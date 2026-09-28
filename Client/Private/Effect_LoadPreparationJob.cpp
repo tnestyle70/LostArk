@@ -168,6 +168,7 @@ bool Client::CEffectLoadPreparationJob::Open(
 	}
 	m_Results.clear();
 	m_Mailbox.reset();
+	m_FirstFailure.reset();
 	m_Progress = {};
 	m_Progress.iJobEpoch = iInitialJobEpoch;
 	m_Progress.iCatalogRevision = iCatalogRevision;
@@ -225,6 +226,7 @@ Client::CEffectLoadPreparationJob::Post_Command(
 			m_iCurrentJobEpoch = Command.iJobEpoch;
 			m_iCurrentCatalogRevision = Command.iCatalogRevision;
 			m_Results.clear();
+			m_FirstFailure.reset();
 			m_Progress = {};
 			m_Progress.iJobEpoch = Command.iJobEpoch;
 			m_Progress.iCatalogRevision = Command.iCatalogRevision;
@@ -334,6 +336,26 @@ bool Client::CEffectLoadPreparationJob::Try_Pop_Result(
 	}
 	m_ResultSpaceCondition.notify_one();
 	return true;
+}
+
+bool Client::CEffectLoadPreparationJob::Record_FirstFailure(
+	EFFECT_LOAD_FAILURE_RECEIPT Failure)
+{
+	if (!Failure.Is_Valid()) return false;
+	std::lock_guard Lock(m_Mutex);
+	if (!m_bOpen || m_bCancelled || m_bClosed || m_FirstFailure.has_value() ||
+		Failure.iJobEpoch != m_iCurrentJobEpoch ||
+		Failure.iCatalogRevision != m_iCurrentCatalogRevision)
+		return false;
+	m_FirstFailure = std::move(Failure);
+	return true;
+}
+
+std::optional<Client::EFFECT_LOAD_FAILURE_RECEIPT>
+Client::CEffectLoadPreparationJob::Get_FirstFailure() const
+{
+	std::lock_guard Lock(m_Mutex);
+	return m_FirstFailure;
 }
 
 bool Client::CEffectLoadPreparationJob::Publish_Progress(

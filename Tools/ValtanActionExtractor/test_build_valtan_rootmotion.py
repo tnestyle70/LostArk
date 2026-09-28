@@ -96,6 +96,68 @@ class ExplicitClipSegmentTests(unittest.TestCase):
         self.assertIsNone(
             rootmotion.build_explicit_clip_segments(clips, self.curves))
 
+    def test_single_explicit_slice_holds_after_scaled_source_window(self) -> None:
+        segments = rootmotion.build_explicit_clip_segments([{
+            "clip": "first", "sourceStartMs": 100, "playMs": 400,
+            "playRate": 2.0, "loop": False,
+        }], self.curves)
+        self.assertIsNotNone(segments)
+        assert segments is not None
+        for time_ms, expected in ((0, 0.0), (100, 0.2), (200, 0.4),
+                                  (500, 0.4), (1000, 0.4)):
+            with self.subTest(time_ms=time_ms):
+                forward, lateral = rootmotion.sample_explicit_clip_segments(
+                    segments, time_ms)
+                self.assertAlmostEqual(expected, forward, places=6)
+                self.assertEqual(0.0, lateral)
+
+    def test_single_explicit_hold_keeps_motion_prefix_and_other_clip_paths(self) -> None:
+        definitions = (
+            ("ORIGINAL", 500, 500, False),
+            ("HELD", 1000, 500, False),
+            ("FULL", 1000, 1000, False),
+            ("NATURAL", 1000, 0, False),
+            ("LOOP", 1000, 500, True),
+        )
+        encounter = {
+            "bossArchetypeId": "BOSS_TEST",
+            "patterns": [{"patternId": "TEST_HOLD", "stages": [
+                {"stageId": name, "actionId": name, "durationMs": duration}
+                for name, duration, _, _ in definitions
+            ]}],
+        }
+        bindings = {"bindings": [
+            {"actionId": name, "clips": [{
+                "clip": "first", "sourceStartMs": 0, "playMs": play_ms,
+                "playRate": 1.0, "loop": loop,
+            }]}
+            for name, _, play_ms, loop in definitions
+        ]}
+        document, _ = rootmotion.build(
+            Path("."), encounter_document=encounter,
+            bindings_document=bindings, curves=self.curves)
+        stages = {stage["stageId"]: stage
+                  for stage in document["patterns"][0]["stages"]}
+        original = stages["ORIGINAL"]["samples"]
+        held = stages["HELD"]["samples"]
+        self.assertEqual(original, [sample for sample in held
+                                    if sample["timeMs"] <= 500])
+        self.assertEqual(500, original[-1]["timeMs"])
+        self.assertEqual(1000, held[-1]["timeMs"])
+        for sample in held:
+            if sample["timeMs"] >= 500:
+                self.assertEqual(0.5, sample["forward"])
+                self.assertEqual(0.0, sample["lateral"])
+        expected_times = [*range(0, 1000, 33), 1000]
+        for name in ("FULL", "NATURAL", "LOOP"):
+            with self.subTest(unchanged_clip_path=name):
+                samples = stages[name]["samples"]
+                self.assertEqual(expected_times,
+                                 [sample["timeMs"] for sample in samples])
+                self.assertEqual([round(time / 1000.0, 4)
+                                  for time in expected_times],
+                                 [sample["forward"] for sample in samples])
+
     def test_build_preserves_explicit_chain_and_skips_portal_transform(self) -> None:
         returning_curve = (
             1000.0,

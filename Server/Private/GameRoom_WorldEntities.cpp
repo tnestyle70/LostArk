@@ -448,6 +448,7 @@ bool LostArk::Server::CGameRoom::Reset_ValtanArenaWhenEmpty()
 		Mark_RuntimeFailure("valtan-empty-reset.world-destruction");
 		return false;
 	}
+	Reset_WorldPickups(resetTick);
 	m_ServerCollisionSystem.Reset_RuntimeStates();
 	m_ServerNavigation.Reset_RuntimeBlockers();
 	m_iNextWorldDestructionEventSequence = 1u;

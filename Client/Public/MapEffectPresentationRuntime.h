@@ -4,6 +4,7 @@
 #include "DeployPropObject.h"
 #include "Effect_PresentationService.h"
 #include "MapEffectDocument.h"
+#include "Network/PacketMessages.h"
 
 #include <cstdint>
 #include <string>
@@ -45,6 +46,8 @@ public:
 		const std::string& areaId,
 		std::string& outStatus);
 	void Update_LevelPresentation(f32_t timeDelta);
+	void Set_ServerPickups(const std::vector<LostArk::Shared::WORLD_PICKUP_SNAPSHOT>& pickups,
+		uint32_t serverTick);
 	void Update_ServerPresentation(
 		const VALTAN_PRESENTATION_STATE& boss,
 		f32_t timeDelta);
@@ -128,6 +131,8 @@ private:
 		f32_t& outSampleSeconds,
 		uint32_t& outOccurrenceSequence,
 		uint32_t& outSampleStartTick) const;
+	const LostArk::Shared::WORLD_PICKUP_SNAPSHOT* Find_ServerPickup(
+		const std::string& placementId) const;
 	void Stop_WorldEffect(size_t index);
 	void Restore_CurrentSurfaceBaselines();
 
@@ -140,6 +145,8 @@ private:
 	const CEncounterPatternReference* m_pEncounterReference = nullptr;
 	std::vector<f32_t> m_WorldEffectDurations;
 	std::vector<ACTIVE_WORLD_EFFECT> m_ActiveWorldEffects;
+	std::vector<LostArk::Shared::WORLD_PICKUP_SNAPSHOT> m_ServerPickups;
+	uint32_t m_iPickupServerTick = 0u;
 	std::unordered_map<uint64_t, SURFACE_EMISSIVE_BASELINE>
 		m_SurfaceEmissiveBaselines;
 	std::unordered_map<std::string, uint32_t>

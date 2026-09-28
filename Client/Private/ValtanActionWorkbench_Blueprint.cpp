@@ -294,29 +294,11 @@ Render_BossPatternStageTopologyControls(
 	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	ImGui::BeginDisabled(
-		Pattern.Stages.size() <= 1u || iStageIndex >= Pattern.Stages.size());
-	if (ImGui::SmallButton("Delete Stage##BossPattern") &&
-		Pattern.Stages.size() > 1u && iStageIndex < Pattern.Stages.size())
+	ImGui::BeginDisabled(iStageIndex >= Pattern.Stages.size());
+	if (ImGui::SmallButton(Pattern.Stages.size() == 1u ? "Clear Stage##BossPattern" : "Delete Stage##BossPattern") &&
+		iStageIndex < Pattern.Stages.size())
 	{
-		VALTAN_PATTERN_VIEW Candidate = Pattern;
-		Candidate.Stages.erase(Candidate.Stages.begin() +
-			static_cast<std::ptrdiff_t>(iStageIndex));
-		Candidate.strEntryActionId = Candidate.Stages.front().strActionId;
-		std::string Status;
-		if (Validate_ManualStageTopologySoundDependencies(Candidate, Status) &&
-			m_pBalanceTool->Remove_ValtanManualStage(
-				Pattern.strPatternId, Stage.strStageId, Status))
-		{
-			const std::size_t iReplacement = (std::min)(
-				iStageIndex, Candidate.Stages.size() - 1u);
-			m_strSelectedStageId = Candidate.Stages[iReplacement].strStageId;
-			m_strSelectedStableId = m_strSelectedStageId;
-			m_eDetailOwner = DETAIL_OWNER::GAMEPLAY_STAGE;
-			m_bDetailsWindowVisible = true;
-			bChanged = true;
-		}
-		m_strStatus = std::move(Status);
+		bChanged = Delete_SelectedStage(Pattern, Stage, m_strStatus);
 	}
 	ImGui::EndDisabled();
 	ImGui::EndDisabled();

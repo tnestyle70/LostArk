@@ -1024,6 +1024,14 @@ bool Client::CEffect_Tool::Build_ElementsPreviewDocument(const EFFECT_DOCUMENT_D
     EFFECT_DOCUMENT_DESC staged = document;
     std::erase_if(staged.Elements, [&included](const auto& element)
         { return !included.contains(element.strElementId); });
+    // A selected preview owns only histories referenced by its dependency
+    // closure. Orphaned sibling histories make an otherwise valid Solo fail.
+    std::erase_if(staged.RuntimeExtensions.BakedEdgeHistories, [&staged](const auto& history)
+    {
+        return std::none_of(staged.Elements.begin(), staged.Elements.end(),
+            [&history](const auto& element)
+            { return element.RuntimeCarrier.strHistoryId == history.strHistoryId; });
+    });
     std::erase_if(staged.ModelCues, [&staged](const auto& cue)
         { return std::none_of(staged.Elements.begin(), staged.Elements.end(),
             [&cue](const auto& element) { return element.ActionCueAttachment.strModelCueId == cue.strCueId; }); });
@@ -2112,6 +2120,33 @@ void Client::CEffect_Tool::Reset_ProductCueSnapshot()
 	m_bProductCueActionFacingCaptured = false;
 }
 
+f32_t Client::CEffect_Tool::Resolve_WorldPreviewStartTime() const
+{
+    if (!m_WorldPreviewDocument ||
+        (m_ePreviewFilter != EFFECT_PREVIEW_FILTER::SOLO_SELECTED &&
+         m_ePreviewFilter != EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP))
+        return 0.f;
+    std::vector<std::string> ElementIds;
+    for (const auto& Element : m_WorldPreviewDocument->Elements)
+    {
+        const bool bSelected = m_ePreviewFilter == EFFECT_PREVIEW_FILTER::SOLO_SELECTED ?
+            Element.strElementId == m_strPreviewIsolationElementId :
+            (!m_strPreviewIsolationGroupId.empty() ? Element.strGroupId == m_strPreviewIsolationGroupId :
+                std::find(m_PreviewIsolationElementIds.begin(), m_PreviewIsolationElementIds.end(),
+                    Element.strElementId) != m_PreviewIsolationElementIds.end());
+        if (bSelected && Is_ElementPreviewAdmitted(Element) && !Is_EffectSimulationOnlyParticle(Element))
+            ElementIds.push_back(Element.strElementId);
+    }
+    uint32_t StartMs = 0u, EndMs = 0u;
+    std::string Label, Error;
+    if (!Resolve_ElementsPreviewWindow(*m_WorldPreviewDocument, ElementIds, StartMs, EndMs, Label, Error))
+        return 0.f;
+    // The selected emitter owns effect-local time. A combat-object reference
+    // starts later in its boss pattern; seek both clocks to that same instant.
+    return (std::clamp)(Resolve_EffectTimelineTime(static_cast<f32_t>(StartMs) * 0.001f),
+        0.f, (std::max)(0.f, m_fPreviewDurationSeconds - 0.001f));
+}
+
 void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
 {
     // Detail Apply/Save also uses this helper. Movie edits must keep its cursor.
@@ -2205,7 +2240,7 @@ void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
 			"Static Area placement restart refused a missing typed transform.";
 		return;
 	}
-    m_fPreviewTimeSeconds = 0.f;
+    m_fPreviewTimeSeconds = Resolve_WorldPreviewStartTime();
     Reset_ProductCueSnapshot();
 	if (EFFECT_DOCUMENT_PREVIEW_INTENT::STATIC_AREA_PLACEMENT !=
 		m_eActiveDocumentPreviewIntent)
@@ -2327,6 +2362,8 @@ void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
         Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
 	m_bPreviewVisibleRequested = true;
     m_bPreviewPlaying = true;
+    if (m_fPreviewTimeSeconds > 0.f)
+        Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);
 }
 
 bool_t Client::CEffect_Tool::Try_PreviewMazeSkill(const bool_t jumpSlam)

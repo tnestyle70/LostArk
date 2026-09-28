@@ -1320,16 +1320,21 @@ void Client::CSequencerTool::Render_PhysicalAnimationBrowser(ICompositionWorkben
         const bool canStage = session.Can_AppendCompositionAnimationResource(resource, true, stageStatus);
         const bool canRow = session.Can_AppendCompositionAnimationResource(resource, false, rowStatus);
         const bool characterAction = m_eSelectedTarget == TARGET::CHARACTER;
-        const char* stageLabel = characterAction ? "Replace selected Animation" : "Append as Stage";
+        const bool valtanPattern = &session == m_pValtanSession;
+        const char* stageLabel = characterAction ? "Replace selected Animation" :
+            (valtanPattern ? "Append to Pattern End" : "Append as Stage");
         const char* rowLabel = characterAction ? "Append Animation" : "Add Animation Row";
         ImGui::BeginDisabled(!canStage);
         if (ImGui::Button((std::string(stageLabel) + "##CompositionPhysicalAnimation").c_str()))
             (void)session.Append_CompositionAnimationResource(resource, true, m_strAnimationBrowserStatus);
         ImGui::EndDisabled();
-        ImGui::BeginDisabled(!canRow);
-        if (ImGui::Button((std::string(rowLabel) + "##CompositionPhysicalAnimation").c_str()))
-            (void)session.Append_CompositionAnimationResource(resource, false, m_strAnimationBrowserStatus);
-        ImGui::EndDisabled();
+        if (!valtanPattern)
+        {
+            ImGui::BeginDisabled(!canRow);
+            if (ImGui::Button((std::string(rowLabel) + "##CompositionPhysicalAnimation").c_str()))
+                (void)session.Append_CompositionAnimationResource(resource, false, m_strAnimationBrowserStatus);
+            ImGui::EndDisabled();
+        }
         if (!canStage && !stageStatus.empty())
             ImGui::TextWrapped("%s: %s", stageLabel, stageStatus.c_str());
         if (!canRow && !rowStatus.empty() && rowStatus != stageStatus)

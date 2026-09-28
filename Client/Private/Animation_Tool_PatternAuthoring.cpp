@@ -142,12 +142,14 @@ bool_t Client::CAnimation_Tool::Parse_CustomChainDocument(
 		const DATA_JSON_VALUE* pOccurrences = pAnimation->Find("occurrences");
 		if (nullptr == pEndPolicy || !pEndPolicy->Is_String() ||
 			(pEndPolicy->Get_String() != "EXACT" &&
-			 pEndPolicy->Get_String() != "NATIVE_CLIP_LENGTHS") ||
+			 pEndPolicy->Get_String() != "NATIVE_CLIP_LENGTHS" &&
+			 pEndPolicy->Get_String() != "NONE") ||
 			nullptr == pRepeatCount || !pRepeatCount->Is_Number() ||
 			!std::isfinite(pRepeatCount->Get_Number()) ||
 			std::floor(pRepeatCount->Get_Number()) != pRepeatCount->Get_Number() ||
 			nullptr == pOccurrences || !pOccurrences->Is_Array() ||
-			pOccurrences->Get_Array().empty() ||
+			(pOccurrences->Get_Array().empty() !=
+				(pEndPolicy->Get_String() == "NONE")) ||
 			pOccurrences->Get_Array().size() > 64u ||
 			pRepeatCount->Get_Number() !=
 				static_cast<double>(pOccurrences->Get_Array().size()))
@@ -228,7 +230,21 @@ bool_t Client::CAnimation_Tool::Parse_CustomChainDocument(
 
 bool_t Client::CAnimation_Tool::Load_CustomChainLibrary()
 {
-	const std::filesystem::path source = Get_CustomChainFilePath();
+	return Load_CustomChainLibrary(Get_CustomChainFilePath());
+}
+
+bool_t Client::CAnimation_Tool::Load_ValtanCustomChainLibrary()
+{
+	// Composition owns a Valtan intake even before a preview model is selected.
+	// Keep that source identity independent of Animation Tool's current asset.
+	const CUSTOM_CHAIN_PROFILE* const pProfile = Find_CustomChainProfile("Valtan");
+	return Load_CustomChainLibrary(nullptr == pProfile ? std::filesystem::path{} :
+		CProjectDataRoot::Resolve(std::filesystem::path(L"Valtan") / pProfile->pFileName));
+}
+
+bool_t Client::CAnimation_Tool::Load_CustomChainLibrary(
+	const std::filesystem::path& source)
+{
 	if (source.empty())
 	{
 		m_CustomChainLibrary.clear();
@@ -336,7 +352,7 @@ bool_t Client::CAnimation_Tool::Save_CustomChainLibrary()
 			CDataJson::Escape(Entry.chainId).c_str(),
 			CDataJson::Escape(Entry.targetPatternId).c_str(),
 			CDataJson::Escape(Entry.targetStageId).c_str(),
-			bEveryStepAuthored ? "EXACT" : "NATIVE_CLIP_LENGTHS",
+			Entry.steps.empty() ? "NONE" : bEveryStepAuthored ? "EXACT" : "NATIVE_CLIP_LENGTHS",
 			Entry.steps.size());
 		for (size_t iStep = 0u; iStep < Entry.steps.size(); ++iStep)
 		{
@@ -399,6 +415,64 @@ bool_t Client::CAnimation_Tool::Save_CustomChainLibrary()
 void Client::CAnimation_Tool::Render_ValtanPatternCreatePanel()
 {
 	ImGui::SeparatorText("Create New Pattern");
+	if (2 == m_iValtanPatternCreateSourceKind)
+	{
+		const bool_t bBusy = nullptr != m_hValtanPatternCreateProcess;
+		const bool_t bDirty = nullptr == m_pBalanceTool ||
+			m_pBalanceTool->Is_ValtanDraftDirty() || Is_ValtanDocumentDirty();
+		std::string SourceRevision, SourceStatus;
+		const bool_t bAdmitted = nullptr != m_pBalanceTool &&
+			m_pBalanceTool->Get_ValtanCanonicalSourceRevision(SourceRevision, SourceStatus) &&
+			!m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() &&
+			!m_pBalanceTool->Is_ServerRuntimeSetPublishRunning();
+		ImGui::TextWrapped("Enter a name to create an empty Pattern, then append Animation clips, Effects, Sounds and Colliders in the Sequencer.");
+		ImGui::BeginDisabled(bBusy);
+		ImGui::SetNextItemWidth(360.f);
+		ImGui::InputTextWithHint("Pattern name", "Korean or English name",
+			m_ValtanPatternCreateDisplayName, sizeof(m_ValtanPatternCreateDisplayName));
+		ImGui::BeginDisabled(bDirty || !bAdmitted || '\0' == m_ValtanPatternCreateDisplayName[0]);
+		if (ImGui::Button("Create Pattern"))
+		{
+			// Identity is allocated once for this request; display text is not a key.
+			FILETIME Time{};
+			GetSystemTimeAsFileTime(&Time);
+			ULARGE_INTEGER Stamp{};
+			Stamp.LowPart = Time.dwLowDateTime;
+			Stamp.HighPart = Time.dwHighDateTime;
+			const std::string Id = "VALTAN_AUTHORED_" + std::to_string(Stamp.QuadPart) +
+				"_" + std::to_string(GetCurrentProcessId());
+			snprintf(m_ValtanPatternCreatePatternId, sizeof(m_ValtanPatternCreatePatternId), "%s", Id.c_str());
+			m_iValtanPatternCreateTargetPolicy = 0;
+			m_iValtanPatternCreateAimPolicy = 0;
+			(void)Start_ValtanPatternCreateCommand(true);
+		}
+		ImGui::EndDisabled();
+		if (ImGui::Button("Import Animation Sequence..."))
+		{
+			m_iValtanPatternCreateSourceKind = 0;
+			m_ValtanPatternCreatePatternId[0] = '\0';
+			m_strValtanPatternCreateValidatedRequestSha256.clear();
+		}
+		ImGui::EndDisabled();
+		if (bDirty)
+			ImGui::TextWrapped("Save the current Pattern edits before creating another Pattern.");
+		if (!bAdmitted)
+			ImGui::TextWrapped("Load the current Pattern data before creating a Pattern.");
+		if (!m_strValtanPatternCreateStatus.empty())
+			ImGui::TextWrapped("%s", m_strValtanPatternCreateStatus.c_str());
+		if (!m_strValtanPatternCreateDiagnostic.empty() && ImGui::CollapsingHeader("Create process diagnostic"))
+			ImGui::TextWrapped("%s", m_strValtanPatternCreateDiagnostic.c_str());
+		return;
+	}
+	ImGui::BeginDisabled(nullptr != m_hValtanPatternCreateProcess);
+	if (ImGui::Button("Create an empty Pattern instead"))
+	{
+		m_iValtanPatternCreateSourceKind = 2;
+		m_strValtanPatternCreateValidatedRequestSha256.clear();
+	}
+	ImGui::EndDisabled();
+	if (2 == m_iValtanPatternCreateSourceKind)
+		return;
 	ImGui::TextWrapped(
 		"Promote one reviewed Animation Intake chain into a new audition-only "
 		"Valtan pattern. Validate performs the full staged transaction without "
@@ -669,7 +743,12 @@ bool_t Client::CAnimation_Tool::Build_ValtanPatternCreateRequest(
 		static_cast<size_t>(m_iValtanPatternCreateAimPolicy)] << R"json(",
   "intakeChain": )json";
 
-	if (1 == m_iValtanPatternCreateSourceKind)
+	if (2 == m_iValtanPatternCreateSourceKind)
+	{
+		Request << R"json({"selectionKind": "EMPTY_PATTERN"}
+})json";
+	}
+	else if (1 == m_iValtanPatternCreateSourceKind)
 	{
 		if (m_CustomChainLibrary.empty() ||
 			m_iValtanPatternCreateSavedIndex < 0 ||
@@ -806,12 +885,14 @@ bool_t Client::CAnimation_Tool::Start_ValtanPatternCreateCommand(
 			"Apply rejected before mutation: save or discard every Balance / Valtan Animation-Sound owner draft first.";
 		return false;
 	}
-	if (bApply && !Can_MutateValtanView(m_eValtanPatternMasterAdmission))
+	std::string SourceRevision, SourceStatus;
+	if (bApply && (nullptr == m_pBalanceTool ||
+		!m_pBalanceTool->Get_ValtanCanonicalSourceRevision(SourceRevision, SourceStatus) ||
+		m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() ||
+		m_pBalanceTool->Is_ServerRuntimeSetPublishRunning()))
 	{
 		m_strValtanPatternCreateStatus =
-			"Create stopped before writing: Pattern data is " +
-			std::string(ValtanPatternMasterAdmissionLabel()) +
-			". Load the current data before saving.";
+			"Create stopped before writing: load the current source and finish any active Save. " + SourceStatus;
 		return false;
 	}
 
@@ -831,7 +912,9 @@ bool_t Client::CAnimation_Tool::Start_ValtanPatternCreateCommand(
 			"Create New Pattern request SHA-256 could not be computed.";
 		return false;
 	}
-	if (bApply && strRequestSha256 !=
+	// Empty creation has one explicit command; the backend stages and validates
+	// that exact request under its writer lock before any commit.
+	if (bApply && 2 != m_iValtanPatternCreateSourceKind && strRequestSha256 !=
 		m_strValtanPatternCreateValidatedRequestSha256)
 	{
 		m_strValtanPatternCreateValidatedRequestSha256.clear();
@@ -958,6 +1041,7 @@ bool_t Client::CAnimation_Tool::Start_ValtanPatternCreateCommand(
 	m_strValtanPatternCreateActiveRequestSha256 = strRequestSha256;
 	m_strValtanPatternCreateActivePatternId = m_ValtanPatternCreatePatternId;
 	m_bValtanPatternCreateActiveApply = bApply;
+	m_bValtanPatternCreateActiveEmpty = 2 == m_iValtanPatternCreateSourceKind;
 	m_bValtanPatternCreateHasExitCode = false;
 	m_iValtanPatternCreateExitCode = 0u;
 	m_iValtanPatternCreateStartedAtMilliseconds = GetTickCount64();
@@ -981,10 +1065,10 @@ bool_t Client::CAnimation_Tool::Parse_ValtanPatternCreateResult(
 		strOutError = "Create backend result is not strict JSON: " + strOutError;
 		return false;
 	}
-	constexpr std::array<std::string_view, 11u> RequiredKeys = {
+	constexpr std::array<std::string_view, 12u> RequiredKeys = {
 		"schema", "formatVersion", "mode", "patternId", "sourceChainId",
 		"admissionState", "selectionMode", "sourceSha256", "patternCount",
-		"stageCount", "projectedArtifactCount" };
+		"stageCount", "projectedArtifactCount", "sourceOnly" };
 	if (Root.Get_Object().size() != RequiredKeys.size() ||
 		!std::all_of(RequiredKeys.begin(), RequiredKeys.end(),
 			[&Root](const std::string_view strKey)
@@ -1024,6 +1108,7 @@ bool_t Client::CAnimation_Tool::Parse_ValtanPatternCreateResult(
 	const DATA_JSON_VALUE* const pAdmission = String("admissionState");
 	const DATA_JSON_VALUE* const pSelection = String("selectionMode");
 	const DATA_JSON_VALUE* const pSourceSha = String("sourceSha256");
+	const DATA_JSON_VALUE* const pSourceOnly = Root.Find("sourceOnly");
 	uint64_t iVersion = 0u;
 	uint64_t iPatternCount = 0u;
 	uint64_t iStageCount = 0u;
@@ -1035,7 +1120,10 @@ bool_t Client::CAnimation_Tool::Parse_ValtanPatternCreateResult(
 		!UnsignedInteger("patternCount", iPatternCount) ||
 		!UnsignedInteger("stageCount", iStageCount) ||
 		!UnsignedInteger("projectedArtifactCount", iProjectedCount) ||
-		0u == iPatternCount || 0u == iStageCount || 0u == iProjectedCount ||
+		0u == iPatternCount || 0u == iStageCount ||
+		nullptr == pSourceOnly || !pSourceOnly->Is_Boolean() ||
+		pSourceOnly->Get_Boolean() != m_bValtanPatternCreateActiveEmpty ||
+		(m_bValtanPatternCreateActiveEmpty ? 0u != iProjectedCount : 0u == iProjectedCount) ||
 		pSchema->Get_String() !=
 			"lostark.valtan-animation-pattern-create-result" ||
 		pMode->Get_String() !=
@@ -1141,28 +1229,44 @@ void Client::CAnimation_Tool::Poll_ValtanPatternCreateCommand()
 	const bool_t bBalanceReloaded = nullptr != m_pBalanceTool &&
 		m_pBalanceTool->Reload_ValtanSource(strBalanceReloadStatus);
 	m_bCustomChainLibraryLoadAttempted = true;
-	const bool_t bIntakeReloaded = bBalanceReloaded && Load_CustomChainLibrary();
+	const bool_t bIntakeReloaded = bBalanceReloaded && Load_ValtanCustomChainLibrary();
 	const std::string strIntakeStatus = bBalanceReloaded ?
 		m_strCustomChainStatus :
 		"Intake reload was not attempted because joined source/Product admission failed.";
+	VALTAN_PATTERN_TREE_VIEW CreatedAuthoringView;
+	std::string strAnimationStatus;
 	const bool_t bAnimationReloaded = bBalanceReloaded &&
-		Reload_ValtanPatternMaster();
-	const std::string strAnimationStatus = bBalanceReloaded ?
-		m_strValtanPatternMasterStatus :
-		"Anim joined-master reload was not attempted because joined source/Product admission failed.";
+		(m_bValtanPatternCreateActiveEmpty ?
+			m_pBalanceTool->Get_ValtanAuthoringView(CreatedAuthoringView, strAnimationStatus) :
+			Reload_ValtanPatternMaster());
+	if (!m_bValtanPatternCreateActiveEmpty)
+		strAnimationStatus = m_strValtanPatternMasterStatus;
+	if (!bBalanceReloaded)
+		strAnimationStatus = "Animation reload was not attempted because joined source admission failed.";
 	std::string strBossStatus =
 		bAnimationReloaded ? "Boss canonical graph reload is unavailable." :
 			"Boss canonical graph reload was not attempted because Anim reload failed.";
-	const bool_t bBossReloaded = bAnimationReloaded &&
-		nullptr != m_pValtanBossTool &&
-		m_pValtanBossTool->Reload_CanonicalGraph(strBossStatus);
+	const bool_t bBossReloaded = m_bValtanPatternCreateActiveEmpty ||
+		(bAnimationReloaded && nullptr != m_pValtanBossTool &&
+			m_pValtanBossTool->Reload_CanonicalGraph(strBossStatus));
+	if (m_bValtanPatternCreateActiveEmpty)
+		strBossStatus = "Empty authoring Pattern; Product admission waits for Animation clips.";
 	const bool_t bAnimationAdmitted = bAnimationReloaded &&
-		Can_MutateValtanView(m_eValtanPatternMasterAdmission);
+		(m_bValtanPatternCreateActiveEmpty ||
+			Can_MutateValtanView(m_eValtanPatternMasterAdmission));
 	bool_t bSelected = false;
 	if (bAnimationAdmitted)
 	{
-		const std::vector<const VALTAN_PATTERN_VIEW*> Patterns =
-			Collect_ValtanPatternMasterPatterns();
+		std::vector<const VALTAN_PATTERN_VIEW*> Patterns;
+		if (m_bValtanPatternCreateActiveEmpty)
+		{
+			for (const auto& Pattern : CreatedAuthoringView.Gimmicks)
+				Patterns.push_back(&Pattern);
+			for (const auto& Pattern : CreatedAuthoringView.Rotation)
+				Patterns.push_back(&Pattern);
+		}
+		else
+			Patterns = Collect_ValtanPatternMasterPatterns();
 		for (size_t iPattern = 0u; iPattern < Patterns.size(); ++iPattern)
 		{
 			const VALTAN_PATTERN_VIEW* const pPattern = Patterns[iPattern];
@@ -1171,7 +1275,8 @@ void Client::CAnimation_Tool::Poll_ValtanPatternCreateCommand()
 			{
 				continue;
 			}
-			m_iValtanPatternMasterSelected = static_cast<int32_t>(iPattern);
+			if (!m_bValtanPatternCreateActiveEmpty)
+				m_iValtanPatternMasterSelected = static_cast<int32_t>(iPattern);
 			m_strValtanWorkbenchPatternId = pPattern->strPatternId;
 			m_strValtanWorkbenchStageId = pPattern->Stages.empty() ?
 				std::string{} : pPattern->Stages.front().strStageId;
@@ -1185,7 +1290,7 @@ void Client::CAnimation_Tool::Poll_ValtanPatternCreateCommand()
 		}
 	}
 #ifdef _DEBUG
-	if (bSelected)
+	if (bSelected && !m_bValtanPatternCreateActiveEmpty)
 	{
 		if (CMainApp* const pApp = CMainApp::Get_Active())
 			(void)pApp->Debug_SelectCompletePlayPattern(
@@ -1216,8 +1321,9 @@ void Client::CAnimation_Tool::Poll_ValtanPatternCreateCommand()
 		(bBossReloaded ? "PASS" : "REJECTED") + " (" + strBossStatus + ").";
 	if (bReloadClosureAdmitted)
 	{
-		m_strValtanPatternCreateStatus +=
-			" Data Pattern creation is complete. The Create transaction does not republish Gameplay.bootstrap or restart the active Server; run the Server + Client Product build and restart Server before product entry/playback.";
+		m_strValtanPatternCreateStatus = m_bValtanPatternCreateActiveEmpty ?
+			"Pattern created and saved. Append Animation clips to STEP_01, then add Effects, Sounds and Colliders. Use Save for edits and Save & Publish when ready for Server play." :
+			"Pattern created, saved and reloaded. Use Save & Publish when ready for Server play; the running Server has not been changed.";
 	}
 }
 

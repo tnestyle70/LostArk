@@ -409,6 +409,10 @@ namespace Client
 		{
 			return m_ValtanPresentationState;
 		}
+		const std::vector<LostArk::Shared::WORLD_PICKUP_SNAPSHOT>& Get_WorldPickups() const
+		{
+			return m_WorldPickupSnapshots;
+		}
 		uint64_t Get_WorldDestructionPresentationGeneration() const
 		{
 			return m_iWorldDestructionPresentationGeneration;
@@ -703,6 +707,7 @@ namespace Client
 		std::uint64_t m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
 		std::string m_strPendingPresentationFailure;
 		VALTAN_PRESENTATION_STATE m_ValtanPresentationState;
+		std::vector<LostArk::Shared::WORLD_PICKUP_SNAPSHOT> m_WorldPickupSnapshots;
 		CCombatObjectProjectionRuntime m_CombatObjectProjectionRuntime;
         // MainApp owns the player for the active Kouku level; Reset_World drops this view.
         CKoukuSaydonPresentationPlayer* m_pTargetedCombatPresentationPlayer = nullptr;

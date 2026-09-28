@@ -17,7 +17,8 @@
 NS_BEGIN(Client)
 
 inline constexpr std::size_t MAX_BOSS_ARMOR_PARTS = 4u;
-inline constexpr std::size_t MAX_BOSS_COMBAT_OBJECT_VISUALS = 16u;
+// Catalog definitions per boss, independent of live combat-object snapshot count.
+inline constexpr std::size_t MAX_BOSS_COMBAT_OBJECT_VISUALS = 32u;
 
 /* What a native source-character material was authored with, kept past load.
 The catalog states these once as JSON, but the character-creation screen moves
@@ -105,6 +106,11 @@ struct BOSS_COMBAT_OBJECT_VISUAL_ENTRY final
 	std::string armedPresentationEventId;
 	std::string armedEffectAssetId;
 	bool_t stopActiveOnHit = false;
+	// Replace the idle visual with a self-contained armed visual on its Server marker.
+	bool_t stopActiveOnArmed = false;
+	// One armed V1 occurrence owns its terminal tail; the same asset is the direct-hit fallback.
+	// With both armed flags false, a shared armed/hit asset starts only on Hit.
+	bool_t armedEffectOwnsTerminal = false;
 	// Presentation scale relative to the authoritative combat-object root.
 	float3_t worldScale = { 1.f, 1.f, 1.f };
 

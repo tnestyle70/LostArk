@@ -1,0 +1,2220 @@
+{
+  "schema": "lostark.effect-authoring",
+  "version": 13,
+  "effectAssetId": "effect.valtan.six-pizza.source.red-sector",
+  "displayName": "중앙 이동 후 6방향 피자 / 빨간 부채꼴 3회 (원본 자료 기반 저작)",
+  "particleSystem": {
+    "uniformScaleMultiplier": 1,
+    "yawOffsetDegrees": 0,
+    "directionYawDegrees": 0,
+    "initialSpeedMultiplier": 1
+  },
+  "modelCues": [],
+  "elements": [
+    {
+      "id": "valtan.pizza.ground.red.004",
+      "displayName": "빨간 부채꼴 / 004",
+      "groupId": "effect.valtan.six-pizza.source.red-sector",
+      "sourceNode": "action-420620/stage-006/notify-004|groundeffect.42061920",
+      "visible": true,
+      "kind": "decal",
+      "resources": [],
+      "sourceTransformTrack": {
+        "sourceOccurrenceId": "action-420620/stage-006/notify-004|groundeffect.42061920",
+        "sourceTimeOriginSeconds": -0.4000000059604645,
+        "previewOriginUE3Cm": [
+          0,
+          0,
+          0
+        ],
+        "nodes": [
+          {
+            "sourceObjectPath": "action-420620/stage-006/notify-004|groundeffect.42061920",
+            "frame": "RELATIVE_TO_INITIAL",
+            "initialPositionUE3Cm": [
+              0,
+              0,
+              0
+            ],
+            "initialEulerDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scaleUE3": [
+              1,
+              1,
+              1
+            ],
+            "positionKeys": [
+              {
+                "timeSeconds": 0,
+                "value": [
+                  0,
+                  0,
+                  0
+                ],
+                "arriveTangent": [
+                  0,
+                  0,
+                  0
+                ],
+                "leaveTangent": [
+                  0,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 0,
+                "value": [
+                  0,
+                  0,
+                  0
+                ],
+                "arriveTangent": [
+                  0,
+                  0,
+                  0
+                ],
+                "leaveTangent": [
+                  0,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          }
+        ],
+        "alphaScaleKeys": [
+          {
+            "timeSeconds": 0,
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "linear"
+          },
+          {
+            "timeSeconds": 0.20000000298023224,
+            "value": [
+              1,
+              1,
+              1
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "linear"
+          },
+          {
+            "timeSeconds": 0.30000001192092896,
+            "value": [
+              1,
+              1,
+              1
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "linear"
+          },
+          {
+            "timeSeconds": 0.800000011920929,
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "linear"
+          }
+        ]
+      },
+      "material": {
+        "templateId": "effect.source_material",
+        "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_de_behitmondonut_02_01_tr",
+        "renderProfile": "alpha_one_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.mi.o.00.fx.m.fx.o.de.behitmondonut.02.tr.loc.int.6d71f91fdae4",
+          "runtimeShaderProfileId": "effect.ue3.kouku-5213-native.v1",
+          "parentMaterialPath": "fx_m_mi_o_00.fx_m.fx_o_de_behitmondonut_02_tr_loc_int",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "native_texture_0",
+              "sourceObjectPath": "fx_tex_02.fx_d_typical_012",
+              "assetId": "Effect/KoukuSaydon/FullRestore/Textures/fx_tex_02/fx_d_typical_012.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "linear",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "native_texture_1",
+              "sourceObjectPath": "fx_tex_02.fx_d_line_006",
+              "assetId": "Effect/KoukuSaydon/FullRestore/Textures/fx_tex_02/fx_d_line_006.dds",
+              "addressU": "wrap",
+              "addressV": "clamp",
+              "colorSpace": "linear",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [
+            {
+              "name": "inner",
+              "group": "None",
+              "value": 0.75
+            },
+            {
+              "name": "thickness",
+              "group": "None",
+              "value": 0.015
+            },
+            {
+              "name": "decal_drawscale",
+              "group": "None",
+              "value": 200.0
+            },
+            {
+              "name": "angle",
+              "group": "None",
+              "value": 0.1527777777777778
+            },
+            {
+              "name": "opacity",
+              "group": "None",
+              "value": 1.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "color",
+              "group": "None",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
+      },
+      "actionCueAttachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "snapshotRootSourceBasisYawDegrees": -90,
+        "socketLocalTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            -90,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "velocityPerSecond": [
+            0,
+            0,
+            0
+          ]
+        },
+        "color": {
+          "offset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "multiply": [
+            2.0,
+            0.0,
+            0.10000000149011612,
+            1.5
+          ],
+          "clip": 0,
+          "emissiveIntensity": 1,
+          "distortionIntensity": 0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0,
+          "radialIntensity": 0
+        },
+        "uv": {
+          "start": [
+            0,
+            0
+          ],
+          "speed": [
+            0,
+            0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0,
+            0
+          ],
+          "waveFrequency": 1,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.100000001,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0.4000000059604645,
+          "lifeTimeSeconds": 0.800000011920929,
+          "afterImageSeconds": 0,
+          "dissolveStartNormalized": 1
+        },
+        "mesh": {
+          "useModelMaterial": false,
+          "modelPreScale": 0.00999999978,
+          "sourceTypeDataRotationDegrees": [
+            0,
+            0,
+            0
+          ]
+        },
+        "sprite": {
+          "billboard": false,
+          "billboardRollDegrees": 0,
+          "billboardRollDegreesPerSecond": 0
+        },
+        "decal": {
+          "size": [
+            200.0,
+            200.0
+          ],
+          "depth": 6,
+          "receiverMode": "upwardSurfaces",
+          "normalCutoff": 0.5
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0,
+            0,
+            0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "scale": false,
+          "endScale": [
+            1,
+            1,
+            1
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1
+        },
+        "particle": {
+          "maxParticles": 1,
+          "spawnRatePerSecond": 0,
+          "burstCount": 0,
+          "randomSeed": 78,
+          "lifeTimeSeconds": [
+            0.800000011920929,
+            0.800000011920929
+          ],
+          "initialPositionMin": [
+            0,
+            0,
+            0
+          ],
+          "initialPositionMax": [
+            0,
+            0,
+            0
+          ],
+          "initialVelocityMin": [
+            0,
+            0,
+            0
+          ],
+          "initialVelocityMax": [
+            0,
+            0,
+            0
+          ],
+          "acceleration": [
+            0,
+            0,
+            0
+          ],
+          "startSize": [
+            200.0,
+            200.0
+          ],
+          "endSize": [
+            200.0,
+            200.0
+          ],
+          "localSpace": true,
+          "billboard": false
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.349999994,
+          "sampleIntervalSeconds": 0.0166666992,
+          "minimumDistance": 0.00999999978,
+          "startWidth": 0.200000003,
+          "endWidth": 0,
+          "tilingDistanceWorldUnits": 0,
+          "distanceTessellationStepWorldUnits": 0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.0500000007,
+          "maxCopies": 16,
+          "alphaExponent": 1
+        },
+        "light": {
+          "enabled": false
+        },
+        "screenPost": {
+          "enabled": false
+        }
+      },
+      "sourceRecipe": {
+        "enabled": true,
+        "rendererShape": "decal",
+        "emitterDelaySeconds": 0,
+        "emitterDurationSeconds": 0.800000011920929,
+        "emitterLoopCount": 1,
+        "bursts": [
+          {
+            "timeSeconds": 0,
+            "countMinimum": 1,
+            "countMaximum": 1
+          }
+        ],
+        "modules": [
+          {
+            "stableId": "action-420620/stage-006/notify-004|groundeffect.42061920.particlemodulerequired",
+            "className": "particlemodulerequired",
+            "objectPath": "action-420620/stage-006/notify-004|groundeffect.42061920.particlemodulerequired",
+            "literals": [
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "emitterduration",
+                "kind": "number",
+                "value": 0.800000011920929
+              },
+              {
+                "propertyPath": "emitterloops",
+                "kind": "number",
+                "value": 1
+              },
+              {
+                "propertyPath": "buselocalspace",
+                "kind": "boolean",
+                "value": true
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "spawnrate",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "defaultMaximum": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "action-420620/stage-006/notify-004|groundeffect.42061920.particlemodulelifetime",
+            "className": "particlemodulelifetime",
+            "objectPath": "action-420620/stage-006/notify-004|groundeffect.42061920.particlemodulelifetime",
+            "literals": [
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "lifetime",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  0.800000011920929,
+                  0,
+                  0,
+                  0
+                ],
+                "defaultMaximum": [
+                  0.800000011920929,
+                  0,
+                  0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "action-420620/stage-006/notify-004|groundeffect.42061920.particlemodulesize",
+            "className": "particlemodulesize",
+            "objectPath": "action-420620/stage-006/notify-004|groundeffect.42061920.particlemodulesize",
+            "literals": [
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startsize",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  20000.0,
+                  20000.0,
+                  20000.0,
+                  0
+                ],
+                "defaultMaximum": [
+                  20000.0,
+                  20000.0,
+                  20000.0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "action-420620/stage-006/notify-004|groundeffect.42061920.particlemodulecolor",
+            "className": "particlemodulecolor",
+            "objectPath": "action-420620/stage-006/notify-004|groundeffect.42061920.particlemodulecolor",
+            "literals": [
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startcolor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "startalpha",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "action-420620/stage-006/notify-004|groundeffect.42061920.efparticlemoduletypedatadecal",
+            "className": "efparticlemoduletypedatadecal",
+            "objectPath": "action-420620/stage-006/notify-004|groundeffect.42061920.efparticlemoduletypedatadecal",
+            "literals": [
+              {
+                "propertyPath": "nearplane",
+                "kind": "number",
+                "value": -300
+              },
+              {
+                "propertyPath": "farplane",
+                "kind": "number",
+                "value": 300
+              },
+              {
+                "propertyPath": "rotation.degrees.roll",
+                "kind": "number",
+                "value": 0
+              }
+            ],
+            "distributions": []
+          }
+        ]
+      },
+      "sourcePresentation": {
+        "enabled": false
+      }
+    },
+    {
+      "id": "valtan.pizza.ground.red.007",
+      "displayName": "빨간 부채꼴 / 007",
+      "groupId": "effect.valtan.six-pizza.source.red-sector",
+      "sourceNode": "action-420620/stage-006/notify-007|groundeffect.42061920",
+      "visible": true,
+      "kind": "decal",
+      "resources": [],
+      "sourceTransformTrack": {
+        "sourceOccurrenceId": "action-420620/stage-006/notify-007|groundeffect.42061920",
+        "sourceTimeOriginSeconds": -1.899999976158142,
+        "previewOriginUE3Cm": [
+          0,
+          0,
+          0
+        ],
+        "nodes": [
+          {
+            "sourceObjectPath": "action-420620/stage-006/notify-007|groundeffect.42061920",
+            "frame": "RELATIVE_TO_INITIAL",
+            "initialPositionUE3Cm": [
+              0,
+              0,
+              0
+            ],
+            "initialEulerDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scaleUE3": [
+              1,
+              1,
+              1
+            ],
+            "positionKeys": [
+              {
+                "timeSeconds": 0,
+                "value": [
+                  0,
+                  0,
+                  0
+                ],
+                "arriveTangent": [
+                  0,
+                  0,
+                  0
+                ],
+                "leaveTangent": [
+                  0,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 0,
+                "value": [
+                  0,
+                  0,
+                  0
+                ],
+                "arriveTangent": [
+                  0,
+                  0,
+                  0
+                ],
+                "leaveTangent": [
+                  0,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          }
+        ],
+        "alphaScaleKeys": [
+          {
+            "timeSeconds": 0,
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "linear"
+          },
+          {
+            "timeSeconds": 0.20000000298023224,
+            "value": [
+              1,
+              1,
+              1
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "linear"
+          },
+          {
+            "timeSeconds": 0.30000001192092896,
+            "value": [
+              1,
+              1,
+              1
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "linear"
+          },
+          {
+            "timeSeconds": 0.800000011920929,
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "linear"
+          }
+        ]
+      },
+      "material": {
+        "templateId": "effect.source_material",
+        "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_de_behitmondonut_02_01_tr",
+        "renderProfile": "alpha_one_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.mi.o.00.fx.m.fx.o.de.behitmondonut.02.tr.loc.int.6d71f91fdae4",
+          "runtimeShaderProfileId": "effect.ue3.kouku-5213-native.v1",
+          "parentMaterialPath": "fx_m_mi_o_00.fx_m.fx_o_de_behitmondonut_02_tr_loc_int",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "native_texture_0",
+              "sourceObjectPath": "fx_tex_02.fx_d_typical_012",
+              "assetId": "Effect/KoukuSaydon/FullRestore/Textures/fx_tex_02/fx_d_typical_012.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "linear",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "native_texture_1",
+              "sourceObjectPath": "fx_tex_02.fx_d_line_006",
+              "assetId": "Effect/KoukuSaydon/FullRestore/Textures/fx_tex_02/fx_d_line_006.dds",
+              "addressU": "wrap",
+              "addressV": "clamp",
+              "colorSpace": "linear",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [
+            {
+              "name": "inner",
+              "group": "None",
+              "value": 0.75
+            },
+            {
+              "name": "thickness",
+              "group": "None",
+              "value": 0.015
+            },
+            {
+              "name": "decal_drawscale",
+              "group": "None",
+              "value": 200.0
+            },
+            {
+              "name": "angle",
+              "group": "None",
+              "value": 0.1527777777777778
+            },
+            {
+              "name": "opacity",
+              "group": "None",
+              "value": 1.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "color",
+              "group": "None",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
+      },
+      "actionCueAttachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "snapshotRootSourceBasisYawDegrees": -90,
+        "socketLocalTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            -90,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "velocityPerSecond": [
+            0,
+            0,
+            0
+          ]
+        },
+        "color": {
+          "offset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "multiply": [
+            2.0,
+            0.0,
+            0.10000000149011612,
+            1.5
+          ],
+          "clip": 0,
+          "emissiveIntensity": 1,
+          "distortionIntensity": 0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0,
+          "radialIntensity": 0
+        },
+        "uv": {
+          "start": [
+            0,
+            0
+          ],
+          "speed": [
+            0,
+            0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0,
+            0
+          ],
+          "waveFrequency": 1,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.100000001,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 1.899999976158142,
+          "lifeTimeSeconds": 0.800000011920929,
+          "afterImageSeconds": 0,
+          "dissolveStartNormalized": 1
+        },
+        "mesh": {
+          "useModelMaterial": false,
+          "modelPreScale": 0.00999999978,
+          "sourceTypeDataRotationDegrees": [
+            0,
+            0,
+            0
+          ]
+        },
+        "sprite": {
+          "billboard": false,
+          "billboardRollDegrees": 0,
+          "billboardRollDegreesPerSecond": 0
+        },
+        "decal": {
+          "size": [
+            200.0,
+            200.0
+          ],
+          "depth": 6,
+          "receiverMode": "upwardSurfaces",
+          "normalCutoff": 0.5
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0,
+            0,
+            0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "scale": false,
+          "endScale": [
+            1,
+            1,
+            1
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1
+        },
+        "particle": {
+          "maxParticles": 1,
+          "spawnRatePerSecond": 0,
+          "burstCount": 0,
+          "randomSeed": 78,
+          "lifeTimeSeconds": [
+            0.800000011920929,
+            0.800000011920929
+          ],
+          "initialPositionMin": [
+            0,
+            0,
+            0
+          ],
+          "initialPositionMax": [
+            0,
+            0,
+            0
+          ],
+          "initialVelocityMin": [
+            0,
+            0,
+            0
+          ],
+          "initialVelocityMax": [
+            0,
+            0,
+            0
+          ],
+          "acceleration": [
+            0,
+            0,
+            0
+          ],
+          "startSize": [
+            200.0,
+            200.0
+          ],
+          "endSize": [
+            200.0,
+            200.0
+          ],
+          "localSpace": true,
+          "billboard": false
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.349999994,
+          "sampleIntervalSeconds": 0.0166666992,
+          "minimumDistance": 0.00999999978,
+          "startWidth": 0.200000003,
+          "endWidth": 0,
+          "tilingDistanceWorldUnits": 0,
+          "distanceTessellationStepWorldUnits": 0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.0500000007,
+          "maxCopies": 16,
+          "alphaExponent": 1
+        },
+        "light": {
+          "enabled": false
+        },
+        "screenPost": {
+          "enabled": false
+        }
+      },
+      "sourceRecipe": {
+        "enabled": true,
+        "rendererShape": "decal",
+        "emitterDelaySeconds": 0,
+        "emitterDurationSeconds": 0.800000011920929,
+        "emitterLoopCount": 1,
+        "bursts": [
+          {
+            "timeSeconds": 0,
+            "countMinimum": 1,
+            "countMaximum": 1
+          }
+        ],
+        "modules": [
+          {
+            "stableId": "action-420620/stage-006/notify-007|groundeffect.42061920.particlemodulerequired",
+            "className": "particlemodulerequired",
+            "objectPath": "action-420620/stage-006/notify-007|groundeffect.42061920.particlemodulerequired",
+            "literals": [
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "emitterduration",
+                "kind": "number",
+                "value": 0.800000011920929
+              },
+              {
+                "propertyPath": "emitterloops",
+                "kind": "number",
+                "value": 1
+              },
+              {
+                "propertyPath": "buselocalspace",
+                "kind": "boolean",
+                "value": true
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "spawnrate",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "defaultMaximum": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "action-420620/stage-006/notify-007|groundeffect.42061920.particlemodulelifetime",
+            "className": "particlemodulelifetime",
+            "objectPath": "action-420620/stage-006/notify-007|groundeffect.42061920.particlemodulelifetime",
+            "literals": [
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "lifetime",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  0.800000011920929,
+                  0,
+                  0,
+                  0
+                ],
+                "defaultMaximum": [
+                  0.800000011920929,
+                  0,
+                  0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "action-420620/stage-006/notify-007|groundeffect.42061920.particlemodulesize",
+            "className": "particlemodulesize",
+            "objectPath": "action-420620/stage-006/notify-007|groundeffect.42061920.particlemodulesize",
+            "literals": [
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startsize",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  20000.0,
+                  20000.0,
+                  20000.0,
+                  0
+                ],
+                "defaultMaximum": [
+                  20000.0,
+                  20000.0,
+                  20000.0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "action-420620/stage-006/notify-007|groundeffect.42061920.particlemodulecolor",
+            "className": "particlemodulecolor",
+            "objectPath": "action-420620/stage-006/notify-007|groundeffect.42061920.particlemodulecolor",
+            "literals": [
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startcolor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "startalpha",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "action-420620/stage-006/notify-007|groundeffect.42061920.efparticlemoduletypedatadecal",
+            "className": "efparticlemoduletypedatadecal",
+            "objectPath": "action-420620/stage-006/notify-007|groundeffect.42061920.efparticlemoduletypedatadecal",
+            "literals": [
+              {
+                "propertyPath": "nearplane",
+                "kind": "number",
+                "value": -300
+              },
+              {
+                "propertyPath": "farplane",
+                "kind": "number",
+                "value": 300
+              },
+              {
+                "propertyPath": "rotation.degrees.roll",
+                "kind": "number",
+                "value": 0
+              }
+            ],
+            "distributions": []
+          }
+        ]
+      },
+      "sourcePresentation": {
+        "enabled": false
+      }
+    },
+    {
+      "id": "valtan.pizza.ground.red.010",
+      "displayName": "빨간 부채꼴 / 010",
+      "groupId": "effect.valtan.six-pizza.source.red-sector",
+      "sourceNode": "action-420620/stage-006/notify-010|groundeffect.42061920",
+      "visible": true,
+      "kind": "decal",
+      "resources": [],
+      "sourceTransformTrack": {
+        "sourceOccurrenceId": "action-420620/stage-006/notify-010|groundeffect.42061920",
+        "sourceTimeOriginSeconds": -3.4000000953674316,
+        "previewOriginUE3Cm": [
+          0,
+          0,
+          0
+        ],
+        "nodes": [
+          {
+            "sourceObjectPath": "action-420620/stage-006/notify-010|groundeffect.42061920",
+            "frame": "RELATIVE_TO_INITIAL",
+            "initialPositionUE3Cm": [
+              0,
+              0,
+              0
+            ],
+            "initialEulerDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scaleUE3": [
+              1,
+              1,
+              1
+            ],
+            "positionKeys": [
+              {
+                "timeSeconds": 0,
+                "value": [
+                  0,
+                  0,
+                  0
+                ],
+                "arriveTangent": [
+                  0,
+                  0,
+                  0
+                ],
+                "leaveTangent": [
+                  0,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 0,
+                "value": [
+                  0,
+                  0,
+                  0
+                ],
+                "arriveTangent": [
+                  0,
+                  0,
+                  0
+                ],
+                "leaveTangent": [
+                  0,
+                  0,
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          }
+        ],
+        "alphaScaleKeys": [
+          {
+            "timeSeconds": 0,
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "linear"
+          },
+          {
+            "timeSeconds": 0.20000000298023224,
+            "value": [
+              1,
+              1,
+              1
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "linear"
+          },
+          {
+            "timeSeconds": 0.3999999761581421,
+            "value": [
+              1,
+              1,
+              1
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "linear"
+          },
+          {
+            "timeSeconds": 1.399999976158142,
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "linear"
+          }
+        ]
+      },
+      "material": {
+        "templateId": "effect.source_material",
+        "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_de_behitmondonut_02_01_tr",
+        "renderProfile": "alpha_one_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.mi.o.00.fx.m.fx.o.de.behitmondonut.02.tr.loc.int.6d71f91fdae4",
+          "runtimeShaderProfileId": "effect.ue3.kouku-5213-native.v1",
+          "parentMaterialPath": "fx_m_mi_o_00.fx_m.fx_o_de_behitmondonut_02_tr_loc_int",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "native_texture_0",
+              "sourceObjectPath": "fx_tex_02.fx_d_typical_012",
+              "assetId": "Effect/KoukuSaydon/FullRestore/Textures/fx_tex_02/fx_d_typical_012.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "linear",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "native_texture_1",
+              "sourceObjectPath": "fx_tex_02.fx_d_line_006",
+              "assetId": "Effect/KoukuSaydon/FullRestore/Textures/fx_tex_02/fx_d_line_006.dds",
+              "addressU": "wrap",
+              "addressV": "clamp",
+              "colorSpace": "linear",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [
+            {
+              "name": "inner",
+              "group": "None",
+              "value": 0.75
+            },
+            {
+              "name": "thickness",
+              "group": "None",
+              "value": 0.015
+            },
+            {
+              "name": "decal_drawscale",
+              "group": "None",
+              "value": 200.0
+            },
+            {
+              "name": "angle",
+              "group": "None",
+              "value": 0.1527777777777778
+            },
+            {
+              "name": "opacity",
+              "group": "None",
+              "value": 1.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "color",
+              "group": "None",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
+      },
+      "actionCueAttachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "snapshotRootSourceBasisYawDegrees": -90,
+        "socketLocalTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            -90,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "velocityPerSecond": [
+            0,
+            0,
+            0
+          ]
+        },
+        "color": {
+          "offset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "multiply": [
+            2.0,
+            0.0,
+            0.10000000149011612,
+            1.5
+          ],
+          "clip": 0,
+          "emissiveIntensity": 1,
+          "distortionIntensity": 0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0,
+          "radialIntensity": 0
+        },
+        "uv": {
+          "start": [
+            0,
+            0
+          ],
+          "speed": [
+            0,
+            0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0,
+            0
+          ],
+          "waveFrequency": 1,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.100000001,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 3.4000000953674316,
+          "lifeTimeSeconds": 1.399999976158142,
+          "afterImageSeconds": 0,
+          "dissolveStartNormalized": 1
+        },
+        "mesh": {
+          "useModelMaterial": false,
+          "modelPreScale": 0.00999999978,
+          "sourceTypeDataRotationDegrees": [
+            0,
+            0,
+            0
+          ]
+        },
+        "sprite": {
+          "billboard": false,
+          "billboardRollDegrees": 0,
+          "billboardRollDegreesPerSecond": 0
+        },
+        "decal": {
+          "size": [
+            200.0,
+            200.0
+          ],
+          "depth": 6,
+          "receiverMode": "upwardSurfaces",
+          "normalCutoff": 0.5
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0,
+            0,
+            0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "scale": false,
+          "endScale": [
+            1,
+            1,
+            1
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1
+        },
+        "particle": {
+          "maxParticles": 1,
+          "spawnRatePerSecond": 0,
+          "burstCount": 0,
+          "randomSeed": 78,
+          "lifeTimeSeconds": [
+            1.399999976158142,
+            1.399999976158142
+          ],
+          "initialPositionMin": [
+            0,
+            0,
+            0
+          ],
+          "initialPositionMax": [
+            0,
+            0,
+            0
+          ],
+          "initialVelocityMin": [
+            0,
+            0,
+            0
+          ],
+          "initialVelocityMax": [
+            0,
+            0,
+            0
+          ],
+          "acceleration": [
+            0,
+            0,
+            0
+          ],
+          "startSize": [
+            200.0,
+            200.0
+          ],
+          "endSize": [
+            200.0,
+            200.0
+          ],
+          "localSpace": true,
+          "billboard": false
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.349999994,
+          "sampleIntervalSeconds": 0.0166666992,
+          "minimumDistance": 0.00999999978,
+          "startWidth": 0.200000003,
+          "endWidth": 0,
+          "tilingDistanceWorldUnits": 0,
+          "distanceTessellationStepWorldUnits": 0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.0500000007,
+          "maxCopies": 16,
+          "alphaExponent": 1
+        },
+        "light": {
+          "enabled": false
+        },
+        "screenPost": {
+          "enabled": false
+        }
+      },
+      "sourceRecipe": {
+        "enabled": true,
+        "rendererShape": "decal",
+        "emitterDelaySeconds": 0,
+        "emitterDurationSeconds": 1.399999976158142,
+        "emitterLoopCount": 1,
+        "bursts": [
+          {
+            "timeSeconds": 0,
+            "countMinimum": 1,
+            "countMaximum": 1
+          }
+        ],
+        "modules": [
+          {
+            "stableId": "action-420620/stage-006/notify-010|groundeffect.42061920.particlemodulerequired",
+            "className": "particlemodulerequired",
+            "objectPath": "action-420620/stage-006/notify-010|groundeffect.42061920.particlemodulerequired",
+            "literals": [
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "emitterduration",
+                "kind": "number",
+                "value": 1.399999976158142
+              },
+              {
+                "propertyPath": "emitterloops",
+                "kind": "number",
+                "value": 1
+              },
+              {
+                "propertyPath": "buselocalspace",
+                "kind": "boolean",
+                "value": true
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "spawnrate",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "defaultMaximum": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "action-420620/stage-006/notify-010|groundeffect.42061920.particlemodulelifetime",
+            "className": "particlemodulelifetime",
+            "objectPath": "action-420620/stage-006/notify-010|groundeffect.42061920.particlemodulelifetime",
+            "literals": [
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "lifetime",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1.399999976158142,
+                  0,
+                  0,
+                  0
+                ],
+                "defaultMaximum": [
+                  1.399999976158142,
+                  0,
+                  0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "action-420620/stage-006/notify-010|groundeffect.42061920.particlemodulesize",
+            "className": "particlemodulesize",
+            "objectPath": "action-420620/stage-006/notify-010|groundeffect.42061920.particlemodulesize",
+            "literals": [
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startsize",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  20000.0,
+                  20000.0,
+                  20000.0,
+                  0
+                ],
+                "defaultMaximum": [
+                  20000.0,
+                  20000.0,
+                  20000.0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "action-420620/stage-006/notify-010|groundeffect.42061920.particlemodulecolor",
+            "className": "particlemodulecolor",
+            "objectPath": "action-420620/stage-006/notify-010|groundeffect.42061920.particlemodulecolor",
+            "literals": [
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startcolor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "startalpha",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "action-420620/stage-006/notify-010|groundeffect.42061920.efparticlemoduletypedatadecal",
+            "className": "efparticlemoduletypedatadecal",
+            "objectPath": "action-420620/stage-006/notify-010|groundeffect.42061920.efparticlemoduletypedatadecal",
+            "literals": [
+              {
+                "propertyPath": "nearplane",
+                "kind": "number",
+                "value": -300
+              },
+              {
+                "propertyPath": "farplane",
+                "kind": "number",
+                "value": 300
+              },
+              {
+                "propertyPath": "rotation.degrees.roll",
+                "kind": "number",
+                "value": 0
+              }
+            ],
+            "distributions": []
+          }
+        ]
+      },
+      "sourcePresentation": {
+        "enabled": false
+      }
+    }
+  ]
+}

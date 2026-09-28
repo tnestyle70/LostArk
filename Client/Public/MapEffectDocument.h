@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -29,6 +30,7 @@ enum class MAP_EFFECT_ACTIVATION_POLICY
 {
 	LEVEL_ACTIVE,
 	SERVER_PATTERN_WINDOW,
+	SERVER_PICKUP,
 	END
 };
 
@@ -84,12 +86,30 @@ struct MAP_EFFECT_SURFACE_PRESENTATION final
 	}
 };
 
+struct MAP_EFFECT_PICKUP final
+{
+	std::string wallGroupId;
+	float3_t landingPosition = {};
+	uint32_t fallDurationMs = 1000u;
+	f32_t pickupRadiusM = 1.f;
+
+	bool operator==(const MAP_EFFECT_PICKUP& other) const
+	{
+		return wallGroupId == other.wallGroupId &&
+			landingPosition.x == other.landingPosition.x &&
+			landingPosition.y == other.landingPosition.y &&
+			landingPosition.z == other.landingPosition.z &&
+			fallDurationMs == other.fallDurationMs && pickupRadiusM == other.pickupRadiusM;
+	}
+};
+
 struct MAP_EFFECT_WORLD_PRESENTATION final
 {
 	std::string independentEffectId;
 	std::string displayName;
 	std::string placementId;
 	std::string effectAssetId;
+	std::optional<MAP_EFFECT_PICKUP> pickup;
 	float3_t position = {};
 	float4_t rotationQuaternion = { 0.f, 0.f, 0.f, 1.f };
 	float3_t scale = { 1.f, 1.f, 1.f };
@@ -109,6 +129,7 @@ struct MAP_EFFECT_WORLD_PRESENTATION final
 		return independentEffectId == other.independentEffectId &&
 			displayName == other.displayName &&
 			placementId == other.placementId && effectAssetId == other.effectAssetId &&
+			pickup == other.pickup &&
 			position.x == other.position.x && position.y == other.position.y &&
 			position.z == other.position.z &&
 			rotationQuaternion.x == other.rotationQuaternion.x &&

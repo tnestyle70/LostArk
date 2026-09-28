@@ -3973,10 +3973,10 @@
     {
       "patternId": "VALTAN_ARMOR_BREAK_OPENING",
       "encounterOrdinal": 23,
-      "encounterRowSha256": "ba9e56cf799767206477692a985bf765703005358912ff84ff4cb2721a8e6954",
+      "encounterRowSha256": "802c96aa6bb867d8cd1a1db524720bea8e5bdfe4be4589dce49fbfc716a2233b",
       "runtimePattern": {
         "patternId": "VALTAN_ARMOR_BREAK_OPENING",
-        "category": "MECHANIC",
+        "category": "NORMAL",
         "minimumPhase": 1,
         "maximumPhase": 3,
         "targetPolicy": "LOCK_NEAREST_ON_START",
@@ -3989,11 +3989,11 @@
           420654,
           420655
         ],
-        "selectionMode": "HEALTH_BAR",
+        "selectionMode": "AUDITION_ONLY",
         "minimumHealthBar": 0,
         "maximumHealthBar": 0,
-        "triggerHealthBar": 159,
-        "triggerOrder": 1,
+        "triggerHealthBar": 0,
+        "triggerOrder": 0,
         "armorRequirement": "ANY",
         "phaseRequirement": "ANY",
         "invulnerableWhileRunning": false,
@@ -4240,10 +4240,10 @@
     {
       "patternId": "VALTAN_FOUR_PILLARS_105",
       "encounterOrdinal": 25,
-      "encounterRowSha256": "516cc51b65d65f1d236fd49d7dc6e9583dbc2273b347a1892d65f05fb5d12bcc",
+      "encounterRowSha256": "61d27506785c5a9e9264e9fc471689eb8214d59418de144fb4614572e34bbdff",
       "runtimePattern": {
         "patternId": "VALTAN_FOUR_PILLARS_105",
-        "category": "MECHANIC",
+        "category": "NORMAL",
         "minimumPhase": 1,
         "maximumPhase": 3,
         "targetPolicy": "LOCK_RANDOM_ALIVE_ON_START",
@@ -4253,11 +4253,11 @@
         "sourceActionIds": [
           420610
         ],
-        "selectionMode": "HEALTH_BAR",
+        "selectionMode": "AUDITION_ONLY",
         "minimumHealthBar": 0,
         "maximumHealthBar": 0,
-        "triggerHealthBar": 100,
-        "triggerOrder": 1,
+        "triggerHealthBar": 0,
+        "triggerOrder": 0,
         "armorRequirement": "ANY",
         "phaseRequirement": "ANY",
         "invulnerableWhileRunning": false,
@@ -4678,13 +4678,29 @@
             "sourceStartMs": 0,
             "sourceEndMs": null,
             "localTransform": {
-              "position": [0, 0, 0],
-              "rotationDegrees": [0, 0, 0],
-              "scale": [1, 1, 1]
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
             },
             "scalePolicy": {
               "kind": "GAMEPLAY_FOOTPRINT",
-              "worldScale": [1.5, 1.5, 1.5]
+              "worldScale": [
+                1.5,
+                1.5,
+                1.5
+              ]
             }
           }
         },
@@ -4706,13 +4722,29 @@
             "sourceStartMs": 0,
             "sourceEndMs": null,
             "localTransform": {
-              "position": [0, 0, 0],
-              "rotationDegrees": [0, 0, 0],
-              "scale": [1, 1, 1]
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
             },
             "scalePolicy": {
               "kind": "GAMEPLAY_FOOTPRINT",
-              "worldScale": [1.5, 1.5, 1.5]
+              "worldScale": [
+                1.5,
+                1.5,
+                1.5
+              ]
             }
           }
         }
@@ -4870,10 +4902,10 @@
     {
       "patternId": "VALTAN_MAGIC_ORB_STAGGER_76",
       "encounterOrdinal": 29,
-      "encounterRowSha256": "fbea9afd1836737a0932138b792376de7a5d1c57cd4d58de23eacd46c5ae533e",
+      "encounterRowSha256": "6520af9175a5288c286d38544f5de66b57f45fa1374dbd7afcb0f4fa45752af9",
       "runtimePattern": {
         "patternId": "VALTAN_MAGIC_ORB_STAGGER_76",
-        "category": "MECHANIC",
+        "category": "NORMAL",
         "minimumPhase": 1,
         "maximumPhase": 3,
         "targetPolicy": "NONE",
@@ -4884,11 +4916,11 @@
           420617,
           420618
         ],
-        "selectionMode": "HEALTH_BAR",
+        "selectionMode": "AUDITION_ONLY",
         "minimumHealthBar": 0,
         "maximumHealthBar": 0,
-        "triggerHealthBar": 73,
-        "triggerOrder": 1,
+        "triggerHealthBar": 0,
+        "triggerOrder": 0,
         "armorRequirement": "ANY",
         "phaseRequirement": "ANY",
         "invulnerableWhileRunning": false,
@@ -5174,10 +5206,10 @@
     {
       "patternId": "VALTAN_CENTER_GRAB_COUNTER_64",
       "encounterOrdinal": 30,
-      "encounterRowSha256": "5dfd7314aae44ef170d81e2d538c7f70a8162830eebd518a64ff2be3037692d4",
+      "encounterRowSha256": "31e918ccd74e706254ce0533437b582acb94aa03d9445594c12d01ff69a0fcf4",
       "runtimePattern": {
         "patternId": "VALTAN_CENTER_GRAB_COUNTER_64",
-        "category": "MECHANIC",
+        "category": "NORMAL",
         "minimumPhase": 1,
         "maximumPhase": 3,
         "targetPolicy": "LOCK_RANDOM_ALIVE_ON_START",
@@ -5188,11 +5220,11 @@
           420623,
           420631
         ],
-        "selectionMode": "HEALTH_BAR",
+        "selectionMode": "AUDITION_ONLY",
         "minimumHealthBar": 0,
         "maximumHealthBar": 0,
-        "triggerHealthBar": 62,
-        "triggerOrder": 1,
+        "triggerHealthBar": 0,
+        "triggerOrder": 0,
         "armorRequirement": "ANY",
         "phaseRequirement": "ANY",
         "invulnerableWhileRunning": false,
@@ -5613,10 +5645,10 @@
     {
       "patternId": "VALTAN_GHOST_TRANSITION_15",
       "encounterOrdinal": 32,
-      "encounterRowSha256": "bdcd2ce560c7031d39d6c8584ff11de7c8700a348061ecf645ad075d7442b378",
+      "encounterRowSha256": "b1120a0c115ee1a677b35ddc7b8d36ad356a035444cd74a9ad400fccd70462af",
       "runtimePattern": {
         "patternId": "VALTAN_GHOST_TRANSITION_15",
-        "category": "MECHANIC",
+        "category": "NORMAL",
         "minimumPhase": 1,
         "maximumPhase": 3,
         "targetPolicy": "NONE",
@@ -5636,11 +5668,11 @@
           420659,
           420665
         ],
-        "selectionMode": "HEALTH_BAR",
+        "selectionMode": "AUDITION_ONLY",
         "minimumHealthBar": 0,
         "maximumHealthBar": 0,
-        "triggerHealthBar": 14,
-        "triggerOrder": 1,
+        "triggerHealthBar": 0,
+        "triggerOrder": 0,
         "armorRequirement": "ANY",
         "phaseRequirement": "ANY",
         "invulnerableWhileRunning": false,
@@ -5961,10 +5993,10 @@
   ],
   "sharedRotationRows": [
     {
-      "rotationId": "rotation.valtan.160.130",
+      "rotationId": "rotation.valtan.phase1.160.130",
       "rotationOrdinal": 0,
-      "rotationRowSha256": "d2f321759aa342984479fa0afb9ef8d009dc7483086f03b6f15dc154a73cb0de",
-      "selectionMode": "WEIGHTED_POOL",
+      "rotationRowSha256": "bb0dbd7ade1ff04ef925fffc04d63fe71e12e744dc678c65fa63acf98a55aeec",
+      "selectionMode": "ORDERED_LOOP",
       "fromHealthBar": 160,
       "toHealthBar": 130,
       "patternRefs": [
@@ -5977,26 +6009,30 @@
           "ownership": "MANAGED"
         },
         {
+          "patternId": "VALTAN_HIGH_JUMP",
+          "ownership": "MANAGED"
+        },
+        {
           "patternId": "VALTAN_FOUR_SLASH",
           "ownership": "MANAGED"
         },
         {
-          "patternId": "VALTAN_FIST_IN_OUT",
+          "patternId": "VALTAN_CROSS",
           "ownership": "MANAGED"
         },
         {
-          "patternId": "VALTAN_HIGH_JUMP",
+          "patternId": "VALTAN_DASH_CHARGE",
           "ownership": "MANAGED"
         }
       ]
     },
     {
-      "rotationId": "rotation.valtan.130.109",
+      "rotationId": "rotation.valtan.phase1.130.115",
       "rotationOrdinal": 1,
-      "rotationRowSha256": "65b58689d81392e14e4ae78fb80275c355a51eb2070066e73264b7a4d7c43ecd",
-      "selectionMode": "WEIGHTED_POOL",
+      "rotationRowSha256": "64118399e3e3a4d001f69a92e56e4f01673d11be7e3b70908ed2eec9ce25b840",
+      "selectionMode": "ORDERED_LOOP",
       "fromHealthBar": 130,
-      "toHealthBar": 109,
+      "toHealthBar": 115,
       "patternRefs": [
         {
           "patternId": "VALTAN_WHIRLWIND",
@@ -6007,11 +6043,57 @@
           "ownership": "MANAGED"
         },
         {
+          "patternId": "VALTAN_HIGH_JUMP",
+          "ownership": "MANAGED"
+        },
+        {
           "patternId": "VALTAN_FOUR_SLASH",
           "ownership": "MANAGED"
         },
         {
-          "patternId": "VALTAN_FIST_IN_OUT",
+          "patternId": "VALTAN_CROSS",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_DASH_CHARGE",
+          "ownership": "MANAGED"
+        }
+      ]
+    },
+    {
+      "rotationId": "rotation.valtan.phase2.115.105",
+      "rotationOrdinal": 2,
+      "rotationRowSha256": "4d48ef5f0eb9c34ddcf4d6bc8b4f3e212de4f80e0eb673866078231892b62022",
+      "selectionMode": "ORDERED_LOOP",
+      "fromHealthBar": 115,
+      "toHealthBar": 105,
+      "patternRefs": [
+        {
+          "patternId": "VALTAN_SILENCE_SLOT",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_FOUR_SLASH",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_BIND_SLOT",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_WHIRLWIND",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_STAGGER_SLOT",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_CROSS",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_DASH_CHARGE",
           "ownership": "MANAGED"
         },
         {
@@ -6021,20 +6103,90 @@
       ]
     },
     {
-      "rotationId": "rotation.valtan.109.100",
-      "rotationOrdinal": 2,
-      "rotationRowSha256": "48aa23f8a2422caf497398673a4c477222fd748beac2cc9112fd892dcbee8ca2",
-      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
-      "fromHealthBar": 108,
-      "toHealthBar": 100,
+      "rotationId": "rotation.valtan.phase2.105.80",
+      "rotationOrdinal": 3,
+      "rotationRowSha256": "2c2f36209ce3bce99bc3061c30e23011e2efb26ad4b182dec8dca626d9c34c8a",
+      "selectionMode": "ORDERED_LOOP",
+      "fromHealthBar": 105,
+      "toHealthBar": 80,
       "patternRefs": [
         {
-          "patternId": "VALTAN_EARTHQUAKE_SMASH",
-          "ownership": "LEGACY"
+          "patternId": "VALTAN_SILENCE_SLOT",
+          "ownership": "MANAGED"
         },
         {
-          "patternId": "VALTAN_EARTHQUAKE_SMASH",
-          "ownership": "LEGACY"
+          "patternId": "VALTAN_FOUR_SLASH",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_BIND_SLOT",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_SEQUENCE_FOUR",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_WHIRLWIND",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_STAGGER_SLOT",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_CROSS",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_DASH_CHARGE",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_HIGH_JUMP",
+          "ownership": "MANAGED"
+        }
+      ]
+    },
+    {
+      "rotationId": "rotation.valtan.phase2.80.65",
+      "rotationOrdinal": 4,
+      "rotationRowSha256": "70dd30894a51a42bf03b943a916e73ef818c427ae2b145dfcb3d2cdbe68a6532",
+      "selectionMode": "ORDERED_LOOP",
+      "fromHealthBar": 80,
+      "toHealthBar": 65,
+      "patternRefs": [
+        {
+          "patternId": "VALTAN_CATCH_BREATH",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_SILENCE_SLOT",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_SEQUENCE_FOUR",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_FOUR_SLASH",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_BIND_SLOT",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_WHIRLWIND",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_STAGGER_SLOT",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_CROSS",
+          "ownership": "MANAGED"
         },
         {
           "patternId": "VALTAN_DASH_CHARGE",
@@ -6043,136 +6195,124 @@
       ]
     },
     {
-      "rotationId": "rotation.valtan.100.84",
-      "rotationOrdinal": 3,
-      "rotationRowSha256": "4a6206c423ae0d6b59ce468054b7e0c04a7a46a266ad418224dbfa9c6039a0ea",
-      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
-      "fromHealthBar": 99,
-      "toHealthBar": 84,
-      "patternRefs": [
-        {
-          "patternId": "VALTAN_RED_BLADE_WAVE",
-          "ownership": "LEGACY"
-        },
-        {
-          "patternId": "VALTAN_EARTHQUAKE_SMASH",
-          "ownership": "LEGACY"
-        },
-        {
-          "patternId": "VALTAN_WHIRLWIND",
-          "ownership": "MANAGED"
-        },
-        {
-          "patternId": "VALTAN_EARTHQUAKE_SMASH",
-          "ownership": "LEGACY"
-        },
-        {
-          "patternId": "VALTAN_FOUR_SLASH",
-          "ownership": "MANAGED"
-        }
-      ]
-    },
-    {
-      "rotationId": "rotation.valtan.84.73",
-      "rotationOrdinal": 4,
-      "rotationRowSha256": "8c031c774b9ac3e5d200725a0a6888865e94200ab96743c5adc517920d37aab6",
-      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
-      "fromHealthBar": 83,
-      "toHealthBar": 73,
-      "patternRefs": [
-        {
-          "patternId": "VALTAN_SUPER_SMASH",
-          "ownership": "LEGACY"
-        },
-        {
-          "patternId": "VALTAN_GROUND_WAVE_SMASH",
-          "ownership": "LEGACY"
-        }
-      ]
-    },
-    {
-      "rotationId": "rotation.valtan.73.62",
+      "rotationId": "rotation.valtan.phase2.65.30",
       "rotationOrdinal": 5,
-      "rotationRowSha256": "3819fcc6c1357461f5e462d72a142ac03a462d0d4b654e7075733f990f9c762a",
-      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
-      "fromHealthBar": 72,
-      "toHealthBar": 62,
-      "patternRefs": [
-        {
-          "patternId": "VALTAN_FOUR_SLASH",
-          "ownership": "MANAGED"
-        },
-        {
-          "patternId": "VALTAN_FRONT_BACK_FRONT",
-          "ownership": "LEGACY"
-        },
-        {
-          "patternId": "VALTAN_DOWN_SMASH",
-          "ownership": "LEGACY"
-        },
-        {
-          "patternId": "VALTAN_DOWN_SMASH",
-          "ownership": "LEGACY"
-        }
-      ]
-    },
-    {
-      "rotationId": "rotation.valtan.62.30",
-      "rotationOrdinal": 6,
-      "rotationRowSha256": "35e1bf26bcf5f7626c8f2428e26b56eae01594e579458a5bce7c139422e2cc57",
-      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
-      "fromHealthBar": 61,
+      "rotationRowSha256": "706f64babd84d96c9e1e3a6e5d9815581b412460887abd01bf14a5c8f4e25db2",
+      "selectionMode": "ORDERED_LOOP",
+      "fromHealthBar": 65,
       "toHealthBar": 30,
       "patternRefs": [
         {
-          "patternId": "VALTAN_DOWN_SMASH",
-          "ownership": "LEGACY"
+          "patternId": "VALTAN_CATCH_BREATH",
+          "ownership": "MANAGED"
         },
         {
-          "patternId": "VALTAN_DOWN_SMASH",
-          "ownership": "LEGACY"
+          "patternId": "VALTAN_SILENCE_SLOT",
+          "ownership": "MANAGED"
         },
         {
           "patternId": "VALTAN_FOUR_SLASH",
           "ownership": "MANAGED"
         },
         {
-          "patternId": "VALTAN_EARTHQUAKE_SMASH",
-          "ownership": "LEGACY"
+          "patternId": "VALTAN_SEQUENCE_FOUR",
+          "ownership": "MANAGED"
         },
         {
-          "patternId": "VALTAN_SUPER_SMASH",
-          "ownership": "LEGACY"
+          "patternId": "VALTAN_TRIPLE_COUNTER",
+          "ownership": "MANAGED"
         },
-        {
-          "patternId": "VALTAN_GROUND_WAVE_SMASH",
-          "ownership": "LEGACY"
-        }
-      ]
-    },
-    {
-      "rotationId": "rotation.valtan.28.14",
-      "rotationOrdinal": 7,
-      "rotationRowSha256": "076533ab19c98a9f6ff6484297dfb500e444f0594d958b6fefa6b201d8ca22d4",
-      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
-      "fromHealthBar": 29,
-      "toHealthBar": 14,
-      "patternRefs": [
         {
           "patternId": "VALTAN_WHIRLWIND",
           "ownership": "MANAGED"
         },
         {
+          "patternId": "VALTAN_STAGGER_SLOT",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_CROSS",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_DASH_CHARGE",
+          "ownership": "MANAGED"
+        }
+      ]
+    },
+    {
+      "rotationId": "rotation.valtan.phase2.30.15",
+      "rotationOrdinal": 6,
+      "rotationRowSha256": "c63b1e93f2971f25003692a9a4982703286fad08fc774d0b4628aa89ced84155",
+      "selectionMode": "ORDERED_LOOP",
+      "fromHealthBar": 30,
+      "toHealthBar": 15,
+      "patternRefs": [
+        {
+          "patternId": "VALTAN_CATCH_BREATH",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_SILENCE_SLOT",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_SEQUENCE_FOUR",
+          "ownership": "MANAGED"
+        },
+        {
           "patternId": "VALTAN_FOUR_SLASH",
           "ownership": "MANAGED"
         },
         {
-          "patternId": "VALTAN_FRONT_BACK_FRONT",
-          "ownership": "LEGACY"
+          "patternId": "VALTAN_TRIPLE_COUNTER",
+          "ownership": "MANAGED"
         },
         {
-          "patternId": "VALTAN_EARTHQUAKE_SMASH",
-          "ownership": "LEGACY"
+          "patternId": "VALTAN_WHIRLWIND",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_STAGGER_SLOT",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_CROSS",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_DASH_CHARGE",
+          "ownership": "MANAGED"
+        }
+      ]
+    },
+    {
+      "rotationId": "rotation.valtan.phase3.40.0",
+      "rotationOrdinal": 7,
+      "rotationRowSha256": "f009f7547e5f105dc08cc89e241f9c08cbc590c42a1736a8bce5ff44fde8c6e4",
+      "selectionMode": "ORDERED_LOOP",
+      "fromHealthBar": 40,
+      "toHealthBar": 0,
+      "patternRefs": [
+        {
+          "patternId": "VALTAN_FOUR_SLASH",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_CATCH_BREATH",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_WHIRLWIND",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_CROSS",
+          "ownership": "MANAGED"
+        },
+        {
+          "patternId": "VALTAN_SEQUENCE_FOUR",
+          "ownership": "MANAGED"
         }
       ]
     }

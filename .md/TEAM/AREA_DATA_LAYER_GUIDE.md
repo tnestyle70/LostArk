@@ -158,6 +158,20 @@ Lighting Workbench는 현재 Level/Area가 일치할 때 저작 preview와 publi
 
 ## 4. MapTool이 지금 편집하는 것
 
+발탄의 `mapeffects.json`에는 선택적인 Server 획득형 World 이펙트를 저장할 수 있다.
+`SERVER_PICKUP`/`SOURCE_LOOP` row는 stable placementId와 벽 위 position, 기존 effectAssetId,
+`pickup.wallGroupId/landingPosition/fallDurationMs/pickupRadiusM`을 소유한다. Effect Tool의
+World `에테르 구슬` parent에서 개별 배치와 낙하 Preview를 조정한다. Preview는 Server
+벽 파괴나 버프를 변경하지 않는다. 제품 위치와 획득 상태는 protocol119 WorldPickups가
+결정한다. 현재 로나운의 기운은 전멸1회 보호이며 일반 피해 면역이나 시간제 버프가 아니다.
+
+`Publish-MapAuthoring.ps1 -AreaId LV_LUT_HEARTRB_ED -Scope Effects`는 해당 Client Map
+문서와 `Server/Bin/DataFiles/World/VALTAN_ARENA.worldpickupsbootstrap`을 함께 검증·게시한다.
+Validate는 쓰지 않고 Check는 게시 bytes 일치를 검사한다. wall ID, finite 값·범위, 낙하 방향과
+기본 nav 착지 가능 여부가 잘못되면 게시하지 않는다. Server는 초기화와 착지 때 현재 nav를
+재검사하며 실제 collider 접촉에서만 지급한다. Server는 새 bootstrap을 시작 때 읽으므로
+Source Save/Publish를 실행 중 Server 상태의 즉시 갱신으로 설명하지 않는다.
+
 Debug Lobby에서 `Test`를 누르면 기존 `TRAINING_GROUND` 서버 승인을 거친 뒤
 `LEVEL::DEVELOPMENT`를 socket, player, replication이 없는 Map Editor Workspace shell로
 연다. 진입 후 F1은 공통 Developer Tools만 토글하며, 그 안의 `Map Tool`에서 다음 Area

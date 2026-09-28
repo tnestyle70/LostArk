@@ -3,6 +3,7 @@
 #include "Shader_EffectStandardColorV1.hlsli"
 #include "Shader_Artist31470Active022DecalMaterial.hlsli"
 #include "Shader_EffectLocalDecalAdapter.hlsli"
+#include "Shader_EffectDecalReceiver.hlsli"
 #define EFFECT_NATIVE_DECAL_CARRIER 1
 #define EFFECT_NATIVE_PROFILE_GROUP 2304
 #include "Shader_EffectArtistNative.hlsli"
@@ -72,42 +73,12 @@ float3 Resolve_DecalReceiverNormalV1(
     return geometricNormal;
 }
 
-bool Reject_KoukuGroundWarningReceiver(uint materialProfile, float depthMarker,
-    float receiverPayload)
-{
-    const bool groundWarning = materialProfile == 3600u ||
-        materialProfile == 3601u || materialProfile == 3602u ||
-        materialProfile == 3607u ||
-        // Valtan tracking-axe warning and impact ground decals share the
-        // same actor-exclusion policy; preserve their source projector depth.
-        materialProfile == 2614u || materialProfile == 2599u ||
-        // Guardian Quake Smash's four source floor decals use the same
-        // environment-only projector contract. Their 3m depth must not stamp
-        // the character's head while the root is already 5cm above ground.
-        (materialProfile >= 4156u && materialProfile <= 4159u);
-    if (!groundWarning)
-        return false;
-    const uint receiverBits = asuint(receiverPayload);
-    // Only default/source geometry owns this bit. Other markers pack map
-    // normals and baked/shadow state and must not be interpreted as actors.
-    if ((depthMarker == 0.f || depthMarker == 5.f) && (receiverBits & 256u) != 0u)
-        return true;
-    if (depthMarker != 5.f)
-        return false;
-    const uint sourceProgram = receiverBits & 255u;
-    // Native skin/equipment and these monster families are also used by
-    // rigid attachments. Source map families 25/30/80..83 remain receivers;
-    // program 30's animated bomb is excluded by the skinned bit above.
-    return (sourceProgram >= 1u && sourceProgram <= 24u) ||
-        (sourceProgram >= 26u && sourceProgram <= 29u) || sourceProgram == 84u;
-}
-
 EFFECT_PS_OUT PS_MATERIAL(VS_OUT input)
 {
     const float4 depth = g_DepthTexture.Sample(PointSampler, input.uv);
     clip(0.99999f - depth.x);
     clip(0.99999f - depth.y);
-    if (Reject_KoukuGroundWarningReceiver(g_SourceMaterialProfile, depth.w,
+    if (Reject_EffectDecalActorReceiver(depth.w,
         g_DecalReceiverTexture.Load(int3(int2(input.position.xy), 0)).w))
         clip(-1.f);
     const float viewZ = depth.y * 1000.f;
@@ -139,7 +110,7 @@ EFFECT_PS_OUT PS_MATERIAL(VS_OUT input)
         local.x / (halfSize.x * 2.f) + 0.5f,
         0.5f - local.z / (halfSize.y * 2.f));
     EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
-    if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 5247u)
+    if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 5311u)
     {
         ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
         nativeInput.uv = decalUV;

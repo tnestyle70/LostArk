@@ -1217,7 +1217,8 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
 	ImGui::TextWrapped("Selected Element Solo: %s",
 		ElementPreviewAdmissionReason(*pCurrent));
     if (Has_ClassMovieContext() || (m_pAuthoringSequencer && !m_ProductPreview &&
-        (Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
+        (m_ActiveDocument->strEffectAssetId.starts_with("effect.valtan.") ||
+         Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
          Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId))))
     {
         if (ImGui::Button("Timeline Solo##SelectedElement"))

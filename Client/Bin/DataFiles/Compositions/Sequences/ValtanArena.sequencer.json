@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "sequencerId": "arena.sequencer.valtan",
   "sourceRevision": 1,
-  "compositionRevision": "c808ad5bb2e099b9923848b90b6e52118b84fca60660c2298f1d56d3bfba7078",
+  "compositionRevision": "fe0cd180109c2e72025896059f98db2a3b9151114ea6520508cefb75c01019a9",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "Valtan Arena Sequencer",
@@ -13,12 +13,12 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "c808ad5bb2e099b9923848b90b6e52118b84fca60660c2298f1d56d3bfba7078",
+    "sourceManifestId": "fe0cd180109c2e72025896059f98db2a3b9151114ea6520508cefb75c01019a9",
     "files": [
       {
         "path": "Data/Compositions/Bosses/Valtan.bosscomposition.json",
-        "sha256": "2c435774e2148c58d1d14e504892678356141c54a718dab1ead26084a8cbd0ec",
-        "bytes": 4341
+        "sha256": "0f4002a75b1519ba6377a643c1e0ef0512e9dcecd3e2f6819e98213e94d2476e",
+        "bytes": 4273
       },
       {
         "path": "Data/Compositions/Sequences/ValtanArena.sequencer.json",
@@ -27,8 +27,8 @@
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.mapeffects.json",
-        "sha256": "3a66aa74cc1fb189812d5bd46459075f83d1cfb0402d2d68e235fead1a5414ff",
-        "bytes": 1038
+        "sha256": "e21d84730025850b422181eb6d71d0479829151536315b8b94f748b148d899f2",
+        "bytes": 6792
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.maplights.json",

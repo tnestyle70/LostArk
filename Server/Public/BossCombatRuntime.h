@@ -76,6 +76,9 @@ namespace LostArk::Server
 		std::uint32_t iStaggerDamage = 0u;
 		std::uint32_t iPartDamage = 0u;
 		std::uint32_t iCounterPower = 0u;
+		bool bCounterFromPrimarySlot = false;
+		// Set only after the catalog COUNTER guard window admits its stage promotion.
+		bool bCounterFromActiveGuard = false;
 		std::uint32_t iServerTick = 0u;
 		/* CServerCombatHitRuntime preserves an encounter's legacy armour-defense
 		contract before entering this typed boss boundary.  Such a hit must still

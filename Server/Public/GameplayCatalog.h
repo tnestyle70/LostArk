@@ -614,6 +614,7 @@ namespace LostArk::Server
 	{
 		NONE,
 		FORWARD,
+		TO_ARENA_CENTER,
 		PORTAL_TARGET_RUSH,
 		PORTAL_CROSS_ARENA
 	};
@@ -1085,6 +1086,13 @@ namespace LostArk::Server
 		protection the raid has. */
 		bool bPiercesCover = false;
 		BOSS_PATTERN_STAGE_MOTION Motion;
+		/* Optional stage-local aim; earlier stages retain the pattern policy. */
+		bool bTrackNearestTarget = false;
+		bool bTrackPatternTarget = false;
+		bool bHasAimEnd = false;
+		std::uint32_t iAimEndMs = 0u;
+		bool bHasAimResponseScale = false;
+		float fAimResponseScale = 1.f;
 		/* Encounter prop slots this stage edge shatters. The stele set outlives
 		the pattern that raised it, so the edge that breaks a pair is authored
 		here instead of being inferred from the raise. Empty for every stage that
@@ -1137,7 +1145,9 @@ namespace LostArk::Server
 		WEIGHTED_POOL,
 		/* Legacy authored lists introduce each step once, then hand back to the
 		   encounter-wide weighted selector. */
-		ORDERED_INTRO_THEN_WEIGHTED
+		ORDERED_INTRO_THEN_WEIGHTED,
+		/* Repeat every ordinal in the phase-owned health window, including duplicates. */
+		ORDERED_LOOP
 	};
 
 	struct BOSS_PATTERN_ROTATION_CANDIDATE final
@@ -1184,13 +1194,17 @@ namespace LostArk::Server
 	{
 		/* Consume every authored step exactly once and leave the boss idle after
 		   the terminal step. No weighted or legacy rotation fallback is allowed. */
-		ORDERED_ONCE_THEN_IDLE
+		ORDERED_ONCE_THEN_IDLE,
+		/* Keep the sequence for Play All; automatic combat uses health mechanics and rotations. */
+		HEALTH_BAR_ROTATIONS
 	};
 
 	struct BOSS_PATTERN_SEQUENCE_DEFINITION final
 	{
 		std::string strEncounterId;
 		std::string strSequenceId;
+		/* Optional automatic entry, before the encounter's existing intro attack. */
+		std::string strEntranceCinematicPatternId;
 		BOSS_PATTERN_SEQUENCE_MODE eMode =
 			BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE;
 		std::uint32_t iInterStepPursuitMs = 0u;
@@ -1217,6 +1231,9 @@ namespace LostArk::Server
 		float fSpawnHalfExtentsX = 0.f;
 		float fSpawnHalfExtentsZ = 0.f;
 		std::uint32_t iMaximumActiveGhosts = 0u;
+		// Zero preserves legacy replacement on the next fixed tick after despawn.
+		std::uint32_t iAuxiliarySpawnIntervalMs = 0u;
+		std::uint32_t iPortalSpawnIntervalMs = 7900u;
 	};
 
 	struct BOSS_PATTERN_BUNDLE_MEMBER final
@@ -1740,6 +1757,13 @@ namespace LostArk::Server
 		std::string m_NonKoukuBootstrapRows;
 		std::string m_strStatus;
 	};
+
+	inline bool Is_PrimaryCounterSkill(const PLAYER_SKILL_DEFINITION& skill)
+	{
+		return 0u != skill.iCounterPower &&
+			("Q" == skill.strInputSlot || "W" == skill.strInputSlot ||
+			 "E" == skill.strInputSlot || "R" == skill.strInputSlot);
+	}
 
 	/* The Space slot is the class dodge (the original's ActionType 2): a press
 	that dashes, or a hold that glides. It is the one action no move goal or

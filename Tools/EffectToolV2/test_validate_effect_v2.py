@@ -245,6 +245,35 @@ class EffectV2ValidatorTests(unittest.TestCase):
             },
         )
 
+    def test_screen_post_png_texture_passes(self) -> None:
+        document = copy.deepcopy(self.document)
+        document["effectType"] = "ScreenPost"
+        for suffix in (".png", ".PNG"):
+            with self.subTest(suffix=suffix):
+                asset_id = f"UI/KoukuSaydon/GameNote/dj_kouku_cardrain{suffix}"
+                resource = self.resource_root / asset_id
+                resource.parent.mkdir(parents=True, exist_ok=True)
+                resource.write_bytes(b"png")
+                document["slots"]["base"] = asset_id
+                self._write_fixture(document, self.binding)
+                report = VALIDATOR.validate(self.root, self.resource_root)
+                self.assertEqual(report["authored"], 1)
+                self.assertEqual(report["textures"], 1)
+
+    def test_png_support_preserves_resource_and_slot_validation(self) -> None:
+        for slot, asset_id, error in (
+            ("base", "Effect/Test/missing.png", "resource is missing"),
+            ("base", "../outside.png", "escapes Resources"),
+            ("base", "Effect/Test/base.tga", "must reference"),
+            ("mesh", "Effect/Test/base.png", r"must reference .wmodel"),
+        ):
+            with self.subTest(slot=slot, asset_id=asset_id):
+                document = copy.deepcopy(self.document)
+                document["slots"][slot] = asset_id
+                self._write_fixture(document, self.binding)
+                with self.assertRaisesRegex(VALIDATOR.ContractError, error):
+                    VALIDATOR.validate(self.root, self.resource_root)
+
     def test_boss_valtan_clip_binding_joins_canonical_inventory(self) -> None:
         self._write_boss_valtan_clip_fixture(
             "mesh_att_battle_19_01", "mesh_att_battle_19_01"
@@ -575,9 +604,29 @@ class EffectV2ValidatorTests(unittest.TestCase):
         report = VALIDATOR.validate(self.root, self.resource_root)
         self.assertEqual(report["bindings"], 2)
 
-    def test_unbound_group_fails_closed(self) -> None:
+    def test_unbound_library_leaf_and_group_pass(self) -> None:
         self._write_group(self.group)
-        with self.assertRaisesRegex(VALIDATOR.ContractError, "unbound Effect V2 groups"):
+        binding = copy.deepcopy(self.binding)
+        binding["bindings"] = []
+        self._write_fixture(self.document, binding)
+        report = VALIDATOR.validate(self.root, self.resource_root)
+        self.assertEqual(report["authored"], 1)
+        self.assertEqual(report["groups"], 1)
+        self.assertEqual(report["bindings"], 0)
+        self.assertEqual(report["independent"], 0)
+
+    def test_unbound_library_resources_and_group_children_are_still_validated(self) -> None:
+        binding = copy.deepcopy(self.binding)
+        binding["bindings"] = []
+        self._write_fixture(self.document, binding)
+        group = copy.deepcopy(self.group)
+        group["children"][0]["effectId"] = "effect.test.missing"
+        self._write_group(group)
+        with self.assertRaisesRegex(VALIDATOR.ContractError, "child has no authored effect"):
+            VALIDATOR.validate(self.root, self.resource_root)
+        self._write_group(self.group)
+        (self.resource_root / "Effect/Test/base.dds").unlink()
+        with self.assertRaisesRegex(VALIDATOR.ContractError, "resource is missing"):
             VALIDATOR.validate(self.root, self.resource_root)
 
     def test_nested_group_child_fails_closed(self) -> None:

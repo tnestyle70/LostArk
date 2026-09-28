@@ -1895,7 +1895,7 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
                     "firstOffsetMs": 1000, "intervalMs": 0,
                 },
                 "serverDamageProfileId":
-                    "damage.valtan.omnidirectional-wipe-130",
+                    "damage.valtan.magic-orb-failure",
                 "pushRangeM": 0.0,
                 "pushMs": 0,
                 "knockdown": True,

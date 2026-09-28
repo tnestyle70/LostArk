@@ -547,12 +547,21 @@ for ordinal, selection in enumerate(selections):
             # Warrior selection arcanebolter decal: same original projection
             # prefix, sky rows 13..15, unused declared suffix padding 11/12.
             '57983e11986fc848b45046b7922de2b2': ('5d79421dc8571c45aa49790f50274f51', 13, [0, 1, 2, 11, 12, 13, 14, 15]),
+            # Valtan EXP_05_02 crack: original LocalDecal projection/color/opacity
+            # prefix and tangent-up sky rows 14..16; declared rows 12/13 are unused.
+            'c03ef74fecbf0243a343e11d3ab63d0a': ('5d79421dc8571c45aa49790f50274f51', 14, [0, 1, 2, 12, 13, 14, 15, 16]),
             # Circus-ball impact: LocalDecal receiver normal plus projected tangent/binormal.
             '70820928f0b4b14486394a81b0f88c89': ('772e94581a5e6548b9529bc7cc103bca', None, [0, 1, 2, 8, 9]),
         }.get(sid) if decal else None
         if kouku_decal:
             assert selection['sourceVS'] == kouku_decal[0]
             assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == kouku_decal[2]
+        if decal and sid == 'c03ef74fecbf0243a343e11d3ab63d0a':
+            assert selection['sourceVF'] == 'flocaldecalvertexfactory'
+            assert p['disassembly']['instructionSha256'] == 'b8a4e6fcde9247bca884038c606ef6dbce7e34579f68b7d30c63d483391796ee'
+            assert bindings['bindingSemanticSha256'] == '6a1ae57e39b441e5e617f64cbc89cc63820c7cdf9d5eb3ac09c61ec5dc8cd6dc'
+            assert bindings['textureSampleClosure']['unownedEngineSamplePairs'] == []
+            assert not any(re.search(r'cb0\[(?:12|13)\]', line) for line in instructions)
         kouku_ground = decal and sid in (
             'ef9cad5cf42011438c3b2ff2ecf7baee',
             'b123a95ca0a96e488268a58a2998fa43',
@@ -566,7 +575,10 @@ for ordinal, selection in enumerate(selections):
             '6b8e8fca5028ea449cbe6a1d5aebb3c6',
             # GroundEffect 2001 fan uses the same original projection ABI;
             # its radial/angular material expressions remain native.
-            'c390f9f83fce2b4791421e47db4cdcc6')
+            'c390f9f83fce2b4791421e47db4cdcc6',
+            # Valtan GroundEffect 2006 red sector retains the exact same
+            # LocalDecal VS and engine-owned CB0[0..3] projection prefix.
+            'cb2536fe3098784eb8a1ce43b3c9efd0')
         if kouku_ground:
             # GroundEffect's LocalDecal VS exports absolute world position at
             # TEXCOORD5. Its PS adds a pre-view translation before the existing

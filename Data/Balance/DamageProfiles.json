@@ -2,133 +2,521 @@
   "schema": "lostark.damage-profiles",
   "formatVersion": 2,
   "profiles": [
-    { "damageProfileId": "damage.player.31200", "damageRatePercent": 1788 },
-    { "damageProfileId": "damage.player.31420", "damageRatePercent": 983 },
-    { "damageProfileId": "damage.player.31430", "damageRatePercent": 3267 },
-    { "damageProfileId": "damage.player.31460", "damageRatePercent": 1139 },
-    { "damageProfileId": "damage.player.31480", "damageRatePercent": 6981 },
-    { "damageProfileId": "damage.player.31910", "damageRatePercent": 100 },
-    { "damageProfileId": "damage.player.31930", "damageRatePercent": 33826 },
-    { "damageProfileId": "damage.player.31950", "damageRatePercent": 100 },
-    { "damageProfileId": "damage.player.31210", "damageRatePercent": 1301 },
-    { "damageProfileId": "damage.player.17000", "damageRatePercent": 100 },
-    { "damageProfileId": "damage.player.17030", "damageRatePercent": 862 },
-    { "damageProfileId": "damage.player.17040", "damageRatePercent": 587 },
-    { "damageProfileId": "damage.player.17060", "damageRatePercent": 1255 },
-    { "damageProfileId": "damage.player.17080", "damageRatePercent": 353 },
-    { "damageProfileId": "damage.player.17090", "damageRatePercent": 397 },
-    { "damageProfileId": "damage.player.17100", "damageRatePercent": 725 },
-    { "damageProfileId": "damage.player.17110", "damageRatePercent": 1580 },
-    { "damageProfileId": "damage.player.17140", "damageRatePercent": 2077 },
-    { "damageProfileId": "damage.player.17240", "damageRatePercent": 784 },
-    { "damageProfileId": "damage.player.17170", "damageRatePercent": 2134 },
-    { "damageProfileId": "damage.player.17250", "damageRatePercent": 5471 },
-    { "damageProfileId": "damage.player.17820", "damageRatePercent": 3672 },
-    { "damageProfileId": "damage.player.34010", "damageRatePercent": 100 },
-    { "damageProfileId": "damage.player.34040", "damageRatePercent": 301 },
-    { "damageProfileId": "damage.player.34090", "damageRatePercent": 1050 },
-    { "damageProfileId": "damage.player.34100", "damageRatePercent": 298 },
-    { "damageProfileId": "damage.player.34110", "damageRatePercent": 499 },
-    { "damageProfileId": "damage.player.34120", "damageRatePercent": 361 },
-    { "damageProfileId": "damage.player.34140", "damageRatePercent": 439 },
-    { "damageProfileId": "damage.player.34150", "damageRatePercent": 3839 },
-    { "damageProfileId": "damage.player.34160", "damageRatePercent": 344 },
-    { "damageProfileId": "damage.player.34610", "damageRatePercent": 2639 },
-    { "damageProfileId": "damage.player.34630", "damageRatePercent": 67652 },
-    { "damageProfileId": "damage.player.34650", "damageRatePercent": 4541 },
-    { "damageProfileId": "damage.player.38020", "damageRatePercent": 624 },
-    { "damageProfileId": "damage.player.38050", "damageRatePercent": 801 },
-    { "damageProfileId": "damage.player.45050", "damageRatePercent": 249 },
-    { "damageProfileId": "damage.player.45060", "damageRatePercent": 262 },
-    { "damageProfileId": "damage.valtan.dash-charge", "damageRatePercent": 400 },
-    { "damageProfileId": "damage.valtan.four-direction-walls", "damageRatePercent": 250 },
-    { "damageProfileId": "damage.valtan.jump-axe-throw", "damageRatePercent": 500 },
-    { "damageProfileId": "damage.valtan.circular-spin", "damageRatePercent": 300 },
-    { "damageProfileId": "damage.valtan.triple-attack", "damageRatePercent": 180 },
-    { "damageProfileId": "damage.valtan.six-direction-130", "damageRatePercent": 450 },
-    { "damageProfileId": "damage.valtan.omnidirectional-wipe-130", "damageRatePercent": 100000 },
-    { "damageProfileId": "damage.valtan.arena-destroy-109", "damageRatePercent": 700 },
-    { "damageProfileId": "damage.valtan.arena-destroy-33", "damageRatePercent": 900 },
-    { "damageProfileId": "damage.valtan.swing", "damageRatePercent": 220 },
-    { "damageProfileId": "damage.valtan.down-smash", "damageRatePercent": 350 },
-    { "damageProfileId": "damage.valtan.imprison-roar", "damageRatePercent": 220 },
-    { "damageProfileId": "damage.valtan.earthquake-smash", "damageRatePercent": 280 },
-    { "damageProfileId": "damage.valtan.parry", "damageRatePercent": 600 },
-    { "damageProfileId": "damage.valtan.magic-choice", "damageRatePercent": 350 },
-    { "damageProfileId": "damage.valtan.four-slash", "damageRatePercent": 160 },
-    { "damageProfileId": "damage.valtan.high-jump", "damageRatePercent": 500 },
-    { "damageProfileId": "damage.valtan.stomp", "damageRatePercent": 250 },
-    { "damageProfileId": "damage.valtan.bind-charge-smash", "damageRatePercent": 500 },
-    { "damageProfileId": "damage.valtan.ground-wave-smash", "damageRatePercent": 300 },
-    { "damageProfileId": "damage.valtan.super-smash", "damageRatePercent": 700 },
-    { "damageProfileId": "damage.valtan.jump-spin", "damageRatePercent": 300 },
-    { "damageProfileId": "damage.valtan.portal-rush", "damageRatePercent": 450 },
-    { "damageProfileId": "damage.valtan.charge-grab-roar", "damageRatePercent": 500 },
-    { "damageProfileId": "damage.valtan.backstep", "damageRatePercent": 220 },
-    { "damageProfileId": "damage.valtan.red-blade-wave", "damageRatePercent": 350 },
-    { "damageProfileId": "damage.valtan.fist-in-out", "damageRatePercent": 450 },
-    { "damageProfileId": "damage.valtan.ledge-roar", "damageRatePercent": 400 },
-    { "damageProfileId": "damage.valtan.triple-counter", "damageRatePercent": 500 },
-    { "damageProfileId": "damage.valtan.four-pillars-105", "damageRatePercent": 450 },
-    { "damageProfileId": "damage.valtan.four-pillars-105-pierce", "damageRatePercent": 100000 },
-    { "damageProfileId": "damage.valtan.center-grab-64", "damageRatePercent": 700 },
-    { "damageProfileId": "damage.valtan.ghost-transition-15", "damageRatePercent": 900 },
-    { "damageProfileId": "damage.player.38120", "damageRatePercent": 549 },
-    { "damageProfileId": "damage.player.38200", "damageRatePercent": 159 },
-    { "damageProfileId": "damage.player.38140", "damageRatePercent": 79 },
-    { "damageProfileId": "damage.player.38180", "damageRatePercent": 183 },
-    { "damageProfileId": "damage.player.38210", "damageRatePercent": 555 },
-    { "damageProfileId": "damage.player.38260", "damageRatePercent": 249 },
-    { "damageProfileId": "damage.player.38290", "damageRatePercent": 100 },
-    { "damageProfileId": "damage.player.38250", "damageRatePercent": 15207 },
-    { "damageProfileId": "damage.player.38320", "damageRatePercent": 100 },
-    { "damageProfileId": "damage.player.38000", "damageRatePercent": 100 },
-    { "damageProfileId": "damage.player.45620", "damageRatePercent": 1322 },
-    { "damageProfileId": "damage.player.45210", "damageRatePercent": 1604 },
-    { "damageProfileId": "damage.player.45300", "damageRatePercent": 2087 },
-    { "damageProfileId": "damage.player.45070", "damageRatePercent": 289 },
-    { "damageProfileId": "damage.player.45190", "damageRatePercent": 532 },
-    { "damageProfileId": "damage.player.45600", "damageRatePercent": 2770 },
-    { "damageProfileId": "damage.player.45810", "damageRatePercent": 11834 },
-    { "damageProfileId": "damage.player.45820", "damageRatePercent": 95291 },
-    { "damageProfileId": "damage.player.45000", "damageRatePercent": 100 },
-    { "damageProfileId": "damage.player.31470", "damageRatePercent": 6975 },
-    { "damageProfileId": "damage.player.31490", "damageRatePercent": 6029 },
-    { "damageProfileId": "damage.player.31000", "damageRatePercent": 100 },
-    { "damageProfileId": "damage.player.2050220", "damageRatePercent": 3056 },
-    { "damageProfileId": "damage.player.2050240", "damageRatePercent": 4722 },
-    { "damageProfileId": "damage.player.2050100", "damageRatePercent": 740 },
-    { "damageProfileId": "damage.player.2050120", "damageRatePercent": 300 },
-    { "damageProfileId": "damage.player.2050160", "damageRatePercent": 1418 },
-    { "damageProfileId": "damage.player.2050180", "damageRatePercent": 1368 },
-    { "damageProfileId": "damage.player.2050230", "damageRatePercent": 2459 },
-    { "damageProfileId": "damage.player.2050520", "damageRatePercent": 100 },
-    { "damageProfileId": "damage.player.2050210", "damageRatePercent": 1788 },
-    { "damageProfileId": "damage.player.2050500", "damageRatePercent": 100 },
-    { "damageProfileId": "damage.player.2050540", "damageRatePercent": 33826 },
-    { "damageProfileId": "damage.player.2050010", "damageRatePercent": 100 },
-    { "damageProfileId": "damage.player.34510", "damageRatePercent": 100 },
-    { "damageProfileId": "damage.player.34540", "damageRatePercent": 396 },
-    { "damageProfileId": "damage.player.34550", "damageRatePercent": 298 },
-    { "damageProfileId": "damage.player.34560", "damageRatePercent": 873 },
-    { "damageProfileId": "damage.player.34570", "damageRatePercent": 3441 },
-    { "damageProfileId": "damage.player.34580", "damageRatePercent": 1882 },
-    { "damageProfileId": "damage.player.34590", "damageRatePercent": 4274 },
-    { "damageProfileId": "damage.player.49000", "damageRatePercent": 100 },
-    { "damageProfileId": "damage.player.49001", "damageRatePercent": 100 },
-    { "damageProfileId": "damage.player.49100", "damageRatePercent": 1049 },
-    { "damageProfileId": "damage.player.49110", "damageRatePercent": 376 },
-    { "damageProfileId": "damage.player.49120", "damageRatePercent": 1328 },
-    { "damageProfileId": "damage.player.49130", "damageRatePercent": 666 },
-    { "damageProfileId": "damage.player.49200", "damageRatePercent": 3098 },
-    { "damageProfileId": "damage.player.49210", "damageRatePercent": 191 },
-    { "damageProfileId": "damage.player.49220", "damageRatePercent": 538 },
-    { "damageProfileId": "damage.player.49230", "damageRatePercent": 344 },
-    { "damageProfileId": "damage.player.49150", "damageRatePercent": 6198 },
-    { "damageProfileId": "damage.player.49260", "damageRatePercent": 453 },
-    { "damageProfileId": "damage.player.49270", "damageRatePercent": 1084 },
-    { "damageProfileId": "damage.player.49330", "damageRatePercent": 397 },
-    { "damageProfileId": "damage.player.49400", "damageRatePercent": 397 },
-    { "damageProfileId": "damage.player.49420", "damageRatePercent": 397 }
+    {
+      "damageProfileId": "damage.player.31200",
+      "damageRatePercent": 1788
+    },
+    {
+      "damageProfileId": "damage.player.31420",
+      "damageRatePercent": 983
+    },
+    {
+      "damageProfileId": "damage.player.31430",
+      "damageRatePercent": 3267
+    },
+    {
+      "damageProfileId": "damage.player.31460",
+      "damageRatePercent": 1139
+    },
+    {
+      "damageProfileId": "damage.player.31480",
+      "damageRatePercent": 6981
+    },
+    {
+      "damageProfileId": "damage.player.31910",
+      "damageRatePercent": 100
+    },
+    {
+      "damageProfileId": "damage.player.31930",
+      "damageRatePercent": 33826
+    },
+    {
+      "damageProfileId": "damage.player.31950",
+      "damageRatePercent": 100
+    },
+    {
+      "damageProfileId": "damage.player.31210",
+      "damageRatePercent": 1301
+    },
+    {
+      "damageProfileId": "damage.player.17000",
+      "damageRatePercent": 100
+    },
+    {
+      "damageProfileId": "damage.player.17030",
+      "damageRatePercent": 862
+    },
+    {
+      "damageProfileId": "damage.player.17040",
+      "damageRatePercent": 587
+    },
+    {
+      "damageProfileId": "damage.player.17060",
+      "damageRatePercent": 1255
+    },
+    {
+      "damageProfileId": "damage.player.17080",
+      "damageRatePercent": 353
+    },
+    {
+      "damageProfileId": "damage.player.17090",
+      "damageRatePercent": 397
+    },
+    {
+      "damageProfileId": "damage.player.17100",
+      "damageRatePercent": 725
+    },
+    {
+      "damageProfileId": "damage.player.17110",
+      "damageRatePercent": 1580
+    },
+    {
+      "damageProfileId": "damage.player.17140",
+      "damageRatePercent": 2077
+    },
+    {
+      "damageProfileId": "damage.player.17240",
+      "damageRatePercent": 784
+    },
+    {
+      "damageProfileId": "damage.player.17170",
+      "damageRatePercent": 2134
+    },
+    {
+      "damageProfileId": "damage.player.17250",
+      "damageRatePercent": 5471
+    },
+    {
+      "damageProfileId": "damage.player.17820",
+      "damageRatePercent": 3672
+    },
+    {
+      "damageProfileId": "damage.player.34010",
+      "damageRatePercent": 100
+    },
+    {
+      "damageProfileId": "damage.player.34040",
+      "damageRatePercent": 301
+    },
+    {
+      "damageProfileId": "damage.player.34090",
+      "damageRatePercent": 1050
+    },
+    {
+      "damageProfileId": "damage.player.34100",
+      "damageRatePercent": 298
+    },
+    {
+      "damageProfileId": "damage.player.34110",
+      "damageRatePercent": 499
+    },
+    {
+      "damageProfileId": "damage.player.34120",
+      "damageRatePercent": 361
+    },
+    {
+      "damageProfileId": "damage.player.34140",
+      "damageRatePercent": 439
+    },
+    {
+      "damageProfileId": "damage.player.34150",
+      "damageRatePercent": 3839
+    },
+    {
+      "damageProfileId": "damage.player.34160",
+      "damageRatePercent": 344
+    },
+    {
+      "damageProfileId": "damage.player.34610",
+      "damageRatePercent": 2639
+    },
+    {
+      "damageProfileId": "damage.player.34630",
+      "damageRatePercent": 67652
+    },
+    {
+      "damageProfileId": "damage.player.34650",
+      "damageRatePercent": 4541
+    },
+    {
+      "damageProfileId": "damage.player.38020",
+      "damageRatePercent": 624
+    },
+    {
+      "damageProfileId": "damage.player.38050",
+      "damageRatePercent": 801
+    },
+    {
+      "damageProfileId": "damage.player.45050",
+      "damageRatePercent": 249
+    },
+    {
+      "damageProfileId": "damage.player.45060",
+      "damageRatePercent": 262
+    },
+    {
+      "damageProfileId": "damage.valtan.dash-charge",
+      "damageRatePercent": 400
+    },
+    {
+      "damageProfileId": "damage.valtan.four-direction-walls",
+      "damageRatePercent": 250
+    },
+    {
+      "damageProfileId": "damage.valtan.jump-axe-throw",
+      "damageRatePercent": 500
+    },
+    {
+      "damageProfileId": "damage.valtan.circular-spin",
+      "damageRatePercent": 300
+    },
+    {
+      "damageProfileId": "damage.valtan.triple-attack",
+      "damageRatePercent": 180
+    },
+    {
+      "damageProfileId": "damage.valtan.six-direction-130",
+      "damageRatePercent": 450
+    },
+    {
+      "damageProfileId": "damage.valtan.omnidirectional-wipe-130",
+      "damageRatePercent": 100000
+    },
+    {
+      "damageProfileId": "damage.valtan.arena-destroy-109",
+      "damageRatePercent": 700
+    },
+    {
+      "damageProfileId": "damage.valtan.arena-destroy-33",
+      "damageRatePercent": 900
+    },
+    {
+      "damageProfileId": "damage.valtan.swing",
+      "damageRatePercent": 220
+    },
+    {
+      "damageProfileId": "damage.valtan.down-smash",
+      "damageRatePercent": 350
+    },
+    {
+      "damageProfileId": "damage.valtan.imprison-roar",
+      "damageRatePercent": 220
+    },
+    {
+      "damageProfileId": "damage.valtan.earthquake-smash",
+      "damageRatePercent": 280
+    },
+    {
+      "damageProfileId": "damage.valtan.parry",
+      "damageRatePercent": 600
+    },
+    {
+      "damageProfileId": "damage.valtan.magic-choice",
+      "damageRatePercent": 350
+    },
+    {
+      "damageProfileId": "damage.valtan.four-slash",
+      "damageRatePercent": 160
+    },
+    {
+      "damageProfileId": "damage.valtan.high-jump",
+      "damageRatePercent": 500
+    },
+    {
+      "damageProfileId": "damage.valtan.stomp",
+      "damageRatePercent": 250
+    },
+    {
+      "damageProfileId": "damage.valtan.bind-charge-smash",
+      "damageRatePercent": 500
+    },
+    {
+      "damageProfileId": "damage.valtan.ground-wave-smash",
+      "damageRatePercent": 300
+    },
+    {
+      "damageProfileId": "damage.valtan.super-smash",
+      "damageRatePercent": 700
+    },
+    {
+      "damageProfileId": "damage.valtan.jump-spin",
+      "damageRatePercent": 300
+    },
+    {
+      "damageProfileId": "damage.valtan.portal-rush",
+      "damageRatePercent": 450
+    },
+    {
+      "damageProfileId": "damage.valtan.charge-grab-roar",
+      "damageRatePercent": 500
+    },
+    {
+      "damageProfileId": "damage.valtan.backstep",
+      "damageRatePercent": 220
+    },
+    {
+      "damageProfileId": "damage.valtan.red-blade-wave",
+      "damageRatePercent": 350
+    },
+    {
+      "damageProfileId": "damage.valtan.fist-in-out",
+      "damageRatePercent": 450
+    },
+    {
+      "damageProfileId": "damage.valtan.ledge-roar",
+      "damageRatePercent": 400
+    },
+    {
+      "damageProfileId": "damage.valtan.triple-counter",
+      "damageRatePercent": 500
+    },
+    {
+      "damageProfileId": "damage.valtan.four-pillars-105",
+      "damageRatePercent": 450
+    },
+    {
+      "damageProfileId": "damage.valtan.four-pillars-105-pierce",
+      "damageRatePercent": 100000
+    },
+    {
+      "damageProfileId": "damage.valtan.center-grab-64",
+      "damageRatePercent": 700
+    },
+    {
+      "damageProfileId": "damage.valtan.ghost-transition-15",
+      "damageRatePercent": 900
+    },
+    {
+      "damageProfileId": "damage.player.38120",
+      "damageRatePercent": 549
+    },
+    {
+      "damageProfileId": "damage.player.38200",
+      "damageRatePercent": 159
+    },
+    {
+      "damageProfileId": "damage.player.38140",
+      "damageRatePercent": 79
+    },
+    {
+      "damageProfileId": "damage.player.38180",
+      "damageRatePercent": 183
+    },
+    {
+      "damageProfileId": "damage.player.38210",
+      "damageRatePercent": 555
+    },
+    {
+      "damageProfileId": "damage.player.38260",
+      "damageRatePercent": 249
+    },
+    {
+      "damageProfileId": "damage.player.38290",
+      "damageRatePercent": 100
+    },
+    {
+      "damageProfileId": "damage.player.38250",
+      "damageRatePercent": 15207
+    },
+    {
+      "damageProfileId": "damage.player.38320",
+      "damageRatePercent": 100
+    },
+    {
+      "damageProfileId": "damage.player.38000",
+      "damageRatePercent": 100
+    },
+    {
+      "damageProfileId": "damage.player.45620",
+      "damageRatePercent": 1322
+    },
+    {
+      "damageProfileId": "damage.player.45210",
+      "damageRatePercent": 1604
+    },
+    {
+      "damageProfileId": "damage.player.45300",
+      "damageRatePercent": 2087
+    },
+    {
+      "damageProfileId": "damage.player.45070",
+      "damageRatePercent": 289
+    },
+    {
+      "damageProfileId": "damage.player.45190",
+      "damageRatePercent": 532
+    },
+    {
+      "damageProfileId": "damage.player.45600",
+      "damageRatePercent": 2770
+    },
+    {
+      "damageProfileId": "damage.player.45810",
+      "damageRatePercent": 11834
+    },
+    {
+      "damageProfileId": "damage.player.45820",
+      "damageRatePercent": 95291
+    },
+    {
+      "damageProfileId": "damage.player.45000",
+      "damageRatePercent": 100
+    },
+    {
+      "damageProfileId": "damage.player.31470",
+      "damageRatePercent": 6975
+    },
+    {
+      "damageProfileId": "damage.player.31490",
+      "damageRatePercent": 6029
+    },
+    {
+      "damageProfileId": "damage.player.31000",
+      "damageRatePercent": 100
+    },
+    {
+      "damageProfileId": "damage.player.2050220",
+      "damageRatePercent": 3056
+    },
+    {
+      "damageProfileId": "damage.player.2050240",
+      "damageRatePercent": 4722
+    },
+    {
+      "damageProfileId": "damage.player.2050100",
+      "damageRatePercent": 740
+    },
+    {
+      "damageProfileId": "damage.player.2050120",
+      "damageRatePercent": 300
+    },
+    {
+      "damageProfileId": "damage.player.2050160",
+      "damageRatePercent": 1418
+    },
+    {
+      "damageProfileId": "damage.player.2050180",
+      "damageRatePercent": 1368
+    },
+    {
+      "damageProfileId": "damage.player.2050230",
+      "damageRatePercent": 2459
+    },
+    {
+      "damageProfileId": "damage.player.2050520",
+      "damageRatePercent": 100
+    },
+    {
+      "damageProfileId": "damage.player.2050210",
+      "damageRatePercent": 1788
+    },
+    {
+      "damageProfileId": "damage.player.2050500",
+      "damageRatePercent": 100
+    },
+    {
+      "damageProfileId": "damage.player.2050540",
+      "damageRatePercent": 33826
+    },
+    {
+      "damageProfileId": "damage.player.2050010",
+      "damageRatePercent": 100
+    },
+    {
+      "damageProfileId": "damage.player.34510",
+      "damageRatePercent": 100
+    },
+    {
+      "damageProfileId": "damage.player.34540",
+      "damageRatePercent": 396
+    },
+    {
+      "damageProfileId": "damage.player.34550",
+      "damageRatePercent": 298
+    },
+    {
+      "damageProfileId": "damage.player.34560",
+      "damageRatePercent": 873
+    },
+    {
+      "damageProfileId": "damage.player.34570",
+      "damageRatePercent": 3441
+    },
+    {
+      "damageProfileId": "damage.player.34580",
+      "damageRatePercent": 1882
+    },
+    {
+      "damageProfileId": "damage.player.34590",
+      "damageRatePercent": 4274
+    },
+    {
+      "damageProfileId": "damage.player.49000",
+      "damageRatePercent": 100
+    },
+    {
+      "damageProfileId": "damage.player.49001",
+      "damageRatePercent": 100
+    },
+    {
+      "damageProfileId": "damage.player.49100",
+      "damageRatePercent": 1049
+    },
+    {
+      "damageProfileId": "damage.player.49110",
+      "damageRatePercent": 376
+    },
+    {
+      "damageProfileId": "damage.player.49120",
+      "damageRatePercent": 1328
+    },
+    {
+      "damageProfileId": "damage.player.49130",
+      "damageRatePercent": 666
+    },
+    {
+      "damageProfileId": "damage.player.49200",
+      "damageRatePercent": 3098
+    },
+    {
+      "damageProfileId": "damage.player.49210",
+      "damageRatePercent": 191
+    },
+    {
+      "damageProfileId": "damage.player.49220",
+      "damageRatePercent": 538
+    },
+    {
+      "damageProfileId": "damage.player.49230",
+      "damageRatePercent": 344
+    },
+    {
+      "damageProfileId": "damage.player.49150",
+      "damageRatePercent": 6198
+    },
+    {
+      "damageProfileId": "damage.player.49260",
+      "damageRatePercent": 453
+    },
+    {
+      "damageProfileId": "damage.player.49270",
+      "damageRatePercent": 1084
+    },
+    {
+      "damageProfileId": "damage.player.49330",
+      "damageRatePercent": 397
+    },
+    {
+      "damageProfileId": "damage.player.49400",
+      "damageRatePercent": 397
+    },
+    {
+      "damageProfileId": "damage.player.49420",
+      "damageRatePercent": 397
+    },
+    {
+      "damageProfileId": "damage.valtan.magic-orb-failure",
+      "damageRatePercent": 4376
+    }
   ]
 }

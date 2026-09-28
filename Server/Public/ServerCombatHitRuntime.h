@@ -26,6 +26,8 @@ namespace LostArk::Server
 		std::uint32_t iStaggerDamage = 0u;
 		std::uint32_t iPartDamage = 0u;
 		std::uint32_t iCounterPower = 0u;
+		// Resolved from the admitted skill's catalog slot, never a client claim.
+		bool bCounterFromPrimarySlot = false;
 		/* The caster rolled a critical hit for this one hit. iRawDamage already
 		carries the critical multiplier; this only colours the damage event. */
 		bool bCritical = false;

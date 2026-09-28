@@ -155,6 +155,8 @@ LostArk::Server::CGameRoom::CGameRoom(
 		{
 			return;
 		}
+		if (!Initialize_WorldPickups())
+			return;
 		/* The stele slots are repeatable presentation state whose Deploy
 		occurrences stay hidden on the Client until the state becomes INTACT.
 		The authored set now carries the cover circle each raised slot owns, and
@@ -1053,6 +1055,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		if (player.eCardMazeRole != LostArk::Shared::CARD_MAZE_ROLE::NONE)
 			m_CardMazePreviousPositions[id] = {player.fPositionX, player.fPositionZ};
 	Update_Guides(fixedDeltaSeconds);
+	Update_WorldPickups(updateTick, false);
 	Update_Players(fixedDeltaSeconds);
 	Update_KoukuCardRainSoldiers(updateTick);
 	Update_CardMaze(updateTick);
@@ -1154,6 +1157,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		recordTickDuration();
 		return;
 	}
+	Update_WorldPickups(updateTick);
 	Drain_BossCombatEvents();
 	if (!Flush_KoukuSaydonPatternAuditionLifecycle())
 	{

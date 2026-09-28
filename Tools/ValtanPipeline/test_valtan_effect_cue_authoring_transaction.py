@@ -54,6 +54,10 @@ class ValtanEffectCueAuthoringTransactionTests(unittest.TestCase):
             self.root / "Tools/ValtanActionExtractor",
             ignore=shutil.ignore_patterns("__pycache__"),
         )
+        hit_contract_relative = "Tools/KoukuSaydonPipeline/combat_hit_templates.py"
+        hit_contract_target = self.root / hit_contract_relative
+        hit_contract_target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(REPOSITORY_ROOT / hit_contract_relative, hit_contract_target)
         parser_source = (
             REPOSITORY_ROOT
             / "Tools/ModelAssetConverter/retime_wmodel_from_psa.py"
@@ -67,6 +71,7 @@ class ValtanEffectCueAuthoringTransactionTests(unittest.TestCase):
             "Client/Bin/Resources/Character/Valtan/MN_RPBF_01.wmodel",
             "Client/Bin/Resources/Character/Valtan/AnimSets/"
             "MN_RPBF_01_AnimSet.wmodel",
+            "Client/Bin/Resources/Character/Valtan/Cinematics/MN_RPBF_01_CinematicAnimSet.wmodel",
         ):
             source = REPOSITORY_ROOT / relative
             target = self.root / relative

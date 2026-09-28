@@ -98,6 +98,7 @@ inline constexpr ZONE ZONES[] =
 inline constexpr const char* GUARD_BLOCKED_DAMAGE_PROFILES[] =
 {
     "damage.valtan.omnidirectional-wipe-130",
+    "damage.valtan.magic-orb-failure",
 };
 
 [[nodiscard]] inline bool Same_Id(const char* left, const char* right) noexcept

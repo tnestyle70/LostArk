@@ -3173,6 +3173,9 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectLocalDecalAdapter.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectDecalReceiver.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
     <None Include="..\Bin\ShaderFiles\Shader_Ue3Glasshole02.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
@@ -5945,5 +5948,48 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.ether.orb.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.four.sector.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.tracking-axe.large-circle.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku5184.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku5184.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup5184.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases5184.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup5184.hlsli"><Filter>97.ShaderFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420620.stage001.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420620.stage005.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420620.stage006.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.six-pizza.source-warnings.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.six-pizza.source.center-sector.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.six-pizza.source.red-sector.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.six-pizza.source.yellow-sector.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_04.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_07.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_itr_02326.par_l_itr_02326_off_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_itr_02326.par_l_itr_02326_off_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_itr_02326.par_l_itr_02326_on_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_itr_02326.par_l_itr_02326_spawn_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.itr-02326.spawn-and-idle.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.itr-02326.off.full.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku5248.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku5248.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup5248.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases5248.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup5248.hlsli"><Filter>97.ShaderFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420624.stage012.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_atk_01_24.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_exp_05_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_exp_05_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.struggling.source-in-out.active.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.struggling.source-portal-dash.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.struggling.source-underfoot.active.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.struggling.source-yellow-roar.warning.effect.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
 </Project>

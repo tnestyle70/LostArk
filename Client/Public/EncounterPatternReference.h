@@ -21,6 +21,13 @@ struct ENCOUNTER_STAGE_REFERENCE final
 	std::string stageId;
 	std::string actionId;
 	std::string stageKind;
+	/* Empty inherits the Pattern policy; otherwise this Stage tracks its target. */
+	std::string aimTargetPolicy;
+	bool_t bHasAimEnd = false;
+	uint32_t iAimEndMs = 0u;
+	bool_t bHasAimResponseScale = false;
+	f32_t fAimResponseScale = 1.f;
+	std::string motionKind;
 	uint32_t iDurationMs = 0;
 	uint32_t iStartOffsetMs = 0;
 	std::string hitShape;

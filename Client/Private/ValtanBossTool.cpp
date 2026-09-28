@@ -4979,8 +4979,10 @@ void Client::CValtanBossTool::Render_ConnectionSummary(
 	{
 		Append_Unique(
 			HitMotion,
-			Stage.Motion->strKind + " / " +
-				std::to_string(Stage.Motion->fDistance) + " m");
+			"TO_ARENA_CENTER" == Stage.Motion->strKind ?
+				"Arena center / " + std::to_string(Stage.iDurationMs) + " ms" :
+				Stage.Motion->strKind + " / " +
+					std::to_string(Stage.Motion->fDistance) + " m");
 	}
 	if (Pattern.ServerMotion.has_value())
 	{
@@ -4989,6 +4991,8 @@ void Client::CValtanBossTool::Render_ConnectionSummary(
 			"pattern " + Pattern.ServerMotion->strKind + " -> " +
 				Pattern.ServerMotion->strAnchorId);
 	}
+	if (!Stage.strAimTargetPolicy.empty())
+		Append_Unique(HitMotion, "Aim / " + Stage.strAimTargetPolicy);
 	Render_ConnectionRow("Hit / Motion", Join(HitMotion));
 
 	std::vector<std::string> World;

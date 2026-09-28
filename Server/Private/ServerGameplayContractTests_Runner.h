@@ -31,6 +31,7 @@ public:
     static int Run_KoukuDraft();
     static int Run_KoukuProductOnly();
     static int Run_ValtanLifecycleOnly();
+    static int Run_ValtanPresentationOnly();
     static int Run_SkillStagesOnly();
     static int Run_ValtanArenaSupport();
     static int Run_ValtanPatternControl();
@@ -67,7 +68,7 @@ private:
     static void Run_WaveMonsterButtons(TESTS& tests);
     static void Run_ValtanDash(TESTS& tests, CGameplayCatalog& catalog, const char* VALTAN_WALL_COLLISION_STATE, float VALTAN_WALL_CENTER_X, float VALTAN_WALL_CENTER_Y, float VALTAN_WALL_CENTER_Z);
     static void Run_ValtanAudition(TESTS& tests);
-    static void Run_ValtanResetlessNext(TESTS& tests, const char* VALTAN_WALL_COLLISION_STATE);
+    static void Run_ValtanResetlessNext(TESTS& tests, const char* VALTAN_WALL_COLLISION_STATE, bool presentationOnly = false);
     static void Run_ValtanReleaseControl(TESTS& tests);
     static void Run_WorldDestruction(TESTS& tests, CGameplayCatalog& catalog, CServerNavigation& navigation);
 };

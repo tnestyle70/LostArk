@@ -3337,10 +3337,12 @@ bool Client::CClientReplication::Apply_CombatObjectPresentationEvent(
 			record->strCombatObjectArchetypeId, record->strClientVisualId);
 	}
 	std::string status;
+	bool_t visualCommitted = false;
 	const bool_t applied =
-		boss->Apply_CombatObjectPresentationEvent(event, status);
-	if (applied && visual && visual->stopActiveOnHit &&
-		event.strHitId != visual->armedPresentationEventId)
+		boss->Apply_CombatObjectPresentationEvent(event, status, &visualCommitted);
+	if (visualCommitted && visual &&
+		((visual->stopActiveOnHit && event.strHitId != visual->armedPresentationEventId) ||
+		 (visual->stopActiveOnArmed && event.strHitId == visual->armedPresentationEventId)))
 	{
 		COMBAT_OBJECT_PRESENTATION_SINK sink{ *this };
 		m_CombatObjectProjectionRuntime.Complete_Presentation(event.iCombatObjectId, sink);
@@ -3652,6 +3654,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		return true;
 	if (!m_PlayerHealth.Apply_Snapshot(snapshot))
 		return false;
+	m_WorldPickupSnapshots = snapshot.WorldPickups;
 
 	bool allSucceeded = true;
 
@@ -4077,7 +4080,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				entity.iPatternSequence,
 				entity.iPatternStageIndex,
 				PatternTargetPose,
-				entity.PortalRushRoute) ||
+				entity.PortalRushRoute,
+				entity.PatternLanding) ||
 				!valtan->Apply_BossCombatState(entity.BossCombat) ||
 				!valtan->Apply_BrokenArmorMask(entity.iBrokenArmorMask))
 			{
@@ -4455,6 +4459,7 @@ void Client::CClientReplication::Reset_World()
 	m_CombatObjectHitAreasByArchetype.clear();
 #endif
 	m_ValtanPresentationState = {};
+	m_WorldPickupSnapshots.clear();
 	m_WorldDestructionProjectionRuntime.Reset();
 	m_WorldDestructionLiveEvents.clear();
 	m_EncounterPropState = {};

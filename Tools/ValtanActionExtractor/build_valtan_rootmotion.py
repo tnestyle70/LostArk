@@ -154,15 +154,17 @@ def build_explicit_clip_segments(
         clips: list[dict],
         curves: dict[str, tuple[float, float, list]],
 ) -> list[ExplicitClipSegment] | None:
-    """Resolve a finite multi-clip chain using the Client timeline contract.
+    """Resolve finite source slices using the Client timeline contract.
 
     `playMs` is source time, not wall time.  The Client divides that source
     slice by `playRate` before handing off to the next clip.  Natural
     (`playMs == 0`) chains intentionally stay on the legacy first-clip bake in
     this tool: changing those historical curves is outside the explicit-slice
-    migration that introduced the Dash WINDUP repeats.
+    migration that introduced the Dash WINDUP repeats. A single non-looping
+    explicit slice also stops root travel when its source window ends, even
+    when the gameplay stage holds that last pose for longer.
     """
-    if len(clips) < 2:
+    if not clips or (len(clips) == 1 and clips[0].get("loop", False)):
         return None
     play_windows = [float(clip.get("playMs", 0)) for clip in clips]
     if any(play_ms <= 0.0 or not math.isfinite(play_ms)
@@ -315,10 +317,16 @@ def build(
 
             samples = []
             admission_travel = max(abs(end_forward), abs(end_lateral))
-            time_ms = 0
-            while True:
+            sample_times = set(range(0, duration_ms, SAMPLE_INTERVAL_MS))
+            sample_times.add(duration_ms)
+            if explicit_segments is not None and len(clips) == 1:
+                # Preserve the terminal source sample at the start of a hold;
+                # otherwise interpolation would ease toward it past the cut.
+                sample_times.add(min(duration_ms, math.ceil(
+                    explicit_segments[0].wall_duration_ms)))
+            for time_ms in sorted(sample_times):
                 forward, lateral = sample_stage_displacement(time_ms)
-                if explicit_segments is not None:
+                if explicit_segments is not None and len(clips) > 1:
                     admission_travel = max(
                         admission_travel,
                         abs(forward),
@@ -332,9 +340,6 @@ def build(
                     # review; the publisher packs forward and lateral only.
                     "up": 0.0,
                 })
-                if time_ms >= duration_ms:
-                    break
-                time_ms = min(time_ms + SAMPLE_INTERVAL_MS, duration_ms)
             if admission_travel < MINIMUM_TRAVEL_METRES:
                 continue
             stages.append({

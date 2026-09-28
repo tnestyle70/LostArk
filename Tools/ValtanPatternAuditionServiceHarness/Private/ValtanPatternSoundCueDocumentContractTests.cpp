@@ -1217,7 +1217,8 @@ namespace
       "combatObjectArchetypeId": "combatobject.valtan.contract",
       "hitId": "hit.valtan.contract.01",
       "soundBank": "S_Mob_G_Voltan2",
-      "soundEvent": "G_Voltan2_Attack09_ProjExp1"
+      "soundEvent": "G_Voltan2_Attack09_ProjExp1",
+      "playbackOffsetMs": 50
     },
     {
       "bindingId": "cue.contract.presentation",
@@ -1251,7 +1252,8 @@ namespace
 		if (!Require(admitted.Cues.end() != hit &&
 			admitted.Cues.end() != presentation &&
 			hit->strPresentationEventId.empty() &&
-			presentation->strHitId.empty(),
+			presentation->strHitId.empty() &&
+			hit->iPlaybackOffsetMs == 50u && presentation->iPlaybackOffsetMs == 0u,
 			"combat-object Sound source union did not preserve exactly one identity"))
 		{
 			return false;
@@ -1270,6 +1272,17 @@ namespace
 					ownerBefore == admitted.strOwnerArchetypeId,
 					label);
 			};
+		for (const std::string_view invalidOffset :
+			{ "-1", "600001", "0.5", "true", "null", "\"50\"" })
+		{
+			std::string invalid(valid);
+			const std::string field = "\"playbackOffsetMs\": 50";
+			invalid.replace(invalid.find(field), field.size(),
+				"\"playbackOffsetMs\": " + std::string(invalidOffset));
+			if (!RejectsWithoutMutation(invalid, product,
+				"invalid WAV offset must preserve the admitted combat-object Sound document"))
+				return false;
+		}
 		constexpr std::string_view both = R"json({
   "schema":"lostark.valtan-combat-object-sound-cues","formatVersion":1,
   "ownerArchetypeId":"BOSS_VALTAN","cues":[{

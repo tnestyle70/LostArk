@@ -253,3 +253,30 @@ Client/Bin/Resources와 GBResources2.zip은 변경하지 않았다. 보존198개
 Client/UI는 자동 실행하지 않았다. 실제 머리 외형, 낙하탄/고정 장판 화면, 사운드의 음량과
 반복 경계, F1 위치 편집의 최종 화면 판정은 사용자 확인 범위다. 디스크 게시/빌드 성공을
 실행 중 편집기 메모리 draft 또는 Server의 자동 재로드로 기록하지 않는다.
+
+### 후속 — 요청한 톱날 WAV 전달 보완 (2026-09-29)
+
+사용자가 지정한 `G_KoukuSatan1_Attack10_Proj1.layer1.variant01.wav` 1개를
+설치 Resources에서 `C:/Users/user/Desktop/GBResources/Sound/KoukuSaton/Events/`에
+추가했다. 파일 크기는 2,005,124 bytes이며 원본 설치 receipt·설치본·전달본의 SHA256은
+`97ca499f643463211c96743785cd065b7c48fd5398a58e3264a3eca8f3a73b8f`로 일치한다.
+현재 전달 폴더의 기존 40개 리소스를 보존했고 README와 기존 manifest의 목록·합계만
+41개, 71,580,751 bytes로 갱신했다. JSON parse와 실제 파일 수·합계 검증을 통과했다.
+메타데이터 교체 전 백업은 `out/GBResourcesSoundDelivery20260929/`에 보관했다.
+이번 작업은 기존 WAV의 로컬 전달 준비이며 빌드·게시·Client 실행·Drive 업로드는 수행하지 않았다.
+
+같은 날 후속 요청으로 이미지에 명시된 WAV 13개 전체를 전달 폴더에 모았다.
+Attack10 Proj1/Proj2의 layer1~3 variant01 6개와 Attack11 ProjExp1,
+Attack23 Proj1/Proj2, Attack33 ProjExp1, Satan1 Attack05 Proj1/ProjExp1 및
+Attack06 ProjExp1의 variant01 7개다. 앞서 추가한 1개는 유지하고 누락 12개
+20,607,748 bytes를 추가했다. 요청한 13개 합계는 22,612,872 bytes이며 모두
+원래 install receipt·현재 설치 Resources·전달본의 SHA256이 일치한다.
+기존 41개를 보존한 전체 전달본은 53개, 92,188,499 bytes다. 기존 manifest와 README를
+갱신했고 JSON parse 및 전체 53개 파일의 크기·SHA256·수량·합계를 확인했다.
+
+과거 `session-resource-delivery.json`에는 이 13개 모두 `keep=true`이며 당시
+GBResources에 있던 WAV 197개의 일부로 기록돼 있다. 이번 후속 작업 전 현재
+GBResources에는 앞서 추가한 1개만 있었고 GBResources2에는 13개 모두 없었다.
+현재 Desktop/Downloads/Documents에서 GBResources 이름의 ZIP을 찾지 못했으므로
+이전 압축본 내용과 실제 Drive 업로드 여부는 확인하지 못했다. 로컬 전달 기록을
+업로드 완료로 간주하지 않는다. 이번에도 Drive 업로드·빌드·게시·Client 실행은 하지 않았다.

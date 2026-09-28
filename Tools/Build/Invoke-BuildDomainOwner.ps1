@@ -74,6 +74,7 @@ else {
         'world.gameplay',
         'navigation',
         'world.destruction',
+        'world.pickups',
         'gameplay.balance',
         'items.catalog',
         'vehicles.profiles',

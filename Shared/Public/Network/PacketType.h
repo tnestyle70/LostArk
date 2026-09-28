@@ -113,7 +113,9 @@ namespace LostArk::Shared
 	// 115 appends authoritative stagger success and Mario hit-source presentation to DAMAGE_EVENT.
 	// 116 carries explicit guide actors, a separate companion roster, dialogue and decision traces.
 	// 117 carries the Server-selected mechanic gauge mode and remaining/maximum.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 117;
+	// 118 carries the immutable Server pattern landing anchor on world snapshots.
+	// Protocol 119 adds authoritative World pickups and the Ronaun guard occurrence.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 119;
 
 	enum class WORLD_ID : std::uint16_t
 	{

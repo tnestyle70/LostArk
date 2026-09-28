@@ -126,7 +126,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         )
         self.assertEqual(100.0, final_attack["hit"]["shape"]["outerRadiusM"])
         self.assertEqual(
-            "damage.valtan.omnidirectional-wipe-130",
+            "damage.valtan.magic-orb-failure",
             final_attack["hit"]["serverDamageProfileId"],
         )
 

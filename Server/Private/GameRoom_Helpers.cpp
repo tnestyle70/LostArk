@@ -566,6 +566,7 @@ void Prepare_TimelineAuditionPlayer(
 		const std::uint32_t actionTick)
 	{
 		Freeze_TimelineAuditionPlayer(player);
+		player.bRonaunGuard = false; player.iRonaunGrantTick = 0u;
 		player.iCurrentHp = player.iMaximumHp;
 		player.iCurrentResource = player.iMaximumResource;
 		player.iResourceAccumulator = 0u;

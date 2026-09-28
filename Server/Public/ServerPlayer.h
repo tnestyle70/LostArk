@@ -350,6 +350,8 @@ namespace LostArk::Server
 		std::uint32_t iShield = 0;
 		/* Set while a death-deny buff has already spent itself on a lethal hit. */
 		std::uint32_t iInvulnerableEndTick = 0;
+		bool bRonaunGuard = false;
+		std::uint32_t iRonaunGrantTick = 0u;
 		std::uint32_t iEstherGuardEndTick = 0;
 		std::int32_t iEstherGuardDamageTakenPercent = 0;
 		// Room policy gates damage gain; fractional units survive small admitted hits.

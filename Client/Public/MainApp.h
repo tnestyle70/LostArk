@@ -215,7 +215,7 @@ private:
 	any gate fails -- level outside the combat set, invalid player, skill window, or the Debug
 	O-key raid-entry preview -- since these LEVEL::STATIC sprites keep their last state instead
 	of simply not being drawn the way the old ImGui pass did. */
-	void Sync_KoukuCinematicUI();
+	void Sync_CinematicUI();
 	void RenderCinematicSubtitles();
 	void Update_CombatHUD(f32_t fTimeDelta);
 	void Hide_CombatHUD();
@@ -853,6 +853,7 @@ private:
 	uint32_t m_iPreviousBossBarsRemaining = 0u;
 	f64_t m_dBossBarTickFlashStartSeconds = -1.0;
 	uint32_t m_iPreviousBossCurrentHp = 0u;
+	uint32_t m_iPreviousBossMaximumHp = 0u;
 	f64_t m_dBossHitGlowStartSeconds = -1.0;
 	f32_t m_fBossHitGlowFillRatio = 0.f;
 	/* Get_DamageEvents() is a rolling buffer that keeps growing (trimmed only once past 128

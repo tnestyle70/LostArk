@@ -416,6 +416,82 @@ namespace
 			"Effect cue oracle exhausted its stable identity namespace");
 	}
 
+
+	void VerifyLandingEffectCueAuthoringContract()
+	{
+		VALTAN_PATTERN_TREE_VIEW Baseline;
+		VALTAN_PATTERN_VIEW Pattern;
+		Pattern.strPatternId = "VALTAN_LANDING_TEST";
+		Pattern.bAuthoringMasterManaged = true;
+		Pattern.ServerMotion.emplace();
+		Pattern.ServerMotion->strKind = "LEAP_TO_TARGET";
+		VALTAN_STAGE_VIEW Stage;
+		Stage.strStageId = "AIRBORNE";
+		Stage.strActionId = "valtan.landing-test.airborne";
+		Stage.iDurationMs = 8000u;
+		Pattern.Stages.push_back(Stage);
+		Baseline.Rotation.push_back(Pattern);
+		VALTAN_PRODUCT_EFFECT_CUE_VIEW Cue;
+		Cue.strBindingId = "cue.valtan.composition.landing-test";
+		Cue.strOccurrenceId = Cue.strBindingId + ".occurrence.01";
+		Cue.strPatternId = Pattern.strPatternId;
+		Cue.strStageId = Stage.strStageId;
+		Cue.strActionId = Stage.strActionId;
+		Cue.strEffectAssetId = "effect.valtan.landing-test";
+		Cue.strAnchorSlotId = "pattern.landing.snapshot";
+		Cue.strFollowPolicy = "snapshot";
+		Cue.eFollowPolicy = EFFECT_FOLLOW_POLICY::SNAPSHOT;
+		Cue.strStopPolicy = "natural";
+		Cue.eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
+		Cue.strRepeatPolicy = "once";
+		Cue.strScalePolicy = "OWNER_RELATIVE";
+		Cue.eScalePolicy = VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE;
+		Cue.bHasExplicitScalePolicy = true;
+		Cue.bUsesStageClock = true;
+		Cue.iStageOffsetMs = 6906u;
+		Cue.iSourceStartMs = 6906u;
+		Cue.iStageDurationMs = Stage.iDurationMs;
+		VALTAN_EFFECT_CUE_AUTHORING_CONTEXT Context;
+		Context.eAdmission = VALTAN_EFFECT_CUE_AUTHORING_ADMISSION::ADMITTED;
+		Context.QuerySourceMembership = [](const std::string&, bool_t& found, std::string&)
+		{ found = true; return true; };
+		std::string Status;
+		bool_t Changed = false;
+		for (const std::string Kind : { "LEAP_TO_TARGET", "LEAP_TO_ANCHOR" })
+		{
+			auto Tree = Baseline;
+			Tree.Rotation.front().ServerMotion->strKind = Kind;
+			Require(CValtanPatternEffectCueAuthoring::Add(Tree, Cue.strPatternId,
+				Cue.strStageId, Cue.strActionId, Cue, Context, Changed, Status) && Changed &&
+				Tree.Rotation.front().Stages.front().ProductCues.front().strAnchorSlotId ==
+					"pattern.landing.snapshot",
+				"landing anchor must admit both Server leap kinds");
+			Require(CValtanPatternEffectCueAuthoring::Validate_Mirrors(
+				Tree.Rotation.front().Stages.front(), Status),
+				"landing anchor authoring broke cue mirrors");
+		}
+		for (uint32_t Case = 0u; Case < 4u; ++Case)
+		{
+			auto Tree = Baseline;
+			auto Invalid = Cue;
+			if (Case == 0u) Invalid.strAnchorSlotId = "pattern.landing.unknown";
+			if (Case == 1u)
+			{
+				Invalid.strFollowPolicy = "follow";
+				Invalid.eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
+			}
+			if (Case == 2u) Tree.Rotation.front().ServerMotion.reset();
+			if (Case == 3u) Tree.Rotation.front().ServerMotion->strKind = "DASH";
+			const auto Before = CaptureCueGraph(Tree);
+			Changed = true;
+			Require(!CValtanPatternEffectCueAuthoring::Add(Tree, Cue.strPatternId,
+				Cue.strStageId, Cue.strActionId, Invalid, Context, Changed, Status) &&
+				!Changed && Before == CaptureCueGraph(Tree),
+				"invalid landing anchor must preserve the previous authored graph");
+		}
+		std::cout << "Valtan landing anchor authoring: 6/6 passed\n";
+	}
+
 	void VerifyEffectCueAuthoringContract()
 	{
 		VALTAN_PATTERN_TREE_VIEW Tree;
@@ -639,6 +715,7 @@ int Run_ValtanPatternEffectCueAuthoringContractTests()
 {
 	try
 	{
+		VerifyLandingEffectCueAuthoringContract();
 		VerifyEffectCueAuthoringContract();
 		return 0;
 	}

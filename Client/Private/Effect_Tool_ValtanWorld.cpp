@@ -193,7 +193,7 @@ bool_t Client::CEffect_Tool::Try_SavePublishValtanAreaStaticEffects()
 	std::wstring command = L"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"" +
 		publisher.wstring() + L"\" -AreaId \"" +
 		std::filesystem::path(VALTAN_AREA_ID).wstring() +
-		L"\" -ProjectRoot \"" + projectRoot.wstring() + L"\"";
+		L"\" -ProjectRoot \"" + projectRoot.wstring() + L"\" -Scope Effects";
 	std::string publishStatus;
 	if (!Run_OwnedToolProcess(command, projectRoot, 60000u,
 			"Map Effect save", publishStatus))
@@ -239,8 +239,15 @@ bool_t Client::CEffect_Tool::Update_StaticAreaPreviewRoot()
 {
 	if (!m_StaticAreaPreviewPresentation.has_value())
 		return false;
-	const MAP_EFFECT_WORLD_PRESENTATION& presentation =
-		*m_StaticAreaPreviewPresentation;
+	MAP_EFFECT_WORLD_PRESENTATION presentation = *m_StaticAreaPreviewPresentation;
+	if (presentation.pickup.has_value())
+	{
+		const float3_t landing = presentation.pickup->landingPosition;
+		const f32_t fraction = (std::clamp)(m_fValtanEtherPreviewFraction, 0.f, 1.f);
+		presentation.position.x += (landing.x - presentation.position.x) * fraction;
+		presentation.position.y += (landing.y - presentation.position.y) * fraction;
+		presentation.position.z += (landing.z - presentation.position.z) * fraction;
+	}
 	if (m_ActiveDocument.has_value() &&
 		m_ActiveDocument->strEffectAssetId != presentation.effectAssetId)
 		return false;
@@ -706,6 +713,126 @@ bool_t Client::CEffect_Tool::Try_RegisterStaticAreaWorldEffectDraft()
 	return true;
 }
 
+void Client::CEffect_Tool::Render_ValtanEtherPickupSection(const std::string& strSearch)
+{
+	std::vector<const MAP_EFFECT_WORLD_PRESENTATION*> pickups;
+	for (const auto& row : m_ValtanAreaMapEffectDocument.Get_WorldEffects())
+		if (row.pickup.has_value() && (strSearch.empty() ||
+			Contains_NoCase(row.displayName, strSearch) ||
+			Contains_NoCase(row.placementId, strSearch) || Contains_NoCase("ether", strSearch)))
+			pickups.push_back(&row);
+	if (pickups.empty()) return;
+	if (!strSearch.empty()) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+	if (!ImGui::TreeNodeEx("\xEC\x97\x90\xED\x85\x8C\xEB\xA5\xB4 \xEA\xB5\xAC\xEC\x8A\xAC###ValtanEtherPickups",
+		ImGuiTreeNodeFlags_OpenOnArrow)) return;
+	ImGui::PushID("ValtanEtherPickups");
+	if (m_strSelectedValtanEtherPlacement.empty())
+		m_strSelectedValtanEtherPlacement = pickups.front()->placementId;
+	for (const auto* row : pickups)
+	{
+		const std::string label = row->displayName + "###" + row->placementId;
+		if (ImGui::Selectable(label.c_str(), m_strSelectedValtanEtherPlacement == row->placementId))
+		{
+			m_strSelectedValtanEtherPlacement = row->placementId;
+			m_fValtanEtherPreviewFraction = 0.f;
+			m_bValtanEtherFallPreviewPlaying = false;
+			m_bPreviewLoop = true;
+			Try_PreviewValtanAreaWorldEffect(*row, true);
+		}
+	}
+	auto selected = std::find_if(pickups.begin(), pickups.end(), [this](const auto* row)
+		{ return row->placementId == m_strSelectedValtanEtherPlacement; });
+	MAP_EFFECT_WORLD_PRESENTATION* row = selected == pickups.end() ? nullptr :
+		m_ValtanAreaMapEffectDocument.Edit_WorldEffect((*selected)->independentEffectId);
+	if (row && row->pickup.has_value())
+	{
+		MAP_EFFECT_PICKUP& pickup = *row->pickup;
+		ImGui::SeparatorText(row->displayName.c_str());
+		bool_t changed = false;
+		changed |= ImGui::DragFloat3("Wall position", &row->position.x, 0.05f, -100000.f, 100000.f, "%.3f");
+		changed |= ImGui::DragFloat3("Landing position", &pickup.landingPosition.x, 0.05f, -100000.f, 100000.f, "%.3f");
+		changed |= ImGui::DragFloat3("Scale", &row->scale.x, 0.01f, 0.001f, 1000.f, "%.3f");
+		int duration = static_cast<int>(pickup.fallDurationMs);
+		if (ImGui::DragInt("Fall duration (ms)", &duration, 10.f, 1, 60000))
+		{ pickup.fallDurationMs = static_cast<uint32_t>((std::clamp)(duration, 1, 60000)); changed = true; }
+		changed |= ImGui::DragFloat("Pickup radius (m)", &pickup.pickupRadiusM, 0.01f, 0.001f, 20.f, "%.3f");
+		const bool_t refreshWalls = ImGui::SmallButton("Refresh wall choices");
+		if (!m_bValtanEtherWallLoadAttempted || refreshWalls)
+		{
+			m_bValtanEtherWallLoadAttempted = true;
+			std::string status;
+			if (!m_ValtanEtherWallDocument.Load(CProjectDataRoot::Resolve(
+				"Encounters/Valtan/ValtanWorldEvents.json"), VALTAN_AREA_ID, "ENCOUNTER_VALTAN", status))
+				m_strValtanAreaMapEffectStatus = status;
+		}
+		if (ImGui::BeginCombo("Wall ID", pickup.wallGroupId.c_str()))
+		{
+			for (const auto& group : m_ValtanEtherWallDocument.Get_Groups())
+				if (group.eNavPolarity == DESTRUCTION_NAV_POLARITY::BLOCK_WHILE_INTACT &&
+					ImGui::Selectable(group.groupId.c_str(), group.groupId == pickup.wallGroupId))
+				{ pickup.wallGroupId = group.groupId; changed = true; }
+			ImGui::EndCombo();
+		}
+		if (changed)
+		{
+			m_bValtanAreaMapEffectDirty = true;
+			if (m_StaticAreaPreviewPresentation.has_value() &&
+				m_StaticAreaPreviewPresentation->placementId == row->placementId)
+			{
+				m_StaticAreaPreviewPresentation = *row;
+				(void)Update_StaticAreaPreviewRoot();
+			}
+		}
+		ImGui::SeparatorText("Placement / Fall Preview");
+		ImGui::TextUnformatted(m_fValtanEtherPreviewFraction <= 0.f ? "Wait" :
+			(m_fValtanEtherPreviewFraction >= 1.f ? "Landed" : "Fall"));
+		if (ImGui::SliderFloat("Fall progress", &m_fValtanEtherPreviewFraction, 0.f, 1.f, "%.2f"))
+		{
+			m_bValtanEtherFallPreviewPlaying = false;
+			if (!m_StaticAreaPreviewPresentation.has_value() ||
+				m_StaticAreaPreviewPresentation->placementId != row->placementId)
+			{ m_bPreviewLoop = true; Try_PreviewValtanAreaWorldEffect(*row, true); }
+			(void)Update_StaticAreaPreviewRoot();
+		}
+		if (ImGui::SmallButton("Preview position"))
+		{
+			m_fValtanEtherPreviewFraction = 0.f;
+			m_bValtanEtherFallPreviewPlaying = false;
+			m_bPreviewLoop = true;
+			Try_PreviewValtanAreaWorldEffect(*row, true);
+		}
+		ImGui::SameLine();
+		if (ImGui::SmallButton("Play fall"))
+		{
+			m_fValtanEtherPreviewFraction = 0.f;
+			m_bPreviewLoop = true;
+			m_bValtanEtherFallPreviewPlaying = Try_PreviewValtanAreaWorldEffect(*row, true);
+		}
+		ImGui::SameLine();
+		if (ImGui::SmallButton("Reset preview"))
+		{
+			m_fValtanEtherPreviewFraction = 0.f;
+			m_bValtanEtherFallPreviewPlaying = false;
+			(void)Update_StaticAreaPreviewRoot();
+		}
+		ImGui::SameLine();
+		if (ImGui::SmallButton("Stop preview")) Hide_WorldPreview();
+	}
+	ImGui::Separator();
+	ImGui::BeginDisabled(!m_bValtanAreaMapEffectDirty);
+	if (ImGui::SmallButton("Save")) Try_SavePublishValtanAreaStaticEffects();
+	ImGui::SameLine();
+	if (ImGui::SmallButton("Discard draft")) Discard_ValtanAreaStaticEffectDraft();
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(m_bValtanAreaMapEffectDirty);
+	if (ImGui::SmallButton("Reload saved")) Refresh_ValtanAreaStaticEffects();
+	ImGui::EndDisabled();
+	ImGui::TextWrapped("%s", m_strValtanAreaMapEffectStatus.c_str());
+	ImGui::PopID();
+	ImGui::TreePop();
+}
+
 void Client::CEffect_Tool::Render_ValtanAreaStaticEffectSection(
 	const std::string& strSearch)
 {
@@ -727,6 +854,7 @@ void Client::CEffect_Tool::Render_ValtanAreaStaticEffectSection(
 		return;
 	}
 
+	Render_ValtanEtherPickupSection(strSearch);
 	const auto matchesSurface = [&strSearch](const auto& row)
 	{
 		return strSearch.empty() ||
@@ -735,6 +863,7 @@ void Client::CEffect_Tool::Render_ValtanAreaStaticEffectSection(
 	};
 	const auto matchesWorld = [&strSearch](const auto& row)
 	{
+		if (row.pickup.has_value()) return false;
 		return strSearch.empty() ||
 			Contains_NoCase(row.independentEffectId, strSearch) ||
 			Contains_NoCase(row.displayName, strSearch) ||
@@ -1159,6 +1288,16 @@ void Client::CEffect_Tool::Render_ValtanCinematicEffectSection(const std::string
         {
             ImGui::TextWrapped("%s | %u ms", group.strSourceDisplayName.c_str(), group.iDurationMs);
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%s", group.strSequenceId.c_str(), group.strInstanceId.c_str());
+            if (group.strPatternId == "VALTAN_ENTRANCE_CINEMATIC")
+            {
+                if (ImGui::Button("Open Editor##CompleteCinematic"))
+                    (void)Open_ClassMovie("valtan.entrance");
+                ImGui::SameLine();
+                if (ImGui::Button("Play All##CompleteCinematic") && Open_ClassMovie("valtan.entrance"))
+                    (void)Play_ClassMovie();
+                ImGui::TextWrapped("Open the complete entrance: all Elements, actor animation, source timing and bone attachments. Element Solo keeps the same scene clock.");
+                if (!m_strClassMovieStatus.empty()) ImGui::TextWrapped("%s", m_strClassMovieStatus.c_str());
+            }
             if (group.Effects.empty()) ImGui::TextDisabled("This sequence has no Effect tracks.");
             for (const auto& [id, occurrences] : rows)
             {
@@ -1362,12 +1501,23 @@ void Client::CEffect_Tool::Render_ValtanEffectResourceSection(
 
 	std::vector<const EFFECT_RESOURCE_DESCRIPTOR*> Groups;
 	std::vector<const EFFECT_RESOURCE_DESCRIPTOR*> Leaves;
+	std::unordered_set<std::string> SeparateRestoreIds;
+	for (const auto& Source : m_ValtanExactAuthoredSources)
+		if (m_ValtanFullRestoreSourceClips.contains(Source.strEffectAssetId))
+			SeparateRestoreIds.insert(Source.strEffectAssetId);
 	for (const EFFECT_RESOURCE_DESCRIPTOR& Resource :
 		m_pValtanEffectResourceSnapshot->Get_Resources())
 	{
+		// Exact saved restores are listed once in the dedicated Pattern tree.
+		if (Resource.Key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT &&
+			SeparateRestoreIds.contains(Resource.Key.strStableId)) continue;
+		const auto AuthoringLabel = m_ValtanEffectAuthoringLabels.find(Resource.Key.strStableId);
 		if (!strSearch.empty() &&
 			!Contains_NoCase(Resource.Key.strStableId, strSearch) &&
-			!Contains_NoCase(Resource.strCategoryLabel, strSearch))
+			!Contains_NoCase(Resource.strDisplayLabel, strSearch) &&
+			!Contains_NoCase(Resource.strCategoryLabel, strSearch) &&
+			(AuthoringLabel == m_ValtanEffectAuthoringLabels.end() ||
+			 !Contains_NoCase(AuthoringLabel->second.strSearchText, strSearch)))
 		{
 			continue;
 		}
@@ -1391,12 +1541,14 @@ void Client::CEffect_Tool::Render_ValtanEffectResourceSection(
 			"STALE PRESERVED / READ ONLY");
 	}
 
-	const auto RenderRows = [this](
+	const auto RenderRows = [this, &strSearch](
 		const char_t* pLabel,
 		const std::vector<const EFFECT_RESOURCE_DESCRIPTOR*>& Rows)
 	{
 		const std::string Label = std::string(pLabel) + " (" +
 			std::to_string(Rows.size()) + ")";
+		if (!strSearch.empty())
+			ImGui::SetNextItemOpen(true, ImGuiCond_Always);
 		if (!ImGui::TreeNodeEx(Label.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
 			return;
 		for (const EFFECT_RESOURCE_DESCRIPTOR* pResource : Rows)
@@ -1404,9 +1556,12 @@ void Client::CEffect_Tool::Render_ValtanEffectResourceSection(
 			if (nullptr == pResource)
 				continue;
 			ImGui::PushID(pResource->Key.strStableId.c_str());
-			ImGui::TextWrapped("%s | %s",
-				pResource->strDisplayLabel.c_str(),
-				pResource->strCategoryLabel.c_str());
+			const auto AuthoringLabel = m_ValtanEffectAuthoringLabels.find(pResource->Key.strStableId);
+			const std::string& DisplayName = AuthoringLabel != m_ValtanEffectAuthoringLabels.end() ?
+				AuthoringLabel->second.strDisplayName : pResource->strDisplayLabel;
+			ImGui::TextWrapped("%s | %s", DisplayName.c_str(), pResource->strCategoryLabel.c_str());
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("%s", pResource->Key.strStableId.c_str());
 			ImGui::SameLine();
 			const bool_t bCanOpen =
 				Can_MutateValtanView(m_eValtanEffectResourceAdmission) &&
@@ -1444,7 +1599,10 @@ void Client::CEffect_Tool::Render_ValtanExactAuthoredSourceSection(
 		m_ValtanExactAuthoredSources)
 	{
 		const std::string strPath = Source.Path.generic_string();
+		const auto AuthoringLabel = m_ValtanEffectAuthoringLabels.find(Source.strEffectAssetId);
 		const bool_t bMatches = strSearch.empty() ||
+			(AuthoringLabel != m_ValtanEffectAuthoringLabels.end() &&
+			 Contains_NoCase(AuthoringLabel->second.strSearchText, strSearch)) ||
 			Contains_NoCase(Source.strEffectAssetId, strSearch) ||
 			Contains_NoCase(Source.strOwnerArchetypeId, strSearch) ||
 			Contains_NoCase(Source.strPatternId, strSearch) ||
@@ -1457,98 +1615,153 @@ void Client::CEffect_Tool::Render_ValtanExactAuthoredSourceSection(
 			VisibleSources.push_back(&Source);
 	}
 
-	if (!strSearch.empty())
-		ImGui::SetNextItemOpen(true, ImGuiCond_Always);
-	else
-		ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
-	const std::string strLabel =
-		"EXISTING AUTHORED EFFECTS (" +
-		std::to_string(VisibleSources.size()) + "/" +
-		std::to_string(m_ValtanExactAuthoredSources.size()) + ")";
-	if (!ImGui::TreeNodeEx(strLabel.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
-		return;
-
-	ImGui::TextDisabled(
-		"Exact EffectCatalog/Authored JSON sources. Open Editor remains available when the Pattern Product join is rejected; Server/Product Play does not.");
-	if (m_ValtanExactAuthoredSources.empty())
-	{
-		ImGui::TextDisabled(
-			"No exact effect.valtan.* authored source was indexed. Refresh reports source-catalog errors without substituting a runtime row.");
-		ImGui::TreePop();
-		return;
-	}
+	ImGui::SeparatorText("Valtan Saved Effects");
+	ImGui::TextDisabled("%zu / %zu saved Effects", VisibleSources.size(), m_ValtanExactAuthoredSources.size());
+	if (m_ValtanEffectAuthoringLabels.empty() && !m_strValtanEffectAuthoringLabelStatus.empty())
+		ImGui::TextWrapped("%s", m_strValtanEffectAuthoringLabelStatus.c_str());
 	if (VisibleSources.empty())
 	{
-		ImGui::TextDisabled("No existing Valtan authored Effect matches the search.");
-		ImGui::TreePop();
+		ImGui::TextDisabled("No saved Valtan Effect matches the search. Refresh updates the source list.");
 		return;
 	}
 
-	const f32_t fRowListHeight = std::clamp(
-		ImGui::GetTextLineHeightWithSpacing() * 14.f, 220.f, 360.f);
-	ImGui::BeginChild(
-		"ValtanExactAuthoredSourceList", ImVec2(0.f, fRowListHeight), true);
-	for (const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY* pSource : VisibleSources)
+	struct SOURCE_ROW final
 	{
-		if (nullptr == pSource)
+		const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY* pSource = nullptr;
+		std::string strName;
+	};
+	struct RESTORE_GROUP final
+	{
+		std::string strName;
+		std::vector<SOURCE_ROW> Rows;
+	};
+	std::map<std::string, RESTORE_GROUP> RestoreGroups;
+	std::vector<SOURCE_ROW> OtherSources;
+	size_t iRestoreCount = 0u;
+	for (const auto* Source : VisibleSources)
+	{
+		const auto Label = m_ValtanEffectAuthoringLabels.find(Source->strEffectAssetId);
+		const std::string Name = Label != m_ValtanEffectAuthoringLabels.end() ?
+			Label->second.strDisplayName : Source->strEffectAssetId;
+		if (!m_ValtanFullRestoreSourceClips.contains(Source->strEffectAssetId))
+		{
+			OtherSources.push_back({Source, Name});
 			continue;
-		ImGui::PushID(pSource->strEffectAssetId.c_str());
-		ImGui::SeparatorText(pSource->strEffectAssetId.c_str());
-
-		std::string strOwner = "SOURCE ONLY | Product owner unavailable";
-		switch (pSource->eOwnerKind)
-		{
-		case EFFECT_DIRECT_AUTHORED_OWNER_KIND::BOSS_PATTERN:
-			strOwner = "BOSS PATTERN | " + pSource->strPatternId + " / " +
-				pSource->strStageId + " / " + pSource->strActionId;
-			break;
-		case EFFECT_DIRECT_AUTHORED_OWNER_KIND::BOSS_COMBAT_OBJECT:
-			strOwner = "BOSS COMBAT OBJECT | " +
-				pSource->strCombatObjectArchetypeId + " / " +
-				pSource->strClientVisualId;
-			break;
-		case EFFECT_DIRECT_AUTHORED_OWNER_KIND::PLAYER_SKILL:
-			strOwner = "PLAYER SKILL OWNER";
-			break;
-		default:
-			break;
 		}
-		ImGui::TextWrapped("%s", strOwner.c_str());
-		ImGui::TextDisabled("%s", pSource->Path.generic_string().c_str());
-
-		const bool_t bActive = m_ActiveDocument.has_value() &&
-			m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
-			m_ActiveDocument->strEffectAssetId == pSource->strEffectAssetId;
-		std::string strEditableStatus;
-		const std::filesystem::path* pEditablePath =
-			Observe_DirectAuthoredEditablePath(
-				pSource->strEffectAssetId, strEditableStatus);
-		ImGui::BeginDisabled(bActive || nullptr == pEditablePath);
-		if (ImGui::SmallButton("Open Editor") && nullptr != pEditablePath)
+		++iRestoreCount;
+		if (Label != m_ValtanEffectAuthoringLabels.end() && !Label->second.RestorePatterns.empty())
 		{
-			std::string strExactStatus;
-			const std::filesystem::path* pExactPath =
-				Resolve_DirectAuthoredEditablePath(
-					pSource->strEffectAssetId, strExactStatus);
-			if (nullptr == pExactPath)
-				m_strElementStatus = std::move(strExactStatus);
-			else
-				Try_LoadDocumentPath(*pExactPath,
-					EFFECT_DOCUMENT_SOURCE::AUTHORED,
-					pSource->strEffectAssetId,
-					EFFECT_DOCUMENT_PREVIEW_INTENT::STANDALONE_EFFECT);
+			for (const auto& Pattern : Label->second.RestorePatterns)
+			{
+				auto& Group = RestoreGroups[Pattern.strPatternId];
+				Group.strName = Pattern.strPatternName;
+				Group.Rows.push_back({Source, Pattern.strEffectName});
+			}
 		}
-		ImGui::EndDisabled();
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		else
 		{
-			ImGui::SetTooltip("%s", bActive ?
-				"This exact authored document is already the Current Effect." :
-				strEditableStatus.c_str());
+			auto& Group = RestoreGroups["##UnassignedRestore"];
+			Group.strName = "Other restored sources";
+			Group.Rows.push_back({Source, Name.ends_with(" [Full Restore]") ? Name : Name + " [Full Restore]"});
 		}
-		ImGui::PopID();
 	}
-	ImGui::EndChild();
-	ImGui::TreePop();
+	const auto RenderRows = [this](std::vector<SOURCE_ROW>& Rows)
+	{
+		std::ranges::sort(Rows, [](const SOURCE_ROW& A, const SOURCE_ROW& B)
+		{
+			if (A.strName != B.strName) return A.strName < B.strName;
+			return A.pSource->strEffectAssetId < B.pSource->strEffectAssetId;
+		});
+		// Use the All Effects window's scrollbar; each source has one compact row.
+		if (!ImGui::BeginTable("##SavedEffectRows", 2,
+			ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) return;
+		ImGui::TableSetupColumn("Effect", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn("Editor", ImGuiTableColumnFlags_WidthFixed,
+			ImGui::CalcTextSize("Open Editor").x + ImGui::GetStyle().FramePadding.x * 2.f);
+		for (const auto& Row : Rows)
+		{
+			const auto* Source = Row.pSource;
+			ImGui::PushID(Source->strEffectAssetId.c_str());
+			const bool_t bActive = m_ActiveDocument.has_value() &&
+				m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
+				m_ActiveDocument->strEffectAssetId == Source->strEffectAssetId;
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			const bool_t bOpen = ImGui::TreeNodeEx((Row.strName + "###SavedEffect").c_str(),
+				ImGuiTreeNodeFlags_OpenOnArrow | (bActive ? ImGuiTreeNodeFlags_Selected : 0));
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("%s\n%s", Row.strName.c_str(), Source->strEffectAssetId.c_str());
+			ImGui::TableSetColumnIndex(1);
+			std::string EditableStatus;
+			const auto* EditablePath = Observe_DirectAuthoredEditablePath(Source->strEffectAssetId, EditableStatus);
+			ImGui::BeginDisabled(bActive || nullptr == EditablePath);
+			if (ImGui::SmallButton("Open Editor") && EditablePath)
+			{
+				std::string ExactStatus;
+				const auto* ExactPath = Resolve_DirectAuthoredEditablePath(Source->strEffectAssetId, ExactStatus);
+				if (!ExactPath) m_strElementStatus = std::move(ExactStatus);
+				else Try_LoadDocumentPath(*ExactPath, EFFECT_DOCUMENT_SOURCE::AUTHORED,
+					Source->strEffectAssetId, EFFECT_DOCUMENT_PREVIEW_INTENT::STANDALONE_EFFECT);
+			}
+			ImGui::EndDisabled();
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+				ImGui::SetTooltip("%s", bActive ? "This saved Effect is already open." : EditableStatus.c_str());
+			if (bOpen)
+			{
+				ImGui::TableNextRow();
+				ImGui::TableSetColumnIndex(0);
+				ImGui::TextWrapped("Effect: %s", Source->strEffectAssetId.c_str());
+				ImGui::TextWrapped("Path: %s", Source->Path.generic_string().c_str());
+				if (!Source->strPatternId.empty())
+					ImGui::TextWrapped("Linked occurrence: %s / %s / %s", Source->strPatternId.c_str(),
+						Source->strStageId.c_str(), Source->strActionId.c_str());
+				else if (!Source->strCombatObjectArchetypeId.empty())
+					ImGui::TextWrapped("Combat object: %s / %s", Source->strCombatObjectArchetypeId.c_str(),
+						Source->strClientVisualId.c_str());
+				else ImGui::TextDisabled("Saved source; no Product occurrence is asserted by this row.");
+				if (!EditableStatus.empty()) ImGui::TextWrapped("%s", EditableStatus.c_str());
+				ImGui::TreePop();
+			}
+			ImGui::PopID();
+		}
+		ImGui::EndTable();
+	};
+	if (iRestoreCount)
+	{
+		ImGui::SetNextItemOpen(true, strSearch.empty() ? ImGuiCond_FirstUseEver : ImGuiCond_Always);
+		const std::string Label = "Full Restore (" + std::to_string(iRestoreCount) + ")###ValtanRestoreSources";
+		if (ImGui::TreeNodeEx(Label.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
+		{
+			ImGui::TextWrapped("Shared Effects appear under each matching Pattern. Open Editor edits the same saved Effect.");
+			std::vector<std::pair<std::string, RESTORE_GROUP*>> Groups;
+			for (auto& [Id, Group] : RestoreGroups) Groups.emplace_back(Id, &Group);
+			std::ranges::sort(Groups, [](const auto& A, const auto& B)
+			{ return A.second->strName != B.second->strName ? A.second->strName < B.second->strName : A.first < B.first; });
+			for (const auto& [Id, Group] : Groups)
+			{
+				ImGui::PushID(Id.c_str());
+				ImGui::SetNextItemOpen(true, strSearch.empty() ? ImGuiCond_FirstUseEver : ImGuiCond_Always);
+				const std::string GroupLabel = Group->strName + " (" + std::to_string(Group->Rows.size()) + ")###RestorePattern";
+				if (ImGui::TreeNodeEx(GroupLabel.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
+				{
+					RenderRows(Group->Rows);
+					ImGui::TreePop();
+				}
+				ImGui::PopID();
+			}
+			ImGui::TreePop();
+		}
+	}
+	if (!OtherSources.empty())
+	{
+		ImGui::SetNextItemOpen(true, strSearch.empty() ? ImGuiCond_FirstUseEver : ImGuiCond_Always);
+		const std::string Label = "Other Saved Effects (" + std::to_string(OtherSources.size()) + ")###ValtanOtherSources";
+		if (ImGui::TreeNodeEx(Label.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
+		{
+			RenderRows(OtherSources);
+			ImGui::TreePop();
+		}
+	}
 }
 
 void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
@@ -1560,8 +1773,8 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	   Animator order now comes from ManualAuditions. All Effects and Valtan Boss Tool
 	   both submit the one shared typed Server audition service. */
 	Render_ValtanCinematicEffectSection(strSearch);
-	Render_ValtanEffectResourceSection(strSearch);
 	Render_ValtanExactAuthoredSourceSection(strSearch);
+	Render_ValtanEffectResourceSection(strSearch);
 	if (m_ValtanPatternProductUnlinkOperation.has_value())
 	{
 		ImGui::TextWrapped("%s", m_strValtanPatternEffectStatus.c_str());

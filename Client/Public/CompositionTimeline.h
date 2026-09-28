@@ -130,6 +130,21 @@ inline DISPLAY_LAYOUT AllocateDisplayRows(
 	return layout;
 }
 
+// Marquee uses the drawn box rectangle (including short point boxes), not label IDs.
+inline bool MarqueeIntersectsBox(const ImVec2 anchor, const ImVec2 pointer,
+    const ImVec2 boxMin, const ImVec2 boxMax)
+{
+    if (!std::isfinite(anchor.x) || !std::isfinite(anchor.y) ||
+        !std::isfinite(pointer.x) || !std::isfinite(pointer.y) ||
+        !std::isfinite(boxMin.x) || !std::isfinite(boxMin.y) ||
+        !std::isfinite(boxMax.x) || !std::isfinite(boxMax.y) ||
+        boxMax.x <= boxMin.x || boxMax.y <= boxMin.y) return false;
+    return boxMax.x >= (std::min)(anchor.x, pointer.x) &&
+        boxMin.x <= (std::max)(anchor.x, pointer.x) &&
+        boxMax.y >= (std::min)(anchor.y, pointer.y) &&
+        boxMin.y <= (std::max)(anchor.y, pointer.y);
+}
+
 enum class BoxGesture : std::uint8_t
 {
 	MOVE,

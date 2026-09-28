@@ -503,6 +503,7 @@ bool LostArk::Server::CGameRoom::Despawn_KoukuSaydonArenaDebugEntities(const boo
 	for (auto& [id, player] : m_Players)
 	{
 		(void)id;
+		player.bRonaunGuard = false; player.iRonaunGrantTick = 0u;
 		player.iEstherGuardEndTick = 0u;
 		player.iEstherGuardDamageTakenPercent = 0;
 	}

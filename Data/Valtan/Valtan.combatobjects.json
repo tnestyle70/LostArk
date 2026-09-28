@@ -204,11 +204,57 @@
       ],
       "presentationEvents": []
     },
-    {"combatObjectArchetypeId": "combatobject.valtan.six-pizza.rock-pillar", "kind": "FIXED_AREA", "lifetimeMs": 32000, "coverRadiusM": 1.5, "spawn": {"origin": {"kind": "BOSS_POSITION", "forwardOffsetM": 0.0, "rightOffsetM": 0.0}, "direction": {"kind": "NONE"}}, "movement": {"kind": "STATIC"}, "hits": [{"hitId": "hit.valtan.six-pizza.rock-pillar.explode", "trigger": {"kind": "TIMED", "atMs": 0}, "repeat": {"count": 1, "intervalMs": 0}, "shape": {"kind": "CIRCLE", "outerRadiusM": 3.0}, "serverDamageProfileId": "damage.valtan.stomp", "pushRangeM": 1.5, "pushMs": 150, "knockdown": true, "downMs": 1000}], "presentationEvents": [], "ownerHitChain": {"triggerActionId": "valtan.sequence.center-six-pizza-charge.step-11", "delayMs": 1500, "armedPresentationEventId": "event.valtan.six-pizza.rock-pillar.armed"}},
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.six-pizza.rock-pillar",
+      "kind": "FIXED_AREA",
+      "lifetimeMs": 32000,
+      "coverRadiusM": 1.5,
+      "spawn": {
+        "origin": {
+          "kind": "BOSS_POSITION",
+          "forwardOffsetM": 0.0,
+          "rightOffsetM": 0.0
+        },
+        "direction": {
+          "kind": "NONE"
+        }
+      },
+      "movement": {
+        "kind": "STATIC"
+      },
+      "hits": [
+        {
+          "hitId": "hit.valtan.six-pizza.rock-pillar.explode",
+          "trigger": {
+            "kind": "TIMED",
+            "atMs": 0
+          },
+          "repeat": {
+            "count": 1,
+            "intervalMs": 0
+          },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 3.0
+          },
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
+        }
+      ],
+      "presentationEvents": [],
+      "ownerHitChain": {
+        "triggerActionId": "valtan.sequence.center-six-pizza-charge.step-11",
+        "delayMs": 1500,
+        "armedPresentationEventId": "event.valtan.six-pizza.rock-pillar.armed"
+      }
+    },
     {
       "combatObjectArchetypeId": "combatobject.valtan.struggling.rock-pillar",
       "kind": "FIXED_AREA",
-      "lifetimeMs": 6200,
+      "lifetimeMs": 5333,
       "coverRadiusM": 1.5,
       "spawn": {
         "origin": {
@@ -228,7 +274,7 @@
           "hitId": "hit.valtan.struggling.rock-pillar.explode",
           "trigger": {
             "kind": "TIMED",
-            "atMs": 5000
+            "atMs": 4133
           },
           "repeat": {
             "count": 1,
@@ -331,6 +377,396 @@
           "downMs": 1500
         }
       ]
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.terrain-3.combo-rock",
+      "kind": "FIXED_AREA",
+      "lifetimeMs": 32000,
+      "coverRadiusM": 1.5,
+      "spawn": {
+        "origin": {
+          "kind": "BOSS_POSITION",
+          "forwardOffsetM": 0.0,
+          "rightOffsetM": 0.0
+        },
+        "direction": {
+          "kind": "NONE"
+        }
+      },
+      "movement": {
+        "kind": "STATIC"
+      },
+      "hits": [
+        {
+          "hitId": "hit.valtan.terrain-3.combo-rock.explode",
+          "trigger": {
+            "kind": "TIMED",
+            "atMs": 0
+          },
+          "repeat": {
+            "count": 1,
+            "intervalMs": 0
+          },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 3.0
+          },
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
+        }
+      ],
+      "presentationEvents": [],
+      "ownerHitChain": {
+        "triggerActionId": "valtan.mechanic.terrain-destruction-3.combo.step-11",
+        "delayMs": 1500,
+        "armedPresentationEventId": "event.valtan.terrain-3.combo-rock.armed"
+      }
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.terrain-9.combo-rock",
+      "kind": "FIXED_AREA",
+      "lifetimeMs": 32000,
+      "coverRadiusM": 1.5,
+      "spawn": {
+        "origin": {
+          "kind": "BOSS_POSITION",
+          "forwardOffsetM": 0.0,
+          "rightOffsetM": 0.0
+        },
+        "direction": {
+          "kind": "NONE"
+        }
+      },
+      "movement": {
+        "kind": "STATIC"
+      },
+      "hits": [
+        {
+          "hitId": "hit.valtan.terrain-9.combo-rock.explode",
+          "trigger": {
+            "kind": "TIMED",
+            "atMs": 0
+          },
+          "repeat": {
+            "count": 1,
+            "intervalMs": 0
+          },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 3.0
+          },
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
+        }
+      ],
+      "presentationEvents": [],
+      "ownerHitChain": {
+        "triggerActionId": "valtan.mechanic.terrain-destruction-9.combo.step-11",
+        "delayMs": 1500,
+        "armedPresentationEventId": "event.valtan.terrain-9.combo-rock.armed"
+      }
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.underfoot-01",
+      "kind": "FIXED_AREA",
+      "lifetimeMs": 4000,
+      "spawn": {
+        "origin": {
+          "kind": "RESOLVED_VOLLEY_POSITION"
+        },
+        "direction": {
+          "kind": "NONE"
+        }
+      },
+      "movement": {
+        "kind": "STATIC"
+      },
+      "hits": [
+        {
+          "hitId": "hit.valtan.struggling.underfoot-01",
+          "trigger": {
+            "kind": "TIMED",
+            "atMs": 1500
+          },
+          "repeat": {
+            "count": 1,
+            "intervalMs": 0
+          },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 2.4
+          },
+          "serverDamageProfileId": "damage.valtan.down-smash",
+          "pushRangeM": 2.0,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1200
+        }
+      ],
+      "presentationEvents": []
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.underfoot-02",
+      "kind": "FIXED_AREA",
+      "lifetimeMs": 4000,
+      "spawn": {
+        "origin": {
+          "kind": "RESOLVED_VOLLEY_POSITION"
+        },
+        "direction": {
+          "kind": "NONE"
+        }
+      },
+      "movement": {
+        "kind": "STATIC"
+      },
+      "hits": [
+        {
+          "hitId": "hit.valtan.struggling.underfoot-02",
+          "trigger": {
+            "kind": "TIMED",
+            "atMs": 1500
+          },
+          "repeat": {
+            "count": 1,
+            "intervalMs": 0
+          },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 2.4
+          },
+          "serverDamageProfileId": "damage.valtan.down-smash",
+          "pushRangeM": 2.0,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1200
+        }
+      ],
+      "presentationEvents": []
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.underfoot-03",
+      "kind": "FIXED_AREA",
+      "lifetimeMs": 4000,
+      "spawn": {
+        "origin": {
+          "kind": "RESOLVED_VOLLEY_POSITION"
+        },
+        "direction": {
+          "kind": "NONE"
+        }
+      },
+      "movement": {
+        "kind": "STATIC"
+      },
+      "hits": [
+        {
+          "hitId": "hit.valtan.struggling.underfoot-03",
+          "trigger": {
+            "kind": "TIMED",
+            "atMs": 1500
+          },
+          "repeat": {
+            "count": 1,
+            "intervalMs": 0
+          },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 2.4
+          },
+          "serverDamageProfileId": "damage.valtan.down-smash",
+          "pushRangeM": 2.0,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1200
+        }
+      ],
+      "presentationEvents": []
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.underfoot-04",
+      "kind": "FIXED_AREA",
+      "lifetimeMs": 4000,
+      "spawn": {
+        "origin": {
+          "kind": "RESOLVED_VOLLEY_POSITION"
+        },
+        "direction": {
+          "kind": "NONE"
+        }
+      },
+      "movement": {
+        "kind": "STATIC"
+      },
+      "hits": [
+        {
+          "hitId": "hit.valtan.struggling.underfoot-04",
+          "trigger": {
+            "kind": "TIMED",
+            "atMs": 1500
+          },
+          "repeat": {
+            "count": 1,
+            "intervalMs": 0
+          },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 2.4
+          },
+          "serverDamageProfileId": "damage.valtan.down-smash",
+          "pushRangeM": 2.0,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1200
+        }
+      ],
+      "presentationEvents": []
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.underfoot-05",
+      "kind": "FIXED_AREA",
+      "lifetimeMs": 4000,
+      "spawn": {
+        "origin": {
+          "kind": "RESOLVED_VOLLEY_POSITION"
+        },
+        "direction": {
+          "kind": "NONE"
+        }
+      },
+      "movement": {
+        "kind": "STATIC"
+      },
+      "hits": [
+        {
+          "hitId": "hit.valtan.struggling.underfoot-05",
+          "trigger": {
+            "kind": "TIMED",
+            "atMs": 1500
+          },
+          "repeat": {
+            "count": 1,
+            "intervalMs": 0
+          },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 2.4
+          },
+          "serverDamageProfileId": "damage.valtan.down-smash",
+          "pushRangeM": 2.0,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1200
+        }
+      ],
+      "presentationEvents": []
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.underfoot-06",
+      "kind": "FIXED_AREA",
+      "lifetimeMs": 4000,
+      "spawn": {
+        "origin": {
+          "kind": "RESOLVED_VOLLEY_POSITION"
+        },
+        "direction": {
+          "kind": "NONE"
+        }
+      },
+      "movement": {
+        "kind": "STATIC"
+      },
+      "hits": [
+        {
+          "hitId": "hit.valtan.struggling.underfoot-06",
+          "trigger": {
+            "kind": "TIMED",
+            "atMs": 1500
+          },
+          "repeat": {
+            "count": 1,
+            "intervalMs": 0
+          },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 2.4
+          },
+          "serverDamageProfileId": "damage.valtan.down-smash",
+          "pushRangeM": 2.0,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1200
+        }
+      ],
+      "presentationEvents": []
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.in-out",
+      "kind": "FIXED_AREA",
+      "lifetimeMs": 4200,
+      "spawn": {
+        "origin": {
+          "kind": "BOSS_POSITION",
+          "forwardOffsetM": 1.6,
+          "rightOffsetM": 0.0
+        },
+        "direction": {
+          "kind": "NONE"
+        }
+      },
+      "movement": {
+        "kind": "STATIC"
+      },
+      "hits": [
+        {
+          "hitId": "hit.valtan.struggling.inner",
+          "trigger": {
+            "kind": "TIMED",
+            "atMs": 1000
+          },
+          "repeat": {
+            "count": 1,
+            "intervalMs": 0
+          },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 4.0
+          },
+          "serverDamageProfileId": "damage.valtan.ground-wave-smash",
+          "pushRangeM": 2.0,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1200
+        },
+        {
+          "hitId": "hit.valtan.struggling.outer",
+          "trigger": {
+            "kind": "TIMED",
+            "atMs": 3000
+          },
+          "repeat": {
+            "count": 1,
+            "intervalMs": 0
+          },
+          "shape": {
+            "kind": "RING",
+            "innerRadiusM": 3.0,
+            "outerRadiusM": 15.0
+          },
+          "serverDamageProfileId": "damage.valtan.ground-wave-smash",
+          "pushRangeM": 2.0,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1200
+        }
+      ],
+      "presentationEvents": []
     }
   ]
 }

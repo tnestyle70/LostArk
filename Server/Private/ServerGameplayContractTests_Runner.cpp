@@ -45,6 +45,22 @@ int CServerGameplayContractRunner::Run_ValtanLifecycleOnly()
         if (!catalog.Load()) { std::cout << catalog.Get_Status() << '\n'; return; }
         Run_ValtanLifecycle(tests, catalog);
         Run_ValtanPinnedGeneration(tests, catalog);
+        Run_ValtanResetlessNext(tests,
+            "collision.valtan.wallgroup.11047903315509031966.15719065619666776634");
+        std::cout << "failures : " << tests.failures << '\n';
+        *static_cast<int*>(output) = tests.failures == 0 ? 0 : 1;
+    };
+    return Run_WithContractWorkerStack(execute, &result) ? result : 1;
+}
+
+int CServerGameplayContractRunner::Run_ValtanPresentationOnly()
+{
+    int result = 1;
+    const auto execute = [](void* output) {
+        std::cout << std::unitbuf;
+        TESTS tests{};
+        Run_ValtanResetlessNext(tests,
+            "collision.valtan.wallgroup.11047903315509031966.15719065619666776634", true);
         std::cout << "failures : " << tests.failures << '\n';
         *static_cast<int*>(output) = tests.failures == 0 ? 0 : 1;
     };

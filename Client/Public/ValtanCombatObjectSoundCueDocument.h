@@ -21,6 +21,8 @@ struct VALTAN_COMBAT_OBJECT_SOUND_CUE final
 	std::string strPresentationEventId;
 	std::string strSoundBank;
 	std::string strSoundEvent;
+	/* Skip source audio lead-in; the Server semantic event time is unchanged. */
+	uint32_t iPlaybackOffsetMs = 0u;
 	/* Runtime-only assets pinned from the exact admitted catalog snapshot. */
 	std::vector<std::string> ResolvedAssetIds;
 };

@@ -650,7 +650,7 @@ try {
         $missingRuntimeInputs = @(
             foreach ($runtimeDomainId in @('gameplay.balance', 'items.catalog',
                 'vehicles.profiles', 'honortitles.catalog', 'valtan.rewards',
-                'world.gameplay', 'navigation')) {
+                'world.gameplay', 'world.pickups', 'navigation')) {
                 $runtimeDomain = Get-BuildDomainById $runtimeInputManifest $runtimeDomainId
                 $runtimeDomain.requiredOutputPatterns | Where-Object {
                     ([string]$_).StartsWith('Server/Bin/DataFiles/', [StringComparison]::Ordinal)

@@ -66,7 +66,10 @@ namespace
 		const DATA_JSON_VALUE& Value,
 		const std::initializer_list<const char_t*> Keys)
 	{
-		const size_t optionalCount = nullptr != Value.Find("playbackOffsetMs") ? 1u : 0u;
+		const size_t optionalCount =
+			(nullptr != Value.Find("playbackOffsetMs") ? 1u : 0u) +
+			(nullptr != Value.Find("timingBasis") &&
+			 nullptr != Value.Find("stageEndMs") ? 1u : 0u);
 		return Value.Is_Object() && Value.Get_Object().size() == Keys.size() + optionalCount &&
 			std::all_of(Keys.begin(), Keys.end(),
 				[&Value](const char_t* key) { return nullptr != Value.Find(key); });
@@ -684,11 +687,12 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 			Cue.strOccurrenceId = Cue.strBindingId;
 		Cue.bUsesStageClock = bStageClock;
 		if (bStageClock &&
-			(EFFECT_STOP_POLICY::NATURAL != Cue.eStopPolicy ||
+			((EFFECT_STOP_POLICY::NATURAL != Cue.eStopPolicy &&
+			  EFFECT_STOP_POLICY::CUE_END != Cue.eStopPolicy) ||
 			 VALTAN_PATTERN_EFFECT_REPEAT_POLICY::ONCE != Cue.eRepeatPolicy))
 		{
 			strOutStatus =
-				"STAGE_CLOCK Valtan Effect cue requires natural/once policies.";
+				"STAGE_CLOCK Valtan Effect cue requires natural or cue_end with once repeat.";
 			return false;
 		}
 		if (bUsesScalePolicySchema &&
@@ -756,6 +760,13 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 				Cue.strPatternId;
 			return false;
 		}
+		if (Cue.strAnchorSlotId == "map" &&
+			Cue.eFollowPolicy != EFFECT_FOLLOW_POLICY::SNAPSHOT)
+		{
+			strOutStatus = "Valtan map Effect cue requires snapshot follow: " +
+				Cue.strBindingId;
+			return false;
+		}
 		if (Cue.strAnchorSlotId.starts_with("pattern.target.") &&
 			Cue.strAnchorSlotId != PATTERN_TARGET_SNAPSHOT_ANCHOR)
 		{
@@ -773,6 +784,23 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 				Cue.strBindingId;
 			return false;
 		}
+		if (Cue.strAnchorSlotId.starts_with("pattern.landing.") &&
+			(Cue.strAnchorSlotId != "pattern.landing.snapshot" ||
+			 Cue.eFollowPolicy != EFFECT_FOLLOW_POLICY::SNAPSHOT ||
+			 !pPattern->serverMotion.has_value() ||
+			 (pPattern->serverMotion->kind != "LEAP_TO_ANCHOR" &&
+			  pPattern->serverMotion->kind != "LEAP_TO_TARGET")))
+		{
+			strOutStatus =
+				"Valtan landing Effect cue requires snapshot follow and a Server leap: " +
+				Cue.strBindingId;
+			return false;
+		}
+		const auto Stage = std::find_if(pPattern->stages.begin(),
+			pPattern->stages.end(), [&Cue](const ENCOUNTER_STAGE_REFERENCE& Value)
+			{
+				return Value.stageId == Cue.strStageId;
+			});
 		if (Cue.strAnchorSlotId.starts_with("arena.center"))
 		{
 			const bool_t bFixedCenter =
@@ -796,11 +824,17 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 				Cue.eFollowPolicy == EFFECT_FOLLOW_POLICY::SNAPSHOT &&
 				pPattern->targetPolicy == "LOCK_RANDOM_ALIVE_ON_START" &&
 				pPattern->aimPolicy == "LOCK_FACING_ON_START";
+			const bool_t bStageCenterFollow = Stage != pPattern->stages.end() &&
+				Stage->aimTargetPolicy == "NEAREST_EACH_TICK" &&
+				std::any_of(pPattern->stages.begin(), Stage + 1u,
+					[](const ENCOUNTER_STAGE_REFERENCE& Candidate) {
+						return Candidate.motionKind == "TO_ARENA_CENTER";
+					});
 			const bool_t bExactTargetFollow = bTargetFollow &&
-				bHasCenterApproach &&
 				Cue.eFollowPolicy == EFFECT_FOLLOW_POLICY::FOLLOW &&
-				pPattern->targetPolicy == "LOCK_RANDOM_ALIVE_ON_START" &&
-				pPattern->aimPolicy == "TRACK_TARGET_EACH_TICK";
+				(bStageCenterFollow || (bHasCenterApproach &&
+				 pPattern->targetPolicy == "LOCK_RANDOM_ALIVE_ON_START" &&
+				 pPattern->aimPolicy == "TRACK_TARGET_EACH_TICK"));
 			if (!bExactFixedCenter && !bExactFixedFacing &&
 				!bExactTargetFollow)
 			{
@@ -810,11 +844,6 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 				return false;
 			}
 		}
-		const auto Stage = std::find_if(pPattern->stages.begin(),
-			pPattern->stages.end(), [&Cue](const ENCOUNTER_STAGE_REFERENCE& Value)
-			{
-				return Value.stageId == Cue.strStageId;
-			});
 		if (pPattern->stages.end() == Stage ||
 			Stage->actionId != Cue.strActionId ||
 			0u == Stage->iDurationMs ||
@@ -829,17 +858,13 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 			Stage - pPattern->stages.begin());
 		Cue.iStageDurationMs = Stage->iDurationMs;
 
-		const char_t* pEndKey = bLegacy ? "endMs" : "sourceEndMs";
-		const DATA_JSON_VALUE* pEndMs = bStageClock ?
-			nullptr : CueValue.Find(pEndKey);
-		if (bStageClock)
+		const char_t* pEndKey = bLegacy ? "endMs" :
+			(bStageClock ? "stageEndMs" : "sourceEndMs");
+		const DATA_JSON_VALUE* pEndMs = CueValue.Find(pEndKey);
+		if (EFFECT_STOP_POLICY::NATURAL == Cue.eStopPolicy)
 		{
-			Cue.iEndMs = Cue.iStartMs;
-			Cue.bHasSourceEnd = false;
-		}
-		else if (EFFECT_STOP_POLICY::NATURAL == Cue.eStopPolicy)
-		{
-			if (nullptr == pEndMs || !pEndMs->Is_Null())
+			if ((nullptr == pEndMs && !bStageClock) ||
+				(nullptr != pEndMs && !pEndMs->Is_Null()))
 			{
 				strOutStatus =
 					"Natural Valtan pattern Effect cue requires a null source end.";

@@ -87,10 +87,11 @@ def _require_relative_asset(asset_id: str, slot: str, owner: str) -> None:
     path = PurePosixPath(asset_id)
     if path.is_absolute() or ".." in path.parts or ":" in asset_id:
         raise ContractError(f"{owner} {slot} escapes Resources: {asset_id}")
-    expected_suffix = ".wmodel" if slot == "mesh" else ".dds"
-    if path.suffix.lower() != expected_suffix:
+    # CEffectV2Object uses WIC for authored PNG textures and the DDS loader for DDS.
+    expected_suffixes = (".wmodel",) if slot == "mesh" else (".dds", ".png")
+    if path.suffix.lower() not in expected_suffixes:
         raise ContractError(
-            f"{owner} {slot} must reference {expected_suffix}: {asset_id}"
+            f"{owner} {slot} must reference {' or '.join(expected_suffixes)}: {asset_id}"
         )
 
 
@@ -411,14 +412,8 @@ def _validate_bindings(
     authored: dict[str, Path],
     groups: dict[str, list[tuple[str, int]]],
     canonical_clips: Mapping[str, set[str]],
-    independent_effects: set[str],
-    independent_groups: set[str],
 ) -> tuple[int, int]:
     seen_archetypes: set[str] = set()
-    seen_effects: set[str] = set(independent_effects)
-    seen_groups: set[str] = set(independent_groups)
-    for group_id in independent_groups:
-        seen_effects.update(effect for effect, _ in groups[group_id])
     binding_count = 0
     boss_v1_compatibility_count = 0
     paths = sorted(binding_root.glob("*.effectv2bindings.json"))
@@ -457,14 +452,6 @@ def _validate_bindings(
                 )
             except binding_v2.BindingContractError as exc:
                 raise ContractError(str(exc)) from exc
-            for row in rows:
-                resource = row["resource"]
-                if resource["kind"] == "LEAF":
-                    seen_effects.add(resource["id"])
-                else:
-                    group_id = resource["id"]
-                    seen_groups.add(group_id)
-                    seen_effects.update(effect for effect, _ in groups[group_id])
             binding_count += len(rows)
             continue
         if not binding_v2._is_format_version(document.get("formatVersion"), 1):
@@ -527,11 +514,6 @@ def _validate_bindings(
                 raise ContractError(f"duplicate Effect V2 binding row: {archetype_id}: {identity}")
             row_identities.add(identity)
             validated_rows.append((effect_id, group_id, stage, clip, start_ms))
-            if has_effect:
-                seen_effects.add(effect_id)
-            else:
-                seen_groups.add(group_id)
-                seen_effects.update(effect for effect, _ in groups[group_id])
             binding_count += 1
         for effect_id, _, stage, clip, start_ms in validated_rows:
             if not effect_id:
@@ -549,12 +531,10 @@ def _validate_bindings(
                             f"at the same clock: {archetype_id}: {effect_id}/{group_id} "
                             f"@{start_ms}ms"
                         )
-    missing = sorted(set(authored) - seen_effects)
-    if missing:
-        raise ContractError(f"unbound Effect V2 authored effects: {missing[:5]}")
-    missing_groups = sorted(set(groups) - seen_groups)
-    if missing_groups:
-        raise ContractError(f"unbound Effect V2 groups: {missing_groups[:5]}")
+    # The catalog retains reusable leaves/groups after callers migrate to V1,
+    # and Composition owns additional instances outside legacy clip bindings.
+    # Validate every document and actual reference without requiring reverse
+    # binding coverage of the entire authoring library.
     return binding_count, boss_v1_compatibility_count
 
 
@@ -568,8 +548,7 @@ def validate(repository_root: Path, resource_root: Path) -> dict[str, int]:
         repository_root, binding_root
     )
     independent_effects, independent_groups = _load_independent(v2_root, authored, groups)
-    combat_object_groups = _load_boss_combat_object_groups(repository_root, groups)
-    admitted_groups = independent_groups | combat_object_groups
+    _load_boss_combat_object_groups(repository_root, groups)
     binding_count, boss_v1_compatibility_count = _validate_bindings(
         repository_root,
         resource_root,
@@ -577,8 +556,6 @@ def validate(repository_root: Path, resource_root: Path) -> dict[str, int]:
         authored,
         groups,
         canonical_clips,
-        independent_effects,
-        admitted_groups,
     )
     return {
         "authored": len(authored),

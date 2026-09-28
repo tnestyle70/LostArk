@@ -1643,6 +1643,66 @@ bool_t Client::CEffectV2Catalog::Stage_AppendBossValtanBindings(
 	}
 }
 
+bool_t Client::CEffectV2Catalog::Apply_BossValtanBindingDraftTransaction(
+    const std::function<bool_t(std::string&)>& Mutation, std::string& strOutError)
+{
+    if (!Mutation) return Fail(strOutError, "Effect draft transaction has no mutation.");
+    // Keep readers and reload commits outside the complete multi-owner edit. The
+    // recursive lock permits the same thread's existing staged mutation APIs.
+    const std::lock_guard Lock(m_SnapshotMutex);
+    const auto snapshot = m_pSnapshot;
+    const auto baseline = m_strBossValtanBindingDraftBaselineBytes;
+    const bool_t dirty = m_bBossValtanBindingDraftDirty;
+    try
+    {
+        if (Mutation(strOutError)) return true;
+    }
+    catch (const std::exception& error)
+    {
+        strOutError = "Effect draft transaction rolled back: " + std::string(error.what());
+    }
+    catch (...)
+    {
+        strOutError = "Effect draft transaction rolled back after an unexpected failure.";
+    }
+    m_pSnapshot = snapshot;
+    m_strBossValtanBindingDraftBaselineBytes = baseline;
+    m_bBossValtanBindingDraftDirty = dirty;
+    return false;
+}
+
+bool_t Client::CEffectV2Catalog::Stage_RemoveBossValtanBindings(
+	const std::vector<EFFECT_V2_STAGE_BINDING_KEY>& Keys,
+	std::string& strOutError)
+{
+	if (Keys.empty()) return true;
+	try
+	{
+		const std::lock_guard Lock(m_SnapshotMutex);
+		if (!m_pSnapshot || !m_pSnapshot->Is_Ready() || !m_pSnapshot->Can_MutateBossValtanBindings())
+			return Fail(strOutError, "Stage Delete requires the complete Effect V2 binding view.");
+		auto candidate = m_pSnapshot->m_BossValtanBindings;
+		for (const auto& key : Keys)
+		{
+			std::size_t index = 0u;
+			if (!Validate_StageBindingIdentity(key, strOutError) ||
+				!Resolve_UniqueStageBindingIndex(candidate, key, index, strOutError)) return false;
+			const auto& binding = candidate[index];
+			if (binding.strPatternId != key.strPatternId || binding.strStageId != key.strStageId ||
+				binding.strActionId != key.strActionId || binding.strResourceId != key.strResourceId ||
+				binding.iStartMs != key.iStartMs ||
+				(EFFECT_V2_RESOURCE_KIND::GROUP == binding.eResourceKind) != key.bGroup)
+				return Fail(strOutError, "Stage Delete found a changed Effect binding; the entire draft was preserved.");
+			candidate.erase(candidate.begin() + static_cast<std::ptrdiff_t>(index));
+		}
+		return Commit_BossValtanBindingsLocked(std::move(candidate), "stage delete", strOutError);
+	}
+	catch (const std::exception& error)
+	{
+		return Fail(strOutError, "Stage Delete failed before Effect commit: " + std::string(error.what()));
+	}
+}
+
 bool_t Client::CEffectV2Catalog::Stage_RemoveBossValtanStageBinding(
 	const EFFECT_V2_STAGE_BINDING_KEY& Key,
 	std::string& strOutError)

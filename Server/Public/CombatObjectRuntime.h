@@ -54,6 +54,8 @@ namespace LostArk::Server
 		std::uint32_t iStaggerDamage = 0u;
 		std::uint32_t iPartDamage = 0u;
 		std::uint32_t iCounterPower = 0u;
+		// Pinned with the skill's hit definition at spawn, including after reload.
+		bool bCounterFromPrimarySlot = false;
 		float fPushRangeM = 0.f;
 		float fRiseHeightM = 0.f;
 		bool bForcePush = false, bPushFromBoss = false;

@@ -133,3 +133,25 @@ Effect V2 두 occurrence, G_Voltan2_Attack25_Shot2, Server wipe가 일치
 ```
 
 육안/청각 timing과 실제 UI drag 재현은 사용자 판정 전까지 수동 미검증으로 남긴다.
+
+## G06. 09-29 현재 마력구 피해·게이지 연결
+
+현재 health rotation이 소비하는 VALTAN_STAGGER_SLOT의 CHANNEL은12초 동안
+확정 HP피해1000을 누적한다. 성공은 별도 Groggy, timeout은 FINAL_ATTACK의1초에서1회 hit다.
+Source BossProfiles attackPower100은 실제 Product에서 Retail profile의2285로 대체된다.
+공용 profile damage.valtan.omnidirectional-wipe-130의 rate100000%는 실제 raw2285000을 만든다.
+전용 damage.valtan.magic-orb-failure/rate4376을 만들고 이 FINAL_ATTACK의 profile ID만 바꾸어
+현재 Retail 방어 전 피해를99991로 맞춘다. ValtanBrain은 percent만 소비하므로 coefficient/addend
+fixed damage를 Data에 추가해도 실제로 쓰이지 않는다. 130줄 공유 profile은 변경하지 않는다.
+새 profile ID를 기존 guard blocked-list에 alias로 연결해 같은 마력구의 바훈/로나운 차단을 보존한다.
+기존 threshold1000과 모든 타이밍·성공 분기는 유지한다. 실제 HP 감소는 기존 방어·보호막·보호·남은 HP 제한을 거친다.
+Data2field와 PROJECT_TUNED receipt 후보는 통합 담당자가 최신 저장본에 원자 병합/게시한다.
+
+Server의 response threshold/progress는 이미 snapshot에 담긴다. CombatHUDViewModel은
+옛 VALTAN_MAGIC_ORB_STAGGER_76/window만 STAGGER gauge로 변환하므로 새 슬롯이 누락됐다.
+기존 mapping에 정확한 STAGGER_SLOT/valtan.authoring.stagger-slot.channel 조합을 추가한다.
+새 슬롯은 Server response만 사용하고, 옛 슬롯의 legacy stagger fallback은 보존한다.
+FINAL_ATTACK·Groggy·취소로 action이 바뀌면 기존 snapshot의 NONE으로 즉시 숨긴다.
+MainApp의 기존 Boss_StaggerBg/Fill·사용자 위치/옵션·Resources는 변경하지 않는다.
+실제 Apply_Boss native probe로 시작·진행·초과clamp·실패/성공/취소·재시작과 옛 슬롯/다른보스
+비영향을 검증한다. 새 C++ 파일/프로젝트 등록은 필요하지 않으며, 피해 Data 게시와 최종 Product는 통합 담당자가 수행한다.

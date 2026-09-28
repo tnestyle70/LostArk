@@ -2665,6 +2665,21 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
             }
             if (!m_strClassMovieStatus.empty()) ImGui::TextWrapped("%s", m_strClassMovieStatus.c_str());
             ImGui::Spacing();
+            if (!Search.empty()) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+            if (ImGui::TreeNodeEx("Valtan###ValtanWorldPickups", ImGuiTreeNodeFlags_OpenOnArrow))
+            {
+                if (!m_bValtanAreaMapEffectLoadAttempted)
+                    Refresh_ValtanAreaStaticEffects();
+                if (m_ValtanAreaMapEffectDocument.Is_Ready())
+                    Render_ValtanEtherPickupSection(Search);
+                else
+                {
+                    ImGui::TextWrapped("%s", m_strValtanAreaMapEffectStatus.c_str());
+                    if (ImGui::SmallButton("Reload saved##ValtanWorldPickups"))
+                        Refresh_ValtanAreaStaticEffects();
+                }
+                ImGui::TreePop();
+            }
         }
 		Render_SavedAuthoredEffectSection(Search, m_bAllEffectsWorldSelected);
 	}

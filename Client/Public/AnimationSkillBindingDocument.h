@@ -119,6 +119,8 @@ namespace Client
 	a stable boss-owned action ID either to an ordered clip chain or to explicit
 	NONE playback for an Effect-only stage; gameplay pattern timing remains in
 	the encounter document. A one-clip chain is the plain single-clip stage. */
+	inline constexpr std::size_t MAX_BOSS_PATTERN_ANIMATION_CLIPS = 256u;
+
 	struct BOSS_PATTERN_ANIMATION_CLIP
 	{
 		std::string strClipOccurrenceId;

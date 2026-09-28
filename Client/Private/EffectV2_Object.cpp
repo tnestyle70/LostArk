@@ -1828,7 +1828,8 @@ HRESULT Client::CEffectV2Object::Render_Decal(const uint32_t iPass)
 		FAILED(m_pShader->Bind_RawValue("g_DecalUp", &vDecalUp, sizeof(vDecalUp))) ||
 		FAILED(m_pShader->Bind_RawValue("g_DecalNormalCutoff", &D.fNormalCutoff, sizeof(f32_t))) ||
 		FAILED(GameInstance.Bind_RT_SRV(TEXT("Target_Depth"), m_pShader, "g_DepthTexture")) ||
-		FAILED(GameInstance.Bind_RT_SRV(TEXT("Target_Normal"), m_pShader, "g_NormalTexture")))
+		FAILED(GameInstance.Bind_RT_SRV(TEXT("Target_Normal"), m_pShader, "g_NormalTexture")) ||
+		FAILED(GameInstance.Bind_RT_SRV(TEXT("Target_PickPos"), m_pShader, "g_DecalReceiverTexture")))
 		return E_FAIL;
 	const uint32_t iDecalPass = BLEND_MODE::ADDITIVE == m_Params.eBlend ? 1u :
 		BLEND_MODE::MULTIPLY == m_Params.eBlend ? 2u : 0u;

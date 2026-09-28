@@ -1126,6 +1126,7 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectRuntimeMaterialPacket.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectStandardColorV1.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectLocalDecalAdapter.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectDecalReceiver.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_Ue3Glasshole02.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_Ue3Glasshole02Translation.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary.hlsl">
@@ -1205,11 +1206,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>..\Bin\Debug\</OutDir>
-    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.200.113</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.22</LocalDebuggerEnvironment>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>..\Bin\Release\</OutDir>
-    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.200.113</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.22</LocalDebuggerEnvironment>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -4321,5 +4322,60 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.ether.orb.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.four.sector.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.tracking-axe.large-circle.warning.effect.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku5184.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku5184.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup5184.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases5184.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup5184.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420620.stage001.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420620.stage005.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420620.stage006.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.six-pizza.source-warnings.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.six-pizza.source.center-sector.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.six-pizza.source.red-sector.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.six-pizza.source.yellow-sector.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_01.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_02.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_04.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_07.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_itr_02326.par_l_itr_02326_off_01.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_itr_02326.par_l_itr_02326_off_02.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_itr_02326.par_l_itr_02326_on_01.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_itr_02326.par_l_itr_02326_spawn_01.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.itr-02326.spawn-and-idle.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.itr-02326.off.full.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku5248.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku5248.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup5248.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases5248.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup5248.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420624.stage012.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_atk_01_24.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_exp_05_01.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_exp_05_02.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.struggling.source-in-out.active.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.struggling.source-portal-dash.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.struggling.source-underfoot.active.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.struggling.source-yellow-roar.warning.effect.json" />
   </ItemGroup>
 </Project>

@@ -1,5 +1,129 @@
 # LostArk merge 회귀 방지 정본
 
+### World 구슬의 파괴 원인·표현 수명과 추적 정지
+
+World SOURCE_LOOP의 입장 검사는 실제 지원 carrier와 같아야 한다. portable Cascade Ribbon은
+TRAIL kind이지만 source particle simulation과 지속 방출을 사용한다. sprite/mesh-only 검사로
+정상 Ribbon을 거부하지 말고 기존 typed ribbon admission을 사용한다. map parser/publish 성공을
+실제 Spawn → Commit → Update clone/attach 성공으로 대신하지 않는다. 실패 이유는 Stop이
+status를 초기화하기 전에 복사해 effectAssetId와 stable placementId를 함께 보고한다.
+
+같은 destruction mutation을 돌진과 외곽 전체 파괴가 공유할 수 있다. mutation 이름만으로
+전체 구슬을 제거하지 말고 실제 stage binding과 성공한 commit을 구분한다. 벽 위 구슬은
+기존 SOURCE_LOOP로 유지하고 Server snapshot이 없는 동안 로컬로 생성·획득하지 않는다.
+착지점은 바닥 높이뿐 아니라 벽 파괴 뒤 플레이어가 접근 가능한 nav 연결과 다른 collider를
+검사한다. World Effect와 Server pickup bootstrap은 같은 게시 transaction에서 교체한다.
+
+추적 종료는 Stage의 정수 시계로 판정하고 다음 Stage 진입의 FacePoint가 고정 방향을 다시
+덮어쓰지 않는지 확인한다. Preview도 같은 fixed tick 회전 helper를 사용한다. 충격음 지연은
+cue 시점과 WAV 내부 무음 길이를 분리해 측정하며 playback offset을 gameplay hit 이동으로
+설명하지 않는다. 구체적인 검증은 09-28의 Play Pattern·World Ether RESULT를 따른다.
+
+### 연출 Effect 편집은 원래 장면 시계를 유지한다
+
+WorldSequence의 Effect 목록만 Open하면 배우 TRS·본·발생 시점이 사라진다. 연출 단위 편집은
+같은 WorldSequencePlayer를 사용하고 Element preview만 기존 world-root renderer에 교체한다.
+여러 occurrence가 같은 Effect를 쓰면 저장 owner는 하나임을 표시한다. Solo로 숨길 때 모델
+애니메이션과 source history를 함께 중단하지 않으며, 실패한 교체는 이전 preview를 보존한다.
+
+Valtan Full Restore의 Solo는 Complete와 같은 source-aware sequencer로 먼저 보내야 한다.
+선택에서 제외한 형제 trail의 baked-edge history가 남은 문서를 먼저 stage하면 unreferenced history 검증에서 실패한다. 기존 sequencer의 선택 projection과 source target을 재사용하고, 남은 trail에 필요한 history는 보존한다.
+전투 오브젝트 Solo의 Element source 시작은 패턴 시각으로 변환한 뒤 애니메이션과 함께 seek한다.
+여러 Element의 일회 그룹 재생도 첫 Element만 넘기지 않으며 반복은 선택 시작점으로 돌아간다.
+선택 projection은 참조되지 않는 sibling baked history만 제거한다. baked trail/light와 실제
+본 follow carrier를 같은 집합으로 세지 않으며, 실제 follow 집합의 bone/socket 계약을 검증한다.
+마지막 Element 삭제를 지원할 때는 저장 guard뿐 아니라 Product 준비와 sequence loop/fit도
+빈 body를 처리해야 한다. 모든 실행 row와 runtime extension이 비어 있고 Codec 구조 검증을
+통과한 authored source만 무표시 상태로 허용하며, 잘못된 nonempty 문서를 허용하지 않는다.
+
+### 발탄 Preview와 Play Pattern의 장판·마지막 동작 차이
+
+게시된 cue가 존재해도 전멸 직후 NO_VALID_TARGET 종료가 마지막 애니메이션과 늦은 cue를
+삭제할 수 있다. 최종 타격의 사망 fixture에서 남은 동작·RECOVERY·COMPLETED와 snapshot을
+검사하고 생존자를 과도한 HP로 유지한 테스트만으로 완주를 확인하지 않는다.
+도약 중 root/follow의 실제 높이와 decal depth 및 snapshot particle의 생성 위치를 대조한다.
+Server가 시작에 고정한 착지점은 현재 target pose와 다르므로 protocol의 landing snapshot을
+사용한다. 새 snapshot 계약이 nonzero pattern 시작 tick을 요구하면 기존 action tick뿐 아니라
+실제 BeginPattern/완료/사망의 pattern tick 기록·정리까지 연결하고 전체 packet encode를 확인한다.
+이전 Stage의 유한 지연 경고가 중간 source 컷씬의 Stop_BossOwner에 지워지는지도
+확인하며, 명시적 tail만 숨김·시계 유지하고 일반 몸체 이펙트 및 Stop 정리는 보존한다.
+다른 패턴에서 보이는 경고는 잔상으로 단정하기 전에 canonical/Product의 stable cue 참조를
+대조한다. 원본 notify별 공백을 제품의 연속 장판 요구로 오인하지 않는다.
+
+### 새 Animation 패턴 생성은 기존 promotion을 다시 생성하지 않는다
+
+Create New Pattern이 과거 intake로 기존 promotion까지 재생성하면 이후 편집한 stage duration,
+animation 및 camera가 서로 다른 시계가 된다. 새 요청은 현재 canonical 기존 pattern을 그대로
+보존하고 새 pattern만 추가한다. 전체 lineage·join·Product validation은 유지하고 잘못된 기존
+camera를 자르거나 검사를 건너뛰지 않는다. 명시적인 promotion refresh의 재생성 동작과 Create의
+보존 동작을 구분해 회귀 검사한다.
+
+### Effect 게시 일치는 배열 index가 아니라 stable binding ID로 비교한다
+
+원본 cue 배열은 편집 저장 순서이고 Product reader는 action/clip/start/occurrence 순으로
+정렬한다. 시작 시각 편집으로 순서가 바뀌면 같은 index 비교는 정상 게시도 변경으로 오판해
+F1 inventory와 Server Play를 막는다. 동일 stage의 stable binding ID로 찾아 전체 저장 field를
+비교하고 개수·중복·누락·실제 field 변경은 계속 거부한다. 이 상태에서 Save/Publish 반복이나
+source 배열 재정렬을 복구 절차로 요구하지 않는다. native strict reader의 전체 inventory 성공과
+실제 cue 값이 다른 negative case를 함께 확인한다.
+
+### V2 게시 검증은 현재 decoder와 저작 라이브러리를 함께 따른다
+
+`CEffectV2Object::Acquire_Texture`의 DDS/WIC 경로가 PNG를 지원해도 Python 검증이 DDS만
+허용하면 쿠크 DJ의 정상 PNG 때문에 발탄 `Save & Publish` 전체가 중단된다. 일반 corpus와
+typed binding validator의 texture 허용 형식을 함께 맞추고 mesh WModel·상대 경로·실물 검사는
+유지한다. V1으로 교체한 에스더·쿠크의 이전 V2 leaf/group은 저작 라이브러리에 보존될 수 있다.
+모든 문서와 실제 binding/group/Independent 참조를 검증하되 모든 저작본의 역방향 runtime
+binding을 요구하거나 이를 통과시키려고 가짜 Independent 등록을 하지 않는다.
+
+Encounter Stage에 optional `attackContacts`를 추가하면 gameplay뿐 아니라 같은 Stage를 읽는
+지형 파괴 publisher의 exact field 검사도 함께 맞춘다. 지형 게시기는 nonempty 배열과 Stage
+identity만 확인하고 contact geometry·pulse·damage 의미는 기존 Gameplay/Server 검증을 유지한다.
+
+피자 target-follow의 공통 yaw180과 개별 cue의 원본 방향 보정은 별개다. 한 조합의 빨강과 노랑
+관계가 정상인 채 전체 방향만 반대면 그 occurrence의 LocalTransform만 보정한다. once cue의
+명시 tail 종료는 `sourceEndMs`와 `cue_end`를 함께 저장하고 Product 및 generation에 같은 값이
+실리는지 확인한다. 공통 root yaw나 Server target/hit yaw를 함께 바꾸지 않는다.
+
+### 컷신의 일시 숨김으로 미래 Effect 예약을 삭제하지 않는다
+
+Local Pattern Preview의 장기 V1 인스턴스에는 아직 발생하지 않은 delayed emitter도 들어 있다.
+컷신 진입에서 `Stop_BossOwner`로 삭제하면 pause/seek가 재구성할 때만 미래 이펙트가 보인다.
+local preview는 해당 boss의 externally-sampled cue만 숨기고 동일 인스턴스·clock을 유지한다.
+컷신 중 새 cue도 숨긴 상태로 시작하며 종료 시 표시한다. 실제 Stop과 Product 정리는 구분한다.
+
+### 소품 이펙트는 LookInfo의 이벤트·모델·재질을 함께 복원한다
+
+움직이는 돌 파편의 이름만으로 고정 소품의 원본을 대신하지 않는다. Prop row에서 LookInfo를
+찾고 모델 두 재질·원본 애니메이션·material action과 Particle 부모 이벤트/지연을 함께 대조한다.
+ParticleSystem 자체의 emitter delay와 부모 notify delay는 서로 다르며 각각 한 번만 적용한다.
+MeshMaterial 모듈의 명시적 override는 기존 `sourceMaterialSlots`로 연결해 portable recipe와
+native material의 일치를 유지한다. 단순 Required 치환이나 지원 검증 삭제로 통과시키지 않는다.
+새 조합은 필요한 runtime extension만 가져오고, 실제 codec에서 UTF-8 표시명 길이와 미참조
+baked-edge history까지 검사한다. 원본 비활성 notify를 켠 조합은 원본 자료 기반 저작으로 표시한다.
+Full Restore animation index는 원본 action/stage/clip ID만 담는다. 파생 sector·조합은 일반
+Effect catalog/resource tree에 등록하고, 설치 뒤 실제 검색 metadata reader까지 검증한다.
+Effect 전환과 Sound의 성공은 분리한다. 새 Armed visual을 생성한 뒤 Sound만 실패했을 때도
+기존 active visual은 종료해야 하며, 소리 실패는 별도 진단으로 유지한다.
+
+### Sound Save의 저장 값과 파생 stage metadata를 구분한다
+
+Pattern Sound의 stage index/duration은 편집·재생에서 계산하는 값이며 JSON 저장 계약이 아니다.
+Save 후 storage-only 재읽기와 runtime metadata가 붙은 draft를 구조체 전체로 비교하면 파일 저장은
+성공해도 owner 채택이 실패한다. 그 결과 Workbench source pin이 오래돼 Sound 행이 사라질 수 있다.
+동일 draft generation과 직렬화한 저장 후보·실제 디스크 bytes를 비교하고 실패 시 기존 draft를 유지한다.
+Preview 요청도 자기 잠금을 현재 dirty 상태로 갱신한다. 다른 창의 Render에만 맡기면 저장 전
+잠금이 남으므로 동일 owner 예외와 다른 도구의 미저장 보호를 각각 유지한다.
+
+### All Effects의 한국어 검색은 미게시 Pattern에서도 원본을 찾는다
+
+발탄 Source Save 뒤 strict Product join이 실패해도 실제 Authored Effect의 검색·편집은 유지한다.
+Resource/Existing Authored 목록은 ID·경로뿐 아니라 저장 표시명과 source의 모든 정확한 Pattern
+연결 이름을 검색한다. 공유 Effect를 첫 owner의 표시명 하나로만 검색하면 다른 Pattern에서
+사용하는 원본이 사라진 것처럼 보인다. 검색 metadata는 source admission에서 따로 검증·교체하고,
+실패하면 이전 metadata를 보존한다. 이 metadata로 Product/Server 권한을 승인하지 않으며,
+Open Editor는 기존 exact path·stable ID·미저장 전환 검증을 사용한다.
+
 ### 한 Stage의 서로 다른 타격은 같은 pulse 시계의 contact로 보존한다
 
 검격·도넛처럼 도형과 피해가 다른 타격을 particle bounds나 단일 shape로 합치지 않는다.
@@ -4681,3 +4805,172 @@ Full Restore의 원본 animationClips/clipDuration/source-stage receipt를 사�
 ### 생성 돌과 폭발 파편의 복구 표면 연결
 
 standing rock과 explosion debris가 다른 source material을 사용할 수 있다. 생성 돌을 복원해도 별도 hit 문서와 내용을 복사한 편집용 composite는 자동 갱신되지 않는다. 같은 표면을 요청받으면 실제 WModel geometry·UV/N/T·sampler와 material dynamic 채널을 대조한다. 기둥 mesh를 작은 파편에 통째로 치환해 크기·실루엣을 바꾸지 않고, 기존 파편 수명·탄도·색·저작 파동을 보존한 표면 연결과 원본 폭발 전체 복원 주장을 구분한다. 구체 적용과 native 비교는 09-28 VALTAN_PR_INTEGRATION RESULT에 기록한다.
+
+### 발탄 Create 이후 STALE와 끝 자세 유지 구간의 Append
+
+- 데이터 전용 Composition은 Animation preview의 `m_AssetName`을 보장하지 않는다. 생성 후
+  intake 재조회는 명시적 Valtan source를 사용한다. 보조 preview 이름이 비었다고 정상 source
+  commit의 created event를 삼키면 목록은 이전 revision에 남고 Append까지 읽기 전용이 된다.
+- 편집 가능 여부는 검증한 source owner로 판단하고 Server 재생 준비는 Product inventory로
+  판단한다. 빈 pattern은 실제 `animation.mode=NONE`으로 저장하고 clip을 꾸며 넣지 않는다.
+- finite clip 합보다 Stage가 길면 끝 자세 유지 구간이다. Append는 clip 합 위치에서 시작하고
+  Stage 길이는 기존값과 새 합 중 큰 값으로 유지한다. 이전 마지막 clip의 파생 hold 길이도
+  다시 계산해야 timeline에서 실제 clip 사이에 가짜 빈 구간이 생기지 않는다.
+- 일반 Collider는 Stage의 단일 geometry와 pulse schedule이다. Ctrl+C/V로 같은 geometry의
+  시점을 복제할 때 피해·반응·anchor를 함께 비교하며 중복 시점과 범위 밖 시점은 전체 거부한다.
+
+### 발탄 원본 시퀀스와 독립 Effect 저작 입력
+
+- 원본 .clipcuts의 ms와 설치 CModel의 cooked tick/30 길이는 다를 수 있다. 예를 들어
+  mesh_idle_battle_1은 원본2333ms와 runtime2233ms다. Append는 non-loop 한 항목을
+  native window 안으로 제한하고 조정 내용을 표시한다. 원본의 중복 항목은 보존하며 파일명에
+  _loop가 없는 긴 cut을 임의 반복으로 늘리지 않는다. 개별 clip Append 검사만으로 원본
+  Sequence 전체 Append 성공을 대신하지 않는다. Boss 한 Stage의 clip 상한은256이며 reader,
+  editor, source와 publisher가 같아야 한다. player skill 상한은 별개다.
+- STAGE_CLOCK Effect는 clipOccurrenceId와 mappingBasis가 없는 정식 독립 invocation이다.
+  기존 reader가 이를 지원해도 Add/Update/Save serializer가 clip mirror를 요구하면 실제 저작은
+  막힌다. 빈 Stage의 Add→Box Detail→Ctrl+C/V→Save/reopen→Product reader를 함께 확인한다.
+  stageEndMs는 optional이고 cue_end에만 수치가 필요하다. once tail의 끝은 Stage를 넘어도
+  600000ms 이내로 보존한다. timing clock과 spatial anchor는 별도 계약이다.
+- map anchor는 snapshot과 identity world root를 사용한다. Boss root snapshot을 Map으로
+  표시하면 실제 배치 좌표가 달라진다. 기존 cue ID와 연결은 유지하고 사용자가 선택한 cue만
+  변경한다. 여러 owner의 붙여넣기는 Balance/Sound/V2 draft transaction으로 한 번에 원복한다.
+
+- Animation이 없는 seed의 Product 제외 판정은 독립 V1뿐 아니라 실제 Pattern/Stage/Action에
+  연결된 V2 STAGE binding과 Collider도 포함한다. 마지막 content 제거 시 이전 Product 행을
+  unmanaged legacy로 남기지 않고 기존 retirement 경로로 제거하며 Source seed는 유지한다.
+- Stage topology 변경은 별도 PatternShake owner도 살핀다. Stage copy/delete와 Animation
+  delete는 Shake의 clip/action ID와 원본 payload를 함께 처리하고 비활성 source 행을 버리지
+  않는다. Sound/Shake/V2 baseline/candidate는 기존 canonical writer의 같은 CAS에 포함한다.
+  source_manifest에도 Shake hash가 들어가야 Shake만 저장해도 revision이 바뀐다.
+- 영역 선택/혼합 box 변경에서 UI 선택만 복원하면 충분하지 않다. 실패 시 Balance, Sound,
+  V2, Shake와 dirty/detail 상태를 함께 원복한다. Animation은 기존 연속 slot 경계에서 상대
+  간격을 보존하는 이동만 허용하며 Stage 재배치는 각 Stage 내부 시계를 변경하지 않는다.
+
+
+### 발탄 Resources의 삭제된 대상과 Append 끝 위치
+
+- 선택 Stage와 별도 cached ResourceTargetStageId가 달라지면 삭제된 STEP_01이 Resources를
+  계속 잠글 수 있다. Append의 대상 정책은 화면에 명시하고 현재 Pattern에서 다시 resolve한다.
+  선택 Stage 안 편집과 패턴 맨 끝 추가를 같은 Append 명령으로 섞지 않는다.
+- Earlier/Later는 밀리초 delta를 기존 drag midpoint에 더하는 기능이 아니다. 선택 Animation의
+  소속 Stage를 중복 제거하고 각 선택 구간을 인접한 미선택 Stage 너머로 한 칸 옮긴다.
+  여러 이동은 단일 owner transaction으로 처리하고 실패 시 순서·세대·선택을 유지한다.
+- timeline 버튼이 source transaction과 preview 갱신을 호출하면 그 프레임의 기존 Pattern/Stage
+  포인터를 계속 그리지 않는다. mutation 뒤 다음 프레임에서 새 view를 조회한다.
+
+
+### 기존 encounter Pattern과 manual audition의 Append를 구분하기
+
+- 새 Pattern만 생성하는 native fixture로 기존 encounter Pattern의 Append를 검증했다고
+  기록하지 않는다. manual audition의 새 Stage 삽입이 성공해도 정본 encounter의 C++ Save와
+  Python writer는 같은 topology op를 거부할 수 있다. 실제 사용자 Pattern ID로 owner의
+  Append → BuildValtanDraftPatch → SourceSave → split/reopen → Product를 이어서 확인한다.
+- 정본의 마지막 finite Animation 목록은 기존 typed owner로 확장할 수 있다. Stage graph와
+  Motion/World/Counter 참조를 바꾸는 manual topology admission을 일괄 완화하지 않는다.
+  기존 Stage의 ENTER event·hit offset·clip ID는 그대로 유지하고 끝 시계만 연장한다.
+- 마지막 Stage에 독립 Effect를 붙이며 길이를 늘리면 finite EXACT Animation의 end policy를
+  HOLD_LAST_POSE로 맞춘다. 수명 증가만 저장하고 EXACT를 남기면 source validation이 거부한다.
+
+### 발탄 Box 삭제·검색 drag·조건부 tail 표시의 소비자 일치
+
+- 마지막 Animation Box 삭제를 manual audition에만 허용하면 기존 정본 Stage에서 삭제도
+  재추가도 막힌다. non-WAIT의 Animation NONE, C++ draft admission, typed patch, Python
+  writer와 재로드를 함께 확인한다. WAIT의 빈 Stage 계약은 별도로 유지한다.
+- clip에 연결된 V1 cue를 먼저 삭제했어도 삭제 전 Stage/ProductCues snapshot으로 다음
+  의존성을 검사하면 자기 변경을 dangling 참조로 오판한다. 같은 transaction 안에서 최신
+  Stage와 cue 목록을 다시 읽고 검사한다. Sound·Shake·V2 실패 때도 앞선 삭제를 원복한다.
+- ImGui `BeginDragDropSource()` 기본 경로는 직전 item의 stable ID가 필요하다. 검색 InputText가
+  활성화된 프레임에 TextWrapped/TextDisabled 뒤에서 호출하면 ID 0 assert가 발생할 수 있다.
+  Summon/Logic의 source는 기존 Copy Resource 버튼 바로 뒤에 연결한다. 전역 helper에
+  SourceAllowNullID를 추가해 행 identity 문제를 우회하지 않는다.
+- 저장된 후속 clip이 안 보이면 Product 누락과 선택한 preview 분기를 구분한다. 잡기 성공의
+  ANY_PLAYER_GRABBED 뒤 Stage는 Normal/TIMEOUT 경로에서 의도적으로 빠진다. shared path
+  resolver, 초기 Pattern 선택, 경로 메뉴, Play Selected Stage, V1/V2 Effect 진입을 같은
+  Capture Success 경로로 연결하되 Server 분기를 선형 재생으로 바꾸지 않는다. 같은 Pattern에서
+  사용자가 선택한 Normal은 자동으로 다시 성공 경로로 바꾸지 않는다.
+- Stage motion/aim을 추가하면 source projection뿐 아니라 Product reference, strict 비교,
+  source overlay, Balance draft/save와 Effect authoring admission까지 연결한다. nearest aim의
+  center-follow는 owner Stage와 앞선/현재 center motion을 함께 검증한다. Pattern 전체의
+  locked-random/snapshot 허용 조건을 느슨하게 만들어 다른 Stage에 추적이 번지게 하지 않는다.
+- V1 Stage-clock cue의 `stageEndMs`는 Composition reader와 joined/detached 정규화에도
+  보존한다. canonical Source/Product 검증만 통과해도 보조 reader가 필드를 모르거나 natural만
+  허용하면 정상 게시를 막는다. `once`와 `cue_end`의 유한 종료 범위를 유지하고, natural의
+  종료 없음 및 clip-clock의 별도 sourceEndMs 계약을 함께 검사한다. target-follow admission도
+  동일한 Stage aim·앞선/현재 center motion 조건을 소비해야 한다.
+- Effect V2 `CLIP_OCCURRENCE.startMs`를 occurrence 내부 상대 시각으로 바꾸지 않는다.
+  native와 Pattern Sound는 원본 source 시각을 저장하고 `(startMs-sourceStartMs)/playRate`에
+  앞선 clip의 wall 길이를 더한다. Python validator·legacy migration도 이 계약을 유지한다.
+  source cut이 0인 예제만으로는 잘못된 상대 시계가 드러나지 않는다. nonzero cut의 시작
+  포함/끝 제외, 이전 clip 누적 시각, 서로 다른 재생 배율과 실제 반복 펼침을 함께 확인한다.
+
+### Valtan 원본 장판·포탈 재질과 native shader bucket
+
+- 신규 source decal은 재질 이름이나 PS ID만으로 기존 adapter에 넣지 않는다. 실제 VS/PS, instruction hash, binding hash와 사용 CB 행·texture slot이 기존 adapter 계약과 일치하는지 검사한다. 사용하지 않던 padding 행을 읽기 시작한 경우도 거부한다.
+- 새 native shader bucket을 추가하면 Mesh/Particle 선택 wrapper·실행 표·프로젝트뿐 아니라 공용 Decal/Trail의 bucket 상한도 함께 갱신한다. source HLSL 컴파일만으로 설치 CSO나 실제 장판 표시가 성공했다고 기록하지 않는다.
+- 원본 boss Sound event가 설치 catalog에 없으면 유사 event로 복구 완료를 대신하지 않는다. 원본 Wwise Play graph의 layer·random weight·delay를 보존한 offline render와 stable event catalog merge를 확인한다.
+
+- Gameplay publisher의 InputOverlayRoot 검증 성공만으로 최종 canonical publish 성공을
+  선언하지 않는다. 설치 전 동일한 전체 후보에 Project-ValtanPatternMaster Validate의
+  split/Product·clip-template·hit/presentation 검사와 Composition reader를 적용한다.
+  검사용 전체 Data를 반복 복사하지 말고 read-only mirror와 분리한 변경 overlay를 사용한다.
+  실제 게시 성공과 실행 중 Server의 재시작·사용자 화면 확인은 별도로 기록한다.
+
+### Actor Catalog와 패턴 판독기의 서로 다른 입장 경계
+
+BossCatalog combatObjectVisuals는 보스당 visual 정의 배열이며 현재 상한은32개다. 동시 생성
+instance나 snapshot 최대 개수와 혼동하지 않는다. CActorCatalog·Valtan authoring·Gameplay
+publisher에 같은 정의 상한을 적용한다. PatternTree가18개를 읽고 Server catalog가 통과해도
+Loader가 먼저 부르는 전체 ActorCatalog Initialize의16개 제한이 남아 있으면 입장 전에 실패한다.
+카탈로그 정의를 늘릴 때 전체5개 Actor catalog의 실제 Initialize를 실행하고 한도 바로 위 입력을
+거부하는지도 확인한다. 상세 parse 실패를 포괄 contract mismatch 문구로 덮어쓰지 않는다.
+
+
+### 발탄 새 데칼과 ARMED/HIT의 파괴 시계
+
+- 새 source decal을 연결할 때 특정 native ID allowlist에 actor 제외를 추가하는 방식으로
+  끝내지 않는다. V1/V2 공통 projected receiver가 GBuffer marker0/5의 skinned bit와 native
+  actor 표식을 소비해야 한다. 정적 Map 및 sprite/mesh/trail과 source projection volume은
+  별도 계약이다. shader compile·GPU 수치 검증과 사용자 화면 확인을 구분한다.
+- ownerHitChain이 내부0ms/외부1500ms를 보내도 같은 전체 Off asset을 ARMED와 HIT에서
+  즉시 시작하면 화면은 동시에 터진다. 두 armed flags가 false인 동일 asset은 실제 HIT까지
+  active를 유지하고 HIT에서만 파괴 표현을 시작한다. Preview도 고정된 보스 yaw와 같은
+  collider를 소비하며 현재 타겟을 다시 향해 판정을 돌리지 않는다.
+- PublishCandidate에 추가 draft patch가 없다는 사실은 Product가 최신이라는 뜻이 아니다.
+  저장한 split source에서 먼저 projection하고 의미가 같은 Product만 byte 재사용한다.
+  provenance receipt는 최종 선택된 Product 값에 동기화한다. 재현·검증은09-29 발탄 결과를 따른다.
+- 회전하는 피자 경고는 cue root뿐 아니라 내부 요소의 snapshot attachment도 확인한다.
+  source basis를 한 번 보존한 뒤 mutable root를 소비해야 장판과 후속 붉은 영역이 같은
+  sector yaw를 따른다. 본 부착의 반시계 보정은 설치 모델의 축으로 계산하되 중간 particle world만
+  검사하지 않는다. 고정축 Sprite는 그 회전과 별개로 최종 quad를 다시 만들 수 있어 위치만 따라갈 수 있다.
+  필요한 carrier에만 `followEmitterAxisRotation`을 연결하고 실제 bone import basis와 socket의 평면 보정을
+  함께 검증한다. 원점·고정 yaw만 사용하지 말고 비영점 보스 위치에서 이동과 회전을 함께 바꿔 최종 quad의
+  꼭짓점·텍스처 전방·법선이 보스 pivot을 따르는지 확인한다. source/notify 보정은 한 번만 적용한다.
+
+### 같은 보스 entity의 부활 HP와 정지 장판
+
+부활이 archetype 교체 없이 phase만 바꾸는 경우 HUD의 최대 줄수 profile도 phase를 소비해야 한다.
+HP/maxHP는 snapshot을 사용하고 maxHP 전환을 일반 피격으로 처리하지 않는다. 부활 HP 검사는
+Respawn ENTER가 아니라 실제 완료 경계에서 수행한다. 정지 PER_ALIVE_PLAYER SINGLE 장판은
+플레이어 위치에 유효 surface가 있는지로 배치한다. walkable bit가 없다는 이유만으로 바닥 있는
+위치를 실패시키지 않으며 RADIAL·이동·void 거부에는 같은 예외를 전파하지 않는다.
+이펙트·사운드의 sourceStart는 stage local과 다를 수 있으므로 source clock에서 wall clock으로
+변환한 뒤 범위를 검증한다. 원본과 저장된 PROJECT_AUTHORED 선택을 구분한다.
+
+### Encounter optional 필드와 실제 Level 입장 파서
+
+ValtanPatternTree 에디터와 Server Catalog가 새 optional 필드를 읽어도
+Level_ValtanArena가 별도로 호출하는 CEncounterPatternReference::Load의 exact-object
+검사가 오래된 상태면 매 입장마다 초기화가 실패한다. schema 확장 시 field 검색으로
+모든 실제 소비자를 확인하고, 설치된 Product 및 실제 CProjectDataRoot로 해석한
+전체 Encounter를 입장 파서에 통과시킨다. 이어지는 camera document Load와
+controller Initialize도 검사한다. 에디터의 단일 함수 검사나 Server 입장 검증을
+Client Level 전체 초기화 성공으로 기록하지 않는다. malformed 문서의 Load 실패가
+기존 commit 상태를 보존하는지 함께 확인한다.
+
+- Source→Product의 수동 owner 파생값은 publisher와 Client strict join이 동일해야 한다.
+  manual repeatPolicy.limit가 저장되어 있어도 자동 전투의 maximumConsecutiveUses는0이다.
+  원본을 억지로0으로 고치거나 parity를 끄지 말고 실제 전체 Tree와 Play inventory로 확인한다.
+- Encounter stage 필드 확장은 Gameplay publisher뿐 아니라 World destruction publisher의
+  exact-field 검사에도 적용한다. 공통 타입·범위 계약을 맞추고 실제 Full DataOnly 완료를
+  확인한다. 개별 Gameplay/Composition 게시 성공을 전체 domain 게시 성공으로 대신하지 않는다.

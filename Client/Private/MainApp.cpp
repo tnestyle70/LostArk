@@ -241,6 +241,18 @@ namespace
         CEffect_Tool::CLASS_MOVIE_CALLBACKS movieCallbacks;
         movieCallbacks.state = [](const std::string& classId) {
             CEffect_Tool::CLASS_MOVIE_STATE state;
+            if (classId == "valtan.entrance")
+            {
+                auto* arena = CLevel_ValtanArena::Get_Active();
+                if (!arena || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::VALTAN_ARENA))
+                { state.status = "Enter Valtan Arena to inspect the entrance scene."; return state; }
+                const auto& preview = arena->Debug_GetEffectCinematicState();
+                state.available = preview.available; state.active = preview.active; state.paused = preview.paused;
+                state.clockMs = preview.clockMs; state.durationMs = preview.durationMs; state.playbackRate = preview.playbackRate;
+                state.selectionActive = preview.selectionActive; state.selectionRepeat = preview.selectionRepeat;
+                state.status = preview.status;
+                return state;
+            }
             auto* level = CLevel_CharacterSelect::Get_Active();
             if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
             { state.status = "Enter Character Select to edit this Movie."; return state; }
@@ -256,11 +268,24 @@ namespace
             return state;
         };
         movieCallbacks.timeline = [](const std::string& classId, bool loop) -> std::shared_ptr<const CLASS_MOVIE_TIMELINE> {
+            if (classId == "valtan.entrance")
+            {
+                auto* arena = CLevel_ValtanArena::Get_Active();
+                return arena && !loop && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA) ?
+                    arena->Debug_GetEffectCinematicTimeline() : nullptr;
+            }
             auto* level = CLevel_CharacterSelect::Get_Active();
             return level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) ?
                 level->Get_ClassSelectionPresentation().Get_Timeline(classId, loop) : nullptr;
         };
         movieCallbacks.play = [](const std::string& classId, std::string& status) {
+            if (classId == "valtan.entrance")
+            {
+                auto* arena = CLevel_ValtanArena::Get_Active();
+                if (!arena || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::VALTAN_ARENA))
+                { status = "Enter Valtan Arena to play the entrance scene."; return false; }
+                return arena->Debug_PlayEffectCinematic(status);
+            }
             auto* level = CLevel_CharacterSelect::Get_Active();
             if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
             { status = "Enter Character Select to play this Movie."; return false; }
@@ -272,6 +297,13 @@ namespace
             return played;
         };
         movieCallbacks.seek = [](const std::string& classId, bool loop, double timeMs, std::string& status) {
+            if (classId == "valtan.entrance")
+            {
+                auto* arena = CLevel_ValtanArena::Get_Active();
+                if (!arena || loop || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::VALTAN_ARENA))
+                { status = "Enter Valtan Arena to scrub the entrance scene."; return false; }
+                return arena->Debug_SeekEffectCinematic(timeMs, status);
+            }
             auto* level = CLevel_CharacterSelect::Get_Active();
             if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT) || !level->Can_PlayClassCinematic())
             { status = "Wait for Character Select admission and close other character previews."; return false; }
@@ -289,12 +321,21 @@ namespace
             return sampled;
         };
         movieCallbacks.pause = [](bool paused) {
+            if (auto* arena = CLevel_ValtanArena::Get_Active(); arena &&
+                CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+            { arena->Debug_PauseEffectCinematic(paused); return; }
             if (auto* level = CLevel_CharacterSelect::Get_Active()) level->Get_ClassSelectionPresentation().Set_Paused(paused);
         };
         movieCallbacks.stop = [] {
+            if (auto* arena = CLevel_ValtanArena::Get_Active(); arena &&
+                CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+            { arena->Debug_StopEffectCinematic(); return; }
             if (auto* level = CLevel_CharacterSelect::Get_Active()) level->Get_ClassSelectionPresentation().Stop();
         };
         movieCallbacks.preview = [](const EFFECT_DOCUMENT_DESC& document, std::string& status) {
+            if (auto* arena = CLevel_ValtanArena::Get_Active(); arena &&
+                CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+                return arena->Debug_PreviewCinematicEffect(document, status);
             auto* level = CLevel_CharacterSelect::Get_Active();
             if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
             { status = "Movie Effect preview requires Character Select."; return false; }
@@ -303,6 +344,13 @@ namespace
         movieCallbacks.playSelection = [](const std::string& classId, bool loop,
             const EFFECT_DOCUMENT_DESC& full, const EFFECT_DOCUMENT_DESC& selected,
             const std::vector<std::string>& drawElementIds, double startAgeMs, double endAgeMs, bool repeat, std::string& status) {
+            if (classId == "valtan.entrance")
+            {
+                auto* arena = CLevel_ValtanArena::Get_Active();
+                if (!arena || loop || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::VALTAN_ARENA))
+                { status = "Enter Valtan Arena to play entrance Elements."; return false; }
+                return arena->Debug_PlayCinematicEffectSelection(full, selected, drawElementIds, startAgeMs, endAgeMs, repeat, status);
+            }
             auto* level = CLevel_CharacterSelect::Get_Active();
             if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
             { status = "Enter Character Select to play Movie elements."; return false; }
@@ -314,17 +362,33 @@ namespace
         };
         movieCallbacks.previewSelection = [](const EFFECT_DOCUMENT_DESC& full,
             const EFFECT_DOCUMENT_DESC& selected, const std::vector<std::string>& drawElementIds, double startAgeMs, double endAgeMs, std::string& status) {
+            if (auto* arena = CLevel_ValtanArena::Get_Active(); arena &&
+                CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+                return arena->Debug_PreviewCinematicEffectSelection(full, selected, drawElementIds, startAgeMs, endAgeMs, status);
             auto* level = CLevel_CharacterSelect::Get_Active();
             if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
             { status = "Movie Effect preview requires Character Select."; return false; }
             return level->Get_ClassSelectionPresentation().Preview_EffectSelection(full, selected, drawElementIds, startAgeMs, endAgeMs, status);
         };
+        movieCallbacks.selectEffectOccurrence = [](const std::string& trackId, std::string& status) {
+            if (auto* arena = CLevel_ValtanArena::Get_Active(); arena &&
+                CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+                return arena->Debug_SelectCinematicEffectOccurrence(trackId, status);
+            status = "Effect occurrence selection requires the Valtan entrance editor.";
+            return false;
+        };
         movieCallbacks.setPlaybackRate = [](double rate) {
+            if (auto* arena = CLevel_ValtanArena::Get_Active(); arena &&
+                CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+                return arena->Debug_SetEffectCinematicPlaybackRate(rate);
             auto* level = CLevel_CharacterSelect::Get_Active();
             return level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) &&
                 level->Get_ClassSelectionPresentation().Set_PlaybackRate(rate);
         };
         movieCallbacks.clearPreviews = [](std::string& status) {
+            if (auto* arena = CLevel_ValtanArena::Get_Active(); arena &&
+                CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+                return arena->Debug_ClearCinematicEffectPreviews(status);
             auto* level = CLevel_CharacterSelect::Get_Active();
             return !level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT) ||
                 level->Get_ClassSelectionPresentation().Clear_EffectPreviews(status);
@@ -1851,15 +1915,19 @@ void CMainApp::UpdateKoukuGateCompletePlay()
 }
 
 
-void CMainApp::Sync_KoukuCinematicUI()
+void CMainApp::Sync_CinematicUI()
 {
 	auto* arena = CLevel_KakulSaydonArena::Get_Active();
 	// Composition camera sampling follows Engine.Late_Update; refresh the
 	// character owner before queued body/equipment/shadow draws consume it.
 	if (arena) arena->Sync_CinematicPlayerVisibility();
-	const bool_t suppressed = arena &&
-		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
-		arena->Is_CinematicPresentationActive();
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	const auto* valtanArena = CLevel_ValtanArena::Get_Active();
+	const bool_t suppressed =
+		(arena && currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
+		 arena->Is_CinematicPresentationActive()) ||
+		(valtanArena && currentLevel == ETOUI(LEVEL::VALTAN_ARENA) &&
+		 valtanArena->Is_CinematicHUDSuppressed());
 	auto& router = CUIInputRouter::Get();
 	if (suppressed && !router.Is_CinematicSuppressed())
 	{
@@ -1896,7 +1964,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	applies the gameplay-mouse block for anything that claimed the mouse this frame. */
 	CUIInputRouter::Get().Begin_Frame();
 	CUITextOcclusion::Get().Begin_Frame();
-	Sync_KoukuCinematicUI();
+	Sync_CinematicUI();
 	UpdateProfilerRuntime();
 
 	UpdateDebugToolShortcut();
@@ -3650,7 +3718,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 
 	/* Every shown runtime surface now declares where it covers the screen and on which layer,
 	so each text group can be hidden exactly where a surface above it covers it. */
-	Sync_KoukuCinematicUI();
+	Sync_CinematicUI();
 	Update_WorldHealthBars(fTimeDelta);
 	if (!CUIInputRouter::Get().Is_CinematicSuppressed()) Register_UITextOccluders();
 }
@@ -3707,7 +3775,7 @@ HRESULT CMainApp::Render()
         }
         catch (...) { } // Preserve the original rendering failure and transport state.
     };
-	Sync_KoukuCinematicUI();
+	Sync_CinematicUI();
 	float4_t clearColor = { 0.008f, 0.012f, 0.025f, 1.f };
 	HRESULT hBeginResult;
 	{
@@ -8108,9 +8176,11 @@ void CMainApp::Update_BossHealthBar()
 	/* Edge-detect against the previous frame's bars-remaining/HP to trigger the two real effects
 	below -- reset instead of comparing on a target swap, or the new boss's lower HP/bar-count would
 	read as damage taken against the old one. */
-	if (boss.strArchetypeId != m_strPreviousBossArchetypeId)
+	if (boss.strArchetypeId != m_strPreviousBossArchetypeId ||
+		boss.iMaximumHp != m_iPreviousBossMaximumHp)
 	{
 		m_strPreviousBossArchetypeId = boss.strArchetypeId;
+		m_iPreviousBossMaximumHp = boss.iMaximumHp;
 		m_iPreviousBossBarsRemaining = iBarsRemaining;
 		m_iPreviousBossCurrentHp = boss.iCurrentHp;
 		m_dBossBarTickFlashStartSeconds = -1.0;
@@ -9336,7 +9406,8 @@ void CMainApp::RenderDamageNumbers()
 			number.fScatterY = spreadY(scatterRandom);
 		}
 		m_dLastDamageSeconds = number.dSpawnSeconds;
-		if (number.iAmount != 0u) m_FloatingDamageNumbers.push_back(number);
+		if (number.iAmount != 0u || number.eHitFlag == LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE)
+			m_FloatingDamageNumbers.push_back(number);
 		const auto appendSuccess = [&](const uint8_t kind, const f32_t offsetY)
 		{
 			auto success = number;
@@ -9444,12 +9515,11 @@ void CMainApp::RenderDamageNumbers()
 			continue;
 		const bool_t isShard =
 			LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE != number.eCardMazeSuit;
-		/* INVINCIBLE is drawn by nothing in retail either. */
-		if (!number.iMechanicSuccess && LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE == number.eHitFlag)
-			continue;
+		const bool_t isInvincible = LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE == number.eHitFlag;
 		const bool_t isAbsorb = LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB == number.eHitFlag;
 		const wstring strAmount = number.iMechanicSuccess == 1u ? L"\uCE74\uC6B4\uD130" :
-			number.iMechanicSuccess == 2u ? L"\uBB34\uB825\uD654" : isAbsorb ? L"\uD761\uC218" : isShard ?
+			number.iMechanicSuccess == 2u ? L"\uBB34\uB825\uD654" : isInvincible ? L"\uBB34\uC801" :
+			isAbsorb ? L"\uD761\uC218" : isShard ?
 			shardText(number.eCardMazeSuit, number.iAmount) :
 			Format_ThousandsSeparated(number.iAmount);
 		const float2_t vMeasured =
@@ -9473,6 +9543,8 @@ void CMainApp::RenderDamageNumbers()
 			vColor = XMVectorSet(0.f, 1.f, 0.f, fAlpha); break;
 		case LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB:
 			vColor = XMVectorSet(0.2f, 0.65f, 1.f, fAlpha); break;
+		case LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE:
+			vColor = XMVectorSet(0.2f, 0.6f, 1.f, fAlpha); break;
 		default: break;
 		}
 		/* A shard is a pickup, not a hit, so it keeps the plain white. */

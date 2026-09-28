@@ -312,6 +312,7 @@ namespace LostArk::Server
 		first engage. A late joiner never replays it, and only a room-empty or
 		Debug reset clears the ledger. */
 		bool bIntroPatternConsumed = false;
+		bool bEntranceCinematicConsumed = false;
 		/* The Debug ordered audition replays an authored 1-67 list and requires an
 		empty queue between steps, so product pattern follow-ups must not be
 		queued while it drives the boss. */
@@ -364,6 +365,7 @@ namespace LostArk::Server
 		/* First nonzero Server tick on which this stage is evaluated. Tick zero is
 		the process-wide reserved sentinel, so wrap advances UINT32_MAX -> 1. */
 		std::uint32_t iPatternStageFirstEvaluationTick = 0;
+		std::uint64_t iPatternAimLastElapsedTicks = 0u;
 		/* Number of stage-owned spawn waves committed for the current action.
 		The ENTER edge commits wave zero and later fixed ticks advance this only
 		after the whole mixed volley transaction succeeds. */

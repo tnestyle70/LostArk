@@ -200,6 +200,7 @@ namespace
 		incoming.iStaggerDamage = kind == 0u || kind == 2u ? staggerDamage : 0u;
 		incoming.iPartDamage = kind <= 1u ? partDamage : 0u;
 		incoming.iCounterPower = kind == 0u || kind == 3u ? counterPower : 0u;
+		incoming.bCounterFromPrimarySlot = nullptr != skill && Is_PrimaryCounterSkill(*skill);
 		if (incoming.iRawDamage == 0u && incoming.iStaggerDamage == 0u &&
 			incoming.iPartDamage == 0u && incoming.iCounterPower == 0u)
 			return;

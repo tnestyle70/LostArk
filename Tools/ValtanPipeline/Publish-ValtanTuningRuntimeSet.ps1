@@ -12,6 +12,8 @@ param(
     [string]$SourceBaselineRoot = '',
     [string]$PatternSoundBaselinePath = '',
     [string]$PatternSoundCandidatePath = '',
+    [string]$PatternShakeBaselinePath = '',
+    [string]$PatternShakeCandidatePath = '',
     [string]$EffectV2BaselinePath = '',
     [string]$EffectV2CandidatePath = '',
     [string]$EffectV2ReadSetPath = '',
@@ -61,6 +63,8 @@ function Resolve-OptionalPath([string]$Value) {
 }
 $resolvedPatternSoundBaseline = Resolve-OptionalPath $PatternSoundBaselinePath
 $resolvedPatternSoundCandidate = Resolve-OptionalPath $PatternSoundCandidatePath
+$resolvedPatternShakeBaseline = Resolve-OptionalPath $PatternShakeBaselinePath
+$resolvedPatternShakeCandidate = Resolve-OptionalPath $PatternShakeCandidatePath
 $resolvedEffectV2Baseline = Resolve-OptionalPath $EffectV2BaselinePath
 $resolvedEffectV2Candidate = Resolve-OptionalPath $EffectV2CandidatePath
 $resolvedEffectV2ReadSet = Resolve-OptionalPath $EffectV2ReadSetPath
@@ -91,6 +95,10 @@ switch ($Mode) {
             ([string]::IsNullOrWhiteSpace($resolvedPatternSoundCandidate))) {
             throw 'Pattern Sound baseline/candidate paths must be paired.'
         }
+        if (([string]::IsNullOrWhiteSpace($resolvedPatternShakeBaseline)) -ne
+            ([string]::IsNullOrWhiteSpace($resolvedPatternShakeCandidate))) {
+            throw 'Pattern Shake baseline/candidate paths must be paired.'
+        }
         if (([string]::IsNullOrWhiteSpace($resolvedEffectV2Baseline)) -ne
             ([string]::IsNullOrWhiteSpace($resolvedEffectV2Candidate))) {
             throw 'Effect V2 baseline/candidate paths must be paired.'
@@ -116,6 +124,10 @@ switch ($Mode) {
                 '--pattern-sound-baseline', $resolvedPatternSoundBaseline,
                 '--pattern-sound-candidate', $resolvedPatternSoundCandidate
             )
+        }
+        if (-not [string]::IsNullOrWhiteSpace($resolvedPatternShakeBaseline)) {
+            $command += @('--pattern-shake-baseline', $resolvedPatternShakeBaseline,
+                '--pattern-shake-candidate', $resolvedPatternShakeCandidate)
         }
         if (-not [string]::IsNullOrWhiteSpace($resolvedEffectV2Baseline)) {
             $command += @(

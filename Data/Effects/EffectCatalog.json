@@ -7175,6 +7175,131 @@
       "effectAssetId": "effect.valtan.tracking-axe.large-circle.warning",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.valtan.tracking-axe.large-circle.warning.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.action.420620.stage001.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.action.420620.stage001.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.action.420620.stage005.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.action.420620.stage005.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.action.420620.stage006.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.action.420620.stage006.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.sequence.six-pizza.source-warnings",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.sequence.six-pizza.source-warnings.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.six-pizza.source.center-sector",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.six-pizza.source.center-sector.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.six-pizza.source.red-sector",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.six-pizza.source.red-sector.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.six-pizza.source.yellow-sector",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.six-pizza.source.yellow-sector.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_04",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_04.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_07",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_07.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.source.fx_itr_02326.par_l_itr_02326_off_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.source.fx_itr_02326.par_l_itr_02326_off_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.source.fx_itr_02326.par_l_itr_02326_off_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.source.fx_itr_02326.par_l_itr_02326_off_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.source.fx_itr_02326.par_l_itr_02326_on_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.source.fx_itr_02326.par_l_itr_02326_on_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.source.fx_itr_02326.par_l_itr_02326_spawn_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.source.fx_itr_02326.par_l_itr_02326_spawn_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.source.itr-02326.spawn-and-idle",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.source.itr-02326.spawn-and-idle.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.source.itr-02326.off.full",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.source.itr-02326.off.full.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_atk_01_24",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_atk_01_24.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_exp_05_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_exp_05_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_exp_05_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_exp_05_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.action.420624.stage012.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.action.420624.stage012.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.struggling.source-yellow-roar.warning",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.struggling.source-yellow-roar.warning.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.struggling.source-underfoot.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.struggling.source-underfoot.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.struggling.source-in-out.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.struggling.source-in-out.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.struggling.source-portal-dash",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.struggling.source-portal-dash.effect.json"
     }
   ]
 }

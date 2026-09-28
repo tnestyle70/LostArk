@@ -1,0 +1,7 @@
+LOSTARK_WORLD_PICKUPS 1 "LV_LUT_HEARTRB_ED" 30 6
+"world.valtan.ether.01" "destroyable.group.valtan.outerwall109.1090000000000001" 172.132996 28.108001 -122.501999 164.75 23.390829 -122.75 27 0.75
+"world.valtan.ether.02" "destroyable.group.valtan.outerwall109.1090000000000006" 164.464279 28.108001 -108.335396 160.25 23.429047 -114.75 27 0.75
+"world.valtan.ether.03" "destroyable.group.valtan.outerwall109.1090000000000010" 151.474258 28.108001 -106.608551 147.75 23.329539 -108.25 27 0.75
+"world.valtan.ether.04" "destroyable.group.valtan.outerwall109.1090000000000012" 139.927002 28.108001 -121.617996 147.75 23.41746 -120.75 27 0.75
+"world.valtan.ether.05" "destroyable.group.valtan.outerwall109.1090000000000017" 147.595718 28.108001 -135.784607 151.25 23.409861 -128.25 27 0.75
+"world.valtan.ether.06" "destroyable.group.valtan.outerwall109.1090000000000030" 163.698715 28.108001 -136.226608 159.25 23.445454 -130.25 27 0.75

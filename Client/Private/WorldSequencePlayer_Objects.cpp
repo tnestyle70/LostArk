@@ -14,6 +14,7 @@
 #include "EffectV2_Runtime.h"
 #include "Effect_PresentationService.h"
 #include "Effect_Playback.h"
+#include "Effect_DocumentCodec.h"
 #include "Profiler.h"
 #include <unordered_set>
 #include <algorithm>
@@ -318,6 +319,134 @@ bool_t CWorldSequencePlayer::Set_Document(const CWorldSequenceDocument& document
     return admitted;
 }
 
+bool CWorldSequencePlayer::Preview_EffectDocument(const EFFECT_DOCUMENT_DESC& document,
+    const TARGET_SET& targets, std::string& status)
+{
+    bool used = false;
+    for (const auto& sequence : m_Document.Get_Templates())
+        for (const auto& track : sequence.effectTracks)
+            used |= track.resourceKind == "V1_EFFECT" && track.resourceId == document.strEffectAssetId;
+    if (!used || !targets.Is_Complete())
+    { status = "The Effect is not part of this admitted World Sequence."; return false; }
+    EFFECT_PREVIEW staged;
+    if (!CEffectDocumentCodec::Validate(document, status)) return false;
+    const bool empty = document.OwnerControls.empty() &&
+        std::none_of(document.Elements.begin(), document.Elements.end(),
+            [](const auto& element) { return element.bVisible; }) &&
+        std::none_of(document.ModelCues.begin(), document.ModelCues.end(),
+            [](const auto& cue) { return cue.bVisible; });
+    // Deleting the final row is a valid authoring draft. It suppresses the
+    // source instead of asking the renderer to prepare a drawable empty body.
+    if (!empty)
+    {
+        CEffectPlayback timing;
+        if (!timing.Stage_Document(document, status) ||
+            !CEffectPresentationService::Prepare_WorldPreviewTarget(targets.device, targets.context,
+                document, staged.target, status)) return false;
+        staged.durationSeconds = timing.Get_DurationSeconds();
+    }
+    staged.document = std::make_shared<const EFFECT_DOCUMENT_DESC>(document);
+    auto previews = m_EffectPreviews;
+    previews.insert_or_assign(document.strEffectAssetId, std::move(staged));
+    return Commit_EffectPreviews(std::move(previews), {}, status);
+}
+
+bool CWorldSequencePlayer::Preview_EffectSelection(const EFFECT_DOCUMENT_DESC& full,
+    const EFFECT_DOCUMENT_DESC& selected, const std::vector<std::string>& drawElementIds,
+    const std::string& effectTrackId, const TARGET_SET& targets, std::string& status)
+{
+    bool used = false;
+    for (const auto& sequence : m_Document.Get_Templates())
+        for (const auto& track : sequence.effectTracks)
+            used |= track.resourceKind == "V1_EFFECT" && track.resourceId == full.strEffectAssetId &&
+                (effectTrackId.empty() || effectTrackId == track.effectTrackId);
+    if (!used || !targets.Is_Complete() || full.strEffectAssetId != selected.strEffectAssetId ||
+        drawElementIds.empty() || selected.Elements.empty() ||
+        std::any_of(selected.Elements.begin(), selected.Elements.end(), [&](const auto& element) {
+            return std::none_of(full.Elements.begin(), full.Elements.end(), [&](const auto& source) {
+                return source.strElementId == element.strElementId;
+            });
+        }))
+    { status = "World Sequence Solo needs elements of its exact Effect and occurrence."; return false; }
+    EFFECT_PREVIEW staged;
+    EFFECT_SELECTION selection{full.strEffectAssetId, effectTrackId, {}};
+    CEffectPlayback timing;
+    if (!timing.Stage_Document(full, status) ||
+        !CEffectPresentationService::Prepare_WorldPreviewTarget(targets.device, targets.context,
+            full, staged.target, status) ||
+        !CEffectPresentationService::Prepare_WorldPreviewTarget(targets.device, targets.context,
+            selected, selection.target, status, &drawElementIds)) return false;
+    staged.document = std::make_shared<const EFFECT_DOCUMENT_DESC>(full);
+    staged.durationSeconds = timing.Get_DurationSeconds();
+    auto previews = m_EffectPreviews;
+    previews.insert_or_assign(full.strEffectAssetId, std::move(staged));
+    return Commit_EffectPreviews(std::move(previews), std::move(selection), status);
+}
+
+bool CWorldSequencePlayer::Clear_EffectPreviews(std::string& status)
+{
+    return Commit_EffectPreviews({}, {}, status);
+}
+
+bool CWorldSequencePlayer::Commit_EffectPreviews(
+    std::unordered_map<std::string, EFFECT_PREVIEW> previews,
+    std::optional<EFFECT_SELECTION> selection, std::string& status)
+{
+    const auto targetFor = [](const auto& source, const auto& filter,
+        const ACTIVE_INSTANCE::EFFECT_INSTANCE& effect) -> std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET> {
+        if (!effect.sourceDocument) return {};
+        const auto& id = effect.sourceDocument->strEffectAssetId;
+        if (filter && filter->assetId == id &&
+            (filter->effectTrackId.empty() || filter->effectTrackId == effect.effectTrackId)) return filter->target;
+        const auto found = source.find(id);
+        return found == source.end() ? nullptr : found->second.target;
+    };
+    std::vector<std::pair<EFFECT_WORLD_ROOT_HANDLE,
+        std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET>>> replacements;
+    std::unordered_set<uint64_t> retired;
+    for (const auto* instances : {&m_Active, &m_Held})
+        for (const auto& active : *instances)
+            for (const auto& effect : active.effects)
+            {
+                if (!effect.v1Handle || !effect.sourceDocument) continue;
+                const auto draft = previews.find(effect.sourceDocument->strEffectAssetId);
+                if (draft != previews.end() && !draft->second.target)
+                { retired.insert(effect.v1Handle); continue; }
+                if (targetFor(m_EffectPreviews, m_EffectSelection, effect) !=
+                    targetFor(previews, selection, effect))
+                    replacements.emplace_back(EFFECT_WORLD_ROOT_HANDLE{effect.v1Handle},
+                        targetFor(previews, selection, effect));
+            }
+    if (!CEffectPresentationService::Replace_WorldRootPreviews(replacements, status)) return false;
+    m_EffectPreviews = std::move(previews);
+    m_EffectSelection = std::move(selection);
+    for (auto* instances : {&m_Active, &m_Held})
+        for (auto& active : *instances)
+        {
+            // Destructive retirement follows successful replacement staging so
+            // a bad edit elsewhere still leaves the complete old scene intact.
+            std::erase_if(active.effects, [&](const auto& effect) {
+                if (!retired.contains(effect.v1Handle)) return false;
+                CEffectPresentationService::Stop_WorldRoot({effect.v1Handle});
+                return true;
+            });
+            for (auto& effect : active.effects)
+            {
+                if (!effect.v1Handle || !effect.sourceDocument) continue;
+                const std::string id = effect.sourceDocument->strEffectAssetId;
+                const auto found = m_EffectPreviews.find(id);
+                effect.sourceDocument = found == m_EffectPreviews.end() ?
+                    CEffectCatalog::Find_Loaded(id) : found->second.document;
+                const bool visible = !m_EffectSelection || (m_EffectSelection->assetId == id &&
+                    (m_EffectSelection->effectTrackId.empty() || m_EffectSelection->effectTrackId == effect.effectTrackId));
+                (void)CEffectPresentationService::Set_WorldRootInspectionVisible({effect.v1Handle}, visible);
+            }
+        }
+    status = m_EffectSelection ? "Selected sequence elements staged; actor animation and source time are preserved." :
+        "Sequence Effect drafts staged; actor animation and source time are preserved.";
+    return true;
+}
+
 bool_t CWorldSequencePlayer::Set_DocumentBatch(const CWorldSequenceDocument& document,
     const TARGET_SET& targets, const std::vector<CWorldSequencePlayer*>& players, std::string& status)
 {
@@ -347,6 +476,8 @@ bool_t CWorldSequencePlayer::Set_DocumentBatch(const CWorldSequenceDocument& doc
         player.Clear_PreparedObjects();
         player.m_ObjectModels.clear();
         player.m_EffectSnapshots.clear();
+        player.m_EffectPreviews.clear();
+        player.m_EffectSelection.reset();
         player.m_Document = std::move(staged[i]);
         player.m_Status = "World Object document admitted.";
     }
@@ -390,6 +521,8 @@ bool_t CWorldSequencePlayer::Replace_DocumentKeepingModels(const CWorldSequenceD
         }
     }
     m_EffectSnapshots.clear();
+    m_EffectPreviews.clear();
+    m_EffectSelection.reset();
     m_Document = std::move(staged);
     status = "World Object document admitted; kept " + std::to_string(kept) + " prepared model(s).";
     m_Status = status;
@@ -1348,6 +1481,14 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
             const f32_t period = static_cast<f32_t>(motion->CycleSpanMs(*sequence));
             for (const auto& effect : sequence->effectTracks)
             {
+                const auto preview = m_EffectPreviews.find(effect.resourceId);
+                const bool selectedTrack = !m_EffectSelection ||
+                    (m_EffectSelection->assetId == effect.resourceId &&
+                     (m_EffectSelection->effectTrackId.empty() || m_EffectSelection->effectTrackId == effect.effectTrackId));
+                // V1 keeps sampled history behind its draw mask. V2 has no
+                // document Solo projection and is retired until full replay.
+                if (m_EffectSelection && effect.resourceKind != "V1_EFFECT") continue;
+                if (preview != m_EffectPreviews.end() && !preview->second.target) continue;
                 // Each effect owns its declared slot, including a different
                 // skeleton/scale in a multi-actor cinematic or a NEXT motion.
                 const auto binding = std::find_if(motion->bindings.begin(), motion->bindings.end(),
@@ -1391,14 +1532,27 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                             if (prepared == m_ObjectModels.end())
                             { m_Status = "World Object Effect model was not prepared: " + resource->objectId; return false; }
                             const bool v1 = effect.resourceKind == "V1_EFFECT";
-                            const auto document = !v1 ? nullptr : CEffectCatalog::Find_Loaded(effect.resourceId);
+                            const auto document = !v1 ? nullptr : preview != m_EffectPreviews.end() ?
+                                preview->second.document : CEffectCatalog::Find_Loaded(effect.resourceId);
                             if (v1 && !document)
                             { m_Status = "World Object V1 Effect document was not prepared: " + effect.resourceId; return false; }
+                            // Deleting every authored row leaves a valid silent catalog source.
+                            // Skip before loop/fit duration checks; omitting its key also retires
+                            // any earlier live occurrence after a saved source replacement.
+                            if (v1 && !document->bSourceContract && document->Elements.empty() &&
+                                document->ModelCues.empty() && document->OwnerControls.empty() &&
+                                document->RuntimeExtensions.Is_Empty()) continue;
+                            const auto resolveDuration = [&](float& duration) {
+                                if (preview == m_EffectPreviews.end())
+                                    return CEffectPresentationService::Try_Get_PreparedProductDurationSeconds(effect.resourceId, duration);
+                                duration = preview->second.durationSeconds;
+                                return std::isfinite(duration) && duration > 0.f;
+                            };
                             float effectTimeScale = 1.f;
                             if (effect.fitEffectToDuration)
                             {
                                 float sourceDuration = 0.f;
-                                if (!CEffectPresentationService::Try_Get_PreparedProductDurationSeconds(effect.resourceId, sourceDuration) ||
+                                if (!resolveDuration(sourceDuration) ||
                                     !CWorldSequenceDocument::Try_EffectTimeScale(effect, sourceDuration, effectTimeScale))
                                 { m_Status = "World Object Effect fit needs a finite prepared V1 duration: " + effect.resourceId; return false; }
                             }
@@ -1413,7 +1567,7 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                                 if (!nativeInfiniteLoop)
                                 {
                                     float sourceDuration = 0.f;
-                                    if (!CEffectPresentationService::Try_Get_PreparedProductDurationSeconds(effect.resourceId, sourceDuration) ||
+                                    if (!resolveDuration(sourceDuration) ||
                                         !std::isfinite(sourceDuration) || sourceDuration <= 0.f)
                                     { m_Status = "World Object Effect loop needs a finite prepared V1 duration: " + effect.resourceId; return false; }
                                     // A prepared duration includes particle/after-image tails. Repeat
@@ -1533,6 +1687,9 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                                         spawn.fSourceLoopEndSeconds = nativeInfiniteLoop ? effect.durationMs * .001f : 0.f;
                                         spawn.bExternallySampled = true;
                                         spawn.bExternalModelCueAnchors = !document->ModelCues.empty();
+                                        spawn.pAuthoringPreview = m_EffectSelection && selectedTrack ?
+                                            m_EffectSelection->target : preview != m_EffectPreviews.end() ?
+                                                preview->second.target : nullptr;
                                         EFFECT_WORLD_ROOT_HANDLE handle;
                                         if (!CEffectPresentationService::Spawn_LevelPlacement(spawn, handle, m_Status)) return false;
                                         /* The normal runtime keeps new requests pending until MainApp finishes
@@ -1541,6 +1698,7 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                                         if (targets.bCommitWorldRootEffectsAfterSpawn)
                                             CEffectPresentationService::Commit_PendingWorldRootSpawns({handle});
                                         active.effects.push_back({key, 0u, handle.iValue, document});
+                                        active.effects.back().effectTrackId = effect.effectTrackId;
                                     }
                                     else
                                     {
@@ -1562,6 +1720,8 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                                 }
                                 if (v1)
                                 {
+                                    (void)CEffectPresentationService::Set_WorldRootInspectionVisible(
+                                        {found->v1Handle}, selectedTrack);
                                     const bool placementEdited = found->sampledPlacement != active.placement ||
                                         found->sampledPositionOffset.x != active.positionOffset.x ||
                                         found->sampledPositionOffset.y != active.positionOffset.y ||

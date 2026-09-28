@@ -2046,6 +2046,16 @@ void Client::CAnimation_Tool::Render_ValtanPresentationLanes(
 					}
 					ImGui::EndCombo();
 				}
+				int32_t playbackOffsetMs = static_cast<int32_t>(Cue.iPlaybackOffsetMs);
+				if (ImGui::InputInt("WAV Start Offset (ms)", &playbackOffsetMs, 10, 50))
+				{
+					Cue.iPlaybackOffsetMs = static_cast<uint32_t>(std::clamp(playbackOffsetMs, 0, 600000));
+					m_bValtanCombatObjectSoundCuesDirty = true;
+					m_strValtanCombatObjectSoundCueStatus =
+						"UNSAVED: " + Cue.strBindingId + " WAV start offset = " +
+						std::to_string(Cue.iPlaybackOffsetMs) + " ms";
+				}
+				ImGui::TextDisabled("Skip the WAV beginning; Server event timing stays unchanged.");
 				const std::vector<std::string>& Variants =
 					CSoundCueCatalog::Find_Variants("Valtan", Cue.strSoundEvent);
 				for (std::size_t iVariant = 0u;
@@ -2053,7 +2063,7 @@ void Client::CAnimation_Tool::Render_ValtanPresentationLanes(
 				{
 					ImGui::PushID(static_cast<int32_t>(iVariant));
 					if (ImGui::SmallButton("Preview Impact WAV"))
-						(void)Preview_ValtanSoundAsset(Variants[iVariant]);
+						(void)Preview_ValtanSoundAsset(Variants[iVariant], Cue.iPlaybackOffsetMs);
 					ImGui::SameLine();
 					ImGui::TextDisabled("%s", Variants[iVariant].c_str());
 					ImGui::PopID();

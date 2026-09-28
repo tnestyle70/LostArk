@@ -47,4 +47,31 @@ class OwnerHitChainContractTests(unittest.TestCase):
         for broken in [dict(visual,stopActiveOnHit=1),dict(visual,effectV2Group={}),{k:v for k,v in visual.items() if k!='armedEffectAssetId'}]:
             with self.assertRaises(pipeline.PipelineError):pipeline._validate_combat_object_visual_row(broken,'test',None)
 
+    def test_armed_replacement_requires_a_real_armed_visual(self):
+        visual = {'combatObjectArchetypeId':ROCK, 'clientVisualId':'visual.rock',
+                  'effectAssetId':'effect.active', 'armedPresentationEventId':'event.armed',
+                  'armedEffectAssetId':'effect.armed', 'stopActiveOnArmed':True}
+        pipeline._validate_combat_object_visual_row(visual, 'test', None)
+        for broken in [dict(visual, stopActiveOnArmed=1),
+                       {k:v for k,v in visual.items() if k not in ('armedPresentationEventId','armedEffectAssetId')}]:
+            with self.assertRaises(pipeline.PipelineError):
+                pipeline._validate_combat_object_visual_row(broken, 'test', None)
+
+    def test_armed_terminal_ownership_is_optional_and_requires_same_fallback(self):
+        legacy = {'combatObjectArchetypeId':ROCK, 'clientVisualId':'visual.rock',
+                  'effectAssetId':'effect.active', 'hitEffectAssetId':'effect.hit'}
+        pipeline._validate_combat_object_visual_row(legacy, 'test', None)
+        pipeline._validate_combat_object_visual_row(dict(legacy, armedEffectOwnsTerminal=False), 'test', None)
+        whole = dict(legacy, armedPresentationEventId='event.armed',
+                     armedEffectAssetId='effect.hit', armedEffectOwnsTerminal=True)
+        pipeline._validate_combat_object_visual_row(whole, 'test', None)
+        for invalid in [dict(whole, armedEffectOwnsTerminal=1),
+                        dict(whole, armedEffectOwnsTerminal='true'),
+                        dict(whole, armedEffectAssetId='effect.different'),
+                        {k:v for k,v in whole.items() if k != 'hitEffectAssetId'},
+                        dict(legacy, armedEffectOwnsTerminal=True)]:
+            with self.subTest(visual=invalid):
+                with self.assertRaises(pipeline.PipelineError):
+                    pipeline._validate_combat_object_visual_row(invalid, 'test', None)
+
 if __name__ == '__main__':unittest.main()

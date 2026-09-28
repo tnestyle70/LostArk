@@ -1,9 +1,11 @@
 #include "Shader_EffectV2_Common.hlsli"
+#include "Shader_EffectDecalReceiver.hlsli"
 
 float4x4 g_ViewMatrixInverse;
 float4x4 g_ProjMatrixInverse;
 float4x4 g_DecalWorldInverse;
 Texture2D g_NormalTexture;
+Texture2D g_DecalReceiverTexture; // Target_PickPos, exact RGBA32_FLOAT payload
 float2 g_DecalSize = float2(1.f, 1.f);
 float g_DecalDepth = 1.f;
 float g_DecalEdgeFade = 0.f;
@@ -33,6 +35,9 @@ VS_OUT VS_MAIN(VS_IN input)
 PS_EFFECT_OUT Decal_Shade(VS_OUT input, uniform bool bPremultiply)
 {
 	const float4 depth = g_DepthTexture.Sample(PointSampler, input.vTexcoord);
+	if (Reject_EffectDecalActorReceiver(depth.w,
+		g_DecalReceiverTexture.Load(int3(int2(input.vPosition.xy), 0)).w))
+		clip(-1.f);
 	const float viewZ = depth.y * 1000.f;
 	float4 worldPosition;
 	worldPosition.x = input.vTexcoord.x * 2.f - 1.f;

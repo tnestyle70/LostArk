@@ -522,11 +522,14 @@ bool_t CMapEffectPresentationRuntime::Probe_WorldEffectAdmissions(
 			CEffectPresentationService::Commit_PendingWorldRootSpawns({ stagedProbe.Handle });
 			const bool_t admitted = CEffectPresentationService::Update_WorldRoot(
 				stagedProbe.Handle, stagedProbe.Root);
+			const std::string admissionStatus = admitted ? std::string{} :
+				CEffectPresentationService::Get_Status();
 			CEffectPresentationService::Stop_WorldRoot(stagedProbe.Handle);
 			if (!admitted)
 			{
 				stopProbes();
-				outStatus = "Map Effect source-loop clone/attach rejected: " + world.effectAssetId;
+				outStatus = "Map Effect source-loop clone/attach rejected: " + world.effectAssetId +
+					" [placement=" + world.placementId + "]: " + admissionStatus;
 				return false;
 			}
 			continue;
@@ -584,8 +587,12 @@ bool_t CMapEffectPresentationRuntime::Is_WithinDrawDistance(
 }
 
 float4x4_t CMapEffectPresentationRuntime::Build_WorldRoot(
-	const MAP_EFFECT_WORLD_PRESENTATION& presentation) const
+	const MAP_EFFECT_WORLD_PRESENTATION& sourcePresentation) const
 {
+	MAP_EFFECT_WORLD_PRESENTATION presentation = sourcePresentation;
+	if (MAP_EFFECT_ACTIVATION_POLICY::SERVER_PICKUP == presentation.activationPolicy)
+		if (const auto* pickup = Find_ServerPickup(presentation.placementId))
+			presentation.position = { pickup->fPositionX, pickup->fPositionY, pickup->fPositionZ };
 	float4x4_t result{};
 	const vector_t rotation = XMVectorSet(
 		presentation.rotationQuaternion.x,
@@ -640,6 +647,19 @@ bool_t CMapEffectPresentationRuntime::Resolve_WorldSample(
 	outSampleSeconds = 0.f;
 	outOccurrenceSequence = 0u;
 	outSampleStartTick = 0u;
+	if (MAP_EFFECT_ACTIVATION_POLICY::SERVER_PICKUP == presentation.activationPolicy)
+	{
+		const auto* pickup = Find_ServerPickup(presentation.placementId);
+		if (nullptr == pickup || !std::isfinite(pickup->fPositionX) ||
+			!std::isfinite(pickup->fPositionY) || !std::isfinite(pickup->fPositionZ) ||
+			pickup->eState >= LostArk::Shared::WORLD_PICKUP_STATE::COLLECTED)
+			return false;
+		outSampleSeconds = nullptr == active ? 0.f : active->fLastSampleSeconds +
+			(std::isfinite(timeDelta) ? (std::clamp)(timeDelta, 0.f, 0.1f) : 0.f);
+		outOccurrenceSequence = pickup->iStateStartTick;
+		outSampleStartTick = pickup->iStateStartTick;
+		return true;
+	}
 	if (MAP_EFFECT_ACTIVATION_POLICY::LEVEL_ACTIVE ==
 		presentation.activationPolicy)
 	{
@@ -699,6 +719,25 @@ bool_t CMapEffectPresentationRuntime::Resolve_WorldSample(
 	return true;
 }
 
+void CMapEffectPresentationRuntime::Set_ServerPickups(
+	const std::vector<LostArk::Shared::WORLD_PICKUP_SNAPSHOT>& pickups,
+	const uint32_t serverTick)
+{
+	if (m_iPickupServerTick == serverTick) return;
+	m_ServerPickups = serverTick == 0u ?
+		std::vector<LostArk::Shared::WORLD_PICKUP_SNAPSHOT>{} : pickups;
+	m_iPickupServerTick = serverTick;
+}
+
+const LostArk::Shared::WORLD_PICKUP_SNAPSHOT* CMapEffectPresentationRuntime::Find_ServerPickup(
+	const std::string& placementId) const
+{
+	if (0u == m_iPickupServerTick) return nullptr;
+	const auto found = std::find_if(m_ServerPickups.begin(), m_ServerPickups.end(),
+		[&placementId](const auto& pickup) { return pickup.strPlacementId == placementId; });
+	return found == m_ServerPickups.end() ? nullptr : &*found;
+}
+
 void CMapEffectPresentationRuntime::Update_LevelPresentation(const f32_t timeDelta)
 {
 	Update_ServerPresentation(VALTAN_PRESENTATION_STATE{}, timeDelta);
@@ -724,6 +763,17 @@ void CMapEffectPresentationRuntime::Update_ServerPresentation(
 	for (size_t index = m_ActiveWorldEffects.size(); index-- > 0u;)
 	{
 		ACTIVE_WORLD_EFFECT& active = m_ActiveWorldEffects[index];
+		if (MAP_EFFECT_ACTIVATION_POLICY::SERVER_PICKUP == active.Presentation.activationPolicy)
+		{
+			const auto* pickup = Find_ServerPickup(active.Presentation.placementId);
+			if (pickup && pickup->eState == LostArk::Shared::WORLD_PICKUP_STATE::WALL &&
+				active.iPatternSequence != pickup->iStateStartTick)
+			{
+				Stop_WorldEffect(index);
+				m_ActiveWorldEffects.erase(m_ActiveWorldEffects.begin() + index);
+				continue;
+			}
+		}
 		if (!Is_WithinDrawDistance(active.Presentation))
 		{
 			m_LevelActiveSpawnAttemptedPlacements.erase(active.Presentation.placementId);
@@ -750,9 +800,9 @@ void CMapEffectPresentationRuntime::Update_ServerPresentation(
 			if (MAP_EFFECT_PLAYBACK_POLICY::LOCAL_LOOP == active.Presentation.playbackPolicy)
 				sampleSeconds = std::fmod(sampleSeconds, active.fDurationSeconds);
 		}
-		else if (active.iPatternSequence != occurrenceSequence ||
-			sampleSeconds > active.fDurationSeconds +
-				TIMELINE_EPSILON_SECONDS)
+		else if (MAP_EFFECT_ACTIVATION_POLICY::SERVER_PATTERN_WINDOW == active.Presentation.activationPolicy &&
+			(active.iPatternSequence != occurrenceSequence ||
+			 sampleSeconds > active.fDurationSeconds + TIMELINE_EPSILON_SECONDS))
 		{
 			Stop_WorldEffect(index);
 			m_ActiveWorldEffects.erase(m_ActiveWorldEffects.begin() + index);
@@ -933,6 +983,8 @@ void CMapEffectPresentationRuntime::Clear()
 	for (size_t index = 0u; index < m_ActiveWorldEffects.size(); ++index)
 		Stop_WorldEffect(index);
 	m_ActiveWorldEffects.clear();
+	m_ServerPickups.clear();
+	m_iPickupServerTick = 0u;
 	m_WorldEffectDurations.clear();
 	m_SurfaceEmissiveBaselines.clear();
 	m_LastAttemptedServerSequenceByPlacement.clear();

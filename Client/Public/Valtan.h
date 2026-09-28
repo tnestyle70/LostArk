@@ -279,6 +279,7 @@ public:
 	// Authoring clones may select the same complete phase presentation as the Server.
 	bool_t Set_LocalPreviewGhostPresentation(bool_t ghost, std::string& status);
 	void Set_CinematicPresentationSuppressed(bool_t suppressed);
+	bool_t Is_CinematicPresentationSuppressed() const { return m_isCinematicPresentationSuppressed; }
     std::string Get_PresentationDiagnostic() const;
 	/* Warp portal bindings use Server-locked virtual anchors instead of the
 	current interpolated body root, which may already be mid-rush when a
@@ -309,7 +310,8 @@ public:
 		uint32_t iPatternSequence,
 		uint32_t iPatternStageIndex,
 		const PATTERN_TARGET_SNAPSHOT_POSE& PatternTargetPose,
-		const LostArk::Shared::PORTAL_RUSH_ROUTE_SNAPSHOT& PortalRushRoute);
+		const LostArk::Shared::PORTAL_RUSH_ROUTE_SNAPSHOT& PortalRushRoute,
+		const LostArk::Shared::PATTERN_LANDING_SNAPSHOT& PatternLanding = {});
 	/* A pool slot copies only the immutable, already exact-admitted joined
 	presentation.  Model/animation compatibility is revalidated against this
 	ghost instance; occurrence cursors and Effect state are never copied. */
@@ -362,9 +364,10 @@ public:
 		const LostArk::Shared::BOSS_COMBAT_SNAPSHOT& state);
 	bool_t Apply_BossCombatEvent(
 		const LostArk::Shared::BOSS_COMBAT_EVENT& event);
+	// Visual lifecycle commit is independent of the optional Sound result.
 	bool_t Apply_CombatObjectPresentationEvent(
 		const LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event,
-		std::string& strOutStatus);
+		std::string& strOutStatus, bool_t* pOutVisualCommitted = nullptr);
 	/* Debug Workbench Save reloads only Client presentation documents. Server
 	   hit identity and gameplay timing remain untouched. Each reload stages the
 	   complete replacement and keeps the previously admitted map on failure. */
@@ -521,7 +524,11 @@ private:
 	f32_t m_fServerPatternTargetSnapshotYawDegrees = 0.f;
 	bool_t m_bHasServerPatternTargetSnapshotPose = false;
 	bool_t m_bServerPatternTargetIdentityStable = false;
+	LostArk::Shared::NET_ENTITY_ID m_iServerCurrentPatternTargetNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+	bool_t m_bHasServerCurrentPatternTargetPose = false;
 	LostArk::Shared::PORTAL_RUSH_ROUTE_SNAPSHOT m_PortalRushRoute;
+	// Exact Server landing pin for the accepted pattern occurrence, never a live target pose.
+	LostArk::Shared::PATTERN_LANDING_SNAPSHOT m_PatternLanding;
 	/* One composite invocation owns one root handle.  The Server pattern keeps
 	   the target identity fixed while current yaw changes per fixed tick; late
 	   Effect elements therefore inherit the same updated root rather than
@@ -533,6 +540,7 @@ private:
 		LostArk::Shared::NET_ENTITY_ID iTargetNetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
 		float3_t vArenaCenter = {};
+		bool_t bAllowTargetChanges = false;
 		EFFECT_TRANSFORM_DESC LocalTransform{};
 		VALTAN_PATTERN_EFFECT_SCALE_POLICY eScalePolicy =
 			VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE;
@@ -581,12 +589,29 @@ private:
 		m_LocalPreviewStageStartMsByActionId;
 	std::unordered_map<std::string, uint32_t>
 		m_LocalPreviewStageDurationMsByActionId;
+	struct LOCAL_PATTERN_AIM_WINDOW final
+	{
+		uint32_t iEndMs = 0u;
+		bool_t bTrack = false;
+		bool_t bArenaCenterPivot = false;
+		bool_t bHasResponseScale = false;
+		f32_t fResponseScale = 1.f;
+	};
+	std::unordered_map<std::string, LOCAL_PATTERN_AIM_WINDOW>
+		m_LocalPreviewAimByActionId;
+	std::string m_strLocalPreviewAimActionId;
+	uint64_t m_iLocalPreviewAimElapsedTicks = 0u;
+	f32_t m_fLocalPreviewAimYawDegrees = 0.f;
+	f32_t m_fLocalPreviewAimInitialYawDegrees = 0.f;
+	bool_t m_bLocalPreviewAimInitialized = false;
+	bool_t m_bLocalPreviewAimSeedsTarget = false;
 	std::unordered_map<std::string, PATTERN_BODY_VISIBILITY_WINDOW>
 		m_LocalPreviewBodyVisibilityByActionId;
 	std::unordered_map<std::string, f32_t>
 		m_LocalPreviewPortalRushDistanceByActionId;
 	std::unordered_map<std::string, float3_t>
 		m_LocalPreviewArenaCenterAnchors;
+	LostArk::Shared::PATTERN_LANDING_SNAPSHOT m_LocalPreviewPatternLanding;
 	struct LOCAL_PATTERN_COMBAT_OBJECT_EVENT final
 	{
 		std::string strPresentationEventId;
@@ -603,6 +628,8 @@ private:
 		std::string strTerminalEffectAssetId;
 		std::string strArmedEffectAssetId;
 		bool_t bStopActiveOnHit = false;
+		bool_t bStopActiveOnArmed = false;
+		bool_t bArmedEffectOwnsTerminal = false;
 		bool_t bOwnerHitChain = false;
 		uint32_t iChainDelayMs = 0u;
 		f32_t fCoverRadiusM = 0.f;
@@ -661,6 +688,7 @@ private:
 		std::vector<VALTAN_PATTERN_EFFECT_CUE>> m_PatternEffectCuesByActionId;
 	// Captured from the same admitted pattern view as the Product cue document.
 	std::unordered_map<std::string, float3_t> m_PatternArenaCenterAnchors;
+	std::unordered_set<std::string> m_PatternNearestAimActions;
 	std::unordered_set<std::string> m_AttemptedPatternEffectOccurrenceKeys;
 	bool_t m_bPatternEffectCueScanAgeValid = false;
 	f32_t m_fPatternEffectCueScanAgeSeconds = 0.f;
@@ -685,6 +713,8 @@ private:
 	std::unordered_map<std::string, VALTAN_COMBAT_OBJECT_SOUND_CUE>
 		m_CombatObjectSoundCuesBySource;
 	std::uint64_t m_iLastCombatObjectPresentationEventSequence = 0u;
+	// Successful armed occurrences awaiting their terminal event; value is the Server start tick.
+	std::unordered_map<uint64_t, uint32_t> m_ArmedCombatObjectTerminalOwners;
 	/* Boss camera-shake cues, same shape as the Sound cue registry. Every
 	   client that presents the boss feels its shakes; they are not gated on a
 	   locally controlled owner like player skill shakes. */
@@ -782,6 +812,7 @@ private:
 	bool_t Reload_PatternEffectCues_WhileAdmitted(std::string& strOutStatus);
 	void Spawn_DuePatternEffectCues(f32_t fActionAgeSeconds);
 	void Update_PatternTargetFollowEffectRoots();
+	void Update_LocalPreviewPatternAim(std::string_view actionId, f32_t fActionAgeSeconds);
 	void Update_LocalPreviewTargetFollowEffectRoots(f32_t fPreviewTimelineSeconds);
 	void Detach_PatternTargetFollowEffectRoots();
 	bool_t Sync_LocalPatternCombatObjectPreview(

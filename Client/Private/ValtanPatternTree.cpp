@@ -3,6 +3,7 @@
 #include "AnimationSkillBindingDocument.h"
 #include "DataJson.h"
 #include "EncounterPatternReference.h"
+#include "EffectV2_Document.h"
 #include "ProjectDataRoot.h"
 #include "ValtanPatternEffectCueDocument.h"
 #include "ValtanPatternFlowDocument.h"
@@ -518,6 +519,38 @@ namespace
 		return true;
 	}
 
+	bool_t Read_StageAim(
+		const DATA_JSON_VALUE* pValue,
+		const uint32_t iStageDurationMs,
+		std::string& strOutTargetPolicy,
+		bool_t& bOutHasEnd, uint32_t& iOutEndMs,
+		bool_t& bOutHasResponseScale, f32_t& fOutResponseScale)
+	{
+		strOutTargetPolicy.clear();
+		bOutHasEnd = false;
+		iOutEndMs = 0u;
+		bOutHasResponseScale = false;
+		fOutResponseScale = 1.f;
+		if (nullptr == pValue)
+			return true;
+		const DATA_JSON_VALUE* pPolicy = Required(
+			*pValue, "targetPolicy", DATA_JSON_TYPE::STRING);
+		if (!Has_ExactPropertiesWithOptional(*pValue, { "targetPolicy" },
+				{ "endMs", "responseScale" }) || nullptr == pPolicy ||
+			("NEAREST_EACH_TICK" != pPolicy->Get_String() &&
+			 "PATTERN_TARGET" != pPolicy->Get_String()))
+			return false;
+		strOutTargetPolicy = pPolicy->Get_String();
+		bOutHasEnd = nullptr != pValue->Find("endMs");
+		bOutHasResponseScale = nullptr != pValue->Find("responseScale");
+		return (!bOutHasEnd ||
+			(Read_RequiredUInt32(*pValue, "endMs", iOutEndMs) &&
+			 iOutEndMs <= iStageDurationMs)) &&
+			(!bOutHasResponseScale ||
+			 (Read_RequiredFiniteFloat(*pValue, "responseScale", fOutResponseScale) &&
+			  fOutResponseScale >= 0.01f && fOutResponseScale <= 10.f));
+	}
+
 	bool_t Read_StageMotion(
 		const DATA_JSON_VALUE* pValue,
 		const uint32_t iStageDurationMs,
@@ -567,6 +600,11 @@ namespace
 					return false;
 				Motion.HalfExtentsM[iAxis] = static_cast<f32_t>(Extent.Get_Number());
 			}
+		}
+		else if ("TO_ARENA_CENTER" == Motion.strKind)
+		{
+			if (!Has_ExactProperties(*pValue, { "kind" }))
+				return false;
 		}
 		else if ("FORWARD" != Motion.strKind ||
 			!Has_ExactProperties(*pValue, { "kind", "distance" }) ||
@@ -1517,13 +1555,23 @@ namespace
 		Out.reset();
 		if (nullptr == pValue)
 			return true;
-		if (!Has_ExactProperties(*pValue,
+		if (!Has_ExactPropertiesWithOptional(*pValue,
 				{ "kind", "ghostArchetypeId", "ghostPatternIds",
-				  "spawnHalfExtentsM", "maximumActiveGhosts" }))
+				  "spawnHalfExtentsM", "maximumActiveGhosts" },
+				{ "auxiliarySpawnIntervalMs", "portalSpawnIntervalMs" }))
 			return false;
 		Client::VALTAN_PATTERN_FINALE_VIEW Finale;
 		Finale.strKind = Read_String(*pValue, "kind");
 		Finale.strGhostArchetypeId = Read_String(*pValue, "ghostArchetypeId");
+		const auto ReadInterval = [&](const char* name, uint32_t& interval)
+		{
+			return nullptr == pValue->Find(name) ||
+				(Read_RequiredUInt32(*pValue, name, interval) &&
+				 interval >= 1u && interval <= 600000u);
+		};
+		if (!ReadInterval("auxiliarySpawnIntervalMs", Finale.iAuxiliarySpawnIntervalMs) ||
+			!ReadInterval("portalSpawnIntervalMs", Finale.iPortalSpawnIntervalMs))
+			return false;
 		const DATA_JSON_VALUE* pPatterns = Required(
 			*pValue, "ghostPatternIds", DATA_JSON_TYPE::ARRAY);
 		const DATA_JSON_VALUE* pExtents = Required(
@@ -1614,12 +1662,18 @@ namespace
 		uint32_t iPushMs = 0u;
 		bool_t bKnockdown = false;
 		uint32_t iDownMs = 0u;
+		std::string strAimTargetPolicy;
+		bool_t bHasAimEnd = false;
+		uint32_t iAimEndMs = 0u;
+		bool_t bHasAimResponseScale = false;
+		f32_t fAimResponseScale = 1.f;
 		std::optional<Client::VALTAN_STAGE_MOTION_VIEW> Motion;
 		std::vector<Client::VALTAN_STAGE_ACTION_VIEW> Actions;
 		std::vector<Client::VALTAN_STAGE_BRANCH_VIEW> Branches;
 		std::vector<Client::VALTAN_CLIP_OCCURRENCE_VIEW> Occurrences;
 		std::vector<Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW> AuthoredCues;
 		std::vector<MASTER_EFFECT_REFERENCE> EffectReferences;
+		bool_t bHasStageEffectV2Bindings = false;
 		std::vector<Client::VALTAN_CAMERA_INVOCATION_VIEW> CameraInvocations;
         std::vector<Client::BOSS_STAGE_SCENE_PROFILE_OCCURRENCE> SceneProfileOccurrences;
         std::vector<Client::BOSS_STAGE_LIGHT_OCCURRENCE> LightOccurrences;
@@ -1751,6 +1805,7 @@ namespace
 	{
 		std::string strSequenceId;
 		std::string strMode;
+		std::string strEntranceCinematicPatternId;
 		uint32_t iInterStepPursuitMs = 0u;
 		std::vector<std::string> PatternIds;
 		std::vector<uint32_t> TransitionPursuitMs;
@@ -2030,7 +2085,7 @@ namespace
 				  "downMs", "motion", "actions", "branches", "animation",
 				  "effectRefs", "cameraInvocations" },
 				{ "partDamagePolicy", "counterProxy", "bossResponse", "hitAnchor",
-				  "hitActivation", "bodyVisibility", "verticalOffsetM", "sceneProfileOccurrences", "lightOccurrences", "attackContacts" });
+				  "hitActivation", "bodyVisibility", "verticalOffsetM", "sceneProfileOccurrences", "lightOccurrences", "attackContacts", "aim" });
 		const bool_t bCaptureShape = Has_ExactPropertiesWithOptional(Value,
 				{ "stageId", "sequenceRole", "actionId", "stageKind",
 				  "durationMs", "hitShape", "hitOuterRadius", "hitInnerRadius",
@@ -2042,7 +2097,7 @@ namespace
 				  "actions", "branches", "animation", "effectRefs",
 				  "cameraInvocations" },
 				{ "partDamagePolicy", "counterProxy", "bossResponse", "hitAnchor",
-				  "hitActivation", "bodyVisibility", "verticalOffsetM", "sceneProfileOccurrences", "lightOccurrences", "attackContacts" });
+				  "hitActivation", "bodyVisibility", "verticalOffsetM", "sceneProfileOccurrences", "lightOccurrences", "attackContacts", "aim" });
 		if (!bBaseShape && !bCaptureShape)
 		{
 			strOutError = "master stage has unexpected properties";
@@ -2112,12 +2167,12 @@ namespace
 				*pAnimation, "occurrences", DATA_JSON_TYPE::ARRAY);
 			if (!Is_NonNegativeInteger(pRepeatCount) ||
 				pRepeatCount->Get_Number() < 1.0 ||
-				pRepeatCount->Get_Number() > 64.0 || nullptr == pOccurrences ||
+				pRepeatCount->Get_Number() > MAX_BOSS_PATTERN_ANIMATION_CLIPS || nullptr == pOccurrences ||
 				pOccurrences->Get_Array().empty() || nullptr == pEndPolicy ||
 				("EXACT" != pEndPolicy->Get_String() &&
 				 "HOLD_LAST_POSE" != pEndPolicy->Get_String() &&
 				 "LOOP_TO_STAGE_END" != pEndPolicy->Get_String()) ||
-				pOccurrences->Get_Array().size() > 64u)
+				pOccurrences->Get_Array().size() > MAX_BOSS_PATTERN_ANIMATION_CLIPS)
 			{
 				strOutError = "master stage repeatCount/occurrences is invalid";
 				return false;
@@ -2183,6 +2238,8 @@ namespace
 			!Read_RequiredFiniteFloat(Value, "pushRangeM", Out.fPushRangeM) ||
 			!Read_RequiredUInt32(Value, "pushMs", Out.iPushMs) ||
 			!Read_RequiredUInt32(Value, "downMs", Out.iDownMs) ||
+			!Read_StageAim(Value.Find("aim"), Out.iDurationMs, Out.strAimTargetPolicy,
+				Out.bHasAimEnd, Out.iAimEndMs, Out.bHasAimResponseScale, Out.fAimResponseScale) ||
 			!Read_StageMotion(
 				Value.Find("motion"), Out.iDurationMs, Out.Motion) ||
 			!Read_StageActions(
@@ -2231,7 +2288,8 @@ namespace
 		}
         if (!LostArk::Shared::Validate_StageAttackContacts(Out.AttackContacts,
             Out.iDurationMs, Out.HitOffsetsMs, Out.iHitCount, Out.iHitDelayMs, Out.iHitIntervalMs) ||
-            (!Out.AttackContacts.empty() && (Out.bHasHitActivation || Out.Motion.has_value() ||
+            (!Out.AttackContacts.empty() && (Out.bHasHitActivation ||
+                (Out.Motion.has_value() && Out.Motion->strKind != "TO_ARENA_CENTER") ||
                 Out.strPlayerResponse != "DAMAGE" || Out.strHitShape == "NONE")))
         {
             strOutError = "master stage attackContacts contract is invalid";
@@ -2393,8 +2451,8 @@ namespace
 						*pProjection, "timingBasis", DATA_JSON_TYPE::STRING);
 					const DATA_JSON_VALUE* pStageOffset =
 						pProjection->Find("stageOffsetMs");
-					if (!Has_ExactProperties(
-							*pProjection, { "timingBasis", "stageOffsetMs" }) ||
+					if (!Has_ExactPropertiesWithOptional(
+							*pProjection, { "timingBasis", "stageOffsetMs" }, { "stageEndMs" }) ||
 						nullptr == pTimingBasis ||
 						"STAGE_CLOCK" != pTimingBasis->Get_String() ||
 						!Is_NonNegativeInteger(pStageOffset) ||
@@ -2405,6 +2463,12 @@ namespace
 							"master stage-clock cueProjection values are invalid";
 						return false;
 					}
+					const auto* end = pProjection->Find("stageEndMs");
+					Reference.bHasSourceEnd = end && !end->Is_Null();
+					if (Reference.bHasSourceEnd && (!Is_NonNegativeInteger(end) ||
+						end->Get_Number() <= pStageOffset->Get_Number() || end->Get_Number() > 600000.0))
+					{ strOutError = "master stage-clock end leaves Stage"; return false; }
+					Reference.iSourceEndMs = Reference.bHasSourceEnd ? static_cast<uint32_t>(end->Get_Number()) : 0u;
 					Reference.bUsesStageClock = true;
 					Reference.iStageOffsetMs = static_cast<uint32_t>(
 						pStageOffset->Get_Number());
@@ -2549,7 +2613,18 @@ namespace
 
 		const DATA_JSON_VALUE* pSourceActions = Required(
 			Value, "sourceActionIds", DATA_JSON_TYPE::ARRAY);
-		if (nullptr == pSourceActions || pSourceActions->Get_Array().empty() ||
+		const DATA_JSON_VALUE* pPresentationSources = Required(
+			Value, "presentationSources", DATA_JSON_TYPE::ARRAY);
+		// A name-only manual pattern has no claimed source animation. Keep it
+		// editable without inventing a PRIMARY source or an idle clip.
+		const bool_t bUnboundManualPattern =
+			"AUDITION_ONLY" == Read_String(Value, "selectionMode") &&
+			nullptr != pSourceActions && pSourceActions->Get_Array().empty() &&
+			nullptr != pPresentationSources &&
+			pPresentationSources->Get_Array().empty() &&
+			0.0 == pSourceSequence->Get_Number();
+		if (nullptr == pSourceActions ||
+			(!bUnboundManualPattern && pSourceActions->Get_Array().empty()) ||
 			std::any_of(pSourceActions->Get_Array().begin(),
 				pSourceActions->Get_Array().end(),
 				[](const DATA_JSON_VALUE& SourceAction)
@@ -2561,10 +2636,8 @@ namespace
 			strOutError = "master sourceActionIds is invalid";
 			return false;
 		}
-		const DATA_JSON_VALUE* pPresentationSources = Required(
-			Value, "presentationSources", DATA_JSON_TYPE::ARRAY);
 		if (nullptr == pPresentationSources ||
-			pPresentationSources->Get_Array().empty())
+			(!bUnboundManualPattern && pPresentationSources->Get_Array().empty()))
 		{
 			strOutError = "master presentationSources is invalid";
 			return false;
@@ -2893,8 +2966,8 @@ namespace
 				"master pattern-stage Effect cueProjection contract is invalid";
 			return false;
 		}
-		if (Has_ExactProperties(
-				*pProjection, { "timingBasis", "stageOffsetMs" }))
+		if (Has_ExactPropertiesWithOptional(
+				*pProjection, { "timingBasis", "stageOffsetMs" }, { "stageEndMs" }))
 		{
 			const DATA_JSON_VALUE* pTimingBasis = Required(
 				*pProjection, "timingBasis", DATA_JSON_TYPE::STRING);
@@ -2909,6 +2982,12 @@ namespace
 				return false;
 			}
 			Out.bHasCueProjection = true;
+			const auto* end = pProjection->Find("stageEndMs");
+			Out.bHasCueSourceEnd = end && !end->Is_Null();
+			if (Out.bHasCueSourceEnd && (!Is_NonNegativeInteger(end) ||
+				end->Get_Number() <= pStageOffset->Get_Number() || end->Get_Number() > 600000.0))
+			{ strOutError = "independent stage-clock end is invalid"; return false; }
+			Out.iCueSourceEndMs = Out.bHasCueSourceEnd ? static_cast<uint32_t>(end->Get_Number()) : 0u;
 			Out.bUsesCueStageClock = true;
 			Out.iCueStageOffsetMs = static_cast<uint32_t>(
 				pStageOffset->Get_Number());
@@ -2966,7 +3045,7 @@ namespace
 			Value, "ranges", DATA_JSON_TYPE::ARRAY);
 		const DATA_JSON_VALUE* pPatternIds = Required(
 			Value, "patternIds", DATA_JSON_TYPE::ARRAY);
-		if (nullptr == pMode || "WEIGHTED_POOL" != pMode->Get_String() ||
+		if (nullptr == pMode || ("WEIGHTED_POOL" != pMode->Get_String() && "ORDERED_LOOP" != pMode->Get_String()) ||
 			nullptr == pRanges || pRanges->Get_Array().empty() ||
 			nullptr == pPatternIds || pPatternIds->Get_Array().empty())
 		{
@@ -2987,7 +3066,7 @@ namespace
 					Range, { "rotationId", "fromHealthBar", "toHealthBar" }) ||
 				nullptr == pRangeId || !Is_StableToken(pRangeId->Get_String()) ||
 				!Is_NonNegativeInteger(pFrom) || !Is_NonNegativeInteger(pTo) ||
-				0.0 == pFrom->Get_Number() || 0.0 == pTo->Get_Number())
+				0.0 == pFrom->Get_Number() || ("ORDERED_LOOP" != Out.strSelectionMode && 0.0 == pTo->Get_Number()))
 			{
 				strOutError = "master normalSelection range is invalid";
 				return false;
@@ -2998,7 +3077,7 @@ namespace
 			RangeView.iToHealthBar = static_cast<uint32_t>(pTo->Get_Number());
 			if (!RangeIds.insert(RangeView.strRotationId).second ||
 				RangeView.iFromHealthBar <= RangeView.iToHealthBar ||
-				RangeView.iFromHealthBar > iPreviousFromHealthBar)
+				("ORDERED_LOOP" != Out.strSelectionMode && RangeView.iFromHealthBar > iPreviousFromHealthBar))
 			{
 				strOutError = "master normalSelection range is duplicated or inverted";
 				return false;
@@ -3800,6 +3879,11 @@ namespace
 			Product.iPushMs == Master.iPushMs &&
 			Product.bKnockdown == Master.bKnockdown &&
 			Product.iDownMs == Master.iDownMs &&
+			Product.strAimTargetPolicy == Master.strAimTargetPolicy &&
+			Product.bHasAimEnd == Master.bHasAimEnd &&
+			Product.iAimEndMs == Master.iAimEndMs &&
+			Product.bHasAimResponseScale == Master.bHasAimResponseScale &&
+			Product.fAimResponseScale == Master.fAimResponseScale &&
 			Equal_StageMotion(Product.Motion, Master.Motion) &&
 			Equal_StageActions(Product.Actions, Master.Actions) &&
 			Equal_StageBranches(Product.Branches, Master.Branches);
@@ -4096,7 +4180,7 @@ namespace
 			Has_ExactPropertiesWithOptional(Cue,
 				{ "cueId", "occurrenceId", "effectAssetId", "timingBasis",
 				  "stageOffsetMs", "anchorSlotId", "followPolicy", "stopPolicy",
-				  "repeatPolicy", "localTransform", "scalePolicy" }, { "playbackOffsetMs" }) :
+				  "repeatPolicy", "localTransform", "scalePolicy" }, { "playbackOffsetMs", "stageEndMs" }) :
 			Has_ExactPropertiesWithOptional(Cue,
 				{ "cueId", "occurrenceId", "effectAssetId", "clipOccurrenceId",
 				  "sourceStartMs", "sourceEndMs", "anchorSlotId", "followPolicy",
@@ -4125,11 +4209,20 @@ namespace
 				!Is_NonNegativeInteger(Cue.Find("stageOffsetMs")) ||
 				("follow" != Read_String(Cue, "followPolicy") &&
 				 "snapshot" != Read_String(Cue, "followPolicy")) ||
-				"natural" != Read_String(Cue, "stopPolicy") ||
+				("natural" != Read_String(Cue, "stopPolicy") && "cue_end" != Read_String(Cue, "stopPolicy")) ||
 				"once" != Read_String(Cue, "repeatPolicy"))
 			{
 				strOutError =
 					"split stage-clock cue timing/policy is invalid";
+				return false;
+			}
+			const auto* end = Cue.Find("stageEndMs");
+			const bool hasEnd = end && !end->Is_Null();
+			if (("cue_end" == Read_String(Cue, "stopPolicy")) != hasEnd ||
+				(hasEnd && (!Is_NonNegativeInteger(end) ||
+				 end->Get_Number() <= Cue.Find("stageOffsetMs")->Get_Number() || end->Get_Number() > 600000.0)))
+			{
+				strOutError = "split stage-clock cue end is invalid";
 				return false;
 			}
 		}
@@ -4285,6 +4378,9 @@ namespace
 			/* Keep the legacy display position meaningful while consumers move to
 			   the explicit tagged field. It is not a clip-source position. */
 			View.iSourceStartMs = View.iStageOffsetMs;
+			const auto* end = Cue.Find("stageEndMs");
+			View.bHasSourceEnd = end && !end->Is_Null();
+			View.iSourceEndMs = View.bHasSourceEnd ? static_cast<uint32_t>(end->Get_Number()) : 0u;
 		}
 		else
 		{
@@ -4611,14 +4707,15 @@ namespace
 			nullptr == pScriptedSequence ? nullptr :
 				pScriptedSequence->Find("transitionPursuitMs");
 		if (nullptr == pScriptedSequence ||
-			(!Has_ExactProperties(*pScriptedSequence,
-				{ "sequenceId", "mode", "interStepPursuitMs", "patternIds" }) &&
-			 !Has_ExactProperties(*pScriptedSequence,
-				{ "sequenceId", "mode", "interStepPursuitMs", "patternIds",
-				  "transitionPursuitMs" })) ||
+			!Has_ExactPropertiesWithOptional(*pScriptedSequence,
+				{ "sequenceId", "mode", "interStepPursuitMs", "patternIds" },
+				{ "transitionPursuitMs", "entranceCinematicPatternId" }) ||
+			(nullptr != pScriptedSequence->Find("entranceCinematicPatternId") &&
+			 (!pScriptedSequence->Find("entranceCinematicPatternId")->Is_String() ||
+			  !Is_StableToken(Read_String(*pScriptedSequence, "entranceCinematicPatternId")))) ||
 			!Is_StableToken(Read_String(*pScriptedSequence, "sequenceId")) ||
-			"ORDERED_ONCE_THEN_IDLE" !=
-				Read_String(*pScriptedSequence, "mode") ||
+			("ORDERED_ONCE_THEN_IDLE" != Read_String(*pScriptedSequence, "mode") &&
+			 "HEALTH_BAR_ROTATIONS" != Read_String(*pScriptedSequence, "mode")) ||
 			!Is_NonNegativeInteger(
 				pScriptedSequence->Find("interStepPursuitMs")) ||
 			pScriptedSequence->Find("interStepPursuitMs")->Get_Number() < 100.0 ||
@@ -4635,6 +4732,8 @@ namespace
 		ScriptedSequence.strSequenceId = Read_String(
 			*pScriptedSequence, "sequenceId");
 		ScriptedSequence.strMode = Read_String(*pScriptedSequence, "mode");
+		ScriptedSequence.strEntranceCinematicPatternId = Read_String(
+			*pScriptedSequence, "entranceCinematicPatternId");
 		ScriptedSequence.iInterStepPursuitMs = static_cast<uint32_t>(
 			pScriptedSequence->Find("interStepPursuitMs")->Get_Number());
 		for (const DATA_JSON_VALUE& PatternId : pScriptedPatterns->Get_Array())
@@ -4690,6 +4789,27 @@ namespace
 			PatternsBySet;
 		for (const DATA_JSON_VALUE& Set : pSets->Get_Array())
 		{
+			if ("ORDERED_LOOP" == Read_String(Set, "mode"))
+			{
+				const std::string strSetId = Read_String(Set, "selectionSetId");
+				const auto* pMembers = Required(Set, "patternIds", DATA_JSON_TYPE::ARRAY);
+				if (!Has_ExactProperties(Set, {"selectionSetId", "mode", "patternIds"}) ||
+					!Is_StableToken(strSetId) || PatternsBySet.contains(strSetId) ||
+					nullptr == pMembers || pMembers->Get_Array().empty() || pMembers->Get_Array().size() > 32u)
+				{ strOutError = "split gameplay ordered loop is invalid"; return false; }
+				Client::VALTAN_SELECTION_SET_VIEW SetView;
+				SetView.strSelectionSetId = strSetId;
+				SetView.strMode = "ORDERED_LOOP";
+				for (const auto& Member : pMembers->Get_Array())
+				{
+					if (!Member.Is_String() || !Is_StableToken(Member.Get_String()))
+					{ strOutError = "split gameplay ordered loop occurrence is invalid"; return false; }
+					SetView.PatternIds.push_back(Member.Get_String());
+				}
+				PatternsBySet.emplace(strSetId, SetView.PatternIds);
+				OutSelectionSets.push_back(std::move(SetView));
+				continue;
+			}
 			if (!Has_ExactProperties(Set,
 					{ "selectionSetId", "mode", "candidates" }) ||
 				"WEIGHTED_POOL" != Read_String(Set, "mode"))
@@ -4949,7 +5069,7 @@ namespace
 
 		DATA_JSON_VALUE::OBJECT Normal;
 		Normal.emplace("selectionMode",
-			DATA_JSON_VALUE::String("WEIGHTED_POOL"));
+			DATA_JSON_VALUE::String("HEALTH_BAR_ROTATIONS" == ScriptedSequence.strMode ? "ORDERED_LOOP" : "WEIGHTED_POOL"));
 		Normal.emplace("ranges", DATA_JSON_VALUE::Array(std::move(Ranges)));
 		Normal.emplace("patternIds", Build_StringArray(NormalPatternIds));
 		OutNormalSelection = DATA_JSON_VALUE::Object(std::move(Normal));
@@ -5494,6 +5614,7 @@ namespace
 		std::set<std::string, std::less<>> CandidatePatterns;
 		for (const Client::VALTAN_SELECTION_SET_VIEW& Set : SelectionSets)
 		{
+			CandidatePatterns.insert(Set.PatternIds.begin(), Set.PatternIds.end());
 			for (const Client::VALTAN_SELECTION_CANDIDATE_VIEW& Candidate :
 				Set.Candidates)
 			{
@@ -5664,7 +5785,7 @@ namespace
 						  "defaultNextActionId", "hit", "motion", "events",
 						  "branches" },
 						{ "partDamagePolicy", "counterProxy", "bossResponse",
-						  "verticalOffsetM" }) ||
+						  "verticalOffsetM", "aim" }) ||
 					!Has_ExactPropertiesWithOptional(PresentationStage,
 						{ "stageId", "actionId", "sequenceRole", "animation",
 						  "effectCues", "cameraInvocations" },
@@ -5798,6 +5919,8 @@ namespace
 					return false;
 				}
 				LegacyStage.emplace("motion", *pMotion);
+				if (const DATA_JSON_VALUE* pAim = GameplayStage.Find("aim"))
+					LegacyStage.emplace("aim", *pAim);
 
 				DATA_JSON_VALUE::ARRAY Actions;
 				DATA_JSON_VALUE::ARRAY EffectReferences;
@@ -5935,8 +6058,9 @@ namespace
 						nullptr != Cue.Find("timingBasis");
 					if (bUsesStageClock)
 					{
-						if (Cue.Find("stageOffsetMs")->Get_Number() >=
-								pDuration->Get_Number())
+						const auto* end = Cue.Find("stageEndMs");
+						if (Cue.Find("stageOffsetMs")->Get_Number() >= pDuration->Get_Number() ||
+							(end && !end->Is_Null() && end->Get_Number() > 600000.0))
 						{
 							strOutError =
 								"split stage-clock cue left its Stage wall";
@@ -6015,6 +6139,7 @@ namespace
 						{
 							Projection.emplace("timingBasis", *Cue.Find("timingBasis"));
 							Projection.emplace("stageOffsetMs", *Cue.Find("stageOffsetMs"));
+							if (const auto* end = Cue.Find("stageEndMs")) Projection.emplace("stageEndMs", *end);
 						}
 						else
 						{
@@ -6230,7 +6355,8 @@ namespace
 			LegacyPattern.emplace("selectionWeight", DATA_JSON_VALUE::Number(
 				pCompatibilityWeight->Get_Number()));
 			LegacyPattern.emplace("maximumConsecutiveUses",
-				*pRepeatPolicy->Find("limit"));
+				bManual ? DATA_JSON_VALUE::Number(0.0) :
+					*pRepeatPolicy->Find("limit"));
 			LegacyPattern.emplace("minimumRange",
 				*pEligibility->Find("minimumRangeM"));
 			LegacyPattern.emplace("maximumRange",
@@ -6280,6 +6406,7 @@ namespace
 				{
 					Projection.emplace("timingBasis", *Cue.Find("timingBasis"));
 					Projection.emplace("stageOffsetMs", *Cue.Find("stageOffsetMs"));
+					if (const auto* end = Cue.Find("stageEndMs")) Projection.emplace("stageEndMs", *end);
 				}
 				else
 				{
@@ -6368,6 +6495,21 @@ namespace
 				return false;
 			}
 		}
+		if (ScriptedSequence.strMode == "HEALTH_BAR_ROTATIONS" &&
+			!ScriptedSequence.strEntranceCinematicPatternId.empty())
+		{
+			const auto Entrance = std::find_if(Out.Patterns.begin(), Out.Patterns.end(),
+				[&ScriptedSequence](const MASTER_PATTERN& Pattern)
+				{ return Pattern.strPatternId == ScriptedSequence.strEntranceCinematicPatternId; });
+			if (ScriptedSequence.strEntranceCinematicPatternId != CINEMATIC_ENTRY_PATTERN_ID ||
+				Entrance == Out.Patterns.end() || Entrance->strCategory != "NORMAL" ||
+				Entrance->strTargetPolicy != "NONE" || Entrance->strAimPolicy != "NONE" ||
+				!Entrance->bInvulnerableWhileRunning)
+			{
+				strOutError = "split gameplay entrance cinematic requires the managed invulnerable NORMAL entrance with NONE target/aim";
+				return false;
+			}
+		}
 		Out.SelectionSets = std::move(SelectionSets);
 		Out.SelectionWindows = std::move(SelectionWindows);
 		Out.Mechanics = std::move(MechanicViews);
@@ -6424,6 +6566,19 @@ namespace
 							return false;
 						}
 					}
+					else if (Anchor.starts_with("pattern.landing."))
+					{
+						if (Anchor != "pattern.landing.snapshot" ||
+							Read_String(Cue, "followPolicy") != "snapshot" ||
+							!Pattern.ServerMotion.has_value() ||
+							(Pattern.ServerMotion->strKind != "LEAP_TO_ANCHOR" &&
+							 Pattern.ServerMotion->strKind != "LEAP_TO_TARGET"))
+						{
+							strOutError = "split landing cue requires snapshot follow and a Server leap: " +
+								Pattern.strPatternId + "/" + Stage.strStageId;
+							return false;
+						}
+					}
 					else if (Anchor.starts_with("arena.center"))
 					{
 						const bool_t bFixedFacing =
@@ -6439,16 +6594,25 @@ namespace
 							Pattern.ServerMotion.has_value() &&
 							"LEAP_TO_ANCHOR" == Pattern.ServerMotion->strKind &&
 							Pattern.ServerMotion->bMoveToAnchorBeforeTakeoff;
+						const bool_t bStageCenterFollow =
+							("NEAREST_EACH_TICK" == Stage.strAimTargetPolicy ||
+							 "PATTERN_TARGET" == Stage.strAimTargetPolicy) &&
+							std::any_of(Pattern.Stages.begin(), Pattern.Stages.begin() + iStage + 1u,
+								[](const MASTER_STAGE& Candidate) {
+									return Candidate.Motion.has_value() &&
+										"TO_ARENA_CENTER" == Candidate.Motion->strKind;
+								});
 						if (("arena.center" != Anchor && !bFixedFacing &&
 							 !bTargetFollow) ||
 							(bFixedCenter && !bHasFixedCenterMotion) ||
-							(!bFixedCenter && !bHasCenterApproach) ||
+							(!bFixedCenter && !bHasCenterApproach &&
+							 !(bTargetFollow && bStageCenterFollow)) ||
 							Read_String(Cue, "followPolicy") !=
 								(bTargetFollow ? "follow" : "snapshot") ||
 							(bFixedFacing &&
 							 (Pattern.strAimPolicy != "LOCK_FACING_ON_START" ||
 							  Pattern.strTargetPolicy != "LOCK_RANDOM_ALIVE_ON_START")) ||
-							(bTargetFollow &&
+							(bTargetFollow && !bStageCenterFollow &&
 							 (Pattern.strAimPolicy != "TRACK_TARGET_EACH_TICK" ||
 							  Pattern.strTargetPolicy != "LOCK_RANDOM_ALIVE_ON_START")))
 						{
@@ -6571,6 +6735,11 @@ namespace
 			Stage.iPushMs = Source.iPushMs;
 			Stage.bKnockdown = Source.bKnockdown;
 			Stage.iDownMs = Source.iDownMs;
+			Stage.strAimTargetPolicy = Source.strAimTargetPolicy;
+			Stage.bHasAimEnd = Source.bHasAimEnd;
+			Stage.iAimEndMs = Source.iAimEndMs;
+			Stage.bHasAimResponseScale = Source.bHasAimResponseScale;
+			Stage.fAimResponseScale = Source.fAimResponseScale;
 			Stage.Motion = Source.Motion;
 			Stage.Actions = Source.Actions;
 			Stage.Branches = Source.Branches;
@@ -6593,6 +6762,28 @@ namespace
 		pDiagnostic->strStatus = strStatus;
 		pDiagnostic->strRejectedPatternId.assign(strPatternId);
 		pDiagnostic->strRejectedStageId.assign(strStageId);
+	}
+
+	bool_t Join_StageEffectV2SourceScopes(MASTER_DOCUMENT& Master, std::string& strOutError)
+	{
+		const auto path = Client::CProjectDataRoot::Resolve(std::filesystem::path(L"Effects") /
+			L"V2" / L"Bindings" / L"BOSS_VALTAN.effectv2bindings.json");
+		std::error_code error;
+		if (!std::filesystem::exists(path, error) && !error) return true;
+		std::string text;
+		std::vector<Client::EFFECT_V2_BINDING> bindings;
+		if (!Read_TextDocument(path, text, strOutError) ||
+			!Client::CEffectV2Document::Parse_Bindings(text, "BOSS_VALTAN", bindings, strOutError))
+			return false;
+		for (auto& pattern : Master.Patterns)
+			for (auto& stage : pattern.Stages)
+				stage.bHasStageEffectV2Bindings = std::any_of(bindings.begin(), bindings.end(),
+					[&](const auto& binding) {
+						return binding.eClockBasis == Client::EFFECT_V2_CLOCK_BASIS::STAGE &&
+							binding.strPatternId == pattern.strPatternId && binding.strStageId == stage.strStageId &&
+							binding.strActionId == stage.strActionId && binding.iStartMs < stage.iDurationMs;
+					});
+		return true;
 	}
 
 	bool_t Apply_MasterDocument(
@@ -6649,11 +6840,28 @@ namespace
 				Independent.strIndependentEffectId, &Independent);
 		}
 		std::set<std::string, std::less<>> ReferencedIndependentIds;
+		std::set<std::string, std::less<>> UnboundManualPatternIds;
 
 		for (const MASTER_PATTERN& MasterPattern : Master.Patterns)
 		{
 			Client::VALTAN_PATTERN_VIEW* pPattern = Find_Pattern(
 				View, MasterPattern.strPatternId);
+			if (MasterPattern.bManualServerAudition &&
+				MasterPattern.SourceActionIds.empty() &&
+				MasterPattern.PresentationSources.empty() &&
+				std::all_of(MasterPattern.Stages.begin(), MasterPattern.Stages.end(),
+					[](const auto& Stage) { return Stage.Occurrences.empty() && Stage.EffectReferences.empty() &&
+						!Stage.bHasStageEffectV2Bindings && (Stage.strHitShape.empty() || Stage.strHitShape == "NONE"); }))
+			{
+				// Source-only empty patterns never become a Server Product until
+				// their first real animation or independent Effect is assigned and published.
+				if (nullptr != pPattern)
+					return RejectStaleProjection(
+						"unbound manual pattern unexpectedly exists in Product: " +
+							MasterPattern.strPatternId, MasterPattern.strPatternId);
+				UnboundManualPatternIds.insert(MasterPattern.strPatternId);
+				continue;
+			}
 			if (nullptr == pPattern ||
 				(bRequireProductParity &&
 				 !Equal_MasterPatternGameplay(*pPattern, MasterPattern)) ||
@@ -6732,16 +6940,21 @@ namespace
 								MasterStage.strStageId);
 						}
 					}
-					for (size_t iCue = 0u;
-						iCue < MasterStage.AuthoredCues.size(); ++iCue)
+					// Product cues are sorted for playback; authored array order is
+					// not their identity. Both parsers already reject duplicate IDs.
+					for (const Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW& AuthoredCue :
+						MasterStage.AuthoredCues)
 					{
-						if (!Equal_AuthoredCue(
-								Stage.ProductCues[iCue],
-								MasterStage.AuthoredCues[iCue]))
+						const auto ProductCue = std::find_if(
+							Stage.ProductCues.begin(), Stage.ProductCues.end(),
+							[&AuthoredCue](const auto& Cue)
+							{ return Cue.strBindingId == AuthoredCue.strBindingId; });
+						if (Stage.ProductCues.end() == ProductCue ||
+							!Equal_AuthoredCue(*ProductCue, AuthoredCue))
 						{
 							return RejectStaleProjection(
 								"master/Product Effect cue changed: " +
-									MasterStage.AuthoredCues[iCue].strBindingId,
+									AuthoredCue.strBindingId,
 								MasterPattern.strPatternId,
 								MasterStage.strStageId);
 						}
@@ -6778,6 +6991,7 @@ namespace
 						}
 					}
 				}
+				Stage.bHasStageEffectV2Bindings = MasterStage.bHasStageEffectV2Bindings;
 				Stage.strSequenceRole = MasterStage.strSequenceRole;
 				Stage.iAuthoringRepeatCount = MasterStage.iRepeatCount;
 				Stage.strAnimationEndPolicy =
@@ -6808,7 +7022,8 @@ namespace
 										Reference.bUsesStageClock &&
 									(Reference.bUsesStageClock ?
 										(Cue.iStageOffsetMs ==
-										 Reference.iStageOffsetMs) :
+										 Reference.iStageOffsetMs && Cue.bHasSourceEnd == Reference.bHasSourceEnd &&
+                                        (!Reference.bHasSourceEnd || Cue.iSourceEndMs == Reference.iSourceEndMs)) :
 										(Cue.strClipOccurrenceId ==
 											Reference.strClipOccurrenceId &&
 										 Cue.iSourceStartMs ==
@@ -6867,15 +7082,16 @@ namespace
 			!Is_NonNegativeInteger(PatternRotations.Find("formatVersion")) ||
 			4.0 != PatternRotations.Find("formatVersion")->Get_Number() ||
 			nullptr == pProductScriptedSequence ||
-			(!Has_ExactProperties(*pProductScriptedSequence,
-				{ "sequenceId", "mode", "interStepPursuitMs", "patternIds" }) &&
-			 !Has_ExactProperties(*pProductScriptedSequence,
-				{ "sequenceId", "mode", "interStepPursuitMs", "patternIds",
-				  "transitionPursuitMs" })) ||
+			!Has_ExactPropertiesWithOptional(*pProductScriptedSequence,
+				{ "sequenceId", "mode", "interStepPursuitMs", "patternIds" },
+				{ "transitionPursuitMs", "entranceCinematicPatternId" }) ||
+			(nullptr != pProductScriptedSequence->Find("entranceCinematicPatternId") &&
+			 (!pProductScriptedSequence->Find("entranceCinematicPatternId")->Is_String() ||
+			  !Is_StableToken(Read_String(*pProductScriptedSequence, "entranceCinematicPatternId")))) ||
 			!Is_StableToken(Read_String(
 				*pProductScriptedSequence, "sequenceId")) ||
-			"ORDERED_ONCE_THEN_IDLE" != Read_String(
-				*pProductScriptedSequence, "mode") ||
+			("ORDERED_ONCE_THEN_IDLE" != Read_String(*pProductScriptedSequence, "mode") &&
+			 "HEALTH_BAR_ROTATIONS" != Read_String(*pProductScriptedSequence, "mode")) ||
 			!Is_NonNegativeInteger(
 				pProductScriptedSequence->Find("interStepPursuitMs")) ||
 			pProductScriptedSequence->Find(
@@ -6949,6 +7165,8 @@ namespace
 				Master.ScriptedSequence.strSequenceId ||
 			 Read_String(*pProductScriptedSequence, "mode") !=
 				Master.ScriptedSequence.strMode ||
+			 Read_String(*pProductScriptedSequence, "entranceCinematicPatternId") !=
+				Master.ScriptedSequence.strEntranceCinematicPatternId ||
 			 static_cast<uint32_t>(pProductScriptedSequence->Find(
 					"interStepPursuitMs")->Get_Number()) !=
 					Master.ScriptedSequence.iInterStepPursuitMs ||
@@ -6962,6 +7180,7 @@ namespace
 		}
 		View.strScriptedSequenceId = Master.ScriptedSequence.strSequenceId;
 		View.strScriptedSequenceMode = Master.ScriptedSequence.strMode;
+		View.strEntranceCinematicPatternId = Master.ScriptedSequence.strEntranceCinematicPatternId;
 		View.iScriptedSequenceInterStepPursuitMs =
 			Master.ScriptedSequence.iInterStepPursuitMs;
 		View.ScriptedSequencePatternIds = Master.ScriptedSequence.PatternIds;
@@ -7020,6 +7239,34 @@ namespace
 						"Valtan managed Product rotation order drifted");
 				}
 				++iManagedRotationOrdinal;
+				if ("ORDERED_LOOP" == Read_String(Row, "selectionMode"))
+				{
+					const auto& Window = *Managed->second;
+					const auto Set = SetById.find(Window.strSelectionSetId);
+					const auto* pMembers = Required(Row, "patternIds", DATA_JSON_TYPE::ARRAY);
+					if (!Has_ExactProperties(Row, {"rotationId", "selectionMode", "fromHealthBar", "toHealthBar",
+						"windowId", "gameplayPhase", "selectionSetId", "patternIds"}) ||
+						nullptr == pMembers || pMembers->Get_Array().empty() || pMembers->Get_Array().size() > 32u)
+					{ strOutError = "Valtan ordered loop Product shape is invalid"; return false; }
+					std::vector<std::string> Members;
+					for (const auto& Member : pMembers->Get_Array())
+					{
+						if (!Member.Is_String() || !Is_StableToken(Member.Get_String()))
+						{ strOutError = "Valtan ordered loop Product occurrence is invalid"; return false; }
+						Members.push_back(Member.Get_String());
+					}
+					if (bRequireProductParity && (Set == SetById.end() || "ORDERED_LOOP" != Set->second->strMode ||
+						Members != Set->second->PatternIds || Read_String(Row, "windowId") != Window.strWindowId ||
+						Read_String(Row, "selectionSetId") != Window.strSelectionSetId ||
+						!Is_NonNegativeInteger(Row.Find("gameplayPhase")) || !Is_NonNegativeInteger(Row.Find("fromHealthBar")) ||
+						!Is_NonNegativeInteger(Row.Find("toHealthBar")) ||
+						Row.Find("gameplayPhase")->Get_Number() != Window.iGameplayPhase ||
+						Row.Find("fromHealthBar")->Get_Number() != Window.iMaximumHealthBarInclusive ||
+						Row.Find("toHealthBar")->Get_Number() != Window.iMinimumHealthBarExclusive))
+						return RejectStaleProjection("Valtan ordered loop Product parity drifted: " + strRotationId);
+					SeenManagedRotations.insert(strRotationId);
+					continue;
+				}
 				if (!Has_ExactProperties(Row,
 						{ "rotationId", "selectionMode", "fromHealthBar",
 						  "toHealthBar", "windowId", "gameplayPhase",
@@ -7133,7 +7380,7 @@ namespace
 		}
 		if (SeenManagedRotations.size() != Master.SelectionWindows.size() ||
 			iManagedRotationOrdinal != Master.SelectionWindows.size() ||
-			iLegacyRotationOrdinal != iLegacyRotationCount)
+			iLegacyRotationOrdinal != ("HEALTH_BAR_ROTATIONS" == Master.ScriptedSequence.strMode ? 0u : iLegacyRotationCount))
 		{
 			return RejectStaleProjection(
 				"Valtan Product selection-window/legacy rotation coverage is incomplete");
@@ -7142,6 +7389,9 @@ namespace
 		View.SelectionWindows = Master.SelectionWindows;
 		View.Mechanics = Master.Mechanics;
 		View.ManualAuditions = Master.ManualAuditions;
+		std::erase_if(View.ManualAuditions,
+			[&UnboundManualPatternIds](const auto& Manual)
+			{ return UnboundManualPatternIds.contains(Manual.strPatternId); });
 		View.NormalSelection = Master.NormalSelection;
 		for (const std::string& PatternId : View.NormalSelection.PatternIds)
 		{
@@ -7346,7 +7596,8 @@ namespace
 								Independent.bUsesCueStageClock) &&
 							(Independent.bUsesCueStageClock ?
 								(Cue.iStageOffsetMs ==
-									Independent.iCueStageOffsetMs) :
+									Independent.iCueStageOffsetMs && Cue.bHasSourceEnd == Independent.bHasCueSourceEnd &&
+                                    (!Independent.bHasCueSourceEnd || Cue.iSourceEndMs == Independent.iCueSourceEndMs)) :
 								(Cue.strClipOccurrenceId ==
 									Independent.strCueClipOccurrenceId &&
 								 Cue.iSourceStartMs ==
@@ -8056,6 +8307,12 @@ bool_t Client::CValtanPatternTree::Build_PlayablePatternInventory(
 					return false;
 				}
 			}
+			if (Pattern.bManualServerAudition && Pattern.SourceActionIds.empty() &&
+				Pattern.PresentationSources.empty() &&
+				std::all_of(Pattern.Stages.begin(), Pattern.Stages.end(),
+					[](const auto& Stage) { return Stage.ClipOccurrences.empty() && Stage.ProductCues.empty() &&
+						!Stage.bHasStageEffectV2Bindings && !Stage.Has_HitShape(); }))
+				continue;
 			StagedPatterns.push_back(&Pattern);
 		}
 	}
@@ -8078,8 +8335,16 @@ bool_t Client::CValtanPatternTree::Build_PlayablePatternInventory(
 	/* Preserve the authored manual display order independently of Next's
 	   source-sequence ordering. Membership was validated in both directions. */
 	for (const VALTAN_MANUAL_AUDITION_VIEW& Manual : View.ManualAuditions)
+	{
+		const auto* Pattern = Find_Pattern(View, Manual.strPatternId);
+		if (Pattern->SourceActionIds.empty() && Pattern->PresentationSources.empty() &&
+			std::all_of(Pattern->Stages.begin(), Pattern->Stages.end(),
+				[](const auto& Stage) { return Stage.ClipOccurrences.empty() && Stage.ProductCues.empty() &&
+						!Stage.bHasStageEffectV2Bindings && !Stage.Has_HitShape(); }))
+			continue;
 		("DERIVED_SERVER_PATTERN" == Manual.strAdmissionState ?
 			Staged.DerivedPatternIds : Staged.AnimatorPatternIds).push_back(Manual.strPatternId);
+	}
 	OutInventory = std::move(Staged);
 	strOutError.clear();
 	return true;
@@ -8264,6 +8529,7 @@ bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 	size_t iStage = 0u;
 	bool_t bWallContactTaken = false;
 	bool_t bCounterHitTaken = false;
+	bool_t bCaptureTaken = false;
 	for (;;)
 	{
 		const VALTAN_STAGE_VIEW& Stage = Pattern.Stages[iStage];
@@ -8297,6 +8563,15 @@ bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 			}
 			return true;
 		};
+		if (VALTAN_PATTERN_PREVIEW_PATH::CAPTURE_SUCCESS == ePath)
+		{
+			if (!SelectOutcome("ANY_PLAYER_GRABBED"))
+			{
+				strOutStatus = "Valtan preview path has ambiguous ANY_PLAYER_GRABBED edges.";
+				return false;
+			}
+			bCaptureTaken = bCaptureTaken || nullptr != pSelected;
+		}
 		if (VALTAN_PATTERN_PREVIEW_PATH::COUNTER_GROGGY == ePath)
 		{
 			if (!SelectOutcome("COUNTER_HIT"))
@@ -8355,6 +8630,11 @@ bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 		iStage = Next->second;
 	}
 
+	if (VALTAN_PATTERN_PREVIEW_PATH::CAPTURE_SUCCESS == ePath && !bCaptureTaken)
+	{
+		strOutStatus = "Valtan Capture Success preview path has no ANY_PLAYER_GRABBED branch.";
+		return false;
+	}
 	if (VALTAN_PATTERN_PREVIEW_PATH::COUNTER_GROGGY == ePath &&
 		!bCounterHitTaken)
 	{
@@ -8468,7 +8748,8 @@ bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
 			Gameplay, strOutStatus) ||
 		!Parse_Document(std::filesystem::path(L"Valtan") / L"Valtan.presentation.json",
 			Presentation, strOutStatus) ||
-		!Parse_SplitMasterDocument(Gameplay, Presentation, Master, strOutStatus))
+		!Parse_SplitMasterDocument(Gameplay, Presentation, Master, strOutStatus) ||
+		!Join_StageEffectV2SourceScopes(Master, strOutStatus))
 		return false;
     DATA_JSON_VALUE CombatAuthoring, BossCatalog;
     if (!Parse_Document(std::filesystem::path(L"Valtan") / L"Valtan.combatobjects.json", CombatAuthoring, strOutStatus) ||
@@ -8592,6 +8873,7 @@ bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
 	VALTAN_PATTERN_TREE_VIEW Staged;
 	Staged.strScriptedSequenceId = Master.ScriptedSequence.strSequenceId;
 	Staged.strScriptedSequenceMode = Master.ScriptedSequence.strMode;
+	Staged.strEntranceCinematicPatternId = Master.ScriptedSequence.strEntranceCinematicPatternId;
 	Staged.iScriptedSequenceInterStepPursuitMs = Master.ScriptedSequence.iInterStepPursuitMs;
 	Staged.ScriptedSequencePatternIds = Master.ScriptedSequence.PatternIds;
 	Staged.ScriptedSequenceTransitionPursuitMs = Master.ScriptedSequence.TransitionPursuitMs;
@@ -8632,6 +8914,7 @@ bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
 			Stage.bSuppressAnimation = Row.bSuppressAnimation;
 			Stage.ClipOccurrences = Row.Occurrences;
 			Stage.ProductCues = Row.AuthoredCues;
+			Stage.bHasStageEffectV2Bindings = Row.bHasStageEffectV2Bindings;
 			Stage.CameraInvocations = Row.CameraInvocations;
             Stage.SceneProfileOccurrences = Row.SceneProfileOccurrences;
             Stage.LightOccurrences = Row.LightOccurrences;
@@ -8823,7 +9106,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 	}
 	MASTER_DOCUMENT MasterDocument;
 	if (!Parse_SplitMasterDocument(
-			GameplayRoot, PresentationRoot, MasterDocument, Error))
+			GameplayRoot, PresentationRoot, MasterDocument, Error) ||
+		!Join_StageEffectV2SourceScopes(MasterDocument, Error))
 	{
 		strOutStatus = "Valtan split authoring strict join failed: " + Error;
 		Set_CanonicalReadFailure(
@@ -9292,7 +9576,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			Pattern.strSelectionMode.empty() ||
 			Pattern.strArmorRequirement.empty() ||
 			Pattern.strPhaseRequirement.empty() || nullptr == pInvulnerable ||
-			nullptr == pSourceActionIds || pSourceActionIds->Get_Array().empty() ||
+			nullptr == pSourceActionIds ||
+			(pSourceActionIds->Get_Array().empty() &&
+			 "AUDITION_ONLY" != Pattern.strSelectionMode) ||
 			!Read_RequiredUInt32(
 				PatternValue, "minimumPhase", Pattern.iMinimumPhase) ||
 			!Read_RequiredUInt32(
@@ -9461,6 +9747,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						StageValue, "pushMs", Stage.iPushMs) ||
 					!Read_RequiredUInt32(
 						StageValue, "downMs", Stage.iDownMs) ||
+					!Read_StageAim(StageValue.Find("aim"), Stage.iDurationMs, Stage.strAimTargetPolicy,
+						Stage.bHasAimEnd, Stage.iAimEndMs, Stage.bHasAimResponseScale, Stage.fAimResponseScale) ||
 					!Read_StageMotion(StageValue.Find("motion"),
 						Stage.iDurationMs, Stage.Motion) ||
 					!Read_StageActions(StageValue.Find("actions"),
@@ -9551,7 +9839,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 
         if (!LostArk::Shared::Validate_StageAttackContacts(Stage.AttackContacts,
             Stage.iDurationMs, Stage.HitOffsetsMs, Stage.iHitCount, Stage.iHitDelayMs, Stage.iHitIntervalMs) ||
-            (!Stage.AttackContacts.empty() && (Stage.bHasHitActivation || Stage.Motion.has_value() ||
+            (!Stage.AttackContacts.empty() && (Stage.bHasHitActivation ||
+                (Stage.Motion.has_value() && Stage.Motion->strKind != "TO_ARENA_CENTER") ||
                 Stage.strPlayerResponse != "DAMAGE" || Stage.strHitShape == "NONE")))
         {
             strOutStatus = "Valtan encounter stage attackContacts contract is invalid";
@@ -9784,7 +10073,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						if (Cue.bUsesStageClock)
 						{
 							if (!Cue.strClipOccurrenceId.empty() ||
-								Cue.iStageOffsetMs >= Stage.iDurationMs)
+								Cue.iStageOffsetMs >= Stage.iDurationMs ||
+                                (Cue.bHasSourceEnd && (Cue.iSourceEndMs <= Cue.iStageOffsetMs || Cue.iSourceEndMs > 600000u)))
 							{
 								strOutStatus =
 									"Valtan stage-clock Effect cue left its Stage wall: " +

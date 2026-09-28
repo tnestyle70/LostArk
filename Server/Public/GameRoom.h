@@ -1509,6 +1509,12 @@ namespace LostArk::Server
 			const SERVER_WORLD_ENTITY& boss,
 			std::uint32_t serverTick);
 		bool Commit_DueEncounterProps(std::uint32_t serverTick);
+		bool Initialize_WorldPickups();
+		void Reset_WorldPickups(std::uint32_t serverTick);
+		void Update_WorldPickups(std::uint32_t serverTick, bool allowCollection = true);
+		void Apply_WorldPickupDestruction(const WORLD_DESTRUCTION_TRANSACTION& transaction,
+			std::uint32_t serverTick);
+		void Remove_RemainingWorldPickups(std::uint32_t serverTick);
 		bool Send_EncounterPropSync(
 			const std::shared_ptr<CClientSession>& session);
 		void Broadcast_EncounterPropSync();
@@ -1821,6 +1827,13 @@ namespace LostArk::Server
 		CEstherSkillSystem m_EstherSkillSystem;
 		CWorldDestructionBootstrap m_WorldDestructionBootstrap;
 		CWorldDestructionRuntime m_WorldDestructionRuntime;
+		struct WORLD_PICKUP_RUNTIME final
+		{
+			WORLD_PICKUP_DESCRIPTOR Descriptor;
+			LostArk::Shared::WORLD_PICKUP_SNAPSHOT Snapshot;
+		};
+		std::vector<WORLD_PICKUP_RUNTIME> m_WorldPickups;
+		std::uint32_t m_iWorldPickupEncounterEpoch = 0u;
 		/* The four pillars come back four times in one fight, so they live in a
 		reversible prop runtime instead of a one-way destruction group. */
 		CEncounterPropRuntime m_EncounterPropRuntime;

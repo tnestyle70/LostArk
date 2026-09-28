@@ -74,6 +74,13 @@ class DynamicGhostConsumerContractTests(unittest.TestCase):
             self.assertIn("VALTAN_FOUR_SLASH", source)
             self.assertIn("VALTAN_WHIRLWIND", source)
         self.assertIn("data-driven two-child reordered finale was rejected", client_test)
+        self.assertIn("VALTAN_FIXTURE_DYNAMIC_FINALE", client_test)
+        self.assertIn("whole-Encounter optional finale interval admission failed", client_test)
+        self.assertIn("legacy six-child canonical finale was rejected", client_test)
+        reference = read("Client/Private/EncounterPatternReference.cpp")
+        for field in ("auxiliarySpawnIntervalMs", "portalSpawnIntervalMs"):
+            self.assertIn(field, client_test)
+            self.assertIn(field, reference)
         self.assertIn('"maximumActiveGhosts", "2"', client_test)
         self.assertIn("finale-data-driven", server_test)
         self.assertIn("const std::string dynamicFinaleRow =", server_test)

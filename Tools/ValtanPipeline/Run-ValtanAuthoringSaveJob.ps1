@@ -10,6 +10,8 @@ param(
     [string]$SourceBaselineRoot = '',
     [string]$PatternSoundBaselinePath = '',
     [string]$PatternSoundCandidatePath = '',
+    [string]$PatternShakeBaselinePath = '',
+    [string]$PatternShakeCandidatePath = '',
     [string]$EffectV2BaselinePath = '',
     [string]$EffectV2CandidatePath = '',
     [string]$EffectV2ReadSetPath = '',
@@ -123,6 +125,8 @@ try {
         $pairs = @(
             @('-PatternSoundBaselinePath', $PatternSoundBaselinePath),
             @('-PatternSoundCandidatePath', $PatternSoundCandidatePath),
+            @('-PatternShakeBaselinePath', $PatternShakeBaselinePath),
+            @('-PatternShakeCandidatePath', $PatternShakeCandidatePath),
             @('-EffectV2BaselinePath', $EffectV2BaselinePath),
             @('-EffectV2CandidatePath', $EffectV2CandidatePath)
         )

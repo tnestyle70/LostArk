@@ -202,6 +202,121 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
         iterable = paths.keys() if isinstance(paths, dict) else paths
         return {path: promotion._read_bytes_or_none(path) for path in iterable}
 
+    def empty_request(self) -> dict:
+        request = self.request()
+        request["intakeChain"] = {"selectionKind": "EMPTY_PATTERN"}
+        return request
+
+    def test_empty_pattern_has_real_empty_tracks_and_no_product_writes(self) -> None:
+        targets, baselines, result = self.prepare(self.empty_request())
+        self.assertTrue(result["sourceOnly"])
+        self.assertEqual(0, result["projectedArtifactCount"])
+        self.assertEqual(set(targets), {self.root / relative for relative in (
+            promotion.DEBUG_REL, promotion.MANIFEST_REL, promotion.GAMEPLAY_REL,
+            promotion.PRESENTATION_REL, promotion.RECEIPT_REL,
+            promotion.COMPOSITION_DESCRIPTOR_REL)})
+        gameplay = json.loads(targets[self.root / promotion.GAMEPLAY_REL])
+        presentation = json.loads(targets[self.root / promotion.PRESENTATION_REL])
+        pattern = gameplay["patterns"][-1]
+        visual = presentation["patterns"][-1]
+        self.assertEqual([], pattern["sourceActionIds"])
+        self.assertEqual([], visual["presentationSources"])
+        self.assertEqual(0, visual["sourceSequenceIndex"])
+        self.assertEqual("ACTIVE", pattern["stages"][0]["stageKind"])
+        self.assertEqual({"shape": {"kind": "NONE"}}, pattern["stages"][0]["hit"])
+        self.assertEqual({"mode": "NONE"}, visual["stages"][0]["animation"])
+        self.assertEqual([], visual["stages"][0]["effectCues"])
+        chain = json.loads(targets[self.root / promotion.DEBUG_REL])["chains"][-1]
+        self.assertEqual({"endPolicy": "NONE", "repeatCount": 0, "occurrences": []}, chain["animation"])
+        promotion._atomic_commit(targets, expected_baselines=baselines, repository_root=self.root)
+        self.assertEqual(targets, {path: path.read_bytes() for path in targets})
+        pipeline = promotion._load_v2_pipeline(REPOSITORY_ROOT)
+        joined = pipeline.join_v2_authoring(
+            gameplay, presentation,
+            pipeline.read_json(self.root / pipeline.WORLD_SET_REL),
+            pipeline.read_json(self.root / pipeline.COMBAT_AUTHORING_REL))
+        reopened_gameplay, reopened_presentation = pipeline.split_v2_authoring(
+            joined, pipeline.read_json(self.root / pipeline.WORLD_SET_REL),
+            pipeline.read_json(self.root / pipeline.COMBAT_AUTHORING_REL))
+        self.assertEqual(gameplay, reopened_gameplay)
+        self.assertEqual(presentation, reopened_presentation)
+
+    def test_empty_pattern_rejects_supplied_clip_and_unmarked_empty_chain(self) -> None:
+        request = self.empty_request()
+        request["intakeChain"]["chain"] = {}
+        with self.assertRaises(promotion.PromotionError):
+            self.prepare(request)
+        request = self.request()
+        request["intakeChain"]["chain"]["animation"]["occurrences"] = []
+        with self.assertRaises(promotion.PromotionError):
+            self.prepare(request)
+
+    def test_empty_pattern_transaction_rolls_back_all_source_owners(self) -> None:
+        targets, baselines, _ = self.prepare(self.empty_request())
+        before = self.exact_bytes(baselines)
+        with self.assertRaises(promotion.PromotionError):
+            promotion._atomic_commit(targets, expected_baselines=baselines,
+                                     repository_root=self.root, inject_failure_after=2)
+        self.assertEqual(before, self.exact_bytes(baselines))
+
+    def test_empty_pattern_first_sequence_declares_primary_without_fake_source(self) -> None:
+        targets, _, _ = self.prepare(self.empty_request())
+        pipeline = promotion._load_v2_pipeline(REPOSITORY_ROOT)
+        docs = pipeline.load_pipeline_documents(REPOSITORY_ROOT)
+        gameplay = json.loads(targets[self.root / promotion.GAMEPLAY_REL])
+        presentation = json.loads(targets[self.root / promotion.PRESENTATION_REL])
+        master = pipeline.join_v2_authoring(gameplay, presentation,
+            docs[pipeline.WORLD_SET_REL], docs[pipeline.COMBAT_AUTHORING_REL])
+        stage = master["patterns"][-1]["stages"][0]
+        operations = [
+            {"op": "ADD_PATTERN_SEQUENCE_SOURCE", "patternId": "VALTAN_WORKBENCH_NEW_PATTERN",
+             "sourceActionId": 420612, "sequenceIndex": 3, "role": "PRIMARY"},
+            {"op": "SET_STAGE_ANIMATION", "patternId": "VALTAN_WORKBENCH_NEW_PATTERN",
+             "stageId": "STEP_01", "animation": {"endPolicy": "EXACT", "repeatCount": 1,
+             "occurrences": [{"clipOccurrenceId": stage["actionId"] + ".clip-01",
+                "clip": "mesh_att_battle_12_01", "mappingBasis": "SOURCE_REVIEWED_DELTA",
+                "sourceStartMs": 0, "playMs": 1000, "playRate": 1.0,
+                "repeatUntilStageEnd": False}]}}]
+        patch = {"schema": pipeline.DRAFT_PATCH_SCHEMA, "formatVersion": 1,
+                 "sourceRevision": "0" * 64, "operations": operations}
+        result = pipeline.apply_draft_patch(master, docs[pipeline.BOSS_PROFILES_REL],
+            docs[pipeline.DAMAGE_REL], patch, "0" * 64, docs[pipeline.WORLD_SET_REL],
+            docs[pipeline.COMBAT_AUTHORING_REL], repository_root=REPOSITORY_ROOT,
+            effect_catalog=docs[pipeline.EFFECT_CATALOG_REL],
+            boss_catalog=docs[pipeline.BOSS_CATALOG_REL], require_runtime_resources=False)
+        authored = result[0]["patterns"][-1]
+        self.assertEqual([420612], authored["sourceActionIds"])
+        self.assertEqual(3, authored["sourceSequenceIndex"])
+        self.assertEqual([{"sourceActionId": 420612, "sequenceIndex": 3, "role": "PRIMARY"}],
+                         authored["presentationSources"])
+
+    def test_empty_pattern_and_raw_clip_use_real_product_projection(self) -> None:
+        targets, _, _ = self.prepare(self.empty_request())
+        gameplay = json.loads(targets[self.root / promotion.GAMEPLAY_REL])
+        presentation = json.loads(targets[self.root / promotion.PRESENTATION_REL])
+        debug = json.loads(targets[self.root / promotion.DEBUG_REL])
+        manifest = json.loads(targets[self.root / promotion.MANIFEST_REL])
+        empty_outputs = promotion.validate_and_project(
+            REPOSITORY_ROOT, gameplay, presentation,
+            debug_document=debug, promotion_manifest=manifest)
+        encounter = json.loads(empty_outputs["Data/Encounters/Valtan/ValtanEncounter.json"])
+        self.assertNotIn("VALTAN_WORKBENCH_NEW_PATTERN", {row["patternId"] for row in encounter["patterns"]})
+        stage = presentation["patterns"][-1]["stages"][0]
+        stage["animation"] = {"endPolicy": "EXACT", "repeatCount": 1, "occurrences": [{
+            "clipOccurrenceId": stage["actionId"] + ".clip-01",
+            "clip": "mesh_att_battle_12_01", "mappingBasis": "SOURCE_REVIEWED_DELTA",
+            "sourceStartMs": 0, "playMs": 1000, "playRate": 1.0,
+            "repeatUntilStageEnd": False}]}
+        outputs = promotion.validate_and_project(
+            REPOSITORY_ROOT, gameplay, presentation,
+            debug_document=debug, promotion_manifest=manifest)
+        encounter = json.loads(outputs["Data/Encounters/Valtan/ValtanEncounter.json"])
+        authored = next(row for row in encounter["patterns"] if row["patternId"] == "VALTAN_WORKBENCH_NEW_PATTERN")
+        self.assertEqual([], authored["sourceActionIds"])
+        self.assertEqual("AUDITION_ONLY", authored["selectionMode"])
+        bindings = json.loads(outputs["Data/Animation/Authored/Valtan/Valtan.patternbindings.json"])
+        self.assertIn(stage["actionId"], json.dumps(bindings))
+
     def test_current_chain_stages_strict_default_audition_contract(self) -> None:
         targets, _baselines, result = self.prepare(self.request())
         debug_payload = targets[self.root / promotion.DEBUG_REL]
@@ -297,6 +412,75 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
             + 1,
             composition["revision"],
         )
+
+    def test_create_preserves_existing_tuned_pattern_owners(self) -> None:
+        gameplay_path = self.root / promotion.GAMEPLAY_REL
+        presentation_path = self.root / promotion.PRESENTATION_REL
+        gameplay = promotion._read_json(gameplay_path)
+        presentation = promotion._read_json(presentation_path)
+        pattern_id = "VALTAN_GHOST_DEATH_AUDITION"
+        gameplay_stage = next(
+            row for row in gameplay["patterns"] if row["patternId"] == pattern_id
+        )["stages"][0]
+        presentation_stage = next(
+            row for row in presentation["patterns"] if row["patternId"] == pattern_id
+        )["stages"][0]
+        # A later typed cinematic edit is longer than the immutable intake's
+        # original death clip. Create must preserve all three joined clocks.
+        gameplay_stage["durationMs"] = 12345
+        presentation_stage["animation"]["occurrences"][0]["playMs"] = 12345
+        presentation_stage["cameraInvocations"][0]["durationMs"] = 12345
+        for path, document in ((gameplay_path, gameplay), (presentation_path, presentation)):
+            # Canonical Pattern order need not be the promotion manifest order.
+            document["patterns"] = document["patterns"][1:] + document["patterns"][:1]
+            path.write_text(json.dumps(document), encoding="utf-8")
+        before = self.exact_bytes(list(self.root.rglob("*.json")))
+
+        for saved in (False, True):
+            with self.subTest(saved_intake=saved):
+                request = self.request(saved=saved)
+                targets, _baselines, _result = self.prepare(request)
+                for path, original in ((gameplay_path, gameplay), (presentation_path, presentation)):
+                    staged = json.loads(targets[path])
+                    self.assertEqual(len(original["patterns"]) + 1, len(staged["patterns"]))
+                    staged["patterns"] = [
+                        row for row in staged["patterns"]
+                        if row["patternId"] != request["patternId"]
+                    ]
+                    if "decisionModel" in staged:
+                        manual_rows = staged["decisionModel"]["manualAuditions"]
+                        self.assertEqual(
+                            len(original["decisionModel"]["manualAuditions"]) + 1,
+                            len(manual_rows),
+                        )
+                        staged["decisionModel"]["manualAuditions"] = [
+                            row for row in manual_rows
+                            if row["patternId"] != request["patternId"]
+                        ]
+                    # Compare full ordered documents, including all decision
+                    # metadata and interspersed derived manual owners.
+                    self.assertEqual(original, staged)
+                self.assertEqual(before, self.exact_bytes(before))
+
+    def test_create_rejects_existing_invalid_camera_without_repairing_it(self) -> None:
+        gameplay = promotion._read_json(self.root / promotion.GAMEPLAY_REL)
+        path = self.root / promotion.PRESENTATION_REL
+        presentation = promotion._read_json(path)
+        pattern_id = "VALTAN_GHOST_DEATH_AUDITION"
+        duration = next(
+            row for row in gameplay["patterns"] if row["patternId"] == pattern_id
+        )["stages"][0]["durationMs"]
+        stage = next(
+            row for row in presentation["patterns"] if row["patternId"] == pattern_id
+        )["stages"][0]
+        stage["cameraInvocations"][0]["durationMs"] = duration + 1
+        path.write_text(json.dumps(presentation), encoding="utf-8")
+        before = self.exact_bytes(list(self.root.rglob("*.json")))
+        with self.assertRaisesRegex(
+            promotion.PromotionError, "camera invocation durationMs out of range"
+        ):
+            self.prepare(self.request())
+        self.assertEqual(before, self.exact_bytes(before))
 
     def test_apply_commits_the_full_authoring_and_product_transaction(self) -> None:
         request_path = self.root / "CreatePattern.request.json"

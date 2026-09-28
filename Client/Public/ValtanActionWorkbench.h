@@ -368,6 +368,7 @@ private:
 		const VALTAN_STAGE_VIEW* pStage,
 		bool_t bMutationAdmitted);
 	bool_t Reload_AnimationSequences();
+	bool_t Append_SelectedSequenceToPattern(const VALTAN_PATTERN_VIEW& Pattern);
 	bool_t Apply_SelectedSequenceToStage(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
@@ -412,6 +413,13 @@ private:
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
 		std::string& strOutStatus);
+	bool_t Move_SelectedStages(const VALTAN_PATTERN_VIEW& Pattern, int64_t deltaMs, std::string& status);
+	bool_t Reorder_SelectedStages(const VALTAN_PATTERN_VIEW& Pattern, int32_t direction, std::string& status);
+	bool_t Delete_SelectedStages(const VALTAN_PATTERN_VIEW& Pattern, std::string& strOutStatus);
+	bool_t Delete_SelectedStage(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const VALTAN_STAGE_VIEW& Stage,
+		std::string& strOutStatus, bool_t bRefreshPreview = true);
 	bool_t Delete_SelectedTimelineBox(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
@@ -516,6 +524,7 @@ private:
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
 		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue);
+	bool_t Append_EffectResourceAtPatternEnd(const std::string& patternId, std::string& status);
 	void Reload_SemanticValtanEffects(bool_t bReloadCatalog = true);
 	void Reset_EffectCueEditor();
 	void Render_WindowMenu();
@@ -673,6 +682,13 @@ private:
 	uint32_t m_iTimelineMoveSourceEndMs = 0u;
 
 	std::vector<TIMELINE_SELECTION> m_TimelineSelection;
+	bool_t m_bTimelineMarqueeActive = false;
+	bool_t m_bTimelineMarqueeDragged = false;
+	float m_fTimelineMarqueeAnchorX = 0.f, m_fTimelineMarqueeAnchorY = 0.f;
+	std::string m_strTimelineMarqueePatternId;
+	std::vector<TIMELINE_SELECTION> m_TimelineMarqueeBefore;
+	std::vector<TIMELINE_SELECTION> m_TimelineMarqueeBase;
+	TIMELINE_SELECTION m_TimelineMarqueeFocus;
 	int m_iTimelineGroupMoveMs = 0;
 	std::string m_strSelectedPatternId;
 	std::string m_strSelectedStageId;
@@ -738,6 +754,9 @@ private:
 	std::uint64_t m_iPendingSaveJobId = 0u;
 	std::uint64_t m_iPendingPatternSoundDraftGeneration = 0u;
 	std::uint64_t m_iPendingEffectV2DraftRevision = 0u;
+	std::uint64_t m_iPendingPatternShakeDraftGeneration = 0u;
+	std::string m_strPendingPatternShakeCandidateBytes;
+	bool_t m_bPendingPatternShakeOwner = false;
 	std::string m_strPendingPatternSoundCandidateBytes;
 	std::string m_strPendingEffectV2CandidateBytes;
 	bool_t m_bPendingPatternSoundOwner = false;
@@ -804,6 +823,7 @@ private:
 	{
 		std::string displayName;
 		std::string searchText;
+		bool fullRestore = false;
 		std::string status;
 		std::vector<std::string> categories;
 		std::vector<std::vector<std::string>> patternCategories;
@@ -837,6 +857,7 @@ private:
 	EFFECT_RESOURCE_KIND m_eEffectAddResourceKind =
 		EFFECT_RESOURCE_KIND::V1_PATTERN;
 	uint32_t m_iEffectV2AddStartMs = 0u;
+	bool_t m_bEffectAddUsesStageClock = true;
 	std::string m_strEffectAddAssetId;
 	std::string m_strEffectAddClipOccurrenceId;
 	/* Box Detail inputs remain a session draft until Apply validates and stages

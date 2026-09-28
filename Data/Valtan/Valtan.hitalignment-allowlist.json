@@ -90,7 +90,26 @@
       "stageId": "STEP_02",
       "actionId": "valtan.sequence.ghost-finale.step-02",
       "bindingId": null,
-      "expectedHitOffsetsMs": [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850],
+      "expectedHitOffsetsMs": [
+        0,
+        50,
+        100,
+        150,
+        200,
+        250,
+        300,
+        350,
+        400,
+        450,
+        500,
+        550,
+        600,
+        650,
+        700,
+        750,
+        800,
+        850
+      ],
       "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
     },
     {
@@ -100,7 +119,26 @@
       "stageId": "STEP_03",
       "actionId": "valtan.sequence.ghost-finale.step-03",
       "bindingId": null,
-      "expectedHitOffsetsMs": [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850],
+      "expectedHitOffsetsMs": [
+        0,
+        50,
+        100,
+        150,
+        200,
+        250,
+        300,
+        350,
+        400,
+        450,
+        500,
+        550,
+        600,
+        650,
+        700,
+        750,
+        800,
+        850
+      ],
       "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
     },
     {
@@ -110,7 +148,26 @@
       "stageId": "STEP_04",
       "actionId": "valtan.sequence.ghost-finale.step-04",
       "bindingId": null,
-      "expectedHitOffsetsMs": [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850],
+      "expectedHitOffsetsMs": [
+        0,
+        50,
+        100,
+        150,
+        200,
+        250,
+        300,
+        350,
+        400,
+        450,
+        500,
+        550,
+        600,
+        650,
+        700,
+        750,
+        800,
+        850
+      ],
       "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
     },
     {
@@ -120,7 +177,26 @@
       "stageId": "STEP_05",
       "actionId": "valtan.sequence.ghost-finale.step-05",
       "bindingId": null,
-      "expectedHitOffsetsMs": [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850],
+      "expectedHitOffsetsMs": [
+        0,
+        50,
+        100,
+        150,
+        200,
+        250,
+        300,
+        350,
+        400,
+        450,
+        500,
+        550,
+        600,
+        650,
+        700,
+        750,
+        800,
+        850
+      ],
       "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
     },
     {
@@ -130,7 +206,26 @@
       "stageId": "STEP_06",
       "actionId": "valtan.sequence.ghost-finale.step-06",
       "bindingId": null,
-      "expectedHitOffsetsMs": [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850],
+      "expectedHitOffsetsMs": [
+        0,
+        50,
+        100,
+        150,
+        200,
+        250,
+        300,
+        350,
+        400,
+        450,
+        500,
+        550,
+        600,
+        650,
+        700,
+        750,
+        800,
+        850
+      ],
       "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
     },
     {
@@ -140,7 +235,26 @@
       "stageId": "STEP_07",
       "actionId": "valtan.sequence.ghost-finale.step-07",
       "bindingId": null,
-      "expectedHitOffsetsMs": [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850],
+      "expectedHitOffsetsMs": [
+        0,
+        50,
+        100,
+        150,
+        200,
+        250,
+        300,
+        350,
+        400,
+        450,
+        500,
+        550,
+        600,
+        650,
+        700,
+        750,
+        800,
+        850
+      ],
       "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
     },
     {
@@ -150,7 +264,26 @@
       "stageId": "STEP_08",
       "actionId": "valtan.sequence.ghost-finale.step-08",
       "bindingId": null,
-      "expectedHitOffsetsMs": [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850],
+      "expectedHitOffsetsMs": [
+        0,
+        50,
+        100,
+        150,
+        200,
+        250,
+        300,
+        350,
+        400,
+        450,
+        500,
+        550,
+        600,
+        650,
+        700,
+        750,
+        800,
+        850
+      ],
       "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
     },
     {
@@ -160,7 +293,26 @@
       "stageId": "STEP_09",
       "actionId": "valtan.sequence.ghost-finale.step-09",
       "bindingId": null,
-      "expectedHitOffsetsMs": [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850],
+      "expectedHitOffsetsMs": [
+        0,
+        50,
+        100,
+        150,
+        200,
+        250,
+        300,
+        350,
+        400,
+        450,
+        500,
+        550,
+        600,
+        650,
+        700,
+        750,
+        800,
+        850
+      ],
       "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
     },
     {
@@ -170,7 +322,34 @@
       "stageId": "STEP_02",
       "actionId": "valtan.sequence.warp.step-02",
       "bindingId": null,
-      "expectedHitOffsetsMs": [300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550],
+      "expectedHitOffsetsMs": [
+        300,
+        350,
+        400,
+        450,
+        500,
+        550,
+        600,
+        650,
+        700,
+        750,
+        800,
+        850,
+        900,
+        950,
+        1000,
+        1050,
+        1100,
+        1150,
+        1200,
+        1250,
+        1300,
+        1350,
+        1400,
+        1450,
+        1500,
+        1550
+      ],
       "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
     },
     {
@@ -180,7 +359,34 @@
       "stageId": "STEP_03",
       "actionId": "valtan.sequence.warp.step-03",
       "bindingId": null,
-      "expectedHitOffsetsMs": [600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550, 1600, 1650, 1700, 1750, 1800, 1850],
+      "expectedHitOffsetsMs": [
+        600,
+        650,
+        700,
+        750,
+        800,
+        850,
+        900,
+        950,
+        1000,
+        1050,
+        1100,
+        1150,
+        1200,
+        1250,
+        1300,
+        1350,
+        1400,
+        1450,
+        1500,
+        1550,
+        1600,
+        1650,
+        1700,
+        1750,
+        1800,
+        1850
+      ],
       "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
     },
     {
@@ -190,7 +396,34 @@
       "stageId": "STEP_04",
       "actionId": "valtan.sequence.warp.step-04",
       "bindingId": null,
-      "expectedHitOffsetsMs": [600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550, 1600, 1650, 1700, 1750, 1800, 1850],
+      "expectedHitOffsetsMs": [
+        600,
+        650,
+        700,
+        750,
+        800,
+        850,
+        900,
+        950,
+        1000,
+        1050,
+        1100,
+        1150,
+        1200,
+        1250,
+        1300,
+        1350,
+        1400,
+        1450,
+        1500,
+        1550,
+        1600,
+        1650,
+        1700,
+        1750,
+        1800,
+        1850
+      ],
       "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
     },
     {
@@ -200,7 +433,34 @@
       "stageId": "STEP_05",
       "actionId": "valtan.sequence.warp.step-05",
       "bindingId": null,
-      "expectedHitOffsetsMs": [600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550, 1600, 1650, 1700, 1750, 1800, 1850],
+      "expectedHitOffsetsMs": [
+        600,
+        650,
+        700,
+        750,
+        800,
+        850,
+        900,
+        950,
+        1000,
+        1050,
+        1100,
+        1150,
+        1200,
+        1250,
+        1300,
+        1350,
+        1400,
+        1450,
+        1500,
+        1550,
+        1600,
+        1650,
+        1700,
+        1750,
+        1800,
+        1850
+      ],
       "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
     },
     {
@@ -210,7 +470,34 @@
       "stageId": "STEP_06",
       "actionId": "valtan.sequence.warp.step-06",
       "bindingId": null,
-      "expectedHitOffsetsMs": [600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550, 1600, 1650, 1700, 1750, 1800, 1850],
+      "expectedHitOffsetsMs": [
+        600,
+        650,
+        700,
+        750,
+        800,
+        850,
+        900,
+        950,
+        1000,
+        1050,
+        1100,
+        1150,
+        1200,
+        1250,
+        1300,
+        1350,
+        1400,
+        1450,
+        1500,
+        1550,
+        1600,
+        1650,
+        1700,
+        1750,
+        1800,
+        1850
+      ],
       "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
     },
     {
@@ -220,7 +507,34 @@
       "stageId": "STEP_07",
       "actionId": "valtan.sequence.warp.step-07",
       "bindingId": null,
-      "expectedHitOffsetsMs": [600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550, 1600, 1650, 1700, 1750, 1800, 1850],
+      "expectedHitOffsetsMs": [
+        600,
+        650,
+        700,
+        750,
+        800,
+        850,
+        900,
+        950,
+        1000,
+        1050,
+        1100,
+        1150,
+        1200,
+        1250,
+        1300,
+        1350,
+        1400,
+        1450,
+        1500,
+        1550,
+        1600,
+        1650,
+        1700,
+        1750,
+        1800,
+        1850
+      ],
       "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
     },
     {
@@ -230,7 +544,34 @@
       "stageId": "STEP_08",
       "actionId": "valtan.sequence.warp.step-08",
       "bindingId": null,
-      "expectedHitOffsetsMs": [600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550, 1600, 1650, 1700, 1750, 1800, 1850],
+      "expectedHitOffsetsMs": [
+        600,
+        650,
+        700,
+        750,
+        800,
+        850,
+        900,
+        950,
+        1000,
+        1050,
+        1100,
+        1150,
+        1200,
+        1250,
+        1300,
+        1350,
+        1400,
+        1450,
+        1500,
+        1550,
+        1600,
+        1650,
+        1700,
+        1750,
+        1800,
+        1850
+      ],
       "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
     },
     {
@@ -240,7 +581,34 @@
       "stageId": "STEP_09",
       "actionId": "valtan.sequence.warp.step-09",
       "bindingId": null,
-      "expectedHitOffsetsMs": [600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550, 1600, 1650, 1700, 1750, 1800, 1850],
+      "expectedHitOffsetsMs": [
+        600,
+        650,
+        700,
+        750,
+        800,
+        850,
+        900,
+        950,
+        1000,
+        1050,
+        1100,
+        1150,
+        1200,
+        1250,
+        1300,
+        1350,
+        1400,
+        1450,
+        1500,
+        1550,
+        1600,
+        1650,
+        1700,
+        1750,
+        1800,
+        1850
+      ],
       "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
     },
     {
@@ -250,7 +618,15 @@
       "stageId": "STEP_08",
       "actionId": "valtan.sequence.center-trash-rush-if.step-08",
       "bindingId": null,
-      "expectedHitOffsetsMs": [0, 100, 200, 300, 400, 500, 600],
+      "expectedHitOffsetsMs": [
+        0,
+        100,
+        200,
+        300,
+        400,
+        500,
+        600
+      ],
       "reason": "Capture rush collision is sampled every 100ms until one target is captured; the stage intentionally uses one representative rush sound."
     },
     {
@@ -260,7 +636,15 @@
       "stageId": "RETRY_RUSH_02",
       "actionId": "valtan.sequence.center-trash-rush-if.retry-rush-02",
       "bindingId": null,
-      "expectedHitOffsetsMs": [0, 100, 200, 300, 400, 500, 600],
+      "expectedHitOffsetsMs": [
+        0,
+        100,
+        200,
+        300,
+        400,
+        500,
+        600
+      ],
       "reason": "Capture rush collision is sampled every 100ms until one target is captured; the stage intentionally uses one representative rush sound."
     },
     {
@@ -270,7 +654,15 @@
       "stageId": "RETRY_RUSH_03",
       "actionId": "valtan.sequence.center-trash-rush-if.retry-rush-03",
       "bindingId": null,
-      "expectedHitOffsetsMs": [0, 100, 200, 300, 400, 500, 600],
+      "expectedHitOffsetsMs": [
+        0,
+        100,
+        200,
+        300,
+        400,
+        500,
+        600
+      ],
       "reason": "Capture rush collision is sampled every 100ms until one target is captured; the stage intentionally uses one representative rush sound."
     },
     {
@@ -280,7 +672,15 @@
       "stageId": "STEP_08",
       "actionId": "valtan.sequence.rush-if.step-08",
       "bindingId": null,
-      "expectedHitOffsetsMs": [0, 100, 200, 300, 400, 500, 600],
+      "expectedHitOffsetsMs": [
+        0,
+        100,
+        200,
+        300,
+        400,
+        500,
+        600
+      ],
       "reason": "Capture rush collision is sampled every 100ms until one target is captured; the stage intentionally uses one representative rush sound."
     },
     {
@@ -290,7 +690,15 @@
       "stageId": "RETRY_RUSH_02",
       "actionId": "valtan.sequence.rush-if.retry-rush-02",
       "bindingId": null,
-      "expectedHitOffsetsMs": [0, 100, 200, 300, 400, 500, 600],
+      "expectedHitOffsetsMs": [
+        0,
+        100,
+        200,
+        300,
+        400,
+        500,
+        600
+      ],
       "reason": "Capture rush collision is sampled every 100ms until one target is captured; the stage intentionally uses one representative rush sound."
     },
     {
@@ -300,7 +708,15 @@
       "stageId": "RETRY_RUSH_03",
       "actionId": "valtan.sequence.rush-if.retry-rush-03",
       "bindingId": null,
-      "expectedHitOffsetsMs": [0, 100, 200, 300, 400, 500, 600],
+      "expectedHitOffsetsMs": [
+        0,
+        100,
+        200,
+        300,
+        400,
+        500,
+        600
+      ],
       "reason": "Capture rush collision is sampled every 100ms until one target is captured; the stage intentionally uses one representative rush sound."
     },
     {
@@ -564,6 +980,602 @@
           "startMs": 100
         }
       ]
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.struggling.inner.pattern-sound",
+      "rule": "COMBAT_OBJECT_HIT_PATTERN_SOUND",
+      "patternId": "VALTAN_STRUGGLING",
+      "stageId": "STEP_07",
+      "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-07",
+      "bindingId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-07.clip-01.02",
+      "expectedHitOffsetsMs": [
+        1000
+      ],
+      "reason": "The original STEP_07 Sound cue already plays this one inner detonation at1000ms. Keep its local preview and Server pattern playback; adding object sound would play the same event twice.",
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.in-out",
+      "hitId": "hit.valtan.struggling.inner",
+      "spawnEventId": "event.valtan.struggling.in-out",
+      "expectedSoundCue": {
+        "bindingId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-07.clip-01.02",
+        "occurrenceId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-07.clip-01.02.occurrence.01",
+        "patternId": "VALTAN_STRUGGLING",
+        "stageId": "STEP_07",
+        "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-07",
+        "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-07.clip-01",
+        "soundBank": "S_Mob_G_Voltan2",
+        "soundEvent": "G_Voltan2_Attack18_Shot5",
+        "repeatPolicy": "once",
+        "startMs": 1000
+      },
+      "expectedAnimation": {
+        "endPolicy": "EXACT",
+        "repeatCount": 1,
+        "occurrences": [
+          {
+            "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-07.clip-01",
+            "clip": "mesh_att_battle_19_04",
+            "mappingBasis": "PROJECT_AUTHORED",
+            "sourceStartMs": 0,
+            "playMs": 2600,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          }
+        ]
+      }
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.struggling.saved-sound.step_06_target_01",
+      "rule": "PROJECT_AUTHORED_SOUND_TIMING",
+      "patternId": "VALTAN_STRUGGLING",
+      "stageId": "STEP_06_TARGET_01",
+      "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-01",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [
+        267
+      ],
+      "reason": "User keeps the exact existing ten source Action sound events while nine retained V2 occurrences follow the native667ms clip cycles. Damage matches every V2 time exactly; only the saved audio timing differs.",
+      "expectedSoundCues": [
+        {
+          "bindingId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01.03",
+          "occurrenceId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01.03.occurrence.01",
+          "patternId": "VALTAN_STRUGGLING",
+          "stageId": "STEP_06_TARGET_01",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-01",
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-01.clip-02",
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack18_Shot4",
+          "repeatPolicy": "once",
+          "startMs": 128
+        },
+        {
+          "bindingId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01.04",
+          "occurrenceId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01.04.occurrence.01",
+          "patternId": "VALTAN_STRUGGLING",
+          "stageId": "STEP_06_TARGET_01",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-01",
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-01.clip-02",
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack18_Shot4",
+          "repeatPolicy": "once",
+          "startMs": 309
+        }
+      ],
+      "expectedAnimation": {
+        "endPolicy": "EXACT",
+        "repeatCount": 1,
+        "occurrences": [
+          {
+            "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-01.clip-01",
+            "clip": "mesh_att_battle_19_03",
+            "mappingBasis": "SOURCE_REVIEWED_DELTA",
+            "sourceStartMs": 600,
+            "playMs": 67,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          },
+          {
+            "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-01.clip-02",
+            "clip": "mesh_att_battle_19_03",
+            "mappingBasis": "SOURCE_REVIEWED_DELTA",
+            "sourceStartMs": 0,
+            "playMs": 333,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          }
+        ]
+      }
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.struggling.saved-sound.step_06_target_02",
+      "rule": "PROJECT_AUTHORED_SOUND_TIMING",
+      "patternId": "VALTAN_STRUGGLING",
+      "stageId": "STEP_06_TARGET_02",
+      "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-02",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [
+        67
+      ],
+      "reason": "User keeps the exact existing ten source Action sound events while nine retained V2 occurrences follow the native667ms clip cycles. Damage matches every V2 time exactly; only the saved audio timing differs. This slice has no local audio: the preceding exact slice retains the976ms impact91ms before the1067ms visual; its full source payload and unique unbranched edge are pinned.",
+      "expectedSoundCues": [
+        {
+          "bindingId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01.03",
+          "occurrenceId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01.03.occurrence.01",
+          "patternId": "VALTAN_STRUGGLING",
+          "stageId": "STEP_06_TARGET_01",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-01",
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-01.clip-02",
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack18_Shot4",
+          "repeatPolicy": "once",
+          "startMs": 128
+        },
+        {
+          "bindingId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01.04",
+          "occurrenceId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01.04.occurrence.01",
+          "patternId": "VALTAN_STRUGGLING",
+          "stageId": "STEP_06_TARGET_01",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-01",
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-01.clip-02",
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack18_Shot4",
+          "repeatPolicy": "once",
+          "startMs": 309
+        }
+      ],
+      "expectedAnimation": {
+        "endPolicy": "EXACT",
+        "repeatCount": 1,
+        "occurrences": [
+          {
+            "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-02.clip-01",
+            "clip": "mesh_att_battle_19_03",
+            "mappingBasis": "SOURCE_REVIEWED_DELTA",
+            "sourceStartMs": 333,
+            "playMs": 200,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          }
+        ]
+      },
+      "expectedSoundStage": {
+        "stageId": "STEP_06_TARGET_01",
+        "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-01",
+        "expectedAnimation": {
+          "endPolicy": "EXACT",
+          "repeatCount": 1,
+          "occurrences": [
+            {
+              "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-01.clip-01",
+              "clip": "mesh_att_battle_19_03",
+              "mappingBasis": "SOURCE_REVIEWED_DELTA",
+              "sourceStartMs": 600,
+              "playMs": 67,
+              "playRate": 1.0,
+              "repeatUntilStageEnd": false
+            },
+            {
+              "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-01.clip-02",
+              "clip": "mesh_att_battle_19_03",
+              "mappingBasis": "SOURCE_REVIEWED_DELTA",
+              "sourceStartMs": 0,
+              "playMs": 333,
+              "playRate": 1.0,
+              "repeatUntilStageEnd": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.struggling.saved-sound.step_06_target_03",
+      "rule": "PROJECT_AUTHORED_SOUND_TIMING",
+      "patternId": "VALTAN_STRUGGLING",
+      "stageId": "STEP_06_TARGET_03",
+      "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-03",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [
+        334,
+        534
+      ],
+      "reason": "User keeps the exact existing ten source Action sound events while nine retained V2 occurrences follow the native667ms clip cycles. Damage matches every V2 time exactly; only the saved audio timing differs.",
+      "expectedSoundCues": [
+        {
+          "bindingId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01.05",
+          "occurrenceId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01.05.occurrence.01",
+          "patternId": "VALTAN_STRUGGLING",
+          "stageId": "STEP_06_TARGET_03",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-03",
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-03.clip-02",
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack18_Shot4",
+          "repeatPolicy": "once",
+          "startMs": 62
+        },
+        {
+          "bindingId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01.06",
+          "occurrenceId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01.06.occurrence.01",
+          "patternId": "VALTAN_STRUGGLING",
+          "stageId": "STEP_06_TARGET_03",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-03",
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-03.clip-02",
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack18_Shot4",
+          "repeatPolicy": "once",
+          "startMs": 244
+        }
+      ],
+      "expectedAnimation": {
+        "endPolicy": "EXACT",
+        "repeatCount": 1,
+        "occurrences": [
+          {
+            "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-03.clip-01",
+            "clip": "mesh_att_battle_19_03",
+            "mappingBasis": "SOURCE_REVIEWED_DELTA",
+            "sourceStartMs": 533,
+            "playMs": 134,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          },
+          {
+            "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-03.clip-02",
+            "clip": "mesh_att_battle_19_03",
+            "mappingBasis": "SOURCE_REVIEWED_DELTA",
+            "sourceStartMs": 0,
+            "playMs": 466,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          }
+        ]
+      }
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.struggling.saved-sound.step_06_target_06",
+      "rule": "PROJECT_AUTHORED_SOUND_TIMING",
+      "patternId": "VALTAN_STRUGGLING",
+      "stageId": "STEP_06_TARGET_06",
+      "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-06",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [
+        1,
+        468
+      ],
+      "reason": "User keeps the exact existing ten source Action sound events while nine retained V2 occurrences follow the native667ms clip cycles. Damage matches every V2 time exactly; only the saved audio timing differs.",
+      "expectedSoundCues": [
+        {
+          "bindingId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01.09",
+          "occurrenceId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01.09.occurrence.01",
+          "patternId": "VALTAN_STRUGGLING",
+          "stageId": "STEP_06_TARGET_06",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-06",
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-06.clip-01",
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack18_Shot4",
+          "repeatPolicy": "once",
+          "startMs": 609
+        },
+        {
+          "bindingId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01.10",
+          "occurrenceId": "cue.sound.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01.10.occurrence.01",
+          "patternId": "VALTAN_STRUGGLING",
+          "stageId": "STEP_06_TARGET_06",
+          "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-06",
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-06.clip-02",
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack18_Shot4",
+          "repeatPolicy": "once",
+          "startMs": 124
+        }
+      ],
+      "expectedAnimation": {
+        "endPolicy": "EXACT",
+        "repeatCount": 1,
+        "occurrences": [
+          {
+            "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-06.clip-01",
+            "clip": "mesh_att_battle_19_03",
+            "mappingBasis": "SOURCE_REVIEWED_DELTA",
+            "sourceStartMs": 399,
+            "playMs": 268,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          },
+          {
+            "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-06.clip-02",
+            "clip": "mesh_att_battle_19_03",
+            "mappingBasis": "SOURCE_REVIEWED_DELTA",
+            "sourceStartMs": 0,
+            "playMs": 332,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          }
+        ]
+      }
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.valtan_terrain_destruction_3_oclock.combo_step_23.saved-sound",
+      "rule": "PROJECT_AUTHORED_SOUND_TIMING",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+      "stageId": "COMBO_STEP_23",
+      "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-23",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [
+        0,
+        350,
+        700,
+        1050,
+        1400
+      ],
+      "reason": "The authored continuous whirlwind keeps its existing Attack15 impact200ms and voice1200ms while five damage pulses run every350ms, equivalent to the existing WHIRLWIND/SPIN authored sound contract.",
+      "expectedSoundCues": [
+        {
+          "bindingId": "cue.sound.valtan.mechanic.terrain-destruction-3.combo.step-23.notify.00",
+          "occurrenceId": "cue.sound.valtan.mechanic.terrain-destruction-3.combo.step-23.notify.00.occurrence.01",
+          "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+          "stageId": "COMBO_STEP_23",
+          "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-23",
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-23.clip-01",
+          "repeatPolicy": "once",
+          "startMs": 200,
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack15_Shot2"
+        },
+        {
+          "bindingId": "cue.sound.valtan.mechanic.terrain-destruction-3.combo.step-23.notify.01",
+          "occurrenceId": "cue.sound.valtan.mechanic.terrain-destruction-3.combo.step-23.notify.01.occurrence.01",
+          "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+          "stageId": "COMBO_STEP_23",
+          "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-23",
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-23.clip-01",
+          "repeatPolicy": "once",
+          "startMs": 1200,
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack13_ShotVox1"
+        }
+      ],
+      "expectedAnimation": {
+        "endPolicy": "LOOP_TO_STAGE_END",
+        "repeatCount": 1,
+        "occurrences": [
+          {
+            "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-23.clip-01",
+            "clip": "mesh_att_battle_20_03",
+            "mappingBasis": "SOURCE_REVIEWED_DELTA",
+            "sourceStartMs": 0,
+            "playMs": 0,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": true
+          }
+        ]
+      }
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.valtan_terrain_destruction_3_oclock.combo_step_17.saved-sound",
+      "rule": "PROJECT_AUTHORED_SOUND_TIMING",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+      "stageId": "COMBO_STEP_17",
+      "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-17",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [
+        756
+      ],
+      "reason": "The copied original evt1 roar recovery retains Attack07 shot/voice at1ms and voice2300ms while the edited chain yellow warning ends at the Server blast756ms. Audio rows and original source appearance remain unchanged.",
+      "expectedSoundCues": [
+        {
+          "bindingId": "cue.sound.valtan.mechanic.terrain-destruction-3.combo.step-17.notify.00",
+          "occurrenceId": "cue.sound.valtan.mechanic.terrain-destruction-3.combo.step-17.notify.00.occurrence.01",
+          "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+          "stageId": "COMBO_STEP_17",
+          "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-17",
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-17.clip-01",
+          "repeatPolicy": "once",
+          "startMs": 1,
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack07_ShotVox1"
+        },
+        {
+          "bindingId": "cue.sound.valtan.mechanic.terrain-destruction-3.combo.step-17.notify.01",
+          "occurrenceId": "cue.sound.valtan.mechanic.terrain-destruction-3.combo.step-17.notify.01.occurrence.01",
+          "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+          "stageId": "COMBO_STEP_17",
+          "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-17",
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-17.clip-01",
+          "repeatPolicy": "once",
+          "startMs": 1,
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack07_Shot1"
+        },
+        {
+          "bindingId": "cue.sound.valtan.mechanic.terrain-destruction-3.combo.step-17.notify.02",
+          "occurrenceId": "cue.sound.valtan.mechanic.terrain-destruction-3.combo.step-17.notify.02.occurrence.01",
+          "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+          "stageId": "COMBO_STEP_17",
+          "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-17",
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-17.clip-01",
+          "repeatPolicy": "once",
+          "startMs": 2300,
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack07_ShotVox2"
+        }
+      ],
+      "expectedAnimation": {
+        "endPolicy": "EXACT",
+        "repeatCount": 1,
+        "occurrences": [
+          {
+            "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-17.clip-01",
+            "clip": "mesh_evt1_att_battle_5_01_end",
+            "mappingBasis": "SOURCE_REVIEWED_DELTA",
+            "sourceStartMs": 0,
+            "playMs": 2633,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          }
+        ]
+      }
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.valtan_terrain_destruction_9_oclock.combo_step_23.saved-sound",
+      "rule": "PROJECT_AUTHORED_SOUND_TIMING",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+      "stageId": "COMBO_STEP_23",
+      "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-23",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [
+        0,
+        350,
+        700,
+        1050,
+        1400
+      ],
+      "reason": "The authored continuous whirlwind keeps its existing Attack15 impact200ms and voice1200ms while five damage pulses run every350ms, equivalent to the existing WHIRLWIND/SPIN authored sound contract.",
+      "expectedSoundCues": [
+        {
+          "bindingId": "cue.sound.valtan.mechanic.terrain-destruction-9.combo.step-23.notify.00",
+          "occurrenceId": "cue.sound.valtan.mechanic.terrain-destruction-9.combo.step-23.notify.00.occurrence.01",
+          "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+          "stageId": "COMBO_STEP_23",
+          "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-23",
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-23.clip-01",
+          "repeatPolicy": "once",
+          "startMs": 200,
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack15_Shot2"
+        },
+        {
+          "bindingId": "cue.sound.valtan.mechanic.terrain-destruction-9.combo.step-23.notify.01",
+          "occurrenceId": "cue.sound.valtan.mechanic.terrain-destruction-9.combo.step-23.notify.01.occurrence.01",
+          "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+          "stageId": "COMBO_STEP_23",
+          "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-23",
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-23.clip-01",
+          "repeatPolicy": "once",
+          "startMs": 1200,
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack13_ShotVox1"
+        }
+      ],
+      "expectedAnimation": {
+        "endPolicy": "LOOP_TO_STAGE_END",
+        "repeatCount": 1,
+        "occurrences": [
+          {
+            "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-23.clip-01",
+            "clip": "mesh_att_battle_20_03",
+            "mappingBasis": "SOURCE_REVIEWED_DELTA",
+            "sourceStartMs": 0,
+            "playMs": 0,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": true
+          }
+        ]
+      }
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.valtan_terrain_destruction_9_oclock.combo_step_17.saved-sound",
+      "rule": "PROJECT_AUTHORED_SOUND_TIMING",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+      "stageId": "COMBO_STEP_17",
+      "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-17",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [
+        756
+      ],
+      "reason": "The copied original evt1 roar recovery retains Attack07 shot/voice at1ms and voice2300ms while the edited chain yellow warning ends at the Server blast756ms. Audio rows and original source appearance remain unchanged.",
+      "expectedSoundCues": [
+        {
+          "bindingId": "cue.sound.valtan.mechanic.terrain-destruction-9.combo.step-17.notify.00",
+          "occurrenceId": "cue.sound.valtan.mechanic.terrain-destruction-9.combo.step-17.notify.00.occurrence.01",
+          "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+          "stageId": "COMBO_STEP_17",
+          "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-17",
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-17.clip-01",
+          "repeatPolicy": "once",
+          "startMs": 1,
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack07_ShotVox1"
+        },
+        {
+          "bindingId": "cue.sound.valtan.mechanic.terrain-destruction-9.combo.step-17.notify.01",
+          "occurrenceId": "cue.sound.valtan.mechanic.terrain-destruction-9.combo.step-17.notify.01.occurrence.01",
+          "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+          "stageId": "COMBO_STEP_17",
+          "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-17",
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-17.clip-01",
+          "repeatPolicy": "once",
+          "startMs": 1,
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack07_Shot1"
+        },
+        {
+          "bindingId": "cue.sound.valtan.mechanic.terrain-destruction-9.combo.step-17.notify.02",
+          "occurrenceId": "cue.sound.valtan.mechanic.terrain-destruction-9.combo.step-17.notify.02.occurrence.01",
+          "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+          "stageId": "COMBO_STEP_17",
+          "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-17",
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-17.clip-01",
+          "repeatPolicy": "once",
+          "startMs": 2300,
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack07_ShotVox2"
+        }
+      ],
+      "expectedAnimation": {
+        "endPolicy": "EXACT",
+        "repeatCount": 1,
+        "occurrences": [
+          {
+            "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-17.clip-01",
+            "clip": "mesh_evt1_att_battle_5_01_end",
+            "mappingBasis": "SOURCE_REVIEWED_DELTA",
+            "sourceStartMs": 0,
+            "playMs": 2633,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          }
+        ]
+      }
+    },
+    {
+      "exceptionId": "exception.valtan.floor-wipe-130.second-smash.delayed-damage",
+      "rule": "PROJECT_AUTHORED_SOUND_TIMING",
+      "patternId": "VALTAN_FLOOR_WIPE_130",
+      "stageId": "SECOND_SMASH",
+      "actionId": "valtan.mechanic.floor-wipe-130.second-smash",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [
+        500
+      ],
+      "reason": "PROJECT_TUNED: The user requested the six-direction wipe damage500ms later. This stage now hits at500ms and lasts1000ms with its saved500ms clip held at the last pose. Preserve the existing original impact sound at source1ms and both independently saved V1 effects; only the damage and hold tail move. The complete sound cue and animation payload are pinned below.",
+      "expectedSoundCues": [
+        {
+          "bindingId": "cue.sound.valtan.mechanic.floor-wipe-130.second-smash.clip.01.01",
+          "occurrenceId": "cue.sound.valtan.mechanic.floor-wipe-130.second-smash.clip.01.01.occurrence.01",
+          "patternId": "VALTAN_FLOOR_WIPE_130",
+          "stageId": "SECOND_SMASH",
+          "actionId": "valtan.mechanic.floor-wipe-130.second-smash",
+          "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.second-smash.clip.01",
+          "soundBank": "S_Mob_G_Voltan2",
+          "soundEvent": "G_Voltan2_Attack25_Shot3",
+          "repeatPolicy": "once",
+          "startMs": 1
+        }
+      ],
+      "expectedAnimation": {
+        "endPolicy": "HOLD_LAST_POSE",
+        "repeatCount": 1,
+        "occurrences": [
+          {
+            "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.second-smash.clip.01",
+            "clip": "mesh_att_battle_15_03",
+            "mappingBasis": "PROJECT_AUTHORED",
+            "sourceStartMs": 0,
+            "playMs": 500,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          }
+        ]
+      }
     }
   ]
 }

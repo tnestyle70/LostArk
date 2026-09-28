@@ -869,7 +869,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             "Valtan stage-clock Effect cue left its Stage wall",
             "STAGE_CLOCK Valtan Effect cue requires its owning action binding",
             "Valtan stage-clock Effect cue binding rejected",
-            "Only a natural/once Effect stage-clock row may omit clipOccurrenceId",
+            "Only a natural or trimmed once Effect stage-clock row may omit clipOccurrenceId",
         ):
             self.assertIn(
                 token,

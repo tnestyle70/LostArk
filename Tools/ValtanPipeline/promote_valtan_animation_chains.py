@@ -38,6 +38,7 @@ PRESENTATION_REL = "Data/Valtan/Valtan.presentation.json"
 PATTERN_SOUND_REL = (
     "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json"
 )
+PATTERN_SHAKE_REL = "Data/Animation/Authored/Valtan/Valtan.patternshakecues.json"
 EFFECT_V2_BINDINGS_REL = (
     "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
 )
@@ -612,7 +613,7 @@ def _reviewed_closure_counts(
     """Return the closure reviewed by the manifest/debug exact-order join."""
 
     return len(promotions), sum(
-        len(chain["animation"]["occurrences"]) for chain in chains
+        max(1, len(chain["animation"]["occurrences"])) for chain in chains
     )
 
 
@@ -808,6 +809,15 @@ def _manual_presentation_pattern(
     source_action_ids: list[int],
     stages: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    if promotion.get("creationKind") == "EMPTY_PATTERN":
+        return {
+            "patternId": promotion["patternId"],
+            "sourceSequenceIndex": 0,
+            "presentationSources": [],
+            "stages": [{"stageId": stage["stageId"], "actionId": stage["actionId"],
+                        "sequenceRole": "STEP", "animation": {"mode": "NONE"},
+                        "effectCues": [], "cameraInvocations": []} for stage in stages],
+        }
     primary_action_id = promotion.get("sourceActionId", source_action_ids[0])
     if primary_action_id not in source_action_ids:
         raise PromotionError(
@@ -1147,6 +1157,7 @@ def build_candidates(
     debug_document: dict[str, Any] | None = None,
     gameplay_document: dict[str, Any] | None = None,
     presentation_document: dict[str, Any] | None = None,
+    preserve_existing_patterns: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     manifest_path = repo_root / MANIFEST_REL
     manifest = (
@@ -1213,6 +1224,7 @@ def build_candidates(
                 "aimPolicy",
                 "sourceActionId",
                 "sourceSequenceIndex",
+                "creationKind",
             ),
             f"promotion[{ordinal}]",
         )
@@ -1230,6 +1242,8 @@ def build_candidates(
             or promotion["admissionState"] != "MANUAL_SERVER_AUDITION"
         ):
             raise PromotionError(f"promotion metadata is invalid: {chain_id}")
+        if "creationKind" in promotion and promotion["creationKind"] != "EMPTY_PATTERN":
+            raise PromotionError(f"unsupported pattern creationKind: {chain_id}")
         target_policy = promotion.get("targetPolicy", "NONE")
         aim_policy = promotion.get("aimPolicy", "NONE")
         if target_policy not in {
@@ -1442,23 +1456,24 @@ def build_candidates(
             if owner is None or owner.get("sourceChainId") != promotion["sourceChainId"]:
                 raise PromotionError(f"pattern ID collides with a non-matching owner: {pattern_id}")
 
-    gameplay["patterns"] = [
-        row for row in gameplay["patterns"] if row.get("patternId") not in pattern_ids
-    ]
-    presentation["patterns"] = [
-        row for row in presentation["patterns"] if row.get("patternId") not in pattern_ids
-    ]
     if "decisionModel" not in gameplay or not isinstance(gameplay["decisionModel"], dict):
         raise PromotionError("gameplay decisionModel is missing")
-    gameplay["decisionModel"]["manualAuditions"] = [
-        row for row in existing_manual if row.get("patternId") not in pattern_ids
-    ]
+    if not preserve_existing_patterns:
+        gameplay["patterns"] = [
+            row for row in gameplay["patterns"] if row.get("patternId") not in pattern_ids
+        ]
+        presentation["patterns"] = [
+            row for row in presentation["patterns"] if row.get("patternId") not in pattern_ids
+        ]
+        gameplay["decisionModel"]["manualAuditions"] = [
+            row for row in existing_manual if row.get("patternId") not in pattern_ids
+        ]
 
     receipt_patterns: list[dict[str, Any]] = []
     seen_source_occurrences: set[str] = set()
     seen_target_actions: set[str] = set()
     seen_target_occurrences: set[str] = set()
-    for promotion, chain in zip(promotions, promoted_chains):
+    for promotion_ordinal, (promotion, chain) in enumerate(zip(promotions, promoted_chains)):
         chain_id = promotion["sourceChainId"]
         _exact(
             chain,
@@ -1470,11 +1485,13 @@ def build_candidates(
         animation = chain["animation"]
         _exact(animation, ("endPolicy", "repeatCount", "occurrences"), f"chain {chain_id}.animation")
         occurrences = animation["occurrences"]
+        empty_pattern = promotion.get("creationKind") == "EMPTY_PATTERN"
         if (
-            animation["endPolicy"] != "NATIVE_CLIP_LENGTHS"
+            animation["endPolicy"] != ("NONE" if empty_pattern else "NATIVE_CLIP_LENGTHS")
             or not isinstance(occurrences, list)
-            or not occurrences
-            or _integer(animation["repeatCount"], f"chain {chain_id}.repeatCount", 1)
+            or (not occurrences and not empty_pattern)
+            or (empty_pattern and bool(occurrences))
+            or _integer(animation["repeatCount"], f"chain {chain_id}.repeatCount", 0)
             != len(occurrences)
             or len(occurrences) > 64
         ):
@@ -1623,80 +1640,107 @@ def build_candidates(
                 }
             )
 
-        gameplay_pattern = _manual_gameplay_pattern(
-            promotion, source_action_ids, stages
-        )
-        presentation_pattern = _manual_presentation_pattern(
-            promotion, source_action_ids, stages
-        )
-        if promotion["patternId"] == "VALTAN_TRASH":
-            gameplay_pattern, presentation_pattern = _expand_trash_capture_promotion(
-                gameplay_pattern,
-                presentation_pattern,
-                existing_gameplay_by_id.get(promotion["patternId"]),
-                existing_presentation_by_id.get(promotion["patternId"]),
-            )
-        elif promotion["patternId"] in (
-            "VALTAN_TRASH_CATCH_IF", "VALTAN_TRASH_CATCH_SUCCESS", "VALTAN_TRASH_CATCH_FAIL"
-        ):
-            from author_valtan_phase_two_mechanics import author_trash_capture_flow
-            shared_gameplay = copy.deepcopy(next(
-                row for row in gameplay["patterns"] if row["patternId"] == "VALTAN_TRASH"))
-            shared_presentation = copy.deepcopy(next(
-                row for row in presentation["patterns"] if row["patternId"] == "VALTAN_TRASH"))
-            author_trash_capture_flow(
-                {"patterns": [shared_gameplay, gameplay_pattern]},
-                {"patterns": [shared_presentation, presentation_pattern]},
-                audition_pattern_ids=(promotion["patternId"],),
-            )
+        if empty_pattern:
+            stages = [{"stageId": "STEP_01",
+                       "actionId": f"valtan.sequence.{chain_id}.step-01",
+                       "durationMs": 1000}]
         existing_gameplay_pattern = existing_gameplay_by_id.get(
             promotion["patternId"]
         )
         existing_presentation_pattern = existing_presentation_by_id.get(
             promotion["patternId"]
         )
-        if (
-            promotion["patternId"] == "VALTAN_COUNTER"
-            and existing_gameplay_pattern is not None
-            and existing_presentation_pattern is not None
-            and "VALTAN_GROGGY_FOLLOWUP" in current_gameplay_ids
-            and "VALTAN_GROGGY_FOLLOWUP" in current_presentation_ids
-            and "VALTAN_COUNTER_GROGGY" not in current_gameplay_ids
-            and "VALTAN_COUNTER_GROGGY" not in current_presentation_ids
-            and "VALTAN_COUNTER_GROGGY" in set(
-                gameplay.get("retiredPatternIds", [])
-            )
-        ):
-            # The reviewed source receipt retains its fourth, counter-specific
-            # groggy occurrence as immutable intake evidence. Canonical gameplay
-            # retires that duplicate result pattern and routes STEP_02 success
-            # to the shared Valtan groggy follow-up instead.
+        if (preserve_existing_patterns or empty_pattern) and existing_gameplay_pattern is not None:
+            # Creating one new Pattern must not refresh earlier Patterns from
+            # immutable intake. Their current Stage clocks, edited animation,
+            # cameras and other typed owners are canonical and are validated
+            # together with the new Pattern before the transaction can commit.
             gameplay_pattern = copy.deepcopy(existing_gameplay_pattern)
             presentation_pattern = copy.deepcopy(existing_presentation_pattern)
         else:
-            preserve_sequence_append = bool(_typed_appended_sequence_sources(
-                presentation_pattern,
-                existing_presentation_pattern,
-            ))
-            gameplay_pattern = _preserve_manual_gameplay_enrichment(
-                gameplay_pattern,
-                existing_gameplay_pattern,
-                preserve_sequence_append=preserve_sequence_append,
+            gameplay_pattern = _manual_gameplay_pattern(
+                promotion, source_action_ids, stages
             )
-            presentation_pattern = _preserve_manual_presentation_enrichment(
-                presentation_pattern,
-                existing_presentation_pattern,
+            presentation_pattern = _manual_presentation_pattern(
+                promotion, source_action_ids, stages
             )
-        gameplay["patterns"].append(gameplay_pattern)
-        presentation["patterns"].append(presentation_pattern)
-        gameplay["decisionModel"]["manualAuditions"].append(
-            {
+            if promotion["patternId"] == "VALTAN_TRASH":
+                gameplay_pattern, presentation_pattern = _expand_trash_capture_promotion(
+                    gameplay_pattern,
+                    presentation_pattern,
+                    existing_gameplay_by_id.get(promotion["patternId"]),
+                    existing_presentation_by_id.get(promotion["patternId"]),
+                )
+            elif promotion["patternId"] in (
+                "VALTAN_TRASH_CATCH_IF", "VALTAN_TRASH_CATCH_SUCCESS", "VALTAN_TRASH_CATCH_FAIL"
+            ):
+                from author_valtan_phase_two_mechanics import author_trash_capture_flow
+                shared_gameplay = copy.deepcopy(next(
+                    row for row in gameplay["patterns"] if row["patternId"] == "VALTAN_TRASH"))
+                shared_presentation = copy.deepcopy(next(
+                    row for row in presentation["patterns"] if row["patternId"] == "VALTAN_TRASH"))
+                author_trash_capture_flow(
+                    {"patterns": [shared_gameplay, gameplay_pattern]},
+                    {"patterns": [shared_presentation, presentation_pattern]},
+                    audition_pattern_ids=(promotion["patternId"],),
+                )
+            if (
+                promotion["patternId"] == "VALTAN_COUNTER"
+                and existing_gameplay_pattern is not None
+                and existing_presentation_pattern is not None
+                and "VALTAN_GROGGY_FOLLOWUP" in current_gameplay_ids
+                and "VALTAN_GROGGY_FOLLOWUP" in current_presentation_ids
+                and "VALTAN_COUNTER_GROGGY" not in current_gameplay_ids
+                and "VALTAN_COUNTER_GROGGY" not in current_presentation_ids
+                and "VALTAN_COUNTER_GROGGY" in set(
+                    gameplay.get("retiredPatternIds", [])
+                )
+            ):
+                # The reviewed source receipt retains its fourth, counter-specific
+                # groggy occurrence as immutable intake evidence. Canonical gameplay
+                # retires that duplicate result pattern and routes STEP_02 success
+                # to the shared Valtan groggy follow-up instead.
+                gameplay_pattern = copy.deepcopy(existing_gameplay_pattern)
+                presentation_pattern = copy.deepcopy(existing_presentation_pattern)
+            else:
+                preserve_sequence_append = bool(_typed_appended_sequence_sources(
+                    presentation_pattern,
+                    existing_presentation_pattern,
+                ))
+                gameplay_pattern = _preserve_manual_gameplay_enrichment(
+                    gameplay_pattern,
+                    existing_gameplay_pattern,
+                    preserve_sequence_append=preserve_sequence_append,
+                )
+                presentation_pattern = _preserve_manual_presentation_enrichment(
+                    presentation_pattern,
+                    existing_presentation_pattern,
+                )
+        if not preserve_existing_patterns or existing_gameplay_pattern is None:
+            gameplay["patterns"].append(gameplay_pattern)
+            presentation["patterns"].append(presentation_pattern)
+            manual_row = {
                 "patternId": promotion["patternId"],
                 "sourceChainId": chain_id,
                 "authoringPhase": promotion["authoringPhase"],
                 "admissionState": promotion["admissionState"],
             }
-        )
+            manual_rows = gameplay["decisionModel"]["manualAuditions"]
+            insert_at = len(manual_rows)
+            if preserve_existing_patterns:
+                # Saved intake can be promoted between earlier promotions.
+                # Insert only the new owner in that filtered lineage order;
+                # retain every existing row, including interspersed derived
+                # owners, in its original relative position.
+                following_ids = {
+                    row["patternId"] for row in promotions[promotion_ordinal + 1 :]
+                }
+                insert_at = next(
+                    (index for index, row in enumerate(manual_rows)
+                     if row["patternId"] in following_ids),
+                    insert_at,
+                )
+            manual_rows.insert(insert_at, manual_row)
         receipt_patterns.append(
             {
                 "sourceChainId": chain_id,
@@ -1796,6 +1840,7 @@ def validate_and_project(
     debug_document: dict[str, Any] | None = None,
     promotion_manifest: dict[str, Any] | None = None,
     pattern_sound_source_bytes: bytes | None = None,
+    pattern_shake_source_bytes: bytes | None = None,
     effect_v2_source_bytes: bytes | None = None,
 ) -> dict[str, str]:
     pipeline = _load_v2_pipeline(repo_root)
@@ -1806,6 +1851,8 @@ def validate_and_project(
         docs[pipeline.PRESENTATION_AUTHORING_REL] = presentation
         if pattern_sound_source_bytes is not None:
             docs[pipeline.PATTERN_SOUND_CUES_REL] = pattern_sound_source_bytes
+        if pattern_shake_source_bytes is not None:
+            docs[pipeline.SHAKE_CUES_REL] = pattern_shake_source_bytes
         if effect_v2_source_bytes is not None:
             docs[pipeline.EFFECT_V2_BINDINGS_REL] = effect_v2_source_bytes
         if combat_authoring is not None:
@@ -2470,7 +2517,9 @@ def _validate_create_request(request: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(selection, dict):
         raise PromotionError("Create New Pattern intakeChain must be an object")
     selection_kind = selection.get("selectionKind")
-    if selection_kind == "SAVED_INTAKE_CHAIN":
+    if selection_kind == "EMPTY_PATTERN":
+        _exact(selection, ("selectionKind",), "Create New Pattern empty intakeChain")
+    elif selection_kind == "SAVED_INTAKE_CHAIN":
         _exact(
             selection,
             ("selectionKind", "sourceChainId"),
@@ -2511,7 +2560,7 @@ def _validate_create_request(request: dict[str, Any]) -> dict[str, Any]:
         _stable(chain.get("chainId"), "current chainId")
     else:
         raise PromotionError(
-            "intakeChain.selectionKind must be SAVED_INTAKE_CHAIN or CURRENT_CHAIN"
+            "intakeChain.selectionKind must be EMPTY_PATTERN, SAVED_INTAKE_CHAIN or CURRENT_CHAIN"
         )
     normalized = copy.deepcopy(request)
     normalized["patternId"] = pattern_id
@@ -2590,7 +2639,12 @@ def _stage_create_pattern_documents(
             if chain_id in promoted_chain_ids
         )
     else:
-        chain = copy.deepcopy(selection["chain"])
+        chain = (
+            {"chainId": "authored." + pattern_id.lower(), "targetPatternId": "",
+             "targetStageId": "", "animation": {"endPolicy": "NONE",
+             "repeatCount": 0, "occurrences": []}}
+            if selection_kind == "EMPTY_PATTERN" else copy.deepcopy(selection["chain"])
+        )
         source_chain_id = chain["chainId"]
         declared_intake_ids = {
             row.get("sourceChainId")
@@ -2618,6 +2672,8 @@ def _stage_create_pattern_documents(
         "targetPolicy": request["targetPolicy"],
         "aimPolicy": request["aimPolicy"],
     }
+    if selection_kind == "EMPTY_PATTERN":
+        promotion["creationKind"] = "EMPTY_PATTERN"
     if selection_kind == "CURRENT_CHAIN" and "sourceActionId" in selection:
         promotion["sourceActionId"] = selection["sourceActionId"]
         promotion["sourceSequenceIndex"] = selection["sourceSequenceIndex"]
@@ -2683,8 +2739,10 @@ def prepare_create_pattern_transaction(
         debug_document=staged_debug,
         gameplay_document=gameplay,
         presentation_document=presentation,
+        preserve_existing_patterns=True,
     )
-    product_relatives = _transaction_projection_relatives(repo_root)
+    source_only = request["intakeChain"]["selectionKind"] == "EMPTY_PATTERN"
+    product_relatives = () if source_only else _transaction_projection_relatives(repo_root)
     if len(product_relatives) != len(set(product_relatives)):
         raise PromotionError("Product projection target closure contains duplicates")
     for relative in product_relatives:
@@ -2694,7 +2752,7 @@ def prepare_create_pattern_transaction(
                 f"Product projection collides with an authoring target: {relative}"
             )
         expected_baselines[path] = _read_bytes_or_none(path)
-    outputs = validate_and_project(
+    outputs = {} if source_only else validate_and_project(
         repo_root,
         staged_gameplay,
         staged_presentation,
@@ -2747,6 +2805,7 @@ def prepare_create_pattern_transaction(
         "patternCount": receipt["patternCount"],
         "stageCount": receipt["stageCount"],
         "projectedArtifactCount": len(outputs),
+        "sourceOnly": source_only,
     }
     return targets, expected_baselines, result
 
@@ -3355,6 +3414,90 @@ def commit_projected_products(
 
 
 
+def _validate_pattern_shake_source(payload: bytes) -> dict[str, Any]:
+    document = _read_json_bytes(payload, Path(PATTERN_SHAKE_REL))
+    _exact(document, ("schema", "formatVersion", "ownerArchetypeId", "cues"), "Pattern Shake")
+    if (document["schema"] != "lostark.valtan-pattern-shake-cues" or
+            type(document["formatVersion"]) is not int or document["formatVersion"] != 1 or
+            document["ownerArchetypeId"] != "BOSS_VALTAN"):
+        raise PromotionError("Pattern Shake source header is invalid")
+    if not isinstance(document["cues"], list) or len(document["cues"]) > 1024:
+        raise PromotionError("Pattern Shake cues must be an array <= 1024")
+    binding_ids: set[str] = set()
+    occurrence_ids: set[str] = set()
+    for row in document["cues"]:
+        _exact(row, ("bindingId", "occurrenceId", "patternId", "stageId", "actionId",
+                     "clipOccurrenceId", "repeatPolicy", "startMs", "shake"), "Pattern Shake cue")
+        for field in ("bindingId", "occurrenceId", "patternId", "stageId", "actionId", "clipOccurrenceId"):
+            _stable(row[field], "Pattern Shake " + field)
+        if row["bindingId"] in binding_ids or row["occurrenceId"] in occurrence_ids:
+            raise PromotionError("Pattern Shake has duplicate binding or occurrence identity")
+        binding_ids.add(row["bindingId"]); occurrence_ids.add(row["occurrenceId"])
+        if row["repeatPolicy"] not in ("once", "each_loop") or _integer(row["startMs"], "Pattern Shake startMs") > 60000:
+            raise PromotionError("Pattern Shake source clock is invalid")
+        if not isinstance(row["shake"], str) or not row["shake"]:
+            raise PromotionError("Pattern Shake payload must be text")
+        fields: dict[str, list[float]] = {}
+        for field in row["shake"].split(";"):
+            key, separator, value = field.partition("=")
+            if not separator or key in fields or key not in ("dur", "stop", "in", "out", "x", "y", "z", "fov"):
+                raise PromotionError("Pattern Shake payload field is invalid or duplicated")
+            try:
+                number_parts = value.split(",")
+                if any(re.fullmatch(r"[ \t]*[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?", item) is None for item in number_parts):
+                    raise ValueError("not a native decimal float")
+                values = [float(item) for item in number_parts]
+            except ValueError as exc:
+                raise PromotionError("Pattern Shake payload number is invalid") from exc
+            if len(values) != (2 if key in ("x", "y", "z", "fov") else 1) or any(not math.isfinite(n) or abs(n) > 3.402823466e38 for n in values):
+                raise PromotionError("Pattern Shake payload number/count is invalid")
+            if key in ("dur", "stop") and values[0] <= 0 or key in ("in", "out") and values[0] < 0:
+                raise PromotionError("Pattern Shake duration/blend is invalid")
+            fields[key] = values
+        if not {"dur", "in", "out", "x", "y", "z", "fov"}.issubset(fields):
+            raise PromotionError("Pattern Shake payload is missing required fields")
+    return document
+
+
+def _validate_pattern_shake_dependencies_against_candidate_products(
+    repo_root: Path, outputs: Mapping[str, str], *, shake_source_bytes: bytes | None = None,
+    validate_occurrence_ids: set[str] | None = None,
+) -> None:
+    pipeline = _load_v2_pipeline(repo_root)
+    document = _validate_pattern_shake_source(shake_source_bytes if shake_source_bytes is not None else (repo_root / PATTERN_SHAKE_REL).read_bytes())
+    encounter = _read_json_bytes(outputs[pipeline.ENCOUNTER_REL].encode("utf-8"), Path(pipeline.ENCOUNTER_REL))
+    animation = _read_json_bytes(outputs[pipeline.BINDINGS_REL].encode("utf-8"), Path(pipeline.BINDINGS_REL))
+    patterns = {row["patternId"]: {stage["stageId"]: stage for stage in row["stages"]} for row in encounter["patterns"]}
+    bindings = {row["actionId"]: row for row in animation["bindings"]}
+    for cue in document["cues"]:
+        if validate_occurrence_ids is not None and cue["occurrenceId"] not in validate_occurrence_ids:
+            continue
+        label = "Pattern Shake " + cue["occurrenceId"]
+        binding = bindings.get(cue["actionId"])
+        if binding is None:
+            raise PromotionError(label + " action has no candidate animation binding")
+        # Native compatibility: explicit retired NONE actions are inert; known
+        # animation-only legacy Patterns may not yet exist in Encounter.
+        if binding.get("playbackMode") == "NONE" and not binding["clips"]:
+            if validate_occurrence_ids is not None:
+                raise PromotionError(label + " changed cue has no active candidate clip")
+            continue
+        clip = next((row for row in binding["clips"] if row["clipOccurrenceId"] == cue["clipOccurrenceId"]), None)
+        if clip is None:
+            raise PromotionError(label + " clip occurrence is not owned by its candidate action")
+        if cue["repeatPolicy"] == "each_loop" and not clip.get("loop", False):
+            raise PromotionError(label + " each_loop references a non-loop clip")
+        if cue["patternId"] not in patterns:
+            if validate_occurrence_ids is not None:
+                raise PromotionError(label + " changed cue has no candidate Pattern")
+            continue
+        stage = patterns[cue["patternId"]].get(cue["stageId"])
+        if stage is None or stage["actionId"] != cue["actionId"] or not stage["durationMs"]:
+            raise PromotionError(label + " candidate Pattern/Stage/action tuple is invalid")
+        if cue["startMs"] < clip["sourceStartMs"] or (clip["playMs"] and cue["startMs"] >= clip["sourceStartMs"] + clip["playMs"]):
+            raise PromotionError(label + " startMs is outside its candidate clip segment")
+
+
 def _validate_source_sidecar(owner: str, payload: bytes) -> None:
     """Storage checks only; resource/clock dependency readiness is Publish work."""
     value = _read_json_bytes(payload, Path(owner))
@@ -3369,7 +3512,9 @@ def _validate_source_sidecar(owner: str, payload: bytes) -> None:
         if isinstance(node, list):
             for child in node: finite_tree(child)
     finite_tree(value)
-    if owner == PATTERN_SOUND_REL:
+    if owner == PATTERN_SHAKE_REL:
+        _validate_pattern_shake_source(payload)
+    elif owner == PATTERN_SOUND_REL:
         _exact(value, ('schema', 'formatVersion', 'ownerArchetypeId', 'cues'), owner)
         if value['schema'] != 'lostark.valtan-pattern-sound-cues' or value['formatVersion'] != 1 or value['ownerArchetypeId'] != 'BOSS_VALTAN':
             raise PromotionError('Pattern Sound source header is invalid')
@@ -3422,6 +3567,8 @@ def commit_source_authoring_patch(
     repo_root: Path, draft_patch_path: Path, *, source_baseline_root: Path,
     pattern_sound_baseline_path: Path | None = None,
     pattern_sound_candidate_path: Path | None = None,
+    pattern_shake_baseline_path: Path | None = None,
+    pattern_shake_candidate_path: Path | None = None,
     effect_v2_baseline_path: Path | None = None,
     effect_v2_candidate_path: Path | None = None,
     lock_timeout_seconds: float = 0.0,
@@ -3459,7 +3606,7 @@ def commit_source_authoring_patch(
         candidate,bosses,damage,combat,boss_catalog,count=result
         gameplay,presentation=pipeline.split_v2_authoring(candidate,docs[pipeline.WORLD_SET_REL],combat)
         source_values={GAMEPLAY_REL:gameplay,PRESENTATION_REL:presentation,pipeline.COMBAT_AUTHORING_REL:combat,pipeline.BOSS_CATALOG_REL:boss_catalog}
-        targets={}; expected={}
+        targets={}; expected={}; sidecar_payloads={}
         for relative,value in source_values.items():
             # No-op and unrelated owners keep their exact physical bytes.
             if value==docs[relative]: continue
@@ -3469,14 +3616,40 @@ def commit_source_authoring_patch(
             expected[repo_root/relative]=physical
         for relative,baseline_path,candidate_path in (
             (PATTERN_SOUND_REL,pattern_sound_baseline_path,pattern_sound_candidate_path),
+            (PATTERN_SHAKE_REL,pattern_shake_baseline_path,pattern_shake_candidate_path),
             (EFFECT_V2_BINDINGS_REL,effect_v2_baseline_path,effect_v2_candidate_path)):
             if (baseline_path is None)!=(candidate_path is None): raise PromotionError(f'{relative} requires baseline and candidate')
             if baseline_path is None: continue
             baseline=baseline_path.read_bytes(); payload=candidate_path.read_bytes()
             if (repo_root/relative).read_bytes()!=baseline: raise PromotionError(f'{relative} changed since Reload; source draft was preserved')
             _validate_source_sidecar(relative,payload)
+            sidecar_payloads[relative] = payload
             if payload!=baseline:
                 targets[repo_root/relative]=payload; expected[repo_root/relative]=baseline
+        if operations or pattern_shake_candidate_path is not None:
+            encounter = copy.deepcopy(docs[pipeline.ENCOUNTER_REL])
+            animation = copy.deepcopy(docs[pipeline.BINDINGS_REL])
+            by_pattern = {row["patternId"]: row for row in encounter["patterns"]}
+            by_action = {row["actionId"]: row for row in animation["bindings"]}
+            for retired in candidate["retiredPatternIds"]:
+                by_pattern.pop(retired, None)
+            for pattern in candidate["patterns"]:
+                by_pattern[pattern["patternId"]] = {"patternId": pattern["patternId"], "stages": pattern["stages"]}
+                for stage in pattern["stages"]:
+                    by_action[stage["actionId"]] = pipeline.compile_binding(stage)
+            encounter["patterns"] = list(by_pattern.values()); animation["bindings"] = list(by_action.values())
+            shake_payload = (sidecar_payloads[PATTERN_SHAKE_REL] if PATTERN_SHAKE_REL in sidecar_payloads
+                             else (repo_root / PATTERN_SHAKE_REL).read_bytes())
+            shake_rows = _validate_pattern_shake_source(shake_payload)["cues"]
+            saved_rows = {row["occurrenceId"]: row for row in _read_json(repo_root / PATTERN_SHAKE_REL)["cues"]}
+            before_stages = {(p["patternId"], st["stageId"]): st for p in master["patterns"] for st in p["stages"]}
+            after_stages = {(p["patternId"], st["stageId"]): st for p in candidate["patterns"] for st in p["stages"]}
+            changed_scopes = {key for key in before_stages.keys() | after_stages.keys() if before_stages.get(key) != after_stages.get(key)}
+            changed_cues = {row["occurrenceId"] for row in shake_rows if
+                           saved_rows.get(row["occurrenceId"]) != row or (row["patternId"], row["stageId"]) in changed_scopes}
+            _validate_pattern_shake_dependencies_against_candidate_products(repo_root,
+                {pipeline.ENCOUNTER_REL: _json_text(encounter), pipeline.BINDINGS_REL: _json_text(animation)},
+                shake_source_bytes=shake_payload, validate_occurrence_ids=changed_cues)
         if targets:
             _atomic_commit(targets,expected_baselines=expected,repository_root=repo_root,lock_already_held=True,inject_failure_after=inject_failure_after)
         after=pipeline.source_manifest(repo_root)
@@ -3489,6 +3662,8 @@ def commit_typed_authoring_patch(
     authoring_root: Path | None = None,
     pattern_sound_baseline_path: Path | None = None,
     pattern_sound_candidate_path: Path | None = None,
+    pattern_shake_baseline_path: Path | None = None,
+    pattern_shake_candidate_path: Path | None = None,
     effect_v2_baseline_path: Path | None = None,
     effect_v2_candidate_path: Path | None = None,
     effect_v2_read_set_path: Path | None = None,
@@ -3642,6 +3817,9 @@ def commit_typed_authoring_patch(
                 docs[pipeline.WORLD_SET_REL],
                 committed_combat,
             )
+            pattern_shake_pair = read_owner_pair(
+                "Pattern Shake", pattern_shake_baseline_path, pattern_shake_candidate_path,
+            )
             outputs = validate_and_project(
                 repo_root,
                 gameplay,
@@ -3649,6 +3827,7 @@ def commit_typed_authoring_patch(
                 combat_authoring=committed_combat,
                 boss_catalog=committed_boss_catalog,
                 pattern_sound_source_bytes=(pattern_sound_candidate_path.read_bytes() if pattern_sound_candidate_path is not None else None),
+                pattern_shake_source_bytes=(pattern_shake_pair[1] if pattern_shake_pair is not None else None),
                 effect_v2_source_bytes=(effect_v2_candidate_path.read_bytes() if effect_v2_candidate_path is not None else None),
             )
             pattern_sound_pair = read_owner_pair(
@@ -3656,6 +3835,7 @@ def commit_typed_authoring_patch(
                 pattern_sound_baseline_path,
                 pattern_sound_candidate_path,
             )
+            pattern_shake_target = repo_root / PATTERN_SHAKE_REL
             effect_v2_pair = read_owner_pair(
                 "Effect V2",
                 effect_v2_baseline_path,
@@ -3755,6 +3935,9 @@ def commit_typed_authoring_patch(
             if pattern_sound_pair is not None:
                 target_payloads[pattern_sound_target] = pattern_sound_pair[1]
                 provided_baselines[pattern_sound_target] = pattern_sound_pair[0]
+            if pattern_shake_pair is not None:
+                target_payloads[pattern_shake_target] = pattern_shake_pair[1]
+                provided_baselines[pattern_shake_target] = pattern_shake_pair[0]
             if effect_v2_pair is not None:
                 target_payloads[effect_v2_target] = effect_v2_pair[1]
                 provided_baselines[effect_v2_target] = effect_v2_pair[0]

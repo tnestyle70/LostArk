@@ -8,7 +8,8 @@
       "combatObjectArchetypeId": "combatobject.valtan.high-jump.target-axe",
       "hitId": "hit.valtan.high-jump.target-axe.01",
       "soundBank": "S_Mob_G_Voltan2",
-      "soundEvent": "G_Voltan2_Attack09_ProjExp1"
+      "soundEvent": "G_Voltan2_Attack09_ProjExp1",
+      "playbackOffsetMs": 50
     },
     {
       "bindingId": "cue.sound.valtan.combatobject.red-blade-wave.projectile.hit.01",
@@ -65,6 +66,69 @@
       "hitId": "hit.valtan.ghost.portal-charge.01",
       "soundBank": "S_Mob_G_Voltan2",
       "soundEvent": "G_Voltan2_Attack17_Shot3"
+    },
+    {
+      "bindingId": "cue.sound.valtan.terrain-3.combo-rock.explode",
+      "combatObjectArchetypeId": "combatobject.valtan.terrain-3.combo-rock",
+      "hitId": "hit.valtan.terrain-3.combo-rock.explode",
+      "soundBank": "S_Mob_G_Voltan2",
+      "soundEvent": "G_Voltan2_Attack09_ProjExp1"
+    },
+    {
+      "bindingId": "cue.sound.valtan.terrain-9.combo-rock.explode",
+      "combatObjectArchetypeId": "combatobject.valtan.terrain-9.combo-rock",
+      "hitId": "hit.valtan.terrain-9.combo-rock.explode",
+      "soundBank": "S_Mob_G_Voltan2",
+      "soundEvent": "G_Voltan2_Attack09_ProjExp1"
+    },
+    {
+      "bindingId": "cue.sound.valtan.struggling.underfoot-01.source",
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.underfoot-01",
+      "hitId": "hit.valtan.struggling.underfoot-01",
+      "soundBank": "S_Mob_G_Voltan2",
+      "soundEvent": "G_Voltan2_Attack14_ProjExp1"
+    },
+    {
+      "bindingId": "cue.sound.valtan.struggling.underfoot-02.source",
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.underfoot-02",
+      "hitId": "hit.valtan.struggling.underfoot-02",
+      "soundBank": "S_Mob_G_Voltan2",
+      "soundEvent": "G_Voltan2_Attack14_ProjExp1"
+    },
+    {
+      "bindingId": "cue.sound.valtan.struggling.underfoot-03.source",
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.underfoot-03",
+      "hitId": "hit.valtan.struggling.underfoot-03",
+      "soundBank": "S_Mob_G_Voltan2",
+      "soundEvent": "G_Voltan2_Attack14_ProjExp1"
+    },
+    {
+      "bindingId": "cue.sound.valtan.struggling.underfoot-04.source",
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.underfoot-04",
+      "hitId": "hit.valtan.struggling.underfoot-04",
+      "soundBank": "S_Mob_G_Voltan2",
+      "soundEvent": "G_Voltan2_Attack14_ProjExp1"
+    },
+    {
+      "bindingId": "cue.sound.valtan.struggling.underfoot-05.source",
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.underfoot-05",
+      "hitId": "hit.valtan.struggling.underfoot-05",
+      "soundBank": "S_Mob_G_Voltan2",
+      "soundEvent": "G_Voltan2_Attack14_ProjExp1"
+    },
+    {
+      "bindingId": "cue.sound.valtan.struggling.underfoot-06.source",
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.underfoot-06",
+      "hitId": "hit.valtan.struggling.underfoot-06",
+      "soundBank": "S_Mob_G_Voltan2",
+      "soundEvent": "G_Voltan2_Attack14_ProjExp1"
+    },
+    {
+      "bindingId": "cue.sound.valtan.struggling.outer.source",
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.in-out",
+      "hitId": "hit.valtan.struggling.outer",
+      "soundBank": "S_Mob_G_Voltan2",
+      "soundEvent": "G_Voltan2_Attack18_ProjExp1"
     }
   ]
 }

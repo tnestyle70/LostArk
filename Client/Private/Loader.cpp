@@ -326,6 +326,12 @@ HRESULT CLoader::Start_Loading()
 	}
 	if (SUCCEEDED(result) && m_isCancellationRequested.load(std::memory_order_acquire))
 		result = HRESULT_FROM_WIN32(ERROR_CANCELLED);
+	if (FAILED(result) && m_pEffectLoadJob)
+	{
+		const auto Failure = m_pEffectLoadJob->Get_FirstFailure();
+		if (Failure && FAILED(static_cast<HRESULT>(Failure->iRootCode)))
+			result = static_cast<HRESULT>(Failure->iRootCode);
+	}
 	if (FAILED(result))
 		Request_Cancellation();
 	m_iResult.store(result, std::memory_order_release);

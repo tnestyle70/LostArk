@@ -1277,7 +1277,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_RevisionProtocol(TESTS&
 			"PATTERNFINALE\tENCOUNTER_VALTAN\tVALTAN_GHOST_FINALE\tGHOST_PORTAL_LOOP\tBOSS_VALTAN_GHOST\t";
 		const std::string finaleChildren =
 			"\tVALTAN_WHIRLWIND\tVALTAN_FOUR_SLASH\tVALTAN_SEQUENCE_FOUR"
-			"\tVALTAN_CROSS\tVALTAN_CHARGE\tVALTAN_CHARGE_2";
+			"\tVALTAN_CROSS";
 		const std::string finaleRow = finalePrefix + "10\t10\t1" + finaleChildren;
 		const std::string dynamicFinaleRow =
 			finalePrefix + "10\t10\t2" + finaleChildren;
@@ -1298,9 +1298,18 @@ void LostArk::Server::CServerGameplayContractRunner::Run_RevisionProtocol(TESTS&
 			2u == dynamicFinale->Finale.iMaximumActiveGhosts &&
 			dynamicFinale->Finale.GhostPatternIds == std::vector<std::string>{
 				"VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH",
-				"VALTAN_SEQUENCE_FOUR", "VALTAN_CROSS",
-				"VALTAN_CHARGE", "VALTAN_CHARGE_2" },
-			"Load the canonical six-child finale pool and retain its authored capacity");
+				"VALTAN_SEQUENCE_FOUR", "VALTAN_CROSS" },
+			"Load the canonical four-child finale pool and retain its authored capacity");
+		tests.Require(nullptr != dynamicFinalePatterns && dynamicFinale != dynamicFinalePatterns->end() &&
+			dynamicFinale->Finale.iAuxiliarySpawnIntervalMs == 5000u &&
+			dynamicFinale->Finale.iPortalSpawnIntervalMs == 10000u,
+			"Retain the saved five-second auxiliary delay and ten-second portal interval");
+		const std::string intervalPrefix = "PATTERNFINALEINTERVAL\tENCOUNTER_VALTAN\tVALTAN_GHOST_FINALE\t";
+		tests.Require(rejectsRuntimeRefinement(L"finale-aux-interval-overflow", intervalPrefix + "5000\t10000",
+			intervalPrefix + "600001\t10000", "interval row is invalid") &&
+			rejectsRuntimeRefinement(L"finale-portal-interval-zero", intervalPrefix + "5000\t10000",
+				intervalPrefix + "5000\t0", "interval row is invalid"),
+			"Finale interval bounds reject malformed rows without replacing the active generation");
 		tests.Require(
 			rejectsRuntimeRefinement(L"finale-half-extent", finaleRow,
 				finalePrefix + "0.5\t10\t1" + finaleChildren,
@@ -1322,7 +1331,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_RevisionProtocol(TESTS&
 				finalePrefix + "10\t10\t1\tVALTAN_WHIRLWIND\tVALTAN_FOUR_SLASH"
 					"\tVALTAN_SEQUENCE_FOUR\tVALTAN_CROSS\tVALTAN_CHARGE"
 					"\tVALTAN_UNKNOWN_GHOST_ATTACK",
-				"primary-loop order is invalid"),
+				"auxiliary skill pool is invalid"),
 			"Finale rejects invalid ranges, empty/duplicate children and unresolved references transactionally");
 		const std::string targetPortalRow =
 			"PATTERNSTAGEMOTION\tENCOUNTER_VALTAN\tVALTAN_WARP\tvaltan.sequence.warp.step-02\tPORTAL_TARGET_RUSH\t300\t12.3076925\t16";

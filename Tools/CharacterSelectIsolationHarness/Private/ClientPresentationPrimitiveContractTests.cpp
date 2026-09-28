@@ -118,12 +118,19 @@ namespace
 		first.iNetEntityId = 101u;
 		first.iCurrentHp = 25u;
 		first.iMaximumHp = 100u;
+		first.iInvulnerabilityZonePulseTick = snapshot.iServerTick;
+		first.bRonaunGuard = true;
+		first.iRonaunGrantTick = snapshot.iServerTick;
 		second.iNetEntityId = 202u;
 		second.iCurrentHp = 0u;
 		second.iMaximumHp = 200u;
 		snapshot.Players = { second, first };
 		if (!Require(!health.Find(101u).hasSnapshot && health.Apply_Snapshot(snapshot) &&
 			health.Find(101u).Get_Ratio() == 0.25f &&
+			health.Find(101u).iInvulnerabilityZonePulseTick == 10u &&
+			health.Find(101u).bRonaunGuard && health.Find(101u).iRonaunGrantTick == 10u &&
+			health.Find(202u).iRonaunGrantTick == 0u &&
+			health.Find(202u).iInvulnerabilityZonePulseTick == 0u &&
 			health.Find(202u).hasSnapshot && health.Find(202u).Get_Ratio() == 0.f &&
 			!health.Find(999u).hasSnapshot,
 			"HP join fabricated data, used row order, or hid zero HP"))
@@ -131,15 +138,19 @@ namespace
 			return false;
 		}
 		snapshot.Players[1].iCurrentHp = 90u;
+		snapshot.Players[1].iInvulnerabilityZonePulseTick = 0u;
+		snapshot.Players[1].bRonaunGuard = false;
 		if (!Require(health.Apply_Snapshot(snapshot) &&
-			health.Find(101u).Get_Ratio() == 0.25f,
+			health.Find(101u).Get_Ratio() == 0.25f &&
+			health.Find(101u).iInvulnerabilityZonePulseTick == 10u,
 			"duplicate tick replaced current HP"))
 		{
 			return false;
 		}
 		snapshot.iServerTick = 9u;
 		if (!Require(health.Apply_Snapshot(snapshot) &&
-			health.Find(101u).Get_Ratio() == 0.25f,
+			health.Find(101u).Get_Ratio() == 0.25f &&
+			health.Find(101u).iInvulnerabilityZonePulseTick == 10u,
 			"older tick replaced current HP"))
 		{
 			return false;
@@ -147,7 +158,8 @@ namespace
 		snapshot.iServerTick = 11u;
 		snapshot.Players.push_back(first);
 		if (!Require(!health.Apply_Snapshot(snapshot) &&
-			health.Find(101u).Get_Ratio() == 0.25f,
+			health.Find(101u).Get_Ratio() == 0.25f &&
+			health.Find(101u).iInvulnerabilityZonePulseTick == 10u,
 			"duplicate entity partially committed HP"))
 		{
 			return false;
@@ -155,11 +167,21 @@ namespace
 		snapshot.Players.pop_back();
 		snapshot.Players[1].iMaximumHp = 0u;
 		if (!Require(!health.Apply_Snapshot(snapshot) &&
-			health.Find(101u).Get_Ratio() == 0.25f,
+			health.Find(101u).Get_Ratio() == 0.25f &&
+			health.Find(101u).iInvulnerabilityZonePulseTick == 10u,
 			"invalid HP partially committed the snapshot"))
 		{
 			return false;
 		}
+		snapshot.Players[1].iMaximumHp = 100u;
+		if (!Require(health.Apply_Snapshot(snapshot) &&
+			health.Find(101u).iInvulnerabilityZonePulseTick == 0u &&
+			!health.Find(101u).bRonaunGuard && health.Find(101u).iRonaunGrantTick == 10u,
+			"new snapshot lost grant text or retained consumed protection"))
+		{
+			return false;
+		}
+		snapshot.iServerTick = 12u;
 		snapshot.Players = { second };
 		if (!Require(health.Apply_Snapshot(snapshot) && !health.Find(101u).hasSnapshot,
 			"out-of-world member retained stale HP"))

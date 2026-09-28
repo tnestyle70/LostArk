@@ -1721,6 +1721,9 @@ namespace LostArk::Shared
 		std::string strFearPresentationId;
 		// Latest Server zone entry/2-second pulse, or zero while outside the active zone.
 		std::uint32_t iInvulnerabilityZonePulseTick = 0u;
+		// One authoritative Ronaun wipe guard; grant occurrence survives consumption.
+		bool bRonaunGuard = false;
+		std::uint32_t iRonaunGrantTick = 0u;
 		// 0 outside a staged action, 1-based stage index while one runs: combo
 		// stages, and start/loop/end for a HOLD skill. The server owns it; the
 		// client must not count stages itself.
@@ -1800,6 +1803,19 @@ namespace LostArk::Shared
 		bool operator==(const PORTAL_RUSH_ROUTE_SNAPSHOT&) const = default;
 	};
 
+	/* The Server fixes a leap's landing when the pattern begins. Keep that
+	   anchor on every snapshot so late/coalesced playback never guesses it
+	   from the moving target or the airborne boss. */
+	struct PATTERN_LANDING_SNAPSHOT
+	{
+		bool isValid = false;
+		float fPositionX = 0.f;
+		float fPositionY = 0.f;
+		float fPositionZ = 0.f;
+
+		bool operator==(const PATTERN_LANDING_SNAPSHOT&) const = default;
+	};
+
 	struct WORLD_ENTITY_SNAPSHOT
 	{
 		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
@@ -1820,6 +1836,7 @@ namespace LostArk::Shared
 		// entities must leave this invalid; Client presentation never reselects it.
 		NET_ENTITY_ID iPatternTargetNetEntityId = INVALID_NET_ENTITY_ID;
 		PORTAL_RUSH_ROUTE_SNAPSHOT PortalRushRoute;
+		PATTERN_LANDING_SNAPSHOT PatternLanding;
 		float fPositionX = 0.f;
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;
@@ -1844,8 +1861,8 @@ namespace LostArk::Shared
 	};
 	/* Retail damagetext.gfx (EFUI_DAMAGE, DamageTextWnd) draws a number in one of five
 	styles, chosen by the flag the native side sends with it. Ordinary hits and potion
-	heals are the two this Server judges today; CRITICAL and MISS wait on the combat
-	numbers that will decide them, and INVINCIBLE draws nothing at all in retail. */
+	heals use positive amounts; INVINCIBLE is an outgoing zero-damage verdict
+	for a Server-blocked hit and carries no stagger or mechanic credit. */
 	enum class DAMAGE_HIT_FLAG : std::uint8_t
 	{
 		NORMAL = 0,
@@ -1973,6 +1990,20 @@ namespace LostArk::Shared
 		GameplayDataRevision PinnedDefinitionRevision{};
 	};
 
+	inline constexpr std::size_t MAX_WORLD_PICKUPS = 16u;
+	enum class WORLD_PICKUP_STATE : std::uint8_t
+	{
+		WALL, FALLING, GROUNDED, COLLECTED, REMOVED, END
+	};
+	struct WORLD_PICKUP_SNAPSHOT
+	{
+		std::string strPlacementId;
+		WORLD_PICKUP_STATE eState = WORLD_PICKUP_STATE::WALL;
+		float fPositionX = 0.f, fPositionY = 0.f, fPositionZ = 0.f;
+		std::uint32_t iStateStartTick = 0u;
+		bool operator==(const WORLD_PICKUP_SNAPSHOT&) const = default;
+	};
+
 	//player snapshot을 vector 구조체로 들고, servertick을 들고있다?
 	struct S2C_WORLD_SNAPSHOT
 	{
@@ -1986,6 +2017,8 @@ namespace LostArk::Shared
 		// Full live set, sorted by iCombatObjectId. Reliable spawn/despawn
 		// frames remain ordering barriers around this 30 Hz transform level.
 		std::vector<COMBAT_OBJECT_SNAPSHOT> CombatObjects;
+		// Full stable-ID ordered state, including collected/removed tombstones.
+		std::vector<WORLD_PICKUP_SNAPSHOT> WorldPickups;
 		// Room-shared raid Esther gauge. A maximum of 0 says this world has no
 		// Esther roster and the HUD then has nothing to draw.
 		std::uint32_t iEstherGauge = 0;

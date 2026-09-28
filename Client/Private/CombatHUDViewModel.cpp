@@ -377,7 +377,12 @@ void Client::CCombatHUDViewModel::Apply_Boss(
 	}
 	m_Boss.isValid = true;
 	m_Boss.strArchetypeId = archetypeId;
-	const auto profile = m_BossProfiles.find(archetypeId);
+	// The primary entity keeps its archetype during ghost revival. Its HUD
+	// bar count follows the replicated phase while HP remains Server-owned.
+	const auto profile = m_BossProfiles.find(
+		archetypeId == "BOSS_VALTAN" && snapshot.BossCombat.iGameplayPhase == 3u &&
+		snapshot.strPatternId != "VALTAN_GHOST_RESPAWN_AUDITION" ?
+			"BOSS_VALTAN_GHOST" : archetypeId);
 	m_Boss.strDisplayName = m_BossProfiles.end() == profile ?
 		archetypeId : profile->second.strDisplayName;
 	m_Boss.iMaximumHealthBars = m_BossProfiles.end() == profile ?
@@ -404,15 +409,18 @@ void Client::CCombatHUDViewModel::Apply_Boss(
 	m_Boss.eMechanicGaugeKind = snapshot.BossCombat.eMechanicGaugeKind;
 	m_Boss.iCurrentMechanicGauge = snapshot.BossCombat.iCurrentMechanicGauge;
 	m_Boss.iMaximumMechanicGauge = snapshot.BossCombat.iMaximumMechanicGauge;
-	/* Valtan's magic-orb window predates the typed Kouku mechanic projection.
-	Use its Server response damage first, or the original Server stagger counter.
-	The stable action ID hides the bar immediately on success, timeout or cancel. */
+	/* Both Valtan magic-orb channels use the Server's confirmed response progress.
+	Only the legacy window falls back to the original Server stagger counter.
+	Exact action IDs hide the bar immediately on success, timeout or cancel. */
+	const bool legacyMagicOrbWindow = snapshot.strPatternId == "VALTAN_MAGIC_ORB_STAGGER_76" &&
+		snapshot.strActionId == "valtan.mechanic.magic-orb-stagger-76.window";
+	const bool authoredMagicOrbChannel = snapshot.strPatternId == "VALTAN_STAGGER_SLOT" &&
+		snapshot.strActionId == "valtan.authoring.stagger-slot.channel";
 	if ((archetypeId == "BOSS_VALTAN" || archetypeId == "BOSS_VALTAN_GHOST") &&
-		snapshot.strPatternId == "VALTAN_MAGIC_ORB_STAGGER_76" &&
-		snapshot.strActionId == "valtan.mechanic.magic-orb-stagger-76.window")
+		(legacyMagicOrbWindow || authoredMagicOrbChannel))
 	{
 		const auto maximum = snapshot.BossCombat.iResponseThreshold > 0u ?
-			snapshot.BossCombat.iResponseThreshold : snapshot.BossCombat.iMaximumStagger;
+			snapshot.BossCombat.iResponseThreshold : legacyMagicOrbWindow ? snapshot.BossCombat.iMaximumStagger : 0u;
 		const auto progress = snapshot.BossCombat.iResponseThreshold > 0u ?
 			snapshot.BossCombat.iResponseProgress : snapshot.BossCombat.iCurrentStagger;
 		m_Boss.eMechanicGaugeKind = maximum > 0u ? LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::STAGGER :
@@ -498,7 +506,8 @@ void Client::CCombatHUDViewModel::Apply_DamageEvents(
 	{
 		if (LostArk::Shared::INVALID_PLAYER_ID != localPlayerId &&
 			event.iSourcePlayerId == localPlayerId && event.isOutgoing &&
-			event.eHitFlag != LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB)
+			event.eHitFlag != LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB &&
+			event.eHitFlag != LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE)
 		{
 			/* Own hit: the raid's clock starts on the first one; nothing resets until the
 			level is left. */
@@ -513,8 +522,9 @@ void Client::CCombatHUDViewModel::Apply_DamageEvents(
 			if (event.isCounterSuccess)
 				++m_CombatAnalysis.iCounterSuccesses;
 		}
-		/* Successful mechanics remain visible even when the hit did no HP damage. */
-		if (0u == event.iAmount && !event.isCounterSuccess && !event.isStaggerSuccess)
+		/* Keep Server verdict text even when no HP damage or mechanic credit exists. */
+		if (0u == event.iAmount && !event.isCounterSuccess && !event.isStaggerSuccess &&
+			event.eHitFlag != LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE)
 			continue;
 		HUD_DAMAGE_EVENT retained{};
 		retained.iServerTick = serverTick;

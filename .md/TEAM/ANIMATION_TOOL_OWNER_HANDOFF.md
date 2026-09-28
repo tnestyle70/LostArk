@@ -5,6 +5,65 @@
 
 ## Action Workbench의 공통 창과 저장 owner
 
+발탄 `Composition Actions → Create New Pattern`은 이름을 입력하고 `Create Pattern`을 누르면
+자동 stable ID와 빈 `STEP_01`을 저장하고 선택한다. Animation/Effect/Sound/Collider는 비어 있으며
+`Composition Resources → Animation`에서 실제 clip을 Append한 뒤 같은 Sequencer에서 편집한다.
+Resources의 `Append to Pattern End`는 선택 Stage와 무관하게 현재 Pattern의 마지막을 조회한다.
+manual audition은 마지막 뒤 새 ACTIVE Stage를 만들어 Animation을 추가하며 Sequence 전체도
+한 새 Stage에 원본 순서로 추가한다. 기존 encounter Pattern은 Stage graph를 보존하고 마지막
+Stage의 finite Animation 목록에 추가해 끝 시계만 연장한다. 예를 들어 지형 파괴 3시의 IMPACT
+뒤에 추가해도 기존 착지 Motion·지형 ENTER event·hit 67ms·clip ID는 유지된다. 마지막 목록의
+loop나 특수 Motion clock 등 실제 기존 owner 제한은 유지한다. `Replace Stage Slots`는
+명시적으로 선택 Stage를 교체한다. 원본 sequence의 새 패턴 승격은 `Import Animation Sequence...`에 둔다.
+빈 패턴은 저장·재열기가 가능하며 Animation, 독립 V1/V2 Effect 또는 Collider가 없는 seed는 Product 게시에서 제외한다.
+직접 조합한 clip은 가짜 원본 skill ID를 만들지 않고 `AUDITION_ONLY`로 게시한다.
+
+발탄 Ctrl+C/V는 Animation, Stage, V1/V2 Effect, Sound와 일반 Damage Collider를 지원하며 묶음은 상대 시각을
+유지한다. 같은 Stage의 같은 모양·피해·반응 Collider는 하나의 Collider 박스에 타격 시점을
+추가한다. 서로 다른 모양, Grab, 개별 attackContacts, 기존 연속 활성 창과의 병합은 기존 typed
+편집기를 사용한다. 불가능한 붙여넣기는 이유를 표시하고 전체 대상 초안을 보존한다.
+빈 timeline lane을 드래그하면 Stage와 각 track의 박스를 영역 선택하며 Shift는 선택에 더하고
+Escape는 선택 전 상태로 복원한다. Stage를 복사하면 소유한 박스도 함께 새 ID로 복사하고,
+함께 선택된 자식 박스는 중복 복사하지 않는다. Stage Paste는 선택한 대상 Stage 뒤에 삽입한다.
+일반 Animation 묶음은 대상 Stage 끝에 추가하고 함께 복사한 cue는 새 clip ID에 연결한다.
+Animation/V1/V2 Effect/Sound/일반 Collider 묶음의 Move/Delete와 Ctrl+D Duplicate도 같은
+transaction으로 처리한다. Animation은 연속 Sequence의 slot 경계로 이동하며 함께 선택한
+cue의 상대 시간을 같은 이동량으로 유지한다. Stage 드래그는 선택 Stage들을 원래 순서의
+block으로 재배치하고 소유 리소스의 ID와 Stage 내부 시간을 유지한다.
+`Earlier / Later`는 선택 Stage와 선택 Animation의 소속 Stage를 중복 제거해 인접한 미선택
+Stage 너머로 한 칸 옮긴다. 여러 선택의 내부 순서와 각 Stage의 소유 리소스를 유지하며
+양 끝이나 실패에서는 전체 draft·선택을 보존한다. Sequencer의 선택 영역에는 Source Start /
+Source Duration 입력을 펼치지 않는다. 세부 source trim은 Box Detail과 timeline edge에 남아 있다.
+manual audition Stage에는 Duplicate Stage/Delete Stage를 제공하며 마지막 하나는 Clear Stage로 비운다.
+Stage 복사·삭제와 Animation 삭제는 연결된 Camera Shake도 보존 또는 함께 제거한다.
+Shake의 원본 payload와 비활성 원본 행을 보존하며 기존 Source Save가 baseline/candidate를
+다른 owner와 같은 CAS·원자 transaction으로 저장한다.
+Counter/World/특수 이동처럼 공유 gameplay 참조가 있는 Stage 전체 변경은 기존 보호를 유지한다.
+
+Resources의 `Append Effect to Pattern End`는 Animation 선택 없이 패턴 끝에 독립 Effect를 추가한다.
+manual audition은 새 ACTIVE Stage를 만들고, 기존 encounter Pattern은 마지막 Stage의 기존 끝에서
+Effect를 시작해 그 수명만큼 Stage를 연장한다. EXACT Animation은 HOLD_LAST_POSE로 끝 자세를
+유지한다. Stage 변경과 cue 추가는 같은 transaction이므로 실패 시 둘 다 보존한다. 수명은 기존
+resource resolver를 사용하며 미정/무한 수명은 1000ms 편집 구간으로 시작한다. 선택 구간에 넣는 기능은 접힌 `Add to selected Stage (optional)`에
+별도로 둔다. 삭제된 이전 Stage ID가 기본 Append를 잠그지 않는다.
+새 V1 Effect의 기본은 Animation이 필요 없는 독립 Stage 시간이다. Box Detail에서 시작·끝과
+Effect In, Boss follow / Boss snapshot / Map anchor, 위치·회전·크기를 편집한다. Map은 맵 절대
+좌표이며 Boss snapshot과 다르다. 기존 Animation 연결 cue는 보존하고 선택적으로 연결 방식을
+바꾼다. stageEndMs는 optional cue_end 끝이며 자연 수명은 원본 Effect 수명을 사용한다.
+
+Save는 Source 편집을 저장하고, Save & Publish는 저장본을 검증·게시한다. 게시 파일의 성공과
+실행 중 Server의 revision 활성화는 구분하며 기존 활성화 절차 또는 Server 재시작이 필요하다.
+
+발탄 combat-object V1 visual의 optional `stopActiveOnArmed`는 armed event에서 기존 idle
+표현을 종료한다. optional `armedEffectOwnsTerminal`이 true이면 armed/hit가 같은 Effect를
+참조해야 하며, 성공한 armed에서 시작한 자연 수명 Effect를 후속 hit가 다시 만들지 않는다.
+Sound event는 독립적으로 유지하고 직접 hit만 받은 경우에는 해당 Effect를 한 번 시작한다.
+두 필드의 기본값은 false다. Local Preview도 같은 시작 시계를 사용하며 Server 피해 시각을
+Effect 문서 수명으로 바꾸지 않는다. Effect Tool은 새 원본 돌·피자 문서를 일반 V1로 편집한다.
+두 필드가 모두 false이고 armed/hit가 같은 Effect라면 전체 파괴 표현은 실제 HIT에서만
+시작한다. ARMED 동안 기존 idle을 유지하고 Sound·의미 event는 계속 소비한다. 이 정책은
+Server의 내부/외부 돌 지연을 Product와 Preview에서 동일하게 표시하기 위한 계약이다.
+
 F1 → Action Workbench의 왼쪽 창은 **Composition Actions**다. 최상단 Boss / Character / Object /
 Sequence / World 선택 아래 각 owner의 트리가 나온다. Object/Sequence는 이 공통 창에서 편집한다.
 Effect는 F1의 `Open Effect Tool V1`, `Open Effect Tool V2`로 각각 원래 독립 창을 연다.
@@ -235,6 +294,13 @@ Animation Tool은 이 경로가 존재해도 Effect element를 직접 편집하�
 소유한다. Valtan Server stage와 damage도 계속 Encounter/Server 권위이며 Effect Tool이 바꾸지 않는다.
 
 ### 2.2 V1 복구본과 Effect Sequencer
+
+발탄은 `All Effects → Valtan → 검색`에서 패턴의 한국어 이름이나 저장된 Effect 이름을 입력하면
+`EFFECT RESOURCES`와 `EXISTING AUTHORED EFFECTS`의 원본을 찾는다. 하나의 Effect를 여러
+패턴이 공유하면 각 패턴 이름으로 검색된다. Source Save 후 Publish 전이어도 이 원본의
+`Open Editor → Current Effect → Save Changes`는 사용할 수 있다. 하단 Product fallback의
+읽기 전용 상태는 Pattern 연결·Server 재생의 상태이며 원본 편집 권한과 구분한다. 외부에서
+저장 이름이나 연결을 변경했으면 `Refresh`로 검색 metadata를 다시 읽는다.
 
 V1 All Effects는 기존 Product `.unified`와 이름이 대응하는 `.restore`와 `.full.restore`를 Product 아래
 독립 Recovery Effect로 표시한다. 처음 창을 펼칠 때 Authored 파일 목록을 자동으로 읽으며,
@@ -483,26 +549,40 @@ Sound 박스는 preview가 선택하는 variation의 실제 WAV 길이에서 잘
 박스 안에 있어야 한다. `each_loop` 박스는 반복 전체와 tail을 표시하며 양끝 trim 대상이 아니다.
 WAV 길이를 읽을 수 없으면 `duration unavailable`을 표시한다.
 
-Shift 클릭으로 박스를 추가 선택하거나 선택 해제한다. V1 Effect와 Sound의 혼합 선택은
-함께 Move/Duplicate/Delete할 수 있고 하나라도 적용에 실패하면 전체 draft를 보존한다.
-다른 owner를 포함한 그룹 변경과 그룹 Copy는 지원하지 않으며 부분 적용하지 않는다.
+Shift 클릭으로 박스를 추가 선택하거나 선택 해제한다. Animation/V1/V2 Effect/Sound/일반 Collider의
+혼합 선택은 함께 Move/Duplicate/Delete/Copy할 수 있고 하나라도 적용에 실패하면 전체 draft를
+보존한다. Stage를 함께 선택하면 소유한 박스는 Stage와 함께 처리하며 중복 적용하지 않는다.
 선택된 그룹을 그대로 끌면 함께 이동하고, 드래그하지 않고 클릭하면 단일 선택으로 돌아간다.
 
 Effect Resources는 Patterns의 Connected Effects/Full Restore, Common, Library로 묶고 이름·pattern·
 clip·ID·category 검색을 지원한다. V1/V2 leaf/group의 typed owner는 그대로 유지한다.
-Open Editor는 resource body, Append는 선택 Stage/animation occurrence의 invocation을 편집한다.
+Open Editor는 resource body를 편집한다. 기본 Append는 패턴 맨 끝에 독립 Effect를 추가한다.
+선택 Stage 안 추가는 별도 접힌 메뉴에서 명시적으로 수행한다.
 
 `All Effects > Valtan > CINEMATIC EFFECTS`에는 `진입 / Entrance`, `2페이즈 / Phase 2`,
 `피자 / Roar`, `버러지 / Trash`, `사망 / Finale` 다섯 그룹을 표시한다. 현재 실제 sequence의
 87개 occurrence가 51개 공유 Effect body를 사용하며, 같은 body의 반복 track은 별도 occurrence로 보인다.
-`Open Editor`는 공유 body를 열고 `Preview`는 해당 Effect 하나를 재생한다. `Copy Resource`로 복사한
+`진입 / Entrance` 그룹 상단의 `Open Editor`는 발탄 본체와 무채색 본체의 원래 WorldSequence를
+함께 여는 연출 편집 세션이다. `Model View > All Cinematic Elements`에서 13개 공유 Effect의
+84개 Element와 반복 사용을 포함한 88개 발생을 확인한다. Element를 선택하면 원래 Effect를
+Current Effect로 열고, `Solo`는 본체 애니메이션·본 부착·발생 시각을 유지하면서 해당 Element만
+표시한다. `Play All`, Pause/Resume, Movie time, playback rate, Repeat Selection은 같은24.708초
+연출 시계를 사용한다. 저장은 `Save Changes`로 원래 공유 Effect에 반영하며, 양 눈처럼 같은
+Effect를 반복 사용하는 occurrence에는 같은 편집이 적용된다. 각 발생 행의 `Use occurrence`를
+선택한 뒤 Solo하면 그 발생만 표시하고, `Solo: All occurrences`로 전체 발생 선택을 복구한다.
+이 선택은 표시 범위이며 저장 owner를 분리하지 않는다. 다른 Effect로 옮길 때 미저장 보호를 유지한다. 최초 자원 준비 중이면 표시된 상태를 확인한 뒤 Play를 다시 누른다.
+`Stop`은 편집 재생 모델을 정리하고 기존 보스 표시를 복구하며 Solo 선택은 다음 Seek에도 유지한다.
+`End Movie Editing`은 임시 preview와 선택도 초기화한다. 마지막 Element를 삭제한 완전한 빈
+Effect도 저장할 수 있으며 해당 body를 쓰는 모든 occurrence가 무표시가 된다.
+
+개별 리소스 행의 `Open Editor`는 공유 body를 열고 `Preview`는 해당 Effect 하나를 재생한다. `Copy Resource`로 복사한
 리소스는 기존 Composition 붙여넣기로 추가할 수 있다. 같은 목록은 Composition의
 `Resources > Effect > V1 > Cinematics`에서도 선택하고 Append할 수 있다. 복사는 재사용 body를
 가리키는 리소스를 전달하며, 원래 sequence의 actor 배치·위치·시각을 자동으로 복사하지 않는다.
 
-V1 Append의 `Attach to Animation Box`는 지정한 clip, 선택 Animation 또는 선택 Effect의 owner clip,
-타임라인 cursor의 Animation, 대상 Stage의 첫 clip 순서로 유효한 대상을 제안한다. 표시된 combo에서
-다른 clip으로 바꿀 수 있다. `WAIT` Stage와 Animation이 없는 Stage에는 V1 Effect를 Append할 수 없다.
+선택 Stage의 명시적 clip 연결 모드에서 `Attach to Animation Box`는 지정 clip, 선택 Animation,
+cursor의 Animation, 첫 clip 순서로 대상을 제안한다. 기본 독립 Effect Append에는 Animation이
+필요하지 않으며 Box Detail에서 공간 anchor와 시각을 편집한다.
 
 Common의 네 방향 돌은 Effect를 네 번 붙이는 대신 Summon의 spawn count/radius/lifetime을 사용한다.
 실행 중 외부에서 새 V1 catalog 항목을 등록했다면 Workbench의 목록 Refresh만으로 runtime catalog가
@@ -1827,3 +1907,45 @@ Focus selected는 선택 모델 bounds로 자유 카메라를 배치한다. Pick
 ### Valtan Full Restore의 사용자 반복 미리보기
 
 `Data/Effects/ValtanFullRestoreAnimations.json`의 원본 animationClips/previewWallMs는 추출 근거다. standalone Open Editor의 사용자 반복은 optional authoredPreview의 PROJECT_AUTHORED 표식과 loop/previewWallMs로 분리한다. Effect Tool의 Valtan standalone loader만 이를 명시적으로 선택하며 일반 pattern 매칭은 원본을 계속 읽는다. 원본 builder는 유효한 사용자 override를 보존한다. 실제 Pattern의 모델 반복·hidden window·Effect cue offset은 canonical presentation의 별도 계약이므로, standalone만 늘렸다고 Pattern의 접지 시각까지 맞아졌다고 설명하지 않는다.
+
+### 발탄 Sequence 삭제·조건부 후속 동작·Summon Resources
+
+발탄의 관리 대상 non-WAIT Stage에서 마지막 Sequence Box를 삭제하면 해당 Stage의
+Animation만 `NONE`으로 저장한다. Stage 시계, Collider, Motion, World/Logic 참조는 유지한다.
+삭제한 clip occurrence에 연결된 V1 Effect를 먼저 제거한 뒤 최신 Stage와 ProductCues로
+의존성을 다시 판정하며, Sound·Shake·V2를 포함한 같은 편집 transaction이 실패하면 전체
+초안을 복원한다. 이후 `Replace Stage Slots`로 Sequence를 다시 넣을 수 있다. WAIT는 계속
+Animation NONE인 빈 Stage이며 시계 편집만 허용한다. Source Save와 Product/Server 반영을
+구분하고, 저장 후 Complete Play에 반영할 때는 기존 Save & Publish 경로를 사용한다.
+
+`Preview Outcome`/`Preview Branch`의 `Capture Success -> Throw`는 실제
+`ANY_PLAYER_GRABBED` 분기를 골라 잡기 성공 뒤의 동작을 미리 본다. 다른 Pattern을 선택할 때
+이 경로가 유효하고 Normal보다 많은 Stage를 보여주면 자동 선택한다. 같은 Pattern에서
+사용자가 명시적으로 고른 `Normal / Timeout`은 유지한다. Play Selected Stage와 V1/V2
+Effect의 Stage 미리보기 진입도 성공 경로를 찾는다. 잡아채서 불어 날리기의 마지막
+`mesh_att_battle_21_04`는 기존 후속 Stage이며, Normal이 STEP_02의 TIMEOUT 종료를 고르면
+목록에 보이지 않을 수 있다. 이 미리보기 선택은 Server의 실제 잡기 성공 조건을 바꾸지 않는다.
+
+Summon 검색은 Pattern 이름·ID와 소환체/Effect ID를 함께 찾는다. Summon과 Logic 리소스의
+드래그는 ID가 있는 `Copy Resource` 버튼에서 시작한다. 설명 Text 행에는 drag source를
+붙이지 않는다. 검색 입력 중 설명 행의 ID 없는 drag source를 호출하던 ImGui assert를
+해결한 경로이며, 검색과 드래그 시작은 소환체 정의나 현재 배치의 값을 바꾸지 않는다.
+
+Stage `motion: {"kind":"TO_ARENA_CENTER"}`와 선택적
+`aim: {"targetPolicy":"NEAREST_EACH_TICK"}`는 Server 저작 계약이다. Workbench는 이를
+Logic 트랙과 연결 정보에 표시하고 일반 Animation/Stage 저장에서 보존한다. 일반 Stage
+편집으로 aim을 지우거나 motion kind를 바꾸지 않으며, 알 수 없는 kind·필드는 로드 시 거부한다.
+새 nearest aim의 `arena.center.target-follow` Effect는 같은 Stage의 aim과 그 Stage 이전 또는
+현재의 `TO_ARENA_CENTER`가 함께 있어야 한다. 기존 고정/snapshot 타깃 계약은 유지한다.
+
+V1 Effect의 Stage-clock `once` cue는 선택적 `stageEndMs`와 `cue_end`로 끝 시각을 지정한다.
+끝 시각은 시작 뒤의 600000ms 이하이며 Stage를 넘는 유한 tail도 보존한다. natural은 끝 시각이
+없어야 한다. Composition 게시도 이 종료 시계와 nearest-after-center anchor 조건을 동일하게
+검증하며, clip-clock Effect의 `sourceEndMs`와 섞어 저장하지 않는다.
+
+Effect V2의 `CLIP_OCCURRENCE` binding `startMs`는 Pattern Sound와 같은 **원본 clip의
+절대 source 시각**이다. occurrence가 `sourceStartMs=333`, `playMs=200`이면 원본 400ms의
+Effect는 `startMs=400`으로 저장한다. 재생기가 sourceStart를 뺀 67ms를 playRate로 나눈 뒤
+앞선 occurrence의 누적 wall 시각을 더한다. 67을 저장하면 다른 원본 시각이 되어 거부된다.
+Stage-clock binding은 계속 Stage의 wall 시각을 저장한다. 반복 clip을 여러 Stage로 나눌 때도
+원본 source 시각과 occurrence ID를 맞추고, 반복별 stable binding ID로 호출을 구분한다.

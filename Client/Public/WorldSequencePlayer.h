@@ -23,6 +23,7 @@ NS_BEGIN(Client)
 class CWorldSequenceObject;
 class EFFECT_V2_CATALOG_SNAPSHOT;
 struct EFFECT_DOCUMENT_DESC;
+struct EFFECT_WORLD_PREVIEW_TARGET;
 struct SAYDON_WEAPON_REPLACEMENT;
 struct SAYDON_HAT_REPLACEMENT;
 
@@ -125,6 +126,14 @@ public:
 	// CPU snapshot admitted by the Loader; lookup performs no IO or GPU work.
 	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> Find_PreparedLeafSnapshot(const std::string& leafId) const;
 	bool_t Set_Document(const CWorldSequenceDocument& document, const TARGET_SET& targets, std::string& status);
+    // Editor-only projections use the same world roots, actor bones and source clock.
+    // Prepare every replacement before committing; failed edits preserve the live preview.
+    bool Preview_EffectDocument(const EFFECT_DOCUMENT_DESC& document,
+        const TARGET_SET& targets, std::string& status);
+    bool Preview_EffectSelection(const EFFECT_DOCUMENT_DESC& full,
+        const EFFECT_DOCUMENT_DESC& selected, const std::vector<std::string>& drawElementIds,
+        const std::string& effectTrackId, const TARGET_SET& targets, std::string& status);
+    bool Clear_EffectPreviews(std::string& status);
 	// Editor draft preview: same validation and stop as Set_Document, but a
 	// prepared model whose resource still asks for the same inputs is kept, so
 	// a key or clip edit does not reload a 40 MB body and its animation set.
@@ -374,6 +383,7 @@ private:
 			std::shared_ptr<const EFFECT_DOCUMENT_DESC> sourceDocument;
 			std::optional<OBJECT_PLACEMENT> sampledPlacement;
 			float3_t sampledPositionOffset{};
+			std::string effectTrackId;
 		};
 		std::vector<EFFECT_INSTANCE> effects;
         std::vector<SOUND_INSTANCE> sounds;
@@ -422,7 +432,23 @@ private:
 		const TARGET_SET& targets);
 
 private:
+    struct EFFECT_PREVIEW final
+    {
+        std::shared_ptr<const EFFECT_DOCUMENT_DESC> document;
+        std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET> target;
+        f32_t durationSeconds = 0.f;
+    };
+    struct EFFECT_SELECTION final
+    {
+        std::string assetId, effectTrackId;
+        std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET> target;
+    };
+    bool Commit_EffectPreviews(std::unordered_map<std::string, EFFECT_PREVIEW> previews,
+        std::optional<EFFECT_SELECTION> selection, std::string& status);
+
 	CWorldSequenceDocument m_Document;
+    std::unordered_map<std::string, EFFECT_PREVIEW> m_EffectPreviews;
+    std::optional<EFFECT_SELECTION> m_EffectSelection;
 	bool_t m_bPaused = false;
 	std::vector<ACTIVE_INSTANCE> m_Active;
     std::vector<RETIRED_SOUND> m_RetiredSounds;

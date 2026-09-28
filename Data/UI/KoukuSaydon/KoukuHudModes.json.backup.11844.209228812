@@ -1,0 +1,101 @@
+{
+  "formatVersion": 1,
+  "healthBarPositions": {
+    "allyOffsetX": 0,
+    "allyOffsetY": 0,
+    "enemyOffsetX": 0,
+    "enemyOffsetY": -40,
+    "koukuOffsetX": 0,
+    "koukuOffsetY": 0,
+    "koukuSaydonOffsetX": 0,
+    "koukuSaydonOffsetY": -92,
+    "mechanicOffsetX": 0,
+    "mechanicOffsetY": 7,
+    "valtanOffsetX": 0,
+    "valtanOffsetY": 0
+  },
+  "madness": {
+    "feetOffsetMeters": 1.2999999523162842,
+    "fillTextureByState": ["UI/KoukuSaydon/Madness/madness_fill_state_0.png", "UI/KoukuSaydon/Madness/madness_fill_state_1.png"],
+    "holdMs": 15000,
+    "maximum": 100,
+    "stateThresholds": [49, 100]
+  },
+  "modes": [{
+      "emblemSlot": "Kouku_Emblem_Npc",
+      "id": "POLYMORPH",
+      "randomOrder": false,
+      "skills": [{
+          "cooldownMs": 3000,
+          "displayName": "폭탄 던지기",
+          "iconPath": "UI/KoukuSaydon/Hud/skill_poly_q.png",
+          "skillId": 43340
+        }, {
+          "cooldownMs": 3000,
+          "displayName": "나팔 불기",
+          "iconPath": "UI/KoukuSaydon/Hud/skill_poly_w.png",
+          "skillId": 43341
+        }, {
+          "cooldownMs": 3000,
+          "displayName": "특급 배송",
+          "iconPath": "UI/KoukuSaydon/Hud/skill_poly_e.png",
+          "skillId": 43343
+        }]
+    }, {
+      "emblemSlot": "Kouku_Emblem_Npc",
+      "id": "MARIO",
+      "randomOrder": false,
+      "skills": [{
+          "cooldownMs": 3000,
+          "displayName": "마리오 Q",
+          "iconPath": "UI/KoukuSaydon/Hud/skill_mario_q.png",
+          "skillId": 0
+        }, {
+          "cooldownMs": 3000,
+          "displayName": "마리오 W",
+          "iconPath": "UI/KoukuSaydon/Hud/skill_mario_w.png",
+          "skillId": 0
+        }]
+    }, {
+      "emblemSlot": "Kouku_Emblem_Npc",
+      "id": "DANCE",
+      "randomOrder": false,
+      "skills": [{
+          "cooldownMs": 3000,
+          "displayName": "양팔모으기",
+          "iconPath": "UI/KoukuSaydon/Hud/skill_dance_0.png",
+          "skillId": 0
+        }, {
+          "cooldownMs": 3000,
+          "displayName": "슈퍼맨",
+          "iconPath": "UI/KoukuSaydon/Hud/skill_dance_1.png",
+          "skillId": 0
+        }, {
+          "cooldownMs": 3000,
+          "displayName": "양팔벌리기",
+          "iconPath": "UI/KoukuSaydon/Hud/skill_dance_2.png",
+          "skillId": 0
+        }, {
+          "cooldownMs": 3000,
+          "displayName": "한다리올리기",
+          "iconPath": "UI/KoukuSaydon/Hud/skill_dance_3.png",
+          "skillId": 0
+        }]
+    }, {
+      "emblemSlot": "Kouku_Emblem_Pickup",
+      "id": "MAZE",
+      "randomOrder": false,
+      "skills": [{
+          "cooldownMs": 400,
+          "displayName": "뿅망치 내려치기",
+          "iconPath": "UI/KoukuSaydon/Hud/skill_maze_q.png",
+          "skillId": 56411
+        }, {
+          "cooldownMs": 400,
+          "displayName": "LMB 뿅망치 휘두르기",
+          "iconPath": "UI/KoukuSaydon/Hud/skill_maze_q.png",
+          "skillId": 0
+        }]
+    }],
+  "schema": "lostark.kouku-hud-modes"
+}

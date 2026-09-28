@@ -363,6 +363,7 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_PlayerProjectile(
 		hit.iStaggerDamage = skill.iStaggerDamage;
 		hit.iPartDamage = skill.iPartDamage;
 		hit.iCounterPower = skill.iCounterPower;
+		hit.bCounterFromPrimarySlot = Is_PrimaryCounterSkill(skill);
 		hit.fPushRangeM = authored.Hit.fPushRange;
 		hit.iPushMs = authored.Hit.iPushMs;
 		for (std::uint32_t repeat = 0u;
@@ -1108,6 +1109,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 						incoming.iStaggerDamage = hit.iStaggerDamage;
 						incoming.iPartDamage = hit.iPartDamage;
 						incoming.iCounterPower = hit.iCounterPower;
+						incoming.bCounterFromPrimarySlot = hit.bCounterFromPrimarySlot;
 						incoming.fSourceX =
 							object.LiveState.CurrentPose.fPositionX;
 						incoming.fSourceZ =
@@ -1230,6 +1232,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 						incoming.iStaggerDamage = hit.iStaggerDamage;
 						incoming.iPartDamage = hit.iPartDamage;
 						incoming.iCounterPower = hit.iCounterPower;
+						incoming.bCounterFromPrimarySlot = hit.bCounterFromPrimarySlot;
 						incoming.fSourceX =
 							object.LiveState.CurrentPose.fPositionX;
 						incoming.fSourceZ =
