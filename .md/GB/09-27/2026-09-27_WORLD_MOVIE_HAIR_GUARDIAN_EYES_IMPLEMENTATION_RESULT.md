@@ -290,3 +290,85 @@ Client OBJ35개와 실행 파일이 갱신됐다. 기존 C4819/외부 PDB 경고
 사용자는 이후 반짝임이 Movie에 국한되지 않고 일반 캐릭터를 가까이 보아도 나타난다고 정정했다.
 따라서 이 정상 머리 교체를 전체 피부·재질 광택 문제의 해결로 기록하지 않는다. 그 공통 재질
 문제는 별도 조사 대상으로 남고, 이 절의 완료 범위는 머리 교체·게시·빌드다.
+
+## G10. 기존 정상 재질의 반사 lookup mip 재사용 후보
+
+사용자는 워로드 기본 의상의 기존 보정을 Movie에 재사용하도록 요청했다. 기존
+`2026-09-08_CHARACTER_MATERIAL_MINIFICATION_RESULT.md`의 TGA full mip 복원과
+현재 `CMaterial.cpp`의 `BuildRgbaMipChain`/TGA loader를 대조했다. 정상 기본 의상의
+`hdr07_1.tga`와 `brdf_beckmann_spec.tga`는 512×512에서 10단계 mip를 생성하지만,
+Movie가 참조하던 동일 lookup의 DDS는 header mip count 0, 실제 mip 1개다.
+
+일반 피부·전체 갑옷의 모든 광택 원인을 확정한 것은 아니다. 이번에 확인한 결함은 아래
+Movie 입력에서 기존 정상 경로의 반사 lookup mip가 빠진 것이다. 원본 native shader는
+roughness에서 산출한 LOD로 반사 lookup을 `SampleLevel`하므로 한 단계 DDS는 항상
+mip0을 샘플한다. 별도 검토자가 현재 Warlord face200·upper2·lower10 및 Guardian face200의
+실제 값과 식을 계산했다. 1080p 내부 quad 기준 face 요청 LOD10은 정상 TGA의 유효 mip9와
+DDS의 mip0으로 갈리고, armor 요청 LOD2~11은 정상 유효 mip2~9와 DDS mip0으로 갈린다.
+증거는 `out/MovieReflectionMip20260929/lod-readonly.json`이다. 화면 개선 정도는 사용자가
+판정한다. roughness/specular 강도를 바꾸거나 공통 shader에 광택 감쇠를 추가하지 않았다.
+
+`prepare_movie_lookup_mips.py`는 최신 source SHA
+`a2003e335915f04091202bf59e3056b6b3d8edf7cad2dce7bf98786c1d6b7afc`를 확인하고
+out 후보만 작성했다. 다섯 class 32 object의 58개
+`materialProfile.textures[expressionIndex].assetId`만 기존 정상 TGA 두 파일로 바꾼다.
+원본 source·Resources·CharacterCatalog·보스·소환 동물·몬스터·prop은 쓰지 않았다.
+
+| class | 대상 object 수 / texture field 수 | 실제 얼굴·피부 대상 |
+|---|---:|---|
+| GuardianKnight | 2 / 4 | a12265.p0 얼굴(9,11), a12253.p4 피부(4,6) |
+| Artist | 15 / 30 | a12222.p0·a12240.p0·a12247.p0 얼굴(9,11), a12220.p2·a12243.p1·a12244.p2 피부(4,6); 나머지는 복장·붓 |
+| DimensionMaster | 3 / 6 | a12269.p0 얼굴(9,11), a12267.p4·a754.p4 피부(4,6) |
+| LanceMaster | 6 / 6 | a12241.p0~p3 복장과 a748.p0·a749.p0 무기의 BRDF(8)만; 새 정상 donor 얼굴은 이미 TGA를 사용하므로 제외 |
+| Warlord | 6 / 12 | a12206.p5 얼굴(9,11), a12207.p1~p4 복장, a726.p0 무기 |
+
+8개의 서로 다른 DDS 경로 각각을 기존 정상 TGA와 decode하여 512×512 RGBA 전체가
+byte-exact equal임을 확인했다. hdr07_1은 기존과 같은 srgb, BRDF는 같은 linear다.
+동일 mip0의 RGBA SHA는 hdr07_1
+`3f04e367ddab93474f26c0314f1d2381aa848b99bcb1cc1f53dc569f376346b9`, BRDF
+`d1cebef3f7bed8ba20b7741fe76b9065fc5e45338dd5474b1abd90eccb6d6a9f`다.
+기존 공유 DDS를 덮어쓰지 않고 Movie의 참조 필드만 변경하므로 새 Resources는 없다.
+정확한 58행 stable object/expression/전후 asset ID와 실제 파일 hash는
+`out/MovieLookupMip20260929/lookup-mip-receipt.json`에 있다.
+
+전체 JSON의 해당 58필드를 역변환하면 원본 JSON과 같다는 검사를 통과했다. 피부 normal·
+specular·diffuse·화장·skin color 입력, sourceMaterial·family·모든 scalar, model·geometry·UV·
+clip·camera·lighting·LUT 및 다른 object의 값과 순서는 보존했다. Guardian HR00 갑옷 native199는
+128×128 8mip scene cube를 사용하고 두 2D lookup을 소비하지 않으므로 이번 수정 대상이 아니다.
+창술사 머리 교체를 다른 class의 공통 광택 수정으로 확대하여 기록하지 않는다.
+
+재현 명령은 다음과 같다. source hash가 바뀌었으면 최신 저장본의 필드 충돌을 확인하고
+새 기준으로 재검증하며, output은 아직 없는 경로를 사용한다.
+
+```powershell
+python -B Tools/CharacterSelectPipeline/prepare_movie_lookup_mips.py --source C:/Users/user/Desktop/LostArk/Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL00/LV_LOBBY_CLASSSELECT_SL00.worldsequences.json --resources C:/Users/user/Desktop/LostArk/Client/Bin/Resources --expected-source-sha256 a2003e335915f04091202bf59e3056b6b3d8edf7cad2dce7bf98786c1d6b7afc --output out/MovieLookupMipRebuild20260929
+```
+
+후보는 `out/MovieLookupMip20260929/Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL00/`
+`LV_LOBBY_CLASSSELECT_SL00.worldsequences.json`, SHA
+`7ee3500856dc485bbd611b6dccd6367cf148db2c16c5960aca40e51b83cf75e1`다.
+이 절 작성 시 JSON parse·mip0/colorSpace 동일성·허용 필드 밖 변경 없음·diff check를 통과했다.
+독립 scope 검토도 32개 object/58개 assetId 외 모든 JSON 값·순서가 동일함을 확인했다.
+Monster/Summon/Prop 변경 0, Guardian199 cube armor 변경 0이며, 보스46개 모델·catalog·
+rendering option·공유 lookup·shader를 포함한 730개 기준 파일의 SHA가 모두 동일하다.
+증거는 `out/MovieTextureScope20260929/candidate-review.json` 및 `scope-verification.json`이다.
+publisher Validate/Publish·원본 반영은 상위 작업에서 이어서 기록한다.
+새 C++/shader가 없으므로 새 compile 요구는 없고, Client/UI 실행 및 화면 판정은 수행하지 않았다.
+
+
+### G10 실제 게시·설치 확인
+
+동일 candidate에 공식 Map publisher의 `Scope WorldSequences / Mode Publish`를 실행해
+PASS했다. 생성된 runtime과 source의 SHA는 모두
+`7ee3500856dc485bbd611b6dccd6367cf148db2c16c5960aca40e51b83cf75e1`이다.
+최신 원본 저장본의 SHA, lookup 여덟 쌍의 실제 파일 SHA, 기존 donor/catalog를 다시
+확인한 뒤 원본 작업 폴더에 source/runtime·도구·문서 총 7개 파일을 백업 및 원자적
+교체했다. 무관한 원본 문서 변경은 현재 HEAD를 기준으로 3-way 병합해 보존했다.
+설치 후 원본 폴더에서 공식 publisher `Mode Check`도 PASS했다.
+
+설치 기록은 `out/MovieVisibilityBalance20260929/reflection-install/installed.json`,
+원본 Check 로그는 `out/MovieVisibilityBalance20260929/reflection-installed-check.log`다.
+최종 독립 확인에서도 보스·공통 shader·lookup 등 기존 730개 파일의 SHA는 모두
+불변이다. 이 단계는 참조 데이터만 변경했으며 추가 Resources와 C++/shader 변경은 없다.
+G09의 Product Debug 빌드 성공 이후의 데이터 반영이므로 mip 수정 자체의 재컴파일은
+필요하지 않다. 최신 실행 화면의 반짝임과 미저장 편집 draft 반영은 확인하지 않았다.

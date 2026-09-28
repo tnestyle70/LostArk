@@ -110,3 +110,22 @@ offset은 일반 얼굴을 연결하기에 부적합하므로 재사용하지 �
 새 렌더링 경로·shader·project/filter 등록은 없다. donor 기준 head-space shape, UV/texture,
 본 index·clip bytes, 실제 reader와 준비 경로, 변경 TU 최소 컴파일을 검증한다. 최종 설치와
 사용자의 Movie 외형 판정은 별도 단계로 기록한다.
+
+## G10. 기존 정상 재질의 반사 lookup mip 연결 (2026-09-29)
+
+사용자는 이미 보정한 워로드 기본 의상의 방식을 Movie에도 적용하도록 요청했다. 기존
+`CMaterial::BuildRgbaMipChain`을 사용하는 정상 TGA 입력과 Movie의 단일 mip DDS 입력을
+대조한다. 같은 512×512 RGBA와 colorSpace가 입증된 `hdr07_1`, `brdf_beckmann_spec`만
+기존 `Character/SourceMaterials/efmaster_material_prologue/*.tga`로 연결한다. 정상 TGA는
+기존 loader에서 10단계 mip를 생성한다. 밝기·roughness·specular scalar를 새로 조정하지 않는다.
+
+다섯 class Movie의 실제 얼굴·몸·복장·무기에 속한 stable object의
+`materialProfile.textures[expressionIndex].assetId`만 후보에서 변경한다. 소환 동물·몬스터·prop,
+보스·공유 DDS·CharacterCatalog·normal map·shader는 변경하지 않는다. 가디언 HR00 armor의
+native199는 두 lookup을 소비하지 않으므로 이번 연결의 적용 대상이 아니다. 모델·UV·clip·camera,
+sourceMaterial·family·parameter·colorSpace와 팀장이 저장한 rendering option은 보존한다.
+
+최신 source hash를 확인한 뒤 out 후보와 stable field patch·RGBA/hash 검증 receipt를 만든다.
+서로 다른 texture path는 각각 비교하며 기존 정상 TGA와 mip0 전체가 다르면 거부한다.
+publisher Validate/Publish 및 독립 field-diff 검사 후 현재 디스크 저장본에 병합한다. 공유 DDS와
+보스 관련 파일은 전후 hash가 같아야 한다. 파일 반영과 사용자의 Movie 화면 판정은 구분한다.

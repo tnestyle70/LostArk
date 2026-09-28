@@ -4672,6 +4672,12 @@ winding을 함께 RH로 변환하고 최종 WModel+placement를 원본 grid/heig
 
 ### Movie 물방울의 distortion 근거
 
+- 기본 의상의 TGA 경로가 full mip를 만들더라도 같은 그림의 Movie DDS는 한 mip뿐일 수 있다.
+  anisotropic sampler만으로 없는 mip가 생기지 않는다. 반사 lookup의 실제 SampleLevel 요청과
+  SRV mip 수·mip0 픽셀·색공간을 대조한다. 정상 TGA와 동일한 입력이면 해당 Movie의 texture
+  참조만 재사용하고 공용 DDS·shader·보스 재질을 덮어쓰지 않는다. 같은 증상이라도 환경 cube를
+  쓰는 별도 program은 이 수정에 포함하지 않는다.
+
 Guardian Movie watersplash native4645~4647에는 원본 shader map에도 별도 distortion shader가
 없다. UV distortion 파라미터와 SceneColor 굴절 pass를 혼동해 companion을 추가하지 않는다.
 정확한 MIC static set·VF·shader ID를 먼저 대조하고, 미연결 WORLD crack과 particle 물방울을
