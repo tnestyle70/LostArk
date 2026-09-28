@@ -3412,6 +3412,17 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::SET_EQUIPMENT;
 		command.SetEquipment = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_BUY_ITEMS)
+	{
+		C2S_BUY_ITEMS request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_BUY_ITEMS");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::BUY_ITEMS;
+		command.BuyItems = std::move(request);
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_DESPAWN_ALL_WORLD_ENTITIES)
 	{
 		C2S_DESPAWN_ALL_WORLD_ENTITIES request{};
@@ -5116,6 +5127,7 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	enterCommand.strSpawnPlacementOverrideId = transfer.strSpawnPlacementOverrideId;
 	enterCommand.strRaidReturnNpcPlacementId = transfer.strRaidReturnNpcPlacementId;
 	enterCommand.CarriedInventory = transfer.CarriedInventory;
+	enterCommand.CarriedPurse = transfer.CarriedPurse;
 	enterCommand.iCarriedHonorTitleId = transfer.iHonorTitleId;
 	const ROOM_COMMAND_ENQUEUE_RESULT targetEnterResult =
 		targetSimulation->Enqueue_Detailed(std::move(enterCommand));

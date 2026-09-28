@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Network/PacketMessages.h"
+#include "ServerPlayer.h"
 
 #include <cstdint>
 #include <string>
@@ -29,6 +30,14 @@ namespace LostArk::Server
 			LostArk::Shared::EQUIPMENT_SLOT::NONE;
 	};
 
+	// One stock line of an NPC shop: the item, the currency it is paid in and the price of one.
+	struct SERVER_SHOP_ITEM
+	{
+		std::string strItemId;
+		SERVER_CURRENCY eCurrency = SERVER_CURRENCY::SILVER;
+		std::uint32_t iPrice = 0;
+	};
+
 	class CItemCatalog final
 	{
 	public:
@@ -42,10 +51,20 @@ namespace LostArk::Server
 		/* Every (item, slot) a fresh character starts wearing, in slot order. */
 		const std::vector<std::pair<std::string, LostArk::Shared::EQUIPMENT_SLOT>>&
 			Get_StartingEquipment() const { return m_StartingEquipment; }
+		/* The purse a fresh character starts with (CURRENCY rows). */
+		const SERVER_PURSE& Get_StartingPurse() const { return m_StartingPurse; }
+
+		/* The stock line for itemId in the shop npcPlacementId runs; null when that NPC
+		   runs no shop or its shop does not sell the item. */
+		const SERVER_SHOP_ITEM* Find_ShopItem(
+			const std::string& npcPlacementId, const std::string& itemId) const;
 
 	private:
 		std::unordered_map<std::string, SERVER_ITEM_DEFINITION> m_Items;
 		std::vector<std::pair<std::string, LostArk::Shared::EQUIPMENT_SLOT>> m_StartingEquipment;
+		SERVER_PURSE m_StartingPurse;
+		std::unordered_map<std::string, std::string> m_ShopIdByNpcPlacementId;
+		std::unordered_map<std::string, std::vector<SERVER_SHOP_ITEM>> m_ShopItemsByShopId;
 		std::string m_strStatus;
 	};
 }

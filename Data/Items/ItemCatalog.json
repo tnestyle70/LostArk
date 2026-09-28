@@ -9,6 +9,9 @@
     { "itemId": "MATERIAL_GUARDIAN_STONE", "displayName": "수호석", "maxStack": 9999, "iconPath": "", "healPercent": 0, "category": "use" },
     { "itemId": "MATERIAL_LEAPSTONE_TIER1", "displayName": "1단계 도약돌", "maxStack": 9999, "iconPath": "", "healPercent": 0, "category": "use" },
     { "itemId": "CURRENCY_GOLD", "displayName": "골드", "maxStack": 999999999, "iconPath": "", "healPercent": 0, "category": "use" },
+    { "itemId": "BATTLE_DESTRUCTION_BOMB", "displayName": "파괴 폭탄", "maxStack": 9999, "iconPath": "UI/Items/Common/battle_destruction_bomb.png", "healPercent": 0, "category": "use", "grade": "rare" },
+    { "itemId": "BATTLE_WHIRLWIND_GRENADE", "displayName": "회오리 수류탄", "maxStack": 9999, "iconPath": "UI/Items/Common/battle_whirlwind_grenade.png", "healPercent": 0, "category": "use", "grade": "rare" },
+    { "itemId": "BATTLE_HOLY_CHARM", "displayName": "성스러운 부적", "maxStack": 9999, "iconPath": "UI/Items/Common/battle_holy_charm.png", "healPercent": 0, "category": "use", "grade": "rare" },
     { "itemId": "EQUIP_DESTINYBLAZE_HEAD", "displayName": "운명의 업화 머리장식", "maxStack": 1, "iconPath": "UI/Items/LanceMaster/destinyblaze_helmet.png", "healPercent": 0, "category": "combat", "equipSlot": "helmet", "characterClass": "LanceMaster", "grade": "legend" },
     { "itemId": "EQUIP_DESTINYBLAZE_SHOULDER", "displayName": "운명의 업화 어깨장식", "maxStack": 1, "iconPath": "UI/Items/LanceMaster/destinyblaze_shoulder.png", "healPercent": 0, "category": "combat", "equipSlot": "shoulder", "characterClass": "LanceMaster", "grade": "legend" },
     { "itemId": "EQUIP_DESTINYBLAZE_TOP", "displayName": "운명의 업화 상의", "maxStack": 1, "iconPath": "UI/Items/LanceMaster/destinyblaze_top.png", "healPercent": 0, "category": "combat", "equipSlot": "top", "characterClass": "LanceMaster", "grade": "legend" },
@@ -55,5 +58,20 @@
     { "itemId": "AVATAR_LANCEMASTER_MOKOKO_HEAD", "displayName": "즐거운 모코코 머리 아바타", "maxStack": 1, "iconPath": "UI/Items/LanceMaster/mokoko_pleasant_head.png", "healPercent": 0, "category": "combat", "equipSlot": "avatarHead", "characterClass": "LanceMaster", "grade": "avatar" },
     { "itemId": "AVATAR_LANCEMASTER_MOKOKO_OUTFIT", "displayName": "즐거운 모코코 의상 아바타", "maxStack": 1, "iconPath": "UI/Items/LanceMaster/mokoko_pleasant_outfit.png", "healPercent": 0, "category": "combat", "equipSlot": "avatarOutfit", "characterClass": "LanceMaster", "grade": "avatar" },
     { "itemId": "ITEM_PORTFOLIO", "displayName": "취업용 포트폴리오", "maxStack": 1, "iconPath": "UI/Items/Common/portfolio.png", "healPercent": 0, "category": "combat", "grade": "relic" }
+  ],
+  "currencies": [
+    { "currencyId": "SILVER", "displayName": "실링", "iconPath": "UI/Common/Money_Silver.png", "startingAmount": 16161 },
+    { "currencyId": "GOLD", "displayName": "골드", "iconPath": "UI/Common/Money_Gold.png", "startingAmount": 161 }
+  ],
+  "shops": [
+    {
+      "shopId": "shop.bern.potion",
+      "npcPlacementIds": [ "npc.bern.plaza.05", "npc.bern.plaza.11", "npc.bern.plaza.12", "npc.bern.plaza.13", "npc.bern.plaza.14", "npc.bern.plaza.15", "npc.bern.plaza.16", "npc.bern.plaza.19", "npc.bern.plaza.20", "npc.bern.src.74" ],
+      "items": [
+        { "itemId": "BATTLE_DESTRUCTION_BOMB", "currencyId": "SILVER", "price": 161 },
+        { "itemId": "BATTLE_WHIRLWIND_GRENADE", "currencyId": "SILVER", "price": 161 },
+        { "itemId": "BATTLE_HOLY_CHARM", "currencyId": "SILVER", "price": 161 }
+      ]
+    }
   ]
 }

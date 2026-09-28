@@ -2224,6 +2224,30 @@ bool CNetworkManager::Send_UseItem(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_BuyItems(
+	const std::uint32_t requestSequence,
+	const std::string_view npcPlacementId,
+	const std::vector<LostArk::Shared::SHOP_BASKET_ENTRY>& entries)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_BUY_ITEMS message{};
+	message.iRequestSequence = requestSequence;
+	message.strNpcPlacementId = std::string{ npcPlacementId };
+	message.Entries = entries;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_BUY_ITEMS,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_SetEquipment(
 	const std::uint32_t requestSequence,
 	const LostArk::Shared::EQUIPMENT_SLOT slot,

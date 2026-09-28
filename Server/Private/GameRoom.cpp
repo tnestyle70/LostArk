@@ -844,7 +844,8 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		case ROOM_COMMAND_TYPE::ENTER_WORLD:
 			Join(command.iSessionId, command.EnterWorld,
 				command.strSpawnPlacementOverrideId, command.CarriedInventory,
-				command.iCarriedHonorTitleId, command.strRaidReturnNpcPlacementId);
+				command.iCarriedHonorTitleId, command.strRaidReturnNpcPlacementId,
+				command.CarriedPurse);
 			break;
 		case ROOM_COMMAND_TYPE::MOVE:
 			Handle_Move(command.iSessionId, command.Move);
@@ -971,6 +972,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 			break;
 		case ROOM_COMMAND_TYPE::SET_EQUIPMENT:
 			Handle_SetEquipment(command.iSessionId, command.SetEquipment);
+			break;
+		case ROOM_COMMAND_TYPE::BUY_ITEMS:
+			Handle_BuyItems(command.iSessionId, command.BuyItems);
 			break;
 		case ROOM_COMMAND_TYPE::DESPAWN_ALL_WORLD_ENTITIES:
 			Handle_DespawnAllWorldEntities(

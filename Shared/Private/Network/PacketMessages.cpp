@@ -5761,6 +5761,8 @@ bool LostArk::Shared::Write_Message(
 		writer.Write_U32(item.iQuantity);
 		writer.Write_U8(static_cast<std::uint8_t>(item.eEquippedSlot));
 	}
+	writer.Write_U32(message.iSilver);
+	writer.Write_U32(message.iGold);
 	return true;
 }
 
@@ -5789,6 +5791,8 @@ bool LostArk::Shared::Read_Message(
 		item.eEquippedSlot = static_cast<EQUIPMENT_SLOT>(equippedSlot);
 		decoded.Items.push_back(std::move(item));
 	}
+	if (!reader.Read_U32(decoded.iSilver) || !reader.Read_U32(decoded.iGold))
+		return false;
 	if (!Is_Valid_InventoryItems(decoded.Items))
 		return false;
 	message = std::move(decoded);
@@ -5850,6 +5854,61 @@ bool LostArk::Shared::Read_Message(
 	if (0u == decoded.iRequestSequence ||
 		EQUIPMENT_SLOT::NONE == decoded.eSlot || decoded.eSlot >= EQUIPMENT_SLOT::END ||
 		(decoded.bEquip ? !Is_Valid_ItemId(decoded.strItemId) : !decoded.strItemId.empty()))
+		return false;
+	message = std::move(decoded);
+	return true;
+}
+
+namespace
+{
+	bool Is_Valid_ShopBasket(const LostArk::Shared::C2S_BUY_ITEMS& message)
+	{
+		using namespace LostArk::Shared;
+		if (0u == message.iRequestSequence || message.strNpcPlacementId.empty() ||
+			message.strNpcPlacementId.size() > MAX_NPC_PLACEMENT_ID_BYTES ||
+			message.Entries.empty() || message.Entries.size() > MAX_SHOP_BASKET_ENTRIES)
+			return false;
+		for (const SHOP_BASKET_ENTRY& entry : message.Entries)
+			if (!Is_Valid_ItemId(entry.strItemId) || 0u == entry.iQuantity ||
+				entry.iQuantity > MAX_SHOP_BASKET_QUANTITY)
+				return false;
+		return true;
+	}
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_BUY_ITEMS& message)
+{
+	if (!Is_Valid_ShopBasket(message))
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	if (!writer.Write_String(message.strNpcPlacementId, MAX_NPC_PLACEMENT_ID_BYTES))
+		return false;
+	writer.Write_U8(static_cast<std::uint8_t>(message.Entries.size()));
+	for (const SHOP_BASKET_ENTRY& entry : message.Entries)
+	{
+		if (!writer.Write_String(entry.strItemId, MAX_ITEM_ID_BYTES))
+			return false;
+		writer.Write_U32(entry.iQuantity);
+	}
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_BUY_ITEMS& message)
+{
+	C2S_BUY_ITEMS decoded{};
+	std::uint8_t count = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_String(decoded.strNpcPlacementId, MAX_NPC_PLACEMENT_ID_BYTES) ||
+		!reader.Read_U8(count) || 0u == count || count > MAX_SHOP_BASKET_ENTRIES)
+		return false;
+	decoded.Entries.resize(count);
+	for (SHOP_BASKET_ENTRY& entry : decoded.Entries)
+		if (!reader.Read_String(entry.strItemId, MAX_ITEM_ID_BYTES) ||
+			!reader.Read_U32(entry.iQuantity))
+			return false;
+	if (!Is_Valid_ShopBasket(decoded))
 		return false;
 	message = std::move(decoded);
 	return true;

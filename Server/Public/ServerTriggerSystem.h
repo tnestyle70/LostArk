@@ -43,6 +43,8 @@ namespace LostArk::Server
 		from the departing player's live Valtan inventory so clear rewards
 		survive the "돌아가기" trip back to Bern instead of being silently reset. */
 		std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT> CarriedInventory;
+		/* The purse, carried under the same rule as CarriedInventory. */
+		SERVER_PURSE CarriedPurse;
 	};
 
 	/* One player's view of one interact-gated box changing. The room turns

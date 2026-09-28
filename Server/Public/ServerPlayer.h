@@ -19,6 +19,20 @@
 
 namespace LostArk::Server
 {
+	/* The player's purse: retail's two currencies, shown under the inventory and spent in
+	   NPC shops. Not bag items -- they never take a slot. */
+	enum class SERVER_CURRENCY : std::uint8_t { SILVER, GOLD };
+	struct SERVER_PURSE
+	{
+		std::uint32_t iSilver = 0;
+		std::uint32_t iGold = 0;
+
+		std::uint32_t& Amount(const SERVER_CURRENCY eCurrency)
+		{
+			return SERVER_CURRENCY::GOLD == eCurrency ? iGold : iSilver;
+		}
+	};
+
 	struct SERVER_TRIGGER_MOVE_SAMPLE
 	{
 		std::uint32_t iTimeMs = 0u;
@@ -578,5 +592,6 @@ namespace LostArk::Server
 		// reused directly since the wire shape and the server truth are the
 		// same {itemId, quantity} pair.
 		std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT> Inventory;
+		SERVER_PURSE Purse;
 	};
 }

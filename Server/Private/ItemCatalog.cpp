@@ -105,6 +105,15 @@ bool LostArk::Server::CItemCatalog::Load()
 	using ITEM_MAP = decltype(m_Items);
 	ITEM_MAP previousItems = std::move(m_Items);
 	m_Items.clear();
+	std::unordered_map<std::string, std::string> shopIdByNpc;
+	std::unordered_map<std::string, std::vector<SERVER_SHOP_ITEM>> shopItems;
+	SERVER_PURSE startingPurse{};
+	const auto parseCurrency = [](const std::string_view value, SERVER_CURRENCY& output)
+	{
+		if ("SILVER" == value) { output = SERVER_CURRENCY::SILVER; return true; }
+		if ("GOLD" == value) { output = SERVER_CURRENCY::GOLD; return true; }
+		return false;
+	};
 
 	const std::filesystem::path dataRoot = Resolve_DataRoot();
 	const std::filesystem::path path = dataRoot / L"Items" / L"Items.bootstrap";
@@ -136,9 +145,9 @@ bool LostArk::Server::CItemCatalog::Load()
 		return false;
 	}
 
-	if (4u != version)
+	if (5u != version)
 	{
-		m_strStatus = "Item bootstrap version mismatch: expected 4, got " +
+		m_strStatus = "Item bootstrap version mismatch: expected 5, got " +
 			std::to_string(version) + "; path=" + path.string() +
 			"; run powershell -ExecutionPolicy Bypass -File "
 			"Tools/GameplayPipeline/Publish-ItemCatalog.ps1 -Mode Publish";
@@ -156,6 +165,48 @@ bool LostArk::Server::CItemCatalog::Load()
 		}
 		StripCarriageReturn(line);
 		const std::vector<std::string_view> fields = SplitTabs(line);
+		/* CURRENCY <SILVER|GOLD> <startingAmount>: the fresh-character purse. */
+		if (3u == fields.size() && "CURRENCY" == fields[0])
+		{
+			SERVER_CURRENCY currency{};
+			std::uint32_t amount = 0;
+			if (!parseCurrency(fields[1], currency) || !ParseNumber(fields[2], amount))
+			{
+				m_strStatus = "Item bootstrap CURRENCY row is invalid";
+				m_Items = std::move(previousItems);
+				return false;
+			}
+			startingPurse.Amount(currency) = amount;
+			continue;
+		}
+		/* SHOPNPC <shopId> <npcPlacementId>: the NPC runs that shop. */
+		if (3u == fields.size() && "SHOPNPC" == fields[0])
+		{
+			if (!IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+				!shopIdByNpc.emplace(std::string(fields[2]), std::string(fields[1])).second)
+			{
+				m_strStatus = "Item bootstrap SHOPNPC row is invalid";
+				m_Items = std::move(previousItems);
+				return false;
+			}
+			continue;
+		}
+		/* SHOPITEM <shopId> <itemId> <SILVER|GOLD> <price>: one stock line. */
+		if (5u == fields.size() && "SHOPITEM" == fields[0])
+		{
+			SERVER_SHOP_ITEM stock{};
+			if (!IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+				!parseCurrency(fields[3], stock.eCurrency) ||
+				!ParseNumber(fields[4], stock.iPrice) || 0u == stock.iPrice)
+			{
+				m_strStatus = "Item bootstrap SHOPITEM row is invalid";
+				m_Items = std::move(previousItems);
+				return false;
+			}
+			stock.strItemId = fields[2];
+			shopItems[std::string(fields[1])].push_back(std::move(stock));
+			continue;
+		}
 		SERVER_ITEM_DEFINITION item{};
 		if (7u != fields.size() || "ITEM" != fields[0] || !IsStableId(fields[1]) ||
 			!ParseNumber(fields[2], item.iMaxStack) || 0u == item.iMaxStack ||
@@ -188,12 +239,33 @@ bool LostArk::Server::CItemCatalog::Load()
 		return false;
 	}
 
+	/* Every stock line must name a catalog item, and every shop an NPC runs must sell
+	   something. The publisher checks the same; this keeps a hand-edited file honest. */
+	for (const auto& [shopId, stock] : shopItems)
+		for (const SERVER_SHOP_ITEM& line : stock)
+			if (!m_Items.contains(line.strItemId))
+			{
+				m_strStatus = "Item bootstrap shop sells an unknown item";
+				m_Items = std::move(previousItems);
+				return false;
+			}
+	for (const auto& [npcId, shopId] : shopIdByNpc)
+		if (!shopItems.contains(shopId))
+		{
+			m_strStatus = "Item bootstrap shop has no stock: " + shopId;
+			m_Items = std::move(previousItems);
+			return false;
+		}
+
 	m_StartingEquipment.clear();
 	for (const auto& [itemId, item] : m_Items)
 		if (LostArk::Shared::EQUIPMENT_SLOT::NONE != item.eStartingEquippedSlot)
 			m_StartingEquipment.emplace_back(itemId, item.eStartingEquippedSlot);
 	std::sort(m_StartingEquipment.begin(), m_StartingEquipment.end(),
 		[](const auto& left, const auto& right) { return left.second < right.second; });
+	m_StartingPurse = startingPurse;
+	m_ShopIdByNpcPlacementId = std::move(shopIdByNpc);
+	m_ShopItemsByShopId = std::move(shopItems);
 	m_strStatus = "Loaded item bootstrap";
 	return true;
 }
@@ -203,4 +275,20 @@ LostArk::Server::CItemCatalog::Find_Item(const std::string& itemId) const
 {
 	const auto iter = m_Items.find(itemId);
 	return m_Items.end() == iter ? nullptr : &iter->second;
+}
+
+const LostArk::Server::SERVER_SHOP_ITEM*
+LostArk::Server::CItemCatalog::Find_ShopItem(
+	const std::string& npcPlacementId, const std::string& itemId) const
+{
+	const auto shop = m_ShopIdByNpcPlacementId.find(npcPlacementId);
+	if (m_ShopIdByNpcPlacementId.end() == shop)
+		return nullptr;
+	const auto stock = m_ShopItemsByShopId.find(shop->second);
+	if (m_ShopItemsByShopId.end() == stock)
+		return nullptr;
+	for (const SERVER_SHOP_ITEM& line : stock->second)
+		if (line.strItemId == itemId)
+			return &line;
+	return nullptr;
 }

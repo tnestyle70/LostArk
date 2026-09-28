@@ -17,6 +17,7 @@
 #include "DataJson.h"
 #include "GameInstance.h"
 #include "HUDRuntimeView.h"
+#include "ItemCatalog.h"
 #include "UIInputRouter.h"
 #include "UILayoutRuntime.h"
 #include "LevelRegistry.h"
@@ -459,10 +460,10 @@ HRESULT CLevel_Bern::Initialize()
 			"unavailable; right-click interaction is disabled.\n");
 	}
 	(void)Ready_ShipNpcs(pEntry->pMapAreaId);
-	if (!Ready_RepairNpcs(pEntry->pMapAreaId))
+	if (!Ready_ServiceNpcs(pEntry->pMapAreaId))
 	{
 		OutputDebugStringA(
-			"[Level_Bern] Repair NPC positions unavailable; right-click "
+			"[Level_Bern] Repair/shop NPC positions unavailable; right-click "
 			"interaction is disabled.\n");
 	}
 	m_pValtanEntryView = std::make_unique<CRaidEntryPreviewView>(
@@ -606,8 +607,8 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 	Update_ShipNpcInteraction();
 	Advance_ShipNpcWalk();
 	Update_ShipCamera();
-	Update_RepairNpcInteraction();
-	Advance_RepairNpcWalk();
+	Update_ServiceNpcInteraction();
+	Advance_ServiceNpcWalk();
 	if (Is_ValtanEntryModalOpen())
 	{
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
@@ -1145,7 +1146,7 @@ void CLevel_Bern::Advance_ValtanEntryWalk()
 #endif
 }
 
-bool_t CLevel_Bern::Ready_RepairNpcs(const std::string& areaId)
+bool_t CLevel_Bern::Ready_ServiceNpcs(const std::string& areaId)
 {
 	// The two placements carrying the anvil symbol (Minimap_Symbol_158) in
 	// Data/UI/WorldMap/WorldMapNpcSymbols.json -- retail's repair service marker, as opposed
@@ -1170,7 +1171,7 @@ bool_t CLevel_Bern::Ready_RepairNpcs(const std::string& areaId)
 	if (!document.Load(documentPath, areaId, status))
 		return false;
 
-	std::vector<REPAIR_NPC> staged;
+	std::vector<SERVICE_NPC> staged;
 	for (const WORLD_GAMEPLAY_PLACEMENT& placement : document.Get_Placements())
 	{
 		if (WORLD_PLACEMENT_KIND::NPC != placement.eKind)
@@ -1182,26 +1183,27 @@ bool_t CLevel_Bern::Ready_RepairNpcs(const std::string& areaId)
 			{
 				return placement.placementId == pId;
 			});
-		if (!isRepair)
-			continue;
-		staged.push_back({ placement.placementId, placement.position });
+		if (isRepair)
+			staged.push_back({ placement.placementId, placement.position, NPC_SERVICE::REPAIR });
+		else if (nullptr != CItemCatalog::Find_ShopByNpc(placement.placementId))
+			staged.push_back({ placement.placementId, placement.position, NPC_SERVICE::SHOP });
 	}
 
-	m_RepairNpcs = std::move(staged);
-	return !m_RepairNpcs.empty();
+	m_ServiceNpcs = std::move(staged);
+	return !m_ServiceNpcs.empty();
 }
 
-void CLevel_Bern::Update_RepairNpcInteraction()
+void CLevel_Bern::Update_ServiceNpcInteraction()
 {
 	const bool_t isRightMouseDown =
 		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::RB) & 0x80);
 	const bool_t isRightMousePressed =
-		isRightMouseDown && !m_wasRightMouseDownForRepairNpcInteract;
-	m_wasRightMouseDownForRepairNpcInteract = isRightMouseDown;
+		isRightMouseDown && !m_wasRightMouseDownForServiceNpcInteract;
+	m_wasRightMouseDownForServiceNpcInteract = isRightMouseDown;
 
 	const shared_ptr<CCharacter> localCharacter =
 		m_Replication.Get_LocalCharacter();
-	if (m_RepairNpcs.empty() || !isRightMousePressed ||
+	if (m_ServiceNpcs.empty() || !isRightMousePressed ||
 		0 == (CGameInstance::Get().Get_DIMouseState(DIM::RB) & 0x80) ||
 		nullptr == localCharacter ||
 		nullptr == m_pCamera || !m_pCamera->Is_FollowEnabled())
@@ -1216,8 +1218,8 @@ void CLevel_Bern::Update_RepairNpcInteraction()
 
 	constexpr f32_t NPC_CLICK_RADIUS = 1.5f;
 	f32_t fBestRayParameter = FLT_MAX;
-	const REPAIR_NPC* pHit = nullptr;
-	for (const REPAIR_NPC& npc : m_RepairNpcs)
+	const SERVICE_NPC* pHit = nullptr;
+	for (const SERVICE_NPC& npc : m_ServiceNpcs)
 	{
 		const vector_t vNpcPos = XMLoadFloat3(&npc.vPosition);
 		const f32_t fRayParameter = XMVectorGetX(XMVector3Dot(
@@ -1243,8 +1245,8 @@ void CLevel_Bern::Update_RepairNpcInteraction()
 
 	m_PlayerController.Suppress_MoveClickThisFrame();
 	CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
-	m_strRepairNpcPlacementId = pHit->strPlacementId;
-	m_isWalkingToRepairNpc = true;
+	m_strServiceNpcPlacementId = pHit->strPlacementId;
+	m_isWalkingToServiceNpc = true;
 
 	/* Stop just inside interaction range, on the side the character is already standing --
 	same approach as Update_ItemUpgradeNpcInteraction. */
@@ -1272,28 +1274,28 @@ void CLevel_Bern::Update_RepairNpcInteraction()
 	}
 }
 
-void CLevel_Bern::Advance_RepairNpcWalk()
+void CLevel_Bern::Advance_ServiceNpcWalk()
 {
-	if (!m_isWalkingToRepairNpc)
+	if (!m_isWalkingToServiceNpc)
 		return;
 
 	const shared_ptr<CCharacter> localCharacter = m_Replication.Get_LocalCharacter();
 	const auto npcIt = std::find_if(
-		m_RepairNpcs.begin(), m_RepairNpcs.end(),
-		[this](const REPAIR_NPC& npc)
+		m_ServiceNpcs.begin(), m_ServiceNpcs.end(),
+		[this](const SERVICE_NPC& npc)
 		{
-			return npc.strPlacementId == m_strRepairNpcPlacementId;
+			return npc.strPlacementId == m_strServiceNpcPlacementId;
 		});
-	if (nullptr == localCharacter || m_RepairNpcs.end() == npcIt)
+	if (nullptr == localCharacter || m_ServiceNpcs.end() == npcIt)
 	{
-		m_isWalkingToRepairNpc = false;
+		m_isWalkingToServiceNpc = false;
 		return;
 	}
 	const shared_ptr<CTransform> transform = localCharacter->Get_Transform();
 	if (nullptr == transform)
 		return;
 
-	// Same footprint Update_RepairNpcInteraction stops the character at.
+	// Same footprint Update_ServiceNpcInteraction stops the character at.
 	constexpr f32_t INTERACTION_RADIUS = 3.f;
 	const vector_t vCharacterPos = transform->Get_State(STATE::POSITION);
 	const vector_t vDelta = XMVectorSubtract(
@@ -1303,9 +1305,14 @@ void CLevel_Bern::Advance_RepairNpcWalk()
 	if (fDistanceSq > INTERACTION_RADIUS * INTERACTION_RADIUS)
 		return;
 
-	m_isWalkingToRepairNpc = false;
+	m_isWalkingToServiceNpc = false;
 	if (CMainApp* pMainApp = CMainApp::Get_Active())
-		pMainApp->Open_RepairWindow();
+	{
+		if (NPC_SERVICE::SHOP == npcIt->eService)
+			pMainApp->Open_ShopWindow(npcIt->strPlacementId);
+		else
+			pMainApp->Open_RepairWindow();
+	}
 }
 
 bool_t CLevel_Bern::Ready_ItemUpgradeNpc(const std::string& areaId)

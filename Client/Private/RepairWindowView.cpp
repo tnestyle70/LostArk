@@ -6,6 +6,7 @@
 
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
+#include "MainApp.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
 #include "UITextOcclusion.h"
@@ -114,7 +115,11 @@ void Client::CRepairWindowView::Update_Drag()
 
 	if (!m_bDraggingPanel)
 	{
+		/* The close button sits inside the title bar; a press on it is the button's. */
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (m_pBackgroundView->Get_SlotRect(CLOSE_ID, fX, fY, fWidth, fHeight) &&
+			Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+			return;
 		if (!m_pBackgroundView->Get_SlotRect(TITLE_ID, fX, fY, fWidth, fHeight))
 			return;
 		if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
@@ -213,6 +218,7 @@ void Client::CRepairWindowView::Update_Buttons()
 		if (Router.Is_Clicked(
 			fCloseX, fCloseY, fCloseWidth, fCloseHeight, fRefWidth, fRefHeight))
 		{
+			CMainApp::Play_UIButtonClickSound();
 			Close();
 		}
 	}

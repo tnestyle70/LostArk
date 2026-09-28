@@ -315,7 +315,8 @@ namespace LostArk::Server
 				carriedInventory = {},
 			LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId =
 				LostArk::Shared::INVALID_HONOR_TITLE_ID,
-			const std::string& raidReturnNpcPlacementId = {});
+			const std::string& raidReturnNpcPlacementId = {},
+			const SERVER_PURSE& carriedPurse = {});
 		bool Build_PlayerEntryFrames(STAGED_PLAYER_ENTRY& entry,
 			std::span<const STAGED_PLAYER_ENTRY> batch, std::string& status);
 		void Commit_PlayerEntry(const STAGED_PLAYER_ENTRY& entry);
@@ -329,7 +330,8 @@ namespace LostArk::Server
 				carriedInventory = {},
 			LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId =
 				LostArk::Shared::INVALID_HONOR_TITLE_ID,
-			const std::string& raidReturnNpcPlacementId = {});
+			const std::string& raidReturnNpcPlacementId = {},
+			const SERVER_PURSE& carriedPurse = {});
 		void Leave(
 			SESSION_ID sessionId,
 			LostArk::Shared::PLAYER_DESPAWN_REASON reason, bool publishDeparture = true);
@@ -1104,6 +1106,14 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_SET_EQUIPMENT& request) const;
 		/* After a class change: items bound to another class go back to the bag. */
 		bool Unequip_OtherClassItems(SERVER_PLAYER& player) const;
+		/* NPC shop basket. The player must stand by that shop NPC; every line must be in
+		   its stock, the total price must be covered and the bag must take every line, or
+		   nothing changes. Answers with the whole inventory either way. */
+		void Handle_BuyItems(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_BUY_ITEMS& request);
+		bool Apply_BuyItems(SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_BUY_ITEMS& request) const;
 		// Debug Character Select Arena "되돌리기" -- despawns every world entity the
 		// debug spawn buttons created in this room (Broadcast_WorldEntityDespawned per
 		// entity) and resets the spawn group runtime so the same groups can be
@@ -1366,8 +1376,7 @@ namespace LostArk::Server
 		bool Send_InventorySnapshot(
 			const std::shared_ptr<CClientSession>& session,
 			std::uint32_t requestSequence,
-			const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>&
-				inventory);
+			const SERVER_PLAYER& player);
 		bool Send_Despawned(
 			const std::shared_ptr<CClientSession>& session,
 			LostArk::Shared::NET_ENTITY_ID netEntityId,

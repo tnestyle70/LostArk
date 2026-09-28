@@ -3111,7 +3111,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				Find_Session(sessionId);
 			if (nullptr != session &&
 				!Send_InventorySnapshot(
-					session, 0u, playerIter->second.Inventory))
+					session, 0u, playerIter->second))
 			{
 				session->Request_Close();
 			}
