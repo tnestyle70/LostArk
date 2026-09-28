@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3114
+LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3117
 "flm_att_battle_compete_1_loop" CANCEL startms=0 endms=5000 payload="입력끝" src=orig
 "flm_att_battle_compete_1_loop" CANCEL startms=0 endms=5000 payload="입력없음" src=orig
 "flm_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_04" src=orig
@@ -309,6 +309,9 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3114
 "flm_sk_chestdestruction_04" EFFECT startms=298 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "flm_sk_chestdestruction_04" HIT startms=99 endms=150 rep=2 repms=120 fz=600 fzin=200 fzout=300 push=10 pushr=40 area=2 ar=160 aa=140 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_chestdestruction_04" HIT startms=338 endms=389 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=80 pushr=10 area=2 ar=220 aa=190 ah=150 ax=-10 arem=0 maxt=0 src=orig
+"flm_sk_chestdestruction_04" HIT startms=550 endms=700 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=80 pushr=10 area=3 ar=220 aa=240 ah=150 ax=20 arem=0 maxt=0 src=orig
+"flm_sk_chestdestruction_04" HIT startms=750 endms=900 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=80 pushr=10 area=3 ar=220 aa=240 ah=150 ax=20 arem=0 maxt=0 src=orig
+"flm_sk_chestdestruction_04" HIT startms=1100 endms=1250 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=110 pushr=50 area=3 ar=220 aa=240 ah=150 ax=20 arem=0 maxt=0 src=orig
 "flm_sk_chestdestruction_04" EFFECT startms=338 payload="" src=orig
 "flm_sk_chestdestruction_04" CANCEL startms=348 endms=1458 payload="[선스]" src=orig
 "flm_sk_chestdestruction_04" CANCEL startms=401 endms=1504 payload="[선이]" src=orig

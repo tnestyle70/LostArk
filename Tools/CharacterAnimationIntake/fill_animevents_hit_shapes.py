@@ -45,6 +45,22 @@ def load_base_hits(asset):
     return out
 
 
+def load_particle_hits(asset):
+    """Trailing ParticleHit notifies build_base_hit_rows.py aligned with the tooltip's
+    unjudged SkillEffect rows: (clip, start ms) -> that row's shape."""
+    out = {}
+    path = os.path.join(REF, asset, asset + '.basehits')
+    if not os.path.exists(path):
+        return out
+    for line in read_lines(path)[1:]:
+        m = re.match(r'^(\d+) particle="([^"]+)" t=(\d+) pk=\d+ (.*)$', line.rstrip('\r'))
+        if m:
+            shape = {k: int(v) for k, v in parse_pairs(m.group(4)).items()}
+            shape.update(rep=1, repms=0)
+            out[(m.group(2), int(m.group(3)))] = shape
+    return out
+
+
 def load_hit_repeats(asset):
     """Repeat count and interval of each source Effect notify, from build_hit_repeats.py."""
     out = {}
@@ -60,6 +76,7 @@ def load_hit_repeats(asset):
 
 def load_notify(asset, clipmap):
     base_hits = load_base_hits(asset)
+    particle_hits = load_particle_hits(asset)
     repeats = load_hit_repeats(asset)
     clips = {}
     order = []
@@ -77,6 +94,8 @@ def load_notify(asset, clipmap):
         if p.get('kind') != 'HIT':
             continue
         own = {k: int(p[k]) for k in SHAPE_KEYS if k in p}
+        if p.get('src') == 'ParticleHit' and (cur, to_ms(float(p['t']))) in particle_hits:
+            own = dict(particle_hits[(cur, to_ms(float(p['t'])))])
         if p.get('asset', '').isdigit() and own.get('area', 0) > 0:
             start = to_ms(float(p['t']))
             repeat = next((repeats[(int(p['asset']), start + d)] for d in (0, -1, 1)
@@ -107,8 +126,11 @@ def load_notify(asset, clipmap):
             base += [r for r in effect
                      if r[4].isdigit() and int(r[4]) in owned and
                      all(abs(r[0] - b[0]) >= SAME_MOMENT_SECONDS for b in base)]
-            base.sort(key=lambda r: r[0])
-        clips[clip] = base or effect
+        # A trailing ParticleHit the tooltip alignment shaped is a judgement of
+        # its own, not the visual echo of one of these Effect rows.
+        clips[clip] = sorted((base or effect) + [r for r in rows if r[3] == 'ParticleHit' and
+                                                 (clip, to_ms(r[0])) in particle_hits],
+                             key=lambda r: r[0])
     clips = {k: [r[:3] + (r[5],) for r in v] for k, v in clips.items()}
     return clips, order
 

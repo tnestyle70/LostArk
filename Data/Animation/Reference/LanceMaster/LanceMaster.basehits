@@ -1,4 +1,4 @@
-LOSTARK_BASE_HIT_ROWS 1 "LanceMaster" 10
+LOSTARK_BASE_HIT_ROWS 1 "LanceMaster" 13
 34070 pk=340720 match=340701
 34090 pk=340960 match=340900
 34100 pk=341071 match=341001
@@ -9,3 +9,6 @@ LOSTARK_BASE_HIT_ROWS 1 "LanceMaster" 10
 34610 pk=346111 match=346100
 34610 pk=346112 match=346100
 34610 pk=346113 match=346113
+34140 particle="flm_sk_chestdestruction_04" t=550 pk=341402 area=3 ar=220 aa=240 ah=150 ax=20 arem=0 maxt=0 push=80 pushr=10 fz=450 fzin=150 fzout=250
+34140 particle="flm_sk_chestdestruction_04" t=750 pk=341402 area=3 ar=220 aa=240 ah=150 ax=20 arem=0 maxt=0 push=80 pushr=10 fz=450 fzin=150 fzout=250
+34140 particle="flm_sk_chestdestruction_04" t=1100 pk=341403 area=3 ar=220 aa=240 ah=150 ax=20 arem=0 maxt=0 push=110 pushr=50 fz=600 fzin=200 fzout=300
