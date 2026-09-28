@@ -125,6 +125,7 @@
 	<ClInclude Include="..\Private\CharacterSelectArenaSpawnGate.h" />
     <ClInclude Include="..\Public\Level_CharacterSelect.h" />
     <ClInclude Include="..\Public\PlayableCharacterAssetService.h" />
+    <ClInclude Include="..\Public\SquareHoleInstrumentCatalog.h" />
     <ClInclude Include="..\Public\DeployPropRuntime.h" />
     <ClInclude Include="..\Public\WorldSequencePlayer.h" />
     <ClInclude Include="..\Public\DestructionSimulationDocument.h" />
@@ -431,6 +432,7 @@
     <ClCompile Include="..\Private\Effect_ProductPrewarmQueue.cpp" />
     <ClCompile Include="..\Private\Level_CharacterSelect.cpp" />
     <ClCompile Include="..\Private\PlayableCharacterAssetService.cpp" />
+    <ClCompile Include="..\Private\SquareHoleInstrumentCatalog.cpp" />
     <ClCompile Include="..\Private\Trigger_Box.cpp" />
     <ClCompile Include="..\Private\ValtanPresentationAssetService.cpp" />
 	<ClCompile Include="..\Private\NpcPlacementPresentationService.cpp" />
@@ -705,6 +707,7 @@
     <None Include="..\..\Data\Actors\MaharakaResidents.source.json" />
     <None Include="..\..\Data\Actors\MonsterCatalog.json" />
     <None Include="..\..\Data\Actors\VehicleCatalog.json" />
+    <None Include="..\..\Data\Actors\SquareHoleInstruments.json" />
 	<None Include="..\..\Data\Sound\CharacterSoundCatalog.json" />
 	<None Include="..\..\Data\Sound\EstherActionSoundCues.json" />
 	<None Include="..\..\Data\Rendering\Authored\RenderingProfiles.json" />

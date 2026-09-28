@@ -12,10 +12,12 @@
 #include "RuntimeAssetRoot.h"
 #include "Profiler.h"
 #include "Prototype.h"
+#include "SquareHoleInstrumentCatalog.h"
 
 #include <array>
 #include <condition_variable>
 #include <exception>
+#include <filesystem>
 #include <stdexcept>
 #include <mutex>
 #include <unordered_map>
@@ -357,6 +359,32 @@ HRESULT Client::CPlayableCharacterAssetService::Prepare_Models(
 	}
 	if (Is_Cancelled(pCancellationRequested)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
 
+	/* The Square Hole instrument is a prop, so it is prepared beside the class but outside the
+	batch above: a file that is absent or will not decode costs the class its instrument, never
+	its admission. */
+	unique_ptr<CModel> instrumentModel;
+	if (const auto instrument = CSquareHoleInstrumentCatalog::Find(characterClass))
+	{
+		Engine::MODEL_ASSET_LOAD_DESC instrumentDesc;
+		instrumentDesc.assetRoot = CRuntimeAssetRoot::Get_ResourceRoot();
+		instrumentDesc.meshPath = CRuntimeAssetRoot::Resolve(instrument->strModelAssetId);
+		std::error_code fileError;
+		if (!instrumentDesc.assetRoot.empty() && !instrumentDesc.meshPath.empty() &&
+			std::filesystem::is_regular_file(instrumentDesc.meshPath, fileError) && !fileError)
+		{
+			instrumentModel = CModel::Create(pDevice, pContext, MODEL::NONANIM, instrumentDesc, XMMatrixIdentity());
+			if (!instrumentModel)
+				OutputDebugStringA(("[PlayableCharacterAssetService] Instrument model did not decode: " +
+					instrument->strModelAssetId + "\n").c_str());
+		}
+		else
+		{
+			OutputDebugStringA(("[PlayableCharacterAssetService] Instrument model is absent: " +
+				instrument->strModelAssetId + "\n").c_str());
+		}
+	}
+	if (Is_Cancelled(pCancellationRequested)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+
 	// Cross-model mutation begins only after every independent load joined.
 	// Keep authored animation order and reject hash/clip collisions as before.
 	CModel* pBodyPalette = models.front().get();
@@ -407,14 +435,18 @@ HRESULT Client::CPlayableCharacterAssetService::Prepare_Models(
 			}
 		}
 	}
-	staged.reserve(prototypeCount);
+	staged.reserve(prototypeCount + 1u);
 	for (size_t index = 0u; index < tasks.size(); ++index)
 		if (!tasks[index].AnimationSet)
 			staged.emplace_back(tasks[index].Tag, std::move(models[index]));
+	const bool hasInstrument = nullptr != instrumentModel;
+	if (hasInstrument)
+		staged.emplace_back(CSquareHoleInstrumentCatalog::Get_ModelTag(characterClass), std::move(instrumentModel));
 
 	if (Is_Cancelled(pCancellationRequested)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
 	Engine::CProfilerScope authoringScope(CGameInstance::Get().Get_Profiler(), "CharacterAssets.Authoring.Prepare");
 	auto documents = std::make_shared<PREPARED_PRESENTATION>();
+	documents->HasSquareHoleInstrument = hasInstrument;
 	std::vector<std::string> clips;
 	clips.reserve(pBodyPalette->Get_NumAnimations());
 	for (uint32_t index = 0u; index < pBodyPalette->Get_NumAnimations(); ++index)

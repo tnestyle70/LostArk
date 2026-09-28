@@ -819,6 +819,9 @@
     <ClCompile Include="..\Private\PlayableCharacterAssetService.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\SquareHoleInstrumentCatalog.cpp">
+      <Filter>04. Network</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\ClientReplication.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
@@ -1555,6 +1558,9 @@
     <ClInclude Include="..\Public\PlayableCharacterAssetService.h">
       <Filter>04. Network</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\SquareHoleInstrumentCatalog.h">
+      <Filter>04. Network</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\ClientReplication.h">
       <Filter>04. Network</Filter>
     </ClInclude>
@@ -1940,6 +1946,9 @@
 	  <Filter>96.DataFiles\Actors</Filter>
 	</None>
 	<None Include="..\..\Data\Actors\VehicleCatalog.json">
+	  <Filter>96.DataFiles\Actors</Filter>
+	</None>
+	<None Include="..\..\Data\Actors\SquareHoleInstruments.json">
 	  <Filter>96.DataFiles\Actors</Filter>
 	</None>
 	<None Include="..\..\Data\Sound\CharacterSoundCatalog.json">
