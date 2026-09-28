@@ -5,6 +5,7 @@
 #include "GameInstance.h"
 #include "Model.h"
 #include "NpcPresentationAssetService.h"
+#include "Npc.h"
 #include "Valtan.h"
 #include "ValtanPresentationAssetService.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
@@ -887,6 +888,7 @@ void CWorldSequencePlayer::Release_Objects(ACTIVE_INSTANCE& active)
     {
         entry.weaponReplacement.reset();
         entry.hatReplacement.reset();
+        entry.npcPreviewSuppression.reset();
         if (entry.object)
         {
             entry.object->Hide();
@@ -1152,7 +1154,11 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
     active.objectSampleStatus.clear();
     active.objectColliderSamples.clear();
     std::vector<OBJECT_COLLIDER_SAMPLE> colliderSamples;
-    for (auto& entry : active.objects) entry.object->Hide();
+    for (auto& entry : active.objects)
+    {
+        entry.object->Hide();
+        entry.npcPreviewSuppression.reset();
+    }
     if (!visible || std::none_of(instance.bindings.begin(), instance.bindings.end(),
         [](const auto& binding) { return binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE; })) return true;
     std::vector<PLAYER_ANCHOR> anchors;
@@ -1273,6 +1279,21 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
                 }
                 if (!found->object->Sample(stored, key.visible, animation, ageMs, windowEnd))
                 { m_Status = "World Object transform/animation sample failed: " + resource->objectId; return false; }
+                if (found->object->Is_Visible() && !binding.previewNpcPlacementId.empty())
+                {
+                    const auto npc = targets.previewNpc ? targets.previewNpc(binding.previewNpcPlacementId) : nullptr;
+                    if (!npc)
+                    {
+                        found->object->Hide();
+                        m_Status = "NPC preview requires its live placement: " + binding.previewNpcPlacementId;
+                        return false;
+                    }
+                    npc->Acquire_CompositionPreviewSuppression();
+                    found->npcPreviewSuppression = std::shared_ptr<const void>(npc.get(),
+                        [owner = std::weak_ptr<CNpc>(npc)](const void*) {
+                            if (const auto current = owner.lock()) current->Release_CompositionPreviewSuppression();
+                        });
+                }
                 if (found->object->Is_Visible())
                     for (const auto& collider : sequence.colliderTracks)
                     {
@@ -1501,12 +1522,14 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                                 // Retain raw birth/history transforms. WORLD particles must receive
                                 // the current presentation transform after evaluating the whole frame.
                                 std::optional<float4x4_t> presentationPost;
-                                if (targets.objectWorldPostTransform)
+                                const auto& effectPostTransform = targets.objectEffectPostTransform ?
+                                    targets.objectEffectPostTransform : targets.objectWorldPostTransform;
+                                if (effectPostTransform)
                                 {
                                     float4x4_t post;
                                     const float currentSourceMs = (std::min)(trigger + ageMs,
                                         static_cast<float>(sequence->durationMs));
-                                    if (!Sample_ObjectPresentationPostTransform(targets.objectWorldPostTransform,
+                                    if (!Sample_ObjectPresentationPostTransform(effectPostTransform,
                                         motion->instanceId, currentSourceMs, post, m_Status)) return false;
                                     if (!XMMatrixIsIdentity(XMLoadFloat4x4(&post))) presentationPost = post;
                                 }

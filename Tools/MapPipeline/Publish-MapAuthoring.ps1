@@ -2245,8 +2245,29 @@ function Read-WorldSequenceDocument {
             throw 'World Object effect lanes require one Object Resource binding'
         }
         foreach ($binding in $bindings) {
-            Assert-ExactJsonProperties $binding `
-                @('slotId','targetKind','targetId') 'World sequence binding'
+            $bindingFields = @('slotId','targetKind','targetId')
+            if ($null -ne $binding.PSObject.Properties['previewNpcPlacementId']) { $bindingFields += 'previewNpcPlacementId' }
+            Assert-ExactJsonProperties $binding $bindingFields 'World sequence binding'
+            if ($null -ne $binding.PSObject.Properties['previewNpcPlacementId']) {
+                $resource = $objectResources[$binding.targetId]
+                if ($binding.targetKind -cne 'OBJECT_RESOURCE' -or $null -eq $resource -or -not $resource.animated -or
+                    $binding.previewNpcPlacementId -isnot [string] -or $binding.previewNpcPlacementId -cnotmatch $stableId -or
+                    $bindings.Count -ne 1 -or $instanceAnchor -cne 'WORLD' -or $motionEnd -cnotin @('STOP','HOLD') -or
+                    -not [string]::IsNullOrEmpty($resource.sequenceInstanceId) -or
+                    ($null -ne $template.objectMotion -and $template.objectMotion.count -ne 1) -or
+                    @($template.colliderTracks | Where-Object { $null -ne $_ }).Count -ne 0 -or
+                    $null -ne $resource.PSObject.Properties['combatBody'] -or
+                    $null -ne $resource.PSObject.Properties['presentationBossArchetypeId']) {
+                    throw "Invalid editor NPC replacement: $($instance.instanceId)"
+                }
+                $world = Get-Content -LiteralPath (Join-Path $ProjectRoot "Data/Worlds/$AreaId/Gameplay.world.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+                $npc = @($world.placements | Where-Object { $_.placementId -ceq $binding.previewNpcPlacementId -and $_.kind -ceq 'npc' -and $_.enabled })
+                $npcCatalog = Get-Content -LiteralPath (Join-Path $ProjectRoot 'Data/Actors/NpcCatalog.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+                $actor = @($npcCatalog.npcs | Where-Object { $npc.Count -eq 1 -and $_.archetypeId -ceq $npc[0].archetypeId })
+                if ($npc.Count -ne 1 -or $actor.Count -ne 1 -or $actor[0].modelAssetId -cne $resource.modelAssetId) {
+                    throw "NPC preview must match one enabled placement and its exact model: $($instance.instanceId)"
+                }
+            }
             if ($binding.slotId -isnot [string] -or
                 -not $boundSlots.Add([string]$binding.slotId) -or
                 $binding.targetKind -isnot [string] -or

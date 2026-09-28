@@ -42,6 +42,7 @@
 #include <cctype>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <limits>
 
@@ -1796,7 +1797,22 @@ void CCharacter::Apply_LocalMoveSnapshot(const CLocalMovePrediction::Snapshot& s
 	const bool_t wasEnabled = m_isLocalMovePredictionEnabled;
 	const auto disposition = m_LocalMovePrediction.ApplySnapshot(snapshot, now, Get_LocalMovePose());
 	if (disposition == CLocalMovePrediction::SnapshotDisposition::IGNORED)
+	{
+		// Maharaka diagnostic: an ignored snapshot far from the presented body.
+		const auto visual = Get_LocalMovePose();
+		const f32_t dx = visual.position.x - snapshot.position.x;
+		const f32_t dz = visual.position.z - snapshot.position.z;
+		if (LEVEL::MAHARAKA == static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID()) &&
+			dx * dx + dz * dz > 1.5f * 1.5f)
+		{
+			Write_EffectFailureDiagnostic("maharaka.localmove.ignored",
+				"tick=" + std::to_string(snapshot.serverTick) +
+				" moveSeq=" + std::to_string(snapshot.processedMoveSequence) +
+				" canPredict=" + std::to_string(snapshot.canPredictMove ? 1 : 0) +
+				" enabled=" + std::to_string(m_isLocalMovePredictionEnabled ? 1 : 0));
+		}
 		return;
+	}
 	m_isLocalMovePredictionEnabled = snapshot.canPredictMove;
 	const bool_t preserveSkillHandoff = wasEnabled && !snapshot.canPredictMove &&
 		isSkillAction && m_hasNetworkState;
@@ -2215,6 +2231,180 @@ bool_t CCharacter::Apply_MazePresentation(const bool_t isMaze)
 	Apply_NetworkStance(m_eStance);
 	return true;
 }
+
+namespace
+{
+	constexpr const wchar_t* WATER_GUN_PART_TAG = L"Part_96_WaterGun";
+	constexpr const wchar_t* WATER_GUN_PROTOTYPE_TAG = L"Prototype_Component_Model_MaharakaWaterGun";
+	// EFTable_Prop 15000/15002 "Water Pro MK-1" -> EFDLProp_ITR_02164.
+	constexpr const char* WATER_GUN_MODEL = "Character/Maharaka/WaterGun/ITR_02164/ITR_02164.wmodel";
+	// LookInfo player socket SC_Prop3_01 = bip001-prop3 with a zero offset on every class body.
+	constexpr const char* WATER_GUN_SOCKET_BONE = "bip001-prop3";
+	// Submesh 1 is the translucent tank (itr_02164_02_mi); its source translucency is not restored.
+	constexpr uint32_t WATER_GUN_HIDDEN_MESH_MASK = 1u << 1;
+	constexpr const char* WATER_GUN_EFFECT_PREFIX = "effect.maharaka.watergun.watergun_att_";
+	constexpr const char* WATER_GUN_EFFECT_SUFFIX = ".full.restore";
+
+	void Write_WaterGunDiagnostic(const std::string& detail)
+	{
+		if (ETOUI(LEVEL::MAHARAKA) == CGameInstance::Get().Get_CurrentLevelID())
+			Write_EffectFailureDiagnostic("maharaka.watergun", detail);
+	}
+
+	HRESULT Ensure_WaterGunPrototype(ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext, const uint32_t iLevelIndex, std::string& status)
+	{
+		if (nullptr != CGameInstance::Get().Clone_Prototype(iLevelIndex, WATER_GUN_PROTOTYPE_TAG))
+			return S_FALSE;
+		Engine::MODEL_ASSET_LOAD_DESC load;
+		if (!CActorCatalog::Build_ModelLoadDescription(WATER_GUN_MODEL, load, status))
+			return E_FAIL;
+		/* Cooked in UE centimetres with axes (x, z, y). The prop bone frame is
+		   (x, y, -z) and already carries the class cm-to-m basis. */
+		auto model = Engine::CModel::Create(pDevice, pContext, MODEL::NONANIM, load,
+			XMMatrixRotationX(XMConvertToRadians(-90.f)));
+		if (!model || !model->Get_NumMeshes())
+		{
+			status = "water gun model failed to load";
+			return E_FAIL;
+		}
+		std::vector<std::pair<std::wstring, unique_ptr<Engine::CPrototype>>> staged;
+		staged.emplace_back(WATER_GUN_PROTOTYPE_TAG, std::move(model));
+		if (FAILED(CGameInstance::Get().Add_Prototypes(iLevelIndex, std::move(staged))))
+		{
+			status = "water gun prototype commit failed";
+			return E_FAIL;
+		}
+		return S_OK;
+	}
+}
+
+bool_t CCharacter::Apply_WaterGunPresentation(bool_t isArmed)
+{
+	m_bWaterGunServerArmed = isArmed;
+#ifdef _DEBUG
+	isArmed = isArmed || m_bWaterGunPreviewForced;
+#endif
+	if (m_pSpec == CCharacterCatalog::Find_ClownSpec())
+		isArmed = false;
+	const char* className = nullptr != m_pSpec && nullptr != m_pSpec->pAssetName ? m_pSpec->pAssetName : "?";
+	/* The gun and its clips are Maharaka-only optional assets. Outside Maharaka, or
+	   when this class's water-gun set was not admitted, arming keeps the class weapon. */
+	if (isArmed && !m_bWaterGunPresentation)
+	{
+		CLIP_STEP idle{}, run{};
+		idle.clip = "watergun_idle";
+		run.clip = "watergun_run";
+		std::uint32_t clip = UINT32_MAX;
+		f32_t clipDuration = 0.f;
+		if (ETOUI(LEVEL::MAHARAKA) != m_iPrototypeLevelIndex)
+			isArmed = false;
+		else if (!Resolve_ClipTiming(idle, clip, clipDuration) || !Resolve_ClipTiming(run, clip, clipDuration))
+		{
+			Write_WaterGunDiagnostic(std::string("kind=arm-skipped class=") + className +
+				" reason=animation-set-unavailable");
+			isArmed = false;
+		}
+	}
+	if (isArmed == m_bWaterGunPresentation)
+		return true;
+	if (isArmed && !__super::Find_PartObject(WATER_GUN_PART_TAG))
+	{
+		std::string status = "body has no " + std::string(WATER_GUN_SOCKET_BONE);
+		if (!m_pBodyModel || !m_pBodyModel->Has_Bone(WATER_GUN_SOCKET_BONE) ||
+			FAILED(Ensure_WaterGunPrototype(m_pDevice, m_pContext, m_iPrototypeLevelIndex, status)))
+		{
+			Write_WaterGunDiagnostic(std::string("kind=arm-failed class=") + className + " reason=" + status);
+			return false;
+		}
+		CPart_Equipment::PART_EQUIPMENT_DESC desc{};
+		desc.pParentMatrix = &m_PresentationRootMatrix;
+		desc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
+		desc.strModelTag = WATER_GUN_PROTOTYPE_TAG;
+		desc.strShaderTag = TEXT("Prototype_Component_Shader_VtxMeshBinary");
+		desc.pSkeletonModel = m_pBodyModel;
+		desc.pSocketBoneName = WATER_GUN_SOCKET_BONE;
+		desc.iHiddenMeshMask = WATER_GUN_HIDDEN_MESH_MASK;
+		if (const auto body = dynamic_pointer_cast<CTransform>(
+			__super::Get_Component(TEXT("Part_00_Body"), TEXT("Com_Transform"))))
+			desc.pSocketRootMatrix = body->Get_WorldMatrixPtr();
+		if (FAILED(__super::Add_PartObject(m_iPrototypeLevelIndex,
+			TEXT("Prototype_GameObject_Part_Equipment"), WATER_GUN_PART_TAG, &desc)))
+		{
+			Write_WaterGunDiagnostic(std::string("kind=arm-failed class=") + className + " reason=part");
+			return false;
+		}
+	}
+	m_bWaterGunPresentation = isArmed;
+	Set_PartVisible(WATER_GUN_PART_TAG, isArmed);
+	CLIP_STEP idle{}, run{};
+	idle.clip = "watergun_idle";
+	run.clip = "watergun_run";
+	std::uint32_t animation = UINT32_MAX;
+	f32_t duration = 0.f;
+	m_hasWaterGunClips = isArmed && Resolve_ClipTiming(idle, animation, duration) &&
+		Resolve_ClipTiming(run, animation, duration);
+	// Weapons are re-derived through Set_PartVisible, which hides them while armed.
+	Apply_NetworkStance(m_eStance);
+	if (!Is_PlayingSkill() && LostArk::Shared::PLAYER_ACTION_STATE::NONE == m_eNetworkAction &&
+		KNOCKDOWN_STEP::NONE == m_eKnockdownStep)
+		Set_Animation(m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE, true);
+	if (isArmed)
+	{
+		std::vector<std::string> targets, admitted;
+		for (uint32_t attack = 1u; attack <= 4u; ++attack)
+			targets.push_back(WATER_GUN_EFFECT_PREFIX + std::to_string(attack) + WATER_GUN_EFFECT_SUFFIX);
+		std::string status;
+		if (!CEffectPresentationService::Queue_ProductTargets_Priority(targets, admitted, status))
+			Write_WaterGunDiagnostic("kind=effect-queue-failed reason=" + status);
+	}
+	char detail[384]{};
+	float3_t socket{};
+	f32_t basis = 0.f;
+	if (m_pBodyModel && m_pBodyModel->Has_Bone(WATER_GUN_SOCKET_BONE))
+	{
+		const matrix_t bone = m_pBodyModel->Get_BoneMatrix(WATER_GUN_SOCKET_BONE);
+		basis = XMVectorGetX(XMVector3Length(bone.r[0]));
+		XMStoreFloat3(&socket, XMVector3TransformCoord(bone.r[3], XMLoadFloat4x4(&m_PresentationRootMatrix)));
+	}
+	std::snprintf(detail, sizeof(detail),
+		"kind=%s class=%s local=%d clips=%d socketBasis=%.5f socketWorld=(%.3f,%.3f,%.3f)",
+		isArmed ? "arm" : "disarm", className, m_isLocallyControlled ? 1 : 0,
+		m_hasWaterGunClips ? 1 : 0, basis, socket.x, socket.y, socket.z);
+	Write_WaterGunDiagnostic(detail);
+	return true;
+}
+
+#ifdef _DEBUG
+void CCharacter::Set_WaterGunPreviewForced(const bool_t forced)
+{
+	m_bWaterGunPreviewForced = forced;
+	(void)Apply_WaterGunPresentation(m_bWaterGunServerArmed);
+}
+
+bool_t CCharacter::Play_WaterGunAttackPreview(const uint32_t attack)
+{
+	if (!m_bWaterGunPresentation || attack < 1u || attack > 6u)
+		return false;
+	CLIP_STEP step{};
+	step.clip = "watergun_att_" + std::to_string(attack);
+	if (!Start_Clip(step))
+		return false;
+	// GADGET.loa: water bomb (att_5) and water mine (att_6) carry no source particle.
+	if (attack > 4u)
+		return true;
+	EFFECT_SPAWN_DESC desc;
+	desc.strEffectAssetId = WATER_GUN_EFFECT_PREFIX + std::to_string(attack) + WATER_GUN_EFFECT_SUFFIX;
+	desc.pOwner = static_pointer_cast<CCharacter>(shared_from_this());
+	desc.strOccurrenceId = "watergun.preview:" + std::to_string(attack) + ":" +
+		std::to_string(++m_iWaterGunPreviewSequence);
+	std::string status;
+	const bool_t spawned = CEffectPresentationService::Spawn(desc, status);
+	Write_WaterGunDiagnostic("kind=preview-fire attack=" + std::to_string(attack) +
+		" spawned=" + std::to_string(spawned ? 1 : 0) + (spawned ? std::string() : " reason=" + status));
+	return spawned;
+}
+#endif
 
 bool_t CCharacter::Apply_MarioPresentation(bool_t isMario)
 {
@@ -2900,6 +3090,26 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_bHasEffectActionFacingYaw = false;
 		m_fEffectActionFacingYawDegrees = 0.f;
 	}
+	else if (PLAYER_ACTION_STATE::FALLING == m_eNetworkAction &&
+		LEVEL::MAHARAKA == static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID()))
+	{
+		/* Maharaka Waterpang only: the Server ends that fall alive on a jump box.
+		Drop the fall's hit loop and any knockdown step from the push before it,
+		so the body stands in its ordinary idle/run pose. */
+		m_pChain = nullptr;
+		m_iChainStage = 0;
+		m_iChainStep = 0;
+		m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
+		m_fActionPresentationSeconds = 0.f;
+		Commit_PendingClipChains();
+		Set_Animation(
+			m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
+			true);
+		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
+		m_iEffectActionStartTick = 0u;
+		m_bHasEffectActionFacingYaw = false;
+		m_fEffectActionFacingYawDegrees = 0.f;
+	}
 	else if (PLAYER_ACTION_STATE::INTERACTION == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::SKILL == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::TRIGGER_MOVE == m_eNetworkAction ||
@@ -3073,7 +3283,7 @@ void CCharacter::Set_PartVisible(const tchar_t* pPartTag, const bool_t isVisible
 	if (nullptr != pPart)
 	{
 		bool_t allowed = isVisible;
-		if (allowed && m_pSpec && (m_bMazePresentation ||
+		if (allowed && m_pSpec && (m_bMazePresentation || m_bWaterGunPresentation ||
 			(m_pSpec == CCharacterCatalog::Find_ClownSpec() && !m_bMarioPresentation)))
 		{
 			for (uint32_t i = 0u; i < m_pSpec->iNumWeapons; ++i)
@@ -3441,6 +3651,9 @@ const char_t* CCharacter::Resolve_LocomotionClip(const CHARACTER_ANIM eAnim) con
 	{
 		if (const VEHICLE_RIDER_ENTRY* pRider = Find_VehicleRider())
 			return (CHARACTER_ANIM::IDLE == eAnim ? pRider->idleClip : pRider->runClip).c_str();
+		// pr_itr_02164_idle_1/run_1 from every class AnimSet, renamed class-neutral.
+		if (m_bWaterGunPresentation && m_hasWaterGunClips)
+			return CHARACTER_ANIM::IDLE == eAnim ? "watergun_idle" : "watergun_run";
 	}
 	const char_t* pClipName = m_pSpec->AnimationClips[ETOUI(eAnim)];
 	if (CHARACTER_ANIM::IDLE != eAnim && CHARACTER_ANIM::RUN != eAnim)
@@ -3632,8 +3845,11 @@ bool_t CCharacter::Try_SampleTargetGround(
 {
 	if (nullptr == m_pNavigationCom || !std::isfinite(x) || !std::isfinite(z))
 		return false;
+	// The body's height picks the stacked navigation region the target lies on.
+	const f32_t hintY = nullptr != m_pTransformCom ?
+		XMVectorGetY(m_pTransformCom->Get_State(STATE::POSITION)) : 0.f;
 	return m_pNavigationCom->Try_SampleWalkablePoint(
-		XMVectorSet(x, 0.f, z, 1.f), outPosition);
+		XMVectorSet(x, hintY, z, 1.f), outPosition);
 }
 
 PATH_RESULT_CODE CCharacter::Request_Move(fvector_t vGoalPosition)

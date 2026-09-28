@@ -2,89 +2,154 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_OCN_EVENTIS_MHP",
-  "revision": 6,
+  "revision": 275,
   "placements": [
     {
-      "placementId": "player.spawn.maharaka.party01",
-      "kind": "playerSpawn",
-      "archetypeId": null,
-      "encounterId": null,
+      "placementId": "jump1",
+      "kind": "triggerBox",
       "position": [
-        61.18,
-        20.48,
-        -975.7
+        66.6110001,
+        23.2040005,
+        -992.672974
       ],
-      "yawDegrees": 0.0,
-      "enabled": true
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [
+        1,
+        1,
+        1
+      ],
+      "triggerOnce": false,
+      "events": [
+        {
+          "type": "movePlayer",
+          "targetPosition": [
+            71.0330353,
+            23.1000004,
+            -988.017334
+          ],
+          "durationSeconds": 1.2,
+          "arcHeight": 2.5
+        }
+      ],
+      "requiresInteract": true,
+      "interactAction": "tightrope"
     },
     {
-      "placementId": "player.spawn.maharaka.party02",
-      "kind": "playerSpawn",
-      "archetypeId": null,
-      "encounterId": null,
+      "placementId": "jump1_1",
+      "kind": "triggerBox",
       "position": [
-        68.36,
-        20.48,
-        -968.82
+        71.0330353,
+        23.1000004,
+        -988.017334
       ],
-      "yawDegrees": 0.0,
-      "enabled": true
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1,
+        1,
+        1
+      ],
+      "triggerOnce": true,
+      "events": []
     },
     {
-      "placementId": "player.spawn.maharaka.party03",
-      "kind": "playerSpawn",
-      "archetypeId": null,
-      "encounterId": null,
+      "placementId": "jump2",
+      "kind": "triggerBox",
       "position": [
-        63.81,
-        20.48,
-        -971.06
+        83.2979965,
+        23.4039993,
+        -975.674988
       ],
-      "yawDegrees": 0.0,
-      "enabled": true
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [
+        1,
+        1,
+        1
+      ],
+      "triggerOnce": false,
+      "events": [
+        {
+          "type": "movePlayer",
+          "targetPosition": [
+            78.8357773,
+            23.2280006,
+            -980.061584
+          ],
+          "durationSeconds": 1.2,
+          "arcHeight": 2.5
+        }
+      ],
+      "requiresInteract": true,
+      "interactAction": "tightrope"
     },
     {
-      "placementId": "player.spawn.maharaka.party04",
-      "kind": "playerSpawn",
-      "archetypeId": null,
-      "encounterId": null,
+      "placementId": "jump2_1",
+      "kind": "triggerBox",
       "position": [
-        57.55,
-        20.48,
-        -982.72
+        78.8357773,
+        23.2280006,
+        -980.061584
       ],
-      "yawDegrees": 0.0,
-      "enabled": true
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1,
+        1,
+        1
+      ],
+      "triggerOnce": true,
+      "events": []
     },
     {
-      "placementId": "npc.maharaka.source57009.actor100",
-      "kind": "npc",
-      "archetypeId": "NPC_MAHARAKA_MOKOMOKO",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": null,
+      "placementId": "jump3",
+      "kind": "triggerBox",
       "position": [
-        75.179,
-        25.19908152,
-        -1007.262
+        71.764534,
+        20.6499996,
+        -975.366272
       ],
-      "yawDegrees": 0.0,
-      "enabled": true
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [
+        1,
+        1,
+        1
+      ],
+      "triggerOnce": false,
+      "events": [
+        {
+          "type": "movePlayer",
+          "targetPosition": [
+            73.0410004,
+            23.1289997,
+            -979.223022
+          ],
+          "durationSeconds": 1.2,
+          "arcHeight": 2.5
+        }
+      ],
+      "requiresInteract": true,
+      "interactAction": "climb"
     },
     {
-      "placementId": "npc.maharaka.source57009.actor188",
-      "kind": "npc",
-      "archetypeId": "NPC_MAHARAKA_WATERCANNON",
-      "encounterId": null,
-      "idleClip": null,
-      "behavior": null,
+      "placementId": "jump3_1",
+      "kind": "triggerBox",
       "position": [
-        75.05,
-        23.66841349,
-        -984.32
+        73.0410004,
+        23.1289997,
+        -979.223022
       ],
-      "yawDegrees": -46.1,
-      "enabled": true
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1,
+        1,
+        1
+      ],
+      "triggerOnce": true,
+      "events": []
     },
     {
       "placementId": "npc.maharaka.scene06a.source67",
@@ -94,9 +159,9 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        81.1877587890625,
-        19.826026611328125,
-        -995.886328125
+        81.1877594,
+        19.8260269,
+        -995.886353
       ],
       "yawDegrees": 26.015625,
       "enabled": true
@@ -109,11 +174,11 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        81.972607421875,
-        19.824100341796875,
-        -994.162890625
+        81.9726105,
+        19.8241005,
+        -994.162903
       ],
-      "yawDegrees": 229.04296875,
+      "yawDegrees": 229.042969,
       "enabled": true
     },
     {
@@ -124,9 +189,9 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        69.37609375,
-        19.857174072265625,
-        -977.33046875
+        69.376091,
+        19.8571739,
+        -977.330444
       ],
       "yawDegrees": 335.390625,
       "enabled": true
@@ -139,11 +204,11 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        80.0225830078125,
-        19.828841552734374,
+        80.022583,
+        19.8288422,
         -993.96875
       ],
-      "yawDegrees": 79.98046875,
+      "yawDegrees": 79.9804688,
       "enabled": true
     },
     {
@@ -154,11 +219,11 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        58.188525390625,
-        20.5162548828125,
-        -989.0203125
+        58.1885262,
+        20.5162544,
+        -989.020325
       ],
-      "yawDegrees": 164.00390625,
+      "yawDegrees": 164.003906,
       "enabled": true
     },
     {
@@ -169,11 +234,11 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        63.1671826171875,
-        20.489345703125,
-        -971.18359375
+        63.1671829,
+        20.4893456,
+        -971.183594
       ],
-      "yawDegrees": 207.59765625,
+      "yawDegrees": 207.597656,
       "enabled": true
     },
     {
@@ -184,11 +249,11 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        61.8583251953125,
-        20.473099365234376,
-        -972.52921875
+        61.858326,
+        20.4730988,
+        -972.529236
       ],
-      "yawDegrees": 226.93359375,
+      "yawDegrees": 226.933594,
       "enabled": true
     },
     {
@@ -199,11 +264,11 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        57.6962548828125,
-        20.415064697265624,
-        -979.905546875
+        57.6962547,
+        20.4150639,
+        -979.905518
       ],
-      "yawDegrees": 194.23828125,
+      "yawDegrees": 194.238281,
       "enabled": true
     },
     {
@@ -214,11 +279,11 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        57.5883837890625,
-        20.457867431640626,
-        -980.31359375
+        57.5883827,
+        20.4578667,
+        -980.313599
       ],
-      "yawDegrees": 237.3046875,
+      "yawDegrees": 237.304688,
       "enabled": true
     },
     {
@@ -229,9 +294,9 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        58.5163623046875,
-        20.4838134765625,
-        -989.9240625
+        58.5163612,
+        20.4838142,
+        -989.924072
       ],
       "yawDegrees": 335.390625,
       "enabled": true
@@ -244,9 +309,9 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        83.161181640625,
-        19.078863525390624,
-        -993.12453125
+        83.1611786,
+        19.0788631,
+        -993.124512
       ],
       "yawDegrees": 19.6875,
       "enabled": true
@@ -259,9 +324,9 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        66.4585498046875,
-        19.040931396484375,
-        -979.425
+        66.4585495,
+        19.0409317,
+        -979.424988
       ],
       "yawDegrees": 185.625,
       "enabled": true
@@ -274,9 +339,9 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        67.9532958984375,
-        19.7650341796875,
-        -977.1396875
+        67.9532928,
+        19.7650337,
+        -977.139709
       ],
       "yawDegrees": 46.0546875,
       "enabled": true
@@ -289,9 +354,9 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        105.8440234375,
-        20.48099853515625,
-        -997.317578125
+        105.844025,
+        20.480999,
+        -997.317566
       ],
       "yawDegrees": 233.4375,
       "enabled": true
@@ -304,9 +369,9 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        57.4626953125,
-        20.48103271484375,
-        -987.20796875
+        57.4626961,
+        20.4810333,
+        -987.207947
       ],
       "yawDegrees": 78.75,
       "enabled": true
@@ -319,9 +384,9 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        68.0145947265625,
-        20.077005615234373,
-        -978.945
+        68.014595,
+        20.0770054,
+        -978.945007
       ],
       "yawDegrees": 7.55859375,
       "enabled": true
@@ -334,11 +399,11 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        77.8271728515625,
-        19.87319580078125,
-        -996.253359375
+        77.8271713,
+        19.8731956,
+        -996.253357
       ],
-      "yawDegrees": 182.98828125,
+      "yawDegrees": 182.988281,
       "enabled": true
     },
     {
@@ -349,9 +414,9 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        77.597392578125,
-        19.915997314453126,
-        -1001.913359375
+        77.5973892,
+        19.9159966,
+        -1001.91333
       ],
       "yawDegrees": 2.8125,
       "enabled": true
@@ -364,11 +429,11 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        69.907568359375,
-        19.80857177734375,
-        -975.835078125
+        69.9075699,
+        19.8085709,
+        -975.835083
       ],
-      "yawDegrees": 219.0234375,
+      "yawDegrees": 219.023438,
       "enabled": true
     },
     {
@@ -379,11 +444,11 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        103.457333984375,
-        20.5161767578125,
-        -994.672734375
+        103.457336,
+        20.5161762,
+        -994.672729
       ],
-      "yawDegrees": 237.12890625,
+      "yawDegrees": 237.128906,
       "enabled": true
     },
     {
@@ -394,11 +459,11 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        106.415,
-        20.4741796875,
-        -999.05
+        106.415001,
+        20.4741802,
+        -999.049988
       ],
-      "yawDegrees": 311.66015625,
+      "yawDegrees": 311.660156,
       "enabled": true
     },
     {
@@ -409,11 +474,11 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        106.951669921875,
-        20.414986572265626,
-        -1002.70875
+        106.951668,
+        20.4149857,
+        -1002.70874
       ],
-      "yawDegrees": 357.36328125,
+      "yawDegrees": 357.363281,
       "enabled": true
     },
     {
@@ -424,9 +489,9 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        106.93654296875,
-        20.457789306640624,
-        -1002.28703125
+        106.936546,
+        20.4577885,
+        -1002.28705
       ],
       "yawDegrees": 40.4296875,
       "enabled": true
@@ -439,9 +504,9 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        102.687548828125,
-        20.4837353515625,
-        -995.24859375
+        102.687546,
+        20.483736,
+        -995.248596
       ],
       "yawDegrees": 48.515625,
       "enabled": true
@@ -454,11 +519,11 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        120.049150390625,
-        25.62914794921875,
-        -991.952734375
+        120.049149,
+        25.6291485,
+        -991.952759
       ],
-      "yawDegrees": 101.42578125,
+      "yawDegrees": 101.425781,
       "enabled": true
     },
     {
@@ -469,9 +534,9 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        125.77205078125,
-        25.62107666015625,
-        -990.517890625
+        125.772049,
+        25.6210766,
+        -990.517883
       ],
       "yawDegrees": 326.953125,
       "enabled": true
@@ -484,9 +549,9 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        99.140068359375,
-        27.73676025390625,
-        -969.97796875
+        99.1400681,
+        27.7367611,
+        -969.977966
       ],
       "yawDegrees": 144.140625,
       "enabled": true
@@ -499,12 +564,118 @@
       "idleClip": null,
       "behavior": null,
       "position": [
-        108.047236328125,
-        27.677978515625,
-        -960.22265625
+        108.047234,
+        27.6779785,
+        -960.222656
       ],
       "yawDegrees": 36.2109375,
       "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.source57009.actor100",
+      "kind": "npc",
+      "archetypeId": "NPC_MAHARAKA_MOKOMOKO",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        75.1790009,
+        25.1990814,
+        -1007.26202
+      ],
+      "yawDegrees": 0,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.source57009.actor188",
+      "kind": "npc",
+      "archetypeId": "NPC_MAHARAKA_WATERCANNON",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        75.0500031,
+        23.6684132,
+        -984.320007
+      ],
+      "yawDegrees": -46.0999985,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.maharaka.party01",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        61.1800003,
+        20.4799995,
+        -975.700012
+      ],
+      "yawDegrees": 0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.maharaka.party02",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        68.3600006,
+        20.4799995,
+        -968.820007
+      ],
+      "yawDegrees": 0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.maharaka.party03",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        63.8100014,
+        20.4799995,
+        -971.059998
+      ],
+      "yawDegrees": 0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.maharaka.party04",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        57.5499992,
+        20.4799995,
+        -982.719971
+      ],
+      "yawDegrees": 0,
+      "enabled": true
+    },
+    {
+      "placementId": "waterpang.arena.start",
+      "kind": "triggerBox",
+      "position": [
+        75.05,
+        22.65,
+        -984.32
+      ],
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [
+        5.5,
+        0.7,
+        5.5
+      ],
+      "triggerOnce": false,
+      "requiresInteract": false,
+      "events": [
+        {
+          "type": "playSequence",
+          "sequenceInstanceId": "world.sequence.instance.maharaka.waterpang.source.intro15.stage"
+        }
+      ]
     }
   ]
 }

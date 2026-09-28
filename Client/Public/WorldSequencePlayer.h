@@ -21,6 +21,7 @@ NS_END
 NS_BEGIN(Client)
 
 class CWorldSequenceObject;
+class CNpc;
 class EFFECT_V2_CATALOG_SNAPSHOT;
 struct EFFECT_DOCUMENT_DESC;
 struct SAYDON_WEAPON_REPLACEMENT;
@@ -77,6 +78,9 @@ public:
 		// commit only the newly-created world roots before seeking that editor frame.
 		bool_t bCommitWorldRootEffectsAfterSpawn = false;
 		std::function<std::vector<PLAYER_ANCHOR>()> playerAnchors;
+		// Supplied by the owning editor or Server-approved Level presentation.
+		// Only the exact NPC's rendering is suppressed; gameplay remains replicated.
+		std::function<std::shared_ptr<CNpc>(const std::string&)> previewNpc;
 		// Live BODY bone pose; separate from a frozen projectile emission origin.
 		std::function<bool_t(const std::string&, const std::string&, PLAYER_ANCHOR&, std::string&)> bossAnchor;
 		// Occurrence-local real milliseconds at birth -> frozen world origin.
@@ -84,6 +88,9 @@ public:
 		// Optional presentation-only post transform, sampled at the Object's source clock.
 		// Effect frames use the current post transform without rebasing their birth history.
 		std::function<bool_t(const std::string&, f32_t, float4x4_t&, std::string&)> objectWorldPostTransform;
+		// Optional effect-only replacement for objectWorldPostTransform: attached World
+		// Object effects use it while the model pose stays untouched.
+		std::function<bool_t(const std::string&, f32_t, float4x4_t&, std::string&)> objectEffectPostTransform;
 
 		bool_t Is_Complete() const noexcept
 		{
@@ -319,6 +326,7 @@ private:
 		std::shared_ptr<PREPARED_OBJECT_POOL> preparationPool;
 		std::shared_ptr<const SAYDON_WEAPON_REPLACEMENT> weaponReplacement;
 		std::shared_ptr<const SAYDON_HAT_REPLACEMENT> hatReplacement;
+		std::shared_ptr<const void> npcPreviewSuppression;
 	};
 	struct OBJECT_MODEL
 	{

@@ -964,6 +964,15 @@ HRESULT CLoader::Ready_For_Maharaka()
 		selectedClass)))
 		return E_FAIL;
 
+	if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::MAHARAKA),
+		CWorldSequenceObject::PROTOTYPE_TAG,CWorldSequenceObject::Create(m_pDevice,m_pContext)))) return E_FAIL;
+	std::string waterpangStatus;
+	if (!CWorldSequencePlayer::Prepare_AreaLoad(ETOUI(LEVEL::MAHARAKA),pEntry->pMapAreaId,
+		pEntry->MapLoadScope,waterpangStatus,[this]() { return m_isCancellationRequested.load(std::memory_order_acquire); }))
+	{
+		if (m_isCancellationRequested.load(std::memory_order_acquire)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+		OutputDebugStringA(("[Loader][Waterpang] "+waterpangStatus+"\n").c_str());
+	}
 	Set_Status(TEXT("Maharaka loading complete"));
 	rollback.Commit();
 	return S_OK;
@@ -1174,6 +1183,38 @@ HRESULT CLoader::Ready_MapArea(
 					navigationContract.runtimePath.c_str(), maximumStepHeight);
 				if (!navigation)
 					return E_FAIL;
+				/* The Server answers inside detail regions from the region grid, so the
+				   local player's predicted height and paths must use the same grids. */
+				std::vector<MAP_NAVIGATION_REGION> regions;
+				if (!CMapNavigationContract::Read_RuntimeRegionManifest(
+					areaId, regions, navigationStatus))
+				{
+					OutputDebugStringA(("[Loader][Map] " + navigationStatus + "\n").c_str());
+					return E_FAIL;
+				}
+				for (const MAP_NAVIGATION_REGION& region : regions)
+				{
+					MAP_NAVIGATION_CONTRACT regionContract;
+					f32_t regionStepHeight = 0.f;
+					if (!CMapNavigationContract::Resolve_Region(
+							areaId, region.regionId, regionContract, navigationStatus) ||
+						!regionContract.runtimeGridAvailable ||
+						!CMapNavigationContract::Read_RuntimeStepHeight(
+							regionContract, regionStepHeight, navigationStatus) ||
+						std::abs(regionStepHeight - region.stepHeight) > 0.000001f)
+					{
+						OutputDebugStringA(("[Loader][Map] Navigation region rejected: " +
+							region.regionId + " (" + navigationStatus + ")\n").c_str());
+						return E_FAIL;
+					}
+					auto regionNavigation = CNavigation::Create_NavGrid(m_pDevice, m_pContext,
+						regionContract.runtimePath.c_str(), regionStepHeight);
+					if (!regionNavigation ||
+						FAILED(navigation->Attach_Region(std::move(regionNavigation))))
+					{
+						return E_FAIL;
+					}
+				}
 				staged.emplace_back(navigationContract.prototypeTag, std::move(navigation));
 			}
 		}

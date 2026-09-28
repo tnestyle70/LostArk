@@ -1,4 +1,5 @@
 #include "GameRoom.h"
+#include "Gameplay/MaharakaWaterpangContract.h"
 
 #include "ClientSession.h"
 #include "ServerCombatHitRuntime.h"
@@ -443,8 +444,11 @@ void LostArk::Server::CGameRoom::Handle_DebugWorldPlayback(
 	{
 		using Result = DEBUG_WORLD_PLAYBACK_RESULT;
 		using Op = DEBUG_WORLD_PLAYBACK_OPERATION;
-		if (request.eWorldId != m_eWorldId ||
-			(m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA && m_eWorldId != WORLD_ID::VALTAN_ARENA))
+		MAHARAKA_WATERPANG_EVENT_KIND waterpangKind{};
+		const bool waterpangDebug = m_eWorldId == WORLD_ID::MAHARAKA &&
+			Find_MaharakaWaterpangDebugKind(request.strTargetId, waterpangKind);
+		if (request.eWorldId != m_eWorldId || (!waterpangDebug &&
+			m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA && m_eWorldId != WORLD_ID::VALTAN_ARENA))
 			return Result::WRONG_WORLD;
 		const auto playerId = m_PlayerIdBySessionId.find(sessionId);
 		if (playerId == m_PlayerIdBySessionId.end()) return Result::INVALID_PLAYER;
@@ -453,6 +457,9 @@ void LostArk::Server::CGameRoom::Handle_DebugWorldPlayback(
 		auto& last = m_WorldPlaybackRequestSequences[sessionId];
 		if (request.iRequestSequence <= last) return Result::STALE_REQUEST;
 		last = request.iRequestSequence;
+		if (waterpangDebug)
+			return request.eOperation == Op::PLAY_SEQUENCE ?
+				Start_MaharakaWaterpangDebugEvent(request.strTargetId) : Result::INVALID_TARGET;
 		if (request.eOperation == Op::PLACE_ROOM_PLAYER) return Apply_DebugRoomPlayerArrival(sessionId, request);
 		const bool replay = request.eOperation == Op::REPLAY_TRIGGER || request.eOperation == Op::REPLAY_SEQUENCE;
 		const auto play = [&](const std::string& id)
@@ -615,6 +622,16 @@ bool LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(
 	}
 
 	S2C_WORLD_SEQUENCE_PLAY message{};
+	const bool waterpang = m_eWorldId == WORLD_ID::MAHARAKA && instanceId == MAHARAKA_WATERPANG_INTRO_INSTANCE;
+	if (waterpang)
+	{
+		// Re-entry and debug replay cannot restart an in-progress arena session.
+		if (operation != WORLD_SEQUENCE_OPERATION::PLAY) return false;
+		if (m_MaharakaWaterpangIntro) return true;
+		message.iServerTick = m_iServerTick;
+		message.iStartTick = m_iServerTick + MAHARAKA_WATERPANG_COUNTDOWN_TICKS;
+		if (!message.iStartTick) ++message.iStartTick;
+	}
 	message.eOperation = operation;
 	message.strSequenceInstanceId = instanceId;
 	message.strTargetSequenceInstanceId = targetSequenceInstanceId;
@@ -626,6 +643,12 @@ bool LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(
 	CPacketWriter writer;
 	if (!Write_Message(writer, message))
 		return false;
+	if (waterpang)
+	{
+		m_MaharakaWaterpangIntro = message;
+		// The match takes the cast from here; a Debug forced event ends with the reservation.
+		m_MaharakaWaterpangDebugEvent.reset();
+	}
 	for (const auto& [playerId, player] : m_Players)
 	{
 		(void)playerId;
@@ -1515,4 +1538,192 @@ LostArk::Server::CGameRoom::Find_KoukuSaydonAuditionBoss()
 			return CKoukuSaydonBrain::Is_GateOneBoss(m_eWorldId, entity);
 		});
 	return m_WorldEntities.end() == found ? nullptr : &*found;
+}
+
+
+void LostArk::Server::CGameRoom::Update_MaharakaWaterpangHazards(
+	SERVER_PLAYER& player, const std::uint32_t updateTick)
+{
+	using namespace LostArk::Shared;
+	if (m_eWorldId != WORLD_ID::MAHARAKA || !updateTick ||
+		!player.iCurrentHp || !player.isCombatReady || player.TriggerMove.isActive || player.bWaterpangLaunch ||
+		player.eAction == PLAYER_ACTION_STATE::DEAD || player.eAction == PLAYER_ACTION_STATE::FALLING)
+		return;
+	MAHARAKA_WATERPANG_EVENT_SAMPLE event{};
+	if (!Sample_MaharakaWaterpangNow(updateTick, event))
+		return;
+	// Only a body on the arena deck or its pier takes part; the pool and shore do not.
+	if (!m_ServerNavigation.Is_Loaded() ||
+		!m_ServerNavigation.Is_PointWalkableInRegion(MAHARAKA_WATERPANG_REGION_ID,
+			player.fPositionX, player.fPositionZ, player.fPositionY))
+		return;
+	const float bodyRadius = WorldCollision::PLAYER_HALF_EXTENT_X;
+	SERVER_WORLD_TO_PLAYER_HIT hit{};
+	hit.iServerTick = updateTick;
+	hit.bIgnoreCounter = true;
+	hit.bForcePush = true;
+	hit.bUsePushDirection = true;
+	hit.bKnockdown = true;
+	if (MAHARAKA_WATERPANG_EVENT_KIND::WATERFALL != event.eKind)
+	{
+		if (!event.bFiring || (player.iWaterpangCannonHitTick &&
+			static_cast<std::int32_t>(updateTick - player.iWaterpangCannonHitTick) <
+				static_cast<std::int32_t>(MAHARAKA_WATERPANG_CANNON_HIT_INTERVAL_TICKS)))
+			return;
+		constexpr float degreesToRadians = 3.14159265358979f / 180.f;
+		const float jetX = std::sin(event.fCannonYawDegrees * degreesToRadians);
+		const float jetZ = std::cos(event.fCannonYawDegrees * degreesToRadians);
+		const float x = player.fPositionX - MAHARAKA_WATERPANG_CANNON_X;
+		const float z = player.fPositionZ - MAHARAKA_WATERPANG_CANNON_Z;
+		const float along = x * jetX + z * jetZ;
+		const float across = x * jetZ - z * jetX;
+		if (std::abs(along) > MAHARAKA_WATERPANG_CANNON_HALF_LENGTH_M + bodyRadius ||
+			std::abs(across) > MAHARAKA_WATERPANG_CANNON_HALF_WIDTH_M + bodyRadius)
+			return;
+		// The jet carries the body away from the cannon along its own line.
+		const float sign = along < 0.f ? -1.f : 1.f;
+		hit.fSourceX = MAHARAKA_WATERPANG_CANNON_X;
+		hit.fSourceZ = MAHARAKA_WATERPANG_CANNON_Z;
+		hit.fPushDirectionX = jetX * sign;
+		hit.fPushDirectionZ = jetZ * sign;
+		hit.fPushRangeM = MAHARAKA_WATERPANG_CANNON_PUSH_M;
+		hit.iPushMs = MAHARAKA_WATERPANG_CANNON_PUSH_MS;
+		player.iWaterpangCannonHitTick = updateTick;
+	}
+	else
+	{
+		if (event.iElapsedTicks != MAHARAKA_WATERPANG_WATERFALL_HIT_TICK &&
+			event.iElapsedTicks != MAHARAKA_WATERPANG_WATERFALL_SECOND_HIT_TICK) return;
+		// The waterfall covers the whole deck; the pool, the shore and the piers are clear.
+		const float x = player.fPositionX - MAHARAKA_WATERPANG_CANNON_X;
+		const float z = player.fPositionZ - MAHARAKA_WATERPANG_CANNON_Z;
+		const float radius = std::sqrt(x * x + z * z);
+		if (radius > MAHARAKA_WATERPANG_DECK_RADIUS_M || player.fPositionY < MAHARAKA_WATERPANG_DECK_MIN_Y_M)
+			return;
+		// Source waves: within 2.5 m of the origin 3.2 m ahead of the mokoko at 2.30 s, the rest at 2.46 s.
+		float faceX = MAHARAKA_WATERPANG_CANNON_X - MAHARAKA_WATERPANG_MOKOMOKO_X;
+		float faceZ = MAHARAKA_WATERPANG_CANNON_Z - MAHARAKA_WATERPANG_MOKOMOKO_Z;
+		const float faceLength = std::sqrt(faceX * faceX + faceZ * faceZ);
+		faceX /= faceLength; faceZ /= faceLength;
+		const float originX = MAHARAKA_WATERPANG_MOKOMOKO_X + faceX * MAHARAKA_WATERPANG_WATERFALL_ORIGIN_FORWARD_M;
+		const float originZ = MAHARAKA_WATERPANG_MOKOMOKO_Z + faceZ * MAHARAKA_WATERPANG_WATERFALL_ORIGIN_FORWARD_M;
+		const bool innerWave = std::hypot(player.fPositionX - originX, player.fPositionZ - originZ) <=
+			MAHARAKA_WATERPANG_WATERFALL_INNER_WAVE_M;
+		if (innerWave != (event.iElapsedTicks == MAHARAKA_WATERPANG_WATERFALL_HIT_TICK)) return;
+		// Away from the arena centre (on the cannon itself, along the mokoko's facing).
+		float directionX = radius < 0.3f ? faceX : x / radius;
+		float directionZ = radius < 0.3f ? faceZ : z / radius;
+		constexpr float degreesToRadians = 3.14159265358979f / 180.f;
+		float pierDegrees[2]{};
+		std::uint32_t pierCount = 0u;
+		for (const char* pierId : { "jump1", "jump2" })
+			if (const auto* pier = Find_Placement(pierId))
+				pierDegrees[pierCount++] = std::atan2(pier->fPositionX - MAHARAKA_WATERPANG_CANNON_X,
+					pier->fPositionZ - MAHARAKA_WATERPANG_CANNON_Z) / degreesToRadians;
+		/* The flight ends past the rim (|p + d * direction| >= exit radius) and never
+		   over a jump pier: while its end bearing is within a pier's half angle, the
+		   direction turns 2 degrees further away from that pier. */
+		float distance = MAHARAKA_WATERPANG_WATERFALL_LAUNCH_M;
+		for (std::uint32_t attempt = 0u; attempt < 60u; ++attempt)
+		{
+			const float along = x * directionX + z * directionZ;
+			const float exitRadius = MAHARAKA_WATERPANG_WATERFALL_EXIT_RADIUS_M;
+			distance = (std::max)(MAHARAKA_WATERPANG_WATERFALL_LAUNCH_M, -along + std::sqrt(
+				(std::max)(0.f, along * along + exitRadius * exitRadius - radius * radius)));
+			const float endDegrees = std::atan2(x + directionX * distance, z + directionZ * distance) / degreesToRadians;
+			float turnDegrees = 0.f;
+			for (std::uint32_t pier = 0u; pier < pierCount; ++pier)
+			{
+				const float offDegrees = std::remainder(endDegrees - pierDegrees[pier], 360.f);
+				if (std::abs(offDegrees) < MAHARAKA_WATERPANG_PIER_HALF_ANGLE_DEGREES)
+					turnDegrees = offDegrees < 0.f ? -2.f : 2.f;
+			}
+			if (0.f == turnDegrees) break;
+			const float turned = std::atan2(directionX, directionZ) + turnDegrees * degreesToRadians;
+			directionX = std::sin(turned);
+			directionZ = std::cos(turned);
+		}
+		hit.fSourceX = MAHARAKA_WATERPANG_CANNON_X;
+		hit.fSourceZ = MAHARAKA_WATERPANG_CANNON_Z;
+		hit.fPushDirectionX = directionX;
+		hit.fPushDirectionZ = directionZ;
+		hit.fPushRangeM = distance;
+		hit.iPushMs = MAHARAKA_WATERPANG_WATERFALL_LAUNCH_MS;
+		hit.bPushBallistic = true;
+		hit.bPushCanLeaveArena = true;
+		hit.fPushHeightM = MAHARAKA_WATERPANG_WATERFALL_LAUNCH_HEIGHT_M;
+	}
+	// Both attacks only displace; the source rows carry no damage for this match.
+	const auto result = CServerCombatHitRuntime::Apply_WorldToPlayer(player, hit, m_GameplayCatalog, m_TickDamageEvents);
+	// Only a waterfall launch that armed its flight owns the forced Waterpang fall.
+	if (MAHARAKA_WATERPANG_EVENT_KIND::WATERFALL == event.eKind && SERVER_COMBAT_HIT_RESULT::LANDED == result &&
+		player.bKnockbackBallistic && player.fKnockbackRemainingSeconds > 0.f)
+		player.bWaterpangLaunch = true;
+}
+
+bool LostArk::Server::CGameRoom::Sample_MaharakaWaterpangNow(
+	const std::uint32_t tick, LostArk::Shared::MAHARAKA_WATERPANG_EVENT_SAMPLE& out) const
+{
+	using namespace LostArk::Shared;
+	if (m_eWorldId != WORLD_ID::MAHARAKA) return false;
+	// A running Debug forced event replaces the schedule; the Client samples the same way.
+	MAHARAKA_WATERPANG_EVENT_KIND kind{};
+	if (m_MaharakaWaterpangDebugEvent &&
+		Find_MaharakaWaterpangDebugKind(m_MaharakaWaterpangDebugEvent->strSequenceInstanceId, kind) &&
+		Sample_MaharakaWaterpangDebugEvent(kind, m_MaharakaWaterpangDebugEvent->iStartTick, tick, out))
+		return true;
+	return m_MaharakaWaterpangIntro && Sample_MaharakaWaterpangEvent(
+		static_cast<std::int32_t>(tick - m_MaharakaWaterpangIntro->iStartTick),
+		m_MaharakaWaterpangIntro->iStartTick, out);
+}
+
+bool LostArk::Server::CGameRoom::Is_MaharakaWaterpangDebugEventLive(const std::uint32_t tick) const
+{
+	using namespace LostArk::Shared;
+	MAHARAKA_WATERPANG_EVENT_KIND kind{};
+	if (!m_MaharakaWaterpangDebugEvent ||
+		!Find_MaharakaWaterpangDebugKind(m_MaharakaWaterpangDebugEvent->strSequenceInstanceId, kind))
+		return false;
+	// Two seconds past the event cover a launch or push still in flight.
+	const std::uint32_t liveTicks =
+		Get_MaharakaWaterpangEventTicks(Make_MaharakaWaterpangDebugEvent(kind)) + 2u * MAHARAKA_WATERPANG_TICK_HZ;
+	const auto elapsed = static_cast<std::int32_t>(tick - m_MaharakaWaterpangDebugEvent->iStartTick);
+	return elapsed >= 0 && static_cast<std::uint32_t>(elapsed) < liveTicks;
+}
+
+LostArk::Shared::DEBUG_WORLD_PLAYBACK_RESULT LostArk::Server::CGameRoom::Start_MaharakaWaterpangDebugEvent(
+	const std::string& instanceId)
+{
+	using namespace LostArk::Shared;
+	using Result = DEBUG_WORLD_PLAYBACK_RESULT;
+#ifndef _DEBUG
+	(void)instanceId;
+	return Result::DISABLED;
+#else
+	MAHARAKA_WATERPANG_EVENT_KIND kind{};
+	if (m_eWorldId != WORLD_ID::MAHARAKA || !Find_MaharakaWaterpangDebugKind(instanceId, kind))
+		return Result::INVALID_TARGET;
+	/* The countdown and the intro cutscene own the cast until the first scheduled
+	   event; a forced event there would fight the intro poses and camera. */
+	if (m_MaharakaWaterpangIntro && !Has_ReachedServerTick(m_iServerTick, Add_ServerTicksSkippingReservedZero(
+		m_MaharakaWaterpangIntro->iStartTick, MAHARAKA_WATERPANG_SCHEDULE.front().iStartSeconds * MAHARAKA_WATERPANG_TICK_HZ)))
+		return Result::ACTION_REJECTED;
+	S2C_WORLD_SEQUENCE_PLAY message{};
+	message.eOperation = WORLD_SEQUENCE_OPERATION::PLAY;
+	message.strSequenceInstanceId = instanceId;
+	message.iServerTick = m_iServerTick;
+	message.iStartTick = Add_ServerTicksSkippingReservedZero(m_iServerTick, MAHARAKA_WATERPANG_DEBUG_LEAD_TICKS);
+	CPacketWriter writer;
+	if (!Write_Message(writer, message)) return Result::ACTION_REJECTED;
+	// A new press replaces the running forced event; every Client restarts on the new occurrence.
+	m_MaharakaWaterpangDebugEvent = message;
+	for (const auto& [playerId, player] : m_Players)
+	{
+		(void)playerId;
+		const std::shared_ptr<CClientSession> session = Find_Session(player.iSessionId);
+		if (nullptr != session && !session->Send_Frame(PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY, writer.Get_Buffer()))
+			session->Request_Close();
+	}
+	return Result::ACCEPTED;
+#endif
 }

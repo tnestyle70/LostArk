@@ -189,9 +189,11 @@ private:
 	bool_t Ready_ShipNpcs(const std::string& areaId);
 	void Update_ShipNpcInteraction();
 	void Advance_ShipNpcWalk();
-	/* While the local player rides a ship the follow camera takes the retail voyage pose
-	(EFTable_CameraSetting 1001 step 1: FOV 60, 17 m); it returns to the map profile on dismount. */
-	void Update_ShipCamera();
+	/* While the local player rides a ship the follow camera takes the retail voyage lens
+	(EFTable_CameraSetting 1001 zoom steps 1-3): the anchor-volume step near the harbour, the
+	open-sea step outside it, the mouse wheel between steps; it returns to the map profile on
+	dismount. */
+	void Update_ShipCamera(f32_t fTimeDelta);
 
 	/* Optional entrance cinematic: one authored camera cue from
 	Data/Encounters/Bern/BernEntranceCamera.json plays exactly once right after
@@ -277,6 +279,18 @@ private:
 	int32_t m_iWalkingToShipNpc = -1;
 	bool_t m_wasRightMouseDownForShipNpcInteract = false;
 	bool_t m_bShipCameraActive = false;
+	/* Eased ship lens in project units; the zoom step is 0-based into shipCamera.zoomSteps. */
+	struct SHIP_LENS final
+	{
+		f32_t distanceMeters = 0.f;
+		f32_t pitchDegrees = 0.f;
+		f32_t yawDegrees = 0.f;
+		f32_t fovXDegrees = 60.f;
+		f32_t focusOffsetYMeters = 0.f;
+	};
+	SHIP_LENS m_ShipLens{};
+	uint32_t m_iShipZoomStep = 0u;
+	bool_t m_bShipInAnchorVolume = false;
 
 	VALTAN_CINEMATIC_CAMERA_CUE m_EntranceCameraCue;
 	bool_t m_hasEntranceCameraCue = false;

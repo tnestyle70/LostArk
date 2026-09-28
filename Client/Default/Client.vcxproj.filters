@@ -456,6 +456,9 @@
     <ClCompile Include="..\Private\MapLightPresentationRuntime.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\MaharakaWaterpangPresentation.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\MapEditorWorkspaceService.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
@@ -1181,6 +1184,9 @@
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\MapLightPresentationRuntime.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\MaharakaWaterpangPresentation.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\MapEditorWorkspaceService.h">
@@ -2761,6 +2767,12 @@
       <Filter>96.DataFiles\ResourceIntake</Filter>
     </None>
     <None Include="..\..\Data\Navigation\LV_BER_BERNCASTLE.navsource">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
+    <None Include="..\..\Data\Navigation\LV_OCN_EVENTIS_MHP.WaterpangEntry.navsource">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
+    <None Include="..\..\Data\Navigation\LV_OCN_EVENTIS_MHP.navregions">
       <Filter>96.DataFiles\Navigation</Filter>
     </None>
     <None Include="..\..\Data\Navigation\LV_BER_BERNCASTLE.navpaint">

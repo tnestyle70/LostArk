@@ -1052,8 +1052,8 @@ bool_t Client::CWorldSequenceDocument::Load_Text(const std::string_view text,
 			const bool_t validBindingShape =
 				LEGACY_FORMAT_VERSION == parsedFormatVersion ?
 				Is_ExactObject(bindingValue, { "slotId", "placementId" }) :
-				Is_ExactObject(bindingValue,
-					{ "slotId", "targetKind", "targetId" });
+				Is_ObjectShape(bindingValue,
+					{ "slotId", "targetKind", "targetId" }, { "previewNpcPlacementId" });
 			if (!validBindingShape)
 			{
 				outStatus = "World sequence binding shape is invalid";
@@ -1096,6 +1096,12 @@ bool_t Client::CWorldSequenceDocument::Load_Text(const std::string_view text,
 				parsedBinding.targetId = targetId->Get_String();
 				if (parsedFormatVersion < 3u && parsedBinding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
 				{ outStatus = "Object resource binding requires formatVersion 3"; return false; }
+			}
+			if (const auto* placement = bindingValue.Find("previewNpcPlacementId"))
+			{
+				if (!placement->Is_String() || !Is_ValidStableId(placement->Get_String()))
+				{ outStatus = "Invalid NPC preview placement"; return false; }
+				parsedBinding.previewNpcPlacementId = placement->Get_String();
 			}
 			parsedInstance.bindings.push_back(std::move(parsedBinding));
 		}
@@ -1467,7 +1473,10 @@ bool_t Client::CWorldSequenceDocument::Save(
 				<< "\", \"targetKind\": \""
 				<< TargetKind_ToString(binding.targetKind)
 				<< "\", \"targetId\": \""
-				<< CDataJson::Escape(binding.targetId) << "\" }";
+				<< CDataJson::Escape(binding.targetId) << "\"";
+			if (!binding.previewNpcPlacementId.empty())
+				output << ", \"previewNpcPlacementId\": \"" << CDataJson::Escape(binding.previewNpcPlacementId) << "\"";
+			output << " }";
 		}
 		output << (value.bindings.empty() ? "]\n" : "\n      ]\n")
 			<< "    }";
@@ -1939,6 +1948,17 @@ bool_t Client::CWorldSequenceDocument::Validate(
 		std::unordered_set<std::string> boundTargets;
 		for (const WORLD_SEQUENCE_BINDING& binding : value.bindings)
 		{
+			if (!binding.previewNpcPlacementId.empty())
+			{
+				const auto* object = Find_ObjectResource(binding.targetId);
+				if (binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE || !object ||
+					!object->animated || !object->sequenceInstanceId.empty() || object->combatBody ||
+					!object->presentationBossArchetypeId.empty() || value.anchorKind != "WORLD" ||
+					(value.motionEnd != WORLD_SEQUENCE_MOTION_END::STOP && value.motionEnd != WORLD_SEQUENCE_MOTION_END::HOLD) ||
+					value.bindings.size() != 1u || targetTemplate->objectMotion.EmissionCount() != 1u ||
+					!targetTemplate->colliderTracks.empty() || !Is_ValidStableId(binding.previewNpcPlacementId))
+				{ outStatus = "NPC preview requires one animated WORLD visual without combat"; return false; }
+			}
 			const auto transformSlot = std::find_if(targetTemplate->tracks.begin(),
 				targetTemplate->tracks.end(),
 				[&binding](const WORLD_SEQUENCE_TRACK& track)
@@ -2396,7 +2416,9 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 				left.bindings[bindingIndex].targetKind !=
 					right.bindings[bindingIndex].targetKind ||
 				left.bindings[bindingIndex].targetId !=
-					right.bindings[bindingIndex].targetId)
+					right.bindings[bindingIndex].targetId ||
+				left.bindings[bindingIndex].previewNpcPlacementId !=
+					right.bindings[bindingIndex].previewNpcPlacementId)
 			{
 				return false;
 			}

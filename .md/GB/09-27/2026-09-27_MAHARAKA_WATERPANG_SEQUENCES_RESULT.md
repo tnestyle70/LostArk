@@ -1,5 +1,46 @@
 # 마하라카 워터팡 Camera·발판·효과음 등록 결과
 
+## 2026-09-28 G05 — 점프 입장·10초 예약·컷신 종료 유지
+
+구현/저장/게시 완료, 사용자 화면 검증 대기. 아래 이전 G01~G04 기록보다 이 절의 현재 상태가 우선한다.
+
+- 큰 모코모코와 중앙 물대포 OBJECT_RESOURCE의 STOP을 HOLD로 바꿨다. 자연 종료는 마지막
+  visible pose와 기존 NPC suppression을 유지한다. 명시적 Stop/MapTool 전환/맵 퇴장에서는 반환한다.
+- 사용자 출발/도착 6개 위치와 회전, NPC 및 기타 배치를 보존했다. jump1~3 출발점만 enabled,
+  requiresInteract, movePlayer로 연결한다. 도착 jump1_1~3_1은 비활성 marker이며 자동 왕복하지 않는다.
+- waterpang.arena.start는 무대 위 높이에서 입장을 판정한다. Server가 최초 요청에 300tick(30Hz)
+  예약을 만들고 Client는 10초부터 표시한다. 0이 되면 게시된 도입15 camera와 연결 배우/무대/음원을 재생한다.
+  재진입/다른 플레이어/Debug Replay는 예약을 재시작하지 않는다. 빈 방에서 예약을 지운다.
+- 늦은 입장도 원래 start tick을 받는다. 카메라가 이미 끝났으면 다시 보여주지 않고 World 최종 상태를 적용한다.
+- 실제 21개 mesh placement에서 좁은 WaterpangEntry navigation을 굽고 Client/Server에 동일 게시했다.
+  3개 도착 지점과 다음 걸음이 20.48m 평지가 아니라 22.4m 부근 무대에 남는 것을 서버 하네스로 확인했다.
+  이 영역 밖의 지형, NPC, 재질, 원본 카메라는 이번 단계에서 변경하지 않았다.
+- authoring Gameplay revision 274 / WorldSequences revision 6. 원본과 후보/비교 보고서는
+  `out/MaharakaWaterpangEntry20260928/{before,candidate,report.json}`에 보존했다.
+
+검증:
+
+- Debug Product Engine/Shared/Server/Client 빌드 통과. 최종 증거는
+  `out/BuildPipeline/runs/20260928T062344069Z-debug-product.json`. C4819/DirectXTK PDB 경고는 남아 있다.
+- WorldSequence publisher Publish/Check, WorldGameplay MAHARAKA Validate/Publish,
+  Navigation MAHARAKA Validate/Publish 및 Navigation ContractTest 통과.
+- `test_maharaka_waterpang_entry.py` 3개 테스트 통과: 반복 설치 무변경, 기존 행 보존,
+  HOLD/runtime 동등성, jump 목적지, 양쪽 navigation bytes/착지 높이.
+- `--world-playback-contract-test`의 새 Waterpang 22검사 통과: 예약/중복/실패 예약 rollback/늦은 입장
+  packet/빈 방/착지/진입 및 세 G 점프의 실제 Server motion 완료와 exact 목적지 검사.
+  전체 하네스는 별도의 Valtan sequence-ID 초기화 및 legacy Kouku admission 두 검사에서 실패했다.
+  해당 두 검사와 관련한 기존 데이터/동작을 이번 요청에서 덮어쓰지 않았으며 전체 PASS로 기록하지 않는다.
+- WorldSequence 실제 publisher의 정상/잘못된 object/motion 입력 검증 테스트 통과.
+  project/filter XML parse, `git diff --check` 통과. Release 빌드는 이번 검증에 포함하지 않았다.
+- Client/UI를 실행하거나 캡처하지 않았다. 물대포 공격·승패·보상·무대 붕괴는 이번 구현 범위가 아니다.
+
+사용자 확인: Server와 Client를 새 빌드로 다시 시작 → Maharaka → MapTool을 닫고 follow camera 상태에서
+jump3의 G로 무대 진입 → 10초 문구 → 도입15 → 카메라 종료 후 큰 모코모코/타워 유지.
+jump1/2는 사용자가 설치한 통 위 출발점에서 G를 누른다. 접근 경로를 임의로 추가하지 않았다.
+MapTool 미리보기는 Camera의 도입15를 끝까지 재생한다. 명시적 Stop은 원위치 복원을 수행한다.
+
+전체 코드와 등록 파일: [G05 코드 부록](2026-09-28_MAHARAKA_WATERPANG_ENTRY_CODE.md).
+
 ## 요청과 현재 경계
 
 요청은 영상처럼 워터팡 전체를 구현하고 MapTool Camera에서 편집 가능하게 만드는 것이다.
@@ -116,3 +157,113 @@ G01 최초 후보와 before 백업은 out/MaharakaWaterpang20260927/에 있다. 
 후보가 있어야 실행된다. 사용자 편집 후 무조건 재생성하는 도구가 아니며 충돌 시 거부한다.
 source-registration-report.json은 초기 G01의 판독 기록이므로 붕괴 길이는 본 결과의
 Engine CDO 기반 5000ms와 최종 authoring을 우선한다. commit/push는 하지 않았다.
+
+## G03 — 2026-09-28 사용자 동영상 대조: 저장·게시·Debug 빌드 완료
+
+> 아래 G03 카메라 retarget은 이후 G04에서 철회했다. 현재 상태는 문서 끝 G04를 따른다.
+
+사용자가 제공한 원본 12.633초/379프레임과 현재 11.033초/331프레임 영상을 읽어 비교했다.
+원본의 큰 모코모코 얼굴 close-up 구간에서 현재 영상은 바닥·야자수 쪽을 향한다.
+동영상 녹화 시작 시점이 다르므로 파일 경과 시각을 동일한 scene 시각이라고 간주하지 않았다.
+
+### 확인한 원인과 수정
+
+- 설치본 Matinee43 / InterpData158의 원본 키 자체가 현재 큰 모코모코를 향하지 않는다.
+  외부 게임 상태의 rebase 여부는 미확정이다. 좌표 변환 버그가 확정됐다고 보고하지 않는다.
+  원본 importer와 before JSON을 보존하고, 도입15만 영상 기준 카메라로 조정했다.
+  실제 NPC actor100 위치 기준 얼굴 오프셋 [0,1.5,1]m, heading -45도, close-up 위치 보정은
+  PROJECT_VIDEO_RETARGET이다. source-exact camera나 사용자 visual PASS가 아니다.
+- 원본 smile group205 / track286 / import -70 mn_ismp_00.mat.mn_ismp_00-2_mi가 빠져 있었다.
+  opacity_intensity를 6501ms=0 / 6602ms=1 / 9502ms=0으로 materialTracks에 연결했다.
+  skeletal 웃음 clip을 찾았다는 뜻이 아니라 실제 원본 얼굴 재질 전환을 연결한 것이다.
+- 큰 모코모코와 중앙 작은 모코모코를 기존 WorldSequence OBJECT_RESOURCE로 preview한다.
+  source NPC의 기존 모델·전체 native 재질을 사용하고 smile 슬롯만 instance 상수로 바꾼다.
+  작은 모코모코는 설치된 att_battle_2_01(1초)과 att_battle_2_02를 8101/9101ms에 배치했다.
+  이 두 clip의 타이밍은 영상 기반 편집이며 원본 Matinee 배우 binding이라고 주장하지 않는다.
+- binding의 previewNpcPlacementId가 정확한 기존 NPC를 조회하고 clone이 보일 때만 render를
+  억제한다. hide/Stop/seek/실패 정리/풀 반환에서 해제한다. Server 위치·AI·네트워크는 불변이다.
+  callback 없는 제품 실행 경로는 실패한다. 마하라카 MapTool 편집 프리뷰 지원이다.
+
+### 자동 검증
+
+- `Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product`: Engine/Shared/Server/Client PASS.
+  최초 Client OBJ194 재빌드 뒤 최종 STOP 제약 추가분 OBJ1 재빌드도 PASS.
+  최종 receipt: out/BuildPipeline/runs/20260928T042025631Z-debug-product.json.
+  Shader 재컴파일 0, 기존 C4819 경고 있음. Client/UI를 실행하지 않았다.
+- 후보에 정본 publisher의 실제 Read-WorldSequenceDocument / Read-CameraShotDocument와
+  Assert-WorldSequencePlacementTargets를 적용해 PASS. 원본 NPC placement/model identity 포함.
+- 동일 validator에 없는 placement, 다른 NPC 모델 연결, HOLD motion 입력을 주어 세 사례 모두
+  예상 오류로 거부됨을 확인했다. 검사는 out 후보만 사용했으며 저작·게시 파일을 바꾸지 않았다.
+- close-up 완전 가중치 구간 21개 샘플에서 실제 얼굴 기준점에 대한 시선 오차 < 1e-8m.
+  이는 시선 수치 검사이며 피사체 가림·프레이밍의 육안 검증이 아니다.
+- 기존 WorldSequence 행 전부 보존, 도입15 외 cutscene 보존, 무관한 Save 변경 병합,
+  revision 증가, 같은 카메라 key 동시 편집 거부 검사 PASS.
+- git diff --check PASS. 독립 코드 리뷰에서 모델 import 크기·회전, clip 선택,
+  material sampler, NPC suppression 수명을 실제 소비자와 대조했다.
+
+### 반영 상태와 남은 단계
+
+사용자가 맵툴 확인을 위해 저장·게시를 명시 승인하여 authoring/runtime JSON을 반영했다.
+후보·원본 백업·검사 기록은 out/MaharakaCameraVideo20260928/에 있다.
+retarget_maharaka_waterpang_intro.py --apply-reviewed로 최신 저장본의 stable ID/필드 병합,
+적용 직전 백업, CAS 원자적 교체를 완료했다. CameraShots/WorldSequences 각각 정본 publisher의
+Publish(구조 검증 포함)와 Check가 PASS했다. 두 문서 revision은 3에서 4로 증가했다.
+
+마지막 실제 Camera Play 호출 경로 재점검에서 Build_CutsceneTargets가 별도 TARGET_SET을
+만들면서 새 previewNpc callback을 전달하지 않는 누락을 발견했다. Runtime_AuthoringTargets의
+NPC 조회만 이 경로로 전달하도록 수정했다. draft map/deploy 소유권은 유지한다.
+이 누락 때문에 이전 단계의 빌드·독립 리뷰만으로 실제 Play 연결 완료를 주장할 수 없었다.
+수정 후 Product Debug 빌드 PASS: Client MapTool_Cutscenes.cpp OBJ1·EXE1, CSO0.
+최종 receipt는 out/BuildPipeline/runs/20260928T044746410Z-debug-product.json이다.
+기존 include의 C4828 인코딩 경고는 남아 있다. Client/Server는 에이전트가 실행하지 않았다.
+
+사용자 확인 경로: 새 Debug Client → 마하라카 → F1 → Open Map Tool → Camera →
+`워터팡 / 도입 15 · 영상 맞춤 카메라·표정` → Play. 6.6~8.1초 얼굴, 8.101초 중앙 상승,
+Stop 후 NPC 복귀, 뒤로 seek, Save/Reload 보존을 사용자가 확인한다.
+intro20, 기존 발판 흔들림/붕괴/복구, Foley, NPC gameplay 좌표와 rendering 옵션은 바꾸지 않았다.
+새 Drive 리소스는 없다. 웃음 음성 추가·물 분사 action4225601·경기 AI를 완료한 변경이 아니다.
+commit/push는 수행하지 않았다.
+
+## G04 — 원본 카메라 복귀 / 경기 도입에서만 타워·모코모코 이동
+
+사용자가 평상시 위치와 경기 중 위치를 구분하도록 정정했다. 57011 DeployData의 actor22,
+NPC570941, model MN_ISMP_00 연결을 확인했다. runtime 좌표계의 원본 XZ는
+[81.8360400390625, -991.514375], source yaw는 225.87890625도다.
+57009 평상시 NPC actor100을 기준으로 카메라를 돌린 G03 판단은 철회했다.
+
+### 저장·게시한 변경
+
+- 도입15 두 cameraTrack을 G03 이전 원본 키와 정확히 같게 복구했다.
+- 도입15 시작부터 큰 모코모코 preview를 경기 XZ/방향으로 옮긴다.
+- 현재 SCENE04A export612 / MAP_65096D72C5C9_ITR_02453_SK 타워를 같은 rigid group으로 옮긴다.
+  새 MAP_PLACEMENT instance는 baseline-relative offset/rotation을 사용한다.
+- 기존 큰 모코모코 표정, 작은 모코모코 상승, 효과음과 도입20/발판 시퀀스는 보존했다.
+- 저작 CameraShots/WorldSequences revision4→5를 CAS로 저장하고 정본 publisher로 각각 Publish했다.
+  Gameplay.world.json과 mapplacements는 수정하지 않았다. 경기 외 평상시 배치는 그대로다.
+
+### 원본과 보정의 구분
+
+NPC 원본 rootY는 20.5628662109375m이나 현재 head/support 피벗·접촉과 호환된다고 확인되지 않았다.
+원본 카메라는 고정하고 설치된 smile 면의 중심을 close-up 수직 중심에 맞추는
+PROJECT_FRAME_CONTACT_ADAPTER를 적용했다. 결과 headY=24.3577745710577m,
+standY=19.063083920198324m이며 기존 머리/받침 높이차 5.294690650859376m를 유지했다.
+따라서 전체 transform이 원본과 동일하다고 주장하지 않는다.
+인접 Prop570987의 실제 배치도 읽었지만 모델 테이블 연결은 미확정이다.
+이 Prop의 원본 모델을 찾았다는 뜻이 아니라 사용자 요청대로 기존 확인된 타워를 함께 이동했다.
+
+### 확인과 사용 범위
+
+후보 publisher 파싱·placement/model identity 검사와 기존 negative3사례가 통과했다.
+다른 행 보존, 원본 cameraTrack 일치, baseline-relative 타워 좌표 역산, 원본 파일 freshness를 검사했다.
+Stop_Instance의 baseline 복원 및 Release_Objects의 NPC render suppression 해제 경로를 확인했다.
+새 C++ 수정은 없으며 G03 최종 Debug EXE를 그대로 사용한다. 새 Drive 리소스도 없다.
+
+MapTool → Camera(통합 컷신 편집 OFF) → `워터팡 / 도입 15 · 원본 카메라·경기 배치` → Play.
+Stop은 프리뷰 타워/NPC를 평상시로 복귀시킨다. 끝 프레임은 Stop 전까지 편집기에서 유지한다.
+실제 화면·가림·재생/Stop의 최종 확인은 사용자에게 남아 있다. Client/Server는 실행하지 않았다.
+전체 서버 경기 시작/종료 상태머신을 구현한 변경이 아니며 현재 범위는 경기 도입 MapTool 프리뷰다.
+백업·후보·원본/보정 근거는 out/MaharakaMatchLayout20260928/에 보존했다. commit/push 없음.
+
+최종 CameraShots/WorldSequences Check 모두 PASS. 저작/게시 파일은 각각 byte 동일, revision5다.
+git diff --check PASS. 7504ms 원본 카메라 기준 smile 중심의 (right,up,forward)는
+(1.0552674, 약0, 12.7772485)m다. 이는 수치 진단이며 화면 가시성 PASS가 아니다.

@@ -243,8 +243,32 @@ bool_t Client::CMapNavigationContract::Read_RegionManifest(
 	std::vector<MAP_NAVIGATION_REGION>& outRegions,
 	std::string& outStatus)
 {
+	return Read_RegionManifestFile(
+		areaId, Resolve_RegionManifestPath(areaId), outRegions, outStatus);
+}
+
+bool_t Client::CMapNavigationContract::Read_RuntimeRegionManifest(
+	const std::string& areaId,
+	std::vector<MAP_NAVIGATION_REGION>& outRegions,
+	std::string& outStatus)
+{
+	const std::filesystem::path mapRoot = CMapAssetCatalog::Get_MapDataRoot();
+	std::filesystem::path path;
+	if (Is_ValidAreaId(areaId) && !mapRoot.empty() && !mapRoot.parent_path().empty())
+	{
+		path = (mapRoot.parent_path() / L"Navigation" /
+			(ToWideAscii(areaId) + L".navregions")).lexically_normal();
+	}
+	return Read_RegionManifestFile(areaId, path, outRegions, outStatus);
+}
+
+bool_t Client::CMapNavigationContract::Read_RegionManifestFile(
+	const std::string& areaId,
+	const std::filesystem::path& path,
+	std::vector<MAP_NAVIGATION_REGION>& outRegions,
+	std::string& outStatus)
+{
 	outRegions.clear();
-	const std::filesystem::path path = Resolve_RegionManifestPath(areaId);
 	if (path.empty())
 	{
 		outStatus = "Navigation data root is unavailable";

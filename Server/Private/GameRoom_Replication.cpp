@@ -6,6 +6,7 @@
 #include "Network/PacketMessages.h"
 #include "Network/PacketWriter.h"
 #include "Gameplay/WorldCollisionContract.h"
+#include "Gameplay/MaharakaWaterpangContract.h"
 
 #include <algorithm>
 #include <array>
@@ -561,6 +562,14 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.eAction = player.eAction;
 		snapshot.isKnockbackAirborne = player.eAction == PLAYER_ACTION_STATE::KNOCKDOWN &&
 			player.bKnockbackBallistic && player.fKnockbackRemainingSeconds > 0.f;
+		// Water gun: armed from the intro start tick while the body stands on the
+		// Waterpang arena region; an arena push-off or knockdown keeps it until the
+		// fall resolves. The empty-room reset clears the match and so the gun.
+		snapshot.isWaterpangArmed = WORLD_ID::MAHARAKA == m_eWorldId && m_MaharakaWaterpangIntro &&
+			Has_ReachedServerTick(m_iServerTick, m_MaharakaWaterpangIntro->iStartTick) &&
+			(player.bWaterpangFall || PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction ||
+			 (m_ServerNavigation.Is_Loaded() && m_ServerNavigation.Is_PointWalkableInRegion(
+				MAHARAKA_WATERPANG_REGION_ID, player.fPositionX, player.fPositionZ, player.fPositionY)));
 		snapshot.eStance = player.eStance;
 		snapshot.iSkillId = player.iCurrentSkillId;
 		snapshot.iActionStartTick = player.iActionStartTick;

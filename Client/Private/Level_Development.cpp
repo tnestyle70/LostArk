@@ -14,6 +14,17 @@
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
 #include "Transform.h"
+#include "MaharakaWaterpangPresentation.h"
+#include "UILayoutRuntime.h"
+
+#ifdef _DEBUG
+void Client::CLevel_Development::Set_MapAuthoringActive(bool_t active)
+{
+    if (active && m_Waterpang) m_Waterpang->Suspend_ForAuthoring();
+    m_bMapAuthoringActive = active;
+}
+#endif
+#include "InteractKeyPromptView.h"
 
 #ifdef _DEBUG
 #include "MapEditorWorkspaceService.h"
@@ -33,6 +44,7 @@ CLevel_Development::CLevel_Development(
 
 CLevel_Development::~CLevel_Development()
 {
+	m_Waterpang.reset(); // Return poses while map and replication still exist.
 	if (this == s_pActiveInstance)
 		s_pActiveInstance = nullptr;
 #ifdef _DEBUG
@@ -157,6 +169,22 @@ HRESULT CLevel_Development::Initialize()
 	{
 		return E_FAIL;
 	}
+	if (m_eLevel == LEVEL::MAHARAKA)
+	{
+		m_InteractPrompt = std::make_unique<CInteractKeyPromptView>();
+		m_InteractPrompt->Initialize(m_pDevice,m_pContext,ETOUI(m_eLevel),pEntry->pMapAreaId);
+		m_Waterpang = std::make_unique<CMaharakaWaterpangPresentation>();
+		CWorldSequencePlayer::TARGET_SET targets;
+		targets.levelIndex=ETOUI(m_eLevel); targets.pCatalog=&m_MapRuntime.Get_Catalog();
+		targets.pPlacements=&m_MapRuntime.Get_MutablePlacements(); targets.pDeployRuntime=&m_WaterpangDeploy;
+		targets.device=m_pDevice; targets.context=m_pContext;
+		targets.previewNpc=[this](const std::string& id) { return m_Replication.Find_NpcPlacement(id); };
+		if (!m_Waterpang->Initialize(targets,m_pCamera.lock()))
+		{
+			Write_EffectFailureDiagnostic("maharaka.waterpang.prepare",m_Waterpang->Get_Status());
+			m_Waterpang.reset();
+		}
+	}
 	return S_OK;
 }
 
@@ -211,14 +239,28 @@ void CLevel_Development::Update(const f32_t fTimeDelta)
 		m_Replication.Get_LocalCharacter();
 	m_PlayerController.Set_LocalCharacter(localCharacter);
 	const shared_ptr<CCamera_Free> camera = m_pCamera.lock();
+	bool editing = false;
+#ifdef _DEBUG
+	editing = m_bMapAuthoringActive;
+#endif
+	if (m_Waterpang)
+	{
+		for (const auto& play:m_Replication.Consume_WorldSequencePlays()) m_Waterpang->Accept(play);
+		m_Waterpang->Update(fTimeDelta,m_Replication.Get_LastServerTick(),editing);
+	}
+	if (m_InteractPrompt)
+		m_InteractPrompt->Update(fTimeDelta,localCharacter,CCombatHUDViewModel::Get().Get_InteractPromptTriggerId(),
+			!editing && camera && !camera->Is_PresentationOverrideActive());
 	m_PlayerController.Update(
-		nullptr != camera && camera->Is_FollowEnabled());
+		nullptr != camera && camera->Is_FollowEnabled() && !camera->Is_PresentationOverrideActive());
 }
 
 HRESULT CLevel_Development::Render()
 {
 	if (FAILED(__super::Render()))
 		return E_FAIL;
+	if (m_InteractPrompt) m_InteractPrompt->Render_Text();
+	if (m_Waterpang) m_Waterpang->Render();
 
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(m_isMapEditorWorkspace ?

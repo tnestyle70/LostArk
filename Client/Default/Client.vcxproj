@@ -276,6 +276,7 @@
     <ClInclude Include="..\Public\MapEffectPresentationRuntime.h" />
     <ClInclude Include="..\Public\MapLightDocument.h" />
     <ClInclude Include="..\Public\MapLightPresentationRuntime.h" />
+    <ClInclude Include="..\Public\MaharakaWaterpangPresentation.h" />
     <ClInclude Include="..\Public\MapEditorWorkspaceService.h" />
     <ClInclude Include="..\Public\MapNavigationContract.h" />
     <ClInclude Include="..\Public\LevelNavigationDebug.h" />
@@ -612,6 +613,7 @@
     <ClCompile Include="..\Private\MapEffectPresentationRuntime.cpp" />
     <ClCompile Include="..\Private\MapLightDocument.cpp" />
     <ClCompile Include="..\Private\MapLightPresentationRuntime.cpp" />
+    <ClCompile Include="..\Private\MaharakaWaterpangPresentation.cpp" />
     <ClCompile Include="..\Private\MapEditorWorkspaceService.cpp" />
     <ClCompile Include="..\Private\MapNavigationContract.cpp" />
     <ClCompile Include="..\Private\LevelNavigationDebug.cpp" />
@@ -701,6 +703,8 @@
     <None Include="..\..\Data\Actors\EquipmentPresentationCatalog.json" />
     <None Include="..\..\Data\Actors\NpcCatalog.json" />
     <None Include="..\..\Data\Actors\MaharakaResidents.source.json" />
+    <None Include="..\..\Data\Navigation\LV_OCN_EVENTIS_MHP.WaterpangEntry.navsource" />
+    <None Include="..\..\Data\Navigation\LV_OCN_EVENTIS_MHP.navregions" />
     <None Include="..\..\Data\Actors\MonsterCatalog.json" />
     <None Include="..\..\Data\Actors\VehicleCatalog.json" />
 	<None Include="..\..\Data\Sound\CharacterSoundCatalog.json" />

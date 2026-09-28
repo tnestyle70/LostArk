@@ -243,6 +243,30 @@ bool_t CCamera_Free::Set_FollowPose(
 	return true;
 }
 
+bool_t CCamera_Free::Set_FollowLens(
+	const float3_t& vPositionOffset,
+	const float3_t& vLookOffset,
+	const f32_t fovYDegrees)
+{
+	const f32_t dx = vLookOffset.x - vPositionOffset.x;
+	const f32_t dy = vLookOffset.y - vPositionOffset.y;
+	const f32_t dz = vLookOffset.z - vPositionOffset.z;
+	if (!std::isfinite(dx) || !std::isfinite(dy) || !std::isfinite(dz) ||
+		!std::isfinite(fovYDegrees) || fovYDegrees <= 1.f || fovYDegrees >= 179.f ||
+		dx * dx + dz * dz <= (dx * dx + dy * dy + dz * dz) * 0.000001f)
+	{
+		return false;
+	}
+	// Unlike Set_FollowPose the follow keeps its eased eye, so each frame's
+	// offset change travels through the same follow response.
+	m_vPositionOffset = vPositionOffset;
+	m_vLookOffset = vLookOffset;
+	m_fBaseFovy = fovYDegrees;
+	if (!Is_PresentationOverrideActive())
+		m_fFovy = fovYDegrees;
+	return true;
+}
+
 void CCamera_Free::Frame_Area(
 	const float3_t& center,
 	const f32_t radius)

@@ -1729,6 +1729,8 @@ namespace LostArk::Shared
 		std::vector<SKILL_COOLDOWN_SNAPSHOT> Cooldowns;
 		// Server ballistic hit reaction; false outside KNOCKDOWN, including after landing.
 		bool isKnockbackAirborne = false;
+		// Maharaka Waterpang only: the Server arms every live-match arena participant.
+		bool isWaterpangArmed = false;
 		PLAYER_CONTROL_KIND eControlKind = PLAYER_CONTROL_KIND::HUMAN;
 	};
 

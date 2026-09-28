@@ -1,6 +1,7 @@
 #include "ServerTriggerSystem.h"
 
 #include "Gameplay/WorldCollisionContract.h"
+#include "Gameplay/MaharakaWaterpangContract.h"
 
 #include <algorithm>
 #include <cmath>
@@ -643,6 +644,12 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 		{
 			if (player.Is_Guide()) continue;
 			if (0u == player.iCurrentHp || !Contains(trigger, player))
+				continue;
+			// Keep membership unset during the jump: landing creates the entry edge.
+			if (m_eWorldId == LostArk::Shared::WORLD_ID::MAHARAKA && player.TriggerMove.isActive &&
+				!trigger.Definition.TriggerActions.empty() &&
+				trigger.Definition.TriggerActions.front().eKind == WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE &&
+				trigger.Definition.TriggerActions.front().strTargetId == LostArk::Shared::MAHARAKA_WATERPANG_INTRO_INSTANCE)
 				continue;
 			currentInside.insert(playerId);
 			const bool wasInside = trigger.PlayersInside.contains(playerId);

@@ -566,7 +566,10 @@ for ordinal, selection in enumerate(selections):
             '6b8e8fca5028ea449cbe6a1d5aebb3c6',
             # GroundEffect 2001 fan uses the same original projection ABI;
             # its radial/angular material expressions remain native.
-            'c390f9f83fce2b4791421e47db4cdcc6')
+            'c390f9f83fce2b4791421e47db4cdcc6',
+            # Maharaka GroundEffect 1006 behit donut: the same LocalDecal VS
+            # and engine-owned CB0[0..3] prefix; its ring/angle expressions stay native.
+            'cb2536fe3098784eb8a1ce43b3c9efd0')
         if kouku_ground:
             # GroundEffect's LocalDecal VS exports absolute world position at
             # TEXCOORD5. Its PS adds a pre-view translation before the existing

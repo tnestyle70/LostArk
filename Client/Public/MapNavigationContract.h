@@ -61,6 +61,13 @@ public:
 		const std::string& areaId,
 		std::vector<MAP_NAVIGATION_REGION>& outRegions,
 		std::string& outStatus);
+	/* The copy published beside the runtime grids. The product loader reads it
+	   so the Client attaches exactly the regions the Server loads; the
+	   authoring manifest above belongs to the MapTool. */
+	static bool_t Read_RuntimeRegionManifest(
+		const std::string& areaId,
+		std::vector<MAP_NAVIGATION_REGION>& outRegions,
+		std::string& outStatus);
 	static bool_t Write_RegionManifest(
 		const std::string& areaId,
 		const std::vector<MAP_NAVIGATION_REGION>& regions,
@@ -68,6 +75,13 @@ public:
 	static std::filesystem::path Resolve_RegionManifestPath(
 		const std::string& areaId);
 	static bool_t Is_ValidRegionId(const std::string& regionId);
+
+private:
+	static bool_t Read_RegionManifestFile(
+		const std::string& areaId,
+		const std::filesystem::path& path,
+		std::vector<MAP_NAVIGATION_REGION>& outRegions,
+		std::string& outStatus);
 };
 
 NS_END

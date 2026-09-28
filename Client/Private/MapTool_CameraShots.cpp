@@ -1417,6 +1417,8 @@ void Client::CMapTool::Render_CutsceneSection()
 					m_CutsceneSubtitleDraft.reset();
 					m_CutsceneSoundSequenceId.clear();
 					m_CutsceneSoundDraft.reset();
+					m_CutsceneEffectSequenceId.clear();
+					m_CutsceneEffectDraft.reset();
 				}
 				m_iSelectedCutscene = index;
 			}
@@ -1690,6 +1692,8 @@ void Client::CMapTool::Render_CutsceneActorSection(
 				m_CutsceneSubtitleDraft.reset();
 				m_CutsceneSoundSequenceId.clear();
 				m_CutsceneSoundDraft.reset();
+				m_CutsceneEffectSequenceId.clear();
+				m_CutsceneEffectDraft.reset();
 			}
 			ImGui::PopID();
 			ImGui::TableSetColumnIndex(1);
@@ -1817,6 +1821,8 @@ void Client::CMapTool::Render_CutsceneActorSection(
 			m_CutsceneSubtitleDraft.reset();
 			m_CutsceneSoundSequenceId.clear();
 			m_CutsceneSoundDraft.reset();
+			m_CutsceneEffectSequenceId.clear();
+			m_CutsceneEffectDraft.reset();
 			m_CutsceneActorEditStatus = "전용 템플릿으로 복제했습니다 (미저장): " + copyId;
 			return;
 		}
@@ -2088,6 +2094,94 @@ void Client::CMapTool::Render_CutsceneActorSection(
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("Reset Sound Inputs") && existing != sequence->soundTracks.end()) row = *existing;
+		ImGui::EndDisabled();
+		ImGui::PopID();
+	}
+	ImGui::SeparatorText("Effects");
+	ImGui::TextDisabled("Select an effect row, edit its timing or placement, then Apply Effect and Save.");
+	ImGui::TextDisabled("Offset/rotation are in the held object's frame; with Inherit off the rotation is world yaw.");
+	if (m_CutsceneEffectSequenceId != sequence->sequenceId)
+	{
+		m_CutsceneEffectSequenceId = sequence->sequenceId;
+		m_CutsceneEffectDraft.reset();
+	}
+	if (!m_CutsceneEffectDraft && !sequence->effectTracks.empty())
+		m_CutsceneEffectDraft = sequence->effectTracks.front();
+	if (ImGui::BeginTable("##CutsceneEffects", 4,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
+	{
+		ImGui::TableSetupColumn("Effect row");
+		ImGui::TableSetupColumn("Start (ms)");
+		ImGui::TableSetupColumn("Duration (ms)");
+		ImGui::TableSetupColumn("Resource");
+		ImGui::TableHeadersRow();
+		for (const auto& row : sequence->effectTracks)
+		{
+			ImGui::PushID(row.effectTrackId.c_str());
+			ImGui::TableNextRow(); ImGui::TableSetColumnIndex(0);
+			if (ImGui::Selectable(row.effectTrackId.c_str(), m_CutsceneEffectDraft &&
+				m_CutsceneEffectDraft->effectTrackId == row.effectTrackId,
+				ImGuiSelectableFlags_SpanAllColumns)) m_CutsceneEffectDraft = row;
+			ImGui::TableSetColumnIndex(1); ImGui::Text("%u", sequence->EffectStartMs(row));
+			ImGui::TableSetColumnIndex(2); ImGui::Text("%u", row.durationMs);
+			ImGui::TableSetColumnIndex(3); ImGui::TextWrapped("%s", row.resourceId.c_str());
+			ImGui::PopID();
+		}
+		ImGui::EndTable();
+	}
+	if (m_CutsceneEffectDraft)
+	{
+		auto& row = *m_CutsceneEffectDraft;
+		ImGui::PushID("CutsceneEffectEdit");
+		ImGui::TextWrapped("%s (%s, timing %s)", row.resourceId.c_str(), row.resourceKind.c_str(), row.timing.c_str());
+		ImGui::SetNextItemWidth(160.f);
+		ImGui::InputScalar("Effect Start (ms)", ImGuiDataType_U32, &row.startMs);
+		ImGui::SetNextItemWidth(160.f);
+		ImGui::InputScalar("Effect Duration (ms)", ImGuiDataType_U32, &row.durationMs);
+		ImGui::SetNextItemWidth(260.f);
+		ImGui::DragFloat3("Effect Offset (m)", &row.positionOffset.x, 0.01f, 0.f, 0.f, "%.4f");
+		ImGui::SetNextItemWidth(260.f);
+		ImGui::DragFloat3("Effect Rotation (deg)", &row.rotationDegrees.x, 0.25f, 0.f, 0.f, "%.3f");
+		ImGui::SetNextItemWidth(260.f);
+		ImGui::DragFloat3("Effect Scale", &row.scale.x, 0.01f, 0.01f, 100.f, "%.3f");
+		char boneBuffer[257]{};
+		std::snprintf(boneBuffer, sizeof(boneBuffer), "%s", row.bone.c_str());
+		ImGui::SetNextItemWidth(260.f);
+		if (ImGui::InputText("Effect Bone (empty: object pivot)", boneBuffer, sizeof(boneBuffer)))
+			row.bone = boneBuffer;
+		ImGui::Checkbox("Follow Object", &row.followObject);
+		ImGui::SameLine();
+		ImGui::Checkbox("Inherit Object Rotation", &row.inheritObjectRotation);
+		/* Fit and loop are mutually exclusive in the document contract. */
+		if (ImGui::Checkbox("Loop To Duration", &row.loopEffectToDuration) && row.loopEffectToDuration)
+			row.fitEffectToDuration = false;
+		ImGui::SameLine();
+		if (ImGui::Checkbox("Fit To Duration", &row.fitEffectToDuration) && row.fitEffectToDuration)
+			row.loopEffectToDuration = false;
+		const auto existing = std::find_if(sequence->effectTracks.begin(), sequence->effectTracks.end(),
+			[&](const auto& saved) { return saved.effectTrackId == row.effectTrackId; });
+		ImGui::BeginDisabled(existing == sequence->effectTracks.end());
+		if (ImGui::Button("Apply Effect") && existing != sequence->effectTracks.end())
+		{
+			const auto previous = *existing;
+			*existing = row;
+			std::string status;
+			if (!m_pWorldSequenceToolPanel->Validate(m_Catalog,
+				Authoring_Placements(), Authoring_Deploy(), status))
+			{
+				*existing = previous;
+				m_CutsceneActorEditStatus = "Effect edit refused; saved draft preserved: " + status;
+			}
+			else
+			{
+				m_pWorldSequenceToolPanel->Mark_ExternalEdit();
+				m_bCutsceneWorldPreviewStale = true;
+				m_CutsceneEditTemplateSnapshot = *sequence;
+				m_CutsceneActorEditStatus = "Effect applied to the World draft. Save stores the edit.";
+			}
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Reset Effect Inputs") && existing != sequence->effectTracks.end()) row = *existing;
 		ImGui::EndDisabled();
 		ImGui::PopID();
 	}

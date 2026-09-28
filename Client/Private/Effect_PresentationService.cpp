@@ -4232,7 +4232,9 @@ bool_t Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormali
 	// Normalize that basis once; preserve source StartSize and model geometry.
 	// Vehicle models (admission 0.0001, rig root 100) measure the same 0.01 basis.
 	// The Esther Silian NPC body is cooked through the same NPC pipeline.
+	// The Waterpang water gun rides bip001-prop3 on every class body (0.01 basis).
 	return strEffectAssetId.starts_with("effect.vehicle.") ||
+		strEffectAssetId.starts_with("effect.maharaka.watergun.") ||
 		strEffectAssetId.starts_with("effect.guardianknight.") ||
 		strEffectAssetId.starts_with("effect.esther.silian.") ||
 		strEffectAssetId.starts_with("effect.esther.inanna.") ||
