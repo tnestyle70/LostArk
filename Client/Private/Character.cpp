@@ -30,6 +30,7 @@
 #include "Part_Body.h"
 #include "Part_Equipment.h"
 #include "Part_Vehicle.h"
+#include "SquareHoleInstrumentCatalog.h"
 #include "VehiclePresentationAssetService.h"
 #include "PlayerSkillCatalog.h"
 #include "RuntimeAssetRoot.h"
@@ -4633,8 +4634,16 @@ void CCharacter::Set_PresentationVisibilityControls(const bool_t all,
             // The authored stance/user visibility remains the baseline. An
             // active source IdentityParts window overlays it until removal.
             equipment->Set_PresentationVisible(showIdentity && 0u == m_iVehicleId);
+            /* The class plays an instrument during the Square Hole song, so its weapons stay
+            put away for exactly as long as the Server holds that action, and the instrument is
+            shown for exactly that long (and never on a mount). */
+            const bool_t isSongInstrument = CSquareHoleInstrumentCatalog::PART_TAG == id;
+            const bool_t songActive =
+                LostArk::Shared::PLAYER_ACTION_STATE::SQUAREHOLE_SONG == m_eNetworkAction;
             equipment->Set_PresentationSuppressed(all ||
-                (weapon && equipment->Is_WeaponPart()) || (identity && equipment->Is_IdentityPart()));
+                (isSongInstrument && (!songActive || 0u != m_iVehicleId)) ||
+                ((weapon || songActive) && equipment->Is_WeaponPart()) ||
+                (identity && equipment->Is_IdentityPart()));
         }
 }
 
@@ -4833,6 +4842,42 @@ HRESULT CCharacter::Ready_PartObjects()
 			m_pSpec->pWeapons[i].pPartTag,
 			&weaponDesc)))
 			return E_FAIL;
+	}
+
+	/* The Square Hole song's instrument: another socketed static piece on the bone the retail
+	socket names. It stays suppressed (see Set_PresentationVisibilityControls) except for the
+	length of the song action, and it is a prop, so a class without one -- or a part that will
+	not build -- simply plays the song bare-handed. */
+	if (m_pSpec != CCharacterCatalog::Find_ClownSpec())
+	{
+		const auto prepared = CPlayableCharacterAssetService::Get_PreparedPresentation(
+			m_iPrototypeLevelIndex, m_eCharacterClass);
+		const auto instrument = CSquareHoleInstrumentCatalog::Find(m_eCharacterClass);
+		if (prepared && prepared->HasSquareHoleInstrument && instrument)
+		{
+			CPart_Equipment::PART_EQUIPMENT_DESC instrumentDesc{};
+			instrumentDesc.pParentMatrix = &m_PresentationRootMatrix;
+			instrumentDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
+			instrumentDesc.strModelTag = CSquareHoleInstrumentCatalog::Get_ModelTag(m_eCharacterClass);
+			instrumentDesc.strShaderTag = m_pSpec->pWeaponShaderTag;
+			instrumentDesc.pSkeletonModel = m_pBodyModel;
+			instrumentDesc.pSocketBoneName = instrument->strSocketBone.c_str();
+			instrumentDesc.pEmissiveOverride = &m_ActionEmissiveOverride;
+			if (const auto bodyTransform = dynamic_pointer_cast<CTransform>(
+				__super::Get_Component(TEXT("Part_00_Body"), TEXT("Com_Transform"))))
+				instrumentDesc.pSocketRootMatrix = bodyTransform->Get_WorldMatrixPtr();
+			if (FAILED(__super::Add_PartObject(m_iPrototypeLevelIndex,
+				TEXT("Prototype_GameObject_Part_Equipment"),
+				CSquareHoleInstrumentCatalog::PART_TAG, &instrumentDesc)))
+			{
+				OutputDebugStringA("[Character] Square Hole instrument part could not be built.\n");
+			}
+			else if (const auto pPart = dynamic_cast<CPart_Equipment*>(
+				__super::Find_PartObject(CSquareHoleInstrumentCatalog::PART_TAG)))
+			{
+				(void)pPart->Set_SocketTransform(instrument->vPositionMeters, instrument->vRotationDegrees);
+			}
+		}
 	}
 
 	return S_OK;

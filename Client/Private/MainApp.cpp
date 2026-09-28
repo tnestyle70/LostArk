@@ -817,7 +817,8 @@ void CMainApp::Update_CustomizingSceneProfile()
 		"scene.character-select.customizing-dark.v1";
 	auto* characterSelect = CLevel_CharacterSelect::Get_Active();
 	const bool_t wantsDarkStage =
-		nullptr != characterSelect && characterSelect->Is_CustomizingOpen();
+		nullptr != characterSelect &&
+		(characterSelect->Is_CustomizingOpen() || characterSelect->Is_ClassShowcaseOpen());
 	const bool_t holdsDarkStage = !m_strSceneProfileBeforeCustomizing.empty();
 	if (wantsDarkStage == holdsDarkStage)
 		return;
@@ -3720,8 +3721,26 @@ void CMainApp::Update(const f32_t fTimeDelta)
     if(!(selectedCharacter&&selectedCharacter->Get_PresentationDirectionalControl(controlsBrightness,controlsColor)) && localCharacter)
         localCharacter->Get_PresentationDirectionalControl(controlsBrightness,controlsColor);
     vehicleBrightness=std::clamp(vehicleBrightness*controlsBrightness,0.f,16.f);
+    /* The Lobby's authored scene light is black: it draws no world. While the character-select
+    window stands the roster up, its portraits borrow the creation screen's key light
+    (scene.character-select.customizing-dark.v1 colours), aimed at the characters' faces.
+    It is a per-frame presentation override, so the authored Lobby profile is never touched. */
+    LIGHT_DESC characterSelectLight{};
+    const bool_t characterSelectLit = nullptr != m_pCharacterSelectWindowView &&
+        m_pCharacterSelectWindowView->Is_Open() &&
+        CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::LOBBY);
+    if (characterSelectLit)
+    {
+        characterSelectLight.eType = LIGHT::DIRECTIONAL;
+        XMStoreFloat4(&characterSelectLight.vDirection,
+            XMVector3Normalize(XMVectorSet(-0.35f, -0.6f, -0.72f, 0.f)));
+        characterSelectLight.vDiffuse = float4_t(1.3f, 1.3f, 1.35f, 1.f);
+        characterSelectLight.vAmbient = float4_t(0.53f, 0.53f, 0.55f, 1.f);
+        characterSelectLight.vSpecular = float4_t(0.f, 0.f, 0.f, 1.f);
+    }
     if (!m_RenderingProfiles.Apply_CameraEnvironment(fTimeDelta, environmentStatus,
-        koukuCinematic || valtanCinematic || marioStage || nullptr != pShipFog, nullptr,
+        koukuCinematic || valtanCinematic || marioStage || nullptr != pShipFog,
+        characterSelectLit ? &characterSelectLight : nullptr,
         vehicleBrightness, &controlsColor, shipFogThinned ? &shipFogTuning : nullptr))
         OutputDebugStringA((environmentStatus + "\n").c_str());
 	}
@@ -3813,6 +3832,9 @@ HRESULT CMainApp::Render()
 		(void)m_pCharacterInfoView->Render_Portrait();
 	if (nullptr != m_pAvatarBookView)
 		(void)m_pAvatarBookView->Render_Portrait();
+	if (nullptr != m_pCharacterSelectWindowView &&
+		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::LOBBY))
+		m_pCharacterSelectWindowView->Render_Portraits();
 	if (auto* pArena = CLevel_KakulSaydonArena::Get_Active();
 		nullptr != pArena &&
 		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
@@ -4392,6 +4414,12 @@ HRESULT CMainApp::Render()
 			{
 				CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 				pCharacterSelect->Render_ArenaSpawnLabels();
+			}
+			/* Preview-step buttons and the trial banner: the class is on show then, which is
+			exactly when the gate above is closed. */
+			{
+				CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
+				pCharacterSelect->Render_BrowseLabels();
 			}
 			/* Outside that gate: the nickname step opens from the customizing screen, so the
 			gate that hides the spawn captions would take every glyph of this modal with it. */
@@ -6284,13 +6312,34 @@ void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
 		LEVEL::STATIC. */
 		if (m_pCharacterSelectWindowView->Is_Open())
 			m_pCharacterSelectWindowView->Close();
+		m_pCharacterSelectWindowView->Release_Stage();
 		return;
 	}
 
-	m_pCharacterSelectWindowView->Update(fTimeDelta);
+	/* The options window opens over this one from its own icon; while it is up this window
+	keeps drawing but leaves the pointer and Escape to it. */
+	m_pCharacterSelectWindowView->Update(fTimeDelta,
+		nullptr != m_pSystemOptionView && m_pSystemOptionView->Is_Open());
 
 	switch (m_pCharacterSelectWindowView->Consume_Intent())
 	{
+	case CCharacterSelectWindowView::INTENT::START_CHARACTER:
+	{
+		/* The same identity path Character Select's Create Character confirm uses: stage the
+		card's class and nickname as the pending creation, then ask the Server for Bern. The
+		Lobby commits it once Bern is entered and cancels it if the entry fails. */
+		LostArk::Shared::CHARACTER_CLASS_ID eClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
+		string strNickname;
+		m_pCharacterSelectWindowView->Get_StartCharacter(eClass, strNickname);
+		if (CCharacterSelectionState::Stage_Creation(eClass, strNickname) &&
+			!CLevel_Lobby::Submit_ProductCommand(LOBBY_STAGE::BERN))
+			CCharacterSelectionState::Cancel_PendingCreation();
+		break;
+	}
+	case CCharacterSelectWindowView::INTENT::OPEN_OPTIONS:
+		if (nullptr != m_pSystemOptionView)
+			m_pSystemOptionView->Open();
+		break;
 	case CCharacterSelectWindowView::INTENT::NEW_CHARACTER:
 		/* The same product command the Lobby button used to submit directly. The window
 		stays open while the Server approval runs -- success changes the level (the branch

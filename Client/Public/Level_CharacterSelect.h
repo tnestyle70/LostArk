@@ -83,6 +83,17 @@ private:
 		RETURNING_TO_LOBBY
 	};
 
+	/* Retail character creation walks three steps: a category row plays that category's
+	movie, a class thumbnail shows the class standing with its info panel and the
+	preview / trial / create buttons, and only "trial" hands the character to the player
+	(controller, combat HUD, spawn buttons, the trial banner). */
+	enum class CLASS_BROWSE_STAGE
+	{
+		CATEGORY,
+		PREVIEW,
+		TRIAL
+	};
+
 	enum class CLASS_PRESENTATION_PREPARATION_STATE
 	{
 		IDLE,
@@ -209,6 +220,12 @@ private:
 	/* Real click/hover for GoBackIcon/SpawnMonsterButton/BossSpawnButton/SpawnCancelButton/
 	CreateCharacterButton via CUIInputRouter. Called from Update() alongside Update_ClassList. */
 	void Update_ArenaSpawnButtons();
+	/* PREVIEW step's three buttons: preview (no action yet), trial, create. */
+	void Update_BrowseButtons();
+	/* Every browse-stage change goes through here so CharacterSelectBrowse.user.log records what
+	moved it. */
+	void Set_BrowseStage(CLASS_BROWSE_STAGE eStage, const char* pReason);
+	void Log_PresentationGate();
 	/* Forces every slot Update_ClassList/Update_ArenaSpawnButtons own invisible, without running
 	their hover/click handling -- used by both their own MODE::SERVER_ARENA-gated early return
 	and Update()'s Is_DebugRaidEntryPreviewOpen() gate, since a CUI_Sprite (unlike the old ImGui
@@ -225,6 +242,8 @@ public:
 	m_pClassSelectView is private to this level, so CMainApp reaches it through Get_Active()
 	instead of a second CUILayoutRuntime of its own. */
 	void Render_ArenaSpawnLabels();
+	/* Captions of the PREVIEW buttons and the TRIAL banner. */
+	void Render_BrowseLabels();
 	/* The Create Character nickname step's own glyphs. Separate from the pass above
 	because that one is suppressed while the customizing screen is up, and this modal
 	opens from inside it. */
@@ -235,6 +254,12 @@ public:
 	chrome behind it the same way it does for the Debug raid-entry preview. */
 	bool_t Is_CustomizingOpen() const;
 	bool_t Is_ClassCinematicActive() const { return m_ClassSelectionPresentation.Is_Active(); }
+	/* The class-standing step on a live arena: the class stands alone on the dark stage with its
+	info panel, and the world beyond it is not drawn. CMainApp swaps the dark scene profile for
+	it, like the customizing screen. */
+	bool_t Is_ClassShowcaseOpen() const
+	{ return MODE::SERVER_ARENA == m_eMode && CLASS_BROWSE_STAGE::PREVIEW == m_eBrowseStage &&
+		!Is_ClassCinematicActive() && !Is_CustomizingOpen() && !m_isCreateCharacterModalOpen; }
 	bool_t Can_PlayClassCinematic() const;
 	const std::vector<CHARACTER_SELECT_MOVIE_OPTION>& Get_ClassMovieOptions() const
 	{ return m_ClassMovieOptions; }
@@ -250,11 +275,17 @@ public:
         const std::vector<std::string>& drawElementIds, double startAgeMs, double endAgeMs, bool repeat, std::string& status);
 	// F1 reuses the active Level's cinematic owner in both Debug and Release.
 	static void Render_ClassSelectMovieControls();
+	/* Also true outside the trial step: the character is on show, not in the player's hands,
+	so the controller and the combat HUD stay off. */
 	bool_t Is_ProductPresentationOpen() const
-	{ return Is_CustomizingOpen() || Is_ClassCinematicActive(); }
+	{ return Is_CustomizingOpen() || Is_ClassCinematicActive() || CLASS_BROWSE_STAGE::TRIAL != m_eBrowseStage; }
 	/* Takes the class-list stage down while character creation is open and restores each
 	placement's authored visibility when it closes. */
 	void Update_CustomizingStageVisibility();
+	/* Frames the showcase class full-body from the front through the camera's presentation
+	override, and hands the camera back the moment the step ends. */
+	void Update_ClassShowcaseCamera();
+	void End_ClassShowcaseCamera();
 #ifdef _DEBUG
 	/* Same split as Render_ArenaSpawnLabels just above, plus the
 	   GetForegroundDrawList() submission-order requirement
@@ -441,7 +472,13 @@ private:
 	unique_ptr<CUILayoutRuntime> m_pClassSelectView = { nullptr };
 	unique_ptr<CCustomizingView> m_pCustomizingView;
 	int32_t m_iExpandedCategory = -1;
+	/* Entry lands on the class standing in its info panel with the preview / trial / create
+	buttons under it; the trial screen (controller, combat HUD, spawn buttons) is only reached
+	through the trial button, and a category row still plays its movie. */
+	CLASS_BROWSE_STAGE m_eBrowseStage = CLASS_BROWSE_STAGE::PREVIEW;
 	MODE m_eMode = MODE::CONNECTING;
+	int32_t m_iLoggedPresentationOpen = -1;
+	bool_t m_bShowcaseCameraActive = false;
 	size_t m_iSelectedClassIndex = 0;
 	std::optional<size_t> m_iPendingClassIndex;
 	std::optional<size_t> m_iRequestedClassIndex;

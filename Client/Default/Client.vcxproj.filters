@@ -822,6 +822,9 @@
     <ClCompile Include="..\Private\PlayableCharacterAssetService.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\SquareHoleInstrumentCatalog.cpp">
+      <Filter>04. Network</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\ClientReplication.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
@@ -979,6 +982,9 @@
       <Filter>04. Network\00. PlayerController</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\CharacterSelectionState.cpp">
+      <Filter>01.Levels\01. CharacterSelect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\CharacterRoster.cpp">
       <Filter>01.Levels\01. CharacterSelect</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Level_CharacterSelect.cpp">
@@ -1561,6 +1567,9 @@
     <ClInclude Include="..\Public\PlayableCharacterAssetService.h">
       <Filter>04. Network</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\SquareHoleInstrumentCatalog.h">
+      <Filter>04. Network</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\ClientReplication.h">
       <Filter>04. Network</Filter>
     </ClInclude>
@@ -1739,6 +1748,9 @@
       <Filter>04. Network\00. PlayerController</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\CharacterSelectionState.h">
+      <Filter>01.Levels\01. CharacterSelect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\CharacterRoster.h">
       <Filter>01.Levels\01. CharacterSelect</Filter>
     </ClInclude>
 	<ClInclude Include="..\Private\CharacterSelectArenaSpawnGate.h">
@@ -1946,6 +1958,9 @@
 	  <Filter>96.DataFiles\Actors</Filter>
 	</None>
 	<None Include="..\..\Data\Actors\VehicleCatalog.json">
+	  <Filter>96.DataFiles\Actors</Filter>
+	</None>
+	<None Include="..\..\Data\Actors\SquareHoleInstruments.json">
 	  <Filter>96.DataFiles\Actors</Filter>
 	</None>
 	<None Include="..\..\Data\Sound\CharacterSoundCatalog.json">

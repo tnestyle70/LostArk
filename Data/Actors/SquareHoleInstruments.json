@@ -1,0 +1,34 @@
+{
+  "schema": "lostark.squarehole-instruments",
+  "formatVersion": 1,
+  "instruments": [
+    {
+      "characterAssetId": "Warlord",
+      "modelAssetId": "Character/IT_WR_HORN_00/IT_WR_HORN_00.wmodel",
+      "socketBone": "bip001-prop3",
+      "positionMeters": [0, 0, 0],
+      "rotationDegrees": [0, 0, 0]
+    },
+    {
+      "characterAssetId": "LanceMaster",
+      "modelAssetId": "Character/IT_FT_PIPA_00/IT_FT_PIPA_00.wmodel",
+      "socketBone": "bip001-prop3",
+      "positionMeters": [0, 0, 0],
+      "rotationDegrees": [0, 0, 0]
+    },
+    {
+      "characterAssetId": "Artist",
+      "modelAssetId": "Character/IT_SP_HARP_00/IT_SP_HARP_00.wmodel",
+      "socketBone": "bip001-prop3",
+      "positionMeters": [0, 0, 0],
+      "rotationDegrees": [0, 0, 0]
+    },
+    {
+      "characterAssetId": "GuardianKnight",
+      "modelAssetId": "Character/IT_DK_CART_00/IT_DK_CART_00.wmodel",
+      "socketBone": "bip001-prop3",
+      "positionMeters": [0, 0, 0],
+      "rotationDegrees": [0, 0, 0]
+    }
+  ]
+}
