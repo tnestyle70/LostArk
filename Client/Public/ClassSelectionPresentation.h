@@ -143,7 +143,8 @@ public:
     std::shared_ptr<const CLASS_MOVIE_TIMELINE> Get_Timeline(const std::string& classId, bool loop) const;
     double Map_TimelineTime(const std::string& classId, bool loop, double timeMs, bool toSource) const;
     // Instance-local V1 editor draft; retained across Play, Stop, Seek and phase transitions.
-    bool Preview_EffectDocument(const EFFECT_DOCUMENT_DESC& document, std::string& status);
+    bool Preview_EffectDocument(const EFFECT_DOCUMENT_DESC& document, std::string& status,
+        const std::vector<std::string>* drawElementIds = nullptr);
     bool Clear_EffectPreviews(std::string& status);
     bool Play_EffectSelection(const std::string& classId, bool loop,
         const EFFECT_DOCUMENT_DESC& full, const EFFECT_DOCUMENT_DESC& selected,

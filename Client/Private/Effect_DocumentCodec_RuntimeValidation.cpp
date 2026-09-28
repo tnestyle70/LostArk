@@ -760,7 +760,15 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 		{
 			return Cue.bVisible;
 		});
-	if (!bHasVisibleElement && !bHasVisibleModelCue && Document.OwnerControls.empty())
+	// An authored hide operation can intentionally turn the final row off.
+	// Keep schema validation and visible-carrier admission; only explicit all-hidden
+	// nonempty documents are valid no-draw sources, not empty or unsupported ones.
+	const bool_t bExplicitlyHidden = (!Document.Elements.empty() || !Document.ModelCues.empty()) &&
+		std::all_of(Document.Elements.begin(), Document.Elements.end(),
+			[](const EFFECT_ELEMENT_DESC& element) { return !element.bVisible; }) &&
+		std::all_of(Document.ModelCues.begin(), Document.ModelCues.end(),
+			[](const EFFECT_MODEL_CUE_DESC& cue) { return !cue.bVisible; });
+	if (!bHasVisibleElement && !bHasVisibleModelCue && Document.OwnerControls.empty() && !bExplicitlyHidden)
 	{
 		strOutError =
 			"Effect has no visible Element, Model / Summon, or Owner Control to preview.";

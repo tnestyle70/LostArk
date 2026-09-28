@@ -159,7 +159,7 @@ namespace
                 m_Callbacks.stop();
             m_OwnsPlayback = false;
             m_Scrubbing = false;
-            m_Pending = COMMAND::NONE; m_Drag.reset();
+            m_Pending = COMMAND::NONE; m_Drag.reset(); m_DeleteWorldItem.clear();
         }
 
         void Begin_WorkbenchFrame() override
@@ -233,6 +233,13 @@ namespace
             m_State = Read_State();
             Refresh_RowSource();
             Render_CameraWindow();
+            Render_VisibilityWindow();
+            if (!m_DeleteWorldItem.empty())
+            {
+                if (!m_RowDirty && !m_State.authoringPublishPending)
+                    (void)Submit_Inspection(Client::CLASS_MOVIE_INSPECTION_ACTION::EXCLUDE, m_DeleteWorldItem);
+                m_DeleteWorldItem.clear();
+            }
             if (m_SaveRequested && m_RowDirty) m_ApplyRequested = true;
             if (m_RequestedRate && m_Callbacks.setPlaybackRate)
                 (void)m_Callbacks.setPlaybackRate(*m_RequestedRate);
@@ -439,6 +446,78 @@ namespace
             ImGui::EndDisabled();
         }
 
+        bool Submit_Inspection(const Client::CLASS_MOVIE_INSPECTION_ACTION action,
+            const std::string& itemId = {}, const bool enabled = true)
+        {
+            if (!m_Callbacks.inspection.command) return false;
+            Client::CLASS_MOVIE_INSPECTION_COMMAND command;
+            command.action = action; command.itemId = itemId; command.enabled = enabled;
+            return m_Callbacks.inspection.command(m_State.selectedClassId, m_ViewLoop, command, m_EditStatus);
+        }
+
+        void Render_VisibilityControls()
+        {
+            using ACTION = Client::CLASS_MOVIE_INSPECTION_ACTION;
+            if (ImGui::Button("Movie visibility / models")) m_VisibilityWindow = true;
+            ImGui::SameLine();
+            if (ImGui::Button("Clear model Mute / Solo")) (void)Submit_Inspection(ACTION::CLEAR_PREVIEW);
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!m_OpenedAuthoring || m_State.authoringPublishPending);
+            if (ImGui::Button("Save movie##visibility")) m_SaveRequested = true;
+            ImGui::EndDisabled();
+            m_Inspection = m_Callbacks.inspection.state ?
+                m_Callbacks.inspection.state(m_State.selectedClassId, m_ViewLoop) : Client::CLASS_MOVIE_INSPECTION_STATE{};
+            m_InspectedWorldId = m_Inspection.selectedId;
+            bool background = m_Inspection.showBackground, effects = m_Inspection.showEffects;
+            ImGui::BeginDisabled(!m_Callbacks.inspection.command);
+            if (ImGui::Checkbox("Background (preview)", &background)) (void)Submit_Inspection(ACTION::BACKGROUND, {}, background);
+            ImGui::SameLine();
+            if (ImGui::Checkbox("Effects (preview)", &effects)) (void)Submit_Inspection(ACTION::EFFECTS, {}, effects);
+            ImGui::EndDisabled();
+            const auto selected = std::find_if(m_Inspection.items.begin(), m_Inspection.items.end(),
+                [this](const auto& item) { return item.id == m_SelectedBox && m_SelectedKind == "World Model"; });
+            if (selected != m_Inspection.items.end())
+            {
+                const auto& item = *selected;
+                ImGui::TextWrapped("Model: %s", item.label.c_str());
+                if (ImGui::Button(item.muted ? "Unmute model" : "Mute model")) (void)Submit_Inspection(ACTION::MUTE, item.id, !item.muted);
+                ImGui::SameLine();
+                if (ImGui::Button(item.solo ? "Unsolo model" : "Solo model")) (void)Submit_Inspection(ACTION::SOLO, item.id, !item.solo);
+                ImGui::SameLine();
+                ImGui::BeginDisabled(m_RowDirty || m_State.authoringPublishPending);
+                if (ImGui::Button(item.excluded ? "Restore to Movie" : "Delete from Movie"))
+                {
+                    if (item.excluded) (void)Submit_Inspection(ACTION::EXCLUDE, item.id, false);
+                    else m_DeleteWorldItem = item.id;
+                }
+                ImGui::EndDisabled();
+                ImGui::TextDisabled("Mute / Solo are temporary. Delete removes this model from the Movie; Save movie persists it. Restore keeps the resource available.");
+            }
+            else if (m_SelectedKind == "Effect")
+            {
+                for (const auto& row : m_Timeline->rows) if (row.kind == "Effect" && row.id == m_SelectedRow)
+                    for (const auto& box : row.boxes) if (box.id == m_SelectedBox)
+                    {
+                        ImGui::BeginDisabled(m_RowDirty || !m_Callbacks.openEffectEditor);
+                        if (ImGui::Button("Edit Elements / Mute / Hide")) m_OpenEffect = box.resource;
+                        ImGui::EndDisabled();
+                        ImGui::SameLine(); ImGui::TextWrapped("%s", box.resource.c_str());
+                    }
+            }
+            else ImGui::TextDisabled("Select a World Model for Mute / Solo / Delete, or an Effect to edit its Elements.");
+            if (m_State.authoringDirty) ImGui::TextUnformatted("Movie has unsaved changes.");
+            if (!m_EditStatus.empty()) ImGui::TextWrapped("%s", m_EditStatus.c_str());
+        }
+
+        void Render_VisibilityWindow()
+        {
+            if (!m_VisibilityWindow) return;
+            ImGui::SetNextWindowSize({820.f, 620.f}, ImGuiCond_FirstUseEver);
+            if (ImGui::Begin("Movie visibility / models###WorldMovieVisibility", &m_VisibilityWindow))
+                m_WorldInspector.Render(m_Callbacks.inspection, m_State.selectedClassId, m_ViewLoop, m_RowDirty);
+            ImGui::End();
+        }
+
         void Render_Timeline()
         {
             ImGui::Text("%s / %s", m_State.selectedLabel.c_str(), m_ViewLoop ? "Loop" : "Intro");
@@ -470,6 +549,7 @@ namespace
             ImGui::SameLine();
             if (ImGui::Button("Loop start")) { m_ViewLoop = true; Queue_Seek(true, 0.); }
             ImGui::EndDisabled();
+            Render_VisibilityControls();
             m_RowFilter.Draw("Filter rows", 220.f);
             ImGui::SameLine(); ImGui::SetNextItemWidth(140.f);
             ImGui::SliderFloat("Zoom", &m_PixelsPerSecond, 20.f, 200.f, "%.0f px/s");
@@ -558,6 +638,18 @@ namespace
                 }
             }
             ImGui::EndChild();
+            const auto& io = ImGui::GetIO();
+            if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
+                !io.WantTextInput && !ImGui::IsAnyItemActive() && !io.KeyCtrl && !io.KeyAlt && !io.KeySuper &&
+                !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId) &&
+                !ImGui::IsMouseDragging(ImGuiMouseButton_Left) && !ImGui::GetDragDropPayload() && !m_Drag &&
+                !m_RowDirty && !m_State.authoringPublishPending && m_SelectedKind == "World Model" &&
+                ImGui::IsKeyPressed(ImGuiKey_Delete, false))
+            {
+                const auto item = std::find_if(m_Inspection.items.begin(), m_Inspection.items.end(),
+                    [this](const auto& value) { return value.id == m_SelectedBox && !value.excluded; });
+                if (item != m_Inspection.items.end()) m_DeleteWorldItem = item->id;
+            }
             Update_TimelineGesture();
         }
 
@@ -593,7 +685,20 @@ namespace
                 (row.kind == "Animation" && !box.loopAnimation && box.nativeDurationMs > 0.);
             const ImU32 colors[] = {IM_COL32(62,94,130,255), IM_COL32(72,116,79,255), IM_COL32(105,77,154,255),
                 IM_COL32(143,89,46,255), IM_COL32(120,100,61,255), IM_COL32(135,121,45,255), IM_COL32(59,121,122,255), IM_COL32(131,72,101,255)};
-            DrawBox(draw, min, max, colors[family], selected, box.label.c_str(), editable, editable);
+            std::string label = box.label;
+            ImU32 color = colors[family];
+            if (row.kind == "World Model")
+            {
+                const auto item = std::find_if(m_Inspection.items.begin(), m_Inspection.items.end(),
+                    [&](const auto& value) { return value.id == box.id; });
+                if (item != m_Inspection.items.end())
+                {
+                    if (item->excluded) { label += " [excluded]"; color = IM_COL32(73,62,62,220); }
+                    else if (item->muted) { label += " [muted]"; color = IM_COL32(67,70,77,220); }
+                    else if (item->solo) { label += " [solo]"; color = IM_COL32(72,126,94,255); }
+                }
+            }
+            DrawBox(draw, min, max, color, selected, label.c_str(), editable, editable);
             if (box.movieHoldEndMs > end)
                 draw->AddRectFilled({endX, p.y + 7.f}, {p.x + labelWidth + float(box.movieHoldEndMs * .001 * m_PixelsPerSecond), p.y + LaneHeight - 7.f}, IM_COL32(72,116,79,70));
             if (hovered && ImGui::IsMouseHoveringRect(min, max))
@@ -874,13 +979,15 @@ namespace
         std::shared_ptr<const Client::CLASS_MOVIE_TIMELINE> m_Timeline;
         std::string m_SelectedKind, m_SelectedRow, m_SelectedBox;
         Client::CClassMovieInspector m_WorldInspector;
+        Client::CLASS_MOVIE_INSPECTION_STATE m_Inspection;
+        bool m_VisibilityWindow = false;
         std::string m_InspectedWorldId;
         bool m_OpenedAuthoring = false, m_RowDirty = false;
         bool m_ApplyRequested = false, m_SaveRequested = false, m_ReloadRequested = false;
         std::optional<Client::CLASS_MOVIE_AUTHORING_BOX> m_EditBox;
         Client::DATA_JSON_VALUE m_EditValue;
         std::map<std::string, int> m_KeySelections;
-        std::string m_EditStatus, m_OpenEffect;
+        std::string m_EditStatus, m_OpenEffect, m_DeleteWorldItem;
     };
 
     const char* PaneLabel(const PANE pane, const bool sequenceWorkspace)

@@ -61,9 +61,11 @@ void Client::CClassMovieInspector::Render(const CLASS_MOVIE_INSPECTION_CALLBACKS
     size_t shown = 0;
     const auto tableFlags = ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg |
         ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY;
-    if (ImGui::BeginTable("Models", 4, tableFlags, {0.f, 200.f}))
+    if (ImGui::BeginTable("Models", 6, tableFlags, {0.f, 250.f}))
     {
         ImGui::TableSetupColumn("Model", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("Preview", ImGuiTableColumnFlags_WidthFixed, 105.f);
+        ImGui::TableSetupColumn("In Movie", ImGuiTableColumnFlags_WidthFixed, 65.f);
         ImGui::TableSetupColumn("Authored", ImGuiTableColumnFlags_WidthFixed, 70.f);
         ImGui::TableSetupColumn("Drawn", ImGuiTableColumnFlags_WidthFixed, 50.f);
         ImGui::TableSetupColumn("World XYZ (m)", ImGuiTableColumnFlags_WidthFixed, 155.f);
@@ -79,13 +81,25 @@ void Client::CClassMovieInspector::Render(const CLASS_MOVIE_INSPECTION_CALLBACKS
             if (item.excluded) label += " [deleted]";
             else if (item.solo) label += " [solo]";
             else if (item.muted) label += " [muted]";
-            if (ImGui::Selectable((label + "##model").c_str(), item.selected,
-                ImGuiSelectableFlags_SpanAllColumns)) (void)submit(ACTION::SELECT, item.id);
+            if (ImGui::Selectable((label + "##model").c_str(), item.selected)) (void)submit(ACTION::SELECT, item.id);
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%s", item.id.c_str(), item.modelAssetId.c_str());
             ImGui::TableSetColumnIndex(1);
-            ImGui::TextUnformatted(!item.sampled ? "No sample" : item.authoredVisible ? "Visible" : "Hidden");
-            ImGui::TableSetColumnIndex(2); ImGui::TextUnformatted(item.drawn ? "Yes" : "No");
+            bool muted = item.muted, solo = item.solo;
+            if (ImGui::Checkbox("M", &muted)) (void)submit(ACTION::MUTE, item.id, muted);
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Mute this model in preview only.");
+            ImGui::SameLine();
+            if (ImGui::Checkbox("S", &solo)) (void)submit(ACTION::SOLO, item.id, solo);
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Solo this WORLD model in preview only.");
+            ImGui::TableSetColumnIndex(2);
+            bool included = !item.excluded;
+            ImGui::BeginDisabled(unappliedRowDraft);
+            if (ImGui::Checkbox("##included", &included)) (void)submit(ACTION::EXCLUDE, item.id, !included);
+            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Include / exclude this model in the Movie. Save Movie persists it.");
             ImGui::TableSetColumnIndex(3);
+            ImGui::TextUnformatted(!item.sampled ? "No sample" : item.authoredVisible ? "Visible" : "Hidden");
+            ImGui::TableSetColumnIndex(4); ImGui::TextUnformatted(item.drawn ? "Yes" : "No");
+            ImGui::TableSetColumnIndex(5);
             if (item.sampled) ImGui::Text("%.2f, %.2f, %.2f", item.position.x, item.position.y, item.position.z);
             else ImGui::TextUnformatted("Not sampled");
             ImGui::PopID();

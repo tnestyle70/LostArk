@@ -343,6 +343,13 @@ namespace
             { status = "Movie Effect preview requires Character Select."; return false; }
             return level->Get_ClassSelectionPresentation().Preview_EffectDocument(document, status);
         };
+        movieCallbacks.previewVisibility = [](const EFFECT_DOCUMENT_DESC& document,
+            const std::vector<std::string>& drawElementIds, std::string& status) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+            { status = "Movie Element visibility requires Character Select."; return false; }
+            return level->Get_ClassSelectionPresentation().Preview_EffectDocument(document, status, &drawElementIds);
+        };
         movieCallbacks.playSelection = [](const std::string& classId, bool loop,
             const EFFECT_DOCUMENT_DESC& full, const EFFECT_DOCUMENT_DESC& selected,
             const std::vector<std::string>& drawElementIds, double startAgeMs, double endAgeMs, bool repeat, std::string& status) {

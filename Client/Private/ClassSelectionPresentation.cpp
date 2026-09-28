@@ -1143,7 +1143,7 @@ bool CClassSelectionPresentation::Sample_Effects(const PHASE& phase, const float
 }
 
 bool CClassSelectionPresentation::Preview_EffectDocument(
-    const EFFECT_DOCUMENT_DESC& document, std::string& status)
+    const EFFECT_DOCUMENT_DESC& document, std::string& status, const std::vector<std::string>* drawElementIds)
 {
     const auto& scenes = m_Authoring ? m_Authoring->scenes : m_Scenes;
     bool used = false;
@@ -1155,7 +1155,7 @@ bool CClassSelectionPresentation::Preview_EffectDocument(
     { status = "This Effect does not belong to an admitted class-selection Movie."; return false; }
     std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET> target;
     if (!CEffectPresentationService::Prepare_WorldPreviewTarget(m_Targets.device,
-        m_Targets.context, document, target, status)) return false;
+        m_Targets.context, document, target, status, drawElementIds)) return false;
     std::vector<std::pair<EFFECT_WORLD_ROOT_HANDLE,
         std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET>>> replacements;
     for (const auto& [id, active] : m_Effects)
