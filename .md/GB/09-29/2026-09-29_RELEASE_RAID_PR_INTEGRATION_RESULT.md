@@ -70,7 +70,18 @@ app-local VC runtime을 포함하며 Resources는 Drive 공유본을 선택한�
 공유 endpoint는 `192.168.0.22:7777`이다.
 
 대상: `C:/Users/user/Desktop/LostArk-Release-20260929.zip`.
-기존 20260923 ZIP은 보존한다. 최종 ZIP 및 GitHub 병합 영수증은 아래에 후속 기록한다.
+기존 20260923 ZIP(127,130,057 bytes)은 보존했다. ZIP 생성과 전체 CRC/manifest SHA256 검사 PASS.
+새 ZIP은 166,238,609 bytes이며 SHA256은 `59d0985e60934a232fee65af0235c8a19e4f90df19f63bf8f3486c8cb28a39c2`다.
+Resources 포함 0, payload 2,740 files, authoring Data 2,127 files, compiled shader 254개다.
+Launcher nonlaunch preflight PASS: Client/Server 실행 없음, endpoint .22, protocol 120,
+bundled Data/Server DataFiles 격리를 확인했다.
+파일 증거: `out/ReleasePackaging/portable-delivery.receipt.json`,
+`out/ReleasePackaging/preflight-20260929-final.json`.
+ZIP binary/source 기준 commit은 `78982951577340c2c362b040c5163bf4cd62aa78`이다.
+이후 결과 기록만 변경하며 제품 파일은 동일하다. 통합 PR은 #480이다.
+패키지 안 Server.exe와 패키지 Data/DataFiles만 지정한 numeric 네 세션 검사도 PASS
+(`out/ReleaseIntegration20260929/packaged-numeric-final.log`, failures 0). 이 검사는
+임시 복사본을 사용하므로 전달 ZIP의 초기 밸런스를 변경하지 않았다.
 
 ## 남은 사용자 화면 확인
 
