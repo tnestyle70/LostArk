@@ -1445,6 +1445,71 @@
       "layers": [],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "TrialModeBand",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 0, "y": 0, "width": 1280, "height": 146.6667 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/TrialModeBand.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "TrialModePlate",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 410.6667, "y": 0, "width": 459.3333, "height": 101.3333 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/TrialModePlate.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "PreviewButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 532.6667, "y": 632, "width": 106.6667, "height": 26.6667 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/TrialV2Button.png", "hoverPath": "UI/ClassSelect/Common/TrialV2ButtonHover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "TrialButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 640.6667, "y": 632, "width": 106.6667, "height": 26.6667 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/TrialV2Button.png", "hoverPath": "UI/ClassSelect/Common/TrialV2ButtonHover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "CreateCharacterCenterButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 524, "y": 661.3333, "width": 232, "height": 36.6667 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/CreateCharacterCenterButton.png", "hoverPath": "UI/ClassSelect/Common/CreateCharacterCenterButtonHover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     }
   ]
 }

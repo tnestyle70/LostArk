@@ -10,6 +10,8 @@
 #include "Body_Valtan.h"
 #include "Character.h"
 #include "CharacterCatalog.h"
+#include "CharacterRoster.h"
+#include "PlayerSkillCatalog.h"
 #include "CharacterSelectionState.h"
 #include "ClassSelectionPresentation.h"
 #include "Collider.h"
@@ -248,6 +250,20 @@ HRESULT CLoader::Initialize(
 				return reject(E_FAIL, "loader.initialize.character-authoring",
 					"Character authoring snapshot could not be captured; player skills are unavailable.");
 			m_CharacterAuthoringInputs.emplace(characterClass, std::move(input));
+		}
+	}
+	else if (CActorCatalog::Initialize())
+	{
+		/* The Lobby stands the character-select roster up, so the same owner-thread staging runs
+		for those classes. Any failure here only leaves the Lobby without its characters. */
+		std::string skillStatus;
+		if (!CPlayerSkillCatalog::Get_Skills().empty() || CPlayerSkillCatalog::Load(skillStatus))
+		{
+			for (const CHARACTER_ROSTER_ENTRY& entry : CCharacterRoster::Get_Entries())
+			{
+				if (auto input = CPlayableCharacterAssetService::Capture_AuthoringInput(entry.eCharacterClass))
+					m_CharacterAuthoringInputs.emplace(entry.eCharacterClass, std::move(input));
+			}
 		}
 	}
 	m_eNextLevelID = eNextLevelID;
@@ -498,8 +514,24 @@ void CLoader::Print_Text()
 HRESULT CLoader::Ready_For_Lobby()
 {
 	CLevelResourceRollbackScope rollback(ETOUI(LEVEL::LOBBY));
-	Declare_Phases(2u);
+	Declare_Phases(3u);
 	Set_Status(TEXT("LOBBY: stage selection UI"));
+	/* The character-select window stands the roster's characters up over the Lobby, so their
+	models are prepared here, behind the Loading screen, like any level's playable classes. A
+	failure only costs the window its characters, never the Lobby: the window prepares whichever
+	class is still missing on its own. */
+	Set_Status(TEXT("LOBBY: character stage"));
+	std::vector<LostArk::Shared::CHARACTER_CLASS_ID> stageClasses;
+	for (const CHARACTER_ROSTER_ENTRY& entry : CCharacterRoster::Get_Entries())
+	{
+		if (m_CharacterAuthoringInputs.contains(entry.eCharacterClass))
+			stageClasses.push_back(entry.eCharacterClass);
+	}
+	/* Weapon parts draw with the static-mesh shader, which other levels only get from their map. */
+	if (stageClasses.empty() ||
+		FAILED(Ready_StaticMeshShader(ETOUI(LEVEL::LOBBY))) ||
+		FAILED(Ready_Character_Rendering(ETOUI(LEVEL::LOBBY), stageClasses)))
+		OutputDebugStringA("[Loader][Lobby] Character stage preparation failed; the window prepares its own.\n");
 	Set_Status(TEXT("Lobby loading complete"));
 	rollback.Commit();
 	return S_OK;

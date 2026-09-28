@@ -975,6 +975,9 @@
     <ClCompile Include="..\Private\CharacterSelectionState.cpp">
       <Filter>01.Levels\01. CharacterSelect</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\CharacterRoster.cpp">
+      <Filter>01.Levels\01. CharacterSelect</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Level_CharacterSelect.cpp">
       <Filter>01.Levels\01. CharacterSelect</Filter>
     </ClCompile>
@@ -1727,6 +1730,9 @@
       <Filter>04. Network\00. PlayerController</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\CharacterSelectionState.h">
+      <Filter>01.Levels\01. CharacterSelect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\CharacterRoster.h">
       <Filter>01.Levels\01. CharacterSelect</Filter>
     </ClInclude>
 	<ClInclude Include="..\Private\CharacterSelectArenaSpawnGate.h">
