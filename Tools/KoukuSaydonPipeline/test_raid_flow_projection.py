@@ -50,6 +50,36 @@ def bingo_documents():
 
 
 class RaidProjectionTests(unittest.TestCase):
+    def test_saved_gate2_grab_and_bingo_attack_project_current_damage_colliders(self):
+        source = composition.load_json(ROOT / composition.SOURCE_PATH)
+        ids = {PREFIX + "17", PREFIX + "109"}
+        candidate = composition._publication_candidate(source, ids)
+        composition.validate_document(candidate, ROOT)
+        composition.validate_publishable(candidate, ROOT)
+        projected = {row["patternId"]: row for row in composition.project_encounter(candidate, ROOT)["patterns"]}
+        resources = {row["resourceId"]: row for row in source["presentationResources"]}
+        for pattern in candidate["patterns"]:
+            with self.subTest(pattern=pattern["patternId"]):
+                windows = projected[pattern["patternId"]]["logicWindows"]
+                damage = [row for row in windows if any(
+                    result["kind"] == "MAX_HP_PERCENT_DAMAGE" for result in row["onSuccess"])]
+                self.assertEqual(4 if pattern["patternId"] == PREFIX + "17" else 1, len(damage))
+                for window in damage:
+                    colliders = [box for box in pattern["presentationOccurrences"]
+                        if resources[box["resourceId"]]["kind"] == "COLLIDER"
+                        and box.get("logicOccurrenceId") == window["windowId"]]
+                    self.assertEqual(1, len(colliders))
+                    self.assertEqual((colliders[0]["startMs"], colliders[0]["durationMs"]),
+                                     (window["startMs"], window["durationMs"]))
+                    self.assertEqual([colliders[0]["occurrenceId"]],
+                                     [region["regionId"] for region in window["cardRegions"]])
+        grab = projected[PREFIX + "17"]["logicWindows"]
+        self.assertTrue(any(row["kind"] == "ATTACHMENT_HOLD" for row in grab))
+        self.assertTrue(any(result["kind"] == "CAPTURE_PLAYER" for row in grab for result in row["onSuccess"]))
+        bingo_damage = projected[PREFIX + "109"]["logicWindows"][0]["onSuccess"][0]
+        self.assertTrue(bingo_damage["forcePush"])
+        self.assertTrue(bingo_damage["pushBallistic"])
+
     def test_hp_groups_preserve_saved_identity_and_completion_boundary(self):
         action, sequence = documents()
         flow = action["patternFlows"][0]
