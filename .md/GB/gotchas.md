@@ -5424,3 +5424,16 @@ stage의 다음 회차만 도착하는 경우와 반복 뒤 실제 counter→GRO
 확인한다. 컷씬→등장 휠윈드→일반 휠윈드를 테스트 기대값에 그대로 넣으면 실제 중복도 통과한다.
 G 입장 검증은 사용자가 보는 순서인 컷씬→저장된 휠윈드 한 번→다음 패턴을 확인하고 명시적인
 Play All과 legacy audition을 별도로 보존한다.
+
+
+### 부위 파괴 효과와 Combat Object 소환 연결
+
+- 갑옷 파편과 바닥 돌은 같은 연출로 취급하지 않는다. PART_BROKEN의 실제 제거 mask가
+  파편을 소유하고, RECOVERY ENTER의 SPAWN_COMBAT_OBJECT는 별도의 피해 오브젝트다.
+  잘못된 연출 제거는 해당 spawn과 전용 companion/visual/sound까지 함께 교정한다.
+- managed spawn을 제거한 publisher는 이전 Product의 같은 managed owner object도 제거해야 한다.
+  replace-or-append만 쓰면 사라진 오브젝트가 게시본에 남는다. 다른 legacy owner는 보존한다.
+- 파괴 폭탄 전용 갑옷은 서버가 생성한 폭탄 provenance로 판정한다. skillId 숫자만 검사하거나
+  일반 HP 피해를 legacy armor durability로 다시 빼면 평타·스킬로도 갑옷이 파괴된다.
+- 부위 파괴 준비 PNG는 살아 있는 갑옷과 열린 파괴 창을 함께 확인한다. 실제 파괴 파편/성공 문구와
+  준비 PNG의 발생 조건을 합치지 않는다. 반복 돌진·추가 폭탄은 이미 제거된 mask를 복구하지 않는다.
