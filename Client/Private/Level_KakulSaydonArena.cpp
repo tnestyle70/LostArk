@@ -3130,26 +3130,34 @@ void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta
 			m_iNextGateRequestSequence++, GATE_PROGRESS_KIND::ADVANCE);
 	m_bMvpWasVisible = bMvpVisible;
 
-	/* The panel button follows the raid: leave (an exit vote back to Bern) while a gate is up,
-	   dungeon progress once a gate short of the last is cleared, exit once the last one is.
-	   Only the leader can press it, and not while a vote is running or the award page is up. */
+	/* The panel button follows the raid: restart while a gate is up, leave (an exit vote back
+	   to Bern) in the gate 3 waiting deck, dungeon progress once a gate short of the last is
+	   cleared, exit once the last one is. The leader presses everything but the final exit,
+	   which every player can use to go back on their own, and nothing while a vote is running
+	   or the award page is up. */
 	/* Before any gate is raised (fresh room, or before the F1 button) the panel treats gate 1
-	   as current. */
+	   as current: the restart button then raises it, as the Server's RESTART rule does. */
 	const uint8_t iShownGate = (std::max<uint8_t>)(m_GateProgress.iCurrentGate, 1u);
 	const uint8_t iShownCount = (std::max<uint8_t>)(m_GateProgress.iGateCount, KOUKU_GATE_COUNT);
 	const bool_t bCleared = 0u != (m_GateProgress.iClearedMask & (1u << (iShownGate - 1u)));
-	CRaidGateProgressView::BUTTON eButton = CRaidGateProgressView::BUTTON::LEAVE;
+	CRaidGateProgressView::BUTTON eButton = CRaidGateProgressView::BUTTON::RESTART;
 	if (bCleared)
 		eButton = iShownGate < iShownCount ? CRaidGateProgressView::BUTTON::PROGRESS : CRaidGateProgressView::BUTTON::EXIT;
 	if (bCleared && iShownGate == 3u && iShownCount > 3u)
 		eButton = CRaidGateProgressView::BUTTON::NONE;
-	if (eButton != CRaidGateProgressView::BUTTON::NONE &&
+	/* The waiting deck before gate 3: the panel offers the exit vote there, and the party enters
+	   the gate by standing on the entry aura. */
+	const bool_t bAtGate3Deck = eButton != CRaidGateProgressView::BUTTON::NONE &&
 		(Get_KoukuRaidState().ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY ||
-        (!Is_ServerRaidActive() && Is_AtGate3EntryTerrace())))
-		eButton = CRaidGateProgressView::BUTTON::ENTER_GATE3;
+        (!Is_ServerRaidActive() && Is_AtGate3EntryTerrace()));
+	if (bAtGate3Deck)
+		eButton = CRaidGateProgressView::BUTTON::LEAVE;
 	const bool_t canPropose = canInteract && Is_LocalRaidLeader() && !bVoteOpen;
-	Update_Gate3EntryAura(canPropose, eButton == CRaidGateProgressView::BUTTON::ENTER_GATE3 && canInteract);
-	m_GateProgressView.Set_Button(eButton, canPropose);
+	/* The final exit is the player's own trip back to Bern, so it is not the leader's alone. */
+	const bool_t canExit = canInteract && !bVoteOpen;
+	Update_Gate3EntryAura(canPropose, bAtGate3Deck && canInteract);
+	m_GateProgressView.Set_Button(eButton,
+		CRaidGateProgressView::BUTTON::EXIT == eButton ? canExit : canPropose);
 	// Bingo is the encore after the three displayed gate icons.
 	m_GateProgressView.Set_Progress(iShownGate, iShownGate > 3u ?
 		static_cast<uint8_t>(m_GateProgress.iClearedMask | 0x7u) : m_GateProgress.iClearedMask);
@@ -3167,12 +3175,16 @@ void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta
         m_bGate3AuraSubmitted = true;
         (void)m_pPlayerCommandSink->Request_GateProgressPropose(m_iNextGateRequestSequence++, GATE_PROGRESS_KIND::ENTER_GATE3);
         break;
+	case CRaidGateProgressView::INTENT::PROPOSE_RESTART:
+		if (!canPropose) break;
+		(void)m_pPlayerCommandSink->Request_GateProgressPropose(m_iNextGateRequestSequence++, GATE_PROGRESS_KIND::RESTART);
+		break;
 	case CRaidGateProgressView::INTENT::PROPOSE_EXIT:
 		if (!canPropose) break;
 		(void)m_pPlayerCommandSink->Request_GateProgressPropose(m_iNextGateRequestSequence++, GATE_PROGRESS_KIND::EXIT);
 		break;
 	case CRaidGateProgressView::INTENT::EXIT:
-		if (!canPropose) break;
+		if (!canExit) break;
 		(void)m_pPlayerCommandSink->Request_ReturnToBern(m_iNextGateRequestSequence++);
 		break;
 	case CRaidGateProgressView::INTENT::ACCEPT:

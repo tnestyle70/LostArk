@@ -54,6 +54,7 @@ namespace
 	   sys.common.exit_btn, confirm / cancel, accept / decline. Wide hex escapes keep this file
 	   ASCII. */
 	constexpr const wchar_t* TEXT_PROGRESS = L"\xB358\xC804 \xC9C4\xD589";
+	constexpr const wchar_t* TEXT_RESTART = L"\xC7AC\xC2DC\xC791";
 	constexpr const wchar_t* TEXT_ENTER_GATE3 = L"3\xAD00\xBB38 \xC785\xC7A5";
 	constexpr const wchar_t* TEXT_ENTER_BINGO = L"\xBE59\xACE0 \xC785\xC7A5";
 	constexpr const wchar_t* TEXT_ASK_ENTER_BINGO = L"\xBE59\xACE0\xC5D0 \xC785\xC7A5\xD558\xC2DC\xACA0\xC2B5\xB2C8\xAE4C?";
@@ -80,7 +81,7 @@ namespace
 	bool_t Is_RestartPrompt(const Client::CRaidGateProgressView::PROMPT ePrompt)
 	{
 		using PROMPT = Client::CRaidGateProgressView::PROMPT;
-		return PROMPT::VOTE_RESTART == ePrompt;
+		return PROMPT::CONFIRM_RESTART == ePrompt || PROMPT::VOTE_RESTART == ePrompt;
 	}
 
 	bool_t Is_ExitPrompt(const Client::CRaidGateProgressView::PROMPT ePrompt)
@@ -191,6 +192,7 @@ const wchar_t* Client::CRaidGateProgressView::Button_Text() const
 	{
 	case BUTTON::ENTER_GATE3: return TEXT_ENTER_GATE3;
 	case BUTTON::ENTER_BINGO: return TEXT_ENTER_BINGO;
+	case BUTTON::RESTART: return TEXT_RESTART;
 	case BUTTON::LEAVE: return TEXT_EXIT;
 	case BUTTON::PROGRESS: return TEXT_PROGRESS;
 	case BUTTON::EXIT: return TEXT_EXIT;
@@ -270,7 +272,8 @@ Client::CRaidGateProgressView::INTENT Client::CRaidGateProgressView::Update_Prom
 				eIntent = bConfirm ? INTENT::ACCEPT : INTENT::DECLINE;
 			else if (bConfirm)
 				eIntent = m_ePrompt == PROMPT::CONFIRM_ENTER_GATE3 ? INTENT::PROPOSE_ENTER_GATE3 :
-                    Is_ExitPrompt(m_ePrompt) ? INTENT::PROPOSE_EXIT : INTENT::PROPOSE_ADVANCE;
+                    Is_ExitPrompt(m_ePrompt) ? INTENT::PROPOSE_EXIT :
+                    Is_RestartPrompt(m_ePrompt) ? INTENT::PROPOSE_RESTART : INTENT::PROPOSE_ADVANCE;
 		}
 	}
 	if (bPressed)
@@ -305,6 +308,9 @@ Client::CRaidGateProgressView::INTENT Client::CRaidGateProgressView::Update_Butt
 	case BUTTON::ENTER_GATE3:
         Open_Prompt(PROMPT::CONFIRM_ENTER_GATE3, wstring_t());
         return INTENT::NONE;
+	case BUTTON::RESTART:
+		Open_Prompt(PROMPT::CONFIRM_RESTART, wstring_t());
+		return INTENT::NONE;
 	case BUTTON::LEAVE:
 		Open_Prompt(PROMPT::CONFIRM_EXIT, wstring_t());
 		return INTENT::NONE;
