@@ -65,6 +65,8 @@ public:
 		m_PartyInteraction.Render_InvitePopupText();
 		m_PartyInteraction.Render_ContextMenuText();
 	}
+	/* The captions under the bottom-right icon buttons (HUD text layer, called by CMainApp). */
+	void Render_SystemMenuText() { m_SystemMenuButtons.Render_Text(); }
 	static CLevel_Bern* Get_Active() { return s_pActiveInstance; }
 	/* Non-null only while the ship follow pose is the active camera, so CMainApp can hand the
 	   ride's fog tuning to the presentation environment and nothing else needs to know about

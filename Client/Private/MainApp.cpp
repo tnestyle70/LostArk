@@ -4473,6 +4473,10 @@ HRESULT CMainApp::Render()
 	{
 		if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
 		{
+			{
+				CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
+				pBern->Render_SystemMenuText();
+			}
 			CUITextLayerScope ModalText(UI_TEXT_LAYER::MODAL);
 			pBern->Render_ValtanEntryModalText();
 			pBern->Render_PartyInviteText();

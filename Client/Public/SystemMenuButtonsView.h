@@ -29,6 +29,8 @@ public:
 	/* True while the cursor is over an icon, so the owning Level keeps that click away from
 	gameplay (a left click would otherwise also attack). */
 	bool_t Is_PointerOver() const { return m_bPointerOver; }
+	/* The caption under each icon, in the LOA font; call from the Level's text pass. */
+	void Render_Text() const;
 
 private:
 	unique_ptr<CUILayoutRuntime> m_pView;
