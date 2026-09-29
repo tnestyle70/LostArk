@@ -292,13 +292,18 @@ SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extra
     nativeInput.sourcePrimitiveBounds = sourcePrimitiveBounds;
     SOURCE_CHARACTER_NATIVE_OUTPUT native = EvaluateSourceCharacterBase(nativeInput);
     if (native.discarded) discard;
+    // Hair programs without a native masked mode: cut the translucent alpha at
+    // the source masked default so the base pass still writes the card core.
+    if (g_SourceCharacterHairMaskedPass == 2u && saturate(native.targets[0].a) < 0.333f) discard;
     // Opaque native PS alpha is explicitly zero and is not coverage. Hair and
     // eyelash carry actual opacity. The existing opaque character draw uses
     // ordered coverage until its source sorted-translucency passes are present.
-    if (g_SourceCharacterProgram == 6u || g_SourceCharacterProgram == 7u ||
+    // The hair masked base pass already discarded below its own threshold.
+    if (g_SourceCharacterHairMaskedPass == 0u && (
+        g_SourceCharacterProgram == 6u || g_SourceCharacterProgram == 7u ||
         g_SourceCharacterProgram == 18u || g_SourceCharacterProgram == 20u ||
         g_SourceCharacterProgram == 29u || g_SourceCharacterProgram == 800u || g_SourceCharacterProgram == 84u ||
-        g_SourceCharacterProgram == 99u)
+        g_SourceCharacterProgram == 99u))
     {
         static const float threshold[16] = {
             .5f, 8.5f, 2.5f, 10.5f, 12.5f, 4.5f, 14.5f, 6.5f,
