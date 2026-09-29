@@ -1,5 +1,6 @@
 #include "CombatObjectRuntime.h"
 #include "ValtanBrain.h"
+#include "ItemCatalog.h"
 
 #include "ServerCombatHitRuntime.h"
 
@@ -270,6 +271,61 @@ bool LostArk::Server::CCombatObjectRuntime::Allocate_Id(
 			1u : candidate + 1u;
 	}
 	return false;
+}
+
+bool LostArk::Server::CCombatObjectRuntime::Stage_BattleItemProjectile(
+	SERVER_COMBAT_OBJECT_TRANSACTION& transaction, const SERVER_PLAYER& source,
+	const SERVER_BATTLE_ITEM_USE& use, const float targetX, const float targetY, const float targetZ,
+	const CGameplayCatalog& catalog, const std::uint32_t serverTick, std::string& status) const
+{
+	const auto* profile = catalog.Find_Player(source.eCharacterClass);
+	const float dx = targetX - source.fPositionX, dz = targetZ - source.fPositionZ;
+	const float distance = std::hypot(dx, dz);
+	if (!profile || !serverTick || !std::isfinite(distance) || !std::isfinite(targetY) ||
+		!source.iNetEntityId || !use.iProjectileSpeedCmPerSecond || !use.iRadiusCm ||
+		(use.eKind != BATTLE_ITEM_KIND::DESTRUCTION && use.eKind != BATTLE_ITEM_KIND::WHIRLWIND))
+	{ status = "Battle projectile definition is invalid"; return false; }
+	SERVER_COMBAT_OBJECT object;
+	if (!Allocate_Id(transaction, object.iCombatObjectId))
+	{ status = "Battle projectile capacity is exhausted"; return false; }
+	object.eSourceKind = SERVER_COMBAT_OBJECT_SOURCE_KIND::PLAYER;
+	object.iSourcePlayerId = source.iPlayerId;
+	object.iSourceNetEntityId = source.iNetEntityId;
+	object.iSourceSkillId = use.iSkillId;
+	object.iSpawnTick = serverTick;
+	object.strCombatObjectArchetypeId = use.eKind == BATTLE_ITEM_KIND::DESTRUCTION ?
+		"battle.item.destruction_bomb" : "battle.item.whirlwind_grenade";
+	object.strClientVisualId = object.strCombatObjectArchetypeId;
+	object.PinnedDefinitionRevision = catalog.Get_ActiveRevision();
+	object.bReplicated = object.bDetonateOnContact = true;
+	object.LiveState.strOwnerPatternId = "battle.item";
+	object.LiveState.strOwnerStageActionId = "battle.item.throw";
+	object.fSpeedMps = static_cast<float>(use.iProjectileSpeedCmPerSecond) * .01f;
+	object.fRemainingDistanceM = object.fProjectileDistanceM = distance;
+	object.fProjectileStartY = source.fPositionY + static_cast<float>(use.iProjectileLaunchHeightCm) * .01f;
+	object.fProjectileTargetY = targetY;
+	object.fProjectileArcHeightM = static_cast<float>(use.iProjectileArcHeightCm) * .01f;
+	object.fRemainingMilliseconds = (distance / object.fSpeedMps) * 1000.f + 100.f;
+	auto& pose = object.LiveState.CurrentPose;
+	pose.fPositionX = source.fPositionX; pose.fPositionY = object.fProjectileStartY; pose.fPositionZ = source.fPositionZ;
+	pose.fDirectionX = distance > .0001f ? dx / distance : 0.f;
+	pose.fDirectionZ = distance > .0001f ? dz / distance : 1.f;
+	pose.fYawDegrees = std::atan2(pose.fDirectionX, pose.fDirectionZ) * RADIANS_TO_DEGREES;
+	object.LiveState.PreviousPose = pose;
+	object.strContactPresentationId = "battle.item.impact";
+	object.fContactPresentationRadiusM = .15f;
+	SERVER_COMBAT_OBJECT_HIT_RUNTIME hit;
+	hit.strHitId = object.strContactPresentationId;
+	hit.eTrigger = SERVER_COMBAT_OBJECT_HIT_TRIGGER::TIMED;
+	hit.Shape.eKind = SERVER_COMBAT_SHAPE_KIND::CIRCLE;
+	hit.Shape.fOuterRadius = static_cast<float>(use.iRadiusCm) * .01f;
+	hit.iPartDamage = use.iPartDamage; hit.iStaggerDamage = use.iStaggerDamage;
+	hit.iStaggerMaximumDivisor = use.iStaggerMaximumDivisor;
+	hit.RepeatRawDamage.push_back(CGameplayCatalog::Resolve_Damage(profile->iAttackPower, use.iDamageRatePercent));
+	object.Hits.push_back(std::move(hit));
+	transaction.Spawned.push_back(To_SpawnedMessage(object));
+	transaction.Objects.push_back(std::move(object));
+	return true;
 }
 
 bool LostArk::Server::CCombatObjectRuntime::Stage_PlayerProjectile(
@@ -978,6 +1034,14 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 			object.LiveState.CurrentPose.fPositionZ +=
 				object.LiveState.CurrentPose.fDirectionZ * step;
 		}
+		if (object.bDetonateOnContact)
+		{
+			const float progress = object.fProjectileDistanceM > .0001f ?
+				std::clamp(1.f - object.fRemainingDistanceM / object.fProjectileDistanceM, 0.f, 1.f) : 1.f;
+			object.LiveState.CurrentPose.fPositionY = object.fProjectileStartY +
+				(object.fProjectileTargetY - object.fProjectileStartY) * progress +
+				4.f * object.fProjectileArcHeightM * progress * (1.f - progress);
+		}
 		const bool lifetimeExpired = !object.bPersistentLifetime && object.fRemainingMilliseconds <= 0.f;
 		const bool expired = lifetimeExpired ||
 			(object.bExpireOnDistanceEnd && object.fSpeedMps > 0.f &&
@@ -992,8 +1056,8 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 				const std::string& pulseId, const std::uint32_t repeatIndex)
 			{
 				if (!object.bReplicated ||
-					SERVER_COMBAT_OBJECT_SOURCE_KIND::WORLD_ENTITY !=
-						object.eSourceKind)
+					(SERVER_COMBAT_OBJECT_SOURCE_KIND::WORLD_ENTITY != object.eSourceKind &&
+					 !object.bDetonateOnContact))
 				{
 					return;
 				}
@@ -1037,13 +1101,33 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 			contact.Shape.eKind = SERVER_COMBAT_SHAPE_KIND::CIRCLE;
 			contact.Shape.fOuterRadius = object.fContactPresentationRadiusM;
 			bool contacted = false;
-			for (auto& [id, player] : players)
+			if (object.bDetonateOnContact)
+			{
+				SERVER_WORLD_ENTITY* first = nullptr;
+				float nearest = (std::numeric_limits<float>::max)();
+				for (auto& target : worldEntities)
+				{
+					if (!IsDamageable(target) || !ContactOverlaps(object, contact, BodyOf(target))) continue;
+					const float distance = std::hypot(target.fPositionX - object.LiveState.PreviousPose.fPositionX,
+						target.fPositionZ - object.LiveState.PreviousPose.fPositionZ);
+					if (distance < nearest) { nearest = distance; first = &target; }
+				}
+				if (first)
+				{
+					object.LiveState.CurrentPose.fPositionX = first->fPositionX;
+					object.LiveState.CurrentPose.fPositionY = first->fPositionY;
+					object.LiveState.CurrentPose.fPositionZ = first->fPositionZ;
+					QueuePresentationPulse(object.strContactPresentationId, 0u);
+					contacted = true;
+				}
+			}
+			if (!object.bDetonateOnContact) for (auto& [id, player] : players)
 			{
 				// Card pursuit selects only its steering target. Every player can intercept
 				// the card; its suit-specific damage immunity is evaluated below.
 				const bool targetOnly = object.bHoming &&
 					object.eDamageImmuneCardSymbol == LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
-				if (!IsDamageable(player) || (targetOnly && player.iNetEntityId != object.iLockedTargetNetEntityId) ||
+				if (!IsDamageable(player) || player.Has_TimeStop(serverTick) || (targetOnly && player.iNetEntityId != object.iLockedTargetNetEntityId) ||
 					!ContactOverlaps(object, contact, BodyOf(player))) continue;
 				// A matching interception rescues this card occurrence's captive. Other
 				// owners and later binds must survive an older card reaching the player.
@@ -1087,6 +1171,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 		for (std::size_t hitIndex = 0u; hitIndex < object.Hits.size(); ++hitIndex)
 		{
 			SERVER_COMBAT_OBJECT_HIT_RUNTIME& hit = object.Hits[hitIndex];
+			if (object.bDetonateOnContact && !contactTermination) continue;
 			const auto attackPose = AttackPose(object.LiveState.CurrentPose, hit);
 			if (SERVER_COMBAT_OBJECT_HIT_TRIGGER::CONTACT == hit.eTrigger)
 			{
@@ -1111,6 +1196,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 						incoming.iRawDamage =
 							hit.RepeatRawDamage[mark->iAppliedCount];
 						incoming.iStaggerDamage = hit.iStaggerDamage;
+						incoming.iStaggerMaximumDivisor = hit.iStaggerMaximumDivisor;
 						incoming.iPartDamage = hit.iPartDamage;
 						incoming.iCounterPower = hit.iCounterPower;
 						incoming.bCounterFromPrimarySlot = hit.bCounterFromPrimarySlot;
@@ -1137,7 +1223,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 					for (auto& [playerId, target] : players)
 					{
 						(void)playerId;
-						if (!IsDamageable(target) ||
+						if (!IsDamageable(target) || target.Has_TimeStop(serverTick) ||
                             (object.eDamageImmuneCardSymbol != LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE &&
                              target.eMechanicCardSymbol == object.eDamageImmuneCardSymbol) || !ContactOverlaps(
 							object, hit, BodyOf(target)))
@@ -1192,7 +1278,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 				else if (object.fElapsedMilliseconds < dueMilliseconds)
 					break;
 				firedFirstTimedPulse = true;
-				QueuePresentationPulse(hit.strHitId, hit.iAppliedTimedCount);
+				if (!object.bDetonateOnContact) QueuePresentationPulse(hit.strHitId, hit.iAppliedTimedCount);
 				const std::uint32_t rawDamage =
 					hit.RepeatRawDamage[hit.iAppliedTimedCount];
 				if (nullptr != sourcePlayer)
@@ -1234,6 +1320,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 						incoming.iSkillId = object.iSourceSkillId;
 						incoming.iRawDamage = rawDamage;
 						incoming.iStaggerDamage = hit.iStaggerDamage;
+						incoming.iStaggerMaximumDivisor = hit.iStaggerMaximumDivisor;
 						incoming.iPartDamage = hit.iPartDamage;
 						incoming.iCounterPower = hit.iCounterPower;
 						incoming.bCounterFromPrimarySlot = hit.bCounterFromPrimarySlot;
@@ -1257,7 +1344,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 					for (auto& [playerId, target] : players)
 					{
 						(void)playerId;
-						if (!IsDamageable(target) ||
+						if (!IsDamageable(target) || target.Has_TimeStop(serverTick) ||
                             (object.eDamageImmuneCardSymbol != LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE &&
                              target.eMechanicCardSymbol == object.eDamageImmuneCardSymbol) ||
 							!CServerCombatGeometry::Overlaps_Pose(

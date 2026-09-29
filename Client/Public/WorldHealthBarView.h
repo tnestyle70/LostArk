@@ -23,6 +23,8 @@ public:
 	/* Pair order: ally, normal monster, KoukuSaydon, Kouku, Valtan.
 	Reference pixels; each offset moves the complete HP/shield group. */
 	bool Set_Offsets(const std::array<float2_t, 5>& offsets);
+	// Called in the existing world-text pass, after UI occluders are registered.
+	void Render_Text() const;
 	// Shared by the mechanic gauge so both bars follow the visible, interpolated actor.
 	static bool Try_GetHeadAnchor(const HUD_WORLD_HEALTH_BAR_STATE& state, float3_t& position);
 
@@ -35,10 +37,13 @@ private:
 	{
 		~BAR();
 		std::unique_ptr<CUILayoutRuntime> view;
+		std::unique_ptr<CUILayoutRuntime> armorBreakView;
 		std::array<RECT, 4> rects;
 	};
 	std::unique_ptr<BAR> Create_Bar() const;
 
+	struct BREAK_TEXT { float2_t position; f32_t alpha = 1.f; };
+	std::vector<BREAK_TEXT> m_BreakTexts;
 	std::array<float2_t, 5> m_Offsets{};
 	ComPtr<ID3D11Device> m_Device;
 	ComPtr<ID3D11DeviceContext> m_Context;

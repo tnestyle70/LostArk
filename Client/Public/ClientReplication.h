@@ -470,6 +470,8 @@ namespace Client
 			return m_PartyRoster;
 		}
 		const CReplicatedPlayerHealth& Get_PlayerHealth() const { return m_PlayerHealth; }
+		LostArk::Shared::NET_ENTITY_ID Find_ItemTargetPlayerFromRay(
+			const float3_t& origin, const float3_t& direction) const;
 		/* Server-decided world sequence starts, in arrival order. The caller
 		   takes them so one start is never played twice. */
 		const LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE& Get_KoukuBundleState() const { return m_KoukuBundleState; }
@@ -589,6 +591,21 @@ namespace Client
 		bool_t Retry_DeferredValtanGhostPresentationPoolRefresh(
 			std::string& strOutStatus);
 		void Clear_ValtanGhostPresentationPool();
+		static bool Is_BattleItemProjectile(std::string_view archetype);
+		bool Apply_BattleItemImpact(const LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event);
+		bool Spawn_BattleItemProjectile(const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned,
+			COMBAT_OBJECT_PRESENTATION_HANDLE& handle, std::string& status);
+		void Apply_BattleItemProtection(const LostArk::Shared::PLAYER_SNAPSHOT& player,
+			std::uint32_t serverTick, const std::shared_ptr<CCharacter>& character);
+		void Clear_BattleItemProtection(LostArk::Shared::NET_ENTITY_ID entity = LostArk::Shared::INVALID_NET_ENTITY_ID);
+		struct BATTLE_ITEM_PROTECTION_PRESENTATION final
+		{
+			std::weak_ptr<CCharacter> owner;
+			std::uint32_t endTick = 0u;
+			std::string occurrence;
+		};
+		std::map<std::pair<LostArk::Shared::NET_ENTITY_ID, std::uint32_t>,
+			BATTLE_ITEM_PROTECTION_PRESENTATION> m_BattleItemProtection;
 		bool Apply_CombatObjectSpawn(
 			const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned);
 		bool Apply_CombatObjectPresentationEvent(

@@ -285,6 +285,8 @@ struct WORLD_SEQUENCE_SOUND_TRACK
     uint32_t durationMs = 1u;
     f32_t volume = 1.f;
     bool_t loopToDuration = false;
+    // Native WAV milliseconds skipped before this occurrence starts.
+    uint32_t sourceStartMs = 0u;
     bool operator==(const WORLD_SEQUENCE_SOUND_TRACK&) const = default;
 };
 

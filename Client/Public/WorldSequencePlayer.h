@@ -251,9 +251,12 @@ public:
 	   scrub never restarts the sequence or loses the placed pose. */
 	void Set_Paused(bool_t paused);
     // For a presentation owner that supplies source milliseconds by external seek.
-    // This changes audio pitch only; the owner continues to drive every track.
-    void Set_ExternalSoundClockRate(f32_t rate) { if (std::isfinite(rate) && rate > 0.f && rate <= 16.f) m_ExternalSoundClockRate = rate; }
+    // Reconcile media position as well as pitch after frame stalls or deferred advances.
+    void Set_ExternalSoundClockRate(f32_t rate)
+    { if (std::isfinite(rate) && rate > 0.f && rate <= 16.f) { m_ExternalSoundClockRate = rate; m_HasExternalSoundClock = true; } }
     void Update_SoundTails(f32_t timeDelta);
+    // Complete audio without releasing visual ownership; explicit seek may play it again.
+    void Finish_Sounds();
     // Level-owned listener audience; visual clocks continue when its sound is inaudible.
     void Set_SoundAudience(std::function<bool(const std::string&)> audience) { m_SoundAudience = std::move(audience); }
     void Retire_InstanceSoundTails(const std::string& instanceId);
@@ -461,6 +464,7 @@ private:
 	std::vector<ACTIVE_INSTANCE> m_Active;
     std::vector<RETIRED_SOUND> m_RetiredSounds;
     f32_t m_ExternalSoundClockRate = 1.f;
+    bool_t m_HasExternalSoundClock = false;
     std::function<bool(const std::string&)> m_SoundAudience;
 	// Finished clocks no longer tick, but own their held pose until explicit stop/replay.
 	std::vector<ACTIVE_INSTANCE> m_Held;

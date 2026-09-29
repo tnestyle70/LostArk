@@ -47877,6 +47877,7 @@
           "durationMs": 3255,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
+          "suppressLocalMario": true,
           "worldSequenceInstanceId": ""
         },
         {

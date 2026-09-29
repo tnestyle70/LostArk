@@ -387,5 +387,8 @@
 	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
 	</ClCompile>
     <ClInclude Include="..\Private\ServerGameplayContractTests_PlayerSkillFixtures.h" />
+    <ClCompile Include="..\Private\ServerGameplayContractTests_BattleItems.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
   </ItemGroup>
 </Project>

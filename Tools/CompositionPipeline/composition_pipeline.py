@@ -2766,7 +2766,7 @@ def _validate_world_sequence_sound_tracks(
         if not isinstance(row, dict):
             raise CompositionError(f"{row_context} must be an object")
         _require_exact_fields(row, ("soundTrackId", "assetId", "startMs", "durationMs", "volume"),
-                              ("loopToDuration",), row_context)
+                              ("loopToDuration", "sourceStartMs"), row_context)
         identity = _require_owner_stable_id(row["soundTrackId"], f"{row_context}.soundTrackId", 128)
         if identity in identities:
             raise CompositionError(f"{row_context}.soundTrackId is duplicate")
@@ -2777,7 +2777,9 @@ def _validate_world_sequence_sound_tracks(
             raise CompositionError(f"{row_context}.assetId must be a Resources-relative Sound WAV path")
         start = _require_nonnegative_int(row["startMs"], f"{row_context}.startMs")
         duration = _require_positive_int(row["durationMs"], f"{row_context}.durationMs")
-        if start > template["durationMs"] or start + duration > WORLD_SEQUENCE_MAX_DURATION_MS:
+        source_start = _require_nonnegative_int(row.get("sourceStartMs", 0), f"{row_context}.sourceStartMs")
+        if (start > template["durationMs"] or start + duration > WORLD_SEQUENCE_MAX_DURATION_MS or
+                source_start + duration > WORLD_SEQUENCE_MAX_DURATION_MS):
             raise CompositionError(f"{row_context} sound timing is outside its bounds")
         _require_finite_number(row["volume"], f"{row_context}.volume", minimum=0, maximum=4)
         if "loopToDuration" in row and not isinstance(row["loopToDuration"], bool):

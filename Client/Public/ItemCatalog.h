@@ -1,11 +1,19 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
 
 namespace Client
 {
+	struct BATTLE_ITEM_EFFECT_BINDING { const char* itemId; const char* effectAssetId; };
+	inline constexpr std::array<BATTLE_ITEM_EFFECT_BINDING, 4u> BATTLE_ITEM_EFFECTS = {{
+		{ "BATTLE_DESTRUCTION_BOMB", "effect.world.item.destruction_bomb" },
+		{ "BATTLE_WHIRLWIND_GRENADE", "effect.world.item.whirlwind_grenade" },
+		{ "BATTLE_HOLY_CHARM", "effect.world.item.holy_charm" },
+		{ "BATTLE_TIME_STOP_POTION", "effect.world.item.time_stop" }
+	}};
 	/* One row of Data/Items/ItemCatalog.json. Debug-only slice: the F1 Give
 	Item dropdown needs a display name, which the Server bootstrap does not
 	carry, so the Client reads the source document directly the same way
@@ -21,6 +29,7 @@ namespace Client
 		// use restores. Display/UI-only -- the Server's own copy is what's
 		// actually authoritative when a use is applied.
 		std::uint32_t iHealPercent = 0;
+		float fTargetRangeM = 0.f;
 		// "combat" (equipment, shown under the InventoryView Combat filter and
 		// the item-upgrade window) or "use" (consumables/materials/currency,
 		// shown under the Use filter). Display/filter-only, never sent to Server.

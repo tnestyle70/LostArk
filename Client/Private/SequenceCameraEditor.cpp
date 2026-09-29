@@ -5,6 +5,23 @@
 
 namespace Client
 {
+bool CSequenceCameraEditor::Set_KeyPose(EFFECT_CAMERA_ROW& row, const std::string& id,
+    const VALTAN_CINEMATIC_CAMERA_POSE& pose, std::string& status)
+{
+    const auto found = std::find_if(row.cue.Keyframes.begin(), row.cue.Keyframes.end(),
+        [&](const auto& key) { return key.strSceneId == id; });
+    if (!pose.hasUp || found == row.cue.Keyframes.end() || row.upVectors.size() != row.cue.Keyframes.size())
+    { status = "Select a valid camera key and capture a complete camera pose."; return false; }
+    const auto index = static_cast<std::size_t>(found - row.cue.Keyframes.begin());
+    auto candidate = row;
+    candidate.cue.Keyframes[index].vEye = pose.vEye;
+    candidate.cue.Keyframes[index].vLookAt = pose.vLookAt;
+    candidate.upVectors[index] = pose.vUp;
+    if (!CEffectRecoveryCamera::Validate({candidate}, status)) return false;
+    // Commit only pose fields, keeping selection iterators and all authored timing/lens settings.
+    found->vEye = pose.vEye; found->vLookAt = pose.vLookAt; row.upVectors[index] = pose.vUp;
+    status.clear(); return true;
+}
 bool CSequenceCameraEditor::Set_KeyTime(EFFECT_CAMERA_ROW& row, const std::string& id, const std::uint32_t time)
 {
     auto found = std::find_if(row.cue.Keyframes.begin(), row.cue.Keyframes.end(), [&](const auto& key) { return key.strSceneId == id; });
@@ -56,7 +73,8 @@ bool CSequenceCameraEditor::Offset_Range(EFFECT_CAMERA_ROW& row, const std::uint
     row = std::move(candidate); return true;
 }
 SEQUENCE_CAMERA_EDITOR_RESULT CSequenceCameraEditor::Render(EFFECT_CAMERA_ROW& destination,
-    SEQUENCE_CAMERA_EDITOR_STATE& state, const std::uint32_t cursor)
+    SEQUENCE_CAMERA_EDITOR_STATE& state, const std::uint32_t cursor,
+    const SEQUENCE_CAMERA_CAPTURE& captureFreeCamera)
 {
     auto row = destination;
     SEQUENCE_CAMERA_EDITOR_RESULT result;
@@ -73,6 +91,7 @@ SEQUENCE_CAMERA_EDITOR_RESULT CSequenceCameraEditor::Render(EFFECT_CAMERA_ROW& d
     int index = static_cast<int>(selected - row.cue.Keyframes.begin());
     if (ImGui::Button("Previous key") && index > 0) { --index; state.selectedKeyId = row.cue.Keyframes[index].strSceneId; result.seekLocalMs = row.cue.Keyframes[index].iTimeMs; }
     ImGui::SameLine(); if (ImGui::Button("Next key") && index + 1 < static_cast<int>(row.cue.Keyframes.size())) { ++index; state.selectedKeyId = row.cue.Keyframes[index].strSceneId; result.seekLocalMs = row.cue.Keyframes[index].iTimeMs; }
+    ImGui::TextDisabled("%zu keys | Delete key keeps the first key and interpolation settings.", row.cue.Keyframes.size());
     if (ImGui::BeginListBox("Keys", {-1.f, 125.f}))
     {
         ImGuiListClipper clipper; clipper.Begin(static_cast<int>(row.cue.Keyframes.size()));
@@ -96,6 +115,18 @@ SEQUENCE_CAMERA_EDITOR_RESULT CSequenceCameraEditor::Render(EFFECT_CAMERA_ROW& d
     result.changed |= ImGui::DragFloat3("Eye", &selected->vEye.x, .01f);
     result.changed |= ImGui::DragFloat3("Look at", &selected->vLookAt.x, .01f);
     result.changed |= ImGui::DragFloat3("Up", &row.upVectors[index].x, .01f);
+    if (captureFreeCamera)
+    {
+        ImGui::BeginDisabled(row.modelRelative);
+        if (ImGui::Button("Use free cam pos"))
+        {
+            VALTAN_CINEMATIC_CAMERA_POSE pose;
+            if (captureFreeCamera(pose, state.validationStatus))
+                result.changed |= Set_KeyPose(row, state.selectedKeyId, pose, state.validationStatus);
+        }
+        ImGui::EndDisabled();
+        ImGui::TextDisabled("Copies Eye, Look at and Up to this key. Time and FOV stay unchanged.");
+    }
     result.changed |= ImGui::DragFloat(row.horizontalFov ? "FOV X" : "FOV Y", &selected->fFovYDegrees, .1f, 1.01f, 178.99f);
     result.changed |= ImGui::Checkbox("Cut before key", &selected->cutBefore);
     if (ImGui::Button("Seek to key")) result.seekLocalMs = selected->iTimeMs;

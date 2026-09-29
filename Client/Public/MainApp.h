@@ -131,6 +131,9 @@ public:
 	widgets) -- single source of truth for the sound asset path so every button's own
 	click-handling code calls this instead of repeating the literal path. */
 	static void Play_UIButtonClickSound();
+	/* Retail's party request sound (sys_party_request1), played once when an accept / decline
+	   popup opens: the party invite, the raid entry vote and the commander gate vote. */
+	static void Play_PopupRequestSound();
 
 	/* CMainApp is a single process-lifetime instance (see Create()/Free()), but
 	nothing previously exposed it back to a Level the way CLevel_Bern/
@@ -150,6 +153,12 @@ public:
 	void Open_RepairWindow();
 	/* Bern's potion merchants: opens the shop the NPC placement runs. */
 	void Open_ShopWindow(const string& strNpcPlacementId);
+	/* The world's bottom-right icon buttons (CSystemMenuButtonsView). The options window is the
+	one Escape opens; a no-op when it is already open. */
+	void Open_SystemOptionsWindow();
+	/* Saves what the character carries, leaves the world for the Lobby and has the character
+	select window open there. False changes nothing (a Level transition is already pending). */
+	bool_t Return_ToCharacterSelect();
 
 	static void Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle);
 	/* Every domain tool writes one stable Pattern ID into this process-wide
@@ -883,6 +892,9 @@ private:
 		wstring		strState;
 		wstring		strTag;
 		uint32_t	iCharacterCount = 0;
+		/* The row's head-count is this PC's saved roster (CCharacterRoster) instead of
+		iCharacterCount: there is no account, so the characters belong to that one server. */
+		bool_t		bCountsSavedCharacters = false;
 		bool_t		bCreatable = true;
 	};
 	vector<LOBBY_SERVER_ENTRY>	m_LobbyServers;
@@ -933,6 +945,8 @@ private:
 	runtime path for; every other Escape consumer keeps its own meaning. */
 	unique_ptr<CSystemOptionWindowView> m_pSystemOptionView = { nullptr };
 	bool_t m_bSystemOptionKeyDown = false;
+	/* Set by Return_ToCharacterSelect: the Lobby it lands in opens the character select window. */
+	bool_t m_bOpenCharacterSelectOnLobby = false;
 	/* Edge for Close_RuntimeWindowsForLoading. */
 	bool_t m_bWasLoadingLevel = false;
 	/* Open toggle windows in opening order (oldest first); [0, m_iEscapeWindowCount). */

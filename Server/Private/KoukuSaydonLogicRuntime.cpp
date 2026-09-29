@@ -926,6 +926,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Discard(
 	Reveal_CardMazeEntryPlayers(ledger, players);
 	if (nullptr != pBoss)
 	{
+		pBoss->iKoukuItemStaggerMaximum = 0u;
+		pBoss->iKoukuItemStaggerCredit = 0u;
 		pBoss->bKoukuShieldActive = false;
 		pBoss->fKoukuShieldArcDegrees = 0.f;
 		pBoss->KoukuShieldRegions.clear();
@@ -1200,6 +1202,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Open_Window(
         (void)CBossCombatRuntime::Set_Flag(boss.BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, true);
         break;
 	case BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW:
+		boss.iKoukuItemStaggerMaximum = window.iThreshold;
+		boss.iKoukuItemStaggerCredit = 0u;
 		boss.bKoukuShieldActive = window.fShieldArcDegrees > 0.f;
 		boss.fKoukuShieldArcDegrees = window.fShieldArcDegrees;
 		boss.fKoukuShieldNormalYawOffsetDegrees = window.fNormalYawOffsetDegrees;
@@ -1245,6 +1249,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Close_Window(
 	(void)players;
 	if (BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW == window.eKind)
 	{
+		boss.iKoukuItemStaggerMaximum = 0u;
+		boss.iKoukuItemStaggerCredit = 0u;
 		boss.bKoukuShieldActive = false;
 		boss.fKoukuShieldArcDegrees = 0.f;
 		boss.KoukuShieldRegions.clear();
@@ -1480,7 +1486,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
 		break;
 	}
 	case BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR:
-        if (Can_ReceiveSpatialContact(player) && !player.bPatternBound &&
+        if (!player.Has_TimeStop(serverTick) && !player.Has_HolyCharmProtection(serverTick) &&
+            Can_ReceiveSpatialContact(player) && !player.bPatternBound &&
             PLAYER_ACTION_STATE::GRABBED != player.eAction &&
 			PLAYER_ACTION_STATE::TRIGGER_MOVE != player.eAction &&
 			PLAYER_ACTION_STATE::WALL_CLIMB != player.eAction &&
@@ -2083,7 +2090,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 		{
 			const std::uint32_t lost = state.iBossHpAtOpen > boss.iCurrentHp ?
 				state.iBossHpAtOpen - boss.iCurrentHp : 0u;
-			if (window.iThreshold > 0u && lost >= window.iThreshold)
+			const std::uint64_t progress = static_cast<std::uint64_t>(lost) + boss.iKoukuItemStaggerCredit;
+			if (window.iThreshold > 0u && progress >= window.iThreshold)
 			{
 				Close_Window(boss, window, state, players);
 				Apply_Results(window.OnSuccess, state, nullptr, players, boss, catalog,
@@ -2093,7 +2101,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 					outOutput.bEndPatternEarly = true;
 					outOutput.bStaggerSuccess = true;
 				}
-				// This authored window measures lost HP, not the typed stagger gauge.
+				// Existing skill HP contribution and item-only stagger credit share this window.
 				// Publish its one-shot success without inventing damage or a contributor.
 				if (outDamageEvents.size() < LostArk::Shared::MAX_DAMAGE_EVENTS)
 				{
@@ -2214,7 +2222,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 			{
 				const bool ownedCapture = captureContact && Is_CurrentBossHandCapture(
 					player, boss.iNetEntityId, boss.iPatternSequence, serverTick);
-				if ((!Can_ReceiveSpatialContact(player) && !ownedCapture) || (enter && !window.bRearmOnExit && !window.bRepeatAfterKnockback && !window.iRepeatIntervalMs &&
+				if (player.Has_TimeStop(serverTick) || (!Can_ReceiveSpatialContact(player) && !ownedCapture) || (enter && !window.bRearmOnExit && !window.bRepeatAfterKnockback && !window.iRepeatIntervalMs &&
 					KOUKUSAYDON_LOGIC_ANSWER::SUCCESS == state.Answers[playerId]))
 					continue;
 				const auto caught = std::find_if(window.CardRegions.begin(), window.CardRegions.end(),
@@ -3180,7 +3188,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Project_MechanicGauge(
 		const auto lost = state.iBossHpAtOpen > boss.iCurrentHp ? state.iBossHpAtOpen - boss.iCurrentHp : 0u;
 		snapshot.eMechanicGaugeKind = BOSS_MECHANIC_GAUGE_KIND::STAGGER;
 		snapshot.iMaximumMechanicGauge = window.iThreshold;
-		snapshot.iCurrentMechanicGauge = window.iThreshold - (std::min)(lost, window.iThreshold);
+		snapshot.iCurrentMechanicGauge = window.iThreshold - static_cast<std::uint32_t>((std::min)(
+			static_cast<std::uint64_t>(lost) + boss.iKoukuItemStaggerCredit, static_cast<std::uint64_t>(window.iThreshold)));
 		return;
 	}
 	// The typed detonation is scheduled in parent time too: its preceding 13 s

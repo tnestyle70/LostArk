@@ -73,7 +73,8 @@ class ValtanStageContactsTests(unittest.TestCase):
         master=self.join();jump=next(p for p in master['patterns'] if p['patternId']=='VALTAN_HIGH_JUMP')
         land=next(s for s in jump['stages'] if s['stageId']=='LAND')
         self.assertEqual([201],land['hit']['schedule']['offsetsMs'])
-        self.assertEqual(('CIRCLE',8.75,50),tuple(land['hit']['contacts'][0][k] for k in ('shape','radiusM','damagePercent')))
+        self.assertEqual(('CIRCLE',12.25,50),tuple(land['hit']['contacts'][0][k] for k in ('shape','radiusM','damagePercent')))
+        self.assertEqual(12.25,land['hit']['shape']['outerRadiusM'])
         profile=next(p for p in self.docs[pipeline.DAMAGE_REL]['profiles'] if p['damageProfileId']=='damage.valtan.high-jump')
         self.assertEqual(500,profile['damageRatePercent'])
 

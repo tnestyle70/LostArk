@@ -50,6 +50,8 @@ public:
         bool active = false;
         bool paused = false;
         bool looping = false;
+        bool repeatMovie = true;
+        bool completedHold = false;
         std::uint64_t ownerToken = 0;
         std::uint64_t loopCycle = 0;
         double clockMs = 0.;
@@ -73,9 +75,11 @@ public:
         std::function<void(bool)> setPaused;
         std::function<bool(bool, double)> seek;
         std::function<bool(double)> setPlaybackRate;
+        std::function<bool(const std::string&, bool, std::string&)> setRepeatMovie;
         std::function<std::shared_ptr<const CLASS_MOVIE_TIMELINE>(const std::string&, bool)> timeline;
         std::function<bool(std::string&)> beginAuthoring, saveAuthoring, reloadAuthoring, publishAuthoring;
         std::function<double(const std::string&, bool, double, bool)> mapTime;
+        std::function<bool(VALTAN_CINEMATIC_CAMERA_POSE&, std::string&)> captureFreeCamera;
         std::function<bool(const std::string&, bool, const std::string&, const std::string&, CLASS_MOVIE_AUTHORING_BOX&, std::string&)> editableBox;
         std::function<bool(const CLASS_MOVIE_AUTHORING_BOX&, const DATA_JSON_VALUE&, std::string&)> applyBox;
         std::function<bool(const CLASS_MOVIE_AUTHORING_BOX&, double, double, CLASS_MOVIE_TIMING_EDIT, std::string&)> editTiming;

@@ -101,6 +101,13 @@ bool Client::CItemCatalog::Load(std::string& outStatus)
 		definition.iMaxStack = static_cast<std::uint32_t>(maxStack->Get_Number());
 		definition.strIconPath = iconPath->Get_String();
 		definition.iHealPercent = static_cast<std::uint32_t>(healPercent->Get_Number());
+		if (const auto* battle = value.Find("battleUse"))
+		{
+			const auto* range = Required(*battle, "rangeCm", DATA_JSON_TYPE::NUMBER);
+			if (!range || range->Get_Number() < 0. || range->Get_Number() > 5000.)
+			{ outStatus = "ItemCatalog.json has an invalid battle target range"; return false; }
+			definition.fTargetRangeM = static_cast<float>(range->Get_Number() * .01);
+		}
 		definition.strCategory = category->Get_String();
 		const auto ReadOptionalText = [&value](const char* pKey, std::string& outText)
 		{

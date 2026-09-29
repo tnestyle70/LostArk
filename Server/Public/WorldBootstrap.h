@@ -175,6 +175,19 @@ namespace LostArk::Server
 		float x = 0.f, y = 0.f, z = 0.f;
 	};
 
+	// Collision projection of the existing placement-relative linear bounce track.
+	// The publisher resolves stable bindings; the Server never reads model assets.
+	struct MARIO_BOUNCING_BALL final
+	{
+		struct KEY { float timeMs = 0.f, offsetY = 0.f; };
+		std::uint64_t placementId = 0u;
+		float x = 0.f, y = 0.f, z = 0.f, radius = 0.f;
+		float durationMs = 0.f, playbackSpeed = 1.f;
+		std::vector<KEY> keys;
+		float Sample_OffsetY(double clockMs) const;
+		void Sample_SweptOffsetY(double fromMs, double toMs, float& low, float& high) const;
+	};
+
 	class CWorldBootstrap final
 	{
 	public:
@@ -191,12 +204,14 @@ namespace LostArk::Server
 		const std::vector<std::string>& Get_SequenceInstanceIds() const { return m_SequenceInstanceIds; }
 		const std::vector<CARD_MAZE_MARCH_LANE>& Get_CardMazeLanes() const { return m_CardMazeLanes; }
 		const std::vector<MARIO_SOURCE_BALL>& Get_MarioBalls() const { return m_MarioBalls; }
+		const std::vector<MARIO_BOUNCING_BALL>& Get_MarioBouncingBalls() const { return m_MarioBouncingBalls; }
 
 	private:
 		std::vector<WORLD_BOOTSTRAP_PLACEMENT> m_Placements;
 		std::vector<std::string> m_SequenceInstanceIds;
 		std::vector<CARD_MAZE_MARCH_LANE> m_CardMazeLanes;
 		std::vector<MARIO_SOURCE_BALL> m_MarioBalls;
+		std::vector<MARIO_BOUNCING_BALL> m_MarioBouncingBalls;
 		std::string m_strAreaId;
 		std::string m_strStatus;
 		std::uint32_t m_iRevision = 0;

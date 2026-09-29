@@ -1295,6 +1295,12 @@ Pattern 전체 600초 제한은 유지한다. PRODUCT는 기존 64 Stage 제한�
 다른 몸체의 DRAFT 저장만으로 실제 boss archetype을 바꾸지는 않는다.
 기존 publisher의 runtime timing 제한과 검증 후 명시적 배포 절차를 유지한다.
 
+Mario phase2의 전장 커튼은 enabled `MARIO_PHASE2_PLAYERS` trigger가 있는 Pattern의
+정확한 `boss.kouku.curtain_1` occurrence에 Product-only `suppressLocalMario=true`를
+투영한다. Client는 로컬 Server snapshot의 Mario 참가 상태로 해당 occurrence만 소비·종료한다.
+전체 Pattern과 다른 파티원, 댄스타임의 같은 leaf는 계속 재생한다. 이 필드는 저작 UI 입력이
+아니며 publisher에서 파생한다. 실제 Product parser까지 연결해 검증하고 bool 조건만 시험하지 않는다.
+
 대형 이름 Action의 로컬 preview는 현재 Client가 읽은 BossCatalog의 대형 세이튼
 `bodyModelPreScale / 0.017` 비율을 사용하고 일반 동작/정지 시 기준 크기로 복원한다.
 현재 저장된 catalog 값으로 비율을 계산하며, 무기도 catalog의 `weaponModelPreScale`과 v8
@@ -1962,3 +1968,47 @@ Effect는 `startMs=400`으로 저장한다. 재생기가 sourceStart를 뺀 67ms
 앞선 occurrence의 누적 wall 시각을 더한다. 67을 저장하면 다른 원본 시각이 되어 거부된다.
 Stage-clock binding은 계속 Stage의 wall 시각을 저장한다. 반복 clip을 여러 Stage로 나눌 때도
 원본 source 시각과 occurrence ID를 맞추고, 반복별 stable binding ID로 호출을 구분한다.
+
+### World Movie Sound의 앞부분 자르기와 시계 동기화
+
+Sound Box Detail의 `Audio source in (ms)`는 timeline 시작 시각을 유지하면서 WAV 앞부분을
+건너뛴다. 왼쪽 edge를 줄이면 같은 만큼 음원 source-in도 증가하고, body 이동은 현재
+source-in을 유지한다. 오른쪽 edge는 종료 위치만 조절한다. `Apply row → Save movie →
+Publish`가 기존 World source와 게시 데이터를 갱신한다. 일반 배치 startMs와 음원의
+sourceStartMs를 혼동하지 않는다. optional sourceStartMs의 생략값은0이며 새 Client/게시자가
+그 필드를 함께 소비한다. source-in이 음원 밖이면 적용을 거절하고 기존 초안을 유지한다.
+
+Movie 오디오는 원본 time dilation과 사용자 속도를 유지하면서 actual media cursor와
+Movie source 시간을 비교한다. 긴 frame 지연 후100ms를 넘긴 차이를 교정하고, 정상
+범위에서는 채널을 매 frame seek하지 않는다. pause/seek/loop도 같은 owner를 사용하며
+일반 World와 전투 SFX 재생 시계는 이 Movie 전용 교정의 대상이 아니다.
+
+
+### World Movie 카메라 키에 현재 자유 시점 사용
+
+Character Selection Movie의 Camera box에서 Open Sequence Camera Tool을 열고 수정할 key를
+선택한다. F6으로 자유 카메라를 활성화해 구도를 맞춘 뒤 Use free cam pos를 누르면 해당 key의
+Eye/LookAt/Up을 가져온다. key시간·FOV·cut·보간은 유지하며 follow/무비override 중에는 거절한다.
+기존 Save movie/Publish 흐름으로 저장·게시한다. Delete key는 첫 key를 보호하면서 선택key를
+줄인다. 큰 위치 변경이나 중간key 삭제는 앞뒤 경로를 바꾸므로 재생하며 확인한다.
+
+
+### Movie 1회 재생과 마지막 장면 유지
+
+World / Character Select의 Repeat movie는 선택 클래스의 재생 정책이다. OFF에서 Play All은
+현재 다섯 클래스는 첫 주요 연출 Camera box를 한 번 재생한 뒤 그 마지막 유효 장면을 유지한다.
+뒤쪽 Camera box로 자동 진행하지 않는다. 완료 시 배우·카메라·Effect는 유지하고
+Movie 사운드는 종료한다. 완료 메시지가 보이면 Resume는 비활성화되며 Play All로 처음부터
+다시 재생하거나 timeline Seek로 다른 시점을 확인한다. F6 자유 시점과 Movie 시점 복귀도 가능하다.
+
+Intro/Loop 데이터와 기존 키는 보존한다. Loop 탭의 명시적 미리보기는 계속 사용하며 Repeat movie
+OFF에서는 그 phase도 1회 후 고정된다. Repeat Selection은 선택 Effect 구간의 별도 설정이다.
+Repeat movie ON은 기존 Intro→Loop 반복을 복원한다. Save movie로 저장하며, 기존 저장 동작은
+미리보기를 Stop하므로 저장 후 Play All을 누른다. 키 미적용 또는 publish 중에는 repeat 변경을 막는다.
+
+정본은 Data/Camera/ClassSelection.cinematics.json의 scene별 optional repeatMovie bool이다.
+생략한 이전 문서는 true로 읽으며, 현재 다섯 클래스는 사용자 요청으로 false를 적용한다.
+optional holdAfterCameraId는 Intro의 종료 기준 Camera box stable ID를 참조한다. 현재 다섯 클래스는
+각 첫 Camera box를 지정한다. 그 box의 길이·위치를 편집하면 source clock/slomo를 반영한 종료
+시점도 함께 바뀐다. 이 필드가 없는 문서는 전체 Intro 끝을 유지한다. 뒤쪽 box와 키는 삭제하지
+않으며 일시정지된 Seek로 계속 편집할 수 있다. animation/sound box의 시각과 duration은 보존한다.

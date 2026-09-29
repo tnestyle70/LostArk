@@ -2358,7 +2358,19 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
     {
         for (const auto& id : CEffectCatalog::Get_EffectAssetIds())
             if (MatchesOwner(id) && CEffectCatalog::Is_DirectAuthoredDocument(id) && MatchesSearch(id)) EffectIds.push_back(id);
-        std::ranges::sort(EffectIds);
+        const auto worldOrder = [](const std::string& id)
+        {
+            constexpr std::array<std::string_view, 6u> first = {
+                "effect.world.mouse_click", "effect.world.move_destination",
+                "effect.world.item.destruction_bomb", "effect.world.item.whirlwind_grenade",
+                "effect.world.item.holy_charm", "effect.world.item.time_stop" };
+            const auto found = std::find(first.begin(), first.end(), id);
+            return static_cast<std::size_t>(found - first.begin());
+        };
+        std::ranges::sort(EffectIds, [&](const auto& left, const auto& right) {
+            const auto leftOrder = worldOrder(left), rightOrder = worldOrder(right);
+            return leftOrder != rightOrder ? leftOrder < rightOrder : left < right;
+        });
         EffectIds.erase(std::unique(EffectIds.begin(), EffectIds.end()), EffectIds.end());
     }
     const auto visible = [&](const std::size_t index) {

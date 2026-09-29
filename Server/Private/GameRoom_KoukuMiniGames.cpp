@@ -185,10 +185,84 @@ void LostArk::Server::CGameRoom::Update_MarioBombContacts(
             hit.fPushDirectionZ = dz / static_cast<float>(length);
             hit.fPushRangeM = 4.f; hit.iPushMs = 1000u; hit.iServerTick = updateTick;
             Configure_MarioHazardLaunch(hit);
-            (void)CServerCombatHitRuntime::Apply_WorldToPlayer(player, hit, m_GameplayCatalog, m_TickDamageEvents);
+            const auto result = CServerCombatHitRuntime::Apply_WorldToPlayer(
+                player, hit, m_GameplayCatalog, m_TickDamageEvents);
+            if (result == SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED) continue;
             player.MarioBombHitBirths[identity] = birth;
+            // Each entrant owns this contact ledger. Reliable STOP carries the
+            // exact deterministic generation even when its damage was absorbed
+            // or a transient damage snapshot is coalesced before presentation.
+            S2C_WORLD_SEQUENCE_PLAY stopped;
+            stopped.eOperation = WORLD_SEQUENCE_OPERATION::STOP;
+            stopped.strSequenceInstanceId = Bomb::InstanceId(binding, slot);
+            stopped.iStartTick = Bomb::BirthTick(phase, birth, SERVER_TICK_HZ);
+            stopped.iServerTick = updateTick;
+            CPacketWriter writer;
+            if (!stopped.iStartTick || !Write_Message(writer, stopped))
+                Mark_RuntimeFailure("mario.bomb.contact-stop");
+            else if (const auto session = Find_Session(player.iSessionId);
+                session && !session->Send_Frame(PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY, writer.Get_Buffer()))
+                session->Request_Close();
             if (!player.iCurrentHp) return;
         }
+    }
+}
+
+void LostArk::Server::CGameRoom::Update_MarioBouncingBallContacts(
+    SERVER_PLAYER& player, const std::uint32_t updateTick)
+{
+    using namespace LostArk::Shared;
+    const auto stage = player.iCurrentHp && player.iMarioStage >= 1u && player.iMarioStage <= 4u ? player.iMarioStage : 0u;
+    if (stage != player.iMarioBouncingBallContactStage)
+    {
+        player.MarioBouncingBallContacts.clear();
+        player.iMarioBouncingBallContactStage = static_cast<std::uint8_t>(stage);
+    }
+    if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || !stage || !updateTick || !player.isCombatReady ||
+        player.TriggerMove.isActive || player.eAction == PLAYER_ACTION_STATE::DEAD ||
+        player.eAction == PLAYER_ACTION_STATE::FALLING || player.eAction == PLAYER_ACTION_STATE::GRABBED) return;
+    const double clockMs = double(updateTick) * (1000. / SERVER_TICK_HZ);
+    for (const auto& ball : m_WorldBootstrap.Get_MarioBouncingBalls())
+    {
+        const float dx = (std::max)(0.f, std::abs(player.fPositionX - ball.x) - WorldCollision::PLAYER_HALF_EXTENT_X);
+        const float dz = (std::max)(0.f, std::abs(player.fPositionZ - ball.z) - WorldCollision::PLAYER_HALF_EXTENT_Z);
+        const float horizontalSquared = dx * dx + dz * dz;
+        float low = 0.f, high = 0.f;
+        bool contact = horizontalSquared <= ball.radius * ball.radius;
+        if (contact)
+        {
+            ball.Sample_SweptOffsetY(clockMs - 1000. / SERVER_TICK_HZ, clockMs, low, high);
+            const float verticalRadius = std::sqrt((std::max)(0.f, ball.radius * ball.radius - horizontalSquared));
+            const float bodyY = player.fPositionY + WorldCollision::PLAYER_CENTER_OFFSET_Y;
+            contact = bodyY + WorldCollision::PLAYER_HALF_EXTENT_Y >= ball.y + ball.radius + low - verticalRadius &&
+                bodyY - WorldCollision::PLAYER_HALF_EXTENT_Y <= ball.y + ball.radius + high + verticalRadius;
+        }
+        if (!contact) { player.MarioBouncingBallContacts.erase(ball.placementId); continue; }
+        if (player.MarioBouncingBallContacts.contains(ball.placementId)) continue;
+        SERVER_WORLD_TO_PLAYER_HIT hit{};
+        hit.iRawDamage = 1320u;
+        hit.bIgnoreDefense = hit.bIgnoreCounter = true;
+        hit.fSourceX = ball.x; hit.fSourceZ = ball.z;
+        hit.bUsePushDirection = true;
+        // The sphere has no horizontal velocity. Push away along the current
+        // rail so a hit cannot strand the entrant outside the scrolling lane.
+        float directionX = player.fPositionX - ball.x, directionZ = player.fPositionZ - ball.z;
+        if (player.bMarioRailReady)
+        {
+            float side = directionX * player.fMarioRailRightX + directionZ * player.fMarioRailRightZ;
+            if (std::abs(side) < .001f) side = -1.f;
+            directionX = player.fMarioRailRightX * (side < 0.f ? -1.f : 1.f);
+            directionZ = player.fMarioRailRightZ * (side < 0.f ? -1.f : 1.f);
+        }
+        const float length = std::hypot(directionX, directionZ);
+        hit.fPushDirectionX = length > .001f ? directionX / length : 1.f;
+        hit.fPushDirectionZ = length > .001f ? directionZ / length : 0.f;
+        hit.fPushRangeM = 4.f; hit.iPushMs = 1000u; hit.iServerTick = updateTick;
+        Configure_MarioHazardLaunch(hit);
+        if (CServerCombatHitRuntime::Apply_WorldToPlayer(player, hit, m_GameplayCatalog, m_TickDamageEvents) ==
+            SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED) continue;
+        player.MarioBouncingBallContacts.emplace(ball.placementId, true);
+        if (!player.iCurrentHp) return;
     }
 }
 

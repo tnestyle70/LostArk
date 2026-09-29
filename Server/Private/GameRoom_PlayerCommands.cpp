@@ -99,6 +99,7 @@ void LostArk::Server::CGameRoom::Execute_PlayerMove(
 	}
 
 	player.iLastMoveSequence = move.iClientSequence;
+	if (player.Has_TimeStop(m_iServerTick)) return;
 	if (((player.CardMaze.flags & 1u) && !m_KoukuCardMaze.Is_SoloHunter(player.iPlayerId)) ||
 		player.CardMaze.transferStartTick) return;
 	if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
@@ -292,7 +293,7 @@ void LostArk::Server::CGameRoom::Commit_PendingPlayerCommand(
 	const SERVER_PENDING_PLAYER_COMMAND pending = player.PendingCommand;
 	player.PendingCommand.Clear();
 	player.hasBufferedComboInput = false;
-	if (player.bPatternBound ||
+	if (player.bPatternBound || player.Has_TimeStop(actionStartTick) ||
 		LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction ||
 		0u == player.iCurrentHp ||
 		player.fKnockbackRemainingSeconds > 0.f)
@@ -359,7 +360,7 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 bool LostArk::Server::CGameRoom::Execute_PlayerSkill(
     SERVER_PLAYER& player, const LostArk::Shared::C2S_USE_SKILL& useSkill)
 {
-    if (Is_KoukuRaidInputBlocked()) return false;
+    if (Is_KoukuRaidInputBlocked() || player.Has_TimeStop(m_iServerTick)) return false;
 	/* A mounted player's quick slots belong to the vehicle; class skills never
 	start from the saddle. */
 	if (LostArk::Shared::INVALID_VEHICLE_ID != player.iVehicleId)

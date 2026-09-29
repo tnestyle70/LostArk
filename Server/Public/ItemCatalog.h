@@ -11,6 +11,16 @@
 
 namespace LostArk::Server
 {
+	enum class BATTLE_ITEM_KIND : std::uint8_t { NONE, DESTRUCTION, WHIRLWIND, CLEANSE, TIME_STOP };
+	struct SERVER_BATTLE_ITEM_USE
+	{
+		BATTLE_ITEM_KIND eKind = BATTLE_ITEM_KIND::NONE;
+		std::uint32_t iSkillId = 0u, iDamageRatePercent = 0u, iPartDamage = 0u, iStaggerDamage = 0u;
+		std::uint32_t iStaggerMaximumDivisor = 0u;
+		std::uint32_t iRangeCm = 0u, iRadiusCm = 0u, iDurationMs = 0u, iCooldownMs = 0u;
+		std::uint32_t iProjectileSpeedCmPerSecond = 0u, iProjectileArcHeightCm = 0u, iProjectileLaunchHeightCm = 0u;
+	};
+
 	// One row of the published Data/Items/ItemCatalog.json. Debug-only slice:
 	// the Server only needs enough to validate a give-item request and cap a
 	// stack, so no display name or category travels through the bootstrap.
@@ -21,6 +31,7 @@ namespace LostArk::Server
 		// 0 for a non-consumable; otherwise the percent of maximum HP a single
 		// use restores (e.g. the three HP potion tiers: 15/30/45).
 		std::uint32_t iHealPercent = 0;
+		SERVER_BATTLE_ITEM_USE BattleUse;
 		// ItemCatalog.json equipSlot ("helmet", "earring"...) and characterClass
 		// ("LanceMaster"...); empty when the item is not equipment / not class-bound.
 		std::string strEquipSlot;

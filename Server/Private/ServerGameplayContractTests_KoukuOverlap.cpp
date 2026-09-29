@@ -10,6 +10,7 @@
 #include "Network/PacketReader.h"
 #include "Network/PacketWriter.h"
 #include "GameRoom.h"
+#include "ClientSession.h"
 #include "ServerNavigation.h"
 #include "WorldBootstrap.h"
 #include "WorldDestructionBootstrapContractTests.h"
@@ -603,6 +604,20 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
     }
     {
         namespace Bomb = LostArk::Shared::KoukuMarioBomb;
+        tests.Require(Bomb::INTERVAL_MS == 8000u && Bomb::SPEED_MPS == 3.f && Bomb::BINDINGS.size() == 7u,
+            "Mario flying balls keep their seven emitters and speed while spacing births eight seconds apart");
+        constexpr SESSION_ID bombSessionId = 90929u, bombSpectatorId = 90930u;
+        const auto bombSession = std::make_shared<CClientSession>(bombSessionId, INVALID_SOCKET,
+            CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+        const auto spectatorSession = std::make_shared<CClientSession>(bombSpectatorId, INVALID_SOCKET,
+            CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+        bombSession->m_isSendRunning.store(true);
+        spectatorSession->m_isSendRunning.store(true);
+        room->m_Sessions[bombSessionId] = bombSession;
+        room->m_Sessions[bombSpectatorId] = spectatorSession;
+        const auto clearBombFrames = [&] {
+            bombSession->m_OutboundFrames.clear(); bombSession->m_iQueuedOutboundBytes = 0u;
+        };
         for (const auto& binding : Bomb::BINDINGS)
         {
             const auto* marker = room->Find_Placement(binding.marker);
@@ -625,6 +640,8 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
                 const auto tick = (birthMs + 1000u) * 30u / 1000u + 1u;
                 const float fraction = static_cast<float>((double(tick) * (1000. / 30.) - birthMs) / duration);
                 auto victim = player(); victim.iMarioStage = binding.stage;
+                victim.iSessionId = bombSessionId;
+                clearBombFrames();
                 victim.iMaximumHp = victim.iCurrentHp = generation == 100u ? 13200u : 26400u;
                 victim.fPositionX = marker->fPositionX + (endX - marker->fPositionX) * fraction;
                 victim.fPositionZ = marker->fPositionZ + (endZ - marker->fPositionZ) * fraction;
@@ -635,9 +652,24 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
                 room->Update_MarioBombContacts(victim, tick);
                 room->Update_MarioBombContacts(victim, tick + 1u);
                 tests.Require(victim.iCurrentHp == victim.iMaximumHp - 1320u && room->m_TickDamageEvents.size() == 1u &&
+                    room->m_TickDamageEvents.front().eMarioHitSource == MARIO_HIT_SOURCE::FLYING_BALL &&
                     victim.eAction == PLAYER_ACTION_STATE::KNOCKDOWN && victim.bKnockbackBallistic &&
                     victim.fKnockbackRemainingSeconds > .99f,
                     "Every Mario emitter generation deals fixed 1320 once at different maximum HP and launches authoritative knockdown");
+                S2C_WORLD_SEQUENCE_PLAY stopped;
+                bool stopRead = false;
+                if (bombSession->m_OutboundFrames.size() == 1u)
+                {
+                    const auto& frame = bombSession->m_OutboundFrames.front();
+                    CPacketReader reader{std::span<const std::uint8_t>{frame.Bytes}.subspan(PACKET_HEADER_BYTES)};
+                    stopRead = frame.ePacketType == PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY && Read_Message(reader, stopped);
+                }
+                const auto slots = (duration + Bomb::INTERVAL_MS - 1u) / Bomb::INTERVAL_MS;
+                tests.Require(stopRead && stopped.eOperation == WORLD_SEQUENCE_OPERATION::STOP &&
+                    stopped.strSequenceInstanceId == Bomb::InstanceId(binding, generation % slots) &&
+                    stopped.iStartTick == Bomb::BirthTick(phase, generation, 30u) && stopped.iServerTick == tick &&
+                    spectatorSession->m_OutboundFrames.empty(),
+                    "Actual Mario contact sends exactly one reliable generation STOP to its entrant, preserving all other clients");
                 room->Advance_PlayerKnockback(victim, .5f);
                 tests.Require(std::abs(victim.fPositionY - marker->fPositionY - 2.f) < .001f,
                     "Mario bomb launch reaches its two-metre apex during the knockdown animation");
@@ -652,9 +684,68 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
                 tests.Require(airborne.iCurrentHp == 100u, "A jump above the flying bomb's volume avoids its contact");
             }
         }
+        room->m_Sessions.erase(bombSessionId); room->m_Sessions.erase(bombSpectatorId);
+        bombSession->m_isSendRunning.store(false); spectatorSession->m_isSendRunning.store(false);
         auto noPush = SERVER_WORLD_TO_PLAYER_HIT{};
         Configure_MarioHazardLaunch(noPush);
         tests.Require(!noPush.bPushBallistic, "Unconfigured ordinary attacks do not acquire Mario launch motion");
+    }
+    {
+        const auto& balls = room->m_WorldBootstrap.Get_MarioBouncingBalls();
+        tests.Require(balls.size() == 13u, "All thirteen authored striped ball bindings publish authoritative bounce geometry");
+        for (const auto& ball : balls)
+        for (const unsigned maximumHp : {13200u, 26400u})
+        {
+            const unsigned tick = static_cast<unsigned>(std::ceil(100. * ball.durationMs / ball.playbackSpeed * 30. / 1000.));
+            const double clockMs = double(tick) * (1000. / 30.);
+            auto victim = player(); victim.iMarioStage = 1u;
+            victim.iMaximumHp = victim.iCurrentHp = maximumHp;
+            victim.bMarioRailReady = true; victim.fMarioRailRightX = 1.f; victim.fMarioRailRightZ = 0.f;
+            victim.fPositionX = ball.x + .1f; victim.fPositionZ = ball.z;
+            victim.fPositionY = ball.y + ball.Sample_OffsetY(clockMs);
+            const auto before = victim;
+            room->m_TickDamageEvents.clear();
+            room->Update_MarioBouncingBallContacts(victim, tick);
+            room->Update_MarioBouncingBallContacts(victim, tick);
+            tests.Require(victim.iCurrentHp == maximumHp - 1320u && room->m_TickDamageEvents.size() == 1u &&
+                victim.eAction == PLAYER_ACTION_STATE::KNOCKDOWN && victim.bKnockbackBallistic &&
+                victim.fKnockbackRemainingSeconds > .99f && victim.fKnockbackDirectionX > .999f &&
+                victim.iKnockdownEndTick == tick + (1000u + PLAYER_HIT_LANDING_RECOVERY_MS) * 30u / 1000u,
+                "Every striped ball deals fixed 1320 once per contact and shares bomb launch/down timing at different maximum HP");
+            room->Advance_PlayerKnockback(victim, .5f);
+            tests.Require(std::abs(victim.fPositionY - before.fPositionY - 2.f) < .001f,
+                "Striped ball knockdown reaches the same two metre apex as a bomb");
+            room->Advance_PlayerKnockback(victim, .5f);
+            tests.Require(std::abs(victim.fPositionY - before.fPositionY) < .001f &&
+                std::abs(victim.fPositionX - before.fPositionX - 4.f) < .001f && victim.fKnockbackRemainingSeconds == 0.f,
+                "Striped ball knockdown lands and stops at the same four metre endpoint as a bomb");
+            victim.fPositionX = ball.x + 100.f;
+            room->Update_MarioBouncingBallContacts(victim, tick);
+            victim.fPositionX = before.fPositionX; victim.fPositionY = before.fPositionY;
+            room->Update_MarioBouncingBallContacts(victim, tick);
+            tests.Require(victim.iCurrentHp == maximumHp - 2640u,
+                "Leaving and reentering a striped ball rearms contact while an uninterrupted overlap cannot stack hits");
+            for (const unsigned blocked : {0u, 1u, 2u, 3u, 4u})
+            {
+                auto excluded = before;
+                if (blocked == 0u) excluded.iMarioStage = 0u;
+                if (blocked == 1u) excluded.fPositionY += 20.f;
+                if (blocked == 2u) excluded.TriggerMove.isActive = true;
+                if (blocked == 3u) excluded.eAction = PLAYER_ACTION_STATE::GRABBED;
+                if (blocked == 4u) excluded.iTimeStopEndTick = tick + 100u;
+                room->Update_MarioBouncingBallContacts(excluded, tick);
+                tests.Require(excluded.iCurrentHp == maximumHp,
+                    "Striped ball contact preserves Mario scope, vertical separation, trigger transfer, capture and time stop immunity");
+            }
+        }
+        MARIO_BOUNCING_BALL fast;
+        fast.durationMs = 1200.f;
+        fast.keys = {{0.f, 0.f}, {10.f, 5.f}, {20.f, 0.f}, {1190.f, 5.f}, {1200.f, 0.f}};
+        float low = -1.f, high = -1.f;
+        fast.Sample_SweptOffsetY(0., 30., low, high);
+        tests.Require(low == 0.f && high == 5.f, "A sub-tick bounce apex is included in the Server contact sweep");
+        fast.Sample_SweptOffsetY(1180., 1210., low, high);
+        tests.Require(low == 0.f && high == 5.f, "Bounce contact sweep includes authored extrema across the loop boundary");
     }
     // P85 uses the same first-contact path for both visible beam occurrences.
     for (const unsigned startMs : {3083u, 5222u})

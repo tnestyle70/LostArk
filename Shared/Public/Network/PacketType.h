@@ -118,7 +118,8 @@ namespace LostArk::Shared
 	// 120 combines Valtan anchors/pickups, NPC shop silver/gold, Waterpang and live numeric balance.
 	// Neither independently published 118 nor 119 peers support this combined layout.
 	// 121 carries each Mario entrant's required colour and matching-ball progress.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 121;
+	// 124 combines saved-character restore, raid EXIT votes and ground-target battle items.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 124;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -437,7 +438,12 @@ namespace LostArk::Shared
 		C2S_BALANCE_QUERY,
 		S2C_BALANCE_SNAPSHOT,
 		C2S_BALANCE_PATCH,
-		S2C_BALANCE_RESULT
+		S2C_BALANCE_RESULT,
+		// One-shot restore of a saved character's inventory, purse and honor title
+		// right after entering Bern. Every admitted request receives a typed result;
+		// success follows the authoritative inventory snapshot in the reliable queue.
+		C2S_RESTORE_CHARACTER,
+		S2C_RESTORE_CHARACTER_RESULT
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -563,6 +569,8 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS:
 		case PACKET_TYPE::C2S_DEBUG_USE_ESTHER:
 		case PACKET_TYPE::C2S_BUY_ITEMS:
+		case PACKET_TYPE::C2S_RESTORE_CHARACTER:
+		case PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT:
 		case PACKET_TYPE::C2S_BALANCE_QUERY:
 		case PACKET_TYPE::S2C_BALANCE_SNAPSHOT:
 		case PACKET_TYPE::C2S_BALANCE_PATCH:

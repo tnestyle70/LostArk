@@ -3064,8 +3064,22 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 			 !Cue.strBindingId.starts_with("cue.valtan.composition.") &&
 			 pEffectAssetId->starts_with("effect.valtan.action.") &&
 			 pEffectAssetId->ends_with(".full.restore") ? Cue.iStartMs : 0u);
+		// This travelling aura belongs to the authoritative charge, not its
+		// editable source trim. Preserve source speed/start and span the current
+		// stage; a wall, death, or any accepted action exit retires it below.
+		const bool_t bChargeMotionCue = PatternId == "VALTAN_DASH_CHARGE" &&
+			ActionId == "valtan.attack.dash-charge.active" &&
+			*pEffectAssetId == "effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_dash_01_1";
 		f32_t fLiveSourceDurationSeconds = 0.f;
-		if (Cue.bHasSourceEnd)
+		if (bChargeMotionCue)
+		{
+			fLiveSourceDurationSeconds =
+				(static_cast<f32_t>(Cue.iStageDurationMs) * 0.001f -
+					fFirstOccurrenceWallSeconds) * fPlaybackRate;
+			if (fLiveSourceDurationSeconds <= 0.f)
+				continue;
+		}
+		else if (Cue.bHasSourceEnd)
 		{
 			fLiveSourceDurationSeconds =
 				static_cast<f32_t>(Cue.iEndMs - Cue.iStartMs) * 0.001f;
@@ -3079,7 +3093,7 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 				*pEffectAssetId + "\n").c_str());
 			continue;
 		}
-		if (!Cue.bHasSourceEnd)
+		if (!bChargeMotionCue && !Cue.bHasSourceEnd)
 			fLiveSourceDurationSeconds = (std::max)(0.f,
 				fLiveSourceDurationSeconds - static_cast<f32_t>(iSourceSeekOffsetMs) * 0.001f);
 
@@ -3097,8 +3111,10 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 		if (!Resolve_ValtanPatternEffectOccurrenceScan(ScanDesc, Samples))
 			continue;
 
-		const uint32_t iCueDurationMs = Cue.bHasSourceEnd ?
-			Cue.iEndMs - Cue.iStartMs + iSourceSeekOffsetMs : 0u;
+		const uint32_t iCueDurationMs = bChargeMotionCue ?
+			static_cast<uint32_t>(std::ceil(fLiveSourceDurationSeconds * 1000.f)) +
+				iSourceSeekOffsetMs :
+			(Cue.bHasSourceEnd ? Cue.iEndMs - Cue.iStartMs + iSourceSeekOffsetMs : 0u);
 		for (const VALTAN_PATTERN_EFFECT_OCCURRENCE_SAMPLE& Sample : Samples)
 		{
 			const std::string AttemptKey = Cue.strOccurrenceId + "/loop:" +
@@ -3119,10 +3135,10 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 			Desc.eFollowPolicy = Cue.eFollowPolicy;
 			Desc.eScalePolicy = Cue.eScalePolicy;
 			Desc.vWorldScale = Cue.vWorldScale;
-			Desc.eStopPolicy = Cue.eStopPolicy;
+			Desc.eStopPolicy = bChargeMotionCue ? EFFECT_STOP_POLICY::CUE_END : Cue.eStopPolicy;
 			Desc.iCueDurationMs = iCueDurationMs;
 			// A trimmed ONCE keeps its tail beyond the owning animation stage.
-			Desc.bPreserveBossActionTail = Cue.bHasSourceEnd &&
+			Desc.bPreserveBossActionTail = !bChargeMotionCue && Cue.bHasSourceEnd &&
 				!Cue.bUsesLegacyStageWallTime &&
 				VALTAN_PATTERN_EFFECT_REPEAT_POLICY::ONCE == Cue.eRepeatPolicy &&
 				(fFirstOccurrenceWallSeconds + fLiveSourceDurationSeconds / fPlaybackRate) * 1000.f >
@@ -4292,6 +4308,8 @@ void CValtan::Update_GhostPortalRoutePresentation(const f32_t fTimeDelta)
 
 void CValtan::Update(f32_t fTimeDelta)
 {
+	if (std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
+		m_fArmorBreakFeedbackRemainingSeconds = (std::max)(0.f, m_fArmorBreakFeedbackRemainingSeconds - fTimeDelta);
 	if (!m_isReplicationDormant)
 	{
 		const auto* actor = CActorCatalog::Find_Boss(m_strPresentationPartArchetypeId.empty() ?
@@ -5345,6 +5363,24 @@ void CValtan::Refresh_ArmorPartVisibility()
 	}
 }
 
+bool_t CValtan::Is_ArmorBreakAvailable() const
+{
+	return m_isServerAuthoritative && Is_PresentationVisible() && m_hasBossCombatState &&
+		m_strArchetypeId == "BOSS_VALTAN" && m_BossCombatState.iGameplayPhase < 3u &&
+		m_iOwnerBossNetEntityId == LostArk::Shared::INVALID_NET_ENTITY_ID &&
+		m_strServerPatternId == "VALTAN_DASH_CHARGE" &&
+		m_strServerActionId == "valtan.attack.dash-charge.recovery" &&
+		(m_BossCombatState.iAlivePartMask & ~static_cast<uint32_t>(m_iBrokenArmorMask) & 3u) != 0u &&
+		LostArk::Shared::Has_BossCombatFlag(m_BossCombatState.iFlags,
+			LostArk::Shared::BOSS_COMBAT_STATE_FLAG::GROGGY);
+}
+
+f32_t CValtan::Get_ArmorBreakFeedbackRemainingSeconds() const
+{
+	return Is_PresentationVisible() && m_hasBossCombatState && m_BossCombatState.iGameplayPhase < 3u ?
+		m_fArmorBreakFeedbackRemainingSeconds : 0.f;
+}
+
 bool_t CValtan::Apply_BossCombatEvent(
 	const LostArk::Shared::BOSS_COMBAT_EVENT& event)
 {
@@ -5365,6 +5401,32 @@ bool_t CValtan::Apply_BossCombatEvent(
 			Set_ArmorPartVisible(stateMask, false);
 	}
 	m_iLastBossCombatEventSequence = event.iEventSequence;
+	if (m_strArchetypeId == "BOSS_VALTAN" && (event.iPartMask & 3u) != 0u)
+	{
+		m_fArmorBreakFeedbackRemainingSeconds = 1.4f;
+		if (Is_PresentationVisible() && m_hasBossCombatState && m_BossCombatState.iGameplayPhase < 3u)
+		{
+			// Original 420627 detaches Parts1 at both upper arms; 420628 uses
+			// Parts2 and both hands. Reliable event identity owns one attempt.
+			for (uint32_t part = 0u; part < 2u; ++part)
+			{
+				if ((event.iPartMask & (1u << part)) == 0u) continue;
+				EFFECT_SPAWN_DESC spawn;
+				spawn.strEffectAssetId = part == 0u ?
+					"effect.valtan.action.420627.stage000.full.restore" :
+					"effect.valtan.action.420628.stage000.full.restore";
+				spawn.pBossOwner = static_pointer_cast<CValtan>(shared_from_this());
+				spawn.strOccurrenceId = "valtan:armor-break:" + std::to_string(event.iEventSequence) +
+					":part:" + std::to_string(part);
+				spawn.iActionStartTick = event.iEventTick;
+				spawn.eScalePolicy = VALTAN_PATTERN_EFFECT_SCALE_POLICY::ARENA_ABSOLUTE;
+				spawn.bPreserveBossActionTail = true;
+				std::string status;
+				if (!CEffectPresentationService::Spawn(spawn, status))
+					OutputDebugStringA(("[Client][Valtan] armor-break Effect isolated: " + status + "\n").c_str());
+			}
+		}
+	}
 	return true;
 }
 
@@ -5531,6 +5593,7 @@ void CValtan::Reset_ReplicatedOccurrenceState()
 	m_fGhostPortalRoutePresentationAgeSeconds = 0.f;
 	m_iBrokenArmorMask = 0u;
 	m_iLastBossCombatEventSequence = 0u;
+	m_fArmorBreakFeedbackRemainingSeconds = 0.f;
 	m_fHitFlashRemainingSeconds = 0.f;
 	m_HitFlash = {};
 	m_iNetworkSampleCount = 0u;
@@ -5945,17 +6008,14 @@ bool_t CValtan::Apply_NetworkState(
 	if (0u != iPreviousActionStartTick &&
 		(patternEdgeChanged || !isPatternState))
 	{
-		// GROGGY is entered only by the Server wall-contact branch; normal clock
-		// expiry skips it. Preserve the authored charge tail on that normal path.
-		const bool_t bChargeHitWall = patternEdgeChanged &&
-			iPatternSequence == m_iServerPatternSequence &&
+		// All accepted exits end the travelling charge: wall GROGGY, normal
+		// distance completion, replacement pattern, and death share this edge.
+		const bool_t bChargeEnded =
 			m_strServerPatternId == "VALTAN_DASH_CHARGE" &&
-			patternId == "VALTAN_DASH_CHARGE" &&
-			m_strServerActionId == "valtan.attack.dash-charge.active" &&
-			actionId == "valtan.attack.dash-charge.recovery";
+			m_strServerActionId == "valtan.attack.dash-charge.active";
 		CEffectPresentationService::Stop_BossAction(
 			std::static_pointer_cast<CValtan>(shared_from_this()),
-			 iPreviousActionStartTick, bChargeHitWall);
+			 iPreviousActionStartTick, bChargeEnded);
 	}
 	if (!isPatternState || iPatternSequence != m_iServerPatternSequence)
 		Detach_PatternTargetFollowEffectRoots();

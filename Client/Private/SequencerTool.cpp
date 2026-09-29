@@ -160,6 +160,7 @@ namespace
             m_OwnsPlayback = false;
             m_Scrubbing = false;
             m_Pending = COMMAND::NONE; m_Drag.reset(); m_DeleteWorldItem.clear();
+            m_RequestedRepeatMovie.reset();
         }
 
         void Begin_WorkbenchFrame() override
@@ -239,6 +240,20 @@ namespace
                 if (!m_RowDirty && !m_State.authoringPublishPending)
                     (void)Submit_Inspection(Client::CLASS_MOVIE_INSPECTION_ACTION::EXCLUDE, m_DeleteWorldItem);
                 m_DeleteWorldItem.clear();
+            }
+            if (m_RequestedRepeatMovie)
+            {
+                // Submit before Save; a camera edit opened later this frame still
+                // owns its pending row and must not be invalidated by this change.
+                if (!m_RowDirty && m_OpenedAuthoring && !m_State.authoringPublishPending && m_Callbacks.setRepeatMovie)
+                {
+                    (void)m_Callbacks.setRepeatMovie(m_RequestedRepeatMovie->classId,
+                        m_RequestedRepeatMovie->repeat, m_EditStatus);
+                    m_State = Read_State();
+                    Refresh_RowSource();
+                }
+                else m_EditStatus = "Apply or revert pending row edits before changing Movie repeat.";
+                m_RequestedRepeatMovie.reset();
             }
             if (m_SaveRequested && m_RowDirty) m_ApplyRequested = true;
             if (m_RequestedRate && m_Callbacks.setPlaybackRate)
@@ -334,6 +349,7 @@ namespace
                         m_Callbacks.selectCategory(i);
                         m_Scrubbing = false;
                         m_Pending = COMMAND::NONE;
+                        m_RequestedRepeatMovie.reset();
                         m_State = Read_State();
                         m_SelectedBox.clear(); m_SelectedRow.clear(); m_SelectedKind.clear(); m_ViewLoop = false;
                         m_EditBox.reset(); m_CameraEditor = {}; m_Drag.reset();
@@ -351,12 +367,20 @@ namespace
         {
             ImGui::TextUnformatted("World / Character Select");
             Render_CategorySelector();
+            bool repeatMovie = m_State.repeatMovie;
+            ImGui::BeginDisabled(!m_State.available || !m_OpenedAuthoring || !m_Callbacks.setRepeatMovie ||
+                m_RowDirty || m_State.authoringPublishPending);
+            if (ImGui::Checkbox("Repeat movie", &repeatMovie))
+                m_RequestedRepeatMovie = REPEAT_MOVIE_REQUEST{m_State.selectedClassId, repeatMovie};
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                ImGui::SetTooltip("Off: Play All runs the intro once and holds its last frame. An explicit Loop preview also plays once.\nOn: the intro continues into the repeating loop. Save movie keeps this class setting.");
+            ImGui::EndDisabled();
             ImGui::BeginDisabled(!m_State.available || !m_Callbacks.play);
             const bool restarting = m_State.active && m_State.activeClassId == m_State.selectedClassId;
             if (ImGui::Button(restarting ? "Play All (restart intro)" : "Play All")) m_Pending = COMMAND::PLAY;
             ImGui::EndDisabled();
             ImGui::SameLine();
-            ImGui::BeginDisabled(!m_State.active || !m_Callbacks.setPaused);
+            ImGui::BeginDisabled(!m_State.active || m_State.completedHold || !m_Callbacks.setPaused);
             if (ImGui::Button(m_State.paused ? "Resume" : "Pause"))
             {
                 m_RequestedPause = !m_State.paused;
@@ -367,6 +391,8 @@ namespace
             ImGui::BeginDisabled(!m_State.active || !m_Callbacks.stop);
             if (ImGui::Button("Stop")) m_Pending = COMMAND::STOP;
             ImGui::EndDisabled();
+            if (m_State.completedHold)
+                ImGui::TextWrapped("Movie complete - holding last frame. Play All replays.");
             Render_RateControl();
             ImGui::BeginDisabled(!m_OpenedAuthoring || m_State.authoringPublishPending);
             if (ImGui::Button("Save movie")) m_SaveRequested = true;
@@ -784,6 +810,8 @@ namespace
             ImGui::EndDisabled();
             if (m_SelectedKind == "Animation")
                 ImGui::Text("Clip offset %.3f s / clip rate %.3fx", box->sourceOffsetMs * .001, box->playbackRate);
+            if (m_SelectedKind == "Sound")
+                ImGui::Text("Audio source in: %.3f s", box->sourceOffsetMs * .001);
             if (m_SelectedKind == "Time Control")
             {
                 Render_RateControl();
@@ -858,6 +886,19 @@ namespace
                 if (ImGui::Button("Open Sequence Camera Tool")) m_CameraWindow = true;
                 ImGui::TextWrapped("Edit the ordered camera cuts and keys in Sequence Camera Tool. Save movie includes pending key edits.");
             }
+            if (m_SelectedKind == "Sound")
+            {
+                const auto* field = m_EditValue.Find("sourceStartMs");
+                double sourceIn = field ? field->Get_Number() : 0.;
+                if (ImGui::InputDouble("Audio source in (ms)", &sourceIn, 1., 100., "%.0f") && std::isfinite(sourceIn))
+                {
+                    auto fields = m_EditValue.Get_Object();
+                    fields["sourceStartMs"] = Client::DATA_JSON_VALUE::Number(std::round(sourceIn));
+                    m_EditValue = Client::DATA_JSON_VALUE::Object(std::move(fields), m_EditValue.Get_ObjectInsertionOrder());
+                    m_RowDirty = true; m_FollowPlayback = false;
+                }
+                ImGui::TextWrapped("Source in skips the beginning of the audio without moving the box. The left edge trims audio; dragging the body only moves it.");
+            }
             if (m_SelectedKind != "Camera" || ImGui::CollapsingHeader("All camera row fields"))
                 if (EditMovieValue("Row values", m_EditValue, m_KeySelections, "movie-row"))
                 { m_RowDirty = true; m_FollowPlayback = false; }
@@ -916,7 +957,7 @@ namespace
                         double sourceCursor = MatchesPlayback() ? m_State.sourceClockMs :
                             m_Callbacks.mapTime ? m_Callbacks.mapTime(m_State.selectedClassId, m_ViewLoop, m_EditMs, true) : 0.;
                         const auto local = static_cast<uint32_t>(std::clamp(sourceCursor - row.startMs, 0., double(row.cue.iDurationMs)));
-                        const auto result = Client::CSequenceCameraEditor::Render(row, m_CameraEditor, local);
+                        const auto result = Client::CSequenceCameraEditor::Render(row, m_CameraEditor, local, m_Callbacks.captureFreeCamera);
                         if (result.changed)
                         {
                             m_EditValue = Client::CEffectRecoveryCamera::Write_Row(row, &m_EditValue);
@@ -976,6 +1017,8 @@ namespace
         bool m_LiveCamera = true;
         ImGuiTextFilter m_RowFilter;
         std::optional<double> m_RequestedRate;
+        struct REPEAT_MOVIE_REQUEST { std::string classId; bool repeat; };
+        std::optional<REPEAT_MOVIE_REQUEST> m_RequestedRepeatMovie;
         std::shared_ptr<const Client::CLASS_MOVIE_TIMELINE> m_Timeline;
         std::string m_SelectedKind, m_SelectedRow, m_SelectedBox;
         Client::CClassMovieInspector m_WorldInspector;

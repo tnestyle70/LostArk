@@ -22,8 +22,10 @@ bottom sits 50 px above it (PIVOT_TYPE_BOTTOM_LEFT, 0, 50, descriptionTF). The r
 puts that point at the player's head (the prompt sits right over the nameplate while the
 player stands in the trigger ring), so the local character's head anchor is used.
 
-Which action a box shows is not authored on our trigger boxes; it is read from the box's own
-move: down -> godown, up -> climb, level -> tightrope, no move -> check. Presentation only: the
+Which action a box shows is read from the box's own move (down -> godown, up -> climb, level ->
+tightrope, no move -> check) unless the box names one in interactAction, which also allows the
+two actions a move cannot describe: move (retail's "move" text with the sparkle icon) and lever
+(its "pull lever" text with the hand icon). Presentation only: the
 Server's prompt decides when it shows and the G press still goes through CPlayerController. */
 class CInteractKeyPromptView final
 {
@@ -37,7 +39,7 @@ public:
 	void Render_Text() const;
 
 private:
-	enum class ACTION : uint8_t { GODOWN, CLIMB, TIGHTROPE, CHECK };
+	enum class ACTION : uint8_t { GODOWN, CLIMB, TIGHTROPE, CHECK, MOVE, LEVER };
 	struct TRIGGER
 	{
 		std::string strPlacementId;

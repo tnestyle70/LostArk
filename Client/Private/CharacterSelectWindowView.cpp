@@ -6,6 +6,7 @@
 
 #include "ActorCatalog.h"
 #include "Character.h"
+#include "CustomizingView.h"
 #include "CharacterCatalog.h"
 #include "CharacterPortraitRenderer.h"
 #include "CharacterRoster.h"
@@ -66,6 +67,7 @@ namespace
 	{
 		"CharSel_StagePortrait_0", "CharSel_StagePortrait_1",
 		"CharSel_StagePortrait_2", "CharSel_StagePortrait_3",
+		"CharSel_StagePortrait_4", "CharSel_StagePortrait_5",
 	};
 	const wstring_t STAGE_LAYER_TAG = TEXT("Layer_CharacterSelectStage");
 	/* Full-body framing: a level camera at chest height, 4 m out with a 30 degree FOV, covers
@@ -250,17 +252,22 @@ CCharacterSelectWindowView::INTENT CCharacterSelectWindowView::Consume_Intent()
 }
 
 void CCharacterSelectWindowView::Get_StartCharacter(
-	LostArk::Shared::CHARACTER_CLASS_ID& outClass, std::string& outNickname) const
+	LostArk::Shared::CHARACTER_CLASS_ID& outClass, std::string& outNickname,
+	std::string& outAppearanceJson, std::string& outCharacterId) const
 {
 	const std::vector<CHARACTER_ROSTER_ENTRY>& Roster = CCharacterRoster::Get_Entries();
-	if (m_iSelectedCard < 0 || static_cast<size_t>(m_iSelectedCard) >= Roster.size())
+	if (m_iSelectedCard < 0 || !CCharacterRoster::Is_Occupied(static_cast<size_t>(m_iSelectedCard)))
 	{
 		outClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
 		outNickname.clear();
+		outAppearanceJson.clear();
+		outCharacterId.clear();
 		return;
 	}
 	outClass = Roster[static_cast<size_t>(m_iSelectedCard)].eCharacterClass;
 	outNickname = Roster[static_cast<size_t>(m_iSelectedCard)].strNickname;
+	outAppearanceJson = Roster[static_cast<size_t>(m_iSelectedCard)].strAppearanceJson;
+	outCharacterId = Roster[static_cast<size_t>(m_iSelectedCard)].strCharacterId;
 }
 
 void CCharacterSelectWindowView::Update(f32_t fTimeDelta, const bool_t bInputBlocked)
@@ -379,7 +386,7 @@ void CCharacterSelectWindowView::Update_Cards(const bool_t bAcceptClicks)
 	for (int32_t i = 0; i < CARD_COUNT; ++i)
 	{
 		const std::string strSlot = Card_SlotId(i);
-		const bool_t bSeated = static_cast<size_t>(i) < Roster.size();
+		const bool_t bSeated = CCharacterRoster::Is_Occupied(static_cast<size_t>(i));
 		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
 		if (!m_pView->Get_SlotRect(strSlot, fX, fY, fW, fH))
 			continue;
@@ -411,7 +418,10 @@ void CCharacterSelectWindowView::Update_Cards(const bool_t bAcceptClicks)
 			if (bSeated)
 				m_iSelectedCard = i;
 			else
+			{
+				m_iCreationSlot = i;
 				m_eIntent = INTENT::NEW_CHARACTER;
+			}
 		}
 	}
 }
@@ -473,7 +483,7 @@ void CCharacterSelectWindowView::Update_IconButtons(const bool_t bAcceptClicks)
 void CCharacterSelectWindowView::Open_RenameDialog()
 {
 	const std::vector<CHARACTER_ROSTER_ENTRY>& Roster = CCharacterRoster::Get_Entries();
-	if (m_iSelectedCard < 0 || static_cast<size_t>(m_iSelectedCard) >= Roster.size())
+	if (m_iSelectedCard < 0 || !CCharacterRoster::Is_Occupied(static_cast<size_t>(m_iSelectedCard)))
 		return;
 	m_strRenameDraft = Utf8_ToWide(Roster[static_cast<size_t>(m_iSelectedCard)].strNickname);
 	m_strRenameStatus.clear();
@@ -596,7 +606,7 @@ void CCharacterSelectWindowView::Update_Stage()
 	const std::vector<CHARACTER_ROSTER_ENTRY>& Roster = CCharacterRoster::Get_Entries();
 	for (int32_t i = 0; i < STAGE_COUNT && static_cast<size_t>(i) < Roster.size(); ++i)
 	{
-		if (m_bStageFailed[i] || !m_StageCharacters[i].expired())
+		if (!CCharacterRoster::Is_Occupied(static_cast<size_t>(i)) || m_bStageFailed[i] || !m_StageCharacters[i].expired())
 			continue;
 
 		/* The Lobby loader skips the actor and skill catalogs every other level loads before
@@ -681,6 +691,11 @@ void CCharacterSelectWindowView::Spawn_StageCharacter(const int32_t iIndex)
 
 	pCharacter->Apply_NetworkStance(Stage_Stance(Desc.eCharacterClass));
 	pCharacter->Set_Animation(CHARACTER_ANIM::IDLE, true);
+	/* The card wears the look its character was made with. A document that does not fit (another
+	class, unreadable) leaves the class default. */
+	if (!Roster[static_cast<size_t>(iIndex)].strAppearanceJson.empty())
+		(void)CCustomizingView::Apply_SavedLook(
+			pCharacter, Roster[static_cast<size_t>(iIndex)].strAppearanceJson, m_pDevice, m_pContext);
 	m_StageCharacters[iIndex] = pCharacter;
 	Write_StageLog("card " + std::to_string(iIndex) + " character standing");
 }
@@ -818,7 +833,7 @@ void CCharacterSelectWindowView::RenderText()
 	{
 		if (!m_pView->Get_SlotRect(Card_SlotId(i), fX, fY, fW, fH))
 			continue;
-		if (static_cast<size_t>(i) < Roster.size())
+		if (CCharacterRoster::Is_Occupied(static_cast<size_t>(i)))
 		{
 			/* CharacterSelectListRenderer: class_txt $YG760 12 #969696 at (55,0), name_txt
 			   $YoonGasiIIM 16 #ffffff at (55,19), in card stage px. */
@@ -859,7 +874,7 @@ void CCharacterSelectWindowView::RenderText()
 	// Seated count at the card bar's right edge, like the reference's "5 / 6".
 	if (m_pView->Get_SlotRect("CharSel_SlotCountTextBox", fX, fY, fW, fH))
 	{
-		const std::wstring strCount = std::to_wstring(Roster.size()) + L" / 6";
+		const std::wstring strCount = std::to_wstring(CCharacterRoster::Get_CharacterCount()) + L" / 6";
 		DrawCentered(strCount.c_str(), fX, fY, fW, fH, 0.75f,
 			XMVectorSet(190.f / 255.f, 190.f / 255.f, 195.f / 255.f, 1.f));
 	}

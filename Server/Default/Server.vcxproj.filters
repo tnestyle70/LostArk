@@ -187,6 +187,7 @@
     <ClCompile Include="..\Private\ServerGameplayContractTests_CardMaze.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\ServerGameplayContractTests_Bingo.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\ServerGameplayContractTests_VehicleRiding.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_BattleItems.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuSupportSurface.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\ServerGameplayContractTests_Navigation.cpp"><Filter>Private</Filter></ClCompile>
     <ClInclude Include="..\Private\ServerGameplayContractTests_PlayerSkillFixtures.h"><Filter>Private</Filter></ClInclude>

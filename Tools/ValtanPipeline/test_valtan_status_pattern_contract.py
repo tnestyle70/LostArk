@@ -100,7 +100,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         self.assertEqual(0.5, channel["verticalOffsetM"])
         self.assertNotIn("verticalOffsetM", final_attack)
         self.assertEqual(
-            {"kind": "ACCUMULATED_HEALTH_DAMAGE", "threshold": 1000},
+            {"kind": "ACCUMULATED_HEALTH_DAMAGE", "threshold": 10000},
             channel["bossResponse"],
         )
         self.assertEqual(

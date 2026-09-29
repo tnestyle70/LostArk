@@ -6,10 +6,11 @@
 FacePoint가 회전을 다시 만들 수 있다. 고정 부채꼴은 원본 경고와 hit의 같은 yaw를 유지하고,
 개별 패턴과 복합 패턴 안의 같은 동작을 각각 검사한다. 복합 패턴 전체 추적을 끄지 않는다.
 
-보존된 ONCE Effect tail은 일반 Stage 종료와 다르게 처리된다. 벽 충돌 GROGGY에서 멈춰야
-하는 돌진은 해당 stable action 전환에만 보존 tail과 pending 종료를 명시하고 정상 source
-cue/lifetime은 유지한다. 명시 TIMEOUT branch가 event-only GROGGY 건너뛰기를 우회하는지도
-확인한다. 같은 deadline의 WALL_CONTACT는 정상 timeout보다 우선해야 한다.
+보존된 ONCE Effect tail은 일반 Stage 종료와 다르게 처리된다. 이동을 따라가는 돌진 aura는
+원본 lifetime을 줄이지 않고 현재 CHARGE stage의 남은 시간을 cue 종료로 사용한다.
+벽 충돌 GROGGY·정상 완료·패턴 교체·죽음의 승인 action 전환에서 pending과 tail을 정리한다.
+다른 원본 이펙트의 보존 tail은 유지한다. 명시 TIMEOUT branch가 event-only GROGGY
+건너뛰기를 우회하는지도 확인한다. 같은 deadline의 WALL_CONTACT는 정상 timeout보다 우선한다.
 
 cinematic camera 활성만으로 모든 player visibility/input/HUD를 함께 끄지 않는다.
 전투 중 대형 등장 camera는 기존 Server 승인 이동을 유지하며, DANCE는 플레이어 HUD와
@@ -5088,3 +5089,102 @@ Client Level 전체 초기화 성공으로 기록하지 않는다. malformed 문
 - 목표색과 진행 count는 머리 표식 대상과 분리해 입장자 snapshot으로 전달한다. 진행 알림은
   일치 count 증가에만 시작하고 반복 snapshot·다른 색 공 파괴·진입 기준값으로 재생하지 않는다.
   UILabelFont의 SpriteBatch는 premultiplied alpha이므로 fade에서 RGB와 alpha를 함께 줄인다.
+
+### 참가자별 Effect 차단은 실제 게시 occurrence까지 연결한다
+
+저작 LogicOccurrences의 triggerKind로만 Client audience를 판정하면 Product reader가
+해당 logic을 받지 않는 경로에서 조건이 영원히 false가 될 수 있다. 게시기가 정확한
+occurrence의 audience 의미를 전달하고 실제 Product parser가 소비하는지 대조한다.
+쿠크 Mario phase2의 suppressLocalMario는 커튼 occurrence 하나에만 적용하며
+전체 패턴·Server gameplay·다른 파티원의 재생을 막지 않는다. 이미 생성된 핸들 종료,
+늦은 참가 snapshot과 복귀 뒤 재생 방지까지 검사한다. bool 조건 fixture만 통과한 것을
+Product 연결 완료로 기록하지 않는다. 근거는09-29 RAID_MOVIE_INTEGRATION_RESULT다.
+
+### 주기 생성물의 접촉 소멸은 피해 숫자와 별도 reliable identity를 쓴다
+
+서버 피해가 확정돼도 HUD의 transient damage history만 보고 공의 생성을 끝내면
+피해 합산·흡수·snapshot 병합에서 소멸과 이펙트를 놓칠 수 있다. 기존 typed lifecycle에
+stable instance와 birth tick을 실어 해당 참가자의 정확한 세대만 종료한다.
+처음 관측한 참가 snapshot 시각을 실제 입장 시각으로 가정하지 않으며 이전 관측 경계를
+사용해 먼저 도착한 접촉을 보존한다. 현재 공의 생존과 확정 접촉 Effect는 별도로 판단해
+수명 마지막 tick의 정상 접촉을 놓치지 않는다. 늦은 Effect는 원본 sample age/수명을
+사용하고 오래된 신호로 다음 공을 종료하지 않는다. 같은 clock/interval을 Server와
+Client에서 공유하며 자세한 검증은09-29 RAID_MOVIE_INTEGRATION_RESULT를 따른다.
+
+
+### 배틀 아이템의 무력화·보호·원본 리소스
+
+- 쿠크 `STAGGER_WINDOW`는 기존 HP 감소를 기여로 사용한다. HP0 회오리 수류탄은 별도 credit를
+  실제 창의 threshold와 HUD·성공 판정에 연결해야 한다. typed gauge에만 넣으면 쿠크 창은 완료되지 않는다.
+  최대치 1/3은 ceil(max/3)으로 계산해 세 번에 완료하며, 남은 양의 1/3이나 33%로 대체하지 않는다.
+- 시간 정지/성부를 기존 invulnerability tick에 합치면 직접 wipe 소비자의 사전 skip까지 바뀔 수 있다.
+  별도 보호 deadline을 공간 hit/공포 판정에 연결하고 명시적인 encounter wipe를 유지한다.
+- 지속 buff Effect는 skill action tick과 수명을 공유하지 않는다. recipient+endTick occurrence로
+  늦은 입장·교체의 경과 시간을 복원하고 만료/사망/이탈 시 pending와 active를 함께 정리한다.
+- 원작 Ribbon `sheetspertrail`은 실제 값과 buffer capacity를 함께 소비한다. 회수 비행 원본의
+  5장을 1로 줄이거나 해당 emitter를 삭제하지 말고 기존 trail renderer의 장별 geometry/draw를 사용한다.
+- 배포 dependency는 `validate_effect_sources._collect_runtime_resource_ids`로 수집한다. `assetId`
+  키만 훑으면 source native material의 별도 texture 참조와 공통 Character 리소스를 빠뜨린다.
+
+### Movie 오디오의 시각 clock과 FMOD media position
+
+Movie Update의 긴 frame clamp나 시작 defer는 FMOD 채널의 진행을 멈추지 않는다.
+source delta250ms 이하라는 이유로 audio seek를 생략하면 slomo 구간에서 초 단위 drift가
+남을 수 있다. 명시적 external Movie clock에서는 sourceStartMs+age와 실제 media cursor를
+비교하고100ms 초과만 교정하며, 아직 sound box 안인데 채널이 끝났으면 현재 위치에서
+복구한다. 기본 World/SFX의 독립 재생에는 이 정책을 전파하지 않는다.
+
+Sound startMs는 timeline 배치, sourceStartMs는 WAV 내부 시작 위치다. 왼쪽 edge trim은
+둘을 함께 바꾸고 body 이동은 sourceStartMs를 보존해야 한다. 음원을 자르기 전에 원본
+AkEvent/Play delay와 PCM 선두 무음, animation finite clip 끝, Movie time dilation을
+분리해 확인한다. 사용자가 관찰한 특정 시점을 근거 없이 고정 offset으로 저장하지 않는다.
+
+
+### Movie ground foliage와 음원 합산 복원
+
+일반 StaticMeshComponent 배치가 맞아도 InstancedFoliageActor의 native instance layer가 별도로
+누락될 수 있다. actor/CDO visibility와 원본80-byte matrix/instance RNM bias를 대조하고 일반배치
+개수만으로 전체지면 복원을 판정하지 않는다. 같은geometry라도 Area별MIC/staticset/lightmap은
+원본에서 확인한다. foliageWind의 기존runtime과publisher 허용필드를 함께 검사한다.
+
+WEM을 PCM16으로 변환하면 float peak가1을 넘는 원본파형이 합산 전에 잘릴 수 있다. WAV를
+나중에float로바꿔도 복구되지 않으므로 원본media를float로 다시decode한다. Layer의 두음원은
+중복오류로삭제하지 말고 원본bus gain/limiter까지 조사한다. offline dynamics bake는 해당동시
+mix/time/gain에 한정되고 native wall-clock DSP와 동일하지 않다. 타이밍동기화와음질복원은
+별개검증이며 현재박스 시작시점을임의보정하지 않는다.
+
+
+### Visual Studio 프로젝트의 중복 항목은 MSBuild 성공과 별도로 검사한다
+
+같은 파일을 같은 ItemType의 ClCompile/ClInclude에 두 번 등록하면 XML parse와 명령줄 빌드는
+성공해도 Visual Studio의 프로젝트 다시 로드는 거부될 수 있다. 프로젝트 등록을 추가할 때
+기존 Include 경로를 대소문자와 경로 구분자를 정규화해 비교하고, 동일 항목을 다시 추가하지
+않는다. metadata가 같은 중복만 제거하며 원래 bigobj 설정과 실제 소스 파일은 보존한다.
+프로젝트가 언로드된 상태에서 시작 설정을 저장하면 Server + Client 프로필에서도 Server가
+빠져 있을 수 있으므로 두 상태를 별도로 확인한다. 실제 복구 증거는09-29 RAID_MOVIE_INTEGRATION_RESULT G13이다.
+
+### Map catalog 게시 성공과 실제 Client admission을 함께 확인한다
+
+mapassets의 위치 기반 토큰을 수정할 때 필드 이름과 CMapAssetCatalog parser의 순서를 대조한다.
+SL03 foliage 생성기의 token13은 그림자 설정이 아니라 uvScale.x였다. 0을 저장하면 publisher가
+배치·재질 검사를 통과해도 Client의 양수 UV 검증에서 전체 Area 로드를 거부한다. donor의 UV와
+castsShadow 값을 보존하고, 변환 이후 양축 UV와 render profile 범위를 publisher에서도 검사한다.
+source는 Load_Source, 게시본은 Load_Area로 실제 재질까지 읽어야 한다. 게시본에 Load_Source를
+호출하면 authoring 경로 계약 오류가 나므로 검증 fixture의 호출 오류와 제품 오류를 구분한다.
+수치·교체·게시 증거는09-25 FOUR_CLASS_SELECTION_MOVIES_IMPLEMENTATION_RESULT G13을 따른다.
+
+### Movie 종료는 사용자가 지목한 Camera box 경계로 확인한다
+
+Class Selection의 intro에는 첫 주요 연출 뒤 대기용 Camera box도 포함된다. repeatMovie=false로
+전체 intro의 마지막 frame만 고정하면 첫 연출 뒤의 카메라 이동은 계속된다. 종료 기준 camera를
+stable ID로 지정하고 그 source 끝을 기존 clock의 Movie time으로 변환한다. 다음 cut 진입을 막을
+때는 double epsilon만 빼지 말고 실제 소비하는 float source의 직전 값을 역변환해야 한다.
+일시정지된 수동 Seek는 자동 종료에서 제외해 뒤쪽 box 편집을 보존한다.
+
+### Foliage 로드 성공과 material bind 성공을 분리한다
+
+C++의 필수 Bind_RawValue 이름이 compiled FX의 global에 없으면 material 준비가 E_FAIL로 끝나
+draw가 제출되지 않는다. catalog와 resource admission만으로 이 경계를 검증했다고 기록하지 않는다.
+SL03의 g_SourceFoliageWindProgram 누락은 설치된 FX에서 실제 실패를 재현한 뒤 공용 HLSL에
+동일 uint 계약을 연결했다. Binary base에 전역 변수를 추가할 때에는 모든 SourceGroup 변형도
+재컴파일해야 CShader의 변수 타입·크기 parity를 유지한다. 조용한 optional bind로 우회하지 않는다.

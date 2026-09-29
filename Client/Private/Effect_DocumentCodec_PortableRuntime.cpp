@@ -1577,6 +1577,13 @@ namespace Client::EffectDocumentCodecDetail
 						continue;
 					}
 					++iTypeDataMatchCount;
+                    if (Carrier.eKind == EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_RIBBON_V1)
+                    {
+                        double sheets;
+                        if (!ReadPortableNumberLiteral(Module, "sheetspertrail", 1, sheets) ||
+                            sheets < 1 || sheets > 8 || std::floor(sheets) != sheets)
+                        { strOutError = "Cascade Ribbon requires an integer source sheet count in [1,8]."; return false; }
+                    }
 					if (Normalize_SourceModuleClass(Module.strClassName) !=
 						(Carrier.eKind == EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_BEAM_V1 ?
                             "particlemoduletypedatabeam2" : "particlemoduletypedataribbon"))
