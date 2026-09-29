@@ -5945,9 +5945,17 @@ bool_t CValtan::Apply_NetworkState(
 	if (0u != iPreviousActionStartTick &&
 		(patternEdgeChanged || !isPatternState))
 	{
+		// GROGGY is entered only by the Server wall-contact branch; normal clock
+		// expiry skips it. Preserve the authored charge tail on that normal path.
+		const bool_t bChargeHitWall = patternEdgeChanged &&
+			iPatternSequence == m_iServerPatternSequence &&
+			m_strServerPatternId == "VALTAN_DASH_CHARGE" &&
+			patternId == "VALTAN_DASH_CHARGE" &&
+			m_strServerActionId == "valtan.attack.dash-charge.active" &&
+			actionId == "valtan.attack.dash-charge.recovery";
 		CEffectPresentationService::Stop_BossAction(
 			std::static_pointer_cast<CValtan>(shared_from_this()),
-			 iPreviousActionStartTick);
+			 iPreviousActionStartTick, bChargeHitWall);
 	}
 	if (!isPatternState || iPatternSequence != m_iServerPatternSequence)
 		Detach_PatternTargetFollowEffectRoots();

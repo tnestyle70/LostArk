@@ -155,6 +155,58 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanRevision(TESTS& t
 			return room.Is_Ready();
 		};
 
+		bool dashBranchContract = true;
+		for (const bool wallContact : {false, true})
+		{
+			auto room = prepareStatusRoom("VALTAN_DASH_CHARGE", 19670u);
+			dashBranchContract = dashBranchContract && advanceStatusOccurrence(*room, 7000u) &&
+				advanceStatusOccurrence(*room, 7221u);
+			auto& boss = room->m_WorldEntities.front();
+			dashBranchContract = dashBranchContract && "CHARGE" == boss.strPatternStageId;
+			if (wallContact)
+				dashBranchContract = dashBranchContract && CBossCombatRuntime::Publish_PatternOutcome(
+					boss, BOSS_PATTERN_STAGE_OUTCOME::WALL_CONTACT, 7266u);
+			dashBranchContract = dashBranchContract && advanceStatusOccurrence(*room, 7266u);
+			dashBranchContract = dashBranchContract && (wallContact ?
+				("GROGGY" == boss.strPatternStageId && boss.bPatternGroggy) :
+				(boss.strPatternId.empty() && !boss.bPatternGroggy &&
+				 SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED == boss.PatternTerminalReceipt.eResult));
+		}
+		tests.Require(dashBranchContract,
+			"Dash deadline completes normally while a wall contact on the same deadline wins and enters GROGGY");
+
+		auto fixedFourRoom = prepareStatusRoom("VALTAN_SEQUENCE_FOUR", 19680u);
+		fixedFourRoom->m_WorldEntities.front().fYawDegrees = 37.f;
+		bool fourDirectionFixed = true;
+		for (std::uint32_t tick = 800u; tick < 830u && fourDirectionFixed; ++tick)
+		{
+			fixedFourRoom->m_Players.at(19600u).fPositionX += 0.1f;
+			fixedFourRoom->m_Players.at(19600u).fPositionZ -= 0.1f;
+			fourDirectionFixed = advanceStatusOccurrence(*fixedFourRoom, tick) &&
+				std::abs(fixedFourRoom->m_WorldEntities.front().fYawDegrees - 37.f) < 0.001f;
+		}
+		tests.Require(fourDirectionFixed,
+			"Four-direction slash preserves its starting authored direction as players move");
+
+		auto strugglingFourRoom = prepareStatusRoom("VALTAN_STRUGGLING", 19685u);
+		bool strugglingFourFixed = advanceStatusOccurrence(*strugglingFourRoom, 9000u) &&
+			advanceStatusOccurrence(*strugglingFourRoom, 9060u) &&
+			advanceStatusOccurrence(*strugglingFourRoom, 9075u);
+		auto& strugglingFourBoss = strugglingFourRoom->m_WorldEntities.front();
+		// Deliberately disagree with both the centre and target bearings at the edge.
+		strugglingFourBoss.fPositionX += 1.f;
+		strugglingFourBoss.fYawDegrees = 37.f;
+		strugglingFourFixed = strugglingFourFixed && advanceStatusOccurrence(*strugglingFourRoom, 9126u) &&
+			"STEP_04" == strugglingFourBoss.strPatternStageId;
+		for (std::uint32_t tick = 9127u; tick < 9275u && strugglingFourFixed; ++tick)
+		{
+			strugglingFourRoom->m_Players.at(19600u).fPositionX += 0.03f;
+			strugglingFourFixed = advanceStatusOccurrence(*strugglingFourRoom, tick) &&
+				std::abs(strugglingFourBoss.fYawDegrees - 37.f) < 0.001f;
+		}
+		tests.Require(strugglingFourFixed && 4u == strugglingFourBoss.iAppliedPatternHitCount,
+			"Struggling freezes only its four-direction stage through all four authored hit angles despite centre and player bearings");
+
 		auto magicRoom = prepareStatusRoom("VALTAN_STAGGER_SLOT", 19700u);
 		bool magicOccurrenceValid = advanceStatusOccurrence(*magicRoom, 1000u);
 		SERVER_WORLD_ENTITY& magicBoss = magicRoom->m_WorldEntities.front();
@@ -276,7 +328,19 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanRevision(TESTS& t
 		{
 			(void)playerId;
 			if (0u != player.iCurrentHp)
+			{
 				player.iCurrentHp = player.iMaximumHp = 10000u;
+				player.iShield = 1000000u;
+				player.iInvulnerableEndTick = 3000u;
+				player.iEstherGuardEndTick = 3000u;
+				player.iEstherGuardDamageTakenPercent = -100;
+				player.bRonaunGuard = true;
+				if (19601u == playerId)
+				{
+					player.isCombatReady = false;
+					player.fPositionX += 200.f;
+				}
+			}
 		}
 		magicFailureValid = magicFailureValid &&
 			advanceStatusOccurrence(*magicFailureRoom, 2389u) &&
@@ -300,6 +364,42 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanRevision(TESTS& t
 		tests.Require(
 			magicFailureValid,
 			"Magic-orb timeout restores the Stage-owned +0.5m offset before its 1000ms final-attack wipe and stays at base Y");
+
+		auto counterFailureRoom = prepareStatusRoom("VALTAN_TRIPLE_COUNTER", 19760u);
+		for (auto& [id, player] : counterFailureRoom->m_Players)
+		{
+			if (!player.iCurrentHp) continue;
+			player.iShield = 1000000u;
+			player.iInvulnerableEndTick = player.iEstherGuardEndTick = 6000u;
+			player.iEstherGuardDamageTakenPercent = -100;
+			player.bRonaunGuard = true;
+			if (19601u == id) { player.isCombatReady = false; player.fPositionX += 200.f; }
+		}
+		SERVER_PLAYER guide = counterFailureRoom->m_Players.at(19600u);
+		guide.iPlayerId = 19603u; guide.iNetEntityId = 19863u;
+		guide.eControlKind = PLAYER_CONTROL_KIND::GUIDE_AI;
+		counterFailureRoom->m_Players.emplace(guide.iPlayerId, guide);
+		bool counterFailureValid = true, sawFirstMiss = false, sawSecondMiss = false, sawFinalWipe = false;
+		for (std::uint32_t tick = 5000u; tick < 5500u && counterFailureValid; ++tick)
+		{
+			counterFailureValid = advanceStatusOccurrence(*counterFailureRoom, tick);
+			const auto& boss = counterFailureRoom->m_WorldEntities.front();
+			const bool humansAlive = counterFailureRoom->m_Players.at(19600u).iCurrentHp &&
+				counterFailureRoom->m_Players.at(19601u).iCurrentHp;
+			if (boss.iAppliedPatternHitCount && "FAIL_1" == boss.strPatternStageId)
+				sawFirstMiss = humansAlive;
+			if (boss.iAppliedPatternHitCount && "FAIL_2" == boss.strPatternStageId)
+				sawSecondMiss = humansAlive;
+			if (boss.iAppliedPatternHitCount && "FAIL_3" == boss.strPatternStageId)
+			{
+				sawFinalWipe = !counterFailureRoom->m_Players.at(19600u).iCurrentHp &&
+					!counterFailureRoom->m_Players.at(19601u).iCurrentHp &&
+					guide.iCurrentHp == counterFailureRoom->m_Players.at(guide.iPlayerId).iCurrentHp;
+				break;
+			}
+		}
+		tests.Require(counterFailureValid && sawFirstMiss && sawSecondMiss && sawFinalWipe,
+			"Only the third missed counter wipes every living human through shields, invulnerability and range while preserving Guide");
 
 		auto magicAbortRoom = prepareStatusRoom(
 			"VALTAN_STAGGER_SLOT", 19775u);

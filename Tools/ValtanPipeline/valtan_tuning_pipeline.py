@@ -5751,7 +5751,7 @@ def _validate_finale(
           tuple(field for field in interval_fields if field in finale), context)
     for field in interval_fields:
         if field in finale:
-            integer(finale[field], f"{context}.{field}", 1, 600000)
+            integer(finale[field], f"{context}.{field}", 0 if field == "portalSpawnIntervalMs" else 1, 600000)
     if finale["kind"] != "GHOST_PORTAL_LOOP":
         raise PipelineError(f"{context} kind is unsupported")
     _validate_finite_pattern_graph(pattern)

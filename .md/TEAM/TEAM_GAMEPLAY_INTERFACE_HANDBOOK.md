@@ -782,7 +782,7 @@ NetEntityId, player/local 구분, current/max HP, shield, presentation의 weak �
 Debug/Release F1의 광기 위치 조절 아래 `Health bar positions`에서 주황 기믹, 다른 아군 HP,
 일반 몬스터·쿠크세이튼·쿠크·발탄 HP의 X/Y offset을 각각 조절한다.
 `Data/UI/KoukuSaydon/KoukuHudModes.json`의 optional `healthBarPositions`는
-`mechanicOffsetX/Y`, `allyOffsetX/Y`, `enemyOffsetX/Y`, `koukuSaydonOffsetX/Y`,
+`mechanicHeadOffsetX/Y`, `allyOffsetX/Y`, `enemyOffsetX/Y`, `koukuSaydonOffsetX/Y`,
 `koukuOffsetX/Y`, `valtanOffsetX/Y`를 저장한다(각 X/Y는 별도 key다).
 같은 객체의 optional `mechanicWidthScale`, `mechanicHeightScale`은 주황 기믹 행만 조절하며
 각각 기본 1/3과 1, finite 0.1..3 배율이다. F1의 `Stagger width`/`Stagger thickness`에서
@@ -791,8 +791,10 @@ Debug/Release F1의 광기 위치 조절 아래 `Health bar positions`에서 주
 불투명 보라 `Boss_StaggerTrack`은 숨기며, 남은 값/최대값 비율로 주황 fill이 줄어든 자리에는
 `Boss_StaggerBg`의 빈 바가 보인다.
 1280×720 기준 pixel, +X 오른쪽/+Y 아래, finite -1280..1280이며 기본은 0이다. 이전 문서의
-누락된 보스별 값은 enemy X/Y를 상속한다. frame/HP/shield를 함께 이동하고 상단 기믹은
-원래 저작 rect에서 offset을 적용한다. Save/Reload는 최신 디스크의 다른 field와 기존 Y 튜닝을
+누락된 보스별 값은 enemy X/Y를 상속한다. frame/HP/shield를 함께 이동한다. 주황 기믹은 snapshot의 exact boss entity가 가리키는
+실제 presentation 머리와 health bar의 공통 화면 투영 함수를 사용하고, 최종 카메라 갱신 뒤
+매 프레임 배치한다. 머리 기준 보정은 기본0이며 예전 화면 고정 `mechanicOffsetX/Y`는
+저장 문서에 보존하지만 머리 기준값으로 재해석하지 않는다. 대상 부재·화면 밖은 숨긴다. Save/Reload는 최신 디스크의 다른 field와 기존 Y 튜닝을
 보존하며, 같은 축의 실제 충돌·검증 실패 시 디스크와 preview를 유지한다.
 World health read model의 stable archetype ID로 묶음을 선택하며, 거대 세이튼의 작은 HP는
 항상 숨긴다. 카드미로에서는 플레이어와 네 문양 카드 병정의 작은 HP를 숨긴다.
@@ -1001,7 +1003,8 @@ immutable 참조이므로 현재 trigger 줄수에 맞춰 이름을 바꾸지 �
 `introPatternId` 등장 휠윈드 → health rotation 순서다. 컷씬·등장 휠윈드는 각각 한 번 소비한다.
 같은 primary archetype의 phase3 HUD는 ghost profile의40줄과 snapshot HP를 사용한다.
 finale의 optional `auxiliarySpawnIntervalMs`는 보조 유령 소멸 후 재생성 대기(현재5000ms),
-`portalSpawnIntervalMs`는 삼각 포탈 시작 간격(현재10000ms)이다. `PATTERNFINALEINTERVAL`이
+`portalSpawnIntervalMs`는 삼각 포탈 시작 간격이며 현재0으로 자동 삼각 돌진을 끈다.
+0은 이 scheduler만 비활성화하고 랜덤 보조 유령을 유지한다. 양수는 기존 간격 의미다. `PATTERNFINALEINTERVAL`이
 두 값을 전달하고 기존 `PATTERNFINALE` 형식은 유지한다. 보조 pool4개와 primary loop5개는 별개다.
 없는 필드의 legacy 재생성·7900ms 기본값 및 이전6개 pool 로드는 보존한다.
 
@@ -2399,13 +2402,21 @@ INVULNERABILITY_ZONE의 기존 threshold필드는0이면인원제한없음,1~4�
 
 ### 쿠크 후속 판정·표시 계약
 
-현재 protocol115의 player snapshot은 iMarioMarkerColor(0없음,1빨강,2파랑,3노랑)를
+player snapshot은 iMarioMarkerColor(0없음,1빨강,2파랑,3노랑)를
 표시 대상에게 보낸다. Server가 마리오 진입 때 지정 색과 대상을 정하고1인은 진입자,
 2~4인은 바깥 참가자 중 한 명에게 표시한다. 표식 대상이 사망해도 진입자가 살아
 있는 동안 유지한다. 지정 색 공3개를 파괴해야 terminal 이동과 typed0키 복귀가
 허용되며 Mario4의4개 배치도 목표는3개다. 표식은3개 달성만으로 지우지 않고 실제
 복귀 완료·진입자 사망·취소에서 제거한다.1~2인 아이언 메이든0명,3~4인1명이며
 표식과 메이든 대상은 겹칠 수 있다. 기존 pop mask와 Server 이동 승인 경로를 사용한다.
+
+protocol121은 입장자의 `iMarioRequiredColor`와 `iMarioMatchingBallCount`를 추가로 보낸다.
+목표색은 0없음/1빨강/2파랑/3노랑이고 개수는 기존 Server 탈출 판정의 일치 개수를 최대3으로
+제한한 값이다. Mario 밖에서는 둘 다0이며, 다른 참가자 머리의 `iMarioMarkerColor`와 구분한다.
+Client HUD는 일치 개수가 증가할 때만 마리오 화면 하단에 `[1 / 3] 노란색 공` 형태로1초 표시하고
+0.4초 투명도 fade 뒤 제거한다. 같은 snapshot이나 다른 색 공 파괴는 알림을 재시작하지 않는다.
+공 파괴 개수나 목표색을 Client에서 다시 판정하지 않는다. 표시 대상의 얼굴은 원본 Offering의 Color와
+공통 얼굴 texture, 위쪽 도형은 빨강 별/파랑 마름모/노랑 삼각형 원본 mask를 사용한다.
 
 BINGO_BOARD는 WORLD hammer collider head × 저장 Object scale에서 투영한
 hammerHalfExtentsM(진행축·가로축)을 PATTERNBINGOHAMMER 행으로 읽는다.4방향의

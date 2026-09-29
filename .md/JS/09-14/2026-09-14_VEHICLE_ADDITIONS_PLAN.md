@@ -915,3 +915,21 @@ if __name__ == "__main__":
                       "scaleKeys": sum(row["scaleKeys"] for row in receipt["files"]),
                       "installed": receipt["installed"]}))
 ```
+
+## G10. 2026-09-29 다른 PC의 구형 탑승 Resources 교체
+
+현재 PC의 body와 6개 donor는 G09 receipt의 교정 SHA와 일치한다. Release ZIP은 Resources를
+포함하지 않으며 remote/local player는 같은 `Apply_NetworkVehicle`와 class prototype을
+소비한다. 관찰 PC의 실제 파일은 접근하지 못했으므로 구형 donor 사용 여부는 해당 PC에서 확인한다.
+
+`Tools/VehiclePipeline/Install-DimensionMasterRiderScalePatch.ps1`를 추가하고 기존 교정본 6개만
+별도 Resources 패치 ZIP으로 준비한다. `-ResourceRoot`로 실제 실행에 사용하는 폴더를 명시하며,
+기존 receipt의 body·구형/교정 donor와 패치 payload를 모두 검사한 다음 교체한다.
+`-CheckOnly`는 쓰지 않고 대상 상태만 확인한다. 이미 교정된 파일은 다시 축소하지 않는다.
+교체 직전 freshness를 재확인하고 Resources 밖에 원본을 보존하며 원자 교체·자기 변경 rollback을
+사용한다. 알 수 없는 파일은 덮어쓰지 않는다. 이 스크립트는 게임이나 UI를 실행·종료하지 않는다.
+
+C++/HLSL, catalog, protocol, 서버 수치와 기존 실행 ZIP은 변경하지 않는다. 새 C++ 파일이 없으므로
+vcxproj/filter 등록과 Product 재빌드는 필요하지 않다. 기존 4개 repair 회귀, 실파일 파싱,
+구형→교정 설치·재실행 무변경·검사 전용·잘못된 입력 보존, ZIP CRC와 payload 일치를 확인한다.
+다른 PC의 실제 적용과 다음 Client 실행 후 탑승·이동·하차 화면은 사용자가 확인한다.

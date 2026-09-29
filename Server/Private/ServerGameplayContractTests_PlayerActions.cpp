@@ -1106,8 +1106,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_PlayerActions(TESTS& te
 				BOSS_PATTERN_STAGE_OUTCOME::WALL_CONTACT,
 				"valtan.attack.dash-charge.recovery") &&
 			hasDashBranch(dashPattern->Stages[1],
-				BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
-				"valtan.attack.dash-charge.recovery") &&
+				BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT, "") &&
 			nullptr != dashGroggy && 2u == dashGroggy->Branches.size() &&
 			hasPatternFollowup(*dashGroggy,
 				BOSS_PATTERN_STAGE_OUTCOME::PART_DESTROYED,

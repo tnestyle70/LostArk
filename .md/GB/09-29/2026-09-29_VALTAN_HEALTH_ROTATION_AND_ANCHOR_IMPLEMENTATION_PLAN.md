@@ -122,3 +122,77 @@ Tools/WorldPipeline/Publish-ValtanWorldDestruction.ps1의 stage exact-property �
 responseScale의 타입·범위 검증을 유지한다. unknown 필드 허용이나 원본 aim 제거로
 우회하지 않는다. 실제 전체 -Mode Validate 후 정식 Full DataOnly를 재실행해
 모든 domain의 완료 결과를 확인한다. 이미 성공한 domain은 기존 캐시 규칙을 사용한다.
+
+
+## G15. 추적 도끼 중앙, 고정 4방향과 네 돌 반경
+
+사용자의 최종 정정에 따라 높이·중앙 착지 대상은 VALTAN_HIGH_JUMP 추적 도끼다.
+피자에 준비했던 이번 변경은 기존 저장값 그대로 복구한다. HIGH_JUMP의 serverMotion을
+LEAP_TO_TARGET에서 LEAP_TO_ANCHOR로 바꾸고 apexHeight를 9m에서 30m로 높인다.
+착지는 기존 landingPosition [156.03, 22.99751, -122.06]을 사용한다. 이륙 위치와
+타이밍은 보존하며 AIRBORNE warning/LAND cue의 기존 pattern.landing.snapshot이
+Server의 같은 중앙 좌표를 소비한다. 추적 도끼의 플레이어별 투사체 생성은 보존한다.
+SEQUENCE_FOUR는 targetPolicy/aimPolicy를 NONE으로 설정해 시작 시 방향을 유지한다.
+3시·9시 COMBO_STEP_18과 STRUGGLING STEP_08의 네 돌만 중심 반경을
+6.3639610307m에서 5.8639610307m로 줄인다. 피자 돌과 다른 돌은 보존한다.
+
+## G16. 실패 전멸과 피날레 자동 삼각 돌진 중지
+
+ValtanBrain의 기존 ApplyPatternHit에서 TRIPLE_COUNTER의 FAIL_3 및
+STAGGER_SLOT의 FINAL_ATTACK을 정확한 패턴/단계 ID로 식별해 기존
+SERVER_WORLD_TO_PLAYER_HIT::bEncounterWipe로 전달한다. 첫 두 카운터 실패는
+기존 공격을 유지하며 마지막 실패만 살아 있는 인간 파티 전원을 처리한다.
+거리·cover·counter·invulnerability·shield로 전멸이 누락되지 않도록 후보 선별도
+해당 두 실패 단계에서만 전멸 계약을 따른다. Guide는 전멸 대상에서 제외한다.
+
+finale.portalSpawnIntervalMs=0은 자동 삼각 포탈 생성 비활성화다. 미지정 7900ms와
+양수 1..600000ms는 기존 의미를 유지하고 auxiliarySpawnIntervalMs는 계속
+1..600000ms다. Python/Gameplay publisher/Server/Client의 검증을 함께 맞춘다.
+GHOST_FINALE는 portalSpawnIntervalMs만 0으로 저장하고 네 종류의 랜덤 보조 유령,
+최대 1명, 소멸 후 5000ms 재생성 및 수동 GHOST_PORTAL_ONCE는 보존한다.
+일반 발탄에서 유령으로 전환할 때 ending을 띄우지 않고 primary phase3 최종 사망만
+ending으로 보는 Client 변경은 같은 작업의 Client 담당자가 구현한다.
+
+## G17. 집중 검증과 통합 반영
+
+기존 Python finale interval contract와 Server stage/ghost/rock 계약 테스트를 갱신한다.
+0 간격의 자동 포탈 부재, 랜덤 유령 지속, 양수 간격의 기존 삼각 경로, protected/out-of-range
+플레이어의 두 실패 전멸, 성공 분기 보존을 검사한다. 변경 JSON parse와 diff check 및
+필요 최소 컴파일을 수행한다. 신규 C++ 파일이 없어 project/filter 등록은 없다.
+publisher와 Debug/Release 통합 빌드·PR/merge는 root가 담당하며 Client/UI는 실행하지 않는다.
+
+
+## G18. 세 구르기 후 돌진의 벽 충돌과 정상 완료 분리
+
+DASH_CHARGE CHARGE의 명시 TIMEOUT이 GROGGY로 이어져 기존 NextClockStageIndex의
+사건 전용 단계 건너뛰기를 우회하고 있었다. TIMEOUT nextActionId와 defaultNextActionId를
+null로 일치시켜 기존 FinishPattern(COMPLETED)을 사용한다. WALL_CONTACT의 recovery
+action은 그대로 두며 같은 deadline tick에도 먼저 소비하므로 실제 충돌만 GROGGY다.
+Client는 이 안정적 action 전환에서만 보존 중인 돌진 tail을 강제 종료한다. 무충돌
+완료에서는 기존 자연 tail과 수명을 유지한다. tick 추정이나 새 packet은 추가하지 않는다.
+기존 실제 Brain 계약에 무충돌 deadline과 같은 deadline의 wall outcome 우선순위를 추가한다.
+
+
+## G19. 발악 내부 네 방향의 단계 한정 회전 고정
+
+STRUGGLING STEP_04의 네 contact는 1200/2200/3200/4200ms와
+0/180/270/90도다. 이 단계에 기존 PATTERN_TARGET endMs=0 aim을 저장해
+TO_ARENA_CENTER 단계 진입의 FacePoint와 매 tick 추적 모두 중지한다.
+중앙 이동과 나머지 발악의 aim/motion은 유지한다. SEQUENCE_FOUR는 pattern NONE
+설정 외에 BeginPattern 전 nearest-target 자동 회전도 해당 패턴에서만 제외한다.
+Client는 Server yaw와 landing snapshot을 보간해서 표시하며 자체 target yaw를 쓰지 않는다.
+실제 Brain에 서로 다른 중심·플레이어 방위와 이동 입력을 주고 네 타격 동안 yaw가
+유지되는지 검사한다. red fan은 같은 owner basis, contact는 그 basis+저작 offset을 쓴다.
+
+
+## G20. 정상 완료와 전멸 변경 이후 lifecycle fixture 갱신
+
+통합 Release lifecycle의10실패는 timeout만으로 Dash GROGGY를 기대한 검사1개와
+무적 observer가 마력구 실패를 버티던 연속4인검사의9개 후속 실패다. 제품의 wall-only
+GROGGY와 true wipe는 유지한다. Dash fixture는 실제 WALL_CONTACT outcome을 공급하고
+기존 stage duration/deadline 검사를 유지한다. 연속4인 성공 시나리오는 기존 typed
+BossCombatRuntime 입력으로 마력구의 required HP damage와 세 카운터의 유효 counter
+성공을 공급한다. Room이 followup/stage/phase를 결정하며 actor 부활, 전멸 우회,
+커서 이동, reset 또는 audition override를 사용하지 않는다. 실제 성공 횟수와 기존
+allAlive/8개 loop/7개 기믹/ghost HP/4session snapshot/clear/MVP 검사를 모두 유지한다.
+root의 실행 중 contract 종료 전 빌드·재실행하지 않는다. source 데이터는 바꾸지 않는다.

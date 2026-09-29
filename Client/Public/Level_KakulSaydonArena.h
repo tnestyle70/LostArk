@@ -324,6 +324,7 @@ public:
 	bool_t Sample_CompositionCamera(std::string_view shotId, float seconds, const float3_t& offset, std::string_view ownerKey, uint32_t durationMs, bool_t preview);
 	bool_t Is_CompositionCameraEnabled() const;
 	bool_t Is_CinematicPresentationActive() const;
+	bool_t Is_CinematicInputBlocked() const;
 	bool_t Should_HideCinematicPlayers() const;
 	void Sync_CinematicPlayerVisibility();
 	bool_t Is_LocalMarioStageActive() const;
@@ -393,6 +394,11 @@ public:
 		std::string& outStatus);
 
 private:
+    bool Prepare_EntryRaidResources(std::string& status);
+    bool Prepare_CompletePlayResources(const std::vector<std::string>& patternIds,
+        const std::vector<std::string>& bundleIds, uint32_t sourceRevision,
+        bool& ready, std::string& status, bool wholeRaid,
+        std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft, bool reloadWorld);
 	bool_t Try_GetCinematicWorldBossAnchor(const std::string& archetype, const std::string& bone,
 		CWorldSequencePlayer::PLAYER_ANCHOR& out, std::string& status) const;
 	CWorldSequencePlayer::TARGET_SET Make_WorldSequenceTargets();
@@ -458,6 +464,11 @@ private:
 	std::uint8_t m_iMarioCurseNoticeQueue = 0u;
 	std::int32_t m_iMarioCurseNoticeColor = -1;
 	f32_t m_fMarioCurseNoticeSeconds = 0.f;
+	static constexpr f32_t MARIO_PROGRESS_HOLD_SECONDS = 1.f;
+	static constexpr f32_t MARIO_PROGRESS_FADE_SECONDS = .4f;
+	std::uint8_t m_iMarioProgressColor = 0u;
+	std::uint8_t m_iMarioProgressCount = 0u;
+	f32_t m_fMarioProgressNoticeSeconds = 0.f;
 	// Presentation-only launch markers use published world positions and the existing object player.
 	struct MARIO_BOMB_EMITTER
 	{

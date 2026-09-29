@@ -85,6 +85,9 @@ namespace Client
 		// Server-popped layout slots and released colours; zero outside Mario.
 		std::uint16_t iMarioPoppedBallMask = 0u;
 		std::uint8_t iMarioCurseReleasedMask = 0u;
+		// This entrant's objective, distinct from the marker on another player.
+		std::uint8_t iMarioRequiredColor = 0u;
+		std::uint8_t iMarioMatchingBallCount = 0u;
 		bool isCombatReady = true;
 		/* Pattern status is replicated by the Server. Bind affects locomotion/action
 		state while silence is projected through the existing quick-slot cooldown
@@ -120,6 +123,8 @@ namespace Client
 	struct HUD_BOSS_STATE
 	{
 		bool isValid = false;
+		// Exact replicated entity whose presentation anchors the mechanic gauge.
+		LostArk::Shared::NET_ENTITY_ID iNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 		std::string strArchetypeId;
 		std::string strDisplayName;
 		std::uint32_t iCurrentHp = 0;

@@ -4774,7 +4774,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			std::uint32_t auxiliaryMs = 0u, portalMs = 0u;
 			if (5u != fields.size() || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
 				!ParseNumber(fields[3], auxiliaryMs) || auxiliaryMs > 600000u ||
-				!ParseNumber(fields[4], portalMs) || portalMs < 1u || portalMs > 600000u ||
+				!ParseNumber(fields[4], portalMs) || portalMs > 600000u ||
 				!patternFinaleIntervalOwners.emplace(std::string(fields[1]) + ":" + std::string(fields[2])).second)
 			{
 				m_strStatus = "Boss finale interval row is invalid or duplicated";
@@ -6719,7 +6719,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				pattern.Finale.iMaximumActiveGhosts < 1u ||
 				pattern.Finale.iMaximumActiveGhosts > 64u ||
 				pattern.Finale.iAuxiliarySpawnIntervalMs > 600000u ||
-				pattern.Finale.iPortalSpawnIntervalMs < 1u || pattern.Finale.iPortalSpawnIntervalMs > 600000u ||
+				pattern.Finale.iPortalSpawnIntervalMs > 600000u ||
 				pattern.Finale.GhostPatternIds.empty() ||
 				pattern.Finale.GhostPatternIds.size() > 64u)
 			{

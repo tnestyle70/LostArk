@@ -6653,7 +6653,7 @@ void Client::CEffectPresentationService::Stop_Owner(
 Client::EFFECT_BOSS_ACTION_STOP_RESULT
 Client::CEffectPresentationService::Stop_BossAction(
 	const std::shared_ptr<CValtan>& pOwner,
-	const uint32_t iActionStartTick)
+	const uint32_t iActionStartTick, const bool_t bStopPreservedTails)
 {
 	EFFECT_BOSS_ACTION_STOP_RESULT Result;
 	if (nullptr == pOwner || 0u == iActionStartTick)
@@ -6662,12 +6662,12 @@ Client::CEffectPresentationService::Stop_BossAction(
 	const size_t iPendingBefore = g_PendingEffectSpawns.size();
 	g_PendingEffectSpawns.erase(std::remove_if(
 		g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
-		[&pOwner, iActionStartTick](const PENDING_EFFECT_SPAWN& Pending)
+		[&pOwner, iActionStartTick, bStopPreservedTails](const PENDING_EFFECT_SPAWN& Pending)
 		{
 			return 0u == Pending.Desc.iWorldRootHandle &&
 				Pending.Desc.pBossOwner.lock() == pOwner &&
 				Pending.Desc.iActionStartTick == iActionStartTick &&
-				!Pending.Desc.bPreserveBossActionTail;
+				(bStopPreservedTails || !Pending.Desc.bPreserveBossActionTail);
 		}), g_PendingEffectSpawns.end());
 	Result.iPendingStopped = static_cast<uint64_t>(
 		iPendingBefore - g_PendingEffectSpawns.size());
@@ -6681,7 +6681,7 @@ Client::CEffectPresentationService::Stop_BossAction(
 		{
 			continue;
 		}
-		if (Effect.bPreserveBossActionTail ||
+		if ((!bStopPreservedTails && Effect.bPreserveBossActionTail) ||
 			!Should_StopBossActionActiveEffect(Effect.eStopPolicy))
 		{
 			++Result.iActiveRetainedNatural;

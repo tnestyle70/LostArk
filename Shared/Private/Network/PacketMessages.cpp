@@ -235,6 +235,10 @@ namespace
 			snapshot.iMarioPoppedBallMask <= 0x0FFFu &&
 			snapshot.iMarioCurseReleasedMask <= 7u &&
 			snapshot.iMarioMarkerColor <= 3u &&
+			snapshot.iMarioRequiredColor <= 3u && snapshot.iMarioMatchingBallCount <= 3u &&
+			(snapshot.iMarioRequiredColor != 0u || snapshot.iMarioMatchingBallCount == 0u) &&
+			(snapshot.iMarioStage != 0u ||
+			 (snapshot.iMarioRequiredColor == 0u && snapshot.iMarioMatchingBallCount == 0u)) &&
 			(snapshot.iMarioStage != 0u ||
 			 (snapshot.iMarioPoppedBallMask == 0u && snapshot.iMarioCurseReleasedMask == 0u)) &&
 			snapshot.CardMaze.flags <= LostArk::Shared::CARD_MAZE_VALID_FLAGS &&
@@ -3273,6 +3277,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U16(player.iMarioPoppedBallMask);
 		writer.Write_U8(player.iMarioCurseReleasedMask);
 		writer.Write_U8(player.iMarioMarkerColor);
+		writer.Write_U8(player.iMarioRequiredColor);
+		writer.Write_U8(player.iMarioMatchingBallCount);
 		writer.Write_U8(static_cast<std::uint8_t>(player.eCardMazeRole));
 		writer.Write_U8(static_cast<std::uint8_t>(player.eCardMazeSuit));
 		writer.Write_U8(player.iCardMazeKills);
@@ -3595,6 +3601,11 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U16(player.iMarioPoppedBallMask) || player.iMarioPoppedBallMask > 0x0FFFu ||
 			!reader.Read_U8(player.iMarioCurseReleasedMask) || player.iMarioCurseReleasedMask > 7u ||
 			!reader.Read_U8(player.iMarioMarkerColor) || player.iMarioMarkerColor > 3u ||
+			!reader.Read_U8(player.iMarioRequiredColor) || player.iMarioRequiredColor > 3u ||
+			!reader.Read_U8(player.iMarioMatchingBallCount) || player.iMarioMatchingBallCount > 3u ||
+			(player.iMarioRequiredColor == 0u && player.iMarioMatchingBallCount != 0u) ||
+			(player.iMarioStage == 0u &&
+			 (player.iMarioRequiredColor != 0u || player.iMarioMatchingBallCount != 0u)) ||
 			(player.iMarioStage == 0u &&
 			 (player.iMarioPoppedBallMask != 0u || player.iMarioCurseReleasedMask != 0u)) ||
 			!reader.Read_U8(rawCardMazeRole) ||

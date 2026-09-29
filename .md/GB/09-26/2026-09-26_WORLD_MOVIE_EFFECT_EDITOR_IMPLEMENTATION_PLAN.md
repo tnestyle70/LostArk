@@ -175,3 +175,38 @@ filters의 해당 물리 분류에 등록한다. 실제 Product 소비자를 사
 현재 사용자 Client/Server는 종료하거나 조작하지 않는다. 실행 중 EXE/DLL을 교체하지 않는
 최소 컴파일과 JSON/XML parse 및 diff check를 수행하고 링크·사용자 화면 확인을 구분한다.
 회색 plane의 원인 확정과 실제 제외할 항목의 선택은 새 검사 기능에서 사용자가 확인한다.
+
+## G13. Composition Sequencer의 Movie 숨김 조작 노출 (2026-09-29)
+
+`SequencerTool.cpp`의 WORLD session은 모델 검사 UI를 Preview 창에만 그린다. 사용자가
+첨부한 Composition Sequencer에는 선택 막대만 있으므로 그 창 위에서 모델 Mute/Solo,
+Movie 제외/복원과 Save movie를 바로 실행하고 전체 Movie visibility 창을 열도록 연결한다.
+숨김 상태를 막대에도 표시하며 선택된 Effect에서는 Element 편집기로 바로 진입한다.
+기존 inspection stable ID, draw gate, excludedWorldObjectIds 저장과 실패 보존을 재사용한다.
+
+`ClassMovieInspector.cpp`에는 목록 행마다 Mute/Solo와 Movie 포함 여부를 표시해 선택 후
+아래까지 스크롤하지 않아도 조작할 수 있게 한다. 임시 Mute와 저장되는 제외를 구분한다.
+`Effect_Tool_Workspace.cpp`의 Movie controls에는 현재 선택 Element의 Mute/Solo와 저장되는
+Visible 초안 및 Save Changes를 노출한다. 현재 Detail draft를 보존해 같은 검증·preview·save
+소비자로 전달하며, 이전 Solo target이 새 선택의 Mute 대상으로 남는 경우를 교정한다.
+
+기존 세 C++ 파일만 수정하므로 project/filter 신규 등록은 없다. 기존 UTF-8와 CRLF를 유지한다.
+최소 Product 컴파일과 diff 검사, 실제 owner/소비자 연결을 확인한다. Client 실행·UI 조작·
+회색 요소의 최종 선택과 화면 판정은 사용자가 수행한다. 이 변경에서 요소를 임의로 지우거나
+현재 저장된 Effect/Movie 데이터와 렌더링 옵션을 수정하지 않는다.
+
+G13 경계 보완: 마지막 Element도 Mute와 Visible OFF가 가능해야 한다. `Effect_Tool.h`의
+typed `previewVisibility` callback을 `MainApp.cpp`가 기존 Movie owner로 전달한다.
+`ClassSelectionPresentation::Preview_EffectDocument`의 optional draw ID 집합은 full 문서와
+동일한 prepared target을 사용하되 empty mask도 허용하여 sim/clock과 저장 visibility를
+보존한다. 개별·그룹 Mute는 이 경로로 갱신하고 Play All이 완전한 draft를 복구한다.
+`Effect_DocumentCodec_RuntimeValidation.cpp`는 schema 검증에 성공한 비어 있지 않은 문서가
+모든 Element/ModelCue를 명시적으로 숨긴 경우에만 no-draw로 허용한다. 빈 문서와 visible인
+미지원 carrier의 거부는 유지하며, 이는 마지막 Visible OFF의 Save와 다시 읽기에 필요하다.
+새 C++ 파일은 없고 기존 두 header와 여섯 TU가 최종 변경 범위다.
+
+G13 사용자 조작 보완: WORLD 선택의 `Delete from Movie`와 Delete 키는 기존
+excludedWorldObjectIds 변경을 요청한다. 키는 Composition Sequencer에 focus가 있고
+입력창·popup·drag·미적용 row·publish가 없을 때만 받으며 Effect나 Background는 삭제하지
+않는다. 명령을 frame 끝까지 stable ID로 지연하여 목록 순회 중 객체를 바꾸지 않는다.
+Element Mute는 stable ID를 누적하고 Unmute는 그 ID만 해제해 같은 시각에서 비교한다.

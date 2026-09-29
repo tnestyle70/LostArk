@@ -668,6 +668,10 @@ void CEffect_Tool::Sync_ClassMovieSelection()
     if (!Has_ClassMovieContext() || !m_ClassMovieCallbacks.state) return;
     const auto state = m_ClassMovieCallbacks.state(m_strClassMovieId);
     m_bClassMovieSelectionRepeat = state.selectionActive && state.selectionRepeat;
+    // Live Mute has no audition interval, including when its draw set is empty.
+    if (!Is_ValtanCinematicEditor() && (m_ePreviewFilter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED ||
+        m_ePreviewFilter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED_GROUP))
+    { m_bClassMovieSelectionRepeat = false; return; }
     if (!state.selectionActive)
     {
         m_PreviewIsolationElementIds.clear();
@@ -680,6 +684,20 @@ bool CEffect_Tool::Stage_ClassMovieEffect(const EFFECT_DOCUMENT_DESC& document)
     Sync_ClassMovieSelection();
     if (!Is_ClassMovieEffect(document.strEffectAssetId) || !m_ClassMovieCallbacks.preview)
     { m_strPreviewStatus = "This Effect is not part of the selected Movie. Open its Movie Effect again."; return false; }
+    if (!Is_ValtanCinematicEditor() && (m_ePreviewFilter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED ||
+        m_ePreviewFilter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED_GROUP))
+    {
+        std::vector<std::string> visible;
+        for (const auto& element : document.Elements)
+            if (EffectToolDetail::Is_ElementPreviewAdmitted(element) &&
+                std::find(m_ClassMovieFilterTargetIds.begin(), m_ClassMovieFilterTargetIds.end(),
+                    element.strElementId) == m_ClassMovieFilterTargetIds.end()) visible.push_back(element.strElementId);
+        if (!m_ClassMovieCallbacks.previewVisibility ||
+            !m_ClassMovieCallbacks.previewVisibility(document, visible, m_strPreviewStatus)) return false;
+        m_PreviewIsolationElementIds = std::move(visible);
+        m_strClassMovieStatus = m_strPreviewStatus;
+        return true;
+    }
     EFFECT_DOCUMENT_DESC filtered;
     auto ids = m_PreviewIsolationElementIds;
     // Delete/visibility edits retire stale selection IDs only after the new target commits.
@@ -704,7 +722,7 @@ bool CEffect_Tool::Stage_ClassMovieEffect(const EFFECT_DOCUMENT_DESC& document)
 bool CEffect_Tool::Play_ClassMovie()
 {
     if (!Has_ClassMovieContext() || !m_ClassMovieCallbacks.play) return false;
-    const auto previousFilter = m_ePreviewFilter;
+    const auto previousFilter = std::exchange(m_ePreviewFilter, EFFECT_PREVIEW_FILTER::COMPLETE);
     const auto previousIsolation = std::exchange(m_PreviewIsolationElementIds, {});
     if (m_ActiveDocument && Is_ClassMovieEffect(m_ActiveDocument->strEffectAssetId))
     {
@@ -719,6 +737,7 @@ bool CEffect_Tool::Play_ClassMovie()
     if (played)
     {
         m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
+        m_ClassMovieFilterTargetIds.clear();
         m_bClassMovieLoop = false; m_bClassMovieScrubbing = false;
         m_bClassMovieSelectionRepeat = false;
     }
@@ -759,6 +778,43 @@ bool CEffect_Tool::Try_SetClassMoviePreviewFilter(const EFFECT_PREVIEW_FILTER fi
     EFFECT_DOCUMENT_DESC full;
     if (!Resolve_AuthoringOccurrenceDocument({EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, m_ActiveDocument->strEffectAssetId},
         full, m_strPreviewStatus)) return false;
+    if (!Is_ValtanCinematicEditor() && (filter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED ||
+        filter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED_GROUP))
+    {
+        std::vector<std::string> targets;
+        if (filter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED)
+        {
+            const auto& selected = m_strSelectedElementId.empty() ? m_strPreviewIsolationElementId : m_strSelectedElementId;
+            if (std::none_of(full.Elements.begin(), full.Elements.end(),
+                [&](const auto& element) { return element.strElementId == selected; }))
+            { m_strPreviewStatus = "The selected Element no longer exists; the previous preview was preserved."; return false; }
+            if (m_ePreviewFilter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED ||
+                m_ePreviewFilter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED_GROUP) targets = m_ClassMovieFilterTargetIds;
+            std::erase_if(targets, [&](const auto& id) {
+                return std::none_of(full.Elements.begin(), full.Elements.end(),
+                    [&](const auto& element) { return element.strElementId == id; });
+            });
+            if (std::find(targets.begin(), targets.end(), selected) == targets.end()) targets.push_back(selected);
+        }
+        else if (!m_strPreviewIsolationGroupId.empty())
+        {
+            for (const auto& element : full.Elements)
+                if (element.strGroupId == m_strPreviewIsolationGroupId) targets.push_back(element.strElementId);
+        }
+        else targets = m_ClassMovieFilterTargetIds;
+        if (targets.empty()) { m_strPreviewStatus = "Select an Element or group before Mute."; return false; }
+        std::vector<std::string> visible;
+        for (const auto& element : full.Elements)
+            if (EffectToolDetail::Is_ElementPreviewAdmitted(element) &&
+                std::find(targets.begin(), targets.end(), element.strElementId) == targets.end()) visible.push_back(element.strElementId);
+        if (!m_ClassMovieCallbacks.previewVisibility ||
+            !m_ClassMovieCallbacks.previewVisibility(full, visible, m_strPreviewStatus)) return false;
+        m_ClassMovieFilterTargetIds = std::move(targets);
+        m_PreviewIsolationElementIds = std::move(visible);
+        m_ePreviewFilter = filter; m_bClassMovieSelectionRepeat = false;
+        m_strClassMovieStatus = m_strPreviewStatus = "Movie Element Mute applied at the current time. Play All clears Mute; Visible and Save Changes persist a hide.";
+        return true;
+    }
     const auto previousFilter = std::exchange(m_ePreviewFilter, filter);
     const auto previousScope = m_PreviewIsolationElementIds;
     auto filterTargets = m_ClassMovieFilterTargetIds;
@@ -966,7 +1022,8 @@ void CEffect_Tool::Render_ClassMovieControls(const bool showEffects)
     float playbackRate = static_cast<float>(state.playbackRate);
     if (ImGui::SliderFloat("Movie playback rate", &playbackRate, .05f, 2.f, "%.2fx") && m_ClassMovieCallbacks.setPlaybackRate)
         (void)m_ClassMovieCallbacks.setPlaybackRate(playbackRate);
-    if (!m_PreviewIsolationElementIds.empty())
+    if (!m_PreviewIsolationElementIds.empty() && m_ePreviewFilter != EFFECT_PREVIEW_FILTER::MUTE_SELECTED &&
+        m_ePreviewFilter != EFFECT_PREVIEW_FILTER::MUTE_SELECTED_GROUP)
     {
         if (ImGui::Button("Restart Selection")) (void)Restart_ClassMoviePreview();
         ImGui::SameLine();
@@ -993,6 +1050,87 @@ void CEffect_Tool::Render_ClassMovieControls(const bool showEffects)
         for (size_t i = 0; i < std::size(scopes); ++i)
             if (ImGui::Selectable(scopeNames[i], scopes[i] == m_ePreviewFilter)) (void)Try_SetPreviewFilter(scopes[i]);
         ImGui::EndCombo();
+    }
+    if (m_ActiveDocument)
+    {
+        ImGui::PushID("MovieElementVisibility");
+        ImGui::SeparatorText("Element visibility");
+        if (ImGui::BeginCombo("Element", m_strSelectedElementId.empty() ? "Select an Element" : m_strSelectedElementId.c_str()))
+        {
+            for (const auto& element : m_ActiveDocument->Elements)
+            {
+                const std::string label = (element.strDisplayName.empty() ? element.strElementId : element.strDisplayName) +
+                    (element.bVisible ? "" : " [hidden]") + "##" + element.strElementId;
+                if (ImGui::Selectable(label.c_str(), element.strElementId == m_strSelectedElementId))
+                    (void)Try_SelectElement(m_ActiveDocument->strEffectAssetId, element.strElementId);
+            }
+            ImGui::EndCombo();
+        }
+        if (const auto* selected = Find_SelectedElement())
+        {
+            const EFFECT_ELEMENT_DESC selectedSnapshot = *selected;
+            const std::string selectedId = selectedSnapshot.strElementId;
+            if (ImGui::Button("Solo Element")) (void)Try_SoloElement(m_ActiveDocument->strEffectAssetId, selectedId);
+            ImGui::SameLine();
+            const bool muted = !cinematic && (m_ePreviewFilter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED ||
+                m_ePreviewFilter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED_GROUP) &&
+                std::find(m_ClassMovieFilterTargetIds.begin(), m_ClassMovieFilterTargetIds.end(), selectedId) != m_ClassMovieFilterTargetIds.end();
+            if (ImGui::Button(muted ? "Unmute Element" : "Mute Element"))
+            {
+                if (muted)
+                {
+                    EFFECT_DOCUMENT_DESC full;
+                    if (Resolve_AuthoringOccurrenceDocument({EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT,
+                        m_ActiveDocument->strEffectAssetId}, full, m_strPreviewStatus))
+                    {
+                        auto targets = m_ClassMovieFilterTargetIds;
+                        std::erase(targets, selectedId);
+                        std::vector<std::string> visibleIds;
+                        for (const auto& element : full.Elements)
+                            if (EffectToolDetail::Is_ElementPreviewAdmitted(element) &&
+                                std::find(targets.begin(), targets.end(), element.strElementId) == targets.end()) visibleIds.push_back(element.strElementId);
+                        if (m_ClassMovieCallbacks.previewVisibility &&
+                            m_ClassMovieCallbacks.previewVisibility(full, visibleIds, m_strPreviewStatus))
+                        {
+                            m_ClassMovieFilterTargetIds = std::move(targets);
+                            m_PreviewIsolationElementIds = m_ClassMovieFilterTargetIds.empty() ? std::vector<std::string>{} : std::move(visibleIds);
+                            m_ePreviewFilter = m_ClassMovieFilterTargetIds.empty() ? EFFECT_PREVIEW_FILTER::COMPLETE : EFFECT_PREVIEW_FILTER::MUTE_SELECTED_GROUP;
+                            m_strClassMovieStatus = m_strPreviewStatus = "Element unmuted at the current Movie time. Saved Visible settings are unchanged.";
+                        }
+                    }
+                }
+                else
+                {
+                    // The chosen row, not an earlier Solo target, owns this command.
+                    const auto previous = m_strPreviewIsolationElementId;
+                    m_strPreviewIsolationElementId = selectedId;
+                    if (!Try_SetClassMoviePreviewFilter(EFFECT_PREVIEW_FILTER::MUTE_SELECTED))
+                        m_strPreviewIsolationElementId = previous;
+                }
+            }
+            bool visible = m_DetailDraft && m_strDetailDraftElementId == selectedId ?
+                m_DetailDraft->bVisible : selectedSnapshot.bVisible;
+            if (ImGui::Checkbox("Visible (saved with Effect)", &visible))
+            {
+                if (!m_DetailDraft || m_strDetailDraftElementId != selectedId)
+                {
+                    m_DetailDraft = selectedSnapshot; m_strDetailDraftElementId = selectedId;
+                    Refresh_DetailDraftAdmission(selectedSnapshot);
+                }
+                m_DetailDraft->bVisible = visible;
+                m_bDetailDraftDirty = true; m_bDetailDraftPreviewPending = false;
+                m_bDetailDraftPreviewRestartRequested = false;
+                (void)Stage_DetailDraftPreview();
+                m_strClassMovieStatus = m_strPreviewStatus;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Save Changes (Effect)")) (void)Try_ApplyDraftAndSave();
+        }
+        ImGui::TextWrapped("Mute / Unmute compares the selected Element at the current Movie time; Solo auditions it. Play All clears the preview filter. To keep an Element hidden, turn off Visible and Save Changes (Effect). Shared occurrences use the same saved Element.");
+        if (!m_strElementStatus.empty()) ImGui::TextWrapped("%s", m_strElementStatus.c_str());
+        if (!m_strPreviewStatus.empty()) ImGui::TextWrapped("%s", m_strPreviewStatus.c_str());
+        if (!m_strDocumentStatus.empty()) ImGui::TextWrapped("%s", m_strDocumentStatus.c_str());
+        ImGui::PopID();
     }
     if (state.active) ImGui::Text("Playing %s: %.3f / %.3f s%s", state.loop ? "Loop" : "Intro",
         state.clockMs * .001, state.durationMs * .001, state.paused ? " (paused)" : "");

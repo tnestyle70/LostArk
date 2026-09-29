@@ -1885,6 +1885,19 @@ Effect Tool의 Movie controls와 WORLD Action Workbench Preview에는 같은 Mov
 instance·slot·object ID, WModel, 실제 sampled XYZ와 mesh/material을 확인한다. Pick은 현재
 표시된 posed triangle의 최근접 mesh를 찾으며 texture alpha pixel까지 판정하지 않는다.
 
+Composition Sequencer 상단의 `Movie visibility / models`에서도 같은 목록을 연다. World Model
+box를 고르면 상단의 `Mute model`, `Solo model`, `Delete from Movie`로 바로 조작한다.
+목록의 `M`/`S`는 임시 Mute/Solo이고 `In Movie`는 저장할 포함 여부다. 제외 후 `Save movie`를
+누르면 유지되며 복원은 `Show deleted models (restore)`에서 `In Movie`를 켜고 저장한다.
+Sequencer에 focus가 있고 입력·드래그·미반영 row 편집이 없을 때 Delete 키도 선택 World Model을
+제외한다. `Restore to Movie`로 되돌릴 수 있으며 Resources 파일 자체는 삭제하지 않는다.
+Effect box는 `Edit Elements / Mute / Hide`로 연결된 V1 문서를 연다. Movie controls에서
+Element를 선택해 Mute/Solo하거나 `Visible (saved with Effect)`를 끄고 `Save Changes (Effect)`로
+저장한다. Effect 저장은 해당 asset을 공유하는 occurrence에도 적용되며 Movie 모델 제외와
+저장 문서가 다르다.
+Element Mute는 선택한 ID를 누적하고 Unmute는 해당 ID만 복원한다. 같은 Movie 시각에서
+비교할 수 있으며 마지막 Element까지 Mute해도 clock과 원본 Visible는 유지된다.
+
 Mute는 선택 모델의 draw를 즉시 숨기고 Solo는 WORLD 모델 중 선택 항목만 그린다. 일시정지한
 프레임에서도 즉시 반영하며 Movie clock, 애니메이션 및 Effect의 bone provider는 유지한다.
 배경과 Effect는 각각 Show background / Show Effects로 임시 표시를 조절한다. 이러한 검사

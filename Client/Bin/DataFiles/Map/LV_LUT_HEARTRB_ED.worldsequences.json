@@ -4007,7 +4007,7 @@
           "subtitleTrackId": "subtitle.valtan.cin.37053_09_01",
           "stringId": "cin.37053_09_01",
           "text": "이 버러지들...",
-          "position": "NORMAL",
+          "position": "UPPER",
           "slotId": "",
           "startMs": 623,
           "durationMs": 1800
@@ -4016,7 +4016,7 @@
           "subtitleTrackId": "subtitle.valtan.cin.37053_09_02",
           "stringId": "cin.37053_09_02",
           "text": "다... 짓뭉개주마!",
-          "position": "NORMAL",
+          "position": "UPPER",
           "slotId": "",
           "startMs": 3276,
           "durationMs": 2500

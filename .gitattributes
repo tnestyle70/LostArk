@@ -89,4 +89,10 @@
 /Client/Private/Effect_Tool.cpp text eol=lf
 /Client/Public/Effect_Tool.h text eol=lf
 
+# Native numeric balance receipts seal exact source/runtime bytes across pull.
+/Data/Balance/Profiles/Retail.balanceprofile.json text eol=lf
+/Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap text eol=lf
+/Server/Bin/DataFiles/Gameplay/NumericBalance.active.json text eol=lf
+/Server/Bin/DataFiles/Gameplay/BalanceNumeric.save.receipt.json text eol=lf
+
 

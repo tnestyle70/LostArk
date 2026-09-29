@@ -165,3 +165,54 @@
 ### 배포와 사용자 확인 경계
 
 Resources는 Runtime ZIP에 넣지 않는다. 위 6개를 기존 `Character/DimensionMaster/AnimSets` 경로대로 별도 Drive 업데이트로 전달한다. 다른 PC의 파일 교체 및 현재 실행 중인 캐릭터의 메모리 재로딩을 완료했다고 주장하지 않는다. 다음 캐릭터 로드/재시작 후 탑승·이동·탈것 스킬·하차의 실제 화면은 사용자가 확인한다. 이번 검증은 실제 모델 기반 수치 검사이며 Client 실행·UI 조작·GPU 화면 판정은 수행하지 않았다.
+
+## G10. 2026-09-29 다른 PC의 100배 탑승 증상과 Resources 전달
+
+사용자는 본인 PC만 정상이고 각자의 Resources를 쓰는 다른 PC에서는 용 탑승자가 100배 커진다고
+보고했다. 현재 body와 donor 6개를 다시 파싱했고 G09 교정 SHA와 전부 일치했다.
+`ClientReplication::Create_Character`와 `Apply_PlayerSnapshot -> Apply_NetworkVehicle`는
+local/remote 모두 같은 class prototype과 Ride clip을 소비한다. Debug/Release의 준비 시점 차이는
+있지만 remote 탑승 배율 분기는 없다. 고대의 바다9523과 고대의 신화9524는 같은 Dragon2 donor다.
+관찰 PC가 자신의 구형 donor를 사용하면 같은 캐릭터도 100배 확대되며 Git/Release ZIP은
+Resources 실물을 전달하지 않는다. 다른 PC의 파일 자체는 이번 세션에서 직접 읽지 않았다.
+
+현재 설치 body의34,612개 정점·inverse bind·body skeleton과 Dragon2의7개 clip을 사용해 시작·중간·끝
+21표본을 검사했다. 비교용 구형 donor는 root scale key만 메모리에서100으로 복원했고 그 SHA가
+G09 원본과 정확히 일치했다. 모든 표본의 구형/교정 AABB 대각선 비율은100이며 최대 오차는
+1.97e-6이다. 현재 catalog presentationScale1.05와 preScale0.01 기준 idle XYZ는
+교정0.541612/0.711480/0.548469m, 구형54.161189/71.148026/54.846888m다.
+맵 추가 배율·공통 yaw는 이 수치에 넣지 않았으며 비율은 변하지 않는다.
+증거는 `out/DimensionMasterRiderScale20260929/remote-diagnosis/dragon-attached-body-current.json`이다.
+
+사용자가 지정한 `C:/Users/user/Desktop/GBResources`는 반영 직전 비어 있었다.
+그 아래 `Character/DimensionMaster/AnimSets/`에 G09 표의 교정본6개, 합계39,799,516bytes를
+넣었다. 입력·임시 복사본·최종 파일을 모두 기존 afterSha256으로 검사했다.
+전달 목록은 `out/DimensionMasterRiderScale20260929/gbresources-delivery.json`이다.
+`Resources` wrapper를 추가하지 않았으므로 GBResources 안의 Character 폴더를 받는 PC의
+실제 Resources에 병합한다. Resources 파일은 Git에 추가하지 않는다.
+
+기존 repair 회귀4개 PASS, 본체6,244개 및 donor3,352개 root scale key 검사 PASS,
+용7clip21표본 수치 검사 PASS다. 기존 정상 리소스와 C++/HLSL/JSON/XML은 수정하지 않아
+새 Product Build는 실행하지 않았다. 공유 Server와 Client/UI는 실행·종료·조작하지 않았다.
+사용자가 종료를 요청한 당시 Visual Studio PID10676은 종료했다. 이후 새 PID47652가 열려
+응답 중인 것을 확인했으며 사용자가 다시 연 작업일 수 있어 반복 종료하지 않았다.
+
+다른 PC에 복사하고 다음 Client 시작 후 탑승·이동·스킬·하차의 실제 화면은 사용자 확인 범위다.
+
+### 선택적 적용 도구
+
+`Tools/VehiclePipeline/Install-DimensionMasterRiderScalePatch.ps1`는 기존 receipt와6개 교정 payload를
+사용하며 PowerShell5.1만 필요하다. 명시한 실제 ResourceRoot의 body와6개 donor가 기존 구형/교정
+hash인지를 모두 검사하고 unknown은 전체 교체 전에 거부한다. Resources 밖에 staging/backup을
+두고 File.Replace·직전 freshness 확인·자기 변경 rollback을 사용한다. 게임 프로세스는 조작하지 않는다.
+
+실제 구형 donor bytes를 복원한 격리 fixture의8조건이 PASS다: CheckOnly 무변경,6개 설치,
+재실행 no-op, 마지막 target unknown 전체 보존, 마지막 payload 손상 전체 보존, 두 번째 파일
+공유 잠금으로 교체 실패 시 첫 파일 rollback, 다른 body 거부, receipt 경로 탈출 거부.
+현재 Client/Bin/Resources body와6개 donor는 검사 전후 hash가 동일하다.
+증거: `out/RiderScalePatchInstallerTests20260929/edd47d60-bc71-42dc-b7e8-3fcc57c06418/summary.json`.
+
+교정6개와 도구·기존 receipt·사용 안내를 묶은 선택적 ZIP은
+`C:/Users/user/Desktop/DimensionMaster-RiderScale-Patch-20260929.zip`이다.
+ZIP 전체 CRC와6개 donor의 기존 교정 hash 일치를 확인했다. `GBResources`에는 요청한6개만
+Resources 상대 구조로 두었다. 빌드/전체 Resources 팩을 새로 만들지 않았으며 git diff --check PASS다.

@@ -377,12 +377,13 @@ namespace
 		if (!Require(!legacyIntervals.empty(), "legacy finale interval fixture was not staged"))
 			return false;
 		size_t intervalAdmissionCount = 0u;
-		for (const auto& intervals : std::array<std::array<const char*, 2u>, 5u>{
+		for (const auto& intervals : std::array<std::array<const char*, 2u>, 6u>{
 			std::array<const char*, 2u>{ nullptr, nullptr },
 			std::array<const char*, 2u>{ "5000", nullptr },
 			std::array<const char*, 2u>{ nullptr, "10000" },
 			std::array<const char*, 2u>{ "1", "600000" },
-			std::array<const char*, 2u>{ "5000", "10000" } })
+			std::array<const char*, 2u>{ "5000", "10000" },
+			std::array<const char*, 2u>{ "5000", "0" } })
 		{
 			auto text = setFinaleInterval(legacyIntervals, "auxiliarySpawnIntervalMs", intervals[0]);
 			text = setFinaleInterval(std::move(text), "portalSpawnIntervalMs", intervals[1]);
@@ -398,6 +399,8 @@ namespace
 		{
 			for (const char* invalid : { "0", "-1", "600001", "1.5", "null", "true", "\"5000\"" })
 			{
+				if (std::string_view(key) == "portalSpawnIntervalMs" &&
+					std::string_view(invalid) == "0") continue;
 				const auto text = setFinaleInterval(legacyIntervals, key, invalid);
 				const auto label = std::string("finale interval ") + key + "=" + invalid;
 				if (!Require(!text.empty(), "invalid finale interval fixture was not staged") ||

@@ -559,6 +559,11 @@ bool_t Client::CValtanCinematicCameraController::Update(
 
     const VALTAN_CINEMATIC_CAMERA_CUE* cue = nullptr;
     if (input.isBossDead) cue = m_pDocument->Find_DeathCue();
+    else if (input.strPatternId == "VALTAN_GHOST_DEATH_AUDITION")
+    {
+        // This living phase2 transition leads to the ghost fight, not the ending.
+        // Suppress both an authored finale invocation and the legacy fallback.
+    }
     else if (input.hasStageCameraInvocations)
     {
         const auto& cues = m_pDocument->Get_Cues();

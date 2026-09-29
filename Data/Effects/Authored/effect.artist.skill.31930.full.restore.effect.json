@@ -3,7 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.artist.skill.31930.full.restore",
   "displayName": "이펙트_도화가AltV_전체",
-  "bloomIntensity": 1.3,
+  "bloomIntensity": 1.29999995,
   "particleSystem": { "uniformScaleMultiplier": 1, "yawOffsetDegrees": 0, "directionYawDegrees": 0, "initialSpeedMultiplier": 1 },
   "modelCues": [  ],
   "elements": [
@@ -699,7 +699,7 @@
       "actionCueAttachment": { "enabled": true, "follow": false, "sourceAnchorSlotId": "root", "runtimeAnchorSlotId": "root", "runtimeBoneName": "", "snapshotRootSourceBasisYawDegrees": -90, "socketLocalTransform": { "position": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1] } },
       "transformInheritance": { "enabled": false, "masterElementId": "" },
       "detail": {
-        "transform": { "position": [0, 0, -0], "rotationDegrees": [0, 0, -0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [2, 2, 2], "velocityPerSecond": [0, 0, 0] },
+        "transform": { "position": [0, 0.0900000036, -0], "rotationDegrees": [0, 0, -0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [2, 2, 2], "velocityPerSecond": [0, 0, 0] },
         "color": { "offset": [0, 0, 0, 0], "multiply": [1, 1, 1, 1], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
         "uv": { "start": [0, 0], "speed": [0, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": true, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
         "timing": { "startDelaySeconds": 0.0700000003, "lifeTimeSeconds": 1, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
@@ -922,7 +922,7 @@
       "actionCueAttachment": { "enabled": true, "follow": false, "sourceAnchorSlotId": "root", "runtimeAnchorSlotId": "root", "runtimeBoneName": "", "snapshotRootSourceBasisYawDegrees": -90, "socketLocalTransform": { "position": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1] } },
       "transformInheritance": { "enabled": false, "masterElementId": "" },
       "detail": {
-        "transform": { "position": [0, 0, -0], "rotationDegrees": [0, 0, -0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [2, 2, 2], "velocityPerSecond": [0, 0, 0] },
+        "transform": { "position": [0, 0.0900000036, -0], "rotationDegrees": [0, 0, -0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [2, 2, 2], "velocityPerSecond": [0, 0, 0] },
         "color": { "offset": [0, 0, 0, 0], "multiply": [1, 1, 1, 1], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
         "uv": { "start": [0, 0], "speed": [0, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": true, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
         "timing": { "startDelaySeconds": 0.0700000003, "lifeTimeSeconds": 1, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },

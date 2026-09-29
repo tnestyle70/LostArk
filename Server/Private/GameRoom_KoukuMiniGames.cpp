@@ -176,7 +176,7 @@ void LostArk::Server::CGameRoom::Update_MarioBombContacts(
                 marker->fPositionZ + dz * before, x, z,
                 {player.fPositionX, player.fPositionZ, WorldCollision::PLAYER_HALF_EXTENT_X + Bomb::RADIUS_M})) continue;
             SERVER_WORLD_TO_PLAYER_HIT hit{};
-            hit.iRawDamage = (std::max)(1u, player.iMaximumHp / 10u);
+            hit.iRawDamage = 1320u;
             hit.eMarioHitSource = LostArk::Shared::MARIO_HIT_SOURCE::FLYING_BALL;
             hit.bIgnoreDefense = hit.bIgnoreCounter = true;
             hit.fSourceX = x; hit.fSourceZ = z;

@@ -1563,14 +1563,14 @@ namespace
 		Client::VALTAN_PATTERN_FINALE_VIEW Finale;
 		Finale.strKind = Read_String(*pValue, "kind");
 		Finale.strGhostArchetypeId = Read_String(*pValue, "ghostArchetypeId");
-		const auto ReadInterval = [&](const char* name, uint32_t& interval)
+		const auto ReadInterval = [&](const char* name, uint32_t minimum, uint32_t& interval)
 		{
 			return nullptr == pValue->Find(name) ||
 				(Read_RequiredUInt32(*pValue, name, interval) &&
-				 interval >= 1u && interval <= 600000u);
+				 interval >= minimum && interval <= 600000u);
 		};
-		if (!ReadInterval("auxiliarySpawnIntervalMs", Finale.iAuxiliarySpawnIntervalMs) ||
-			!ReadInterval("portalSpawnIntervalMs", Finale.iPortalSpawnIntervalMs))
+		if (!ReadInterval("auxiliarySpawnIntervalMs", 1u, Finale.iAuxiliarySpawnIntervalMs) ||
+			!ReadInterval("portalSpawnIntervalMs", 0u, Finale.iPortalSpawnIntervalMs))
 			return false;
 		const DATA_JSON_VALUE* pPatterns = Required(
 			*pValue, "ghostPatternIds", DATA_JSON_TYPE::ARRAY);

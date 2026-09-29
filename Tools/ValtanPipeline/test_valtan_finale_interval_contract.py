@@ -26,7 +26,7 @@ class ValtanFinaleIntervalContractTests(unittest.TestCase):
         pipeline._validate_finale(pattern, {row["patternId"]: row for row in master["patterns"]}, master["bossArchetypeId"])
 
     def test_optional_fields_and_bounds(self):
-        for fields in ({}, {"auxiliarySpawnIntervalMs": 1}, {"portalSpawnIntervalMs": 600000},
+        for fields in ({}, {"auxiliarySpawnIntervalMs": 1}, {"portalSpawnIntervalMs": 0}, {"portalSpawnIntervalMs": 600000},
                        {"auxiliarySpawnIntervalMs": 5000, "portalSpawnIntervalMs": 10000}):
             master, pattern = self.candidate()
             for key in ("auxiliarySpawnIntervalMs", "portalSpawnIntervalMs"):
@@ -37,7 +37,7 @@ class ValtanFinaleIntervalContractTests(unittest.TestCase):
 
     def test_invalid_intervals_are_rejected(self):
         for key in ("auxiliarySpawnIntervalMs", "portalSpawnIntervalMs"):
-            for value in (None, True, "5000", 0, -1, 600001, 1.5):
+            for value in (None, True, "5000", -1, 600001, 1.5) + ((0,) if key == "auxiliarySpawnIntervalMs" else ()):
                 master, pattern = self.candidate()
                 pattern["finale"][key] = value
                 with self.subTest(key=key, value=value), self.assertRaises(pipeline.PipelineError):
@@ -58,6 +58,7 @@ class ValtanFinaleIntervalContractTests(unittest.TestCase):
 
     def test_product_and_provenance_preserve_both_intervals(self):
         master, pattern = self.candidate()
+        pattern["finale"]["portalSpawnIntervalMs"] = 0
         outputs = pipeline.project_v2_products(self.root, self.docs, master)
         encounter = json.loads(outputs[pipeline.ENCOUNTER_REL])
         product = next(row for row in encounter["patterns"] if row["patternId"] == pattern["patternId"])

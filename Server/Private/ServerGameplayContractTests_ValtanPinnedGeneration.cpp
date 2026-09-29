@@ -1142,6 +1142,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 			const auto durationTicks = [](const std::uint32_t ms)
 			{ return (std::max)(1u, static_cast<std::uint32_t>((static_cast<std::uint64_t>(ms) * 30u + 999u) / 1000u)); };
 			const std::uint32_t replacementDelayTicks = durationTicks(finale->Finale.iAuxiliarySpawnIntervalMs);
+			const bool automaticPortalsEnabled = 0u != finale->Finale.iPortalSpawnIntervalMs;
 			const std::uint32_t portalIntervalTicks = durationTicks(finale->Finale.iPortalSpawnIntervalMs);
 			const auto* automatic = catalog.Find_BossPatternSequence("ENCOUNTER_VALTAN");
 			const bool healthLoops = nullptr != automatic &&
@@ -1369,12 +1370,13 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 				if (observedPrimaryLoop == expectedTwoPrimaryCycles &&
 					observedAuxiliarySequence >= 3u &&
 					observedAuxiliaryDespawn && 0u == auxiliaryDespawnTick &&
-					portalSpawnTicks.size() >= 2u)
+					(!automaticPortalsEnabled || portalSpawnTicks.size() >= 2u))
 				{
 					break;
 				}
 			}
-			bool portalCadenceExact = portalSpawnTicks.size() >= 2u;
+			bool portalCadenceExact = automaticPortalsEnabled ? portalSpawnTicks.size() >= 2u :
+				portalSpawnTicks.empty() && 0u == observedPortalSequence;
 			for (std::size_t index = 1u;
 				portalCadenceExact && index < portalSpawnTicks.size(); ++index)
 			{

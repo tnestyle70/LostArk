@@ -3,6 +3,7 @@
 #include "KoukuSaydonLogicRuntime.h"
 
 #include "Gameplay/CombatCollisionContract.h"
+#include "Gameplay/WorldCollisionContract.h"
 #include "ServerCombatHitRuntime.h"
 
 #include <algorithm>
@@ -1270,9 +1271,40 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 				resolvedZ,
 				wasBlocked))
 		{
-			player.fPositionX = resolvedX;
-			player.fPositionY = resolvedY;
-			player.fPositionZ = resolvedZ;
+			// A body sweep can redirect a valid dash onto a tangent outside the
+			// floor. Revalidate that final segment before committing any position;
+			// rejecting it preserves the last safe pose without cancelling the skill.
+			bool finalStepAllowed = true;
+			if (nullptr != navigation && navigation->Is_Loaded())
+			{
+				SERVER_NAV_POINT finalGround{ resolvedX, resolvedY, resolvedZ };
+				bool finalStepClamped = false;
+				Clamp_StepToWalkable(*navigation,
+					player.fPositionX, player.fPositionZ, resolvedX, resolvedZ,
+					finalGround, finalStepClamped, player.fPositionY);
+				finalStepAllowed = !finalStepClamped;
+				if (finalStepAllowed && nullptr != collision && resolvedY != finalGround.y)
+				{
+					// The tangent sweep held Y fixed. Grounding that result is a new
+					// vertical move, so it must neither cross nor end inside a body.
+					float groundedX = resolvedX, groundedY = resolvedY, groundedZ = resolvedZ;
+					bool groundingBlocked = false;
+					finalStepAllowed = collision->Resolve_CircleMove(
+						resolvedX, resolvedY, resolvedZ, resolvedX, finalGround.y, resolvedZ,
+						WorldCollision::PLAYER_HALF_EXTENT_X, WorldCollision::PLAYER_HALF_EXTENT_Y,
+						WorldCollision::PLAYER_CENTER_OFFSET_Y,
+						groundedX, groundedY, groundedZ, groundingBlocked, player.iNetEntityId, false) &&
+						!groundingBlocked && collision->Is_PlayerPositionClear(
+							resolvedX, finalGround.y, resolvedZ, player.iNetEntityId);
+				}
+				if (finalStepAllowed) resolvedY = finalGround.y;
+			}
+			if (finalStepAllowed)
+			{
+				player.fPositionX = resolvedX;
+				player.fPositionY = resolvedY;
+				player.fPositionZ = resolvedZ;
+			}
 		}
 	}
 

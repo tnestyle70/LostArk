@@ -54,7 +54,10 @@ namespace
         if (SourceEquipmentMaterial::Is_Translucent(surface->sourceCharacter.program)) return 9u;
         switch (surface->sourceCharacter.program)
         {
+        case 6u:  // Same eyelash/hair coverage as Character and Part_Equipment.
+        case 7u:
         case 18u: return 9u;
+        case 99u: return 9u;
         case 84u: return SOURCE_GHOST_OPAQUE_PASS;
         case 88u: return 10u;
         default: return 0u;

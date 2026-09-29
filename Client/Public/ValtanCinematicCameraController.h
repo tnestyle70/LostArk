@@ -33,6 +33,8 @@ struct VALTAN_CINEMATIC_CAMERA_INPUT final
 	/* Death has no pattern to key on, so the clear shot is selected by this flag
 	   and still runs off the authoritative action start tick. */
 	bool_t isBossDead = false;
+	// Cached with the primary identity for reliable final DEAD despawn fallback.
+	bool_t isFinalBossPhase = false;
     bool_t hasStageCameraInvocations = false;
     std::string strInvokedCameraCueId;
     uint32_t iCameraStartOffsetMs = 0u, iCameraDurationMs = 0u;

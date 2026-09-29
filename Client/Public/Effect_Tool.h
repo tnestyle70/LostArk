@@ -568,6 +568,8 @@ public:
         std::function<void(bool)> pause;
         std::function<void()> stop;
         std::function<bool(const EFFECT_DOCUMENT_DESC&, std::string&)> preview;
+        // Draw-only Movie mask; an empty set hides every Element without deleting it.
+        std::function<bool(const EFFECT_DOCUMENT_DESC&, const std::vector<std::string>&, std::string&)> previewVisibility;
         // The Level owns occurrence selection, source/movie conversion and repeat time.
         std::function<bool(const std::string&, bool, const EFFECT_DOCUMENT_DESC&,
             const EFFECT_DOCUMENT_DESC&, const std::vector<std::string>&, double, double, bool, std::string&)> playSelection;

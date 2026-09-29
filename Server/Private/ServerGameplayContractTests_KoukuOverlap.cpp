@@ -625,6 +625,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
                 const auto tick = (birthMs + 1000u) * 30u / 1000u + 1u;
                 const float fraction = static_cast<float>((double(tick) * (1000. / 30.) - birthMs) / duration);
                 auto victim = player(); victim.iMarioStage = binding.stage;
+                victim.iMaximumHp = victim.iCurrentHp = generation == 100u ? 13200u : 26400u;
                 victim.fPositionX = marker->fPositionX + (endX - marker->fPositionX) * fraction;
                 victim.fPositionZ = marker->fPositionZ + (endZ - marker->fPositionZ) * fraction;
                 victim.fPositionY = marker->fPositionY;
@@ -633,10 +634,10 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
                 room->Update_MarioBombContacts(victim, tick);
                 room->Update_MarioBombContacts(victim, tick);
                 room->Update_MarioBombContacts(victim, tick + 1u);
-                tests.Require(victim.iCurrentHp == 90u && room->m_TickDamageEvents.size() == 1u &&
+                tests.Require(victim.iCurrentHp == victim.iMaximumHp - 1320u && room->m_TickDamageEvents.size() == 1u &&
                     victim.eAction == PLAYER_ACTION_STATE::KNOCKDOWN && victim.bKnockbackBallistic &&
                     victim.fKnockbackRemainingSeconds > .99f,
-                    "Every Mario emitter generation hits once and launches the player through authoritative knockdown");
+                    "Every Mario emitter generation deals fixed 1320 once at different maximum HP and launches authoritative knockdown");
                 room->Advance_PlayerKnockback(victim, .5f);
                 tests.Require(std::abs(victim.fPositionY - marker->fPositionY - 2.f) < .001f,
                     "Mario bomb launch reaches its two-metre apex during the knockdown animation");
@@ -863,6 +864,100 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
         }
         tests.Require(checked == 66u && ascents == 51u,
             "All 66 installed P18/P19/P33 carriers include 51 terminal-ascent releases and 15 split-track endings");
+    }
+    {
+        auto hookRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        hookRoom->m_GateProgress.iCurrentGate = 3u;
+        SERVER_NAV_POINT start{}, floor{}; float yaw = 0.f;
+        auto hanging = player();
+        hanging.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+        hanging.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+        hanging.eAction = PLAYER_ACTION_STATE::GRABBED;
+        hanging.isCombatReady = false;
+        hanging.eAttachmentSlot = PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP;
+        hanging.iAttachmentOwnerNetEntityId = 991u;
+        hanging.iAttachmentPatternSequence = 7u;
+        hanging.iAttachmentReleaseTick = 100u;
+        const bool ready = hookRoom->Is_Ready() && hookRoom->Resolve_KoukuRevivePosition(hanging, start, yaw) &&
+            hookRoom->m_ServerNavigation.Project_Point(start.x, start.z, floor, start.y);
+        tests.Require(ready, "Hook handoff loads the actual Gate 3 fallback floor");
+        if (ready)
+        {
+            hanging.fPositionX = floor.x; hanging.fPositionY = floor.y + 1.f; hanging.fPositionZ = floor.z;
+            C2S_USE_SKILL dodge{}; dodge.iClientSequence = 1u; dodge.iSkillId = 34020u;
+            dodge.fAimX = 1.f; dodge.fAimZ = 0.f;
+            CPlayerSkillSystem skills;
+            const auto& product = hookRoom->m_GameplayCatalog.Active();
+            auto p = hanging;
+            tests.Require(!skills.Try_Start(p, dodge, product, 99u, &hookRoom->m_ServerNavigation),
+                "Space cannot interrupt a hook on the tick before its landing");
+            const bool released = !hookRoom->Update_PlayerAttachment(p, 100u);
+            tests.Require(released && p.eAction == PLAYER_ACTION_STATE::NONE && p.isCombatReady &&
+                std::abs(p.fPositionY - floor.y) < .001f &&
+                hookRoom->m_ServerNavigation.Is_PointWalkableExact(p.fPositionX, p.fPositionZ, p.fPositionY),
+                "Expired hook grounds the whole pose before restoring movement and combat");
+            tests.Require(skills.Try_Start(p, dodge, product, 100u, &hookRoom->m_ServerNavigation),
+                "Space is accepted immediately after a grounded hook handoff");
+            for (unsigned exit = 0u; exit < 3u; ++exit)
+            {
+                p = hanging; p.iAttachmentReleaseTick = 1000u;
+                if (exit == 0u) p.fPositionY += 20.f;
+                if (exit == 1u) { p.fPositionX += 10000.f; p.fPositionZ += 10000.f; }
+                p.fKnockbackRemainingSeconds = 1.f; p.bKnockbackBallistic = true;
+                p.fKnockbackVelocityY = 10.f; p.fFallVelocityY = -10.f; p.iFallDeathTick = 300u;
+                const bool ended = exit == 2u ?
+                    hookRoom->Release_PlayerAttachment(p, 991u, 0.f, 0u, false, 0u, 101u) :
+                    !hookRoom->Update_PlayerAttachment(p, 101u);
+                tests.Require(ended && p.eAction == PLAYER_ACTION_STATE::NONE && p.isCombatReady &&
+                    std::abs(p.fPositionY - floor.y) < .001f &&
+                    hookRoom->m_ServerNavigation.Is_PointWalkableExact(p.fPositionX, p.fPositionZ, p.fPositionY) &&
+                    !p.bKnockbackBallistic && !p.fKnockbackRemainingSeconds && !p.fFallVelocityY && !p.iFallDeathTick,
+                    "Missing owner, outside pose and explicit cancellation all finish on verified ground with no residual flight");
+            }
+            const auto navigation = hookRoom->m_ServerNavigation;
+            hookRoom->m_ServerNavigation = CServerNavigation{};
+            p = hanging;
+            tests.Require(hookRoom->Update_PlayerAttachment(p, 100u) && p.eAction == PLAYER_ACTION_STATE::GRABBED &&
+                !p.isCombatReady && p.fPositionY == hanging.fPositionY &&
+                !skills.Try_Start(p, dodge, product, 100u, &hookRoom->m_ServerNavigation),
+                "Missing landing data retains the hook and rejects Space instead of unlocking an airborne body");
+            hookRoom->m_ServerNavigation = navigation;
+            tests.Require(!hookRoom->Update_PlayerAttachment(p, 101u) && p.eAction == PLAYER_ACTION_STATE::NONE,
+                "Restored landing data releases the retained hook without a new capture");
+            p = hanging; p.iCurrentHp = 0u;
+            tests.Require(!hookRoom->Update_PlayerAttachment(p, 100u) && p.eAction == PLAYER_ACTION_STATE::DEAD &&
+                !p.isCombatReady && p.fPositionY == hanging.fPositionY,
+                "Hook landing safety preserves the existing death contract");
+            // Encore's reset used to clear a failed hook after owner cleanup anyway.
+            auto& raid = hookRoom->m_KoukuRaid;
+            raid.pCatalog = hookRoom->m_GameplayCatalog.Get_ActiveGeneration();
+            const auto* encore = raid.pCatalog ? raid.pCatalog->Find_KoukuRaidGate("BINGO") : nullptr;
+            tests.Require(encore && !encore->strIntroPatternId.empty(),
+                "Hook cinematic handoff uses the published Encore definition");
+            if (encore && !encore->strIntroPatternId.empty())
+            {
+                raid.State.iRunEpoch = 1u; raid.State.strGateId = "GATE3";
+                raid.State.ePhase = KOUKUSAYDON_RAID_PHASE::WAIT_GATE;
+                hookRoom->m_Players[hanging.iPlayerId] = hanging;
+                const auto priorWorldCount = hookRoom->m_WorldEntities.size();
+                hookRoom->m_ServerNavigation = CServerNavigation{};
+                tests.Require(!hookRoom->Begin_KoukuRaidCinematic("BINGO", false, 102u) &&
+                    raid.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE && raid.State.strGateId == "GATE3" &&
+                    hookRoom->m_WorldEntities.size() == priorWorldCount &&
+                    hookRoom->m_Players.at(hanging.iPlayerId).eAction == PLAYER_ACTION_STATE::GRABBED &&
+                    !hookRoom->m_Players.at(hanging.iPlayerId).isCombatReady &&
+                    hookRoom->m_Players.at(hanging.iPlayerId).iAttachmentOwnerNetEntityId == hanging.iAttachmentOwnerNetEntityId &&
+                    hookRoom->m_Players.at(hanging.iPlayerId).fPositionY == hanging.fPositionY,
+                    "Encore admission preserves failed hook landing before owner cleanup, scope change and player reset");
+                hookRoom->m_ServerNavigation = navigation;
+                tests.Require(hookRoom->Begin_KoukuRaidCinematic("BINGO", false, 103u) &&
+                    raid.State.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC && raid.State.strGateId == "BINGO" &&
+                    hookRoom->m_Players.at(hanging.iPlayerId).eAction == PLAYER_ACTION_STATE::NONE &&
+                    hookRoom->m_Players.at(hanging.iPlayerId).eAttachmentSlot == PLAYER_ATTACHMENT_SLOT::NONE &&
+                    std::abs(hookRoom->m_Players.at(hanging.iPlayerId).fPositionY - floor.y) < .001f,
+                    "Restored floor grounds the retained hook before Encore changes gate scope and resets actions");
+            }
+        }
     }
     // Protection intercepts the complete result before either damage or forced movement.
     BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "push.protected";

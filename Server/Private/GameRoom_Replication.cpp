@@ -645,6 +645,11 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 			static_cast<std::uint8_t>(Mario_CurseReleasedMask(player.iMarioStage, player.iMarioLayoutVariant) &
 				(1u << (player.iMarioRequiredColor - 1u))) : 0u;
 		snapshot.iMarioMarkerColor = Mario_MarkerColor(player.iNetEntityId);
+		if (player.iMarioStage >= 1u && player.iMarioStage <= 4u)
+		{
+			snapshot.iMarioRequiredColor = player.iMarioRequiredColor;
+			snapshot.iMarioMatchingBallCount = (std::min)(std::uint8_t{ 3u }, Mario_MatchingBallCount(player));
+		}
 		snapshot.eCardMazeRole = player.eCardMazeRole;
 		snapshot.eCardMazeSuit = player.eCardMazeSuit;
 		snapshot.iCardMazeKills = player.iCardMazeKills;

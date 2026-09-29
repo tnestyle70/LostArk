@@ -2295,7 +2295,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			$auxiliaryInterval = [uint32]$finale.auxiliarySpawnIntervalMs
 		}
 		if ($hasPortalInterval) {
-			Assert-JsonInteger $finale.portalSpawnIntervalMs 'ghost portal interval' 1 600000
+			Assert-JsonInteger $finale.portalSpawnIntervalMs 'ghost portal interval' 0 600000
 			$portalInterval = [uint32]$finale.portalSpawnIntervalMs
 		}
 		Assert-JsonString $finale.kind 'pattern finale kind'

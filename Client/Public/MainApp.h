@@ -308,6 +308,7 @@ private:
 	drives is gated on this one answer, because each surface deciding for itself is what
 	let a minimap zone label and the combat analyzer letter the loading art. */
 	bool_t Is_KoukuMinigameHUDHidden() const;
+	bool_t Is_KoukuBossHealthBarHidden() const;
 	bool_t Is_RuntimeUIScreenSuppressed() const;
 	/* The toggle windows one Escape press closes one at a time, newest first. */
 	enum class ESCAPE_WINDOW : uint8_t { INVENTORY, CHARACTER_INFO, AVATAR_BOOK, HONOR_TITLE, VEHICLE, WORLD_MAP, REPAIR, SHOP, END };
@@ -424,6 +425,7 @@ private:
 	std::array<f32_t, 2> Get_MechanicBarScale() const;
 	bool_t Set_MechanicBarScale(const std::array<f32_t, 2>& scale);
 	void Apply_MechanicBarRect();
+	void Update_MechanicBarAnchor();
 	bool_t Save_HealthBarPositions(std::string& status);
 	bool_t Reload_HealthBarPositions(std::string& status);
 	void RenderHUDBarPositionControls();
@@ -705,6 +707,10 @@ private:
 	std::array<f32_t, 2> m_SavedMechanicBarScale{ 1.f / 3.f, 1.f };
 	std::array<float4_t, 3> m_MechanicBarBaseRects{};
 	std::array<bool_t, 3> m_MechanicBarHasBase{};
+	// Sampled from the same live head anchor as the world health bar after the final camera update.
+	float2_t m_MechanicBarHeadAnchor{};
+	bool_t m_bMechanicBarHasHeadAnchor = false;
+	bool_t m_bMechanicBarUIAllowed = false;
 	std::string m_strHealthBarPositionStatus;
 	/* UI/Esther/EstherUI.json's runtime consumer (Update_EstherGauge) -- real CUI_Sprite
 	GameObjects under LEVEL::STATIC, same reasoning as m_pBossUIView: the Esther skill window is

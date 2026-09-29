@@ -9,6 +9,7 @@
 #include "EffectFailureDiagnostic.h"
 #include "ActorCatalog.h"
 #include "KoukuSaydonPresentationAssetService.h"
+#include "KoukuSaydonBossTool.h"
 #include "KoukuSaydonPresentationPlayer.h"
 #include "EffectV2_Runtime.h"
 #include "Effect_Catalog.h"
@@ -69,11 +70,18 @@ namespace
 	/* Three gate icons remain visible; the Server may also expose the Bingo encore. */
 	constexpr uint8_t KOUKU_GATE_COUNT = 3u;
 
+	bool_t CinematicShotAllowsGameplay(const std::string_view shotId)
+	{
+		// The Gate 2 giant Saydon appearance is a combat bundle camera, not a raid transition.
+		return shotId == "camera.kouku.pattern.1";
+	}
+
 	bool_t CinematicShotShowsPlayers(const std::string_view shotId)
 	{
 		// Only these authored scenes include the replicated party. The combined
 		// Gate 2 clear / Gate 3 entry reveals players only in entry shots 11-18.
-		return shotId == "1Stage.finale" || shotId == "2Stage.book" ||
+		return CinematicShotAllowsGameplay(shotId) ||
+			shotId == "1Stage.finale" || shotId == "2Stage.book" ||
 			shotId == "kouku.gate1.authored.finale" || shotId == "kouku.gate1.authored.portal" ||
 			shotId == "kouku.gate1.authored.book" || shotId.starts_with("kouku.gate1.full.camera.") ||
 			shotId.starts_with("kouku.gate2.maze.camera.") ||
@@ -1496,34 +1504,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 		}
 		else
 		{
-#ifndef _DEBUG
-			const auto worldStarted = GetTickCount64();
-			size_t worldPrepared = 0u;
-			CProfilerScope worldPrepareScope(pProfiler, "Level.Kouku.WorldResources.Prewarm");
-			for (const auto& instance : m_SequencePlayer.Get_Document().Get_Instances())
-			{
-				if (!instance.enabled) continue;
-				if (!m_SequencePlayer.Prepare_InstanceResources(instance.instanceId, sequenceTargets))
-				{
-					OutputDebugStringA(("[Level_KakulSaydonArena][WorldPrewarm] " +
-						instance.instanceId + ": " + m_SequencePlayer.Get_Status() + "\n").c_str());
-					return E_FAIL;
-				}
-				++worldPrepared;
-			}
-            // Release's Loader has already settled the V1 closure. Debug prepares
-            // these effect-bearing props in Complete Play after its async barrier.
-            if (!m_SequencePlayer.Prewarm_ObjectInstances("world.object.instance.kouku.mario_circus_ball.aura", 4u, sequenceTargets) ||
-                !m_SequencePlayer.Prewarm_ObjectInstances("world.object.instance.kouku.odd_doll.large.att_battle_2_01", 4u, sequenceTargets))
-            {
-                OutputDebugStringA(("[Level_KakulSaydonArena][MarioPrewarm] " +
-                    m_SequencePlayer.Get_Status() + "\n").c_str());
-                return E_FAIL;
-            }
-			Write_EffectFailureDiagnostic("Kouku.Loading.WorldPrepared",
-				"elapsed_ms=" + std::to_string(GetTickCount64() - worldStarted) +
-				" instances=" + std::to_string(worldPrepared));
-#endif
+#ifdef _DEBUG
 			CProfilerScope prepareScope(pProfiler, "Level.Kouku.JokerCards.Prewarm");
             // Six cards and one joker have no asynchronous Effect dependency.
             // Shared cue players borrow these exact clones from m_SequencePlayer.
@@ -1534,6 +1515,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 					m_SequencePlayer.Get_Status() + "\n").c_str());
 				return E_FAIL;
 			}
+#endif
 		}
 	}
 
@@ -1662,6 +1644,16 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 			"[Level_KakulSaydonArena] Debug stage entry Trigger Box "
 			"presentation failed.\n");
 	}
+#endif
+
+#ifndef _DEBUG
+    std::string raidPreparationStatus;
+    if (!Prepare_EntryRaidResources(raidPreparationStatus))
+    {
+        Write_EffectFailureDiagnostic("Kouku.Loading.RaidPreparationFailed", raidPreparationStatus);
+        OutputDebugStringA(("[Level_KakulSaydonArena][RaidPrewarm] " + raidPreparationStatus + "\n").c_str());
+        return E_FAIL;
+    }
 #endif
 
 	Write_EffectFailureDiagnostic("Kouku.Arena.Ready",
@@ -2127,22 +2119,14 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	Sync_CinematicPlayerVisibility();
 	Update_RaidBgm();
 	// Consume this frame's Server-started camera sequence before accepting input.
-	// A completed shot may keep following the player and must not block controls.
-	const bool_t isCameraTrackPlaying = std::any_of(
-		m_CameraShots.begin(), m_CameraShots.end(),
-		[this](const KAKUL_CAMERA_SHOT& shot)
-		{
-			return m_bCameraShotHeld && shot.strShotId == m_strActiveCameraShotId &&
-				shot.hasCameraTrack && !shot.followsPlayer && !shot.strSequenceInstanceId.empty() &&
-				Is_SequenceCameraAudience(shot.strSequenceInstanceId, CCombatHUDViewModel::Get().Get_Player().iMarioStage) &&
-				m_SequencePlayer.Is_Playing(shot.strSequenceInstanceId);
-		});
+	// The giant Saydon combat shot keeps ordinary Server-authorized picking available.
+	const bool_t cinematicInputBlocked = Is_CinematicInputBlocked();
 	bool_t sequenceInputReady = !m_bSequenceCombatPending;
 #ifdef _DEBUG
 	sequenceInputReady = sequenceInputReady && !Is_DebugGatePending();
 #endif
 	m_PlayerController.Update(
-		sequenceInputReady && nullptr != m_pCamera && m_pCamera->Is_FollowEnabled() && !isCameraTrackPlaying,
+		sequenceInputReady && nullptr != m_pCamera && m_pCamera->Is_FollowEnabled() && !cinematicInputBlocked,
 		sequenceInputReady && nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&
 		!m_pCamera->Is_PresentationOverrideActive());
 	Update_TriggerMoveFade(fTimeDelta);
@@ -2640,6 +2624,23 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 			text += L" EXIT (" + std::to_wstring(static_cast<int>(maze.CardMaze.exitX)) + L", " +
 				std::to_wstring(static_cast<int>(maze.CardMaze.exitZ)) + L")";
 		drawPrompt(text.c_str(), 0.68f, 1.f, Colors::White);
+	}
+	/* The Server reports the entrant's matching count used by the exit check.
+	   The overhead marker may belong to a different player outside Mario. */
+	const auto& mario = CCombatHUDViewModel::Get().Get_Player();
+	if (m_fMarioProgressNoticeSeconds > 0.f && mario.isValid &&
+		mario.iMarioStage >= 1u && mario.iMarioStage <= 4u &&
+		m_iMarioProgressColor >= 1u && m_iMarioProgressColor <= 3u)
+	{
+		static constexpr const wchar_t* BALL_NAMES[3] = {
+			L"\uBE68\uAC04\uC0C9 \uACF5", L"\uD30C\uB780\uC0C9 \uACF5", L"\uB178\uB780\uC0C9 \uACF5" };
+		const auto color = m_iMarioProgressColor;
+		const std::wstring progress = L"[" + std::to_wstring(m_iMarioProgressCount) +
+			L" / 3] " + BALL_NAMES[color - 1u];
+		const vector_t tint = 1u == color ? Colors::Red :
+			2u == color ? Colors::DeepSkyBlue : Colors::Gold;
+		const f32_t alpha = std::clamp(m_fMarioProgressNoticeSeconds / MARIO_PROGRESS_FADE_SECONDS, 0.f, 1.f);
+		drawPrompt(progress.c_str(), 0.68f, 1.f, XMVectorSetW(XMVectorScale(tint, alpha), alpha));
 	}
 	/* Mario: a colour's curse lifts when its last source ball pops. Korean by
 	   universal character names for the same codepage reason as above. */
@@ -5062,6 +5063,19 @@ bool_t Client::CLevel_KakulSaydonArena::Is_CinematicPresentationActive() const
 		!shot->strSequenceInstanceId.empty() && m_SequencePlayer.Is_Playing(shot->strSequenceInstanceId);
 }
 
+bool_t Client::CLevel_KakulSaydonArena::Is_CinematicInputBlocked() const
+{
+	if (m_bSequenceCombatPending) return true;
+	if (!Is_CinematicPresentationActive()) return false;
+	if (m_pCamera && m_CompositionCamera.cinematicTrack && !m_CompositionCamera.ownerKey.empty() &&
+		m_pCamera->Is_PresentationOverrideOwnedBy(0x4b4f554b55434f4dull))
+		return !CinematicShotAllowsGameplay(m_CompositionCamera.shotId);
+	if (m_pCamera && m_bCameraShotHeld &&
+		m_pCamera->Is_PresentationOverrideOwnedBy(KAKULSAYDON_CAMERA_SHOT_OWNER_ID))
+		return !CinematicShotAllowsGameplay(m_strActiveCameraShotId);
+	return true;
+}
+
 bool_t Client::CLevel_KakulSaydonArena::Should_HideCinematicPlayers() const
 {
 	if (!Is_CinematicPresentationActive()) return false;
@@ -6296,10 +6310,59 @@ bool_t Client::CLevel_KakulSaydonArena::Can_StartCompositionWorld(
 }
 
 
+bool Client::CLevel_KakulSaydonArena::Prepare_EntryRaidResources(std::string& status)
+{
+    const auto started = GetTickCount64();
+    CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Level.Kouku.RaidResources.Prewarm");
+    CKoukuSaydonBossTool published;
+    if (!published.Reload(status)) return false;
+    const auto& patterns = published.Get_PlayAllPatternIds();
+    const auto sourceRevision = published.Get_SourceRevision();
+    bool ready = false;
+    // Loader already admitted this WORLD document. Preserve its models and pools;
+    // the same selection will be consumed by the Server PREPARING acknowledgement.
+    if (!Prepare_CompletePlayResources(patterns, {}, sourceRevision, ready, status, true, {}, false)) return false;
+    const auto& resources = m_CompletePlayPreparation->resources;
+    const auto probe = CEffectPresentationService::Get_ProductCuePreparationProbe(resources.V1EffectIds);
+    if (!resources.V1EffectIds.empty() && (!probe.bCatalogRevisionCurrent || !probe.bSettled ||
+        probe.iFailedCount || probe.iUnavailableCount || !probe.strBlockingFailure.empty() ||
+        probe.iPreparedCount != resources.V1EffectIds.size()))
+    {
+        status = "Release raid resources were not settled by the loading barrier: " + probe.strBlockingFailure;
+        return false;
+    }
+    // Each call advances one actor, V2 or WORLD item, then at most one binding
+    // archetype. Never wait for asynchronous work while Level activation owns the thread.
+    const size_t maximumSteps = resources.BossArchetypeIds.size() + resources.V2Effects.size() +
+        resources.WorldInstanceIds.size() + CActorCatalog::Get_Bosses().size() + 2u;
+    for (size_t step = 0u; step < maximumSteps && !ready; ++step)
+        if (!Prepare_CompletePlayResources(patterns, {}, sourceRevision, ready, status, true, {}, false)) return false;
+    if (!ready)
+    {
+        status = "Release raid preparation did not finish within its dependency bound: " + status;
+        return false;
+    }
+    if (!Prepare_ServerRaidGatePresentation("GATE1", status)) return false;
+    Write_EffectFailureDiagnostic("Kouku.Loading.RaidPrepared",
+        "elapsed_ms=" + std::to_string(GetTickCount64() - started) +
+        " source_revision=" + std::to_string(sourceRevision) +
+        " world_instances=" + std::to_string(resources.WorldInstanceIds.size()));
+    return true;
+}
+
 bool Client::CLevel_KakulSaydonArena::Debug_PrepareCompletePlayResources(
     const std::vector<std::string>& patternIds, const std::vector<std::string>& bundleIds,
     const uint32_t sourceRevision, bool& ready, std::string& status, const bool wholeRaid,
     std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft)
+{
+    return Prepare_CompletePlayResources(patternIds, bundleIds, sourceRevision, ready, status,
+        wholeRaid, std::move(draft), true);
+}
+
+bool Client::CLevel_KakulSaydonArena::Prepare_CompletePlayResources(
+    const std::vector<std::string>& patternIds, const std::vector<std::string>& bundleIds,
+    const uint32_t sourceRevision, bool& ready, std::string& status, const bool wholeRaid,
+    std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft, const bool reloadWorld)
 {
     ready = false;
     const auto& document = m_SequencePlayer.Get_Document();
@@ -6328,7 +6391,7 @@ bool Client::CLevel_KakulSaydonArena::Debug_PrepareCompletePlayResources(
             status += ". Preparation will continue automatically.";
             return true;
         }
-        if (!Reload_WorldObjectRuntime(status)) return false;
+        if (reloadWorld && !Reload_WorldObjectRuntime(status)) return false;
         COMPLETE_PLAY_PREPARATION staged;
         staged.selectedPatterns = patternIds; staged.selectedBundles = bundleIds; staged.sourceRevision = sourceRevision;
         if (!CKoukuSaydonPresentationAssetService::Collect_CompletePlayResources(patternIds, bundleIds,

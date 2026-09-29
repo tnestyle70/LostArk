@@ -395,6 +395,21 @@ void CLevel_KakulSaydonArena::Update_MarioBallPresentation(const f32_t timeDelta
         nullptr : document.Find_Instance(m_strMarioBallLayoutInstance);
     const std::uint16_t popped = layout ? player.iMarioPoppedBallMask : std::uint16_t{};
     const std::uint8_t curse = layout ? player.iMarioCurseReleasedMask : std::uint8_t{};
+    const bool hasObjective = layout && player.isValid && player.iMarioStage >= 1u &&
+        player.iMarioStage <= 4u && player.iMarioRequiredColor >= 1u && player.iMarioRequiredColor <= 3u;
+    const std::uint8_t progressColor = hasObjective ? player.iMarioRequiredColor : std::uint8_t{};
+    const std::uint8_t progressCount = hasObjective ? player.iMarioMatchingBallCount : std::uint8_t{};
+    // Replayed snapshots and wrong-colour pops must not restart the notification.
+    // Entry, a new objective and return establish a silent baseline.
+    if (layoutChanged || progressColor != m_iMarioProgressColor || progressCount < m_iMarioProgressCount)
+        m_fMarioProgressNoticeSeconds = 0.f;
+    else if (progressCount > m_iMarioProgressCount)
+        m_fMarioProgressNoticeSeconds = MARIO_PROGRESS_HOLD_SECONDS + MARIO_PROGRESS_FADE_SECONDS;
+    else
+        m_fMarioProgressNoticeSeconds = (std::max)(0.f, m_fMarioProgressNoticeSeconds -
+            (std::isfinite(timeDelta) && timeDelta > 0.f ? timeDelta : 0.f));
+    m_iMarioProgressColor = progressColor;
+    m_iMarioProgressCount = progressCount;
     /* Balls popped before this player arrived are hidden silently: the smoke
        and the notice belong to the pop itself. */
     const std::uint16_t changed = static_cast<std::uint16_t>(popped ^ m_iMarioPoppedBallsSeen);
@@ -667,6 +682,14 @@ bool_t CLevel_KakulSaydonArena::Reload_WorldObjectRuntime(std::string& status)
     if (!m_SequencePlayer.Load_Area("LV_LUT_MIDNIGHTC_ED", targets))
     { status = m_SequencePlayer.Get_Status(); return false; }
     const auto loadedStatus = m_SequencePlayer.Get_Status();
+    // Entry may have staged G1 before any Server run. A successful explicit
+    // WORLD reload must retire that unconsumed stage, never an active scene lease.
+    if (m_pPendingGateObjects && m_pPendingGateObjects->serverRaidPrepared &&
+        !m_ServerRaidEnvironmentBaseline && !m_pServerRaidCinematicBorrowedGateObjects)
+    {
+        Debug_CancelGateObjects();
+        m_pPendingGateMapLights.reset(); m_PendingGateMapLightSource.reset();
+    }
     std::string preparationErrors;
     for (const auto& [instanceId, copies] : {
         std::pair{"world.object.instance.kouku.card", 6u},

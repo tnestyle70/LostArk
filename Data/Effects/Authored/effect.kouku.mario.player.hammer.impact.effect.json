@@ -10175,7 +10175,7 @@
       "displayName": "notify-005 | particlespriteemitter_6",
       "groupId": "effect.kouku.mario.player.hammer.impact",
       "sourceNode": "action-42784/stage-000/notify-005|fx_mn_reup_07.par_y_reup_07_wp_hammer_01.particlespriteemitter_6",
-      "visible": true,
+      "visible": false,
       "kind": "particle",
       "resources": [
         {
@@ -11947,7 +11947,7 @@
       "displayName": "notify-005 | particlespriteemitter_16",
       "groupId": "effect.kouku.mario.player.hammer.impact",
       "sourceNode": "action-42784/stage-000/notify-005|fx_mn_reup_07.par_y_reup_07_wp_hammer_01.particlespriteemitter_16",
-      "visible": true,
+      "visible": false,
       "kind": "particle",
       "resources": [
         {

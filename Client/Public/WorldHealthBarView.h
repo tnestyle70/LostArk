@@ -23,6 +23,8 @@ public:
 	/* Pair order: ally, normal monster, KoukuSaydon, Kouku, Valtan.
 	Reference pixels; each offset moves the complete HP/shield group. */
 	bool Set_Offsets(const std::array<float2_t, 5>& offsets);
+	// Shared by the mechanic gauge so both bars follow the visible, interpolated actor.
+	static bool Try_GetHeadAnchor(const HUD_WORLD_HEALTH_BAR_STATE& state, float3_t& position);
 
 private:
 	struct RECT
@@ -36,7 +38,6 @@ private:
 		std::array<RECT, 4> rects;
 	};
 	std::unique_ptr<BAR> Create_Bar() const;
-	static bool Try_GetHeadAnchor(const HUD_WORLD_HEALTH_BAR_STATE& state, float3_t& position);
 
 	std::array<float2_t, 5> m_Offsets{};
 	ComPtr<ID3D11Device> m_Device;
