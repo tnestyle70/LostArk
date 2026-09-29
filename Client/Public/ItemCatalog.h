@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace Client
@@ -32,6 +33,12 @@ namespace Client
 		std::string strEquipSlot;
 		std::string strCharacterClass;
 		std::string strGrade;
+		/* Avatar only: the EquipmentPresentationCatalog visual set the character wears when
+		   this item sits in its avatar slot. Empty for gear and for a shop template. */
+		std::string strVisualSetId;
+		/* Shop template only: characterClass -> the class item the Server hands the buyer.
+		   Shown in the shop under the template's own name and icon; never equippable itself. */
+		std::unordered_map<std::string, std::string> ClassVariants;
 	};
 
 	/* One stock line of an NPC shop (ItemCatalog.json "shops"). The Server's copy, published

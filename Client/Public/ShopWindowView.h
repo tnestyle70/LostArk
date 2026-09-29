@@ -71,6 +71,9 @@ private:
 	/* Stock cells add to the basket; basket slots take a line out. */
 	void Update_Stock();
 	void Update_Basket();
+	uint32_t Get_PageCount() const;
+	/* Absolute stock index the cell shows on the current page, or SIZE_MAX past the end. */
+	size_t Get_StockIndex(uint32_t iCell) const;
 	/* Pushes the stock and basket icons to their slots; only when either changes. */
 	void Refresh_Icons();
 	/* Shown and hidden per frame: empty cells and basket slots draw no icon or coin. */
@@ -89,6 +92,8 @@ private:
 	const SHOP_DEFINITION* m_pShop = nullptr;
 	std::vector<BASKET_LINE> m_Basket;
 	bool_t m_bIconsDirty = true;
+	/* Ten stock lines per page; the two page plates under the list are prev/next. */
+	uint32_t m_iPage = 0;
 
 	bool_t m_bDraggingPanel = false;
 	f32_t m_fLastDragMouseX = 0.f;

@@ -632,6 +632,13 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 					player.fVehicleFlightStartHeight / vehicle->fFlightVerticalSpeed);
 		}
 		snapshot.iHonorTitleId = player.iHonorTitleId;
+		for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& item : player.Inventory)
+		{
+			if (LostArk::Shared::EQUIPMENT_SLOT::AVATAR_HEAD == item.eEquippedSlot)
+				snapshot.strAvatarHeadItemId = item.strItemId;
+			else if (LostArk::Shared::EQUIPMENT_SLOT::AVATAR_OUTFIT == item.eEquippedSlot)
+				snapshot.strAvatarOutfitItemId = item.strItemId;
+		}
 		snapshot.eMechanicCardSymbol = player.eMechanicCardSymbol;
 		snapshot.eMechanicCardColor = player.eMechanicCardColor;
 		snapshot.eKoukuHudMode = player.eKoukuHudMode;

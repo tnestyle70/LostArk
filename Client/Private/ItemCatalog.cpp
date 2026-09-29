@@ -111,6 +111,20 @@ bool Client::CItemCatalog::Load(std::string& outStatus)
 		ReadOptionalText("equipSlot", definition.strEquipSlot);
 		ReadOptionalText("characterClass", definition.strCharacterClass);
 		ReadOptionalText("grade", definition.strGrade);
+		ReadOptionalText("visualSetId", definition.strVisualSetId);
+		if (const DATA_JSON_VALUE* pVariants = value.Find("classVariants");
+			nullptr != pVariants && pVariants->Get_Type() == DATA_JSON_TYPE::OBJECT)
+		{
+			for (const auto& [strClass, variant] : pVariants->Get_Object())
+			{
+				if (variant.Get_Type() != DATA_JSON_TYPE::STRING || variant.Get_String().empty())
+				{
+					outStatus = "ItemCatalog.json has an invalid classVariants entry";
+					return false;
+				}
+				definition.ClassVariants[strClass] = variant.Get_String();
+			}
+		}
 
 		for (const ITEM_DEFINITION& existing : staged)
 		{

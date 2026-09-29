@@ -3,6 +3,7 @@
 #include <Windows.h>
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <cctype>
 #include <filesystem>
@@ -107,6 +108,8 @@ bool LostArk::Server::CItemCatalog::Load()
 	m_Items.clear();
 	std::unordered_map<std::string, std::string> shopIdByNpc;
 	std::unordered_map<std::string, std::vector<SERVER_SHOP_ITEM>> shopItems;
+	/* (template, class) -> variant, applied to m_Items after every ITEM row is known. */
+	std::vector<std::array<std::string, 3>> variantRows;
 	SERVER_PURSE startingPurse{};
 	const auto parseCurrency = [](const std::string_view value, SERVER_CURRENCY& output)
 	{
@@ -145,9 +148,9 @@ bool LostArk::Server::CItemCatalog::Load()
 		return false;
 	}
 
-	if (5u != version)
+	if (6u != version)
 	{
-		m_strStatus = "Item bootstrap version mismatch: expected 5, got " +
+		m_strStatus = "Item bootstrap version mismatch: expected 6, got " +
 			std::to_string(version) + "; path=" + path.string() +
 			"; run powershell -ExecutionPolicy Bypass -File "
 			"Tools/GameplayPipeline/Publish-ItemCatalog.ps1 -Mode Publish";
@@ -207,6 +210,18 @@ bool LostArk::Server::CItemCatalog::Load()
 			shopItems[std::string(fields[1])].push_back(std::move(stock));
 			continue;
 		}
+		/* ITEMVARIANT <templateId> <className> <itemId>: the class variant a template buys. */
+		if (4u == fields.size() && "ITEMVARIANT" == fields[0])
+		{
+			if (!IsStableId(fields[1]) || fields[2].empty() || !IsStableId(fields[3]))
+			{
+				m_strStatus = "Item bootstrap ITEMVARIANT row is invalid";
+				m_Items = std::move(previousItems);
+				return false;
+			}
+			variantRows.push_back({ std::string(fields[1]), std::string(fields[2]), std::string(fields[3]) });
+			continue;
+		}
 		SERVER_ITEM_DEFINITION item{};
 		if (7u != fields.size() || "ITEM" != fields[0] || !IsStableId(fields[1]) ||
 			!ParseNumber(fields[2], item.iMaxStack) || 0u == item.iMaxStack ||
@@ -237,6 +252,23 @@ bool LostArk::Server::CItemCatalog::Load()
 		m_strStatus = "Item bootstrap has trailing rows";
 		m_Items = std::move(previousItems);
 		return false;
+	}
+
+	/* A template is not equipment and every variant is equipment of exactly that class;
+	   the publisher checks the same so a hand-edited file stays honest. */
+	for (const auto& [templateId, className, variantId] : variantRows)
+	{
+		const auto templateIter = m_Items.find(templateId);
+		const auto variantIter = m_Items.find(variantId);
+		if (m_Items.end() == templateIter || m_Items.end() == variantIter ||
+			!templateIter->second.strEquipSlot.empty() || !templateIter->second.strCharacterClass.empty() ||
+			variantIter->second.strEquipSlot.empty() || variantIter->second.strCharacterClass != className ||
+			!templateIter->second.ClassVariants.emplace(className, variantId).second)
+		{
+			m_strStatus = "Item bootstrap ITEMVARIANT row does not fit its items: " + templateId;
+			m_Items = std::move(previousItems);
+			return false;
+		}
 	}
 
 	/* Every stock line must name a catalog item, and every shop an NPC runs must sell

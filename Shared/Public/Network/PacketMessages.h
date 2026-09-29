@@ -1740,6 +1740,11 @@ namespace LostArk::Shared
 		// Maharaka Waterpang only: the Server arms every live-match arena participant.
 		bool isWaterpangArmed = false;
 		PLAYER_CONTROL_KIND eControlKind = PLAYER_CONTROL_KIND::HUMAN;
+		/* Avatar items the Server has this player wearing (protocol 122): the itemId in the
+		   AVATAR_HEAD / AVATAR_OUTFIT inventory slot, or empty. Every Client maps the id to
+		   its class visual set; the Server never knows a model or visual set id. */
+		std::string strAvatarHeadItemId;
+		std::string strAvatarOutfitItemId;
 	};
 
 	enum class BOSS_COMBAT_STATE_FLAG : std::uint16_t
@@ -2838,6 +2843,8 @@ namespace LostArk::Shared
 		RING2,
 		STONE,
 		BRACELET,
+		AVATAR_HEAD,
+		AVATAR_OUTFIT,
 		END
 	};
 
@@ -2861,6 +2868,8 @@ namespace LostArk::Shared
 		case EQUIPMENT_SLOT::RING2: return "ring";
 		case EQUIPMENT_SLOT::STONE: return "stone";
 		case EQUIPMENT_SLOT::BRACELET: return "bracelet";
+		case EQUIPMENT_SLOT::AVATAR_HEAD: return "avatarHead";
+		case EQUIPMENT_SLOT::AVATAR_OUTFIT: return "avatarOutfit";
 		default: return nullptr;
 		}
 	}

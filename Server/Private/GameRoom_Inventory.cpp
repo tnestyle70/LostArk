@@ -333,6 +333,18 @@ bool LostArk::Server::CGameRoom::Apply_BuyItems(
 		const SERVER_ITEM_DEFINITION* definition = m_ItemCatalog.Find_Item(entry.strItemId);
 		if (nullptr == stock || nullptr == definition)
 			return false;
+		/* A shop template is one icon for every class: the buyer receives the variant of the
+		   buyer's class. A class the template has no variant for cannot buy it. */
+		const SERVER_ITEM_DEFINITION* granted = definition;
+		if (!definition->ClassVariants.empty())
+		{
+			const auto variant = definition->ClassVariants.find(Item_ClassName(player.eCharacterClass));
+			if (definition->ClassVariants.end() == variant)
+				return false;
+			granted = m_ItemCatalog.Find_Item(variant->second);
+			if (nullptr == granted)
+				return false;
+		}
 		const std::uint64_t cost = static_cast<std::uint64_t>(stock->iPrice) * entry.iQuantity;
 		std::uint32_t& purse = stagedPurse.Amount(stock->eCurrency);
 		if (purse < cost)
@@ -340,19 +352,19 @@ bool LostArk::Server::CGameRoom::Apply_BuyItems(
 		purse -= static_cast<std::uint32_t>(cost);
 
 		/* No silent cap: a line that would overflow the stack refuses the basket. */
-		const auto owned = bagEntry(entry.strItemId);
+		const auto owned = bagEntry(granted->strItemId);
 		if (staged.end() == owned)
 		{
-			if (staged.size() >= MAX_INVENTORY_ITEMS || entry.iQuantity > definition->iMaxStack)
+			if (staged.size() >= MAX_INVENTORY_ITEMS || entry.iQuantity > granted->iMaxStack)
 				return false;
 			INVENTORY_ITEM_SNAPSHOT item{};
-			item.strItemId = entry.strItemId;
+			item.strItemId = granted->strItemId;
 			item.iQuantity = entry.iQuantity;
 			staged.push_back(std::move(item));
 		}
 		else
 		{
-			if (static_cast<std::uint64_t>(owned->iQuantity) + entry.iQuantity > definition->iMaxStack)
+			if (static_cast<std::uint64_t>(owned->iQuantity) + entry.iQuantity > granted->iMaxStack)
 				return false;
 			owned->iQuantity += entry.iQuantity;
 		}

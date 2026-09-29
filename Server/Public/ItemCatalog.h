@@ -28,6 +28,9 @@ namespace LostArk::Server
 		// The slot a fresh character already wears this item in; NONE otherwise.
 		LostArk::Shared::EQUIPMENT_SLOT eStartingEquippedSlot =
 			LostArk::Shared::EQUIPMENT_SLOT::NONE;
+		/* ITEMVARIANT rows: a shop template's class name -> the item the buyer of that class
+		   receives. Empty for an ordinary item. A template is never equipment itself. */
+		std::unordered_map<std::string, std::string> ClassVariants;
 	};
 
 	// One stock line of an NPC shop: the item, the currency it is paid in and the price of one.
