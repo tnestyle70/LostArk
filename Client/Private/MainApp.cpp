@@ -699,6 +699,25 @@ void CMainApp::Play_UIButtonClickSound()
 	CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
 }
 
+void CMainApp::Open_SystemOptionsWindow()
+{
+	if (nullptr != m_pSystemOptionView && !m_pSystemOptionView->Is_Open())
+		m_pSystemOptionView->Open();
+}
+
+bool_t CMainApp::Return_ToCharacterSelect()
+{
+	if (CLevelTransitionService::Is_Pending())
+		return false;
+	CCharacterSelectionState::Save_ActiveWorldState();
+	if (!CLevelTransitionService::Request_Load(LEVEL::LOBBY, "world.menu.character-select"))
+		return false;
+	m_bOpenCharacterSelectOnLobby = true;
+	/* The Server removes this player through its normal disconnect handling. */
+	CNetworkManager::Get().Close_ServerConnection();
+	return true;
+}
+
 void CMainApp::Play_PopupRequestSound()
 {
 	const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
@@ -6348,6 +6367,13 @@ void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
 		return;
 	}
 
+	/* Coming back from a world by the character select icon: this is the screen it asked for. */
+	if (m_bOpenCharacterSelectOnLobby && !m_pCharacterSelectWindowView->Is_Open() &&
+		CLevel_Lobby::Can_SubmitProductCommand())
+	{
+		m_pCharacterSelectWindowView->Open();
+		m_bOpenCharacterSelectOnLobby = false;
+	}
 	/* The options window opens over this one from its own icon; while it is up this window
 	keeps drawing but leaves the pointer and Escape to it. */
 	m_pCharacterSelectWindowView->Update(fTimeDelta,
@@ -10237,6 +10263,14 @@ void CMainApp::Apply_LevelRequest()
 
 	if (LEVEL_TRANSITION_PHASE::LOAD == request.ePhase)
 	{
+		/* Leaving a world for the Lobby, by the character select icon, a lost connection or a
+		Server disconnect, keeps what the character was carrying. */
+		if (LEVEL::LOBBY == request.eTargetLevel &&
+			(iPreviousLevel == ETOUI(LEVEL::BERN) ||
+			 iPreviousLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+			 iPreviousLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ||
+			 iPreviousLevel == ETOUI(LEVEL::MAHARAKA)))
+			CCharacterSelectionState::Save_ActiveWorldState();
 		const HRESULT result = Start_Level(
 			request.eTargetLevel,
 			request.iLobbyCommandToken);

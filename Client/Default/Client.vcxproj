@@ -84,6 +84,7 @@
     <ClInclude Include="..\Public\MvpAwardCatalog.h" />
     <ClInclude Include="..\Public\MvpResultView.h" />
     <ClInclude Include="..\Public\RaidGateProgressView.h" />
+    <ClInclude Include="..\Public\SystemMenuButtonsView.h" />
     <ClInclude Include="..\Public\InteractKeyPromptView.h" />
     <ClInclude Include="..\Public\UITextOcclusion.h" />
     <ClInclude Include="..\Public\BossImmuneGaugeView.h" />
@@ -380,6 +381,7 @@
     <ClCompile Include="..\Private\MvpAwardCatalog.cpp" />
     <ClCompile Include="..\Private\MvpResultView.cpp" />
     <ClCompile Include="..\Private\RaidGateProgressView.cpp" />
+    <ClCompile Include="..\Private\SystemMenuButtonsView.cpp" />
     <ClCompile Include="..\Private\InteractKeyPromptView.cpp" />
     <ClCompile Include="..\Private\UITextOcclusion.cpp" />
     <ClCompile Include="..\Private\BossImmuneGaugeView.cpp" />
@@ -1027,6 +1029,7 @@
     <None Include="..\..\Data\UI\Bern\ValtanRaidEntry_Layout.json" />
     <None Include="..\..\Data\UI\Party\PartyInviteConfirm_Layout.json" />
     <None Include="..\..\Data\UI\RaidGateProgress\RaidGateProgress_Layout.json" />
+    <None Include="..\..\Data\UI\SystemMenu\SystemMenuButtons_Layout.json" />
     <None Include="..\..\Data\UI\RaidGateProgress\RaidGateVote_Layout.json" />
     <None Include="..\..\Data\UI\Interact\InteractKey_Layout.json" />
     <None Include="..\..\Data\UI\Party\PartyContextMenu_Layout.json" />

@@ -153,6 +153,12 @@ public:
 	void Open_RepairWindow();
 	/* Bern's potion merchants: opens the shop the NPC placement runs. */
 	void Open_ShopWindow(const string& strNpcPlacementId);
+	/* The world's bottom-right icon buttons (CSystemMenuButtonsView). The options window is the
+	one Escape opens; a no-op when it is already open. */
+	void Open_SystemOptionsWindow();
+	/* Saves what the character carries, leaves the world for the Lobby and has the character
+	select window open there. False changes nothing (a Level transition is already pending). */
+	bool_t Return_ToCharacterSelect();
 
 	static void Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle);
 	/* Every domain tool writes one stable Pattern ID into this process-wide
@@ -936,6 +942,8 @@ private:
 	runtime path for; every other Escape consumer keeps its own meaning. */
 	unique_ptr<CSystemOptionWindowView> m_pSystemOptionView = { nullptr };
 	bool_t m_bSystemOptionKeyDown = false;
+	/* Set by Return_ToCharacterSelect: the Lobby it lands in opens the character select window. */
+	bool_t m_bOpenCharacterSelectOnLobby = false;
 	/* Edge for Close_RuntimeWindowsForLoading. */
 	bool_t m_bWasLoadingLevel = false;
 	/* Open toggle windows in opening order (oldest first); [0, m_iEscapeWindowCount). */

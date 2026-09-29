@@ -1,0 +1,103 @@
+{
+ "schema": "lostark.ui-layout",
+ "formatVersion": 1,
+ "resolution": {
+  "width": 1280,
+  "height": 720
+ },
+ "classes": [
+  "Default"
+ ],
+ "slots": [
+  {
+   "id": "SMB_Options",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 1217.333,
+    "y": 688.667,
+    "width": 22.0,
+    "height": 21.333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/SystemMenu/Settings_Icon.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "SMB_CharacterSelect",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 1247.333,
+    "y": 689.333,
+    "width": 22.667,
+    "height": 20.667
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/SystemMenu/CharacterSelect_Icon.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  }
+ ]
+}

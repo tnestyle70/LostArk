@@ -25,6 +25,8 @@ struct CHARACTER_ENTRY_IDENTITY final
 		CHARACTER_ENTRY_IDENTITY_SOURCE::END;
 };
 
+struct CHARACTER_WORLD_STATE;
+
 class CCharacterSelectionState final
 {
 public:
@@ -44,6 +46,12 @@ public:
 		std::string_view nickname, std::string_view appearanceJson);
 	/* The look of the character that entered the world, or empty. Set when Bern is entered. */
 	static std::string Get_ActiveAppearanceJson();
+	/* Writes what the character that entered the world is carrying (inventory, purse, honor
+	title, as the Client last received them) into its roster entry. Leaves the saved state alone
+	when nothing was received yet, so leaving early cannot wipe it. */
+	static void Save_ActiveWorldState();
+	/* The saved state of the character that entered the world, if it has one. */
+	static bool_t Try_Get_ActiveWorldState(CHARACTER_WORLD_STATE& outState);
 	static bool_t Has_PendingCreation();
 	static bool_t Commit_PendingCreation();
 	static void Cancel_PendingCreation();

@@ -1,6 +1,7 @@
 #include "CharacterSelectionState.h"
 
 #include "CharacterRoster.h"
+#include "CombatHUDViewModel.h"
 #include "Network/PacketMessages.h"
 
 #include <Windows.h>
@@ -107,6 +108,48 @@ std::string Client::CCharacterSelectionState::Get_ActiveAppearanceJson()
 {
 	std::scoped_lock lock{ g_SelectionMutex };
 	return g_ActiveAppearanceJson;
+}
+
+void Client::CCharacterSelectionState::Save_ActiveWorldState()
+{
+	LostArk::Shared::CHARACTER_CLASS_ID eClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
+	std::string strNickname;
+	{
+		std::scoped_lock lock{ g_SelectionMutex };
+		if (!g_SelectedClass.has_value() || !g_CreatedNickname.has_value())
+			return;
+		eClass = *g_SelectedClass;
+		strNickname = *g_CreatedNickname;
+	}
+	const CCombatHUDViewModel& ViewModel = CCombatHUDViewModel::Get();
+	const LostArk::Shared::S2C_INVENTORY_SNAPSHOT& Inventory = ViewModel.Get_Inventory();
+	const auto& Player = ViewModel.Get_Player();
+	/* No inventory answer yet (left before it arrived, or a direct entry) is not a state to save. */
+	if (!Player.isValid || (Inventory.Items.empty() && 0u == Inventory.iSilver && 0u == Inventory.iGold))
+		return;
+	CHARACTER_WORLD_STATE State{};
+	State.bValid = true;
+	State.Items = Inventory.Items;
+	State.iSilver = Inventory.iSilver;
+	State.iGold = Inventory.iGold;
+	State.iHonorTitleId = Player.iHonorTitleId;
+	std::string strStatus;
+	if (!CCharacterRoster::Update_WorldState(eClass, strNickname, State, strStatus))
+		OutputDebugStringA(("[CharacterSelection] World state save failed: " + strStatus + "\n").c_str());
+}
+
+bool_t Client::CCharacterSelectionState::Try_Get_ActiveWorldState(CHARACTER_WORLD_STATE& outState)
+{
+	LostArk::Shared::CHARACTER_CLASS_ID eClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
+	std::string strNickname;
+	{
+		std::scoped_lock lock{ g_SelectionMutex };
+		if (!g_SelectedClass.has_value() || !g_CreatedNickname.has_value())
+			return false;
+		eClass = *g_SelectedClass;
+		strNickname = *g_CreatedNickname;
+	}
+	return CCharacterRoster::Try_Get_WorldState(eClass, strNickname, outState);
 }
 
 bool_t Client::CCharacterSelectionState::Has_PendingCreation()

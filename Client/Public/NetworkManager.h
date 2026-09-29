@@ -334,6 +334,12 @@ public:
 		std::uint32_t requestSequence,
 		std::string_view npcPlacementId,
 		const std::vector<LostArk::Shared::SHOP_BASKET_ENTRY>& entries);
+	/* One-shot start of a saved character from its stored inventory, purse and honor title; the
+	Server accepts it once per fresh Bern entry and answers with an S2C_INVENTORY_SNAPSHOT. */
+	bool Send_RestoreCharacter(
+		std::uint32_t requestSequence,
+		const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items,
+		std::uint32_t silver, std::uint32_t gold, std::uint32_t honorTitleId);
 	/* Right-click equip (bEquip, itemId into slot) or unequip (slot to the bag, no item id).
 	The Server answers with an S2C_INVENTORY_SNAPSHOT either way. */
 	bool Send_SetEquipment(
