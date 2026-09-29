@@ -372,3 +372,74 @@ Inspector source 변경 뒤 clean row cache는 generation을 갱신하고, dirty
 triangle 기준이며 texture alpha texel 판정은 아니다. 회색 plane 원인을 특정했다고 주장하거나
 임의 항목을 자동 삭제하지 않았다. 실제 제거 대상은 새 목록과 Mute/Solo로 비교해 선택한다.
 새 헤어/Guardian Movie 복원 요청은 해당 실측·변경 결과와 별도로 기록한다.
+
+## G13. Sequencer의 Mute·Delete와 Element 숨김 노출 (2026-09-29)
+
+### 확인한 원인과 반영 코드
+
+기존 G12 WORLD Mute/Solo/Delete는 구현돼 있었지만 Action Workbench session의
+`PANE::PREVIEW`에만 공용 검사 패널을 그렸다. 사용자가 첨부한 Composition Sequencer에는
+모델 막대 선택만 있어 그 창에서 숨김을 조작할 수 없었다. V1 Element Mute/Visible도 별도
+Effect 편집기와 Detail 안에 있었다.
+
+`SequencerTool.cpp`의 Movie 타임라인 상단에 `Movie visibility / models`, 배경/Effect preview
+토글, 선택 모델 `Mute model / Unmute model`, Solo, `Delete from Movie / Restore to Movie`,
+`Save movie`를 연결했다. WORLD 막대는 muted/solo/excluded 상태를 표시한다. Delete 키는
+해당 Sequencer focus와 실제 선택 WORLD stable ID를 요구하고 입력창·active widget·popup·
+drag·미적용 row·publish·Effect/Background 선택 중에는 작동하지 않는다. 삭제는 frame 끝에
+기존 EXCLUDE 명령으로 전달해 같은 class Intro/Loop의 draw를 제외한다. Movie 저장은
+excludedWorldObjectIds에 남기며 WModel/Resources 자체를 지우지 않는다. Restore할 수 있다.
+
+공용 `ClassMovieInspector.cpp`의 각 모델 행에도 M/S와 In Movie checkbox를 표시했다.
+선택 Effect의 `Edit Elements / Mute / Hide`는 기존 V1 Movie 편집기를 연다. Movie controls에서
+Element 선택, Mute/Unmute, Solo, 저장되는 Visible 초안 및 Save Changes를 직접 조작한다.
+Save Changes는 `Try_ApplyDraftAndSave`를 사용해 미적용 Visible 변경까지 저장한다.
+선택 Element는 preview 명령 전에 값을 보관하여 Document 교체 후 포인터를 재사용하지 않는다.
+
+기존 Mute는 남은 visible ID가 0개이면 audition interval을 만들 수 없어 마지막 Element를
+숨기지 못했다. typed `previewVisibility` callback을 MainApp에서 기존 Movie owner로 연결하고
+`Preview_EffectDocument`의 optional submission ID mask로 준비/교체한다. 비어 있는 mask도
+허용하며 full Document의 visible·simulation·시간 의미는 유지한다. Mute target은 누적하며
+Unmute는 선택 ID만 복원해 같은 Movie 시각에서 비교한다. 실패하면 기존 mask와 target을
+보존한다. Play All은 완전한 draft로 복원한다. Valtan cinematic의 기존 audition 경로는 유지한다.
+
+저장 Visible OFF도 마지막 항목에서 실패하던 부분을 codec에서 보완했다. schema-valid하고
+비어 있지 않은 문서의 모든 Element/ModelCue가 명시적으로 visible=false일 때만 no-draw로
+인정한다. empty 문서, 잘못된 stable ID와 visible 상태의 미지원 carrier 거부는 유지한다.
+새 C++ 파일은 없으며 두 기존 header와 여섯 TU만 수정했다.
+
+### 실행한 검증
+
+- 정상 Product Debug의 실제 compile command를 사용해 변경 여섯 TU를 격리 컴파일했다.
+  이후 Delete·Unmute·누적 Mute 후속 수정은 해당 TU를 다시 컴파일했다. source 변경 없는
+  compile exit0를 확인했으며 로그는 `out/MovieVisibilityBalance20260929/*.compile.log`다.
+  이는 최소 컴파일 검증이며 설치 Client EXE의 재링크/교체와는 구분한다.
+- 실제 Product Codec OBJ와 변경 RuntimeValidation OBJ를 연결한 console probe compile/link/run0,
+  18 assertions PASS. 실제 창술사 `effect.classselect.lancemaster.bfx_low_02.glow.par_b_glow_param_001`
+  문서의 마지막 Visible OFF, serialize/parse, sandbox CAS 저장·재로드·Restore를 확인했다.
+  empty, malformed/duplicate ID와 schema-valid하지만 visible인 unsupported carrier는 거부됐다.
+  stale 저장 실패 뒤 기존 hidden 디스크 내용도 유지됐다. 증거는 `codec-probe-run.log`와
+  `codec-probe-receipt.json`이며 원본 Data는 변경하지 않았다.
+- 실제 `Preview_EffectDocument` 함수 본문을 사용하는 native boundary fixture compile/run0,
+  12 assertions PASS. empty draw mask, 같은 asset의 여러 occurrence만 교체, 잘못된 ID/foreign
+  Effect/준비·교체 실패 시 이전 target 유지, Unmute/complete 복원과 clock/pause 보존을 확인했다.
+  `movie-mask-run.log`와 `movie-mask-receipt.json`에 기록했다. GPU/service collaborator는
+  deterministic 대역이므로 실제 GPU 제출 또는 pixel 표시 성공으로 해석하지 않는다.
+- 변경 C++ UTF-8/BOM 여부와 기존 LF/CRLF를 유지했고 scoped `git diff --check`를 통과했다.
+  이번 코드 변경은 JSON/XML schema나 project/filter 등록을 추가하지 않는다.
+
+### 사용자 확인 경계
+
+Client/UI를 실행·조작하거나 화면을 캡처하지 않았다. 사용자는 Movie 재생 중 WORLD 모델을
+선택하여 Mute를 켰다 꺼 실제 회색 요소를 식별하고, 제거할 모델이면 Delete from Movie와
+Save movie를 사용한다. Effect 내부 요소라면 Edit Elements / Mute / Hide로 들어가 비교 후
+Visible OFF와 Save Changes를 사용한다. 어느 모델/Element가 회색 원인인지 임의로 판단해
+데이터를 삭제하지 않았고, 최종 화면 판정과 설치 실행본 적용은 별도다.
+
+### G13 후속 설치 확인
+
+최종 소스는 기존 사용자 편집을 보존한 채 원래 Desktop/LostArk에 반영했다. 사용자가 저장 후
+Client/Server를 종료한 것을 확인하고 Product Debug compile/link/deploy를 완료했다.
+원래 저장소의 `out/BuildPipeline/runs/20260928T220610990Z-debug-product.json`이 PASS 근거다.
+새 실행 파일에 Mute/Unmute·Delete/Restore 기능이 포함된다. 에이전트가 실행하거나 회색
+항목을 임의 삭제하지 않았으며 사용자의 실제 화면에서 대상 선택과 비교가 남는다.

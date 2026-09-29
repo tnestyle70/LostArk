@@ -1,5 +1,53 @@
 # LostArk merge 회귀 방지 정본
 
+### 패턴의 회전·충돌 종료와 cinematic 입력 분리
+
+패턴 target/aim이 NONE이어도 선택 직전 nearest-target FacePoint나 Stage 중앙 이동의
+FacePoint가 회전을 다시 만들 수 있다. 고정 부채꼴은 원본 경고와 hit의 같은 yaw를 유지하고,
+개별 패턴과 복합 패턴 안의 같은 동작을 각각 검사한다. 복합 패턴 전체 추적을 끄지 않는다.
+
+보존된 ONCE Effect tail은 일반 Stage 종료와 다르게 처리된다. 벽 충돌 GROGGY에서 멈춰야
+하는 돌진은 해당 stable action 전환에만 보존 tail과 pending 종료를 명시하고 정상 source
+cue/lifetime은 유지한다. 명시 TIMEOUT branch가 event-only GROGGY 건너뛰기를 우회하는지도
+확인한다. 같은 deadline의 WALL_CONTACT는 정상 timeout보다 우선해야 한다.
+
+cinematic camera 활성만으로 모든 player visibility/input/HUD를 함께 끄지 않는다.
+전투 중 대형 등장 camera는 기존 Server 승인 이동을 유지하며, DANCE는 플레이어 HUD와
+보스 HUD의 표시 조건을 구분한다. 실제 raid phase와 camera owner를 모두 대조한다.
+구체적 적용·검증은 09-29 RAID_MOVIE_INTEGRATION 및 연결된 발탄·쿠크 RESULT를 따른다.
+
+### Movie 파생 모델 교체와 시간별 재질 트랙
+
+Movie 모델을 일반 catalog donor로 바꾸면 WorldSequences의 model/materialSource 연결뿐 아니라
+ClassSelection.cinematics의 Intro/Loop materialTracks도 실제 사용 mesh의 materialName·family에
+맞춰야 한다. 이전 이름은 override rejected, 이름만 바꾼 이전 program은 mismatch로 재생을 막는다.
+정상 donor 외형을 선택한 교체는 기본 parameters도 donor와 대조하고 기존 곡선·시간·제외 목록은
+보존한다. 준비 성공만으로 완료하지 말고 재생의 Set_ObjectMaterialConstants까지 확인한다.
+발생 근거와 복구 검증은 `09-27/2026-09-27_WORLD_MOVIE_HAIR_GUARDIAN_EYES_IMPLEMENTATION_RESULT.md` G11에 둔다.
+
+### Release 선로딩과 실행 직전 재준비
+
+쿠크 Release 입장에서 준비한 WORLD 모델·clone pool을 첫 Server PREPARING에서 다시
+Load_Area하여 비우면 선로딩 효과가 사라진다. Loader의 검증된 WORLD를 공통 Complete Play
+준비에 연결하고, 같은 선택·source revision·catalog generation의 완료 상태를 재사용한다.
+V1은 queued가 아니라 실제 settled/prepared여야 하며 초기화 중 worker를 기다리는 무한
+루프를 만들지 않는다. 저작 reload, 다른 revision과 명시 취소는 기존 검사를 유지한다.
+성공한 명시 WORLD reload에서는 아직 사용하지 않은 관문 준비 객체와 조명도 함께 폐기한다.
+실패한 로드와 활성 cinematic이 빌린 환경은 유지한다.
+발탄 Release의 이미 준비된 V2/WORLD 검증에도 리소스마다 한 프레임 대기를 추가하지 않는다.
+Character Select는 현재 roster 전체를 이미 선로딩하므로 Server 승인과 교체 검사를 지워
+속도를 개선한 것으로 처리하지 않는다. 초기 준비·서버 왕복·실제 화면 시작 시간은 구분한다.
+
+### Server entry failed와 reliable 송신 큐 초과
+
+Lobby의 Server entry failed는 일반 복구 문구다. 승인 timeout으로 단정하지 말고 Server의
+connection.closed reason과 queuedFrames/queuedBytes, 해당 시각의 Room 상태를 확인한다.
+작은 combat event도 개수 상한을 먼저 채울 수 있다. 현재 송신 큐는 연결당 4096 frame/8 MiB로
+제한하며 reliable FIFO와 snapshot 병합·reserve를 유지한다. 일시적인 WSAEWOULDBLOCK을
+입장 승인 timeout이나 이미 종료된 연결의 drain timeout으로 혼동하지 않는다. 큐 확대는
+일시 정체 허용량의 증가이며 원격 Client 정체 원인이 해결됐다는 증거가 아니다.
+09-29 Release 시퀀스 준비 RESULT에 실제 카드 패턴의 동시 종료와 회귀 검증을 기록한다.
+
 ### World 구슬의 파괴 원인·표현 수명과 추적 정지
 
 World SOURCE_LOOP의 입장 검사는 실제 지원 carrier와 같아야 한다. portable Cascade Ribbon은
@@ -4659,6 +4707,12 @@ winding을 함께 RH로 변환하고 최종 WModel+placement를 원본 grid/heig
 
 ### Movie 검사에서 visibility와 카메라 소유권
 
+- Inspector 기능이 있어도 Sequencer에서 진입할 수 있는지 확인한다. 선택 WORLD의 Mute/Solo와
+  Delete/Restore는 같은 stable-ID owner를 사용하고, Delete 키는 focus·텍스트 입력·drag를 검사한다.
+- 마지막 Element의 Mute는 빈 draw mask를 허용하되 전체 document와 Movie clock을 유지한다.
+  저장형 Visible OFF는 nonempty all-hidden 문서로 검증하고, 비어 있거나 손상된 문서까지
+  drawable 검증에서 허용하지 않는다. 실제 저장·재로드·stale writer 거부와 복원을 함께 확인한다.
+
 - WORLD Solo/Mute/Delete 표시 제외는 draw gate로 처리한다. CWorldSequenceObject::Hide 또는
   authored visibility 변경으로 임시 격리하면 Try_GetObjectPivot/본 부착 소비자가 사라질 수 있다.
 - 외부 샘플링 Effect의 임시 숨김은 Set_Visible(false)와 다르다. 후자는 owner controls/afterimage/
@@ -4671,12 +4725,28 @@ winding을 함께 RH로 변환하고 최종 WModel+placement를 원본 grid/heig
 
 ### Movie 물방울의 distortion 근거
 
+- 기본 의상의 TGA 경로가 full mip를 만들더라도 같은 그림의 Movie DDS는 한 mip뿐일 수 있다.
+  anisotropic sampler만으로 없는 mip가 생기지 않는다. 반사 lookup의 실제 SampleLevel 요청과
+  SRV mip 수·mip0 픽셀·색공간을 대조한다. 정상 TGA와 동일한 입력이면 해당 Movie의 texture
+  참조만 재사용하고 공용 DDS·shader·보스 재질을 덮어쓰지 않는다. 같은 증상이라도 환경 cube를
+  쓰는 별도 program은 이 수정에 포함하지 않는다.
+
 Guardian Movie watersplash native4645~4647에는 원본 shader map에도 별도 distortion shader가
 없다. UV distortion 파라미터와 SceneColor 굴절 pass를 혼동해 companion을 추가하지 않는다.
 정확한 MIC static set·VF·shader ID를 먼저 대조하고, 미연결 WORLD crack과 particle 물방울을
 같은 대상으로 취급하지 않는다. 수치 draw 성공은 사용자가 본 특정 프레임의 가려짐 판정과 다르다.
 
 ### 일반 헤어를 Movie 골격에 연결할 때
+
+- determinant -1의 좌표 변환은 tangent handedness도 반전한다. 76-byte legacy 정점에는
+  sign이 없어 reader가 +1로 복원하므로, 명시 sign을 가진 WINT 정점으로 바꾼 뒤 반전한다.
+  위치·normal·tangent만 같아도 binormal이 반대일 수 있다. 실제 reader의 N/T/B를 대조한다.
+- normal-map basis 결함을 머리 실루엣의 원인으로 단정하지 않는다. 정상 머리를 Movie 의상에
+  조합할 때 geometry·재질을 함께 옮기고 본 이름·inverse bind·animated head-space를 검사한다.
+  기존 Movie clip과 배우 ID는 유지하며 새 파생 WModel의 설치와 데이터 게시를 각각 확인한다.
+- Movie 원본에서 weight가 없던 facial bone은 이름이 있어도 inverse bind가 새 donor 정점에
+  맞지 않을 수 있다. donor의 weighted inverse bind를 좌표 변환해 매핑하고 Movie skeleton과
+  clip은 유지한다. 파일 decode·본 수만 검사하지 말고 실제 skinning 후 원형 오차·전구간 크기를 대조한다.
 
 - donor와 Movie의 본 수가 다르면 양의 weight가 사용하는 실제 본 이름부터 대조한다. 누락된
   본을 버리거나 head에 몰아 붙이지 않고 Movie clip prefix를 유지한 호환 파생 골격을 만든다.
@@ -4979,3 +5049,42 @@ Client Level 전체 초기화 성공으로 기록하지 않는다. malformed 문
 - Encounter stage 필드 확장은 Gameplay publisher뿐 아니라 World destruction publisher의
   exact-field 검사에도 적용한다. 공통 타입·범위 계약을 맞추고 실제 Full DataOnly 완료를
   확인한다. 개별 Gameplay/Composition 게시 성공을 전체 domain 게시 성공으로 대신하지 않는다.
+
+### 보스 기믹 게이지와 갈고리 하차 직후 이동
+
+- 움직이는 보스의 무력화 게이지는 고정 HUD rect+offset으로 붙이지 않는다. 작은 HP와 같은
+  exact entity의 실제 머리 anchor와 최종 카메라 projection을 매 프레임 소비한다. 예전 화면
+  고정 offset을 새 머리 기준 offset으로 재해석하지 않고 optional 새 키 기본0으로 분리한다.
+- Space/root motion의 navigation clamp 뒤 body collision이 접선 이동을 만들 수 있다. 최종
+  충돌 결과의 전체 경로도 지면 검증 후 commit하며, 거절된 tick은 마지막 안전 좌표를 보존한다.
+  그 뒤 ground Y가 바뀌면 수직 보정 구간과 최종 player volume도 collision으로 재검증한다.
+- 3관문 WORLD hook은 정상 ascent뿐 아니라 deadline·owner 소멸·중단도 공통 해제에서
+  walkable floor와 충돌을 검사한 뒤 입력을 푼다. 근처 안전 바닥이 없으면 기존 관문 시작점의
+  검증된 바닥으로 복귀하며, 그것도 없으면 attachment/input lock을 유지한다. 실제 Space
+  입력의 발생 시각과 이 방어 경로 검증은 구분한다.
+  cinematic의 일괄 action reset도 이 실패 lock을 지우면 안 된다. gate scope·owner를 바꾸기
+  전에 현재 관문 기준으로 모든 hook 해제를 stage하고, 미확보 지면이면 진입을 거절한다.
+- 검증 근거는 `09-29/2026-09-29_KOUKU_STAGGER_ANCHOR_HOOK_LANDING_RESULT.md`에 둔다.
+
+
+### 평소 장착 무기와 공격 이펙트의 중복 모델
+
+- 같은 무기를 작게 들고 공격 때 크게 띄우면 source mesh particle의 본체·overlay도 찾는다.
+  geometry cook basis와 preScale·StartSize·socket scale·실제 body/root 축소를 모두 비교하고,
+  기존 장착 모델을 요청 크기로 맞춘 뒤 중복 geometry만 비활성화한다. 타격 particle과 recipe는
+  보존한다. CPU 치수 일치를 최종 손 부착·GPU 화면 확인으로 기록하지 않는다.
+- 실제 적용·검증은 `09-29/2026-09-29_MARIO_HELD_HAMMER_RESULT.md`를 따른다.
+
+### 색별 기믹 표식은 원본 variant의 재질·텍스처까지 대조한다
+
+- base ParticleSystem과 색별 suffix를 전체 표식의 대체 관계로 가정하지 않는다.
+  마리오 원본 Offering buff는 공통 광대 얼굴에 Color를 넣고 색별 도형을 동시에 재생한다.
+  face를 흰색으로 고정하면 이 색상 override가 누락된다. 서버 random/snapshot 성공은
+  실제 얼굴 색상을 증명하지 않는다. ColorStr 같은 추가 배율도 emitter별 소비자를 확인한다.
+- 원본 buff/action의 동시 시스템·인스턴스 override와 emitter→MIC→texture를 추적한다. 원본 흰 마스크,
+  HDR 색상값, HUD buff atlas 아이콘을 구분하고 PNG 추출만으로 게임 표시 수정을 완료 처리하지 않는다.
+- 원본 추출 근거와 현재 미반영 경계는
+  `09-29/2026-09-29_MARIO_MARKER_SOURCE_EXTRACTION_RESULT.md`에 기록한다.
+- 목표색과 진행 count는 머리 표식 대상과 분리해 입장자 snapshot으로 전달한다. 진행 알림은
+  일치 count 증가에만 시작하고 반복 snapshot·다른 색 공 파괴·진입 기준값으로 재생하지 않는다.
+  UILabelFont의 SpriteBatch는 premultiplied alpha이므로 fade에서 RGB와 alpha를 함께 줄인다.

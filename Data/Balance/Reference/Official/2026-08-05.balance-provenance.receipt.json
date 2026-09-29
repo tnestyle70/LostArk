@@ -50417,7 +50417,7 @@
             },
             {
               "outcome": "TIMEOUT",
-              "nextActionId": "valtan.attack.dash-charge.recovery"
+              "nextActionId": null
             }
           ]
         },
@@ -50522,7 +50522,7 @@
             },
             {
               "outcome": "TIMEOUT",
-              "nextActionId": "valtan.attack.dash-charge.recovery"
+              "nextActionId": null
             }
           ]
         },
@@ -53177,14 +53177,14 @@
         "policyId": "balance-tool-authored-override-v1"
       },
       "sourceValue": {
-        "kind": "LEAP_TO_TARGET",
+        "kind": "LEAP_TO_ANCHOR",
         "anchorId": "anchor.valtan.high-jump.landing",
         "landingPosition": [
           156.03,
           22.99751,
           -122.06
         ],
-        "apexHeight": 9.0,
+        "apexHeight": 30.0,
         "travelStageId": "LAND",
         "takeoffStartMs": 1133,
         "takeoffEndMs": 1500,
@@ -53193,14 +53193,14 @@
       },
       "transform": "Balance Tool authored override",
       "resultValue": {
-        "kind": "LEAP_TO_TARGET",
+        "kind": "LEAP_TO_ANCHOR",
         "anchorId": "anchor.valtan.high-jump.landing",
         "landingPosition": [
           156.03,
           22.99751,
           -122.06
         ],
-        "apexHeight": 9.0,
+        "apexHeight": 30.0,
         "travelStageId": "LAND",
         "takeoffStartMs": 1133,
         "takeoffEndMs": 1500,
@@ -59467,7 +59467,7 @@
           "stageId": "FAIL_3",
           "actionId": "valtan.reactive.triple-counter.third-fail",
           "stageKind": "ACTIVE",
-          "durationMs": 7929,
+          "durationMs": 1704,
           "hitShape": "CIRCLE",
           "hitOuterRadius": 12.0,
           "hitInnerRadius": 0.0,
@@ -59745,7 +59745,7 @@
           "stageId": "FAIL_3",
           "actionId": "valtan.reactive.triple-counter.third-fail",
           "stageKind": "ACTIVE",
-          "durationMs": 7929,
+          "durationMs": 1704,
           "hitShape": "CIRCLE",
           "hitOuterRadius": 12.0,
           "hitInnerRadius": 0.0,
@@ -62338,10 +62338,10 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": "NEAREST_EACH_TICK",
+      "sourceValue": "NONE",
       "transform": "Balance Tool authored override",
-      "resultValue": "NEAREST_EACH_TICK",
-      "note": "Admitted to automatic combat through the authored decision model; official source binding is not claimed."
+      "resultValue": "NONE",
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -62352,10 +62352,10 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": "TRACK_TARGET_EACH_TICK",
+      "sourceValue": "NONE",
       "transform": "Balance Tool authored override",
-      "resultValue": "TRACK_TARGET_EACH_TICK",
-      "note": "Admitted to automatic combat through the authored decision model; official source binding is not claimed."
+      "resultValue": "NONE",
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -66942,6 +66942,10 @@
           ],
           "motion": {
             "kind": "TO_ARENA_CENTER"
+          },
+          "aim": {
+            "targetPolicy": "PATTERN_TARGET",
+            "endMs": 0
           }
         },
         {
@@ -67583,7 +67587,7 @@
               "targetingPolicy": "ARENA_CENTER",
               "countPerResolvedTarget": 4,
               "layout": "RADIAL",
-              "radiusM": 6.3639610307,
+              "radiusM": 5.8639610307,
               "startAngleDegrees": 45.0,
               "angleStepDegrees": 90.0,
               "allowOverlap": false,
@@ -67898,6 +67902,10 @@
           ],
           "motion": {
             "kind": "TO_ARENA_CENTER"
+          },
+          "aim": {
+            "targetPolicy": "PATTERN_TARGET",
+            "endMs": 0
           }
         },
         {
@@ -68539,7 +68547,7 @@
               "targetingPolicy": "ARENA_CENTER",
               "countPerResolvedTarget": 4,
               "layout": "RADIAL",
-              "radiusM": 6.3639610307,
+              "radiusM": 5.8639610307,
               "startAngleDegrees": 45.0,
               "angleStepDegrees": 90.0,
               "allowOverlap": false,
@@ -68657,7 +68665,7 @@
           ]
         }
       ],
-      "note": "Admitted to automatic combat through the authored decision model; official source binding is not claimed."
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -69189,7 +69197,7 @@
               "targetingPolicy": "ARENA_CENTER",
               "countPerResolvedTarget": 4,
               "layout": "RADIAL",
-              "radiusM": 6.3639610307,
+              "radiusM": 5.8639610307,
               "startAngleDegrees": 45.0,
               "angleStepDegrees": 90.0,
               "allowOverlap": false,
@@ -69528,7 +69536,7 @@
               "targetingPolicy": "ARENA_CENTER",
               "countPerResolvedTarget": 4,
               "layout": "RADIAL",
-              "radiusM": 6.3639610307,
+              "radiusM": 5.8639610307,
               "startAngleDegrees": 45.0,
               "angleStepDegrees": 90.0,
               "allowOverlap": false,
@@ -70235,7 +70243,7 @@
               "targetingPolicy": "ARENA_CENTER",
               "countPerResolvedTarget": 4,
               "layout": "RADIAL",
-              "radiusM": 6.3639610307,
+              "radiusM": 5.8639610307,
               "startAngleDegrees": 45.0,
               "angleStepDegrees": 90.0,
               "allowOverlap": false,
@@ -70574,7 +70582,7 @@
               "targetingPolicy": "ARENA_CENTER",
               "countPerResolvedTarget": 4,
               "layout": "RADIAL",
-              "radiusM": 6.3639610307,
+              "radiusM": 5.8639610307,
               "startAngleDegrees": 45.0,
               "angleStepDegrees": 90.0,
               "allowOverlap": false,

@@ -177,9 +177,11 @@ namespace LostArk::Server
 			CLOSED
 		};
 
-		static constexpr std::size_t MAX_OUTBOUND_FRAME_COUNT = 128u;
+		// Small reliable combat events can burst while a LAN peer briefly stops reading.
+		// Bound both events and bytes while preserving every reliable frame in FIFO.
+		static constexpr std::size_t MAX_OUTBOUND_FRAME_COUNT = 4096u;
 		static constexpr std::size_t RELIABLE_FRAME_RESERVE = 16u;
-		static constexpr std::size_t MAX_OUTBOUND_BYTE_COUNT = 512u * 1024u;
+		static constexpr std::size_t MAX_OUTBOUND_BYTE_COUNT = 8u * 1024u * 1024u;
 		static constexpr std::size_t RELIABLE_BYTE_RESERVE = 128u * 1024u;
 		// Socket calls are nonblocking; temporary pressure is not a broken stream.
 		static constexpr std::uint32_t TRANSPORT_POLL_MILLISECONDS = 100u;

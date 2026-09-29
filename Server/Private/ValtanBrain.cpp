@@ -2733,6 +2733,9 @@ namespace
 		const BOSS_RUNTIME_PROFILE* bossProfile =
 			catalog.Find_Boss(boss.bGhostPhasePatternLoopActive && boss.strArchetypeId == "BOSS_VALTAN" ?
                 "BOSS_VALTAN_GHOST" : boss.strArchetypeId);
+		const bool encounterWipe =
+			("VALTAN_TRIPLE_COUNTER" == boss.strPatternId && "FAIL_3" == boss.strPatternStageId) ||
+			("VALTAN_STAGGER_SLOT" == boss.strPatternId && "FINAL_ATTACK" == boss.strPatternStageId);
 		const auto& damageProfile = contact ? contact->strDamageProfileId : boss.strDamageProfileId;
 		const bool ignoreDefense = contact && contact->strDamageKind != "PROFILE";
 		const std::uint32_t rawDamage = CGameplayCatalog::Resolve_Damage(
@@ -2756,15 +2759,15 @@ namespace
 					boss.PortalStageHitTargets.end(), player.iNetEntityId));
 			/* A successful player counter answers the hit instead of taking it,
 			so it is consulted before any damage is resolved. */
-			if (0u == player.iCurrentHp || !player.isCombatReady ||
-				alreadyHit ||
-				!(contact ? ContainsStageContact(*contact, player, hitTransform) : ContainsPatternHit(boss, player, hitTransform)) ||
-				(!boss.bPatternPiercesCover &&
-					IsShieldedByCover(hitTransform, player, coverCircles)))
+			if (0u == player.iCurrentHp || (encounterWipe && player.Is_Guide()) ||
+				(!encounterWipe && (!player.isCombatReady || alreadyHit ||
+				 !(contact ? ContainsStageContact(*contact, player, hitTransform) : ContainsPatternHit(boss, player, hitTransform)) ||
+				 (!boss.bPatternPiercesCover &&
+					IsShieldedByCover(hitTransform, player, coverCircles)))))
 			{
 				continue;
 			}
-			if (!ignoreDefense && player.Is_Human() && CPlayerSkillSystem::Try_Counter(player, catalog, serverTick))
+			if (!encounterWipe && !ignoreDefense && player.Is_Human() && CPlayerSkillSystem::Try_Counter(player, catalog, serverTick))
 			{
 				(void)CBossCombatRuntime::Try_TriggerCounter(boss, serverTick);
 				continue;
@@ -2773,6 +2776,7 @@ namespace
 			incoming.iRawDamage = !ignoreDefense ? rawDamage :
 				contact->strDamageKind == "INSTANT_DEATH" ? player.iMaximumHp :
 				(std::max)(1u, static_cast<std::uint32_t>(std::uint64_t(player.iMaximumHp) * contact->iDamagePercent / 100u));
+			incoming.bEncounterWipe = encounterWipe;
 			incoming.bIgnoreDefense = ignoreDefense;
 			incoming.bIgnoreCounter = ignoreDefense;
 			incoming.fSourceX = hitTransform.fPositionX;
@@ -3343,7 +3347,9 @@ void LostArk::Server::CValtanBrain::Update(
 			return;
 		}
 		boss.MovePath.clear();
-		if (nullptr != target &&
+		// Four-direction attacks retain their authored starting basis, including
+		// the admission edge before BeginPattern applies the declared aim policy.
+		if (nullptr != target && selected->strPatternId != "VALTAN_SEQUENCE_FOUR" &&
 			BOSS_PATTERN_TARGET_POLICY::LOCK_RANDOM_ALIVE_BEHIND_ON_START !=
 			selected->eTargetPolicy)
 		{

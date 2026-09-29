@@ -718,6 +718,65 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SessionTransport(TESTS&
 			"Coalesce queued snapshots to latest-wins without reordering reliable frames");
 	}
 	{
+		CClientSession session{ 90014u, INVALID_SOCKET, {}, {} };
+		session.m_isSendRunning.store(true);
+		// The Release spinning-card incident exhausted 128 frames at only 20 KiB.
+		// Model a longer small-event burst while the sender cannot drain its queue.
+		constexpr std::size_t EVENT_COUNT = 512u;
+		bool admitted = true;
+		for (std::size_t index = 0u; index < EVENT_COUNT; ++index)
+		{
+			std::vector<std::uint8_t> frame(214u, 0u);
+			frame[0] = static_cast<std::uint8_t>(index);
+			frame[1] = static_cast<std::uint8_t>(index >> 8u);
+			admitted = (CClientSession::OUTBOUND_ENQUEUE_RESULT::QUEUED ==
+				session.Queue_OutboundFrame(PACKET_TYPE::S2C_COMBAT_OBJECT_PRESENTATION_EVENT,
+					std::move(frame))) && admitted;
+			if (index % 8u == 0u)
+				(void)session.Queue_OutboundFrame(PACKET_TYPE::S2C_WORLD_SNAPSHOT,
+					{static_cast<std::uint8_t>(index)});
+		}
+		std::size_t nextEvent = 0u, snapshots = 0u;
+		bool ordered = true;
+		for (const auto& frame : session.m_OutboundFrames)
+		{
+			if (frame.ePacketType == PACKET_TYPE::S2C_WORLD_SNAPSHOT)
+			{ ++snapshots; continue; }
+			ordered = ordered && frame.ePacketType == PACKET_TYPE::S2C_COMBAT_OBJECT_PRESENTATION_EVENT &&
+				frame.Bytes.size() == 214u && frame.Bytes[0] == static_cast<std::uint8_t>(nextEvent) &&
+				frame.Bytes[1] == static_cast<std::uint8_t>(nextEvent >> 8u);
+			++nextEvent;
+		}
+		const auto metrics = session.Get_OutboundMetrics();
+		tests.Require(admitted && ordered && nextEvent == EVENT_COUNT && snapshots == 1u &&
+			metrics.iReliableEnqueuedFrameCount == EVENT_COUNT && metrics.iReliableRejectedFrameCount == 0u &&
+			metrics.iSnapshotCoalescedFrameCount == 63u && metrics.iSnapshotDroppedFrameCount == 0u &&
+			metrics.iCurrentQueuedByteCount == EVENT_COUNT * 214u + 1u &&
+			session.Get_CloseDiagnostic().eReason == SESSION_DIAGNOSTIC_REASON::NONE,
+			"Retain a 512-event combat burst in FIFO while coalescing snapshots under temporary send pressure");
+		session.Request_Close();
+	}
+	{
+		CClientSession session{ 90015u, INVALID_SOCKET, {}, {} };
+		session.m_isSendRunning.store(true);
+		constexpr std::size_t FRAME_BYTES = 8192u;
+		constexpr std::size_t BYTE_LIMIT_FRAMES = CClientSession::MAX_OUTBOUND_BYTE_COUNT / FRAME_BYTES;
+		bool admitted = true;
+		for (std::size_t index = 0u; index < BYTE_LIMIT_FRAMES; ++index)
+			admitted = (CClientSession::OUTBOUND_ENQUEUE_RESULT::QUEUED ==
+				session.Queue_OutboundFrame(PACKET_TYPE::S2C_CHAT,
+					std::vector<std::uint8_t>(FRAME_BYTES, 1u))) && admitted;
+		const std::array<std::uint8_t, 1u> payload{2u};
+		const bool overflowClosed = !session.Send_Frame(PACKET_TYPE::S2C_CHAT, payload);
+		const auto diagnostic = session.Get_CloseDiagnostic();
+		tests.Require(admitted && BYTE_LIMIT_FRAMES < CClientSession::MAX_OUTBOUND_FRAME_COUNT &&
+			overflowClosed && !session.m_isSendRunning.load() && session.m_OutboundFrames.empty() &&
+			diagnostic.eReason == SESSION_DIAGNOSTIC_REASON::SERVER_RELIABLE_OUTBOUND_OVERFLOW &&
+			diagnostic.iQueuedFrameCountAtClose == BYTE_LIMIT_FRAMES &&
+			diagnostic.iQueuedByteCountAtClose == CClientSession::MAX_OUTBOUND_BYTE_COUNT,
+			"Keep the 8 MiB reliable byte limit and fail-close when large frames exhaust it");
+	}
+	{
 		CClientSession session{ 90002u, INVALID_SOCKET, {}, {} };
 		session.m_isSendRunning.store(true);
 		constexpr std::size_t SNAPSHOT_FRAME_LIMIT =

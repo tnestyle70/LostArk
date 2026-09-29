@@ -824,7 +824,7 @@
           "actionId": "valtan.attack.dash-charge.active",
           "stageKind": "ACTIVE",
           "durationMs": 1500,
-          "defaultNextActionId": "valtan.attack.dash-charge.recovery",
+          "defaultNextActionId": null,
           "hit": {
             "shape": {
               "kind": "BOX",
@@ -855,7 +855,7 @@
             },
             {
               "outcome": "TIMEOUT",
-              "nextActionId": "valtan.attack.dash-charge.recovery"
+              "nextActionId": null
             }
           ]
         },
@@ -1420,14 +1420,14 @@
         420610
       ],
       "serverMotion": {
-        "kind": "LEAP_TO_TARGET",
+        "kind": "LEAP_TO_ANCHOR",
         "anchorId": "anchor.valtan.high-jump.landing",
         "landingPosition": [
           156.03,
           22.99751,
           -122.06
         ],
-        "apexHeight": 9.0,
+        "apexHeight": 30.0,
         "travelStageId": "LAND",
         "takeoffStartMs": 1133,
         "takeoffEndMs": 1500,
@@ -2080,7 +2080,7 @@
               "countPerResolvedTarget": 4,
               "layout": {
                 "kind": "RADIAL_AROUND_ARENA_CENTER",
-                "radiusM": 6.3639610307,
+                "radiusM": 5.8639610307,
                 "startAngleDegrees": 45.0,
                 "angleStepDegrees": 90.0,
                 "mappingBasis": "PROJECT_TUNED"
@@ -2461,7 +2461,7 @@
               "countPerResolvedTarget": 4,
               "layout": {
                 "kind": "RADIAL_AROUND_ARENA_CENTER",
-                "radiusM": 6.3639610307,
+                "radiusM": 5.8639610307,
                 "startAngleDegrees": 45.0,
                 "angleStepDegrees": 90.0,
                 "mappingBasis": "PROJECT_TUNED"
@@ -3175,7 +3175,7 @@
         ],
         "maximumActiveGhosts": 1,
         "auxiliarySpawnIntervalMs": 5000,
-        "portalSpawnIntervalMs": 10000
+        "portalSpawnIntervalMs": 0
       }
     },
     {
@@ -3870,7 +3870,7 @@
           "stageId": "FAIL_3",
           "actionId": "valtan.reactive.triple-counter.third-fail",
           "stageKind": "ACTIVE",
-          "durationMs": 7929,
+          "durationMs": 1704,
           "defaultNextActionId": null,
           "hit": {
             "shape": {
@@ -4480,8 +4480,8 @@
       "compatibilitySelectionWeight": 1,
       "actionId": "valtan.sequence.four",
       "entryActionId": "valtan.sequence.four.step-01",
-      "targetPolicy": "NEAREST_EACH_TICK",
-      "aimPolicy": "TRACK_TARGET_EACH_TICK",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
       "eligibility": {
         "armorRequirement": "ANY",
         "phaseRequirement": "ANY",
@@ -8093,7 +8093,11 @@
             "kind": "TO_ARENA_CENTER"
           },
           "events": [],
-          "branches": []
+          "branches": [],
+          "aim": {
+            "targetPolicy": "PATTERN_TARGET",
+            "endMs": 0
+          }
         },
         {
           "stageId": "STEP_05",
@@ -8742,7 +8746,7 @@
               "countPerResolvedTarget": 4,
               "layout": {
                 "kind": "RADIAL_AROUND_ARENA_CENTER",
-                "radiusM": 6.3639610307,
+                "radiusM": 5.8639610307,
                 "startAngleDegrees": 45.0,
                 "angleStepDegrees": 90.0,
                 "mappingBasis": "PROJECT_TUNED"

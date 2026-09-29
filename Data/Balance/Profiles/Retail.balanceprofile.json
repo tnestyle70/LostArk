@@ -24,7 +24,7 @@
       "maximumHp": 132000,
       "maximumResource": 10000,
       "resourceRegenPerSecond": 5000,
-      "attackPower": 23000,
+      "attackPower": 230000,
       "defense": 105,
       "criticalChancePercent": 70,
       "criticalDamagePercent": 200
@@ -54,7 +54,7 @@
       "maximumHp": 120000,
       "maximumResource": 10000,
       "resourceRegenPerSecond": 5000,
-      "attackPower": 23000,
+      "attackPower": 230000,
       "defense": 90,
       "criticalChancePercent": 70,
       "criticalDamagePercent": 200
@@ -64,7 +64,7 @@
       "maximumHp": 126000,
       "maximumResource": 10000,
       "resourceRegenPerSecond": 5000,
-      "attackPower": 23000,
+      "attackPower": 230000,
       "defense": 100,
       "criticalChancePercent": 70,
       "criticalDamagePercent": 200
@@ -74,7 +74,7 @@
       "maximumHp": 150000,
       "maximumResource": 10000,
       "resourceRegenPerSecond": 5000,
-      "attackPower": 23000,
+      "attackPower": 230000,
       "defense": 120,
       "criticalChancePercent": 70,
       "criticalDamagePercent": 200
@@ -84,7 +84,7 @@
       "maximumHp": 132000,
       "maximumResource": 10000,
       "resourceRegenPerSecond": 5000,
-      "attackPower": 23000,
+      "attackPower": 230000,
       "defense": 110,
       "criticalChancePercent": 70,
       "criticalDamagePercent": 200
@@ -929,8 +929,8 @@
     },
     {
       "damageProfileId": "damage.player.31930",
-      "attackCoefficientBp": 14962143,
-      "damageAddend": 127933,
+      "attackCoefficientBp": 149621,
+      "damageAddend": 12803,
       "damageSpreadPercent": 10
     },
     {
@@ -1013,8 +1013,8 @@
     },
     {
       "damageProfileId": "damage.player.17250",
-      "attackCoefficientBp": 11338743,
-      "damageAddend": 52384,
+      "attackCoefficientBp": 1133874,
+      "damageAddend": 52390,
       "damageSpreadPercent": 10
     },
     {
@@ -1086,8 +1086,8 @@
     {
       "damageProfileId": "damage.player.34630",
       "bossHealthBarDamage": 35,
-      "attackCoefficientBp": 16286651,
-      "damageAddend": 75170,
+      "attackCoefficientBp": 1628665,
+      "damageAddend": 75172,
       "damageSpreadPercent": 10
     },
     {
@@ -1512,8 +1512,8 @@
     },
     {
       "damageProfileId": "damage.player.2050540",
-      "attackCoefficientBp": 14603465,
-      "damageAddend": 67330,
+      "attackCoefficientBp": 1460346,
+      "damageAddend": 67341,
       "damageSpreadPercent": 10
     },
     {
@@ -1656,8 +1656,8 @@
     },
     {
       "damageProfileId": "damage.player.49420",
-      "attackCoefficientBp": 12037617,
-      "damageAddend": 55561,
+      "attackCoefficientBp": 1203761,
+      "damageAddend": 55577,
       "damageSpreadPercent": 10
     }
   ],

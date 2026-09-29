@@ -336,6 +336,9 @@ bool LostArk::Server::CGameRoom::Update_ValtanGhostPortalScheduler(
 		m_strStatus = "Valtan ghost portal interval owner is unavailable";
 		return false;
 	}
+	// Zero disables only scheduled triangles; the independent auxiliary lane remains active.
+	if (0u == finale->Finale.iPortalSpawnIntervalMs)
+		return true;
 	if (0u != boss.iGhostPortalLastSpawnTick &&
 		Elapsed_ServerTicksSkippingReservedZero(
 			boss.iGhostPortalLastSpawnTick, serverTick) <

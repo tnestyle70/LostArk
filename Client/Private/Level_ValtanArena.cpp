@@ -2104,10 +2104,11 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 	const VALTAN_PRESENTATION_STATE& boss =
 		m_Replication.Get_ValtanPresentationState();
 	VALTAN_CINEMATIC_CAMERA_INPUT input{};
-	/* Death is no longer a reason to stop: it selects the clear shot instead,
-	   and the same restore path still runs when that cue finishes, on level exit
-	   and on disconnect. */
-	input.isBossDead = boss.isValid &&
+	// The primary keeps BOSS_VALTAN through its ghost phase. Auxiliary ghosts
+	// and the living phase2 death/respawn transition never own the raid ending.
+	input.isFinalBossPhase = boss.isValid && boss.strArchetypeId == "BOSS_VALTAN" &&
+		boss.BossCombat.iGameplayPhase == 3u;
+	input.isBossDead = input.isFinalBossPhase &&
 		LostArk::Shared::WORLD_ENTITY_ACTION::DEAD == boss.eAction;
 	input.isValid = boss.isValid;
 	input.iNetEntityId = boss.iNetEntityId;
@@ -2210,8 +2211,7 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 	// The current camera owner, including its bounded exit blend, hides HUD
 	// only for the introduction and ending. A battle camera replaces this flag.
 	m_bCinematicCameraHidesHUD = input.isBossDead ||
-		input.strPatternId == "VALTAN_ENTRANCE_CINEMATIC" ||
-		input.strPatternId == "VALTAN_GHOST_DEATH_AUDITION";
+		input.strPatternId == "VALTAN_ENTRANCE_CINEMATIC";
 
 	if (!m_bCinematicCameraApplied)
 	{
@@ -3352,7 +3352,10 @@ bool_t CLevel_ValtanArena::Debug_PrepareCompletePlayResources(
     status = "Preparing Valtan Complete Play: V1 " + std::to_string(probe.iPreparedCount) + "/" + std::to_string(pending.v1Ids.size()) +
         ", V2 " + std::to_string(pending.v2Index) + "/" + std::to_string(pending.v2Ids.size()) +
         ", WORLD " + std::to_string(pending.worldIndex) + "/" + std::to_string(pending.worldIds.size()) + ". Server playback has not started.";
-    if (pending.v2Index < pending.v2Ids.size())
+    // Release has already warmed the raid in Loader and Initialize. Validate
+    // resident resources together instead of adding one frame per dependency.
+    // Debug keeps the sliced path for newly saved authoring resources.
+    while (pending.v2Index < pending.v2Ids.size())
     {
         const auto& [kind,id] = pending.v2Ids[pending.v2Index];
         auto resourceSnapshot = pending.v2Snapshot;
@@ -3376,16 +3379,22 @@ bool_t CLevel_ValtanArena::Debug_PrepareCompletePlayResources(
         else { status = "Complete Play V2 resource kind is invalid: " + kind; return false; }
         if (!CEffectV2Runtime::Prewarm_Group(group,resourceSnapshot,m_pDevice,m_pContext))
         { status = "Complete Play V2 preparation failed: " + id + "; " + CEffectV2Runtime::Last_Error(); return false; }
-        ++pending.v2Index; return true;
+        ++pending.v2Index;
+#ifdef _DEBUG
+        return true;
+#endif
     }
     if (!pending.v1Ids.empty() && (!probe.bCatalogRevisionCurrent || !probe.bSettled ||
         probe.iPreparedCount != pending.v1Ids.size())) return true;
-    if (pending.worldIndex < pending.worldIds.size())
+    while (pending.worldIndex < pending.worldIds.size())
     {
         const auto& id = pending.worldIds[pending.worldIndex];
         if (!m_SourceCinematicPlayer.Prepare_InstanceResources(id,SourceCinematicTargets()))
         { status = "Complete Play WORLD preparation failed: " + id + "; " + m_SourceCinematicPlayer.Get_Status(); return false; }
-        ++pending.worldIndex; return true;
+        ++pending.worldIndex;
+#ifdef _DEBUG
+        return true;
+#endif
     }
     ready = true; status = "Valtan Complete Play resources are fully prepared."; return true;
 }
@@ -3472,7 +3481,9 @@ void CLevel_ValtanArena::Prepare_SourceCinematicInput(VALTAN_CINEMATIC_CAMERA_IN
     }
     // Reliable DEAD despawn may retire the replicated registry before a DEAD
     // snapshot arrives. Retain only its presentation identity, never gameplay.
-    const bool_t dead = input.isBossDead || CCombatHUDViewModel::Get().Get_BossDeadRaw();
+    const bool_t dead = input.isBossDead ||
+        (m_LastSourceCinematicInput.isFinalBossPhase &&
+         CCombatHUDViewModel::Get().Get_BossDeadRaw());
     if (dead && !m_bSourceDeathStarted && m_LastSourceCinematicInput.isValid)
     {
         Stop_SourceCinematic();
@@ -3515,8 +3526,6 @@ bool_t CLevel_ValtanArena::Update_SourceCinematic(const VALTAN_CINEMATIC_CAMERA_
     std::string selected;
     f32_t sourceOffsetMs = 0.f;
     if (input.isBossDead && m_bSourceDeathStarted && !m_bSourceDeathFinished)
-        selected = "finale";
-    else if (input.strPatternId == "VALTAN_GHOST_DEATH_AUDITION")
         selected = "finale";
     else if (input.strPatternId == "VALTAN_ENTRANCE_CINEMATIC")
         selected = "entrance";

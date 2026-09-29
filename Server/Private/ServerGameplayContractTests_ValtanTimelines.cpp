@@ -422,11 +422,11 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 				"hit.valtan.six-pizza.rock-pillar.explode", 30u, 0u, 32000u,
 				10.f, true },
 			DELAYED_ROCK_PILLAR_CASE{
-				"VALTAN_STRUGGLING", "STEP_04",
-				"valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04",
+				"VALTAN_STRUGGLING", "STEP_08",
+				"valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-08",
 				"combatobject.valtan.struggling.rock-pillar",
-				"hit.valtan.struggling.rock-pillar.explode", 25u, 5000u, 6200u,
-				6.3639610307f, false }
+				"hit.valtan.struggling.rock-pillar.explode", 36u, 4133u, 5333u,
+				5.8639610307f, true }
 		};
 		bool delayedDamagingPillarSetsExact = true;
 		for (std::size_t caseIndex = 0u; caseIndex < cases.size(); ++caseIndex)
@@ -563,7 +563,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 						objects[ordinal].LiveState.CurrentPose.fPositionZ) < 0.001f;
 			}
 			delayedDamagingPillarSetsExact = delayedDamagingPillarSetsExact &&
-				exactSet && hasOffNavigationAuthoredRoot &&
+				exactSet && (testCase.arenaCenter || hasOffNavigationAuthoredRoot) &&
 				4u == positions.size() && reliableSpawnSet;
 		}
 		tests.Require(
@@ -716,10 +716,23 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 			portalRoom.m_GameplayCatalog.Get_ActiveRevision();
 		portalRoom.m_WorldEntities.push_back(portalBoss);
 		SERVER_WORLD_ENTITY* livePortalBoss = &portalRoom.m_WorldEntities.back();
+		auto* portalPatterns = const_cast<std::vector<BOSS_PATTERN_DEFINITION>*>(
+			portalRoom.m_GameplayCatalog.Find_BossPatterns("ENCOUNTER_VALTAN"));
+		const auto portalFinale = std::find_if(portalPatterns->begin(), portalPatterns->end(),
+			[](const auto& pattern) { return "VALTAN_GHOST_FINALE" == pattern.strPatternId; });
+		const std::uint32_t authoredPortalInterval = portalFinale->Finale.iPortalSpawnIntervalMs;
+		tests.Require(0u == authoredPortalInterval &&
+			portalRoom.Update_ValtanGhostPortalScheduler(*livePortalBoss, portalRoom.m_GameplayCatalog, 2000u) &&
+			portalRoom.m_CombatObjectRuntime.Get_LiveObjects().empty() &&
+			0u == livePortalBoss->iGhostPortalOccurrenceSequence,
+			"Disabled automatic triangle portals do not stage objects or advance their occurrence");
+		// An explicit positive interval still exercises the existing triangle route.
+		portalFinale->Finale.iPortalSpawnIntervalMs = 10000u;
 		const bool stagedPortal = initializedPortalRoom &&
 			portalNavigationUnloaded &&
 			portalRoom.Update_ValtanGhostPortalScheduler(
 				*livePortalBoss, portalRoom.m_GameplayCatalog, 2100u);
+		portalFinale->Finale.iPortalSpawnIntervalMs = authoredPortalInterval;
 		const auto& portalObjects =
 			portalRoom.m_CombatObjectRuntime.Get_LiveObjects();
 		std::vector<const SERVER_WORLD_ENTITY*> portalRunners;

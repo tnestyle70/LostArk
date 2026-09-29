@@ -599,25 +599,17 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_ClownBodyPrototype(
 	constexpr std::string_view CLOWN_READY_KEY = "avatar.kouku-saydon.clown";
 	constexpr const char_t* CLOWN_IDLE_CLIP = "rpcz00p_idle_battle_1";
 	constexpr const char_t* CLOWN_RUN_CLIP = "rpcz00p_run_battle_1";
-	/* The hammer the doll swings is the Mario-1 monster's (WP_MN_RHKP_07). It
-	is a submesh of REUP.wmodel carried by one Biped bone; the static cook
-	beside REUP holds it in the monster's right-hand frame, in metres, and
-	shares REUP's textures. The doll's skeleton chain bakes x100 into every
-	bone, so a socketed metre-authored mesh receives 100 x 0.012053 per unit;
-	in a Mario stage the doll is further scaled to 1.5 m (0.632). This
-	pre-scale is 1 / (100 x 0.012053 x 0.632), so the hammer in the stage is
-	the monster's 1.05 m, not shrunk with the doll. The cook is in the hand
-	frame with the head along local +Y and the head's star faces along local
-	X; on this doll's hand that put the head behind the character, so the
-	pitch (about X) turns it round without moving the star faces. Sampled
-	from the first key of rpcz00p_idle_battle_1, hand -Y after 180 points
-	straight forward and hand +Z points mostly down, so pitch past 180 raises
-	the head; the hand's Z is not vertical, so 40 degrees of pitch is 30
-	degrees of elevation. 220 puts the head 30 degrees above forward in the
-	idle stance. */
+	/* The held WP_MN_RHKP_07 and Q's fm_g_rhkp_01 are the same mesh in
+	different cook bases. Q's centimetre mesh at StartSize 2 matches this
+	metre-authored hand-frame cook, but its source anchor omits the Mario
+	body-part shrink. Cancel that shrink in this Mario-only weapon so it
+	keeps Q's observed size while following the actual hand. The authored Q
+	hides its duplicate mesh emitters and retains its charge/swing/hit FX.
+	Keep the measured hand-frame pitch: 220 degrees raises the hammer head
+	30 degrees above forward in rpcz00p_idle_battle_1. */
 	constexpr std::string_view CLOWN_HAMMER_ASSET =
 		"Character/Monster/MarioOriginal/REUP/WP_MN_RHKP_07_Static.wmodel";
-	constexpr f32_t CLOWN_HAMMER_PRE_SCALE = 1.313f;
+	constexpr f32_t CLOWN_HAMMER_PRE_SCALE = 1.313f * (2.3730526f / 1.5f);
 	constexpr f32_t CLOWN_HAMMER_PITCH_DEGREES = 220.f;
 	constexpr f32_t CLOWN_HAMMER_YAW_DEGREES = 0.f;
 	constexpr f32_t CLOWN_HAMMER_ROLL_DEGREES = 0.f;

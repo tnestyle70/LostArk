@@ -621,10 +621,11 @@ public:
 	   from its non-zero actionStartTick.  Stage replacement cancels queued work
 	   and active CUE_END work; an already-active NATURAL cue keeps updating until
 	   its document finishes.  Stop_BossOwner remains the unconditional death,
-	   despawn and level-teardown boundary. */
+	   despawn and level-teardown boundary. A Server interruption can explicitly
+	   retire preserved CUE_END tails without affecting unrelated actions. */
 	static EFFECT_BOSS_ACTION_STOP_RESULT Stop_BossAction(
 		const std::shared_ptr<CValtan>& pOwner,
-		uint32_t iActionStartTick);
+		uint32_t iActionStartTick, bool_t bStopPreservedTails = false);
 	/* The local composition owns every cue clock, including retained NATURAL
 	   tails. Repeated timeline samples hold both queued and active effects.
 	   Explicit seek reconstruction must bypass the real-time catch-up budget. */

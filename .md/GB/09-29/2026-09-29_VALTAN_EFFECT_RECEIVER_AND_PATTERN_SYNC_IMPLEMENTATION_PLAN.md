@@ -83,3 +83,38 @@ Level Render에서 router 밖에 그리는 이름표·말풍선·상태 text에�
 source 종료 뒤 camera handoff까지 숨김이 유지되도록 camera owner가 suppression 상태를
 소유하고 End_CinematicCameraOverride에서 해제한다. 새 카메라 owner 시작 시 입장/엔딩
 여부를 다시 계산해 이전 상태가 일반 전투 연출에 남지 않게 한다.
+
+## G08. CHARGE 단계 소유와 최종 유령 사망 구분
+
+현재 VALTAN_DASH_CHARGE의 CHARGE cue는 source2641~3414ms와 playRate0.6에서
+Stage 끝을 넘는 ONCE tail로 판정되어 GROGGY 진입의 Stop_BossAction을 우회한다.
+사용자 정정에 따라 정상 cue의318.3~1606.7ms와 Effect10초 수명은 그대로 유지한다.
+Server TIMEOUT은 기존 terminal branch로 정상 완료하고 WALL_CONTACT만 GROGGY를
+선택하도록 split source를 교정한다. 이 데이터 변경은 Server 담당의 검증과 함께 통합한다.
+Valtan.cpp는 같은 sequence의 active→recovery stable action edge에서만
+Effect_PresentationService의 Stop_BossAction opt-in 인자로 보존 CUE_END tail을 끈다.
+pending과 active를 같은 owner/action-start로 정리하고 다른 boss/action/world-root 및
+NATURAL active는 보존한다. 일반 Stop 호출과 정상 돌진 시간·무관한 ONCE tail은 유지한다.
+
+Level_ValtanArena.cpp는 primary BOSS_VALTAN의 replicated phase3 DEAD만 엔딩으로
+인정한다. VALTAN_CINEMATIC_CAMERA_INPUT에 phase3 여부를 보존하여 reliable DEAD
+despawn이 snapshot보다 먼저 와도 마지막 동일 primary의 최종 phase에서만 시작한다.
+phase2의 GHOST_DEATH_AUDITION은 source-preview.finale를 선택하지 않으며,
+ValtanCinematicCameraController도 그 전환의 finale camera invocation/fallback을
+선택하지 않는다. 실제 최종 사망의 카메라·배우·HUD 숨김과 종료 복구는 유지한다.
+
+## G09. 전투 자막과 자동 포탈 OFF의 Client 소비
+
+LV_LUT_HEARTRB_ED.worldsequences.json의 source-preview.trash template에 있는
+cin.37053_09_01/02 두 자막만 NORMAL에서 기존 UPPER 위치로 올린다. 공통 HUD layout과
+다른 연출의 자막 위치는 유지한다. 최신 디스크 저장본·hash를 확인한 뒤 대상 필드만
+백업/원자 교체하고 root 통합 단계에서 WorldSequences publisher를 사용한다.
+
+EncounterPatternReference.cpp와 ValtanPatternTree.cpp는 finale.portalSpawnIntervalMs의
+0을 자동 포탈 OFF로 읽고 auxiliarySpawnIntervalMs는1 이상을 요구한다. 미지정 기본값과
+양수 상한600000은 유지한다. 기존 ValtanEncounterReferenceContractTests의 정상0과
+음수/소수/상한/잘못된 타입 및 실패 시 기존 문서 보존 검증을 갱신한다.
+
+기존 소비자 경로로 CHARGE 짧은/긴 Stage edge, phase2 전환과 phase3 실제 사망,
+portal0 admission을 focused 검증하고 변경 CPP의 최소 컴파일을 수행한다. 새 제품 파일과
+프로젝트 등록은 없다. root의 Debug/Release 통합 빌드·게시와 사용자 화면 확인은 별도로 기록한다.

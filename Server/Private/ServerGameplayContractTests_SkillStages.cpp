@@ -36,6 +36,165 @@ using namespace LostArk::Shared;
 void LostArk::Server::CServerGameplayContractRunner::Run_SkillStages(TESTS& tests, CGameplayCatalog& catalog)
 {
 	{
+		// Exercise the real skill mover and body slide on a small floor with an
+		// open outer edge and a two-metre deck step. The original dash is safe;
+		// only collision's redirected segment leaves the floor.
+		namespace fs = std::filesystem;
+		const fs::path root = fs::temp_directory_path() /
+			(L"LostArkSkillSlideContract-" + std::to_wstring(_getpid()) + L"-" +
+				std::to_wstring(GetTickCount64()));
+		std::error_code fixtureError;
+		fs::create_directories(root / L"Navigation", fixtureError);
+		bool fixtureWritten = !fixtureError;
+		if (fixtureWritten)
+		{
+			for (const bool raisedFloor : { false, true })
+			{
+				const std::string id = raisedFloor ? "SKILL_SLIDE_STEP" : "SKILL_SLIDE";
+				std::ofstream grid(root / L"Navigation" / (id + ".navgrid"), std::ios::binary);
+				const std::uint32_t width = 6u, height = 6u;
+				const float cellSize = 1.f, origin = 0.f;
+				std::array<std::uint8_t, 36u> walkable{}; walkable.fill(1u);
+				std::array<float, 36u> heights{};
+				for (std::size_t i = 0u; i < heights.size(); ++i)
+					heights[i] = raisedFloor ? 2.f + static_cast<float>(3u - (std::min)(3u,
+						static_cast<unsigned>(i / width))) : (i % width < 3u ? 2.f : 4.f);
+				grid.write(reinterpret_cast<const char*>(&width), sizeof(width));
+				grid.write(reinterpret_cast<const char*>(&height), sizeof(height));
+				grid.write(reinterpret_cast<const char*>(&cellSize), sizeof(cellSize));
+				grid.write(reinterpret_cast<const char*>(&origin), sizeof(origin));
+				grid.write(reinterpret_cast<const char*>(&origin), sizeof(origin));
+				grid.write(reinterpret_cast<const char*>(walkable.data()), walkable.size());
+				grid.write(reinterpret_cast<const char*>(heights.data()), sizeof(heights));
+				std::ofstream policy(root / L"Navigation" / (id + ".navpolicy"), std::ios::binary);
+				policy << "LOSTARK_NAVIGATION_POLICY 1 \"" << id << "\" 1\n";
+				fixtureWritten = fixtureWritten && grid.good() && policy.good();
+			}
+		}
+		wchar_t previousRoot[32768]{};
+		const DWORD previousLength = GetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
+			previousRoot, static_cast<DWORD>(std::size(previousRoot)));
+		CServerNavigation navigation, steppedNavigation;
+		const bool loaded = fixtureWritten && SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", root.c_str()) &&
+			navigation.Load("SKILL_SLIDE") && steppedNavigation.Load("SKILL_SLIDE_STEP");
+		SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
+			previousLength && previousLength < std::size(previousRoot) ? previousRoot : nullptr);
+		auto fixture = std::make_unique<CGameplayCatalog>(catalog);
+		auto* dodge = const_cast<PLAYER_SKILL_DEFINITION*>(fixture->Find_Skill(34020u));
+		tests.Require(loaded && dodge && Is_DodgeSkill(*dodge),
+			"Load a floor-edge fixture and the published Space dodge for collision-slide regression");
+		if (loaded && dodge)
+		{
+			dodge->RootMotion.clear(); dodge->ComboStages.clear(); dodge->Hits.clear(); dodge->Projectiles.clear();
+			dodge->fMovementDistance = 3.f; dodge->fRootMotionScale = 1.f;
+			dodge->iActionDurationMs = 1000u; dodge->iResourceCost = dodge->iIdentityCost = 0u;
+			dodge->eSkillKind = PLAYER_SKILL_KIND::ACTIVE;
+			dodge->strDamageProfileId.clear();
+			const auto playerAt = [](const float x, const float y, const float z) {
+				SERVER_PLAYER player{};
+				player.iPlayerId = 99880u; player.iNetEntityId = 99881u;
+				player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+				player.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+				player.iCurrentHp = player.iMaximumHp = 1000u;
+				player.iCurrentResource = player.iMaximumResource = 1000u;
+				player.fPositionX = x; player.fPositionY = y; player.fPositionZ = z;
+				return player;
+			};
+			const auto runDodge = [&](SERVER_PLAYER& player, const CServerNavigation* nav,
+				const CServerCollisionSystem* collision) {
+				CPlayerSkillSystem skills;
+				C2S_USE_SKILL command{}; command.iSkillId = dodge->iSkillId; command.iClientSequence = 1u;
+				command.fAimX = player.fPositionX + 5.f; command.fAimZ = player.fPositionZ;
+				const bool started = skills.Try_Start(player, command, *fixture, 1u, nav);
+				std::vector<SERVER_WORLD_ENTITY> entities; std::vector<DAMAGE_EVENT> events;
+				if (started) skills.Update(player, entities, *fixture, nav, collision, .5f, 16u, events);
+				return started;
+			};
+			CServerCollisionSystem edgeBody;
+			edgeBody.Set_BlockingBodies({ SERVER_BLOCKING_BODY{2.f, .2f, .4f} });
+			auto edge = playerAt(1.f, 2.f, .2f);
+			float rawX = 0.f, rawY = 0.f, rawZ = 0.f; bool blocked = false;
+			SERVER_NAV_POINT rawGround{};
+			tests.Require(edgeBody.Resolve_PlayerMove(edge, 2.5f, 2.f, .2f, rawX, rawY, rawZ, blocked) &&
+				rawZ < 0.f && !navigation.Sample_Position(rawX, rawZ, rawGround, rawY),
+				"A real body tangent can redirect an otherwise walkable dodge beyond the floor edge");
+			tests.Require(runDodge(edge, &navigation, &edgeBody) && edge.eAction == PLAYER_ACTION_STATE::SKILL &&
+				edge.fPositionX == 1.f && edge.fPositionY == 2.f && edge.fPositionZ == .2f,
+				"Reject the off-floor collision slide while preserving the last safe pose and active dodge");
+			auto ordinary = playerAt(1.f, 2.f, .2f);
+			tests.Require(runDodge(ordinary, &navigation, nullptr) && std::abs(ordinary.fPositionX - 2.5f) < .0001f &&
+				ordinary.fPositionY == 2.f && ordinary.fPositionZ == .2f,
+				"Keep ordinary Space displacement and the sampled floor height");
+			CServerCollisionSystem insideBody;
+			insideBody.Set_BlockingBodies({ SERVER_BLOCKING_BODY{2.f, 2.f, .4f} });
+			auto inside = playerAt(1.f, 2.f, 2.f);
+			tests.Require(runDodge(inside, &navigation, &insideBody) && inside.fPositionX > 1.f && inside.fPositionZ < 2.f &&
+				navigation.Is_PointWalkableExact(inside.fPositionX, inside.fPositionZ, inside.fPositionY) && inside.fPositionY == 2.f,
+				"Preserve a body tangent slide that stays on the same walkable floor");
+			// The tangent remains at Y=2; its final XZ lies one allowed step up.
+			// An overhead body is missed at Y=2 but overlaps the grounded Y=3 pose.
+			CServerCollisionSystem overheadBody;
+			overheadBody.Set_BlockingBodies({ SERVER_BLOCKING_BODY{2.f, 3.5f, .4f},
+				SERVER_BLOCKING_BODY{1.149f, 2.149f, .2f, 4.5f, .1f} });
+			auto raised = playerAt(1.f, 2.f, 3.5f);
+			tests.Require(overheadBody.Resolve_PlayerMove(raised, 2.5f, 2.f, 3.5f, rawX, rawY, rawZ, blocked) &&
+				rawY == 2.f && steppedNavigation.Sample_Position(rawX, rawZ, rawGround, rawY) && rawGround.y == 3.f &&
+				overheadBody.Is_PlayerPositionClear(rawX, rawY, rawZ, raised.iNetEntityId) &&
+				!overheadBody.Is_PlayerPositionClear(rawX, rawGround.y, rawZ, raised.iNetEntityId),
+				"Reproduce a collision-safe tangent whose navigation grounding enters an overhead body");
+			tests.Require(runDodge(raised, &steppedNavigation, &overheadBody) &&
+				raised.eAction == PLAYER_ACTION_STATE::SKILL && raised.fPositionX == 1.f &&
+				raised.fPositionY == 2.f && raised.fPositionZ == 3.5f,
+				"Reject a blocked post-slide grounding without changing the pose or cancelling Space");
+			CServerCollisionSystem safeStepBody;
+			safeStepBody.Set_BlockingBodies({ SERVER_BLOCKING_BODY{2.f, 3.5f, .4f} });
+			auto safeStep = playerAt(1.f, 2.f, 3.5f);
+			tests.Require(runDodge(safeStep, &steppedNavigation, &safeStepBody) && safeStep.fPositionX > 1.f &&
+				safeStep.fPositionZ < 3.f && safeStep.fPositionY == 3.f &&
+				safeStepBody.Is_PlayerPositionClear(safeStep.fPositionX, safeStep.fPositionY, safeStep.fPositionZ,
+					safeStep.iNetEntityId),
+				"Preserve a clear tangent and its traversable one-metre height correction");
+			// Three individually traversable steps put the final pose above this
+			// thin body. Endpoint overlap alone would miss crossing it vertically.
+			CServerCollisionSystem crossedBody;
+			crossedBody.Set_BlockingBodies({ SERVER_BLOCKING_BODY{2.f, 3.5f, .4f},
+				SERVER_BLOCKING_BODY{1.149f, .149f, .2f, 4.1f, .1f} });
+			auto crossing = playerAt(1.f, 2.f, 3.5f);
+			tests.Require(crossedBody.Resolve_PlayerMove(crossing, 4.5f, 2.f, 3.5f, rawX, rawY, rawZ, blocked) &&
+				rawY == 2.f && steppedNavigation.Sample_Position(rawX, rawZ, rawGround, rawY) && rawGround.y == 5.f &&
+				crossedBody.Is_PlayerPositionClear(rawX, rawY, rawZ, crossing.iNetEntityId) &&
+				crossedBody.Is_PlayerPositionClear(rawX, rawGround.y, rawZ, crossing.iNetEntityId),
+				"A multi-step tangent has clear grounding endpoints with a thin blocker between their heights");
+			dodge->fMovementDistance = 7.f;
+			tests.Require(runDodge(crossing, &steppedNavigation, &crossedBody) &&
+				crossing.eAction == PLAYER_ACTION_STATE::SKILL && crossing.fPositionX == 1.f &&
+				crossing.fPositionY == 2.f && crossing.fPositionZ == 3.5f,
+				"Sweep the grounding correction so clear endpoints cannot tunnel through an intervening body");
+			CServerCollisionSystem overlappingBody;
+			overlappingBody.Set_BlockingBodies({ SERVER_BLOCKING_BODY{1.f, 2.5f, .4f} });
+			auto escaping = playerAt(1.f, 2.f, 2.5f);
+			dodge->fMovementDistance = .2f;
+			tests.Require(runDodge(escaping, &navigation, &overlappingBody) && escaping.fPositionX > 1.f &&
+				escaping.fPositionY == 2.f && !overlappingBody.Is_PlayerPositionClear(
+					escaping.fPositionX, escaping.fPositionY, escaping.fPositionZ, escaping.iNetEntityId),
+				"Unchanged-height movement retains gradual escape from a pre-existing body overlap");
+			dodge->fMovementDistance = 3.f;
+			auto deck = playerAt(2.8f, 2.f, 2.f);
+			tests.Require(runDodge(deck, &navigation, nullptr) && deck.fPositionX >= 2.8f && deck.fPositionX < 3.f &&
+				deck.fPositionY == 2.f && deck.fPositionZ == 2.f,
+				"Keep the existing per-segment clamp before a forbidden deck-height step");
+			auto outside = playerAt(-1.f, 7.f, 2.f);
+			tests.Require(runDodge(outside, &navigation, nullptr) && outside.fPositionX == -1.f &&
+				outside.fPositionY == 7.f && outside.fPositionZ == 2.f,
+				"An already off-grid dodge retains its original XYZ instead of snapping to another cell");
+			auto withoutNavigation = playerAt(-1.f, 7.f, 2.f);
+			tests.Require(runDodge(withoutNavigation, nullptr, nullptr) &&
+				std::abs(withoutNavigation.fPositionX - .5f) < .0001f && withoutNavigation.fPositionY == 7.f,
+				"Retain the existing navigation-absent skill movement contract");
+		}
+		fs::remove_all(root, fixtureError);
+	}
+	{
 		SERVER_WORLD_ENTITY boss{};
 		boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS; boss.strArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
 		boss.iNetEntityId = 99801u; boss.iCurrentHp = boss.iMaximumHp = 1000u;

@@ -264,6 +264,8 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.iMarioLayoutVariant = snapshot.iMarioLayoutVariant;
 	m_Player.iMarioPoppedBallMask = snapshot.iMarioPoppedBallMask;
 	m_Player.iMarioCurseReleasedMask = snapshot.iMarioCurseReleasedMask;
+	m_Player.iMarioRequiredColor = snapshot.iMarioRequiredColor;
+	m_Player.iMarioMatchingBallCount = snapshot.iMarioMatchingBallCount;
 	m_Player.isCombatReady = snapshot.isCombatReady;
 	m_Player.isPatternBound = snapshot.isPatternBound;
 	m_Player.iPatternBindEndTick = snapshot.iPatternBindEndTick;
@@ -385,6 +387,7 @@ void Client::CCombatHUDViewModel::Apply_Boss(
 		return;
 	}
 	m_Boss.isValid = true;
+	m_Boss.iNetEntityId = snapshot.iNetEntityId;
 	m_Boss.strArchetypeId = archetypeId;
 	// The primary entity keeps its archetype during ghost revival. Its HUD
 	// bar count follows the replicated phase while HP remains Server-owned.
@@ -464,6 +467,7 @@ void Client::CCombatHUDViewModel::Debug_Set_Boss_Preview(const bool enable)
 	}
 
 	m_Boss.isValid = true;
+	m_Boss.iNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 	m_Boss.strArchetypeId = "DEBUG_PREVIEW_VALTAN";
 	/* UTF-8 bytes for "\xBC1C\xD0C4" (Valtan's display name) -- strDisplayName is std::string, not
 	wstring, so this needs the UTF-8 encoding of the two Hangul codepoints, not their raw values. */

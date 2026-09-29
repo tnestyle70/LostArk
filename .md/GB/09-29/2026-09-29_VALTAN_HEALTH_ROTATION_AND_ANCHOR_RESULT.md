@@ -255,3 +255,65 @@ Client G12/G13 수정은04:11:40 빌드에 포함됐으며 추가 게시기 수�
 필요로 하지 않는다. 최종 근거는 out/ValtanEncounterFinaleAdmission20260929/final-result.json.
 새 Resources는 없고 Client/Server를 자동 실행하지 않았다. 사용자는 Server와 새 Client를
 재실행해 화면·실제 조작을 확인한다. 추가 Save & Publish 없이 최종 게시본을 사용할 수 있다.
+
+
+## G15~G19. 2026-09-29 추가 요청의 Server/Data 반영
+
+사용자 최종 정정을 따라 높이·중앙 착지는 `VALTAN_HIGH_JUMP` 추적 도끼에 적용했다.
+serverMotion은 LEAP_TO_TARGET→LEAP_TO_ANCHOR, apex는9→30m다. 기존 중앙
+[156.03,22.99751,-122.06]과 1133/1500ms 이륙,267ms 착지는 유지했다. AIRBORNE의
+빨간 장판과 LAND cue는 원래 pattern.landing.snapshot이므로 같은 Server 중앙 좌표를
+소비한다. 플레이어별 투사체 생성은 보존했다. 이번에 준비했던 피자 변경은 자기
+필드만 시작 백업값으로 복구했으며 presentation JSON은 이 하위 작업 시작본과 같다.
+
+SEQUENCE_FOUR의 target/aim은 NONE이며 BeginPattern 직전의 nearest-target 자동
+회전도 이 패턴에서만 제외했다. STRUGGLING STEP_04는 기존 aim 계약
+PATTERN_TARGET/endMs=0으로 단계 진입 TO_ARENA_CENTER FacePoint와 매 tick aim을
+막는다. 다른 발악 단계는 보존했다. 네 contact는1200/2200/3200/4200ms 및
+0/180/270/90도 그대로다. Client는 Server yaw를 보간하며 player target yaw를
+다시 적용하지 않는다. 부채꼴은 같은 owner basis, contact는 basis+저작 offset이다.
+
+3시·9시 COMBO_STEP_18과 발악 STEP_08의 정확한 세 rock event만 반경을
+6.3639610307→5.8639610307m로 줄였다. 중심·개수·방향·돌 scale·피자 돌은 보존했다.
+이는 방사 반경0.5m 감소이며45도 배치의 각 X/Z offset 감소는 약0.353553m다.
+
+ValtanBrain::ApplyPatternHit는 TRIPLE_COUNTER/FAIL_3와 STAGGER_SLOT/FINAL_ATTACK을
+기존 bEncounterWipe에 연결한다. 살아 있는 인간은 거리·cover·combatReady·counter·
+보호막·무적·바훈 보호와 관계없이 최종 실패에서 처리하고 Guide는 제외한다.
+첫 두 카운터 실패와 성공 분기는 유지했다.
+
+GHOST_FINALE.portalSpawnIntervalMs=0은 자동 삼각 포탈 중지다. Python/Gameplay
+publisher/Server Catalog/scheduler를 연결했다. 미지정 legacy7900ms와 양수1..600000ms,
+보조 유령 네 패턴/최대1명/소멸 후5000ms 생성 및 수동 GHOST_PORTAL_ONCE를 유지했다.
+Client 두 reader와 tests, 일반→유령 전환 ending 제외는 Client 담당 변경이다.
+Server의 실제 primary는 동일 BOSS_VALTAN/boss.valtan.center이고 phase3에 ghost
+profile40줄을 적용한다. BOSS_VALTAN_GHOST는 별도 보조 유령이므로 ending owner와 다르다.
+
+세 구르기 후 DASH_CHARGE/CHARGE의 TIMEOUT과 defaultNextActionId는 null로 바꿔
+기존 정상 완료를 사용한다. WALL_CONTACT만 recovery/GROGGY로 연결한다. 동일 deadline
+WALL도 먼저 소비하므로 Client가 그 action edge에서만 돌진 tail을 강제 정리한다.
+정상 완료의 cue lifetime과 tail을 보존하고 새 packet/tick 추정은 추가하지 않았다.
+
+### 수행한 검증
+
+- JSON parse 및 gameplay/presentation authoring validation, 전체8 Product 후보 projection PASS.
+  후보만 out/ValtanPatternCorrections20260929/projection에 기록했다.
+- test_valtan_finale_interval_contract의5 tests PASS. portal0/양수/미지정, auxiliary0 및
+  malformed 거부, projection/provenance/save 보존을 확인했다.
+- 제품3 TU(ValtanBrain/GameplayCatalog/GameRoom_BossSimulation)와 기존 contract6 TU를
+  MSVC C++20 개별 컴파일하여9 TU exit0. out/ValtanPatternCorrections20260929/compile.log.
+  기존 Brain uint64→uint32 C4244 두 경고는 남았으며 이번 변경 줄이 아니다.
+- 기존 tests에 protected/distant 실패 전멸·Guide 제외, 독립/발악4방향 yaw, dash 정상
+  deadline/동시 wall 우선순위, 자동 portal 부재·양수 triangle 유지와 보조 유령 지속을
+  추가했다. Struggling rock fixture의 오래된 STEP04/833ms/5000ms/6200ms는 현재
+  STEP08/1200ms/4133ms/5333ms로 갱신했다.
+- 변경 파일 git diff --check PASS. 시작본 대비 JSON diff는 gameplay 요청11필드뿐이며
+  presentation 차이는0개다. 코드 인코딩을 유지하고 원문 백업은 동일 out/*.before에 있다.
+
+### 통합 검증과 남은 경계
+
+하위 작업은 publisher/Server/Client를 실행하지 않았다. 정식 projection·Composition·
+Gameplay 게시와 Debug/Release 제품 빌드, 실제 Server contract 실행 및 PR/merge는
+root 통합 작업이 수행한다. 이 절 작성 시 native tests는 컴파일까지만 확인했으며
+실행 PASS로 기록하지 않는다. 화면상의 높이·중앙 장판·부채꼴 방향·벽 충돌 tail·
+최종 ending은 사용자가 판정한다. Resources 추가는 없다.

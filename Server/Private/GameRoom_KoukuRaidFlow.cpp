@@ -295,6 +295,19 @@ bool LostArk::Server::CGameRoom::Begin_KoukuRaidCinematic(const std::string& gat
 {
     const auto* gate = m_KoukuRaid.pCatalog->Find_KoukuRaidGate(gateId);
     if (!gate || (clear ? gate->strClearPatternId.empty() : gate->strIntroPatternId.empty())) return false;
+    // A later cinematic reset must not erase a hook whose landing is still blocked.
+    // Stage every release before changing any player, owner or gate scope.
+    std::vector<std::pair<PLAYER_ID, SERVER_PLAYER>> landedHooks;
+    for (const auto& [id, player] : m_Players)
+    {
+        if (!player.iCurrentHp || player.eAction != PLAYER_ACTION_STATE::GRABBED ||
+            player.eAttachmentSlot != PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP) continue;
+        auto landed = player;
+        if (!Release_PlayerAttachment(landed, player.iAttachmentOwnerNetEntityId,
+            0.f, 0u, false, 0u, tick)) return false;
+        landedHooks.emplace_back(id, std::move(landed));
+    }
+    for (auto& [id, landed] : landedHooks) m_Players.at(id) = std::move(landed);
     if (!Despawn_KoukuSaydonArenaDebugEntities(true)) return false;
     auto& run = m_KoukuRaid; run.bClearCinematic = clear; run.CompletedArrivals.clear(); run.iPrimaryBossId = INVALID_NET_ENTITY_ID;
     run.bEntryRunning = false; run.iNextEntryTick = 0u;

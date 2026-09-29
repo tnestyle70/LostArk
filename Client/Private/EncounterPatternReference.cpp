@@ -334,7 +334,8 @@ namespace
 		{
 			uint32_t intervalMs = 0u;
 			if (nullptr != finale->Find(intervalKey) &&
-				(!Read_Unsigned(*finale, intervalKey, 600000u, intervalMs) || intervalMs == 0u))
+				(!Read_Unsigned(*finale, intervalKey, 600000u, intervalMs) ||
+				 (intervalMs == 0u && std::string_view(intervalKey) == "auxiliarySpawnIntervalMs")))
 				return false;
 		}
 		std::string kind, archetype;

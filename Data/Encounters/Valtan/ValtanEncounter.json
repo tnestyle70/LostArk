@@ -384,7 +384,7 @@
             },
             {
               "outcome": "TIMEOUT",
-              "nextActionId": "valtan.attack.dash-charge.recovery"
+              "nextActionId": null
             }
           ]
         },
@@ -1089,14 +1089,14 @@
       "minimumRange": 2,
       "maximumRange": 18,
       "serverMotion": {
-        "kind": "LEAP_TO_TARGET",
+        "kind": "LEAP_TO_ANCHOR",
         "anchorId": "anchor.valtan.high-jump.landing",
         "landingPosition": [
           156.03,
           22.99751,
           -122.06
         ],
-        "apexHeight": 9.0,
+        "apexHeight": 30.0,
         "travelStageId": "LAND",
         "takeoffStartMs": 1133,
         "takeoffEndMs": 1500,
@@ -2719,7 +2719,7 @@
           "stageId": "FAIL_3",
           "actionId": "valtan.reactive.triple-counter.third-fail",
           "stageKind": "ACTIVE",
-          "durationMs": 7929,
+          "durationMs": 1704,
           "hitShape": "CIRCLE",
           "hitOuterRadius": 12.0,
           "hitInnerRadius": 0.0,
@@ -4509,8 +4509,8 @@
       "category": "NORMAL",
       "minimumPhase": 1,
       "maximumPhase": 3,
-      "targetPolicy": "NEAREST_EACH_TICK",
-      "aimPolicy": "TRACK_TARGET_EACH_TICK",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
       "displayName": "2페이즈 4방향 공격",
       "actionId": "valtan.sequence.four",
       "sourceActionIds": [
@@ -8236,6 +8236,10 @@
           ],
           "motion": {
             "kind": "TO_ARENA_CENTER"
+          },
+          "aim": {
+            "targetPolicy": "PATTERN_TARGET",
+            "endMs": 0
           }
         },
         {
@@ -8877,7 +8881,7 @@
               "targetingPolicy": "ARENA_CENTER",
               "countPerResolvedTarget": 4,
               "layout": "RADIAL",
-              "radiusM": 6.3639610307,
+              "radiusM": 5.8639610307,
               "startAngleDegrees": 45.0,
               "angleStepDegrees": 90.0,
               "allowOverlap": false,
@@ -9207,7 +9211,7 @@
               "targetingPolicy": "ARENA_CENTER",
               "countPerResolvedTarget": 4,
               "layout": "RADIAL",
-              "radiusM": 6.3639610307,
+              "radiusM": 5.8639610307,
               "startAngleDegrees": 45.0,
               "angleStepDegrees": 90.0,
               "allowOverlap": false,
@@ -9594,7 +9598,7 @@
               "targetingPolicy": "ARENA_CENTER",
               "countPerResolvedTarget": 4,
               "layout": "RADIAL",
-              "radiusM": 6.3639610307,
+              "radiusM": 5.8639610307,
               "startAngleDegrees": 45.0,
               "angleStepDegrees": 90.0,
               "allowOverlap": false,
@@ -9950,7 +9954,7 @@
         ],
         "maximumActiveGhosts": 1,
         "auxiliarySpawnIntervalMs": 5000,
-        "portalSpawnIntervalMs": 10000
+        "portalSpawnIntervalMs": 0
       },
       "stages": [
         {

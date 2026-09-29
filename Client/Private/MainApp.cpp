@@ -12,6 +12,7 @@
 #include "PlayableCharacterAssetService.h"
 #include "DungeonTimerView.h"
 #include "WorldHealthBarView.h"
+#include "WorldPlayerNameplateView.h"
 
 #include "CharacterSelectionState.h"
 #include "CharacterSelectWindowView.h"
@@ -139,7 +140,7 @@
 namespace
 {
 	constexpr const char* HUD_BAR_POSITION_KEYS[] = {
-		"mechanicOffsetX", "mechanicOffsetY", "allyOffsetX", "allyOffsetY", "enemyOffsetX", "enemyOffsetY",
+		"mechanicHeadOffsetX", "mechanicHeadOffsetY", "allyOffsetX", "allyOffsetY", "enemyOffsetX", "enemyOffsetY",
 		"koukuSaydonOffsetX", "koukuSaydonOffsetY", "koukuOffsetX", "koukuOffsetY", "valtanOffsetX", "valtanOffsetY" };
 	constexpr const char* HUD_MECHANIC_SCALE_KEYS[] = { "mechanicWidthScale", "mechanicHeightScale" };
 	constexpr const char* HUD_MECHANIC_SLOTS[] = { "Boss_StaggerBg", "Boss_StaggerTrack", "Boss_StaggerFill" };
@@ -160,6 +161,8 @@ namespace
 		if (!root.Is_Object() || !schema || !schema->Is_String() ||
 			schema->Get_String() != "lostark.kouku-hud-modes" || !version ||
 			!version->Is_Number() || version->Get_Number() != 1.0) return false;
+		// Legacy mechanicOffsetX/Y are screen-placement values. Preserve them on disk;
+		// new head-relative offsets default to zero instead of reinterpreting old tuning.
 		std::array<f32_t, 12> staged{};
 		std::array<f32_t, 2> stagedScale{ 1.f / 3.f, 1.f };
 		if (const auto* positions = root.Find("healthBarPositions"))
@@ -342,6 +345,13 @@ namespace
             if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
             { status = "Movie Effect preview requires Character Select."; return false; }
             return level->Get_ClassSelectionPresentation().Preview_EffectDocument(document, status);
+        };
+        movieCallbacks.previewVisibility = [](const EFFECT_DOCUMENT_DESC& document,
+            const std::vector<std::string>& drawElementIds, std::string& status) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+            { status = "Movie Element visibility requires Character Select."; return false; }
+            return level->Get_ClassSelectionPresentation().Preview_EffectDocument(document, status, &drawElementIds);
         };
         movieCallbacks.playSelection = [](const std::string& classId, bool loop,
             const EFFECT_DOCUMENT_DESC& full, const EFFECT_DOCUMENT_DESC& selected,
@@ -1935,7 +1945,7 @@ void CMainApp::Sync_CinematicUI()
 	const auto* valtanArena = CLevel_ValtanArena::Get_Active();
 	const bool_t suppressed =
 		(arena && currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
-		 arena->Is_CinematicPresentationActive()) ||
+		 arena->Is_CinematicInputBlocked()) ||
 		(valtanArena && currentLevel == ETOUI(LEVEL::VALTAN_ARENA) &&
 		 valtanArena->Is_CinematicHUDSuppressed());
 	auto& router = CUIInputRouter::Get();
@@ -3749,6 +3759,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	so each text group can be hidden exactly where a surface above it covers it. */
 	Sync_CinematicUI();
 	Update_WorldHealthBars(fTimeDelta);
+	Update_MechanicBarAnchor();
 	if (!CUIInputRouter::Get().Is_CinematicSuppressed()) Register_UITextOccluders();
 }
 
@@ -6086,6 +6097,14 @@ bool_t CMainApp::Is_KoukuMinigameHUDHidden() const
 	if (ETOUI(LEVEL::KAKULSAYDON_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
 		return false;
 	const auto gimmick = CCombatHUDViewModel::Get().Get_KoukuGimmick();
+	return gimmick.isValid && gimmick.eHudMode == HUD_KOUKU_HUD_MODE::MAZE;
+}
+
+bool_t CMainApp::Is_KoukuBossHealthBarHidden() const
+{
+	if (ETOUI(LEVEL::KAKULSAYDON_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+		return false;
+	const auto gimmick = CCombatHUDViewModel::Get().Get_KoukuGimmick();
 	return gimmick.isValid &&
 		(gimmick.eHudMode == HUD_KOUKU_HUD_MODE::MAZE ||
 		 gimmick.eHudMode == HUD_KOUKU_HUD_MODE::DANCE);
@@ -7984,6 +8003,8 @@ void CMainApp::RenderSkillCooldownText()
 
 void CMainApp::Hide_BossHealthBar()
 {
+	m_bMechanicBarUIAllowed = false;
+	m_bMechanicBarHasHeadAnchor = false;
 	if (nullptr == m_pBossUIView)
 		return;
 	constexpr const char_t* BOSS_UI_ALL_SLOTS[] = {
@@ -8038,13 +8059,16 @@ bool_t CMainApp::Set_MechanicBarScale(const std::array<f32_t, 2>& scale)
 void CMainApp::Apply_MechanicBarRect()
 {
 	if (!m_pBossUIView) return;
-	float2_t center{};
+	float2_t center{}, placementCenter{};
 	bool hasCenter = false;
 	for (size_t i = 0u; i < m_MechanicBarBaseRects.size(); ++i)
 		if (m_MechanicBarHasBase[i])
 		{
 			const auto& base = m_MechanicBarBaseRects[i];
 			center = float2_t(base.x + base.z * 0.5f, base.y + base.w * 0.5f);
+			// Like the health bar, keep the complete frame 3 reference pixels above the head.
+			placementCenter = m_bMechanicBarHasHeadAnchor ? float2_t(m_MechanicBarHeadAnchor.x,
+				m_MechanicBarHeadAnchor.y - 3.f - base.w * m_MechanicBarScale[1] * 0.5f) : center;
 			hasCenter = true;
 			break;
 		}
@@ -8055,10 +8079,54 @@ void CMainApp::Apply_MechanicBarRect()
 		{
 			const auto& base = m_MechanicBarBaseRects[i];
 			m_pBossUIView->Set_SlotRect(HUD_MECHANIC_SLOTS[i],
-				center.x + (base.x - center.x) * m_MechanicBarScale[0] + m_HealthBarOffsets[0],
-				center.y + (base.y - center.y) * m_MechanicBarScale[1] + m_HealthBarOffsets[1],
+				placementCenter.x + (base.x - center.x) * m_MechanicBarScale[0] + m_HealthBarOffsets[0],
+				placementCenter.y + (base.y - center.y) * m_MechanicBarScale[1] + m_HealthBarOffsets[1],
 				base.z * m_MechanicBarScale[0], base.w * m_MechanicBarScale[1]);
 		}
+}
+
+void CMainApp::Update_MechanicBarAnchor()
+{
+	if (!m_pBossUIView) return;
+	const auto hide = [&]() {
+		for (const auto* slot : HUD_MECHANIC_SLOTS) m_pBossUIView->Set_SlotVisible(slot, false);
+	};
+	m_bMechanicBarHasHeadAnchor = false;
+	hide();
+	const auto& hud = CCombatHUDViewModel::Get();
+	const auto& boss = hud.Get_Boss();
+	using KIND = LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND;
+	if (!m_bMechanicBarUIAllowed || Is_RuntimeUIScreenSuppressed() || Is_KoukuMinigameHUDHidden() ||
+		Is_MvpResultPageOpen() || !boss.isValid || !boss.iCurrentHp || !boss.iMaximumMechanicGauge ||
+		(boss.eMechanicGaugeKind != KIND::STAGGER && boss.eMechanicGaugeKind != KIND::BOSS_HP))
+		return;
+	if (boss.hasPosition)
+	{
+		const auto& states = hud.Get_WorldHealthBars();
+		const auto state = std::find_if(states.begin(), states.end(), [&](const auto& value) {
+			return !value.isPlayer && value.iNetEntityId == boss.iNetEntityId && value.iCurrentHp > 0u;
+		});
+		if (state == states.end() || boss.iNetEntityId == LostArk::Shared::INVALID_NET_ENTITY_ID) return;
+		auto& game = CGameInstance::Get();
+		const auto* view = game.Get_Transform(D3DTS::VIEW);
+		const auto* projection = game.Get_Transform(D3DTS::PROJ);
+		const auto viewport = game.Get_ViewportSize();
+		float3_t head{};
+		float2_t screen{};
+		if (!view || !projection || !CWorldHealthBarView::Try_GetHeadAnchor(*state, head) ||
+			!CWorldPlayerNameplateView::Try_ProjectWorldPosition(head, *view, *projection, viewport, screen))
+			return;
+		m_MechanicBarHeadAnchor = float2_t(screen.x * m_pBossUIView->Get_ResolutionWidth() / viewport.x,
+			screen.y * m_pBossUIView->Get_ResolutionHeight() / viewport.y);
+		m_bMechanicBarHasHeadAnchor = true;
+	}
+	Apply_MechanicBarRect();
+	const f32_t ratio = static_cast<f32_t>((std::min)(boss.iCurrentMechanicGauge, boss.iMaximumMechanicGauge)) /
+		static_cast<f32_t>(boss.iMaximumMechanicGauge);
+	m_pBossUIView->Set_SlotVisible("Boss_StaggerBg", true);
+	m_pBossUIView->Set_SlotVisible("Boss_StaggerTrack", false);
+	m_pBossUIView->Set_SlotFillRatio("Boss_StaggerFill", ratio);
+	m_pBossUIView->Set_SlotVisible("Boss_StaggerFill", ratio > 0.f);
 }
 
 bool_t CMainApp::Reload_HealthBarPositions(std::string& status)
@@ -8225,7 +8293,7 @@ void CMainApp::Update_BossHealthBar()
 			CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
 
 	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
-	if (!isSupportedLevel || skillWindowOpen || isCharSelectOverlayOpen || Is_KoukuMinigameHUDHidden() ||
+	if (!isSupportedLevel || skillWindowOpen || isCharSelectOverlayOpen || Is_KoukuBossHealthBarHidden() ||
 		Is_MvpResultPageOpen() ||
 		!boss.isValid || 0u == boss.iMaximumHp)
 	{
@@ -8354,18 +8422,9 @@ void CMainApp::Update_BossHealthBar()
 		m_pBossUIView->Set_SlotVisible("Boss_FillBehind", false);
 	}
 
-	/* Only an active Server mechanic owns this orange row. Blackhole reports
-	actual remaining boss HP; it never borrows ordinary accumulated stagger. */
-	const bool mechanicVisible = boss.iMaximumMechanicGauge > 0u &&
-		(boss.eMechanicGaugeKind == LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::STAGGER ||
-		 boss.eMechanicGaugeKind == LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::BOSS_HP);
-	m_pBossUIView->Set_SlotVisible("Boss_StaggerBg", mechanicVisible);
-	m_pBossUIView->Set_SlotVisible("Boss_StaggerTrack", false);
-	const f32_t mechanicRatio = mechanicVisible ? static_cast<f32_t>(
-		(std::min)(boss.iCurrentMechanicGauge, boss.iMaximumMechanicGauge)) /
-		static_cast<f32_t>(boss.iMaximumMechanicGauge) : 0.f;
-	m_pBossUIView->Set_SlotFillRatio("Boss_StaggerFill", mechanicRatio);
-	m_pBossUIView->Set_SlotVisible("Boss_StaggerFill", mechanicVisible && mechanicRatio > 0.f);
+	// The mechanic row samples its exact boss and final camera after the Level update.
+	// Its Server gauge values stay independent from this screen-fixed HP bar.
+	m_bMechanicBarUIAllowed = true;
 
 	/* User-supplied boundary marker (HP seperate Bar.png -- a tiny 3x15 soft cream vertical glow
 	line, not an EFUI_STATUS extraction) drawn at the current fill/empty edge, matching the real
@@ -8446,6 +8505,7 @@ healthRatio/iBarsRemaining from the same boss snapshot Update_BossHealthBar alre
 frame; cheap pure arithmetic, safer than threading the values out as member state. */
 void CMainApp::RenderBossHealthBarText()
 {
+	if (Is_KoukuBossHealthBarHidden()) return;
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	if (currentLevel != ETOUI(LEVEL::BERN) &&
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
@@ -13593,7 +13653,7 @@ void CMainApp::RenderHUDBarPositionControls()
 
 	ImGui::SeparatorText("Health bar positions");
 	auto offsets = Get_HealthBarPositions();
-	bool changed = ImGui::DragFloat2("Stagger X / Y##HUDBar", &offsets[0], 1.f, -1280.f, 1280.f, "%.1f");
+	bool changed = ImGui::DragFloat2("Stagger head X / Y##HUDBar", &offsets[0], 1.f, -1280.f, 1280.f, "%.1f");
 	auto mechanicScale = Get_MechanicBarScale();
 	bool sizeChanged = ImGui::SliderFloat("Stagger width##HUDBar", &mechanicScale[0], 0.1f, 3.f, "%.3fx");
 	sizeChanged |= ImGui::SliderFloat("Stagger thickness##HUDBar", &mechanicScale[1], 0.1f, 3.f, "%.3fx");
@@ -13610,7 +13670,8 @@ void CMainApp::RenderHUDBarPositionControls()
 	ImGui::SameLine();
 	if (ImGui::Button("Reload saved positions and size##HUDBar")) (void)Reload_HealthBarPositions(m_strHealthBarPositionStatus);
 	ImGui::TextDisabled("1280 x 720 reference pixels; +Y moves down. Frames and shields move together.");
-	ImGui::TextDisabled("Stagger size uses the authored frame center. Default width 0.333x; thickness 1x.");
+	ImGui::TextDisabled("Stagger X/Y offsets the boss head, like the world health bar.");
+	ImGui::TextDisabled("Size uses the authored frame center. Default width 0.333x; thickness 1x.");
 	ImGui::TextDisabled("Save writes Data/UI/KoukuSaydon/KoukuHudModes.json. Applies across levels.");
 	if (!m_strHealthBarPositionStatus.empty()) ImGui::TextWrapped("%s", m_strHealthBarPositionStatus.c_str());
 }

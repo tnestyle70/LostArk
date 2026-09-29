@@ -352,6 +352,49 @@ bool LostArk::Server::CGameRoom::Release_PlayerAttachment(
 		return false;
 	}
 
+	// Every hook exit, including cancellation and an owner disappearing, must
+	// land before input is unlocked. A dodge must never start from an air pose.
+	if (player.iCurrentHp && !player.iMarioStage && Resolve_CurrentKoukuGate() == 3u &&
+		player.eAttachmentSlot == PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP)
+	{
+		SERVER_NAV_POINT landing{};
+		constexpr float maximumDistance = 2.f * WorldCollision::PLAYER_HALF_EXTENT_Y;
+		const auto clearFloor = [&] {
+			return std::isfinite(landing.x) && std::isfinite(landing.y) && std::isfinite(landing.z) &&
+				m_ServerNavigation.Is_PointWalkableExact(landing.x, landing.z, landing.y) &&
+				m_ServerCollisionSystem.Is_PlayerPositionClear(landing.x, landing.y, landing.z, player.iNetEntityId);
+		};
+		const auto nearbyFloor = [&] {
+			return clearFloor() && std::abs(landing.y - player.fPositionY) <= maximumDistance &&
+				std::hypot(landing.x - player.fPositionX, landing.z - player.fPositionZ) <= maximumDistance &&
+				m_ServerNavigation.Is_InSameNavigationGrid(player.fPositionX, player.fPositionZ, landing.x, landing.z);
+		};
+		bool grounded = m_ServerNavigation.Is_Loaded() &&
+			std::isfinite(player.fPositionX) && std::isfinite(player.fPositionY) && std::isfinite(player.fPositionZ) &&
+			((m_ServerNavigation.Project_PointOnSameLevel(player.fPositionX, player.fPositionZ, landing, player.fPositionY) && nearbyFloor()) ||
+			 (m_ServerNavigation.Project_Point(player.fPositionX, player.fPositionZ, landing, player.fPositionY) && nearbyFloor()));
+		if (!grounded)
+		{
+			SERVER_NAV_POINT start{}; float yaw = 0.f;
+			grounded = m_ServerNavigation.Is_Loaded() && Resolve_KoukuRevivePosition(player, start, yaw) &&
+				m_ServerNavigation.Project_Point(start.x, start.z, landing, start.y) && clearFloor() &&
+				std::abs(landing.y - start.y) <= maximumDistance &&
+				std::hypot(landing.x - start.x, landing.z - start.z) <= maximumDistance &&
+				m_ServerNavigation.Is_InSameNavigationGrid(start.x, start.z, landing.x, landing.z);
+		}
+		if (!grounded)
+		{
+			player.isCombatReady = false;
+			m_strStatus = "Kouku hook release is waiting for a safe arena floor";
+			return false;
+		}
+		player.fPositionX = landing.x;
+		player.fPositionY = landing.y;
+		player.fPositionZ = landing.z;
+		player.fFallVelocityY = 0.f;
+		player.iFallDeathTick = 0u;
+	}
+
 	float sourceX = player.fPositionX;
 	float sourceZ = player.fPositionZ;
 	const auto owner = std::find_if(
@@ -440,7 +483,7 @@ bool LostArk::Server::CGameRoom::Update_PlayerAttachment(
     if (player.iCurrentHp == 0u || (player.iAttachmentEndTick && Has_ReachedServerTick(serverTick, player.iAttachmentEndTick)))
     {
         (void)Release_PlayerAttachment(player, ownerEntityId, 0.f, 0u, false, 0u, serverTick ? serverTick : 1u);
-        return false;
+        return player.eAction == PLAYER_ACTION_STATE::GRABBED;
     }
 	const auto body = std::find_if(
 		m_WorldEntities.begin(), m_WorldEntities.end(),
@@ -469,7 +512,7 @@ bool LostArk::Server::CGameRoom::Update_PlayerAttachment(
 			(void)Release_PlayerAttachment(
 				player, ownerEntityId, 0.f, 0u, false, 0u,
 				0u == serverTick ? 1u : serverTick);
-			return false;
+			return player.eAction == PLAYER_ACTION_STATE::GRABBED;
 		}
 		player.isCombatReady = false;
 		return true;

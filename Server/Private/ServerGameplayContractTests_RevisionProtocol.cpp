@@ -956,8 +956,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_RevisionProtocol(TESTS&
 			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.contract.repeat\t1\tVALTAN_UNKNOWN_SEQUENCE_STEP");
 		const std::string dashTimeoutRecoveryRow =
 			"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_DASH_CHARGE\t"
-			"valtan.attack.dash-charge.active\tTIMEOUT\t"
-			"valtan.attack.dash-charge.recovery";
+			"valtan.attack.dash-charge.active\tTIMEOUT\t";
 		std::string divergentDashRecoveryBootstrap = bootstrapText;
 		const bool madeDivergentDashRecovery = replaceBootstrapRow(
 			divergentDashRecoveryBootstrap, dashTimeoutRecoveryRow,
@@ -1302,13 +1301,13 @@ void LostArk::Server::CServerGameplayContractRunner::Run_RevisionProtocol(TESTS&
 			"Load the canonical four-child finale pool and retain its authored capacity");
 		tests.Require(nullptr != dynamicFinalePatterns && dynamicFinale != dynamicFinalePatterns->end() &&
 			dynamicFinale->Finale.iAuxiliarySpawnIntervalMs == 5000u &&
-			dynamicFinale->Finale.iPortalSpawnIntervalMs == 10000u,
-			"Retain the saved five-second auxiliary delay and ten-second portal interval");
+			dynamicFinale->Finale.iPortalSpawnIntervalMs == 0u,
+			"Retain the saved five-second auxiliary delay while disabling automatic triangle portals");
 		const std::string intervalPrefix = "PATTERNFINALEINTERVAL\tENCOUNTER_VALTAN\tVALTAN_GHOST_FINALE\t";
-		tests.Require(rejectsRuntimeRefinement(L"finale-aux-interval-overflow", intervalPrefix + "5000\t10000",
-			intervalPrefix + "600001\t10000", "interval row is invalid") &&
-			rejectsRuntimeRefinement(L"finale-portal-interval-zero", intervalPrefix + "5000\t10000",
-				intervalPrefix + "5000\t0", "interval row is invalid"),
+		tests.Require(rejectsRuntimeRefinement(L"finale-aux-interval-overflow", intervalPrefix + "5000\t0",
+			intervalPrefix + "600001\t0", "interval row is invalid") &&
+			rejectsRuntimeRefinement(L"finale-portal-interval-overflow", intervalPrefix + "5000\t0",
+				intervalPrefix + "5000\t600001", "interval row is invalid"),
 			"Finale interval bounds reject malformed rows without replacing the active generation");
 		tests.Require(
 			rejectsRuntimeRefinement(L"finale-half-extent", finaleRow,

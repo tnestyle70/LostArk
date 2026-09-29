@@ -2,6 +2,8 @@
 #include "ServerGameplayContractTests.h"
 #include "GameplayCatalog.h"
 #include "GameRoom.h"
+#include "ClientSession.h"
+#include "Network/PacketReader.h"
 #include "ServerNavigation.h"
 #include "ServerCollisionSystem.h"
 #include "ServerCombatHitRuntime.h"
@@ -664,6 +666,30 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 					a.TriggerMove.fTargetX == b.TriggerMove.fTargetX && a.TriggerMove.fTargetY == b.TriggerMove.fTargetY && a.TriggerMove.fTargetZ == b.TriggerMove.fTargetZ &&
 					a.TriggerMove.fDurationSeconds == b.TriggerMove.fDurationSeconds && a.TriggerMove.fElapsedSeconds == b.TriggerMove.fElapsedSeconds;
 			};
+			// Production snapshots are emitted after the room has entered a nonzero tick.
+			room->m_iServerTick = 1u;
+			auto snapshotSession = std::make_shared<CClientSession>(player.iSessionId, INVALID_SOCKET,
+				CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+			snapshotSession->m_isSendRunning.store(true);
+			room->m_Sessions.emplace(player.iSessionId, snapshotSession);
+			room->m_PlayerIdBySessionId[player.iSessionId] = player.iPlayerId;
+			const auto hasProgressSnapshot = [&](const std::uint8_t colour, const std::uint8_t count) {
+				snapshotSession->m_OutboundFrames.clear();
+				snapshotSession->m_iQueuedOutboundBytes = 0u;
+				room->Broadcast_WorldSnapshot();
+				for (const auto& frame : snapshotSession->m_OutboundFrames)
+				{
+					if (frame.ePacketType != PACKET_TYPE::S2C_WORLD_SNAPSHOT) continue;
+					CPacketReader reader{std::span<const std::uint8_t>(frame.Bytes).subspan(PACKET_HEADER_BYTES)};
+					S2C_WORLD_SNAPSHOT decoded{};
+					if (!Read_Message(reader, decoded) || reader.Get_RemainingSize()) continue;
+					const auto entrant = std::find_if(decoded.Players.begin(), decoded.Players.end(),
+						[&](const auto& value) { return value.iNetEntityId == player.iNetEntityId; });
+					return entrant != decoded.Players.end() && entrant->iMarioRequiredColor == colour &&
+						entrant->iMarioMatchingBallCount == count;
+				}
+				return false;
+			};
 			C2S_MARIO_RETURN request{}; request.iClientSequence = 1u; request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
 			std::vector<std::uint8_t> matchingSlots;
 			std::uint16_t wrongColourMask = 0u;
@@ -676,10 +702,19 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 			tests.Require(matchingSlots.size() >= 3u, "Every published Mario layout provides three required-colour balls");
 			if (matchingSlots.size() < 3u) continue;
 			room->m_MarioPoppedBalls[stage] = wrongColourMask;
-			tests.Require(room->Mario_MatchingBallCount(player) == 0u, "Wrong-colour balls never advance the Mario exit requirement");
+			tests.Require(room->Mario_MatchingBallCount(player) == 0u && hasProgressSnapshot(1u, 0u),
+				"Wrong-colour balls never advance the Mario exit requirement or replicated progress");
+			for (std::uint8_t colour = 2u; colour <= 3u; ++colour)
+			{
+				player.iMarioRequiredColor = colour;
+				tests.Require(hasProgressSnapshot(colour, 3u),
+					"Server serializes every assigned colour and caps progress at three even with four matching balls");
+			}
+			player.iMarioRequiredColor = 1u;
 			for (std::uint8_t count = 0u; count < 3u; ++count)
 			{
 				request.iClientSequence = 1u + count;
+				tests.Require(hasProgressSnapshot(1u, count), "Server snapshot carries each zero, one and two matching-ball step");
 				tests.Require(room->Mario_MatchingBallCount(player) == count &&
 					room->Apply_MarioReturn(player, request).eResult == MARIO_RETURN_RESULT::REJECTED_PLAYER_STATE &&
 					room->Begin_MarioTriggerMove(*terminal, player, 300u) == SERVER_TRIGGER_MOVE_ENTRY_RESULT::RETRY_WHILE_INSIDE &&
@@ -687,6 +722,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 					"Zero, one or two matching balls preserve Mario position and reject both terminal G and Return");
 				room->m_MarioPoppedBalls[stage] |= static_cast<std::uint16_t>(1u << matchingSlots[count]);
 			}
+			tests.Require(hasProgressSnapshot(1u, 3u), "Third matching ball is replicated as completed progress before escape");
 			tests.Require(room->Mario_MatchingBallCount(player) == 3u && room->Mario_MarkerColor(player.iNetEntityId) == 1u,
 				"Three matching balls unlock every Mario stage and retain the marker until escape");
 			request.iClientSequence = 10u;
@@ -703,6 +739,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				!player.hasMoveGoal && player.MovePath.empty() && player.iCurrentHp == 100u,
 				"Mario Return starts the real terminal flight and restores form without teleporting or damaging the player");
 			if (accepted.eResult != MARIO_RETURN_RESULT::ACCEPTED) continue;
+			tests.Require(hasProgressSnapshot(0u, 0u), "Accepted return clears entrant HUD progress while the head marker remains until landing");
 			tests.Require(room->Mario_MarkerColor(player.iNetEntityId) == 1u,
 				"Mario marker survives the accepted return flight until landing");
 			room->Update_Players((std::min)(.1f, action.fDurationSeconds * .25f));

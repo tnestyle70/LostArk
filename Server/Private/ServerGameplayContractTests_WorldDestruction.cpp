@@ -1180,22 +1180,23 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldDestruction(TESTS&
 			1.f / 30.f, 900u, {}, leapArcDamage);
 		const bool startedTheJump =
 			"VALTAN_HIGH_JUMP" == leapArcBoss.strPatternId;
-		const bool landsOnTheTarget =
-			std::abs(leapArcBoss.fLeapLandingX - leapArcTarget.fPositionX) < 0.01f &&
-			std::abs(leapArcBoss.fLeapLandingZ - leapArcTarget.fPositionZ) < 0.01f;
-		const bool leftItsOwnFeet =
-			std::abs(leapArcBoss.fLeapLandingX - leapArcBoss.fSpawnPositionX) > 1.f ||
-			std::abs(leapArcBoss.fLeapLandingZ - leapArcBoss.fSpawnPositionZ) > 1.f;
+		const bool landsOnTheCenter =
+			std::abs(leapArcBoss.fLeapLandingX - highJump->Motion.fLandingX) < 0.01f &&
+			std::abs(leapArcBoss.fLeapLandingZ - highJump->Motion.fLandingZ) < 0.01f;
+		const bool ignoresPlayerLanding =
+			std::hypot(leapArcBoss.fLeapLandingX - leapArcTarget.fPositionX,
+				leapArcBoss.fLeapLandingZ - leapArcTarget.fPositionZ) > 1.f;
 		tests.Require(
 			nullptr != highJump &&
-			BOSS_PATTERN_MOTION_KIND::LEAP_TO_TARGET == highJump->Motion.eKind &&
+			BOSS_PATTERN_MOTION_KIND::LEAP_TO_ANCHOR == highJump->Motion.eKind &&
 			1133u == highJump->Motion.iTakeoffStartMs &&
 			1500u == highJump->Motion.iTakeoffEndMs &&
 			0u == highJump->Motion.iTravelStartMs &&
 			267u == highJump->Motion.iTravelEndMs &&
-			startedTheJump && landsOnTheTarget && leftItsOwnFeet &&
+			startedTheJump && landsOnTheCenter && ignoresPlayerLanding &&
+			30.f == highJump->Motion.fApexHeight &&
 			leapArcBoss.fPatternLeapApexHeight == highJump->Motion.fApexHeight,
-			"Land the high jump on its locked player with the authored fast lift/drop windows");
+			"Land the 30-metre tracking-axe jump at the authored arena centre independently of its player target");
 
 		std::uint32_t leapArcTick = 901u;
 		float heightAtOneSecond = leapArcBoss.fPositionY;
@@ -1258,9 +1259,9 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldDestruction(TESTS&
 			if (8u == tick)
 			{
 				landedInsideFastWindow =
-					std::abs(leapArcBoss.fPositionX - leapArcTarget.fPositionX) < 0.01f &&
-					std::abs(leapArcBoss.fPositionY - leapArcTarget.fPositionY) < 0.01f &&
-					std::abs(leapArcBoss.fPositionZ - leapArcTarget.fPositionZ) < 0.01f;
+					std::abs(leapArcBoss.fPositionX - highJump->Motion.fLandingX) < 0.01f &&
+					std::abs(leapArcBoss.fPositionY - highJump->Motion.fLandingY) < 0.01f &&
+					std::abs(leapArcBoss.fPositionZ - highJump->Motion.fLandingZ) < 0.01f;
 			}
 			enteredRecovery = "RECOVERY" == leapArcBoss.strPatternStageId;
 		}
@@ -1268,9 +1269,9 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldDestruction(TESTS&
 			heldAtApex && enteredLand && airborneHoldTicks >= 240u && airborneHoldTicks <= 241u &&
 			landedInsideFastWindow && enteredRecovery &&
 			2u == leapArcBoss.iPatternLeapTravelStageIndex &&
-			std::abs(leapArcBoss.fPositionX - leapArcTarget.fPositionX) < 0.01f &&
-			std::abs(leapArcBoss.fPositionY - leapArcTarget.fPositionY) < 0.01f &&
-			std::abs(leapArcBoss.fPositionZ - leapArcTarget.fPositionZ) < 0.01f,
+			std::abs(leapArcBoss.fPositionX - highJump->Motion.fLandingX) < 0.01f &&
+			std::abs(leapArcBoss.fPositionY - highJump->Motion.fLandingY) < 0.01f &&
+			std::abs(leapArcBoss.fPositionZ - highJump->Motion.fLandingZ) < 0.01f,
 			"Hold the high jump at its apex for AIRBORNE and finish the drop in LAND's authored fast window");
 
 		// Only Six Pizza's first landing uses this authored Server arc.

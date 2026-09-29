@@ -203,3 +203,59 @@ Client와 Server는 종료된 상태를 유지했다. 사용자가 Server→Clie
 의존성은 감사했고 새3개와 구분했다. Data의 재질 override·shader·EXE는 섞지 않았다.
 근거는 `out/ValtanEffects20260929/resource-delivery/verification.json`과
 `resource-delivery-ghost-audit.json`이다.
+
+## G10. 벽 충돌 GROGGY의 돌진 tail 종료
+
+사용자 정정대로 정상 돌진 cue의318.3~1606.7ms와 원본 Effect10초 emitter/lifetime을
+유지했다. Spawn_DuePatternEffectCues 본문은 HEAD와 동일하고 dash Effect도 diff가 없다.
+Effect SHA-256은456d1b3911d9541e919c148969c23e29ad01936f8e7e033e7c966fb7eae2cf76이다.
+
+Client Valtan::Apply_NetworkState는 같은 VALTAN_DASH_CHARGE sequence의
+valtan.attack.dash-charge.active→valtan.attack.dash-charge.recovery에서만
+Stop_BossAction의 새 opt-in bStopPreservedTails를 사용한다. 기존 기본값은false이다.
+서버의 정상 TIMEOUT이 명시적 terminal branch로 끝나고 WALL_CONTACT만 GROGGY를
+선택하는 split 변경과 함께 소비한다. 단순 NextClockStageIndex의 skip 주석만으로
+wall-only를 가정하지 않았고 앞선 ApplyTimeoutBranch를 조사하여 source를 함께 교정했다.
+
+해당 owner/action-start의 pending과 보존 CUE_END active를 즉시 삭제하며, 다른 boss,
+action-start, world-root와 NATURAL active는 보존한다. 원본 Effect나 정상 tail 시간은
+줄이지 않았다. 이 함수의 실제 본문을 사용하는 headless 저장소 검증에서 기본 tail 보존,
+강제 pending/active 삭제와 격리를 확인했다. 수치 검증은 실제 GPU 화면 판정을 대신하지 않는다.
+
+## G11. 중간 유령 전환과 최종 엔딩·상단 자막
+
+primary는 유령 phase에서도 BOSS_VALTAN이다. Level_ValtanArena는 replicated
+BossCombat.iGameplayPhase3의 primary DEAD만 엔딩으로 인정한다. 마지막 입력에도
+isFinalBossPhase를 보존하여 reliable DEAD despawn이 먼저 도착할 때만 같은 최종 phase의
+fallback을 허용한다. phase2 GHOST_DEATH_AUDITION은 source finale 선택에서 제거했고,
+카메라 controller도 이 전환의 authored invocation과 legacy fallback을 모두 차단한다.
+실제 최종 사망의 camera/source finale와 HUD 숨김·종료 복구는 유지한다.
+
+LV_LUT_HEARTRB_ED source-preview.trash의 cin.37053_09_01/02 두 자막 position만
+NORMAL→UPPER로 변경했다. 원문 백업·직전 bytes 확인·원자 교체를 수행했고 나머지 JSON이
+동일함을 확인했다. subtitle-receipt.json과 worldsequences.before.json을 out에 보존했다.
+
+추적 도끼의 pattern.landing.snapshot은 Server PATTERN_LANDING_SNAPSHOT을 직접
+소비하며 HIGH_JUMP 이름으로 target 위치를 다시 계산하지 않는다. 4방향 Product body
+rotation도 Server yaw 보간만 수행하고 Client player target으로 덮어쓰지 않는다. 로컬 aim은
+저작 preview 전용이며 track=false에서 정지한다. 이 경로는 읽기 검토했고 수정하지 않았다.
+
+## G12. portal0 Client admission과 검증 경계
+
+EncounterPatternReference와 ValtanPatternTree가 portalSpawnIntervalMs0을 허용한다.
+미지정7900 및 양수 상한600000은 보존하고 auxiliary0은 계속 거부한다. 기존 native
+EncounterPatternReference contract의6개 정상 interval과104개 거부/rollback 모두 PASS.
+실제 Read_PatternFinale를 포함한 reader 검증과 실제 CameraDocument/Controller의
+중간 invocation/fallback 차단, final DEAD 유지, source 선택·reliable fallback·Stop 소비를
+포함한 focused native34검사도 PASS했다. headless Stop fixture는 실제 본문과 제품
+Desc/Result를 사용하며 GPU 대신 메모리 저장소의 제거 결과를 확인했다.
+
+Valtan.cpp, Effect_PresentationService.cpp, Level_ValtanArena.cpp 전체 Debug /Zs PASS.
+수정 reader/controller와 기존 contract CPP도 실제 native compile/link/run을 통과했다.
+ValtanPatternTree 전체 CPP compile과 분리한 실제 reader 본문의 실행을 구분했다.
+변경9개 H/CPP는 UTF-8 BOM없음·CRLF를 유지했고 JSON parse와 scoped diff --check PASS.
+새 제품 파일이나 project/filter 등록은 없다. 근거는
+out/ValtanClientPresentation20260929/validation.json, native.log, native-build.log, syntax.log다.
+
+이 절의 검증은 Client/UI 실행을 포함하지 않는다. 정식 Debug/Release Product 빌드,
+WorldSequences/Valtan/Composition 게시와 PR 통합 결과는 root 통합 RESULT에서 관리한다.

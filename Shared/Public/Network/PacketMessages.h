@@ -1701,6 +1701,10 @@ namespace LostArk::Shared
 		std::uint8_t iMarioCurseReleasedMask = 0u;
 		// Marker over this player: 0 none, 1 red, 2 blue, 3 yellow. May be outside Mario.
 		std::uint8_t iMarioMarkerColor = 0u;
+		// This entrant's objective, independent of the player displaying its marker.
+		// Both are zero outside Mario; colour 1 red, 2 blue, 3 yellow; progress caps at 3.
+		std::uint8_t iMarioRequiredColor = 0u;
+		std::uint8_t iMarioMatchingBallCount = 0u;
 		/* Card maze truth. NONE carries suit NONE and zero counts; a HUNTER
 		carries the suit it was dealt and kills <= the kill target. */
 		CARD_MAZE_ROLE eCardMazeRole = CARD_MAZE_ROLE::NONE;
