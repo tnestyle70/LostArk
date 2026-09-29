@@ -5010,7 +5010,13 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	on a valid player in a supported Level. Every part reads NORMAL until a Server message
 	carries item durability, so only the silhouette draws. */
 	if (nullptr != m_pDurabilityHudView)
-		m_pDurabilityHudView->Update();
+	{
+		/* The class-select map shows no gear wear, so its armor silhouette stays hidden there. */
+		if (currentLevel == ETOUI(LEVEL::CHARACTER_SELECT))
+			m_pDurabilityHudView->Hide();
+		else
+			m_pDurabilityHudView->Update();
+	}
 	if (nullptr != m_pInventoryView)
 	{
 		m_pInventoryView->Update(CCombatHUDViewModel::Get().Get_Inventory().Items);
