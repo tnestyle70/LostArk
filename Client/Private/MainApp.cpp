@@ -6363,7 +6363,7 @@ void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
 		LostArk::Shared::CHARACTER_CLASS_ID eClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
 		string strNickname;
 		m_pCharacterSelectWindowView->Get_StartCharacter(eClass, strNickname);
-		if (CCharacterSelectionState::Stage_Creation(eClass, strNickname) &&
+		if (CCharacterSelectionState::Stage_ExistingEntry(eClass, strNickname) &&
 			!CLevel_Lobby::Submit_ProductCommand(LOBBY_STAGE::BERN))
 			CCharacterSelectionState::Cancel_PendingCreation();
 		break;

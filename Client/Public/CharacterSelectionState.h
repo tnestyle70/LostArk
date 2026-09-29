@@ -33,7 +33,12 @@ public:
 	static bool_t Has_Selection();
 	static bool_t Try_Get_SelectedClass(
 		LostArk::Shared::CHARACTER_CLASS_ID& outCharacterClass);
+	/* A character created just now: once Bern is entered it is added to the saved roster. */
 	static bool_t Stage_Creation(
+		LostArk::Shared::CHARACTER_CLASS_ID characterClass,
+		std::string_view nickname);
+	/* A character picked from the saved roster: the same identity handoff, nothing new to save. */
+	static bool_t Stage_ExistingEntry(
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 		std::string_view nickname);
 	static bool_t Has_PendingCreation();
