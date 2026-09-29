@@ -66,22 +66,19 @@ if ($items.Count -eq 0 -or $items.Count -gt 4096) {
     throw "Item catalog item count is out of range: $($items.Count)"
 }
 
+$itemIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$itemRows = [Collections.Generic.List[string]]::new()
+$battleRows = [Collections.Generic.List[string]]::new()
+$startingSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 # The Server's CHARACTER_CLASS_ID names as ItemCatalog.json spells characterClass.
 $classNames = @('LanceMaster', 'Gunslinger', 'Slayer', 'Artist', 'DimensionMaster', 'Warlord', 'GuardianKnight')
-
-$itemIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $itemById = @{}
-$itemRows = [Collections.Generic.List[string]]::new()
-$startingSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 foreach ($item in $items) {
     # grade is a Client presentation field (inventory grade art). equipSlot and characterClass
     # also travel to the Server, which checks them on equip; startingEquippedSlot names the
     # equipment slot a fresh character already wears the item in. "-" marks an absent value.
-    # visualSetId is Client-only (EquipmentPresentationCatalog visual set an equipped avatar
-    # shows). classVariants marks a shop template: the Server hands the buyer the variant of
-    # the buyer's class instead of the template itself.
     Assert-Properties $item @('itemId', 'displayName', 'maxStack', 'iconPath', 'healPercent', 'category') `
-        @('equipSlot', 'characterClass', 'grade', 'startingEquippedSlot', 'visualSetId', 'classVariants') 'item'
+        @('equipSlot', 'characterClass', 'grade', 'startingEquippedSlot', 'battleUse', 'visualSetId', 'classVariants') 'item'
     Assert-JsonString $item.itemId 'item itemId'
     Assert-JsonString $item.displayName 'item displayName'
     Assert-JsonInteger $item.maxStack 'item maxStack' 1 ([uint32]::MaxValue)
@@ -100,13 +97,13 @@ foreach ($item in $items) {
         $slots = @('weapon', 'helmet', 'shoulder', 'top', 'pants', 'gloves', 'necklace', 'earring', 'ring', 'stone', 'bracelet', 'avatarHead', 'avatarOutfit')
         if ($slots -cnotcontains $item.equipSlot) { throw "item equipSlot is unknown: $($item.itemId)" }
     }
-    if ($null -ne $item.PSObject.Properties['characterClass']) {
-        if ($classNames -cnotcontains $item.characterClass) { throw "item characterClass is unknown: $($item.itemId)" }
-    }
     if ($null -ne $item.PSObject.Properties['grade']) {
         if (@('normal', 'rare', 'epic', 'legend', 'relic', 'ancient', 'avatar') -cnotcontains $item.grade) {
             throw "item grade is unknown: $($item.itemId)"
         }
+    }
+    if ($null -ne $item.PSObject.Properties['characterClass']) {
+        if ($classNames -cnotcontains $item.characterClass) { throw "item characterClass is unknown: $($item.itemId)" }
     }
     if ($null -ne $item.PSObject.Properties['visualSetId']) {
         if ($null -eq $item.PSObject.Properties['equipSlot'] -or
@@ -143,8 +140,32 @@ foreach ($item in $items) {
         if (-not $startingSlots.Add($startingField)) { throw "Two items start in slot $startingField" }
     }
     $itemRows.Add((@('ITEM', $item.itemId, [uint32]$item.maxStack, [uint32]$item.healPercent, $equipSlotField, $classField, $startingField) -join "`t"))
+    if ($null -ne $item.PSObject.Properties['battleUse']) {
+        $battle = $item.battleUse
+        $fields = @('kind', 'skillId', 'damageRatePercent', 'partDamage', 'staggerDamage', 'rangeCm', 'radiusCm', 'durationMs', 'cooldownMs', 'projectileSpeedCmPerSecond', 'projectileArcHeightCm', 'projectileLaunchHeightCm', 'staggerMaximumDivisor')
+        Assert-ExactProperties $battle $fields 'battleUse'
+        $expectedKinds = @{ BATTLE_DESTRUCTION_BOMB = 'DESTRUCTION'; BATTLE_WHIRLWIND_GRENADE = 'WHIRLWIND'; BATTLE_HOLY_CHARM = 'CLEANSE'; BATTLE_TIME_STOP_POTION = 'TIME_STOP' }
+        if (-not $expectedKinds.ContainsKey([string]$item.itemId) -or $battle.kind -cne $expectedKinds[[string]$item.itemId] -or
+            $item.category -cne 'use' -or $item.healPercent -ne 0 -or $equipSlotField -cne '-') { throw "battleUse kind/item mismatch: $($item.itemId)" }
+        foreach ($field in @('skillId', 'damageRatePercent', 'partDamage', 'staggerDamage', 'rangeCm', 'radiusCm', 'durationMs', 'cooldownMs', 'projectileSpeedCmPerSecond', 'projectileArcHeightCm', 'projectileLaunchHeightCm', 'staggerMaximumDivisor')) {
+            Assert-JsonInteger $battle.$field "battleUse $field" 0 1000000
+        }
+        if ((($battle.kind -eq 'WHIRLWIND') -and ($battle.staggerMaximumDivisor -ne 3 -or $battle.damageRatePercent -ne 0 -or $battle.staggerDamage -ne 0)) -or
+            (($battle.kind -ne 'WHIRLWIND') -and $battle.staggerMaximumDivisor -ne 0) -or
+            $battle.skillId -eq 0 -or $battle.cooldownMs -lt 1000 -or $battle.cooldownMs -gt 600000 -or
+            $battle.rangeCm -gt 5000 -or $battle.radiusCm -gt 5000 -or $battle.durationMs -gt 600000 -or
+            (($battle.kind -in @('DESTRUCTION', 'WHIRLWIND')) -and ($battle.rangeCm -eq 0 -or $battle.radiusCm -eq 0)) -or
+            ($battle.kind -eq 'TIME_STOP' -and $battle.rangeCm -ne 0) -or
+            (($battle.kind -in @('CLEANSE', 'TIME_STOP')) -and $battle.durationMs -eq 0) -or
+            $battle.projectileSpeedCmPerSecond -gt 10000 -or $battle.projectileArcHeightCm -gt 1000 -or $battle.projectileLaunchHeightCm -gt 1000 -or
+            (($battle.kind -in @('DESTRUCTION', 'WHIRLWIND')) -and $battle.projectileSpeedCmPerSecond -eq 0)) { throw "battleUse values are invalid: $($item.itemId)" }
+        $battleRows.Add((@('BATTLEITEM', $item.itemId, $battle.kind, $battle.skillId, $battle.damageRatePercent, $battle.partDamage, $battle.staggerDamage,
+            $battle.rangeCm, $battle.radiusCm, $battle.durationMs, $battle.cooldownMs, $battle.projectileSpeedCmPerSecond, $battle.projectileArcHeightCm, $battle.projectileLaunchHeightCm, $battle.staggerMaximumDivisor) -join "`t"))
+    }
 }
 
+# Currencies are the player's purse (실링, 골드), not bag items. The Server knows exactly these
+# two; startingAmount is what a fresh character is given.
 # Shop templates: a class-neutral item whose purchase gives the buyer the class variant.
 # The template itself is never equippable (no equipSlot, no class); every variant is a
 # real equippable item of exactly that class, with the same equipSlot for every class.
@@ -152,7 +173,8 @@ $variantRows = [Collections.Generic.List[string]]::new()
 foreach ($item in $items) {
     if ($null -eq $item.PSObject.Properties['classVariants']) { continue }
     if ($null -ne $item.PSObject.Properties['equipSlot'] -or $null -ne $item.PSObject.Properties['characterClass'] -or
-        $null -ne $item.PSObject.Properties['startingEquippedSlot'] -or $null -ne $item.PSObject.Properties['visualSetId']) {
+        $null -ne $item.PSObject.Properties['startingEquippedSlot'] -or $null -ne $item.PSObject.Properties['visualSetId'] -or
+        $null -ne $item.PSObject.Properties['battleUse']) {
         throw "item classVariants template must not be equipment itself: $($item.itemId)"
     }
     $variants = $item.classVariants
@@ -176,8 +198,6 @@ foreach ($item in $items) {
     }
 }
 
-# Currencies are the player's purse (실링, 골드), not bag items. The Server knows exactly these
-# two; startingAmount is what a fresh character is given.
 $currencyRows = [Collections.Generic.List[string]]::new()
 $currencyIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 foreach ($currency in @($itemDocument.currencies | Where-Object { $null -ne $_ })) {
@@ -192,7 +212,7 @@ foreach ($currency in @($itemDocument.currencies | Where-Object { $null -ne $_ }
 }
 
 # NPC shops: which NPC placements run each shop, and what each sells for which currency item.
-# The shop window pages stock ten cells at a time, so a shop sells at most forty lines.
+# The shop window lays stock out on a ten-cell page, so a shop sells at most ten lines.
 $shopRows = [Collections.Generic.List[string]]::new()
 $shopIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $shopNpcIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -225,7 +245,7 @@ foreach ($shop in @($itemDocument.shops | Where-Object { $null -ne $_ })) {
 }
 
 if ($Mode -eq 'Validate') {
-    Write-Output "Item catalog Validate succeeded: $($itemRows.Count) items, $($variantRows.Count) class variants, $($currencyRows.Count) currencies, $($shopIds.Count) shops."
+    Write-Output "Item catalog Validate succeeded: $($itemRows.Count) items, $($currencyRows.Count) currencies, $($shopIds.Count) shops."
     return
 }
 
@@ -239,8 +259,9 @@ if (-not $outputDirectory.StartsWith($repoPrefix, [StringComparison]::OrdinalIgn
 }
 
 $lines = [Collections.Generic.List[string]]::new()
-$lines.Add("LOSTARK_ITEM_BOOTSTRAP`t6`t$($itemRows.Count + $variantRows.Count + $currencyRows.Count + $shopRows.Count)")
+$lines.Add("LOSTARK_ITEM_BOOTSTRAP`t7`t$($itemRows.Count + $battleRows.Count + $variantRows.Count + $currencyRows.Count + $shopRows.Count)")
 foreach ($row in $itemRows) { $lines.Add($row) }
+foreach ($row in $battleRows) { $lines.Add($row) }
 foreach ($row in $variantRows) { $lines.Add($row) }
 foreach ($row in $currencyRows) { $lines.Add($row) }
 foreach ($row in $shopRows) { $lines.Add($row) }

@@ -3,10 +3,11 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <string>
 
 namespace LostArk::Shared::KoukuMarioBomb
 {
-inline constexpr std::uint32_t INTERVAL_MS = 4000u;
+inline constexpr std::uint32_t INTERVAL_MS = 8000u;
 inline constexpr float SPEED_MPS = 3.f;
 inline constexpr float RADIUS_M = .36f;
 inline constexpr float LOW_BOTTOM_M = .05f, HIGH_BOTTOM_M = .90f;
@@ -20,6 +21,18 @@ inline constexpr std::array<BINDING, 7u> BINDINGS{{
     {3u, "Mario3_Boom_2", "Mario3_Trigger_8", "Mario3_Trigger_10"},
     {4u, "Mario4_Boom", "Mario4_Tigger_6", "Mario4_Tigger_7"}
 }};
+// Sequence identity is shared gameplay/presentation data, never an asset path.
+inline std::string InstanceId(const BINDING& binding, const std::uint32_t slot)
+{
+    return std::string("world.object.instance.mario.bomb.") + binding.marker + ".slot" + std::to_string(slot);
+}
+inline std::uint32_t BirthTick(const std::uint32_t phaseMs, const std::int64_t birth,
+    const std::uint32_t tickHz) noexcept
+{
+    if (birth < 0 || !tickHz) return 0u;
+    const double tick = std::ceil((double(birth) * INTERVAL_MS + phaseMs) * tickHz / 1000.);
+    return tick > 0. && tick <= 4294967295. ? static_cast<std::uint32_t>(tick) : 0u;
+}
 inline std::uint32_t Seed(const char* marker) noexcept
 {
     std::uint32_t result = 2166136261u;

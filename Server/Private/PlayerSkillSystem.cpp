@@ -464,7 +464,7 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 	using namespace LostArk::Shared;
 	const PLAYER_SKILL_DEFINITION* skill = catalog.Find_Skill(command.iSkillId);
 	SERVER_NAV_POINT stagedTarget{};
-	if ((!sequenceAlreadyConsumed &&
+	if (player.Has_TimeStop(actionStartTick) || (!sequenceAlreadyConsumed &&
 			!IsNewerSequence(command.iClientSequence, player.iLastSkillSequence)) ||
 		nullptr == skill || skill->eCharacterClass != player.eCharacterClass ||
 		0u == player.iCurrentHp ||

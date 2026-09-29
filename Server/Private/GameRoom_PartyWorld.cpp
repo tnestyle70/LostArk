@@ -31,8 +31,6 @@ void LostArk::Server::CGameRoom::Handle_ReturnToBern(
 	const LostArk::Shared::C2S_RETURN_TO_BERN& request)
 {
 	using namespace LostArk::Shared;
-	// Direct Lobby/debug entries have no source NPC; retain their established exit.
-	constexpr const char* BERN_RETURN_PLACEMENT_ID = "npc.bern.beda.guide";
 
 	/* Valtan after its clear; KoukuSaydon after its last gate cleared (the gate progress
 	   widget's exit button). */
@@ -52,19 +50,31 @@ void LostArk::Server::CGameRoom::Handle_ReturnToBern(
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionIter == m_PlayerIdBySessionId.end())
 		return;
-	const auto playerIter = m_Players.find(sessionIter->second);
+	// Solo only -- unlike Handle_ConfirmNpcEntry, returning is never batched
+	// across a party. Each player presses their own button independently.
+	(void)Stage_ReturnToBern(sessionIter->second, request.iRequestSequence);
+}
+
+bool LostArk::Server::CGameRoom::Stage_ReturnToBern(
+	const LostArk::Shared::PLAYER_ID playerId,
+	const std::uint32_t requestSequence)
+{
+	using namespace LostArk::Shared;
+	// Direct Lobby/debug entries have no source NPC; retain their established exit.
+	constexpr const char* BERN_RETURN_PLACEMENT_ID = "npc.bern.beda.guide";
+
+	const auto playerIter = m_Players.find(playerId);
 	if (playerIter == m_Players.end())
-		return;
+		return false;
 	const SERVER_PLAYER& player = playerIter->second;
 	if (INVALID_SESSION_ID == player.iSessionId ||
 		CHARACTER_CLASS_ID::END == player.eCharacterClass ||
 		player.strNickName.empty())
 	{
-		return;
+		return false;
 	}
 
-	// Solo only -- unlike Handle_ConfirmNpcEntry, returning is never batched
-	// across a party. Each player presses their own button independently.
+	const SESSION_ID sessionId = player.iSessionId;
 	const bool isAlreadyStaged = std::any_of(
 		m_PendingWorldTransfers.begin(), m_PendingWorldTransfers.end(),
 		[sessionId](const SERVER_WORLD_TRANSFER_REQUEST& pending)
@@ -72,7 +82,7 @@ void LostArk::Server::CGameRoom::Handle_ReturnToBern(
 			return pending.iSessionId == sessionId;
 		});
 	if (isAlreadyStaged)
-		return;
+		return false;
 
 	SERVER_WORLD_TRANSFER_REQUEST transfer{};
 	transfer.iSessionId = player.iSessionId;
@@ -80,7 +90,7 @@ void LostArk::Server::CGameRoom::Handle_ReturnToBern(
 	transfer.eCharacterClass = player.eCharacterClass;
 	transfer.strNickName = player.strNickName;
 	transfer.iHonorTitleId = player.iHonorTitleId;
-	transfer.iPartyRequestSequence = request.iRequestSequence;
+	transfer.iPartyRequestSequence = requestSequence;
 	transfer.strSpawnPlacementOverrideId = player.strRaidReturnNpcPlacementId.empty() ?
 		BERN_RETURN_PLACEMENT_ID : player.strRaidReturnNpcPlacementId;
 	// Carries Valtan clear rewards (and anything else still held) across the
@@ -93,6 +103,7 @@ void LostArk::Server::CGameRoom::Handle_ReturnToBern(
             (companion->second.AnchorId == player.iPlayerId || m_PartyMembersByPartyId.at(party->second).size() == 1u))
             transfer.PartyBatchSessionIds.push_back(sessionId);
 	m_PendingWorldTransfers.push_back(std::move(transfer));
+	return true;
 }
 
 void LostArk::Server::CGameRoom::Handle_PartyInvite(

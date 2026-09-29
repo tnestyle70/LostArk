@@ -148,6 +148,15 @@ Consumers: `Tools/VehiclePipeline/build_vehicle_sound_catalog.py`,
 `build_character_sound_catalog.py` (a class's `.animevents` SOUND rows -> `CharacterSoundCatalog.json`
 class bucket + `Resources/Sound/Character/<Class>` wavs; Common events already in the catalog are kept).
 
+Guardian Knight's class-selection movie uses
+`Tools/CharacterSelectPipeline/prepare_guardian_selection_sound.py`. It verifies
+the original Matinee cue and reviewed Wwise Layer graph, decodes both simultaneous
+stems with FMOD `NOSOUND`, and bakes the source Play action's 400 ms linear fade.
+It writes WAV candidates and a stable-template `soundTracks` patch under `out/`.
+The movie uses direct WorldSequence asset IDs, so these two stems must not become
+random alternatives in `CharacterSoundCatalog.json`. Apply the reviewed patch
+to the latest saved WorldSequences document and publish through the Map owner.
+
 ## KoukuSaydon source sound candidates
 
 `build_kouku_sound_candidates.py` reads the extracted Action LOA AKEvent notifies,
@@ -188,3 +197,84 @@ provenance, exact joins and holdouts. Copy only the files named in
 stable-ID merge preserving unrelated edits. The final installer must recheck
 the latest saved timing, verify hashes before replacement, keep backups, and
 replace atomically. A changed animation window requires rebuilding the candidate.
+
+## Float-preserving simultaneous Movie stems
+
+`restore_layered_movie_audio.py` handles reviewed Layer events whose simultaneous
+stems exceed full scale. It extracts the original WEMs and rebuilds their Ogg
+headers with the existing pipeline, then uses an installed FFmpeg to decode
+IEEE float32 PCM. The older FMOD PCM16 extraction clamps values above full scale
+before a mix bus can process them; turning that already-clamped WAV into float
+cannot recover the lost peaks. This path always decodes the original media.
+
+The Artist selection recipe records Event `732838072`, Play `260014151`, Layer
+`304951303`, and media `868518256`/`707626343`. They play simultaneously; they
+are not random alternatives. Source local gain, pitch, delay, RTPC and state
+adjustments are absent. The voice priority property `100` is not a volume.
+The parent ActorMixer routes to bus `1635194334`, then `393239870` with -2 dB,
+then master bus `3803692087` with -2 dB. The active master Peak Limiter
+`377339466` supplies threshold -5 dB, ratio 10, lookahead 15 ms, release 100 ms,
+output +3 dB and linked channels. The recipe pins the reviewed HIRC payloads,
+INIT bank bytes (including RTPC defaults), source WEM hashes and original WAV
+hashes. A changed source must be reviewed instead of silently reusing a preset.
+
+This is a **parameter-matched offline approximation**, not a bit-identical
+implementation of the Wwise limiter. The tool applies the source aggregate
+bus gain before a linked detector of the sum, uses the next 15 ms maximum with
+instantaneous reduction and one-pole release, and distributes the same gain
+envelope to both float stems. It does not normalize each stem independently,
+delete either layer, change the global FMOD effects bus or add gain controls.
+The output frame count and sample positions stay unchanged; lookahead is
+compensated offline. Default RTPC values contribute no extra volume/filter
+change for this isolated source pair. Other game audio, dynamic states and
+sidechain inputs are outside this bake.
+
+Both Sound boxes remain independently editable under their existing stable
+IDs. `_bus_restored_f32.wav` files preserve the original WAVs. The prepared mix
+is valid for the reviewed start 0/source-in 0/volume 1 pair. Changing relative
+timing or gain requires a new mix review; the installer refuses such changes.
+Movie playback continues to apply its existing source clock/pitch to these
+rendered stems. Consequently a slowed Movie also stretches the baked dynamics
+envelope; this does not reproduce a live Wwise post-resampling limiter with
+wall-clock release. Pitch policy is deliberately not inferred from PCM clipping.
+
+```powershell
+python Tools/SoundPipeline/restore_layered_movie_audio.py prepare `
+  --out out/MovieSoundSync20260929/artist-restored
+python -m unittest discover -s Tools/SoundPipeline -p test_restore_layered_movie_audio.py
+# After candidate review and authorized installation:
+python Tools/SoundPipeline/restore_layered_movie_audio.py install `
+  --out out/MovieSoundSync20260929/artist-restored
+```
+
+Preparation checks the native sample grid, finite float readback, linked-envelope
+identity and an unclipped summed result. It writes provenance and numeric results
+to `candidate-receipt.json`. Installation rereads the latest World document,
+preserves all unrelated bytes, replaces only the two `assetId` values plus the
+required revision, and uses the Movie writer lock, freshness checks, atomic
+replacement, backup and guarded rollback. New resources go to project Resources
+and the selected `--mirror` (default Desktop/GBResources). Existing different
+resources are never overwritten. `install-receipt.json` reports actual hashes;
+Map publishing and listening in the Client are separate verification steps.
+
+The same verified default bus chain also covers these reviewed recipes. Pass
+the corresponding `--recipe Tools/SoundPipeline/<name>_selection_bus.recipe.json`
+to both commands and use a separate candidate directory per recipe.
+
+| Recipe name | Output Sound boxes | Preserved Movie start | Source Play fade |
+| --- | ---: | ---: | ---: |
+| artist | 2 separate stems | 0 ms | 0 ms |
+| guardianknight | 2 separate stems | 0 ms | 400 ms linear |
+| dimensionmaster | 2 separate stems | 100 ms | 0 ms |
+| lancemaster | 1 mix of both source stems | 0 ms | 0 ms |
+| warlord | 1 mix of both source stems | 300 ms | 0 ms |
+
+Guardian's source fade is applied in float before linked dynamics. Lance Master
+and Warlord already have one authored sound box for a two-source mix; their
+restoration keeps that single box and mixes only after float processing. All
+current track duration, source-in, volume, timing and stable IDs remain intact.
+Lance Master's original float decodes contain 374,519 frames whereas its prior
+WAV has 374,520 frames with a terminal zero. Its reviewed recipe adds precisely
+one zero frame at the end to retain that existing sample grid; it cannot pad
+other discrepancies, remove leading audio or move an event. Candidate receipts
+record both native frame count and terminal padding.

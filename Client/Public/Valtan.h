@@ -299,6 +299,9 @@ public:
 	   one bit per authored plate index, and presentation only has to hide
 	   the part wearing that index. */
 	bool_t Apply_BrokenArmorMask(uint8_t iBrokenArmorMask);
+	// Read-only Server mechanic presentation for the world HUD.
+	bool_t Is_ArmorBreakAvailable() const;
+	f32_t Get_ArmorBreakFeedbackRemainingSeconds() const;
 	bool_t Apply_NetworkState(
 		const float3_t& position,
 		f32_t yawDegrees,
@@ -454,6 +457,7 @@ private:
 	bool_t m_isPatternBodyHidden = false;
 	uint8_t m_iBrokenArmorMask = 0u;
 	std::uint64_t m_iLastBossCombatEventSequence = 0u;
+	f32_t m_fArmorBreakFeedbackRemainingSeconds = 0.f;
 	DEFERRED_EMISSIVE_OVERRIDE m_HitFlash;
 	f32_t m_fHitFlashRemainingSeconds = { 0.f };
 	CNavPathFollower m_PathFollower;

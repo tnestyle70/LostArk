@@ -148,9 +148,9 @@ bool LostArk::Server::CItemCatalog::Load()
 		return false;
 	}
 
-	if (6u != version)
+	if (7u != version)
 	{
-		m_strStatus = "Item bootstrap version mismatch: expected 6, got " +
+		m_strStatus = "Item bootstrap version mismatch: expected 7, got " +
 			std::to_string(version) + "; path=" + path.string() +
 			"; run powershell -ExecutionPolicy Bypass -File "
 			"Tools/GameplayPipeline/Publish-ItemCatalog.ps1 -Mode Publish";
@@ -208,6 +208,41 @@ bool LostArk::Server::CItemCatalog::Load()
 			}
 			stock.strItemId = fields[2];
 			shopItems[std::string(fields[1])].push_back(std::move(stock));
+			continue;
+		}
+		if (15u == fields.size() && "BATTLEITEM" == fields[0])
+		{
+			auto item = m_Items.find(std::string(fields[1]));
+			SERVER_BATTLE_ITEM_USE use;
+			if (fields[2] == "DESTRUCTION" && fields[1] == "BATTLE_DESTRUCTION_BOMB") use.eKind = BATTLE_ITEM_KIND::DESTRUCTION;
+			if (fields[2] == "WHIRLWIND" && fields[1] == "BATTLE_WHIRLWIND_GRENADE") use.eKind = BATTLE_ITEM_KIND::WHIRLWIND;
+			if (fields[2] == "CLEANSE" && fields[1] == "BATTLE_HOLY_CHARM") use.eKind = BATTLE_ITEM_KIND::CLEANSE;
+			if (fields[2] == "TIME_STOP" && fields[1] == "BATTLE_TIME_STOP_POTION") use.eKind = BATTLE_ITEM_KIND::TIME_STOP;
+			if (item == m_Items.end() || use.eKind == BATTLE_ITEM_KIND::NONE ||
+				item->second.BattleUse.eKind != BATTLE_ITEM_KIND::NONE || item->second.iHealPercent || !item->second.strEquipSlot.empty() ||
+				!ParseNumber(fields[3], use.iSkillId) || !use.iSkillId ||
+				!ParseNumber(fields[4], use.iDamageRatePercent) || use.iDamageRatePercent > 1000000u ||
+				!ParseNumber(fields[5], use.iPartDamage) || use.iPartDamage > 1000000u ||
+				!ParseNumber(fields[6], use.iStaggerDamage) || use.iStaggerDamage > 1000000u ||
+				!ParseNumber(fields[7], use.iRangeCm) || use.iRangeCm > 5000u ||
+				!ParseNumber(fields[8], use.iRadiusCm) || use.iRadiusCm > 5000u ||
+				!ParseNumber(fields[9], use.iDurationMs) || use.iDurationMs > 600000u ||
+				!ParseNumber(fields[10], use.iCooldownMs) || use.iCooldownMs < 1000u || use.iCooldownMs > 600000u ||
+				((use.eKind == BATTLE_ITEM_KIND::DESTRUCTION || use.eKind == BATTLE_ITEM_KIND::WHIRLWIND) && (!use.iRangeCm || !use.iRadiusCm)) ||
+				(use.eKind == BATTLE_ITEM_KIND::TIME_STOP && use.iRangeCm) ||
+				((use.eKind == BATTLE_ITEM_KIND::CLEANSE || use.eKind == BATTLE_ITEM_KIND::TIME_STOP) && !use.iDurationMs) ||
+				!ParseNumber(fields[11], use.iProjectileSpeedCmPerSecond) || use.iProjectileSpeedCmPerSecond > 10000u ||
+				!ParseNumber(fields[12], use.iProjectileArcHeightCm) || use.iProjectileArcHeightCm > 1000u ||
+				!ParseNumber(fields[13], use.iProjectileLaunchHeightCm) || use.iProjectileLaunchHeightCm > 1000u ||
+				!ParseNumber(fields[14], use.iStaggerMaximumDivisor) ||
+				(use.eKind == BATTLE_ITEM_KIND::WHIRLWIND ? (use.iStaggerMaximumDivisor != 3u || use.iDamageRatePercent || use.iStaggerDamage) : use.iStaggerMaximumDivisor != 0u) ||
+				((use.eKind == BATTLE_ITEM_KIND::DESTRUCTION || use.eKind == BATTLE_ITEM_KIND::WHIRLWIND) && !use.iProjectileSpeedCmPerSecond))
+			{
+				m_strStatus = "Item bootstrap BATTLEITEM row is invalid";
+				m_Items = std::move(previousItems);
+				return false;
+			}
+			item->second.BattleUse = use;
 			continue;
 		}
 		/* ITEMVARIANT <templateId> <className> <itemId>: the class variant a template buys. */

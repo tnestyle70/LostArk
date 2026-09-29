@@ -65,6 +65,7 @@ bool LostArk::Server::CGameRoom::Grant_Item(
 			(std::min)(stacked, static_cast<std::uint64_t>(
 				itemDefinition->iMaxStack)));
 	}
+	player.bRestoreAvailable = false;
 	return true;
 }
 
@@ -106,26 +107,113 @@ void LostArk::Server::CGameRoom::Handle_UseItem(
 		return;
 
 	SERVER_PLAYER& player = playerIter->second;
-	const SERVER_ITEM_DEFINITION* itemDefinition =
-		m_ItemCatalog.Find_Item(request.strItemId);
-	// Not owned, not a consumable, or already dead: no-op. A dead player using
-	// a heal potion would just resurrect them for free outside the real
-	// revive path, so this is deliberately excluded too.
-	if (nullptr == itemDefinition || 0u == itemDefinition->iHealPercent ||
-		0u == player.iCurrentHp)
-	{
-		return;
-	}
-
-	const auto existing = std::find_if(
-		player.Inventory.begin(), player.Inventory.end(),
+	if (!Is_NewerSequence(request.iRequestSequence, player.iLastItemUseSequence)) return;
+	player.iLastItemUseSequence = request.iRequestSequence;
+	const SERVER_ITEM_DEFINITION* itemDefinition = m_ItemCatalog.Find_Item(request.strItemId);
+	if (!itemDefinition || !player.iCurrentHp ||
+		(!itemDefinition->iHealPercent && itemDefinition->BattleUse.eKind == BATTLE_ITEM_KIND::NONE)) return;
+	const auto existing = std::find_if(player.Inventory.begin(), player.Inventory.end(),
 		[&request](const INVENTORY_ITEM_SNAPSHOT& item)
+		{ return item.strItemId == request.strItemId && EQUIPMENT_SLOT::NONE == item.eEquippedSlot; });
+	if (existing == player.Inventory.end() || !existing->iQuantity) return;
+	const auto& use = itemDefinition->BattleUse;
+	if (use.eKind != BATTLE_ITEM_KIND::NONE)
+	{
+		const auto tick = m_iServerTick == (std::numeric_limits<std::uint32_t>::max)() ? 1u : m_iServerTick + 1u;
+		const auto cooldown = player.ItemCooldownEndTicks.find(request.strItemId);
+		const bool isThrown = use.eKind == BATTLE_ITEM_KIND::DESTRUCTION || use.eKind == BATTLE_ITEM_KIND::WHIRLWIND;
+		const bool isAllyTarget = use.eKind == BATTLE_ITEM_KIND::CLEANSE;
+		if (Is_KoukuRaidInputBlocked() || player.Has_TimeStop(tick) || player.iMarioStage || player.bPatternBound ||
+			player.TriggerMove.isActive || player.iVehicleId != INVALID_VEHICLE_ID ||
+			player.eMadnessForm != PLAYER_MADNESS_FORM::NORMAL || player.eKoukuHudMode != KOUKU_HUD_MODE::NONE ||
+			player.eAction != PLAYER_ACTION_STATE::NONE || player.fKnockbackRemainingSeconds > 0.f ||
+			(cooldown != player.ItemCooldownEndTicks.end() && !Has_ReachedServerTick(tick, cooldown->second)) ||
+			request.hasGroundTarget != isThrown ||
+			(request.iTargetPlayerNetEntityId != INVALID_NET_ENTITY_ID) != isAllyTarget ||
+			!std::isfinite(request.fTargetX) || !std::isfinite(request.fTargetZ) ||
+			(!request.hasGroundTarget && (request.fTargetX != 0.f || request.fTargetZ != 0.f))) return;
+		SERVER_NAV_POINT target{player.fPositionX, player.fPositionY, player.fPositionZ};
+		if (request.hasGroundTarget)
 		{
-			return item.strItemId == request.strItemId &&
-				EQUIPMENT_SLOT::NONE == item.eEquippedSlot;
-		});
-	if (existing == player.Inventory.end() || 0u == existing->iQuantity)
-		return;
+			const float dx = request.fTargetX - player.fPositionX, dz = request.fTargetZ - player.fPositionZ;
+			const float range = static_cast<float>(use.iRangeCm) * .01f;
+			if (dx * dx + dz * dz > range * range + .001f) return;
+			target.x = request.fTargetX; target.z = request.fTargetZ;
+		}
+		if (use.eKind == BATTLE_ITEM_KIND::DESTRUCTION || use.eKind == BATTLE_ITEM_KIND::WHIRLWIND)
+		{
+			if (!m_ServerNavigation.Sample_SurfacePosition(target.x, target.z, target) ||
+				std::abs(target.y - player.fPositionY) > 3.f) return;
+			auto transaction = m_CombatObjectRuntime.Begin_Transaction();
+			std::string status;
+			if (!m_CombatObjectRuntime.Stage_BattleItemProjectile(transaction, player, use,
+				target.x, target.y, target.z, m_GameplayCatalog, tick, status) ||
+				!m_CombatObjectRuntime.Commit(std::move(transaction))) return;
+			if (!Broadcast_CombatObjectLifecycle()) Mark_RuntimeFailure("battle.item.projectile-spawn");
+		}
+		else
+		{
+			SERVER_PLAYER* recipient = &player;
+			if (use.eKind == BATTLE_ITEM_KIND::CLEANSE)
+			{
+				recipient = nullptr;
+				const auto sourceParty = m_PartyIdByPlayerId.find(player.iPlayerId);
+				if (sourceParty == m_PartyIdByPlayerId.end() || !sourceParty->second) return;
+				for (auto& [id, candidate] : m_Players)
+				{
+					if (candidate.iNetEntityId != request.iTargetPlayerNetEntityId) continue;
+					const auto targetParty = m_PartyIdByPlayerId.find(id);
+					const float dx = candidate.fPositionX - player.fPositionX;
+					const float dz = candidate.fPositionZ - player.fPositionZ;
+					const float range = static_cast<float>(use.iRangeCm) * .01f;
+					if (id == player.iPlayerId || !candidate.Is_Human() || !candidate.iCurrentHp ||
+						targetParty == m_PartyIdByPlayerId.end() || targetParty->second != sourceParty->second ||
+						candidate.iMarioStage || candidate.bPatternBound || candidate.TriggerMove.isActive ||
+						candidate.eKoukuHudMode != KOUKU_HUD_MODE::NONE || candidate.eAttachmentSlot != PLAYER_ATTACHMENT_SLOT::NONE ||
+						candidate.eAction == PLAYER_ACTION_STATE::DEAD || candidate.eAction == PLAYER_ACTION_STATE::FALLING ||
+						std::abs(candidate.fPositionY - player.fPositionY) > 3.f || dx * dx + dz * dz > range * range + .001f) return;
+					recipient = &candidate;
+					break;
+				}
+				if (!recipient) return;
+			}
+			S2C_WORLD_SEQUENCE_PLAY presentation;
+			presentation.strSequenceInstanceId = "world.item.use." + request.strItemId + "." +
+				std::to_string(player.iNetEntityId) + "." + std::to_string(request.iRequestSequence) + "." +
+				std::to_string(recipient->iNetEntityId);
+			presentation.iStartTick = presentation.iServerTick = tick;
+			presentation.iDurationMs = use.iDurationMs;
+			presentation.fPositionOffsetX = recipient->fPositionX;
+			presentation.fPositionOffsetY = recipient->fPositionY;
+			presentation.fPositionOffsetZ = recipient->fPositionZ;
+			CPacketWriter writer;
+			if (!Write_Message(writer, presentation)) return;
+			const auto endTick = tick + (use.iDurationMs * SERVER_TICK_HZ + 999u) / 1000u;
+			if (use.eKind == BATTLE_ITEM_KIND::CLEANSE)
+			{
+				recipient->iHolyCharmProtectionEndTick = endTick;
+				if (recipient->eAction == PLAYER_ACTION_STATE::FEAR)
+				{
+					recipient->iFearEndTick = tick;
+					(void)CKoukuSaydonLogicRuntime::Update_PlayerFear(*recipient, tick);
+				}
+			}
+			else
+			{
+				player.iTimeStopEndTick = endTick;
+				player.hasMoveGoal = false; player.MovePath.clear(); player.iMovePathIndex = 0u;
+				player.PendingCommand.Clear(); player.hasBufferedComboInput = false;
+			}
+			for (const auto& [id, observer] : m_Players)
+			{
+				(void)id;
+				if (auto connection = Find_Session(observer.iSessionId); connection &&
+					!connection->Send_Frame(PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY, writer.Get_Buffer())) connection->Request_Close();
+			}
+		}
+		player.ItemCooldownEndTicks[request.strItemId] = tick + (use.iCooldownMs * SERVER_TICK_HZ + 999u) / 1000u;
+	}
+	else if (request.hasGroundTarget || request.iTargetPlayerNetEntityId != INVALID_NET_ENTITY_ID) return;
 
 	const std::uint64_t healAmount =
 		(static_cast<std::uint64_t>(player.iMaximumHp) *
@@ -156,6 +244,7 @@ void LostArk::Server::CGameRoom::Handle_UseItem(
 	--existing->iQuantity;
 	if (0u == existing->iQuantity)
 		player.Inventory.erase(existing);
+	player.bRestoreAvailable = false;
 
 	if (!Send_InventorySnapshot(
 		session, request.iRequestSequence, player))
@@ -289,7 +378,8 @@ void LostArk::Server::CGameRoom::Handle_SetEquipment(
 	if (playerIter == m_Players.end())
 		return;
 	/* A refused move still answers, so the window drops any optimistic state. */
-	(void)Apply_SetEquipment(playerIter->second, request);
+	if (Apply_SetEquipment(playerIter->second, request))
+		playerIter->second.bRestoreAvailable = false;
 	if (!Send_InventorySnapshot(
 		session, request.iRequestSequence, playerIter->second))
 	{
@@ -371,6 +461,7 @@ bool LostArk::Server::CGameRoom::Apply_BuyItems(
 	}
 	player.Inventory = std::move(staged);
 	player.Purse = stagedPurse;
+	player.bRestoreAvailable = false;
 	return true;
 }
 
@@ -392,6 +483,70 @@ void LostArk::Server::CGameRoom::Handle_BuyItems(
 	{
 		session->Request_Close();
 	}
+}
+
+bool LostArk::Server::CGameRoom::Validate_RestoreCharacter(
+	const SERVER_PLAYER& player, const LostArk::Shared::C2S_RESTORE_CHARACTER& request) const
+{
+	using namespace LostArk::Shared;
+	/* Wire decoding already rejected unknown slots, empty ids, zero counts, two items in one
+	   slot and a stack listed twice; what is left is what only the Server's catalogs know. */
+	if (request.Items.size() > MAX_INVENTORY_ITEMS)
+		return false;
+	for (const INVENTORY_ITEM_SNAPSHOT& item : request.Items)
+	{
+		const SERVER_ITEM_DEFINITION* definition = m_ItemCatalog.Find_Item(item.strItemId);
+		if (nullptr == definition || 0u == item.iQuantity || item.iQuantity > definition->iMaxStack)
+			return false;
+		if (EQUIPMENT_SLOT::NONE == item.eEquippedSlot)
+			continue;
+		/* An equipped entry is one item in a slot of its own kind that this class can wear. */
+		const char* slotKind = Equipment_SlotKind(item.eEquippedSlot);
+		if (1u != item.iQuantity || nullptr == slotKind || definition->strEquipSlot != slotKind ||
+			!Is_UsableByClass(*definition, player.eCharacterClass))
+			return false;
+	}
+	return INVALID_HONOR_TITLE_ID == request.iHonorTitleId ||
+		m_HonorTitleCatalog.Has_Title(request.iHonorTitleId);
+}
+
+void LostArk::Server::CGameRoom::Handle_RestoreCharacter(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_RESTORE_CHARACTER& request)
+{
+	using namespace LostArk::Shared;
+	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (nullptr == session) return;
+	const auto reply = [&](const CHARACTER_RESTORE_RESULT verdict, const HONOR_TITLE_ID title = INVALID_HONOR_TITLE_ID)
+	{
+		const S2C_RESTORE_CHARACTER_RESULT result{request.iRequestSequence, verdict, title};
+		CPacketWriter writer;
+		if (!Write_Message(writer, result) || !session->Send_Frame(
+			PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT, writer.Get_Buffer())) session->Request_Close();
+	};
+	const auto playerIter = sessionIter == m_PlayerIdBySessionId.end() ? m_Players.end() : m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end() || playerIter->second.iSessionId != sessionId)
+	{ reply(CHARACTER_RESTORE_RESULT::REJECTED_SESSION); return; }
+	SERVER_PLAYER& player = playerIter->second;
+	/* Once per fresh Bern entry, before the player changed anything. The chance is spent even
+	   by a request that fails validation, so a client cannot probe with variants. */
+	if (WORLD_ID::BERN != m_eWorldId || !player.bRestoreAvailable)
+	{ reply(CHARACTER_RESTORE_RESULT::REJECTED_UNAVAILABLE); return; }
+	player.bRestoreAvailable = false;
+	if (!Validate_RestoreCharacter(player, request))
+	{
+		m_strStatus = "A saved character restore was refused by the Server catalogs.";
+		reply(CHARACTER_RESTORE_RESULT::REJECTED_CATALOG);
+		return;
+	}
+	player.Inventory = request.Items;
+	player.Purse.iSilver = request.iSilver;
+	player.Purse.iGold = request.iGold;
+	player.iHonorTitleId = request.iHonorTitleId;
+	if (!Send_InventorySnapshot(session, request.iRequestSequence, player))
+	{ session->Request_Close(); return; }
+	reply(CHARACTER_RESTORE_RESULT::APPLIED, player.iHonorTitleId);
 }
 
 void LostArk::Server::CGameRoom::Handle_DespawnAllWorldEntities(

@@ -874,6 +874,7 @@
               "effectAssetId": "effect.valtan.tracking-axe.large-circle.warning",
               "clipOccurrenceId": "valtan.attack.high-jump.airborne.clip.01",
               "sourceStartMs": 6906,
+              "playbackOffsetMs": 0,
               "sourceEndMs": null,
               "anchorSlotId": "pattern.landing.snapshot",
               "followPolicy": "snapshot",
@@ -891,9 +892,9 @@
                   0
                 ],
                 "scale": [
+                  1.399999976158142,
                   1,
-                  1,
-                  1
+                  1.399999976158142
                 ]
               },
               "scalePolicy": {

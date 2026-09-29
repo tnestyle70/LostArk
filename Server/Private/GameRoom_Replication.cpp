@@ -532,7 +532,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 				player.fPositionX, player.fPositionZ);
 		snapshot.canPredictMove = !onRuntimeSupport && !onKoukuDetailGrid &&
 			PLAYER_ACTION_STATE::NONE == player.eAction &&
-			player.iCurrentHp != 0u && !player.bPatternBound &&
+			player.iCurrentHp != 0u && !player.bPatternBound && !player.Has_TimeStop(m_iServerTick) &&
 			player.iMarioStage == 0u && !player.TriggerMove.isActive &&
 			player.fKnockbackRemainingSeconds <= 0.f &&
 			player.CardMaze.transferStartTick == 0u &&
@@ -600,10 +600,16 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iCurrentHp = player.iCurrentHp;
 		snapshot.iMaximumHp = player.iMaximumHp;
 		snapshot.iShield = player.iShield;
-		snapshot.iActiveBuffCount = static_cast<std::uint8_t>((std::min)(
-			player.ActiveBuffs.size(), LostArk::Shared::MAX_ACTIVE_BUFFS));
-		for (std::size_t buffIndex = 0; buffIndex < snapshot.iActiveBuffCount; ++buffIndex)
-			snapshot.ActiveBuffs[buffIndex] = player.ActiveBuffs[buffIndex];
+		// Item visuals must survive snapshot coalescing without removing real skill buffs.
+		if (player.Has_TimeStop(m_iServerTick))
+			snapshot.ActiveBuffs[snapshot.iActiveBuffCount++] = {33500u, player.iTimeStopEndTick};
+		if (player.Has_HolyCharmProtection(m_iServerTick))
+			snapshot.ActiveBuffs[snapshot.iActiveBuffCount++] = {32282u, player.iHolyCharmProtectionEndTick};
+		for (const auto& buff : player.ActiveBuffs)
+		{
+			if (snapshot.iActiveBuffCount == LostArk::Shared::MAX_ACTIVE_BUFFS) break;
+			snapshot.ActiveBuffs[snapshot.iActiveBuffCount++] = buff;
+		}
 		snapshot.iCurrentResource = player.iCurrentResource;
 		snapshot.iMaximumResource = player.iMaximumResource;
 		snapshot.iCurrentIdentity = player.iCurrentIdentity;

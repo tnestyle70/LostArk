@@ -26,6 +26,7 @@ namespace Client
 		WORLD_DESTRUCTION_DELTA,
 		ENCOUNTER_PROP_SYNC,
 		INVENTORY_SNAPSHOT,
+		RESTORE_CHARACTER_RESULT,
 		PARTY_INVITE_RECEIVED,
 		PARTY_ROSTER,
 		PARTY_TRANSFER_RESULT,
@@ -81,6 +82,7 @@ namespace Client
 			WorldDestructionDelta;
 		LostArk::Shared::S2C_ENCOUNTER_PROP_SYNC EncounterPropSync;
 		LostArk::Shared::S2C_INVENTORY_SNAPSHOT InventorySnapshot;
+		LostArk::Shared::S2C_RESTORE_CHARACTER_RESULT RestoreCharacterResult;
 		LostArk::Shared::S2C_PARTY_INVITE_RECEIVED PartyInviteReceived;
 		LostArk::Shared::S2C_PARTY_ROSTER PartyRoster;
 		LostArk::Shared::S2C_PARTY_TRANSFER_RESULT PartyTransferResult;

@@ -4,6 +4,8 @@
 #ifndef SOURCE_FOLIAGE_WIND_INCLUDED
 #define SOURCE_FOLIAGE_WIND_INCLUDED
 uint g_SourceFoliageWindEnabled = 0u;
+// Program 1 is the exact E4FE implementation below; do not alias other VS inputs.
+uint g_SourceFoliageWindProgram = 1u;
 float4 g_SourceFoliageWindLocalCenter = float4(0,0,0,1);
 float4 g_SourceFoliageWindLocalBounds = float4(1,1,1,1);
 float4 g_SourceFoliageWindActorPosition = 0;
@@ -14,7 +16,8 @@ float g_SourceFoliageWindTime = 0;
 float3 SourceFoliageToUE(float3 value) { return float3(value.x,-value.z,value.y)*100.f; }
 float3 SourceFoliageWorldOffset(float3 worldPosition, float4 vertexColor, float4x4 world)
 {
-    if (g_SurfaceProgram != 9u || g_SourceFoliageWindEnabled == 0u) return 0;
+    if (g_SurfaceProgram != 9u || g_SourceFoliageWindEnabled == 0u ||
+        g_SourceFoliageWindProgram != 1u) return 0;
     float4 cb0[18]; float4 cb1[6];
     [unroll] for(uint i=0;i<18;++i) cb0[i]=0;
     [unroll] for(uint j=0;j<6;++j) cb1[j]=0;

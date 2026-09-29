@@ -5826,11 +5826,19 @@ bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer,
 	const C2S_USE_ITEM& message)
 {
-	if (0u == message.iRequestSequence || !Is_Valid_ItemId(message.strItemId))
+	if (0u == message.iRequestSequence || !Is_Valid_ItemId(message.strItemId) ||
+		!std::isfinite(message.fTargetX) || !std::isfinite(message.fTargetZ) ||
+		std::abs(message.fTargetX) > 100000.f || std::abs(message.fTargetZ) > 100000.f ||
+		(!message.hasGroundTarget && (message.fTargetX != 0.f || message.fTargetZ != 0.f)) ||
+		(message.hasGroundTarget && message.iTargetPlayerNetEntityId != INVALID_NET_ENTITY_ID))
 		return false;
 	writer.Write_U32(message.iRequestSequence);
 	if (!writer.Write_String(message.strItemId, MAX_ITEM_ID_BYTES))
 		return false;
+	writer.Write_U8(message.hasGroundTarget ? 1u : 0u);
+	writer.Write_F32(message.fTargetX);
+	writer.Write_F32(message.fTargetZ);
+	writer.Write_U32(message.iTargetPlayerNetEntityId);
 	return true;
 }
 
@@ -5839,12 +5847,21 @@ bool LostArk::Shared::Read_Message(
 	C2S_USE_ITEM& message)
 {
 	C2S_USE_ITEM decoded{};
+	std::uint8_t hasTarget = 0u;
 	if (!reader.Read_U32(decoded.iRequestSequence) ||
 		!reader.Read_String(decoded.strItemId, MAX_ITEM_ID_BYTES) ||
+		!reader.Read_U8(hasTarget) || hasTarget > 1u ||
+		!reader.Read_F32(decoded.fTargetX) || !reader.Read_F32(decoded.fTargetZ) ||
+		!reader.Read_U32(decoded.iTargetPlayerNetEntityId) ||
+		!std::isfinite(decoded.fTargetX) || !std::isfinite(decoded.fTargetZ) ||
+		std::abs(decoded.fTargetX) > 100000.f || std::abs(decoded.fTargetZ) > 100000.f ||
+		(!hasTarget && (decoded.fTargetX != 0.f || decoded.fTargetZ != 0.f)) ||
+		(hasTarget && decoded.iTargetPlayerNetEntityId != INVALID_NET_ENTITY_ID) ||
 		0u == decoded.iRequestSequence || !Is_Valid_ItemId(decoded.strItemId))
 	{
 		return false;
 	}
+	decoded.hasGroundTarget = hasTarget != 0u;
 	message = std::move(decoded);
 	return true;
 }
@@ -5879,6 +5896,80 @@ bool LostArk::Shared::Read_Message(
 		(decoded.bEquip ? !Is_Valid_ItemId(decoded.strItemId) : !decoded.strItemId.empty()))
 		return false;
 	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_RESTORE_CHARACTER& message)
+{
+	if (0u == message.iRequestSequence || message.Items.size() > MAX_INVENTORY_ITEMS ||
+		!Is_Valid_InventoryItems(message.Items) ||
+		message.iSilver > MAX_RESTORE_PURSE_AMOUNT || message.iGold > MAX_RESTORE_PURSE_AMOUNT)
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.Items.size()));
+	for (const INVENTORY_ITEM_SNAPSHOT& item : message.Items)
+	{
+		if (!writer.Write_String(item.strItemId, MAX_ITEM_ID_BYTES))
+			return false;
+		writer.Write_U32(item.iQuantity);
+		writer.Write_U8(static_cast<std::uint8_t>(item.eEquippedSlot));
+	}
+	writer.Write_U32(message.iSilver);
+	writer.Write_U32(message.iGold);
+	writer.Write_U32(message.iHonorTitleId);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_RESTORE_CHARACTER& message)
+{
+	C2S_RESTORE_CHARACTER decoded{};
+	std::uint16_t itemCount = 0;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(itemCount) ||
+		0u == decoded.iRequestSequence || itemCount > MAX_INVENTORY_ITEMS)
+		return false;
+	decoded.Items.reserve(itemCount);
+	for (std::uint16_t index = 0; index < itemCount; ++index)
+	{
+		INVENTORY_ITEM_SNAPSHOT item{};
+		std::uint8_t equippedSlot = 0u;
+		if (!reader.Read_String(item.strItemId, MAX_ITEM_ID_BYTES) ||
+			!reader.Read_U32(item.iQuantity) || !reader.Read_U8(equippedSlot))
+			return false;
+		item.eEquippedSlot = static_cast<EQUIPMENT_SLOT>(equippedSlot);
+		decoded.Items.push_back(std::move(item));
+	}
+	if (!reader.Read_U32(decoded.iSilver) || !reader.Read_U32(decoded.iGold) ||
+		!reader.Read_U32(decoded.iHonorTitleId))
+		return false;
+	if (!Is_Valid_InventoryItems(decoded.Items) ||
+		decoded.iSilver > MAX_RESTORE_PURSE_AMOUNT || decoded.iGold > MAX_RESTORE_PURSE_AMOUNT)
+		return false;
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const S2C_RESTORE_CHARACTER_RESULT& message)
+{
+	if (!message.iRequestSequence || message.eResult >= CHARACTER_RESTORE_RESULT::END) return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	writer.Write_U32(message.iHonorTitleId);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, S2C_RESTORE_CHARACTER_RESULT& message)
+{
+	S2C_RESTORE_CHARACTER_RESULT decoded{};
+	std::uint8_t result = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U8(result) ||
+		!reader.Read_U32(decoded.iHonorTitleId)) return false;
+	decoded.eResult = static_cast<CHARACTER_RESTORE_RESULT>(result);
+	if (!decoded.iRequestSequence || decoded.eResult >= CHARACTER_RESTORE_RESULT::END) return false;
+	message = decoded;
 	return true;
 }
 

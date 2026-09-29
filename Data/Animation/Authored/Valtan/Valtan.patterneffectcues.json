@@ -2969,14 +2969,15 @@
           0
         ],
         "scale": [
+          1.399999976158142,
           1,
-          1,
-          1
+          1.399999976158142
         ]
       },
       "scalePolicy": {
         "kind": "OWNER_RELATIVE"
-      }
+      },
+      "playbackOffsetMs": 0
     },
     {
       "bindingId": "cue.valtan.composition.valtan_high_jump.land.01",

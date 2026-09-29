@@ -326,14 +326,18 @@ public:
 	/* A consumable used from a quick slot. The Server owns the heal/decrement;
 	the answer arrives the same way -- an S2C_INVENTORY_SNAPSHOT replication
 	event, plus the next S2C_WORLD_SNAPSHOT tick for the new HP. */
-	bool Send_UseItem(
-		std::uint32_t requestSequence,
-		std::string_view itemId);
+	bool Send_UseItem(const LostArk::Shared::C2S_USE_ITEM& request);
 	/* NPC shop basket; the Server answers with an S2C_INVENTORY_SNAPSHOT. */
 	bool Send_BuyItems(
 		std::uint32_t requestSequence,
 		std::string_view npcPlacementId,
 		const std::vector<LostArk::Shared::SHOP_BASKET_ENTRY>& entries);
+	/* One-shot start of a saved character from its stored inventory, purse and honor title; the
+	Server accepts it once per fresh Bern entry and returns a typed result after the inventory snapshot. */
+	bool Send_RestoreCharacter(
+		std::uint32_t requestSequence,
+		const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items,
+		std::uint32_t silver, std::uint32_t gold, std::uint32_t honorTitleId);
 	/* Right-click equip (bEquip, itemId into slot) or unequip (slot to the bag, no item id).
 	The Server answers with an S2C_INVENTORY_SNAPSHOT either way. */
 	bool Send_SetEquipment(

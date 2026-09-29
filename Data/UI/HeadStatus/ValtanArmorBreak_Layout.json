@@ -1,0 +1,38 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": {
+    "width": 1280,
+    "height": 720
+  },
+  "classes": [
+    "Default"
+  ],
+  "slots": [
+    {
+      "id": "Valtan_ArmorBreakReady",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 604,
+        "y": 360,
+        "width": 72,
+        "height": 72
+      },
+      "rotation": 0,
+      "layers": [
+        {
+          "path": "UI/HeadStatus/Valtan_ArmorBreakReady.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    }
+  ]
+}

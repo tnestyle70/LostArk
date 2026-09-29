@@ -1,0 +1,94 @@
+{
+  "schema": "lostark.layered-movie-audio-restoration.v1",
+  "id": "artist-selection",
+  "event": "pc_create_specialist1",
+  "packageFilter": "SOUND_PC_COMMON",
+  "worldDocument": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL00/LV_LOBBY_CLASSSELECT_SL00.worldsequences.json",
+  "sequenceId": "sequence.classselect.artist.intro.a1778.p0",
+  "stems": [
+    {
+      "mediaId": 868518256,
+      "soundTrackId": "classselect.artist.source.stem1",
+      "originalAssetId": "Sound/Character/Artist/ClassSelect/pc_create_specialist1_1.wav",
+      "restoredAssetId": "Sound/Character/Artist/ClassSelect/pc_create_specialist1_1_bus_restored_f32.wav",
+      "reviewedWemSha256": "e2e01739be29af6ded7f0126942591215b8ec8fa1a4415fbe601d6aed985479c",
+      "reviewedOriginalAssetSha256": "37df25cfb5c22e6d9d0a5358b3c81bbfad9a8faf77b223ef556c4602573a9d1b"
+    },
+    {
+      "mediaId": 707626343,
+      "soundTrackId": "classselect.artist.source.stem2",
+      "originalAssetId": "Sound/Character/Artist/ClassSelect/pc_create_specialist1_2.wav",
+      "restoredAssetId": "Sound/Character/Artist/ClassSelect/pc_create_specialist1_2_bus_restored_f32.wav",
+      "reviewedWemSha256": "ab5ada55a29491acec5edb43fa13c011be35230e5b9b3f5e733842167e72ee52",
+      "reviewedOriginalAssetSha256": "e4962f7819fe273d7bdd8e4459e6ba945c97e1bf6ee5a44045ec70eca003f1b3"
+    }
+  ],
+  "expectedTrack": {
+    "startMs": 0,
+    "durationMs": 8006,
+    "volume": 1,
+    "sourceStartMs": 0,
+    "loopToDuration": false
+  },
+  "bus": {
+    "path": [
+      1635194334,
+      393239870,
+      3803692087
+    ],
+    "gainDb": -4,
+    "limiterFxId": 377339466,
+    "thresholdDb": -5,
+    "ratio": 10,
+    "lookAheadMs": 15,
+    "releaseMs": 100,
+    "outputDb": 3,
+    "stereoLinked": true
+  },
+  "reviewedHirc": {
+    "732838072": {
+      "kind": 4,
+      "payloadHex": "0d47807f0fc59e0b32e17aab1accd7ae0e5a94dd37e0ab9516bced52078c6d8d08cb9d5d08c6945703ada3d72fa037d72e0283163a"
+    },
+    "260014151": {
+      "kind": 3,
+      "payloadHex": "030407302d120000000460170090"
+    },
+    "304951303": {
+      "kind": 9,
+      "payloadHex": "00000000000000cc07023c00000000000001000000000000000002000000f2129a0b40e464100000000000"
+    },
+    "194646770": {
+      "kind": 2,
+      "payloadHex": "01000400007089c433c3650300000000000000000007302d12000000000000010000000000000000"
+    },
+    "275047488": {
+      "kind": 2,
+      "payloadHex": "010004000067852d2a412b0200010000000000000007302d120001070000c84200000000010000000000000000"
+    },
+    "1006766028": {
+      "kind": 7,
+      "payloadHex": "000000de1577610000000000000003080000010000000000000000160000004e1da605cd32d506b0a7ae07b6d1310bbe2c390b07302d12ddd4fb17bef11b189a277c1848113a193f6d811df7115c2135c9bf219d9b6524b3aa2126f032522919038233970aee37ac1ac23acdef8f3d32d1913dc8c9a73f"
+    },
+    "1635194334": {
+      "kind": 8,
+      "payloadHex": "3e5d7017050e1b1c1d200000c842000000000000c842000000000000c84201050100000000000002e80300000000c0c20000000001000053c9ca19010000000000000005001bf2271c000200d12fa2010203000000f0c10000000009000000000088c1000000000000000000000000b20b2fbf040000003e5d70170002005bbf8b1802020000000000000080bf040000000000c84200000000040000001bf2271c000203c5464d340003000000f0c10000000009000000000088c1000000000000000000000000000020c204000000f901305400020376203d1d0005000000c8c20000000009000000000014c20000000004000000000000c200009642040000006f1283ba0000b44204000000000000000000000004000000cb90e179000203f953b0380003000000c8c20000000009000000000020c200000000060000000000000000008c420400000005050201040200030200020200000201029ca50d71000106877ccd854bfd3cc9633ef80001813c1a5da131fd18"
+    },
+    "393239870": {
+      "kind": 8,
+      "payloadHex": "37bcb7e206050e1b1c1d20000000c00000c842000000000000c842000000000000c84201050000000000000002e80300000000c0c200000000010000295a0100000000000000000002002aab62d8000200ad6aca1a0204000000f0c10000000009000000000070c10000000000000000000000c1b20b2fbf0900000000000000b20b2fbf040000005be96209000200013036230204000000f0c100000000090000000000a0c10000000000000000000070c182c55fbf090000000000000082c55fbf04000000050502010402000302000202000002010191131f9f000191131f9f93fc1a1c"
+    },
+    "3803692087": {
+      "kind": 8,
+      "payloadHex": "000000004a3111e606050e1b1c1d20000000c00000c842000000000000c842000000000000c84201050000000000000002e80300009a99c0c2000000000100004abe7d16000000000000000001008716ccf10002054d30542b02020000000000000080bf040000000000c84200000000040000000000"
+    },
+    "377339466": {
+      "kind": 17,
+      "payloadHex": "03006e00160000000000a0c0000020418fc2753ccdcccc3d00004040010100000000000000"
+    }
+  },
+  "scope": "Default-state standalone simultaneous layer mix. Existing Movie source time and pitch remain unchanged. Does not reproduce native Wwise DSP bit-identically, other game buses, runtime sidechain states, or subsequent relative stem timing/gain edits.",
+  "reviewedInitBankSha256": [
+    "d24ca1e887c1d9a4de78507f1c682a826f7f064deabbcb4dd86b260cede38e3d"
+  ]
+}

@@ -1128,6 +1128,14 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_BUY_ITEMS& request);
 		bool Apply_BuyItems(SERVER_PLAYER& player,
 			const LostArk::Shared::C2S_BUY_ITEMS& request) const;
+		/* One-shot restore of a Client-saved character (inventory, purse, honor title).
+		   Bern only, once per fresh entry, and only before any inventory change; the
+		   whole request is validated first and a rejected one changes nothing. */
+		void Handle_RestoreCharacter(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_RESTORE_CHARACTER& request);
+		bool Validate_RestoreCharacter(const SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_RESTORE_CHARACTER& request) const;
 		// Debug Character Select Arena "되돌리기" -- despawns every world entity the
 		// debug spawn buttons created in this room (Broadcast_WorldEntityDespawned per
 		// entity) and resets the spawn group runtime so the same groups can be
@@ -1162,6 +1170,11 @@ namespace LostArk::Server
 		void Handle_ReturnToBern(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_RETURN_TO_BERN& request);
+		// Stages one player's world transfer back to Bern. Shared by the cleared-raid exit
+		// button and the gate progress EXIT vote; returns false when nothing was staged.
+		bool Stage_ReturnToBern(
+			LostArk::Shared::PLAYER_ID playerId,
+			std::uint32_t requestSequence);
 		/* Same-room-only: request.iTargetNetEntityId must resolve to a real
 		   player currently in this room's m_PlayerIdByEntityId. There is no
 		   cross-room player identity yet (nickname is display text only, see
@@ -1596,6 +1609,7 @@ namespace LostArk::Server
 		void Resolve_CardMazeHammerHit(SERVER_PLAYER& player, std::uint32_t updateTick);
 		void Resolve_MarioHammerHit(SERVER_PLAYER& player, std::uint32_t updateTick);
 		void Update_MarioBombContacts(SERVER_PLAYER& player, std::uint32_t updateTick);
+		void Update_MarioBouncingBallContacts(SERVER_PLAYER& player, std::uint32_t updateTick);
 		// Rotating cannon jets and the big mokoko waterfall of a live Waterpang match.
 		void Update_MaharakaWaterpangHazards(SERVER_PLAYER& player, std::uint32_t updateTick);
 		// The running Debug forced event first, else the match schedule; false when neither runs.

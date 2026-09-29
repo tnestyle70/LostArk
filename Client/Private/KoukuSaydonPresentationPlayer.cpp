@@ -488,6 +488,14 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
                 Number(key, "sourceMs", 0., MAX_TIMELINE_MS)});
         }
     }
+    if (const auto* suppress = row.Find("suppressLocalMario"))
+    {
+        if (!suppress->Is_Boolean()) throw std::runtime_error("suppressLocalMario must be Boolean.");
+        box.bSuppressLocalMario = suppress->Get_Boolean();
+        if (box.bSuppressLocalMario && (kind != KIND::EFFECT || Text(row, "resourceKind") != "LEAF" ||
+            Text(row, "assetId") != "boss.kouku.curtain_1"))
+            throw std::runtime_error("Local Mario suppression requires the outside-arena curtain Effect.");
+    }
     if (const auto* debug = row.Find("debugRender"))
     {
         if (!debug->Is_Boolean()) throw std::runtime_error("debugRender must be Boolean.");
@@ -2943,16 +2951,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         if (row.failed) return;
         const auto& listener = CCombatHUDViewModel::Get().Get_Player();
         if (row.suppressedForLocalMario) return;
-        if (resource.eKind == KIND::EFFECT && resource.strAssetId == "boss.kouku.curtain_1" &&
-            !previewSession && listener.isValid && !listener.isPreview &&
-            listener.iMarioStage >= 1u && listener.iMarioStage <= 4u &&
-            std::any_of(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(), [&](const auto& occurrence) {
-                if (!occurrence.bEnabled) return false;
-                const auto logic = std::find_if(document.Logics.begin(), document.Logics.end(),
-                    [&](const auto& value) { return value.strLogicId == occurrence.strLogicId; });
-                return logic != document.Logics.end() && logic->strLogicType == "TRIGGER" &&
-                    logic->strTriggerKind == "MARIO_PHASE2_PLAYERS";
-            }))
+        if (box.bSuppressLocalMario && !previewSession && listener.isValid && !listener.isPreview &&
+            listener.iMarioStage >= 1u && listener.iMarioStage <= 4u)
         {
             // This full-screen curtain belongs to the outside phase-two arena.
             // The local Server-admitted Mario entrant must retain an unobscured view.

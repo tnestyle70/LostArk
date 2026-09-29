@@ -210,3 +210,112 @@ excludedWorldObjectIds 변경을 요청한다. 키는 Composition Sequencer에 f
 입력창·popup·drag·미적용 row·publish가 없을 때만 받으며 Effect나 Background는 삭제하지
 않는다. 명령을 frame 끝까지 stable ID로 지연하여 목록 순회 중 객체를 바꾸지 않는다.
 Element Mute는 stable ID를 누적하고 Unmute는 그 ID만 해제해 같은 시각에서 비교한다.
+
+## G14. Movie 사운드 소스 시작 위치와 클래스별 동기화 조사 (2026-09-29)
+
+현재 Sound edge trim은 startMs/durationMs만 바꿔 WAV 앞부분을 건너뛰지 않는다. 기존
+WORLD_SEQUENCE_SOUND_TRACK에 optional sourceStartMs(기본0, 음원 ms)를 추가하고 C++ reader,
+writer, validation, Map/Composition publisher와 실제 Play_SoundCue offset을 함께 연결한다.
+왼쪽 edge는 이동한 만큼 sourceStartMs를 증가시키며 body 이동과 오른쪽 edge는 이를 보존한다.
+Box Detail에는 Audio source in (ms)를 노출하여 timeline 시작을 유지한 채 앞부분을 생략할 수
+있게 한다. 잘못된 범위/오래된 generation은 기존 초안을 보존한다. 기존 row의 생략값은0이다.
+
+창술사·워로드는 도화가·차원술사의 원본 AkEvent, 미디어, animation/Matinee 시간과 대조한다.
+사용자가 관찰한 워로드 약2.7초를 임의 offset으로 저장하지 않는다. 원인이 확인된 경로만
+수정하며 정상 두 클래스의 저작 데이터와 rendering 옵션을 보존한다. Guardian의 누락된
+원본 사운드는 별도 추출 후보에서 준비하고 최신 저장본 병합과 World publish로 연결한다.
+
+기존 C++ 파일만 변경하므로 project/filter 추가는 없다. 인코딩·개행을 보존하며 Product
+최소 컴파일, source-in의 저장 왕복/잘못된 범위/앞 trim과 이동 구분, publisher 검사로 검증한다.
+실행 중 Client의 EXE 링크와 저작 데이터 최종 반영은 후보 검증 후 확인하며 UI와 청감은
+사용자가 직접 판정한다.
+
+G14 실측 보완: Movie는 긴 frame을250ms로 제한하고 시작 직후 한 frame을 defer하지만 FMOD
+채널은 wall time으로 계속 간다. 정상 연속 seek는 source delta250ms 이하이면 기존 채널의
+pitch만 바꾸므로 특히 slomo 구간에서 초 단위 drift가 남는다. Engine의 Synchronize_SoundCue가
+실제 FMOD media position을 expected source offset과 비교하고100ms 초과만 seek한다.
+WorldSequencePlayer의 명시적 external Movie clock만 이를 사용하며 일반 World/SFX는 그대로다.
+Movie가 아직 sound box 안인데 stall로 채널이 끝났으면 현재 source offset부터 재준비한다.
+처음부터 없는 음원(handle0)은 반복 I/O하지 않고, pause/source-in/loop modulo를 보존한다.
+
+원본 Wwise 시작은 Lance0ms/Warlord300ms/Artist0ms/DimensionMaster100ms와 설치본이 같다.
+선두 무음과 source2.7초 전후 finite animation sample은 초 단위 offset이나 clip 누락을
+지지하지 않는다. 원본 slomo→pitch 정책은 정상 두 클래스까지 바꾸지 않는다.
+
+## G15. 자유 시점에서 선택 카메라 키 편집 (2026-09-29)
+
+World Movie의 선택한 key에 Use free cam pos를 누르면 실제 자유 카메라의 View 역행렬에서
+Eye/LookAt/Up을 얻는다. SequencerTool → MainApp typed callback → 기존 CCameraTool의
+Capture_ViewPose 경로를 사용하고 Movie가 적용한 마지막 sample을 대신 복사하지 않는다.
+follow/presentation override 중이거나 유효하지 않은 basis는 기존 key를 보존하며 거절한다.
+
+공유 SequenceCameraEditor는 optional capture callback으로 받는다. 선택 key의 포즈만
+transactional 교체하고 time, stable ID, FOV, cut, easing과 보간 종류를 유지한다. 기존 ALT V
+호출자는 callback 없이 기존 동작을 유지한다. 키 개수를 표시하고 기존 Add/Delete/Revert와
+첫 키 보호를 사용해 사용자가 직접 개수를 줄이게 한다. 현재 저장 카메라를 자동 단순화하지 않는다.
+
+기존5개 C++ 파일을 변경하므로 project/filter 등록은 없다. 비유한 포즈·영벡터·평행 Up 거절,
+실패 시 이전 key 유지, 시간/보간 보존과 Product 컴파일을 검증한다. 자연스러운 경로의 최종
+판정은 사용자가 재생하며 한다. 포즈와 중간 키가 달라지면 인접 구간 경로도 달라질 수 있다.
+
+## G16. 도화가 두 음원의 변환 clipping과 원본 bus 복원 (2026-09-29)
+
+실제 설치 PCM16은 원본 WEM의 float peak1.2301/1.1431을 잘라 저장했고 두 stem 합은
+peak2.1569다. 원본 INIT bus chain에는 누적-4dB와 master Peak Limiter가 있지만 현재 WAV
+변환/재생에는 없다. gain/limiter의 출처를 보존하는 오프라인 converter로 원본 float를 읽고,
+동시 두 stem 합에서 동일한 stereo-linked gain envelope를 계산해 각 stem에 분배한다.
+threshold-5dB,ratio10,lookahead15ms,release100ms,output+3dB의 원본 값을 사용한다.
+
+새 float WAV2개를 별도 asset ID로 설치하여 기존 clipped WAV를 보존한다. stable sound ID,
+start/duration/volume 등 두 박스의 편집 계약은 유지하며 assetId만 최신 저장본에서 병합한다.
+현재 동시start0/volume1 계약이 달라지면 자동 덮어쓰지 않는다. 이 baked envelope는 당시
+두 stem mix 기준이다. 향후 상대 시간·gain을 다르게 편집하면 다시 계산해야 한다. Wwise
+DSP의 bit-identical 복원이 아닌, 원본 근거를 사용한 재생 adapter임을 구분한다.
+
+합산 clipping0,원본float 복구,같은 gain envelope와 모든 sample의 유한성,이전 데이터 보존,
+FMOD float WAV 수용·게시 검사 및 GBResources SHA 일치를 검증한다. 전역 SFX나 다른
+클래스에 임의 음량 감소·limiter를 전파하지 않는다. 최종 음질은 사용자가 청취한다.
+
+
+G16 후속 범위: 같은 감사를 Guardian/DimensionMaster/LanceMaster/Warlord에 적용했더니
+모두 합산 clipping이 확인됐다. 원본 graph별 local gain/pitch/delay/RTPC/state와 동일 bus chain을
+검증한 recipe를 추가한다. Guardian은400ms fade와 두 stem, DM은100ms timeline 시작과 두 stem,
+Lance/Warlord는 기존 단일 mix 박스를 유지한다. Lance의 기존 말미 무음1frame만 명시적으로
+padding하고 다른 샘플 시각/길이/박스/volume을 바꾸지 않는다. 각각 새 float asset ID만 최신
+World에 병합하고 원래 WAV는 보존한다. 원작 DSP와 offline 근사의 경계는 동일하게 적용한다.
+
+
+## G17. Movie 1회 재생 후 마지막 장면 유지 (2026-09-29)
+
+사용자는 첫 카메라의 끝을 다른 컷에 복사하는 대신 Movie 전체를 한 번 재생한 뒤 반복을 없애는
+방향을 선택했다. SCENE에 optional repeatMovie(bool, 생략시 기존 true)를 추가한다. 현재 다섯
+클래스의 false 후보를 준비하며 Intro/Loop의 카메라·캐릭터·Effect·사운드 및 clock 키는 보존한다.
+
+ClassSelectionPresentation은 종료 직전의 마지막 유효 source sample을 적용하고 completedHold를
+설정한다. Stop/Loop 전환 없이 모델·카메라 소유권과 Effect 핸들을 유지한다. 완료 후 Resume는
+재생하지 않으며 Play All 또는 명시 Seek가 완료 상태를 해제한다. F6 자유 카메라와 복귀는
+계속 작동한다. WorldSequencePlayer의 Finish_Sounds는 활성/잔향 채널을 종료하고 연속 sampling의
+재시작을 막는다. 불연속 Seek나 새 Play는 기존 사운드 재생 계약을 사용한다.
+
+SequencerTool은 class별 Repeat movie와 완료 상태를 표시하고 MainApp typed callback으로 같은
+저작 owner에 제출한다. 변경은 현재 playback/키 초안을 보존하고 Save movie의 기존 field merge와
+원자 저장을 따른다. 신규 C++ 파일/프로젝트 등록은 없다. 실제 parser, 완료 경계, 사운드 종료,
+기존 repeat 호환, 카메라/슬로모 샘플과 Debug/Release 컴파일을 검증한다. 실행 중 Debug EXE는
+교체하지 않으며 검증된 후보가 준비된 뒤 실제 잠금과 저장 상태만 최종 반영 단계에서 확인한다.
+
+## G18. 첫 주요 연출 종료 지점으로 hold 경계 정정 (2026-09-29)
+
+사용자 재확인 결과 원하는 경계는 전체 Intro의 끝이 아니라 첫 주요 연출 Camera box의 끝이다.
+G17은 Intro 안에 포함된 후속 카메라 구간까지 재생했으므로 요청을 충족하지 못했다. 실행 중 EXE는
+G17 코드가 포함된 새 Debug 빌드였으며 단순 배포 누락으로 처리하지 않는다.
+
+SCENE에 optional holdAfterCameraId를 추가해 Intro의 stable camera ID를 참조한다. repeatMovie=false의
+일반 재생에서 참조 카메라의 start+duration을 source 종료로 삼고 기존 MovieTimeMs로 wall clock에
+역매핑한다. 다음 cut으로 넘어가지 않는 마지막 유효 source sample에서 기존 완료 정지 경로를
+사용한다. Camera box와 내부 키·World·사운드·Effect 원본은 삭제하거나 시간 재배열하지 않는다.
+해당 필드가 없는 문서는 G17의 전체 phase 종료를 유지하며 명시적 Loop 편집도 기존대로 둔다.
+
+최신 저장본의 다섯 scene에 첫 활성 camera ID만 추가하고 데이터 정합성·동시 저장 여부를 확인해
+원자 반영한다. 실제 Update 경계와 소비한 camera ID, 다음 cut 미진입, slomo 및 user edit에 따른
+종료 재계산, 기존 저장/실패 보존 경로를 검증한다. 실행 중 Client 링크 잠금은 후보 검증 후 처리한다.
+화면의 최종 판정은 사용자가 하며 parser·샘플러 검사만으로 완료했다고 설명하지 않는다.

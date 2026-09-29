@@ -12,13 +12,13 @@
 
 | 계층 | 이번에 추가되는 계약 | 종료 증거 |
 |---|---|---|
-| Data | 클래스 중립 template 아이템 30개(`classVariants`), 클래스별 아이템 150개(`visualSetId`), 상점 `shop.bern.avatar.mokoko` 30줄 | `Publish-ItemCatalog.ps1 -Mode Validate/Publish`, bootstrap v6 |
-| Shared | `EQUIPMENT_SLOT::AVATAR_HEAD/AVATAR_OUTFIT`, `PLAYER_SNAPSHOT.strAvatarHeadItemId/strAvatarOutfitItemId`, protocol 122 | NetworkProtocolHarness failures 0 |
-| Server | bootstrap v6 `ITEMVARIANT` 행, 구매 시 template → 클래스 아이템 치환, 스냅샷에 착용 아바타 ID | Server contract test·실행 |
+| Data | 클래스 중립 template 아이템 30개(`classVariants`), 클래스별 아이템 150개(`visualSetId`), 상점 `shop.bern.avatar.mokoko` 30줄 | `Publish-ItemCatalog.ps1 -Mode Validate/Publish`, bootstrap v7 |
+| Shared | `EQUIPMENT_SLOT::AVATAR_HEAD/AVATAR_OUTFIT`, `PLAYER_SNAPSHOT.strAvatarHeadItemId/strAvatarOutfitItemId`, protocol 125 | NetworkProtocolHarness failures 0 |
+| Server | bootstrap v7 `ITEMVARIANT` 행, 구매 시 template → 클래스 아이템 치환, 스냅샷에 착용 아바타 ID | Server contract test·실행 |
 | Client | 우클릭 아바타 착용/해제, 상점 페이지, 스냅샷 착용 ID → visualSet 적용(본인·타인) | Debug 빌드, 로컬 Server+Client 착용 확인(사용자) |
 
 G 순서: G01 Data/publisher → G02 Shared → G03 Server → G04 Client 데이터·UI → G05 Client 복제 표현 → G06 검증.
-G02~G05는 protocol 122라 Server/Client를 함께 빌드·재시작한다.
+G02~G05는 protocol 125라 Server/Client를 함께 빌드·재시작한다.
 
 ## 1. 실측 요약(변경 근거)
 
@@ -268,7 +268,7 @@ G02~G05는 protocol 122라 Server/Client를 함께 빌드·재시작한다.
 
 ### 2.2 `Tools/GameplayPipeline/Publish-ItemCatalog.ps1` (전체 교체)
 
-변경: (a) item optional에 `visualSetId`(Client 전용 문자열)·`classVariants`(template 전용) 추가, (b) template 검증 — `equipSlot`/`characterClass` 없음, 값은 같은 `characterClass`·비어 있지 않은 `equipSlot`을 가진 실재 아이템, 키는 7 클래스 이름 중 하나, (c) `ITEMVARIANT <template> <class> <item>` 행, (d) 상점 줄 상한 10 → 40, (e) header `6`.
+변경: (a) item optional에 `visualSetId`(Client 전용 문자열)·`classVariants`(template 전용) 추가, (b) template 검증 — `equipSlot`/`characterClass` 없음, 값은 같은 `characterClass`·비어 있지 않은 `equipSlot`을 가진 실재 아이템, 키는 7 클래스 이름 중 하나, (c) `ITEMVARIANT <template> <class> <item>` 행, (d) 상점 줄 상한 10 → 40, (e) header `7`.
 
 ```powershell
 [CmdletBinding()]
@@ -512,7 +512,7 @@ if (-not $outputDirectory.StartsWith($repoPrefix, [StringComparison]::OrdinalIgn
 }
 
 $lines = [Collections.Generic.List[string]]::new()
-$lines.Add("LOSTARK_ITEM_BOOTSTRAP`t6`t$($itemRows.Count + $variantRows.Count + $currencyRows.Count + $shopRows.Count)")
+$lines.Add("LOSTARK_ITEM_BOOTSTRAP`t7`t$($itemRows.Count + $variantRows.Count + $currencyRows.Count + $shopRows.Count)")
 foreach ($row in $itemRows) { $lines.Add($row) }
 foreach ($row in $variantRows) { $lines.Add($row) }
 foreach ($row in $currencyRows) { $lines.Add($row) }
@@ -592,7 +592,7 @@ Write-PublishTextCatalog -Mode $Mode -Destination $destination -Lines $lines `
 **작업: 추가** — `struct PLAYER_SNAPSHOT` 안, 기준점 `PLAYER_CONTROL_KIND eControlKind = PLAYER_CONTROL_KIND::HUMAN;`(1742행) 바로 아래, 닫는 `};` 바로 위.
 
 ```cpp
-		/* Avatar items the Server has this player wearing (protocol 122): the itemId in the
+		/* Avatar items the Server has this player wearing (protocol 125): the itemId in the
 		   AVATAR_HEAD / AVATAR_OUTFIT inventory slot, or empty. Every Client maps the id to
 		   its class visual set; the Server never knows a model or visual set id. */
 		std::string strAvatarHeadItemId;
@@ -643,7 +643,7 @@ Write-PublishTextCatalog -Mode $Mode -Destination $destination -Lines $lines `
 
 ### 3.4 `Tools/NetworkProtocolHarness/Private/NetworkProtocolHarness.cpp`
 
-- 121 pin 11곳(2238, 2426, 3103, 3224, 3409, 3416, 3788, 3905, 4150, 7490, 7518)의 `121u` → `122u`, 메시지 문자열 `"Protocol 121` → `"Protocol 122`(2242, 2429, 3107, 3231, 3789, 3906, 4386, 4404, 7491, 7519).
+- 121 pin 11곳(2238, 2426, 3103, 3224, 3409, 3416, 3788, 3905, 4150, 7490, 7518)의 `121u` → `122u`, 메시지 문자열 `"Protocol 121` → `"Protocol 125`(2242, 2429, 3107, 3231, 3789, 3906, 4386, 4404, 7491, 7519).
 - **작업: 추가** — `Test_WorldSnapshotRoundTrip`에서 기준점 `first.Cooldowns.push_back({ 34060, 330, 720 });` 바로 아래.
 
 ```cpp
@@ -677,7 +677,7 @@ Write-PublishTextCatalog -Mode $Mode -Destination $destination -Lines $lines `
             worn.bEquip && worn.strItemId == wear.strItemId &&
             std::string_view("avatarOutfit") == Equipment_SlotKind(EQUIPMENT_SLOT::AVATAR_OUTFIT) &&
             std::string_view("avatarHead") == Equipment_SlotKind(EQUIPMENT_SLOT::AVATAR_HEAD),
-            "Protocol 122 carries the avatar equipment slots");
+            "Protocol 125 carries the avatar equipment slots");
 ```
 
 `Server/Private/ServerGameplayContractTests_SpawnGroups.cpp:1285`의 `NETWORK_PROTOCOL_VERSION == 101u`는 이미 stale이라 이번 변경과 무관하게 실패 중이다. 건드리지 않는다(팀장 소유).
@@ -815,9 +815,9 @@ bool LostArk::Server::CItemCatalog::Load()
 		return false;
 	}
 
-	if (6u != version)
+	if (7u != version)
 	{
-		m_strStatus = "Item bootstrap version mismatch: expected 6, got " +
+		m_strStatus = "Item bootstrap version mismatch: expected 7, got " +
 			std::to_string(version) + "; path=" + path.string() +
 			"; run powershell -ExecutionPolicy Bypass -File "
 			"Tools/GameplayPipeline/Publish-ItemCatalog.ps1 -Mode Publish";
@@ -1512,7 +1512,7 @@ void Client::CClientReplication::Apply_AvatarPresentation(
 
 ```text
 G01  Publish-ItemCatalog.ps1 -Mode Validate → Publish; Items.bootstrap header 6·행 수; git diff --check
-G02  NetworkProtocolHarness 빌드·실행 failures 0 (World Snapshot Players Round Trip, Protocol 122 ...)
+G02  NetworkProtocolHarness 빌드·실행 failures 0 (World Snapshot Players Round Trip, Protocol 125 ...)
 G03  Server 빌드; Server.exe --contract-test; 로컬 Server 시작 로그에 Item bootstrap 오류 없음
 G04  Client 빌드; 베른 상점 NPC에서 30줄 3페이지 표시·구매(GOLD 차감·인벤 입고 = 자기 클래스 아이템)
 G05  인벤 우클릭 착용 → 본인 화면·두 번째 Client 화면에서 모코코 착용 보임; 우클릭 해제; 클래스 변경 시 Server가 벗김
@@ -1524,4 +1524,4 @@ G05  인벤 우클릭 착용 → 본인 화면·두 번째 Client 화면에서 �
 
 - 아바타 책(`AvatarBookWindowView`)은 옛 고정 파츠 방식 그대로 둔다(착용 경로는 인벤토리 우클릭). 책을 visualSet 기반으로 바꾸는 것은 후속.
 - 상점 판매(junk)·재구매 탭, 아바타 염색, 곰탈(AV_040) 아이템은 이번 범위가 아니다.
-- 팀 문서: `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 아이템·상점 절에 template/`classVariants`, `visualSetId`, 아바타 슬롯 2개와 protocol 122를 RESULT 뒤 갱신한다.
+- 팀 문서: `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 아이템·상점 절에 template/`classVariants`, `visualSetId`, 아바타 슬롯 2개와 protocol 125를 RESULT 뒤 갱신한다.

@@ -1,0 +1,106 @@
+{
+  "schema": "lostark.layered-movie-audio-restoration.v1",
+  "packageFilter": "SOUND_PC_COMMON",
+  "worldDocument": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL00/LV_LOBBY_CLASSSELECT_SL00.worldsequences.json",
+  "bus": {
+    "path": [
+      1635194334,
+      393239870,
+      3803692087
+    ],
+    "gainDb": -4,
+    "limiterFxId": 377339466,
+    "thresholdDb": -5,
+    "ratio": 10,
+    "lookAheadMs": 15,
+    "releaseMs": 100,
+    "outputDb": 3,
+    "stereoLinked": true
+  },
+  "scope": "Default-state standalone simultaneous layer mix. Existing Movie source time and pitch remain unchanged. Does not reproduce native Wwise DSP bit-identically, other game buses, runtime sidechain states, or subsequent relative stem timing/gain edits.",
+  "reviewedInitBankSha256": [
+    "d24ca1e887c1d9a4de78507f1c682a826f7f064deabbcb4dd86b260cede38e3d"
+  ],
+  "id": "lancemaster-selection",
+  "event": "pc_create_fighter1",
+  "sequenceId": "sequence.classselect.lancemaster.intro.a12230.p0",
+  "stems": [
+    {
+      "soundTrackId": "classselect.fighter.akevent.3113",
+      "originalAssetId": "Sound/CharacterSelect/LanceMaster/pc_create_fighter1.wav",
+      "restoredAssetId": "Sound/CharacterSelect/LanceMaster/pc_create_fighter1_bus_restored_f32.wav",
+      "reviewedOriginalAssetSha256": "c4d1aa6fd9088ead05b084be8cce9af22ea705be2d4b9e24e3e5dc478044857c"
+    }
+  ],
+  "sources": [
+    {
+      "soundTrackId": "classselect.fighter.akevent.3113",
+      "originalAssetId": "Sound/CharacterSelect/LanceMaster/pc_create_fighter1.wav",
+      "restoredAssetId": "Sound/CharacterSelect/LanceMaster/pc_create_fighter1_bus_restored_f32.wav",
+      "reviewedOriginalAssetSha256": "c4d1aa6fd9088ead05b084be8cce9af22ea705be2d4b9e24e3e5dc478044857c",
+      "mediaId": 816716368,
+      "reviewedWemSha256": "d30f8b867b186e390c056cfa616b2081a2beb17be391cf20c86c875cacdbd2d6",
+      "reviewedTailPaddingFrames": 1
+    },
+    {
+      "soundTrackId": "classselect.fighter.akevent.3113",
+      "originalAssetId": "Sound/CharacterSelect/LanceMaster/pc_create_fighter1.wav",
+      "restoredAssetId": "Sound/CharacterSelect/LanceMaster/pc_create_fighter1_bus_restored_f32.wav",
+      "reviewedOriginalAssetSha256": "c4d1aa6fd9088ead05b084be8cce9af22ea705be2d4b9e24e3e5dc478044857c",
+      "mediaId": 339108984,
+      "reviewedWemSha256": "062fee9861371372eeafd958bd1b2005e6dcebea1b1234d82efa3b5f84bdc88a",
+      "reviewedTailPaddingFrames": 1
+    }
+  ],
+  "fadeInMs": 0,
+  "mixToSingleTrack": true,
+  "expectedTrack": {
+    "startMs": 0,
+    "durationMs": 8493,
+    "volume": 1,
+    "sourceStartMs": 0,
+    "loopToDuration": false
+  },
+  "reviewedHirc": {
+    "2965381536": {
+      "kind": 4,
+      "payloadHex": "0dd4f88a12d5c0581ed657c63e26335932281df820f5dd4b180604511dd8667a3254ecab3365d4f81ac90fa50d01c71d12a082e135"
+    },
+    "311097556": {
+      "kind": 3,
+      "payloadHex": "03044e1da6050000000460170090"
+    },
+    "94772558": {
+      "kind": 9,
+      "payloadHex": "00000000000000cc07023c000000030800040100000000000000000200000025399f135512db140000000000"
+    },
+    "329201957": {
+      "kind": 2,
+      "payloadHex": "0100040000501aae302a22030000000000000000004e1da605000000000000010000000000000000"
+    },
+    "349901397": {
+      "kind": 2,
+      "payloadHex": "0100040000786436145741020001000000000000004e1da605000000000000010000000000000000"
+    },
+    "1006766028": {
+      "kind": 7,
+      "payloadHex": "000000de1577610000000000000003080000010000000000000000160000004e1da605cd32d506b0a7ae07b6d1310bbe2c390b07302d12ddd4fb17bef11b189a277c1848113a193f6d811df7115c2135c9bf219d9b6524b3aa2126f032522919038233970aee37ac1ac23acdef8f3d32d1913dc8c9a73f"
+    },
+    "1635194334": {
+      "kind": 8,
+      "payloadHex": "3e5d7017050e1b1c1d200000c842000000000000c842000000000000c84201050100000000000002e80300000000c0c20000000001000053c9ca19010000000000000005001bf2271c000200d12fa2010203000000f0c10000000009000000000088c1000000000000000000000000b20b2fbf040000003e5d70170002005bbf8b1802020000000000000080bf040000000000c84200000000040000001bf2271c000203c5464d340003000000f0c10000000009000000000088c1000000000000000000000000000020c204000000f901305400020376203d1d0005000000c8c20000000009000000000014c20000000004000000000000c200009642040000006f1283ba0000b44204000000000000000000000004000000cb90e179000203f953b0380003000000c8c20000000009000000000020c200000000060000000000000000008c420400000005050201040200030200020200000201029ca50d71000106877ccd854bfd3cc9633ef80001813c1a5da131fd18"
+    },
+    "393239870": {
+      "kind": 8,
+      "payloadHex": "37bcb7e206050e1b1c1d20000000c00000c842000000000000c842000000000000c84201050000000000000002e80300000000c0c200000000010000295a0100000000000000000002002aab62d8000200ad6aca1a0204000000f0c10000000009000000000070c10000000000000000000000c1b20b2fbf0900000000000000b20b2fbf040000005be96209000200013036230204000000f0c100000000090000000000a0c10000000000000000000070c182c55fbf090000000000000082c55fbf04000000050502010402000302000202000002010191131f9f000191131f9f93fc1a1c"
+    },
+    "3803692087": {
+      "kind": 8,
+      "payloadHex": "000000004a3111e606050e1b1c1d20000000c00000c842000000000000c842000000000000c84201050000000000000002e80300009a99c0c2000000000100004abe7d16000000000000000001008716ccf10002054d30542b02020000000000000080bf040000000000c84200000000040000000000"
+    },
+    "377339466": {
+      "kind": 17,
+      "payloadHex": "03006e00160000000000a0c0000020418fc2753ccdcccc3d00004040010100000000000000"
+    }
+  }
+}

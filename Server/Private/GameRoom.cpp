@@ -976,6 +976,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		case ROOM_COMMAND_TYPE::BUY_ITEMS:
 			Handle_BuyItems(command.iSessionId, command.BuyItems);
 			break;
+		case ROOM_COMMAND_TYPE::RESTORE_CHARACTER:
+			Handle_RestoreCharacter(command.iSessionId, command.RestoreCharacter);
+			break;
 		case ROOM_COMMAND_TYPE::DESPAWN_ALL_WORLD_ENTITIES:
 			Handle_DespawnAllWorldEntities(
 				command.iSessionId, command.DespawnAllWorldEntities);

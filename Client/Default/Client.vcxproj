@@ -84,6 +84,7 @@
     <ClInclude Include="..\Public\MvpAwardCatalog.h" />
     <ClInclude Include="..\Public\MvpResultView.h" />
     <ClInclude Include="..\Public\RaidGateProgressView.h" />
+    <ClInclude Include="..\Public\SystemMenuButtonsView.h" />
     <ClInclude Include="..\Public\InteractKeyPromptView.h" />
     <ClInclude Include="..\Public\UITextOcclusion.h" />
     <ClInclude Include="..\Public\BossImmuneGaugeView.h" />
@@ -161,6 +162,7 @@
     <ClInclude Include="..\Public\CustomizingFaceTextureDocument.h" />
     <ClInclude Include="..\Public\CustomizingIconDocument.h" />
     <ClInclude Include="..\Public\CustomizingView.h" />
+    <ClInclude Include="..\Public\CharacterOutfitApplier.h" />
     <ClInclude Include="..\Public\DurabilityHudView.h" />
     <ClInclude Include="..\Public\InventoryView.h" />
     <ClInclude Include="..\Public\RepairWindowView.h" />
@@ -380,6 +382,7 @@
     <ClCompile Include="..\Private\MvpAwardCatalog.cpp" />
     <ClCompile Include="..\Private\MvpResultView.cpp" />
     <ClCompile Include="..\Private\RaidGateProgressView.cpp" />
+    <ClCompile Include="..\Private\SystemMenuButtonsView.cpp" />
     <ClCompile Include="..\Private\InteractKeyPromptView.cpp" />
     <ClCompile Include="..\Private\UITextOcclusion.cpp" />
     <ClCompile Include="..\Private\BossImmuneGaugeView.cpp" />
@@ -451,6 +454,7 @@
 	<ClCompile Include="..\Private\KoukuSaydonAnimationBlend.cpp" />
     <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp" />
     <ClCompile Include="..\Private\ClientReplication.cpp" />
+    <ClCompile Include="..\Private\ClientReplication_BattleItems.cpp" />
 	<ClCompile Include="..\Private\CombatObjectProjectionRuntime.cpp" />
     <ClCompile Include="..\Private\CombatHUDViewModel.cpp" />
     <ClCompile Include="..\Private\EstherCutinPresentationService.cpp" />
@@ -462,6 +466,7 @@
     <ClCompile Include="..\Private\CustomizingFaceTextureDocument.cpp" />
     <ClCompile Include="..\Private\CustomizingIconDocument.cpp" />
     <ClCompile Include="..\Private\CustomizingView.cpp" />
+    <ClCompile Include="..\Private\CharacterOutfitApplier.cpp" />
     <ClCompile Include="..\Private\DurabilityHudView.cpp" />
     <ClCompile Include="..\Private\InventoryView.cpp" />
     <ClCompile Include="..\Private\RepairWindowView.cpp" />
@@ -853,6 +858,12 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.albion.frontthree.electric.impact.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.world.mouse_click.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.world.move_destination.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.destruction_bomb.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.whirlwind_grenade.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.holy_charm.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.time_stop.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.destruction_bomb.flight.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.whirlwind_grenade.flight.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.clown.polymorph.q.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.clown.polymorph.w.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.clown.polymorph.e.effect.json" />
@@ -1014,6 +1025,7 @@
     <None Include="..\..\Data\UI\BossUI\BossUI.json" />
     <None Include="..\..\Data\UI\BossUI\ImmuneGauge_Layout.json" />
     <None Include="..\..\Data\UI\HeadStatus\HealthBar_Layout.json" />
+    <None Include="..\..\Data\UI\HeadStatus\ValtanArmorBreak_Layout.json" />
     <None Include="..\..\Data\UI\Esther\EstherUI.json" />
     <None Include="..\..\Data\UI\Esther\EstherCutin.json" />
     <None Include="..\..\Data\UI\Inventory\InventoryUI.json" />
@@ -1027,6 +1039,7 @@
     <None Include="..\..\Data\UI\Bern\ValtanRaidEntry_Layout.json" />
     <None Include="..\..\Data\UI\Party\PartyInviteConfirm_Layout.json" />
     <None Include="..\..\Data\UI\RaidGateProgress\RaidGateProgress_Layout.json" />
+    <None Include="..\..\Data\UI\SystemMenu\SystemMenuButtons_Layout.json" />
     <None Include="..\..\Data\UI\RaidGateProgress\RaidGateVote_Layout.json" />
     <None Include="..\..\Data\UI\Interact\InteractKey_Layout.json" />
     <None Include="..\..\Data\UI\Party\PartyContextMenu_Layout.json" />
@@ -3212,6 +3225,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420627.stage000.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420628.stage000.full.restore.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_d.par_d_rpbf_partsdestruction_01.effect.json" />
   </ItemGroup>
   <ItemGroup>
@@ -4391,5 +4405,18 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Data\Balance\NumericSourceBindings.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku5312.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku5312.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup5312.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases5312.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup5312.hlsli" />
   </ItemGroup>
 </Project>

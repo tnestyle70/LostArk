@@ -219,6 +219,8 @@ namespace LostArk::Server
 		std::uint8_t iMarioStage = 0u;
 		std::uint8_t iMarioBombContactStage = 0u;
 		std::map<std::pair<std::uint32_t, std::uint32_t>, std::int64_t> MarioBombHitBirths;
+		std::uint8_t iMarioBouncingBallContactStage = 0u;
+		std::map<std::uint64_t, bool> MarioBouncingBallContacts;
 		std::uint8_t iMarioLayoutVariant = 0u;
 		// The entrant owns the challenge until death/cancellation or the return landing.
 		// 0 inactive, 1 red, 2 blue, 3 yellow; the marker may belong to an outside player.
@@ -273,6 +275,8 @@ namespace LostArk::Server
 			iMarioStage = 0u;
 			iMarioBombContactStage = 0u;
 			MarioBombHitBirths.clear();
+			iMarioBouncingBallContactStage = 0u;
+			MarioBouncingBallContacts.clear();
 			iMarioLayoutVariant = 0u;
 			iMarioMoveExpiryTick = 0u;
 			fMarioDirectionX = fMarioDirectionZ = 0.f;
@@ -370,6 +374,14 @@ namespace LostArk::Server
 		std::uint32_t iShield = 0;
 		/* Set while a death-deny buff has already spent itself on a lethal hit. */
 		std::uint32_t iInvulnerableEndTick = 0;
+		// Item protection is separate from encounter-granted immunity (e.g. Bingo).
+		std::uint32_t iTimeStopEndTick = 0u, iHolyCharmProtectionEndTick = 0u;
+		std::uint32_t iLastItemUseSequence = 0u;
+		std::unordered_map<std::string, std::uint32_t> ItemCooldownEndTicks;
+		bool Has_TimeStop(const std::uint32_t tick) const noexcept
+		{ return iTimeStopEndTick && static_cast<std::int32_t>(tick - iTimeStopEndTick) < 0; }
+		bool Has_HolyCharmProtection(const std::uint32_t tick) const noexcept
+		{ return iHolyCharmProtectionEndTick && static_cast<std::int32_t>(tick - iHolyCharmProtectionEndTick) < 0; }
 		bool bRonaunGuard = false;
 		std::uint32_t iRonaunGrantTick = 0u;
 		std::uint32_t iEstherGuardEndTick = 0;
@@ -601,5 +613,8 @@ namespace LostArk::Server
 		// same {itemId, quantity} pair.
 		std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT> Inventory;
 		SERVER_PURSE Purse;
+		/* True only from the fresh-entry grant until the first inventory change or the
+		   one C2S_RESTORE_CHARACTER; a world transfer that carries inventory never sets it. */
+		bool bRestoreAvailable = false;
 	};
 }

@@ -985,6 +985,7 @@ void CRaidEntryPreviewView::Open_VoteConfirm(
 	m_isOpen = true;
 	m_isConfirmStepOpen = true;
 	m_hasJustOpened = true;
+	CMainApp::Play_PopupRequestSound();
 }
 
 void CRaidEntryPreviewView::Close_VoteConfirm()

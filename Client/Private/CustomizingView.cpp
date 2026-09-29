@@ -1,6 +1,7 @@
 #include "CustomizingView.h"
 
 #include "Character.h"
+#include "CharacterOutfitApplier.h"
 #include "FaceCustomizeApplier.h"
 #include "GameInstance.h"
 #include "MainApp.h"
@@ -414,6 +415,8 @@ Client::CCustomizingView::CCustomizingView(
 	Hide();
 }
 
+Client::CCustomizingView::CCustomizingView() = default;
+
 Client::CCustomizingView::~CCustomizingView() = default;
 
 void Client::CCustomizingView::Open()
@@ -798,11 +801,11 @@ namespace
 	void WriteVector(std::ostringstream& out, const char_t* pName, const float4_t& vValue)
 	{
 		out << "  \"" << pName << "\": [";
-		for (const f32_t f : { vValue.x, vValue.y, vValue.z, vValue.w })
+		const std::array<f32_t, 4> values{ vValue.x, vValue.y, vValue.z, vValue.w };
+		for (size_t component = 0; component < values.size(); ++component)
 		{
-			WriteNumber(out, f);
-			if (&f != &vValue.w)
-				out << ", ";
+			if (component) out << ", ";
+			WriteNumber(out, values[component]);
 		}
 		out << "],\n";
 	}
@@ -840,19 +843,9 @@ void Client::CCustomizingView::Refresh_SaveSlots()
 	}
 }
 
-bool_t Client::CCustomizingView::Save_Slot(
-	const shared_ptr<CCharacter>& pCharacter, const int32_t iSlot)
+std::string Client::CCustomizingView::Serialize_Appearance(
+	const shared_ptr<CCharacter>& pCharacter) const
 {
-	if (nullptr == pCharacter || iSlot < 0 || iSlot >= SAVE_SLOT_COUNT)
-		return false;
-	const std::filesystem::path path = SaveSlotPath(m_strIconClassAssetId, iSlot);
-	if (path.empty())
-		return false;
-	std::error_code error;
-	std::filesystem::create_directories(path.parent_path(), error);
-	if (error)
-		return false;
-
 	std::ostringstream out;
 	out << "{\n";
 	out << "  \"schema\": \"lostark.customizing-preset\",\n";
@@ -875,11 +868,11 @@ bool_t Client::CCustomizingView::Save_Slot(
 	{
 		out << "    [";
 		const float4_t& v = m_SurfaceColors[i];
-		for (const f32_t f : { v.x, v.y, v.z, v.w })
+		const std::array<f32_t, 4> values{ v.x, v.y, v.z, v.w };
+		for (size_t component = 0; component < values.size(); ++component)
 		{
-			WriteNumber(out, f);
-			if (&f != &v.w)
-				out << ", ";
+			if (component) out << ", ";
+			WriteNumber(out, values[component]);
 		}
 		out << (i + 1u < m_SurfaceColors.size() ? "],\n" : "]\n");
 	}
@@ -912,11 +905,26 @@ bool_t Client::CCustomizingView::Save_Slot(
 	out << "  \"eyeIris\": " << m_iSelectedEyeIris << ",\n";
 	out << "  \"costume\": " << m_iSelectedCostume << "\n";
 	out << "}\n";
+	return out.str();
+}
+
+bool_t Client::CCustomizingView::Save_Slot(
+	const shared_ptr<CCharacter>& pCharacter, const int32_t iSlot)
+{
+	if (nullptr == pCharacter || iSlot < 0 || iSlot >= SAVE_SLOT_COUNT)
+		return false;
+	const std::filesystem::path path = SaveSlotPath(m_strIconClassAssetId, iSlot);
+	if (path.empty())
+		return false;
+	std::error_code error;
+	std::filesystem::create_directories(path.parent_path(), error);
+	if (error)
+		return false;
 
 	std::ofstream file(path, std::ios::binary | std::ios::trunc);
 	if (!file.is_open())
 		return false;
-	const std::string text = out.str();
+	const std::string text = Serialize_Appearance(pCharacter);
 	file.write(text.data(), static_cast<std::streamsize>(text.size()));
 	if (!file.good())
 		return false;
@@ -938,6 +946,14 @@ bool_t Client::CCustomizingView::Load_Slot(
 		return false;
 	const std::string text((std::istreambuf_iterator<char_t>(file)),
 		std::istreambuf_iterator<char_t>());
+	return Apply_Appearance(pCharacter, text);
+}
+
+bool_t Client::CCustomizingView::Apply_Appearance(
+	const shared_ptr<CCharacter>& pCharacter, const std::string& text)
+{
+	if (nullptr == pCharacter)
+		return false;
 	DATA_JSON_VALUE root;
 	std::string error;
 	if (!CDataJson::Parse(text, root, error) || !root.Is_Object())
@@ -1098,6 +1114,75 @@ bool_t Client::CCustomizingView::Load_Slot(
 		}
 	}
 	return true;
+}
+
+bool_t Client::CCustomizingView::Apply_SavedAppearance(
+	const shared_ptr<CCharacter>& pCharacter, const std::string& strJson)
+{
+	if (nullptr == pCharacter || strJson.empty())
+		return false;
+	/* One logic-only instance serves every restore: each apply starts from Reset_All, so it
+	carries nothing over from the character before. Main thread only, like the screen. */
+	static CCustomizingView Applier;
+	Applier.Apply_ListIcons(pCharacter);
+	return Applier.Apply_Appearance(pCharacter, strJson);
+}
+
+namespace
+{
+	/* Kept between restores so the models an outfit admitted are remembered. */
+	std::unique_ptr<Client::CCharacterOutfitApplier> g_pSavedLookOutfit;
+}
+
+bool_t Client::CCustomizingView::Read_SavedOutfit(
+	const std::string& strJson, int32_t& outHair, int32_t& outCostume)
+{
+	outHair = -1;
+	outCostume = -1;
+	DATA_JSON_VALUE root;
+	std::string error;
+	if (!CDataJson::Parse(strJson, root, error) || !root.Is_Object())
+		return false;
+	outHair = static_cast<int32_t>(ReadNumber(root.Find("hair"), -1.f));
+	outCostume = static_cast<int32_t>(ReadNumber(root.Find("costume"), -1.f));
+	return true;
+}
+
+bool_t Client::CCustomizingView::Apply_SavedLook(
+	const shared_ptr<CCharacter>& pCharacter, const std::string& strJson,
+	const ComPtr<ID3D11Device>& pDevice, const ComPtr<ID3D11DeviceContext>& pContext)
+{
+	if (nullptr == pCharacter || strJson.empty() || nullptr == pCharacter->Get_Spec())
+		return false;
+
+	/* Only a document of this class may dress it: the hair and costume indices are per class. */
+	DATA_JSON_VALUE root;
+	std::string error;
+	if (!CDataJson::Parse(strJson, root, error) || !root.Is_Object())
+		return false;
+	const DATA_JSON_VALUE* pClass = root.Find("class");
+	const char_t* pAssetName = pCharacter->Get_Spec()->pAssetName;
+	if (nullptr == pClass || !pClass->Is_String() || nullptr == pAssetName ||
+		pClass->Get_String() != pAssetName)
+		return false;
+
+	if (nullptr != pDevice && nullptr != pContext)
+	{
+		int32_t iHair = -1, iCostume = -1;
+		if (Read_SavedOutfit(strJson, iHair, iCostume))
+		{
+			if (nullptr == g_pSavedLookOutfit)
+				g_pSavedLookOutfit = std::make_unique<CCharacterOutfitApplier>(pDevice, pContext);
+			/* Soft: a failed swap leaves the class default outfit and the look still applies. */
+			(void)g_pSavedLookOutfit->Apply(pCharacter, iHair, iCostume);
+		}
+	}
+	return Apply_SavedAppearance(pCharacter, strJson);
+}
+
+void Client::CCustomizingView::Release_SavedLookCache()
+{
+	g_pSavedLookOutfit.reset();
 }
 
 void Client::CCustomizingView::Update_ActionList(const shared_ptr<CCharacter>& pCharacter)
@@ -1311,6 +1396,9 @@ void Client::CCustomizingView::Apply_ListIcons(const shared_ptr<CCharacter>& pCh
 	m_iSelectedEyeIris = -1;
 	Seed_MaterialControls(pCharacter);
 	Refresh_SaveSlots();
+	/* A logic-only instance has no icon grids to fill. */
+	if (nullptr == m_pView)
+		return;
 	const auto* pIcons = m_IconDocument.Find(m_strIconClassAssetId);
 	if (nullptr == pIcons)
 		return;

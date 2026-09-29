@@ -943,7 +943,7 @@ bool_t Client::CWorldSequenceDocument::Load_Text(const std::string_view text,
             for (const auto& row : sounds->Get_Array())
             {
                 WORLD_SEQUENCE_SOUND_TRACK sound;
-                if (!Is_ObjectShape(row, { "soundTrackId", "assetId", "startMs", "durationMs", "volume" }, { "loopToDuration" }) ||
+                if (!Is_ObjectShape(row, { "soundTrackId", "assetId", "startMs", "durationMs", "volume" }, { "loopToDuration", "sourceStartMs" }) ||
                     !row.Find("soundTrackId")->Is_String() || !row.Find("assetId")->Is_String() || !row.Find("volume")->Is_Number() ||
                     !Read_Uint32(row.Find("startMs"), sound.startMs, MAX_DURATION_MS) ||
                     !Read_Uint32(row.Find("durationMs"), sound.durationMs, MAX_DURATION_MS))
@@ -956,6 +956,9 @@ bool_t Client::CWorldSequenceDocument::Load_Text(const std::string_view text,
                     if (!loop->Is_Boolean()) { outStatus = "World sound loopToDuration must be boolean"; return false; }
                     sound.loopToDuration = loop->Get_Boolean();
                 }
+                if (const auto* source = row.Find("sourceStartMs"); source &&
+                    !Read_Uint32(source, sound.sourceStartMs, MAX_DURATION_MS))
+                { outStatus = "World sound sourceStartMs must be bounded integer milliseconds"; return false; }
                 parsedTemplate.soundTracks.push_back(std::move(sound));
             }
         }
@@ -1420,6 +1423,7 @@ bool_t Client::CWorldSequenceDocument::Save(
                     << "\", \"assetId\": \"" << CDataJson::Escape(sound.assetId)
                     << "\", \"startMs\": " << sound.startMs << ", \"durationMs\": " << sound.durationMs
                     << ", \"volume\": " << sound.volume;
+                if (sound.sourceStartMs) output << ", \"sourceStartMs\": " << sound.sourceStartMs;
                 if (sound.loopToDuration) output << ", \"loopToDuration\": true";
                 output << " }";
             }
@@ -1717,6 +1721,7 @@ bool_t Client::CWorldSequenceDocument::Validate(
                 !Is_ResourcePath(sound.assetId, false) || !sound.assetId.starts_with("Sound/") || !sound.assetId.ends_with(".wav") ||
                 sound.startMs > value.durationMs || sound.durationMs == 0u ||
                 uint64_t(sound.startMs) + sound.durationMs > MAX_DURATION_MS ||
+                uint64_t(sound.sourceStartMs) + sound.durationMs > MAX_DURATION_MS ||
                 !std::isfinite(sound.volume) || sound.volume < 0.f || sound.volume > 4.f)
             { outStatus = "Invalid World sound track: " + value.sequenceId + "/" + sound.soundTrackId; return false; }
         for (const auto& subtitle : value.subtitleTracks)

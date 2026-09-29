@@ -265,7 +265,7 @@ bool LostArk::Server::CGameRoom::Capture_PlayerAttachment(
 			player.iAttachmentPatternSequence == owner->iPatternSequence &&
             player.iAttachmentEndTick == holdEndTick;
 	}
-	if (0u == player.iCurrentHp || !player.isCombatReady ||
+	if (0u == player.iCurrentHp || !player.isCombatReady || player.Has_TimeStop(serverTick) ||
         PLAYER_ACTION_STATE::FEAR == player.eAction ||
 		PLAYER_ACTION_STATE::DEAD == player.eAction ||
 		PLAYER_ACTION_STATE::FALLING == player.eAction ||
@@ -837,9 +837,12 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 							SERVER_ENTITY_ACTION::DEAD != entity.eAction;
 					});
 			};
+		if (!player.iCurrentHp || !player.Has_TimeStop(updateTick)) player.iTimeStopEndTick = 0u;
+		if (!player.iCurrentHp || !player.Has_HolyCharmProtection(updateTick)) player.iHolyCharmProtectionEndTick = 0u;
         (void)CKoukuSaydonLogicRuntime::Update_PlayerFear(player, updateTick);
 		Update_MarioControlState(player);
 		Update_MarioBombContacts(player, updateTick);
+		Update_MarioBouncingBallContacts(player, updateTick);
 		Update_MaharakaWaterpangHazards(player, updateTick);
 		if (m_eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA && player.iCurrentHp &&
 			!player.iMarioStage && !player.TriggerMove.isActive &&
@@ -922,6 +925,11 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			continue;
 		if (Update_PlayerFall(player, fixedDeltaSeconds, updateTick))
 			continue;
+		if (player.Has_TimeStop(updateTick))
+		{
+			CServerBuffRuntime::Expire(player.ActiveBuffs, updateTick);
+			continue;
+		}
 		const std::string authoredMoveSource = player.TriggerMove.strSourcePlacementId;
 		if (m_ServerTriggerSystem.Update_PlayerMotion(
 			player, fixedDeltaSeconds))
