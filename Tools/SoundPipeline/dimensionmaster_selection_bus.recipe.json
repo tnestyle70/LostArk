@@ -1,0 +1,110 @@
+{
+  "schema": "lostark.layered-movie-audio-restoration.v1",
+  "packageFilter": "SOUND_PC_COMMON",
+  "worldDocument": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL00/LV_LOBBY_CLASSSELECT_SL00.worldsequences.json",
+  "bus": {
+    "path": [
+      1635194334,
+      393239870,
+      3803692087
+    ],
+    "gainDb": -4,
+    "limiterFxId": 377339466,
+    "thresholdDb": -5,
+    "ratio": 10,
+    "lookAheadMs": 15,
+    "releaseMs": 100,
+    "outputDb": 3,
+    "stereoLinked": true
+  },
+  "scope": "Default-state standalone simultaneous layer mix. Existing Movie source time and pitch remain unchanged. Does not reproduce native Wwise DSP bit-identically, other game buses, runtime sidechain states, or subsequent relative stem timing/gain edits.",
+  "reviewedInitBankSha256": [
+    "d24ca1e887c1d9a4de78507f1c682a826f7f064deabbcb4dd86b260cede38e3d"
+  ],
+  "id": "dimensionmaster-selection",
+  "event": "pc_create_dimensionmaster1",
+  "sequenceId": "sequence.classselect.dimensionmaster.intro.a12260.p0",
+  "stems": [
+    {
+      "soundTrackId": "classselect.dimensionmaster.source.stem1",
+      "originalAssetId": "Sound/Character/DimensionMaster/ClassSelect/pc_create_dimensionmaster1_1.wav",
+      "restoredAssetId": "Sound/Character/DimensionMaster/ClassSelect/pc_create_dimensionmaster1_1_bus_restored_f32.wav",
+      "reviewedOriginalAssetSha256": "17119672bff8a78b522327e4066eb68c0b29714bc9aeb03b5bdb397f5533428e"
+    },
+    {
+      "soundTrackId": "classselect.dimensionmaster.source.stem2",
+      "originalAssetId": "Sound/Character/DimensionMaster/ClassSelect/pc_create_dimensionmaster1_2.wav",
+      "restoredAssetId": "Sound/Character/DimensionMaster/ClassSelect/pc_create_dimensionmaster1_2_bus_restored_f32.wav",
+      "reviewedOriginalAssetSha256": "2aa34a8ec77fce467eb61b0b9646db8f604fcf698c06a514355e53ed1e02b5d7"
+    }
+  ],
+  "sources": [
+    {
+      "soundTrackId": "classselect.dimensionmaster.source.stem1",
+      "originalAssetId": "Sound/Character/DimensionMaster/ClassSelect/pc_create_dimensionmaster1_1.wav",
+      "restoredAssetId": "Sound/Character/DimensionMaster/ClassSelect/pc_create_dimensionmaster1_1_bus_restored_f32.wav",
+      "reviewedOriginalAssetSha256": "17119672bff8a78b522327e4066eb68c0b29714bc9aeb03b5bdb397f5533428e",
+      "mediaId": 39297514,
+      "reviewedWemSha256": "a8637a715a935a5da439c3b970bbf0f32900ac9b38894657553b875d7e9e31f8"
+    },
+    {
+      "soundTrackId": "classselect.dimensionmaster.source.stem2",
+      "originalAssetId": "Sound/Character/DimensionMaster/ClassSelect/pc_create_dimensionmaster1_2.wav",
+      "restoredAssetId": "Sound/Character/DimensionMaster/ClassSelect/pc_create_dimensionmaster1_2_bus_restored_f32.wav",
+      "reviewedOriginalAssetSha256": "2aa34a8ec77fce467eb61b0b9646db8f604fcf698c06a514355e53ed1e02b5d7",
+      "mediaId": 939013489,
+      "reviewedWemSha256": "ed959b2c4a9c2daa97dd685c9122df43d1d66d1fb43a956ec2b80b7f7a3b4e2d"
+    }
+  ],
+  "fadeInMs": 0,
+  "mixToSingleTrack": false,
+  "expectedTrack": {
+    "startMs": 100,
+    "durationMs": 9749,
+    "volume": 1,
+    "sourceStartMs": 0,
+    "loopToDuration": false
+  },
+  "reviewedHirc": {
+    "2023427219": {
+      "kind": 4,
+      "payloadHex": "0da43c4e2f79366810c1477e0483880f0be635b73cd589072007bd4a2c39e5ac315cb333020c2ec420294ee8323442e4235ec7b11d"
+    },
+    "793656484": {
+      "kind": 3,
+      "payloadHex": "0304bef11b180000000460170090"
+    },
+    "404484542": {
+      "kind": 9,
+      "payloadHex": "00000000000000cc07023c0000000308000401000000000000000002000000f02b09268ef0073f0000000000"
+    },
+    "638135280": {
+      "kind": 2,
+      "payloadHex": "0100040000eaa15702483d01000100000000000000bef11b18000000000000010000000000000000"
+    },
+    "1057484942": {
+      "kind": 2,
+      "payloadHex": "01000400007135f8371ac003000000000000000000bef11b18000000000000010000000000000000"
+    },
+    "1006766028": {
+      "kind": 7,
+      "payloadHex": "000000de1577610000000000000003080000010000000000000000160000004e1da605cd32d506b0a7ae07b6d1310bbe2c390b07302d12ddd4fb17bef11b189a277c1848113a193f6d811df7115c2135c9bf219d9b6524b3aa2126f032522919038233970aee37ac1ac23acdef8f3d32d1913dc8c9a73f"
+    },
+    "1635194334": {
+      "kind": 8,
+      "payloadHex": "3e5d7017050e1b1c1d200000c842000000000000c842000000000000c84201050100000000000002e80300000000c0c20000000001000053c9ca19010000000000000005001bf2271c000200d12fa2010203000000f0c10000000009000000000088c1000000000000000000000000b20b2fbf040000003e5d70170002005bbf8b1802020000000000000080bf040000000000c84200000000040000001bf2271c000203c5464d340003000000f0c10000000009000000000088c1000000000000000000000000000020c204000000f901305400020376203d1d0005000000c8c20000000009000000000014c20000000004000000000000c200009642040000006f1283ba0000b44204000000000000000000000004000000cb90e179000203f953b0380003000000c8c20000000009000000000020c200000000060000000000000000008c420400000005050201040200030200020200000201029ca50d71000106877ccd854bfd3cc9633ef80001813c1a5da131fd18"
+    },
+    "393239870": {
+      "kind": 8,
+      "payloadHex": "37bcb7e206050e1b1c1d20000000c00000c842000000000000c842000000000000c84201050000000000000002e80300000000c0c200000000010000295a0100000000000000000002002aab62d8000200ad6aca1a0204000000f0c10000000009000000000070c10000000000000000000000c1b20b2fbf0900000000000000b20b2fbf040000005be96209000200013036230204000000f0c100000000090000000000a0c10000000000000000000070c182c55fbf090000000000000082c55fbf04000000050502010402000302000202000002010191131f9f000191131f9f93fc1a1c"
+    },
+    "3803692087": {
+      "kind": 8,
+      "payloadHex": "000000004a3111e606050e1b1c1d20000000c00000c842000000000000c842000000000000c84201050000000000000002e80300009a99c0c2000000000100004abe7d16000000000000000001008716ccf10002054d30542b02020000000000000080bf040000000000c84200000000040000000000"
+    },
+    "377339466": {
+      "kind": 17,
+      "payloadHex": "03006e00160000000000a0c0000020418fc2753ccdcccc3d00004040010100000000000000"
+    }
+  }
+}

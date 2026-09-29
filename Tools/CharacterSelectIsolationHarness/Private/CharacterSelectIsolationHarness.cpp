@@ -487,11 +487,11 @@ namespace
 				m_LatestPlayerEntityIds.contains(Get_NetEntityId());
 		}
 
-		[[nodiscard]] bool Has_ExactPlayerSnapshot(
+		[[nodiscard]] bool Has_ExactHumanPlayerSnapshot(
 			const std::set<NET_ENTITY_ID>& expected) const
 		{
 			return Is_Accepted() && m_hasWorldSnapshot &&
-				m_LatestPlayerEntityIds == expected;
+				m_LatestHumanPlayerEntityIds == expected;
 		}
 
 		[[nodiscard]] bool Has_PrivatePlayerLeak() const
@@ -627,6 +627,7 @@ namespace
 				m_EnterAccepted = accepted;
 				m_eExpectedWorld = accepted.eWorldId;
 				m_LatestPlayerEntityIds.clear();
+				m_LatestHumanPlayerEntityIds.clear();
 				m_LatestWorldEntityIds.clear();
 				m_ObservedSpawnedPlayerEntityIds.clear();
 				m_ObservedSpawnedPlayerNicknames.clear();
@@ -710,9 +711,12 @@ namespace
 				}
 				m_iLastServerTick = snapshot.iServerTick;
 				m_LatestPlayerEntityIds.clear();
+				m_LatestHumanPlayerEntityIds.clear();
 				for (const PLAYER_SNAPSHOT& player : snapshot.Players)
 				{
 					m_LatestPlayerEntityIds.insert(player.iNetEntityId);
+					if (player.eControlKind == PLAYER_CONTROL_KIND::HUMAN)
+						m_LatestHumanPlayerEntityIds.insert(player.iNetEntityId);
 					if (player.iNetEntityId == Get_NetEntityId())
 					{
 						m_fOwnPositionX = player.fPositionX;
@@ -798,6 +802,8 @@ namespace
 		NET_ENTITY_ID m_iPendingPartyInviter = INVALID_NET_ENTITY_ID;
 		bool m_hasPartyTransferFailure = false;
 		std::set<NET_ENTITY_ID> m_LatestPlayerEntityIds;
+		// Guide companions occupy no human party seat; private-world checks still use all players.
+		std::set<NET_ENTITY_ID> m_LatestHumanPlayerEntityIds;
 		std::set<NET_ENTITY_ID> m_LatestWorldEntityIds;
 		std::map<NET_ENTITY_ID, std::pair<float, float>>
 			m_LatestWorldEntityPositions;
@@ -1203,8 +1209,8 @@ namespace
 					probeError = "Bern assigned duplicate player entity IDs";
 					return PROBE_RESULT::FAIL;
 				}
-				return first->Has_ExactPlayerSnapshot(expected) &&
-					second->Has_ExactPlayerSnapshot(expected) &&
+				return first->Has_ExactHumanPlayerSnapshot(expected) &&
+					second->Has_ExactHumanPlayerSnapshot(expected) &&
 					first->Has_ExactSpawnNickname(
 						first->Get_NetEntityId(), "Bern-Shared-A") &&
 					first->Has_ExactSpawnNickname(
@@ -1430,7 +1436,7 @@ namespace
 				return expected.size() == memberCount &&
 					std::all_of(clients.begin(), clients.end(),
 						[&](const CTestClient* client)
-						{ return client->Has_ExactPlayerSnapshot(expected); }) ?
+						{ return client->Has_ExactHumanPlayerSnapshot(expected); }) ?
 					PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
 			}, "party Bern admission", error))
 		{
@@ -1512,7 +1518,7 @@ namespace
 					std::all_of(clients.begin(), clients.end(),
 						[&](const CTestClient* client)
 						{
-							return client->Has_ExactPlayerSnapshot(expected) &&
+							return client->Has_ExactHumanPlayerSnapshot(expected) &&
 								client->Has_ExactPartyRoster(targetRoster);
 						}) ? PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
 			}, "party Valtan roster and leader preservation", error))

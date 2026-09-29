@@ -131,6 +131,43 @@ function Parse-PlacementRow {
     }
 }
 
+function Assert-MapCatalogRowContract {
+    param([string[]]$Tokens, [int]$Version, [string]$Context)
+    # Keep imported and published rows aligned with CMapAssetCatalog::Load.
+    # In particular, a zero UV scale fails Client admission before materials load.
+    $expectedCount = if ($Version -eq 1) { 8 } elseif ($Version -eq 2) { 11 } elseif ($Version -eq 3) { 25 } else { 26 }
+    if ($Tokens.Count -ne $expectedCount -or $Tokens[1].Length -eq 0 -or
+        $Tokens[3].Length -eq 0 -or $Tokens[7] -cnotin @('Origin','BottomCenter')) {
+        throw "Asset catalog row fields are invalid: $Context"
+    }
+    foreach ($index in 4..6) {
+        $scale = [single](Convert-DeployFiniteNumber $Tokens[$index] "$Context scale[$index]")
+        if ($scale -le 0) { throw "Asset catalog scale must be positive: $Context" }
+    }
+    if ($Version -ge 2 -and ($Tokens[8] -cnotmatch '^[A-Za-z0-9_.-]{1,64}$' -or
+        $Tokens[9].Length -lt 1 -or $Tokens[9].Length -gt 128 -or
+        $Tokens[10].Length -lt 1 -or $Tokens[10].Length -gt 512 -or
+        $Tokens[9] -match '[\x00-\x1f\x7f]' -or $Tokens[10] -match '[\x00-\x1f\x7f]')) {
+        throw "Asset catalog metadata is invalid: $Context"
+    }
+    if ($Version -lt 3) { return }
+    if ($Tokens[11] -cnotin @('Opaque','Alpha','Sky','Additive','Water') -or
+        $Tokens[12] -cnotin @('Back','Front','None')) {
+        throw "Asset catalog render/cull mode is invalid: $Context"
+    }
+    $profile = @{}
+    foreach ($index in 13..($expectedCount - 1)) {
+        $profile[$index] = [single](Convert-DeployFiniteNumber $Tokens[$index] "$Context profile[$index]")
+    }
+    if ($profile[13] -le 0 -or $profile[14] -le 0 -or
+        $profile[17] -lt 0 -or $profile[17] -gt 1 -or
+        $profile[18] -lt 0 -or $profile[19] -lt 0 -or $profile[20] -lt 1 -or
+        $profile[21] -lt 0 -or $profile[22] -lt 0 -or $profile[23] -lt 0 -or $profile[24] -lt 0 -or
+        ($Version -ge 4 -and ($profile[25] -lt [single]0.01 -or $profile[25] -gt 64))) {
+        throw "Asset catalog render profile is outside the Client contract: $Context"
+    }
+}
+
 function Read-MapAssetCatalog {
     param([string]$Path, [string[]]$Lines, [switch]$Published)
     if (-not $PSBoundParameters.ContainsKey('Lines')) {
@@ -153,6 +190,7 @@ function Read-MapAssetCatalog {
         throw "Asset catalog material reference/version is invalid: $Path"
     }
     $assetIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $prototypeTags = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $assets = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
     $resourcePrefix = [IO.Path]::GetFullPath($runtimeResourceRoot).TrimEnd('\') + '\'
     foreach ($row in @($lines | Select-Object -Skip 1)) {
@@ -168,6 +206,11 @@ function Read-MapAssetCatalog {
             throw "Asset model path must stay Resources-relative: $modelPath"
         }
         $assetId = $match.Groups['id'].Value
+        $tokens = @(Split-DeployAuthoringTokens $row $Path)
+        Assert-MapCatalogRowContract $tokens $version "$Path/$assetId"
+        if (-not $prototypeTags.Add($tokens[3])) {
+            throw "Duplicate prototype tag in asset catalog: $Path/$assetId"
+        }
         if (-not $assetIds.Add($assetId)) {
             throw "Duplicate asset ID in catalog: $Path"
         }
@@ -177,13 +220,7 @@ function Read-MapAssetCatalog {
         }
         $script:mapMaterialModels[$assetId] = $modelPath
         if ($Published) {
-            $tokens = @(Split-DeployAuthoringTokens $row $Path)
-            $expectedCount = if ($version -eq 1) { 8 } elseif ($version -eq 2) { 11 } elseif ($version -eq 3) { 25 } else { 26 }
             $renderMode = if ($version -lt 3) { 'Opaque' } else { $tokens[11] }
-            if ($tokens.Count -ne $expectedCount -or
-                $renderMode -cnotin @('Opaque','Alpha','Sky','Additive','Water')) {
-                throw "Asset catalog sequence target row is invalid: $Path/$assetId"
-            }
             $assets.Add($assetId, [pscustomobject]@{ RenderMode = $renderMode })
         }
     }
@@ -2162,6 +2199,14 @@ function Read-WorldSequenceDocument {
                 if ($row.loopToDuration -isnot [bool]) { throw 'World sound loopToDuration must be boolean' }
                 $soundFields += 'loopToDuration'
             }
+            $soundSourceStartMs = 0.0
+            if ($row.PSObject.Properties['sourceStartMs']) {
+                if (-not (Test-JsonNumber $row.sourceStartMs) -or
+                    [double]$row.sourceStartMs -ne [math]::Floor([double]$row.sourceStartMs) -or
+                    $row.sourceStartMs -lt 0) { throw 'Sound sourceStartMs must be nonnegative integer milliseconds' }
+                $soundSourceStartMs = [double]$row.sourceStartMs
+                $soundFields += 'sourceStartMs'
+            }
             Assert-ExactJsonProperties $row $soundFields 'World sound track'
             if ($row.soundTrackId -isnot [string] -or $row.soundTrackId -cnotmatch $stableId -or -not $soundIds.Add($row.soundTrackId) -or
                 $row.assetId -isnot [string] -or -not $row.assetId.StartsWith('Sound/', [StringComparison]::Ordinal) -or
@@ -2173,6 +2218,7 @@ function Read-WorldSequenceDocument {
             }
             if ($row.startMs -lt 0 -or $row.startMs -gt $template.durationMs -or $row.durationMs -lt 1 -or
                 [double]$row.startMs + [double]$row.durationMs -gt 600000 -or
+                $soundSourceStartMs + [double]$row.durationMs -gt 600000 -or
                 -not (Test-JsonNumber $row.volume) -or $row.volume -lt 0 -or $row.volume -gt 4) { throw 'Invalid World sound time or volume' }
             if (-not (Test-Path -LiteralPath (Join-Path $runtimeResourceRoot $row.assetId) -PathType Leaf)) { throw "World sound asset is missing: $($row.assetId)" }
         }
@@ -2870,6 +2916,57 @@ function Read-WModelMaterialNames {
     finally { $reader.Dispose(); $stream.Dispose() }
 }
 
+function Assert-SourceFoliageWind {
+    param($Wind, [string]$Family)
+    if ($Family -cnotin @('bg-source-foliage-masked','bg-source-grass-masked') -and
+        -not $Family.StartsWith('source.', [StringComparison]::Ordinal)) {
+        throw 'Source foliage wind requires a supported surface'
+    }
+    Assert-ExactJsonProperties $Wind @('program','localCenter','localBounds','actorPositionSourceCm','windDirectionSpeedSource','playerPositionSource','scalarRows') 'Source foliage wind'
+    if ($Wind.program -isnot [string] -or
+        $Wind.program -cnotin @('UE3_FOLIAGE_VS_E4FE','UE3_FOLIAGE_VS_A1C6','UE3_FOLIAGE_VS_1C39') -or
+        ($Family -ceq 'bg-source-grass-masked' -and $Wind.program -ceq 'UE3_FOLIAGE_VS_E4FE')) {
+        throw 'Invalid source foliage wind program or family'
+    }
+    foreach ($key in @('localCenter','localBounds','actorPositionSourceCm','windDirectionSpeedSource','playerPositionSource')) {
+        if ($Wind.$key -isnot [array] -or $Wind.$key.Count -ne 4) { throw "Invalid source wind vector: $key" }
+        foreach ($value in $Wind.$key) {
+            if (-not (Test-JsonNumber $value) -or [Math]::Abs([double]$value) -gt 1e8) { throw "Invalid source wind value: $key" }
+        }
+    }
+    if ($Wind.scalarRows -isnot [array] -or $Wind.scalarRows.Count -ne 4) { throw 'Invalid source wind scalar rows' }
+    $flat = [Collections.Generic.List[double]]::new()
+    foreach ($row in $Wind.scalarRows) {
+        if ($row -isnot [array] -or $row.Count -ne 4) { throw 'Invalid source wind scalar row' }
+        foreach ($value in $row) {
+            if (-not (Test-JsonNumber $value) -or [Math]::Abs([double]$value) -gt 1e8) { throw 'Invalid source wind scalar' }
+            $flat.Add([double]$value)
+        }
+    }
+    if ($Wind.localCenter[3] -ne 1 -or $Wind.actorPositionSourceCm[3] -ne 0 -or
+        $Wind.windDirectionSpeedSource[0] -ne 0 -or $Wind.windDirectionSpeedSource[1] -ne 0 -or
+        $Wind.windDirectionSpeedSource[2] -ne 1 -or $Wind.windDirectionSpeedSource[3] -ne 0) {
+        throw 'Invalid source wind position or no-wind input'
+    }
+    foreach ($value in $Wind.localBounds) {
+        if ([single]$value -le 0 -or $value -gt 1e5) { throw 'Invalid source wind bounds' }
+    }
+    $used = 16; $timeLane = 10
+    if ($Wind.program -ceq 'UE3_FOLIAGE_VS_A1C6') { $used = 7; $timeLane = 1 }
+    elseif ($Wind.program -ceq 'UE3_FOLIAGE_VS_1C39') { $used = 10; $timeLane = 4 }
+    if ($flat[$timeLane] -ne 0) { throw 'Source wind authored time lane must be zero' }
+    for ($index = $used; $index -lt 16; $index++) {
+        if ($flat[$index] -ne 0) { throw 'Unused source wind scalar lane must be zero' }
+    }
+    if ($Wind.program -ceq 'UE3_FOLIAGE_VS_E4FE' -and [single]$flat[2] -le 0) { throw 'Invalid source foliage affect distance' }
+    if ($Wind.program -ceq 'UE3_FOLIAGE_VS_A1C6' -and
+        ($Wind.localCenter[0] -ne 0 -or $Wind.localCenter[1] -ne 0 -or $Wind.localCenter[2] -ne 0 -or
+         @($Wind.playerPositionSource | Where-Object { $_ -ne 0 }).Count -ne 0)) { throw 'Invalid basic source wind pivot or player' }
+    if ($Wind.program -ceq 'UE3_FOLIAGE_VS_1C39' -and
+        ([single]$flat[0] -le 0 -or $Wind.playerPositionSource[0] -ne 99999 -or $Wind.playerPositionSource[1] -ne 99999 -or
+         $Wind.playerPositionSource[2] -ne 0 -or $Wind.playerPositionSource[3] -ne 0)) { throw 'Invalid source grass affect distance or player sentinel' }
+}
+
 function Read-MapMaterialDocument {
     param([string]$Path)
     $document = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8) | ConvertFrom-Json
@@ -2913,6 +3010,8 @@ function Read-MapMaterialDocument {
                 if ($document.formatVersion -ne 2 -or $row.family -ceq 'diffuse-sampler' -or $property.Value -isnot [string]) { throw 'Invalid per-material draw state' }
                 if ($property.Name -ceq 'renderMode' -and $property.Value -cnotin @('deferred','translucent','background','additive','water')) { throw 'Unknown material render mode' }
                 if ($property.Name -ceq 'cullMode' -and $property.Value -cnotin @('back','front','none')) { throw 'Unknown material cull mode' }
+            } elseif ($property.Name -ceq 'foliageWind') {
+                Assert-SourceFoliageWind $property.Value $row.family
             } else { $materialFields[$property.Name] = $property.Value }
         }
         $row = [pscustomobject]$materialFields

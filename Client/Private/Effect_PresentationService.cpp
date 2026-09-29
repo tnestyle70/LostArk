@@ -6631,6 +6631,19 @@ void Client::CEffectPresentationService::Stop_VehicleOwner(
             Remove_At(index);
 }
 
+void Client::CEffectPresentationService::Stop_CharacterOccurrence(
+    const std::shared_ptr<CCharacter>& owner, const std::string& occurrenceId)
+{
+    if (!owner || occurrenceId.empty()) return;
+    g_PendingEffectSpawns.erase(std::remove_if(g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
+        [&](const PENDING_EFFECT_SPAWN& pending) {
+            return pending.Desc.pOwner.lock() == owner && pending.Desc.strOccurrenceId == occurrenceId;
+        }), g_PendingEffectSpawns.end());
+    for (size_t index = g_ActiveEffects.size(); index-- > 0u;)
+        if (g_ActiveEffects[index].pOwner.lock() == owner && g_ActiveEffects[index].strOccurrenceId == occurrenceId)
+            Remove_At(index);
+}
+
 void Client::CEffectPresentationService::Stop_Owner(
     const std::shared_ptr<CCharacter>& pOwner)
 {

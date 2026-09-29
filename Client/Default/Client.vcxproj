@@ -451,6 +451,7 @@
 	<ClCompile Include="..\Private\KoukuSaydonAnimationBlend.cpp" />
     <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp" />
     <ClCompile Include="..\Private\ClientReplication.cpp" />
+    <ClCompile Include="..\Private\ClientReplication_BattleItems.cpp" />
 	<ClCompile Include="..\Private\CombatObjectProjectionRuntime.cpp" />
     <ClCompile Include="..\Private\CombatHUDViewModel.cpp" />
     <ClCompile Include="..\Private\EstherCutinPresentationService.cpp" />
@@ -853,6 +854,12 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.albion.frontthree.electric.impact.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.world.mouse_click.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.world.move_destination.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.destruction_bomb.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.whirlwind_grenade.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.holy_charm.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.time_stop.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.destruction_bomb.flight.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.whirlwind_grenade.flight.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.clown.polymorph.q.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.clown.polymorph.w.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.clown.polymorph.e.effect.json" />
@@ -1014,6 +1021,7 @@
     <None Include="..\..\Data\UI\BossUI\BossUI.json" />
     <None Include="..\..\Data\UI\BossUI\ImmuneGauge_Layout.json" />
     <None Include="..\..\Data\UI\HeadStatus\HealthBar_Layout.json" />
+    <None Include="..\..\Data\UI\HeadStatus\ValtanArmorBreak_Layout.json" />
     <None Include="..\..\Data\UI\Esther\EstherUI.json" />
     <None Include="..\..\Data\UI\Esther\EstherCutin.json" />
     <None Include="..\..\Data\UI\Inventory\InventoryUI.json" />
@@ -3212,6 +3220,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420627.stage000.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420628.stage000.full.restore.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_d.par_d_rpbf_partsdestruction_01.effect.json" />
   </ItemGroup>
   <ItemGroup>
@@ -4391,5 +4400,18 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Data\Balance\NumericSourceBindings.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku5312.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku5312.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup5312.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases5312.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup5312.hlsli" />
   </ItemGroup>
 </Project>

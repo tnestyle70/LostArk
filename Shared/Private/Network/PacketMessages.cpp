@@ -5818,11 +5818,19 @@ bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer,
 	const C2S_USE_ITEM& message)
 {
-	if (0u == message.iRequestSequence || !Is_Valid_ItemId(message.strItemId))
+	if (0u == message.iRequestSequence || !Is_Valid_ItemId(message.strItemId) ||
+		!std::isfinite(message.fTargetX) || !std::isfinite(message.fTargetZ) ||
+		std::abs(message.fTargetX) > 100000.f || std::abs(message.fTargetZ) > 100000.f ||
+		(!message.hasGroundTarget && (message.fTargetX != 0.f || message.fTargetZ != 0.f)) ||
+		(message.hasGroundTarget && message.iTargetPlayerNetEntityId != INVALID_NET_ENTITY_ID))
 		return false;
 	writer.Write_U32(message.iRequestSequence);
 	if (!writer.Write_String(message.strItemId, MAX_ITEM_ID_BYTES))
 		return false;
+	writer.Write_U8(message.hasGroundTarget ? 1u : 0u);
+	writer.Write_F32(message.fTargetX);
+	writer.Write_F32(message.fTargetZ);
+	writer.Write_U32(message.iTargetPlayerNetEntityId);
 	return true;
 }
 
@@ -5831,12 +5839,21 @@ bool LostArk::Shared::Read_Message(
 	C2S_USE_ITEM& message)
 {
 	C2S_USE_ITEM decoded{};
+	std::uint8_t hasTarget = 0u;
 	if (!reader.Read_U32(decoded.iRequestSequence) ||
 		!reader.Read_String(decoded.strItemId, MAX_ITEM_ID_BYTES) ||
+		!reader.Read_U8(hasTarget) || hasTarget > 1u ||
+		!reader.Read_F32(decoded.fTargetX) || !reader.Read_F32(decoded.fTargetZ) ||
+		!reader.Read_U32(decoded.iTargetPlayerNetEntityId) ||
+		!std::isfinite(decoded.fTargetX) || !std::isfinite(decoded.fTargetZ) ||
+		std::abs(decoded.fTargetX) > 100000.f || std::abs(decoded.fTargetZ) > 100000.f ||
+		(!hasTarget && (decoded.fTargetX != 0.f || decoded.fTargetZ != 0.f)) ||
+		(hasTarget && decoded.iTargetPlayerNetEntityId != INVALID_NET_ENTITY_ID) ||
 		0u == decoded.iRequestSequence || !Is_Valid_ItemId(decoded.strItemId))
 	{
 		return false;
 	}
+	decoded.hasGroundTarget = hasTarget != 0u;
 	message = std::move(decoded);
 	return true;
 }

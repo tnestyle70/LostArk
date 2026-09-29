@@ -155,6 +155,8 @@ bool_t CLevel_KakulSaydonArena::Ready_MarioBombPresentation(std::string& status)
 
         MARIO_BOMB_EMITTER emitter;
         emitter.stage = binding.stage;
+        emitter.start = start;
+        emitter.finish = finish;
         // Stable marker identity, never vector order, supplies the random sequence and launch phase.
         emitter.seed = MarioBomb::Seed(binding.marker);
         emitter.phaseMs = emitter.seed % MarioBomb::INTERVAL_MS;
@@ -195,12 +197,13 @@ bool_t CLevel_KakulSaydonArena::Ready_MarioBombPresentation(std::string& status)
         for (std::uint32_t slot = 0; slot < slotCount; ++slot)
         {
             WORLD_SEQUENCE_INSTANCE instance;
-            instance.instanceId = std::string("world.object.instance.mario.bomb.") + binding.marker + ".slot" + std::to_string(slot);
+            instance.instanceId = MarioBomb::InstanceId(binding, slot);
             instance.templateId = flight.sequenceId;
             instance.position = start;
             instance.bindings = base->bindings;
             emitter.slots.push_back(instance.instanceId);
             emitter.births.push_back(-1);
+            emitter.stoppedBirths.push_back(-1);
             stagedDocument.Get_Instances().push_back(std::move(instance));
         }
         stagedEmitters.push_back(std::move(emitter));
@@ -214,9 +217,85 @@ bool_t CLevel_KakulSaydonArena::Ready_MarioBombPresentation(std::string& status)
     if (m_pMarioBombPlayer) m_pMarioBombPlayer->Stop_All(targets, true);
     m_pMarioBombPlayer = std::move(stagedPlayer);
     m_MarioBombEmitters = std::move(stagedEmitters);
-    status = "7 Mario bomb markers ready; 4000ms interval, 3m/s; Server contact and knockdown.";
+    status = "7 Mario bomb markers ready; 8000ms interval, 3m/s; Server contact and knockdown.";
     OutputDebugStringA(("[MarioBomb] " + status + "\n").c_str());
     return true;
+}
+
+bool_t CLevel_KakulSaydonArena::Queue_MarioBombContactStop(
+    const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& stopped)
+{
+    using namespace LostArk::Shared;
+    if (stopped.eOperation != WORLD_SEQUENCE_OPERATION::STOP ||
+        stopped.iRunEpoch || !stopped.strSequenceInstanceId.starts_with("world.object.instance.mario.bomb."))
+        return false;
+    if (stopped.iStartTick && stopped.iServerTick >= stopped.iStartTick &&
+        m_PendingMarioBombContactStops.size() < 224u)
+        m_PendingMarioBombContactStops.push_back(stopped);
+    return true;
+}
+
+void CLevel_KakulSaydonArena::Consume_MarioBombContactStops(const double clockMs)
+{
+    const auto tick = m_Replication.Get_LastServerTick();
+    const auto targets = Make_WorldSequenceTargets();
+    for (auto pending = m_PendingMarioBombContactStops.begin(); pending != m_PendingMarioBombContactStops.end();)
+    {
+        // The reliable edge can precede its player snapshot in the same receive
+        // batch. Wait for that snapshot before choosing the entrant's stage.
+        if (pending->iServerTick > tick) { ++pending; continue; }
+        const auto stopped = *pending;
+        pending = m_PendingMarioBombContactStops.erase(pending);
+        if (stopped.iServerTick < m_iMarioBombStageStartTick) continue;
+        for (auto& emitter : m_MarioBombEmitters)
+        {
+            if (emitter.stage != m_iMarioBombStage || emitter.failed) continue;
+            const auto found = std::find(emitter.slots.begin(), emitter.slots.end(), stopped.strSequenceInstanceId);
+            if (found == emitter.slots.end()) continue;
+            const auto slot = static_cast<std::uint32_t>(found - emitter.slots.begin());
+            const auto count = static_cast<std::uint32_t>(emitter.slots.size());
+            const double hitMs = double(stopped.iServerTick) * (1000. / 30.);
+            const auto birth = MarioBomb::Birth(hitMs, emitter.phaseMs, slot, count);
+            const double birthMs = double(birth) * MarioBomb::INTERVAL_MS + emitter.phaseMs;
+            const double age = hitMs - birthMs;
+            if (birth < 0 || age < 0. || age >= emitter.durationMs ||
+                stopped.iStartTick != MarioBomb::BirthTick(emitter.phaseMs, birth, 30u) ||
+                birth <= emitter.stoppedBirths[slot])
+                break;
+            emitter.stoppedBirths[slot] = birth;
+            // The confirmed contact may arrive after this generation expires or
+            // its slot starts another ball. Never stop that newer generation.
+            if (emitter.births[slot] == birth)
+            {
+                m_pMarioBombPlayer->Stop_Instance(*found, targets, true);
+                emitter.births[slot] = -1;
+            }
+            const float sampleAge = static_cast<float>((std::max)(0., clockMs - hitMs) * .001);
+            f32_t effectSeconds = 0.f;
+            if (CEffectPresentationService::Try_Get_PreparedProductDurationSeconds(
+                "effect.kouku.mario.flyingball.hit", effectSeconds) &&
+                effectSeconds > 0.f && sampleAge >= effectSeconds)
+                break;
+            // Restore the existing impact Effect at this Server-confirmed ball
+            // generation's contact pose. No client overlap or HP inference.
+            const float fraction = static_cast<float>(age / emitter.durationMs);
+            const float x = emitter.start.x + (emitter.finish.x - emitter.start.x) * fraction;
+            const float z = emitter.start.z + (emitter.finish.z - emitter.start.z) * fraction;
+            const float y = emitter.start.y + MarioBomb::Bottom(emitter.seed, birth) + MarioBomb::RADIUS_M;
+            EFFECT_LEVEL_PLACEMENT_SPAWN_DESC spawn;
+            spawn.iLevelIndex = ETOUI(LEVEL::KAKULSAYDON_ARENA);
+            spawn.strPlacementId = "mario.flying.hit:" + *found + ":" + std::to_string(stopped.iStartTick);
+            spawn.strEffectAssetId = "effect.kouku.mario.flyingball.hit";
+            spawn.iSpawnTick = stopped.iServerTick;
+            spawn.fInitialSampleTimeSeconds = sampleAge;
+            XMStoreFloat4x4(&spawn.RootWorld, XMMatrixTranslation(x, y, z));
+            EFFECT_WORLD_ROOT_HANDLE handle;
+            std::string status;
+            if (!CEffectPresentationService::Spawn_LevelPlacement(spawn, handle, status))
+                OutputDebugStringA(("[MarioHit] " + status + "\n").c_str());
+            break;
+        }
+    }
 }
 
 void CLevel_KakulSaydonArena::Update_MarioBombPresentation(const f32_t timeDelta)
@@ -226,21 +305,38 @@ void CLevel_KakulSaydonArena::Update_MarioBombPresentation(const f32_t timeDelta
     const std::uint8_t stage = player.iCurrentHp && player.iMarioStage >= 2u && player.iMarioStage <= 4u ?
         player.iMarioStage : 0u;
     const auto tick = m_Replication.Get_LastServerTick();
+    const auto previousObservedTick = m_iMarioBombSnapshotTick;
     if (tick != m_iMarioBombSnapshotTick)
     { m_iMarioBombSnapshotTick = tick; m_fMarioBombSnapshotSeconds = 0.f; }
     else m_fMarioBombSnapshotSeconds = (std::min)(.1f, m_fMarioBombSnapshotSeconds + timeDelta);
     const double clockMs = double(tick) * (1000. / 30.) + double(m_fMarioBombSnapshotSeconds) * 1000.;
     const auto targets = Make_WorldSequenceTargets();
+    // A lethal contact may already have cleared the new HUD's Mario state.
+    // Its reliable STOP still belongs to the previous stage on this frame.
+    if (!stage && m_iMarioBombStage && !player.iCurrentHp && m_pMarioBombPlayer)
+        Consume_MarioBombContactStops(clockMs);
     if (stage != m_iMarioBombStage || clockMs < m_fMarioBombStageStartMs)
     {
         if (m_pMarioBombPlayer) m_pMarioBombPlayer->Stop_All(targets, true);
         for (auto& emitter : m_MarioBombEmitters)
-        { std::fill(emitter.births.begin(), emitter.births.end(), -1); emitter.failed = false; }
+        {
+            std::fill(emitter.births.begin(), emitter.births.end(), -1);
+            std::fill(emitter.stoppedBirths.begin(), emitter.stoppedBirths.end(), -1);
+            emitter.failed = false;
+        }
         m_iMarioBombStage = stage;
+        // Snapshots may coalesce across entry and first contact. The last
+        // observed previous stage is the lower bound, not this later snapshot.
+        m_iMarioBombStageStartTick = previousObservedTick <= tick ? previousObservedTick : 0u;
         m_fMarioBombStageStartMs = clockMs;
         m_bMarioBombLoadAttempted = false;
     }
-    if (!stage) return;
+    if (!stage)
+    {
+        std::erase_if(m_PendingMarioBombContactStops,
+            [tick](const auto& stop) { return stop.iServerTick <= tick; });
+        return;
+    }
     if (!m_pMarioBombPlayer)
     {
         if (m_bMarioBombLoadAttempted) return;
@@ -249,6 +345,7 @@ void CLevel_KakulSaydonArena::Update_MarioBombPresentation(const f32_t timeDelta
         if (!Ready_MarioBombPresentation(status))
         { OutputDebugStringA(("[MarioBomb] " + status + "\n").c_str()); return; }
     }
+    Consume_MarioBombContactStops(clockMs);
     for (auto& emitter : m_MarioBombEmitters)
     {
         if (emitter.stage != stage || emitter.failed) continue;
@@ -259,7 +356,8 @@ void CLevel_KakulSaydonArena::Update_MarioBombPresentation(const f32_t timeDelta
             const auto birth = MarioBomb::Birth(clockMs, emitter.phaseMs, static_cast<std::uint32_t>(slot), static_cast<std::uint32_t>(count));
             const double birthMs = double(birth) * MarioBomb::INTERVAL_MS + emitter.phaseMs;
             const double age = clockMs - birthMs;
-            if (birth < 0 || age < 0. || age >= emitter.durationMs)
+            if (birth < 0 || age < 0. || age >= emitter.durationMs ||
+                emitter.stoppedBirths[static_cast<size_t>(slot)] == birth)
             {
                 if (m_pMarioBombPlayer->Is_Playing(id)) m_pMarioBombPlayer->Stop_Instance(id, targets, true);
                 emitter.births[static_cast<size_t>(slot)] = -1;
@@ -486,7 +584,7 @@ void CLevel_KakulSaydonArena::Update_MarioCombatPresentation()
         playSound("JumpClown1_StandUp1");
     m_bMarioWasKnockedDown = knockedDown;
     uint32_t newest = m_iMarioDamageTick;
-    bool sounded = false, flyingShown = false;
+    bool sounded = false;
     for (const auto& retained : hud.Get_DamageEvents())
     {
         newest = (std::max)(newest, retained.iServerTick);
@@ -500,20 +598,8 @@ void CLevel_KakulSaydonArena::Update_MarioCombatPresentation()
                 local.eAction == PLAYER_ACTION_STATE::KNOCKDOWN ? "JumpClown1_Down1" : "JumpClown1_Damage1");
             sounded = true;
         }
-        if (!flyingShown && event.eMarioHitSource == MARIO_HIT_SOURCE::FLYING_BALL && character->Get_Transform())
-        {
-            EFFECT_LEVEL_PLACEMENT_SPAWN_DESC spawn;
-            spawn.iLevelIndex = ETOUI(LEVEL::KAKULSAYDON_ARENA);
-            spawn.strPlacementId = "mario.flying.hit:" + std::to_string(retained.iServerTick);
-            spawn.strEffectAssetId = "effect.kouku.mario.flyingball.hit";
-            spawn.iSpawnTick = retained.iServerTick;
-            XMStoreFloat4x4(&spawn.RootWorld, XMMatrixTranslation(event.fPositionX, event.fPositionY + .8f, event.fPositionZ));
-            EFFECT_WORLD_ROOT_HANDLE handle;
-            std::string status;
-            if (!CEffectPresentationService::Spawn_LevelPlacement(spawn, handle, status))
-                OutputDebugStringA(("[MarioHit] " + status + "\n").c_str());
-            flyingShown = true;
-        }
+        // Flying-ball impact visuals follow the reliable generation STOP below,
+        // not the transient damage history (which also emits shield/HP splits).
     }
     // Consume retained combat history even outside Mario, preventing replay on entry.
     m_iMarioDamageTick = newest;

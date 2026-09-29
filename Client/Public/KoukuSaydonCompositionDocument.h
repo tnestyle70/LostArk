@@ -490,6 +490,8 @@ namespace Client
 		bool_t bFitEffectToDuration = false;
 		// Continues source loop-zero emitters at native speed for this occurrence.
 		bool_t bLoopEffectToDuration = false;
+		// Product-only audience metadata derived from the enabled Mario phase-two trigger.
+		bool_t bSuppressLocalMario = false;
 		bool_t bDebugRender = true;
 		std::string strBone;
 		std::string strBoneTarget = "BODY";

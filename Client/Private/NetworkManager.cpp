@@ -2205,17 +2205,11 @@ bool CNetworkManager::Send_DebugGiveItem(
 		frameBytes) && Send_All(frameBytes);
 }
 
-bool CNetworkManager::Send_UseItem(
-	const std::uint32_t requestSequence,
-	const std::string_view itemId)
+bool CNetworkManager::Send_UseItem(const LostArk::Shared::C2S_USE_ITEM& message)
 {
 	using namespace LostArk::Shared;
 	if (!Is_Connected())
 		return false;
-
-	C2S_USE_ITEM message{};
-	message.iRequestSequence = requestSequence;
-	message.strItemId = std::string{ itemId };
 	CPacketWriter payloadWriter;
 	if (!Write_Message(payloadWriter, message))
 		return false;

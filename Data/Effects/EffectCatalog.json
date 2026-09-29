@@ -7375,6 +7375,41 @@
       "effectAssetId": "effect.maharaka.waterpang.mokomoko.telegraph",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.maharaka.waterpang.mokomoko.telegraph.effect.json"
+    },
+    {
+      "effectAssetId": "effect.world.item.destruction_bomb",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.world.item.destruction_bomb.effect.json"
+    },
+    {
+      "effectAssetId": "effect.world.item.whirlwind_grenade",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.world.item.whirlwind_grenade.effect.json"
+    },
+    {
+      "effectAssetId": "effect.world.item.holy_charm",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.world.item.holy_charm.effect.json"
+    },
+    {
+      "effectAssetId": "effect.world.item.time_stop",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.world.item.time_stop.effect.json"
+    },
+    {
+      "effectAssetId": "effect.world.item.destruction_bomb.flight",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.world.item.destruction_bomb.flight.effect.json"
+    },
+    {
+      "effectAssetId": "effect.world.item.whirlwind_grenade.flight",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.world.item.whirlwind_grenade.flight.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.action.420628.stage000.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.action.420628.stage000.full.restore.effect.json"
     }
   ]
 }

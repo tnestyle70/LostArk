@@ -2901,6 +2901,10 @@ namespace LostArk::Shared
 	{
 		std::uint32_t iRequestSequence = 0;
 		std::string strItemId;
+		// Intent only. Server validates range and resolves the target surface.
+		bool hasGroundTarget = false;
+		float fTargetX = 0.f, fTargetZ = 0.f;
+		NET_ENTITY_ID iTargetPlayerNetEntityId = INVALID_NET_ENTITY_ID;
 	};
 
 	/* Right-click equip / unequip. bEquip moves one strItemId from the bag into eSlot

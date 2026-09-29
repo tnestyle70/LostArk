@@ -370,6 +370,14 @@ namespace LostArk::Server
 		std::uint32_t iShield = 0;
 		/* Set while a death-deny buff has already spent itself on a lethal hit. */
 		std::uint32_t iInvulnerableEndTick = 0;
+		// Item protection is separate from encounter-granted immunity (e.g. Bingo).
+		std::uint32_t iTimeStopEndTick = 0u, iHolyCharmProtectionEndTick = 0u;
+		std::uint32_t iLastItemUseSequence = 0u;
+		std::unordered_map<std::string, std::uint32_t> ItemCooldownEndTicks;
+		bool Has_TimeStop(const std::uint32_t tick) const noexcept
+		{ return iTimeStopEndTick && static_cast<std::int32_t>(tick - iTimeStopEndTick) < 0; }
+		bool Has_HolyCharmProtection(const std::uint32_t tick) const noexcept
+		{ return iHolyCharmProtectionEndTick && static_cast<std::int32_t>(tick - iHolyCharmProtectionEndTick) < 0; }
 		bool bRonaunGuard = false;
 		std::uint32_t iRonaunGrantTick = 0u;
 		std::uint32_t iEstherGuardEndTick = 0;

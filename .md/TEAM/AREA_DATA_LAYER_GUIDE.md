@@ -302,7 +302,7 @@ World Tool, Effect Composition resolver, Map publisher와 Composition validator�
 유지한다. JSON array와 stable ID 계약은 그대로이며 template 수를 늘려도 wire 형식은 바뀌지 않는다.
 
 WorldSequence v3의 optional `soundTracks`는 `{ soundTrackId, assetId, startMs, durationMs, volume }`과
-optional boolean `loopToDuration`(기본 false)을 저장한다. ID는 lane 안에서 유일한 stable ID이며 asset은 Resources-relative `Sound/*.wav`다.
+optional boolean `loopToDuration`(기본 false)과 optional integer `sourceStartMs`(기본0, 음원 ms)를 저장한다. ID는 lane 안에서 유일한 stable ID이며 asset은 Resources-relative `Sound/*.wav`다.
 `startMs`는 0..template duration, `durationMs`는 양수, 합은 최대 600000ms이며 volume은 finite
 0..4다. 원본 사운드의 끝이 visual duration을 넘어도 `PresentationSpanMs`와 `CycleSpanMs`,
 카메라 종료 시간은 늘리지 않는다. 자연 종료 후 남은 소리는 기존 sound handle로 관리하며 명시적
@@ -310,6 +310,11 @@ Stop, Seek, Level 정리는 해당 handle을 함께 종료한다. `loopToDuratio
 반복 구간을 재생하되 track duration, motion 전환·cutoff, visual 종료, Stop에서 즉시 끝낸다.
 반복음은 자연 종료 후 one-shot tail로 넘기지 않는다. 시작음과 반복 layer가 함께 있는 원본은
 각 layer를 별도 sound track으로 연결해 시작음을 매 cycle마다 재생하지 않는다.
+`sourceStartMs + durationMs`도600000ms 이하여야 한다. 실제 샘플은 source-in에 box age를 더해
+시작하며 반복음은 그 값을 원본 길이로 modulo한다. Movie의 왼쪽 edge는 timeline 시작과
+source-in을 함께 자르고 body 이동은 source-in을 유지한다. 외부 Movie clock을 명시한 재생만
+실제 FMOD cursor의100ms 초과 drift를 교정한다. 일반 World/SFX와 원본 박스 timing은 유지한다.
+
 
 optional `subtitleTracks`는 `{ subtitleTrackId, stringId, text, position, slotId, startMs, durationMs }`다.
 `text`는 1..4096-byte valid UTF-8 plain text이며 LF만 허용하고 다른 제어 문자와 `<`, `>`는 거부한다.

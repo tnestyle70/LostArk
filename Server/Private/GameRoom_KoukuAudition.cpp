@@ -602,6 +602,7 @@ bool LostArk::Server::CGameRoom::Retain_KoukuPatternTail(
 			// These flags belonged to the completed occurrence; the next Pattern owns new flags.
 			(void)CBossCombatRuntime::Set_Flag(live.BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, false);
 			live.bKoukuShieldActive = false; live.fKoukuShieldArcDegrees = 0.f; live.KoukuShieldRegions.clear();
+			live.iKoukuItemStaggerMaximum = 0u; live.iKoukuItemStaggerCredit = 0u;
 			break;
 		}
 	tail.Member.LogicLedger = std::move(member.LogicLedger);

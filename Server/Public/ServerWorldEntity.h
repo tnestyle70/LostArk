@@ -450,6 +450,8 @@ namespace LostArk::Server
 		/* KoukuSaydon stagger window: while raised, player hits whose caster
 		stands inside the frontal arc are reflected back at that caster instead
 		of landing. Owned by CKoukuSaydonLogicRuntime for one window. */
+		std::uint32_t iKoukuItemStaggerMaximum = 0u;
+		std::uint32_t iKoukuItemStaggerCredit = 0u;
 		bool bKoukuShieldActive = false;
 		float fKoukuShieldArcDegrees = 0.f;
 		float fKoukuShieldNormalYawOffsetDegrees = 0.f;

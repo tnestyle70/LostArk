@@ -68,13 +68,14 @@ if ($items.Count -eq 0 -or $items.Count -gt 4096) {
 
 $itemIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $itemRows = [Collections.Generic.List[string]]::new()
+$battleRows = [Collections.Generic.List[string]]::new()
 $startingSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 foreach ($item in $items) {
     # grade is a Client presentation field (inventory grade art). equipSlot and characterClass
     # also travel to the Server, which checks them on equip; startingEquippedSlot names the
     # equipment slot a fresh character already wears the item in. "-" marks an absent value.
     Assert-Properties $item @('itemId', 'displayName', 'maxStack', 'iconPath', 'healPercent', 'category') `
-        @('equipSlot', 'characterClass', 'grade', 'startingEquippedSlot') 'item'
+        @('equipSlot', 'characterClass', 'grade', 'startingEquippedSlot', 'battleUse') 'item'
     Assert-JsonString $item.itemId 'item itemId'
     Assert-JsonString $item.displayName 'item displayName'
     Assert-JsonInteger $item.maxStack 'item maxStack' 1 ([uint32]::MaxValue)
@@ -125,6 +126,28 @@ foreach ($item in $items) {
         if (-not $startingSlots.Add($startingField)) { throw "Two items start in slot $startingField" }
     }
     $itemRows.Add((@('ITEM', $item.itemId, [uint32]$item.maxStack, [uint32]$item.healPercent, $equipSlotField, $classField, $startingField) -join "`t"))
+    if ($null -ne $item.PSObject.Properties['battleUse']) {
+        $battle = $item.battleUse
+        $fields = @('kind', 'skillId', 'damageRatePercent', 'partDamage', 'staggerDamage', 'rangeCm', 'radiusCm', 'durationMs', 'cooldownMs', 'projectileSpeedCmPerSecond', 'projectileArcHeightCm', 'projectileLaunchHeightCm', 'staggerMaximumDivisor')
+        Assert-ExactProperties $battle $fields 'battleUse'
+        $expectedKinds = @{ BATTLE_DESTRUCTION_BOMB = 'DESTRUCTION'; BATTLE_WHIRLWIND_GRENADE = 'WHIRLWIND'; BATTLE_HOLY_CHARM = 'CLEANSE'; BATTLE_TIME_STOP_POTION = 'TIME_STOP' }
+        if (-not $expectedKinds.ContainsKey([string]$item.itemId) -or $battle.kind -cne $expectedKinds[[string]$item.itemId] -or
+            $item.category -cne 'use' -or $item.healPercent -ne 0 -or $equipSlotField -cne '-') { throw "battleUse kind/item mismatch: $($item.itemId)" }
+        foreach ($field in @('skillId', 'damageRatePercent', 'partDamage', 'staggerDamage', 'rangeCm', 'radiusCm', 'durationMs', 'cooldownMs', 'projectileSpeedCmPerSecond', 'projectileArcHeightCm', 'projectileLaunchHeightCm', 'staggerMaximumDivisor')) {
+            Assert-JsonInteger $battle.$field "battleUse $field" 0 1000000
+        }
+        if ((($battle.kind -eq 'WHIRLWIND') -and ($battle.staggerMaximumDivisor -ne 3 -or $battle.damageRatePercent -ne 0 -or $battle.staggerDamage -ne 0)) -or
+            (($battle.kind -ne 'WHIRLWIND') -and $battle.staggerMaximumDivisor -ne 0) -or
+            $battle.skillId -eq 0 -or $battle.cooldownMs -lt 1000 -or $battle.cooldownMs -gt 600000 -or
+            $battle.rangeCm -gt 5000 -or $battle.radiusCm -gt 5000 -or $battle.durationMs -gt 600000 -or
+            (($battle.kind -in @('DESTRUCTION', 'WHIRLWIND')) -and ($battle.rangeCm -eq 0 -or $battle.radiusCm -eq 0)) -or
+            ($battle.kind -eq 'TIME_STOP' -and $battle.rangeCm -ne 0) -or
+            (($battle.kind -in @('CLEANSE', 'TIME_STOP')) -and $battle.durationMs -eq 0) -or
+            $battle.projectileSpeedCmPerSecond -gt 10000 -or $battle.projectileArcHeightCm -gt 1000 -or $battle.projectileLaunchHeightCm -gt 1000 -or
+            (($battle.kind -in @('DESTRUCTION', 'WHIRLWIND')) -and $battle.projectileSpeedCmPerSecond -eq 0)) { throw "battleUse values are invalid: $($item.itemId)" }
+        $battleRows.Add((@('BATTLEITEM', $item.itemId, $battle.kind, $battle.skillId, $battle.damageRatePercent, $battle.partDamage, $battle.staggerDamage,
+            $battle.rangeCm, $battle.radiusCm, $battle.durationMs, $battle.cooldownMs, $battle.projectileSpeedCmPerSecond, $battle.projectileArcHeightCm, $battle.projectileLaunchHeightCm, $battle.staggerMaximumDivisor) -join "`t"))
+    }
 }
 
 # Currencies are the player's purse (실링, 골드), not bag items. The Server knows exactly these
@@ -190,8 +213,9 @@ if (-not $outputDirectory.StartsWith($repoPrefix, [StringComparison]::OrdinalIgn
 }
 
 $lines = [Collections.Generic.List[string]]::new()
-$lines.Add("LOSTARK_ITEM_BOOTSTRAP`t5`t$($itemRows.Count + $currencyRows.Count + $shopRows.Count)")
+$lines.Add("LOSTARK_ITEM_BOOTSTRAP`t6`t$($itemRows.Count + $battleRows.Count + $currencyRows.Count + $shopRows.Count)")
 foreach ($row in $itemRows) { $lines.Add($row) }
+foreach ($row in $battleRows) { $lines.Add($row) }
 foreach ($row in $currencyRows) { $lines.Add($row) }
 foreach ($row in $shopRows) { $lines.Add($row) }
 

@@ -2115,7 +2115,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 
 	/* 1/2/3/4 use whatever item is registered on Item_1..4 (drag-drop from the inventory --
 	see Update_ItemQuickSlots). Same gating as K/I; the Server is the one that actually
-	validates ownership and applies the heal, this only ever sends the request. */
+	validates ownership and resolves the selected item, this only submits typed intent. */
 	if (!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive())
 	{
 		constexpr int VIRTUAL_KEYS[4] = { 0x31, 0x32, 0x33, 0x34 }; // VK_1..VK_4
@@ -2127,8 +2127,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 				0 != (GetAsyncKeyState(VIRTUAL_KEYS[i]) & 0x8000);
 			if (keyDown && !m_bItemKeyDown[i] && !m_strItemQuickSlot[i].empty())
 			{
-				CNetworkManager::Get().Send_UseItem(
-					m_iNextUseItemSequence++, m_strItemQuickSlot[i]);
+				if (CPlayerController* pController = Find_ActivePlayerController())
+					(void)pController->Request_UseItem(m_iNextUseItemSequence++, m_strItemQuickSlot[i]);
 			}
 			m_bItemKeyDown[i] = keyDown;
 		}
@@ -4377,6 +4377,7 @@ HRESULT CMainApp::Render()
 		RenderItemAnnounceText();
 	}
 	RenderDamageNumbers();
+	if (m_pWorldHealthBarView) m_pWorldHealthBarView->Render_Text();
 	{
 		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 		if (nullptr != m_pCombatAnalysisView)
@@ -10898,6 +10899,8 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 				state.active = preview.Is_Active();
 				state.paused = preview.Is_Paused();
 				state.looping = preview.Is_Looping();
+                state.repeatMovie = preview.Get_RepeatMovie(state.selectedClassId);
+                state.completedHold = preview.Is_CompletedHold();
 				state.ownerToken = preview.Get_PlaybackToken();
 				state.loopCycle = preview.Get_LoopCycle();
 				state.clockMs = preview.Get_ClockMs();
@@ -10950,6 +10953,12 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
                 return level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) &&
                     level->Get_ClassSelectionPresentation().Set_PlaybackRate(rate);
             };
+            classSelection.setRepeatMovie = [](const std::string& classId, bool repeat, std::string& status) {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+                { status = "Open Character Select to change Movie repeat."; return false; }
+                return level->Get_ClassSelectionPresentation().Set_RepeatMovie(classId, repeat, status);
+            };
             classSelection.timeline = [](const std::string& classId, bool loop) -> std::shared_ptr<const CLASS_MOVIE_TIMELINE> {
                 auto* level = CLevel_CharacterSelect::Get_Active();
                 return level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) ?
@@ -10979,6 +10988,18 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
             classSelection.mapTime = [](const std::string& classId, bool loop, double timeMs, bool toSource) {
                 auto* level = CLevel_CharacterSelect::Get_Active();
                 return level ? level->Get_ClassSelectionPresentation().Map_TimelineTime(classId, loop, timeMs, toSource) : -1.;
+            };
+            classSelection.captureFreeCamera = [](VALTAN_CINEMATIC_CAMERA_POSE& pose, std::string& status) {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+                { status = "Open the Character Select movie to capture its free camera."; return false; }
+                const auto camera = level->Get_DebugCamera();
+                if (!camera || camera->Is_FollowRequested() || camera->Is_PresentationOverrideActive())
+                { status = "Switch to Movie Free camera (F6) before capturing a key."; return false; }
+                VALTAN_CINEMATIC_CAMERA_POSE captured;
+                if (!CCameraTool::Capture_ViewPose(captured))
+                { status = "The current free camera pose is invalid."; return false; }
+                pose = captured; status.clear(); return true;
             };
             classSelection.editTiming = [](const CLASS_MOVIE_AUTHORING_BOX& box, double start, double end,
                 CLASS_MOVIE_TIMING_EDIT gesture, std::string& status) {
@@ -13869,6 +13890,38 @@ void CMainApp::RenderDeveloperTools()
 	RenderBalanceTestLauncher();
 	RenderHUDBarPositionControls();
 #endif
+	if (ImGui::CollapsingHeader("Battle Items"))
+	{
+		CPlayerController* controller = Find_ActivePlayerController();
+		const auto& player = CCombatHUDViewModel::Get().Get_Player();
+		const bool ready = controller && player.isValid && !player.isPreview;
+		ImGui::BeginDisabled(!ready);
+		const auto give = [&](const char* itemId)
+		{
+			const auto sequence = m_iNextDebugGiveItemSequence++;
+			if (!m_iNextDebugGiveItemSequence) m_iNextDebugGiveItemSequence = 1u;
+			return controller && controller->Request_DebugGiveItem(sequence, itemId, 10u);
+		};
+		if (ImGui::Button("Give all four (10 each)"))
+		{
+			unsigned sent = 0u;
+			for (const auto& binding : BATTLE_ITEM_EFFECTS) if (give(binding.itemId)) ++sent;
+			m_strDebugItemStatus = "Requested " + std::to_string(sent) + " of 4 item stacks. Check inventory.";
+		}
+		for (const auto& binding : BATTLE_ITEM_EFFECTS)
+		{
+			const auto* item = CItemCatalog::Find_ById(binding.itemId);
+			if (!item) continue;
+			const auto label = item->strDisplayName + " x10##" + binding.itemId;
+			if (ImGui::Button(label.c_str()))
+				m_strDebugItemStatus = give(binding.itemId) ? "Requested " + item->strDisplayName + " x10." : "Item request was not sent.";
+		}
+		ImGui::EndDisabled();
+		if (!ready) ImGui::TextDisabled("Enter a Server world first.");
+		ImGui::TextWrapped("Open inventory (I), then drag the four items into HUD slots 1 / 2 / 3 / 4. Close F1 and press the matching number to use.");
+		ImGui::TextWrapped("Aim bombs at the ground and Holy Charm at another party member. Time Stop protects yourself for 3 seconds. Item cooldowns still apply.");
+		if (!m_strDebugItemStatus.empty()) ImGui::TextWrapped("%s", m_strDebugItemStatus.c_str());
+	}
 	RenderCameraSpeedControls();
 	RenderDragonControls();
 	ImGui::TextWrapped("%s", m_strToolStatus.c_str());
@@ -14004,10 +14057,9 @@ void CMainApp::RenderDeveloperTools()
 		ImGui::BeginDisabled(!canGiveItem);
 		if (ImGui::Button("Give"))
 		{
-			if (debugNetworkManager.Send_DebugGiveItem(
-				m_iNextDebugGiveItemSequence,
-				selectedItem.strItemId,
-				1u))
+			CPlayerController* controller = Find_ActivePlayerController();
+			if (controller && controller->Request_DebugGiveItem(
+				m_iNextDebugGiveItemSequence, selectedItem.strItemId, 1u))
 			{
 				m_strDebugItemStatus = "Requested " + selectedItem.strDisplayName;
 				++m_iNextDebugGiveItemSequence;

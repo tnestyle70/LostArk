@@ -828,6 +828,9 @@
     <ClCompile Include="..\Private\ClientReplication.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\ClientReplication_BattleItems.cpp">
+      <Filter>04. Network</Filter>
+    </ClCompile>
 	<ClCompile Include="..\Private\CombatObjectProjectionRuntime.cpp">
 	  <Filter>04. Network</Filter>
 	</ClCompile>
@@ -2415,6 +2418,24 @@
     <None Include="..\..\Data\Effects\Authored\effect.world.move_destination.effect.json">
       <Filter>96.DataFiles\Effects</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.destruction_bomb.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.whirlwind_grenade.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.holy_charm.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.time_stop.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.destruction_bomb.flight.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.world.item.whirlwind_grenade.flight.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.clown.polymorph.q.effect.json">
       <Filter>96.DataFiles</Filter>
     </None>
@@ -2860,6 +2881,9 @@
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\UI\HeadStatus\HealthBar_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\HeadStatus\ValtanArmorBreak_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\UI\RaidClear\RaidClear_Layout.json">
@@ -4980,6 +5004,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420627.stage000.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420628.stage000.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_d.par_d_rpbf_partsdestruction_01.effect.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
   <ItemGroup>
@@ -6027,5 +6052,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Data\Balance\NumericSourceBindings.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku5312.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku5312.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup5312.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases5312.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup5312.hlsli"><Filter>97.ShaderFiles</Filter></None>
   </ItemGroup>
 </Project>

@@ -311,6 +311,18 @@ void CSound_Manager::Seek_SoundCue(uint64_t handle, uint32_t ageMs)
 		else found->second->setPosition(ageMs, FMOD_TIMEUNIT_MS);
 	}
 }
+bool_t CSound_Manager::Synchronize_SoundCue(uint64_t handle, uint32_t ageMs, uint32_t maxDriftMs)
+{
+    const auto found = m_CueChannels.find(handle);
+    if (found == m_CueChannels.end()) return false;
+    bool playing = false;
+    unsigned int positionMs = 0u;
+    if (found->second->isPlaying(&playing) != FMOD_OK || !playing ||
+        found->second->getPosition(&positionMs, FMOD_TIMEUNIT_MS) != FMOD_OK) return false;
+    const auto driftMs = positionMs > ageMs ? positionMs - ageMs : ageMs - positionMs;
+    if (driftMs > maxDriftMs) Seek_SoundCue(handle, ageMs);
+    return Is_SoundCueActive(handle);
+}
 void CSound_Manager::Stop_SoundCue(uint64_t handle)
 {
 	const auto found = m_CueChannels.find(handle);

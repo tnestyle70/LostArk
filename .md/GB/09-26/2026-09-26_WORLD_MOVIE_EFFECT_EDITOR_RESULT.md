@@ -443,3 +443,201 @@ Client/Server를 종료한 것을 확인하고 Product Debug compile/link/deploy
 원래 저장소의 `out/BuildPipeline/runs/20260928T220610990Z-debug-product.json`이 PASS 근거다.
 새 실행 파일에 Mute/Unmute·Delete/Restore 기능이 포함된다. 에이전트가 실행하거나 회색
 항목을 임의 삭제하지 않았으며 사용자의 실제 화면에서 대상 선택과 비교가 남는다.
+
+## G14. 창술사·워로드 사운드 동기화와 Sound source-in (2026-09-29)
+
+### 원본과 현재 소비자 대조
+
+| 클래스 | 원본/현재 AkEvent 시작 | Movie2.7초의 source 시각 | 조사 결과 |
+|---|---:|---:|---|
+| 창술사 |0ms|1807.82ms|PCM 첫 유효 sample1.293ms, 당시 실제 회전 변화90채널|
+| 워로드 |300ms|1862.79ms|PCM 첫 유효 sample53.923ms, 당시 실제 회전 변화70채널|
+| 도화가 |0ms|2442.46ms|사용자 정상 판정, 기존두 stem과 slomo 보존|
+| 차원술사 |100ms|2700ms|사용자 정상 판정, 기존두 stem과 slomo 보존|
+
+네 원본 Wwise Play에는 추가 DelayTime이 없다. 창술사/워로드 PCM 길이는8492.517ms/
+9371.202ms로 초 단위 선두 무음은 없다. 원본 finite clip의 마지막 자세 유지도 확인했다.
+창술사 slotC의 계산상 끝 source2498.745ms와 설치 torso/hand의2450~2490ms, 워로드
+slotA의 끝2217.055ms와 설치60Hz sample2233.333ms가 부합한다. 따라서2.7초를 고정
+보정값으로 저장하거나 animation 앞 구간을 임의 추가하지 않았다. 이는 전체 시각적
+동등성 판정이 아니라 해당 누락 가설에 대한 원본/설치 수치 대조다.
+
+### 수정한 실제 결함
+
+Movie Update는 긴 frame을250ms까지만 진행하고 Play 직후 한 frame을 defer한다. FMOD는
+wall time을 계속 진행하지만 기존 World Apply_Sounds는 살아 있는 handle의 pitch만 바꿨다.
+원본 slomo가 .28/.32인 구간에서는 긴 stall의 source delta가250ms보다 작아 기존 seek
+조건으로도 잡히지 않는다. 사운드와 시각 clock이 벌어진 채 유지될 수 있는 결함이다.
+
+Engine Synchronize_SoundCue가 실제 cursor를 expected sourceStartMs+age와 비교하며100ms
+초과만 seek한다. 명시적 external Movie clock만 사용한다. 소리만 먼저 끝났는데 Movie는
+box 안이면 현재 위치에서 새 채널을 준비한다. 최초부터 unavailable인handle0은 반복 로드하지
+않는다. 일반 World/SFX의 독립 재생, 기존 음원/시작 시각/슬로모 데이터는 보존했다.
+
+기존 Sound 왼쪽 edge는 startMs/durationMs만 바꿨으므로 음원 앞부분 trim이 아니었다. optional
+sourceStartMs를 reader/writer/validation/Map·Composition publisher/실제 WAV offset에 연결했다.
+왼쪽 edge는 source-in과 시작을 함께 바꾸고 body 이동은 source-in을 보존한다. Box Detail의
+Audio source in (ms)로 timeline 시작은 유지한 채 음원 앞부분을 건너뛸 수 있다. 음원 범위 밖은
+기존 초안을 보존하며 거절한다. 이번 데이터에는 임의 source-in 값을 넣지 않았다.
+
+### 검증·적용 상태
+
+- Engine 정식 Debug Build exit0, 실제 Engine.dll/lib20:20:29 갱신. 첫ClCompile;Link 명령은
+  OBJ 컴파일만 수행하여 이후 정상Build로 실링크를 확인했다. 증거는
+  out/MovieSoundSync20260929/engine-product-build.log이다.
+- SDK 갱신과 Client ClCompile exit0. client-final-compile.log에 기록했다. 기존 C4819 경고는
+  남았으며 C++ 인코딩과 개행은 유지했다. 새 C++ 파일/project 등록은 없다.
+- Composition World Sound focused tests2개 PASS. source-in 기본0/저장값 보존, 음수·소수·
+  bool·초과 범위 거부를 검사했다.
+- 실제 Product OBJ·FMOD 채널 fixture와 최종 Client 설치, 가디언 데이터 게시 결과는 후속
+  검증 아래에 기록한다. 현재 실행 중 Client는 종료하거나 조작하지 않았다.
+
+가디언 사운드·창술사 잔디의 원본/후보/게시 증거는 같은 작업의
+09-25 FOUR_CLASS_SELECTION_MOVIES RESULT 후속 항목과 연결한다. 사용자의 실제 청감과
+잔디 화면 판정은 자동 검사와 구분한다.
+
+### G14 실제 Product 사운드 검사
+
+실제 변경 Client OBJ와 새 Engine/Bin/Debug/Engine.dll을 연결한 headless FMOD fixture에서
+51 assertions PASS, exit0을 확인했다. 실제 DLL 경로도 검사했으며 채널은 master mute/paused로
+검증했다. source-in 저장 왕복과 malformed rollback,2700ms ahead 동기화,50/100ms 보존과
+101ms seek, 뒤처진 cursor·종료된 채널 복구, pause/single voice, 일반 World 비개입, loop/end,
+Clear ownership reset을 실행했다. 증거는 out/MovieSoundSync20260929/run.log 및
+product-inputs.json이다. 실제 청취·GPU 장면을 검증한 것은 아니다.
+
+Guardian 후보2 WAV와 soundTracks를 최신 revision3에서4로 병합하고 WorldSequences
+Publish를 완료했다. 나머지 JSON 바이트/카메라 값은 보존했으며 Runtime SHA256은
+ed4e013958dac79c90418b227c72af50228ad31ba29153461e7b931c740eac21이다.
+원본2stem과400ms fade, byte patch/atomic install 및 GBResources 동일 복사 증거는
+out/ClassMovieSoundRestore20260929/guardian의 candidate/validation.json, install-receipt.json,
+publish.log에 기록했다. 후속 Artist 교정 게시에 따라 문서 revision/hash는 추가 변경될 수 있다.
+
+## G15. 자유 시점에서 카메라 키 포즈 가져오기
+
+Sequence Camera Tool의 Use free cam pos가 선택key의 Eye/LookAt/Up만 현재 자유 카메라의
+View 역행렬에서 가져온다. MainApp typed callback은 현재 CharacterSelect, free/follow 및
+presentation override 상태를 확인한다. 저장된 Movie sample을 대신 쓰지 않는다. model-relative
+row는 world pose를 잘못 넣지 않도록 버튼을 비활성화한다. time/ID/FOV/cut/easing/보간은 보존한다.
+
+키 개수를 표시하며 기존 Delete key로 중간 키를 줄일 수 있다. 첫 키 보호와 Revert는 유지하고
+사용자의1003개 키를 자동 삭제하지 않았다. 키를 이동하거나 삭제하면 인접 구간의 경로가
+달라지지만 기존 sampler와 보간 설정은 그대로 사용한다. ALT V shared editor 호출도 유지했다.
+
+실제 sampler CPU fixture41개 PASS: 정상 pose교체,8종 비정상basis의 atomic rejection,
+missing key/up 개수 거부,시간/FOV축/Linear·Catmull/easing/cut/endpoint보존,중간키삭제와첫키보호.
+변경3TU 및ALT V호출부를 격리 ClCompile exit0으로 검사했다. out/CameraKeyCapture20260929의
+validation.json, test.log, ui-compile.log가 증거이며 제품 UI를 실행한 검증은 아니다.
+
+## G16. 다섯 클래스의 PCM clipping과 원본 mix bus 복구
+
+도화가의 두 음원은 원본 Layer의 음성과 효과음이며 중복 재생 버그가 아니다. 원본 WEM을
+float로 다시 decode하면 peak1.2301/1.1431인데 기존 PCM16 변환에서 각각5654/2270샘플이
+잘려 있었다. 두 원본의 합은2.156918이다. 음원을 하나 지우거나 기존 clipped WAV를 float로
+바꾸는 것으로는 해결되지 않는다.
+
+원본 INIT에는 bus1635194334→393239870(-2dB)→3803692087(-2dB)와 활성 Peak Limiter가
+있다. threshold-5dB,ratio10,lookahead15ms,release100ms,output+3dB,stereo-link를 확인했다.
+다섯 클래스 모두 같은 bus를 사용하고 추가 local gain/pitch/delay/RTPC/state는 없으며 Guardian
+Play의 fade400ms만 적용한다. Tools/SoundPipeline/restore_layered_movie_audio.py와 recipe5개가
+원본 HIRC·INIT·WEM 해시를 고정하고 원본 float에서 다시 처리한다.
+
+동시 stem 합으로 계산한 공통 envelope를 각 stem에 분배하거나 기존 단일 mix로 저장했다.
+첫 샘플 위치와 frame 수, Sound stable ID·개수·start/duration/source-in/volume을 보존했다.
+Lance는 기존 파일 끝의 무음1frame(0.0227ms)만 명시적으로 유지했다. 상대 gain/time이 바뀐
+저장본은 자동 덮어쓰지 않는다. 새 asset ID8개를 설치하고 원래 WAV는 보존했다.
+
+| 클래스 | 유지한 Sound 박스 | 복원 후 합산 peak | 잘린 샘플 |
+|---|---:|---:|---:|
+| Artist |2|0.867728|0|
+| GuardianKnight |2|0.861227|0|
+| DimensionMaster |2|0.821700|0|
+| LanceMaster |1|0.864067|0|
+| Warlord |1|0.841235|0|
+
+이 처리는 원본 파라미터에 맞춘 offline 근사다. 실제 Wwise DSP의 bit-identical 결과, 다른
+게임 소리까지 포함한 master mix, 동적 상태를 복원했다고 주장하지 않는다. source-time envelope는
+Movie slowmo와 함께 늘어나므로 live wall-clock limiter와 다르다. 이후 두 박스의 상대 시간이나
+gain을 변경하면 envelope를 다시 검토해야 한다. 별도 runtime 오디오 경로와 전역 볼륨 변경은 없다.
+
+Python focused6개, 모든 sample의 유한성·공통 envelope·lookahead/release·끝 경계·박스 보존,
+프로젝트/GBResources8개 SHA 일치를 확인했다. FMOD NOSOUND로8개 모두 stereo32-bit PCMFloat와
+frames×8bytes를 읽었다. Product 사운드 fixture는 Artist float 채널의 admission/2700ms paused
+seek/.24pitch/두 voice까지 추가하여 총56 PASS다. 원본과 수치 증거는
+out/MovieSoundSync20260929/{artist,guardian,dimensionmaster,lancemaster,warlord}-restored 및
+all-class-installed-validation.json, run.log에 있다. 실제 청감 판정은 사용자가 한다.
+
+최종 WorldSequences Publish는 source/runtime SHA256
+6b8cac11b11face85bb07ab8f4b2876f7b9d761c965317f6846f0c51bb689bf4로 완료했다.
+통합 게시 로그는 out/MovieRaidFinal20260929/world-movie-final-publish.log다.
+
+
+## G17. Movie 1회 재생 후 마지막 장면 유지 (2026-09-29)
+
+SCENE.repeatMovie(optional bool, 생략=true)를 실제 parser와 저작 owner에 연결했다. 현재 Guardian,
+Artist, DimensionMaster, LanceMaster, Warlord의 repeatMovie=false만 최신 카메라 문서에 추가했다.
+원자 교체와 백업/hash 검증, Intro/Loop 내부의 키·시각·clock·Effect 불변은
+out/MovieRepeatHold20260929/policy-install-receipt.json에 기록했다. 기존 반복 데이터는 보존했다.
+
+Update는 마지막 유효 source sample을 유지하고 completedHold에 진입한다. exact duration은
+World actor를 wrap/hide할 수 있으므로 기존 float nextafter 경계를 사용한다. 모델/카메라/Effect
+owner를 해제하지 않으며 F6 inspection은 계속 처리한다. 완료 뒤 Resume는 차단하고 새 Play/Seek와
+Stop에서 완료 상태를 초기화한다. Effect selection 시작 실패 후 rollback에서도 기존 완료 상태와
+사운드 종료를 복원한다. Save movie의 기존 Stop 동작은 유지하여 저장 뒤 Play All로 확인한다.
+
+WorldSequencePlayer.Finish_Sounds는 해당 owner의 active/retired 채널만 종료하며 연속 샘플의
+재생 부활을 막는다. 별도 Product C++/FMOD NOSOUND 검사21개가 PASS다. 무관한 채널 보존,
+실패/빈 핸들, tail-only, 반복 완료 호출, 같은 sample/+10ms 연속seek와 명시적 불연속seek를 확인했다.
+검증은 out/MovieFinishSound20260929/{validation.json,test.log}를 따른다.
+
+실제 Product parser와 camera sampler로5클래스×Intro/Loop10phase의 마지막 wall/source 경계,
+마지막 cut 유효성,120회 고정 위치·시선·FOV·Up 재샘플, legacy repeat=true 및 잘못된 bool 거부와
+실패 시 기존 scenes 보존을 확인했다. probe-validation.json에는 사용한 실제OBJ/소스/data SHA가
+있다. 이 CPU 검사는 실제 Client의 매frame Tick나 GPU 화면 검증을 대신하지 않는다.
+
+처음엔 실행 중 Debug EXE를 보존하기 위해 별도 OutDir를 사용했다. 변경하지 않은 shader 재컴파일은
+해당 작업의 compiler만 중단했으며, 별도 compile/link에서 C++ compile은 성공하고 Shared.lib의
+OutDir 전파 경로 때문에 링크가 실패했다. 사용자 EXE 종료 후 정상 Product 빌드로 전환했다.
+Debug Product compile/link/deploy는20260929T123342593Z-debug-product.json PASS이며 SkipBuild=false다.
+검사 당시 추가 Resources221개는 Desktop/GBResources와 bytes/hash가 모두 일치했고 이번 hold수정은
+새 리소스를 추가하지 않았다. resource-mirror-final.json을 따른다.
+
+최종 Release Product compile/link/deploy도20260929T123546398Z-release-product.json PASS이며
+SkipBuild=false다. 두 구성 모두 Engine/Shared/Server/Client를 표준 Product 경로로 확인했다.
+기존 컴파일 경고와 DirectXTK PDB 부재 경고는 남아 있으나 최종 빌드 오류는 없다.
+사용자가 마지막 저장한 SL00 WorldSequences를 다시 게시했으며 source/runtime SHA256은
+29d4b78ec53533c0e6601eb5ce5bf0f4e2aed0c6e841a066a480a29714387b8b로 일치한다.
+추가 잔디 catalog의 잘못된 UV24행도 별도 Area publisher로 교정·게시했고 실제 Client CPU loader의
+source/runtime161개 admission을 확인했다. 세부 증거는09-25 FOUR_CLASS RESULT G13과
+out/LanceGrassCatalogFix20260929/install-receipt.json이다. Client 화면은 자율 실행하지 않았다.
+
+## G18. 사용자 재검증 후 첫 주요 연출의 종료 경계 교정
+
+G17 완료 보고 후 사용자는 뒤쪽 Camera box로 여전히 이동하며 잔디도 보이지 않는다고 확인했다.
+현재 프로세스는21:33:39 빌드된 Debug Client를21:43:09 시작했고, EXE 내부에 G17 완료 처리와
+저장본의 다섯 repeatMovie=false가 있었다. 단순 EXE 미배포가 아니었다. G17은 전체 Intro의 끝을
+종료로 잘못 해석했다. 사용자가 요청한 경계는 첫 주요 연출 Camera box 끝이다.
+
+SCENE.holdAfterCameraId가 첫 Intro camera stable ID를 참조하고 실제 Update가 해당 box의 종료를
+source clock에서 Movie clock으로 역변환한다. 종료 직전 float source sample을 먼저 선택하여
+double epsilon의 float 반올림으로 다음 cut에 진입하는 것도 막는다. paused Seek는 자동 완료를
+하지 않아 뒤쪽 box를 계속 편집할 수 있다. Repeat ON과 명시적 Loop, 필드 없는 legacy는 기존
+종료 정책을 사용한다. 소스 구현과 최종 EXE 설치·검증 결과는 아래 완료 기록에서 구분한다.
+
+실제 Product Update→Sample_Frame→Sample_Camera CPU fixture711개를 통과했다. 기존 다섯 클래스의
+camera/clock을 사용하고 GPU 생성이 필요한 world/material/light/effect만 분리했다. 첫 cut 이전과
+교차 직후의 camera ID, 완료 후120회 Update의 동일 clock/pose, 뒤쪽 paused Seek 보존, Resume,
+Repeat ON, legacy 전체 종료, 명시 Loop 종료와 다른 stable marker를 검사했다. 잘못된 참조6종의
+transactional 거부도 확인했다. test 전용 DLL PATH에 PhysX를 누락한 최초 loader 종료는 경로를
+교정한 뒤 재실행해 해결했으며 제품 오류와 구분한다. 최종 probe-validation.json은 exit0이다.
+
+1배속 Movie clock의 첫 연출 종료는 창술사7695.059ms, 워로드8163.213ms, 도화가8596.199ms,
+가디언8733.171ms, 차원술사9994.457ms다. camera sampler는 정수ms를 소비하므로 해당 source 끝의
+1ms 전 샘플을 유지하고 World/Effect에는 직전 float source sample이 전달된다.
+최신 저장본에 다섯 holdAfterCameraId만 hash 재확인·백업·원자 교체로 설치했다. 나머지 JSON 필드는
+동일하며 설치 SHA256은 e36691f9bfa2800c711bf93051faa7e1a77daf881aa65eaa38cb43bc28a8c053이다.
+검증·설치 기록은 out/MovieFirstCutHold20260929/{probe-validation,install-receipt,runtime-path-audit}.json이다.
+
+최종 Release Product build/deploy는20260929T131955762Z-release-product.json PASS(SkipBuild=false)다.
+Client.exe는22:19:53 생성됐고 변경된 C++ OBJ10개·CSO30개·EXE1개가 갱신됐다. 설치된 Release
+Binary/MapInstance 및 Binary28개 변형을 실제 CShader로 생성해 wind 입력9개, Clone pass와 reset을
+검사했다. 이전 E_FAIL은 두 경로 모두 S_OK로 바뀌었다. 로그는 installed-release-shader-check.log다.

@@ -905,6 +905,7 @@ struct NATIVE_RIBBON_CURVE_SETTINGS final
 {
     bool enabled = false;
     uint32_t maxSubdivisions = 25u;
+    uint32_t sheetCount = 1u;
     float tangentTessellationScalar = 0.f;
 };
 
@@ -929,6 +930,8 @@ NATIVE_RIBBON_CURVE_SETTINGS Native_RibbonCurveSettings(
                 result.enabled = result.enabled || literal.bBoolean;
             if (literal.eKind != Client::EFFECT_SOURCE_LITERAL_KIND::NUMBER ||
                 !std::isfinite(literal.fNumber)) continue;
+            if (literal.strPropertyPath == "sheetspertrail")
+                result.sheetCount = static_cast<uint32_t>(std::clamp(literal.fNumber, 1.0, 8.0));
             if (literal.strPropertyPath == "maxtessellationbetweenparticles")
                 result.maxSubdivisions = static_cast<uint32_t>(std::clamp(literal.fNumber, 1.0, 25.0));
             if (literal.strPropertyPath == "tangenttessellationscalar")
@@ -1270,6 +1273,9 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				TessellatedPoints.data(), TessellatedPoints.size());
 		}
 
+        // Submit each source sheet through the existing bounded trail buffer.
+        for (uint32_t iSheet = 0u; iSheet < Curve.sheetCount; ++iSheet)
+        {
 		std::vector<Engine::VTXEFFECT_TRAIL>& Vertices = m_TrailVertexScratch;
 		std::vector<uint32_t>& Indices = m_TrailIndexScratch;
 		Vertices.clear();
@@ -1425,7 +1431,12 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				Trail.pElement->Detail.Trail.fStartWidth +
 				(Trail.pElement->Detail.Trail.fEndWidth -
 					Trail.pElement->Detail.Trail.fStartWidth) * Age;
-			const vector_t HalfSide = Side * (Width * 0.5f);
+            vector_t SheetAxis = XMVectorZero();
+            if (Curve.sheetCount > 1u && !Normalize_Safe(Next - Previous, SheetAxis))
+            {
+                bPreviousCenterlinePair = false;
+                continue;
+            }
 			const f32_t U = fTilingDistance > 0.f ?
 				Point.fCumulativeDistance / fTilingDistance :
 				static_cast<f32_t>(iPoint);
@@ -1435,17 +1446,26 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				(bTypedArtistRibbon ?
 					float4_t(1.f, 1.f, 1.f, Point.vSourceColor.w) :
 					float4_t(1.f, 1.f, 1.f, 1.f - Age));
-			Vertices.push_back({ To_Float3(Position - HalfSide),
-				float2_t(U, 0.f), Color, Point.vDynamicParameter });
-			Vertices.push_back({ To_Float3(Position + HalfSide),
-				float2_t(U, 1.f), Color, Point.vDynamicParameter });
-			if (bPreviousCenterlinePair)
-			{
-				const uint32_t Base = static_cast<uint32_t>(Vertices.size()) - 4u;
-				Indices.insert(Indices.end(),
-					{ Base, Base + 1u, Base + 2u,
-					  Base + 1u, Base + 3u, Base + 2u });
-			}
+            // A strip repeats after pi radians; each sheet keeps its own indices.
+            {
+                const uint32_t sheet = iSheet;
+                const vector_t SheetSide = sheet == 0u ? Side : XMVector3Rotate(Side,
+                    XMQuaternionRotationNormal(SheetAxis,
+                        XM_PI * static_cast<float>(sheet) / static_cast<float>(Curve.sheetCount)));
+                const vector_t HalfSide = SheetSide * (Width * 0.5f);
+                const uint32_t Current = static_cast<uint32_t>(Vertices.size());
+                Vertices.push_back({ To_Float3(Position - HalfSide),
+                    float2_t(U, 0.f), Color, Point.vDynamicParameter });
+                Vertices.push_back({ To_Float3(Position + HalfSide),
+                    float2_t(U, 1.f), Color, Point.vDynamicParameter });
+                if (bPreviousCenterlinePair)
+                {
+                    const uint32_t PreviousPair = Current - 2u;
+                    Indices.insert(Indices.end(),
+                        { PreviousPair, PreviousPair + 1u, Current,
+                          PreviousPair + 1u, Current + 1u, Current });
+                }
+            }
 			PreviousSide = Side;
 			bPreviousCenterlinePair = true;
 		}
@@ -1587,6 +1607,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 			Vertices.data(), Vertices.size()));
 #endif
 		bSubmitted = true;
+        }
 	}
 	return bSubmitted ? S_OK : S_FALSE;
 }

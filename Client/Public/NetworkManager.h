@@ -326,9 +326,7 @@ public:
 	/* A consumable used from a quick slot. The Server owns the heal/decrement;
 	the answer arrives the same way -- an S2C_INVENTORY_SNAPSHOT replication
 	event, plus the next S2C_WORLD_SNAPSHOT tick for the new HP. */
-	bool Send_UseItem(
-		std::uint32_t requestSequence,
-		std::string_view itemId);
+	bool Send_UseItem(const LostArk::Shared::C2S_USE_ITEM& request);
 	/* NPC shop basket; the Server answers with an S2C_INVENTORY_SNAPSHOT. */
 	bool Send_BuyItems(
 		std::uint32_t requestSequence,

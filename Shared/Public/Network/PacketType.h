@@ -118,7 +118,8 @@ namespace LostArk::Shared
 	// 120 combines Valtan anchors/pickups, NPC shop silver/gold, Waterpang and live numeric balance.
 	// Neither independently published 118 nor 119 peers support this combined layout.
 	// 121 carries each Mario entrant's required colour and matching-ball progress.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 121;
+	// 122 adds Server-validated ground-target intent to the existing item-use command.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 122;
 
 	enum class WORLD_ID : std::uint16_t
 	{

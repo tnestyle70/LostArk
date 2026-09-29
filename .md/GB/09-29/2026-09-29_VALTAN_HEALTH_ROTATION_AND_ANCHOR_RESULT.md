@@ -365,3 +365,52 @@ snapshot의 landing/sequence/revision/start tick 일치와 airborne/LAND/RECOVER
 
 변경 diff check PASS. 이 하위 작업에서 재빌드·실행하지 않았으며 root가 기존
 `--valtan-presentation-contract-test`의 Debug/Release 결과를 통합 RESULT에 기록한다.
+
+## G22. 확대된 착지 경고와 돌진 수명 재검토
+
+사용자가 저장한 AIRBORNE7984ms, 경고 XZ1.399999976 배율과 playbackOffset0을
+보존했다. 기존 지름17.5m×1.4=24.5m에 맞춰 LAND 기본 shape와
+hit.valtan.high-jump.final-landing contact 반경만8.75→12.25m로 변경했다.
+201ms, 최대HP50%, forcePush/밀치기와30m 공중 상승·중앙 착지는 유지한다.
+canonical writer lock 안에서 최신 두 split 파일을 읽고 후보 strict join 및8개
+projection을 검증한 뒤 hash 재확인·백업·원자 교체했다. 결과와 원문은
+out/RaidPatternReview20260929/landing-radius.json 및 *.before.json에 있다.
+
+STRUGGLING의 사자후는 누락이 아니었다. STEP10+900ms의CIRCLE100m는
+STEP09에서 시작해 종료 뒤900ms까지 유지되는 노란 원 지름200m와 대응한다.
+STEP08+1200ms에 생성한 네 돌의 coverRadius1.5m는 사자후를 차단하고
+생성4133ms 뒤 각 돌의CIRCLE3m 폭발이 이어진다. 같은 피해를 다시 추가하지 않았다.
+저장본·bootstrap·Server ApplyPatternHit와 cover guard를 대조한 상세는
+out/RaidPatternReview20260929/struggling-audit.md다.
+
+Client/Private/Valtan.cpp에서 travelling charge aura의 source trim 고정 종료를
+현재 CHARGE 단계 시간으로 바꿨다. wall GROGGY뿐 아니라 정상 완료·패턴 교체·죽음의
+승인 action edge에서도 해당 owner/actionStart의 pending 및 tail을 끝낸다.
+다른 effect의 ONCE tail은 유지한다. source 10초 수명과0.6 재생속도,318.333ms
+시작은 보존했다. 현1500ms charge에서 사용 source 시간은709ms다.
+독립 읽기 검토에서 시간/seek/owner/늦은 snapshot 경계의 추가 결함은 없었다.
+
+고정4방향의 NONE aim과 사전 자동회전 제외, 발악 내부 STEP04 고정 basis,
+phase3 primary 실제 DEAD만 ending, finale portalInterval0과 random ghost5000ms,
+버러지 자막 두 개의 source/published UPPER를 재확인했다. 기존 구현을 다시 바꾸지 않았다.
+
+### G22 실행한 검증
+
+- stage contacts6개, finale interval5개, stage aim3개 Python 검사 통과.
+- presentation generation13개 검사, V2 authored259/bindings113/groups60/independent66
+  및 textures151 검증 통과.
+- 실제 Client Stop 함수/시간식/consumer reader를 사용하는 focused native41개와
+  encounter rejection/rollback104개 통과. GPU/실제 Client 실행 검사가 아니다.
+- Release Engine/Shared/Server/Client4개 순차 정상 Build 통과. 실행 중 Debug 때문에
+  runner의 모든configuration 차단 preflight는 실패했고 같은 MSBuild/제품 순서를
+  직접 실행했다. 로그는out/RaidPatternReview20260929/release-{Project}.log다.
+- 최신 게시본으로 Release --valtan-lifecycle-contract-test failures0.
+  Debug --valtan-presentation-contract-test failures0. Release의 동일 presentation CLI는
+  assertion 제외 구성이라 출력0을 별도 기능 증거로 세지 않았다.
+- 정식 Valtan PublishV2, Composition Validate/Publish, Gameplay Publish 완료.
+  generation5ba6db61b2c2d86d9311396954e86ca985cc14837eae35a1412dab9216d12ad6의
+ 174개 artifact hash/bytes와9개 Product projection이 일치했다.
+
+뒤이어 요청한 마리오 수정까지 포함한 최종 Debug/Release와 게시 상태는
+같은 날짜 RAID_MOVIE_INTEGRATION_RESULT의 추가 절에 통합한다.
+실제4클라의 화면·소리·입력 판정은 사용자 확인이며 이 작업이 실행하지 않았다.

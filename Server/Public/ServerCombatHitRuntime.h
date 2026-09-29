@@ -24,6 +24,7 @@ namespace LostArk::Server
 		LostArk::Shared::SKILL_ID iSkillId = LostArk::Shared::INVALID_SKILL_ID;
 		std::uint32_t iRawDamage = 0u;
 		std::uint32_t iStaggerDamage = 0u;
+		std::uint32_t iStaggerMaximumDivisor = 0u;
 		std::uint32_t iPartDamage = 0u;
 		std::uint32_t iCounterPower = 0u;
 		// Resolved from the admitted skill's catalog slot, never a client claim.

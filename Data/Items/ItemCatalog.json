@@ -9,9 +9,10 @@
     { "itemId": "MATERIAL_GUARDIAN_STONE", "displayName": "수호석", "maxStack": 9999, "iconPath": "", "healPercent": 0, "category": "use" },
     { "itemId": "MATERIAL_LEAPSTONE_TIER1", "displayName": "1단계 도약돌", "maxStack": 9999, "iconPath": "", "healPercent": 0, "category": "use" },
     { "itemId": "CURRENCY_GOLD", "displayName": "골드", "maxStack": 999999999, "iconPath": "", "healPercent": 0, "category": "use" },
-    { "itemId": "BATTLE_DESTRUCTION_BOMB", "displayName": "파괴 폭탄", "maxStack": 9999, "iconPath": "UI/Items/Common/battle_destruction_bomb.png", "healPercent": 0, "category": "use", "grade": "rare" },
-    { "itemId": "BATTLE_WHIRLWIND_GRENADE", "displayName": "회오리 수류탄", "maxStack": 9999, "iconPath": "UI/Items/Common/battle_whirlwind_grenade.png", "healPercent": 0, "category": "use", "grade": "rare" },
-    { "itemId": "BATTLE_HOLY_CHARM", "displayName": "성스러운 부적", "maxStack": 9999, "iconPath": "UI/Items/Common/battle_holy_charm.png", "healPercent": 0, "category": "use", "grade": "rare" },
+    {"itemId": "BATTLE_DESTRUCTION_BOMB", "displayName": "파괴 폭탄", "maxStack": 9999, "iconPath": "UI/Items/Common/battle_destruction_bomb.png", "healPercent": 0, "category": "use", "grade": "rare", "battleUse": {"kind": "DESTRUCTION", "skillId": 32141, "damageRatePercent": 100, "partDamage": 3, "staggerDamage": 0, "rangeCm": 700, "radiusCm": 300, "durationMs": 0, "cooldownMs": 30000, "projectileSpeedCmPerSecond": 1000, "projectileArcHeightCm": 150, "projectileLaunchHeightCm": 100, "staggerMaximumDivisor": 0}},
+    {"itemId": "BATTLE_WHIRLWIND_GRENADE", "displayName": "회오리 수류탄", "maxStack": 9999, "iconPath": "UI/Items/Common/battle_whirlwind_grenade.png", "healPercent": 0, "category": "use", "grade": "rare", "battleUse": {"kind": "WHIRLWIND", "skillId": 32311, "damageRatePercent": 0, "partDamage": 0, "staggerDamage": 0, "rangeCm": 700, "radiusCm": 300, "durationMs": 0, "cooldownMs": 30000, "projectileSpeedCmPerSecond": 1000, "projectileArcHeightCm": 150, "projectileLaunchHeightCm": 100, "staggerMaximumDivisor": 3}},
+    {"itemId": "BATTLE_HOLY_CHARM", "displayName": "성스러운 부적", "maxStack": 9999, "iconPath": "UI/Items/Common/battle_holy_charm.png", "healPercent": 0, "category": "use", "grade": "rare", "battleUse": {"kind": "CLEANSE", "skillId": 32282, "damageRatePercent": 0, "partDamage": 0, "staggerDamage": 0, "rangeCm": 500, "radiusCm": 500, "durationMs": 3000, "cooldownMs": 30000, "projectileSpeedCmPerSecond": 0, "projectileArcHeightCm": 0, "projectileLaunchHeightCm": 0, "staggerMaximumDivisor": 0}},
+    {"itemId": "BATTLE_TIME_STOP_POTION", "displayName": "시간 정지 물약", "maxStack": 9999, "iconPath": "UI/Items/Common/battle_time_stop_potion.png", "healPercent": 0, "category": "use", "grade": "epic", "battleUse": {"kind": "TIME_STOP", "skillId": 33500, "damageRatePercent": 0, "partDamage": 0, "staggerDamage": 0, "rangeCm": 0, "radiusCm": 0, "durationMs": 3000, "cooldownMs": 30000, "projectileSpeedCmPerSecond": 0, "projectileArcHeightCm": 0, "projectileLaunchHeightCm": 0, "staggerMaximumDivisor": 0}},
     { "itemId": "EQUIP_DESTINYBLAZE_HEAD", "displayName": "운명의 업화 머리장식", "maxStack": 1, "iconPath": "UI/Items/LanceMaster/destinyblaze_helmet.png", "healPercent": 0, "category": "combat", "equipSlot": "helmet", "characterClass": "LanceMaster", "grade": "legend" },
     { "itemId": "EQUIP_DESTINYBLAZE_SHOULDER", "displayName": "운명의 업화 어깨장식", "maxStack": 1, "iconPath": "UI/Items/LanceMaster/destinyblaze_shoulder.png", "healPercent": 0, "category": "combat", "equipSlot": "shoulder", "characterClass": "LanceMaster", "grade": "legend" },
     { "itemId": "EQUIP_DESTINYBLAZE_TOP", "displayName": "운명의 업화 상의", "maxStack": 1, "iconPath": "UI/Items/LanceMaster/destinyblaze_top.png", "healPercent": 0, "category": "combat", "equipSlot": "top", "characterClass": "LanceMaster", "grade": "legend" },
@@ -70,7 +71,8 @@
       "items": [
         { "itemId": "BATTLE_DESTRUCTION_BOMB", "currencyId": "SILVER", "price": 161 },
         { "itemId": "BATTLE_WHIRLWIND_GRENADE", "currencyId": "SILVER", "price": 161 },
-        { "itemId": "BATTLE_HOLY_CHARM", "currencyId": "SILVER", "price": 161 }
+        { "itemId": "BATTLE_HOLY_CHARM", "currencyId": "SILVER", "price": 161 },
+        { "itemId": "BATTLE_TIME_STOP_POTION", "currencyId": "SILVER", "price": 161 }
       ]
     }
   ]

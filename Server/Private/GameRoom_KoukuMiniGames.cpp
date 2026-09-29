@@ -185,8 +185,24 @@ void LostArk::Server::CGameRoom::Update_MarioBombContacts(
             hit.fPushDirectionZ = dz / static_cast<float>(length);
             hit.fPushRangeM = 4.f; hit.iPushMs = 1000u; hit.iServerTick = updateTick;
             Configure_MarioHazardLaunch(hit);
-            (void)CServerCombatHitRuntime::Apply_WorldToPlayer(player, hit, m_GameplayCatalog, m_TickDamageEvents);
+            const auto result = CServerCombatHitRuntime::Apply_WorldToPlayer(
+                player, hit, m_GameplayCatalog, m_TickDamageEvents);
+            if (result == SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED) continue;
             player.MarioBombHitBirths[identity] = birth;
+            // Each entrant owns this contact ledger. Reliable STOP carries the
+            // exact deterministic generation even when its damage was absorbed
+            // or a transient damage snapshot is coalesced before presentation.
+            S2C_WORLD_SEQUENCE_PLAY stopped;
+            stopped.eOperation = WORLD_SEQUENCE_OPERATION::STOP;
+            stopped.strSequenceInstanceId = Bomb::InstanceId(binding, slot);
+            stopped.iStartTick = Bomb::BirthTick(phase, birth, SERVER_TICK_HZ);
+            stopped.iServerTick = updateTick;
+            CPacketWriter writer;
+            if (!stopped.iStartTick || !Write_Message(writer, stopped))
+                Mark_RuntimeFailure("mario.bomb.contact-stop");
+            else if (const auto session = Find_Session(player.iSessionId);
+                session && !session->Send_Frame(PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY, writer.Get_Buffer()))
+                session->Request_Close();
             if (!player.iCurrentHp) return;
         }
     }

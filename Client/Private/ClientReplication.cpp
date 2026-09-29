@@ -506,7 +506,9 @@ bool Client::CClientReplication::Update()
 		case CLIENT_REPLICATION_EVENT_TYPE::WORLD_SEQUENCE_PLAY:
 			/* Queued rather than played here: the level owns the sequence
 			   player and drains this on its own update. */
-			m_PendingWorldSequencePlays.push_back(event.WorldSequencePlay);
+			// Battle-item recipient effects follow replicated buff expiry, including late joins.
+			if (!event.WorldSequencePlay.strSequenceInstanceId.starts_with("world.item.use."))
+				m_PendingWorldSequencePlays.push_back(event.WorldSequencePlay);
 			break;
 		}
 	}
@@ -2424,6 +2426,7 @@ bool Client::CClientReplication::Commit_PlayerSpawn(
 bool Client::CClientReplication::Apply_Despawn(
 	const LostArk::Shared::S2C_PLAYER_DESPAWNED& despawned)
 {
+	Clear_BattleItemProtection(despawned.iNetEntityId);
 	CCombatHUDViewModel::Get().Remove_WorldHealthBar(despawned.iNetEntityId);
 	m_PendingPlayerSpawns.erase(despawned.iNetEntityId);
 	m_PendingPlayerPresentations.erase(despawned.iNetEntityId);
@@ -3261,6 +3264,14 @@ bool Client::CClientReplication::Apply_CombatObjectSpawn(
 	const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned)
 {
 	using namespace LostArk::Shared;
+	if (Is_BattleItemProjectile(spawned.strCombatObjectArchetypeId))
+	{
+		if (spawned.strClientVisualId != spawned.strCombatObjectArchetypeId ||
+			(!m_Registry.Find_Record(spawned.iSourceNetEntityId) &&
+			 !m_PendingPlayerSpawns.contains(spawned.iSourceNetEntityId))) return false;
+		COMBAT_OBJECT_PRESENTATION_SINK sink{ *this };
+		return m_CombatObjectProjectionRuntime.Apply_Spawn(spawned, sink, m_strPendingPresentationFailure);
+	}
 	const auto source = m_WorldEntities.find(spawned.iSourceNetEntityId);
 	if (source == m_WorldEntities.end() ||
 		WORLD_ENTITY_KIND::BOSS != source->second.eKind ||
@@ -3307,6 +3318,8 @@ bool Client::CClientReplication::Apply_CombatObjectSpawn(
 bool Client::CClientReplication::Apply_CombatObjectPresentationEvent(
 	const LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event)
 {
+	if (Is_BattleItemProjectile(event.strCombatObjectArchetypeId))
+		return Apply_BattleItemImpact(event);
 	const auto source = m_WorldEntities.find(event.iSourceNetEntityId);
 	if (source == m_WorldEntities.end() ||
 		LostArk::Shared::WORLD_ENTITY_KIND::BOSS != source->second.eKind)
@@ -3428,6 +3441,8 @@ bool Client::CClientReplication::Spawn_CombatObjectPresentation(
 	std::string& outStatus)
 {
 	outHandle.Reset();
+	if (Is_BattleItemProjectile(spawned.strCombatObjectArchetypeId))
+		return Spawn_BattleItemProjectile(spawned, outHandle, outStatus);
 	const auto source = m_WorldEntities.find(spawned.iSourceNetEntityId);
 	if (source == m_WorldEntities.end() ||
 		source->second.eKind != LostArk::Shared::WORLD_ENTITY_KIND::BOSS)
@@ -3564,6 +3579,17 @@ bool Client::CClientReplication::Update_CombatObjectPresentation(
 {
 	const COMBAT_OBJECT_PROJECTION_RECORD* record =
 		m_CombatObjectProjectionRuntime.Find(snapshot.iCombatObjectId);
+	if (record && Is_BattleItemProjectile(record->strCombatObjectArchetypeId))
+	{
+		if (record->iSourceNetEntityId != snapshot.iSourceNetEntityId ||
+			record->Snapshot.PinnedDefinitionRevision != snapshot.PinnedDefinitionRevision ||
+			record->PresentationHandle != handle ||
+			handle.eKind != COMBAT_OBJECT_PRESENTATION_KIND::EFFECT_V1_LEVEL_ROOT) return false;
+		float4x4_t root;
+		XMStoreFloat4x4(&root, XMMatrixRotationY(XMConvertToRadians(snapshot.fYawDegrees)) *
+			XMMatrixTranslation(snapshot.fPositionX, snapshot.fPositionY, snapshot.fPositionZ));
+		return CEffectPresentationService::Update_WorldRoot({ handle.iValue }, root);
+	}
 	const auto source = m_WorldEntities.find(snapshot.iSourceNetEntityId);
 	if (nullptr == record || source == m_WorldEntities.end() ||
 		record->iSourceNetEntityId != snapshot.iSourceNetEntityId ||
@@ -4420,6 +4446,7 @@ void Client::CClientReplication::Update_DeathPresentations()
 
 void Client::CClientReplication::Reset_World()
 {
+	Clear_BattleItemProtection();
 	m_WorldCombatTargets.clear();
 	m_PendingWorldCombatHits.clear();
 	if (const auto character = Get_LocalCharacter())
@@ -4641,6 +4668,7 @@ bool Client::CClientReplication::Apply_PlayerSnapshot(
 	{
 		allSucceeded = false;
 	}
+	Apply_BattleItemProtection(player, serverTick, character);
 	character->Apply_NetworkStance(player.eStance);
 	character->Apply_NetworkVehicle(player.iVehicleId);
 	(void)character->Apply_WaterGunPresentation(player.isWaterpangArmed);

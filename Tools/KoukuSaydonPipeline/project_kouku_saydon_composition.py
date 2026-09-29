@@ -5725,12 +5725,20 @@ def _project_presentation_resource(resource: dict[str, Any]) -> dict[str, Any]:
 
 
 def _project_presentation_occurrence(document: dict[str, Any], pattern: dict[str, Any], box: dict[str, Any], resource: dict[str, Any]) -> dict[str, Any]:
+    suppress_local_mario = False
+    if resource["kind"] == "EFFECT" and resource.get("resourceKind", "LEAF") == "LEAF" and resource.get("assetId") == "boss.kouku.curtain_1":
+        logics = {row["logicId"]: row for row in document.get("logics", [])}
+        suppress_local_mario = any(occurrence.get("enabled", True) and
+            logics.get(occurrence["logicId"], {}).get("logicType") == "TRIGGER" and
+            logics.get(occurrence["logicId"], {}).get("triggerKind") == "MARIO_PHASE2_PLAYERS"
+            for occurrence in pattern.get("logicOccurrences", []))
     return {
         **_project_presentation_resource(resource),
         **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"effectSourceStartMs", "effectSourceTimeKeys", "brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration", "boneRotation", "colliderMotion", "colliderEndPositionOffset", "colliderEndScale", "anchorPresentationOccurrenceId"}},
         **{key: value for key, value in box.items() if key not in PRESENTATION_OCCURRENCE_EDITOR_KEYS
            and (key != "effectSourceTimeKeys" or value != [])},
         **({"brightnessMultiplier": box.get("brightnessMultiplier", 1.0)} if resource["kind"] == "LIGHT" else {}),
+        **({"suppressLocalMario": True} if suppress_local_mario else {}),
         "worldSequenceInstanceId": next((w["sequenceInstanceId"] for w in document.get("worlds", []) if w["worldId"] == box.get("worldId", "")), ""),
         **({"worldOccurrenceId": _resolve_collider_world_occurrence(pattern, box)["occurrenceId"]}
            if resource["kind"] in {"COLLIDER", "LIGHT"} and box.get("anchorKind", "BOSS") == "WORLD" else {}),

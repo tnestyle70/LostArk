@@ -2352,9 +2352,13 @@ G1/G2 MVP는 고정 raid roster의0기여 참가자도 포함한다. Client clea
 투표를 시작하고 고정 roster 전원의 승인 정책은 유지한다. G3 false-clear는 MVP를 생략하고
 기존 Encore Sequence→BINGO 경로를 사용한다.
 
-Mario 비행 폭탄의7개 stable marker와4초 주기·궤적은 `KoukuMarioBombContract.h`를 공유한다.
-Server는 세대별 swept 접촉을 한 번만 적용하며 최대 HP10% 피해와4m/1초·높이2m 날아감을
-기존 combat hit 경로로 확정한다. Client는 같은 시계의 폭탄과 snapshot 반응만 표시한다.
+Mario2/3/4 비행 폭탄의7개 stable marker와8초 주기·궤적은 `KoukuMarioBombContract.h`를 공유한다.
+Server는 세대별 swept 접촉을 한 번만 적용하며 고정1320 피해와4m/1초·높이2m 날아감을
+기존 combat hit 경로로 확정한다. 확정 접촉은 해당 참가자에게만 기존
+`S2C_WORLD_SEQUENCE_PLAY/STOP`의 stable instance ID와 birth tick으로 전달한다.
+Client는 같은 세대의 공만 종료하고 기존 피격 Effect를 접촉 시계로 한 번 재생한다.
+수신 전 자연 종료된 공의 Effect는 표시하되 새 세대의 공을 종료하지 않는다.
+일시적인 HUD damage history나 Client overlap으로 소멸을 추측하지 않는다.
 갈고리는 광대 변신 참가자를 잡지 않으며 잡힌 일반 참가자의 표시 animation은 IDLE이다.
 Object Tool의 Action 유래 배치는 pattern/occurrence stable ID의 placement를 저장한다.
 Rendering Workbench의 두 FXAA checkbox는 같은 선택 Mario scene/region의 영구 draft를 사용한다.
@@ -2430,8 +2434,8 @@ hammerHalfExtentsM(진행축·가로축)을 PATTERNBINGOHAMMER 행으로 읽는�
 사용하며 표적이 이동해도 다시 추적하지 않는다. 다음 선택과 패턴 종료/중단은 원래 yaw를
 복구한다. 표적 사망·퇴장은 다른 플레이어로 재선정하지 않고 마지막 유효 좌표를 사용한다.
 카드미로 입장에는 사망자 위치도 포함하되 HP0/DEAD/빈 interaction slot을 보존한다.
-카드미로·댄스 모드는 사망 관전자도 HUD를 숨기며 기믹 입력이나 사망 복귀창을
-전역 UI suppression으로 차단하지 않는다.
+카드미로는 전체 HUD를 숨기며 댄스는 플레이어 HUD를 유지하고 보스 체력바만 숨긴다.
+기믹 입력이나 사망 복귀창을 전역 UI suppression으로 차단하지 않는다.
 
 ### 성공 문구와 마리오 전장 분리
 
@@ -2504,3 +2508,34 @@ CActorCatalog 입장 reader, Valtan authoring validator와 Gameplay publisher가
 검사한다. 이 개수는 생성 인스턴스/snapshot 개수와 별개다. 초과는 전체 카탈로그 로드를
 거부하며 기존 부분 state를 정리하고 파일·보스·개수·한도를 표시한다. 패턴 전용 reader의
 성공만으로 전체 ActorCatalog 초기화 성공을 대신하지 않는다.
+
+
+### 배틀 아이템 사용과 보호 표현
+
+HUD 1~4는 기존 배치 slot의 item ID를 `CPlayerController -> IPlayerCommandSink`로 제출한다.
+`C2S_USE_ITEM`은 ground target 또는 대상 player net ID 중 하나만 포함한다. Client는
+성스러운 부적 대상을 현재 표시 중인 아군 body mesh에서 피킹하고 Server가 같은 파티·생존·
+거리·미니게임 영역과 소지 수량·재사용 대기시간을 검증한다. 거절은 수량을 소비하지 않는다.
+
+파괴 폭탄/회오리 수류탄은 `CCombatObjectRuntime`의 기존 replicated projectile을 사용한다.
+Client는 `battle.item.destruction_bomb` / `battle.item.whirlwind_grenade`의 spawn/snapshot과
+`battle.item.impact` HIT_PULSE를 기존 `CCombatObjectProjectionRuntime`으로 표시한다.
+접촉/도착과 damage·partDamage·stagger 판정은 Server만 수행한다. 표시용 원본 Effect ID는
+Client가 소유하며 새로운 투사체 manager나 local hit 판정을 추가하지 않는다.
+
+성스러운 부적은 대상 공포를 즉시 해제하고 3초간 공포·피해를 막는다. 시간 정지는 자신을
+3초간 공격 collider hit 대상에서 제외하고 이동·스킬을 제한한다. 두 상태는 기존 무적 tick과
+분리되며 `bEncounterWipe` 직접 전멸은 그대로 적용한다. 바닥·벽·낙하 물리는 유지한다.
+Server snapshot의 `ActiveBuffs` 32282/33500 및 종료 tick이 표현 수명의 정본이다.
+원작 부적/시간 정지 Effect는 대상 Character root에 부착하고 시간 정지의 흰 `buffcolor`는
+기존 ownerControls에서 제어한다. class 교체·사망·해제·이탈 때 해당 occurrence만 정리한다.
+
+회오리 수류탄의 현재 프로젝트 정책은 HP 피해 0과 최대 무력화량의 `ceil(max/3)`이다.
+`battleUse.staggerMaximumDivisor=3`을 서버 projectile hit에 고정하며 남은 게이지의 1/3이 아니다.
+쿠크 `STAGGER_WINDOW`의 기존 일반 스킬 HP 감소 기여는 유지하되 수류탄 기여는 별도 credit로
+계산하고 같은 mechanic gauge와 성공 판정에만 합산한다. 발탄 typed gauge는 기존 stagger 경로를
+소비한다. 다음 창·종료된 창으로 credit를 재사용하지 않는다.
+
+Debug/Release 공통 F1 `Battle Items`의 `Give all four (10 each)`와 개별 지급은 기존
+`C2S_DEBUG_GIVE_ITEM`을 typed command sink로 제출한다. 아이템 사용을 우회하거나 local effect를
+즉시 재생하지 않는다. 인벤토리(I)에서 HUD1~4에 배치하고 F1을 닫은 후 실제 사용을 검증한다.

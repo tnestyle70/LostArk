@@ -1839,6 +1839,19 @@ void CWorldSequencePlayer::Set_Paused(const bool_t paused)
     for (const auto& sound : m_RetiredSounds) audio.Pause_SoundCue(sound.handle, paused);
 }
 
+void CWorldSequencePlayer::Finish_Sounds()
+{
+    auto& audio = CGameInstance::Get();
+    for (auto& active : m_Active)
+    {
+        for (const auto& sound : active.sounds) audio.Stop_SoundCue(sound.handle);
+        active.sounds.clear();
+        active.soundPlaybackFinished = true;
+        active.seekSounds = false;
+    }
+    Stop_RetiredSounds();
+}
+
 void CWorldSequencePlayer::Stop_RetiredSounds(const std::string& ownerId)
 {
     for (auto at = m_RetiredSounds.begin(); at != m_RetiredSounds.end();)
@@ -1943,11 +1956,12 @@ void CWorldSequencePlayer::Apply_Sounds(ACTIVE_INSTANCE& active)
                         uint32_t mediaDurationMs = 0u;
                         const bool loopReady = !row.loopToDuration ||
                             audio.Get_SoundDurationMs(path.wstring(), mediaDurationMs);
-                        const auto sampleMs = static_cast<uint32_t>(ageMs);
+                        const auto sampleMs = row.sourceStartMs + static_cast<uint32_t>(ageMs);
                         const auto cycle = row.loopToDuration && mediaDurationMs ? sampleMs / mediaDurationMs : 0u;
                         const auto offsetMs = row.loopToDuration && mediaDurationMs ? sampleMs % mediaDurationMs : sampleMs;
                         const auto handle = loopReady ? audio.Play_SoundCue(path.wstring(), row.volume,
-                            offsetMs, m_bPaused, rate * m_ExternalSoundClockRate) : 0u;
+                            offsetMs, m_bPaused, rate * m_ExternalSoundClockRate,
+                            row.loopToDuration ? 0u : row.sourceStartMs + row.durationMs) : 0u;
                         // A missing cue is isolated and remembered, so a broken asset
                         // cannot retrigger file I/O or invalidate an otherwise valid scene.
                         active.sounds.push_back({key, handle, birthMs + row.durationMs / rate,
@@ -1956,7 +1970,7 @@ void CWorldSequencePlayer::Apply_Sounds(ACTIVE_INSTANCE& active)
                     }
                     else
                     {
-                        const auto sampleMs = static_cast<uint32_t>(ageMs);
+                        const auto sampleMs = row.sourceStartMs + static_cast<uint32_t>(ageMs);
                         if (row.loopToDuration && found->mediaDurationMs &&
                             sampleMs / found->mediaDurationMs != found->mediaCycle)
                         {
@@ -1969,7 +1983,25 @@ void CWorldSequencePlayer::Apply_Sounds(ACTIVE_INSTANCE& active)
                             found->handle = audio.Play_SoundCue(path.wstring(), row.volume,
                                 sampleMs % found->mediaDurationMs, m_bPaused, rate * m_ExternalSoundClockRate);
                         }
-                        else audio.Set_SoundCuePlaybackRate(found->handle, rate * m_ExternalSoundClockRate);
+                        else
+                        {
+                            audio.Set_SoundCuePlaybackRate(found->handle, rate * m_ExternalSoundClockRate);
+                            if (m_HasExternalSoundClock && found->handle)
+                            {
+                                const auto offsetMs = row.loopToDuration && found->mediaDurationMs ?
+                                    sampleMs % found->mediaDurationMs : sampleMs;
+                                if (!audio.Synchronize_SoundCue(found->handle, offsetMs))
+                                {
+                                    // A long render/load stall can finish the mixer channel
+                                    // while the Movie clock is still inside this sound box.
+                                    audio.Stop_SoundCue(found->handle);
+                                    const auto path = CRuntimeAssetRoot::Resolve(row.assetId);
+                                    found->handle = audio.Play_SoundCue(path.wstring(), row.volume,
+                                        offsetMs, m_bPaused, rate * m_ExternalSoundClockRate,
+                                        row.loopToDuration ? 0u : row.sourceStartMs + row.durationMs);
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -476,10 +476,16 @@ private:
 		std::uint32_t seed = 1u, phaseMs = 0u, durationMs = 0u;
 		std::vector<std::string> slots;
 		std::vector<std::int64_t> births;
+        std::vector<std::int64_t> stoppedBirths;
+        float3_t start{}, finish{};
 		bool_t failed = false;
 	};
 	bool_t Ready_MarioBombPresentation(std::string& status);
 	void Update_MarioBombPresentation(f32_t timeDelta);
+    bool_t Queue_MarioBombContactStop(const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& stopped);
+    void Consume_MarioBombContactStops(double clockMs);
+    std::vector<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> m_PendingMarioBombContactStops;
+    std::uint32_t m_iMarioBombStageStartTick = 0u;
 	std::unique_ptr<CWorldSequencePlayer> m_pMarioBombPlayer;
 	std::vector<MARIO_BOMB_EMITTER> m_MarioBombEmitters;
 	std::uint8_t m_iMarioBombStage = 0u;

@@ -782,7 +782,9 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		   Its ambient attachments use this existing worker preparation gate. */
 		if (bCharacterSelect || bValtanArena)
 		{
-			std::vector<std::string> defaultEffects;
+			std::vector<std::string> defaultEffects{
+				"effect.valtan.action.420627.stage000.full.restore",
+				"effect.valtan.action.420628.stage000.full.restore" };
 			for (const auto& boss : CActorCatalog::Get_Bosses())
 				if (boss.clientPresentationId == "boss.valtan.client.v1")
 					for (const auto& particle : boss.defaultParticles)
@@ -960,6 +962,17 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 				return IsolateFailure(Status);
 			m_EffectPreparationTargets.insert(m_EffectPreparationTargets.end(),
 				preparedSequenceEffects.begin(), preparedSequenceEffects.end());
+		}
+		if (bCharacterSelect || bBern || bValtanArena || bKoukuArena)
+		{
+			const std::vector<std::string> battleItems{
+				"effect.world.item.destruction_bomb", "effect.world.item.destruction_bomb.flight",
+				"effect.world.item.whirlwind_grenade", "effect.world.item.whirlwind_grenade.flight",
+				"effect.world.item.holy_charm", "effect.world.item.time_stop" };
+			std::vector<std::string> prepared;
+			if (!CEffectPresentationService::Queue_ProductTargets_Priority(battleItems, prepared, Status))
+				return IsolateFailure(Status);
+			m_EffectPreparationTargets.insert(m_EffectPreparationTargets.end(), prepared.begin(), prepared.end());
 		}
 		/* Every published Area world Effect joins the existing loader worker.
 		   The runtime document is optional outside the Valtan contract; malformed

@@ -7,6 +7,7 @@
 #include "Transform.h"
 #include "UILayoutRuntime.h"
 #include "UITextOcclusion.h"
+#include "UILabelFont.h"
 #include "Valtan.h"
 #include "WorldPlayerNameplateView.h"
 
@@ -97,6 +98,7 @@ Client::CWorldHealthBarView::~CWorldHealthBarView() = default;
 Client::CWorldHealthBarView::BAR::~BAR()
 {
 	if (view) view->Release_Sprites();
+	if (armorBreakView) armorBreakView->Release_Sprites();
 }
 
 std::unique_ptr<Client::CWorldHealthBarView::BAR> Client::CWorldHealthBarView::Create_Bar() const
@@ -149,7 +151,12 @@ void Client::CWorldHealthBarView::Update(const f32_t timeDelta,
 {
 	/* Hide before sampling so offscreen, dead and rejected actors cannot leave a
 	last-frame image behind. Missing entities release only this view's own sprites. */
-	for (auto& [id, bar] : m_Bars) bar->view->Set_AllSlotsVisible(false);
+	m_BreakTexts.clear();
+	for (auto& [id, bar] : m_Bars)
+	{
+		bar->view->Set_AllSlotsVisible(false);
+		if (bar->armorBreakView) bar->armorBreakView->Set_AllSlotsVisible(false);
+	}
 	std::unordered_set<LostArk::Shared::NET_ENTITY_ID> live;
 	for (const auto& state : states)
 		if (state.iCurrentHp > 0u && !state.isLocal && !state.pPresentation.expired()) live.insert(state.iNetEntityId);
@@ -178,6 +185,32 @@ void Client::CWorldHealthBarView::Update(const f32_t timeDelta,
 			found = m_Bars.emplace(state.iNetEntityId, std::move(bar)).first;
 		}
 		auto& bar = *found->second;
+		if (const auto valtan = std::dynamic_pointer_cast<CValtan>(state.pPresentation.lock()))
+		{
+			const bool ready = valtan->Is_ArmorBreakAvailable();
+			if (ready && !bar.armorBreakView)
+			{
+				bar.armorBreakView = std::make_unique<CUILayoutRuntime>(m_Device, m_Context,
+					ETOUI(LEVEL::STATIC), TEXT("Layer_ValtanArmorBreak"), L"UI/HeadStatus/ValtanArmorBreak_Layout.json");
+				bar.armorBreakView->Set_UISortLayer(UI_TEXT_LAYER::WORLD - 1);
+			}
+			if (ready && bar.armorBreakView)
+			{
+				f32_t rx = 0.f, ry = 0.f, width = 0.f, height = 0.f;
+				if (bar.armorBreakView->Get_SlotRect("Valtan_ArmorBreakReady", rx, ry, width, height))
+				{
+					bar.armorBreakView->Set_SlotPosition("Valtan_ArmorBreakReady",
+						screen.x * bar.armorBreakView->Get_ResolutionWidth() / viewport.x - width * 0.5f,
+						screen.y * bar.armorBreakView->Get_ResolutionHeight() / viewport.y + 8.f);
+					bar.armorBreakView->Set_SlotVisible("Valtan_ArmorBreakReady", true);
+					bar.armorBreakView->Update(timeDelta);
+				}
+			}
+			const f32_t remaining = valtan->Get_ArmorBreakFeedbackRemainingSeconds();
+			if (remaining > 0.f)
+				m_BreakTexts.push_back({ float2_t(screen.x, screen.y + 22.f * viewport.y / 720.f),
+					(std::min)(1.f, remaining / 0.3f) });
+		}
 		const auto& frame = bar.rects[0];
 		const auto& offset = m_Offsets[HealthBarPositionGroup(state)];
 		const f32_t x = screen.x * bar.view->Get_ResolutionWidth() / viewport.x - frame.width * 0.5f + offset.x;
@@ -205,5 +238,25 @@ void Client::CWorldHealthBarView::Update(const f32_t timeDelta,
 		bar.view->Set_SlotFillRatio(SLOTS[3], shieldRatio);
 		bar.view->Set_SlotVisible(SLOTS[3], shieldRatio > 0.f);
 		bar.view->Update(timeDelta);
+	}
+}
+
+void Client::CWorldHealthBarView::Render_Text() const
+{
+	if (m_BreakTexts.empty()) return;
+	auto& game = CGameInstance::Get();
+	const f32_t ratio = game.Get_ViewportSize().y / 720.f;
+	f32_t scale = 1.f;
+	const auto font = UILabelFont::Resolve(TEXT("Font_YG760"), 26.f * ratio, scale);
+	const wchar_t* text = L"\uD30C\uAD34";
+	const auto size = game.Measure_Text(font, text);
+	CUITextLayerScope worldText(UI_TEXT_LAYER::WORLD);
+	for (const auto& feedback : m_BreakTexts)
+	{
+		const float2_t position(feedback.position.x - size.x * scale * 0.5f, feedback.position.y);
+		game.Draw_Text(font, text, float2_t(position.x + ratio, position.y + ratio),
+			XMVectorSet(0.f, 0.f, 0.f, feedback.alpha), 0.f, float2_t(0.f, 0.f), scale);
+		game.Draw_Text(font, text, position, XMVectorSet(0.4f, 1.f, 0.73f, feedback.alpha),
+			0.f, float2_t(0.f, 0.f), scale);
 	}
 }

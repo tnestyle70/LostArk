@@ -3,6 +3,7 @@
 #include "imgui.h"
 
 #include "PlayerController.h"
+#include "ItemCatalog.h"
 
 #include "ActorCatalog.h"
 #include "Character.h"
@@ -197,6 +198,7 @@ void Client::CPlayerController::Update(
 	// Cancel local targeting/held intent and suppress new commands when this Client loses focus.
 	const bool_t gameplayCommandsEnabled = requestedGameplayCommandsEnabled &&
 		GetForegroundWindow() == g_hWnd;
+	m_bGameplayCommandsEnabled = gameplayCommandsEnabled;
 	Update_DebugPlayerPlacement(debugPlacementEnabled && !gameplayCommandsEnabled);
 	const bool_t marioControlsActive = Update_MarioControls(gameplayCommandsEnabled);
 	{
@@ -986,6 +988,55 @@ void Client::CPlayerController::Update_VehicleRiding(
 		}
 	}
 	(void)Send_VehicleRidingRequest(requested);
+}
+
+bool_t Client::CPlayerController::Request_DebugGiveItem(
+	const std::uint32_t requestSequence, const std::string& itemId, const std::uint32_t quantity)
+{
+	const auto& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!m_pCommandSink || !player.isValid || player.isPreview || !CItemCatalog::Find_ById(itemId)) return false;
+	LostArk::Shared::C2S_DEBUG_GIVE_ITEM request;
+	request.iRequestSequence = requestSequence; request.strItemId = itemId; request.iQuantity = quantity;
+	return m_pCommandSink->Request_DebugGiveItem(request);
+}
+
+bool_t Client::CPlayerController::Request_UseItem(
+	const std::uint32_t requestSequence, const std::string& itemId)
+{
+	const auto character = m_pLocalCharacter.lock();
+	const auto& player = CCombatHUDViewModel::Get().Get_Player();
+	const auto* item = CItemCatalog::Find_ById(itemId);
+	if (!m_bGameplayCommandsEnabled || !m_pCommandSink || !character || !item ||
+		!player.isValid || player.isPreview || !player.iCurrentHp || Is_PlayerControlCaptured(player))
+		return false;
+	LostArk::Shared::C2S_USE_ITEM request;
+	request.iRequestSequence = requestSequence;
+	request.strItemId = itemId;
+	if (itemId == "BATTLE_HOLY_CHARM")
+	{
+		vector_t rayOrigin, rayDirection;
+		if (!m_ItemTargetResolver || !Try_PickWorldRay(rayOrigin, rayDirection)) return false;
+		float3_t origin, direction;
+		XMStoreFloat3(&origin, rayOrigin); XMStoreFloat3(&direction, rayDirection);
+		request.iTargetPlayerNetEntityId = m_ItemTargetResolver(origin, direction);
+		if (request.iTargetPlayerNetEntityId == LostArk::Shared::INVALID_NET_ENTITY_ID) return false;
+	}
+	else if (item->fTargetRangeM > 0.f)
+	{
+		const auto transform = character->Get_Transform();
+		if (!transform) return false;
+		float3_t origin, picked;
+		XMStoreFloat3(&origin, transform->Get_State(STATE::POSITION));
+		if (!Try_PickGroundPlane(origin.y, picked)) return false;
+		const float dx = picked.x - origin.x, dz = picked.z - origin.z;
+		const float length = std::hypot(dx, dz);
+		if (!std::isfinite(length)) return false;
+		const float scale = length > item->fTargetRangeM ? item->fTargetRangeM / length : 1.f;
+		request.hasGroundTarget = true;
+		request.fTargetX = origin.x + dx * scale;
+		request.fTargetZ = origin.z + dz * scale;
+	}
+	return m_pCommandSink->Request_UseItem(request);
 }
 
 bool_t Client::CPlayerController::Request_VehicleRiding(const std::uint32_t vehicleId)

@@ -1,0 +1,110 @@
+{
+  "schema": "lostark.layered-movie-audio-restoration.v1",
+  "packageFilter": "SOUND_PC_COMMON",
+  "worldDocument": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL00/LV_LOBBY_CLASSSELECT_SL00.worldsequences.json",
+  "bus": {
+    "path": [
+      1635194334,
+      393239870,
+      3803692087
+    ],
+    "gainDb": -4,
+    "limiterFxId": 377339466,
+    "thresholdDb": -5,
+    "ratio": 10,
+    "lookAheadMs": 15,
+    "releaseMs": 100,
+    "outputDb": 3,
+    "stereoLinked": true
+  },
+  "scope": "Default-state standalone simultaneous layer mix. Existing Movie source time and pitch remain unchanged. Does not reproduce native Wwise DSP bit-identically, other game buses, runtime sidechain states, or subsequent relative stem timing/gain edits.",
+  "reviewedInitBankSha256": [
+    "d24ca1e887c1d9a4de78507f1c682a826f7f064deabbcb4dd86b260cede38e3d"
+  ],
+  "id": "guardianknight-selection",
+  "event": "pc_create_dragonknight1",
+  "sequenceId": "sequence.classselect.guardianknight.intro.a12254.p0",
+  "stems": [
+    {
+      "soundTrackId": "classselect.guardianknight.source.303593929",
+      "originalAssetId": "Sound/CharacterSelect/GuardianKnight/pc_create_dragonknight1__303593929.wav",
+      "restoredAssetId": "Sound/CharacterSelect/GuardianKnight/pc_create_dragonknight1__303593929_bus_restored_f32.wav",
+      "reviewedOriginalAssetSha256": "08f842306d7f6b59f64e22f1cee67a3dbafa6c54c94708ea31e3a366ce89d617"
+    },
+    {
+      "soundTrackId": "classselect.guardianknight.source.107503277",
+      "originalAssetId": "Sound/CharacterSelect/GuardianKnight/pc_create_dragonknight1__107503277.wav",
+      "restoredAssetId": "Sound/CharacterSelect/GuardianKnight/pc_create_dragonknight1__107503277_bus_restored_f32.wav",
+      "reviewedOriginalAssetSha256": "4693a420359c71c43007aabb26f2c48ef3295a6bd0659cd9b64d350172b61b26"
+    }
+  ],
+  "sources": [
+    {
+      "soundTrackId": "classselect.guardianknight.source.303593929",
+      "originalAssetId": "Sound/CharacterSelect/GuardianKnight/pc_create_dragonknight1__303593929.wav",
+      "restoredAssetId": "Sound/CharacterSelect/GuardianKnight/pc_create_dragonknight1__303593929_bus_restored_f32.wav",
+      "reviewedOriginalAssetSha256": "08f842306d7f6b59f64e22f1cee67a3dbafa6c54c94708ea31e3a366ce89d617",
+      "mediaId": 303593929,
+      "reviewedWemSha256": "8f9de2b59c02f8dae294576336e713e800480fcb7a2e4cf66edf9e08ee87db25"
+    },
+    {
+      "soundTrackId": "classselect.guardianknight.source.107503277",
+      "originalAssetId": "Sound/CharacterSelect/GuardianKnight/pc_create_dragonknight1__107503277.wav",
+      "restoredAssetId": "Sound/CharacterSelect/GuardianKnight/pc_create_dragonknight1__107503277_bus_restored_f32.wav",
+      "reviewedOriginalAssetSha256": "4693a420359c71c43007aabb26f2c48ef3295a6bd0659cd9b64d350172b61b26",
+      "mediaId": 107503277,
+      "reviewedWemSha256": "a2b4da85566f695f409348490387982590204a33f7b4c54f09699d0cc3a8392a"
+    }
+  ],
+  "fadeInMs": 400,
+  "mixToSingleTrack": false,
+  "expectedTrack": {
+    "startMs": 0,
+    "durationMs": 8583,
+    "volume": 1,
+    "sourceStartMs": 0,
+    "loopToDuration": false
+  },
+  "reviewedHirc": {
+    "3366830879": {
+      "kind": 4,
+      "payloadHex": "0d6819d30a3c35832997ab301a1c1a2a35590780307bf4bd1dd34b332532b1ab00c814ae0c2b44d130f1e83707fa1f732ff8e91910"
+    },
+    "181606760": {
+      "kind": 3,
+      "payloadHex": "0304c8c9a73f00011090010000000460170090"
+    },
+    "1067960776": {
+      "kind": 9,
+      "payloadHex": "00000000000000cc07023c00000003080004010000000000000000020000005f9eba1bb38d0f3f0000000000"
+    },
+    "465215071": {
+      "kind": 2,
+      "payloadHex": "0100040000c97918122be201000100000000000000c8c9a73f0001070000c84200000000010000000000000000"
+    },
+    "1057983923": {
+      "kind": 2,
+      "payloadHex": "0100040000ad5e6806b6c802000000000000000000c8c9a73f000000000000010000000000000000"
+    },
+    "1006766028": {
+      "kind": 7,
+      "payloadHex": "000000de1577610000000000000003080000010000000000000000160000004e1da605cd32d506b0a7ae07b6d1310bbe2c390b07302d12ddd4fb17bef11b189a277c1848113a193f6d811df7115c2135c9bf219d9b6524b3aa2126f032522919038233970aee37ac1ac23acdef8f3d32d1913dc8c9a73f"
+    },
+    "1635194334": {
+      "kind": 8,
+      "payloadHex": "3e5d7017050e1b1c1d200000c842000000000000c842000000000000c84201050100000000000002e80300000000c0c20000000001000053c9ca19010000000000000005001bf2271c000200d12fa2010203000000f0c10000000009000000000088c1000000000000000000000000b20b2fbf040000003e5d70170002005bbf8b1802020000000000000080bf040000000000c84200000000040000001bf2271c000203c5464d340003000000f0c10000000009000000000088c1000000000000000000000000000020c204000000f901305400020376203d1d0005000000c8c20000000009000000000014c20000000004000000000000c200009642040000006f1283ba0000b44204000000000000000000000004000000cb90e179000203f953b0380003000000c8c20000000009000000000020c200000000060000000000000000008c420400000005050201040200030200020200000201029ca50d71000106877ccd854bfd3cc9633ef80001813c1a5da131fd18"
+    },
+    "393239870": {
+      "kind": 8,
+      "payloadHex": "37bcb7e206050e1b1c1d20000000c00000c842000000000000c842000000000000c84201050000000000000002e80300000000c0c200000000010000295a0100000000000000000002002aab62d8000200ad6aca1a0204000000f0c10000000009000000000070c10000000000000000000000c1b20b2fbf0900000000000000b20b2fbf040000005be96209000200013036230204000000f0c100000000090000000000a0c10000000000000000000070c182c55fbf090000000000000082c55fbf04000000050502010402000302000202000002010191131f9f000191131f9f93fc1a1c"
+    },
+    "3803692087": {
+      "kind": 8,
+      "payloadHex": "000000004a3111e606050e1b1c1d20000000c00000c842000000000000c842000000000000c84201050000000000000002e80300009a99c0c2000000000100004abe7d16000000000000000001008716ccf10002054d30542b02020000000000000080bf040000000000c84200000000040000000000"
+    },
+    "377339466": {
+      "kind": 17,
+      "payloadHex": "03006e00160000000000a0c0000020418fc2753ccdcccc3d00004040010100000000000000"
+    }
+  }
+}

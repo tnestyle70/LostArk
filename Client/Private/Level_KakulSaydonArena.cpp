@@ -1618,6 +1618,8 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
 	m_pWorldEntityCommandSink = make_shared<CNetworkWorldEntityCommandSink>();
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
+	m_PlayerController.Set_ItemTargetResolver([this](const float3_t& origin, const float3_t& direction)
+	{ return m_Replication.Find_ItemTargetPlayerFromRay(origin, direction); });
 	m_ChatBubbleView.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
 #ifdef _DEBUG
 	m_PlayerController.Set_DebugMarioJumpEnabled(true);
@@ -1990,6 +1992,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	   instance ID against what it loaded and plays the presentation. */
 	for (const auto& play : m_Replication.Consume_WorldSequencePlays())
 	{
+        if (Queue_MarioBombContactStop(play)) continue;
 		if (play.eOperation == LostArk::Shared::WORLD_SEQUENCE_OPERATION::STOP_OWNER ||
 			play.eOperation == LostArk::Shared::WORLD_SEQUENCE_OPERATION::FINISH_OWNER ||
 			play.iRunEpoch != 0u)
