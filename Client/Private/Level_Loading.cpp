@@ -161,6 +161,13 @@ HRESULT CLevel_Loading::Initialize(
 		m_strTitleText = L"\xD55C\xBC24\xC911\xC758 \xC11C\xCEE4\xC2A4";
 		m_strTipText = L"\xD55C\xBC24\xC911\xC758 \xC11C\xCEE4\xC2A4\xB294 \xB2F9\xC2E0\xC744 \xC9C4\xC2EC\xC73C\xB85C \xD658\xC601\xD569\xB2C8\xB2E4.";
 	}
+	else if (LEVEL::LOBBY == m_eNextLevelID)
+	{
+		/* The Lobby load (client start, returning to the Lobby) shows no loading art or text:
+		the title and tip stay empty and Ready_Layer_Chrome is skipped below. The failure panel
+		is a separate view and still appears if the load fails. */
+		m_strScenarioLabel.clear();
+	}
 	else
 	{
 		m_strTitleText = L"\xBCA0\xB978 \xC131";
@@ -168,7 +175,7 @@ HRESULT CLevel_Loading::Initialize(
 		m_strTipText = L"\xC81C 1\xB300 \xC774\xD399\xD2B8 \xB2F4\xB2F9\xC790\xB294 \xADF9\xC2EC\xD55C \xC6B0\xC6B8\xC99D\xC744 \xD638\xC18C\xD558\xBA70 \xC774\xD399\xD2B8 \xB2F4\xB2F9\xC9C1\xC744 \xC0AC\xD1F4\xD588\xC2B5\xB2C8\xB2E4";
 	}
 
-	const HRESULT chromeResult = Ready_Layer_Chrome();
+	const HRESULT chromeResult = LEVEL::LOBBY == m_eNextLevelID ? S_OK : Ready_Layer_Chrome();
 	if (FAILED(chromeResult))
 		return reject(chromeResult, "loading.initialize.chrome", "Loading chrome initialization failed.");
 	m_pRecoveryView = std::make_unique<CUILayoutRuntime>(
