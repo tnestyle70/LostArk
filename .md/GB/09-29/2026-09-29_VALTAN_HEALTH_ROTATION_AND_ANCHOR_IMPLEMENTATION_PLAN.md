@@ -183,3 +183,16 @@ TO_ARENA_CENTER 단계 진입의 FacePoint와 매 tick 추적 모두 중지한�
 Client는 Server yaw와 landing snapshot을 보간해서 표시하며 자체 target yaw를 쓰지 않는다.
 실제 Brain에 서로 다른 중심·플레이어 방위와 이동 입력을 주고 네 타격 동안 yaw가
 유지되는지 검사한다. red fan은 같은 owner basis, contact는 그 basis+저작 offset을 쓴다.
+
+
+## G20. 정상 완료와 전멸 변경 이후 lifecycle fixture 갱신
+
+통합 Release lifecycle의10실패는 timeout만으로 Dash GROGGY를 기대한 검사1개와
+무적 observer가 마력구 실패를 버티던 연속4인검사의9개 후속 실패다. 제품의 wall-only
+GROGGY와 true wipe는 유지한다. Dash fixture는 실제 WALL_CONTACT outcome을 공급하고
+기존 stage duration/deadline 검사를 유지한다. 연속4인 성공 시나리오는 기존 typed
+BossCombatRuntime 입력으로 마력구의 required HP damage와 세 카운터의 유효 counter
+성공을 공급한다. Room이 followup/stage/phase를 결정하며 actor 부활, 전멸 우회,
+커서 이동, reset 또는 audition override를 사용하지 않는다. 실제 성공 횟수와 기존
+allAlive/8개 loop/7개 기믹/ghost HP/4session snapshot/clear/MVP 검사를 모두 유지한다.
+root의 실행 중 contract 종료 전 빌드·재실행하지 않는다. source 데이터는 바꾸지 않는다.

@@ -2828,6 +2828,13 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanResetlessNext(TES
 			const auto patternStartTick = boss->iPatternStartTick;
 			const auto revision = boss->PinnedDefinitionRevision;
 			auto& player = room.m_Players.at(NEXT_OWNER_PLAYER);
+			const float initialTargetX = player.fPositionX;
+			const float initialTargetZ = player.fPositionZ;
+			const bool authoredCenterLanding =
+				std::fabs(landing.fPositionX - 156.03f) < 0.001f &&
+				std::fabs(landing.fPositionY - 22.99751f) < 0.001f &&
+				std::fabs(landing.fPositionZ + 122.06f) < 0.001f &&
+				std::fabs(boss->fPatternLeapApexHeight - 30.f) < 0.001f;
 			player.fPositionX += 5.f;
 			player.fPositionZ += 3.f;
 			bool allLandingSnapshotsMatch = true;
@@ -2917,9 +2924,15 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanResetlessNext(TES
 				}
 				if ("RECOVERY" == boss->strPatternStageId)
 					recoveryStartTick = boss->iActionStartTick;
+				// A center anchor is independent of the boss's target-position cache.
+				// Observe the actual raider moving away from both its start and the anchor.
+				const float targetMovementX = player.fPositionX - initialTargetX;
+				const float targetMovementZ = player.fPositionZ - initialTargetZ;
+				const float targetToLandingX = player.fPositionX - landing.fPositionX;
+				const float targetToLandingZ = player.fPositionZ - landing.fPositionZ;
 				targetMovedFromLanding = targetMovedFromLanding ||
-					(std::fabs(boss->fPatternTargetLastPositionX - landing.fPositionX) > 1.f &&
-					 std::fabs(boss->fPatternTargetLastPositionZ - landing.fPositionZ) > 1.f);
+					(targetMovementX * targetMovementX + targetMovementZ * targetMovementZ > 1.f &&
+					 targetToLandingX * targetToLandingX + targetToLandingZ * targetToLandingZ > 1.f);
 				const auto queuedSnapshots = std::count_if(fixture.Session->m_OutboundFrames.begin(),
 					fixture.Session->m_OutboundFrames.end(), [](const auto& frame)
 					{
@@ -2931,7 +2944,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanResetlessNext(TES
 			room.Broadcast_WorldSnapshot();
 			WORLD_ENTITY_SNAPSHOT completed;
 			std::cout << "[LandingEvidence] ready=" << room.Is_Ready() << " snapshots=" << allLandingSnapshotsMatch << " airborne=" << observedAirborne << " land=" << observedLand << " recovery=" << observedRecovery << " moved=" << targetMovedFromLanding << " coalesced=" << observedCoalescing << "\n";
-			tests.Require(room.Is_Ready() && allLandingSnapshotsMatch && observedAirborne && observedLand &&
+			tests.Require(room.Is_Ready() && authoredCenterLanding && allLandingSnapshotsMatch && observedAirborne && observedLand &&
 				observedRecovery && targetMovedFromLanding && observedCoalescing,
 				"Late and coalesced HIGH_JUMP snapshots retain the Server landing through airborne landing and recovery while the target moves");
 			tests.Require(readLatestBoss(completed) && completed.strPatternId.empty() &&

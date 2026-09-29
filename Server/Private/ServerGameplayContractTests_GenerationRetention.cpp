@@ -122,8 +122,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_GenerationRetention(TES
 		const BOSS_COMBAT_OBJECT_DEFINITION* groundRoarRock =
 			catalog.Find_BossCombatObject(
 				"combatobject.valtan.ground-roar.rock");
-		const BOSS_PATTERN_STAGE_DEFINITION* strugglingRockStep =
+		const BOSS_PATTERN_STAGE_DEFINITION* strugglingFourDirection =
 			findStage("VALTAN_STRUGGLING", "STEP_04");
+		const BOSS_PATTERN_STAGE_DEFINITION* strugglingRockStep =
+			findStage("VALTAN_STRUGGLING", "STEP_08");
 		const BOSS_PATTERN_STAGE_DEFINITION* partBreakStage =
 			findStage("VALTAN_PART_BREAK", "PART_BREAK");
 		const BOSS_PATTERN_STAGE_DEFINITION* partBreakRecovery =
@@ -301,11 +303,12 @@ void LostArk::Server::CServerGameplayContractRunner::Run_GenerationRetention(TES
 		};
 		const auto hasTripleSlam = [&hasBranch](
 			const BOSS_PATTERN_STAGE_DEFINITION* stage,
+			const std::uint32_t durationMs,
 			const std::string_view nextActionId)
 		{
 			return nullptr != stage &&
 				BOSS_PATTERN_STAGE_KIND::ACTIVE == stage->eStageKind &&
-				1667u == stage->iDurationMs &&
+				durationMs == stage->iDurationMs &&
 				!stage->bHasCounterProxy && stage->Actions.empty() &&
 				BOSS_PATTERN_HIT_SHAPE::CIRCLE == stage->eHitShape &&
 				std::abs(stage->fHitOuterRadius - 12.f) < 1.0e-6f &&
@@ -344,13 +347,14 @@ void LostArk::Server::CServerGameplayContractRunner::Run_GenerationRetention(TES
 			entranceCameraGateExact,
 			"Load the exact invulnerable 24.708-second Valtan entrance camera gate");
 
+		// Retail.balanceprofile.json publishes the authored stagger windows at x400.
 		const bool reactiveTopologyExact = nullptr != patterns &&
 			nullptr != parryStance && 2u == parryStance->Actions.size() &&
 			2u == parryStance->Branches.size() &&
 			hasAction(parryStance,
 				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER,
 				BOSS_PATTERN_STAGE_ACTION_KIND::SET_STAGGER_GAUGE,
-				"boss.gauge.stagger", 30u) &&
+				"boss.gauge.stagger", 12000u) &&
 			hasAction(parryStance,
 				BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT,
 				BOSS_PATTERN_STAGE_ACTION_KIND::SET_STAGGER_GAUGE,
@@ -383,7 +387,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_GenerationRetention(TES
 				"VALTAN_GROGGY_FOLLOWUP") &&
 			hasBranch(tripleFirst, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
 				"valtan.reactive.triple-counter.first-fail") &&
-			hasTripleSlam(tripleFirstFail,
+			hasTripleSlam(tripleFirstFail, 1667u,
 				"valtan.reactive.triple-counter.second") &&
 			hasForwardCounter(tripleSecond) &&
 			BOSS_PATTERN_STAGE_KIND::WINDUP == tripleSecond->eStageKind &&
@@ -394,7 +398,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_GenerationRetention(TES
 				"VALTAN_GROGGY_FOLLOWUP") &&
 			hasBranch(tripleSecond, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
 				"valtan.reactive.triple-counter.second-fail") &&
-			hasTripleSlam(tripleSecondFail,
+			hasTripleSlam(tripleSecondFail, 1667u,
 				"valtan.reactive.triple-counter.third") &&
 			hasForwardCounter(tripleThird) &&
 			BOSS_PATTERN_STAGE_KIND::WINDUP == tripleThird->eStageKind &&
@@ -405,7 +409,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_GenerationRetention(TES
 				"VALTAN_GROGGY_FOLLOWUP") &&
 			hasBranch(tripleThird, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
 				"valtan.reactive.triple-counter.third-fail") &&
-			hasTripleSlam(tripleThirdFail, "") &&
+			hasTripleSlam(tripleThirdFail, 1704u, "") &&
 			nullptr != armorCharge &&
 			BOSS_PATTERN_STAGE_MOTION_KIND::FORWARD == armorCharge->Motion.eKind &&
 			std::abs(armorCharge->Motion.fDistance - 20.f) < 1.0e-6f &&
@@ -430,7 +434,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_GenerationRetention(TES
 			2u == orbWindow->Branches.size() &&
 			hasAction(orbWindow, BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER,
 				BOSS_PATTERN_STAGE_ACTION_KIND::SET_STAGGER_GAUGE,
-				"boss.gauge.stagger", 100u) &&
+				"boss.gauge.stagger", 40000u) &&
 			hasAction(orbWindow, BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT,
 				BOSS_PATTERN_STAGE_ACTION_KIND::SET_STAGGER_GAUGE,
 				"boss.gauge.stagger", 0u) &&
@@ -490,17 +494,36 @@ void LostArk::Server::CServerGameplayContractRunner::Run_GenerationRetention(TES
 				<< ", volleys=" << valtanStageVolleyActionCount << ", branches=" << valtanRuntimeBranchCount
 				<< ", motions=" << valtanMotionCount << '\n';
 		}
+		const auto hasTimedContact = [](const BOSS_PATTERN_STAGE_DEFINITION* stage,
+			const std::size_t index, const std::string_view hitId, const std::uint32_t atMs,
+			const std::string_view shape)
+		{
+			if (!stage || index >= stage->AttackContacts.size()) return false;
+			const auto& contact = stage->AttackContacts[index];
+			return contact.strHitId == hitId && contact.strTrigger == "TIMED" &&
+				contact.iAtMs == atMs && contact.iEndMs == 0u &&
+				contact.iRepeatCount == 1u && contact.iRepeatIntervalMs == 0u && contact.strShape == shape;
+		};
 		tests.Require(
 			nullptr != fourSlashes && 3u == fourSlashes->iHitCount &&
 			0u == fourSlashes->iHitDelayMs &&
 			0u == fourSlashes->iHitIntervalMs &&
-			std::vector<std::uint32_t>{ 1790u, 2560u, 3330u } ==
+			std::vector<std::uint32_t>{ 1667u, 2221u, 3008u } ==
 				fourSlashes->HitOffsetsMs &&
-			nullptr != fourSlashSpin && 1u == fourSlashSpin->iHitCount &&
+			nullptr != fourSlashSpin && 3u == fourSlashSpin->iHitCount &&
 			0u == fourSlashSpin->iHitDelayMs &&
 			0u == fourSlashSpin->iHitIntervalMs &&
-			std::vector<std::uint32_t>{ 600u } ==
+			std::vector<std::uint32_t>{ 600u, 1640u, 3000u } ==
 				fourSlashSpin->HitOffsetsMs &&
+			3u == fourSlashes->AttackContacts.size() && 3u == fourSlashSpin->AttackContacts.size() &&
+			hasTimedContact(fourSlashes, 0u, "hit.valtan.four-slash.slash-1", 1667u, "CONE") &&
+			hasTimedContact(fourSlashes, 1u, "hit.valtan.four-slash.slash-2", 2221u, "CONE") &&
+			hasTimedContact(fourSlashes, 2u, "hit.valtan.four-slash.slash-3", 3008u, "CONE") &&
+			hasTimedContact(fourSlashSpin, 0u, "hit.valtan.four-slash.spin-contact", 600u, "CONE") &&
+			hasTimedContact(fourSlashSpin, 1u, "hit.valtan.four-slash.slash-4", 1640u, "CONE") &&
+			hasTimedContact(fourSlashSpin, 2u, "hit.valtan.four-slash.donut-explosion", 3000u, "RING") &&
+			std::abs(fourSlashSpin->AttackContacts[2].fRadiusM - 10.8) < 0.0001 &&
+			std::abs(fourSlashSpin->AttackContacts[2].fInnerRadiusM - 4.8) < 0.0001 &&
 			fourSlashes->bWallContact && fourSlashSpin->bWallContact,
 			"Compile the rejoined four-slash explicit Server hit schedule exactly");
 		const bool hasExactHighJumpVolley = nullptr != highJumpAirborne &&
@@ -621,22 +644,52 @@ void LostArk::Server::CServerGameplayContractRunner::Run_GenerationRetention(TES
 			hasExactGroundRoarCardinalRocks && nullptr != entranceEstablish &&
 				entranceEstablish->Actions.empty(),
 			"Own the exact stomp/roar hit track and one four-root diagonal damaging rock volley in GROUND_ROAR STEP_01, and never place it in the entrance cinematic");
+		bool hasExactStrugglingFourDirection = nullptr != strugglingFourDirection &&
+			BOSS_PATTERN_HIT_SHAPE::CONE == strugglingFourDirection->eHitShape &&
+			std::vector<std::uint32_t>{ 1200u, 2200u, 3200u, 4200u } == strugglingFourDirection->HitOffsetsMs &&
+			4u == strugglingFourDirection->AttackContacts.size() && strugglingFourDirection->Actions.empty() &&
+			strugglingFourDirection->bTrackPatternTarget && strugglingFourDirection->bHasAimEnd &&
+			0u == strugglingFourDirection->iAimEndMs;
+		const std::array<double, 4> fourDirectionYaws{ 0., 180., 270., 90. };
+		for (std::size_t index = 0u; index < fourDirectionYaws.size() && hasExactStrugglingFourDirection; ++index)
+		{
+			const auto& contact = strugglingFourDirection->AttackContacts[index];
+			hasExactStrugglingFourDirection = hasTimedContact(strugglingFourDirection, index,
+				"hit.valtan.struggling.four-direction-" + std::to_string(index + 1u),
+				1200u + static_cast<std::uint32_t>(index) * 1000u, "CONE") &&
+				contact.fYawOffsetDegrees == fourDirectionYaws[index] && contact.fLengthM == 10. &&
+				contact.fAngleDegrees == 80. && contact.strDamageKind == "PROFILE" &&
+				contact.strDamageProfileId == "damage.valtan.stomp";
+		}
 		const bool hasExactStrugglingRockAndImpactTrack =
 			nullptr != strugglingRockStep &&
 			BOSS_PATTERN_HIT_SHAPE::CIRCLE == strugglingRockStep->eHitShape &&
 			std::abs(strugglingRockStep->fHitOuterRadius - 8.f) < 0.0001f &&
-			std::vector<std::uint32_t>{ 1233u, 2233u, 3233u, 4200u } ==
+			std::vector<std::uint32_t>{ 1200u } ==
 				strugglingRockStep->HitOffsetsMs &&
 			"damage.valtan.stomp" ==
 				strugglingRockStep->strDamageProfileId &&
+			1u == strugglingRockStep->iHitCount && 1400u == strugglingRockStep->iDurationMs &&
 			1u == strugglingRockStep->Actions.size() &&
+			BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == strugglingRockStep->Actions.front().eTrigger &&
 			BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT_VOLLEY ==
 				strugglingRockStep->Actions.front().eKind &&
 			"combatobject.valtan.struggling.rock-pillar" ==
-				strugglingRockStep->Actions.front().strTargetId;
+				strugglingRockStep->Actions.front().strTargetId &&
+			BOSS_COMBAT_OBJECT_VOLLEY_POLICY::ARENA_CENTER == strugglingRockStep->Actions.front().Volley.ePolicy &&
+			BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL == strugglingRockStep->Actions.front().Volley.eLayout &&
+			4u == strugglingRockStep->Actions.front().Volley.iCountPerResolvedTarget &&
+			4u == strugglingRockStep->Actions.front().Volley.iMaximumTotalObjects &&
+			1u == strugglingRockStep->Actions.front().Volley.iSpawnCount &&
+			1200u == strugglingRockStep->Actions.front().Volley.iFirstSpawnOffsetMs &&
+			0u == strugglingRockStep->Actions.front().Volley.iSpawnIntervalMs &&
+			std::abs(strugglingRockStep->Actions.front().Volley.fRadiusM - 5.8639610307f) < 0.0001f &&
+			45.f == strugglingRockStep->Actions.front().Volley.fStartAngleDegrees &&
+			90.f == strugglingRockStep->Actions.front().Volley.fAngleStepDegrees &&
+			!strugglingRockStep->Actions.front().Volley.bAllowOverlap;
 		tests.Require(
-			hasExactStrugglingRockAndImpactTrack,
-			"Admit only the reviewed STRUGGLING STEP_04 boss impact track beside its delayed rock volley");
+			hasExactStrugglingFourDirection && hasExactStrugglingRockAndImpactTrack,
+			"Keep STRUGGLING STEP_04 fixed four-direction contacts separate from the STEP_08 impact and delayed arena-centred rock volley");
 		const bool hasExactPartBreakRecoveryCardinalRocks =
 			nullptr != partBreakStage && 1800u == partBreakStage->iDurationMs &&
 			nullptr != partBreakRecovery &&

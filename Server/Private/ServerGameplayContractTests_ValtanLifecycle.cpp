@@ -418,6 +418,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 			update(chargeTick);
 			const bool chargeEntered = "CHARGE" == boss.strPatternStageId;
 			const auto groggyTick = boss.iPatternStageFirstEvaluationTick + ticks(dash->Stages[1]) - 1u;
+			// GROGGY belongs to a confirmed wall contact, including one on the deadline.
+			// The normal no-wall timeout is covered by the separate branch contract.
+			const bool wallPublished = CBossCombatRuntime::Publish_PatternOutcome(
+				boss, BOSS_PATTERN_STAGE_OUTCOME::WALL_CONTACT, groggyTick);
 			update(groggyTick);
 			const bool groggyEntered = "GROGGY" == boss.strPatternStageId &&
 				boss.iPatternStageDurationMs == dashGroggy->iDurationMs;
@@ -425,9 +429,9 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 			update(doneTick - 1u);
 			const bool heldBeforeDeadline = "GROGGY" == boss.strPatternStageId;
 			update(doneTick);
-			tests.Require(chargeEntered && groggyEntered && heldBeforeDeadline && boss.strPatternId.empty() &&
+			tests.Require(chargeEntered && wallPublished && groggyEntered && heldBeforeDeadline && boss.strPatternId.empty() &&
 				SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED == boss.PatternTerminalReceipt.eResult,
-				"Dash enters and completes GROGGY on the published stage durations, preserving the last pre-deadline tick");
+				"Wall-contact Dash enters and completes GROGGY on the published stage durations, preserving the last pre-deadline tick");
 		}
 		tests.Require(
 			nullptr != catchBreath && nullptr != catchGrab &&
@@ -924,8 +928,9 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 			"Release a captured player fail-closed when its boss owner disappears");
 	}
 	{
-		// Observe one continuous Product encounter. Only fixture player survival
-		// and incoming boss HP are controlled; Room owns every stage and phase.
+		// Observe one continuous Product encounter. Fixture player survival and
+		// typed incoming boss hits are controlled; Room owns every stage and phase.
+		// Fatal mechanics must succeed: observer invulnerability cannot bypass a wipe.
 		auto room = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		std::vector<std::shared_ptr<CClientSession>> sessions;
 		const auto drain = [&sessions]()
@@ -1005,6 +1010,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 			bool stableIdentity = true, automatic = true, wireParity = true, allAlive = true;
 			bool arrivalChecked = false, allArrived = false, killIssued = false, killedByPlayer = false;
 			bool progressionComplete = false;
+			bool mechanicSuccessInputsValid = true;
+			std::uint32_t staggerSuccesses = 0u, tripleCounterSuccesses = 0u;
 			const auto consumeSnapshots = [&]()
 			{
 				std::vector<std::uint8_t> baseline;
@@ -1060,6 +1067,33 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 				if (boss->strPatternId == "VALTAN_ENTRANCE_CINEMATIC" &&
 					(cinematicStages.empty() || cinematicStages.back() != boss->strPatternStageId))
 					cinematicStages.push_back(boss->strPatternStageId);
+				// These are confirmed incoming hits at the existing combat boundary, not
+				// forced outcomes or stage changes. The next Room tick consumes success.
+				if (boss->strPatternId == "VALTAN_STAGGER_SLOT" && boss->strPatternStageId == "CHANNEL" &&
+					!boss->bPatternBossResponsePublished)
+				{
+					BOSS_INCOMING_HIT hit{};
+					hit.iSourcePlayerId = sessions.front()->Get_PlayerId();
+					hit.iSkillId = 34010u; hit.iServerTick = room->m_iServerTick;
+					hit.iRawDamage = boss->iPatternBossResponseThreshold;
+					hit.bHealthDamagePreResolved = true;
+					const auto result = CBossCombatRuntime::Apply_PlayerHit(*boss, hit);
+					mechanicSuccessInputsValid = mechanicSuccessInputsValid && result.bHealthDamageThresholdReached &&
+						result.iHealthDamage == hit.iRawDamage;
+					if (result.bHealthDamageThresholdReached) ++staggerSuccesses;
+				}
+				if (boss->strPatternId == "VALTAN_TRIPLE_COUNTER" && boss->strPatternStageId == "COUNTER_1" &&
+					CBossCombatRuntime::Has_Flag(boss->BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE))
+				{
+					BOSS_INCOMING_HIT hit{};
+					hit.iSourcePlayerId = sessions.front()->Get_PlayerId();
+					hit.iSkillId = 34040u; hit.iServerTick = room->m_iServerTick;
+					hit.iCounterPower = 1u; hit.bCounterFromPrimarySlot = true;
+					hit.fSourceX = boss->fPositionX; hit.fSourceZ = boss->fPositionZ;
+					const auto result = CBossCombatRuntime::Apply_PlayerHit(*boss, hit);
+					mechanicSuccessInputsValid = mechanicSuccessInputsValid && result.bCounterTriggered;
+					if (result.bCounterTriggered) ++tripleCounterSuccesses;
+				}
 				if (boss->strPatternId.empty() || previousSequence == boss->iPatternSequence) continue;
 				previousSequence = boss->iPatternSequence;
 				std::cout << "[VALTAN_4P] tick=" << room->m_iServerTick << " pattern=" << boss->strPatternId
@@ -1140,6 +1174,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 			for (std::size_t index = 0u; index < 7u; ++index) expectedMechanics.emplace_back(windows[index].mechanic);
 			tests.Require(mechanics == expectedMechanics && revival == std::vector<std::string>{"VALTAN_GHOST_DEATH_AUDITION", "VALTAN_GHOST_RESPAWN_AUDITION"} && ghostRestored,
 				"All seven health mechanics run once in order and real Death-to-Respawn restores the primary to forty bars");
+			tests.Require(mechanicSuccessInputsValid && staggerSuccesses == 5u && tripleCounterSuccesses == 2u,
+				"Continuous success run supplies all five real health-damage thresholds and both Triple Counter successes without bypassing wipes");
 			tests.Require(room->Is_Ready() && stableIdentity && automatic && allAlive && progressionComplete && killedByPlayer,
 				"The uninterrupted four-player raid reaches ghost skill death and authoritative clear without reset or audition override");
 			tests.Require(wireParity && synchronizedTicks > 1000u && terminalSnapshots == 4u &&

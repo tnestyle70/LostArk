@@ -317,3 +317,51 @@ Gameplay 게시와 Debug/Release 제품 빌드, 실제 Server contract 실행 �
 root 통합 작업이 수행한다. 이 절 작성 시 native tests는 컴파일까지만 확인했으며
 실행 PASS로 기록하지 않는다. 화면상의 높이·중앙 장판·부채꼴 방향·벽 충돌 tail·
 최종 ending은 사용자가 판정한다. Resources 추가는 없다.
+
+
+## G20. 통합 lifecycle 실패 원인과 fixture 교정
+
+root가 실행한 Release `--valtan-lifecycle-contract-test`의10실패를 조사했다. 로그는
+`out/RaidMovieIntegration20260929/server-release-valtan-lifecycle-contract-test.log`다.
+Dash 검사1개는 wall outcome 없이 정상 TIMEOUT으로 GROGGY에 진입할 것을 기대했다.
+연속4인 검사는 observer 무적만 켜고 마력구 패턴을 실패하므로 true wipe가 도입된 뒤
+115→105 구간의 STAGGER_SLOT에서 전원 사망했다. 이후6개 window/기믹/clear/MVP
+검사는 동일 중단 원인으로 연쇄 실패했다. 제품 정책을 되돌릴 근거는 없었다.
+
+`ServerGameplayContractTests_ValtanLifecycle.cpp`만 수정했다. Dash는 실제
+WALL_CONTACT outcome을 deadline에 공급한 후 기존 GROGGY duration/마지막 전 tick/
+완료 receipt 검사를 그대로 수행한다. 연속4인 성공 run은 BossCombatRuntime의
+기존 typed incoming-hit 경계로5회 마력구 health-damage threshold와2회 Triple Counter
+성공을 공급한다. 실제 결과 flag와 성공 횟수를 추가 검증하며 Room이 followup과
+순서·phase를 계속 결정한다. allAlive/8개 loop/7개 기믹/ghost 부활/실제 마지막 player
+skill kill/동일4session snapshot/MVP 검사는 유지한다. 별도 두 실패 패턴 전멸 검사는
+변경하지 않았다. observer 부활, 강제커서 이동, audition override, wipe immunity를
+추가하지 않았으며 데이터 및 제품 코드도 바꾸지 않았다.
+
+변경 diff check PASS. 이 교정은 root의 Debug 전체 계약 프로세스가 실행 중인 동안
+작성했으므로 여기서는 재빌드·재실행하지 않았다. root가 종료 후 Server Debug/Release
+최소 재빌드와 실패 slice 실행 결과를 통합 RESULT에 기록한다.
+
+root 통합 후 Debug/Release Server 최소 재빌드가 성공했다. Release 전체 실행에서 G20의
+기존10개 실패는 사라졌고 새5/2 성공 입력, 전원생존,7개기믹,최종처치/보상 검사가 통과했다.
+전체 광역 계약은 다른82개 실패가 남아 PASS가 아니며 통합 RESULT G07에서 구분한다.
+
+
+## G21. 중앙 착지의 지연 snapshot fixture 교정
+
+root의 수정 후 Debug lifecycle 실행은 HIGH_JUMP 지연 snapshot 검사 한 개에서만
+실패했다. `server-debug-valtan-lifecycle-corrected.log`의 LandingEvidence는
+ready/snapshots/airborne/land/recovery/coalesced가 모두1이고 moved만0이며
+LandingMismatch는 없었다. 실제 snapshot과 중앙 착지는 정상이지만 기존 검사는
+보스 내부 target-position cache가 착지점에서 X와 Z 양쪽으로1m 이상 떨어져야
+이동으로 판정했다. 중앙 anchor는 이 target cache와 별개의 값이다.
+
+`ServerGameplayContractTests_ValtanResetlessNext.cpp`의 해당 fixture만 변경했다.
+실제 player의 시작점 대비 이동거리와 중앙 착지점 대비 거리를 각각 확인한다.
+중앙 [156.03,22.99751,-122.06] 및 apex30m도 명시적으로 검증한다. 지연·병합된
+snapshot의 landing/sequence/revision/start tick 일치와 airborne/LAND/RECOVERY
+전구간 유지, lethal landing,3200ms LAND와400ms RECOVERY 종료 검사는 보존했다.
+제품 코드, Client, 원본 데이터와 게시본은 변경하지 않았다.
+
+변경 diff check PASS. 이 하위 작업에서 재빌드·실행하지 않았으며 root가 기존
+`--valtan-presentation-contract-test`의 Debug/Release 결과를 통합 RESULT에 기록한다.
