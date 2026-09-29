@@ -47,16 +47,27 @@ namespace
 		return std::filesystem::path(base) / L"LostArk" / L"CharacterRoster.json";
 	}
 
-	/* JSON string escaping for the two characters a nickname could need (quote, backslash);
-	control characters are already refused by Is_Valid_PlayerNickname. */
+	/* JSON string escaping: quote, backslash and the control characters an appearance document
+	(several lines of text) carries. A nickname never has control characters -- they are refused
+	by Is_Valid_PlayerNickname. */
 	std::string Escape_Json(const std::string& text)
 	{
 		std::string escaped;
 		for (const char character : text)
 		{
 			if ('"' == character || '\\' == character)
+			{
 				escaped.push_back('\\');
-			escaped.push_back(character);
+				escaped.push_back(character);
+			}
+			else if ('\n' == character)
+				escaped += "\\n";
+			else if ('\r' == character)
+				escaped += "\\r";
+			else if ('\t' == character)
+				escaped += "\\t";
+			else
+				escaped.push_back(character);
 		}
 		return escaped;
 	}
@@ -99,7 +110,11 @@ namespace
 			if (!LostArk::Shared::Is_Supported_Playable_Character_Class(eClass) ||
 				!LostArk::Shared::Is_Valid_PlayerNickname(nicknameValue->Get_String()))
 				continue;
-			entries.push_back({ eClass, nicknameValue->Get_String() });
+			Client::CHARACTER_ROSTER_ENTRY entry{ eClass, nicknameValue->Get_String(), {} };
+			const DATA_JSON_VALUE* appearanceValue = value.Find("appearance");
+			if (nullptr != appearanceValue && DATA_JSON_TYPE::STRING == appearanceValue->Get_Type())
+				entry.strAppearanceJson = appearanceValue->Get_String();
+			entries.push_back(std::move(entry));
 		}
 		std::stable_sort(entries.begin(), entries.end(), Is_Before_In_Card_Order);
 		return entries;
@@ -122,7 +137,10 @@ namespace
 			document += (0u == index ? "\n" : ",\n");
 			document += "    { \"class\": " +
 				std::to_string(static_cast<uint32_t>(entries[index].eCharacterClass)) +
-				", \"nickname\": \"" + Escape_Json(entries[index].strNickname) + "\" }";
+				", \"nickname\": \"" + Escape_Json(entries[index].strNickname) + "\"";
+			if (!entries[index].strAppearanceJson.empty())
+				document += ", \"appearance\": \"" + Escape_Json(entries[index].strAppearanceJson) + "\"";
+			document += " }";
 		}
 		document += entries.empty() ? " ]\n}\n" : "\n  ]\n}\n";
 
@@ -185,7 +203,7 @@ bool_t Client::CCharacterRoster::Rename(
 
 bool_t Client::CCharacterRoster::Add(
 	const LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass, const std::string& strNickname,
-	size_t& outIndex, std::string& outStatus)
+	const std::string& strAppearanceJson, size_t& outIndex, std::string& outStatus)
 {
 	std::vector<CHARACTER_ROSTER_ENTRY>& entries = Roster();
 	if (!LostArk::Shared::Is_Supported_Playable_Character_Class(eCharacterClass))
@@ -206,7 +224,7 @@ bool_t Client::CCharacterRoster::Add(
 
 	/* The new card goes where its class belongs in the card order, after any card of the same
 	class already there. */
-	const CHARACTER_ROSTER_ENTRY created{ eCharacterClass, strNickname };
+	const CHARACTER_ROSTER_ENTRY created{ eCharacterClass, strNickname, strAppearanceJson };
 	std::vector<CHARACTER_ROSTER_ENTRY> staged = entries;
 	const auto position = std::upper_bound(staged.begin(), staged.end(), created, Is_Before_In_Card_Order);
 	const size_t iInsertedIndex = static_cast<size_t>(position - staged.begin());

@@ -19,6 +19,9 @@ struct CHARACTER_ROSTER_ENTRY
 {
 	LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
 	std::string strNickname;
+	/* The look made on the customizing screen (CCustomizingView::Serialize_Appearance), kept as
+	that document's own text. Empty when the character was made without one. */
+	std::string strAppearanceJson;
 };
 
 class CCharacterRoster final
@@ -36,7 +39,8 @@ public:
 	/* Validates, appends a newly created character, saves the whole roster atomically, then
 	updates memory. False leaves the roster as it was and the reason in outStatus. */
 	static bool_t Add(LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass,
-		const std::string& strNickname, size_t& outIndex, std::string& outStatus);
+		const std::string& strNickname, const std::string& strAppearanceJson,
+		size_t& outIndex, std::string& outStatus);
 };
 
 NS_END

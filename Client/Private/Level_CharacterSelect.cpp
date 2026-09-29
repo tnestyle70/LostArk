@@ -1666,8 +1666,13 @@ bool_t CLevel_CharacterSelect::Confirm_CreateCharacter()
 		return false;
 	}
 
+	/* The look made on the customizing screen goes with the new character. Nothing to capture when
+	the screen was never used: the character then keeps its class default. */
+	std::string strAppearance;
+	if (nullptr != m_pCustomizingView && nullptr != m_pActiveCharacter)
+		strAppearance = m_pCustomizingView->Serialize_Appearance(m_pActiveCharacter);
 	if (!CCharacterSelectionState::Stage_Creation(
-		SUPPORTED_CLASSES[m_iSelectedClassIndex], nickname))
+		SUPPORTED_CLASSES[m_iSelectedClassIndex], nickname, strAppearance))
 	{
 		m_strStatus = "The character identity could not be staged.";
 		return false;

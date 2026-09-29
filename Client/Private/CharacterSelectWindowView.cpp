@@ -6,6 +6,7 @@
 
 #include "ActorCatalog.h"
 #include "Character.h"
+#include "CustomizingView.h"
 #include "CharacterCatalog.h"
 #include "CharacterPortraitRenderer.h"
 #include "CharacterRoster.h"
@@ -250,17 +251,20 @@ CCharacterSelectWindowView::INTENT CCharacterSelectWindowView::Consume_Intent()
 }
 
 void CCharacterSelectWindowView::Get_StartCharacter(
-	LostArk::Shared::CHARACTER_CLASS_ID& outClass, std::string& outNickname) const
+	LostArk::Shared::CHARACTER_CLASS_ID& outClass, std::string& outNickname,
+	std::string& outAppearanceJson) const
 {
 	const std::vector<CHARACTER_ROSTER_ENTRY>& Roster = CCharacterRoster::Get_Entries();
 	if (m_iSelectedCard < 0 || static_cast<size_t>(m_iSelectedCard) >= Roster.size())
 	{
 		outClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
 		outNickname.clear();
+		outAppearanceJson.clear();
 		return;
 	}
 	outClass = Roster[static_cast<size_t>(m_iSelectedCard)].eCharacterClass;
 	outNickname = Roster[static_cast<size_t>(m_iSelectedCard)].strNickname;
+	outAppearanceJson = Roster[static_cast<size_t>(m_iSelectedCard)].strAppearanceJson;
 }
 
 void CCharacterSelectWindowView::Update(f32_t fTimeDelta, const bool_t bInputBlocked)
@@ -681,6 +685,11 @@ void CCharacterSelectWindowView::Spawn_StageCharacter(const int32_t iIndex)
 
 	pCharacter->Apply_NetworkStance(Stage_Stance(Desc.eCharacterClass));
 	pCharacter->Set_Animation(CHARACTER_ANIM::IDLE, true);
+	/* The card wears the look its character was made with. A document that does not fit (another
+	class, unreadable) leaves the class default. */
+	if (!Roster[static_cast<size_t>(iIndex)].strAppearanceJson.empty())
+		(void)CCustomizingView::Apply_SavedAppearance(
+			pCharacter, Roster[static_cast<size_t>(iIndex)].strAppearanceJson);
 	m_StageCharacters[iIndex] = pCharacter;
 	Write_StageLog("card " + std::to_string(iIndex) + " character standing");
 }

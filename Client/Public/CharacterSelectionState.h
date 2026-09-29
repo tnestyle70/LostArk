@@ -33,14 +33,17 @@ public:
 	static bool_t Has_Selection();
 	static bool_t Try_Get_SelectedClass(
 		LostArk::Shared::CHARACTER_CLASS_ID& outCharacterClass);
-	/* A character created just now: once Bern is entered it is added to the saved roster. */
+	/* A character created just now: once Bern is entered it is added to the saved roster with
+	the look it was made with (CCustomizingView::Serialize_Appearance, empty for none). */
 	static bool_t Stage_Creation(
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass,
-		std::string_view nickname);
+		std::string_view nickname, std::string_view appearanceJson);
 	/* A character picked from the saved roster: the same identity handoff, nothing new to save. */
 	static bool_t Stage_ExistingEntry(
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass,
-		std::string_view nickname);
+		std::string_view nickname, std::string_view appearanceJson);
+	/* The look of the character that entered the world, or empty. Set when Bern is entered. */
+	static std::string Get_ActiveAppearanceJson();
 	static bool_t Has_PendingCreation();
 	static bool_t Commit_PendingCreation();
 	static void Cancel_PendingCreation();

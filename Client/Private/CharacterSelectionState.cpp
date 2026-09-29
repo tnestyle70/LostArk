@@ -17,6 +17,7 @@ namespace
 		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
 			LostArk::Shared::CHARACTER_CLASS_ID::END;
 		std::string strNickname;
+		std::string strAppearanceJson;
 		bool_t bNewCharacter = false;
 	};
 
@@ -24,10 +25,12 @@ namespace
 	std::optional<LostArk::Shared::CHARACTER_CLASS_ID> g_SelectedClass;
 	std::optional<std::string> g_CreatedNickname;
 	std::optional<PENDING_CHARACTER_CREATION> g_PendingCreation;
+	std::string g_ActiveAppearanceJson;
 
 	bool_t Stage_Pending(
 		const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
-		const std::string_view nickname, const bool_t bNewCharacter)
+		const std::string_view nickname, const std::string_view appearanceJson,
+		const bool_t bNewCharacter)
 	{
 		if (!LostArk::Shared::Is_Supported_Playable_Character_Class(
 				characterClass) ||
@@ -39,6 +42,7 @@ namespace
 		PENDING_CHARACTER_CREATION staged{};
 		staged.eCharacterClass = characterClass;
 		staged.strNickname.assign(nickname);
+		staged.strAppearanceJson.assign(appearanceJson);
 		staged.bNewCharacter = bNewCharacter;
 
 		std::scoped_lock lock{ g_SelectionMutex };
@@ -87,16 +91,22 @@ bool_t Client::CCharacterSelectionState::Try_Get_SelectedClass(
 
 bool_t Client::CCharacterSelectionState::Stage_Creation(
 	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
-	const std::string_view nickname)
+	const std::string_view nickname, const std::string_view appearanceJson)
 {
-	return Stage_Pending(characterClass, nickname, true);
+	return Stage_Pending(characterClass, nickname, appearanceJson, true);
 }
 
 bool_t Client::CCharacterSelectionState::Stage_ExistingEntry(
 	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
-	const std::string_view nickname)
+	const std::string_view nickname, const std::string_view appearanceJson)
 {
-	return Stage_Pending(characterClass, nickname, false);
+	return Stage_Pending(characterClass, nickname, appearanceJson, false);
+}
+
+std::string Client::CCharacterSelectionState::Get_ActiveAppearanceJson()
+{
+	std::scoped_lock lock{ g_SelectionMutex };
+	return g_ActiveAppearanceJson;
 }
 
 bool_t Client::CCharacterSelectionState::Has_PendingCreation()
@@ -119,10 +129,12 @@ bool_t Client::CCharacterSelectionState::Commit_PendingCreation()
 		size_t iNewIndex = 0;
 		std::string strRosterStatus;
 		if (!CCharacterRoster::Add(g_PendingCreation->eCharacterClass,
-			g_PendingCreation->strNickname, iNewIndex, strRosterStatus))
+			g_PendingCreation->strNickname, g_PendingCreation->strAppearanceJson,
+			iNewIndex, strRosterStatus))
 			OutputDebugStringA(("[CharacterSelection] Roster add failed: " + strRosterStatus + "\n").c_str());
 	}
 	g_CreatedNickname = std::move(g_PendingCreation->strNickname);
+	g_ActiveAppearanceJson = std::move(g_PendingCreation->strAppearanceJson);
 	g_PendingCreation.reset();
 	return true;
 }

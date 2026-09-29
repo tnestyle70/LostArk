@@ -6362,8 +6362,9 @@ void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
 		Lobby commits it once Bern is entered and cancels it if the entry fails. */
 		LostArk::Shared::CHARACTER_CLASS_ID eClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
 		string strNickname;
-		m_pCharacterSelectWindowView->Get_StartCharacter(eClass, strNickname);
-		if (CCharacterSelectionState::Stage_ExistingEntry(eClass, strNickname) &&
+		string strAppearance;
+		m_pCharacterSelectWindowView->Get_StartCharacter(eClass, strNickname, strAppearance);
+		if (CCharacterSelectionState::Stage_ExistingEntry(eClass, strNickname, strAppearance) &&
 			!CLevel_Lobby::Submit_ProductCommand(LOBBY_STAGE::BERN))
 			CCharacterSelectionState::Cancel_PendingCreation();
 		break;
