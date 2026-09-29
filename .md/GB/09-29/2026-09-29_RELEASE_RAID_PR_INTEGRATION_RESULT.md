@@ -89,3 +89,28 @@ AGENTS의 Client/UI 자율 실행 금지에 따라 실제 Client 네 창/네 PC�
 서버 simulation/전송 frame 검증은 실제 LAN 전송 품질, GPU 표시, 실제 음향 청취 성공의
 증거가 아니다. 네 명이 동일 ZIP과 최신 Drive Resources로 발탄/쿠크 컷씬·이펙트·음향을
 확인해야 한다. 제품 실행 자체를 네 PC에서 완료했다고 기록하지 않는다.
+
+
+## 2026-09-29 저녁 통합 Release 후속 기록
+
+이 항목은 위 #480 배포 뒤의 #482, #484 및 Desktop 작업 통합에 대한 기록이다.
+현재 캐릭터 계약은 위의 고정 4개/로컬 JSON 설명을 대체한다. EXE마다 빈 6슬롯으로
+시작하고 선택 슬롯과 캐릭터 상태를 현재 프로세스 동안만 유지한다. 개인 roster JSON은
+읽거나 쓰거나 삭제하지 않는다. Lobby의 캐릭터 모델 선행 로드를 제거했다.
+
+- #482와 #484를 실제 merge commit으로 통합하고 기존 Desktop 164개 변경을 보존했다.
+  원본 safety stash는 `339f78fa514b3aa14806751ceda39798f628a5c2`다.
+- 기존 셰이더 변경 9개는 원본 snapshot과 내용이 동일하다. 4개는 바이트까지 동일하고
+  5개는 checkout의 LF/CRLF 차이만 있다. 기존 무비 셰이더를 되돌리지 않았다.
+- 요구 무력화량은 실제 Valtan STAGGER_SLOT 1000→10000, Kouku G1 및 Mario2 각각
+  115000→1150000이다. 스킬 무력화 피해와 회오리 수류탄 정책은 변경하지 않았다.
+- Lugaru HP는 일반 몬스터의 5배인 2380280이다. Mario 수직 공은 게시된 이동 곡선을
+  소비하며 폭탄과 같은 피격 상태와 고정 1320 피해를 적용한다. World schema는 12다.
+- 시간정지물약을 포함한 기존 배틀 아이템 동작을 #484와 통합했다. 네트워크 protocol은 124다.
+- Valtan PublishV2, Client/Server domain publish 및 NumericSourceBindings 생성 완료.
+  패키지 도구 19개 검사, 변경 JSON parse 및 diff --check 통과.
+- 사용자 최신 요청에 따라 추가 장비/재화 복원 검증과 광역 진단을 중단하고 Release ZIP을
+  우선한다. 새 raid/battle-item/character focused 검사는 소스에 포함되지만 이번 배포에서
+  실행 완료로 기록하지 않는다. Client/UI 및 실제 4인 플레이도 실행하지 않았다.
+
+최종 Release 빌드 및 ZIP 검증 결과는 아래 후속 항목에 기록한다.

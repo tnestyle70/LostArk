@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "compositionId": "boss.composition.valtan",
   "sourceRevision": 4,
-  "compositionRevision": "0a1ca25f9e132334732e2e22a77708aa78934fd4689272a9193913c8b268385a",
+  "compositionRevision": "78500f397e777bf750c8ae73bd2d296529d7cdd0cc0b67cf095159f9c88b6336",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "Valtan Boss Composition",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "0a1ca25f9e132334732e2e22a77708aa78934fd4689272a9193913c8b268385a",
+    "sourceManifestId": "78500f397e777bf750c8ae73bd2d296529d7cdd0cc0b67cf095159f9c88b6336",
     "files": [
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
@@ -2132,8 +2132,8 @@
       },
       {
         "path": "Data/Encounters/Valtan/ValtanEncounter.json",
-        "sha256": "c3375d13b4cf5c0b10495a30b1875957b7d20efa6d93734178a0bc5ea0d3375b",
-        "bytes": 343391
+        "sha256": "624a98e67479591049d78effc5580a48b74e5df47d9870abc8ad1222a22f6817",
+        "bytes": 343392
       },
       {
         "path": "Data/Sound/CharacterSoundCatalog.json",
@@ -2147,8 +2147,8 @@
       },
       {
         "path": "Data/Valtan/Valtan.gameplay.json",
-        "sha256": "f61361b2c32a690311797f6f4347943e18c89d124f817d14a6efd5b2b1c09750",
-        "bytes": 282983
+        "sha256": "442601470af42ca96705ee7667f778a9e3cab07a4040dda5b33a890c9fa0f71b",
+        "bytes": 282984
       },
       {
         "path": "Data/Valtan/Valtan.legacy-compatibility.json",
@@ -8847,7 +8847,7 @@
               "cameraInvocations": [],
               "bossResponse": {
                 "kind": "ACCUMULATED_HEALTH_DAMAGE",
-                "threshold": 1000
+                "threshold": 10000
               },
               "verticalOffsetM": 0.5
             },
@@ -40748,7 +40748,7 @@
             ],
             "bossResponse": {
               "kind": "ACCUMULATED_HEALTH_DAMAGE",
-              "threshold": 1000
+              "threshold": 10000
             },
             "verticalOffsetM": 0.5
           },

@@ -71899,7 +71899,7 @@
           ],
           "bossResponse": {
             "kind": "ACCUMULATED_HEALTH_DAMAGE",
-            "threshold": 1000
+            "threshold": 10000
           },
           "verticalOffsetM": 0.5
         },
@@ -71958,7 +71958,7 @@
           ],
           "bossResponse": {
             "kind": "ACCUMULATED_HEALTH_DAMAGE",
-            "threshold": 1000
+            "threshold": 10000
           },
           "verticalOffsetM": 0.5
         },
