@@ -72,6 +72,44 @@ namespace
 		return escaped;
 	}
 
+	uint32_t Read_Unsigned(const DATA_JSON_VALUE* pValue)
+	{
+		if (nullptr == pValue || !pValue->Is_Number() || pValue->Get_Number() < 0.0 ||
+			pValue->Get_Number() > 4294967295.0)
+			return 0u;
+		return static_cast<uint32_t>(pValue->Get_Number());
+	}
+
+	/* The optional "world" object of a roster entry. An unreadable one is no saved state; a bad
+	item inside a readable one is skipped. */
+	void Load_WorldState(const DATA_JSON_VALUE* pWorld, Client::CHARACTER_WORLD_STATE& outState)
+	{
+		outState = {};
+		if (nullptr == pWorld || !pWorld->Is_Object())
+			return;
+		const DATA_JSON_VALUE* pItems = pWorld->Find("items");
+		if (nullptr == pItems || DATA_JSON_TYPE::ARRAY != pItems->Get_Type())
+			return;
+		for (const DATA_JSON_VALUE& item : pItems->Get_Array())
+		{
+			const DATA_JSON_VALUE* pId = item.Is_Object() ? item.Find("id") : nullptr;
+			if (nullptr == pId || DATA_JSON_TYPE::STRING != pId->Get_Type() || pId->Get_String().empty())
+				continue;
+			LostArk::Shared::INVENTORY_ITEM_SNAPSHOT entry{};
+			entry.strItemId = pId->Get_String();
+			entry.iQuantity = Read_Unsigned(item.Find("qty"));
+			entry.eEquippedSlot = static_cast<LostArk::Shared::EQUIPMENT_SLOT>(
+				static_cast<uint8_t>(Read_Unsigned(item.Find("slot"))));
+			if (0u == entry.iQuantity)
+				continue;
+			outState.Items.push_back(std::move(entry));
+		}
+		outState.iSilver = Read_Unsigned(pWorld->Find("silver"));
+		outState.iGold = Read_Unsigned(pWorld->Find("gold"));
+		outState.iHonorTitleId = Read_Unsigned(pWorld->Find("honorTitle"));
+		outState.bValid = true;
+	}
+
 	/* A missing, unreadable or older-format (formatVersion 1 kept only nicknames of four fixed
 	cards) file is an empty roster. A bad entry inside a current file is skipped. */
 	std::vector<Client::CHARACTER_ROSTER_ENTRY> Load_Roster()
@@ -114,6 +152,7 @@ namespace
 			const DATA_JSON_VALUE* appearanceValue = value.Find("appearance");
 			if (nullptr != appearanceValue && DATA_JSON_TYPE::STRING == appearanceValue->Get_Type())
 				entry.strAppearanceJson = appearanceValue->Get_String();
+			Load_WorldState(value.Find("world"), entry.World);
 			entries.push_back(std::move(entry));
 		}
 		std::stable_sort(entries.begin(), entries.end(), Is_Before_In_Card_Order);
@@ -140,6 +179,21 @@ namespace
 				", \"nickname\": \"" + Escape_Json(entries[index].strNickname) + "\"";
 			if (!entries[index].strAppearanceJson.empty())
 				document += ", \"appearance\": \"" + Escape_Json(entries[index].strAppearanceJson) + "\"";
+			if (entries[index].World.bValid)
+			{
+				const Client::CHARACTER_WORLD_STATE& World = entries[index].World;
+				document += ", \"world\": { \"silver\": " + std::to_string(World.iSilver) +
+					", \"gold\": " + std::to_string(World.iGold) +
+					", \"honorTitle\": " + std::to_string(World.iHonorTitleId) + ", \"items\": [";
+				for (size_t item = 0; item < World.Items.size(); ++item)
+				{
+					document += (0u == item ? " " : ", ");
+					document += "{ \"id\": \"" + Escape_Json(World.Items[item].strItemId) +
+						"\", \"qty\": " + std::to_string(World.Items[item].iQuantity) +
+						", \"slot\": " + std::to_string(static_cast<uint32_t>(World.Items[item].eEquippedSlot)) + " }";
+				}
+				document += " ] }";
+			}
 			document += " }";
 		}
 		document += entries.empty() ? " ]\n}\n" : "\n  ]\n}\n";
@@ -199,6 +253,47 @@ bool_t Client::CCharacterRoster::Rename(
 	entries = std::move(staged);
 	outStatus = "Name changed.";
 	return true;
+}
+
+bool_t Client::CCharacterRoster::Update_WorldState(
+	const LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass, const std::string& strNickname,
+	const CHARACTER_WORLD_STATE& State, std::string& outStatus)
+{
+	std::vector<CHARACTER_ROSTER_ENTRY>& entries = Roster();
+	const auto found = std::find_if(entries.begin(), entries.end(),
+		[&](const CHARACTER_ROSTER_ENTRY& entry)
+		{
+			return entry.eCharacterClass == eCharacterClass && entry.strNickname == strNickname;
+		});
+	if (found == entries.end())
+	{
+		outStatus = "No saved character matches.";
+		return false;
+	}
+	std::vector<CHARACTER_ROSTER_ENTRY> staged = entries;
+	staged[static_cast<size_t>(found - entries.begin())].World = State;
+	staged[static_cast<size_t>(found - entries.begin())].World.bValid = true;
+	if (!Save_Roster(staged, outStatus))
+		return false;
+	entries = std::move(staged);
+	outStatus = "World state saved.";
+	return true;
+}
+
+bool_t Client::CCharacterRoster::Try_Get_WorldState(
+	const LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass, const std::string& strNickname,
+	CHARACTER_WORLD_STATE& outState)
+{
+	for (const CHARACTER_ROSTER_ENTRY& entry : Roster())
+	{
+		if (entry.eCharacterClass == eCharacterClass && entry.strNickname == strNickname &&
+			entry.World.bValid)
+		{
+			outState = entry.World;
+			return true;
+		}
+	}
+	return false;
 }
 
 bool_t Client::CCharacterRoster::Add(

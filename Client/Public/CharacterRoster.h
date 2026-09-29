@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine_Defines.h"
+#include "Network/PacketMessages.h"
 #include "Network/PacketType.h"
 
 #include <string>
@@ -15,6 +16,18 @@ so it survives a restart. Cards stand in class order (Warlord, Lance Master, Art
 Knight from the left) whatever order they were created in. The class of a card is fixed at
 creation; only its nickname changes. The nickname is checked by the same rule the Server applies
 on entry (Is_Valid_PlayerNickname). */
+/* What the Server had this character carrying when it last left the world: the whole inventory
+(equipment is the items with an equipped slot), the purse and the worn honor title. The Client
+keeps it and offers it back on the next entry; bValid is false until a first save. */
+struct CHARACTER_WORLD_STATE
+{
+	bool_t bValid = false;
+	std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT> Items;
+	uint32_t iSilver = 0;
+	uint32_t iGold = 0;
+	uint32_t iHonorTitleId = 0;
+};
+
 struct CHARACTER_ROSTER_ENTRY
 {
 	LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
@@ -22,6 +35,7 @@ struct CHARACTER_ROSTER_ENTRY
 	/* The look made on the customizing screen (CCustomizingView::Serialize_Appearance), kept as
 	that document's own text. Empty when the character was made without one. */
 	std::string strAppearanceJson;
+	CHARACTER_WORLD_STATE World;
 };
 
 class CCharacterRoster final
@@ -38,6 +52,12 @@ public:
 	static bool_t Rename(size_t iIndex, const std::string& strNickname, std::string& outStatus);
 	/* Validates, appends a newly created character, saves the whole roster atomically, then
 	updates memory. False leaves the roster as it was and the reason in outStatus. */
+	/* Replaces the world state of the character with this class and nickname and saves the whole
+	roster atomically. False (no such character, or the save failed) leaves the roster as it was. */
+	static bool_t Update_WorldState(LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass,
+		const std::string& strNickname, const CHARACTER_WORLD_STATE& State, std::string& outStatus);
+	static bool_t Try_Get_WorldState(LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass,
+		const std::string& strNickname, CHARACTER_WORLD_STATE& outState);
 	static bool_t Add(LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass,
 		const std::string& strNickname, const std::string& strAppearanceJson,
 		size_t& outIndex, std::string& outStatus);
