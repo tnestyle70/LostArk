@@ -312,7 +312,7 @@ bool_t Client::CEquipmentPresentationCatalog::Load(std::string& outError)
 		1.0 != version->Get_Number() || nullptr == slotIds ||
 		!slotIds->Is_Array() || SLOT_NAMES.size() != slotIds->Get_Array().size() ||
 		nullptr == visualSets || !visualSets->Is_Array() ||
-		visualSets->Get_Array().empty() || visualSets->Get_Array().size() > 256u)
+		visualSets->Get_Array().empty() || visualSets->Get_Array().size() > 512u)
 	{
 		outError = "Equipment catalog root contract mismatch.";
 		return false;
