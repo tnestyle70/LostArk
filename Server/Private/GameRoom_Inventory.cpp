@@ -505,20 +505,27 @@ void LostArk::Server::CGameRoom::Handle_RestoreCharacter(
 	using namespace LostArk::Shared;
 	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
-	if (nullptr == session || sessionIter == m_PlayerIdBySessionId.end())
-		return;
-	const auto playerIter = m_Players.find(sessionIter->second);
+	if (nullptr == session) return;
+	const auto reply = [&](const CHARACTER_RESTORE_RESULT verdict, const HONOR_TITLE_ID title = INVALID_HONOR_TITLE_ID)
+	{
+		const S2C_RESTORE_CHARACTER_RESULT result{request.iRequestSequence, verdict, title};
+		CPacketWriter writer;
+		if (!Write_Message(writer, result) || !session->Send_Frame(
+			PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT, writer.Get_Buffer())) session->Request_Close();
+	};
+	const auto playerIter = sessionIter == m_PlayerIdBySessionId.end() ? m_Players.end() : m_Players.find(sessionIter->second);
 	if (playerIter == m_Players.end() || playerIter->second.iSessionId != sessionId)
-		return;
+	{ reply(CHARACTER_RESTORE_RESULT::REJECTED_SESSION); return; }
 	SERVER_PLAYER& player = playerIter->second;
 	/* Once per fresh Bern entry, before the player changed anything. The chance is spent even
 	   by a request that fails validation, so a client cannot probe with variants. */
 	if (WORLD_ID::BERN != m_eWorldId || !player.bRestoreAvailable)
-		return;
+	{ reply(CHARACTER_RESTORE_RESULT::REJECTED_UNAVAILABLE); return; }
 	player.bRestoreAvailable = false;
 	if (!Validate_RestoreCharacter(player, request))
 	{
 		m_strStatus = "A saved character restore was refused by the Server catalogs.";
+		reply(CHARACTER_RESTORE_RESULT::REJECTED_CATALOG);
 		return;
 	}
 	player.Inventory = request.Items;
@@ -526,7 +533,8 @@ void LostArk::Server::CGameRoom::Handle_RestoreCharacter(
 	player.Purse.iGold = request.iGold;
 	player.iHonorTitleId = request.iHonorTitleId;
 	if (!Send_InventorySnapshot(session, request.iRequestSequence, player))
-		session->Request_Close();
+	{ session->Request_Close(); return; }
+	reply(CHARACTER_RESTORE_RESULT::APPLIED, player.iHonorTitleId);
 }
 
 void LostArk::Server::CGameRoom::Handle_DespawnAllWorldEntities(

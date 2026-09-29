@@ -26,7 +26,7 @@
       "displayName": "세이튼로직_방패무력화",
       "logicType": "DURATION",
       "judgementKind": "STAGGER_WINDOW",
-      "threshold": 115000,
+      "threshold": 1150000,
       "shieldArcDegrees": 71.737272000000004,
       "endsPatternOnSuccess": true,
       "normalYawOffsetDegrees": 90
@@ -496,7 +496,7 @@
       "displayName": "쿠크세이튼_마리오_무력화",
       "logicType": "DURATION",
       "judgementKind": "STAGGER_WINDOW",
-      "threshold": 115000,
+      "threshold": 1150000,
       "shieldArcDegrees": 0,
       "endsPatternOnSuccess": true,
       "normalYawOffsetDegrees": 0

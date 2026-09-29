@@ -690,6 +690,63 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
         Configure_MarioHazardLaunch(noPush);
         tests.Require(!noPush.bPushBallistic, "Unconfigured ordinary attacks do not acquire Mario launch motion");
     }
+    {
+        const auto& balls = room->m_WorldBootstrap.Get_MarioBouncingBalls();
+        tests.Require(balls.size() == 13u, "All thirteen authored striped ball bindings publish authoritative bounce geometry");
+        for (const auto& ball : balls)
+        for (const unsigned maximumHp : {13200u, 26400u})
+        {
+            const unsigned tick = static_cast<unsigned>(std::ceil(100. * ball.durationMs / ball.playbackSpeed * 30. / 1000.));
+            const double clockMs = double(tick) * (1000. / 30.);
+            auto victim = player(); victim.iMarioStage = 1u;
+            victim.iMaximumHp = victim.iCurrentHp = maximumHp;
+            victim.bMarioRailReady = true; victim.fMarioRailRightX = 1.f; victim.fMarioRailRightZ = 0.f;
+            victim.fPositionX = ball.x + .1f; victim.fPositionZ = ball.z;
+            victim.fPositionY = ball.y + ball.Sample_OffsetY(clockMs);
+            const auto before = victim;
+            room->m_TickDamageEvents.clear();
+            room->Update_MarioBouncingBallContacts(victim, tick);
+            room->Update_MarioBouncingBallContacts(victim, tick);
+            tests.Require(victim.iCurrentHp == maximumHp - 1320u && room->m_TickDamageEvents.size() == 1u &&
+                victim.eAction == PLAYER_ACTION_STATE::KNOCKDOWN && victim.bKnockbackBallistic &&
+                victim.fKnockbackRemainingSeconds > .99f && victim.fKnockbackDirectionX > .999f &&
+                victim.iKnockdownEndTick == tick + (1000u + PLAYER_HIT_LANDING_RECOVERY_MS) * 30u / 1000u,
+                "Every striped ball deals fixed 1320 once per contact and shares bomb launch/down timing at different maximum HP");
+            room->Advance_PlayerKnockback(victim, .5f);
+            tests.Require(std::abs(victim.fPositionY - before.fPositionY - 2.f) < .001f,
+                "Striped ball knockdown reaches the same two metre apex as a bomb");
+            room->Advance_PlayerKnockback(victim, .5f);
+            tests.Require(std::abs(victim.fPositionY - before.fPositionY) < .001f &&
+                std::abs(victim.fPositionX - before.fPositionX - 4.f) < .001f && victim.fKnockbackRemainingSeconds == 0.f,
+                "Striped ball knockdown lands and stops at the same four metre endpoint as a bomb");
+            victim.fPositionX = ball.x + 100.f;
+            room->Update_MarioBouncingBallContacts(victim, tick);
+            victim.fPositionX = before.fPositionX; victim.fPositionY = before.fPositionY;
+            room->Update_MarioBouncingBallContacts(victim, tick);
+            tests.Require(victim.iCurrentHp == maximumHp - 2640u,
+                "Leaving and reentering a striped ball rearms contact while an uninterrupted overlap cannot stack hits");
+            for (const unsigned blocked : {0u, 1u, 2u, 3u, 4u})
+            {
+                auto excluded = before;
+                if (blocked == 0u) excluded.iMarioStage = 0u;
+                if (blocked == 1u) excluded.fPositionY += 20.f;
+                if (blocked == 2u) excluded.TriggerMove.isActive = true;
+                if (blocked == 3u) excluded.eAction = PLAYER_ACTION_STATE::GRABBED;
+                if (blocked == 4u) excluded.iTimeStopEndTick = tick + 100u;
+                room->Update_MarioBouncingBallContacts(excluded, tick);
+                tests.Require(excluded.iCurrentHp == maximumHp,
+                    "Striped ball contact preserves Mario scope, vertical separation, trigger transfer, capture and time stop immunity");
+            }
+        }
+        MARIO_BOUNCING_BALL fast;
+        fast.durationMs = 1200.f;
+        fast.keys = {{0.f, 0.f}, {10.f, 5.f}, {20.f, 0.f}, {1190.f, 5.f}, {1200.f, 0.f}};
+        float low = -1.f, high = -1.f;
+        fast.Sample_SweptOffsetY(0., 30., low, high);
+        tests.Require(low == 0.f && high == 5.f, "A sub-tick bounce apex is included in the Server contact sweep");
+        fast.Sample_SweptOffsetY(1180., 1210., low, high);
+        tests.Require(low == 0.f && high == 5.f, "Bounce contact sweep includes authored extrema across the loop boundary");
+    }
     // P85 uses the same first-contact path for both visible beam occurrences.
     for (const unsigned startMs : {3083u, 5222u})
     for (const unsigned entryDelayTicks : {0u, 1u, 20u, 45u})

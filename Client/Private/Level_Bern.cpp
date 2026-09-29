@@ -1802,12 +1802,15 @@ void CLevel_Bern::Try_Send_CharacterRestore()
 	no saved state just keeps the Server's fresh start. */
 	if (m_bCharacterRestoreSent || nullptr == m_Replication.Get_LocalCharacter())
 		return;
-	m_bCharacterRestoreSent = true;
 	CHARACTER_WORLD_STATE State{};
 	if (!CCharacterSelectionState::Try_Get_ActiveWorldState(State))
-		return;
-	(void)CNetworkManager::Get().Send_RestoreCharacter(
-		1u, State.Items, State.iSilver, State.iGold, State.iHonorTitleId);
+	{ m_bCharacterRestoreSent = true; return; }
+	if (CNetworkManager::Get().Send_RestoreCharacter(
+		1u, State.Items, State.iSilver, State.iGold, State.iHonorTitleId))
+	{
+		CCharacterSelectionState::Mark_RestoreRequested(1u);
+		m_bCharacterRestoreSent = true;
+	}
 }
 
 void CLevel_Bern::Poll_RaidEntryVote()

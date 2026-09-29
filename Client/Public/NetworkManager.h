@@ -333,7 +333,7 @@ public:
 		std::string_view npcPlacementId,
 		const std::vector<LostArk::Shared::SHOP_BASKET_ENTRY>& entries);
 	/* One-shot start of a saved character from its stored inventory, purse and honor title; the
-	Server accepts it once per fresh Bern entry and answers with an S2C_INVENTORY_SNAPSHOT. */
+	Server accepts it once per fresh Bern entry and returns a typed result after the inventory snapshot. */
 	bool Send_RestoreCharacter(
 		std::uint32_t requestSequence,
 		const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items,

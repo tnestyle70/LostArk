@@ -641,3 +641,16 @@ transactional 거부도 확인했다. test 전용 DLL PATH에 PhysX를 누락한
 Client.exe는22:19:53 생성됐고 변경된 C++ OBJ10개·CSO30개·EXE1개가 갱신됐다. 설치된 Release
 Binary/MapInstance 및 Binary28개 변형을 실제 CShader로 생성해 wind 입력9개, Clone pass와 reset을
 검사했다. 이전 E_FAIL은 두 경로 모두 S_OK로 바뀌었다. 로그는 installed-release-shader-check.log다.
+
+최종 Debug Product build/deploy도20260929T132038835Z-debug-product.json PASS(SkipBuild=false)다.
+C++는 앞선 Debug compile 단계에서 갱신했고 Product는CSO30개와EXE를 갱신했다. 설치된 Debug
+FX30개도 같은 실제 CShader 검사에서 wind9입력·Binary28변형·Clone pass·reset을 통과했다.
+프로젝트의 Debug/Release 최종 EXE에서 holdAfterCameraId 문자열을 확인했다. 실제 Client UI와
+최종 잔디 표시 판정은 수행하지 않았다. 검증기는 Client 실행 없이 WARP device를 사용했다.
+
+최종 대조에서 사용자가21:56에 저장한 Lance sound 앞1574ms trim(sourceStartMs1574,
+duration6919, World revision13)이 이전 게시본과 달랐다. 이 최신 편집을 보존해 WorldSequences를
+게시했으며 source/runtime SHA256은 d6e74a0c1b3e38f599650887307434b5a7893a15d3091475f78b38b1e51cee27로
+일치한다. 데이터 변경이므로 추가 C++ 빌드는 필요하지 않았다. final-delivery.json은 두 구성 EXE의
+신규 marker 코드, 구성별30CSO, 실제 바인딩 검사, Camera 후보와 설치본 일치, World 일치와
+GBResources221개의 SHA 동일성을 확인했다. Debug EXE22:20:36, Release EXE22:19:53 생성이다.

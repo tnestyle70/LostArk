@@ -379,11 +379,16 @@ acceleration Y=-8H/T²를 저장한다. 생성 개수·간격을 보존하고 �
 표시한다. 이후 생성도 전체 상태 종료시각을 공유한다. 별도 PhysX simulation이나 저장 곡선 schema는 없다.
 
 쿠크 마리오의 줄무늬 공은 `world.sequence.instance.mario.striped_ball.bounce`의 기존
-MAP_PLACEMENT track을 Level이 순환 Seek하는 순수 외형이다. Server-replicated `iMarioStage`
-1~4일 때만 같은 Server tick 시계로 재생하며 마리오 밖에서는 원래 배치를 복원한다.
-각 track의 상대 Y 키가 높이와 위상을 소유한다. 이는 일반 MAP_PLACEMENT의 `motionEnd=LOOP`
-지원이나 이동 collider/피해 판정이 아니다. 같은 placement에 다른 활성 시퀀스를 동시에 적용하지
-않으며, 활성 시퀀스의 기존 Preview/Reload guard를 풀려면 마리오 밖으로 나간다.
+MAP_PLACEMENT track을 Level이 순환 Seek한다. Server-replicated `iMarioStage` 1~4에서만
+같은 Server tick 시계로 재생하며 마리오 밖에서는 원래 배치를 복원한다. WorldGameplay publisher는
+같은 stable binding·배치·uniform scale·LINEAR 상대 Y 키를 `worldbootstrap` v12의
+`MARIOBOUNCE` 행으로 게시한다. 현재 13개 공의 높이·위상은 기존 track이 정본이며, 변경 시
+Map과 WorldGameplay를 함께 publish한다. Server는 실제 곡선을 30Hz로 sweep하여 접촉 진입당
+고정 1320 피해와 기존 폭탄의 4m/1초·최고2m 발사, KNOCKDOWN과 착지 후1초 회복 상태를 적용한다.
+연속 겹침은 한 번만 맞으며 접촉을 벗어나면 다시 판정한다. 시간정지·보호막 등 기존 Server 방어
+계약을 소비하며 Client가 피해나 위치를 판정하지 않는다. 비수직·비선형·비균일 배율 후보는 게시를
+거절한다. 일반 MAP_PLACEMENT의 LOOP 지원은 아니며 같은 placement에 다른 활성 시퀀스를
+동시에 적용하지 않는다. Preview/Reload guard를 풀려면 마리오 밖으로 나간다.
 
 원본 마리오 색 공은 `source:37081:npc:<actorId>` provenance와 imported placement ID로 저장한다.
 117개 후보는 기본 hidden이며 `world.sequence.instance.marioN.source.layoutC` 12개 시퀀스에서
@@ -403,14 +408,15 @@ placement와 시퀀스는 Map publisher, 몬스터 anchor/group은 WorldGameplay
 World Gameplay에서 위치를 저장한 뒤 `Tools/WorldPipeline/Publish-WorldGameplay.ps1 -Mode Publish`로
 내보내고 Client에 재진입한다. 제품은 published `World/LV_LUT_MIDNIGHTC_ED.viewer.world.json`의
 marker와 기존 마리오 진행선 끝점을 읽으며 source 직접 fallback을 사용하지 않는다.
-해당 Server `iMarioStage`의 살아 있는 로컬 플레이어가 있을 때만 4초 간격·약 3m/s로
+해당 Server `iMarioStage`의 살아 있는 로컬 플레이어가 있을 때만 8초 간격·약 3m/s로
 기존 `world.object.mario.clown_face_ball`을 WorldSequenceObject/CModel 경로에 생성한다.
 marker에서 같은 진행선의 먼 끝점까지 수평 직진하고 도착·퇴장·사망 때 제거한다.
 광대 얼굴 공의 모델 +X 앞축을 실제 비행 방향으로 회전시키며 world-up을 유지한다.
 비대칭 모델의 바닥 중심 보정도 함께 회전한다. 카메라 추적 billboard는 아니다.
 발사마다 stable marker/Server 시각 해시로 기본 바닥 정렬 높이에 +0.05m 또는 +0.90m를 더한다.
 box halfExtents는 모델 scale이 아니며 모델은 기존 resource scale을 유지한다.
-이는 피해 없는 Client 비행 표현이고 충돌·폭발·Server combat-object spawn은 포함하지 않는다.
+Server는 같은 marker·시계·세대의 접촉에서 고정 1320 피해와 위의 공통 발사 상태를 적용한다.
+명중한 비행 공의 해당 세대만 entrant에게 reliable STOP으로 숨기며 다른 플레이어의 공은 보존한다.
 위치/라인 데이터는 진입 시 읽고, 속도·간격·두 높이는 현재 Level WorldObjects의 MARIO_BOMB 상수다.
 
 F1 `World Object Tool`은 이 Area source와 부모의 optional `defaultMotionInstanceId`를 편집·저장한다.

@@ -441,3 +441,10 @@ E_FAIL을 반환해 draw를 제출하지 못했다. 설치 Debug/Release FX에�
 공용 HLSL의 변수 계약을 복구하고 Binary28개 변형도 재컴파일한다. 해당 수정과 CShader의 실제
 bind/pass 검사 근거는09-25 FOUR_CLASS_SELECTION_MOVIES_IMPLEMENTATION_RESULT G13 후속을 따른다.
 G14의 CPU catalog PASS는 이 렌더링 결함 해결이나 최종 화면 성공을 의미하지 않았다.
+
+G15 최종 반영: Debug20260929T132038835Z, Release20260929T131955762Z의 Product build/deploy가
+모두 PASS다. EXE와 구성별30FX를 갱신했고 실제 설치 FX의 필수 바인딩·Clone pass 검사는 성공했다.
+카메라 첫 box 완료는 Product Update CPU711개로 검사했으며 최신 사용자 Lance sound1574ms trim도
+보존·게시해 source/runtime hash를 맞췄다. 두 EXE·Camera·FX·World·GBResources221개의 최종 대조는
+out/MovieFirstCutHold20260929/final-delivery.json에 있다. 소스·실행 파일 패키징이 가능한 상태다.
+Client 화면의 잔디 표시와 최종 청감 판정은 사용자에게 남아 있다.

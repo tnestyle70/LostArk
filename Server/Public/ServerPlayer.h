@@ -219,6 +219,8 @@ namespace LostArk::Server
 		std::uint8_t iMarioStage = 0u;
 		std::uint8_t iMarioBombContactStage = 0u;
 		std::map<std::pair<std::uint32_t, std::uint32_t>, std::int64_t> MarioBombHitBirths;
+		std::uint8_t iMarioBouncingBallContactStage = 0u;
+		std::map<std::uint64_t, bool> MarioBouncingBallContacts;
 		std::uint8_t iMarioLayoutVariant = 0u;
 		// The entrant owns the challenge until death/cancellation or the return landing.
 		// 0 inactive, 1 red, 2 blue, 3 yellow; the marker may belong to an outside player.
@@ -273,6 +275,8 @@ namespace LostArk::Server
 			iMarioStage = 0u;
 			iMarioBombContactStage = 0u;
 			MarioBombHitBirths.clear();
+			iMarioBouncingBallContactStage = 0u;
+			MarioBouncingBallContacts.clear();
 			iMarioLayoutVariant = 0u;
 			iMarioMoveExpiryTick = 0u;
 			fMarioDirectionX = fMarioDirectionZ = 0.f;

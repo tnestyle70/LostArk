@@ -704,3 +704,9 @@ install-receipt/publish.log에 추출·구조·설치/GBResources·게시 근거
 out/LanceGrassRenderFix20260929/installed-Release로 복사했다. 실제 CShader의 Binary28개 변형
 admission, MapInstance/Binary의 wind9개 입력·Clone pass·reset 모두 통과했다. probe.log가 증거다.
 수정 전 두 경로 Program bind의 HRESULT0x80004005는 모두0x00000000으로 바뀌었다.
+
+Debug Product20260929T132038835Z-debug-product.json도PASS이며 동일하게 설치Debug30FX를
+out/LanceGrassRenderFix20260929/installed-Debug로 hash 대조 복사해 실제CShader 생성·바인딩·
+Clone pass·reset을 통과했다. Debug/Release FX 검증은 같은 제품 Release Engine CShader의
+WARP device에서 수행했으며 Client 실행이나 화면 캡처는 없었다. 최종 잔디 표시·색·밀도는
+사용자의 화면 확인 경계로 남긴다. 추가 Resources는 없고 기존221개는 GBResources와 유지된다.

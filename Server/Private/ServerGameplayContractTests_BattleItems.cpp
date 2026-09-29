@@ -5,6 +5,7 @@
 #include "ServerCombatHitRuntime.h"
 #include "KoukuSaydonLogicRuntime.h"
 #include "WorldBootstrap.h"
+#include "Network/PacketReader.h"
 
 #include <algorithm>
 #include <memory>
@@ -181,6 +182,167 @@ int CServerGameplayContractRunner::Run_BattleItemsOnly()
         tests.Require(ally.eAction != PLAYER_ACTION_STATE::FEAR, "Holy charm blocks new Kouku fear during protection");
         CKoukuSaydonLogicRuntime::Apply_Result(ally, fear, *boss, room->m_GameplayCatalog, nullptr, 900u, damageEvents);
         tests.Require(ally.eAction == PLAYER_ACTION_STATE::FEAR, "Kouku fear resumes exactly after holy protection expires");
+    }
+    {
+        // Exercise the real use command, trajectory, part authority and four observer
+        // packets. Only the current recovery window and cooldown clock are fixture inputs.
+        auto arena = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+        std::vector<std::shared_ptr<CClientSession>> observers;
+        bool admitted = arena->Is_Ready();
+        for (unsigned index = 0; index < 4u && admitted; ++index)
+        {
+            auto session = std::make_shared<CClientSession>(91000u + index, INVALID_SOCKET,
+                CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+            session->m_isSendRunning.store(true);
+            arena->Handle_Register(session);
+            observers.push_back(session);
+            C2S_ENTER_WORLD entry;
+            entry.eWorldId = WORLD_ID::VALTAN_ARENA;
+            entry.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
+            entry.strNickName = "BombArmor" + std::to_string(index + 1u);
+            admitted = arena->Join(session->Get_SessionId(), entry);
+        }
+        const auto* placement = arena->Find_Placement("boss.valtan.center");
+        const auto* patterns = arena->m_GameplayCatalog.Find_BossPatterns("ENCOUNTER_VALTAN");
+        const BOSS_PATTERN_STAGE_DEFINITION* recovery = nullptr;
+        std::uint32_t recoveryIndex = 0u;
+        if (patterns) for (const auto& pattern : *patterns)
+            if (pattern.strPatternId == "VALTAN_DASH_CHARGE")
+                for (std::size_t index = 0u; index < pattern.Stages.size(); ++index)
+                    if (pattern.Stages[index].strActionId == "valtan.attack.dash-charge.recovery")
+                    { recovery = &pattern.Stages[index]; recoveryIndex = static_cast<std::uint32_t>(index); }
+        auto stagedBoss = std::make_unique<SERVER_WORLD_ENTITY>();
+        const bool built = admitted && placement && recovery &&
+            arena->Build_WorldEntity(*placement, 500001u, *stagedBoss);
+        tests.Require(built && arena->Count_HumanPlayers() == 4u &&
+            stagedBoss->BossCombat.iAlivePartMask == 3u && stagedBoss->ArmorPlates.size() == 2u &&
+            recovery->ePartDamagePolicy == BOSS_PATTERN_PART_DAMAGE_POLICY::DESTROY_FIRST_ELIGIBLE,
+            "Four admitted players use the published Valtan parts and dash recovery policy");
+        if (built)
+        {
+            arena->m_WorldEntities.clear();
+            arena->m_WorldEntities.push_back(std::move(*stagedBoss));
+            auto& boss = arena->m_WorldEntities.front();
+            auto& thrower = arena->m_Players.at(observers.front()->Get_PlayerId());
+            SERVER_NAV_POINT source;
+            const bool positioned = arena->m_ServerNavigation.Sample_SurfacePosition(
+                boss.fPositionX, boss.fPositionZ + 4.f, source);
+            thrower.fPositionX = source.x; thrower.fPositionY = source.y; thrower.fPositionZ = source.z;
+            thrower.isCombatReady = true;
+            tests.Require(positioned && arena->Grant_Item(thrower, "BATTLE_DESTRUCTION_BOMB", 5u),
+                "Destruction bombs enter a real inventory at a navigable throwing position");
+            const auto remaining = [&]() {
+                const auto item = std::find_if(thrower.Inventory.begin(), thrower.Inventory.end(),
+                    [](const auto& row) { return row.strItemId == "BATTLE_DESTRUCTION_BOMB"; });
+                return item == thrower.Inventory.end() ? 0u : item->iQuantity;
+            };
+            const auto initialQuantity = remaining();
+            std::uint32_t sequence = 1u;
+            for (unsigned attempt = 0u; attempt < 3u && positioned; ++attempt)
+            {
+                for (const auto& observer : observers)
+                { observer->m_OutboundFrames.clear(); observer->m_iQueuedOutboundBytes = 0u; }
+                arena->m_iServerTick = 100u + attempt * 1000u;
+                arena->m_TickBossCombatEvents.clear();
+                boss.BossCombat.PendingOutcomes.clear();
+                boss.bPendingArmorBreakReaction = false;
+                boss.strPatternId = "VALTAN_DASH_CHARGE";
+                boss.strPatternStageId = recovery->strStageId;
+                boss.strActionId = recovery->strActionId;
+                boss.iPatternSequence = attempt + 1u;
+                boss.iPatternStageIndex = recoveryIndex;
+                boss.iPatternStageDurationMs = recovery->iDurationMs;
+                boss.iActionStartTick = arena->m_iServerTick;
+                boss.eAction = SERVER_ENTITY_ACTION::PATTERN_RECOVERY;
+                boss.ePatternPartDamagePolicy = recovery->ePartDamagePolicy;
+                boss.bPatternGroggy = attempt != 0u;
+                (void)CBossCombatRuntime::Set_Flag(boss.BossCombat, SERVER_BOSS_COMBAT_FLAG::GROGGY, attempt != 0u);
+                const auto beforeMask = boss.BossCombat.iAlivePartMask;
+                std::uint32_t expectedBroken = 0u;
+                if (attempt) for (const auto& part : boss.BossCombat.Parts)
+                    if (part.iStateMask & beforeMask) { expectedBroken = part.iStateMask; break; }
+                C2S_USE_ITEM request;
+                request.strItemId = "BATTLE_DESTRUCTION_BOMB";
+                request.hasGroundTarget = true;
+                request.iRequestSequence = sequence++;
+                request.fTargetX = thrower.fPositionX + 100.f; request.fTargetZ = thrower.fPositionZ;
+                arena->Handle_UseItem(thrower.iSessionId, request);
+                tests.Require(remaining() == initialQuantity - attempt && arena->m_CombatObjectRuntime.Get_LiveObjects().empty(),
+                    "Out-of-range destruction throws preserve inventory and create no projectile");
+                request.iRequestSequence = sequence++;
+                request.fTargetX = boss.fPositionX; request.fTargetZ = boss.fPositionZ;
+                arena->Handle_UseItem(thrower.iSessionId, request);
+                tests.Require(remaining() == initialQuantity - attempt - 1u && arena->m_CombatObjectRuntime.Get_LiveObjects().size() == 1u,
+                    "Accepted destruction command consumes one item and launches one server projectile");
+                arena->Handle_UseItem(thrower.iSessionId, request);
+                request.iRequestSequence = sequence++;
+                arena->Handle_UseItem(thrower.iSessionId, request);
+                tests.Require(remaining() == initialQuantity - attempt - 1u && arena->m_CombatObjectRuntime.Get_LiveObjects().size() == 1u,
+                    "Duplicate and cooldown destruction requests cannot duplicate the throw");
+                damageEvents.clear();
+                for (unsigned step = 0u; step < 60u && !arena->m_CombatObjectRuntime.Get_LiveObjects().empty(); ++step)
+                {
+                    ++arena->m_iServerTick;
+                    arena->m_CombatObjectRuntime.Update(arena->m_Players, arena->m_WorldEntities,
+                        arena->m_GameplayCatalog, 1.f / 30.f, arena->m_iServerTick, damageEvents);
+                }
+                tests.Require(arena->m_CombatObjectRuntime.Get_LiveObjects().empty() &&
+                    boss.BossCombat.iAlivePartMask == (beforeMask & ~expectedBroken) &&
+                    boss.bPendingArmorBreakReaction == (expectedBroken != 0u),
+                    "Destruction contact breaks exactly one eligible plate only while groggy");
+                arena->Drain_BossCombatEvents();
+                const bool broadcast = arena->Broadcast_CombatObjectLifecycle();
+                arena->Broadcast_WorldSnapshot();
+                bool parity = broadcast;
+                for (const auto& observer : observers)
+                {
+                    unsigned spawns = 0u, impacts = 0u, despawns = 0u, snapshots = 0u;
+                    for (const auto& frame : observer->m_OutboundFrames)
+                    {
+                        CPacketReader reader{std::span<const std::uint8_t>(frame.Bytes).subspan(PACKET_HEADER_BYTES)};
+                        if (frame.ePacketType == PACKET_TYPE::S2C_COMBAT_OBJECT_SPAWNED)
+                        {
+                            S2C_COMBAT_OBJECT_SPAWNED message;
+                            parity &= Read_Message(reader, message) && message.strClientVisualId == "battle.item.destruction_bomb";
+                            ++spawns;
+                        }
+                        else if (frame.ePacketType == PACKET_TYPE::S2C_COMBAT_OBJECT_PRESENTATION_EVENT)
+                        {
+                            S2C_COMBAT_OBJECT_PRESENTATION_EVENT message;
+                            parity &= Read_Message(reader, message) && message.strHitId == "battle.item.impact" &&
+                                message.eKind == COMBAT_OBJECT_PRESENTATION_EVENT_KIND::HIT_PULSE;
+                            ++impacts;
+                        }
+                        else if (frame.ePacketType == PACKET_TYPE::S2C_COMBAT_OBJECT_DESPAWNED)
+                        {
+                            S2C_COMBAT_OBJECT_DESPAWNED message;
+                            parity &= Read_Message(reader, message);
+                            ++despawns;
+                        }
+                        else if (frame.ePacketType == PACKET_TYPE::S2C_WORLD_SNAPSHOT)
+                        {
+                            S2C_WORLD_SNAPSHOT message;
+                            parity &= Read_Message(reader, message);
+                            const auto entity = std::find_if(message.Entities.begin(), message.Entities.end(),
+                                [&](const auto& row) { return row.iNetEntityId == boss.iNetEntityId; });
+                            parity &= entity != message.Entities.end() && entity->BossCombat.iAlivePartMask == boss.BossCombat.iAlivePartMask &&
+                                entity->iBrokenArmorMask == static_cast<std::uint8_t>(3u & ~boss.BossCombat.iAlivePartMask) &&
+                                message.BossCombatEvents.size() == (expectedBroken ? 1u : 0u);
+                            if (expectedBroken && message.BossCombatEvents.size() == 1u)
+                                parity &= message.BossCombatEvents.front().eKind == BOSS_COMBAT_EVENT_KIND::PART_BROKEN &&
+                                    message.BossCombatEvents.front().iPartMask == expectedBroken;
+                            ++snapshots;
+                        }
+                    }
+                    parity &= spawns == 1u && impacts == 1u && despawns == 1u && snapshots == 1u;
+                }
+                tests.Require(parity, "Four observers decode one flight, impact, removal and matching armor break snapshot");
+            }
+            tests.Require(!boss.BossCombat.iAlivePartMask && std::all_of(boss.ArmorPlates.begin(), boss.ArmorPlates.end(),
+                [](const auto& plate) { return !plate.iRemainingDurability; }),
+                "Two separate groggy windows remove both typed and legacy armor plates");
+        }
+        for (const auto& observer : observers) observer->Request_Close();
     }
     std::cout << "failures : " << tests.failures << '\n';
     return tests.failures ? 1 : 0;

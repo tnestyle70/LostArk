@@ -801,11 +801,11 @@ namespace
 	void WriteVector(std::ostringstream& out, const char_t* pName, const float4_t& vValue)
 	{
 		out << "  \"" << pName << "\": [";
-		for (const f32_t f : { vValue.x, vValue.y, vValue.z, vValue.w })
+		const std::array<f32_t, 4> values{ vValue.x, vValue.y, vValue.z, vValue.w };
+		for (size_t component = 0; component < values.size(); ++component)
 		{
-			WriteNumber(out, f);
-			if (&f != &vValue.w)
-				out << ", ";
+			if (component) out << ", ";
+			WriteNumber(out, values[component]);
 		}
 		out << "],\n";
 	}
@@ -868,11 +868,11 @@ std::string Client::CCustomizingView::Serialize_Appearance(
 	{
 		out << "    [";
 		const float4_t& v = m_SurfaceColors[i];
-		for (const f32_t f : { v.x, v.y, v.z, v.w })
+		const std::array<f32_t, 4> values{ v.x, v.y, v.z, v.w };
+		for (size_t component = 0; component < values.size(); ++component)
 		{
-			WriteNumber(out, f);
-			if (&f != &v.w)
-				out << ", ";
+			if (component) out << ", ";
+			WriteNumber(out, values[component]);
 		}
 		out << (i + 1u < m_SurfaceColors.size() ? "],\n" : "]\n");
 	}

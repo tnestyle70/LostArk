@@ -2942,7 +2942,7 @@ namespace LostArk::Shared
 	/* One-shot restore of a character the Client saved locally: the whole inventory
 	   (equipped entries keep their slot), the purse and the worn honor title. The Server
 	   accepts it once, in Bern, before the player changed anything, and answers with an
-	   S2C_INVENTORY_SNAPSHOT; a rejected restore is silent. */
+	   S2C_INVENTORY_SNAPSHOT followed by S2C_RESTORE_CHARACTER_RESULT; rejection is explicit. */
 	inline constexpr std::uint32_t MAX_RESTORE_PURSE_AMOUNT = 2000000000u;
 	struct C2S_RESTORE_CHARACTER
 	{
@@ -2954,6 +2954,17 @@ namespace LostArk::Shared
 	};
 	bool Write_Message(CPacketWriter& writer, const C2S_RESTORE_CHARACTER& message);
 	bool Read_Message(CPacketReader& reader, C2S_RESTORE_CHARACTER& message);
+
+	enum class CHARACTER_RESTORE_RESULT : std::uint8_t
+	{ APPLIED, REJECTED_SESSION, REJECTED_UNAVAILABLE, REJECTED_CATALOG, END };
+	struct S2C_RESTORE_CHARACTER_RESULT
+	{
+		std::uint32_t iRequestSequence = 0u;
+		CHARACTER_RESTORE_RESULT eResult = CHARACTER_RESTORE_RESULT::REJECTED_SESSION;
+		HONOR_TITLE_ID iHonorTitleId = INVALID_HONOR_TITLE_ID;
+	};
+	bool Write_Message(CPacketWriter& writer, const S2C_RESTORE_CHARACTER_RESULT& message);
+	bool Read_Message(CPacketReader& reader, S2C_RESTORE_CHARACTER_RESULT& message);
 
 	bool Write_Message(
 		CPacketWriter& writer,

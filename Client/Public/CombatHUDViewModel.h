@@ -442,7 +442,10 @@ namespace Client
 			const LostArk::Shared::S2C_INVENTORY_SNAPSHOT& snapshot)
 		{
 			m_Inventory = snapshot;
+			m_bHasInventory = true;
 		}
+		bool Has_Inventory() const { return m_bHasInventory; }
+		void Apply_RestoredHonorTitle(LostArk::Shared::HONOR_TITLE_ID title) { m_Player.iHonorTitleId = title; }
 		const LostArk::Shared::S2C_INVENTORY_SNAPSHOT& Get_Inventory() const
 		{
 			return m_Inventory;
@@ -610,6 +613,7 @@ namespace Client
 		std::uint32_t m_iStatusEffectTextPreviewSerial = 0u;
 #endif
 		LostArk::Shared::S2C_INVENTORY_SNAPSHOT m_Inventory{};
+		bool m_bHasInventory = false;
 		std::string m_strStatus;
 	};
 }

@@ -948,6 +948,7 @@ bool CNetworkManager::Has_DispatchCapacity(
 	case PACKET_TYPE::S2C_WORLD_ENTITY_DESPAWNED:
 	case PACKET_TYPE::S2C_COMBAT_OBJECT_DESPAWNED:
 	case PACKET_TYPE::S2C_INVENTORY_SNAPSHOT:
+	case PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT:
 	case PACKET_TYPE::S2C_PARTY_INVITE_RECEIVED:
 	case PACKET_TYPE::S2C_KOUKUSAYDON_RAID_STATE:
 	case PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE:
@@ -4505,6 +4506,17 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 				m_LocalSpawn.eCharacterClass = result.eActiveClass;
 		}
 		m_CharacterClassChangeResults.push_back(std::move(result));
+		break;
+	}
+	case PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT:
+	{
+		S2C_RESTORE_CHARACTER_RESULT result{};
+		if (!Read_Message(reader, result) || 0 != reader.Get_RemainingSize())
+		{ m_iLastErrorCode.store(WSAEINVAL); return; }
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::RESTORE_CHARACTER_RESULT;
+		event.RestoreCharacterResult = result;
+		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}
 	case PACKET_TYPE::S2C_INVENTORY_SNAPSHOT:

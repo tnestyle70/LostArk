@@ -1609,6 +1609,7 @@ namespace LostArk::Server
 		void Resolve_CardMazeHammerHit(SERVER_PLAYER& player, std::uint32_t updateTick);
 		void Resolve_MarioHammerHit(SERVER_PLAYER& player, std::uint32_t updateTick);
 		void Update_MarioBombContacts(SERVER_PLAYER& player, std::uint32_t updateTick);
+		void Update_MarioBouncingBallContacts(SERVER_PLAYER& player, std::uint32_t updateTick);
 		// Rotating cannon jets and the big mokoko waterfall of a live Waterpang match.
 		void Update_MaharakaWaterpangHazards(SERVER_PLAYER& player, std::uint32_t updateTick);
 		// The running Debug forced event first, else the match schedule; false when neither runs.

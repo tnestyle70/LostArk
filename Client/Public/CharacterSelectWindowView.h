@@ -54,9 +54,10 @@ public:
 	   CLOSE = server select / ESC. */
 	enum class INTENT { NONE, NEW_CHARACTER, START_CHARACTER, OPEN_OPTIONS, CLOSE };
 	INTENT Consume_Intent();
+	int32_t Get_CreationSlot() const { return m_iCreationSlot; }
 	/* The seated card "game start" was pressed on. */
 	void Get_StartCharacter(LostArk::Shared::CHARACTER_CLASS_ID& outClass,
-		std::string& outNickname, std::string& outAppearanceJson) const;
+		std::string& outNickname, std::string& outAppearanceJson, std::string& outCharacterId) const;
 
 	/* Drives visibility, hover texture swaps and click hit-testing for one frame while
 	   open (sprites themselves draw through the normal engine UI pipeline). Claims the
@@ -88,7 +89,7 @@ private:
 	void Spawn_StageCharacter(int32_t iIndex);
 
 private:
-	static constexpr int32_t STAGE_COUNT = 4;
+	static constexpr int32_t STAGE_COUNT = 6;
 
 	ComPtr<ID3D11Device> m_pDevice;
 	ComPtr<ID3D11DeviceContext> m_pContext;
@@ -105,6 +106,7 @@ private:
 	int32_t m_iHoveredCard = -1;
 	/* Seated card picked by the last click (-1 none). */
 	int32_t m_iSelectedCard = -1;
+	int32_t m_iCreationSlot = -1;
 	bool_t m_bRenameHovered = false;
 	bool_t m_bOptionHovered = false;
 

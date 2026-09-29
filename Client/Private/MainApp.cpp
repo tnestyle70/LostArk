@@ -711,7 +711,7 @@ bool_t CMainApp::Return_ToCharacterSelect()
 {
 	if (CLevelTransitionService::Is_Pending())
 		return false;
-	CCharacterSelectionState::Save_ActiveWorldState();
+	CCharacterSelectionState::Capture_ActiveWorldState();
 	if (!CLevelTransitionService::Request_Load(LEVEL::LOBBY, "world.menu.character-select"))
 		return false;
 	m_bOpenCharacterSelectOnLobby = true;
@@ -6435,8 +6435,9 @@ void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
 		LostArk::Shared::CHARACTER_CLASS_ID eClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
 		string strNickname;
 		string strAppearance;
-		m_pCharacterSelectWindowView->Get_StartCharacter(eClass, strNickname, strAppearance);
-		if (CCharacterSelectionState::Stage_ExistingEntry(eClass, strNickname, strAppearance) &&
+		string strCharacterId;
+		m_pCharacterSelectWindowView->Get_StartCharacter(eClass, strNickname, strAppearance, strCharacterId);
+		if (CCharacterSelectionState::Stage_ExistingEntry(eClass, strNickname, strAppearance, strCharacterId) &&
 			!CLevel_Lobby::Submit_ProductCommand(LOBBY_STAGE::BERN))
 			CCharacterSelectionState::Cancel_PendingCreation();
 		break;
@@ -6450,7 +6451,9 @@ void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
 		stays open while the Server approval runs -- success changes the level (the branch
 		above closes it), a rejection leaves the window up and the user can ESC back to the
 		Lobby's status line. */
-		(void)CLevel_Lobby::Submit_ProductCommand(LOBBY_STAGE::CHARACTER_SELECT);
+		if (CCharacterSelectionState::Select_CreationSlot(
+			static_cast<size_t>(m_pCharacterSelectWindowView->Get_CreationSlot())))
+			(void)CLevel_Lobby::Submit_ProductCommand(LOBBY_STAGE::CHARACTER_SELECT);
 		break;
 	case CCharacterSelectWindowView::INTENT::CLOSE:
 		m_pCharacterSelectWindowView->Close();
@@ -6633,7 +6636,7 @@ void CMainApp::RenderLobbyButtonText()
 		if (Entry.bCreatable)
 		{
 			const uint32_t iShownCount = Entry.bCountsSavedCharacters ?
-				static_cast<uint32_t>(CCharacterRoster::Get_Entries().size()) : Entry.iCharacterCount;
+				static_cast<uint32_t>(CCharacterRoster::Get_CharacterCount()) : Entry.iCharacterCount;
 			const wstring strCount = std::to_wstring(iShownCount);
 			DrawAt(strCount.c_str(), strYG760, 16.f, Rect.fX + 365.333f, fCenterY,
 				0.f, 33.333f, Colors::White);
@@ -10321,7 +10324,7 @@ void CMainApp::Apply_LevelRequest()
 			 iPreviousLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
 			 iPreviousLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ||
 			 iPreviousLevel == ETOUI(LEVEL::MAHARAKA)))
-			CCharacterSelectionState::Save_ActiveWorldState();
+			CCharacterSelectionState::Capture_ActiveWorldState();
 		const HRESULT result = Start_Level(
 			request.eTargetLevel,
 			request.iLobbyCommandToken);
@@ -14817,7 +14820,7 @@ void CMainApp::Free()
 #endif
 	if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Reset();
 	m_pKoukuPresentationPlayer.reset();
-	/* The saved-look outfit applier holds the D3D device and an equipment service: release them
+	/* The session-look outfit applier holds the D3D device and an equipment service: release them
 	while the Engine is alive. */
 	CCustomizingView::Release_SavedLookCache();
 	/* Active instances must leave ObjectManager while the Engine is alive, but

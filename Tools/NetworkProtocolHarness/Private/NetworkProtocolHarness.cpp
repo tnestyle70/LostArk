@@ -8890,9 +8890,51 @@ void Test_BattleItemUseProtocol(TEST_RUNNER& tests)
     }
 }
 
+void Test_CharacterRestoreProtocol(TEST_RUNNER& tests)
+{
+    C2S_RESTORE_CHARACTER request;
+    request.iRequestSequence = 7u;
+    request.Items.push_back({"POTION_HP_SMALL", 23u, EQUIPMENT_SLOT::NONE});
+    request.iSilver = 161161u; request.iGold = 900u; request.iHonorTitleId = 3u;
+    CPacketWriter writer;
+    const bool written = Write_Message(writer, request);
+    CPacketReader reader{writer.Get_Buffer()};
+    C2S_RESTORE_CHARACTER decoded;
+    tests.Require(written && Read_Message(reader, decoded) && !reader.Get_RemainingSize() &&
+        decoded.Items.size() == 1u && decoded.Items[0].iQuantity == 23u &&
+        decoded.iSilver == 161161u && decoded.iGold == 900u && decoded.iHonorTitleId == 3u,
+        "Session character restore preserves inventory, both currencies and title");
+    for (const auto verdict : {CHARACTER_RESTORE_RESULT::APPLIED,
+        CHARACTER_RESTORE_RESULT::REJECTED_SESSION, CHARACTER_RESTORE_RESULT::REJECTED_UNAVAILABLE,
+        CHARACTER_RESTORE_RESULT::REJECTED_CATALOG})
+    {
+        const S2C_RESTORE_CHARACTER_RESULT result{7u, verdict, 3u};
+        CPacketWriter resultWriter;
+        const bool encoded = Write_Message(resultWriter, result);
+        CPacketReader resultReader{resultWriter.Get_Buffer()};
+        S2C_RESTORE_CHARACTER_RESULT roundTrip;
+        tests.Require(encoded && Read_Message(resultReader, roundTrip) && !resultReader.Get_RemainingSize() &&
+            roundTrip.iRequestSequence == 7u && roundTrip.eResult == verdict && roundTrip.iHonorTitleId == 3u,
+            "Restore success and every refusal are explicit round-trip results");
+    }
+    CPacketWriter invalid;
+    invalid.Write_U32(7u); invalid.Write_U8(static_cast<std::uint8_t>(CHARACTER_RESTORE_RESULT::END)); invalid.Write_U32(0u);
+    CPacketReader invalidReader{invalid.Get_Buffer()};
+    S2C_RESTORE_CHARACTER_RESULT preserved{99u, CHARACTER_RESTORE_RESULT::APPLIED, 8u};
+    tests.Require(!Read_Message(invalidReader, preserved) && preserved.iRequestSequence == 99u && preserved.iHonorTitleId == 8u,
+        "Unknown restore result preserves the previous decoded state");
+    CPacketWriter invalidRequest;
+    request.iGold = MAX_RESTORE_PURSE_AMOUNT + 1u;
+    tests.Require(!Write_Message(invalidRequest, request), "Restore rejects an out-of-range purse");
+    tests.Require(Is_Known_Packet_Type(PACKET_TYPE::C2S_RESTORE_CHARACTER) &&
+        Is_Known_Packet_Type(PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT), "Both restore packet directions are registered");
+}
+
 int main(const int argumentCount, char* arguments[])
 {
 	TEST_RUNNER testRunner{};
+    if (argumentCount == 2 && std::string_view(arguments[1]) == "--character-restore-only")
+    { Test_CharacterRestoreProtocol(testRunner); return testRunner.iFailureCount ? 1 : 0; }
     if (argumentCount == 2 && std::string_view(arguments[1]) == "--battle-items-only")
     { Test_BattleItemUseProtocol(testRunner); return testRunner.iFailureCount ? 1 : 0; }
     if (argumentCount == 2 && std::string_view(arguments[1]) == "--numeric-balance-only")
@@ -8940,6 +8982,7 @@ int main(const int argumentCount, char* arguments[])
 		return 0u == testRunner.iFailureCount ? 0 : 1;
 	}
 
+    Test_CharacterRestoreProtocol(testRunner);
     Test_BattleItemUseProtocol(testRunner);
     Test_NumericBalanceProtocol(testRunner);
 	Test_Integrated120ShopProtocol(testRunner);

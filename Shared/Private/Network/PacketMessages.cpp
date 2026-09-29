@@ -5942,6 +5942,29 @@ bool LostArk::Shared::Read_Message(
 	return true;
 }
 
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const S2C_RESTORE_CHARACTER_RESULT& message)
+{
+	if (!message.iRequestSequence || message.eResult >= CHARACTER_RESTORE_RESULT::END) return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	writer.Write_U32(message.iHonorTitleId);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, S2C_RESTORE_CHARACTER_RESULT& message)
+{
+	S2C_RESTORE_CHARACTER_RESULT decoded{};
+	std::uint8_t result = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U8(result) ||
+		!reader.Read_U32(decoded.iHonorTitleId)) return false;
+	decoded.eResult = static_cast<CHARACTER_RESTORE_RESULT>(result);
+	if (!decoded.iRequestSequence || decoded.eResult >= CHARACTER_RESTORE_RESULT::END) return false;
+	message = decoded;
+	return true;
+}
+
 namespace
 {
 	bool Is_Valid_ShopBasket(const LostArk::Shared::C2S_BUY_ITEMS& message)

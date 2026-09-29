@@ -26,7 +26,7 @@ DIRECT_DOMAINS = ('Actors', 'Animation/Authored', 'Animation/HitShapes', 'Balanc
                   'Guide', 'Items', 'KoukuSaydon', 'Rendering/Authored', 'Sound',
                   'Titles', 'UI', 'Valtan', 'Vehicles', 'Worlds')
 DATA_SUFFIXES = {'.json', '.animevents'}
-TRANSIENT = re.compile(r'(^|\.)(staging|rollback|backup|before|tmp|temp)(\.|$)', re.I)
+TRANSIENT = re.compile(r'(^|\.)(staging|rollback|backup|before|tmp|temp|retired)(\.|$)', re.I)
 
 
 def read(path):

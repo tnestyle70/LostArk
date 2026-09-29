@@ -330,6 +330,7 @@ bool Client::CClientReplication::Update()
 	{
 		if (m_wasConnected)
 		{
+			CCharacterSelectionState::Capture_ActiveWorldState();
 			Reset_World();
 			m_hasPendingConnectionLoss = true;
 		}
@@ -407,6 +408,22 @@ bool Client::CClientReplication::Update()
 		case CLIENT_REPLICATION_EVENT_TYPE::ENCOUNTER_PROP_SYNC:
 			allSucceeded = Apply_EncounterPropSync(
 				event.EncounterPropSync) && allSucceeded;
+			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::RESTORE_CHARACTER_RESULT:
+			if (CCharacterSelectionState::Apply_RestoreResult(event.RestoreCharacterResult))
+			{
+				if (event.RestoreCharacterResult.eResult == LostArk::Shared::CHARACTER_RESTORE_RESULT::APPLIED)
+					CCombatHUDViewModel::Get().Apply_RestoredHonorTitle(event.RestoreCharacterResult.iHonorTitleId);
+				else
+				{
+					CLevelTransitionService::Report_Recovery(
+						LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_IDENTITY_COMMIT_FAILED,
+						"character.restore-rejected", "Server rejected the session character state. The session roster was preserved.", E_FAIL);
+					CNetworkManager::Get().Close_ServerConnection();
+					CLevelTransitionService::Request_Load(LEVEL::LOBBY, "character.restore-rejected");
+				}
+			}
 			break;
 
 		case CLIENT_REPLICATION_EVENT_TYPE::INVENTORY_SNAPSHOT:
