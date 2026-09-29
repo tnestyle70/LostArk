@@ -1616,9 +1616,11 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 			{
 				if (!player.iCurrentHp || player.eAction == PLAYER_ACTION_STATE::DEAD) continue;
 				if (Is_KoukuRaidRunning() && std::find(m_KoukuRaid.PlayerIds.begin(), m_KoukuRaid.PlayerIds.end(), id) == m_KoukuRaid.PlayerIds.end()) continue;
-				// Bingo alone permits Inanna or an earned line buff to survive the black hole.
-				// An earlier line reward may already have expired, so success cannot soften this wipe.
-				if (serverTick < player.iInvulnerableEndTick)
+				// Only an unexpired earned line or Inanna zone satisfies this mechanic.
+				// Generic immunity and item protection cannot turn a failed verdict into success.
+				const auto protectedUntil = [&](const std::uint32_t until) {
+					return until && !CKoukuSaydonLogicRuntime::Has_ReachedTick(serverTick, until); };
+				if (protectedUntil(player.iKoukuBingoLineProtectionEndTick) || protectedUntil(player.iEstherZoneProtectionEndTick))
 				{
 				    // Emit the same deduplicated combat-text pulse as a safe-zone verdict.
 				    player.iInvulnerabilityZoneContactTick = serverTick;
@@ -2188,6 +2190,9 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 		1u : m_iServerTick + 1u;
 	// Idempotent for direct simulation callers; normal ticks already prepared before players.
 	Prepare_KoukuAuditionTick(updateTick);
+	// Commit portal contact before child attacks mutate the contacting player.
+	// This boundary is outside entity iteration because entry may spawn stage objects.
+	Commit_KoukuMarioEntries();
 	Update_KoukuPatternTails(updateTick);
 	Update_KoukuGazeClones(updateTick);
 	if (!Update_DependentBosses(updateTick))

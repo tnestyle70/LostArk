@@ -291,9 +291,9 @@ int LostArk::Server::CServerGameplayContractRunner::Run_ValtanArenaSupport()
 		// Keep Bahuntur's existing grant and mitigation while adding the wipe verdict text.
 		const CGameplayCatalog& catalog = room.m_GameplayCatalog.Active();
 		const auto* guard = EstherStrike::Find_Guard(ESTHER_ID::BAHUNTUR);
-		tests.Require(guard && guard->iGrantTimeMs == 4000u && guard->iDurationMs == 30000u &&
+		tests.Require(guard && guard->iGrantTimeMs == 1000u && guard->iDurationMs == 30000u &&
 			guard->fRadiusM == 7.f && guard->fOffsetForwardM == 4.2f && guard->iDamageTakenPercent == -50,
-			"Bahuntur retains the four-second, seven-metre, thirty-second protection contract");
+			"Bahuntur retains the one-second, seven-metre, thirty-second protection contract");
 		if (!guard) return 1;
 		constexpr std::uint32_t grantTick = 1001u;
 		const std::uint32_t guardEnd = grantTick + 900u;
@@ -323,11 +323,11 @@ int LostArk::Server::CServerGameplayContractRunner::Run_ValtanArenaSupport()
 		SERVER_WORLD_ENTITY summon{};
 		summon.eEstherId = ESTHER_ID::BAHUNTUR;
 		summon.fPositionX = core.x; summon.fPositionZ = core.z; summon.fYawDegrees = 90.f;
-		summon.fActionElapsedSeconds = 3.999f;
+		summon.fActionElapsedSeconds = .999f;
 		room.Apply_EstherStrikeHits(summon, grantTick - 1u);
 		tests.Require(!summon.bEstherSupportApplied && !room.m_Players.at(firstPlayer).iEstherGuardEndTick,
-			"Bahuntur grants no protection before the actual four-second strike point");
-		summon.fActionElapsedSeconds = 4.f;
+			"Bahuntur grants no protection before the actual one-second strike point");
+		summon.fActionElapsedSeconds = 1.f;
 		room.Apply_EstherStrikeHits(summon, grantTick);
 		auto& guarded = room.m_Players.at(firstPlayer);
 		tests.Require(summon.bEstherSupportApplied && guarded.iEstherGuardEndTick == guardEnd &&
@@ -347,16 +347,19 @@ int LostArk::Server::CServerGameplayContractRunner::Run_ValtanArenaSupport()
 		hit.iServerTick = grantTick + 2u;
 		hit.fSourceX = guarded.fPositionX - 1.f; hit.fSourceZ = guarded.fPositionZ;
 		hit.fPushRangeM = 2.f; hit.iPushMs = 250u; hit.bKnockdown = true; hit.iDownMs = 1000u;
+		const auto guardedHpBefore = guarded.iCurrentHp;
 		tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(guarded, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::LANDED &&
-			guarded.iCurrentHp == 90u && events.size() == 1u && events.front().iAmount == 10u &&
+			events.size() == 1u && events.front().iAmount >= 9u && events.front().iAmount <= 11u &&
+			guardedHpBefore - guarded.iCurrentHp == events.front().iAmount &&
 			guarded.eAction == PLAYER_ACTION_STATE::NONE && guarded.fKnockbackRemainingSeconds == 0.f &&
 			!guarded.iInvulnerabilityZoneContactTick && !guarded.iInvulnerabilityZonePulseTick,
-			"Bahuntur keeps fifty-percent ordinary damage and hit-reaction immunity without false invulnerable text");
+			"Bahuntur applies incoming variation around fifty-percent ordinary damage and keeps hit-reaction immunity without false invulnerable text");
+		const auto guardedHpAfterDamage = guarded.iCurrentHp;
 		events.clear();
 		guarded.iShield = 50u;
 		hit.iServerTick += 1u; hit.bEstherGuardBlockable = true;
 		tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(guarded, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::ABSORBED &&
-			guarded.iCurrentHp == 90u && guarded.iShield == 50u && events.empty() &&
+			guarded.iCurrentHp == guardedHpAfterDamage && guarded.iShield == 50u && events.empty() &&
 			guarded.iInvulnerabilityZoneContactTick == hit.iServerTick && guarded.iInvulnerabilityZonePulseTick == hit.iServerTick,
 			"A Bahuntur-blockable wipe preserves HP and shield and emits the existing invulnerable text pulse");
 		guarded.iInvulnerableEndTick = guardEnd + 100u;
@@ -369,8 +372,11 @@ int LostArk::Server::CServerGameplayContractRunner::Run_ValtanArenaSupport()
 		expired.iInvulnerableEndTick = 0u; expired.iShield = 0u;
 		hit.iServerTick = guardEnd;
 		const auto previousPulse = expired.iInvulnerabilityZonePulseTick;
+		const auto expiredHpBefore = expired.iCurrentHp;
 		tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(expired, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::LANDED &&
-			expired.iCurrentHp == 70u && expired.iInvulnerabilityZonePulseTick == previousPulse &&
+			events.size() == 1u && events.front().iAmount >= 18u && events.front().iAmount <= 22u &&
+			expiredHpBefore - expired.iCurrentHp == events.front().iAmount &&
+			expired.iInvulnerabilityZonePulseTick == previousPulse &&
 			expired.iInvulnerabilityZoneContactTick != guardEnd,
 			"The exact thirty-second expiry restores full damage and emits no new invulnerable text");
 		events.clear();
@@ -2026,7 +2032,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_InannaProtection(
     peer.fPositionX = 8.f;
     room->Update_EstherZones(zoneTick + 31u);
     auto left = peer; hit.iServerTick = zoneTick + 32u;
-    tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(left, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::LANDED && left.iCurrentHp == 90u,
+    const auto leftHpBefore = left.iCurrentHp;
+    tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(left, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::LANDED &&
+        events.size() == 1u && events.front().iAmount >= 9u && events.front().iAmount <= 11u &&
+        leftHpBefore - left.iCurrentHp == events.front().iAmount,
         "Leaving Inanna's zone ends the protection within two ticks");
     auto unrelatedWipe = caster; hit.iServerTick = zoneTick + 31u; hit.bEncounterWipe = true;
     tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(unrelatedWipe, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::KILLED &&
@@ -2039,7 +2048,20 @@ void LostArk::Server::CServerGameplayContractRunner::Run_InannaProtection(
     tests.Require(caster.iCurrentHp == 85u && peer.iCurrentHp == 100u && room->m_EstherZones.empty() &&
         room->m_TickDamageEvents.size() == 1u && DAMAGE_HIT_FLAG::HEAL == room->m_TickDamageEvents.front().eHitFlag,
         "Inanna's zone release heals thirty-five percent of maximum HP for the participants still inside");
-    caster.iInvulnerableEndTick = peer.iInvulnerableEndTick = endTick;
+    // Prime the last real Inanna zone pulse, then retain only its two-tick source expiry.
+    // An unrelated longer generic immunity must not extend that mechanic protection.
+    const auto grantLastInannaPulse = [&]() {
+        const auto casterX = caster.fPositionX, peerX = peer.fPositionX;
+        caster.fPositionX = peer.fPositionX = 0.f;
+        room->Open_EstherZone(*zone, 0.f, 0.f, endTick - 2u);
+        room->Update_EstherZones(endTick - 2u);
+        room->m_EstherZones.clear();
+        caster.fPositionX = casterX; peer.fPositionX = peerX;
+        caster.iInvulnerableEndTick = peer.iInvulnerableEndTick = endTick + 100u;
+    };
+    grantLastInannaPulse();
+    tests.Require(caster.iEstherZoneProtectionEndTick == endTick && peer.iEstherZoneProtectionEndTick == endTick,
+        "Black-hole protection is granted by the real Inanna source independently of longer generic immunity");
     peer.fPositionX = 1000.f;
     auto& audition = room->m_KoukuSaydonPatternAudition;
     audition.ePhase = CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE;
@@ -2075,7 +2097,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_InannaProtection(
         "Bingo black hole wipes unprotected raid participants at exact Inanna expiry while preserving nonparticipants");
     caster.iCurrentHp = peer.iCurrentHp = 100u;
     caster.eAction = peer.eAction = PLAYER_ACTION_STATE::NONE;
-    caster.iInvulnerableEndTick = peer.iInvulnerableEndTick = endTick;
+    grantLastInannaPulse();
     caster.iShield = peer.iShield = 5000u;
     room->m_KoukuBingoDuration.bLastLineCompletionSucceeded = true;
     room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, detonation});

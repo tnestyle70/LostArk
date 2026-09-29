@@ -91,12 +91,6 @@
           ]
         },
         {
-          "combatObjectArchetypeId": "combatobject.valtan.part-break.rock",
-          "clientVisualId": "combatobject.visual.valtan.part-break.rock.v1",
-          "effectAssetId": "effect.valtan.ground-roar.rock.active",
-          "hitEffectAssetId": "effect.valtan.ground-roar.rock.explode"
-        },
-        {
           "combatObjectArchetypeId": "combatobject.valtan.ghost.portal-charge",
           "clientVisualId": "combatobject.visual.valtan.ghost.portal-charge.v2",
           "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",

@@ -119,7 +119,8 @@ namespace LostArk::Shared
 	// Neither independently published 118 nor 119 peers support this combined layout.
 	// 121 carries each Mario entrant's required colour and matching-ball progress.
 	// 124 combines saved-character restore, raid EXIT votes and ground-target battle items.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 124;
+	// 125 carries the authoritative Mario/card-maze deadline in each player snapshot.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 125;
 
 	enum class WORLD_ID : std::uint16_t
 	{

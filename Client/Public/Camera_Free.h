@@ -46,6 +46,7 @@ public:
 	void Set_FollowTarget(const shared_ptr<CTransform>& pFollowTarget);
 
 	void Set_FollowEnabled(bool_t isEnabled);
+	void Set_SpectateFrozen(bool_t frozen);
 
 	bool_t Is_FollowEnabled() const
 	{

@@ -457,6 +457,7 @@ private:
 	bool_t m_isPatternBodyHidden = false;
 	uint8_t m_iBrokenArmorMask = 0u;
 	std::uint64_t m_iLastBossCombatEventSequence = 0u;
+	uint32_t m_iArmorBreakFeedbackPartMask = 0u;
 	f32_t m_fArmorBreakFeedbackRemainingSeconds = 0.f;
 	DEFERRED_EMISSIVE_OVERRIDE m_HitFlash;
 	f32_t m_fHitFlashRemainingSeconds = { 0.f };

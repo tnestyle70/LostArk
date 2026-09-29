@@ -246,6 +246,8 @@ namespace LostArk::Server
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
 		std::uint32_t iLastMarioMoveSequence = 0u;
 		std::uint32_t iMarioMoveExpiryTick = 0u;
+		// Absolute server deadline shared by Mario and the card maze; zero is inactive.
+		std::uint32_t iKoukuMinigameEndTick = 0u;
 		float fMarioDirectionX = 0.f;
 		float fMarioDirectionZ = 0.f;
 		bool bMarioRailReady = false;
@@ -258,6 +260,7 @@ namespace LostArk::Server
 		{
 			if (0u != iMarioStage)
 			{
+				iKoukuMinigameEndTick = 0u;
 				eMadnessForm = ePreMarioForm;
 				/* The stage owns the arena HUD mode the same way it owns the
 				form, so leaving hands both back. Clear_KoukuInteractionState
@@ -347,6 +350,8 @@ namespace LostArk::Server
 
 		std::uint32_t iCurrentHp = 1000;
 		std::uint32_t iMaximumHp = 1000;
+		// Server-only per-hit stream; same-tick contacts must not share one damage roll.
+		std::uint64_t iIncomingDamageSampleSerial = 0u;
 		std::uint32_t iCurrentResource = 100;
 		std::uint32_t iMaximumResource = 100;
 		// Fixed-point regen carry in ticks: gains profile regen per tick and pays
@@ -374,6 +379,8 @@ namespace LostArk::Server
 		std::uint32_t iShield = 0;
 		/* Set while a death-deny buff has already spent itself on a lethal hit. */
 		std::uint32_t iInvulnerableEndTick = 0;
+		// Explicit successful Bingo mechanics; ordinary immunity cannot satisfy its wipe verdict.
+		std::uint32_t iKoukuBingoLineProtectionEndTick = 0u, iEstherZoneProtectionEndTick = 0u;
 		// Item protection is separate from encounter-granted immunity (e.g. Bingo).
 		std::uint32_t iTimeStopEndTick = 0u, iHolyCharmProtectionEndTick = 0u;
 		std::uint32_t iLastItemUseSequence = 0u;
@@ -440,6 +447,8 @@ namespace LostArk::Server
 			bKoukuPatternOwnsClown = false;
 			iKoukuSuppressedPatternSequence = 0u;
 			eKoukuAreaHudMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
+			iKoukuMinigameEndTick = 0u;
+			iKoukuBingoLineProtectionEndTick = iEstherZoneProtectionEndTick = 0u;
 			eKoukuHudMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
 			eDebugKoukuHudModeOverride = LostArk::Shared::KOUKU_HUD_MODE::NONE;
 			for (std::int8_t& index : ModeSkillIndexBySlot)

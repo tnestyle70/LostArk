@@ -4,7 +4,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "5cd376ccc47341b4962a888afa0d69bfdfeb175be679f2d3a22dc80f4a635f06",
+    "sourceManifestId": "0bcadb6b75d955093aaa10f84f356c0cd8cd4fee25439aba8ed0f28c39d60643",
     "files": [
       {
         "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_05.actionbindings.json",
@@ -48,8 +48,8 @@
       },
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
-        "sha256": "ba625763ca4c4a88ae178a173acb5ff634832de4caeb59d09ce0280acb713fd8",
-        "bytes": 5696
+        "sha256": "0986e0007096ad3b866bea79624793f54e2a1b28ef7e2f2c581f08c1e7466966",
+        "bytes": 5391
       },
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
@@ -73,8 +73,8 @@
       },
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json",
-        "sha256": "0488dc66e46313aafec9e579afdf96583f96e96afef39bce6579524825396c45",
-        "bytes": 398574
+        "sha256": "1aed13b4a4917fb53d422f794f32e31c66b00cea46ab6c902be041b2945bb620",
+        "bytes": 398036
       },
       {
         "path": "Data/Animation/Reference/KoukuSaydon/MN_RPCT_05.actionreference.json",
@@ -178,7 +178,7 @@
       },
       {
         "path": "Data/Effects/Authored/effect.valtan.action.420624.stage000.full.restore.effect.json",
-        "sha256": "c343efb79f1e1e696210f6dc13cec2bd16309bf5b13b27c349dcb272f70a19d5",
+        "sha256": "8b3777b8e936c525f5f3a11df18f8b6c8311be7f2b6d6aea33a5d78c227eeaea",
         "bytes": 1181099
       },
       {
@@ -2198,8 +2198,8 @@
       },
       {
         "path": "Data/Encounters/Valtan/ValtanEncounter.json",
-        "sha256": "624a98e67479591049d78effc5580a48b74e5df47d9870abc8ad1222a22f6817",
-        "bytes": 343392
+        "sha256": "a3789a0d9c5e4a93789e890dfa20b23bb314c4288200f05c34f21cdf6dbf556c",
+        "bytes": 342878
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.mapeffects.json",
@@ -2218,8 +2218,8 @@
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
-        "sha256": "dde82e6b47c64aa2fdb6eb429493fedb2be3b556b40cc96e3c87ad32000fca37",
-        "bytes": 14280821
+        "sha256": "16980c380ebd4c07821f7519fa53169d58d35d98335bb4faba03720025135d5b",
+        "bytes": 14333673
       },
       {
         "path": "Data/Rendering/Authored/RenderingProfiles.json",
@@ -2233,13 +2233,13 @@
       },
       {
         "path": "Data/Valtan/Valtan.combatobjects.json",
-        "sha256": "a22ee973b2eaf6e56cc7d738aebd6bb19d7b3d8855dd798c39c4c6a660c0d549",
-        "bytes": 18966
+        "sha256": "2101455a6e864be010eba3e42980d3acc60e4059a8b83ad415985ed3951b7662",
+        "bytes": 17961
       },
       {
         "path": "Data/Valtan/Valtan.gameplay.json",
-        "sha256": "442601470af42ca96705ee7667f778a9e3cab07a4040dda5b33a890c9fa0f71b",
-        "bytes": 282984
+        "sha256": "07fe9841a5f8f76d4807a8b7882ae10538b8e5516beb6ba8ec835fe570391f39",
+        "bytes": 282586
       },
       {
         "path": "Data/Valtan/Valtan.legacy-compatibility.json",
@@ -2266,12 +2266,12 @@
     },
     {
       "path": "Bosses/Valtan.bosscomposition.json",
-      "sha256": "75d93f6024a767d0d5722c2292738ee4d2376a9dcd1c3dbbd9d69a3609136c9f",
-      "bytes": 4464252
+      "sha256": "6c7c585e48ed1a678be81cfff2db928f69a973c3482446ef9565d495f795aa8f",
+      "bytes": 4458283
     },
     {
       "path": "Sequences/KoukuSaydonArena.sequencer.json",
-      "sha256": "0938a7ae9a30faa3331c293b37f46512efab5230879a3916eaab0add966ba3c2",
+      "sha256": "c617391d771b5f4283e62026ab17494fe7e88faa25f6476b641d945bcc2a1677",
       "bytes": 2152
     },
     {

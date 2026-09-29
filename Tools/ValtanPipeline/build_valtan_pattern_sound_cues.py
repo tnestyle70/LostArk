@@ -135,16 +135,7 @@ def _build_project_authored_semantic_cues() -> dict[str, dict]:
                 f"{index:02d}"
             ),
         )
-    add(
-        "part-break.recovery.projection",
-        "VALTAN_PART_BREAK",
-        "PART_BREAK_RECOVERY",
-        "valtan.reaction.part-break.recovery",
-        "valtan.reaction.part-break.recovery.clip.01",
-        1,
-        "G_Voltan2_Attack09_ProjCreat1",
-        binding_id="cue.sound.valtan.reaction.part-break.recovery.clip-01.01",
-    )
+
 
     # The merged Ground Roar stage has two stomp contacts, followed by the
     # embedded roar occurrence at stage-local 1800 + clip-local 900ms.

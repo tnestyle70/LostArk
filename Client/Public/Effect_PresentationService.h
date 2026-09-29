@@ -264,6 +264,7 @@ class CEffectPresentationService final
 {
 public:
     static void Set_FrameCamera(const std::shared_ptr<CCamera_Free>& camera);
+    static bool_t Is_CameraPresentationOwner(const CCharacter* character);
     // Called before follow-anchor sampling and particle advancement on the same frame.
     static void Prepare_FrameCamera(f32_t timeDelta);
 	static bool_t Estimate_DocumentBudget(

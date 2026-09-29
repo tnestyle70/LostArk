@@ -2655,12 +2655,28 @@ void LostArk::Server::CServerGameplayContractRunner::Run_NumericBalanceProtocol(
             app->On_SessionFrame(sessions[owner]->Get_SessionId(),frame); return true;
         };
         const auto settle=[&] {
-            const auto until=std::chrono::steady_clock::now()+std::chrono::seconds(45);
+#if defined(_DEBUG)
+            constexpr auto budget=std::chrono::seconds(180);
+#else
+            constexpr auto budget=std::chrono::seconds(45);
+#endif
+            const auto began=std::chrono::steady_clock::now();
+            const auto until=began+budget;
+            const auto report=[&](bool completed) {
+                const auto elapsed=std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now()-began).count();
+                std::cout<<"[NUMERIC_SETTLE] completed="<<completed<<" elapsedMs="<<elapsed
+                    <<" budgetMs="<<std::chrono::duration_cast<std::chrono::milliseconds>(budget).count()
+                    <<" requester="<<app->m_NumericBalanceRequester
+                    <<" persisting="<<app->m_NumericBalancePersisting
+                    <<" workerValid="<<app->m_NumericBalanceWorker.valid()<<'\n';
+                return completed;
+            };
             do { app->Tick_GameplaySimulations(1.f/30.f,{}); collect();
-                if (app->m_NumericBalanceRequester==INVALID_SESSION_ID && !app->m_NumericBalanceWorker.valid()) return true;
+                if (app->m_NumericBalanceRequester==INVALID_SESSION_ID && !app->m_NumericBalanceWorker.valid()) return report(true);
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             } while (std::chrono::steady_clock::now()<until);
-            return false;
+            return report(false);
         };
         collect();
         for (std::size_t i=0;i<4u;++i) submit(i,PACKET_TYPE::C2S_BALANCE_QUERY,C2S_BALANCE_QUERY{1u,0u});
@@ -2698,6 +2714,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_NumericBalanceProtocol(
         tests.Require(sameResult && std::any_of(results[1].begin(),results[1].end(),[](const auto& r){return r.eResult==BALANCE_APPLY_RESULT::BUSY;}),
             "A nonleader session's typed save validates, persists and broadcasts one applied revision to all four; competing in-flight save is BUSY");
         for (const auto& result:results[2]) if (result.eResult!=BALANCE_APPLY_RESULT::APPLIED) std::cout<<"[NUMERIC] "<<result.strReason<<'\n';
+        if (!settled) return; // Dependent checks require this transaction's committed revision.
         const auto committed=app->m_pActiveGameplayGeneration;
         const auto expectedHp=player->iMaximumHp+1000u;
         tests.Require(sameResult && room->Get_ActiveGameplayGeneration()==committed && extra->Get_ActiveGameplayGeneration()==committed &&
@@ -2758,6 +2775,60 @@ void LostArk::Server::CServerGameplayContractRunner::Run_NumericBalanceProtocol(
         tests.Require(newRoom->Is_Ready() && newRoom->Get_ActiveGameplayGeneration()==committed &&
             newRoom->m_GameplayCatalog.Find_Player(CHARACTER_CLASS_ID::LANCE_MASTER)->iMaximumHp==expectedHp,
             "A newly created private room starts from the committed numeric generation");
+        const auto common = std::find_if(restartedEntries.begin(), restartedEntries.end(), [](const auto& entry) {
+            return entry.eDomain == BALANCE_DOMAIN::STAGGER && entry.strId == "RAID_COMMON" &&
+                entry.strField == "staggerGaugeMaximum"; });
+        const bool oneStagger = std::count_if(restartedEntries.begin(), restartedEntries.end(), [](const auto& entry) {
+            return entry.eDomain == BALANCE_DOMAIN::STAGGER; }) == 1;
+        tests.Require(oneStagger && common != restartedEntries.end() && common->fValue == 40000.,
+            "Numeric Stagger view exposes exactly one shared 40000 raid maximum");
+        if (oneStagger && common != restartedEntries.end())
+        {
+            const auto originalMaximum = static_cast<std::uint32_t>(common->fValue);
+            const auto temporaryMaximum = originalMaximum + 1000u;
+            bool roundTrip = true;
+            auto retainedStagger = std::make_shared<SERVER_WORLD_ENTITY>();
+            for (std::uint32_t turn = 0u; turn != 2u; ++turn)
+            {
+                const auto before = turn == 0u ? originalMaximum : temporaryMaximum;
+                const auto after = turn == 0u ? temporaryMaximum : originalMaximum;
+                auto* gaugeBoss = room->Find_AuditionBoss();
+                if (gaugeBoss)
+                {
+                    gaugeBoss->BossCombat.iStaggerMaximum = before;
+                    gaugeBoss->BossCombat.iStaggerCurrent = before * 3u / 4u;
+                    gaugeBoss->iKoukuItemStaggerMaximum = before;
+                    gaugeBoss->iKoukuItemStaggerCredit = before * 3u / 4u;
+                    retainedStagger->iKoukuItemStaggerMaximum = before;
+                    retainedStagger->iKoukuItemStaggerCredit = before * 3u / 4u;
+                    gaugeBoss->KoukuRetainedLogicOwners = { retainedStagger };
+                }
+                C2S_BALANCE_PATCH staggerPatch;
+                staggerPatch.iRequestSequence = 6u + turn;
+                staggerPatch.BaseNumericRevision = app->m_NumericBalanceStore.Get_NumericRevision();
+                staggerPatch.Changes = {{ BALANCE_DOMAIN::STAGGER, "RAID_COMMON", "staggerGaugeMaximum",
+                    double(before), double(after) }};
+                const bool sentStagger = submit(0u, PACKET_TYPE::C2S_BALANCE_PATCH, staggerPatch);
+                const bool settledStagger = settle();
+                const auto active = app->m_pActiveGameplayGeneration;
+                CGameplayCatalog durable;
+                gaugeBoss = room->Find_AuditionBoss();
+                const bool ratioPreserved = gaugeBoss && gaugeBoss->BossCombat.iStaggerMaximum == after &&
+                    gaugeBoss->BossCombat.iStaggerCurrent == after * 3u / 4u &&
+                    gaugeBoss->iKoukuItemStaggerMaximum == after && gaugeBoss->iKoukuItemStaggerCredit == after * 3u / 4u &&
+                    retainedStagger->iKoukuItemStaggerMaximum == after && retainedStagger->iKoukuItemStaggerCredit == after * 3u / 4u;
+                tests.Require(ratioPreserved, "Live and retained stagger windows preserve their progress ratio through a numeric maximum edit");
+                roundTrip = ratioPreserved && roundTrip && sentStagger && settledStagger && durable.Load() &&
+                    durable.Get_RaidStaggerMaximum() == after && active->Get_RaidStaggerMaximum() == after &&
+                    room->Get_ActiveGameplayGeneration() == active && extra->Get_ActiveGameplayGeneration() == active &&
+                    std::any_of(results[0].begin(), results[0].end(), [&](const auto& result) {
+                        return result.iRequestSequence == staggerPatch.iRequestSequence &&
+                            result.eResult == BALANCE_APPLY_RESULT::APPLIED; });
+            }
+            tests.Require(roundTrip && app->m_NumericBalanceStore.Get_NumericRevision() == appliedNumeric &&
+                read(source) == savedSource && read(disk) == saved,
+                "Shared raid stagger Save+Apply roundtrip 40000 to 41000 to 40000 persists, activates every room and restores exact source/bootstrap bytes");
+        }
         for (const auto& session:sessions) session->Request_Close();
         app->m_Sessions.clear(); app->m_GameplayBindingBySessionId.clear(); app->m_SharedGameRooms.clear();
         std::cout<<"[NUMERIC_4P] revision="<<Format_GameplayDataRevision(appliedNumeric)<<" fixture="<<fixture.string()<<'\n';

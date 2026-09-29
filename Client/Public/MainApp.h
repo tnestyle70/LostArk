@@ -691,11 +691,9 @@ private:
 	bool_t m_bCharacterSelectFloorShaderDefaultBrightness = false;
 	bool_t m_bKoukuUiPreview = false;
 	HUD_KOUKU_GIMMICK_STATE m_KoukuUiPreview;
-	/* Dungeon-timer preview controls. The Server owns no minigame deadline, so
-	   CCombatHUDViewModel runs the countdown and these are just the panel inputs.
-	   10 minutes matches the length a card maze run is judged against. */
+	/* Explicit authoring preview only. Product countdown reads the Server deadline. */
 	bool_t m_bDungeonTimerPreview = false;
-	f32_t m_fDungeonTimerStartSeconds = 600.f;
+	f32_t m_fDungeonTimerStartSeconds = 90.f;
 	f32_t m_fDungeonTimerWarningSeconds = 10.f;
 #endif
 	/* UI/BossUI/BossUI.json's runtime consumer (Update_BossHealthBar) -- real CUI_Sprite
@@ -837,6 +835,8 @@ private:
 	state -- that is presentation-only and does not belong on the ViewModel). */
 	struct FLOATING_DAMAGE_NUMBER
 	{
+		LostArk::Shared::NET_ENTITY_ID iTargetNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		LostArk::Shared::PLAYER_ID iSourcePlayerId = LostArk::Shared::INVALID_PLAYER_ID;
 		f64_t dSpawnSeconds = 0.0;
 		float3_t vWorldPosition = {};
 		uint32_t iAmount = 0;

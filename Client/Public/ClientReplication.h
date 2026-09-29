@@ -32,6 +32,8 @@
 
 //Network Event瑜??ㅼ젣 Engine GameObject ?앹꽦 ?쒓굅濡?踰덉뿭?섎뒗 ???섎굹??main-thread 寃쎄퀎
 
+namespace Engine { class CTransform; }
+
 namespace Client
 {
 	class CCharacter;
@@ -355,6 +357,20 @@ namespace Client
 			const COMBAT_DEBUG_VISIBILITY_SNAPSHOT& Visibility);
 
 		std::shared_ptr<CCharacter> Get_LocalCharacter() const;
+		// Presentation selection only: local commands always retain their local character.
+		bool_t Cycle_SpectateTarget();
+		bool_t Is_SpectateTargetDead() const;
+		void Reset_SpectateTarget();
+		bool_t Is_Spectating() const { return m_iSpectateEntityId != LostArk::Shared::INVALID_NET_ENTITY_ID; }
+		std::shared_ptr<CCharacter> Get_CameraCharacter() const;
+		std::shared_ptr<Engine::CTransform> Resolve_CameraTarget();
+		std::shared_ptr<Engine::CTransform> Get_CameraTarget() const;
+		const LostArk::Shared::PLAYER_SNAPSHOT* Get_CameraPlayerSnapshot() const;
+		// Mario world UI follows the camera subject; roster and gameplay remain complete.
+		LostArk::Shared::NET_ENTITY_ID Get_KoukuWorldUISubjectId() const;
+		bool_t Should_ShowKoukuPlayerWorldUI(LostArk::Shared::NET_ENTITY_ID entityId) const;
+		bool_t Should_ShowKoukuDamageWorldUI(LostArk::Shared::NET_ENTITY_ID targetId,
+			LostArk::Shared::PLAYER_ID sourcePlayerId) const;
 		std::shared_ptr<CValtan> Find_PrimaryValtanPresentation() const;
 		/* Debug tuning only: the live CNpc body of one primary KoukuSaydon
 		arena boss archetype, or null while that boss is not replicated. */
@@ -708,6 +724,9 @@ namespace Client
 		std::unordered_set<uint8_t> m_FailedPlayerAssetClasses;
 		//index slot, slotindex, generation
 		OBJECT_HANDLE m_LocalCharacterHandle;
+		LostArk::Shared::NET_ENTITY_ID m_iSpectateEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		std::shared_ptr<Engine::CTransform> m_pSpectateDeathTarget;
+		bool_t m_bSpectateTargetWasAlive = false;
 		bool m_isInitialized = false;
 		bool m_wasConnected = false;
 		bool m_hasPendingConnectionLoss = false;

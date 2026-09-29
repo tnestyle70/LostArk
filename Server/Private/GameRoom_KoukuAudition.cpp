@@ -603,6 +603,7 @@ bool LostArk::Server::CGameRoom::Retain_KoukuPatternTail(
 			(void)CBossCombatRuntime::Set_Flag(live.BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, false);
 			live.bKoukuShieldActive = false; live.fKoukuShieldArcDegrees = 0.f; live.KoukuShieldRegions.clear();
 			live.iKoukuItemStaggerMaximum = 0u; live.iKoukuItemStaggerCredit = 0u;
+			live.iKoukuDamageReductionWindows = 0u;
 			break;
 		}
 	tail.Member.LogicLedger = std::move(member.LogicLedger);
@@ -1069,6 +1070,8 @@ void LostArk::Server::CGameRoom::Prepare_KoukuAuditionTick(const std::uint32_t s
 		for (auto& entity : m_WorldEntities) if (entity.iNetEntityId == member.iBossEntityId) { boss = &entity; break; }
 		if (!boss || !boss->iCurrentHp || boss->eAction == SERVER_ENTITY_ACTION::DEAD || !CKoukuSaydonBrain::Is_ArenaBoss(m_eWorldId, *boss))
 		{ m_strStatus = "KoukuSaydon admitted participant died or disappeared"; Clear_KoukuSaydonPatternAudition(); return; }
+		// The root portal has its own clock, including gaps between child patterns.
+		Update_KoukuMarioEntry(member, serverTick);
 		if (member.bMarioSoloReturnRequired && !member.bCompletionChainSuccessQueued)
 		{
 			const auto entrant = m_Players.find(member.iMarioEntrantPlayerId);
@@ -1081,11 +1084,9 @@ void LostArk::Server::CGameRoom::Prepare_KoukuAuditionTick(const std::uint32_t s
 			}
 			if (!entrant->second.iCurrentHp || entrant->second.eAction == PLAYER_ACTION_STATE::DEAD)
 			{
-				// Death fails this mechanic, not the raid runtime. Preserve the living boss
-				// and let the normal dead-return/revive path and next flow entry continue.
-				member.bCompleted = true;
-				m_strStatus = "Mario solo entrant died before phase 2; mechanic completed as failed";
-				Clear_KoukuSaydonPatternAudition(true); return;
+				// A dead entrant cannot return, but phase 2 still owns its full authored playback.
+				member.bMarioSoloReturnRequired = false;
+				m_strStatus = "Mario solo entrant died; phase 2 continues after phase 1";
 			}
 		}
 		// Last-tick entry has committed by now; it must participate in the gate.
@@ -1289,9 +1290,8 @@ void LostArk::Server::CGameRoom::Update_KoukuMarioEntry(
 	if (!root) return;
 	const std::uint32_t age = serverTick >= member.iMarioEntryStartTick ? serverTick - member.iMarioEntryStartTick :
 		(std::numeric_limits<std::uint32_t>::max)() - member.iMarioEntryStartTick + serverTick;
-	// A plain entry pattern closes with its window; a chain root stays open while its children run.
-	const bool honorWindowEnd = !member.bCompletionChainStarted && std::none_of(root->LogicWindows.begin(), root->LogicWindows.end(),
-		[](const auto& window) { return window.eKind == BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT; });
+	// The authored entry deadline is independent of the Parent/child lifetime.
+	const bool honorWindowEnd = true;
 	if (honorWindowEnd)
 	{
 		std::uint32_t lastEnd = 0u;
@@ -1308,7 +1308,7 @@ void LostArk::Server::CGameRoom::Update_KoukuMarioEntry(
 			const auto anchor = *member.MarioEntryAnchor;
 			member.MarioEntryAnchor.reset();
 			for (auto& [id, player] : m_Players)
-				if (player.Is_Human() && player.iCurrentHp && player.isCombatReady)
+				if (player.Is_Human() && player.iCurrentHp)
 					for (const auto& result : failure->OnTimeout)
 						CKoukuSaydonLogicRuntime::Apply_Result(player, result, anchor, *catalog, nullptr, serverTick, m_TickDamageEvents);
 			m_strStatus = "Mario entry timed out; the authored raid failure was applied";
@@ -1335,7 +1335,17 @@ void LostArk::Server::CGameRoom::Commit_KoukuMarioEntries()
 			[&](const auto& row) { return row.strMemberId == entry.strMemberId && row.iMarioEntryStartTick == entry.iRootStartTick; });
 		const auto player = m_Players.find(entry.iPlayerId);
 		if (found == m_KoukuSaydonPatternAudition.Members.end() || !found->MarioEntryAnchor || found->bMarioEntryConsumed ||
-			player == m_Players.end() || !Enter_MarioFromPattern(player->second, entry.iStage ? entry.iStage : found->iMarioEntryStage)) continue;
+			player == m_Players.end()) continue;
+		if (!Enter_MarioFromPattern(player->second, entry.iStage ? entry.iStage : found->iMarioEntryStage))
+		{
+			if ((m_iServerTick % 30u) == 0u)
+				std::cout << "[MarioEntryDeferred] player=" << entry.iPlayerId << " tick=" << m_iServerTick
+					<< " hp=" << player->second.iCurrentHp << " ready=" << player->second.isCombatReady
+					<< " action=" << static_cast<unsigned>(player->second.eAction)
+					<< " attachment=" << player->second.iAttachmentOwnerNetEntityId
+					<< " bind=" << player->second.bPatternBound << " reason=" << m_strStatus << '\n';
+			continue;
+		}
 		auto& member = *found;
 		if (entry.iStage) member.iMarioEntryStage = entry.iStage;
 		if (const auto* catalog = Resolve_KoukuProductCatalog(); catalog && !member.strCompletionChainSuccessPatternId.empty())
@@ -1490,15 +1500,13 @@ void LostArk::Server::CGameRoom::Queue_KoukuCompletionChainSuccess(
 			if (window.eKind == BOSS_PATTERN_LOGIC_KIND::ENTER_AREA && window.OnSuccess.size() == 1u &&
 				window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER && !window.OnTimeout.empty())
 			{
-				for (auto& [id, player] : m_Players) if (player.Is_Human() && player.iCurrentHp && player.isCombatReady)
+				for (auto& [id, player] : m_Players) if (player.Is_Human() && player.iCurrentHp)
 					for (const auto& result : window.OnTimeout)
 						CKoukuSaydonLogicRuntime::Apply_Result(player, result, *member.MarioEntryAnchor, *catalog, nullptr, serverTick, m_TickDamageEvents);
-				// A failed mechanic is a completed occurrence, not a runtime failure.
-				// Keep the authored penalty, but do not abort the raid and despawn its boss.
-				member.bCompleted = true;
-				m_strStatus = "Mario phase 1 ended without an entrant; authored failure applied";
-				Clear_KoukuSaydonPatternAudition(true);
-				return;
+				// Failure applies the penalty once and follows the same phase-2 playback.
+				member.bMarioSoloReturnRequired = false;
+				m_strStatus = "Mario phase 1 ended without an entrant; party defeated and phase 2 queued";
+				break;
 			}
 	}
 	member.MarioEntryAnchor.reset();
@@ -1519,7 +1527,7 @@ void LostArk::Server::CGameRoom::Queue_KoukuCompletionChainSuccess(
 	Queue_KoukuSaydonPatternAuditionLifecycle(member.PatternIds[member.iPatternIndex], 0u, 0u,
 		KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING, {}, member.iBossEntityId);
 	if (m_KoukuSaydonPatternAudition.Members.size() == 1u) m_KoukuSaydonPatternAudition.ePhase = KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING;
-	m_strStatus = "Mario phase 2 admitted after entry success and the required solo return";
+	m_strStatus = "Mario phase 2 admitted after the phase-1 entry verdict";
 }
 
 bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& boss, const std::uint32_t serverTick)
@@ -1608,7 +1616,7 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
 	}
 	Queue_KoukuSaydonPatternAuditionLifecycle(completedPatternId, sequence, stage, KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PATTERN_COMPLETED, {}, boss.iNetEntityId);
 	const auto completedIndex = member->iPatternIndex;
-	if (!member->bCompletionChainStarted && member->MarioEntryAnchor &&
+	if (!member->bCompletionChainStarted &&
 		member->strMarioEntryPatternId == completedPatternId && !member->strCompletionChainSuccessPatternId.empty())
 	{
 		member->bCompletionChainAwaitingReturn = true;

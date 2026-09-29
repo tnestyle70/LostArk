@@ -1766,6 +1766,12 @@ namespace
 						Pattern.strPatternId + "/" + ActionId;
 					return false;
 				}
+				if ((Pattern.strPatternId == "VALTAN_TRASH" || Pattern.strPatternId == "VALTAN_TRASH_CATCH_IF") &&
+					(Stage.strStageId == "RETRY_EXHAUSTED" || Stage.strStageId == "CATCH_SLAM" ||
+					 Stage.strStageId == "EXECUTE_TAIL") &&
+					Pattern.Stages[Target->second].strStageId == "RECHARGE_WAIT_02" &&
+					Stage.Branches.size() == 1u && Stage.Branches.front().strOutcome == "TIMEOUT")
+					return true;
 				Successors[iStage].push_back(Target->second);
 				++Incoming[Target->second];
 				return true;
@@ -8530,6 +8536,7 @@ bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 	bool_t bWallContactTaken = false;
 	bool_t bCounterHitTaken = false;
 	bool_t bCaptureTaken = false;
+	bool_t bCounterRetry = false;
 	for (;;)
 	{
 		const VALTAN_STAGE_VIEW& Stage = Pattern.Stages[iStage];
@@ -8627,6 +8634,14 @@ bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 				*pSelected->strNextActionId;
 			return false;
 		}
+		if ((Pattern.strPatternId == "VALTAN_TRASH" || Pattern.strPatternId == "VALTAN_TRASH_CATCH_IF") &&
+			(Stage.strStageId == "RETRY_EXHAUSTED" || Stage.strStageId == "CATCH_SLAM" ||
+			 Stage.strStageId == "EXECUTE_TAIL") && Stage.Branches.size() == 1u &&
+			pSelected->strOutcome == "TIMEOUT" && Pattern.Stages[Next->second].strStageId == "RECHARGE_WAIT_02")
+		{
+			bCounterRetry = true;
+			break;
+		}
 		iStage = Next->second;
 	}
 
@@ -8644,7 +8659,8 @@ bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 	}
 	OutStages = std::move(StagedPath);
 	strOutStatus = "Valtan preview path resolved " +
-		std::to_string(OutStages.size()) + " stages.";
+		std::to_string(OutStages.size()) + (bCounterRetry ?
+		" stages in one pass; Server repeats until a counter succeeds." : " stages.");
 	return true;
 }
 

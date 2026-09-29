@@ -644,6 +644,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		for (std::size_t slot = 0u; slot < KOUKU_HUD_SLOT_COUNT; ++slot)
 			snapshot.ModeSkillIndexBySlot[slot] = player.ModeSkillIndexBySlot[slot];
 		snapshot.iMarioStage = player.iMarioStage;
+		snapshot.iKoukuMinigameEndTick = player.iKoukuMinigameEndTick;
 		snapshot.iMarioLayoutVariant = player.iMarioLayoutVariant;
 		snapshot.iMarioPoppedBallMask = player.iMarioStage >= 1u && player.iMarioStage <= 4u ?
 			m_MarioPoppedBalls[player.iMarioStage] : std::uint16_t{};
@@ -702,6 +703,17 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 				snapshot.Cooldowns.push_back({ skillId, cooldownEndTick,
 					duration != player.CooldownDurationTicksBySkillId.end() ? duration->second : 0u });
 			}
+		}
+		/* Item slots retain their inventory item ID. Project each active item cooldown
+		through its catalog skill ID so the same HUD deadline path can show reuse time. */
+		for (const auto& [itemId, cooldownEndTick] : player.ItemCooldownEndTicks)
+		{
+			if (static_cast<std::int32_t>(cooldownEndTick - m_iServerTick) <= 0) continue;
+			const auto* definition = m_ItemCatalog.Find_Item(itemId);
+			if (!definition || definition->BattleUse.eKind == BATTLE_ITEM_KIND::NONE) continue;
+			const auto& use = definition->BattleUse;
+			snapshot.Cooldowns.push_back({ use.iSkillId, cooldownEndTick,
+				(use.iCooldownMs * SERVER_TICK_HZ + 999u) / 1000u });
 		}
 		std::sort(snapshot.Cooldowns.begin(), snapshot.Cooldowns.end(),
 			[](const SKILL_COOLDOWN_SNAPSHOT& left,

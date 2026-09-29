@@ -656,7 +656,8 @@ namespace LostArk::Server
         ATTACHMENT_HOLD,
 		PATTERN_COMPLETION_COUNT,
 		INVULNERABILITY_ZONE,
-		BINGO_COMPLETED_LINES
+		BINGO_COMPLETED_LINES,
+		BOSS_DAMAGE_REDUCTION
 	};
 
 	enum class BOSS_PATTERN_LOGIC_RESULT_KIND : std::uint8_t
@@ -1539,6 +1540,7 @@ namespace LostArk::Server
 	class CGameplayCatalog final
 	{
 	public:
+		[[nodiscard]] std::uint32_t Get_RaidStaggerMaximum() const noexcept { return m_iRaidStaggerMaximum; }
 		bool Load();
 		/* Numeric-only publication keeps choreography/presentation identity while
 		   the separate numeric digest provides optimistic edit concurrency. */
@@ -1755,6 +1757,7 @@ namespace LostArk::Server
 		std::unordered_map<std::string, BOSS_PATTERN_BUNDLE_DEFINITION> m_BossPatternBundles;
 		std::unordered_map<std::string, KOUKU_RAID_GATE_DEFINITION> m_KoukuRaidGates;
 		std::uint32_t m_iKoukuSaydonProductSourceRevision = 0u;
+		std::uint32_t m_iRaidStaggerMaximum = 0u;
 		std::unordered_map<std::string, BOSS_ENCOUNTER_MADNESS_POLICY>
 			m_KoukuMadnessPolicies;
 		std::unordered_map<LostArk::Shared::CHARACTER_CLASS_ID,

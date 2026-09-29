@@ -17,9 +17,6 @@ namespace
 	using namespace Client;
 
 	constexpr std::uint64_t SOURCE_GENERATION = 0x47524150484D4F44ull;
-	constexpr std::uint64_t DASH_DEFAULT_DURATION_MS = 11983u;
-	constexpr std::uint64_t DASH_WALL_DURATION_MS = 11983u;
-	constexpr std::uint64_t DASH_MAXIMUM_DURATION_MS = 11983u;
 
 	void Require(const bool bCondition, const char* const pMessage)
 	{
@@ -137,7 +134,7 @@ namespace
 		return Left.NodeIndices == Right.NodeIndices &&
 			Left.EdgeIndices == Right.EdgeIndices &&
 			Left.iDurationMs == Right.iDurationMs &&
-			Left.bTerminal == Right.bTerminal;
+			Left.bTerminal == Right.bTerminal && Left.bRepeats == Right.bRepeats;
 	}
 
 	bool SameNode(
@@ -424,15 +421,15 @@ namespace
 		Require(SOURCE_GENERATION == Snapshot.iSourceGeneration &&
 			"VALTAN_DASH_CHARGE" == Snapshot.strPatternId,
 			"projection lost its source generation or stable Pattern identity");
-		Require(DASH_DEFAULT_DURATION_MS == Snapshot.DefaultPath.iDurationMs &&
+		Require((FindStage(Dash, "WINDUP").iDurationMs + FindStage(Dash, "CHARGE").iDurationMs) == Snapshot.DefaultPath.iDurationMs &&
 			Snapshot.DefaultPath.bTerminal,
-			"VALTAN_DASH_CHARGE default path no longer includes its 11983 ms groggy continuation");
-		Require(DASH_MAXIMUM_DURATION_MS == Snapshot.MaximumPath.iDurationMs &&
+			"VALTAN_DASH_CHARGE no-wall default path must end on its authored charge timeout");
+		Require((FindStage(Dash, "WINDUP").iDurationMs + FindStage(Dash, "CHARGE").iDurationMs + FindStage(Dash, "GROGGY").iDurationMs) == Snapshot.MaximumPath.iDurationMs &&
 			Snapshot.MaximumPath.bTerminal,
-			"VALTAN_DASH_CHARGE maximum path no longer includes its 11983 ms groggy continuation");
+			"VALTAN_DASH_CHARGE maximum path no longer includes its authored groggy continuation");
 		Require(StageIds(Snapshot, Snapshot.DefaultPath) ==
-			std::vector<std::string>{ "WINDUP", "CHARGE", "GROGGY" },
-			"default path omitted the same-Pattern groggy continuation");
+			std::vector<std::string>{ "WINDUP", "CHARGE" },
+			"no-wall default path must not invent a groggy continuation");
 		Require(StageIds(Snapshot, Snapshot.MaximumPath) ==
 			std::vector<std::string>{ "WINDUP", "CHARGE", "GROGGY" },
 			"maximum path omitted the same-Pattern groggy continuation");
@@ -445,11 +442,11 @@ namespace
 		};
 		const ACTION_COMPOSITION_GRAPH_SNAPSHOT Snapshot =
 			ProjectOrThrow(Dash, Overrides);
-		Require(DASH_DEFAULT_DURATION_MS == Snapshot.DefaultPath.iDurationMs,
+		Require((FindStage(Dash, "WINDUP").iDurationMs + FindStage(Dash, "CHARGE").iDurationMs) == Snapshot.DefaultPath.iDurationMs,
 			"preview outcome override mutated the default path");
-		Require(DASH_WALL_DURATION_MS == Snapshot.SelectedPath.iDurationMs &&
+		Require((FindStage(Dash, "WINDUP").iDurationMs + FindStage(Dash, "CHARGE").iDurationMs + FindStage(Dash, "GROGGY").iDurationMs) == Snapshot.SelectedPath.iDurationMs &&
 			Snapshot.SelectedPath.bTerminal,
-			"WALL_CONTACT preview path no longer includes the 11983 ms groggy continuation");
+			"WALL_CONTACT preview path no longer includes the authored groggy continuation");
 		Require(StageIds(Snapshot, Snapshot.SelectedPath) ==
 			std::vector<std::string>{ "WINDUP", "CHARGE", "GROGGY" },
 			"selected WALL_CONTACT outcome omitted the local groggy Stage");
@@ -473,7 +470,7 @@ namespace
 				Continuation.strTargetActionId &&
 			Continuation.strTargetPatternId.empty(),
 			"selected WALL_CONTACT path lost its same-Pattern groggy target");
-		Require(DASH_MAXIMUM_DURATION_MS == Snapshot.MaximumPath.iDurationMs,
+		Require((FindStage(Dash, "WINDUP").iDurationMs + FindStage(Dash, "CHARGE").iDurationMs + FindStage(Dash, "GROGGY").iDurationMs) == Snapshot.MaximumPath.iDurationMs,
 			"preview outcome override mutated the maximum path");
 	}
 
@@ -552,6 +549,43 @@ namespace
 			Snapshot, Admitted);
 	}
 
+	void VerifyTrashCounterRetry(const VALTAN_PATTERN_VIEW& Trash)
+	{
+		auto Snapshot = ProjectOrThrow(Trash);
+		for (const auto Path : { VALTAN_PATTERN_PREVIEW_PATH::NORMAL,
+			VALTAN_PATTERN_PREVIEW_PATH::CAPTURE_SUCCESS })
+		{
+			std::vector<const VALTAN_STAGE_VIEW*> Stages;
+			std::string Status;
+			Require(CValtanPatternTree::Build_PreviewStagePath(Trash, Path, Stages, Status) &&
+				!Stages.empty() && Stages.size() <= Trash.Stages.size() &&
+				Status.find("repeats") != std::string::npos,
+				"Trash timeline preview resolves one pass at the retry boundary");
+		}
+		Require(Snapshot.DefaultPath.bRepeats && !Snapshot.DefaultPath.bTerminal &&
+			Snapshot.DefaultPath.NodeIndices.size() <= Trash.Stages.size(),
+			"Trash default preview must stop at its retry edge without claiming completion");
+		const auto& Retry = FindStage(Trash, "RECHARGE_WAIT_02");
+		for (const char* StageId : { "RETRY_EXHAUSTED", "CATCH_SLAM", "EXECUTE_TAIL" })
+		{
+			const auto& Source = FindStage(Trash, StageId);
+			Require(std::any_of(Snapshot.Edges.begin(), Snapshot.Edges.end(), [&](const auto& Edge)
+				{ return Edge.strSourceActionId == Source.strActionId && !Edge.bTerminal &&
+					Edge.strTargetActionId == Retry.strActionId && Edge.Polyline.size() >= 2u; }),
+				"Trash retry remains a visible local edge with its exact destination");
+		}
+		const auto Counter = ProjectOrThrow(Trash,
+			{{ FindStage(Trash, "STEP_07").strActionId, "COUNTER_HIT" }});
+		Require(Counter.SelectedPath.bTerminal && !Counter.SelectedPath.bRepeats &&
+			StageIds(Counter, Counter.SelectedPath).back() == "GROGGY",
+			"Trash counter preview still terminates through GROGGY");
+		VALTAN_PATTERN_VIEW Invalid = Trash;
+		FindBranch(FindStage(Invalid, "RETRY_EXHAUSTED"), "TIMEOUT").strNextActionId = Invalid.strEntryActionId;
+		const auto Preserved = Snapshot;
+		RequireRejectedWithoutSnapshotMutation(Invalid, ACTION_COMPOSITION_GRAPH_ERROR_CODE::CYCLE,
+			Snapshot, Preserved);
+	}
+
 	void VerifyNodeHitTesting(const VALTAN_PATTERN_VIEW& Dash)
 	{
 		const ACTION_COMPOSITION_GRAPH_SNAPSHOT Snapshot = ProjectOrThrow(Dash);
@@ -585,7 +619,7 @@ namespace
 			{
 				return "valtan.attack.dash-charge.active" ==
 					Candidate.strSourceActionId &&
-					"TIMEOUT" == Candidate.strOutcome &&
+					"WALL_CONTACT" == Candidate.strOutcome &&
 					!Candidate.bTerminal &&
 					"valtan.attack.dash-charge.recovery" ==
 						Candidate.strTargetActionId &&
@@ -646,6 +680,8 @@ int Run_ActionCompositionGraphModelContractTests()
 	}
 	const VALTAN_PATTERN_VIEW& Dash = *pDash;
 	const std::vector<std::pair<const char*, std::function<void()>>> Tests{
+		{ "Trash counter retry graph and bounded preview",
+			[&] { VerifyTrashCounterRetry(FindPattern(View, "VALTAN_TRASH")); } },
 		{ "production default/maximum path durations",
 			[&] { VerifyProductionDurations(Dash); } },
 		{ "preview outcome selected path",

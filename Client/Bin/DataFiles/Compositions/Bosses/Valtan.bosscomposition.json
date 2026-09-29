@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "compositionId": "boss.composition.valtan",
   "sourceRevision": 4,
-  "compositionRevision": "78500f397e777bf750c8ae73bd2d296529d7cdd0cc0b67cf095159f9c88b6336",
+  "compositionRevision": "c124143abbc5a4b213e16528346308d906dc190002a2c52e183a3372a1954fbf",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "Valtan Boss Composition",
@@ -13,12 +13,12 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "78500f397e777bf750c8ae73bd2d296529d7cdd0cc0b67cf095159f9c88b6336",
+    "sourceManifestId": "c124143abbc5a4b213e16528346308d906dc190002a2c52e183a3372a1954fbf",
     "files": [
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
-        "sha256": "ba625763ca4c4a88ae178a173acb5ff634832de4caeb59d09ce0280acb713fd8",
-        "bytes": 5696
+        "sha256": "0986e0007096ad3b866bea79624793f54e2a1b28ef7e2f2c581f08c1e7466966",
+        "bytes": 5391
       },
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
@@ -42,8 +42,8 @@
       },
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json",
-        "sha256": "0488dc66e46313aafec9e579afdf96583f96e96afef39bce6579524825396c45",
-        "bytes": 398574
+        "sha256": "1aed13b4a4917fb53d422f794f32e31c66b00cea46ab6c902be041b2945bb620",
+        "bytes": 398036
       },
       {
         "path": "Data/Compositions/Bosses/Valtan.bosscomposition.json",
@@ -112,7 +112,7 @@
       },
       {
         "path": "Data/Effects/Authored/effect.valtan.action.420624.stage000.full.restore.effect.json",
-        "sha256": "c343efb79f1e1e696210f6dc13cec2bd16309bf5b13b27c349dcb272f70a19d5",
+        "sha256": "8b3777b8e936c525f5f3a11df18f8b6c8311be7f2b6d6aea33a5d78c227eeaea",
         "bytes": 1181099
       },
       {
@@ -2132,8 +2132,8 @@
       },
       {
         "path": "Data/Encounters/Valtan/ValtanEncounter.json",
-        "sha256": "624a98e67479591049d78effc5580a48b74e5df47d9870abc8ad1222a22f6817",
-        "bytes": 343392
+        "sha256": "a3789a0d9c5e4a93789e890dfa20b23bb314c4288200f05c34f21cdf6dbf556c",
+        "bytes": 342878
       },
       {
         "path": "Data/Sound/CharacterSoundCatalog.json",
@@ -2142,13 +2142,13 @@
       },
       {
         "path": "Data/Valtan/Valtan.combatobjects.json",
-        "sha256": "a22ee973b2eaf6e56cc7d738aebd6bb19d7b3d8855dd798c39c4c6a660c0d549",
-        "bytes": 18966
+        "sha256": "2101455a6e864be010eba3e42980d3acc60e4059a8b83ad415985ed3951b7662",
+        "bytes": 17961
       },
       {
         "path": "Data/Valtan/Valtan.gameplay.json",
-        "sha256": "442601470af42ca96705ee7667f778a9e3cab07a4040dda5b33a890c9fa0f71b",
-        "bytes": 282984
+        "sha256": "07fe9841a5f8f76d4807a8b7882ae10538b8e5516beb6ba8ec835fe570391f39",
+        "bytes": 282586
       },
       {
         "path": "Data/Valtan/Valtan.legacy-compatibility.json",
@@ -3743,34 +3743,7 @@
                 }
               },
               "motion": null,
-              "events": [
-                {
-                  "eventId": "valtan.part-break.cardinal-rocks",
-                  "trigger": "ENTER",
-                  "kind": "SPAWN_COMBAT_OBJECT_VOLLEY",
-                  "combatObjectArchetypeId": "combatobject.valtan.part-break.rock",
-                  "volleyPolicy": "BOSS_RELATIVE",
-                  "countPerResolvedTarget": 4,
-                  "layout": {
-                    "kind": "RADIAL_AROUND_BOSS",
-                    "radiusM": 4.9497475,
-                    "startAngleDegrees": 45.0,
-                    "angleStepDegrees": 90.0,
-                    "mappingBasis": "PROJECT_TUNED"
-                  },
-                  "spawnSchedule": {
-                    "kind": "INTERVAL",
-                    "count": 1,
-                    "firstOffsetMs": 0,
-                    "intervalMs": 0
-                  },
-                  "arenaRandom": {
-                    "kind": "NONE"
-                  },
-                  "allowOverlap": false,
-                  "maximumTotalObjects": 4
-                }
-              ],
+              "events": [],
               "branches": [],
               "animation": {
                 "endPolicy": "EXACT",
@@ -14970,7 +14943,7 @@
               "actionId": "valtan.sequence.center-trash-rush-if.retry-exhausted",
               "stageKind": "RECOVERY",
               "durationMs": 1000,
-              "defaultNextActionId": null,
+              "defaultNextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02",
               "hit": {
                 "shape": {
                   "kind": "NONE"
@@ -14981,7 +14954,7 @@
               "branches": [
                 {
                   "outcome": "TIMEOUT",
-                  "nextActionId": null
+                  "nextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02"
                 }
               ],
               "animation": {
@@ -15088,7 +15061,7 @@
               "actionId": "valtan.sequence.center-trash-rush-if.catch-slam",
               "stageKind": "ACTIVE",
               "durationMs": 1500,
-              "defaultNextActionId": null,
+              "defaultNextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02",
               "hit": {
                 "shape": {
                   "kind": "NONE"
@@ -15106,7 +15079,7 @@
               "branches": [
                 {
                   "outcome": "TIMEOUT",
-                  "nextActionId": null
+                  "nextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02"
                 }
               ],
               "animation": {
@@ -15236,7 +15209,7 @@
               "actionId": "valtan.sequence.center-trash-rush-if.execute-tail",
               "stageKind": "RECOVERY",
               "durationMs": 1500,
-              "defaultNextActionId": null,
+              "defaultNextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02",
               "hit": {
                 "shape": {
                   "kind": "NONE"
@@ -15253,7 +15226,7 @@
               "branches": [
                 {
                   "outcome": "TIMEOUT",
-                  "nextActionId": null
+                  "nextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02"
                 }
               ],
               "animation": {
@@ -16691,7 +16664,7 @@
               "actionId": "valtan.sequence.rush-if.retry-exhausted",
               "stageKind": "RECOVERY",
               "durationMs": 1000,
-              "defaultNextActionId": null,
+              "defaultNextActionId": "valtan.sequence.rush-if.recharge-wait-02",
               "hit": {
                 "shape": {
                   "kind": "NONE"
@@ -16702,7 +16675,7 @@
               "branches": [
                 {
                   "outcome": "TIMEOUT",
-                  "nextActionId": null
+                  "nextActionId": "valtan.sequence.rush-if.recharge-wait-02"
                 }
               ],
               "animation": {
@@ -16809,7 +16782,7 @@
               "actionId": "valtan.sequence.rush-if.catch-slam",
               "stageKind": "ACTIVE",
               "durationMs": 1500,
-              "defaultNextActionId": null,
+              "defaultNextActionId": "valtan.sequence.rush-if.recharge-wait-02",
               "hit": {
                 "shape": {
                   "kind": "NONE"
@@ -16827,7 +16800,7 @@
               "branches": [
                 {
                   "outcome": "TIMEOUT",
-                  "nextActionId": null
+                  "nextActionId": "valtan.sequence.rush-if.recharge-wait-02"
                 }
               ],
               "animation": {
@@ -16957,7 +16930,7 @@
               "actionId": "valtan.sequence.rush-if.execute-tail",
               "stageKind": "RECOVERY",
               "durationMs": 1500,
-              "defaultNextActionId": null,
+              "defaultNextActionId": "valtan.sequence.rush-if.recharge-wait-02",
               "hit": {
                 "shape": {
                   "kind": "NONE"
@@ -16974,7 +16947,7 @@
               "branches": [
                 {
                   "outcome": "TIMEOUT",
-                  "nextActionId": null
+                  "nextActionId": "valtan.sequence.rush-if.recharge-wait-02"
                 }
               ],
               "animation": {
@@ -18231,7 +18204,8 @@
                 }
               },
               "motion": {
-                "kind": "TO_ARENA_CENTER"
+                "kind": "FORWARD",
+                "distance": 6.0
               },
               "events": [],
               "branches": [],
@@ -24682,34 +24656,7 @@
                 "kind": "NONE"
               }
             },
-            "events": [
-              {
-                "eventId": "valtan.part-break.cardinal-rocks",
-                "trigger": "ENTER",
-                "kind": "SPAWN_COMBAT_OBJECT_VOLLEY",
-                "combatObjectArchetypeId": "combatobject.valtan.part-break.rock",
-                "volleyPolicy": "BOSS_RELATIVE",
-                "countPerResolvedTarget": 4,
-                "layout": {
-                  "kind": "RADIAL_AROUND_BOSS",
-                  "radiusM": 4.9497475,
-                  "startAngleDegrees": 45.0,
-                  "angleStepDegrees": 90.0,
-                  "mappingBasis": "PROJECT_TUNED"
-                },
-                "spawnSchedule": {
-                  "kind": "INTERVAL",
-                  "count": 1,
-                  "firstOffsetMs": 0,
-                  "intervalMs": 0
-                },
-                "arenaRandom": {
-                  "kind": "NONE"
-                },
-                "allowOverlap": false,
-                "maximumTotalObjects": 4
-              }
-            ],
+            "events": [],
             "cues": [
               {
                 "cueId": "cue.animation.valtan.reaction.part-break.recovery.clip.01",
@@ -24757,98 +24704,6 @@
                   "playRate": 1.0,
                   "repeatUntilStageEnd": false,
                   "wallDurationMs": 2850
-                }
-              },
-              {
-                "cueId": "valtan.part-break.cardinal-rocks",
-                "kind": "COMBAT_OBJECT",
-                "scope": {
-                  "patternId": "VALTAN_PART_BREAK",
-                  "stageId": "PART_BREAK_RECOVERY",
-                  "actionId": "valtan.reaction.part-break.recovery"
-                },
-                "clock": {
-                  "basis": "STAGE",
-                  "startMs": 0,
-                  "repeatPolicy": "ONCE"
-                },
-                "stopPolicy": "STAGE_END",
-                "anchor": {
-                  "kind": "SERVER_RESOLVED"
-                },
-                "payload": {
-                  "eventId": "valtan.part-break.cardinal-rocks",
-                  "trigger": "ENTER",
-                  "kind": "SPAWN_COMBAT_OBJECT_VOLLEY",
-                  "combatObjectArchetypeId": "combatobject.valtan.part-break.rock",
-                  "volleyPolicy": "BOSS_RELATIVE",
-                  "countPerResolvedTarget": 4,
-                  "layout": {
-                    "kind": "RADIAL_AROUND_BOSS",
-                    "radiusM": 4.9497475,
-                    "startAngleDegrees": 45.0,
-                    "angleStepDegrees": 90.0,
-                    "mappingBasis": "PROJECT_TUNED"
-                  },
-                  "spawnSchedule": {
-                    "kind": "INTERVAL",
-                    "count": 1,
-                    "firstOffsetMs": 0,
-                    "intervalMs": 0
-                  },
-                  "arenaRandom": {
-                    "kind": "NONE"
-                  },
-                  "allowOverlap": false,
-                  "maximumTotalObjects": 4
-                }
-              },
-              {
-                "cueId": "cue.sound.valtan.reaction.part-break.recovery.clip-01.01",
-                "kind": "SOUND",
-                "scope": {
-                  "patternId": "VALTAN_PART_BREAK",
-                  "stageId": "PART_BREAK_RECOVERY",
-                  "actionId": "valtan.reaction.part-break.recovery"
-                },
-                "clock": {
-                  "basis": "STAGE",
-                  "startMs": 1,
-                  "repeatPolicy": "ONCE",
-                  "clipOccurrenceId": "valtan.reaction.part-break.recovery.clip.01"
-                },
-                "stopPolicy": "NATURAL",
-                "anchor": {
-                  "kind": "BOSS_ROOT",
-                  "slotId": "root",
-                  "followPolicy": "FOLLOW",
-                  "rotationBasis": "BOSS_YAW",
-                  "localTransform": {
-                    "translation": [
-                      0.0,
-                      0.0,
-                      0.0
-                    ],
-                    "rotation": [
-                      0.0,
-                      0.0,
-                      0.0
-                    ],
-                    "scale": [
-                      1.0,
-                      1.0,
-                      1.0
-                    ]
-                  }
-                },
-                "payload": {
-                  "soundBank": "S_Mob_G_Voltan2",
-                  "soundEvent": "G_Voltan2_Attack09_ProjCreat1",
-                  "sourceClock": {
-                    "basis": "CLIP_OCCURRENCE",
-                    "startMs": 1,
-                    "clipOccurrenceId": "valtan.reaction.part-break.recovery.clip.01"
-                  }
                 }
               },
               {
@@ -69878,11 +69733,11 @@
             "stageKind": "RECOVERY",
             "durationMs": 1000,
             "flow": {
-              "defaultNextActionId": null,
+              "defaultNextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02",
               "branches": [
                 {
                   "outcome": "TIMEOUT",
-                  "nextActionId": null
+                  "nextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02"
                 }
               ]
             },
@@ -70484,11 +70339,11 @@
             "stageKind": "ACTIVE",
             "durationMs": 1500,
             "flow": {
-              "defaultNextActionId": null,
+              "defaultNextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02",
               "branches": [
                 {
                   "outcome": "TIMEOUT",
-                  "nextActionId": null
+                  "nextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02"
                 }
               ]
             },
@@ -70792,11 +70647,11 @@
             "stageKind": "RECOVERY",
             "durationMs": 1500,
             "flow": {
-              "defaultNextActionId": null,
+              "defaultNextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02",
               "branches": [
                 {
                   "outcome": "TIMEOUT",
-                  "nextActionId": null
+                  "nextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02"
                 }
               ]
             },
@@ -75806,11 +75661,11 @@
             "stageKind": "RECOVERY",
             "durationMs": 1000,
             "flow": {
-              "defaultNextActionId": null,
+              "defaultNextActionId": "valtan.sequence.rush-if.recharge-wait-02",
               "branches": [
                 {
                   "outcome": "TIMEOUT",
-                  "nextActionId": null
+                  "nextActionId": "valtan.sequence.rush-if.recharge-wait-02"
                 }
               ]
             },
@@ -76465,11 +76320,11 @@
             "stageKind": "ACTIVE",
             "durationMs": 1500,
             "flow": {
-              "defaultNextActionId": null,
+              "defaultNextActionId": "valtan.sequence.rush-if.recharge-wait-02",
               "branches": [
                 {
                   "outcome": "TIMEOUT",
-                  "nextActionId": null
+                  "nextActionId": "valtan.sequence.rush-if.recharge-wait-02"
                 }
               ]
             },
@@ -76773,11 +76628,11 @@
             "stageKind": "RECOVERY",
             "durationMs": 1500,
             "flow": {
-              "defaultNextActionId": null,
+              "defaultNextActionId": "valtan.sequence.rush-if.recharge-wait-02",
               "branches": [
                 {
                   "outcome": "TIMEOUT",
-                  "nextActionId": null
+                  "nextActionId": "valtan.sequence.rush-if.recharge-wait-02"
                 }
               ]
             },
@@ -81640,7 +81495,8 @@
               "branches": []
             },
             "motion": {
-              "kind": "TO_ARENA_CENTER"
+              "kind": "FORWARD",
+              "distance": 6.0
             },
             "hit": {
               "shape": {
@@ -94559,27 +94415,6 @@
           "soundBank": "S_Mob_G_Voltan2",
           "soundEvent": "G_Voltan2_Attack09_ProjExp1",
           "playbackOffsetMs": 50
-        },
-        "detachedReason": "COMBAT_OBJECT_LIFETIME_SCOPE"
-      },
-      {
-        "cueId": "cue.sound.valtan.combatobject.part-break.rock.explode.01",
-        "kind": "COMBAT_OBJECT_SOUND",
-        "scope": {
-          "combatObjectArchetypeId": "combatobject.valtan.part-break.rock"
-        },
-        "clock": {
-          "basis": "COMBAT_OBJECT_EVENT",
-          "repeatPolicy": "ONCE"
-        },
-        "stopPolicy": "NATURAL",
-        "anchor": {
-          "kind": "COMBAT_OBJECT"
-        },
-        "payload": {
-          "hitId": "hit.valtan.part-break.rock.explode",
-          "soundBank": "S_Mob_G_Voltan2",
-          "soundEvent": "G_Voltan2_Attack09_ProjExp1"
         },
         "detachedReason": "COMBAT_OBJECT_LIFETIME_SCOPE"
       },
@@ -110057,18 +109892,6 @@
           "soundEvent": "G_Voltan2_Attack11_Shot1",
           "repeatPolicy": "once",
           "startMs": 700
-        },
-        {
-          "bindingId": "cue.sound.valtan.reaction.part-break.recovery.clip-01.01",
-          "occurrenceId": "cue.sound.valtan.reaction.part-break.recovery.clip-01.01.occurrence.01",
-          "patternId": "VALTAN_PART_BREAK",
-          "stageId": "PART_BREAK_RECOVERY",
-          "actionId": "valtan.reaction.part-break.recovery",
-          "clipOccurrenceId": "valtan.reaction.part-break.recovery.clip.01",
-          "soundBank": "S_Mob_G_Voltan2",
-          "soundEvent": "G_Voltan2_Attack09_ProjCreat1",
-          "repeatPolicy": "once",
-          "startMs": 1
         },
         {
           "bindingId": "cue.sound.valtan.reaction.part-break.recovery.clip.01.01",
@@ -126420,13 +126243,6 @@
           "bindingId": "cue.sound.valtan.combatobject.struggling.rock-pillar.explode.01",
           "combatObjectArchetypeId": "combatobject.valtan.struggling.rock-pillar",
           "hitId": "hit.valtan.struggling.rock-pillar.explode",
-          "soundBank": "S_Mob_G_Voltan2",
-          "soundEvent": "G_Voltan2_Attack09_ProjExp1"
-        },
-        {
-          "bindingId": "cue.sound.valtan.combatobject.part-break.rock.explode.01",
-          "combatObjectArchetypeId": "combatobject.valtan.part-break.rock",
-          "hitId": "hit.valtan.part-break.rock.explode",
           "soundBank": "S_Mob_G_Voltan2",
           "soundEvent": "G_Voltan2_Attack09_ProjExp1"
         },

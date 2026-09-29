@@ -91,9 +91,14 @@ void CLevel_Lobby::Update(const f32_t fTimeDelta)
 		m_hasRecoveryDiagnostic = true;
 		/* Keep the structured recovery snapshot for logs/harnesses, but do not
 		   dump protocol, hash, or transport diagnostics into the normal Lobby. */
-		m_strStatus = "Server entry failed.";
+		using LostArk::Shared::SESSION_DIAGNOSTIC_REASON;
+		const bool localLoadFailure =
+			m_RecoveryDiagnostic.eReason == SESSION_DIAGNOSTIC_REASON::CLIENT_LOAD_FAILED ||
+			m_RecoveryDiagnostic.eReason == SESSION_DIAGNOSTIC_REASON::CLIENT_LOADING_START_FAILED;
+		m_strStatus = localLoadFailure ?
+			"Game resources could not be loaded. Returned to Lobby." : "Server entry failed.";
 		CNetworkManager::Get().Record_SessionEvent("lobby.recovery.presented",
-			"message=Server entry failed.; recoveryReason=" + std::string(
+			"message=" + m_strStatus + "; recoveryReason=" + std::string(
 				LostArk::Shared::To_SessionDiagnosticReasonName(m_RecoveryDiagnostic.eReason)) +
 			"; source=" + m_RecoveryDiagnostic.strSource +
 			"; hresult=" + std::to_string(static_cast<std::uint32_t>(m_RecoveryDiagnostic.hResult)) +

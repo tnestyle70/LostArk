@@ -1680,6 +1680,142 @@ std::shared_ptr<CCharacter> Client::CClientReplication::Get_LocalCharacter() con
 	return m_Registry.Resolve(m_LocalCharacterHandle);
 }
 
+void Client::CClientReplication::Reset_SpectateTarget()
+{
+	m_iSpectateEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+	m_pSpectateDeathTarget.reset();
+	m_bSpectateTargetWasAlive = false;
+}
+
+bool_t Client::CClientReplication::Cycle_SpectateTarget()
+{
+	using namespace LostArk::Shared;
+	const auto local = m_PlayerHealth.Find(CNetworkManager::Get().Get_LocalEntityId());
+	if (!local.hasSnapshot || local.iCurrentHp != 0u) return false;
+	std::vector<REPLICATED_PLAYER_VIEW> players;
+	Collect_PlayerViews(players);
+	// Preserve the party's displayed order; non-party audition players follow stable entity order.
+	const auto order = [this](const auto id) {
+		const auto it = std::find_if(m_PartyRoster.Members.begin(), m_PartyRoster.Members.end(),
+			[id](const auto& member) { return member.iNetEntityId == id; });
+		return static_cast<size_t>(std::distance(m_PartyRoster.Members.begin(), it));
+	};
+	std::stable_sort(players.begin(), players.end(), [&](const auto& a, const auto& b) {
+		return order(a.iNetEntityId) < order(b.iNetEntityId);
+	});
+	const auto current = std::find_if(players.begin(), players.end(), [this](const auto& p) {
+		return p.iNetEntityId == m_iSpectateEntityId;
+	});
+	const size_t start = current == players.end() ? 0u :
+		(static_cast<size_t>(std::distance(players.begin(), current)) + 1u) % players.size();
+	for (size_t offset = 0u; offset < players.size(); ++offset)
+	{
+		const auto& player = players[(start + offset) % players.size()];
+		const auto health = m_PlayerHealth.Find(player.iNetEntityId);
+		const auto character = player.pCharacter.lock();
+		if (player.isLocal || player.eControlKind != PLAYER_CONTROL_KIND::HUMAN ||
+			!health.hasSnapshot || health.iCurrentHp == 0u || !character || !character->Get_Transform()) continue;
+		m_iSpectateEntityId = player.iNetEntityId;
+		m_pSpectateDeathTarget.reset();
+		m_bSpectateTargetWasAlive = false;
+		return true;
+	}
+	return false;
+}
+
+std::shared_ptr<CCharacter> Client::CClientReplication::Get_CameraCharacter() const
+{
+	if (!Is_Spectating()) return Get_LocalCharacter();
+	OBJECT_HANDLE handle;
+	return m_Registry.Find_Handle(m_iSpectateEntityId, handle) ? m_Registry.Resolve(handle) : nullptr;
+}
+
+bool_t Client::CClientReplication::Is_SpectateTargetDead() const
+{
+	const auto local = m_PlayerHealth.Find(CNetworkManager::Get().Get_LocalEntityId());
+	if (!Is_Spectating() || (local.hasSnapshot && local.iCurrentHp > 0u)) return false;
+	const auto health = m_PlayerHealth.Find(m_iSpectateEntityId);
+	return !health.hasSnapshot || health.iCurrentHp == 0u || !Get_CameraCharacter();
+}
+
+std::shared_ptr<CTransform> Client::CClientReplication::Get_CameraTarget() const
+{
+	const auto character = Get_CameraCharacter();
+	if (Is_Spectating())
+	{
+		const auto health = m_PlayerHealth.Find(m_iSpectateEntityId);
+		if (!health.hasSnapshot || health.iCurrentHp == 0u || !character)
+			return m_pSpectateDeathTarget;
+	}
+	return character ? character->Get_Transform() : nullptr;
+}
+
+std::shared_ptr<CTransform> Client::CClientReplication::Resolve_CameraTarget()
+{
+	const auto local = m_PlayerHealth.Find(CNetworkManager::Get().Get_LocalEntityId());
+	if (Is_Spectating() && local.hasSnapshot && local.iCurrentHp > 0u) Reset_SpectateTarget();
+	const auto character = Get_CameraCharacter();
+	if (Is_Spectating() && character && character->Get_Transform())
+	{
+		const auto health = m_PlayerHealth.Find(m_iSpectateEntityId);
+		const bool_t alive = health.hasSnapshot && health.iCurrentHp > 0u;
+		if (!m_pSpectateDeathTarget)
+		{
+			m_pSpectateDeathTarget = CTransform::Create(m_Desc.pDevice, m_Desc.pContext);
+			if (m_pSpectateDeathTarget) m_pSpectateDeathTarget->Initialize(nullptr);
+		}
+		if (m_pSpectateDeathTarget && (alive || m_bSpectateTargetWasAlive))
+		{
+			const auto source = character->Get_Transform();
+			for (const auto state : { STATE::RIGHT, STATE::UP, STATE::LOOK, STATE::POSITION })
+				m_pSpectateDeathTarget->Set_State(state, source->Get_State(state));
+		}
+		m_bSpectateTargetWasAlive = alive;
+	}
+	return Get_CameraTarget();
+}
+
+const LostArk::Shared::PLAYER_SNAPSHOT* Client::CClientReplication::Get_CameraPlayerSnapshot() const
+{
+	const auto id = Is_Spectating() ? m_iSpectateEntityId : CNetworkManager::Get().Get_LocalEntityId();
+	const auto found = std::find_if(m_KoukuCardSnapshots.begin(), m_KoukuCardSnapshots.end(),
+		[id](const auto& player) { return player.iNetEntityId == id; });
+	return found != m_KoukuCardSnapshots.end() ? &*found : nullptr;
+}
+
+LostArk::Shared::NET_ENTITY_ID Client::CClientReplication::Get_KoukuWorldUISubjectId() const
+{
+	if (m_Desc.iLayerLevelIndex != ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		return LostArk::Shared::INVALID_NET_ENTITY_ID;
+	const auto* subject = Get_CameraPlayerSnapshot();
+	return subject && subject->iMarioStage >= 1u && subject->iMarioStage <= 4u ?
+		subject->iNetEntityId : LostArk::Shared::INVALID_NET_ENTITY_ID;
+}
+
+bool_t Client::CClientReplication::Should_ShowKoukuPlayerWorldUI(
+	const LostArk::Shared::NET_ENTITY_ID entityId) const
+{
+	const auto subject = Get_KoukuWorldUISubjectId();
+	return subject == LostArk::Shared::INVALID_NET_ENTITY_ID || entityId == subject;
+}
+
+bool_t Client::CClientReplication::Should_ShowKoukuDamageWorldUI(
+	const LostArk::Shared::NET_ENTITY_ID targetId, const LostArk::Shared::PLAYER_ID sourcePlayerId) const
+{
+	using namespace LostArk::Shared;
+	const auto subject = Get_KoukuWorldUISubjectId();
+	if (subject == INVALID_NET_ENTITY_ID || targetId == subject) return true;
+	// A heal or hit on the subject remains theirs even when another player caused it.
+	const auto players = m_Registry.Get_LivePlayers();
+	if (std::any_of(players.begin(), players.end(), [targetId](const auto& player) {
+		return player.Record.iNetEntityId == targetId; })) return false;
+	// Enemy damage belongs to the player who caused it, not to its screen position.
+	return sourcePlayerId != INVALID_PLAYER_ID && std::any_of(players.begin(), players.end(),
+		[subject, sourcePlayerId](const auto& player) {
+			return player.Record.iNetEntityId == subject && player.Record.iPlayerId == sourcePlayerId;
+		});
+}
+
 std::shared_ptr<CNpc> Client::CClientReplication::Find_NpcPlacement(
 	const std::string_view placementId) const
 {
@@ -4568,6 +4704,7 @@ void Client::CClientReplication::Reset_World()
 	m_EncounterPropState = {};
 	m_InventoryState = {};
 	m_PlayerHealth.Reset();
+	Reset_SpectateTarget();
 	m_PartyRoster = {};
 	m_hasPendingPartyInvite = false;
 	m_PendingPartyInvite = {};

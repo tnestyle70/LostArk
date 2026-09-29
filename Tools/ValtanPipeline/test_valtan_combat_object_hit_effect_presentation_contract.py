@@ -38,7 +38,6 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             "combatobject.valtan.ground-roar.rock": (5000, 6200),
             "combatobject.valtan.six-pizza.rock-pillar": (0, 32000),
             "combatobject.valtan.struggling.rock-pillar": (5000, 6200),
-            "combatobject.valtan.part-break.rock": (5000, 6200),
         }
         for archetype_id, (at_ms, life_ms) in expected.items():
             with self.subTest(archetype_id=archetype_id):
@@ -406,11 +405,6 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
                 "effect.valtan.struggling.rock.explode",
                 5.0,
             ),
-            "combatobject.valtan.part-break.rock": (
-                "effect.valtan.ground-roar.rock.active",
-                "effect.valtan.ground-roar.rock.explode",
-                5.0,
-            ),
         }
         effects = json.loads(_read("Data/Effects/EffectCatalog.json"))
         paths = {
@@ -514,7 +508,7 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             cue for cue in cues["cues"]
             if cue["combatObjectArchetypeId"] in expected
         ]
-        self.assertEqual(4, len(rock_cues))
+        self.assertEqual(len(expected), len(rock_cues))
         self.assertTrue(all("hitId" in cue for cue in rock_cues))
         self.assertTrue(all("startMs" not in cue and "delayMs" not in cue
                             for cue in rock_cues))

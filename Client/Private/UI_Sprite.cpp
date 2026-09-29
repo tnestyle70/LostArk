@@ -170,12 +170,13 @@ void Client::CUI_Sprite::Apply_Transform()
 	const float sx = m_vReferenceResolution.x > 0.f ? viewport.x / m_vReferenceResolution.x : 1.f;
 	const float sy = m_vReferenceResolution.y > 0.f ? viewport.y / m_vReferenceResolution.y : 1.f;
 	m_vAppliedViewport = viewport;
-	m_pTransformCom->Scale(m_fSizeX * sx, m_fSizeY * sy);
-	/* Screen-space clockwise degrees (the HUD Layout Tool/HUDRuntimeView convention, y-down) map
-	to a negative mathematical rotation about +Z in this y-up world space. CTransform::Rotation
-	rebuilds right/up/look from axis-aligned axes at the current scale, so it must run after
-	Scale and always runs (0 degrees rebuilds the identity axes a previous nonzero rotation
-	left rotated -- Scale alone only re-lengthens the already-rotated axes). */
+	/* Rebuild from the current rect, not the previous basis. A zero-width shield collapses
+	RIGHT to zero; normalizing that old axis in Scale cannot restore a later positive width. */
+	m_pTransformCom->Set_State(STATE::RIGHT, XMVectorSet(m_fSizeX * sx, 0.f, 0.f, 0.f));
+	m_pTransformCom->Set_State(STATE::UP, XMVectorSet(0.f, m_fSizeY * sy, 0.f, 0.f));
+	m_pTransformCom->Set_State(STATE::LOOK, XMVectorSet(0.f, 0.f, 1.f, 0.f));
+	/* Screen-space clockwise degrees (y-down) map to a negative rotation about +Z.
+	Apply the authored rotation after rebuilding the axes, including the zero-degree case. */
 	m_pTransformCom->Rotation(XMVectorSet(0.f, 0.f, 1.f, 0.f), -m_fRotationDeg);
 	m_pTransformCom->Set_State(STATE::POSITION,
 		XMVectorSet(

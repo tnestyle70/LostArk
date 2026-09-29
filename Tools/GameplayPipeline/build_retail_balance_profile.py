@@ -148,6 +148,7 @@ PROJECT_POLICY = {
     # Authored SET_STAGGER_GAUGE values are 30 and 100; x400 makes the large window the
     # original 40000 of NpcBalance.ParalyzationPointMax.
     "staggerGaugeScale": 400,
+    "raidStaggerMaximum": 40000,
     # Preserve per-pattern results: breath 1%, Mario hazard 5%, failure penalty 50%,
     # and explicit zero for damage-only lingering floors. Automatic HP-based gain
     # remains the fallback only for damage verdicts without a madness result.
@@ -709,6 +710,7 @@ def main() -> int:
         "profileId": PROFILE_ID,
         "displayName": "원작 수치 (발탄 1415 / 쿠크세이튼 1475, 기준 스펙 아이템 레벨 1500)",
         "staggerGaugeScale": PROJECT_POLICY["staggerGaugeScale"],
+        "raidStaggerMaximum": PROJECT_POLICY["raidStaggerMaximum"],
         "madnessGaugeAddPercent": PROJECT_POLICY["madnessGaugeAddPercent"],
         "madness": PROJECT_POLICY["madness"],
         "players": build_players(pcs, players_document["players"]),

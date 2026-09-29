@@ -425,6 +425,8 @@ void CWorldSequencePlayer::Clear()
 	m_EffectSelection.reset();
     m_HasExternalSoundClock = false;
     m_ExternalSoundClockRate = 1.f;
+    m_ExternalSoundElapsedMs = 0.f;
+    m_SourceToSoundTime = {};
 	m_ModelCache.clear();
 	m_Document.Reset_Empty({});
 	m_Status.clear();
