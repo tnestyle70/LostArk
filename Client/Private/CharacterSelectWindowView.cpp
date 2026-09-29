@@ -688,8 +688,8 @@ void CCharacterSelectWindowView::Spawn_StageCharacter(const int32_t iIndex)
 	/* The card wears the look its character was made with. A document that does not fit (another
 	class, unreadable) leaves the class default. */
 	if (!Roster[static_cast<size_t>(iIndex)].strAppearanceJson.empty())
-		(void)CCustomizingView::Apply_SavedAppearance(
-			pCharacter, Roster[static_cast<size_t>(iIndex)].strAppearanceJson);
+		(void)CCustomizingView::Apply_SavedLook(
+			pCharacter, Roster[static_cast<size_t>(iIndex)].strAppearanceJson, m_pDevice, m_pContext);
 	m_StageCharacters[iIndex] = pCharacter;
 	Write_StageLog("card " + std::to_string(iIndex) + " character standing");
 }

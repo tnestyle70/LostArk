@@ -68,6 +68,7 @@
 #include "UILabelFont.h"
 #include "CharacterInfoWindowView.h"
 #include "VehicleWindowView.h"
+#include "CustomizingView.h"
 #include "SystemOptionWindowView.h"
 #include "ClientWindowDisplay.h"
 #include "CombatAnalysisFrameView.h"
@@ -14715,6 +14716,9 @@ void CMainApp::Free()
 #endif
 	if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Reset();
 	m_pKoukuPresentationPlayer.reset();
+	/* The saved-look outfit applier holds the D3D device and an equipment service: release them
+	while the Engine is alive. */
+	CCustomizingView::Release_SavedLookCache();
 	/* Active instances must leave ObjectManager while the Engine is alive, but
 	   prepared renderer/catalog globals cannot be cleared until a Loading level
 	   has cancelled and joined its worker.  Release_Engine tears the current

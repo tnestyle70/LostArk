@@ -162,6 +162,7 @@
     <ClInclude Include="..\Public\CustomizingFaceTextureDocument.h" />
     <ClInclude Include="..\Public\CustomizingIconDocument.h" />
     <ClInclude Include="..\Public\CustomizingView.h" />
+    <ClInclude Include="..\Public\CharacterOutfitApplier.h" />
     <ClInclude Include="..\Public\DurabilityHudView.h" />
     <ClInclude Include="..\Public\InventoryView.h" />
     <ClInclude Include="..\Public\RepairWindowView.h" />
@@ -464,6 +465,7 @@
     <ClCompile Include="..\Private\CustomizingFaceTextureDocument.cpp" />
     <ClCompile Include="..\Private\CustomizingIconDocument.cpp" />
     <ClCompile Include="..\Private\CustomizingView.cpp" />
+    <ClCompile Include="..\Private\CharacterOutfitApplier.cpp" />
     <ClCompile Include="..\Private\DurabilityHudView.cpp" />
     <ClCompile Include="..\Private\InventoryView.cpp" />
     <ClCompile Include="..\Private\RepairWindowView.cpp" />

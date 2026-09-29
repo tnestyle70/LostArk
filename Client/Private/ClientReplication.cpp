@@ -2346,7 +2346,8 @@ bool Client::CClientReplication::Create_Character(
 	{
 		const std::string strAppearance = CCharacterSelectionState::Get_ActiveAppearanceJson();
 		if (!strAppearance.empty())
-			(void)CCustomizingView::Apply_SavedAppearance(character, strAppearance);
+			(void)CCustomizingView::Apply_SavedLook(
+				character, strAppearance, m_Desc.pDevice, m_Desc.pContext);
 	}
 	outCharacter = character;
 	return true;

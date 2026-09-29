@@ -1,6 +1,7 @@
 #include "CustomizingView.h"
 
 #include "Character.h"
+#include "CharacterOutfitApplier.h"
 #include "FaceCustomizeApplier.h"
 #include "GameInstance.h"
 #include "MainApp.h"
@@ -1125,6 +1126,63 @@ bool_t Client::CCustomizingView::Apply_SavedAppearance(
 	static CCustomizingView Applier;
 	Applier.Apply_ListIcons(pCharacter);
 	return Applier.Apply_Appearance(pCharacter, strJson);
+}
+
+namespace
+{
+	/* Kept between restores so the models an outfit admitted are remembered. */
+	std::unique_ptr<Client::CCharacterOutfitApplier> g_pSavedLookOutfit;
+}
+
+bool_t Client::CCustomizingView::Read_SavedOutfit(
+	const std::string& strJson, int32_t& outHair, int32_t& outCostume)
+{
+	outHair = -1;
+	outCostume = -1;
+	DATA_JSON_VALUE root;
+	std::string error;
+	if (!CDataJson::Parse(strJson, root, error) || !root.Is_Object())
+		return false;
+	outHair = static_cast<int32_t>(ReadNumber(root.Find("hair"), -1.f));
+	outCostume = static_cast<int32_t>(ReadNumber(root.Find("costume"), -1.f));
+	return true;
+}
+
+bool_t Client::CCustomizingView::Apply_SavedLook(
+	const shared_ptr<CCharacter>& pCharacter, const std::string& strJson,
+	const ComPtr<ID3D11Device>& pDevice, const ComPtr<ID3D11DeviceContext>& pContext)
+{
+	if (nullptr == pCharacter || strJson.empty() || nullptr == pCharacter->Get_Spec())
+		return false;
+
+	/* Only a document of this class may dress it: the hair and costume indices are per class. */
+	DATA_JSON_VALUE root;
+	std::string error;
+	if (!CDataJson::Parse(strJson, root, error) || !root.Is_Object())
+		return false;
+	const DATA_JSON_VALUE* pClass = root.Find("class");
+	const char_t* pAssetName = pCharacter->Get_Spec()->pAssetName;
+	if (nullptr == pClass || !pClass->Is_String() || nullptr == pAssetName ||
+		pClass->Get_String() != pAssetName)
+		return false;
+
+	if (nullptr != pDevice && nullptr != pContext)
+	{
+		int32_t iHair = -1, iCostume = -1;
+		if (Read_SavedOutfit(strJson, iHair, iCostume))
+		{
+			if (nullptr == g_pSavedLookOutfit)
+				g_pSavedLookOutfit = std::make_unique<CCharacterOutfitApplier>(pDevice, pContext);
+			/* Soft: a failed swap leaves the class default outfit and the look still applies. */
+			(void)g_pSavedLookOutfit->Apply(pCharacter, iHair, iCostume);
+		}
+	}
+	return Apply_SavedAppearance(pCharacter, strJson);
+}
+
+void Client::CCustomizingView::Release_SavedLookCache()
+{
+	g_pSavedLookOutfit.reset();
 }
 
 void Client::CCustomizingView::Update_ActionList(const shared_ptr<CCharacter>& pCharacter)

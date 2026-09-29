@@ -864,6 +864,9 @@
     <ClCompile Include="..\Private\CustomizingView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\CharacterOutfitApplier.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\DurabilityHudView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -1619,6 +1622,9 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\CustomizingView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\CharacterOutfitApplier.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\DurabilityHudView.h">

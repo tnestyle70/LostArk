@@ -89,6 +89,19 @@ public:
 	the character untouched when the document is another class' or unreadable. */
 	static bool_t Apply_SavedAppearance(
 		const shared_ptr<CCharacter>& pCharacter, const std::string& strJson);
+	/* The hair cell and try-on costume index a saved look document states (-1 when it does not),
+	so a caller with no screen can dress the character. False when the text is not a look. */
+	static bool_t Read_SavedOutfit(
+		const std::string& strJson, int32_t& outHair, int32_t& outCostume);
+	/* A saved look on a character with no screen: hair and costume first (the equipment swap
+	replaces the parts the hair colour, two-tone and dye act on), then Apply_SavedAppearance.
+	The device pair is only used to admit equipment models; without it the outfit is skipped.
+	A document of another class leaves the character untouched. */
+	static bool_t Apply_SavedLook(
+		const shared_ptr<CCharacter>& pCharacter, const std::string& strJson,
+		const ComPtr<ID3D11Device>& pDevice, const ComPtr<ID3D11DeviceContext>& pContext);
+	/* Drops the outfit applier Apply_SavedLook keeps alive; call before the device goes away. */
+	static void Release_SavedLookCache();
 	/* Degrees the drag gesture has turned the subject. The camera stays where the retail
 	framing puts it; the model is what rotates, so its cloth chains react. */
 	f32_t Get_SubjectYawOffsetDegrees() const { return -m_fOrbitYaw; }
