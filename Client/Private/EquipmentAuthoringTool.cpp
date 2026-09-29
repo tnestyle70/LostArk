@@ -145,6 +145,8 @@ Client::CEquipmentAuthoringTool::CEquipmentAuthoringTool(
 	, m_pPreviewPanel{ std::move(pPreviewPanel) }
 	, m_PresentationService{ m_pDevice, m_pContext }
 {
+	static_assert(CLASS_OPTIONS.size() == CLASS_COUNT,
+		"CLASS_LOADOUTS must hold one loadout per class option");
 }
 
 Client::CEquipmentAuthoringTool::~CEquipmentAuthoringTool()

@@ -5139,6 +5139,10 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 				(void)CNetworkManager::Get().Send_SetEquipment(
 					m_iNextUseItemSequence++, eTarget, true, strEquipItemId);
 		}
+		LostArk::Shared::EQUIPMENT_SLOT eAvatarUnequipSlot = LostArk::Shared::EQUIPMENT_SLOT::NONE;
+		if (m_pInventoryView->Try_Consume_UnequipRequest(eAvatarUnequipSlot))
+			(void)CNetworkManager::Get().Send_SetEquipment(
+				m_iNextUseItemSequence++, eAvatarUnequipSlot, false, {});
 	}
 	if (nullptr != m_pCharacterInfoView)
 	{

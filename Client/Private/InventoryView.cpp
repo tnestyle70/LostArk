@@ -120,6 +120,15 @@ bool_t Client::CInventoryView::Try_Consume_EquipRequest(string& outItemId)
 	return true;
 }
 
+bool_t Client::CInventoryView::Try_Consume_UnequipRequest(LostArk::Shared::EQUIPMENT_SLOT& outSlot)
+{
+	if (LostArk::Shared::EQUIPMENT_SLOT::NONE == m_ePendingUnequipSlot)
+		return false;
+	outSlot = m_ePendingUnequipSlot;
+	m_ePendingUnequipSlot = LostArk::Shared::EQUIPMENT_SLOT::NONE;
+	return true;
+}
+
 void Client::CInventoryView::Render_Text()
 {
 	if (!m_bOpen || nullptr == m_pBackgroundView)
@@ -500,8 +509,11 @@ vector<size_t> Client::CInventoryView::Build_FilteredIndices(
 	filteredIndices.reserve(items.size());
 	for (size_t i = 0; i < items.size(); ++i)
 	{
-		/* Worn equipment lives in the character info window, not the bag. */
-		if (LostArk::Shared::EQUIPMENT_SLOT::NONE != items[i].eEquippedSlot)
+		/* Worn gear lives in the character info window, not the bag. A worn avatar has no
+		   window slot, so it stays in the bag and a right-click takes it off. */
+		if (LostArk::Shared::EQUIPMENT_SLOT::NONE != items[i].eEquippedSlot &&
+			LostArk::Shared::EQUIPMENT_SLOT::AVATAR_HEAD != items[i].eEquippedSlot &&
+			LostArk::Shared::EQUIPMENT_SLOT::AVATAR_OUTFIT != items[i].eEquippedSlot)
 			continue;
 		if (bShowAll)
 		{
@@ -571,18 +583,23 @@ void Client::CInventoryView::Update_Items(
 		LOA-font pass) -- CGameInstance::Draw_Text there, no ImGui. */
 	}
 
-	/* Right-click on a bag equipment item: equip it. Avatar pieces are worn through the
-	avatar book, not this path. */
+	/* Right-click on a bag item: equip gear or an avatar; a worn avatar comes off instead. */
 	if (Router.Is_RightClickEdge() && iHoveredSlot >= 0 &&
 		static_cast<size_t>(iHoveredSlot) < m_DisplayOrder.size() &&
 		m_DisplayOrder[iHoveredSlot] < filteredIndices.size() &&
 		filteredIndices[m_DisplayOrder[iHoveredSlot]] < items.size())
 	{
-		const string& strItemId = items[filteredIndices[m_DisplayOrder[iHoveredSlot]]].strItemId;
-		const ITEM_DEFINITION* pEquip = CItemCatalog::Find_ById(strItemId);
-		if (nullptr != pEquip && !pEquip->strEquipSlot.empty() &&
-			"avatarHead" != pEquip->strEquipSlot && "avatarOutfit" != pEquip->strEquipSlot)
-			m_strPendingEquipItemId = strItemId;
+		const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& Item = items[filteredIndices[m_DisplayOrder[iHoveredSlot]]];
+		if (LostArk::Shared::EQUIPMENT_SLOT::NONE != Item.eEquippedSlot)
+		{
+			m_ePendingUnequipSlot = Item.eEquippedSlot;
+		}
+		else
+		{
+			const ITEM_DEFINITION* pEquip = CItemCatalog::Find_ById(Item.strItemId);
+			if (nullptr != pEquip && !pEquip->strEquipSlot.empty())
+				m_strPendingEquipItemId = Item.strItemId;
+		}
 	}
 
 	/* Drag-and-drop: press-and-hold over a filled slot starts a drag. Releasing over a

@@ -40,7 +40,7 @@ public:
 	{
 		m_iDragFromSlot = -1; m_bDraggingPanel = false;
 		m_bHasPendingItemDrop = m_bHasPendingItemPick = false;
-		m_strPendingEquipItemId.clear();
+		m_strPendingEquipItemId.clear(); m_ePendingUnequipSlot = LostArk::Shared::EQUIPMENT_SLOT::NONE;
 		m_strPendingDropItemId.clear(); m_strPendingPickItemId.clear(); m_strPendingPickIconPath.clear();
 	}
 	CInventoryView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
@@ -74,6 +74,8 @@ public:
 	/* One-shot: the equipment item right-clicked in the bag this frame (retail equips on
 	right-click); CMainApp picks the slot and asks the Server. */
 	bool_t Try_Consume_EquipRequest(string& outItemId);
+	/* Right-click on a worn avatar in the bag: the slot to take off. */
+	bool_t Try_Consume_UnequipRequest(LostArk::Shared::EQUIPMENT_SLOT& outSlot);
 
 	/* Forces every owned CUI_Sprite invisible without touching m_bOpen -- the panel reappears on
 	its own, still at whatever m_bOpen/category/position state it had, the next time Update()
@@ -136,6 +138,7 @@ private:
 	string m_strPendingPickIconPath;
 	/* Set by Update_Items on a right-click over an equipment item. */
 	string m_strPendingEquipItemId;
+	LostArk::Shared::EQUIPMENT_SLOT m_ePendingUnequipSlot = LostArk::Shared::EQUIPMENT_SLOT::NONE;
 };
 
 NS_END

@@ -12,6 +12,9 @@ float4 g_SourceCharacterLightConstants[64];
 float4 g_SourceCharacterBaseConstants[64];
 #endif
 #ifndef SOURCE_CHARACTER_LIGHT_PASS
+// Source hair base pass: the masked constant row is raised by the caller, so
+// coverage is the program's own threshold discard instead of the ordered dither.
+uint g_SourceCharacterHairMaskedPass = 0u;
 uint g_SourceCharacterEnvironmentEnabled = 0u;
 TextureCube g_SourceCharacterEnvironmentCube;
 float4 g_SourceCharacterEnvironmentColor = float4(1.f, 1.f, 1.f, 0.f);
