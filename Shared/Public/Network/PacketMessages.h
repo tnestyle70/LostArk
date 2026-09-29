@@ -1739,6 +1739,9 @@ namespace LostArk::Shared
 		bool isKnockbackAirborne = false;
 		// Maharaka Waterpang only: the Server arms every live-match arena participant.
 		bool isWaterpangArmed = false;
+		// Waterpang water gun: latest cast (skill id and the Server tick it began); both 0 before the first.
+		std::uint32_t iWaterGunSkillId = 0u;
+		std::uint32_t iWaterGunCastTick = 0u;
 		PLAYER_CONTROL_KIND eControlKind = PLAYER_CONTROL_KIND::HUMAN;
 	};
 

@@ -1556,6 +1556,7 @@ void LostArk::Server::CGameRoom::Update_MaharakaWaterpangHazards(
 		return;
 	// Only a body on the arena deck or its pier takes part; the pool and shore do not.
 	if (!m_ServerNavigation.Is_Loaded() ||
+		!Is_MaharakaWaterpangArenaFootprint(player.fPositionX, player.fPositionZ) ||
 		!m_ServerNavigation.Is_PointWalkableInRegion(MAHARAKA_WATERPANG_REGION_ID,
 			player.fPositionX, player.fPositionZ, player.fPositionY))
 		return;
@@ -1596,11 +1597,11 @@ void LostArk::Server::CGameRoom::Update_MaharakaWaterpangHazards(
 	{
 		if (event.iElapsedTicks != MAHARAKA_WATERPANG_WATERFALL_HIT_TICK &&
 			event.iElapsedTicks != MAHARAKA_WATERPANG_WATERFALL_SECOND_HIT_TICK) return;
-		// The waterfall covers the whole deck; the pool, the shore and the piers are clear.
+		// The waterfall covers only the yellow centre disc; the ring of purple blocks, the pool, the shore and the piers are clear.
 		const float x = player.fPositionX - MAHARAKA_WATERPANG_CANNON_X;
 		const float z = player.fPositionZ - MAHARAKA_WATERPANG_CANNON_Z;
 		const float radius = std::sqrt(x * x + z * z);
-		if (radius > MAHARAKA_WATERPANG_DECK_RADIUS_M || player.fPositionY < MAHARAKA_WATERPANG_DECK_MIN_Y_M)
+		if (radius > MAHARAKA_WATERPANG_WATERFALL_HIT_RADIUS_M || player.fPositionY < MAHARAKA_WATERPANG_DECK_MIN_Y_M)
 			return;
 		// Source waves: within 2.5 m of the origin 3.2 m ahead of the mokoko at 2.30 s, the rest at 2.46 s.
 		float faceX = MAHARAKA_WATERPANG_CANNON_X - MAHARAKA_WATERPANG_MOKOMOKO_X;
@@ -1728,4 +1729,168 @@ LostArk::Shared::DEBUG_WORLD_PLAYBACK_RESULT LostArk::Server::CGameRoom::Start_M
 	}
 	return Result::ACCEPTED;
 #endif
+}
+
+bool LostArk::Server::CGameRoom::Is_MaharakaWaterpangArmed(const SERVER_PLAYER& player) const
+{
+	using namespace LostArk::Shared;
+	// Armed from the intro start tick while the body stands on the Waterpang arena region; an arena
+	// push-off or knockdown keeps it until the fall resolves. The empty-room reset clears the match.
+	return WORLD_ID::MAHARAKA == m_eWorldId && m_MaharakaWaterpangIntro &&
+		Has_ReachedServerTick(m_iServerTick, m_MaharakaWaterpangIntro->iStartTick) &&
+		(player.bWaterpangFall || PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction ||
+		 (m_ServerNavigation.Is_Loaded() &&
+		  Is_MaharakaWaterpangArenaFootprint(player.fPositionX, player.fPositionZ) &&
+		  m_ServerNavigation.Is_PointWalkableInRegion(
+			MAHARAKA_WATERPANG_REGION_ID, player.fPositionX, player.fPositionZ, player.fPositionY)));
+}
+
+bool LostArk::Server::CGameRoom::Try_StartMaharakaWaterGunSkill(
+	SERVER_PLAYER& player, const LostArk::Shared::C2S_USE_SKILL& command)
+{
+	using namespace LostArk::Shared;
+	const MAHARAKA_WATERGUN_SKILL* const skill = Find_MaharakaWaterGunSkill(command.iSkillId);
+	// Movement is never locked, so only states that own the body's action refuse a cast.
+	if (nullptr == skill || !Is_MaharakaWaterpangArmed(player) || 0u == player.iCurrentHp ||
+		PLAYER_ACTION_STATE::NONE != player.eAction || player.fKnockbackRemainingSeconds > 0.f ||
+		player.bWaterpangFall || player.bPatternBound || player.TriggerMove.isActive ||
+		!Is_NewerSequence(command.iClientSequence, player.iLastSkillSequence) ||
+		(0u != player.iSilenceEndTick && !Has_ReachedServerTick(m_iServerTick, player.iSilenceEndTick)))
+		return false;
+	const std::uint32_t startTick =
+		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ? 1u : m_iServerTick + 1u;
+	// One action at a time: the previous cast's clip must have run out.
+	if (0u != player.iWaterGunCastEndTick &&
+		static_cast<std::int32_t>(player.iWaterGunCastEndTick - startTick) > 0)
+		return false;
+	const auto cooldown = player.CooldownEndTickBySkillId.find(skill->iSkillId);
+	if (cooldown != player.CooldownEndTickBySkillId.end() &&
+		static_cast<std::int32_t>(cooldown->second - startTick) > 0)
+		return false;
+
+	player.iLastSkillSequence = command.iClientSequence;
+	player.iWaterGunSkillId = skill->iSkillId;
+	player.iWaterGunCastTick = startTick;
+	player.iWaterGunCastEndTick = Add_ServerTicksSkippingReservedZero(
+		startTick, Get_MaharakaWaterGunTicks(skill->iActionMs));
+	if (0u != skill->iCooldownMs)
+		player.CooldownEndTickBySkillId.insert_or_assign(skill->iSkillId,
+			Add_ServerTicksSkippingReservedZero(startTick, Get_MaharakaWaterGunTicks(skill->iCooldownMs)));
+	if (MAHARAKA_WATERGUN_KIND::SPEED_BUFF == skill->eKind)
+	{
+		player.iWaterGunSpeedEndTick = Add_ServerTicksSkippingReservedZero(
+			startTick, Get_MaharakaWaterGunTicks(skill->iBuffMs));
+		player.fWaterGunSpeedScale = skill->fBuffSpeedScale;
+		return true;
+	}
+	// A standing body turns to the aim; a walking one keeps the facing of its path.
+	const float aimX = command.fAimX - player.fPositionX;
+	const float aimZ = command.fAimZ - player.fPositionZ;
+	const float aimDistance = std::sqrt(aimX * aimX + aimZ * aimZ);
+	if (!player.hasMoveGoal && aimDistance > 0.1f)
+		player.fYawDegrees = std::atan2(aimX, aimZ) * RADIANS_TO_DEGREES;
+	MAHARAKA_WATERGUN_SHOT shot{};
+	shot.iOwnerId = player.iPlayerId;
+	shot.iSkillId = skill->iSkillId;
+	shot.iSpawnTick = Add_ServerTicksSkippingReservedZero(startTick, Get_MaharakaWaterGunTicks(skill->iSpawnMs));
+	shot.fAimDistanceM = (std::min)(skill->fMaxRangeM, (std::max)(aimDistance, 1.f));
+	m_MaharakaWaterGunShots.push_back(std::move(shot));
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Update_MaharakaWaterGunShots(const std::uint32_t updateTick)
+{
+	using namespace LostArk::Shared;
+	if (m_MaharakaWaterGunShots.empty())
+		return;
+	if (WORLD_ID::MAHARAKA != m_eWorldId)
+	{
+		m_MaharakaWaterGunShots.clear();
+		return;
+	}
+	constexpr float fixedDeltaSeconds = 1.f / static_cast<float>(MAHARAKA_WATERPANG_TICK_HZ);
+	const float bodyRadius = WorldCollision::PLAYER_HALF_EXTENT_X;
+	for (MAHARAKA_WATERGUN_SHOT& shot : m_MaharakaWaterGunShots)
+	{
+		const MAHARAKA_WATERGUN_SKILL* const skill = Find_MaharakaWaterGunSkill(shot.iSkillId);
+		const auto ownerIter = m_Players.find(shot.iOwnerId);
+		if (nullptr == skill || m_Players.end() == ownerIter)
+		{
+			shot.bSpent = true;
+			continue;
+		}
+		if (!shot.bLaunched)
+		{
+			if (!Has_ReachedServerTick(updateTick, shot.iSpawnTick))
+				continue;
+			const SERVER_PLAYER& owner = ownerIter->second;
+			// A shooter who fell or died before the muzzle notify never fires.
+			if (0u == owner.iCurrentHp || PLAYER_ACTION_STATE::DEAD == owner.eAction ||
+				PLAYER_ACTION_STATE::FALLING == owner.eAction || owner.bWaterpangFall)
+			{
+				shot.bSpent = true;
+				continue;
+			}
+			const float yawRadians = owner.fYawDegrees / RADIANS_TO_DEGREES;
+			shot.bLaunched = true;
+			shot.fDirX = std::sin(yawRadians);
+			shot.fDirZ = std::cos(yawRadians);
+			shot.fX = owner.fPositionX;
+			shot.fY = owner.fPositionY;
+			shot.fZ = owner.fPositionZ;
+			shot.fReachM = MAHARAKA_WATERGUN_KIND::GRENADE == skill->eKind ?
+				shot.fAimDistanceM : skill->fSpeedMps * skill->fLifeSeconds;
+		}
+		const float step = (std::min)(skill->fSpeedMps * fixedDeltaSeconds, shot.fReachM - shot.fTravelM);
+		if (step > 0.f)
+		{
+			shot.fX += shot.fDirX * step;
+			shot.fZ += shot.fDirZ * step;
+			shot.fTravelM += step;
+		}
+		const bool grenade = MAHARAKA_WATERGUN_KIND::GRENADE == skill->eKind;
+		const bool landed = shot.fTravelM + 0.0001f >= shot.fReachM;
+		// A thrown bomb only bursts where it lands; a missile touches bodies along the way.
+		if (!grenade || landed)
+		{
+			const float reach = skill->fHitRadiusM + bodyRadius;
+			for (auto& [targetId, target] : m_Players)
+			{
+				if (targetId == shot.iOwnerId || 0u == target.iCurrentHp || !target.isCombatReady ||
+					!Is_MaharakaWaterpangArmed(target) ||
+					std::find(shot.Struck.begin(), shot.Struck.end(), targetId) != shot.Struck.end() ||
+					std::abs(target.fPositionY - shot.fY) > MAHARAKA_WATERGUN_HIT_HEIGHT_M)
+					continue;
+				const float deltaX = target.fPositionX - shot.fX;
+				const float deltaZ = target.fPositionZ - shot.fZ;
+				if (deltaX * deltaX + deltaZ * deltaZ > reach * reach)
+					continue;
+				SERVER_WORLD_TO_PLAYER_HIT hit{};
+				hit.iServerTick = updateTick;
+				hit.bIgnoreCounter = true;
+				hit.fSourceX = shot.fX;
+				hit.fSourceZ = shot.fZ;
+				hit.fPushRangeM = skill->fPushRangeM;
+				hit.iPushMs = skill->iPushMs;
+				// A missile carries the body along its own line; a burst pushes away from its centre.
+				hit.bUsePushDirection = !grenade;
+				hit.fPushDirectionX = shot.fDirX;
+				hit.fPushDirectionZ = shot.fDirZ;
+				// The source rows carry no usable HP damage for this match (see the contract).
+				(void)CServerCombatHitRuntime::Apply_WorldToPlayer(target, hit, m_GameplayCatalog, m_TickDamageEvents);
+				shot.Struck.push_back(targetId);
+				if (!grenade)
+				{
+					shot.bSpent = true;
+					break;
+				}
+			}
+		}
+		if (landed)
+			shot.bSpent = true;
+	}
+	m_MaharakaWaterGunShots.erase(
+		std::remove_if(m_MaharakaWaterGunShots.begin(), m_MaharakaWaterGunShots.end(),
+			[](const MAHARAKA_WATERGUN_SHOT& shot) { return shot.bSpent; }),
+		m_MaharakaWaterGunShots.end());
 }

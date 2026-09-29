@@ -933,6 +933,18 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			Update_MarioControlState(player);
 			if (!player.TriggerMove.isActive && !authoredMoveSource.empty())
 				Complete_KoukuMarioReturn(player, authoredMoveSource, updateTick);
+			/* Landing from a Waterpang crossing (jump1/jump2/jump3) protects the player for a
+			   moment; the existing invulnerable tick already absorbs cannon, waterfall and
+			   water gun hits, so none of them push or drop the player while it runs. */
+			if (LostArk::Shared::WORLD_ID::MAHARAKA == m_eWorldId && !player.TriggerMove.isActive &&
+				player.iCurrentHp &&
+				LostArk::Shared::Is_MaharakaWaterpangJumpTrigger(authoredMoveSource))
+			{
+				const std::uint32_t protectUntil = Add_ServerTicksSkippingReservedZero(
+					updateTick, LostArk::Shared::MAHARAKA_WATERPANG_JUMP_INVULNERABLE_TICKS);
+				if (!player.iInvulnerableEndTick || Has_ReachedServerTick(protectUntil, player.iInvulnerableEndTick))
+					player.iInvulnerableEndTick = protectUntil;
+			}
             if (!player.TriggerMove.isActive && player.Is_Human()) Guide_AnchorArrived(player);
 			continue;
 		}
@@ -1373,6 +1385,7 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 		((m_MaharakaWaterpangIntro && Has_ReachedServerTick(knockbackTick, m_MaharakaWaterpangIntro->iStartTick)) ||
 		 Is_MaharakaWaterpangDebugEventLive(knockbackTick));
 	const bool waterpangPush = waterpangMatch &&
+		LostArk::Shared::Is_MaharakaWaterpangArenaFootprint(player.fPositionX, player.fPositionZ) &&
 		m_ServerNavigation.Is_PointWalkableInRegion(LostArk::Shared::MAHARAKA_WATERPANG_REGION_ID,
 			player.fPositionX, player.fPositionZ, player.fPositionY);
 	if (waterpangPush) player.bKnockbackCanLeaveArena = true;

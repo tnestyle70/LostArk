@@ -3,7 +3,10 @@
 Does not move user markers, NPCs, permanent map placements or camera keys.
 CAS install with a before/candidate backup; publishers own runtime outputs.
 The focused navigation region preserves the existing flat base outside the
-exact 18 stage tiles, centre disc and two top barrel meshes.
+exact 18 stage tiles, centre disc and two top barrel meshes. It spans the whole
+base grid (0.25 m cells): the Server answers a query from the region that holds
+its first point alone, so a region smaller than the island trapped every player
+who waded into it. The arena detail is baked in a 22 m window inside it.
 """
 import argparse
 import copy
@@ -74,6 +77,7 @@ def prepare():
     # Exact scene export identities, verified against installed mesh bounds.
     ids += ['11877804709865735844','11550822667285194357','10829680542090774286']
     assert len(ids)==21 and len(set(ids))==21
+    # Arena window measured against the meshes; ARENA_* mirrors Shared MaharakaWaterpangContract.h.
     width=88; size=.25; ox=64.; oz=-995.
     xx,zz=np.meshgrid(ox+(np.arange(width)+.5)*size,oz+(np.arange(width)+.5)*size)
     heights=np.full(xx.shape,20.48); count=0
@@ -99,8 +103,14 @@ def prepare():
         assert 22.3<support<22.5, (n,support)
         assert all(abs(by_id[f'jump{n}_1']['position'][j]-start_trigger['position'][j])<=start_trigger['halfExtents'][j] for j in (0,2))
     region='WaterpangEntry'
-    lines=[f'LOSTARK_NAVGRID_SOURCE 1 "{AREA}.{region}" {width} {width} {size} {ox} {oz} {width*width}']
-    lines += [f'{x} {z} 1 {heights[z,x]:.8f}' for z in range(width) for x in range(width)]
+    # The region equals the base grid footprint (Data/Navigation/<Area>.navgrid.json), flat outside the window.
+    region_width=640; region_ox=0.; region_oz=-1072.
+    column=int(round((ox-region_ox)/size)); row=int(round((oz-region_oz)/size))
+    assert region_width==int(round(160./size)) and column+width<=region_width and row+width<=region_width
+    full=np.full((region_width,region_width),20.48)
+    full[row:row+width,column:column+width]=heights
+    lines=[f'LOSTARK_NAVGRID_SOURCE 1 "{AREA}.{region}" {region_width} {region_width} {size} {region_ox} {region_oz} {region_width*region_width}']
+    lines += [f'{x} {z} 1 {full[z,x]:.8f}' for z in range(region_width) for x in range(region_width)]
     nav_path=ROOT/f'Data/Navigation/{AREA}.{region}.navsource'
     manifest=ROOT/f'Data/Navigation/{AREA}.navregions'
     manifest_bytes=f'LOSTARK_NAVGRID_REGIONS 1 "{AREA}" 1\nREGION "{region}" 0.6\n'.encode()

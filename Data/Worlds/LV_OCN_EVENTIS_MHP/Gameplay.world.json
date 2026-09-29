@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_OCN_EVENTIS_MHP",
-  "revision": 275,
+  "revision": 278,
   "placements": [
     {
       "placementId": "jump1",
@@ -676,6 +676,32 @@
           "sequenceInstanceId": "world.sequence.instance.maharaka.waterpang.source.intro15.stage"
         }
       ]
+    },
+    {
+      "placementId": "island.exit.to.bern",
+      "kind": "triggerBox",
+      "position": [
+        62.7,
+        20.48,
+        -975.6
+      ],
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [
+        2,
+        2,
+        2
+      ],
+      "triggerOnce": false,
+      "events": [
+        {
+          "type": "changeLevel",
+          "targetWorldId": "BERN",
+          "spawnPlacementId": "island.return.sea.landing"
+        }
+      ],
+      "requiresInteract": true,
+      "interactAction": "dock:기에나의 바다"
     }
   ]
 }

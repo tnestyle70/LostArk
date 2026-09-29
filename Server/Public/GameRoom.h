@@ -1600,6 +1600,12 @@ namespace LostArk::Server
 		void Update_MaharakaWaterpangHazards(SERVER_PLAYER& player, std::uint32_t updateTick);
 		// The running Debug forced event first, else the match schedule; false when neither runs.
 		bool Sample_MaharakaWaterpangNow(std::uint32_t tick, LostArk::Shared::MAHARAKA_WATERPANG_EVENT_SAMPLE& out) const;
+		// The Server's water gun arming rule: replicated as PLAYER_SNAPSHOT.isWaterpangArmed.
+		bool Is_MaharakaWaterpangArmed(const SERVER_PLAYER& player) const;
+		// Water gun Q/W/E/R cast of an armed body: cooldown, no movement lock, shot scheduled.
+		bool Try_StartMaharakaWaterGunSkill(SERVER_PLAYER& player, const LostArk::Shared::C2S_USE_SKILL& command);
+		// Flies the scheduled shots and pushes the bodies they strike.
+		void Update_MaharakaWaterGunShots(std::uint32_t updateTick);
 		// The forced event plus a short tail, so its last push can still leave the deck.
 		bool Is_MaharakaWaterpangDebugEventLive(std::uint32_t tick) const;
 		// Debug F1 Waterpang pattern button: starts a forced event for the whole room.
@@ -1712,6 +1718,18 @@ namespace LostArk::Server
 		std::size_t m_iLastRoomPerfOutboundHighWatermark = 0u;
 		bool m_acceptsCommands = true;
 		std::deque<SERVER_WORLD_TRANSFER_REQUEST> m_PendingWorldTransfers;
+		/* Bern remembers the ship a session sailed to Maharaka on, so the return trip can put that
+		   session back on the same ship at the pier it left from. Bern room only; keyed by session. */
+		struct SHIP_RETURN_STATE final
+		{
+			LostArk::Shared::VEHICLE_ID iVehicleId = LostArk::Shared::INVALID_VEHICLE_ID;
+			float fDockX = 0.f;
+			float fDockY = 0.f;
+			float fDockZ = 0.f;
+			float fDockYawDegrees = 0.f;
+		};
+		std::unordered_map<SESSION_ID, SHIP_RETURN_STATE> m_MaharakaShipReturnBySession;
+		void Remember_ShipForWorldTransfer(const SERVER_WORLD_TRANSFER_REQUEST& transfer);
 		struct PENDING_ESTHER_SUMMON final
 		{
 			const ESTHER_ROSTER_ENTRY* pRosterEntry = nullptr;
@@ -1811,6 +1829,22 @@ namespace LostArk::Server
 		CServerTriggerSystem m_ServerTriggerSystem;
 		// One room-wide scheduled intro, retained for late join until the room empties.
 		std::optional<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> m_MaharakaWaterpangIntro;
+		// A Waterpang water gun shot from cast to burst; bodies already struck are remembered.
+		struct MAHARAKA_WATERGUN_SHOT final
+		{
+			LostArk::Shared::PLAYER_ID iOwnerId = 0;
+			std::uint32_t iSkillId = 0u;
+			std::uint32_t iSpawnTick = 0u;
+			float fAimDistanceM = 0.f;
+			bool bLaunched = false;
+			bool bSpent = false;
+			float fX = 0.f, fY = 0.f, fZ = 0.f;
+			float fDirX = 0.f, fDirZ = 1.f;
+			float fTravelM = 0.f;
+			float fReachM = 0.f;
+			std::vector<LostArk::Shared::PLAYER_ID> Struck;
+		};
+		std::vector<MAHARAKA_WATERGUN_SHOT> m_MaharakaWaterGunShots;
 		// Debug forced waterfall/cannon broadcast; replaced by the next press, kept for late join.
 		std::optional<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> m_MaharakaWaterpangDebugEvent;
 		CSpawnGroupBootstrap m_SpawnGroupBootstrap;

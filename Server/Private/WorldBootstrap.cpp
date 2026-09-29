@@ -154,6 +154,8 @@ namespace
 			outWorldId = WORLD_ID::VALTAN_ARENA;
 		else if ("KAKULSAYDON_ARENA" == value)
 			outWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		else if ("MAHARAKA" == value)
+			outWorldId = WORLD_ID::MAHARAKA;
 		else
 			return false;
 		return true;
@@ -412,15 +414,21 @@ bool LostArk::Server::CWorldBootstrap::Load(
 				}
 				else if ("changeLevel" == fields[actionCursor])
 				{
-					if (1u != payloadCount ||
+					/* Payload 1 is the target world alone. Payload 2 adds the placement id of
+					   the target world's own bootstrap the player lands on (the ship dock and
+					   its return use it); the room re-validates that id on entry. */
+					if ((1u != payloadCount && 2u != payloadCount) ||
 						!ParseTriggerTargetWorld(
 							fields[actionCursor + 2u], action.eTargetWorldId) ||
-						action.eTargetWorldId == worldId)
+						action.eTargetWorldId == worldId ||
+						(2u == payloadCount && !IsStableId(fields[actionCursor + 3u])))
 					{
 						m_strStatus = "World changeLevel action is invalid at row " +
 							std::to_string(index);
 						return false;
 					}
+					if (2u == payloadCount)
+						action.strTargetId = fields[actionCursor + 3u];
 					action.eKind = WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL;
 				}
 				else if ("activateSpawnGroup" == fields[actionCursor])

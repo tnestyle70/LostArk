@@ -681,6 +681,36 @@ bool LostArk::Server::CGameRoom::Commit_WorldTransferDeparture(
 	return !m_PlayerIdBySessionId.contains(sessionId);
 }
 
+void LostArk::Server::CGameRoom::Remember_ShipForWorldTransfer(
+	const SERVER_WORLD_TRANSFER_REQUEST& transfer)
+{
+	using LostArk::Shared::WORLD_ID;
+	if (WORLD_ID::BERN != m_eWorldId)
+		return;
+	/* Only the Maharaka trip keeps the ship; any other departure forgets it. This runs where the room
+	   hands a transfer off, so the tick entry, the G interaction (the dock is a G trigger), the Debug
+	   trigger and every other staging path remember it alike. */
+	const auto playerIdIter = m_PlayerIdBySessionId.find(transfer.iSessionId);
+	const auto playerIter = playerIdIter != m_PlayerIdBySessionId.end() ?
+		m_Players.find(playerIdIter->second) : m_Players.end();
+	if (WORLD_ID::MAHARAKA == transfer.eTargetWorldId && playerIter != m_Players.end() &&
+		playerIter->second.bShipDockValid &&
+		LostArk::Shared::INVALID_VEHICLE_ID != playerIter->second.iVehicleId)
+	{
+		if (m_MaharakaShipReturnBySession.size() >= 256u)
+			m_MaharakaShipReturnBySession.clear();
+		SHIP_RETURN_STATE state{};
+		state.iVehicleId = playerIter->second.iVehicleId;
+		state.fDockX = playerIter->second.fShipDockX;
+		state.fDockY = playerIter->second.fShipDockY;
+		state.fDockZ = playerIter->second.fShipDockZ;
+		state.fDockYawDegrees = playerIter->second.fShipDockYawDegrees;
+		m_MaharakaShipReturnBySession[transfer.iSessionId] = state;
+	}
+	else
+		m_MaharakaShipReturnBySession.erase(transfer.iSessionId);
+}
+
 bool LostArk::Server::CGameRoom::Try_DequeueWorldTransfer(
 	SERVER_WORLD_TRANSFER_REQUEST& outTransfer)
 {
@@ -688,6 +718,7 @@ bool LostArk::Server::CGameRoom::Try_DequeueWorldTransfer(
 		return false;
 	outTransfer = std::move(m_PendingWorldTransfers.front());
 	m_PendingWorldTransfers.pop_front();
+	Remember_ShipForWorldTransfer(outTransfer);
 	return true;
 }
 
@@ -1061,6 +1092,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 	Update_Guides(fixedDeltaSeconds);
 	Update_WorldPickups(updateTick, false);
 	Update_Players(fixedDeltaSeconds);
+	Update_MaharakaWaterGunShots(updateTick);
 	Update_KoukuCardRainSoldiers(updateTick);
 	Update_CardMaze(updateTick);
 	Update_KoukuBingo(updateTick);

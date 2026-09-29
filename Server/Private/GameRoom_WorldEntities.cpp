@@ -363,6 +363,7 @@ bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 	{
 		m_MaharakaWaterpangIntro.reset();
 		m_MaharakaWaterpangDebugEvent.reset();
+		m_MaharakaWaterGunShots.clear();
 	}
 	if ((WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId &&
 		WORLD_ID::VALTAN_ARENA != m_eWorldId &&
