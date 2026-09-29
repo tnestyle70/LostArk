@@ -1337,6 +1337,33 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             source_text, projected_text, "bindings", "bindingId", managed_ids
         )
 
+    def test_removed_managed_spawn_retires_its_product_carrier(self) -> None:
+        from unittest.mock import patch
+        docs = copy.deepcopy(self.docs)
+        product = docs[pipeline.COMBAT_PRODUCT_REL]
+        retired = copy.deepcopy(product["objects"][0])
+        retired["combatObjectArchetypeId"] = "combatobject.valtan.part-break.rock"
+        retired["ownerPatternId"] = "VALTAN_PART_BREAK"
+        retired["ownerStageActionId"] = "valtan.reaction.part-break.recovery"
+        product["objects"].append(retired)
+        staged = pipeline.join_v2_authoring(
+            docs[pipeline.GAMEPLAY_AUTHORING_REL],
+            docs[pipeline.PRESENTATION_AUTHORING_REL],
+            docs[pipeline.WORLD_SET_REL], docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        original_read = pipeline.read_text
+        product_path = (self.root / pipeline.COMBAT_PRODUCT_REL).resolve()
+        def read_with_old_carrier(path):
+            return (json.dumps(product, ensure_ascii=False, indent=2) + "\n"
+                    if Path(path).resolve() == product_path else original_read(path))
+        with patch.object(pipeline, "read_text", side_effect=read_with_old_carrier):
+            outputs = pipeline.project_v2_products(self.root, docs, staged)
+        result = json.loads(outputs[pipeline.COMBAT_PRODUCT_REL])["objects"]
+        self.assertNotIn(retired["combatObjectArchetypeId"], {
+            row["combatObjectArchetypeId"] for row in result
+        })
+        self.assertEqual(self.docs[pipeline.COMBAT_PRODUCT_REL]["objects"], result)
+
     def test_combat_companion_has_only_object_owned_fields(self) -> None:
         companion = self.docs[pipeline.COMBAT_AUTHORING_REL]
         pipeline.validate_combat_authoring(companion)
@@ -1347,7 +1374,15 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                           "combatobject.valtan.ground-roar.rock",
                           "combatobject.valtan.six-pizza.rock-pillar",
                           "combatobject.valtan.struggling.rock-pillar",
-                          "combatobject.valtan.part-break.rock",
+                          "combatobject.valtan.struggling.underfoot-01",
+                          "combatobject.valtan.struggling.underfoot-02",
+                          "combatobject.valtan.struggling.underfoot-03",
+                          "combatobject.valtan.struggling.underfoot-04",
+                          "combatobject.valtan.struggling.underfoot-05",
+                          "combatobject.valtan.struggling.underfoot-06",
+                          "combatobject.valtan.struggling.in-out",
+                          "combatobject.valtan.terrain-3.combo-rock",
+                          "combatobject.valtan.terrain-9.combo-rock",
                           "combatobject.valtan.ghost.portal-charge"},
                          {row["combatObjectArchetypeId"] for row in companion["objects"]})
         axe = next(
@@ -1695,7 +1730,12 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                          [row["outcome"] for row in stages["CATCH_PRE_IMPACT"]["branches"]])
         self.assertEqual("DAMAGE_GRABBED_PLAYERS", stages["CATCH_SLAM"]["events"][0]["kind"])
         self.assertEqual("EXECUTE_GRABBED_PLAYERS", stages["EXECUTE_TAIL"]["events"][0]["kind"])
-        for terminal in ("CATCH_SLAM", "EXECUTE_TAIL", "RETRY_EXHAUSTED", "GROGGY"):
+        retry_action = stages["RECHARGE_WAIT_02"]["actionId"]
+        for retry in ("CATCH_SLAM", "EXECUTE_TAIL", "RETRY_EXHAUSTED"):
+            self.assertEqual(retry_action, stages[retry]["defaultNextActionId"])
+            self.assertEqual([{"outcome": "TIMEOUT", "nextActionId": retry_action}],
+                             stages[retry]["branches"])
+        for terminal in ("GROGGY",):
             self.assertIsNone(stages[terminal]["defaultNextActionId"])
             self.assertEqual([{"outcome": "TIMEOUT", "nextActionId": None}],
                              stages[terminal]["branches"])

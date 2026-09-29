@@ -478,10 +478,13 @@ void Client::CValtanActionWorkbench::Render_BossPatternPane(
 		Graph.strPatternId == pPattern->strPatternId &&
 		Graph.iSourceGeneration == iPatternViewDraftGeneration;
 	ImGui::Text(
-		"Default %llu ms | Selected %llu ms | Maximum %llu ms",
+		"Default %llu ms%s | Selected %llu ms%s | Longest pass %llu ms%s",
 		static_cast<unsigned long long>(Graph.DefaultPath.iDurationMs),
+		Graph.DefaultPath.bRepeats ? " then repeat" : "",
 		static_cast<unsigned long long>(Graph.SelectedPath.iDurationMs),
-		static_cast<unsigned long long>(Graph.MaximumPath.iDurationMs));
+		Graph.SelectedPath.bRepeats ? " then repeat" : "",
+		static_cast<unsigned long long>(Graph.MaximumPath.iDurationMs),
+		Graph.MaximumPath.bRepeats ? " then repeat" : "");
 	ImGui::SameLine();
 	if (ImGui::SmallButton("Fit"))
 		m_bBossPatternFitRequested = true;

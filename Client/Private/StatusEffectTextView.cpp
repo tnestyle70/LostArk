@@ -154,6 +154,7 @@ void Client::CStatusEffectTextView::Submit(const REQUEST& Request)
 	std::uniform_real_distribution<f32_t> ScatterX(-SCATTER_X_PX, SCATTER_X_PX);
 	std::uniform_real_distribution<f32_t> ScatterY(-SCATTER_Y_PX, SCATTER_Y_PX);
 	OCCURRENCE Occurrence{};
+	Occurrence.iOwnerEntityId = Request.iOwnerEntityId;
 	Occurrence.strWord = Request.strWord;
 	Occurrence.iColorRgb = Request.iColorRgb;
 	Occurrence.pAnchor = Request.pAnchor;
@@ -178,7 +179,7 @@ void Client::CStatusEffectTextView::Update(const f32_t fTimeDelta)
 		m_Occurrences.end());
 }
 
-void Client::CStatusEffectTextView::Render() const
+void Client::CStatusEffectTextView::Render(const std::uint32_t onlyOwnerEntityId) const
 {
 	if (m_Occurrences.empty())
 		return;
@@ -193,6 +194,7 @@ void Client::CStatusEffectTextView::Render() const
 
 	for (const OCCURRENCE& Occurrence : m_Occurrences)
 	{
+		if (onlyOwnerEntityId && Occurrence.iOwnerEntityId != onlyOwnerEntityId) continue;
 		const shared_ptr<CCharacter> pAnchor = Occurrence.pAnchor.lock();
 		if (nullptr == pAnchor)
 			continue;

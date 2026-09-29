@@ -357,7 +357,7 @@ namespace LostArk::Shared
 		MAX_WORLD_SNAPSHOT_PLAYERS = 32;
 	// Lance Master alone authors nine ACTIVE skills and can hold all nine on
 	// cooldown at once, so eight silently dropped one tile from the HUD.
-	inline constexpr std::size_t MAX_PLAYER_COOLDOWNS = 16;
+	inline constexpr std::size_t MAX_PLAYER_COOLDOWNS = 32;
 	// One tick applies at most one player hit and one boss hit per actor, so this
 	// bounds a 30 Hz frame rather than a fight.
 	inline constexpr std::size_t MAX_DAMAGE_EVENTS = 64;
@@ -1692,6 +1692,8 @@ namespace LostArk::Shared
 			{ -1, -1, -1, -1, -1, -1, -1, -1 };
 		// 0 outside Mario; 1..4 identify the Server-owned side-scroll stage.
 		std::uint8_t iMarioStage = 0u;
+		// Server-owned 90-second Mario / card-maze deadline; zero means inactive.
+		std::uint32_t iKoukuMinigameEndTick = 0u;
 		// Server-selected source layout: 0 unselected, 1..3 original cases.
 		std::uint8_t iMarioLayoutVariant = 0u;
 		/* Source balls of that layout the Server has popped, bit = the layout's
@@ -1886,6 +1888,8 @@ namespace LostArk::Shared
 		INVINCIBLE,
 		HEAL,
 		ABSORB, // Actual shield absorption, separate from HP damage.
+		DAMAGE_REDUCED,
+		CRITICAL_DAMAGE_REDUCED,
 		END
 	};
 	inline bool Is_Valid_DamageHitFlag(const DAMAGE_HIT_FLAG eFlag)

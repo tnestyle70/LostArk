@@ -1853,6 +1853,123 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 - 같은 FX의 여러 pass가 같은 entry/profile을 사용하면 `CompileShader` 결과를 공유한다. pass 이름·순서·render state와 서로 다른 entry는 유지한다. 정적/애니메이션 CModel shader도 이 검사를 포함하며, 컴파일 표현식 수 감소와 실제 FX 생성·pass/input layout 검증을 구분한다.
 - 증분 측정은 같은 MSBuild와 완전히 같은 인자를 반복한다. 같은 디렉터리라도 `OutDir`의 slash 표기가 달라 `/Fo` 문자열이 바뀌면 FXC command tracking이 전체를 다시 컴파일할 수 있다. 그런 실행은 no-change 결과로 보고하지 않고 별도 재빌드로 기록하며, CSO 내용과 수정 시각 및 실제 FXC 실행 수를 함께 확인한다.
 
+### 통합·checkout과 shader 증분 캐시의 무효화를 구분한다
+
+브랜치 이름은 compiler 입력이 아니다. 같은 tree로 전환해 working-tree byte와 mtime가 그대로라면
+branch를 바꿨다는 사실만으로 FXC를 다시 실행할 이유가 생기지 않는다. 실제 동일-tree 전환의
+C++/shader 입력 2,273개에서 SHA-256과 mtime가 모두 보존된 대조는
+[Release 통합 결과](09-29/2026-09-29_RELEASE_RAID_PR_INTEGRATION_RESULT.md)를 따른다.
+측정 파일 `out/ReleaseValidation20260929/branch-no-input-change.json`은 해당 실행의 로컬 증거이며,
+다른 checkout에서도 파일이 보존된다고 대신 증명하지 않는다.
+
+반면 서로 다른 tree 사이의 checkout, safety stash와 복원, 파일 전체 복사, 내용이 같은 생성물의
+재저장은 디스크 파일을 다시 써서 mtime를 바꿀 수 있다. 기존 CSO가 최신 source 내용으로 만들어졌어도
+include가 더 새 시각이면 MSBuild dependency tracking은 그 입력을 오래된 출력의 원인으로 판단할 수
+있다. 이때 diagnostic에 적힌 입력 경로·수정시각과 Git reflog/보존 기록을 대조한다. 내용이 같은
+공통 HLSLI까지 원인으로 지목됐다면 byte 동일성과 timestamp invalidation을 함께 기록한다.
+실제로 바뀐 C++/헤더도 있을 수 있으므로 모든 재컴파일을 불필요했다고 확장하지 않는다.
+
+`git diff`의 의미상 차이, Git index blob, working-tree bytes, mtime는 서로 다른 정보다.
+`core.autocrlf`와 `.gitattributes` 때문에 index LF/working-tree CRLF가 될 수 있다.
+`git ls-files --eol`과 실제 byte hash를 확인하고 “내용이 같다”가 어느 기준인지 명시한다.
+EOL만 바뀌어도 byte hash와 tracking은 달라질 수 있다. 다른 작업 보존을 생략하거나 줄바꿈 설정을
+임의로 바꾸는 대신, 통합 전 안전 snapshot을 남기고 필요한 변경만 현재 디스크 형식에 맞춰 적용한다.
+작업 보존과 캐시 보존은 별도 목적이며, 재컴파일이 발생했다고 stash의 원본 데이터가 유실된 것은 아니다.
+
+기존 출력이 있는 checkout과 새 worktree의 비용도 구분한다. worktree는 소스 격리이며 원본의
+OBJ/PCH/CSO와 `.tlog`를 자동 공유하지 않는다. 유효 캐시가 없는 최초 빌드는 정상적으로 비용이 든다.
+원본 checkout의 실제 report가 include 변경을 지목했다면 이를 막연히 cold-worktree 문제로 설명하지
+않는다. 출처·도구체인·입력 대응이 불명확한 다른 디렉터리의 OBJ/CSO를 섞어 캐시를 만들지 않는다.
+
+### 기존 CSO는 정상 tracking과 입력 대응을 보존해 재사용한다
+
+- 통합 전에는 수정 예정 source/include와 공용 props·프로젝트 metadata, 활성 output/IntDir/tlog,
+  현재 toolchain을 확인한다. source/include 변경이 없는 C++ 수정은 같은 경로의 정상 Product Build로
+  필요한 OBJ와 링크만 갱신하고, 유효 CSO는 MSBuild가 재사용하도록 둔다.
+- source/include bytes뿐 아니라 define/macro, entry/profile, compiler 옵션, SDK/도구 host,
+  구성과 command의 출력 경로 표기까지 같아야 동일한 compiler 입력이라고 볼 수 있다. 같은 디렉터리를
+  가리켜도 `/Fo` 등 command 문자열이 달라져 tracking이 무효화되는 경우를 별도 확인한다.
+- `source mtime < cso mtime`만으로 올바른 출력을 보장하지 않는다. 빌드 도중 source가 바뀌었거나
+  다른 구성의 CSO를 복사했을 수 있다. 기존 성공 결과의 입력/출력 대응과 tracking을 확인하고,
+  배포에서는 활성 producer의 CSO와 실제 consumer 복사본의 존재·내용 hash도 확인한다.
+- 생성기와 복사 단계는 결과 bytes가 같으면 다시 쓰지 않는다. 통합 후보를 안전하게 보존한 상태에서
+  필요한 내용만 반영한다. 기록 없이 과거 source 시각을 복원하거나 CSO를 touch하고 tracking을 지워
+  최신이라고 표시하는 것은 재사용이 아니다. 실제 shader 변경·누락은 정상 Build로 갱신한다.
+- source가 바뀌지 않았다는 예상과 달리 FXC가 시작되면 또 다른 전체 Build/Clean/Rebuild를 추가하지
+  않는다. 기존 diagnostic에서 최초 변경 include, command 차이, toolchain 전후, 출력/추적 누락을
+  먼저 분류한다. 원인 확인을 위해 같은 비싼 작업을 무조건 다시 실행하지 않는다.
+
+### FXC 병목은 작업 시간과 실제 compile 입력으로 설명한다
+
+Product report의 Client 전체 시간은 FXC 시간과 다르다. binary/diagnostic log에서 FXC task의
+시작·종료, C++ CL, Link를 구분하고, shader별 command 메시지와 object-save 성공 메시지가 있으면
+그 사이의 경과를 함께 적는다. command→save 시간은 scheduling·다른 compiler와의 경합을 포함할 수
+있으므로 개별 프로세스의 순수 CPU 시간 또는 optimizer 시간으로 부르지 않는다. 마지막 CSO 저장이
+FXC task 종료 직전이라는 사실은 그 실행에서 기다린 마지막 shader를 보여주지만 함수별 원인은 아니다.
+여러 FXC가 병렬로 실행되므로 shader별 경과의 합을 사용자 대기시간으로 계산하지 않는다.
+
+실제 FXC task의 `MaxProcessCount`와 C++ `ProcessorNumber`를 따로 확인한다. 공용 props의 기본값만
+읽어 해당 실행의 병렬도라고 보고하지 않는다. 상위 property나 명령의 override가 적용될 수 있고,
+병렬 수를 늘리면 CPU·메모리 경합이 생길 수도 있다. CPU/메모리 측정 없이 최적 병렬 수나 병목 원인을
+확정하지 않는다. outputChanges의 OBJ/CSO 수는 성공 출력의 크기·시각 변화이며 실패 시도 수나 source
+내용 변화 수가 아니다. 두 실행 비교는 toolchain·command·실제 입력 범위·cache 상태도 함께 적는다.
+
+`Shader_VtxAnimMeshBinary`와 `Shader_VtxMeshBinary`는 vertex shader 하나가 아니라 여러 VS/PS,
+render state와 pass를 담은 `fx_5_0` effect다. 공통 HLSLI 하나의 수정은 여러 group wrapper를
+재컴파일시키는 범위 문제이며, 기본 effect 한 개의 긴 compile 시간은 별도의 compiler workload다.
+단순 줄 수·파일 크기·pass 수만으로 optimizer 시간이 비례한다고 판단하지 않는다.
+
+### AnimMesh·Mesh 최적화는 기존 group 선택과 pass 공유부터 실측한다
+
+- 기본 `SOURCE_CHARACTER_PROGRAM_GROUP=0`을 “모든 SourceCharacter group 포함”으로 해석하지 않는다.
+  Base/Light leaf의 `!defined(GROUP) || GROUP == <선택값>` guard와 wrapper define을 실제로 평가한다.
+  AnimMesh의 `ARTIST_NATIVE_MODEL_ONLY`는 일반 effect dispatch와 Kouku native group들을 이미
+  제외하고, 비영 group의 `EFFECT_NATIVE_DECLARATIONS_ONLY`는 관련 함수 본문을 더 제한한다.
+- 그래도 기본 AnimMesh의 model 경로는 Artist·Vehicle·Lance VA·ALTV 함수와 입력 변환을 함께
+  포함한다. 좁은 모델 dispatch가 읽는 큰 native group 파일에 미사용 함수도 들어 있다면 실제 호출
+  의존성을 기준으로 include 범위를 줄일 후보가 된다. 원시 include 줄 수는 전처리 후 source 크기나
+  최종 GPU instruction 수와 다르며, 후보를 찾았다고 성능 개선을 확인한 것은 아니다.
+- `PS_MAIN_EFFECT_MODEL_CUE_NATIVE`의 scene-read/bloom 보정은 같은 native 평가를 read mode별로
+  여러 번 호출한다. 이 경로는 inline/분기 최적화 비용의 조사 후보지만, 색·투과·bloom 계산의 동등성
+  증명 없이 호출을 합치거나 제거하지 않는다. compiler phase별 시간은 별도 계측 전까지 미확정이다.
+- 기본 Mesh의 map-forward native 프로그램, foliage/stand wind, alpha/sky/water/shadow/outline 등
+  여러 entry의 callgraph를 구분한다. group0의 비용과 group wrapper 전체 재컴파일 수를 섞지 않는다.
+  무조건 모든 native material이 포함돼 느리다고 하지 말고 실제 전처리 조건과 reachable 함수를 본다.
+- 두 기본 effect에는 동일 entry를 전역 `VertexShader`/`PixelShader` 변수로 compile한 뒤 여러 pass가
+  공유하는 경로가 이미 있다. pass 수를 모두 중복 compile 횟수로 세지 않는다. 남은 inline 식도
+  entry/profile/인수/전처리 조건이 완전히 같을 때만 추가 공유 후보로 삼는다.
+- 물리 파일을 나누기만 하고 모든 consumer가 다시 전부 include하면 영향 범위는 줄지 않는다.
+  기존 source group/cohort·carrier 선택과 생성기·등록·배포 경계를 함께 유지하면서 필요한 함수와
+  공통 선언을 좁힌다. 별도 두 번째 runtime이나 누락 material fallback을 만들지 않는다.
+- 후보 비교는 같은 Release toolchain과 격리된 실험 출력으로 측정한다. production output을 덮거나
+  `/Od`·최적화 비활성화·FXC skip으로 시간을 줄여 완료하지 않는다. 공개 pass 이름/순서/상태,
+  base/group admission 정책, reflection 변수·타입·배열 범위, input signature, texture/sampler와
+  material ID·상수 ABI를 보존한다. 컴파일 후 실제 FX 생성·consumer 준비와 사용자 화면 판정을 구분한다.
+  compiler 시간 감소와 실행 중 GPU frame-time 개선은 서로 다른 검증이다.
+
+### publish 범위·runtime 내용 검증·완료 시간은 별도로 보고한다
+
+Product compile/link PASS는 모든 runtime domain의 최신 generation 내용, 설치 파일 또는 패키지
+전달 완료를 의미하지 않는다. runner가 기록한 파일 존재·일부 catalog `CheckPublished`·Navigation
+검사 범위를 그대로 보고한다. 참조된 generation/manifest·schema·stable ID·실제 소비 경로는 해당
+변경의 publisher/reader 검증과 전달 목록에서 확인한다. JSON parse 성공이나 파일명 존재만으로
+내용 정합성을 대신하지 않는다. Core/FullDiagnostic, 별도 harness와 실제 Server/Client 동작도
+각각 실행한 범위만 기록한다. `-SkipBuild`를 현재 source의 컴파일 증거로 쓰지 않는다.
+
+먼저 변경을 C++/HLSL/데이터 domain으로 분리하고, 저작 source·publisher·소비 schema가 바뀐 domain만
+명시적으로 생성·검증한다. owner 전체 publish는 여러 domain 최초 준비 또는 전체 배포 준비처럼
+실제로 필요한 경우에 선택한다. UI/C++ 수정이나 compile 경고 해소를 위해 대형 map/projector/
+navigation·gameplay publisher를 매번 모두 실행하지 않는다. 반대로 실제 바뀐 gameplay·presentation
+출력을 빠뜨리고 EXE만 전달하지 않는다. publisher의 START/PASS/REUSED/lock-wait와 domain별 시간을
+읽고, 독립 병렬 구간을 중복 합산하지 않는다. 실제 코드/내용 결함 때문에 필요한 게시 비용과 선택
+범위가 넓어서 발생한 비용을 구분한다.
+
+완료 예상은 “항상 몇 분”으로 고정하지 않는다. 기존 cache 재사용 여부, 새 FXC 실행 여부,
+C++ 대상과 public header 파급, 게시 domain, ZIP I/O와 검증 범위를 확인한 뒤 측정 근거와 가정을
+같이 알린다. FXC가 시작되어 가정이 깨지면 직전 동일 계열의 실측으로 예상을 수정한다. 데이터 통합,
+컴파일/링크, domain 게시, generation 전달, 패키지 구성, 사용자 실제 화면·다인 플레이 확인은
+별도 완료 항목이다. 이번 사건의 시간표·로그·미측정 경계는 위 Release 통합 RESULT에 둔다.
+
 ### 시퀀스 목록 표시·소스 검증을 실제 Play 준비와 혼동하지 않는다
 
 - Composition은 Data 원본의 새 WORLD ID를 참조할 수 있지만 Level은 게시된 Area 문서, World Object Tool은 저장 문서의 cache를 사용한다. 저작 revision만 올리고 실행용 `.worldsequences.json`과 `.camerashots.json`을 게시하지 않으면 row는 보여도 Play 준비에서 거부된다. 같은 Area publisher의 Publish와 Check를 수행하고 새 Client에서 동일 WORLD/Camera ID와 revision을 확인한다. 일반 C++ 빌드는 이 배포를 대신하지 않는다. 미저장 Tool 문서를 자동 reload하거나 누락 ID를 건너뛰지 않는다.
@@ -4661,6 +4778,7 @@ winding을 함께 RH로 변환하고 최종 WModel+placement를 원본 grid/heig
 - Object/World는 공통 box 그림만 공유해서는 Boss/Sequence와 같은 편집 UX가 되지 않는다.
   겹침 기준 행 배치를 공유하고 actor/slot을 partition한다. 표시 lane index는 저장 ID가 아니며
   접기는 객체 visibility나 재생을 바꾸지 않는다. 유한 animation의 실제 clip 구간과 hold tail을 구분한다.
+- 스킬 타격 시간을 연출에 맞출 때 PlayerSkills.hitTimeMs만 바꾸면 실제 HitShapes의 DAMAGE/COUNTER/STAGGER clock이 남을 수 있다. 동일 stable skill/clip에서 effect occurrence 시작과 camera 종료를 대조하고 실제 Server shape clock·animevents·provenance를 함께 맞춘다. camera 시간을 Server runtime이 직접 읽는 우회는 추가하지 않는다.
 - ALT V의 action arrangement와 product recovery effectsequence는 서로 다른 저장 owner다.
   preview camera를 편집할 때 원본 effect/camera ID·clip 시간 매핑을 보존하며 정본 편집은 원본 시간에서 한다.
   camera-only stable ID 병합·CAS 저장과 실제 product camera cache 갱신까지 확인한다.
@@ -5199,3 +5317,121 @@ SL03의 g_SourceFoliageWindProgram 누락은 설치된 FX에서 실제 실패를
 - 원본 HUD(Scaleform 무비)를 복원할 때 frame 1의 좌표를 그대로 믿지 않는다. oceanhud의 skillSlotList는 무비상 간격이 47px인데 원본 클라이언트 스크린샷에서는 44.3px(Q x=699.0, A x=721.3)로 실행 시 다시 배치된다. 조각의 크기와 버튼 위치는 무비가 맞았지만 스크립트가 재배치하는 목록은 사용자 사진을 격자로 확대해 잰 값이 정답이다. 무비 좌표로 만든 결과와 사진을 나란히 합성해 비교한 뒤 확정한다(2026-09-30 배 HUD).
 - 배 HUD 돔의 정체는 내구도가 아니라 보급(OceanSupplieGauge)이다. 분모는 EFTable_VoyageShip.MaxSupply(레벨1: 8200=3500, 8203=3900)다. 이름을 추측하기 전에 무비 sprite 이름과 테이블 열 이름으로 확정한다. 프로젝트에는 보급 소모가 없어 가득으로 표시한다.
 - GFX 도형 배치를 계산할 때 음수 스케일(거울 반전)이 걸린 조각은 x0 = tx + min(b0*sx, b1*sx)로 왼쪽 위를 구한다(b0*sx만 쓰면 반전된 조각이 반대편에 놓여 링이 X자로 겹친다). 회전 성분(r0, r1)이 있는 조각은 게이지 채움용이므로 정지 그림에서는 반쪽 두 장을 거울로 합쳐 쓰고 파이 마스크로 채운다.
+
+
+### Release 필수 Effect와 Movie 오디오 시계 재발 방지
+
+- Effect element displayName은 UTF-8 1~64바이트다. 생성기와 ZIP preflight에서 같은
+  계약을 검사하고, JSON 구조 검사와 실제 필수 문서의 CEffectDocumentCodec Load를 구분한다.
+  긴 asset ID를 표시 이름에 반복해 입장을 막지 않는다.
+- Character mesh particle이 공유하는 원본 Character/SourceMaterials DDS는 texture로만
+  admission한다. 동명 Effect DDS의 다른 해시를 무시하고 교체하지 않는다. 경로 탈출과
+  모델·미존재 파일 거부를 유지한다. 동일 native program을 쓰는 두 MIC도 sourceMaterialPath
+  정확 일치가 입장을 막을 수 있다. parent/base/static ShaderMap key와 입력 ABI를 대조한
+  명시 variant만 허용하고 텍스처·동적 수치·다른 carrier 검증은 유지한다.
+- Movie 카메라 source clock의 time dilation을 WAV pitch·cursor·drift 보정에 중복 적용하지
+  않는다. cue 시작만 source→Movie 시간으로 매핑하고 WAV 진행·길이·Sound trim은 감속 전
+  Movie 시간, pitch는 사용자 수동 배속으로 계산한다. Pause/Seek/끝/tail과 일반 World를
+  함께 확인한다. 화면·실청 결과는 FMOD NOSOUND 검증과 구분한다.
+- Lobby 저장 카드도 animated shader·Character/part/collider 공통 prototype이 필요하다.
+  Begin_LevelLoad로 이전 레벨별 준비 상태를 초기화하고 실제 class 모델의 지연 로드는 유지한다.
+
+구체적인 실패 로그와 실행 검증은09-29 RELEASE_ENTRY_AUDIO_REPAIR_RESULT에 둔다.
+
+
+### Movie0에 배치한 Sound의 원본 앞부분 복구
+
+Sound startMs가0인데 sourceStartMs가양수이면 왼쪽 edge는 Movie0 경계때문에 더 늘릴 수
+없다. 파일 손실이나 감속 clock 회귀로 단정하지 않는다. 원본 앞부분 복구는 source-in0과
+실제 WAV frame 수에서 얻은 전체 duration으로 한다. 기존 배치와 volume·mix bus 복원본은
+보존하며 음수 timeline이나 pitch 보정으로 대신하지 않는다. 해당 수정은 WorldSequences
+scope로 publish하고 실행 중 authoring draft와 저장본을 구분한다. G20 결과를 따른다.
+
+### 신규 packet 실패는 실제 링크된 Shared도 확인한다
+
+전투 연결은 정상인데 새 도구 명령만 실패하면 현재 소스 codec 검사와 설치된 Debug/Release
+Shared.lib 링크 검사를 구분한다. payload 생성 성공 후 Build_Packet_Frame 또는 header 읽기가
+거부되면 PacketType 정의와 실제 provider 객체를 대조한다. CL.read의 header 의존성이 빠진
+객체는 Build가 최신 상태라고 보고해도 오래된 packet 범위를 유지할 수 있다. 진단 로그와
+실패 archive를 보존한 뒤 표준 경로의 필요한 C++ 컴파일로 복구하고 compiler가 의존성을
+다시 기록했는지 확인한다. tlog 삭제·수동 편집이나 timestamp 조작으로 우회하지 않는다.
+실행 중 Client/Server는 예전 static library가 연결된 EXE이므로 새 archive 생성과 EXE 재연결·
+재실행을 구분한다. 09-30 Balance Test의 증거는 RELEASE_ENTRY_AUDIO_REPAIR_RESULT G08에 둔다.
+
+
+### 관전 대상과 local-only 카메라·효과
+
+관전은 follow target 교체만으로 완성되지 않는다. ALT_V camera, private element mask, afterimage,
+skill shake와 Kouku area camera·lighting·timer가 실제 camera subject를 소비하는지 함께 확인한다.
+이미 재생 중인 private effect도 대상을 바꾸면 mask를 갱신해야 한다. 대상의 사망 때 live transform만
+추적하면 후속 정리/텔레포트가 죽은 시점을 이동시키므로 stable ID와 frozen pose를 따로 유지한다.
+Debug timer preview의 성공은 Release 제품 HUD 표시 증거가 아니다. Server deadline 복제와
+일반 HUD 숨김 뒤의 타이머 text gate를 함께 검사한다. 배틀 아이템은 inventory 소비와 cooldown을
+분리해 확인하며, 서버 30초 거절이 Client에 표시되지 않는 것을 슬롯 소진으로 단정하지 않는다.
+
+### 발탄 반복 그래프와 root portal 위치의 소비자 경계
+
+카운터까지 반복하는 Trash는 Python/PowerShell/native graph admission뿐 아니라 Workbench 그래프와
+타임라인 미리보기까지 같은 exact retry edge 계약을 소비해야 한다. 그래프의 실제 target을 terminal로
+바꾸지 않고 미리보기만 첫 반복 경계에서 멈춘다. 다른 cycle과 dangling target은 계속 거절한다.
+
+root snapshot 이펙트의 offset은 `Local * SnapshotRootSourceBasis * AttachmentRoot`에서 확인한다.
+body의 전방 보정과 snapshot source basis가 각각 -90도인 발탄 portal에서 local +X는 owner 왼쪽이다.
+position만 owner 전방으로 옮길 때 정상 geometry 회전이나 공용 shader 축을 제거하지 않는다.
+authoring motion을 FORWARD로 바꿨으면 Product→rootmotion→Gameplay 게시 순서를 지켜 옛 curve를 제거한다.
+
+### 레이드 즉사·독립 무력화·저작 Duration 연결
+
+최대 HP 피해를 rawDamage로만 전달하면 방어·보호막·시간 정지·death-deny에 막힐 수 있다.
+명시적 즉사와 전멸은 공통 lethal 플래그 및 그 이전 대상 선정까지 함께 검증한다.
+무력화는 HP snapshot 차이가 아니라 별도 채널이며, 동일 cast의 DAMAGE/STAGGER/COUNTER
+저작 행에 기여를 중복 배분하지 않는다. STAGGER-only 행도 감소 전 피해 basis를 보존해야 한다.
+Duration 이름만 저장하고 judgementKind를 지정하지 않으면 Product 동작이 생기지 않는다.
+새 kind는 authoring 목록·projector·bootstrap parser뿐 아니라 Brain의 runtime admission도 연결한다.
+
+### 무력화 damage 기준과 typed Result 채널
+
+DAMAGE/COUNTER/STAGGER가 별도 row인 skill에서 incoming HP damage만 /1000하면 STAGGER row의
+호출자가 이미0으로 지운 값을 사용하게 된다. caster와 projectile timed/contact의 독립 stagger
+subhit ordinal로 같은 cast damage share를 전달하고, HP차감·무력화지급 채널은 따로 유지한다.
+DAMAGE row와 STAGGER row 양쪽에서 기여를 지급하지 않는다. shared raid maximum 편집은 현재
+진행률을 ratio로 보존해야 하며 min clamp로 성공 outcome 없는 가득 찬 gauge를 만들지 않는다.
+
+### 같은 용 모델의 스킬별 descriptor와 shader 수정 구분
+
+스킬 shader 수정이 효과가 없다는 보고에서는 현재 binding·animevent·effect stable ID부터
+실제 ModelCue 또는 particle carrier까지 확인한다. BRDF의 NaN 방어가 적용돼 있어도 MIC의
+파란 rim·발광 곡선이 남아 있으면 색은 계속 파랗게 나온다. 다른 스킬의 재질로 맞출 때는
+family뿐 아니라 texture·parameter track을 함께 비교하되 실제 mesh의 materialName은 보존한다.
+시간은 해당 occurrence 수명에 맞추고 visibility/dead·geometry·transform은 별도로 보존한다.
+JSON의 명시 texture만 복사하면 CModel override 이전 기본 material DDS가 빠질 수 있으므로
+기본 모델 dependency와 Resources 전달본 자체의 실제 CModel 입장을 같이 검증한다.
+
+### UI rect가 0 크기를 거친 뒤 다시 커지는 경우
+
+보호막·게이지가 0일 때 quad 크기를 0으로 바꾸면 CTransform::Scale의 기존 basis normalize로는
+다음 양수 크기를 복원할 수 없다. CUI_Sprite는 이전 transform이 아니라 현재 rect와 viewport에서
+축을 재구성한 뒤 authored rotation을 적용한다. 흰 texture와 tint 확인만으로 fill 표시 성공을
+판정하지 말고, 0→양수 및 소진→재부여 순서에서 실제 transform 폭이 복원되는지 확인한다.
+
+### 인형·공의 독립 광기를 HP·shield 변화로 판정하지 않는다
+
+특수 광기의 유효 접촉을 HP 감소 또는 shield 감소로 추론하면 피해가 미리 차단된 경우 함께
+누락된다. 실제 내부 spatial contact와 stable WORLD source를 기준으로 광기를 계산하고,
+일반 피해 기반 광기 gate와 분리한다. AREA_OVERLAP은 범위 밖 timeout에도 spatialContact를
+전달하므로 resolved contact center까지 확인한다. 새로 발생한 특수 흡수 텍스트만 제거하며
+실제 HP 손실과 일반 공격·이전 대상 event는 보존한다. 회귀에 shield 감소뿐 아니라 둘 다
+변하지 않는 무적/피해0 접촉과 범위 밖/시간정지/변신 상태를 포함한다.
+
+### 반복 패턴 snapshot과 입장 공격 중복
+
+Server stage graph에 뒤쪽→앞쪽 retry edge를 추가하면 Client의 stageIndex 단조 증가 검사도
+같이 검토한다. 동일 patternSequence에서 stageIndex가 작아졌다는 이유만으로 거절하면 Server는
+반복하지만 Client는 마지막 자세에 멈춘다. 승인된 반복 경로에서는 새 actionStartTick으로 회차를
+구분하고 serverTick·sequence·과거 actionStartTick 거절은 유지한다. snapshot이 합쳐져 같은
+stage의 다음 회차만 도착하는 경우와 반복 뒤 실제 counter→GROGGY 종료도 포함해 검증한다.
+
+자동 입장 컷씬 뒤 별도 legacy intro를 삽입할 때 저장된 rotation의 첫 occurrence와 중복되는지
+확인한다. 컷씬→등장 휠윈드→일반 휠윈드를 테스트 기대값에 그대로 넣으면 실제 중복도 통과한다.
+G 입장 검증은 사용자가 보는 순서인 컷씬→저장된 휠윈드 한 번→다음 패턴을 확인하고 명시적인
+Play All과 legacy audition을 별도로 보존한다.

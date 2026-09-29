@@ -448,8 +448,8 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 					return (entity.eKind == WORLD_BOOTSTRAP_KIND::BOSS && !entity.isEstherSummon) || entity.iNetEntityId == 987650u; }),
 					"Arena start removes static bosses and earlier-stored owned dependents");
 				tests.Require(std::any_of(room->m_WorldEntities.begin(), room->m_WorldEntities.end(), [](const auto& entity) { return entity.iNetEntityId == 987651u; }) &&
-					std::any_of(room->m_WorldEntities.begin(), room->m_WorldEntities.end(), [](const auto& entity) { return entity.iNetEntityId == 987652u; }),
-					"Arena start preserves unrelated NPC and Esther entities");
+					std::none_of(room->m_WorldEntities.begin(), room->m_WorldEntities.end(), [](const auto& entity) { return entity.iNetEntityId == 987652u; }),
+					"Arena start preserves unrelated NPCs and removes the previous encounter Esther summon");
 				if (once != placements.end())
 					tests.Require(enterTrigger(*once, 3u) == 1u,
 						"Arena reset rearms the consumed sequence through Product overlap before fixture reinitialization");
@@ -910,7 +910,9 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				patrol = spawned;
 				patrol.fYawDegrees = std::atan2(patrol.fMarioPatrolAxisX, patrol.fMarioPatrolAxisZ) * 57.2957795f;
 				victim.fPositionY = patrol.fPositionY;
-				for (uint32_t tick = 201u; tick <= 230u; ++tick)
+				// Observe one authored attack, including REUP's longer windup, without entering a second attack.
+				const uint32_t attackEndTick = 203u + (patrol.iPatternTelegraphMs * 30u + 999u) / 1000u;
+				for (uint32_t tick = 201u; tick <= attackEndTick; ++tick)
 					brain.Update(patrol, patrolPlayers, room->m_GameplayCatalog,
 						room->m_ServerNavigation, 1.f / 30.f, tick, patrolDamage);
 				const auto* victimProfile = room->m_GameplayCatalog.Find_Player(victim.eCharacterClass);
@@ -919,7 +921,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				tests.Require(victim.iCurrentHp == 50000u - expectedDamage && patrolDamage.size() == 1u,
 					"Mario nearby attack lands exactly once and does not force player death");
 				SERVER_PLAYER_TO_WORLD_HIT strike{};
-				strike.iSkillId = 34010u; strike.iRawDamage = 1u; strike.iServerTick = 231u;
+				strike.iSkillId = 34010u; strike.iRawDamage = 1u; strike.iServerTick = attackEndTick + 1u;
 				tests.Require(CServerCombatHitRuntime::Apply_PlayerToWorld(patrol, strike, patrolDamage) ==
 					SERVER_COMBAT_HIT_RESULT::KILLED && !patrol.iCurrentHp,
 					"One admitted player hit kills the Mario monster");
@@ -1487,6 +1489,9 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 					walker = player;
 					walker.iPlayerId = 321u; walker.iNetEntityId = 654u; walker.iSessionId = 987u;
 					walker.iCurrentHp = walker.iMaximumHp = 100u;
+					// This fixture isolates walk support; independent Mario contact tests verify the live hazards.
+					const auto routeInvulnerableEnd = room->m_iServerTick + 3000u;
+					walker.iInvulnerableEndTick = routeInvulnerableEnd;
 					walker.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 					room->m_PlayerIdBySessionId[walker.iSessionId] = walker.iPlayerId;
 					room->Refresh_PlayerBlockingBodies();

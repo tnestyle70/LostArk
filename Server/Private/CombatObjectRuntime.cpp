@@ -774,7 +774,8 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 			hit.Shape.fOuterRadius = float(authored.fRadiusM); hit.Shape.fInnerRadius = float(authored.fInnerRadiusM);
 			hit.Shape.fLength = float(authored.fLengthM); hit.Shape.fHalfWidth = float(authored.fHalfWidthM);
 			hit.Shape.fAngleDegrees = float(authored.fAngleDegrees);
-			hit.bInstantDeath = authored.strDamageKind == "INSTANT_DEATH";
+			hit.bInstantDeath = authored.strDamageKind == "INSTANT_DEATH" ||
+				(authored.strDamageKind == "MAX_HP_PERCENT" && authored.iDamagePercent >= 100u);
 			hit.bIgnoreDefense = authored.strDamageKind != "PROFILE";
 			hit.iDamagePercent = authored.iDamagePercent;
 			hit.strNumericBalanceId = authored.strNumericBalanceId;
@@ -1198,6 +1199,11 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 						incoming.iStaggerDamage = hit.iStaggerDamage;
 						incoming.iStaggerMaximumDivisor = hit.iStaggerMaximumDivisor;
 						incoming.iPartDamage = hit.iPartDamage;
+						incoming.bDestructionBombSource =
+							object.strCombatObjectArchetypeId == "battle.item.destruction_bomb" &&
+							object.LiveState.strOwnerPatternId == "battle.item" &&
+							object.LiveState.strOwnerStageActionId == "battle.item.throw" &&
+							hit.strHitId == "battle.item.impact";
 						incoming.iCounterPower = hit.iCounterPower;
 						incoming.bCounterFromPrimarySlot = hit.bCounterFromPrimarySlot;
 						incoming.fSourceX =
@@ -1223,7 +1229,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 					for (auto& [playerId, target] : players)
 					{
 						(void)playerId;
-						if (!IsDamageable(target) || target.Has_TimeStop(serverTick) ||
+						if (!target.iCurrentHp || (!hit.bInstantDeath && (!IsDamageable(target) || target.Has_TimeStop(serverTick))) ||
                             (object.eDamageImmuneCardSymbol != LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE &&
                              target.eMechanicCardSymbol == object.eDamageImmuneCardSymbol) || !ContactOverlaps(
 							object, hit, BodyOf(target)))
@@ -1234,6 +1240,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 							object.fElapsedMilliseconds < mark->fNextMilliseconds)
 							continue;
 						SERVER_WORLD_TO_PLAYER_HIT incoming{};
+						incoming.bInstantDeath = hit.bInstantDeath;
 						incoming.bIgnoreDefense = hit.bIgnoreDefense;
 						incoming.bIgnoreCounter = hit.bIgnoreDefense;
 						incoming.iRawDamage =
@@ -1322,6 +1329,11 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 						incoming.iStaggerDamage = hit.iStaggerDamage;
 						incoming.iStaggerMaximumDivisor = hit.iStaggerMaximumDivisor;
 						incoming.iPartDamage = hit.iPartDamage;
+						incoming.bDestructionBombSource =
+							object.strCombatObjectArchetypeId == "battle.item.destruction_bomb" &&
+							object.LiveState.strOwnerPatternId == "battle.item" &&
+							object.LiveState.strOwnerStageActionId == "battle.item.throw" &&
+							hit.strHitId == "battle.item.impact";
 						incoming.iCounterPower = hit.iCounterPower;
 						incoming.bCounterFromPrimarySlot = hit.bCounterFromPrimarySlot;
 						incoming.fSourceX =
@@ -1344,7 +1356,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 					for (auto& [playerId, target] : players)
 					{
 						(void)playerId;
-						if (!IsDamageable(target) || target.Has_TimeStop(serverTick) ||
+						if (!target.iCurrentHp || (!hit.bInstantDeath && (!IsDamageable(target) || target.Has_TimeStop(serverTick))) ||
                             (object.eDamageImmuneCardSymbol != LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE &&
                              target.eMechanicCardSymbol == object.eDamageImmuneCardSymbol) ||
 							!CServerCombatGeometry::Overlaps_Pose(
@@ -1356,6 +1368,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 								BodyOf(target)))
 							continue;
 						SERVER_WORLD_TO_PLAYER_HIT incoming{};
+						incoming.bInstantDeath = hit.bInstantDeath;
 						incoming.bIgnoreDefense = hit.bIgnoreDefense;
 						incoming.bIgnoreCounter = hit.bIgnoreDefense;
 						incoming.iRawDamage = AttackDamage(hit, target, rawDamage);

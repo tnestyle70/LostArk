@@ -17,6 +17,12 @@ namespace LostArk::Server
 		KILLED
 	};
 
+	[[nodiscard]] inline bool Uses_RaidStaggerPolicy(const SERVER_WORLD_ENTITY& target) noexcept
+	{
+		return target.strArchetypeId == "BOSS_VALTAN" || target.strArchetypeId == "BOSS_VALTAN_GHOST" ||
+			target.strArchetypeId.starts_with("BOSS_KAKULSAYDON_");
+	}
+
 	struct SERVER_PLAYER_TO_WORLD_HIT final
 	{
 		LostArk::Shared::PLAYER_ID iSourcePlayerId =
@@ -25,7 +31,12 @@ namespace LostArk::Server
 		std::uint32_t iRawDamage = 0u;
 		std::uint32_t iStaggerDamage = 0u;
 		std::uint32_t iStaggerMaximumDivisor = 0u;
+		// Typed result channels retain their damage basis without granting the other channel.
+		bool bHealthDamageDisabled = false;
+		bool bStaggerDisabled = false;
 		std::uint32_t iPartDamage = 0u;
+		// Set only by a confirmed server-owned destruction-bomb projectile hit.
+		bool bDestructionBombSource = false;
 		std::uint32_t iCounterPower = 0u;
 		// Resolved from the admitted skill's catalog slot, never a client claim.
 		bool bCounterFromPrimarySlot = false;
@@ -69,6 +80,7 @@ namespace LostArk::Server
 		bool bIgnoreCounter = false;
 		// Server encounter failure verdict; bypasses all personal damage protection.
 		bool bEncounterWipe = false;
+		bool bInstantDeath = false;
 		bool bEstherGuardBlockable = false;
 		// A contact window may hurt the player held by this exact boss action.
 		LostArk::Shared::NET_ENTITY_ID iCaptureOwnerId = LostArk::Shared::INVALID_NET_ENTITY_ID;

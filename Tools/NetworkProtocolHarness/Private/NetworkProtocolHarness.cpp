@@ -2547,6 +2547,7 @@ namespace
 		player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
 		snapshot.Players.push_back(player);
 		std::vector<std::uint8_t> baseline;
+		snapshot.Players[0].iKoukuMinigameEndTick = 2701u;
 		testRunner.Require(Build_WorldSnapshotPayload(snapshot, baseline), "Mario stage snapshot baseline is valid");
 		std::size_t marioStageByte = baseline.size();
 		for (std::uint8_t stage = 0u; stage <= 4u; ++stage)
@@ -2558,6 +2559,7 @@ namespace
 			S2C_WORLD_SNAPSHOT decoded{};
 			testRunner.Require(Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
 				decoded.Players.size() == 1u && decoded.Players[0].iMarioStage == stage &&
+				decoded.Players[0].iKoukuMinigameEndTick == 2701u &&
 				decoded.Players[0].eMadnessForm == PLAYER_MADNESS_FORM::CLOWN,
 				"Mario stage and existing clown form round trip independently");
 			if (stage == 1u && writer.Get_Buffer().size() == baseline.size())
@@ -2596,9 +2598,9 @@ namespace
 			testRunner.Require(written && Read_Message(reader, decoded) && !reader.Get_RemainingSize() &&
 				decoded.Players.size() == 1u && decoded.Players[0].iMarioLayoutVariant == layout &&
 				decoded.Players[0].iMarioStage == 3u, "Mario original layout round trip");
-			if (written && marioStageByte + 1u < writer.Get_Buffer().size())
+			if (written && marioStageByte + 1u + sizeof(std::uint32_t) < writer.Get_Buffer().size())
 			{
-				auto malformed = writer.Get_Buffer(); malformed[marioStageByte + 1u] = 4u;
+				auto malformed = writer.Get_Buffer(); malformed[marioStageByte + 1u + sizeof(std::uint32_t)] = 4u;
 				CPacketReader invalid{malformed}; decoded.iServerTick = 99u;
 				testRunner.Require(!Read_Message(invalid, decoded) && decoded.iServerTick == 99u,
 					"Unknown Mario layout preserves destination snapshot");
@@ -2690,8 +2692,8 @@ namespace
 			if (fault == 0u) wire[colourByte] = 4u;
 			if (fault == 1u) wire[countByte] = 4u;
 			if (fault == 2u) wire[colourByte] = 0u;
-			if (fault == 3u && marioStageByte + 1u < wire.size())
-			{ wire[marioStageByte] = 0u; wire[marioStageByte + 1u] = 0u; }
+			if (fault == 3u && marioStageByte + 1u + sizeof(std::uint32_t) < wire.size())
+			{ wire[marioStageByte] = 0u; wire[marioStageByte + 1u + sizeof(std::uint32_t)] = 0u; }
 			CPacketReader reader{wire}; auto previous = snapshot; previous.iServerTick = 99u;
 			testRunner.Require(!Read_Message(reader, previous) && previous.iServerTick == 99u &&
 				previous.Players[0].iMarioRequiredColor == 3u && previous.Players[0].iMarioMatchingBallCount == 3u,
@@ -2862,6 +2864,22 @@ namespace
 				"Absorption cannot double-count combat bookkeeping");
 		}
 		{
+			for (const auto flag : {DAMAGE_HIT_FLAG::DAMAGE_REDUCED, DAMAGE_HIT_FLAG::CRITICAL_DAMAGE_REDUCED})
+			{
+				auto reduced = snapshot; DAMAGE_EVENT hit{};
+				hit.iTargetNetEntityId = 900u; hit.iAmount = 1000u; hit.isOutgoing = true;
+				hit.eHitFlag = flag; reduced.DamageEvents = {hit};
+				CPacketWriter writer; S2C_WORLD_SNAPSHOT decodedReduced;
+				const bool written = Write_Message(writer, reduced);
+				CPacketReader reader{writer.Get_Buffer()};
+				testRunner.Require(written && Read_Message(reader, decodedReduced) &&
+					decodedReduced.DamageEvents.front().eHitFlag == flag &&
+					decodedReduced.DamageEvents.front().iAmount == 1000u,
+					"Normal and critical reduced-damage labels retain the authoritative amount over the wire");
+				reduced.DamageEvents.front().isOutgoing = false;
+				CPacketWriter invalid;
+				testRunner.Require(!Write_Message(invalid, reduced), "Reduced boss damage cannot be forged as incoming player damage");
+			}
 			/* A shard rides the damage event for the position it already carries:
 			the suit names the hunter it belongs to and iAmount is the count. */
 			S2C_WORLD_SNAPSHOT shardSnapshot = snapshot;
@@ -4570,7 +4588,8 @@ namespace
 		// Protocol 62 adds the Mario stage; protocol 76 adds its source layout.
 		// Protocol 80 adds the popped-ball U16 and curse-release U8 masks; 114 adds marker colour.
 		// Protocol 121 adds the entrant objective colour and matching-ball count.
-		constexpr std::size_t playerMarioStageBytes = 1 + 1 + 2 + 1 + 1 + 1 + 1;
+		// Protocol 126 includes the absolute minigame deadline U32 after stage.
+		constexpr std::size_t playerMarioStageBytes = 1 + 4 + 1 + 2 + 1 + 1 + 1 + 1;
         constexpr std::size_t playerCardMazeBytes = 5 + (4 * 6);
 		// Protocol 78 adds a fear deadline and the empty presentation string length.
         constexpr std::size_t playerFearBytes = 4 + 2;

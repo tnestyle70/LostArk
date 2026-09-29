@@ -4,6 +4,7 @@
   "profileId": "Retail",
   "displayName": "원작 수치 (발탄 1415 / 쿠크세이튼 1475, 기준 스펙 아이템 레벨 1500)",
   "staggerGaugeScale": 400,
+  "raidStaggerMaximum": 50000,
   "madnessGaugeAddPercent": -1,
   "madness": [
     {

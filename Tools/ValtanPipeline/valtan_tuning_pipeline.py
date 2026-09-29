@@ -5708,7 +5708,7 @@ def validate_v2_master(
 
 
 def _validate_finite_pattern_graph(pattern: Mapping[str, Any]) -> None:
-    """Require every stage to terminate; looping finales repeat occurrences, not edges."""
+    """Reject cycles except the three authored Trash counter-retry backedges."""
     stages = unique_index(pattern["stages"], "actionId", "finite pattern stages")
     active: set[str] = set()
     completed: set[str] = set()
@@ -5725,6 +5725,13 @@ def _validate_finite_pattern_graph(pattern: Mapping[str, Any]) -> None:
         successors = [stage["defaultNextActionId"]] + [branch["nextActionId"] for branch in stage["branches"]]
         for target in successors:
             if target is not None:
+                target_stage = stages.get(target)
+                if (pattern['patternId'] in ('VALTAN_TRASH', 'VALTAN_TRASH_CATCH_IF')
+                    and stage['stageId'] in ('RETRY_EXHAUSTED', 'CATCH_SLAM', 'EXECUTE_TAIL')
+                    and target_stage is not None and target_stage['stageId'] == 'RECHARGE_WAIT_02'
+                    and stage['branches'] == [{'outcome': 'TIMEOUT', 'nextActionId': target}]
+                    and stage['defaultNextActionId'] == target):
+                    continue
                 visit(target)
         active.remove(action_id)
         completed.add(action_id)
@@ -7658,6 +7665,13 @@ def project_v2_products(
             "playbackMode": ANIMATION_MODE_NONE,
             "clips": [],
         }
+    # Removing a managed spawn and its companion must retire the old Product
+    # carrier too. Unmanaged legacy rows and the sealed v1 fixture stay intact.
+    removed_managed_combat_ids = set() if migration_fixture else {
+        archetype for archetype, row in source_combat_rows.items()
+        if row.get("ownerPatternId") in managed_pattern_ids | source_retired_pattern_ids
+        and archetype not in {item["combatObjectArchetypeId"] for item in combat_rows}
+    }
     source_cue_document = json.loads(
         source_texts[CUES_REL], object_pairs_hook=_reject_duplicate_pairs
     )
@@ -7721,11 +7735,12 @@ def project_v2_products(
             4,
         ),
         ROTATIONS_REL: json_text(rotation_document),
-        COMBAT_PRODUCT_REL: replace_or_append_rows(
+        COMBAT_PRODUCT_REL: replace_append_or_remove_rows(
             source_texts[COMBAT_PRODUCT_REL],
             "objects",
             "combatObjectArchetypeId",
             {row["combatObjectArchetypeId"]: row for row in combat_rows},
+            removed_managed_combat_ids,
         ),
         WORLD_PRODUCT_REL: replace_rows_same_ordinal(
             source_texts[WORLD_PRODUCT_REL], "bindings", "bindingId", world_replacements

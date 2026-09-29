@@ -69,9 +69,15 @@
       },
       "sourceMaterialProfile": {
         "materialName": "sk_ddk_drr_01_head_st_mi",
-        "sourceMaterial": "sk_ddk_drr_01.mat.sk_ddk_drr_01_head_st_mi_fx_dead",
-        "family": "source.character.guardianknight-sk-ddk-drr-01-head-st-mi-fx-dead.v1",
+        "sourceMaterial": "sk_ddk_drr_00.mat.sk_ddk_drr_00_head_mi",
+        "family": "source.character.guardianknight-sk-ddk-drr-00-head-mi.v1",
         "parameters": {
+          "1.use_emissive_flickerspeed_fixed": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
           "basecolor_color": [
             1.0,
             1.0,
@@ -109,6 +115,48 @@
             0.0
           ],
           "dead_texture_tiling": [
+            3.0,
+            3.0,
+            3.0,
+            3.0
+          ],
+          "diffusecolor_a": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "diffusecolor_b": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "diffusecolor_c": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "emissive_color": [
+            7.231294631958008,
+            2.154627799987793,
+            0.5779414176940918,
+            1.0
+          ],
+          "emissive_flicker_speed": [
+            0.6000000238418579,
+            0.6000000238418579,
+            0.6000000238418579,
+            0.6000000238418579
+          ],
+          "emissive_intensity": [
+            0.30000001192092896,
+            0.30000001192092896,
+            0.30000001192092896,
+            0.30000001192092896
+          ],
+          "emissive_intensitymin": [
             0.5,
             0.5,
             0.5,
@@ -138,6 +186,30 @@
             0.0,
             1.0
           ],
+          "fx_distortion_intensity": [
+            0.30000001192092896,
+            0.30000001192092896,
+            0.30000001192092896,
+            0.30000001192092896
+          ],
+          "fx_panning_color": [
+            1.0,
+            0.8938124179840088,
+            0.7319562435150146,
+            0.0
+          ],
+          "fx_panning_intensity": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "fx_panningspeed_tiling": [
+            0.05000000074505806,
+            0.07999999821186066,
+            8.0,
+            1.0
+          ],
           "hit_color": [
             0.0,
             0.0,
@@ -145,10 +217,10 @@
             0.0
           ],
           "metallic_power": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            4.5,
+            4.5,
+            4.5,
+            4.5
           ],
           "normaltex_intensity": [
             1.0,
@@ -169,10 +241,10 @@
             1.0
           ],
           "occlusion_power": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            0.6000000238418579,
+            0.6000000238418579,
+            0.6000000238418579,
+            0.6000000238418579
           ],
           "occlusionbasecolor_blend_intensity": [
             0.0,
@@ -180,47 +252,65 @@
             0.0,
             0.0
           ],
-          "opacity_intensity": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
           "pbr_add_basecolor_to_emissive": [
-            0.15000000596046448,
-            0.15000000596046448,
-            0.15000000596046448,
-            0.15000000596046448
-          ],
-          "pbr_specular": [
-            0.5,
-            0.5,
-            0.5,
-            0.5
-          ],
-          "rimlight_hardness": [
-            0.5,
-            0.5,
-            0.5,
-            0.5
-          ],
-          "rimlight_intensity": [
-            30.0,
-            30.0,
-            30.0,
-            30.0
-          ],
-          "rimlightcolor": [
-            0.10000000149011612,
-            0.20000000298023224,
-            2.0,
-            1.0
-          ],
-          "roughness_power": [
             0.20000000298023224,
             0.20000000298023224,
             0.20000000298023224,
             0.20000000298023224
+          ],
+          "pbr_specular": [
+            0.30000001192092896,
+            0.30000001192092896,
+            0.30000001192092896,
+            0.30000001192092896
+          ],
+          "rimlight_angle": [
+            20.0,
+            20.0,
+            20.0,
+            20.0
+          ],
+          "rimlight_area": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "rimlight_hardness": [
+            5.0,
+            5.0,
+            5.0,
+            5.0
+          ],
+          "rimlight_intensity": [
+            5.0,
+            5.0,
+            5.0,
+            5.0
+          ],
+          "rimlight_spread": [
+            0.75,
+            0.75,
+            0.75,
+            0.75
+          ],
+          "rimlight_turn": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rimlightcolor": [
+            0.24860963225364685,
+            0.1847068965435028,
+            0.1524658054113388,
+            1.0
+          ],
+          "roughness_power": [
+            0.6000000238418579,
+            0.6000000238418579,
+            0.6000000238418579,
+            0.6000000238418579
           ],
           "selectioncolor": [
             0.0,
@@ -274,7 +364,7 @@
         "textures": [
           {
             "expressionIndex": 0,
-            "assetId": "Effect/GuardianKnight/FullRestore/Textures/sk_ddk_drg_00/sk_ddk_drg_00_head_n.dds",
+            "assetId": "Effect/GuardianKnight/FullRestore/Textures/sk_ddk_drr_00/sk_ddk_drr_00_head_n.dds",
             "colorSpace": "linear"
           },
           {
@@ -289,11 +379,26 @@
           },
           {
             "expressionIndex": 3,
-            "assetId": "Effect/Artist/Textures/EFMASTER_MATERIAL_PROLOGUE/statefx_default.dds",
+            "assetId": "Effect/GuardianKnight/FullRestore/Textures/sk_ddk_drg_00/sk_ddk_drg_00_head_cm.dds",
             "colorSpace": "srgb"
           },
           {
             "expressionIndex": 4,
+            "assetId": "Effect/GuardianKnight/FullRestore/Textures/sk_ddk_drr_00/sk_ddk_drr_00_head_e.dds",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 5,
+            "assetId": "Effect/GuardianKnight/FullRestore/Textures/efmaster_material_prologue/fx_a_fire_007.dds",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 6,
+            "assetId": "Effect/Artist/Textures/EFMASTER_MATERIAL_PROLOGUE/statefx_default.dds",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 7,
             "assetId": "Effect/Warlord/Textures/EFMASTER_MATERIAL_PROLOGUE/fx_a_noise_018.dds",
             "colorSpace": "srgb"
           }
@@ -359,24 +464,11 @@
           ]
         },
         {
-          "name": "opacity_intensity",
+          "name": "emissive_intensity",
           "kind": "SCALAR",
           "keys": [
             {
-              "timeSeconds": 0.0,
-              "value": [
-                0.0
-              ],
-              "arriveTangent": [
-                0.0
-              ],
-              "leaveTangent": [
-                0.0
-              ],
-              "interpolation": "linear"
-            },
-            {
-              "timeSeconds": 0.20000000298023224,
+              "timeSeconds": 0.14347830255620808,
               "value": [
                 1.0
               ],
@@ -389,22 +481,9 @@
               "interpolation": "linear"
             },
             {
-              "timeSeconds": 0.5,
+              "timeSeconds": 0.8608698046472821,
               "value": [
-                1.0
-              ],
-              "arriveTangent": [
-                0.0
-              ],
-              "leaveTangent": [
-                0.0
-              ],
-              "interpolation": "linear"
-            },
-            {
-              "timeSeconds": 0.9000000059604645,
-              "value": [
-                0.0
+                10.0
               ],
               "arriveTangent": [
                 0.0
@@ -421,7 +500,7 @@
           "kind": "COLOR",
           "keys": [
             {
-              "timeSeconds": 0.0,
+              "timeSeconds": 0.358695751045537,
               "value": [
                 0.0,
                 0.0,
@@ -443,55 +522,11 @@
               "interpolation": "linear"
             },
             {
-              "timeSeconds": 0.6000000238418579,
+              "timeSeconds": 1.076087253136611,
               "value": [
-                0.20000000298023224,
                 1.0,
-                7.0,
-                1.0
-              ],
-              "arriveTangent": [
-                0.0,
-                0.0,
-                0.0,
-                0.0
-              ],
-              "leaveTangent": [
-                0.0,
-                0.0,
-                0.0,
-                0.0
-              ],
-              "interpolation": "linear"
-            },
-            {
-              "timeSeconds": 0.800000011920929,
-              "value": [
-                0.20000000298023224,
-                1.0,
-                7.0,
-                1.0
-              ],
-              "arriveTangent": [
-                0.0,
-                0.0,
-                0.0,
-                0.0
-              ],
-              "leaveTangent": [
-                0.0,
-                0.0,
-                0.0,
-                0.0
-              ],
-              "interpolation": "linear"
-            },
-            {
-              "timeSeconds": 1.100000023841858,
-              "value": [
-                0.0,
-                0.0,
-                0.0,
+                0.11392100155353546,
+                0.04943300038576126,
                 1.0
               ],
               "arriveTangent": [
@@ -571,9 +606,15 @@
       },
       "sourceMaterialProfile": {
         "materialName": "sk_ddk_drr_01_neck_st_mi",
-        "sourceMaterial": "sk_ddk_drr_01.mat.sk_ddk_drr_01_neck_st_mi_fx_dead",
-        "family": "source.character.guardianknight-sk-ddk-drr-01-neck-st-mi-fx-dead.v1",
+        "sourceMaterial": "sk_ddk_drr_00.mat.sk_ddk_drr_00_neck_mi",
+        "family": "source.character.guardianknight-sk-ddk-drr-00-neck-mi.v1",
         "parameters": {
+          "1.use_emissive_flickerspeed_fixed": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
           "basecolor_color": [
             1.0,
             1.0,
@@ -611,10 +652,34 @@
             0.0
           ],
           "dead_texture_tiling": [
-            0.5,
-            0.5,
-            0.5,
-            0.5
+            3.0,
+            3.0,
+            3.0,
+            3.0
+          ],
+          "emissive_color": [
+            1.7572325468063354,
+            0.7415080070495605,
+            0.30995646119117737,
+            1.0
+          ],
+          "emissive_flicker_speed": [
+            0.6000000238418579,
+            0.6000000238418579,
+            0.6000000238418579,
+            0.6000000238418579
+          ],
+          "emissive_intensity": [
+            5.0,
+            5.0,
+            5.0,
+            5.0
+          ],
+          "emissive_intensitymin": [
+            0.699999988079071,
+            0.699999988079071,
+            0.699999988079071,
+            0.699999988079071
           ],
           "fx_color_desaturation_actiontool": [
             0.0,
@@ -647,10 +712,10 @@
             0.0
           ],
           "metallic_power": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            4.5,
+            4.5,
+            4.5,
+            4.5
           ],
           "normaltex_intensity": [
             1.0,
@@ -671,10 +736,10 @@
             1.0
           ],
           "occlusion_power": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            0.800000011920929,
+            0.800000011920929,
+            0.800000011920929,
+            0.800000011920929
           ],
           "occlusionbasecolor_blend_intensity": [
             0.0,
@@ -682,47 +747,65 @@
             0.0,
             0.0
           ],
-          "opacity_intensity": [
-            0.6000000238418579,
-            0.6000000238418579,
-            0.6000000238418579,
-            0.6000000238418579
-          ],
           "pbr_add_basecolor_to_emissive": [
-            0.15000000596046448,
-            0.15000000596046448,
-            0.15000000596046448,
-            0.15000000596046448
-          ],
-          "pbr_specular": [
-            0.5,
-            0.5,
-            0.5,
-            0.5
-          ],
-          "rimlight_hardness": [
-            0.5,
-            0.5,
-            0.5,
-            0.5
-          ],
-          "rimlight_intensity": [
-            30.0,
-            30.0,
-            30.0,
-            30.0
-          ],
-          "rimlightcolor": [
-            0.10000000149011612,
-            0.20000000298023224,
-            2.0,
-            1.0
-          ],
-          "roughness_power": [
             0.20000000298023224,
             0.20000000298023224,
             0.20000000298023224,
             0.20000000298023224
+          ],
+          "pbr_specular": [
+            0.30000001192092896,
+            0.30000001192092896,
+            0.30000001192092896,
+            0.30000001192092896
+          ],
+          "rimlight_angle": [
+            20.0,
+            20.0,
+            20.0,
+            20.0
+          ],
+          "rimlight_area": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "rimlight_hardness": [
+            6.0,
+            6.0,
+            6.0,
+            6.0
+          ],
+          "rimlight_intensity": [
+            5.0,
+            5.0,
+            5.0,
+            5.0
+          ],
+          "rimlight_spread": [
+            0.75,
+            0.75,
+            0.75,
+            0.75
+          ],
+          "rimlight_turn": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rimlightcolor": [
+            0.1602150946855545,
+            0.1249164491891861,
+            0.10710708051919937,
+            1.0
+          ],
+          "roughness_power": [
+            0.6000000238418579,
+            0.6000000238418579,
+            0.6000000238418579,
+            0.6000000238418579
           ],
           "selectioncolor": [
             0.0,
@@ -776,26 +859,31 @@
         "textures": [
           {
             "expressionIndex": 0,
-            "assetId": "Effect/GuardianKnight/FullRestore/Textures/sk_ddk_drg_00/sk_ddk_drg_00_neck_n.dds",
+            "assetId": "Effect/GuardianKnight/FullRestore/Textures/sk_ddk_drr_00/sk_ddk_drr_00_neck_n.dds",
             "colorSpace": "linear"
           },
           {
             "expressionIndex": 1,
-            "assetId": "Effect/GuardianKnight/FullRestore/Textures/sk_ddk_drr_01/sk_ddk_drr_01_neck_d.dds",
+            "assetId": "Effect/GuardianKnight/FullRestore/Textures/sk_ddk_drr_00/sk_ddk_drr_00_neck_d.dds",
             "colorSpace": "srgb"
           },
           {
             "expressionIndex": 2,
-            "assetId": "Effect/GuardianKnight/FullRestore/Textures/sk_ddk_drg_00/sk_ddk_drg_00_neck_orm.dds",
+            "assetId": "Effect/GuardianKnight/FullRestore/Textures/sk_ddk_drr_00/sk_ddk_drr_00_neck_orm.dds",
             "colorSpace": "linear"
           },
           {
             "expressionIndex": 3,
-            "assetId": "Effect/Artist/Textures/EFMASTER_MATERIAL_PROLOGUE/statefx_default.dds",
+            "assetId": "Effect/GuardianKnight/FullRestore/Textures/sk_ddk_drr_00/sk_ddk_drr_00_neck_e.dds",
             "colorSpace": "srgb"
           },
           {
             "expressionIndex": 4,
+            "assetId": "Effect/Artist/Textures/EFMASTER_MATERIAL_PROLOGUE/statefx_default.dds",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 5,
             "assetId": "Effect/Warlord/Textures/EFMASTER_MATERIAL_PROLOGUE/fx_a_noise_018.dds",
             "colorSpace": "srgb"
           }
@@ -861,24 +949,11 @@
           ]
         },
         {
-          "name": "opacity_intensity",
+          "name": "emissive_intensity",
           "kind": "SCALAR",
           "keys": [
             {
-              "timeSeconds": 0.0,
-              "value": [
-                0.0
-              ],
-              "arriveTangent": [
-                0.0
-              ],
-              "leaveTangent": [
-                0.0
-              ],
-              "interpolation": "linear"
-            },
-            {
-              "timeSeconds": 0.20000000298023224,
+              "timeSeconds": 0.14347830255620808,
               "value": [
                 1.0
               ],
@@ -891,22 +966,9 @@
               "interpolation": "linear"
             },
             {
-              "timeSeconds": 0.5,
+              "timeSeconds": 0.8608698046472821,
               "value": [
-                1.0
-              ],
-              "arriveTangent": [
-                0.0
-              ],
-              "leaveTangent": [
-                0.0
-              ],
-              "interpolation": "linear"
-            },
-            {
-              "timeSeconds": 0.9000000059604645,
-              "value": [
-                0.0
+                10.0
               ],
               "arriveTangent": [
                 0.0
@@ -923,7 +985,7 @@
           "kind": "COLOR",
           "keys": [
             {
-              "timeSeconds": 0.0,
+              "timeSeconds": 0.358695751045537,
               "value": [
                 0.0,
                 0.0,
@@ -945,55 +1007,11 @@
               "interpolation": "linear"
             },
             {
-              "timeSeconds": 0.6000000238418579,
+              "timeSeconds": 1.076087253136611,
               "value": [
-                0.20000000298023224,
                 1.0,
-                7.0,
-                1.0
-              ],
-              "arriveTangent": [
-                0.0,
-                0.0,
-                0.0,
-                0.0
-              ],
-              "leaveTangent": [
-                0.0,
-                0.0,
-                0.0,
-                0.0
-              ],
-              "interpolation": "linear"
-            },
-            {
-              "timeSeconds": 0.800000011920929,
-              "value": [
-                0.20000000298023224,
-                1.0,
-                7.0,
-                1.0
-              ],
-              "arriveTangent": [
-                0.0,
-                0.0,
-                0.0,
-                0.0
-              ],
-              "leaveTangent": [
-                0.0,
-                0.0,
-                0.0,
-                0.0
-              ],
-              "interpolation": "linear"
-            },
-            {
-              "timeSeconds": 1.100000023841858,
-              "value": [
-                0.0,
-                0.0,
-                0.0,
+                0.11392100155353546,
+                0.04943300038576126,
                 1.0
               ],
               "arriveTangent": [

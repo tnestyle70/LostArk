@@ -13,7 +13,7 @@
   "elements": [
     {
       "id": "effect.world.item.whirlwind_grenade.flight.particlespriteemitter_41",
-      "displayName": "effect.world.item.whirlwind_grenade.flight | particlespriteemitter_41",
+      "displayName": "particlespriteemitter_41",
       "groupId": "effect.world.item.whirlwind_grenade.flight",
       "sourceNode": "effect.world.item.whirlwind_grenade.flight|fx_bs_05.prj.par_l_battle_wind_prj_01.particlespriteemitter_41",
       "visible": true,
@@ -1250,7 +1250,7 @@
     },
     {
       "id": "effect.world.item.whirlwind_grenade.flight.particlespriteemitter_27",
-      "displayName": "effect.world.item.whirlwind_grenade.flight | particlespriteemitter_27",
+      "displayName": "particlespriteemitter_27",
       "groupId": "effect.world.item.whirlwind_grenade.flight",
       "sourceNode": "effect.world.item.whirlwind_grenade.flight|fx_bs_05.prj.par_l_battle_wind_prj_01.particlespriteemitter_27",
       "visible": true,
@@ -2283,7 +2283,7 @@
     },
     {
       "id": "effect.world.item.whirlwind_grenade.flight.particlespriteemitter_16",
-      "displayName": "effect.world.item.whirlwind_grenade.flight | particlespriteemitter_16",
+      "displayName": "particlespriteemitter_16",
       "groupId": "effect.world.item.whirlwind_grenade.flight",
       "sourceNode": "effect.world.item.whirlwind_grenade.flight|fx_bs_05.prj.par_l_battle_wind_prj_01.particlespriteemitter_16",
       "visible": true,
@@ -3345,7 +3345,7 @@
     },
     {
       "id": "effect.world.item.whirlwind_grenade.flight.particlespriteemitter_5",
-      "displayName": "effect.world.item.whirlwind_grenade.flight | particlespriteemitter_5",
+      "displayName": "particlespriteemitter_5",
       "groupId": "effect.world.item.whirlwind_grenade.flight",
       "sourceNode": "effect.world.item.whirlwind_grenade.flight|fx_bs_05.prj.par_l_battle_wind_prj_01.particlespriteemitter_5",
       "visible": true,
@@ -4906,7 +4906,7 @@
     },
     {
       "id": "effect.world.item.whirlwind_grenade.flight.particlespriteemitter_11",
-      "displayName": "effect.world.item.whirlwind_grenade.flight | particlespriteemitter_11",
+      "displayName": "particlespriteemitter_11",
       "groupId": "effect.world.item.whirlwind_grenade.flight",
       "sourceNode": "effect.world.item.whirlwind_grenade.flight|fx_bs_05.prj.par_l_battle_wind_prj_01.particlespriteemitter_11",
       "visible": true,
@@ -6503,7 +6503,7 @@
     },
     {
       "id": "effect.world.item.whirlwind_grenade.flight.particlespriteemitter_33",
-      "displayName": "effect.world.item.whirlwind_grenade.flight | particlespriteemitter_33",
+      "displayName": "particlespriteemitter_33",
       "groupId": "effect.world.item.whirlwind_grenade.flight",
       "sourceNode": "effect.world.item.whirlwind_grenade.flight|fx_bs_05.prj.par_l_battle_wind_prj_01.particlespriteemitter_33",
       "visible": true,
@@ -7605,7 +7605,7 @@
     },
     {
       "id": "effect.world.item.whirlwind_grenade.flight.particlespriteemitter_34",
-      "displayName": "effect.world.item.whirlwind_grenade.flight | particlespriteemitter_34",
+      "displayName": "particlespriteemitter_34",
       "groupId": "effect.world.item.whirlwind_grenade.flight",
       "sourceNode": "effect.world.item.whirlwind_grenade.flight|fx_bs_05.prj.par_l_battle_wind_prj_01.particlespriteemitter_34",
       "visible": true,
@@ -9353,7 +9353,7 @@
     },
     {
       "id": "effect.world.item.whirlwind_grenade.flight.particlespriteemitter_35",
-      "displayName": "effect.world.item.whirlwind_grenade.flight | particlespriteemitter_35",
+      "displayName": "particlespriteemitter_35",
       "groupId": "effect.world.item.whirlwind_grenade.flight",
       "sourceNode": "effect.world.item.whirlwind_grenade.flight|fx_bs_05.prj.par_l_battle_wind_prj_01.particlespriteemitter_35",
       "visible": true,
@@ -11027,7 +11027,7 @@
     },
     {
       "id": "effect.world.item.whirlwind_grenade.flight.particlespriteemitter_12",
-      "displayName": "effect.world.item.whirlwind_grenade.flight | particlespriteemitter_12",
+      "displayName": "particlespriteemitter_12",
       "groupId": "effect.world.item.whirlwind_grenade.flight",
       "sourceNode": "effect.world.item.whirlwind_grenade.flight|fx_bs_05.prj.par_l_battle_wind_prj_01.particlespriteemitter_12",
       "visible": true,
@@ -12185,7 +12185,7 @@
     },
     {
       "id": "effect.world.item.whirlwind_grenade.flight.particlespriteemitter_13",
-      "displayName": "effect.world.item.whirlwind_grenade.flight | particlespriteemitter_13",
+      "displayName": "particlespriteemitter_13",
       "groupId": "effect.world.item.whirlwind_grenade.flight",
       "sourceNode": "effect.world.item.whirlwind_grenade.flight|fx_bs_05.prj.par_l_battle_wind_prj_01.particlespriteemitter_13",
       "visible": true,
@@ -13296,7 +13296,7 @@
     },
     {
       "id": "effect.world.item.whirlwind_grenade.flight.particlespriteemitter_14",
-      "displayName": "effect.world.item.whirlwind_grenade.flight | particlespriteemitter_14",
+      "displayName": "particlespriteemitter_14",
       "groupId": "effect.world.item.whirlwind_grenade.flight",
       "sourceNode": "effect.world.item.whirlwind_grenade.flight|fx_bs_05.prj.par_l_battle_wind_prj_01.particlespriteemitter_14",
       "visible": true,

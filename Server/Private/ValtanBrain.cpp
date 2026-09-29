@@ -1270,9 +1270,11 @@ namespace
 				trace.eResult = VALTAN_DECISION_RESULT::MECHANIC_RESET_REQUIRED;
 				return nullptr;
 			}
-			// Keep the existing intro attack unconsumed: it follows this one-time
-			// cutscene with its existing attack geometry and completion contract.
+			// Automatic health rotations start at the first authored occurrence after
+			// this cutscene. The legacy entrance attack would insert a second
+			// whirlwind before that occurrence, so consume it only on this path.
 			boss.bEntranceCinematicConsumed = true;
+			boss.bIntroPatternConsumed = true;
 			trace.eSource = VALTAN_DECISION_SOURCE::INTRO;
 			trace.eResult = VALTAN_DECISION_RESULT::SELECTED;
 			trace.strSelectedPatternId = cinematic->strPatternId;
@@ -1283,10 +1285,6 @@ namespace
 			trace.Candidates.push_back(std::move(candidate));
 			return cinematic;
 		}
-		const bool mandatoryEntranceAttack = healthRotations &&
-			boss.bEntranceCinematicConsumed && !boss.bIntroPatternConsumed &&
-			!boss.bScriptedPatternPlayback && !boss.bAutomaticPatternSequenceAuditionOverride &&
-			!scriptedSequence->strEntranceCinematicPatternId.empty();
 		if (healthRotations) scriptedSequence = nullptr;
 		if (boss.PendingPatternFollowup.Is_Pending())
 		{
@@ -1423,13 +1421,11 @@ namespace
 			trace.Candidates.push_back(std::move(candidate));
 			return step;
 		}
-		/* The first appearance runs before the health-bar queue and before any
-		weighted roll, so the entrance sweep can never come up again later. A
-		configured automatic cinematic makes this attack mandatory on completion;
-		legacy entry and explicit audition keep the authored selection range. The
-		attack geometry remains unchanged in either path. A missing
-		pattern is consumed anyway, so a broken catalog cannot stall the boss on
-		every tick. */
+		/* Legacy entry and explicit audition retain the range-gated entrance
+		attack before the health-bar queue or weighted roll. Automatic entry with
+		a cinematic already consumed it above and proceeds to the authored loop.
+		A missing pattern is consumed anyway, so a broken catalog cannot stall
+		the boss on every tick. */
 		if (!boss.bIntroPatternConsumed &&
 			(nullptr == scriptedSequence ||
 			 boss.bAutomaticPatternSequenceAuditionOverride))
@@ -1456,8 +1452,8 @@ namespace
 				trace.Candidates.push_back(std::move(candidate));
 				boss.bIntroPatternConsumed = true;
 			}
-			else if (mandatoryEntranceAttack ||
-				(targetDistance >= intro->fMinimumRange && targetDistance <= intro->fMaximumRange))
+			else if (targetDistance >= intro->fMinimumRange &&
+				targetDistance <= intro->fMaximumRange)
 			{
 				boss.bIntroPatternConsumed = true;
 				boss.bAutomaticPatternSequenceAuditionOverride = false;
@@ -2738,6 +2734,8 @@ namespace
 			("VALTAN_STAGGER_SLOT" == boss.strPatternId && "FINAL_ATTACK" == boss.strPatternStageId);
 		const auto& damageProfile = contact ? contact->strDamageProfileId : boss.strDamageProfileId;
 		const bool ignoreDefense = contact && contact->strDamageKind != "PROFILE";
+		const bool instantDeath = contact && (contact->strDamageKind == "INSTANT_DEATH" ||
+			(contact->strDamageKind == "MAX_HP_PERCENT" && contact->iDamagePercent >= 100u));
 		const std::uint32_t rawDamage = CGameplayCatalog::Resolve_Damage(
 			nullptr == bossProfile ? 0u : bossProfile->iAttackPower,
 			catalog.Find_DamageRatePercent(damageProfile));
@@ -2760,7 +2758,7 @@ namespace
 			/* A successful player counter answers the hit instead of taking it,
 			so it is consulted before any damage is resolved. */
 			if (0u == player.iCurrentHp || (encounterWipe && player.Is_Guide()) ||
-				(!encounterWipe && (!player.isCombatReady || alreadyHit ||
+				(!encounterWipe && ((!instantDeath && !player.isCombatReady) || alreadyHit ||
 				 !(contact ? ContainsStageContact(*contact, player, hitTransform) : ContainsPatternHit(boss, player, hitTransform)) ||
 				 (!boss.bPatternPiercesCover &&
 					IsShieldedByCover(hitTransform, player, coverCircles)))))
@@ -2777,6 +2775,7 @@ namespace
 				contact->strDamageKind == "INSTANT_DEATH" ? player.iMaximumHp :
 				(std::max)(1u, static_cast<std::uint32_t>(std::uint64_t(player.iMaximumHp) * contact->iDamagePercent / 100u));
 			incoming.bEncounterWipe = encounterWipe;
+			incoming.bInstantDeath = instantDeath;
 			incoming.bIgnoreDefense = ignoreDefense;
 			incoming.bIgnoreCounter = ignoreDefense;
 			incoming.fSourceX = hitTransform.fPositionX;

@@ -158,6 +158,23 @@ class PortableCheckTests(unittest.TestCase):
 
 
 class ClosureTests(unittest.TestCase):
+    def test_packaged_effect_element_names_use_native_byte_limit(self):
+        root = builder.OUTPUT_ROOT / ('effect-labels-' + str(time.time_ns()))
+        for relative in [*('Client/Bin/Release/' + n for n in builder.MODULES), 'Server/Bin/Release/Server.exe', 'Client/Bin/Release/Shader.cso']:
+            path = root / relative; path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(b'fixture')
+        effect = root / 'Data/Effects/Authored/effect.test.labels.effect.json'
+        effect.parent.mkdir(parents=True)
+        builder.write(root / 'Data/Effects/EffectCatalog.json', {'effects': [{'authoringPath': 'Effects/Authored/' + effect.name}]})
+        document = dict(schema='lostark.effect-authoring', version=13,
+                        displayName='Top-level label is permitted to exceed the element label byte limit.',
+                        elements=[dict(id='label.one', displayName='가' * 21 + 'a')])
+        builder.write(effect, document)
+        self.assertIn(effect.relative_to(root).as_posix(), builder.collect(root)[0])
+        document['elements'][0]['displayName'] += 'b'
+        builder.write(effect, document)
+        with self.assertRaisesRegex(RuntimeError, r'Element.*65 bytes'):
+            builder.collect(root)
+
     def test_current_domain_new_source_literal_and_recursive_reference(self):
         root = builder.OUTPUT_ROOT / ('closure-' + str(time.time_ns()))
         for relative in [*('Client/Bin/Release/' + n for n in builder.MODULES), 'Server/Bin/Release/Server.exe', 'Client/Bin/Release/Shader.cso']:

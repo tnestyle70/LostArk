@@ -322,30 +322,7 @@ def author_existing_patterns(
         "defaultNextActionId": None,
         "hit": none_hit(),
         "motion": None,
-        "events": [{
-            "eventId": "valtan.part-break.cardinal-rocks",
-            "trigger": "ENTER",
-            "kind": "SPAWN_COMBAT_OBJECT_VOLLEY",
-            "combatObjectArchetypeId": "combatobject.valtan.part-break.rock",
-            "volleyPolicy": "BOSS_RELATIVE",
-            "countPerResolvedTarget": 4,
-            "layout": {
-                "kind": "RADIAL_AROUND_BOSS",
-                "radiusM": 4.9497475,
-                "startAngleDegrees": 45.0,
-                "angleStepDegrees": 90.0,
-                "mappingBasis": "PROJECT_TUNED",
-            },
-            "spawnSchedule": {
-                "kind": "INTERVAL",
-                "count": 1,
-                "firstOffsetMs": 0,
-                "intervalMs": 0,
-            },
-            "arenaRandom": {"kind": "NONE"},
-            "allowOverlap": False,
-            "maximumTotalObjects": 4,
-        }],
+        "events": [],
         "branches": [],
     }
     dash_part_break_p_stage = {
@@ -1045,7 +1022,7 @@ def author_trash_capture_flow(
         recharge_stage("RECHARGE_WAIT_03", actions["RETRY_WINDUP_03"]),
         retry_windup_stage("RETRY_WINDUP_03", actions["RETRY_RUSH_03"], 3),
         retry_rush_stage("RETRY_RUSH_03", actions["RETRY_EXHAUSTED"]),
-        gameplay_stage("RETRY_EXHAUSTED", 1000, None, kind="RECOVERY"),
+        gameplay_stage("RETRY_EXHAUSTED", 1000, actions["RECHARGE_WAIT_02"], kind="RECOVERY"),
     ]
     new_g = [
         *retry_g,
@@ -1054,12 +1031,12 @@ def author_trash_capture_flow(
             {"outcome": "ALL_PLAYERS_GRABBED", "nextActionId": actions["EXECUTE_TAIL"]},
             {"outcome": "TIMEOUT", "nextActionId": actions["CATCH_SLAM"]},
         ]),
-        gameplay_stage("CATCH_SLAM", 1500, None, events=[{
+        gameplay_stage("CATCH_SLAM", 1500, actions["RECHARGE_WAIT_02"], events=[{
             "eventId": "event.valtan.trash.captured-slam", "trigger": "ENTER",
             "kind": "DAMAGE_GRABBED_PLAYERS",
             "damageProfileId": "damage.valtan.charge-grab-roar",
         }]),
-        gameplay_stage("EXECUTE_TAIL", 1500, None, kind="RECOVERY", events=[{
+        gameplay_stage("EXECUTE_TAIL", 1500, actions["RECHARGE_WAIT_02"], kind="RECOVERY", events=[{
             "eventId": "event.valtan.trash.execute-grabbed", "trigger": "ENTER",
             "kind": "EXECUTE_GRABBED_PLAYERS",
         }]),
@@ -1145,6 +1122,13 @@ def author_trash_capture_flow(
 
         destination["stages"] = [remap(copy.deepcopy(stage(trash, key))) for key in stage_ids]
         destination_p["stages"] = [remap(copy.deepcopy(stage(trash_p, key))) for key in stage_ids]
+        if pattern_id.endswith("_SUCCESS"):
+            # A standalone capture audition owns only the catch clip fragment.
+            # Product Trash and the complete IF audition own the retry loop.
+            for row in destination["stages"]:
+                if row["stageId"] in ("CATCH_SLAM", "EXECUTE_TAIL"):
+                    row["defaultNextActionId"] = None
+                    row["branches"] = [{"outcome": "TIMEOUT", "nextActionId": None}]
         if pattern_id.endswith("_FAIL"):
             destination["stages"][0]["defaultNextActionId"] = None
             destination["stages"][0]["branches"] = [

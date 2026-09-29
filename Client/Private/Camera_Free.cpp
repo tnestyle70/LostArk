@@ -170,6 +170,18 @@ void CCamera_Free::Set_FollowEnabled(bool_t isEnabled)
 	}
 }
 
+void CCamera_Free::Set_SpectateFrozen(const bool_t frozen)
+{
+	constexpr uint64_t owner = 0x5350454354444541ull;
+	if (frozen)
+	{
+		// Retain the displayed pose (including an ALT_V cut) until this same player revives.
+		(void)Begin_PresentationOverride(owner, PRESENTATION_PRIORITY::OBSERVER_HOLD);
+	}
+	else if (Is_PresentationOverrideOwnedBy(owner))
+		(void)End_PresentationOverrideAtCurrentPose(owner);
+}
+
 bool_t CCamera_Free::Set_FreeMoveSpeed(const f32_t metersPerSecond)
 {
 	if (!std::isfinite(metersPerSecond) ||

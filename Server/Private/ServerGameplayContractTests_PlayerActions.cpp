@@ -587,19 +587,18 @@ void LostArk::Server::CServerGameplayContractRunner::Run_PlayerActions(TESTS& te
 			strikeArmoredBoss(true, 4000u, 4000u, groggyBoss);
 		tests.Require(
 			groggyDamage == fullyArmoredDamage &&
-			4000u - groggyDamage ==
-				groggyBoss.ArmorPlates[0].iRemainingDurability &&
-			4000u == groggyBoss.ArmorPlates[1].iRemainingDurability,
-			"Spend groggy damage on the front plate only, at the mitigated amount");
+			4000u == groggyBoss.ArmorPlates[0].iRemainingDurability &&
+			4000u == groggyBoss.ArmorPlates[1].iRemainingDurability &&
+			!groggyBoss.bPendingArmorBreakReaction,
+			"Ordinary skill damage still hurts Valtan while groggy without consuming bomb-only armor durability");
 
 		SERVER_WORLD_ENTITY brokenBoss{};
 		(void)strikeArmoredBoss(true, 1u, 4000u, brokenBoss);
 		tests.Require(
-			0u == brokenBoss.ArmorPlates[0].iRemainingDurability &&
+			1u == brokenBoss.ArmorPlates[0].iRemainingDurability &&
 			4000u == brokenBoss.ArmorPlates[1].iRemainingDurability &&
-			brokenBoss.bPendingArmorBreakReaction &&
-			!brokenBoss.bPatternGroggy,
-			"Break one plate per groggy window, close it, and queue the part-break reaction");
+			!brokenBoss.bPendingArmorBreakReaction && brokenBoss.bPatternGroggy,
+			"A normal skill cannot finish even a one-durability Valtan plate or close the bomb window");
 	}
 	{
 		/* Q/W/E/R counter power is attached to a real damaging hit, unlike the

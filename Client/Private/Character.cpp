@@ -1049,7 +1049,7 @@ void CCharacter::Update_VehicleSkillCues(
 				(preparation.empty() ? std::string{} : " Preparation: " + preparation) + "\n").c_str());
 		}
 	}
-    if (m_isLocallyControlled && CUserSettings::Get().Is_SkillCameraShakeOn())
+    if (CEffectPresentationService::Is_CameraPresentationOwner(this) && CUserSettings::Get().Is_SkillCameraShakeOn())
     {
         for (const auto& cue : skill.shakeCues)
         {
@@ -1417,7 +1417,7 @@ void CCharacter::Queue_VehicleSkillEffects(const VEHICLE_ACTOR_ENTRY& vehicle) c
 
 void CCharacter::Update_CameraShakeCues()
 {
-	if (!m_isLocallyControlled || m_EffectCueDocument.Shakes.empty())
+	if (!CEffectPresentationService::Is_CameraPresentationOwner(this) || m_EffectCueDocument.Shakes.empty())
 		return;
 	if (nullptr == m_pBodyModel || nullptr == m_pChain ||
 		0u == m_iEffectActionStartTick || m_iChainStage < 0 ||

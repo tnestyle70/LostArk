@@ -120,8 +120,8 @@ namespace LostArk::Shared
 	// 121 carries each Mario entrant's required colour and matching-ball progress.
 	// 122 carries each player's latest Waterpang water gun cast (skill id and Server start tick).
 	// 124 combines saved-character restore, raid EXIT votes and ground-target battle items.
-	// Independently released 125 peers carry either water gun casts or avatar items.
-	// 126 combines both layouts and rejects those incompatible 125 peers.
+	// Independently released 125 peers carry water gun casts, avatar items, or minigame deadlines.
+	// 126 combines all three layouts and rejects those incompatible 125 peers.
 	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 126;
 
 	enum class WORLD_ID : std::uint16_t

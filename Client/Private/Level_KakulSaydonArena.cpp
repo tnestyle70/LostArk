@@ -337,7 +337,10 @@ namespace
 
 	bool_t Is_LocalMarioLightingActive()
 	{
-		// Shared stage props and remote players cannot change this client's lighting.
+		// Only the selected camera subject chooses Mario lighting; other remote props do not.
+		if (const auto* arena = CLevel_KakulSaydonArena::Get_Active())
+			if (const auto* subject = arena->Get_CameraPlayerSnapshot())
+				return subject->iMarioStage >= 1u && subject->iMarioStage <= 4u;
 		const auto& player = CCombatHUDViewModel::Get().Get_Player();
 		return player.isValid && !player.isPreview && player.iMarioStage >= 1u && player.iMarioStage <= 4u;
 	}
@@ -2147,7 +2150,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	const auto& gates = Get_DebugGates();
 	const bool_t playerOnlyEntry = m_iActiveDebugGate < gates.size() &&
 		nullptr == gates[m_iActiveDebugGate].BossPlacementIds[0];
-	const auto canShowMadnessGauge = [&madnessPlayers, &localCharacter, gateEntered, playerOnlyEntry](
+	const auto canShowMadnessGauge = [this, &madnessPlayers, &localCharacter, gateEntered, playerOnlyEntry](
 		const shared_ptr<CCharacter>& character)
 	{
 		if (!character) return false;
@@ -2155,6 +2158,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		{
 			if (view.pCharacter.lock() != character) continue;
 			const auto& player = view.Snapshot;
+			if (!m_Replication.Should_ShowKoukuPlayerWorldUI(player.iNetEntityId)) return false;
 			// Server-approved player-only Debug entry and Mario have no boss gate.
 			if (!gateEntered && LostArk::Shared::KOUKU_HUD_MODE::MARIO != player.eKoukuHudMode &&
 				!(playerOnlyEntry && character == localCharacter))
@@ -2168,6 +2172,11 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	madnessState.isValid = madnessState.isValid && canShowMadnessGauge(localCharacter);
 	if (LostArk::Shared::KOUKU_HUD_MODE::MAZE == CCombatHUDViewModel::Get().Get_Player().eKoukuHudMode)
 		madnessState.eHudMode = HUD_KOUKU_HUD_MODE::MAZE;
+	if (m_Replication.Get_KoukuWorldUISubjectId() != LostArk::Shared::INVALID_NET_ENTITY_ID)
+	{
+		madnessState.eHudMode = HUD_KOUKU_HUD_MODE::MARIO;
+		madnessState.eCardMazeRole = LostArk::Shared::CARD_MAZE_ROLE::NONE;
+	}
 	if (nullptr != m_pMadnessGaugeView)
 		m_pMadnessGaugeView->Update(fTimeDelta, localCharacter, madnessState);
 	/* Teammates: their own madness from the snapshot, drawn the same way over them. */
@@ -2280,14 +2289,15 @@ void Client::CLevel_KakulSaydonArena::Update_StatusEffectText(const f32_t fTimeD
 	   keyed by the button's own serial so repeated presses keep firing. */
 	const std::uint32_t previewSerial =
 		CCombatHUDViewModel::Get().Get_StatusEffectTextPreviewSerial();
-	const auto previewAnchor = m_Replication.Get_LocalCharacter();
+	const auto previewAnchor = m_Replication.Get_CameraCharacter();
 	/* Only consume the serial once there is a character to hang the word on, so
 	   a press made before the local character is up is not swallowed. */
 	if (previewSerial != m_iStatusEffectTextPreviewSerial && nullptr != previewAnchor)
 	{
 		m_iStatusEffectTextPreviewSerial = previewSerial;
 		CStatusEffectTextView::REQUEST request{};
-		request.iOwnerEntityId = 0u;
+		const auto* subject = m_Replication.Get_CameraPlayerSnapshot();
+		request.iOwnerEntityId = subject ? subject->iNetEntityId : 0u;
 		request.iOccurrenceKey = previewSerial;
 		request.strWord = FEAR_WORD;
 		request.iColorRgb = FEAR_COLOR_RGB;
@@ -2467,13 +2477,12 @@ void Client::CLevel_KakulSaydonArena::Update_DeadScene(
 
 	/* Real Render_DeadScene's own whole-screen AddRectFilled(IM_COL32(0,0,0,160)), now a real
 	slot (DeadScene_Dim, White1x1 tinted) instead of a raw ImGui draw call. */
-	m_pDeadSceneView->Set_SlotVisible("DeadScene_Dim", isDead);
-	m_pDeadSceneView->Set_SlotVisible("DeadScene_PanelBg", isDead);
-	m_pDeadSceneView->Set_SlotVisible("DeadScene_WingedArch", isDead);
-	m_pDeadSceneView->Set_SlotVisible("DeadScene_Effect", isDead);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_Dim", isDead && !m_Replication.Is_Spectating());
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_PanelBg", isDead && !m_Replication.Is_Spectating());
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_WingedArch", isDead && !m_Replication.Is_Spectating());
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_Effect", isDead && !m_Replication.Is_Spectating());
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_ReviveButton", isDead);
-	/* Spectate is not wired to any server/client command yet -- these two slots exist only
-	so the button and its border can be positioned in the HUD Layout Tool. */
+	// Spectating changes the presentation target; revive remains a typed gameplay command.
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_SpectateButton", isDead);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_SpectateBorder", isDead);
 	/* Tool-authoring placeholders only (mark where RenderDeadSceneText's labels land) --
@@ -2495,6 +2504,7 @@ void Client::CLevel_KakulSaydonArena::Update_DeadScene(
 	is a separate free-standing box above the revive button, unrelated to that label. */
 	{
 		HUD_DEADSCENE_TEXT_RECTS textRects;
+		textRects.isSpectating = m_Replication.Is_Spectating();
 		textRects.isValid =
 			m_pDeadSceneView->Get_SlotRect("DeadScene_TitleTextMarker",
 				textRects.fTitleX, textRects.fTitleY,
@@ -2511,6 +2521,23 @@ void Client::CLevel_KakulSaydonArena::Update_DeadScene(
 		CCombatHUDViewModel::Get().Set_DeadSceneTextRects(textRects);
 	}
 
+	f32_t spectateX = 0.f, spectateY = 0.f, spectateWidth = 0.f, spectateHeight = 0.f;
+	if (m_pDeadSceneView->Get_SlotRect("DeadScene_SpectateButton", spectateX, spectateY, spectateWidth, spectateHeight))
+	{
+		auto& router = CUIInputRouter::Get();
+		const auto width = m_pDeadSceneView->Get_ResolutionWidth();
+		const auto height = m_pDeadSceneView->Get_ResolutionHeight();
+		if (router.Is_Hovered(spectateX, spectateY, spectateWidth, spectateHeight, width, height))
+		{
+			router.Claim_Mouse_This_Frame();
+			if (router.Is_Clicked(spectateX, spectateY, spectateWidth, spectateHeight, width, height) &&
+				m_Replication.Cycle_SpectateTarget())
+			{
+				CMainApp::Play_UIButtonClickSound();
+				Bind_CameraToLocalCharacter();
+			}
+		}
+	}
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (!m_pDeadSceneView->Get_SlotRect(
 		"DeadScene_ReviveButton", fX, fY, fWidth, fHeight))
@@ -2540,8 +2567,12 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	/* The award page is a full-screen modal: no world text at all while it is up. */
 	if (nullptr == m_pMvpResultView || !m_pMvpResultView->Is_Visible())
 	{
-		m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster());
-		m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
+		auto worldUIPlayers = m_NameplatePlayers;
+		std::erase_if(worldUIPlayers, [this](const auto& player) {
+			return !m_Replication.Should_ShowKoukuPlayerWorldUI(player.iNetEntityId);
+		});
+		m_PlayerNameplateView.Render(worldUIPlayers, &m_Replication.Get_PartyRoster());
+		m_ChatBubbleView.Render(m_Replication, worldUIPlayers);
 	}
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(
@@ -2565,7 +2596,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 			viewport.x * 0.5f, viewport.y * heightRatio,
 			promptLineSpacing * promptScale * sizeMultiplier, tint);
 	};
-	if (m_bGate3AuraOccupied && !m_bGate3AuraSubmitted && Is_LocalRaidLeader())
+	if (m_bGate3AuraOccupied && !m_bGate3AuraSubmitted)
 	{
 		drawPrompt(L"\uC7A0\uC2DC \uD6C4 \uB2E4\uC74C \uC9C0\uC810\uC73C\uB85C \uC774\uB3D9\uB429\uB2C8\uB2E4.",
 			0.72f, 0.625f, Colors::White);
@@ -2662,7 +2693,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	}
 	/* Floating status words last, over the scene and over the two prompts above,
 	   the way the retail damage-text canvas sits on its own top layer. */
-	m_StatusEffectTextView.Render();
+	m_StatusEffectTextView.Render(m_Replication.Get_KoukuWorldUISubjectId());
 	/* Award page labels sit over everything else this Level draws, the status
 	   words included. Its own image layers are CUI_Sprite objects on Layer_UI,
 	   so they need no call. */
@@ -3014,9 +3045,17 @@ void Client::CLevel_KakulSaydonArena::Update_Gate3EntryAura(const bool_t canProp
 		m_bGate3AuraSubmitted = false;
 	}
 	float3_t position{};
-	const auto& player = CCombatHUDViewModel::Get().Get_Player();
-	const bool_t occupied = entryAvailable && player.isValid && player.iCurrentHp &&
-		Try_GetReplicatedLocalPlayerPosition(position) &&
+	const auto& roster = m_Replication.Get_PartyRoster();
+	std::vector<REPLICATED_PLAYER_VIEW> players;
+	m_Replication.Collect_PlayerViews(players);
+	const auto leader = std::find_if(players.begin(), players.end(), [&](const auto& player) {
+		return roster.Members.empty() ? player.isLocal : player.iNetEntityId == roster.Members.front().iNetEntityId;
+	});
+	const auto character = leader != players.end() ? leader->pCharacter.lock() : nullptr;
+	const bool_t alive = leader != players.end() && m_Replication.Get_PlayerHealth().Find(leader->iNetEntityId).iCurrentHp > 0u;
+	if (character && character->Get_Transform())
+		XMStoreFloat3(&position, character->Get_Transform()->Get_State(STATE::POSITION));
+	const bool_t occupied = entryAvailable && alive && character && character->Get_Transform() &&
 		LostArk::Shared::Is_KoukuGate3EntryAura(position.x, position.y, position.z);
 	if (!occupied)
 	{
@@ -3966,11 +4005,11 @@ bool_t Client::CLevel_KakulSaydonArena::Set_FollowCameraProfile(
 void Client::CLevel_KakulSaydonArena::Update_SourceFollowCamera(const f32_t timeDelta, bool_t immediate)
 {
 	if (!m_FollowCameraProfile.useSourceCameraRegions || !m_pCamera) return;
-	const auto character = Get_LocalCharacter();
-	if (!character || !character->Get_Transform())
+	const auto transform = m_Replication.Get_CameraTarget();
+	if (!transform)
 	{ m_bSourceCameraInitialized = false; return; }
 	float3_t position{};
-	XMStoreFloat3(&position, character->Get_Transform()->Get_State(STATE::POSITION));
+	XMStoreFloat3(&position, transform->Get_State(STATE::POSITION));
 	if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) return;
 	const auto delta = XMLoadFloat3(&position) - XMLoadFloat3(&m_vSourceCameraPreviousPlayer);
 	immediate = immediate || !m_bSourceCameraInitialized || XMVectorGetX(XMVector3LengthSq(delta)) > 144.f;
@@ -4009,9 +4048,10 @@ bool_t Client::CLevel_KakulSaydonArena::Bind_CameraToLocalCharacter()
 {
 	if (nullptr == m_pCamera)
 		return false;
-	const shared_ptr<CCharacter> localCharacter =
-		m_Replication.Get_LocalCharacter();
-	if (nullptr == localCharacter)
+	m_pCamera->Set_SpectateFrozen(m_Replication.Is_SpectateTargetDead());
+	const auto transform = m_Replication.Resolve_CameraTarget();
+	const auto localCharacter = m_Replication.Get_CameraCharacter();
+	if (nullptr == transform)
 	{
 		m_pCameraTarget.reset();
 		m_bSourceCameraInitialized = false;
@@ -4020,12 +4060,9 @@ bool_t Client::CLevel_KakulSaydonArena::Bind_CameraToLocalCharacter()
 		return true;
 	}
 	CCharacter::Set_MapPresentationSizeProfile(m_FollowCameraProfile);
-	if (m_pCameraTarget.lock() == localCharacter)
+	if (m_pCamera->Get_FollowTarget() == transform)
 		return true;
 
-	const shared_ptr<CTransform> transform = localCharacter->Get_Transform();
-	if (nullptr == transform)
-		return false;
 	m_pCameraTarget = localCharacter;
 	m_pCamera->Set_FollowTarget(transform);
 	Update_SourceFollowCamera(0.f, true);
@@ -4633,12 +4670,13 @@ Client::CLevel_KakulSaydonArena::Find_ActiveCameraShot(
 	for (const KAKUL_CAMERA_SHOT& shot : m_CameraShots)
 	{
 		if (shot.bPatternOnly || !Is_SequenceCameraAudience(shot.strSequenceInstanceId,
-			CCombatHUDViewModel::Get().Get_Player().iMarioStage)) continue;
+			(m_Replication.Get_CameraPlayerSnapshot() ? m_Replication.Get_CameraPlayerSnapshot()->iMarioStage : 0u))) continue;
 		const bool_t isHeldNow = shot.strShotId == m_strActiveCameraShotId;
 		bool_t isActive = false;
 		if (shot.strShotId == CARD_MAZE_TELESCOPE_SHOT_ID)
 		{
-			isActive = (CCombatHUDViewModel::Get().Get_KoukuGimmick().CardMaze.flags & 1u) != 0u;
+			const auto* subject = m_Replication.Get_CameraPlayerSnapshot();
+			isActive = subject && (subject->CardMaze.flags & 1u) != 0u;
 		}
 		else if (!shot.strSequenceInstanceId.empty())
 		{
@@ -5476,7 +5514,7 @@ bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
 	const auto found = std::find_if(shots.begin(), shots.end(), [shotId](const auto& shot) { return shot.strShotId == shotId; });
 	if (found == shots.end() || durationMs < found->iBlendInMs) return false;
 	if (!preview && !Is_SequenceCameraAudience(found->strSequenceInstanceId,
-		CCombatHUDViewModel::Get().Get_Player().iMarioStage)) return false;
+		(m_Replication.Get_CameraPlayerSnapshot() ? m_Replication.Get_CameraPlayerSnapshot()->iMarioStage : 0u))) return false;
 	auto& transition = m_CompositionCamera;
 	if (transition.cancelledOwnerKey == ownerKey) return false;
 	// The Gate 1 book row includes a World tail after its authored camera has finished.
@@ -5526,10 +5564,10 @@ bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
 	}
 	else if (found->followsPlayer)
 	{
-		const auto character = m_Replication.Get_LocalCharacter();
-		if (!character || !character->Get_Transform())
+		const auto transform = m_Replication.Get_CameraTarget();
+		if (!transform)
 		{ Stop_CompositionCamera(true); return false; }
-		float3_t player; XMStoreFloat3(&player, character->Get_Transform()->Get_State(STATE::POSITION));
+		float3_t player; XMStoreFloat3(&player, transform->Get_State(STATE::POSITION));
 		target.vEye = float3_t(player.x + found->vFollowEyeOffset.x, player.y + found->vFollowEyeOffset.y, player.z + found->vFollowEyeOffset.z);
 		target.vLookAt = float3_t(player.x + found->vFollowLookAtOffset.x, player.y + found->vFollowLookAtOffset.y, player.z + found->vFollowLookAtOffset.z);
 	}
@@ -5552,9 +5590,9 @@ bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
 
 bool_t Client::CLevel_KakulSaydonArena::Resolve_CompositionFollowPose(VALTAN_CINEMATIC_CAMERA_POSE& outPose) const
 {
-	const auto character = m_Replication.Get_LocalCharacter();
-	if (!character || !character->Get_Transform()) return false;
-	float3_t position; XMStoreFloat3(&position, character->Get_Transform()->Get_State(STATE::POSITION));
+	const auto transform = m_Replication.Get_CameraTarget();
+	if (!transform) return false;
+	float3_t position; XMStoreFloat3(&position, transform->Get_State(STATE::POSITION));
 	const auto eyeOffset = m_EffectiveFollowCameraProfile.positionOffset;
 	const auto lookOffset = CArenaCameraProfile::LookOffset(m_EffectiveFollowCameraProfile);
 	outPose.vEye = float3_t(position.x + eyeOffset.x, position.y + eyeOffset.y, position.z + eyeOffset.z);
@@ -5655,10 +5693,7 @@ void Client::CLevel_KakulSaydonArena::Update_CameraShots(const f32_t fTimeDelta)
 		Release_CameraShot();
 		return;
 	}
-	const shared_ptr<CCharacter> localCharacter =
-		m_Replication.Get_LocalCharacter();
-	const shared_ptr<CTransform> transform =
-		nullptr != localCharacter ? localCharacter->Get_Transform() : nullptr;
+	const auto transform = m_Replication.Get_CameraTarget();
 	float3_t position{};
 	if (nullptr != transform)
 		XMStoreFloat3(&position, transform->Get_State(STATE::POSITION));

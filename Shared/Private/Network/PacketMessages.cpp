@@ -662,6 +662,9 @@ namespace
 			(LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB != damage.eHitFlag ||
 				(0u != damage.iAmount && 0u == damage.iStaggerAmount && !damage.isCounterSuccess && !damage.isStaggerSuccess &&
 					damage.eCardMazeSuit == LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE)) &&
+			((damage.eHitFlag != LostArk::Shared::DAMAGE_HIT_FLAG::DAMAGE_REDUCED &&
+				damage.eHitFlag != LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL_DAMAGE_REDUCED) ||
+				(damage.isOutgoing && damage.iAmount && damage.eCardMazeSuit == LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE)) &&
 			/* Stagger and counters are things a player did to a boss. */
 			((0 == damage.iStaggerAmount && !damage.isCounterSuccess && !damage.isStaggerSuccess) || damage.isOutgoing) &&
 			LostArk::Shared::Is_Valid_MechanicCardSymbol(damage.eCardMazeSuit) &&
@@ -3280,6 +3283,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 				static_cast<int>(player.ModeSkillIndexBySlot[slot]) + 1));
 		}
 		writer.Write_U8(player.iMarioStage);
+		writer.Write_U32(player.iKoukuMinigameEndTick);
 		writer.Write_U8(player.iMarioLayoutVariant);
 		writer.Write_U16(player.iMarioPoppedBallMask);
 		writer.Write_U8(player.iMarioCurseReleasedMask);
@@ -3607,6 +3611,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			rawHudMode >= static_cast<std::uint8_t>(KOUKU_HUD_MODE::END) ||
 			!Read_KoukuHudSlots(reader, player) ||
 			!reader.Read_U8(player.iMarioStage) || player.iMarioStage > 4u ||
+			!reader.Read_U32(player.iKoukuMinigameEndTick) ||
 			!reader.Read_U8(player.iMarioLayoutVariant) || player.iMarioLayoutVariant > 3u ||
 			(player.iMarioStage == 0u && player.iMarioLayoutVariant != 0u) ||
 			!reader.Read_U16(player.iMarioPoppedBallMask) || player.iMarioPoppedBallMask > 0x0FFFu ||

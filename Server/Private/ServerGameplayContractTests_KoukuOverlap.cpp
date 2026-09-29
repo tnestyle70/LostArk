@@ -46,6 +46,44 @@ using namespace LostArk::Shared;
 
 namespace
 {
+    // Every sampled incoming hit must agree with authoritative HP/shield loss.
+    // Check each contact independently, so aggregate tolerance cannot hide a
+    // missing/repeated hit or a bad per-hit range.
+    bool Matches_IncomingDamage(const SERVER_PLAYER& player, std::uint32_t initialHp,
+        std::uint32_t baseline, std::size_t expectedCount, std::span<const DAMAGE_EVENT> events)
+    {
+        std::uint64_t amount = 0u; std::size_t count = 0u;
+        for (const auto& event : events)
+        {
+            if (event.iTargetNetEntityId != player.iNetEntityId) continue;
+            if (event.isOutgoing || event.eHitFlag != DAMAGE_HIT_FLAG::NORMAL ||
+                event.iAmount < baseline - baseline / 10u || event.iAmount > baseline + baseline / 10u) return false;
+            amount += event.iAmount; ++count;
+        }
+        return count == expectedCount && player.iCurrentHp <= initialHp && amount == initialHp - player.iCurrentHp;
+    }
+
+    bool Matches_LastIncomingDamage(const SERVER_PLAYER& player, std::uint32_t initialHp,
+        std::uint32_t baseline, const std::vector<DAMAGE_EVENT>& events)
+    {
+        return !events.empty() && Matches_IncomingDamage(player, initialHp, baseline, 1u,
+            std::span<const DAMAGE_EVENT>(events).last(1u));
+    }
+
+    bool Matches_AbsorbedDamage(const SERVER_PLAYER& player, std::uint32_t initialShield,
+        std::uint32_t baseline, std::size_t expectedCount, std::span<const DAMAGE_EVENT> events)
+    {
+        std::uint64_t amount = 0u; std::size_t count = 0u;
+        for (const auto& event : events)
+        {
+            if (event.iTargetNetEntityId != player.iNetEntityId) continue;
+            if (event.isOutgoing || event.eHitFlag != DAMAGE_HIT_FLAG::ABSORB ||
+                event.iAmount < baseline - baseline / 10u || event.iAmount > baseline + baseline / 10u) return false;
+            amount += event.iAmount; ++count;
+        }
+        return count == expectedCount && player.iShield <= initialShield && amount == initialShield - player.iShield;
+    }
+
     void Run_GuideHazardPolicyContracts(TESTS& tests, const CGameplayCatalog& catalog)
     {
         const auto makePlayer = [](PLAYER_ID id, bool guide) {
@@ -75,14 +113,15 @@ namespace
         tests.Require(CKoukuSaydonLogicRuntime::Predict_ContactRisk(*boss, pattern, ledger, players.at(2u), 101u, 1000u) == 1.f,
             "Guide anticipates a contact using the same Logic collider geometry");
         CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 101u, events, output);
-        tests.Require(players.at(1u).iCurrentHp == 900u && players.at(2u).iCurrentHp == 900u,
-            "Guide and human touching the same spatial collider take the same damage");
+        tests.Require(Matches_IncomingDamage(players.at(1u), 1000u, 100u, 1u, events) &&
+            Matches_IncomingDamage(players.at(2u), 1000u, 100u, 1u, events),
+            "Guide and human touching the same spatial collider use the same damage range and replicate their actual loss");
 
         players.at(2u).fPositionX = 20.f;
         CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 102u, events, output);
         players.at(2u).fPositionX = 0.f;
         CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 103u, events, output);
-        tests.Require(players.at(2u).iCurrentHp == 800u,
+        tests.Require(Matches_IncomingDamage(players.at(2u), 1000u, 100u, 2u, events),
             "Guide exiting and reentering a hazard rearms the physical contact");
         players.at(2u) = makePlayer(2u, true);
         pattern.LogicWindows.front().OnSuccess.front().eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH;
@@ -96,10 +135,11 @@ namespace
         players.at(1u) = makePlayer(1u, false); players.at(2u) = makePlayer(2u, true);
         players.at(1u).fPositionX = players.at(2u).fPositionX = 20.f;
         auto& verdict = pattern.LogicWindows.front(); verdict.eKind = BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP;
-        verdict.OnSuccess.clear(); verdict.OnTimeout = {damage};
+        verdict.OnSuccess.clear(); verdict.OnTimeout = {damage}; events.clear();
         CKoukuSaydonLogicRuntime::Build(pattern, *boss, 300u, ledger);
         CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 330u, events, output);
-        tests.Require(players.at(1u).iCurrentHp == 900u && players.at(2u).iCurrentHp == 1000u,
+        tests.Require(Matches_IncomingDamage(players.at(1u), 1000u, 100u, 1u, events) &&
+            Matches_IncomingDamage(players.at(2u), 1000u, 100u, 0u, events),
             "Guide is excluded from a missed mechanic area verdict while humans still fail");
 
         auto& guide = players.at(2u);
@@ -164,18 +204,18 @@ namespace
         tests.Require(events.empty() && players.at(1u).iCurrentHp == 13200u && players.at(2u).iCurrentHp == 13200u,
             "Split-ball damage stays inactive before the authored explosion window");
         update(103u);
-        tests.Require(players.at(1u).iCurrentHp == 11880u,
-            "One split-ball WORLD cylinder applies 1320 damage from ten percent of 13200 maximum HP through the authoritative result consumer");
-        tests.Require(players.at(2u).iCurrentHp == 10560u,
-            "Two independent overlapping split-ball explosion windows stack to 2640 damage in one Server tick");
+        tests.Require(Matches_IncomingDamage(players.at(1u), 13200u, 1320u, 1u, events),
+            "One split-ball WORLD cylinder applies sampled 1188..1452 damage from the ten-percent 1320 baseline through the authoritative result consumer");
+        tests.Require(Matches_IncomingDamage(players.at(2u), 13200u, 1320u, 2u, events),
+            "Two independent overlapping split-ball explosion windows stack two independently sampled damage events in one Server tick");
         tests.Require(players.at(3u).iCurrentHp == 13200u && players.at(4u).iCurrentHp == 13200u,
             "Split-ball cylinder rejects the enclosing box corner and finite-height misses after WORLD-track placement");
         tests.Require(events.size() == 3u && std::all_of(events.begin(), events.end(),
-            [](const DAMAGE_EVENT& event) { return event.iAmount == 1320u && !event.isOutgoing; }),
-            "Split-ball hits each emit an independent incoming 1320 damage event");
+            [](const DAMAGE_EVENT& event) { return event.iAmount >= 1188u && event.iAmount <= 1452u && !event.isOutgoing; }),
+            "Split-ball hits each emit an independent incoming 1188..1452 damage event");
         update(103u); players.at(1u).fPositionX = 50.f; update(104u);
         players.at(1u).fPositionX = 8.f; update(104u);
-        tests.Require(events.size() == 3u && players.at(1u).iCurrentHp == 11880u && players.at(2u).iCurrentHp == 10560u,
+        tests.Require(events.size() == 3u && Matches_IncomingDamage(players.at(1u), 13200u, 1320u, 1u, events) && Matches_IncomingDamage(players.at(2u), 13200u, 1320u, 2u, events),
             "A split-ball explosion hits each player once despite duplicate ticks, continued overlap or reentry");
         // One-shot ENTER_AREA judges the ceil-rounded end tick before closing.
         // Keep the outside player still until that final contact sample is consumed.
@@ -226,7 +266,7 @@ namespace
         build(); update(102u); update(103u); update(108u);
         tests.Require(events.empty(), "A rising cylinder has no contact before birth or while its top remains below the player's body");
         update(118u); update(119u); update(132u); update(133u);
-        tests.Require(players.at(1u).iCurrentHp == 90u && players.at(2u).iCurrentHp == 100u &&
+        tests.Require(Matches_IncomingDamage(players.at(1u), 100u, 10u, 1u, events) && players.at(2u).iCurrentHp == 100u &&
             players.at(3u).iCurrentHp == 100u && events.size() == 1u,
             "A rising cylinder intersects the player's body once at its interpolated height and rejects radial and vertical misses");
 
@@ -235,14 +275,14 @@ namespace
         resetPlayer(1u, 0.f, 0.f); build(); update(103u);
         tests.Require(events.empty(), "A descending cylinder starts above the player instead of becoming an infinite-height circle");
         update(118u); update(132u);
-        tests.Require(players.at(1u).iCurrentHp == 90u && events.size() == 1u,
+        tests.Require(Matches_IncomingDamage(players.at(1u), 100u, 10u, 1u, events) && events.size() == 1u,
             "A descending cylinder uses the same lifetime interpolation and once-per-player trigger");
 
         region.fCenterY = -5.f; region.fHalfY = .05f; region.iMotionDurationMs = 33u;
         pattern.LogicWindows.front().iDurationMs = 33u;
         region.EndPositionOffset = {0.f, 10.f, 0.f};
         resetPlayer(1u, 0.f, 0.f); build(); update(103u); update(104u);
-        tests.Require(players.at(1u).iCurrentHp == 90u && events.size() == 1u,
+        tests.Require(Matches_IncomingDamage(players.at(1u), 100u, 10u, 1u, events) && events.size() == 1u,
             "A thin cylinder crossing the entire player body between two Server ticks still hits through its bounded sweep");
         region.iMotionDurationMs = 1000u; pattern.LogicWindows.front().iDurationMs = 1000u;
 
@@ -251,20 +291,22 @@ namespace
         players.clear(); resetPlayer(1u, 2.f, 5.f); build(); update(103u); update(108u);
         tests.Require(events.empty(), "Growing column keeps a narrow and low start volume");
         update(128u); update(132u);
-        tests.Require(players.at(1u).iCurrentHp == 90u && events.size() == 1u,
+        tests.Require(Matches_IncomingDamage(players.at(1u), 100u, 10u, 1u, events) && events.size() == 1u,
             "Independent end size and end position grow a column upward from its fixed floor and expand its radius");
 
         region.bLinearMotion = false; region.fCenterY = 1.f; region.fHalfY = 1.f; region.fRadiusM = 2.f;
         auto& contact = pattern.LogicWindows.front(); contact.iRepeatIntervalMs = 200u;
         players.clear(); resetPlayer(1u, 0.f, 0.f); resetPlayer(2u, 20.f, 0.f);
         build(); update(103u); update(103u); update(108u);
-        tests.Require(players.at(1u).iCurrentHp == 90u && events.size() == 1u,
+        tests.Require(Matches_IncomingDamage(players.at(1u), 100u, 10u, 1u, events) && events.size() == 1u,
             "Tick contact damages immediately on entry and does not repeat on a duplicate or premature Server tick");
         update(109u); players.at(2u).fPositionX = 0.f; update(110u); update(114u);
-        tests.Require(players.at(1u).iCurrentHp == 80u && players.at(2u).iCurrentHp == 90u && events.size() == 3u,
+        tests.Require(Matches_IncomingDamage(players.at(1u), 100u, 10u, 2u, events) &&
+            Matches_IncomingDamage(players.at(2u), 100u, 10u, 1u, events) && events.size() == 3u,
             "Tick contact owns an independent authored interval for each player");
         players.at(1u).fPositionX = 20.f; update(115u); update(116u);
-        tests.Require(players.at(1u).iCurrentHp == 80u && players.at(2u).iCurrentHp == 80u && events.size() == 4u,
+        tests.Require(Matches_IncomingDamage(players.at(1u), 100u, 10u, 2u, events) &&
+            Matches_IncomingDamage(players.at(2u), 100u, 10u, 2u, events) && events.size() == 4u,
             "A contact tick damages only players still inside and does not punish an exited player");
         update(133u); update(140u);
         tests.Require(events.size() == 4u, "Collider lifetime closes periodic contact without a final out-of-window damage tick");
@@ -276,14 +318,14 @@ namespace
         players.clear(); resetPlayer(1u, 13.f, 7.f); players.at(1u).fPositionZ = 20.f;
         resetPlayer(2u, 13.f, 0.f); players.at(2u).fPositionZ = 20.f;
         build(); update(103u);
-        tests.Require(players.at(1u).iCurrentHp == 90u && players.at(2u).iCurrentHp == 100u,
+        tests.Require(Matches_IncomingDamage(players.at(1u), 100u, 10u, 1u, events) && players.at(2u).iCurrentHp == 100u,
             "Boss-follow cylinder combines authoritative root yaw and height exactly once");
         region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_START;
         resetPlayer(1u, 1000.f, 7.f); players.at(1u).fPositionZ = 20.f;
         build(); update(103u);
         boss->fPositionX = 100.f; boss->fPositionY = 50.f; boss->fPositionZ = 200.f; boss->fYawDegrees = 0.f;
         players.at(1u).fPositionX = 13.f; update(104u); update(105u);
-        tests.Require(players.at(1u).iCurrentHp == 90u && players.at(2u).iCurrentHp == 100u && events.size() == 1u,
+        tests.Require(Matches_IncomingDamage(players.at(1u), 100u, 10u, 1u, events) && players.at(2u).iCurrentHp == 100u && events.size() == 1u,
             "A fixed boss-anchored cylinder freezes birth position, yaw and height while the boss moves to another location");
         region.iAnchorCaptureStartMs = 0u;
         boss->fPositionX = 10.f; boss->fPositionY = 7.f; boss->fPositionZ = 20.f; boss->fYawDegrees = 90.f;
@@ -293,7 +335,7 @@ namespace
             "A fixed Effect captures its authoritative basis before the later Collider window opens");
         boss->fPositionX = 100.f; boss->fPositionY = 50.f; boss->fPositionZ = 200.f; boss->fYawDegrees = 0.f;
         update(103u);
-        tests.Require(players.at(1u).iCurrentHp == 90u && events.size() == 1u,
+        tests.Require(Matches_IncomingDamage(players.at(1u), 100u, 10u, 1u, events) && events.size() == 1u,
             "The later Collider uses its linked Effect birth basis after the boss has moved and turned");
         contact.OnSuccess.front().eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER;
         contact.OnSuccess.front().iMarioEntryStage = 1u;
@@ -393,7 +435,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
         auto ordinary = p; auto normal = push; normal.bForcePush = false;
         CKoukuSaydonLogicRuntime::Apply_Result(ordinary, normal, *boss, catalog, nullptr, 100u, events);
         CKoukuSaydonLogicRuntime::Apply_Result(p, push, *boss, catalog, nullptr, 100u, events);
-        tests.Require(ordinary.fKnockbackSpeed <= 1.f && p.iCurrentHp == 90u && p.eAction == PLAYER_ACTION_STATE::KNOCKDOWN &&
+        tests.Require(ordinary.fKnockbackSpeed <= 1.f && Matches_LastIncomingDamage(p, 100u, 10u, events) && p.eAction == PLAYER_ACTION_STATE::KNOCKDOWN &&
             p.iFearEndTick == 0u && p.iKnockdownEndTick > 100u && p.iHitReactionGraceEndTick == 0u &&
             std::abs(p.fKnockbackSpeed * p.fKnockbackRemainingSeconds - 16.f) < .0001f && p.bKnockbackCanLeaveArena,
             "Explicit force push replaces fear/down/grace/previous reaction; ordinary push preserves resistance");
@@ -530,7 +572,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
         CKoukuSaydonLogicRuntime::Apply_Result(p, effect, *boss, catalog, nullptr, 100u, events);
         for (unsigned tick = 0u; tick < 8u; ++tick) room->Advance_PlayerKnockback(p, 1.f / 30.f);
         tests.Require(std::abs(p.fPositionX - (1.f + distance)) < .0001f && std::abs(p.fPositionZ) < .0001f &&
-            p.fKnockbackRemainingSeconds == 0.f && !p.bKnockbackCanLeaveArena && p.iCurrentHp == 90u,
+            p.fKnockbackRemainingSeconds == 0.f && !p.bKnockbackCanLeaveArena && Matches_LastIncomingDamage(p, 100u, 10u, events),
             "Six and sixteen metre pushes consume exact authored distance; laser local X uses yaw offset once");
     }
     {
@@ -598,7 +640,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
         update(100u); update(101u);
         players.at(1u).fPositionX = 10.f; update(102u);
         players.at(1u).fPositionX = -1.f; update(103u); update(104u);
-        tests.Require(players.at(1u).iCurrentHp == 80u && repeatEvents.size() == 2u &&
+        tests.Require(Matches_IncomingDamage(players.at(1u), 100u, 10u, 2u, repeatEvents) && repeatEvents.size() == 2u &&
             players.at(1u).fKnockbackDirectionX < -.999f && players.at(1u).fKnockbackRemainingSeconds > .24f,
             "Short laser contact rearms on real reentry during previous push and stays latched between exits");
     }
@@ -651,11 +693,11 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
                 room->Update_MarioBombContacts(victim, tick);
                 room->Update_MarioBombContacts(victim, tick);
                 room->Update_MarioBombContacts(victim, tick + 1u);
-                tests.Require(victim.iCurrentHp == victim.iMaximumHp - 1320u && room->m_TickDamageEvents.size() == 1u &&
+                tests.Require(Matches_IncomingDamage(victim, victim.iMaximumHp, 1320u, 1u, room->m_TickDamageEvents) && room->m_TickDamageEvents.size() == 1u &&
                     room->m_TickDamageEvents.front().eMarioHitSource == MARIO_HIT_SOURCE::FLYING_BALL &&
                     victim.eAction == PLAYER_ACTION_STATE::KNOCKDOWN && victim.bKnockbackBallistic &&
                     victim.fKnockbackRemainingSeconds > .99f,
-                    "Every Mario emitter generation deals fixed 1320 once at different maximum HP and launches authoritative knockdown");
+                    "Every Mario emitter generation deals a sampled 1188..1452 hit from the fixed 1320 baseline once at different maximum HP and launches authoritative knockdown");
                 S2C_WORLD_SEQUENCE_PLAY stopped;
                 bool stopRead = false;
                 if (bombSession->m_OutboundFrames.size() == 1u)
@@ -707,11 +749,11 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
             room->m_TickDamageEvents.clear();
             room->Update_MarioBouncingBallContacts(victim, tick);
             room->Update_MarioBouncingBallContacts(victim, tick);
-            tests.Require(victim.iCurrentHp == maximumHp - 1320u && room->m_TickDamageEvents.size() == 1u &&
+            tests.Require(Matches_IncomingDamage(victim, maximumHp, 1320u, 1u, room->m_TickDamageEvents) && room->m_TickDamageEvents.size() == 1u &&
                 victim.eAction == PLAYER_ACTION_STATE::KNOCKDOWN && victim.bKnockbackBallistic &&
                 victim.fKnockbackRemainingSeconds > .99f && victim.fKnockbackDirectionX > .999f &&
                 victim.iKnockdownEndTick == tick + (1000u + PLAYER_HIT_LANDING_RECOVERY_MS) * 30u / 1000u,
-                "Every striped ball deals fixed 1320 once per contact and shares bomb launch/down timing at different maximum HP");
+                "Every striped ball deals a sampled 1188..1452 hit from the fixed 1320 baseline once per contact and shares bomb launch/down timing at different maximum HP");
             room->Advance_PlayerKnockback(victim, .5f);
             tests.Require(std::abs(victim.fPositionY - before.fPositionY - 2.f) < .001f,
                 "Striped ball knockdown reaches the same two metre apex as a bomb");
@@ -723,7 +765,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
             room->Update_MarioBouncingBallContacts(victim, tick);
             victim.fPositionX = before.fPositionX; victim.fPositionY = before.fPositionY;
             room->Update_MarioBouncingBallContacts(victim, tick);
-            tests.Require(victim.iCurrentHp == maximumHp - 2640u,
+            tests.Require(Matches_IncomingDamage(victim, maximumHp, 1320u, 2u, room->m_TickDamageEvents),
                 "Leaving and reentering a striped ball rearms contact while an uninterrupted overlap cannot stack hits");
             for (const unsigned blocked : {0u, 1u, 2u, 3u, 4u})
             {
@@ -779,7 +821,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
         const bool inactiveBeforeBirth = damage.empty() && victim.iCurrentHp == 100u;
         if (entryDelayTicks) { victim.fPositionZ = 20.f; update(birth); victim.fPositionZ = 0.f; }
         update(birth + entryDelayTicks); update(birth + entryDelayTicks + 1u);
-        tests.Require(inactiveBeforeBirth && victim.iCurrentHp == 90u && damage.size() == 1u &&
+        tests.Require(inactiveBeforeBirth && Matches_IncomingDamage(victim, 100u, 10u, 1u, damage) && damage.size() == 1u &&
             victim.eAction == PLAYER_ACTION_STATE::KNOCKDOWN && victim.bKnockbackBallistic &&
             victim.fKnockbackRemainingSeconds > 1.19f && victim.fKnockbackDirectionX > .999f,
             "Both bazooka shots hit initial overlap or later visible entry once, replacing fear/down/grace with the authored launch");
@@ -851,8 +893,10 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
                 while (last && !track.Keys[last].bVisible) --last;
                 // P18/P19's staggered starts shift the baked 30 Hz samples. These
                 // measured times are independent expectations, not a copy of the resolver.
+                // Current P33 grip samples bottom at 1667ms and rise from 1669ms;
+                // the previous 1701ms expectation was already one tick into ascent.
                 const auto phase = track.iStartMs % 1000u;
-                const auto ascentMs = source.strPatternId == "KAKULSAYDON_G1_PATTERN_33" ? 1701u :
+                const auto ascentMs = source.strPatternId == "KAKULSAYDON_G1_PATTERN_33" ? 1667u :
                     (phase == 175u || phase == 875u ? 6542u : phase == 350u ? 6550u : phase == 525u ? 6558u : 6567u);
                 const auto releaseMs = rises ? ascentMs : track.Keys[last].iTimeMs;
                 tests.Require(region.eAnchor == BOSS_LOGIC_REGION_ANCHOR::WORLD,
@@ -1084,7 +1128,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
             auto effect = push; effect.fPushRangeM = distance; effect.bPushCanLeaveArena = false;
             CKoukuSaydonLogicRuntime::Apply_Result(p, effect, *boss, catalog, nullptr, 100u, events);
             for (unsigned tick = 0u; tick < 8u; ++tick) room->Advance_PlayerKnockback(p, 1.f / 30.f);
-            tests.Require(p.eAction != PLAYER_ACTION_STATE::FALLING && p.iCurrentHp == 90u &&
+            tests.Require(p.eAction != PLAYER_ACTION_STATE::FALLING && Matches_LastIncomingDamage(p, 100u, 10u, events) &&
                 p.fKnockbackRemainingSeconds == 0.f && arenaNavigation.Is_PointWalkableExact(p.fPositionX, p.fPositionZ),
                 "Finite six/sixteen metre push from actual centre survives navigation height clamp");
         }
@@ -1117,7 +1161,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
                 effect.bPushBallistic = ballistic; effect.fPushHeightM = ballistic ? 3.f : 0.f;
                 CKoukuSaydonLogicRuntime::Apply_Result(p, effect, *boss, catalog, nullptr, 100u, events);
                 for (unsigned tick = 0u; tick < 31u; ++tick) room->Advance_PlayerKnockback(p, 1.f / 30.f);
-                tests.Require(p.iCurrentHp == 90u && p.eAction != PLAYER_ACTION_STATE::FALLING &&
+                tests.Require(Matches_LastIncomingDamage(p, 100u, 10u, events) && p.eAction != PLAYER_ACTION_STATE::FALLING &&
                     p.fKnockbackRemainingSeconds == 0.f && arenaNavigation.Is_PointWalkableExact(p.fPositionX, p.fPositionZ) &&
                     std::abs(p.fPositionY - edgeGround.y) <= 1.f,
                     "Gate 1 and Gate 3 fence both ordinary and ballistic authored arena-exit pushes at the supported deck");
@@ -1292,7 +1336,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
             runtime.Update(targets, owners, catalog, 1.f / 30.f, 101u, damage);
             runtime.Update(targets, owners, catalog, 1.f / 30.f, 102u, damage);
             auto& caught = targets.at(1u);
-            tests.Require(caught.iCurrentHp == 90u && damage.size() == 1u && caught.bKnockbackBallistic &&
+            tests.Require(Matches_IncomingDamage(caught, 100u, 10u, 1u, damage) && damage.size() == 1u && caught.bKnockbackBallistic &&
                 !caught.bKnockbackCanLeaveArena && caught.fKnockbackSpeed == 0.f,
                 "Albion timed/contact damage launches once vertically through the shared world-hit consumer");
             caught.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
@@ -1307,7 +1351,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
                 "Authored Albion rise reaches three metres halfway through its 1.2-second flight");
             for (unsigned tick = 0u; tick < 19u; ++tick) room->Advance_PlayerKnockback(caught, 1.f / 30.f);
             tests.Require(std::abs(caught.fPositionY) < .001f && caught.fKnockbackRemainingSeconds == 0.f &&
-                caught.iCurrentHp == 90u && caught.eAction == PLAYER_ACTION_STATE::KNOCKDOWN && !caught.bKnockbackBallistic &&
+                Matches_IncomingDamage(caught, 100u, 10u, 1u, damage) && caught.eAction == PLAYER_ACTION_STATE::KNOCKDOWN && !caught.bKnockbackBallistic &&
                 caught.iKnockdownEndTick > 138u, "Authored Albion rise lands in a retained down pose without a second damage tick");
         }
         room->m_ServerNavigation = savedNav;
@@ -1477,7 +1521,7 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
 			CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, room->m_Players, catalog, nullptr, tick, events, output);
 		};
 		update(100u); update(101u); update(102u);
-		tests.Require(first.iCurrentHp == 900u && second.iCurrentHp == 1000u && events.size() == 1u &&
+		tests.Require(Matches_IncomingDamage(first, 1000u, 100u, 1u, events) && second.iCurrentHp == 1000u && events.size() == 1u &&
 			std::abs(first.fKnockbackDirectionX - 1.f) < .0001f && std::abs(first.fKnockbackDirectionZ) < .0001f &&
 			std::abs(first.fKnockbackSpeed * first.fKnockbackRemainingSeconds - 2.f) < .0001f,
 			"Reentry trigger hits on first entry, stays latched inside, and arms two-metre boss-away knockback");
@@ -1488,15 +1532,15 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
 			"Existing authoritative knockback mover consumes exactly two metres over the 242ms window");
 		first.fPositionX = 6.f; update(110u);
 		first.fPositionX = -1.f; second.fPositionX = 0.f; second.fPositionZ = 1.5f; update(111u); update(112u);
-		tests.Require(first.iCurrentHp == 800u && second.iCurrentHp == 900u && events.size() == 3u &&
+		tests.Require(Matches_IncomingDamage(first, 1000u, 100u, 2u, events) && Matches_IncomingDamage(second, 1000u, 100u, 1u, events) && events.size() == 3u &&
 			first.fKnockbackDirectionX < -.9999f && second.fKnockbackDirectionZ > .9999f,
 			"Leaving rearms only that player; reentry and another player's first entry each hit once in their own outward direction");
 		room->Advance_PlayerKnockback(first, .242f); room->Advance_PlayerKnockback(second, .242f);
 		boss->fPositionX = 20.f; update(120u); boss->fPositionX = 0.f; update(121u);
-		tests.Require(first.iCurrentHp == 700u && second.iCurrentHp == 800u && events.size() == 5u,
+		tests.Require(Matches_IncomingDamage(first, 1000u, 100u, 3u, events) && Matches_IncomingDamage(second, 1000u, 100u, 2u, events) && events.size() == 5u,
 			"Boss-follow collider movement also records a real exit before its next entry hit");
 		first.fPositionX = second.fPositionX = 50.f; update(400u); update(401u);
-		tests.Require(first.iCurrentHp == 700u && second.iCurrentHp == 800u && room->m_Players.at(3u).iCurrentHp == 950u && events.size() == 6u,
+		tests.Require(Matches_IncomingDamage(first, 1000u, 100u, 3u, events) && Matches_IncomingDamage(second, 1000u, 100u, 2u, events) && Matches_IncomingDamage(room->m_Players.at(3u), 1000u, 50u, 1u, events) && events.size() == 6u,
 			"Reentry window Timeout runs once only for the player who never entered; previous entrants are not punished on exit");
 		pattern.LogicWindows.front().bRearmOnExit = false;
 		pattern.LogicWindows.front().bRepeatAfterKnockback = true;
@@ -1506,21 +1550,21 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
 		first.iCurrentHp = first.iMaximumHp = 1000u; first.isCombatReady = true; first.fPositionX = 1.f;
 		events.clear(); update(500u);
 		room->Advance_PlayerKnockback(first, .1f); update(501u); update(508u);
-		tests.Require(first.iCurrentHp == 900u && events.size() == 1u && first.fKnockbackRemainingSeconds > 0.f,
+		tests.Require(Matches_IncomingDamage(first, 1000u, 100u, 1u, events) && events.size() == 1u && first.fKnockbackRemainingSeconds > 0.f,
 			"Continuous contact suppresses all additional damage while knockback is still moving, even after its minimum hit interval");
 		room->Advance_PlayerKnockback(first, .2f); update(509u); update(510u);
-		tests.Require(first.iCurrentHp == 800u && events.size() == 2u && first.fKnockbackRemainingSeconds > 0.f,
+		tests.Require(Matches_IncomingDamage(first, 1000u, 100u, 2u, events) && events.size() == 2u && first.fKnockbackRemainingSeconds > 0.f,
 			"Finishing knockback inside the same collider rearms the next hit without any exit or six duplicated triggers");
 		first.fKnockbackRemainingSeconds = first.fKnockbackSpeed = 0.f; update(511u); update(516u);
-		tests.Require(first.iCurrentHp == 800u && events.size() == 2u,
+		tests.Require(Matches_IncomingDamage(first, 1000u, 100u, 2u, events) && events.size() == 2u,
 			"An early collision stop cannot cause a new contact hit before the authored 242ms interval");
 		update(517u);
-		tests.Require(first.iCurrentHp == 700u && events.size() == 3u,
+		tests.Require(Matches_IncomingDamage(first, 1000u, 100u, 3u, events) && events.size() == 3u,
 			"An inside player can be hit again after the complete knockback interval");
 		room->Advance_PlayerKnockback(first, .3f); first.fPositionX = 6.f; update(526u);
-		tests.Require(first.iCurrentHp == 700u && events.size() == 3u, "Finished knockback outside the collider does not hit again");
+		tests.Require(Matches_IncomingDamage(first, 1000u, 100u, 3u, events) && events.size() == 3u, "Finished knockback outside the collider does not hit again");
 		first.fPositionX = 1.f; update(527u); update(530u); update(540u);
-		tests.Require(first.iCurrentHp == 600u && events.size() == 6u,
+		tests.Require(Matches_IncomingDamage(first, 1000u, 100u, 4u, events) && events.size() == 6u,
 			"A later entry hits once and the window deadline ends contact processing (two never-entered players receive Timeout)");
 		pattern.LogicWindows.front().bRepeatAfterKnockback = false;
 		pattern.LogicWindows.front().iDurationMs = 10000u;
@@ -1529,7 +1573,7 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
 		first.iCurrentHp = first.iMaximumHp = 1000u; first.isCombatReady = true; first.fPositionX = 1.f;
 		second.fPositionX = 50.f; second.fPositionZ = 0.f; events.clear();
 		update(200u); first.fPositionX = 6.f; update(201u); first.fPositionX = 1.f; update(202u);
-		tests.Require(first.iCurrentHp == 900u && events.size() == 1u,
+		tests.Require(Matches_IncomingDamage(first, 1000u, 100u, 1u, events) && events.size() == 1u,
 			"Existing ENTER_AREA defaults remain one-shot even after leaving and reentering");
 		first.fKnockbackRemainingSeconds = first.fKnockbackSpeed = 0.f;
 		first.fPositionX = 1.f; first.fPositionZ = 0.f;
@@ -1575,9 +1619,10 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
 			first.iCurrentHp = first.iMaximumHp = 1000u; first.isCombatReady = true;
 			first.fPositionX = 13.f; first.fPositionZ = -7.f;
 			boss->fPositionX = -9.f; boss->fPositionZ = 21.f; boss->fYawDegrees = yaw;
+			events.clear();
 			CKoukuSaydonLogicRuntime::Apply_Result(first, laserDamage, *boss, catalog, nullptr, 600u, events);
 			const float radians = yaw * .017453292519943295f;
-			tests.Require(first.iCurrentHp == 900u && std::abs(first.fKnockbackDirectionX - std::sin(radians)) < .0001f &&
+			tests.Require(Matches_IncomingDamage(first, 1000u, 100u, 1u, events) && std::abs(first.fKnockbackDirectionX - std::sin(radians)) < .0001f &&
 				std::abs(first.fKnockbackDirectionZ - std::cos(radians)) < .0001f &&
 				std::abs(first.fKnockbackSpeed * first.fKnockbackRemainingSeconds - 2.f) < .0001f,
 				"Laser damage samples current boss forward regardless of player-relative bearing and preserves push distance/time");
@@ -1589,22 +1634,22 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
 		auto& ellipse = ellipseWindow.CardRegions.front();
 		ellipse.bCircle = false; ellipse.bSector = true; ellipse.bReverseSector = true;
 		ellipse.fRadiusXM = 1.f; ellipse.fRadiusZM = 5.f; ellipse.fHalfAngleDegrees = 45.f;
-		for (const auto& sample : std::array<std::array<float, 3u>, 4u>{{ {3.f, 0.f, 1000.f}, {-3.f, 0.f, 900.f}, {0.f, 2.f, 1000.f}, {-6.f, 0.f, 1000.f} }})
+		for (const auto& sample : std::array<std::array<float, 3u>, 4u>{{ {3.f, 0.f, 0.f}, {-3.f, 0.f, 1.f}, {0.f, 2.f, 0.f}, {-6.f, 0.f, 0.f} }})
 		{
 			first = SERVER_PLAYER{}; first.iPlayerId = 1u; first.iNetEntityId = 8101u;
 			first.iCurrentHp = first.iMaximumHp = 1000u; first.isCombatReady = true;
 			first.fPositionX = sample[0]; first.fPositionZ = sample[1];
-			CKoukuSaydonLogicRuntime::Build(pattern, *boss, 650u, ledger); update(650u);
-			tests.Require(first.iCurrentHp == static_cast<unsigned>(sample[2]),
+			events.clear(); CKoukuSaydonLogicRuntime::Build(pattern, *boss, 650u, ledger); update(650u);
+			tests.Require(Matches_IncomingDamage(first, 1000u, 100u, static_cast<unsigned>(sample[2]), events),
 				"Authoritative Reverse Sector retains its rotated long axis, safe wedge and short-axis/radial exclusions");
 		}
-		for (const auto& boundary : std::array<std::array<float, 2u>, 2u>{{ {0.f, 900.f}, {180.f, 1000.f} }})
+		for (const auto& boundary : std::array<std::array<float, 2u>, 2u>{{ {0.f, 1.f}, {180.f, 0.f} }})
 		{
 			first = SERVER_PLAYER{}; first.iPlayerId = 1u; first.iNetEntityId = 8101u;
 			first.iCurrentHp = first.iMaximumHp = 1000u; first.isCombatReady = true; first.fPositionX = 3.f;
 			ellipse.fHalfAngleDegrees = boundary[0];
-			CKoukuSaydonLogicRuntime::Build(pattern, *boss, 700u, ledger); update(700u);
-			tests.Require(first.iCurrentHp == static_cast<unsigned>(boundary[1]),
+			events.clear(); CKoukuSaydonLogicRuntime::Build(pattern, *boss, 700u, ledger); update(700u);
+			tests.Require(Matches_IncomingDamage(first, 1000u, 100u, static_cast<unsigned>(boundary[1]), events),
 				"Reverse safe angle zero hits the full ellipse and 360 leaves an empty hazard");
 		}
         // Duration contact uses the same per-player clock as trigger contact.
@@ -1623,11 +1668,11 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
         second.fPositionX = 50.f; events.clear();
         CKoukuSaydonLogicRuntime::Build(pattern, *boss, 800u, ledger);
         update(800u); update(801u); update(802u);
-        tests.Require(first.iCurrentHp == 1900u && first.iCurrentMadness == 2u && events.size() == 1u,
+        tests.Require(Matches_IncomingDamage(first, 2000u, 100u, 1u, events) && first.iCurrentMadness == 2u && events.size() == 1u,
             "Duration flame contact hits immediately then respects the authored hundred-millisecond interval");
         update(803u); first.fPositionX = 20.f; update(806u); first.fPositionX = 0.f; update(809u);
         update(812u); update(815u); update(818u);
-        tests.Require(first.iCurrentHp == 1600u && first.iCurrentMadness == 8u && events.size() == 4u,
+        tests.Require(Matches_IncomingDamage(first, 2000u, 100u, 4u, events) && first.iCurrentMadness == 8u && events.size() == 4u,
             "Duration contact applies damage and madness together, excludes exits and expires without an extra end-tick hit");
         // Gauge belongs to a landed damage verdict, regardless of result order.
         repeated.iDurationMs = 900u; repeated.iRepeatIntervalMs = 300u;
@@ -1640,12 +1685,12 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
         };
         resetFlame();
         for (unsigned tick = 900u; tick <= 930u; ++tick) update(tick);
-        tests.Require(first.iCurrentHp == 1700u && first.iCurrentMadness == 3u &&
+        tests.Require(Matches_IncomingDamage(first, 2000u, 100u, 3u, events) && first.iCurrentMadness == 3u &&
             first.dMadnessRemainder == 0. && events.size() == 3u && first.iMadnessDamageGainPercent == 100u,
-            "Three explicit breath ticks preserve 100 damage each and add exactly 3 percent madness without automatic gain");
+            "Three explicit breath ticks preserve each sampled 90..110 damage event and add exactly 3 percent madness without automatic gain");
         resetFlame(); first.iShield = 1000u;
         for (unsigned tick = 900u; tick <= 930u; ++tick) update(tick);
-        tests.Require(first.iCurrentHp == 2000u && first.iShield == 700u && first.iCurrentMadness == 0u,
+        tests.Require(first.iCurrentHp == 2000u && Matches_AbsorbedDamage(first, 1000u, 100u, 3u, events) && first.iCurrentMadness == 0u,
             "Shield-absorbed breath damage cannot add explicit contact madness");
         resetFlame(); first.iInvulnerableEndTick = 1000u;
         for (unsigned tick = 900u; tick <= 930u; ++tick) update(tick);
@@ -1654,19 +1699,20 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
         madness.iPercent = 0u; repeated.OnSuccess = {fixed, madness};
         resetFlame(); first.iCurrentMadness = 3u;
         for (unsigned tick = 900u; tick <= 930u; ++tick) update(tick);
-        tests.Require(first.iCurrentHp == 1700u && first.iCurrentMadness == 3u &&
+        tests.Require(Matches_IncomingDamage(first, 2000u, 100u, 3u, events) && first.iCurrentMadness == 3u &&
             first.dMadnessRemainder == 0. && events.size() == 3u && first.iMadnessDamageGainPercent == 100u,
             "Explicit zero madness preserves flame-floor damage and the prior three-percent gauge while suppressing automatic gain");
         resetFlame(); first.iShield = 1000u;
         for (unsigned tick = 900u; tick <= 930u; ++tick) update(tick);
-        tests.Require(first.iCurrentHp == 2000u && first.iShield == 700u && first.iCurrentMadness == 0u,
+        tests.Require(first.iCurrentHp == 2000u && Matches_AbsorbedDamage(first, 1000u, 100u, 3u, events) && first.iCurrentMadness == 0u,
             "Explicit zero madness preserves shield absorption without gaining gauge");
         resetFlame(); first.iInvulnerableEndTick = 1000u;
         for (unsigned tick = 900u; tick <= 930u; ++tick) update(tick);
         tests.Require(first.iCurrentHp == 2000u && first.iCurrentMadness == 0u && events.empty(),
             "Explicit zero madness preserves invulnerability without contact damage or gauge");
         repeated.OnSuccess = {fixed}; resetFlame(); update(900u);
-        tests.Require(first.iCurrentHp == 1900u && first.iCurrentMadness == 5u && first.iMadnessDamageGainPercent == 100u,
+        tests.Require(Matches_IncomingDamage(first, 2000u, 100u, 1u, events) && std::abs(first.iCurrentMadness + first.dMadnessRemainder -
+            (2000u - first.iCurrentHp) * .05) < .000001 && first.iMadnessDamageGainPercent == 100u,
             "An ordinary damage verdict without an explicit madness result retains automatic HP-proportional gain");
 
 

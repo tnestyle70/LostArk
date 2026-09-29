@@ -2132,43 +2132,34 @@ void CMainApp::Update(const f32_t fTimeDelta)
 #ifdef _DEBUG
 		CCombatHUDViewModel::Get().Debug_Tick_DungeonTimer(fTimeDelta);
 #endif
-		/* Retail limits, shown only (nothing ends at zero): every Mario stage 60 s, the card
-		   maze 150 s. Counts from the moment the replicated stage / maze role appears. */
+		// Gameplay owns the deadline. Interpolate only between received Server ticks.
 		{
-			static std::uint8_t s_iSource = 0u;
-			static f32_t s_fSeconds = 0.f;
-			static bool_t s_bDriving = false;
+			static std::uint32_t previousTick = 0u, previousDeadline = 0u;
+			static f32_t snapshotAge = 0.f;
 			CCombatHUDViewModel& HudModel = CCombatHUDViewModel::Get();
-			if (!HudModel.Is_DungeonTimerRunning())
+			const HUD_PLAYER_STATE& player = HudModel.Get_Player();
+			const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+			const auto* subject = arena ? arena->Get_CameraPlayerSnapshot() : nullptr;
+			const auto deadline = subject ? subject->iKoukuMinigameEndTick : player.iKoukuMinigameEndTick;
+			if (previousTick != player.iServerTick || previousDeadline != deadline)
 			{
-				const HUD_PLAYER_STATE& Player = HudModel.Get_Player();
-				std::uint8_t iSource = 0u;
-				if (Player.isValid)
-				{
-					if (Player.iMarioStage >= 1u && Player.iMarioStage <= 4u)
-						iSource = Player.iMarioStage;
-					else if (LostArk::Shared::CARD_MAZE_ROLE::NONE != HudModel.Get_KoukuGimmick().eCardMazeRole)
-						iSource = 5u;
-				}
-				if (iSource != s_iSource)
-				{
-					s_iSource = iSource;
-					s_fSeconds = (5u == iSource) ? 150.f : 60.f;
-				}
-				if (0u != s_iSource)
-				{
-					s_fSeconds = (std::max)(0.f, s_fSeconds - fTimeDelta);
-					HUD_DUNGEON_TIMER_STATE State;
-					State.isVisible = true;
-					State.fSeconds = s_fSeconds;
-					HudModel.Debug_Set_DungeonTimer(State, false);
-					s_bDriving = true;
-				}
-				else if (s_bDriving)
-				{
-					HudModel.Debug_Set_DungeonTimer(HUD_DUNGEON_TIMER_STATE{}, false);
-					s_bDriving = false;
-				}
+				previousTick = player.iServerTick;
+				previousDeadline = deadline;
+				snapshotAge = 0.f;
+			}
+			else snapshotAge += (std::max)(0.f, fTimeDelta);
+			bool_t previewVisible = false;
+#ifdef _DEBUG
+			previewVisible = m_bDungeonTimerPreview;
+#endif
+			if (deadline != 0u || (!HudModel.Is_DungeonTimerRunning() && !previewVisible))
+			{
+				HUD_DUNGEON_TIMER_STATE state{};
+				state.isVisible = player.isValid && deadline != 0u;
+				const auto remainingTicks = deadline - player.iServerTick;
+				state.fSeconds = state.isVisible && remainingTicks <= 0x7fffffffu ?
+					(std::max)(0.f, static_cast<float>(remainingTicks) / 30.f - snapshotAge) : 0.f;
+				HudModel.Set_DungeonTimer(state, false);
 			}
 		}
 		m_pDungeonTimerView->Update(fTimeDelta,
@@ -4423,13 +4414,18 @@ HRESULT CMainApp::Render()
 		(ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
 			nullptr != CLevel_CharacterSelect::Get_Active() &&
 			CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
+	// Minigames suppress the combat HUD, but their deadline is product UI in both builds.
+	if (!isCharSelectOverlayOpen && !Is_MvpResultPageOpen() && m_pDungeonTimerView)
+	{
+		CUITextLayerScope TimerText(UI_TEXT_LAYER::HUD);
+		m_pDungeonTimerView->Render();
+	}
 	if (!isCharSelectOverlayOpen && !Is_MvpResultPageOpen() && !Is_KoukuMinigameHUDHidden())
 	{
 		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 		RenderCombatHUDText();
 		RenderBossHealthBarText();
-		if (nullptr != m_pDungeonTimerView)
-			m_pDungeonTimerView->Render();
+
 		RenderChargeGaugeText();
 		RenderSkillCooldownText();
 		/* VALTAN_ARENA-only inside; no CharSelect-preview overlap possible, but grouped with the
@@ -5056,6 +5052,7 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	Update_SkillSlotMarks();
 	Update_SkillCooldowns();
 	Update_QuickSlotFlash();
+	m_HudTimedTexts.clear();
 	Update_ItemQuickSlots();
 	Update_SpecialQuickSlots();
 	/* The combat analyser belongs to the raid arenas: in town and the class-select arena it
@@ -5067,7 +5064,6 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		else
 			m_pCombatAnalysisView->Hide();
 	}
-	m_HudTimedTexts.clear();
 	Update_KoukuHudMode();
 	Update_VehicleHud();
 	Update_WaterGunHud();
@@ -7912,6 +7908,16 @@ void CMainApp::Update_ItemQuickSlots()
 		}
 		m_pHUDRuntimeView->Set_SlotTexture(ITEM_ICON_SLOT_IDS[i], pDefinition->strIconPath);
 		m_pHUDRuntimeView->Set_SlotVisible(ITEM_ICON_SLOT_IDS[i], true);
+		const auto& inventory = CCombatHUDViewModel::Get().Get_Inventory().Items;
+		const auto owned = std::find_if(inventory.begin(), inventory.end(), [&](const auto& item)
+		{
+			return item.strItemId == m_strItemQuickSlot[i] &&
+				item.eEquippedSlot == LostArk::Shared::EQUIPMENT_SLOT::NONE && item.iQuantity > 0u;
+		});
+		const f32_t cooldown = Resolve_HudCooldownRatio(CCombatHUDViewModel::Get().Get_Player(),
+			pDefinition->iBattleSkillId, pDefinition->iCooldownMs, ITEM_SLOT_IDS[i]);
+		const f32_t brightness = owned == inventory.end() ? 0.25f : cooldown > 0.f ? 0.45f : 1.f;
+		m_pHUDRuntimeView->Set_SlotTint(ITEM_ICON_SLOT_IDS[i], float4_t(brightness, brightness, brightness, 1.f));
 	}
 }
 
@@ -7951,7 +7957,12 @@ void CMainApp::Update_PlayerHealthManaBar()
 
 	m_pHUDRuntimeView->Set_SlotFillRatio("HealthBar_Fill", healthTrackRatio);
 	m_pHUDRuntimeView->Set_SlotVisible("HealthBar_Fill", healthTrackRatio > 0.f);
-	m_pHUDRuntimeView->Set_SlotFillRatio("HealthBar_Shield_Fill", shieldRatio);
+	// Both authored slots start at the left edge; move the white segment to the HP endpoint.
+	f32_t healthX = 0.f, healthY = 0.f, healthWidth = 0.f, healthHeight = 0.f;
+	if (m_pHUDRuntimeView->Get_SlotRect("HealthBar_Fill", healthX, healthY, healthWidth, healthHeight))
+		m_pHUDRuntimeView->Set_SlotRect("HealthBar_Shield_Fill",
+			healthX + healthWidth * healthTrackRatio, healthY, healthWidth * shieldRatio, healthHeight);
+	m_pHUDRuntimeView->Set_SlotFillRatio("HealthBar_Shield_Fill", 1.f);
 	m_pHUDRuntimeView->Set_SlotVisible("HealthBar_Shield_Fill", shieldRatio > 0.f);
 	m_pHUDRuntimeView->Set_SlotFillRatio("ManaBar_Fill", manaRatio);
 	/* A class with an ember pool runs on ember, not mana: the mana fill stays
@@ -8268,7 +8279,33 @@ void CMainApp::RenderSkillCooldownText()
 			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 	};
 
-	/* Texts the HUD update pass queued this frame: cooldown seconds over the special slot and
+	/* Item assignment is stable; quantity is always the latest server inventory stack. */
+	for (int32_t i = 0; i < 4; ++i)
+	{
+		if (m_strItemQuickSlot[i].empty()) continue;
+		const auto* definition = CItemCatalog::Find_ById(m_strItemQuickSlot[i]);
+		if (!definition || definition->strIconPath.empty()) continue;
+		const auto& inventory = CCombatHUDViewModel::Get().Get_Inventory().Items;
+		const auto owned = std::find_if(inventory.begin(), inventory.end(), [&](const auto& item)
+		{
+			return item.strItemId == m_strItemQuickSlot[i] &&
+				item.eEquippedSlot == LostArk::Shared::EQUIPMENT_SLOT::NONE;
+		});
+		const wstring quantity = std::to_wstring(owned != inventory.end() ? owned->iQuantity : 0u);
+		f32_t x, y, width, height;
+		if (!m_pHUDRuntimeView->Get_SlotRect("Item_" + std::to_string(i + 1), x, y, width, height)) continue;
+		const float2_t measured = CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), quantity.c_str());
+		if (measured.y <= 0.f) continue;
+		const f32_t scale = (11.f / measured.y) * textUiScale;
+		const float2_t position((x + width - 2.f) * textScaleX, (y + height - 2.f) * textScaleY);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), quantity.c_str(),
+			float2_t(position.x + 1.f, position.y + 1.f), XMVectorSet(0.f, 0.f, 0.f, 0.85f),
+			0.f, float2_t(1.f, 1.f), scale);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), quantity.c_str(), position,
+			Colors::White, 0.f, float2_t(1.f, 1.f), scale);
+	}
+
+	/* Texts the HUD update pass queued this frame: item/special slot cooldown seconds and
 	the vehicle Q/W/E, remaining seconds under each buff / debuff (Shared_BuffSlot_Common
 	cooldownText: YG760 10 px, #9BD979 for a buff, #E2C87A for a debuff, centred under the
 	icon). Vehicle-mode slots are excluded from the class loop above, so nothing doubles. */
@@ -8607,9 +8644,16 @@ void CMainApp::Update_WorldHealthBars(const f32_t fTimeDelta)
 		CLevel_CharacterSelect::Get_Active() && CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen();
 	const auto& hud = CCombatHUDViewModel::Get();
 	const auto gimmick = hud.Get_KoukuGimmick();
-	const bool cardMazeActive = LostArk::Shared::CARD_MAZE_ROLE::NONE != gimmick.eCardMazeRole ||
-		LostArk::Shared::KOUKU_HUD_MODE::MAZE == hud.Get_Player().eKoukuHudMode;
-	m_pWorldHealthBarView->Update(fTimeDelta, hud.Get_WorldHealthBars(),
+	const auto* arena = currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ? CLevel_KakulSaydonArena::Get_Active() : nullptr;
+	const auto* subject = arena ? arena->Get_CameraPlayerSnapshot() : nullptr;
+	const bool cardMazeActive = subject ? subject->eKoukuHudMode == LostArk::Shared::KOUKU_HUD_MODE::MAZE :
+		(LostArk::Shared::CARD_MAZE_ROLE::NONE != gimmick.eCardMazeRole ||
+		 LostArk::Shared::KOUKU_HUD_MODE::MAZE == hud.Get_Player().eKoukuHudMode);
+	auto worldBars = hud.Get_WorldHealthBars();
+	if (arena) std::erase_if(worldBars, [arena](const auto& state) {
+		return state.isPlayer && !arena->Should_ShowPlayerWorldUI(state.iNetEntityId);
+	});
+	m_pWorldHealthBarView->Update(fTimeDelta, worldBars,
 		isSupportedLevel && !Is_RuntimeUIScreenSuppressed() && !characterPresentation && !Is_MvpResultPageOpen(), cardMazeActive);
 }
 
@@ -8999,7 +9043,7 @@ void CMainApp::RenderDeadSceneText()
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
 	const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ?
 		(rects.fTitleHeight * 0.6f / vTitleMeasured.y) : 1.f;
-	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str(),
+	if (!rects.isSpectating) CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str(),
 		float2_t((rects.fTitleX + rects.fTitleWidth * 0.5f) * textScaleX,
 			(rects.fTitleY + rects.fTitleHeight * 0.5f) * textScaleY),
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fTitleScale * textUiScale);
@@ -9029,7 +9073,7 @@ void CMainApp::RenderDeadSceneText()
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strReviveMessage.c_str());
 	const f32_t fMessageScale = (vMessageMeasured.y > 0.f) ?
 		(rects.fMessageHeight * 0.6f / vMessageMeasured.y) : 1.f;
-	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strReviveMessage.c_str(),
+	if (!rects.isSpectating) CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strReviveMessage.c_str(),
 		float2_t((rects.fMessageX + rects.fMessageWidth * 0.5f) * textScaleX,
 			(rects.fMessageY + rects.fMessageHeight * 0.5f) * textScaleY),
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fMessageScale * textUiScale);
@@ -9459,12 +9503,18 @@ void CMainApp::Update_EstherGauge(const f32_t fTimeDelta)
 	/* Each raid grants its own three esther skills, in its own order -- the same three the raid
 	entry screen lists for that raid, so the window a player sees inside the raid matches what
 	they were shown on the way in. The level is the raid: this only runs in an arena level, and
-	the document's authored icons are Valtan's, so only Kakul needs to be swapped in. */
+	this shared view survives level transitions, so every raid sets all three icons. */
 	if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel)
 	{
 		m_pEstherUIView->Set_SlotTexture("Esther_Slot1_Icon", "UI/Esther/esther_icon_3.png");
 		m_pEstherUIView->Set_SlotTexture("Esther_Slot2_Icon", "UI/Esther/esther_portrait_wei.png");
 		m_pEstherUIView->Set_SlotTexture("Esther_Slot3_Icon", "UI/Esther/esther_icon_4.png");
+	}
+	else
+	{
+		m_pEstherUIView->Set_SlotTexture("Esther_Slot1_Icon", "UI/Esther/esther_portrait_bahuntur.png");
+		m_pEstherUIView->Set_SlotTexture("Esther_Slot2_Icon", "UI/Esther/esther_portrait_wei.png");
+		m_pEstherUIView->Set_SlotTexture("Esther_Slot3_Icon", "UI/Esther/esther_portrait_sillian.png");
 	}
 
 	const uint32_t gauge = CCombatHUDViewModel::Get().Get_EstherGauge();
@@ -9870,12 +9920,15 @@ void CMainApp::RenderDamageNumbers()
 	that tick under the same serverTick, so advancing the cursor inside the loop would drop all
 	but the first number of a multi-target hit. */
 	const uint32_t iSpawnedUpToTick = m_iLastRenderedDamageServerTick;
+	const auto* arena = currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ? CLevel_KakulSaydonArena::Get_Active() : nullptr;
 	for (const HUD_DAMAGE_EVENT& damageEvent : damageEvents)
 	{
 		if (damageEvent.iServerTick <= iSpawnedUpToTick)
 			continue;
 		m_iLastRenderedDamageServerTick =
 			(std::max)(m_iLastRenderedDamageServerTick, damageEvent.iServerTick);
+		if (arena && !arena->Should_ShowDamageWorldUI(damageEvent.Event.iTargetNetEntityId,
+			damageEvent.Event.iSourcePlayerId)) continue;
 		/* A shard belongs to the one hunter who was dealt that suit, so the
 		other hunters' shards are not drawn on this screen. */
 		if (LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE !=
@@ -9886,6 +9939,8 @@ void CMainApp::RenderDamageNumbers()
 			continue;
 		}
 		FLOATING_DAMAGE_NUMBER number{};
+		number.iTargetNetEntityId = damageEvent.Event.iTargetNetEntityId;
+		number.iSourcePlayerId = damageEvent.Event.iSourcePlayerId;
 		number.dSpawnSeconds = Product_Now_Seconds();
 		number.vWorldPosition = float3_t(
 			damageEvent.Event.fPositionX,
@@ -9978,6 +10033,7 @@ void CMainApp::RenderDamageNumbers()
 	};
 	for (const FLOATING_DAMAGE_NUMBER& number : m_FloatingDamageNumbers)
 	{
+		if (arena && !arena->Should_ShowDamageWorldUI(number.iTargetNetEntityId, number.iSourcePlayerId)) continue;
 		const f64_t dAge = dNow - number.dSpawnSeconds;
 		/* Walk the element's own frames: hold the last key once the timeline has run out. */
 		const bool_t isHeal = LostArk::Shared::DAMAGE_HIT_FLAG::HEAL == number.eHitFlag;
@@ -10036,6 +10092,7 @@ void CMainApp::RenderDamageNumbers()
 		switch (number.eHitFlag)
 		{
 		case LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL:
+		case LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL_DAMAGE_REDUCED:
 			vColor = XMVectorSet(1.f, 204.f / 255.f, 0.f, fAlpha); break;
 		case LostArk::Shared::DAMAGE_HIT_FLAG::MISS:
 			vColor = XMVectorSet(0.6f, 0.6f, 0.6f, fAlpha); break;
@@ -10072,6 +10129,21 @@ void CMainApp::RenderDamageNumbers()
 		}
 		CGameInstance::Get().Draw_Text(TEXT("Font_EventDamage"), strAmount.c_str(),
 			vDrawPosition, vColor, 0.f, float2_t(0.5f, 0.5f), fScale);
+		if (number.eHitFlag == LostArk::Shared::DAMAGE_HIT_FLAG::DAMAGE_REDUCED ||
+			number.eHitFlag == LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL_DAMAGE_REDUCED)
+		{
+			constexpr const wchar_t* label = L"\uD53C\uD574 \uAC10\uC18C";
+			const float2_t measured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), label);
+			const f32_t height = fFontPx * stageScale * 0.72f;
+			const f32_t scale = measured.y > 0.f ? height / measured.y : fScale * 0.72f;
+			const float2_t position(vDrawPosition.x,
+				vDrawPosition.y + fFontPx * stageScale * 0.5f + height * 0.5f + 2.f * stageScale);
+			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), label,
+				float2_t(position.x + stageScale, position.y + stageScale),
+				vGlowColor, 0.f, float2_t(0.5f, 0.5f), scale);
+			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), label, position,
+				XMVectorSet(1.f, 1.f, 1.f, fAlpha), 0.f, float2_t(0.5f, 0.5f), scale);
+		}
 	}
 }
 

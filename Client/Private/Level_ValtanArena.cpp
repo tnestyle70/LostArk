@@ -2143,19 +2143,11 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
                 }
     }
 
-	const shared_ptr<CCharacter> localCharacter =
-		m_Replication.Get_LocalCharacter();
-	if (nullptr != localCharacter)
+	const auto localTransform = m_Replication.Get_CameraTarget();
+	if (nullptr != localTransform)
 	{
-		const shared_ptr<CTransform> localTransform =
-			localCharacter->Get_Transform();
-		if (nullptr != localTransform)
-		{
-			XMStoreFloat3(
-				&input.vLocalPlayerPosition,
-				localTransform->Get_State(STATE::POSITION));
-			input.hasLocalPlayerPosition = true;
-		}
+		XMStoreFloat3(&input.vLocalPlayerPosition, localTransform->Get_State(STATE::POSITION));
+		input.hasLocalPlayerPosition = true;
 	}
 
 #ifdef _DEBUG
@@ -2568,13 +2560,12 @@ void CLevel_ValtanArena::Update_DeadScene(
 
 	/* Real Render_DeadScene's own whole-screen AddRectFilled(IM_COL32(0,0,0,160)), now a real
 	slot (DeadScene_Dim, White1x1 tinted) instead of a raw ImGui draw call. */
-	m_pDeadSceneView->Set_SlotVisible("DeadScene_Dim", isDead);
-	m_pDeadSceneView->Set_SlotVisible("DeadScene_PanelBg", isDead);
-	m_pDeadSceneView->Set_SlotVisible("DeadScene_WingedArch", isDead);
-	m_pDeadSceneView->Set_SlotVisible("DeadScene_Effect", isDead);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_Dim", isDead && !m_Replication.Is_Spectating());
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_PanelBg", isDead && !m_Replication.Is_Spectating());
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_WingedArch", isDead && !m_Replication.Is_Spectating());
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_Effect", isDead && !m_Replication.Is_Spectating());
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_ReviveButton", isDead);
-	/* Spectate is not wired to any server/client command yet -- these two slots exist only
-	so the button and its border can be positioned in the HUD Layout Tool. */
+	// Spectating changes the presentation target; revive remains a typed gameplay command.
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_SpectateButton", isDead);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_SpectateBorder", isDead);
 	/* Tool-authoring placeholders only (mark where RenderDeadSceneText's labels land) --
@@ -2596,6 +2587,7 @@ void CLevel_ValtanArena::Update_DeadScene(
 	is a separate free-standing box above the revive button, unrelated to that label. */
 	{
 		HUD_DEADSCENE_TEXT_RECTS textRects;
+		textRects.isSpectating = m_Replication.Is_Spectating();
 		textRects.isValid =
 			m_pDeadSceneView->Get_SlotRect("DeadScene_TitleTextMarker",
 				textRects.fTitleX, textRects.fTitleY,
@@ -2612,6 +2604,23 @@ void CLevel_ValtanArena::Update_DeadScene(
 		CCombatHUDViewModel::Get().Set_DeadSceneTextRects(textRects);
 	}
 
+	f32_t spectateX = 0.f, spectateY = 0.f, spectateWidth = 0.f, spectateHeight = 0.f;
+	if (m_pDeadSceneView->Get_SlotRect("DeadScene_SpectateButton", spectateX, spectateY, spectateWidth, spectateHeight))
+	{
+		auto& router = CUIInputRouter::Get();
+		const auto width = m_pDeadSceneView->Get_ResolutionWidth();
+		const auto height = m_pDeadSceneView->Get_ResolutionHeight();
+		if (router.Is_Hovered(spectateX, spectateY, spectateWidth, spectateHeight, width, height))
+		{
+			router.Claim_Mouse_This_Frame();
+			if (router.Is_Clicked(spectateX, spectateY, spectateWidth, spectateHeight, width, height) &&
+				m_Replication.Cycle_SpectateTarget())
+			{
+				CMainApp::Play_UIButtonClickSound();
+				Bind_CameraToLocalCharacter();
+			}
+		}
+	}
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (!m_pDeadSceneView->Get_SlotRect(
 		"DeadScene_ReviveButton", fX, fY, fWidth, fHeight))
@@ -3177,9 +3186,10 @@ bool_t CLevel_ValtanArena::Bind_CameraToLocalCharacter()
 	if (nullptr == m_pCamera)
 		return false;
 
-	const shared_ptr<CCharacter> localCharacter =
-		m_Replication.Get_LocalCharacter();
-	if (nullptr == localCharacter)
+	m_pCamera->Set_SpectateFrozen(m_Replication.Is_SpectateTargetDead());
+	const auto transform = m_Replication.Resolve_CameraTarget();
+	const auto localCharacter = m_Replication.Get_CameraCharacter();
+	if (nullptr == transform)
 	{
 		m_pCameraTarget.reset();
 		if (m_bCinematicCameraApplied)
@@ -3201,13 +3211,9 @@ bool_t CLevel_ValtanArena::Bind_CameraToLocalCharacter()
 		return true;
 	}
 	CCharacter::Set_MapPresentationSizeProfile(m_FollowCameraProfile);
-	if (m_pCameraTarget.lock() == localCharacter)
+	if (m_pCamera->Get_FollowTarget() == transform)
 		return true;
 
-	const shared_ptr<CTransform> transform =
-		localCharacter->Get_Transform();
-	if (nullptr == transform)
-		return false;
 
 	m_pCameraTarget = localCharacter;
 	if (m_bCinematicCameraApplied)

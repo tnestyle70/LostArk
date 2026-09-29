@@ -70,11 +70,12 @@ public:
 	void Update(f32_t fTimeDelta);
 	/* Called from the level's Render pass; draws nothing when the anchor is gone
 	or projects behind the camera. */
-	void Render() const;
+	void Render(std::uint32_t onlyOwnerEntityId = 0u) const;
 
 private:
 	struct OCCURRENCE
 	{
+		std::uint32_t				iOwnerEntityId = 0u;
 		std::wstring				strWord;
 		std::uint32_t				iColorRgb = 0xFFFFFFu;
 		std::weak_ptr<CCharacter>	pAnchor;

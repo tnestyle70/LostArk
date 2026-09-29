@@ -242,6 +242,15 @@ namespace
 					const auto next = stageByAction.find(target->Get_String());
 					if (stageByAction.end() == next)
 						return false;
+					std::string patternId, sourceStageId, targetStageId;
+					if (Read_String(pattern, "patternId", false, patternId) &&
+						Read_String(rows[index], "stageId", false, sourceStageId) &&
+						Read_String(rows[next->second], "stageId", false, targetStageId) &&
+						(patternId == "VALTAN_TRASH" || patternId == "VALTAN_TRASH_CATCH_IF") &&
+						(sourceStageId == "RETRY_EXHAUSTED" || sourceStageId == "CATCH_SLAM" ||
+						 sourceStageId == "EXECUTE_TAIL") && targetStageId == "RECHARGE_WAIT_02" &&
+						branches->Get_Array().size() == 1u && outcome == "TIMEOUT")
+						continue;
 					successors[index].push_back(next->second);
 					++incoming[next->second];
 				}

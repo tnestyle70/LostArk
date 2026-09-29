@@ -107,186 +107,49 @@ class ValtanPartBreakRecoveryContractTests(unittest.TestCase):
                 for occurrence in stage["animation"]["occurrences"]
             ))
 
-    def test_recovery_enter_owns_one_exact_boss_relative_cardinal_volley(self) -> None:
+    def test_part_break_recovery_spawns_no_rocks_in_source_or_product(self) -> None:
         gameplay = _json("Data/Valtan/Valtan.gameplay.json")
         pattern = _one(gameplay["patterns"], "patternId", "VALTAN_PART_BREAK")
-        recovery = _one(
-            pattern["stages"], "stageId", "PART_BREAK_RECOVERY"
-        )
-        self.assertEqual(
-            [{
-                "eventId": "valtan.part-break.cardinal-rocks",
-                "trigger": "ENTER",
-                "kind": "SPAWN_COMBAT_OBJECT_VOLLEY",
-                "combatObjectArchetypeId":
-                    "combatobject.valtan.part-break.rock",
-                "volleyPolicy": "BOSS_RELATIVE",
-                "countPerResolvedTarget": 4,
-                "layout": {
-                    "kind": "RADIAL_AROUND_BOSS",
-                    "radiusM": 4.9497475,
-                    "startAngleDegrees": 45.0,
-                    "angleStepDegrees": 90.0,
-                    "mappingBasis": "PROJECT_TUNED",
-                },
-                "spawnSchedule": {
-                    "kind": "INTERVAL",
-                    "count": 1,
-                    "firstOffsetMs": 0,
-                    "intervalMs": 0,
-                },
-                "arenaRandom": {"kind": "NONE"},
-                "allowOverlap": False,
-                "maximumTotalObjects": 4,
-            }],
-            recovery["events"],
-        )
-
+        for stage in pattern["stages"]:
+            self.assertFalse(any(
+                event["kind"].startswith("SPAWN_COMBAT_OBJECT")
+                for event in stage["events"]
+            ))
         encounter = _json("Data/Encounters/Valtan/ValtanEncounter.json")
-        product_pattern = _one(
-            encounter["patterns"], "patternId", "VALTAN_PART_BREAK"
-        )
-        product_recovery = _one(
-            product_pattern["stages"], "stageId", "PART_BREAK_RECOVERY"
-        )
-        self.assertEqual(5183, product_recovery["durationMs"])
-        self.assertEqual(
-            {
-                "trigger": "ENTER",
-                "kind": "SPAWN_COMBAT_OBJECT_VOLLEY",
-                "targetId": "combatobject.valtan.part-break.rock",
-                "targetingPolicy": "BOSS_RELATIVE",
-                "countPerResolvedTarget": 4,
-                "layout": "RADIAL",
-                "radiusM": 4.9497475,
-                "startAngleDegrees": 45.0,
-                "angleStepDegrees": 90.0,
-                "allowOverlap": False,
-                "maximumTotalObjects": 4,
-                "spawnCount": 1,
-                "firstSpawnOffsetMs": 0,
-                "spawnIntervalMs": 0,
-                "arenaRandomCount": 0,
-                "arenaRandomRadiusM": 0,
-                "arenaHeightToleranceM": 0,
-                "arenaAnchorPolicy": "NONE",
-            },
-            product_recovery["actions"][0],
-        )
+        product = _one(encounter["patterns"], "patternId", "VALTAN_PART_BREAK")
+        for stage in product["stages"]:
+            self.assertFalse(any(
+                action["kind"].startswith("SPAWN_COMBAT_OBJECT")
+                for action in stage.get("actions", [])
+            ))
+        recovery = _one(product["stages"], "stageId", "PART_BREAK_RECOVERY")
+        self.assertEqual(5183, recovery["durationMs"])
 
-    def test_distinct_carrier_has_exact_owner_damage_visual_and_sound(self) -> None:
-        authoring = _json("Data/Valtan/Valtan.combatobjects.json")
-        authored = _one(
-            authoring["objects"],
-            "combatObjectArchetypeId",
-            "combatobject.valtan.part-break.rock",
-        )
-        self.assertEqual(6200, authored["lifetimeMs"])
-        self.assertEqual(1.5, authored["coverRadiusM"])
-        self.assertEqual([], authored["presentationEvents"])
-        self.assertEqual(1, len(authored["hits"]))
-        authored_hit = authored["hits"][0]
-        self.assertEqual(
-            "hit.valtan.part-break.rock.explode", authored_hit["hitId"]
-        )
-        self.assertEqual({"kind": "TIMED", "atMs": 5000}, authored_hit["trigger"])
-        self.assertEqual({"kind": "CIRCLE", "outerRadiusM": 3.0}, authored_hit["shape"])
-        self.assertEqual("damage.valtan.stomp", authored_hit["serverDamageProfileId"])
-
-        product = _json("Data/Encounters/Valtan/ValtanCombatObjects.json")
-        carrier = _one(
-            product["objects"],
-            "combatObjectArchetypeId",
-            "combatobject.valtan.part-break.rock",
-        )
-        self.assertEqual("VALTAN_PART_BREAK", carrier["ownerPatternId"])
-        self.assertEqual(
-            "valtan.reaction.part-break.recovery",
-            carrier["ownerStageActionId"],
-        )
-        self.assertEqual("FIXED_AREA", carrier["kind"])
-        self.assertEqual("BOSS_POSITION", carrier["originPolicy"])
-        self.assertEqual("NONE", carrier["directionPolicy"])
-        self.assertEqual(6200, carrier["lifeMs"])
-        self.assertEqual(1.5, carrier["coverRadiusM"])
-        self.assertNotIn("presentationEvents", carrier)
-        self.assertEqual(1, len(carrier["hits"]))
-        carrier_hit = carrier["hits"][0]
-        self.assertEqual(
-            "hit.valtan.part-break.rock.explode", carrier_hit["hitId"]
-        )
-        self.assertEqual("TIMED", carrier_hit["trigger"])
-        self.assertEqual(5000, carrier_hit["atMs"])
-        self.assertEqual("CIRCLE", carrier_hit["hitShape"])
-        self.assertEqual(3.0, carrier_hit["hitOuterRadius"])
-        self.assertEqual("damage.valtan.stomp", carrier_hit["serverDamageProfileId"])
-
-        catalog = _json("Data/Actors/BossCatalog.json")
-        boss = _one(catalog["bosses"], "archetypeId", "BOSS_VALTAN")
-        visual = _one(
-            boss["combatObjectVisuals"],
-            "combatObjectArchetypeId",
-            "combatobject.valtan.part-break.rock",
-        )
-        self.assertEqual(
-            {
-                "combatObjectArchetypeId":
-                    "combatobject.valtan.part-break.rock",
-                "clientVisualId":
-                    "combatobject.visual.valtan.part-break.rock.v1",
-                "effectAssetId": "effect.valtan.ground-roar.rock.active",
-                "hitEffectAssetId":
-                    "effect.valtan.ground-roar.rock.explode",
-            },
-            visual,
-        )
-
-        object_cues = _json(
-            "Data/Animation/Authored/Valtan/"
-            "Valtan.combatobjectsoundcues.json"
-        )
-        terminal = _one(
-            object_cues["cues"],
-            "bindingId",
-            "cue.sound.valtan.combatobject.part-break.rock.explode.01",
-        )
-        self.assertEqual(
-            {
-                "bindingId":
-                    "cue.sound.valtan.combatobject.part-break.rock.explode.01",
-                "combatObjectArchetypeId":
-                    "combatobject.valtan.part-break.rock",
-                "hitId": "hit.valtan.part-break.rock.explode",
-                "soundBank": "S_Mob_G_Voltan2",
-                "soundEvent": "G_Voltan2_Attack09_ProjExp1",
-            },
-            terminal,
-        )
-
-        pattern_cues = _json(
-            "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json"
-        )
-        creation = _one(
-            pattern_cues["cues"],
-            "bindingId",
-            "cue.sound.valtan.reaction.part-break.recovery.clip-01.01",
-        )
-        self.assertEqual("VALTAN_PART_BREAK", creation["patternId"])
-        self.assertEqual("PART_BREAK_RECOVERY", creation["stageId"])
-        self.assertEqual(
-            "valtan.reaction.part-break.recovery", creation["actionId"]
-        )
-        self.assertEqual(
-            "valtan.reaction.part-break.recovery.clip.01",
-            creation["clipOccurrenceId"],
-        )
-        self.assertEqual("G_Voltan2_Attack09_ProjCreat1", creation["soundEvent"])
-        self.assertEqual(1, creation["startMs"])
-
-        sound_catalog = _json("Data/Sound/CharacterSoundCatalog.json")
-        bank = sound_catalog["classes"]["Valtan"]
-        self.assertEqual(4, len(bank["G_Voltan2_Attack09_ProjCreat1"]))
-        self.assertEqual(4, len(bank["G_Voltan2_Attack09_ProjExp1"]))
+    def test_part_break_rock_carrier_visual_and_sound_are_removed(self) -> None:
+        archetype = "combatobject.valtan.part-break.rock"
+        for path in ("Data/Valtan/Valtan.combatobjects.json",
+                     "Data/Encounters/Valtan/ValtanCombatObjects.json"):
+            self.assertNotIn(archetype, {
+                row["combatObjectArchetypeId"] for row in _json(path)["objects"]
+            })
+        boss = _one(_json("Data/Actors/BossCatalog.json")["bosses"],
+                    "archetypeId", "BOSS_VALTAN")
+        self.assertNotIn(archetype, {
+            row["combatObjectArchetypeId"] for row in boss["combatObjectVisuals"]
+        })
+        cues = _json("Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json")
+        self.assertFalse(any(row["combatObjectArchetypeId"] == archetype
+                             for row in cues["cues"]))
+        pattern_cues = _json("Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json")
+        self.assertFalse(any(
+            row["patternId"] == "VALTAN_PART_BREAK"
+            and row["soundEvent"] == "G_Voltan2_Attack09_ProjCreat1"
+            for row in pattern_cues["cues"]
+        ))
+        # Original ground-roar rocks remain a separate, valid encounter visual.
+        self.assertIn("combatobject.valtan.ground-roar.rock", {
+            row["combatObjectArchetypeId"] for row in boss["combatObjectVisuals"]
+        })
 
     def test_runtime_projects_damage_cover_and_uses_one_hit_pulse(self) -> None:
         room = _text("Server/Private/GameRoom.cpp")

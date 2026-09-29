@@ -90,6 +90,8 @@ namespace Client
 		std::vector<std::size_t> EdgeIndices;
 		std::uint64_t iDurationMs = 0u;
 		bool bTerminal = false;
+		// One displayed pass stops at a retry edge; the Server continues until countered.
+		bool bRepeats = false;
 	};
 
 	/* One preview-only branch choice for a Stage action. It never mutates the
