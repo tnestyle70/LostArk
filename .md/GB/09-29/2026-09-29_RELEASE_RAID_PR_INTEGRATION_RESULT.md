@@ -114,3 +114,17 @@ AGENTS의 Client/UI 자율 실행 금지에 따라 실제 Client 네 창/네 PC�
   실행 완료로 기록하지 않는다. Client/UI 및 실제 4인 플레이도 실행하지 않았다.
 
 최종 Release 빌드 및 ZIP 검증 결과는 아래 후속 항목에 기록한다.
+
+### 저녁 통합본 최종 배포 완료
+
+- Release Product Build PASS, skip 없음, missing/invalid runtime input 모두 0.
+  증거: `C:\Users\user\Desktop\LostArk\out\BuildPipeline\runs\20260929T140535348Z-release-product.json`. Client 288 OBJ와 36 CSO가 재생성됐고 링크까지 성공했다.
+- ZIP: `C:\Users\user\Desktop\LostArk-Release-20260929.zip`. 166871747 bytes, SHA256 `640ce4fd489cdee73ecf6e60f442e3570f261604de5f410ac37aa259f5673e46`.
+- ZIP CRC, manifest 모든 파일 SHA256, numeric source 576개, nonlaunch preflight PASS.
+  protocol 124, source revision 2469, sequence revision 183, payload 2757개, compiled shader 256개.
+  Resources는 포함하지 않고 기존 외부 Resources를 선택한다.
+- 이전 ZIP 백업: `C:\Users\user\Desktop\LostArk-Release-20260929.backup-20260929-230707-473865.zip`.
+- ZIP의 소스 기준 commit은 `f7b56113d7f20855b495eaf85a49f957994ea043`다. 이후 문서 기록만 추가하며 제품 파일은 동일하다.
+- 통합 PR: https://github.com/tnestyle70/LostArk/pull/485. #482와 #484의 head를 merge ancestry로 포함한다.
+- 이번 빌드는 성공했지만 실제 Client 실행, 4인 레이드 완주 및 캐릭터 전환 화면 검증은
+  하지 않았다. 이전 #480의 실행 결과를 이번 통합본의 실행 결과로 대체하지 않는다.
