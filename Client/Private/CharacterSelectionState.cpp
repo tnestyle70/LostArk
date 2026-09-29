@@ -1,5 +1,8 @@
+#include <WinSock2.h>
 #include "CharacterSelectionState.h"
 
+#include "CharacterRoster.h"
+#include "CombatHUDViewModel.h"
 #include "Network/PacketMessages.h"
 
 #include <Windows.h>
@@ -16,12 +19,38 @@ namespace
 		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
 			LostArk::Shared::CHARACTER_CLASS_ID::END;
 		std::string strNickname;
+		std::string strAppearanceJson;
+		bool_t bNewCharacter = false;
 	};
 
 	std::mutex g_SelectionMutex;
 	std::optional<LostArk::Shared::CHARACTER_CLASS_ID> g_SelectedClass;
 	std::optional<std::string> g_CreatedNickname;
 	std::optional<PENDING_CHARACTER_CREATION> g_PendingCreation;
+	std::string g_ActiveAppearanceJson;
+
+	bool_t Stage_Pending(
+		const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
+		const std::string_view nickname, const std::string_view appearanceJson,
+		const bool_t bNewCharacter)
+	{
+		if (!LostArk::Shared::Is_Supported_Playable_Character_Class(
+				characterClass) ||
+			!LostArk::Shared::Is_Valid_PlayerNickname(nickname))
+		{
+			return false;
+		}
+
+		PENDING_CHARACTER_CREATION staged{};
+		staged.eCharacterClass = characterClass;
+		staged.strNickname.assign(nickname);
+		staged.strAppearanceJson.assign(appearanceJson);
+		staged.bNewCharacter = bNewCharacter;
+
+		std::scoped_lock lock{ g_SelectionMutex };
+		g_PendingCreation = std::move(staged);
+		return true;
+	}
 
 	const std::string& Get_AuditionNickname()
 	{
@@ -64,22 +93,64 @@ bool_t Client::CCharacterSelectionState::Try_Get_SelectedClass(
 
 bool_t Client::CCharacterSelectionState::Stage_Creation(
 	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
-	const std::string_view nickname)
+	const std::string_view nickname, const std::string_view appearanceJson)
 {
-	if (!LostArk::Shared::Is_Supported_Playable_Character_Class(
-			characterClass) ||
-		!LostArk::Shared::Is_Valid_PlayerNickname(nickname))
-	{
-		return false;
-	}
+	return Stage_Pending(characterClass, nickname, appearanceJson, true);
+}
 
-	PENDING_CHARACTER_CREATION staged{};
-	staged.eCharacterClass = characterClass;
-	staged.strNickname.assign(nickname);
+bool_t Client::CCharacterSelectionState::Stage_ExistingEntry(
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
+	const std::string_view nickname, const std::string_view appearanceJson)
+{
+	return Stage_Pending(characterClass, nickname, appearanceJson, false);
+}
 
+std::string Client::CCharacterSelectionState::Get_ActiveAppearanceJson()
+{
 	std::scoped_lock lock{ g_SelectionMutex };
-	g_PendingCreation = std::move(staged);
-	return true;
+	return g_ActiveAppearanceJson;
+}
+
+void Client::CCharacterSelectionState::Save_ActiveWorldState()
+{
+	LostArk::Shared::CHARACTER_CLASS_ID eClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
+	std::string strNickname;
+	{
+		std::scoped_lock lock{ g_SelectionMutex };
+		if (!g_SelectedClass.has_value() || !g_CreatedNickname.has_value())
+			return;
+		eClass = *g_SelectedClass;
+		strNickname = *g_CreatedNickname;
+	}
+	const CCombatHUDViewModel& ViewModel = CCombatHUDViewModel::Get();
+	const LostArk::Shared::S2C_INVENTORY_SNAPSHOT& Inventory = ViewModel.Get_Inventory();
+	const auto& Player = ViewModel.Get_Player();
+	/* No inventory answer yet (left before it arrived, or a direct entry) is not a state to save. */
+	if (!Player.isValid || (Inventory.Items.empty() && 0u == Inventory.iSilver && 0u == Inventory.iGold))
+		return;
+	CHARACTER_WORLD_STATE State{};
+	State.bValid = true;
+	State.Items = Inventory.Items;
+	State.iSilver = Inventory.iSilver;
+	State.iGold = Inventory.iGold;
+	State.iHonorTitleId = Player.iHonorTitleId;
+	std::string strStatus;
+	if (!CCharacterRoster::Update_WorldState(eClass, strNickname, State, strStatus))
+		OutputDebugStringA(("[CharacterSelection] World state save failed: " + strStatus + "\n").c_str());
+}
+
+bool_t Client::CCharacterSelectionState::Try_Get_ActiveWorldState(CHARACTER_WORLD_STATE& outState)
+{
+	LostArk::Shared::CHARACTER_CLASS_ID eClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
+	std::string strNickname;
+	{
+		std::scoped_lock lock{ g_SelectionMutex };
+		if (!g_SelectedClass.has_value() || !g_CreatedNickname.has_value())
+			return false;
+		eClass = *g_SelectedClass;
+		strNickname = *g_CreatedNickname;
+	}
+	return CCharacterRoster::Try_Get_WorldState(eClass, strNickname, outState);
 }
 
 bool_t Client::CCharacterSelectionState::Has_PendingCreation()
@@ -95,7 +166,19 @@ bool_t Client::CCharacterSelectionState::Commit_PendingCreation()
 		return false;
 
 	g_SelectedClass = g_PendingCreation->eCharacterClass;
+	/* A new character joins the saved roster only once Bern is really entered. Failing to save
+	it never fails the entry: the character plays, it just is not on a card next time. */
+	if (g_PendingCreation->bNewCharacter)
+	{
+		size_t iNewIndex = 0;
+		std::string strRosterStatus;
+		if (!CCharacterRoster::Add(g_PendingCreation->eCharacterClass,
+			g_PendingCreation->strNickname, g_PendingCreation->strAppearanceJson,
+			iNewIndex, strRosterStatus))
+			OutputDebugStringA(("[CharacterSelection] Roster add failed: " + strRosterStatus + "\n").c_str());
+	}
 	g_CreatedNickname = std::move(g_PendingCreation->strNickname);
+	g_ActiveAppearanceJson = std::move(g_PendingCreation->strAppearanceJson);
 	g_PendingCreation.reset();
 	return true;
 }

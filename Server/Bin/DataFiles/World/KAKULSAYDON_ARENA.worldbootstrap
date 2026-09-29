@@ -11,44 +11,44 @@ boss.kakulsaydon.g2.kouku	boss	BOSS_KAKULSAYDON_G2_KOUKU	ENCOUNTER_KAKULSAYDON_G
 boss.kakulsaydon.g3.saydon	boss	BOSS_KAKULSAYDON_G3_SAYDON	ENCOUNTER_KAKULSAYDON_G1	-0.0700000003	1.32000005	942.330017	223	0
 cardmaze.return	triggerBox	-	-	0.280000001	-0.00999999978	1351.65002	0	0	1	1	1	0	1	0	movePlayer	5	3.38000011	10.5600004	323.920013	1.20000005	0
 cardmaze.telescope	triggerBox	-	-	0.280000001	-0.00999999978	1351.65002	0	1	1.5	1.5	1.5	0	1	0	claimCardMazeTelescope	1	cardmaze.telescope
-jump.1	triggerBox	-	-	3.13100004	8.64000034	-17.3759995	-23	1	1	0.300000012	1	0	1	0	movePlayer	5	-0.148000002	6.11000013	-14.566	0.800000012	1
-jump.2	triggerBox	-	-	-0.547999978	6.10984421	-14.6660004	68.5	1	0.5	0.200000003	1	0	1	0	movePlayer	5	-1.20000005	3.55999994	-16.6000004	0.800000012	1
-jump.3	triggerBox	-	-	-0.407999992	3.55999923	-19.4060001	68.5	1	0.5	0.100000001	1.10000002	0	1	0	movePlayer	5	2.58599997	1.023	-24.7789993	0.800000012	1
+jump.1	triggerBox	-	-	3.13100004	8.64000034	-17.3759995	-23	1	1	0.300000012	1	0	1	1	movePlayer	5	-0.148000002	6.11000013	-14.566	0.800000012	1
+jump.2	triggerBox	-	-	-0.547999978	6.10984421	-14.6660004	68.5	1	0.5	0.200000003	1	0	1	1	movePlayer	5	-1.20000005	3.55999994	-16.6000004	0.800000012	1
+jump.3	triggerBox	-	-	-0.407999992	3.55999923	-19.4060001	68.5	1	0.5	0.100000001	1.10000002	0	1	1	movePlayer	5	2.58599997	1.023	-24.7789993	0.800000012	1
 Mario1_go	triggerBox	-	-	3.38000011	1.32000005	945.330017	44	0	1	0.5	1	1	1	0	movePlayer	6	-1148.703	-11.5246	-910.572998	1.5	0	MARIO
 Mario1_Intro	triggerBox	-	-	-1148.703	-11.5246	-910.572998	0	1	3	2	3	1	1	0	playSequence	1	world.sequence.instance.mario_m1_intro
-Mario1_Trigger_1	triggerBox	-	-	-1170.71594	-11.033	-930.359009	-47	1	1	0.100000001	1	1	1	0	movePlayer	5	-1172.90002	-14.0799999	-934.090027	0.600000024	1.20000005
+Mario1_Trigger_1	triggerBox	-	-	-1170.71594	-11.033	-930.359009	-47	1	1	0.100000001	1	1	1	1	movePlayer	5	-1172.90002	-14.0799999	-934.090027	0.600000024	1.20000005
 Mario1_Trigger_2	triggerBox	-	-	-1166.59595	-11.0299997	-926.494019	135	1	1	0.5	2.0999999	1	1	0	playSequence	1	world.sequence.instance.mario_m1_28
-Mario1_Trigger_3	triggerBox	-	-	-1188.54297	-13.9901953	-941.656982	51.5	1	2	0.5	1	1	1	0	movePlayer	5	-1193.03003	-11.5	-946.25	0.699999988	1.79999995
+Mario1_Trigger_3	triggerBox	-	-	-1188.54297	-13.9901953	-941.656982	51.5	1	2	0.5	1	1	1	1	movePlayer	5	-1193.03003	-11.5	-946.25	0.699999988	1.79999995
 Mario1_Trigger_4	triggerBox	-	-	-1201.33301	-11.500001	-959.445984	33.5	1	2	0.5	2	1	1	0	playSequence	1	world.sequence.instance.mario_m1_27
-Mario1_Trigger_5	triggerBox	-	-	-1207.36206	-11.5045977	-969.10498	34	1	2	0.5	2	0	1	0	movePlayer	6	-2	1.317626	942	1.5	0	NONE
+Mario1_Trigger_5	triggerBox	-	-	-1207.36206	-11.5045977	-969.10498	34	1	2	0.5	2	0	1	1	movePlayer	6	-2	1.317626	942	1.5	0	NONE
 Mario2_Boom	triggerBox	-	-	-1452.45996	-9.02043533	-1202.08679	36.5	0	1	1	1	1	0	0
 Mario2_Boom_1	triggerBox	-	-	-1414.82605	-6.46043539	-1191.02405	78.5	0	1	1	1	1	0	0
 Mario2_Boom_2	triggerBox	-	-	-1447.68994	-3.90043545	-1223.35486	47	0	1	1	1	1	0	0
 Mario2_go	triggerBox	-	-	1.58000004	1.32000005	942.929993	40	0	1	0.5	1	1	1	0	movePlayer	5	-1434.48999	-9.02000999	-1175.96997	1.5	0
 Mario2_Intro	triggerBox	-	-	-1434.48999	-9.02000999	-1175.96997	0	1	3	2	3	0	1	0	playSequence	1	world.sequence.instance.mario_m2_intro
 Mario2_Trigger_1	triggerBox	-	-	-1440.58997	-9.02043438	-1184.66699	-56	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m2_spin
-Mario2_Trigger_2	triggerBox	-	-	-1447.71704	-9.02043533	-1196.14404	34	1	1	0.5	1	1	1	0	movePlayer	5	-1443.92004	-6.46000004	-1196.52002	0.699999988	1.79999995
+Mario2_Trigger_2	triggerBox	-	-	-1447.71704	-9.02043533	-1196.14404	34	1	1	0.5	1	1	1	1	movePlayer	5	-1443.92004	-6.46000004	-1196.52002	0.699999988	1.79999995
 Mario2_Trigger_3	triggerBox	-	-	-1433.92102	-6.46043491	-1194.82104	-9.5	0	1	0.5	1	1	0	0
-Mario2_Trigger_4	triggerBox	-	-	-1418.71301	-6.46043444	-1191.37927	78	1	1	0.5	1	1	1	0	movePlayer	5	-1419.72998	-3.9000001	-1195.22998	0.699999988	1.79999995
+Mario2_Trigger_4	triggerBox	-	-	-1418.71301	-6.46043444	-1191.37927	78	1	1	0.5	1	1	1	1	movePlayer	5	-1419.72998	-3.9000001	-1195.22998	0.699999988	1.79999995
 Mario2_Trigger_5	triggerBox	-	-	-1425.13196	-3.90043521	-1201.03198	46.5	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m2_29
 Mario2_Trigger_6	triggerBox	-	-	-1435.396	-3.90043545	-1210.83752	47	0	2	0.5	1	1	0	0
-Mario2_Trigger_7	triggerBox	-	-	-1446.08301	-3.90043497	-1221.57202	46.5	1	2	1	2	1	1	0	movePlayer	5	-2	1.317626	942	1.5	0
+Mario2_Trigger_7	triggerBox	-	-	-1446.08301	-3.90043497	-1221.57202	46.5	1	2	1	2	1	1	1	movePlayer	5	-2	1.317626	942	1.5	0
 Mario3_Boom	triggerBox	-	-	-1897.24097	-8.9670229	-1668.71497	37.5	0	1	1	1	1	0	0
 Mario3_Boom_1	triggerBox	-	-	-1885.05701	-8.9670229	-1651.20496	35	0	1	1	1	1	0	0
 Mario3_Boom_2	triggerBox	-	-	-1911.41797	-6.40875769	-1683.177	53	0	1	1	1	1	0	0
 Mario3_go	triggerBox	-	-	-0.920000017	1.32000005	941.22998	44	0	1	0.5	1	1	1	0	movePlayer	5	-1889.68994	-11.5299997	-1646.20996	1.5	0
 Mario3_Intro	triggerBox	-	-	-1889.68994	-11.5299997	-1646.20996	0	1	3	2	3	0	1	0	playSequence	1	world.sequence.instance.mario_m3_intro
 Mario3_Trigger_1	triggerBox	-	-	-1893.76904	-11.5270224	-1656.33215	21	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m4_45
-Mario3_Trigger_10	triggerBox	-	-	-1913.87903	-6.40875864	-1685.15601	56	1	1	0.5	1	1	1	0	movePlayer	5	-1907.51001	-8.97000027	-1679.81995	0.699999988	1
+Mario3_Trigger_10	triggerBox	-	-	-1913.87903	-6.40875864	-1685.15601	56	1	1	0.5	1	1	1	1	movePlayer	5	-1907.51001	-8.97000027	-1679.81995	0.699999988	1
 Mario3_Trigger_11	triggerBox	-	-	-1919.51001	-8.96702194	-1684.41699	68.5	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m4_52
-Mario3_Trigger_12	triggerBox	-	-	-1932.651	-8.96702194	-1689.995	68.5	1	1	0.5	1	0	1	0	movePlayer	5	-2	1.317626	942	1.5	0
+Mario3_Trigger_12	triggerBox	-	-	-1932.651	-8.96702194	-1689.995	68.5	1	1	0.5	1	0	1	1	movePlayer	5	-2	1.317626	942	1.5	0
 Mario3_Trigger_2	triggerBox	-	-	-1889.50098	-8.96702194	-1658.63098	32	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m4_48
 Mario3_Trigger_3	triggerBox	-	-	-1889.95996	-6.407022	-1662.03296	37	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m4_49
-Mario3_Trigger_4	triggerBox	-	-	-1898.26294	-11.5270214	-1666.60498	24.5	1	1	0.5	1	1	1	0	movePlayer	5	-1893.98999	-8.47000027	-1663.72998	0.600000024	1.20000005
-Mario3_Trigger_5	triggerBox	-	-	-1887.07605	-8.96702194	-1654.48804	34.5	1	1	0.5	1	1	1	0	movePlayer	5	-1887.85999	-6.40999985	-1659.82996	0.600000024	1.20000005
-Mario3_Trigger_6	triggerBox	-	-	-1895.953	-6.40702295	-1669.22095	37.5	1	1	0.5	1	1	1	0	movePlayer	5	-1911.43201	-3.84800005	-1684.83496	0.300000012	0
+Mario3_Trigger_4	triggerBox	-	-	-1898.26294	-11.5270214	-1666.60498	24.5	1	1	0.5	1	1	1	1	movePlayer	5	-1893.98999	-8.47000027	-1663.72998	0.600000024	1.20000005
+Mario3_Trigger_5	triggerBox	-	-	-1887.07605	-8.96702194	-1654.48804	34.5	1	1	0.5	1	1	1	1	movePlayer	5	-1887.85999	-6.40999985	-1659.82996	0.600000024	1.20000005
+Mario3_Trigger_6	triggerBox	-	-	-1895.953	-6.40702295	-1669.22095	37.5	1	1	0.5	1	1	1	1	movePlayer	5	-1911.43201	-3.84800005	-1684.83496	0.300000012	0
 Mario3_Trigger_7	triggerBox	-	-	-1911.43201	-3.84771752	-1684.83496	49	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m4_50
-Mario3_Trigger_8	triggerBox	-	-	-1919.52905	-3.84771729	-1691.70398	49.5	1	1	0.5	1	1	1	0	movePlayer	5	-1925.26697	-6.04899979	-1692.71594	0.600000024	1
+Mario3_Trigger_8	triggerBox	-	-	-1919.52905	-3.84771729	-1691.70398	49.5	1	1	0.5	1	1	1	1	movePlayer	5	-1925.26697	-6.04899979	-1692.71594	0.600000024	1
 Mario3_Trigger_9	triggerBox	-	-	-1919.76697	-6.40875912	-1689.01599	56	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m4_51
 Mario4_Boom	triggerBox	-	-	-1613.31421	-15.3704367	-1414.651	56	0	1	1	1	1	0	0
 Mario4_go	triggerBox	-	-	-3.11999989	1.32000005	939.530029	45.5	0	1	0.5	1	1	1	0	movePlayer	5	-1632.56995	-20.4899998	-1400.92004	1.5	0
@@ -57,13 +57,13 @@ Mario4_Tigger_1	triggerBox	-	-	-1637.97095	-20.4904346	-1407.42395	43.5	1	1	0.5	
 Mario4_Tigger_10	triggerBox	-	-	-1623.82397	-12.8104353	-1438.38696	58	1	1	0.5	1	0	1	0	playSequence	1	world.sequence.instance.mario_m3_card03
 Mario4_Tigger_11	triggerBox	-	-	-1620.5	-12.8104362	-1441.73206	55	1	1	0.5	1	0	1	0	playSequence	1	world.sequence.instance.mario_m3_card04
 Mario4_Tigger_12	triggerBox	-	-	-1618.90906	-12.8104353	-1445.68604	56.5	1	1	0.5	1	0	1	0	playSequence	1	world.sequence.instance.mario_m3_card05
-Mario4_Tigger_13	triggerBox	-	-	-1615.255	-12.8104362	-1450.40991	61	1	1	0.5	1	0	1	0	movePlayer	5	-2	1.317626	942	1.5	0
-Mario4_Tigger_2	triggerBox	-	-	-1646.79895	-20.4904366	-1416.57764	47.5	1	1	0.5	1	1	1	0	movePlayer	5	-1643.84998	-17.9300003	-1418.60999	0.699999988	1.5
-Mario4_Tigger_3	triggerBox	-	-	-1655.99951	-20.4904366	-1425.09131	48	1	1	0.5	1	1	1	0	movePlayer	5	-1654.01001	-17.9300003	-1428.75	0.600000024	1.20000005
+Mario4_Tigger_13	triggerBox	-	-	-1615.255	-12.8104362	-1450.40991	61	1	1	0.5	1	0	1	1	movePlayer	5	-2	1.317626	942	1.5	0
+Mario4_Tigger_2	triggerBox	-	-	-1646.79895	-20.4904366	-1416.57764	47.5	1	1	0.5	1	1	1	1	movePlayer	5	-1643.84998	-17.9300003	-1418.60999	0.699999988	1.5
+Mario4_Tigger_3	triggerBox	-	-	-1655.99951	-20.4904366	-1425.09131	48	1	1	0.5	1	1	1	1	movePlayer	5	-1654.01001	-17.9300003	-1428.75	0.600000024	1.20000005
 Mario4_Tigger_4	triggerBox	-	-	-1638.79797	-17.9304333	-1419.71704	10.5	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m3_swing
-Mario4_Tigger_5	triggerBox	-	-	-1628.62805	-17.9304371	-1420.724	4	1	1	0.5	1	1	1	0	movePlayer	5	-1626.70996	-15.3699999	-1423.92004	0.600000024	1.20000005
-Mario4_Tigger_6	triggerBox	-	-	-1649.01001	-17.9304352	-1438.84595	65	1	1	0.5	1	1	1	0	movePlayer	5	-1646.27002	-15.3699999	-1436.38	0.600000024	1.20000005
-Mario4_Tigger_7	triggerBox	-	-	-1632.71204	-15.3704367	-1426.81494	57.5	1	1	0.5	1	1	1	0	movePlayer	5	-1629.37	-11.9700003	-1430.88	0.699999988	1.5
+Mario4_Tigger_5	triggerBox	-	-	-1628.62805	-17.9304371	-1420.724	4	1	1	0.5	1	1	1	1	movePlayer	5	-1626.70996	-15.3699999	-1423.92004	0.600000024	1.20000005
+Mario4_Tigger_6	triggerBox	-	-	-1649.01001	-17.9304352	-1438.84595	65	1	1	0.5	1	1	1	1	movePlayer	5	-1646.27002	-15.3699999	-1436.38	0.600000024	1.20000005
+Mario4_Tigger_7	triggerBox	-	-	-1632.71204	-15.3704367	-1426.81494	57.5	1	1	0.5	1	1	1	1	movePlayer	5	-1629.37	-11.9700003	-1430.88	0.699999988	1.5
 Mario4_Tigger_8	triggerBox	-	-	-1629.36804	-11.9700003	-1430.88403	57	1	1	0.5	1	0	1	0	playSequence	1	world.sequence.instance.mario_m3_card01
 Mario4_Tigger_9	triggerBox	-	-	-1625.41797	-12.8104353	-1434.66602	56.5	1	1	0.5	1	0	1	0	playSequence	1	world.sequence.instance.mario_m3_card02
 Miro_1	triggerBox	-	-	-20.4904499	-0.00999999978	1328.98901	0	0	1	0.5	1.39999998	0	0	0
@@ -102,8 +102,8 @@ Miro_6	triggerBox	-	-	5.10955	-0.00999999978	1328.98901	0	0	1	0.5	1.39999998	0	0
 Miro_7	triggerBox	-	-	10.2295504	-0.00999999978	1328.98901	0	0	1	0.5	1.39999998	0	0	0
 Miro_8	triggerBox	-	-	15.3495502	-0.00999999978	1328.98901	0	0	1	0.5	1.39999998	0	0	0
 Miro_9	triggerBox	-	-	20.4695492	-0.00999999978	1328.98901	0	0	1	0.5	1.39999998	0	0	0
-paper.1	triggerBox	-	-	0.414999992	0.547999978	-46.1549988	11	1	0.5	0.5	0.5	1	1	0	playSequence	1	world.sequence.instance.1
-paper.2	triggerBox	-	-	15.0349998	0.247999996	-61.7910004	17	1	0.5	0.5	0.5	1	1	0	playSequence	1	world.sequence.instance.5
+paper.1	triggerBox	-	-	0.414999992	0.547999978	-46.1549988	11	1	0.5	0.5	0.5	1	1	1	playSequence	1	world.sequence.instance.1
+paper.2	triggerBox	-	-	15.0349998	0.247999996	-61.7910004	17	1	0.5	0.5	0.5	1	1	1	playSequence	1	world.sequence.instance.5
 player.spawn.kakul.party01	playerSpawn	-	-	3.28999996	8.64000034	-10.6899996	0	1
 player.spawn.kakul.party02	playerSpawn	-	-	3.4000001	8.64000034	-10.6899996	0	1
 player.spawn.kakul.party03	playerSpawn	-	-	3.45000005	8.64000034	-10.6899996	0	1

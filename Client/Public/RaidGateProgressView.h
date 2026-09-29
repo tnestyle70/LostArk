@@ -14,10 +14,11 @@ class CUILayoutRuntime;
 /* Commander raid gate progress on screen: the top-left "<raid> [<difficulty>]" panel (retail
 EpicGateCommanderProgressFrame) that stays up for the whole raid, with one icon per gate
 (cleared = crest with the green check, current = blue glow, later = blue door) and one button
-whose meaning follows the raid state: "restart" while a gate is being fought, "dungeon
-progress" once a gate short of the last is cleared, "exit" once the last gate is cleared.
-Restart and progress open a confirm dialog and then a party vote; a member sees the
-accept / decline prompt for whichever vote the leader started.
+whose meaning follows the raid state: "restart" while a gate is being fought, "exit" (a party
+vote back to Bern) in the gate 3 waiting deck, "dungeon progress" once a gate short of the last
+is cleared, "exit" (direct return) once the last gate is cleared. Restart, leave and progress
+open a confirm dialog and then a party vote; a member sees the accept / decline prompt for
+whichever vote the leader started.
 
 Presentation only. Who is the leader, whether a gate is cleared and what the vote decided all
 come from the Server's S2C_GATE_PROGRESS_STATE through the owning Level; this view draws the
@@ -26,9 +27,10 @@ Data/UI/RaidGateProgress/*.json (build_raid_gate_progress_ui.py). */
 class CRaidGateProgressView final
 {
 public:
-	enum class BUTTON { NONE, RESTART, PROGRESS, EXIT, ENTER_GATE3, ENTER_BINGO };
-	enum class PROMPT { NONE, CONFIRM_ADVANCE, CONFIRM_RESTART, VOTE_ADVANCE, VOTE_RESTART, CONFIRM_ENTER_GATE3, VOTE_ENTER_GATE3 };
-	enum class INTENT { NONE, PROPOSE_ADVANCE, PROPOSE_RESTART, EXIT, ACCEPT, DECLINE, PROPOSE_ENTER_GATE3 };
+	/* LEAVE opens the exit vote; EXIT is the direct return after the last gate. */
+	enum class BUTTON { NONE, RESTART, LEAVE, PROGRESS, EXIT, ENTER_GATE3, ENTER_BINGO };
+	enum class PROMPT { NONE, CONFIRM_ADVANCE, CONFIRM_RESTART, CONFIRM_EXIT, VOTE_ADVANCE, VOTE_RESTART, VOTE_EXIT, CONFIRM_ENTER_GATE3, VOTE_ENTER_GATE3 };
+	enum class INTENT { NONE, PROPOSE_ADVANCE, PROPOSE_RESTART, PROPOSE_EXIT, EXIT, ACCEPT, DECLINE, PROPOSE_ENTER_GATE3 };
 
 public:
 	void Initialize(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext,

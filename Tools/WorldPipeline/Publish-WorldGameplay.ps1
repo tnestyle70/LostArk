@@ -840,7 +840,7 @@ function Convert-WorldDocument {
 				throw "Trigger requiresInteract must be a JSON Boolean: $($placement.placementId)"
 			}
 			if ($hasInteractAction) {
-				if ($placement.interactAction -cnotin @('godown','climb','tightrope','check')) {
+				if ($placement.interactAction -cnotin @('godown','climb','tightrope','check','move','lever')) {
 					throw "Trigger interactAction is not a known prompt action: $($placement.placementId)"
 				}
 			}

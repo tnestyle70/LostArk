@@ -8,7 +8,9 @@
 #include "ActorCatalog.h"
 #include "Character.h"
 #include "CharacterCatalog.h"
+#include "CharacterSelectionState.h"
 #include "CombatHUDViewModel.h"
+#include "CustomizingView.h"
 #include "Effect_PresentationService.h"
 #include "EffectV2_Catalog.h"
 #include "EffectV2_Runtime.h"
@@ -2337,6 +2339,18 @@ bool Client::CClientReplication::Create_Character(
 	character->Set_SkillHitAreaDebugVisible(
 		m_CombatDebugVisibility.bPlayerSkillHitGeometry);
 #endif
+	/* The local player wears the look of the character that entered the world. Character Select
+	is left out: its customizing screen owns the model there, and the clown rig has no such
+	look. A document of another class is refused by the applier. */
+	if (isLocallyControlled &&
+		LostArk::Shared::PLAYER_MADNESS_FORM::CLOWN != madnessForm &&
+		m_Desc.iPrototypeLevelIndex != ETOUI(LEVEL::CHARACTER_SELECT))
+	{
+		const std::string strAppearance = CCharacterSelectionState::Get_ActiveAppearanceJson();
+		if (!strAppearance.empty())
+			(void)CCustomizingView::Apply_SavedLook(
+				character, strAppearance, m_Desc.pDevice, m_Desc.pContext);
+	}
 	outCharacter = character;
 	return true;
 }

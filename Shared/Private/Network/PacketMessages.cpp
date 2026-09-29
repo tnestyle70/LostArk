@@ -5891,6 +5891,57 @@ bool LostArk::Shared::Read_Message(
 	return true;
 }
 
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_RESTORE_CHARACTER& message)
+{
+	if (0u == message.iRequestSequence || message.Items.size() > MAX_INVENTORY_ITEMS ||
+		!Is_Valid_InventoryItems(message.Items) ||
+		message.iSilver > MAX_RESTORE_PURSE_AMOUNT || message.iGold > MAX_RESTORE_PURSE_AMOUNT)
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.Items.size()));
+	for (const INVENTORY_ITEM_SNAPSHOT& item : message.Items)
+	{
+		if (!writer.Write_String(item.strItemId, MAX_ITEM_ID_BYTES))
+			return false;
+		writer.Write_U32(item.iQuantity);
+		writer.Write_U8(static_cast<std::uint8_t>(item.eEquippedSlot));
+	}
+	writer.Write_U32(message.iSilver);
+	writer.Write_U32(message.iGold);
+	writer.Write_U32(message.iHonorTitleId);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_RESTORE_CHARACTER& message)
+{
+	C2S_RESTORE_CHARACTER decoded{};
+	std::uint16_t itemCount = 0;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(itemCount) ||
+		0u == decoded.iRequestSequence || itemCount > MAX_INVENTORY_ITEMS)
+		return false;
+	decoded.Items.reserve(itemCount);
+	for (std::uint16_t index = 0; index < itemCount; ++index)
+	{
+		INVENTORY_ITEM_SNAPSHOT item{};
+		std::uint8_t equippedSlot = 0u;
+		if (!reader.Read_String(item.strItemId, MAX_ITEM_ID_BYTES) ||
+			!reader.Read_U32(item.iQuantity) || !reader.Read_U8(equippedSlot))
+			return false;
+		item.eEquippedSlot = static_cast<EQUIPMENT_SLOT>(equippedSlot);
+		decoded.Items.push_back(std::move(item));
+	}
+	if (!reader.Read_U32(decoded.iSilver) || !reader.Read_U32(decoded.iGold) ||
+		!reader.Read_U32(decoded.iHonorTitleId))
+		return false;
+	if (!Is_Valid_InventoryItems(decoded.Items) ||
+		decoded.iSilver > MAX_RESTORE_PURSE_AMOUNT || decoded.iGold > MAX_RESTORE_PURSE_AMOUNT)
+		return false;
+	message = std::move(decoded);
+	return true;
+}
+
 namespace
 {
 	bool Is_Valid_ShopBasket(const LostArk::Shared::C2S_BUY_ITEMS& message)

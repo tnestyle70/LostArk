@@ -867,6 +867,9 @@
     <ClCompile Include="..\Private\CustomizingView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\CharacterOutfitApplier.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\DurabilityHudView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -952,6 +955,9 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\RaidGateProgressView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\SystemMenuButtonsView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\InteractKeyPromptView.cpp">
@@ -1621,6 +1627,9 @@
     <ClInclude Include="..\Public\CustomizingView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\CharacterOutfitApplier.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\DurabilityHudView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
@@ -1715,6 +1724,9 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\RaidGateProgressView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\SystemMenuButtonsView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\InteractKeyPromptView.h">
@@ -2944,6 +2956,9 @@
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\UI\RaidGateProgress\RaidGateProgress_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\SystemMenu\SystemMenuButtons_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\UI\RaidGateProgress\RaidGateVote_Layout.json">

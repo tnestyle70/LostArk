@@ -42,6 +42,8 @@ class CCustomizingView final
 public:
 	CCustomizingView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext,
 		uint32_t iGameObjectLevelIndex);
+	/* A logic-only instance: no screen is built, so it can only save and restore a look. */
+	CCustomizingView();
 	~CCustomizingView();
 
 public:
@@ -79,6 +81,27 @@ public:
 	int32_t Get_SelectedHair() const { return m_iSelectedHair; }
 	/* Seed only a class first visited in this view; explicit selections and saved slots win. */
 	void Configure_HairDefault(const std::string& classAssetId, int32_t defaultIndex);
+	/* The character's whole look as one JSON document, the same one a preset slot holds. */
+	std::string Serialize_Appearance(const shared_ptr<CCharacter>& pCharacter) const;
+	/* Puts a saved look (Serialize_Appearance's document) on a character with no screen open:
+	the face, materials, stamps and iris. Hair and costume are not applied here -- they are
+	equipment sets the owning Level dresses, so the document only states them. False leaves
+	the character untouched when the document is another class' or unreadable. */
+	static bool_t Apply_SavedAppearance(
+		const shared_ptr<CCharacter>& pCharacter, const std::string& strJson);
+	/* The hair cell and try-on costume index a saved look document states (-1 when it does not),
+	so a caller with no screen can dress the character. False when the text is not a look. */
+	static bool_t Read_SavedOutfit(
+		const std::string& strJson, int32_t& outHair, int32_t& outCostume);
+	/* A saved look on a character with no screen: hair and costume first (the equipment swap
+	replaces the parts the hair colour, two-tone and dye act on), then Apply_SavedAppearance.
+	The device pair is only used to admit equipment models; without it the outfit is skipped.
+	A document of another class leaves the character untouched. */
+	static bool_t Apply_SavedLook(
+		const shared_ptr<CCharacter>& pCharacter, const std::string& strJson,
+		const ComPtr<ID3D11Device>& pDevice, const ComPtr<ID3D11DeviceContext>& pContext);
+	/* Drops the outfit applier Apply_SavedLook keeps alive; call before the device goes away. */
+	static void Release_SavedLookCache();
 	/* Degrees the drag gesture has turned the subject. The camera stays where the retail
 	framing puts it; the model is what rotates, so its cloth chains react. */
 	f32_t Get_SubjectYawOffsetDegrees() const { return -m_fOrbitYaw; }
@@ -240,6 +263,9 @@ private:
 	void Refresh_SaveSlots();
 	bool_t Save_Slot(const shared_ptr<CCharacter>& pCharacter, int32_t iSlot);
 	bool_t Load_Slot(const shared_ptr<CCharacter>& pCharacter, int32_t iSlot);
+	/* Load_Slot's document half: applies a look document to the character and to this view's
+	own copies of its values. */
+	bool_t Apply_Appearance(const shared_ptr<CCharacter>& pCharacter, const std::string& strJson);
 	/* Every material control back to what the class was authored with, and the view's own
 	copies of those values with it. Shared by the first frame of a class and by the whole
 	reset, which is why it is not inline in either. */

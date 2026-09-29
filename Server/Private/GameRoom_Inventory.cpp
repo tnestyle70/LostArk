@@ -65,6 +65,7 @@ bool LostArk::Server::CGameRoom::Grant_Item(
 			(std::min)(stacked, static_cast<std::uint64_t>(
 				itemDefinition->iMaxStack)));
 	}
+	player.bRestoreAvailable = false;
 	return true;
 }
 
@@ -243,6 +244,7 @@ void LostArk::Server::CGameRoom::Handle_UseItem(
 	--existing->iQuantity;
 	if (0u == existing->iQuantity)
 		player.Inventory.erase(existing);
+	player.bRestoreAvailable = false;
 
 	if (!Send_InventorySnapshot(
 		session, request.iRequestSequence, player))
@@ -376,7 +378,8 @@ void LostArk::Server::CGameRoom::Handle_SetEquipment(
 	if (playerIter == m_Players.end())
 		return;
 	/* A refused move still answers, so the window drops any optimistic state. */
-	(void)Apply_SetEquipment(playerIter->second, request);
+	if (Apply_SetEquipment(playerIter->second, request))
+		playerIter->second.bRestoreAvailable = false;
 	if (!Send_InventorySnapshot(
 		session, request.iRequestSequence, playerIter->second))
 	{
@@ -446,6 +449,7 @@ bool LostArk::Server::CGameRoom::Apply_BuyItems(
 	}
 	player.Inventory = std::move(staged);
 	player.Purse = stagedPurse;
+	player.bRestoreAvailable = false;
 	return true;
 }
 
@@ -467,6 +471,62 @@ void LostArk::Server::CGameRoom::Handle_BuyItems(
 	{
 		session->Request_Close();
 	}
+}
+
+bool LostArk::Server::CGameRoom::Validate_RestoreCharacter(
+	const SERVER_PLAYER& player, const LostArk::Shared::C2S_RESTORE_CHARACTER& request) const
+{
+	using namespace LostArk::Shared;
+	/* Wire decoding already rejected unknown slots, empty ids, zero counts, two items in one
+	   slot and a stack listed twice; what is left is what only the Server's catalogs know. */
+	if (request.Items.size() > MAX_INVENTORY_ITEMS)
+		return false;
+	for (const INVENTORY_ITEM_SNAPSHOT& item : request.Items)
+	{
+		const SERVER_ITEM_DEFINITION* definition = m_ItemCatalog.Find_Item(item.strItemId);
+		if (nullptr == definition || 0u == item.iQuantity || item.iQuantity > definition->iMaxStack)
+			return false;
+		if (EQUIPMENT_SLOT::NONE == item.eEquippedSlot)
+			continue;
+		/* An equipped entry is one item in a slot of its own kind that this class can wear. */
+		const char* slotKind = Equipment_SlotKind(item.eEquippedSlot);
+		if (1u != item.iQuantity || nullptr == slotKind || definition->strEquipSlot != slotKind ||
+			!Is_UsableByClass(*definition, player.eCharacterClass))
+			return false;
+	}
+	return INVALID_HONOR_TITLE_ID == request.iHonorTitleId ||
+		m_HonorTitleCatalog.Has_Title(request.iHonorTitleId);
+}
+
+void LostArk::Server::CGameRoom::Handle_RestoreCharacter(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_RESTORE_CHARACTER& request)
+{
+	using namespace LostArk::Shared;
+	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (nullptr == session || sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end() || playerIter->second.iSessionId != sessionId)
+		return;
+	SERVER_PLAYER& player = playerIter->second;
+	/* Once per fresh Bern entry, before the player changed anything. The chance is spent even
+	   by a request that fails validation, so a client cannot probe with variants. */
+	if (WORLD_ID::BERN != m_eWorldId || !player.bRestoreAvailable)
+		return;
+	player.bRestoreAvailable = false;
+	if (!Validate_RestoreCharacter(player, request))
+	{
+		m_strStatus = "A saved character restore was refused by the Server catalogs.";
+		return;
+	}
+	player.Inventory = request.Items;
+	player.Purse.iSilver = request.iSilver;
+	player.Purse.iGold = request.iGold;
+	player.iHonorTitleId = request.iHonorTitleId;
+	if (!Send_InventorySnapshot(session, request.iRequestSequence, player))
+		session->Request_Close();
 }
 
 void LostArk::Server::CGameRoom::Handle_DespawnAllWorldEntities(

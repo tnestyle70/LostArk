@@ -609,5 +609,8 @@ namespace LostArk::Server
 		// same {itemId, quantity} pair.
 		std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT> Inventory;
 		SERVER_PURSE Purse;
+		/* True only from the fresh-entry grant until the first inventory change or the
+		   one C2S_RESTORE_CHARACTER; a world transfer that carries inventory never sets it. */
+		bool bRestoreAvailable = false;
 	};
 }

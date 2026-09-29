@@ -14,6 +14,7 @@
 #include "WorldHealthBarView.h"
 #include "WorldPlayerNameplateView.h"
 
+#include "CharacterRoster.h"
 #include "CharacterSelectionState.h"
 #include "CharacterSelectWindowView.h"
 #include "MinimapView.h"
@@ -68,6 +69,7 @@
 #include "UILabelFont.h"
 #include "CharacterInfoWindowView.h"
 #include "VehicleWindowView.h"
+#include "CustomizingView.h"
 #include "SystemOptionWindowView.h"
 #include "ClientWindowDisplay.h"
 #include "CombatAnalysisFrameView.h"
@@ -696,6 +698,32 @@ void CMainApp::Play_UIButtonClickSound()
 {
 	const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
 		L"Sound/UI/Select/ui_default_button_click2__59426200.wav");
+	CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+}
+
+void CMainApp::Open_SystemOptionsWindow()
+{
+	if (nullptr != m_pSystemOptionView && !m_pSystemOptionView->Is_Open())
+		m_pSystemOptionView->Open();
+}
+
+bool_t CMainApp::Return_ToCharacterSelect()
+{
+	if (CLevelTransitionService::Is_Pending())
+		return false;
+	CCharacterSelectionState::Save_ActiveWorldState();
+	if (!CLevelTransitionService::Request_Load(LEVEL::LOBBY, "world.menu.character-select"))
+		return false;
+	m_bOpenCharacterSelectOnLobby = true;
+	/* The Server removes this player through its normal disconnect handling. */
+	CNetworkManager::Get().Close_ServerConnection();
+	return true;
+}
+
+void CMainApp::Play_PopupRequestSound()
+{
+	const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
+		L"Sound/UI/System/sys_party_request1__654410772.wav");
 	CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
 }
 
@@ -2104,6 +2132,45 @@ void CMainApp::Update(const f32_t fTimeDelta)
 #ifdef _DEBUG
 		CCombatHUDViewModel::Get().Debug_Tick_DungeonTimer(fTimeDelta);
 #endif
+		/* Retail limits, shown only (nothing ends at zero): every Mario stage 60 s, the card
+		   maze 150 s. Counts from the moment the replicated stage / maze role appears. */
+		{
+			static std::uint8_t s_iSource = 0u;
+			static f32_t s_fSeconds = 0.f;
+			static bool_t s_bDriving = false;
+			CCombatHUDViewModel& HudModel = CCombatHUDViewModel::Get();
+			if (!HudModel.Is_DungeonTimerRunning())
+			{
+				const HUD_PLAYER_STATE& Player = HudModel.Get_Player();
+				std::uint8_t iSource = 0u;
+				if (Player.isValid)
+				{
+					if (Player.iMarioStage >= 1u && Player.iMarioStage <= 4u)
+						iSource = Player.iMarioStage;
+					else if (LostArk::Shared::CARD_MAZE_ROLE::NONE != HudModel.Get_KoukuGimmick().eCardMazeRole)
+						iSource = 5u;
+				}
+				if (iSource != s_iSource)
+				{
+					s_iSource = iSource;
+					s_fSeconds = (5u == iSource) ? 150.f : 60.f;
+				}
+				if (0u != s_iSource)
+				{
+					s_fSeconds = (std::max)(0.f, s_fSeconds - fTimeDelta);
+					HUD_DUNGEON_TIMER_STATE State;
+					State.isVisible = true;
+					State.fSeconds = s_fSeconds;
+					HudModel.Debug_Set_DungeonTimer(State, false);
+					s_bDriving = true;
+				}
+				else if (s_bDriving)
+				{
+					HudModel.Debug_Set_DungeonTimer(HUD_DUNGEON_TIMER_STATE{}, false);
+					s_bDriving = false;
+				}
+			}
+		}
 		m_pDungeonTimerView->Update(fTimeDelta,
 			CCombatHUDViewModel::Get().Get_DungeonTimer());
 	}
@@ -4447,6 +4514,10 @@ HRESULT CMainApp::Render()
 	{
 		if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
 		{
+			{
+				CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
+				pBern->Render_SystemMenuText();
+			}
 			CUITextLayerScope ModalText(UI_TEXT_LAYER::MODAL);
 			pBern->Render_ValtanEntryModalText();
 			pBern->Render_PartyInviteText();
@@ -5011,7 +5082,13 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	on a valid player in a supported Level. Every part reads NORMAL until a Server message
 	carries item durability, so only the silhouette draws. */
 	if (nullptr != m_pDurabilityHudView)
-		m_pDurabilityHudView->Update();
+	{
+		/* The class-select map shows no gear wear, so its armor silhouette stays hidden there. */
+		if (currentLevel == ETOUI(LEVEL::CHARACTER_SELECT))
+			m_pDurabilityHudView->Hide();
+		else
+			m_pDurabilityHudView->Update();
+	}
 	if (nullptr != m_pInventoryView)
 	{
 		m_pInventoryView->Update(CCombatHUDViewModel::Get().Get_Inventory().Items);
@@ -6336,6 +6413,13 @@ void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
 		return;
 	}
 
+	/* Coming back from a world by the character select icon: this is the screen it asked for. */
+	if (m_bOpenCharacterSelectOnLobby && !m_pCharacterSelectWindowView->Is_Open() &&
+		CLevel_Lobby::Can_SubmitProductCommand())
+	{
+		m_pCharacterSelectWindowView->Open();
+		m_bOpenCharacterSelectOnLobby = false;
+	}
 	/* The options window opens over this one from its own icon; while it is up this window
 	keeps drawing but leaves the pointer and Escape to it. */
 	m_pCharacterSelectWindowView->Update(fTimeDelta,
@@ -6350,8 +6434,9 @@ void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
 		Lobby commits it once Bern is entered and cancels it if the entry fails. */
 		LostArk::Shared::CHARACTER_CLASS_ID eClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
 		string strNickname;
-		m_pCharacterSelectWindowView->Get_StartCharacter(eClass, strNickname);
-		if (CCharacterSelectionState::Stage_Creation(eClass, strNickname) &&
+		string strAppearance;
+		m_pCharacterSelectWindowView->Get_StartCharacter(eClass, strNickname, strAppearance);
+		if (CCharacterSelectionState::Stage_ExistingEntry(eClass, strNickname, strAppearance) &&
 			!CLevel_Lobby::Submit_ProductCommand(LOBBY_STAGE::BERN))
 			CCharacterSelectionState::Cancel_PendingCreation();
 		break;
@@ -6547,7 +6632,9 @@ void CMainApp::RenderLobbyButtonText()
 			fCenterY, 0.5f, 91.333f, vStateColor);
 		if (Entry.bCreatable)
 		{
-			const wstring strCount = std::to_wstring(Entry.iCharacterCount);
+			const uint32_t iShownCount = Entry.bCountsSavedCharacters ?
+				static_cast<uint32_t>(CCharacterRoster::Get_Entries().size()) : Entry.iCharacterCount;
+			const wstring strCount = std::to_wstring(iShownCount);
 			DrawAt(strCount.c_str(), strYG760, 16.f, Rect.fX + 365.333f, fCenterY,
 				0.f, 33.333f, Colors::White);
 		}
@@ -6676,6 +6763,9 @@ void CMainApp::Load_LobbyServers()
 		if (const DATA_JSON_VALUE* pCount = Value.Find("characterCount"))
 			if (pCount->Is_Number() && pCount->Get_Number() >= 0.0)
 				Entry.iCharacterCount = static_cast<uint32_t>(pCount->Get_Number());
+		if (const DATA_JSON_VALUE* pCounts = Value.Find("countsSavedCharacters"))
+			if (pCounts->Is_Boolean())
+				Entry.bCountsSavedCharacters = pCounts->Get_Boolean();
 		if (const DATA_JSON_VALUE* pCreatable = Value.Find("creatable"))
 			if (pCreatable->Is_Boolean())
 				Entry.bCreatable = pCreatable->Get_Boolean();
@@ -10224,6 +10314,14 @@ void CMainApp::Apply_LevelRequest()
 
 	if (LEVEL_TRANSITION_PHASE::LOAD == request.ePhase)
 	{
+		/* Leaving a world for the Lobby, by the character select icon, a lost connection or a
+		Server disconnect, keeps what the character was carrying. */
+		if (LEVEL::LOBBY == request.eTargetLevel &&
+			(iPreviousLevel == ETOUI(LEVEL::BERN) ||
+			 iPreviousLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+			 iPreviousLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ||
+			 iPreviousLevel == ETOUI(LEVEL::MAHARAKA)))
+			CCharacterSelectionState::Save_ActiveWorldState();
 		const HRESULT result = Start_Level(
 			request.eTargetLevel,
 			request.iLobbyCommandToken);
@@ -14719,6 +14817,9 @@ void CMainApp::Free()
 #endif
 	if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Reset();
 	m_pKoukuPresentationPlayer.reset();
+	/* The saved-look outfit applier holds the D3D device and an equipment service: release them
+	while the Engine is alive. */
+	CCustomizingView::Release_SavedLookCache();
 	/* Active instances must leave ObjectManager while the Engine is alive, but
 	   prepared renderer/catalog globals cannot be cleared until a Loading level
 	   has cancelled and joined its worker.  Release_Engine tears the current

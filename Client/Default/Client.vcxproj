@@ -84,6 +84,7 @@
     <ClInclude Include="..\Public\MvpAwardCatalog.h" />
     <ClInclude Include="..\Public\MvpResultView.h" />
     <ClInclude Include="..\Public\RaidGateProgressView.h" />
+    <ClInclude Include="..\Public\SystemMenuButtonsView.h" />
     <ClInclude Include="..\Public\InteractKeyPromptView.h" />
     <ClInclude Include="..\Public\UITextOcclusion.h" />
     <ClInclude Include="..\Public\BossImmuneGaugeView.h" />
@@ -161,6 +162,7 @@
     <ClInclude Include="..\Public\CustomizingFaceTextureDocument.h" />
     <ClInclude Include="..\Public\CustomizingIconDocument.h" />
     <ClInclude Include="..\Public\CustomizingView.h" />
+    <ClInclude Include="..\Public\CharacterOutfitApplier.h" />
     <ClInclude Include="..\Public\DurabilityHudView.h" />
     <ClInclude Include="..\Public\InventoryView.h" />
     <ClInclude Include="..\Public\RepairWindowView.h" />
@@ -380,6 +382,7 @@
     <ClCompile Include="..\Private\MvpAwardCatalog.cpp" />
     <ClCompile Include="..\Private\MvpResultView.cpp" />
     <ClCompile Include="..\Private\RaidGateProgressView.cpp" />
+    <ClCompile Include="..\Private\SystemMenuButtonsView.cpp" />
     <ClCompile Include="..\Private\InteractKeyPromptView.cpp" />
     <ClCompile Include="..\Private\UITextOcclusion.cpp" />
     <ClCompile Include="..\Private\BossImmuneGaugeView.cpp" />
@@ -463,6 +466,7 @@
     <ClCompile Include="..\Private\CustomizingFaceTextureDocument.cpp" />
     <ClCompile Include="..\Private\CustomizingIconDocument.cpp" />
     <ClCompile Include="..\Private\CustomizingView.cpp" />
+    <ClCompile Include="..\Private\CharacterOutfitApplier.cpp" />
     <ClCompile Include="..\Private\DurabilityHudView.cpp" />
     <ClCompile Include="..\Private\InventoryView.cpp" />
     <ClCompile Include="..\Private\RepairWindowView.cpp" />
@@ -1035,6 +1039,7 @@
     <None Include="..\..\Data\UI\Bern\ValtanRaidEntry_Layout.json" />
     <None Include="..\..\Data\UI\Party\PartyInviteConfirm_Layout.json" />
     <None Include="..\..\Data\UI\RaidGateProgress\RaidGateProgress_Layout.json" />
+    <None Include="..\..\Data\UI\SystemMenu\SystemMenuButtons_Layout.json" />
     <None Include="..\..\Data\UI\RaidGateProgress\RaidGateVote_Layout.json" />
     <None Include="..\..\Data\UI\Interact\InteractKey_Layout.json" />
     <None Include="..\..\Data\UI\Party\PartyContextMenu_Layout.json" />

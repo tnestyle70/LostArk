@@ -11,6 +11,7 @@
 #include "PartyInteractionView.h"
 #include "PlayerController.h"
 #include "RaidEntryPreviewView.h"
+#include "SystemMenuButtonsView.h"
 #include "WorldPlayerChatBubbleView.h"
 #include "WorldPlayerNameplateView.h"
 
@@ -64,6 +65,8 @@ public:
 		m_PartyInteraction.Render_InvitePopupText();
 		m_PartyInteraction.Render_ContextMenuText();
 	}
+	/* The captions under the bottom-right icon buttons (HUD text layer, called by CMainApp). */
+	void Render_SystemMenuText() { m_SystemMenuButtons.Render_Text(); }
 	static CLevel_Bern* Get_Active() { return s_pActiveInstance; }
 	/* Non-null only while the ship follow pose is the active camera, so CMainApp can hand the
 	   ride's fog tuning to the presentation environment and nothing else needs to know about
@@ -156,6 +159,10 @@ private:
 	/* 매 프레임 파티 레이드 입장 투표 replication 이벤트를 소비한다. 프롬프트면 수락/거절
 	   창을 열고(모달이 안 열려 있어도), 거절/타임아웃/취소 종료면 창을 닫아 Bern에 남는다. */
 	void Poll_RaidEntryVote();
+	/* The bottom-right icon buttons: the options window and the way back to character select. */
+	void Update_SystemMenuButtons();
+	/* Offers the character's saved inventory, purse and honor title to the Server once. */
+	void Try_Send_CharacterRestore();
 
 	/* npc.bern.schmidt's authored position (real placement in Data/Worlds/
 	LV_BER_BERNCASTLE/Gameplay.world.json, archetype NPC_SCHMIDT), loaded the same
@@ -243,6 +250,11 @@ private:
 	CClientReplication m_Replication;
 	CWorldPlayerNameplateView m_PlayerNameplateView;
 	CWorldPlayerChatBubbleView m_ChatBubbleView;
+	CSystemMenuButtonsView m_SystemMenuButtons;
+	/* Set once the character select icon started the trip to the Lobby: this level then stops
+	updating so the closing connection is not reported as a loss. */
+	bool_t m_bReturningToCharacterSelect = false;
+	bool_t m_bCharacterRestoreSent = false;
 	std::vector<REPLICATED_PLAYER_VIEW> m_NameplatePlayers;
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
 	CPartyInteractionView m_PartyInteraction;

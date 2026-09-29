@@ -56,7 +56,7 @@ public:
 	INTENT Consume_Intent();
 	/* The seated card "game start" was pressed on. */
 	void Get_StartCharacter(LostArk::Shared::CHARACTER_CLASS_ID& outClass,
-		std::string& outNickname) const;
+		std::string& outNickname, std::string& outAppearanceJson) const;
 
 	/* Drives visibility, hover texture swaps and click hit-testing for one frame while
 	   open (sprites themselves draw through the normal engine UI pipeline). Claims the

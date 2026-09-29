@@ -533,10 +533,12 @@ HRESULT CLoader::Ready_For_Lobby()
 		if (m_CharacterAuthoringInputs.contains(entry.eCharacterClass))
 			stageClasses.push_back(entry.eCharacterClass);
 	}
-	/* Weapon parts draw with the static-mesh shader, which other levels only get from their map. */
-	if (stageClasses.empty() ||
-		FAILED(Ready_StaticMeshShader(ETOUI(LEVEL::LOBBY))) ||
-		FAILED(Ready_Character_Rendering(ETOUI(LEVEL::LOBBY), stageClasses)))
+	/* Weapon parts draw with the static-mesh shader, which other levels only get from their map.
+	The roster starts empty, so the shader is prepared even with no class to stage: a character
+	created later is prepared by the window on its own. */
+	if (FAILED(Ready_StaticMeshShader(ETOUI(LEVEL::LOBBY))) ||
+		(!stageClasses.empty() &&
+			FAILED(Ready_Character_Rendering(ETOUI(LEVEL::LOBBY), stageClasses))))
 		OutputDebugStringA("[Loader][Lobby] Character stage preparation failed; the window prepares its own.\n");
 	Set_Status(TEXT("Lobby loading complete"));
 	rollback.Commit();

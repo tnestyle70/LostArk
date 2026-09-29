@@ -2245,6 +2245,32 @@ bool CNetworkManager::Send_BuyItems(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_RestoreCharacter(
+	const std::uint32_t requestSequence,
+	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items,
+	const std::uint32_t silver, const std::uint32_t gold, const std::uint32_t honorTitleId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_RESTORE_CHARACTER message{};
+	message.iRequestSequence = requestSequence;
+	message.Items = items;
+	message.iSilver = silver;
+	message.iGold = gold;
+	message.iHonorTitleId = honorTitleId;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_RESTORE_CHARACTER,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_SetEquipment(
 	const std::uint32_t requestSequence,
 	const LostArk::Shared::EQUIPMENT_SLOT slot,
