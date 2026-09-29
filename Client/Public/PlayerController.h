@@ -639,6 +639,13 @@ namespace Client
 			bool_t isKeyboardBlocked,
 			bool_t useRawKeyboard,
 			const shared_ptr<CCharacter>& character);
+		/* While the Server has this body armed in the Waterpang arena, Q/W/E/R submit the
+		water gun's shots (the Shared contract table) as ordinary skill intents. Movement
+		stays free; the Server decides whether a shot starts. */
+		void Poll_WaterGunSlots(
+			bool_t isKeyboardBlocked,
+			bool_t useRawKeyboard,
+			const shared_ptr<CCharacter>& character);
 		bool_t Send_VehicleRidingRequest(std::uint32_t vehicleId);
 		/* Consumes title verdicts and expires a request the Server never answered. */
 		void Update_HonorTitle();
@@ -678,6 +685,9 @@ namespace Client
 		bool_t m_wasVehicleKeyDown = false;
 		bool_t m_wasVehicleDismountKeyDown = false;
 		std::array<bool_t, 4> m_wasVehicleSkillKeyDown{};
+		std::array<bool_t, 4> m_wasWaterGunKeyDown{};
+		// True while the water gun owns Q/W/E/R, so the class quick slots skip those four keys.
+		bool_t m_bWaterGunOwnsQuickSlots = false;
 		std::chrono::steady_clock::time_point m_VehicleFlightInputSentAt{};
 		float3_t m_LastVehicleFlightInput{};
 		float3_t m_VehicleFlightDirection{};

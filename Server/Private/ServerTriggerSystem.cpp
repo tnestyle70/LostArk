@@ -286,7 +286,7 @@ bool LostArk::Server::CServerTriggerSystem::Run_Action(
 	else if (WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL == action.eKind)
 	{
 		SERVER_WORLD_TRANSFER_REQUEST transfer{};
-		fired = Build_WorldTransfer(player, action, transfer);
+		fired = Build_WorldTransfer(player, action, transfer, m_eWorldId);
 		if (fired)
 			outTransfers.push_back(std::move(transfer));
 	}
@@ -914,12 +914,14 @@ bool LostArk::Server::CServerTriggerSystem::Begin_MovePlayer(
 bool LostArk::Server::CServerTriggerSystem::Build_WorldTransfer(
 	const SERVER_PLAYER& player,
 	const WORLD_TRIGGER_ACTION& action,
-	SERVER_WORLD_TRANSFER_REQUEST& outTransfer)
+	SERVER_WORLD_TRANSFER_REQUEST& outTransfer,
+	const LostArk::Shared::WORLD_ID fromWorldId)
 {
 	using namespace LostArk::Shared;
 	if (WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL != action.eKind ||
 		(WORLD_ID::BERN != action.eTargetWorldId &&
-			WORLD_ID::VALTAN_ARENA != action.eTargetWorldId) ||
+			WORLD_ID::VALTAN_ARENA != action.eTargetWorldId &&
+			WORLD_ID::MAHARAKA != action.eTargetWorldId) ||
 		INVALID_SESSION_ID == player.iSessionId ||
 		CHARACTER_CLASS_ID::END == player.eCharacterClass ||
 		player.strNickName.empty() || 0u == player.iCurrentHp ||
@@ -932,5 +934,17 @@ bool LostArk::Server::CServerTriggerSystem::Build_WorldTransfer(
 	outTransfer.eTargetWorldId = action.eTargetWorldId;
 	outTransfer.eCharacterClass = player.eCharacterClass;
 	outTransfer.strNickName = player.strNickName;
+	/* The Maharaka trips leave and re-enter Bern with the same character, so the worn
+	   title, the bag and the purse ride along instead of resetting to a fresh entry.
+	   The Bern <-> Valtan boxes keep their established fresh-entry behaviour. */
+	if (WORLD_ID::MAHARAKA == action.eTargetWorldId ||
+		WORLD_ID::MAHARAKA == fromWorldId)
+	{
+		outTransfer.iHonorTitleId = player.iHonorTitleId;
+		outTransfer.CarriedInventory = player.Inventory;
+		outTransfer.CarriedPurse = player.Purse;
+	}
+	// An authored landing placement in the target world (empty = its usual free spawn).
+	outTransfer.strSpawnPlacementOverrideId = action.strTargetId;
 	return true;
 }

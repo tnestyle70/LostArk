@@ -482,8 +482,13 @@ Waterpang Level presentation이다. 자연 종료 HOLD는 배우와 suppression�
 늦은 입장은 같은 시작 tick을 받고 방이 비면 초기화한다. 도입15 CameraShots와 연결된 WorldSequence를
 같은 서버 시계로 재생하고 카메라만 종료한다. 승패/보상 기능은 이 계약에 포함하지 않는다.
 MapTool은 제품 배우를 잠시 반환한 뒤 preview를 소유하며 닫으면 현재 방 시각으로 재구성한다.
-Maharaka의 WaterpangEntry navregion은 실제 18개 타일·중앙 원판·통 2개 메시를 0.25m로 굽고
-그 외 영역은 기존 20.48m 바닥을 보존한다. 이 영역은 아직 무대 붕괴나 동적 낙사 navigation이 아니다.
+Maharaka의 WaterpangEntry navregion은 기본 격자와 같은 160m 정사각형(640x640, 0.25m)을 덮고,
+실제 18개 타일·중앙 원판·통 2개 메시는 x 64~86, z -995~-973의 22m 창 안에만 굽고 그 외는 기존 20.48m 바닥을
+보존한다. 서버는 질의의 첫 점을 담는 영역의 격자만 쓰므로, 영역이 걸을 수 있는 범위보다 작으면 그 안에 들어간
+플레이어가 밖으로 걸어 나가지 못한다(출구 트리거 island.exit.to.bern과 스폰이 22m 창 바깥이었다). 영역이 섬 전체라서
+"영역 안에서 걷기 가능"은 아레나 판정이 아니다. 캐논·물벼락·물총 무장·밀려남은 Shared
+`Is_MaharakaWaterpangArenaFootprint`(위 22m 창)를 함께 검사한다. 이 영역은 아직 무대 붕괴나 동적 낙사 navigation이 아니다.
+바다 바닥까지 전부 걷기 가능한 기본 격자의 성질은 그대로이며 섬 해안선으로 좁히려면 지형 타일(LAND01) 높이로 다시 굽는다.
 Waterpang 공격 연출은 같은 Area WorldSequence의 stable instance
 `world.sequence.instance.maharaka.waterpang.attack.{mokomoko, cannon.start, cannon.loop.cw, cannon.loop.ccw, cannon.end}`가
 소유한다. Client는 공용 계약 `Sample_MaharakaWaterpangEvent`의 서버 단계마다 이 instance를 골라 서버 시계로

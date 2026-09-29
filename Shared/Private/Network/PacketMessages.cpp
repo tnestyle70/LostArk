@@ -184,6 +184,7 @@ namespace
             Is_Valid_Locomotion(snapshot.eLocomotionState) &&
 			Is_Valid_PlayerAction(snapshot.eAction) &&
 			(!snapshot.isKnockbackAirborne || snapshot.eAction == LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN) &&
+			((0u == snapshot.iWaterGunSkillId) == (0u == snapshot.iWaterGunCastTick)) &&
 			Is_Valid_Stance(snapshot.eStance) &&
 			Is_Valid_PlayerAttachmentSlot(snapshot.eAttachmentSlot) &&
 			std::isfinite(snapshot.fAttachmentLocalOffsetX) &&
@@ -3233,6 +3234,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(player.iActionStartTick);
 		writer.Write_U8(player.isKnockbackAirborne ? 1u : 0u);
 		writer.Write_U8(player.isWaterpangArmed ? 1u : 0u);
+		writer.Write_U32(player.iWaterGunSkillId);
+		writer.Write_U32(player.iWaterGunCastTick);
 		writer.Write_U32(player.iAttachmentOwnerNetEntityId);
 		writer.Write_U8(static_cast<std::uint8_t>(player.eAttachmentSlot));
 		writer.Write_F32(player.fAttachmentLocalOffsetX);
@@ -3560,6 +3563,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(player.iActionStartTick) ||
 			!reader.Read_U8(rawKnockbackAirborne) || rawKnockbackAirborne > 1u ||
 			!reader.Read_U8(rawWaterpangArmed) || rawWaterpangArmed > 1u ||
+			!reader.Read_U32(player.iWaterGunSkillId) ||
+			!reader.Read_U32(player.iWaterGunCastTick) ||
 			!reader.Read_U32(player.iAttachmentOwnerNetEntityId) ||
 			!reader.Read_U8(rawAttachmentSlot) ||
 			!reader.Read_F32(player.fAttachmentLocalOffsetX) ||

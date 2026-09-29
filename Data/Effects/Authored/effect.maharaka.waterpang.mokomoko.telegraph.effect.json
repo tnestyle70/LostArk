@@ -2,7 +2,7 @@
   "schema": "lostark.effect-authoring",
   "version": 13,
   "effectAssetId": "effect.maharaka.waterpang.mokomoko.telegraph",
-  "displayName": "Waterpang mokoko telegraph (SkillDecal 1106, whole deck)",
+  "displayName": "Waterpang mokoko telegraph (SkillDecal 1106, yellow centre disc)",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,
@@ -13,7 +13,7 @@
   "elements": [
     {
       "id": "effect.maharaka.waterpang.mokomoko.telegraph.decal",
-      "displayName": "Waterpang mokoko telegraph (SkillDecal 1106, whole deck)",
+      "displayName": "Waterpang mokoko telegraph (SkillDecal 1106, yellow centre disc)",
       "groupId": "effect.maharaka.waterpang.mokomoko.telegraph",
       "sourceNode": "project.groundeffect.adapter.effect.maharaka.waterpang.mokomoko.telegraph.decal|fx_m_mi_o_00.fx_mi.fx_o_de_condmondonut_02_01_tr",
       "visible": true,
@@ -63,7 +63,7 @@
             {
               "name": "decal_drawscale",
               "group": "None",
-              "value": 15.0
+              "value": 10.0
             },
             {
               "name": "angle",
@@ -221,8 +221,8 @@
         },
         "decal": {
           "size": [
-            15.0,
-            15.0
+            10.0,
+            10.0
           ],
           "depth": 6,
           "receiverMode": "upwardSurfaces",
@@ -311,12 +311,12 @@
             0.0
           ],
           "startSize": [
-            15.0,
-            15.0
+            10.0,
+            10.0
           ],
           "endSize": [
-            15.0,
-            15.0
+            10.0,
+            10.0
           ],
           "localSpace": true,
           "billboard": false,
@@ -514,15 +514,15 @@
                 "lookupTableTimeScale": 0,
                 "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  1500.0,
-                  1500.0,
-                  1500.0,
+                  1000.0,
+                  1000.0,
+                  1000.0,
                   0
                 ],
                 "defaultMaximum": [
-                  1500.0,
-                  1500.0,
-                  1500.0,
+                  1000.0,
+                  1000.0,
+                  1000.0,
                   0
                 ],
                 "lookupTable": [],

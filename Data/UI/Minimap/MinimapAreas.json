@@ -5,7 +5,239 @@
     {
       "level": "BERN",
       "worldAreaId": "LV_BER_BERNCASTLE",
+      "areaName": "베른 성 (성 내부)",
+      "image": "UI/Minimap/Maps/BernCastleIndoor_9.png",
+      "imageSize": [
+        768,
+        488
+      ],
+      "worldMinCm": [
+        1760,
+        -37644
+      ],
+      "worldMaxCm": [
+        8928,
+        -26380
+      ],
+      "note": "retail cm; client X = x/100, client Z = -y/100; image right = +y, image up = +x"
+    },
+    {
+      "level": "BERN",
+      "worldAreaId": "LV_BER_BERNCASTLE",
+      "areaName": "베른 성 (내부)",
+      "image": "UI/Minimap/Maps/BernCastleIndoor_2.png",
+      "imageSize": [
+        636,
+        768
+      ],
+      "worldMinCm": [
+        2688,
+        -25480
+      ],
+      "worldMaxCm": [
+        8832,
+        -20360
+      ],
+      "note": "retail cm; client X = x/100, client Z = -y/100; image right = +y, image up = +x"
+    },
+    {
+      "level": "BERN",
+      "worldAreaId": "LV_BER_BERNCASTLE",
+      "areaName": "베른 성 (도서관)",
+      "image": "UI/Minimap/Maps/BernCastleIndoor_7.png",
+      "imageSize": [
+        768,
+        612
+      ],
+      "worldMinCm": [
+        3360,
+        -17056
+      ],
+      "worldMaxCm": [
+        7456,
+        -11936
+      ],
+      "note": "retail cm; client X = x/100, client Z = -y/100; image right = +y, image up = +x"
+    },
+    {
+      "level": "BERN",
+      "worldAreaId": "LV_BER_BERNCASTLE",
+      "areaName": "베른 성 (내부)",
+      "image": "UI/Minimap/Maps/BernCastleIndoor_8.png",
+      "imageSize": [
+        636,
+        768
+      ],
+      "worldMinCm": [
+        11360,
+        -16352
+      ],
+      "worldMaxCm": [
+        17504,
+        -11232
+      ],
+      "note": "retail cm; client X = x/100, client Z = -y/100; image right = +y, image up = +x"
+    },
+    {
+      "level": "BERN",
+      "worldAreaId": "LV_BER_BERNCASTLE",
+      "areaName": "베른 성 (내부)",
+      "image": "UI/Minimap/Maps/BernCastleIndoor_6.png",
+      "imageSize": [
+        768,
+        768
+      ],
+      "worldMinCm": [
+        12832,
+        -26080
+      ],
+      "worldMaxCm": [
+        17952,
+        -20960
+      ],
+      "note": "retail cm; client X = x/100, client Z = -y/100; image right = +y, image up = +x"
+    },
+    {
+      "level": "BERN",
+      "worldAreaId": "LV_BER_BERNCASTLE",
+      "areaName": "베른 성 (내부)",
+      "image": "UI/Minimap/Maps/BernCastleIndoor_5.png",
+      "imageSize": [
+        768,
+        576
+      ],
+      "worldMinCm": [
+        13464,
+        -36816
+      ],
+      "worldMaxCm": [
+        16536,
+        -32720
+      ],
+      "note": "retail cm; client X = x/100, client Z = -y/100; image right = +y, image up = +x"
+    },
+    {
+      "level": "BERN",
+      "worldAreaId": "LV_BER_BERNCASTLE",
+      "areaName": "베른 성 (내부)",
+      "image": "UI/Minimap/Maps/BernCastleIndoor_12.png",
+      "imageSize": [
+        768,
+        768
+      ],
+      "worldMinCm": [
+        20960,
+        -14432
+      ],
+      "worldMaxCm": [
+        24032,
+        -11360
+      ],
+      "note": "retail cm; client X = x/100, client Z = -y/100; image right = +y, image up = +x"
+    },
+    {
+      "level": "BERN",
+      "worldAreaId": "LV_BER_BERNCASTLE",
+      "areaName": "베른 성 (내부)",
+      "image": "UI/Minimap/Maps/BernCastleIndoor_3.png",
+      "imageSize": [
+        768,
+        768
+      ],
+      "worldMinCm": [
+        21024,
+        -21920
+      ],
+      "worldMaxCm": [
+        24096,
+        -18848
+      ],
+      "note": "retail cm; client X = x/100, client Z = -y/100; image right = +y, image up = +x"
+    },
+    {
+      "level": "BERN",
+      "worldAreaId": "LV_BER_BERNCASTLE",
+      "areaName": "베른 성 (내부)",
+      "image": "UI/Minimap/Maps/BernCastleIndoor_14.png",
+      "imageSize": [
+        512,
+        768
+      ],
+      "worldMinCm": [
+        21408,
+        -34016
+      ],
+      "worldMaxCm": [
+        24480,
+        -31968
+      ],
+      "note": "retail cm; client X = x/100, client Z = -y/100; image right = +y, image up = +x"
+    },
+    {
+      "level": "BERN",
+      "worldAreaId": "LV_BER_BERNCASTLE",
+      "areaName": "베른 성 (내부)",
+      "image": "UI/Minimap/Maps/BernCastleIndoor_11.png",
+      "imageSize": [
+        768,
+        768
+      ],
+      "worldMinCm": [
+        21440,
+        -29096
+      ],
+      "worldMaxCm": [
+        24512,
+        -26024
+      ],
+      "note": "retail cm; client X = x/100, client Z = -y/100; image right = +y, image up = +x"
+    },
+    {
+      "level": "BERN",
+      "worldAreaId": "LV_BER_BERNCASTLE",
+      "areaName": "베른 앞바다",
+      "image": "UI/Minimap/Maps/BernSea.png",
+      "imageSize": [
+        1335,
+        1250
+      ],
+      "worldMinCm": [
+        12000,
+        13600
+      ],
+      "worldMaxCm": [
+        62000,
+        67000
+      ],
+      "selectMinCm": [
+        27072,
+        13600
+      ],
+      "selectMaxCm": [
+        62000,
+        67000
+      ],
+      "extraSelectBoxesCm": [
+        [
+          12000,
+          22048,
+          27072,
+          67000
+        ]
+      ],
+      "landmarks": [
+        {
+          "placementId": "island.dock.to.maharaka",
+          "icon": "UI/Minimap/marker_island.png"
+        }
+      ],
+      "note": "generated by Tools/ShipPipeline/build_sea_minimap.py from the sea navigation land mask; picked where the town map (BernCastle.png, x <= 27072 and y <= 22048) has no picture; retail cm; client X = x/100, client Z = -y/100; image right = +y, image up = +x"
+    },
+    {
+      "level": "BERN",
+      "worldAreaId": "LV_BER_BERNCASTLE",
       "areaName": "베른 성",
+      "default": true,
       "image": "UI/Minimap/Maps/BernCastle.png",
       "imageSize": [
         1280,

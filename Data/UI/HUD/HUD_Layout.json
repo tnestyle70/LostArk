@@ -18,6 +18,1880 @@
   ],
   "slots": [
     {
+      "id": "Ship_Hud_Plate",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 468.166667,
+        "y": 632.702026,
+        "width": 474.666667,
+        "height": 79.333333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/ship_plate.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Hud_Wheel",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 611.5,
+        "y": 590.368693,
+        "width": 124.0,
+        "height": 110.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/ship_wheel.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Hud_Bezel",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 634.833333,
+        "y": 607.502026,
+        "width": 67.666667,
+        "height": 74.733333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/ship_bezel.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Hud_Dome",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 640.233333,
+        "y": 611.768693,
+        "width": 66.533333,
+        "height": 66.6
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 1,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [
+          "UI/HUD/Voyage/Dome/ship_dome_00.png",
+          "UI/HUD/Voyage/Dome/ship_dome_01.png",
+          "UI/HUD/Voyage/Dome/ship_dome_02.png",
+          "UI/HUD/Voyage/Dome/ship_dome_03.png",
+          "UI/HUD/Voyage/Dome/ship_dome_04.png",
+          "UI/HUD/Voyage/Dome/ship_dome_05.png",
+          "UI/HUD/Voyage/Dome/ship_dome_06.png",
+          "UI/HUD/Voyage/Dome/ship_dome_07.png",
+          "UI/HUD/Voyage/Dome/ship_dome_08.png",
+          "UI/HUD/Voyage/Dome/ship_dome_09.png",
+          "UI/HUD/Voyage/Dome/ship_dome_10.png",
+          "UI/HUD/Voyage/Dome/ship_dome_11.png",
+          "UI/HUD/Voyage/Dome/ship_dome_12.png",
+          "UI/HUD/Voyage/Dome/ship_dome_13.png",
+          "UI/HUD/Voyage/Dome/ship_dome_14.png",
+          "UI/HUD/Voyage/Dome/ship_dome_15.png",
+          "UI/HUD/Voyage/Dome/ship_dome_16.png",
+          "UI/HUD/Voyage/Dome/ship_dome_17.png",
+          "UI/HUD/Voyage/Dome/ship_dome_18.png",
+          "UI/HUD/Voyage/Dome/ship_dome_19.png",
+          "UI/HUD/Voyage/Dome/ship_dome_20.png",
+          "UI/HUD/Voyage/Dome/ship_dome_21.png",
+          "UI/HUD/Voyage/Dome/ship_dome_22.png",
+          "UI/HUD/Voyage/Dome/ship_dome_23.png",
+          "UI/HUD/Voyage/Dome/ship_dome_24.png",
+          "UI/HUD/Voyage/Dome/ship_dome_25.png",
+          "UI/HUD/Voyage/Dome/ship_dome_26.png",
+          "UI/HUD/Voyage/Dome/ship_dome_27.png",
+          "UI/HUD/Voyage/Dome/ship_dome_28.png",
+          "UI/HUD/Voyage/Dome/ship_dome_29.png",
+          "UI/HUD/Voyage/Dome/ship_dome_30.png",
+          "UI/HUD/Voyage/Dome/ship_dome_31.png",
+          "UI/HUD/Voyage/Dome/ship_dome_32.png",
+          "UI/HUD/Voyage/Dome/ship_dome_33.png",
+          "UI/HUD/Voyage/Dome/ship_dome_34.png",
+          "UI/HUD/Voyage/Dome/ship_dome_35.png",
+          "UI/HUD/Voyage/Dome/ship_dome_36.png",
+          "UI/HUD/Voyage/Dome/ship_dome_37.png",
+          "UI/HUD/Voyage/Dome/ship_dome_38.png",
+          "UI/HUD/Voyage/Dome/ship_dome_39.png",
+          "UI/HUD/Voyage/Dome/ship_dome_40.png"
+        ],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Hud_Icon",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 660.833333,
+        "y": 670.035359,
+        "width": 26.0,
+        "height": 26.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/ship_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_Q_Frame",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 499.5,
+        "y": 643.902026,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/ship_slot_frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_W_Frame",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 529.033333,
+        "y": 643.902026,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/ship_slot_frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_E_Frame",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 558.566667,
+        "y": 643.902026,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/ship_slot_frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_R_Frame",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 588.1,
+        "y": 643.902026,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/ship_slot_frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_A_Frame",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 514.366667,
+        "y": 674.568693,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/ship_slot_frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_S_Frame",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 543.9,
+        "y": 674.568693,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/ship_slot_frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_D_Frame",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 573.433333,
+        "y": 674.568693,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/ship_slot_frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_F_Frame",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 602.966667,
+        "y": 674.568693,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/ship_slot_frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_Q_Icon",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 499.5,
+        "y": 643.902026,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_W_Icon",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 529.033333,
+        "y": 643.902026,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_E_Icon",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 558.566667,
+        "y": 643.902026,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_R_Icon",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 588.1,
+        "y": 643.902026,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_A_Icon",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 514.366667,
+        "y": 674.568693,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_S_Icon",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 543.9,
+        "y": 674.568693,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_D_Icon",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 573.433333,
+        "y": 674.568693,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_F_Icon",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 602.966667,
+        "y": 674.568693,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_Q_Cooldown",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 499.5,
+        "y": 643.902026,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_W_Cooldown",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 529.033333,
+        "y": 643.902026,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_E_Cooldown",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 558.566667,
+        "y": 643.902026,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_R_Cooldown",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 588.1,
+        "y": 643.902026,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_A_Cooldown",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 514.366667,
+        "y": 674.568693,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_S_Cooldown",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 543.9,
+        "y": 674.568693,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_D_Cooldown",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 573.433333,
+        "y": 674.568693,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Slot_F_Cooldown",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 602.966667,
+        "y": 674.568693,
+        "width": 28.066667,
+        "height": 27.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Btn_Horn",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 782.033333,
+        "y": 632.635359,
+        "width": 115.333333,
+        "height": 80.666667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/btn_horn.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Hud_Bottle",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 821.5,
+        "y": 627.368693,
+        "width": 40.0,
+        "height": 61.333333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/ship_bottle.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Hud_EventSlot",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 830.166667,
+        "y": 682.702026,
+        "width": 24.0,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/ship_event_slot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Btn_Anchor_Bg",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 722.166667,
+        "y": 656.035359,
+        "width": 51.333333,
+        "height": 51.333333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/btn_anchor_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Btn_Anchor_Icon",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 726.833333,
+        "y": 660.702026,
+        "width": 41.333333,
+        "height": 42.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/btn_anchor_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Btn_Boost_Dark",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 785.966667,
+        "y": 661.635359,
+        "width": 33.6,
+        "height": 38.8
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/btn_boost_dark.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Btn_Boost_Fill",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 780.366667,
+        "y": 658.635359,
+        "width": 44.8,
+        "height": 44.8
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/btn_boost_fill.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Btn_Boost_Gear",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 776.1,
+        "y": 654.468693,
+        "width": 53.333333,
+        "height": 53.133333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/btn_boost_gear.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Btn_Boost_Arrow",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 798.833333,
+        "y": 676.702026,
+        "width": 8.0,
+        "height": 9.333333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/btn_boost_arrow.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Btn_Cruise_Icon",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 758.833333,
+        "y": 631.368693,
+        "width": 31.333333,
+        "height": 31.333333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/btn_cruise_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Btn_Cruise_Ring",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 755.5,
+        "y": 625.368693,
+        "width": 42.0,
+        "height": 44.666667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/btn_cruise_ring.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Ship_Btn_AutoCruise",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 890.833333,
+        "y": 659.368693,
+        "width": 40.0,
+        "height": 36.666667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Voyage/btn_autocruise.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
       "id": "HealthBar_BG",
       "ownerClass": null,
       "type": 3,

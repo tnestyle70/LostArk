@@ -367,6 +367,19 @@ bool LostArk::Server::CGameRoom::Execute_PlayerSkill(
 	{
 		return Try_StartVehicleSkill(player, useSkill);
 	}
+	/* Waterpang: while the Server has this body armed, Q/W/E/R belong to the water
+	gun. Its shots take the gun's own path; the class skills on those four keys are
+	refused here as the Client no longer shows them. Every other key and world keeps
+	the class path unchanged. */
+	if (LostArk::Shared::WORLD_ID::MAHARAKA == m_eWorldId && Is_MaharakaWaterpangArmed(player))
+	{
+		if (nullptr != LostArk::Shared::Find_MaharakaWaterGunSkill(useSkill.iSkillId))
+			return Try_StartMaharakaWaterGunSkill(player, useSkill);
+		const auto* const classSkill = m_GameplayCatalog.Active().Find_Skill(useSkill.iSkillId);
+		if (nullptr != classSkill && 1u == classSkill->strInputSlot.size() &&
+			nullptr != LostArk::Shared::Find_MaharakaWaterGunSkillBySlot(classSkill->strInputSlot.front()))
+			return false;
+	}
 	/* While a KoukuSaydon interaction HUD is up only that HUD's slots act; the
 	class skills the Client no longer shows are refused here as well. */
 	if (0u != player.iMarioStage || player.bPatternBound ||
@@ -1379,6 +1392,8 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.PendingCommand.Clear();
 	staged.hasReleasedHold = false;
 	staged.CooldownEndTickBySkillId.clear();
+	staged.iWaterGunCastEndTick = 0u;
+	staged.iWaterGunSpeedEndTick = 0u;
 	staged.isCombatReady = true;
 
 	m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);

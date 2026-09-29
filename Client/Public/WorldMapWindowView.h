@@ -81,6 +81,18 @@ private:
 		string		strImage;
 		f32_t		fWorldMinX = 0.f, fWorldMinY = 0.f;	/* retail cm */
 		f32_t		fWorldMaxX = 0.f, fWorldMaxY = 0.f;
+		/* Optional selection box (retail cm): which positions pick this area. Defaults to the map box.
+		A harbour that shares a wide image with unrelated ground selects by a narrower box. */
+		f32_t		fSelectMinX = 0.f, fSelectMinY = 0.f;
+		f32_t		fSelectMaxX = 0.f, fSelectMaxY = 0.f;
+		bool_t		bDefault = false;		/* Data "default": fallback when no box holds the position. */
+		/* Optional extra boxes (retail cm) that also pick this area, for ground that is not one rectangle
+		(the open sea around a harbour town). Data "extraSelectBoxesCm": [[minX, minY, maxX, maxY], ...]. */
+		struct SELECT_BOX
+		{
+			f32_t	fMinX = 0.f, fMinY = 0.f, fMaxX = 0.f, fMaxY = 0.f;
+		};
+		vector<SELECT_BOX>	ExtraSelect;
 	};
 	struct LABEL
 	{
@@ -168,7 +180,7 @@ private:
 	void Load_SquareHoles();
 	void Load_NpcSymbols();
 	void Load_Panels();
-	const AREA* Find_Area(LEVEL eLevel) const;
+	const AREA* Find_Area(LEVEL eLevel, f32_t fClientX, f32_t fClientZ) const;
 	const LABEL_SET* Find_Labels(LEVEL eLevel) const;
 	const HOLE_SET* Find_Holes(LEVEL eLevel) const;
 	const ZONE_SET* Find_Zones(LEVEL eLevel) const;

@@ -26,6 +26,7 @@ class CCharacter;
 class CMapLightPresentationRuntime;
 class CMapEffectPresentationRuntime;
 class CTrigger_Box;
+class CInteractKeyPromptView;
 class IPlayerCommandSink;
 
 class CLevel_Bern final : public CLevel
@@ -268,6 +269,15 @@ private:
 	};
 	std::vector<VALTAN_ENTRY_NPC> m_ValtanEntryNpcs;
 	unique_ptr<CRaidEntryPreviewView> m_pValtanEntryView;
+	/* Interact prompt ("<place> [G]") and the mooring marker of the authored dock trigger.
+	   Presentation only: the Server decides when the box is offered and what G does. */
+	unique_ptr<CInteractKeyPromptView> m_pInteractPrompt;
+	uint64_t m_iAnchorMarkerHandle = 0u;
+	bool_t m_bAnchorMarkerPlaced = false;
+	f32_t m_fAnchorMarkerRetrySeconds = 0.f;
+	uint32_t m_iAnchorMarkerAttempts = 0u;
+	void Update_AnchorMarker(f32_t fTimeDelta);
+	void Clear_AnchorMarker();
 	bool_t m_isWalkingToValtanEntryNpc = false;
 	std::string m_strValtanEntryNpcPlacementId;
 	bool_t m_wasRightMouseDownForNpcInteract = false;

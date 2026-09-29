@@ -228,6 +228,9 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.iMaximumMadness = snapshot.iMaximumMadness;
 	m_Player.eMadnessForm = snapshot.eMadnessForm;
 	m_Player.iVehicleId = snapshot.iVehicleId;
+	m_Player.isWaterpangArmed = snapshot.isWaterpangArmed;
+	m_Player.fMoveSpeed = snapshot.fMoveSpeed;
+	m_Player.hasMoveGoal = snapshot.hasMoveGoal;
 	m_Player.eVehicleFlightPhase = snapshot.eVehicleFlightPhase;
 	m_Player.iHonorTitleId = snapshot.iHonorTitleId;
 	m_Player.eKoukuHudMode = snapshot.eKoukuHudMode;

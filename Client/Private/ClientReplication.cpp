@@ -4703,6 +4703,7 @@ bool Client::CClientReplication::Apply_PlayerSnapshot(
 	character->Apply_NetworkStance(player.eStance);
 	character->Apply_NetworkVehicle(player.iVehicleId);
 	(void)character->Apply_WaterGunPresentation(player.isWaterpangArmed);
+	character->Apply_NetworkWaterGunCast(player.iWaterGunSkillId, player.iWaterGunCastTick, serverTick);
 	character->Apply_NetworkPresentationHidden((player.CardMaze.flags & LostArk::Shared::CARD_MAZE_ENTRY_HIDDEN) != 0u);
 	if (isLocallyControlled && m_Desc.iLayerLevelIndex == ETOUI(LEVEL::MAHARAKA))
 		Trace_MaharakaLocalPlayer(*character, player, serverTick);
