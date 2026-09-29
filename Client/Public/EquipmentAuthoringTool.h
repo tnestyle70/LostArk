@@ -20,7 +20,7 @@ class CCharacter;
 class CEquipmentAuthoringTool final
 {
 private:
-	static constexpr size_t CLASS_COUNT = 6u;
+	static constexpr size_t CLASS_COUNT = 7u;
 	static constexpr size_t SLOT_COUNT = ETOI(EQUIPMENT_SLOT_ID::END);
 	using LOADOUT = std::array<std::string, SLOT_COUNT>;
 	using CLASS_LOADOUTS = std::array<LOADOUT, CLASS_COUNT>;
