@@ -109,6 +109,8 @@ HRESULT Client::CMinimapView::Load_Areas()
 		const DATA_JSON_VALUE* pWorldAreaId = Value.Find("worldAreaId");
 		if (nullptr != pWorldAreaId && pWorldAreaId->Is_String())
 			Area.strWorldAreaId = pWorldAreaId->Get_String();
+		const DATA_JSON_VALUE* pDefault = Value.Find("default");
+		Area.bDefault = nullptr != pDefault && pDefault->Is_Boolean() && pDefault->Get_Boolean();
 		const auto Number = [](const DATA_JSON_VALUE& V, size_t i)
 		{
 			const DATA_JSON_VALUE& E = V.Get_Array()[i];
@@ -116,6 +118,53 @@ HRESULT Client::CMinimapView::Load_Areas()
 		};
 		Area.fWorldMinX = Number(*pMin, 0); Area.fWorldMinY = Number(*pMin, 1);
 		Area.fWorldMaxX = Number(*pMax, 0); Area.fWorldMaxY = Number(*pMax, 1);
+		const DATA_JSON_VALUE* pSelMin = Value.Find("selectMinCm");
+		const DATA_JSON_VALUE* pSelMax = Value.Find("selectMaxCm");
+		Area.fSelectMinX = Area.fWorldMinX; Area.fSelectMinY = Area.fWorldMinY;
+		Area.fSelectMaxX = Area.fWorldMaxX; Area.fSelectMaxY = Area.fWorldMaxY;
+		if (nullptr != pSelMin && pSelMin->Is_Array() && pSelMin->Get_Array().size() >= 2 &&
+			nullptr != pSelMax && pSelMax->Is_Array() && pSelMax->Get_Array().size() >= 2)
+		{
+			const auto& SMin = pSelMin->Get_Array();
+			const auto& SMax = pSelMax->Get_Array();
+			if (SMin[0].Is_Number() && SMin[1].Is_Number() && SMax[0].Is_Number() && SMax[1].Is_Number() &&
+				SMax[0].Get_Number() > SMin[0].Get_Number() && SMax[1].Get_Number() > SMin[1].Get_Number())
+			{
+				Area.fSelectMinX = static_cast<f32_t>(SMin[0].Get_Number());
+				Area.fSelectMinY = static_cast<f32_t>(SMin[1].Get_Number());
+				Area.fSelectMaxX = static_cast<f32_t>(SMax[0].Get_Number());
+				Area.fSelectMaxY = static_cast<f32_t>(SMax[1].Get_Number());
+			}
+		}
+		const DATA_JSON_VALUE* pExtraBoxes = Value.Find("extraSelectBoxesCm");
+		if (nullptr != pExtraBoxes && pExtraBoxes->Is_Array())
+		{
+			for (const DATA_JSON_VALUE& Box : pExtraBoxes->Get_Array())
+			{
+				if (!Box.Is_Array() || Box.Get_Array().size() < 4)
+					continue;
+				AREA::SELECT_BOX Extra{};
+				Extra.fMinX = Number(Box, 0); Extra.fMinY = Number(Box, 1);
+				Extra.fMaxX = Number(Box, 2); Extra.fMaxY = Number(Box, 3);
+				if (Extra.fMaxX > Extra.fMinX && Extra.fMaxY > Extra.fMinY)
+					Area.ExtraSelect.push_back(Extra);
+			}
+		}
+		const DATA_JSON_VALUE* pLandmarks = Value.Find("landmarks");
+		if (nullptr != pLandmarks && pLandmarks->Is_Array())
+		{
+			for (const DATA_JSON_VALUE& Landmark : pLandmarks->Get_Array())
+			{
+				const DATA_JSON_VALUE* pLandmarkId = Landmark.Is_Object() ? Landmark.Find("placementId") : nullptr;
+				const DATA_JSON_VALUE* pLandmarkIcon = Landmark.Is_Object() ? Landmark.Find("icon") : nullptr;
+				if (nullptr == pLandmarkId || !pLandmarkId->Is_String() ||
+					nullptr == pLandmarkIcon || !pLandmarkIcon->Is_String())
+				{
+					continue;
+				}
+				Area.Landmarks.push_back(AREA::LANDMARK{ pLandmarkId->Get_String(), pLandmarkIcon->Get_String() });
+			}
+		}
 		if (Area.fWorldMaxX - Area.fWorldMinX <= 1.f || Area.fWorldMaxY - Area.fWorldMinY <= 1.f)
 			continue;
 		m_Areas.push_back(std::move(Area));
@@ -125,9 +174,12 @@ HRESULT Client::CMinimapView::Load_Areas()
 
 void Client::CMinimapView::Load_AreaNpcSymbols(const AREA& Area)
 {
-	if (m_strLoadedNpcAreaId == Area.strWorldAreaId)
+	/* An area with landmarks is keyed by its own image, because its landmark set differs from the other
+	areas that share the same world document; every other area stays keyed by the world area as before. */
+	const string strKey = Area.Landmarks.empty() ? Area.strWorldAreaId : Area.strWorldAreaId + "|" + Area.strImage;
+	if (m_strLoadedNpcAreaId == strKey)
 		return;
-	m_strLoadedNpcAreaId = Area.strWorldAreaId;
+	m_strLoadedNpcAreaId = strKey;
 	m_NpcSymbols.clear();
 	if (Area.strWorldAreaId.empty())
 		return;
@@ -144,13 +196,6 @@ void Client::CMinimapView::Load_AreaNpcSymbols(const AREA& Area)
 		return CDataJson::Parse(Text, outRoot, Error) && outRoot.Is_Object();
 	};
 
-	DATA_JSON_VALUE SymbolRoot;
-	if (!ReadJson(CProjectDataRoot::Resolve(L"UI/WorldMap/WorldMapNpcSymbols.json"), SymbolRoot))
-		return;
-	const DATA_JSON_VALUE* pPlacements = SymbolRoot.Find("placements");
-	if (nullptr == pPlacements || !pPlacements->Is_Object())
-		return;
-
 	DATA_JSON_VALUE WorldRoot;
 	const filesystem::path WorldPath = CProjectDataRoot::Resolve(
 		filesystem::path("Worlds") / Area.strWorldAreaId / "Gameplay.world.json");
@@ -160,8 +205,46 @@ void Client::CMinimapView::Load_AreaNpcSymbols(const AREA& Area)
 	if (nullptr == pWorldPlacements || !pWorldPlacements->Is_Array())
 		return;
 
+	/* Landmarks first, so they always own a marker slot: the position comes from the placement itself
+	(the same Gameplay.world.json the Server publishes), never from a copy typed into this view. */
+	for (const AREA::LANDMARK& Landmark : Area.Landmarks)
+	{
+		for (const DATA_JSON_VALUE& Placement : pWorldPlacements->Get_Array())
+		{
+			if (!Placement.Is_Object())
+				continue;
+			const DATA_JSON_VALUE* pId = Placement.Find("placementId");
+			const DATA_JSON_VALUE* pPosition = Placement.Find("position");
+			if (nullptr == pId || !pId->Is_String() || Landmark.strPlacementId != pId->Get_String() ||
+				nullptr == pPosition || !pPosition->Is_Array() || pPosition->Get_Array().size() < 3)
+			{
+				continue;
+			}
+			const DATA_JSON_VALUE& X = pPosition->Get_Array()[0];
+			const DATA_JSON_VALUE& Z = pPosition->Get_Array()[2];
+			if (!X.Is_Number() || !Z.Is_Number())
+				break;
+			NPC_SYMBOL Symbol{};
+			Symbol.strIconPath = Landmark.strIcon;
+			Symbol.fWorldX = static_cast<f32_t>(X.Get_Number());
+			Symbol.fWorldZ = static_cast<f32_t>(Z.Get_Number());
+			Symbol.bEdgeClamp = true;
+			m_NpcSymbols.push_back(std::move(Symbol));
+			break;
+		}
+	}
+
+	DATA_JSON_VALUE SymbolRoot;
+	if (!ReadJson(CProjectDataRoot::Resolve(L"UI/WorldMap/WorldMapNpcSymbols.json"), SymbolRoot))
+		return;
+	const DATA_JSON_VALUE* pPlacements = SymbolRoot.Find("placements");
+	if (nullptr == pPlacements || !pPlacements->Is_Object())
+		return;
+
 	for (const DATA_JSON_VALUE& Placement : pWorldPlacements->Get_Array())
 	{
+		if (m_NpcSymbols.size() >= NPC_MARKER_COUNT)
+			break;
 		if (!Placement.Is_Object())
 			continue;
 		const DATA_JSON_VALUE* pKind = Placement.Find("kind");
@@ -184,17 +267,40 @@ void Client::CMinimapView::Load_AreaNpcSymbols(const AREA& Area)
 		Symbol.fWorldX = X.Is_Number() ? static_cast<f32_t>(X.Get_Number()) : 0.f;
 		Symbol.fWorldZ = Z.Is_Number() ? static_cast<f32_t>(Z.Get_Number()) : 0.f;
 		m_NpcSymbols.push_back(std::move(Symbol));
-		if (m_NpcSymbols.size() >= NPC_MARKER_COUNT)
-			break;
 	}
 }
 
-const Client::CMinimapView::AREA* Client::CMinimapView::Find_Area(LEVEL eLevel) const
+const Client::CMinimapView::AREA* Client::CMinimapView::Find_Area(
+	LEVEL eLevel, const f32_t fClientX, const f32_t fClientZ) const
 {
+	/* Retail cm: x = client X * 100, y = -client Z * 100. */
+	const f32_t fWorldX = fClientX * 100.f;
+	const f32_t fWorldY = -fClientZ * 100.f;
+	const AREA* pFirst = nullptr;
+	const AREA* pDefault = nullptr;
 	for (const AREA& Area : m_Areas)
-		if (Area.eLevel == eLevel)
+	{
+		if (Area.eLevel != eLevel)
+			continue;
+		if (nullptr == pFirst)
+			pFirst = &Area;
+		if (nullptr == pDefault && Area.bDefault)
+			pDefault = &Area;
+		if (fWorldX >= Area.fSelectMinX && fWorldX <= Area.fSelectMaxX &&
+			fWorldY >= Area.fSelectMinY && fWorldY <= Area.fSelectMaxY)
+		{
 			return &Area;
-	return nullptr;
+		}
+		for (const AREA::SELECT_BOX& Box : Area.ExtraSelect)
+		{
+			if (fWorldX >= Box.fMinX && fWorldX <= Box.fMaxX &&
+				fWorldY >= Box.fMinY && fWorldY <= Box.fMaxY)
+			{
+				return &Area;
+			}
+		}
+	}
+	return nullptr != pDefault ? pDefault : pFirst;
 }
 
 void Client::CMinimapView::Hide_All()
@@ -211,8 +317,9 @@ void Client::CMinimapView::Update(const f32_t fTimeDelta, LEVEL eLevel,
 	const CClientReplication::MINIMAP_MARKER_SNAPSHOT* pSnapshot)
 {
 	(void)fTimeDelta;
-	const AREA* pArea = Find_Area(eLevel);
-	if (nullptr == pArea || nullptr == pSnapshot || !pSnapshot->hasLocal)
+	const AREA* pArea = nullptr != pSnapshot && pSnapshot->hasLocal ?
+		Find_Area(eLevel, pSnapshot->fLocalX, pSnapshot->fLocalZ) : nullptr;
+	if (nullptr == pArea)
 	{
 		Hide_All();
 		return;
@@ -314,8 +421,10 @@ void Client::CMinimapView::Update(const f32_t fTimeDelta, LEVEL eLevel,
 	character; anything outside the map rect hides. --- */
 	const f32_t fCenterX = fViewX + fViewW * 0.5f;
 	const f32_t fCenterY = fViewY + fViewH * 0.5f;
+	/* bClampToEdge: a landmark keeps to the window edge in its direction when the place is off the visible
+	map, instead of hiding like a party member or NPC does. */
 	const auto PlaceMarker = [&](const char* pSlotId,
-		const CClientReplication::MINIMAP_MARKER* pMarker)
+		const CClientReplication::MINIMAP_MARKER* pMarker, const bool_t bClampToEdge = false)
 	{
 		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
 		if (!m_pView->Get_SlotRect(pSlotId, fX, fY, fW, fH))
@@ -329,10 +438,20 @@ void Client::CMinimapView::Update(const f32_t fTimeDelta, LEVEL eLevel,
 		ToUV(pMarker->fX, pMarker->fZ, fU, fV);
 		f32_t fDU = 0.f, fDV = 0.f;
 		ToScreenDelta(fU - fLocalU, fV - fLocalV, fDU, fDV);
-		const f32_t fDX = fDU / fScaleU * fViewW;
-		const f32_t fDY = fDV / fScaleV * fViewH;
-		const bool_t bInside = std::fabs(fDX) <= fViewW * 0.5f - fW * 0.35f &&
-			std::fabs(fDY) <= fViewH * 0.5f - fH * 0.35f;
+		f32_t fDX = fDU / fScaleU * fViewW;
+		f32_t fDY = fDV / fScaleV * fViewH;
+		const f32_t fHalfW = fViewW * 0.5f - fW * 0.35f;
+		const f32_t fHalfH = fViewH * 0.5f - fH * 0.35f;
+		if (bClampToEdge && fHalfW > 0.f && fHalfH > 0.f)
+		{
+			const f32_t fNorm = std::sqrt((fDX / fHalfW) * (fDX / fHalfW) + (fDY / fHalfH) * (fDY / fHalfH));
+			if (fNorm > 1.f)
+			{
+				fDX /= fNorm;
+				fDY /= fNorm;
+			}
+		}
+		const bool_t bInside = std::fabs(fDX) <= fHalfW && std::fabs(fDY) <= fHalfH;
 		m_pView->Set_SlotVisible(pSlotId, bInside);
 		if (bInside)
 			m_pView->Set_SlotPosition(pSlotId, fCenterX + fDX - fW * 0.5f, fCenterY + fDY - fH * 0.5f);
@@ -367,7 +486,7 @@ void Client::CMinimapView::Update(const f32_t fTimeDelta, LEVEL eLevel,
 		Marker.fX = Symbol.fWorldX;
 		Marker.fZ = Symbol.fWorldZ;
 		m_pView->Set_SlotTexture(strSlotId, Symbol.strIconPath);
-		PlaceMarker(strSlotId.c_str(), &Marker);
+		PlaceMarker(strSlotId.c_str(), &Marker, Symbol.bEdgeClamp);
 	}
 
 	/* Local arrow: centered, rotated to the character's facing. Character yaw is measured from

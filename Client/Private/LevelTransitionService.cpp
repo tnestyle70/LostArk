@@ -13,6 +13,7 @@ namespace
 	std::optional<Client::LEVEL_TRANSITION_REQUEST> g_PendingRequest;
 	std::optional<Client::CLIENT_RECOVERY_DIAGNOSTIC> g_RecoveryDiagnostic;
 	std::string g_Status = "No level transition is pending.";
+	LEVEL g_LastWorldTransferOrigin = LEVEL::END;
 
 	std::uint64_t Get_UnixMilliseconds() noexcept
 	{
@@ -184,6 +185,12 @@ bool_t Client::CLevelTransitionService::Try_ConsumeLoadFailure(
 	return true;
 }
 
+LEVEL Client::CLevelTransitionService::Get_LastWorldTransferOrigin()
+{
+	std::scoped_lock lock{ g_TransitionMutex };
+	return g_LastWorldTransferOrigin;
+}
+
 Client::SERVER_WORLD_TRANSFER_PUMP_RESULT
 Client::CLevelTransitionService::Pump_ServerApprovedWorldTransfer(
 	const LEVEL currentLevel)
@@ -210,6 +217,9 @@ Client::CLevelTransitionService::Pump_ServerApprovedWorldTransfer(
 		case WORLD_ID::KAKULSAYDON_ARENA:
 			targetLevel = LEVEL::KAKULSAYDON_ARENA;
 			break;
+		case WORLD_ID::MAHARAKA:
+			targetLevel = LEVEL::MAHARAKA;
+			break;
 		default:
 			break;
 		}
@@ -218,6 +228,8 @@ Client::CLevelTransitionService::Pump_ServerApprovedWorldTransfer(
 	if (LEVEL::END != targetLevel && targetLevel != currentLevel &&
 		Request_Load(targetLevel, "server.trigger.change-level"))
 	{
+		std::scoped_lock lock{ g_TransitionMutex };
+		g_LastWorldTransferOrigin = currentLevel;
 		return SERVER_WORLD_TRANSFER_PUMP_RESULT::REQUESTED;
 	}
 
@@ -261,6 +273,9 @@ bool_t Client::CLevelTransitionService::Request(
 		pSource,
 		lobbyCommandToken
 	};
+	// Every newer request forgets the previous transfer origin; the world-transfer pump
+	// sets it again right after its own request is staged.
+	g_LastWorldTransferOrigin = LEVEL::END;
 	/* A target-level failure is reported before the recovery load back to the
 	   Lobby is staged.  Clearing the report for that recovery request erased
 	   the only actionable reason before CLevel_Lobby could consume it.  A new

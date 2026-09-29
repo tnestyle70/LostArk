@@ -40,9 +40,31 @@ private:
 		string		strImage;
 		f32_t		fWorldMinX = 0.f, fWorldMinY = 0.f;	/* retail cm */
 		f32_t		fWorldMaxX = 0.f, fWorldMaxY = 0.f;
+		/* Optional selection box (retail cm): which positions pick this area. Defaults to the map box.
+		A harbour that shares a wide image with unrelated ground selects by a narrower box. */
+		f32_t		fSelectMinX = 0.f, fSelectMinY = 0.f;
+		f32_t		fSelectMaxX = 0.f, fSelectMaxY = 0.f;
 		/* Optional: the Data/Worlds area whose NPC placements carry world map symbols.
 		Empty for an area with none, which then draws no NPC markers. */
 		string		strWorldAreaId;
+		/* Data "default": the entry a position outside every box of its level falls back to. */
+		bool_t		bDefault = false;
+		/* Optional extra boxes (retail cm) that also pick this area, for ground that is not one rectangle
+		(the open sea around a harbour town). Data "extraSelectBoxesCm": [[minX, minY, maxX, maxY], ...]. */
+		struct SELECT_BOX
+		{
+			f32_t	fMinX = 0.f, fMinY = 0.f, fMaxX = 0.f, fMaxY = 0.f;
+		};
+		vector<SELECT_BOX>	ExtraSelect;
+		/* Optional landmarks: placements of strWorldAreaId (a trigger box, not an NPC) drawn with an icon that
+		sticks to the window edge when the place is outside the visible part of the map, so the player can
+		find its direction. Data "landmarks": [{ "placementId", "icon" }, ...]. */
+		struct LANDMARK
+		{
+			string	strPlacementId;
+			string	strIcon;
+		};
+		vector<LANDMARK>	Landmarks;
 	};
 
 	HRESULT Load_Areas();
@@ -50,7 +72,11 @@ private:
 	the same pair CWorldMapWindowView draws on the M map. Loaded once per area change; the
 	symbols are static authored placements, so there is nothing to refresh per frame. */
 	void Load_AreaNpcSymbols(const AREA& Area);
-	const AREA* Find_Area(LEVEL eLevel) const;
+	/* A level may list several areas (Bern's indoor volumes, then its outdoor map). The first entry
+	whose retail-cm box contains the local position wins, in file order; a position inside none of
+	them falls back to the entry marked "default", else the level's first, which keeps every
+	single-area level as before. */
+	const AREA* Find_Area(LEVEL eLevel, f32_t fClientX, f32_t fClientZ) const;
 	void Hide_All();
 
 private:
@@ -61,6 +87,7 @@ private:
 		string	strIconPath;
 		f32_t	fWorldX = 0.f;
 		f32_t	fWorldZ = 0.f;
+		bool_t	bEdgeClamp = false;	/* landmark: keeps to the window edge when off the visible map */
 	};
 	vector<NPC_SYMBOL>				m_NpcSymbols;
 	string							m_strLoadedNpcAreaId;

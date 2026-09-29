@@ -242,6 +242,13 @@ namespace LostArk::Server
 		std::uint32_t iWaterpangCannonHitTick = 0u;
 		// A Waterpang waterfall launch in flight: it ends in the Waterpang fall, never a landing.
 		bool bWaterpangLaunch = false;
+		// Waterpang water gun: the latest cast (replicated), the tick its action ends (a second
+		// cast waits for it, movement is never locked) and the E speed buff's end and factor.
+		std::uint32_t iWaterGunSkillId = 0u;
+		std::uint32_t iWaterGunCastTick = 0u;
+		std::uint32_t iWaterGunCastEndTick = 0u;
+		std::uint32_t iWaterGunSpeedEndTick = 0u;
+		float fWaterGunSpeedScale = 1.f;
 		LostArk::Shared::PLAYER_MADNESS_FORM ePreMarioForm =
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
 		std::uint32_t iLastMarioMoveSequence = 0u;

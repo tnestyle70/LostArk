@@ -9,6 +9,7 @@
 #include "Character.h"
 #include "CharacterCatalog.h"
 #include "CharacterSelectionState.h"
+#include "ItemCatalog.h"
 #include "CombatHUDViewModel.h"
 #include "CustomizingView.h"
 #include "Effect_PresentationService.h"
@@ -2601,6 +2602,7 @@ bool Client::CClientReplication::Apply_Despawn(
 	m_PlayerHealth.Erase(despawned.iNetEntityId);
 	m_ChatBubblesByNetEntityId.erase(despawned.iNetEntityId);
 	m_GuidePromptSequences.erase(despawned.iNetEntityId);
+	m_AppliedAvatarByNetEntityId.erase(despawned.iNetEntityId);
 	m_PendingGuideBubbles.erase(despawned.iNetEntityId);
 	if (m_GuideState && m_GuideState->iGuideNetEntityId == despawned.iNetEntityId) m_GuideState.reset();
 	OBJECT_HANDLE handle{};
@@ -4557,6 +4559,8 @@ Client::CClientReplication::Replace_CharacterClass(
 		return CHARACTER_REPLACE_RESULT::RECOVERED_FAILURE;
 	}
 
+	/* A replaced body is a fresh CCharacter: the next snapshot dresses it again. */
+	m_AppliedAvatarByNetEntityId.erase(snapshot.iNetEntityId);
 	if (isLocallyControlled)
 	{
 		m_LocalCharacterHandle = newHandle;
@@ -4719,6 +4723,9 @@ void Client::CClientReplication::Reset_World()
 	m_GuidePromptSequences.clear();
 	m_PendingGuideBubbles.clear();
 	m_HonorTitleByNetEntityId.clear();
+	m_AppliedAvatarByNetEntityId.clear();
+	if (nullptr != m_pEquipmentPresentation)
+		m_pEquipmentPresentation->On_LevelChanged();
 	++m_iWorldDestructionPresentationGeneration;
 	if (0u == m_iWorldDestructionPresentationGeneration)
 		++m_iWorldDestructionPresentationGeneration;
@@ -4840,7 +4847,9 @@ bool Client::CClientReplication::Apply_PlayerSnapshot(
 	character->Apply_NetworkStance(player.eStance);
 	character->Apply_NetworkVehicle(player.iVehicleId);
 	(void)character->Apply_WaterGunPresentation(player.isWaterpangArmed);
+	character->Apply_NetworkWaterGunCast(player.iWaterGunSkillId, player.iWaterGunCastTick, serverTick);
 	character->Apply_NetworkPresentationHidden((player.CardMaze.flags & LostArk::Shared::CARD_MAZE_ENTRY_HIDDEN) != 0u);
+	Apply_AvatarPresentation(player.iNetEntityId, *character, player);
 	if (isLocallyControlled && m_Desc.iLayerLevelIndex == ETOUI(LEVEL::MAHARAKA))
 		Trace_MaharakaLocalPlayer(*character, player, serverTick);
 	if (PLAYER_ACTION_STATE::GRABBED == player.eAction)
@@ -4912,6 +4921,64 @@ bool Client::CClientReplication::Apply_PlayerSnapshot(
 	}
 	m_PendingPlayerPresentations.erase(player.iNetEntityId);
 	return allSucceeded;
+}
+
+void Client::CClientReplication::Apply_AvatarPresentation(
+	const LostArk::Shared::NET_ENTITY_ID iNetEntityId, CCharacter& character,
+	const LostArk::Shared::PLAYER_SNAPSHOT& player)
+{
+	const std::pair<std::string, std::string> worn{ player.strAvatarHeadItemId, player.strAvatarOutfitItemId };
+	const auto applied = m_AppliedAvatarByNetEntityId.find(iNetEntityId);
+	if (m_AppliedAvatarByNetEntityId.end() != applied && applied->second == worn)
+		return;
+	/* Nothing worn and nothing ever applied: the default look needs no service. */
+	if (worn.first.empty() && worn.second.empty() &&
+		m_AppliedAvatarByNetEntityId.end() == applied)
+	{
+		m_AppliedAvatarByNetEntityId[iNetEntityId] = worn;
+		return;
+	}
+
+	if (nullptr == m_pEquipmentPresentation)
+		m_pEquipmentPresentation =
+			std::make_unique<CEquipmentPresentationService>(m_Desc.pDevice, m_Desc.pContext);
+	if (!m_isEquipmentCatalogLoadAttempted)
+	{
+		m_isEquipmentCatalogLoadAttempted = true;
+		std::string loadError;
+		m_isEquipmentCatalogLoaded = m_EquipmentCatalog.Load(loadError);
+		if (!m_isEquipmentCatalogLoaded)
+			OutputDebugStringA(("[ClientReplication][Avatar] catalog: " + loadError + "\n").c_str());
+	}
+	/* Recorded before the attempt: a broken pair is tried once, not every snapshot. */
+	m_AppliedAvatarByNetEntityId[iNetEntityId] = worn;
+	if (!m_isEquipmentCatalogLoaded)
+		return;
+
+	std::array<std::string, ETOI(EQUIPMENT_SLOT_ID::END)> selected{};
+	const auto Resolve = [&](const std::string& strItemId, const EQUIPMENT_SLOT_ID eSlot)
+	{
+		if (strItemId.empty())
+			return;
+		const ITEM_DEFINITION* pItem = CItemCatalog::Find_ById(strItemId);
+		if (nullptr == pItem || pItem->strVisualSetId.empty())
+		{
+			OutputDebugStringA(("[ClientReplication][Avatar] no visual set for item " + strItemId + "\n").c_str());
+			return;
+		}
+		selected[ETOI(eSlot)] = pItem->strVisualSetId;
+	};
+	Resolve(worn.first, EQUIPMENT_SLOT_ID::HEAD);
+	Resolve(worn.second, EQUIPMENT_SLOT_ID::UPPER);
+
+	std::string error;
+	const bool_t bNothing = std::all_of(selected.begin(), selected.end(),
+		[](const std::string& strSet) { return strSet.empty(); });
+	const bool_t bApplied = bNothing ?
+		m_pEquipmentPresentation->Reset_Preview(character, error) :
+		m_pEquipmentPresentation->Apply_Preview(character, m_EquipmentCatalog, selected, error);
+	if (!bApplied)
+		OutputDebugStringA(("[ClientReplication][Avatar] " + error + "\n").c_str());
 }
 
 Client::CClientReplication::CClientReplication() = default;

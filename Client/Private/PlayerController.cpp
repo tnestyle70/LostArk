@@ -17,6 +17,7 @@
 #include "Transform.h"
 #include "UIInputRouter.h"
 #include "UserSettingsDocument.h"
+#include "Gameplay/MaharakaWaterpangContract.h"
 
 #include <cmath>
 #include <cstdio>
@@ -68,6 +69,13 @@ namespace
 	};
 
 	constexpr size_t SlotKeyCount = sizeof(SlotKeys) / sizeof(SlotKeys[0]);
+
+	/* Q/W/E/R are the four slots the Waterpang water gun takes over while armed. */
+	bool_t Is_WaterGunQuickSlot(const char* pInputSlot)
+	{
+		return nullptr != pInputSlot && '\0' != pInputSlot[0] && '\0' == pInputSlot[1] &&
+			nullptr != LostArk::Shared::Find_MaharakaWaterGunSkillBySlot(pInputSlot[0]);
+	}
 
 	constexpr std::chrono::milliseconds MOVE_GOAL_RESEND_INTERVAL{ 50 };
 	constexpr f32_t MOVE_GOAL_DEADZONE_RADIUS = 0.5f;
@@ -152,6 +160,8 @@ void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>&
 	m_wasVehicleKeyDown = false;
 	m_wasVehicleDismountKeyDown = false;
 	m_wasVehicleSkillKeyDown.fill(false);
+	m_wasWaterGunKeyDown.fill(false);
+	m_bWaterGunOwnsQuickSlots = false;
 	m_wasKeyDown.fill(false);
 	m_iHeldSkillId = LostArk::Shared::INVALID_SKILL_ID;
 	m_byHeldKeyCode = 0;
@@ -530,6 +540,9 @@ void Client::CPlayerController::Update(
 	LostArk::Shared::SKILL_ID releasedSkillId =
 		LostArk::Shared::INVALID_SKILL_ID;
 	const bool_t isMounted = 0u != CCombatHUDViewModel::Get().Get_Player().iVehicleId;
+	/* Waterpang: a Server-armed body shoots the water gun on Q/W/E/R; the class keeps its other slots. */
+	const bool_t isWaterGunArmed = !isMounted && CCombatHUDViewModel::Get().Get_Player().isWaterpangArmed;
+	m_bWaterGunOwnsQuickSlots = isWaterGunArmed;
 	Poll_SkillSlots(
 		suppressKeyboard || !gameplayCommandsEnabled || isMounted,
 		useRawKeyboard,
@@ -538,6 +551,10 @@ void Client::CPlayerController::Update(
 		releasedSkillId);
 	Poll_VehicleSkillSlots(
 		suppressKeyboard || !gameplayCommandsEnabled || !isMounted,
+		useRawKeyboard,
+		character);
+	Poll_WaterGunSlots(
+		suppressKeyboard || !gameplayCommandsEnabled || !isWaterGunArmed,
 		useRawKeyboard,
 		character);
 
@@ -777,7 +794,8 @@ void Client::CPlayerController::Poll_SkillSlots(
 			slot.requiresAlt != isAltDown ||
 			!isDown[index] || m_wasKeyDown[slot.byKeyCode] ||
 			nullptr == pSpec ||
-			LostArk::Shared::INVALID_SKILL_ID != outSkillId)
+			LostArk::Shared::INVALID_SKILL_ID != outSkillId ||
+			(m_bWaterGunOwnsQuickSlots && Is_WaterGunQuickSlot(slot.pInputSlot)))
 		{
 			continue;
 		}
@@ -1142,6 +1160,58 @@ void Client::CPlayerController::Update_VehicleFlightInput(bool_t inputAllowed, b
         m_VehicleFlightInputSentAt = now;
         m_LastVehicleFlightInput = input;
     }
+}
+
+void Client::CPlayerController::Poll_WaterGunSlots(
+	const bool_t isKeyboardBlocked,
+	const bool_t useRawKeyboard,
+	const shared_ptr<CCharacter>& character)
+{
+	struct WATER_GUN_SLOT_KEY
+	{
+		char cInputSlot;
+		uint8_t byKeyCode;
+	};
+	static constexpr WATER_GUN_SLOT_KEY WaterGunSlotKeys[] =
+	{
+		{ 'Q', DIK_Q },
+		{ 'W', DIK_W },
+		{ 'E', DIK_E },
+		{ 'R', DIK_R },
+	};
+	bool_t submitted = false;
+	for (std::size_t index = 0u; index < std::size(WaterGunSlotKeys); ++index)
+	{
+		const WATER_GUN_SLOT_KEY& slot = WaterGunSlotKeys[index];
+		const int8_t state = m_CaptureInputGate.Is_Blocked(slot.byKeyCode) ?
+			static_cast<int8_t>(0) :
+			(useRawKeyboard ?
+				CGameInstance::Get().Get_DIKeyStateRaw(slot.byKeyCode) :
+				CGameInstance::Get().Get_DIKeyState(slot.byKeyCode));
+		const bool_t isDown = 0 != (state & 0x80);
+		const bool_t pressed = isDown && !m_wasWaterGunKeyDown[index];
+		m_wasWaterGunKeyDown[index] = isDown;
+		if (isKeyboardBlocked || !pressed || submitted || nullptr == character || nullptr == m_pCommandSink)
+			continue;
+		const LostArk::Shared::MAHARAKA_WATERGUN_SKILL* skill =
+			LostArk::Shared::Find_MaharakaWaterGunSkillBySlot(slot.cInputSlot);
+		const shared_ptr<CTransform> transform = character->Get_Transform();
+		if (nullptr == skill || nullptr == transform)
+			continue;
+		const vector_t position = transform->Get_State(STATE::POSITION);
+		float3_t aim{};
+		if (!Try_PickGroundPlane(XMVectorGetY(position), aim))
+		{
+			const vector_t look = XMVector3Normalize(transform->Get_State(STATE::LOOK));
+			aim.x = XMVectorGetX(position) + XMVectorGetX(look) * 5.f;
+			aim.y = XMVectorGetY(position);
+			aim.z = XMVectorGetZ(position) + XMVectorGetZ(look) * 5.f;
+		}
+		submitted = m_pCommandSink->Request_UseSkill(
+			m_iNextActionSequence, skill->iSkillId, aim.x, aim.z);
+		if (submitted && 0u == ++m_iNextActionSequence)
+			m_iNextActionSequence = 1u;
+	}
 }
 
 void Client::CPlayerController::Poll_VehicleSkillSlots(

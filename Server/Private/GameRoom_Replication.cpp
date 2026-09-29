@@ -567,11 +567,9 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		// Water gun: armed from the intro start tick while the body stands on the
 		// Waterpang arena region; an arena push-off or knockdown keeps it until the
 		// fall resolves. The empty-room reset clears the match and so the gun.
-		snapshot.isWaterpangArmed = WORLD_ID::MAHARAKA == m_eWorldId && m_MaharakaWaterpangIntro &&
-			Has_ReachedServerTick(m_iServerTick, m_MaharakaWaterpangIntro->iStartTick) &&
-			(player.bWaterpangFall || PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction ||
-			 (m_ServerNavigation.Is_Loaded() && m_ServerNavigation.Is_PointWalkableInRegion(
-				MAHARAKA_WATERPANG_REGION_ID, player.fPositionX, player.fPositionZ, player.fPositionY)));
+		snapshot.isWaterpangArmed = Is_MaharakaWaterpangArmed(player);
+		snapshot.iWaterGunSkillId = player.iWaterGunSkillId;
+		snapshot.iWaterGunCastTick = player.iWaterGunCastTick;
 		snapshot.eStance = player.eStance;
 		snapshot.iSkillId = player.iCurrentSkillId;
 		snapshot.iActionStartTick = player.iActionStartTick;
@@ -638,6 +636,13 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 					player.fVehicleFlightStartHeight / vehicle->fFlightVerticalSpeed);
 		}
 		snapshot.iHonorTitleId = player.iHonorTitleId;
+		for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& item : player.Inventory)
+		{
+			if (LostArk::Shared::EQUIPMENT_SLOT::AVATAR_HEAD == item.eEquippedSlot)
+				snapshot.strAvatarHeadItemId = item.strItemId;
+			else if (LostArk::Shared::EQUIPMENT_SLOT::AVATAR_OUTFIT == item.eEquippedSlot)
+				snapshot.strAvatarOutfitItemId = item.strItemId;
+		}
 		snapshot.eMechanicCardSymbol = player.eMechanicCardSymbol;
 		snapshot.eMechanicCardColor = player.eMechanicCardColor;
 		snapshot.eKoukuHudMode = player.eKoukuHudMode;

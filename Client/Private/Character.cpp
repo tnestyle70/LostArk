@@ -38,6 +38,7 @@
 #include "SoundCueCatalog.h"
 #include "CombatHUDViewModel.h"
 #include "Gameplay/WorldCollisionContract.h"
+#include "Gameplay/MaharakaWaterpangContract.h"
 
 #include <algorithm>
 #include <cctype>
@@ -1335,8 +1336,65 @@ void CCharacter::Update_VehicleLifetimeEffects(const f32_t deltaSeconds)
                 OutputDebugStringA(("[VehicleLifetime] " + cue.effectAssetId + ": " + status + "\n").c_str());
         }
     };
-    sample(vehicle->ambientEffectCues, m_VehicleAmbientCueStates, true);
+    // A ship shows its wake only while it is underway (LookInfo carries no speed
+    // switch; the world-space particles then trail the hull at its own speed).
+    if (vehicle->isShip)
+        Update_ShipWakeGate(deltaSeconds, owner);
+    if (!vehicle->isShip || m_isMoving)
+        sample(vehicle->ambientEffectCues, m_VehicleAmbientCueStates, true);
     sample(vehicle->mountEffectCues, m_VehicleMountCueStates, false);
+}
+
+void CCharacter::Update_ShipWakeGate(const f32_t deltaSeconds, const std::shared_ptr<CCharacter>& owner)
+{
+    if (nullptr == m_pTransformCom || nullptr == m_pVehiclePart || !(deltaSeconds > 0.f)) return;
+    float3_t position = {};
+    XMStoreFloat3(&position, m_pTransformCom->Get_State(STATE::POSITION));
+    if (m_bShipWakeHasPosition)
+    {
+        const f32_t dx = position.x - m_vShipWakeLastPosition.x;
+        const f32_t dz = position.z - m_vShipWakeLastPosition.z;
+        const f32_t speed = std::sqrt(dx * dx + dz * dz) / deltaSeconds;
+        m_fShipWakeSpeed += (speed - m_fShipWakeSpeed) * (std::min)(1.f, deltaSeconds * 8.f);
+        if (dx * dx + dz * dz > 1.0e-8f)
+            m_fShipWakeTravelYawDegrees = XMConvertToDegrees(std::atan2(dx, dz));
+    }
+    m_vShipWakeLastPosition = position;
+    m_bShipWakeHasPosition = true;
+
+    const bool_t underway = m_isMoving;
+    const bool_t wasOn = m_bShipWakeOn;
+    if (!underway && wasOn)
+    {
+        // Hull halted: drop the wake now; the next departure spawns it again.
+        CEffectPresentationService::Stop_VehicleOwner(owner);
+        for (uint8_t& state : m_VehicleAmbientCueStates)
+            if (1u == state) state = 0u;
+    }
+    m_bShipWakeOn = underway;
+    if (!m_isLocallyControlled ||
+        LEVEL::BERN != static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID()))
+        return;
+    // Bern wake diagnostic: on every edge and about every 2 s while underway.
+    m_fShipWakeLogSeconds += deltaSeconds;
+    const bool_t edge = underway != wasOn;
+    if (m_iShipWakeLogCount >= 240u || (!edge && (!underway || m_fShipWakeLogSeconds < 2.f))) return;
+    m_fShipWakeLogSeconds = 0.f;
+    ++m_iShipWakeLogCount;
+    const float4x4_t& hull = m_pVehiclePart->Get_CombinedWorldMatrix();
+    // The wake is aimed astern: the model +X row of the drawn hull, reversed.
+    const f32_t bowYaw = XMConvertToDegrees(std::atan2(hull._11, hull._13));
+    f32_t aimVsTravel = std::fmod(bowYaw + 180.f - m_fShipWakeTravelYawDegrees, 360.f);
+    if (aimVsTravel > 180.f) aimVsTravel -= 360.f;
+    if (aimVsTravel < -180.f) aimVsTravel += 360.f;
+    char line[320] = {};
+    std::snprintf(line, sizeof(line),
+        "vehicle=%u state=%s speed_mps=%.2f pos=(%.2f,%.2f,%.2f) bow_yaw_deg=%.1f travel_yaw_deg=%.1f "
+        "wake_aim_yaw_deg=%.1f aim_minus_travel_deg=%.1f hull_scale_x=%.4f",
+        m_iVehicleId, underway ? "on" : "off", m_fShipWakeSpeed, position.x, position.y, position.z,
+        bowYaw, m_fShipWakeTravelYawDegrees, bowYaw + 180.f, aimVsTravel,
+        std::sqrt(hull._11 * hull._11 + hull._12 * hull._12 + hull._13 * hull._13));
+    Write_EffectFailureDiagnostic("ShipWake.Bern", line);
 }
 
 void CCharacter::Queue_VehicleSkillEffects(const VEHICLE_ACTOR_ENTRY& vehicle) const
@@ -2246,6 +2304,25 @@ namespace
 	constexpr const char* WATER_GUN_EFFECT_PREFIX = "effect.maharaka.watergun.watergun_att_";
 	constexpr const char* WATER_GUN_EFFECT_SUFFIX = ".full.restore";
 
+	/* GADGET.loa AKEvent notifies of the shot actions. Each event is three equally weighted
+	   variations rendered to Sound/Maharaka/WaterGun/<event>.variantNN.wav. */
+	constexpr const char* WATER_GUN_SOUND_ROOT = "Sound/Maharaka/WaterGun/";
+	constexpr uint32_t WATER_GUN_SOUND_VARIANTS = 3u;
+	struct WATER_GUN_SOUND_NOTIFY
+	{
+		uint32_t attack;
+		f32_t delaySeconds;
+		const char* event;
+	};
+	constexpr WATER_GUN_SOUND_NOTIFY WATER_GUN_SOUND_NOTIFIES[] =
+	{
+		{ 1u, 0.f, "Gadget_WaterPistol1_Attack1_Cast1" },
+		{ 1u, 0.2f, "Gadget_WaterPistol1_Attack3_Shot1" },
+		{ 2u, 0.f, "Gadget_WaterPistol1_Attack1_Cast1" },
+		{ 2u, 0.55f, "Gadget_WaterPistol1_Attack1_Shot1" },
+		{ 5u, 0.1f, "Gadget_Enviska1_Attack1_Shot1" },
+	};
+
 	void Write_WaterGunDiagnostic(const std::string& detail)
 	{
 		if (ETOUI(LEVEL::MAHARAKA) == CGameInstance::Get().Get_CurrentLevelID())
@@ -2385,27 +2462,85 @@ void CCharacter::Set_WaterGunPreviewForced(const bool_t forced)
 
 bool_t CCharacter::Play_WaterGunAttackPreview(const uint32_t attack)
 {
+	return Play_WaterGunAttack(attack);
+}
+#endif
+
+bool_t CCharacter::Play_WaterGunAttack(const uint32_t attack)
+{
 	if (!m_bWaterGunPresentation || attack < 1u || attack > 6u)
 		return false;
 	CLIP_STEP step{};
 	step.clip = "watergun_att_" + std::to_string(attack);
 	if (!Start_Clip(step))
 		return false;
+	/* The clip owns the body's pose until it ends, whether the body stands or runs;
+	   Update_WaterGunCast hands locomotion back. */
+	m_bWaterGunCastActive = true;
+	m_PendingWaterGunSounds.clear();
+	for (const WATER_GUN_SOUND_NOTIFY& notify : WATER_GUN_SOUND_NOTIFIES)
+		if (notify.attack == attack)
+			m_PendingWaterGunSounds.emplace_back(notify.delaySeconds, notify.event);
 	// GADGET.loa: water bomb (att_5) and water mine (att_6) carry no source particle.
 	if (attack > 4u)
 		return true;
 	EFFECT_SPAWN_DESC desc;
 	desc.strEffectAssetId = WATER_GUN_EFFECT_PREFIX + std::to_string(attack) + WATER_GUN_EFFECT_SUFFIX;
 	desc.pOwner = static_pointer_cast<CCharacter>(shared_from_this());
-	desc.strOccurrenceId = "watergun.preview:" + std::to_string(attack) + ":" +
-		std::to_string(++m_iWaterGunPreviewSequence);
+	desc.strOccurrenceId = "watergun.fire:" + std::to_string(attack) + ":" +
+		std::to_string(++m_iWaterGunCastSequence);
 	std::string status;
 	const bool_t spawned = CEffectPresentationService::Spawn(desc, status);
-	Write_WaterGunDiagnostic("kind=preview-fire attack=" + std::to_string(attack) +
+	Write_WaterGunDiagnostic("kind=fire attack=" + std::to_string(attack) +
 		" spawned=" + std::to_string(spawned ? 1 : 0) + (spawned ? std::string() : " reason=" + status));
 	return spawned;
 }
-#endif
+
+void CCharacter::Apply_NetworkWaterGunCast(
+	const uint32_t skillId, const uint32_t castTick, const uint32_t serverTick)
+{
+	if (0u == skillId || 0u == castTick || castTick == m_iWaterGunCastTickSeen)
+		return;
+	m_iWaterGunCastTickSeen = castTick;
+	const LostArk::Shared::MAHARAKA_WATERGUN_SKILL* const skill =
+		LostArk::Shared::Find_MaharakaWaterGunSkill(skillId);
+	/* A cast already older than its own action (a late join, a resent snapshot) is
+	   history, not a shot to replay. */
+	if (nullptr == skill || 0u == skill->iAttackClip ||
+		static_cast<int32_t>(serverTick - castTick) >
+			static_cast<int32_t>(LostArk::Shared::Get_MaharakaWaterGunTicks(skill->iActionMs)))
+		return;
+	(void)Play_WaterGunAttack(skill->iAttackClip);
+}
+
+void CCharacter::Update_WaterGunCast(const f32_t fTimeDelta)
+{
+	for (auto& pending : m_PendingWaterGunSounds)
+		pending.first -= fTimeDelta;
+	for (const auto& pending : m_PendingWaterGunSounds)
+	{
+		if (pending.first > 0.f)
+			continue;
+		const uint32_t variant = 1u + static_cast<uint32_t>(std::rand()) % WATER_GUN_SOUND_VARIANTS;
+		Play_CombatSound(CRuntimeAssetRoot::Resolve(std::string(WATER_GUN_SOUND_ROOT) + pending.second +
+			".variant0" + std::to_string(variant) + ".wav").wstring(), 1.f);
+	}
+	std::erase_if(m_PendingWaterGunSounds, [](const auto& pending) { return pending.first <= 0.f; });
+	if (!m_bWaterGunCastActive)
+		return;
+	/* The shot clip yields to any state that owns the body's animation. */
+	if (!m_bWaterGunPresentation || Is_PlayingSkill() ||
+		LostArk::Shared::PLAYER_ACTION_STATE::NONE != m_eNetworkAction ||
+		KNOCKDOWN_STEP::NONE != m_eKnockdownStep)
+	{
+		m_bWaterGunCastActive = false;
+		return;
+	}
+	if (!Is_ClipFinished())
+		return;
+	m_bWaterGunCastActive = false;
+	Set_Animation(m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE, true);
+}
 
 bool_t CCharacter::Apply_MarioPresentation(bool_t isMario)
 {
@@ -3761,6 +3896,10 @@ void CCharacter::Apply_NetworkVehicle(const std::uint32_t vehicleId)
     CEffectPresentationService::Stop_VehicleOwner(static_pointer_cast<CCharacter>(shared_from_this()));
     m_VehicleAmbientCueStates.clear();
     m_VehicleMountCueStates.clear();
+    m_bShipWakeHasPosition = false;
+    m_bShipWakeOn = false;
+    m_fShipWakeSpeed = 0.f;
+    m_fShipWakeLogSeconds = 0.f;
     m_iVehicleControlSkillId = 0u;
     m_fVehicleControlAgeSeconds = 0.f;
     m_fVehicleDirectionalBrightness = 1.f;
@@ -3914,6 +4053,7 @@ void CCharacter::Update(f32_t fTimeDelta)
 	gets a say and Is_PlayingSkill() is already correct when the logic reads it. */
 	Update_Chain();
 	Update_KnockdownPresentation();
+	Update_WaterGunCast(fTimeDelta);
 
 	/* Class code may only update presentation. Input and gameplay commands are
 	owned by PlayerController and its command sink. */
@@ -4909,7 +5049,7 @@ void CCharacter::Commit_Locomotion(bool_t isMoving)
 	/* The Esther call plays without a chain, so a run-to-idle edge from just
 	before the cast must not stomp its clip; the action edge restores
 	locomotion when the Server releases ESTHER_CAST. */
-	if (Is_PlayingSkill() ||
+	if (Is_PlayingSkill() || m_bWaterGunCastActive ||
 		LostArk::Shared::PLAYER_ACTION_STATE::NONE != m_eNetworkAction ||
 		KNOCKDOWN_STEP::NONE != m_eKnockdownStep)
 	{

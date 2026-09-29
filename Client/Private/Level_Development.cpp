@@ -6,16 +6,20 @@
 #include "CharacterSelectionState.h"
 #include "CombatHUDViewModel.h"
 #include "EffectFailureDiagnostic.h"
+#include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MainApp.h"
 #include "MapLightPresentationRuntime.h"
+#include "MapAssetCatalog.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
+#include "Profiler.h"
 #include "Transform.h"
 #include "MaharakaWaterpangPresentation.h"
 #include "UILayoutRuntime.h"
+#include "WorldGameplayDocument.h"
 
 #ifdef _DEBUG
 void Client::CLevel_Development::Set_MapAuthoringActive(bool_t active)
@@ -44,6 +48,7 @@ CLevel_Development::CLevel_Development(
 
 CLevel_Development::~CLevel_Development()
 {
+	Clear_TriggerMarkers();
 	m_Waterpang.reset(); // Return poses while map and replication still exist.
 	if (this == s_pActiveInstance)
 		s_pActiveInstance = nullptr;
@@ -173,6 +178,7 @@ HRESULT CLevel_Development::Initialize()
 	{
 		m_InteractPrompt = std::make_unique<CInteractKeyPromptView>();
 		m_InteractPrompt->Initialize(m_pDevice,m_pContext,ETOUI(m_eLevel),pEntry->pMapAreaId);
+		(void)Load_TriggerMarkers(pEntry->pMapAreaId);
 		m_Waterpang = std::make_unique<CMaharakaWaterpangPresentation>();
 		CWorldSequencePlayer::TARGET_SET targets;
 		targets.levelIndex=ETOUI(m_eLevel); targets.pCatalog=&m_MapRuntime.Get_Catalog();
@@ -195,6 +201,13 @@ void CLevel_Development::Update(const f32_t fTimeDelta)
 	if (m_isMapEditorWorkspace)
 		return;
 
+	/* Maharaka is also reached from a live Bern session and leaves the same way: the Server
+	   approves the world change, then this level asks the transition service for the target. */
+	if (LEVEL::MAHARAKA == m_eLevel &&
+		SERVER_WORLD_TRANSFER_PUMP_RESULT::NONE !=
+			CLevelTransitionService::Pump_ServerApprovedWorldTransfer(LEVEL::MAHARAKA))
+		return;
+
 	if (LEVEL::MAHARAKA == m_eLevel)
 	{
 #ifdef _DEBUG
@@ -202,6 +215,7 @@ void CLevel_Development::Update(const f32_t fTimeDelta)
 		if (!m_bMapAuthoringActive)
 #endif
 		m_MapRuntime.Update_SelfMotions(fTimeDelta);
+		Update_TriggerMarkerClocks(fTimeDelta);
 		if (m_pMapLightPresentation &&
 			!m_pMapLightPresentation->Submit_Frame() &&
 			!m_bMapLightSubmissionFailureReported)
@@ -254,6 +268,144 @@ void CLevel_Development::Update(const f32_t fTimeDelta)
 	m_PlayerController.Update(
 		nullptr != camera && camera->Is_FollowEnabled() &&
 		(LEVEL::MAHARAKA != m_eLevel || !camera->Is_PresentationOverrideActive()));
+}
+
+bool_t CLevel_Development::Load_TriggerMarkers(const char* pAreaId)
+{
+	if (nullptr == pAreaId)
+		return false;
+	/* The Server publishes this document from the same Gameplay.world.json, and the interact
+	   prompt reads it the same way: the marker sits on the exact trigger box centre, nothing
+	   is copied or guessed. */
+	CWorldGameplayDocument world;
+	std::string strStatus;
+	const std::filesystem::path path = CMapAssetCatalog::Get_MapDataRoot().parent_path() /
+		"World" / (std::string(pAreaId) + ".viewer.world.json");
+	if (!world.Load(path, pAreaId, strStatus))
+	{
+		OutputDebugStringA(("[MaharakaTriggerMarker] " + strStatus + "\n").c_str());
+		return false;
+	}
+	std::vector<TRIGGER_MARKER> staged;
+	for (const WORLD_GAMEPLAY_PLACEMENT& placement : world.Get_Placements())
+	{
+		/* The box the player steps on to go somewhere: jump1/jump2/jump3. The disabled
+		   arrival boxes (jump*_1) have no event, and the Bern exit and the match start are
+		   changeLevel / playSequence boxes, so none of those show the marker. */
+		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind || !placement.isEnabled ||
+			1u != placement.triggerEvents.size() ||
+			WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER != placement.triggerEvents.front().eKind)
+			continue;
+		TRIGGER_MARKER marker;
+		marker.placementId = placement.placementId;
+		XMStoreFloat4x4(&marker.rootWorld, XMMatrixTranslation(
+			placement.position.x, placement.position.y, placement.position.z));
+		staged.push_back(std::move(marker));
+	}
+	Clear_TriggerMarkers();
+	m_TriggerMarkers = std::move(staged);
+	return true;
+}
+
+void CLevel_Development::Clear_TriggerMarkers()
+{
+	for (auto& marker : m_TriggerMarkers)
+	{
+		EFFECT_WORLD_ROOT_HANDLE handle;
+		handle.iValue = marker.iHandleValue;
+		CEffectPresentationService::Stop_WorldRoot(handle);
+	}
+	m_TriggerMarkers.clear();
+}
+
+void CLevel_Development::Update_TriggerMarkerClocks(const f32_t deltaSeconds)
+{
+	if (!std::isfinite(deltaSeconds) || deltaSeconds < 0.f)
+		return;
+	for (auto& marker : m_TriggerMarkers)
+	{
+		if (marker.retired)
+			continue;
+		if (marker.clockStarted)
+			marker.seconds = std::fmod(marker.seconds + deltaSeconds, 7.f);
+		marker.clockStarted = true;
+	}
+}
+
+void CLevel_Development::Submit_TriggerMarkers()
+{
+	if (LEVEL::MAHARAKA != m_eLevel ||
+		CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::MAHARAKA))
+		return;
+	for (auto& marker : m_TriggerMarkers)
+	{
+		if (marker.retired) continue;
+		EFFECT_WORLD_ROOT_HANDLE handle;
+		handle.iValue = marker.iHandleValue;
+		// The complete fixed marker footprint stays inside the existing 8m sphere.
+		const float3_t center{ marker.rootWorld._41, marker.rootWorld._42, marker.rootWorld._43 };
+		const bool_t visible = CEffectPresentationService::Is_WorldPresentationVisible(
+			center, 8.f, marker.active);
+		if (!visible)
+		{
+			if (marker.active && handle.Is_Valid())
+				(void)CEffectPresentationService::Submit_LevelPlacementSample(handle, false);
+			marker.active = false;
+			continue;
+		}
+		const bool_t firstSample = !marker.started;
+		if (firstSample)
+		{
+			// Reuse the Loader's prepared target and commit only this marker.
+			EFFECT_LEVEL_PLACEMENT_SPAWN_DESC desc;
+			desc.iLevelIndex = ETOUI(LEVEL::MAHARAKA);
+			desc.strPlacementId = "maharaka.trigger." + marker.placementId;
+			desc.strEffectAssetId = "effect.world.move_destination";
+			desc.RootWorld = marker.rootWorld;
+			desc.bExternallySampled = true;
+			std::string strStatus;
+			if (!CEffectPresentationService::Spawn_LevelPlacement(desc, handle, strStatus))
+			{
+				marker.retired = true;
+				OutputDebugStringA(("[MaharakaTriggerMarker] " + marker.placementId +
+					": " + strStatus + "\n").c_str());
+				continue;
+			}
+			marker.iHandleValue = handle.iValue;
+			CEffectPresentationService::Commit_PendingWorldRootSpawns({ handle });
+			marker.started = true;
+		}
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER provider =
+			[root = marker.rootWorld](f32_t, EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& sample,
+				std::string& status)
+			{
+				sample.RootWorld = root;
+				sample.SourceAnchorWorlds.clear();
+				status.clear();
+				return true;
+			};
+		if (auto* profiler = CGameInstance::Get().Get_Profiler())
+		{
+			profiler->Add_Counter(EProfilerCounter::EffectMarkerSamples);
+			if (firstSample || !marker.active)
+				profiler->Add_Counter(EProfilerCounter::EffectMarkerHistoryRequests);
+		}
+		const bool_t sampled = CEffectPresentationService::Seek_WorldRoot(handle,
+			marker.seconds, provider, firstSample || !marker.active);
+		const HRESULT submitted = sampled ?
+			CEffectPresentationService::Submit_LevelPlacementSample(handle, true) : E_FAIL;
+		if (S_OK != submitted)
+		{
+			CEffectPresentationService::Stop_WorldRoot(handle);
+			marker.iHandleValue = 0u;
+			marker.retired = true;
+			marker.active = false;
+			OutputDebugStringA(("[MaharakaTriggerMarker] Sample/submission failed: " +
+				marker.placementId + ": " + CEffectPresentationService::Get_Status() + "\n").c_str());
+			continue;
+		}
+		marker.active = true;
+	}
 }
 
 HRESULT CLevel_Development::Render()

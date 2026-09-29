@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_BER_BERNCASTLE",
-  "revision": 922,
+  "revision": 926,
   "placements": [
     {
       "placementId": "castle",
@@ -1092,6 +1092,30 @@
       "events": [
         { "type": "changeLevel", "targetWorldId": "VALTAN_ARENA" }
       ]
+    },
+    {
+      "placementId": "island.dock.to.maharaka",
+      "kind": "triggerBox",
+      "position": [430.1, 10.95, -476.64],
+      "yawDegrees": 111.9,
+      "enabled": true,
+      "halfExtents": [8, 4, 8],
+      "triggerOnce": false,
+      "requiresInteract": true,
+      "interactAction": "dock:마하라카 썸머 캠프",
+      "events": [
+        { "type": "changeLevel", "targetWorldId": "MAHARAKA" }
+      ]
+    },
+    {
+      "placementId": "island.return.sea.landing",
+      "kind": "triggerBox",
+      "position": [424.02, 10.95, -473.8],
+      "yawDegrees": 111.2,
+      "enabled": false,
+      "halfExtents": [1, 1, 1],
+      "triggerOnce": true,
+      "events": []
     }
   ]
 }

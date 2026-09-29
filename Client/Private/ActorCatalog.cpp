@@ -1269,8 +1269,9 @@ namespace
 			const DATA_JSON_VALUE* pSeatOffset = value.Is_Object() ? value.Find("seatOffset") : nullptr;
 			const DATA_JSON_VALUE* pModelYaw = value.Is_Object() ? value.Find("modelYawDegrees") : nullptr;
 			const DATA_JSON_VALUE* pModelLift = value.Is_Object() ? value.Find("modelLiftMeters") : nullptr;
+			const DATA_JSON_VALUE* pMaxSupply = value.Is_Object() ? value.Find("maxSupply") : nullptr;
             const std::size_t optionalCount = (pSeatRotation ? 1u : 0u) +
-                (pShip ? 1u : 0u) + (pSeatOffset ? 1u : 0u) + (pModelYaw ? 1u : 0u) + (pModelLift ? 1u : 0u) +
+                (pShip ? 1u : 0u) + (pSeatOffset ? 1u : 0u) + (pModelYaw ? 1u : 0u) + (pModelLift ? 1u : 0u) + (pMaxSupply ? 1u : 0u) +
                 (hasLocomotionCues && value.Find("locomotionSoundCues") ? 1u : 0u) +
                 (hasLocomotionCues && value.Find("ambientEffectCues") ? 1u : 0u) +
                 (hasLocomotionCues && value.Find("mountEffectCues") ? 1u : 0u) +
@@ -1316,6 +1317,14 @@ namespace
 					std::abs(pModelLift->Get_Number()) > 20.0)
 					return false;
 				entry.modelLiftMeters = static_cast<f32_t>(pModelLift->Get_Number());
+			}
+			if (nullptr != pMaxSupply)
+			{
+				if (!pMaxSupply->Is_Number() || !std::isfinite(pMaxSupply->Get_Number()) ||
+					pMaxSupply->Get_Number() < 1.0 || pMaxSupply->Get_Number() > 100000.0 ||
+					std::floor(pMaxSupply->Get_Number()) != pMaxSupply->Get_Number())
+					return false;
+				entry.iMaxSupply = static_cast<std::uint32_t>(pMaxSupply->Get_Number());
 			}
 			if (hasLocomotionCues && !ParseVehicleLocomotionCues(value, entry))
 				return false;

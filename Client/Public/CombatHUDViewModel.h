@@ -76,6 +76,11 @@ namespace Client
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
 		// The vehicle the Server has this player riding; 0 on foot.
 		std::uint32_t iVehicleId = 0u;
+		// Maharaka Waterpang: the Server armed this body with the water gun, so Q/W/E/R shoot it.
+		bool isWaterpangArmed = false;
+		// Replicated effective move speed (m/s) and whether a move goal is pending; the ship HUD's knots line reads them.
+		float fMoveSpeed = 0.f;
+		bool hasMoveGoal = false;
 		LostArk::Shared::VEHICLE_FLIGHT_PHASE eVehicleFlightPhase = LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED;
 		// The honor title the Server has this player wearing; 0 = none.
 		std::uint32_t iHonorTitleId = 0u;

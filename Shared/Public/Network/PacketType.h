@@ -118,9 +118,11 @@ namespace LostArk::Shared
 	// 120 combines Valtan anchors/pickups, NPC shop silver/gold, Waterpang and live numeric balance.
 	// Neither independently published 118 nor 119 peers support this combined layout.
 	// 121 carries each Mario entrant's required colour and matching-ball progress.
+	// 122 carries each player's latest Waterpang water gun cast (skill id and Server start tick).
 	// 124 combines saved-character restore, raid EXIT votes and ground-target battle items.
-	// 125 carries the authoritative Mario/card-maze deadline in each player snapshot.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 125;
+	// Independently released 125 peers carry water gun casts, avatar items, or minigame deadlines.
+	// 126 combines all three layouts and rejects those incompatible 125 peers.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 126;
 
 	enum class WORLD_ID : std::uint16_t
 	{

@@ -33,6 +33,8 @@ namespace
 	constexpr const char* JUNK_BUTTON_ID = "Shop_JunkBtn";
 	constexpr const char* BUY_BUTTON_ID = "Shop_BuyBtn";
 	constexpr const char* EMPTY_BUTTON_ID = "Shop_EmptyBtn";
+	constexpr const char* PAGE_PREV_ID = "Shop_PageBg_0";
+	constexpr const char* PAGE_NEXT_ID = "Shop_PageBg_1";
 
 	constexpr uint32_t CELL_COUNT = 10;
 	constexpr uint32_t BASKET_COUNT = 10;
@@ -48,6 +50,9 @@ namespace
 	const wchar_t* EMPTY_TEXT = L"\xBE44\xC6B0\xAE30";
 	const wchar_t* BUY_AMOUNT_TEXT = L"\xAD6C\xB9E4 \xAE08\xC561";
 	const wchar_t* BALANCE_TEXT = L"\xAD6C\xB9E4 \xD6C4 \xC794\xC561";
+	/* Page plates: prev / next page; the page counter goes on the title line. */
+	const wchar_t* PAGE_PREV_TEXT = L"\x25C0 \xC774\xC804 \xD398\xC774\xC9C0";
+	const wchar_t* PAGE_NEXT_TEXT = L"\xB2E4\xC74C \xD398\xC774\xC9C0 \x25B6";
 
 	/* Item grade colours as GameMsg writes them (same table as Level_ValtanArena's
 	Item_GradeRgb): rare #00B5FF, uncommon #91FE02 and so on; white for no grade. */
@@ -125,6 +130,7 @@ void Client::CShopWindowView::Open(const string& strNpcPlacementId)
 		m_Basket.clear();
 	m_pShop = pShop;
 	m_strNpcPlacementId = strNpcPlacementId;
+	m_iPage = 0;
 	m_bIconsDirty = true;
 	m_bOpen = true;
 }
@@ -320,10 +326,11 @@ void Client::CShopWindowView::Update_Stock()
 	CUIInputRouter& Router = CUIInputRouter::Get();
 	const f32_t fRefWidth = m_pBackgroundView->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pBackgroundView->Get_ResolutionHeight();
-	const size_t iStockCount = (std::min)(m_pShop->Items.size(), static_cast<size_t>(CELL_COUNT));
-
-	for (uint32_t iCell = 0; iCell < iStockCount; ++iCell)
+	for (uint32_t iCell = 0; iCell < CELL_COUNT; ++iCell)
 	{
+		const size_t iStock = Get_StockIndex(iCell);
+		if (SIZE_MAX == iStock)
+			break;
 		const string strCellId = Make_Id("Shop_Cell_", iCell);
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!m_pBackgroundView->Get_SlotRect(strCellId, fX, fY, fWidth, fHeight))
@@ -335,7 +342,7 @@ void Client::CShopWindowView::Update_Stock()
 			continue;
 
 		/* One more of this item: an existing line grows, otherwise a free slot takes it. */
-		const SHOP_ITEM_DEFINITION& Stock = m_pShop->Items[iCell];
+		const SHOP_ITEM_DEFINITION& Stock = m_pShop->Items[iStock];
 		auto Line = std::find_if(m_Basket.begin(), m_Basket.end(),
 			[&Stock](const BASKET_LINE& Candidate) { return Candidate.strItemId == Stock.strItemId; });
 		if (m_Basket.end() != Line)
@@ -350,6 +357,40 @@ void Client::CShopWindowView::Update_Stock()
 		}
 		CMainApp::Play_UIButtonClickSound();
 	}
+
+	/* Page plates: prev/next when there is more than one page. The Server sees only item ids,
+	   so paging never touches the basket. */
+	const uint32_t iPages = Get_PageCount();
+	const float4_t vNormal(1.f, 1.f, 1.f, 1.f), vHover(1.25f, 1.25f, 1.25f, 1.f), vDimmed(0.5f, 0.5f, 0.5f, 1.f);
+	const auto Page = [&](const char* pId, const bool_t bEnabled, const int32_t iDelta)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pBackgroundView->Get_SlotRect(pId, fX, fY, fWidth, fHeight))
+			return;
+		const bool_t bHovered = bEnabled && Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
+		m_pBackgroundView->Set_SlotTintMultiplier(pId, !bEnabled ? vDimmed : (bHovered ? vHover : vNormal));
+		if (bEnabled && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+		{
+			CMainApp::Play_UIButtonClickSound();
+			m_iPage = static_cast<uint32_t>(static_cast<int32_t>(m_iPage) + iDelta);
+			m_bIconsDirty = true;
+		}
+	};
+	Page(PAGE_PREV_ID, m_iPage > 0u, -1);
+	Page(PAGE_NEXT_ID, m_iPage + 1u < iPages, 1);
+}
+
+uint32_t Client::CShopWindowView::Get_PageCount() const
+{
+	if (nullptr == m_pShop || m_pShop->Items.empty())
+		return 1u;
+	return static_cast<uint32_t>((m_pShop->Items.size() + CELL_COUNT - 1u) / CELL_COUNT);
+}
+
+size_t Client::CShopWindowView::Get_StockIndex(const uint32_t iCell) const
+{
+	const size_t iIndex = static_cast<size_t>(m_iPage) * CELL_COUNT + iCell;
+	return (nullptr != m_pShop && iIndex < m_pShop->Items.size()) ? iIndex : SIZE_MAX;
 }
 
 void Client::CShopWindowView::Update_Basket()
@@ -375,10 +416,12 @@ void Client::CShopWindowView::Refresh_Icons()
 	if (!m_bIconsDirty)
 		return;
 	m_bIconsDirty = false;
-	const size_t iStockCount = (std::min)(m_pShop->Items.size(), static_cast<size_t>(CELL_COUNT));
-	for (uint32_t iCell = 0; iCell < iStockCount; ++iCell)
+	for (uint32_t iCell = 0; iCell < CELL_COUNT; ++iCell)
 	{
-		const ITEM_DEFINITION* pItem = CItemCatalog::Find_ById(m_pShop->Items[iCell].strItemId);
+		const size_t iStock = Get_StockIndex(iCell);
+		if (SIZE_MAX == iStock)
+			break;
+		const ITEM_DEFINITION* pItem = CItemCatalog::Find_ById(m_pShop->Items[iStock].strItemId);
 		if (nullptr != pItem && !pItem->strIconPath.empty())
 			m_pBackgroundView->Set_SlotTexture(Make_Id("Shop_CellIcon_", iCell), pItem->strIconPath);
 	}
@@ -395,7 +438,8 @@ void Client::CShopWindowView::Apply_Visibility()
 	m_pBackgroundView->Set_AllSlotsVisible(true);
 	for (const char* pAnchorId : TEXT_ANCHOR_IDS)
 		m_pBackgroundView->Set_SlotVisible(pAnchorId, false);
-	const size_t iShownStock = (std::min)(m_pShop->Items.size(), static_cast<size_t>(CELL_COUNT));
+	const size_t iPageStart = (std::min)(m_pShop->Items.size(), static_cast<size_t>(m_iPage) * CELL_COUNT);
+	const size_t iShownStock = (std::min)(m_pShop->Items.size() - iPageStart, static_cast<size_t>(CELL_COUNT));
 	for (uint32_t iCell = static_cast<uint32_t>(iShownStock); iCell < CELL_COUNT; ++iCell)
 	{
 		m_pBackgroundView->Set_SlotVisible(Make_Id("Shop_CellIcon_", iCell), false);
@@ -480,13 +524,15 @@ void Client::CShopWindowView::Render_Text()
 
 	/* MarketListItem: nameTF at (56,5) 194x23, moneyTF right-aligned at (179,54) 140x22 so
 	the figure ends against the coin at x 316. */
-	const size_t iShownStock = (std::min)(m_pShop->Items.size(), static_cast<size_t>(CELL_COUNT));
-	for (uint32_t iCell = 0; iCell < iShownStock; ++iCell)
+	for (uint32_t iCell = 0; iCell < CELL_COUNT; ++iCell)
 	{
+		const size_t iStock = Get_StockIndex(iCell);
+		if (SIZE_MAX == iStock)
+			break;
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!m_pBackgroundView->Get_SlotRect(Make_Id("Shop_Cell_", iCell), fX, fY, fWidth, fHeight))
 			continue;
-		const SHOP_ITEM_DEFINITION& Stock = m_pShop->Items[iCell];
+		const SHOP_ITEM_DEFINITION& Stock = m_pShop->Items[iStock];
 		const ITEM_DEFINITION* pItem = CItemCatalog::Find_ById(Stock.strItemId);
 		if (nullptr != pItem)
 		{
@@ -525,6 +571,15 @@ void Client::CShopWindowView::Render_Text()
 	DrawLabel(JUNK_BUTTON_ID, JUNK_TEXT, TEXT("Font_YG760"), 16.f, 0.5f, float4_t(0.6f, 0.6f, 0.6f, 1.f));
 	DrawLabel(BUY_BUTTON_ID, BUY_TEXT, TEXT("Font_YG760"), 16.f, 0.5f, COLOR_WHITE);
 	DrawLabel(EMPTY_BUTTON_ID, EMPTY_TEXT, TEXT("Font_YG760"), 16.f, 0.5f, COLOR_WHITE);
+	if (Get_PageCount() > 1u)
+	{
+		const std::wstring strPage = std::to_wstring(m_iPage + 1u) + L" / " + std::to_wstring(Get_PageCount());
+		DrawLabel(PAGE_PREV_ID, PAGE_PREV_TEXT, TEXT("Font_YG760"), 14.f, 0.5f,
+			m_iPage > 0u ? COLOR_WHITE : float4_t(0.6f, 0.6f, 0.6f, 1.f));
+		DrawLabel(PAGE_NEXT_ID, PAGE_NEXT_TEXT, TEXT("Font_YG760"), 14.f, 0.5f,
+			m_iPage + 1u < Get_PageCount() ? COLOR_WHITE : float4_t(0.6f, 0.6f, 0.6f, 1.f));
+		DrawLabel(TITLE_ID, strPage.c_str(), TEXT("Font_YG760"), 14.f, 1.f, COLOR_WHITE);
+	}
 }
 
 bool_t Client::CShopWindowView::Get_ScreenRect(

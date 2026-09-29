@@ -246,6 +246,8 @@ private:
 	2.png"'s own art. Called after EndFrame() like the other LOA-font text, for the same
 	z-order reason as Render_Text(). */
 	void RenderQuickSlotKeyLabels();
+	/* The ocean HUD's text: supply on the dome, the knots line, the slot and button key letters. */
+	void RenderShipHudTexts();
 	/* KoukuSaydon interaction mode over the combat HUD (retail quickslot.gfx
 	quickSlotTypeMc): when HUD_KOUKU_GIMMICK_STATE names a mode, the class identity
 	block and the T/V slots hide, the mode's interaction emblem shows, and Q..F carry
@@ -259,6 +261,12 @@ private:
 	(VehicleUiCatalog.json skills[]) and A/S/D/F show the locked-slot icon. Runs after
 	Update_KoukuHudMode; with no vehicle the base ownerClass pass already hid the emblem. */
 	void Update_VehicleHud();
+	/* Waterpang water gun HUD: the retail INTERACTION_TYPE_PICKUP_PROP mode of quickslot.gfx (the
+	same pickup emblem and Q..F interaction layout the KoukuSaydon hammer uses). While the Server
+	keeps this body armed in Maharaka the class identity block and T/V hide, the pickup emblem
+	shows, Q/W/E/R carry the four water gun skill icons with the replicated cooldown pies and
+	A/S/D/F stay the plain dark slot. Runs after Update_VehicleHud. */
+	void Update_WaterGunHud();
 	/* Inventory / vehicle-window icon picks start a CQuickSlotDragView carry; the drop click
 	binds the payload to Item_1..4 (items) or SpecialSkill_1..6 (vehicles), anywhere else
 	lets go. Runs after the windows' own Update so this frame's picks are seen. */
@@ -681,6 +689,13 @@ private:
 	struct HUD_TIMED_TEXT { string strSlotId; uint32_t iEndTick = 0u; bool_t bDebuff = false; bool_t bUnderSlot = false; };
 	vector<HUD_TIMED_TEXT> m_HudTimedTexts;
 	bool_t m_bHudSpecialSlotShown = false;
+	/* Set by Update_VehicleHud while the local player rides a ship: the retail ocean HUD has no
+	HP/mana bar, item row or class special slots, so their captions are dropped as well. */
+	bool_t m_bShipHudActive = false;
+	/* Ocean HUD values set by Update_VehicleHud: the dome's supply (current / capacity) and the knots line. */
+	uint32_t m_iShipSupply = 0u;
+	uint32_t m_iShipSupplyMax = 0u;
+	f32_t m_fShipKnots = 0.f;
 #ifdef _DEBUG
 	unique_ptr<CLevelNavigationDebug> m_pLevelNavigationDebug;
 	// These are unapplied UI drafts; the active Level owns the installed floor.

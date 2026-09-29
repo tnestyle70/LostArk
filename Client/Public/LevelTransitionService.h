@@ -79,6 +79,10 @@ public:
 		std::string& outDetail);
 	static SERVER_WORLD_TRANSFER_PUMP_RESULT
 		Pump_ServerApprovedWorldTransfer(LEVEL currentLevel);
+	/* Level the last Server-approved world transfer left from (LEVEL::END when the newest
+	request was not one). Lets the loading screen tell "Bern from Maharaka" from a normal
+	Bern entry without adding anything to the protocol. */
+	static LEVEL Get_LastWorldTransferOrigin();
 
 private:
 	static bool_t Request(
