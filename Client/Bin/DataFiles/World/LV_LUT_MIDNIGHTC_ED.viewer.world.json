@@ -88,6 +88,7 @@
                                                0.100000001,
                                                1
                                            ],
+                           "requiresInteract":  true,
                            "triggerOnce":  true,
                            "events":  [
                                           {
@@ -140,6 +141,7 @@
                                                0.5,
                                                1
                                            ],
+                           "requiresInteract":  true,
                            "triggerOnce":  true,
                            "events":  [
                                           {
@@ -192,6 +194,8 @@
                                                0.5,
                                                2
                                            ],
+                           "requiresInteract":  true,
+                           "interactAction":  "move",
                            "triggerOnce":  false,
                            "events":  [
                                           {
@@ -358,6 +362,7 @@
                                                0.5,
                                                1
                                            ],
+                           "requiresInteract":  true,
                            "triggerOnce":  true,
                            "events":  [
                                           {
@@ -407,6 +412,7 @@
                                                0.5,
                                                1
                                            ],
+                           "requiresInteract":  true,
                            "triggerOnce":  true,
                            "events":  [
                                           {
@@ -479,6 +485,8 @@
                                                1,
                                                2
                                            ],
+                           "requiresInteract":  true,
+                           "interactAction":  "move",
                            "triggerOnce":  true,
                            "events":  [
                                           {
@@ -643,6 +651,7 @@
                                                0.5,
                                                1
                                            ],
+                           "requiresInteract":  true,
                            "triggerOnce":  true,
                            "events":  [
                                           {
@@ -695,6 +704,8 @@
                                                0.5,
                                                1
                                            ],
+                           "requiresInteract":  true,
+                           "interactAction":  "move",
                            "triggerOnce":  false,
                            "events":  [
                                           {
@@ -770,6 +781,7 @@
                                                0.5,
                                                1
                                            ],
+                           "requiresInteract":  true,
                            "triggerOnce":  true,
                            "events":  [
                                           {
@@ -799,6 +811,7 @@
                                                0.5,
                                                1
                                            ],
+                           "requiresInteract":  true,
                            "triggerOnce":  true,
                            "events":  [
                                           {
@@ -828,6 +841,7 @@
                                                0.5,
                                                1
                                            ],
+                           "requiresInteract":  true,
                            "triggerOnce":  true,
                            "events":  [
                                           {
@@ -880,6 +894,7 @@
                                                0.5,
                                                1
                                            ],
+                           "requiresInteract":  true,
                            "triggerOnce":  true,
                            "events":  [
                                           {
@@ -1096,6 +1111,8 @@
                                                0.5,
                                                1
                                            ],
+                           "requiresInteract":  true,
+                           "interactAction":  "move",
                            "triggerOnce":  false,
                            "events":  [
                                           {
@@ -1125,6 +1142,7 @@
                                                0.5,
                                                1
                                            ],
+                           "requiresInteract":  true,
                            "triggerOnce":  true,
                            "events":  [
                                           {
@@ -1154,6 +1172,7 @@
                                                0.5,
                                                1
                                            ],
+                           "requiresInteract":  true,
                            "triggerOnce":  true,
                            "events":  [
                                           {
@@ -1206,6 +1225,7 @@
                                                0.5,
                                                1
                                            ],
+                           "requiresInteract":  true,
                            "triggerOnce":  true,
                            "events":  [
                                           {
@@ -1235,6 +1255,7 @@
                                                0.5,
                                                1
                                            ],
+                           "requiresInteract":  true,
                            "triggerOnce":  true,
                            "events":  [
                                           {
@@ -1264,6 +1285,7 @@
                                                0.5,
                                                1
                                            ],
+                           "requiresInteract":  true,
                            "triggerOnce":  true,
                            "events":  [
                                           {
@@ -2218,6 +2240,7 @@
                                                0.300000012,
                                                1
                                            ],
+                           "requiresInteract":  true,
                            "triggerOnce":  false,
                            "events":  [
                                           {
@@ -2247,6 +2270,7 @@
                                                0.200000003,
                                                1
                                            ],
+                           "requiresInteract":  true,
                            "triggerOnce":  false,
                            "events":  [
                                           {
@@ -2276,6 +2300,7 @@
                                                0.100000001,
                                                1.10000002
                                            ],
+                           "requiresInteract":  true,
                            "triggerOnce":  false,
                            "events":  [
                                           {
@@ -2305,6 +2330,8 @@
                                                0.5,
                                                0.5
                                            ],
+                           "requiresInteract":  true,
+                           "interactAction":  "lever",
                            "triggerOnce":  true,
                            "events":  [
                                           {
@@ -2328,6 +2355,8 @@
                                                0.5,
                                                0.5
                                            ],
+                           "requiresInteract":  true,
+                           "interactAction":  "lever",
                            "triggerOnce":  true,
                            "events":  [
                                           {

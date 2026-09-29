@@ -152,7 +152,7 @@ struct WORLD_GAMEPLAY_PLACEMENT
 	   request, so a document written before this field reads as false. */
 	bool_t requiresInteract = false;
 	/* Optional on a gated trigger box: which retail MasterKey action the prompt shows
-	("godown", "climb", "tightrope", "jump", "check"). Empty means the prompt reads the
+	("godown", "climb", "tightrope", "jump", "check", "move", "lever"). Empty means the prompt reads the
 	box's own movePlayer height the way it did before this field existed -- a box whose
 	action is not a move, or whose move does not describe what the player is doing, names
 	it here instead. */
