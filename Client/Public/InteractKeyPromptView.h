@@ -35,13 +35,18 @@ public:
 		const std::string& strOfferedTriggerId, bool_t bShown);
 	/* Action name line; HUD text layer. Call from the Level's Render. */
 	void Render_Text() const;
+	/* First authored dock trigger (interactAction "dock:<name>"): the point a level marks with its
+	mooring marker. False when the viewer document has none. Presentation only. */
+	bool_t Try_Get_DockPoint(float3_t& vOutCenter, f32_t& fOutYawDegrees) const;
 
 private:
-	enum class ACTION : uint8_t { GODOWN, CLIMB, TIGHTROPE, CHECK };
+	enum class ACTION : uint8_t { GODOWN, CLIMB, TIGHTROPE, CHECK, DOCK };
 	struct TRIGGER
 	{
 		std::string strPlacementId;
 		ACTION eAction = ACTION::CHECK;
+		// DOCK only: the authored place name shown as the action line (interactAction "dock:<name>").
+		std::wstring strLabel;
 		/* Box in world units. A box that fires on entry is never offered by the Server --
 		its action has already run by the time anyone could press a key -- so the icon it
 		authored is shown while the local player stands in it. Presentation only: nothing
@@ -58,6 +63,7 @@ private:
 	std::vector<TRIGGER>				m_Triggers;
 	std::string							m_strShownTriggerId;
 	ACTION								m_eAction = ACTION::CHECK;
+	std::wstring							m_strLabel;
 	f32_t								m_fShowSeconds = -1.f;
 	/* Screen px of the text line (centre x, centre y) and its line height, set in Update. */
 	f32_t								m_fTextCenterX = 0.f;

@@ -185,6 +185,13 @@ public:
 	// Local preview of watergun_att_1..6; att_1..4 also spawn their source muzzle effect.
 	bool_t Play_WaterGunAttackPreview(uint32_t attack);
 #endif
+	/* Waterpang water gun shot: plays watergun_att_1..6 (att_1..4 also spawn their source
+	   muzzle effect) without touching movement; the shot clip hands locomotion back when
+	   it ends. */
+	bool_t Play_WaterGunAttack(uint32_t attack);
+	/* The replicated cast edge (skill id and the Server tick it began): plays each new cast
+	   once, and never replays one already older than its own action. */
+	void Apply_NetworkWaterGunCast(uint32_t skillId, uint32_t castTick, uint32_t serverTick);
 	//charcter represent function
 	bool_t Apply_NetworkState(
 		const float3_t& position,
@@ -446,6 +453,11 @@ private:
 	bool_t m_bWaterGunPreviewForced = false;
 	uint32_t m_iWaterGunPreviewSequence = 0u;
 #endif
+	bool_t m_bWaterGunCastActive = false;
+	uint32_t m_iWaterGunCastTickSeen = 0u;
+	uint32_t m_iWaterGunCastSequence = 0u;
+	// Source AkEvent notifies of the running shot: seconds until each plays, and its catalog event.
+	std::vector<std::pair<f32_t, std::string>> m_PendingWaterGunSounds;
 	// Part parent pointers refer to this instance member for their whole lifetime.
 	float4x4_t m_PresentationRootMatrix = {};
 	bool_t m_isMoving = { false };
@@ -553,6 +565,13 @@ private:
     uint32_t m_iVehicleEffectGeneration = 0u;
     std::vector<uint8_t> m_VehicleAmbientCueStates;
     std::vector<uint8_t> m_VehicleMountCueStates;
+    float3_t m_vShipWakeLastPosition = {};
+    f32_t m_fShipWakeTravelYawDegrees = 0.f;
+    f32_t m_fShipWakeSpeed = 0.f;
+    f32_t m_fShipWakeLogSeconds = 0.f;
+    uint32_t m_iShipWakeLogCount = 0u;
+    bool_t m_bShipWakeHasPosition = false;
+    bool_t m_bShipWakeOn = false;
 	std::uint32_t m_iEffectActionStartTick = 0u;
 	f32_t m_fEffectActionFacingYawDegrees = 0.f;
 	bool_t m_bHasEffectActionFacingYaw = false;
@@ -696,6 +715,8 @@ private:
 	/* Advances the knockdown clip step when its current clip ends: fall to
 	land, land to the lying loop, and standup back to locomotion. */
 	void Update_KnockdownPresentation();
+	/* Plays the shot's delayed source sounds and returns locomotion once its clip has run out. */
+	void Update_WaterGunCast(f32_t fTimeDelta);
 
 	void Update_PresentationRootMatrix();
 
@@ -734,6 +755,8 @@ private:
 		std::uint32_t actionStartTick, f32_t actionAgeSeconds);
 	void Update_VehicleLocomotionSoundCues();
     void Update_VehicleLifetimeEffects(f32_t deltaSeconds);
+    // Ship wake: the hull's ambient wake cues run only while it is underway.
+    void Update_ShipWakeGate(f32_t deltaSeconds, const std::shared_ptr<CCharacter>& owner);
     void Update_VehiclePresentationControls(f32_t deltaSeconds);
 	void Queue_VehicleSkillEffects(const VEHICLE_ACTOR_ENTRY& vehicle) const;
 	void Spawn_FallbackEffect(LostArk::Shared::SKILL_ID iSkillId);

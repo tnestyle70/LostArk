@@ -48,6 +48,7 @@ namespace
 		case 0: return L"\xB0B4\xB824\xAC00\xAE30";
 		case 1: return L"\xC62C\xB77C\xAC00\xAE30";
 		case 2: return L"\xAC74\xB108\xAC00\xAE30";
+		case 4: return L"\xC815\xBC15\xD558\xAE30";
 		default: return L"\xD655\xC778\xD558\xAE30";
 		}
 	}
@@ -58,6 +59,7 @@ namespace
 		case 0: return "UI/Interact/Icon_godown.png";
 		case 1: return "UI/Interact/Icon_climb.png";
 		case 2: return "UI/Interact/Icon_singleLine.png";
+		case 4: return "UI/Interact/Icon_check.png";
 		default: return "UI/Interact/Icon_check.png";
 		}
 	}
@@ -103,6 +105,20 @@ void Client::CInteractKeyPromptView::Initialize(
 			else if ("climb" == Placement.strInteractAction) Trigger.eAction = ACTION::CLIMB;
 			else if ("tightrope" == Placement.strInteractAction) Trigger.eAction = ACTION::TIGHTROPE;
 			else if ("check" == Placement.strInteractAction) Trigger.eAction = ACTION::CHECK;
+			else if (0 == Placement.strInteractAction.rfind("dock:", 0) && Placement.strInteractAction.size() > 5u)
+			{
+				/* "dock:<name>": the UTF-8 place name is the action line, like the original's
+				   "<place> [G]" at a ship dock. */
+				const std::string strLabel = Placement.strInteractAction.substr(5u);
+				const int iWide = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, strLabel.c_str(),
+					static_cast<int>(strLabel.size()), nullptr, 0);
+				if (iWide <= 0)
+					continue;
+				Trigger.strLabel.assign(static_cast<size_t>(iWide), L'\0');
+				MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, strLabel.c_str(),
+					static_cast<int>(strLabel.size()), Trigger.strLabel.data(), iWide);
+				Trigger.eAction = ACTION::DOCK;
+			}
 			else
 			{
 				OutputDebugStringA(("[InteractKeyPrompt] unknown interactAction: " +
@@ -201,6 +217,7 @@ void Client::CInteractKeyPromptView::Update(const f32_t fTimeDelta,
 		/* A new offer replays the "show" glow and swaps the action icon. */
 		m_strShownTriggerId = pTrigger->strPlacementId;
 		m_eAction = pTrigger->eAction;
+		m_strLabel = pTrigger->strLabel;
 		m_fShowSeconds = 0.f;
 		m_pView->Set_SlotTexture("IKP_Icon", Action_Icon(static_cast<uint8_t>(m_eAction)));
 	}
@@ -222,7 +239,9 @@ void Client::CInteractKeyPromptView::Update(const f32_t fTimeDelta,
 	/* "{0} {1}": the name, a space, the keycap, centred on the point together. */
 	f32_t fScale = 1.f;
 	const wstring_t strFont = UILabelFont::Resolve(FONT_YG760, m_fTextPx, fScale);
-	const f32_t fTextW = Instance.Measure_Text(strFont, Action_Text(static_cast<uint8_t>(m_eAction))).x * fScale;
+	const wchar_t* pActionText = ACTION::DOCK == m_eAction && !m_strLabel.empty() ?
+		m_strLabel.c_str() : Action_Text(static_cast<uint8_t>(m_eAction));
+	const f32_t fTextW = Instance.Measure_Text(strFont, pActionText).x * fScale;
 	const f32_t fLineW = fTextW + (KEY_GAP + KEY_W) * fPx;
 	m_fTextCenterX = vPoint.x - fLineW * 0.5f + fTextW * 0.5f;
 	const f32_t fKeyX = vPoint.x - fLineW * 0.5f + fTextW + KEY_GAP * fPx;
@@ -251,13 +270,27 @@ void Client::CInteractKeyPromptView::Update(const f32_t fTimeDelta,
 	m_bVisible = true;
 }
 
+bool_t Client::CInteractKeyPromptView::Try_Get_DockPoint(float3_t& vOutCenter, f32_t& fOutYawDegrees) const
+{
+	for (const TRIGGER& Trigger : m_Triggers)
+	{
+		if (ACTION::DOCK != Trigger.eAction)
+			continue;
+		vOutCenter = Trigger.vCenter;
+		fOutYawDegrees = Trigger.fYawDegrees;
+		return true;
+	}
+	return false;
+}
+
 void Client::CInteractKeyPromptView::Render_Text() const
 {
 	if (!m_bVisible)
 		return;
 	/* YG760 14 px white with the retail black blur (blurSize 2, strength 3) read as an outline. */
 	CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
-	const wchar_t* pText = Action_Text(static_cast<uint8_t>(m_eAction));
+	const wchar_t* pText = ACTION::DOCK == m_eAction && !m_strLabel.empty() ?
+		m_strLabel.c_str() : Action_Text(static_cast<uint8_t>(m_eAction));
 	const fvector_t vOutline = XMVectorSet(0.f, 0.f, 0.f, 0.85f);
 	static constexpr f32_t OFFSETS[8][2] = {
 		{ -1.f, 0.f }, { 1.f, 0.f }, { 0.f, -1.f }, { 0.f, 1.f },

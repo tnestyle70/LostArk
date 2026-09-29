@@ -580,10 +580,24 @@ bool_t Client::CWorldGameplayDocument::Load(
 				}
 				else if (WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL == event.eKind)
 				{
-					if (!Is_ExactObject(eventValue, { "type", "targetWorldId" }))
+					/* The optional landing placement names where the player stands in the
+					   target world (the ship dock and its return use it). */
+					const DATA_JSON_VALUE* landing = eventValue.Find("spawnPlacementId");
+					if (nullptr != landing ?
+						!Is_ExactObject(eventValue, { "type", "targetWorldId", "spawnPlacementId" }) :
+						!Is_ExactObject(eventValue, { "type", "targetWorldId" }))
 					{
 						outStatus = "Gameplay changeLevel event has invalid fields";
 						return false;
+					}
+					if (nullptr != landing)
+					{
+						if (!landing->Is_String() || !Is_ValidStableId(landing->Get_String()))
+						{
+							outStatus = "Gameplay changeLevel landing placement is invalid";
+							return false;
+						}
+						event.targetId = landing->Get_String();
 					}
 					const DATA_JSON_VALUE* targetWorldId =
 						eventValue.Find("targetWorldId");
@@ -1020,6 +1034,9 @@ bool_t Client::CWorldGameplayDocument::Save(
 				{
 					output << ", \"targetWorldId\": \""
 						<< WorldId_ToString(event.eTargetWorldId) << '"';
+					if (!event.targetId.empty())
+						output << ", \"spawnPlacementId\": \""
+							<< CDataJson::Escape(event.targetId) << '"';
 				}
 				else if (WORLD_TRIGGER_EVENT_KIND::ACTIVATE_SPAWN_GROUP == event.eKind)
 				{
@@ -1193,6 +1210,8 @@ bool_t Client::CWorldGameplayDocument::Is_Valid(
 					if (WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL == event.eKind)
 					{
 						return LostArk::Shared::WORLD_ID::BERN ==
+								event.eTargetWorldId ||
+							LostArk::Shared::WORLD_ID::MAHARAKA ==
 								event.eTargetWorldId ||
 							LostArk::Shared::WORLD_ID::VALTAN_ARENA ==
 								event.eTargetWorldId ||
@@ -1441,6 +1460,7 @@ const char_t* Client::CWorldGameplayDocument::WorldId_ToString(
 	case WORLD_ID::BERN: return "BERN";
 	case WORLD_ID::VALTAN_ARENA: return "VALTAN_ARENA";
 	case WORLD_ID::KAKULSAYDON_ARENA: return "KAKULSAYDON_ARENA";
+	case WORLD_ID::MAHARAKA: return "MAHARAKA";
 	default: return "invalid";
 	}
 }
@@ -1456,6 +1476,8 @@ bool_t Client::CWorldGameplayDocument::Try_ParseWorldId(
 		outWorldId = WORLD_ID::VALTAN_ARENA;
 	else if ("KAKULSAYDON_ARENA" == value)
 		outWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+	else if ("MAHARAKA" == value)
+		outWorldId = WORLD_ID::MAHARAKA;
 	else
 		return false;
 	return true;

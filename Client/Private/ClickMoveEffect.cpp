@@ -37,7 +37,8 @@ std::vector<std::string> Client::CClickMoveEffect::Queue_LevelResources(const LE
 		if (std::string_view(id).find("aura") != std::string_view::npos &&
 			LEVEL::KAKULSAYDON_ARENA != level) continue;
 		if (id == DESTINATION_EFFECT_ID &&
-			LEVEL::KAKULSAYDON_ARENA != level && LEVEL::VALTAN_ARENA != level)
+			LEVEL::KAKULSAYDON_ARENA != level && LEVEL::VALTAN_ARENA != level &&
+			LEVEL::MAHARAKA != level)
 			continue;
 		std::vector<std::string> target;
 		std::string status;

@@ -13,6 +13,8 @@
 #include "Camera_Free.h"
 #include "CombatHUDViewModel.h"
 #include "EffectFailureDiagnostic.h"
+#include "Effect_PresentationService.h"
+#include "InteractKeyPromptView.h"
 #include "Character.h"
 #include "DataJson.h"
 #include "GameInstance.h"
@@ -345,6 +347,7 @@ CLevel_Bern::CLevel_Bern(
 CLevel_Bern::~CLevel_Bern()
 {
 	End_EntranceCinematic();
+	Clear_AnchorMarker();
 	if (nullptr != m_pMapEffectPresentation)
 	{
 		m_pMapEffectPresentation->Clear();
@@ -468,6 +471,15 @@ HRESULT CLevel_Bern::Initialize()
 	}
 	m_pValtanEntryView = std::make_unique<CRaidEntryPreviewView>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::BERN));
+	m_pInteractPrompt = std::make_unique<CInteractKeyPromptView>();
+	m_pInteractPrompt->Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::BERN), pEntry->pMapAreaId);
+	{
+		std::vector<std::string> markerTargets;
+		std::string markerStatus;
+		if (!CEffectPresentationService::Queue_ProductTargets_Priority(
+			{ "effect.bern.anchor.marker.marker.full.restore" }, markerTargets, markerStatus))
+			Write_EffectFailureDiagnostic("AnchorMarker.Bern", "prepare isolated: " + markerStatus);
+	}
 
 	/* First-ever CGameInstance::Draw_Text call for Font_YoonGasiIIM in this
 	level appeared to render nothing the first time the Valtan-entry popup
@@ -614,6 +626,11 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
 	}
+	if (nullptr != m_pInteractPrompt)
+		m_pInteractPrompt->Update(fTimeDelta, localCharacter,
+			CCombatHUDViewModel::Get().Get_InteractPromptTriggerId(),
+			nullptr != m_pCamera && !m_pCamera->Is_PresentationOverrideActive());
+	Update_AnchorMarker(fTimeDelta);
 	m_PlayerController.Update(
 		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled(),
 		nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&
@@ -742,6 +759,8 @@ HRESULT CLevel_Bern::Render()
 	   the combat HUD renders -- see its declaration comment in Level_Bern.h.
 	   Only the LOA font label pass stays here. */
 	Render_ValtanEntryModalText();
+	if (nullptr != m_pInteractPrompt)
+		m_pInteractPrompt->Render_Text();
 
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(
@@ -1599,6 +1618,67 @@ void CLevel_Bern::Advance_ShipNpcWalk()
 			"requested: the character is inside the ship NPC interaction radius");
 		pMainApp->Open_ShipWindow();
 	}
+}
+
+void CLevel_Bern::Clear_AnchorMarker()
+{
+	if (0u != m_iAnchorMarkerHandle)
+	{
+		EFFECT_WORLD_ROOT_HANDLE handle{};
+		handle.iValue = m_iAnchorMarkerHandle;
+		CEffectPresentationService::Stop_WorldRoot(handle);
+	}
+	m_iAnchorMarkerHandle = 0u;
+	m_bAnchorMarkerPlaced = false;
+}
+
+/* The golden anchor volume on the water in front of the dock trigger (EFTable_VoyageAnchorVolume
+   -> Prop ITR_10297 DockingVolume). It is placed only where the authored viewer document has a
+   dock trigger, at that trigger, so it can never mark a place the Server does not offer. */
+void CLevel_Bern::Update_AnchorMarker(const f32_t fTimeDelta)
+{
+	if (m_bAnchorMarkerPlaced || nullptr == m_pInteractPrompt || m_iAnchorMarkerAttempts >= 40u)
+		return;
+	m_fAnchorMarkerRetrySeconds -= fTimeDelta;
+	if (m_fAnchorMarkerRetrySeconds > 0.f)
+		return;
+	float3_t vCenter{};
+	f32_t fYawDegrees = 0.f;
+	if (!m_pInteractPrompt->Try_Get_DockPoint(vCenter, fYawDegrees))
+	{
+		m_iAnchorMarkerAttempts = 40u;
+		return;
+	}
+	m_fAnchorMarkerRetrySeconds = 0.5f;
+	++m_iAnchorMarkerAttempts;
+	EFFECT_LEVEL_PLACEMENT_SPAWN_DESC desc;
+	desc.iLevelIndex = ETOUI(LEVEL::BERN);
+	desc.strPlacementId = "bern.anchor.marker";
+	desc.strEffectAssetId = "effect.bern.anchor.marker.marker.full.restore";
+	desc.bOwnerSustainedSourceLoops = true;
+	XMStoreFloat4x4(&desc.RootWorld, XMMatrixRotationY(XMConvertToRadians(fYawDegrees)) *
+		XMMatrixTranslation(vCenter.x, vCenter.y, vCenter.z));
+	EFFECT_WORLD_ROOT_HANDLE staged;
+	std::string status;
+	if (!CEffectPresentationService::Spawn_LevelPlacement(desc, staged, status))
+	{
+		if (m_iAnchorMarkerAttempts == 1u || m_iAnchorMarkerAttempts == 40u)
+			Write_EffectFailureDiagnostic("AnchorMarker.Bern", "spawn waiting: " + status);
+		return;
+	}
+	CEffectPresentationService::Commit_PendingWorldRootSpawns({ staged });
+	if (!CEffectPresentationService::Update_WorldRoot(staged, desc.RootWorld))
+	{
+		Write_EffectFailureDiagnostic("AnchorMarker.Bern", "activation failed: " + CEffectPresentationService::Get_Status());
+		CEffectPresentationService::Stop_WorldRoot(staged);
+		return;
+	}
+	m_iAnchorMarkerHandle = staged.iValue;
+	m_bAnchorMarkerPlaced = true;
+	char line[192]{};
+	snprintf(line, sizeof(line), "placed asset=%s pos=(%.2f, %.2f, %.2f) yaw=%.1f attempts=%u",
+		desc.strEffectAssetId.c_str(), vCenter.x, vCenter.y, vCenter.z, fYawDegrees, m_iAnchorMarkerAttempts);
+	Write_EffectFailureDiagnostic("AnchorMarker.Bern", line);
 }
 
 void CLevel_Bern::Update_ShipCamera(const f32_t fTimeDelta)

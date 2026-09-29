@@ -161,6 +161,25 @@ HRESULT CLevel_Loading::Initialize(
 		m_strTitleText = L"\xD55C\xBC24\xC911\xC758 \xC11C\xCEE4\xC2A4";
 		m_strTipText = L"\xD55C\xBC24\xC911\xC758 \xC11C\xCEE4\xC2A4\xB294 \xB2F9\xC2E0\xC744 \xC9C4\xC2EC\xC73C\xB85C \xD658\xC601\xD569\xB2C8\xB2E4.";
 	}
+	else if (LEVEL::MAHARAKA == m_eNextLevelID)
+	{
+		/* Zone 57009 (2021 Maharaka Paradise island): retail's tip.name.zonebase_57009. Its
+		   HintGroup row was retired with the 2021 event, so the tip is the one Maharaka-specific
+		   hint left in EFTable_GameMsg (sys.hint.zone_island_323) with its colour tags removed. */
+		m_strTitleText = L"\xB9C8\xD558\xB77C\xCE74 \xD30C\xB77C\xB2E4\xC774\xC2A4";
+		m_strScenarioLabel = L"\xC815\xBCF4";
+		m_strTipText = L"\xB9C8\xD558\xB77C\xCE74 \xC12C\xC758 \xB2E4\xC591\xD55C \xB180\xC774\xC5D0 \xCC38\xC5EC\xD558\xBA74 \xB9C8\xD558\xB77C\xCE74 \xC78E\xC0C8\xB97C \xC5BB\xC744 \xC218 \xC788\xC2B5\xB2C8\xB2E4.";
+	}
+	else if (LEVEL::BERN == m_eNextLevelID &&
+		LEVEL::MAHARAKA == CLevelTransitionService::Get_LastWorldTransferOrigin())
+	{
+		/* Leaving Maharaka lands on Bern's sea, retail's zone 30703. Title is
+		   tip.name.zonebase_30703 without its voyage prefix; the tip is HintGroup 30703's
+		   sys.hint.zone_voyage_005. */
+		m_strTitleText = L"\xAE30\xC5D0\xB098\xC758 \xBC14\xB2E4";
+		m_strScenarioLabel = L"\xC815\xBCF4";
+		m_strTipText = L"\xAC01\xC885 \xC8FC\xD654\xB97C \xD1B5\xD574 \xB354 \xC88B\xC740 \xC120\xC6D0\xC744 \xD68D\xB4DD\xD560 \xC218 \xC788\xC2B5\xB2C8\xB2E4.";
+	}
 	else
 	{
 		m_strTitleText = L"\xBCA0\xB978 \xC131";
@@ -1277,6 +1296,15 @@ HRESULT CLevel_Loading::Ready_Layer_Chrome()
 		   zone's own sys.hint.zone_commanderraid_011. */
 		if ("Background" == strId && LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID)
 			strTexturePath = "UI/Loading/Loading_Background_Kouku.png";
+		/* Maharaka: zone 57009's own loading art (ExtRes/Loading/ZONE ISLAND_57009). */
+		if ("Background" == strId && LEVEL::MAHARAKA == m_eNextLevelID)
+			strTexturePath = "UI/Loading/Loading_Background_Maharaka.png";
+		/* Leaving Maharaka: zone 30703's loading group 30700 holds three equal-weight images
+		   (VOYAGE_COMMON_0/1/2); retail picks one at random per load. The project keeps only
+		   VOYAGE_COMMON_0 (Sea_0) on purpose. */
+		if ("Background" == strId && LEVEL::BERN == m_eNextLevelID &&
+			LEVEL::MAHARAKA == CLevelTransitionService::Get_LastWorldTransferOrigin())
+			strTexturePath = "UI/Loading/Loading_Background_Sea_0.png";
 
 		/* Texture-less slots (empty "layers") are position-only markers the HUD Layout Tool
 		can still drag -- pull text draw positions from them instead of creating a sprite. */
