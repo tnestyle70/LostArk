@@ -2132,6 +2132,45 @@ void CMainApp::Update(const f32_t fTimeDelta)
 #ifdef _DEBUG
 		CCombatHUDViewModel::Get().Debug_Tick_DungeonTimer(fTimeDelta);
 #endif
+		/* Retail limits, shown only (nothing ends at zero): every Mario stage 60 s, the card
+		   maze 150 s. Counts from the moment the replicated stage / maze role appears. */
+		{
+			static std::uint8_t s_iSource = 0u;
+			static f32_t s_fSeconds = 0.f;
+			static bool_t s_bDriving = false;
+			CCombatHUDViewModel& HudModel = CCombatHUDViewModel::Get();
+			if (!HudModel.Is_DungeonTimerRunning())
+			{
+				const HUD_PLAYER_STATE& Player = HudModel.Get_Player();
+				std::uint8_t iSource = 0u;
+				if (Player.isValid)
+				{
+					if (Player.iMarioStage >= 1u && Player.iMarioStage <= 4u)
+						iSource = Player.iMarioStage;
+					else if (LostArk::Shared::CARD_MAZE_ROLE::NONE != HudModel.Get_KoukuGimmick().eCardMazeRole)
+						iSource = 5u;
+				}
+				if (iSource != s_iSource)
+				{
+					s_iSource = iSource;
+					s_fSeconds = (5u == iSource) ? 150.f : 60.f;
+				}
+				if (0u != s_iSource)
+				{
+					s_fSeconds = (std::max)(0.f, s_fSeconds - fTimeDelta);
+					HUD_DUNGEON_TIMER_STATE State;
+					State.isVisible = true;
+					State.fSeconds = s_fSeconds;
+					HudModel.Debug_Set_DungeonTimer(State, false);
+					s_bDriving = true;
+				}
+				else if (s_bDriving)
+				{
+					HudModel.Debug_Set_DungeonTimer(HUD_DUNGEON_TIMER_STATE{}, false);
+					s_bDriving = false;
+				}
+			}
+		}
 		m_pDungeonTimerView->Update(fTimeDelta,
 			CCombatHUDViewModel::Get().Get_DungeonTimer());
 	}
