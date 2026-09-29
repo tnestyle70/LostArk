@@ -246,3 +246,102 @@ CINEMATIC→WHIRLWIND→DASH_CHARGE와 Trash 반복·실제 카운터 종료를 
 이는 실제4Client 화면, Client retry snapshot 전체 통합, PNG 최종 위치 판정을 대신하지 않는다.
 Client 실행·UI 조작 및 ZIP 갱신은 하지 않았다. 실행 출력은 `Client/Bin/Release/Client.exe`,
 `Server/Bin/Release/Server.exe`이고 기존 ZIP은 변경하지 않았다.
+
+## G12. 최종 발탄 동작과 저장값 보존
+
+자동 G 입장의 HEALTH_BAR_ROTATIONS cinematic 경로는 entrance cinematic과 legacy intro를
+함께 소비한다. 컷씬 뒤 legacy `VALTAN_ENTRANCE_WHIRLWIND`를 추가하지 않고 현재 저장된
+첫 일반 순환으로 진행한다. Lifecycle 검사는 순환 목록으로 필터하기 전의 첫8개 occurrence를
+`CINEMATIC → WHIRLWIND → DASH_CHARGE → HIGH_JUMP → FOUR_SLASH → CROSS →
+DASH_CHARGE → WHIRLWIND`로 대조하고, 연속 성공 전투에서 legacy entrance0회를 확인했다.
+기존 명시적 audition과 저장된 timing은 유지한다.
+
+TRASH/TRASH_CATCH_IF는 놓침·포획 뒤 재시도하고 실제 COUNTER_HIT 이후 GROGGY를 거쳐
+완료한다. 전원 처형 후 살아 있는 대상이 없는 중단은 카운터 성공으로 기록하지 않는다.
+Client는 같은 patternSequence의 정확한 Trash retry action 사이에서 새 forward actionStartTick이
+있을 때 stageIndex 역행과 같은 stage의 다음 회차를 수용한다. 과거 tick·다른 패턴·일반 패턴
+역행 거절은 유지한다. 기존 실제 함수 native CPU48/48 결과와 이전 소스 실패6건 재현은
+`out/ValtanTrashSnapshot20260930/validation-receipt.json`을 따른다. 실제 Client 화면 검증은 아니다.
+
+### 갑옷 파괴와 PNG·실제 파괴 피드백
+
+`VALTAN_PART_BREAK/PART_BREAK_RECOVERY`의 cardinal-rocks spawn과 전용 orphan
+combatobject·visual·sound 연결을 제거했다. 원본 GROUND_ROAR의 돌과 공유 Effect는 유지한다.
+PART_BREAK1800ms와 recovery5183ms는 그대로다. 현재 native 검사는155tick 유지·156tick
+완료와 recovery에서 돌 definition·live object·damage·lifecycle event가 없음을 확인했다.
+
+primary BOSS_VALTAN의 일반 몸체 갑옷은 서버가 archetype·owner pattern/action·impact hit를
+확인한 destruction_bomb projectile 결과에만 반응한다. 일반 공격·스킬·폭탄 번호만 가진 hit와
+벽 충돌은 갑옷을 차감하지 않는다. HP·독립 무력화 및 다른 보스의 일반 part-damage는 유지한다.
+실제 두 groggy 구간에서 양쪽 갑옷을 제거하고, 이미 제거된 뒤 네 번째 실제 폭탄과 반복 벽
+impact에서도 추가 파괴·복원이 없음을 검사했다. 네 관찰자가 같은 갑옷 상태를 decode했다.
+
+PNG는 성공 순간에만 뜨는 표시로 바꾸지 않았다. 파괴 가능한 DASH recovery/GROGGY에서
+남은 갑옷이 있을 때의 ready 표시다. 갑옷 mask가0이면 반복 돌진이나 추가 폭탄으로 다시
+표시하지 않는다. 반면 파편·성공 text는 실제 `PART_BROKEN` 사건과 snapshot에서 새로
+제거된 mask, 아직 feedback하지 않은 mask가 일치할 때만 발생한다. 중복 event와 이미 제거된
+부위의 새 event sequence는 재생하지 않는다. 기존420627/420628 파편을 사용한다.
+이 Client 조건은 소스 검토 범위이며, PNG 위치·파편 화면의 최종 판정은 사용자 확인 범위다.
+
+### 마력구와 속박의 후속 연결
+
+마력구 CHANNEL의 누적 HP 피해 response는 기존 독립 무력화 ENTER/EXIT gauge와
+`STAGGER_BROKEN → VALTAN_GROGGY_FOLLOWUP`으로 연결했다. 현재 공통 최대치50000과
+이후 F1 저장값을 catalog에서 읽으며 일반 피해/1000과 회오리1/3을 같은 기존 경로로 소비한다.
+12000ms channel·+0.5m 높이·실패 stage와 타격 시점은 유지한다. Python4/4·V2 projector와
+적용 receipt에 이어 최종 Release presentation suite27개가 모두 통과했다.
+
+속박 제품은 살아 있는 대상의 피격 가능 상태를 유지하고 `bPatternBound`로 이동·스킬 입력을
+차단한다. 저장된4107ms hold·3533ms recovery를5000ms로 되돌리지 않았다. 최초 fixture는
+준비 상태와 회복 진입 위치를 과거 계약으로 검사했다. 실제 진단에서는 EXIT가 저장XYZ를
+복원한 뒤 같은 tick의 플레이어 갱신이 남은 넉백을 진행하는 것이 확인됐다.
+
+최종 검사는 기존 단계 거래 직후·플레이어 갱신 전의 읽기 전용 관찰 지점에서 정확한 위치,
+owner/endTick 해제와 HP·남은 넉백 불변을 확인한다. 이후 실제 갱신의 넉백 진행과 추가 HP
+감소 부재, 취소 복원, 단독 완료·다음 선택도 검사한다. 제품 피해·무적·넉백 정책은 바꾸지 않았다.
+tick2000 입장은2123 RECOVERY,2229 완료이며, 구체적 진단은 같은 out의
+`bind-result-candidate.md`와 `bind-exit-boundary-candidate/final-source-verification.json`에 있다.
+
+### 발악과 기존 리소스
+
+기존 승인된 전방6m 포탈·6m/500ms 돌진·중앙 복귀와 source-underfoot growing-warning만
+숨기는 범위는 유지한다. 앞선 위치 검증784건과 파편 리소스 중복 제외50개 closure 확인은
+기존 `valtan-result-candidate.md`의 근거를 따른다. 새 발탄 리소스 제작·추가 복사는 없으며
+별도 PR487/488의 GBResources 복사와 구분한다. 수치·파일 검사는 GPU 화면이나 실제 본 부착
+판정을 대신하지 않는다.
+
+## G13. 최신 확정 검증과 남은 전달 경계
+
+최종 Release의 기존7개 CLI suite는 합558 PASS, failures0, 전부 exit0이다.
+`out/ValtanFinalRepair20260930/release-final-native-results.json`이 집계 정본이다.
+
+| 범위 | PASS | 이번 발탄 관련 확인 |
+|---|---:|---|
+| BattleItems | 174 | 실제 폭탄 전용 갑옷·추가 폭탄·벽 impact·4명 복제, 아바타 포함 suite 전체 |
+| ValtanLifecycle | 94 | 첫 순환·legacy entrance 제외·Trash 재시도/카운터·연속4인 전투 |
+| ValtanPresentation | 27 | 최종 Magic/Bind·단독 속박·침묵·돌진·발악·PartBreak recovery |
+| KoukuProduct | 96 | 별도 쿠크 후속 검증 |
+| WorldPlayback / VehicleRiding / NPCRaidReturn | 34 / 99 / 34 | 통합 PR 및 복귀 경로 |
+
+최종 전체 DataOnly는 `full-publish-final2.log`에서 완료됐으며 source revision은
+`128d68d30634ff0c51eaab5f6e4669434842014cc795997abfe803e2c55eedc4`다. 최초 추가 게시의
+world.destruction 실패를 보완한 뒤 Valtan PublishV2·world.destruction·gameplay.balance와
+나머지 domain의 PASS/검증된 REUSED를 확인했다. 실행 중 Server 메모리 갱신이나 화면 확인을
+게시 완료에 포함하지 않는다.
+
+Debug Product는 `out/BuildPipeline/runs/20260929T233149354Z-debug-product.json`에 PASS다.
+이후 Bind fixture만 추가 교정되어 최신 테스트 소스를 포함하는 Debug 재빌드·7개 native
+검증의 최종 집계는 아직 대기다. 현재 Debug BattleItems174 PASS만으로 전체를 완료 처리하지
+않는다. 최종 Release Product 재빌드는 검증용 Debug Server PID45512 때문에 output guard에서
+컴파일 시작 전에 차단됐으므로 아직 대기다(`product-release-final.log`).
+
+최초 광역 Release 전체 계약은1459 PASS/91 FAIL, exit1이었다. 은퇴한 HEALTH_BAR159 행,
+과거 managed rotation, AIRBORNE8000ms 대신 현재7984ms, protocol101 대신126 등 구형
+fixture 불일치는 확인했다. 그러나 queued generation 등 복합 실패와 범위 밖 검사 전부를
+fixture 문제로 확정하지 않았다. 상세 목록과 미확정 분류는
+`release-native-failure-audit.json`, `native-fixture-drift-audit.json`에 보존한다. 이 전체 suite를
+PASS로 바꾸거나 사용자 저장 패턴을 과거 기대값으로 복원하지 않았다.
+
+최신 Debug/Release Product 전체 완료, Debug native 최종 결과, GitHub merge와 새 ZIP의
+hash·CRC·preflight는 담당자 확인 후 기록한다. 실제 G 입장·반복 Trash·카운터 종료·파괴 ready
+PNG·실제 갑옷 파편·전방 포탈의 화면과 음향은 사용자 확인 범위로 남긴다.

@@ -4,7 +4,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "0bcadb6b75d955093aaa10f84f356c0cd8cd4fee25439aba8ed0f28c39d60643",
+    "sourceManifestId": "d8793b437c18af74db17f569f3c22cb464c924e1954bb56d06fc382b9feb4b48",
     "files": [
       {
         "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_05.actionbindings.json",
@@ -588,8 +588,8 @@
       },
       {
         "path": "Data/Effects/EffectCatalog.json",
-        "sha256": "020e47d5463eff607d1561347072145b751463bd5408e2ae5bac4425d7050b56",
-        "bytes": 375806
+        "sha256": "ebd63f0d051f188d327114aba6872349ff8e60b710f22782360423efb5003055",
+        "bytes": 378574
       },
       {
         "path": "Data/Effects/V2/Authored/bingo.bomb.mark_1.effectv2.json",
@@ -2198,8 +2198,8 @@
       },
       {
         "path": "Data/Encounters/Valtan/ValtanEncounter.json",
-        "sha256": "a3789a0d9c5e4a93789e890dfa20b23bb314c4288200f05c34f21cdf6dbf556c",
-        "bytes": 342878
+        "sha256": "034861ec81db5d0bf1f38c04c36668a31d3e761eab13ac84be5530171218402c",
+        "bytes": 343198
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.mapeffects.json",
@@ -2238,8 +2238,8 @@
       },
       {
         "path": "Data/Valtan/Valtan.gameplay.json",
-        "sha256": "07fe9841a5f8f76d4807a8b7882ae10538b8e5516beb6ba8ec835fe570391f39",
-        "bytes": 282586
+        "sha256": "9e21e8d0916a520dd51d47c979bb4b2a30ee4a819b962a29258edb018550aacf",
+        "bytes": 282858
       },
       {
         "path": "Data/Valtan/Valtan.legacy-compatibility.json",
@@ -2266,8 +2266,8 @@
     },
     {
       "path": "Bosses/Valtan.bosscomposition.json",
-      "sha256": "6c7c585e48ed1a678be81cfff2db928f69a973c3482446ef9565d495f795aa8f",
-      "bytes": 4458283
+      "sha256": "450a93549d4567bb98658cd521e6ac727c93529be000c0fab5b7e29d5c560f91",
+      "bytes": 4460614
     },
     {
       "path": "Sequences/KoukuSaydonArena.sequencer.json",

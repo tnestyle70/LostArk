@@ -466,6 +466,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_KoukuProductOnly()
         std::cout << std::unitbuf;
         TESTS tests{}; CGameplayCatalog catalog;
         if (!catalog.Load()) { std::cout << catalog.Get_Status() << '\n'; return; }
+        Run_KoukuSaydonLogicRuntimeContracts(tests, catalog);
         Run_KoukuMarioEntryContact(tests);
         Run_KoukuProduct(tests, catalog);
         std::cout << "failures : " << tests.failures << '\n';

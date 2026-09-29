@@ -2560,7 +2560,7 @@ Debug/Release 공통 F1 `Battle Items`의 `Give all four (10 each)`와 개별 �
 상태다. 대상 사망 시 당시 시점을 유지하고 같은 ID의 부활을 다시 추적한다. camera subject는
 Arena shot과 ALT_V/local-only effect를 소유하며 gameplay command는 local player만 소유한다.
 
-Protocol 125의 `PLAYER_SNAPSHOT::iKoukuMinigameEndTick`은 absolute Server tick(0 비활성)이다.
+통합 Protocol 126의 `PLAYER_SNAPSHOT::iKoukuMinigameEndTick`은 absolute Server tick(0 비활성)이다.
 Mario/card maze 입장 때 Server가 90초 deadline을 설정하고 탈출·timeout을 판정한다. Client는
 이 값으로 Debug/Release 타이머를 표시한다. 아이템 cooldown은 item catalog `battleUse.skillId`로
 기존 `Cooldowns`에 복제하며 최대 32개를 보낸다. Client는 slot item ID를 소비하지 않고 Server

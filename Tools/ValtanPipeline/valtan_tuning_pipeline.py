@@ -1858,6 +1858,21 @@ def _validate_body_visibility(
         )
 
 
+def _has_closed_stagger_response(stage: Mapping[str, Any]) -> bool:
+    events = stage.get("events", stage.get("actions", []))
+    return (
+        any(branch.get("outcome") == "STAGGER_BROKEN"
+            for branch in stage.get("branches", []) if isinstance(branch, dict))
+        and any(event.get("kind") == "SET_STAGGER_GAUGE"
+                and event.get("trigger") == "ENTER"
+                and isinstance(event.get("value"), (int, float))
+                and event["value"] > 0 for event in events if isinstance(event, dict))
+        and any(event.get("kind") == "SET_STAGGER_GAUGE"
+                and event.get("trigger") == "EXIT" and event.get("value") == 0
+                for event in events if isinstance(event, dict))
+    )
+
+
 def _validate_stage_vertical_offset(
     stage: Mapping[str, Any],
     context: str,
@@ -1871,12 +1886,12 @@ def _validate_stage_vertical_offset(
     )
     if (
         vertical_offset == 0.0
-        or stage.get("bossResponse") is None
+        or (stage.get("bossResponse") is None and not _has_closed_stagger_response(stage))
         or stage.get("motion") is not None
         or pattern_has_server_motion
     ):
         raise PipelineError(
-            f"{context} verticalOffsetM requires an active boss response "
+            f"{context} verticalOffsetM requires an active boss response or closed stagger gauge "
             "without server motion"
         )
 

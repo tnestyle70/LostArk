@@ -1126,6 +1126,29 @@ namespace
 		return true;
 	}
 
+	bool_t Has_ClosedStaggerStageResponse(const DATA_JSON_VALUE& Stage)
+	{
+		const auto* branches = Stage.Find("branches");
+		const auto* actions = Stage.Find("events");
+		if (nullptr == actions) actions = Stage.Find("actions");
+		if (nullptr == branches || !branches->Is_Array() ||
+			nullptr == actions || !actions->Is_Array()) return false;
+		const bool_t hasOutcome = std::any_of(branches->Get_Array().begin(), branches->Get_Array().end(),
+			[](const DATA_JSON_VALUE& branch) { return Read_String(branch, "outcome") == "STAGGER_BROKEN"; });
+		const auto hasGauge = [actions](const std::string_view trigger, const bool_t enabled)
+		{
+			return std::any_of(actions->Get_Array().begin(), actions->Get_Array().end(),
+				[trigger, enabled](const DATA_JSON_VALUE& action)
+				{
+					const auto* value = action.Find("value");
+					return Read_String(action, "kind") == "SET_STAGGER_GAUGE" &&
+						Read_String(action, "trigger") == trigger && Is_FiniteNumber(value) &&
+						(enabled ? value->Get_Number() > 0.0 : value->Get_Number() == 0.0);
+				});
+		};
+		return hasOutcome && hasGauge("ENTER", true) && hasGauge("EXIT", false);
+	}
+
 	bool_t Validate_SplitGameplayStageExtensions(
 		const DATA_JSON_VALUE& Stage,
 		const std::vector<Client::VALTAN_STAGE_BRANCH_VIEW>& Branches,
@@ -1157,7 +1180,7 @@ namespace
 			(!Is_FiniteNumber(pVerticalOffset) ||
 			 0.0 == pVerticalOffset->Get_Number() ||
 			 std::fabs(pVerticalOffset->Get_Number()) > 100.0 ||
-			 !BossResponse.has_value() ||
+			 (!BossResponse.has_value() && !Has_ClosedStaggerStageResponse(Stage)) ||
 			 (nullptr != pStageMotion && !pStageMotion->Is_Null())))
 		{
 			strOutError =
@@ -2281,7 +2304,7 @@ namespace
 			 ("ACTIVE" != Out.strStageKind || 1u != iHealthThresholdCount)) ||
 			(!Out.BossResponse.has_value() && 0u != iHealthThresholdCount) ||
 			(0.f != Out.fVerticalOffsetM &&
-			 (!Out.BossResponse.has_value() || Out.Motion.has_value())) ||
+			 ((!Out.BossResponse.has_value() && !Has_ClosedStaggerStageResponse(Value)) || Out.Motion.has_value())) ||
 			(Out.CounterProxy.has_value() &&
 			 (("BOSS_FORWARD_ARC" == Out.CounterProxy->strKind &&
 			   "WINDUP" != Out.strStageKind &&
@@ -9804,7 +9827,7 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					(!Stage.BossResponse.has_value() &&
 					 0u != iHealthThresholdCount) ||
 					(0.f != Stage.fVerticalOffsetM &&
-					 (!Stage.BossResponse.has_value() || Stage.Motion.has_value())) ||
+					 ((!Stage.BossResponse.has_value() && !Has_ClosedStaggerStageResponse(StageValue)) || Stage.Motion.has_value())) ||
 					(Stage.CounterProxy.has_value() &&
 					 (("BOSS_FORWARD_ARC" == Stage.CounterProxy->strKind &&
 					   "WINDUP" != Stage.strStageKind &&

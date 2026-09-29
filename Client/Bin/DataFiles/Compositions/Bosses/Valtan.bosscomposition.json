@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "compositionId": "boss.composition.valtan",
   "sourceRevision": 4,
-  "compositionRevision": "c124143abbc5a4b213e16528346308d906dc190002a2c52e183a3372a1954fbf",
+  "compositionRevision": "ec88cb27193085d19b85572f268db9c9b07f4c8c1cf6116d98db29423ece15f8",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "Valtan Boss Composition",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "c124143abbc5a4b213e16528346308d906dc190002a2c52e183a3372a1954fbf",
+    "sourceManifestId": "ec88cb27193085d19b85572f268db9c9b07f4c8c1cf6116d98db29423ece15f8",
     "files": [
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
@@ -522,8 +522,8 @@
       },
       {
         "path": "Data/Effects/EffectCatalog.json",
-        "sha256": "020e47d5463eff607d1561347072145b751463bd5408e2ae5bac4425d7050b56",
-        "bytes": 375806
+        "sha256": "ebd63f0d051f188d327114aba6872349ff8e60b710f22782360423efb5003055",
+        "bytes": 378574
       },
       {
         "path": "Data/Effects/V2/Authored/bingo.bomb.mark_1.effectv2.json",
@@ -2132,8 +2132,8 @@
       },
       {
         "path": "Data/Encounters/Valtan/ValtanEncounter.json",
-        "sha256": "a3789a0d9c5e4a93789e890dfa20b23bb314c4288200f05c34f21cdf6dbf556c",
-        "bytes": 342878
+        "sha256": "034861ec81db5d0bf1f38c04c36668a31d3e761eab13ac84be5530171218402c",
+        "bytes": 343198
       },
       {
         "path": "Data/Sound/CharacterSoundCatalog.json",
@@ -2147,8 +2147,8 @@
       },
       {
         "path": "Data/Valtan/Valtan.gameplay.json",
-        "sha256": "07fe9841a5f8f76d4807a8b7882ae10538b8e5516beb6ba8ec835fe570391f39",
-        "bytes": 282586
+        "sha256": "9e21e8d0916a520dd51d47c979bb4b2a30ee4a819b962a29258edb018550aacf",
+        "bytes": 282858
       },
       {
         "path": "Data/Valtan/Valtan.legacy-compatibility.json",
@@ -8780,10 +8780,23 @@
                 }
               },
               "motion": null,
-              "events": [],
+              "events": [
+                {
+                  "eventId": "event.valtan.stagger-slot.channel.enter",
+                  "trigger": "ENTER",
+                  "kind": "SET_STAGGER_GAUGE",
+                  "value": 50000
+                },
+                {
+                  "eventId": "event.valtan.stagger-slot.channel.exit",
+                  "trigger": "EXIT",
+                  "kind": "SET_STAGGER_GAUGE",
+                  "value": 0
+                }
+              ],
               "branches": [
                 {
-                  "outcome": "HEALTH_DAMAGE_THRESHOLD_REACHED",
+                  "outcome": "STAGGER_BROKEN",
                   "nextActionId": null,
                   "nextPatternId": "VALTAN_GROGGY_FOLLOWUP"
                 },
@@ -8818,10 +8831,6 @@
               },
               "effectCues": [],
               "cameraInvocations": [],
-              "bossResponse": {
-                "kind": "ACCUMULATED_HEALTH_DAMAGE",
-                "threshold": 10000
-              },
               "verticalOffsetM": 0.5
             },
             {
@@ -40386,7 +40395,7 @@
               "defaultNextActionId": "valtan.authoring.stagger-slot.final-attack",
               "branches": [
                 {
-                  "outcome": "HEALTH_DAMAGE_THRESHOLD_REACHED",
+                  "outcome": "STAGGER_BROKEN",
                   "nextActionId": null,
                   "nextPatternId": "VALTAN_GROGGY_FOLLOWUP"
                 },
@@ -40402,7 +40411,20 @@
                 "kind": "NONE"
               }
             },
-            "events": [],
+            "events": [
+              {
+                "eventId": "event.valtan.stagger-slot.channel.enter",
+                "trigger": "ENTER",
+                "kind": "SET_STAGGER_GAUGE",
+                "value": 50000
+              },
+              {
+                "eventId": "event.valtan.stagger-slot.channel.exit",
+                "trigger": "EXIT",
+                "kind": "SET_STAGGER_GAUGE",
+                "value": 0
+              }
+            ],
             "cues": [
               {
                 "cueId": "cue.animation.VALTAN_STAGGER_SLOT.CHANNEL.composition.clip.01",
@@ -40553,6 +40575,54 @@
                 }
               },
               {
+                "cueId": "event.valtan.stagger-slot.channel.enter",
+                "kind": "LOGIC",
+                "scope": {
+                  "patternId": "VALTAN_STAGGER_SLOT",
+                  "stageId": "CHANNEL",
+                  "actionId": "valtan.authoring.stagger-slot.channel"
+                },
+                "clock": {
+                  "basis": "STAGE",
+                  "startMs": 0,
+                  "repeatPolicy": "ONCE"
+                },
+                "stopPolicy": "STAGE_END",
+                "anchor": {
+                  "kind": "SERVER_RESOLVED"
+                },
+                "payload": {
+                  "eventId": "event.valtan.stagger-slot.channel.enter",
+                  "trigger": "ENTER",
+                  "kind": "SET_STAGGER_GAUGE",
+                  "value": 50000
+                }
+              },
+              {
+                "cueId": "event.valtan.stagger-slot.channel.exit",
+                "kind": "LOGIC",
+                "scope": {
+                  "patternId": "VALTAN_STAGGER_SLOT",
+                  "stageId": "CHANNEL",
+                  "actionId": "valtan.authoring.stagger-slot.channel"
+                },
+                "clock": {
+                  "basis": "STAGE",
+                  "startMs": 0,
+                  "repeatPolicy": "ONCE"
+                },
+                "stopPolicy": "STAGE_END",
+                "anchor": {
+                  "kind": "SERVER_RESOLVED"
+                },
+                "payload": {
+                  "eventId": "event.valtan.stagger-slot.channel.exit",
+                  "trigger": "EXIT",
+                  "kind": "SET_STAGGER_GAUGE",
+                  "value": 0
+                }
+              },
+              {
                 "cueId": "cue.animation.VALTAN_STAGGER_SLOT.CHANNEL.composition.clip.02",
                 "kind": "ANIMATION",
                 "scope": {
@@ -40601,10 +40671,6 @@
                 }
               }
             ],
-            "bossResponse": {
-              "kind": "ACCUMULATED_HEALTH_DAMAGE",
-              "threshold": 10000
-            },
             "verticalOffsetM": 0.5
           },
           {

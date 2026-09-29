@@ -109,3 +109,23 @@ owner 없는 companion을 허용하지 않는다. projector는 managed owner에�
 Product에서 제거하도록 기존 replace/remove 함수를 사용하고 unmanaged legacy는 보존한다.
 갑옷은 서버가 생성한 실제 destruction_bomb 명중만 차감한다. 일반 공격 HP·무력화는 유지하며
 스킬 번호만 폭탄과 같아도 갑옷을 깎지 않는다. 다른 보스의 기존 partDamage는 유지한다.
+
+
+## G13. 마력구의 독립 무력화 경로 완결
+
+최종 native 검증에서 VALTAN_STAGGER_SLOT/CHANNEL이 아직 ACCUMULATED_HEALTH_DAMAGE
+10000을 사용한다는 누락을 발견했다. 이 HP 누적 response를 제거하고 기존 ENTER/EXIT의
+SET_STAGGER_GAUGE, 공통 raidStaggerMaximum, STAGGER_BROKEN과 기존 Groggy follow-up을
+사용한다. 실제 HP 피해와 무력화를 분리하며 일반 확정 적중은 기존 raw 피해/1000 경로,
+회오리는 게시 item의 최대치/3 경로를 그대로 소비한다. 사용자 저장 최대치50000은 유지한다.
+새 패킷, 별도 무력화 계산기 또는 병렬 전투 runtime을 추가하지 않는다.
+
+CHANNEL의 기존 +0.5m 높이와 성공/timeout 복귀는 유지한다. 높이를 HP response에만
+허용하던 Server catalog, publisher, split source, Client reference/tree 검증은 ENTER/EXIT가
+닫힌 무력화 window도 수용하도록 같은 계약으로 맞춘다. source와 생성 recipe를 함께 고친 뒤
+정상 split publish 및 전체 domain publish를 수행한다. 실제 HP0 적중·회오리·공통최대치·성공
+한 번·높이 복원·Groggy 전환을 기존 native fixture에서 확인한다.
+
+광역 contract의 과거 저작 상수 실패는 별도 증거로 보존한다. 이번 변경의 무돌 회복·현재 타임라인은
+기존 valtan-presentation 검증에 연결하고, 쿠크 난수 피해는 정확한 고정 피해 대신 허용범위와
+실제 DamageEvent/HP 일치·발동 횟수를 검사한다. 새 CLI나 별도 제품 우회는 만들지 않는다.

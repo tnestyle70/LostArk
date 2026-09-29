@@ -1201,7 +1201,6 @@ bool_t Client::CEncounterPatternReference::Load(
 					!std::isfinite(stageVerticalOffset->Get_Number()) ||
 					0.0 == stageVerticalOffset->Get_Number() ||
 					std::fabs(stageVerticalOffset->Get_Number()) > 100.0 ||
-					nullptr == stageEntry.Find("bossResponse") ||
 					(nullptr != stageMotion && !stageMotion->Is_Null()) ||
 					(nullptr != patternMotion && !patternMotion->Is_Null()))
 				{
@@ -1447,6 +1446,23 @@ bool_t Client::CEncounterPatternReference::Load(
 				outStatus = "Encounter stage v4 branches are invalid: " +
 					pattern.patternId + "/" + stage.stageId;
 				return false;
+			}
+			if (0.f != stage.fVerticalOffsetM && nullptr == stageEntry.Find("bossResponse"))
+			{
+				const auto* staggerBranches = stageEntry.Find("branches");
+				const bool_t hasStaggerOutcome = nullptr != staggerBranches && staggerBranches->Is_Array() &&
+					std::any_of(staggerBranches->Get_Array().begin(), staggerBranches->Get_Array().end(),
+						[](const DATA_JSON_VALUE& branch)
+						{
+							const auto* outcome = branch.Find("outcome");
+							return nullptr != outcome && outcome->Is_String() &&
+								outcome->Get_String() == "STAGGER_BROKEN";
+						});
+				if (!hasStaggerEnter || !hasStaggerExit || !hasStaggerOutcome)
+				{
+					outStatus = "Encounter stage vertical offset has no active response: " + pattern.patternId + "/" + stage.stageId;
+					return false;
+				}
 			}
 			const DATA_JSON_VALUE* branches = stageEntry.Find("branches");
 			if (nullptr != branches)

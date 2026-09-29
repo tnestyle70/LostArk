@@ -168,6 +168,139 @@ int CServerGameplayContractRunner::Run_BattleItemsOnly()
                     tests.Require(remaining != player.Inventory.end() && remaining->iQuantity == 2u,
                         "Repeated item sequence preserves all four clients' consumed quantities");
                 }
+            // The protocol harness covers avatar wire fields; this block covers the
+            // actual shop -> inventory -> equipment -> replicated observer path.
+            const auto avatarMerchant = std::find_if(bern->m_WorldEntities.begin(), bern->m_WorldEntities.end(),
+                [](const auto& entity) { return entity.eKind == WORLD_BOOTSTRAP_KIND::NPC &&
+                    entity.strPlacementId == "npc.bern.plaza.17"; });
+            tests.Require(avatarMerchant != bern->m_WorldEntities.end(), "Published Bern avatar merchant is available");
+            if (avatarMerchant != bern->m_WorldEntities.end())
+            {
+                auto& avatarPlayer = bern->m_Players.at(peers.front()->Get_PlayerId());
+                const auto beforeAvatar = avatarPlayer;
+                struct AVATAR_CASE { CHARACTER_CLASS_ID eClass; const char* prefix; };
+                const AVATAR_CASE avatarCases[] = {
+                    {CHARACTER_CLASS_ID::LANCE_MASTER, "LANCEMASTER"},
+                    {CHARACTER_CLASS_ID::WARLORD, "WARLORD"},
+                    {CHARACTER_CLASS_ID::ARTIST, "ARTIST"},
+                    {CHARACTER_CLASS_ID::DIMENSIONMASTER, "DIMENSIONMASTER"},
+                    {CHARACTER_CLASS_ID::GUARDIANKNIGHT, "GUARDIANKNIGHT"},
+                    {CHARACTER_CLASS_ID::GUNSLINGER, nullptr},
+                    {CHARACTER_CLASS_ID::SLAYER, nullptr}};
+                C2S_BUY_ITEMS basket;
+                basket.iRequestSequence = 1000u;
+                basket.strNpcPlacementId = "npc.bern.plaza.17";
+                basket.Entries = {{"AVATAR_MOKOKO_036_HEAD", 1u}, {"AVATAR_MOKOKO_036_OUTFIT", 1u}};
+                const auto atSlot = [&avatarPlayer](const EQUIPMENT_SLOT slot, const std::string& id) {
+                    return std::any_of(avatarPlayer.Inventory.begin(), avatarPlayer.Inventory.end(),
+                        [&](const auto& item) { return item.eEquippedSlot == slot &&
+                            item.strItemId == id && item.iQuantity == 1u; });
+                };
+                const auto privateInventoryMatches = [&](const unsigned sequence) {
+                    bool found = false;
+                    for (const auto& frame : peers.front()->m_OutboundFrames)
+                        if (frame.ePacketType == PACKET_TYPE::S2C_INVENTORY_SNAPSHOT)
+                        {
+                            CPacketReader reader{std::span<const std::uint8_t>(frame.Bytes).subspan(PACKET_HEADER_BYTES)};
+                            S2C_INVENTORY_SNAPSHOT snapshot;
+                            found = Read_Message(reader, snapshot) && snapshot.iRequestSequence == sequence &&
+                                sameItems(snapshot.Items, avatarPlayer.Inventory) &&
+                                snapshot.iGold == avatarPlayer.Purse.iGold && snapshot.iSilver == avatarPlayer.Purse.iSilver;
+                        }
+                    return found && std::all_of(peers.begin() + 1, peers.end(),
+                        [](const auto& peer) { return peer->m_OutboundFrames.empty(); });
+                };
+                for (const auto& avatarCase : avatarCases)
+                {
+                    avatarPlayer = beforeAvatar;
+                    avatarPlayer.eCharacterClass = avatarCase.eClass;
+                    avatarPlayer.fPositionX = avatarMerchant->fPositionX;
+                    avatarPlayer.fPositionZ = avatarMerchant->fPositionZ;
+                    avatarPlayer.Inventory.clear();
+                    avatarPlayer.Purse.iGold = 100u; avatarPlayer.Purse.iSilver = 77u;
+                    avatarPlayer.bRestoreAvailable = true;
+                    clearFrames(); ++basket.iRequestSequence;
+                    bern->Handle_BuyItems(peers.front()->Get_SessionId(), basket);
+                    bool correct = privateInventoryMatches(basket.iRequestSequence) && avatarPlayer.Purse.iSilver == 77u;
+                    if (avatarCase.prefix != nullptr)
+                    {
+                        const std::string base = std::string("AVATAR_") + avatarCase.prefix + "_MOKOKO_036_";
+                        correct &= avatarPlayer.Inventory.size() == 2u && avatarPlayer.Purse.iGold == 80u &&
+                            !avatarPlayer.bRestoreAvailable && atSlot(EQUIPMENT_SLOT::NONE, base + "HEAD") &&
+                            atSlot(EQUIPMENT_SLOT::NONE, base + "OUTFIT");
+                    }
+                    else
+                        correct &= avatarPlayer.Inventory.empty() && avatarPlayer.Purse.iGold == 100u &&
+                            avatarPlayer.bRestoreAvailable;
+                    tests.Require(correct, avatarCase.prefix != nullptr ?
+                        "Avatar shop grants both exact class variants privately and charges the template prices" :
+                        "Unsupported avatar classes reject the entire basket without consuming currency or restore state");
+                }
+                avatarPlayer = beforeAvatar;
+                avatarPlayer.Inventory.clear(); avatarPlayer.Purse.iGold = 100u;
+                avatarPlayer.fPositionX = avatarMerchant->fPositionX;
+                avatarPlayer.fPositionZ = avatarMerchant->fPositionZ;
+                bool normalEquipped = true;
+                for (const auto slot : {EQUIPMENT_SLOT::HELMET, EQUIPMENT_SLOT::TOP})
+                {
+                    const std::string id = slot == EQUIPMENT_SLOT::HELMET ?
+                        "EQUIP_WARLORD_HONORWHISPER_HELMET" : "EQUIP_WARLORD_HONORWHISPER_TOP";
+                    C2S_SET_EQUIPMENT equip{1100u, slot, true, id};
+                    normalEquipped &= bern->Grant_Item(avatarPlayer, id, 1u) && bern->Apply_SetEquipment(avatarPlayer, equip);
+                }
+                tests.Require(normalEquipped, "Normal helmet and top use the real equipment path before avatar dressing");
+                clearFrames(); ++basket.iRequestSequence;
+                bern->Handle_BuyItems(peers.front()->Get_SessionId(), basket);
+                tests.Require(privateInventoryMatches(basket.iRequestSequence) && avatarPlayer.Inventory.size() == 4u,
+                    "Avatar purchase adds its two variants beside existing normal equipment");
+                C2S_SET_EQUIPMENT head{1101u, EQUIPMENT_SLOT::AVATAR_HEAD, true, "AVATAR_WARLORD_MOKOKO_036_HEAD"};
+                C2S_SET_EQUIPMENT outfit{1102u, EQUIPMENT_SLOT::AVATAR_OUTFIT, true, "AVATAR_WARLORD_MOKOKO_036_OUTFIT"};
+                for (const auto& equip : {head, outfit})
+                {
+                    clearFrames(); bern->Handle_SetEquipment(peers.front()->Get_SessionId(), equip);
+                    tests.Require(privateInventoryMatches(equip.iRequestSequence) && atSlot(equip.eSlot, equip.strItemId),
+                        "Avatar equipment handler commits the requested class item to its separate slot");
+                }
+                const auto normalPreserved = [&]() {
+                    return atSlot(EQUIPMENT_SLOT::HELMET, "EQUIP_WARLORD_HONORWHISPER_HELMET") &&
+                        atSlot(EQUIPMENT_SLOT::TOP, "EQUIP_WARLORD_HONORWHISPER_TOP");
+                };
+                tests.Require(normalPreserved(), "Avatar head and outfit leave normal helmet and top equipped");
+                const bool foreignGranted = bern->Grant_Item(avatarPlayer, "AVATAR_LANCEMASTER_MOKOKO_036_HEAD", 1u);
+                const auto beforeRejectedEquip = avatarPlayer.Inventory;
+                C2S_SET_EQUIPMENT foreign{1103u, EQUIPMENT_SLOT::AVATAR_HEAD, true, "AVATAR_LANCEMASTER_MOKOKO_036_HEAD"};
+                tests.Require(foreignGranted && !bern->Apply_SetEquipment(avatarPlayer, foreign) &&
+                    sameItems(beforeRejectedEquip, avatarPlayer.Inventory),
+                    "A wrong-class avatar in the bag cannot replace the currently worn head");
+                const auto allObserversMatch = [&](const std::string& expectedHead) {
+                    clearFrames(); bern->Broadcast_WorldSnapshot();
+                    return std::all_of(peers.begin(), peers.end(), [&](const auto& peer) {
+                        bool found = false;
+                        for (const auto& frame : peer->m_OutboundFrames)
+                            if (frame.ePacketType == PACKET_TYPE::S2C_WORLD_SNAPSHOT)
+                            {
+                                CPacketReader reader{std::span<const std::uint8_t>(frame.Bytes).subspan(PACKET_HEADER_BYTES)};
+                                S2C_WORLD_SNAPSHOT snapshot;
+                                if (!Read_Message(reader, snapshot)) return false;
+                                const auto player = std::find_if(snapshot.Players.begin(), snapshot.Players.end(),
+                                    [&](const auto& value) { return value.iNetEntityId == avatarPlayer.iNetEntityId; });
+                                found = player != snapshot.Players.end() && player->strAvatarHeadItemId == expectedHead &&
+                                    player->strAvatarOutfitItemId == outfit.strItemId;
+                            }
+                        return found;
+                    });
+                };
+                tests.Require(allObserversMatch(head.strItemId),
+                    "All four world observers receive both equipped avatar IDs on the owner's exact entity");
+                C2S_SET_EQUIPMENT removeHead{1104u, EQUIPMENT_SLOT::AVATAR_HEAD, false, {}};
+                clearFrames(); bern->Handle_SetEquipment(peers.front()->Get_SessionId(), removeHead);
+                tests.Require(privateInventoryMatches(removeHead.iRequestSequence) &&
+                    atSlot(EQUIPMENT_SLOT::NONE, head.strItemId) && atSlot(EQUIPMENT_SLOT::AVATAR_OUTFIT, outfit.strItemId) &&
+                    normalPreserved() && allObserversMatch({}),
+                    "Removing the avatar head clears only its replicated ID while outfit and normal equipment remain");
+                avatarPlayer = beforeAvatar;
+                clearFrames();
+            }
         }
         for (const auto& peer : peers) peer->Request_Close();
         // Catalog-only errors pass the wire contract, then preserve fresh-entry state.
@@ -329,18 +462,27 @@ int CServerGameplayContractRunner::Run_BattleItemsOnly()
         BOSS_PATTERN_DEFINITION pattern; pattern.strPatternId = boss->strPatternId;
         BOSS_PATTERN_LOGIC_WINDOW window;
         window.strWindowId = "stagger"; window.eKind = BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW;
-        window.iDurationMs = 5000u; window.iThreshold = 1000u; window.bEndsPatternOnSuccess = true;
+        const auto commonMaximum = room->m_GameplayCatalog.Active().Get_RaidStaggerMaximum();
+        window.iDurationMs = 5000u;
+        window.iThreshold = commonMaximum == 1u ? 2u : 1u; // Prove the active policy overrides a different authored fallback.
+        window.bEndsPatternOnSuccess = true;
         pattern.LogicWindows.push_back(window);
         KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
         CKoukuSaydonLogicRuntime::Build(pattern, *boss, 500u, ledger);
         CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, room->m_Players,
             room->m_GameplayCatalog, nullptr, 500u, damageEvents, output);
-        const auto commonMaximum = room->m_GameplayCatalog.Active().Get_RaidStaggerMaximum();
-        const auto third = (commonMaximum + 2u) / 3u;
-        tests.Require(commonMaximum == 40000u && boss->iKoukuItemStaggerMaximum == commonMaximum,
-            "Kouku stagger window consumes the shared 40000 numeric policy");
+        const auto third = commonMaximum / 3u + (commonMaximum % 3u != 0u ? 1u : 0u);
+        const auto* grenade = room->m_ItemCatalog.Find_Item("BATTLE_WHIRLWIND_GRENADE");
+        BOSS_COMBAT_SNAPSHOT openedGauge;
+        CKoukuSaydonLogicRuntime::Project_MechanicGauge(*boss, pattern, ledger, 500u, openedGauge);
+        tests.Require(commonMaximum != 0u && boss->iKoukuItemStaggerMaximum == commonMaximum &&
+            openedGauge.iMaximumMechanicGauge == commonMaximum && openedGauge.iCurrentMechanicGauge == commonMaximum &&
+            grenade != nullptr && grenade->BattleUse.iStaggerMaximumDivisor == 3u,
+            "Kouku stagger window consumes the active common policy and the published whirlwind grants one third");
         SERVER_PLAYER_TO_WORLD_HIT hit;
-        hit.iSourcePlayerId = caster.iPlayerId; hit.iSkillId = 32311u; hit.iStaggerMaximumDivisor = 3u;
+        hit.iSourcePlayerId = caster.iPlayerId;
+        hit.iSkillId = grenade != nullptr ? grenade->BattleUse.iSkillId : 0u;
+        hit.iStaggerMaximumDivisor = grenade != nullptr ? grenade->BattleUse.iStaggerMaximumDivisor : 0u;
         for (unsigned count = 1u; count <= 3u; ++count)
         {
             hit.iServerTick = 500u + count;

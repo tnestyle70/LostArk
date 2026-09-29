@@ -1,6 +1,7 @@
 #include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
 #include "GameplayCatalog.h"
+#include "ServerCombatHitRuntime.h"
 #include "GameRoom.h"
 #include "ClientSession.h"
 #include "Network/PacketReader.h"
@@ -1103,17 +1104,27 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 				// These are confirmed incoming hits at the existing combat boundary, not
 				// forced outcomes or stage changes. The next Room tick consumes success.
 				if (boss->strPatternId == "VALTAN_STAGGER_SLOT" && boss->strPatternStageId == "CHANNEL" &&
-					!boss->bPatternBossResponsePublished)
+					boss->BossCombat.iStaggerCurrent < boss->BossCombat.iStaggerMaximum)
 				{
-					BOSS_INCOMING_HIT hit{};
+					SERVER_PLAYER_TO_WORLD_HIT hit{};
 					hit.iSourcePlayerId = sessions.front()->Get_PlayerId();
 					hit.iSkillId = 34010u; hit.iServerTick = room->m_iServerTick;
-					hit.iRawDamage = boss->iPatternBossResponseThreshold;
+					const std::uint64_t rawDamage = static_cast<std::uint64_t>(boss->BossCombat.iStaggerMaximum) * 1000u;
+					if (rawDamage > (std::numeric_limits<std::uint32_t>::max)())
+					{
+						mechanicSuccessInputsValid = false;
+						break;
+					}
+					hit.iRawDamage = static_cast<std::uint32_t>(rawDamage);
 					hit.bHealthDamagePreResolved = true;
-					const auto result = CBossCombatRuntime::Apply_PlayerHit(*boss, hit);
-					mechanicSuccessInputsValid = mechanicSuccessInputsValid && result.bHealthDamageThresholdReached &&
-						result.iHealthDamage == hit.iRawDamage;
-					if (result.bHealthDamageThresholdReached) ++staggerSuccesses;
+					hit.bHealthDamageDisabled = true;
+					const auto hp = boss->iCurrentHp;
+					(void)CServerCombatHitRuntime::Apply_PlayerToWorld(*boss, hit, room->m_TickDamageEvents);
+					const bool completed = boss->BossCombat.iStaggerMaximum == boss->BossCombat.iStaggerCurrent &&
+						std::any_of(boss->BossCombat.PendingOutcomes.begin(), boss->BossCombat.PendingOutcomes.end(),
+							[](const auto& outcome) { return outcome.eOutcome == BOSS_PATTERN_STAGE_OUTCOME::STAGGER_BROKEN; });
+					mechanicSuccessInputsValid = mechanicSuccessInputsValid && completed && boss->iCurrentHp == hp;
+					if (completed) ++staggerSuccesses;
 				}
 				const bool trashCounter = boss->strPatternId == "VALTAN_TRASH";
 				if (((boss->strPatternId == "VALTAN_TRIPLE_COUNTER" && boss->strPatternStageId == "COUNTER_1") || trashCounter) &&

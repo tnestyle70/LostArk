@@ -1848,10 +1848,15 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
             "defaultNextActionId": "valtan.authoring.stagger-slot.final-attack",
             "hit": none_hit(),
             "motion": None,
-            "events": [],
+            "events": [
+                {"eventId": "event.valtan.stagger-slot.channel.enter",
+                 "trigger": "ENTER", "kind": "SET_STAGGER_GAUGE", "value": 50000},
+                {"eventId": "event.valtan.stagger-slot.channel.exit",
+                 "trigger": "EXIT", "kind": "SET_STAGGER_GAUGE", "value": 0},
+            ],
             "branches": [
                 {
-                    "outcome": "HEALTH_DAMAGE_THRESHOLD_REACHED",
+                    "outcome": "STAGGER_BROKEN",
                     "nextActionId": None,
                     "nextPatternId": groggy_id,
                 },
@@ -1861,10 +1866,6 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
                 },
             ],
             "verticalOffsetM": 0.5,
-            "bossResponse": {
-                "kind": "ACCUMULATED_HEALTH_DAMAGE",
-                "threshold": 1000,
-            },
         },
         {
             "stageId": "FINAL_ATTACK",

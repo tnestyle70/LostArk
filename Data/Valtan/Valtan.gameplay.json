@@ -3273,10 +3273,23 @@
             }
           },
           "motion": null,
-          "events": [],
+          "events": [
+            {
+              "eventId": "event.valtan.stagger-slot.channel.enter",
+              "trigger": "ENTER",
+              "kind": "SET_STAGGER_GAUGE",
+              "value": 50000
+            },
+            {
+              "eventId": "event.valtan.stagger-slot.channel.exit",
+              "trigger": "EXIT",
+              "kind": "SET_STAGGER_GAUGE",
+              "value": 0
+            }
+          ],
           "branches": [
             {
-              "outcome": "HEALTH_DAMAGE_THRESHOLD_REACHED",
+              "outcome": "STAGGER_BROKEN",
               "nextActionId": null,
               "nextPatternId": "VALTAN_GROGGY_FOLLOWUP"
             },
@@ -3285,10 +3298,6 @@
               "nextActionId": "valtan.authoring.stagger-slot.final-attack"
             }
           ],
-          "bossResponse": {
-            "kind": "ACCUMULATED_HEALTH_DAMAGE",
-            "threshold": 10000
-          },
           "verticalOffsetM": 0.5
         },
         {

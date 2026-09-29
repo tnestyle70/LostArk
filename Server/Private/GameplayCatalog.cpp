@@ -7214,13 +7214,17 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				const std::string stageVerticalOffsetKey =
 					pattern.strEncounterId + "\n" + pattern.strPatternId + "\n" +
 					stage.strActionId;
+				const bool hasStaggerResponse = std::any_of(
+					stage.Branches.begin(), stage.Branches.end(),
+					[](const BOSS_PATTERN_STAGE_BRANCH& branch)
+					{ return branch.eOutcome == BOSS_PATTERN_STAGE_OUTCOME::STAGGER_BROKEN; });
 				const bool hasStageVerticalOffset =
 					0.f != stage.fVerticalOffsetM;
 				const bool validStageVerticalOffset =
 					std::isfinite(stage.fVerticalOffsetM) &&
 					std::fabs(stage.fVerticalOffsetM) <= 100.f &&
 					(!hasStageVerticalOffset ||
-					 (hasBossResponse &&
+					 ((hasBossResponse || hasStaggerResponse) &&
 					  BOSS_PATTERN_MOTION_KIND::NONE == pattern.Motion.eKind &&
 					  BOSS_PATTERN_STAGE_MOTION_KIND::NONE == stage.Motion.eKind &&
 					  patternStageVerticalOffsetOwners.contains(

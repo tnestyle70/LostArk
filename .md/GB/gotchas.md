@@ -5448,3 +5448,14 @@ Play All과 legacy audition을 별도로 보존한다.
   일반 HP 피해를 legacy armor durability로 다시 빼면 평타·스킬로도 갑옷이 파괴된다.
 - 부위 파괴 준비 PNG는 살아 있는 갑옷과 열린 파괴 창을 함께 확인한다. 실제 파괴 파편/성공 문구와
   준비 PNG의 발생 조건을 합치지 않는다. 반복 돌진·추가 폭탄은 이미 제거된 mask를 복구하지 않는다.
+
+
+### 공통 무력화 정책과 기존 HP 누적 response
+
+공통 피해/1000 계산을 추가해도 authored stage가 ACCUMULATED_HEALTH_DAMAGE를 계속 사용하면
+그 패턴은 HP 누적 경로에 남는다. 실제 자동 선택 패턴의 ENTER/EXIT gauge, 성공 outcome,
+후속 패턴과 HUD snapshot을 함께 확인한다. 발탄 마력구는 기존 SET_STAGGER_GAUGE와
+STAGGER_BROKEN을 사용하며 HP0·흡수·감소·회오리 및 성공 한 번을 실제 hit 경계에서 검사한다.
+무력화 창의 stage 높이를 허용할 때 source/publisher/Server/Client의 admission을 같이 맞추고,
+닫히지 않은 ENTER/EXIT와 malformed branch는 거부한다. F1으로 바꾼 현재 공통값을 테스트가
+40000 같은 과거 고정값으로 덮어쓰거나 실패로 간주하지 않는다.

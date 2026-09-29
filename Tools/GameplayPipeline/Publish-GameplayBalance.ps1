@@ -2527,6 +2527,10 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			$stageProperties += @('playerResponse','attachmentSlot','gripLocalOffset')
 		}
 		Assert-ExactProperties $stage $stageProperties 'encounter pattern stage'
+		# The branch validator below requires both gauge ENTER and EXIT.
+		$hasStaggerResponse = $hasStageBranches -and @($stage.branches | Where-Object {
+			[string]$_.outcome -ceq 'STAGGER_BROKEN'
+		}).Count -gt 0
 		$stageVerticalOffsetM = 0.0
 		if ($hasStageVerticalOffset) {
 			Assert-JsonNumber $stage.verticalOffsetM `
@@ -2536,8 +2540,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				[double]::IsInfinity($stageVerticalOffsetM) -or
 				$stageVerticalOffsetM -eq 0.0 -or
 				[Math]::Abs($stageVerticalOffsetM) -gt 100.0 -or
-				-not $hasBossResponse -or $hasServerMotion -or $hasStageMotion) {
-				throw "Pattern stage verticalOffsetM requires an active boss response without server motion: $($pattern.patternId) stage $stageIndex"
+				(-not $hasBossResponse -and -not $hasStaggerResponse) -or $hasServerMotion -or $hasStageMotion) {
+				throw "Pattern stage verticalOffsetM requires an active boss response or closed stagger gauge without server motion: $($pattern.patternId) stage $stageIndex"
 			}
 		}
 		$partDamagePolicy = 'NORMAL'
