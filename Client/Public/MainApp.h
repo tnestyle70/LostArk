@@ -892,6 +892,9 @@ private:
 		wstring		strState;
 		wstring		strTag;
 		uint32_t	iCharacterCount = 0;
+		/* The row's head-count is this PC's saved roster (CCharacterRoster) instead of
+		iCharacterCount: there is no account, so the characters belong to that one server. */
+		bool_t		bCountsSavedCharacters = false;
 		bool_t		bCreatable = true;
 	};
 	vector<LOBBY_SERVER_ENTRY>	m_LobbyServers;

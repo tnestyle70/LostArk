@@ -14,6 +14,7 @@
 #include "WorldHealthBarView.h"
 #include "WorldPlayerNameplateView.h"
 
+#include "CharacterRoster.h"
 #include "CharacterSelectionState.h"
 #include "CharacterSelectWindowView.h"
 #include "MinimapView.h"
@@ -6591,7 +6592,9 @@ void CMainApp::RenderLobbyButtonText()
 			fCenterY, 0.5f, 91.333f, vStateColor);
 		if (Entry.bCreatable)
 		{
-			const wstring strCount = std::to_wstring(Entry.iCharacterCount);
+			const uint32_t iShownCount = Entry.bCountsSavedCharacters ?
+				static_cast<uint32_t>(CCharacterRoster::Get_Entries().size()) : Entry.iCharacterCount;
+			const wstring strCount = std::to_wstring(iShownCount);
 			DrawAt(strCount.c_str(), strYG760, 16.f, Rect.fX + 365.333f, fCenterY,
 				0.f, 33.333f, Colors::White);
 		}
@@ -6720,6 +6723,9 @@ void CMainApp::Load_LobbyServers()
 		if (const DATA_JSON_VALUE* pCount = Value.Find("characterCount"))
 			if (pCount->Is_Number() && pCount->Get_Number() >= 0.0)
 				Entry.iCharacterCount = static_cast<uint32_t>(pCount->Get_Number());
+		if (const DATA_JSON_VALUE* pCounts = Value.Find("countsSavedCharacters"))
+			if (pCounts->Is_Boolean())
+				Entry.bCountsSavedCharacters = pCounts->Get_Boolean();
 		if (const DATA_JSON_VALUE* pCreatable = Value.Find("creatable"))
 			if (pCreatable->Is_Boolean())
 				Entry.bCreatable = pCreatable->Get_Boolean();
