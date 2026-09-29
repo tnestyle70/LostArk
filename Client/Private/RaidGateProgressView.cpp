@@ -208,6 +208,10 @@ void Client::CRaidGateProgressView::Set_PromptVisible(const bool_t bVisible)
 
 void Client::CRaidGateProgressView::Open_Prompt(const PROMPT eKind, const wstring_t& strProposerName)
 {
+	/* A vote prompt is the accept / decline popup a party member receives: sound it once when it
+	   opens, not on every refresh of the same prompt. */
+	if (Is_VotePrompt(eKind) && !Is_VotePrompt(m_ePrompt))
+		CMainApp::Play_PopupRequestSound();
 	m_ePrompt = eKind;
 	m_strProposer = strProposerName;
 	Set_PromptVisible(PROMPT::NONE != eKind);

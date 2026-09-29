@@ -131,6 +131,9 @@ public:
 	widgets) -- single source of truth for the sound asset path so every button's own
 	click-handling code calls this instead of repeating the literal path. */
 	static void Play_UIButtonClickSound();
+	/* Retail's party request sound (sys_party_request1), played once when an accept / decline
+	   popup opens: the party invite, the raid entry vote and the commander gate vote. */
+	static void Play_PopupRequestSound();
 
 	/* CMainApp is a single process-lifetime instance (see Create()/Free()), but
 	nothing previously exposed it back to a Level the way CLevel_Bern/

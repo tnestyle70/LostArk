@@ -699,6 +699,13 @@ void CMainApp::Play_UIButtonClickSound()
 	CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
 }
 
+void CMainApp::Play_PopupRequestSound()
+{
+	const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
+		L"Sound/UI/System/sys_party_request1__654410772.wav");
+	CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+}
+
 void CMainApp::Open_ShipWindow()
 {
 	if (nullptr != m_pVehicleWindowView)
