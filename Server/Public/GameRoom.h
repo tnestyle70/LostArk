@@ -1128,6 +1128,14 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_BUY_ITEMS& request);
 		bool Apply_BuyItems(SERVER_PLAYER& player,
 			const LostArk::Shared::C2S_BUY_ITEMS& request) const;
+		/* One-shot restore of a Client-saved character (inventory, purse, honor title).
+		   Bern only, once per fresh entry, and only before any inventory change; the
+		   whole request is validated first and a rejected one changes nothing. */
+		void Handle_RestoreCharacter(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_RESTORE_CHARACTER& request);
+		bool Validate_RestoreCharacter(const SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_RESTORE_CHARACTER& request) const;
 		// Debug Character Select Arena "되돌리기" -- despawns every world entity the
 		// debug spawn buttons created in this room (Broadcast_WorldEntityDespawned per
 		// entity) and resets the spawn group runtime so the same groups can be
