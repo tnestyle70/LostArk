@@ -8,6 +8,7 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <string_view>
 #include <unordered_set>
 
@@ -210,9 +211,10 @@ bool LostArk::Server::CWorldBootstrap::Load(
 	std::uint32_t sequenceCount = 0;
 	std::uint32_t laneCount = 0;
 	std::uint32_t ballCount = 0;
-	if ((6u != header.size() && 7u != header.size() && 8u != header.size() && 9u != header.size()) ||
+	std::uint32_t bouncingBallCount = 0;
+	if ((6u != header.size() && 7u != header.size() && 8u != header.size() && 9u != header.size() && 10u != header.size()) ||
 		"LOSTARK_WORLD_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || (8u != version && 9u != version && 10u != version && 11u != version) ||
+		!ParseNumber(header[1], version) || (8u != version && 9u != version && 10u != version && 11u != version && 12u != version) ||
 		(8u == version && 6u != header.size()) ||
 		(9u == version && (7u != header.size() || !ParseNumber(header[6], sequenceCount) || sequenceCount > 4096u)) ||
 		(10u == version && (8u != header.size() || !ParseNumber(header[6], sequenceCount) || sequenceCount > 4096u ||
@@ -220,6 +222,10 @@ bool LostArk::Server::CWorldBootstrap::Load(
 		(11u == version && (9u != header.size() || !ParseNumber(header[6], sequenceCount) || sequenceCount > 4096u ||
 			!ParseNumber(header[7], laneCount) || (laneCount != 0u && laneCount != 36u) ||
 			!ParseNumber(header[8], ballCount) || ballCount > 4096u)) ||
+		(12u == version && (10u != header.size() || !ParseNumber(header[6], sequenceCount) || sequenceCount > 4096u ||
+			!ParseNumber(header[7], laneCount) || (laneCount != 0u && laneCount != 36u) ||
+			!ParseNumber(header[8], ballCount) || ballCount > 4096u ||
+			!ParseNumber(header[9], bouncingBallCount) || bouncingBallCount > 128u)) ||
 		header[2] != worldName || !IsStableId(header[3]) ||
 		!ParseNumber(header[4], revision) || 0u == revision ||
 		!ParseNumber(header[5], count) || count > 4096u)
@@ -778,6 +784,40 @@ bool LostArk::Server::CWorldBootstrap::Load(
 		++ballSlots[(ball.stage - 1u) * 3u + ball.layout - 1u];
 		balls.push_back(ball);
 	}
+	std::vector<MARIO_BOUNCING_BALL> bouncingBalls;
+	std::unordered_set<std::uint64_t> bouncingIds;
+	for (std::uint32_t i = 0u; i < bouncingBallCount; ++i)
+	{
+		if (!std::getline(input, line)) { m_strStatus = "Mario bouncing balls truncated"; return false; }
+		StripCarriageReturn(line);
+		const auto f = SplitTabs(line);
+		MARIO_BOUNCING_BALL ball;
+		std::uint32_t keyCount = 0u;
+		if (worldId != WORLD_ID::KAKULSAYDON_ARENA || f.size() < 9u || f[0] != "MARIOBOUNCE" ||
+			!ParseNumber(f[1], ball.placementId) || !ball.placementId || !bouncingIds.insert(ball.placementId).second ||
+			!ParseNumber(f[2], ball.x) || !ParseNumber(f[3], ball.y) || !ParseNumber(f[4], ball.z) ||
+			!ParseNumber(f[5], ball.radius) || !ParseNumber(f[6], ball.durationMs) || !ParseNumber(f[7], ball.playbackSpeed) ||
+			!std::isfinite(ball.x) || !std::isfinite(ball.y) || !std::isfinite(ball.z) ||
+			!std::isfinite(ball.radius) || ball.radius <= 0.f || ball.radius > 10.f ||
+			!std::isfinite(ball.durationMs) || ball.durationMs < 1.f || ball.durationMs > 120000.f ||
+			!std::isfinite(ball.playbackSpeed) || ball.playbackSpeed < .1f || ball.playbackSpeed > 4.f ||
+			!ParseNumber(f[8], keyCount) || keyCount < 2u || keyCount > 4096u || f.size() != 9u + 2u * keyCount)
+		{ m_strStatus = "Mario bouncing ball is invalid"; return false; }
+		for (std::uint32_t key = 0u; key < keyCount; ++key)
+		{
+			MARIO_BOUNCING_BALL::KEY value;
+			if (!ParseNumber(f[9u + key * 2u], value.timeMs) || !ParseNumber(f[10u + key * 2u], value.offsetY) ||
+				!std::isfinite(value.timeMs) || !std::isfinite(value.offsetY) || std::abs(value.offsetY) > 100.f ||
+				value.timeMs < 0.f || value.timeMs > ball.durationMs ||
+				(key && value.timeMs <= ball.keys.back().timeMs))
+			{ m_strStatus = "Mario bouncing ball key is invalid"; return false; }
+			ball.keys.push_back(value);
+		}
+		if (ball.keys.front().timeMs != 0.f || ball.keys.back().timeMs != ball.durationMs ||
+			std::abs(ball.keys.front().offsetY - ball.keys.back().offsetY) > .0001f)
+		{ m_strStatus = "Mario bouncing ball loop is discontinuous"; return false; }
+		bouncingBalls.push_back(std::move(ball));
+	}
 	if (std::getline(input, line))
 	{
 		m_strStatus = "World bootstrap has trailing rows";
@@ -812,9 +852,38 @@ bool LostArk::Server::CWorldBootstrap::Load(
 	m_SequenceInstanceIds = std::move(sequences);
 	m_CardMazeLanes = std::move(lanes);
 	m_MarioBalls = std::move(balls);
+	m_MarioBouncingBalls = std::move(bouncingBalls);
 	m_strAreaId = stagedAreaId;
 	m_iRevision = revision;
 	m_strStatus = "Loaded world bootstrap: " +
 		std::to_string(m_Placements.size()) + " placements";
 	return true;
+}
+
+float LostArk::Server::MARIO_BOUNCING_BALL::Sample_OffsetY(const double clockMs) const
+{
+	const float phase = static_cast<float>(std::fmod(clockMs * playbackSpeed, durationMs));
+	const auto next = std::upper_bound(keys.begin(), keys.end(), phase,
+		[](float time, const KEY& key) { return time < key.timeMs; });
+	if (next == keys.begin()) return keys.front().offsetY;
+	if (next == keys.end()) return keys.back().offsetY;
+	const auto& before = *std::prev(next);
+	return before.offsetY + (next->offsetY - before.offsetY) *
+		(phase - before.timeMs) / (next->timeMs - before.timeMs);
+}
+
+void LostArk::Server::MARIO_BOUNCING_BALL::Sample_SweptOffsetY(
+	const double fromMs, const double toMs, float& low, float& high) const
+{
+	const float first = Sample_OffsetY(fromMs), last = Sample_OffsetY(toMs);
+	low = (std::min)(first, last); high = (std::max)(first, last);
+	const double begin = fromMs * playbackSpeed, end = toMs * playbackSpeed;
+	// Include intermediate key extrema and the wrap boundary: a fast fall may
+	// cross the whole player between two 30 Hz endpoints.
+	for (const auto& key : keys)
+	{
+		const double occurrence = key.timeMs + std::ceil((begin - key.timeMs) / durationMs) * durationMs;
+		if (occurrence < begin || occurrence > end) continue;
+		low = (std::min)(low, key.offsetY); high = (std::max)(high, key.offsetY);
+	}
 }

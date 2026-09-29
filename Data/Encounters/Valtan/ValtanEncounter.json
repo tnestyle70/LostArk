@@ -1128,7 +1128,7 @@
           "stageId": "AIRBORNE",
           "actionId": "valtan.attack.high-jump.airborne",
           "stageKind": "WINDUP",
-          "durationMs": 8000,
+          "durationMs": 7984,
           "hitShape": "NONE",
           "hitOuterRadius": 0,
           "hitInnerRadius": 0,
@@ -1172,7 +1172,7 @@
           "stageKind": "ACTIVE",
           "durationMs": 3200,
           "hitShape": "CIRCLE",
-          "hitOuterRadius": 8.75,
+          "hitOuterRadius": 12.25,
           "hitInnerRadius": 0.0,
           "hitAngleDegrees": 0.0,
           "hitLength": 0.0,
@@ -1197,7 +1197,7 @@
               "repeatCount": 1,
               "repeatIntervalMs": 0,
               "shape": "CIRCLE",
-              "radiusM": 8.75,
+              "radiusM": 12.25,
               "innerRadiusM": 0,
               "lengthM": 0,
               "halfWidthM": 0,
@@ -10706,7 +10706,7 @@
           ],
           "bossResponse": {
             "kind": "ACCUMULATED_HEALTH_DAMAGE",
-            "threshold": 1000
+            "threshold": 10000
           },
           "verticalOffsetM": 0.5
         },

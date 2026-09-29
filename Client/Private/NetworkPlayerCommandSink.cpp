@@ -2,6 +2,16 @@
 
 #include "NetworkManager.h"
 
+bool Client::CNetworkPlayerCommandSink::Request_DebugGiveItem(const LostArk::Shared::C2S_DEBUG_GIVE_ITEM& request)
+{
+	return CNetworkManager::Get().Send_DebugGiveItem(request.iRequestSequence, request.strItemId, request.iQuantity);
+}
+
+bool Client::CNetworkPlayerCommandSink::Request_UseItem(const LostArk::Shared::C2S_USE_ITEM& request)
+{
+	return CNetworkManager::Get().Send_UseItem(request);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_DebugWorldPlayback(
 	const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request)
 {

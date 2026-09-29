@@ -80,5 +80,6 @@ LostArk::Server::CGameRoom::Apply_SetHonorTitle(
 		return commit(HONOR_TITLE_RESULT::REJECTED_UNKNOWN_TITLE);
 	}
 	player.iHonorTitleId = request.iHonorTitleId;
+	player.bRestoreAvailable = false;
 	return commit(HONOR_TITLE_RESULT::ACCEPTED);
 }

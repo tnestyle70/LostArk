@@ -1,6 +1,8 @@
 #include "ClassSelectionPresentation.h"
 #include "ProjectDataRoot.h"
 #include "MapAssetCatalog.h"
+#include "GameInstance.h"
+#include "RuntimeAssetRoot.h"
 
 #include <algorithm>
 #include <cmath>
@@ -525,6 +527,48 @@ bool CClassSelectionPresentation::Reload_Authoring(std::string& status)
     m_Authoring = std::move(staged); status = "Movie sources loaded. Unsaved changes were replaced only after validation."; return true;
 }
 
+bool CClassSelectionPresentation::Get_RepeatMovie(const std::string& classId) const
+{
+    const auto& scenes = m_Authoring ? m_Authoring->scenes : m_Scenes;
+    const auto scene = std::find_if(scenes.begin(), scenes.end(),
+        [&](const SCENE& value) { return value.classId == classId; });
+    return scene != scenes.end() && scene->repeatMovie;
+}
+
+bool CClassSelectionPresentation::Set_RepeatMovie(const std::string& classId,
+    const bool repeat, std::string& status)
+{
+    if (!Begin_Authoring(status)) return false;
+    if (Is_AuthoringPublishPending())
+    { status = "Wait for the current Movie publish before changing repeat."; return false; }
+    const auto* scenesValue = m_Authoring->manifest.Find("scenes");
+    if (!scenesValue || !scenesValue->Is_Array())
+    { status = "Movie scene source is unavailable."; return false; }
+    auto rows = scenesValue->Get_Array();
+    const auto row = std::find_if(rows.begin(), rows.end(),
+        [&](const Json& value) { return Text(value, "classId") == classId; });
+    const auto live = std::find_if(m_Scenes.begin(), m_Scenes.end(),
+        [&](const SCENE& value) { return value.classId == classId; });
+    const auto authored = std::find_if(m_Authoring->scenes.begin(), m_Authoring->scenes.end(),
+        [&](const SCENE& value) { return value.classId == classId; });
+    if (row == rows.end() || live == m_Scenes.end() || authored == m_Authoring->scenes.end())
+    { status = "The Movie scene changed; its previous draft was preserved."; return false; }
+    *row = Set(*row, "repeatMovie", Json::Boolean(repeat));
+    auto manifest = Set(m_Authoring->manifest, "scenes", Json::Array(std::move(rows)));
+    std::vector<SCENE> validated;
+    if (!Parse(manifest, m_Resources.Get_Document().Get_AreaId(), validated, status)) return false;
+    // This policy never changes admission, resources or the current playback pose.
+    live->repeatMovie = authored->repeatMovie = repeat;
+    m_Authoring->manifest = std::move(manifest);
+    m_Authoring->dirty = !Equal(m_Authoring->manifest, m_Authoring->manifestBase) ||
+        !Equal(m_Authoring->world, m_Authoring->worldBase);
+    ++m_Authoring->generation;
+    status = repeat ? "Movie repeat enabled. Save movie keeps this setting." :
+        "Movie plays once and holds its last frame. Save movie keeps this setting.";
+    m_Authoring->status = status;
+    return true;
+}
+
 bool CClassSelectionPresentation::Get_AuthoringBox(const std::string& classId, const bool loop,
     const std::string& kind, const std::string& boxId, CLASS_MOVIE_AUTHORING_BOX& out, std::string& status)
 {
@@ -596,8 +640,20 @@ bool CClassSelectionPresentation::Apply_AuthoringBox(const CLASS_MOVIE_AUTHORING
     Json manifest = m_Authoring->manifest, worldJson = m_Authoring->world;
     auto& target = world ? worldJson : manifest; target = Replace(target, path, 0u, replacement);
     std::vector<SCENE> scenes; CWorldSequenceDocument document;
-    if (!Validate_Authoring(manifest, worldJson, scenes, document, status) ||
-        !Prepare_Authoring(scenes, document, status) || !Commit_Authoring(std::move(scenes), document, status)) return false;
+    if (!Validate_Authoring(manifest, worldJson, scenes, document, status)) return false;
+    if (before.kind == "Sound")
+    {
+        const auto* source = replacement.Find("sourceStartMs");
+        if (source && source->Get_Number() > 0.)
+        {
+            uint32_t nativeDurationMs = 0u;
+            const auto asset = CRuntimeAssetRoot::Resolve(Text(replacement, "assetId"));
+            if (asset.empty() || !CGameInstance::Get().Get_SoundDurationMs(asset.wstring(), nativeDurationMs) ||
+                source->Get_Number() >= nativeDurationMs)
+            { status = "Audio source in must be inside the WAV; the current draft is preserved."; return false; }
+        }
+    }
+    if (!Prepare_Authoring(scenes, document, status) || !Commit_Authoring(std::move(scenes), document, status)) return false;
     m_Authoring->scenes = m_Scenes; m_Authoring->document = m_Resources.Get_Document();
     m_Authoring->manifest = std::move(manifest); m_Authoring->world = std::move(worldJson);
     m_Authoring->dirty = !Equal(m_Authoring->manifest, m_Authoring->manifestBase) || !Equal(m_Authoring->world, m_Authoring->worldBase);
@@ -662,7 +718,14 @@ bool CClassSelectionPresentation::Edit_AuthoringTiming(const CLASS_MOVIE_AUTHORI
     if (end <= start) { status = "This box requires at least one source millisecond."; return false; }
     if (before.kind == "Sound")
     {
-        replacement = Set(Set(replacement, "startMs", Json::Number(start)), "durationMs", Json::Number(end - start));
+        double sourceIn = selected->sourceOffsetMs;
+        if (gesture == CLASS_MOVIE_TIMING_EDIT::TRIM_START)
+            sourceIn += start - selected->sourceStartMs;
+        sourceIn = std::round(sourceIn);
+        if (sourceIn < 0. || sourceIn + end - start > CWorldSequenceDocument::MAX_DURATION_MS)
+        { status = "Sound trim is outside its source window; the current draft is preserved."; return false; }
+        replacement = Set(Set(Set(replacement, "startMs", Json::Number(start)),
+            "durationMs", Json::Number(end - start)), "sourceStartMs", Json::Number(sourceIn));
         return Apply_AuthoringBox(before, replacement, status);
     }
     if (before.kind == "Animation")

@@ -364,6 +364,8 @@ void CGameInstance::Set_SoundCuePlaybackRate(uint64_t handle, f32_t rate)
 { if (m_pSound_Manager) m_pSound_Manager->Set_SoundCuePlaybackRate(handle, rate); }
 void CGameInstance::Seek_SoundCue(uint64_t handle, uint32_t ageMs)
 { if (m_pSound_Manager) m_pSound_Manager->Seek_SoundCue(handle, ageMs); }
+bool_t CGameInstance::Synchronize_SoundCue(uint64_t handle, uint32_t ageMs, uint32_t maxDriftMs)
+{ return m_pSound_Manager && m_pSound_Manager->Synchronize_SoundCue(handle, ageMs, maxDriftMs); }
 void CGameInstance::Stop_SoundCue(uint64_t handle)
 { if (m_pSound_Manager) m_pSound_Manager->Stop_SoundCue(handle); }
 

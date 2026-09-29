@@ -196,3 +196,20 @@ BossCombatRuntime 입력으로 마력구의 required HP damage와 세 카운터�
 커서 이동, reset 또는 audition override를 사용하지 않는다. 실제 성공 횟수와 기존
 allAlive/8개 loop/7개 기믹/ghost HP/4session snapshot/clear/MVP 검사를 모두 유지한다.
 root의 실행 중 contract 종료 전 빌드·재실행하지 않는다. source 데이터는 바꾸지 않는다.
+
+## G22. 저장된 착지 경고 확대와 Release 전 재검토
+
+현재 사용자 저장본의 추적 도끼 AIRBORNE 경고 occurrence는 XZ 1.4배다.
+원본 지름17.5m와 곱한 지름24.5m에 맞춰 HIGH_JUMP LAND의 기본 shape와
+hit.valtan.high-jump.final-landing contact를 반경8.75→12.25m로 함께 갱신한다.
+201ms 접촉, 최대HP50%, forcePush 및 중앙 landing snapshot은 보존한다.
+최신 gameplay/presentation을 canonical writer lock 안에서 다시 읽고 두 반경만
+병합한다. 원문 백업·후보 strict join/projection·교체 직전 hash·원자 교체를 유지한다.
+
+STRUGGLING의 네 돌과 STEP_10 사자후는 기존 Server 판정과 cover 소비까지 감사해
+중복 contact를 만들지 않는다. 돌진 Effect는 실제 active stage 시간에 연결하고
+벽 접촉 GROGGY 및 정상 종료의 승인 action 전환에서 정리한다. 고정4방향,
+유령 최종 사망 ending, 자동 삼각 돌진 제외, 자막 UPPER 및 쿠크 HUD/입력은
+현재 source와 실제 소비자를 대조한다. 사용자 승인에 따라 정식 domain publish와
+Debug/Release Product Build, 같은 bootstrap/presentation revision 소비를 확인한다.
+Client/UI 자율 실행과 수동 화면 판정은 수행하지 않는다. 새 C++ 파일은 없다.

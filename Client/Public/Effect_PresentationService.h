@@ -615,6 +615,8 @@ public:
 		std::string& strOutStatus);
     static void Update(f32_t fTimeDelta);
     static void Synchronize_FollowAnchors();
+    static void Stop_CharacterOccurrence(const std::shared_ptr<CCharacter>& owner,
+        const std::string& occurrenceId);
     static void Stop_Owner(const std::shared_ptr<CCharacter>& pOwner);
     static void Stop_VehicleOwner(const std::shared_ptr<CCharacter>& pOwner);
 	/* A replicated boss stage owns every queued cue and every active cue created

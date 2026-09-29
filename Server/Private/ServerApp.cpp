@@ -3456,6 +3456,17 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::BUY_ITEMS;
 		command.BuyItems = std::move(request);
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_RESTORE_CHARACTER)
+	{
+		C2S_RESTORE_CHARACTER request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_RESTORE_CHARACTER");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::RESTORE_CHARACTER;
+		command.RestoreCharacter = std::move(request);
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_DESPAWN_ALL_WORLD_ENTITIES)
 	{
 		C2S_DESPAWN_ALL_WORLD_ENTITIES request{};

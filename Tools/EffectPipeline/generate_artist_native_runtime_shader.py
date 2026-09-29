@@ -552,10 +552,19 @@ for ordinal, selection in enumerate(selections):
             'c03ef74fecbf0243a343e11d3ab63d0a': ('5d79421dc8571c45aa49790f50274f51', 14, [0, 1, 2, 12, 13, 14, 15, 16]),
             # Circus-ball impact: LocalDecal receiver normal plus projected tangent/binormal.
             '70820928f0b4b14486394a81b0f88c89': ('772e94581a5e6548b9529bc7cc103bca', None, [0, 1, 2, 8, 9]),
+            # Destruction Bomb: original LocalDecal projection/color/opacity,
+            # sky rows 12..14; declared suffix padding 10/11 is unused.
+            'ac639f46d134fb4d8c0b10ae1cc97fed': ('5d79421dc8571c45aa49790f50274f51', 12, [0, 1, 2, 10, 11, 12, 13, 14]),
         }.get(sid) if decal else None
         if kouku_decal:
             assert selection['sourceVS'] == kouku_decal[0]
             assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == kouku_decal[2]
+        if decal and sid == 'ac639f46d134fb4d8c0b10ae1cc97fed':
+            assert selection['sourceVF'] == 'flocaldecalvertexfactory'
+            assert p['disassembly']['instructionSha256'] == 'db185a4b77af6ebca777c9ce74934fcb3e413ffd95ee11e886257e165e28e73a'
+            assert bindings['bindingSemanticSha256'] == '7c94b6e38373326590411ba686aef24204e9355b89327a6b93e9e48f40f3cff9'
+            assert bindings['textureSampleClosure']['unownedEngineSamplePairs'] == []
+            assert not any(re.search(r'cb0\[(?:10|11)\]', line) for line in instructions)
         if decal and sid == 'c03ef74fecbf0243a343e11d3ab63d0a':
             assert selection['sourceVF'] == 'flocaldecalvertexfactory'
             assert p['disassembly']['instructionSha256'] == 'b8a4e6fcde9247bca884038c606ef6dbce7e34579f68b7d30c63d483391796ee'

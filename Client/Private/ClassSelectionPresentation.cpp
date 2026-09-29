@@ -443,6 +443,18 @@ double CClassSelectionPresentation::PHASE::MovieTimeMs(const double sourceMs) co
         (source - left.sourceMs) / (right->sourceMs - left.sourceMs);
 }
 
+uint32_t CClassSelectionPresentation::SCENE::HoldSourceEndMs(const bool looping) const
+{
+    const auto& phase = looping ? loop : intro;
+    if (!looping && !holdAfterCameraId.empty())
+    {
+        const auto camera = std::find_if(intro.cameras.begin(), intro.cameras.end(),
+            [&](const EFFECT_CAMERA_ROW& row) { return row.id == holdAfterCameraId; });
+        if (camera != intro.cameras.end()) return camera->startMs + camera->cue.iDurationMs;
+    }
+    return phase.durationMs;
+}
+
 bool CClassSelectionPresentation::Set_PlaybackRate(const double rate)
 {
     if (!std::isfinite(rate) || rate < .05 || rate > 2.) return false;
@@ -560,9 +572,12 @@ std::shared_ptr<const CLASS_MOVIE_TIMELINE> CClassSelectionPresentation::Get_Tim
             add("Animation", id + ".animation-slot." + track.slotId, sequence->displayName + " / " + track.slotId, std::move(value));
         }
         for (const auto& track : sequence->soundTracks)
-            add("Sound", id + "." + track.soundTrackId, sequence->displayName,
-                box(id + "." + track.soundTrackId, track.soundTrackId, track.assetId,
-                    track.startMs, track.startMs + track.durationMs));
+        {
+            auto value = box(id + "." + track.soundTrackId, track.soundTrackId, track.assetId,
+                track.startMs, track.startMs + track.durationMs);
+            value.sourceOffsetMs = track.sourceStartMs;
+            add("Sound", id + "." + track.soundTrackId, sequence->displayName, std::move(value));
+        }
     }
     CLASS_MOVIE_TIMELINE_ROW cameras{"Camera", "camera", "Director", {}};
     for (const auto& track : phase.cameras)
@@ -736,6 +751,12 @@ bool CClassSelectionPresentation::Parse(const DATA_JSON_VALUE& root, const std::
             !std::all_of(scene.classId.begin(), scene.classId.end(), [](unsigned char c)
                 { return (c >= 'A' && c <= 'Z') || c == '_'; }))
         { error = "Invalid or duplicated class selection scene identity."; return false; }
+        if (const auto* repeat = value.Find("repeatMovie"))
+        {
+            if (!repeat->Is_Boolean())
+            { error = "Class selection repeatMovie must be boolean."; return false; }
+            scene.repeatMovie = repeat->Get_Boolean();
+        }
         if (const auto* background = value.Find("backgroundAreaId"))
         {
             if (!background->Is_String() || !IsBackgroundAreaId(background->Get_String()))
@@ -744,6 +765,15 @@ bool CClassSelectionPresentation::Parse(const DATA_JSON_VALUE& root, const std::
         }
         if (!ParsePhase(value.Find("intro"), scene.intro, error) ||
             !ParsePhase(value.Find("loop"), scene.loop, error)) return false;
+        if (const auto* hold = value.Find("holdAfterCameraId"))
+        {
+            if (!hold->Is_String() || !CWorldSequenceDocument::Is_ValidStableId(hold->Get_String()))
+            { error = "Class selection holdAfterCameraId must be a stable intro camera ID."; return false; }
+            scene.holdAfterCameraId = hold->Get_String();
+            if (std::none_of(scene.intro.cameras.begin(), scene.intro.cameras.end(),
+                [&](const EFFECT_CAMERA_ROW& row) { return row.id == scene.holdAfterCameraId; }))
+            { error = "Class selection holdAfterCameraId does not reference an intro camera."; return false; }
+        }
         if (const auto* excluded = value.Find("excludedWorldObjectIds"))
         {
             if (!excluded->Is_Array() || excluded->Get_Array().size() > 4096u)
@@ -963,6 +993,7 @@ bool CClassSelectionPresentation::Start_Phase(const SCENE& scene, const bool loo
     m_Looping = loop;
     m_ElapsedMs = elapsedMs;
     m_LoopCycle = loopCycle;
+    m_CompletedHold = false;
     // Acquire the override before enabling follow: it must not snap to the
     // replicated player while entering the Movie or returning from inspection.
     const bool previousFollow = camera->Is_FollowRequested();
@@ -976,6 +1007,9 @@ bool CClassSelectionPresentation::Start_Phase(const SCENE& scene, const bool loo
 
 void CClassSelectionPresentation::Set_Paused(const bool paused)
 {
+    // A completed Movie is a retained scene, not a resumable timeline pause.
+    // Play or an explicit Seek starts another playback epoch.
+    if (m_CompletedHold && !paused) return;
     m_Paused = paused;
     if (m_Active) m_Active->Set_Paused(paused);
 }
@@ -1276,6 +1310,7 @@ bool CClassSelectionPresentation::Play_EffectSelection(const std::string& classI
     const auto previousCycle = m_LoopCycle;
     const auto previousToken = m_PlaybackToken;
     const bool previousLoop = m_Looping, previousPaused = m_Paused;
+    const bool previousCompletedHold = m_CompletedHold;
     m_EffectPreviews.insert_or_assign(full.strEffectAssetId, std::move(fullTarget));
     m_Selection = selection;
     if (!Start_Phase(*scene, loop, selection.startMs, 0u, false, true))
@@ -1283,7 +1318,15 @@ bool CClassSelectionPresentation::Play_EffectSelection(const std::string& classI
         const auto failure = m_Status;
         m_EffectPreviews = previousPreviews; m_Selection = previousSelection;
         if (previousScene && Start_Phase(*previousScene, previousLoop, previousTime, previousCycle, previousPaused, true))
+        {
             m_PlaybackToken = previousToken;
+            if (previousCompletedHold)
+            {
+                m_Active->Finish_Sounds();
+                Set_Paused(true);
+                m_CompletedHold = true;
+            }
+        }
         status = failure; return false;
     }
     m_DeferAdvance = true; m_PlaybackToken = ++g_NextPlaybackToken;
@@ -1387,6 +1430,12 @@ void CClassSelectionPresentation::Update(const float deltaSeconds)
     }
     if (!std::isfinite(deltaSeconds) || deltaSeconds < 0.f)
     { Fail("Invalid class selection frame time."); return; }
+    if (m_CompletedHold)
+    {
+        // Re-submit held lights and inspection changes without advancing any clock.
+        if (!Sample_Frame()) Fail(m_Status);
+        return;
+    }
     // This is a visual preview clock. Loading/debugger stalls pause it instead of
     // replaying hours of particle history from zero in one frame. Server time is unaffected.
     const double deltaMs = (m_Paused || m_DeferAdvance) ? 0. :
@@ -1411,8 +1460,25 @@ void CClassSelectionPresentation::Update(const float deltaSeconds)
         return;
     }
     const auto& phase = m_Looping ? m_Scene->loop : m_Scene->intro;
-    if (m_ElapsedMs >= phase.WallDurationMs())
+    const uint32_t holdSourceEndMs = m_Scene->HoldSourceEndMs(m_Looping);
+    const double completionMs = m_Scene->repeatMovie ? phase.WallDurationMs() :
+        phase.MovieTimeMs(holdSourceEndMs);
+    if (!m_Paused && m_ElapsedMs >= completionMs)
     {
+        if (!m_Scene->repeatMovie)
+        {
+            // Camera cuts and world endpoints are exclusive. Choose the previous
+            // float source sample before converting back to Movie time, otherwise
+            // a double-only epsilon can round onto the next camera in Sample_Frame.
+            const float heldSourceMs = std::nextafter(static_cast<float>(holdSourceEndMs), 0.f);
+            m_ElapsedMs = phase.MovieTimeMs(heldSourceMs);
+            if (!Sample_Frame()) { Fail(m_Status); return; }
+            m_Active->Finish_Sounds();
+            Set_Paused(true);
+            m_CompletedHold = true;
+            m_Status = "Movie complete - holding last frame. Play All replays.";
+            return;
+        }
         const double overflow = m_ElapsedMs - phase.WallDurationMs();
         const double loopDuration = m_Scene->loop.WallDurationMs();
         const uint64_t cycles = (m_Looping ? m_LoopCycle + 1u : 0u) +
@@ -1448,6 +1514,7 @@ void CClassSelectionPresentation::Stop()
     m_LoopCycle = 0u;
     m_Looping = false;
     m_Paused = false;
+    m_CompletedHold = false;
     m_DeferAdvance = false;
     m_PlaybackToken = 0u;
     m_CameraSample = {};

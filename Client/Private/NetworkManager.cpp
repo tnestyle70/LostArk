@@ -948,6 +948,7 @@ bool CNetworkManager::Has_DispatchCapacity(
 	case PACKET_TYPE::S2C_WORLD_ENTITY_DESPAWNED:
 	case PACKET_TYPE::S2C_COMBAT_OBJECT_DESPAWNED:
 	case PACKET_TYPE::S2C_INVENTORY_SNAPSHOT:
+	case PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT:
 	case PACKET_TYPE::S2C_PARTY_INVITE_RECEIVED:
 	case PACKET_TYPE::S2C_KOUKUSAYDON_RAID_STATE:
 	case PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE:
@@ -2205,17 +2206,11 @@ bool CNetworkManager::Send_DebugGiveItem(
 		frameBytes) && Send_All(frameBytes);
 }
 
-bool CNetworkManager::Send_UseItem(
-	const std::uint32_t requestSequence,
-	const std::string_view itemId)
+bool CNetworkManager::Send_UseItem(const LostArk::Shared::C2S_USE_ITEM& message)
 {
 	using namespace LostArk::Shared;
 	if (!Is_Connected())
 		return false;
-
-	C2S_USE_ITEM message{};
-	message.iRequestSequence = requestSequence;
-	message.strItemId = std::string{ itemId };
 	CPacketWriter payloadWriter;
 	if (!Write_Message(payloadWriter, message))
 		return false;
@@ -2247,6 +2242,32 @@ bool CNetworkManager::Send_BuyItems(
 	std::vector<std::uint8_t> frameBytes;
 	return Build_Packet_Frame(
 		PACKET_TYPE::C2S_BUY_ITEMS,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_RestoreCharacter(
+	const std::uint32_t requestSequence,
+	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items,
+	const std::uint32_t silver, const std::uint32_t gold, const std::uint32_t honorTitleId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_RESTORE_CHARACTER message{};
+	message.iRequestSequence = requestSequence;
+	message.Items = items;
+	message.iSilver = silver;
+	message.iGold = gold;
+	message.iHonorTitleId = honorTitleId;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_RESTORE_CHARACTER,
 		payloadWriter.Get_Buffer(),
 		frameBytes) && Send_All(frameBytes);
 }
@@ -4485,6 +4506,17 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 				m_LocalSpawn.eCharacterClass = result.eActiveClass;
 		}
 		m_CharacterClassChangeResults.push_back(std::move(result));
+		break;
+	}
+	case PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT:
+	{
+		S2C_RESTORE_CHARACTER_RESULT result{};
+		if (!Read_Message(reader, result) || 0 != reader.Get_RemainingSize())
+		{ m_iLastErrorCode.store(WSAEINVAL); return; }
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::RESTORE_CHARACTER_RESULT;
+		event.RestoreCharacterResult = result;
+		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}
 	case PACKET_TYPE::S2C_INVENTORY_SNAPSHOT:

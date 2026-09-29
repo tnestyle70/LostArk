@@ -65,3 +65,60 @@ ledger를 보존하고 별도 numeric revision으로 충돌을 검출한다. 플
 새 ServerBalanceNumericStore H/CPP와 필요한 focused 테스트는 Server 프로젝트와
 filters에 등록하고 Release 컴파일, 잘못된/오래된 patch 거부, 저장 실패 보존,
 네 세션의 동일 적용과 ghost HP profile 보존을 기존 contract runner에서 검증한다.
+
+
+## G05. PR484와 현재 저장본의 후속 Release 통합
+
+기준 main은 23008e0ec이며 PR483은 이미 병합됐다. 사용자는 PR484, PR482와 현재
+Desktop 작업의 통합·병합 및 같은 Release ZIP 재생성을 승인했다. 원본 Desktop의
+Movie/사운드/발탄/쿠크/아이템 변경 164개 파일을 hash와 함께 별도 관리 worktree에
+보존했다. 임시 backup·retired 파일은 보존하되 소스 커밋과 배포에서 제외한다.
+PR482의 기능과 수치는 이미 최신 저장본에 포함되어 있어 후속 Movie 편집과 새 게시본을
+유지하면서 ancestry를 병합한다. 이전 numeric receipt를 새 bootstrap에 붙이지 않는다.
+PR484의 캐릭터 저장, 상점과 나가기 투표를 현재 배틀 아이템 사용 경로에 병합하고
+충돌하는 독립 protocol122/123 대신 통합 protocol124를 사용한다.
+
+## G06. 루가루와 마리오 상하 이동 공
+
+Retail monsters의 MINIBOSS_LUGARU maximumHp만 일반 몬스터 대표 체력476056의
+5배2380280으로 변경한다. base MonsterProfiles만 변경해 Retail에 가려지지 않게 한다.
+상하 이동 공13개는 실제 저작 placement·scale·Y curve를 World publisher가 전달하고,
+Server가 같은 clock의 접촉을 판정한다. 기존 Mario 폭탄의 launch/knockdown helper와
+1320 고정 피해를 재사용한다. 반복 접촉은 contact latch로 제어하고 Client Transform을
+피해 권위로 사용하지 않는다. 기존 WorldBootstrap/room 경로를 확장하며 새 C++ 파일은
+추가하지 않는다. World schema 및 관련 publisher/reader를 같은 변경에서 검증한다.
+
+## G07. EXE 실행 중 여러 캐릭터와 상태 유지
+
+사용자는 후속 지시에서 EXE 종료 뒤 개인 JSON을 다시 읽는 영속 로스터를 철회했다.
+하나의 process-session 안에서 여러 캐릭터의 stable local ID, nickname, 외형,
+인벤토리·장비·실링·골드·칭호를 유지한다. 캐릭터 선택으로 돌아오기 전에 현재 Server
+snapshot을 해당 캐릭터에 저장하고 다시 선택하면 Bern 입장 후 typed 복원 요청·결과로
+Server에 적용한다. 실패하거나 아직 응답이 없으면 이전 캐릭터 상태를 보존한다.
+EXE 종료 시 session roster는 사라지고 다음 실행은 빈 로스터다. 기존 개인 JSON을
+읽거나 쓰거나 삭제하지 않고 Git/portable ZIP에도 개인 상태를 포함하지 않는다.
+Debug/Release Lobby는 존재하는 session roster 카드만 준비하며 최초 빈 로스터를 위해
+4개 캐릭터 모델을 미리 로드하지 않는다. 생성용 모델은 기존 생성 화면의 진입 경로가
+필요할 때 준비한다. 최초 Lobby에 Bern 로딩 화면을 다시 표시하지 않는다.
+외형 serialize의 RGBA trailing comma를 수정해 session 카드와 실제 캐릭터에 적용한다.
+
+## G08. 전투 소비와 최종 배포 검증
+
+실제 Server fixture로 파괴폭탄의 투척·접촉·유효한 GROGGY 창의 갑옷1/2 파괴와
+PART_BROKEN 전송을 검사한다. 회오리 수류탄·성스러운 부적·시간정지물약의 기존
+사용/효과/수량·쿨타임 계약을 재실행한다. 발탄4세션은 phase3 전환 때 ending 없이
+유령 부활 후 최종 사망에서만 ending으로 진행하는지, 쿠크4세션은 입장부터 빙고
+완료까지 기존 lifecycle/raid/bingo 계약으로 확인한다. 화면·음향·실제4PC는 사용자 확인이다.
+최신 정본을 공식 publisher로 게시하고 Release Product와 필요한 focused harness를
+빌드한다. JSON/XML parse와 diff check 후 통합 PR을 push·merge하고 portable builder로
+기존 ZIP을 백업한 뒤 원자 교체한다. ZIP CRC/manifest SHA/launcher --check와 실제
+포함 EXE·CSO·Data 세대를 확인한다. 기존 Resources는 외부 참조로 유지한다.
+
+
+## G09. 지정 패턴의 무력화 요구량 열 배
+
+사용자가 명시적으로 확인한 대상은 스킬 무력화 피해가 아니라 패턴의 요구 무력화량이다.
+발탄의 무력화 패턴, 쿠크1관문 무력화 패턴과3관문 마리오2페이즈의 실제 Server 소비
+정본을 찾아 현재값의10배로 설정한다. 모든 스킬이나 전역 Retail 배율에 전파하지 않는다.
+회오리 수류탄의 현재 최대 게이지1/3 기여 정책은 보존한다. 기존값·변경값·대상 stable ID와
+게시된 소비값은 RESULT에 기록하고 정본 publisher로 Gameplay/Composition을 갱신한다.

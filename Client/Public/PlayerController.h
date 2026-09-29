@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstdint>
 #include <memory>
+#include <functional>
 #include <string>
 
 //local 입력을 gameplay command로 바꾸는 client 입력 경계
@@ -486,6 +487,11 @@ namespace Client
 		round trip and pending sequence as the H key. False while a request is outstanding or
 		the local player can't ride right now. */
 		bool_t Request_VehicleRiding(std::uint32_t vehicleId);
+		bool_t Request_UseItem(std::uint32_t requestSequence, const std::string& itemId);
+		bool_t Request_DebugGiveItem(std::uint32_t requestSequence, const std::string& itemId, std::uint32_t quantity);
+		using ITEM_TARGET_RESOLVER = std::function<LostArk::Shared::NET_ENTITY_ID(
+			const float3_t&, const float3_t&)>;
+		void Set_ItemTargetResolver(ITEM_TARGET_RESOLVER resolver) { m_ItemTargetResolver = std::move(resolver); }
 		/* Title window's apply / deselect button (titleId 0 = take it off). False while a
 		request is outstanding or there is no live local player. */
 		bool_t Request_HonorTitle(std::uint32_t titleId);
@@ -658,6 +664,8 @@ namespace Client
 		bool_t Update_DebugMarioJump(bool_t gameplayCommandsEnabled);
 
 	private:
+		bool_t m_bGameplayCommandsEnabled = false;
+		ITEM_TARGET_RESOLVER m_ItemTargetResolver;
 		weak_ptr<CCharacter> m_pLocalCharacter;
 		shared_ptr<IPlayerCommandSink> m_pCommandSink;
 		std::int8_t m_iMarioFacing = 1;

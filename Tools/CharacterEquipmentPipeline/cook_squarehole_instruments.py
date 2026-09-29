@@ -60,14 +60,16 @@ VERTEX = struct.Struct("<3f3f2f3ff")
 
 
 def to_legacy_basis(wmodel: Path):
-    """Put a static v1.0 WMSH in the basis the installed WP_* weapons and class bodies use.
+    """Put a static v1.0 WMSH in the basis the installed class bodies and WP_* weapons use.
 
-    The converter keeps UModel's glTF axes. The installed weapons are that basis with
-    (x, y, z) -> (x, -z, -y): measured on WP_WWBK_03, whose glTF box is x[-39.6,169.5]
-    y[-32.6,32.6] z[-13.1,13.1] and whose installed box is y[-13.1,13.1] z[-32.6,32.6]. A part
-    that rides a body bone has to be in the bone's basis, so positions, normals and tangents
-    are mapped, the tangent handedness flips with the reflection, and every triangle's winding
-    is reversed. Sizes do not change, so the file is patched in place.
+    The converter keeps UModel's glTF axes (x, z, y of the UE mesh). The installed bodies, their
+    animations and weapons are the UE space with z negated. From the glTF axes that is
+    (x, y, z) -> (x, z, -y), a pure rotation, so neither the triangle winding nor the tangent
+    handedness changes. An earlier version used (x, -z, -y) here, which was fitted on a weapon
+    that is mirror-symmetric in y: it agreed with the weapons but mirrored every instrument
+    (the harp's faces swapped and the pipa was reversed left to right). A part that rides a body
+    bone has to be in the bone's basis, so positions, normals and tangents are mapped. Sizes do
+    not change, so the file is patched in place.
     """
     data = bytearray(wmodel.read_bytes())
     wint = bytes(data).index(b"WMSH") - FILE_HEADER.size
@@ -87,14 +89,9 @@ def to_legacy_basis(wmodel: Path):
     for row in range(total_vertices):
         at = vertex_base + row * stride
         px, py, pz, nx, ny, nz, u, v, tx, ty, tz, w = VERTEX.unpack_from(data, at)
-        VERTEX.pack_into(data, at, px, -pz, -py, nx, -nz, -ny, u, v, tx, -tz, -ty, -w)
+        VERTEX.pack_into(data, at, px, pz, -py, nx, nz, -ny, u, v, tx, tz, -ty, w)
 
-    triple_format = "<3H" if index_stride == 2 else "<3I"
     for row, (vertex_offset, vertex_count, index_offset, index_count, *_rest) in enumerate(descriptors):
-        for tri in range(index_count // 3):
-            at = index_base + index_offset + tri * 3 * index_stride
-            a, b, c = struct.unpack_from(triple_format, data, at)
-            struct.pack_into(triple_format, data, at, a, c, b)
         if has_bounds:
             points = [VERTEX.unpack_from(data, vertex_base + vertex_offset + k * stride)[:3]
                       for k in range(vertex_count)]

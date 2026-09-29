@@ -1618,6 +1618,8 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
 	m_pWorldEntityCommandSink = make_shared<CNetworkWorldEntityCommandSink>();
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
+	m_PlayerController.Set_ItemTargetResolver([this](const float3_t& origin, const float3_t& direction)
+	{ return m_Replication.Find_ItemTargetPlayerFromRay(origin, direction); });
 	m_ChatBubbleView.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
 #ifdef _DEBUG
 	m_PlayerController.Set_DebugMarioJumpEnabled(true);
@@ -1990,6 +1992,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	   instance ID against what it loaded and plays the presentation. */
 	for (const auto& play : m_Replication.Consume_WorldSequencePlays())
 	{
+        if (Queue_MarioBombContactStop(play)) continue;
 		if (play.eOperation == LostArk::Shared::WORLD_SEQUENCE_OPERATION::STOP_OWNER ||
 			play.eOperation == LostArk::Shared::WORLD_SEQUENCE_OPERATION::FINISH_OWNER ||
 			play.iRunEpoch != 0u)
@@ -2991,9 +2994,12 @@ void Client::CLevel_KakulSaydonArena::Apply_GateProgressState(
 		if (GATE_PROGRESS_VOTE_RESULT::ALL_ACCEPTED != State.eResult)
 		{
 			/* sys.commander.progress_vote_fail_dialog_desc */
+			const wstring_t strOutcome = GATE_PROGRESS_KIND::EXIT == State.eKind ?
+				L"\xB098\xAC00\xAE30\xAC00 \xCDE8\xC18C\xB418\xC5C8\xC2B5\xB2C8\xB2E4." :
+				L"\xB2E4\xC74C \xAD00\xBB38 \xC785\xC7A5\xC774 \xCDE8\xC18C\xB418\xC5C8\xC2B5\xB2C8\xB2E4.";
 			m_GateProgressView.Show_Notice(
-				L"\xD22C\xD45C\xC5D0 \xC751\xB2F5\xD558\xC9C0 \xC54A\xC558\xAC70\xB098 \xAC70\xC808\xD55C \xC778\xC6D0\xC774 \xC788\xC5B4 "
-				L"\xB2E4\xC74C \xAD00\xBB38 \xC785\xC7A5\xC774 \xCDE8\xC18C\xB418\xC5C8\xC2B5\xB2C8\xB2E4.", 4.f);
+				wstring_t(L"\xD22C\xD45C\xC5D0 \xC751\xB2F5\xD558\xC9C0 \xC54A\xC558\xAC70\xB098 \xAC70\xC808\xD55C \xC778\xC6D0\xC774 \xC788\xC5B4 ") +
+				strOutcome, 4.f);
 		}
 	}
 }
@@ -3127,9 +3133,11 @@ void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta
 			m_iNextGateRequestSequence++, GATE_PROGRESS_KIND::ADVANCE);
 	m_bMvpWasVisible = bMvpVisible;
 
-	/* The panel button follows the raid: restart while a gate is up, dungeon progress once a
-	   gate short of the last is cleared, exit once the last one is. Only the leader can press
-	   it, and not while a vote is running or the award page is up. */
+	/* The panel button follows the raid: restart while a gate is up, leave (an exit vote back
+	   to Bern) in the gate 3 waiting deck, dungeon progress once a gate short of the last is
+	   cleared, exit once the last one is. The leader presses everything but the final exit,
+	   which every player can use to go back on their own, and nothing while a vote is running
+	   or the award page is up. */
 	/* Before any gate is raised (fresh room, or before the F1 button) the panel treats gate 1
 	   as current: the restart button then raises it, as the Server's RESTART rule does. */
 	const uint8_t iShownGate = (std::max<uint8_t>)(m_GateProgress.iCurrentGate, 1u);
@@ -3140,13 +3148,19 @@ void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta
 		eButton = iShownGate < iShownCount ? CRaidGateProgressView::BUTTON::PROGRESS : CRaidGateProgressView::BUTTON::EXIT;
 	if (bCleared && iShownGate == 3u && iShownCount > 3u)
 		eButton = CRaidGateProgressView::BUTTON::NONE;
-	if (eButton != CRaidGateProgressView::BUTTON::NONE &&
+	/* The waiting deck before gate 3: the panel offers the exit vote there, and the party enters
+	   the gate by standing on the entry aura. */
+	const bool_t bAtGate3Deck = eButton != CRaidGateProgressView::BUTTON::NONE &&
 		(Get_KoukuRaidState().ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY ||
-        (!Is_ServerRaidActive() && Is_AtGate3EntryTerrace())))
-		eButton = CRaidGateProgressView::BUTTON::ENTER_GATE3;
+        (!Is_ServerRaidActive() && Is_AtGate3EntryTerrace()));
+	if (bAtGate3Deck)
+		eButton = CRaidGateProgressView::BUTTON::LEAVE;
 	const bool_t canPropose = canInteract && Is_LocalRaidLeader() && !bVoteOpen;
-	Update_Gate3EntryAura(canPropose, eButton == CRaidGateProgressView::BUTTON::ENTER_GATE3 && canInteract);
-	m_GateProgressView.Set_Button(eButton, canPropose);
+	/* The final exit is the player's own trip back to Bern, so it is not the leader's alone. */
+	const bool_t canExit = canInteract && !bVoteOpen;
+	Update_Gate3EntryAura(canPropose, bAtGate3Deck && canInteract);
+	m_GateProgressView.Set_Button(eButton,
+		CRaidGateProgressView::BUTTON::EXIT == eButton ? canExit : canPropose);
 	// Bingo is the encore after the three displayed gate icons.
 	m_GateProgressView.Set_Progress(iShownGate, iShownGate > 3u ?
 		static_cast<uint8_t>(m_GateProgress.iClearedMask | 0x7u) : m_GateProgress.iClearedMask);
@@ -3168,8 +3182,12 @@ void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta
 		if (!canPropose) break;
 		(void)m_pPlayerCommandSink->Request_GateProgressPropose(m_iNextGateRequestSequence++, GATE_PROGRESS_KIND::RESTART);
 		break;
-	case CRaidGateProgressView::INTENT::EXIT:
+	case CRaidGateProgressView::INTENT::PROPOSE_EXIT:
 		if (!canPropose) break;
+		(void)m_pPlayerCommandSink->Request_GateProgressPropose(m_iNextGateRequestSequence++, GATE_PROGRESS_KIND::EXIT);
+		break;
+	case CRaidGateProgressView::INTENT::EXIT:
+		if (!canExit) break;
 		(void)m_pPlayerCommandSink->Request_ReturnToBern(m_iNextGateRequestSequence++);
 		break;
 	case CRaidGateProgressView::INTENT::ACCEPT:
@@ -3190,6 +3208,7 @@ bool_t Client::CLevel_KakulSaydonArena::Is_GateVotePromptOpen() const
 	const CRaidGateProgressView::PROMPT ePrompt = m_GateProgressView.Get_Prompt();
 	return CRaidGateProgressView::PROMPT::VOTE_ADVANCE == ePrompt ||
 		CRaidGateProgressView::PROMPT::VOTE_RESTART == ePrompt ||
+		CRaidGateProgressView::PROMPT::VOTE_EXIT == ePrompt ||
         CRaidGateProgressView::PROMPT::VOTE_ENTER_GATE3 == ePrompt;
 }
 
@@ -3198,6 +3217,8 @@ Client::CRaidGateProgressView::PROMPT Client::CLevel_KakulSaydonArena::Gate_Vote
 {
     if (LostArk::Shared::GATE_PROGRESS_KIND::ENTER_GATE3 == eKind)
         return CRaidGateProgressView::PROMPT::VOTE_ENTER_GATE3;
+	if (LostArk::Shared::GATE_PROGRESS_KIND::EXIT == eKind)
+		return CRaidGateProgressView::PROMPT::VOTE_EXIT;
 	return LostArk::Shared::GATE_PROGRESS_KIND::RESTART == eKind ?
 		CRaidGateProgressView::PROMPT::VOTE_RESTART : CRaidGateProgressView::PROMPT::VOTE_ADVANCE;
 }

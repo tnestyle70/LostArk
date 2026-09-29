@@ -24,6 +24,8 @@
 #include "UILayoutRuntime.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
+#include "CharacterRoster.h"
+#include "CharacterSelectionState.h"
 #include "MainApp.h"
 #include "MapLightPresentationRuntime.h"
 #include "MapEffectPresentationRuntime.h"
@@ -445,6 +447,8 @@ HRESULT CLevel_Bern::Initialize()
 
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
+	m_PlayerController.Set_ItemTargetResolver([this](const float3_t& origin, const float3_t& direction)
+	{ return m_Replication.Find_ItemTargetPlayerFromRay(origin, direction); });
 	if (!m_PlayerController.Initialize_TargetingPreview(ETOUI(LEVEL::BERN)))
 		return FailActivation("bern.targeting-preview", "Player targeting preview initialization failed.");
 	if (!m_PlayerController.Initialize_ClickMoveEffect(ETOUI(LEVEL::BERN)))
@@ -502,6 +506,7 @@ HRESULT CLevel_Bern::Initialize()
 
 	m_PartyInteraction.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::BERN));
 	m_ChatBubbleView.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::BERN));
+	m_SystemMenuButtons.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::BERN));
 
 	const std::filesystem::path musicPath =
 		CRuntimeAssetRoot::Resolve(BERN_CASTLE_BGM_ASSET_ID);
@@ -531,6 +536,8 @@ HRESULT CLevel_Bern::Initialize()
 void CLevel_Bern::Update(f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
+	if (m_bReturningToCharacterSelect)
+		return;
 	if (SERVER_WORLD_TRANSFER_PUMP_RESULT::NONE !=
 		CLevelTransitionService::Pump_ServerApprovedWorldTransfer(LEVEL::BERN))
 	{
@@ -611,6 +618,8 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 #ifdef _DEBUG
 	Update_ValtanEntryDebugPreviewKey();
 #endif
+	Update_SystemMenuButtons();
+	Try_Send_CharacterRestore();
 	Update_ValtanEntryInteraction();
 	Advance_ValtanEntryWalk();
 	Poll_RaidEntryVote();
@@ -1836,6 +1845,51 @@ void CLevel_Bern::Render_ValtanEntryModal()
 			m_iNextNpcEntryConfirmSequence++,
 			intent.iProposalId,
 			intent.bAccepted);
+	}
+}
+
+void CLevel_Bern::Update_SystemMenuButtons()
+{
+	/* Hidden while the entrance cinematic plays or the raid entry window is up. */
+	const bool_t bEntranceCinematic = m_bEntranceCinematicApplied && !m_bEntranceCinematicDone;
+	const CSystemMenuButtonsView::INTENT eIntent =
+		m_SystemMenuButtons.Update(!bEntranceCinematic && !Is_ValtanEntryModalOpen());
+	if (m_SystemMenuButtons.Is_PointerOver())
+	{
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
+	}
+	CMainApp* pMainApp = CMainApp::Get_Active();
+	if (nullptr == pMainApp)
+		return;
+	switch (eIntent)
+	{
+	case CSystemMenuButtonsView::INTENT::OPEN_OPTIONS:
+		pMainApp->Open_SystemOptionsWindow();
+		break;
+	case CSystemMenuButtonsView::INTENT::RETURN_TO_CHARACTER_SELECT:
+		if (pMainApp->Return_ToCharacterSelect())
+			m_bReturningToCharacterSelect = true;
+		break;
+	default:
+		break;
+	}
+}
+
+void CLevel_Bern::Try_Send_CharacterRestore()
+{
+	/* Once the local character is standing the Server has admitted this entry. A character with
+	no saved state just keeps the Server's fresh start. */
+	if (m_bCharacterRestoreSent || nullptr == m_Replication.Get_LocalCharacter())
+		return;
+	CHARACTER_WORLD_STATE State{};
+	if (!CCharacterSelectionState::Try_Get_ActiveWorldState(State))
+	{ m_bCharacterRestoreSent = true; return; }
+	if (CNetworkManager::Get().Send_RestoreCharacter(
+		1u, State.Items, State.iSilver, State.iGold, State.iHonorTitleId))
+	{
+		CCharacterSelectionState::Mark_RestoreRequested(1u);
+		m_bCharacterRestoreSent = true;
 	}
 }
 

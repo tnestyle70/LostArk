@@ -205,6 +205,7 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 			player.Inventory.push_back(std::move(item));
 		}
 		player.Purse = m_ItemCatalog.Get_StartingPurse();
+		player.bRestoreAvailable = true;
 		/* A fresh character already wears the catalog's starting accessories. */
 		for (const auto& [itemId, slot] : m_ItemCatalog.Get_StartingEquipment())
 		{

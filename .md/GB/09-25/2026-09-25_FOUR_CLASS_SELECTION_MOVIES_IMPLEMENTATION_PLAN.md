@@ -210,3 +210,33 @@ clock mapping을 사용하여 긴 컷신 전체를 편집·탐색할 수 있게 
 검사한다. 기존 파일 확장으로 구현하되 새 C++ 파일이 필요하면 project/filter도 등록한다.
 이 작업 중 사용자의 정본 JSON을 자동 교체하거나 Reload하지 않는다. 구현된 UI의 명시 Save가
 저작·게시 경로를 사용하도록 연결하고, 임시 복사본에서 저장/재로드를 검증한다.
+
+## G12. 창술사 무비의 원본 지면 잔디
+
+SL03의 기존 509개 정적 배치를 보존한다. 원본 UPK에는 별도로 InstancedStaticMeshComponent
+24개가 있고, longgrass02의 300개 instance가 현재 catalog/placement에서 빠졌다.
+흩날리는 무비 Particle과 지면 잔디는 서로 다른 원본 occurrence다.
+
+기존 Bern instance matrix와 공용 component lighting decoder를 재사용하는 추출기를 추가한다.
+v868 native 80-byte matrix/UV bias와 actor/component·archetype/CDO 가시성을 검사하고
+component 위치를 instance 위치로 대신 사용하지 않는다. RNM 24쌍과 instance별 UV bias를
+stable placement에 연결한다. 다른 Area에 설치된 동일 WModel은 새 원본 glTF의 실제 채널을
+대조해 재사용하되, 다른 Area 재질 override 대신 SL03 원본 MIC 수치·texture·wind 입력을 쓴다.
+
+기존 CModel/CMaterial foliage 경로를 사용한다. publisher가 runtime과 달리 foliageWind를
+거부하는 검증 차이를 기존 세 program 계약에 맞추며 새 reader나 shader program은 만들지 않는다.
+후보에 asset/material 24개와 placement 300개만 추가해 기존 row와 모든 rendering option을
+보존한다. native layout 실패, 잘못된 wind 입력, 원본 자료와 Resource의 연결을 검증한다.
+
+사용자 저장·반영 승인 후 최신 디스크의 stable ID/field를 다시 읽어 hash 비교·백업·원자 교체로
+병합하고 Area publisher로 게시한다. 후보 검증, Resources 설치, 런타임 게시와 사용자 최종 화면
+판정은 분리한다. 새 C++/프로젝트 등록은 없으며 Client/UI를 실행하거나 조작하지 않는다.
+
+### G12-1. 잔디 재질 draw 바인딩 복구
+
+Catalog 입장 성공 이후 실제 그리기 경계도 확인한다. 현재 C++가 필수로 바인딩하는
+`g_SourceFoliageWindProgram`이 공용 HLSL에 없어 E4FE 잔디의 material bind가 실패한다.
+공용 HLSL에 program 1 선택을 연결하되 기존 E4FE 산술과 모든 저작 값은 보존한다.
+Binary/MapInstance의 실제 fx_5_0 결과에서 필수 변수 바인딩과 pass 적용을 검사한다.
+A1C6/1C39의 별도 원본 산술은 이번 E4FE 복구 완료 범위에 포함하지 않는다.
+제품 CSO 배포는 통합 빌드 담당자가 수행하며 실행 중 Client/UI는 조작하지 않는다.

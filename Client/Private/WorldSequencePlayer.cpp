@@ -423,6 +423,8 @@ void CWorldSequencePlayer::Clear()
 	m_EffectSnapshots.clear();
 	m_EffectPreviews.clear();
 	m_EffectSelection.reset();
+    m_HasExternalSoundClock = false;
+    m_ExternalSoundClockRate = 1.f;
 	m_ModelCache.clear();
 	m_Document.Reset_Empty({});
 	m_Status.clear();

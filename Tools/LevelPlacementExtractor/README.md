@@ -544,3 +544,32 @@ sky/fresnel 값을 diffuse/reflection으로 대입하거나 임의 타일 크기
 
 이 연결은 pixel 재질 입력의 복구다. MIC별 static switch, vertex wave와 원본 장면 조명까지 같은 것은 아니며,
 30개 값·파일 존재·게시 성공을 원본 최종 외형의 완료 증거로 삼지 않는다.
+
+## UE3 native foliage instance 증거 추출
+
+일반 `extract_ue3_placements.py`의 StaticMeshComponent count에는
+InstancedFoliageActor의 InstancedStaticMeshComponent가 포함되지 않는다.
+`extract_ue3_foliage_placements.py`는 검증한 v868 native layout의 80-byte instance matrix와
+instance별 lightmap/shadowmap UV bias를 기존 Bern matrix·component lighting decoder로 읽는다.
+actor/component 및 archetype/CDO의 visibility를 함께 저장하며 이름으로 숨기지 않는다.
+
+```powershell
+python Tools\LevelPlacementExtractor\extract_ue3_foliage_placements.py `
+  --package LV_LOBBY_CLASSSELECT_SL03 --package-root <ReleasePC>\Packages `
+  --umodel <umodel_lostark_v7.exe> --output out\LanceGrass\foliage.json
+```
+
+출력은 원본 mesh, override, RNM, transform과 stable source/placement ID를 가진 증거 JSON이다.
+1 LOD texture RNM, identity component transform과 알려진 native footer만 허용한다.
+다른 layout은 오류로 남기며 정본 Data나 Resources를 직접 교체하지 않는다. 기존 정적 배치와
+병합할 때 instance별 matrix·UV bias를 보존하고 원본 MIC의 material 입력을 별도로 회수한다.
+동일 geometry의 다른 Area override를 복사하지 않는다. 검증된 후보의 사용자 저장·반영 승인 후
+최신 정본을 병합하고 Map publisher를 사용한다. 전체 절차와 검증 경계는 09-25 FOUR_CLASS
+MOVIES PLAN G12/RESULT G13을 따른다.
+
+카탈로그 행의 숫자 위치를 추측해 shadow/material 속성을 넣지 않는다. v3~v5의
+13/14번째 zero-based token은 `uvScale.x/y`이며 양수여야 한다. `castsShadow`는
+material override의 원본 component 값으로 보존한다. 게시 도구는 source와 published
+카탈로그 모두 `CMapAssetCatalog::Load`의 scale·render profile 범위를 검사한다.
+후보 승인에는 실제 CPU `Load_Source`, 게시 후에는 `Load_Area`까지 확인한다.
+파일 존재·publisher 통과만으로 Client catalog admission을 대신 판정하지 않는다.

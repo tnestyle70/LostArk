@@ -366,7 +366,7 @@ def _validate_status_patterns(
                     "verticalOffsetM" in final_attack or
                     channel.get("bossResponse") != {
                         "kind": "ACCUMULATED_HEALTH_DAMAGE",
-                        "threshold": 1000,
+                        "threshold": 10000,
                     } or
                     success != {
                         "outcome": "HEALTH_DAMAGE_THRESHOLD_REACHED",

@@ -579,6 +579,7 @@ void Client::CCombatHUDViewModel::Reset_RuntimeState()
 	m_KoukuGimmickPreview = {};
 #endif
 	m_Inventory = {};
+	m_bHasInventory = false;
 }
 
 void Client::CCombatHUDViewModel::Apply_WorldHealthBars(

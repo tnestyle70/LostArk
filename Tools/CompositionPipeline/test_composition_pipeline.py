@@ -1407,18 +1407,28 @@ class WorldSequenceSoundContractTests(unittest.TestCase):
     def test_saved_sound_lane_preserves_payload_and_rejects_invalid_bounds(self) -> None:
         template = {"durationMs": 1000, "soundTracks": [{"soundTrackId": "sound.one",
                     "assetId": "Sound/World/sample.wav", "startMs": 900,
-                    "durationMs": 2000, "volume": 1.0, "loopToDuration": True}]}
+                    "durationMs": 2000, "volume": 1.0, "loopToDuration": True, "sourceStartMs": 2700}]}
         before = copy.deepcopy(template)
         pipeline._validate_world_sequence_sound_tracks(template, "test")
         self.assertEqual(template, before)
         for field, value in (("assetId", "Sound/../sample.wav"), ("startMs", 1001),
                              ("durationMs", 0), ("durationMs", 600000), ("volume", 4.1),
-                             ("loopToDuration", 1)):
+                             ("loopToDuration", 1), ("sourceStartMs", -1),
+                             ("sourceStartMs", 1.5), ("sourceStartMs", True),
+                             ("sourceStartMs", 599000)):
             with self.subTest(field=field):
                 candidate = copy.deepcopy(template)
                 candidate["soundTracks"][0][field] = value
                 with self.assertRaises(pipeline.CompositionError):
                     pipeline._validate_world_sequence_sound_tracks(candidate, "test")
+
+    def test_legacy_sound_defaults_to_untrimmed_without_rewriting(self) -> None:
+        template = {"durationMs": 1000, "soundTracks": [{"soundTrackId": "sound.legacy",
+                    "assetId": "Sound/World/sample.wav", "startMs": 0,
+                    "durationMs": 1000, "volume": 1.0}]}
+        before = copy.deepcopy(template)
+        pipeline._validate_world_sequence_sound_tracks(template, "legacy")
+        self.assertEqual(template, before)
 
 
 class WorldSequenceColliderContractTests(unittest.TestCase):

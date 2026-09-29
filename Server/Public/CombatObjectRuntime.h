@@ -53,6 +53,7 @@ namespace LostArk::Server
 		projectile never has to look its skill definition up again after spawn. */
 		std::vector<std::uint32_t> RepeatRawDamage;
 		std::uint32_t iStaggerDamage = 0u;
+		std::uint32_t iStaggerMaximumDivisor = 0u;
 		std::uint32_t iPartDamage = 0u;
 		std::uint32_t iCounterPower = 0u;
 		// Pinned with the skill's hit definition at spawn, including after reload.
@@ -118,6 +119,7 @@ namespace LostArk::Server
 	};
 
 	struct SERVER_BOSS_PATTERN_HIT;
+	struct SERVER_BATTLE_ITEM_USE;
 
 	struct SERVER_COMBAT_OBJECT final
 	{
@@ -152,6 +154,10 @@ namespace LostArk::Server
 		float fLockedTargetOffsetX = 0.f;
 		float fLockedTargetOffsetZ = 0.f;
 		SERVER_COMBAT_OBJECT_LIVE_STATE LiveState;
+		// Thrown objects burst once on the first world-body contact or at their destination.
+		bool bDetonateOnContact = false;
+		float fProjectileStartY = 0.f, fProjectileTargetY = 0.f;
+		float fProjectileDistanceM = 0.f, fProjectileArcHeightM = 0.f;
 		float fSpeedMps = 0.f;
 		float fRemainingDistanceM = -1.f;
 		std::uint32_t iMovementStartDelayMs = 0u;
@@ -187,6 +193,11 @@ namespace LostArk::Server
 	{
 	public:
 		[[nodiscard]] SERVER_COMBAT_OBJECT_TRANSACTION Begin_Transaction() const;
+
+		bool Stage_BattleItemProjectile(SERVER_COMBAT_OBJECT_TRANSACTION& transaction,
+			const SERVER_PLAYER& source, const SERVER_BATTLE_ITEM_USE& use,
+			float targetX, float targetY, float targetZ, const CGameplayCatalog& catalog,
+			std::uint32_t serverTick, std::string& status) const;
 
 		bool Stage_PlayerProjectile(
 			SERVER_COMBAT_OBJECT_TRANSACTION& transaction,

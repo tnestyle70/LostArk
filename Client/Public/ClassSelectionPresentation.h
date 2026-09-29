@@ -109,6 +109,9 @@ public:
         std::string classId, sceneId, backgroundAreaId;
         std::vector<std::string> excludedWorldObjectIds;
         PHASE intro, loop;
+        bool repeatMovie = true;
+        std::string holdAfterCameraId;
+        uint32_t HoldSourceEndMs(bool looping) const;
     };
 
     CClassSelectionPresentation() = default;
@@ -159,6 +162,9 @@ public:
         const std::string& boxId, CLASS_MOVIE_AUTHORING_BOX& out, std::string& status);
     bool Apply_AuthoringBox(const CLASS_MOVIE_AUTHORING_BOX& before,
         const DATA_JSON_VALUE& replacement, std::string& status);
+    bool Get_RepeatMovie(const std::string& classId) const;
+    bool Set_RepeatMovie(const std::string& classId, bool repeat, std::string& status);
+    bool Is_CompletedHold() const { return m_CompletedHold; }
     bool Save_Authoring(std::string& status, bool publish = true);
     bool Publish_Authoring(std::string& status);
     bool Edit_AuthoringTiming(const CLASS_MOVIE_AUTHORING_BOX& before,
@@ -266,6 +272,7 @@ private:
     std::optional<EFFECT_SELECTION> m_Selection;
     bool m_Looping = false;
     bool m_Paused = false;
+    bool m_CompletedHold = false;
     bool m_DeferAdvance = false;
     bool m_OwnsCamera = false;
     bool m_InspectionFreeCamera = false;

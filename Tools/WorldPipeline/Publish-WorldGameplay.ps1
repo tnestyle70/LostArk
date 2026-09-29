@@ -840,11 +840,11 @@ function Convert-WorldDocument {
 				throw "Trigger requiresInteract must be a JSON Boolean: $($placement.placementId)"
 			}
 			if ($hasInteractAction) {
-				# "dock:<place name>" shows that name as the prompt line (a ship dock); the other four
+				# "dock:<place name>" shows that name as the prompt line (a ship dock); the other six
 				# names pick a fixed retail icon. The label is presentation only and never leaves this file.
 				$isDockLabel = ($placement.interactAction -is [string]) -and
 					($placement.interactAction -cmatch '^dock:[^\x00-\x1F]{1,32}$')
-				if (-not $isDockLabel -and $placement.interactAction -cnotin @('godown','climb','tightrope','check')) {
+				if (-not $isDockLabel -and $placement.interactAction -cnotin @('godown','climb','tightrope','check','move','lever')) {
 					throw "Trigger interactAction is not a known prompt action: $($placement.placementId)"
 				}
 			}
@@ -1360,14 +1360,91 @@ function Convert-WorldDocument {
             }
         }
     }
+    # Project the exact existing vertical bounce keys and stable placement bindings.
+    # Strip y-axis rotation is harmless for a sphere; pitch/roll or a different
+    # motion program must be rejected instead of silently desynchronizing damage.
+    $bouncingBalls = [Collections.Generic.List[string]]::new()
+    if ($WorldId -eq 'KAKULSAYDON_ARENA') {
+        $bounce = @($sequenceDocument.instances | Where-Object { $_.instanceId -ceq 'world.sequence.instance.mario.striped_ball.bounce' -and $_.enabled })
+        if ($bounce.Count -eq 1) {
+            $instance = $bounce[0]
+            $template = @($sequenceDocument.templates | Where-Object { $_.sequenceId -ceq $instance.templateId })[0]
+            if ($template.interpolation -cne 'LINEAR' -or $instance.anchorKind -cne 'WORLD' -or
+                $instance.motionEnd -cne 'STOP' -or $template.objectMotion.count -ne 1 -or
+                $instance.bindings.Count -gt 128 -or $template.tracks.Count -ne $instance.bindings.Count -or
+                @($instance.position | Where-Object { $_ -ne 0 }).Count -or $template.animationTracks.Count) {
+                throw 'Unsupported Mario striped ball bounce program.'
+            }
+            Assert-JsonInteger $template.durationMs 'Mario bounce duration' 1 120000
+            Assert-JsonNumber $instance.playbackSpeed 'Mario bounce speed'
+            if ($instance.playbackSpeed -lt 0.1 -or $instance.playbackSpeed -gt 4) { throw 'Invalid Mario bounce speed.' }
+            foreach ($field in @('velocity','acceleration','angularVelocityDegrees','revolutionDegreesPerSecond','revolutionOffset')) {
+                if (@($template.objectMotion.$field | Where-Object { $_ -ne 0 }).Count) { throw 'Mario bounce supports authored transform keys only.' }
+            }
+            $placements = @{}
+            foreach ($line in [IO.File]::ReadAllLines($ballPlacementPath)) {
+                $fields = @([regex]::Matches($line, '"[^"]*"|\S+') | ForEach-Object { $_.Value.Trim('"') })
+                if ($fields.Count -ne 16 -or $fields[4] -cne 'MAP_MARIO_STRIPED_BALL') { continue }
+                $placements[$fields[0]] = $fields
+            }
+            $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+            foreach ($binding in $instance.bindings) {
+                $id = [string]$binding.targetId
+                $track = @($template.tracks | Where-Object { $_.slotId -ceq $binding.slotId })
+                if ($binding.targetKind -cne 'MAP_PLACEMENT' -or -not $placements.ContainsKey($id) -or
+                    -not $seen.Add($id) -or $track.Count -ne 1) { throw "Invalid Mario bounce binding: $id" }
+                $row = $placements[$id]
+                $values = @()
+                foreach ($field in $row[5..14]) {
+                    $number = 0.0
+                    if (-not [double]::TryParse($field, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$number) -or
+                        [double]::IsNaN($number) -or [double]::IsInfinity($number)) { throw "Invalid Mario bounce placement number: $id" }
+                    $values += $number
+                }
+                if ($row[15] -cne '1' -or [Math]::Abs($values[3]) -gt 0.00001 -or [Math]::Abs($values[5]) -gt 0.00001 -or
+                    [Math]::Abs($values[4] * $values[4] + $values[6] * $values[6] - 1) -gt 0.0001 -or
+                    $values[7] -le 0 -or $values[7] -gt 20 -or $values[7] -ne $values[8] -or $values[7] -ne $values[9]) {
+                    throw "Mario bounce needs a visible upright uniformly scaled placement: $id"
+                }
+                # Installed MN_PPCC_00_SK sphere bounds are 94.16095 cm wide.
+                # Catalog BottomCenter makes its center exactly one radius above the pivot.
+                $radius = 0.470805 * $values[7]
+                $keys = @($track[0].keys)
+                if ($keys.Count -lt 2 -or $keys.Count -gt 4096 -or $keys[0].timeMs -ne 0 -or
+                    $keys[-1].timeMs -ne $template.durationMs -or
+                    [Math]::Abs($keys[0].positionOffset[1] - $keys[-1].positionOffset[1]) -gt 0.0001) {
+                    throw "Mario bounce needs a continuous bounded loop: $id"
+                }
+                $output = [Collections.Generic.List[string]]::new()
+                foreach ($field in @($id, (Format-InvariantFloat $values[0]), (Format-InvariantFloat $values[1]),
+                    (Format-InvariantFloat $values[2]), (Format-InvariantFloat $radius),
+                    [string]$template.durationMs, (Format-InvariantFloat $instance.playbackSpeed), [string]$keys.Count)) { $output.Add($field) }
+                $previousTime = -1
+                foreach ($key in $keys) {
+                    Assert-JsonInteger $key.timeMs 'Mario bounce key time' 0 $template.durationMs
+                    Assert-JsonNumber $key.positionOffset[1] 'Mario bounce key offset'
+                    if ($key.timeMs -le $previousTime -or $key.visible -ne $true -or
+                        $key.positionOffset.Count -ne 3 -or $key.positionOffset[0] -ne 0 -or $key.positionOffset[2] -ne 0 -or
+                        [Math]::Abs($key.positionOffset[1]) -gt 100 -or
+                        ($key.rotationQuaternion -join ',') -cne '0,0,0,1' -or ($key.scaleMultiplier -join ',') -cne '1,1,1') {
+                        throw "Unsupported Mario bounce transform key: $id"
+                    }
+                    $previousTime = $key.timeMs
+                    $output.Add([string]$key.timeMs); $output.Add((Format-InvariantFloat $key.positionOffset[1]))
+                }
+                $bouncingBalls.Add(($output -join "`t"))
+            }
+        }
+    }
     $lines = [Collections.Generic.List[string]]::new()
-	$lines.Add("LOSTARK_WORLD_BOOTSTRAP`t11`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)`t$($sequenceIds.Count)`t$($mazeLanes.Count)`t$($marioBalls.Count)")
+	$lines.Add("LOSTARK_WORLD_BOOTSTRAP`t12`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)`t$($sequenceIds.Count)`t$($mazeLanes.Count)`t$($marioBalls.Count)`t$($bouncingBalls.Count)")
     foreach ($row in $sortedRows) {
         $lines.Add($row)
     }
     foreach ($sequenceId in @($sequenceIds | Sort-Object)) { $lines.Add($sequenceId) }
     foreach ($lane in $mazeLanes) { $lines.Add($lane) }
     foreach ($ball in $marioBalls) { $lines.Add("MARIOBALL`t$ball") }
+    foreach ($ball in $bouncingBalls) { $lines.Add("MARIOBOUNCE`t$ball") }
     return [ordered]@{
         WorldId = $WorldId
         AreaId = $AreaId

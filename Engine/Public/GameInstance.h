@@ -68,6 +68,9 @@ public: /* For.Sound_Manager */
 	void Pause_SoundCue(uint64_t handle, bool_t paused);
     void Set_SoundCuePlaybackRate(uint64_t handle, f32_t playbackRate);
 	void Seek_SoundCue(uint64_t handle, uint32_t ageMs);
+    // Reconcile a live cue with an externally owned clock without seeking every frame.
+    // False means the caller's live cue has ended or become unavailable.
+    bool_t Synchronize_SoundCue(uint64_t handle, uint32_t ageMs, uint32_t maxDriftMs = 100u);
 	void Stop_SoundCue(uint64_t handle);
 
 	HRESULT Play_LoopingSound(const wstring_t& strSoundFilePath, f32_t fVolume);

@@ -515,7 +515,8 @@ def project(evidence,index,notifies,occurrences,records,destination,material_pat
                     tilingDistanceWorldUnits=float(imported.prop(props,'texturetiledistance',0))*.01,
                     distanceTessellationStepWorldUnits=0)
             else:
-                assert imported.prop(props, 'sheetspertrail') == 1
+                sheets = imported.prop(props, 'sheetspertrail')
+                assert isinstance(sheets, int) and 1 <= sheets <= 8
                 detail['trail'].update(maxPoints=int(imported.prop(props,'maxparticleintrailcount')),
                     pointLifeTimeSeconds=max(detail['particle']['lifeTimeSeconds']), sampleIntervalSeconds=1/60,
                     minimumDistance=0, faceCamera=True,

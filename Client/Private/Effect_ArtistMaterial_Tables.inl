@@ -78883,7 +78883,1145 @@ constexpr std::array<ARTIST_PARAMETER_DESC,3> ARTIST_PARAMETERS_4979 = {{
 }};
 constexpr std::array<ARTIST_SWITCH_DESC,0> ARTIST_SWITCHES_4979 = {{
 }};
-constexpr std::array<ARTIST_PROGRAM_DESC,2584> ARTIST_PROGRAM_STORAGE = {{
+constexpr std::array<std::string_view,4> ARTIST_TEXTURES_5312 = {{"01.heightmap","01.diffmap_a","01.emismap","01.alphamaskmap"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,13> ARTIST_PARAMETERS_5312 = {{
+    {"selectioncolor", 5u, 0u, true},
+    {"82.diffusecolor", 4u, 0u, true},
+    {"03.emap_uv.x.scale", 0u, 2u, false},
+    {"04.emap_uv.y.scale", 1u, 0u, false},
+    {"21.phasepantimescale", 2u, 0u, false},
+    {"19.emissiion_color", 3u, 0u, true},
+    {"02.diffmap_a.uvscale", 0u, 1u, false},
+    {"04.bumpzero.pos", 0u, 3u, false},
+    {"02.bumpheight", 0u, 0u, false},
+    {"81.diffusedesat", 2u, 1u, false},
+    {"15.emissiion_power", 1u, 3u, false},
+    {"09.str", 1u, 1u, false},
+    {"10.power", 1u, 2u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,14> ARTIST_SWITCHES_5312 = {{
+    {"01.usevertexcolor2emissive", false},
+    {"00.usefakelight", false},
+    {"00.usebump", true},
+    {"10.use2maps", false},
+    {"00.usespecullar", false},
+    {"30.usedissolve", false},
+    {"00.usealphamap", true},
+    {"06.mapch.r", true},
+    {"07.mapch.g", true},
+    {"08.mapch.b", true},
+    {"00.useemission", true},
+    {"use_invert_x", false},
+    {"23.invert", false},
+    {"09.mapch.a", true},
+}};
+constexpr std::array<std::string_view,0> ARTIST_TEXTURES_5313 = {{}};
+constexpr std::array<ARTIST_PARAMETER_DESC,2> ARTIST_PARAMETERS_5313 = {{
+    {"selectioncolor", 1u, 0u, true},
+    {"hardness", 0u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,0> ARTIST_SWITCHES_5313 = {{
+}};
+constexpr std::array<std::string_view,3> ARTIST_TEXTURES_5314 = {{"detail texture","spread texture","center texture"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,4> ARTIST_PARAMETERS_5314 = {{
+    {"selectioncolor", 1u, 0u, true},
+    {"scale", 0u, 2u, false},
+    {"detail texture tiling", 0u, 0u, false},
+    {"dynamic_parameter_explanation", 0u, 1u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,12> ARTIST_SWITCHES_5314 = {{
+    {"use_spread texture", true},
+    {"use_detaildistortion", true},
+    {"use_centerdistortion", false},
+    {"use_meshtype", false},
+    {"use_up&down", false},
+    {"use_xy axis", false},
+    {"use_billboard", false},
+    {"use_sharp", false},
+    {"use_twirl", false},
+    {"use_tworing", false},
+    {"use_wavering", false},
+    {"use_center texture", true},
+}};
+constexpr std::array<std::string_view,2> ARTIST_TEXTURES_5315 = {{"native_texture_0","native_texture_1"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,1> ARTIST_PARAMETERS_5315 = {{
+    {"selectioncolor", 0u, 0u, true},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,0> ARTIST_SWITCHES_5315 = {{
+}};
+constexpr std::array<std::string_view,0> ARTIST_TEXTURES_5316 = {{}};
+constexpr std::array<ARTIST_PARAMETER_DESC,5> ARTIST_PARAMETERS_5316 = {{
+    {"selectioncolor", 1u, 0u, true},
+    {"01.radius", 0u, 0u, false},
+    {"02.hardness", 0u, 1u, false},
+    {"03.spherepower", 0u, 2u, false},
+    {"04.sphere_str", 0u, 3u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,4> ARTIST_SWITCHES_5316 = {{
+    {"checkisdepthbiasalpha", false},
+    {"01.checkisvertexcolor", true},
+    {"30.usefresnal", false},
+    {"02.usedynamicparam", false},
+}};
+constexpr std::array<std::string_view,3> ARTIST_TEXTURES_5317 = {{"uv_noise_01_tex","emissive_tex","transition texture"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,16> ARTIST_PARAMETERS_5317 = {{
+    {"selectioncolor", 4u, 0u, true},
+    {"total_scale", 1u, 1u, false},
+    {"uv_noise_01_panning_x", 3u, 0u, false},
+    {"uv_noise_01_tiling", 3u, 2u, false},
+    {"uv_noise_01_panning_y", 3u, 1u, false},
+    {"uv_noise_01_intensity", 2u, 3u, false},
+    {"emissive_uv_scale_x", 0u, 3u, false},
+    {"emissive_uv_scale_y", 1u, 0u, false},
+    {"emissive_desaturation", 0u, 0u, false},
+    {"emissive_intensity", 0u, 1u, false},
+    {"transition_panning_x", 2u, 0u, false},
+    {"transition_tiling", 2u, 2u, false},
+    {"transition_panning_y", 2u, 1u, false},
+    {"transition line thickness", 1u, 2u, false},
+    {"emissive_line_intensity", 0u, 2u, false},
+    {"transition thickness", 1u, 3u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,6> ARTIST_SWITCHES_5317 = {{
+    {"non_alpha_chanel", true},
+    {"use_distortion", false},
+    {"use_fresnel_alpha", false},
+    {"use_meshtype", false},
+    {"use_polarcoordinate", true},
+    {"use_uv_noise_02", false},
+}};
+constexpr std::array<std::string_view,2> ARTIST_TEXTURES_5318 = {{"native_texture_0","native_texture_1"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,2> ARTIST_PARAMETERS_5318 = {{
+    {"selectioncolor", 1u, 0u, true},
+    {"meshemitterdynamicparameter", 0u, 0u, true},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,0> ARTIST_SWITCHES_5318 = {{
+}};
+constexpr std::array<std::string_view,1> ARTIST_TEXTURES_5319 = {{"emissive_tex"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,6> ARTIST_PARAMETERS_5319 = {{
+    {"selectioncolor", 2u, 0u, true},
+    {"uv_scale", 1u, 0u, false},
+    {"dynamic_parameter_explanation", 0u, 1u, false},
+    {"emissive_desaturation", 0u, 2u, false},
+    {"emissive_power", 0u, 3u, false},
+    {"depth_alpha_bias", 0u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,18> ARTIST_SWITCHES_5319 = {{
+    {"use_mesh_world_normal", false},
+    {"use_depth_alpha", true},
+    {"use_distortion", false},
+    {"use_distortion_floor", false},
+    {"use_meshtype", false},
+    {"use_subuv_tex", false},
+    {"use_alpha_tex", false},
+    {"use_uv_panning", false},
+    {"use_uv_rotation", false},
+    {"use_uv_noise_tex", false},
+    {"use_fresnel_alpha", false},
+    {"use_camera_alpha", false},
+    {"use_edge_glow", false},
+    {"non_alpha_chanel", false},
+    {"use_axisy", true},
+    {"use_dynparam_panning", false},
+    {"use_uv_noise_tex_02", false},
+    {"use_rotation_angle", false},
+}};
+constexpr std::array<std::string_view,2> ARTIST_TEXTURES_5320 = {{"native_texture_0","native_texture_1"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,2> ARTIST_PARAMETERS_5320 = {{
+    {"selectioncolor", 1u, 0u, true},
+    {"emissive_color", 0u, 0u, true},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,0> ARTIST_SWITCHES_5320 = {{
+}};
+constexpr std::array<std::string_view,2> ARTIST_TEXTURES_5321 = {{"map_a","map_b"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,7> ARTIST_PARAMETERS_5321 = {{
+    {"selectioncolor", 5u, 0u, true},
+    {"01.firecolor", 1u, 0u, true},
+    {"02.illuminationcolor", 2u, 0u, true},
+    {"03.smokecolor", 3u, 0u, true},
+    {"04.optioncolor", 4u, 0u, true},
+    {"readme", 0u, 1u, false},
+    {"01.bias_alpha", 0u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,2> ARTIST_SWITCHES_5321 = {{
+    {"00.use_depthalpha", true},
+    {"00.usebump", false},
+}};
+constexpr std::array<std::string_view,2> ARTIST_TEXTURES_5322 = {{"map_a","map_b"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,6> ARTIST_PARAMETERS_5322 = {{
+    {"selectioncolor", 5u, 0u, true},
+    {"01.firecolor", 1u, 0u, true},
+    {"02.illuminationcolor", 2u, 0u, true},
+    {"03.smokecolor", 3u, 0u, true},
+    {"04.optioncolor", 4u, 0u, true},
+    {"readme", 0u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,2> ARTIST_SWITCHES_5322 = {{
+    {"00.use_depthalpha", false},
+    {"00.usebump", true},
+}};
+constexpr std::array<std::string_view,1> ARTIST_TEXTURES_5323 = {{"subuv_tex"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,4> ARTIST_PARAMETERS_5323 = {{
+    {"selectioncolor", 2u, 0u, true},
+    {"emissive_color&intensity", 1u, 0u, true},
+    {"dynamic_parameter_explanation", 0u, 0u, false},
+    {"emissive_tex_desturation", 0u, 1u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,5> ARTIST_SWITCHES_5323 = {{
+    {"use_meshtype", false},
+    {"use_subuv_tex", true},
+    {"use_nonalpha_tex", false},
+    {"use_emissive_vertcolor", false},
+    {"use_nonuvnoise", false},
+}};
+constexpr std::array<std::string_view,1> ARTIST_TEXTURES_5324 = {{"subuv_tex"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,4> ARTIST_PARAMETERS_5324 = {{
+    {"selectioncolor", 1u, 0u, true},
+    {"dynamic_parameter_explanation", 0u, 0u, false},
+    {"emissive_tex_desturation", 0u, 1u, false},
+    {"light_intensity", 0u, 2u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,5> ARTIST_SWITCHES_5324 = {{
+    {"use_meshtype", false},
+    {"use_subuv_tex", true},
+    {"use_nonalpha_chanel", false},
+    {"use_nonuvnoise", false},
+    {"use_depth_alpha", false},
+}};
+constexpr std::array<std::string_view,1> ARTIST_TEXTURES_5325 = {{"tex"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,3> ARTIST_PARAMETERS_5325 = {{
+    {"selectioncolor", 1u, 0u, true},
+    {"desaturationscalar", 0u, 1u, false},
+    {"alphapower", 0u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,1> ARTIST_SWITCHES_5325 = {{
+    {"desaturation", true},
+}};
+constexpr std::array<std::string_view,1> ARTIST_TEXTURES_5326 = {{"subuv_tex"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,4> ARTIST_PARAMETERS_5326 = {{
+    {"selectioncolor", 2u, 0u, true},
+    {"emissive_color&intensity", 1u, 0u, true},
+    {"dynamic_parameter_explanation", 0u, 0u, false},
+    {"emissive_tex_desturation", 0u, 1u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,5> ARTIST_SWITCHES_5326 = {{
+    {"use_meshtype", false},
+    {"use_subuv_tex", true},
+    {"use_nonalpha_tex", false},
+    {"use_emissive_vertcolor", false},
+    {"use_nonuvnoise", false},
+}};
+constexpr std::array<std::string_view,2> ARTIST_TEXTURES_5327 = {{"06.map_anew","00.map_b"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,7> ARTIST_PARAMETERS_5327 = {{
+    {"selectioncolor", 2u, 0u, true},
+    {"09.map_a_panning_x", 0u, 3u, false},
+    {"06.map_alod", 0u, 0u, false},
+    {"07.map_a_uvscale_r", 0u, 1u, false},
+    {"08.map_a_uvscale_g", 0u, 2u, false},
+    {"11.map_a_str", 1u, 0u, false},
+    {"12.map_a_power", 1u, 1u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,15> ARTIST_SWITCHES_5327 = {{
+    {"00.usedistortion", false},
+    {"20.use_centrehole", false},
+    {"00.usedepthbiasalpha", false},
+    {"30.usefresnal", false},
+    {"10.cameradistance", false},
+    {"01.mapch.r", true},
+    {"02.mapch.g", true},
+    {"03.mapch.b", true},
+    {"00.use_uvdistort", false},
+    {"01.usecoordinate_index1", false},
+    {"01.use_uvdistort_all", false},
+    {"15.use_panbezier", true},
+    {"checkismeshemitvc", false},
+    {"00.use_rgbinalphamap", false},
+    {"30.use_additionalmap", false},
+}};
+constexpr std::array<std::string_view,2> ARTIST_TEXTURES_5328 = {{"01.map_e","06.map_f"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,21> ARTIST_PARAMETERS_5328 = {{
+    {"selectioncolor", 6u, 0u, true},
+    {"16.emissiion_str", 5u, 0u, true},
+    {"51.texlod", 4u, 0u, false},
+    {"time", 4u, 1u, false},
+    {"04.map_e_panning_x", 1u, 1u, false},
+    {"02.map_e_uvscale_r", 0u, 3u, false},
+    {"03.map_e_uvscale_g", 1u, 0u, false},
+    {"01.amount", 0u, 0u, false},
+    {"11.curvature", 2u, 3u, false},
+    {"twirldirection", 4u, 2u, false},
+    {"05.map_e_panning_y", 1u, 2u, false},
+    {"09.map_f_panning_x", 2u, 1u, false},
+    {"07.map_f_uvscale_r", 1u, 3u, false},
+    {"08.map_f_uvscale_g", 2u, 0u, false},
+    {"10.map_f_panning_y", 2u, 2u, false},
+    {"12.desaturation", 3u, 0u, false},
+    {"15.emissiion_power", 3u, 1u, false},
+    {"21.noise_str", 3u, 2u, false},
+    {"01.circle_radius", 0u, 1u, false},
+    {"02.circle_hardness", 0u, 2u, false},
+    {"22.noise_power", 3u, 3u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,12> ARTIST_SWITCHES_5328 = {{
+    {"00.usedistortion", false},
+    {"01.usemesh", false},
+    {"00.checkisdepthbiasalpha", false},
+    {"50.usesnowflake", false},
+    {"00.use_uvdistort", false},
+    {"00.use_bump", false},
+    {"40.usefresnal", false},
+    {"20.useaddnoise", true},
+    {"00.usecentermask", false},
+    {"00.use_uvdistort_alpha", false},
+    {"20.usecolorvari", false},
+    {"00.uselight", false},
+}};
+constexpr std::array<std::string_view,3> ARTIST_TEXTURES_5329 = {{"main_tex","uv_noise_texture","colormap_tex"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,24> ARTIST_PARAMETERS_5329 = {{
+    {"selectioncolor", 7u, 0u, true},
+    {"colormap_color", 6u, 0u, true},
+    {"main_utile", 3u, 2u, false},
+    {"twist_str", 4u, 1u, false},
+    {"main_curve", 2u, 3u, false},
+    {"main_vtile", 3u, 3u, false},
+    {"main_panner", 3u, 0u, false},
+    {"colormap_utile", 1u, 0u, false},
+    {"colormap_vtile", 1u, 1u, false},
+    {"colormap_panner", 0u, 1u, false},
+    {"uvnoise_utile", 5u, 0u, false},
+    {"uvnoise_vtile", 5u, 1u, false},
+    {"uvnoise_panner", 4u, 2u, false},
+    {"uvnoise_str", 4u, 3u, false},
+    {"colormap_power", 0u, 2u, false},
+    {"colormap_str", 0u, 3u, false},
+    {"colormap_desatuation", 0u, 0u, false},
+    {"main_power", 3u, 1u, false},
+    {"out_opa_range", 4u, 0u, false},
+    {"in_opa_range", 2u, 0u, false},
+    {"in_opa_str", 2u, 1u, false},
+    {"main_alpha", 2u, 2u, false},
+    {"distortion_power", 1u, 2u, false},
+    {"distortion_str", 1u, 3u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,4> ARTIST_SWITCHES_5329 = {{
+    {"use_colormap", true},
+    {"use_uvnoise", true},
+    {"use_distortion", true},
+    {"use_depth_alpha", false},
+}};
+constexpr std::array<std::string_view,1> ARTIST_TEXTURES_5330 = {{"emissive_tex"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,1> ARTIST_PARAMETERS_5330 = {{
+    {"selectioncolor", 0u, 0u, true},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,3> ARTIST_SWITCHES_5330 = {{
+    {"use_meshtype", false},
+    {"use_subuv_tex", false},
+    {"use_nonalpha_chanel", false},
+}};
+constexpr std::array<std::string_view,3> ARTIST_TEXTURES_5331 = {{"06.map","01.map_a","21.map_c"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,18> ARTIST_PARAMETERS_5331 = {{
+    {"selectioncolor", 5u, 0u, true},
+    {"21.uvscale.x", 2u, 2u, false},
+    {"22.uvscale.y", 2u, 3u, false},
+    {"time", 4u, 0u, false},
+    {"04.map_a_panning_x", 0u, 3u, false},
+    {"02.map_a_uvscale_r", 0u, 1u, false},
+    {"03.map_a_uvscale_g", 0u, 2u, false},
+    {"09.map_d_panning_x", 2u, 0u, false},
+    {"07.map_d_uvscale_r", 1u, 2u, false},
+    {"08.map_d_uvscale_g", 1u, 3u, false},
+    {"10.map_d_panning_y", 2u, 1u, false},
+    {"05.distort_str", 1u, 0u, false},
+    {"05.map_a_panning_y", 1u, 1u, false},
+    {"29.cmap.direct", 3u, 0u, false},
+    {"30.cmap.time(rotrate)", 3u, 1u, false},
+    {"36.str", 3u, 2u, false},
+    {"37.power", 3u, 3u, false},
+    {"01.depthbiasdalpha_bias", 0u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,26> ARTIST_SWITCHES_5331 = {{
+    {"00.usedistortion", false},
+    {"01.usemesh", false},
+    {"31.mapch.r", true},
+    {"32.mapch.g", true},
+    {"20.use_clampmap", true},
+    {"25.use_yclamp", false},
+    {"00.use_uvdistort", true},
+    {"10.use_mapb", false},
+    {"00.use_mapa", true},
+    {"30.usefresnal", false},
+    {"00.checkisdepthbiasalpha", true},
+    {"00.use_emission", false},
+    {"50.usefresemission", false},
+    {"01.use_emissionmap", true},
+    {"10.use_mapf", false},
+    {"11.map_e + map_f", false},
+    {"00.usespecullar", false},
+    {"20.usefresspec", false},
+    {"40.use_clampmap", false},
+    {"48.use_yclamp", false},
+    {"41.map_e + map_f", false},
+    {"60.twist", false},
+    {"60.usedissolveemission", false},
+    {"31.fresnal.invert", false},
+    {"33.mapch.b", true},
+    {"34.mapch.a", true},
+}};
+constexpr std::array<std::string_view,3> ARTIST_TEXTURES_5332 = {{"native_texture_0","native_texture_1","native_texture_2"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,1> ARTIST_PARAMETERS_5332 = {{
+    {"selectioncolor", 0u, 0u, true},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,0> ARTIST_SWITCHES_5332 = {{
+}};
+constexpr std::array<std::string_view,1> ARTIST_TEXTURES_5333 = {{"emissive_tex"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,5> ARTIST_PARAMETERS_5333 = {{
+    {"selectioncolor", 1u, 0u, true},
+    {"uv_scale", 0u, 3u, false},
+    {"dynamic_parameter_explanation", 0u, 0u, false},
+    {"emissive_desaturation", 0u, 1u, false},
+    {"emissive_power", 0u, 2u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,18> ARTIST_SWITCHES_5333 = {{
+    {"use_mesh_world_normal", false},
+    {"use_depth_alpha", false},
+    {"use_distortion", false},
+    {"use_distortion_floor", false},
+    {"use_meshtype", false},
+    {"use_subuv_tex", false},
+    {"use_alpha_tex", false},
+    {"use_uv_panning", false},
+    {"use_uv_rotation", false},
+    {"use_uv_noise_tex", false},
+    {"use_fresnel_alpha", false},
+    {"use_camera_alpha", false},
+    {"use_edge_glow", false},
+    {"non_alpha_chanel", false},
+    {"use_axisy", true},
+    {"use_dynparam_panning", false},
+    {"use_uv_noise_tex_02", false},
+    {"use_rotation_angle", false},
+}};
+constexpr std::array<std::string_view,6> ARTIST_TEXTURES_5334 = {{"dissolvetexture1","dissolvetexture2","native_texture_2","maintexture1","maintexture2","native_texture_5"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,2> ARTIST_PARAMETERS_5334 = {{
+    {"selectioncolor", 1u, 0u, true},
+    {"meshemitterdynamicparameter", 0u, 0u, true},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,0> ARTIST_SWITCHES_5334 = {{
+}};
+constexpr std::array<std::string_view,1> ARTIST_TEXTURES_5335 = {{"emissive_tex"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,8> ARTIST_PARAMETERS_5335 = {{
+    {"selectioncolor", 3u, 0u, true},
+    {"meshemitterdynamicparameter", 2u, 0u, true},
+    {"uv_scale", 1u, 1u, false},
+    {"dynamic_parameter_explanation", 0u, 0u, false},
+    {"emissive_desaturation", 0u, 3u, false},
+    {"edge_intensity", 0u, 1u, false},
+    {"edge_power", 0u, 2u, false},
+    {"emissive_power", 1u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,18> ARTIST_SWITCHES_5335 = {{
+    {"use_mesh_world_normal", false},
+    {"use_depth_alpha", false},
+    {"use_distortion", false},
+    {"use_distortion_floor", false},
+    {"use_meshtype", true},
+    {"use_subuv_tex", false},
+    {"use_alpha_tex", false},
+    {"use_uv_panning", false},
+    {"use_uv_rotation", false},
+    {"use_uv_noise_tex", false},
+    {"use_fresnel_alpha", false},
+    {"use_camera_alpha", false},
+    {"use_edge_glow", true},
+    {"non_alpha_chanel", false},
+    {"use_axisy", true},
+    {"use_dynparam_panning", false},
+    {"use_uv_noise_tex_02", false},
+    {"use_rotation_angle", false},
+}};
+constexpr std::array<std::string_view,2> ARTIST_TEXTURES_5336 = {{"04.map_anew","00.map_b"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,8> ARTIST_PARAMETERS_5336 = {{
+    {"selectioncolor", 2u, 0u, true},
+    {"05.map_alod", 0u, 0u, false},
+    {"09.map_a_panning_x", 0u, 3u, false},
+    {"07.map_a_uvscale_r", 0u, 1u, false},
+    {"08.map_a_uvscale_g", 0u, 2u, false},
+    {"10.map_a_panning_y", 1u, 0u, false},
+    {"11.map_a_str", 1u, 1u, false},
+    {"12.map_a_power", 1u, 2u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,18> ARTIST_SWITCHES_5336 = {{
+    {"00.usedistortion", false},
+    {"20.use_centrehole", false},
+    {"00.usedepthbiasalpha", false},
+    {"30.usefresnal", false},
+    {"10.cameradistance", false},
+    {"01.mapch.r", true},
+    {"02.mapch.g", true},
+    {"03.mapch.b", true},
+    {"00.use_uvdistort", false},
+    {"01.use_uvdistort_all", false},
+    {"checkismeshemitvc", false},
+    {"00.use_rgbinalphamap", false},
+    {"06.use((r+g+b)*0.33)", false},
+    {"15.use_panbezier", false},
+    {"01.usecoordinate_index1", false},
+    {"30.use_additionalmap", false},
+    {"useupno_alpha", false},
+    {"40.use_fanshape", false},
+}};
+constexpr std::array<std::string_view,0> ARTIST_TEXTURES_5337 = {{}};
+constexpr std::array<ARTIST_PARAMETER_DESC,2> ARTIST_PARAMETERS_5337 = {{
+    {"selectioncolor", 1u, 0u, true},
+    {"dynamic_parameter_explanation", 0u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,12> ARTIST_SWITCHES_5337 = {{
+    {"use_spread texture", false},
+    {"use_detaildistortion", false},
+    {"use_centerdistortion", true},
+    {"use_meshtype", false},
+    {"use_up&down", false},
+    {"use_xy axis", false},
+    {"use_billboard", false},
+    {"use_sharp", false},
+    {"use_twirl", false},
+    {"use_tworing", true},
+    {"use_wavering", false},
+    {"use_center texture", true},
+}};
+constexpr std::array<std::string_view,0> ARTIST_TEXTURES_5338 = {{}};
+constexpr std::array<ARTIST_PARAMETER_DESC,9> ARTIST_PARAMETERS_5338 = {{
+    {"selectioncolor", 2u, 0u, true},
+    {"cricle_rotation", 0u, 0u, false},
+    {"uv_scale_x", 1u, 2u, false},
+    {"uv_scale_y", 1u, 3u, false},
+    {"uv_position_x", 1u, 0u, false},
+    {"uv_position_y", 1u, 1u, false},
+    {"mask_hardness", 0u, 1u, false},
+    {"mask_power", 0u, 3u, false},
+    {"mask_intensity", 0u, 2u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,1> ARTIST_SWITCHES_5338 = {{
+    {"use_inverse", false},
+}};
+constexpr std::array<std::string_view,4> ARTIST_TEXTURES_5339 = {{"noise_tex","diff_tex","native_texture_2","opacity_tex"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,26> ARTIST_PARAMETERS_5339 = {{
+    {"selectioncolor", 9u, 0u, true},
+    {"diff_high_color", 6u, 0u, true},
+    {"diff_low_color", 7u, 0u, true},
+    {"diff_u_tile", 1u, 1u, false},
+    {"diff_v_tile", 1u, 2u, false},
+    {"noise_u_tile", 2u, 2u, false},
+    {"noise_v_tile", 3u, 0u, false},
+    {"noise_u_pan", 2u, 1u, false},
+    {"noise_v_pan", 2u, 3u, false},
+    {"meshemitterdynamicparameter", 8u, 0u, true},
+    {"wave_pan_speed", 4u, 3u, false},
+    {"diff_rotation", 0u, 2u, false},
+    {"opacity_u_tile", 4u, 0u, false},
+    {"opacity_v_tile", 4u, 1u, false},
+    {"opacity_rotation", 3u, 1u, false},
+    {"noise_str", 2u, 0u, false},
+    {"diff_u_center", 1u, 0u, false},
+    {"wave_tile", 5u, 1u, false},
+    {"wave_str", 5u, 0u, false},
+    {"wave_noise_str", 4u, 2u, false},
+    {"diff_desturation", 0u, 0u, false},
+    {"diff_pow", 0u, 1u, false},
+    {"diff_str", 0u, 3u, false},
+    {"opacity_u_center", 3u, 3u, false},
+    {"opacity_str", 3u, 2u, false},
+    {"distortion_str", 1u, 3u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,0> ARTIST_SWITCHES_5339 = {{
+}};
+constexpr std::array<std::string_view,0> ARTIST_TEXTURES_5340 = {{}};
+constexpr std::array<ARTIST_PARAMETER_DESC,6> ARTIST_PARAMETERS_5340 = {{
+    {"selectioncolor", 2u, 0u, true},
+    {"01.radius", 0u, 0u, false},
+    {"02.hardness", 0u, 1u, false},
+    {"03.spherepower", 0u, 2u, false},
+    {"04.sphere_str", 0u, 3u, false},
+    {"depthbiasdalpha_bias", 1u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,4> ARTIST_SWITCHES_5340 = {{
+    {"checkisdepthbiasalpha", true},
+    {"01.checkisvertexcolor", true},
+    {"30.usefresnal", false},
+    {"02.usedynamicparam", false},
+}};
+constexpr std::array<std::string_view,1> ARTIST_TEXTURES_5341 = {{"texture"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,3> ARTIST_PARAMETERS_5341 = {{
+    {"selectioncolor", 1u, 0u, true},
+    {"tex_intensity", 0u, 1u, false},
+    {"glimmer_opacity", 0u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,0> ARTIST_SWITCHES_5341 = {{
+}};
+constexpr std::array<std::string_view,3> ARTIST_TEXTURES_5342 = {{"uv_noise_01_tex","emissive_tex","alpha_tex"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,12> ARTIST_PARAMETERS_5342 = {{
+    {"selectioncolor", 3u, 0u, true},
+    {"uv_noise_01_panning_x", 1u, 2u, false},
+    {"uv_noise_01_tiling_x", 2u, 0u, false},
+    {"uv_noise_01_tiling_y", 2u, 1u, false},
+    {"uv_noise_01_panning_y", 1u, 3u, false},
+    {"uv_noise_01_intensity", 1u, 1u, false},
+    {"uv_scale", 2u, 2u, false},
+    {"dynamic_parameter_explanation", 0u, 2u, false},
+    {"emissive_desaturation", 0u, 3u, false},
+    {"emissive_power", 1u, 0u, false},
+    {"depth_alpha_bias", 0u, 0u, false},
+    {"distortion_intensity", 0u, 1u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,17> ARTIST_SWITCHES_5342 = {{
+    {"use_mesh_world_normal", false},
+    {"use_depth_alpha", true},
+    {"use_distortion", true},
+    {"use_meshtype", false},
+    {"use_subuv_tex", false},
+    {"use_alpha_tex", true},
+    {"use_uv_panning", false},
+    {"use_uv_rotation", false},
+    {"use_uv_noise_tex", true},
+    {"use_fresnel_alpha", false},
+    {"use_camera_alpha", false},
+    {"use_edge_glow", false},
+    {"use_distortion_floor", false},
+    {"non_alpha_chanel", false},
+    {"use_dynparam_panning", false},
+    {"use_axisy", true},
+    {"use_uv_noise_tex_02", false},
+}};
+constexpr std::array<std::string_view,4> ARTIST_TEXTURES_5343 = {{"native_texture_0","native_texture_1","native_texture_2","colormap"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,15> ARTIST_PARAMETERS_5343 = {{
+    {"selectioncolor", 5u, 0u, true},
+    {"colormap_color", 4u, 0u, true},
+    {"main_ucoord", 3u, 0u, false},
+    {"01.amount", 0u, 0u, false},
+    {"main_power", 2u, 3u, false},
+    {"addmap1_utile", 1u, 0u, false},
+    {"addmap1_panner", 0u, 1u, false},
+    {"addmap1_vtile", 1u, 1u, false},
+    {"addmap1_power", 0u, 2u, false},
+    {"addmap1_str", 0u, 3u, false},
+    {"colormap1_utile", 1u, 2u, false},
+    {"colormap1_vtile", 1u, 3u, false},
+    {"colormap_power", 2u, 1u, false},
+    {"colormap_str", 2u, 2u, false},
+    {"colormap_desatuation", 2u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,0> ARTIST_SWITCHES_5343 = {{
+}};
+constexpr std::array<std::string_view,4> ARTIST_TEXTURES_5344 = {{"31.map_e","06.map","04.map_anew","00.map_b"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,19> ARTIST_PARAMETERS_5344 = {{
+    {"selectioncolor", 6u, 0u, true},
+    {"39.map_a_panning_x", 3u, 2u, false},
+    {"37.mape_color", 5u, 0u, true},
+    {"09.map_a_panning_x", 1u, 3u, false},
+    {"05.map_alod", 0u, 2u, false},
+    {"41.map_a_uvscale_r", 3u, 3u, false},
+    {"42.map_a_uvscale_g", 4u, 0u, false},
+    {"09.map_d_panning_x", 2u, 0u, false},
+    {"07.map_d_uvscale_r", 1u, 0u, false},
+    {"08.map_d_uvscale_g", 1u, 2u, false},
+    {"10.map_d_panning_y", 2u, 1u, false},
+    {"05.distort_str", 0u, 1u, false},
+    {"33.desaturation", 3u, 0u, false},
+    {"35.mape_power", 3u, 1u, false},
+    {"07.map_a_uvscale_r", 0u, 3u, false},
+    {"08.map_a_uvscale_g", 1u, 1u, false},
+    {"11.map_a_str", 2u, 2u, false},
+    {"12.map_a_power", 2u, 3u, false},
+    {"01.depthbiasdalpha_bias", 0u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,18> ARTIST_SWITCHES_5344 = {{
+    {"00.usedistortion", false},
+    {"20.use_centrehole", false},
+    {"00.usedepthbiasalpha", true},
+    {"30.usefresnal", false},
+    {"10.cameradistance", false},
+    {"01.mapch.r", true},
+    {"02.mapch.g", true},
+    {"03.mapch.b", true},
+    {"00.use_uvdistort", true},
+    {"01.use_uvdistort_all", true},
+    {"checkismeshemitvc", false},
+    {"00.use_rgbinalphamap", false},
+    {"06.use((r+g+b)*0.33)", false},
+    {"15.use_panbezier", true},
+    {"01.usecoordinate_index1", false},
+    {"30.use_additionalmap", true},
+    {"useupno_alpha", false},
+    {"40.use_fanshape", false},
+}};
+constexpr std::array<std::string_view,0> ARTIST_TEXTURES_5345 = {{}};
+constexpr std::array<ARTIST_PARAMETER_DESC,6> ARTIST_PARAMETERS_5345 = {{
+    {"selectioncolor", 2u, 0u, true},
+    {"centerglow_power", 0u, 0u, false},
+    {"centerglow_str", 0u, 1u, false},
+    {"glow_power", 0u, 2u, false},
+    {"str", 1u, 0u, false},
+    {"power", 0u, 3u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,0> ARTIST_SWITCHES_5345 = {{
+}};
+constexpr std::array<std::string_view,4> ARTIST_TEXTURES_5346 = {{"add_emissive_tex","twinkle_tex","twinkle_tex_01","mask_tex"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,8> ARTIST_PARAMETERS_5346 = {{
+    {"selectioncolor", 3u, 0u, true},
+    {"emissive_color&intensity", 2u, 0u, true},
+    {"emissive_paning", 0u, 1u, false},
+    {"emissive_tiling", 0u, 2u, false},
+    {"add_emissive_intensity", 0u, 0u, false},
+    {"twinkle_paning", 1u, 0u, false},
+    {"twinkle_tiling", 1u, 1u, false},
+    {"twinkle_intensity", 0u, 3u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,3> ARTIST_SWITCHES_5346 = {{
+    {"use_mask_r_chanel", false},
+    {"use_emissive_r_chanel", false},
+    {"use_meshtype", false},
+}};
+constexpr std::array<std::string_view,3> ARTIST_TEXTURES_5347 = {{"06.map","02.map_e","21.map_c"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,24> ARTIST_PARAMETERS_5347 = {{
+    {"selectioncolor", 8u, 0u, true},
+    {"93.emissiion_color", 6u, 0u, true},
+    {"meshemitterdynamicparameter", 7u, 0u, true},
+    {"21.uvscale.x", 2u, 2u, false},
+    {"22.uvscale.y", 2u, 3u, false},
+    {"time", 5u, 0u, false},
+    {"05.map_e_panning_x", 1u, 0u, false},
+    {"03.map_e_uvscale_r", 0u, 0u, false},
+    {"04.map_e_uvscale_g", 0u, 1u, false},
+    {"09.map_d_panning_x", 2u, 0u, false},
+    {"07.map_d_uvscale_r", 1u, 2u, false},
+    {"08.map_d_uvscale_g", 1u, 3u, false},
+    {"10.map_d_panning_y", 2u, 1u, false},
+    {"05.distort_str", 0u, 2u, false},
+    {"06.map_e_panning_y", 1u, 1u, false},
+    {"91.desaturation", 4u, 2u, false},
+    {"92.emissiion_power", 4u, 3u, false},
+    {"29.cmap.direct", 3u, 0u, false},
+    {"30.cmap.time(rotrate)", 3u, 1u, false},
+    {"36.str", 4u, 0u, false},
+    {"37.power", 4u, 1u, false},
+    {"32.fresnal_power", 3u, 2u, false},
+    {"33.fresnal_str", 3u, 3u, false},
+    {"05.distortion_str", 0u, 3u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,26> ARTIST_SWITCHES_5347 = {{
+    {"00.usedistortion", true},
+    {"01.usemesh", true},
+    {"31.mapch.r", true},
+    {"32.mapch.g", true},
+    {"20.use_clampmap", true},
+    {"25.use_yclamp", false},
+    {"00.use_uvdistort", true},
+    {"10.use_mapb", false},
+    {"00.use_mapa", false},
+    {"30.usefresnal", true},
+    {"00.checkisdepthbiasalpha", false},
+    {"00.use_emission", true},
+    {"50.usefresemission", false},
+    {"01.use_emissionmap", true},
+    {"10.use_mapf", false},
+    {"11.map_e + map_f", false},
+    {"00.usespecullar", false},
+    {"20.usefresspec", false},
+    {"40.use_clampmap", false},
+    {"48.use_yclamp", false},
+    {"41.map_e + map_f", false},
+    {"60.twist", false},
+    {"60.usedissolveemission", false},
+    {"31.fresnal.invert", false},
+    {"33.mapch.b", true},
+    {"34.mapch.a", true},
+}};
+constexpr std::array<std::string_view,2> ARTIST_TEXTURES_5348 = {{"tex_colormap","tex_main"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,10> ARTIST_PARAMETERS_5348 = {{
+    {"selectioncolor", 3u, 0u, true},
+    {"colormap_uspeed", 1u, 0u, false},
+    {"colormap_ucoord", 0u, 3u, false},
+    {"colormap_vspeed", 1u, 2u, false},
+    {"colormap_vcoord", 1u, 1u, false},
+    {"colormap_pow", 0u, 1u, false},
+    {"colormap_str", 0u, 2u, false},
+    {"colormap_des", 0u, 0u, false},
+    {"main_pow", 1u, 3u, false},
+    {"main_str", 2u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,4> ARTIST_SWITCHES_5348 = {{
+    {"use_addmap", false},
+    {"use_uvnoise", false},
+    {"use_colormap_cameravec", false},
+    {"sw_color_clamp", false},
+}};
+constexpr std::array<std::string_view,2> ARTIST_TEXTURES_5349 = {{"tex_colormap","tex_main"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,10> ARTIST_PARAMETERS_5349 = {{
+    {"selectioncolor", 3u, 0u, true},
+    {"colormap_uspeed", 1u, 0u, false},
+    {"colormap_ucoord", 0u, 3u, false},
+    {"colormap_vspeed", 1u, 2u, false},
+    {"colormap_vcoord", 1u, 1u, false},
+    {"colormap_pow", 0u, 1u, false},
+    {"colormap_str", 0u, 2u, false},
+    {"colormap_des", 0u, 0u, false},
+    {"main_pow", 1u, 3u, false},
+    {"main_str", 2u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,4> ARTIST_SWITCHES_5349 = {{
+    {"use_addmap", false},
+    {"use_uvnoise", false},
+    {"use_colormap_cameravec", false},
+    {"sw_color_clamp", false},
+}};
+constexpr std::array<std::string_view,2> ARTIST_TEXTURES_5350 = {{"tex_colormap","tex_main"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,10> ARTIST_PARAMETERS_5350 = {{
+    {"selectioncolor", 3u, 0u, true},
+    {"colormap_uspeed", 1u, 0u, false},
+    {"colormap_ucoord", 0u, 3u, false},
+    {"colormap_vspeed", 1u, 2u, false},
+    {"colormap_vcoord", 1u, 1u, false},
+    {"colormap_pow", 0u, 1u, false},
+    {"colormap_str", 0u, 2u, false},
+    {"colormap_des", 0u, 0u, false},
+    {"main_pow", 1u, 3u, false},
+    {"main_str", 2u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,4> ARTIST_SWITCHES_5350 = {{
+    {"use_addmap", false},
+    {"use_uvnoise", false},
+    {"use_colormap_cameravec", false},
+    {"sw_color_clamp", false},
+}};
+constexpr std::array<std::string_view,2> ARTIST_TEXTURES_5351 = {{"01.specmap","11.dirtmap"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,11> ARTIST_PARAMETERS_5351 = {{
+    {"selectioncolor", 4u, 0u, true},
+    {"05.specmap_uvscale.x", 0u, 0u, false},
+    {"06.specmap_uvscale.y", 0u, 1u, false},
+    {"09.specmap_color", 2u, 0u, true},
+    {"12.ditmap_uv.x", 1u, 0u, false},
+    {"13.ditmap_uv.y", 1u, 1u, false},
+    {"16.dirt_color", 3u, 0u, true},
+    {"07.desaturation", 0u, 2u, false},
+    {"08.specmap_power", 0u, 3u, false},
+    {"14.dirt_desat", 1u, 2u, false},
+    {"15.dirt_power", 1u, 3u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,34> ARTIST_SWITCHES_5351 = {{
+    {"00.usealphamap", false},
+    {"06.mapch.r", true},
+    {"07.mapch.g", true},
+    {"08.mapch.b", true},
+    {"30.usefresnalalpha", false},
+    {"00.use_uvdistort", false},
+    {"--use_dissolve", false},
+    {"01.usemesh", true},
+    {"01.liner_type", false},
+    {"02.bothsides_type", false},
+    {"03.cross_type", false},
+    {"04.sweep_type", false},
+    {"05.radialtype", true},
+    {"06.invert", false},
+    {"--use_fakeshadow", false},
+    {"--usediffusemap", true},
+    {"01.usesubmap", false},
+    {"17.usebump", false},
+    {"27.usebump", false},
+    {"--usespecullar", true},
+    {"00.usediffusemap", false},
+    {"00.usediemission", false},
+    {"--a.useemission", false},
+    {"--b.usemaskmap", true},
+    {"--c.usephasemap", false},
+    {"53.emissionmask.invert", false},
+    {"60.usefresnalemission", false},
+    {"40.usenormalmap", false},
+    {"20.usebottomlight", false},
+    {"41.use.r", true},
+    {"42.use.g", false},
+    {"43.use.b", false},
+    {"20.uses.maskmap", false},
+    {"00.useworldnormal", false},
+}};
+constexpr std::array<std::string_view,1> ARTIST_TEXTURES_5352 = {{"emissive_tex"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,6> ARTIST_PARAMETERS_5352 = {{
+    {"selectioncolor", 2u, 0u, true},
+    {"uv_scale", 1u, 0u, false},
+    {"dynamic_parameter_explanation", 0u, 1u, false},
+    {"emissive_desaturation", 0u, 2u, false},
+    {"emissive_power", 0u, 3u, false},
+    {"depth_alpha_bias", 0u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,18> ARTIST_SWITCHES_5352 = {{
+    {"use_mesh_world_normal", false},
+    {"use_depth_alpha", true},
+    {"use_distortion", false},
+    {"use_distortion_floor", false},
+    {"use_meshtype", false},
+    {"use_subuv_tex", false},
+    {"use_alpha_tex", false},
+    {"use_uv_panning", false},
+    {"use_uv_rotation", false},
+    {"use_uv_noise_tex", false},
+    {"use_fresnel_alpha", false},
+    {"use_camera_alpha", false},
+    {"use_edge_glow", false},
+    {"non_alpha_chanel", false},
+    {"use_axisy", true},
+    {"use_dynparam_panning", false},
+    {"use_uv_noise_tex_02", false},
+    {"use_rotation_angle", false},
+}};
+constexpr std::array<std::string_view,1> ARTIST_TEXTURES_5353 = {{"emissive_tex"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,1> ARTIST_PARAMETERS_5353 = {{
+    {"selectioncolor", 0u, 0u, true},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,3> ARTIST_SWITCHES_5353 = {{
+    {"use_meshtype", false},
+    {"use_subuv_tex", false},
+    {"use_nonalpha_chanel", false},
+}};
+constexpr std::array<std::string_view,0> ARTIST_TEXTURES_5354 = {{}};
+constexpr std::array<ARTIST_PARAMETER_DESC,5> ARTIST_PARAMETERS_5354 = {{
+    {"selectioncolor", 1u, 0u, true},
+    {"01.radius", 0u, 0u, false},
+    {"02.hardness", 0u, 1u, false},
+    {"03.spherepower", 0u, 2u, false},
+    {"04.spherestr", 0u, 3u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,5> ARTIST_SWITCHES_5354 = {{
+    {"checkisdepthbiasalpha", false},
+    {"checkisvertexcolor", true},
+    {"01.checkisvertexcolor", true},
+    {"02.usedynamicparam", false},
+    {"30.usefresnal", false},
+}};
+constexpr std::array<std::string_view,1> ARTIST_TEXTURES_5355 = {{"native_texture_0"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,1> ARTIST_PARAMETERS_5355 = {{
+    {"selectioncolor", 0u, 0u, true},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,0> ARTIST_SWITCHES_5355 = {{
+}};
+constexpr std::array<std::string_view,5> ARTIST_TEXTURES_5356 = {{"addmap1_tex","uvnoise_tex","colormap2_tex","colormap_tex","main_tex"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,39> ARTIST_PARAMETERS_5356 = {{
+    {"selectioncolor", 11u, 0u, true},
+    {"colormap2_color", 9u, 0u, true},
+    {"colormap_color", 10u, 0u, true},
+    {"main_tex_upos", 6u, 1u, false},
+    {"main_tex_vpos", 6u, 2u, false},
+    {"main_ucoord", 6u, 3u, false},
+    {"twist_str", 7u, 2u, false},
+    {"main_tex_upanner", 6u, 0u, false},
+    {"curve_power", 4u, 1u, false},
+    {"main_v_panner", 7u, 0u, false},
+    {"addmap1_utile", 0u, 3u, false},
+    {"addmap1_vtile", 1u, 0u, false},
+    {"addmap1_panner", 0u, 0u, false},
+    {"uvnoise_utile", 8u, 2u, false},
+    {"uvnoise_vtile", 8u, 3u, false},
+    {"uvnoise_panner", 7u, 3u, false},
+    {"uvnoise_power", 8u, 0u, false},
+    {"uvnoise_str", 8u, 1u, false},
+    {"addmap1_power", 0u, 1u, false},
+    {"addmap1_str", 0u, 2u, false},
+    {"colormap2_ucoord", 2u, 0u, false},
+    {"colormap2_vcoord", 2u, 1u, false},
+    {"colormap2_vpanner", 2u, 2u, false},
+    {"colormap2_power", 1u, 2u, false},
+    {"colormap2_str", 1u, 3u, false},
+    {"colormap2_destu", 1u, 1u, false},
+    {"colormap_ucoord", 3u, 2u, false},
+    {"colormap_vcoord", 3u, 3u, false},
+    {"colormap_vpanner", 4u, 0u, false},
+    {"colormap_power", 3u, 0u, false},
+    {"colormap_str", 3u, 1u, false},
+    {"colormap_destu", 2u, 3u, false},
+    {"main_str", 5u, 3u, false},
+    {"main_power", 5u, 2u, false},
+    {"out_opa_range", 7u, 1u, false},
+    {"in_opa_range", 4u, 3u, false},
+    {"in_opa_str", 5u, 0u, false},
+    {"main_alpha", 5u, 1u, false},
+    {"distortion_str", 4u, 2u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,18> ARTIST_SWITCHES_5356 = {{
+    {"use_distortion", false},
+    {"use_halfmoon", false},
+    {"multiply_addmap2", false},
+    {"main_tex_useuvnoise", false},
+    {"use_uvnoise", true},
+    {"use_dynamic_vcoord", true},
+    {"uvnoise_v_pannertime", false},
+    {"main_v_pannertime", false},
+    {"main_u_pannertime", false},
+    {"use_colormap2", true},
+    {"colormap_v_pannertime", false},
+    {"colormap2_v_pannertime", false},
+    {"use_addmap2", false},
+    {"addmap2_v_pannertime", false},
+    {"use_addmap1", true},
+    {"addmap1_v_pannertime", false},
+    {"use_mesh", false},
+    {"use_depth_alpha", false},
+}};
+constexpr std::array<std::string_view,4> ARTIST_TEXTURES_5357 = {{"native_texture_0","native_texture_1","opacity_tex","native_texture_3"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,4> ARTIST_PARAMETERS_5357 = {{
+    {"selectioncolor", 1u, 0u, true},
+    {"panner_speed", 0u, 2u, false},
+    {"opacitymap_xpos", 0u, 0u, false},
+    {"opacitymap_ypos", 0u, 1u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,0> ARTIST_SWITCHES_5357 = {{
+}};
+constexpr std::array<std::string_view,3> ARTIST_TEXTURES_5358 = {{"01.emitmap","01_uvdistortmap","01.alphamap"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,17> ARTIST_PARAMETERS_5358 = {{
+    {"selectioncolor", 5u, 0u, true},
+    {"09.color", 4u, 0u, true},
+    {"04.map_c_panning_x", 1u, 0u, false},
+    {"02.map_c_uvscale_r", 0u, 0u, false},
+    {"03.map_c_uvscale_g", 0u, 2u, false},
+    {"05.map_c_panning_y", 1u, 2u, false},
+    {"04.map_d_panning_x", 1u, 1u, false},
+    {"02.map_d_uvscale_r", 0u, 1u, false},
+    {"03.map_d_uvscale_g", 0u, 3u, false},
+    {"05.map_d_panning_y", 1u, 3u, false},
+    {"07.uvdistort_str", 2u, 1u, false},
+    {"08.desaturation", 2u, 2u, false},
+    {"07.map_d_uvscale_r", 2u, 0u, false},
+    {"08.map_d_uvscale_g", 2u, 3u, false},
+    {"10.map_d_panning_y", 3u, 0u, false},
+    {"11.str", 3u, 1u, false},
+    {"12.power", 3u, 2u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,7> ARTIST_SWITCHES_5358 = {{
+    {"00.checkisdepthbiasalpha", false},
+    {"01.usemesh", false},
+    {"--a.useuvdistort", true},
+    {"--b.useuvdistortmap", true},
+    {"00.usepolarcoord", true},
+    {"00.usepolarcoord.", true},
+    {"10.useedgestr", false},
+}};
+constexpr std::array<std::string_view,3> ARTIST_TEXTURES_5359 = {{"31.map_e","04.map_anew","00.map_b"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,15> ARTIST_PARAMETERS_5359 = {{
+    {"selectioncolor", 5u, 0u, true},
+    {"37.mape_color", 4u, 0u, true},
+    {"05.map_alod", 0u, 0u, false},
+    {"39.map_a_panning_x", 2u, 1u, false},
+    {"41.map_a_uvscale_r", 2u, 3u, false},
+    {"42.map_a_uvscale_g", 3u, 0u, false},
+    {"40.map_a_panning_y", 2u, 2u, false},
+    {"33.desaturation", 1u, 3u, false},
+    {"35.mape_power", 2u, 0u, false},
+    {"09.map_a_panning_x", 0u, 3u, false},
+    {"07.map_a_uvscale_r", 0u, 1u, false},
+    {"08.map_a_uvscale_g", 0u, 2u, false},
+    {"10.map_a_panning_y", 1u, 0u, false},
+    {"11.map_a_str", 1u, 1u, false},
+    {"12.map_a_power", 1u, 2u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,18> ARTIST_SWITCHES_5359 = {{
+    {"00.usedistortion", false},
+    {"20.use_centrehole", false},
+    {"00.usedepthbiasalpha", false},
+    {"30.usefresnal", false},
+    {"10.cameradistance", false},
+    {"01.mapch.r", true},
+    {"02.mapch.g", true},
+    {"03.mapch.b", true},
+    {"00.use_uvdistort", false},
+    {"01.use_uvdistort_all", false},
+    {"checkismeshemitvc", false},
+    {"00.use_rgbinalphamap", false},
+    {"06.use((r+g+b)*0.33)", false},
+    {"15.use_panbezier", false},
+    {"01.usecoordinate_index1", false},
+    {"30.use_additionalmap", true},
+    {"useupno_alpha", false},
+    {"40.use_fanshape", false},
+}};
+constexpr std::array<std::string_view,3> ARTIST_TEXTURES_5360 = {{"04.map_anew","06.map","00.map_b"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,14> ARTIST_PARAMETERS_5360 = {{
+    {"selectioncolor", 4u, 0u, true},
+    {"05.map_alod", 0u, 1u, false},
+    {"09.map_a_panning_x", 1u, 2u, false},
+    {"07.map_a_uvscale_r", 0u, 2u, false},
+    {"08.map_a_uvscale_g", 1u, 0u, false},
+    {"10.map_a_panning_y", 2u, 0u, false},
+    {"09.map_d_panning_x", 1u, 3u, false},
+    {"07.map_d_uvscale_r", 0u, 3u, false},
+    {"08.map_d_uvscale_g", 1u, 1u, false},
+    {"10.map_d_panning_y", 2u, 1u, false},
+    {"05.distort_str", 0u, 0u, false},
+    {"11.desaturation", 2u, 2u, false},
+    {"11.map_a_str", 2u, 3u, false},
+    {"12.map_a_power", 3u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,18> ARTIST_SWITCHES_5360 = {{
+    {"00.usedistortion", false},
+    {"20.use_centrehole", false},
+    {"00.usedepthbiasalpha", false},
+    {"30.usefresnal", false},
+    {"10.cameradistance", false},
+    {"01.mapch.r", true},
+    {"02.mapch.g", true},
+    {"03.mapch.b", true},
+    {"00.use_uvdistort", true},
+    {"01.use_uvdistort_all", true},
+    {"checkismeshemitvc", false},
+    {"00.use_rgbinalphamap", true},
+    {"06.use((r+g+b)*0.33)", false},
+    {"15.use_panbezier", false},
+    {"01.usecoordinate_index1", false},
+    {"30.use_additionalmap", false},
+    {"useupno_alpha", false},
+    {"40.use_fanshape", false},
+}};
+constexpr std::array<std::string_view,0> ARTIST_TEXTURES_5361 = {{}};
+constexpr std::array<ARTIST_PARAMETER_DESC,6> ARTIST_PARAMETERS_5361 = {{
+    {"selectioncolor", 2u, 0u, true},
+    {"01.radius", 0u, 0u, false},
+    {"02.hardness", 0u, 1u, false},
+    {"03.spherepower", 0u, 2u, false},
+    {"04.sphere_str", 0u, 3u, false},
+    {"depthbiasdalpha_bias", 1u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,4> ARTIST_SWITCHES_5361 = {{
+    {"01.checkisvertexcolor", true},
+    {"02.usedynamicparam", false},
+    {"30.usefresnal", false},
+    {"checkisdepthbiasalpha", true},
+}};
+constexpr std::array<std::string_view,3> ARTIST_TEXTURES_5362 = {{"01.map_e","06.map_f","01.map"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,19> ARTIST_PARAMETERS_5362 = {{
+    {"selectioncolor", 6u, 0u, true},
+    {"20.rotateuv", 3u, 2u, false},
+    {"meshemitterdynamicparameter", 5u, 0u, true},
+    {"04.map_e_panning_x", 1u, 0u, false},
+    {"02.map_e_uvscale_r", 0u, 0u, false},
+    {"03.map_e_uvscale_g", 0u, 2u, false},
+    {"05.map_e_panning_y", 1u, 2u, false},
+    {"09.map_f_panning_x", 2u, 1u, false},
+    {"07.map_f_uvscale_r", 1u, 3u, false},
+    {"08.map_f_uvscale_g", 2u, 0u, false},
+    {"10.map_f_panning_y", 2u, 2u, false},
+    {"12.desaturation", 2u, 3u, false},
+    {"15.emissiion_power", 3u, 0u, false},
+    {"16.emissiion_str", 3u, 1u, false},
+    {"02.map_lod", 0u, 1u, false},
+    {"03.map_str", 0u, 3u, false},
+    {"04.map_power", 1u, 1u, false},
+    {"51.power", 3u, 3u, false},
+    {"52.str", 4u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,5> ARTIST_SWITCHES_5362 = {{
+    {"00.use_uvdistort", false},
+    {"01.usemesh", true},
+    {"50.use_fresnal", true},
+    {"10.useverticalmap", false},
+    {"00.use_emissionmap", true},
+}};
+constexpr std::array<ARTIST_PROGRAM_DESC,2635> ARTIST_PROGRAM_STORAGE = {{
     {460u,"effect.ue3.artist-460-native.v1","sk_sdm_tig_00.mat.sk_sdm_tig_00aa_mi","efbasematerial_prologue.pbr.pbr_base_trn","ue3.material.efbasematerial.prologue.pbr.pbr.base.trn.6efcc2fcdb7b",false,true,"skeletalMesh",false,false,true,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_460,ARTIST_PARAMETERS_460,ARTIST_SWITCHES_460},
     {461u,"effect.ue3.artist-461-native.v1","sk_sdm_dra_00.mat.sk_sdm_dra_00_mi","efbasematerial_prologue.pbr.pbr_base_trn","ue3.material.efbasematerial.prologue.pbr.pbr.base.trn.6efcc2fcdb7b",false,true,"skeletalMesh",false,false,true,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_461,ARTIST_PARAMETERS_461,ARTIST_SWITCHES_461},
     {462u,"effect.ue3.artist-462-native.v1","fx_m_mi_02.fx_m.fx_j_maskedrib_01_tr","fx_m_mi_02.fx_m.fx_j_maskedrib_01_tr","ue3.material.fx.m.mi.02.fx.m.fx.j.maskedrib.01.tr.b508403ea55f",false,false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ,ARTIST_TEXTURES_462,ARTIST_PARAMETERS_462,ARTIST_SWITCHES_462},
@@ -81468,4 +82606,55 @@ constexpr std::array<ARTIST_PROGRAM_DESC,2584> ARTIST_PROGRAM_STORAGE = {{
     {4977u,"effect.ue3.kouku-4977-native.v1","bfx_m_mi_00.bfx_m.bfx_d_pa_circ_02_ad","bfx_m_mi_00.bfx_m.bfx_d_pa_circ_02_ad","ue3.material.bfx.m.mi.00.bfx.m.bfx.d.pa.circ.02.ad.0861ec48398e",false,false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_4977,ARTIST_PARAMETERS_4977,ARTIST_SWITCHES_4977},
     {4978u,"effect.ue3.kouku-4978-native.v1","fx_m_mi_00.fx_mi.fx_d_pa_master_01_072_tr","fx_m_mi_00.fx_m.fx_d_pa_master_01_tr","ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.tr.47fde102a56b",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_4978,ARTIST_PARAMETERS_4978,ARTIST_SWITCHES_4978},
     {4979u,"effect.ue3.kouku-4979-native.v1","fx_m_mi_01.fx_mi.fx_f_pa_ri_01_3_ad","fx_m_mi_01.fx_m.fx_f_pa_ri_01_ad","ue3.material.fx.m.mi.01.fx.m.fx.f.pa.ri.01.ad.9e58d8091d6a",false,false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_4979,ARTIST_PARAMETERS_4979,ARTIST_SWITCHES_4979},
+    {5312u,"effect.ue3.kouku-5312-native.v1","fx_m_mi_04.fx_mi.fx_d_de_master_01_18_tr","fx_m_mi_04.fx_m.fx_d_de_master_01_tr","ue3.material.fx.m.mi.04.fx.m.fx.d.de.master.01.tr.9dbd0f5e780c",false,false,"decal",false,false,true,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5312,ARTIST_PARAMETERS_5312,ARTIST_SWITCHES_5312},
+    {5313u,"effect.ue3.kouku-5313-native.v1","bfx_m_mi_00.bfx_m.bfx_i_pa_backglow_cl_02_tr","bfx_m_mi_00.bfx_m.bfx_i_pa_backglow_cl_02_tr","ue3.material.bfx.m.mi.00.bfx.m.bfx.i.pa.backglow.cl.02.tr.5de7680be180",false,false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5313,ARTIST_PARAMETERS_5313,ARTIST_SWITCHES_5313},
+    {5314u,"effect.ue3.kouku-5314-native.v1","fx_mastermaterial.fx_mi.fx_c_pa_dist_05_ad","fx_mastermaterial.fx_mm.fx_mm_distortion_01_ad","ue3.material.fx.mastermaterial.fx.mm.fx.mm.distortion.01.ad.fd38a9b02e64",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5314,ARTIST_PARAMETERS_5314,ARTIST_SWITCHES_5314},
+    {5315u,"effect.ue3.kouku-5315-native.v1","fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr","fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr","ue3.material.fx.m.mi.05.fx.m.fx.c.pa.aura.02.tr.6b6be3c64e52",false,false,"sprite",false,false,false,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5315,ARTIST_PARAMETERS_5315,ARTIST_SWITCHES_5315},
+    {5316u,"effect.ue3.kouku-5316-native.v1","bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_02_ad","bfx_m_mi_00.bfx_m.bfx_d_pa_circ_01_ad","ue3.material.bfx.m.mi.00.bfx.m.bfx.d.pa.circ.01.ad.0f4a4414a90a",false,false,"sprite",false,false,false,false,EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ,ARTIST_TEXTURES_5316,ARTIST_PARAMETERS_5316,ARTIST_SWITCHES_5316},
+    {5317u,"effect.ue3.kouku-5317-native.v1","fx_m_mi_01.fx_mi.fx_j_pa_fluid_01_1_tr","fx_mastermaterial.fx_mm.fx_mm_fluid_01_tr","ue3.material.fx.mastermaterial.fx.mm.fx.mm.fluid.01.tr.99f00cf3e57f",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5317,ARTIST_PARAMETERS_5317,ARTIST_SWITCHES_5317},
+    {5318u,"effect.ue3.kouku-5318-native.v1","fx_m_mi_05.fx_m.fx_a_me_panning_01_ts_ad","fx_m_mi_05.fx_m.fx_a_me_panning_01_ts_ad","ue3.material.fx.m.mi.05.fx.m.fx.a.me.panning.01.ts.ad.a2daab5b3ee5",true,false,"mesh",false,true,false,false,EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ,ARTIST_TEXTURES_5318,ARTIST_PARAMETERS_5318,ARTIST_SWITCHES_5318},
+    {5319u,"effect.ue3.kouku-5319-native.v1","fx_m_mi_00.fx_mi.fx_a_pa_cd_01_2_tr","fx_mastermaterial.fx_mm.fx_mm_basic_01_tr","ue3.material.fx.mastermaterial.fx.mm.fx.mm.basic.01.tr.ce17b96d1b77",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5319,ARTIST_PARAMETERS_5319,ARTIST_SWITCHES_5319},
+    {5320u,"effect.ue3.kouku-5320-native.v1","fx_m_mi_00.fx_m.fx_a_pa_firework_01_ad","fx_m_mi_00.fx_m.fx_a_pa_firework_01_ad","ue3.material.fx.m.mi.00.fx.m.fx.a.pa.firework.01.ad.9ef4fb3b6712",false,false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5320,ARTIST_PARAMETERS_5320,ARTIST_SWITCHES_5320},
+    {5321u,"effect.ue3.kouku-5321-native.v1","fx_m_mi_00.fx_mi.fx_d_pa_fire_18_03_dt_tr","fx_m_mi_00.fx_m.fx_d_pa_fire_18_tr","ue3.material.fx.m.mi.00.fx.m.fx.d.pa.fire.18.tr.a94801fb6eec",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5321,ARTIST_PARAMETERS_5321,ARTIST_SWITCHES_5321},
+    {5322u,"effect.ue3.kouku-5322-native.v1","fx_m_mi_00.fx_mi.fx_d_pa_fire_18_01_tr","fx_m_mi_00.fx_m.fx_d_pa_fire_18_tr","ue3.material.fx.m.mi.00.fx.m.fx.d.pa.fire.18.tr.a94801fb6eec",false,false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5322,ARTIST_PARAMETERS_5322,ARTIST_SWITCHES_5322},
+    {5323u,"effect.ue3.kouku-5323-native.v1","fx_m_mi_00.fx_mi.fx_a_pa_fi_01_1_ad","fx_mastermaterial.fx_mm.fx_mm_simple_01_ad","ue3.material.fx.mastermaterial.fx.mm.fx.mm.simple.01.ad.9b97b139cca2",false,false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5323,ARTIST_PARAMETERS_5323,ARTIST_SWITCHES_5323},
+    {5324u,"effect.ue3.kouku-5324-native.v1","fx_m_mi_00.fx_mi.fx_a_pa_db_02_1_tr","fx_mastermaterial.fx_mm.fx_mm_simple_03_tr","ue3.material.fx.mastermaterial.fx.mm.fx.mm.simple.03.tr.a50550a91456",false,false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5324,ARTIST_PARAMETERS_5324,ARTIST_SWITCHES_5324},
+    {5325u,"effect.ue3.kouku-5325-native.v1","fx_m_mi_05.fx_mi.fx_b_pa_fi_01_1_tr","fx_m_mi_05.fx_m.fx_b_pa_fireseq_01_tr","ue3.material.fx.m.mi.05.fx.m.fx.b.pa.fireseq.01.tr.0fd401bf388f",false,false,"sprite",false,true,false,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5325,ARTIST_PARAMETERS_5325,ARTIST_SWITCHES_5325},
+    {5326u,"effect.ue3.kouku-5326-native.v1","fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad","fx_mastermaterial.fx_mm.fx_mm_simple_01_ad","ue3.material.fx.mastermaterial.fx.mm.fx.mm.simple.01.ad.9b97b139cca2",false,false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5326,ARTIST_PARAMETERS_5326,ARTIST_SWITCHES_5326},
+    {5327u,"effect.ue3.kouku-5327-native.v1","fx_m_mi_03.fx_mi.fx_j_pa_ring_07_20_tr","fx_m_mi_03.fx_m.fx_d_pa_ring_07_tr","ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ring.07.tr.ac51b180263c",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ,ARTIST_TEXTURES_5327,ARTIST_PARAMETERS_5327,ARTIST_SWITCHES_5327},
+    {5328u,"effect.ue3.kouku-5328-native.v1","fx_m_mi_01.fx_mi.fx_d_pa_twirl_05_12_tr","fx_mastermaterial.fx_mm.fx_mm_twirl_05_tr","ue3.material.fx.mastermaterial.fx.mm.fx.mm.twirl.05.tr.7c56ec23f388",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5328,ARTIST_PARAMETERS_5328,ARTIST_SWITCHES_5328},
+    {5329u,"effect.ue3.kouku-5329-native.v1","fx_m_mi_01.fx_mi.fx_i_pa_absorb_03_ad","bfx_m_mi_00.bfx_m.bfx_i_pa_wave_01_ad","ue3.material.bfx.m.mi.00.bfx.m.bfx.i.pa.wave.01.ad.517585fdd7f7",false,false,"sprite",false,true,false,false,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5329,ARTIST_PARAMETERS_5329,ARTIST_SWITCHES_5329},
+    {5330u,"effect.ue3.kouku-5330-native.v1","fx_m_mi_00.fx_mi.fx_d_pa_atta_05_11_ad","fx_mastermaterial.fx_mm.fx_mm_light_01_ad","ue3.material.fx.mastermaterial.fx.mm.fx.mm.light.01.ad.f431613b2bdf",false,false,"sprite",false,false,false,false,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5330,ARTIST_PARAMETERS_5330,ARTIST_SWITCHES_5330},
+    {5331u,"effect.ue3.kouku-5331-native.v1","fx_m_mi_00.fx_mi.fx_d_pa_master_01_019_dt_tr","fx_m_mi_00.fx_m.fx_d_pa_master_01_tr","ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.tr.47fde102a56b",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5331,ARTIST_PARAMETERS_5331,ARTIST_SWITCHES_5331},
+    {5332u,"effect.ue3.kouku-5332-native.v1","fx_m_mi_05.fx_m.fx_b_pa_smoke_03_tr","fx_m_mi_05.fx_m.fx_b_pa_smoke_03_tr","ue3.material.fx.m.mi.05.fx.m.fx.b.pa.smoke.03.tr.01821ccdf0b2",false,false,"sprite",false,true,false,false,EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ,ARTIST_TEXTURES_5332,ARTIST_PARAMETERS_5332,ARTIST_SWITCHES_5332},
+    {5333u,"effect.ue3.kouku-5333-native.v1","fx_m_mi_01.fx_mi.fx_e_pa_ap_03_1_tr","fx_mastermaterial.fx_mm.fx_mm_basic_01_tr","ue3.material.fx.mastermaterial.fx.mm.fx.mm.basic.01.tr.ce17b96d1b77",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5333,ARTIST_PARAMETERS_5333,ARTIST_SWITCHES_5333},
+    {5334u,"effect.ue3.kouku-5334-native.v1","fx_m_mi_05.fx_m.fx_a_me_panning_02_ad","fx_m_mi_05.fx_m.fx_a_me_panning_02_ad","ue3.material.fx.m.mi.05.fx.m.fx.a.me.panning.02.ad.bee1f421cd5f",true,false,"mesh",false,false,false,false,EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ,ARTIST_TEXTURES_5334,ARTIST_PARAMETERS_5334,ARTIST_SWITCHES_5334},
+    {5335u,"effect.ue3.kouku-5335-native.v1","fx_m_mi_01.fx_mi.fx_e_me_ap_02_5_ts_tr","fx_mastermaterial.fx_mm.fx_mm_basic_01_tr","ue3.material.fx.mastermaterial.fx.mm.fx.mm.basic.01.tr.ce17b96d1b77",true,false,"mesh",false,true,false,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5335,ARTIST_PARAMETERS_5335,ARTIST_SWITCHES_5335},
+    {5336u,"effect.ue3.kouku-5336-native.v1","fx_m_mi_01.fx_mi.fx_j_pa_windwv_01_1_ad","fx_m_mi_03.fx_m.fx_d_pa_ring_07_ad","ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ring.07.ad.82e9116584b2",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ,ARTIST_TEXTURES_5336,ARTIST_PARAMETERS_5336,ARTIST_SWITCHES_5336},
+    {5337u,"effect.ue3.kouku-5337-native.v1","fx_m_mi_01.fx_mi.fx_e_pa_gl_03_1_ad","fx_mastermaterial.fx_mm.fx_mm_distortion_01_ad","ue3.material.fx.mastermaterial.fx.mm.fx.mm.distortion.01.ad.fd38a9b02e64",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5337,ARTIST_PARAMETERS_5337,ARTIST_SWITCHES_5337},
+    {5338u,"effect.ue3.kouku-5338-native.v1","fx_m_mi_05.fx_mi.fx_e_pa_gl_07_1_ad","fx_m_mi_05.fx_m.fx_e_pa_mask_01_ad","ue3.material.fx.m.mi.05.fx.m.fx.e.pa.mask.01.ad.f1d8ba435442",false,false,"sprite",false,false,false,false,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5338,ARTIST_PARAMETERS_5338,ARTIST_SWITCHES_5338},
+    {5339u,"effect.ue3.kouku-5339-native.v1","fx_m_mi_02.fx_mi.fx_k_me_flowtrail_01_14_tr_ts","fx_m_mi_02.fx_m.fx_k_me_flowtrail_01_ts_tr","ue3.material.fx.m.mi.02.fx.m.fx.k.me.flowtrail.01.ts.tr.bc0628267aaa",true,false,"mesh",false,true,false,false,EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ,ARTIST_TEXTURES_5339,ARTIST_PARAMETERS_5339,ARTIST_SWITCHES_5339},
+    {5340u,"effect.ue3.kouku-5340-native.v1","bfx_m_mi_00.bfx_mi.bfx_h_pa_circle_01_02_ad","bfx_m_mi_00.bfx_m.bfx_d_pa_circ_01_ad","ue3.material.bfx.m.mi.00.bfx.m.bfx.d.pa.circ.01.ad.0f4a4414a90a",false,false,"sprite",false,true,false,false,EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ,ARTIST_TEXTURES_5340,ARTIST_PARAMETERS_5340,ARTIST_SWITCHES_5340},
+    {5341u,"effect.ue3.kouku-5341-native.v1","fx_m_mi_01.fx_mi.fx_f_pa_ri_01_2_ad","fx_m_mi_01.fx_m.fx_f_pa_ri_01_ad","ue3.material.fx.m.mi.01.fx.m.fx.f.pa.ri.01.ad.9e58d8091d6a",false,false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5341,ARTIST_PARAMETERS_5341,ARTIST_SWITCHES_5341},
+    {5342u,"effect.ue3.kouku-5342-native.v1","fx_m_mi_01.fx_mi.fx_k_pa_ht_02_ad","fx_mastermaterial.fx_mm.fx_mm_basic_01_ad","ue3.material.fx.mastermaterial.fx.mm.fx.mm.basic.01.ad.c509bec15c99",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5342,ARTIST_PARAMETERS_5342,ARTIST_SWITCHES_5342},
+    {5343u,"effect.ue3.kouku-5343-native.v1","bfx_m_mi_00.bfx_m.bfx_i_pa_aurawave_002_ad","bfx_m_mi_00.bfx_m.bfx_i_pa_aurawave_002_ad","ue3.material.bfx.m.mi.00.bfx.m.bfx.i.pa.aurawave.002.ad.2aa75507ca77",false,false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5343,ARTIST_PARAMETERS_5343,ARTIST_SWITCHES_5343},
+    {5344u,"effect.ue3.kouku-5344-native.v1","fx_m_mi_03.fx_mi.fx_k_pa_ring_05_ad","fx_m_mi_03.fx_m.fx_d_pa_ring_07_ad","ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ring.07.ad.82e9116584b2",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ,ARTIST_TEXTURES_5344,ARTIST_PARAMETERS_5344,ARTIST_SWITCHES_5344},
+    {5345u,"effect.ue3.kouku-5345-native.v1","bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad","bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad","ue3.material.bfx.m.mi.00.bfx.m.bfx.i.pa.glow.01.ad.0857e02620a0",false,false,"sprite",false,true,false,false,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5345,ARTIST_PARAMETERS_5345,ARTIST_SWITCHES_5345},
+    {5346u,"effect.ue3.kouku-5346-native.v1","fx_m_mi_01.fx_mi.fx_e_pa_fd_07_1_ad","fx_m_mi_01.fx_m.fx_e_pa_twinkle_01_ad","ue3.material.fx.m.mi.01.fx.m.fx.e.pa.twinkle.01.ad.72979792ae2b",false,false,"sprite",false,false,false,false,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5346,ARTIST_PARAMETERS_5346,ARTIST_SWITCHES_5346},
+    {5347u,"effect.ue3.kouku-5347-native.v1","fx_m_mi_01.fx_mi.fx_k_me_floorstrm_14_ad","fx_m_mi_00.fx_m.fx_d_pa_master_01_ad","ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.ad.2bf3a6febe9f",true,false,"mesh",false,true,true,false,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5347,ARTIST_PARAMETERS_5347,ARTIST_SWITCHES_5347},
+    {5348u,"effect.ue3.kouku-5348-native.v1","bfx_m_mi_00.bfx_mi.bfx_k_pa_note_01_3_ad","bfx_m_mi_00.bfx_i_pa_smoke_01_ad","ue3.material.bfx.m.mi.00.bfx.i.pa.smoke.01.ad.128d7614aab5",false,false,"sprite",false,false,false,false,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5348,ARTIST_PARAMETERS_5348,ARTIST_SWITCHES_5348},
+    {5349u,"effect.ue3.kouku-5349-native.v1","bfx_m_mi_00.bfx_mi.bfx_k_pa_note_01_ad","bfx_m_mi_00.bfx_i_pa_smoke_01_ad","ue3.material.bfx.m.mi.00.bfx.i.pa.smoke.01.ad.128d7614aab5",false,false,"sprite",false,false,false,false,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5349,ARTIST_PARAMETERS_5349,ARTIST_SWITCHES_5349},
+    {5350u,"effect.ue3.kouku-5350-native.v1","bfx_m_mi_00.bfx_mi.bfx_k_pa_note_01_2_ad","bfx_m_mi_00.bfx_i_pa_smoke_01_ad","ue3.material.bfx.m.mi.00.bfx.i.pa.smoke.01.ad.128d7614aab5",false,false,"sprite",false,false,false,false,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5350,ARTIST_PARAMETERS_5350,ARTIST_SWITCHES_5350},
+    {5351u,"effect.ue3.kouku-5351-native.v1","fx_m_mi_01.fx_mi.fx_l_me_dissolve_01_01_ma","fx_m_mi_00.fx_m.fx_d_pa_dissolve_01_ma","ue3.material.fx.m.mi.00.fx.m.fx.d.pa.dissolve.01.ma.c2c4b0f0e6a5",true,false,"mesh",false,false,true,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5351,ARTIST_PARAMETERS_5351,ARTIST_SWITCHES_5351},
+    {5352u,"effect.ue3.kouku-5352-native.v1","fx_m_mi_01.fx_mi.fx_e_pa_cd_02_2_tr","fx_mastermaterial.fx_mm.fx_mm_basic_01_tr","ue3.material.fx.mastermaterial.fx.mm.fx.mm.basic.01.tr.ce17b96d1b77",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5352,ARTIST_PARAMETERS_5352,ARTIST_SWITCHES_5352},
+    {5353u,"effect.ue3.kouku-5353-native.v1","fx_m_mi_01.fx_mi.fx_h_pa_smoke_01_tr","fx_mastermaterial.fx_mm.fx_mm_light_01_tr","ue3.material.fx.mastermaterial.fx.mm.fx.mm.light.01.tr.8a6435f0c4e0",false,false,"sprite",false,false,false,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5353,ARTIST_PARAMETERS_5353,ARTIST_SWITCHES_5353},
+    {5354u,"effect.ue3.kouku-5354-native.v1","bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_02_tr","bfx_m_mi_00.bfx_m.bfx_d_pa_circ_01_tr","ue3.material.bfx.m.mi.00.bfx.m.bfx.d.pa.circ.01.tr.f3e3bcf906f5",false,false,"sprite",false,false,false,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5354,ARTIST_PARAMETERS_5354,ARTIST_SWITCHES_5354},
+    {5355u,"effect.ue3.kouku-5355-native.v1","fx_m_mi_05.fx_m.fx_c_pa_energyray_01_ad","fx_m_mi_05.fx_m.fx_c_pa_energyray_01_ad","ue3.material.fx.m.mi.05.fx.m.fx.c.pa.energyray.01.ad.0910e1c6fcdd",false,false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5355,ARTIST_PARAMETERS_5355,ARTIST_SWITCHES_5355},
+    {5356u,"effect.ue3.kouku-5356-native.v1","fx_m_mi_03.fx_mi.fx_i_pa_shockwave_07_ad","fx_m_mi_03.fx_m.fx_i_pa_portal_01_ad","ue3.material.fx.m.mi.03.fx.m.fx.i.pa.portal.01.ad.258529955137",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5356,ARTIST_PARAMETERS_5356,ARTIST_SWITCHES_5356},
+    {5357u,"effect.ue3.kouku-5357-native.v1","fx_m_mi_01.fx_mi.fx_i_pa_ribbon_05_ad","fx_m_mi_05.fx_m.fx_b_pa_trail_09_ts_ad","ue3.material.fx.m.mi.05.fx.m.fx.b.pa.trail.09.ts.ad.d4ccb78424d6",false,false,"ribbon",false,true,false,false,EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ,ARTIST_TEXTURES_5357,ARTIST_PARAMETERS_5357,ARTIST_SWITCHES_5357},
+    {5358u,"effect.ue3.kouku-5358-native.v1","fx_m_mi_03.fx_mi.fx_k_pa_shockwave_03_ad","fx_m_mi_03.fx_m.fx_d_pa_shockwave_01_ad","ue3.material.fx.m.mi.03.fx.m.fx.d.pa.shockwave.01.ad.59f87b44a536",false,false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5358,ARTIST_PARAMETERS_5358,ARTIST_SWITCHES_5358},
+    {5359u,"effect.ue3.kouku-5359-native.v1","fx_m_mi_01.fx_mi.fx_j_pa_windwv_01_5_ad","fx_m_mi_03.fx_m.fx_d_pa_ring_07_ad","ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ring.07.ad.82e9116584b2",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ,ARTIST_TEXTURES_5359,ARTIST_PARAMETERS_5359,ARTIST_SWITCHES_5359},
+    {5360u,"effect.ue3.kouku-5360-native.v1","fx_m_mi_03.fx_mi.fx_d_pa_ring_07_25_ad","fx_m_mi_03.fx_m.fx_d_pa_ring_07_ad","ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ring.07.ad.82e9116584b2",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ,ARTIST_TEXTURES_5360,ARTIST_PARAMETERS_5360,ARTIST_SWITCHES_5360},
+    {5361u,"effect.ue3.kouku-5361-native.v1","bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad","bfx_m_mi_00.bfx_m.bfx_d_pa_circ_01_ad","ue3.material.bfx.m.mi.00.bfx.m.bfx.d.pa.circ.01.ad.0f4a4414a90a",false,false,"sprite",false,true,false,false,EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ,ARTIST_TEXTURES_5361,ARTIST_PARAMETERS_5361,ARTIST_SWITCHES_5361},
+    {5362u,"effect.ue3.kouku-5362-native.v1","fx_m_mi_00.fx_mi.fx_d_me_line_01_07_tr","fx_m_mi_00.fx_m.fx_d_pa_line_01_tr","ue3.material.fx.m.mi.00.fx.m.fx.d.pa.line.01.tr.4f1ac65d01d3",true,false,"mesh",false,false,true,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_5362,ARTIST_PARAMETERS_5362,ARTIST_SWITCHES_5362},
 }};

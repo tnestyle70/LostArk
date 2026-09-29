@@ -40,7 +40,8 @@ namespace
 		"UI/Interact/ShowFx_0.png", "UI/Interact/ShowFx_1.png", "UI/Interact/ShowFx_2.png",
 		"UI/Interact/ShowFx_3.png", "UI/Interact/ShowFx_4.png" };
 
-	/* GameMsg tip.name.interactionkey_godown / climb / tightrope / check, ASCII-escaped. */
+	/* GameMsg tip.name.interactionkey_godown / climb / tightrope / check / move / pull_lever,
+	ASCII-escaped. */
 	const wchar_t* Action_Text(const uint8_t iAction)
 	{
 		switch (iAction)
@@ -48,7 +49,9 @@ namespace
 		case 0: return L"\xB0B4\xB824\xAC00\xAE30";
 		case 1: return L"\xC62C\xB77C\xAC00\xAE30";
 		case 2: return L"\xAC74\xB108\xAC00\xAE30";
-		case 4: return L"\xC815\xBC15\xD558\xAE30";
+		case 4: return L"\xC774\xB3D9\xD558\xAE30";
+		case 5: return L"\xB808\xBC84 \xB2F9\xAE30\xAE30";
+		case 6: return L"\xC815\xBC15\xD558\xAE30";
 		default: return L"\xD655\xC778\xD558\xAE30";
 		}
 	}
@@ -59,7 +62,9 @@ namespace
 		case 0: return "UI/Interact/Icon_godown.png";
 		case 1: return "UI/Interact/Icon_climb.png";
 		case 2: return "UI/Interact/Icon_singleLine.png";
-		case 4: return "UI/Interact/Icon_check.png";
+		case 4: return "UI/Interact/Icon_move.png";
+		case 5: return "UI/Interact/Icon_lever.png";
+		case 6: return "UI/Interact/Icon_check.png";
 		default: return "UI/Interact/Icon_check.png";
 		}
 	}
@@ -119,6 +124,8 @@ void Client::CInteractKeyPromptView::Initialize(
 					static_cast<int>(strLabel.size()), Trigger.strLabel.data(), iWide);
 				Trigger.eAction = ACTION::DOCK;
 			}
+			else if ("move" == Placement.strInteractAction) Trigger.eAction = ACTION::MOVE;
+			else if ("lever" == Placement.strInteractAction) Trigger.eAction = ACTION::LEVER;
 			else
 			{
 				OutputDebugStringA(("[InteractKeyPrompt] unknown interactAction: " +

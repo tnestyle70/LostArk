@@ -33,6 +33,45 @@ def copy_repository_inputs(root: Path) -> None:
 
 
 class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
+    def test_mario_curtain_audience_survives_product_projection_without_gameplay_logic(self):
+        document = copy.deepcopy(self.hierarchy_document)
+        phase_two = self.find(document, "KAKULSAYDON_G1_PATTERN_33")
+        dance = self.find(document, DANCE_ID)
+        before = copy.deepcopy(document)
+        projected = subject._project_pattern_presentation(document, phase_two)
+        curtains = [row for row in projected["presentationOccurrences"] if row.get("suppressLocalMario")]
+        self.assertEqual(["KAKULSAYDON_G1_PATTERN_33.presentation.1"], [row["occurrenceId"] for row in curtains])
+        self.assertEqual(("boss.kouku.curtain_1", "LEAF", 0, 3255),
+                         tuple(curtains[0][key] for key in ("assetId", "resourceKind", "startMs", "durationMs")))
+        self.assertNotIn("logicOccurrences", projected)
+        self.assertFalse(any(row.get("suppressLocalMario") for row in
+                             subject._project_pattern_presentation(document, dance)["presentationOccurrences"]))
+        self.assertEqual(before, document)
+        # Audience follows the enabled semantic trigger, never a specific pattern ID.
+        phase_two["patternId"] = "test.renamed.mario.phase.two"
+        renamed = subject._project_pattern_presentation(document, phase_two)
+        self.assertEqual(curtains, [row for row in renamed["presentationOccurrences"] if row.get("suppressLocalMario")])
+
+    def test_mario_curtain_audience_requires_enabled_phase_two_trigger(self):
+        for mutation in ("disabled", "wrong-kind", "wrong-trigger", "missing"):
+            with self.subTest(mutation=mutation):
+                document = copy.deepcopy(self.hierarchy_document)
+                phase_two = self.find(document, "KAKULSAYDON_G1_PATTERN_33")
+                logic = next(row for row in document["logics"] if row.get("triggerKind") == "MARIO_PHASE2_PLAYERS")
+                if mutation == "disabled":
+                    for occurrence in phase_two["logicOccurrences"]:
+                        if occurrence["logicId"] == logic["logicId"]:
+                            occurrence["enabled"] = False
+                elif mutation == "wrong-kind":
+                    logic["logicType"] = "DURATION"
+                elif mutation == "wrong-trigger":
+                    logic["triggerKind"] = "BOSS_TELEPORT_XZ"
+                else:
+                    phase_two["logicOccurrences"] = [row for row in phase_two["logicOccurrences"]
+                                                     if row["logicId"] != logic["logicId"]]
+                projected = subject._project_pattern_presentation(document, phase_two)
+                self.assertFalse(any(row.get("suppressLocalMario") for row in projected["presentationOccurrences"]))
+
     def test_dice_bind_visual_projects_only_an_enabled_dice_mechanic(self):
         document = copy.deepcopy(self.hierarchy_document)
         dice = self.find(document, "KAKULSAYDON_G1_PATTERN_78")
