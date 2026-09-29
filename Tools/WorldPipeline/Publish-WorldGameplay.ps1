@@ -840,7 +840,11 @@ function Convert-WorldDocument {
 				throw "Trigger requiresInteract must be a JSON Boolean: $($placement.placementId)"
 			}
 			if ($hasInteractAction) {
-				if ($placement.interactAction -cnotin @('godown','climb','tightrope','check')) {
+				# "dock:<place name>" shows that name as the prompt line (a ship dock); the other four
+				# names pick a fixed retail icon. The label is presentation only and never leaves this file.
+				$isDockLabel = ($placement.interactAction -is [string]) -and
+					($placement.interactAction -cmatch '^dock:[^\x00-\x1F]{1,32}$')
+				if (-not $isDockLabel -and $placement.interactAction -cnotin @('godown','climb','tightrope','check')) {
 					throw "Trigger interactAction is not a known prompt action: $($placement.placementId)"
 				}
 			}
@@ -954,16 +958,28 @@ function Convert-WorldDocument {
 					if ($hasTrackMove) { $triggerFields += $trackFields }
 				}
 				elseif ($event.type -eq 'changeLevel') {
-					Assert-ExactProperties $event @('type','targetWorldId') "$relativePath changeLevel event"
+					$hasLandingPlacement = $null -ne $event.PSObject.Properties['spawnPlacementId']
+					Assert-ExactProperties $event $(if ($hasLandingPlacement) { @('type','targetWorldId','spawnPlacementId') } else { @('type','targetWorldId') }) "$relativePath changeLevel event"
 					Assert-JsonString $event.targetWorldId "$relativePath changeLevel targetWorldId"
-					if ($event.targetWorldId -notin @('BERN','VALTAN_ARENA') -or
+					if ($event.targetWorldId -notin @('BERN','VALTAN_ARENA','MAHARAKA') -or
 						[string]$event.targetWorldId -eq $WorldId) {
 						throw "changeLevel target is unknown or equals the source world: $($placement.placementId)"
 					}
-					if ($WorldId -notin @('BERN','VALTAN_ARENA')) {
-						throw "changeLevel is only supported between Bern and Valtan Arena."
+					if ($WorldId -notin @('BERN','VALTAN_ARENA','MAHARAKA')) {
+						throw "changeLevel is only supported between Bern, Valtan Arena and Maharaka."
 					}
-					$triggerFields += @('changeLevel', '1', [string]$event.targetWorldId)
+					# Bern <-> Valtan Arena keep the original pair; Maharaka only connects to Bern.
+					if (($WorldId -eq 'MAHARAKA' -and [string]$event.targetWorldId -ne 'BERN') -or
+						([string]$event.targetWorldId -eq 'MAHARAKA' -and $WorldId -ne 'BERN')) {
+						throw "Maharaka changeLevel connects only to Bern: $($placement.placementId)"
+					}
+					if ($hasLandingPlacement) {
+						Assert-StableId $event.spawnPlacementId "$relativePath changeLevel spawnPlacementId"
+						$triggerFields += @('changeLevel', '2', [string]$event.targetWorldId, [string]$event.spawnPlacementId)
+					}
+					else {
+						$triggerFields += @('changeLevel', '1', [string]$event.targetWorldId)
+					}
 				}
 				elseif ($event.type -eq 'activateSpawnGroup') {
 					Assert-ExactProperties $event @('type','spawnGroupId') "$relativePath activateSpawnGroup event"
@@ -1783,7 +1799,7 @@ if ($Mode -eq 'Publish') {
 		}
 		# Read-only F1 inventory for packaged Debug clients without the authoring checkout.
 		foreach ($world in $worlds) {
-			if ($world.WorldId -notin @('KAKULSAYDON_ARENA', 'VALTAN_ARENA')) { continue }
+			if ($world.WorldId -notin @('KAKULSAYDON_ARENA', 'VALTAN_ARENA', 'MAHARAKA', 'BERN')) { continue }
 			$name = "$($world.AreaId).viewer.world.json"
 			$staged = Join-Path $stagingRoot $name
 			[IO.File]::WriteAllText($staged, ($world.ViewerDocument | ConvertTo-Json -Depth 30), [Text.UTF8Encoding]::new($false))

@@ -7375,6 +7375,61 @@
       "effectAssetId": "effect.maharaka.waterpang.mokomoko.telegraph",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.maharaka.waterpang.mokomoko.telegraph.effect.json"
+    },
+    {
+      "effectAssetId": "effect.vehicle.ship.wake.8200.run_battle_1.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.vehicle.ship.wake.8200.run_battle_1.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.vehicle.ship.wake.8201.run_battle_1.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.vehicle.ship.wake.8201.run_battle_1.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.vehicle.ship.wake.8202.run_battle_1.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.vehicle.ship.wake.8202.run_battle_1.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.vehicle.ship.wake.8203.run_battle_1.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.vehicle.ship.wake.8203.run_battle_1.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.vehicle.ship.wake.8204.run_battle_1.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.vehicle.ship.wake.8204.run_battle_1.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.vehicle.ship.wake.8205.run_battle_1.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.vehicle.ship.wake.8205.run_battle_1.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.vehicle.ship.wake.8206.run_battle_1.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.vehicle.ship.wake.8206.run_battle_1.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.vehicle.ship.wake.8207.run_battle_1.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.vehicle.ship.wake.8207.run_battle_1.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.vehicle.ship.wake.8208.run_battle_1.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.vehicle.ship.wake.8208.run_battle_1.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.bern.harbor.dockingvolume.marker.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.bern.harbor.dockingvolume.marker.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.bern.anchor.marker.marker.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.bern.anchor.marker.marker.full.restore.effect.json"
     }
   ]
 }
