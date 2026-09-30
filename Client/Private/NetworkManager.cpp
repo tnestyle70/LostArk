@@ -1206,7 +1206,8 @@ bool CNetworkManager::Connect_To_Server(
 bool CNetworkManager::Send_EnterWorld(
 	LostArk::Shared::WORLD_ID worldId,
 	LostArk::Shared::CHARACTER_CLASS_ID characterClass,
-	std::string_view nickName)
+	std::string_view nickName,
+	const std::uint8_t voiceType)
 {
 	using namespace LostArk::Shared;
 
@@ -1225,6 +1226,7 @@ bool CNetworkManager::Send_EnterWorld(
 	message.eWorldId = worldId;
 	message.eCharacterClass = characterClass;
 	message.strNickName = std::string{ nickName };
+	message.iVoiceType = voiceType;
 
 	CPacketWriter payloadWriter;
 	if (!Write_Message(payloadWriter, message))

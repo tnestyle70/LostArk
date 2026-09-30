@@ -174,6 +174,8 @@ namespace LostArk::Server
 			LostArk::Shared::CHARACTER_CLASS_ID::END;
 
 		std::string strNickName;
+		// Character-creation voice type (1..8), carried like the nickname.
+		std::uint8_t iVoiceType = LostArk::Shared::MIN_VOICE_TYPE;
 		std::string strSpawnPlacementId;
 		// Server-validated Bern entry guide; retained until this raid visit ends.
 		std::string strRaidReturnNpcPlacementId;

@@ -122,6 +122,9 @@ namespace LostArk::Shared
 	// 124 combines saved-character restore, raid EXIT votes and ground-target battle items.
 	// Independently released 125 peers carry water gun casts, avatar items, or minigame deadlines.
 	// 126 combines all three layouts and rejects those incompatible 125 peers.
+	// 127 appends the character-creation voice type (1..8) to C2S_ENTER_WORLD and
+	// S2C_PLAYER_SPAWNED so every peer plays one player's voice lines with the
+	// same voice.
 	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 127;
 
 	enum class WORLD_ID : std::uint16_t
@@ -592,6 +595,11 @@ namespace LostArk::Shared
 	//inline : 이 헤더를 여러 .cpp가 include해도 동일한 변수 정의로 취급한다.
 	//constexpr : 컴파일 타임 시간 상수
 	inline constexpr std::size_t MAX_NICKNAME_BYTES = 32;
+
+	// Character-creation voice type: the original's customizing table offers
+	// Type1..Type8 per class. 0 is never on the wire.
+	inline constexpr std::uint8_t MIN_VOICE_TYPE = 1;
+	inline constexpr std::uint8_t MAX_VOICE_TYPE = 8;
 
 	// Same as Character Select Arena's own room cap (see
 	// Run-CharacterSelectIsolationHarness.ps1's 4/4 ROOM_FULL contract).

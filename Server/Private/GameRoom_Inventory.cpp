@@ -877,6 +877,7 @@ void LostArk::Server::CGameRoom::Handle_ConfirmNpcEntry(
 	transfer.strRaidReturnNpcPlacementId = request.strNpcPlacementId;
 	transfer.eCharacterClass = player.eCharacterClass;
 	transfer.strNickName = player.strNickName;
+	transfer.iVoiceType = player.iVoiceType;
 	transfer.iHonorTitleId = player.iHonorTitleId;
 	transfer.iPartyRequestSequence = request.iRequestSequence;
 	for (const PLAYER_ID memberId : batchMemberIds)

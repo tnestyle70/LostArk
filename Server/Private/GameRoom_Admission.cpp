@@ -115,6 +115,7 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	player.iNetEntityId = m_iNextNetEntityId + static_cast<NET_ENTITY_ID>(offset);
 	player.eCharacterClass = enterWorld.eCharacterClass;
 	player.strNickName = enterWorld.strNickName;
+	player.iVoiceType = enterWorld.iVoiceType;
 	/* A transfer keeps the title it wore; the target room's own bootstrap still has the
 	last word, so an id it does not list arrives bare. */
 	player.iHonorTitleId = m_HonorTitleCatalog.Has_Title(carriedHonorTitleId) ?
@@ -380,6 +381,7 @@ bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
 		message.eControlKind = player.eControlKind;
         message.strWaterpangNpcArchetypeId = player.strWaterpangNpcArchetypeId;
 		message.strNickName = player.strNickName;
+		message.iVoiceType = player.iVoiceType;
 		message.fPositionX = player.fPositionX;
 		message.fPositionY = player.fPositionY;
 		message.fPositionZ = player.fPositionZ;

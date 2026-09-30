@@ -6,6 +6,7 @@
 #include "GameInstance.h"
 #include "CombatHUDViewModel.h"
 #include "Network/PacketMessages.h"
+#include "CustomizingView.h"
 
 #include <Windows.h>
 
@@ -261,6 +262,8 @@ bool_t Client::CCharacterSelectionState::Try_Resolve_ForWorld(
 		{
 			staged.eCharacterClass = g_PendingCreation->eCharacterClass;
 			staged.strNickname = g_PendingCreation->strNickname;
+			staged.iVoiceType = CCustomizingView::Read_SavedVoiceType(
+				g_PendingCreation->strAppearanceJson);
 			staged.eSource =
 				CHARACTER_ENTRY_IDENTITY_SOURCE::PENDING_CREATION;
 			break;
@@ -277,6 +280,7 @@ bool_t Client::CCharacterSelectionState::Try_Resolve_ForWorld(
 		if (g_CreatedNickname.has_value())
 		{
 			staged.strNickname = *g_CreatedNickname;
+			staged.iVoiceType = CCustomizingView::Read_SavedVoiceType(g_ActiveAppearanceJson);
 			staged.eSource = CHARACTER_ENTRY_IDENTITY_SOURCE::CREATED;
 		}
 		else

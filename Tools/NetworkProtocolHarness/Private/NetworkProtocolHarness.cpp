@@ -417,6 +417,42 @@ namespace
 		testRunner.Require(
 			0 == reader.Get_RemainingSize(),
 			"Consume Entire Payload");
+
+		bool voiceContract = true;
+		for (const std::uint8_t voiceType : { MIN_VOICE_TYPE, MAX_VOICE_TYPE })
+		{
+			C2S_ENTER_WORLD voiced = source;
+			voiced.iVoiceType = voiceType;
+			std::vector<std::uint8_t> voicedPayload;
+			if (!Build_EnterWorldPayload(voiced, voicedPayload))
+			{
+				voiceContract = false;
+				continue;
+			}
+			C2S_ENTER_WORLD decodedVoiced{};
+			CPacketReader voicedReader{ voicedPayload };
+			voiceContract &= Read_Message(voicedReader, decodedVoiced) &&
+				decodedVoiced.iVoiceType == voiceType &&
+				0 == voicedReader.Get_RemainingSize();
+		}
+		for (const std::uint8_t voiceType : { std::uint8_t{ 0u }, std::uint8_t{ MAX_VOICE_TYPE + 1u } })
+		{
+			C2S_ENTER_WORLD rejected = source;
+			rejected.iVoiceType = voiceType;
+			std::vector<std::uint8_t> rejectedPayload;
+			voiceContract &= !Build_EnterWorldPayload(rejected, rejectedPayload);
+
+			S2C_PLAYER_SPAWNED rejectedSpawn{};
+			rejectedSpawn.iPlayerId = 1u;
+			rejectedSpawn.iNetEntityId = 100u;
+			rejectedSpawn.eCharacterClass = source.eCharacterClass;
+			rejectedSpawn.strNickName = source.strNickName;
+			rejectedSpawn.iVoiceType = voiceType;
+			std::vector<std::uint8_t> rejectedSpawnPayload;
+			voiceContract &= !Build_PlayerSpawnedPayload(rejectedSpawn, rejectedSpawnPayload);
+		}
+		testRunner.Require(voiceContract,
+			"Enter World And Spawn Carry Voice Type 1..8 And Reject Others");
 	}
 
 	void Test_PlayerNicknameContract(TEST_RUNNER& testRunner)
@@ -807,11 +843,12 @@ namespace
 			0x00, 0x00, 0x80, 0x3F,
 			0x00, 0x00, 0x00, 0x40,
 			0x00, 0x00, 0x40, 0x40,
-			0x00, 0x00, 0xB4, 0x42
+			0x00, 0x00, 0xB4, 0x42,
+			0x01 // voice type
 		};
 
 		testRunner.Require(
-			payload.size() == 34,
+			payload.size() == 35,
 			"Player Spawned Payload Size");
 
 		testRunner.Require(
@@ -832,7 +869,8 @@ namespace
 
 		testRunner.Require(
 			decoded.eCharacterClass == source.eCharacterClass &&
-			decoded.strNickName == source.strNickName,
+			decoded.strNickName == source.strNickName &&
+			decoded.iVoiceType == source.iVoiceType,
 			"Spawned Identity Round Trip");
 
 		testRunner.Require(
@@ -2235,11 +2273,11 @@ namespace
         killed.eResult = DEBUG_KILL_GATE_BOSSES_RESULT::DISABLED; CPacketWriter rejectedKill;
         testRunner.Require(!Write_Message(rejectedKill, killed), "Rejected Gate Kill cannot claim a kill count");
 
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 126u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 127u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS) + 1u,
-			"Protocol 126 combines flight and Debug Esther without renumbering packets");
+			"Protocol 127 combines flight and Debug Esther without renumbering packets");
 		for (const auto esther : { ESTHER_ID::SILLIAN, ESTHER_ID::WEI,
 			ESTHER_ID::BAHUNTUR, ESTHER_ID::NINAV, ESTHER_ID::INANNA })
 		{
@@ -2423,10 +2461,10 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 126u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 127u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
-			"Mario direction packet retains its appended identity in protocol 126");
+			"Mario direction packet retains its appended identity in protocol 127");
 	}
 
 
@@ -3118,11 +3156,11 @@ namespace
 				unchanged.eWorldId == WORLD_ID::BERN && unchanged.eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION,
 				"Invalid Mario return verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 126u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 127u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_RETURN) && Is_Known_Packet_Type(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) == static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) == static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) + 1u,
-			"Protocol 126 preserves Mario return packet identities");
+			"Protocol 127 preserves Mario return packet identities");
 	}
 
 	void Test_DebugMarioJumpProtocol(TEST_RUNNER& testRunner)
@@ -3239,14 +3277,14 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 126u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 127u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) + 1u,
-			"Protocol 126 preserves Mario jump packet identities without renumbering existing peers");
+			"Protocol 127 preserves Mario jump packet identities without renumbering existing peers");
 	}
 
 	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
@@ -3424,14 +3462,14 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 126u,
+			NETWORK_PROTOCOL_VERSION == 127u,
 			"Riding packet identities append without renumbering peers");
 	}
 
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 126u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 126");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 127u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 127");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -3803,8 +3841,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 126u,
-			"Protocol 126 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 127u,
+			"Protocol 127 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -3920,8 +3958,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(126u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 126");
+			testRunner.Require(127u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 127");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -4165,8 +4203,8 @@ namespace
         testRunner.Require(!Write_Message(rejectHp, badState), "Guide Trace Rejects HP Outside Unit Interval");
         state.fEvadeScore = std::numeric_limits<float>::quiet_NaN(); CPacketWriter rejectNan;
         testRunner.Require(!Write_Message(rejectNan, state), "Guide Trace Rejects Nonfinite Scores");
-        testRunner.Require(NETWORK_PROTOCOL_VERSION == 126u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
-            Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v126 Peers");
+        testRunner.Require(NETWORK_PROTOCOL_VERSION == 127u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
+            Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v127 Peers");
     }
 
 	void Test_ChatProtocol(TEST_RUNNER& testRunner)
@@ -4401,7 +4439,7 @@ namespace
         testRunner.Require(written && Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
             decoded.iSilver == inventory.iSilver && decoded.iGold == inventory.iGold &&
             decoded.Items.size() == 1u && decoded.Items.front().iQuantity == 3u,
-            "Protocol 126 preserves shop purse alongside inventory items");
+            "Protocol 127 preserves shop purse alongside inventory items");
         auto truncated = writer.Get_Buffer();
         if (!truncated.empty()) truncated.pop_back();
         CPacketReader shortReader{truncated}; decoded.iSilver = 91u; decoded.iGold = 92u;
@@ -4419,7 +4457,7 @@ namespace
             basketReader.Get_RemainingSize() == 0u && basket.strNpcPlacementId == purchase.strNpcPlacementId &&
             basket.Entries.size() == 1u && basket.Entries.front().iQuantity == 2u &&
             Is_Known_Packet_Type(PACKET_TYPE::C2S_BUY_ITEMS),
-            "Protocol 126 preserves the appended shop request");
+            "Protocol 127 preserves the appended shop request");
 
         C2S_SET_EQUIPMENT wear{};
         wear.iRequestSequence = 79u;
@@ -4434,7 +4472,7 @@ namespace
             worn.bEquip && worn.strItemId == wear.strItemId &&
             std::string_view("avatarOutfit") == Equipment_SlotKind(EQUIPMENT_SLOT::AVATAR_OUTFIT) &&
             std::string_view("avatarHead") == Equipment_SlotKind(EQUIPMENT_SLOT::AVATAR_HEAD),
-            "Protocol 126 carries the avatar equipment slots");
+            "Protocol 127 carries the avatar equipment slots");
     }
 	void Test_WorldSnapshotRoundTrip(
 		TEST_RUNNER& testRunner)
@@ -4588,7 +4626,7 @@ namespace
 		// Protocol 62 adds the Mario stage; protocol 76 adds its source layout.
 		// Protocol 80 adds the popped-ball U16 and curse-release U8 masks; 114 adds marker colour.
 		// Protocol 121 adds the entrant objective colour and matching-ball count.
-		// Protocol 126 includes the absolute minigame deadline U32 after stage.
+		// Protocol 127 includes the absolute minigame deadline U32 after stage.
 		constexpr std::size_t playerMarioStageBytes = 1 + 4 + 1 + 2 + 1 + 1 + 1 + 1;
         constexpr std::size_t playerCardMazeBytes = 5 + (4 * 6);
 		// Protocol 78 adds a fear deadline and the empty presentation string length.
@@ -4601,7 +4639,7 @@ namespace
 		constexpr std::size_t playerVehicleBytes = 4 + 1 + 4 + 4;
         // Protocol 89 adds the equipped honor-title identity to every player.
         constexpr std::size_t playerHonorTitleBytes = 4;
-        // Protocol 126 appends the worn avatar head/outfit item ids (two length-prefixed strings).
+        // Protocol 127 appends the worn avatar head/outfit item ids (two length-prefixed strings).
         const std::size_t playerAvatarBytes =
             (2 + first.strAvatarHeadItemId.size() + 2 + first.strAvatarOutfitItemId.size()) +
             (2 + second.strAvatarHeadItemId.size() + 2 + second.strAvatarOutfitItemId.size());
@@ -7540,7 +7578,7 @@ namespace
 		}
 
 		testRunner.Require(
-			126u == NETWORK_PROTOCOL_VERSION,
+			127u == NETWORK_PROTOCOL_VERSION,
 			"Session Diagnostics Use Current Protocol Version 126");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
@@ -7568,8 +7606,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			126u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 126");
+			127u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 127");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =

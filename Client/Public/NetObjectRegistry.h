@@ -65,6 +65,7 @@ namespace Client
 		std::string strNickName;
 		// Immutable Server-selected appearance for a Waterpang AI player.
 		std::string strWaterpangNpcArchetypeId;
+		std::uint8_t iVoiceType = LostArk::Shared::MIN_VOICE_TYPE;
 
 		float fPositionX = 0.f;
 		float fPositionY = 0.f;

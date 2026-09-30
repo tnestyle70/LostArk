@@ -1077,6 +1077,12 @@ bool LostArk::Shared::Is_Valid_SequenceInstanceId(
 	return true;
 }
 
+bool LostArk::Shared::Is_Valid_VoiceType(
+	const std::uint8_t voiceType) noexcept
+{
+	return voiceType >= MIN_VOICE_TYPE && voiceType <= MAX_VOICE_TYPE;
+}
+
 bool LostArk::Shared::Is_Valid_PlayerNickname(
 	const std::string_view nickname) noexcept
 {
@@ -1178,7 +1184,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_ENTER_WORLD
         CHARACTER_CLASS_ID::END))
         return false;
 
-	if (!Is_Valid_PlayerNickname(message.strNickName))
+	if (!Is_Valid_PlayerNickname(message.strNickName) ||
+		!Is_Valid_VoiceType(message.iVoiceType))
         return false;
 
 	writer.Write_U16(message.iProtocolVersion);
@@ -1188,9 +1195,13 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_ENTER_WORLD
 	writer.Write_U8(rawCharacterClass);
 
     //nickname write
-    return writer.Write_String(
+    if (!writer.Write_String(
         message.strNickName,
-        MAX_NICKNAME_BYTES);
+        MAX_NICKNAME_BYTES))
+        return false;
+
+	writer.Write_U8(message.iVoiceType);
+	return true;
 }
 
 bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_ENTER_WORLD& message)
@@ -1199,6 +1210,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_ENTER_WORLD& messa
 	std::uint16_t rawWorldId = {};
 	std::uint8_t rawCharacterClass = {};
 	std::string nickName;
+	std::uint8_t voiceType = {};
 
 	if (!reader.Read_U16(protocolVersion) ||
 		!reader.Read_U16(rawWorldId) ||
@@ -1225,8 +1237,12 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_ENTER_WORLD& messa
 	if (!Is_Valid_PlayerNickname(nickName))
         return false;
 
+	if (!reader.Read_U8(voiceType) || !Is_Valid_VoiceType(voiceType))
+		return false;
+
 	C2S_ENTER_WORLD decoded{};
 	decoded.iProtocolVersion = protocolVersion;
+	decoded.iVoiceType = voiceType;
 	decoded.eWorldId = static_cast<WORLD_ID>(rawWorldId);
 
     decoded.eCharacterClass =
@@ -1382,7 +1398,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer,
         static_cast<std::uint8_t>(CHARACTER_CLASS_ID::END))
         return false;
 
-	if (!Is_Valid_PlayerNickname(spawned.strNickName))
+	if (!Is_Valid_PlayerNickname(spawned.strNickName) ||
+		!Is_Valid_VoiceType(spawned.iVoiceType))
         return false;
 
     //position X/Y/Z가 finite인지 검사
@@ -1418,6 +1435,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer,
     writer.Write_F32(spawned.fPositionY);
     writer.Write_F32(spawned.fPositionZ);
     writer.Write_F32(spawned.fYawDegrees);
+    writer.Write_U8(spawned.iVoiceType);
 
     return writer.Write_String(spawned.strWaterpangNpcArchetypeId, MAX_STABLE_NETWORK_ID_BYTES);
 }
@@ -1440,6 +1458,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
     float positionY = 0.f;
     float positionZ = 0.f;
     float yawDegrees = 0.f;
+    std::uint8_t voiceType = 0u;
 
     if (!reader.Read_U32(iPlayerId))
         return false;
@@ -1472,6 +1491,9 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
     if (!reader.Read_String(waterpangNpcArchetypeId, MAX_STABLE_NETWORK_ID_BYTES) ||
         !Is_Valid_StableId(waterpangNpcArchetypeId, true) ||
         (!waterpangNpcArchetypeId.empty() && static_cast<PLAYER_CONTROL_KIND>(rawControlKind) != PLAYER_CONTROL_KIND::WATERPANG_AI))
+        return false;
+
+    if (!reader.Read_U8(voiceType) || !Is_Valid_VoiceType(voiceType))
         return false;
 
     if (iPlayerId == INVALID_PLAYER_ID)
@@ -1517,6 +1539,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
     decoded.fPositionY = positionY;
     decoded.fPositionZ = positionZ;
     decoded.fYawDegrees = yawDegrees;
+    decoded.iVoiceType = voiceType;
 
     spawned = std::move(decoded);
 

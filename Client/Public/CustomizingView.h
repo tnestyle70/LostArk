@@ -31,8 +31,10 @@ own CFaceCustomizeApplier (the retail add_*_ui additive poses), so what the scre
 always what the skeleton is actually doing.
 
 Only the face tab has data today (Data/Customizing/FaceSliders/<race>.facesliders.json). The
-other six retail tabs draw dimmed and do not respond -- hair meshes, morph presets, material
-tints and voice are separate slices that have no runtime contract yet.
+other retail tabs draw dimmed and do not respond -- hair meshes, morph presets and material
+tints are separate slices that have no runtime contract yet. The voice tab picks one of the
+class's Data/Sound/CharacterVoiceTypes.json voice types; the choice rides in the look document
+and reaches the Server as the entry's voice type.
 
 The camera is not touched here: Get_CameraPositionOffset/Get_CameraLookOffset expose the orbit
 this screen's drag/wheel gesture produces, and the owning Level applies them to its own
@@ -79,6 +81,10 @@ public:
 	bool_t Try_Consume_CostumeChange();
 	/* Which hairstyle cell the hair tab is showing, and its one-shot change edge. */
 	int32_t Get_SelectedHair() const { return m_iSelectedHair; }
+	/* The voice type (1..8) the voice tab has picked. */
+	uint8_t Get_SelectedVoiceType() const { return m_iSelectedVoiceType; }
+	/* The voice type a saved look document states; the first type when it states none. */
+	static uint8_t Read_SavedVoiceType(const std::string& strJson);
 	/* Seed only a class first visited in this view; explicit selections and saved slots win. */
 	void Configure_HairDefault(const std::string& classAssetId, int32_t defaultIndex);
 	/* The character's whole look as one JSON document, the same one a preset slot holds. */
@@ -113,6 +119,10 @@ private:
 	/* Hair, eye, skin and adorn: their retail chrome, shown per selected tab. The controls are
 	placed and clickable; what they would change has no runtime contract yet. */
 	void Update_SecondaryTabs(const shared_ptr<CCharacter>& pCharacter);
+	/* The voice tab: one row per voice type the class's catalog records. Picking a row
+	plays one of that voice's lines so the choice can be heard. */
+	void Update_VoiceTab();
+	void Play_VoicePreview(uint8_t iVoiceType);
 	/* A grid shows one window onto a longer list. These keep the window in range and fill the
 	visible cells from it; the wheel over the grid moves it. */
 	int32_t Clamp_ScrollRow(int32_t iScrollRow, int32_t iEntryCount, int32_t iCellCount) const;
@@ -163,7 +173,7 @@ private:
 private:
 	unique_ptr<CUILayoutRuntime> m_pView;
 	bool_t m_bOpen = false;
-	/* Retail tab order: base, face, hair, eye, skin, adorn, voice. Only face has data. */
+	/* Retail tab order: base, face, hair, eye, skin, adorn, voice. */
 	int32_t m_iSelectedTab = 1;
 	/* Face detail part: eye, eyebrow, cheekbone, jaw, nose, mouth. */
 	int32_t m_iSelectedPart = 0;
@@ -299,6 +309,7 @@ private:
 	bool_t m_bCostumeChanged = false;
 	int32_t m_iSelectedHair = 0;
 	int32_t m_iDefaultHair = 0;
+	uint8_t m_iSelectedVoiceType = 1u;
 	std::string m_strHairClassAssetId;
 	std::unordered_map<std::string, int32_t> m_HairSelectionsByClass;
 	int32_t m_iFacePresetScrollRow = 0;

@@ -278,6 +278,7 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 	m_ePendingPurpose = purpose;
 	m_ePendingCharacterClass = identity.eCharacterClass;
 	m_strPendingNickname = identity.strNickname;
+	m_iPendingVoiceType = identity.iVoiceType;
 	m_hasPendingCharacterCreationEntry = usesPendingCreation;
 
 	switch (Submit_PendingNetworkEntry())
@@ -342,7 +343,8 @@ CLevel_Lobby::ENTRY_REQUEST_RESULT CLevel_Lobby::Submit_PendingNetworkEntry()
 	if (!networkManager.Send_EnterWorld(
 		m_ePendingWorldId,
 		m_ePendingCharacterClass,
-		m_strPendingNickname))
+		m_strPendingNickname,
+		m_iPendingVoiceType))
 	{
 		return ENTRY_REQUEST_RESULT::SEND_FAILED;
 	}
@@ -420,6 +422,7 @@ void CLevel_Lobby::Reset_PendingEntryState()
 	m_ePendingPurpose = LOBBY_COMMAND_PURPOSE::GAMEPLAY;
 	m_ePendingCharacterClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
 	m_strPendingNickname.clear();
+	m_iPendingVoiceType = LostArk::Shared::MIN_VOICE_TYPE;
 	m_strPendingServerHost.clear();
 	m_hasPendingCharacterCreationEntry = false;
 	m_ApprovalDeadline = {};

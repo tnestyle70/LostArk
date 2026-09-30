@@ -562,6 +562,7 @@ namespace Client
 			LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 			LostArk::Shared::PLAYER_MADNESS_FORM madnessForm,
 			std::string_view nickName,
+			std::uint8_t voiceType,
 			const float3_t& position,
 			f32_t yawDegrees,
 			bool_t isLocallyControlled,

@@ -6,6 +6,8 @@
 #include "GameInstance.h"
 #include "MainApp.h"
 #include "Model.h"
+#include "RuntimeAssetRoot.h"
+#include "SoundCueCatalog.h"
 #include "Transform.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
@@ -119,9 +121,9 @@ namespace
 	wrong icons. Until category 0 is extracted the tab is dimmed rather than opened onto a
 	blank panel. */
 	constexpr int32_t BASE_TAB_INDEX = 0;
-	/* Voice is left out on purpose: its list needs audio this project has none of, so drawing
-	its rows would only add a row of dead buttons. */
 	constexpr int32_t VOICE_TAB_INDEX = 6;
+	/* CC_VoiceType<N> rows in CustomizingUI.json; the catalog offers at most Type8. */
+	constexpr int32_t VOICE_ROW_COUNT = 8;
 
 	/* Cell counts of each tab's own rolling lists, sized to the retail viewports. */
 	/* Cells the grid draws, not entries the list holds. The retail viewports are this size and
@@ -245,6 +247,9 @@ namespace
 	constexpr const wchar_t* LABEL_PICKER_APPLY = L"\xD655\xC778";
 	constexpr const wchar_t* LABEL_PICKER_CANCEL = L"\xCDE8\xC18C";
 	constexpr const wchar_t* LABEL_NOT_READY = L"\xC900\xBE44 \xC911\xC778 \xD56D\xBAA9\xC785\xB2C8\xB2E4.";
+	/* sys.pccreate.customizing_label_voice_select / sys.pccreat.voicetype<N> */
+	constexpr const wchar_t* LABEL_VOICE_DESC = L"\xCE90\xB9AD\xD130 \xC74C\xC131 \xC120\xD0DD";
+	constexpr const wchar_t* LABEL_VOICE_TYPE = L"\xC74C\xC131 \xD0C0\xC785 ";
 
 	/* One row of CharCustom_Right_TabFaceDetailPart<N>: the slider id in
 	<race>.facesliders.json, its retail row caption, and which part sprite it belongs to.
@@ -621,6 +626,7 @@ void Client::CCustomizingView::Update(
 	Update_Tabs();
 	Update_FaceTab(pCharacter);
 	Update_SecondaryTabs(pCharacter);
+	Update_VoiceTab();
 	Update_Buttons(pCharacter);
 	/* Last: its own widgets test the router directly, so the capture above does not block
 	the picker itself. */
@@ -682,7 +688,7 @@ void Client::CCustomizingView::Update_Tabs()
 		const string strGlowId = "CC_Tab" + std::to_string(i) + "_Glow";
 		const string strIconId = "CC_Tab" + std::to_string(i) + "_Icon";
 		const bool_t bSelected = i == m_iSelectedTab;
-		const bool_t bSupported = VOICE_TAB_INDEX != i && BASE_TAB_INDEX != i;
+		const bool_t bSupported = BASE_TAB_INDEX != i;
 
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!Get_SlotRect(strBgId.c_str(), fX, fY, fWidth, fHeight))
@@ -903,6 +909,7 @@ std::string Client::CCustomizingView::Serialize_Appearance(
 	out << "  \"hairTwoToneRange\": "; WriteNumber(out, m_fHairTwoToneRange); out << ",\n";
 	out << "  \"hair\": " << m_iSelectedHair << ",\n";
 	out << "  \"eyeIris\": " << m_iSelectedEyeIris << ",\n";
+	out << "  \"voiceType\": " << static_cast<int32_t>(m_iSelectedVoiceType) << ",\n";
 	out << "  \"costume\": " << m_iSelectedCostume << "\n";
 	out << "}\n";
 	return out.str();
@@ -1085,6 +1092,7 @@ bool_t Client::CCustomizingView::Apply_Appearance(
 		m_iSelectedCostume = iCostume;
 		m_bCostumeChanged = true;
 	}
+	m_iSelectedVoiceType = Read_SavedVoiceType(text);
 
 	/* The stamps and the iris are textures, so they are re-applied here rather than waiting
 	for the tab that owns the grid to be opened. A cell whose texture this client does not
@@ -1146,6 +1154,19 @@ bool_t Client::CCustomizingView::Read_SavedOutfit(
 	outHair = static_cast<int32_t>(ReadNumber(root.Find("hair"), -1.f));
 	outCostume = static_cast<int32_t>(ReadNumber(root.Find("costume"), -1.f));
 	return true;
+}
+
+uint8_t Client::CCustomizingView::Read_SavedVoiceType(const std::string& strJson)
+{
+	DATA_JSON_VALUE root;
+	std::string error;
+	if (strJson.empty() || !CDataJson::Parse(strJson, root, error) || !root.Is_Object())
+		return LostArk::Shared::MIN_VOICE_TYPE;
+	const f32_t fType = ReadNumber(root.Find("voiceType"), 0.f);
+	if (fType < static_cast<f32_t>(LostArk::Shared::MIN_VOICE_TYPE) ||
+		fType > static_cast<f32_t>(LostArk::Shared::MAX_VOICE_TYPE))
+		return LostArk::Shared::MIN_VOICE_TYPE;
+	return static_cast<uint8_t>(fType);
 }
 
 bool_t Client::CCustomizingView::Apply_SavedLook(
@@ -1281,6 +1302,7 @@ void Client::CCustomizingView::Reset_All(const shared_ptr<CCharacter>& pCharacte
 	m_isHairTwoTone = false;
 	m_isEyeOddSelected = false;
 	m_iSelectedEyeIris = -1;
+	m_iSelectedVoiceType = LostArk::Shared::MIN_VOICE_TYPE;
 	m_iSelectedAdornSub = 0;
 	m_iFacePresetScrollRow = 0;
 	m_iHairScrollRow = m_iDefaultHair / GRID_COLUMNS;
@@ -2246,6 +2268,49 @@ void Client::CCustomizingView::Apply_FacePreset(
 		pCharacter->Set_FaceMorphWeight(Morph.first, Morph.second);
 }
 
+void Client::CCustomizingView::Update_VoiceTab()
+{
+	const bool_t bVoice = VOICE_TAB_INDEX == m_iSelectedTab;
+	m_pView->Set_SlotVisible("CC_VoiceDivision", bVoice);
+	const std::vector<uint8_t> Types = bVoice ?
+		CSoundCueCatalog::Collect_VoiceTypes(m_strIconClassAssetId) : std::vector<uint8_t>{};
+	for (int32_t i = 0; i < VOICE_ROW_COUNT; ++i)
+	{
+		const string strBgId = "CC_VoiceType" + std::to_string(i) + "_Bg";
+		const string strSelectedId = "CC_VoiceType" + std::to_string(i) + "_Selected";
+		const bool_t bRow = i < static_cast<int32_t>(Types.size());
+		const uint8_t iType = bRow ? Types[static_cast<size_t>(i)] : 0u;
+		m_pView->Set_SlotVisible(strBgId, bRow);
+		m_pView->Set_SlotVisible(strSelectedId, bRow && iType == m_iSelectedVoiceType);
+		if (!bRow || m_isPickerCapturingPointer)
+			continue;
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (Get_SlotRect(strBgId.c_str(), fX, fY, fWidth, fHeight) &&
+			Is_Hovered(fX, fY, fWidth, fHeight) && Is_Clicked(fX, fY, fWidth, fHeight))
+		{
+			m_iSelectedVoiceType = iType;
+			Play_VoicePreview(iType);
+		}
+	}
+}
+
+void Client::CCustomizingView::Play_VoicePreview(const uint8_t iVoiceType)
+{
+	const std::vector<std::string> Events =
+		CSoundCueCatalog::Collect_VoiceEventNames(m_strIconClassAssetId);
+	if (Events.empty())
+		return;
+	const std::string& strEvent = Events[std::uniform_int_distribution<size_t>(
+		0u, Events.size() - 1u)(m_Random)];
+	const std::vector<std::string>& Variants =
+		CSoundCueCatalog::Find_VoiceVariants(m_strIconClassAssetId, strEvent, iVoiceType);
+	if (Variants.empty())
+		return;
+	const std::string& strAsset = Variants[std::uniform_int_distribution<size_t>(
+		0u, Variants.size() - 1u)(m_Random)];
+	CGameInstance::Get().Play_SoundCue(CRuntimeAssetRoot::Resolve(strAsset).wstring(), 1.f);
+}
+
 void Client::CCustomizingView::Update_FaceTab(const shared_ptr<CCharacter>& pCharacter)
 {
 	const bool_t bFaceTab = FACE_TAB_INDEX == m_iSelectedTab;
@@ -2586,7 +2651,7 @@ void Client::CCustomizingView::Render_Text()
 			continue;
 		}
 		const bool_t bSelected = i == m_iSelectedTab;
-		const bool_t bSupported = VOICE_TAB_INDEX != i && BASE_TAB_INDEX != i;
+		const bool_t bSupported = BASE_TAB_INDEX != i;
 		const bool_t bHovered = bSupported && Is_Hovered(fX, fY, fWidth, fHeight);
 		if (!bSelected && !bHovered)
 			continue;
@@ -2684,10 +2749,32 @@ void Client::CCustomizingView::Render_Text()
 		their own captions now and the line sat on top of them. */
 		f32_t fPanelX = 0.f, fPanelY = 0.f, fPanelWidth = 0.f, fPanelHeight = 0.f;
 		if (VOICE_TAB_INDEX == m_iSelectedTab &&
+			CSoundCueCatalog::Collect_VoiceTypes(m_strIconClassAssetId).empty() &&
 			Get_SlotRect("CC_RightBg", fPanelX, fPanelY, fPanelWidth, fPanelHeight))
 		{
 			Fn_Draw(TEXT("Font_YG760"), fPanelX + fPanelWidth * 0.5f, 200.f, 12.f,
 				vDimColor, LABEL_NOT_READY, float2_t(0.5f, 0.5f));
+		}
+		if (VOICE_TAB_INDEX == m_iSelectedTab && PICKER_SURFACE_NONE == m_iPickerSurface)
+		{
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			const std::vector<uint8_t> Types =
+				CSoundCueCatalog::Collect_VoiceTypes(m_strIconClassAssetId);
+			if (!Types.empty() && Get_SlotRect("CC_VoiceDivision", fX, fY, fWidth, fHeight))
+			{
+				Fn_Draw(TEXT("Font_YG760"), RIGHT_LABEL_X, fY - 12.f, 11.f,
+					vDescColor, LABEL_VOICE_DESC, float2_t(0.f, 0.5f));
+			}
+			for (size_t i = 0; i < Types.size() && i < VOICE_ROW_COUNT; ++i)
+			{
+				const string strBgId = "CC_VoiceType" + std::to_string(i) + "_Bg";
+				if (!Get_SlotRect(strBgId.c_str(), fX, fY, fWidth, fHeight))
+					continue;
+				const wstring strLabel = wstring(LABEL_VOICE_TYPE) + std::to_wstring(Types[i]);
+				Fn_Draw(TEXT("Font_YG760"), fX + fWidth * 0.5f, fY + fHeight * 0.5f, 11.f,
+					Types[i] == m_iSelectedVoiceType ? vSectionColor : vDescColor,
+					strLabel.c_str(), float2_t(0.5f, 0.5f));
+			}
 		}
 	}
 	else if (m_isFaceDetailExpanded)
