@@ -1694,8 +1694,10 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Results(
 		const bool lethal = result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH ||
 			(result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE && result.iPercent >= 100u);
 		const auto apply = [&](SERVER_PLAYER& player) {
-			if (!lethal && invulnerablePlayers.contains(player.iPlayerId) &&
-				(result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE ||
+			// A solved same-pattern safe zone cancels its verdict before generic lethal-hit bypasses.
+			if (invulnerablePlayers.contains(player.iPlayerId) &&
+				(result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH ||
+				 result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE ||
 				 result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE ||
 				 result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR)) return;
 			if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT &&

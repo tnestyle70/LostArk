@@ -592,6 +592,122 @@ namespace ServerGameplayContractDetail
             tests.Require(targets.at(1u).iCurrentHp == 100u && targets.at(2u).iCurrentHp == 100u,
                 "A valid red zone protects overlapping occupants even when the blue zone count is invalid");
         }
+        // Lethal raid verdicts bypass ordinary buffs, but a correctly answered
+        // same-pattern occupancy zone is the mechanic's successful answer.
+        for (const bool percentDeath : {false, true}) for (const std::uint32_t required : {1u, 2u})
+            for (std::uint32_t count = 1u; count <= 3u; ++count)
+            {
+                auto exact = pattern; auto lethalGaze = gaze;
+                auto lethalResult = death;
+                if (percentDeath) { lethalResult.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE; lethalResult.iPercent = 100u; }
+                lethalGaze.OnFail = {lethalResult}; exact.LogicWindows = {lethalGaze, zone};
+                exact.LogicWindows.back().iThreshold = required;
+                auto targets = makePlayers(count);
+                for (auto& [id, target] : targets) { target.iShield = 10000u; target.iInvulnerableEndTick = 1000u; }
+                KOUKUSAYDON_LOGIC_LEDGER state; CKoukuSaydonLogicRuntime::Build(exact, *boss, 200u, state);
+                judge(exact, targets, state, 203u);
+                const bool protects = count == required;
+                tests.Require(std::all_of(targets.begin(), targets.end(), [&](const auto& row) {
+                    return protects ? row.second.iCurrentHp == 100u : row.second.iCurrentHp == 0u;
+                }) && events.size() == (protects ? 0u : count),
+                    "Exact blue/red occupancy blocks instant-death and 100-percent verdicts; wrong counts still die through ordinary buffs");
+            }
+        for (const std::uint32_t required : {1u, 2u})
+        {
+            auto exact = pattern; auto lethalGaze = gaze; lethalGaze.OnFail = {death};
+            exact.LogicWindows = {lethalGaze, zone}; exact.LogicWindows.back().iThreshold = required;
+            auto targets = makePlayers(2u); targets.at(2u).fPositionZ = required == 1u ? 4.f : 2.f;
+            KOUKUSAYDON_LOGIC_LEDGER state; CKoukuSaydonLogicRuntime::Build(exact, *boss, 200u, state);
+            judge(exact, targets, state, 200u);
+            targets.at(2u).fPositionZ = required == 1u ? 2.f : 4.f; judge(exact, targets, state, 201u);
+            const bool revoked = targets.at(1u).iInvulnerabilityZoneContactTick != 201u;
+            targets.at(2u).fPositionZ = required == 1u ? 4.f : 2.f; judge(exact, targets, state, 202u);
+            const bool restored = targets.at(1u).iInvulnerabilityZoneContactTick == 202u;
+            judge(exact, targets, state, 203u);
+            tests.Require(revoked && restored && targets.at(1u).iCurrentHp == 100u,
+                "Returning to the exact blue/red count restores protection before the lethal judgement");
+        }
+
+        // Exercise the installed P11 geometry, clock, three lethal contacts and
+        // gaze results together instead of replacing its hazards with a 50-percent fixture.
+        const auto* definitions = catalog.Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
+        const BOSS_PATTERN_DEFINITION* published = nullptr;
+        if (definitions) for (const auto& candidate : *definitions)
+            if (candidate.strPatternId == "KAKULSAYDON_G1_PATTERN_11") published = &candidate;
+        CWorldBootstrap bootstrap;
+        const bool loadedWorld = bootstrap.Load(WORLD_ID::KAKULSAYDON_ARENA);
+        const WORLD_BOOTSTRAP_PLACEMENT* placement = nullptr;
+        if (loadedWorld && published) for (const auto& candidate : bootstrap.Get_Placements())
+            if (candidate.strPlacementId == published->strTargetBossPlacementId) placement = &candidate;
+        std::vector<const BOSS_PATTERN_LOGIC_WINDOW*> zones;
+        std::set<std::uint32_t> lethalTicks;
+        constexpr std::uint32_t startTick = 100u;
+        std::uint32_t finalZoneTick = startTick;
+        if (published) for (const auto& window : published->LogicWindows)
+        {
+            if (window.eKind == BOSS_PATTERN_LOGIC_KIND::INVULNERABILITY_ZONE)
+            {
+                zones.push_back(&window);
+                finalZoneTick = (std::max)(finalZoneTick, startTick + CKoukuSaydonLogicRuntime::Ticks_FromMs(window.iStartMs + window.iDurationMs));
+            }
+            if (window.eKind == BOSS_PATTERN_LOGIC_KIND::ENTER_AREA && std::any_of(window.OnSuccess.begin(), window.OnSuccess.end(),
+                [](const auto& result) { return result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH; }))
+                lethalTicks.insert(startTick + CKoukuSaydonLogicRuntime::Ticks_FromMs(window.iStartMs));
+        }
+        const bool publishedReady = placement && zones.size() == 4u && lethalTicks.size() == 3u &&
+            std::count_if(zones.begin(), zones.end(), [](const auto* window) { return window->iThreshold == 1u; }) == 2 &&
+            std::count_if(zones.begin(), zones.end(), [](const auto* window) { return window->iThreshold == 2u; }) == 2 &&
+            std::all_of(zones.begin(), zones.end(), [](const auto* window) { return window->CardRegions.size() == 1u &&
+                window->CardRegions.front().eAnchor == BOSS_LOGIC_REGION_ANCHOR::WORLD; });
+        tests.Require(publishedReady, "Installed P11 and Gate2 placement expose two blue, two red zones and three actual instant-death contacts");
+        if (publishedReady) for (const auto* safeZone : zones) for (std::uint32_t count = 1u; count <= 3u; ++count)
+        {
+            auto actualBoss = std::make_unique<SERVER_WORLD_ENTITY>(); actualBoss->iNetEntityId = 4000u;
+            actualBoss->iPatternSequence = 1u; actualBoss->strPatternId = published->strPatternId;
+            actualBoss->strEncounterId = published->strEncounterId; actualBoss->eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+            actualBoss->iCurrentHp = actualBoss->iMaximumHp = 10000u;
+            actualBoss->fPositionX = placement->fPositionX; actualBoss->fPositionY = placement->fPositionY;
+            actualBoss->fPositionZ = placement->fPositionZ; actualBoss->fYawDegrees = placement->fYawDegrees;
+            const auto& region = safeZone->CardRegions.front(); auto targets = makePlayers(count);
+            for (auto& [id, target] : targets)
+            {
+                target.fPositionX = region.fCenterX; target.fPositionY = region.fCenterY; target.fPositionZ = region.fCenterZ;
+                target.fYawDegrees = std::atan2(actualBoss->fPositionX - target.fPositionX,
+                    actualBoss->fPositionZ - target.fPositionZ) * 57.29577951308232f;
+            }
+            KOUKUSAYDON_LOGIC_LEDGER state; KOUKUSAYDON_LOGIC_OUTPUT actualOutput;
+            CKoukuSaydonLogicRuntime::Build(*published, *actualBoss, startTick, state);
+            const bool protects = count == safeZone->iThreshold;
+            for (std::uint32_t tick = startTick; tick <= finalZoneTick + 1u; ++tick)
+            {
+                events.clear();
+                CKoukuSaydonLogicRuntime::Update(*actualBoss, *published, state, targets, catalog, nullptr, tick, events, actualOutput);
+                if (!lethalTicks.contains(tick)) continue;
+                const bool correct = std::all_of(targets.begin(), targets.end(), [&](const auto& row) {
+                    return protects ? row.second.iCurrentHp == 100u && row.second.iFearEndTick == 0u &&
+                        row.second.iInvulnerabilityZoneContactTick == tick : row.second.iCurrentHp == 0u;
+                }) && (protects ? events.empty() : events.size() == count);
+                const auto label = std::string("Installed P11 ") + safeZone->strWindowId + " count=" + std::to_string(count) +
+                    " lethalTick=" + std::to_string(tick) + " preserves the exact occupancy verdict";
+                tests.Require(correct, label.c_str());
+                if (!protects) break;
+            }
+            if (protects)
+            {
+                tests.Require(std::all_of(targets.begin(), targets.end(), [&](const auto& row) {
+                    return row.second.iInvulnerabilityZoneContactTick != finalZoneTick + 1u;
+                }), "Installed P11 protection expires after the authored safe-zone window");
+                auto unrelated = *published; unrelated.strPatternId = "contract.external.wipe";
+                std::erase_if(unrelated.LogicWindows, [](const auto& window) { return window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA; });
+                KOUKUSAYDON_LOGIC_LEDGER other; CKoukuSaydonLogicRuntime::Build(unrelated, *actualBoss, startTick, other);
+                for (auto& [id, target] : targets) { target.iShield = 10000u; target.iInvulnerableEndTick = 1000u; }
+                events.clear();
+                CKoukuSaydonLogicRuntime::Update(*actualBoss, unrelated, other, targets, catalog, nullptr, *lethalTicks.begin(), events, actualOutput);
+                tests.Require(std::all_of(targets.begin(), targets.end(), [](const auto& row) { return row.second.iCurrentHp == 0u; }) && events.size() == count,
+                    "An unrelated lethal pattern still kills through ordinary buffs after the safe pattern completes");
+            }
+        }
+
 
     }
 

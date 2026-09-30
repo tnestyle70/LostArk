@@ -62,3 +62,22 @@ P21의 비스듬한 두 발사는 실제 BOX 축에 맞춰+135.9000015도와+45�
 사망·낙하·잡힘·맵이동 상태는 제외하고 기존 안전존이 차단한 Result는 밀림도 적용하지 않는다.
 pushCanLeaveArena는 요청한 공격에만 켜고 서버가 바깥 경계 통과를 확인한 때 기존 FALLING→DEAD를 소비한다.
 거리가 끝나기 전에 경계를 넘지 않거나 실제 collision에 막히면 낙사로 위장하지 않는다.
+
+## G07. 2026-09-30 파1빨2의 즉사 보호 회귀 복원
+
+현재 HEAD4fce79521e7a48f57c6d3351ab272dcbd0e67246의 파1빨2 게시 Pattern11은
+파랑 threshold1·빨강 threshold2의 INVULNERABILITY_ZONE과 세 번의 ENTER_AREA 즉사를
+함께 사용한다. 09-30의 일반 즉사 우회 변경에서 Apply_Results가 lethal 결과에 한해
+같은 Pattern의 invulnerablePlayers 검사를 건너뛰어, 정확 인원이 들어가도 사망한다.
+
+Server/Private/KoukuSaydonLogicRuntime.cpp의 Apply_Results에서 같은 Pattern이 현재
+정확 인원으로 승인한 zone의 결과 차단을 INSTANT_DEATH와 HP100%에도 복원한다.
+일반 시정·무적 버프가 즉사를 막게 변경하지 않으며 zone 밖·잘못된 인원·다른 Pattern·
+종료 이후에는 보호하지 않는다. 기존 HP50%·FEAR 보호와 서버 무적 pulse를 유지한다.
+
+ServerGameplayContractTests_KoukuLogic.cpp의 기존 fixture에 실제 게시 Pattern11의
+세 타격 시각과 파랑1/빨강2 생존, 잘못된 인원·영역 밖 사망을 추가한다. 구코드 실패와
+수정 코드 통과를 대조하고 실제 제품 컴파일 옵션으로 Debug/Release를 검증한다.
+데이터·public ABI·신규 C++ 파일·project/filter 등록 변경은 필요 없다.
+실행 중 Release의 종료는 자동 수행하지 않으며 먼저 out 격리 빌드/검증을 마친다.
+최종 제품 링크의 실제 파일 점유와 사용자 화면 확인은 RESULT에서 별도로 기록한다.

@@ -15,8 +15,16 @@
     "mechanicOffsetX": -303,
     "mechanicOffsetY": 360,
     "mechanicWidthScale": 0.3333333432674408,
+    "valtanArmorBreakHeightScale": 1,
+    "valtanArmorBreakOffsetX": -6,
+    "valtanArmorBreakOffsetY": -85,
+    "valtanArmorBreakWidthScale": 1,
     "valtanOffsetX": -20,
-    "valtanOffsetY": -227
+    "valtanOffsetY": -227,
+    "valtanStaggerHeadOffsetX": 0,
+    "valtanStaggerHeadOffsetY": 98,
+    "valtanStaggerHeightScale": 1,
+    "valtanStaggerWidthScale": 0.3333333432674408
   },
   "madness": {
     "feetOffsetMeters": 1.2999999523162842,

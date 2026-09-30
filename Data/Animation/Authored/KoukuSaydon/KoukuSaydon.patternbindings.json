@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "lightResourceRevision": 30,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 2496,
+  "sourceRevision": 2497,
   "bindings": [
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.43",
@@ -38564,7 +38564,7 @@
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_26.presentation.2",
           "startMs": 15577,
-          "durationMs": 2066,
+          "durationMs": 1420,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
@@ -38763,9 +38763,9 @@
           "assetId": "",
           "resourceDurationMs": 34,
           "positionOffset": [
-            0,
-            0,
-            0.6000000238418579
+            4.340000152587891,
+            10,
+            323.1000061035156
           ],
           "rotationDegrees": [
             0,
@@ -38783,12 +38783,12 @@
           "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
-          "bone": "b_rpct_01",
+          "followBoss": false,
+          "bone": "",
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "BOSS",
+          "anchorKind": "MAP",
           "worldId": "",
           "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_26.logic.1",
           "debugRender": true,
@@ -38798,7 +38798,7 @@
           "startMs": 16997,
           "durationMs": 100,
           "brightnessMultiplier": 1,
-          "boneTarget": "WEAPON",
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         }
       ]
