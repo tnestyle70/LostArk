@@ -319,3 +319,29 @@ SCENE에 optional holdAfterCameraId를 추가해 Intro의 stable camera ID를 �
 원자 반영한다. 실제 Update 경계와 소비한 camera ID, 다음 cut 미진입, slomo 및 user edit에 따른
 종료 재계산, 기존 저장/실패 보존 경로를 검증한다. 실행 중 Client 링크 잠금은 후보 검증 후 처리한다.
 화면의 최종 판정은 사용자가 하며 parser·샘플러 검사만으로 완료했다고 설명하지 않는다.
+
+## G19. 카메라 감속과 오디오 재생 시계 분리 (2026-09-29)
+
+G14는 source clock의 감속률을 FMOD pitch와 media offset에 함께 적용했다. 사용자 재확인에서
+감속 구간의 음질 문제로 확인되어 이 정책을 교정한다. 카메라·애니메이션·Effect는 기존 source
+시계를 유지한다. 사운드의 시작 시각만 source에서 Movie 시간으로 옮기고, 시작 이후 cursor와
+수명·drift 보정은 감속 전 Movie 경과시간으로 계산한다. FMOD에는 수동 재생 배속만 전달한다.
+
+ClassSelectionPresentation과 기존 WorldSequencePlayer를 연결하며 callback이 없는 일반 World
+사운드는 기존 동작을 유지한다. sourceStartMs, loop-to-duration, pause·불연속 seek·Stop·Replay와
+완료 정지, 무관한 채널의 수명도 보존한다. 실제 제품 함수와 FMOD NOSOUND 검사로 원래 pitch
+문제를 재현하고 감속/가속·seek·끝 경계를 검증한다. 기존 C++ 파일만 수정해 project/filter 신규
+등록은 없다. Product Release 빌드 후 package에 포함하며 최종 음질은 사용자가 청취한다.
+
+
+## G20. 창술사·워로드 Sound 앞부분 원복 (2026-09-30)
+
+사용자가 G19 오디오의 정상 청감을 확인했고, 이전 지연을 피하려고 잘라 둔 두 Sound의
+앞부분 복구를 요청했다. 현재 startMs0에서 sourceStartMs만 창술사1574/워로드850이므로
+왼쪽 trim은 Movie0 경계에 막힌다. 이는 WAV 파일 손실이 아니며 새 C++ 경로가 필요하지 않다.
+
+SL00 WorldSequences의 stable soundTrackId 두 개만 sourceStartMs0과 원본 전체 길이
+8493/9372ms로 복구한다. 기존 startMs0·volume1·원본 mix bus 복원 WAV·카메라·다른 track은
+보존한다. 정본 revision을 갱신하고 hash 재확인·백업·원자 교체 후 WorldSequences scope만
+publish한다. 실제 WAV frame/format 길이와 source/runtime의 두 행을 대조한다. 실행 중
+Client의 미저장 draft나 Reload·종료는 조작하지 않으며 새 저장본은 다시 읽을 때 소비된다.

@@ -360,6 +360,8 @@ struct VEHICLE_ACTOR_ENTRY final
 	bool_t seatBoneRotatesRider = false;
 	/* Ships (EFTable_VoyageShip) are listed only by the ship NPC window. */
 	bool_t isShip = false;
+	/* EFTable_VoyageShip.MaxSupply (level 1): the capacity the ocean HUD dome (supply gauge) reads. 0 = none. */
+	std::uint32_t iMaxSupply = 0u;
 	/* Metres in the vehicle root frame, added to the seat bone: a ship has no seat bone above
 	the waterline, so the rider stands on the deck at this offset. */
 	float3_t seatOffset = { 0.f, 0.f, 0.f };

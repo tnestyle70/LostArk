@@ -2179,7 +2179,7 @@ LOSTARK_ANIM_EVENTS 6 "GuardianKnight" 2240
 "ddk_sk_wingstinger_custom_5_03" SUPERARMOR startms=0 endms=1000 payload="" src=orig
 "ddk_sk_wingstinger_custom_5_03" SOUND startms=1 payload="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_WingStinger1_FX005_2" src=orig
 "ddk_sk_flame_scale_01" HIT startms=300 endms=300 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=1 ar=130 aa=0 ah=180 ax=0 arem=0 maxt=0 src=orig
-"ddk_sk_super_sanctumofembereth" HIT startms=300 endms=300 rep=1 repms=0 fz=1000 fzin=250 fzout=350 push=80 pushr=10 area=2 ar=800 aa=550 ah=225 ax=0 arem=0 maxt=0 src=orig
+"ddk_sk_super_sanctumofembereth" HIT startms=3800 endms=3800 rep=1 repms=0 fz=1000 fzin=250 fzout=350 push=80 pushr=10 area=2 ar=800 aa=550 ah=225 ax=0 arem=0 maxt=0 src=orig
 "ddk_sk_revenge_02" HIT startms=440 endms=540 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=350 aa=250 ah=180 ax=0 arem=0 maxt=0 src=orig
 "ddk_sk_brutalmarch_03" HIT startms=650 endms=750 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=350 aa=250 ah=180 ax=0 arem=0 maxt=0 src=orig
 "ddk_att_battle_1_01" EFFECT startms=0 payload="effect.guardianknight.skill.49000.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1

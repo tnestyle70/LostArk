@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Focused source contract for Valtan Trash's finite three-attempt graph."""
+"""Focused source contract for Trash retry loops and finite audition fragments."""
 
 from __future__ import annotations
 
+import copy
 import json
 import sys
 import unittest
@@ -49,48 +50,107 @@ def stage(pattern_row: dict[str, Any], stage_id: str) -> dict[str, Any]:
 class ValtanTrashFiniteRetryContractTests(unittest.TestCase):
     PATTERN_IDS = ("VALTAN_TRASH", "VALTAN_TRASH_CATCH_IF")
 
-    def test_authoring_recipe_and_source_are_identical(self) -> None:
-        authored_gameplay, authored_presentation = author.build("VALTAN_TRASH")
-        for pattern_id in (
-            "VALTAN_TRASH",
-            "VALTAN_TRASH_CATCH_IF",
-            "VALTAN_TRASH_CATCH_SUCCESS",
-            "VALTAN_TRASH_CATCH_FAIL",
-        ):
+    def test_authoring_recipe_preserves_retry_and_counter_contract(self) -> None:
+        authored_gameplay, _ = author.build("VALTAN_TRASH")
+        # Saved timing and effect cues are user-owned. The recipe's generated
+        # defaults need not overwrite them to preserve its retry graph contract.
+        fields = ("stageId", "actionId", "stageKind", "defaultNextActionId",
+                  "branches", "hit", "events", "counterProxy")
+        for pattern_id in (*self.PATTERN_IDS, "VALTAN_TRASH_CATCH_SUCCESS",
+                           "VALTAN_TRASH_CATCH_FAIL"):
+            saved = pattern(GAMEPLAY, pattern_id)
+            authored = pattern(authored_gameplay, pattern_id)
+            self.assertEqual(saved["entryActionId"], authored["entryActionId"])
             self.assertEqual(
-                pattern(GAMEPLAY, pattern_id),
-                pattern(authored_gameplay, pattern_id),
-            )
-            self.assertEqual(
-                pattern(PRESENTATION, pattern_id),
-                pattern(authored_presentation, pattern_id),
+                [{key: row.get(key) for key in fields} for row in saved["stages"]],
+                [{key: row.get(key) for key in fields} for row in authored["stages"]],
             )
 
-    def test_both_product_sources_are_forward_only_finite_dags(self) -> None:
-        pattern_by_id = {
-            row["patternId"]: row for row in GAMEPLAY["patterns"]
-        }
+    def test_only_three_exact_retry_backedges_are_allowed(self) -> None:
+        pattern_by_id = {row["patternId"]: row for row in GAMEPLAY["patterns"]}
+        retry_sources = {"RETRY_EXHAUSTED", "CATCH_SLAM", "EXECUTE_TAIL"}
         for pattern_id in self.PATTERN_IDS:
             gameplay = pattern(GAMEPLAY, pattern_id)
             tuning._validate_finite_pattern_graph(gameplay)
             tuning._validate_pattern_counter_groggy_contract(
                 gameplay, pattern_by_id, f"pattern {pattern_id}"
             )
-            positions = {
-                row["actionId"]: index
-                for index, row in enumerate(gameplay["stages"])
-            }
+            positions = {row["actionId"]: index
+                         for index, row in enumerate(gameplay["stages"])}
+            retry_target = stage(gameplay, "RECHARGE_WAIT_02")["actionId"]
+            found = set()
             for source_index, row in enumerate(gameplay["stages"]):
                 targets = [row["defaultNextActionId"]] + [
                     branch["nextActionId"] for branch in row["branches"]
                 ]
                 for target in targets:
-                    if target is not None:
-                        self.assertGreater(
-                            positions[target],
-                            source_index,
-                            f"{pattern_id}/{row['stageId']} has a back-edge",
-                        )
+                    if target is None or positions[target] > source_index:
+                        continue
+                    self.assertIn(row["stageId"], retry_sources)
+                    self.assertEqual(target, retry_target)
+                    self.assertEqual(row["defaultNextActionId"], retry_target)
+                    self.assertEqual(row["branches"], [
+                        {"outcome": "TIMEOUT", "nextActionId": retry_target}
+                    ])
+                    found.add(row["stageId"])
+            self.assertEqual(found, retry_sources)
+
+    def test_unrelated_cycles_and_finite_fragment_cycles_are_rejected(self) -> None:
+        for pattern_id in (*self.PATTERN_IDS, "VALTAN_TRASH_CATCH_SUCCESS",
+                           "VALTAN_TRASH_CATCH_FAIL"):
+            gameplay = copy.deepcopy(pattern(GAMEPLAY, pattern_id))
+            tuning._validate_finite_pattern_graph(gameplay)
+            first = gameplay["stages"][0]
+            first["defaultNextActionId"] = first["actionId"]
+            with self.assertRaises(tuning.PipelineError):
+                tuning._validate_finite_pattern_graph(gameplay)
+        for source_id in ("RETRY_EXHAUSTED", "CATCH_SLAM", "EXECUTE_TAIL"):
+            for pattern_id in self.PATTERN_IDS:
+                gameplay = copy.deepcopy(pattern(GAMEPLAY, pattern_id))
+                row = stage(gameplay, source_id)
+                target = stage(gameplay, "RETRY_WINDUP_02")["actionId"]
+                row["defaultNextActionId"] = target
+                row["branches"] = [{"outcome": "TIMEOUT", "nextActionId": target}]
+                with self.assertRaises(tuning.PipelineError):
+                    tuning._validate_finite_pattern_graph(gameplay)
+
+    def test_no_capture_partial_capture_and_all_capture_retry_until_counter(self) -> None:
+        # Traverse the actual saved outcome edges. Native lifecycle separately
+        # proves that confirmed combat hits publish COUNTER_HIT at runtime.
+        for pattern_id in self.PATTERN_IDS:
+            gameplay = pattern(GAMEPLAY, pattern_id)
+            by_action = {row["actionId"]: row for row in gameplay["stages"]}
+            for capture in ("NONE", "PARTIAL", "ALL"):
+                with self.subTest(pattern=pattern_id, capture=capture):
+                    action = gameplay["entryActionId"]
+                    retry_count = counter_count = 0
+                    visited = []
+                    for _ in range(128):
+                        self.assertIsNotNone(action)
+                        row = by_action[action]
+                        visited.append(row["stageId"])
+                        branches = {b["outcome"]: b["nextActionId"]
+                                    for b in row["branches"]}
+                        if row["stageId"] == "RECHARGE_WAIT_02":
+                            retry_count += 1
+                        outcome = "TIMEOUT"
+                        if "COUNTER_HIT" in branches and retry_count >= 3:
+                            outcome = "COUNTER_HIT"
+                            counter_count += 1
+                        elif capture != "NONE" and "ANY_PLAYER_GRABBED" in branches:
+                            outcome = "ANY_PLAYER_GRABBED"
+                        elif capture == "ALL" and "ALL_PLAYERS_GRABBED" in branches:
+                            outcome = "ALL_PLAYERS_GRABBED"
+                        action = branches.get(outcome, row["defaultNextActionId"])
+                        if action is None:
+                            break
+                    self.assertIsNone(action, "counter must reach the finite GROGGY terminal")
+                    self.assertEqual(counter_count, 1)
+                    self.assertGreaterEqual(retry_count, 3)
+                    self.assertEqual(visited[-1], "GROGGY")
+                    expected_tail = {"NONE": "RETRY_EXHAUSTED", "PARTIAL": "CATCH_SLAM",
+                                     "ALL": "EXECUTE_TAIL"}[capture]
+                    self.assertGreaterEqual(visited.count(expected_tail), 2)
 
     def test_each_attempt_owns_one_counter_window_and_capture_rush(self) -> None:
         for pattern_id in self.PATTERN_IDS:
@@ -154,13 +214,13 @@ class ValtanTrashFiniteRetryContractTests(unittest.TestCase):
                     },
                 )
 
-    def test_misses_advance_twice_then_terminate(self) -> None:
+    def test_misses_advance_then_repeat_the_counter_opportunity(self) -> None:
         for pattern_id in self.PATTERN_IDS:
             gameplay = pattern(GAMEPLAY, pattern_id)
             expected = (
                 ("RUSH_MISS", "RECHARGE_WAIT_02"),
                 ("RETRY_MISS_02", "RECHARGE_WAIT_03"),
-                ("RETRY_EXHAUSTED", None),
+                ("RETRY_EXHAUSTED", "RECHARGE_WAIT_02"),
             )
             for miss_id, next_id in expected:
                 miss = stage(gameplay, miss_id)

@@ -157,11 +157,13 @@ namespace
 		incoming.iSourcePlayerId = sourcePlayerId;
         incoming.bGuideSource = guideSource;
 		incoming.iSkillId = skillId;
-		incoming.iRawDamage = kind <= 1u ? rawDamage : 0u;
+		incoming.iRawDamage = kind <= 2u ? rawDamage : 0u;
+		incoming.bHealthDamageDisabled = kind > 1u;
+		incoming.bStaggerDisabled = kind == 1u || kind == 3u;
 		const auto* skill = catalog.Find_Skill(skillId);
 		const auto* damageProfile = nullptr == skill ? nullptr :
 			catalog.Find_DamageProfile(skill->strDamageProfileId);
-		const bool bossHealthBars = kind <= 1u &&
+		const bool bossHealthBars = kind <= 2u &&
 			WORLD_BOOTSTRAP_KIND::BOSS == target.eKind && nullptr != damageProfile &&
 			0u != damageProfile->iBossHealthBarDamage &&
 			0u != target.iMaximumHp && 0u != target.iMaximumHealthBars;
@@ -886,6 +888,7 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 			(projectile.fSpeed > 0.f && 0.f == projectile.fRemainingDistance);
 
 		std::uint32_t subHitIndex = projectile.iSubHitBase;
+		std::uint32_t staggerSubHitIndex = projectile.iSubHitBase;
 		std::size_t timedIndex = 0u;
 		for (std::size_t hitIndex = 0; hitIndex < definition.Hits.size(); ++hitIndex)
 		{
@@ -932,12 +935,12 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 						player.iPlayerId, player.Is_Guide(), projectile.iSkillId,
 						skill->iStaggerDamage, skill->iPartDamage,
 						skill->iCounterPower,
-						ownsDamage ? DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal,
-							subHitIndex + mark->iAppliedCount) : 0u,
+						(ownsDamage || hit.Hit.iResultKind == 2u) ? DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal,
+							(hit.Hit.iResultKind == 2u ? staggerSubHitIndex : subHitIndex) + mark->iAppliedCount) : 0u,
 						catalog, player.ActiveBuffs,
 						catalog.Find_Player(player.eCharacterClass),
 						&hit.Hit, DamageSpreadOf(catalog, skill->strDamageProfileId),
-						projectile.iSubHitTotal, subHitIndex + mark->iAppliedCount,
+						projectile.iSubHitTotal, (hit.Hit.iResultKind == 2u ? staggerSubHitIndex : subHitIndex) + mark->iAppliedCount,
 						projectile.fPositionX, projectile.fPositionZ,
 						projectile.fDirectionX, projectile.fDirectionZ,
 						serverTick, outDamageEvents);
@@ -946,13 +949,15 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 						static_cast<float>(hit.Hit.iRepeatMs) * MILLISECONDS_TO_SECONDS;
 				}
 				if (ownsDamage) subHitIndex += hit.Hit.iRepeatCount;
+				if (hit.Hit.iResultKind == 2u) staggerSubHitIndex += hit.Hit.iRepeatCount;
 				continue;
 			}
 			/* A timed hit fires once per repeat on its own schedule from spawn,
 			on everything the shape covers at that moment; a missile that has
 			already stopped keeps firing where it stands until its life ends. */
 			for (std::uint32_t repeat = 0; repeat < hit.Hit.iRepeatCount;
-				++repeat, subHitIndex += ownsDamage ? 1u : 0u, ++timedIndex)
+				++repeat, subHitIndex += ownsDamage ? 1u : 0u,
+				staggerSubHitIndex += hit.Hit.iResultKind == 2u ? 1u : 0u, ++timedIndex)
 			{
 				if (projectile.iAppliedTimedMask.test(timedIndex))
 					continue;
@@ -989,12 +994,12 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 						player.iPlayerId, player.Is_Guide(), projectile.iSkillId,
 						skill->iStaggerDamage, skill->iPartDamage,
 						skill->iCounterPower,
-						ownsDamage ? DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal,
-							subHitIndex) : 0u,
+						(ownsDamage || hit.Hit.iResultKind == 2u) ? DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal,
+							hit.Hit.iResultKind == 2u ? staggerSubHitIndex : subHitIndex) : 0u,
 						catalog, player.ActiveBuffs,
 						catalog.Find_Player(player.eCharacterClass),
 						&hit.Hit, DamageSpreadOf(catalog, skill->strDamageProfileId),
-						projectile.iSubHitTotal, subHitIndex,
+						projectile.iSubHitTotal, hit.Hit.iResultKind == 2u ? staggerSubHitIndex : subHitIndex,
 						projectile.fPositionX, projectile.fPositionZ,
 						projectile.fDirectionX, projectile.fDirectionZ,
 						serverTick, outDamageEvents);
@@ -1466,6 +1471,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			player.Projectiles.push_back(std::move(spawned));
 		}
 		std::uint32_t subHitIndex = 0;
+		std::uint32_t staggerSubHitIndex = 0;
 		std::size_t colliderRepeatIndex = 0u;
 		bool allFired = true;
 		/* Every action start clears the fire mask; a window ledger that outlives it is stale. */
@@ -1475,7 +1481,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		{
 			const bool ownsDamage = OwnsHealthDamage(hit);
 			for (std::uint32_t repeat = 0; repeat < hit.iRepeatCount;
-				++repeat, subHitIndex += ownsDamage ? 1u : 0u, ++colliderRepeatIndex)
+				++repeat, subHitIndex += ownsDamage ? 1u : 0u,
+				staggerSubHitIndex += hit.iResultKind == 2u ? 1u : 0u, ++colliderRepeatIndex)
 			{
 				const float fireMs =
 					static_cast<float>(hit.iTimeMs + hit.iRepeatMs * repeat);
@@ -1532,8 +1539,9 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 					targets.resize(hit.iMaxTargets - windowHits);
 				for (auto& [distanceSquared, target] : targets)
 				{
-					applyDamage(*target, ownsDamage ? damageOfSubHit(subHitIndex) : 0u, &hit,
-						subHitTotal, subHitIndex);
+					applyDamage(*target, (ownsDamage || hit.iResultKind == 2u) ?
+						damageOfSubHit(hit.iResultKind == 2u ? staggerSubHitIndex : subHitIndex) : 0u, &hit,
+						subHitTotal, hit.iResultKind == 2u ? staggerSubHitIndex : subHitIndex);
 					player.HitWindowTargets.emplace_back(windowIndex, target->iNetEntityId);
 				}
 				if (!targets.empty())

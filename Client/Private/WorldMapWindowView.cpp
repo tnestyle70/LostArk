@@ -258,6 +258,8 @@ void Client::CWorldMapWindowView::Load_Areas()
 		if (LEVEL::END == Area.eLevel)
 			continue;
 		Area.strImage = pImage->Get_String();
+		const DATA_JSON_VALUE* pDefault = Value.Find("default");
+		Area.bDefault = nullptr != pDefault && pDefault->Is_Boolean() && pDefault->Get_Boolean();
 		if (nullptr != pName && pName->Is_String())
 			(void)Convert_Utf8(pName->Get_String(), Area.strAreaName);
 		const auto& Min = pMin->Get_Array();
@@ -268,6 +270,38 @@ void Client::CWorldMapWindowView::Load_Areas()
 		Area.fWorldMinY = static_cast<f32_t>(Min[1].Get_Number());
 		Area.fWorldMaxX = static_cast<f32_t>(Max[0].Get_Number());
 		Area.fWorldMaxY = static_cast<f32_t>(Max[1].Get_Number());
+		const DATA_JSON_VALUE* pSelMin = Value.Find("selectMinCm");
+		const DATA_JSON_VALUE* pSelMax = Value.Find("selectMaxCm");
+		Area.fSelectMinX = Area.fWorldMinX; Area.fSelectMinY = Area.fWorldMinY;
+		Area.fSelectMaxX = Area.fWorldMaxX; Area.fSelectMaxY = Area.fWorldMaxY;
+		if (nullptr != pSelMin && pSelMin->Is_Array() && pSelMin->Get_Array().size() >= 2 &&
+			nullptr != pSelMax && pSelMax->Is_Array() && pSelMax->Get_Array().size() >= 2)
+		{
+			const auto& SMin = pSelMin->Get_Array();
+			const auto& SMax = pSelMax->Get_Array();
+			if (SMin[0].Is_Number() && SMin[1].Is_Number() && SMax[0].Is_Number() && SMax[1].Is_Number() &&
+				SMax[0].Get_Number() > SMin[0].Get_Number() && SMax[1].Get_Number() > SMin[1].Get_Number())
+			{
+				Area.fSelectMinX = static_cast<f32_t>(SMin[0].Get_Number());
+				Area.fSelectMinY = static_cast<f32_t>(SMin[1].Get_Number());
+				Area.fSelectMaxX = static_cast<f32_t>(SMax[0].Get_Number());
+				Area.fSelectMaxY = static_cast<f32_t>(SMax[1].Get_Number());
+			}
+		}
+		const DATA_JSON_VALUE* pExtraBoxes = Value.Find("extraSelectBoxesCm");
+		if (nullptr != pExtraBoxes && pExtraBoxes->Is_Array())
+		{
+			for (const DATA_JSON_VALUE& Box : pExtraBoxes->Get_Array())
+			{
+				if (!Box.Is_Array() || Box.Get_Array().size() < 4)
+					continue;
+				AREA::SELECT_BOX Extra{};
+				Extra.fMinX = Box.Get_Array()[0].Is_Number() ? static_cast<f32_t>(Box.Get_Array()[0].Get_Number()) : 0.f; Extra.fMinY = Box.Get_Array()[1].Is_Number() ? static_cast<f32_t>(Box.Get_Array()[1].Get_Number()) : 0.f;
+				Extra.fMaxX = Box.Get_Array()[2].Is_Number() ? static_cast<f32_t>(Box.Get_Array()[2].Get_Number()) : 0.f; Extra.fMaxY = Box.Get_Array()[3].Is_Number() ? static_cast<f32_t>(Box.Get_Array()[3].Get_Number()) : 0.f;
+				if (Extra.fMaxX > Extra.fMinX && Extra.fMaxY > Extra.fMinY)
+					Area.ExtraSelect.push_back(Extra);
+			}
+		}
 		if (Area.fWorldMaxX <= Area.fWorldMinX || Area.fWorldMaxY <= Area.fWorldMinY)
 			continue;
 		m_Areas.push_back(std::move(Area));
@@ -457,12 +491,37 @@ void Client::CWorldMapWindowView::Load_Panels()
 	}
 }
 
-const Client::CWorldMapWindowView::AREA* Client::CWorldMapWindowView::Find_Area(const LEVEL eLevel) const
+const Client::CWorldMapWindowView::AREA* Client::CWorldMapWindowView::Find_Area(
+	const LEVEL eLevel, const f32_t fClientX, const f32_t fClientZ) const
 {
+	/* Same rule as the minimap: first listed area whose retail-cm box holds the position, else the level's first. */
+	const f32_t fWorldX = fClientX * 100.f;
+	const f32_t fWorldY = -fClientZ * 100.f;
+	const AREA* pFirst = nullptr;
+	const AREA* pDefault = nullptr;
 	for (const AREA& Area : m_Areas)
-		if (Area.eLevel == eLevel)
+	{
+		if (Area.eLevel != eLevel)
+			continue;
+		if (nullptr == pFirst)
+			pFirst = &Area;
+		if (nullptr == pDefault && Area.bDefault)
+			pDefault = &Area;
+		if (fWorldX >= Area.fSelectMinX && fWorldX <= Area.fSelectMaxX &&
+			fWorldY >= Area.fSelectMinY && fWorldY <= Area.fSelectMaxY)
+		{
 			return &Area;
-	return nullptr;
+		}
+		for (const AREA::SELECT_BOX& Box : Area.ExtraSelect)
+		{
+			if (fWorldX >= Box.fMinX && fWorldX <= Box.fMaxX &&
+				fWorldY >= Box.fMinY && fWorldY <= Box.fMaxY)
+			{
+				return &Area;
+			}
+		}
+	}
+	return nullptr != pDefault ? pDefault : pFirst;
 }
 
 const Client::CWorldMapWindowView::LABEL_SET* Client::CWorldMapWindowView::Find_Labels(const LEVEL eLevel) const
@@ -661,7 +720,8 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 	CUIPointerScope PointerScope(this);
 	(void)fTimeDelta;
 	m_Texts.clear();
-	const AREA* pArea = Find_Area(eLevel);
+	const AREA* pArea = nullptr != pSnapshot && pSnapshot->hasLocal ?
+		Find_Area(eLevel, pSnapshot->fLocalX, pSnapshot->fLocalZ) : nullptr;
 	if (!m_bOpen || nullptr == pArea || nullptr == pSnapshot || !pSnapshot->hasLocal)
 	{
 		if (m_bOpen && nullptr == pArea)

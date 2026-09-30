@@ -254,6 +254,13 @@ public:
     // Reconcile media position as well as pitch after frame stalls or deferred advances.
     void Set_ExternalSoundClockRate(f32_t rate)
     { if (std::isfinite(rate) && rate > 0.f && rate <= 16.f) { m_ExternalSoundClockRate = rate; m_HasExternalSoundClock = true; } }
+    // Movie audio has its own undilated elapsed time. Only cue births are mapped
+    // from the visual source timeline; WAV age/duration never inherit camera slomo.
+    void Set_ExternalSoundTime(f32_t elapsedMs, std::function<f32_t(f32_t)> sourceToSoundMs)
+    {
+        if (std::isfinite(elapsedMs) && elapsedMs >= 0.f && sourceToSoundMs)
+        { m_ExternalSoundElapsedMs = elapsedMs; m_SourceToSoundTime = std::move(sourceToSoundMs); }
+    }
     void Update_SoundTails(f32_t timeDelta);
     // Complete audio without releasing visual ownership; explicit seek may play it again.
     void Finish_Sounds();
@@ -465,6 +472,8 @@ private:
     std::vector<RETIRED_SOUND> m_RetiredSounds;
     f32_t m_ExternalSoundClockRate = 1.f;
     bool_t m_HasExternalSoundClock = false;
+    f32_t m_ExternalSoundElapsedMs = 0.f;
+    std::function<f32_t(f32_t)> m_SourceToSoundTime;
     std::function<bool(const std::string&)> m_SoundAudience;
 	// Finished clocks no longer tick, but own their held pose until explicit stop/replay.
 	std::vector<ACTIVE_INSTANCE> m_Held;

@@ -571,10 +571,10 @@ def telegraph_documents():
         RECTANGLE_ID + '.decal', 0.9, 15.0, 1.5, 1.3, RECTANGLE_COLOR,
         dict(inner=0, decal_drawscale_x=0.9, decal_drawscale_y=15.0), 0)
     # SkillDecal 1106 (4225612 PlayDecalEffect, window 2.3 s, fill 2.0 s) on the
-    # project hit volume: the whole deck, one full disc (no remove range, 360
-    # degrees) of the contract deck radius at the cannon centre.
-    radius = contract_constant('MAHARAKA_WATERPANG_DECK_RADIUS_M')
-    donut = ground_decal(DONUT_TEMPLATE, DONUT_ID, 'Waterpang mokoko telegraph (SkillDecal 1106, whole deck)',
+    # project hit volume: the yellow centre disc, one full disc (no remove range,
+    # 360 degrees) of the contract waterfall hit radius at the cannon centre.
+    radius = contract_constant('MAHARAKA_WATERPANG_WATERFALL_HIT_RADIUS_M')
+    donut = ground_decal(DONUT_TEMPLATE, DONUT_ID, 'Waterpang mokoko telegraph (SkillDecal 1106, yellow centre disc)',
         DONUT_ID + '.decal', 2 * radius, 2 * radius, 2.3, 2.0, DONUT_COLOR,
         dict(thickness=0.0, inner=0.0, decal_drawscale=2 * radius, angle=1.0), 0.0)
     assert donut['elements'][0]['material']['sourceMaterialPath'] == DONUT_COND_MATERIAL

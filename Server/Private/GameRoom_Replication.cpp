@@ -567,11 +567,9 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		// Water gun: armed from the intro start tick while the body stands on the
 		// Waterpang arena region; an arena push-off or knockdown keeps it until the
 		// fall resolves. The empty-room reset clears the match and so the gun.
-		snapshot.isWaterpangArmed = WORLD_ID::MAHARAKA == m_eWorldId && m_MaharakaWaterpangIntro &&
-			Has_ReachedServerTick(m_iServerTick, m_MaharakaWaterpangIntro->iStartTick) &&
-			(player.bWaterpangFall || PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction ||
-			 (m_ServerNavigation.Is_Loaded() && m_ServerNavigation.Is_PointWalkableInRegion(
-				MAHARAKA_WATERPANG_REGION_ID, player.fPositionX, player.fPositionZ, player.fPositionY)));
+		snapshot.isWaterpangArmed = Is_MaharakaWaterpangArmed(player);
+		snapshot.iWaterGunSkillId = player.iWaterGunSkillId;
+		snapshot.iWaterGunCastTick = player.iWaterGunCastTick;
 		snapshot.eStance = player.eStance;
 		snapshot.iSkillId = player.iCurrentSkillId;
 		snapshot.iActionStartTick = player.iActionStartTick;
@@ -638,12 +636,20 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 					player.fVehicleFlightStartHeight / vehicle->fFlightVerticalSpeed);
 		}
 		snapshot.iHonorTitleId = player.iHonorTitleId;
+		for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& item : player.Inventory)
+		{
+			if (LostArk::Shared::EQUIPMENT_SLOT::AVATAR_HEAD == item.eEquippedSlot)
+				snapshot.strAvatarHeadItemId = item.strItemId;
+			else if (LostArk::Shared::EQUIPMENT_SLOT::AVATAR_OUTFIT == item.eEquippedSlot)
+				snapshot.strAvatarOutfitItemId = item.strItemId;
+		}
 		snapshot.eMechanicCardSymbol = player.eMechanicCardSymbol;
 		snapshot.eMechanicCardColor = player.eMechanicCardColor;
 		snapshot.eKoukuHudMode = player.eKoukuHudMode;
 		for (std::size_t slot = 0u; slot < KOUKU_HUD_SLOT_COUNT; ++slot)
 			snapshot.ModeSkillIndexBySlot[slot] = player.ModeSkillIndexBySlot[slot];
 		snapshot.iMarioStage = player.iMarioStage;
+		snapshot.iKoukuMinigameEndTick = player.iKoukuMinigameEndTick;
 		snapshot.iMarioLayoutVariant = player.iMarioLayoutVariant;
 		snapshot.iMarioPoppedBallMask = player.iMarioStage >= 1u && player.iMarioStage <= 4u ?
 			m_MarioPoppedBalls[player.iMarioStage] : std::uint16_t{};
@@ -702,6 +708,17 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 				snapshot.Cooldowns.push_back({ skillId, cooldownEndTick,
 					duration != player.CooldownDurationTicksBySkillId.end() ? duration->second : 0u });
 			}
+		}
+		/* Item slots retain their inventory item ID. Project each active item cooldown
+		through its catalog skill ID so the same HUD deadline path can show reuse time. */
+		for (const auto& [itemId, cooldownEndTick] : player.ItemCooldownEndTicks)
+		{
+			if (static_cast<std::int32_t>(cooldownEndTick - m_iServerTick) <= 0) continue;
+			const auto* definition = m_ItemCatalog.Find_Item(itemId);
+			if (!definition || definition->BattleUse.eKind == BATTLE_ITEM_KIND::NONE) continue;
+			const auto& use = definition->BattleUse;
+			snapshot.Cooldowns.push_back({ use.iSkillId, cooldownEndTick,
+				(use.iCooldownMs * SERVER_TICK_HZ + 999u) / 1000u });
 		}
 		std::sort(snapshot.Cooldowns.begin(), snapshot.Cooldowns.end(),
 			[](const SKILL_COOLDOWN_SNAPSHOT& left,

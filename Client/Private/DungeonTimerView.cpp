@@ -18,22 +18,12 @@ namespace
 	space and is scaled by the authored slot width divided by this. */
 	constexpr f32_t NATIVE_EMBLEM_WIDTH = 241.f;
 
-	/* Centres of the three text fields in movie space. All three are siblings of
-	raidImageMc inside the same frame sprite, so their placement translate is in the
-	emblem's own space. Each field's authored bounds start at (-2, -2), not (0, 0),
-	so the span is translate + bounds, not translate + half the size:
-	  timeTF        (21, 133) + (-2,-2)..(204, 42.8) -> x 19..225,  y 131..175.8
-	  underBigTF    (19, 133) + (-2,-2)..(98, 42.8)  -> x 17..117,  y 131..175.8
-	  underSmallTF  (116, 140) + (-2,-2)..(98, 30.8) -> x 114..214, y 138..170.8 */
+	/* Normal and decimal-warning strings share the timeTF centre and font size.
+	The authored timeTF bounds are x 19..225, y 131..175.8 in emblem space. */
 	constexpr f32_t TIME_CENTER_X = 122.f;
 	constexpr f32_t TIME_CENTER_Y = 153.4f;
-	constexpr f32_t UNDER_BIG_CENTER_X = 67.f;
-	constexpr f32_t UNDER_BIG_CENTER_Y = 153.4f;
-	constexpr f32_t UNDER_SMALL_CENTER_X = 164.f;
-	constexpr f32_t UNDER_SMALL_CENTER_Y = 154.4f;
-	/* fontHeight 680 and 480 twips. */
+	/* timeTF fontHeight 680 twips. */
 	constexpr f32_t TIME_FONT_PX = 34.f;
-	constexpr f32_t UNDER_SMALL_FONT_PX = 24.f;
 
 	/* The hidden "setting" clip's own text: a = warning, b = normal. */
 	constexpr std::uint32_t NORMAL_COLOR_RGB = 0xFFD200u;
@@ -153,17 +143,8 @@ void Client::CDungeonTimerView::Render() const
 		return;
 	}
 
-	/* Below warningTime the movie hides timeTF and shows the two under fields
-	instead, filled by substr(0,2) and substr(2,3) of the raw seconds value --
-	a "9." / "87" split. Formatting to two decimals first keeps that split
-	deterministic where a raw float would not be. */
-	wchar_t Raw[32] = {};
-	swprintf_s(Raw, L"%.2f", (std::max)(m_fSeconds, 0.f));
-	const wstring strRaw = Raw;
-	/* substr clamps the count to what is left, so this is the AS3 substr(0,2) and
-	substr(2,3) directly. */
-	const wstring strBig = strRaw.substr(0u, 2u);
-	const wstring strSmall = strRaw.size() > 2u ? strRaw.substr(2u, 3u) : wstring();
-	draw(UNDER_BIG_CENTER_X, UNDER_BIG_CENTER_Y, TIME_FONT_PX, strBig, WARNING_COLOR_RGB);
-	draw(UNDER_SMALL_CENTER_X, UNDER_SMALL_CENTER_Y, UNDER_SMALL_FONT_PX, strSmall, WARNING_COLOR_RGB);
+	// One string shares a baseline, glyph size and centering across the decimal point.
+	wchar_t raw[32] = {};
+	swprintf_s(raw, L"%.2f", (std::max)(m_fSeconds, 0.f));
+	draw(TIME_CENTER_X, TIME_CENTER_Y, TIME_FONT_PX, raw, WARNING_COLOR_RGB);
 }

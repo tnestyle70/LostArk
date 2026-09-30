@@ -345,9 +345,9 @@ void CMaharakaWaterpangPresentation::Update_Attacks()
 
 void CMaharakaWaterpangPresentation::Trace_Waterfall(const LostArk::Shared::MAHARAKA_WATERPANG_EVENT_SAMPLE& event)
 {
-    /* Once per cast at the first Server wave tick: the whole-deck hit volume, the
+    /* Once per cast at the first Server wave tick: the yellow-disc hit volume, the
        held mokoko object's facing (its +X carries the water columns) and the source
-       wave origin 3.2 m ahead of it, every authored effect track (the whole-deck
+       wave origin 3.2 m ahead of it, every authored effect track (the yellow-disc
        telegraph and the ground splash stations) and the authored sound rows. */
     using namespace LostArk::Shared;
     m_WaterfallTraceOccurrence=event.iOccurrence;
@@ -378,8 +378,8 @@ void CMaharakaWaterpangPresentation::Trace_Waterfall(const LostArk::Shared::MAHA
     const std::string tracks=Describe_EffectTracks(MOKOMOKO_ATTACK,false);
     char line[768];
     std::snprintf(line,sizeof(line),
-        "occurrence=%u tick=%u hit=deck(r<=%.1fm,waves@%u/%u) facingToCentre=%.2f tracks=[%s] modelFacing=%s%.2f waveOrigin=%.2fm/%+.1f sounds=[%s] instance=%s",
-        event.iOccurrence,event.iElapsedTicks,MAHARAKA_WATERPANG_DECK_RADIUS_M,MAHARAKA_WATERPANG_WATERFALL_HIT_TICK,
+        "occurrence=%u tick=%u hit=disc(r<=%.1fm,waves@%u/%u) facingToCentre=%.2f tracks=[%s] modelFacing=%s%.2f waveOrigin=%.2fm/%+.1f sounds=[%s] instance=%s",
+        event.iOccurrence,event.iElapsedTicks,MAHARAKA_WATERPANG_WATERFALL_HIT_RADIUS_M,MAHARAKA_WATERPANG_WATERFALL_HIT_TICK,
         MAHARAKA_WATERPANG_WATERFALL_SECOND_HIT_TICK,sectorDegrees,tracks.c_str(),posed ? "" : "unposed:",facing,
         originDistance,originAngle,sounds.empty() ? "none" : sounds.c_str(),m_ActorInstances[0].c_str());
     Write_EffectFailureDiagnostic("maharaka.waterpang.waterfall",line);

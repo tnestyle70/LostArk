@@ -153,6 +153,13 @@ public:
 	{
 		return m_Replication.Get_LocalCharacter();
 	}
+	const LostArk::Shared::PLAYER_SNAPSHOT* Get_CameraPlayerSnapshot() const
+	{ return m_Replication.Get_CameraPlayerSnapshot(); }
+	bool_t Should_ShowPlayerWorldUI(LostArk::Shared::NET_ENTITY_ID entityId) const
+	{ return m_Replication.Should_ShowKoukuPlayerWorldUI(entityId); }
+	bool_t Should_ShowDamageWorldUI(LostArk::Shared::NET_ENTITY_ID targetId,
+		LostArk::Shared::PLAYER_ID sourcePlayerId) const
+	{ return m_Replication.Should_ShowKoukuDamageWorldUI(targetId, sourcePlayerId); }
 	/* Party roster window (CMainApp): the Server roster and the per-player HP / madness join. */
 	void Drain_ChatLines(std::vector<CClientReplication::CHAT_LINE>& outLines)
 	{

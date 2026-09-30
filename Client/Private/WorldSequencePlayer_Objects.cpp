@@ -1866,9 +1866,10 @@ void CWorldSequencePlayer::Retire_Sounds(ACTIVE_INSTANCE& active)
 {
     // Only handles survive natural visual completion. Camera, actor and control
     // clocks retain their authored duration and explicit Stop still owns cleanup.
+    const f32_t elapsedMs = m_SourceToSoundTime ? m_ExternalSoundElapsedMs : active.elapsedMs;
     for (const auto& sound : active.sounds)
-        if (!sound.loopToDuration && sound.handle && sound.endElapsedMs > active.elapsedMs)
-            m_RetiredSounds.push_back({active.instanceId, sound.handle, sound.endElapsedMs - active.elapsedMs});
+        if (!sound.loopToDuration && sound.handle && sound.endElapsedMs > elapsedMs)
+            m_RetiredSounds.push_back({active.instanceId, sound.handle, sound.endElapsedMs - elapsedMs});
         else CGameInstance::Get().Stop_SoundCue(sound.handle);
     active.sounds.clear();
 }
@@ -1910,6 +1911,7 @@ void CWorldSequencePlayer::Apply_Sounds(ACTIVE_INSTANCE& active)
     active.soundPlaybackFinished = false;
     std::unordered_set<std::string> wanted;
     auto& audio = CGameInstance::Get();
+    const f32_t soundElapsedMs = m_SourceToSoundTime ? m_ExternalSoundElapsedMs : active.elapsedMs;
     const auto sampleChain = [&](const std::string& firstId, const f32_t firstStartMs, const f32_t cutoffMs)
     {
         const auto* motion = m_Document.Find_Instance(firstId);
@@ -1930,15 +1932,36 @@ void CWorldSequencePlayer::Apply_Sounds(ACTIVE_INSTANCE& active)
                 if (row.loopToDuration && (active.elapsedMs >= cutoffMs || (!loop && localMs >= period))) continue;
                 if (localMs < row.startMs) continue;
                 const uint64_t last = loop ? static_cast<uint64_t>(std::floor((localMs - row.startMs) / period)) : 0u;
-                const uint64_t first = loop ? static_cast<uint64_t>((std::max)(0.0,
+                uint64_t first = loop ? static_cast<uint64_t>((std::max)(0.0,
                     std::floor((localMs - row.startMs - row.durationMs) / period) + 1.0)) : 0u;
+                const auto soundBirthAt = [&](uint64_t epoch)
+                {
+                    const f32_t birthMs = start + (row.startMs + static_cast<f32_t>(epoch) * period) / rate;
+                    return m_SourceToSoundTime ? m_SourceToSoundTime(birthMs) : birthMs;
+                };
+                if (loop && m_SourceToSoundTime)
+                {
+                    // Find the first still-audible occurrence in the sound clock.
+                    // Source-age bounds would discard tails during visual speedup
+                    // or retain expired voices during visual slow motion.
+                    uint64_t low = 0u, high = last + 1u;
+                    while (low < high)
+                    {
+                        const uint64_t middle = low + (high - low) / 2u;
+                        if ((soundElapsedMs - soundBirthAt(middle)) * rate >= row.durationMs) low = middle + 1u;
+                        else high = middle;
+                    }
+                    first = low;
+                }
                 if (last < first || last - first > 1024u) continue;
                 for (uint64_t epoch = first; epoch <= last; ++epoch)
                 {
                     const f32_t eventMs = row.startMs + static_cast<f32_t>(epoch) * period;
-                    const f32_t ageMs = localMs - eventMs;
                     const f32_t birthMs = start + eventMs / rate;
-                    if (ageMs < 0.f || ageMs >= row.durationMs || birthMs >= cutoffMs) continue;
+                    const f32_t soundBirthMs = soundBirthAt(epoch);
+                    const f32_t ageMs = m_SourceToSoundTime ?
+                        (soundElapsedMs - soundBirthMs) * rate : localMs - eventMs;
+                    if (!std::isfinite(ageMs) || ageMs < 0.f || ageMs >= row.durationMs || birthMs >= cutoffMs) continue;
                     const auto key = firstId + ":" + motion->instanceId + ":" + std::to_string(firstStartMs) +
                         ":" + row.soundTrackId + ":" + std::to_string(epoch);
                     wanted.insert(key);
@@ -1964,7 +1987,7 @@ void CWorldSequencePlayer::Apply_Sounds(ACTIVE_INSTANCE& active)
                             row.loopToDuration ? 0u : row.sourceStartMs + row.durationMs) : 0u;
                         // A missing cue is isolated and remembered, so a broken asset
                         // cannot retrigger file I/O or invalidate an otherwise valid scene.
-                        active.sounds.push_back({key, handle, birthMs + row.durationMs / rate,
+                        active.sounds.push_back({key, handle, soundBirthMs + row.durationMs / rate,
                             mediaDurationMs, cycle, row.loopToDuration});
                         if (!handle) m_Status = "World sequence sound unavailable: " + row.assetId;
                     }

@@ -259,7 +259,8 @@ namespace LostArk::Server
 		static bool Build_WorldTransfer(
 			const SERVER_PLAYER& player,
 			const WORLD_TRIGGER_ACTION& action,
-			SERVER_WORLD_TRANSFER_REQUEST& outTransfer);
+			SERVER_WORLD_TRANSFER_REQUEST& outTransfer,
+			LostArk::Shared::WORLD_ID fromWorldId = LostArk::Shared::WORLD_ID::END);
 
 	private:
 		std::vector<RUNTIME_TRIGGER> m_Triggers;

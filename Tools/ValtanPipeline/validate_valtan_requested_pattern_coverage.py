@@ -210,14 +210,15 @@ def _validate_status_patterns(
 
     expected_status_events = {
         "VALTAN_STAGGER_SLOT": (
-            ("CHANNEL", None, 0, 12000),
+            ("CHANNEL", "SET_STAGGER_GAUGE", 50000, 12000),
             ("FINAL_ATTACK", None, 0, 3000),
         ),
         "VALTAN_GROGGY_FOLLOWUP": (
             ("GROGGY", "SET_BOSS_FLAG", True, 6833),
         ),
         "VALTAN_BIND_SLOT": (
-            ("STEP_01", "SET_PLAYER_BIND", 5000, 5000),
+            ("STEP_01", "SET_PLAYER_BIND", 5000,
+             gameplay_by_id["VALTAN_BIND_SLOT"]["stages"][0]["durationMs"]),
             ("RECOVERY", None, 0, 3533),
         ),
         "VALTAN_SILENCE_SLOT": (
@@ -364,12 +365,14 @@ def _validate_status_patterns(
             if ("verticalOffsetM" in gameplay_row or
                     channel.get("verticalOffsetM") != 0.5 or
                     "verticalOffsetM" in final_attack or
-                    channel.get("bossResponse") != {
-                        "kind": "ACCUMULATED_HEALTH_DAMAGE",
-                        "threshold": 10000,
-                    } or
+                    "bossResponse" in channel or
+                    [(event.get("trigger"), event.get("kind"), event.get("value"))
+                     for event in channel.get("events", [])] != [
+                        ("ENTER", "SET_STAGGER_GAUGE", 50000),
+                        ("EXIT", "SET_STAGGER_GAUGE", 0),
+                    ] or
                     success != {
-                        "outcome": "HEALTH_DAMAGE_THRESHOLD_REACHED",
+                        "outcome": "STAGGER_BROKEN",
                         "nextActionId": None,
                         "nextPatternId": "VALTAN_GROGGY_FOLLOWUP",
                     } or
@@ -385,8 +388,8 @@ def _validate_status_patterns(
                         "firstOffsetMs": 1000, "intervalMs": 0,
                     } or
                     final_attack.get("hit", {}).get("serverDamageProfileId") !=
-                    "damage.valtan.omnidirectional-wipe-130"):
-                raise CoverageError("magic-orb damage response or wipe contract differs")
+                    "damage.valtan.magic-orb-failure"):
+                raise CoverageError("magic-orb independent stagger or wipe contract differs")
         gameplay_stage_by_id = {stage["stageId"]: stage for stage in gameplay_stages}
         for stage in presentation_stages:
             stage_id = stage["stageId"]

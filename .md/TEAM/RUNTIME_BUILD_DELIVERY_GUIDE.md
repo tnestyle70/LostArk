@@ -440,9 +440,11 @@ portable v6 wrapper는 이 로그를 만들지 않으며 오류 창 또는 `--ch
 Client 로그를 확인한다. 10초 동안 살아 있다는 사실은 Lobby 진입 또는 이후 게임플레이 성공의
 증거가 아니다. Client/UI의 최종 화면 확인은 사용자가 수행한다.
 
-Debug 저작 기능은 Server + Client profile에서 사용자가 직접 확인한다. Release에서는 F1/Workbench가
-노출되지 않으므로 제품 Lobby/Level 진입만 확인한다. 화면과 음향 fidelity는 자동 설치 결과가 아니라
-사용자의 수동 smoke 판정이다.
+Debug 저작 기능은 Server + Client profile에서 사용자가 직접 확인한다. Release F1은 Balance Test,
+게시 패턴 재생·관문 재시작과 Battle Items 지급 등 `AGENTS.md`의 제품 검증 범위를 제공한다.
+Battle Items의 `Give all four (10 each)`는 서버 인벤토리에 지급하며, `I`에서 HUD 1~4번 슬롯에
+등록하고 F1을 닫은 뒤 숫자키로 사용한다. 전체 저작 Workbench와는 범위가 다르다.
+화면과 음향 fidelity는 자동 설치 결과가 아니라 사용자의 수동 smoke 판정이다.
 
 ## 연결 종료 진단 수집
 

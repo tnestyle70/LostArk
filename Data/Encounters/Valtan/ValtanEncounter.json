@@ -6588,7 +6588,7 @@
           "branches": [
             {
               "outcome": "TIMEOUT",
-              "nextActionId": null
+              "nextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02"
             }
           ]
         },
@@ -6679,7 +6679,7 @@
           "branches": [
             {
               "outcome": "TIMEOUT",
-              "nextActionId": null
+              "nextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02"
             }
           ]
         },
@@ -6714,7 +6714,7 @@
           "branches": [
             {
               "outcome": "TIMEOUT",
-              "nextActionId": null
+              "nextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02"
             }
           ]
         },
@@ -7460,7 +7460,7 @@
           "branches": [
             {
               "outcome": "TIMEOUT",
-              "nextActionId": null
+              "nextActionId": "valtan.sequence.rush-if.recharge-wait-02"
             }
           ]
         },
@@ -7551,7 +7551,7 @@
           "branches": [
             {
               "outcome": "TIMEOUT",
-              "nextActionId": null
+              "nextActionId": "valtan.sequence.rush-if.recharge-wait-02"
             }
           ]
         },
@@ -7586,7 +7586,7 @@
           "branches": [
             {
               "outcome": "TIMEOUT",
-              "nextActionId": null
+              "nextActionId": "valtan.sequence.rush-if.recharge-wait-02"
             }
           ]
         },
@@ -8081,7 +8081,8 @@
           "knockdown": false,
           "downMs": 0,
           "motion": {
-            "kind": "TO_ARENA_CENTER"
+            "kind": "FORWARD",
+            "distance": 6.0
           }
         },
         {
@@ -10693,9 +10694,25 @@
           "pushMs": 0,
           "knockdown": false,
           "downMs": 0,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "SET_STAGGER_GAUGE",
+              "targetId": "boss.gauge.stagger",
+              "value": 50000,
+              "durationMs": 0
+            },
+            {
+              "trigger": "EXIT",
+              "kind": "SET_STAGGER_GAUGE",
+              "targetId": "boss.gauge.stagger",
+              "value": 0,
+              "durationMs": 0
+            }
+          ],
           "branches": [
             {
-              "outcome": "HEALTH_DAMAGE_THRESHOLD_REACHED",
+              "outcome": "STAGGER_BROKEN",
               "nextActionId": null,
               "nextPatternId": "VALTAN_GROGGY_FOLLOWUP"
             },
@@ -10704,10 +10721,6 @@
               "nextActionId": "valtan.authoring.stagger-slot.final-attack"
             }
           ],
-          "bossResponse": {
-            "kind": "ACCUMULATED_HEALTH_DAMAGE",
-            "threshold": 10000
-          },
           "verticalOffsetM": 0.5
         },
         {
@@ -11031,29 +11044,7 @@
           "pushRangeM": 0.0,
           "pushMs": 0,
           "knockdown": false,
-          "downMs": 0,
-          "actions": [
-            {
-              "trigger": "ENTER",
-              "kind": "SPAWN_COMBAT_OBJECT_VOLLEY",
-              "targetId": "combatobject.valtan.part-break.rock",
-              "targetingPolicy": "BOSS_RELATIVE",
-              "countPerResolvedTarget": 4,
-              "layout": "RADIAL",
-              "radiusM": 4.9497475,
-              "startAngleDegrees": 45.0,
-              "angleStepDegrees": 90.0,
-              "allowOverlap": false,
-              "maximumTotalObjects": 4,
-              "spawnCount": 1,
-              "firstSpawnOffsetMs": 0,
-              "spawnIntervalMs": 0,
-              "arenaRandomCount": 0,
-              "arenaRandomRadiusM": 0,
-              "arenaHeightToleranceM": 0,
-              "arenaAnchorPolicy": "NONE"
-            }
-          ]
+          "downMs": 0
         }
       ]
     },

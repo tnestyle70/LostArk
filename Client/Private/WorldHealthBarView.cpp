@@ -200,15 +200,15 @@ void Client::CWorldHealthBarView::Update(const f32_t timeDelta,
 				if (bar.armorBreakView->Get_SlotRect("Valtan_ArmorBreakReady", rx, ry, width, height))
 				{
 					bar.armorBreakView->Set_SlotPosition("Valtan_ArmorBreakReady",
-						screen.x * bar.armorBreakView->Get_ResolutionWidth() / viewport.x - width * 0.5f,
-						screen.y * bar.armorBreakView->Get_ResolutionHeight() / viewport.y + 8.f);
+						screen.x * bar.armorBreakView->Get_ResolutionWidth() / viewport.x - width * 0.5f - 24.f,
+						screen.y * bar.armorBreakView->Get_ResolutionHeight() / viewport.y - 40.f);
 					bar.armorBreakView->Set_SlotVisible("Valtan_ArmorBreakReady", true);
 					bar.armorBreakView->Update(timeDelta);
 				}
 			}
 			const f32_t remaining = valtan->Get_ArmorBreakFeedbackRemainingSeconds();
 			if (remaining > 0.f)
-				m_BreakTexts.push_back({ float2_t(screen.x, screen.y + 22.f * viewport.y / 720.f),
+				m_BreakTexts.push_back({ float2_t(screen.x, screen.y - 2.f * viewport.y / 720.f),
 					(std::min)(1.f, remaining / 0.3f) });
 		}
 		const auto& frame = bar.rects[0];

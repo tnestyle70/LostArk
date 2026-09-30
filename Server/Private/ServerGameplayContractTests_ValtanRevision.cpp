@@ -1,6 +1,7 @@
 #include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
 #include "BossCombatRuntime.h"
+#include "ServerCombatHitRuntime.h"
 #include "GameplayCatalog.h"
 #include "GameRoom.h"
 #include "ServerNavigation.h"
@@ -19,6 +20,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <iterator>
 #include <limits>
@@ -119,7 +121,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanRevision(TESTS& t
 			return room;
 		};
 		const auto advanceStatusOccurrence = [](CGameRoom& room,
-			const std::uint32_t tick)
+			const std::uint32_t tick,
+			const std::function<void(const CGameRoom&)>& afterStageTransaction = {})
 		{
 			if (!room.Is_Ready() || room.m_WorldEntities.empty())
 				return false;
@@ -149,6 +152,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanRevision(TESTS& t
 					return false;
 				}
 			}
+			if (afterStageTransaction)
+				afterStageTransaction(room);
 			room.m_iServerTick = 0u == tick ? 0u : tick - 1u;
 			room.Update_Players(1.f / 30.f);
 			room.m_iServerTick = tick;
@@ -211,6 +216,13 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanRevision(TESTS& t
 		bool magicOccurrenceValid = advanceStatusOccurrence(*magicRoom, 1000u);
 		SERVER_WORLD_ENTITY& magicBoss = magicRoom->m_WorldEntities.front();
 		const float magicBaseY = magicBoss.fSpawnPositionY;
+		const auto maximum = magicRoom->m_GameplayCatalog.Active().Get_RaidStaggerMaximum();
+		if (maximum <= 4u || static_cast<std::uint64_t>(maximum) * 1000u >
+			(std::numeric_limits<std::uint32_t>::max)())
+		{
+			tests.Require(false, "Common stagger maximum admits the explicit raw/1000 fixture inputs");
+			return;
+		}
 		magicOccurrenceValid = magicOccurrenceValid &&
 			"VALTAN_STAGGER_SLOT" == magicBoss.strPatternId &&
 			"CHANNEL" == magicBoss.strPatternStageId &&
@@ -220,95 +232,92 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanRevision(TESTS& t
 			magicBoss.bPatternStageVerticalOffsetApplied &&
 			std::abs(magicBoss.fPatternStageVerticalBaseY - magicBaseY) < 0.001f &&
 			std::abs(magicBoss.fPositionY - magicBaseY - 0.5f) < 0.001f &&
-			BOSS_PATTERN_BOSS_RESPONSE_KIND::ACCUMULATED_HEALTH_DAMAGE ==
-				magicBoss.ePatternBossResponseKind &&
-			1000u == magicBoss.iPatternBossResponseThreshold &&
-			0u == magicBoss.iPatternBossResponseAccumulatedHealthDamage &&
-			!magicBoss.bPatternBossResponsePublished;
-
-		BOSS_INCOMING_HIT underThreshold{};
-		underThreshold.iSourcePlayerId = 19600u;
-		underThreshold.iSkillId = 34040u;
-		underThreshold.iRawDamage = 999u;
-		underThreshold.iServerTick = 1001u;
-		const BOSS_HIT_RESULT underThresholdResult =
-			CBossCombatRuntime::Apply_PlayerHit(magicBoss, underThreshold);
-		magicOccurrenceValid = magicOccurrenceValid &&
-			999u == underThresholdResult.iHealthDamage &&
-			!underThresholdResult.bHealthDamageThresholdReached &&
-			999u == magicBoss.iPatternBossResponseAccumulatedHealthDamage &&
-			magicBoss.BossCombat.PendingOutcomes.empty();
-
-		magicBoss.BossCombat.iShieldCurrent = 1u;
-		magicBoss.BossCombat.iShieldMaximum = 1u;
-		(void)CBossCombatRuntime::Set_Flag(
-			magicBoss.BossCombat, SERVER_BOSS_COMBAT_FLAG::SHIELDED, true);
-		BOSS_INCOMING_HIT shieldOnly = underThreshold;
-		shieldOnly.iRawDamage = 1u;
-		shieldOnly.iServerTick = 1002u;
-		const BOSS_HIT_RESULT shieldOnlyResult =
-			CBossCombatRuntime::Apply_PlayerHit(magicBoss, shieldOnly);
-		magicOccurrenceValid = magicOccurrenceValid &&
-			1u == shieldOnlyResult.iShieldDamage &&
-			0u == shieldOnlyResult.iHealthDamage &&
-			999u == magicBoss.iPatternBossResponseAccumulatedHealthDamage;
-
-		(void)CBossCombatRuntime::Set_Flag(
-			magicBoss.BossCombat, SERVER_BOSS_COMBAT_FLAG::INVULNERABLE, true);
-		BOSS_INCOMING_HIT invulnerable = underThreshold;
-		invulnerable.iRawDamage = 100u;
-		invulnerable.iServerTick = 1003u;
-		const BOSS_HIT_RESULT invulnerableResult =
-			CBossCombatRuntime::Apply_PlayerHit(magicBoss, invulnerable);
-		(void)CBossCombatRuntime::Set_Flag(
-			magicBoss.BossCombat, SERVER_BOSS_COMBAT_FLAG::INVULNERABLE, false);
-		magicOccurrenceValid = magicOccurrenceValid &&
-			invulnerableResult.bBlockedByInvulnerability &&
-			0u == invulnerableResult.iHealthDamage &&
-			999u == magicBoss.iPatternBossResponseAccumulatedHealthDamage;
-
-		BOSS_INCOMING_HIT thresholdEdge = underThreshold;
-		thresholdEdge.iRawDamage = 1u;
-		thresholdEdge.iServerTick = 1004u;
-		const BOSS_HIT_RESULT thresholdEdgeResult =
-			CBossCombatRuntime::Apply_PlayerHit(magicBoss, thresholdEdge);
-		BOSS_INCOMING_HIT afterThreshold = underThreshold;
-		afterThreshold.iRawDamage = 50u;
-		afterThreshold.iServerTick = 1005u;
-		const BOSS_HIT_RESULT afterThresholdResult =
-			CBossCombatRuntime::Apply_PlayerHit(magicBoss, afterThreshold);
-		const bool magicPublishedOnce = magicOccurrenceValid &&
-			thresholdEdgeResult.bHealthDamageThresholdReached &&
-			!afterThresholdResult.bHealthDamageThresholdReached &&
-			1000u == magicBoss.iPatternBossResponseAccumulatedHealthDamage &&
-			magicBoss.bPatternBossResponsePublished &&
+			BOSS_PATTERN_BOSS_RESPONSE_KIND::NONE == magicBoss.ePatternBossResponseKind &&
+			0u == magicBoss.iPatternBossResponseThreshold &&
+			maximum == magicBoss.BossCombat.iStaggerMaximum &&
+			0u == magicBoss.BossCombat.iStaggerCurrent;
+		const auto hpBefore = magicBoss.iCurrentHp;
+		SERVER_PLAYER_TO_WORLD_HIT hit{};
+		hit.iSourcePlayerId = 19600u; hit.iSkillId = 34040u;
+		hit.iServerTick = 1001u; hit.iRawDamage = 999u; hit.bStaggerDisabled = true;
+		(void)CServerCombatHitRuntime::Apply_PlayerToWorld(magicBoss, hit, magicRoom->m_TickDamageEvents);
+		magicOccurrenceValid = magicOccurrenceValid && magicBoss.iCurrentHp == hpBefore - 999u &&
+			magicBoss.BossCombat.iStaggerCurrent == 0u;
+		// The independent skill stagger channel carries its raw damage basis while HP stays unchanged.
+		hit.bStaggerDisabled = false; hit.bHealthDamageDisabled = true;
+		hit.iRawDamage = static_cast<std::uint32_t>(static_cast<std::uint64_t>(maximum - 4u) * 1000u);
+		hit.iServerTick = 1002u;
+		(void)CServerCombatHitRuntime::Apply_PlayerToWorld(magicBoss, hit, magicRoom->m_TickDamageEvents);
+		magicOccurrenceValid = magicOccurrenceValid && magicBoss.iCurrentHp == hpBefore - 999u &&
+			magicBoss.BossCombat.iStaggerCurrent == maximum - 4u;
+		// Shield absorption and HP reduction do not change the pre-HP stagger basis.
+		(void)CBossCombatRuntime::Set_Shield(magicBoss.BossCombat, 1000u);
+		hit.bHealthDamageDisabled = false; hit.iRawDamage = 1000u; hit.iServerTick = 1003u;
+		(void)CServerCombatHitRuntime::Apply_PlayerToWorld(magicBoss, hit, magicRoom->m_TickDamageEvents);
+		magicOccurrenceValid = magicOccurrenceValid && magicBoss.iCurrentHp == hpBefore - 999u &&
+			0u == magicBoss.BossCombat.iShieldCurrent && magicBoss.BossCombat.iStaggerCurrent == maximum - 3u;
+		magicBoss.iKoukuDamageReductionWindows = 1u;
+		hit.iServerTick = 1004u;
+		(void)CServerCombatHitRuntime::Apply_PlayerToWorld(magicBoss, hit, magicRoom->m_TickDamageEvents);
+		magicBoss.iKoukuDamageReductionWindows = 0u;
+		magicOccurrenceValid = magicOccurrenceValid && magicBoss.iCurrentHp == hpBefore - 1000u &&
+			magicBoss.BossCombat.iStaggerCurrent == maximum - 2u;
+		// Typed invulnerability blocks HP only; the established independent stagger policy remains active.
+		(void)CBossCombatRuntime::Set_Flag(magicBoss.BossCombat, SERVER_BOSS_COMBAT_FLAG::INVULNERABLE, true);
+		hit.iServerTick = 1005u;
+		(void)CServerCombatHitRuntime::Apply_PlayerToWorld(magicBoss, hit, magicRoom->m_TickDamageEvents);
+		(void)CBossCombatRuntime::Set_Flag(magicBoss.BossCombat, SERVER_BOSS_COMBAT_FLAG::INVULNERABLE, false);
+		magicOccurrenceValid = magicOccurrenceValid && magicBoss.iCurrentHp == hpBefore - 1000u &&
+			magicBoss.BossCombat.iStaggerCurrent == maximum - 1u && magicBoss.BossCombat.PendingOutcomes.empty();
+		// Pattern invulnerability is the existing admission boundary that blocks both channels.
+		magicBoss.bPatternInvulnerable = true;
+		hit.iServerTick = 1006u;
+		(void)CServerCombatHitRuntime::Apply_PlayerToWorld(magicBoss, hit, magicRoom->m_TickDamageEvents);
+		magicBoss.bPatternInvulnerable = false;
+		magicOccurrenceValid = magicOccurrenceValid && magicBoss.iCurrentHp == hpBefore - 1000u &&
+			magicBoss.BossCombat.iStaggerCurrent == maximum - 1u && magicBoss.BossCombat.PendingOutcomes.empty();
+		hit.bHealthDamageDisabled = true;
+		for (const auto tick : {1007u, 1008u})
+		{
+			hit.iServerTick = tick;
+			(void)CServerCombatHitRuntime::Apply_PlayerToWorld(magicBoss, hit, magicRoom->m_TickDamageEvents);
+		}
+		magicOccurrenceValid = magicOccurrenceValid && magicBoss.iCurrentHp == hpBefore - 1000u &&
+			maximum == magicBoss.BossCombat.iStaggerCurrent &&
 			1u == magicBoss.BossCombat.PendingOutcomes.size() &&
-			BOSS_PATTERN_STAGE_OUTCOME::HEALTH_DAMAGE_THRESHOLD_REACHED ==
-				magicBoss.BossCombat.PendingOutcomes.front().eOutcome;
-		magicOccurrenceValid = magicPublishedOnce &&
-			advanceStatusOccurrence(*magicRoom, 1006u) &&
+			BOSS_PATTERN_STAGE_OUTCOME::STAGGER_BROKEN == magicBoss.BossCombat.PendingOutcomes.front().eOutcome &&
+			advanceStatusOccurrence(*magicRoom, 1009u) &&
 			magicBoss.PendingPatternFollowup.Is_Pending() &&
-			"VALTAN_GROGGY_FOLLOWUP" ==
-				magicBoss.PendingPatternFollowup.strPatternId &&
-			magicBoss.strPatternId.empty() &&
+			"VALTAN_GROGGY_FOLLOWUP" == magicBoss.PendingPatternFollowup.strPatternId && magicBoss.strPatternId.empty() &&
 			!magicBoss.bPatternVerticalOffsetApplied &&
 			!magicBoss.bPatternStageVerticalOffsetApplied &&
 			std::abs(magicBoss.fPositionY - magicBaseY) < 0.001f &&
-			BOSS_PATTERN_BOSS_RESPONSE_KIND::NONE ==
-				magicBoss.ePatternBossResponseKind &&
+			0u == magicBoss.BossCombat.iStaggerMaximum && 0u == magicBoss.BossCombat.iStaggerCurrent &&
+			BOSS_PATTERN_BOSS_RESPONSE_KIND::NONE == magicBoss.ePatternBossResponseKind &&
 			0u == magicBoss.iPatternBossResponseThreshold &&
-			0u == magicBoss.iPatternBossResponseAccumulatedHealthDamage &&
-			!magicBoss.bPatternBossResponsePublished &&
-			advanceStatusOccurrence(*magicRoom, 1007u);
-		tests.Require(
-			magicOccurrenceValid &&
-			"VALTAN_GROGGY_FOLLOWUP" == magicBoss.strPatternId &&
-			"GROGGY" == magicBoss.strPatternStageId &&
-			"valtan.followup.groggy.active" == magicBoss.strActionId &&
+			0u == magicBoss.iPatternBossResponseAccumulatedHealthDamage && !magicBoss.bPatternBossResponsePublished &&
+			advanceStatusOccurrence(*magicRoom, 1010u);
+		tests.Require(magicOccurrenceValid && "VALTAN_GROGGY_FOLLOWUP" == magicBoss.strPatternId &&
+			"GROGGY" == magicBoss.strPatternStageId && "valtan.followup.groggy.active" == magicBoss.strActionId &&
 			std::abs(magicBoss.fPositionY - magicBaseY) < 0.001f &&
-			CBossCombatRuntime::Has_Flag(
-				magicBoss.BossCombat, SERVER_BOSS_COMBAT_FLAG::GROGGY),
-			"Magic-orb channel counts only confirmed HP damage, saturates at 1000, publishes once, restores base Y and starts the separate Groggy follow-up");
+			CBossCombatRuntime::Has_Flag(magicBoss.BossCombat, SERVER_BOSS_COMBAT_FLAG::GROGGY),
+			"Magic-orb uses common raw/1000 stagger independently of HP, shield and reduction, publishes once, clears on EXIT and restores Y before Groggy");
+		auto whirlwindRoom = prepareStatusRoom("VALTAN_STAGGER_SLOT", 19725u);
+		bool whirlwindValid = advanceStatusOccurrence(*whirlwindRoom, 1500u);
+		auto& whirlwindBoss = whirlwindRoom->m_WorldEntities.front();
+		const auto whirlwindHp = whirlwindBoss.iCurrentHp;
+		hit.iStaggerMaximumDivisor = 3u; hit.iRawDamage = 1u; hit.bHealthDamageDisabled = true;
+		const auto third = maximum / 3u + (maximum % 3u ? 1u : 0u);
+		for (std::uint32_t index = 1u; index <= 3u; ++index)
+		{
+			hit.iServerTick = 1500u + index;
+			(void)CServerCombatHitRuntime::Apply_PlayerToWorld(whirlwindBoss, hit, whirlwindRoom->m_TickDamageEvents);
+			whirlwindValid = whirlwindValid && whirlwindBoss.iCurrentHp == whirlwindHp &&
+				whirlwindBoss.BossCombat.iStaggerCurrent == (std::min)(maximum, third * index) &&
+				whirlwindBoss.BossCombat.PendingOutcomes.size() == (index == 3u ? 1u : 0u);
+		}
+		tests.Require(whirlwindValid,
+			"Magic-orb consumes the existing whirlwind one-third credit and saturates the common gauge on the third confirmed hit");
 
 		auto magicFailureRoom = prepareStatusRoom(
 			"VALTAN_STAGGER_SLOT", 19750u);
@@ -479,6 +488,52 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanRevision(TESTS& t
 			forwardHalfPlaneExact,
 			"Counter source admission uses a radiusless closed boss-forward 180-degree half-plane while retaining the legacy local-circle proxy");
 
+		const auto* statusPatterns = catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
+		if (nullptr == statusPatterns)
+		{
+			tests.Require(false, "Catalog has Valtan definitions for authored Bind clocks");
+			return;
+		}
+		const auto bindDefinition = std::find_if(statusPatterns->begin(), statusPatterns->end(),
+			[](const BOSS_PATTERN_DEFINITION& definition) { return definition.strPatternId == "VALTAN_BIND_SLOT"; });
+		if (statusPatterns->end() == bindDefinition || bindDefinition->Stages.size() < 2u)
+		{
+			tests.Require(false, "Catalog has a Bind hold and recovery definition");
+			return;
+		}
+		const auto bindDurationMs = bindDefinition->Stages.front().iDurationMs;
+		const auto bindTicks = (bindDurationMs * 30u + 999u) / 1000u;
+		const auto recoveryDurationMs = bindDefinition->Stages[1u].iDurationMs;
+		const auto recoveryTicks = (recoveryDurationMs * 30u + 999u) / 1000u;
+		const auto bindRecoveryTick = 2000u + bindTicks - 1u;
+		std::ostringstream bindDiagnostics;
+		const auto recordBindState = [&bindDiagnostics](const char* label, const CGameRoom& room,
+			const PLAYER_ID playerId, const bool valid)
+		{
+			const auto& boss = room.m_WorldEntities.front();
+			bindDiagnostics << "[BindDiagnostic] " << label << " valid=" << valid
+				<< " tick=" << room.m_iServerTick << " roomReady=" << room.Is_Ready()
+				<< " status=" << room.m_strStatus << " stage=" << boss.strPatternStageId
+				<< " duration=" << boss.iPatternStageDurationMs << " firstEvaluation=" << boss.iPatternStageFirstEvaluationTick
+				<< " sequence=" << boss.iPatternSequence << " target=" << boss.iPatternTargetEntityId
+				<< " terminal=" << static_cast<unsigned>(boss.PatternTerminalReceipt.eResult)
+				<< " player=" << playerId;
+			const auto found = room.m_Players.find(playerId);
+			if (found != room.m_Players.end())
+			{
+				const auto& p = found->second;
+				bindDiagnostics << " hp=" << p.iCurrentHp << " bound=" << p.bPatternBound
+					<< " ready=" << p.isCombatReady << " restoreReady=" << p.bPatternBindRestoreCombatReady
+					<< " owner=" << p.iPatternBindOwnerNetEntityId << " end=" << p.iPatternBindEndTick
+					<< " entity=" << p.iNetEntityId << " action=" << static_cast<unsigned>(p.eAction)
+					<< " skill=" << p.iCurrentSkillId << " skillSequence=" << p.iLastSkillSequence
+					<< " resource=" << p.iCurrentResource << " moveGoal=" << p.hasMoveGoal
+					<< " pose=" << p.fPositionX << ',' << p.fPositionY << ',' << p.fPositionZ
+					<< " restore=" << p.fPatternBindRestoreX << ',' << p.fPatternBindRestoreY << ',' << p.fPatternBindRestoreZ
+					<< " knockback=" << p.fKnockbackRemainingSeconds;
+			}
+			bindDiagnostics << '\n';
+		};
 		auto bindRoom = prepareStatusRoom("VALTAN_BIND_SLOT", 19800u);
 		const bool bindStarted = advanceStatusOccurrence(*bindRoom, 2000u);
 		SERVER_WORLD_ENTITY& bindBoss = bindRoom->m_WorldEntities.front();
@@ -503,15 +558,16 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanRevision(TESTS& t
 			bindRestoreZ = bound.fPatternBindRestoreZ;
 			bindOccurrenceValid =
 				bindBoss.iPatternTargetEntityId == bound.iNetEntityId &&
-				5000u == bindBoss.iPatternStageDurationMs &&
+				bindDurationMs == bindBoss.iPatternStageDurationMs &&
 				0u != bound.iCurrentHp &&
-				150u == bound.iPatternBindEndTick - 2000u &&
+				bindTicks == bound.iPatternBindEndTick - 2000u &&
 				std::abs(bound.fPositionX - bindRestoreX) < 0.001f &&
 				std::abs(bound.fPositionY - bindRestoreY - 5.f) < 0.001f &&
 				std::abs(bound.fPositionZ - bindRestoreZ) < 0.001f &&
-				!bound.isCombatReady && !bound.hasMoveGoal &&
+				bound.isCombatReady && bound.bPatternBindRestoreCombatReady && !bound.hasMoveGoal &&
 				!bindRoom->m_Players.at(19602u).bPatternBound;
 		}
+		recordBindState("entry", *bindRoom, boundPlayerId, bindOccurrenceValid);
 		if (bindOccurrenceValid)
 		{
 			const SESSION_ID sessionId = 20600u + (boundPlayerId - 19600u);
@@ -534,8 +590,9 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanRevision(TESTS& t
 				0u == blocked.iLastSkillSequence &&
 				resourceBefore == blocked.iCurrentResource;
 		}
+		recordBindState("input-block", *bindRoom, boundPlayerId, bindOccurrenceValid);
 		for (std::uint32_t tick = 2001u;
-			bindOccurrenceValid && tick < 2149u; ++tick)
+			bindOccurrenceValid && tick < bindRecoveryTick; ++tick)
 		{
 			bindOccurrenceValid = advanceStatusOccurrence(*bindRoom, tick);
 		}
@@ -543,35 +600,58 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanRevision(TESTS& t
 		const bool boundThroughLastTick = bindOccurrenceValid &&
 			bindRoom->m_Players.end() != lastBoundTickEntry &&
 			lastBoundTickEntry->second.bPatternBound &&
-			2150u == lastBoundTickEntry->second.iPatternBindEndTick;
+			2000u + bindTicks == lastBoundTickEntry->second.iPatternBindEndTick;
+		recordBindState("last-bound", *bindRoom, boundPlayerId, boundThroughLastTick);
+		const float pendingBindPushSeconds = bindRoom->m_Players.end() != lastBoundTickEntry ?
+			lastBoundTickEntry->second.fKnockbackRemainingSeconds : 0.f;
+		const auto hpBeforeRecovery = bindRoom->m_Players.end() != lastBoundTickEntry ?
+			lastBoundTickEntry->second.iCurrentHp : 0u;
+		bool releasedOnRecoveryEntry = false;
 		bindOccurrenceValid = bindOccurrenceValid &&
-			advanceStatusOccurrence(*bindRoom, 2149u);
+			advanceStatusOccurrence(*bindRoom, bindRecoveryTick, [&](const CGameRoom& transitionRoom)
+			{
+				const auto restored = transitionRoom.m_Players.find(boundPlayerId);
+				const auto& transitionBoss = transitionRoom.m_WorldEntities.front();
+				// Observe the actual EXIT transaction before normal movement for this tick.
+				releasedOnRecoveryEntry = "RECOVERY" == transitionBoss.strPatternStageId &&
+					recoveryDurationMs == transitionBoss.iPatternStageDurationMs &&
+					transitionRoom.m_Players.end() != restored && !restored->second.bPatternBound &&
+					INVALID_NET_ENTITY_ID == restored->second.iPatternBindOwnerNetEntityId &&
+					0u == restored->second.iPatternBindEndTick && restored->second.isCombatReady &&
+					std::abs(restored->second.fPositionX - bindRestoreX) < 0.001f &&
+					std::abs(restored->second.fPositionY - bindRestoreY) < 0.001f &&
+					std::abs(restored->second.fPositionZ - bindRestoreZ) < 0.001f &&
+					restored->second.iCurrentHp == hpBeforeRecovery &&
+					std::abs(restored->second.fKnockbackRemainingSeconds - pendingBindPushSeconds) < 0.0001f;
+				recordBindState("exit-before-player-tick", transitionRoom, boundPlayerId, releasedOnRecoveryEntry);
+			});
 		const auto recoveryBindEntry = bindRoom->m_Players.find(boundPlayerId);
-		const bool releasedOnRecoveryEntry = bindOccurrenceValid &&
-			"RECOVERY" == bindBoss.strPatternStageId &&
-			3533u == bindBoss.iPatternStageDurationMs &&
-			bindRoom->m_Players.end() != recoveryBindEntry &&
-			!recoveryBindEntry->second.bPatternBound &&
-			INVALID_NET_ENTITY_ID ==
-				recoveryBindEntry->second.iPatternBindOwnerNetEntityId &&
-			0u == recoveryBindEntry->second.iPatternBindEndTick &&
+		// The earlier authored stomp remains damageable during Bind. Its pending
+		// push resumes only after EXIT restores the pose and releases the input lock.
+		const bool pendingPushResumedAfterRelease = bindOccurrenceValid && releasedOnRecoveryEntry &&
+			pendingBindPushSeconds > 0.f && hpBeforeRecovery > 0u && hpBeforeRecovery < 100000u &&
+			bindRoom->m_Players.end() != recoveryBindEntry && !recoveryBindEntry->second.bPatternBound &&
 			recoveryBindEntry->second.isCombatReady &&
-			std::abs(recoveryBindEntry->second.fPositionX - bindRestoreX) < 0.001f &&
-			std::abs(recoveryBindEntry->second.fPositionY - bindRestoreY) < 0.001f &&
-			std::abs(recoveryBindEntry->second.fPositionZ - bindRestoreZ) < 0.001f;
-		for (std::uint32_t tick = 2150u;
-			bindOccurrenceValid && tick <= 2260u &&
+			0u == recoveryBindEntry->second.iPatternBindOwnerNetEntityId &&
+			0u == recoveryBindEntry->second.iPatternBindEndTick &&
+			recoveryBindEntry->second.iCurrentHp == hpBeforeRecovery &&
+			recoveryBindEntry->second.fKnockbackRemainingSeconds < pendingBindPushSeconds &&
+			(std::abs(recoveryBindEntry->second.fPositionX - bindRestoreX) > 0.001f ||
+			 std::abs(recoveryBindEntry->second.fPositionZ - bindRestoreZ) > 0.001f);
+		recordBindState("recovery-after-player-tick", *bindRoom, boundPlayerId, pendingPushResumedAfterRelease);
+		bindDiagnostics << "[BindDiagnostic] expectedRestore=" << bindRestoreX << ',' << bindRestoreY << ',' << bindRestoreZ << '\n';
+		for (std::uint32_t tick = bindRecoveryTick + 1u;
+			bindOccurrenceValid && tick <= bindRecoveryTick + recoveryTicks &&
 			0u == bindBoss.PatternTerminalReceipt.iPatternSequence; ++tick)
 		{
 			bindOccurrenceValid = advanceStatusOccurrence(*bindRoom, tick);
 		}
 		const auto releasedBindEntry = bindRoom->m_Players.find(boundPlayerId);
-		/* Recovery owns a separate authored roar hit at 900 ms. The EXIT action
-		   must restore the captured pose exactly on Recovery entry, which is
-		   asserted above; after that point the legitimate roar push may move the
-		   released player before the occurrence completes. */
+		/* Exact restoration is asserted at the EXIT transaction above. Normal
+		   movement then consumes the pending hold-stage stomp push, and Recovery's
+		   separate authored roar at 900 ms can move the released player again. */
 		const bool bindExited = bindOccurrenceValid && boundThroughLastTick &&
-			releasedOnRecoveryEntry &&
+			releasedOnRecoveryEntry && pendingPushResumedAfterRelease &&
 			bindRoom->m_Players.end() != releasedBindEntry &&
 			SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
 				bindBoss.PatternTerminalReceipt.eResult &&
@@ -581,6 +661,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanRevision(TESTS& t
 			0u == releasedBindEntry->second.iPatternBindEndTick &&
 			releasedBindEntry->second.isCombatReady;
 
+		recordBindState("completed", *bindRoom, boundPlayerId, bindExited);
 		auto cancelledBindRoom = prepareStatusRoom("VALTAN_BIND_SLOT", 19900u);
 		bool bindCancelValid = advanceStatusOccurrence(*cancelledBindRoom, 2300u);
 		const auto cancelledEntry = std::find_if(
@@ -622,9 +703,20 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanRevision(TESTS& t
 			std::abs(cancelledBindEntry->second.fPositionZ - cancelRestoreZ) <
 				0.001f &&
 			cancelledBindEntry->second.isCombatReady;
+		recordBindState("cancelled", *cancelledBindRoom, cancelledPlayerId, bindCancelValid);
+		if (!bindOccurrenceValid || !bindExited || !bindCancelValid)
+		{
+			std::cerr << "[BindDiagnostic] summary occurrence=" << bindOccurrenceValid
+				<< " lastBound=" << boundThroughLastTick << " recovery=" << releasedOnRecoveryEntry
+				<< " resumedPush=" << pendingPushResumedAfterRelease
+				<< " exited=" << bindExited << " cancel=" << bindCancelValid
+				<< " duration=" << bindDurationMs << " ticks=" << bindTicks
+				<< " recoveryTick=" << bindRecoveryTick << " recoveryTicks=" << recoveryTicks << '\n'
+				<< bindDiagnostics.str();
+		}
 		tests.Require(
 			bindOccurrenceValid && bindExited && bindCancelValid,
-			"Catalog-loaded Bind slot locks one random alive target at Y+5m for the authored 5000 ms, blocks movement/skills, restores on Recovery entry, and also restores on occurrence cancel");
+			"Catalog-loaded Bind slot locks one random alive target at Y+5m for the catalog-authored duration, blocks movement/skills, restores on Recovery entry, and also restores on occurrence cancel");
 
 		auto soloBindRoom = prepareStatusRoom("VALTAN_BIND_SLOT", 19950u);
 		SERVER_PLAYER soloPlayer = soloBindRoom->m_Players.at(19600u);
@@ -641,9 +733,11 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanRevision(TESTS& t
 			soloBindRoom->m_WorldEntities.front();
 		soloBindValid = soloBindValid &&
 			soloBindRoom->m_Players.at(19600u).bPatternBound &&
-			!soloBindRoom->m_Players.at(19600u).isCombatReady;
+			soloBindRoom->m_Players.at(19600u).isCombatReady &&
+			soloBindRoom->m_Players.at(19600u).bPatternBindRestoreCombatReady;
+		const auto soloRecoveryTick = 2600u + bindTicks - 1u;
 		for (std::uint32_t tick = 2601u;
-			soloBindValid && tick <= 2749u; ++tick)
+			soloBindValid && tick <= soloRecoveryTick; ++tick)
 		{
 			soloBindValid = advanceStatusOccurrence(*soloBindRoom, tick);
 		}
@@ -652,8 +746,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanRevision(TESTS& t
 			!soloBindRoom->m_Players.at(19600u).bPatternBound &&
 			soloBindRoom->m_Players.at(19600u).isCombatReady &&
 			!soloBindBoss.bMechanicLedgerRequiresReset;
-		std::uint32_t soloTick = 2750u;
-		for (; soloBindValid && soloTick <= 2870u &&
+		std::uint32_t soloTick = soloRecoveryTick + 1u;
+		for (; soloBindValid && soloTick <= soloRecoveryTick + recoveryTicks &&
 			0u == soloBindBoss.PatternTerminalReceipt.iPatternSequence;
 			++soloTick)
 		{

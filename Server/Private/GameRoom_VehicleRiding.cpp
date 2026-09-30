@@ -108,7 +108,13 @@ float LostArk::Server::CGameRoom::Resolve_PlayerMoveSpeed(
 			return vehicle->fMoveSpeed;
 		}
 	}
-	return player.fMoveSpeed * Resolve_StanceMoveSpeedScale(player);
+	/* Waterpang water gun E: the source speed-up buff raises the walking speed until its
+	   end tick. It is Maharaka only, so a stale end tick can never follow a player to another room. */
+	const bool waterGunSpeedUp = LostArk::Shared::WORLD_ID::MAHARAKA == m_eWorldId &&
+		0u != player.iWaterGunSpeedEndTick &&
+		static_cast<std::int32_t>(player.iWaterGunSpeedEndTick - m_iServerTick) > 0;
+	return player.fMoveSpeed * Resolve_StanceMoveSpeedScale(player) *
+		(waterGunSpeedUp ? player.fWaterGunSpeedScale : 1.f);
 }
 
 bool LostArk::Server::CGameRoom::Can_RideVehicle(

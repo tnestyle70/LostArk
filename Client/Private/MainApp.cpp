@@ -2132,43 +2132,34 @@ void CMainApp::Update(const f32_t fTimeDelta)
 #ifdef _DEBUG
 		CCombatHUDViewModel::Get().Debug_Tick_DungeonTimer(fTimeDelta);
 #endif
-		/* Retail limits, shown only (nothing ends at zero): every Mario stage 60 s, the card
-		   maze 150 s. Counts from the moment the replicated stage / maze role appears. */
+		// Gameplay owns the deadline. Interpolate only between received Server ticks.
 		{
-			static std::uint8_t s_iSource = 0u;
-			static f32_t s_fSeconds = 0.f;
-			static bool_t s_bDriving = false;
+			static std::uint32_t previousTick = 0u, previousDeadline = 0u;
+			static f32_t snapshotAge = 0.f;
 			CCombatHUDViewModel& HudModel = CCombatHUDViewModel::Get();
-			if (!HudModel.Is_DungeonTimerRunning())
+			const HUD_PLAYER_STATE& player = HudModel.Get_Player();
+			const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+			const auto* subject = arena ? arena->Get_CameraPlayerSnapshot() : nullptr;
+			const auto deadline = subject ? subject->iKoukuMinigameEndTick : player.iKoukuMinigameEndTick;
+			if (previousTick != player.iServerTick || previousDeadline != deadline)
 			{
-				const HUD_PLAYER_STATE& Player = HudModel.Get_Player();
-				std::uint8_t iSource = 0u;
-				if (Player.isValid)
-				{
-					if (Player.iMarioStage >= 1u && Player.iMarioStage <= 4u)
-						iSource = Player.iMarioStage;
-					else if (LostArk::Shared::CARD_MAZE_ROLE::NONE != HudModel.Get_KoukuGimmick().eCardMazeRole)
-						iSource = 5u;
-				}
-				if (iSource != s_iSource)
-				{
-					s_iSource = iSource;
-					s_fSeconds = (5u == iSource) ? 150.f : 60.f;
-				}
-				if (0u != s_iSource)
-				{
-					s_fSeconds = (std::max)(0.f, s_fSeconds - fTimeDelta);
-					HUD_DUNGEON_TIMER_STATE State;
-					State.isVisible = true;
-					State.fSeconds = s_fSeconds;
-					HudModel.Debug_Set_DungeonTimer(State, false);
-					s_bDriving = true;
-				}
-				else if (s_bDriving)
-				{
-					HudModel.Debug_Set_DungeonTimer(HUD_DUNGEON_TIMER_STATE{}, false);
-					s_bDriving = false;
-				}
+				previousTick = player.iServerTick;
+				previousDeadline = deadline;
+				snapshotAge = 0.f;
+			}
+			else snapshotAge += (std::max)(0.f, fTimeDelta);
+			bool_t previewVisible = false;
+#ifdef _DEBUG
+			previewVisible = m_bDungeonTimerPreview;
+#endif
+			if (deadline != 0u || (!HudModel.Is_DungeonTimerRunning() && !previewVisible))
+			{
+				HUD_DUNGEON_TIMER_STATE state{};
+				state.isVisible = player.isValid && deadline != 0u;
+				const auto remainingTicks = deadline - player.iServerTick;
+				state.fSeconds = state.isVisible && remainingTicks <= 0x7fffffffu ?
+					(std::max)(0.f, static_cast<float>(remainingTicks) / 30.f - snapshotAge) : 0.f;
+				HudModel.Set_DungeonTimer(state, false);
 			}
 		}
 		m_pDungeonTimerView->Update(fTimeDelta,
@@ -3936,6 +3927,9 @@ HRESULT CMainApp::Render()
 	if (auto* pValtanArena = CLevel_ValtanArena::Get_Active(); pValtanArena &&
 		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
 		pValtanArena->Submit_TriggerMarkers();
+	if (auto* pMaharaka = CLevel_Development::Get_Active(LEVEL::MAHARAKA); pMaharaka &&
+		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::MAHARAKA))
+		pMaharaka->Submit_TriggerMarkers();
 	HRESULT hWorldResult;
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.World");
@@ -4420,13 +4414,18 @@ HRESULT CMainApp::Render()
 		(ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
 			nullptr != CLevel_CharacterSelect::Get_Active() &&
 			CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
+	// Minigames suppress the combat HUD, but their deadline is product UI in both builds.
+	if (!isCharSelectOverlayOpen && !Is_MvpResultPageOpen() && m_pDungeonTimerView)
+	{
+		CUITextLayerScope TimerText(UI_TEXT_LAYER::HUD);
+		m_pDungeonTimerView->Render();
+	}
 	if (!isCharSelectOverlayOpen && !Is_MvpResultPageOpen() && !Is_KoukuMinigameHUDHidden())
 	{
 		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 		RenderCombatHUDText();
 		RenderBossHealthBarText();
-		if (nullptr != m_pDungeonTimerView)
-			m_pDungeonTimerView->Render();
+
 		RenderChargeGaugeText();
 		RenderSkillCooldownText();
 		/* VALTAN_ARENA-only inside; no CharSelect-preview overlap possible, but grouped with the
@@ -4603,6 +4602,17 @@ HRESULT CMainApp::Render()
 	return CGameInstance::Get().Render_End();
 }
 
+namespace
+{
+	/* Maharaka has no combat HUD of its own. The Waterpang water gun opens the retail pickup-mode
+	HUD there, only while the Server keeps this body armed and on foot (Update_WaterGunHud). */
+	bool_t Is_WaterGunHudLevel(const uint32_t iLevel, const HUD_PLAYER_STATE& player)
+	{
+		return ETOUI(LEVEL::MAHARAKA) == iLevel && player.isValid && player.isWaterpangArmed &&
+			0u == player.iVehicleId;
+	}
+}
+
 void CMainApp::Hide_CombatHUD()
 {
 	if (nullptr != m_pHUDRuntimeView)
@@ -4630,7 +4640,8 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ||
 		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
 		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
-		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA);
+		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ||
+		Is_WaterGunHudLevel(currentLevel, CCombatHUDViewModel::Get().Get_Player());
 	/* The Skill Window (when one exists) and the Debug O-key raid-entry preview both replace
 	this whole screen region -- same gates the old ImGui pass applied at its call sites. */
 	const bool_t skillWindowOpen =
@@ -5041,6 +5052,7 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	Update_SkillSlotMarks();
 	Update_SkillCooldowns();
 	Update_QuickSlotFlash();
+	m_HudTimedTexts.clear();
 	Update_ItemQuickSlots();
 	Update_SpecialQuickSlots();
 	/* The combat analyser belongs to the raid arenas: in town and the class-select arena it
@@ -5052,9 +5064,9 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		else
 			m_pCombatAnalysisView->Hide();
 	}
-	m_HudTimedTexts.clear();
 	Update_KoukuHudMode();
 	Update_VehicleHud();
+	Update_WaterGunHud();
 	Update_SpecialSlot();
 	Update_BuffBar();
 	if (nullptr != m_pRepairWindowView)
@@ -5123,6 +5135,10 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 				(void)CNetworkManager::Get().Send_SetEquipment(
 					m_iNextUseItemSequence++, eTarget, true, strEquipItemId);
 		}
+		LostArk::Shared::EQUIPMENT_SLOT eAvatarUnequipSlot = LostArk::Shared::EQUIPMENT_SLOT::NONE;
+		if (m_pInventoryView->Try_Consume_UnequipRequest(eAvatarUnequipSlot))
+			(void)CNetworkManager::Get().Send_SetEquipment(
+				m_iNextUseItemSequence++, eAvatarUnequipSlot, false, {});
 	}
 	if (nullptr != m_pCharacterInfoView)
 	{
@@ -5214,6 +5230,72 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	m_pHUDRuntimeView->Update(fTimeDelta);
 }
 
+void CMainApp::RenderShipHudTexts()
+{
+	if (!m_bShipHudActive || nullptr == m_pHUDRuntimeView)
+		return;
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fScaleX = vViewportSize.x / 1280.f;
+	const f32_t fScaleY = vViewportSize.y / 720.f;
+	const f32_t fUiScale = (std::min)(fScaleX, fScaleY);
+
+	/* Text centred on a HUD reference point; the size is in HUD reference pixels. YG760 is the movie's own font. */
+	const auto DrawHudText = [&](const wchar_t* pText, const f32_t fHudX, const f32_t fHudY,
+		const f32_t fHudPx, const fvector_t vColor)
+	{
+		f32_t fScale = 1.f;
+		const wstring_t strFont = UILabelFont::Resolve(TEXT("Font_YG760"), fHudPx * fUiScale, fScale);
+		const float2_t vMeasured = CGameInstance::Get().Measure_Text(strFont, pText);
+		const float2_t vPosition(std::round(fHudX * fScaleX - vMeasured.x * fScale * 0.5f),
+			std::round(fHudY * fScaleY - vMeasured.y * fScale * 0.5f));
+		CGameInstance::Get().Draw_Text(strFont, pText, float2_t(vPosition.x + 1.f, vPosition.y + 1.f),
+			XMVectorSet(0.f, 0.f, 0.f, 0.75f), 0.f, float2_t(0.f, 0.f), fScale);
+		CGameInstance::Get().Draw_Text(strFont, pText, vPosition, vColor, 0.f, float2_t(0.f, 0.f), fScale);
+	};
+	/* Retail stage px (oceanhud.gfx, 1920x1080) -> HUD reference px: the mapping the ship art uses
+	(retail 960 <-> HUD 673.5, retail 974 <-> HUD 644.702, 2/3 scale). */
+	constexpr f32_t STAGE_SCALE = 2.f / 3.f;
+	const auto DrawStageText = [&](const wchar_t* pText, const f32_t fStageX, const f32_t fStageY,
+		const f32_t fStagePx, const fvector_t vColor)
+	{
+		DrawHudText(pText, 673.5f + (fStageX - 960.f) * STAGE_SCALE, 644.702026f + (fStageY - 974.f) * STAGE_SCALE,
+			fStagePx * STAGE_SCALE, vColor);
+	};
+	const fvector_t vWhite = XMVectorSet(1.f, 1.f, 1.f, 1.f);
+	const fvector_t vSpeed = XMVectorSet(225.f / 255.f, 210.f / 255.f, 157.f / 255.f, 1.f);
+
+	/* The dome (OceanSupplieGauge.targetText, 86x22 at stage 918,963.5) and the knots line under the ship icon. */
+	if (m_iShipSupplyMax > 0u)
+	{
+		const wstring strSupply = std::to_wstring(m_iShipSupply) + L"/" + std::to_wstring(m_iShipSupplyMax);
+		DrawStageText(strSupply.c_str(), 961.f, 975.f, 17.f, vWhite);
+	}
+	const int32_t iKnotsTenths = static_cast<int32_t>(std::lround(m_fShipKnots * 10.f));
+	const wstring strKnots = std::to_wstring(iKnotsTenths / 10) + L"." + std::to_wstring(iKnotsTenths % 10) +
+		L" \uB178\uD2B8";
+	DrawStageText(strKnots.c_str(), 960.f, 1051.f, 16.f, vSpeed);
+
+	/* The eight slot keys sit in the tab at the bottom of each slot (retail keyBind box: slot y + 23.8, 20.6 high). */
+	constexpr const char* SLOT_KEYS[] = { "Q", "W", "E", "R", "A", "S", "D", "F" };
+	constexpr const wchar_t* SLOT_LABELS[] = { L"Q", L"W", L"E", L"R", L"A", L"S", L"D", L"F" };
+	for (size_t i = 0; i < 8u; ++i)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pHUDRuntimeView->Get_SlotRect(string("Ship_Slot_") + SLOT_KEYS[i] + "_Frame", fX, fY, fWidth, fHeight))
+			continue;
+		DrawHudText(SLOT_LABELS[i], fX + fWidth * 0.5f, fY + fHeight * 0.83f, 13.f * STAGE_SCALE, vWhite);
+	}
+
+	/* Button captions (retail cruise_btn T, boatParking_btn Z, booster_btn SPACE, boatHorn_btn C,
+	autoCruiseBtn M), placed where the retail client draws them (stage px measured on the retail screenshot). */
+	DrawStageText(L"T", 1109.f, 995.f, 13.f, vWhite);
+	DrawStageText(L"Z", 1064.f, 1053.f, 13.f, vWhite);
+	DrawStageText(L"SPACE", 1141.f, 1053.f, 13.f, vWhite);
+	DrawStageText(L"C", 1224.f, 1053.f, 13.f, vWhite);
+	DrawStageText(L"M", 1316.f, 1043.f, 13.f, vWhite);
+	DrawStageText(L"\uC790\uB3D9 \uD56D\uB85C", 1316.f, 1057.f, 13.f, vWhite);
+}
+
 void CMainApp::RenderQuickSlotKeyLabels()
 {
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
@@ -5221,7 +5303,8 @@ void CMainApp::RenderQuickSlotKeyLabels()
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
 		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
-		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
+		!Is_WaterGunHudLevel(currentLevel, CCombatHUDViewModel::Get().Get_Player()))
 	{
 		return;
 	}
@@ -5277,10 +5360,24 @@ void CMainApp::RenderQuickSlotKeyLabels()
 	const bool_t bKoukuModeLabels = koukuLabelState.isValid &&
 		HUD_KOUKU_HUD_MODE::NONE != koukuLabelState.eHudMode &&
 		ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel;
-	/* The mounted-vehicle HUD (Update_VehicleHud) drops the T/V column the same way. */
-	const bool_t bMountedLabels = 0u != keyLabelPlayer.iVehicleId;
+	/* The mounted-vehicle HUD (Update_VehicleHud) and the water gun HUD (Update_WaterGunHud) drop
+	the T/V column the same way. */
+	const bool_t bMountedLabels = 0u != keyLabelPlayer.iVehicleId ||
+		Is_WaterGunHudLevel(currentLevel, keyLabelPlayer);
+	/* The ocean HUD draws its own captions (RenderShipHudTexts); the class quick-slot labels do not apply. */
+	if (m_bShipHudActive)
+	{
+		RenderShipHudTexts();
+		return;
+	}
 	for (const KEY_LABEL& Label : LABELS)
 	{
+		/* The ship HUD hides the item row and the class special slots; their captions go with them. */
+		if (m_bShipHudActive && (0 == std::strncmp(Label.pSlotId, "Item_", 5) ||
+			0 == std::strncmp(Label.pSlotId, "SpecialSkill_", 13)))
+		{
+			continue;
+		}
 		if ((bKoukuModeLabels || bMountedLabels) &&
 			(0 == std::strcmp(Label.pSlotId, "Skill_T") || 0 == std::strcmp(Label.pSlotId, "Skill_V")))
 		{
@@ -5338,6 +5435,36 @@ namespace
 		"Skill_T", "Skill_T_Icon", "Skill_T_Frame", "Skill_T_Cooldown", "Skill_T_Flash",
 		"Skill_V", "Skill_V_Icon", "Skill_V_Frame", "Skill_V_Cooldown", "Skill_V_Flash",
 		"Skill_V_Edge1", "Skill_V_Edge2",
+	};
+
+	/* Slots the retail ocean HUD (oceanhud.gfx) does not have: no HP/mana bar, item row, class
+	special slots or charge gauge while sailing. */
+	constexpr const char* SHIP_HIDDEN_SLOTS[] =
+	{
+		"HealthBar_BG", "HealthBar", "HealthBar_Fill", "HealthBar_Shield_Fill",
+		"ManaBar_BG", "ManaBar", "ManaBar_Fill",
+		"Item_1", "Item_2", "Item_3", "Item_4",
+		"Item_1_Icon", "Item_2_Icon", "Item_3_Icon", "Item_4_Icon",
+		"SpecialSkill_1", "SpecialSkill_2", "SpecialSkill_3", "SpecialSkill_4", "SpecialSkill_5", "SpecialSkill_6",
+		"SpecialSkill_1_Icon", "SpecialSkill_2_Icon", "SpecialSkill_3_Icon",
+		"SpecialSkill_4_Icon", "SpecialSkill_5_Icon", "SpecialSkill_6_Icon",
+		"ChargeGauge_Bg", "ChargeGauge_Track", "ChargeGauge_Fill",
+	};
+
+	/* Every slot of the retail ocean HUD (build_ocean_hud_ui.py + build_voyage_hud_ui.py); Update_VehicleHud shows
+	them all while the local player rides a ship and hides them for every other vehicle. */
+	constexpr const char* SHIP_HUD_SLOTS[] =
+	{
+		"Ship_Hud_Plate", "Ship_Hud_Wheel", "Ship_Hud_Bezel", "Ship_Hud_Dome", "Ship_Hud_Icon",
+		"Ship_Slot_Q_Frame", "Ship_Slot_W_Frame", "Ship_Slot_E_Frame", "Ship_Slot_R_Frame",
+		"Ship_Slot_A_Frame", "Ship_Slot_S_Frame", "Ship_Slot_D_Frame", "Ship_Slot_F_Frame",
+		"Ship_Slot_Q_Icon", "Ship_Slot_W_Icon", "Ship_Slot_E_Icon", "Ship_Slot_R_Icon",
+		"Ship_Slot_A_Icon", "Ship_Slot_S_Icon", "Ship_Slot_D_Icon", "Ship_Slot_F_Icon",
+		"Ship_Slot_Q_Cooldown", "Ship_Slot_W_Cooldown", "Ship_Slot_E_Cooldown", "Ship_Slot_R_Cooldown",
+		"Ship_Slot_A_Cooldown", "Ship_Slot_S_Cooldown", "Ship_Slot_D_Cooldown", "Ship_Slot_F_Cooldown",
+		"Ship_Btn_Horn", "Ship_Hud_Bottle", "Ship_Hud_EventSlot", "Ship_Btn_Anchor_Bg", "Ship_Btn_Anchor_Icon",
+		"Ship_Btn_Boost_Dark", "Ship_Btn_Boost_Fill", "Ship_Btn_Boost_Gear", "Ship_Btn_Boost_Arrow",
+		"Ship_Btn_Cruise_Icon", "Ship_Btn_Cruise_Ring", "Ship_Btn_AutoCruise",
 	};
 
 	const char* KoukuHudModeId(const HUD_KOUKU_HUD_MODE eMode)
@@ -5460,6 +5587,7 @@ namespace
 
 void CMainApp::Update_VehicleHud()
 {
+	m_bShipHudActive = false;
 	if (nullptr == m_pHUDRuntimeView)
 		return;
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
@@ -5475,7 +5603,84 @@ void CMainApp::Update_VehicleHud()
 	m_pHUDRuntimeView->Set_ActiveOwnerClass("VehicleRiding");
 	for (const char* pHiddenSlot : KOUKU_HIDDEN_SLOTS)
 		m_pHUDRuntimeView->Set_SlotVisible(pHiddenSlot, false);
-	m_pHUDRuntimeView->Set_SlotVisible("Vehicle_Hud_Emblem", true);
+	/* A ship swaps the saddle emblem for the retail ocean HUD frame (oceanhud.gfx OceanRudderFrame:
+	the hull plate under the quick slots and the steering wheel on the emblem centre). That frame
+	has no HP/mana bar, item row or class special slots, so those hide with their captions. */
+	const VEHICLE_ACTOR_ENTRY* pMountedVehicle = CActorCatalog::Find_Vehicle(player.iVehicleId);
+	const bool_t bShip = nullptr != pMountedVehicle && pMountedVehicle->isShip;
+	m_bShipHudActive = bShip;
+	m_pHUDRuntimeView->Set_SlotVisible("Vehicle_Hud_Emblem", !bShip);
+	for (const char* pShipSlot : SHIP_HUD_SLOTS)
+		m_pHUDRuntimeView->Set_SlotVisible(pShipSlot, bShip);
+	if (bShip)
+	{
+		for (const char* pShipHiddenSlot : SHIP_HIDDEN_SLOTS)
+			m_pHUDRuntimeView->Set_SlotVisible(pShipHiddenSlot, false);
+		/* The class quick slots give way to the ocean HUD's own eight-slot list (Ship_Slot_*). */
+		for (const char* pKey : KOUKU_SLOT_KEYS)
+		{
+			for (const char* pPart : { "", "_Icon", "_Frame", "_Cooldown", "_Flash", "_TypeMark", "_Chain" })
+				m_pHUDRuntimeView->Set_SlotVisible(string("Skill_") + pKey + pPart, false);
+		}
+		for (const char* pClassSlot : { "Skill_T_TypeMark", "Skill_T_Chain", "Skill_V_TypeMark", "Skill_V_Chain" })
+			m_pHUDRuntimeView->Set_SlotVisible(pClassSlot, false);
+
+		/* Q..F are the retail skillSlotList. Q/W/E carry the vehicle's own actions (the keys the Server
+		binds); R (dismount) and the A/S/D/F row keep the empty slot the retail HUD shows. The pies and the
+		seconds text read the replicated cooldowns of the vehicle skills. */
+		for (size_t i = 0; i < HUD_KOUKU_SLOT_COUNT; ++i)
+		{
+			const string strKey = KOUKU_SLOT_KEYS[i];
+			const VEHICLE_SKILL_UI* pSkill = nullptr;
+			if (nullptr != pSkills)
+			{
+				for (const VEHICLE_SKILL_UI& Skill : *pSkills)
+				{
+					if (Skill.strSlot == strKey)
+						pSkill = &Skill;
+				}
+			}
+			const string strIconSlot = "Ship_Slot_" + strKey + "_Icon";
+			const string strCooldownSlot = "Ship_Slot_" + strKey + "_Cooldown";
+			const bool_t bHasIcon = nullptr != pSkill && !pSkill->strIconAsset.empty();
+			if (bHasIcon)
+				m_pHUDRuntimeView->Set_SlotTexture(strIconSlot, pSkill->strIconAsset);
+			m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, bHasIcon);
+			const f32_t fRatio = nullptr != pSkill ?
+				Resolve_HudCooldownRatio(player, pSkill->iSkillId, pSkill->iCooldownMs, strIconSlot) : 0.f;
+			m_pHUDRuntimeView->Set_SlotTint(strCooldownSlot, float4_t(0.f, 0.f, 0.f, 150.f / 255.f));
+			m_pHUDRuntimeView->Set_SlotArcRatio(strCooldownSlot, fRatio);
+			m_pHUDRuntimeView->Set_SlotVisible(strCooldownSlot, fRatio > 0.f);
+		}
+
+		/* SPACE (the boost): the yellow ring refills clockwise from 12 o'clock as the boost cooldown runs out. */
+		f32_t fBoostReady = 1.f;
+		if (nullptr != pSkills)
+		{
+			for (const VEHICLE_SKILL_UI& Skill : *pSkills)
+			{
+				if ("SPACE" == Skill.strSlot)
+					fBoostReady = 1.f - Resolve_HudCooldownRatio(player, Skill.iSkillId, Skill.iCooldownMs, string());
+			}
+		}
+		m_pHUDRuntimeView->Set_SlotArcRatio("Ship_Btn_Boost_Fill", fBoostReady);
+
+		/* The dome is the retail supply gauge (OceanSupplieGauge, EFTable_VoyageShip.MaxSupply). The project
+		has no supply consumption, so it reads full: capacity / capacity. */
+		m_iShipSupplyMax = pMountedVehicle->iMaxSupply;
+		m_iShipSupply = m_iShipSupplyMax;
+		constexpr int32_t SHIP_DOME_FRAME_COUNT = 41;
+		const f32_t fSupplyRatio = m_iShipSupplyMax > 0u ?
+			std::clamp(static_cast<f32_t>(m_iShipSupply) / static_cast<f32_t>(m_iShipSupplyMax), 0.f, 1.f) : 0.f;
+		m_pHUDRuntimeView->Set_Animation_Frame("Ship_Hud_Dome",
+			static_cast<int32_t>(std::lround(fSupplyRatio * static_cast<f32_t>(SHIP_DOME_FRAME_COUNT - 1))));
+
+		/* Knots: ESTIMATE, one retail sample (8200 sailing at 22.3 knots with EFTable_VoyageShip.MoveSpeed 200,
+		i.e. 4.0 m/s here after the x2 ship speed tuning) => 22.3 / 4.0 knots per m/s. 0 while no move goal is pending. */
+		constexpr f32_t SHIP_KNOTS_PER_METER_PER_SECOND = 22.3f / 4.f;
+		m_fShipKnots = player.hasMoveGoal ? player.fMoveSpeed * SHIP_KNOTS_PER_METER_PER_SECOND : 0.f;
+		return;
+	}
 
 	/* Q/W/E carry the vehicle's own actions (VehicleProfiles.json skills[], the keys the Server
 	binds); SPACE goes to the special slot (Update_SpecialSlot). R dismounts and, like the
@@ -5500,6 +5705,49 @@ void CMainApp::Update_VehicleHud()
 		const string strCooldownSlot = "Skill_" + strKey + "_Cooldown";
 		const f32_t fRatio = nullptr != pSkill ?
 			Resolve_HudCooldownRatio(player, pSkill->iSkillId, pSkill->iCooldownMs, "Skill_" + strKey) : 0.f;
+		m_pHUDRuntimeView->Set_SlotTint(strCooldownSlot, float4_t(0.f, 0.f, 0.f, 150.f / 255.f));
+		m_pHUDRuntimeView->Set_SlotArcRatio(strCooldownSlot, fRatio);
+		m_pHUDRuntimeView->Set_SlotVisible(strCooldownSlot, fRatio > 0.f);
+	}
+}
+
+void CMainApp::Update_WaterGunHud()
+{
+	if (nullptr == m_pHUDRuntimeView)
+		return;
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!Is_WaterGunHudLevel(CGameInstance::Get().Get_CurrentLevelID(), player))
+		return;
+
+	/* No class owns this name, so every ownerClass slot (identity blocks) hides; T/V drop and the
+	pickup emblem takes the centre, the same shape as the KoukuSaydon interaction mode. */
+	m_pHUDRuntimeView->Set_ActiveOwnerClass("WaterpangWaterGun");
+	for (const char* pHiddenSlot : KOUKU_HIDDEN_SLOTS)
+		m_pHUDRuntimeView->Set_SlotVisible(pHiddenSlot, false);
+	m_pHUDRuntimeView->Set_SlotVisible("Kouku_Emblem_Pickup", true);
+
+	/* Q/W/E/R are the water gun's own four skills (the Shared table the Server casts from); their
+	cooldown ends come from the replicated cooldown list the Server fills when a cast starts.
+	A/S/D/F are the plain dark slot the retail interaction layout shows for unused keys. */
+	for (size_t i = 0; i < HUD_KOUKU_SLOT_COUNT; ++i)
+	{
+		const string strKey = KOUKU_SLOT_KEYS[i];
+		const string strIconSlot = "Skill_" + strKey + "_Icon";
+		const string strCooldownSlot = "Skill_" + strKey + "_Cooldown";
+		const LostArk::Shared::MAHARAKA_WATERGUN_SKILL* pGun =
+			LostArk::Shared::Find_MaharakaWaterGunSkillBySlot(strKey.front());
+		if (nullptr == pGun)
+		{
+			m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, false);
+			m_pHUDRuntimeView->Set_SlotArcRatio(strCooldownSlot, 0.f);
+			m_pHUDRuntimeView->Set_SlotVisible(strCooldownSlot, false);
+			continue;
+		}
+		m_pHUDRuntimeView->Set_SlotTexture(strIconSlot,
+			"UI/HUD/Waterpang/skill_" + std::to_string(pGun->iSkillId) + ".png");
+		m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, true);
+		const f32_t fRatio = pGun->iCooldownMs > 0u ?
+			Resolve_HudCooldownRatio(player, pGun->iSkillId, pGun->iCooldownMs, "Skill_" + strKey) : 0.f;
 		m_pHUDRuntimeView->Set_SlotTint(strCooldownSlot, float4_t(0.f, 0.f, 0.f, 150.f / 255.f));
 		m_pHUDRuntimeView->Set_SlotArcRatio(strCooldownSlot, fRatio);
 		m_pHUDRuntimeView->Set_SlotVisible(strCooldownSlot, fRatio > 0.f);
@@ -5532,6 +5780,16 @@ void CMainApp::Update_SpecialSlot()
 {
 	if (nullptr == m_pHUDRuntimeView)
 		return;
+	/* On a ship the boost is the ocean HUD's own SPACE button (Update_VehicleHud), not this slot. */
+	if (m_bShipHudActive)
+	{
+		m_bHudSpecialSlotShown = false;
+		for (const char* pSpecial : { "Special_Space", "Special_Space_Frame", "Special_Space_Icon", "Special_Space_Cooldown" })
+			m_pHUDRuntimeView->Set_SlotVisible(pSpecial, false);
+		m_HudTimedTexts.erase(std::remove_if(m_HudTimedTexts.begin(), m_HudTimedTexts.end(),
+			[](const HUD_TIMED_TEXT& Text) { return "Special_Space" == Text.strSlotId; }), m_HudTimedTexts.end());
+		return;
+	}
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 	const HUD_KOUKU_GIMMICK_STATE& kouku = CCombatHUDViewModel::Get().Get_KoukuGimmick();
 	const bool_t bKoukuMode = kouku.isValid && HUD_KOUKU_HUD_MODE::NONE != kouku.eHudMode;
@@ -7650,6 +7908,16 @@ void CMainApp::Update_ItemQuickSlots()
 		}
 		m_pHUDRuntimeView->Set_SlotTexture(ITEM_ICON_SLOT_IDS[i], pDefinition->strIconPath);
 		m_pHUDRuntimeView->Set_SlotVisible(ITEM_ICON_SLOT_IDS[i], true);
+		const auto& inventory = CCombatHUDViewModel::Get().Get_Inventory().Items;
+		const auto owned = std::find_if(inventory.begin(), inventory.end(), [&](const auto& item)
+		{
+			return item.strItemId == m_strItemQuickSlot[i] &&
+				item.eEquippedSlot == LostArk::Shared::EQUIPMENT_SLOT::NONE && item.iQuantity > 0u;
+		});
+		const f32_t cooldown = Resolve_HudCooldownRatio(CCombatHUDViewModel::Get().Get_Player(),
+			pDefinition->iBattleSkillId, pDefinition->iCooldownMs, ITEM_SLOT_IDS[i]);
+		const f32_t brightness = owned == inventory.end() ? 0.25f : cooldown > 0.f ? 0.45f : 1.f;
+		m_pHUDRuntimeView->Set_SlotTint(ITEM_ICON_SLOT_IDS[i], float4_t(brightness, brightness, brightness, 1.f));
 	}
 }
 
@@ -7689,7 +7957,12 @@ void CMainApp::Update_PlayerHealthManaBar()
 
 	m_pHUDRuntimeView->Set_SlotFillRatio("HealthBar_Fill", healthTrackRatio);
 	m_pHUDRuntimeView->Set_SlotVisible("HealthBar_Fill", healthTrackRatio > 0.f);
-	m_pHUDRuntimeView->Set_SlotFillRatio("HealthBar_Shield_Fill", shieldRatio);
+	// Both authored slots start at the left edge; move the white segment to the HP endpoint.
+	f32_t healthX = 0.f, healthY = 0.f, healthWidth = 0.f, healthHeight = 0.f;
+	if (m_pHUDRuntimeView->Get_SlotRect("HealthBar_Fill", healthX, healthY, healthWidth, healthHeight))
+		m_pHUDRuntimeView->Set_SlotRect("HealthBar_Shield_Fill",
+			healthX + healthWidth * healthTrackRatio, healthY, healthWidth * shieldRatio, healthHeight);
+	m_pHUDRuntimeView->Set_SlotFillRatio("HealthBar_Shield_Fill", 1.f);
 	m_pHUDRuntimeView->Set_SlotVisible("HealthBar_Shield_Fill", shieldRatio > 0.f);
 	m_pHUDRuntimeView->Set_SlotFillRatio("ManaBar_Fill", manaRatio);
 	/* A class with an ember pool runs on ember, not mana: the mana fill stays
@@ -7971,7 +8244,8 @@ void CMainApp::RenderSkillCooldownText()
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
 		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
-		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
+		!Is_WaterGunHudLevel(currentLevel, CCombatHUDViewModel::Get().Get_Player()))
 	{
 		return;
 	}
@@ -8005,7 +8279,33 @@ void CMainApp::RenderSkillCooldownText()
 			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 	};
 
-	/* Texts the HUD update pass queued this frame: cooldown seconds over the special slot and
+	/* Item assignment is stable; quantity is always the latest server inventory stack. */
+	for (int32_t i = 0; i < 4; ++i)
+	{
+		if (m_strItemQuickSlot[i].empty()) continue;
+		const auto* definition = CItemCatalog::Find_ById(m_strItemQuickSlot[i]);
+		if (!definition || definition->strIconPath.empty()) continue;
+		const auto& inventory = CCombatHUDViewModel::Get().Get_Inventory().Items;
+		const auto owned = std::find_if(inventory.begin(), inventory.end(), [&](const auto& item)
+		{
+			return item.strItemId == m_strItemQuickSlot[i] &&
+				item.eEquippedSlot == LostArk::Shared::EQUIPMENT_SLOT::NONE;
+		});
+		const wstring quantity = std::to_wstring(owned != inventory.end() ? owned->iQuantity : 0u);
+		f32_t x, y, width, height;
+		if (!m_pHUDRuntimeView->Get_SlotRect("Item_" + std::to_string(i + 1), x, y, width, height)) continue;
+		const float2_t measured = CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), quantity.c_str());
+		if (measured.y <= 0.f) continue;
+		const f32_t scale = (11.f / measured.y) * textUiScale;
+		const float2_t position((x + width - 2.f) * textScaleX, (y + height - 2.f) * textScaleY);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), quantity.c_str(),
+			float2_t(position.x + 1.f, position.y + 1.f), XMVectorSet(0.f, 0.f, 0.f, 0.85f),
+			0.f, float2_t(1.f, 1.f), scale);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), quantity.c_str(), position,
+			Colors::White, 0.f, float2_t(1.f, 1.f), scale);
+	}
+
+	/* Texts the HUD update pass queued this frame: item/special slot cooldown seconds and
 	the vehicle Q/W/E, remaining seconds under each buff / debuff (Shared_BuffSlot_Common
 	cooldownText: YG760 10 px, #9BD979 for a buff, #E2C87A for a debuff, centred under the
 	icon). Vehicle-mode slots are excluded from the class loop above, so nothing doubles. */
@@ -8344,9 +8644,16 @@ void CMainApp::Update_WorldHealthBars(const f32_t fTimeDelta)
 		CLevel_CharacterSelect::Get_Active() && CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen();
 	const auto& hud = CCombatHUDViewModel::Get();
 	const auto gimmick = hud.Get_KoukuGimmick();
-	const bool cardMazeActive = LostArk::Shared::CARD_MAZE_ROLE::NONE != gimmick.eCardMazeRole ||
-		LostArk::Shared::KOUKU_HUD_MODE::MAZE == hud.Get_Player().eKoukuHudMode;
-	m_pWorldHealthBarView->Update(fTimeDelta, hud.Get_WorldHealthBars(),
+	const auto* arena = currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ? CLevel_KakulSaydonArena::Get_Active() : nullptr;
+	const auto* subject = arena ? arena->Get_CameraPlayerSnapshot() : nullptr;
+	const bool cardMazeActive = subject ? subject->eKoukuHudMode == LostArk::Shared::KOUKU_HUD_MODE::MAZE :
+		(LostArk::Shared::CARD_MAZE_ROLE::NONE != gimmick.eCardMazeRole ||
+		 LostArk::Shared::KOUKU_HUD_MODE::MAZE == hud.Get_Player().eKoukuHudMode);
+	auto worldBars = hud.Get_WorldHealthBars();
+	if (arena) std::erase_if(worldBars, [arena](const auto& state) {
+		return state.isPlayer && !arena->Should_ShowPlayerWorldUI(state.iNetEntityId);
+	});
+	m_pWorldHealthBarView->Update(fTimeDelta, worldBars,
 		isSupportedLevel && !Is_RuntimeUIScreenSuppressed() && !characterPresentation && !Is_MvpResultPageOpen(), cardMazeActive);
 }
 
@@ -8736,7 +9043,7 @@ void CMainApp::RenderDeadSceneText()
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
 	const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ?
 		(rects.fTitleHeight * 0.6f / vTitleMeasured.y) : 1.f;
-	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str(),
+	if (!rects.isSpectating) CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str(),
 		float2_t((rects.fTitleX + rects.fTitleWidth * 0.5f) * textScaleX,
 			(rects.fTitleY + rects.fTitleHeight * 0.5f) * textScaleY),
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fTitleScale * textUiScale);
@@ -8766,7 +9073,7 @@ void CMainApp::RenderDeadSceneText()
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strReviveMessage.c_str());
 	const f32_t fMessageScale = (vMessageMeasured.y > 0.f) ?
 		(rects.fMessageHeight * 0.6f / vMessageMeasured.y) : 1.f;
-	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strReviveMessage.c_str(),
+	if (!rects.isSpectating) CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strReviveMessage.c_str(),
 		float2_t((rects.fMessageX + rects.fMessageWidth * 0.5f) * textScaleX,
 			(rects.fMessageY + rects.fMessageHeight * 0.5f) * textScaleY),
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fMessageScale * textUiScale);
@@ -9196,12 +9503,18 @@ void CMainApp::Update_EstherGauge(const f32_t fTimeDelta)
 	/* Each raid grants its own three esther skills, in its own order -- the same three the raid
 	entry screen lists for that raid, so the window a player sees inside the raid matches what
 	they were shown on the way in. The level is the raid: this only runs in an arena level, and
-	the document's authored icons are Valtan's, so only Kakul needs to be swapped in. */
+	this shared view survives level transitions, so every raid sets all three icons. */
 	if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel)
 	{
 		m_pEstherUIView->Set_SlotTexture("Esther_Slot1_Icon", "UI/Esther/esther_icon_3.png");
 		m_pEstherUIView->Set_SlotTexture("Esther_Slot2_Icon", "UI/Esther/esther_portrait_wei.png");
 		m_pEstherUIView->Set_SlotTexture("Esther_Slot3_Icon", "UI/Esther/esther_icon_4.png");
+	}
+	else
+	{
+		m_pEstherUIView->Set_SlotTexture("Esther_Slot1_Icon", "UI/Esther/esther_portrait_bahuntur.png");
+		m_pEstherUIView->Set_SlotTexture("Esther_Slot2_Icon", "UI/Esther/esther_portrait_wei.png");
+		m_pEstherUIView->Set_SlotTexture("Esther_Slot3_Icon", "UI/Esther/esther_portrait_sillian.png");
 	}
 
 	const uint32_t gauge = CCombatHUDViewModel::Get().Get_EstherGauge();
@@ -9499,7 +9812,8 @@ void CMainApp::RenderCombatHUDText()
 		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
 		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
-		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
+		!Is_WaterGunHudLevel(currentLevel, CCombatHUDViewModel::Get().Get_Player()))
 	{
 		return;
 	}
@@ -9514,7 +9828,7 @@ void CMainApp::RenderCombatHUDText()
 		return float2_t(x * scaleX, y * scaleY);
 	};
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	if (player.isValid && player.iMaximumHp > 0u && player.iMaximumResource > 0u)
+	if (player.isValid && player.iMaximumHp > 0u && player.iMaximumResource > 0u && !m_bShipHudActive)
 	{
 		/* ark.controls:Progress.updateText appends the shield straight after the
 		readout as "(+n)", and writes nothing at all while there is no shield. */
@@ -9606,12 +9920,15 @@ void CMainApp::RenderDamageNumbers()
 	that tick under the same serverTick, so advancing the cursor inside the loop would drop all
 	but the first number of a multi-target hit. */
 	const uint32_t iSpawnedUpToTick = m_iLastRenderedDamageServerTick;
+	const auto* arena = currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ? CLevel_KakulSaydonArena::Get_Active() : nullptr;
 	for (const HUD_DAMAGE_EVENT& damageEvent : damageEvents)
 	{
 		if (damageEvent.iServerTick <= iSpawnedUpToTick)
 			continue;
 		m_iLastRenderedDamageServerTick =
 			(std::max)(m_iLastRenderedDamageServerTick, damageEvent.iServerTick);
+		if (arena && !arena->Should_ShowDamageWorldUI(damageEvent.Event.iTargetNetEntityId,
+			damageEvent.Event.iSourcePlayerId)) continue;
 		/* A shard belongs to the one hunter who was dealt that suit, so the
 		other hunters' shards are not drawn on this screen. */
 		if (LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE !=
@@ -9622,6 +9939,8 @@ void CMainApp::RenderDamageNumbers()
 			continue;
 		}
 		FLOATING_DAMAGE_NUMBER number{};
+		number.iTargetNetEntityId = damageEvent.Event.iTargetNetEntityId;
+		number.iSourcePlayerId = damageEvent.Event.iSourcePlayerId;
 		number.dSpawnSeconds = Product_Now_Seconds();
 		number.vWorldPosition = float3_t(
 			damageEvent.Event.fPositionX,
@@ -9714,6 +10033,7 @@ void CMainApp::RenderDamageNumbers()
 	};
 	for (const FLOATING_DAMAGE_NUMBER& number : m_FloatingDamageNumbers)
 	{
+		if (arena && !arena->Should_ShowDamageWorldUI(number.iTargetNetEntityId, number.iSourcePlayerId)) continue;
 		const f64_t dAge = dNow - number.dSpawnSeconds;
 		/* Walk the element's own frames: hold the last key once the timeline has run out. */
 		const bool_t isHeal = LostArk::Shared::DAMAGE_HIT_FLAG::HEAL == number.eHitFlag;
@@ -9772,6 +10092,7 @@ void CMainApp::RenderDamageNumbers()
 		switch (number.eHitFlag)
 		{
 		case LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL:
+		case LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL_DAMAGE_REDUCED:
 			vColor = XMVectorSet(1.f, 204.f / 255.f, 0.f, fAlpha); break;
 		case LostArk::Shared::DAMAGE_HIT_FLAG::MISS:
 			vColor = XMVectorSet(0.6f, 0.6f, 0.6f, fAlpha); break;
@@ -9808,6 +10129,21 @@ void CMainApp::RenderDamageNumbers()
 		}
 		CGameInstance::Get().Draw_Text(TEXT("Font_EventDamage"), strAmount.c_str(),
 			vDrawPosition, vColor, 0.f, float2_t(0.5f, 0.5f), fScale);
+		if (number.eHitFlag == LostArk::Shared::DAMAGE_HIT_FLAG::DAMAGE_REDUCED ||
+			number.eHitFlag == LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL_DAMAGE_REDUCED)
+		{
+			constexpr const wchar_t* label = L"\uD53C\uD574 \uAC10\uC18C";
+			const float2_t measured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), label);
+			const f32_t height = fFontPx * stageScale * 0.72f;
+			const f32_t scale = measured.y > 0.f ? height / measured.y : fScale * 0.72f;
+			const float2_t position(vDrawPosition.x,
+				vDrawPosition.y + fFontPx * stageScale * 0.5f + height * 0.5f + 2.f * stageScale);
+			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), label,
+				float2_t(position.x + stageScale, position.y + stageScale),
+				vGlowColor, 0.f, float2_t(0.5f, 0.5f), scale);
+			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), label, position,
+				XMVectorSet(1.f, 1.f, 1.f, fAlpha), 0.f, float2_t(0.5f, 0.5f), scale);
+		}
 	}
 }
 
@@ -10186,7 +10522,9 @@ HRESULT CMainApp::Ready_Prototype_For_LoadingChrome()
 	for (const wchar_t* pLoadingBackground : {
 		L"UI/Loading/Loading_Background_Valtan.png",
 		L"UI/Loading/Loading_Background_Kouku.png",
-		L"UI/Loading/Loading_Background_Prologue.png" })
+		L"UI/Loading/Loading_Background_Prologue.png",
+		L"UI/Loading/Loading_Background_Maharaka.png",
+		L"UI/Loading/Loading_Background_Sea_0.png" })
 	{
 		const filesystem::path resolvedPath =
 			CRuntimeAssetRoot::Resolve(pLoadingBackground);

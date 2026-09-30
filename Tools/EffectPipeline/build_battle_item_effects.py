@@ -44,6 +44,16 @@ FLIGHT_RESOURCE_SCALES = {
 }
 
 
+def bound_element_display_names(document):
+    for element in document['elements']:
+        # The asset identity already belongs to the document; repeating the
+        # full path in flight labels exceeded the runtime's 64-byte limit.
+        if len(element['displayName'].encode('utf-8')) > 64:
+            element['displayName'] = element['id'].rsplit('.', 1)[-1]
+        if not element['displayName'].strip() or len(element['displayName'].encode('utf-8')) > 64:
+            raise ValueError('Invalid battle-item element display name: ' + element['id'])
+
+
 def configure(args):
     global OUT
     OUT = args.evidence_root.resolve()
@@ -126,6 +136,7 @@ def project():
             for resource in element['resources'] + element['material']['sourceProfile'].get('textures', []):
                 relative = resource['assetId']
                 assert (ROOT / 'Client/Bin/Resources' / relative).is_file() or (OUT / 'Resources' / relative).is_file(), relative
+        bound_element_display_names(document)
         source.write(OUT / 'candidate' / (asset + '.effect.json'), document)
 
 

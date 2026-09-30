@@ -1978,8 +1978,11 @@ Publish`가 기존 World source와 게시 데이터를 갱신한다. 일반 배�
 sourceStartMs를 혼동하지 않는다. optional sourceStartMs의 생략값은0이며 새 Client/게시자가
 그 필드를 함께 소비한다. source-in이 음원 밖이면 적용을 거절하고 기존 초안을 유지한다.
 
-Movie 오디오는 원본 time dilation과 사용자 속도를 유지하면서 actual media cursor와
-Movie source 시간을 비교한다. 긴 frame 지연 후100ms를 넘긴 차이를 교정하고, 정상
+Movie 오디오는 카메라·배우의 원본 time dilation과 별개로 감속 전 Movie 시간을 사용한다.
+Sound 시작만 원본 source 시각에서 Movie 시각으로 변환하고, WAV 재생 위치·길이·source-in은
+오디오 시간으로 계산한다. Sound 박스의 길이와 왼쪽·오른쪽 trim도 같은 WAV 시간을 사용하며,
+body 이동은 현재 source-in과 음원 길이를 보존한다. FMOD pitch에는 사용자가 선택한 재생 배속만
+반영한다. 긴 frame 지연 후 실제 media cursor와의 차이가100ms를 넘으면 교정하고, 정상
 범위에서는 채널을 매 frame seek하지 않는다. pause/seek/loop도 같은 owner를 사용하며
 일반 World와 전투 SFX 재생 시계는 이 Movie 전용 교정의 대상이 아니다.
 

@@ -156,6 +156,7 @@ LOGIC_KIND_VALUE_KEYS = {
     "POSE_INPUT": {"poseIndex"},
     "CARD_DICE_BIND": set(),
     "STAGGER_WINDOW": {"threshold", "shieldArcDegrees", "endsPatternOnSuccess", "normalYawOffsetDegrees"},
+    "BOSS_DAMAGE_REDUCTION": set(),
     "AREA_OVERLAP": {"insideOutcome", "repeatIntervalMs"},
     "INVULNERABILITY_ZONE": {"threshold"},
     "OBJECT_OVERLAP": {"targetWorldInstanceId", "targetRadiusM", "insideOutcome"},
@@ -2225,7 +2226,7 @@ def _validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -
                 if enabled and status == "PRODUCT" and (not hold.get("enabled", True) or
                         hold_start > capture_start or hold_start + hold_duration < capture_start + capture_duration):
                     raise CompositionError(f"{box_context} Hold must be enabled and cover the complete Trigger window")
-            if kind in {"ATTACHMENT_HOLD", "BOSS_TRACK_TARGET", "BOSS_RANDOM_TARGET", "CROSS_DIRECTION_CLONES", "BINGO_BOARD", "INVULNERABILITY_ZONE"} and any(outcomes.values()):
+            if kind in {"ATTACHMENT_HOLD", "BOSS_TRACK_TARGET", "BOSS_RANDOM_TARGET", "CROSS_DIRECTION_CLONES", "BINGO_BOARD", "INVULNERABILITY_ZONE", "BOSS_DAMAGE_REDUCTION"} and any(outcomes.values()):
                 raise CompositionError(f"{box_context} {kind} has no outcomes")
             if kind in {"ATTACHMENT_HOLD", "BOSS_TRACK_TARGET", "BOSS_RANDOM_TARGET", "CROSS_DIRECTION_CLONES", "BINGO_BOARD"} and any(row.get("logicOccurrenceId") == box_id and
                     presentation_resources[row["resourceId"]]["kind"] == "COLLIDER" for row in pattern.get("presentationOccurrences", [])):

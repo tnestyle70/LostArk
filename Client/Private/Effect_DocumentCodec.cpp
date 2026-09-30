@@ -149,7 +149,8 @@ bool_t Client::CEffectDocumentCodec::Is_SafeResourceAssetId(
 	EFFECT_RESOURCE_FILE_KIND* pOutKind)
 {
 	if (strAssetId.empty() || strAssetId.size() > MAX_RESOURCE_ID_BYTES ||
-		0u != strAssetId.rfind("Effect/", 0u) ||
+		(0u != strAssetId.rfind("Effect/", 0u) &&
+			0u != strAssetId.rfind("Character/SourceMaterials/", 0u)) ||
 		std::string::npos != strAssetId.find('\\') ||
 		std::string::npos != strAssetId.find(':'))
 	{
@@ -182,6 +183,12 @@ bool_t Client::CEffectDocumentCodec::Is_SafeResourceAssetId(
 	else if (Extension == ".dds")
 		eKind = EFFECT_RESOURCE_FILE_KIND::TEXTURE;
 	else
+		return false;
+	// Character mesh particles share the original character material textures.
+	// Keep this namespace texture-only; model and arbitrary resource paths
+	// still require their existing admission rules.
+	if (0u == strAssetId.rfind("Character/SourceMaterials/", 0u) &&
+		eKind != EFFECT_RESOURCE_FILE_KIND::TEXTURE)
 		return false;
 	const std::filesystem::path Resolved =
 		CRuntimeAssetRoot::Resolve(RelativePath);

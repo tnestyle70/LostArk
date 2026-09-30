@@ -39,6 +39,8 @@ public:
 			s_pActiveInstance : nullptr;
 	}
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera.lock(); }
+	// Maharaka only: marker over each authored jump (movePlayer) trigger box, like Kouku/Valtan.
+	void Submit_TriggerMarkers();
 #ifdef _DEBUG
 	// Borrow the existing Maharaka map; the Level remains its owner.
 	CMapPlacementRuntime& Get_MapAuthoringRuntime() { return m_MapRuntime; }
@@ -79,6 +81,23 @@ private:
 	CPlayerController m_PlayerController;
 	std::unique_ptr<CMaharakaWaterpangPresentation> m_Waterpang;
 	std::unique_ptr<CInteractKeyPromptView> m_InteractPrompt;
+	// Maharaka only. One effect.world.move_destination on the exact centre of every enabled
+	// single-movePlayer trigger box of the published viewer world document.
+	struct TRIGGER_MARKER final
+	{
+		std::string placementId;
+		uint64_t iHandleValue = 0u;
+		float4x4_t rootWorld{};
+		f32_t seconds = 0.f;
+		bool_t started = false;
+		bool_t clockStarted = false;
+		bool_t active = false;
+		bool_t retired = false;
+	};
+	std::vector<TRIGGER_MARKER> m_TriggerMarkers;
+	bool_t Load_TriggerMarkers(const char* pAreaId);
+	void Clear_TriggerMarkers();
+	void Update_TriggerMarkerClocks(f32_t deltaSeconds);
 	static CLevel_Development* s_pActiveInstance;
 
 public:

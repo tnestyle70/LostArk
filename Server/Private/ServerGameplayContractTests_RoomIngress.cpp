@@ -7,6 +7,7 @@
 #include "ServerTriggerSystem.h"
 #include "WorldBootstrap.h"
 #include "WorldDestructionBootstrapContractTests.h"
+#include "Network/PacketReader.h"
 #include <Windows.h>
 #include <process.h>
 #include <algorithm>
@@ -107,6 +108,104 @@ int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
 			tests.Require(!raid->Stage_PlayerEntry(session, enter, {}, entry, reason, status,
 				{}, {}, INVALID_HONOR_TITLE_ID, "npc.invalid"), "Reject unknown return NPC without partial admission");
 		}
+	}
+	{
+		auto raid = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+		std::vector<std::shared_ptr<CClientSession>> peers;
+		bool ready = raid->Is_Ready();
+		for (unsigned index = 0; index < 4u && ready; ++index)
+		{
+			auto peer = std::make_shared<CClientSession>(95000u + index, INVALID_SOCKET,
+				CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+			peer->m_isSendRunning.store(true); raid->Handle_Register(peer);
+			C2S_ENTER_WORLD enter; enter.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			enter.eCharacterClass = CHARACTER_CLASS_ID::WARLORD; enter.strNickName = "ExitVote" + std::to_string(index);
+			ready = raid->Join(peer->Get_SessionId(), enter); peers.push_back(peer);
+		}
+		if (ready)
+		{
+			const auto& leader = raid->m_Players.at(peers.front()->Get_PlayerId());
+			for (unsigned index = 1; index < peers.size(); ++index)
+			{
+				C2S_PARTY_INVITE invite; invite.iRequestSequence = index;
+				invite.iTargetNetEntityId = raid->m_Players.at(peers[index]->Get_PlayerId()).iNetEntityId;
+				raid->Handle_PartyInvite(leader.iSessionId, invite);
+				C2S_PARTY_INVITE_RESPOND reply; reply.iRequestSequence = index;
+				reply.iFromNetEntityId = leader.iNetEntityId; reply.bAccepted = true;
+				raid->Handle_PartyInviteRespond(peers[index]->Get_SessionId(), reply);
+			}
+			ready = raid->m_PartyMembersByPartyId.size() == 1u &&
+				raid->m_PartyMembersByPartyId.begin()->second.size() == 4u;
+		}
+		tests.Require(ready, "Kouku EXIT fixture uses four actual admissions and accepted party invitations");
+		if (ready)
+		{
+			for (unsigned index = 0; index < peers.size(); ++index)
+			{
+				auto& player = raid->m_Players.at(peers[index]->Get_PlayerId());
+				player.strRaidReturnNpcPlacementId = index % 2u ? "npc.bern.aylara" : "npc.bern.beda.guide";
+				player.Purse.iSilver = 1000u + index; player.Purse.iGold = 100u + index; player.iHonorTitleId = 30001u;
+			}
+			const auto clearFrames = [&]() {
+				for (const auto& peer : peers) { peer->m_OutboundFrames.clear(); peer->m_iQueuedOutboundBytes = 0u; }
+			};
+			const auto allVerdicts = [&](const GATE_PROGRESS_VOTE_RESULT expected) {
+				return std::all_of(peers.begin(), peers.end(), [&](const auto& peer) {
+					return std::any_of(peer->m_OutboundFrames.begin(), peer->m_OutboundFrames.end(), [&](const auto& frame) {
+						if (frame.ePacketType != PACKET_TYPE::S2C_GATE_PROGRESS_STATE) return false;
+						CPacketReader reader{std::span<const std::uint8_t>(frame.Bytes).subspan(PACKET_HEADER_BYTES)};
+						S2C_GATE_PROGRESS_STATE state;
+						return Read_Message(reader, state) && state.bClosed && state.eKind == GATE_PROGRESS_KIND::EXIT &&
+							state.eResult == expected && state.iTotal == 4u;
+					});
+				});
+			};
+			C2S_GATE_PROGRESS_PROPOSE proposal;
+			proposal.iRequestSequence = 10u; proposal.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			proposal.eKind = GATE_PROGRESS_KIND::EXIT;
+			raid->Handle_GateProgressPropose(peers[1]->Get_SessionId(), proposal);
+			tests.Require(!raid->m_GateProgress.iProposalId && raid->m_PendingWorldTransfers.empty(),
+				"A non-leader cannot initiate the party EXIT vote");
+			clearFrames(); raid->Handle_GateProgressPropose(peers[0]->Get_SessionId(), proposal);
+			const auto declinedId = raid->m_GateProgress.iProposalId;
+			C2S_GATE_PROGRESS_RESPOND response; response.iRequestSequence = 11u;
+			response.iProposalId = declinedId + 1u; response.bAccepted = true;
+			raid->Handle_GateProgressRespond(peers[1]->Get_SessionId(), response);
+			tests.Require(declinedId && raid->m_GateProgress.Accepted.size() == 1u && raid->m_PendingWorldTransfers.empty(),
+				"A stale proposal response cannot contribute consent or begin any transfer");
+			response.iProposalId = declinedId; response.bAccepted = false;
+			raid->Handle_GateProgressRespond(peers[1]->Get_SessionId(), response);
+			tests.Require(!raid->m_GateProgress.iProposalId && raid->m_PendingWorldTransfers.empty() &&
+				raid->m_Players.size() == 4u && allVerdicts(GATE_PROGRESS_VOTE_RESULT::DECLINED),
+				"Declined EXIT preserves all four players and reports the same result to every participant");
+			clearFrames(); ++proposal.iRequestSequence;
+			raid->Handle_GateProgressPropose(peers[0]->Get_SessionId(), proposal);
+			response.iProposalId = raid->m_GateProgress.iProposalId; response.bAccepted = true;
+			for (unsigned index = 1; index < peers.size(); ++index)
+			{
+				raid->Handle_GateProgressRespond(peers[index]->Get_SessionId(), response);
+				if (index + 1u < peers.size()) tests.Require(raid->m_PendingWorldTransfers.empty(),
+					"EXIT waits for the last human's consent before staging a return");
+			}
+			bool carried = raid->m_PendingWorldTransfers.size() == 4u && allVerdicts(GATE_PROGRESS_VOTE_RESULT::ALL_ACCEPTED);
+			for (const auto& transfer : raid->m_PendingWorldTransfers)
+			{
+				const auto& player = raid->m_Players.at(raid->m_PlayerIdBySessionId.at(transfer.iSessionId));
+				carried &= transfer.eTargetWorldId == WORLD_ID::BERN && transfer.strNickName == player.strNickName &&
+					transfer.strSpawnPlacementOverrideId == player.strRaidReturnNpcPlacementId &&
+					transfer.CarriedPurse.iSilver == player.Purse.iSilver && transfer.CarriedPurse.iGold == player.Purse.iGold &&
+					transfer.iHonorTitleId == player.iHonorTitleId && transfer.CarriedInventory.size() == player.Inventory.size() &&
+					std::equal(transfer.CarriedInventory.begin(), transfer.CarriedInventory.end(), player.Inventory.begin(),
+						[](const auto& a, const auto& b) { return a.strItemId == b.strItemId && a.iQuantity == b.iQuantity &&
+							a.eEquippedSlot == b.eEquippedSlot; });
+			}
+			tests.Require(carried && raid->m_Players.size() == 4u,
+				"Unanimous EXIT stages each player's exact NPC, equipment, inventory, purse and title before source removal");
+			raid->Handle_GateProgressRespond(peers.back()->Get_SessionId(), response);
+			tests.Require(raid->m_PendingWorldTransfers.size() == 4u,
+				"Repeated final EXIT response cannot enqueue duplicate returns");
+		}
+		for (const auto& peer : peers) peer->Request_Close();
 	}
 	std::cout << "failures : " << tests.failures << '\n';
 	return tests.failures ? 1 : 0;

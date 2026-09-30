@@ -76,11 +76,17 @@ namespace Client
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
 		// The vehicle the Server has this player riding; 0 on foot.
 		std::uint32_t iVehicleId = 0u;
+		// Maharaka Waterpang: the Server armed this body with the water gun, so Q/W/E/R shoot it.
+		bool isWaterpangArmed = false;
+		// Replicated effective move speed (m/s) and whether a move goal is pending; the ship HUD's knots line reads them.
+		float fMoveSpeed = 0.f;
+		bool hasMoveGoal = false;
 		LostArk::Shared::VEHICLE_FLIGHT_PHASE eVehicleFlightPhase = LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED;
 		// The honor title the Server has this player wearing; 0 = none.
 		std::uint32_t iHonorTitleId = 0u;
 		LostArk::Shared::KOUKU_HUD_MODE eKoukuHudMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
 		std::uint8_t iMarioStage = 0u;
+		std::uint32_t iKoukuMinigameEndTick = 0u;
 		std::uint8_t iMarioLayoutVariant = 0u;
 		// Server-popped layout slots and released colours; zero outside Mario.
 		std::uint16_t iMarioPoppedBallMask = 0u;
@@ -212,6 +218,7 @@ namespace Client
 	struct HUD_DEADSCENE_TEXT_RECTS
 	{
 		bool isValid = false;
+		bool isSpectating = false;
 		float fTitleX = 0.f, fTitleY = 0.f, fTitleWidth = 0.f, fTitleHeight = 0.f;
 		float fReviveTextX = 0.f, fReviveTextY = 0.f, fReviveTextWidth = 0.f, fReviveTextHeight = 0.f;
 		float fSpectateX = 0.f, fSpectateY = 0.f, fSpectateWidth = 0.f, fSpectateHeight = 0.f;
@@ -463,13 +470,14 @@ namespace Client
 		all RenderEstherGauge checks to skip drawing. Never touches Server truth. */
 		void Debug_Set_Esther_Preview(bool enable);
 
-		/* The HUD Layout Tool drives the dungeon timer here: nothing else writes it
-		today. Running counts fSeconds down on the tick below and stops at zero. */
-		void Debug_Set_DungeonTimer(const HUD_DUNGEON_TIMER_STATE& state, const bool running)
+		/* Product receives a Server deadline; only explicit authoring preview runs locally. */
+		void Set_DungeonTimer(const HUD_DUNGEON_TIMER_STATE& state, const bool running)
 		{
 			m_DungeonTimer = state;
 			m_bDungeonTimerRunning = running;
 		}
+		void Debug_Set_DungeonTimer(const HUD_DUNGEON_TIMER_STATE& state, const bool running)
+		{ Set_DungeonTimer(state, running); }
 		bool Is_DungeonTimerRunning() const
 		{
 			return m_bDungeonTimerRunning;

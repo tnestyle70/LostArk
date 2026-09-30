@@ -690,67 +690,18 @@ void LostArk::Server::CServerGameplayContractRunner::Run_GenerationRetention(TES
 		tests.Require(
 			hasExactStrugglingFourDirection && hasExactStrugglingRockAndImpactTrack,
 			"Keep STRUGGLING STEP_04 fixed four-direction contacts separate from the STEP_08 impact and delayed arena-centred rock volley");
-		const bool hasExactPartBreakRecoveryCardinalRocks =
+		const bool hasPartBreakRecoveryWithoutRocks =
 			nullptr != partBreakStage && 1800u == partBreakStage->iDurationMs &&
+			partBreakStage->Actions.empty() &&
 			nullptr != partBreakRecovery &&
 			BOSS_PATTERN_STAGE_KIND::RECOVERY ==
 				partBreakRecovery->eStageKind &&
 			5183u == partBreakRecovery->iDurationMs &&
-			1u == partBreakRecovery->Actions.size() &&
-			BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER ==
-				partBreakRecovery->Actions.front().eTrigger &&
-			BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT_VOLLEY ==
-				partBreakRecovery->Actions.front().eKind &&
-			"combatobject.valtan.part-break.rock" ==
-				partBreakRecovery->Actions.front().strTargetId &&
-			BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
-				partBreakRecovery->Actions.front().Volley.ePolicy &&
-			4u == partBreakRecovery->Actions.front().Volley.
-				iCountPerResolvedTarget &&
-			BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL ==
-				partBreakRecovery->Actions.front().Volley.eLayout &&
-			std::abs(partBreakRecovery->Actions.front().Volley.fRadiusM -
-				4.9497475f) < 1.0e-6f &&
-			45.f == partBreakRecovery->Actions.front().Volley.
-				fStartAngleDegrees &&
-			90.f == partBreakRecovery->Actions.front().Volley.
-				fAngleStepDegrees &&
-			!partBreakRecovery->Actions.front().Volley.bAllowOverlap &&
-			4u == partBreakRecovery->Actions.front().Volley.
-				iMaximumTotalObjects &&
-			1u == partBreakRecovery->Actions.front().Volley.iSpawnCount &&
-			0u == partBreakRecovery->Actions.front().Volley.iFirstSpawnOffsetMs &&
-			0u == partBreakRecovery->Actions.front().Volley.iSpawnIntervalMs &&
-			0u == partBreakRecovery->Actions.front().Volley.iArenaRandomCount &&
-			nullptr != partBreakRock &&
-			"VALTAN_PART_BREAK" == partBreakRock->strOwnerPatternId &&
-			"valtan.reaction.part-break.recovery" ==
-				partBreakRock->strOwnerStageActionId &&
-			"combatobject.visual.valtan.part-break.rock.v1" ==
-				partBreakRock->strClientVisualId &&
-			BOSS_COMBAT_OBJECT_KIND::FIXED_AREA == partBreakRock->eKind &&
-			BOSS_COMBAT_OBJECT_ORIGIN_POLICY::BOSS_POSITION ==
-				partBreakRock->eOriginPolicy &&
-			BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NONE ==
-				partBreakRock->eDirectionPolicy &&
-			6200u == partBreakRock->iLifeMs &&
-			std::abs(partBreakRock->fCoverRadiusM - 1.5f) < 0.0001f &&
-			1u == partBreakRock->Hits.size() &&
-			partBreakRock->PresentationPulses.empty() &&
-			"hit.valtan.part-break.rock.explode" ==
-				partBreakRock->Hits.front().strHitId &&
-			BOSS_COMBAT_OBJECT_HIT_TRIGGER::TIMED ==
-				partBreakRock->Hits.front().eTrigger &&
-			5000u == partBreakRock->Hits.front().iAtMs &&
-			BOSS_PATTERN_HIT_SHAPE::CIRCLE ==
-				partBreakRock->Hits.front().eHitShape &&
-			std::abs(partBreakRock->Hits.front().fHitOuterRadius - 3.f) <
-				0.0001f &&
-			"damage.valtan.stomp" ==
-				partBreakRock->Hits.front().strDamageProfileId;
+			partBreakRecovery->Actions.empty() &&
+			nullptr == partBreakRock;
 		tests.Require(
-			hasExactPartBreakRecoveryCardinalRocks,
-			"Split Part Break into 1800ms reaction plus 5183ms recovery and own one exact four-root damaging rock volley at recovery ENTER");
+			hasPartBreakRecoveryWithoutRocks,
+			"Keep Part Break's 1800ms reaction and 5183ms recovery without spawn actions or an orphan damaging rock definition");
 		tests.Require(
 			nullptr != fourSlashPattern && nullptr != swingPattern &&
 			420609u == fourSlashPattern->iSourcePrimaryActionId &&

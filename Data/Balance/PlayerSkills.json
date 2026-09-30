@@ -3097,7 +3097,7 @@
       "setsStance": "NONE",
       "cooldownMs": 3000,
       "actionDurationMs": 4833,
-      "hitTimeMs": 300,
+      "hitTimeMs": 3800,
       "resourceCost": 0,
       "identityCost": 0,
       "movementDistance": 0.0,

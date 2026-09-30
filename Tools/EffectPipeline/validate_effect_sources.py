@@ -56,6 +56,7 @@ BAKED_SAMPLE_KEYS = (
     "secondEdgeUE3Cm",
 )
 CARRIER_KEYS = {
+    "cascadeBeamV1": ("formatVersion", "kind", "admission", "typeDataModuleStableId"),
     "cascadeRibbonV1": (
         "formatVersion",
         "kind",
@@ -482,6 +483,36 @@ def _require_stable_id(value: Any, field: str) -> str:
     return value
 
 
+def validate_element_display_names(source: dict[str, Any], relative: str) -> None:
+    """Match the native codec's element labels, including legacy ID fallback."""
+    version = source.get("version")
+    if (isinstance(version, bool) or not isinstance(version, (int, float))
+            or version not in range(3, 16)):
+        raise ContractError(f"Effect document version is not supported: {relative}")
+    elements = source.get("elements")
+    if not isinstance(elements, list):
+        raise ContractError(f"Effect elements must be an array: {relative}")
+    for index, element in enumerate(elements):
+        owner = f"{relative}.elements[{index}]"
+        if not isinstance(element, dict):
+            raise ContractError(f"Effect Element must be an object: {owner}")
+        field = "displayName" if version >= 6 else "id"
+        value = element.get(field)
+        if not isinstance(value, str):
+            raise ContractError(f"{owner}.{field} must be a string")
+        try:
+            encoded = value.encode("utf-8")
+        except UnicodeEncodeError as exc:
+            raise ContractError(f"{owner}.{field} must be valid UTF-8") from exc
+        # Has_VisibleCharacter uses C-locale isspace on UTF-8 bytes, not Unicode
+        # whitespace classification. The document's own label has a separate limit.
+        if len(encoded) > 64 or not any(byte not in b" \t\r\n\v\f" for byte in encoded):
+            raise ContractError(
+                f"{owner} Element {element.get('id')!r} display name must be "
+                f"1-64 UTF-8 bytes and not blank (got {len(encoded)} bytes)"
+            )
+
+
 def _finite_number(value: Any, field: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ContractError(f"{field} must be a finite number")
@@ -753,7 +784,6 @@ def _validate_v15_runtime_extensions(source: dict[str, Any], relative: str) -> N
         raise ContractError(f"v15 elements must be an array: {relative}")
     element_ids: set[str] = set()
     used_histories: set[str] = set()
-    carrier_count = 0
     for element_index, element in enumerate(elements):
         if not isinstance(element, dict):
             raise ContractError(f"v15 element must be an object: {relative}[{element_index}]")
@@ -766,7 +796,6 @@ def _validate_v15_runtime_extensions(source: dict[str, Any], relative: str) -> N
         carrier = element.get("runtimeCarrier")
         if carrier is None:
             continue
-        carrier_count += 1
         if not isinstance(carrier, dict):
             raise ContractError(f"v15 runtimeCarrier must be an object: {element_id}")
         kind = carrier.get("kind")
@@ -782,9 +811,12 @@ def _validate_v15_runtime_extensions(source: dict[str, Any], relative: str) -> N
 
         source_recipe = element.get("sourceRecipe")
         source_recipe = source_recipe if isinstance(source_recipe, dict) else {}
-        if kind == "cascadeRibbonV1":
+        if kind in ("cascadeRibbonV1", "cascadeBeamV1"):
             if element.get("kind") != "trail" or source_recipe.get("enabled") is not True:
                 raise ContractError(f"v15 Cascade carrier target is invalid: {element_id}")
+            if kind == "cascadeBeamV1" and source_recipe.get("rendererShape") != "beam":
+                raise ContractError(f"v15 Cascade Beam target shape is invalid: {element_id}")
+            type_data_class = "particlemoduletypedatabeam2" if kind == "cascadeBeamV1" else "particlemoduletypedataribbon"
             stable_id = carrier.get("typeDataModuleStableId")
             if (
                 not isinstance(stable_id, str)
@@ -800,7 +832,7 @@ def _validate_v15_runtime_extensions(source: dict[str, Any], relative: str) -> N
                 module
                 for module in modules if isinstance(module, dict)
                 and module.get("stableId") == stable_id
-                and "typedataribbon" in str(module.get("className", "")).casefold()
+                and str(module.get("className", "")).casefold().rsplit(".", 1)[-1] == type_data_class
             ] if isinstance(modules, list) else []
             if len(matches) != 1:
                 raise ContractError(f"v15 Cascade TypeData join is not unique: {element_id}")
@@ -824,8 +856,6 @@ def _validate_v15_runtime_extensions(source: dict[str, Any], relative: str) -> N
                     or light.get("enabled") is not True
                 ):
                     raise ContractError(f"v15 baked Light target is invalid: {element_id}")
-    if carrier_count == 0:
-        raise ContractError(f"v15 Product document has no runtime carriers: {relative}")
     if used_histories != set(histories):
         raise ContractError(f"v15 baked histories are orphaned: {relative}")
 
@@ -1289,6 +1319,7 @@ def validate_repository(
             raise ContractError(f"direct source Effect ID mismatches its catalog row: {relative}")
         if not isinstance(source.get("elements"), list):
             raise ContractError(f"direct source elements must be an array: {relative}")
+        validate_element_display_names(source, relative)
         _validate_authored_material_color_space(source, relative)
         _validate_native_sprite_particle_options(source, relative)
         _validate_authored_module_overrides(source, relative)

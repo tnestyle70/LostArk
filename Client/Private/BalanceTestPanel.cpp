@@ -54,8 +54,8 @@ const char* FieldHelp(const std::string& field)
     if (field == "damageRatePercent") return "Legacy attack multiplier: 100 = 100%. Consumed only when coefficient and addend are both zero.";
     if (field == "damageSpreadPercent") return "Random damage spread in percent, applied by the Server.";
     if (field == "bossHealthBarDamage") return "Total boss health bars per ACTIVE cast, divided among its hits. ALT_V uses this separately from ordinary attack-power damage; missed, invulnerable or shielded hits still follow Server rules.";
-    if (field == "staggerGaugeMaximum") return "This pattern's stagger gauge threshold. A higher value needs more stagger damage; this is not a global multiplier. Some published Retail thresholds require increments of 400; invalid values are rejected without rounding.";
-    if (field == "staggerDamage") return "This skill's stagger contribution per admitted hit, consumed against the active pattern gauge.";
+    if (field == "staggerGaugeMaximum") return "Shared Valtan/Kouku stagger threshold. Each admitted skill contributes damage / 1000 independently of boss HP damage and Mario damage reduction. Whirlwind contributes one third. Save + Apply updates the Server.";
+    if (field == "staggerDamage") return "Legacy stagger contribution outside Valtan/Kouku. Raid stagger uses the admitted hit's damage / 1000; DAMAGE-only and COUNTER-only results do not add stagger.";
     if (field == "partDamage") return "This skill's part-destruction contribution per admitted hit.";
     if (field.find("Percent") != std::string::npos) return "Percent units: 10 = 10%, 100 = 100%.";
     if (field.ends_with("Ms")) return "Milliseconds: 1000 = one second. Current in-flight actions keep their admitted timing.";

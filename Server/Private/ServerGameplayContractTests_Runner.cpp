@@ -61,6 +61,11 @@ int CServerGameplayContractRunner::Run_ValtanPresentationOnly()
         TESTS tests{};
         Run_ValtanResetlessNext(tests,
             "collision.valtan.wallgroup.11047903315509031966.15719065619666776634", true);
+        CGameplayCatalog catalog;
+        const bool catalogLoaded = catalog.Load();
+        tests.Require(catalogLoaded, "Load the published Valtan response catalog");
+        if (catalogLoaded) Run_ValtanRevision(tests, catalog);
+        Run_ValtanTimelines(tests);
         std::cout << "failures : " << tests.failures << '\n';
         *static_cast<int*>(output) = tests.failures == 0 ? 0 : 1;
     };

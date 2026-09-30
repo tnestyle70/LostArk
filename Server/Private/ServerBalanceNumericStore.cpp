@@ -383,6 +383,13 @@ namespace
             case BALANCE_DOMAIN::PATTERN_DAMAGE: continue; // Exact published source bindings below.
             case BALANCE_DOMAIN::STAGGER:
             {
+                if (change.strId == "RAID_COMMON" && change.strField == "staggerGaugeMaximum")
+                {
+                    if (change.fValue < 1. || change.fValue > 1000000000. || std::floor(change.fValue) != change.fValue)
+                        throw std::runtime_error("Raid stagger maximum must be a whole number in 1..1000000000");
+                    retail.scalar(retail.Root.at("raidStaggerMaximum"), change.fBefore, change.fValue);
+                    continue;
+                }
                 const auto id = split(change.strId, '|');
                 if (id.size() != 4 || id[0] != "ENCOUNTER_VALTAN" || change.strField != "staggerGaugeMaximum") throw std::runtime_error("Unsupported stagger source owner");
                 std::size_t ordinal = 0;

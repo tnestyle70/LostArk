@@ -45,6 +45,38 @@ namespace ServerGameplayContractDetail
 	{
 		using namespace LostArk::Shared;
 		using namespace LostArk::Server;
+        for (const auto kind : { BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH, BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS,
+                BOSS_PATTERN_LOGIC_KIND::POSE_INPUT, BOSS_PATTERN_LOGIC_KIND::ENTER_AREA })
+            for (const auto action : { PLAYER_ACTION_STATE::NONE, PLAYER_ACTION_STATE::FALLING, PLAYER_ACTION_STATE::GRABBED })
+            {
+                SERVER_WORLD_ENTITY boss{}; boss.iNetEntityId = 79901u; boss.iPatternSequence = 1u;
+                boss.iCurrentHp = boss.iMaximumHp = 1000u;
+                SERVER_PLAYER target{}; target.iPlayerId = 1u; target.iNetEntityId = 79902u;
+                target.iCurrentHp = target.iMaximumHp = 100u; target.iShield = 100000u;
+                target.iInvulnerableEndTick = 10000u; target.isCombatReady = false; target.eAction = action;
+                target.fPositionZ = -1.f; target.fYawDegrees = 180.f;
+                target.eMechanicCardSymbol = MECHANIC_CARD_SYMBOL::SPADE; target.eMechanicCardColor = MECHANIC_CARD_COLOR::RED;
+                auto safe = target; safe.iPlayerId = 2u; safe.iNetEntityId = 79903u; safe.fYawDegrees = 0.f;
+                safe.eMechanicCardSymbol = MECHANIC_CARD_SYMBOL::HEART;
+                if (kind == BOSS_PATTERN_LOGIC_KIND::ENTER_AREA) target.fPositionX = 100.f;
+                std::map<PLAYER_ID, SERVER_PLAYER> players{{1u, target}, {2u, safe}};
+                BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "contract.lethal.verdict.selection";
+                BOSS_PATTERN_LOGIC_WINDOW window{}; window.strWindowId = "contract.verdict";
+                window.eKind = kind; window.iDurationMs = 100u; window.fHalfAngleDegrees = 45.f;
+                BOSS_PATTERN_LOGIC_RESULT death{}; death.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH;
+                window.OnFail = window.OnTimeout = {death};
+                auto& region = window.CardRegions.emplace_back(); region.strRegionId = "contract.safe.card";
+                region.bCircle = true; region.fRadiusM = 2.f; region.fHalfX = region.fHalfZ = 2.f;
+                region.eCardSymbol = MECHANIC_CARD_SYMBOL::HEART; region.eCardColor = MECHANIC_CARD_COLOR::RED;
+                pattern.LogicWindows = {window};
+                KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output; std::vector<DAMAGE_EVENT> damage;
+                CKoukuSaydonLogicRuntime::Build(pattern, boss, 100u, ledger);
+                CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, nullptr, 100u, damage, output);
+                if (kind == BOSS_PATTERN_LOGIC_KIND::POSE_INPUT) ledger.Windows.front().Answers[2u] = KOUKUSAYDON_LOGIC_ANSWER::SUCCESS;
+                CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, nullptr, 103u, damage, output);
+                tests.Require(!players.at(1u).iCurrentHp && players.at(2u).iCurrentHp == 100u,
+                    "Lethal fail/timeout judges living not-ready, falling and grabbed humans while preserving successful geometry or answers");
+            }
 		const auto makeWindow = []()
 		{
 			BOSS_PATTERN_LOGIC_WINDOW window{};
@@ -415,6 +447,17 @@ namespace ServerGameplayContractDetail
 	frame, which already sits close to the 1 MiB production stack. */
     void Run_KoukuInvulnerabilityZoneContracts(TESTS& tests, const CGameplayCatalog& catalog)
     {
+        const auto tookHalfDamage = [](const SERVER_PLAYER& target, const std::vector<DAMAGE_EVENT>& events) {
+            std::uint64_t amount = 0u; std::size_t count = 0u;
+            for (const auto& event : events)
+            {
+                if (event.iTargetNetEntityId != target.iNetEntityId) continue;
+                if (event.isOutgoing || event.eHitFlag != DAMAGE_HIT_FLAG::NORMAL ||
+                    event.iAmount < 45u || event.iAmount > 55u) return false;
+                amount += event.iAmount; ++count;
+            }
+            return count == 1u && target.iCurrentHp <= 100u && amount == 100u - target.iCurrentHp;
+        };
         auto boss = std::make_unique<SERVER_WORLD_ENTITY>(); boss->iPatternSequence = 1u;
         SERVER_PLAYER base{}; base.iPlayerId = 1u; base.iNetEntityId = 101u;
         base.iCurrentHp = base.iMaximumHp = 100u; base.isCombatReady = true;
@@ -442,14 +485,14 @@ namespace ServerGameplayContractDetail
             CKoukuSaydonLogicRuntime::Build(pattern, *boss, 100u, ledger);
             CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 103u, events, output);
             tests.Require(inside ? player.iCurrentHp == 100u && player.iFearEndTick == 0u && events.empty() :
-                player.iCurrentHp == 50u && player.eAction == PLAYER_ACTION_STATE::FEAR && player.iFearEndTick == 193u,
+                tookHalfDamage(player, events) && player.eAction == PLAYER_ACTION_STATE::FEAR && player.iFearEndTick == 193u,
                 "Owning zone blocks gaze fear and 50 percent damage in either result order; outside receives both");
             if (inside)
             {
                 auto unrelated = pattern; unrelated.strPatternId = "other.pattern"; unrelated.LogicWindows = {gaze};
                 KOUKUSAYDON_LOGIC_LEDGER other{}; CKoukuSaydonLogicRuntime::Build(unrelated, *boss, 100u, other);
                 CKoukuSaydonLogicRuntime::Update(*boss, unrelated, other, players, catalog, nullptr, 103u, events, output);
-                tests.Require(player.iCurrentHp == 50u && player.eAction == PLAYER_ACTION_STATE::FEAR,
+                tests.Require(tookHalfDamage(player, events) && player.eAction == PLAYER_ACTION_STATE::FEAR,
                     "A different Pattern in the same tick does not inherit zone protection");
                 CKoukuSaydonLogicRuntime::Discard(ledger, players, boss.get());
                 CKoukuSaydonLogicRuntime::Apply_Result(player, death, *boss, catalog, nullptr, 103u, events);
@@ -481,6 +524,7 @@ namespace ServerGameplayContractDetail
         };
         const auto judge = [&](BOSS_PATTERN_DEFINITION& definition, std::map<PLAYER_ID, SERVER_PLAYER>& targets,
             KOUKUSAYDON_LOGIC_LEDGER& state, std::uint32_t tick) {
+            events.clear();
             CKoukuSaydonLogicRuntime::Update(*boss, definition, state, targets, catalog, nullptr, tick, events, output);
         };
         gaze.OnFail = {half, fear};
@@ -494,7 +538,7 @@ namespace ServerGameplayContractDetail
                 tests.Require(std::all_of(targets.begin(), targets.end(), [&](const auto& row) {
                     return protects ? row.second.iCurrentHp == 100u && row.second.iFearEndTick == 0u &&
                         row.second.iInvulnerabilityZoneContactTick == 203u && row.second.iInvulnerabilityZonePulseTick == 203u :
-                        row.second.iCurrentHp == 50u && row.second.iFearEndTick != 0u &&
+                        tookHalfDamage(row.second, events) && row.second.iFearEndTick != 0u &&
                         row.second.iInvulnerabilityZoneContactTick == 0u && row.second.iInvulnerabilityZonePulseTick == 0u;
                 }), "Zone threshold zero allows any count; blue one and red two protect only their exact occupancy");
             }
@@ -526,7 +570,7 @@ namespace ServerGameplayContractDetail
                 "Extra occupant or departure cancels zone contact immediately without changing existing invulnerability");
             targets.at(1u).iInvulnerableEndTick = 0u;
             judge(exact, targets, state, 203u);
-            tests.Require(targets.at(1u).iCurrentHp == 50u && targets.at(1u).iFearEndTick != 0u,
+            tests.Require(tookHalfDamage(targets.at(1u), events) && targets.at(1u).iFearEndTick != 0u,
                 "A previously valid exact zone does not retain protection at a later wrong-count judgement");
         }
         {
@@ -859,6 +903,25 @@ namespace ServerGameplayContractDetail
 		policy.iMaximum = 100u;
 		policy.iClownHoldMs = 15000u;
 		std::vector<DAMAGE_EVENT> logicEvents;
+        // These full-HP fixtures have no shield/buff. Each admitted ordinary
+        // hit varies by floor(nominal / 10); its NORMAL event is actual HP loss.
+        const auto matchesLogicDamage = [](const std::vector<DAMAGE_EVENT>& events,
+            const std::size_t begin, const SERVER_PLAYER& player, const std::uint32_t nominal,
+            const std::size_t expectedCount = 1u) {
+            std::uint64_t amount = 0u;
+            std::size_t count = 0u;
+            for (std::size_t index = begin; index < events.size(); ++index)
+            {
+                const auto& event = events[index];
+                if (event.iTargetNetEntityId != player.iNetEntityId) continue;
+                if (event.isOutgoing || event.eHitFlag != DAMAGE_HIT_FLAG::NORMAL ||
+                    event.iAmount < nominal - nominal / 10u || event.iAmount > nominal + nominal / 10u)
+                    return false;
+                amount += event.iAmount; ++count;
+            }
+            return count == expectedCount && player.iCurrentHp <= player.iMaximumHp &&
+                amount == player.iMaximumHp - player.iCurrentHp;
+        };
 		{
 			auto target = makePlayer(42u, 0.f, 0.f, 0.f);
 			target.isCombatReady = true; target.iMadnessDamageGainPercent = 100u;
@@ -873,16 +936,22 @@ namespace ServerGameplayContractDetail
 			tests.Require(target.iCurrentHp == 988u && target.iCurrentMadness == 0u && std::abs(target.dMadnessRemainder - .2) < 1e-8,
 				"Shield-absorbed damage does not fill madness; only the two HP actually lost do");
 			target.iMadnessDamageGainPercent = 0u; hit.iRawDamage = 10u;
+			const auto noPolicyHpBefore = target.iCurrentHp; events.clear();
 			CServerCombatHitRuntime::Apply_WorldToPlayer(target, hit, catalog, events);
-			tests.Require(target.iCurrentMadness == 0u && std::abs(target.dMadnessRemainder - .2) < 1e-8,
+			tests.Require(events.size() == 1u && events.front().iAmount >= 9u && events.front().iAmount <= 11u &&
+				noPolicyHpBefore - target.iCurrentHp == events.front().iAmount &&
+				target.iCurrentMadness == 0u && std::abs(target.dMadnessRemainder - .2) < 1e-8,
 				"A room without a Madness policy cannot charge gauge from incoming damage");
 			target.iMadnessDamageGainPercent = 200u; hit.iRawDamage = 5u;
 			CServerCombatHitRuntime::Apply_WorldToPlayer(target, hit, catalog, events);
 			tests.Require(target.iCurrentMadness == 1u && std::abs(target.dMadnessRemainder - .2) < 1e-8,
 				"Damage gain tuning scales actual HP loss and preserves the earlier fractional gauge");
 			target.iInvulnerableEndTick = 11u;
+			const auto invulnerableHpBefore = target.iCurrentHp;
+			const auto eventCountBefore = events.size();
 			CServerCombatHitRuntime::Apply_WorldToPlayer(target, hit, catalog, events);
-			tests.Require(target.iCurrentHp == 973u && target.iCurrentMadness == 1u,
+			tests.Require(target.iCurrentHp == invulnerableHpBefore && events.size() == eventCountBefore &&
+				target.iCurrentMadness == 1u,
 				"Invulnerability rejects both HP damage and damage-derived madness");
 			CServerCombatHitRuntime::Add_MadnessGauge(target, 1000.);
 			tests.Require(target.iCurrentMadness == 100u && target.dMadnessRemainder == 0., "Gauge gain clamps at the encounter maximum");
@@ -1043,12 +1112,20 @@ namespace ServerGameplayContractDetail
 			}
 			KOUKUSAYDON_LOGIC_LEDGER ledger;
 			KOUKUSAYDON_LOGIC_OUTPUT output;
+			const auto damageBegin = logicEvents.size();
 			CKoukuSaydonLogicRuntime::Build(pattern,boss,600u,ledger);
 			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,629u,logicEvents,output);
 			const bool untouched = std::all_of(players.begin(),players.end(),[](const auto& pair){return pair.second.iCurrentHp == 1000u;});
 			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,630u,logicEvents,output);
-			tests.Require(untouched && players.at(1u).iCurrentHp == 1000u && players.at(2u).iCurrentHp == 900u &&
-				players.at(3u).iCurrentHp == 900u && players.at(4u).iCurrentHp == 800u &&
+			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,631u,logicEvents,output);
+			tests.Require(untouched && logicEvents.size() == damageBegin + 3u &&
+                matchesLogicDamage(logicEvents, damageBegin, players.at(1u), 0u, 0u) &&
+                matchesLogicDamage(logicEvents, damageBegin, players.at(2u), 100u) &&
+                matchesLogicDamage(logicEvents, damageBegin, players.at(3u), 100u) &&
+                matchesLogicDamage(logicEvents, damageBegin, players.at(4u), 200u) &&
+                ledger.Windows[0].Answers.at(1u) == KOUKUSAYDON_LOGIC_ANSWER::SUCCESS &&
+                ledger.Windows[0].Answers.at(2u) == KOUKUSAYDON_LOGIC_ANSWER::FAIL &&
+                ledger.Windows[0].Answers.at(3u) == KOUKUSAYDON_LOGIC_ANSWER::FAIL &&
 				ledger.Windows[0].Answers.at(4u) == KOUKUSAYDON_LOGIC_ANSWER::TIMEOUT,
 				"Judge explicit roulette suit and color at the end only, anchored to spawn: correct success, wrong fail, outside timeout");
 		}
@@ -1074,12 +1151,23 @@ namespace ServerGameplayContractDetail
 			players.emplace(1u,makePlayer(1u,15.f,20.f,0.f));
 			players.emplace(2u,makePlayer(2u,50.f,50.f,0.f));
 			KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
+			const auto damageBegin = logicEvents.size();
 			CKoukuSaydonLogicRuntime::Build(pattern,boss,700u,ledger);
 			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,700u,logicEvents,output);
-			const bool early = players.at(1u).iCurrentHp == (kind == BOSS_PATTERN_LOGIC_KIND::ENTER_AREA ? 900u : 1000u);
+			const bool onEntry = kind == BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
+            const bool early = matchesLogicDamage(logicEvents, damageBegin, players.at(1u),
+                onEntry ? 100u : 0u, onEntry ? 1u : 0u) &&
+                matchesLogicDamage(logicEvents, damageBegin, players.at(2u), 0u, 0u);
+            const auto firstHp = players.at(1u).iCurrentHp;
+            const auto firstCount = logicEvents.size();
 			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,701u,logicEvents,output);
+            const bool noRepeat = players.at(1u).iCurrentHp == firstHp && logicEvents.size() == firstCount;
 			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,730u,logicEvents,output);
-			tests.Require(early && players.at(1u).iCurrentHp == 900u && players.at(2u).iCurrentHp == 800u,
+            CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,731u,logicEvents,output);
+			tests.Require(early && noRepeat && (!onEntry || players.at(1u).iCurrentHp == firstHp) &&
+                logicEvents.size() == damageBegin + 2u &&
+                matchesLogicDamage(logicEvents, damageBegin, players.at(1u), 100u) &&
+                matchesLogicDamage(logicEvents, damageBegin, players.at(2u), 200u),
 				"Reuse existing Result slots for linked Collider Duration or first-enter Trigger exactly once and timeout outside");
 		}
 		{
@@ -1152,12 +1240,16 @@ namespace ServerGameplayContractDetail
 			players.emplace(1u,makePlayer(1u,10.f,20.f,0.f));
 			players.emplace(2u,makePlayer(2u,20.f,20.f,0.f));
 			KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
+			const auto damageBegin = logicEvents.size();
 			CKoukuSaydonLogicRuntime::Build(pattern,logicBoss,800u,ledger);
 			CKoukuSaydonLogicRuntime::Update(logicBoss,pattern,ledger,players,catalog,&policy,829u,logicEvents,output);
 			const bool unchanged = players.at(1u).iCurrentHp == 1000u;
 			CKoukuSaydonLogicRuntime::Update(logicBoss,pattern,ledger,players,catalog,&policy,830u,logicEvents,output);
-			tests.Require(unchanged && players.at(1u).iCurrentHp == 500u && players.at(1u).iCurrentMadness == 50u &&
-				players.at(2u).iCurrentHp == 1000u && ledger.Windows.front().Answers.at(1u) == KOUKUSAYDON_LOGIC_ANSWER::FAIL &&
+            CKoukuSaydonLogicRuntime::Update(logicBoss,pattern,ledger,players,catalog,&policy,831u,logicEvents,output);
+			tests.Require(unchanged && logicEvents.size() == damageBegin + 1u &&
+                matchesLogicDamage(logicEvents, damageBegin, players.at(1u), 500u) && players.at(1u).iCurrentMadness == 50u &&
+                matchesLogicDamage(logicEvents, damageBegin, players.at(2u), 0u, 0u) &&
+                ledger.Windows.front().Answers.at(1u) == KOUKUSAYDON_LOGIC_ANSWER::FAIL &&
 				ledger.Windows.front().Answers.at(2u) == KOUKUSAYDON_LOGIC_ANSWER::TIMEOUT,
 				"Execute the authored Fail Result at Circle Duration end, including the centre, and Timeout outside");
 		}
@@ -1186,15 +1278,21 @@ namespace ServerGameplayContractDetail
 			players.emplace(1u,makePlayer(1u,109.12132f,205.12132f,0.f));
 			players.emplace(2u,makePlayer(2u,999.f,999.f,0.f));
 			KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
+			const auto damageBegin = logicEvents.size();
 			CKoukuSaydonLogicRuntime::Build(pattern,boss,1000u,ledger);
 			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,1006u,logicEvents,output);
 			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,1015u,logicEvents,output);
 			const bool waiting = players.at(1u).iCurrentHp == 1000u;
 			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,1018u,logicEvents,output);
-			const bool sweptThrough = players.at(1u).iCurrentHp == 900u;
+			const bool sweptThrough = logicEvents.size() == damageBegin + 1u &&
+                matchesLogicDamage(logicEvents, damageBegin, players.at(1u), 100u);
+            const auto sweptHp = players.at(1u).iCurrentHp;
 			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,1021u,logicEvents,output);
 			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,1045u,logicEvents,output);
-			tests.Require(waiting && sweptThrough && players.at(1u).iCurrentHp == 900u && players.at(2u).iCurrentHp == 800u,
+			tests.Require(waiting && sweptThrough && players.at(1u).iCurrentHp == sweptHp &&
+                logicEvents.size() == damageBegin + 2u &&
+                matchesLogicDamage(logicEvents, damageBegin, players.at(1u), 100u) &&
+                matchesLogicDamage(logicEvents, damageBegin, players.at(2u), 200u),
 				"Sample the actual WORLD Trigger translation, quaternion, scale, visibility and clock every tick; fire damage once before its final pose");
 		}
 
@@ -1226,10 +1324,14 @@ namespace ServerGameplayContractDetail
 				update(1002u); // Before this emission's delayed birth.
 				const bool delayed = players.at(1u).iCurrentHp == 1000u;
 				update(expired ? 1007u : clippedWindow ? 1005u : 1004u);
-				const auto expected = hiddenGap || expired || clippedWindow ? 1000u : 900u;
-				const bool judged = players.at(1u).iCurrentHp == expected;
+				const bool shouldHit = !hiddenGap && !expired && !clippedWindow;
+                const bool judged = matchesLogicDamage(events, 0u, players.at(1u),
+                    shouldHit ? 100u : 0u, shouldHit ? 1u : 0u);
+                const auto firstHp = players.at(1u).iCurrentHp;
 				update(1008u); update(1009u);
-				return delayed && judged && players.at(1u).iCurrentHp == expected && events.size() == (expected == 900u ? 1u : 0u);
+				return delayed && judged && players.at(1u).iCurrentHp == firstHp &&
+                    events.size() == (shouldHit ? 1u : 0u) &&
+                    matchesLogicDamage(events, 0u, players.at(1u), shouldHit ? 100u : 0u, shouldHit ? 1u : 0u);
 			};
 			tests.Require(checkSweep(false, false, false), "A fast centered WORLD circle crosses a player between ticks, damages once, and waits for its emission delay");
 			tests.Require(checkSweep(true, false, false), "A WORLD circle sweep never bridges a hidden interval between visible keys");
@@ -1285,6 +1387,7 @@ namespace ServerGameplayContractDetail
 			players.emplace(2u, makePlayer(2u, 0.f, 0.f, 0.f));
 			players.emplace(3u, makePlayer(3u, 0.f, 0.f, 0.f));
 			KOUKUSAYDON_LOGIC_LEDGER ledger;
+			const auto damageBegin = logicEvents.size();
 			CKoukuSaydonLogicRuntime::Build(pattern, logicBoss, 300u, ledger);
 			CKoukuSaydonLogicRuntime::Update_PlayerModes(players, &ledger, &policy, 300u);
 			const auto slotOfPose = [](const SERVER_PLAYER& player, const std::int8_t pose)
@@ -1326,11 +1429,13 @@ namespace ServerGameplayContractDetail
 				ledger, pattern, players.at(2u), rightSlot, answerStatus);
 			CKoukuSaydonLogicRuntime::Update(logicBoss, pattern, ledger, players, catalog,
 				&policy, 330u, logicEvents, output);
+            CKoukuSaydonLogicRuntime::Update(logicBoss, pattern, ledger, players, catalog,
+                &policy, 331u, logicEvents, output);
 			tests.Require(layoutDealt && rightRecorded && wrongRecorded && secondAnswerRefused &&
-				ledger.Windows.front().bClosed &&
-				1000u == players.at(1u).iCurrentHp &&
-				900u == players.at(2u).iCurrentHp &&
-				800u == players.at(3u).iCurrentHp,
+				ledger.Windows.front().bClosed && logicEvents.size() == damageBegin + 2u &&
+                matchesLogicDamage(logicEvents, damageBegin, players.at(1u), 0u, 0u) &&
+                matchesLogicDamage(logicEvents, damageBegin, players.at(2u), 100u) &&
+                matchesLogicDamage(logicEvents, damageBegin, players.at(3u), 200u),
 				"Keep fixed QWER pose order and judge the first answer as success, fail or timeout");
 			CKoukuSaydonLogicRuntime::Update_PlayerModes(players, nullptr, &policy, 331u);
 			tests.Require(KOUKU_HUD_MODE::NONE == players.at(1u).eKoukuHudMode &&
@@ -1367,10 +1472,11 @@ namespace ServerGameplayContractDetail
 				!CKoukuSaydonLogicRuntime::Is_ShieldReflected(staggerBoss, 10.f, 0.f) &&
 				!CKoukuSaydonLogicRuntime::Is_ShieldReflected(staggerBoss, 0.f, -10.f);
 			staggerBoss.iCurrentHp -= 999u;
+			staggerBoss.iKoukuItemStaggerCredit = staggerBoss.iKoukuItemStaggerMaximum - 1u;
 			CKoukuSaydonLogicRuntime::Update(staggerBoss, pattern, ledger, players, catalog,
 				&policy, 410u, logicEvents, output);
 			const bool belowThreshold = !ledger.Windows.front().bClosed && output.FollowupPatternIds.empty();
-			staggerBoss.iCurrentHp -= 1u;
+			++staggerBoss.iKoukuItemStaggerCredit;
 			CKoukuSaydonLogicRuntime::Update(staggerBoss, pattern, ledger, players, catalog,
 				&policy, 411u, logicEvents, output);
 			tests.Require(shieldRaised && belowThreshold && ledger.Windows.front().bClosed &&
@@ -1378,7 +1484,7 @@ namespace ServerGameplayContractDetail
 				1u == output.FollowupPatternIds.size() &&
 				"KAKULSAYDON_TEST_GROGGY" == output.FollowupPatternIds.front() &&
 				1000u == players.at(1u).iCurrentHp,
-				"Raise the frontal shield for the stagger window and hand the follow-up to the audition once the lost health reaches the threshold");
+				"Raise the frontal shield for the stagger window and hand the follow-up to the audition once independent stagger credit reaches the common threshold");
 
 			KOUKUSAYDON_LOGIC_LEDGER timeoutLedger;
 			SERVER_WORLD_ENTITY timeoutBoss = logicBoss;

@@ -4,6 +4,8 @@
 #include "ProjectDataRoot.h"
 
 #include <fstream>
+#include <cmath>
+#include <limits>
 
 namespace
 {
@@ -106,7 +108,19 @@ bool Client::CItemCatalog::Load(std::string& outStatus)
 			const auto* range = Required(*battle, "rangeCm", DATA_JSON_TYPE::NUMBER);
 			if (!range || range->Get_Number() < 0. || range->Get_Number() > 5000.)
 			{ outStatus = "ItemCatalog.json has an invalid battle target range"; return false; }
+			const auto* skillId = Required(*battle, "skillId", DATA_JSON_TYPE::NUMBER);
+			const auto* cooldownMs = Required(*battle, "cooldownMs", DATA_JSON_TYPE::NUMBER);
+			const auto IsUnsignedInteger = [](const DATA_JSON_VALUE* number)
+			{
+				return number && std::isfinite(number->Get_Number()) && number->Get_Number() >= 0. &&
+					number->Get_Number() <= (std::numeric_limits<std::uint32_t>::max)() &&
+					std::floor(number->Get_Number()) == number->Get_Number();
+			};
+			if (!IsUnsignedInteger(skillId) || skillId->Get_Number() == 0. || !IsUnsignedInteger(cooldownMs))
+			{ outStatus = "ItemCatalog.json has an invalid battle cooldown"; return false; }
 			definition.fTargetRangeM = static_cast<float>(range->Get_Number() * .01);
+			definition.iBattleSkillId = static_cast<std::uint32_t>(skillId->Get_Number());
+			definition.iCooldownMs = static_cast<std::uint32_t>(cooldownMs->Get_Number());
 		}
 		definition.strCategory = category->Get_String();
 		const auto ReadOptionalText = [&value](const char* pKey, std::string& outText)
@@ -118,6 +132,20 @@ bool Client::CItemCatalog::Load(std::string& outStatus)
 		ReadOptionalText("equipSlot", definition.strEquipSlot);
 		ReadOptionalText("characterClass", definition.strCharacterClass);
 		ReadOptionalText("grade", definition.strGrade);
+		ReadOptionalText("visualSetId", definition.strVisualSetId);
+		if (const DATA_JSON_VALUE* pVariants = value.Find("classVariants");
+			nullptr != pVariants && pVariants->Get_Type() == DATA_JSON_TYPE::OBJECT)
+		{
+			for (const auto& [strClass, variant] : pVariants->Get_Object())
+			{
+				if (variant.Get_Type() != DATA_JSON_TYPE::STRING || variant.Get_String().empty())
+				{
+					outStatus = "ItemCatalog.json has an invalid classVariants entry";
+					return false;
+				}
+				definition.ClassVariants[strClass] = variant.Get_String();
+			}
+		}
 
 		for (const ITEM_DEFINITION& existing : staged)
 		{

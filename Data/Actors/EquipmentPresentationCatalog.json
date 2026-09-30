@@ -6117,6 +6117,3531 @@
           "hiddenMeshMask": 0
         }
       ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036.head",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036.outfit",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036-1.head",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036-1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036-1.outfit",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036-1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036-2.head",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036-2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036-2.outfit",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036-2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036-3.head",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036-3_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036-3.outfit",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036-3_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036-4.head",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036-4_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036-4.outfit",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036-4_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036-5.head",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036-5_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036-5.outfit",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036-5_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036a.head",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036a_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036a.outfit",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036a_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036a-1.head",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036a-1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036a-1.outfit",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036a-1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036a-2.head",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036a-2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036a-2.outfit",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036a-2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036b.head",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036b_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036b.outfit",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036b_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036b-1.head",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036b-1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036b-1.outfit",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036b-1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036b-2.head",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036b-2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036b-2.outfit",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036b-2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036c1.head",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036c1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036c1.outfit",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036c1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036c2.head",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036c2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036c2.outfit",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036c2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036c3.head",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036c3_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_av036c3.outfit",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_av036c3_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036.head",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036.outfit",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036-1.head",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036-1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036-1.outfit",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036-1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036-2.head",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036-2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036-2.outfit",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036-2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036-3.head",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036-3_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036-3.outfit",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036-3_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036-4.head",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036-4_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036-4.outfit",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036-4_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036-5.head",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036-5_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036-5.outfit",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036-5_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036a.head",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036a_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036a.outfit",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036a_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036a-1.head",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036a-1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036a-1.outfit",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036a-1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036a-2.head",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036a-2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036a-2.outfit",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036a-2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036b.head",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036b_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036b.outfit",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036b_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036b-1.head",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036b-1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036b-1.outfit",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036b-1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036b-2.head",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036b-2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036b-2.outfit",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036b-2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036c1.head",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036c1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036c1.outfit",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036c1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036c2.head",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036c2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036c2.outfit",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036c2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036c3.head",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036c3_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.mokoko_av036c3.outfit",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/mokoko_av036c3_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036.head",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036.outfit",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036-1.head",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036-1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036-1.outfit",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036-1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036-2.head",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036-2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036-2.outfit",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036-2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036-3.head",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036-3_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036-3.outfit",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036-3_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036-4.head",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036-4_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036-4.outfit",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036-4_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036-5.head",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036-5_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036-5.outfit",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036-5_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036a.head",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036a_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036a.outfit",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036a_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036a-1.head",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036a-1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036a-1.outfit",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036a-1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036a-2.head",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036a-2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036a-2.outfit",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036a-2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036b.head",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036b_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036b.outfit",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036b_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036b-1.head",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036b-1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036b-1.outfit",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036b-1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036b-2.head",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036b-2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036b-2.outfit",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036b-2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036c1.head",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036c1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036c1.outfit",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036c1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036c2.head",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036c2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036c2.outfit",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036c2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036c3.head",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036c3_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.mokoko_av036c3.outfit",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/mokoko_av036c3_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036.head",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036.outfit",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036-1.head",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036-1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036-1.outfit",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036-1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036-2.head",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036-2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036-2.outfit",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036-2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036-3.head",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036-3_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036-3.outfit",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036-3_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036-4.head",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036-4_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036-4.outfit",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036-4_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036-5.head",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036-5_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036-5.outfit",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036-5_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036a.head",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036a_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036a.outfit",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036a_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036a-1.head",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036a-1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036a-1.outfit",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036a-1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036a-2.head",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036a-2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036a-2.outfit",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036a-2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036b.head",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036b_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036b.outfit",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036b_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036b-1.head",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036b-1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036b-1.outfit",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036b-1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036b-2.head",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036b-2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036b-2.outfit",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036b-2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036c1.head",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036c1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036c1.outfit",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036c1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036c2.head",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036c2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036c2.outfit",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036c2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036c3.head",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036c3_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.mokoko_av036c3.outfit",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/mokoko_av036c3_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036.outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036-1.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036-1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036-1.outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036-1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036-2.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036-2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036-2.outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036-2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036-3.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036-3_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036-3.outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036-3_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036-4.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036-4_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036-4.outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036-4_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036-5.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036-5_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036-5.outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036-5_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036a.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036a_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036a.outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036a_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036a-1.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036a-1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036a-1.outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036a-1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036a-2.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036a-2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036a-2.outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036a-2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036b.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036b_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036b.outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036b_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036b-1.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036b-1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036b-1.outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036b-1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036b-2.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036b-2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036b-2.outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036b-2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036c1.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036c1_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036c1.outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036c1_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036c2.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036c2_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036c2.outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036c2_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036c3.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036c3_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardianknight.mokoko_av036c3.outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/mokoko_av036c3_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
     }
   ]
 }

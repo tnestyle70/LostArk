@@ -723,10 +723,37 @@ function Compile-ValtanWorldDestruction {
 					$stage.verticalOffsetM `
 					"$($pattern.patternId) stage $($stage.stageId) verticalOffsetM" `
 					-100.0 100.0
+				# This publisher does not run Gameplay's branch/action validator.
+				# Prove the complete gauge lifetime here before admitting its offset.
+				$hasClosedStaggerResponse = $false
+				if ($stage.branches -is [Array] -and $stage.actions -is [Array]) {
+					$staggerBranches = @($stage.branches | Where-Object {
+						[string]$_.outcome -ceq 'STAGGER_BROKEN'
+					})
+					$staggerEnters = @($stage.actions | Where-Object {
+						[string]$_.kind -ceq 'SET_STAGGER_GAUGE' -and
+						[string]$_.trigger -ceq 'ENTER'
+					})
+					$staggerExits = @($stage.actions | Where-Object {
+						[string]$_.kind -ceq 'SET_STAGGER_GAUGE' -and
+						[string]$_.trigger -ceq 'EXIT'
+					})
+					if ($staggerBranches.Count -eq 1 -and
+						$staggerEnters.Count -eq 1 -and $staggerExits.Count -eq 1 -and
+						[string]$staggerEnters[0].targetId -ceq 'boss.gauge.stagger' -and
+						[string]$staggerExits[0].targetId -ceq 'boss.gauge.stagger') {
+						$null = Assert-JsonInteger $staggerEnters[0].value `
+							"$($pattern.patternId)/$($stage.stageId) stagger ENTER value" `
+							1 ([uint32]::MaxValue)
+						$null = Assert-JsonInteger $staggerExits[0].value `
+							"$($pattern.patternId)/$($stage.stageId) stagger EXIT value" 0 0
+						$hasClosedStaggerResponse = $true
+					}
+				}
 				if ([double]$stageVerticalOffsetM -eq 0.0 -or
-					-not $hasBossResponse -or $hasPatternServerMotion -or
-					$hasStageMotion) {
-					throw "Encounter stage verticalOffsetM requires an active boss response without server motion: $($pattern.patternId)/$($stage.stageId)"
+					(-not $hasBossResponse -and -not $hasClosedStaggerResponse) -or
+					$hasPatternServerMotion -or $hasStageMotion) {
+					throw "Encounter stage verticalOffsetM requires an active boss response or closed stagger gauge without server motion: $($pattern.patternId)/$($stage.stageId)"
 				}
 			}
 			$hasPlayerResponse =
@@ -2408,9 +2435,47 @@ function Invoke-ContractTests {
         ($unownedVerticalOffsetEncounter.patterns | Where-Object patternId -CEQ 'VALTAN_STAGGER_SLOT').stages |
         Where-Object stageId -CEQ 'CHANNEL' | Select-Object -First 1
     $unownedVerticalOffsetStage.PSObject.Properties.Remove('bossResponse')
+    $unownedVerticalOffsetStage.branches = @($unownedVerticalOffsetStage.branches |
+        Where-Object { [string]$_.outcome -cne 'STAGGER_BROKEN' })
     Assert-Throws {
         Compile-ValtanWorldDestruction $enabled $unownedVerticalOffsetEncounter $simulation
-    } 'stage vertical offset without boss response'
+    } 'stage vertical offset without boss response or stagger outcome'
+
+    foreach ($missingTrigger in @('ENTER', 'EXIT')) {
+        $unclosedStaggerEncounter = Copy-JsonObject $encounter
+        $unclosedStaggerStage =
+            ($unclosedStaggerEncounter.patterns | Where-Object patternId -CEQ 'VALTAN_STAGGER_SLOT').stages |
+            Where-Object stageId -CEQ 'CHANNEL' | Select-Object -First 1
+        $unclosedStaggerStage.PSObject.Properties.Remove('bossResponse')
+        $unclosedStaggerStage.actions = @($unclosedStaggerStage.actions | Where-Object {
+            [string]$_.kind -cne 'SET_STAGGER_GAUGE' -or
+            [string]$_.trigger -cne $missingTrigger
+        })
+        Assert-Throws {
+            Compile-ValtanWorldDestruction $enabled $unclosedStaggerEncounter $simulation
+        } "stage vertical offset without stagger $missingTrigger"
+    }
+
+    foreach ($invalidGauge in @(
+        @{ trigger = 'ENTER'; value = 0 },
+        @{ trigger = 'ENTER'; value = 1.5 },
+        @{ trigger = 'ENTER'; value = '50000' },
+        @{ trigger = 'EXIT'; value = 1 },
+        @{ trigger = 'EXIT'; value = '0' })) {
+        $invalidStaggerEncounter = Copy-JsonObject $encounter
+        $invalidStaggerStage =
+            ($invalidStaggerEncounter.patterns | Where-Object patternId -CEQ 'VALTAN_STAGGER_SLOT').stages |
+            Where-Object stageId -CEQ 'CHANNEL' | Select-Object -First 1
+        $invalidStaggerStage.PSObject.Properties.Remove('bossResponse')
+        $invalidStaggerAction = $invalidStaggerStage.actions | Where-Object {
+            [string]$_.kind -ceq 'SET_STAGGER_GAUGE' -and
+            [string]$_.trigger -ceq $invalidGauge.trigger
+        } | Select-Object -First 1
+        $invalidStaggerAction.value = $invalidGauge.value
+        Assert-Throws {
+            Compile-ValtanWorldDestruction $enabled $invalidStaggerEncounter $simulation
+        } "stage vertical offset with invalid stagger $($invalidGauge.trigger) value"
+    }
 
     $movingVerticalOffsetEncounter = Copy-JsonObject $encounter
     $movingVerticalOffsetStage =

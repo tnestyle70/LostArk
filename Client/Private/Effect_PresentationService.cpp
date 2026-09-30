@@ -235,6 +235,9 @@ namespace
         uint32_t iLevelIndex = UINT32_MAX;
         std::string strEffectAssetId;
         std::string strAnchorSlotId;
+        std::vector<std::string> CameraSubjectElementIds;
+        std::vector<std::string> OtherPlayerElementIds;
+        bool_t bCameraSubjectElementsVisible = false;
         Client::EFFECT_TRANSFORM_DESC LocalTransform{};
         Client::EFFECT_FOLLOW_POLICY eFollowPolicy =
             Client::EFFECT_FOLLOW_POLICY::FOLLOW;
@@ -6153,7 +6156,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
             std::vector<Client::CSkeletalAfterimage::MODEL_VIEW>& views) -> bool_t {
             const auto character = weak.lock();
             if (!character) return false;
-            if (onlyLocal && !character->Is_LocallyControlled() &&
+            if (onlyLocal && !CEffectPresentationService::Is_CameraPresentationOwner(character.get()) &&
                 !preview)
             { views.clear(); return true; }
             return character->Collect_PresentationAfterimageModels(part, views);
@@ -6172,7 +6175,9 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         g_strStatus = strOutStatus;
         return false;
     }
-    if (Owner.pCharacter && !Owner.pCharacter->Is_LocallyControlled())
+    std::vector<std::string> subjectElements, otherElements;
+    const bool subjectVisible = Owner.pCharacter && Is_CameraPresentationOwner(Owner.pCharacter.get());
+    if (Owner.pCharacter && !Desc.bExternallySampled)
     {
         const auto cameraDefinition = g_ProductCameraCache.find(Desc.strEffectAssetId);
         if (cameraDefinition != g_ProductCameraCache.end() && cameraDefinition->second.value &&
@@ -6187,12 +6192,14 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
                     strOutStatus = "Recovery local-only visibility names an absent source element: " + id;
                     g_strStatus = strOutStatus; return false;
                 }
-            std::vector<std::string> allowed; allowed.reserve(pDocument->Elements.size());
             for (const auto& element : pDocument->Elements)
-                if (!std::binary_search(localIds.begin(), localIds.end(), element.strElementId) &&
-                    (Desc.strElementId.empty() || Desc.strElementId == element.strElementId))
-                    allowed.push_back(element.strElementId);
-            if (!pEffect->Set_SubmissionElementSet(std::move(allowed), strOutStatus))
+                if (Desc.strElementId.empty() || Desc.strElementId == element.strElementId)
+                {
+                    subjectElements.push_back(element.strElementId);
+                    if (!std::binary_search(localIds.begin(), localIds.end(), element.strElementId))
+                        otherElements.push_back(element.strElementId);
+                }
+            if (!pEffect->Set_SubmissionElementSet(subjectVisible ? subjectElements : otherElements, strOutStatus))
             {
                 CGameInstance::Get().Remove_GameObject_from_Layer(iLevelIndex, EFFECT_LAYER, pGameObject);
                 g_strStatus = strOutStatus; return false;
@@ -6202,6 +6209,9 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     pEffect->Set_ScreenPostPlaybackEnd(Desc.fExternalPlaybackEndSeconds);
     ACTIVE_EFFECT Active;
     Active.pObject = pEffect;
+    Active.CameraSubjectElementIds = std::move(subjectElements);
+    Active.OtherPlayerElementIds = std::move(otherElements);
+    Active.bCameraSubjectElementsVisible = subjectVisible;
 	Active.pOwner = Owner.pCharacter;
 	Active.pBossOwner = Owner.pBoss;
 	Active.pNpcAnchorOwner = Owner.pNpcAnchors;
@@ -6285,8 +6295,30 @@ void Client::CEffectPresentationService::Set_FrameCamera(const std::shared_ptr<C
     g_FrameCameraLevel = CGameInstance::Get().Get_CurrentLevelID();
 }
 
+bool_t Client::CEffectPresentationService::Is_CameraPresentationOwner(const CCharacter* character)
+{
+    if (!character) return false;
+    const auto camera = g_FrameCamera.lock();
+    if (camera && g_FrameCameraLevel == CGameInstance::Get().Get_CurrentLevelID())
+        return camera->Get_FollowTarget() == character->Get_Transform();
+    return character->Is_LocallyControlled();
+}
+
 void Client::CEffectPresentationService::Prepare_FrameCamera(const f32_t timeDelta)
 {
+    // A spectator may switch in the middle of an existing action. Reuse the admitted
+    // element masks so its private cut/afterimage appears without restarting the skill.
+    for (auto& effect : g_ActiveEffects)
+    {
+        if (!effect.pObject || effect.CameraSubjectElementIds.empty()) continue;
+        const auto owner = effect.pOwner.lock();
+        const bool visible = Is_CameraPresentationOwner(owner.get());
+        if (visible == effect.bCameraSubjectElementsVisible) continue;
+        std::string status;
+        if (effect.pObject->Set_SubmissionElementSet(visible ? effect.CameraSubjectElementIds :
+            effect.OtherPlayerElementIds, status)) effect.bCameraSubjectElementsVisible = visible;
+        else g_strStatus = status;
+    }
     const auto camera = g_FrameCamera.lock();
     if (!camera || !camera->Is_FollowEnabled() ||
         g_FrameCameraLevel != CGameInstance::Get().Get_CurrentLevelID())
@@ -6297,7 +6329,7 @@ void Client::CEffectPresentationService::Prepare_FrameCamera(const f32_t timeDel
     {
         const auto& effect = *it;
         const auto owner = effect.pOwner.lock();
-        if (!owner || !owner->Is_LocallyControlled() || owner->Get_Transform() != target ||
+        if (!owner || owner->Get_Transform() != target ||
             !owner->Is_EffectActionCurrent(effect.iActionStartTick) || effect.bFollowAnchorMissing ||
             effect.bExternallySampled || effect.iLevelIndex != g_FrameCameraLevel || !effect.pObject ||
             effect.pObject->Is_RenderFailureIsolated()) continue;

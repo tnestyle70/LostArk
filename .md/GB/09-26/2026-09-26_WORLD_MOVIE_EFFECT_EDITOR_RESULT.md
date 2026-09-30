@@ -654,3 +654,42 @@ duration6919, World revision13)이 이전 게시본과 달랐다. 이 최신 편
 일치한다. 데이터 변경이므로 추가 C++ 빌드는 필요하지 않았다. final-delivery.json은 두 구성 EXE의
 신규 marker 코드, 구성별30CSO, 실제 바인딩 검사, Camera 후보와 설치본 일치, World 일치와
 GBResources221개의 SHA 동일성을 확인했다. Debug EXE22:20:36, Release EXE22:19:53 생성이다.
+
+
+## G19. 카메라 감속과 독립 Movie 사운드 시계
+
+2026-09-29 사용자가 감속 구간의 음향 왜곡을 보고하여 Sound cursor/pitch/drift/trim을
+카메라 source clock에서 분리했다. source→Movie 매핑은 cue 시작에만 쓰고 WAV 길이·
+재생 위치는 Movie 시간, pitch는 수동 배속을 사용한다. 기존 phase·카메라·사용자 Sound
+저장본은 보존했다. Release 실제 Product OBJ+FMOD NOSOUND488검사 PASS이며 실제 청감은
+사용자 확인 범위다. 상세 파일·검증·배포 근거는09-29 RELEASE_ENTRY_AUDIO_REPAIR_RESULT,
+out/MovieAudioClock20260929/probe-validation.json을 따른다.
+
+
+## G20. 창술사·워로드 원본 Sound 앞부분 복구 (2026-09-30)
+
+사용자가 G19 시간 분리의 정상 청감을 확인했다. 남은 잘림은 WAV 손상이 아니라 이전 지연을
+피하려고 저장한 source-in이었다. 창술사1574/워로드850ms를 건너뛰면서 두 박스 startMs는
+이미0이라 Sequencer의 왼쪽 drag는 Movie0 경계에 막혔다. 이 동작을 임의 음수 배치로 풀지 않았다.
+
+SL00 WorldSequences의 stable Sound 두 개를 sourceStartMs0으로 복구했다. 창술사는
+6919→8493ms, 워로드는8522→9372ms다. 실제44100Hz float WAV의374520/413270frame
+길이를 올림한 원본 전체 구간이며, 기존 startMs0·volume1·bus-restored WAV 경로를 유지했다.
+카메라·다른 track·instance·리소스 실물과 G19 C++는 변경하지 않았다.
+
+정본 revision13→14, 기존 바이트를 out/MovieSoundUntrim20260930에 백업한 뒤 최신 hash
+재확인·동일 폴더 임시 파일·원자 교체로 저장했다. 정본을 field 단위로 비교해 두 Sound의
+sourceStartMs/durationMs와 root revision 외에는 바뀌지 않았음을 확인했다.
+Publish-MapAuthoring.ps1 -AreaId LV_LOBBY_CLASSSELECT_SL00 -Scope WorldSequences -Mode Publish
+exit0이며 source/runtime 전체 JSON 의미가 같다. WAV의 SHA256도 전후 동일하다.
+근거는 out/MovieSoundUntrim20260930/restore-receipt.json, validation.json, publish.log다.
+
+현재 실행 중 Debug Client는 종료·UI 조작·Reload하지 않았다. 사용자 편집창의
+Reload saved movie는 복구된 source를 다시 읽으며, 다음 Level 진입은 게시 runtime을 사용한다.
+코드 변경이 없어 추가 컴파일이나 전체 하네스 재실행은 하지 않았다.
+
+G20의 새 데이터까지 같은 Desktop ZIP에 반영 완료했다. 최종stage는
+`out/ReleasePackaging/20260930-movie-full-audio`, ZIP크기는166876247bytes,
+SHA256은`a8a515153db60fc732e1c3def0ceb7e4207e93a5183c6236fdb831c78beb27fb`다. CRC/전체manifest/preflight와 source/runtime 두파일의
+ZIP내 해시 대조PASS다. 영수증은out/MovieSoundUntrim20260930/package-receipt.json.
+Resources·EXE변경은없고 기존ZIP은백업됐다.

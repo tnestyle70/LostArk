@@ -177,41 +177,6 @@
       "expireOnDistanceEnd": false
     },
     {
-      "combatObjectArchetypeId": "combatobject.valtan.part-break.rock",
-      "clientVisualId": "combatobject.visual.valtan.part-break.rock.v1",
-      "ownerPatternId": "VALTAN_PART_BREAK",
-      "ownerStageActionId": "valtan.reaction.part-break.recovery",
-      "kind": "FIXED_AREA",
-      "originPolicy": "BOSS_POSITION",
-      "directionPolicy": "NONE",
-      "offsetForwardM": 0.0,
-      "offsetRightM": 0.0,
-      "speedMps": 0.0,
-      "maximumDistanceM": 0.0,
-      "lifeMs": 6200,
-      "hits": [
-        {
-          "hitShape": "CIRCLE",
-          "hitOuterRadius": 3.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitId": "hit.valtan.part-break.rock.explode",
-          "trigger": "TIMED",
-          "atMs": 5000,
-          "repeatCount": 1,
-          "repeatIntervalMs": 0,
-          "serverDamageProfileId": "damage.valtan.stomp",
-          "pushRangeM": 1.5,
-          "pushMs": 150,
-          "knockdown": true,
-          "downMs": 1000
-        }
-      ],
-      "coverRadiusM": 1.5
-    },
-    {
       "combatObjectArchetypeId": "combatobject.valtan.six-pizza.rock-pillar",
       "clientVisualId": "combatobject.visual.valtan.six-pizza.rock-pillar.v1",
       "ownerPatternId": "VALTAN_SIX_PIZZA_106",

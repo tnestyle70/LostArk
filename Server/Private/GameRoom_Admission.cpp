@@ -82,7 +82,10 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 		players landing at the same NPC concurrently is fine (unlike normal
 		PLAYER_SPAWN slots, which are one-player-at-a-time). */
 		spawn = Find_Placement(spawnPlacementOverrideId);
-		if (nullptr == spawn || !spawn->isEnabled)
+		/* A disabled triggerBox is allowed too: it is the authored way to mark a landing spot that must
+		   not act as a trigger (Bern's return-from-Maharaka sea landing). */
+		if (nullptr == spawn ||
+			(!spawn->isEnabled && WORLD_BOOTSTRAP_KIND::TRIGGER_BOX != spawn->eKind))
 			return reject(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED,
 				"spawn placement override id does not exist in this world's bootstrap");
 	}
@@ -165,6 +168,22 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 		player.fPositionX = projected.x;
 		player.fPositionY = projected.y;
 		player.fPositionZ = projected.z;
+	}
+	/* Coming back from Maharaka to the sea: the session boards the ship it left Bern on, with the pier it
+	   sailed from as its dock, exactly like a normal boarding. Without a record it stands on foot. */
+	if (WORLD_ID::BERN == m_eWorldId && !spawnPlacementOverrideId.empty())
+	{
+		const auto shipIter = m_MaharakaShipReturnBySession.find(session->Get_SessionId());
+		if (shipIter != m_MaharakaShipReturnBySession.end() &&
+			nullptr != m_VehicleCatalog.Find_Vehicle(shipIter->second.iVehicleId))
+		{
+			player.iVehicleId = shipIter->second.iVehicleId;
+			player.bShipDockValid = true;
+			player.fShipDockX = shipIter->second.fDockX;
+			player.fShipDockY = shipIter->second.fDockY;
+			player.fShipDockZ = shipIter->second.fDockZ;
+			player.fShipDockYawDegrees = shipIter->second.fDockYawDegrees;
+		}
 	}
 	if (!carriedInventory.empty())
 	{

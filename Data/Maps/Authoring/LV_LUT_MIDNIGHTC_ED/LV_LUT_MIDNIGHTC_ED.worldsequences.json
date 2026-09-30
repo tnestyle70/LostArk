@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 2285,
+  "revision": 2288,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -6861,6 +6861,317 @@
       "sequenceInstanceId": "",
       "defaultMotionInstanceId": "world.sequence.instance.kouku.bingo.ending.saydon2.weapon",
       "materialSourceModelAssetId": "Character/KoukuSaton/WP_MN_RPCT_05/WP_MN_RPCT_05.wmodel"
+    },
+    {
+      "objectId": "world.object.kouku.entrance.ball",
+      "displayName": "세이튼 등장 공",
+      "modelAssetId": "Effect/KoukuSaydon/Meshes/wp_mn_rhcn_00/mesh/fm_d_rhcn_00.wmodel",
+      "anchorKind": "WORLD",
+      "diffuseTextureAssetId": "Effect/KoukuSaydon/Textures/MN_RHCN_00/tex/mn_rhcn_00_d.dds",
+      "modelPreScale": 0.00999999978,
+      "animated": false,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "sequenceInstanceId": "",
+      "defaultMotionInstanceId": "world.object.instance.kouku.entrance.ball",
+      "materialProfile": {
+        "materialName": "mn_rhcn_00_mi",
+        "sourceMaterial": "mn_rhcn_00.mat.mn_rhcn_00_mi",
+        "family": "source.character.monster-pbr-masked.v1",
+        "parameters": {
+          "1.use_dyeing_sp": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "1.use_emissive_flickerspeed_fixed": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "beckmannspecular_constant_max": [
+            3.3499999,
+            3.3499999,
+            3.3499999,
+            3.3499999
+          ],
+          "buffcolor": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "constantoutline": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "constantoutline_blink": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "constantoutline_color": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "diffusecolor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "emissive_color": [
+            0.96581465,
+            0.0050282036,
+            0.0134733971,
+            1
+          ],
+          "emissive_flicker_speed": [
+            0.649999976,
+            0.649999976,
+            0.649999976,
+            0.649999976
+          ],
+          "emissive_intensity": [
+            2.5,
+            2.5,
+            2.5,
+            2.5
+          ],
+          "emissive_intensitymin": [
+            0.300000012,
+            0.300000012,
+            0.300000012,
+            0.300000012
+          ],
+          "fresnel_radius": [
+            0.949999988,
+            0.949999988,
+            0.949999988,
+            0.949999988
+          ],
+          "fresnel_rimlightintensity": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "fx_color_desaturation_actiontool": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "fx_color_desaturation_buffsettool": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "fx_color_intensity_actiontool": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "fx_color_intensity_buffsettool": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "hit_color": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "ibl_color_bottom": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "ibl_color_top": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "ibl_exposer": [
+            5,
+            5,
+            5,
+            5
+          ],
+          "ibl_intensity": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "ibl_normal_smooth": [
+            0.699999988,
+            0.699999988,
+            0.699999988,
+            0.699999988
+          ],
+          "ibl_reflect_lodbias": [
+            80,
+            80,
+            80,
+            80
+          ],
+          "metalicness_power": [
+            0.200000003,
+            0.200000003,
+            0.200000003,
+            0.200000003
+          ],
+          "normaltex_intensity": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "orennayar": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "orennayar_brightness": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "pbr_specular_intensity": [
+            10,
+            10,
+            10,
+            10
+          ],
+          "pbr_specular_power": [
+            6,
+            6,
+            6,
+            6
+          ],
+          "roughness_power": [
+            3,
+            3,
+            3,
+            3
+          ],
+          "selectioncolor": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "shadowfactor": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "specular_power_limit": [
+            0.920000017,
+            0.920000017,
+            0.920000017,
+            0.920000017
+          ],
+          "state": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "state_noise": [
+            1,
+            0,
+            0,
+            1
+          ],
+          "trans_rim_hard": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "trans_rim_inradius": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "transcolor": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "transcolor_rimlight ": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "textures": [
+          {
+            "expressionIndex": 0,
+            "assetId": "Effect/KoukuSaydon/Textures/MN_RHCN_00/tex/mn_rhcn_00_n.dds",
+            "colorSpace": "linear"
+          },
+          {
+            "expressionIndex": 1,
+            "assetId": "Effect/KoukuSaydon/Textures/MN_RHCN_00/tex/mn_rhcn_00_d.dds",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 2,
+            "assetId": "Effect/KoukuSaydon/Textures/MN_RHCN_00/tex/mn_rhcn_00_s.dds",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 3,
+            "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 4,
+            "assetId": "Character/SourceMaterials/efmaster_material_prologue/flat_black.tga",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 5,
+            "assetId": "Effect/KoukuSaydon/Textures/MN_RHCN_00/tex/mn_rhcn_00_e.dds",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 6,
+            "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 7,
+            "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+            "colorSpace": "linear"
+          }
+        ]
+      }
     }
   ],
   "templates": [
@@ -150846,12 +151157,35 @@
       "durationMs": 4000,
       "interpolation": "LINEAR",
       "objectMotion": {
-        "velocity": [0, 0, 0],
-        "acceleration": [0, 0, 0],
-        "angularVelocityDegrees": [0, 0, 0],
-        "revolutionDegreesPerSecond": [0, 0, 0],
-        "revolutionOffset": [0, 0, 0],
-        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
       },
       "tracks": [
         {
@@ -150859,34 +151193,140 @@
           "keys": [
             {
               "timeMs": 0,
-              "positionOffset": [0, 0, 0],
-              "rotationQuaternion": [0, 0, 0, 1],
-              "scaleMultiplier": [1, 1, 1],
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
               "visible": true
             },
             {
               "timeMs": 3999,
-              "positionOffset": [0, 0, 0],
-              "rotationQuaternion": [0, 0, 0, 1],
-              "scaleMultiplier": [1, 1, 1],
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
               "visible": true
             },
             {
               "timeMs": 4000,
-              "positionOffset": [0, 0, 0],
-              "rotationQuaternion": [0, 0, 0, 1],
-              "scaleMultiplier": [1, 1, 1],
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
               "visible": false
             }
           ]
         }
       ],
       "animationTracks": [
-        { "slotId": "object", "clipName": "Bomb_idle_normal_1", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true }
+        {
+          "slotId": "object",
+          "clipName": "Bomb_idle_normal_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": true,
+          "holdLastFrame": true
+        }
       ],
       "effectTracks": [
-        { "effectTrackId": "effect.bingo.bomb.fuse", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.gate3.showtime.bomb.fuse", "timing": "TIME", "followObject": true, "bone": "b_body", "startMs": 0, "durationMs": 4000, "positionOffset": [0.200000003, 0, -0.521495998], "rotationDegrees": [-90, 0, 0], "scale": [1, 1, 1], "loopEffectToDuration": true },
-        { "effectTrackId": "effect.bingo.bomb.explosion", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.gate3.showtime.bomb.explosion.blue.full.restore", "timing": "MOTION_END", "followObject": false, "bone": "", "startMs": 0, "durationMs": 3301, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1] }
+        {
+          "effectTrackId": "effect.bingo.bomb.fuse",
+          "slotId": "object",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.kouku.gate3.showtime.bomb.fuse",
+          "timing": "TIME",
+          "followObject": true,
+          "bone": "b_body",
+          "startMs": 0,
+          "durationMs": 4000,
+          "positionOffset": [
+            0.200000003,
+            0,
+            -0.521495998
+          ],
+          "rotationDegrees": [
+            -90,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "loopEffectToDuration": true
+        },
+        {
+          "effectTrackId": "effect.bingo.bomb.explosion",
+          "slotId": "object",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.kouku.gate3.showtime.bomb.explosion.blue.full.restore",
+          "timing": "MOTION_END",
+          "followObject": false,
+          "bone": "",
+          "startMs": 0,
+          "durationMs": 3301,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      ],
+      "soundTracks": [
+        {
+          "soundTrackId": "bingo.bomb.explosion.sound",
+          "assetId": "Sound/KoukuSaton/Events/G_Satan1_Attack06_ProjExp1.variant01.wav",
+          "startMs": 4000,
+          "durationMs": 2067,
+          "volume": 1
+        }
       ]
     },
     {
@@ -196123,28 +196563,171 @@
       "durationMs": 11334,
       "interpolation": "LINEAR",
       "objectMotion": {
-        "velocity": [0, 0, 0],
-        "acceleration": [0, 0, 0],
-        "angularVelocityDegrees": [0, 0, 0],
-        "revolutionDegreesPerSecond": [0, 0, 0],
-        "revolutionOffset": [0, 0, 0],
-        "count": 15, "intervalMs": 0, "spreadDegrees": 0, "seed": 1,
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 15,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1,
         "emissions": [
-          {"positionOffset": [0, 0, 1], "yawDegrees": 180, "startDelayMs": 0},
-          {"positionOffset": [0, 0, 2], "yawDegrees": 180, "startDelayMs": 0},
-          {"positionOffset": [0, 0, 3], "yawDegrees": 180, "startDelayMs": 0},
-          {"positionOffset": [0, 0, 4], "yawDegrees": 180, "startDelayMs": 0},
-          {"positionOffset": [0, 0, 5], "yawDegrees": 180, "startDelayMs": 0},
-          {"positionOffset": [-2.50200009, 0, -0.0939999968], "yawDegrees": 280, "startDelayMs": 0},
-          {"positionOffset": [-1.13600004, 0, -0.460000008], "yawDegrees": 280, "startDelayMs": 0},
-          {"positionOffset": [0.230000004, 0, -0.825999975], "yawDegrees": 280, "startDelayMs": 0},
-          {"positionOffset": [1.59599996, 0, -1.19200003], "yawDegrees": 280, "startDelayMs": 0},
-          {"positionOffset": [2.96199989, 0, -1.55799997], "yawDegrees": 280, "startDelayMs": 0},
-          {"positionOffset": [-1.94299996, 0, -2.05500007], "yawDegrees": 43.4000015, "startDelayMs": 0},
-          {"positionOffset": [-0.972000003, 0, -1.02699995], "yawDegrees": 43.4000015, "startDelayMs": 0},
-          {"positionOffset": [0, 0, 0], "yawDegrees": 43.4000015, "startDelayMs": 0},
-          {"positionOffset": [0.972000003, 0, 1.028], "yawDegrees": 43.4000015, "startDelayMs": 0},
-          {"positionOffset": [1.94299996, 0, 2.05500007], "yawDegrees": 43.4000015, "startDelayMs": 0}
+          {
+            "positionOffset": [
+              0,
+              0,
+              1
+            ],
+            "yawDegrees": 180,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              0,
+              0,
+              2
+            ],
+            "yawDegrees": 180,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              0,
+              0,
+              3
+            ],
+            "yawDegrees": 180,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              0,
+              0,
+              4
+            ],
+            "yawDegrees": 180,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              0,
+              0,
+              5
+            ],
+            "yawDegrees": 180,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -2.50200009,
+              0,
+              -0.0939999968
+            ],
+            "yawDegrees": 280,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -1.13600004,
+              0,
+              -0.460000008
+            ],
+            "yawDegrees": 280,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              0.230000004,
+              0,
+              -0.825999975
+            ],
+            "yawDegrees": 280,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              1.59599996,
+              0,
+              -1.19200003
+            ],
+            "yawDegrees": 280,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              2.96199989,
+              0,
+              -1.55799997
+            ],
+            "yawDegrees": 280,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -1.94299996,
+              0,
+              -2.05500007
+            ],
+            "yawDegrees": 43.4000015,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -0.972000003,
+              0,
+              -1.02699995
+            ],
+            "yawDegrees": 43.4000015,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              0,
+              0,
+              0
+            ],
+            "yawDegrees": 43.4000015,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              0.972000003,
+              0,
+              1.028
+            ],
+            "yawDegrees": 43.4000015,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              1.94299996,
+              0,
+              2.05500007
+            ],
+            "yawDegrees": 43.4000015,
+            "startDelayMs": 0
+          }
         ]
       },
       "tracks": [
@@ -196153,50 +196736,191 @@
           "keys": [
             {
               "timeMs": 0,
-              "positionOffset": [-12.21875, 0, 0],
-              "rotationQuaternion": [0, 0, 0, 1],
-              "scaleMultiplier": [1, 1, 1],
+              "positionOffset": [
+                -12.21875,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1334,
+              "positionOffset": [
+                -12.21875,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
               "visible": true
             },
             {
               "timeMs": 8213,
-              "positionOffset": [-12.21875, 0, 0],
-              "rotationQuaternion": [0, 0, 0, 1],
-              "scaleMultiplier": [1, 1, 1],
+              "positionOffset": [
+                -13.21875,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
               "visible": false
             },
             {
               "timeMs": 8214,
-              "positionOffset": [12.21875, 0, 0],
-              "rotationQuaternion": [0, 0, 0, 1],
-              "scaleMultiplier": [1, 1, 1],
+              "positionOffset": [
+                11.21875,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
               "visible": true
             },
             {
               "timeMs": 10334,
-              "positionOffset": [12.21875, 0, 0],
-              "rotationQuaternion": [0, 0, 0, 1],
-              "scaleMultiplier": [1, 1, 1],
+              "positionOffset": [
+                11.21875,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
               "visible": true
             },
             {
               "timeMs": 11334,
-              "positionOffset": [12.21875, 0, 0],
-              "rotationQuaternion": [0, 0, 0, 1],
-              "scaleMultiplier": [1, 1, 1],
+              "positionOffset": [
+                11.21875,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
               "visible": false
             }
           ]
         }
       ],
       "animationTracks": [
-        { "slotId": "object", "clipName": "Hook_respawn_1", "displayName": "Hook_respawn_1", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true },
-        { "slotId": "object", "clipName": "Hook_att_battle_1_01", "displayName": "Hook_att_battle_1_01", "startMs": 1334, "playbackRate": 1, "loop": false, "holdLastFrame": true },
-        { "slotId": "object", "clipName": "Hook_att_battle_2_01", "displayName": "Hook_att_battle_2_01", "startMs": 8221, "playbackRate": 1, "loop": false, "holdLastFrame": true },
-        { "slotId": "object", "clipName": "Hook_att_battle_3_01", "displayName": "Hook_att_battle_3_01", "startMs": 9834, "playbackRate": 1, "loop": false, "holdLastFrame": true }
+        {
+          "slotId": "object",
+          "clipName": "Hook_respawn_1",
+          "displayName": "Hook_respawn_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        },
+        {
+          "slotId": "object",
+          "clipName": "Hook_att_battle_1_01",
+          "displayName": "Hook_att_battle_1_01",
+          "startMs": 1334,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        },
+        {
+          "slotId": "object",
+          "clipName": "Hook_att_battle_2_01",
+          "displayName": "Hook_att_battle_2_01",
+          "startMs": 8221,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        },
+        {
+          "slotId": "object",
+          "clipName": "Hook_att_battle_3_01",
+          "displayName": "Hook_att_battle_3_01",
+          "startMs": 9834,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
       ],
       "colliderTracks": [
-        { "colliderTrackId": "sequence.kouku.hook.original_preview.collider.hook_tip", "slotId": "object", "startMs": 0, "durationMs": 11334, "positionOffset": [0.537475705, -0.516810358, -1.93534888e-07], "halfExtents": [0.25, 0.349999994, 0.200000003], "yawDegrees": 0, "behavior": "HOOK_CAPTURE", "damagePercent": 0, "gripLocalOffset": [0.537475705, -0.516810358, -1.93534888e-07], "attachmentBone": "b_hook_01" }
+        {
+          "colliderTrackId": "sequence.kouku.hook.original_preview.collider.hook_tip",
+          "slotId": "object",
+          "startMs": 0,
+          "durationMs": 11334,
+          "positionOffset": [
+            0.537475705,
+            -0.516810358,
+            -1.93534888e-07
+          ],
+          "halfExtents": [
+            0.25,
+            0.349999994,
+            0.200000003
+          ],
+          "yawDegrees": 0,
+          "behavior": "HOOK_CAPTURE",
+          "damagePercent": 0,
+          "gripLocalOffset": [
+            0.537475705,
+            -0.516810358,
+            -1.93534888e-07
+          ],
+          "attachmentBone": "b_hook_01"
+        }
       ]
     },
     {
@@ -315329,12 +316053,35 @@
       "durationMs": 1000,
       "interpolation": "LINEAR",
       "objectMotion": {
-        "velocity": [0, 0, 0],
-        "acceleration": [0, 0, 0],
-        "angularVelocityDegrees": [0, 0, 0],
-        "revolutionDegreesPerSecond": [0, 0, 0],
-        "revolutionOffset": [0, 0, 0],
-        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
       },
       "tracks": [
         {
@@ -315342,26 +316089,85 @@
           "keys": [
             {
               "timeMs": 0,
-              "positionOffset": [0, 2.4000001, 0],
-              "rotationQuaternion": [0, 0, 0, 1],
-              "scaleMultiplier": [0.119999997, 0.119999997, 0.119999997],
+              "positionOffset": [
+                0,
+                2.4000001,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                0.179999996,
+                0.179999996,
+                0.179999996
+              ],
               "visible": true
             },
             {
               "timeMs": 1000,
-              "positionOffset": [0, 2.4000001, 0],
-              "rotationQuaternion": [0, 0, 0, 1],
-              "scaleMultiplier": [0.119999997, 0.119999997, 0.119999997],
+              "positionOffset": [
+                0,
+                2.4000001,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                0.179999996,
+                0.179999996,
+                0.179999996
+              ],
               "visible": true
             }
           ]
         }
       ],
       "animationTracks": [
-        { "slotId": "object", "clipName": "Bomb_idle_normal_1", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true }
+        {
+          "slotId": "object",
+          "clipName": "Bomb_idle_normal_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": true,
+          "holdLastFrame": true
+        }
       ],
       "effectTracks": [
-        { "effectTrackId": "effect.bingo.bomb.marked.fuse", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.gate3.showtime.bomb.fuse", "timing": "TIME", "followObject": true, "bone": "b_body", "startMs": 0, "durationMs": 1000, "positionOffset": [0.200000003, 0, -0.521495998], "rotationDegrees": [-90, 0, 0], "scale": [1, 1, 1], "loopEffectToDuration": true }
+        {
+          "effectTrackId": "effect.bingo.bomb.marked.fuse",
+          "slotId": "object",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.kouku.gate3.showtime.bomb.fuse",
+          "timing": "TIME",
+          "followObject": true,
+          "bone": "b_body",
+          "startMs": 0,
+          "durationMs": 1000,
+          "positionOffset": [
+            0.200000003,
+            0,
+            -0.521495998
+          ],
+          "rotationDegrees": [
+            -90,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "loopEffectToDuration": true
+        }
       ]
     },
     {
@@ -318907,6 +319713,1609 @@
         }
       ],
       "animationTracks": []
+    },
+    {
+      "sequenceId": "sequence.kouku.entrance.ball.bounce",
+      "displayName": "세이튼 등장 공 10개 폭발",
+      "category": "WorldObject",
+      "durationMs": 1700,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "spawnHalfExtents": [
+          0,
+          0,
+          0
+        ],
+        "count": 10,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1,
+        "emissions": [
+          {
+            "positionOffset": [
+              -2.101753539,
+              -0.0,
+              1.346800527
+            ],
+            "yawDegrees": -168.188494932,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -1.402188683,
+              -0.0,
+              1.529867621
+            ],
+            "yawDegrees": -139.679765682,
+            "startDelayMs": 180
+          },
+          {
+            "positionOffset": [
+              1.792947578,
+              0.0,
+              -1.371839724
+            ],
+            "yawDegrees": -33.817046512,
+            "startDelayMs": 360
+          },
+          {
+            "positionOffset": [
+              0.031832995,
+              -0.0,
+              1.200264406
+            ],
+            "yawDegrees": -126.956524071,
+            "startDelayMs": 540
+          },
+          {
+            "positionOffset": [
+              2.223447157,
+              -0.0,
+              1.211958123
+            ],
+            "yawDegrees": 114.076534157,
+            "startDelayMs": 720
+          },
+          {
+            "positionOffset": [
+              -2.61751268,
+              -0.0,
+              1.194557857
+            ],
+            "yawDegrees": 94.964892564,
+            "startDelayMs": 900
+          },
+          {
+            "positionOffset": [
+              2.913883919,
+              0.0,
+              -1.621113993
+            ],
+            "yawDegrees": 82.842680385,
+            "startDelayMs": 1080
+          },
+          {
+            "positionOffset": [
+              0.634282925,
+              0.0,
+              1.563517306
+            ],
+            "yawDegrees": -56.860935501,
+            "startDelayMs": 1260
+          },
+          {
+            "positionOffset": [
+              2.070460026,
+              0.0,
+              -0.081222181
+            ],
+            "yawDegrees": -36.979263841,
+            "startDelayMs": 1440
+          },
+          {
+            "positionOffset": [
+              0.848966947,
+              0.0,
+              0.861906937
+            ],
+            "yawDegrees": 88.404874111,
+            "startDelayMs": 1620
+          }
+        ]
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                0.0,
+                0.470804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 25,
+              "positionOffset": [
+                0.025,
+                0.593929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 50,
+              "positionOffset": [
+                0.05,
+                0.713304751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 75,
+              "positionOffset": [
+                0.075,
+                0.828929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 100,
+              "positionOffset": [
+                0.1,
+                0.940804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 125,
+              "positionOffset": [
+                0.125,
+                1.048929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 150,
+              "positionOffset": [
+                0.15,
+                1.153304751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 175,
+              "positionOffset": [
+                0.175,
+                1.253929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 200,
+              "positionOffset": [
+                0.2,
+                1.350804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 225,
+              "positionOffset": [
+                0.225,
+                1.443929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 250,
+              "positionOffset": [
+                0.25,
+                1.533304751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 275,
+              "positionOffset": [
+                0.275,
+                1.618929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 300,
+              "positionOffset": [
+                0.3,
+                1.700804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 325,
+              "positionOffset": [
+                0.325,
+                1.778929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 350,
+              "positionOffset": [
+                0.35,
+                1.853304751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 375,
+              "positionOffset": [
+                0.375,
+                1.923929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 400,
+              "positionOffset": [
+                0.4,
+                1.990804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 425,
+              "positionOffset": [
+                0.425,
+                2.053929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 450,
+              "positionOffset": [
+                0.45,
+                2.113304751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 475,
+              "positionOffset": [
+                0.475,
+                2.168929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 500,
+              "positionOffset": [
+                0.5,
+                2.220804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 525,
+              "positionOffset": [
+                0.525,
+                2.268929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 550,
+              "positionOffset": [
+                0.55,
+                2.313304751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 575,
+              "positionOffset": [
+                0.575,
+                2.353929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 600,
+              "positionOffset": [
+                0.6,
+                2.390804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 625,
+              "positionOffset": [
+                0.625,
+                2.423929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 650,
+              "positionOffset": [
+                0.65,
+                2.453304751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 675,
+              "positionOffset": [
+                0.675,
+                2.478929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 700,
+              "positionOffset": [
+                0.7,
+                2.500804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 725,
+              "positionOffset": [
+                0.725,
+                2.518929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 750,
+              "positionOffset": [
+                0.75,
+                2.533304751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 775,
+              "positionOffset": [
+                0.775,
+                2.543929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 800,
+              "positionOffset": [
+                0.8,
+                2.550804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 825,
+              "positionOffset": [
+                0.825,
+                2.553929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 850,
+              "positionOffset": [
+                0.85,
+                2.553304751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 875,
+              "positionOffset": [
+                0.875,
+                2.548929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 900,
+              "positionOffset": [
+                0.9,
+                2.540804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 925,
+              "positionOffset": [
+                0.925,
+                2.528929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 950,
+              "positionOffset": [
+                0.95,
+                2.513304751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 975,
+              "positionOffset": [
+                0.975,
+                2.493929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1000,
+              "positionOffset": [
+                1.0,
+                2.470804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1025,
+              "positionOffset": [
+                1.025,
+                2.443929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1050,
+              "positionOffset": [
+                1.05,
+                2.413304751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1075,
+              "positionOffset": [
+                1.075,
+                2.378929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1100,
+              "positionOffset": [
+                1.1,
+                2.340804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1125,
+              "positionOffset": [
+                1.125,
+                2.298929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1150,
+              "positionOffset": [
+                1.15,
+                2.253304751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1175,
+              "positionOffset": [
+                1.175,
+                2.203929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1200,
+              "positionOffset": [
+                1.2,
+                2.150804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1225,
+              "positionOffset": [
+                1.225,
+                2.093929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1250,
+              "positionOffset": [
+                1.25,
+                2.033304751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1275,
+              "positionOffset": [
+                1.275,
+                1.968929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1300,
+              "positionOffset": [
+                1.3,
+                1.900804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1325,
+              "positionOffset": [
+                1.325,
+                1.828929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1350,
+              "positionOffset": [
+                1.35,
+                1.753304751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1375,
+              "positionOffset": [
+                1.375,
+                1.673929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1400,
+              "positionOffset": [
+                1.4,
+                1.590804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1425,
+              "positionOffset": [
+                1.425,
+                1.503929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1450,
+              "positionOffset": [
+                1.45,
+                1.413304751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1475,
+              "positionOffset": [
+                1.475,
+                1.318929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1500,
+              "positionOffset": [
+                1.5,
+                1.220804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1525,
+              "positionOffset": [
+                1.525,
+                1.118929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1550,
+              "positionOffset": [
+                1.55,
+                1.013304751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1575,
+              "positionOffset": [
+                1.575,
+                0.903929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1600,
+              "positionOffset": [
+                1.6,
+                0.790804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1625,
+              "positionOffset": [
+                1.625,
+                0.673929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1650,
+              "positionOffset": [
+                1.65,
+                0.553304751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1675,
+              "positionOffset": [
+                1.675,
+                0.428929751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1700,
+              "positionOffset": [
+                1.7,
+                0.300804751,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [],
+      "effectTracks": [
+        {
+          "effectTrackId": "effect.ball_bounce.disappear_start",
+          "slotId": "object",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.kouku.gate3.showtime.saydon.disappear",
+          "timing": "TIME",
+          "followObject": false,
+          "bone": "",
+          "startMs": 0,
+          "durationMs": 1001,
+          "positionOffset": [
+            0.540000021,
+            1,
+            -0.189999998
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "effectTrackId": "effect.ball_bounce.disappear_end",
+          "slotId": "object",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.kouku.gate3.showtime.saydon.disappear",
+          "timing": "MOTION_END",
+          "followObject": false,
+          "bone": "",
+          "startMs": 0,
+          "durationMs": 1001,
+          "positionOffset": [
+            0,
+            -1.5333333,
+            -0.900000036
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "effectTrackId": "effect.1",
+          "slotId": "object",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_ball_appear_cast_01_loc_int",
+          "timing": "MOTION_END",
+          "followObject": true,
+          "bone": "",
+          "startMs": 0,
+          "durationMs": 1000,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
     }
   ],
   "instances": [
@@ -324868,6 +327277,28 @@
           "slotId": "actor",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.bingo.ending.saydon2.weapon"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.entrance.ball",
+      "templateId": "sequence.kouku.entrance.ball.bounce",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.entrance.ball"
         }
       ]
     }

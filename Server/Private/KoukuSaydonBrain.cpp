@@ -498,6 +498,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			valuesValid = !window.CardRegions.empty() && !window.ContactTargets.empty() && window.ContactTargets.size() <= 64u &&
 				!window.OnSuccess.empty() && window.OnFail.empty() && window.OnTimeout.empty() && !window.bEndsPatternOnSuccess;
 			break;
+        case BOSS_PATTERN_LOGIC_KIND::BOSS_DAMAGE_REDUCTION:
         case BOSS_PATTERN_LOGIC_KIND::CARD_DICE_BIND:
         case BOSS_PATTERN_LOGIC_KIND::ATTACHMENT_HOLD:
             valuesValid = window.CardRegions.empty() && window.OnSuccess.empty() && window.OnFail.empty() &&
@@ -656,7 +657,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			(BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW == window.eKind &&
 				!window.OnFail.empty()))
 		{
-			status = "KoukuSaydon pattern logic window is out of the pattern lifetime or carries invalid values";
+			status = "KoukuSaydon pattern logic window is out of the pattern lifetime or carries invalid values: " + pattern.strPatternId + "/" + window.strWindowId;
 			return false;
 		}
 	}

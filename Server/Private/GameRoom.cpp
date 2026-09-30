@@ -681,6 +681,36 @@ bool LostArk::Server::CGameRoom::Commit_WorldTransferDeparture(
 	return !m_PlayerIdBySessionId.contains(sessionId);
 }
 
+void LostArk::Server::CGameRoom::Remember_ShipForWorldTransfer(
+	const SERVER_WORLD_TRANSFER_REQUEST& transfer)
+{
+	using LostArk::Shared::WORLD_ID;
+	if (WORLD_ID::BERN != m_eWorldId)
+		return;
+	/* Only the Maharaka trip keeps the ship; any other departure forgets it. This runs where the room
+	   hands a transfer off, so the tick entry, the G interaction (the dock is a G trigger), the Debug
+	   trigger and every other staging path remember it alike. */
+	const auto playerIdIter = m_PlayerIdBySessionId.find(transfer.iSessionId);
+	const auto playerIter = playerIdIter != m_PlayerIdBySessionId.end() ?
+		m_Players.find(playerIdIter->second) : m_Players.end();
+	if (WORLD_ID::MAHARAKA == transfer.eTargetWorldId && playerIter != m_Players.end() &&
+		playerIter->second.bShipDockValid &&
+		LostArk::Shared::INVALID_VEHICLE_ID != playerIter->second.iVehicleId)
+	{
+		if (m_MaharakaShipReturnBySession.size() >= 256u)
+			m_MaharakaShipReturnBySession.clear();
+		SHIP_RETURN_STATE state{};
+		state.iVehicleId = playerIter->second.iVehicleId;
+		state.fDockX = playerIter->second.fShipDockX;
+		state.fDockY = playerIter->second.fShipDockY;
+		state.fDockZ = playerIter->second.fShipDockZ;
+		state.fDockYawDegrees = playerIter->second.fShipDockYawDegrees;
+		m_MaharakaShipReturnBySession[transfer.iSessionId] = state;
+	}
+	else
+		m_MaharakaShipReturnBySession.erase(transfer.iSessionId);
+}
+
 bool LostArk::Server::CGameRoom::Try_DequeueWorldTransfer(
 	SERVER_WORLD_TRANSFER_REQUEST& outTransfer)
 {
@@ -688,6 +718,7 @@ bool LostArk::Server::CGameRoom::Try_DequeueWorldTransfer(
 		return false;
 	outTransfer = std::move(m_PendingWorldTransfers.front());
 	m_PendingWorldTransfers.pop_front();
+	Remember_ShipForWorldTransfer(outTransfer);
 	return true;
 }
 
@@ -1064,6 +1095,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 	Update_Guides(fixedDeltaSeconds);
 	Update_WorldPickups(updateTick, false);
 	Update_Players(fixedDeltaSeconds);
+	Update_MaharakaWaterGunShots(updateTick);
 	Update_KoukuCardRainSoldiers(updateTick);
 	Update_CardMaze(updateTick);
 	Update_KoukuBingo(updateTick);
@@ -1471,6 +1503,31 @@ bool LostArk::Server::CGameRoom::Commit_NumericBalance(
         boss.iMaximumHp = profile->iMaximumHp; boss.iMaximumHealthBars = profile->iMaximumHealthBars;
         boss.iAttackPower = profile->iAttackPower; boss.fCollisionRadius = profile->fCollisionRadius;
         boss.fEngageDistance = profile->fEngageDistance; boss.fMoveSpeed = profile->fMoveSpeed;
+        const auto commonStagger = m_GameplayCatalog.Active().Get_RaidStaggerMaximum();
+        if (commonStagger && Uses_RaidStaggerPolicy(boss))
+        {
+            if (boss.iKoukuItemStaggerMaximum)
+            {
+                boss.iKoukuItemStaggerCredit = ratio(boss.iKoukuItemStaggerCredit,
+                    boss.iKoukuItemStaggerMaximum, commonStagger, false);
+                boss.iKoukuItemStaggerMaximum = commonStagger;
+            }
+            for (const auto& retained : boss.KoukuRetainedLogicOwners)
+                if (const auto owner = retained.lock(); owner && owner->iKoukuItemStaggerMaximum)
+                {
+                    owner->iKoukuItemStaggerCredit = ratio(owner->iKoukuItemStaggerCredit,
+                        owner->iKoukuItemStaggerMaximum, commonStagger, false);
+                    owner->iKoukuItemStaggerMaximum = commonStagger;
+                }
+            if (boss.BossCombat.iStaggerMaximum)
+            {
+                boss.BossCombat.iStaggerCurrent = ratio(boss.BossCombat.iStaggerCurrent,
+                    boss.BossCombat.iStaggerMaximum, commonStagger, false);
+                boss.BossCombat.iStaggerMaximum = commonStagger;
+                ++boss.BossCombat.iStateRevision;
+            }
+            continue;
+        }
         if (!boss.BossCombat.iStaggerMaximum) continue;
         const auto* pinned = m_GameplayCatalog.Resolve(boss.PinnedDefinitionRevision);
         const auto* patterns = pinned ? pinned->Find_BossPatterns(boss.strEncounterId) : nullptr;
