@@ -348,6 +348,8 @@ public:
 		LostArk::Shared::EQUIPMENT_SLOT slot,
 		bool bEquip,
 		std::string_view itemId);
+	/* Repair NPC window: asks the Server to restore the worn gear's durability. */
+	bool Send_RepairEquipment(std::uint32_t requestSequence, bool bAllSlots);
 	/* Debug Valtan pattern audition. The Server owns the verdict; this only
 	carries the request and hands back whatever it answered. */
 	bool Send_ValtanAudition(

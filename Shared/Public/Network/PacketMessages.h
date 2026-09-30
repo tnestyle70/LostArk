@@ -5,6 +5,7 @@
 #include "Network/PacketType.h"
 #include "NetworkIds.h"
 
+#include <array>
 #include <string>
 #include <string_view>
 #include <limits>
@@ -2898,6 +2899,10 @@ namespace LostArk::Shared
 		EQUIPMENT_SLOT eEquippedSlot = EQUIPMENT_SLOT::NONE;
 	};
 
+	/* Worn-gear parts the durability HUD draws, in wire order: weapon, helmet, top, gloves,
+	   bottoms, shoulder. Each carries a percent, 0 (broken) to 100 (undamaged). */
+	inline constexpr std::size_t DURABILITY_PART_COUNT = 6;
+
 	// Replace-in-full, the same shape S2C_ENCOUNTER_PROP_SYNC uses: one message
 	// carries the whole current inventory, so a late joiner or a re-entering
 	// session is correct without replaying every past give.
@@ -2908,6 +2913,8 @@ namespace LostArk::Shared
 		/* The purse (silver / gold). Currencies are not bag items, so they ride beside them. */
 		std::uint32_t iSilver = 0;
 		std::uint32_t iGold = 0;
+		/* Server-owned wear of the worn gear, one percent per durability HUD part. */
+		std::array<std::uint8_t, DURABILITY_PART_COUNT> DurabilityPercent{ { 100, 100, 100, 100, 100, 100 } };
 	};
 
 	bool Write_Message(
@@ -2943,6 +2950,16 @@ namespace LostArk::Shared
 	};
 	bool Write_Message(CPacketWriter& writer, const C2S_SET_EQUIPMENT& message);
 	bool Read_Message(CPacketReader& reader, C2S_SET_EQUIPMENT& message);
+
+	/* Repair NPC window: bAllSlots is the window's "repair all" button, otherwise "repair
+	   equipped". Only worn gear wears today, so both restore every part to 100 percent. */
+	struct C2S_REPAIR_EQUIPMENT
+	{
+		std::uint32_t iRequestSequence = 0;
+		bool bAllSlots = false;
+	};
+	bool Write_Message(CPacketWriter& writer, const C2S_REPAIR_EQUIPMENT& message);
+	bool Read_Message(CPacketReader& reader, C2S_REPAIR_EQUIPMENT& message);
 
 	/* The shop window's basket: up to ten lines, each one catalog item and a count, bought
 	   from the named shop NPC in one go. */

@@ -570,19 +570,6 @@
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "Lobby_PrevIcon",
-      "ownerClass": null,
-      "type": 0,
-      "rect": { "x": 118.667, "y": 637.733, "width": 27.333, "height": 27.333 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Lobby/ServerSelect/btn_prev.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
       "id": "Lobby_OptionIcon",
       "ownerClass": null,
       "type": 0,

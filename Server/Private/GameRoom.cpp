@@ -1004,6 +1004,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		case ROOM_COMMAND_TYPE::SET_EQUIPMENT:
 			Handle_SetEquipment(command.iSessionId, command.SetEquipment);
 			break;
+		case ROOM_COMMAND_TYPE::REPAIR_EQUIPMENT:
+			Handle_RepairEquipment(command.iSessionId, command.RepairEquipment);
+			break;
 		case ROOM_COMMAND_TYPE::BUY_ITEMS:
 			Handle_BuyItems(command.iSessionId, command.BuyItems);
 			break;
@@ -1236,6 +1239,16 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 	m_iServerTick = updateTick;
 	Expire_RaidEntryProposals();
 	Expire_GateProgressVote();
+	/* A hit that wore gear answers its owner with the inventory snapshot that carries the wear. */
+	for (auto& [wornPlayerId, wornPlayer] : m_Players)
+	{
+		if (!wornPlayer.bDurabilityDirty || !wornPlayer.Is_Human())
+			continue;
+		wornPlayer.bDurabilityDirty = false;
+		const std::shared_ptr<CClientSession> wornSession = Find_Session(wornPlayer.iSessionId);
+		if (nullptr != wornSession && !Send_InventorySnapshot(wornSession, 0u, wornPlayer))
+			wornSession->Request_Close();
+	}
 	if (Count_HumanPlayers() != 0u)
 		Broadcast_WorldSnapshot();
 	std::vector<LostArk::Shared::GameplayDataRevision> liveGenerationPins;

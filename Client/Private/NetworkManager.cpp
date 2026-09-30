@@ -2321,6 +2321,27 @@ bool CNetworkManager::Send_SetEquipment(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_RepairEquipment(
+	const std::uint32_t requestSequence, const bool bAllSlots)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_REPAIR_EQUIPMENT message{};
+	message.iRequestSequence = requestSequence;
+	message.bAllSlots = bAllSlots;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_REPAIR_EQUIPMENT,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_ValtanAudition(
 	const std::uint32_t requestSequence,
 	const LostArk::Shared::VALTAN_AUDITION_OPERATION operation,

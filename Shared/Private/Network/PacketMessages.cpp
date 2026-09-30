@@ -5829,6 +5829,12 @@ bool LostArk::Shared::Write_Message(
 	}
 	writer.Write_U32(message.iSilver);
 	writer.Write_U32(message.iGold);
+	for (const std::uint8_t percent : message.DurabilityPercent)
+	{
+		if (percent > 100u)
+			return false;
+		writer.Write_U8(percent);
+	}
 	return true;
 }
 
@@ -5859,6 +5865,11 @@ bool LostArk::Shared::Read_Message(
 	}
 	if (!reader.Read_U32(decoded.iSilver) || !reader.Read_U32(decoded.iGold))
 		return false;
+	for (std::uint8_t& percent : decoded.DurabilityPercent)
+	{
+		if (!reader.Read_U8(percent) || percent > 100u)
+			return false;
+	}
 	if (!Is_Valid_InventoryItems(decoded.Items))
 		return false;
 	message = std::move(decoded);
@@ -5939,6 +5950,29 @@ bool LostArk::Shared::Read_Message(
 		(decoded.bEquip ? !Is_Valid_ItemId(decoded.strItemId) : !decoded.strItemId.empty()))
 		return false;
 	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_REPAIR_EQUIPMENT& message)
+{
+	if (0u == message.iRequestSequence)
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U8(message.bAllSlots ? 1u : 0u);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_REPAIR_EQUIPMENT& message)
+{
+	C2S_REPAIR_EQUIPMENT decoded{};
+	std::uint8_t allSlots = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U8(allSlots) ||
+		0u == decoded.iRequestSequence || allSlots > 1u)
+		return false;
+	decoded.bAllSlots = 1u == allSlots;
+	message = decoded;
 	return true;
 }
 

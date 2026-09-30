@@ -361,6 +361,22 @@ namespace LostArk::Server
 
 		std::uint32_t iCurrentHp = 1000;
 		std::uint32_t iMaximumHp = 1000;
+		/* Worn-gear durability per HUD part (weapon, helmet, top, gloves, bottoms, shoulder),
+		   percent 0..100. A hit that takes HP wears one part in turn; the owner's inventory
+		   snapshot carries it. Not kept across sessions. */
+		std::array<std::uint8_t, 6> DurabilityPercent{ { 100, 100, 100, 100, 100, 100 } };
+		std::uint8_t iDurabilityWearCursor = 0;
+		bool bDurabilityDirty = false;
+		void Wear_Durability(const std::uint8_t percentLoss) noexcept
+		{
+			std::uint8_t& part = DurabilityPercent[iDurabilityWearCursor % DurabilityPercent.size()];
+			iDurabilityWearCursor = static_cast<std::uint8_t>(
+				(iDurabilityWearCursor + 1u) % DurabilityPercent.size());
+			if (0u == part)
+				return;
+			part = part > percentLoss ? static_cast<std::uint8_t>(part - percentLoss) : std::uint8_t{ 0 };
+			bDurabilityDirty = true;
+		}
 		// Server-only per-hit stream; same-tick contacts must not share one damage roll.
 		std::uint64_t iIncomingDamageSampleSerial = 0u;
 		std::uint32_t iCurrentResource = 100;

@@ -56,6 +56,7 @@ namespace LostArk::Server
 		SET_EQUIPMENT,
 		BUY_ITEMS,
 		RESTORE_CHARACTER,
+		REPAIR_EQUIPMENT,
 		DESPAWN_ALL_WORLD_ENTITIES,
 		CONFIRM_NPC_ENTRY,
 		INTERACT_TRIGGER,
@@ -148,6 +149,7 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_SET_EQUIPMENT SetEquipment;
 		LostArk::Shared::C2S_BUY_ITEMS BuyItems;
 		LostArk::Shared::C2S_RESTORE_CHARACTER RestoreCharacter;
+		LostArk::Shared::C2S_REPAIR_EQUIPMENT RepairEquipment;
 		LostArk::Shared::C2S_DESPAWN_ALL_WORLD_ENTITIES DespawnAllWorldEntities;
 		LostArk::Shared::C2S_CONFIRM_NPC_ENTRY ConfirmNpcEntry;
 		LostArk::Shared::C2S_INTERACT_TRIGGER InteractTrigger;
