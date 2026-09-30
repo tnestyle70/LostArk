@@ -345,3 +345,44 @@ PASS로 바꾸거나 사용자 저장 패턴을 과거 기대값으로 복원하
 최신 Debug/Release Product 전체 완료, Debug native 최종 결과, GitHub merge와 새 ZIP의
 hash·CRC·preflight는 담당자 확인 후 기록한다. 실제 G 입장·반복 Trash·카운터 종료·파괴 ready
 PNG·실제 갑옷 파편·전방 포탈의 화면과 음향은 사용자 확인 범위로 남긴다.
+
+## G14. 최종 게시·빌드·검증 ZIP
+
+최종 소스 기준 Debug/Release Product 빌드가 모두 PASS다. Debug receipt는
+`out/BuildPipeline/runs/20260929T235810436Z-debug-product.json`, Release는
+`out/BuildPipeline/runs/20260929T235908759Z-release-product.json`이다. 둘 다 실제 Build이며
+missing/invalid runtime input은0이다. 기존 shader·문자 인코딩·DirectXTK PDB 경고는 남아
+있으므로 경고0 빌드라고 표현하지 않는다.
+
+Release 기존7개 검사 묶음은558 PASS/0 FAIL다. Debug에서 완료된6개 묶음은861 PASS/0 FAIL
+(BattleItems174, KoukuProduct398, ValtanPresentation82, WorldPlayback74,
+VehicleRiding99, NPCRaidReturn34)다. 마지막 Bind fixture는 정확한 EXIT 복원 시점과
+그 뒤의 정상 넉백 이동을 각각 확인하며 제품 동작을 변경하지 않았다.
+
+별도 Debug ValtanLifecycle 전체 CLI는1200초 제한으로 종료됐다. 그 전에4인 연속 클리어,
+입장 순환·버러지 실제 카운터 종료 등을 포함한162 assertion이 통과했고 assertion 실패는
+없었지만, 추가 F1 Next/Reload/실패 원자성 검사를 모두 마치지 못했다. 이 묶음은 PASS가 아니다.
+Release의 같은 CLI94 PASS와도 구분한다. 초기 광역 Release91 FAIL 역시 전체 재실행·해결로
+표현하지 않는다. 집계 정본은 `release-final-native-results.json`,
+`debug-final-native-results.json`, `debug-valtan-expanded-timeout.json`이다.
+
+전체 게시 정본은 `full-publish-final2.log`와 source revision
+`128d68d30634ff0c51eaab5f6e4669434842014cc795997abfe803e2c55eedc4`이며,
+사용자가 저장한 공통 raidStaggerMaximum50000을 유지했다. NumericSourceBindings는587개
+field로 재생성했다. 통합 ProtocolHarness는 Debug/Release 각각1400 PASS다.
+
+검증 ZIP은 `C:\Users\user\Desktop\LostArk-Verification-20260930.zip`이며
+168,083,458 bytes, SHA256
+`afac5ceced71f4bbea5f66f3a75b6e9b194124f3d8997529cee71c18706b9427`다.
+ZIP CRC·모든 manifest 파일의 SHA/길이·중복 경로·수치 source binding·protocol126·Kouku
+source2496/sequence183·실행 전 검사를 통과했다. Client/Server는 실행하지 않았다.
+Resources는 포함하지 않으며 PR 추가 리소스389개는 GBResources에 복사했다.
+PR488에서 파일이 제공되지 않은 아바타 아이콘30개는 여전히 별도 미완료 항목이다.
+기존 ZIP은 builder가 별도 backup ZIP으로 보존했다.
+
+배포 근거는 `out/ValtanFinalRepair20260930/final-delivery-evidence.json`과
+`out/ReleasePackaging/portable-delivery.receipt.json`이다. 실행 파일/데이터의 소스 commit은
+`8cfc53652c3f058b5b9f4bfe4f463d509cba92b9`이며 이후 RESULT 문서 기록은 제품을 바꾸지 않는다.
+PR487/488 원본 commit을 보존한 통합 PR은
+https://github.com/tnestyle70/LostArk/pull/489 이며 최종 merge 상태는 GitHub가 정본이다.
+실제4Client LAN 입장과 화면·음향은 사용자 확인 범위다.
