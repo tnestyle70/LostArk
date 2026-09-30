@@ -248,6 +248,12 @@ Loader worker에서 호출되는 shader/model/navigation/camera/character/part/V
 
 렌더링 옵션은 팀장이 조율·관리한다. 현재 팀장의 저장값이 정본이며 모든 에이전트와 팀원은 임의 복원·기본값 적용·전수 덮어쓰기를 하지 않는다. 특히 쿠크 Mario1~4의 FXAA/anti-aliasing OFF를 유지한다. 변경 권한 경계는 `AGENTS.md`의 렌더링 옵션 정본과 변경 권한을 따른다.
 
+마하라카 `LV_OCN_EVENTIS_MHP`는 `scene.maharaka.source-day.v1`과 그 섬 환경 volume을
+사용한다. 원본 PS의 전역/지역 조명·안개·후처리를 구분하고 셀피 환경은 일반 화면에
+적용하지 않는다. local33광원은 기존 RNM에 구워진 입력이므로 `UNBAKED` receiver로
+중복 가산을 막는다. 조명·LUT의 물리 경로는 `Resources/Map/Lighting/Maharaka`이며
+다른 맵의 quality override와 전역 렌더링 튜닝은 독립적으로 유지한다.
+
 품질·scene/region 정본은 `Data/Rendering/Authored/RenderingProfiles.json`이다. 쿠크의 실제 base는 `scene.kakulsaydon.g1.base.v1`이며 그 `qualityOverride`는 패턴 scene 전환에도 유지된다. source 비교 profile이나 region override를 수정할 때도 같은 팀장 저장값을 보존한다. `Tools/RenderingPipeline/Publish-RenderingProfiles.ps1 -Mode Publish`만 `Client/Bin/DataFiles/Rendering/RenderingProfiles.runtime.json`을 생성한다. 생성물을 수동 편집하거나 효과 수정에 무관한 렌더링 재설정을 끼워 넣지 않는다. 실행 중 draft·사용자 video 설정과 게시 파일은 서로 다른 수명이며 게시를 자동 Reload로 설명하지 않는다.
 
 ## 팀 협업 규칙
@@ -355,7 +361,7 @@ CPrototype (추상, enable_shared_from_this)
 enum class LEVEL { STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA, KAKULSAYDON_ARENA, DEVELOPMENT, MAHARAKA, END };
 ```
 
-시작 Level은 항상 `LOBBY`다. Lobby는 `Test`, `Character Select`, `Valtan`, `KoukuSaydon`, `Bern`, `Maharaka` 여섯 명령을 제공하고 `CLevelRegistry`가 각 `LEVEL`의 생성 함수, Loader 함수, map area와 load scope를 연결한다. 별도 실행 시나리오 catalog, 문자열 기반 Level 분기, direct `Change_Level` 호출을 추가하지 않는다. `Maharaka`는 Debug Lobby에서 `WORLD_ID::MAHARAKA` Server 승인을 받은 뒤 `LEVEL::MAHARAKA`로 들어가며, 2021 마하라카 파라다이스 섬 Area `LV_OCN_EVENTIS_MHP`를 `CLevel_Development` 셸(맵·follow camera·replication·controller)로 띄운다. 이 월드는 protocol 94부터 있다. 워터팡 경기 중 물총 무장은 Server가 계산해 protocol 118 `PLAYER_SNAPSHOT.isWaterpangArmed`로 복제하며, Client는 `bip001-prop3`에 물총을 달고 직업 무기를 숨긴다. 무장 중 Q/W/E/R은 직업 스킬 대신 `MaharakaWaterpangContract.h`의 물총 스킬표(Q 연발 샷 56900·W 물 폭탄 56910·E 이동속도 증가 56920·R 기본 사격 56930)를 쓰며, 같은 `C2S_USE_SKILL` 경로로 Server가 쿨타임·행동 길이·발사를 판정하고 이동은 잠그지 않는다. 각 플레이어의 마지막 발사(skill id와 시작 tick)는 protocol 122 `PLAYER_SNAPSHOT.iWaterGunSkillId/iWaterGunCastTick`로 복제된다. 피격은 원작 행의 밀림·경직만 적용하고 HP 피해와 냉기 중첩은 적용하지 않는다.
+시작 Level은 항상 `LOBBY`다. Lobby는 `Test`, `Character Select`, `Valtan`, `KoukuSaydon`, `Bern`, `Maharaka` 여섯 명령을 제공하고 `CLevelRegistry`가 각 `LEVEL`의 생성 함수, Loader 함수, map area와 load scope를 연결한다. 별도 실행 시나리오 catalog, 문자열 기반 Level 분기, direct `Change_Level` 호출을 추가하지 않는다. `Maharaka`는 Debug Lobby에서 `WORLD_ID::MAHARAKA` Server 승인을 받은 뒤 `LEVEL::MAHARAKA`로 들어가며, 2021 마하라카 파라다이스 섬 Area `LV_OCN_EVENTIS_MHP`를 `CLevel_Development` 셸(맵·follow camera·replication·controller)로 띄운다. 이 월드는 protocol 94부터 있다. 워터팡 경기 중 물총 무장은 Server가 계산해 protocol 118 `PLAYER_SNAPSHOT.isWaterpangArmed`로 복제하며, Client는 `bip001-prop3`에 물총을 달고 직업 무기를 숨긴다. 무장 중 Q/W/E/R은 직업 스킬 대신 `MaharakaWaterpangContract.h`의 물총 스킬표(Q 연발 샷 56900·W 물 폭탄 56910·E 이동속도 증가 56920·R 기본 사격 56930)를 쓰며, 같은 `C2S_USE_SKILL` 경로로 Server가 쿨타임·행동 길이·발사를 판정하고 이동은 잠그지 않는다. 각 플레이어의 마지막 발사(skill id와 시작 tick)는 protocol 122 `PLAYER_SNAPSHOT.iWaterGunSkillId/iWaterGunCastTick`로 복제된다. 피격은 HP 피해·냉기 중첩 없이 밀림을 적용하며, 워터팡의 사용자 지정 기본 넉백은 쿠크 레이저 기준 6m/242ms다. 원본 행의 밀림값과 구분하고 `Data/AI/MaharakaWaterpangAI.json` 및 AI Tool로 조절한다.
 
 `LEVEL::STATIC`은 전환 시에도 살아남는 영구 레벨이고, 나머지는 `Change_Level`에서 정리된다. `LEVEL::KAKULSAYDON_ARENA`는 Lobby 버튼을 늘리지 않고 Debug Character Select의 typed Server transfer로 진입한다. 각 레벨 인덱스는 `map<wstring_t, shared_ptr<CLayer>>`를 가지며, `CLayer`는 `list<shared_ptr<CGameObject>>`를 들고 매 프레임 `Priority_Update → Update → Late_Update`를 구동한다.
 
@@ -379,7 +385,7 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 벽 위 위치·착지 위치·벽 ID를 편집하고 낙하를 Preview할 수 있다. 실제 낙하·획득·전멸 보호는
 Server가 판정한다. 게시 후 실행 중 Server는 다시 시작해야 하며 도구 Reload는 별도 동작이다.
 
-Kouku의 `Book1_Monsters`/`Book2_Monsters`와 Valtan의 `Stage_1`/`Stage_2` 웨이브 트리거(각각 `spawn.kouku.book1`/`spawn.kouku.book2`, `spawn.valtan.stage01`/`spawn.valtan.stage03`)는 Release Server에서 지금처럼 밟으면 그룹이 시작된다. Debug Server는 이 네 상자를 밟아도, G를 눌러도 실행하지 않고 안내도 보내지 않으며, F1 `KoukuSaydon Arena`의 `Bingo Board` 아래 `Normal Monster 1/2`와 발탄 아레나 안에서만 보이는 `Valtan Arena`의 같은 이름 버튼이 typed 명령 `C2S_DEBUG_RESUMMON_WAVE_MONSTERS`(현재 protocol 105)를 보낸다. Server는 `CServerTriggerSystem::Find_WaveMonsterButton`의 고정 표로만 (world, button)을 그룹에 연결하고, 그 그룹의 살아 있는 monster를 제거한 뒤 그룹을 초기화해 첫 wave부터 다시 시작한다. monster는 그룹의 저작 anchor에 나타나며 플레이어 위치와 무관하다. 결과 메시지는 없고 monster는 world snapshot으로 온다. Release는 이 명령을 무시한다. `Stage_MiniBoss_Spawn`, `Stage_3`, `Stage_Boss`와 다른 월드의 트리거는 Debug에서도 그대로 동작한다. Debug/Release 구분은 컴파일 시 `_DEBUG`이고 Server/Client는 같은 protocol 105로 함께 빌드·재시작한다. 통합 wire는 무적 구역 연출 펄스, 웨이브 재소환, WALL_CLIMB, GuardianKnight ember snapshot, 카드비 occurrence scale, 고대의 바다 flight 입력·snapshot과 F1 에스더 지정 소환을 포함하며 이전 peer와 호환되지 않는다.
+Kouku의 `Book1_Monsters`/`Book2_Monsters`와 Valtan의 `Stage_1`/`Stage_2` 웨이브 트리거(각각 `spawn.kouku.book1`/`spawn.kouku.book2`, `spawn.valtan.stage01`/`spawn.valtan.stage03`)는 Release Server에서 지금처럼 밟으면 그룹이 시작된다. Debug Server는 이 네 상자를 밟아도, G를 눌러도 실행하지 않고 안내도 보내지 않으며, F1 `KoukuSaydon Arena`의 `Bingo Board` 아래 `Normal Monster 1/2`와 발탄 아레나 안에서만 보이는 `Valtan Arena`의 같은 이름 버튼이 typed 명령 `C2S_DEBUG_RESUMMON_WAVE_MONSTERS`(현재 protocol 105)를 보낸다. Server는 `CServerTriggerSystem::Find_WaveMonsterButton`의 고정 표로만 (world, button)을 그룹에 연결하고, 그 그룹의 살아 있는 monster를 제거한 뒤 그룹을 초기화해 첫 wave부터 다시 시작한다. monster는 그룹의 저작 anchor에 나타나며 플레이어 위치와 무관하다. 결과 메시지는 없고 monster는 world snapshot으로 온다. Release는 이 명령을 무시한다. `Stage_MiniBoss_Spawn`, `Stage_3`와 다른 월드의 트리거는 Debug에서도 그대로 동작한다. Valtan의 이전 `Stage_Boss`/`Stage_Boss_ArenaEntry`는 비활성이고 최초 레이드 진입은 `Stage_Boss_Assembly`의 Server 10초 집결·자동 입장 경로를 사용한다. Debug/Release 구분은 컴파일 시 `_DEBUG`이고 Server/Client는 같은 protocol 105로 함께 빌드·재시작한다. 통합 wire는 무적 구역 연출 펄스, 웨이브 재소환, WALL_CLIMB, GuardianKnight ember snapshot, 카드비 occurrence scale, 고대의 바다 flight 입력·snapshot과 F1 에스더 지정 소환을 포함하며 이전 peer와 호환되지 않는다.
 
 ### 최소 수련장 Area
 
@@ -880,9 +886,9 @@ Server는 저장 Action·Sequence revision, 관문 Flow, 시작 1~4인 roster를
 UI에 결과를 표시하고 `WAIT_GATE`에서 기다린다. 시간 경과로 관문을 전환하지 않는다. 시작 roster 전원의
 관문 입장 승인을 받아야 다음 Sequence를 재생하며, 거절·투표 timeout은 현재 관문을 유지한다.
 재시작 승인도 같은 관문의 입장 Sequence를 거친다. 2관문 승인 뒤에는 3관문 입장 Sequence를 재생한다.
-3관문 최초 Sequence 종료는 판자 도착 위치에서 기다리며, 좌상단 `3관문 입장`의 명시 `ENTER_GATE3`
-투표가 승인되면 Server가 전원을 원래 전투 위치로 이동시킨다. 일반 Play 후 또는 ImGui의
-`3관문 입장 전 공간` 이동 후에도 실제 판자 공간에서 같은 입장 버튼을 사용한다.
+3관문 최초 Sequence 종료는 판자 도착 위치에서 기다리며, 공대장이 진입 오라에 Server 기준
+10초 연속 머물면 확인·수락 창 없이 Server가 기존 입장 검증을 거쳐 전원을 전투 위치로 이동시킨다.
+일반 Play 후 또는 ImGui의 `3관문 입장 전 공간` 이동 후에도 같은 자동 집결 입장을 사용한다.
 시작 공간과 판자 공간에서는 `m12_ready_terrace_2ndcircus` BGM을 재생하고, 시퀀스 시작·공간 이탈·전투 입장에서 종료한다.
 일반 Play가 종료되면 실제 위치를 다시 확인해 대기 BGM을 재생한다. 마지막 관문 클리어는 기존 EXIT·재시작 UI를 유지한다.
 Client는 저장 Sequence의 정확한 ID/revision을 유지하며 복제된 시각으로 기존 presentation을 샘플링한다.
@@ -1028,6 +1034,16 @@ asset path는 반드시 `UI/...` Resources-relative ID이며 `CRuntimeAssetRoot:
 처리한다. JSON reference 좌표를 유지하고 현재 physical viewport로 매번 투영하므로 기존 HUD,
 창, keyframe animation과 Loading chrome도 창 크기 변경을 따른다. 폰트는 실제 출력 픽셀에
 가까운 atlas를 선택한다. 원본 저해상도 이미지의 디테일을 새로 생성하는 기능은 아니다.
+
+Debug/Release F1의 `Health bar positions`는 쿠크 무력화와 별도로 `Valtan Stagger`와
+`Valtan Armor Break PNG`의 머리 기준 X/Y와 가로·세로 배율을 조절한다. 각 `Show debug`는
+살아 있는 발탄에 표시만 강제하고 Server 상태를 바꾸지 않는다. `Save positions and stagger size`와
+`Reload saved positions and size`는 기존 `Data/UI/KoukuSaydon/KoukuHudModes.json`의
+`healthBarPositions`를 사용한다. 발탄 전용 필드는 `valtanStaggerHeadOffsetX/Y`,
+`valtanStaggerWidthScale/HeightScale`, `valtanArmorBreakOffsetX/Y`,
+`valtanArmorBreakWidthScale/HeightScale`이며 각 축은 별도 key다. 최초 무력화 값은 현재
+쿠크 값과 같고 이후 각각 저장한다. offset은 1280×720 기준 pixel, 배율은 원본 layout 기준이다.
+Save는 최신 디스크의 다른 필드를 보존하고 같은 필드 충돌만 거절한다. 상세 계약은 팀 사용서를 따른다.
 
 ### ESC 해상도·창 모드·개인 설정
 
@@ -1193,3 +1209,17 @@ snapshot까지 직접 구현해야 하며, Server 담당 파일이라는 이유�
 - 서브시스템 소유권이 헷갈리면 위 "서브시스템 소유권" 표를 본다.
 - 기존 소스는 주변 주석의 언어와 파일별 인코딩을 그대로 맞춘다. 저장소 전체가 하나의 인코딩이라는 가정을 금지한다.
 - `Engine/Public/` 변경 후에는 Product runner로 Engine → Client 컴파일과 SDK 반영을 확인한다. 그 밖의 변경은 해당 기능에 필요한 최소 컴파일을 사용한다. 발견된 컴파일·링크 오류는 수정하고, 아직 하지 않은 실행 확인은 구분해 보고한다.
+
+### 워터팡 AI와 효과 저작 진입
+
+Debug 마하라카의 F1 `Waterpang AI Tool`에서 AI 수(0~20), 판단 tick, 이동 목표 갱신 tick,
+스킬 간격 tick, 대상 거리, 이동·공격 확률, 넉백 거리·시간을 조절한다. tick은 30Hz다.
+Refresh는 Server 적용값을 받고 Apply는 현재 방에 적용하며 Save + Apply는
+Server 저장소의 `Data/AI/MaharakaWaterpangAI.json`까지 저장한다. revision 충돌·실패 시
+현재 실행값과 편집 draft를 보존한다. Client가 정본 파일을 직접 쓰지 않는다.
+
+통합 protocol 127의 Client와 Server를 함께 빌드해야 NPC 외형 및 AI Tool 메시지가 일치한다.
+AI는 인간 4인과 별도인 Server-owned 최대20명이며, 실제 경기 시간은 도입 연출 후180초다.
+종료 후 참가 인간은 같은 마하라카의 섬 바깥쪽으로 복귀해 탐험한다.
+All Effects의 `World → 마하라카 → 워터팡`에서 중앙 장치와 Q/W/E/R 효과를 고른다.
+원본 MK2 총구2종은 별도 변형 폴더에 있으며 현재 Q/W/E/R에 잘못 연결하지 않는다.

@@ -1,5 +1,74 @@
 # LostArk merge 회귀 방지 정본
 
+## 워터팡 효과·NPC 복원 경계
+
+- `.restore`만으로 player skill preview를 선택하지 않는다. Maharaka World 효과의
+  실제 WorldSequence model/bone, player 총구의 prop bone, 독립 투사체 root를 구분한다.
+- source emitter의 좌표 변환과 GADGET 발사 offset을 owner·emitter 양쪽에 중복 적용하지 않는다.
+- 원본 PSA clip 추가는 설치 WModel의 변환 basis부터 같은 idle의 전체 bone/key로 실측한다.
+  UModel-glTF 주민의 position(x,z,y), root quaternion(-x,-z,-y,w), 나머지(x,z,y,w)을
+  다른 ActorX 모델의 기본값으로 전파하지 않는다. 추가 clip 외 기존 section은 byte를 보존한다.
+- native deferred0·shader 컴파일을 원본 VS 변형·화면 성공으로 대신하지 않는다.
+  워터팡 program5275의 Q/W/R bubble 물결 변형은 별도 미복원 경계다.
+
+### Movie 카메라 기준 키와 정적 배경의 소유자
+
+Use free cam pos가 저장하는 LookAt 거리는 원본 키와 다를 수 있다. 첫 Eye만 바꾸거나
+첫 LookAt만 긴 벡터로 두면 다음 키 보간에서 구도가 급히 돌아간다. 수정 전·후 camera basis의
+회전을 Eye 상대 경로와 시선·Up에 함께 적용하며 시선 벡터 길이만 한 컷에서 일관되게 맞춘다.
+이 길이 비율로 이동 경로를 확대하지 않는다. 서로 다른 컷은 기존 cut 정책을 유지하므로
+컷 안의 연속성과 Loop 끝→첫 컷의 구도 차이를 별도로 측정한다.
+같은 컷을 다시 보정할 때는 최초 원본 대신 직전 실제 설치본을 기준으로 새 저장분을 비교한다.
+이미 보정된 뒤 키에 첫 보정량을 다시 더하지 않으며, 변경하지 않은 기준 키와 컷은 유지한다.
+
+Movie WORLD picking은 WorldSequence object를 검사한다. backgroundAreaId로 별도 로드한
+map placement는 그 목록에 없으므로 미선택을 삼각형 picking 결함으로 단정하지 않는다.
+하늘 이름이라도 무한 구체가 아닐 수 있으며 실제 WModel 외곽·배치와 원본 shader를 확인한다.
+배경은 기존 MapTool에 stable Area로 고정해 빌리고 class 전환이 저장 대상을 바꾸지 않게 한다.
+변경은 mapplacements에서 저장·게시하며 Movie JSON에 별도 map override를 만들지 않는다.
+존재하지 않고 편집하지도 않은 optional WorldSequences는 placement Save로 생성하지 않는다.
+상세 검증과 화면 경계는09-26 WORLD_MOVIE_EFFECT_EDITOR RESULT G21·G22를 따른다.
+
+### 본 부착 그룹의 재생 선택과 실제 전방 축
+
+Group by anchor에는 비활성 Light/ScreenPost 자리표시자도 포함될 수 있다. 그룹의 문서·편집
+대상은 유지하되 Play Group의 재생 선택에서는 명시적으로 enabled=false인 presentation만
+제외한다. 단일 Solo, 누락 ID, 숨김 carrier, 활성화된 잘못된 presentation을 정상으로 취급하지
+않으며, 재생 대상이 없으면 기존 preview를 보존한다. 화면의 presentation admission 메시지만
+보고 문서 전체가 drawable=false이거나 live draft 전달이 끊겼다고 단정하지 않는다.
+
+source 전방과 Element Euler만으로 검격 방향을 판단하지 않는다. 실제 설치 모델의 preTransform과
+해당 animation의 bone basis까지 합친다. Guardian 리벤지 스피어의 기존 source +X가 월드 -Y로
+변환되는 원인은 정적인 b_root basis였으며, 독립 그룹 socket에서 그 회전을 상쇄했다. 본의
+전체 clip 안정성과 owner yaw별 전방을 측정한 뒤 기존 BONE 경로를 사용하고, sourceRecipe에
+금지된 OWNER_YAW admission을 우회하지 않는다. 수치와 화면 판정은 별도다. 상세는
+09-30 GUARDIANKNIGHT_REVENGE_SPEAR RESULT G04를 따른다.
+
+### 기믹의 성공 안전존과 일반 무적의 즉사 우회를 구분한다
+
+일반 즉사가 실드·개인 무적·시간 정지를 관통하더라도 같은 Pattern에서 정확 인원을
+충족한 INVULNERABILITY_ZONE까지 건너뛰면 성공한 파1빨2가 사망한다. 현재 실행의
+성공 집합은 generic lethal hit보다 먼저 결과를 차단하고 다른 Pattern이나 종료 이후에
+보호를 남기지 않는다. 50% 피해·FEAR 테스트만으로 즉사 보호를 검증하지 않으며 실제
+게시 원·threshold·세 타격과 인원 부족/초과를 함께 검사한다. 근거는09-21
+KOUKU_SAFE_ZONE_CHARGE_CUTSCENE_RESULT G07에 둔다.
+
+진입 컷신의 HUD 숨김은 캐릭터 숨김이 아니다. 기존 Character presentation owner를
+본체·장비·탈것·그림자의 draw까지 연결하고 source와 camera exit blend의 수명을 함께
+소비한다. 정상 종료·실패·취소·이탈은 표시를 복구하며 전투 camera의 정책은 유지한다.
+### snapshot 뒤에도 유지해야 하는 비행 포즈 보정
+
+Object Update 뒤 Level의 snapshot 적용이 skeleton을 다시 설치할 수 있다. 서버가 소유한
+고도와 중복되는 원본 body lift를 제거할 때 frame Update 한 곳에서만 local bone을 보정하지
+않는다. 비행 mount 포즈 설치 경로를 하나로 모으고 frame·snapshot에서 모두 보정한다.
+같은 시각의 실제 설치 CModel을 raw pose → 보정 → snapshot 재설치 순서로 측정하여
+몸체·seat 높이를 대조한다. rider 자체의 root motion과 혼동해 두 모델에 일괄 보정하지 않는다.
+
+투척 아이템의 조준은 기존 지면 스킬 renderer/geometry를 재사용하되 item ID와 request sequence를
+별도로 소유한다. 조준 시작·취소에서 서버 명령을 보내지 않고 확정 클릭만 기존 item sink로 제출한다.
+취소된 마우스 hold가 다음 frame 이동으로 새는지, UI/focus에서 누른 숫자키가 복귀 시 새 edge가
+되는지 확인한다. 원본 texture 한 장의 재사용은 원본 다층 material/particle 전체 복원과 구분한다.
+
 ### 패턴의 회전·충돌 종료와 cinematic 입력 분리
 
 패턴 target/aim이 NONE이어도 선택 직전 nearest-target FacePoint나 Stage 중앙 이동의
@@ -4849,6 +4918,19 @@ winding을 함께 RH로 변환하고 최종 WModel+placement를 원본 grid/heig
   SRV mip 수·mip0 픽셀·색공간을 대조한다. 정상 TGA와 동일한 입력이면 해당 Movie의 texture
   참조만 재사용하고 공용 DDS·shader·보스 재질을 덮어쓰지 않는다. 같은 증상이라도 환경 cube를
   쓰는 별도 program은 이 수정에 포함하지 않는다.
+- 환경 cube에 mip가 충분해도 표면 normal/diffuse/ORM/color mask/emissive DDS는 한 레벨일 수
+  있다. roughness 채널·색공간·cube LOD와 표면 sampler를 분리해 검사한다. 원본 BC mip가
+  있으면 기존 UModel 추출 경로로 회수하고 mip0 byte-exact와 실제 SRV mip를 확인한다.
+  이 복구를 밝기 옵션 변경이나 거칠기 강제 조정으로 대신하지 않는다. Guardian Movie 범위와
+  화면 확인 경계는09-27 WORLD_MOVIE_HAIR_GUARDIAN_EYES RESULT G12를 따른다.
+
+- 같은 맵의 반사 감사를 `mapmaterials.reflectionTexture`만으로 끝내지 않는다.
+  WorldSequences의 materialProfile, NpcCatalog의 실제 사용 모델 override와 native water의
+  TextureExpression/texture_sky까지 소비자를 따라간다. 정상 TGA는 같은 mip0·색공간을
+  확인한 참조에만 재사용하고, 원본 압축 mip가 존재하는 DDS는 그 payload를 보존해 복원한다.
+  내용 해시가 파일명에 포함되면 새 hash 경로로 연결하며 공통 단일 mip 파일을 덮어쓰지 않는다.
+  맵 DDS만 전달하면 Character lookup TGA가 빠질 수 있으므로 최종 참조에서 GBResources를
+  다시 대조한다. 마하라카의 적용 범위는09-30 SOURCE_LIGHTING RESULT 후속 절을 따른다.
 
 Guardian Movie watersplash native4645~4647에는 원본 shader map에도 별도 distortion shader가
 없다. UV distortion 파라미터와 SceneColor 굴절 pass를 혼동해 companion을 추가하지 않는다.
@@ -5126,9 +5208,10 @@ Loader가 먼저 부르는 전체 ActorCatalog Initialize의16개 제한이 남�
   끝내지 않는다. V1/V2 공통 projected receiver가 GBuffer marker0/5의 skinned bit와 native
   actor 표식을 소비해야 한다. 정적 Map 및 sprite/mesh/trail과 source projection volume은
   별도 계약이다. shader compile·GPU 수치 검증과 사용자 화면 확인을 구분한다.
-- ownerHitChain이 내부0ms/외부1500ms를 보내도 같은 전체 Off asset을 ARMED와 HIT에서
-  즉시 시작하면 화면은 동시에 터진다. 두 armed flags가 false인 동일 asset은 실제 HIT까지
-  active를 유지하고 HIT에서만 파괴 표현을 시작한다. Preview도 고정된 보스 yaw와 같은
+- ownerHitChain 내부0ms/외부1500ms는 준비 시작 차이다. 원본 전체 Off asset은 ARMED에서
+  한 번 시작하고, hit.atMs의 준비 duration1820ms 뒤 피해·소리를 낸다. direct 바위도 준비를
+  생략하지 않는다. armedEffectOwnsTerminal이 HIT 중복 시작을 막으며 HIT에서 준비를 다시
+  시작하거나 source seek로 준비 구간을 자르지 않는다. Preview도 고정된 보스 yaw와 같은
   collider를 소비하며 현재 타겟을 다시 향해 판정을 돌리지 않는다.
 - PublishCandidate에 추가 draft patch가 없다는 사실은 Product가 최신이라는 뜻이 아니다.
   저장한 split source에서 먼저 projection하고 의미가 같은 Product만 byte 재사용한다.
@@ -5459,3 +5542,123 @@ STAGGER_BROKEN을 사용하며 HP0·흡수·감소·회오리 및 성공 한 번
 무력화 창의 stage 높이를 허용할 때 source/publisher/Server/Client의 admission을 같이 맞추고,
 닫히지 않은 ENTER/EXIT와 malformed branch는 거부한다. F1으로 바꾼 현재 공통값을 테스트가
 40000 같은 과거 고정값으로 덮어쓰거나 실패로 간주하지 않는다.
+
+
+### 공유 Effect pivot와 맵 ParticleSystem의 실제 입력
+
+- 공유 Effect 원점 재기준화는 그 asset을 사용하는 모든 occurrence를 찾아 rotation·scale을 반영한
+  inverse translation으로 현재 위치를 보존한다. 선택한 피자만 보정하고 지형 파괴 같은 다른 소비자를
+  놓치면 같은 source 수정으로 다른 패턴의 연출이 밀린다. 원본 입자 world matrix를 시간별 비교한다.
+- 고정 emission 중심을 동적인 렌더링 AABB의 중심으로 설명하지 않는다. 원본 속도와 발사 방향은
+  보존하고, 일부 occurrence의90도 방향 요청은 그 occurrence에만 적용한다.
+- 맵 상공 FX는 base ParticleSystem만 추출하면 instance 색·밝기·비균일 scale·warmup을 빠뜨릴 수 있다.
+  원본 actor/component의 입력을 확인하고 같은 asset 이름의 proxy와 source-native 복원을 구분한다.
+- 모든 문서 Element가 입자를 내는 것은 아니다. 원본 null Rate/RateScale·빈 BurstList emitter는
+  비활성을 보존한다. finite/count 검증에서 제외할 때 정확한 원본 입력을 근거로 남기고 임의 spawn을
+  추가하지 않는다. 현재 패턴 표시 시각은 원작 활성화/비행 시각을 복구했다는 근거가 아니다.
+
+### Combat-object 폭발 준비와 피해 시계
+
+원본 whole-sequence Effect의 준비 구간을 건너뛰어 기존 피해 시계에 맞추지 않는다. 실제 파편 시작
+source age를 측정하고 준비 시작 event와 피해 hit를 분리한다. owner-hit chain은 direct/indirect
+분류 지연에 준비 duration을 더한 시점에 피해·넉백·Sound를 발생시킨다. direct도 준비를 생략하지
+않는다. 같은 armed Effect가 terminal까지 소유하면 hit에서 이펙트를 다시 시작하지 않는다.
+Composition의 fixed hit 시점을 편집할 때 대응 준비 event도 동일 delta로 이동해 원본 준비 길이를
+유지한다. local Preview의 입자·wire·Sound도 동일 준비/폭발 시계를 사용한다.
+
+Valtan local Pattern preview는 LEAP 유무와 무관하게 staged Effect/volley/aim이 요구하는
+ARENA_CENTER를 canonical boss placement에서 먼저 admit해야 한다. Object session 라우팅 변경은
+pane 선택뿐 아니라 MainApp Resources, transport, viewport input owner까지 함께 연결한다.
+
+
+### 공중 넉백 대상의 속박 복귀 위치는 현재 높이와 분리한다
+
+Valtan FOUR_SLASH의 연속 forcePush는 최초 supportY를 유지한 채 공중에서 다시 발사될 수 있다.
+속박 대상 선정은 살아 있는 KNOCKDOWN을 허용하므로, Stage admission에서 현재 Y와 nav ground의
+높이 차이만 검사하면 정상 넉백 대상을 거절하고 room을 중단할 수 있다. Stage와 Commit은 같은
+지면 resolver를 사용하고 유효한 bounded ballistic 상태에서만 supportY를 navigation hint로
+사용한다. walkability·finite·기존1.5m support 검사는 유지하고 복원 XYZ는 검증된 실제 지면으로
+저장한다. 넉백 정리는 기존 Cancel_PlayerActionForPatternStatus/Clear_Attachment를 재사용한다.
+거절 진단은 current XYZ/ground/supportY/비행 상태를 함께 남겨 연결 종료 문구만으로 원인을
+추정하지 않는다. 09-30 COUNTER_LOOP_AND_STRUGGLING RESULT G14에 구코드 실패/수정본 통과
+native 재현과 실제 Debug/Release session 로그의 확인 범위를 구분해 기록했다.
+
+### 겹친 source sprite의 회전과 완료 상태를 함께 확인한다
+
+같은 문양이 여러 emitter에 있으면 선택한 한 겹만 Element 회전을 따르는지 확인한다.
+fixed-axis sprite는 `followEmitterAxisRotation` opt-in과 실제 SourceEmitterWorld를 함께
+소비한다. 다른 겹이 기존 방향에 남은 현상을 공용 renderer의 회전 실패로 단정하지 않는다.
+UV 완성 시점은 native 재질이 실제 소비하는 Color/Dynamic 채널의 원본 곡선에서 산출하며
+완성 겹의 생성과 최초 alpha를 함께 확인한다. import scale이 있는 캐릭터의 본 검증은
+실제 제품의 bone scale normalization까지 포함한다. 양의 측 companion을 음의 측에서
+복제한 배치에 옮길 때는 원본 local offset 차이를 회전·scale한 위치 보정도 필요하다.
+
+문양 자체를 중심으로 돌릴 때는 Element 원점과 실제 quad 중심을 구분한다. source
+StartLocation과 중앙이 아닌 sprite pivot의 두 offset이 모두 회전하므로, Element position만
+고정하면 문양이 이동한다. 현재 회전에 delta를 합성하고 두 offset의 회전 전후 차이를 위치에
+보상한다. 실제 본 basis의 최종 중심·right/up·법선·정점으로 확인하며 다른 겹의 사용자 위치를
+공통 평균으로 덮어쓰지 않는다.
+
+### 손 부착 해제는 포획 시점의 상대 위치를 착지 위치로 쓰지 않는다
+
+root translation을 억제해도 원본 본의 회전은 남는다. 잡기와 내려찍기 사이에 몸이
+회전하면 포획 시점 owner-local offset은 실제 손과 반대편이 될 수 있다. 설치 모델의
+impact source time, preScale, visual yaw, presentation scale과 실제 손 본을 함께 측정하고,
+해제 지점은 그 손 부근의 같은 층 navigation·collision을 검증한 뒤 Server에서 확정한다.
+이미 적용한 visual yaw를 서버에 다시 더하지 않는다. 지면 검사에는 착지 후 실제 이동
+명령도 포함하며, 다중 대상은 HP·attachment·피해 event를 모두 stage한 뒤 한 번에 commit한다.
+
+### 검격의 표시 회전과 발사 방향을 분리한다
+
+Particle System yaw는 모양뿐 아니라 입자의 이동 벡터도 회전한다. 모양만 회전하고
+owner 정면 발사를 유지하려면 기존 directionYaw를 반대 방향으로 보정하고 실제
+Playback의 초기 속도·수명별 velocity module·부모 basis 합성 순서를 확인한다.
+고정 축 sprite는 최종 quad의 emitter basis 소비도 따로 검사하며 필요한 요소에만
+followEmitterAxisRotation을 적용한다. 이동 중심만 정상이라고 최종 면 회전도 정상으로
+판정하지 않는다. 여러 패턴이 공유하는 effect 자체의 수정은 모든 소비자에 적용되므로
+사용자가 지정한 공유 범위를 확인하고 occurrence의 위치·시각과 삭제한 요소를 보존한다.
+발탄 Atk_08_04의 모양 반시계90도·정면 이동 검증은09-30
+VALTAN_EFFECT_CENTER_AND_SKY_RESULT G05에 기록한다.
+
+### 본 부착 Element 위치축을 화면 높이축으로 가정하지 않는다
+
+사용자가 높이를 내리려는 경우 Element Y 숫자 감소만으로 완료했다고 판단하지 않는다.
+실제 CModel preScale·preRotation, 정규화 본, owner basis를 포함해 world 변위를 측정하고
+원하는 world-Y 이동을 해당 local 축으로 환산한다. Guardian b_effectworldzero는 localY가
+수평이고 localZ가 world-Y다. fixture의 모델 생성 인수도 제품과 같아야 하며 identity
+anchor의 Y 감소 성공을 실제 모델 높이 성공으로 대체하지 않는다. 복제한 주변 요소는
+sourceNode 문자열만으로 누락시키지 말고 stable ID와 실제 소비자를 함께 확인한다.
+
+
+### 맵 환경 profile의 전역·지역·셀피와 구운 조명
+
+- 환경 component·WorldInfo·Volume의 값은 CDO와 실제 override flag를 합성한다.
+  SelfCamera의 두 번째 환경 세트는 owner 참조가 셀피 전용인지 먼저 확인한다.
+  큰 native shadow grid 뒤의 tagged property를 앞4KiB에서 찾지 못했다는 이유로
+  미직렬화 기본값으로 처리하지 않는다.
+- RNM의 bakedLightGuids와 local light의 lightmapGuid를 대조해 중복 직접광을 막는다.
+  dominant directional의 ShadowMap2D는 별도 lightGuid이며 두 GUID를 혼동하지 않는다.
+  같은 모델도 shadow atlas가 다르면 material variant를 나누고 placement UV를 보존한다.
+- 환경광으로 쓰는 Lightmass 색의 scene adapter는 원본 runtime SH 복원이 아니다.
+  Resources 전달은 조명·LUT·실제 재질 반사 참조를 모두 포함하고 기존 파일을 보존한다.
+  원본 재조사와 기존 G05 오류 교정은09-30 마하라카 SOURCE_LIGHTING RESULT를 따른다.
+
+
+### 2026-09-30 scene 안개 스위치와 탈것 방향광의 범위
+
+Height Fog Enabled는 base뿐 아니라 같은 profile의 environment region 안개를 함께 끄는 master다. 지역 선택 뒤 profile.Fog.bEnabled를 최종 enabled에 적용하며, OFF/ON을 밀도 0 또는 지역 값 덮어쓰기로 구현하지 않는다. 28개 현재 profile의 지역 사용 12개는 모두 기존 enabled=true여서 이 gate가 현재 저장된 화면값을 바꾸지 않는다. Rendering Workbench Save/Publish는 기존 fog.enabled를 저장한다.
+
+고대의 바다 9523의 원본 vehicle cue Brightness 0.0001을 MainApp에서 scene directional 배율로 사용하면 맵 diffuse/specular가 거의 사라진다. 이는 원본 retail scheduler로 확인되지 않은 project adapter였으며 전역 조명 입력에서 제외했다. 일반 character presentation directional control, 지역 조명, 원본 vehicle cue·재질·effect는 유지한다. 소스 검증과 제품 빌드·화면 확인은 대응 RESULT에서 구분한다.
+
+### 맵 가시성 복원과 원본 초기 시퀀스
+
+actor/component/CDO가 visible이고 LevelStreaming이 AlwaysLoaded여도 최종 초기 가시성이 같다는 뜻은 아니다. `LevelLoaded`/`LevelStartup`에서 `ToggleHidden.Hide`로 이어지는 실제 target actor와 외부 level 참조까지 대조한다. 베른 SCENE03E의 45개는 원본 초기 시퀀스가 숨기므로 이름 차단을 제거하는 방식으로 복원하지 않는다. 원본 스트리밍에 연결되지 않은 이벤트 패키지도 현재 기본 맵에 일괄 표시하지 않는다.
+
+placement ID와 TRS가 일치해도 오래된 Landscape WModel의 축이 반대일 수 있다. 원본 높이·normal·hole topology와 설치 정점을 함께 비교하고, 현행 추출기로 재변환한 뒤 tile anchor와 winding을 확인한다. 재질 bake/cliff 분리가 달라지는 전체 변환은 UV·재질 byte 불변으로 설명하지 않는다. 전체 mip 후보를 별도 overlay로 만든 경우 배포는 cook 폴더 전체 복사 대신 최종 manifest의 후보 경로를 소비한다.
+
+
+### Landscape의 흐림은 해상도와 원본 UV 계약을 함께 확인한다
+
+큰 타일을256px로 베이크한 결과는 원본 반복 텍스처를 복원한 것이 아니다. 베른은 원본 grid×0.1, 중심 회전의 source scalar×3.1400001049, layer tiling을 사용한다. component 폭으로 나누거나 rotation을 degree로 해석하면 무늬 크기부터 달라진다. 단순 upsample·mip bias로 보정하지 않는다.
+
+actor의 Landscape material instance static key와 원본 ShaderCache PS/VF를 맞춘 뒤 layer별 paint/height blend, linear 색 공간, sample normal RG 및 Heightmap BA의 pixel basis를 함께 연결한다. diffuse와 normal의 height blend는 같다고 가정하지 않는다. source PS가 layercliff를 샘플하지 않으면 경사면에 별도 cliff layer를 만들지 않는다. 원본 weight/height의 subsection 중복 경계와 모든 mip, geometry hole을 보존한다. WARP의 constant-sample 수치 일치를 실제 공간 UV·화면 검증으로 확대하지 않는다.

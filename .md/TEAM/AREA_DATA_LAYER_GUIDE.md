@@ -42,11 +42,24 @@ LevelCatalog scenario
 | `LV_DEV_TRAINING_GROUND` | RCArena 10 assets / 18 placements | class-neutral player spawn 4 | uniform 32×32 | NPC/boss/monster/trigger 없음 |
 | `LV_LOBBY_CLASSSELECT_SL00` | 181 catalog entries / 804 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay + monster/Lugaru SpawnGroups |
 | `LV_SHS_RCARENA_D` | 302 assets / 7,856 placements | 없음 | 없음 | 원본 Training Map 편집 대상 |
-| `LV_OCN_EVENTIS_MHP` | single, 398 assets / 3,839 placements (섬 정적 메시 3,823 + 섬 랜드스케이프 16) | class-neutral player spawn 4 (광장 20.48m) | uniform 160×160, 1m, 높이 20.48m | 2021 마하라카 파라다이스 섬. 랜드스케이프 wmodel은 `Map/LV_OCN_EVENTIS_MHP_LAND`, 변형은 `Map/LV_OCN_EVENTIS_MHP`. degenerate tangent 메시 1종(3배치) 제외, 섬 범위는 원본 y > 50000cm |
+| `LV_OCN_EVENTIS_MHP` | single, 1,161 catalog entries / 4,671 placements; material 1,319 / placementLighting 2,822 | Server-owned Maharaka gameplay·Waterpang/NPC/이동 trigger | 현재 Navigation authoring·게시 navgrid 정본 사용 | `scene.maharaka.source-day.v1`의 원본 전역/섬 환경, local33 UNBAKED, 원본 static shadow 2,267배치. catalog variant는 기존 WModel을 공유한다. 랜드스케이프 `Map/LV_OCN_EVENTIS_MHP_LAND`, 조명 `Map/Lighting/Maharaka` |
 
 Character Select의 Loader와 Level placement는 같은 `MakeFullMapScope()`를 소비한다.
 같은 SL00의 원격 원판11개·별11개도 포함한다. 이 로딩 범위는 Server navigation 범위를
 확장하지 않으며 재질·조명 복원이나 화면 표시 완료를 뜻하지 않는다.
+
+Debug Movie Inspector의 `Edit background in Map Tool`은 Movie의 backgroundAreaId로 이미
+로드된 정적 배경을 기존 MapTool에 연결한다. `Character Select target`에서 primary SL00와
+현재 Movie 배경을 구분하며 선택 Area는 class 변경에도 고정된다. 미저장 draft가 있으면
+다른 Area로 전환하지 않고, 선택 배경이 재생 중이 아니거나 전체 배경 preview가 꺼져 있으면
+위치·회전·표시 편집을 막는다. Hierarchy에서 asset 이름·ID·sourcePlacementId로 검색한다.
+Movie의 WORLD 삼각형 pick과 Show entire background preview는 이 개별 배치 편집과 별개다.
+
+배경 위치·회전과 `Visible=false`는 원래 `Data/Maps/Authoring/<Area>/<Area>.mapplacements`에
+저장한다. `Save placements`는 저작 저장이며 실행 데이터 반영은 기존
+`Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId <Area> -Scope Placements -Mode Publish`로
+수행한다. optional WorldSequences가 없고 편집되지 않았다면 placement 저장이 빈 sequence
+문서를 만들지 않는다. 차원술사는 SL12이며 Movie JSON에 중복 map transform을 저장하지 않는다.
 
 Debug F1의 `Character Select Floor Swap` 목록은
 `Data/Rendering/Authored/CharacterSelectFloorSwap.json`의 stable source placement ID를
@@ -125,6 +138,21 @@ PBR 입력에는 texture별 색 공간, optional `bakedLighting`/`environment`�
 연결한다. baked 입력을 선택한 모델은 실제 UV1이 있어야 하며 환경 cube와 BRDF 입력은 함께 요구한다.
 필드·원본 근거·근사 경계는 해당 바닥 복구 PLAN/RESULT를 따른다. 임의의 모든 ORM 재질을
 이 family로 대신 해석하지 않는다.
+
+v2의 `bg-source-landscape-opaque`는 기존 `CModel -> CMaterial`의 family14다.
+`sourceLandscape`는 `grid`(section XY, component62/subsection31), 원본 weight/height
+ScaleBias, 최대2개 `weightmaps`, `heightmapTexture`, 최대6개의 `layers`를 가진다.
+각 layer는 index, UV의 tiling/원본 rotation scalar, diffuse/specular tint·강도,
+factors(desaturation/normal intensity/specular power/0), weight의 map/channel 및
+서로 다른 diffuse·normal height blend 선택, 원본 D와 선택 N을 선언한다.
+D는 명시한 색 공간, N/weight/height는 linear다. grid는 모든 삼각형의 UV0×62로
+복원하며 초기 모델의 cliff side-projection UV를 그대로 연결하지 않는다.
+재질 이름은 WModel에서 정확1개이며 deferred만 지원한다. 누락·중복 layer/channel,
+사용하지 않는 weightmap, 미지원 RNM/environment/emissive 입력은 거부한다.
+원본 texture mip과 hole topology를 보존하며 실시간 height/weight 레이어를 샘플한다.
+이 family가 있는 게시본은 대응 Engine·Client와 두 mesh shader·Deferred를 함께 빌드한
+결과로 읽어야 한다. source contract는 `Tools/LandscapeExtractor/SourceContracts/`에
+보존하며 생성·검증 절차는 해당 도구 README를 따른다.
 
 `Publish-MapAuthoring.ps1`은 요청 material 이름이 실제 WModel에 존재하는지,
 texture 경로·finite 수치·색 공간과 source/runtime 경로 쌍을 검사하고 문서와 catalog를 함께 교체한다.

@@ -369,6 +369,18 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 
 ### 4.1 F1 아레나 카메라와 플레이어 위치 작업
 
+Valtan 최초 레이드 입장은 `Data/Worlds/LV_LUT_HEARTRB_ED/Gameplay.world.json`의
+`Stage_Boss_Assembly` (123.38,23.05,-89.20), yaw48, halfExtents(3.610384827,1.5,3.633995132)를
+사용한다. 같은 room의 인간 참가자 1~4명 전원이 살아서 10초(30Hz 300tick) 머물면 추가
+확인·수락 창 없이 Server가 기존 입장 transaction을 완료한다. GUIDE_AI는 집결에서 제외하고
+이탈·사망·roster 변경은 연속 집결 시계를 초기화한다. 실패한 입장은 같은 점유에서 반복하지 않는다.
+GameRoom은 일반 trigger의 G/진입 활성화를 차단하고 네 목적지의 navigation·height·collision을
+모두 검증한 뒤 `boss.valtan.center` encounter/기존 cinematic을 시작한다. disabled
+`valtan.entry.slot.1~4`가 도착 좌표 (148,23,-117), (150,22.99,-115.73),
+(149.27,23,-119), (151.27,22.99,-117.73)를 소유한다. Client는 replicated 위치·Server tick과
+같은 OBB로 countdown·entry_aura/active를 표시하며 이동·보스 생성을 로컬로 확정하지 않는다.
+이전 Stage_Boss/Stage_Boss_ArenaEntry와 그 move_destination marker는 비활성이다.
+
 발탄 F1 `Valtan Arena`의 Start Position / Before Entrance / Arena Start는 기존 typed player teleport를 사용한다. Debug/Release 공통의 벽·지형 상태 버튼은 전체 벽 복원, 외곽 벽 제거, 3시 붕괴, 9시 붕괴, 양쪽 붕괴를 기존 `Set_ServerArenaPreset` 명령으로 요청한다. 표시 상태는 Server replication을 따르고 요청 대기 중에는 중복 제출을 막는다. 벽·지형 preset은 Pattern의 source/Product 일치 여부와 별개로 Server가 승인하므로, 미게시 Pattern 수정으로 canonical graph가 미승인 상태여도 요청할 수 있다. Save·Publish 진행 잠금과 Server의 session/world·요청·보스 상태·destruction graph 검증은 유지한다. `Despawn Valtan Boss`는 Debug/Release Server에서 ENCOUNTER_VALTAN primary와 owner 종속체만 제거하고 일반 NPC/웨이브 몬스터를 보존한다. 이후 Boss Play Pattern은 disabled placement `boss.valtan.center`를 Server에 준비 요청하고 replicated primary 도착 후 기존 revision/sound/presentation admission을 다시 통과해야 실행된다. spawn 대기는 local boss 생성으로 우회하지 않는다.
 
 Debug/Release 공통 F1 `Camera`에서 자유 카메라 속도를 조절한다. 베른·발탄·쿠크 기본은
@@ -461,8 +473,8 @@ Release Server는 예전처럼 플레이어가 밟으면 그룹을 시작한다.
 제거하고 그룹을 초기화해 첫 wave부터 다시 시작한다. monster는 플레이어 위치와 무관하게 그룹의 저작 anchor에 나타난다.
 결과 메시지는 없고 monster는 world snapshot으로 온다. 거절 사유는 Server 콘솔의 `[WaveMonsters]` 줄에 남는다.
 
-Release Server는 이 명령을 무시한다. `Stage_MiniBoss_Spawn`, `Stage_3`, `Stage_Boss`, 다른 월드의 트리거는 Debug에서도
-예전처럼 동작한다. 다른 protocol의 Server/Client를 섞어 실행하지 않는다. 현재 wire 정본은 `PacketType.h`의 `NETWORK_PROTOCOL_VERSION` 115이다. 위 protocol 99 표기는 해당 명령이 도입된 버전이며 현재 실행 파일의 호환 버전으로 사용하지 않는다.
+Release Server는 이 명령을 무시한다. `Stage_MiniBoss_Spawn`, `Stage_3`, 다른 월드의 트리거는 Debug에서도
+예전처럼 동작한다. Valtan의 이전 `Stage_Boss`/`Stage_Boss_ArenaEntry`는 비활성이고 최초 입장은 아래 집결 계약을 사용한다. 다른 protocol의 Server/Client를 섞어 실행하지 않는다. 현재 wire 정본은 `PacketType.h`의 `NETWORK_PROTOCOL_VERSION` 115이다. 위 protocol 99 표기는 해당 명령이 도입된 버전이며 현재 실행 파일의 호환 버전으로 사용하지 않는다.
 
 ### 4.2 마리오 변신·방향키 조작·Debug 점프
 
@@ -802,7 +814,10 @@ Debug/Release F1의 광기 위치 조절 아래 `Health bar positions`에서 주
 World health read model의 stable archetype ID로 묶음을 선택하며, 거대 세이튼의 작은 HP는
 항상 숨긴다. 카드미로에서는 플레이어와 네 문양 카드 병정의 작은 HP를 숨긴다.
 발탄 마력구 active window는 기존 Server response/stagger 진행을 주황 무력화 게이지에
-표시하며, 쿠크 1관문·마리오 2페이즈·빙고와 같은 주황 fill 및 공통 기믹 X/Y를 소비한다.
+표시한다. 주황 fill 재질은 쿠크와 같지만 F1 `Health bar positions`의 `Valtan Stagger`가
+발탄 전용 X/Y·폭·두께를 소유한다. `Valtan Armor Break PNG`는 부위 파괴 이미지의 X/Y·폭·높이를
+따로 조절하며 각각 `Show debug`로 강제 표시한다. 기존 `Data/UI/KoukuSaydon/KoukuHudModes.json`의
+발탄 전용 8개 optional field로 Save/Reload하고, 쿠크 무력화 튜닝과 서로 덮어쓰지 않는다.
 
 `Get_DamageEvents()`는 최근 128개 Server `DAMAGE_EVENT`를 server tick과 함께 보관한다. 실제 적용
 damage, target NetEntityId, world anchor, incoming/outgoing을 제공하며 UI가 HP 차이로 damage를
@@ -831,13 +846,17 @@ Gameplay bootstrap의 공통 용량은 `Shared/Public/GameplayDataRevision.h`의
 발탄 combat object의 optional `ownerHitChain`은 `triggerActionId`, `delayMs`,
 `armedPresentationEventId`를 가진다. 지정 owner pattern/action의 실제 cone 타격이 돌의 cover
 circle과 겹칠 때, 같은 Server source / pattern sequence / spawn wave에서 맞은 돌은 즉시,
-나머지는 `delayMs` 뒤 기존 피해·`HIT_PULSE` 경로로 폭발한다. 정책이 없으면 기존 TIMED
-동작을 유지한다. 정책 객체는 arm 전 TIMED hit를 실행하지 않고, 첫 arm 이후 반복 타격으로
+나머지는 `delayMs` 뒤 armed event로 원본 준비 Effect를 시작한다. 각 돌의 실제 피해·넉백·
+Sound용 `HIT_PULSE`는 그 시작에 hit의 `atMs`를 더한 시점이다. 현재 원본 Off의 준비 길이는
+1820ms이고 외부 돌의 시작 지연은1500ms다. `atMs=0`인 기존 정책은 즉시 타격 의미를 유지한다.
+정책이 없으면 기존 TIMED 동작을 유지한다. 정책 객체는 arm 전 TIMED hit를 실행하지 않고, 첫 arm 이후 반복 타격으로
 시계를 덮어쓰지 않는다. 폭발 객체는 같은 tick에 despawn하여 늦게 입장한 Client에 재생성되지
 않는다. Client terminal tail은 self-contained presentation pulse가 소유한다.
 
 `combatObjectVisuals`의 optional `armedPresentationEventId` / `armedEffectAssetId`는 한 쌍이며
-정책의 event ID와 정확히 일치해야 한다. `stopActiveOnHit`는 실제 hit와 despawn에서 active
+정책의 event ID 또는 해당 객체의 명시 TIMED 준비 presentation event ID와 정확히 일치해야 한다.
+`armedEffectOwnsTerminal=true`이면 준비 Effect가 파편까지 한 번 재생하고 HIT에서 다시 시작하지 않는다.
+고정 준비 event를 사용하는 객체는 단일 hit와 결합하며, Object 편집은 hit와 준비 event를 함께 이동한다. `stopActiveOnHit`는 실제 hit와 despawn에서 active
 외형을 정리하며 기본값은 false다. armed 전조를 실제 피해 이후의 hit 효과로 대신 재생하지 않는다.
 local Preview는 같은 Shared cone-circle 판정과 pattern clock을 소비한다. bootstrap의 optional
 `BOSSCOMBATOBJECTOWNERHITCHAIN` row는 기존 row/packet 형식을 변경하지 않으며 header 37을
@@ -1861,7 +1880,7 @@ yaw, half extents, once 정책을 편집한다. 선택한 box에 지원 action �
 movePlayer는 목적지를 맵에서 pick한 뒤 duration/arc를 정해야 enabled로 저장할 수 있다. wire box는 저작용 presentation이며 overlap/action 권위는
 Server에만 있다. Save 뒤 publisher와 Server 재시작 전에는 제품 월드에 적용된 것이 아니다.
 
-MapTool `Spawn Groups` panel은 anchor, group, prerequisite, maxAlive, wave, entry의 archetype/count/delay를 별도 dirty 상태로 편집한다. Trigger Box는 이 정의를 복제하지 않고 group ID만 참조한다. Valtan Stage 1 → Lugaru → Stage 3은 prerequisite 완료 뒤에만 다음 group activation이 성공하며, 마지막 boss trigger는 disabled `boss.valtan.center`를 활성화한다.
+MapTool `Spawn Groups` panel은 anchor, group, prerequisite, maxAlive, wave, entry의 archetype/count/delay를 별도 dirty 상태로 편집한다. Trigger Box는 이 정의를 복제하지 않고 group ID만 참조한다. Valtan Stage 1 → Lugaru → Stage 3은 prerequisite 완료 뒤에만 다음 group activation이 성공하며, 마지막 집결 collider는 GameRoom의 전원 10초 집결 완료 후 disabled `boss.valtan.center`를 활성화한다.
 
 같은 panel의 `Collision Box` option은 표면 pick, position, yaw, half extents, enabled, 목록 선택과
 delete를 제공한다. 파란 wire OBB는 저작 표시일 뿐이며 실제 차단은 Server bootstrap을 읽은 뒤 적용된다.
@@ -2211,7 +2230,7 @@ GuardianKnight 일반 S `49220 / 스피닝 플레임`은 `PlayerSkillTargeting.j
 
 발탄 일반·루가루, 쿠크 시작 4종·카드미로 병정의 공격은 MonsterProfiles의 attackPushRangeM/attackPushMs/attackKnockdown/attackDownMs=0/0/false/0으로 피해만 적용한다. Valtan/Kouku boss push와 몬스터 자신의 hitKnockbackScale은 유지한다. MonsterBrain은 공용 Apply_WorldToPlayer 한 번만 호출한다.
 
-Gate3 진입 오라는 원본 Prop300010 사각형의 회전과 실측 크기를 사용한다. Client는 replicated player 위치와 Server tick으로 10초 연속 체류를 표시한 뒤 기존 IPlayerCommandSink::Request_GateProgressPropose(ENTER_GATE3)를 한 번 제출한다. 이탈·사망·phase 변경은 취소하고 파티 동의 및 최종 이동은 기존 Server 입장 계약을 유지한다. WAIT_ENTRY의 이동만 준비 데크 안에서 허용하고 스킬은 계속 차단한다.
+Gate3 진입 오라는 원본 Prop300010 사각형의 회전과 실측 크기를 사용한다. Server는 공대장의 오라 안 10초 연속 체류를 확인하고 추가 확인·수락 창 없이 기존 ENTER_GATE3 완료 경로로 입장시킨다. 이탈·사망·roster/phase 변경은 집결 시계를 초기화하고 실패한 입장은 같은 점유에서 반복하지 않는다. Client는 replicated player 위치와 Server tick으로 countdown만 표시한다. 발탄과 쿠크는 CRaidGateProgressView의 같은 흰색 안내 문구와 노란 초 표시를 사용한다. WAIT_ENTRY의 이동만 준비 데크 안에서 허용하고 스킬은 계속 차단한다.
 
 
 ### 고대의 바다 비행 입력과 presentation
@@ -2517,7 +2536,13 @@ CActorCatalog 입장 reader, Valtan authoring validator와 Gameplay publisher가
 
 ### 배틀 아이템 사용과 보호 표현
 
-HUD 1~4는 기존 배치 slot의 item ID를 `CPlayerController -> IPlayerCommandSink`로 제출한다.
+HUD 1~4의 파괴 폭탄/회오리 수류탄은 먼저 자기 Client에만 사거리와 cursor 목표 표시를 연다.
+물리 좌클릭에서 기존 배치 slot의 item ID와 목표 XZ를 `CPlayerController -> IPlayerCommandSink`로
+제출하며, 물리 우클릭은 전송·소모 없이 조준을 취소한다. 조준 종료 클릭은 release까지
+이동·평타·핑에서 소비하지 않는다. 기존 스킬의 마우스 교환 설정은 유지한다.
+조준 상태는 수량·쿨다운·생존·행동·폼·탑승·맵·class와 입력 focus/UI 상태를 다시 검사하고
+실격 시 정리한다. 원형 표시는 `CSkillGroundTargetPreview`의 기존 경로를 재사용하며
+서버가 복제하는 투사체·사용 효과와 수명을 분리한다. 성스러운 부적/시간 정지는 기존 즉시 요청을 유지한다.
 `C2S_USE_ITEM`은 ground target 또는 대상 player net ID 중 하나만 포함한다. Client는
 성스러운 부적 대상을 현재 표시 중인 아군 body mesh에서 피킹하고 Server가 같은 파티·생존·
 거리·미니게임 영역과 소지 수량·재사용 대기시간을 검증한다. 거절은 수량을 소비하지 않는다.
@@ -2527,6 +2552,12 @@ Client는 `battle.item.destruction_bomb` / `battle.item.whirlwind_grenade`의 sp
 `battle.item.impact` HIT_PULSE를 기존 `CCombatObjectProjectionRuntime`으로 표시한다.
 접촉/도착과 damage·partDamage·stagger 판정은 Server만 수행한다. 표시용 원본 Effect ID는
 Client가 소유하며 새로운 투사체 manager나 local hit 판정을 추가하지 않는다.
+
+primary `BOSS_VALTAN`의 phase1/2 갑옷은 열린 파괴 창에서 Server가 생성한 실제 파괴 폭탄이
+명중하면 남은 eligible plate를 모두 제거한다. 일반 공격·스킬·가짜 skill ID·GUIDE_AI는
+이 경로를 사용할 수 없다. 같은 명중의 combined PART_BROKEN mask 하나가 typed part와
+legacy plate 상태를 함께 갱신하고 Client는 두 원작 파편을 각각 한 번 재생한다. 이후 폭탄은
+이미 제거한 plate의 파편·파괴 성공을 반복하지 않는다.
 
 성스러운 부적은 대상 공포를 즉시 해제하고 3초간 공포·피해를 막는다. 시간 정지는 자신을
 3초간 공격 collider hit 대상에서 제외하고 이동·스킬을 제한한다. 두 상태는 기존 무적 tick과
@@ -2578,3 +2609,24 @@ Inventory 수량과 cooldown만 표시한다. `DAMAGE_REDUCED`/`CRITICAL_DAMAGE_
 난수를 만들지 않는다. 명시적 즉사·전멸, outgoing 피해와 저작 광기 gain에는 이 표본을 적용하지 않는다.
 빙고 검은 구멍은 실제 줄 완성 보상과 이난나 영역의 서버 전용 종료 tick만 성공 보호로 인정한다.
 일반 무적 tick은 전멸 회피 조건이 아니다.
+
+## 워터팡 AI·효과의 입력과 출력
+
+워터팡 AI는 `PLAYER_CONTROL_KIND::WATERPANG_AI(2)`이며 인간4명과 별도로 기본20명을
+Server player 이동·물총·피격 경로로 처리한다. 인간 판정은 `HUMAN` 값과 일치해야 한다.
+protocol127의 `S2C_PLAYER_SPAWNED.strWaterpangNpcArchetypeId`는 NPC 외형의 stable ID다.
+Client는 기존 NPC catalog/model 경로로 외형만 생성하고 gameplay 권위를 갖지 않는다.
+
+Debug F1 `Waterpang AI Tool`은 `IPlayerCommandSink`에 `C2S_MAHARAKA_AI_TUNING`을
+제출한다. GET은 적용값 조회, APPLY는 현재 방 적용, SAVE는 Server 저장소의
+`Data/AI/MaharakaWaterpangAI.json` 최신 byte 검사·원자 저장 후 적용이다.
+`iRequestSequence`는 응답 대응, `iExpectedRevision`은 충돌 검사를 소유한다.
+`S2C_MAHARAKA_AI_TUNING` 성공 전 UI가 적용 완료를 확정하지 않으며 실패·충돌·timeout은
+편집 draft를 보존한다. tick은30Hz이고 기본값은 JSON이 정본이다.
+
+실제 경기180초는 예약된 intro 시작20초 후부터 계산한다. 종료 시 AI·물총 객체를 정리하고
+참가 인간을 `island.spawn.party02` 주변의 navigation/collision 검증 위치로 이동한다.
+이미 섬을 탐험하던 인간은 보존한다. 물총 비행·피격은 기존 replicated CombatObject의
+확정 pose·spawn tick·pinned revision을 소비하고 E는 active buff569200으로 복제한다.
+All Effects `World → 마하라카 → 워터팡`의23개 문서와 경기 재생이 같은 effect ID를 쓴다.
+적용·검증·미복원 경계는09-30 Waterpang RESULT를 확인한다.
