@@ -517,6 +517,31 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
 		material.colorMaskPath == material.diffusePath;
 	m_AuthoredColorTint = m_ColorTint;
 	m_Surface = material.surface;
+    if (m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_LANDSCAPE_OPAQUE)
+    {
+        const auto& source = m_Surface.sourceLandscape;
+        const auto& paths = material.sourceLandscapeTextures;
+        if (!source.Has_ValidInputs() || m_Surface.hasBakedLighting || m_Surface.hasStaticShadow ||
+            m_Surface.hasEnvironmentCube || m_Surface.hasSourceIndirect || m_Surface.hasEmissive) return E_INVALIDARG;
+        const auto load = [&](bool required, const filesystem::path& path, bool srgb,
+            ComPtr<ID3D11ShaderResourceView>& texture) -> HRESULT {
+            if (!required) return path.empty() ? S_OK : E_INVALIDARG;
+            if (path.empty() || FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, path, srgb, texture, true))) return E_FAIL;
+            D3D11_SHADER_RESOURCE_VIEW_DESC desc{}; texture->GetDesc(&desc);
+            return desc.ViewDimension == D3D11_SRV_DIMENSION_TEXTURE2D ? S_OK : E_INVALIDARG;
+        };
+        for (uint32_t i = 0u; i < SOURCE_LANDSCAPE_LAYER_COUNT; ++i)
+        {
+            if (FAILED(load((source.layerMask & (1u << i)) != 0u, paths.diffuse[i], source.diffuseSRGB[i], m_SourceLandscapeDiffuse[i])) ||
+                FAILED(load((source.normalMask & (1u << i)) != 0u, paths.normal[i], false, m_SourceLandscapeNormal[i]))) return E_FAIL;
+            // Existing surface diagnostics retain a valid diffuse view; the
+            // painted evaluator reads the complete selected layer set below.
+            if (!m_SurfaceDiffuse && m_SourceLandscapeDiffuse[i]) m_SurfaceDiffuse = m_SourceLandscapeDiffuse[i];
+        }
+        for (uint32_t i = 0u; i < SOURCE_LANDSCAPE_WEIGHTMAP_COUNT; ++i)
+            if (FAILED(load(i < source.weightmapCount, paths.weightmaps[i], false, m_SourceLandscapeWeights[i]))) return E_FAIL;
+        return load(true, paths.heightmap, false, m_SourceLandscapeHeight);
+    }
     if (m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
     {
         const auto mask = m_Surface.sourceCharacter.baseTextureMask |
@@ -999,6 +1024,36 @@ HRESULT CMaterial::Bind_StaticShadow(shared_ptr<CShader> shader)
         FAILED(shader->Bind_RawValue("g_StaticShadowTransfer", &m_Surface.staticShadowTransfer, sizeof(m_Surface.staticShadowTransfer))) ||
         (enabled && FAILED(shader->Bind_Texture("g_StaticShadowTexture", m_StaticShadow)))) return E_FAIL;
     return S_OK;
+}
+
+HRESULT CMaterial::Bind_SourceLandscapeSurface(shared_ptr<CShader> shader)
+{
+    if (!shader || m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_LANDSCAPE_OPAQUE) return E_INVALIDARG;
+    const auto& source = m_Surface.sourceLandscape;
+    for (const auto& pair : { std::pair<const char*, const uint32_t*>("g_SourceLandscapeLayerMask", &source.layerMask),
+        { "g_SourceLandscapeNormalMask", &source.normalMask }, { "g_SourceLandscapeWeightmapCount", &source.weightmapCount } })
+        if (FAILED(shader->Bind_RawValue(pair.first, pair.second, sizeof(uint32_t)))) return E_FAIL;
+    for (const auto& pair : { std::pair<const char*, const float4_t*>("g_SourceLandscapeGrid", &source.grid),
+        { "g_SourceLandscapeWeightmapScaleBias", &source.weightmapScaleBias },
+        { "g_SourceLandscapeHeightmapScaleBias", &source.heightmapScaleBias } })
+        if (FAILED(shader->Bind_RawValue(pair.first, pair.second, sizeof(float4_t)))) return E_FAIL;
+    const std::pair<const char*, const std::array<float4_t, SOURCE_LANDSCAPE_LAYER_COUNT>*> arrays[] = {
+        { "g_SourceLandscapeUV", &source.uv }, { "g_SourceLandscapeDiffuse", &source.diffuse },
+        { "g_SourceLandscapeSpecular", &source.specular }, { "g_SourceLandscapeFactors", &source.factors },
+        { "g_SourceLandscapeWeight", &source.weight }
+    };
+    for (const auto& pair : arrays)
+        if (FAILED(shader->Bind_RawValue(pair.first, pair.second->data(), sizeof(*pair.second)))) return E_FAIL;
+    for (uint32_t i = 0u; i < SOURCE_LANDSCAPE_LAYER_COUNT; ++i)
+    {
+        if ((source.layerMask & (1u << i)) && FAILED(shader->Bind_Texture(
+            ("g_SourceLandscapeLayerDiffuse" + std::to_string(i)).c_str(), m_SourceLandscapeDiffuse[i]))) return E_FAIL;
+        if ((source.normalMask & (1u << i)) && FAILED(shader->Bind_Texture(
+            ("g_SourceLandscapeLayerNormal" + std::to_string(i)).c_str(), m_SourceLandscapeNormal[i]))) return E_FAIL;
+    }
+    for (uint32_t i = 0u; i < source.weightmapCount; ++i)
+        if (FAILED(shader->Bind_Texture(("g_SourceLandscapeWeightmap" + std::to_string(i)).c_str(), m_SourceLandscapeWeights[i]))) return E_FAIL;
+    return shader->Bind_Texture("g_SourceLandscapeHeightmap", m_SourceLandscapeHeight);
 }
 
 HRESULT CMaterial::Bind_SourceSpecialSurface(shared_ptr<CShader> shader)

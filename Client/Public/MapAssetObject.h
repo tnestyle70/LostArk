@@ -62,6 +62,10 @@ public:
 
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
+	virtual uint8_t Get_UpdatePhaseMask() const override
+	{ return UPDATE_PHASE_UPDATE | UPDATE_PHASE_LATE; }
+	virtual bool_t Uses_FinalCameraSubmission() const override { return true; }
+	virtual void Submit_FinalCamera() override;
 	virtual HRESULT Render() override;
 	virtual HRESULT Render_Group(RENDERGROUP group) override;
 	virtual int32_t Get_BlendSortPriority() const override;
@@ -118,9 +122,11 @@ private:
 	f32_t m_fWorldCullRadius = {};
 	MAP_FRUSTUM_CULLING_POLICY m_FrustumCulling{};
 	MAP_FRUSTUM_RUNTIME_STATE m_FrustumState{};
-	// Final camera only; transient reject grace is never memoized.
+	// Stable camera decisions persist; transient reject grace is reused only within this frame.
 	uint64_t m_iCameraCullRevision = 0u;
 	bool_t m_bCameraCullCached = false;
+	// Reuse this frame's final decision even while reject grace is still active.
+	bool_t m_bFinalCameraCullPrepared = false;
 	bool_t m_bCameraCullShouldRender = true;
 
 	MAP_ASSET_RENDER_PROFILE m_RenderProfile;

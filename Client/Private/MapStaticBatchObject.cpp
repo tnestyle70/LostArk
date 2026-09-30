@@ -212,6 +212,7 @@ void CMapStaticBatchObject::Late_Update(
 	f32_t fTimeDelta)
 {
 	UNREFERENCED_PARAMETER(fTimeDelta);
+	m_bFinalCameraPrepared = false;
 
 	if (Engine::CProfiler* profiler =
 		CGameInstance::Get().Get_Profiler())
@@ -223,40 +224,56 @@ void CMapStaticBatchObject::Late_Update(
 		profiler->Add_Counter(
 			Engine::EProfilerCounter::MapBatchCount);
 	}
+}
 
-	if (0u != m_iAuthoredVisibleInstanceCount)
-	{
-		CGameInstance::Get().Add_RenderObject(
-			RENDERGROUP::NONBLEND,
-			static_pointer_cast<CGameObject>(
-				shared_from_this()));
-	}
+void CMapStaticBatchObject::Submit_FinalCamera()
+{
+    auto& game = CGameInstance::Get();
+    if (game.Is_SceneEnvironmentReplaced() || m_iAuthoredVisibleInstanceCount == 0u)
+        return;
 
-	// Frame providers can replace the shadow light after Late_Update. Queue
-	// authored casters now, then cull against the final light in Render_Shadow.
-	if (m_RenderProfile.castsShadow && 0u != m_iAuthoredVisibleInstanceCount)
-	{
-		CGameInstance::Get().Add_RenderObject(
-			RENDERGROUP::SHADOW,
-			static_pointer_cast<CGameObject>(
-				shared_from_this()));
-	}
+    const auto* camera = CMapAssetRenderUtils::Capture_CameraCullSnapshotView();
+    const HRESULT visibility = Upload_VisibleInstances(camera);
+    m_bFinalCameraPrepared = SUCCEEDED(visibility);
+    // A failed preparation keeps the original draw callback as the error/retry path.
+    if (FAILED(visibility) || !m_VisibleInstances.empty())
+        game.Add_RenderObject(RENDERGROUP::NONBLEND,
+            static_pointer_cast<CGameObject>(shared_from_this()));
+
+    // Camera rejection does not reject a caster whose shadow reaches the view.
+    // Providers have now committed the final shadow switch and light volume.
+    if (m_RenderProfile.castsShadow && game.Is_ShadowLightEnabled())
+    {
+        const HRESULT shadows = Upload_ShadowInstances();
+        if (FAILED(shadows) || !m_ShadowInstances.empty())
+            game.Add_RenderObject(RENDERGROUP::SHADOW,
+                static_pointer_cast<CGameObject>(shared_from_this()));
+    }
 }
 
 HRESULT CMapStaticBatchObject::Render()
 {
+	Engine::CProfiler* const profiler = CGameInstance::Get().Get_Profiler();
+	Engine::CProfilerWorkScope renderWork(profiler, Engine::EProfilerWork::MapBatchRender);
 	if (CGameInstance::Get().Is_SceneEnvironmentReplaced())
 		return S_OK;
 
 	const MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot =
 		CMapAssetRenderUtils::Capture_CameraCullSnapshotView();
 	const bool_t hasCameraSnapshot = nullptr != cameraSnapshot;
-	if (FAILED(Upload_VisibleInstances(cameraSnapshot)))
+	const bool_t preparedForCamera = m_bFinalCameraPrepared &&
+		m_bVisibleInstancesUsedCamera == hasCameraSnapshot &&
+		m_iVisibleCameraRevision == (hasCameraSnapshot ? cameraSnapshot->revision : 0u);
+	if (!preparedForCamera && FAILED(Upload_VisibleInstances(cameraSnapshot)))
 	{
 		return E_FAIL;
 	}
 	if (m_VisibleInstances.empty())
+	{
+		if (profiler) profiler->Add_Counter(Engine::EProfilerCounter::MapBatchEmptyRenders);
 		return S_OK;
+	}
+	if (profiler) profiler->Add_Counter(Engine::EProfilerCounter::MapBatchVisibleRenders);
 
 	const HRESULT cameraBindResult = hasCameraSnapshot ?
 		CMapAssetRenderUtils::Bind_CameraCullSnapshot(
@@ -307,16 +324,19 @@ HRESULT CMapStaticBatchObject::Render()
 			24u + passIndex : passIndex;
 		{
 			Engine::CProfilerDetailScope scope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Material.Bind");
+			Engine::CProfilerWorkScope work(profiler, Engine::EProfilerWork::MapBatchMaterial);
 			if (FAILED(CMapAssetRenderUtils::Bind_Material(m_pModelCom, m_pShaderCom,
 				meshIndex, m_RenderProfile, m_fElapsedTime, nullptr, m_AssetId, nullptr, nullptr,
 				MAP_MATERIAL_BINDING_MODE::INSTANCED))) return E_FAIL;
 		}
 		{
 			Engine::CProfilerDetailScope scope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Pass.Apply");
+			Engine::CProfilerWorkScope work(profiler, Engine::EProfilerWork::MapBatchPass);
 			if (FAILED(m_pShaderCom->Begin(meshPass))) return E_FAIL;
 		}
 		{
 			Engine::CProfilerDetailScope scope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Mesh.Submit");
+			Engine::CProfilerWorkScope work(profiler, Engine::EProfilerWork::MapBatchDraw);
 			if (FAILED(m_pModelCom->Render_Instanced(meshIndex, m_pInstanceBuffer.Get(),
 				sizeof(VTXMESHINSTANCE), instanceCount, 0u, useMeshLod ? &screenLod : nullptr))) return E_FAIL;
 		}
@@ -477,6 +497,7 @@ HRESULT CMapStaticBatchObject::Update_Instance(
     m_bBatchBoundsDirty = true;
 	m_bShadowInstancesDirty = true;
 	m_bVisibleInstancesDirty = true;
+	m_bFinalCameraPrepared = false;
 	return S_OK;
 }
 
@@ -504,6 +525,7 @@ HRESULT CMapStaticBatchObject::Set_InstanceVisible(
         m_bBatchBoundsDirty = true;
 		m_bShadowInstancesDirty = true;
 		m_bVisibleInstancesDirty = true;
+		m_bFinalCameraPrepared = false;
 	}
 	return S_OK;
 }
@@ -537,6 +559,7 @@ HRESULT CMapStaticBatchObject::Set_InstanceSuppressed(
 			++m_iStaticShadowRevision;
 		m_bShadowInstancesDirty = true;
 		m_bVisibleInstancesDirty = true;
+		m_bFinalCameraPrepared = false;
 	}
 	return S_OK;
 }
@@ -557,6 +580,7 @@ HRESULT CMapStaticBatchObject::Set_InstanceCameraPreviewSuppressed(
 			++m_iStaticShadowRevision;
 		m_bShadowInstancesDirty = true;
 		m_bVisibleInstancesDirty = true;
+		m_bFinalCameraPrepared = false;
 	}
 	return S_OK;
 }
@@ -716,6 +740,8 @@ HRESULT CMapStaticBatchObject::Ensure_ShadowInstanceCapacity(
 HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 	const MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot)
 {
+	Engine::CProfiler* const visibilityProfiler = CGameInstance::Get().Get_Profiler();
+	Engine::CProfilerWorkScope visibilityWork(visibilityProfiler, Engine::EProfilerWork::MapBatchVisibility);
 	const bool_t hasCameraSnapshot = nullptr != cameraSnapshot;
 	const uint64_t cameraRevision = hasCameraSnapshot ?
 		cameraSnapshot->revision : 0u;
@@ -726,6 +752,7 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 		if (Engine::CProfiler* profiler =
 			CGameInstance::Get().Get_Profiler())
 		{
+			profiler->Add_Counter(Engine::EProfilerCounter::MapBatchVisibilityCacheHits);
 			profiler->Add_Counter(
 				Engine::EProfilerCounter::MapVisibleInstances,
 				m_VisibleInstances.size());
@@ -733,6 +760,7 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 		return S_OK;
 	}
 
+	if (visibilityProfiler) visibilityProfiler->Add_Counter(Engine::EProfilerCounter::MapBatchVisibilityRebuilds);
 	Engine::CProfilerDetailScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Visibility");
 	m_CandidateVisibleInstances.clear();
 	bool_t requiresNextCameraTick = false;
@@ -756,6 +784,8 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
         }
     }
 
+	if (rejectBatch && visibilityProfiler)
+		visibilityProfiler->Add_Counter(Engine::EProfilerCounter::MapBatchBoundsRejected);
 	if (!rejectBatch)
 	{
 		Engine::CProfilerDetailScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.CullAndPack");
@@ -872,6 +902,9 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 	m_pContext->Unmap(
 		m_pInstanceBuffer.Get(),
 		0);
+	if (visibilityProfiler)
+		visibilityProfiler->Add_Counter(Engine::EProfilerCounter::MapBatchUploadBytes,
+			m_CandidateVisibleInstances.size() * sizeof(VTXMESHINSTANCE));
 	}
     m_VisibleLodBounds = hasLodBounds ? candidateLodBounds : float4_t{};
     m_VisibleTightLodBounds = hasTightLodBounds ? candidateTightLodBounds : float4_t{};

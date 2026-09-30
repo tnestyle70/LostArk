@@ -133,6 +133,9 @@ CModel::CModel(const CModel& Prototype)
 	, m_bHasLocalBounds { Prototype.m_bHasLocalBounds }
 	, m_vLocalBoundsMin { Prototype.m_vLocalBoundsMin }
 	, m_vLocalBoundsMax { Prototype.m_vLocalBoundsMax }
+    , m_bAnimationEnvelopeAttempted { Prototype.m_bAnimationEnvelopeAttempted }
+    , m_fAnimationEnvelopeRadius { Prototype.m_fAnimationEnvelopeRadius }
+    , m_bAnimationEnvelopeExternalPose { Prototype.m_bAnimationEnvelopeExternalPose }
     , m_bHasBindGeometryBounds { Prototype.m_bHasBindGeometryBounds }
     , m_vBindGeometryBoundsMin { Prototype.m_vBindGeometryBoundsMin }
     , m_vBindGeometryBoundsMax { Prototype.m_vBindGeometryBoundsMax }
@@ -408,6 +411,7 @@ bool_t CModel::Configure_RootMotionSuppressionFromRest(const uint32_t rootIndex,
     float4x4_t current;
     XMStoreFloat4x4(&current, m_Bones[rootIndex]->Get_TransformationMatrix());
     m_vRootMotionUnscaledTranslation = {current._41, current._42, current._43};
+    m_bAnimationEnvelopeAttempted = false;
     m_fRootMotionVerticalScale = verticalScale;
     return true;
 }
@@ -420,6 +424,7 @@ bool_t CModel::Restore_RootMotionSuppression(const ROOT_MOTION_SUPPRESSION_STATE
     m_iRootMotionVerticalAxis = state.verticalAxis;
     m_vRootMotionRestTranslation = state.restTranslation;
     m_vRootMotionUnscaledTranslation = state.unscaledTranslation;
+    m_bAnimationEnvelopeAttempted = false;
     m_fRootMotionVerticalScale = state.verticalScale;
     return true;
 }
@@ -505,6 +510,7 @@ bool_t CModel::Set_AnimationTransitionPose(const ANIMATION_TRANSITION_POSE& pose
     m_vRootMotionUnscaledTranslation = unscaledRoot;
     Skip_Blend();
     m_isAnimLoop = false;
+    m_bAnimationEnvelopeExternalPose = true;
     m_ExplicitAnimationPose = pose;
     m_bExplicitAnimationPose = true;
     return true;
@@ -762,6 +768,7 @@ bool_t CModel::Set_BoneLocalMatrix(
     if (iBoneIndex >= m_Bones.size() || nullptr == m_Bones[iBoneIndex])
         return false;
 
+    m_bAnimationEnvelopeExternalPose = true;
     m_Bones[iBoneIndex]->Update_TransformationMatrix(Matrix);
     // Costume-only locals are consumed by Pose_BonesFrom before a full refresh.
     m_iCopiedPoseRevision = 0u;
@@ -770,6 +777,7 @@ bool_t CModel::Set_BoneLocalMatrix(
 
 uint32_t CModel::Pose_BonesFrom(const CModel& source)
 {
+    m_bAnimationEnvelopeExternalPose = true;
     /* By name, because the two skeletons are cooked separately and neither order nor count
        matches: a worn part carries the body's bones plus its own. */
     // A weak owner distinguishes a new model allocated at a retired source address.
@@ -864,6 +872,7 @@ bool_t CModel::Enable_RootMotionSuppression(
         m_vRootMotionUnscaledTranslation = m_vRootMotionRestTranslation;
         m_iRootMotionBoneIndex = static_cast<int32_t>(i);
         m_iRootMotionVerticalAxis = iVerticalAxis;
+        m_bAnimationEnvelopeAttempted = false;
         return true;
     }
     return false;
@@ -896,6 +905,7 @@ bool_t CModel::Set_RootMotionVerticalScale(const f32_t fScale)
     if (m_fRootMotionVerticalScale == fScale) return true;
     const f32_t previousScale = m_fRootMotionVerticalScale;
     m_fRootMotionVerticalScale = fScale;
+    m_bAnimationEnvelopeAttempted = false;
     if (m_iRootMotionBoneIndex >= 0 && static_cast<size_t>(m_iRootMotionBoneIndex) < m_Bones.size() && m_Bones[m_iRootMotionBoneIndex])
     {
         float4x4_t local{};
@@ -949,6 +959,19 @@ bool_t CModel::Update_Animation(const f32_t fTimeDelta)
 	if (!isfinite(fTimeDelta))
 		return false;
 	return Play_Animation(fTimeDelta * m_fAnimationSpeed);
+}
+
+bool_t CModel::Advance_AnimationClock(const f32_t fTimeDelta, const bool_t applyAnimationSpeed)
+{
+    if (!std::isfinite(fTimeDelta) || m_bExplicitAnimationPose ||
+        m_Animations.empty() || m_iCurrentAnimIndex >= m_Animations.size() ||
+        !m_Animations[m_iCurrentAnimIndex]) return false;
+    const float delta = m_isAnimPaused ? 0.f : fTimeDelta * (applyAnimationSpeed ? m_fAnimationSpeed : 1.f);
+    if (!std::isfinite(delta)) return false;
+    const bool_t finished = m_Animations[m_iCurrentAnimIndex]->Advance_Clock(delta, m_isAnimLoop);
+    if (m_fBlendElapsed < m_fBlendDuration && m_BlendFromPose.size() == m_Bones.size())
+        m_fBlendElapsed += delta;
+    return finished;
 }
 
 const char_t* CModel::Get_AnimationName(uint32_t iAnimIndex) const
@@ -1581,6 +1604,14 @@ HRESULT CModel::Bind_SourceCharacterForwardLight(shared_ptr<CShader> shader, uin
     return m_Materials[materialIndex]->Bind_SourceCharacterForwardLight(shader);
 }
 
+HRESULT CModel::Bind_SourceLandscapeSurface(shared_ptr<CShader> shader, uint32_t meshIndex)
+{
+    if (!shader || meshIndex >= m_Meshes.size()) return E_INVALIDARG;
+    const uint32_t materialIndex = m_Meshes[meshIndex]->Get_MaterialIndex();
+    if (materialIndex >= m_Materials.size() || !m_Materials[materialIndex]) return E_INVALIDARG;
+    return m_Materials[materialIndex]->Bind_SourceLandscapeSurface(shader);
+}
+
 HRESULT CModel::Bind_SourceSpecialSurface(shared_ptr<CShader> shader, uint32_t meshIndex)
 {
     if (meshIndex >= m_Meshes.size()) return E_INVALIDARG;
@@ -1909,6 +1940,46 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
                 !surface.Has_ValidSourceFoliageWindProgramInputs() ||
                 any_of(begin(surface.sourceFoliageWindScalars), end(surface.sourceFoliageWindScalars), [&](const float4_t& v) { return !finite(v); }))
                 return failOverride("invalid source foliage wind inputs");
+        }
+        if (replacement.surface.family == MODEL_SURFACE_FAMILY::SOURCE_LANDSCAPE_OPAQUE)
+        {
+            const auto& surface = replacement.surface;
+            const auto& source = surface.sourceLandscape;
+            if (!source.Has_ValidInputs() || surface.hasBakedLighting || surface.hasStaticShadow ||
+                surface.hasEnvironmentCube || surface.hasSourceIndirect || surface.hasEmissive ||
+                (surface.renderMode != MODEL_SURFACE_RENDER_MODE::INHERIT && surface.renderMode != MODEL_SURFACE_RENDER_MODE::DEFERRED))
+                return failOverride("invalid source landscape parameters");
+            const auto root = loadDesc.assetRoot.lexically_normal();
+            const auto validPath = [&](bool required, const filesystem::path& path) {
+                if (!required) return path.empty();
+                const auto relative = path.lexically_normal().lexically_relative(root);
+                return root.is_absolute() && path.is_absolute() && path.extension() == L".dds" &&
+                    !relative.empty() && !relative.is_absolute() &&
+                    none_of(relative.begin(), relative.end(), [](const filesystem::path& part) { return part == ".."; });
+            };
+            const auto& textures = replacement.sourceLandscapeTextures;
+            for (uint32_t i = 0u; i < SOURCE_LANDSCAPE_LAYER_COUNT; ++i)
+                if (!validPath((source.layerMask & (1u << i)) != 0u, textures.diffuse[i]) ||
+                    !validPath((source.normalMask & (1u << i)) != 0u, textures.normal[i]))
+                    return failOverride("source landscape layer texture mismatch or escape");
+            for (uint32_t i = 0u; i < SOURCE_LANDSCAPE_WEIGHTMAP_COUNT; ++i)
+                if (!validPath(i < source.weightmapCount, textures.weightmaps[i])) return failOverride("source landscape weight texture mismatch or escape");
+            if (!validPath(true, textures.heightmap)) return failOverride("source landscape height texture missing or escape");
+            size_t matches = 0u;
+            for (size_t materialIndex = 0u; materialIndex < materialSource.materials.size(); ++materialIndex)
+            {
+                auto& material = materialSource.materials[materialIndex];
+                if (material.name != replacement.materialName) continue;
+                if (any_of(materialSource.meshes.begin(), materialSource.meshes.end(), [&](const auto& mesh) {
+                    return mesh.materialIndex == materialIndex && mesh.vertexKind != MODEL_VERTEX_KIND::STATIC;
+                })) return failOverride("source landscape requires a static painted grid");
+                material.surface = surface;
+                material.sourceLandscapeTextures = textures;
+                ++matches;
+            }
+            if (matches != 1u) return failOverride("source landscape material name is absent or ambiguous");
+            overriddenNames.push_back(replacement.materialName);
+            continue;
         }
         if (replacement.surface.family == MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
         {
@@ -2692,6 +2763,125 @@ bool_t CModel::Try_GetCurrentPoseBounds(float3_t& minimum, float3_t& maximum) co
     return true;
 }
 
+bool_t CModel::Try_GetAnimationEnvelopeRadius(f32_t& radius) const
+{
+    if (m_bAnimationEnvelopeExternalPose || m_bExplicitAnimationPose ||
+        m_fAnimationSpeed < 0.f || m_fBlendElapsed < 0.f) return false;
+    for (const auto& mesh : m_Meshes)
+        if (!mesh || mesh->m_hasUniqueVertexBuffer) return false;
+    if (!m_bAnimationEnvelopeAttempted)
+    {
+        m_bAnimationEnvelopeAttempted = true;
+        m_fAnimationEnvelopeRadius = -1.f;
+        Build_AnimationEnvelopeRadius(m_fAnimationEnvelopeRadius);
+    }
+    if (!std::isfinite(m_fAnimationEnvelopeRadius) || m_fAnimationEnvelopeRadius <= 0.f) return false;
+    radius = m_fAnimationEnvelopeRadius;
+    return true;
+}
+
+bool_t CModel::Build_AnimationEnvelopeRadius(f32_t& radius) const
+{
+    if (MODEL::ANIM != m_eType || m_Bones.empty() || m_Animations.empty() || m_Meshes.empty() ||
+        m_BoneRestLocalTransforms.size() != m_Bones.size()) return false;
+    const auto matrixEnvelope = [](const float4x4_t& m, double& stretch, std::array<double, 3>& translation) {
+        const float* values = &m._11;
+        for (size_t i = 0; i < 16; ++i) if (!std::isfinite(values[i])) return false;
+        if (m._14 != 0.f || m._24 != 0.f || m._34 != 0.f || m._44 != 1.f) return false;
+        // Gershgorin bound of A*A^T bounds the largest singular value, including shear.
+        double squaredStretch = 0.;
+        for (size_t row = 0; row < 3; ++row)
+        {
+            double sum = 0.;
+            for (size_t other = 0; other < 3; ++other)
+            {
+                double dot = 0.;
+                for (size_t axis = 0; axis < 3; ++axis)
+                    dot += double(values[row * 4 + axis]) * values[other * 4 + axis];
+                sum += std::abs(dot);
+            }
+            squaredStretch = (std::max)(squaredStretch, sum);
+        }
+        stretch = std::sqrt(squaredStretch) * 1.0001;
+        translation = {std::abs(double(m._41)), std::abs(double(m._42)), std::abs(double(m._43))};
+        return std::isfinite(stretch);
+    };
+    const auto length = [](const std::array<double, 3>& v) {return std::sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);};
+    vector<std::array<double, 3>> localTranslation(m_Bones.size());
+    vector<double> localScale(m_Bones.size()), combinedScale(m_Bones.size()), combinedRadius(m_Bones.size());
+    for (size_t i = 0; i < m_Bones.size(); ++i)
+        if (!m_Bones[i] || !matrixEnvelope(m_BoneRestLocalTransforms[i], localScale[i], localTranslation[i])) return false;
+    for (const auto& animation : m_Animations)
+        if (!animation || !animation->Accumulate_TransformEnvelope(localTranslation, localScale)) return false;
+    if (m_iRootMotionBoneIndex >= 0)
+    {
+        if (size_t(m_iRootMotionBoneIndex) >= localTranslation.size() ||
+            m_iRootMotionVerticalAxis < -1 || m_iRootMotionVerticalAxis > 2 ||
+            !std::isfinite(m_fRootMotionVerticalScale) || m_fRootMotionVerticalScale < 0.f) return false;
+        const double rest[3] = {m_vRootMotionRestTranslation.x, m_vRootMotionRestTranslation.y, m_vRootMotionRestTranslation.z};
+        auto& bound = localTranslation[size_t(m_iRootMotionBoneIndex)];
+        for (size_t axis = 0; axis < 3; ++axis)
+        {
+            if (!std::isfinite(rest[axis])) return false;
+            bound[axis] = int32_t(axis) == m_iRootMotionVerticalAxis ?
+                std::abs(rest[axis] * (1. - m_fRootMotionVerticalScale)) + bound[axis] * m_fRootMotionVerticalScale :
+                std::abs(rest[axis]);
+        }
+    }
+    double preScale = 0.; std::array<double, 3> preTranslation{};
+    if (!matrixEnvelope(m_PreTransformMatrix, preScale, preTranslation)) return false;
+    for (size_t i = 0; i < m_Bones.size(); ++i)
+    {
+        const int32_t parent = m_Bones[i]->Get_ParentBoneIndex();
+        if (parent < -1 || (parent >= 0 && size_t(parent) >= i)) return false;
+        const double parentScale = parent < 0 ? preScale : combinedScale[size_t(parent)];
+        const double parentRadius = parent < 0 ? length(preTranslation) : combinedRadius[size_t(parent)];
+        combinedScale[i] = localScale[i] * parentScale;
+        combinedRadius[i] = length(localTranslation[i]) * parentScale + parentRadius;
+        if (!std::isfinite(combinedScale[i]) || !std::isfinite(combinedRadius[i])) return false;
+    }
+    double result = 0.; bool hasVertex = false;
+    for (const auto& mesh : m_Meshes)
+    {
+        if (!mesh || mesh->m_hasUniqueVertexBuffer || mesh->m_BoneVertexBounds.size() != mesh->m_iNumBones ||
+            mesh->m_BoneIndices.size() != mesh->m_iNumBones || mesh->m_OffsetMatrices.size() != mesh->m_iNumBones) return false;
+        for (size_t index = 0; index < mesh->m_iNumBones; ++index)
+        {
+            const auto& bounds = mesh->m_BoneVertexBounds[index];
+            if (!bounds.valid) continue;
+            const uint32_t bone = mesh->m_BoneIndices[index];
+            if (bone >= m_Bones.size()) return false;
+            const auto& offset = mesh->m_OffsetMatrices[index];
+            for (const auto& row : offset.m)
+                for (const float value : row) if (!std::isfinite(value)) return false;
+            // Inverse binds may retain a positive homogeneous scale after
+            // inversion. Divide by that exact w instead of rejecting or
+            // rounding it. Positive skin weights remain a convex combination
+            // after their homogeneous weights are normalized by the GPU.
+            if (offset._14 != 0.f || offset._24 != 0.f || offset._34 != 0.f || offset._44 <= 0.f) return false;
+            const double inverseW = 1. / double(offset._44);
+            for (uint32_t corner = 0; corner < 8; ++corner)
+            {
+                const double x = (corner & 1u) ? bounds.maximum.x : bounds.minimum.x;
+                const double y = (corner & 2u) ? bounds.maximum.y : bounds.minimum.y;
+                const double z = (corner & 4u) ? bounds.maximum.z : bounds.minimum.z;
+                const std::array<double, 3> point = {x*offset._11+y*offset._21+z*offset._31+offset._41,
+                    x*offset._12+y*offset._22+z*offset._32+offset._42,
+                    x*offset._13+y*offset._23+z*offset._33+offset._43};
+                const double bound = length(point) * inverseW * combinedScale[bone] + combinedRadius[bone];
+                if (!std::isfinite(bound)) return false;
+                result = (std::max)(result, bound); hasVertex = true;
+            }
+        }
+    }
+    // Skin weights are normalized nonnegative values admitted by CMesh's bounds.
+    // Their convex combination stays inside this sphere; cover float summation.
+    result = result * 1.0001 + .0001;
+    if (!hasVertex || result <= 0. || result >= (std::numeric_limits<float>::max)()) return false;
+    radius = std::nextafter(static_cast<float>(result), (std::numeric_limits<float>::infinity)());
+    return true;
+}
+
 void CModel::Include_BindGeometryPosition(fvector_t value)
 {
     float3_t position; XMStoreFloat3(&position, value);
@@ -2860,6 +3050,7 @@ HRESULT CModel::Attach_AnimationSet(const CModel& animationSet)
 	for (const auto& pIncoming : animationSet.m_Animations)
 		m_Animations.push_back(pIncoming->Clone());
 	m_iNumAnimations = static_cast<uint32_t>(m_Animations.size());
+    m_bAnimationEnvelopeAttempted = false;
 	return S_OK;
 }
 
@@ -2949,6 +3140,7 @@ bool_t CModel::Install_AuthoredAnimations(const vector<MODEL_ANIMATION_DATA>& in
             names.insert(animation.name);
         }
         m_Animations.swap(staged); m_AuthoredAnimationNames.swap(names);
+        m_bAnimationEnvelopeAttempted = false;
         m_iNumAnimations = static_cast<uint32_t>(m_Animations.size());
         status = "Authored animation channels installed"; return true;
     }

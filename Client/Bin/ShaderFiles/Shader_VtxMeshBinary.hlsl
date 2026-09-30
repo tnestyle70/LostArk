@@ -149,6 +149,15 @@ VS_OUT VS_MAIN(VS_IN input)
         output.vPosition=mul(mul(output.vWorldPos,g_ViewMatrix),g_ProjMatrix);
     }
     output.vProjPos = output.vPosition;
+    // Landscape reconstructs its pixel TBN from the original packed height normal.
+    // Carry the actual draw transform instead of the imported mesh tangent basis.
+    if (IsMapSurfaceSourceLandscape())
+    {
+        output.vTangent = float4(mul(float4(1.f, 0.f, 0.f, 0.f), g_WorldInvTransposeMatrix).xyz, 0.f);
+        output.vBinormal = float4(mul(float4(0.f, 1.f, 0.f, 0.f), g_WorldInvTransposeMatrix).xyz, 0.f);
+        output.vNormal = float4(mul(float4(0.f, 0.f, 1.f, 0.f), g_WorldInvTransposeMatrix).xyz, 0.f);
+    }
+
     output.vRawTexcoord = input.vTexcoord;
     output.vLightmapUV = input.vLightmapUV * g_LightmapScaleBias.xy + g_LightmapScaleBias.zw;
     output.vLightmapAverageScale = g_LightmapAverageScale;
@@ -335,7 +344,8 @@ PS_OUT PS_MAIN(VS_OUT input)
             pbr ? 3.f : ((sourceFoliage || sourceSpecial) ? float(g_SurfaceProgram) : (sourceBG ? 8.f : (sourceSpecular ? 4.f : 1.f))));
         output.vPickPos = input.vWorldPos;
         if (pbr || sourceSpecular)
-            output.vPickPos.w = EncodeMapSurfaceGeometricNormal(input.vNormal.xyz,
+            output.vPickPos.w = EncodeMapSurfaceGeometricNormal(
+                IsMapSurfaceSourceLandscape() ? surface.geometricNormal : input.vNormal.xyz,
                 g_HasBakedLighting != 0u && input.vLightmapAverageScale.w != 0.f);
         output.vPickPos.w = EncodeMapStaticShadowChannel(output.vPickPos.w);
         float3 environmentSpecular;
@@ -731,7 +741,8 @@ void PS_MAIN_SHADOW(VS_OUT input)
             clip(SampleMapDiffuseTexture(MapSourceOverlayUV(input.vRawTexcoord), SurfaceAnisotropicSampler).a - 0.3333f);
         else if (IsMapSurfacePBR() && g_SurfacePBRMasked != 0u)
             clip(g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vRawTexcoord * g_SurfaceUVTiling).a - 0.3333f);
-        else if (!IsMapSurfacePBR() && !IsMapSurfaceSourceSpecular() && g_SurfaceProgram != 7u)
+        else if (!IsMapSurfacePBR() && !IsMapSurfaceSourceSpecular() &&
+            !IsMapSurfaceSourceLandscape() && g_SurfaceProgram != 7u)
             clip(SampleMapDiffuseTexture(input.vRawTexcoord, SurfaceAnisotropicSampler).a - 0.3333f);
         return;
     }

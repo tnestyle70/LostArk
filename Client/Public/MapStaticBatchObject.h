@@ -68,6 +68,10 @@ public:
 
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
+	virtual uint8_t Get_UpdatePhaseMask() const override
+	{ return UPDATE_PHASE_UPDATE | UPDATE_PHASE_LATE; }
+	virtual bool_t Uses_FinalCameraSubmission() const override { return true; }
+	virtual void Submit_FinalCamera() override;
 	virtual HRESULT Render() override;
 	virtual HRESULT Render_Shadow() override;
 	virtual bool_t Try_GetStaticShadowRevision(uint64_t& outRevision) const override;
@@ -163,6 +167,8 @@ private:
 	std::vector<uint32_t> m_StaticShadowCasterMeshes;
 	bool_t m_bStaticShadowMaterialInputs = false;
 	bool_t m_bVisibleInstancesDirty = true;
+	// Prepared after all frame providers; do not advance reject grace twice.
+	bool_t m_bFinalCameraPrepared = false;
 	bool_t m_bVisibleInstancesUsedCamera = false;
 	uint64_t m_iVisibleCameraRevision = {};
 	f32_t m_fElapsedTime = {};

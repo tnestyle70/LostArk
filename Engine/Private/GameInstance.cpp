@@ -241,6 +241,11 @@ void CGameInstance::Update_Engine(f32_t fTimeDelta)
 	}
 }
 
+void CGameInstance::Submit_FinalCameraObjects()
+{
+	m_pObject_Manager->Submit_FinalCamera();
+}
+
 void CGameInstance::Refresh_CameraState()
 {
 	m_pPipeLine->Update();

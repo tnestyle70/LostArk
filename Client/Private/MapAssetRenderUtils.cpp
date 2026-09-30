@@ -779,6 +779,8 @@ bool_t Client::CMapAssetRenderUtils::Uses_OpaqueShadowPass(
 	case Engine::MODEL_SURFACE_FAMILY::PBR_OPAQUE:
 		return !surface->pbrAlphaMasked;
 	case Engine::MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE:
+    case Engine::MODEL_SURFACE_FAMILY::SOURCE_LANDSCAPE_OPAQUE:
+        // Landscape holes are source topology; painted alpha is height blending.
 		return true;
 	case Engine::MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE:
 		return (surface->sourceOverlayFlags & 64u) == 0u;
@@ -1228,7 +1230,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 	const auto* camera = CGameInstance::Get().Get_CamPosition();
 	if (!camera || FAILED(shader->Bind_RawValue("g_vCamPosition", camera, sizeof(*camera))) ||
 		FAILED(model->Bind_SurfaceTexture(shader, "g_DiffuseTexture", meshIndex, aiTextureType_DIFFUSE)) ||
-        (program != 7u && program != 8u && program != 9u && program != 10u && program != 12u && FAILED(model->Bind_SurfaceTexture(shader, "g_ReflectionTexture", meshIndex, aiTextureType_REFLECTION))) ||
+        (program != 7u && program != 8u && program != 9u && program != 10u && program != 12u && program != 14u && FAILED(model->Bind_SurfaceTexture(shader, "g_ReflectionTexture", meshIndex, aiTextureType_REFLECTION))) ||
 		((program == 1u || program == 5u) && FAILED(model->Bind_SurfaceTexture(shader, "g_SpecularTexture", meshIndex, aiTextureType_SPECULAR))))
 		return E_FAIL;
 	if (FAILED(shader->Bind_RawValue("g_SurfaceDiffuseBrightness", &surface->diffuseBrightness, sizeof(surface->diffuseBrightness))))
@@ -1253,6 +1255,8 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		return E_FAIL;
 	if (FAILED(shader->Bind_RawValue("g_SurfaceReflectionColor", &surface->reflectionColor, sizeof(surface->reflectionColor))))
 		return E_FAIL;
+    if (program == 14u && FAILED(model->Bind_SourceLandscapeSurface(shader, meshIndex)))
+        return E_FAIL;
     if (program >= 11u && program <= 13u && FAILED(model->Bind_SourceSpecialSurface(shader, meshIndex)))
         return E_FAIL;
     if (program == 9u || program == 10u)

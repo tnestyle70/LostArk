@@ -74,6 +74,9 @@ public:
     // palette already includes pretransform; callers apply only the actor root.
     // Unsupported/morphed geometry leaves both outputs unchanged.
     bool_t Try_GetCurrentPoseBounds(float3_t& minimum, float3_t& maximum) const;
+    // Conservative root-origin sphere covering rest and every admitted WModel clip.
+    // Includes the asset pretransform once; unsupported/morphed/external poses fail open.
+    bool_t Try_GetAnimationEnvelopeRadius(f32_t& radius) const;
     // WModel triangle query at the current rendered pose. Bounds are broad phase
     // only; distance is in world units. Unsupported/morphed geometry is not picked.
     bool_t Try_PickCurrentPose(const float4x4_t& world, const float3_t& rayOrigin,
@@ -224,6 +227,10 @@ public:
 	void Stop_Animation();
 	void Set_AnimationSpeed(f32_t speed);
 	bool_t Update_Animation(f32_t fTimeDelta);
+    // Advances the existing clip/loop/blend clocks, leaving the palette untouched.
+    // The caller evaluates Play_Animation(0) before rendering or changing an action.
+    // Return value is the same finished flag as Play_Animation/Update_Animation.
+    bool_t Advance_AnimationClock(f32_t fTimeDelta, bool_t applyAnimationSpeed = true);
 	uint64_t Get_SkeletonHash() const {
 		return m_iSkeletonHash;
 	}
@@ -314,6 +321,7 @@ public:
 	isEnabled false) when the material simply has no colour mask. */
 	const MODEL_COLOR_TINT* Get_MaterialColorTint(uint32_t iMeshIndex) const;
 	HRESULT Bind_SourceSpecialSurface(shared_ptr<class CShader> shader, uint32_t meshIndex);
+    HRESULT Bind_SourceLandscapeSurface(shared_ptr<class CShader> shader, uint32_t meshIndex);
 	HRESULT Bind_SurfaceLighting(shared_ptr<class CShader> shader, uint32_t meshIndex);
 	HRESULT Bind_SourceCharacter(shared_ptr<class CShader> shader, uint32_t meshIndex);
 	HRESULT Bind_SourceCharacterForwardLight(shared_ptr<class CShader> shader, uint32_t meshIndex);
@@ -424,6 +432,10 @@ private:
 	bool_t									m_bHasLocalBounds = { false };
 	float3_t								m_vLocalBoundsMin = {};
 	float3_t								m_vLocalBoundsMax = {};
+    mutable bool_t m_bAnimationEnvelopeAttempted = false;
+    mutable f32_t m_fAnimationEnvelopeRadius = -1.f;
+    bool_t m_bAnimationEnvelopeExternalPose = false;
+    bool_t Build_AnimationEnvelopeRadius(f32_t& radius) const;
     bool_t m_bHasBindGeometryBounds = false;
     float3_t m_vBindGeometryBoundsMin{}, m_vBindGeometryBoundsMax{};
 	bool_t									m_bHasSelfConsistentUnauthenticatedGeometryMetadata = { false };

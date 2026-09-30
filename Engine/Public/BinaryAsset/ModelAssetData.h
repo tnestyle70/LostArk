@@ -4,6 +4,7 @@
 #include "Engine_VertexTypes.h"
 
 #include <array>
+#include <cmath>
 #include <filesystem>
 
 NS_BEGIN(Engine)
@@ -44,6 +45,7 @@ enum class MODEL_SURFACE_FAMILY : uint32_t
     SOURCE_SNOWICE_OPAQUE = 11,
     SOURCE_VERTEXBLEND_OPAQUE = 12,
     SOURCE_WET_OPAQUE = 13,
+    SOURCE_LANDSCAPE_OPAQUE = 14,
 };
 
 /* Per-placement atlas coordinates and decode scales. The texture pair belongs
@@ -105,6 +107,67 @@ struct MODEL_SOURCE_SPECIAL_PARAMETERS
     bool_t blendBSRGB = true;
 };
 
+// Bounded painted-heightfield inputs on the existing material surface path.
+// Grid dimensions describe the admitted two-subsection native vertex factory.
+inline constexpr uint32_t SOURCE_LANDSCAPE_LAYER_COUNT = 6u;
+inline constexpr uint32_t SOURCE_LANDSCAPE_WEIGHTMAP_COUNT = 2u;
+struct MODEL_SOURCE_LANDSCAPE_PARAMETERS
+{
+    uint32_t layerMask = 0u;
+    uint32_t normalMask = 0u;
+    uint32_t weightmapCount = 0u;
+    float4_t grid = {}; // section XY, component quads, subsection quads
+    float4_t weightmapScaleBias = {};
+    float4_t heightmapScaleBias = {};
+    std::array<float4_t, SOURCE_LANDSCAPE_LAYER_COUNT> uv{}; // tiling, source rotation, 0, 0
+    std::array<float4_t, SOURCE_LANDSCAPE_LAYER_COUNT> diffuse{}; // tint RGB, brightness
+    std::array<float4_t, SOURCE_LANDSCAPE_LAYER_COUNT> specular{}; // tint RGB, intensity
+    std::array<float4_t, SOURCE_LANDSCAPE_LAYER_COUNT> factors{}; // desaturation, normal, power, 0
+    std::array<float4_t, SOURCE_LANDSCAPE_LAYER_COUNT> weight{}; // map, channel, diffuse/normal height mode
+    std::array<bool_t, SOURCE_LANDSCAPE_LAYER_COUNT> diffuseSRGB{};
+
+    bool Has_ValidInputs() const
+    {
+        const auto finite = [](const float4_t& v) {
+            return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z) && std::isfinite(v.w) &&
+                std::abs(v.x) <= 1e6f && std::abs(v.y) <= 1e6f && std::abs(v.z) <= 1e6f && std::abs(v.w) <= 1e6f;
+        };
+        if (layerMask == 0u || (layerMask & ~63u) || (normalMask & ~layerMask) ||
+            weightmapCount == 0u || weightmapCount > SOURCE_LANDSCAPE_WEIGHTMAP_COUNT ||
+            !finite(grid) || std::floor(grid.x) != grid.x || std::floor(grid.y) != grid.y || grid.z != 62.f || grid.w != 31.f ||
+            !finite(weightmapScaleBias) || weightmapScaleBias.x <= 0.f || weightmapScaleBias.y <= 0.f ||
+            !finite(heightmapScaleBias) || heightmapScaleBias.x <= 0.f || heightmapScaleBias.y <= 0.f) return false;
+        uint32_t usedChannels = 0u, usedMaps = 0u;
+        for (uint32_t i = 0u; i < SOURCE_LANDSCAPE_LAYER_COUNT; ++i)
+        {
+            if ((layerMask & (1u << i)) == 0u) continue;
+            const auto& u = uv[i]; const auto& d = diffuse[i]; const auto& s = specular[i];
+            const auto& f = factors[i]; const auto& w = weight[i];
+            if (!finite(u) || !finite(d) || !finite(s) || !finite(f) || !finite(w) ||
+                u.x <= 0.f || u.z != 0.f || u.w != 0.f ||
+                d.x < 0.f || d.y < 0.f || d.z < 0.f || d.w < 0.f ||
+                s.x < 0.f || s.y < 0.f || s.z < 0.f || s.w < 0.f ||
+                f.x < 0.f || f.x > 1.f || f.y < 0.f || f.y > 16.f || f.z < 1.f || f.z > 4096.f || f.w != 0.f ||
+                ((normalMask & (1u << i)) == 0u && f.y != 0.f) ||
+                w.x < 0.f || w.x >= float(weightmapCount) || std::floor(w.x) != w.x ||
+                w.y < 0.f || w.y > 3.f || std::floor(w.y) != w.y ||
+                (w.z != 0.f && w.z != 1.f) || (w.w != 0.f && w.w != 1.f)) return false;
+            const uint32_t channel = 1u << (uint32_t(w.x) * 4u + uint32_t(w.y));
+            if (usedChannels & channel) return false;
+            usedChannels |= channel; usedMaps |= 1u << uint32_t(w.x);
+        }
+        return usedMaps == (1u << weightmapCount) - 1u;
+    }
+};
+
+struct MODEL_SOURCE_LANDSCAPE_TEXTURES
+{
+    std::array<filesystem::path, SOURCE_LANDSCAPE_LAYER_COUNT> diffuse;
+    std::array<filesystem::path, SOURCE_LANDSCAPE_LAYER_COUNT> normal;
+    std::array<filesystem::path, SOURCE_LANDSCAPE_WEIGHTMAP_COUNT> weightmaps;
+    filesystem::path heightmap;
+};
+
 struct MODEL_SURFACE_PARAMETERS
 {
     MODEL_SURFACE_RENDER_MODE renderMode = MODEL_SURFACE_RENDER_MODE::INHERIT;
@@ -131,6 +194,7 @@ struct MODEL_SURFACE_PARAMETERS
     // Native foliage: normal=1, saturation=2, specular=4, specular texture=8,
     // transmission=16, emissive=32, emissive flicker=64.
     MODEL_SOURCE_SPECIAL_PARAMETERS sourceSpecial;
+    MODEL_SOURCE_LANDSCAPE_PARAMETERS sourceLandscape;
     uint32_t sourceFoliageFlags = 0u;
     float4_t sourceFoliageTransmission = { 0.f, 0.f, 0.f, 1.f };
     bool_t sourceFoliageMaskSRGB = false;
@@ -257,6 +321,7 @@ struct MODEL_MATERIAL_OVERRIDE
     filesystem::path sourceBlendNormalBPath;
 	filesystem::path surfaceEmissivePath;
 	std::array<MODEL_SOURCE_CHARACTER_TEXTURE, SOURCE_CHARACTER_TEXTURE_COUNT> sourceCharacterTextures;
+    MODEL_SOURCE_LANDSCAPE_TEXTURES sourceLandscapeTextures;
     filesystem::path bakedAveragePath;
     filesystem::path bakedDirectionalPath;
     filesystem::path staticShadowPath;
@@ -299,6 +364,7 @@ struct MODEL_MATERIAL_DATA
     filesystem::path sourceBlendNormalBPath;
 	filesystem::path surfaceEmissivePath;
 	std::array<MODEL_SOURCE_CHARACTER_TEXTURE, SOURCE_CHARACTER_TEXTURE_COUNT> sourceCharacterTextures;
+    MODEL_SOURCE_LANDSCAPE_TEXTURES sourceLandscapeTextures;
     filesystem::path bakedAveragePath;
     filesystem::path bakedDirectionalPath;
     filesystem::path staticShadowPath;
