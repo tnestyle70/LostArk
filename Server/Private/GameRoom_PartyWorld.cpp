@@ -89,6 +89,7 @@ bool LostArk::Server::CGameRoom::Stage_ReturnToBern(
 	transfer.eTargetWorldId = WORLD_ID::BERN;
 	transfer.eCharacterClass = player.eCharacterClass;
 	transfer.strNickName = player.strNickName;
+	transfer.iVoiceType = player.iVoiceType;
 	transfer.iHonorTitleId = player.iHonorTitleId;
 	transfer.iPartyRequestSequence = requestSequence;
 	transfer.strSpawnPlacementOverrideId = player.strRaidReturnNpcPlacementId.empty() ?
@@ -762,6 +763,7 @@ bool LostArk::Server::CGameRoom::Stage_PartyWorldTransfer(
 	transfer.strRaidReturnNpcPlacementId = raidReturnNpcPlacementId;
 	transfer.eCharacterClass = leader.eCharacterClass;
 	transfer.strNickName = leader.strNickName;
+	transfer.iVoiceType = leader.iVoiceType;
 	transfer.iHonorTitleId = leader.iHonorTitleId;
 	transfer.iPartyRequestSequence = requestSequence;
 	for (const PLAYER_ID memberId : batchMemberIds)
@@ -1079,6 +1081,7 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 		enter.eWorldId = target.m_eWorldId;
 		enter.eCharacterClass = member->second.eCharacterClass;
 		enter.strNickName = member->second.strNickName;
+		enter.iVoiceType = member->second.iVoiceType;
 		STAGED_PLAYER_ENTRY entry{};
 		SESSION_DIAGNOSTIC_REASON reason{};
 		if (!target.Stage_PlayerEntry(session, enter, entries, entry, reason, status,
@@ -1126,7 +1129,7 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
         departingEntities.push_back(oldActor->second.iNetEntityId);
         S2C_PLAYER_SPAWNED spawn;
         spawn.iPlayerId=companion.iPlayerId;spawn.iNetEntityId=companion.iNetEntityId;spawn.eCharacterClass=companion.eCharacterClass;
-        spawn.eControlKind=companion.eControlKind;spawn.strNickName=companion.strNickName;
+        spawn.eControlKind=companion.eControlKind;spawn.strNickName=companion.strNickName;spawn.iVoiceType=companion.iVoiceType;
         spawn.fPositionX=companion.fPositionX;spawn.fPositionY=companion.fPositionY;spawn.fPositionZ=companion.fPositionZ;spawn.fYawDegrees=companion.fYawDegrees;
         CPacketWriter writer;if(!Write_Message(writer,spawn))return reject(PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED,"guide spawn encoding failed");
         guideFrames.push_back({PACKET_TYPE::S2C_PLAYER_SPAWNED,writer.Get_Buffer()});
@@ -1184,6 +1187,7 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 			message.iNetEntityId = entry.Player.iNetEntityId;
 			message.eCharacterClass = entry.Player.eCharacterClass;
 			message.strNickName = entry.Player.strNickName;
+			message.iVoiceType = entry.Player.iVoiceType;
 			message.fPositionX = entry.Player.fPositionX;
 			message.fPositionY = entry.Player.fPositionY;
 			message.fPositionZ = entry.Player.fPositionZ;

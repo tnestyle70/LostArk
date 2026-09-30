@@ -23,6 +23,7 @@ namespace LostArk::Server
 		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
 			LostArk::Shared::CHARACTER_CLASS_ID::END;
 		std::string strNickName;
+		std::uint8_t iVoiceType = LostArk::Shared::MIN_VOICE_TYPE;
 		// Worn honor title, re-applied by the target room's admission.
 		LostArk::Shared::HONOR_TITLE_ID iHonorTitleId = LostArk::Shared::INVALID_HONOR_TITLE_ID;
 		/* One immutable leader-first batch, not independent transfers. The

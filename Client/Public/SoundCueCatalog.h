@@ -38,6 +38,21 @@ public:
 	static const std::vector<std::string>& Find_Variants(
 		const std::string& strClassName,
 		const std::string& strEventName);
+	/* The subset of Find_Variants recorded for one character-creation voice
+	   type (1..8) in Data/Sound/CharacterVoiceTypes.json. iVoiceType 0 means
+	   the class's selectedVoiceType from that document. Empty when the event
+	   is not a voice line, the type is not recorded or the document is
+	   absent: callers then use Find_Variants unchanged. */
+	static const std::vector<std::string>& Find_VoiceVariants(
+		const std::string& strClassName,
+		const std::string& strEventName,
+		uint8_t iVoiceType = 0u);
+	/* Voice types (1..8) the document records for the class, ascending. */
+	static std::vector<uint8_t> Collect_VoiceTypes(
+		const std::string& strClassName);
+	/* Sorted voice-line event names the document records for the class. */
+	static std::vector<std::string> Collect_VoiceEventNames(
+		const std::string& strClassName);
 	/* Sorted copy for authoring UI. Runtime lookup remains Find_Variants;
 	   callers never retain references into the mutable load cache. */
 	static std::vector<std::string> Collect_EventNames(
@@ -45,6 +60,10 @@ public:
 
 private:
 	static std::unordered_map<std::string, EVENT_VARIANTS> s_ClassEvents;
+	/* class -> voice type -> event -> assets, plus each class's default type. */
+	static std::unordered_map<std::string,
+		std::unordered_map<uint8_t, EVENT_VARIANTS>> s_ClassVoiceEvents;
+	static std::unordered_map<std::string, uint8_t> s_ClassDefaultVoiceType;
 	static bool_t s_bLoaded;
 };
 

@@ -5175,6 +5175,7 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	enterWorld.eWorldId = transfer.eTargetWorldId;
 	enterWorld.eCharacterClass = transfer.eCharacterClass;
 	enterWorld.strNickName = transfer.strNickName;
+	enterWorld.iVoiceType = transfer.iVoiceType;
 	ROOM_COMMAND enterCommand{};
 	enterCommand.eType = ROOM_COMMAND_TYPE::ENTER_WORLD;
 	enterCommand.iSessionId = transfer.iSessionId;

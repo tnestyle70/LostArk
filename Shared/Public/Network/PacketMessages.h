@@ -24,6 +24,9 @@ namespace LostArk::Shared
 	[[nodiscard]] bool Is_Valid_PlayerNickname(
 		std::string_view nickname) noexcept;
 
+	[[nodiscard]] bool Is_Valid_VoiceType(
+		std::uint8_t voiceType) noexcept;
+
 	// Same stable-ID alphabet the authored world sequence document enforces, so
 	// a wire value can never name something the Client could not have loaded.
 	[[nodiscard]] bool Is_Valid_SequenceInstanceId(
@@ -39,6 +42,7 @@ namespace LostArk::Shared
 			CHARACTER_CLASS_ID::END;
 
 		std::string strNickName;
+		std::uint8_t iVoiceType = MIN_VOICE_TYPE;
 	};
 
 	bool Write_Message(
@@ -109,6 +113,7 @@ namespace LostArk::Shared
 		//서버 기준 Y축 회전 각도
 		float fYawDegrees = 0.f;
 		PLAYER_CONTROL_KIND eControlKind = PLAYER_CONTROL_KIND::HUMAN;
+		std::uint8_t iVoiceType = MIN_VOICE_TYPE;
 	};
 
 	bool Write_Message(

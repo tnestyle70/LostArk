@@ -158,7 +158,8 @@ public:
 	bool Send_EnterWorld(
 		LostArk::Shared::WORLD_ID worldId,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass,
-		std::string_view nickName);
+		std::string_view nickName,
+		std::uint8_t voiceType);
 	//playercontroller�� ��ǥ XZ�� �����ϴ� public ���
 	bool Send_VehicleFlightInput(std::uint32_t sequence, float x, float z, float vertical);
 	bool Send_MoveGoal(

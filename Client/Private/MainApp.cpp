@@ -1242,10 +1242,11 @@ HRESULT CMainApp::Initialize()
 	means CCharacter::Update_SoundCues() finds no variants for every cue and silently plays
 	nothing (Client-only presentation, no gameplay authority depends on it). */
 	std::string soundCatalogStatus;
-	if (!Client::CSoundCueCatalog::Load(soundCatalogStatus))
+	const bool_t soundCatalogLoaded = Client::CSoundCueCatalog::Load(soundCatalogStatus);
 	{
-		const std::string diagnostic =
-			"[MainApp] Sound Cue Catalog initialization failed: " + soundCatalogStatus + "\n";
+		const std::string diagnostic = (soundCatalogLoaded ?
+			"[MainApp] Sound Cue Catalog: " :
+			"[MainApp] Sound Cue Catalog initialization failed: ") + soundCatalogStatus + "\n";
 		OutputDebugStringA(diagnostic.c_str());
 	}
 	std::string estherActionSoundStatus;

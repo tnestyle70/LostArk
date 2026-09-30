@@ -73,6 +73,7 @@ bool LostArk::Server::CGameRoom::Send_Spawned(
 	message.eCharacterClass = player.eCharacterClass;
 	message.eControlKind = player.eControlKind;
 	message.strNickName = player.strNickName;
+	message.iVoiceType = player.iVoiceType;
 	message.fPositionX = player.fPositionX;
 	message.fPositionY = player.fPositionY;
 	message.fPositionZ = player.fPositionZ;

@@ -95,6 +95,8 @@ public:
 		float3_t vPosition = {};
 
 		std::string strNickName;
+		/* Character-creation voice type (1..8) the Server replicated with the spawn. */
+		uint8_t iVoiceType = { 1u };
 		bool_t isLocallyControlled = { false };
 	} CHARACTER_DESC;
 
@@ -516,6 +518,7 @@ private:
 	int32_t m_iChainStep = {};
 
 	std::string m_strNickName;
+	uint8_t m_iVoiceType = { 1u };
 	bool_t m_isLocallyControlled = { false };
 
 	//network persentation state

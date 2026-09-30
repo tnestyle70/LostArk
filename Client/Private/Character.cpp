@@ -228,6 +228,7 @@ HRESULT CCharacter::Initialize(void* pArg)
 		pDesc->fSpeedPerSec : 5.f;
 	//nickname과 local control 여부 추가
 	m_strNickName = pDesc->strNickName;
+	m_iVoiceType = pDesc->iVoiceType;
 	m_isLocallyControlled = pDesc->isLocallyControlled;
 
 	if (nullptr != pDesc->pNavigationPrototypeTag)
@@ -909,8 +910,12 @@ void CCharacter::Update_SoundCues()
 		iCue < m_EffectCueDocument.Sounds.size(); ++iCue)
 	{
 		const ANIMATION_SOUND_CUE& Cue = m_EffectCueDocument.Sounds[iCue];
-		const std::vector<std::string>& Variants =
-			CSoundCueCatalog::Find_Variants(strClassName, Cue.strEventName);
+		const std::vector<std::string>& VoiceVariants =
+			CSoundCueCatalog::Find_VoiceVariants(
+				strClassName, Cue.strEventName, m_iVoiceType);
+		const std::vector<std::string>& Variants = VoiceVariants.empty() ?
+			CSoundCueCatalog::Find_Variants(strClassName, Cue.strEventName) :
+			VoiceVariants;
 		if (Variants.empty())
 			continue;
 

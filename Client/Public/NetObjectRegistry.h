@@ -63,6 +63,7 @@ namespace Client
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
 
 		std::string strNickName;
+		std::uint8_t iVoiceType = LostArk::Shared::MIN_VOICE_TYPE;
 
 		float fPositionX = 0.f;
 		float fPositionY = 0.f;

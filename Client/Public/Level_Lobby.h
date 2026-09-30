@@ -75,6 +75,7 @@ private:
 	LostArk::Shared::CHARACTER_CLASS_ID m_ePendingCharacterClass =
 		LostArk::Shared::CHARACTER_CLASS_ID::END;
 	string m_strPendingNickname;
+	std::uint8_t m_iPendingVoiceType = LostArk::Shared::MIN_VOICE_TYPE;
 	string m_strPendingServerHost;
 	bool_t m_hasPendingCharacterCreationEntry = false;
 	std::chrono::steady_clock::time_point m_ApprovalDeadline{};

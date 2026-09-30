@@ -171,6 +171,7 @@ namespace
 		record.eControlKind = spawned.eControlKind;
 
 		record.strNickName = spawned.strNickName;
+		record.iVoiceType = spawned.iVoiceType;
 
 		record.fPositionX = spawned.fPositionX;
 		record.fPositionY = spawned.fPositionY;
@@ -192,6 +193,7 @@ namespace
 			left.eCharacterClass == right.eCharacterClass &&
 			left.eControlKind == right.eControlKind &&
 			left.strNickName == right.strNickName &&
+			left.iVoiceType == right.iVoiceType &&
 			left.fPositionX == right.fPositionX &&
 			left.fPositionY == right.fPositionY &&
 			left.fPositionZ == right.fPositionZ &&
@@ -2418,6 +2420,7 @@ bool Client::CClientReplication::Create_Character(
 	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 	const LostArk::Shared::PLAYER_MADNESS_FORM madnessForm,
 	const std::string_view nickName,
+	const std::uint8_t voiceType,
 	const float3_t& position,
 	const f32_t yawDegrees,
 	const bool_t isLocallyControlled,
@@ -2462,6 +2465,7 @@ bool Client::CClientReplication::Create_Character(
 	desc.fRotationPerSec = 180.f;
 	desc.vPosition = position;
 	desc.strNickName = nickName;
+	desc.iVoiceType = voiceType;
 	desc.isLocallyControlled = isLocallyControlled;
 
 	std::shared_ptr<CGameObject> gameObject;
@@ -2557,6 +2561,7 @@ bool Client::CClientReplication::Commit_PlayerSpawn(
 		spawned.eCharacterClass,
 		LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL,
 		spawned.strNickName,
+		spawned.iVoiceType,
 		float3_t(
 			spawned.fPositionX,
 			spawned.fPositionY,
@@ -4513,6 +4518,7 @@ Client::CClientReplication::Replace_CharacterClass(
 		snapshot.eCharacterClass,
 		snapshot.eMadnessForm,
 		oldRecord.strNickName,
+		oldRecord.iVoiceType,
 		float3_t(snapshot.fPositionX, snapshot.fPositionY, snapshot.fPositionZ),
 		snapshot.fYawDegrees,
 		isLocallyControlled,
