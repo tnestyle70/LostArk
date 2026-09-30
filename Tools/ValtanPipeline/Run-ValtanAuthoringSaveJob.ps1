@@ -8,6 +8,8 @@ param(
     [string]$DraftPatchPath = '',
     [switch]$SourceOnly,
     [string]$SourceBaselineRoot = '',
+    [string]$CombatObjectSoundBaselinePath = '',
+    [string]$CombatObjectSoundCandidatePath = '',
     [string]$PatternSoundBaselinePath = '',
     [string]$PatternSoundCandidatePath = '',
     [string]$PatternShakeBaselinePath = '',
@@ -123,6 +125,8 @@ try {
             throw 'COMMIT_FAILED: Effect V2 baseline, candidate, and Reload read-set paths must be provided together.'
         }
         $pairs = @(
+            @('-CombatObjectSoundBaselinePath', $CombatObjectSoundBaselinePath),
+            @('-CombatObjectSoundCandidatePath', $CombatObjectSoundCandidatePath),
             @('-PatternSoundBaselinePath', $PatternSoundBaselinePath),
             @('-PatternSoundCandidatePath', $PatternSoundCandidatePath),
             @('-PatternShakeBaselinePath', $PatternShakeBaselinePath),

@@ -129,3 +129,95 @@ CHANNEL의 기존 +0.5m 높이와 성공/timeout 복귀는 유지한다. 높이�
 광역 contract의 과거 저작 상수 실패는 별도 증거로 보존한다. 이번 변경의 무돌 회복·현재 타임라인은
 기존 valtan-presentation 검증에 연결하고, 쿠크 난수 피해는 정확한 고정 피해 대신 허용범위와
 실제 DamageEvent/HP 일치·발동 횟수를 검사한다. 새 CLI나 별도 제품 우회는 만들지 않는다.
+
+
+## G14. 공중 넉백 다음 속박의 지면 복원 계약
+
+실행 중 Server 진단은 Debug tick18920과 Release tick14443에서 모두
+world-update.pattern-stage-transition / Boss player-bind restore pose is not navigable을
+기록했다. 이 로그에는 대상 XYZ가 없어 실제 프레임의 공중 높이를 확정할 수 없다.
+현재 Stage는 target의 현재 Y와 지면의 차이가1.5m를 넘으면 방을 중단하지만,
+Valtan의 정상 대상 선택은 KNOCKDOWN을 허용한다. FOUR_SLASH의 강제 재발사 넉백은
+첫 supportY를 유지하며 공중에서 다음 발사를 시작하므로 Bind 진입 시 현재 Y와
+복원용 지면 Y를 구분해야 한다.
+
+GameRoom_BossStageActions.cpp에 file-local 지면 resolver를 두고 Stage와 Commit이
+같은 함수를 사용한다. 유효한 진행 중 bounded ballistic reaction만 supportY를
+navigation hint로 사용하며, 그 외에는 현재 Y를 사용한다. 실제 탐색 지면과 기준 Y의
+기존1.5m 제한, walkability, finite 검증은 유지한다. Commit은 검증된 지면 XYZ를
+저장하고 그 지면+5m에 속박한다. 기존 Cancel_PlayerActionForPatternStatus가 호출하는
+Clear_Attachment와 넉백 초기화가 비행을 종료하므로 전역 취소 경로는 수정하지 않는다.
+거절 때만 대상 ID/현재 XYZ/탐색 지면/ballistic 상태/supportY와 실패 이유를 상태에 남긴다.
+
+기존 ServerGameplayContractTests_ValtanRevision.cpp에서 게시 FOUR_SLASH의 실제
+contact 시간과 수치로 Arm_PlayerHitReaction과 Advance_PlayerKnockback을 실행한다.
+구1.5m 조건이 실패하는 결정적 공중 pose를 먼저 기록하고 실제 Brain→Stage→Commit의
+Bind 입장, 비행 종료, EXIT 지면 복원을 검증한다. invalid support, nonfinite support,
+비넉백 floating target은 계속 거절해야 한다. 수정 전 StageActions를 out에 보관한 뒤
+같은 새 native fixture를 구코드와 수정코드로 각각 실행하여 FAIL→PASS를 비교한다.
+기존 --valtan-presentation-contract-test의 Run_ValtanRevision에 연결하며 새 CLI,
+헤더/public 구조체, project/filter 파일은 추가하지 않는다. 통합 빌드는 root가 수행한다.
+
+## G15. 실제 속박 대상 위의 한 번짜리 상태 문구
+
+사용자는 실제 속박된 플레이어 위에 보라색 ‘속박’을 한 번 표시하도록 요청했다.
+위치 이동과 Server 속박 동작은 변경하지 않는다. 기존 CReplicatedPlayerHealth의
+read-only player entity join에 PLAYER_SNAPSHOT의 isPatternBound와 iPatternBindEndTick을
+보존하고, Level_ValtanArena::Update_StatusEffectText가 살아 있는 모든 복제 player view를
+기존 CStatusEffectTextView에 전달한다. local player나 보스 위치로 치환하지 않는다.
+
+속박 중이며 Server deadline이 0이 아닐 때 해당 deadline을 occurrence key로 사용한다.
+기존 view의 owner entity ID·word별 last key가 지속 snapshot의 중복을 막고, 다음 속박의
+새 deadline은 다시 표시한다. 단어는 속박, 색은 기존 보라색 상태 문구 팔레트0x8041D9다.
+기존 character Transform의 현재 위치+1.6m, 폰트·애니메이션·상태 문구 표시 옵션·수명과
+Render 경로를 재사용한다. 새 packet, UI socket 접근, ImGui 제품 문구 또는 renderer는 없다.
+
+변경 파일은 Client/Public/ReplicatedPlayerHealth.h와 Client/Private/Level_ValtanArena.cpp다.
+snapshot→entity join의 두 필드, 동일 key 반복과 새 deadline 재진입, 서로 다른 두 대상의
+독립 occurrence를 작은 소비자 검사로 대조한다. 제품 컴파일은 root 통합 Debug/Release를
+따르며 화면 위치·색의 최종 판정은 사용자가 한다. 새 제품 파일/project/filter 등록은 없다.
+
+## G16. 전원 붙잡기 중단 뒤 Next 예약 해제 검증
+
+최종 Debug lifecycle에서 전원 붙잡기 fixture 한 항목이 실패했다. out 전용 진단에서
+CATCH_COUNTER tick415, EXECUTE_TAIL tick460, 전원 즉사와 attachment 해제, tick506의
+ABORTED, Next 미승격을 확인했다. 유일한 불일치는 종료 후 audition epoch를 보존한다는
+검사 조건이다. 실제 Cancel_ValtanPatternIdAudition은 원래 epoch로 본 occurrence와
+예약 Next의 ABORTED를 통지한 뒤 상태를 INACTIVE/epoch0으로 초기화한다.
+
+ServerGameplayContractTests_ValtanResetlessNext.cpp의 해당 fixture만 교정한다.
+기존 45tick, 정확한 즉사 damage event, HP·world epoch 보존과 완료 부재를 유지하고,
+원래 epoch·pattern sequence·revision으로 상관된 두 ABORTED 통지, INACTIVE/epoch0,
+빈 Next 예약과 counter-success event 부재를 검증한다. 제품 gameplay 코드는 바꾸지 않는다.
+
+수정한 전체 원본 TU를 out object로 최소 컴파일하고, 최신 원본의 공통 lambda와 해당
+fixture 본문을 그대로 추출한 진단 EXE를 기존 제품 Debug object에 연결해 재실행한다.
+원래 전체 suite의 239 PASS/1 FAIL 로그와 수정 후 단일 fixture 결과를 분리한다.
+실행 중 사용자의 EXE를 교체하거나 종료하지 않으며 새 프로젝트 등록은 없다.
+
+## G17. 왼손 찍기 해제의 실제 손 방향과 안전한 지면
+
+제품 Tick을 이용한2인 partial capture에서45/135/225도 세 방향은 CATCH_SLAM의
+살아 있는 플레이어를 walkable0/collision-clear0 좌표로 해제했다. 기존 Server는 포획
+당시 actor-local offset을 그대로 유지한다. Client는 잡힘 중 실제 왼손 bone를 그리다가
+해제 시 Server XYZ로0.2초 보간하므로 두 좌표의 차이가 뒤쪽 보정으로 나타난다.
+
+설치된 원본 mesh_att_battle_13_05-1의 source1500ms에서 b_root 회전은 포획 때보다
+Y180도다. 제품의 root translation 억제, native0.0001, visualYaw−90도, actorScale1.4를
+적용한 왼손은 actor-local right+0.599339m/forward−2.037886m다. 손기준 grip의 up−0.9m는
+바닥 Y를 정하는 값이 아니므로 nav 지면을 사용한다. 이 값은 임의 yaw 보정이 아니라
+현재 source clip의 실측 landing anchor다. 같은 clip/source1500/rate1을 사용하는
+VALTAN_TRASH, VALTAN_TRASH_CATCH_SUCCESS, VALTAN_TRASH_CATCH_IF CATCH_SLAM에만 적용한다.
+
+GameRoom_BossStageActions.cpp의 기존 Prepare_GrabbedPlayerImpact에서 살아남는
+DAMAGE_GRABBED_PLAYERS만 같은 Stage→Commit 거래 안에서 착지를 준비한다. source-derived
+손 XZ를 boss yaw로 월드변환하고, 같은층·같은 nav grid·정확 walkability·충돌 clearance를
+검사한다. 손 주변1.8m 이내의 좁은 지면 보정만 허용하고 actor 반대편이나 다른 층,
+스폰지점으로 대체하지 않는다. 정확한 지면이 없으면 기존 원자적 실패를 유지한다.
+이1.8m와1.5m 높이 허용은 gameplay 안전 범위이며 원본 손 실측값과 구분한다.
+전원 EXECUTE 처형, 일반 Release_PlayerAttachment, 쿠크 hook, arena ejection은 변경하지 않는다.
+
+기존 native fixture에8방향 착지·near-wall·바닥 파괴 조건·손 근처 막힘 보정·invalid 입력의
+원자적 거절을 추가한다. 원본 gameplay object와 수정 object를 동일 out fixture에 연결해
+FAIL→PASS를 확인하고 실제 제품 빌드는 통합 담당이 수행한다. 새 public 헤더/패킷,
+C++ 파일/project/filter 등록 또는 Client 위치 보정 경로는 추가하지 않는다.

@@ -32,6 +32,9 @@ struct VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT final
 	uint32_t iFormatVersion = 0u;
 	std::string strOwnerArchetypeId;
 	std::vector<VALTAN_COMBAT_OBJECT_SOUND_CUE> Cues;
+	std::string strSourceBytes;
+	uint64_t iDraftGeneration = 0u;
+	bool_t bDraftDirty = false;
 };
 
 /* Opaque recovery state for a joined Workbench Save. Once Begin returns
@@ -78,6 +81,13 @@ public:
 	static bool_t Load_Source(
 		VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT& inOutDocument,
 		std::string& strOutStatus);
+	// Only stages memory; the canonical owner transaction owns disk replacement.
+	static bool_t Update_CueDraft(VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT& document,
+		const std::string& bindingId, const std::string& soundEvent, uint32_t playbackOffsetMs, std::string& status);
+	static bool_t Prepare_Save(const VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT& document,
+		std::string& baseline, std::string& candidate, uint64_t& generation, std::string& status);
+	static bool_t Accept_Save(VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT& document,
+		uint64_t generation, const std::string& candidate, std::string& status);
 	static bool_t Validate_SourceDraft(
 		const VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT& document,
 		std::string& strOutStatus);

@@ -443,6 +443,7 @@ bool_t Client::CValtanCombatObjectSoundCueDocument::Parse_Text(
 				std::tuple(right.strCombatObjectArchetypeId,
 					Resolve_SourceId(right), right.strBindingId);
 		});
+	staged.strSourceBytes = std::string(cueText);
 	inOutDocument = std::move(staged);
 	outStatus = "Parsed " + std::to_string(inOutDocument.Cues.size()) +
 		" Server-event-qualified Valtan combat-object Sound cue(s).";
@@ -496,6 +497,60 @@ bool_t Client::CValtanCombatObjectSoundCueDocument::Validate_SourceDraft(
 	}
 	outStatus = "Validated " + std::to_string(staged.Cues.size()) +
 		" Server-event-qualified Valtan Sound cue(s).";
+	return true;
+}
+
+bool_t Client::CValtanCombatObjectSoundCueDocument::Update_CueDraft(
+	VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT& document, const std::string& bindingId,
+	const std::string& soundEvent, const uint32_t playbackOffsetMs, std::string& status)
+{
+	if (document.strSourceBytes.empty() || !Is_StableId(soundEvent) || playbackOffsetMs > 600000u)
+	{ status = "Combat-object Sound baseline or event/offset is invalid; draft preserved."; return false; }
+	auto candidate = document;
+	const auto found = std::find_if(candidate.Cues.begin(), candidate.Cues.end(),
+		[&](const auto& cue) { return cue.strBindingId == bindingId; });
+	if (found == candidate.Cues.end())
+	{ status = "Combat-object Sound binding no longer exists; draft preserved."; return false; }
+	if (found->strSoundEvent == soundEvent && found->iPlaybackOffsetMs == playbackOffsetMs)
+	{ status = "Combat-object Sound is unchanged."; return true; }
+	found->strSoundEvent = soundEvent; found->iPlaybackOffsetMs = playbackOffsetMs;
+	std::string product;
+	VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT staged;
+	if (!Read_File(Resolve_CombatObjectProductPath(), product) ||
+		!Parse_Text(Serialize_Document(candidate), product, staged, status) ||
+		!Validate_CatalogAssets(staged, status)) return false;
+	staged.strSourceBytes = document.strSourceBytes;
+	staged.iDraftGeneration = document.iDraftGeneration + 1u;
+	staged.bDraftDirty = true;
+	document = std::move(staged);
+	status = "Combat-object Sound draft changed. Save & Publish applies the event and source offset.";
+	return true;
+}
+
+bool_t Client::CValtanCombatObjectSoundCueDocument::Prepare_Save(
+	const VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT& document, std::string& baseline,
+	std::string& candidate, uint64_t& generation, std::string& status)
+{
+	baseline.clear(); candidate.clear(); generation = document.iDraftGeneration;
+	if (!document.bDraftDirty) return true;
+	if (document.strSourceBytes.empty())
+	{ status = "Combat-object Sound Save baseline is unavailable."; return false; }
+	if (!Validate_SourceDraft(document, status)) return false;
+	baseline = document.strSourceBytes; candidate = Serialize_Document(document);
+	return true;
+}
+
+bool_t Client::CValtanCombatObjectSoundCueDocument::Accept_Save(
+	VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT& document, const uint64_t generation,
+	const std::string& candidate, std::string& status)
+{
+	if (document.iDraftGeneration != generation || Serialize_Document(document) != candidate)
+	{ status = "Combat-object Sound draft changed while Save completed; local edits preserved."; return false; }
+	std::string disk;
+	if (!Read_File(Resolve_Path(), disk) || disk != candidate)
+	{ status = "Saved combat-object Sound bytes changed before accept; draft preserved."; return false; }
+	document.strSourceBytes = candidate; document.bDraftDirty = false;
+	status = "Accepted saved combat-object Sound owner generation.";
 	return true;
 }
 

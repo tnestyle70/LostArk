@@ -18,12 +18,141 @@
 #include <limits>
 #include <new>
 #include <set>
+#include <sstream>
 #include <string_view>
 #include <utility>
 
 #include "GameRoom_Internal.h"
 
 using namespace GameRoomDetail;
+
+namespace
+{
+
+	bool Resolve_ValtanGrabSlamGround(const LostArk::Server::SERVER_PLAYER& player,
+		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
+		const LostArk::Server::CServerNavigation& navigation,
+		const LostArk::Server::CServerCollisionSystem& collision,
+		LostArk::Server::SERVER_NAV_POINT& landing, std::string& status)
+	{
+		using namespace LostArk::Server;
+		// Installed mesh_att_battle_13_05-1 at source 1500 ms: translation-suppressed
+		// b_root, native 0.0001, visual yaw -90 degrees, actor scale 1.4. The clip
+		// turns its body 180 degrees; the capture-time +Z offset is behind its palm.
+		constexpr float handRightM = 0.599339f;
+		constexpr float handForwardM = -2.037886f;
+		// Gameplay clearance bounds, separate from the measured source pose.
+		constexpr float maximumCorrectionM = 1.8f;
+		constexpr float maximumHeightDifferenceM = 1.5f;
+		if (!navigation.Is_Loaded() || !std::isfinite(boss.fPositionX) ||
+			!std::isfinite(boss.fPositionY) || !std::isfinite(boss.fPositionZ) ||
+			!std::isfinite(boss.fYawDegrees))
+		{
+			status = "Valtan grab slam has no finite owner or loaded landing navigation";
+			return false;
+		}
+		const float radians = boss.fYawDegrees * DEGREES_TO_RADIANS;
+		const float sine = std::sin(radians), cosine = std::cos(radians);
+		const float offsetX = handRightM * cosine + handForwardM * sine;
+		const float offsetZ = -handRightM * sine + handForwardM * cosine;
+		const float desiredX = boss.fPositionX + offsetX;
+		const float desiredZ = boss.fPositionZ + offsetZ;
+		float bestDistanceSquared = (std::numeric_limits<float>::max)();
+		const auto admit = [&](const float x, const float z)
+		{
+			const float dx = x - desiredX, dz = z - desiredZ;
+			const float distanceSquared = dx * dx + dz * dz;
+			SERVER_NAV_POINT ground{};
+			if (!std::isfinite(distanceSquared) ||
+				distanceSquared > maximumCorrectionM * maximumCorrectionM ||
+				distanceSquared >= bestDistanceSquared ||
+				(x - boss.fPositionX) * offsetX + (z - boss.fPositionZ) * offsetZ <= 0.f ||
+				!navigation.Is_InSameNavigationGrid(boss.fPositionX, boss.fPositionZ, x, z) ||
+				!navigation.Is_PointWalkableExact(x, z, boss.fPositionY) ||
+				!navigation.Sample_Position(x, z, ground, boss.fPositionY) ||
+				!std::isfinite(ground.y) ||
+				std::abs(ground.y - boss.fPositionY) > maximumHeightDifferenceM ||
+				!navigation.Has_LineOfSight(boss.fPositionX, boss.fPositionZ, x, z, boss.fPositionY) ||
+				!collision.Is_PlayerPositionClear(x, ground.y, z, player.iNetEntityId))
+			{
+				return false;
+			}
+			landing = ground;
+			bestDistanceSquared = distanceSquared;
+			return true;
+		};
+		if (admit(desiredX, desiredZ)) return true;
+		SERVER_NAV_POINT projected{};
+		if (navigation.Project_PointOnSameLevel(desiredX, desiredZ, projected, boss.fPositionY))
+			(void)admit(projected.x, projected.z);
+		// A nearest navigation cell can still overlap a collision body. Search only
+		// the palm's bounded neighbourhood, never a spawn or an opposite-side deck.
+		const float step = std::clamp(navigation.Get_CellSize(), 0.1f, 0.25f);
+		const int radius = static_cast<int>(std::ceil(maximumCorrectionM / step));
+		for (int z = -radius; z <= radius; ++z)
+			for (int x = -radius; x <= radius; ++x)
+				(void)admit(desiredX + static_cast<float>(x) * step,
+					desiredZ + static_cast<float>(z) * step);
+		if (bestDistanceSquared < (std::numeric_limits<float>::max)()) return true;
+		std::ostringstream detail;
+		detail.precision(9);
+		detail << "Valtan grab slam has no nearby same-level clear palm landing: target="
+			<< player.iNetEntityId << " bossXYZ=" << boss.fPositionX << ',' << boss.fPositionY << ','
+			<< boss.fPositionZ << " yaw=" << boss.fYawDegrees << " palmXZ=" << desiredX << ',' << desiredZ;
+		status = detail.str();
+		return false;
+	}
+	bool Resolve_BossPlayerBindGround(const LostArk::Server::SERVER_PLAYER& player,
+		const LostArk::Server::CServerNavigation& navigation,
+		LostArk::Server::SERVER_NAV_POINT& ground, std::string& status)
+	{
+		using namespace LostArk::Shared;
+		const bool activeBallistic = player.bKnockbackBallistic && player.fKnockbackRemainingSeconds > 0.f;
+		const float referenceY = activeBallistic ? player.fKnockbackSupportY : player.fPositionY;
+		bool sampled = false;
+		const auto reject = [&](const char* reason)
+		{
+			std::ostringstream detail;
+			detail.precision(9);
+			detail << "Boss player-bind restore pose is not navigable: reason=" << reason
+				<< " target=" << player.iNetEntityId
+				<< " currentXYZ=" << player.fPositionX << ',' << player.fPositionY << ',' << player.fPositionZ
+				<< " groundSampled=" << sampled << " groundY=";
+			if (sampled) detail << ground.y;
+			else detail << "unavailable";
+			detail << " ballistic=" << player.bKnockbackBallistic << " activeBallistic=" << activeBallistic
+				<< " remaining=" << player.fKnockbackRemainingSeconds << " supportY=" << player.fKnockbackSupportY
+				<< " referenceY=" << referenceY << " action=" << static_cast<unsigned>(player.eAction)
+				<< " canLeaveArena=" << player.bKnockbackCanLeaveArena << " arenaEjection=" << player.bArenaEjectionActive;
+			status = detail.str();
+			return false;
+		};
+		if (!std::isfinite(player.fPositionX) || !std::isfinite(player.fPositionY) ||
+			!std::isfinite(player.fPositionZ))
+			return reject("nonfinite-position");
+		if (player.bKnockbackBallistic && !std::isfinite(player.fKnockbackRemainingSeconds))
+			return reject("nonfinite-ballistic-time");
+		if (activeBallistic &&
+			(player.eAction != PLAYER_ACTION_STATE::KNOCKDOWN || player.bKnockbackCanLeaveArena ||
+			 player.bArenaEjectionActive || player.bWaterpangLaunch ||
+			 !std::isfinite(player.fKnockbackVelocityY) || !std::isfinite(player.fKnockbackGravityMps2) ||
+			 player.fKnockbackGravityMps2 <= 0.f))
+			return reject("invalid-bounded-ballistic-state");
+		if (!std::isfinite(referenceY)) return reject("nonfinite-reference-height");
+		if (!navigation.Is_Loaded()) return reject("navigation-unloaded");
+		if (!navigation.Is_PointWalkableExact(player.fPositionX, player.fPositionZ, referenceY))
+			return reject("nonwalkable-ground");
+		sampled = navigation.Sample_Position(player.fPositionX, player.fPositionZ, ground, referenceY);
+		if (!sampled) return reject("ground-sample-failed");
+		if (!std::isfinite(ground.x) || !std::isfinite(ground.y) || !std::isfinite(ground.z) ||
+			!std::isfinite(ground.y + 5.f))
+			return reject("nonfinite-ground");
+		// A launched target keeps its original support floor while its current Y follows the arc.
+		// Ordinary/floating targets retain the existing current-Y guard without any wider tolerance.
+		if (std::abs(ground.y - referenceY) > 1.5f) return reject("ground-height-mismatch");
+		return true;
+	}
+}
 
 LostArk::Server::SERVER_PLAYER* LostArk::Server::CGameRoom::Select_BossRandomAliveTarget(
 	const SERVER_WORLD_ENTITY& boss, const std::string& actionId,
@@ -268,23 +397,14 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 				!target->second.isCombatReady || target->second.Is_Guide() || target->second.bPatternBound ||
 				PLAYER_ACTION_STATE::DEAD == target->second.eAction ||
 				PLAYER_ACTION_STATE::FALLING == target->second.eAction ||
-				PLAYER_ACTION_STATE::GRABBED == target->second.eAction ||
-				!m_ServerNavigation.Is_Loaded() ||
-				!m_ServerNavigation.Is_PointWalkableExact(
-					target->second.fPositionX, target->second.fPositionZ))
+				PLAYER_ACTION_STATE::GRABBED == target->second.eAction)
 			{
 				m_strStatus = "Boss player-bind target is not an admitted alive target";
 				return false;
 			}
 			SERVER_NAV_POINT ground{};
-			if (!m_ServerNavigation.Sample_Position(
-				target->second.fPositionX, target->second.fPositionZ, ground) ||
-				std::abs(ground.y - target->second.fPositionY) > 1.5f ||
-				!std::isfinite(target->second.fPositionY + 5.f))
-			{
-				m_strStatus = "Boss player-bind restore pose is not navigable";
+			if (!Resolve_BossPlayerBindGround(target->second, m_ServerNavigation, ground, m_strStatus))
 				return false;
-			}
 			break;
 		}
 		case BOSS_PATTERN_STAGE_ACTION_KIND::SET_PLAYER_SILENCE:
@@ -1033,6 +1153,19 @@ bool LostArk::Server::CGameRoom::Prepare_GrabbedPlayerImpact(
 			(std::min)(player.iCurrentHp,
 				CGameplayCatalog::Apply_Defense(rawDamage, profile->iDefense));
 		staged.iCurrentHp -= amount;
+		const bool valtanPalmSlam = damage && staged.iCurrentHp > 0u &&
+			boss.strArchetypeId == "BOSS_VALTAN" && boss.strPatternStageId == "CATCH_SLAM" &&
+			(boss.strPatternId == "VALTAN_TRASH" || boss.strPatternId == "VALTAN_TRASH_CATCH_SUCCESS" ||
+			 boss.strPatternId == "VALTAN_TRASH_CATCH_IF");
+		if (valtanPalmSlam)
+		{
+			SERVER_NAV_POINT landing{};
+			if (!Resolve_ValtanGrabSlamGround(player, boss, m_ServerNavigation,
+				m_ServerCollisionSystem, landing, m_strStatus)) return false;
+			staged.fPositionX = landing.x;
+			staged.fPositionY = landing.y;
+			staged.fPositionZ = landing.z;
+		}
 		if (!Release_PlayerAttachment(staged, boss.iNetEntityId,
 			0.f, 0u, false, 0u, serverTick))
 		{
@@ -1051,9 +1184,9 @@ bool LostArk::Server::CGameRoom::Prepare_GrabbedPlayerImpact(
 		DAMAGE_EVENT event{};
 		event.iTargetNetEntityId = player.iNetEntityId;
 		event.iAmount = amount;
-		event.fPositionX = player.fPositionX;
-		event.fPositionY = player.fPositionY;
-		event.fPositionZ = player.fPositionZ;
+		event.fPositionX = stagedPlayers.at(playerId).fPositionX;
+		event.fPositionY = stagedPlayers.at(playerId).fPositionY;
+		event.fPositionZ = stagedPlayers.at(playerId).fPositionZ;
 		event.isOutgoing = false;
 		stagedDamageEvents.push_back(event);
 	}
@@ -1183,10 +1316,13 @@ bool LostArk::Server::CGameRoom::Commit_BossPatternPlayerStageActions(
 					});
 				if (m_Players.end() == target)
 					return false;
+				SERVER_NAV_POINT ground{};
+				if (!Resolve_BossPlayerBindGround(target->second, m_ServerNavigation, ground, m_strStatus))
+					return false;
 				SERVER_PLAYER staged = target->second;
-				const float restoreX = staged.fPositionX;
-				const float restoreY = staged.fPositionY;
-				const float restoreZ = staged.fPositionZ;
+				const float restoreX = ground.x;
+				const float restoreY = ground.y;
+				const float restoreZ = ground.z;
 				const float restoreYaw = staged.fYawDegrees;
 				const bool restoreCombatReady = staged.isCombatReady;
 				Cancel_PlayerActionForPatternStatus(staged);
@@ -1201,6 +1337,8 @@ bool LostArk::Server::CGameRoom::Commit_BossPatternPlayerStageActions(
 				staged.fPatternBindRestoreZ = restoreZ;
 				staged.fPatternBindRestoreYawDegrees = restoreYaw;
 				staged.bPatternBindRestoreCombatReady = restoreCombatReady;
+				staged.fPositionX = restoreX;
+				staged.fPositionZ = restoreZ;
 				staged.fPositionY = restoreY +
 					static_cast<float>(action.iValue) / 1000.f;
 				stagedPlayers.emplace(target->first, std::move(staged));

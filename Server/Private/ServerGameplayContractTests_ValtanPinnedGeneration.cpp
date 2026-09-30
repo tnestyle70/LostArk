@@ -263,6 +263,120 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 					!reachedExecution,
 					"Trash windup consumes an in-proxy active Counter guard without damage, enters groggy, and completes without capture or execution");
 		}
+
+		// Product-tick traces place the palm near these walls. Cover every heading
+		// and the surviving central floor without replaying unrelated encounter time.
+		struct SLAM_LANDING_SAMPLE { float x, z, yaw; };
+		constexpr std::array<SLAM_LANDING_SAMPLE, 8u> landingSamples{{
+			SLAM_LANDING_SAMPLE{156.03f,-117.629f,0.f}, {162.192f,-115.898f,45.f},
+			{160.865f,-122.06f,90.f}, {161.768f,-127.798f,135.f},
+			{156.03f,-126.021f,180.f}, {149.899f,-128.191f,225.f},
+			{151.973f,-122.06f,270.f}, {149.185f,-115.215f,315.f} }};
+		for (const auto arena : { VALTAN_TIMELINE_ARENA_STATE::FRESH,
+			VALTAN_TIMELINE_ARENA_STATE::ORDINARY_WALLS_GONE,
+			VALTAN_TIMELINE_ARENA_STATE::FLOOR84_GONE,
+			VALTAN_TIMELINE_ARENA_STATE::FLOOR84_AND_30_GONE })
+		{
+			auto room = prepareRoom();
+			auto& boss = room->m_WorldEntities.front();
+			boss.iPatternSequence = 1u;
+			WORLD_DESTRUCTION_TRANSACTION destruction{};
+			std::vector<std::string> gone;
+			std::string status;
+			const bool arenaReady = room->Prepare_ValtanTimelineArenaState(
+				room->m_WorldDestructionRuntime, boss, arena, 100u, destruction, gone, status) &&
+				(destruction.Transitions.empty() || room->Commit_WorldDestructionTransaction(
+					destruction, {}, 100u, status));
+			tests.Require(arenaReady, "Prepare the actual Valtan wall and collapsed-floor state for palm landing");
+			if (!arenaReady) continue;
+			const auto originalPlayers = room->m_Players;
+			for (const auto& sample : landingSamples)
+			{
+				room->m_Players = originalPlayers;
+				room->m_TickDamageEvents.clear();
+				boss.fPositionX = (arena == VALTAN_TIMELINE_ARENA_STATE::FRESH || arena == VALTAN_TIMELINE_ARENA_STATE::ORDINARY_WALLS_GONE) ? sample.x : 156.03f;
+				boss.fPositionZ = (arena == VALTAN_TIMELINE_ARENA_STATE::FRESH || arena == VALTAN_TIMELINE_ARENA_STATE::ORDINARY_WALLS_GONE) ? sample.z : -122.06f;
+				boss.fPositionY = 22.9975f;
+				boss.fYawDegrees = sample.yaw;
+				boss.strPatternId = "VALTAN_TRASH";
+				boss.strPatternStageId = "CATCH_SLAM";
+				boss.strActionId = stageById("CATCH_SLAM").strActionId;
+				boss.eAction = SERVER_ENTITY_ACTION::PATTERN_ACTIVE;
+				room->Refresh_PlayerBlockingBodies();
+				auto& player = room->m_Players.at(19200u);
+				const float radians = sample.yaw * 3.14159265358979323846f / 180.f;
+				player.fPositionX = boss.fPositionX + std::sin(radians) * 2.f;
+				player.fPositionY = boss.fPositionY;
+				player.fPositionZ = boss.fPositionZ + std::cos(radians) * 2.f;
+				const bool captured = room->Capture_PlayerAttachment(player.iNetEntityId,
+					boss.iNetEntityId, PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND, 101u);
+				const auto hpBefore = player.iCurrentHp;
+				const auto capturedPlayer = player;
+				const bool ownerOnFloor = room->m_ServerNavigation.Is_PointWalkableExact(
+					boss.fPositionX, boss.fPositionZ, boss.fPositionY);
+				const bool committed = captured && room->Apply_BossPatternStageTransition(boss,
+					boss.strPatternId, stageById("CATCH_PRE_IMPACT").strActionId,
+					boss.strPatternId, boss.strActionId, boss.PinnedDefinitionRevision,
+					boss.PinnedDefinitionRevision, 102u);
+				SERVER_NAV_POINT ground{};
+				const float dx = player.fPositionX - boss.fPositionX, dz = player.fPositionZ - boss.fPositionZ;
+				const bool grounded = room->m_ServerNavigation.Is_PointWalkableExact(
+					player.fPositionX, player.fPositionZ, player.fPositionY) &&
+					room->m_ServerNavigation.Sample_Position(player.fPositionX, player.fPositionZ, ground, player.fPositionY) &&
+					std::abs(ground.y - player.fPositionY) < 0.001f &&
+					room->m_ServerCollisionSystem.Is_PlayerPositionClear(
+						player.fPositionX, player.fPositionY, player.fPositionZ, player.iNetEntityId);
+				if (!ownerOnFloor)
+				{
+					// The live rush destroys contacted walls before reaching these points.
+					// Placing that same root inside an intact Fresh wall is inadmissible.
+					tests.Require(captured && !committed && player.iCurrentHp == capturedPlayer.iCurrentHp &&
+						player.eAction == capturedPlayer.eAction &&
+						player.iAttachmentOwnerNetEntityId == capturedPlayer.iAttachmentOwnerNetEntityId &&
+						player.fPositionX == capturedPlayer.fPositionX && player.fPositionY == capturedPlayer.fPositionY &&
+						player.fPositionZ == capturedPlayer.fPositionZ && room->m_TickDamageEvents.empty(),
+						"An impossible Trash root inside an intact wall rejects impact atomically instead of crossing the wall");
+					continue;
+				}
+				tests.Require(committed && grounded && player.iCurrentHp > 0u && player.iCurrentHp < hpBefore &&
+					player.eAction == PLAYER_ACTION_STATE::NONE && player.isCombatReady &&
+					player.eAttachmentSlot == PLAYER_ATTACHMENT_SLOT::NONE &&
+					dx * std::sin(radians) + dz * std::cos(radians) < 0.f &&
+					room->m_TickDamageEvents.size() == 1u &&
+					room->m_TickDamageEvents.front().iAmount == hpBefore - player.iCurrentHp,
+					"Trash slam lands its living capture beside the rotated palm on clear navigable ground at every heading");
+				const auto landed = player;
+				room->m_PlayerIdBySessionId.insert_or_assign(19400u, player.iPlayerId);
+				C2S_MOVE move{}; move.iClientSequence = 1u;
+				const float away = std::hypot(dx, dz);
+				move.fGoalX = player.fPositionX + dx / away * 0.5f;
+				move.fGoalZ = player.fPositionZ + dz / away * 0.5f;
+				room->Handle_Move(19400u, move);
+				room->m_iServerTick = 102u;
+				room->Update_Players(1.f / 30.f);
+				tests.Require(committed && grounded && std::hypot(player.fPositionX - landed.fPositionX,
+					player.fPositionZ - landed.fPositionZ) > 0.001f,
+					"A released Trash survivor accepts a real move command and leaves the palm landing");
+			}
+			room->m_Players = originalPlayers;
+			room->m_TickDamageEvents.clear();
+			auto& rejected = room->m_Players.at(19200u);
+			rejected.fPositionX = boss.fPositionX + 2.f; rejected.fPositionY = boss.fPositionY;
+			rejected.fPositionZ = boss.fPositionZ;
+			const bool captured = room->Capture_PlayerAttachment(rejected.iNetEntityId,
+				boss.iNetEntityId, PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND, 200u);
+			const auto saved = rejected;
+			boss.fYawDegrees = (std::numeric_limits<float>::quiet_NaN)();
+			const bool accepted = room->Apply_BossPatternStageTransition(boss,
+				boss.strPatternId, stageById("CATCH_PRE_IMPACT").strActionId,
+				boss.strPatternId, boss.strActionId, boss.PinnedDefinitionRevision,
+				boss.PinnedDefinitionRevision, 201u);
+			tests.Require(captured && !accepted && rejected.iCurrentHp == saved.iCurrentHp &&
+				rejected.eAction == saved.eAction && rejected.iAttachmentOwnerNetEntityId == saved.iAttachmentOwnerNetEntityId &&
+				rejected.fPositionX == saved.fPositionX && rejected.fPositionY == saved.fPositionY &&
+				rejected.fPositionZ == saved.fPositionZ && room->m_TickDamageEvents.empty(),
+				"Invalid Trash palm landing rejects the whole impact before HP damage or attachment release");
+		}
 		{
 			auto room = prepareRoom();
 			SERVER_WORLD_ENTITY& boss = room->m_WorldEntities.front();

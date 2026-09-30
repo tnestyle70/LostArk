@@ -195,6 +195,7 @@ bool_t Client::CAnimation_Tool::Reload_ValtanPatternMaster()
 
 	m_ValtanPatternMasterView = std::move(Staged);
 	m_bValtanCompositionDraftPreviewReady = false;
+	m_ValtanCompositionObjectSoundPreview.reset();
 	m_ValtanCompositionDraftPreview = {};
 	m_eValtanPatternMasterAdmission =
 		VALTAN_VIEW_ADMISSION::ADMITTED;
@@ -1075,6 +1076,48 @@ void Client::CAnimation_Tool::Rebuild_ValtanPatternPreviewSounds()
 			std::to_string(m_ValtanPreviewSounds.size()) + " occurrences on the Stage clock.";
 }
 
+void Client::CAnimation_Tool::Append_ValtanCombatObjectPreviewSounds(const bool_t resetTransport)
+{
+	if (resetTransport)
+	{
+		for (const auto& sound : m_ValtanPreviewSounds)
+			if (sound.bCombatObject && sound.iHandle) CGameInstance::Get().Stop_SoundCue(sound.iHandle);
+		std::erase_if(m_ValtanPreviewSounds, [](const auto& sound) { return sound.bCombatObject; });
+	}
+	const auto boss = m_ValtanPatternMasterBoss.lock();
+	if (!boss) return;
+	const auto* document = m_ValtanCompositionObjectSoundPreview ? &*m_ValtanCompositionObjectSoundPreview :
+		(m_bValtanCombatObjectSoundCuesReady ? &m_ValtanCombatObjectSoundCues : nullptr);
+	if (!document) return;
+	std::vector<CValtan::LOCAL_COMBAT_OBJECT_SOUND_EVENT> events;
+	boss->Collect_LocalCombatObjectSoundEvents(events);
+	for (const auto& event : events)
+	{
+		if (std::any_of(m_ValtanPreviewSounds.begin(), m_ValtanPreviewSounds.end(),
+			[&](const auto& sound) { return sound.strOccurrenceId == event.strOccurrenceId; })) continue;
+		const auto cue = std::find_if(document->Cues.begin(), document->Cues.end(), [&](const auto& row) {
+			return row.strCombatObjectArchetypeId == event.strArchetypeId &&
+				(row.strHitId.empty() ? row.strPresentationEventId : row.strHitId) == event.strSourceId; });
+		if (cue == document->Cues.end() || cue->ResolvedAssetIds.empty()) continue;
+		if (m_ValtanPreviewSounds.size() >= 16384u)
+		{ m_strValtanPreviewSoundStatus = "Object Sound preview exceeds the 16384 occurrence limit."; break; }
+		VALTAN_PREVIEW_SOUND_OCCURRENCE sound;
+		sound.strOccurrenceId = event.strOccurrenceId;
+		sound.bCombatObject = true;
+		sound.fTimelineStartMs = event.fTimelineStartMs;
+		sound.iPlaybackOffsetMs = cue->iPlaybackOffsetMs;
+		uint64_t selection = 14695981039346656037ull;
+		for (const unsigned char c : sound.strOccurrenceId) selection = (selection ^ c) * 1099511628211ull;
+		sound.Path = CRuntimeAssetRoot::Resolve(cue->ResolvedAssetIds[selection % cue->ResolvedAssetIds.size()]).wstring();
+		uint32_t duration = 0u;
+		if (!sound.Path.empty() && CGameInstance::Get().Get_SoundDurationMs(sound.Path, duration) && duration > sound.iPlaybackOffsetMs)
+			sound.iDurationMs = duration - sound.iPlaybackOffsetMs;
+		else m_strValtanPreviewSoundStatus = "Object Sound source offset is outside the available WAV: " + cue->strSoundEvent;
+		// Retain failed/empty occurrences too: a frame must not repeatedly load a bad WAV.
+		m_ValtanPreviewSounds.push_back(std::move(sound));
+	}
+}
+
 void Client::CAnimation_Tool::Sample_ValtanPatternPreviewSounds(const bool_t bResetTransport)
 {
 	if (!m_bValtanPatternMasterPlaying ||
@@ -1085,6 +1128,7 @@ void Client::CAnimation_Tool::Sample_ValtanPatternPreviewSounds(const bool_t bRe
 	const f64_t fClockMs = Item.iTimelineStartMs +
 		static_cast<f64_t>(m_fValtanPatternMasterItemElapsedSeconds) * 1000.0;
 	const bool_t bReset = bResetTransport || fClockMs < m_fValtanPreviewSoundClockMs;
+	Append_ValtanCombatObjectPreviewSounds(bReset);
 	for (auto& Sound : m_ValtanPreviewSounds)
 	{
 		if (bReset)

@@ -75,6 +75,8 @@ namespace LostArk::Server
 		std::uint32_t iRawDamage = 0u;
 		std::uint32_t iStaggerDamage = 0u;
 		std::uint32_t iPartDamage = 0u;
+		// Trusted server policy: retire the complete eligible armor set in one hit.
+		bool bDestroyAllEligibleParts = false;
 		std::uint32_t iCounterPower = 0u;
 		bool bCounterFromPrimarySlot = false;
 		// Set only after the catalog COUNTER guard window admits its stage promotion.

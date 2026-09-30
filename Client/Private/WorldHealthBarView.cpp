@@ -146,6 +146,19 @@ bool Client::CWorldHealthBarView::Set_Offsets(const std::array<float2_t, 5>& off
 	return true;
 }
 
+bool Client::CWorldHealthBarView::Set_ValtanArmorBreakTuning(
+	const float2_t& offset, const float2_t& scale, const bool showDebug)
+{
+	if (!std::isfinite(offset.x) || !std::isfinite(offset.y) ||
+		std::abs(offset.x) > 1280.f || std::abs(offset.y) > 1280.f ||
+		!std::isfinite(scale.x) || !std::isfinite(scale.y) ||
+		scale.x < 0.1f || scale.x > 3.f || scale.y < 0.1f || scale.y > 3.f) return false;
+	m_ValtanArmorBreakOffset = offset;
+	m_ValtanArmorBreakScale = scale;
+	m_ShowValtanArmorBreakDebug = showDebug;
+	return true;
+}
+
 void Client::CWorldHealthBarView::Update(const f32_t timeDelta,
 	const std::vector<HUD_WORLD_HEALTH_BAR_STATE>& states, const bool allowed, const bool cardMazeActive)
 {
@@ -187,24 +200,28 @@ void Client::CWorldHealthBarView::Update(const f32_t timeDelta,
 		auto& bar = *found->second;
 		if (const auto valtan = std::dynamic_pointer_cast<CValtan>(state.pPresentation.lock()))
 		{
-			const bool ready = valtan->Is_ArmorBreakAvailable();
+			const bool ready = valtan->Is_ArmorBreakAvailable() || m_ShowValtanArmorBreakDebug;
 			if (ready && !bar.armorBreakView)
 			{
 				bar.armorBreakView = std::make_unique<CUILayoutRuntime>(m_Device, m_Context,
 					ETOUI(LEVEL::STATIC), TEXT("Layer_ValtanArmorBreak"), L"UI/HeadStatus/ValtanArmorBreak_Layout.json");
 				bar.armorBreakView->Set_UISortLayer(UI_TEXT_LAYER::WORLD - 1);
+				bar.armorBreakView->Set_AllSlotsVisible(false);
+				auto& base = bar.armorBreakBaseRect;
+				bar.hasArmorBreakBaseRect = bar.armorBreakView->Get_SlotRect("Valtan_ArmorBreakReady",
+					base.x, base.y, base.width, base.height) && base.width > 0.f && base.height > 0.f;
 			}
-			if (ready && bar.armorBreakView)
+			if (ready && bar.armorBreakView && bar.hasArmorBreakBaseRect)
 			{
-				f32_t rx = 0.f, ry = 0.f, width = 0.f, height = 0.f;
-				if (bar.armorBreakView->Get_SlotRect("Valtan_ArmorBreakReady", rx, ry, width, height))
-				{
-					bar.armorBreakView->Set_SlotPosition("Valtan_ArmorBreakReady",
-						screen.x * bar.armorBreakView->Get_ResolutionWidth() / viewport.x - width * 0.5f - 24.f,
-						screen.y * bar.armorBreakView->Get_ResolutionHeight() / viewport.y - 40.f);
-					bar.armorBreakView->Set_SlotVisible("Valtan_ArmorBreakReady", true);
-					bar.armorBreakView->Update(timeDelta);
-				}
+				const auto& base = bar.armorBreakBaseRect;
+				const f32_t width = base.width * m_ValtanArmorBreakScale.x;
+				const f32_t height = base.height * m_ValtanArmorBreakScale.y;
+				bar.armorBreakView->Set_SlotRect("Valtan_ArmorBreakReady",
+					screen.x * bar.armorBreakView->Get_ResolutionWidth() / viewport.x - width * 0.5f + m_ValtanArmorBreakOffset.x,
+					screen.y * bar.armorBreakView->Get_ResolutionHeight() / viewport.y + m_ValtanArmorBreakOffset.y,
+					width, height);
+				bar.armorBreakView->Set_SlotVisible("Valtan_ArmorBreakReady", true);
+				bar.armorBreakView->Update(timeDelta);
 			}
 			const f32_t remaining = valtan->Get_ArmorBreakFeedbackRemainingSeconds();
 			if (remaining > 0.f)

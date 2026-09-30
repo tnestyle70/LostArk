@@ -35,7 +35,7 @@ std::vector<std::string> Client::CClickMoveEffect::Queue_LevelResources(const LE
 		"effect.world.entry_aura", "effect.world.entry_aura.active", "effect.world.respawn_aura" })
 	{
 		if (std::string_view(id).find("aura") != std::string_view::npos &&
-			LEVEL::KAKULSAYDON_ARENA != level) continue;
+			LEVEL::KAKULSAYDON_ARENA != level && LEVEL::VALTAN_ARENA != level) continue;
 		if (id == DESTINATION_EFFECT_ID &&
 			LEVEL::KAKULSAYDON_ARENA != level && LEVEL::VALTAN_ARENA != level &&
 			LEVEL::MAHARAKA != level)

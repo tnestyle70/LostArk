@@ -2703,6 +2703,59 @@ bool Client::CBalanceTool::Get_ValtanCombatObjectRingHitDraft(
 	return true;
 }
 
+bool Client::CBalanceTool::Set_ValtanCombatObjectImpactDraft(
+	const std::string& patternId, const std::string& stageId, const std::string& archetypeId,
+	const VALTAN_COMBAT_OBJECT_HIT_VIEW& hit, uint32_t chainDelayMs, std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission("Valtan Object impact edit", status)) return false;
+	auto staged = m_valtanPatternTree;
+	auto* pattern = FindValtanPattern(staged, patternId);
+	auto* stage = pattern ? FindValtanStage(*pattern, stageId) : nullptr;
+	auto* object = stage ? FindValtanCombatObject(*stage, archetypeId) : nullptr;
+	auto* saved = object ? FindValtanCombatObjectHit(*object, hit.strHitId) : nullptr;
+	if (!pattern || !pattern->bAuthoringMasterManaged || !saved ||
+		hit.strHitShape != saved->strHitShape || hit.strTriggerKind != "TIMED" ||
+		hit.strTriggerKind != saved->strTriggerKind || hit.iRepeatCount != saved->iRepeatCount ||
+		hit.iRepeatIntervalMs != saved->iRepeatIntervalMs ||
+		hit.iRepeatCount == 0u ||
+		(hit.strHitShape != "CIRCLE" && hit.strHitShape != "RING") ||
+		!std::isfinite(hit.fInnerRadiusM) || !std::isfinite(hit.fOuterRadiusM) ||
+		hit.fInnerRadiusM < 0.f || hit.fInnerRadiusM >= hit.fOuterRadiusM || hit.fOuterRadiusM > 1000.f ||
+		(hit.strHitShape == "CIRCLE" && hit.fInnerRadiusM != 0.f) ||
+		hit.strServerDamageProfileId != saved->strServerDamageProfileId ||
+		!std::isfinite(hit.fPushRangeM) || hit.fPushRangeM < 0.f || hit.fPushRangeM > 1000.f ||
+		hit.iPushMs > 600000u || hit.iDownMs > 600000u ||
+		uint64_t(hit.iAtMs) + uint64_t(hit.iRepeatCount - 1u) * hit.iRepeatIntervalMs >= object->iLifetimeMs ||
+		(object->OwnerHitChain ? (chainDelayMs == 0u || uint64_t(chainDelayMs) + hit.iAtMs >= object->iLifetimeMs) : chainDelayMs != 0u))
+	{ status = "Impact edit requires the exact timed circle/ring owner, finite geometry and an in-lifetime clock."; return false; }
+	int64_t preparationDelta = 0;
+	if (!object->OwnerHitChain && !object->strPreparationEventId.empty())
+	{
+		const auto prep = std::find_if(object->PresentationEvents.begin(), object->PresentationEvents.end(),
+			[&](const auto& event) { return event.strPresentationEventId == object->strPreparationEventId; });
+		preparationDelta = int64_t(hit.iAtMs) - saved->iAtMs;
+		if (object->Hits.size() != 1u || prep == object->PresentationEvents.end() ||
+			prep->iAtMs >= saved->iAtMs || int64_t(prep->iAtMs) + preparationDelta < 0)
+		{ status = "Impact would truncate the original Effect preparation."; return false; }
+	}
+	// One archetype owns the hit, even when several patterns summon it.
+	for (auto* group : { &staged.Gimmicks, &staged.Rotation })
+		for (auto& owner : *group) for (auto& part : owner.Stages) for (auto& row : part.CombatObjectEffects)
+			if (row.strCombatObjectArchetypeId == archetypeId)
+			{
+				for (size_t i = 0u; i < row.Hits.size(); ++i)
+					if (row.Hits[i].strHitId == hit.strHitId)
+					{ row.Hits[i] = hit; if (i < row.HitOffsetsMs.size()) row.HitOffsetsMs[i] = hit.iAtMs; }
+				if (row.OwnerHitChain) row.OwnerHitChain->iDelayMs = chainDelayMs;
+				else for (auto& event : row.PresentationEvents)
+					if (event.strPresentationEventId == row.strPreparationEventId)
+						event.iAtMs = static_cast<uint32_t>(int64_t(event.iAtMs) + preparationDelta);
+			}
+	m_valtanPatternTree = std::move(staged); MarkDirty(true);
+	status = "Staged Object impact. Save publishes the collider, knockback and shared Effect/Sound hit clock.";
+	return true;
+}
+
 bool Client::CBalanceTool::Set_ValtanCombatObjectRingHitDraft(
 	const std::string& patternId,
 	const std::string& stageId,
@@ -5910,6 +5963,8 @@ bool Client::CBalanceTool::Launch_ValtanSaveCommand(
 			!ownerDrafts->patternSoundBaselineBytes.empty();
 		const bool hasSoundCandidate =
 			!ownerDrafts->patternSoundCandidateBytes.empty();
+		const bool hasCombatObjectSoundBaseline = !ownerDrafts->combatObjectSoundBaselineBytes.empty();
+		const bool hasCombatObjectSoundCandidate = !ownerDrafts->combatObjectSoundCandidateBytes.empty();
 		const bool hasShakeBaseline = !ownerDrafts->patternShakeBaselineBytes.empty();
 		const bool hasShakeCandidate = !ownerDrafts->patternShakeCandidateBytes.empty();
 		const bool hasEffectBaseline =
@@ -5919,6 +5974,7 @@ bool Client::CBalanceTool::Launch_ValtanSaveCommand(
 		const bool hasEffectReadSet =
 			!ownerDrafts->effectV2ReadSetBytes.empty();
 		if (hasSoundBaseline != hasSoundCandidate ||
+			hasCombatObjectSoundBaseline != hasCombatObjectSoundCandidate ||
 			hasShakeBaseline != hasShakeCandidate ||
 			hasEffectBaseline != hasEffectCandidate ||
 			hasEffectBaseline != hasEffectReadSet)
@@ -5958,6 +6014,11 @@ bool Client::CBalanceTool::Launch_ValtanSaveCommand(
 				ownerDrafts->patternSoundCandidateBytes,
 				L"-PatternSoundBaselinePath",
 				L"-PatternSoundCandidatePath") ||
+			!StageOwnerPair(L"combat-object-sound",
+				ownerDrafts->combatObjectSoundBaselineBytes,
+				ownerDrafts->combatObjectSoundCandidateBytes,
+				L"-CombatObjectSoundBaselinePath",
+				L"-CombatObjectSoundCandidatePath") ||
 			!StageOwnerPair(L"pattern-shake",
 				ownerDrafts->patternShakeBaselineBytes,
 				ownerDrafts->patternShakeCandidateBytes,
@@ -10373,6 +10434,7 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 		return false;
 	}
 	std::vector<std::string> operations;
+	std::unordered_set<std::string> emittedObjectImpactHits;
 	std::vector<std::string> counterDisableOperations;
 	std::vector<std::string> manualStagePreCounterTopologyOperations;
 	std::vector<std::string> manualStagePostCounterTopologyOperations;
@@ -11510,7 +11572,6 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 						object.fSpeedMps != loadedObject.fSpeedMps ||
 						object.fMaximumDistanceM != loadedObject.fMaximumDistanceM ||
 						object.HitIds != loadedObject.HitIds ||
-						object.HitOffsetsMs != loadedObject.HitOffsetsMs ||
 						object.Hits.size() != loadedObject.Hits.size() ||
 						object.PresentationEvents.size() !=
 							loadedObject.PresentationEvents.size() ||
@@ -11538,8 +11599,11 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 					{
 						if (object.PresentationEvents[eventIndex].strPresentationEventId !=
 								loadedObject.PresentationEvents[eventIndex].strPresentationEventId ||
-							object.PresentationEvents[eventIndex].iAtMs !=
-								loadedObject.PresentationEvents[eventIndex].iAtMs)
+							(object.PresentationEvents[eventIndex].iAtMs != loadedObject.PresentationEvents[eventIndex].iAtMs &&
+							 !(object.PresentationEvents[eventIndex].strPresentationEventId == object.strPreparationEventId &&
+							   !object.OwnerHitChain && object.Hits.size() == 1u && loadedObject.Hits.size() == 1u &&
+							   int64_t(object.PresentationEvents[eventIndex].iAtMs) - loadedObject.PresentationEvents[eventIndex].iAtMs ==
+							   int64_t(object.Hits[0].iAtMs) - loadedObject.Hits[0].iAtMs)))
 						{
 							status = "Combat-object presentation event changed outside its typed owner.";
 							return false;
@@ -11557,6 +11621,25 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 						{
 							status = "Combat-object hit stable identity changed outside its typed owner.";
 							return false;
+						}
+						const uint32_t chainDelay = object.OwnerHitChain ? object.OwnerHitChain->iDelayMs : 0u;
+						const uint32_t loadedChainDelay = loadedObject.OwnerHitChain ? loadedObject.OwnerHitChain->iDelayMs : 0u;
+						if (objectHit.iAtMs != loadedHit.iAtMs || objectHit.fPushRangeM != loadedHit.fPushRangeM ||
+							objectHit.iPushMs != loadedHit.iPushMs || objectHit.bKnockdown != loadedHit.bKnockdown ||
+							objectHit.iDownMs != loadedHit.iDownMs || chainDelay != loadedChainDelay ||
+							(objectHit.strHitShape == "CIRCLE" && objectHit.fOuterRadiusM != loadedHit.fOuterRadiusM))
+						{
+							std::ostringstream operation;
+							operation << "    { \"op\": \"SET_COMBAT_OBJECT_IMPACT\", \"patternId\": " << Quote(pattern.strPatternId)
+								<< ", \"stageId\": " << Quote(stage.strStageId) << ", \"combatObjectArchetypeId\": " << Quote(object.strCombatObjectArchetypeId)
+								<< ", \"hitId\": " << Quote(objectHit.strHitId) << ", \"atMs\": " << objectHit.iAtMs
+								<< ", \"innerRadiusM\": " << FormatJsonNumber(objectHit.fInnerRadiusM) << ", \"outerRadiusM\": " << FormatJsonNumber(objectHit.fOuterRadiusM)
+								<< ", \"pushRangeM\": " << FormatJsonNumber(objectHit.fPushRangeM) << ", \"pushMs\": " << objectHit.iPushMs
+								<< ", \"knockdown\": " << (objectHit.bKnockdown ? "true" : "false") << ", \"downMs\": " << objectHit.iDownMs
+								<< ", \"chainDelayMs\": " << chainDelay << " }";
+							if (emittedObjectImpactHits.insert(object.strCombatObjectArchetypeId + "\n" + objectHit.strHitId).second)
+								append(operation);
+							continue;
 						}
 						const bool radiiChanged =
 							objectHit.fInnerRadiusM != loadedHit.fInnerRadiusM ||
@@ -11926,6 +12009,8 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 			!pOwnerDrafts->patternSoundBaselineBytes.empty();
 		const bool hasPatternSoundCandidate =
 			!pOwnerDrafts->patternSoundCandidateBytes.empty();
+		const bool hasCombatObjectSoundBaseline = !pOwnerDrafts->combatObjectSoundBaselineBytes.empty();
+		const bool hasCombatObjectSoundCandidate = !pOwnerDrafts->combatObjectSoundCandidateBytes.empty();
 		const bool hasPatternShakeBaseline = !pOwnerDrafts->patternShakeBaselineBytes.empty();
 		const bool hasPatternShakeCandidate = !pOwnerDrafts->patternShakeCandidateBytes.empty();
 		const bool hasEffectV2Baseline =
@@ -11935,6 +12020,7 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 		const bool hasEffectV2ReadSet =
 			!pOwnerDrafts->effectV2ReadSetBytes.empty();
 		if (hasPatternSoundBaseline != hasPatternSoundCandidate ||
+			hasCombatObjectSoundBaseline != hasCombatObjectSoundCandidate ||
 			hasPatternShakeBaseline != hasPatternShakeCandidate ||
 			hasEffectV2Baseline != hasEffectV2Candidate ||
 			hasEffectV2Baseline != hasEffectV2ReadSet)
@@ -11976,6 +12062,12 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 				pOwnerDrafts->patternSoundCandidateBytes,
 				L"-PatternSoundBaselinePath",
 				L"-PatternSoundCandidatePath") ||
+			!StageOwnerPair(
+				L"CombatObjectSound",
+				pOwnerDrafts->combatObjectSoundBaselineBytes,
+				pOwnerDrafts->combatObjectSoundCandidateBytes,
+				L"-CombatObjectSoundBaselinePath",
+				L"-CombatObjectSoundCandidatePath") ||
 			!StageOwnerPair(
 				L"PatternShake",
 				pOwnerDrafts->patternShakeBaselineBytes,

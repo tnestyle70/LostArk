@@ -2372,7 +2372,7 @@ def validate_combat_authoring(document: dict[str, Any]) -> None:
                 or len(obj.get("hits", [])) != 1 or obj.get("presentationEvents")
                 or obj["hits"][0].get("trigger", {}).get("kind") != "TIMED"
                 or obj["hits"][0].get("repeat", {}).get("count") != 1
-                or chain["delayMs"] >= obj.get("lifetimeMs", 0)
+                or chain["delayMs"] + obj["hits"][0].get("trigger", {}).get("atMs", 0) >= obj.get("lifetimeMs", 0)
                 or chain["armedPresentationEventId"] == obj["hits"][0].get("hitId")):
                 raise PipelineError(f"{context}.ownerHitChain requires one fixed timed hit and explicit lifetime")
         if "presentationEvents" in obj:
@@ -8126,6 +8126,10 @@ DRAFT_PATCH_OPERATIONS = {
     ),
     "SET_STAGE_ANIMATION": ("op", "patternId", "stageId", "animation"),
     "SET_STAGE_HIT": ("op", "patternId", "stageId", "hit"),
+    "SET_COMBAT_OBJECT_IMPACT": (
+        "op", "patternId", "stageId", "combatObjectArchetypeId", "hitId",
+        "atMs", "innerRadiusM", "outerRadiusM", "pushRangeM", "pushMs", "knockdown", "downMs", "chainDelayMs",
+    ),
     "SET_COMBAT_OBJECT_RING_HIT": (
         "op",
         "patternId",
@@ -9398,7 +9402,12 @@ def validate_combat_object_visual_closure(
                 or visual.get("stopActiveOnHit") is not True):
                 raise PipelineError(f"{archetype_id} ownerHitChain/armed visual join is invalid")
         elif "armedPresentationEventId" in visual:
-            raise PipelineError(f"{archetype_id} has an armed visual without ownerHitChain")
+            preparation = [e for e in definitions[archetype_id].get("presentationEvents", [])
+                           if e.get("presentationEventId") == visual["armedPresentationEventId"]]
+            hits = definitions[archetype_id].get("hits", [])
+            if (len(preparation) != 1 or len(hits) != 1 or not visual.get("armedEffectOwnsTerminal")
+                or preparation[0]["trigger"]["atMs"] >= hits[0]["trigger"]["atMs"]):
+                raise PipelineError(f"{archetype_id} armed visual requires one earlier preparation event")
         group = visual.get("effectV2Group")
         if not isinstance(group, dict) or "serverHitId" not in group:
             continue
@@ -11491,6 +11500,58 @@ def apply_draft_patch(
                     archetype_id,
                     client_visual_id,
                 )
+        elif kind == "SET_COMBAT_OBJECT_IMPACT":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            stage = _draft_stage(pattern, operation["stageId"], ordinal)
+            archetype_id = stable_id(operation["combatObjectArchetypeId"], "impact archetype")
+            hit_id = stable_id(operation["hitId"], "impact hit")
+            owners = [event for event in stage.get("events", [])
+                      if event.get("kind") in ("SPAWN_COMBAT_OBJECT", "SPAWN_COMBAT_OBJECT_VOLLEY")
+                      and event.get("combatObjectArchetypeId") == archetype_id]
+            objects = [row for row in (patched_combat or {}).get("objects", [])
+                       if row.get("combatObjectArchetypeId") == archetype_id]
+            hits = [row for row in objects[0]["hits"] if row.get("hitId") == hit_id] if len(objects) == 1 else []
+            if len(owners) != 1 or len(objects) != 1 or len(hits) != 1:
+                raise _draft_error("Impact does not resolve one exact spawn/object/hit owner", operation_ordinal=ordinal)
+            obj, hit = objects[0], hits[0]
+            if hit["trigger"]["kind"] != "TIMED" or hit["shape"]["kind"] not in ("CIRCLE", "RING"):
+                raise _draft_error("Impact editor admits timed circle/ring hits", operation_ordinal=ordinal)
+            at = integer(operation["atMs"], "impact time", 0, 600000)
+            inner = number(operation["innerRadiusM"], "impact inner", 0, 1000)
+            outer = number(operation["outerRadiusM"], "impact outer", 0.000001, 1000)
+            chain_delay = integer(operation["chainDelayMs"], "impact chain delay", 0, 600000)
+            life = obj.get("lifetimeMs", stage["durationMs"])
+            chain = obj.get("ownerHitChain")
+            if (inner >= outer or (hit["shape"]["kind"] == "CIRCLE" and inner != 0)
+                or at + (hit["repeat"]["count"] - 1) * hit["repeat"]["intervalMs"] >= life
+                or (chain and (not 0 < chain_delay or chain_delay + at >= life)) or (not chain and chain_delay)):
+                raise _draft_error("Impact geometry/clock exceeds its owner contract", operation_ordinal=ordinal)
+            if not isinstance(operation["knockdown"], bool):
+                raise _draft_error("Impact knockdown must be boolean", operation_ordinal=ordinal)
+            if not chain:
+                catalog = patched_boss_catalog
+                if catalog is None and repository_root is not None:
+                    catalog = read_json(repo_path(repository_root, BOSS_CATALOG_REL))
+                visuals = _valtan_combat_visual_rows(catalog, "Object impact") if catalog else []
+                visual = next((v for v in visuals if v["combatObjectArchetypeId"] == archetype_id), {})
+                if visual.get("armedEffectOwnsTerminal"):
+                    preparation = [e for e in obj.get("presentationEvents", [])
+                                   if e["presentationEventId"] == visual.get("armedPresentationEventId")]
+                    if len(preparation) != 1 or len(obj["hits"]) != 1:
+                        raise _draft_error("Impact preparation owner is ambiguous", operation_ordinal=ordinal)
+                    lead = hit["trigger"]["atMs"] - preparation[0]["trigger"]["atMs"]
+                    if lead <= 0 or at < lead:
+                        raise _draft_error("Impact would truncate the original preparation", operation_ordinal=ordinal)
+                    preparation[0]["trigger"]["atMs"] = at - lead
+            hit["trigger"]["atMs"] = at
+            hit["shape"]["outerRadiusM"] = outer
+            if hit["shape"]["kind"] == "RING": hit["shape"]["innerRadiusM"] = inner
+            hit["pushRangeM"] = number(operation["pushRangeM"], "impact push distance", 0, 1000)
+            hit["pushMs"] = integer(operation["pushMs"], "impact push time", 0, 600000)
+            hit["knockdown"] = operation["knockdown"]
+            hit["downMs"] = integer(operation["downMs"], "impact down time", 0, 600000)
+            if chain: chain["delayMs"] = chain_delay
+            target = (kind, archetype_id, hit_id)
         elif kind == "SET_COMBAT_OBJECT_RING_HIT":
             pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
             stage = _draft_stage(pattern, operation["stageId"], ordinal)
@@ -15468,6 +15529,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     canonical_parser.add_argument("--draft-patch", type=Path, required=True)
     canonical_parser.add_argument("--source-only", action="store_true")
     canonical_parser.add_argument("--source-baseline-root", type=Path)
+    canonical_parser.add_argument("--combat-object-sound-baseline", type=Path)
+    canonical_parser.add_argument("--combat-object-sound-candidate", type=Path)
     canonical_parser.add_argument("--pattern-sound-baseline", type=Path)
     canonical_parser.add_argument("--pattern-sound-candidate", type=Path)
     canonical_parser.add_argument("--pattern-shake-baseline", type=Path)
@@ -15640,6 +15703,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 root,
                 args.draft_patch,
                 authoring_root=args.authoring_root,
+                combat_object_sound_baseline_path=args.combat_object_sound_baseline,
+                combat_object_sound_candidate_path=args.combat_object_sound_candidate,
                 pattern_sound_baseline_path=args.pattern_sound_baseline,
                 pattern_sound_candidate_path=args.pattern_sound_candidate,
                 pattern_shake_baseline_path=args.pattern_shake_baseline,

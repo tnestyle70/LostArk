@@ -107,6 +107,12 @@ struct VALTAN_COMBAT_OBJECT_HIT_VIEW final
 	std::string strHitShape;
 	f32_t fInnerRadiusM = 0.f;
 	f32_t fOuterRadiusM = 0.f;
+	std::string strServerDamageProfileId;
+	f32_t fPushRangeM = 0.f;
+	uint32_t iPushMs = 0u;
+	bool_t bKnockdown = false;
+	uint32_t iDownMs = 0u;
+	bool operator==(const VALTAN_COMBAT_OBJECT_HIT_VIEW&) const = default;
 };
 
 struct VALTAN_COMBAT_OBJECT_OWNER_HIT_CHAIN_VIEW final
@@ -118,6 +124,7 @@ struct VALTAN_COMBAT_OBJECT_OWNER_HIT_CHAIN_VIEW final
 
 struct VALTAN_COMBAT_OBJECT_EFFECT_VIEW final
 {
+	std::string strPreparationEventId;
 	std::string strCombatObjectArchetypeId;
 	std::string strClientVisualId;
 	std::string strEffectAssetId;

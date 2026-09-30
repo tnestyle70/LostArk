@@ -3755,7 +3755,7 @@
         ],
         "rotationDegrees": [
           0,
-          0,
+          90,
           0
         ],
         "scale": [
@@ -4317,7 +4317,7 @@
       "repeatPolicy": "once",
       "localTransform": {
         "position": [
-          0,
+          -0.75,
           0,
           0
         ],
@@ -4387,7 +4387,7 @@
       "repeatPolicy": "once",
       "localTransform": {
         "position": [
-          0,
+          -0.75,
           0,
           0
         ],
@@ -4422,8 +4422,8 @@
       "repeatPolicy": "once",
       "localTransform": {
         "position": [
-          0,
-          0,
+          -3.6700000762939453,
+          0.6600000262260437,
           0
         ],
         "rotationDegrees": [
@@ -5089,6 +5089,88 @@
         "kind": "OWNER_RELATIVE"
       },
       "playbackOffsetMs": 0
+    },
+    {
+      "bindingId": "cue.valtan.six-pizza.sky.spacehole",
+      "occurrenceId": "cue.valtan.six-pizza.sky.spacehole.occurrence.01",
+      "patternId": "VALTAN_SIX_PIZZA_106",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.center-six-pizza-charge.step-01",
+      "timingBasis": "STAGE_CLOCK",
+      "stageOffsetMs": 0,
+      "stageEndMs": 20400,
+      "effectAssetId": "effect.valtan.sky.source.spacehole",
+      "anchorSlotId": "map",
+      "followPolicy": "snapshot",
+      "stopPolicy": "cue_end",
+      "repeatPolicy": "once",
+      "localTransform": {
+        "position": [
+          156.574375,
+          60.043125,
+          -121.97296875
+        ],
+        "rotationDegrees": [
+          180,
+          0,
+          0
+        ],
+        "scale": [
+          0.359999991953373,
+          0.479999989271164,
+          0.359999991953373
+        ]
+      },
+      "scalePolicy": {
+        "kind": "ARENA_ABSOLUTE",
+        "worldScale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "playbackOffsetMs": 3000
+    },
+    {
+      "bindingId": "cue.valtan.six-pizza.sky.chaosgate",
+      "occurrenceId": "cue.valtan.six-pizza.sky.chaosgate.occurrence.01",
+      "patternId": "VALTAN_SIX_PIZZA_106",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.center-six-pizza-charge.step-01",
+      "timingBasis": "STAGE_CLOCK",
+      "stageOffsetMs": 0,
+      "stageEndMs": 20400,
+      "effectAssetId": "effect.valtan.sky.source.chaosgate",
+      "anchorSlotId": "map",
+      "followPolicy": "snapshot",
+      "stopPolicy": "cue_end",
+      "repeatPolicy": "once",
+      "localTransform": {
+        "position": [
+          158.42,
+          138.4,
+          -125.12
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      "scalePolicy": {
+        "kind": "ARENA_ABSOLUTE",
+        "worldScale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "playbackOffsetMs": 8000
     }
   ]
 }

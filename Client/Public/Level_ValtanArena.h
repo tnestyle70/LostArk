@@ -62,6 +62,7 @@ public:
 
 	static CLevel_ValtanArena* Get_Active() { return s_pActiveInstance; }
 	bool_t Is_CinematicCameraActive() const { return m_bCinematicCameraApplied; }
+	void Sync_CinematicPlayerVisibility();
 	bool_t Is_CinematicHUDSuppressed() const
 	{
 		// Source actors can outlive camera cuts, and an exit blend can outlive
@@ -413,6 +414,7 @@ private:
 	bool_t m_bCinematicRestoreFollowRequested = false;
 	bool_t m_bCinematicCameraApplied = false;
 	bool_t m_bCinematicCameraHidesHUD = false;
+	bool_t m_bCinematicCameraHidesPlayers = false;
 	uint64_t m_iCinematicCameraOwnerId = 0u;
 	CEncounterPatternReference m_ValtanEncounterReference;
 	CValtanCinematicCameraDocument m_ValtanCinematicCameraDocument;
@@ -472,6 +474,19 @@ private:
 	void Show_MvpResult(bool_t bReplayLast);
 	/* Gate progress panel: Valtan is one gate here, checked once the clear mark starts. */
 	CRaidGateProgressView m_GateProgressView;
+	void Update_EntryAssembly(f32_t deltaSeconds);
+	float3_t m_EntryAssemblyPosition{};
+	float3_t m_EntryAssemblyHalfExtents{};
+	f32_t m_fEntryAssemblyYaw = 0.f;
+	bool_t m_bEntryAssemblyLoaded = false;
+	bool_t m_bEntryAssemblyOccupied = false;
+	f32_t m_fEntryAssemblySecondsLeft = 10.f;
+	uint32_t m_iEntryAssemblyStartTick = 0u;
+	std::vector<LostArk::Shared::PLAYER_ID> m_EntryAssemblyParticipants;
+	LostArk::Shared::S2C_GATE_PROGRESS_STATE m_EntryGateState{};
+	EFFECT_WORLD_ROOT_HANDLE m_EntryAuraHandle;
+	std::string m_strEntryAuraAsset;
+
 	/* The retail G prompt over the player's head while the Server offers one of this Area's
 	interact-gated trigger boxes (the climb/descend points). Presentation only. */
 	CInteractKeyPromptView m_InteractKeyPrompt;

@@ -227,7 +227,7 @@
           "hitId": "hit.valtan.six-pizza.rock-pillar.explode",
           "trigger": {
             "kind": "TIMED",
-            "atMs": 0
+            "atMs": 1820
           },
           "repeat": {
             "count": 1,
@@ -254,7 +254,7 @@
     {
       "combatObjectArchetypeId": "combatobject.valtan.struggling.rock-pillar",
       "kind": "FIXED_AREA",
-      "lifetimeMs": 5333,
+      "lifetimeMs": 7153,
       "coverRadiusM": 1.5,
       "spawn": {
         "origin": {
@@ -274,7 +274,7 @@
           "hitId": "hit.valtan.struggling.rock-pillar.explode",
           "trigger": {
             "kind": "TIMED",
-            "atMs": 4133
+            "atMs": 5953
           },
           "repeat": {
             "count": 1,
@@ -291,7 +291,15 @@
           "downMs": 1000
         }
       ],
-      "presentationEvents": []
+      "presentationEvents": [
+        {
+          "presentationEventId": "event.valtan.struggling.rock-pillar.prepare",
+          "trigger": {
+            "kind": "TIMED",
+            "atMs": 4133
+          }
+        }
+      ]
     },
     {
       "combatObjectArchetypeId": "combatobject.valtan.ghost.portal-charge",
@@ -359,7 +367,7 @@
           "hitId": "hit.valtan.terrain-3.combo-rock.explode",
           "trigger": {
             "kind": "TIMED",
-            "atMs": 0
+            "atMs": 1820
           },
           "repeat": {
             "count": 1,
@@ -406,7 +414,7 @@
           "hitId": "hit.valtan.terrain-9.combo-rock.explode",
           "trigger": {
             "kind": "TIMED",
-            "atMs": 0
+            "atMs": 1820
           },
           "repeat": {
             "count": 1,

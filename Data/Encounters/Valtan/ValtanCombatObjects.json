@@ -199,7 +199,7 @@
           "hitHalfWidth": 0.0,
           "hitId": "hit.valtan.six-pizza.rock-pillar.explode",
           "trigger": "TIMED",
-          "atMs": 0,
+          "atMs": 1820,
           "repeatCount": 1,
           "repeatIntervalMs": 0,
           "serverDamageProfileId": "damage.valtan.stomp",
@@ -228,7 +228,7 @@
       "offsetRightM": 0.0,
       "speedMps": 0.0,
       "maximumDistanceM": 0.0,
-      "lifeMs": 5333,
+      "lifeMs": 7153,
       "hits": [
         {
           "hitShape": "CIRCLE",
@@ -239,7 +239,7 @@
           "hitHalfWidth": 0.0,
           "hitId": "hit.valtan.struggling.rock-pillar.explode",
           "trigger": "TIMED",
-          "atMs": 4133,
+          "atMs": 5953,
           "repeatCount": 1,
           "repeatIntervalMs": 0,
           "serverDamageProfileId": "damage.valtan.stomp",
@@ -249,7 +249,13 @@
           "downMs": 1000
         }
       ],
-      "coverRadiusM": 1.5
+      "coverRadiusM": 1.5,
+      "presentationEvents": [
+        {
+          "presentationEventId": "event.valtan.struggling.rock-pillar.prepare",
+          "atMs": 4133
+        }
+      ]
     },
     {
       "combatObjectArchetypeId": "combatobject.valtan.fist-in-out.donut-large",
@@ -308,7 +314,7 @@
           "hitHalfWidth": 0.0,
           "hitId": "hit.valtan.terrain-3.combo-rock.explode",
           "trigger": "TIMED",
-          "atMs": 0,
+          "atMs": 1820,
           "repeatCount": 1,
           "repeatIntervalMs": 0,
           "serverDamageProfileId": "damage.valtan.stomp",
@@ -348,7 +354,7 @@
           "hitHalfWidth": 0.0,
           "hitId": "hit.valtan.terrain-9.combo-rock.explode",
           "trigger": "TIMED",
-          "atMs": 0,
+          "atMs": 1820,
           "repeatCount": 1,
           "repeatIntervalMs": 0,
           "serverDamageProfileId": "damage.valtan.stomp",

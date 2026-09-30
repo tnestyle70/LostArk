@@ -77,6 +77,7 @@ public:
     /* The shell picked one boss entry; a session serving several entries
        narrows what it lists. Sessions with one entry ignore it. */
     virtual void Select_WorkbenchBoss(COMPOSITION_WORKBENCH_BOSS) {}
+    virtual void Select_WorkbenchTarget(COMPOSITION_WORKBENCH_TARGET) {}
     virtual bool Execute_CompositionEdit(COMPOSITION_EDIT_COMMAND, std::string& status)
     {
         status = "Select an editable resource or timeline box in this session.";

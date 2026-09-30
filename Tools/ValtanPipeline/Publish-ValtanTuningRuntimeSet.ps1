@@ -10,6 +10,8 @@ param(
     [string]$DraftPatchPath = '',
     [switch]$SourceOnly,
     [string]$SourceBaselineRoot = '',
+    [string]$CombatObjectSoundBaselinePath = '',
+    [string]$CombatObjectSoundCandidatePath = '',
     [string]$PatternSoundBaselinePath = '',
     [string]$PatternSoundCandidatePath = '',
     [string]$PatternShakeBaselinePath = '',
@@ -61,6 +63,8 @@ function Resolve-OptionalPath([string]$Value) {
     }
     return [IO.Path]::GetFullPath((Join-Path $repoRoot $Value))
 }
+$resolvedCombatObjectSoundBaseline = Resolve-OptionalPath $CombatObjectSoundBaselinePath
+$resolvedCombatObjectSoundCandidate = Resolve-OptionalPath $CombatObjectSoundCandidatePath
 $resolvedPatternSoundBaseline = Resolve-OptionalPath $PatternSoundBaselinePath
 $resolvedPatternSoundCandidate = Resolve-OptionalPath $PatternSoundCandidatePath
 $resolvedPatternShakeBaseline = Resolve-OptionalPath $PatternShakeBaselinePath
@@ -91,6 +95,10 @@ switch ($Mode) {
         if ([string]::IsNullOrWhiteSpace($resolvedDraftPatch)) {
             throw 'CommitCanonicalDraft requires DraftPatchPath.'
         }
+        if (([string]::IsNullOrWhiteSpace($resolvedCombatObjectSoundBaseline)) -ne
+            ([string]::IsNullOrWhiteSpace($resolvedCombatObjectSoundCandidate))) {
+            throw 'Combat Object Sound baseline/candidate paths must be paired.'
+        }
         if (([string]::IsNullOrWhiteSpace($resolvedPatternSoundBaseline)) -ne
             ([string]::IsNullOrWhiteSpace($resolvedPatternSoundCandidate))) {
             throw 'Pattern Sound baseline/candidate paths must be paired.'
@@ -118,6 +126,10 @@ switch ($Mode) {
         if ($SourceOnly) {
             if ([string]::IsNullOrWhiteSpace($SourceBaselineRoot)) { throw 'SourceOnly requires SourceBaselineRoot.' }
             $command += @('--source-only', '--source-baseline-root', [IO.Path]::GetFullPath($SourceBaselineRoot))
+        }
+        if (-not [string]::IsNullOrWhiteSpace($resolvedCombatObjectSoundBaseline)) {
+            $command += @('--combat-object-sound-baseline', $resolvedCombatObjectSoundBaseline,
+                '--combat-object-sound-candidate', $resolvedCombatObjectSoundCandidate)
         }
         if (-not [string]::IsNullOrWhiteSpace($resolvedPatternSoundBaseline)) {
             $command += @(

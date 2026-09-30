@@ -4,6 +4,7 @@
 #include "ServerCombatHitRuntime.h"
 #include "GameplayCatalog.h"
 #include "GameRoom.h"
+#include "PlayerSkillSystem.h"
 #include "ServerNavigation.h"
 #include "ServerApp.h"
 #include "ValtanBrain.h"
@@ -534,6 +535,126 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanRevision(TESTS& t
 			}
 			bindDiagnostics << '\n';
 		};
+		// Exercise real reaction integration with the published six contact clocks.
+		// This fixture assumes every contact lands; the live failure log has no target pose.
+		auto airborneBindRoom = prepareStatusRoom("VALTAN_BIND_SLOT", 19880u);
+		auto& airborne = airborneBindRoom->m_Players.at(19600u);
+		airborneBindRoom->m_Players.at(19601u).iCurrentHp = 0u;
+		airborneBindRoom->m_Players.at(19601u).isCombatReady = false;
+		const auto fourSlash = std::find_if(statusPatterns->begin(), statusPatterns->end(),
+			[](const BOSS_PATTERN_DEFINITION& definition) { return definition.strPatternId == "VALTAN_FOUR_SLASH"; });
+		std::vector<std::pair<std::uint32_t, const ATTACK_HIT_TEMPLATE*>> launchContacts;
+		std::uint32_t fourSlashDurationMs = 0u;
+		if (fourSlash != statusPatterns->end())
+		{
+			for (const auto& stage : fourSlash->Stages)
+			{
+				for (const auto& contact : stage.AttackContacts)
+					launchContacts.emplace_back(fourSlashDurationMs + contact.iAtMs, &contact);
+				fourSlashDurationMs += stage.iDurationMs;
+			}
+		}
+		std::sort(launchContacts.begin(), launchContacts.end(),
+			[](const auto& left, const auto& right) { return left.first < right.first; });
+		std::size_t launchedCount = 0u;
+		const auto fourSlashTicks = (fourSlashDurationMs * 30u + 999u) / 1000u;
+		for (std::uint32_t offsetTick = 0u; offsetTick < fourSlashTicks; ++offsetTick)
+		{
+			const auto elapsedMs = offsetTick * 1000u / 30u;
+			while (launchedCount < launchContacts.size() && launchContacts[launchedCount].first <= elapsedMs)
+			{
+				const auto& contact = *launchContacts[launchedCount++].second;
+				CPlayerSkillSystem::Arm_PlayerHitReaction(airborne,
+					airborne.fPositionX - 1.f, airborne.fPositionZ,
+					static_cast<float>(contact.fPushRangeM), contact.iPushMs, false, 0u,
+					6000u + offsetTick, contact.ForcePush.value_or(contact.fRiseHeightM > 0.0),
+					false, contact.fRiseHeightM > 0.0, static_cast<float>(contact.fRiseHeightM));
+			}
+			airborneBindRoom->m_iServerTick = 6000u + offsetTick;
+			airborneBindRoom->Advance_PlayerKnockback(airborne, 1.f / 30.f);
+		}
+		SERVER_NAV_POINT airborneGround{};
+		const bool hasAirborneGround = airborneBindRoom->m_ServerNavigation.Sample_Position(
+			airborne.fPositionX, airborne.fPositionZ, airborneGround, airborne.fKnockbackSupportY);
+		const bool oldPoseGuardRejects = hasAirborneGround && launchedCount == 6u &&
+			airborne.bKnockbackBallistic && airborne.fKnockbackRemainingSeconds > 0.f &&
+			std::abs(airborne.fPositionY - airborneGround.y) > 1.5f;
+		std::cout << "[BindAirborneDiagnostic] launched=" << launchedCount
+			<< " elapsedMs=" << fourSlashDurationMs << " oldPoseGuardRejects=" << oldPoseGuardRejects
+			<< " position=" << airborne.fPositionX << ',' << airborne.fPositionY << ',' << airborne.fPositionZ
+			<< " groundY=" << airborneGround.y << " supportY=" << airborne.fKnockbackSupportY
+			<< " remaining=" << airborne.fKnockbackRemainingSeconds << '\n';
+		tests.Require(oldPoseGuardRejects,
+			"Published FOUR_SLASH contacts through Arm and Advance produce a navigable airborne target rejected by the former Bind current-Y guard");
+		const SERVER_PLAYER airborneBeforeBind = airborne;
+		bool airborneBindValid = oldPoseGuardRejects && advanceStatusOccurrence(*airborneBindRoom, 7000u);
+		airborneBindValid = airborneBindValid && airborne.bPatternBound &&
+			std::abs(airborne.fPatternBindRestoreY - airborneGround.y) < 0.001f &&
+			std::abs(airborne.fPositionY - airborneGround.y - 5.f) < 0.001f &&
+			!airborne.bKnockbackBallistic && !airborne.bKnockbackCanLeaveArena &&
+			airborne.fKnockbackRemainingSeconds == 0.f && airborne.fKnockbackVelocityY == 0.f;
+		bool airborneRestoredAtExit = false;
+		const auto airborneRecoveryTick = 7000u + bindTicks - 1u;
+		for (std::uint32_t tick = 7001u; airborneBindValid && tick <= airborneRecoveryTick; ++tick)
+		{
+			airborneBindValid = advanceStatusOccurrence(*airborneBindRoom, tick,
+				[&](const CGameRoom& transitionRoom)
+				{
+					if (tick != airborneRecoveryTick) return;
+					const auto& restored = transitionRoom.m_Players.at(19600u);
+					airborneRestoredAtExit = !restored.bPatternBound && restored.isCombatReady &&
+						std::abs(restored.fPositionX - airborneGround.x) < 0.001f &&
+						std::abs(restored.fPositionY - airborneGround.y) < 0.001f &&
+						std::abs(restored.fPositionZ - airborneGround.z) < 0.001f;
+				});
+		}
+		bool airborneCanRearm = false;
+		if (airborneBindValid && airborneRestoredAtExit)
+		{
+			CPlayerSkillSystem::Arm_PlayerHitReaction(airborne, airborne.fPositionX - 1.f,
+				airborne.fPositionZ, 1.f, 1200u, false, 0u, airborneRecoveryTick + 1u, true, false, true, 2.f);
+			airborneCanRearm = airborne.bKnockbackBallistic && airborne.fKnockbackRemainingSeconds > 0.f;
+		}
+		if (!airborneBindValid || !airborneRestoredAtExit || !airborneCanRearm)
+			std::cerr << "[BindAirborneDiagnostic] entryAndHold=" << airborneBindValid
+				<< " restoredAtExit=" << airborneRestoredAtExit << " rearmed=" << airborneCanRearm
+				<< " status=" << airborneBindRoom->m_strStatus << '\n';
+		tests.Require(airborneBindValid && airborneRestoredAtExit && airborneCanRearm,
+			"Bind after actual consecutive FOUR_SLASH launches admits support-ground pose, cancels flight, restores ground on EXIT, and permits a later reaction");
+
+		bool invalidBindPosesRejected = true;
+		for (std::uint32_t invalidCase = 0u; invalidCase < 4u; ++invalidCase)
+		{
+			auto invalidRoom = prepareStatusRoom("VALTAN_BIND_SLOT", 19890u + invalidCase);
+			auto& invalidTarget = invalidRoom->m_Players.at(19600u);
+			invalidTarget = airborneBeforeBind;
+			if (invalidCase == 0u) invalidTarget.fKnockbackSupportY += 10.f;
+			if (invalidCase == 1u) invalidTarget.fKnockbackSupportY = (std::numeric_limits<float>::quiet_NaN)();
+			if (invalidCase == 2u)
+			{
+				invalidTarget.bKnockbackBallistic = false;
+				invalidTarget.fKnockbackRemainingSeconds = 0.f;
+				invalidTarget.eAction = PLAYER_ACTION_STATE::NONE;
+			}
+			if (invalidCase == 3u) invalidTarget.fPositionX = 1000000.f;
+			auto& invalidBoss = invalidRoom->m_WorldEntities.front();
+			invalidBoss.iPatternTargetEntityId = invalidTarget.iNetEntityId;
+			SERVER_BOSS_COMBAT_STATE stagedCombat = invalidBoss.BossCombat;
+			auto stagedPhase = invalidBoss.iPhase;
+			SERVER_COMBAT_OBJECT_TRANSACTION transaction{};
+			const bool rejected = !invalidRoom->Stage_BossPatternStageActions(invalidBoss,
+				invalidRoom->m_GameplayCatalog.Active(), "VALTAN_BIND_SLOT", bindDefinition->Stages.front().strActionId,
+				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 7000u, stagedCombat, stagedPhase, transaction);
+			invalidBindPosesRejected = invalidBindPosesRejected && rejected && !invalidTarget.bPatternBound &&
+				invalidRoom->m_strStatus.find("Boss player-bind restore pose is not navigable") != std::string::npos &&
+				invalidRoom->m_strStatus.find("target=") != std::string::npos &&
+				invalidRoom->m_strStatus.find("supportY=") != std::string::npos;
+			std::cout << "[BindAirborneDiagnostic] invalidCase=" << invalidCase
+				<< " rejected=" << rejected << " status=" << invalidRoom->m_strStatus << '\n';
+		}
+		tests.Require(invalidBindPosesRejected,
+			"Bind retains exact navigation and the 1.5m support guard for invalid support, nonfinite support, nonballistic floating and nonwalkable targets with failure-only pose diagnostics");
+
 		auto bindRoom = prepareStatusRoom("VALTAN_BIND_SLOT", 19800u);
 		const bool bindStarted = advanceStatusOccurrence(*bindRoom, 2000u);
 		SERVER_WORLD_ENTITY& bindBoss = bindRoom->m_WorldEntities.front();

@@ -3804,7 +3804,7 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 			$chainHits[0].trigger -cne 'TIMED' -or $chainHits[0].repeatCount -ne 1 -or
 			($null -ne $combatObject.PSObject.Properties['presentationEvents'] -and @($combatObject.presentationEvents).Count -gt 0) -or $null -eq $triggerStage -or
 			$triggerStage.hitShape -cne 'CONE' -or $triggerStage.hitCount -lt 1 -or
-			$chain.delayMs -ge $lifeMs -or
+			([uint64]$chain.delayMs + [uint64]$chainHits[0].atMs) -ge $lifeMs -or
 			$visual.armedPresentationEventId -cne $chain.armedPresentationEventId -or
 			[string]::IsNullOrEmpty($visual.armedEffectAssetId) -or
 			[string]::IsNullOrEmpty($visual.hitEffectAssetId) -or $visual.stopActiveOnHit -ne $true -or
@@ -3815,7 +3815,13 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 			$combatObjectId, $chain.triggerActionId, $chain.delayMs, $chain.armedPresentationEventId) -join "`t"))
 	}
 	elseif ($null -ne $visual.PSObject.Properties['armedPresentationEventId']) {
-		throw "Armed visual has no owner hit chain: $combatObjectId"
+		$preparation = @($presentationEvents | Where-Object { $_.presentationEventId -ceq $visual.armedPresentationEventId })
+		$timedHits = @($combatObject.hits)
+		if ($preparation.Count -ne 1 -or $timedHits.Count -ne 1 -or
+			$visual.armedEffectOwnsTerminal -ne $true -or $timedHits[0].trigger -cne 'TIMED' -or
+			$preparation[0].atMs -ge $timedHits[0].atMs) {
+			throw "Armed visual requires one earlier preparation event: $combatObjectId"
+		}
 	}
 
 	for ($hitIndex = 0; $hitIndex -lt @($combatObject.hits).Count;

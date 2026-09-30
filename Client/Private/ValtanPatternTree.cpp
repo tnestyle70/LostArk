@@ -3646,6 +3646,7 @@ namespace
 
 	struct COMBAT_OBJECT_EFFECT_REFERENCE final
 	{
+		std::string strPreparationEventId;
 		std::string strClientVisualId;
 		std::string strEffectAssetId;
 		std::string strEffectV2GroupId;
@@ -8838,6 +8839,8 @@ bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
                 row.strCombatObjectArchetypeId = id;
                 row.strClientVisualId = Read_String(*visual->second, "clientVisualId");
                 row.strEffectAssetId = Read_String(*visual->second, "effectAssetId");
+                if (const auto* owns = visual->second->Find("armedEffectOwnsTerminal"); owns && owns->Is_Boolean() && owns->Get_Boolean())
+                    row.strPreparationEventId = Read_String(*visual->second, "armedPresentationEventId");
                 if (const auto* group = visual->second->Find("effectV2Group")) row.strEffectV2GroupId = Read_String(*group, "groupId");
                 row.strTrigger = Read_String(event, "trigger");
                 row.iSpawnValue = static_cast<uint32_t>(Read_Number(event, kind == "SPAWN_COMBAT_OBJECT" ? "count" : "countPerResolvedTarget"));
@@ -8867,6 +8870,11 @@ bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
                         { view.iRepeatCount = static_cast<uint32_t>(Read_Number(*repeat, "count")); view.iRepeatIntervalMs = static_cast<uint32_t>(Read_Number(*repeat, "intervalMs")); }
                         if (const auto* shape = hit.Find("shape"))
                         { view.strHitShape = Read_String(*shape, "kind"); view.fInnerRadiusM = static_cast<float>(Read_Number(*shape, "innerRadiusM")); view.fOuterRadiusM = static_cast<float>(Read_Number(*shape, "outerRadiusM")); }
+                        view.strServerDamageProfileId = Read_String(hit, "serverDamageProfileId");
+                        view.fPushRangeM = static_cast<float>(Read_Number(hit, "pushRangeM"));
+                        view.iPushMs = static_cast<uint32_t>(Read_Number(hit, "pushMs"));
+                        view.iDownMs = static_cast<uint32_t>(Read_Number(hit, "downMs"));
+                        if (const auto* knockdown = hit.Find("knockdown")) view.bKnockdown = knockdown->Get_Boolean();
                         row.Hits.push_back(std::move(view));
                     }
                 if (const auto* presentations = Required(definition, "presentationEvents", DATA_JSON_TYPE::ARRAY))
@@ -9252,6 +9260,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		COMBAT_OBJECT_EFFECT_REFERENCE Reference;
 		Reference.strClientVisualId = Read_String(Visual, "clientVisualId");
 		Reference.strEffectAssetId = Read_String(Visual, "effectAssetId");
+		if (const auto* owns = Visual.Find("armedEffectOwnsTerminal"); owns && owns->Is_Boolean() && owns->Get_Boolean())
+			Reference.strPreparationEventId = Read_String(Visual, "armedPresentationEventId");
 		if (const DATA_JSON_VALUE* pEffectV2Group =
 			Visual.Find("effectV2Group"); nullptr != pEffectV2Group)
 		{
@@ -9391,6 +9401,12 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 				return false;
 			}
 			HitView.strHitShape = strHitShape;
+			HitView.fOuterRadiusM = static_cast<float>(Read_Number(Hit, "hitOuterRadius"));
+			HitView.strServerDamageProfileId = Read_String(Hit, "serverDamageProfileId");
+			HitView.fPushRangeM = static_cast<float>(Read_Number(Hit, "pushRangeM"));
+			HitView.iPushMs = static_cast<uint32_t>(Read_Number(Hit, "pushMs"));
+			HitView.iDownMs = static_cast<uint32_t>(Read_Number(Hit, "downMs"));
+			if (const auto* knockdown = Hit.Find("knockdown")) HitView.bKnockdown = knockdown->Get_Boolean();
 			if ("RING" == strHitShape &&
 				(!Read_RequiredFiniteFloat(
 					Hit, "hitInnerRadius", HitView.fInnerRadiusM) ||
@@ -9991,6 +10007,7 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						}
 						VALTAN_COMBAT_OBJECT_EFFECT_VIEW View;
 						View.strCombatObjectArchetypeId = strTargetId;
+						View.strPreparationEventId = Reference->second.strPreparationEventId;
 						View.strClientVisualId =
 							Reference->second.strClientVisualId;
 						View.strEffectAssetId =

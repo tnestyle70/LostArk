@@ -269,40 +269,31 @@ LostArk::Server::CBossCombatRuntime::Apply_PlayerHit(
 	std::size_t partBreakEdgeIndex = (std::numeric_limits<std::size_t>::max)();
 	if (0u != hit.iPartDamage)
 	{
-		auto part = std::find_if(state.Parts.begin(), state.Parts.end(),
-			[&state](const SERVER_BOSS_PART_STATE& candidate)
-			{
-				if (0u == (state.iAlivePartMask & candidate.iStateMask))
-					return false;
-				return BOSS_PART_DAMAGE_CONDITION::ALWAYS ==
-						candidate.eDamageCondition ||
-					(BOSS_PART_DAMAGE_CONDITION::GROGGY_ONLY ==
-						candidate.eDamageCondition &&
-					 CBossCombatRuntime::Has_Flag(state,
-						SERVER_BOSS_COMBAT_FLAG::GROGGY));
-			});
-		if (state.Parts.end() != part)
+		for (auto& part : state.Parts)
 		{
-			result.iPartDamage =
-				BOSS_PATTERN_PART_DAMAGE_POLICY::DESTROY_FIRST_ELIGIBLE ==
-					boss.ePatternPartDamagePolicy ?
-					part->iCurrentDurability :
-					(std::min)(hit.iPartDamage, part->iCurrentDurability);
-			part->iCurrentDurability -= result.iPartDamage;
-			combatStateChanged = combatStateChanged ||
-				0u != result.iPartDamage;
-			if (0u == part->iCurrentDurability)
+			if (0u == (state.iAlivePartMask & part.iStateMask) ||
+				(BOSS_PART_DAMAGE_CONDITION::GROGGY_ONLY == part.eDamageCondition &&
+				 !Has_Flag(state, SERVER_BOSS_COMBAT_FLAG::GROGGY))) continue;
+			const auto dealt = hit.bDestroyAllEligibleParts ||
+				BOSS_PATTERN_PART_DAMAGE_POLICY::DESTROY_FIRST_ELIGIBLE == boss.ePatternPartDamagePolicy ?
+				part.iCurrentDurability : (std::min)(hit.iPartDamage, part.iCurrentDurability);
+			result.iPartDamage += dealt;
+			part.iCurrentDurability -= dealt;
+			combatStateChanged = combatStateChanged || dealt != 0u;
+			if (0u == part.iCurrentDurability)
 			{
-				state.iAlivePartMask &= ~part->iStateMask;
-				result.iDestroyedPartMask = part->iStateMask;
-				result.strDestroyedPartId = part->strPartId;
-				result.bPartDestroyed = Publish_PatternOutcome(
-					boss, BOSS_PATTERN_STAGE_OUTCOME::PART_DESTROYED,
-					hit.iServerTick);
-				partBreakEdgeIndex = state.PendingPartBreakEdges.size();
-				state.PendingPartBreakEdges.push_back({
-					part->iStateMask, hit.iServerTick, 0u });
+				state.iAlivePartMask &= ~part.iStateMask;
+				result.iDestroyedPartMask |= part.iStateMask;
+				if (result.strDestroyedPartId.empty()) result.strDestroyedPartId = part.strPartId;
 			}
+			if (!hit.bDestroyAllEligibleParts) break;
+		}
+		if (result.iDestroyedPartMask)
+		{
+			result.bPartDestroyed = Publish_PatternOutcome(
+				boss, BOSS_PATTERN_STAGE_OUTCOME::PART_DESTROYED, hit.iServerTick);
+			partBreakEdgeIndex = state.PendingPartBreakEdges.size();
+			state.PendingPartBreakEdges.push_back({result.iDestroyedPartMask, hit.iServerTick, 0u});
 		}
 	}
 	result.iAlivePartMask = state.iAlivePartMask;
