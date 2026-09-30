@@ -2112,3 +2112,15 @@ void LostArk::Server::CPlayerSkillSystem::Recalculate_Cooldowns(
         duration->second = updatedDuration;
     }
 }
+
+void LostArk::Server::CPlayerSkillSystem::Apply_ColosseumObjectHit(
+    SERVER_PLAYER& target, SERVER_PLAYER& caster, const PLAYER_SKILL_DEFINITION& skill,
+    const CGameplayCatalog& catalog, const PLAYER_SKILL_HIT& hit,
+    const std::uint64_t wholeCastDamage, const std::uint32_t subHitTotal, const std::uint32_t subHitIndex,
+    const float sourceX, const float sourceZ, const std::uint32_t serverTick,
+    const SERVER_COLOSSEUM_COMBAT_CONTEXT& context, std::vector<LostArk::Shared::DAMAGE_EVENT>& events)
+{
+    ApplyColosseumPlayerHitDamage(target, caster, skill, catalog, &hit,
+        wholeCastDamage,
+        subHitTotal, subHitIndex, sourceX, sourceZ, serverTick, context, events);
+}

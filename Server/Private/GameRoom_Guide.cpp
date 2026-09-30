@@ -225,7 +225,7 @@ void CGameRoom::Guide_ChatCommand(const SERVER_PLAYER& sender,const std::string&
  }
 }
 
-void CGameRoom::Guide_AnchorArrived(const SERVER_PLAYER& anchor)
+void CGameRoom::Guide_AnchorArrived(const SERVER_PLAYER& anchor, const bool localMapTravel)
 {
  if(!anchor.Is_Human()||isMinigameAnchor(anchor))return;
  const auto found=m_PersonalGuides.find(anchor.iSessionId);
@@ -236,7 +236,21 @@ void CGameRoom::Guide_AnchorArrived(const SERVER_PLAYER& anchor)
  Reset_PlayerForDebugTeleport(actor->second);
  state.ComboId.clear();state.PendingComboId.clear();state.InsideBoxes.clear();state.FarElapsed=0.f;
  state.ReturningOnFoot=true;state.Reason="Following committed owner arrival on foot";
-
+ // An admitted Bern map-travel is a shared local arrival, before ship boarding.
+ // The existing actor follows that relocation; cross-world returns keep their on-foot approach.
+ if(localMapTravel&&m_eWorldId==WORLD_ID::BERN&&!anchor.bShipDockValid)
+ {
+  const float yaw=anchor.fYawDegrees*PI/180.f;
+  SERVER_NAV_POINT landing;
+  if(Find_GuideLanding(actor->second,
+      anchor.fPositionX-std::sin(yaw)*m_GuideCatalog.DesiredDistance,anchor.fPositionY,
+      anchor.fPositionZ-std::cos(yaw)*m_GuideCatalog.DesiredDistance,landing))
+  {
+   actor->second.fPositionX=landing.x;actor->second.fPositionY=landing.y;actor->second.fPositionZ=landing.z;
+   actor->second.fYawDegrees=anchor.fYawDegrees;actor->second.isCombatReady=actor->second.iCurrentHp!=0u;
+   state.ReturningOnFoot=false;state.WaitingForShip=false;
+  }
+ }
 }
 
 void CGameRoom::Update_Guides(float seconds)

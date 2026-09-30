@@ -95,6 +95,36 @@ int CServerGameplayContractRunner::Run_GuideAI()
  leader.bShipDockValid=false;leader.iVehicleId=INVALID_VEHICLE_ID;source->Update_Guides(.2f);
  tests.Require(!state.WaitingForShip&&state.ReturningOnFoot&&guide.fPositionX==pierPose[0],"Disembarking resumes an on-foot approach without relocating the guide");
  leader.fPositionX=ownerPose[0];leader.fPositionZ=ownerPose[2];source->Reset_PlayerForDebugTeleport(guide);state.ReturningOnFoot=false;
+ // Local map travel follows the committed owner once; it is not a ship/world departure.
+ {
+  const auto savedOwner=leader,savedGuide=guide;const auto savedState=state;const auto savedTick=source->m_iServerTick;
+  for(const std::uint16_t destination : {std::uint16_t{1u},std::uint16_t{2u},std::uint16_t{3u},WORLD_MAP_SHIP_TRAVEL_DESTINATION_ID})
+  {
+   source->Reset_PlayerForDebugTeleport(leader);source->Reset_PlayerForDebugTeleport(guide);
+   const auto before=std::array{guide.fPositionX,guide.fPositionY,guide.fPositionZ};
+   C2S_USE_SQUAREHOLE travel;travel.iClientSequence=1000u+destination;travel.iSquareHoleId=destination;
+   source->Handle_UseSquareHole(ownerId,travel);
+   const bool admitted=leader.eAction==PLAYER_ACTION_STATE::SQUAREHOLE_SONG;
+   tests.Require(admitted&&guide.fPositionX==before[0]&&guide.fPositionY==before[1]&&guide.fPositionZ==before[2],
+    "SquareHole and Set Sail preparation preserve the guide until the real song commits");
+   if(!admitted)continue;
+   const auto duration=(SQUAREHOLE_SONG_DURATION_MS*30u+999u)/1000u+(SQUAREHOLE_BLACKOUT_HOLD_MS*30u+999u)/1000u;
+   source->m_iServerTick=leader.iActionStartTick+duration-1u;source->Update_Players(1.f/30.f);
+   SERVER_NAV_POINT expected;const bool landed=source->Resolve_SquareHoleDestination(leader,destination,expected)&&
+    std::hypot(leader.fPositionX-expected.x,leader.fPositionZ-expected.z)<.01f;
+   tests.Require(landed&&guide.iNetEntityId==reception.iNetEntityId&&state.PlayerId==guideId&&state.AnchorId==leader.iPlayerId&&
+    !state.WaitingForOwner&&!state.WaitingForShip&&!leader.bShipDockValid&&source->m_PendingWorldTransfers.empty()&&
+    std::abs(guide.fPositionY-leader.fPositionY)<=2.f&&std::hypot(guide.fPositionX-leader.fPositionX,guide.fPositionZ-leader.fPositionZ)<=6.01f&&
+    source->m_ServerCollisionSystem.Is_PlayerPositionClear(guide.fPositionX,guide.fPositionY,guide.fPositionZ,guide.iNetEntityId),
+    "Committed Bern map travel brings the same owned guide to a validated nearby landing before any ship boarding");
+   drain();
+  }
+  const auto refusedOwner=std::array{leader.fPositionX,leader.fPositionZ},refusedGuide=std::array{guide.fPositionX,guide.fPositionZ};
+  C2S_USE_SQUAREHOLE invalid;invalid.iClientSequence=70000u;invalid.iSquareHoleId=65534u;source->Handle_UseSquareHole(ownerId,invalid);
+  tests.Require(leader.eAction==PLAYER_ACTION_STATE::NONE&&leader.fPositionX==refusedOwner[0]&&leader.fPositionZ==refusedOwner[1]&&
+   guide.fPositionX==refusedGuide[0]&&guide.fPositionZ==refusedGuide[1],"Rejected map travel never relocates its owner or guide");
+  leader=savedOwner;guide=savedGuide;state=savedState;source->m_iServerTick=savedTick;drain();
+ }
  // Existing four-human parties still enter a raid; the guide is outside that transaction.
  for(unsigned i=1;i<4;++i){C2S_PARTY_INVITE invite;invite.iTargetNetEntityId=source->m_Players.at(sessions[i]->Get_PlayerId()).iNetEntityId;source->Handle_PartyInvite(ownerId,invite);C2S_PARTY_INVITE_RESPOND answer;answer.iFromNetEntityId=leader.iNetEntityId;answer.bAccepted=true;source->Handle_PartyInviteRespond(sessions[i]->Get_SessionId(),answer);drain();}
  tests.Require(source->m_PartyMembersByPartyId.size()==1&&source->m_PartyMembersByPartyId.begin()->second.size()==4,"The guide does not occupy or alter a four-human party");

@@ -184,7 +184,7 @@ def sample_bone(sequence, resource, slot, age, bone, load_model):
     return result
 
 
-def sample_object(sequence, instance, resource, box, world, emitter, age, row, load_model):
+def sample_object(sequence, instance, resource, box, world, emitter, age, row, load_model, *, bone_parent=None):
     motion = sequence.get("objectMotion", {})
     # Authored emissions have zero spread. Random spread's argument evaluation
     # order is compiler-dependent; reject that unproven gameplay case explicitly.
@@ -227,7 +227,9 @@ def sample_object(sequence, instance, resource, box, world, emitter, age, row, l
         for i in range(3): visual[12+i] += offset[i]
     if any(v<=0 or not math.isfinite(v) for v in scale): raise ColliderBakeError("Object collider scale must remain positive")
     if row.get("attachmentBone"):
-        pivot = wm.matrix_multiply(sample_bone(sequence,resource,row["slotId"],age,row["attachmentBone"],load_model),visual)
+        # A named Effect root is the parent of the bone, exactly as in Client attachment sampling.
+        parent = wm.matrix_multiply(bone_parent, visual) if bone_parent is not None else visual
+        pivot = wm.matrix_multiply(sample_bone(sequence,resource,row["slotId"],age,row["attachmentBone"],load_model),parent)
     elif row["behavior"] == "HOOK_CAPTURE":
         pivot = visual
     else:

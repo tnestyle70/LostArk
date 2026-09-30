@@ -14,6 +14,7 @@
 #include <span>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 NS_BEGIN(Client)
 
@@ -133,6 +134,7 @@ private:
 	ComPtr<ID3D11Device> m_pDevice = { nullptr };
 	ComPtr<ID3D11DeviceContext> m_pContext = { nullptr };
 	LEVEL m_eNextLevelID = LEVEL::END;
+    std::vector<std::string> m_MaharakaAvatarVisualSetIds;
 	LostArk::Shared::CHARACTER_CLASS_ID m_ePreparedCharacterClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
 	std::unordered_map<LostArk::Shared::CHARACTER_CLASS_ID,
 		std::shared_ptr<const CPlayableCharacterAssetService::AUTHORING_INPUT>> m_CharacterAuthoringInputs;

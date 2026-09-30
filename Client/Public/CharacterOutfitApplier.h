@@ -28,7 +28,7 @@ public:
 	default hair. Costume goes on before hair, the order the screen consumes a loaded slot in.
 	True when the complete outfit commits, including a default body-hair-only look. */
 	bool_t Apply(const shared_ptr<CCharacter>& pCharacter,
-		int32_t iHair, int32_t iCostume);
+		int32_t iHair, int32_t iCostume, bool_t requireAll = false);
 
 private:
 	bool_t Ensure_Loaded();

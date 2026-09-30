@@ -211,6 +211,7 @@ bool Validate_EffectAnchor(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
                     (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.';
             });
     };
+    if (!box.strWorldEffectTrackId.empty()) return reject("World Effect track belongs only to a WORLD bone Collider");
     if ((box.strAnchorKind != "BOSS" && box.strAnchorKind != "WORLD" && box.strAnchorKind != "MAP") ||
         (box.strBoneTarget != "BODY" && box.strBoneTarget != "WEAPON") ||
         (!box.strBone.empty() && !stableId(box.strBone)) || box.iWorldEmissionIndex > 127u)
@@ -509,6 +510,7 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
     if (row.Find("anchorKind")) box.strAnchorKind = Text(row, "anchorKind");
     if (row.Find("worldId")) box.strWorldId = Text(row, "worldId", true);
     if (row.Find("worldOccurrenceId")) box.strWorldOccurrenceId = Text(row, "worldOccurrenceId", true);
+    if (row.Find("worldEffectTrackId")) box.strWorldEffectTrackId = Text(row, "worldEffectTrackId", true);
     if (row.Find("worldEmissionIndex")) box.iWorldEmissionIndex = UInt(row, "worldEmissionIndex", 0u, 127u);
     if (box.strAnchorKind != "BOSS" && box.strAnchorKind != "WORLD" &&
         !(kind == KIND::LIGHT && (box.strAnchorKind == "MAP" || box.strAnchorKind == "PLAYER")) &&
@@ -535,6 +537,12 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
     if (row.Find("boneRotation")) box.strBoneRotation = Text(row, "boneRotation");
     const bool worldBoneCollider = kind == KIND::COLLIDER && box.strAnchorKind == "WORLD" &&
         box.bFollowBoss && box.strBoneTarget == "BODY" && !box.strBone.empty();
+    if (!box.strWorldEffectTrackId.empty() && (!worldBoneCollider || box.strBoneRotation != "BONE" || box.strWorldOccurrenceId.empty() ||
+        box.strWorldEffectTrackId.size() > 128u || box.strWorldEffectTrackId == "." || box.strWorldEffectTrackId == ".." ||
+        !std::all_of(box.strWorldEffectTrackId.begin(), box.strWorldEffectTrackId.end(), [](const unsigned char c) {
+            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.'; })))
+        throw std::runtime_error("World Effect track requires an exact World occurrence and following WORLD BODY bone Collider with BONE rotation.");
     if (box.strAnchorKind == "WORLD" && !box.strBone.empty() && !worldBoneCollider)
         throw std::runtime_error("WORLD bone requires a following BODY Collider: " + box.strOccurrenceId);
     if (box.strBoneRotation != "TARGET_YAW" && (box.strBoneRotation != "BONE" ||
@@ -2845,16 +2853,16 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                     player->Is_Playing(world->strSequenceInstanceId))
                 { if (selected) return false; selected = player.get(); }
             return selected && selected->Try_GetSequencePivot(world->strSequenceInstanceId, anchor, box.iWorldEmissionIndex,
-                box.strBone, box.strBoneRotation == "BONE");
+                box.strBone, box.strBoneRotation == "BONE", box.strWorldEffectTrackId);
         }
         const auto* level = CLevel_KakulSaydonArena::Get_Active();
         if (!level) return false;
         if (session.runEpoch)
             return level->Try_GetOwnedCompositionWorldPivot(session.runEpoch, session.memberId,
                 world->strSequenceInstanceId, box.strWorldOccurrenceId, anchor, box.iWorldEmissionIndex, session.patternSequence,
-                box.strBone, box.strBoneRotation == "BONE");
+                box.strBone, box.strBoneRotation == "BONE", box.strWorldEffectTrackId);
         return level->Try_GetCompositionWorldPivot(world->strSequenceInstanceId, anchor, box.strWorldOccurrenceId, box.iWorldEmissionIndex,
-            box.strBone, box.strBoneRotation == "BONE");
+            box.strBone, box.strBoneRotation == "BONE", box.strWorldEffectTrackId);
     };
     const float targetForwardYawOffset = pattern.strActorProfileId == "MN_RPCT_06" ? 90.f : 0.f;
     std::optional<float3_t> presentationTarget = session.presentationTarget;
@@ -6424,6 +6432,9 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
         if (resource->eKind == KIND::COLLIDER)
         {
             edited.strAnchorPresentationOccurrenceId = occurrence.strAnchorPresentationOccurrenceId;
+            edited.strWorldEffectTrackId = occurrence.strWorldEffectTrackId;
+            if (!edited.strWorldEffectTrackId.empty() && (edited.strAnchorKind != "WORLD" || !edited.bFollowBoss ||
+                edited.strBone.empty() || edited.strBoneTarget != "BODY" || edited.strBoneRotation != "BONE" || edited.strWorldOccurrenceId.empty())) return false;
             edited.strColliderMotion = occurrence.strColliderMotion;
             edited.ColliderEndPositionOffset = occurrence.ColliderEndPositionOffset;
             edited.ColliderEndScale = occurrence.ColliderEndScale;
@@ -6440,6 +6451,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
             return true;
         }
         bool anchorChanged = edited.strAnchorPresentationOccurrenceId != box->strAnchorPresentationOccurrenceId ||
+            edited.strWorldEffectTrackId != box->strWorldEffectTrackId ||
             Is_CenteredWorldCircle(*resource, edited) != Is_CenteredWorldCircle(*resource, *box);
         if (resource->eKind == KIND::EFFECT)
         {

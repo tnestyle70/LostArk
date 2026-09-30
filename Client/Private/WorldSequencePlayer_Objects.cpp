@@ -1085,17 +1085,48 @@ bool_t CWorldSequencePlayer::Try_GetPresentationBossAnchor(const std::string& ar
 }
 
 bool_t CWorldSequencePlayer::Try_GetObjectPivot(const std::string& instanceId, float4x4_t& out,
-    const uint32_t emissionIndex, const std::string& bone, const bool_t boneRotation) const
+    const uint32_t emissionIndex, const std::string& bone, const bool_t boneRotation,
+    const std::string& effectTrackId) const
 {
     const auto active = std::find_if(m_Active.begin(), m_Active.end(),
         [&](const auto& value) { return value.instanceId == instanceId; });
     if (active == m_Active.end()) return false;
+    const auto* instance = m_Document.Find_Instance(instanceId);
+    const auto* sequence = nullptr != instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+    const WORLD_SEQUENCE_EFFECT_TRACK* effect = nullptr;
+    if (!effectTrackId.empty())
+    {
+        if (!instance || !sequence || bone.empty() || !boneRotation || instance->anchorKind != "WORLD" ||
+            instance->bindings.size() != 1u || instance->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
+            return false;
+        for (const auto& track : sequence->effectTracks)
+            if (track.effectTrackId == effectTrackId)
+            { if (effect) return false; effect = &track; }
+        if (!effect || effect->slotId != instance->bindings.front().slotId || effect->resourceKind != "V1_EFFECT" ||
+            !effect->followObject || !effect->inheritObjectRotation || !effect->bone.empty() ||
+            !std::isfinite(effect->rotationDegrees.x) || !std::isfinite(effect->rotationDegrees.y) ||
+            !std::isfinite(effect->rotationDegrees.z) || std::abs(effect->rotationDegrees.x) > .00001f ||
+            std::abs(effect->rotationDegrees.z) > .00001f || !std::isfinite(effect->scale.x) ||
+            !std::isfinite(effect->scale.y) || !std::isfinite(effect->scale.z) || effect->scale.x <= 0.f ||
+            std::abs(effect->scale.x - effect->scale.y) > .00001f || std::abs(effect->scale.x - effect->scale.z) > .00001f ||
+            !std::isfinite(effect->positionOffset.x) || !std::isfinite(effect->positionOffset.y) ||
+            !std::isfinite(effect->positionOffset.z)) return false;
+    }
     const auto sample = [&](const CWorldSequenceObject& object) {
         const auto& root = object.Get_SampledWorld();
         if (bone.empty()) { out = root; return true; }
         const auto model = object.Get_Model();
         if (!model || !model->Has_Bone(bone.c_str())) return false;
-        const matrix_t objectWorld = XMLoadFloat4x4(&root);
+        matrix_t objectWorld = XMLoadFloat4x4(&root);
+        if (effect)
+        {
+            // Match the WORLD Effect root: Bone * EffectTrackTRS * ObjectWorld.
+            // Empty IDs retain the original model-bone pivot and scale exactly.
+            objectWorld = XMMatrixScalingFromVector(XMLoadFloat3(&effect->scale)) *
+                XMMatrixRotationRollPitchYaw(XMConvertToRadians(effect->rotationDegrees.x),
+                    XMConvertToRadians(effect->rotationDegrees.y), XMConvertToRadians(effect->rotationDegrees.z)) *
+                XMMatrixTranslationFromVector(XMLoadFloat3(&effect->positionOffset)) * objectWorld;
+        }
         const matrix_t socket = model->Get_BoneMatrix(bone.c_str()) * objectWorld;
         const vector_t forward = boneRotation ? socket.r[2] : objectWorld.r[2];
         const float x = XMVectorGetX(forward), z = XMVectorGetZ(forward);
@@ -1118,8 +1149,6 @@ bool_t CWorldSequencePlayer::Try_GetObjectPivot(const std::string& instanceId, f
         const auto* values = reinterpret_cast<const float*>(&out);
         return std::all_of(values, values + 16u, [](float value) { return std::isfinite(value); });
     };
-    const auto* instance = m_Document.Find_Instance(instanceId);
-    const auto* sequence = nullptr != instance ? m_Document.Find_Template(instance->templateId) : nullptr;
     if (nullptr == sequence || sequence->objectMotion.emissions.empty())
     {
         if (0u != emissionIndex || active->objects.size() != 1 || !active->objects.front().object ||
@@ -1788,10 +1817,11 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
 }
 
 bool_t Client::CWorldSequencePlayer::Try_GetSequencePivot(const std::string& instanceId, float4x4_t& out,
- const uint32_t emissionIndex, const std::string& bone, const bool_t boneRotation) const
+ const uint32_t emissionIndex, const std::string& bone, const bool_t boneRotation,
+    const std::string& effectTrackId) const
 {
- if (Try_GetObjectPivot(instanceId, out, emissionIndex, bone, boneRotation)) return true;
- if (!bone.empty()) return false;
+ if (Try_GetObjectPivot(instanceId, out, emissionIndex, bone, boneRotation, effectTrackId)) return true;
+ if (!bone.empty() || !effectTrackId.empty()) return false;
  // Placed map/deploy aliases have no emission rows; only row 0 can name them.
  if (0u != emissionIndex) return false;
  const auto* instance = Get_Document().Find_Instance(instanceId);

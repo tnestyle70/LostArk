@@ -90,6 +90,7 @@ bool LostArk::Server::CGameRoom::Stage_ReturnToBern(
 	transfer.eCharacterClass = player.eCharacterClass;
 	transfer.strNickName = player.strNickName;
 	transfer.iVoiceType = player.iVoiceType;
+	transfer.strAppearanceJson = player.strAppearanceJson;
 	transfer.iHonorTitleId = player.iHonorTitleId;
 	transfer.iPartyRequestSequence = requestSequence;
 	transfer.strSpawnPlacementOverrideId = player.strRaidReturnNpcPlacementId.empty() ?
@@ -776,6 +777,7 @@ bool LostArk::Server::CGameRoom::Stage_PartyWorldTransfer(
 	transfer.eCharacterClass = leader.eCharacterClass;
 	transfer.strNickName = leader.strNickName;
 	transfer.iVoiceType = leader.iVoiceType;
+	transfer.strAppearanceJson = leader.strAppearanceJson;
 	transfer.iHonorTitleId = leader.iHonorTitleId;
 	transfer.iPartyRequestSequence = requestSequence;
 	for (const PLAYER_ID memberId : batchMemberIds)
@@ -1079,7 +1081,9 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 	};
 	const bool colosseumSquareHole = m_eWorldId == WORLD_ID::COLOSSEUM &&
 		target.m_eWorldId == WORLD_ID::BERN &&
-		0u != Resolve_BernSquareHoleId(spawnPlacementOverrideId) && raidReturnNpcPlacementId.empty();
+		(0u != Resolve_BernSquareHoleId(spawnPlacementOverrideId) ||
+         (m_iColosseumMatchId && m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::FINISHED &&
+          spawnPlacementOverrideId == "npc.bern.25184_1.2")) && raidReturnNpcPlacementId.empty();
     const bool returning = target.m_eWorldId == WORLD_ID::BERN &&
         (m_eWorldId == WORLD_ID::VALTAN_ARENA || m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA);
 	const bool singleDeparture = returning || colosseumSquareHole;
@@ -1148,6 +1152,7 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 		enter.eCharacterClass = member->second.eCharacterClass;
 		enter.strNickName = member->second.strNickName;
 		enter.iVoiceType = member->second.iVoiceType;
+		enter.strAppearanceJson = member->second.strAppearanceJson;
 		STAGED_PLAYER_ENTRY entry{};
 		SESSION_DIAGNOSTIC_REASON reason{};
 		if (!target.Stage_PlayerEntry(session, enter, entries, entry, reason, status,
@@ -1221,6 +1226,7 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 			message.eCharacterClass = entry.Player.eCharacterClass;
 			message.strNickName = entry.Player.strNickName;
 			message.iVoiceType = entry.Player.iVoiceType;
+			message.strAppearanceJson = entry.Player.strAppearanceJson;
 			message.fPositionX = entry.Player.fPositionX;
 			message.fPositionY = entry.Player.fPositionY;
 			message.fPositionZ = entry.Player.fPositionZ;

@@ -1557,6 +1557,109 @@ namespace
 		Require(WriteText(sourcePath, originalBytes), "could not restore source after Bone preview fixture");
 	}
 
+    void VerifyKoukuWorldEffectColliderFrame(const std::filesystem::path& sourcePath)
+    {
+        using namespace Client;
+        const auto originalBytes = ReadText(sourcePath);
+        KOUKU_SAYDON_COMPOSITION_DOCUMENT source;
+        std::string status;
+        RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(originalBytes, source, status),
+            status, "parse World Effect frame fixture");
+        std::size_t patternIndex = source.Patterns.size(), boxIndex = 0u;
+        for (std::size_t i = 0u; i < source.Patterns.size() && patternIndex == source.Patterns.size(); ++i)
+        {
+            const auto& pattern = source.Patterns[i];
+            if (!pattern.strLoadError.empty()) continue;
+            for (std::size_t j = 0u; j < pattern.PresentationOccurrences.size(); ++j)
+            {
+                const auto& box = pattern.PresentationOccurrences[j];
+                const auto resource = std::find_if(source.PresentationResources.begin(), source.PresentationResources.end(),
+                    [&](const auto& row) { return row.strResourceId == box.strResourceId; });
+                if (resource != source.PresentationResources.end() && resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER &&
+                    box.strAnchorKind == "WORLD" && !box.strWorldOccurrenceId.empty() && box.bFollowBoss &&
+                    box.strBoneTarget == "BODY" && !box.strBone.empty() && box.strBoneRotation == "BONE")
+                { patternIndex = i; boxIndex = j; break; }
+            }
+        }
+        Require(patternIndex < source.Patterns.size(), "World Effect frame fixture needs an authored WORLD bone Collider");
+        auto& box = source.Patterns[patternIndex].PresentationOccurrences[boxIndex];
+        const auto patternId = source.Patterns[patternIndex].strPatternId;
+        const auto boxId = box.strOccurrenceId;
+        box.strWorldEffectTrackId.clear();
+        KOUKU_SAYDON_COMPOSITION_DOCUMENT parsed;
+        auto bytes = CKoukuSaydonCompositionDocument::Serialize(source);
+        const auto boxStart = bytes.find("\"occurrenceId\": \"" + boxId + "\"");
+        Require(boxStart != std::string::npos && bytes.substr(boxStart, bytes.find('}', boxStart) - boxStart).find("worldEffectTrackId") == std::string::npos,
+            "legacy Collider serialization unexpectedly emitted a World Effect frame");
+        RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(bytes, parsed, status), status, "roundtrip legacy Object frame");
+        Require(parsed == source, "empty World Effect frame changed legacy Colliders or unrelated authored data");
+        box.strWorldEffectTrackId = "effect.doll.flame";
+        RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(CKoukuSaydonCompositionDocument::Serialize(source), parsed, status),
+            status, "roundtrip named World Effect frame");
+        Require(parsed == source, "named World Effect frame was lost or changed another Collider");
+        Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(source)), "could not write World Effect frame fixture");
+        CKoukuSaydonActionWorkbench workbench;
+        RequireEditorStep(workbench.Reload(status), status, "reload World Effect frame fixture");
+        auto edited = box;
+        edited.strWorldEffectTrackId = "effect.fixture.applied";
+        RequireEditorStep(workbench.Set_PresentationBox(patternId, edited, status), status, "apply World Effect frame edit");
+        RequireEditorRoundtrip(workbench);
+        auto expected = source;
+        expected.Patterns[patternIndex].PresentationOccurrences[boxIndex] = edited;
+        expected.iRevision = workbench.Get_Composition().iRevision;
+        Require(workbench.Get_Composition() == expected && CKoukuSaydonCompositionDocument::Serialize(workbench.Get_Composition()) ==
+            CKoukuSaydonCompositionDocument::Serialize(expected), "World Effect frame Apply/Save changed unrelated authored data");
+        const auto saved = workbench.Get_Composition();
+        const auto savedBytes = ReadText(sourcePath);
+        edited.strWorldEffectTrackId = "effect.fixture.preview";
+        RequireEditorStep(workbench.Request_PresentationGeometryPreview(patternId, edited, status), status, "preview World Effect frame edit");
+        KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST geometry;
+        KOUKU_SAYDON_COMPOSITION_PATTERN preview;
+        std::uint32_t clock = 0u; bool_t paused = false; std::string target;
+        Require(workbench.Consume_PresentationGeometryPreviewRequest(geometry) && geometry.Occurrence.strWorldEffectTrackId == edited.strWorldEffectTrackId,
+            "geometry overlay did not preserve the World Effect frame edit");
+        Require(workbench.Consume_PatternPreviewRequest(preview, clock, paused, target), "World Effect frame did not queue a Pattern snapshot");
+        const auto previewBox = std::find_if(preview.PresentationOccurrences.begin(), preview.PresentationOccurrences.end(),
+            [&](const auto& row) { return row.strOccurrenceId == boxId; });
+        Require(previewBox != preview.PresentationOccurrences.end() && previewBox->strWorldEffectTrackId == edited.strWorldEffectTrackId,
+            "Pattern preview placement copy dropped the World Effect frame");
+        Require(workbench.Get_Composition() == saved && workbench.Is_Dirty() && ReadText(sourcePath) == savedBytes,
+            "World Effect frame preview changed the applied draft/disk or lost its staged dirty state");
+        workbench.Cancel_PresentationGeometryPreview();
+        Require(!workbench.Is_Dirty() && workbench.Get_Composition() == saved,
+            "discarded World Effect frame preview remained staged or changed the applied draft");
+        edited.strWorldEffectTrackId.clear();
+        RequireEditorStep(workbench.Set_PresentationBox(patternId, edited, status), status, "restore legacy Object frame");
+        RequireEditorRoundtrip(workbench);
+        expected.Patterns[patternIndex].PresentationOccurrences[boxIndex] = edited;
+        expected.iRevision = workbench.Get_Composition().iRevision;
+        Require(workbench.Get_Composition() == expected, "clearing World Effect frame changed unrelated authored data");
+        edited.strWorldEffectTrackId = "effect.doll.flame";
+        RequireEditorStep(workbench.Set_PresentationBox(patternId, edited, status), status, "restore named World Effect frame");
+        RequireEditorRoundtrip(workbench);
+        CKoukuSaydonCompositionDocument document(sourcePath);
+        RequireEditorStep(document.Reload(status), status, "load World Effect frame rejection baseline");
+        const auto good = document.Get_LastGood();
+        bytes = ReadText(sourcePath);
+        for (const auto invalidKind : { "OWNER", "ANCHOR", "FOLLOW", "BONE", "TARGET", "ROTATION", "TRACK_ID" })
+        {
+            auto invalid = good;
+            auto& invalidBox = invalid.Patterns[patternIndex].PresentationOccurrences[boxIndex];
+            const std::string kind = invalidKind;
+            if (kind == "OWNER") invalidBox.strWorldOccurrenceId.clear();
+            else if (kind == "ANCHOR") invalidBox.strAnchorKind = "BOSS";
+            else if (kind == "FOLLOW") invalidBox.bFollowBoss = false;
+            else if (kind == "BONE") invalidBox.strBone.clear();
+            else if (kind == "TARGET") invalidBox.strBoneTarget = "WEAPON";
+            else if (kind == "ROTATION") invalidBox.strBoneRotation = "TARGET_YAW";
+            else invalidBox.strWorldEffectTrackId = "../flame";
+            Require(!document.Save_Atomic(invalid, status) && !status.empty() && document.Get_LastGood() == good && ReadText(sourcePath) == bytes,
+                "invalid World Effect frame replaced the previous saved document");
+        }
+        Require(WriteText(sourcePath, originalBytes), "could not restore source after World Effect frame fixture");
+        std::cout << "Kouku World Effect frame: optional/named roundtrip, Apply, preview copy, clear and invalid-anchor rollback passed\n";
+    }
+
 	void VerifyKoukuTimelineControls(Client::CKoukuSaydonActionWorkbench& workbench,
 		const std::filesystem::path& sourcePath)
 	{
@@ -3990,6 +4093,7 @@ namespace
 		Require(environment.Set(dataRoot), "could not select the scratch Data root");
 		std::cout << "Kouku editor fixture: " << sourcePath.string() << '\n';
 
+        VerifyKoukuWorldEffectColliderFrame(sourcePath);
 		VerifyKoukuSequenceDocumentIsolation(sourcePath, sequencePath);
 		VerifyLegacyEditorMigration(sourcePath);
 		VerifyKoukuGateBundleStorage(sourcePath);
@@ -4192,6 +4296,41 @@ int Run_KoukuSequenceDocumentContractTests()
 		std::cerr << "KoukuSequenceDocumentContractTests: FAIL: " << error.what() << '\n';
 		return 1;
 	}
+}
+
+int Run_KoukuWorldEffectFrameContractTests()
+{
+    try
+    {
+        const auto sourceRoot = Client::CProjectDataRoot::Get();
+        const auto scratchRoot = std::filesystem::temp_directory_path() /
+            ("LostArkKoukuWorldEffectFrame-" + std::to_string(GetCurrentProcessId()) +
+             "-" + std::to_string(GetTickCount64()));
+        SCOPED_TEST_DIRECTORY scratch(scratchRoot);
+        const auto dataRoot = scratchRoot / "Data";
+        const auto relativeSource = std::filesystem::path("KoukuSaydon/Gate1/KoukuSaydonComposition.json");
+        const auto originalBytes = ReadText(sourceRoot / relativeSource);
+        Require(CopyFixture(sourceRoot / relativeSource, dataRoot / relativeSource),
+            "could not copy real World Effect frame authoring source");
+        for (const char* profile : { "MN_RPCT_05", "MN_RPCT_06", "MN_RPCT_07", "MN_RPCZ_00" })
+        {
+            const auto relative = std::filesystem::path("Animation/Reference/KoukuSaydon") /
+                (std::string(profile) + ".actionreference.json");
+            Require(CopyFixture(sourceRoot / relative, dataRoot / relative), "could not copy real Action reference");
+        }
+        SCOPED_ENVIRONMENT_VARIABLE environment(L"LOSTARK_PROJECT_DATA_ROOT");
+        Require(environment.Set(dataRoot), "could not select the isolated World Effect frame Data root");
+        VerifyKoukuWorldEffectColliderFrame(dataRoot / relativeSource);
+        Require(ReadText(dataRoot / relativeSource) == originalBytes && ReadText(sourceRoot / relativeSource) == originalBytes,
+            "World Effect frame fixture changed its seed or real source bytes");
+        std::cout << "KoukuWorldEffectFrameContractTests: PASS\n";
+        return 0;
+    }
+    catch (const std::exception& error)
+    {
+        std::cerr << "KoukuWorldEffectFrameContractTests: FAIL: " << error.what() << '\n';
+        return 1;
+    }
 }
 
 int Run_KoukuCompositionEditorContractTests()

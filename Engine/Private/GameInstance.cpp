@@ -845,3 +845,16 @@ void CGameInstance::Release_Engine()
 		m_pGraphic_Device->Shutdown();
 	m_pGraphic_Device.reset();
 }
+
+uint64_t CGameInstance::Request_Picking()
+{
+    return m_pPicking ? m_pPicking->Request_Picking() : 0u;
+}
+HRESULT CGameInstance::Poll_Picking(const uint64_t requestId, float4_t& vOut)
+{
+    return m_pPicking ? m_pPicking->Poll_Picking(requestId, vOut) : E_ABORT;
+}
+void CGameInstance::Cancel_Picking(const uint64_t requestId)
+{
+    if (m_pPicking) m_pPicking->Cancel_Picking(requestId);
+}

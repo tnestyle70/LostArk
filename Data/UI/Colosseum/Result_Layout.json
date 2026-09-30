@@ -1,0 +1,192 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": {
+    "width": 1280,
+    "height": 720
+  },
+  "classes": [
+    "Default"
+  ],
+  "slots": [
+    {
+      "id": "Result_Victory",
+      "ownerClass": null,
+      "type": 9,
+      "rect": {
+        "x": 0,
+        "y": 106.66666666666666,
+        "width": 1,
+        "height": 1
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      },
+      "keyframeAnimationPath": "UI/Colosseum/Result_Victory.keyframes.json",
+      "keyframeAnimationScale": 0.6666666666666666
+    },
+    {
+      "id": "Result_Defeat",
+      "ownerClass": null,
+      "type": 9,
+      "rect": {
+        "x": 0,
+        "y": 80.33333333333333,
+        "width": 1,
+        "height": 1
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      },
+      "keyframeAnimationPath": "UI/Colosseum/Result_Defeat.keyframes.json",
+      "keyframeAnimationScale": 0.6666666666666666
+    },
+    {
+      "id": "Result_Draw",
+      "ownerClass": null,
+      "type": 9,
+      "rect": {
+        "x": 0,
+        "y": 106.66666666666666,
+        "width": 1,
+        "height": 1
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      },
+      "keyframeAnimationPath": "UI/Colosseum/Result_Draw.keyframes.json",
+      "keyframeAnimationScale": 0.6666666666666666
+    },
+    {
+      "id": "Result_Title",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 473.3333333333333,
+        "y": 214.0,
+        "width": 333.3333333333333,
+        "height": 50.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Result_Return",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 540,
+        "y": 620,
+        "width": 200,
+        "height": 44
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0.05,
+            0.11,
+            0.18,
+            0.95
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    }
+  ]
+}

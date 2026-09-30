@@ -75,7 +75,17 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 			"player entry room/session/identity validation failed");
 	}
 	const WORLD_BOOTSTRAP_PLACEMENT* spawn = nullptr;
-	if (!spawnPlacementOverrideId.empty())
+	if (m_iColosseumMatchId)
+	{
+		const auto seat = std::find(m_ColosseumSessions.begin(), m_ColosseumSessions.end(), session->Get_SessionId());
+		if (seat == m_ColosseumSessions.end()) return reject(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED,
+			"session does not belong to this Colosseum match");
+		const std::size_t index = static_cast<std::size_t>(seat - m_ColosseumSessions.begin());
+		const std::string id = std::string("player.spawn.colosseum.team") + (index % 2u ? "b.0" : "a.0") + std::to_string(index / 2u + 1u);
+		spawn = Find_Placement(id);
+		if (!spawn) return reject(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED, "Colosseum team spawn missing");
+	}
+	else if (!spawnPlacementOverrideId.empty())
 	{
 		/* Not restricted to PLAYER_SPAWN kind or exclusivity -- an override names
 		one specific placement (e.g. a guide NPC) directly, and several returning
@@ -116,11 +126,19 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	player.eCharacterClass = enterWorld.eCharacterClass;
 	player.strNickName = enterWorld.strNickName;
 	player.iVoiceType = enterWorld.iVoiceType;
+	player.strAppearanceJson = enterWorld.strAppearanceJson;
 	/* A transfer keeps the title it wore; the target room's own bootstrap still has the
 	last word, so an id it does not list arrives bare. */
 	player.iHonorTitleId = m_HonorTitleCatalog.Has_Title(carriedHonorTitleId) ?
 		carriedHonorTitleId : INVALID_HONOR_TITLE_ID;
 	player.strSpawnPlacementId = spawn->strPlacementId;
+	if (m_iColosseumMatchId)
+	{
+		player.iColosseumMatchId = m_iColosseumMatchId;
+		player.iColosseumArrivalIndex = static_cast<std::uint8_t>(std::find(m_ColosseumSessions.begin(), m_ColosseumSessions.end(), player.iSessionId) - m_ColosseumSessions.begin());
+		player.iColosseumTeam = player.iColosseumArrivalIndex % 2u;
+        player.bColosseumParticipant = true;
+	}
 	player.strRaidReturnNpcPlacementId = raidReturnNpcPlacementId;
 	player.fPositionY = spawn->fPositionY;
 	const std::uint16_t bernSquareHoleId = WORLD_ID::BERN == m_eWorldId ?
@@ -394,6 +412,7 @@ bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
         message.strWaterpangNpcArchetypeId = player.strWaterpangNpcArchetypeId;
 		message.strNickName = player.strNickName;
 		message.iVoiceType = player.iVoiceType;
+		message.strAppearanceJson = player.strAppearanceJson;
 		message.fPositionX = player.fPositionX;
 		message.fPositionY = player.fPositionY;
 		message.fPositionZ = player.fPositionZ;
@@ -416,6 +435,12 @@ void LostArk::Server::CGameRoom::Commit_PlayerEntry(const STAGED_PLAYER_ENTRY& e
 	const SERVER_PLAYER& player = entry.Player;
 	m_Sessions.insert_or_assign(player.iSessionId, entry.pSession);
 	m_Players.emplace(player.iPlayerId, player);
+	if (m_iColosseumMatchId)
+	{
+		auto& committed = m_Players.at(player.iPlayerId);
+		committed.fColosseumSpawnX = committed.fPositionX; committed.fColosseumSpawnY = committed.fPositionY;
+		committed.fColosseumSpawnZ = committed.fPositionZ; committed.fColosseumSpawnYaw = committed.fYawDegrees;
+	}
 	m_PlayerIdBySessionId.emplace(player.iSessionId, player.iPlayerId);
 	m_PlayerIdByEntityId.emplace(player.iNetEntityId, player.iPlayerId);
 	++m_iNextPlayerId;
@@ -589,8 +614,11 @@ void LostArk::Server::CGameRoom::Leave(
 	else Remove_Guide(sessionId, publishDeparture);
 
 	// A queued player who disconnects or moves on drops out of the Colosseum queue; the rest keep waiting.
-	std::erase_if(m_ColosseumQueue,
+	Remove_ColosseumExpectedSession(sessionId);
+	const auto queuedRemoved = std::erase_if(m_ColosseumQueue,
 		[sessionId](const COLOSSEUM_QUEUE_ENTRY& entry) { return entry.iSessionId == sessionId; });
+    if (m_ColosseumQueue.empty()) m_iColosseumQueueDeadline = 0u;
+    if (queuedRemoved && publishDeparture && !m_bColosseumTransferPending) Broadcast_ColosseumQueueState();
 
 	if (Is_KoukuRaidRunning())
 	{

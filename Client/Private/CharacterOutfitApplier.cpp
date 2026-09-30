@@ -108,7 +108,7 @@ bool_t Client::CCharacterOutfitApplier::Wear_Set(
 
 bool_t Client::CCharacterOutfitApplier::Apply(
 	const shared_ptr<CCharacter>& pCharacter,
-	const int32_t iHair, const int32_t iCostume)
+	const int32_t iHair, const int32_t iCostume, const bool_t requireAll)
 {
 	if (nullptr == pCharacter)
 		return false;
@@ -147,6 +147,7 @@ bool_t Client::CCharacterOutfitApplier::Apply(
 			return nullptr != set && set->classId == pSpec->eCharacterClass &&
 				set->primarySlot == EQUIPMENT_SLOT_ID::HEAD && !set->parts.empty();
 		};
+		if (requireAll && iHair >= 0 && !acceptsHair(iHair)) return false;
 		int32_t iWantedHair = acceptsHair(iHair) ? iHair : iDefaultHair;
 		if (!acceptsHair(iWantedHair))
 		{
@@ -166,6 +167,8 @@ bool_t Client::CCharacterOutfitApplier::Apply(
 			!Wear_Set(*pCharacter, (*pHairIds)[static_cast<size_t>(iWantedHair)], outfit))
 			return false;
 	}
+
+	if (requireAll && iHair >= 0 && nullptr == pHairIds) return false;
 
 	const uint32_t iLevel = pCharacter->Get_PrototypeLevelIndex();
 	Refresh_AdmissionMemory(iLevel);

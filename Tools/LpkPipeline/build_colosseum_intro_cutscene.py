@@ -90,20 +90,21 @@ def build_cutscene(raw):
         yaw = math.degrees(math.atan2(math.cos(th), -math.sin(th)))
         return {"x": round(p[0], 6), "z": round(p[2], 6), "yawDegrees": round(yaw, 3)}
 
-    teams = {}
-    for team, groups in TEAM_SLOT_GROUPS.items():
-        slots = [slot(g) for g in groups]
-        order = sorted(range(len(slots)), key=lambda i: slots[i]["z"])   # far (small z) -> near
-        for row, i in enumerate(order):
-            slots[i]["row"] = row
-        teams[team] = slots
+    # Four-player project lineup: retain the source far-to-near diagonal, with
+    # a fourth row and enough spacing for the selected mercenaries' real models.
+    teams = {team: [{"x": round(sign * (1.8 + i * .5), 6), "z": round(-3.1 + i * 1.3, 6),
+                     "yawDegrees": -sign * (25 + i * 17), "row": i} for i in range(4)]
+             for team, sign in (("A", -1), ("B", 1))}
+    for key in lineup_keys:
+        key["eye"] = [round(v - f * .8, 6) for v, f in zip(key["eye"], forward(l_pitch))]
 
     duration = fade["keys"][-1]["timeMs"]
     return {
         "schema": "lostark.colosseum-intro",
         "formatVersion": 1,
         "source": {"package": "LV_PVP_COLOSSEUM_SCENE01A", "interpData": "interpdata_3",
-                   "note": "retail 3v3 match intro; see .md/GB/09-30/2026-09-30_COLOSSEUM_INTRO_CUTSCENE_RESULT.md"},
+                   "note": "Retail 3v3 camera/timing adapted to four selected players per team; diagonal slots and fourth name row are project layout.",
+                   "cameraAdaptation": "Lineup camera dollied 0.8m backward along source forward to include four players."},
         "durationMs": duration,
         "returnFadeMs": 600,
         "waitForCharacterTimeoutMs": 6000,
@@ -120,7 +121,7 @@ def build_cutscene(raw):
         ],
         "vs": {"showMs": ev["showsequence3"], "hideMs": ev["hidesequence3"]},
         "rows": [{"showMs": ev["showsequence%d" % i], "hideMs": ev["hidesequence%d" % i]}
-                 for i in range(3)],
+                 for i in range(3)] + [{"showMs": ev["showsequence2"] + 154, "hideMs": ev["hidesequence2"]}],
         "teams": teams,
     }
 

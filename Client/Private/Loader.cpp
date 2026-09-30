@@ -10,6 +10,10 @@
 #include "Body_Valtan.h"
 #include "Character.h"
 #include "CharacterCatalog.h"
+#include "EquipmentPresentationService.h"
+#include "ItemCatalog.h"
+#include "MaharakaWaterpangPresentation.h"
+#include "Model.h"
 #include "PlayerSkillCatalog.h"
 #include "CharacterSelectionState.h"
 #include "ClassSelectionPresentation.h"
@@ -236,7 +240,27 @@ HRESULT CLoader::Initialize(
 			return reject(E_INVALIDARG, "loader.initialize.character-class",
 				"Server admission has no supported character class.");
 		}
-		const std::array selectedClass = { m_ePreparedCharacterClass };
+        std::vector selectedClass = { m_ePreparedCharacterClass };
+        if (eNextLevelID == LEVEL::MAHARAKA)
+        {
+            for (const auto aiClass : {LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT,
+                LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER})
+                if (std::find(selectedClass.begin(), selectedClass.end(), aiClass) == selectedClass.end())
+                    selectedClass.push_back(aiClass);
+            // Capture item -> visual-set IDs on the catalog owner before the worker starts.
+            for (unsigned slot = 0u; slot < 12u; ++slot)
+            {
+                std::string item = slot % 2u ? "AVATAR_LANCEMASTER_MOKOKO_036" : "AVATAR_GUARDIANKNIGHT_MOKOKO_036";
+                if (slot / 2u) item += "-" + std::to_string(slot / 2u);
+                for (const char* suffix : {"_HEAD", "_OUTFIT"})
+                {
+                    const auto* definition = CItemCatalog::Find_ById(item + suffix);
+                    if (!definition || definition->strVisualSetId.empty())
+                        return reject(E_FAIL, "loader.initialize.waterpang-avatar", "Waterpang avatar item is unavailable.");
+                    m_MaharakaAvatarVisualSetIds.push_back(definition->strVisualSetId);
+                }
+            }
+        }
 		std::span<const LostArk::Shared::CHARACTER_CLASS_ID> preparationClasses = selectedClass;
 #ifndef _DEBUG
 		if (eNextLevelID == LEVEL::CHARACTER_SELECT)
@@ -958,7 +982,7 @@ HRESULT CLoader::Ready_For_Maharaka()
 			CNpcPlacementPresentationService::Get_Status() + "\n").c_str());
 	}
 	CLevelResourceRollbackScope rollback(ETOUI(LEVEL::MAHARAKA));
-	Declare_Phases(6u);
+	Declare_Phases(9u);
 	Set_Status(TEXT("MAHARAKA: island catalog and placements"));
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
@@ -973,14 +997,52 @@ HRESULT CLoader::Ready_For_Maharaka()
 	}
 
 	Set_Status(TEXT("MAHARAKA: session character bundle"));
-	const std::array selectedClass =
-	{
-		m_ePreparedCharacterClass
-	};
+    std::vector selectedClass = { m_ePreparedCharacterClass };
+    for (const auto aiClass : {LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT,
+        LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER})
+        if (std::find(selectedClass.begin(), selectedClass.end(), aiClass) == selectedClass.end())
+            selectedClass.push_back(aiClass);
 	if (FAILED(Ready_Character_Rendering(
 		ETOUI(LEVEL::MAHARAKA),
 		selectedClass)))
 		return E_FAIL;
+
+    const auto cancelled = [this]() { return m_isCancellationRequested.load(std::memory_order_acquire); };
+    const auto level = ETOUI(LEVEL::MAHARAKA);
+    std::string preloadStatus;
+    Set_Status(TEXT("MAHARAKA: Waterpang weapons and contestant costumes"));
+    if (cancelled()) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+    if (FAILED(CMaharakaWaterpangPresentation::Ensure_WaterGunPrototype(m_pDevice, m_pContext, level, preloadStatus)))
+        return E_FAIL;
+    CEquipmentPresentationCatalog equipmentCatalog;
+    CEquipmentPresentationService equipment(m_pDevice, m_pContext);
+    if (!equipmentCatalog.Load(preloadStatus)) return E_FAIL;
+    for (const auto& set : m_MaharakaAvatarVisualSetIds)
+    {
+        if (cancelled()) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+        if (!equipment.Preload_VisualSets(level, equipmentCatalog, std::span<const std::string>(&set, 1u), preloadStatus))
+        { OutputDebugStringA(("[Loader][Waterpang] " + preloadStatus + "\n").c_str()); return E_FAIL; }
+    }
+    Set_Status(TEXT("MAHARAKA: Waterpang NPC models and materials"));
+    for (const char* archetype : LostArk::Shared::MAHARAKA_WATERPANG_AI_NPCS)
+    {
+        if (cancelled()) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+        if (FAILED(CNpcPresentationAssetService::Ensure_Prototypes(m_pDevice, m_pContext, level, archetype))) return E_FAIL;
+        const auto model = std::dynamic_pointer_cast<CModel>(CGameInstance::Get().Clone_Prototype(
+            level, CNpcPresentationAssetService::Get_ModelPrototypeTag(archetype)));
+        if (!model || !model->Has_Bone("bip001-r-hand")) return E_FAIL;
+    }
+    // Admission must finish with real water-gun clips for every prepared contestant class.
+    for (const auto characterClass : selectedClass)
+    {
+        const auto* spec = CCharacterCatalog::Find_Spec(characterClass);
+        const auto model = spec ? std::dynamic_pointer_cast<CModel>(CGameInstance::Get().Clone_Prototype(level, spec->pBodyModelTag)) : nullptr;
+        bool idle = false, run = false;
+        if (model) for (uint32_t clip = 0u; clip < model->Get_NumAnimations(); ++clip)
+            if (const auto* name = model->Get_AnimationName(clip))
+            { idle |= std::string_view(name) == "watergun_idle"; run |= std::string_view(name) == "watergun_run"; }
+        if (!model || !model->Has_Bone("bip001-prop3") || !idle || !run) return E_FAIL;
+    }
 
 	if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::MAHARAKA),
 		CWorldSequenceObject::PROTOTYPE_TAG,CWorldSequenceObject::Create(m_pDevice,m_pContext)))) return E_FAIL;

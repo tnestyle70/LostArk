@@ -15,6 +15,13 @@ namespace LostArk::Server
 	class CPlayerSkillSystem final
 	{
 	public:
+        // CombatObject projectiles share the same arena damage policy as native skills.
+        static void Apply_ColosseumObjectHit(SERVER_PLAYER& target, SERVER_PLAYER& caster,
+            const PLAYER_SKILL_DEFINITION& skill, const CGameplayCatalog& catalog,
+            const PLAYER_SKILL_HIT& hit, std::uint64_t wholeCastDamage, std::uint32_t subHitTotal,
+            std::uint32_t subHitIndex, float sourceX, float sourceZ, std::uint32_t serverTick,
+            const SERVER_COLOSSEUM_COMBAT_CONTEXT& context,
+            std::vector<LostArk::Shared::DAMAGE_EVENT>& events);
 		bool Try_Start(
 			SERVER_PLAYER& player,
 			const LostArk::Shared::C2S_USE_SKILL& command,

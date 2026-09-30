@@ -1,5 +1,14 @@
 # LostArk merge 회귀 방지 정본
 
+## 콜로세움 승패 배너의 결과 identity와 마지막 프레임
+
+- 로컬 PlayerId/NetEntityId를 서버 참가자 팀과 조인하지 못한 상태를 패배로 간주하지 않는다.
+  정확한 팀 확인까지 결과 UI를 보류하며 패배는 확인된 상대 팀 승리일 때만 표시한다.
+- 같은 원본 무비의 승리/패배라도 프레임 수는 다를 수 있다. 콜로세움은 40fps에서 승리 139,
+  패배/무승부 140프레임이다. 마지막 키의 시각에 한 프레임 길이를 더해 끝 프레임을 보존한다.
+  결과별 배너 종료와 전체 참가자의 공통 컷신 시작 시각을 구분해 양팀의 연출 시계가 갈리지 않게 한다.
+  상세 적용/검증은 10-01 COLOSSEUM_MATCH_FLOW RESULT G06을 따른다.
+
 ## 워터팡 효과·NPC 복원 경계
 
 - `.restore`만으로 player skill preview를 선택하지 않는다. Maharaka World 효과의
@@ -5758,3 +5767,28 @@ soundTracks 채널을 frame마다 Stop/Play하여 정상 WAV도 끊겨 들린다
 Composition SOUND와 WORLD soundTracks는 소비자가 다르므로 한쪽이 정상이어도 다른
 쪽의 채널 수명은 따로 추적한다. 원본 WAV 실청, 채널 재생 횟수, Client 최종 실청은
 구분한다. 수정·수치 근거는 09-26 KOUKU_PLAYTEST_RECOVERY RESULT의 G15 후속에 둔다.
+### WORLD 본 Collider와 부착 Effect의 부모 좌표계
+
+본·모델·재생 시계가 같아도 Effect root의 회전이 다르면 화염과 Collider가 다른 방향을 본다.
+생성 수명이나 본 회전 부호를 바꾸기 전에 실제 설치 WModel의 본 basis와 Element·socket·
+Effect root·Object 변환을 함께 대조한다. Collider의 optional `worldEffectTrackId`로 같은
+Effect 부모를 명시하고 빈 값의 기존 동작을 보존한다. 임의90도 상수를 Collider에 더하지 않는다.
+회귀는 실제 앞뒤 본·여러 시점·반복 경계를 사용하며 불 방향 접촉과 종전 오방향 미접촉을
+함께 검사한다. `WORLDKEY` 개수·finite 성공만으로 방향 정합을 판정하지 않는다.
+[인형 Collider·칼날·카드 미로 결과](10-01/2026-10-01_KOUKU_DOLL_COLLIDER_AND_BLADE_RESULT.md).
+
+### 저FPS 클릭 정지와 비동기 피킹 명령 순서
+
+1픽셀만 복사해도 직후 flags0 Map은 GPU 완료를 main thread에서 기다려 클릭 프레임을 멈출 수 있다.
+픽셀 수 최적화와 완료 대기 제거를 구분하며 일반 이동은 Request 후 DO_NOT_WAIT Poll을 사용한다.
+지연 응답은 요청 당시 pixel·fallback·press와 action/move sequence를 보존해야 한다. 후속 스킬·상호작용·
+외부 이동이 먼저 송신됐다면 이전 결과를 버리고, 새 press·UI/focus·사망·capture·재바인딩도 취소한다.
+취소 결과에 fallback을 적용하면 옛 이동이 되살아난다. WARP의 실제 Copy/Map 검사는 GPU 비대기·
+원본 샘플·취소를, 생산 Controller 추출 검사는 버튼 release·재입력·명령 순서를 따로 검증한다.
+40/60FPS 예측 회귀 성공과 실제 화면의 끊김 해소 판정은 구분한다.
+
+
+### 워터팡 AI 최초 등장 준비와 NPC 장비
+
+- 입장 Loader가 선택 class만 준비하면 경기 예약 뒤 20명 AI 첫 spawn에서 다른 class·24개 의상 모델·NPC8종의 decode/material 준비가 gameplay thread에 몰린다. Server roster의 2 class와 Shared NPC8 정본 및 item→visual-set 해석을 로딩 단계에서 준비하고 기존 prototype을 재사용한다.
+- NPC 외형의 hidden Character proxy에 총을 달거나 player 전용 prop3를 찾으면 실제 NPC는 맨손이다. NPC의 실제 right-hand 본과 최종 preScale basis를 확인한 뒤 기존 CPart_Equipment를 현재 NPC pose 뒤에 갱신한다. 무장·사망/숨김·해제는 snapshot을 따르고 total gun scale에 .01을 두 번 적용하지 않는다.

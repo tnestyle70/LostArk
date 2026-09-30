@@ -174,6 +174,7 @@ namespace
 		record.strNickName = spawned.strNickName;
 		record.strWaterpangNpcArchetypeId = spawned.strWaterpangNpcArchetypeId;
 		record.iVoiceType = spawned.iVoiceType;
+		record.strAppearanceJson = spawned.strAppearanceJson;
 
 		record.fPositionX = spawned.fPositionX;
 		record.fPositionY = spawned.fPositionY;
@@ -197,6 +198,7 @@ namespace
 			left.strNickName == right.strNickName &&
 			left.strWaterpangNpcArchetypeId == right.strWaterpangNpcArchetypeId &&
 			left.iVoiceType == right.iVoiceType &&
+			left.strAppearanceJson == right.strAppearanceJson &&
 			left.fPositionX == right.fPositionX &&
 			left.fPositionY == right.fPositionY &&
 			left.fPositionZ == right.fPositionZ &&
@@ -309,6 +311,40 @@ void Client::CClientReplication::Expect_KoukuRaidReply(const std::uint32_t reque
 	m_KoukuRaidReply = {};
 	m_iKoukuRaidReplyRequestSequence = requestSequence;
 	m_iKoukuRaidReplyWorldGeneration = requestSequence ? CNetworkManager::Get().Get_WorldInboundGeneration() : 0u;
+}
+
+const LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE& Client::CClientReplication::Get_ColosseumMatchState() const
+{
+	return CNetworkManager::Get().Get_ColosseumMatchState();
+}
+
+double Client::CClientReplication::Get_ColosseumServerTick() const
+{
+	return CNetworkManager::Get().Get_ColosseumServerTick();
+}
+
+bool Client::CClientReplication::Are_ColosseumCharactersReady() const
+{
+	const auto& state = Get_ColosseumMatchState();
+	if (!state.iMatchId || state.Participants.empty() || state.Participants.size() != state.iExpectedPlayers) return false;
+	std::vector<REPLICATED_PLAYER_VIEW> players;
+	Collect_PlayerViews(players);
+	for (const auto& participant : state.Participants)
+	{
+		if (m_PendingPlayerSpawns.contains(participant.iNetEntityId) ||
+			m_PendingPlayerPresentations.contains(participant.iNetEntityId) ||
+			m_FailedPlayerSpawnClasses.contains(participant.iNetEntityId) ||
+			m_FailedAvatarPresentations.contains(participant.iNetEntityId) ||
+			!m_AppliedAvatarByNetEntityId.contains(participant.iNetEntityId)) return false;
+		const auto found = std::find_if(players.begin(), players.end(), [&](const auto& player) {
+			return player.iPlayerId == participant.iPlayerId && player.iNetEntityId == participant.iNetEntityId;
+		});
+		if (found == players.end()) return false;
+		const auto character = found->pCharacter.lock();
+		LostArk::Shared::PLAYER_ACTION_STATE action{};
+		if (!character || !character->Get_Transform() || !character->Try_Get_NetworkActionState(action)) return false;
+	}
+	return true;
 }
 
 bool Client::CClientReplication::Update()
@@ -440,14 +476,6 @@ bool Client::CClientReplication::Update()
 		case CLIENT_REPLICATION_EVENT_TYPE::PARTY_INVITE_RECEIVED:
 			Apply_PartyInviteReceived(event.PartyInviteReceived);
 			break;
-
-        case CLIENT_REPLICATION_EVENT_TYPE::COLOSSEUM_MATCH_STATE:
-            if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::COLOSSEUM) &&
-                (!m_ColosseumMatchState.iMatchId ||
-                 (event.ColosseumMatchState.iMatchId == m_ColosseumMatchState.iMatchId &&
-                  static_cast<std::int32_t>(event.ColosseumMatchState.iRevision - m_ColosseumMatchState.iRevision) > 0)))
-                m_ColosseumMatchState = event.ColosseumMatchState;
-            break;
 
 		case CLIENT_REPLICATION_EVENT_TYPE::PARTY_ROSTER:
 			Apply_PartyRoster(event.PartyRoster);
@@ -2444,6 +2472,7 @@ bool Client::CClientReplication::Create_Character(
 	const LostArk::Shared::PLAYER_MADNESS_FORM madnessForm,
 	const std::string_view nickName,
 	const std::uint8_t voiceType,
+	const std::string& appearanceJson,
 	const float3_t& position,
 	const f32_t yawDegrees,
 	const bool_t isLocallyControlled,
@@ -2523,14 +2552,16 @@ bool Client::CClientReplication::Create_Character(
 	/* The local player wears the look of the character that entered the world. Character Select
 	is left out: its customizing screen owns the model there, and the clown rig has no such
 	look. A document of another class is refused by the applier. */
-	if (isLocallyControlled &&
+	if (!appearanceJson.empty() &&
 		LostArk::Shared::PLAYER_MADNESS_FORM::CLOWN != madnessForm &&
 		m_Desc.iPrototypeLevelIndex != ETOUI(LEVEL::CHARACTER_SELECT))
 	{
-		const std::string strAppearance = CCharacterSelectionState::Get_ActiveAppearanceJson();
-		if (!strAppearance.empty())
-			(void)CCustomizingView::Apply_SavedLook(
-				character, strAppearance, m_Desc.pDevice, m_Desc.pContext);
+		if (!CCustomizingView::Apply_SavedLook(character, appearanceJson, m_Desc.pDevice, m_Desc.pContext, true))
+		{
+			m_strPendingPresentationFailure = "Server-replicated appearance could not be applied to " + std::string(nickName);
+			CGameInstance::Get().Remove_GameObject_from_Layer(m_Desc.iLayerLevelIndex,m_Desc.strPlayerLayerTag,character);
+			return false;
+		}
 	}
 	outCharacter = character;
 	return true;
@@ -2585,6 +2616,7 @@ bool Client::CClientReplication::Commit_PlayerSpawn(
 		LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL,
 		spawned.strNickName,
 		spawned.iVoiceType,
+		spawned.strAppearanceJson,
 		float3_t(
 			spawned.fPositionX,
 			spawned.fPositionY,
@@ -2654,7 +2686,8 @@ bool Client::CClientReplication::Create_WaterpangNpcPlayer(
     if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(m_Desc.iPrototypeLevelIndex,
         TEXT("Prototype_GameObject_Npc"), m_Desc.iLayerLevelIndex, m_Desc.strWorldEntityLayerTag, &desc, &object))) return false;
     const auto npc = std::dynamic_pointer_cast<CNpc>(object);
-    if (!npc || !npc->Apply_NetworkState(desc.vPosition, desc.fYawDegree) || !npc->Get_Model())
+    if (!npc || !npc->Apply_NetworkState(desc.vPosition, desc.fYawDegree) || !npc->Get_Model() ||
+        !npc->Prepare_WaterGun(m_Desc.iPrototypeLevelIndex))
     {
         CGameInstance::Get().Remove_GameObject_from_Layer(m_Desc.iLayerLevelIndex, m_Desc.strWorldEntityLayerTag, object);
         return false;
@@ -2669,8 +2702,7 @@ bool Client::CClientReplication::Create_WaterpangNpcPlayer(
     staged.npc = npc; staged.idleClip = staged.currentClip = actor->idleClip;
     for (const auto* clip : {"npc_run_battle_1", "npc_run_away_1", "npc_walk_normal_1", "run_battle_1", "walk_normal_1"})
         if (hasClip(clip)) { staged.runClip = clip; break; }
-    // Town residents with only their source idle retain that real clip. Never
-    // substitute a player rig or invent a water-gun socket/animation for an NPC.
+    // Preserve the resident's real animation; its water gun follows the measured hand attachment.
     for (const auto* clip : {"watergun_att_1", "npc_att_battle_1", "att_battle_1"})
         if (hasClip(clip)) { staged.attackClip = clip; break; }
     if (staged.runClip.empty()) staged.runClip = staged.idleClip;
@@ -2689,6 +2721,7 @@ bool Client::CClientReplication::Update_WaterpangNpcPlayer(
     const bool visible = player.iCurrentHp != 0u &&
         (player.CardMaze.flags & LostArk::Shared::CARD_MAZE_ENTRY_HIDDEN) == 0u;
     npc->Set_PresentationVisible(visible);
+    npc->Set_WaterGunArmed(visible && player.isWaterpangArmed);
     if (!npc->Apply_NetworkState({player.fPositionX, player.fPositionY, player.fPositionZ}, player.fYawDegrees, serverTick)) return false;
     const auto* gun = LostArk::Shared::Find_MaharakaWaterGunSkill(player.iWaterGunSkillId);
     const bool firing = gun && player.iWaterGunCastTick &&
@@ -2735,6 +2768,7 @@ bool Client::CClientReplication::Apply_Despawn(
 	m_ChatBubblesByNetEntityId.erase(despawned.iNetEntityId);
 	m_GuidePromptSequences.erase(despawned.iNetEntityId);
 	m_AppliedAvatarByNetEntityId.erase(despawned.iNetEntityId);
+	m_FailedAvatarPresentations.erase(despawned.iNetEntityId);
 	m_PendingGuideBubbles.erase(despawned.iNetEntityId);
 	if (m_GuideState && m_GuideState->iGuideNetEntityId == despawned.iNetEntityId) m_GuideState.reset();
 	OBJECT_HANDLE handle{};
@@ -4581,7 +4615,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		snapshot.iServerTick,
 		snapshot.DamageEvents,
 		CNetworkManager::Get().Get_LocalPlayerId(),
-        m_Desc.iLayerLevelIndex == ETOUI(LEVEL::COLOSSEUM) && m_ColosseumMatchState.iMatchId != 0u);
+        m_Desc.iLayerLevelIndex == ETOUI(LEVEL::COLOSSEUM) && Get_ColosseumMatchState().iMatchId != 0u);
 	CCombatHUDViewModel::Get().Apply_EstherGauge(
 		snapshot.iEstherGauge,
 		snapshot.iEstherGaugeMaximum);
@@ -4592,16 +4626,16 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 	std::vector<HUD_WORLD_HEALTH_BAR_STATE> healthBars;
 	healthBars.reserve(snapshot.Players.size() + snapshot.Entities.size());
 	const auto localEntityId = CNetworkManager::Get().Get_LocalEntityId();
-    const bool colosseum = m_Desc.iLayerLevelIndex == ETOUI(LEVEL::COLOSSEUM) && m_ColosseumMatchState.iMatchId != 0u;
-    const auto localTeam = std::find_if(m_ColosseumMatchState.Players.begin(), m_ColosseumMatchState.Players.end(),
+    const bool colosseum = m_Desc.iLayerLevelIndex == ETOUI(LEVEL::COLOSSEUM) && Get_ColosseumMatchState().iMatchId != 0u;
+    const auto localTeam = std::find_if(Get_ColosseumMatchState().Players.begin(), Get_ColosseumMatchState().Players.end(),
         [localEntityId](const auto& row) { return row.iNetEntityId == localEntityId; });
 	for (const auto& player : snapshot.Players)
 	{
 		if (player.iNetEntityId == localEntityId || !player.iCurrentHp || !player.iMaximumHp)
 			continue;
-        const auto combatant = std::find_if(m_ColosseumMatchState.Players.begin(), m_ColosseumMatchState.Players.end(),
+        const auto combatant = std::find_if(Get_ColosseumMatchState().Players.begin(), Get_ColosseumMatchState().Players.end(),
             [&](const auto& row) { return row.iNetEntityId == player.iNetEntityId; });
-        if (colosseum && (combatant == m_ColosseumMatchState.Players.end() || !combatant->bParticipant)) continue;
+        if (colosseum && (combatant == Get_ColosseumMatchState().Players.end() || !combatant->bParticipant)) continue;
 		OBJECT_HANDLE handle{};
 		if (!m_Registry.Find_Handle(player.iNetEntityId, handle)) continue;
 		const auto character = m_Registry.Resolve(handle);
@@ -4609,7 +4643,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		HUD_WORLD_HEALTH_BAR_STATE state;
 		state.iNetEntityId = player.iNetEntityId;
 		state.isPlayer = true;
-        state.isEnemyPlayer = colosseum && localTeam != m_ColosseumMatchState.Players.end() && combatant->iTeam != localTeam->iTeam;
+        state.isEnemyPlayer = colosseum && localTeam != Get_ColosseumMatchState().Players.end() && combatant->iTeam != localTeam->iTeam;
 		state.iCurrentHp = player.iCurrentHp;
 		state.iMaximumHp = player.iMaximumHp;
 		state.iShield = player.iShield;
@@ -4666,6 +4700,7 @@ Client::CClientReplication::Replace_CharacterClass(
 		snapshot.eMadnessForm,
 		oldRecord.strNickName,
 		oldRecord.iVoiceType,
+		oldRecord.eCharacterClass == snapshot.eCharacterClass ? oldRecord.strAppearanceJson : std::string{},
 		float3_t(snapshot.fPositionX, snapshot.fPositionY, snapshot.fPositionZ),
 		snapshot.fYawDegrees,
 		isLocallyControlled,
@@ -4678,6 +4713,7 @@ Client::CClientReplication::Replace_CharacterClass(
 
 	NET_PLAYER_RECORD newRecord = oldRecord;
 	newRecord.eCharacterClass = snapshot.eCharacterClass;
+	if (oldRecord.eCharacterClass != snapshot.eCharacterClass) newRecord.strAppearanceJson.clear();
 	newRecord.eMadnessForm = snapshot.eMadnessForm;
 	newRecord.fPositionX = snapshot.fPositionX;
 	newRecord.fPositionY = snapshot.fPositionY;
@@ -4714,6 +4750,7 @@ Client::CClientReplication::Replace_CharacterClass(
 
 	/* A replaced body is a fresh CCharacter: the next snapshot dresses it again. */
 	m_AppliedAvatarByNetEntityId.erase(snapshot.iNetEntityId);
+	m_FailedAvatarPresentations.erase(snapshot.iNetEntityId);
 	if (isLocallyControlled)
 	{
 		m_LocalCharacterHandle = newHandle;
@@ -4865,7 +4902,6 @@ void Client::CClientReplication::Reset_World()
 	m_PlayerHealth.Reset();
 	Reset_SpectateTarget();
 	m_PartyRoster = {};
-	m_ColosseumMatchState = {};
 	m_hasPendingPartyInvite = false;
 	m_PendingPartyInvite = {};
 	m_hasPendingPartyTransferResult = false;
@@ -4880,6 +4916,7 @@ void Client::CClientReplication::Reset_World()
 	m_PendingGuideBubbles.clear();
 	m_HonorTitleByNetEntityId.clear();
 	m_AppliedAvatarByNetEntityId.clear();
+	m_FailedAvatarPresentations.clear();
 	if (nullptr != m_pEquipmentPresentation)
 		m_pEquipmentPresentation->On_LevelChanged();
 	++m_iWorldDestructionPresentationGeneration;
@@ -5098,6 +5135,7 @@ void Client::CClientReplication::Apply_AvatarPresentation(
 		m_AppliedAvatarByNetEntityId.end() == applied)
 	{
 		m_AppliedAvatarByNetEntityId[iNetEntityId] = worn;
+		m_FailedAvatarPresentations.erase(iNetEntityId);
 		return;
 	}
 
@@ -5115,9 +5153,14 @@ void Client::CClientReplication::Apply_AvatarPresentation(
 	/* Recorded before the attempt: a broken pair is tried once, not every snapshot. */
 	m_AppliedAvatarByNetEntityId[iNetEntityId] = worn;
 	if (!m_isEquipmentCatalogLoaded)
+	{
+		m_FailedAvatarPresentations.insert(iNetEntityId);
+		m_strPendingPresentationFailure = "Avatar equipment catalog failed to load for player " + std::to_string(iNetEntityId);
 		return;
+	}
 
 	std::array<std::string, ETOI(EQUIPMENT_SLOT_ID::END)> selected{};
+	bool resolutionFailed = false;
 	const auto Resolve = [&](const std::string& strItemId, const EQUIPMENT_SLOT_ID eSlot)
 	{
 		if (strItemId.empty())
@@ -5125,6 +5168,7 @@ void Client::CClientReplication::Apply_AvatarPresentation(
 		const ITEM_DEFINITION* pItem = CItemCatalog::Find_ById(strItemId);
 		if (nullptr == pItem || pItem->strVisualSetId.empty())
 		{
+			resolutionFailed = true;
 			OutputDebugStringA(("[ClientReplication][Avatar] no visual set for item " + strItemId + "\n").c_str());
 			return;
 		}
@@ -5132,6 +5176,12 @@ void Client::CClientReplication::Apply_AvatarPresentation(
 	};
 	Resolve(worn.first, EQUIPMENT_SLOT_ID::HEAD);
 	Resolve(worn.second, EQUIPMENT_SLOT_ID::UPPER);
+	if (resolutionFailed)
+	{
+		m_FailedAvatarPresentations.insert(iNetEntityId);
+		m_strPendingPresentationFailure = "Avatar visual set is missing for player " + std::to_string(iNetEntityId);
+		return;
+	}
 
 	std::string error;
 	const bool_t bNothing = std::all_of(selected.begin(), selected.end(),
@@ -5140,7 +5190,12 @@ void Client::CClientReplication::Apply_AvatarPresentation(
 		m_pEquipmentPresentation->Reset_Preview(character, error) :
 		m_pEquipmentPresentation->Apply_Preview(character, m_EquipmentCatalog, selected, error);
 	if (!bApplied)
+	{
+		m_FailedAvatarPresentations.insert(iNetEntityId);
+		m_strPendingPresentationFailure = "Avatar presentation failed for player " + std::to_string(iNetEntityId) + ": " + error;
 		OutputDebugStringA(("[ClientReplication][Avatar] " + error + "\n").c_str());
+	}
+	else m_FailedAvatarPresentations.erase(iNetEntityId);
 }
 
 Client::CClientReplication::CClientReplication() = default;

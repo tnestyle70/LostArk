@@ -135,10 +135,6 @@ void CGameRoom::Handle_MaharakaAITuning(SESSION_ID sessionId, const C2S_MAHARAKA
 
 bool CGameRoom::Spawn_MaharakaWaterpangAI()
 {
-    static constexpr const char* NPCS[] = {
-        "NPC_MHP_RESIDENT_8FC2DB56F0AA5175", "NPC_MHP_RESIDENT_7D37CE489AF57466",
-        "NPC_MHP_RESIDENT_6C0BF3F0C656EBAB", "NPC_MHP_RESIDENT_48E52BAC20260E4C",
-        "NPC_BEDA", "NPC_AYLARA", "NPC_FORMAN", "NPC_SCHMIDT" };
     const auto firstSlot = static_cast<std::uint32_t>(m_MaharakaWaterpangAI.size());
     const auto count = m_MaharakaAITuning.iBotCount - firstSlot;
     if (m_Players.size() + count > MAX_WORLD_SNAPSHOT_PLAYERS || !m_ServerNavigation.Is_Loaded()) return false;
@@ -151,7 +147,7 @@ bool CGameRoom::Spawn_MaharakaWaterpangAI()
         ai.eCharacterClass = slot % 2u ? CHARACTER_CLASS_ID::LANCE_MASTER : CHARACTER_CLASS_ID::GUARDIANKNIGHT;
         const auto* profile = m_GameplayCatalog.Find_Player(ai.eCharacterClass);
         if (!profile) return false;
-        ai.strNickName = "Waterpang " + std::to_string(slot + 1u);
+        ai.strNickName = "Waterpang AI " + std::to_string(slot + 1u);
         ai.strSpawnPlacementId = "waterpang.ai." + std::to_string(slot);
         ai.iCurrentHp = ai.iMaximumHp = profile->iMaximumHp;
         ai.iCurrentResource = ai.iMaximumResource = profile->iMaximumResource;
@@ -169,7 +165,7 @@ bool CGameRoom::Spawn_MaharakaWaterpangAI()
                 ai.Inventory.push_back({item, 1u, equip});
             }
         }
-        else ai.strWaterpangNpcArchetypeId = NPCS[slot - 12u];
+        else ai.strWaterpangNpcArchetypeId = MAHARAKA_WATERPANG_AI_NPCS[slot - 12u];
         const float angle = (slot % 10u) * PI / 5.f + (slot / 10u) * PI / 10.f;
         const float radius = slot < 10u ? 3.4f : 6.f;
         SERVER_NAV_POINT point;

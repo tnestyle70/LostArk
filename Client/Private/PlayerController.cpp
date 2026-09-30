@@ -177,6 +177,7 @@ void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>&
 	if (m_pLocalCharacter.lock() == character)
 		return;
 
+	Cancel_MovePicking();
 	m_pLocalCharacter = character;
 	if (m_pClickMoveEffect) m_pClickMoveEffect->Clear();
 	Cancel_GroundTargeting();
@@ -214,6 +215,7 @@ void Client::CPlayerController::Rebind_LocalCharacter(
 {
 	if (m_pLocalCharacter.lock() == character)
 		return;
+	Cancel_MovePicking();
 	m_pLocalCharacter = character;
 	if (m_pClickMoveEffect) m_pClickMoveEffect->Clear_Move();
 	Cancel_GroundTargeting();
@@ -337,6 +339,7 @@ void Client::CPlayerController::Update(
 		m_pClickMoveEffect->Clear_Move();
 	if (isControlCaptured || marioControlsActive)
 	{
+		Cancel_MovePicking();
 		Cancel_GroundTargeting();
 		m_iHeldSkillId = LostArk::Shared::INVALID_SKILL_ID;
 		m_byHeldKeyCode = 0u;
@@ -401,6 +404,7 @@ void Client::CPlayerController::Update(
 		Cancel_GroundTargeting();
 	if (m_GroundTargeting.Is_Active())
 	{
+		Cancel_MovePicking();
 		const auto& playerState = CCombatHUDViewModel::Get().Get_Player();
 		const bool_t isItem = m_GroundTargeting.Is_Item();
 		const PLAYER_SKILL_DEFINITION* targetingDefinition = isItem ? nullptr :
@@ -526,82 +530,18 @@ void Client::CPlayerController::Update(
 		return;
 	}
 
-	if (gameplayCommandsEnabled && isRightMouseDown &&
-		CCombatHUDViewModel::Get().Get_Player().eVehicleFlightPhase == LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED &&
-		!(CCombatHUDViewModel::Get().Get_Player().iVehicleId == LostArk::Shared::ANCIENT_SEA_VEHICLE_ID &&
-		  Move_MouseButton() == Engine::DIM::LB) &&
-		!isMoveClickSuppressed &&
-		nullptr != character &&
-		nullptr != commandSink)
-	{
-		const shared_ptr<CTransform> transform =
-			character->Get_Transform();
-
-		// Skip GPU picking while a held command is still inside its resend interval.
-		// A fresh press remains immediate; the goal checks below still own admission.
-		if (nullptr != transform &&
-			(!m_wasRightMouseDown ||
-				std::chrono::steady_clock::now() - m_LastMoveGoalSentAt >=
-					MOVE_GOAL_RESEND_INTERVAL))
-		{
-			const vector_t position =
-				transform->Get_State(STATE::POSITION);
-			const f32_t groundY = XMVectorGetY(position);
-
-			float3_t goal{};
-			bool_t hasExactClickSurface = false;
-			bool_t hasMoveGoal = false;
-			float4_t pickedSurface{};
-
-			/* The renderer's pick target contains the first visible,
-			   depth-tested triangle under the cursor.  Preserve that exact
-			   world point for both the command's XZ and the cosmetic marker.
-			   Do not gate the cosmetic hit through the Character's local
-			   Navigation component: Bern's Server owns the complete regional
-			   navigation set, while the Client Character currently owns only
-			   the Area base grid.  The typed move command remains subject to
-			   Server navigation validation. */
-			const VEHICLE_ACTOR_ENTRY* const pMountedVehicle =
-				0u == CCombatHUDViewModel::Get().Get_Player().iVehicleId ? nullptr :
-				CActorCatalog::Find_Vehicle(CCombatHUDViewModel::Get().Get_Player().iVehicleId);
-			if (nullptr != pMountedVehicle && pMountedVehicle->isShip)
-			{
-				hasMoveGoal = Try_PickGroundPlane(groundY - SHIP_WATER_BELOW_ROOT_M, goal);
-				hasExactClickSurface = hasMoveGoal;
-			}
-			else if (CGameInstance::Get().Picking(pickedSurface) &&
-				std::isfinite(pickedSurface.x) &&
-				std::isfinite(pickedSurface.y) &&
-				std::isfinite(pickedSurface.z))
-			{
-				goal = float3_t(
-					pickedSurface.x,
-					pickedSurface.y,
-					pickedSurface.z);
-				hasExactClickSurface = true;
-				hasMoveGoal = true;
-			}
-			else
-			{
-				hasMoveGoal = Try_PickGroundPlane(groundY, goal);
-			}
-
-			if (hasMoveGoal && Should_SendMoveGoal(
-					m_wasRightMouseDown,
-					XMVectorGetX(position),
-					XMVectorGetZ(position),
-					goal))
-			{
-				/* A raw plane fallback is retained for compatibility, but never
-				   paints an indicator at a point known not to be the visible
-				   surface. */
-				(void)Request_MoveToPointResolved(
-					goal,
-					isRightMousePressed && hasExactClickSurface,
-					hasExactClickSurface ? &goal : nullptr);
-			}
-		}
-	}
+	const auto& movePlayer = CCombatHUDViewModel::Get().Get_Player();
+	Update_MovePicking(gameplayCommandsEnabled && !isMoveClickSuppressed &&
+		GetForegroundWindow() == g_hWnd &&
+		!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive() &&
+		!CGameInstance::Get().IsMouseInputBlocked() &&
+		!CUIInputRouter::Get().Is_MouseClaimedThisFrame() &&
+		!m_CaptureInputGate.Is_Blocked(CPLAYER_CAPTURE_INPUT_GATE::RIGHT_MOUSE) &&
+		!(Engine::DIM::LB == Move_MouseButton() && m_PingInputGate.Owns_LeftPress()) &&
+		movePlayer.isValid && movePlayer.iCurrentHp != 0u &&
+		movePlayer.eVehicleFlightPhase == LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED &&
+		!(movePlayer.iVehicleId == LostArk::Shared::ANCIENT_SEA_VEHICLE_ID && Move_MouseButton() == Engine::DIM::LB) &&
+		character && commandSink, isRightMouseDown, isRightMousePressed, character);
 
 	LostArk::Shared::SKILL_ID requestedSkillId =
 		LostArk::Shared::INVALID_SKILL_ID;
@@ -1568,6 +1508,7 @@ void Client::CPlayerController::Set_CommandSink(
 {
 	if (m_pCommandSink != commandSink)
 	{
+		Cancel_MovePicking();
 		Cancel_GroundTargeting();
 		m_iLastMarioMoveDirection = 0;
 		m_pendingVehicleRidingSequence = 0u;
@@ -2359,4 +2300,68 @@ bool_t Client::CPlayerController::Request_MoveToPointResolved(
 	if (0 == m_iNextMoveSequence)
 		m_iNextMoveSequence = 1;
 	return true;
+}
+
+void Client::CPlayerController::Cancel_MovePicking()
+{
+    if (m_iMovePickRequest) CGameInstance::Get().Cancel_Picking(m_iMovePickRequest);
+    m_iMovePickRequest = 0u;
+    m_bMovePickHasFallback = false;
+    m_bMovePickFreshPress = false;
+}
+
+void Client::CPlayerController::Update_MovePicking(const bool_t enabled,
+    const bool_t mouseDown, const bool_t freshPress, const shared_ptr<CCharacter>& character)
+{
+    const auto transform = character ? character->Get_Transform() : nullptr;
+    if (!enabled || !transform) { Cancel_MovePicking(); return; }
+    const auto now = std::chrono::steady_clock::now();
+    // A deferred old click may never overtake a newer skill, interaction or
+    // non-cursor movement command. The ordinary held-button path can request again.
+    if (freshPress || (m_iMovePickRequest &&
+        (m_iMovePickActionSequence != m_iNextActionSequence ||
+         m_iMovePickMoveSequence != m_iNextMoveSequence ||
+         now - m_MovePickRequestedAt > std::chrono::milliseconds(350))))
+        Cancel_MovePicking();
+    const auto position = transform->Get_State(STATE::POSITION);
+    const auto submit = [&](const float3_t& goal, const bool exact, const bool pressed)
+    {
+        if (Should_SendMoveGoal(!pressed, XMVectorGetX(position), XMVectorGetZ(position), goal))
+            (void)Request_MoveToPointResolved(goal, pressed && exact, exact ? &goal : nullptr);
+    };
+    // Poll even after button release: one click remains one request. The saved
+    // pixel, fallback and press edge all belong to the same input occurrence.
+    if (m_iMovePickRequest)
+    {
+        float4_t surface{};
+        const HRESULT hr = CGameInstance::Get().Poll_Picking(m_iMovePickRequest, surface);
+        if (hr == S_FALSE) return;
+        if (hr == S_OK)
+            submit({surface.x, surface.y, surface.z}, true, m_bMovePickFreshPress);
+        else if (hr != E_ABORT && m_bMovePickHasFallback)
+            submit(m_MovePickFallback, false, m_bMovePickFreshPress);
+        Cancel_MovePicking();
+        return;
+    }
+    if (!mouseDown || (!freshPress && now - m_LastMoveGoalSentAt < MOVE_GOAL_RESEND_INTERVAL)) return;
+    const auto vehicleId = CCombatHUDViewModel::Get().Get_Player().iVehicleId;
+    const auto* vehicle = vehicleId ? CActorCatalog::Find_Vehicle(vehicleId) : nullptr;
+    const float groundY = XMVectorGetY(position);
+    if (vehicle && vehicle->isShip)
+    {
+        float3_t goal{};
+        if (Try_PickGroundPlane(groundY - SHIP_WATER_BELOW_ROOT_M, goal)) submit(goal, true, freshPress);
+        return;
+    }
+    m_bMovePickFreshPress = freshPress;
+    m_bMovePickHasFallback = Try_PickGroundPlane(groundY, m_MovePickFallback);
+    m_MovePickRequestedAt = now;
+    m_iMovePickActionSequence = m_iNextActionSequence;
+    m_iMovePickMoveSequence = m_iNextMoveSequence;
+    m_iMovePickRequest = CGameInstance::Get().Request_Picking();
+    if (!m_iMovePickRequest)
+    {
+        if (m_bMovePickHasFallback) submit(m_MovePickFallback, false, freshPress);
+        Cancel_MovePicking();
+    }
 }

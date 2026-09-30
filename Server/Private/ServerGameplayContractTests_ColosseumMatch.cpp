@@ -2,6 +2,8 @@
 #include "ServerApp.h"
 #include "ClientSession.h"
 #include "ColosseumCombatPolicy.h"
+#include "Network/PacketWriter.h"
+#include "Network/PacketReader.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -53,16 +55,109 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
         player.Inventory.clear(); player.Purse.iSilver = 77u + i;
         drain();
     }
+    for (unsigned count = 1u; count <= 4u; ++count)
+    {
+        source->m_iServerTick = 1000u; source->m_iColosseumQueueDeadline = 0u;
+        source->m_ColosseumQueue.clear(); source->m_PendingWorldTransfers.clear(); source->m_bColosseumTransferPending = false;
+        for (unsigned i = 0u; i < count; ++i) source->m_ColosseumQueue.push_back({ sessions[i]->Get_SessionId(), i + 1u });
+        source->Try_FormColosseumMatch();
+        tests.Require(source->m_iColosseumQueueDeadline == 1300u && source->m_PendingWorldTransfers.empty(),
+            "One through four humans open exactly a ten-second collection window");
+        source->m_iServerTick = 1299u; source->Try_FormColosseumMatch();
+        tests.Require(source->m_PendingWorldTransfers.empty(), "No early match before the shared collection deadline");
+        source->m_iServerTick = 1300u; source->Try_FormColosseumMatch();
+        tests.Require(source->m_PendingWorldTransfers.size() == 1u &&
+            source->m_PendingWorldTransfers.front().PartyBatchSessionIds.size() == count && source->m_ColosseumQueue.size() == count,
+            "One through four humans reserve the exact present count transactionally at the deadline");
+    }
+    source->m_ColosseumQueue.clear(); source->m_PendingWorldTransfers.clear(); source->m_bColosseumTransferPending = false;
+    source->m_iServerTick = 0u; source->m_iColosseumQueueDeadline = 0u;
+    drain();
+    for (unsigned count = 1u; count <= 3u; ++count)
+    {
+        auto smallSource = std::make_unique<CGameRoom>(WORLD_ID::BERN, app->m_pActiveGameplayGeneration);
+        auto smallTarget = std::make_unique<CGameRoom>(WORLD_ID::COLOSSEUM, app->m_pActiveGameplayGeneration);
+        std::vector<std::shared_ptr<CClientSession>> peers;
+        std::vector<SESSION_ID> ordered;
+        bool admitted = smallSource->Is_Ready() && smallTarget->Is_Ready();
+        for (unsigned i = 0u; i < count && admitted; ++i)
+        {
+            const SESSION_ID id = 998000u + count * 10u + i;
+            auto peer = std::make_shared<CClientSession>(id, INVALID_SOCKET,
+                CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+            peer->m_isSendRunning.store(true); smallSource->Handle_Register(peer);
+            C2S_ENTER_WORLD enter;
+            enter.eWorldId = WORLD_ID::BERN; enter.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+            enter.strNickName = "Flexible" + std::to_string(i);
+            admitted = smallSource->Join(id, enter, "npc.bern.25184_1.2");
+            if (admitted) smallSource->m_ColosseumQueue.push_back({id, i + 1u});
+            peers.push_back(peer); ordered.push_back(id);
+        }
+        std::string status;
+        const bool committed = admitted && smallSource->Transfer_ColosseumMatchTo(*smallTarget, ordered, 9000u + count, status);
+        tests.Require(committed, "One, two and three humans each commit through the real atomic Colosseum admission");
+        if (!committed) std::cout << "Flexible admission count=" << count << " status=" << status << '\n';
+        if (committed)
+        {
+            tests.Require(smallTarget->Count_HumanPlayers() == count && smallTarget->m_Players.size() == count + 10u,
+                "Flexible admission keeps exactly the admitted humans and ten sessionless candidates");
+            for (std::size_t i = 0; i < ordered.size(); ++i)
+            {
+                const auto& p = smallTarget->m_Players.at(smallTarget->m_PlayerIdBySessionId.at(ordered[i]));
+                tests.Require(p.iColosseumTeam == i % 2u && p.iColosseumArrivalIndex == i,
+                    "Flexible admission preserves the accepted order and parity team");
+                smallTarget->Handle_ColosseumLoadReady(ordered[i], {smallTarget->m_iColosseumMatchId});
+            }
+            const auto autoSelected = std::count_if(smallTarget->m_Players.begin(), smallTarget->m_Players.end(),
+                [](const auto& p) { return p.second.Is_ColosseumMercenary() && p.second.bColosseumParticipant; });
+            tests.Require(autoSelected == (count == 1u ? 4 : 0),
+                "Only the team without a human receives exactly four automatically selected mercenaries");
+            smallTarget->Update_ColosseumMatch(1u);
+            tests.Require(smallTarget->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::RECRUITING,
+                "Small matches reach recruitment without waiting for absent humans");
+            std::array<SESSION_ID, 2> recruiter{};
+            for (const auto id : ordered)
+            {
+                const auto& player = smallTarget->m_Players.at(smallTarget->m_PlayerIdBySessionId.at(id));
+                recruiter[player.iColosseumTeam] = id;
+            }
+            for (std::uint8_t team = 0u; team < 2u; ++team)
+            {
+                if (!recruiter[team]) continue;
+                std::uint32_t sequence = 1u;
+                for (const auto& [id, candidate] : smallTarget->m_Players)
+                {
+                    if (!candidate.Is_ColosseumMercenary() || candidate.iColosseumTeam != team) continue;
+                    smallTarget->Handle_ColosseumRecruit(recruiter[team], {sequence++, smallTarget->m_iColosseumMatchId, candidate.iNetEntityId});
+                }
+            }
+            const auto state = smallTarget->Build_ColosseumState();
+            CPacketWriter writer;
+            tests.Require(state.ePhase == COLOSSEUM_MATCH_PHASE::ENTRY_COUNTDOWN && state.Participants.size() == 8u &&
+                state.iExpectedPlayers == 8u && Write_Message(writer, state),
+                "Small matches fill four members per team and publish an encodable eight-person entry countdown");
+            smallTarget->Update_ColosseumMatch(smallTarget->m_iColosseumPhaseEnd);
+            smallTarget->Update_ColosseumMatch(smallTarget->m_iColosseumPhaseEnd);
+            smallTarget->Update_ColosseumMatch(smallTarget->m_iColosseumPhaseEnd);
+            tests.Require(smallTarget->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::ACTIVE &&
+                std::count_if(smallTarget->m_Players.begin(), smallTarget->m_Players.end(), [](const auto& p) { return p.second.bColosseumCombatActive; }) == 8,
+                "A solo, duo or trio can finish all entry phases and activate eight combatants");
+        }
+        for (const auto& peer : peers) peer->m_isSendRunning.store(false);
+    }
     for (unsigned i = 0; i < 3u; ++i) source->m_ColosseumQueue.push_back({ sessions[i]->Get_SessionId(), i + 1u });
     source->Try_FormColosseumMatch();
     tests.Require(source->m_PendingWorldTransfers.empty() && source->m_ColosseumQueue.size() == 3u,
         "Both configurations keep three humans waiting");
     source->m_ColosseumQueue.push_back({ sessions[3]->Get_SessionId(), 4u });
     source->Try_FormColosseumMatch();
+    tests.Require(source->m_PendingWorldTransfers.empty(), "Even four humans wait for the same ten-second collection deadline");
+    source->m_iServerTick = source->m_iColosseumQueueDeadline;
+    source->Try_FormColosseumMatch();
     SERVER_WORLD_TRANSFER_REQUEST transfer;
     const bool staged = source->Try_DequeueWorldTransfer(transfer);
     tests.Require(staged && transfer.bColosseumMatch && transfer.PartyBatchSessionIds.size() == 4u &&
-        source->m_ColosseumQueue.size() == 4u, "Fourth human reserves one immutable batch without erasing the queue");
+        source->m_ColosseumQueue.size() == 4u, "Deadline reserves one ordered immutable batch without erasing the queue");
     if (!staged) return 1;
     std::atomic_bool cancelBeforeLoad{ true };
     auto cancelledRoom = std::make_unique<CGameRoom>(WORLD_ID::COLOSSEUM, app->m_pActiveGameplayGeneration, &cancelBeforeLoad);
@@ -97,7 +192,7 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
                 << " class=" << static_cast<unsigned>(merc.eCharacterClass) << " position="
                 << merc.fPositionX << ',' << merc.fPositionY << ',' << merc.fPositionZ << '\n';
     const auto state = room->Build_ColosseumState();
-    tests.Require(state.Players.size() == 14u && state.ePhase == COLOSSEUM_MATCH_PHASE::RECRUITING &&
+    tests.Require(state.Players.size() == 14u && state.ePhase == COLOSSEUM_MATCH_PHASE::LOADING &&
         std::count_if(state.Players.begin(), state.Players.end(), [](const auto& p) { return p.bParticipant; }) == 4,
         "Persistent initial state marks only four humans as participants");
     const auto expectedReferenceHp = source->m_GameplayCatalog.Find_Boss("BOSS_VALTAN")->iMaximumHp;
@@ -140,6 +235,14 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
         for (const auto& slot : slots) std::cout << slot << ' ';
         std::cout << '\n';
     }
+    tests.Require(room->m_Players.at(room->m_PlayerIdBySessionId.at(sessions[0]->Get_SessionId())).iColosseumTeam == 0u &&
+        room->m_Players.at(room->m_PlayerIdBySessionId.at(sessions[1]->Get_SessionId())).iColosseumTeam == 1u &&
+        room->m_Players.at(room->m_PlayerIdBySessionId.at(sessions[2]->Get_SessionId())).iColosseumTeam == 0u,
+        "Acceptance order fixes teams 1/3 versus 2/4");
+    for (unsigned i = 0u; i < 4u; ++i) room->Handle_ColosseumLoadReady(sessions[i]->Get_SessionId(), { room->m_iColosseumMatchId });
+    room->Update_ColosseumMatch(1u);
+    tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::RECRUITING,
+        "All human presentation readiness opens mercenary selection without combat authority");
     std::array<SESSION_ID, 2> recruiters{};
     std::array<std::vector<NET_ENTITY_ID>, 2> candidates;
     for (auto& [id, player] : room->m_Players)
@@ -159,9 +262,23 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
         request.iRequestSequence = 3u; request.iMercenaryNetEntityId = candidates[team][1];
         room->Handle_ColosseumRecruit(recruiters[team], request);
     }
-    tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::ACTIVE &&
+    tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::ENTRY_COUNTDOWN &&
         std::count_if(room->m_Players.begin(), room->m_Players.end(), [](const auto& p) { return p.second.bColosseumParticipant; }) == 8,
-        "Two selected mercenaries per team open exactly eight combat participants");
+        "Two selected mercenaries per team prepare eight participants and a three-second entry countdown");
+    const auto entryDeadline = room->m_iColosseumPhaseEnd;
+    room->Update_ColosseumMatch(entryDeadline - 1u);
+    tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::ENTRY_COUNTDOWN &&
+        std::none_of(room->m_Players.begin(), room->m_Players.end(), [](const auto& p) { return p.second.bColosseumCombatActive; }),
+        "Entry countdown blocks all damage before the deadline");
+    room->Update_ColosseumMatch(entryDeadline);
+    tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::INTRO && room->m_iColosseumPhaseEnd == entryDeadline + 258u,
+        "Three-second entry transitions to one shared 8.6-second lineup clock");
+    room->Update_ColosseumMatch(room->m_iColosseumPhaseEnd);
+    tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::COUNTDOWN,
+        "Lineup completion starts the original gate countdown");
+    room->Update_ColosseumMatch(room->m_iColosseumPhaseEnd);
+    tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::ACTIVE,
+        "Gate countdown completion enables eight participant combat");
     request.iRequestSequence = 4u; request.iMercenaryNetEntityId = candidates[0][2];
     room->Handle_ColosseumRecruit(recruiters[0], request);
     tests.Require(!room->m_Players.at(room->m_PlayerIdByEntityId.at(candidates[0][2])).bColosseumParticipant,
@@ -177,6 +294,8 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
             (p.second.hasMoveGoal || p.second.eAction == PLAYER_ACTION_STATE::SKILL);
     }), "Selected mercenary targets the opposing team through the shared executor");
     for (unsigned i = 4; i < 8u; ++i) source->m_ColosseumQueue.push_back({ sessions[i]->Get_SessionId(), i + 1u });
+    source->Try_FormColosseumMatch();
+    source->m_iServerTick = source->m_iColosseumQueueDeadline;
     source->Try_FormColosseumMatch();
     SERVER_WORLD_TRANSFER_REQUEST second;
     const bool dequeued = source->Try_DequeueWorldTransfer(second);
@@ -201,7 +320,7 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
     {
         const auto other = app->m_ColosseumMatches.rbegin()->second;
         tests.Require(other != room && other->m_iColosseumMatchId != room->m_iColosseumMatchId &&
-            other->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::RECRUITING,
+            other->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::LOADING,
             "Match authority and recruitment state are isolated despite reused room-local entity IDs");
     }
     // An unresolved result must never block the tick or publish prepared authority.
@@ -229,9 +348,12 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
     for (auto& [id, player] : room->m_Players)
         if (player.iColosseumTeam == 1u && player.bColosseumParticipant) player.iCurrentHp = 0u;
     room->Update_Colosseum(.1f);
+    tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::ACTIVE, "A team death does not truncate the timed respawning match");
+    room->m_iColosseumScores[0] = 1u;
+    room->Update_ColosseumMatch(room->m_iColosseumPhaseEnd);
     tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::FINISHED && room->m_iColosseumWinnerTeam == 0u &&
         std::none_of(room->m_Players.begin(), room->m_Players.end(), [](const auto& p) { return p.second.isCombatReady; }),
-        "Team elimination ends the match and closes every damage authority");
+        "The 120-second deadline determines the score winner and closes every damage authority");
     drain();
     room->Handle_UseSquareHole(defeatedSession, C2S_USE_SQUAREHOLE{ 91u, 1u });
     SERVER_WORLD_TRANSFER_REQUEST returnToBern;
@@ -285,7 +407,7 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
         merc.iCurrentResource = merc.iMaximumResource = profile->iMaximumResource;
         merc.fMoveSpeed = profile->fMoveSpeed;
         merc.iColosseumMatchId = 900u; merc.iColosseumTeam = 0u;
-        merc.bColosseumParticipant = true; merc.isCombatReady = true;
+        merc.bColosseumParticipant = true; merc.isCombatReady = true; merc.bColosseumCombatActive = true;
         merc.CooldownEndTickBySkillId[34020u] = 100000u; // Existing navigation fallback when SPACE is unavailable.
         merc.fPositionX = landing.x; merc.fPositionY = landing.y; merc.fPositionZ = landing.z;
         auto caster = merc;

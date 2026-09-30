@@ -24,6 +24,7 @@ public:
     static int Run_GuideAI();
     static int Run_MaharakaAI();
     static int Run_CharacterAdmissionOnly();
+	static int Run_ColosseumOnly();
     static int Run_RoomPing();
     static int Run_BattleItemsOnly();
     static int Run_ShowtimeBombs();

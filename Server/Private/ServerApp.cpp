@@ -3535,6 +3535,18 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::COLOSSEUM_QUEUE_LEAVE;
 		command.ColosseumQueueLeave = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_COLOSSEUM_LOAD_READY)
+	{
+		if (!Read_Message(reader, command.ColosseumLoadReady) || reader.Get_RemainingSize())
+		{ closeMalformedPayload("C2S_COLOSSEUM_LOAD_READY"); return; }
+		command.eType = ROOM_COMMAND_TYPE::COLOSSEUM_LOAD_READY;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_COLOSSEUM_RETURN)
+	{
+		if (!Read_Message(reader, command.ColosseumReturn) || reader.Get_RemainingSize())
+		{ closeMalformedPayload("C2S_COLOSSEUM_RETURN"); return; }
+		command.eType = ROOM_COMMAND_TYPE::COLOSSEUM_RETURN;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_INTERACT_TRIGGER)
 	{
 		C2S_INTERACT_TRIGGER request{};
@@ -4558,7 +4570,7 @@ bool LostArk::Server::CServerApp::Commit_DataRevisionTransaction()
 			}
 		}
 		std::set<const CGameRoom*> currentRooms;
-		for (const auto& [worldId, room] : m_SharedGameRooms)
+			for (const auto& [worldId, room] : m_SharedGameRooms)
 		{
 			(void)worldId;
 			if (nullptr != room) currentRooms.insert(room.get());
@@ -5080,7 +5092,7 @@ bool LostArk::Server::CServerApp::Begin_ColosseumPreparation(
 {
     using namespace LostArk::Shared;
     if (!source || !transfer.bColosseumMatch || source->Get_WorldId() != WORLD_ID::BERN ||
-        transfer.eTargetWorldId != WORLD_ID::COLOSSEUM || transfer.PartyBatchSessionIds.size() != 4u ||
+        transfer.eTargetWorldId != WORLD_ID::COLOSSEUM || (transfer.PartyBatchSessionIds.empty() || transfer.PartyBatchSessionIds.size() > MAX_COLOSSEUM_MATCH_PLAYERS) ||
         m_ColosseumPreparationWorker.valid()) return false;
     std::shared_ptr<const CGameplayCatalog> generation;
     {
@@ -5263,7 +5275,7 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	{
 		std::scoped_lock lock{ m_SessionsMutex };
 		if (sourceWorldId != WORLD_ID::BERN || transfer.eTargetWorldId != WORLD_ID::COLOSSEUM ||
-			transfer.PartyBatchSessionIds.size() != 4u || m_iNextColosseumMatchId == 0u ||
+			(transfer.PartyBatchSessionIds.empty() || transfer.PartyBatchSessionIds.size() > MAX_COLOSSEUM_MATCH_PLAYERS) || m_iNextColosseumMatchId == 0u ||
 			!m_pActiveGameplayGeneration || m_DataRevisionTransaction.Is_Active() || m_NumericAdmissionPaused)
 		{ setFailure(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_PREFLIGHT_FAILED, WSAEINVAL, "Colosseum batch validation"); return false; }
 		for (const auto sessionId : transfer.PartyBatchSessionIds)
@@ -5422,6 +5434,7 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	enterWorld.eCharacterClass = transfer.eCharacterClass;
 	enterWorld.strNickName = transfer.strNickName;
 	enterWorld.iVoiceType = transfer.iVoiceType;
+	enterWorld.strAppearanceJson = transfer.strAppearanceJson;
 	ROOM_COMMAND enterCommand{};
 	enterCommand.eType = ROOM_COMMAND_TYPE::ENTER_WORLD;
 	enterCommand.iSessionId = transfer.iSessionId;

@@ -997,7 +997,9 @@ bool_t CWorldSequencePlayer::Seek_InstanceToMs(
 		[&instanceId](const ACTIVE_INSTANCE& value) { return value.instanceId == instanceId; });
 	if (found == m_Active.end()) return false;
     if (discontinuous) Stop_RetiredSounds(instanceId);
-    found->seekSounds = discontinuous || elapsedMs < found->elapsedMs || elapsedMs - found->elapsedMs > 250.f;
+    // A slow render frame is still continuous playback: the mixer kept advancing.
+    // Only an explicit scrub or a backwards clock requires restarting the cue.
+    found->seekSounds = discontinuous || elapsedMs < found->elapsedMs;
     if (found->seekSounds) found->soundPlaybackFinished = false;
 	found->elapsedMs = elapsedMs;
 	return APPLY_RESULT::FAILED != Apply_Instance(*found, targets);
@@ -1035,9 +1037,9 @@ bool_t CWorldSequencePlayer::Seek_AllToMs(
 	for (size_t index = 0; index < m_Active.size();)
 	{
 		ACTIVE_INSTANCE& active = m_Active[index];
-        // Match per-instance sampling: a live external clock must not restart audio every frame.
+        // Preserve the mixer channel across forward external-clock updates, including stalls.
         if (discontinuous) Stop_RetiredSounds(active.instanceId);
-        active.seekSounds = discontinuous || elapsedMs < active.elapsedMs || elapsedMs - active.elapsedMs > 250.f;
+        active.seekSounds = discontinuous || elapsedMs < active.elapsedMs;
         if (active.seekSounds) active.soundPlaybackFinished = false;
 		active.elapsedMs = elapsedMs;
 		if (APPLY_RESULT::FAILED == Apply_Instance(active, targets))

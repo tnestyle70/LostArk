@@ -4554,6 +4554,32 @@ def _build_world_bone_collider_track(root, sequences, world, box, collider):
     if not resource or not resource.get("modelAssetId"):
         raise CompositionError("WORLD Bone Collider model is unavailable")
     template = templates[instance["templateId"]]
+    effect_parent = None
+    effect_scale = 1.0
+    effect_track_id = collider.get("worldEffectTrackId", "")
+    if effect_track_id:
+        _stable_id(effect_track_id, "Collider worldEffectTrackId")
+        if (collider.get("boneRotation", "TARGET_YAW") != "BONE" or not collider.get("bone") or
+                collider.get("anchorKind", "WORLD") != "WORLD" or not collider.get("followBoss", True) or
+                collider.get("boneTarget", "BODY") != "BODY"):
+            raise CompositionError("worldEffectTrackId requires a following WORLD BODY bone Collider with BONE rotation")
+        effects = [row for row in template.get("effectTracks", []) if row["effectTrackId"] == effect_track_id]
+        if len(effects) != 1:
+            raise CompositionError("Collider worldEffectTrackId must resolve one Effect track")
+        effect = effects[0]
+        if (effect["slotId"] != bindings[0]["slotId"] or effect.get("resourceKind") != "V1_EFFECT" or
+                not effect.get("followObject", False) or not effect.get("inheritObjectRotation", True) or effect.get("bone")):
+            raise CompositionError("Collider Effect track must follow the same Object slot and inherit its rotation without another bone")
+        angles = effect.get("rotationDegrees", [0, 0, 0])
+        parent_scale = effect.get("scale", [1, 1, 1])
+        position = effect.get("positionOffset", [0, 0, 0])
+        _vector3(angles, "Collider Effect rotation", -36000, 36000)
+        _vector3(parent_scale, "Collider Effect scale", .000001, 100000)
+        _vector3(position, "Collider Effect offset", -100000, 100000)
+        if abs(angles[0]) > 1e-5 or abs(angles[2]) > 1e-5 or max(parent_scale) - min(parent_scale) > 1e-5:
+            raise CompositionError("Collider Effect root must remain upright with uniform positive scale")
+        effect_parent = collider_matrix(parent_scale, collider_rotation(angles), position)
+        effect_scale = parent_scale[0]
     if not any(row["slotId"] == bindings[0]["slotId"] for row in template.get("tracks", [])):
         template = copy.deepcopy(template)
         template.setdefault("tracks", []).append(dict(slotId=bindings[0]["slotId"], keys=[
@@ -4601,7 +4627,7 @@ def _build_world_bone_collider_track(root, sequences, world, box, collider):
         age = max(0, min(local - delays[emission], template["durationMs"]))
         try:
             center, _, scale, _, visible = sample_world_object_collider(
-                template, instance, resource, box, world, emission, age, row, load_model)
+                template, instance, resource, box, world, emission, age, row, load_model, bone_parent=effect_parent)
             direction_row = dict(row, positionOffset=[offset[i] + local_rotation[8+i] for i in range(3)])
             if not bone_rotation:
                 direction_row.update(attachmentBone="", behavior="HOOK_CAPTURE")
@@ -4609,7 +4635,7 @@ def _build_world_bone_collider_track(root, sequences, world, box, collider):
                     emission, age, dict(direction_row, positionOffset=[0,0,0]), load_model)
             else: origin = center
             forward, _, _, _, _ = sample_world_object_collider(
-                template, instance, resource, box, world, emission, age, direction_row, load_model)
+                template, instance, resource, box, world, emission, age, direction_row, load_model, bone_parent=effect_parent)
         except (ColliderBakeError, ValueError, IndexError) as error:
             raise CompositionError(f"Cannot bake WORLD Bone Collider {collider['occurrenceId']}: {error}") from error
         dx, dz = forward[0] - origin[0], forward[2] - origin[2]
@@ -4618,7 +4644,7 @@ def _build_world_bone_collider_track(root, sequences, world, box, collider):
         yaw = math.atan2(dx, dz)
         keys.append(dict(timeMs=time, positionOffset=canonicalize_baked_position(center),
                          rotationY=math.sin(yaw*.5), rotationW=math.cos(yaw*.5),
-                         scaleMultiplier=scale, visible=visible and local >= delays[emission]))
+                          scaleMultiplier=[value * effect_scale for value in scale], visible=visible and local >= delays[emission]))
     return dict(startMs=box["startMs"], startDelayMs=0, durationMs=duration, playbackSpeed=1.0,
                 interpolation="LINEAR", baselinePosition=[0,0,0], baselineYawDegrees=0,
                 baselineScale=[1,1,1], keys=keys)
@@ -5195,7 +5221,7 @@ PRESENTATION_OCCURRENCE_DEFAULTS = {
     "volume": 1.0, "soundSourceStartMs": 0, "effectSourceStartMs": 0, "effectSourceTimeKeys": [], "followBoss": True, "bone": "", "boneTarget": "BODY", "brightnessMultiplier": 1.0,
     "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE",
     "anchorKind": "BOSS", "worldId": "", "logicOccurrenceId": "", "debugRender": True, "worldOccurrenceId": "",
-    "worldEmissionIndex": 0, "boneRotation": "TARGET_YAW",
+    "worldEmissionIndex": 0, "boneRotation": "TARGET_YAW", "worldEffectTrackId": "",
     "anchorPresentationOccurrenceId": "", "colliderMotion": "STATIC", "colliderEndPositionOffset": [0.0, 0.0, 0.0], "colliderEndScale": [1.0, 1.0, 1.0],
 }
 
@@ -5506,6 +5532,10 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
                 (normalized["anchorKind"] != "BOSS" and not world_bone) or not normalized["bone"] or
                 (resources[box["resourceId"]]["kind"] == "COLLIDER" and not normalized["followBoss"])):
             raise CompositionError("BONE boneRotation requires a BOSS Effect or following Collider and a named bone")
+        if normalized["worldEffectTrackId"] != "":
+            _stable_id(normalized["worldEffectTrackId"], "presentation worldEffectTrackId")
+            if not world_bone or normalized["boneRotation"] != "BONE" or not normalized["worldOccurrenceId"]:
+                raise CompositionError("worldEffectTrackId requires an exact WORLD occurrence and following BODY bone Collider with BONE rotation")
     _validate_presentation_selection_groups(pattern, resources, fixed_sound_groups)
 
 
@@ -5735,7 +5765,7 @@ def _project_presentation_occurrence(document: dict[str, Any], pattern: dict[str
             for occurrence in pattern.get("logicOccurrences", []))
     return {
         **_project_presentation_resource(resource),
-        **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"effectSourceStartMs", "effectSourceTimeKeys", "brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration", "boneRotation", "colliderMotion", "colliderEndPositionOffset", "colliderEndScale", "anchorPresentationOccurrenceId"}},
+        **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"effectSourceStartMs", "effectSourceTimeKeys", "brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration", "boneRotation", "colliderMotion", "colliderEndPositionOffset", "colliderEndScale", "anchorPresentationOccurrenceId", "worldEffectTrackId"}},
         **{key: value for key, value in box.items() if key not in PRESENTATION_OCCURRENCE_EDITOR_KEYS
            and (key != "effectSourceTimeKeys" or value != [])},
         **({"brightnessMultiplier": box.get("brightnessMultiplier", 1.0)} if resource["kind"] == "LIGHT" else {}),
@@ -5936,7 +5966,7 @@ def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, A
     for box in pattern.get("sceneProfileOccurrences", []):
         occurrences.append({
             **{key: value for key, value in PRESENTATION_RESOURCE_DEFAULTS.items() if key not in {"durationMs", "defaultAnchorKind"}},
-            **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"effectSourceTimeKeys", "brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration", "boneRotation", "colliderMotion", "colliderEndPositionOffset", "colliderEndScale", "anchorPresentationOccurrenceId"}},
+            **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"effectSourceTimeKeys", "brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration", "boneRotation", "colliderMotion", "colliderEndPositionOffset", "colliderEndScale", "anchorPresentationOccurrenceId", "worldEffectTrackId"}},
             "occurrenceId": box["occurrenceId"], "resourceId": box["sceneProfileId"],
             "kind": "SCENE_PROFILE", "worldSequenceInstanceId": "", "assetId": profiles[box["sceneProfileId"]]["renderingProfileId"],
             "resourceDurationMs": box["durationMs"], "startMs": box["startMs"], "durationMs": box["durationMs"],

@@ -487,7 +487,7 @@ namespace LostArk::Server
 		bool Sample_Corridor(LostArk::Shared::MECHANIC_CARD_SYMBOL suit,
 			const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 			const std::vector<SERVER_WORLD_ENTITY>& entities, const CServerNavigation& navigation,
-			std::uint32_t seed, SPAWN_REQUEST& out) const;
+			std::uint32_t seed, SPAWN_REQUEST& out, bool avoidPersonalExits = false) const;
 		void Reset_Progress(SERVER_PLAYER& player);
 		bool Toggle_Telescope(SERVER_PLAYER& player);
 		[[nodiscard]] bool Is_SoloHunter(LostArk::Shared::PLAYER_ID playerId) const noexcept;

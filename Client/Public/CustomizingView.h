@@ -107,7 +107,8 @@ public:
 	A document of another class leaves the character untouched. */
 	static bool_t Apply_SavedLook(
 		const shared_ptr<CCharacter>& pCharacter, const std::string& strJson,
-		const ComPtr<ID3D11Device>& pDevice, const ComPtr<ID3D11DeviceContext>& pContext);
+		const ComPtr<ID3D11Device>& pDevice, const ComPtr<ID3D11DeviceContext>& pContext,
+		bool_t requireExactOutfit = false);
 	/* Drops the outfit applier Apply_SavedLook keeps alive; call before the device goes away. */
 	static void Release_SavedLookCache();
 	/* Degrees the drag gesture has turned the subject. The camera stays where the retail

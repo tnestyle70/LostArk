@@ -1,0 +1,1467 @@
+{
+  "sourceCommit": "34ec277efc9f84585d66d6f049a664a512b91ee8",
+  "sourcePaths": [
+    "Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json",
+    "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json"
+  ],
+  "selection": "P33 and P91 WORLD occurrences and their resource/instance/template dependencies, plus instant blade WORLD 38. Pattern fields unused by this migration are omitted. The already-derived WORLD 39 and P33.world.5 output are excluded to exercise first-time preparation; all retained source rows and ordinal/revision values are unchanged.",
+  "action": {
+    "revision": 1750,
+    "nextWorldOrdinal": 40,
+    "patterns": [
+      {
+        "patternId": "KAKULSAYDON_G1_PATTERN_33",
+        "nextWorldOccurrenceOrdinal": 6,
+        "worldOccurrences": [
+          {
+            "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.world.2",
+            "worldId": "kakulsaydon.g1.world.37",
+            "startMs": 1242,
+            "durationMs": 31419,
+            "playbackSpeed": 1,
+            "placement": {
+              "position": [
+                -5.310471057891846,
+                1.2990052700042725,
+                938.0942993164062
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          {
+            "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.world.4",
+            "worldId": "kakulsaydon.g1.world.19",
+            "startMs": 1242,
+            "durationMs": 31419,
+            "playbackSpeed": 1,
+            "placement": {
+              "position": [
+                -2.893627166748047,
+                1.3176257610321045,
+                936.8282470703125
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "patternId": "KAKULSAYDON_G1_PATTERN_91",
+        "durationMs": 126104,
+        "nextWorldOccurrenceOrdinal": 5,
+        "worldOccurrences": [
+          {
+            "occurrenceId": "KAKULSAYDON_G1_PATTERN_91.world.1",
+            "worldId": "kakulsaydon.g1.world.35",
+            "startMs": 3365,
+            "durationMs": 46635,
+            "playbackSpeed": 1,
+            "placement": {
+              "position": [
+                6.007999897003174,
+                1.317625641822815,
+                938.572021484375
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          {
+            "occurrenceId": "KAKULSAYDON_G1_PATTERN_91.world.2",
+            "worldId": "kakulsaydon.g1.world.35",
+            "startMs": 3365,
+            "durationMs": 46635,
+            "playbackSpeed": 1,
+            "placement": {
+              "position": [
+                5.1579999923706055,
+                1.317625641822815,
+                947.822021484375
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          {
+            "occurrenceId": "KAKULSAYDON_G1_PATTERN_91.world.3",
+            "worldId": "kakulsaydon.g1.world.22",
+            "startMs": 3365,
+            "durationMs": 46635,
+            "playbackSpeed": 1,
+            "placement": {
+              "position": [
+                -4.791999816894531,
+                1.317625641822815,
+                936.9719848632812
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          {
+            "occurrenceId": "KAKULSAYDON_G1_PATTERN_91.world.4",
+            "worldId": "kakulsaydon.g1.world.22",
+            "startMs": 3365,
+            "durationMs": 46635,
+            "playbackSpeed": 1,
+            "placement": {
+              "position": [
+                -4.742000102996826,
+                1.317625641822815,
+                947.6220092773438
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "worlds": [
+      {
+        "worldId": "kakulsaydon.g1.world.19",
+        "displayName": "바닥_일반칼날",
+        "sequenceInstanceId": "world.object.kouku.cutting_blade.state.1.instance",
+        "objectResourceId": "world.object.kouku.cutting_blade",
+        "positionOffset": [
+          0,
+          0,
+          0
+        ],
+        "anchorKind": "NONE",
+        "anchorPosition": [
+          0,
+          0,
+          0
+        ],
+        "companionEffectResourceId": ""
+      },
+      {
+        "worldId": "kakulsaydon.g1.world.22",
+        "displayName": "괴기스러운 인형 - 큰 사이즈",
+        "sequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01",
+        "objectResourceId": "world.object.kouku.odd_doll.large",
+        "positionOffset": [
+          0,
+          0,
+          0
+        ],
+        "anchorKind": "NONE",
+        "anchorPosition": [
+          0,
+          0,
+          0
+        ],
+        "companionEffectResourceId": ""
+      },
+      {
+        "worldId": "kakulsaydon.g1.world.35",
+        "displayName": "마리오 소환 공 (원본 크기)",
+        "sequenceInstanceId": "world.object.instance.kouku.mario_circus_ball.aura",
+        "objectResourceId": "world.object.kouku.mario_circus_ball",
+        "positionOffset": [
+          0,
+          0,
+          0
+        ],
+        "anchorKind": "NONE",
+        "anchorPosition": [
+          0,
+          0,
+          0
+        ],
+        "companionEffectResourceId": ""
+      },
+      {
+        "worldId": "kakulsaydon.g1.world.37",
+        "displayName": "원본_갈고리",
+        "sequenceInstanceId": "world.sequence.instance.kouku.hook.original_preview",
+        "objectResourceId": "world.object.kouku.hook",
+        "positionOffset": [
+          0,
+          0,
+          0
+        ],
+        "anchorKind": "NONE",
+        "anchorPosition": [
+          0,
+          0,
+          0
+        ],
+        "companionEffectResourceId": ""
+      },
+      {
+        "worldId": "kakulsaydon.g1.world.38",
+        "displayName": "바닥_즉사칼날",
+        "sequenceInstanceId": "world.object.kouku.cutting_blade.state.instant_death.instance",
+        "objectResourceId": "world.object.kouku.cutting_blade",
+        "positionOffset": [
+          0,
+          0,
+          0
+        ],
+        "anchorKind": "NONE",
+        "anchorPosition": [
+          0,
+          0,
+          0
+        ],
+        "companionEffectResourceId": ""
+      }
+    ]
+  },
+  "worldSequences": {
+    "revision": 2129,
+    "instances": [
+      {
+        "instanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01",
+        "templateId": "sequence.kouku.odd_doll.large.att_battle_2_01",
+        "enabled": true,
+        "startDelayMs": 0,
+        "playbackSpeed": 1,
+        "anchorKind": "WORLD",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "motionEnd": "LOOP",
+        "nextMotionId": "",
+        "loopFullPresentation": true,
+        "bindings": [
+          {
+            "slotId": "object",
+            "targetKind": "OBJECT_RESOURCE",
+            "targetId": "world.object.kouku.odd_doll.large"
+          }
+        ]
+      },
+      {
+        "instanceId": "world.object.kouku.cutting_blade.state.1.instance",
+        "templateId": "world.object.kouku.cutting_blade.state.1",
+        "enabled": true,
+        "startDelayMs": 0,
+        "playbackSpeed": 1,
+        "anchorKind": "WORLD",
+        "position": [
+          -0.0500000007,
+          0.330000013,
+          942.210022
+        ],
+        "motionEnd": "LOOP",
+        "nextMotionId": "",
+        "loopFullPresentation": true,
+        "bindings": [
+          {
+            "slotId": "object",
+            "targetKind": "OBJECT_RESOURCE",
+            "targetId": "world.object.kouku.cutting_blade"
+          }
+        ]
+      },
+      {
+        "instanceId": "world.object.kouku.cutting_blade.state.instant_death.instance",
+        "templateId": "world.object.kouku.cutting_blade.state.instant_death",
+        "enabled": true,
+        "startDelayMs": 0,
+        "playbackSpeed": 1,
+        "anchorKind": "WORLD",
+        "position": [
+          0,
+          0.219999999,
+          942
+        ],
+        "motionEnd": "LOOP",
+        "nextMotionId": "",
+        "loopFullPresentation": true,
+        "bindings": [
+          {
+            "slotId": "object",
+            "targetKind": "OBJECT_RESOURCE",
+            "targetId": "world.object.kouku.cutting_blade"
+          }
+        ]
+      },
+      {
+        "instanceId": "world.sequence.instance.kouku.hook.original_preview",
+        "templateId": "sequence.kouku.hook.original_preview",
+        "enabled": true,
+        "startDelayMs": 0,
+        "playbackSpeed": 1,
+        "anchorKind": "WORLD",
+        "position": [
+          -0.469999999,
+          1.20000005,
+          942.679993
+        ],
+        "motionEnd": "STOP",
+        "nextMotionId": "",
+        "bindings": [
+          {
+            "slotId": "object",
+            "targetKind": "OBJECT_RESOURCE",
+            "targetId": "world.object.kouku.hook"
+          }
+        ]
+      },
+      {
+        "instanceId": "world.object.instance.kouku.mario_circus_ball.aura",
+        "templateId": "sequence.kouku.mario_circus_ball.aura",
+        "enabled": true,
+        "startDelayMs": 0,
+        "playbackSpeed": 1,
+        "anchorKind": "WORLD",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "motionEnd": "LOOP",
+        "nextMotionId": "",
+        "loopFullPresentation": true,
+        "bindings": [
+          {
+            "slotId": "object",
+            "targetKind": "OBJECT_RESOURCE",
+            "targetId": "world.object.kouku.mario_circus_ball"
+          }
+        ]
+      }
+    ],
+    "templates": [
+      {
+        "sequenceId": "sequence.kouku.odd_doll.large.att_battle_2_01",
+        "displayName": "회전 화염 뿜기 (모델 동작)",
+        "category": "Animation",
+        "durationMs": 17314,
+        "interpolation": "LINEAR",
+        "objectMotion": {
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "acceleration": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocityDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "revolutionOffset": [
+            0,
+            0,
+            0
+          ],
+          "count": 1,
+          "intervalMs": 0,
+          "spreadDegrees": 0,
+          "seed": 1
+        },
+        "tracks": [],
+        "animationTracks": [
+          {
+            "slotId": "object",
+            "clipName": "att_battle_2_01",
+            "startMs": 0,
+            "playbackRate": 1,
+            "loop": false,
+            "holdLastFrame": true
+          },
+          {
+            "slotId": "object",
+            "clipName": "att_battle_2_01",
+            "sourceStartMs": 1539,
+            "startMs": 1539,
+            "playbackRate": 0.60133332,
+            "loop": false,
+            "holdLastFrame": true
+          },
+          {
+            "slotId": "object",
+            "clipName": "att_battle_2_01",
+            "sourceStartMs": 10559,
+            "startMs": 16539,
+            "playbackRate": 1,
+            "loop": false,
+            "holdLastFrame": true
+          }
+        ],
+        "effectTracks": [
+          {
+            "effectTrackId": "effect.doll.flame",
+            "slotId": "object",
+            "resourceKind": "V1_EFFECT",
+            "resourceId": "effect.kouku.gate3.doll.flame.shared",
+            "timing": "TIME",
+            "followObject": true,
+            "bone": "",
+            "startMs": 0,
+            "durationMs": 17314,
+            "positionOffset": [
+              0,
+              0,
+              0
+            ],
+            "rotationDegrees": [
+              0,
+              90,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "sequenceId": "world.object.kouku.cutting_blade.state.1",
+        "displayName": "바닥_일반칼날",
+        "category": "World",
+        "durationMs": 11000,
+        "interpolation": "SMOOTH_STEP",
+        "objectMotion": {
+          "velocity": [
+            0,
+            0,
+            2
+          ],
+          "acceleration": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocityDegrees": [
+            1440,
+            0,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "revolutionOffset": [
+            0,
+            0,
+            0
+          ],
+          "count": 8,
+          "intervalMs": 0,
+          "spreadDegrees": 0,
+          "seed": 1,
+          "emissions": [
+            {
+              "positionOffset": [
+                11.5200005,
+                1,
+                -3.64499998
+              ],
+              "yawDegrees": 312,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                -6.16699982,
+                1,
+                9.59000015
+              ],
+              "yawDegrees": 132,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                8.84399986,
+                1,
+                -6.6170001
+              ],
+              "yawDegrees": 312,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                -8.84399986,
+                1,
+                6.6170001
+              ],
+              "yawDegrees": 132,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                6.16699982,
+                1,
+                -9.59000015
+              ],
+              "yawDegrees": 312,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                -11.5200005,
+                1,
+                3.64499998
+              ],
+              "yawDegrees": 132,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                -3.81999993,
+                1,
+                11.9499998
+              ],
+              "yawDegrees": 132,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                -1.07000005,
+                1,
+                14.4949999
+              ],
+              "yawDegrees": 132,
+              "startDelayMs": 0
+            }
+          ]
+        },
+        "tracks": [
+          {
+            "slotId": "object",
+            "keys": [
+              {
+                "timeMs": 0,
+                "positionOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "rotationQuaternion": [
+                  0,
+                  0,
+                  0.707106769,
+                  0.707106709
+                ],
+                "scaleMultiplier": [
+                  2,
+                  2,
+                  2
+                ],
+                "visible": true
+              },
+              {
+                "timeMs": 11000,
+                "positionOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "rotationQuaternion": [
+                  0,
+                  0,
+                  0.707106769,
+                  0.707106709
+                ],
+                "scaleMultiplier": [
+                  3,
+                  3,
+                  3
+                ],
+                "visible": true
+              }
+            ]
+          }
+        ],
+        "animationTracks": [],
+        "effectTracks": [
+          {
+            "effectTrackId": "world.object.kouku.cutting_blade.state.1.effect.attached",
+            "slotId": "object",
+            "resourceKind": "V1_EFFECT",
+            "resourceId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_cutting_pjt_01",
+            "timing": "TIME",
+            "followObject": true,
+            "bone": "",
+            "startMs": 0,
+            "durationMs": 11000,
+            "positionOffset": [
+              0,
+              0,
+              0
+            ],
+            "rotationDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ],
+            "loopEffectToDuration": true,
+            "inheritObjectRotation": false
+          }
+        ],
+        "colliderTracks": [
+          {
+            "colliderTrackId": "world.object.kouku.cutting_blade.state.1.collider.1",
+            "slotId": "object",
+            "startMs": 0,
+            "durationMs": 11000,
+            "positionOffset": [
+              0,
+              0,
+              0
+            ],
+            "halfExtents": [
+              0.0804767311,
+              0.979918718,
+              0.979918718
+            ],
+            "yawDegrees": 0,
+            "behavior": "DAMAGE",
+            "damagePercent": 20,
+            "gripLocalOffset": [
+              0,
+              0,
+              0
+            ]
+          }
+        ]
+      },
+      {
+        "sequenceId": "world.object.kouku.cutting_blade.state.instant_death",
+        "displayName": "바닥_즉사칼날",
+        "category": "World",
+        "durationMs": 11000,
+        "interpolation": "SMOOTH_STEP",
+        "objectMotion": {
+          "velocity": [
+            0,
+            0,
+            2
+          ],
+          "acceleration": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocityDegrees": [
+            1440,
+            0,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "revolutionOffset": [
+            0,
+            0,
+            0
+          ],
+          "count": 8,
+          "intervalMs": 0,
+          "spreadDegrees": 0,
+          "seed": 1,
+          "emissions": [
+            {
+              "positionOffset": [
+                3.64499331,
+                1,
+                11.5199928
+              ],
+              "yawDegrees": 222,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                5.13083076,
+                1,
+                10.1821394
+              ],
+              "yawDegrees": 222,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                6.61699343,
+                1,
+                8.84399223
+              ],
+              "yawDegrees": 222,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                8.10387993,
+                1,
+                7.50519371
+              ],
+              "yawDegrees": 222,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                9.59004211,
+                1,
+                6.16704702
+              ],
+              "yawDegrees": 222,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                11.0758801,
+                1,
+                4.82919312
+              ],
+              "yawDegrees": 222,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                2.66041589,
+                1,
+                12.4065104
+              ],
+              "yawDegrees": 222,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                -0.112564072,
+                1,
+                14.9033136
+              ],
+              "yawDegrees": 222,
+              "startDelayMs": 0
+            }
+          ]
+        },
+        "tracks": [
+          {
+            "slotId": "object",
+            "keys": [
+              {
+                "timeMs": 0,
+                "positionOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "rotationQuaternion": [
+                  0,
+                  0,
+                  0.707106769,
+                  0.707106709
+                ],
+                "scaleMultiplier": [
+                  1,
+                  1,
+                  1
+                ],
+                "visible": true
+              },
+              {
+                "timeMs": 11000,
+                "positionOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "rotationQuaternion": [
+                  0,
+                  0,
+                  0.707106769,
+                  0.707106709
+                ],
+                "scaleMultiplier": [
+                  3,
+                  3,
+                  3
+                ],
+                "visible": true
+              }
+            ]
+          }
+        ],
+        "animationTracks": [],
+        "effectTracks": [
+          {
+            "effectTrackId": "world.object.kouku.cutting_blade.state.instant_death.effect.attached",
+            "slotId": "object",
+            "resourceKind": "V1_EFFECT",
+            "resourceId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_cutting_pjt_02_loc_int",
+            "timing": "TIME",
+            "followObject": true,
+            "bone": "",
+            "startMs": 0,
+            "durationMs": 11000,
+            "positionOffset": [
+              0,
+              0,
+              0
+            ],
+            "rotationDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ],
+            "loopEffectToDuration": true,
+            "inheritObjectRotation": false
+          }
+        ],
+        "colliderTracks": [
+          {
+            "colliderTrackId": "world.object.kouku.cutting_blade.state.instant_death.collider.1",
+            "slotId": "object",
+            "startMs": 0,
+            "durationMs": 11000,
+            "positionOffset": [
+              0,
+              0,
+              0
+            ],
+            "halfExtents": [
+              0.0804767311,
+              0.979918718,
+              0.979918718
+            ],
+            "yawDegrees": 0,
+            "behavior": "INSTANT_DEATH",
+            "damagePercent": 0,
+            "gripLocalOffset": [
+              0,
+              0,
+              0
+            ]
+          }
+        ]
+      },
+      {
+        "sequenceId": "sequence.kouku.hook.original_preview",
+        "displayName": "원본_갈고리",
+        "category": "KoukuGate3",
+        "durationMs": 11334,
+        "interpolation": "LINEAR",
+        "objectMotion": {
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "acceleration": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocityDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "revolutionOffset": [
+            0,
+            0,
+            0
+          ],
+          "count": 15,
+          "intervalMs": 0,
+          "spreadDegrees": 0,
+          "seed": 1,
+          "emissions": [
+            {
+              "positionOffset": [
+                0,
+                0,
+                1
+              ],
+              "yawDegrees": 180,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                0,
+                0,
+                2
+              ],
+              "yawDegrees": 180,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                0,
+                0,
+                3
+              ],
+              "yawDegrees": 180,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                0,
+                0,
+                4
+              ],
+              "yawDegrees": 180,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                0,
+                0,
+                5
+              ],
+              "yawDegrees": 180,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                -2.50200009,
+                0,
+                -0.0939999968
+              ],
+              "yawDegrees": 280,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                -1.13600004,
+                0,
+                -0.460000008
+              ],
+              "yawDegrees": 280,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                0.230000004,
+                0,
+                -0.825999975
+              ],
+              "yawDegrees": 280,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                1.59599996,
+                0,
+                -1.19200003
+              ],
+              "yawDegrees": 280,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                2.96199989,
+                0,
+                -1.55799997
+              ],
+              "yawDegrees": 280,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                -1.94299996,
+                0,
+                -2.05500007
+              ],
+              "yawDegrees": 43.4000015,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                -0.972000003,
+                0,
+                -1.02699995
+              ],
+              "yawDegrees": 43.4000015,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "yawDegrees": 43.4000015,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                0.972000003,
+                0,
+                1.028
+              ],
+              "yawDegrees": 43.4000015,
+              "startDelayMs": 0
+            },
+            {
+              "positionOffset": [
+                1.94299996,
+                0,
+                2.05500007
+              ],
+              "yawDegrees": 43.4000015,
+              "startDelayMs": 0
+            }
+          ]
+        },
+        "tracks": [
+          {
+            "slotId": "object",
+            "keys": [
+              {
+                "timeMs": 0,
+                "positionOffset": [
+                  -12.21875,
+                  0,
+                  0
+                ],
+                "rotationQuaternion": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "scaleMultiplier": [
+                  1,
+                  1,
+                  1
+                ],
+                "visible": true
+              },
+              {
+                "timeMs": 8213,
+                "positionOffset": [
+                  -12.21875,
+                  0,
+                  0
+                ],
+                "rotationQuaternion": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "scaleMultiplier": [
+                  1,
+                  1,
+                  1
+                ],
+                "visible": false
+              },
+              {
+                "timeMs": 8214,
+                "positionOffset": [
+                  12.21875,
+                  0,
+                  0
+                ],
+                "rotationQuaternion": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "scaleMultiplier": [
+                  1,
+                  1,
+                  1
+                ],
+                "visible": true
+              },
+              {
+                "timeMs": 10334,
+                "positionOffset": [
+                  12.21875,
+                  0,
+                  0
+                ],
+                "rotationQuaternion": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "scaleMultiplier": [
+                  1,
+                  1,
+                  1
+                ],
+                "visible": true
+              },
+              {
+                "timeMs": 11334,
+                "positionOffset": [
+                  12.21875,
+                  0,
+                  0
+                ],
+                "rotationQuaternion": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "scaleMultiplier": [
+                  1,
+                  1,
+                  1
+                ],
+                "visible": false
+              }
+            ]
+          }
+        ],
+        "animationTracks": [
+          {
+            "slotId": "object",
+            "clipName": "Hook_respawn_1",
+            "displayName": "Hook_respawn_1",
+            "startMs": 0,
+            "playbackRate": 1,
+            "loop": false,
+            "holdLastFrame": true
+          },
+          {
+            "slotId": "object",
+            "clipName": "Hook_att_battle_1_01",
+            "displayName": "Hook_att_battle_1_01",
+            "startMs": 1334,
+            "playbackRate": 1,
+            "loop": false,
+            "holdLastFrame": true
+          },
+          {
+            "slotId": "object",
+            "clipName": "Hook_att_battle_2_01",
+            "displayName": "Hook_att_battle_2_01",
+            "startMs": 8221,
+            "playbackRate": 1,
+            "loop": false,
+            "holdLastFrame": true
+          },
+          {
+            "slotId": "object",
+            "clipName": "Hook_att_battle_3_01",
+            "displayName": "Hook_att_battle_3_01",
+            "startMs": 9834,
+            "playbackRate": 1,
+            "loop": false,
+            "holdLastFrame": true
+          }
+        ],
+        "colliderTracks": [
+          {
+            "colliderTrackId": "sequence.kouku.hook.original_preview.collider.hook_tip",
+            "slotId": "object",
+            "startMs": 0,
+            "durationMs": 11334,
+            "positionOffset": [
+              0.537475705,
+              -0.516810358,
+              -1.93534888e-07
+            ],
+            "halfExtents": [
+              0.25,
+              0.349999994,
+              0.200000003
+            ],
+            "yawDegrees": 0,
+            "behavior": "HOOK_CAPTURE",
+            "damagePercent": 0,
+            "gripLocalOffset": [
+              0.537475705,
+              -0.516810358,
+              -1.93534888e-07
+            ],
+            "attachmentBone": "b_hook_01"
+          }
+        ]
+      },
+      {
+        "sequenceId": "sequence.kouku.mario_circus_ball.aura",
+        "displayName": "마리오 소환 공_무지개빛에서 붉은빛 반복",
+        "category": "WorldObject",
+        "durationMs": 7500,
+        "interpolation": "LINEAR",
+        "objectMotion": {
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "acceleration": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocityDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "revolutionOffset": [
+            0,
+            0,
+            0
+          ],
+          "count": 1,
+          "intervalMs": 0,
+          "spreadDegrees": 0,
+          "seed": 1
+        },
+        "tracks": [
+          {
+            "slotId": "object",
+            "keys": [
+              {
+                "timeMs": 0,
+                "positionOffset": [
+                  -5.72199994e-08,
+                  0.00146865845,
+                  0
+                ],
+                "rotationQuaternion": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "scaleMultiplier": [
+                  1,
+                  1,
+                  1
+                ],
+                "visible": true
+              },
+              {
+                "timeMs": 7500,
+                "positionOffset": [
+                  -5.72199994e-08,
+                  0.00146865845,
+                  0
+                ],
+                "rotationQuaternion": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "scaleMultiplier": [
+                  1,
+                  1,
+                  1
+                ],
+                "visible": true
+              }
+            ]
+          }
+        ],
+        "animationTracks": [],
+        "effectTracks": [
+          {
+            "effectTrackId": "effect.circus.ball.aura",
+            "slotId": "object",
+            "resourceKind": "V1_EFFECT",
+            "resourceId": "effect.kouku.gate3.mario.circus.ball.aura",
+            "timing": "TIME",
+            "followObject": true,
+            "bone": "",
+            "startMs": 0,
+            "durationMs": 7500,
+            "positionOffset": [
+              0,
+              0,
+              0
+            ],
+            "rotationDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      }
+    ],
+    "objectResources": [
+      {
+        "objectId": "world.object.kouku.cutting_blade",
+        "displayName": "월드오브젝트_칼날",
+        "modelAssetId": "Effect/KoukuSaydon/WorldObjects/CuttingBlade/CuttingBlade.wmodel",
+        "anchorKind": "WORLD",
+        "diffuseTextureAssetId": "",
+        "modelPreScale": 0.00999999978,
+        "animated": false,
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "sequenceInstanceId": "",
+        "defaultMotionInstanceId": "world.object.kouku.cutting_blade.state.1.instance"
+      },
+      {
+        "objectId": "world.object.kouku.hook",
+        "displayName": "월드오브젝트_갈고리",
+        "modelAssetId": "Character/KoukuSaton/MN_UMAX_00/MN_UMAX_00.wmodel",
+        "anchorKind": "WORLD",
+        "diffuseTextureAssetId": "",
+        "modelPreScale": 0.00999999978,
+        "animated": true,
+        "scale": [
+          1.14999998,
+          1.14999998,
+          1.14999998
+        ],
+        "sequenceInstanceId": "",
+        "defaultMotionInstanceId": "world.object.instance.kouku.hook"
+      },
+      {
+        "objectId": "world.object.kouku.odd_doll.large",
+        "displayName": "괴기스러운 인형 - 큰 사이즈",
+        "modelAssetId": "Character/KoukuSaton/MN_CDMD_00/MN_CDMD_00.wmodel",
+        "anchorKind": "WORLD",
+        "diffuseTextureAssetId": "",
+        "modelPreScale": 0.00999999978,
+        "animated": true,
+        "scale": [
+          1.60000002,
+          1.60000002,
+          1.60000002
+        ],
+        "sequenceInstanceId": "",
+        "defaultMotionInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01",
+        "combatBody": {
+          "maxHp": 2000,
+          "localCenterM": [
+            -0.0633600652,
+            0.637170494,
+            0.0347844735
+          ],
+          "halfExtentsM": [
+            0.505442619,
+            0.666466773,
+            0.452641368
+          ],
+          "lifetimePolicy": "UNTIL_DESTROYED"
+        }
+      },
+      {
+        "objectId": "world.object.kouku.mario_circus_ball",
+        "displayName": "마리오 소환 공 (원본 크기)",
+        "modelAssetId": "Map/LV_LUT_MIDNIGHTC_ED/MarioProps/StripedBall/StripedBall.wmodel",
+        "anchorKind": "WORLD",
+        "diffuseTextureAssetId": "",
+        "modelPreScale": 0.00999999978,
+        "animated": false,
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "sequenceInstanceId": "",
+        "defaultMotionInstanceId": "world.object.instance.kouku.mario_circus_ball.aura",
+        "combatBody": {
+          "maxHp": 2000,
+          "localCenterM": [
+            5.72204577e-08,
+            0.469336092,
+            0
+          ],
+          "halfExtentsM": [
+            0.470804721,
+            0.470804751,
+            0.470804751
+          ],
+          "lifetimePolicy": "UNTIL_DESTROYED",
+          "shape": "ELLIPSOID"
+        }
+      }
+    ]
+  }
+}

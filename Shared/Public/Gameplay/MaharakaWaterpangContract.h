@@ -10,6 +10,11 @@ namespace LostArk::Shared
     // S2C_WORLD_SEQUENCE_PLAY carries its future start on the 30 Hz Server clock.
     inline constexpr const char* MAHARAKA_WATERPANG_INTRO_INSTANCE =
         "world.sequence.instance.maharaka.waterpang.source.intro15.stage";
+    // Server spawn and Client level-entry preload consume the same NPC roster.
+    inline constexpr std::array<const char*, 8> MAHARAKA_WATERPANG_AI_NPCS = {
+        "NPC_MHP_RESIDENT_8FC2DB56F0AA5175", "NPC_MHP_RESIDENT_7D37CE489AF57466",
+        "NPC_MHP_RESIDENT_6C0BF3F0C656EBAB", "NPC_MHP_RESIDENT_48E52BAC20260E4C",
+        "NPC_BEDA", "NPC_AYLARA", "NPC_FORMAN", "NPC_SCHMIDT" };
     inline constexpr std::uint32_t MAHARAKA_WATERPANG_TICK_HZ = 30u;
     inline constexpr std::uint32_t MAHARAKA_WATERPANG_COUNTDOWN_TICKS = 300u;
     // Navigation detail region that bakes the arena deck and its jump pier. It spans the whole

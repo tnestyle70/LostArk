@@ -57,6 +57,8 @@ void LostArk::Server::CGameRoom::Handle_Move(
 void LostArk::Server::CGameRoom::Execute_PlayerMove(
     SERVER_PLAYER& player, const LostArk::Shared::C2S_MOVE& move)
 {
+	if (player.iColosseumMatchId && !player.bColosseumCombatActive &&
+        m_eColosseumPhase != LostArk::Shared::COLOSSEUM_MATCH_PHASE::RECRUITING) return;
     const bool entryTerraceMove = Is_KoukuRaidRunning() &&
         m_KoukuRaid.State.ePhase == LostArk::Shared::KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY;
     if (Is_KoukuRaidInputBlocked() && !entryTerraceMove) return;
@@ -721,6 +723,7 @@ void LostArk::Server::CGameRoom::Handle_DebugEnterKakulSaydonArena(
 	transfer.eCharacterClass = player.eCharacterClass;
 	transfer.strNickName = player.strNickName;
 	transfer.iVoiceType = player.iVoiceType;
+	transfer.strAppearanceJson = player.strAppearanceJson;
 	transfer.iHonorTitleId = player.iHonorTitleId;
 	transfer.iPartyRequestSequence = request.iRequestSequence;
 	transfer.CarriedInventory = player.Inventory;
@@ -930,7 +933,7 @@ void LostArk::Server::CGameRoom::Finish_SquareHoleSong(SERVER_PLAYER& player)
 	player.fPositionY = landing.y;
 	player.fPositionZ = landing.z;
 	Update_MarioControlState(player);
-	Guide_AnchorArrived(player);
+	Guide_AnchorArrived(player, true);
 }
 
 LostArk::Server::SERVER_PLAYER* LostArk::Server::CGameRoom::Find_EstherCaster(
@@ -1391,6 +1394,7 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.iEstherGuardEndTick = 0u;
 	staged.iEstherGuardDamageTakenPercent = 0;
 	staged.eCharacterClass = request.eCharacterClass;
+	staged.strAppearanceJson.clear(); // Presets are class-specific; a new class uses its default.
 	staged.iLastClassChangeSequence = request.iClientSequence;
 	staged.fMoveGoalX = 0.f;
 	staged.fMoveGoalZ = 0.f;

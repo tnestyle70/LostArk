@@ -478,6 +478,7 @@ bool_t CLevel_Lobby::Resolve_Stage(
 		outTargetLevel = LEVEL::MAHARAKA;
 		return true;
 	case LOBBY_STAGE::COLOSSEUM:
+		// Debug audition still requires Server admission and the existing replicated world.
 		outWorldId = WORLD_ID::COLOSSEUM;
 		outTargetLevel = LEVEL::COLOSSEUM;
 		return true;
@@ -639,8 +640,14 @@ void CLevel_Lobby::Render_StagePanel()
 	if (ImGui::Button("Maharaka"))
 		CLobbyCommandService::Request(LOBBY_STAGE::MAHARAKA);
 	ImGui::SameLine();
-	if (ImGui::Button("Colosseum"))
+#ifdef _DEBUG
+	if (ImGui::Button("Colosseum Preview"))
 		CLobbyCommandService::Request(LOBBY_STAGE::COLOSSEUM);
+#else
+	ImGui::BeginDisabled();
+	ImGui::Button("Colosseum (Bern queue only)");
+	ImGui::EndDisabled();
+#endif
 	ImGui::EndDisabled();
 
 	ImGui::TextWrapped("%s", m_strStatus.c_str());

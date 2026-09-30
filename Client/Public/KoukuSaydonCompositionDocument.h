@@ -506,6 +506,8 @@ namespace Client
 		std::string strWorldId;
 		std::string strLogicOccurrenceId;
 		std::string strWorldOccurrenceId;
+        // Optional WORLD Effect root applied after the named bone and before Object placement.
+        std::string strWorldEffectTrackId;
 		// Row of that World box's authored emission list this box follows; 0 for single emitters.
 		std::uint32_t iWorldEmissionIndex = 0u;
 		// Pattern-local Effect or BOSS Collider selection metadata; runtime transforms remain per occurrence.

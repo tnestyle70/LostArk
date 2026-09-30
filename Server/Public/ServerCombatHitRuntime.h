@@ -167,5 +167,9 @@ namespace LostArk::Server
 			const CGameplayCatalog& catalog,
 			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
             const SERVER_COLOSSEUM_RESOLVED_DAMAGE* pPvPResolved = nullptr);
+		static bool Is_EnemyPlayer(const SERVER_PLAYER& source, const SERVER_PLAYER& target) noexcept;
+		static SERVER_COMBAT_HIT_RESULT Apply_PlayerToPlayer(const SERVER_PLAYER& source, SERVER_PLAYER& target,
+			const SERVER_PLAYER_TO_WORLD_HIT& hit, const CGameplayCatalog& catalog,
+			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents);
 	};
 }

@@ -166,7 +166,50 @@ bool_t Client::CEquipmentPresentationService::Apply_Preview(
 		}
 	}
 
-	const uint32_t prototypeLevelIndex = character.Get_PrototypeLevelIndex();
+    if (!Admit_Models(character.Get_PrototypeLevelIndex(), targetClass, selectedSets, outError))
+        return false;
+
+	std::vector<CCharacter::EQUIPMENT_PREVIEW_PART_DESC> previewParts;
+	for (const EQUIPMENT_VISUAL_SET* set : selectedSets)
+	{
+		previewParts.reserve(previewParts.size() + set->parts.size());
+		for (const EQUIPMENT_PRESENTATION_PART& part : set->parts)
+		{
+			CCharacter::EQUIPMENT_PREVIEW_PART_DESC previewPart;
+			previewPart.runtimePartId = Make_RuntimePartId(*set, part);
+			previewPart.modelPrototypeTag =
+				Make_ModelPrototypeTag(part.modelAssetId);
+			previewPart.isSocketed =
+				EQUIPMENT_ATTACHMENT_MODE::SOCKETED == part.attachmentMode;
+			previewPart.socketBoneId = part.socketBoneId;
+			previewPart.socketYawDegrees = part.socketYawDegrees;
+			previewPart.requiredStance = part.requiredStance;
+            previewPart.isWeaponPart = set->primarySlot == EQUIPMENT_SLOT_ID::WEAPON;
+			previewPart.hiddenMeshMask = part.hiddenMeshMask;
+			previewParts.push_back(std::move(previewPart));
+		}
+	}
+	return character.Apply_EquipmentPreview(
+		previewParts, occupiedSlotsMask, outError);
+}
+
+bool_t Client::CEquipmentPresentationService::Reset_Preview(
+	CCharacter& character,
+	std::string& outError)
+{
+	return character.Reset_EquipmentPreview(outError);
+}
+
+void Client::CEquipmentPresentationService::On_LevelChanged()
+{
+	m_iPrototypeLevelIndex = ETOUI(LEVEL::END);
+	m_AdmittedModelAssetIds.clear();
+}
+
+bool_t Client::CEquipmentPresentationService::Admit_Models(const uint32_t prototypeLevelIndex,
+    const LostArk::Shared::CHARACTER_CLASS_ID targetClass,
+    const std::vector<const EQUIPMENT_VISUAL_SET*>& selectedSets, std::string& outError)
+{
 	if (prototypeLevelIndex >= ETOUI(LEVEL::END))
 	{
 		outError = "Equipment preview target has an invalid prototype level.";
@@ -198,8 +241,10 @@ bool_t Client::CEquipmentPresentationService::Apply_Preview(
 	stagedPrototypes.reserve(modelsToAdmit.size());
 	for (const auto& [assetId, attachmentMode] : modelsToAdmit)
 	{
-		if (m_AdmittedModelAssetIds.contains(assetId))
-			continue;
+        if (m_AdmittedModelAssetIds.contains(assetId)) continue;
+        // Loader and live presentation use the same level-owned prototype registry.
+        if (CGameInstance::Get().Clone_Prototype(prototypeLevelIndex, Make_ModelPrototypeTag(assetId)))
+        { m_AdmittedModelAssetIds.insert(assetId); continue; }
 		const std::filesystem::path path = CRuntimeAssetRoot::Resolve(assetId);
 		std::error_code fileError;
 		if (path.empty() ||
@@ -249,39 +294,19 @@ bool_t Client::CEquipmentPresentationService::Apply_Preview(
 		m_AdmittedModelAssetIds.insert(assetId);
 	}
 
-	std::vector<CCharacter::EQUIPMENT_PREVIEW_PART_DESC> previewParts;
-	for (const EQUIPMENT_VISUAL_SET* set : selectedSets)
-	{
-		previewParts.reserve(previewParts.size() + set->parts.size());
-		for (const EQUIPMENT_PRESENTATION_PART& part : set->parts)
-		{
-			CCharacter::EQUIPMENT_PREVIEW_PART_DESC previewPart;
-			previewPart.runtimePartId = Make_RuntimePartId(*set, part);
-			previewPart.modelPrototypeTag =
-				Make_ModelPrototypeTag(part.modelAssetId);
-			previewPart.isSocketed =
-				EQUIPMENT_ATTACHMENT_MODE::SOCKETED == part.attachmentMode;
-			previewPart.socketBoneId = part.socketBoneId;
-			previewPart.socketYawDegrees = part.socketYawDegrees;
-			previewPart.requiredStance = part.requiredStance;
-            previewPart.isWeaponPart = set->primarySlot == EQUIPMENT_SLOT_ID::WEAPON;
-			previewPart.hiddenMeshMask = part.hiddenMeshMask;
-			previewParts.push_back(std::move(previewPart));
-		}
-	}
-	return character.Apply_EquipmentPreview(
-		previewParts, occupiedSlotsMask, outError);
+    return true;
 }
 
-bool_t Client::CEquipmentPresentationService::Reset_Preview(
-	CCharacter& character,
-	std::string& outError)
+bool_t Client::CEquipmentPresentationService::Preload_VisualSets(const uint32_t levelIndex,
+    const CEquipmentPresentationCatalog& catalog, const std::span<const std::string> visualSetIds,
+    std::string& outError)
 {
-	return character.Reset_EquipmentPreview(outError);
-}
-
-void Client::CEquipmentPresentationService::On_LevelChanged()
-{
-	m_iPrototypeLevelIndex = ETOUI(LEVEL::END);
-	m_AdmittedModelAssetIds.clear();
+    for (const auto& id : visualSetIds)
+    {
+        const auto* set = catalog.Find_Set(id);
+        if (!set || !LostArk::Shared::Is_Supported_Playable_Character_Class(set->classId))
+        { outError = "Unknown preload equipment visual set: " + id; return false; }
+        if (!Admit_Models(levelIndex, set->classId, {set}, outError)) return false;
+    }
+    return true;
 }

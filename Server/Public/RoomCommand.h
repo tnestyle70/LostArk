@@ -71,6 +71,8 @@ namespace LostArk::Server
 		COLOSSEUM_QUEUE_JOIN,
 		COLOSSEUM_QUEUE_LEAVE,
 		COLOSSEUM_RECRUIT,
+		COLOSSEUM_LOAD_READY,
+		COLOSSEUM_RETURN,
 		GATE_PROGRESS_PROPOSE,
 		GATE_PROGRESS_RESPOND,
 		CHAT,
@@ -170,6 +172,8 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_COLOSSEUM_QUEUE_JOIN ColosseumQueueJoin;
 		LostArk::Shared::C2S_COLOSSEUM_QUEUE_LEAVE ColosseumQueueLeave;
 		LostArk::Shared::C2S_COLOSSEUM_RECRUIT ColosseumRecruit;
+		LostArk::Shared::C2S_COLOSSEUM_LOAD_READY ColosseumLoadReady;
+		LostArk::Shared::C2S_COLOSSEUM_RETURN ColosseumReturn;
 		LostArk::Shared::C2S_GATE_PROGRESS_PROPOSE GateProgressPropose;
 		LostArk::Shared::C2S_GATE_PROGRESS_RESPOND GateProgressRespond;
 		LostArk::Shared::C2S_CHAT Chat;

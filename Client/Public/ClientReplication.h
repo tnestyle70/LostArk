@@ -489,13 +489,16 @@ namespace Client
 			return m_PartyRoster;
 		}
 		const CReplicatedPlayerHealth& Get_PlayerHealth() const { return m_PlayerHealth; }
-		const LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE& Get_ColosseumMatchState() const { return m_ColosseumMatchState; }
 		LostArk::Shared::NET_ENTITY_ID Find_ItemTargetPlayerFromRay(
 			const float3_t& origin, const float3_t& direction) const;
 		/* Server-decided world sequence starts, in arrival order. The caller
 		   takes them so one start is never played twice. */
 		const LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE& Get_KoukuBundleState() const { return m_KoukuBundleState; }
 		std::uint32_t Get_LastServerTick() const { return m_iLastServerTick; }
+		const LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE& Get_ColosseumMatchState() const;
+		double Get_ColosseumServerTick() const;
+		bool Are_ColosseumCharactersReady() const;
+		const std::string& Get_PlayerPresentationFailure() const { return m_strPendingPresentationFailure; }
 		const LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE& Get_KoukuRaidState() const { return m_KoukuRaidState; }
 		const LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE& Get_KoukuRaidReply() const { return m_KoukuRaidReply; }
 		void Expect_KoukuRaidReply(std::uint32_t requestSequence);
@@ -564,6 +567,7 @@ namespace Client
 			LostArk::Shared::PLAYER_MADNESS_FORM madnessForm,
 			std::string_view nickName,
 			std::uint8_t voiceType,
+			const std::string& appearanceJson,
 			const float3_t& position,
 			f32_t yawDegrees,
 			bool_t isLocallyControlled,
@@ -798,7 +802,6 @@ namespace Client
 		bool m_hasPendingPartyInvite = false;
 		LostArk::Shared::S2C_PARTY_INVITE_RECEIVED m_PendingPartyInvite{};
 		LostArk::Shared::S2C_PARTY_ROSTER m_PartyRoster{};
-		LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE m_ColosseumMatchState{};
 		CReplicatedPlayerHealth m_PlayerHealth;
 		bool m_hasPendingPartyTransferResult = false;
 		LostArk::Shared::S2C_PARTY_TRANSFER_RESULT m_PendingPartyTransferResult{};
@@ -834,6 +837,7 @@ namespace Client
 		   Erased on despawn and on body replacement so the fresh body is dressed again. */
 		std::unordered_map<LostArk::Shared::NET_ENTITY_ID, std::pair<std::string, std::string>>
 			m_AppliedAvatarByNetEntityId;
+		std::unordered_set<LostArk::Shared::NET_ENTITY_ID> m_FailedAvatarPresentations;
 		/* Built on first avatar; the catalog is Data/Actors/EquipmentPresentationCatalog.json. */
 		CEquipmentPresentationCatalog m_EquipmentCatalog;
 		unique_ptr<CEquipmentPresentationService> m_pEquipmentPresentation;

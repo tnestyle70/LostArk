@@ -12,6 +12,9 @@ class CCamera_Free;
 class CMaharakaWaterpangPresentation final
 {
 public:
+    static constexpr const wchar_t* WATER_GUN_PROTOTYPE_TAG = L"Prototype_Component_Model_MaharakaWaterGun";
+    static HRESULT Ensure_WaterGunPrototype(ComPtr<ID3D11Device> device,
+        ComPtr<ID3D11DeviceContext> context, uint32_t levelIndex, std::string& status);
     bool Initialize(const CWorldSequencePlayer::TARGET_SET& targets, std::shared_ptr<CCamera_Free> camera);
     void Accept(const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& play);
     void Update(float delta, uint32_t serverTick, bool editing);

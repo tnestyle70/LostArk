@@ -148,6 +148,8 @@ public:
 	bool Request_ColosseumRecruit(std::uint32_t clientSequence, std::uint64_t matchId,
 		LostArk::Shared::NET_ENTITY_ID mercenaryNetEntityId) override;
 	bool Consume_ColosseumQueueState(LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE& outState) override;
+	bool Request_ColosseumLoadReady(std::uint64_t matchId) override;
+	bool Request_ColosseumReturn(std::uint64_t matchId) override;
 	bool Consume_RaidMvpResult(LostArk::Shared::S2C_RAID_MVP_RESULT& outResult) override;
 	bool Request_ReturnToBern(
 		std::uint32_t clientSequence) override;

@@ -200,6 +200,8 @@ public:
 	virtual bool Request_ColosseumQueueLeave(std::uint32_t) { return false; }
 	virtual bool Request_ColosseumRecruit(std::uint32_t, std::uint64_t, LostArk::Shared::NET_ENTITY_ID) { return false; }
 	virtual bool Consume_ColosseumQueueState(LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE&) { return false; }
+	virtual bool Request_ColosseumLoadReady(std::uint64_t) { return false; }
+	virtual bool Request_ColosseumReturn(std::uint64_t) { return false; }
 	// Raid Clear screen's own "돌아가기" (return) button, Valtan Arena only --
 	// the reverse trip of Request_ConfirmNpcEntry. No target NPC to name (the
 	// button has no proximity requirement); the Server lands the player back

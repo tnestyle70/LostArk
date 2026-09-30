@@ -3,6 +3,9 @@
 #include "ServerGameplayContractTests.h"
 #include "GameplayCatalog.h"
 #include "GameRoom.h"
+#include "ClientSession.h"
+#include "Network/PacketReader.h"
+#include "Network/PacketWriter.h"
 #include "ServerNavigation.h"
 #include "ServerCollisionSystem.h"
 #include "ServerCombatHitRuntime.h"
@@ -75,17 +78,44 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 	SERVER_NAV_POINT returnGround{};
 	tests.Require(navigation.Sample_Position(3.38f, 323.92f, returnGround) && std::abs(returnGround.y - 10.56f) < 1.f,
 		"Gate 2 default return destination is on published navigation");
-#ifdef _DEBUG
+	for (const PLAYER_ID participants : { 1u, 2u, 4u })
 	{
 		auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
 		tests.Require(room->Is_Ready(), "Actual maze room bootstrap and profiles load");
 		if (!room->Is_Ready()) { std::cout << room->Get_Status() << '\n'; return 1; }
 		auto& entrant = room->m_Players[1u];
 		entrant.iPlayerId = 1u; entrant.iNetEntityId = 101u; entrant.iSessionId = 11u;
+        entrant.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 		entrant.iCurrentHp = entrant.iMaximumHp = 50000u;
 		entrant.fPositionX = .09f; entrant.fPositionY = -.01f; entrant.fPositionZ = 1351.48f;
 		entrant.fYawDegrees = 225.f; // Actual entry is inside the box, facing away from its center.
 		room->m_PlayerIdBySessionId[11u] = 1u;
+        auto connection = std::make_shared<CClientSession>(11u, INVALID_SOCKET,
+            CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+        connection->m_isSendRunning.store(true); room->m_Sessions.emplace(11u, connection);
+        for (PLAYER_ID id = 2u; id <= participants; ++id)
+        {
+            auto other = entrant; other.iPlayerId = id; other.iNetEntityId = 100u + id;
+            other.iSessionId = 10u + id; room->m_Players.emplace(id, other);
+        }
+        const auto pressWire = [&](const C2S_INTERACTION_SLOT& request)
+        {
+            CPacketWriter writer; C2S_INTERACTION_SLOT decoded;
+            bool valid = Write_Message(writer, request);
+            CPacketReader reader(writer.Get_Buffer());
+            valid = valid && Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u;
+            tests.Require(valid, "Q/LMB wire command roundtrips before the actual interaction handler");
+            if (valid) room->Handle_InteractionSlot(11u, decoded);
+        };
+        const auto readSnapshot = [&](S2C_WORLD_SNAPSHOT& decoded)
+        {
+            room->Broadcast_WorldSnapshot();
+            const auto frame = std::find_if(connection->m_OutboundFrames.rbegin(), connection->m_OutboundFrames.rend(),
+                [](const auto& item) { return item.ePacketType == PACKET_TYPE::S2C_WORLD_SNAPSHOT; });
+            if (frame == connection->m_OutboundFrames.rend()) return false;
+            CPacketReader reader(std::span<const std::uint8_t>(frame->Bytes).subspan(PACKET_HEADER_BYTES));
+            return Read_Message(reader, decoded) && !reader.Get_RemainingSize();
+        };
 		C2S_DEBUG_SET_KOUKU_HUD_MODE mode{};
 		mode.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; mode.iRequestSequence = 1u; mode.eMode = KOUKU_HUD_MODE::MAZE;
 		const auto accepted = room->Apply_DebugKoukuHudMode(entrant, mode);
@@ -96,7 +126,7 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 		C2S_INTERACTION_SLOT press{};
 		press.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; press.iRequestSequence = 1u;
 		press.eSlot = static_cast<INTERACTION_SLOT>(0u);
-		room->Handle_InteractionSlot(11u, press);
+		pressWire(press);
 		tests.Require(entrant.eAction == PLAYER_ACTION_STATE::INTERACTION, "Q reaches the actual interaction action handler");
 		// Drive the same fixed-tick player update that lands the hammer once.
 		const auto hitTick = entrant.iActionStartTick + Maze::HAMMER_HIT_TICK_OFFSET;
@@ -133,7 +163,7 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
         entrant.CooldownDurationTicksBySkillId[classWSkillId] = 900u;
 		room->m_iServerTick = tick;
 		press.iRequestSequence = 2u; press.eSlot = INTERACTION_SLOT::W;
-		room->Handle_InteractionSlot(11u, press);
+		pressWire(press);
 		tests.Require(entrant.eAction == PLAYER_ACTION_STATE::INTERACTION && entrant.iCurrentSkillId == 1u,
 			"LMB W-wire press reaches actual handler after Q recovery cancel");
 		const auto lmbStart = entrant.iActionStartTick;
@@ -154,7 +184,7 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
         room->m_iServerTick = (std::max)(lmbHit,
             entrant.CooldownEndTickBySkillId.at(lmbCooldownId));
         press.iRequestSequence = 3u;
-        room->Handle_InteractionSlot(11u, press);
+        pressWire(press);
         const auto repeatedLmbStart = entrant.iActionStartTick;
         tests.Require(entrant.eAction == PLAYER_ACTION_STATE::INTERACTION && entrant.iCurrentSkillId == 1u &&
             repeatedLmbStart > lmbStart && entrant.CooldownEndTickBySkillId.at(qCooldownId) == qDeadlineBeforeLmb &&
@@ -167,7 +197,7 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 		findBox()->iCurrentHp = findBox()->iMaximumHp;
 		const auto hpBeforeQ = findBox()->iCurrentHp;
 		press.iRequestSequence = 4u; press.eSlot = INTERACTION_SLOT::Q;
-		room->Handle_InteractionSlot(11u, press);
+		pressWire(press);
 		tests.Require(entrant.eAction == PLAYER_ACTION_STATE::INTERACTION && entrant.iCurrentSkillId == 0u,
 			"Maze Q reaches the actual interaction handler");
 		const auto qHit = entrant.iActionStartTick + Maze::Hammer_HitTickOffset(0u);
@@ -188,7 +218,7 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 		room->m_iServerTick = (std::max)(room->m_iServerTick,
 			entrant.CooldownEndTickBySkillId.at(Kouku_InteractionCooldownSkillId(KOUKU_HUD_MODE::MAZE, 0u)));
 		press.iRequestSequence = 5u;
-		room->Handle_InteractionSlot(11u, press);
+		pressWire(press);
 		tests.Require(entrant.eAction == PLAYER_ACTION_STATE::INTERACTION && entrant.iCurrentSkillId == 0u &&
 			entrant.iActionStartTick > qHit, "Second Q starts through the actual handler after cooldown");
 		const auto secondQHit = entrant.iActionStartTick + Maze::Hammer_HitTickOffset(0u);
@@ -199,14 +229,48 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 			std::any_of(room->m_TickDamageEvents.begin(), room->m_TickDamageEvents.end(),
 				[boxId](const DAMAGE_EVENT& event) { return event.iTargetNetEntityId == boxId && event.iAmount == 500u; }),
 			"Second Q destroys the 1000-HP box while the telescope waits for the next interaction");
-		tick = room->m_iServerTick + 1u;
-		room->Resolve_CardMazeHammerHit(entrant, tick++);
-		tests.Require(room->m_KoukuCardMaze.Get_Phase() == Maze::PHASE::HUNTING &&
-			room->m_KoukuCardMaze.Get_Targets().size() == 1u && (entrant.CardMaze.flags & 1u),
-			"Center Q hit facing away starts solo telescope and actually spawns a target");
-		if (room->m_KoukuCardMaze.Get_Phase() != Maze::PHASE::HUNTING) std::cout << room->Get_Status() << '\n';
+        // Reproduce the user action after breaking the center prop: this third Q
+        // must pass the command/cooldown/action/contact path, never call Begin directly.
+        room->m_iServerTick = (std::max)(secondQHit, entrant.CooldownEndTickBySkillId.at(qCooldownId));
+        press.iRequestSequence = 6u; pressWire(press);
+        const auto openHit = entrant.iActionStartTick + Maze::Hammer_HitTickOffset(0u);
+        tests.Require(entrant.eAction == PLAYER_ACTION_STATE::INTERACTION && entrant.iActionStartTick > secondQHit,
+            "After the box dies a third real Q is admitted once its own cooldown ends");
+        room->m_iServerTick = openHit - 1u; room->Update_Players(1.f / 30.f);
+        const auto expectedTargets = participants == 1u ? 1u : participants - 1u;
+        tests.Require(room->m_KoukuCardMaze.Get_Phase() == Maze::PHASE::HUNTING &&
+            room->m_KoukuCardMaze.Get_Targets().size() == expectedTargets && (entrant.CardMaze.flags & 1u),
+            "Actual post-destruction Q starts solo/two/four-player camera roles and matching card targets");
+        if (room->m_KoukuCardMaze.Get_Phase() != Maze::PHASE::HUNTING) std::cout << room->Get_Status() << '\n';
+        S2C_WORLD_SNAPSHOT snapshot;
+        const bool replicated = readSnapshot(snapshot);
+        const auto observed = std::find_if(snapshot.Players.begin(), snapshot.Players.end(),
+            [](const auto& row) { return row.iNetEntityId == 101u; });
+        if (!replicated || observed == snapshot.Players.end())
+            std::cout << "Maze snapshot count=" << participants << " parsed=" << replicated
+                << " outbound=" << connection->m_OutboundFrames.size()
+                << " encodeFailures=" << room->m_PerformanceMetrics.iSnapshotEncodeFailureCount
+                << " status=" << room->Get_Status() << '\n';
+        tests.Require(replicated && observed != snapshot.Players.end() &&
+            observed->eKoukuHudMode == KOUKU_HUD_MODE::MAZE && (observed->CardMaze.flags & 1u) &&
+            observed->eCardMazeRole == (participants == 1u ? CARD_MAZE_ROLE::HUNTER : CARD_MAZE_ROLE::TELESCOPE) &&
+            (participants != 1u || (observed->eCardMazeSuit != MECHANIC_CARD_SYMBOL::NONE && observed->iCardMazeKillTarget == 1u)),
+            "Authoritative snapshot carries the exact telescope camera flag and solo floor-symbol fields consumed by Client");
+        const auto dealtSuit = entrant.eCardMazeSuit;
+        auto lastHammerHit = openHit;
+        for (const bool overhead : { false, true })
+        {
+            room->m_iServerTick = (std::max)(lastHammerHit, entrant.CooldownEndTickBySkillId.at(qCooldownId));
+            ++press.iRequestSequence; pressWire(press);
+            lastHammerHit = entrant.iActionStartTick + Maze::Hammer_HitTickOffset(0u);
+            room->m_iServerTick = lastHammerHit - 1u;
+            room->Update_Players(1.f / 30.f);
+            tests.Require(((entrant.CardMaze.flags & 1u) != 0u) == overhead && entrant.eCardMazeSuit == dealtSuit &&
+                room->m_KoukuCardMaze.Get_Targets().size() == expectedTargets,
+                "Owner Q toggles the camera without dealing new cards or losing the solo hunter role");
+        }
+        connection->m_isSendRunning.store(false);
 	}
-#endif
 	std::map<PLAYER_ID, SERVER_PLAYER> players;
 	for (PLAYER_ID id = 1u; id <= 4u; ++id)
 	{
@@ -311,9 +375,8 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 	std::string status;
 	std::map<PLAYER_ID, SERVER_PLAYER> solo;
 	solo.emplace(1u, players[1u]);
-#ifdef _DEBUG
 	const bool soloPlanned = maze.Plan(1u, solo, navigation, 99u, spawns, status);
-	tests.Require(soloPlanned && spawns.size() == 1u, "Debug solo claim places one random suit target");
+	tests.Require(soloPlanned && spawns.size() == 1u, "Both builds allow a solo claim with one random suit target");
 	if (!soloPlanned || spawns.size() != 1u) return 1;
 	const auto soloSpawn = spawns.front();
 	maze.Commit(solo);
@@ -342,10 +405,6 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 	maze.Reset(solo);
 	tests.Require(!maze.Is_SoloHunter(1u) && solo[1u].eCardMazeRole == CARD_MAZE_ROLE::NONE,
 		"Solo reset removes combined role and camera state");
-#else
-	tests.Require(!maze.Plan(1u, solo, navigation, 99u, spawns, status) && spawns.empty(),
-		"Release does not enable Debug solo testing");
-#endif
 	auto deadParty = players;
 	for (PLAYER_ID id = 2u; id <= 4u; ++id) deadParty[id].iCurrentHp = 0u;
 	tests.Require(!maze.Plan(1u, deadParty, navigation, 99u, spawns, status),
@@ -360,6 +419,30 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 	tests.Require(players[1u].CardMaze.flags == 1u && maze.Toggle_Telescope(players[1u]) &&
 		players[1u].CardMaze.flags == 0u && maze.Toggle_Telescope(players[1u]), "Initial telescope owner can independently toggle overhead");
 	tests.Require(!maze.Toggle_Telescope(players[2u]), "Unescaped hunter cannot claim overhead");
+	// Portal placement alone excludes existing personal exits; target sampling stays unchanged.
+	{
+		auto sampledPlayers = players;
+		Maze::SPAWN_REQUEST first{}, unchanged{}, separated{};
+		const std::vector<SERVER_WORLD_ENTITY> noTargets;
+		const bool sampled = maze.Sample_Corridor(players[2u].eCardMazeSuit, sampledPlayers,
+			noTargets, navigation, 8137u, first);
+		tests.Require(sampled, "Personal exit fixture begins with a valid random corridor");
+		if (sampled)
+		{
+			sampledPlayers[3u].CardMaze.flags |= 4u;
+			sampledPlayers[3u].CardMaze.exitX = first.fPositionX;
+			sampledPlayers[3u].CardMaze.exitY = first.fPositionY;
+			sampledPlayers[3u].CardMaze.exitZ = first.fPositionZ;
+			tests.Require(maze.Sample_Corridor(players[2u].eCardMazeSuit, sampledPlayers,
+				noTargets, navigation, 8137u, unchanged) &&
+				unchanged.fPositionX == first.fPositionX && unchanged.fPositionZ == first.fPositionZ,
+				"Existing first-target and respawn sampling ignores the exit-only exclusion mode");
+			tests.Require(maze.Sample_Corridor(players[2u].eCardMazeSuit, sampledPlayers,
+				noTargets, navigation, 8137u, separated, true) &&
+				std::hypot(separated.fPositionX - first.fPositionX, separated.fPositionZ - first.fPositionZ) >= Maze::SPAWN_SPACING_M,
+				"A new personal exit rejects a valid corridor already owned by another active exit");
+		}
+	}
 	std::set<MECHANIC_CARD_SYMBOL> suits;
 	for (PLAYER_ID id = 2u; id <= 4u; ++id) suits.insert(players[id].eCardMazeSuit);
 	tests.Require(suits.size() == 3u && !suits.contains(MECHANIC_CARD_SYMBOL::NONE), "Assigned hunter suits are distinct and valid");
@@ -441,9 +524,6 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 	// Use the room's actual hammer, portal, blackout and return consumers for 1..4 participants.
 	for (PLAYER_ID count = 1u; count <= 4u; ++count)
 	{
-#ifndef _DEBUG
-		if (count == 1u) continue;
-#endif
 		auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
 		for (PLAYER_ID id = 1u; id <= count; ++id)
 		{
@@ -471,30 +551,79 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
                 mazeOwned = mazeOwned && saved->second == std::array{entity.fPositionX, entity.fPositionY, entity.fPositionZ} &&
                     entity.eAction == SERVER_ENTITY_ACTION::IDLE && entity.iTargetEntityId == INVALID_NET_ENTITY_ID;
         tests.Require(mazeOwned, "Maze registration excludes shared combat profiles from the very first generic monster tick");
-		bool portals = true, cameras = true;
+		bool pendingExits = true, cameras = true;
+		std::map<PLAYER_ID, std::array<float, 3u>> defeatedPositions;
 		for (const auto& [targetId, suit] : targets)
 		{
 			const auto target = std::find_if(room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
 				[&](const auto& entity) { return entity.iNetEntityId == targetId; });
 			const auto hunter = std::find_if(room->m_Players.begin(), room->m_Players.end(),
 				[&](const auto& row) { return row.second.eCardMazeSuit == suit; });
-			if (target == room->m_WorldEntities.end() || hunter == room->m_Players.end()) { portals = false; continue; }
+			if (target == room->m_WorldEntities.end() || hunter == room->m_Players.end()) { pendingExits = false; continue; }
 			const std::array position{ target->fPositionX, target->fPositionY, target->fPositionZ };
 			auto& player = hunter->second;
 			player.fPositionX = position[0]; player.fPositionY = position[1]; player.fPositionZ = position[2] - 1.f;
 			player.fYawDegrees = 0.f;
 			room->Resolve_CardMazeHammerHit(player, 101u);
-			portals = portals && player.iCardMazeKills == 1u && (player.CardMaze.flags & 4u) &&
-				player.CardMaze.exitX == position[0] && player.CardMaze.exitY == position[1] && player.CardMaze.exitZ == position[2];
-			player.fPositionX = player.CardMaze.exitX; player.fPositionY = player.CardMaze.exitY; player.fPositionZ = player.CardMaze.exitZ;
+			defeatedPositions.emplace(player.iPlayerId, position);
+			pendingExits = pendingExits && player.iCardMazeKills == 1u && !(player.CardMaze.flags & 4u) &&
+				player.CardMaze.exitX == 0.f && player.CardMaze.exitY == 0.f && player.CardMaze.exitZ == 0.f;
 		}
 		for (const auto& [id, player] : room->m_Players)
 			cameras = cameras && ((player.CardMaze.flags & 1u) != 0u) == (id == 1u);
-		tests.Require(portals && cameras, "Each matching kill puts its portal on that suit and only its claimant has telescope view");
+		tests.Require(pendingExits && cameras && defeatedPositions.size() == expectedHunters,
+			"Matching kills earn a pending random exit and preserve the sole telescope claimant");
 		room->m_iCardMazeMarchStartTick = 0u; // Isolate portal arrival from the independently tested march-contact reset.
+		// Fail the actual room consumer before it can commit any exit coordinates.
+		auto savedNavigation = std::move(room->m_ServerNavigation);
+		room->m_ServerNavigation = {};
 		room->Update_CardMaze(102u);
+		bool failedPreserved = true;
+		for (const auto& [id, position] : defeatedPositions)
+		{
+			const auto& player = room->m_Players.at(id);
+			failedPreserved = failedPreserved && player.iCardMazeKills == 1u && !(player.CardMaze.flags & 4u) &&
+				player.CardMaze.exitX == 0.f && player.CardMaze.exitY == 0.f && player.CardMaze.exitZ == 0.f &&
+				!player.CardMaze.transferStartTick;
+		}
+		tests.Require(failedPreserved, "Failed exit navigation preserves earned kills and does not publish an invalid portal");
+		room->m_ServerNavigation = std::move(savedNavigation);
+		room->Update_CardMaze(103u);
+		bool portals = true;
+		std::map<PLAYER_ID, std::array<float, 3u>> admittedExits;
+		for (const auto& [id, defeated] : defeatedPositions)
+		{
+			const auto& player = room->m_Players.at(id);
+			const auto& exit = player.CardMaze;
+			std::vector<SERVER_NAV_POINT> route;
+			portals = portals && (exit.flags & 4u) && !exit.transferStartTick && player.iCardMazeKills == 1u &&
+				exit.exitX >= Maze::MAZE_MIN_X && exit.exitX <= Maze::MAZE_MAX_X &&
+				exit.exitZ >= Maze::MAZE_MIN_Z && exit.exitZ <= Maze::MAZE_MAX_Z &&
+				std::abs(exit.exitY + .01f) <= .5f && !Maze::In_SafeZone(exit.exitX, exit.exitZ) &&
+				std::hypot(exit.exitX - player.fPositionX, exit.exitZ - player.fPositionZ) >= Maze::PLAYER_KEEPOUT_M &&
+				std::hypot(exit.exitX - defeated[0], exit.exitZ - defeated[2]) > 1.f &&
+				room->m_ServerNavigation.Is_PointWalkableExact(exit.exitX, exit.exitZ) &&
+				room->m_ServerNavigation.Find_Path(Maze::CENTER_X, Maze::CENTER_Z, exit.exitX, exit.exitZ, route) &&
+				!route.empty() && std::hypot(route.back().x - exit.exitX, route.back().z - exit.exitZ) <= .75f;
+			for (const auto& [otherId, other] : admittedExits)
+				portals = portals && std::hypot(exit.exitX - other[0], exit.exitZ - other[2]) >= Maze::SPAWN_SPACING_M;
+			admittedExits.emplace(id, std::array{exit.exitX, exit.exitY, exit.exitZ});
+		}
+		tests.Require(portals && admittedExits.size() == expectedHunters,
+			"Retry commits separate reachable random exits away from the defeated suits, players and central safe zone");
+		room->Update_CardMaze(104u); room->Update_CardMaze(105u);
+		bool retained = true;
+		for (const auto& [id, position] : admittedExits)
+		{
+			auto& player = room->m_Players.at(id);
+			retained = retained && (player.CardMaze.flags & 4u) && !player.CardMaze.transferStartTick &&
+				position == std::array{player.CardMaze.exitX, player.CardMaze.exitY, player.CardMaze.exitZ};
+			player.fPositionX = position[0]; player.fPositionY = position[1]; player.fPositionZ = position[2];
+		}
+		tests.Require(retained, "Admitted personal exits remain fixed across later room ticks until contact");
+		room->Update_CardMaze(106u);
 		const bool beforeArrival = room->m_KoukuCardMaze.Get_Phase() == Maze::PHASE::HUNTING;
-		for (std::uint32_t tick = 103u; tick <= 180u; ++tick) room->Update_CardMaze(tick);
+		for (std::uint32_t tick = 107u; tick <= 190u; ++tick) room->Update_CardMaze(tick);
 		const auto* returnPlacement = room->Find_Placement("cardmaze.return");
 		bool returned = returnPlacement && returnPlacement->TriggerActions.size() == 1u;
 		if (returned)

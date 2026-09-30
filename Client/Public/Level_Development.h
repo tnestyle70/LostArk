@@ -21,6 +21,8 @@ class CInteractKeyPromptView;
 class CColosseumIntroCutscene;
 class CColosseumMatchStart;
 class CRaidEntryPreviewView;
+class CColosseumLoadingView;
+class CColosseumMatchView;
 
 class CLevel_Development final : public CLevel
 {
@@ -65,6 +67,7 @@ public:
 	void Submit_TriggerMarkers();
 	// Colosseum only: true from level entry until the match intro cutscene has faded out.
 	bool_t Is_ColosseumIntroActive() const;
+	void Submit_ColosseumLoadingPortraits();
 	// Colosseum only: F1 Developer Tools section that replays the match intro cutscene.
 	static void Render_ColosseumIntroControls();
 #ifdef _DEBUG
@@ -88,6 +91,7 @@ private:
 	HRESULT Ready_Lights();
 	HRESULT Ready_Camera(const wstring_t& strLayerTag);
 	bool_t Bind_CameraToLocalCharacter();
+	void Update_ColosseumMatch(f32_t deltaSeconds);
 
 private:
 	// Registry entry this instance plays; only DEVELOPMENT may open the Map Editor.
@@ -98,6 +102,8 @@ private:
 	bool_t m_bMapAuthoringActive = false;
 	bool_t m_bWaterpangEffectAuthoringActive = false;
 #endif
+	// F1 direct entry in either build has no match; queue entry always keeps its readiness barrier.
+	bool_t m_bColosseumPreview = false;
 	// Maharaka only: the published source lights of the island, submitted every frame.
 	shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
 	bool_t m_bMapLightSubmissionFailureReported = false;
@@ -118,9 +124,10 @@ private:
 	std::unique_ptr<CColosseumIntroCutscene> m_ColosseumIntro;
 	// Colosseum only: the countdown banner and the gate that follow the intro cutscene.
 	std::unique_ptr<CColosseumMatchStart> m_ColosseumMatchStart;
-	bool_t m_bColosseumIntroWasActive = false;
-	bool_t m_bColosseumMatchStartArmed = true;
-	bool_t m_bColosseumMatchAuthority = false;
+	std::unique_ptr<CColosseumLoadingView> m_ColosseumLoading;
+	std::unique_ptr<CColosseumMatchView> m_ColosseumMatchView;
+	uint64_t m_iColosseumReadyMatch = 0u;
+	uint64_t m_iColosseumLoadingStartedMs = 0u;
 	// Maharaka only. One effect.world.move_destination on the exact centre of every enabled
 	// single-movePlayer trigger box of the published viewer world document.
 	struct TRIGGER_MARKER final

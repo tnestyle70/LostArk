@@ -160,6 +160,13 @@ namespace LostArk::Server
 
 	struct SERVER_PLAYER
 	{
+		// Nonzero only in an isolated Colosseum match. Never inferred from position.
+		std::uint32_t iColosseumRespawnTick = 0u;
+		std::uint32_t iColosseumKills = 0u;
+		LostArk::Shared::PLAYER_ID iColosseumKillerId = LostArk::Shared::INVALID_PLAYER_ID;
+		std::uint8_t iColosseumArrivalIndex = 255u;
+		bool bColosseumReady = false, bColosseumCombatActive = false;
+		float fColosseumSpawnX = 0.f, fColosseumSpawnY = 0.f, fColosseumSpawnZ = 0.f, fColosseumSpawnYaw = 0.f;
 		LostArk::Shared::PLAYER_CONTROL_KIND eControlKind = LostArk::Shared::PLAYER_CONTROL_KIND::HUMAN;
 		bool Is_Guide() const noexcept { return eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::GUIDE_AI; }
 		bool Is_Human() const noexcept { return eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::HUMAN; }
@@ -183,6 +190,7 @@ namespace LostArk::Server
 		std::string strNickName;
 		// Character-creation voice type (1..8), carried like the nickname.
 		std::uint8_t iVoiceType = LostArk::Shared::MIN_VOICE_TYPE;
+		std::string strAppearanceJson;
 		std::string strSpawnPlacementId;
 		// Server-validated Bern entry guide; retained until this raid visit ends.
 		std::string strRaidReturnNpcPlacementId;

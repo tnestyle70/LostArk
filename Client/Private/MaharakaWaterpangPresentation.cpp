@@ -1,4 +1,6 @@
 #include "MaharakaWaterpangPresentation.h"
+#include "ActorCatalog.h"
+#include "Model.h"
 #pragma push_macro("new")
 #undef new
 #include <DirectXColors.h>
@@ -563,3 +565,30 @@ void CMaharakaWaterpangPresentation::Suspend_ForAuthoring()
     // time (including HOLD after the intro), rather than replaying the event.
 }
 CMaharakaWaterpangPresentation::~CMaharakaWaterpangPresentation() { Stop(); }
+
+HRESULT Client::CMaharakaWaterpangPresentation::Ensure_WaterGunPrototype(ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext, const uint32_t iLevelIndex, std::string& status)
+	{
+		if (nullptr != CGameInstance::Get().Clone_Prototype(iLevelIndex, WATER_GUN_PROTOTYPE_TAG))
+			return S_FALSE;
+		Engine::MODEL_ASSET_LOAD_DESC load;
+		if (!CActorCatalog::Build_ModelLoadDescription("Character/Maharaka/WaterGun/ITR_02164/ITR_02164.wmodel", load, status))
+			return E_FAIL;
+		/* Cooked in UE centimetres with axes (x, z, y). The prop bone frame is
+		   (x, y, -z) and already carries the class cm-to-m basis. */
+		auto model = Engine::CModel::Create(pDevice, pContext, MODEL::NONANIM, load,
+			XMMatrixRotationX(XMConvertToRadians(-90.f)));
+		if (!model || !model->Get_NumMeshes())
+		{
+			status = "water gun model failed to load";
+			return E_FAIL;
+		}
+		std::vector<std::pair<std::wstring, unique_ptr<Engine::CPrototype>>> staged;
+		staged.emplace_back(WATER_GUN_PROTOTYPE_TAG, std::move(model));
+		if (FAILED(CGameInstance::Get().Add_Prototypes(iLevelIndex, std::move(staged))))
+		{
+			status = "water gun prototype commit failed";
+			return E_FAIL;
+		}
+		return S_OK;
+	}

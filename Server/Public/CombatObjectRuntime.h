@@ -52,6 +52,10 @@ namespace LostArk::Server
 		/* One resolved raw amount per repeat. Keeping the split here means a
 		projectile never has to look its skill definition up again after spawn. */
 		std::vector<std::uint32_t> RepeatRawDamage;
+        // Player PvP preserves the whole cast and independent hit channel at spawn.
+        std::uint64_t iPlayerWholeCastDamage = 0u;
+        std::uint32_t iPlayerSubHitTotal = 1u, iPlayerSubHitBase = 0u;
+        std::uint32_t iPlayerResultKind = 0u;
 		std::uint32_t iStaggerDamage = 0u;
 		std::uint32_t iStaggerMaximumDivisor = 0u;
 		std::uint32_t iPartDamage = 0u;

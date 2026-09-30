@@ -239,6 +239,8 @@ namespace LostArk::Server
 		[[nodiscard]] std::string Take_PerformanceDiagnostic();
 		bool Try_DequeueWorldTransfer(
 			SERVER_WORLD_TRANSFER_REQUEST& outTransfer);
+		bool Configure_ColosseumMatch(std::uint64_t matchId, const std::vector<SESSION_ID>& sessions);
+		void Remove_ColosseumExpectedSession(SESSION_ID sessionId);
 
 		[[nodiscard]] LostArk::Shared::WORLD_ID Get_WorldId() const
 		{
@@ -297,7 +299,7 @@ namespace LostArk::Server
 			const std::string& raidReturnNpcPlacementId = {},
             const std::string& spawnPlacementOverrideId = {});
 		bool Transfer_ColosseumMatchTo(CGameRoom& target,
-			const std::vector<SESSION_ID>& shuffledSeats, std::uint64_t matchId, std::string& status);
+			const std::vector<SESSION_ID>& orderedSeats, std::uint64_t matchId, std::string& status);
 		void Notify_ColosseumTransferResult(bool committed);
 		[[nodiscard]] bool Try_SealColosseumForRetirement();
 		void Notify_PartyTransferFailure(SESSION_ID sessionId,
@@ -321,7 +323,7 @@ namespace LostArk::Server
 		LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE Build_ColosseumState() const;
 		void Broadcast_ColosseumState();
         float Predict_GuideContactRisk(const SERVER_PLAYER& guide, float x, float z);
-		void Guide_AnchorArrived(const SERVER_PLAYER& anchor);
+		void Guide_AnchorArrived(const SERVER_PLAYER& anchor, bool localMapTravel = false);
 		void Guide_ChatCommand(const SERVER_PLAYER& sender, const std::string& text);
 		void Remove_Guide(SESSION_ID ownerSessionId, bool publish = true);
 		void Suspend_PersonalGuide(SESSION_ID ownerSessionId);
@@ -1179,8 +1181,8 @@ namespace LostArk::Server
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_CONFIRM_NPC_ENTRY& request);
 		// Colosseum match queue (BERN only). JOIN is the answer to the Colosseum NPC's offer: the
-		// Server re-tests distance/state, queues the session and, once the head count is met
-		// (four humans in both configurations), reserves two random teams for one atomic
+		// Server re-tests distance/state, collects up to four humans for ten seconds,
+		// and reserves acceptance-order parity teams for one atomic
 		// admission into a private Colosseum match. Only a committed transfer consumes the queue.
 		// LEAVE removes only the requesting session.
 		void Handle_ColosseumQueueJoin(
@@ -1192,6 +1194,13 @@ namespace LostArk::Server
 		void Send_ColosseumQueueState(
 			SESSION_ID sessionId, LostArk::Shared::COLOSSEUM_QUEUE_STATE state);
 		void Try_FormColosseumMatch();
+		void Broadcast_ColosseumQueueState();
+		void Try_StartColosseumEntry();
+		void Handle_ColosseumLoadReady(SESSION_ID, const LostArk::Shared::C2S_COLOSSEUM_LOAD_READY&);
+		void Handle_ColosseumReturn(SESSION_ID, const LostArk::Shared::C2S_COLOSSEUM_RETURN&);
+		void Update_ColosseumMatch(std::uint32_t tick);
+		void Broadcast_ColosseumMatchState();
+		void Score_ColosseumKills(std::uint32_t tick);
 		// The player pressed the key an interact-gated trigger box offered.
 		// Names only the box; the trigger system re-tests that this player is
 		// still standing in it before anything runs, so a stale or forged
@@ -1906,6 +1915,13 @@ namespace LostArk::Server
 		};
 		std::map<LostArk::Shared::PLAYER_ID, COLOSSEUM_MERCENARY_RUNTIME> m_ColosseumMercenaries;
 		std::unordered_map<SESSION_ID, std::uint32_t> m_ColosseumRecruitSequences;
+		std::vector<SESSION_ID> m_ColosseumSessions;
+		std::uint32_t m_iColosseumPhaseStart = 0u, m_iColosseumPhaseEnd = 0u;
+		std::uint32_t m_iColosseumScores[2]{};
+		std::uint32_t m_iColosseumKillSequence = 0u;
+		std::vector<LostArk::Shared::COLOSSEUM_KILL_EVENT> m_ColosseumRecentKills;
+		std::uint32_t m_iColosseumQueueDeadline = 0u, m_iColosseumQueueBroadcastTick = 0u;
+		std::array<std::uint8_t, 2> m_ColosseumInitialHumans{};
 		GATE_PROGRESS_STATE m_GateProgress;
 		std::uint32_t m_iArenaAssemblyStartTick = 0u;
 		std::uint32_t m_iArenaAssemblyRaidEpoch = 0u;

@@ -809,3 +809,29 @@ out/BuildPipeline/runs/20260930T192918233Z-debug-product.json이며 missing/inva
 모두 PASS다. 영수증은20260930T194308285Z-debug-product.json과
 20260930T194348823Z-release-product.json이며 상세 산출물·증분 재사용 근거는
 .md/GB/10-01/2026-10-01_RELEASE_F1_LEVEL_NAVIGATION_RESULT.md G03에 기록했다.
+
+
+### 2026-10-01 통합: 낮은 FPS에서 입장 첫 WAV 재시작 회귀
+
+이전 수정의 `discontinuous=false` 호출에도 Seek_AllToMs와 Seek_InstanceToMs는 전진 간격이
+250ms를 넘으면 `seekSounds=true`로 바꿨다. 따라서 2~3 FPS 또는 긴 진입 프레임에서
+같은 소리를 다시 Stop/Play하는 결함이 남았다. 연속 전진은 간격과 무관하게 채널을 유지하도록
+바꾸고, 명시 scrub과 시계 역행의 재시작은 유지했다. WORLD 시각·음량·WAV는 변경하지 않았다.
+CardMaze의 매 프레임 sampler도 false를 전달한다. 이 한 줄은 Q 상호작용 회귀 해결 증거가 아니다.
+
+`out/KoukuEntryAudioContinuous20261001/run-probe.ps1`은 제품 함수9개를 추출한다.
+이전/수정 각각1,991 검사 PASS다. 기존2 FPS/10초는 Play20/Stop19, 3 FPS는 Play30/Stop29였으며
+수정 뒤에는 둘 다 Play1/Stop0이다. 60/120 FPS, explicit/backwards, pause/tail, 누락 asset,
+실패 instance 격리, 반복·종료와 Movie 외부시계 회귀도 유지했다.
+
+`run-fmod-probe.ps1`은 제품 Sound_Manager 함수10개를 추가 추출하고 실제 FMOD DLL 및
+설치된 circuspopup WAV를 사용했다. WAV SHA256은 위 기록과 같은8df0e3e…e5d이며 디코더 길이는
+10,266ms다. FMOD_OUTPUTTYPE_NOSOUND_NRT에서 이전5,794/수정5,834 검사 PASS다.
+기존2 FPS/8초의 Play16/Stop15 및3 FPS의 Play24/Stop23을 실제 FMOD 채널로 재현했고,
+수정 후에는 각각1/0, mixer 위치는 약7.8초까지 전진했다. 60/120 FPS도 채널을 유지하며
+명시 scrub·역행은 실제 채널을 교체한다. `results.json`, `fmod-results.json`,
+`source-manifest.json`에 실행결과와 소스·DLL·WAV hash를 기록했다. `git diff --check`도 통과했다.
+
+이 검사는 장면/target·focus·category 경계를 대체한 비출력 mixer 검사다. 실제 Client 전체 빌드와
+사용자 청감 확인을 대신하지 않는다. Client/UI는 실행하지 않았다. Release의 Server 기술문구
+조사는 사용자가 보류했으므로 문구 관련 코드는 바꾸지 않았다.

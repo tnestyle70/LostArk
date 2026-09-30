@@ -1274,7 +1274,7 @@ namespace
 		return std::cout.good();
 	}
 
-	bool Sweep_Legacy_Resource_Corpus(const std::filesystem::path& root)
+	bool Sweep_Legacy_Resource_Corpus(const std::filesystem::path& root, uint32_t expectedFiles = 0u)
 	{
 		std::error_code error;
 		if (!std::filesystem::is_directory(root, error) || error)
@@ -1351,16 +1351,20 @@ namespace
 				++multiSubmeshCount;
 		}
 
-		const bool valid = files.size() == kExpectedLegacyResourceCorpusCount &&
+		const bool defaultCorpusValid = files.size() == kExpectedLegacyResourceCorpusCount &&
 			staticCount == kExpectedLegacyStaticCount &&
 			skinnedCount == kExpectedLegacySkinnedCount &&
 			hasBoundsCount == kExpectedLegacyBoundsCount &&
 			multiSubmeshCount == kExpectedLegacyMultiSubmeshCount;
+		// An explicit bounded subset retains every per-file decoder/legacy check.
+		// The established complete-corpus counts remain mandatory by default.
+		const bool valid = expectedFiles ? files.size() == expectedFiles : defaultCorpusValid;
 		std::cout << "Legacy WModel C++ corpus sweep: files=" << files.size()
 			<< " static=" << staticCount << " skinned=" << skinnedCount
 			<< " hasBounds=" << hasBoundsCount
 			<< " multiSubmesh=" << multiSubmeshCount
 			<< " metadataAbsent=" << files.size()
+			<< " expectedFiles=" << (expectedFiles ? expectedFiles : kExpectedLegacyResourceCorpusCount)
 			<< " valid=" << valid << '\n';
 		return valid;
 	}
@@ -1400,11 +1404,25 @@ int wmain(int argc, wchar_t** argv)
 			std::filesystem::absolute(argv[2]).lexically_normal();
 		return Dump_Artist_Candidate(candidate) ? 0 : 1;
 	}
-	if (3 == argc && std::wstring_view(argv[1]) == L"--legacy-corpus")
+	if ((3 == argc || 5 == argc) && std::wstring_view(argv[1]) == L"--legacy-corpus")
 	{
+		uint32_t expectedFiles = 0u;
+		if (5 == argc)
+		{
+			if (std::wstring_view(argv[3]) != L"--expected-files") return 2;
+			const std::wstring_view count(argv[4]);
+			if (count.empty()) return 2;
+			for (const wchar_t digit : count)
+			{
+				if (digit < L'0' || digit > L'9') return 2;
+				expectedFiles = expectedFiles * 10u + static_cast<uint32_t>(digit - L'0');
+				if (expectedFiles > 4096u) return 2;
+			}
+			if (!expectedFiles) return 2;
+		}
 		const std::filesystem::path resourceRoot =
 			std::filesystem::absolute(argv[2]).lexically_normal();
-		return Sweep_Legacy_Resource_Corpus(resourceRoot) ? 0 : 1;
+		return Sweep_Legacy_Resource_Corpus(resourceRoot, expectedFiles) ? 0 : 1;
 	}
 	if (4 == argc &&
 		std::wstring_view(argv[1]) == L"--writer-independent-golden")
@@ -1423,7 +1441,7 @@ int wmain(int argc, wchar_t** argv)
 		std::wcerr << L"usage: WModelGeometryContractHarness <suite-directory> "
 			L"| --candidate <wmodel> | --dump-candidate <wmodel> "
 			L"| --skinned-basis-candidate <wmodel> "
-			L"| --legacy-corpus <Resources> "
+			L"| --legacy-corpus <Resources> [--expected-files <1..4096>] "
 			L"| --writer-independent-golden <hex> <expected-json>\n";
 		return 2;
 	}

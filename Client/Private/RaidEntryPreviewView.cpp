@@ -1168,6 +1168,21 @@ void CRaidEntryPreviewView::Open_ColosseumOffer()
 	CMainApp::Play_PopupRequestSound();
 }
 
+void CRaidEntryPreviewView::Set_ColosseumQueueState(
+    const LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE& state)
+{
+    if (LostArk::Shared::COLOSSEUM_QUEUE_STATE::WAITING != state.eState)
+    {
+        Close_ColosseumWait();
+        return;
+    }
+    // A late acknowledgement must not reopen a locally cancelled wait window.
+    if (COLOSSEUM_QUEUE_MODE::WAIT != m_eColosseumMode)
+        return;
+    m_ColosseumQueueState = state;
+    m_iColosseumQueueReceivedMs = GetTickCount64();
+}
+
 void CRaidEntryPreviewView::Close_ColosseumWait()
 {
 	if (COLOSSEUM_QUEUE_MODE::WAIT != m_eColosseumMode)
@@ -1288,6 +1303,8 @@ bool_t CRaidEntryPreviewView::Render_ColosseumQueue(
 		m_Intent.eKind = RAID_ENTRY_INTENT::COLOSSEUM_JOIN;
 		m_eColosseumMode = COLOSSEUM_QUEUE_MODE::WAIT;
 		m_fColosseumRingSeconds = 0.f;
+		m_ColosseumQueueState = {};
+		m_iColosseumQueueReceivedMs = 0u;
 		Apply_ColosseumSlots();
 	}
 	return false;
@@ -1320,7 +1337,21 @@ void CRaidEntryPreviewView::RenderText_ColosseumQueue()
 	{
 		Fn_DrawAt("QueueWait_TitleText", L"\xC99D\xBA85\xC758 \xC804\xC7A5 \xC785\xC7A5 \xB300\xAE30", 24.f, Colors::White);
 		Fn_DrawAt("QueueWait_BodyText", L"\xD22C\xAE30\xC7A5 \xBC14\xB2E5\xC744 \xCCAD\xC18C \xC911..", 18.f, Colors::White);
-		return;
+        const bool received = m_iColosseumQueueReceivedMs != 0u;
+        const auto ticksLeft = static_cast<std::int32_t>(
+            m_ColosseumQueueState.iDeadlineTick - m_ColosseumQueueState.iServerTick);
+        const float elapsed = received ? static_cast<float>(
+            GetTickCount64() - m_iColosseumQueueReceivedMs) * 0.001f : 0.f;
+        const int seconds = received ? static_cast<int>(std::ceil((std::max)(
+            0.f, static_cast<float>(ticksLeft) / 30.f - elapsed))) : 10;
+        const std::wstring remaining = seconds > 0
+            ? L"\uC804\uD22C \uC9C4\uC785\uAE4C\uC9C0 " + std::to_wstring(seconds) + L"\uCD08"
+            : L"\uC804\uD22C \uC9C4\uC785 \uC900\uBE44 \uC911...";
+        const std::wstring count = L"\uC11C\uBC84 \uB300\uAE30 \uC778\uC6D0 " +
+            std::to_wstring(received ? m_ColosseumQueueState.iQueuedCount : 0u) + L" / 4";
+        Fn_DrawAt("QueueWait_SecondsText", remaining.c_str(), 18.f, Colors::Yellow);
+        Fn_DrawAt("QueueWait_CountText", count.c_str(), 16.f, Colors::White);
+        return;
 	}
 	const int32_t iSeconds = (std::min)((std::max)(
 		static_cast<int32_t>(std::ceil(m_fColosseumOfferRemaining)), 1), static_cast<int32_t>(COLOSSEUM_OFFER_SECONDS));

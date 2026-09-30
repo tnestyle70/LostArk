@@ -833,6 +833,8 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 	for (auto& [playerId, player] : m_Players)
 	{
 		(void)playerId;
+        if (player.iColosseumMatchId && !player.bColosseumCombatActive &&
+            !(m_eColosseumPhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::RECRUITING && player.Is_Human())) continue;
 		// Bern personal guides hold their exact pose while the owner is away or sailing.
 		if (m_eWorldId == LostArk::Shared::WORLD_ID::BERN && player.Is_Guide() && !player.isCombatReady) continue;
 		if (player.CardMaze.transferStartTick && player.iCurrentHp) continue;

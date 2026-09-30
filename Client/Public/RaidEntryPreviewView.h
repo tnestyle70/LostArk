@@ -94,6 +94,7 @@ public:
 	is the Server's answer that the join was refused or the player left the queue. */
 	void Open_ColosseumOffer();
 	void Close_ColosseumWait();
+	void Set_ColosseumQueueState(const LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE& state);
 
 private:
 	bool_t Render_ConfirmStep();
@@ -162,6 +163,8 @@ private:
 	unique_ptr<CUILayoutRuntime> m_pQueueView;
 	f32_t m_fColosseumOfferRemaining = 0.f;
 	f32_t m_fColosseumRingSeconds = 0.f;
+	LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE m_ColosseumQueueState{};
+	std::uint64_t m_iColosseumQueueReceivedMs = 0u;
 };
 
 NS_END

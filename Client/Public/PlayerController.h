@@ -647,6 +647,9 @@ namespace Client
 			bool_t playClickEffect,
 			const float3_t* pExactClickSurface);
 
+		void Cancel_MovePicking();
+		void Update_MovePicking(bool_t enabled, bool_t mouseDown, bool_t freshPress,
+			const shared_ptr<CCharacter>& character);
 		bool_t Update_MarioControls(bool_t gameplayCommandsEnabled);
 		//실질적인 navigation picking을 통한 이동으로 교체
 		bool_t Should_SendMoveGoal(
@@ -759,6 +762,13 @@ namespace Client
 		bool_t m_isMoveClickSuppressed = false;
 		std::chrono::steady_clock::time_point m_LastMoveGoalSentAt{};
 		float3_t m_LastSentMoveGoal{};
+		uint64_t m_iMovePickRequest = 0u;
+		uint32_t m_iMovePickActionSequence = 0u;
+		uint32_t m_iMovePickMoveSequence = 0u;
+		std::chrono::steady_clock::time_point m_MovePickRequestedAt{};
+		bool_t m_bMovePickFreshPress = false;
+		bool_t m_bMovePickHasFallback = false;
+		float3_t m_MovePickFallback{};
 		/* Edge state indexed by DirectInput key code, not by binding position: a
 		slot that is later re-pointed at another skill must not make a key that is
 		already held read as a fresh press. */

@@ -11,6 +11,7 @@
 #include <fstream>
 #include <limits>
 #include <memory>
+#include <set>
 
 using namespace LostArk::Server;
 using namespace LostArk::Shared;
@@ -234,7 +235,37 @@ int CServerGameplayContractRunner::Run_MaharakaAI()
     S2C_WORLD_SEQUENCE_PLAY intro; intro.eOperation = WORLD_SEQUENCE_OPERATION::PLAY;
     intro.strSequenceInstanceId = MAHARAKA_WATERPANG_INTRO_INSTANCE; intro.iStartTick = 100;
     room->m_MaharakaWaterpangIntro = intro; room->m_iServerTick = 100;
-    room->Update_MaharakaWaterpangMatch(100); drain();
+    room->Update_MaharakaWaterpangMatch(100);
+    std::set<std::string> expectedNames;
+    for (unsigned slot = 1u; slot <= 20u; ++slot) expectedNames.insert("Waterpang AI " + std::to_string(slot));
+    const auto numberedRoster = [&]()
+    {
+        std::set<std::string> names;
+        for (const auto& [id, state] : room->m_MaharakaWaterpangAI)
+        {
+            const auto& player = room->m_Players.at(id);
+            if (player.strNickName != "Waterpang AI " + std::to_string(state.iSlot + 1u) ||
+                !names.insert(player.strNickName).second) return false;
+        }
+        return names == expectedNames;
+    };
+    tests.Require(numberedRoster(), "Twenty Waterpang AI have unique stable slot names 1 through 20 across avatar and NPC appearances");
+    bool spawnNames = true;
+    for (const auto& session : sessions)
+    {
+        std::set<std::string> observedNames;
+        for (const auto& frame : session->m_OutboundFrames)
+        {
+            if (frame.ePacketType != PACKET_TYPE::S2C_PLAYER_SPAWNED) continue;
+            CPacketReader reader(std::span<const std::uint8_t>(frame.Bytes).subspan(PACKET_HEADER_BYTES));
+            S2C_PLAYER_SPAWNED spawned;
+            if (!Read_Message(reader, spawned) || reader.Get_RemainingSize()) { spawnNames = false; continue; }
+            if (spawned.eControlKind == PLAYER_CONTROL_KIND::WATERPANG_AI) observedNames.insert(spawned.strNickName);
+        }
+        spawnNames = spawnNames && observedNames == expectedNames;
+    }
+    tests.Require(spawnNames, "Actual reliable spawn frames deliver all twenty AI nicknames unchanged to every human session");
+    drain();
     tests.Require(room->m_MaharakaWaterpangAI.size() == 20 && room->m_Players.size() == 24 && room->Count_HumanPlayers() == 4, "Twenty AI fit the real navigation and retain all four human slots");
     if (room->m_MaharakaWaterpangAI.size() != 20) return 1;
     unsigned avatars = 0, npcs = 0;
@@ -258,6 +289,7 @@ int CServerGameplayContractRunner::Run_MaharakaAI()
     tests.Require(moved && usedSkill, "Actual AI decision loop submits admitted movement and Waterpang skills");
     for (unsigned i = 0; i < 15; ++i) { room->Tick(1.f / 30.f); drain(); }
     tests.Require(room->m_MaharakaWaterpangAI.size() == 20 && room->Count_HumanPlayers() == 4, "Actual room ticks preserve AI ownership and human roster");
+    tests.Require(numberedRoster(), "Movement and skill updates preserve every AI slot nickname");
     std::array<SERVER_NAV_POINT, 4> admitted;
     for (unsigned i = 0; i < sessions.size(); ++i)
     {
@@ -423,6 +455,7 @@ int CServerGameplayContractRunner::Run_MaharakaAI()
         tests.Require(room->m_MaharakaWaterpangIntro && room->m_MaharakaWaterpangIntro->iStartTick >
             intro.iStartTick + MAHARAKA_WATERPANG_MATCH_END_TICKS && room->m_MaharakaWaterpangAI.size() == 20u,
             "Re-entry landing reserves a new countdown and admits the next AI roster without leaving the room");
+        tests.Require(numberedRoster(), "The next match respawns unique AI names from 1 through 20 without stale or duplicate suffixes");
     }
     for (const auto& session : sessions) room->Leave(session->Get_SessionId(), PLAYER_DESPAWN_REASON::LEVEL_CHANGED);
     return tests.failures ? 1 : 0;

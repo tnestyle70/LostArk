@@ -2879,11 +2879,10 @@ bool LostArk::Server::CKoukuCardMazeRuntime::Plan(
 	}
 	if (hunters.size() > 3u)
 		hunters.resize(3u);
-	bool soloTest = false;
-#ifdef _DEBUG
-	// Only a genuinely one-player room opts into the combined test role.
-	soloTest = std::count_if(players.begin(), players.end(), [](const auto& entry) { return entry.second.Is_Human(); }) == 1;
-#endif
+	// F1 and normal entry use the same single-player rehearsal in both builds.
+	// Dead members of a multiplayer room must not silently change its role rules.
+	const bool soloTest = std::count_if(players.begin(), players.end(),
+        [](const auto& entry) { return entry.second.Is_Human(); }) == 1;
 	if (hunters.empty() && !soloTest)
 	{
 		outStatus = "Card maze needs at least one other living player to hunt";
@@ -2900,7 +2899,7 @@ bool LostArk::Server::CKoukuCardMazeRuntime::Plan(
 	}
 	PARTICIPANT owner{};
 	owner.eRole = CARD_MAZE_ROLE::TELESCOPE;
-	// Multiplayer telescope owners remain suitless; Debug solo is a hunter with overhead access.
+	// Multiplayer telescope owners remain suitless; solo is a hunter with overhead access.
 	if (soloTest)
 	{
 		owner.eRole = CARD_MAZE_ROLE::HUNTER;
@@ -3068,11 +3067,8 @@ LostArk::Server::CKoukuCardMazeRuntime::On_TargetHit(
 		if (KILL_TARGET == participant->second.iKills)
 		{
 			outcome.bHunterComplete = true;
-			// The defeated suit is the personal portal, not a second random destination.
-			hunter.CardMaze.exitX = target.fPositionX;
-			hunter.CardMaze.exitY = target.fPositionY;
-			hunter.CardMaze.exitZ = target.fPositionZ;
-			hunter.CardMaze.flags |= 4u;
+			// The room stages a separate walkable exit after the matching kill.
+			// Failed corridor selection keeps this earned progress for the next tick.
 			bool allComplete = true;
 			for (const auto& [playerId, other] : m_Participants)
 			{
@@ -3143,7 +3139,7 @@ bool LostArk::Server::CKoukuCardMazeRuntime::Sample_Corridor(
 	LostArk::Shared::MECHANIC_CARD_SYMBOL suit,
 	const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 	const std::vector<SERVER_WORLD_ENTITY>& entities, const CServerNavigation& navigation,
-	std::uint32_t seed, SPAWN_REQUEST& out) const
+	std::uint32_t seed, SPAWN_REQUEST& out, const bool avoidPersonalExits) const
 {
 	CARD_MAZE_RANDOM random{ Mix(static_cast<std::uint64_t>(seed) ^ (static_cast<std::uint64_t>(suit) << 32)) | 1ull };
 	for (std::uint32_t attempt = 0u; attempt < SAMPLE_ATTEMPTS; ++attempt)
@@ -3158,6 +3154,9 @@ bool LostArk::Server::CKoukuCardMazeRuntime::Sample_Corridor(
 		{
 			(void)id;
 			if (player.iCurrentHp && DistanceXZ(point.x, point.z, player.fPositionX, player.fPositionZ) < PLAYER_KEEPOUT_M)
+			{ clear = false; break; }
+			if (avoidPersonalExits && player.iCurrentHp && (player.CardMaze.flags & 4u) &&
+				DistanceXZ(point.x, point.z, player.CardMaze.exitX, player.CardMaze.exitZ) < SPAWN_SPACING_M)
 			{ clear = false; break; }
 		}
 		for (const auto& entity : entities)

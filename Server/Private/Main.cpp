@@ -27,6 +27,8 @@ int main(const int argumentCount, char** arguments)
         return LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmissionOnly();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--maharaka-ai-contract-test")
         return LostArk::Server::CServerGameplayContractRunner::Run_MaharakaAI();
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--colosseum-contract-test")
+		return LostArk::Server::CServerGameplayContractRunner::Run_ColosseumOnly();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--guide-ai-contract-test")
         return LostArk::Server::CServerGameplayContractRunner::Run_GuideAI();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--valtan-pattern-control-contract-test")
