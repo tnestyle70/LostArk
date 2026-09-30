@@ -31,7 +31,8 @@
     0.466667,
     1.0
    ],
-   "brightness": 2.0
+   "brightness": 2.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_10_lc.501",
@@ -59,7 +60,8 @@
     0.580392,
     1.0
    ],
-   "brightness": 3.5
+   "brightness": 3.5,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_11_lc.502",
@@ -87,7 +89,8 @@
     0.729412,
     1.0
    ],
-   "brightness": 3.0
+   "brightness": 3.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_12_lc.503",
@@ -115,7 +118,8 @@
     0.729412,
     1.0
    ],
-   "brightness": 2.0
+   "brightness": 2.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_13_lc.504",
@@ -143,7 +147,8 @@
     0.376471,
     1.0
    ],
-   "brightness": 0.5
+   "brightness": 0.5,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_14_lc.505",
@@ -171,7 +176,8 @@
     0.580392,
     1.0
    ],
-   "brightness": 3.5
+   "brightness": 3.5,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_15_lc.506",
@@ -199,7 +205,8 @@
     0.580392,
     1.0
    ],
-   "brightness": 3.5
+   "brightness": 3.5,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_16_lc.507",
@@ -227,7 +234,8 @@
     0.580392,
     1.0
    ],
-   "brightness": 3.5
+   "brightness": 3.5,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_17_lc.508",
@@ -255,7 +263,8 @@
     0.580392,
     1.0
    ],
-   "brightness": 3.5
+   "brightness": 3.5,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_18_lc.509",
@@ -283,7 +292,8 @@
     0.580392,
     1.0
    ],
-   "brightness": 3.5
+   "brightness": 3.5,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_19_lc.510",
@@ -311,7 +321,8 @@
     0.729412,
     1.0
    ],
-   "brightness": 3.0
+   "brightness": 3.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_1_lc.511",
@@ -339,7 +350,8 @@
     0.466667,
     1.0
    ],
-   "brightness": 2.0
+   "brightness": 2.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_20_lc.512",
@@ -367,7 +379,8 @@
     0.729412,
     1.0
    ],
-   "brightness": 3.0
+   "brightness": 3.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_23_lc.513",
@@ -395,7 +408,8 @@
     0.466667,
     1.0
    ],
-   "brightness": 2.0
+   "brightness": 2.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_25_lc.514",
@@ -423,7 +437,8 @@
     0.466667,
     1.0
    ],
-   "brightness": 2.0
+   "brightness": 2.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_26_lc.515",
@@ -451,7 +466,8 @@
     0.466667,
     1.0
    ],
-   "brightness": 2.0
+   "brightness": 2.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_27_lc.516",
@@ -479,7 +495,8 @@
     0.466667,
     1.0
    ],
-   "brightness": 2.0
+   "brightness": 2.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_28_lc.517",
@@ -507,7 +524,8 @@
     0.466667,
     1.0
    ],
-   "brightness": 2.0
+   "brightness": 2.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_29_lc.518",
@@ -535,7 +553,8 @@
     0.580392,
     1.0
    ],
-   "brightness": 3.5
+   "brightness": 3.5,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_2_lc.519",
@@ -563,7 +582,8 @@
     0.466667,
     1.0
    ],
-   "brightness": 2.0
+   "brightness": 2.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_30_lc.520",
@@ -591,7 +611,8 @@
     0.466667,
     1.0
    ],
-   "brightness": 1.5
+   "brightness": 1.5,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_31_lc.521",
@@ -619,7 +640,8 @@
     0.466667,
     1.0
    ],
-   "brightness": 2.0
+   "brightness": 2.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_32_lc.522",
@@ -647,7 +669,8 @@
     0.466667,
     1.0
    ],
-   "brightness": 1.5
+   "brightness": 1.5,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_35_lc.523",
@@ -675,7 +698,8 @@
     0.466667,
     1.0
    ],
-   "brightness": 1.5
+   "brightness": 1.5,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_36_lc.524",
@@ -703,7 +727,8 @@
     0.466667,
     1.0
    ],
-   "brightness": 1.5
+   "brightness": 1.5,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_3_lc.525",
@@ -731,7 +756,8 @@
     0.466667,
     1.0
    ],
-   "brightness": 2.0
+   "brightness": 2.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_4_lc.526",
@@ -759,7 +785,8 @@
     0.580392,
     1.0
    ],
-   "brightness": 3.5
+   "brightness": 3.5,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_5_lc.527",
@@ -787,7 +814,8 @@
     0.580392,
     1.0
    ],
-   "brightness": 3.5
+   "brightness": 3.5,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_6_lc.528",
@@ -815,7 +843,8 @@
     0.729412,
     1.0
    ],
-   "brightness": 3.0
+   "brightness": 3.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_7_lc.529",
@@ -843,7 +872,8 @@
     0.729412,
     1.0
    ],
-   "brightness": 3.0
+   "brightness": 3.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_8_lc.530",
@@ -871,7 +901,8 @@
     0.729412,
     1.0
    ],
-   "brightness": 2.0
+   "brightness": 2.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.pointlight_9_lc.531",
@@ -899,7 +930,8 @@
     0.729412,
     1.0
    ],
-   "brightness": 3.0
+   "brightness": 3.0,
+   "receiver": "UNBAKED"
   },
   {
    "lightId": "light.lv_ocn_eventis_mhp.spotlight_0_lc.3634",
@@ -913,7 +945,7 @@
     -1039.483906
    ],
    "rotationDegrees": [
-    0.0,
+    90.0,
     0.0,
     0.0
    ],
@@ -927,7 +959,8 @@
     0.729412,
     1.0
    ],
-   "brightness": 5.0
+   "brightness": 5.0,
+   "receiver": "UNBAKED"
   }
  ]
 }

@@ -188,9 +188,8 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			CLIENT_LEVEL_KIND::PRODUCT,
 			"world.maharaka",
 			"LV_OCN_EVENTIS_MHP",
-			// The Bern profile carries Bern-space environment regions; the neutral
-			// profile keeps the island free of them until it gets its own.
-			"scene.development.neutral.v1",
+			// Maharaka owns the source island environment; other Area profiles remain independent.
+			"scene.maharaka.source-day.v1",
 			MakeFullMapScope(),
 			CreateMaharaka,
 			[](CLoader& loader) -> HRESULT { return loader.Ready_For_Maharaka(); }
