@@ -111,6 +111,7 @@ private:
 	HRESULT Bind_ShaderResources();
 	HRESULT Bind_ShadowShaderResources();
 	HRESULT Render_Translucent();
+	bool Pose_FlightMount();
 	void Apply_FlightHeadIK(f32_t deltaSeconds);
 	void Resolve_FlightPoseTimes(f32_t& sourceSeconds, f32_t& targetSeconds, f32_t& blend) const;
 

@@ -83,7 +83,7 @@ std::string SavedEffectCategory(const CEffectAuthoringResourceTree::RESOURCE& so
         {"effect.dimensionmaster.", "Character/DimensionMaster"}, {"effect.warlord.", "Character/Warlord"},
         {"effect.guardianknight.", "Character/GuardianKnight"}, {"effect.valtan.", "Boss/Valtan"},
         {"effect.kouku.", "Boss/KoukuSaydon"}, {"effect.vehicle.", "Character Transform/Mounts"},
-        {"effect.world.", "World"}, {"effect.bern.", "World/Bern"}, {"effect.esther.", "World/Esther"},
+        {"effect.world.", "World"}, {"effect.maharaka.", "World/Maharaka"}, {"effect.bern.", "World/Bern"}, {"effect.esther.", "World/Esther"},
         {"boss.kouku.", "Boss/KoukuSaydon"}, {"kouku.", "Boss/KoukuSaydon"},
         {"bingo.", "Boss/KoukuSaydon/Bingo"}, {"cardmaze.", "Boss/KoukuSaydon/Card Maze"},
         {"boss.valtan.", "Boss/Valtan"}, {"esther.", "World/Esther"} };

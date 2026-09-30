@@ -45,13 +45,25 @@ void Client::CClassMovieInspector::Render(const CLASS_MOVIE_INSPECTION_CALLBACKS
     ImGui::SameLine();
     if (ImGui::RadioButton("Free camera (F6)", state.freeCamera)) (void)submit(ACTION::FREE_CAMERA);
     ImGui::Text("Camera XYZ: %.3f, %.3f, %.3f m", state.cameraPosition.x, state.cameraPosition.y, state.cameraPosition.z);
-    if (ImGui::Button(state.pickArmed ? "Cancel scene pick" : "Pick in scene"))
+    if (ImGui::Button(state.pickArmed ? "Cancel WORLD model pick" : "Pick WORLD model in scene"))
         (void)submit(ACTION::PICK_IN_SCENE, {}, !state.pickArmed);
-    if (state.pickArmed) ImGui::TextWrapped("Click one model in the scene outside the tool windows. Picking is used once.");
+    if (state.pickArmed) ImGui::TextWrapped("Click one WORLD model outside the tool windows. Static background placements are selected in Map Tool.");
     bool background = state.showBackground, effects = state.showEffects;
-    if (ImGui::Checkbox("Show background (preview)", &background)) (void)submit(ACTION::BACKGROUND, {}, background);
+    if (ImGui::Checkbox("Show entire background map (preview)", &background)) (void)submit(ACTION::BACKGROUND, {}, background);
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Preview visibility for the entire background map; individual placements are edited and saved in Map Tool.");
     if (ImGui::Checkbox("Show Effects (preview)", &effects)) (void)submit(ACTION::EFFECTS, {}, effects);
     ImGui::EndDisabled();
+    ImGui::TextWrapped("Background Area: %s", state.backgroundAreaId.empty() ? "Unavailable" : state.backgroundAreaId.c_str());
+    if (!state.backgroundAreaId.empty())
+        ImGui::TextWrapped("Source: Data/Maps/Authoring/%s/%s.mapplacements",
+            state.backgroundAreaId.c_str(), state.backgroundAreaId.c_str());
+    ImGui::BeginDisabled(!state.canEditBackground || !callbacks.openBackground);
+    if (ImGui::Button("Edit background in Map Tool"))
+        (void)callbacks.openBackground(classId, state.backgroundAreaId, m_Status);
+    ImGui::EndDisabled();
+    ImGui::TextWrapped("Map Tool edits individual background placements: Position, Rotation and Visible. Save placements stores authoring data; Publish Placements is a separate MapPipeline step.");
+    if (!state.canEditBackground)
+        ImGui::TextDisabled("Play this Movie to edit its loaded background map.");
     if (ImGui::Button("Clear preview filters")) (void)submit(ACTION::CLEAR_PREVIEW);
     ImGui::TextWrapped("Solo isolates WORLD models. Background and Effects use their own preview checkboxes. These filters keep Movie time running and are not saved.");
     ImGui::InputTextWithHint("Search models", "Name, stable ID, WModel or material", m_Search.data(), m_Search.size());

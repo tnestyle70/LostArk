@@ -149,3 +149,23 @@ diff check를 확인한다. 최종 반영은 편집 중 데이터 반영 절차�
 디스크의 해당 필드만 병합하며 hash 재검사·백업·원자 교체·실패 시 자기 변경 rollback을 유지한다.
 이 manifest는 Data 원본을 직접 읽으므로 재빌드나 WorldSequences publish를 요구하지 않는다.
 실행 중 편집기는 자동 Reload하지 않고 사용자에게 저장본 Reload와 Play All 경로를 안내한다.
+
+
+## G12. 가디언나이트 Movie 갑옷·무기의 원본 표면 mip 복구 (2026-09-30)
+
+얼굴·피부의 hdr07 lookup은 G10에서 이미 full mip TGA로 연결되었고, native199 갑옷의
+scene reflection cube도128²/8mip를 보유한다. 갑옷5개와 무기1개의 실제 표면 texture30개는
+설치 DDS가1mip인 반면 원본 pc_ddk_hr_00/wp_ddk_hr_00 package에는29개11mip와 무기ORM1개10mip가
+남아 있다. 표면 sampler가 사용할 원본 mip를 복구하며 이 사실을 반사 cube 누락으로 설명하지 않는다.
+
+기존 extract_ue3_texture_mips.py로 원본 BC1/BC3/BC5 block을 재압축·필터 생성 없이 복구한다.
+현재 DDS와 mip0 payload가 byte-exact이고 형식·크기·colorSpace가 같은 후보만 허용한다.
+Movie 전용 Resources-relative 신규 ID30개로 보관하고 WorldSequences objectResources의 해당
+6개 stable object materialProfile.texture assetId만 교체한다. 기존 공유 DDS와 일반캐릭터·보스,
+shader·roughness/밝기/렌더링 옵션은 보존한다. ORM green의 기존 roughness 소비와 원본분포를
+확인하되 사용자 화면을 보지 않고 유리 느낌이 완전히 해결되었다고 기록하지 않는다.
+
+후보 texture의 실제 loader mip와 source/material 계약을 검증한 뒤 최신 디스크 WorldSequences의
+대상 필드만 병합한다. hash 재확인·백업·원자 교체와 실패 시 자기 변경 rollback을 유지하며
+WorldSequences scope만 publish한다. 카메라 후보와 별개의 문서이므로 저장본의 무관한 사용자
+수정은 유지한다. 실행 중 메모리 Reload는 자동 수행하지 않는다. 신규 C++/project 등록은 없다.

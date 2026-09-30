@@ -269,7 +269,8 @@ public:
 private:
 	/* Frame Update */
 	bool_t Is_MapAuthoringLevel() const;
-	CWorldSequencePlayer::TARGET_SET Runtime_AuthoringTargets() const;
+	CWorldSequencePlayer::TARGET_SET Runtime_AuthoringTargets(
+		const std::string* classMovieBackgroundArea = nullptr) const;
 	vector<PLACED_ENTRY>& Authoring_Placements();
 	const vector<PLACED_ENTRY>& Authoring_Placements() const;
 	vector<STATIC_BATCH_ENTRY>& Authoring_Batches();
@@ -551,6 +552,9 @@ public:
 	   one drawn twice. */
 	ICompositionWorkbenchSession* Get_HostedCompositionSession() const
 	{ return m_bHostingCompositionSession ? m_pHostedCompositionSession : nullptr; }
+	/* Explicitly borrows the loaded Movie background. Empty/primary Area restores
+	   the ordinary map target; a dirty target is never replaced. */
+	bool_t Open_ClassMovieBackground(const std::string& areaId, std::string& status);
 	std::string Debug_GetActiveAreaId() const;
 	shared_ptr<CCamera_Free> Debug_GetCamera() const { return m_pAssetTestCamera.lock(); }
 	int Debug_WorldLevelSelection(const std::string& areaId, uint64_t placementId,
@@ -563,7 +567,8 @@ private:
 	bool_t Begin_EditorAreaSwitch(size_t descriptorIndex);
 	void Update_EditorAreaPreload();
 	void Report_EditorAreaPreloadProgress();
-	bool_t Switch_EditorArea(size_t descriptorIndex);
+	bool_t Switch_EditorArea(size_t descriptorIndex,
+		const std::string* classMovieBackgroundArea = nullptr);
 	bool_t Save_AllAuthoring();
 	bool_t Save_PlacementsAndWorldSequences();
 	bool_t Has_UnsavedAuthoring() const;
@@ -734,6 +739,8 @@ private:
 	CMapAssetCatalog m_Catalog;
 	// The arena owns live objects. This full-source draft excludes sampled animation poses.
 	bool_t m_bRuntimeAuthoring = false;
+	// Fixed until an explicit, clean target switch; never follows the active class.
+	std::string m_ClassMovieBackgroundAreaId;
 	vector<MAP_PLACEMENT_RECORD> m_RuntimePlacementDraft;
 	std::unordered_map<uint64_t, size_t> m_RuntimePlacementIndex;
 	CDeployPropRuntime m_DeployRuntime;
@@ -754,6 +761,7 @@ private:
 	std::string m_CompletePlayStatus =
 		"Complete Play uses the workspace's selected saved Server pattern.";
 	char m_Filter[128]{};
+	char m_PlacementFilter[128]{};
 	std::unordered_set<std::string> m_FavoriteAssetIds;
 
 	vector<PLACED_ENTRY> m_Placements;

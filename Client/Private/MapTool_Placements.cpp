@@ -334,7 +334,9 @@ bool_t Client::CMapTool::Save_PlacementsAndWorldSequences()
 	CWorldSequenceToolPanel verification;
 	bool_t verificationReady = false;
 	bool_t saved = Save_Placements(true, &intendedPlacements);
-	if (saved)
+	// A placement-only background does not acquire an empty sequence document
+	// merely because its linked save tracks that optional path for freshness.
+	if (saved && (sequenceBackup.hadOriginal || sequenceWasDirty))
 	{
 		saved = m_pWorldSequenceToolPanel->Save(
 			m_Catalog, Authoring_Placements(), Authoring_Deploy(), transactionStatus);

@@ -326,11 +326,17 @@ public:
 	void Request_CreateCharacterButtonClick() { m_hasCreateCharacterButtonClick = true; }
 	// Product UI and editor commands share the level-owned typed controller.
 	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
+	// F1 free-camera speed uses the same level-owned camera in Debug and Release.
+	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
 #ifdef _DEBUG
 	/* Map Tool borrows this level's live map the same way the Kouku and Valtan
 	   arenas lend theirs. The level keeps ownership; the tool only edits the
 	   placements in place. */
 	CMapPlacementRuntime& Get_MapAuthoringRuntime() { return m_MapRuntime; }
+	/* Movie backgrounds remain owned by this Level. The editor pins the Area
+	   identity instead of following class changes to another placement vector. */
+	CMapPlacementRuntime* Find_ClassCinematicBackgroundRuntime(const std::string& areaId);
+	std::string Get_ClassCinematicBackgroundArea(const std::string& classId) const;
 	CDeployPropRuntime& Get_MapAuthoringDeploy() { return m_MapAuthoringDeploy; }
 	const ComPtr<ID3D11Device>& Get_MapAuthoringDevice() const { return m_pDevice; }
 	const ComPtr<ID3D11DeviceContext>& Get_MapAuthoringContext() const { return m_pContext; }
@@ -351,7 +357,6 @@ public:
 		return Enter_Stage(eStage);
 	}
 	bool_t Debug_Request_KakulSaydonArena();
-	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
 	const string& Debug_GetNavigationStatus() const { return m_strStatus; }
 
 	/* IMapAuthoringHost: the Debug Map Tool edits this Level's live map in

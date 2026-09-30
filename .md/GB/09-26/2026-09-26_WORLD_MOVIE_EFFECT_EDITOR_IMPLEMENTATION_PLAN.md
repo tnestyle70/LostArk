@@ -345,3 +345,91 @@ SL00 WorldSequences의 stable soundTrackId 두 개만 sourceStartMs0과 원본 �
 보존한다. 정본 revision을 갱신하고 hash 재확인·백업·원자 교체 후 WorldSequences scope만
 publish한다. 실제 WAV frame/format 길이와 source/runtime의 두 행을 대조한다. 실행 중
 Client의 미저장 draft나 Reload·종료는 조작하지 않으며 새 저장본은 다시 읽을 때 소비된다.
+
+## G21. 차원술사의 저장된 첫 구도를 기준으로 후속 카메라 보정 (2026-09-30)
+
+사용자는 모든 편집을 저장한 뒤 차원술사 Intro Camera2·3·4·5의 첫0ms 구도로 후속 키를
+보정하고 차원술사만 반복을 다시 켜도록 요청했다. 최신 저장본에서 네 첫 키의 Eye/LookAt/Up만
+바뀌었고 후속 키는 원본과 같음을 확인했다. 직전 movie 백업과 HEAD의 해당 원본 camera
+배열도 일치한다. source=PROJECT_TUNED와 사용자가 추가한 excludedWorldObjectIds는 보존한다.
+
+각 cut은 자기 수정 전·후 첫 키의 정규화 camera basis 차이로 회전한다. Eye는 기존 첫 Eye를
+뺀 상대 위치에 회전을 적용한 뒤 새 첫 Eye를 더한다. LookAt은 Eye로부터의 시선 벡터를 같은
+회전으로 변환한다. Use free cam pos가10길이 시선을 저장하고 원본은 대략1길이를 사용하므로,
+한 cut의 시선 벡터에만 일정한 길이 비율을 적용해 사용자가 저장한 첫 키를 정확히 유지하면서
+후속 보간의 방향을 보존한다. 카메라 이동 경로·시간·FOV를 그 비율로 확대하지 않는다. Up도
+같은 회전을 적용하고 사용자가 저장한 네 첫 Eye/LookAt/Up은 값 그대로 보존한다.
+
+원본 export와 컷 순서가 대응하는 Intro2→Loop1, Intro3→Loop2, Intro4→Loop3, Intro5→Loop4를
+연결하되 Loop 자체의 기존 첫 키·이동·키 수·FOV·clock을 사용하여 각각 변환한다. Intro 키 배열을
+Loop에 복사하지 않는다. Intro1, 다른 class와 World·Sound·Effect, 컷의 시간·easing·보간은 보존한다.
+차원술사의 repeatMovie만true로 변경한다. 기존 hold marker는 Repeat ON에서 소비되지 않으며
+삭제할 필요가 없다. 새 runtime/일괄 편집 UI를 추가하는 작업은 이번에 포함하지 않는다.
+
+검증은 사용자 첫 키 불변, cut별 상대 거리·방향·Up·FOV·clock 보존, 첫 구간 연속성과 cut 경계,
+실제 제품 parser/sampler의 전체 구간을 대상으로 한다. 최신 디스크 저장본의 stable scene/camera/key
+ID와 변경 필드만 병합하고 hash 재확인·실제 교체본 백업·원자 교체를 사용한다. 데이터 수정이므로
+추가 Product 빌드는 필요 없고 사용자는 기존 Reload saved movie→Play All로 확인한다. 사용자가
+현재 Client/Server 사용을 계속하며 C++ 빌드는 나중으로 미뤘으므로 임의 종료하지 않는다.
+
+
+## G22. 재생 중인 Movie의 정적 배경을 기존 Map Tool에서 편집 (2026-09-30)
+
+차원술사 Movie의 하늘은 WORLD Object가 아니라 LV_LOBBY_CLASSSELECT_SL12의 정적 map placement다.
+Movie Pick은 WorldSequence의 sampled object만 검사하므로 이 하늘이 선택되지 않는다. Map Tool도
+현재 primary SL00만 빌리며 Area registry에 SL12가 없어 기존 화면만으로 개별 배경을 편집할 수 없다.
+Show background는 Area 전체의 일시 숨김이며 개별 이동·저장된 mute를 대신하지 못한다.
+
+Level_CharacterSelect는 stable areaId로 이미 로드된 CLASS_CINEMA_BACKGROUND runtime을 찾는
+Debug getter와 class별 background Area 조회만 공개한다. 기존 primary runtime getter는 그대로 둔다.
+MapTool.h의 Open_ClassMovieBackground(areaId,status)는 Movie Inspector와 target combo가 호출하는
+단일 진입점이다. 선택된 Area를 session 문자열로 고정하며 클래스 변경으로 다른 컨테이너에 자동
+재결합하지 않는다. dirty draft가 있으면 target 변경을 거절하고 현재 Area와 배경이 다르면 편집을
+막되 이전 draft와 저장 대상을 보존한다. 새 파일이나 두 번째 placement runtime은 만들지 않는다.
+
+MapTool_Area.cpp는 실제 로드된 배경만 registry에 추가하고 source catalog·placement를 검증한 뒤
+기존 Switch_EditorArea의 stage/commit 경계에서 target을 교체한다. 기존 target의 sequence restore는
+기존 컨테이너로 완료한 뒤 새 target을 commit한다. placement/batch/model prototype은 Level 소유물을
+빌리고 MapTool은 full-source authored draft를 유지한다. 등록 누락·ID 불일치·dirty·실패 시 기존 target을
+보존한다. MapTool.cpp는 primary와 현재 Movie 배경 선택, 검색 가능한 placement Hierarchy,
+Position/Rotation/Visible 편집을 제공한다. Visible=false는 기존 mapplacements의 저장된 mute다.
+
+Movie Inspector에는 배경 Area와 정본 경로, Edit background in Map Tool 버튼을 표시한다. MainApp은
+기존 MAP tool을 준비하고 typed API를 호출한다. 기존 Pick은 WORLD 모델용임을 명시하고 배경은
+MapTool Hierarchy에서 stable source ID로 선택한다. 카메라·Movie clock·재생 인스턴스를 중지하지 않는다.
+Save는 Data/Maps/Authoring/<Area>/<Area>.mapplacements의 기존 linked transaction을 사용한다.
+MapTool_Placements.cpp의 linked save는 원래 없고 수정되지 않은 optional sequence를 생성하지
+않으며 placement 검증·freshness·백업·rollback·최종 baseline 채택을 그대로 거친다.
+실행 데이터는 기존 Publish-MapAuthoring.ps1의 Placements scope로 게시하며 Movie JSON에 map override를
+중복 저장하지 않는다. 자동으로 하늘 위치·크기·재질·렌더링 옵션을 변경하지 않는다.
+
+기존 H/CPP만 수정하므로 vcxproj/filter 등록은 없다. 검증은 active background와 primary target 분리,
+dirty 전환 거절·클래스 변경 고정·오류 보존·실제 source placement ID·저장/재로드 가시성·컴파일을
+대상으로 한다. Client 화면 실행과 최종 하늘 구도는 사용자가 확인한다. 빌드는 root가 변경 통합 후
+진행하며 에이전트가 Client/UI를 실행하거나 저장되지 않은 편집을 Reload하지 않는다.
+
+
+## G23. 저장한 다섯 클래스의 후속 Camera와 Loop 재보정 (2026-09-30)
+
+최신 저장본과 G21 실제 설치본을 비교하면 차원술사는 Intro Camera2 첫0ms pose만 새로 변경했고
+Camera3는 직전 보정본과 같다. 가디언나이트·도화가·워로드는 Intro Camera2~5, 창술사는 Camera2~4의
+첫 pose를 변경했다. 사용자가 저장한 모든 첫 키와 World 제외 목록을 보존하고 변경이 없는 컷에는
+같은 보정을 중복 적용하지 않는다. G21의 Eye 강체 이동·회전과 LookAt 길이 표현·Up 회전 공식을 쓴다.
+
+Loop의 source export와 실제 컷 순서를 대조해 차원 Intro2→Loop1, 가디언 Intro2~5→Loop1~4,
+도화가·워로드 Intro2~5→동일 번호 Loop, 창술사 Intro2~4→동일 번호 Loop를 연결한다. Loop 자체의
+경로·FOV·시간·속도·보간을 보존한다. 확장한 네 클래스도 repeatMovie를 켜 기존 Intro→Loop 재생을
+복구한다. hold marker는 보존한다. 사용자 기준 키는 그대로 유지하며 source clock과 음향·모델은
+변경하지 않는다. 실제 parser/sampler 검사 후 최신 파일의 stable ID와 변경 필드만 CAS 병합하고
+실제 교체본 백업·원자 교체한다. Client의 메모리 draft와 Reload는 사용자가 관리한다.
+
+## G24. Character Select의 F1 카메라 속도 조절을 상단에 표시 (2026-09-30)
+
+기존 RenderCameraSpeedControls는 Character Select에서도 호출되지만 F1의 여러 패널 아래쪽에
+접힌 Camera 헤더로 있어 찾기 어렵다. Character Select에서는 같은 helper를 현재 Level 표시
+바로 아래에서 한 번만 호출하고 헤더를 기본으로 펼친다. 다른 Level은 기존 위치를 유지한다.
+Level_CharacterSelect의 실제 소유 Camera getter를 Debug/Release 공통으로 사용해 속도 값을
+읽고 쓴다. 새 속도 상태나 별도 입력 경로는 만들지 않으며 이동 속도는 free camera에서 적용됨을
+안내한다. MainApp.cpp, MainApp_Dragon.cpp, Level_CharacterSelect.h 기존 파일의 인코딩을 보존한다.
+신규 C++ 파일과 project/filter 등록은 없다. 실제 get/set 경로와 Debug/Release 개별 컴파일을
+검증하고 최종 Product 링크는 실행 파일 점유를 확인한 뒤 진행한다.

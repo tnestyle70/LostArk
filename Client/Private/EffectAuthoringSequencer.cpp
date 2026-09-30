@@ -15,6 +15,8 @@
 #include "Effect_Object.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_PresentationService.h"
+#include "Level_Development.h"
+#include "Gameplay/MaharakaWaterpangContract.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "KoukuSaydonPresentationPlayer.h"
@@ -154,6 +156,7 @@ const CEffectAuthoringSequencer::MODEL_SEQUENCE* CEffectAuthoringSequencer::Sele
 }
 std::uint32_t CEffectAuthoringSequencer::DurationMs() const
 {
+    if (m_WorldEffectPreview) return m_WorldEffectPreview->durationMs;
     if (Is_ElementPreview()) return (std::clamp)(m_Transient->durationMs, 1u, MAX_MS);
     if (m_ValtanEffectPreview)
     {
@@ -909,11 +912,193 @@ bool CEffectAuthoringSequencer::Select_ValtanEffect(const std::string& assetId,
 
 bool CEffectAuthoringSequencer::Select_WorldEffect(const std::string& assetId, const bool reusePlayerAnchor)
 {
-    if (!assetId.starts_with("effect.world."))
+    if (assetId.starts_with("effect.maharaka.waterpang.")) return Select_MaharakaWorldEffect(assetId);
+    if (assetId.starts_with("effect.maharaka.watergun.watergun_att_") || assetId == "effect.maharaka.watergun.e.speed")
+        return Select_MaharakaWaterGunEffect(assetId);
+    if (!assetId.starts_with("effect.world.") && !assetId.starts_with("effect.maharaka."))
     { m_Status = "Select a saved World Effect before preparing its scene anchor."; return false; }
     const std::optional<std::uint32_t> duration = assetId == "effect.world.mouse_click" ? std::optional<std::uint32_t>(1200u) :
         assetId == "effect.world.move_destination" ? std::optional<std::uint32_t>(7000u) : std::nullopt;
     return Select_SceneEffectTarget(assetId, false, reusePlayerAnchor, assetId == "effect.world.move_destination", duration);
+}
+
+bool CEffectAuthoringSequencer::Select_MaharakaWorldEffect(const std::string& assetId)
+{
+#ifdef _DEBUG
+    auto* level = CLevel_Development::Get_Active(LEVEL::MAHARAKA);
+    if (!level || !m_V1Documents)
+    { m_Status = "Enter Maharaka before replaying its saved World actors and Effects."; return false; }
+    WORLD_EFFECT_PREVIEW staged;
+    staged.assetId = assetId; staged.level = level;
+    staged.player = std::make_shared<CWorldSequencePlayer>();
+    auto& targets = staged.targets;
+    targets.levelIndex = ETOUI(LEVEL::MAHARAKA);
+    targets.pCatalog = &level->Get_MapAuthoringRuntime().Get_Catalog();
+    targets.pPlacements = &level->Get_MapAuthoringRuntime().Get_MutablePlacements();
+    targets.pDeployRuntime = &level->Get_MapAuthoringDeploy();
+    targets.device = m_Device; targets.context = m_Context;
+    targets.objectPreparationOwner = staged.player.get();
+    targets.bCommitWorldRootEffectsAfterSpawn = true;
+    targets.previewNpc = [level](const std::string& id) { return level->Find_MapAuthoringNpc(id); };
+    WORLD_SEQUENCE_PLACEMENT_MAP placements;
+    WORLD_SEQUENCE_DEPLOY_MAP deploy;
+    CWorldSequencePlayer::Collect_ValidationTargets(targets, placements, deploy);
+    constexpr const char* area = "LV_OCN_EVENTIS_MHP";
+    CWorldSequenceDocument sequences;
+    const auto path = CProjectDataRoot::Resolve(std::filesystem::path("Maps/Authoring") / area /
+        (std::string(area) + ".worldsequences.json"));
+    if (!sequences.Load(path, area, placements, deploy, m_Status)) return false;
+    // Retain every placement, animation and socket value. Only draw the selected
+    // Effect's occurrences from the existing attack instance in this local copy.
+    for (auto& sequence : sequences.Get_Templates())
+    {
+        std::erase_if(sequence.effectTracks, [&](const auto& track) {
+            return track.resourceKind != "V1_EFFECT" || track.resourceId != assetId;
+        });
+        sequence.soundTracks.clear(); sequence.subtitleTracks.clear(); sequence.colliderTracks.clear();
+    }
+    for (auto& instance : sequences.Get_Instances())
+    {
+        const auto* sequence = sequences.Find_Template(instance.templateId);
+        if (!sequence || sequence->effectTracks.empty() || !instance.enabled) continue;
+        if (!staged.instanceId.empty() && !instance.instanceId.ends_with(".loop.cw")) continue;
+        staged.instanceId = instance.instanceId;
+        staged.durationMs = sequence->PresentationSpanMs();
+        if (instance.instanceId.ends_with(".loop.cw") || instance.instanceId.ends_with(".loop.ccw"))
+        {
+            if (sequence->tracks.empty() || sequence->tracks.front().keys.empty())
+            { m_Status = "The saved water cannon has no held object pose."; return false; }
+            const auto& pose = sequence->tracks.front().keys.front();
+            const float objectYaw = XMConvertToDegrees(2.f * std::atan2(pose.rotationQuaternion.y, pose.rotationQuaternion.w));
+            const auto pivot = pose.positionOffset;
+            const float direction = instance.instanceId.ends_with(".loop.cw") ? 1.f : -1.f;
+            targets.objectEffectPostTransform = [id = instance.instanceId, pivot, direction, objectYaw](
+                const std::string& selected, float sourceMs, float4x4_t& out, std::string&) {
+                const float yaw = selected == id ? LostArk::Shared::MAHARAKA_WATERPANG_CANNON_YAW_DEGREES +
+                    180.f - objectYaw + direction * sourceMs * .001f * 360.f /
+                    LostArk::Shared::MAHARAKA_WATERPANG_CANNON_SECONDS_PER_TURN : 0.f;
+                XMStoreFloat4x4(&out, XMMatrixTranslation(-pivot.x, 0.f, -pivot.z) *
+                    XMMatrixRotationY(XMConvertToRadians(yaw)) * XMMatrixTranslation(pivot.x, 0.f, pivot.z));
+                return true;
+            };
+        }
+    }
+    if (staged.instanceId.empty())
+    { m_Status = "This Maharaka Effect has no saved World Sequence occurrence; previous preview preserved."; return false; }
+    EFFECT_DOCUMENT_DESC document;
+    if (!m_V1Documents({EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, assetId}, document, m_Status) ||
+        !staged.player->Set_Document(sequences, targets, m_Status) ||
+        !staged.player->Preview_EffectDocument(document, targets, m_Status) ||
+        !staged.player->Prepare_InstanceResources(staged.instanceId, targets))
+    {
+        if (m_Status.empty()) m_Status = staged.player->Get_Status();
+        return false;
+    }
+    m_PendingWorldEffectPreview = std::move(staged);
+    m_Status = "Prepared the saved Maharaka actor, animation, source sockets and Effect tracks.";
+    return true;
+#else
+    (void)assetId;
+    m_Status = "World Effect authoring is available in the Debug Client.";
+    return false;
+#endif
+}
+
+bool CEffectAuthoringSequencer::Preview_MaharakaWorldEffect(const EFFECT_RESOURCE_KEY& key,
+    const std::vector<std::string>& elements, const std::uint32_t focusMs, const bool loop)
+{
+    if ((!m_PendingWorldEffectPreview || m_PendingWorldEffectPreview->assetId != key.strStableId) &&
+        !Select_MaharakaWorldEffect(key.strStableId)) return false;
+    auto staged = std::move(*m_PendingWorldEffectPreview);
+    m_PendingWorldEffectPreview.reset();
+    if (!elements.empty())
+    {
+        EFFECT_DOCUMENT_DESC full;
+        if (!m_V1Documents || !m_V1Documents(key, full, m_Status)) return false;
+        EFFECT_DOCUMENT_DESC selected = full;
+        // Visibility changes are a preview projection; the saved document and
+        // the full emitter clocks remain intact for the shared World player.
+        for (auto& element : selected.Elements)
+            element.bVisible = element.bVisible && std::find(elements.begin(), elements.end(), element.strElementId) != elements.end();
+        if (!staged.player->Preview_EffectSelection(full, selected, elements, {}, staged.targets, m_Status)) return false;
+    }
+#ifdef _DEBUG
+    const bool previousWorldPreview = m_WorldEffectPreview.has_value();
+    staged.level->Set_WaterpangEffectAuthoringActive(true);
+#endif
+    if (!staged.player->Play(staged.instanceId, staged.targets) ||
+        !staged.player->Seek_InstanceToMs(staged.instanceId, static_cast<float>(focusMs), staged.targets, true))
+    {
+        m_Status = staged.player->Get_Status();
+#ifdef _DEBUG
+        staged.level->Set_WaterpangEffectAuthoringActive(previousWorldPreview);
+#endif
+        return false;
+    }
+    Stop();
+#ifdef _DEBUG
+    staged.level->Set_WaterpangEffectAuthoringActive(true);
+#endif
+    m_WorldEffectPreview = std::move(staged);
+    EFFECT_ROW row; row.id = "effect.preview.world"; row.key = key;
+    row.durationMs = m_WorldEffectPreview->durationMs; row.previewElementIds = elements;
+    row.previewStartMs = focusMs; row.previewLoop = loop;
+    m_Transient = std::move(row);
+    m_ClockMs = focusMs; m_Active = true; m_Paused = false; m_SkipNextPlaybackDelta = true; m_Interaction = true;
+    m_Status = "Playing the saved Maharaka World occurrence: " + m_WorldEffectPreview->instanceId;
+    return true;
+}
+
+bool CEffectAuthoringSequencer::Select_MaharakaWaterGunEffect(const std::string& assetId)
+{
+#ifdef _DEBUG
+    const auto scene = CAnimationTargetService::Resolve_SceneCharacter();
+    if (!scene || !scene->Get_Spec() || !m_Panel || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::MAHARAKA))
+    { m_Status = "Enter Maharaka with a playable character before previewing the water gun's source bones."; return false; }
+    const std::string asset = scene->Get_Spec()->pAssetName;
+    if ((!m_Panel->Is_PreviewActive() || CAnimationTargetService::Resolve_AssetName() != asset) && !m_Panel->Select_TargetAsset(asset))
+    { m_Status = m_Panel->Get_Status(); return false; }
+    const auto character = CAnimationTargetService::Resolve_Character();
+    const auto model = CAnimationTargetService::Resolve_Model();
+    if (!character || !model) { m_Status = "The exact character preview model is unavailable."; return false; }
+    std::string clip = "watergun_idle";
+    constexpr std::string_view prefix = "effect.maharaka.watergun.watergun_att_";
+    if (assetId.starts_with(prefix))
+    {
+        const auto suffix = assetId.substr(prefix.size());
+        if (suffix.size() != std::string("1.full.restore").size() || suffix.front() < '1' || suffix.front() > '4' ||
+            suffix.substr(1) != ".full.restore")
+        { m_Status = "Unknown source water-gun animation identity."; return false; }
+        clip = "watergun_att_" + suffix.substr(0, 1);
+    }
+    std::uint32_t index = 0u; float native = 0.f, tickRate = 0.f;
+    if (!Clip_Metadata(model, clip, index, native, tickRate))
+    { m_Status = "The installed Maharaka character is missing its source clip: " + clip; return false; }
+    Stop();
+    m_PreviousWaterGunPreviewForced = character->Is_WaterGunPreviewForced();
+    if (!character->Set_WaterGunPreviewForced(true))
+    {
+        character->Set_WaterGunPreviewForced(m_PreviousWaterGunPreviewForced);
+        m_Status = "The installed source water-gun model/socket could not be prepared.";
+        return false;
+    }
+    m_WaterGunPreviewCharacter = character;
+    m_WaterGunEffectId = assetId;
+    CLIP row; row.id = "watergun.source.animation"; row.label = row.clipName = clip;
+    row.durationMs = assetId == "effect.maharaka.watergun.e.speed" ? 5000u :
+        static_cast<std::uint32_t>(std::ceil(native / tickRate * 1000.f));
+    row.loop = assetId == "effect.maharaka.watergun.e.speed";
+    m_WaterGunClips = {row};
+    m_UseKouku = false; m_CustomAnimation = false; m_SelectedSequence.clear();
+    m_AssetName = asset; m_InventoryGeneration = CAnimationTargetService::Resolve_TargetGeneration();
+    m_ModelRoot = true; m_DefaultAnchorSlotId = "root"; m_ClockMs = 0.0;
+    m_Status = "Prepared the installed character, water-gun socket and source animation: " + clip;
+    return true;
+#else
+    (void)assetId;
+    m_Status = "Water-gun Effect authoring is available in the Debug Client.";
+    return false;
+#endif
 }
 
 bool CEffectAuthoringSequencer::Select_SceneEffectTarget(const std::string& assetId, const bool requiresSourceModel,
@@ -1025,6 +1210,12 @@ bool CEffectAuthoringSequencer::Select_SceneEffectTarget(const std::string& asse
         }
         if (staged.Actors().size() != 1u || !staged.Actors().front().status.empty() || staged.Rows().empty())
         { m_Status = "Kouku Effect has no valid saved model/animation target: " + staged.Status(); return false; }
+    }
+    if (m_WorldEffectPreview)
+    {
+        auto pending = std::move(m_PendingWorldEffectPreview);
+        Stop();
+        m_PendingWorldEffectPreview = std::move(pending);
     }
     m_PendingKoukuEffectPreview = std::move(target);
     m_Status = m_ScenePreviewWorldRoot ? "Prepared Effect preview at the fixed World anchor." :
@@ -1620,6 +1811,11 @@ bool CEffectAuthoringSequencer::Record_V1Anchors(EFFECT_ROW& row, const float4x4
 }
 bool CEffectAuthoringSequencer::Play(const bool paused)
 {
+    if (m_WorldEffectPreview)
+    {
+        m_Active = true; m_Paused = paused; m_SkipNextPlaybackDelta = true;
+        return Sample(true);
+    }
     if (!m_Transient && m_Effects.empty() && m_CameraRows.empty() && m_Sounds.empty() && m_Colliders.empty() &&
         (!m_UseKouku && (m_CustomAnimation ? m_AnimationRows.empty() : m_SelectedSequence.empty())))
     { m_Status = "Select a model animation or append an Effect first."; return false; }
@@ -1773,6 +1969,8 @@ bool CEffectAuthoringSequencer::Append(const EFFECT_RESOURCE_KEY& key, const std
 }
 bool CEffectAuthoringSequencer::Preview(const EFFECT_RESOURCE_KEY& key, const std::uint32_t durationMs)
 {
+    if (key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT && key.strStableId.starts_with("effect.maharaka.waterpang."))
+        return Preview_MaharakaWorldEffect(key);
     if (key.strStableId != m_RecoveryCameraSession.EffectId() && !Ensure_RecoveryCameraSaved(m_Status)) return false;
     if (m_ValtanEffectPreview && m_ValtanEffectPreview->assetId != key.strStableId)
     {
@@ -1794,6 +1992,7 @@ bool CEffectAuthoringSequencer::Preview(const EFFECT_RESOURCE_KEY& key, const st
     if (m_ValtanEffectPreview && m_ValtanEffectPreview->assetId != key.strStableId)
     { m_Status = "The selected Valtan animation belongs to another Effect."; return false; }
     if (m_ValtanEffectPreview) animations = m_ValtanEffectPreview->clips;
+    if (m_WaterGunEffectId == key.strStableId) animations = m_WaterGunClips;
     const bool cameraOnlyV4 = m_Status.starts_with("Recovery camera preview uses");
     const bool replaceTarget = m_PendingKoukuEffectPreview.has_value() ||
         (m_KoukuEffectPreview && m_KoukuEffectPreview->assetId != key.strStableId);
@@ -1890,6 +2089,8 @@ bool CEffectAuthoringSequencer::Preview_Elements(const EFFECT_RESOURCE_KEY& key,
     const std::uint32_t durationMs, const std::uint32_t focusMs, const bool loop)
 {
     Preserve_ClockDuringAuthoring();
+    if (key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT && key.strStableId.starts_with("effect.maharaka.waterpang."))
+        return Preview_MaharakaWorldEffect(key, elementIds, focusMs, loop);
     if (m_ValtanEffectPreview && m_ValtanEffectPreview->assetId != key.strStableId)
     {
         auto pending = std::move(m_PendingKoukuEffectPreview);
@@ -1956,7 +2157,8 @@ bool CEffectAuthoringSequencer::Preview_Elements(const EFFECT_RESOURCE_KEY& key,
     const bool previousInteraction = m_Interaction;
     const std::vector<CAMERA_ROW> cameras;
     auto previousAnimations = std::move(m_TransientAnimationRows);
-    m_TransientAnimationRows = m_ValtanEffectPreview ? m_ValtanEffectPreview->clips : std::vector<CLIP>{};
+    m_TransientAnimationRows = m_WaterGunEffectId == key.strStableId ? m_WaterGunClips :
+        m_ValtanEffectPreview ? m_ValtanEffectPreview->clips : std::vector<CLIP>{};
     m_ClockMs = focusMs;
     // The row retains the document's time origin, including its native start delay.
     // Recovery camera rows belong to whole-document Preview, not element Solo.
@@ -2000,6 +2202,15 @@ bool CEffectAuthoringSequencer::Preview_Elements(const EFFECT_RESOURCE_KEY& key,
 
 bool CEffectAuthoringSequencer::Sample(const bool forceSeekSounds)
 {
+    if (m_WorldEffectPreview)
+    {
+        auto& preview = *m_WorldEffectPreview;
+        if (CLevel_Development::Get_Active(LEVEL::MAHARAKA) != preview.level)
+        { m_Status = "Maharaka World preview ended because its Level changed."; return false; }
+        if (!preview.player->Seek_InstanceToMs(preview.instanceId, static_cast<float>(m_ClockMs), preview.targets, forceSeekSounds))
+        { m_Status = preview.player->Get_Status(); return false; }
+        return true;
+    }
     if (!Sample_Model(ClockMs())) return false;
     float4x4_t root; if (!Resolve_Root(root)) return false;
     if (!Sample_Camera(ClockMs(), root)) return false;
@@ -2017,10 +2228,27 @@ void CEffectAuthoringSequencer::Pause(const bool paused)
 {
     if (m_Paused && !paused) m_SkipNextPlaybackDelta = true;
     m_Paused = paused;
-    if (m_Active && !Sample_Sounds(false)) Stop();
+    if (m_Active && !m_WorldEffectPreview && !Sample_Sounds(false)) Stop();
 }
 void CEffectAuthoringSequencer::Stop()
 {
+    if (m_WorldEffectPreview)
+    {
+#ifdef _DEBUG
+        if (CLevel_Development::Get_Active(LEVEL::MAHARAKA) == m_WorldEffectPreview->level)
+        {
+            m_WorldEffectPreview->player->Stop_All(m_WorldEffectPreview->targets, true);
+            m_WorldEffectPreview->level->Set_WaterpangEffectAuthoringActive(false);
+        }
+#endif
+        m_WorldEffectPreview.reset();
+    }
+    m_PendingWorldEffectPreview.reset();
+#ifdef _DEBUG
+    if (const auto character = m_WaterGunPreviewCharacter.lock())
+        character->Set_WaterGunPreviewForced(m_PreviousWaterGunPreviewForced);
+#endif
+    m_WaterGunPreviewCharacter.reset(); m_WaterGunEffectId.clear(); m_WaterGunClips.clear();
     Stop_Sounds();
     if (g_ModelClockOwner == this) g_ModelClockOwner = nullptr;
     Release_Camera(); m_TransientCameraRows.clear(); m_TransientAnimationRows.clear();
@@ -2062,6 +2290,7 @@ void CEffectAuthoringSequencer::Update(const float dt, const bool active)
                 // repeated GPU preparation and a skipped delta would interrupt the loop.
                 if (!Sample(true)) Stop();
             }
+            else if (m_WorldEffectPreview) { if (!Sample(true)) Stop(); }
             else if (!Play()) Stop();
         }
         else Pause(true);
@@ -2070,6 +2299,8 @@ void CEffectAuthoringSequencer::Update(const float dt, const bool active)
 
 bool CEffectAuthoringSequencer::Uses_Resource(const EFFECT_RESOURCE_KEY& key) const
 {
+    if (m_WorldEffectPreview) return key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT &&
+        key.strStableId == m_WorldEffectPreview->assetId;
     if (m_Transient) return m_Transient->key == key;
     return std::any_of(m_Effects.begin(), m_Effects.end(),
         [&](const EFFECT_ROW& row) { return row.key == key; });
@@ -2100,6 +2331,14 @@ bool CEffectAuthoringSequencer::Refresh_Effects(const EFFECT_RESOURCE_KEY* key,
 {
     Preserve_ClockDuringAuthoring();
     if (key && !Uses_Resource(*key)) return true;
+    if (m_WorldEffectPreview)
+    {
+        EFFECT_DOCUMENT_DESC document;
+        const EFFECT_RESOURCE_KEY selected{EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, m_WorldEffectPreview->assetId};
+        if (!m_V1Documents || !m_V1Documents(selected, document, m_Status) ||
+            !m_WorldEffectPreview->player->Preview_EffectDocument(document, m_WorldEffectPreview->targets, m_Status)) return false;
+        return Sample(true);
+    }
     float4x4_t root = m_WorldRoot;
     if (m_Active && !Resolve_Root(root)) return false;
     if (m_Transient)

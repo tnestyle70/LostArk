@@ -1197,7 +1197,7 @@ void Client::CSequencerTool::Select_Target(const TARGET target)
     m_eAnimationPreviewTransport = ANIMATION_PREVIEW_TRANSPORT::NONE;
     m_AnimationPreviewState = {};
     if (m_TargetChanged) m_TargetChanged(target);
-    if (target == TARGET::BOSS || target == TARGET::SEQUENCE)
+    if (target == TARGET::BOSS || target == TARGET::SEQUENCE || target == TARGET::OBJECT)
         if (auto* session = Selected_Session())
             session->Select_WorkbenchBoss(Get_SelectedBoss());
 }
@@ -1231,7 +1231,7 @@ void Client::CSequencerTool::Open(const TARGET target, const BOSS boss)
         // Stage the requested gate before entering the session. Never briefly
         // select the previous gate and discard an exact typed deep-link selection.
         if (target == TARGET::SEQUENCE) m_eSequenceBoss = boss;
-        if (target == TARGET::BOSS) m_eSelectedBoss = boss;
+        if (target == TARGET::BOSS || target == TARGET::OBJECT) m_eSelectedBoss = boss;
         Select_Target(target);
     }
     else Select_Boss(boss);
@@ -1266,9 +1266,9 @@ void Client::CSequencerTool::Select_Boss(const COMPOSITION_WORKBENCH_BOSS boss)
     if (selectedBoss != boss)
     {
         if (auto* previous = Selected_Session()) previous->On_WorkbenchDeactivated();
+        selectedBoss = boss;
         if (m_TargetChanged) m_TargetChanged(m_eSelectedTarget);
     }
-    selectedBoss = boss;
     if (ICompositionWorkbenchSession* session = Selected_Session())
         session->Select_WorkbenchBoss(boss);
 }
@@ -1278,7 +1278,7 @@ Client::ICompositionWorkbenchSession* Client::CSequencerTool::Selected_Session()
     switch (m_eSelectedTarget)
     {
     case TARGET::CHARACTER: return m_pCharacterSession;
-    case TARGET::OBJECT: return m_pObjectSession;
+    case TARGET::OBJECT: return m_eSelectedBoss == BOSS::VALTAN ? m_pValtanSession : m_pObjectSession;
     case TARGET::WORLD: return m_pClassSelectionSession.get();
     case TARGET::SEQUENCE:
         return m_eSequenceBoss == BOSS::VALTAN ? m_pValtanSession : m_pSequenceSession;
@@ -1544,7 +1544,7 @@ void Client::CSequencerTool::Render_ActionSelector()
         }
     }
     ImGui::Separator();
-    if (m_eSelectedTarget == TARGET::BOSS || m_eSelectedTarget == TARGET::SEQUENCE)
+    if (m_eSelectedTarget == TARGET::BOSS || m_eSelectedTarget == TARGET::SEQUENCE || m_eSelectedTarget == TARGET::OBJECT)
         Render_BossSelector();
 }
 
@@ -1629,7 +1629,8 @@ void Client::CSequencerTool::Render_Pane(
         if (pane == PANE::PATTERNS) Render_ActionSelector();
         if (pane == PANE::RESOURCES && m_bPhysicalAnimationBrowserVisible && m_eSelectedTarget != TARGET::WORLD)
             Render_PhysicalAnimationBrowser(session);
-        const bool hasBossOwner = m_eSelectedTarget == TARGET::BOSS || m_eSelectedTarget == TARGET::SEQUENCE;
+        const bool hasBossOwner = m_eSelectedTarget == TARGET::BOSS || m_eSelectedTarget == TARGET::SEQUENCE ||
+            m_eSelectedTarget == TARGET::OBJECT;
         ImGui::PushID(static_cast<int>(m_eSelectedTarget) * 16 +
             (hasBossOwner ? static_cast<int>(Get_SelectedBoss()) : 0));
         session.Render_WorkbenchPane(pane);
@@ -1701,6 +1702,7 @@ void Client::CSequencerTool::Render()
     m_bPhysicalAnimationFocused = false;
     m_PendingCompositionEdit.reset();
     m_PendingCompositionTransfer.reset();
+    session->Select_WorkbenchTarget(m_eSelectedTarget);
     session->Begin_WorkbenchFrame();
     Apply_ViewRequest(*session);
     if (expanded)
@@ -1717,7 +1719,8 @@ void Client::CSequencerTool::Render()
         if (ImGui::Button("Duplicate##SharedCompositionEdit"))
             m_PendingCompositionEdit = COMPOSITION_EDIT_COMMAND::DUPLICATE_SELECTION;
         if (!m_CompositionEditStatus.empty()) ImGui::TextWrapped("%s", m_CompositionEditStatus.c_str());
-        const bool hasBossOwner = m_eSelectedTarget == TARGET::BOSS || m_eSelectedTarget == TARGET::SEQUENCE;
+        const bool hasBossOwner = m_eSelectedTarget == TARGET::BOSS || m_eSelectedTarget == TARGET::SEQUENCE ||
+            m_eSelectedTarget == TARGET::OBJECT;
         ImGui::PushID(static_cast<int>(m_eSelectedTarget) * 16 +
             (hasBossOwner ? static_cast<int>(Get_SelectedBoss()) : 0));
         session->Render_WorkbenchPane(PANE::TOOLBAR);
