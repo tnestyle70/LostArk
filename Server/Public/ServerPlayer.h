@@ -162,7 +162,9 @@ namespace LostArk::Server
 	{
 		LostArk::Shared::PLAYER_CONTROL_KIND eControlKind = LostArk::Shared::PLAYER_CONTROL_KIND::HUMAN;
 		bool Is_Guide() const noexcept { return eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::GUIDE_AI; }
-		bool Is_Human() const noexcept { return !Is_Guide(); }
+		bool Is_Human() const noexcept { return eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::HUMAN; }
+        bool Is_WaterpangAI() const noexcept { return eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::WATERPANG_AI; }
+        std::string strWaterpangNpcArchetypeId;
 		SESSION_ID iSessionId = INVALID_SESSION_ID;
 		LostArk::Shared::PLAYER_ID iPlayerId =
 			LostArk::Shared::INVALID_PLAYER_ID;

@@ -901,6 +901,8 @@ bool CNetworkManager::Has_DispatchCapacity(
 		return m_DebugKillGateBossesResults.size() < MAX_REVISION_CONTROL_QUEUE;
 	case PACKET_TYPE::S2C_SET_COOLDOWN_MODE_RESULT:
 		return m_SetCooldownModeResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_MAHARAKA_AI_TUNING:
+		return m_MaharakaAITuningResults.size() < MAX_REVISION_CONTROL_QUEUE;
 	case PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT:
 		return m_DebugWorldPlaybackResults.size() < MAX_REVISION_CONTROL_QUEUE;
 	case PACKET_TYPE::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT:
@@ -1935,6 +1937,25 @@ bool CNetworkManager::Send_ConfirmNpcEntry(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_MaharakaAITuning(const LostArk::Shared::C2S_MAHARAKA_AI_TUNING& request)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || m_eWorldId != WORLD_ID::MAHARAKA || INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	CPacketWriter writer;
+	std::vector<std::uint8_t> frame;
+	return Write_Message(writer, request) &&
+		Build_Packet_Frame(PACKET_TYPE::C2S_MAHARAKA_AI_TUNING, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_MaharakaAITuning(LostArk::Shared::S2C_MAHARAKA_AI_TUNING& result)
+{
+	if (m_MaharakaAITuningResults.empty()) return false;
+	result = std::move(m_MaharakaAITuningResults.front());
+	m_MaharakaAITuningResults.pop_front();
+	return true;
+}
+
 bool CNetworkManager::Send_DebugWorldPlayback(const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request)
 {
 	using namespace LostArk::Shared;
@@ -2809,6 +2830,7 @@ void CNetworkManager::Reset_WorldInboundState()
 	Client::CPlayerSkillCatalog::Apply_ServerNumericSnapshot({});
 	Client::CCombatHUDViewModel::Get().Apply_ServerNumericSnapshot({});
 	m_DebugWorldPlaybackResults.clear();
+	m_MaharakaAITuningResults.clear();
 	m_DebugMadnessFormResults.clear();
 	m_VehicleRidingResults.clear();
 	m_HonorTitleResults.clear();
@@ -4103,6 +4125,21 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		if (m_SetCooldownModeResults.size() >= MAX_REVISION_CONTROL_QUEUE)
 		{ Fail_Protocol(WSAENOBUFS); return; }
 		m_SetCooldownModeResults.push_back(result);
+		break;
+	}
+	case PACKET_TYPE::S2C_MAHARAKA_AI_TUNING:
+	{
+		S2C_MAHARAKA_AI_TUNING result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{ Fail_Protocol(WSAEINVAL); return; }
+		if (m_eWorldId != WORLD_ID::MAHARAKA) break;
+		if (m_MaharakaAITuningResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_MaharakaAITuningResults overflow");
+			return;
+		}
+		m_MaharakaAITuningResults.push_back(std::move(result));
 		break;
 	}
 	case PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT:

@@ -414,6 +414,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 		}
 		if (hit.bHealthDamageDisabled) { incoming.iRawDamage = 0u; damageReduced = false; }
 		incoming.iPartDamage = hasTypedParts && !hit.bGuideSource && canDamageArmor ? hit.iPartDamage : 0u;
+		incoming.bDestroyAllEligibleParts = requiresDestructionBomb && hit.bDestructionBombSource && !hit.bGuideSource;
 		incoming.iCounterPower = hit.bGuideSource ? 0u : hit.iCounterPower;
 		incoming.bCounterFromPrimarySlot = !hit.bGuideSource && hit.bCounterFromPrimarySlot;
 		incoming.iServerTick = hit.iServerTick;

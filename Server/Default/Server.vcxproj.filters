@@ -85,6 +85,8 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\GuideCatalog.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\GameRoom_MaharakaAI.cpp" />
+    <ClCompile Include="..\Private\ServerGameplayContractTests_MaharakaAI.cpp" />
     <ClCompile Include="..\Private\GameRoom_Guide.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\GameRoom_GuideThreat.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\ServerGameplayContractTests_Guide.cpp"><Filter>Private</Filter></ClCompile>

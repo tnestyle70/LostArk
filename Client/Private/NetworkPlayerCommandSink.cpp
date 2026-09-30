@@ -12,6 +12,18 @@ bool Client::CNetworkPlayerCommandSink::Request_UseItem(const LostArk::Shared::C
 	return CNetworkManager::Get().Send_UseItem(request);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_MaharakaAITuning(
+	const LostArk::Shared::C2S_MAHARAKA_AI_TUNING& request)
+{
+	return CNetworkManager::Get().Send_MaharakaAITuning(request);
+}
+
+bool Client::CNetworkPlayerCommandSink::Consume_MaharakaAITuning(
+	LostArk::Shared::S2C_MAHARAKA_AI_TUNING& result)
+{
+	return CNetworkManager::Get().Try_Consume_MaharakaAITuning(result);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_DebugWorldPlayback(
 	const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request)
 {

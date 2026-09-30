@@ -2454,10 +2454,10 @@ bool_t CCharacter::Apply_WaterGunPresentation(bool_t isArmed)
 }
 
 #ifdef _DEBUG
-void CCharacter::Set_WaterGunPreviewForced(const bool_t forced)
+bool_t CCharacter::Set_WaterGunPreviewForced(const bool_t forced)
 {
 	m_bWaterGunPreviewForced = forced;
-	(void)Apply_WaterGunPresentation(m_bWaterGunServerArmed);
+	return Apply_WaterGunPresentation(m_bWaterGunServerArmed);
 }
 
 bool_t CCharacter::Play_WaterGunAttackPreview(const uint32_t attack)

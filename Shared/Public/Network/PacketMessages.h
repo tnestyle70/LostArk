@@ -98,6 +98,8 @@ namespace LostArk::Shared
 	//Player Spawn
 	struct S2C_PLAYER_SPAWNED
 	{
+        // Immutable NPC presentation for a Server-owned Waterpang contestant.
+        std::string strWaterpangNpcArchetypeId;
 		PLAYER_ID iPlayerId = INVALID_PLAYER_ID;
 		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
 		CHARACTER_CLASS_ID eCharacterClass = CHARACTER_CLASS_ID::END;
@@ -3731,5 +3733,33 @@ namespace LostArk::Shared
 	bool Read_Message(CPacketReader&, C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST&);
 	bool Write_Message(CPacketWriter&, const S2C_KOUKUSAYDON_RAID_STATE&);
 	bool Read_Message(CPacketReader&, S2C_KOUKUSAYDON_RAID_STATE&);
+
+    struct MAHARAKA_AI_TUNING final
+    {
+        std::uint32_t iRevision = 1u, iBotCount = 20u, iDecisionTicks = 9u;
+        std::uint32_t iMoveRetargetTicks = 45u, iSkillIntervalTicks = 60u;
+        float fTargetRangeM = 9.f, fMoveProbability = .8f, fAggression = .8f, fKnockbackRangeM = 6.f;
+        std::uint32_t iKnockbackMs = 242u;
+    };
+    enum class MAHARAKA_AI_OPERATION : std::uint8_t { GET, APPLY, SAVE };
+    enum class MAHARAKA_AI_RESULT : std::uint8_t { ACCEPTED, REVISION_CONFLICT, INVALID_VALUE, WRONG_WORLD, SAVE_FAILED };
+    struct C2S_MAHARAKA_AI_TUNING final
+    {
+        std::uint32_t iRequestSequence = 0u, iExpectedRevision = 0u;
+        MAHARAKA_AI_OPERATION eOperation = MAHARAKA_AI_OPERATION::GET;
+        MAHARAKA_AI_TUNING Tuning;
+    };
+    struct S2C_MAHARAKA_AI_TUNING final
+    {
+        std::uint32_t iRequestSequence = 0u;
+        MAHARAKA_AI_RESULT eResult = MAHARAKA_AI_RESULT::ACCEPTED;
+        MAHARAKA_AI_TUNING Tuning;
+        std::string strStatus;
+    };
+    bool Is_Valid_MaharakaAITuning(const MAHARAKA_AI_TUNING&);
+    bool Write_Message(CPacketWriter&, const C2S_MAHARAKA_AI_TUNING&);
+    bool Read_Message(CPacketReader&, C2S_MAHARAKA_AI_TUNING&);
+    bool Write_Message(CPacketWriter&, const S2C_MAHARAKA_AI_TUNING&);
+    bool Read_Message(CPacketReader&, S2C_MAHARAKA_AI_TUNING&);
 
 }

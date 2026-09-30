@@ -1164,10 +1164,10 @@ bool_t Client::CEffect_Tool::Try_PlayMarkedElementGroup()
 }
 
 bool_t Client::CEffect_Tool::Try_PreviewElementsTimeline(
-    const std::vector<std::string>& elementIds, const bool loop)
+    const std::vector<std::string>& requestedElementIds, const bool loop)
 {
     m_strKoukuPatternPreviewStatus.clear();
-    if (!m_ActiveDocument || !m_pAuthoringSequencer || elementIds.empty())
+    if (!m_ActiveDocument || !m_pAuthoringSequencer || requestedElementIds.empty())
     { m_strPreviewStatus = "Open an authored Effect and select elements before previewing."; return false; }
     if (!Validate_ActiveRegistryBoundAuditionFreshness(m_strPreviewStatus)) return false;
     EFFECT_DOCUMENT_DESC draft = *m_ActiveDocument;
@@ -1175,6 +1175,23 @@ bool_t Client::CEffect_Tool::Try_PreviewElementsTimeline(
         (m_bDetailDraftDirty && !Apply_DetailDraft(draft)) ||
         (m_bModelCueDraftDirty && !Apply_ModelCueDraft(draft)))
     { m_strPreviewStatus = "Element preview could not apply the current draft."; return false; }
+    auto elementIds = requestedElementIds;
+    if (loop || elementIds.size() > 1u)
+    {
+        // Inactive presentation placeholders belong to the authored anchor group,
+        // but have no playback payload. Keep them in the document and omit only
+        // these explicit no-ops from the group's draw selection. Solo stays strict.
+        std::erase_if(elementIds, [&draft](const auto& id)
+        {
+            const auto element = std::find_if(draft.Elements.begin(), draft.Elements.end(),
+                [&id](const auto& row) { return row.strElementId == id; });
+            return element != draft.Elements.end() &&
+                ((element->eKind == EFFECT_ELEMENT_KIND::LIGHT && !element->Detail.Light.bEnabled) ||
+                 (element->eKind == EFFECT_ELEMENT_KIND::SCREEN_POST && !element->Detail.ScreenPost.bEnabled));
+        });
+        if (elementIds.empty())
+        { m_strPreviewStatus = "The selected group contains only inactive presentation elements; previous preview preserved."; return false; }
+    }
     EFFECT_DOCUMENT_DESC preview;
     if (!Build_ElementsPreviewDocument(draft, elementIds, preview, m_strPreviewStatus)) return false;
     uint32_t focus = 0u, duration = 0u;

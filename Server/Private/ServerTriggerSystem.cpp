@@ -118,6 +118,9 @@ bool LostArk::Server::CServerTriggerSystem::Initialize(
 	std::vector<RUNTIME_TRIGGER> staged;
 	for (const WORLD_BOOTSTRAP_PLACEMENT& placement : placements)
 	{
+		// The room owns this collider's timed all-player vote; entry and G cannot bypass consent.
+		if (m_eWorldId == LostArk::Shared::WORLD_ID::VALTAN_ARENA &&
+			placement.strPlacementId == "Stage_Boss_Assembly") continue;
 		if (WORLD_BOOTSTRAP_KIND::TRIGGER_BOX != placement.eKind ||
 			!placement.isEnabled)
 		{
@@ -614,7 +617,7 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 	{
 		for (const auto& [playerId, player] : players)
 		{
-			if (player.Is_Guide()) continue;
+			if (!player.Is_Human()) continue;
 				if (LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction ||
 					LostArk::Shared::PLAYER_ACTION_STATE::WALL_CLIMB == player.eAction)
 				m_TriggerMoveInFlight.insert(playerId);
@@ -642,7 +645,7 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 		std::unordered_set<LostArk::Shared::PLAYER_ID> currentInside;
 		for (auto& [playerId, player] : players)
 		{
-			if (player.Is_Guide()) continue;
+			if (!player.Is_Human()) continue;
 			if (0u == player.iCurrentHp || !Contains(trigger, player))
 				continue;
 			// Keep membership unset during the jump: landing creates the entry edge.

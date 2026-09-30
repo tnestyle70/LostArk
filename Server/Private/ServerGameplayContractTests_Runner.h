@@ -22,6 +22,7 @@ public:
     static int Run(ServerGameplayContractDetail::CONTRACT_TEST_RUN_CONTEXT& context);
     static int Run_KoukuRaid();
     static int Run_GuideAI();
+    static int Run_MaharakaAI();
     static int Run_CharacterAdmissionOnly();
     static int Run_RoomPing();
     static int Run_BattleItemsOnly();

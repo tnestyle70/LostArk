@@ -30,6 +30,8 @@ public:
 	bool Consume_DebugKillGateBossesResult(LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT&) override;
 	bool Consume_SetCooldownModeResult(LostArk::Shared::S2C_SET_COOLDOWN_MODE_RESULT&) override;
 	bool Request_KoukuRaid(const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request) override;
+	bool Request_MaharakaAITuning(const LostArk::Shared::C2S_MAHARAKA_AI_TUNING& request) override;
+	bool Consume_MaharakaAITuning(LostArk::Shared::S2C_MAHARAKA_AI_TUNING& result) override;
 	bool Request_DebugWorldPlayback(const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request) override;
 	bool Consume_DebugWorldPlaybackResult(LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT& result) override;
 

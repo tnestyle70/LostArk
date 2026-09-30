@@ -272,6 +272,8 @@ public:
 	bool Send_SetCooldownMode(const LostArk::Shared::C2S_SET_COOLDOWN_MODE& request);
 	bool Try_Consume_DebugKillGateBossesResult(LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT& result);
 	bool Try_Consume_SetCooldownModeResult(LostArk::Shared::S2C_SET_COOLDOWN_MODE_RESULT& result);
+	bool Send_MaharakaAITuning(const LostArk::Shared::C2S_MAHARAKA_AI_TUNING& request);
+	bool Try_Consume_MaharakaAITuning(LostArk::Shared::S2C_MAHARAKA_AI_TUNING& result);
 	bool Send_DebugWorldPlayback(const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request);
 	bool Try_Consume_DebugWorldPlaybackResult(LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT& result);
 	bool Send_InteractTrigger(
@@ -608,6 +610,7 @@ private:
 	std::deque<LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT> m_DebugKillGateBossesResults;
 	std::deque<LostArk::Shared::S2C_SET_COOLDOWN_MODE_RESULT> m_SetCooldownModeResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT> m_DebugWorldPlaybackResults;
+	std::deque<LostArk::Shared::S2C_MAHARAKA_AI_TUNING> m_MaharakaAITuningResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT>
 		m_DebugMadnessFormResults;
 	std::deque<LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT> m_VehicleRidingResults;

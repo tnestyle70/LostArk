@@ -122,7 +122,7 @@ namespace LostArk::Shared
 	// 124 combines saved-character restore, raid EXIT votes and ground-target battle items.
 	// Independently released 125 peers carry water gun casts, avatar items, or minigame deadlines.
 	// 126 combines all three layouts and rejects those incompatible 125 peers.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 126;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 127;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -196,9 +196,9 @@ namespace LostArk::Shared
 	}
 
 	// v116: server-owned companion identity, separate party companion, prompt and trace.
-	enum class PLAYER_CONTROL_KIND : std::uint8_t { HUMAN = 0, GUIDE_AI = 1 };
+	enum class PLAYER_CONTROL_KIND : std::uint8_t { HUMAN = 0, GUIDE_AI = 1, WATERPANG_AI = 2 };
 	constexpr bool Is_Known_Player_Control_Kind(PLAYER_CONTROL_KIND kind)
-	{ return kind == PLAYER_CONTROL_KIND::HUMAN || kind == PLAYER_CONTROL_KIND::GUIDE_AI; }
+	{ return kind == PLAYER_CONTROL_KIND::HUMAN || kind == PLAYER_CONTROL_KIND::GUIDE_AI || kind == PLAYER_CONTROL_KIND::WATERPANG_AI; }
 
 	enum class PACKET_TYPE : std::uint16_t
 	{
@@ -446,7 +446,9 @@ namespace LostArk::Shared
 		// right after entering Bern. Every admitted request receives a typed result;
 		// success follows the authoritative inventory snapshot in the reliable queue.
 		C2S_RESTORE_CHARACTER,
-		S2C_RESTORE_CHARACTER_RESULT
+		S2C_RESTORE_CHARACTER_RESULT,
+        C2S_MAHARAKA_AI_TUNING,
+        S2C_MAHARAKA_AI_TUNING
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -574,6 +576,8 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_BUY_ITEMS:
 		case PACKET_TYPE::C2S_RESTORE_CHARACTER:
 		case PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT:
+        case PACKET_TYPE::C2S_MAHARAKA_AI_TUNING:
+        case PACKET_TYPE::S2C_MAHARAKA_AI_TUNING:
 		case PACKET_TYPE::C2S_BALANCE_QUERY:
 		case PACKET_TYPE::S2C_BALANCE_SNAPSHOT:
 		case PACKET_TYPE::C2S_BALANCE_PATCH:

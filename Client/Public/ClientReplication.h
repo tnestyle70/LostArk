@@ -631,6 +631,22 @@ namespace Client
 		};
 		std::map<std::pair<LostArk::Shared::NET_ENTITY_ID, std::uint32_t>,
 			BATTLE_ITEM_PROTECTION_PRESENTATION> m_BattleItemProtection;
+        bool Spawn_WaterGunProjectile(const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned,
+            COMBAT_OBJECT_PRESENTATION_HANDLE& handle, std::string& status);
+        bool Apply_WaterGunImpact(const LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event);
+        void Apply_WaterGunSpeed(const LostArk::Shared::PLAYER_SNAPSHOT& player,
+            std::uint32_t serverTick, const std::shared_ptr<CCharacter>& character);
+        void Clear_WaterGunSpeed(LostArk::Shared::NET_ENTITY_ID entity = LostArk::Shared::INVALID_NET_ENTITY_ID);
+        struct WATERGUN_SPEED_PRESENTATION final
+        {
+            std::weak_ptr<CCharacter> owner;
+            std::weak_ptr<CNpc> npc;
+            std::uint32_t endTick = 0u;
+            std::string occurrence;
+            std::uint64_t worldRootHandle = 0u;
+        };
+        void Update_WaterGunSpeedAnchors();
+        std::map<LostArk::Shared::NET_ENTITY_ID, WATERGUN_SPEED_PRESENTATION> m_WaterGunSpeed;
 		bool Apply_CombatObjectSpawn(
 			const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned);
 		bool Apply_CombatObjectPresentationEvent(
@@ -718,6 +734,18 @@ namespace Client
 		// Stable net objects: slot table, free-slot index and the
 		// handle-by-entity-id lookup, kept across frames.
 		CNetObjectRegistry m_Registry;
+        struct WATERPANG_NPC_PLAYER_VIEW final
+        {
+            std::weak_ptr<CNpc> npc;
+            std::string idleClip, runClip, attackClip, currentClip;
+            std::uint32_t castTick = 0u;
+        };
+        std::unordered_map<LostArk::Shared::NET_ENTITY_ID, WATERPANG_NPC_PLAYER_VIEW> m_WaterpangNpcPlayers;
+        bool Create_WaterpangNpcPlayer(const LostArk::Shared::S2C_PLAYER_SPAWNED& spawned,
+            WATERPANG_NPC_PLAYER_VIEW& out);
+        bool Update_WaterpangNpcPlayer(const LostArk::Shared::PLAYER_SNAPSHOT& player, std::uint32_t serverTick);
+        void Clear_WaterpangNpcPlayer(LostArk::Shared::NET_ENTITY_ID id);
+        void Clear_WaterpangNpcPlayers();
 		struct PENDING_PLAYER_PRESENTATION final
 		{
 			LostArk::Shared::PLAYER_SNAPSHOT Snapshot{};

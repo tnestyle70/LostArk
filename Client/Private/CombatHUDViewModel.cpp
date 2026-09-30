@@ -429,8 +429,8 @@ void Client::CCombatHUDViewModel::Apply_Boss(
 	m_Boss.eMechanicGaugeKind = snapshot.BossCombat.eMechanicGaugeKind;
 	m_Boss.iCurrentMechanicGauge = snapshot.BossCombat.iCurrentMechanicGauge;
 	m_Boss.iMaximumMechanicGauge = snapshot.BossCombat.iMaximumMechanicGauge;
-	/* Both Valtan magic-orb channels use the Server's confirmed response progress.
-	Only the legacy window falls back to the original Server stagger counter.
+	/* Authored magic-orb channels use the Server's independent stagger counter.
+	Only the legacy HP-response window still consumes response progress.
 	Exact action IDs hide the bar immediately on success, timeout or cancel. */
 	const bool legacyMagicOrbWindow = snapshot.strPatternId == "VALTAN_MAGIC_ORB_STAGGER_76" &&
 		snapshot.strActionId == "valtan.mechanic.magic-orb-stagger-76.window";
@@ -439,9 +439,10 @@ void Client::CCombatHUDViewModel::Apply_Boss(
 	if ((archetypeId == "BOSS_VALTAN" || archetypeId == "BOSS_VALTAN_GHOST") &&
 		(legacyMagicOrbWindow || authoredMagicOrbChannel))
 	{
-		const auto maximum = snapshot.BossCombat.iResponseThreshold > 0u ?
-			snapshot.BossCombat.iResponseThreshold : legacyMagicOrbWindow ? snapshot.BossCombat.iMaximumStagger : 0u;
-		const auto progress = snapshot.BossCombat.iResponseThreshold > 0u ?
+		const bool legacyResponse = legacyMagicOrbWindow && snapshot.BossCombat.iResponseThreshold > 0u;
+		const auto maximum = legacyResponse ?
+			snapshot.BossCombat.iResponseThreshold : snapshot.BossCombat.iMaximumStagger;
+		const auto progress = legacyResponse ?
 			snapshot.BossCombat.iResponseProgress : snapshot.BossCombat.iCurrentStagger;
 		m_Boss.eMechanicGaugeKind = maximum > 0u ? LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::STAGGER :
 			LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::NONE;

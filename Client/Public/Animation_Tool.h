@@ -408,7 +408,8 @@ public:
 		const VALTAN_PATTERN_VIEW& Pattern,
 		VALTAN_PATTERN_PREVIEW_PATH ePath,
 		std::string& strOutStatus,
-		uint32_t iPresentationDurationMs = 0u);
+		uint32_t iPresentationDurationMs = 0u,
+		const VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT* objectSounds = nullptr);
 	bool_t Seek_ValtanCompositionPattern(
 		const std::string& strPatternId,
 		uint32_t iPositionMs,
@@ -718,6 +719,7 @@ private:
 	void Reset_ValtanPatternMasterPreviewState(const std::string& status);
 	void Update_ValtanPatternMasterHitAreaPreview();
 	void Rebuild_ValtanPatternPreviewSounds();
+	void Append_ValtanCombatObjectPreviewSounds(bool_t resetTransport);
 	void Sample_ValtanPatternPreviewSounds(bool_t bResetTransport = false);
 	void Reset_ValtanPatternPreviewSounds();
 	static const char_t* ValtanPatternMasterPathName(
@@ -919,6 +921,7 @@ private:
 	bool_t m_bShowHitAreas = true;
 	VALTAN_PATTERN_TREE_VIEW m_ValtanPatternMasterView;
 	VALTAN_PATTERN_VIEW m_ValtanCompositionDraftPreview;
+	std::optional<VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT> m_ValtanCompositionObjectSoundPreview;
 	bool_t m_bValtanCompositionDraftPreviewReady = false;
 	std::vector<VALTAN_PATTERN_MASTER_PLAY_ITEM>
 		m_ValtanPatternMasterPlaylist;
@@ -1005,6 +1008,7 @@ private:
 		uint32_t iPlaybackOffsetMs = 0u;
 		uint64_t iHandle = 0u;
 		bool_t bAttempted = false;
+		bool_t bCombatObject = false;
 	};
 	std::vector<VALTAN_PREVIEW_SOUND_OCCURRENCE> m_ValtanPreviewSounds;
 	uint64_t m_iValtanPreviewSoundGeneration = 0u;

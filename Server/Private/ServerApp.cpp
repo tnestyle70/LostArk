@@ -3500,6 +3500,14 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::INTERACT_TRIGGER;
 		command.InteractTrigger = request;
 	}
+    else if (frame.ePacketType == PACKET_TYPE::C2S_MAHARAKA_AI_TUNING)
+    {
+        C2S_MAHARAKA_AI_TUNING request{};
+        if (!Read_Message(reader, request) || reader.Get_RemainingSize())
+        { closeMalformedPayload("C2S_MAHARAKA_AI_TUNING"); return; }
+        command.eType = ROOM_COMMAND_TYPE::MAHARAKA_AI_TUNING;
+        command.MaharakaAITuning = std::move(request);
+    }
 	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_WORLD_PLAYBACK)
 	{
 		C2S_DEBUG_WORLD_PLAYBACK request{};

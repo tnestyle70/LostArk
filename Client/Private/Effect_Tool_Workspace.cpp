@@ -153,6 +153,9 @@ shared_ptr<CEffectAuthoringSequencer> CEffect_Tool::Create_CompositionSequencer(
                 m_AuthoringOccurrenceDocuments.erase(object.get());
                 m_AuthoringOccurrenceLevels.erase(found);
             });
+        sequencer->Set_V1DocumentProvider(
+            [this](const EFFECT_RESOURCE_KEY& key, EFFECT_DOCUMENT_DESC& document, std::string& error)
+            { return Resolve_AuthoringOccurrenceDocument(key, document, error); });
         sequencer->Set_V1AnchorProvider(
             [this](const std::shared_ptr<CEffectObject>& object, const float4x4_t& root, bool useKouku, float seconds,
                 std::unordered_map<std::string, float4x4_t>& anchors, std::string& error)
@@ -246,7 +249,8 @@ bool CEffect_Tool::Preview_AuthoringResource(const EFFECT_RESOURCE_KEY& key, std
         return false;
     }
     if (key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT &&
-        (key.strStableId.starts_with("effect.kouku.") || key.strStableId.starts_with("effect.valtan.")))
+        (key.strStableId.starts_with("effect.kouku.") || key.strStableId.starts_with("effect.valtan.") ||
+         key.strStableId.starts_with("effect.maharaka.")))
     {
         const bool active = m_ActiveDocument && m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
             m_ActiveDocument->strEffectAssetId == key.strStableId;

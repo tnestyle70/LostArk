@@ -60,6 +60,7 @@ namespace LostArk::Server
 		CONFIRM_NPC_ENTRY,
 		INTERACT_TRIGGER,
 		DEBUG_WORLD_PLAYBACK,
+        MAHARAKA_AI_TUNING,
 		RETURN_TO_BERN,
 		PARTY_INVITE,
 		PARTY_INVITE_RESPOND,
@@ -151,6 +152,7 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_CONFIRM_NPC_ENTRY ConfirmNpcEntry;
 		LostArk::Shared::C2S_INTERACT_TRIGGER InteractTrigger;
 		LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK DebugWorldPlayback;
+        LostArk::Shared::C2S_MAHARAKA_AI_TUNING MaharakaAITuning;
 		LostArk::Shared::C2S_RETURN_TO_BERN ReturnToBern;
 		LostArk::Shared::C2S_PARTY_INVITE PartyInvite;
 		LostArk::Shared::C2S_PARTY_INVITE_RESPOND PartyInviteRespond;

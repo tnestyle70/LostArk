@@ -9,6 +9,7 @@
 #include "DataJson.h"
 #include "Level_ValtanArena.h"
 #include "Level_KakulSaydonArena.h"
+#include "Level_CharacterSelect.h"
 #include <fstream>
 #include <sstream>
 #include <locale>
@@ -19,6 +20,11 @@ namespace
     std::shared_ptr<Client::CCamera_Free> CurrentCamera()
     {
         auto& game = Engine::CGameInstance::Get();
+        if (game.Get_CurrentLevelID() == ETOUI(Client::LEVEL::CHARACTER_SELECT))
+        {
+            const auto* level = Client::CLevel_CharacterSelect::Get_Active();
+            return level ? level->Get_DebugCamera() : nullptr;
+        }
         return std::dynamic_pointer_cast<Client::CCamera_Free>(
             game.Get_GameObject(game.Get_CurrentLevelID(), L"Layer_Camera", 0));
     }
@@ -98,10 +104,12 @@ namespace
 void CMainApp::RenderCameraSpeedControls()
 {
     const auto camera = CurrentCamera();
-    if (!camera || !ImGui::CollapsingHeader("Camera")) return;
+    const auto level = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
+    const bool characterSelect = level == LEVEL::CHARACTER_SELECT;
+    if (!camera || !ImGui::CollapsingHeader(characterSelect ? "Character Select Camera" : "Camera",
+        characterSelect ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None)) return;
     const auto setSpeed = [&](float value) {
 #ifdef _DEBUG
-        const auto level = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
         if (level == LEVEL::VALTAN_ARENA && CLevel_ValtanArena::Get_Active())
         { CLevel_ValtanArena::Get_Active()->Set_DebugCameraSpeed(value); return; }
         if (level == LEVEL::KAKULSAYDON_ARENA && CLevel_KakulSaydonArena::Get_Active())
@@ -115,8 +123,9 @@ void CMainApp::RenderCameraSpeedControls()
         setSpeed(speed);
     if (ImGui::Button("Reset speed to 20 m/s")) setSpeed(20.f);
     ImGui::TextDisabled("F6: Follow / Free. Shift: x%.0f.", CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER);
+    if (characterSelect)
+        ImGui::TextDisabled("Applies to F6 / Movie free-camera movement; Movie playback timing stays authored.");
 #ifdef _DEBUG
-    const auto level = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
     if (level == LEVEL::VALTAN_ARENA || level == LEVEL::KAKULSAYDON_ARENA)
         ImGui::TextDisabled("Arena speed is retained for this Client session.");
     else

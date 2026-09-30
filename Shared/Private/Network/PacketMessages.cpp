@@ -1395,6 +1395,10 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer,
     if (!std::isfinite(spawned.fYawDegrees))
         return false;
 
+    if (!Is_Valid_StableId(spawned.strWaterpangNpcArchetypeId, true) ||
+        (!spawned.strWaterpangNpcArchetypeId.empty() && spawned.eControlKind != PLAYER_CONTROL_KIND::WATERPANG_AI))
+        return false;
+
     //playerid, net entity, character class, nickname
     //position x y z, yawdegrees를 u32로 기록
     writer.Write_U32(spawned.iPlayerId);
@@ -1415,7 +1419,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer,
     writer.Write_F32(spawned.fPositionZ);
     writer.Write_F32(spawned.fYawDegrees);
 
-    return true;
+    return writer.Write_String(spawned.strWaterpangNpcArchetypeId, MAX_STABLE_NETWORK_ID_BYTES);
 }
 
 bool LostArk::Shared::Read_Message(CPacketReader& reader, 
@@ -1430,6 +1434,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
     std::uint8_t rawCharacterClass = {};
     std::uint8_t rawControlKind = 0u;
     std::string nickName;
+    std::string waterpangNpcArchetypeId;
 
     float positionX = 0.f;
     float positionY = 0.f;
@@ -1464,6 +1469,10 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
 
     if (!reader.Read_F32(yawDegrees))
         return false;
+    if (!reader.Read_String(waterpangNpcArchetypeId, MAX_STABLE_NETWORK_ID_BYTES) ||
+        !Is_Valid_StableId(waterpangNpcArchetypeId, true) ||
+        (!waterpangNpcArchetypeId.empty() && static_cast<PLAYER_CONTROL_KIND>(rawControlKind) != PLAYER_CONTROL_KIND::WATERPANG_AI))
+        return false;
 
     if (iPlayerId == INVALID_PLAYER_ID)
         return false;
@@ -1494,6 +1503,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
     S2C_PLAYER_SPAWNED decoded{};
 
     decoded.iPlayerId = iPlayerId;
+    decoded.strWaterpangNpcArchetypeId = std::move(waterpangNpcArchetypeId);
     decoded.eControlKind = static_cast<PLAYER_CONTROL_KIND>(rawControlKind);
     decoded.iNetEntityId = iNetEntityId;
 
@@ -7686,4 +7696,58 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_GUIDE_STATE& messa
         !reader.Read_String(staged.strComboId, MAX_STABLE_NETWORK_ID_BYTES) || !ValidGuideState(staged)) return false;
     staged.bSurvivalOverride = survivalOverride != 0u;
     message = std::move(staged); return true;
+}
+
+bool LostArk::Shared::Is_Valid_MaharakaAITuning(const MAHARAKA_AI_TUNING& t)
+{
+    return t.iRevision && t.iBotCount <= 20u && t.iDecisionTicks >= 1u && t.iDecisionTicks <= 300u &&
+        t.iMoveRetargetTicks >= t.iDecisionTicks && t.iMoveRetargetTicks <= 900u &&
+        t.iSkillIntervalTicks >= 6u && t.iSkillIntervalTicks <= 1800u &&
+        std::isfinite(t.fTargetRangeM) && t.fTargetRangeM >= 1.f && t.fTargetRangeM <= 30.f &&
+        std::isfinite(t.fMoveProbability) && t.fMoveProbability >= 0.f && t.fMoveProbability <= 1.f &&
+        std::isfinite(t.fAggression) && t.fAggression >= 0.f && t.fAggression <= 1.f &&
+        std::isfinite(t.fKnockbackRangeM) && t.fKnockbackRangeM >= 0.f && t.fKnockbackRangeM <= 12.f &&
+        t.iKnockbackMs >= 1u && t.iKnockbackMs <= 3000u;
+}
+namespace
+{
+    void Write_MaharakaTuning(LostArk::Shared::CPacketWriter& w, const LostArk::Shared::MAHARAKA_AI_TUNING& t)
+    {
+        w.Write_U32(t.iRevision); w.Write_U32(t.iBotCount); w.Write_U32(t.iDecisionTicks);
+        w.Write_U32(t.iMoveRetargetTicks); w.Write_U32(t.iSkillIntervalTicks);
+        w.Write_F32(t.fTargetRangeM); w.Write_F32(t.fMoveProbability); w.Write_F32(t.fAggression);
+        w.Write_F32(t.fKnockbackRangeM); w.Write_U32(t.iKnockbackMs);
+    }
+    bool Read_MaharakaTuning(LostArk::Shared::CPacketReader& r, LostArk::Shared::MAHARAKA_AI_TUNING& t)
+    {
+        return r.Read_U32(t.iRevision) && r.Read_U32(t.iBotCount) && r.Read_U32(t.iDecisionTicks) &&
+            r.Read_U32(t.iMoveRetargetTicks) && r.Read_U32(t.iSkillIntervalTicks) && r.Read_F32(t.fTargetRangeM) &&
+            r.Read_F32(t.fMoveProbability) && r.Read_F32(t.fAggression) && r.Read_F32(t.fKnockbackRangeM) && r.Read_U32(t.iKnockbackMs);
+    }
+}
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_MAHARAKA_AI_TUNING& value)
+{
+    if (!value.iRequestSequence || value.eOperation > MAHARAKA_AI_OPERATION::SAVE) return false;
+    writer.Write_U32(value.iRequestSequence); writer.Write_U32(value.iExpectedRevision);
+    writer.Write_U8(static_cast<std::uint8_t>(value.eOperation)); Write_MaharakaTuning(writer, value.Tuning); return true;
+}
+bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_MAHARAKA_AI_TUNING& value)
+{
+    C2S_MAHARAKA_AI_TUNING staged; std::uint8_t operation = 0;
+    if (!reader.Read_U32(staged.iRequestSequence) || !reader.Read_U32(staged.iExpectedRevision) || !reader.Read_U8(operation) ||
+        operation > static_cast<std::uint8_t>(MAHARAKA_AI_OPERATION::SAVE) || !staged.iRequestSequence || !Read_MaharakaTuning(reader, staged.Tuning)) return false;
+    staged.eOperation = static_cast<MAHARAKA_AI_OPERATION>(operation); value = std::move(staged); return true;
+}
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_MAHARAKA_AI_TUNING& value)
+{
+    if (!value.iRequestSequence || value.eResult > MAHARAKA_AI_RESULT::SAVE_FAILED || !Is_Valid_MaharakaAITuning(value.Tuning) || value.strStatus.size() > 256u) return false;
+    writer.Write_U32(value.iRequestSequence); writer.Write_U8(static_cast<std::uint8_t>(value.eResult));
+    Write_MaharakaTuning(writer, value.Tuning); return writer.Write_String(value.strStatus, 256u);
+}
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_MAHARAKA_AI_TUNING& value)
+{
+    S2C_MAHARAKA_AI_TUNING staged; std::uint8_t result = 0;
+    if (!reader.Read_U32(staged.iRequestSequence) || !reader.Read_U8(result) || result > static_cast<std::uint8_t>(MAHARAKA_AI_RESULT::SAVE_FAILED) ||
+        !staged.iRequestSequence || !Read_MaharakaTuning(reader, staged.Tuning) || !Is_Valid_MaharakaAITuning(staged.Tuning) || !reader.Read_String(staged.strStatus, 256u)) return false;
+    staged.eResult = static_cast<MAHARAKA_AI_RESULT>(result); value = std::move(staged); return true;
 }

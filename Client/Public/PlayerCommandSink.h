@@ -29,6 +29,9 @@ public:
 	virtual bool Consume_DebugKillGateBossesResult(LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT&) { return false; }
 	virtual bool Consume_SetCooldownModeResult(LostArk::Shared::S2C_SET_COOLDOWN_MODE_RESULT&) { return false; }
 	virtual bool Request_KoukuRaid(const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST&) { return false; }
+	// Waterpang AI authoring sends typed intent; the Server owns persistence.
+	virtual bool Request_MaharakaAITuning(const LostArk::Shared::C2S_MAHARAKA_AI_TUNING&) { return false; }
+	virtual bool Consume_MaharakaAITuning(LostArk::Shared::S2C_MAHARAKA_AI_TUNING&) { return false; }
 	virtual bool Request_DebugWorldPlayback(const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK&) { return false; }
 	virtual bool Consume_DebugWorldPlaybackResult(LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT&) { return false; }
 

@@ -1026,6 +1026,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 			Handle_ReturnToBern(
 				command.iSessionId, command.ReturnToBern);
 			break;
+        case ROOM_COMMAND_TYPE::MAHARAKA_AI_TUNING:
+            Handle_MaharakaAITuning(command.iSessionId, command.MaharakaAITuning);
+            break;
 		case ROOM_COMMAND_TYPE::DEBUG_WORLD_PLAYBACK:
 			Handle_DebugWorldPlayback(command.iSessionId, command.DebugWorldPlayback);
 			break;
@@ -1092,6 +1095,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 	for (const auto& [id, player] : m_Players)
 		if (player.eCardMazeRole != LostArk::Shared::CARD_MAZE_ROLE::NONE)
 			m_CardMazePreviousPositions[id] = {player.fPositionX, player.fPositionZ};
+	Update_MaharakaWaterpangMatch(updateTick);
 	Update_Guides(fixedDeltaSeconds);
 	Update_WorldPickups(updateTick, false);
 	Update_Players(fixedDeltaSeconds);

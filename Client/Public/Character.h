@@ -180,7 +180,7 @@ public:
 	   class weapons and overrides idle/run; disarm restores both. */
 	bool_t Apply_WaterGunPresentation(bool_t isArmed);
 #ifdef _DEBUG
-	void Set_WaterGunPreviewForced(bool_t forced);
+	bool_t Set_WaterGunPreviewForced(bool_t forced);
 	bool_t Is_WaterGunPreviewForced() const { return m_bWaterGunPreviewForced; }
 	// Local preview of watergun_att_1..6; att_1..4 also spawn their source muzzle effect.
 	bool_t Play_WaterGunAttackPreview(uint32_t attack);

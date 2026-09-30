@@ -44,6 +44,7 @@ class CCharacterActionWorkbench;
 class CWorldObjectTool;
 class CWorldLevelTool;
 class CGuideAITool;
+class CMaharakaAITool;
 struct WORLD_LEVEL_TOOL_REQUEST;
 struct KOUKU_MAP_EFFECT_PLACEMENT_REQUEST;
 struct KOUKU_SAYDON_COMPOSITION_DOCUMENT;
@@ -99,6 +100,7 @@ private:
 		WORLD_OBJECT,
 		WORLD_LEVEL,
 		GUIDE_AI,
+		MAHARAKA_AI,
 		EFFECT_COMPOSITION,
 		COUNT
 	};
@@ -441,6 +443,7 @@ private:
 	bool_t Set_HealthBarPositions(const std::array<f32_t, 12>& offsets);
 	std::array<f32_t, 2> Get_MechanicBarScale() const;
 	bool_t Set_MechanicBarScale(const std::array<f32_t, 2>& scale);
+	bool_t Set_ValtanMechanicTuning(const std::array<f32_t, 8>& tuning);
 	void Apply_MechanicBarRect();
 	void Update_MechanicBarAnchor();
 	bool_t Save_HealthBarPositions(std::string& status);
@@ -727,6 +730,11 @@ private:
 	/* Width/height scales apply only to the mechanic row; original rects never change. */
 	std::array<f32_t, 2> m_MechanicBarScale{ 1.f / 3.f, 1.f };
 	std::array<f32_t, 2> m_SavedMechanicBarScale{ 1.f / 3.f, 1.f };
+	/* Per group: head X/Y offset, width/height scale. Valtan stagger and armor PNG are independent. */
+	std::array<f32_t, 8> m_ValtanMechanicTuning{ 0.f, 0.f, 1.f / 3.f, 1.f, -24.f, -40.f, 1.f, 1.f };
+	std::array<f32_t, 8> m_SavedValtanMechanicTuning{ 0.f, 0.f, 1.f / 3.f, 1.f, -24.f, -40.f, 1.f, 1.f };
+	bool_t m_bValtanStaggerDebug = false;
+	bool_t m_bValtanArmorBreakDebug = false;
 	std::array<float4_t, 3> m_MechanicBarBaseRects{};
 	std::array<bool_t, 3> m_MechanicBarHasBase{};
 	// Sampled from the same live head anchor as the world health bar after the final camera update.
@@ -1011,6 +1019,7 @@ private:
 	unique_ptr<CWorldObjectTool> m_pWorldObjectTool;
 	unique_ptr<CWorldLevelTool> m_pWorldLevelTool;
 	unique_ptr<CGuideAITool> m_pGuideAITool;
+	unique_ptr<CMaharakaAITool> m_pMaharakaAITool;
 	unique_ptr<WORLD_LEVEL_TOOL_REQUEST> m_pWorldLevelPendingMapRequest;
 #endif
 	std::chrono::steady_clock::time_point m_WorldLevelMapDeadline{};

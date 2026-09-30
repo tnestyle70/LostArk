@@ -361,6 +361,8 @@ bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 	using LostArk::Shared::WORLD_ID;
 	if (m_eWorldId == WORLD_ID::MAHARAKA && Count_HumanPlayers() == 0u)
 	{
+        Clear_MaharakaWaterpangAI();
+        m_iWaterpangAIRetryTick = 0u;
 		m_MaharakaWaterpangIntro.reset();
 		m_MaharakaWaterpangDebugEvent.reset();
 		m_MaharakaWaterGunShots.clear();
@@ -375,6 +377,9 @@ bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 	// A fresh room must not inherit the departed raid's gate vote or clear state.
 	// The empty-player guard above preserves an encounter still owned by its party.
 	m_GateProgress = {};
+	m_iArenaAssemblyStartTick = m_iArenaAssemblyRaidEpoch = 0u;
+	m_bArenaAssemblyAttempted = false;
+	m_ArenaAssemblyParticipants.clear();
 	if (WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId)
 	{
 		Stop_KoukuBingoDuration(true);
