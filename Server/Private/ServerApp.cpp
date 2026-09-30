@@ -2816,6 +2816,17 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 				"C2S_ENTER_WORLD decode or trailing-byte validation failed");
 			return;
 		}
+#ifndef _DEBUG
+		// Debug may audition presentation in the unmatched shared arena. Real matches
+		// still use the four-player queue and isolated match rooms in both builds.
+		if (enterWorld.eWorldId == WORLD_ID::COLOSSEUM)
+		{
+			Request_SessionClose(sessionId,
+				SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED, WSAEACCES,
+				"Colosseum requires the Bern four-player queue; direct world admission is not permitted");
+			return;
+		}
+#endif
         std::unique_lock numericAdmissionLock{m_DataRevisionAdmissionMutex};
         if (m_NumericAdmissionPaused)
         {
@@ -3522,6 +3533,18 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		}
 		command.eType = ROOM_COMMAND_TYPE::COLOSSEUM_QUEUE_LEAVE;
 		command.ColosseumQueueLeave = request;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_COLOSSEUM_LOAD_READY)
+	{
+		if (!Read_Message(reader, command.ColosseumLoadReady) || reader.Get_RemainingSize())
+		{ closeMalformedPayload("C2S_COLOSSEUM_LOAD_READY"); return; }
+		command.eType = ROOM_COMMAND_TYPE::COLOSSEUM_LOAD_READY;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_COLOSSEUM_RETURN)
+	{
+		if (!Read_Message(reader, command.ColosseumReturn) || reader.Get_RemainingSize())
+		{ closeMalformedPayload("C2S_COLOSSEUM_RETURN"); return; }
+		command.eType = ROOM_COMMAND_TYPE::COLOSSEUM_RETURN;
 	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_INTERACT_TRIGGER)
 	{
@@ -4306,6 +4329,7 @@ bool LostArk::Server::CServerApp::Validate_DataRevisionTransactionMembership(
 		}
 	}
 	std::set<const CGameRoom*> currentRooms;
+	for (const auto& [id, room] : m_ColosseumMatches) if (room) currentRooms.insert(room.get());
 	for (const auto& [worldId, room] : m_SharedGameRooms)
 	{
 		(void)worldId;
@@ -4533,6 +4557,7 @@ bool LostArk::Server::CServerApp::Commit_DataRevisionTransaction()
 			}
 		}
 		std::set<const CGameRoom*> currentRooms;
+		for (const auto& [id, room] : m_ColosseumMatches) if (room) currentRooms.insert(room.get());
 		for (const auto& [worldId, room] : m_SharedGameRooms)
 		{
 			(void)worldId;
@@ -4878,6 +4903,7 @@ void LostArk::Server::CServerApp::Advance_ServerControlTransactions()
 					if (nullptr != simulation)
 						staged.Simulations.push_back(simulation);
 				}
+				for (const auto& [id, room] : m_ColosseumMatches) if (room) staged.Simulations.push_back(room);
 				const bool requesterParticipates = std::any_of(
 					staged.Participants.begin(), staged.Participants.end(),
 					[&event](const DATA_REVISION_PARTICIPANT& participant)
@@ -4973,6 +4999,8 @@ void LostArk::Server::CServerApp::Tick_GameplaySimulations(
 			if (nullptr != simulation)
 				simulations.push_back(simulation);
 		}
+		for (const auto& [matchId, simulation] : m_ColosseumMatches)
+			if (simulation) simulations.push_back(simulation);
 	}
 
 	// The room thread is the only writer of gameplay state. The mutex is
@@ -5005,6 +5033,16 @@ void LostArk::Server::CServerApp::Tick_GameplaySimulations(
 		Handle_WorldTransfers(simulation);
 	}
 	Retire_QuiescentCharacterSelectArenas();
+	{
+		std::scoped_lock lock{ m_SessionsMutex };
+		for (auto iter = m_ColosseumMatches.begin(); iter != m_ColosseumMatches.end();)
+		{
+			const bool bound = std::any_of(m_GameplayBindingBySessionId.begin(), m_GameplayBindingBySessionId.end(),
+				[&](const auto& row) { return row.second.pSimulation == iter->second; });
+			if (!bound && iter->second->Try_SealPrivateArenaForRetirement()) iter = m_ColosseumMatches.erase(iter);
+			else ++iter;
+		}
+	}
 }
 
 void LostArk::Server::CServerApp::Retire_QuiescentCharacterSelectArenas()
@@ -5045,6 +5083,12 @@ void LostArk::Server::CServerApp::Handle_WorldTransfers(
 		SESSION_WORLD_TRANSFER_FAILURE failure{};
 		if (!Transfer_SessionWorld(sourceSimulation, transfer, failure))
 		{
+			if (transfer.iColosseumMatchId)
+			{
+				std::scoped_lock lock{ m_SessionsMutex };
+				const auto match = m_ColosseumMatches.find(transfer.iColosseumMatchId);
+				if (match != m_ColosseumMatches.end()) match->second->Remove_ColosseumExpectedSession(transfer.iSessionId);
+			}
 			if (!transfer.PartyBatchSessionIds.empty())
 			{
 				std::cerr << "Party transfer rejected without source departure: "
@@ -5107,8 +5151,24 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	}
 
 	const WORLD_ID sourceWorldId = sourceSimulation->Get_WorldId();
-	const std::shared_ptr<CGameRoom> targetSimulation =
-		Find_SharedSimulation(transfer.eTargetWorldId);
+	std::shared_ptr<CGameRoom> targetSimulation;
+	if (transfer.eTargetWorldId == WORLD_ID::COLOSSEUM && transfer.iColosseumMatchId)
+	{
+		std::scoped_lock lock{ m_SessionsMutex };
+		auto found = m_ColosseumMatches.find(transfer.iColosseumMatchId);
+		if (found == m_ColosseumMatches.end())
+		{
+			auto room = std::make_shared<CGameRoom>(WORLD_ID::COLOSSEUM, m_pActiveGameplayGeneration);
+			if (!room->Is_Ready() || !room->Configure_ColosseumMatch(transfer.iColosseumMatchId, transfer.ColosseumSessions))
+			{ setFailure(SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED, WSAEINVAL, "colosseum-room-creation"); return false; }
+			found = m_ColosseumMatches.emplace(transfer.iColosseumMatchId, std::move(room)).first;
+			for (const auto expected : transfer.ColosseumSessions)
+				if (!m_Sessions.contains(expected) || m_Sessions.at(expected)->Is_Closing())
+					found->second->Remove_ColosseumExpectedSession(expected);
+		}
+		targetSimulation = found->second;
+	}
+	else targetSimulation = Find_SharedSimulation(transfer.eTargetWorldId);
 	if (nullptr == targetSimulation ||
 		targetSimulation == sourceSimulation ||
 		sourceWorldId == transfer.eTargetWorldId)
@@ -5218,6 +5278,7 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	enterWorld.eCharacterClass = transfer.eCharacterClass;
 	enterWorld.strNickName = transfer.strNickName;
 	enterWorld.iVoiceType = transfer.iVoiceType;
+	enterWorld.strAppearanceJson = transfer.strAppearanceJson;
 	ROOM_COMMAND enterCommand{};
 	enterCommand.eType = ROOM_COMMAND_TYPE::ENTER_WORLD;
 	enterCommand.iSessionId = transfer.iSessionId;
@@ -5338,6 +5399,7 @@ void LostArk::Server::CServerApp::Shutdown()
 		std::scoped_lock lock{ m_SessionsMutex };
 		m_CharacterSelectArenas.clear();
 		m_SharedGameRooms.clear();
+		m_ColosseumMatches.clear();
 		m_pActiveGameplayGeneration.reset();
 		m_ActiveGameplayBootstrapContentRevision = {};
 		m_ActiveNonValtanGameplayRevision = {};
@@ -5515,6 +5577,7 @@ void LostArk::Server::CServerApp::Advance_NumericBalanceTransaction()
                 m_NumericBalanceSimulations.reserve(m_SharedGameRooms.size() + m_CharacterSelectArenas.size());
                 for (const auto& [world, room] : m_SharedGameRooms) if (room) m_NumericBalanceSimulations.push_back(room);
                 for (const auto& [owner, room] : m_CharacterSelectArenas) if (room) m_NumericBalanceSimulations.push_back(room);
+				for (const auto& [id, room] : m_ColosseumMatches) if (room) m_NumericBalanceSimulations.push_back(room);
                 for (const auto& room : m_NumericBalanceSimulations)
                     if (!room->Stage_NumericBalance(m_NumericBalanceTransactionSequence, prepared.Generation, status)) break;
                 if (status.empty()) m_NumericAdmissionPaused = true;

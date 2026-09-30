@@ -237,6 +237,8 @@ namespace LostArk::Server
 		[[nodiscard]] std::string Take_PerformanceDiagnostic();
 		bool Try_DequeueWorldTransfer(
 			SERVER_WORLD_TRANSFER_REQUEST& outTransfer);
+		bool Configure_ColosseumMatch(std::uint32_t matchId, const std::vector<SESSION_ID>& sessions);
+		void Remove_ColosseumExpectedSession(SESSION_ID sessionId);
 
 		[[nodiscard]] LostArk::Shared::WORLD_ID Get_WorldId() const
 		{
@@ -1177,6 +1179,11 @@ namespace LostArk::Server
 		void Send_ColosseumQueueState(
 			SESSION_ID sessionId, LostArk::Shared::COLOSSEUM_QUEUE_STATE state);
 		void Try_FormColosseumMatch();
+		void Handle_ColosseumLoadReady(SESSION_ID, const LostArk::Shared::C2S_COLOSSEUM_LOAD_READY&);
+		void Handle_ColosseumReturn(SESSION_ID, const LostArk::Shared::C2S_COLOSSEUM_RETURN&);
+		void Update_ColosseumMatch(std::uint32_t tick);
+		void Broadcast_ColosseumMatchState();
+		void Score_ColosseumKills(std::uint32_t tick);
 		// The player pressed the key an interact-gated trigger box offered.
 		// Names only the box; the trigger system re-tests that this player is
 		// still standing in it before anything runs, so a stale or forged
@@ -1864,6 +1871,11 @@ namespace LostArk::Server
 			std::uint32_t iRequestSequence = 0u;
 		};
 		std::vector<COLOSSEUM_QUEUE_ENTRY> m_ColosseumQueue;
+		std::uint32_t m_iColosseumMatchId = 0u;
+		std::vector<SESSION_ID> m_ColosseumSessions;
+		LostArk::Shared::COLOSSEUM_MATCH_PHASE m_eColosseumPhase = LostArk::Shared::COLOSSEUM_MATCH_PHASE::LOADING;
+		std::uint32_t m_iColosseumPhaseStart = 0u, m_iColosseumPhaseEnd = 0u;
+		std::uint32_t m_iColosseumScores[2]{};
 		GATE_PROGRESS_STATE m_GateProgress;
 		std::uint32_t m_iArenaAssemblyStartTick = 0u;
 		std::uint32_t m_iArenaAssemblyRaidEpoch = 0u;

@@ -1234,7 +1234,8 @@ uint8_t Client::CCustomizingView::Read_SavedVoiceType(const std::string& strJson
 
 bool_t Client::CCustomizingView::Apply_SavedLook(
 	const shared_ptr<CCharacter>& pCharacter, const std::string& strJson,
-	const ComPtr<ID3D11Device>& pDevice, const ComPtr<ID3D11DeviceContext>& pContext)
+	const ComPtr<ID3D11Device>& pDevice, const ComPtr<ID3D11DeviceContext>& pContext,
+	const bool_t requireExactOutfit)
 {
 	if (nullptr == pCharacter || strJson.empty() || nullptr == pCharacter->Get_Spec())
 		return false;
@@ -1257,9 +1258,11 @@ bool_t Client::CCustomizingView::Apply_SavedLook(
 		{
 			if (nullptr == g_pSavedLookOutfit)
 				g_pSavedLookOutfit = std::make_unique<CCharacterOutfitApplier>(pDevice, pContext);
-			/* Soft: a failed swap leaves the class default outfit and the look still applies. */
-			(void)g_pSavedLookOutfit->Apply(pCharacter, iHair, iCostume);
+			/* Replicated admission requires every requested part; editor preview remains soft. */
+			const bool_t applied = g_pSavedLookOutfit->Apply(pCharacter, iHair, iCostume, requireExactOutfit);
+			if (requireExactOutfit && !applied) return false;
 		}
+		else if (requireExactOutfit) return false;
 	}
 	return Apply_SavedAppearance(pCharacter, strJson);
 }

@@ -27,6 +27,9 @@ namespace LostArk::Shared
 
 	[[nodiscard]] bool Is_Valid_VoiceType(
 		std::uint8_t voiceType) noexcept;
+	inline constexpr std::size_t MAX_PLAYER_APPEARANCE_BYTES = 16384u;
+	// A bounded numeric customizing preset, never a path or a client-selected runtime asset.
+	[[nodiscard]] bool Is_Valid_PlayerAppearance(std::string_view text, CHARACTER_CLASS_ID characterClass);
 
 	// Same stable-ID alphabet the authored world sequence document enforces, so
 	// a wire value can never name something the Client could not have loaded.
@@ -44,6 +47,7 @@ namespace LostArk::Shared
 
 		std::string strNickName;
 		std::uint8_t iVoiceType = MIN_VOICE_TYPE;
+		std::string strAppearanceJson;
 	};
 
 	bool Write_Message(
@@ -117,6 +121,7 @@ namespace LostArk::Shared
 		float fYawDegrees = 0.f;
 		PLAYER_CONTROL_KIND eControlKind = PLAYER_CONTROL_KIND::HUMAN;
 		std::uint8_t iVoiceType = MIN_VOICE_TYPE;
+		std::string strAppearanceJson;
 	};
 
 	bool Write_Message(
@@ -3120,6 +3125,7 @@ namespace LostArk::Shared
 	// draws it on the match loading screen.
 	struct S2C_COLOSSEUM_MATCH_FOUND
 	{
+		std::uint32_t iMatchId = 0u;
 		std::uint8_t iLocalIndex = 0;
 		std::vector<COLOSSEUM_MATCH_PARTICIPANT> Participants;
 	};
@@ -3130,6 +3136,35 @@ namespace LostArk::Shared
 	bool Read_Message(
 		CPacketReader& reader,
 		S2C_COLOSSEUM_MATCH_FOUND& message);
+
+	// Server room clock, fixed 30 Hz. Team 0 is always the left side for every peer.
+	enum class COLOSSEUM_MATCH_PHASE : std::uint8_t { LOADING, INTRO, COUNTDOWN, PLAYING, FINISHED, END };
+	inline constexpr std::uint8_t COLOSSEUM_DRAW_TEAM = 255u;
+	struct C2S_COLOSSEUM_LOAD_READY { std::uint32_t iMatchId = 0u; };
+	struct C2S_COLOSSEUM_RETURN { std::uint32_t iMatchId = 0u; };
+	struct COLOSSEUM_MATCH_PLAYER_STATE
+	{
+		PLAYER_ID iPlayerId = INVALID_PLAYER_ID;
+		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
+		std::uint8_t iTeam = 0u, iArrivalIndex = 0u;
+		bool bReady = false;
+	};
+	struct S2C_COLOSSEUM_MATCH_STATE
+	{
+		std::uint32_t iMatchId = 0u, iServerTick = 0u;
+		COLOSSEUM_MATCH_PHASE ePhase = COLOSSEUM_MATCH_PHASE::LOADING;
+		std::uint32_t iPhaseStartTick = 0u, iPhaseEndTick = 0u;
+		std::uint32_t iLeftScore = 0u, iRightScore = 0u;
+		std::uint8_t iWinningTeam = COLOSSEUM_DRAW_TEAM;
+		std::uint8_t iExpectedPlayers = 0u;
+		std::vector<COLOSSEUM_MATCH_PLAYER_STATE> Participants;
+	};
+	bool Write_Message(CPacketWriter&, const C2S_COLOSSEUM_LOAD_READY&);
+	bool Read_Message(CPacketReader&, C2S_COLOSSEUM_LOAD_READY&);
+	bool Write_Message(CPacketWriter&, const C2S_COLOSSEUM_RETURN&);
+	bool Read_Message(CPacketReader&, C2S_COLOSSEUM_RETURN&);
+	bool Write_Message(CPacketWriter&, const S2C_COLOSSEUM_MATCH_STATE&);
+	bool Read_Message(CPacketReader&, S2C_COLOSSEUM_MATCH_STATE&);
 
 	// Offered to the one session standing in an interact-gated trigger box, and
 	// withdrawn when it leaves. bAvailable false clears whatever the Client is

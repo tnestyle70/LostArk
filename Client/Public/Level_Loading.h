@@ -38,7 +38,6 @@ private:
 	MatchLoading_Layout.json, text and the class portraits are set here. */
 	void Ready_ColosseumMatchView();
 	void Update_ColosseumMatchProgress();
-	void Render_ColosseumMatchText();
 #ifdef _DEBUG
 	void Render_LoadingProgressDiagnostics();
 #endif
@@ -52,21 +51,7 @@ private:
 	(CUILayoutRuntime), hidden until a Lobby load failure is reported -- the loading screen is
 	product UI, so it draws nothing through ImGui. */
 	unique_ptr<class CUILayoutRuntime> m_pRecoveryView = { nullptr };
-	unique_ptr<class CUILayoutRuntime> m_pMatchView = { nullptr };
-	/* Resolved once in Ready_ColosseumMatchView: the entering player's class/nickname fill the
-	left team's key slot. Class 0xFF means the identity was not available. */
-	std::uint8_t					m_iMatchLocalClass = 0xFFu;
-	wstring_t						m_strMatchLocalName;
-	/* The roster of this match, per team (0 = left = the entering player's team, 1 = right), filled from
-	the Server's S2C_COLOSSEUM_MATCH_FOUND. The screen lays out exactly that many cards and hides a team
-	with none. Without a roster (a Debug Lobby entry) only the entering player is listed. */
-	struct MATCH_CARD
-	{
-		std::uint8_t iClass = 0xFFu;
-		wstring_t strName;
-	};
-	std::vector<MATCH_CARD>			m_MatchCards[2];
-	std::uint32_t					m_iMatchTeamCount[2] = { 1u, 0u };
+	unique_ptr<class CColosseumLoadingView> m_pColosseumLoading;
 	bool_t m_isActivationRequested = { false };
 	bool_t m_isFailureReported = { false };
 	bool_t m_isRetryRequested = { false };

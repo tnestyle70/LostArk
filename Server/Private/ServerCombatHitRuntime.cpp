@@ -569,6 +569,35 @@ namespace
 	}
 }
 
+bool LostArk::Server::CServerCombatHitRuntime::Is_EnemyPlayer(const SERVER_PLAYER& source, const SERVER_PLAYER& target) noexcept
+{
+	return source.iColosseumMatchId && source.iColosseumMatchId == target.iColosseumMatchId &&
+		source.bColosseumCombatActive && target.bColosseumCombatActive && source.iColosseumTeam < 2u &&
+		target.iColosseumTeam < 2u && source.iColosseumTeam != target.iColosseumTeam &&
+		source.iCurrentHp && target.iCurrentHp && source.iPlayerId != target.iPlayerId;
+}
+
+LostArk::Server::SERVER_COMBAT_HIT_RESULT
+LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToPlayer(const SERVER_PLAYER& source, SERVER_PLAYER& target,
+	const SERVER_PLAYER_TO_WORLD_HIT& hit, const CGameplayCatalog& catalog,
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& events)
+{
+	if (!Is_EnemyPlayer(source, target) || hit.bHealthDamageDisabled) return SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED;
+	SERVER_WORLD_TO_PLAYER_HIT incoming{};
+	incoming.iRawDamage = hit.iRawDamage; incoming.fSourceX = hit.fSourceX; incoming.fSourceZ = hit.fSourceZ;
+	incoming.fPushRangeM = hit.fPushRangeM; incoming.iPushMs = hit.iPushMs; incoming.iServerTick = hit.iServerTick;
+	const std::size_t first = events.size();
+	const auto result = Apply_WorldToPlayer(target, incoming, catalog, events);
+	for (std::size_t index = first; index < events.size(); ++index)
+	{
+		events[index].iSourcePlayerId = source.iPlayerId;
+		if (hit.bCritical && events[index].eHitFlag == LostArk::Shared::DAMAGE_HIT_FLAG::NORMAL)
+			events[index].eHitFlag = LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL;
+	}
+	if (result == SERVER_COMBAT_HIT_RESULT::KILLED) target.iColosseumKillerId = source.iPlayerId;
+	return result;
+}
+
 LostArk::Server::SERVER_COMBAT_HIT_RESULT
 LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	SERVER_PLAYER& target,

@@ -814,6 +814,8 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 
 void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 {
+	std::vector<SERVER_PLAYER*> pvpTargets;
+	if (m_iColosseumMatchId) for (auto& [id, player] : m_Players) pvpTargets.push_back(&player);
 	const std::uint32_t updateTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
 		1u : m_iServerTick + 1u;
@@ -821,6 +823,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 	{
 		(void)playerId;
 		if (playerId == m_iGuideReceptionId) continue;
+		if (player.iColosseumMatchId && !player.bColosseumCombatActive) continue;
 		if (player.CardMaze.transferStartTick && player.iCurrentHp) continue;
 		const auto ownsLivePatternOccurrence =
 			[this](const LostArk::Shared::NET_ENTITY_ID ownerEntityId,
@@ -1046,7 +1049,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			&m_ServerCollisionSystem,
 			fixedDeltaSeconds,
 			updateTick,
-			m_TickDamageEvents);
+			m_TickDamageEvents, m_iColosseumMatchId ? &pvpTargets : nullptr);
 		if (LostArk::Shared::PLAYER_ACTION_STATE::NONE == player.eAction &&
 			PLAYER_PENDING_COMMAND_KIND::NONE != player.PendingCommand.eKind)
 		{

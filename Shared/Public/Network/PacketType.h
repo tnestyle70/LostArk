@@ -126,7 +126,7 @@ namespace LostArk::Shared
 	// Independently released 127 branches add voice, durability, or Waterpang AI.
 	// Colosseum 128 adds its world and queue on top of 126. Those peers cannot
 	// decode the combined layout. 129 carries all four contracts together.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 129;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 130;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -460,7 +460,10 @@ namespace LostArk::Shared
 		S2C_COLOSSEUM_MATCH_FOUND = 116,
 		C2S_REPAIR_EQUIPMENT = 117,
 		C2S_MAHARAKA_AI_TUNING = 118,
-		S2C_MAHARAKA_AI_TUNING = 119
+		S2C_MAHARAKA_AI_TUNING = 119,
+		C2S_COLOSSEUM_LOAD_READY = 120,
+		S2C_COLOSSEUM_MATCH_STATE = 121,
+		C2S_COLOSSEUM_RETURN = 122
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -599,6 +602,9 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_COLOSSEUM_QUEUE_LEAVE:
 		case PACKET_TYPE::S2C_COLOSSEUM_QUEUE_STATE:
 		case PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND:
+		case PACKET_TYPE::C2S_COLOSSEUM_LOAD_READY:
+		case PACKET_TYPE::S2C_COLOSSEUM_MATCH_STATE:
+		case PACKET_TYPE::C2S_COLOSSEUM_RETURN:
 			return true;
 		default:
 			return  false;

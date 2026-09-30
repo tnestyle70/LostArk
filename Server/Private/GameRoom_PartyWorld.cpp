@@ -90,6 +90,7 @@ bool LostArk::Server::CGameRoom::Stage_ReturnToBern(
 	transfer.eCharacterClass = player.eCharacterClass;
 	transfer.strNickName = player.strNickName;
 	transfer.iVoiceType = player.iVoiceType;
+	transfer.strAppearanceJson = player.strAppearanceJson;
 	transfer.CarriedDurability = player.Get_DurabilityState();
 	transfer.iHonorTitleId = player.iHonorTitleId;
 	transfer.iPartyRequestSequence = requestSequence;
@@ -765,6 +766,7 @@ bool LostArk::Server::CGameRoom::Stage_PartyWorldTransfer(
 	transfer.eCharacterClass = leader.eCharacterClass;
 	transfer.strNickName = leader.strNickName;
 	transfer.iVoiceType = leader.iVoiceType;
+	transfer.strAppearanceJson = leader.strAppearanceJson;
 	transfer.CarriedDurability = leader.Get_DurabilityState();
 	transfer.iHonorTitleId = leader.iHonorTitleId;
 	transfer.iPartyRequestSequence = requestSequence;
@@ -1084,6 +1086,7 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 		enter.eCharacterClass = member->second.eCharacterClass;
 		enter.strNickName = member->second.strNickName;
 		enter.iVoiceType = member->second.iVoiceType;
+		enter.strAppearanceJson = member->second.strAppearanceJson;
 		STAGED_PLAYER_ENTRY entry{};
 		SESSION_DIAGNOSTIC_REASON reason{};
 		if (!target.Stage_PlayerEntry(session, enter, entries, entry, reason, status,
@@ -1190,6 +1193,7 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 			message.eCharacterClass = entry.Player.eCharacterClass;
 			message.strNickName = entry.Player.strNickName;
 			message.iVoiceType = entry.Player.iVoiceType;
+			message.strAppearanceJson = entry.Player.strAppearanceJson;
 			message.fPositionX = entry.Player.fPositionX;
 			message.fPositionY = entry.Player.fPositionY;
 			message.fPositionZ = entry.Player.fPositionZ;

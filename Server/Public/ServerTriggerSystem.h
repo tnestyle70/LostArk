@@ -17,6 +17,8 @@ namespace LostArk::Server
 {
 	struct SERVER_WORLD_TRANSFER_REQUEST final
 	{
+		std::uint32_t iColosseumMatchId = 0u;
+		std::vector<SESSION_ID> ColosseumSessions;
 		SESSION_ID iSessionId = INVALID_SESSION_ID;
 		LostArk::Shared::WORLD_ID eTargetWorldId =
 			LostArk::Shared::WORLD_ID::END;
@@ -24,6 +26,7 @@ namespace LostArk::Server
 			LostArk::Shared::CHARACTER_CLASS_ID::END;
 		std::string strNickName;
 		std::uint8_t iVoiceType = LostArk::Shared::MIN_VOICE_TYPE;
+		std::string strAppearanceJson;
 		// Worn honor title, re-applied by the target room's admission.
 		LostArk::Shared::HONOR_TITLE_ID iHonorTitleId = LostArk::Shared::INVALID_HONOR_TITLE_ID;
 		/* One immutable leader-first batch, not independent transfers. The

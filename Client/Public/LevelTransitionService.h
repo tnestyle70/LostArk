@@ -69,7 +69,7 @@ public:
 	static ComPtr<ID3D11ShaderResourceView> Get_TransferPortraitSRV();
 	/* Colosseum match loading: the Server-decided roster (S2C_COLOSSEUM_MATCH_FOUND) is stored the
 	moment it arrives in Bern, ahead of the world transfer, so the loading screen can lay out the
-	right number of cards. The loading screen reads it once and clears it. */
+	right number of cards. It survives the loading/presentation barrier and is cleared on arena exit. */
 	static void Set_ColosseumMatch(const LostArk::Shared::S2C_COLOSSEUM_MATCH_FOUND& match);
 	static bool_t Try_Get_ColosseumMatch(LostArk::Shared::S2C_COLOSSEUM_MATCH_FOUND& outMatch);
 	static void Clear_ColosseumMatch();

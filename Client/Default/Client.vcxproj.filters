@@ -351,6 +351,9 @@
     <ClCompile Include="..\Private\Level_Development.cpp">
       <Filter>01.Levels\06. Development</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\ColosseumMatchView.cpp">
+      <Filter>01.Levels\06. Development</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\ProfilerCaptureIO.cpp">
       <Filter>03. Tools\09. Profiler</Filter>
     </ClCompile>
@@ -1138,6 +1141,10 @@
     <ClInclude Include="..\Public\Level_Development.h">
       <Filter>01.Levels\06. Development</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\ColosseumLoadingView.h"><Filter>01.Levels\06. Development</Filter></ClInclude>
+    <ClInclude Include="..\Public\ColosseumMatchView.h"><Filter>01.Levels\06. Development</Filter></ClInclude>
+    <ClInclude Include="..\Public\ColosseumIntroCutscene.h"><Filter>01.Levels\06. Development</Filter></ClInclude>
+    <ClInclude Include="..\Public\ColosseumMatchStart.h"><Filter>01.Levels\06. Development</Filter></ClInclude>
     <ClInclude Include="..\Public\Level_Loading.h">
       <Filter>01.Levels\05. Loading</Filter>
     </ClInclude>
@@ -6113,6 +6120,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Data\Camera\ColosseumIntro.cutscene.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Camera\ColosseumVictory.cutscene.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\UI\Colosseum\MatchHUD_Layout.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\UI\Colosseum\Result_Layout.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\UI\Colosseum\Result_Victory.keyframes.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\UI\Colosseum\Result_Defeat.keyframes.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\UI\Colosseum\Result_Draw.keyframes.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\UI\Colosseum\Result_TitleTracks.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Camera\ColosseumMatchStart.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Customizing\FaceSliders\DK.facesliders.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Maps\Authoring\LV_PVP_COLOSSEUM\LV_PVP_COLOSSEUM.mapplacements"><Filter>96.DataFiles</Filter></None>

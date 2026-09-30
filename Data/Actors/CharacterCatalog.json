@@ -30,7 +30,8 @@
         "Character/LanceMaster/AnimSets/LanceMaster_RideDragon2AnimSet.wmodel",
         "Character/LanceMaster/AnimSets/LanceMaster_MazeHammerAnimSet.wmodel",
         "Character/LanceMaster/AnimSets/LanceMaster_TerrainJumpAnimSet.wmodel",
-        "Character/LanceMaster/AnimSets/LanceMaster_WallClimbAnimSet.wmodel"
+        "Character/LanceMaster/AnimSets/LanceMaster_WallClimbAnimSet.wmodel",
+        "Character/LanceMaster/AnimSets/LanceMaster_ColosseumVictoryAnimSet.wmodel"
       ],
       "waterGunAnimationSetModels": [
         "Character/LanceMaster/AnimSets/LanceMaster_WaterGunAnimSet.wmodel"
@@ -3334,7 +3335,8 @@
       ],
       "animationSetModels": [
         "Character/GunSlinger/AnimSets/GunSlinger_MazeHammerAnimSet.wmodel",
-        "Character/GunSlinger/AnimSets/GunSlinger_WallClimbAnimSet.wmodel"
+        "Character/GunSlinger/AnimSets/GunSlinger_WallClimbAnimSet.wmodel",
+        "Character/GunSlinger/AnimSets/GunSlinger_ColosseumVictoryAnimSet.wmodel"
       ],
       "waterGunAnimationSetModels": [
         "Character/GunSlinger/AnimSets/GunSlinger_WaterGunAnimSet.wmodel"
@@ -7237,7 +7239,8 @@
       ],
       "animationSetModels": [
         "Character/Slayer/AnimSets/Slayer_MazeHammerAnimSet.wmodel",
-        "Character/Slayer/AnimSets/Slayer_WallClimbAnimSet.wmodel"
+        "Character/Slayer/AnimSets/Slayer_WallClimbAnimSet.wmodel",
+        "Character/Slayer/AnimSets/Slayer_ColosseumVictoryAnimSet.wmodel"
       ],
       "waterGunAnimationSetModels": [
         "Character/Slayer/AnimSets/Slayer_WaterGunAnimSet.wmodel"
@@ -11744,7 +11747,8 @@
         "Character/Artist/AnimSets/Artist_RideDragon2AnimSet.wmodel",
         "Character/Artist/AnimSets/Artist_MazeHammerAnimSet.wmodel",
         "Character/Artist/AnimSets/Artist_TerrainJumpAnimSet.wmodel",
-        "Character/Artist/AnimSets/Artist_WallClimbAnimSet.wmodel"
+        "Character/Artist/AnimSets/Artist_WallClimbAnimSet.wmodel",
+        "Character/Artist/AnimSets/Artist_ColosseumVictoryAnimSet.wmodel"
       ],
       "waterGunAnimationSetModels": [
         "Character/Artist/AnimSets/Artist_WaterGunAnimSet.wmodel"
@@ -14938,7 +14942,8 @@
         "Character/DimensionMaster/AnimSets/DimensionMaster_RideDragon2AnimSet.wmodel",
         "Character/DimensionMaster/AnimSets/DimensionMaster_MazeHammerAnimSet.wmodel",
         "Character/DimensionMaster/AnimSets/DimensionMaster_TerrainJumpAnimSet.wmodel",
-        "Character/DimensionMaster/AnimSets/DimensionMaster_WallClimbAnimSet.wmodel"
+        "Character/DimensionMaster/AnimSets/DimensionMaster_WallClimbAnimSet.wmodel",
+        "Character/DimensionMaster/AnimSets/DimensionMaster_ColosseumVictoryAnimSet.wmodel"
       ],
       "waterGunAnimationSetModels": [
         "Character/DimensionMaster/AnimSets/DimensionMaster_WaterGunAnimSet.wmodel"
@@ -17530,7 +17535,8 @@
         "Character/Warlord/AnimSets/Warlord_RideDragon2AnimSet.wmodel",
         "Character/Warlord/AnimSets/Warlord_MazeHammerAnimSet.wmodel",
         "Character/Warlord/AnimSets/Warlord_TerrainJumpAnimSet.wmodel",
-        "Character/Warlord/AnimSets/Warlord_WallClimbAnimSet.wmodel"
+        "Character/Warlord/AnimSets/Warlord_WallClimbAnimSet.wmodel",
+        "Character/Warlord/AnimSets/Warlord_ColosseumVictoryAnimSet.wmodel"
       ],
       "waterGunAnimationSetModels": [
         "Character/Warlord/AnimSets/Warlord_WaterGunAnimSet.wmodel"
@@ -19662,7 +19668,8 @@
         "Character/GuardianKnight/AnimSets/GuardianKnight_RideDragon2AnimSet.wmodel",
         "Character/GuardianKnight/AnimSets/GuardianKnight_MazeHammerAnimSet.wmodel",
         "Character/GuardianKnight/AnimSets/GuardianKnight_TerrainJumpAnimSet.wmodel",
-        "Character/GuardianKnight/AnimSets/GuardianKnight_WallClimbAnimSet.wmodel"
+        "Character/GuardianKnight/AnimSets/GuardianKnight_WallClimbAnimSet.wmodel",
+        "Character/GuardianKnight/AnimSets/GuardianKnight_ColosseumVictoryAnimSet.wmodel"
       ],
       "waterGunAnimationSetModels": [
         "Character/GuardianKnight/AnimSets/GuardianKnight_WaterGunAnimSet.wmodel"

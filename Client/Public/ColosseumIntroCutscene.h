@@ -30,7 +30,7 @@ NS_BEGIN(Client)
    player's feet, fade to black. Afterwards the Level's own follow camera and the Server's pen
    positions are back, so each team waits in its holding pen.
 
-   The Server never learns about this. The players are the real replicated Characters: while the
+	   The Server owns the match clock and roster. The players are the real replicated Characters: while the
    cutscene plays each one is shown at its lineup slot through Character::Set_CutscenePoseOverride
    (presentation transform only), and the pen position from the snapshot returns the moment the
    override is cleared. Input is blocked for the whole time through Is_Active(); the Level gates
@@ -122,6 +122,12 @@ public:
 
 	void Update(const f32_t fTimeDelta, const CClientReplication& replication)
 	{
+		const auto& match = replication.Get_ColosseumMatchState();
+		if (match.iMatchId)
+		{
+			Update_ServerTimeline(replication, match, replication.Get_ColosseumServerTick());
+			return;
+		}
 		if (!Is_Active())
 			return;
 		const std::shared_ptr<CCamera_Free> pCamera = m_pCamera.lock();
@@ -229,6 +235,55 @@ public:
 	}
 
 private:
+	void Update_ServerTimeline(const CClientReplication& replication,
+		const LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE& match, const double serverTick)
+	{
+		using P = LostArk::Shared::COLOSSEUM_MATCH_PHASE;
+		const auto camera = m_pCamera.lock();
+		if (!camera || !m_pView || m_ePhase == PHASE::FAILED) return;
+		if (match.ePhase == P::LOADING ||
+			(match.ePhase == P::INTRO && serverTick < match.iPhaseStartTick))
+		{
+			m_ePhase = PHASE::WAITING;
+			Show_Overlay(false, 0.f); // The shared loading view owns this entire interval.
+			return;
+		}
+		if (match.ePhase != P::INTRO)
+		{
+			if (m_ePhase != PHASE::DONE)
+			{
+				Clear_Actors();
+				(void)camera->End_PresentationOverride(CAMERA_OWNER);
+				Show_Overlay(false, 0.f);
+				m_ePhase = PHASE::DONE;
+			}
+			return;
+		}
+		const f32_t elapsedMs = static_cast<f32_t>((std::max)(0.0, serverTick - match.iPhaseStartTick) * (1000.0 / 30.0));
+		if (elapsedMs < m_Doc.fDurationMs)
+		{
+			m_ePhase = PHASE::PLAYING;
+			m_fClockMs = elapsedMs;
+			// Reconcile actual stable IDs each frame: a departed participant is removed,
+			// and a late presentation may never be permanently lost from the lineup.
+			Clear_Actors();
+			Build_Actors(replication);
+			for (const auto& actor : m_Actors)
+				if (const auto character = actor.pCharacter.lock()) character->Set_CutscenePoseOverride(actor.vPosition, actor.fYawDegrees);
+			Apply_Camera(*camera);
+			Show_Overlay(true, Sample_Fade(m_fClockMs));
+			Update_Vs();
+		}
+		else
+		{
+			Clear_Actors();
+			(void)camera->End_PresentationOverride(CAMERA_OWNER);
+			m_ePhase = PHASE::RETURN;
+			m_fClockMs = elapsedMs - m_Doc.fDurationMs;
+			Show_Overlay(false, 1.f - std::clamp(m_fClockMs / (std::max)(1.f, m_Doc.fReturnFadeMs), 0.f, 1.f));
+		}
+	}
+
 	enum class PHASE { WAITING, PLAYING, RETURN, DONE, FAILED };
 
 	struct SHOT_KEY { f32_t fTimeMs = 0.f; float3_t vEye = {}; };
@@ -441,12 +496,12 @@ private:
 		}
 	}
 
-	/* The team is the pen side the Server put the player on (west of the arena axis = team A, the
-	   left of the lineup); within a team the lower entity id takes the first slot. */
+	/* The actual server roster is the only team/slot authority, not world X or entity order. */
 	void Build_Actors(const CClientReplication& replication)
 	{
 		std::vector<REPLICATED_PLAYER_VIEW> players;
 		replication.Collect_PlayerViews(players);
+		const auto& match = replication.Get_ColosseumMatchState();
 		std::vector<std::pair<LostArk::Shared::NET_ENTITY_ID, ACTOR>> teams[2];
 		for (const REPLICATED_PLAYER_VIEW& player : players)
 		{
@@ -460,8 +515,13 @@ private:
 			actor.pCharacter = pCharacter;
 			actor.strJob = Job_Name(player.eCharacterClass);
 			(void)CWorldPlayerNameplateView::Try_ConvertUtf8(player.strNickname, actor.strName);
-			const f32_t fX = XMVectorGetX(pCharacter->Get_Transform()->Get_State(STATE::POSITION));
-			teams[fX < m_Doc.fArenaCenterX ? 0u : 1u].emplace_back(player.iNetEntityId, std::move(actor));
+			const auto row = std::find_if(match.Participants.begin(), match.Participants.end(), [&](const auto& entry) {
+				return entry.iNetEntityId == player.iNetEntityId && entry.iPlayerId == player.iPlayerId;
+			});
+			if (row != match.Participants.end() && row->iTeam < 2u)
+				teams[row->iTeam].emplace_back(row->iArrivalIndex, std::move(actor));
+			else if (!match.iMatchId && player.isLocal) // Explicit no-match F1 camera preview only.
+				teams[0].emplace_back(0u, std::move(actor));
 		}
 		m_Actors.clear();
 		for (size_t t = 0; t < 2u; ++t)

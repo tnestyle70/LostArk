@@ -4055,6 +4055,8 @@ HRESULT CMainApp::Render()
 		pValtan->Render_MvpPortraits();
 	}
 	Render_ColosseumTransferPortrait();
+	if (auto* colosseum = CLevel_Development::Get_Active(LEVEL::COLOSSEUM))
+		colosseum->Submit_ColosseumLoadingPortraits();
 
 	CEffectPresentationService::Submit_VisibleLevelPresentations();
 

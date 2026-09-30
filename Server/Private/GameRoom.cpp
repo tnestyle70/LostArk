@@ -644,7 +644,7 @@ void LostArk::Server::CGameRoom::Abort_GameplayGeneration(
 bool LostArk::Server::CGameRoom::Try_SealPrivateArenaForRetirement()
 {
 	using LostArk::Shared::WORLD_ID;
-	if (WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId)
+	if (WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId && !m_iColosseumMatchId)
 		return false;
 
 	// Gameplay containers are room-thread-owned. The mutex makes the empty
@@ -868,6 +868,10 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 
 	for (ROOM_COMMAND& command : commands)
 	{
+		if (m_iColosseumMatchId && m_eColosseumPhase != LostArk::Shared::COLOSSEUM_MATCH_PHASE::PLAYING &&
+			command.eType != ROOM_COMMAND_TYPE::REGISTER_SESSION && command.eType != ROOM_COMMAND_TYPE::ENTER_WORLD &&
+			command.eType != ROOM_COMMAND_TYPE::COLOSSEUM_LOAD_READY && command.eType != ROOM_COMMAND_TYPE::COLOSSEUM_RETURN &&
+			command.eType != ROOM_COMMAND_TYPE::ROOM_PING && command.eType != ROOM_COMMAND_TYPE::CHAT) continue;
 		switch (command.eType)
 		{
 		case ROOM_COMMAND_TYPE::REGISTER_SESSION:
@@ -1059,6 +1063,12 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 			Handle_ColosseumQueueLeave(
 				command.iSessionId, command.ColosseumQueueLeave);
 			break;
+		case ROOM_COMMAND_TYPE::COLOSSEUM_LOAD_READY:
+			Handle_ColosseumLoadReady(command.iSessionId, command.ColosseumLoadReady);
+			break;
+		case ROOM_COMMAND_TYPE::COLOSSEUM_RETURN:
+			Handle_ColosseumReturn(command.iSessionId, command.ColosseumReturn);
+			break;
 		case ROOM_COMMAND_TYPE::GATE_PROGRESS_PROPOSE:
 			Handle_GateProgressPropose(
 				command.iSessionId, command.GateProgressPropose);
@@ -1108,6 +1118,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		if (player.eCardMazeRole != LostArk::Shared::CARD_MAZE_ROLE::NONE)
 			m_CardMazePreviousPositions[id] = {player.fPositionX, player.fPositionZ};
 	Update_MaharakaWaterpangMatch(updateTick);
+	Update_ColosseumMatch(updateTick);
 	Update_Guides(fixedDeltaSeconds);
 	Update_WorldPickups(updateTick, false);
 	Update_Players(fixedDeltaSeconds);
@@ -1245,7 +1256,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		return;
 	}
 	Enforce_VehicleRidingState();
+	Score_ColosseumKills(updateTick);
 	m_iServerTick = updateTick;
+	if (m_iColosseumMatchId && updateTick % 3u == 0u) Broadcast_ColosseumMatchState();
 	Expire_RaidEntryProposals();
 	Expire_GateProgressVote();
 	/* A hit that wore gear answers its owner with the inventory snapshot that carries the wear. */

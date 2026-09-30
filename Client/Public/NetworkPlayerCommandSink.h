@@ -146,6 +146,8 @@ public:
 		std::uint32_t clientSequence, const std::string& npcPlacementId) override;
 	bool Request_ColosseumQueueLeave(std::uint32_t clientSequence) override;
 	bool Consume_ColosseumQueueState(LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE& outState) override;
+	bool Request_ColosseumLoadReady(std::uint32_t matchId) override;
+	bool Request_ColosseumReturn(std::uint32_t matchId) override;
 	bool Consume_RaidMvpResult(LostArk::Shared::S2C_RAID_MVP_RESULT& outResult) override;
 	bool Request_ReturnToBern(
 		std::uint32_t clientSequence) override;

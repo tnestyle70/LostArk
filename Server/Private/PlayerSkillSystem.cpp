@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <iterator>
 #include <random>
 
 namespace
@@ -238,6 +239,33 @@ namespace
 		return LostArk::Server::CServerCombatHitRuntime::Is_PlayerDamageableWorldTarget(entity);
 	}
 
+	LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ PlayerBodyOf(const LostArk::Server::SERVER_PLAYER& player)
+	{
+		return {player.fPositionX, player.fPositionZ, LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_X};
+	}
+
+	void ApplyPvpHit(LostArk::Server::SERVER_PLAYER& source, LostArk::Server::SERVER_PLAYER& target,
+		const std::uint32_t skillId, std::uint32_t rawDamage, const LostArk::Server::PLAYER_SKILL_HIT* hit,
+		const LostArk::Server::CGameplayCatalog& catalog, const float x, const float z,
+		const std::uint32_t tick, std::vector<LostArk::Shared::DAMAGE_EVENT>& events)
+	{
+		using namespace LostArk::Server;
+		if ((hit && !OwnsHealthDamage(*hit)) || !CServerCombatHitRuntime::Is_EnemyPlayer(source, target)) return;
+		SERVER_PLAYER_TO_WORLD_HIT incoming{};
+		incoming.iSourcePlayerId = source.iPlayerId; incoming.iSkillId = skillId;
+		rawDamage = CServerBuffRuntime::Scale_Damage(rawDamage, CServerBuffRuntime::Damage_DealtPercent(catalog, source.ActiveBuffs));
+		const auto* skill = catalog.Find_Skill(skillId);
+		incoming.iRawDamage = RollDamageSpread(rawDamage, skill ? DamageSpreadOf(catalog, skill->strDamageProfileId) : 0u);
+		if (const auto* profile = catalog.Find_Player(source.eCharacterClass))
+		{
+			incoming.bCritical = RollCriticalHit(profile->iCriticalChancePercent);
+			if (incoming.bCritical) incoming.iRawDamage = ScaleCriticalDamage(incoming.iRawDamage, profile->iCriticalDamagePercent);
+		}
+		incoming.fSourceX = x; incoming.fSourceZ = z; incoming.iServerTick = tick;
+		incoming.fPushRangeM = hit ? hit->fPushRange : 0.f; incoming.iPushMs = hit ? hit->iPushMs : 0u;
+		(void)CServerCombatHitRuntime::Apply_PlayerToPlayer(source, target, incoming, catalog, events);
+	}
+
 	std::uint32_t ProjectileSubHitCount(
 		const LostArk::Server::PLAYER_SKILL_PROJECTILE& projectile)
 	{
@@ -284,6 +312,20 @@ namespace
 		default:
 			return false;
 		}
+	}
+
+	std::vector<LostArk::Server::SERVER_PLAYER*> PvpShapeTargets(const LostArk::Server::SERVER_PLAYER& source,
+		const std::vector<LostArk::Server::SERVER_PLAYER*>* candidates, const LostArk::Server::PLAYER_SKILL_HIT& hit,
+		const float x, const float z, const float dx, const float dz)
+	{
+		std::vector<LostArk::Server::SERVER_PLAYER*> result;
+		if (!candidates) return result;
+		for (auto* target : *candidates)
+			if (target && LostArk::Server::CServerCombatHitRuntime::Is_EnemyPlayer(source, *target) &&
+				Hit_ShapeOverlaps(hit, x, z, dx, dz, PlayerBodyOf(*target))) result.push_back(target);
+		std::sort(result.begin(), result.end(), [x,z](const auto* a, const auto* b)
+		{ return std::hypot(a->fPositionX-x,a->fPositionZ-z) < std::hypot(b->fPositionX-x,b->fPositionZ-z); });
+		return result;
 	}
 
 	bool IsNewerSequence(
@@ -845,7 +887,8 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 	const CGameplayCatalog& catalog,
 	const float fixedDeltaSeconds,
 	const std::uint32_t serverTick,
-	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
+	const std::vector<SERVER_PLAYER*>* playerTargets)
 {
 	using namespace LostArk::Shared;
 	for (std::size_t index = 0; index < player.Projectiles.size();)
@@ -948,6 +991,25 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 					mark->fNextSeconds = projectile.fElapsedSeconds +
 						static_cast<float>(hit.Hit.iRepeatMs) * MILLISECONDS_TO_SECONDS;
 				}
+				if (ownsDamage)
+				{
+					std::size_t hits = 0u;
+					for (auto* target : PvpShapeTargets(player, playerTargets, hit.Hit, projectile.fPositionX, projectile.fPositionZ, projectile.fDirectionX, projectile.fDirectionZ))
+					{
+						auto mark = std::find_if(projectile.ContactMarks.begin(), projectile.ContactMarks.end(), [&](const auto& value)
+						{ return value.iNetEntityId == target->iNetEntityId && value.iHitIndex == hitIndex; });
+						if (mark == projectile.ContactMarks.end())
+						{
+							SERVER_PROJECTILE_CONTACT_MARK fresh{}; fresh.iNetEntityId = target->iNetEntityId; fresh.iHitIndex = static_cast<std::uint8_t>(hitIndex);
+							projectile.ContactMarks.push_back(fresh); mark = std::prev(projectile.ContactMarks.end());
+						}
+						if (mark->iAppliedCount >= hit.Hit.iRepeatCount || projectile.fElapsedSeconds < mark->fNextSeconds) continue;
+						if (hit.Hit.iMaxTargets && hits >= hit.Hit.iMaxTargets) break;
+						ApplyPvpHit(player, *target, projectile.iSkillId, DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal, subHitIndex + mark->iAppliedCount),
+							&hit.Hit, catalog, projectile.fPositionX, projectile.fPositionZ, serverTick, outDamageEvents);
+						++hits; ++mark->iAppliedCount; mark->fNextSeconds = projectile.fElapsedSeconds + hit.Hit.iRepeatMs * MILLISECONDS_TO_SECONDS;
+					}
+				}
 				if (ownsDamage) subHitIndex += hit.Hit.iRepeatCount;
 				if (hit.Hit.iResultKind == 2u) staggerSubHitIndex += hit.Hit.iRepeatCount;
 				continue;
@@ -986,6 +1048,14 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 					{
 						return left.first < right.first;
 					});
+				if (ownsDamage)
+				{
+					auto pvp = PvpShapeTargets(player, playerTargets, hit.Hit, projectile.fPositionX, projectile.fPositionZ, projectile.fDirectionX, projectile.fDirectionZ);
+					if (hit.Hit.iMaxTargets && pvp.size() > hit.Hit.iMaxTargets) pvp.resize(hit.Hit.iMaxTargets);
+					for (auto* target : pvp) ApplyPvpHit(player, *target, projectile.iSkillId,
+						DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal, subHitIndex), &hit.Hit, catalog,
+						projectile.fPositionX, projectile.fPositionZ, serverTick, outDamageEvents);
+				}
 				if (0u != hit.Hit.iMaxTargets && targets.size() > hit.Hit.iMaxTargets)
 					targets.resize(hit.Hit.iMaxTargets);
 				for (auto& [distanceSquared, target] : targets)
@@ -1116,7 +1186,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	const CServerCollisionSystem* collision,
 	const float fixedDeltaSeconds,
 	const std::uint32_t serverTick,
-	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents) const
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
+	const std::vector<SERVER_PLAYER*>* playerTargets) const
 {
 	using namespace LostArk::Shared;
 	if (PLAYER_ACTION_STATE::DEAD == player.eAction || 0u == player.iCurrentHp)
@@ -1145,7 +1216,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			Update_Identity(player, *identityProfile);
 	}
 	Update_Projectiles(player, worldEntities, catalog, fixedDeltaSeconds,
-		serverTick, outDamageEvents);
+		serverTick, outDamageEvents, playerTargets);
 	if (PLAYER_ACTION_STATE::SKILL != player.eAction)
 	{
 		(void)serverTick;
@@ -1544,6 +1615,18 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 						subHitTotal, hit.iResultKind == 2u ? staggerSubHitIndex : subHitIndex);
 					player.HitWindowTargets.emplace_back(windowIndex, target->iNetEntityId);
 				}
+				if (ownsDamage)
+				{
+					windowHits += targets.size();
+					for (auto* target : PvpShapeTargets(player, playerTargets, hit, hitOriginX, hitOriginZ, player.fSkillAimDirectionX, player.fSkillAimDirectionZ))
+					{
+						if (std::find(player.HitWindowTargets.begin(), player.HitWindowTargets.end(), std::make_pair(windowIndex, target->iNetEntityId)) != player.HitWindowTargets.end()) continue;
+						if (hit.iMaxTargets && windowHits >= hit.iMaxTargets) break;
+						ApplyPvpHit(player, *target, skill->iSkillId, damageOfSubHit(subHitIndex), &hit, catalog, player.fPositionX, player.fPositionZ, serverTick, outDamageEvents);
+						player.HitWindowTargets.emplace_back(windowIndex, target->iNetEntityId); ++windowHits;
+						Gain_EmberGauge(player, catalog);
+					}
+				}
 				if (!targets.empty())
 					Gain_EmberGauge(player, catalog);
 			}
@@ -1583,6 +1666,20 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 				closestDistanceSquared = distanceSquared;
 				closestBoss = &entity;
 			}
+		}
+		SERVER_PLAYER* closestPlayer = nullptr;
+		if (playerTargets) for (auto* target : *playerTargets)
+		{
+			if (!target || !CServerCombatHitRuntime::Is_EnemyPlayer(player, *target) ||
+				!LostArk::Shared::CombatCollision::Circles_Overlap(skillCircle, PlayerBodyOf(*target))) continue;
+			const float dx = target->fPositionX-hitOriginX, dz = target->fPositionZ-hitOriginZ;
+			if ((!closestBoss && !closestPlayer) || dx*dx+dz*dz < closestDistanceSquared)
+			{ closestDistanceSquared = dx*dx+dz*dz; closestPlayer = target; closestBoss = nullptr; }
+		}
+		if (closestPlayer)
+		{
+			ApplyPvpHit(player, *closestPlayer, skill->iSkillId, resolveRawDamage(), nullptr, catalog, player.fPositionX, player.fPositionZ, serverTick, outDamageEvents);
+			Gain_EmberGauge(player, catalog);
 		}
 		if (nullptr != closestBoss)
 		{

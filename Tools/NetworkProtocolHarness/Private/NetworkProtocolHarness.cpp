@@ -845,11 +845,12 @@ namespace
 			0x00, 0x00, 0x40, 0x40,
 			0x00, 0x00, 0xB4, 0x42,
 			0x01, // voice type
-			0x00, 0x00 // empty Waterpang NPC archetype
+			0x00, 0x00, // empty Waterpang NPC archetype
+			0x00, 0x00 // empty selected appearance (explicit class default)
 		};
 
 		testRunner.Require(
-			payload.size() == 37,
+			payload.size() == 39,
 			"Player Spawned Payload Size");
 
 		testRunner.Require(
@@ -2274,11 +2275,11 @@ namespace
         killed.eResult = DEBUG_KILL_GATE_BOSSES_RESULT::DISABLED; CPacketWriter rejectedKill;
         testRunner.Require(!Write_Message(rejectedKill, killed), "Rejected Gate Kill cannot claim a kill count");
 
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 129u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS) + 1u,
-			"Protocol 129 combines flight and Debug Esther without renumbering packets");
+			"Protocol 130 preserves flight and Debug Esther without renumbering packets");
 		for (const auto esther : { ESTHER_ID::SILLIAN, ESTHER_ID::WEI,
 			ESTHER_ID::BAHUNTUR, ESTHER_ID::NINAV, ESTHER_ID::INANNA })
 		{
@@ -2462,10 +2463,10 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 129u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
-			"Mario direction packet retains its appended identity in protocol 129");
+			"Mario direction packet retains its appended identity in protocol 130");
 	}
 
 
@@ -3157,11 +3158,11 @@ namespace
 				unchanged.eWorldId == WORLD_ID::BERN && unchanged.eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION,
 				"Invalid Mario return verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 129u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_RETURN) && Is_Known_Packet_Type(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) == static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) == static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) + 1u,
-			"Protocol 129 preserves Mario return packet identities");
+			"Protocol 130 preserves Mario return packet identities");
 	}
 
 	void Test_DebugMarioJumpProtocol(TEST_RUNNER& testRunner)
@@ -3278,14 +3279,14 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 129u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) + 1u,
-			"Protocol 129 preserves Mario jump packet identities without renumbering existing peers");
+			"Protocol 130 preserves Mario jump packet identities without renumbering existing peers");
 	}
 
 	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
@@ -3463,14 +3464,14 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 129u,
+			NETWORK_PROTOCOL_VERSION == 130u,
 			"Riding packet identities append without renumbering peers");
 	}
 
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 129u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb, ember, Colosseum world and Colosseum queue use protocol 129");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u, "World lifecycle and existing gameplay retain their IDs in Colosseum match protocol 130");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -3842,8 +3843,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 129u,
-			"Protocol 129 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 130u,
+			"Protocol 130 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -3959,8 +3960,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(129u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 129");
+			testRunner.Require(130u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 130");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -4204,8 +4205,8 @@ namespace
         testRunner.Require(!Write_Message(rejectHp, badState), "Guide Trace Rejects HP Outside Unit Interval");
         state.fEvadeScore = std::numeric_limits<float>::quiet_NaN(); CPacketWriter rejectNan;
         testRunner.Require(!Write_Message(rejectNan, state), "Guide Trace Rejects Nonfinite Scores");
-        testRunner.Require(NETWORK_PROTOCOL_VERSION == 129u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
-            Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v129 Peers");
+        testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
+            Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v130 Peers");
     }
 
 	void Test_ChatProtocol(TEST_RUNNER& testRunner)
@@ -4440,7 +4441,7 @@ namespace
         testRunner.Require(written && Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
             decoded.iSilver == inventory.iSilver && decoded.iGold == inventory.iGold &&
             decoded.Items.size() == 1u && decoded.Items.front().iQuantity == 3u,
-            "Protocol 129 preserves shop purse alongside inventory items");
+            "Protocol 130 preserves shop purse alongside inventory items");
         auto truncated = writer.Get_Buffer();
         if (!truncated.empty()) truncated.pop_back();
         CPacketReader shortReader{truncated}; decoded.iSilver = 91u; decoded.iGold = 92u;
@@ -4458,7 +4459,7 @@ namespace
             basketReader.Get_RemainingSize() == 0u && basket.strNpcPlacementId == purchase.strNpcPlacementId &&
             basket.Entries.size() == 1u && basket.Entries.front().iQuantity == 2u &&
             Is_Known_Packet_Type(PACKET_TYPE::C2S_BUY_ITEMS),
-            "Protocol 129 preserves the appended shop request");
+            "Protocol 130 preserves the appended shop request");
 
         C2S_SET_EQUIPMENT wear{};
         wear.iRequestSequence = 79u;
@@ -4473,7 +4474,7 @@ namespace
             worn.bEquip && worn.strItemId == wear.strItemId &&
             std::string_view("avatarOutfit") == Equipment_SlotKind(EQUIPMENT_SLOT::AVATAR_OUTFIT) &&
             std::string_view("avatarHead") == Equipment_SlotKind(EQUIPMENT_SLOT::AVATAR_HEAD),
-            "Protocol 129 carries the avatar equipment slots");
+            "Protocol 130 carries the avatar equipment slots");
     }
 	void Test_WorldSnapshotRoundTrip(
 		TEST_RUNNER& testRunner)
@@ -7579,8 +7580,8 @@ namespace
 		}
 
 		testRunner.Require(
-			129u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 129");
+			130u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 130");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -7607,8 +7608,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			129u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 129");
+			130u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 130");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -9025,7 +9026,7 @@ void Test_CharacterRestoreProtocol(TEST_RUNNER& tests)
 void Test_ColosseumQueueProtocol(TEST_RUNNER& tests)
 {
 	using namespace LostArk::Shared;
-	tests.Require(NETWORK_PROTOCOL_VERSION == 129u &&
+	tests.Require(NETWORK_PROTOCOL_VERSION == 130u &&
 		static_cast<std::uint16_t>(PACKET_TYPE::C2S_COLOSSEUM_QUEUE_JOIN) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT) + 1u &&
 		static_cast<std::uint16_t>(PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND) ==
@@ -9083,6 +9084,7 @@ void Test_ColosseumQueueProtocol(TEST_RUNNER& tests)
 	tests.Require(!Write_Message(invalidStateWriter, invalidState), "Colosseum queue state rejects an unknown state");
 
 	S2C_COLOSSEUM_MATCH_FOUND match{};
+	match.iMatchId = 17u;
 	match.iLocalIndex = 2u;
 	match.Participants = {
 		{ "Alpha", CHARACTER_CLASS_ID::ARTIST, 0u },
@@ -9113,9 +9115,72 @@ void Test_ColosseumQueueProtocol(TEST_RUNNER& tests)
 	CPacketWriter emptyWriter;
 	tests.Require(!Write_Message(emptyWriter, empty), "Colosseum match roster rejects an empty list");
 	S2C_COLOSSEUM_MATCH_FOUND solo{};
+	solo.iMatchId = 18u;
 	solo.Participants = { { "Alpha", CHARACTER_CLASS_ID::ARTIST, 0u } };
 	CPacketWriter soloWriter;
-	tests.Require(Write_Message(soloWriter, solo), "Colosseum match roster allows one player (Debug builds start with one)");
+	tests.Require(Write_Message(soloWriter, solo), "Colosseum roster supports remaining participants after departure");
+	S2C_COLOSSEUM_MATCH_STATE state{};
+	state.iMatchId = 17u; state.iServerTick = 11u; state.iPhaseStartTick = 41u; state.iPhaseEndTick = 299u;
+	state.ePhase = COLOSSEUM_MATCH_PHASE::INTRO; state.iExpectedPlayers = 4u;
+	state.Participants = {{1u,101u,0u,0u,true},{2u,102u,1u,1u,true},{3u,103u,0u,2u,true},{4u,104u,1u,3u,true}};
+	CPacketWriter stateWriter;
+	const bool stateWritten = Write_Message(stateWriter, state);
+	CPacketReader stateReader{stateWriter.Get_Buffer()}; S2C_COLOSSEUM_MATCH_STATE decodedState{};
+	tests.Require(stateWritten && Read_Message(stateReader, decodedState) && !stateReader.Get_RemainingSize() &&
+		decodedState.iExpectedPlayers == 4u && decodedState.iPhaseStartTick == 41u && decodedState.Participants[3].iTeam == 1u,
+		"Colosseum server clock and explicit four-player identities round trip");
+	auto malformedState = state; malformedState.Participants[2].iArrivalIndex = 0u;
+	CPacketWriter duplicateWriter;
+	tests.Require(!Write_Message(duplicateWriter, malformedState), "Colosseum state rejects duplicate arrival identity");
+	malformedState = state; malformedState.iExpectedPlayers = 3u; CPacketWriter expectedWriter;
+	tests.Require(!Write_Message(expectedWriter, malformedState), "Colosseum state rejects more admitted players than expected");
+	malformedState = state; malformedState.Participants[2].iTeam = 1u; CPacketWriter teamWriter;
+	tests.Require(!Write_Message(teamWriter, malformedState), "Colosseum state rejects team inconsistent with queue order");
+	CPacketWriter readyWriter; C2S_COLOSSEUM_LOAD_READY ready{17u}, decodedReady{};
+	const bool readyWritten = Write_Message(readyWriter, ready); CPacketReader readyReader{readyWriter.Get_Buffer()};
+	tests.Require(readyWritten && Read_Message(readyReader, decodedReady) && decodedReady.iMatchId == 17u,
+		"Colosseum loading readiness names its exact match");
+	CPacketWriter invalidReady; tests.Require(!Write_Message(invalidReady, C2S_COLOSSEUM_LOAD_READY{}), "Colosseum readiness rejects zero match");
+	CPacketWriter returnWriter; C2S_COLOSSEUM_RETURN returned{17u}, decodedReturn{};
+	const bool returnWritten = Write_Message(returnWriter, returned); CPacketReader returnReader{returnWriter.Get_Buffer()};
+	tests.Require(returnWritten && Read_Message(returnReader, decodedReturn) && decodedReturn.iMatchId == 17u,
+		"Colosseum result return names its exact match");
+
+	const std::string appearance = R"({"schema":"lostark.customizing-preset","formatVersion":1,"class":"Artist","hair":2,"costume":0,"skinColor":[0.7,0.5,0.3,1],"face":{"eye_width":0.25}})";
+	C2S_ENTER_WORLD enter{}; enter.eWorldId = WORLD_ID::BERN;
+	enter.eCharacterClass = CHARACTER_CLASS_ID::ARTIST; enter.strNickName = "MatchedArtist";
+	enter.strAppearanceJson = appearance;
+	CPacketWriter appearanceWriter; const bool appearanceWritten = Write_Message(appearanceWriter, enter);
+	CPacketReader appearanceReader{appearanceWriter.Get_Buffer()}; C2S_ENTER_WORLD decodedEnter{};
+	tests.Require(appearanceWritten && Read_Message(appearanceReader, decodedEnter) &&
+		!appearanceReader.Get_RemainingSize() && decodedEnter.strAppearanceJson == appearance,
+		"Selected appearance is preserved exactly through world admission");
+	S2C_PLAYER_SPAWNED spawned{}; spawned.iPlayerId = 1u; spawned.iNetEntityId = 101u;
+	spawned.eCharacterClass = CHARACTER_CLASS_ID::ARTIST; spawned.strNickName = enter.strNickName;
+	spawned.strAppearanceJson = appearance;
+	CPacketWriter spawnWriter; const bool spawnWritten = Write_Message(spawnWriter, spawned);
+	CPacketReader spawnReader{spawnWriter.Get_Buffer()}; S2C_PLAYER_SPAWNED decodedSpawn{};
+	tests.Require(spawnWritten && Read_Message(spawnReader, decodedSpawn) && !spawnReader.Get_RemainingSize() &&
+		decodedSpawn.strAppearanceJson == appearance, "Every peer receives the same selected appearance");
+	tests.Require(!Is_Valid_PlayerAppearance(appearance, CHARACTER_CLASS_ID::WARLORD),
+		"Appearance class must match the authoritative character class");
+	for (const std::string invalid : {
+		R"({"schema":"lostark.customizing-preset","formatVersion":2,"class":"Artist"})",
+		R"({"schema":"lostark.customizing-preset","formatVersion":1,"class":"Artist","hair":0,"hair":1})",
+		R"({"schema":"lostark.customizing-preset","formatVersion":1,"class":"Artist","x":1e999})",
+		R"({"schema":"lostark.customizing-preset","formatVersion":1,"class":"Artist","asset":"../../outside"})",
+		R"({"schema":"lostark.customizing-preset","formatVersion":1,"class":"Artist","x":[0,]})"})
+		tests.Require(!Is_Valid_PlayerAppearance(invalid, CHARACTER_CLASS_ID::ARTIST),
+			"Appearance rejects invalid versions, duplicates, nonfinite values, paths and malformed JSON");
+	tests.Require(!Is_Valid_PlayerAppearance(std::string(MAX_PLAYER_APPEARANCE_BYTES + 1u, ' '), CHARACTER_CLASS_ID::ARTIST),
+		"Appearance payload has a strict size bound");
+	if (appearanceWritten)
+	{
+		auto truncated = appearanceWriter.Get_Buffer(); truncated.pop_back();
+		CPacketReader truncatedReader{truncated}; C2S_ENTER_WORLD unchanged{}; unchanged.strNickName = "Preserved";
+		tests.Require(!Read_Message(truncatedReader, unchanged) && unchanged.strNickName == "Preserved",
+			"Truncated appearance admission rolls back without partially replacing identity");
+	}
 }
 
 
@@ -9245,14 +9310,14 @@ void Test_Integrated129Protocol(TEST_RUNNER& tests)
         PACKET_TYPE::C2S_MAHARAKA_AI_TUNING,
         PACKET_TYPE::S2C_MAHARAKA_AI_TUNING
     };
-    bool identities = NETWORK_PROTOCOL_VERSION == 129u && !Is_Known_Packet_Type(PACKET_TYPE::INVALID);
+    bool identities = NETWORK_PROTOCOL_VERSION == 130u && !Is_Known_Packet_Type(PACKET_TYPE::INVALID);
     for (std::size_t i = 1u; i < wireIdentities.size(); ++i)
         identities &= static_cast<std::uint16_t>(wireIdentities[i]) == i && Is_Known_Packet_Type(wireIdentities[i]);
-    tests.Require(identities, "Integrated 129 preserves packet IDs 1..112 and fixes all seven appended IDs");
+    tests.Require(identities, "Protocol 130 preserves the integrated packet IDs 1..119");
     tests.Require(Is_Known_World_Id(WORLD_ID::COLOSSEUM) &&
         static_cast<std::uint16_t>(WORLD_ID::COLOSSEUM) == 7u &&
         static_cast<std::uint8_t>(PLAYER_CONTROL_KIND::WATERPANG_AI) == 2u,
-        "Integrated 129 preserves Colosseum world 7 and Waterpang actor kind 2");
+        "Protocol 130 preserves Colosseum world 7 and Waterpang actor kind 2");
 
     bool spawnContract = true;
     std::vector<std::uint8_t> botBytes;

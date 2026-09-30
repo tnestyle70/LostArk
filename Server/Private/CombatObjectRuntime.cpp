@@ -1188,6 +1188,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 			if (object.bDetonateOnContact)
 			{
 				SERVER_WORLD_ENTITY* first = nullptr;
+				SERVER_PLAYER* firstPlayer = nullptr;
 				float nearest = (std::numeric_limits<float>::max)();
 				for (auto& target : worldEntities)
 				{
@@ -1196,7 +1197,21 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 						target.fPositionZ - object.LiveState.PreviousPose.fPositionZ);
 					if (distance < nearest) { nearest = distance; first = &target; }
 				}
-				if (first)
+				if (sourcePlayer) for (auto& [id, target] : players)
+				{
+					if (!CServerCombatHitRuntime::Is_EnemyPlayer(*sourcePlayer, target) || !ContactOverlaps(object, contact, BodyOf(target))) continue;
+					const float distance = std::hypot(target.fPositionX - object.LiveState.PreviousPose.fPositionX,
+						target.fPositionZ - object.LiveState.PreviousPose.fPositionZ);
+					if (distance < nearest) { nearest = distance; firstPlayer = &target; first = nullptr; }
+				}
+				if (firstPlayer)
+				{
+					object.LiveState.CurrentPose.fPositionX = firstPlayer->fPositionX;
+					object.LiveState.CurrentPose.fPositionY = firstPlayer->fPositionY;
+					object.LiveState.CurrentPose.fPositionZ = firstPlayer->fPositionZ;
+					QueuePresentationPulse(object.strContactPresentationId, 0u); contacted = true;
+				}
+				else if (first)
 				{
 					object.LiveState.CurrentPose.fPositionX = first->fPositionX;
 					object.LiveState.CurrentPose.fPositionY = first->fPositionY;
@@ -1207,6 +1222,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 			}
 			if (!object.bDetonateOnContact) for (auto& [id, player] : players)
 			{
+				if (sourcePlayer && !CServerCombatHitRuntime::Is_EnemyPlayer(*sourcePlayer, player)) continue;
 				// Card pursuit selects only its steering target. Every player can intercept
 				// the card; its suit-specific damage immunity is evaluated below.
 				const bool targetOnly = object.bHoming &&
@@ -1257,10 +1273,41 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 			SERVER_COMBAT_OBJECT_HIT_RUNTIME& hit = object.Hits[hitIndex];
 			if (object.bDetonateOnContact && !contactTermination) continue;
 			const auto attackPose = AttackPose(object.LiveState.CurrentPose, hit);
+			const auto hitPvpTargets = [&](const bool contact, const std::uint32_t rawDamage)
+			{
+				if (!sourcePlayer || !sourcePlayer->iColosseumMatchId) return;
+				std::vector<std::pair<float, SERVER_PLAYER*>> targets;
+				for (auto& [id, target] : players)
+				{
+					if (!CServerCombatHitRuntime::Is_EnemyPlayer(*sourcePlayer, target)) continue;
+					const bool overlaps = contact ? ContactOverlaps(object, hit, BodyOf(target)) :
+						CServerCombatGeometry::Overlaps_Pose(hit.Shape, attackPose.fPositionX, attackPose.fPositionZ,
+							attackPose.fDirectionX, attackPose.fDirectionZ, BodyOf(target));
+					if (overlaps) targets.emplace_back(std::hypot(target.fPositionX-attackPose.fPositionX,target.fPositionZ-attackPose.fPositionZ), &target);
+				}
+				std::sort(targets.begin(), targets.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+				std::size_t admitted = 0u;
+				for (const auto& [distance, target] : targets)
+				{
+					if (hit.Shape.iMaximumTargets && admitted >= hit.Shape.iMaximumTargets) break;
+					auto* mark = contact ? FindContactMark(object, target->iNetEntityId, hitIndex) : nullptr;
+					if (mark && (mark->iAppliedCount >= hit.RepeatRawDamage.size() || object.fElapsedMilliseconds < mark->fNextMilliseconds)) continue;
+					SERVER_PLAYER_TO_WORLD_HIT incoming{};
+					incoming.iSourcePlayerId = sourcePlayer->iPlayerId; incoming.iSkillId = object.iSourceSkillId;
+					incoming.iRawDamage = CServerBuffRuntime::Scale_Damage(mark ? hit.RepeatRawDamage[mark->iAppliedCount] : rawDamage,
+						CServerBuffRuntime::Damage_DealtPercent(catalog, sourcePlayer->ActiveBuffs));
+					incoming.fSourceX = object.LiveState.CurrentPose.fPositionX; incoming.fSourceZ = object.LiveState.CurrentPose.fPositionZ;
+					incoming.fPushRangeM = hit.fPushRangeM; incoming.iPushMs = hit.iPushMs; incoming.iServerTick = serverTick;
+					(void)CServerCombatHitRuntime::Apply_PlayerToPlayer(*sourcePlayer, *target, incoming, catalog, outDamageEvents);
+					++admitted;
+					if (mark) { ++mark->iAppliedCount; mark->fNextMilliseconds = object.fElapsedMilliseconds + hit.iRepeatIntervalMs; }
+				}
+			};
 			if (SERVER_COMBAT_OBJECT_HIT_TRIGGER::CONTACT == hit.eTrigger)
 			{
 				if (!contactMotionActive)
 					continue;
+				hitPvpTargets(true, 0u);
 				if (nullptr != sourcePlayer)
 				{
 					for (SERVER_WORLD_ENTITY& target : worldEntities)
@@ -1371,6 +1418,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 				if (!object.bDetonateOnContact) QueuePresentationPulse(hit.strHitId, hit.iAppliedTimedCount);
 				const std::uint32_t rawDamage =
 					hit.RepeatRawDamage[hit.iAppliedTimedCount];
+				hitPvpTargets(false, rawDamage);
 				if (nullptr != sourcePlayer)
 				{
 					std::vector<std::pair<float, SERVER_WORLD_ENTITY*>> targets;

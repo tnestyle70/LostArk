@@ -2277,6 +2277,57 @@ void CCharacter::Set_Position(fvector_t vPosition)
 	Update_PresentationRootMatrix();
 }
 
+bool_t CCharacter::Sample_CutsceneAnimation(const std::string& clip, const f32_t seconds, const bool_t loop)
+{
+	if (!m_pBodyModel || clip.empty() || !std::isfinite(seconds) || seconds < 0.f)
+		return false;
+	uint32_t index = m_iCutsceneAnimation;
+	if (!m_hasCutsceneAnimation || clip != m_strCutsceneAnimation)
+	{
+		index = UINT32_MAX;
+		for (uint32_t i = 0; i < m_pBodyModel->Get_NumAnimations(); ++i)
+		{
+			const char_t* name = m_pBodyModel->Get_AnimationName(i);
+			if (name && clip == name)
+			{
+				if (index != UINT32_MAX) return false; // Ambiguous source names are not guessed.
+				index = i;
+			}
+		}
+	}
+	if (index == UINT32_MAX) return false;
+	f32_t position = 0.f, duration = 0.f;
+	const f32_t ticksPerSecond = m_pBodyModel->Get_AnimationTickPerSecond(index);
+	if (!m_pBodyModel->Get_AnimationProgress(index, position, duration) ||
+		!std::isfinite(duration) || duration <= 0.f || !std::isfinite(ticksPerSecond) || ticksPerSecond <= 0.f)
+		return false;
+	if (!m_hasCutsceneAnimation)
+	{
+		m_iBeforeCutsceneAnimation = m_pBodyModel->Get_CurrentAnimIndex();
+		m_bBeforeCutsceneLoop = m_pBodyModel->Is_AnimLoop();
+	}
+	m_strCutsceneAnimation = clip;
+	m_iCutsceneAnimation = index;
+	m_fCutsceneAnimationTicks = loop ? std::fmod(seconds * ticksPerSecond, duration) :
+		(std::min)(seconds * ticksPerSecond, duration);
+	m_hasCutsceneAnimation = true;
+	return true;
+}
+
+void CCharacter::Clear_CutsceneAnimation()
+{
+	if (!m_hasCutsceneAnimation) return;
+	if (m_pBodyModel)
+	{
+		m_pBodyModel->Clear_AnimationTransitionPose();
+		if (m_iBeforeCutsceneAnimation < m_pBodyModel->Get_NumAnimations())
+			m_pBodyModel->Set_Animation(m_iBeforeCutsceneAnimation, m_bBeforeCutsceneLoop);
+	}
+	m_hasCutsceneAnimation = false;
+	m_strCutsceneAnimation.clear();
+	m_iCutsceneAnimation = UINT32_MAX;
+}
+
 bool_t CCharacter::Apply_MazePresentation(const bool_t isMaze)
 {
 	if (m_pSpec == CCharacterCatalog::Find_ClownSpec()) return true;
@@ -4445,6 +4496,15 @@ void CCharacter::Load_FaceMorphs()
 
 void CCharacter::Late_Update(f32_t fTimeDelta)
 {
+	// Level replication may sample a network action after Update. Cinematic pose is
+	// the last animation owner before borrowed equipment palettes and face/cloth.
+	if (m_hasCutsceneAnimation && m_pBodyModel)
+	{
+		Engine::CModel::ANIMATION_TRANSITION_POSE pose;
+		pose.sourceIndex = pose.targetIndex = m_iCutsceneAnimation;
+		pose.sourceTicks = pose.targetTicks = m_fCutsceneAnimationTicks;
+		if (!m_pBodyModel->Set_AnimationTransitionPose(pose)) Clear_CutsceneAnimation();
+	}
 	// Skip the composite part render queues without changing equipment visibility.
     Set_PresentationVisibilityControls(m_isSourcePawnHidden, m_isSourceWeaponHidden, m_isSourceIdentityHidden, m_isSourceIdentityVisible);
 	if (Is_WorldPresentationHidden()) return;

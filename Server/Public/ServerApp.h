@@ -343,6 +343,7 @@ namespace LostArk::Server
 		std::unordered_map<
 			SESSION_ID,
 			std::shared_ptr<CGameRoom>> m_CharacterSelectArenas;
+		std::map<std::uint32_t, std::shared_ptr<CGameRoom>> m_ColosseumMatches;
 		//실행 상태 - 여러 스레드가 읽고 쓰기 때문에 atomic을 사용한다.
 		std::atomic_bool m_isRunning{ false };
 		std::atomic<SESSION_ID> m_iNextSessionId{ 1 };

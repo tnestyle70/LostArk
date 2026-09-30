@@ -233,11 +233,16 @@ public:
 	/* True while riding a ship: the rider is not drawn, only the ship sails on the water. */
 	bool_t Is_ShipPresentation() const { return m_isShipPresentation; }
 	void Set_CinematicPresentationSuppressed(bool_t suppressed);
+	bool_t Is_CinematicPresentationSuppressed() const { return m_isCinematicPresentationSuppressed; }
 	/* Colosseum match intro: the lineup pose the cutscene shows this character in. Only the
 	   presentation transform is overridden each Update; snapshots keep arriving and the Server
 	   position is untouched, so clearing snaps straight back to it. */
 	void Set_CutscenePoseOverride(const float3_t& position, f32_t yawDegrees);
 	void Clear_CutscenePoseOverride() { m_isCutscenePoseOverride = false; }
+	// Exact source clip at a cinematic clock. Applied after snapshot action sampling,
+	// before equipment/face presentation; gameplay action and HP remain authoritative.
+	bool_t Sample_CutsceneAnimation(const std::string& clip, f32_t seconds, bool_t loop);
+	void Clear_CutsceneAnimation();
 	bool_t Is_WorldPresentationHidden() const
 	{ return m_isNetworkPresentationHidden || m_isSourcePawnHidden || m_isCinematicPresentationSuppressed; }
     // Transient cue overlays never replace replicated stance or user part visibility.
@@ -474,6 +479,12 @@ private:
 	bool_t m_isNetworkPresentationHidden = false;
 	bool_t m_isCinematicPresentationSuppressed = false;
 	bool_t m_isCutscenePoseOverride = false;
+	bool_t m_hasCutsceneAnimation = false;
+	std::string m_strCutsceneAnimation;
+	uint32_t m_iCutsceneAnimation = UINT32_MAX;
+	uint32_t m_iBeforeCutsceneAnimation = UINT32_MAX;
+	bool_t m_bBeforeCutsceneLoop = false;
+	f32_t m_fCutsceneAnimationTicks = 0.f;
 	float3_t m_vCutscenePosePosition = {};
 	f32_t m_fCutscenePoseYawDegrees = 0.f;
     bool_t m_isSourcePawnHidden = false, m_isSourceWeaponHidden = false, m_isSourceIdentityHidden = false;

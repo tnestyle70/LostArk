@@ -8,7 +8,7 @@
     "unmeasured": "startTextHoldMs / startTextFadeMs (the video ends 1.5 s after the start), the bar between 3.0 s and 1.7 s remaining (one 3-second screenshot, interpolated), the gate sink depth and curve (only 3 video frames)"
   },
   "countdown": {
-    "totalMs": 3000,
+    "totalMs": 10000,
     "startTextHoldMs": 2000,
     "startTextFadeMs": 400,
     "titleText": "콜로세움",

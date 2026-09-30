@@ -120,7 +120,7 @@ bool_t Client::CCharacterOutfitApplier::Wear_Set(
 
 bool_t Client::CCharacterOutfitApplier::Apply(
 	const shared_ptr<CCharacter>& pCharacter,
-	const int32_t iHair, const int32_t iCostume)
+	const int32_t iHair, const int32_t iCostume, const bool_t requireAll)
 {
 	if (nullptr == pCharacter)
 		return false;
@@ -133,13 +133,16 @@ bool_t Client::CCharacterOutfitApplier::Apply(
 	/* A fresh restore target starts bare; Apply_Preview takes the whole outfit each time. */
 	std::array<std::string, ETOI(EQUIPMENT_SLOT_ID::END)> outfit{};
 	bool_t isApplied = false;
+	bool_t costumeApplied = iCostume < 0;
+	bool_t hairApplied = false;
 
 	const std::vector<std::string>* const pCostumeIds =
 		m_CostumeDocument.Find(pSpec->pAssetName);
 	if (nullptr != pCostumeIds && iCostume >= 0 &&
 		static_cast<size_t>(iCostume) < pCostumeIds->size())
 	{
-		isApplied |= Wear_Set(*pCharacter, (*pCostumeIds)[static_cast<size_t>(iCostume)], outfit);
+		costumeApplied = Wear_Set(*pCharacter, (*pCostumeIds)[static_cast<size_t>(iCostume)], outfit);
+		isApplied |= costumeApplied;
 	}
 
 	const std::vector<std::string>* const pHairIds =
@@ -148,11 +151,15 @@ bool_t Client::CCharacterOutfitApplier::Apply(
 	{
 		int32_t iWantedHair = iHair;
 		if (iWantedHair < 0 || static_cast<size_t>(iWantedHair) >= pHairIds->size())
+		{
+			if (requireAll && iWantedHair >= 0) return false;
 			iWantedHair = m_HairstyleDocument.Get_DefaultIndex(pSpec->pAssetName);
+		}
 		if (iWantedHair >= 0 && static_cast<size_t>(iWantedHair) < pHairIds->size())
 		{
-			isApplied |= Wear_Set(*pCharacter, (*pHairIds)[static_cast<size_t>(iWantedHair)], outfit);
+			hairApplied = Wear_Set(*pCharacter, (*pHairIds)[static_cast<size_t>(iWantedHair)], outfit);
+			isApplied |= hairApplied;
 		}
 	}
-	return isApplied;
+	return requireAll ? costumeApplied && hairApplied : isApplied;
 }

@@ -474,7 +474,17 @@ Release Server는 예전처럼 플레이어가 밟으면 그룹을 시작한다.
 결과 메시지는 없고 monster는 world snapshot으로 온다. 거절 사유는 Server 콘솔의 `[WaveMonsters]` 줄에 남는다.
 
 Release Server는 이 명령을 무시한다. `Stage_MiniBoss_Spawn`, `Stage_3`, 다른 월드의 트리거는 Debug에서도
-예전처럼 동작한다. Valtan의 이전 `Stage_Boss`/`Stage_Boss_ArenaEntry`는 비활성이고 최초 입장은 아래 집결 계약을 사용한다. 다른 protocol의 Server/Client를 섞어 실행하지 않는다. 현재 wire 정본은 `PacketType.h`의 `NETWORK_PROTOCOL_VERSION` 129이다. 129는 음성·내구도·Colosseum 대기열·Waterpang AI layout을 함께 소비하며 신규 패킷은 Colosseum 113~116, 수리 117, Waterpang 튜닝 118~119다. 위 protocol 99 표기는 해당 명령이 도입된 버전이며 현재 실행 파일의 호환 버전으로 사용하지 않는다.
+예전처럼 동작한다. Valtan의 이전 `Stage_Boss`/`Stage_Boss_ArenaEntry`는 비활성이고 최초 입장은 아래 집결 계약을 사용한다. 다른 protocol의 Server/Client를 섞어 실행하지 않는다. 현재 wire 정본은 `PacketType.h`의 `NETWORK_PROTOCOL_VERSION` 130이다. 음성·내구도·Colosseum 대기열·Waterpang AI layout에 Colosseum 경기와 customizing 외형 복제를 함께 소비한다. Colosseum 대기열은 113~116, 수리는 117, Waterpang 튜닝은 118~119, Colosseum 준비 완료·경기 상태·귀환은 120~122다. 위 protocol 99 표기는 해당 명령이 도입된 버전이며 현재 실행 파일의 호환 버전으로 사용하지 않는다.
+
+### Colosseum 4인 경기·표현 계약
+
+- 베른 NPC `npc.bern.25184_1.2` 대기열에 들어온 순서로 1·3번은 왼쪽/team 0, 2·4번은 오른쪽/team 1이다. Debug/Release 모두 정식 경기는 4명으로 시작하며 무작위 팀 재배치와 자기 팀을 항상 왼쪽으로 표시하는 처리는 없다. Release 직접 Colosseum world admission은 거부하고 Server가 발행한 match transfer만 별도 `CGameRoom`으로 입장한다. 서로 다른 match의 플레이어·피해·점수·시계는 공유하지 않는다.
+- Debug Lobby `Colosseum Preview`는 Server 승인 및 복제를 유지한 기존 unmatched 월드의 표현 확인용이다. 대기열 roster 없이 입장했을 때만 F1 승리 컷신/HUD/승리·패배 배너 버튼을 활성화한다. `CColosseumMatchView`의 동일 샘플러를 로컬 시계로 호출하며 로컬 캐릭터 1명과 예시 점수 3:1/120초를 보여 준다. `Play Defeat UI`의 예시는 로컬 team 0이 1:3으로 패배하며 원본 `defeat_mc`(심볼 755, 40fps 140프레임)를 사용한다. 실제 Server state를 수정하지 않고 READY/귀환 명령도 제출하지 않는다. 실제 match ID가 수신되면 preview를 정리하고 Server 시계로 돌아간다. 정식 결과는 local PlayerId/NetEntityId로 Server 팀을 확인한 뒤 표시하며 미확인 팀을 패배로 간주하지 않는다. 정식 매치에서는 F1 replay/seek를 잠그며 Preview 종료·교체·Level 종료 시 카메라/캐릭터 override를 복원한다.
+- `S2C_COLOSSEUM_MATCH_FOUND.iMatchId`와 `S2C_COLOSSEUM_MATCH_STATE`가 경기 identity다. 상태는 `LOADING -> INTRO -> COUNTDOWN -> PLAYING -> FINISHED`이며 `iServerTick`, `iPhaseStartTick`, `iPhaseEndTick`은 모두 30 Hz Server tick이다. roster는 PlayerId/NetEntityId/team/arrival index/ready를 싣고 `iExpectedPlayers`는 아직 admission되지 않은 예정 session도 센다. Client는 맵 준비와 expected 수만큼의 실제 character presentation 준비를 모두 마친 뒤 `IPlayerCommandSink::Request_ColosseumLoadReady`로 현재 match ID만 제출한다. 중복 READY는 멱등이고 이전 match ID는 무시한다.
+- 로딩 중 이탈하면 해당 arrival slot만 비우고 남은 사람의 팀·순서를 바꾸지 않는다. 준비 제한은 120초이며 미준비 session을 종료한 뒤 남은 준비 인원으로 진행한다. 준비 완료 후 1초 여유를 둔 공통 intro 시작 tick, 8.6초 intro, 10초 countdown, 120초 PLAYING을 Server가 확정한다. Client가 자체 타이머로 경기 상태를 전환하지 않으며 입력·피해 판정은 PLAYING만 허용한다.
+- 실제 입장 캐릭터의 외형은 `C2S_ENTER_WORLD.strAppearanceJson -> SERVER_PLAYER -> S2C_PLAYER_SPAWNED`로 복제한다. payload는 16 KiB 이내의 schema/version/class 일치, finite 수치·범위, 깊이·중복 key 검증을 통과한 customizing preset이다. stable part key만 허용하며 런타임 asset path는 Client catalog가 해석한다. 외형·음성·칭호·내구도·장비 inventory·소지금은 대기열 입장과 베른 귀환 transfer 모두 보존한다. 로딩과 소개/승리 배우는 이 실제 replicated character를 사용한다.
+- Server의 기존 스킬 overlap 및 room-owned combat object 판정에서 자기 자신과 같은 팀을 먼저 제외한다. 아군은 피해·shield·피격 반응·projectile contact를 소비하지 않는다. 적팀 사망당 1점을 한 번만 부여하고 경기 중 3초 뒤 최초 navigation-projected 팀 spawn에서 HP/resource·상태를 복구한다. 종료 tick부터 잔여 projectile/장판을 취소하고 추가 점수를 받지 않는다. 점수가 같으면 winning team 255(무승부), 그렇지 않으면 0/1이다.
+- 로딩 화면·소개 컷신·12시 중앙 HUD는 같은 팀 좌우와 Server clock을 쓴다. 결과 타이틀과 승리 컷신은 Client 표현이며 경기 승패를 정하지 않는다. `Request_ColosseumReturn(matchId)`는 FINISHED에만 기존 Server world transfer로 베른 귀환을 요청한다. 중복·stale 요청은 재입장을 만들지 않고 모든 UI 명령은 typed command sink를 거친다. 원본 컷신/배너 데이터는 `Data/Camera/ColosseumVictory.cutscene.json`, `Data/UI/Colosseum`이며 시각 일치의 최종 판정은 사용자 수동 검증이다.
 
 ### 4.2 마리오 변신·방향키 조작·Debug 점프
 

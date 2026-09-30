@@ -57,6 +57,7 @@ void LostArk::Server::CGameRoom::Handle_Move(
 void LostArk::Server::CGameRoom::Execute_PlayerMove(
     SERVER_PLAYER& player, const LostArk::Shared::C2S_MOVE& move)
 {
+	if (player.iColosseumMatchId && !player.bColosseumCombatActive) return;
     const bool entryTerraceMove = Is_KoukuRaidRunning() &&
         m_KoukuRaid.State.ePhase == LostArk::Shared::KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY;
     if (Is_KoukuRaidInputBlocked() && !entryTerraceMove) return;
@@ -360,6 +361,7 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 bool LostArk::Server::CGameRoom::Execute_PlayerSkill(
     SERVER_PLAYER& player, const LostArk::Shared::C2S_USE_SKILL& useSkill)
 {
+	if (player.iColosseumMatchId && !player.bColosseumCombatActive) return false;
     if (Is_KoukuRaidInputBlocked() || player.Has_TimeStop(m_iServerTick)) return false;
 	/* A mounted player's quick slots belong to the vehicle; class skills never
 	start from the saddle. */
@@ -458,7 +460,8 @@ void LostArk::Server::CGameRoom::Apply_SkillBuffs(
 	std::vector<SERVER_PLAYER*> allies;
 	allies.reserve(m_Players.size());
 	for (auto& entry : m_Players)
-		allies.push_back(&entry.second);
+		if (!caster.iColosseumMatchId || caster.iColosseumTeam == entry.second.iColosseumTeam)
+			allies.push_back(&entry.second);
 	/* Existing buff runtime owns boss debuffs and monster stun admission. */
 	std::vector<SERVER_WORLD_ENTITY*> enemies;
 	for (SERVER_WORLD_ENTITY& entity : m_WorldEntities)
@@ -711,6 +714,7 @@ void LostArk::Server::CGameRoom::Handle_DebugEnterKakulSaydonArena(
 	transfer.eCharacterClass = player.eCharacterClass;
 	transfer.strNickName = player.strNickName;
 	transfer.iVoiceType = player.iVoiceType;
+	transfer.strAppearanceJson = player.strAppearanceJson;
 	transfer.CarriedDurability = player.Get_DurabilityState();
 	transfer.iHonorTitleId = player.iHonorTitleId;
 	transfer.iPartyRequestSequence = request.iRequestSequence;
@@ -1349,6 +1353,7 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.iEstherGuardEndTick = 0u;
 	staged.iEstherGuardDamageTakenPercent = 0;
 	staged.eCharacterClass = request.eCharacterClass;
+	staged.strAppearanceJson.clear(); // Presets are class-specific; a new class uses its default.
 	staged.iLastClassChangeSequence = request.iClientSequence;
 	staged.fMoveGoalX = 0.f;
 	staged.fMoveGoalZ = 0.f;

@@ -137,7 +137,8 @@ namespace LostArk::Server
 			const CServerCollisionSystem* collision,
 			float fixedDeltaSeconds,
 			std::uint32_t serverTick,
-			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents) const;
+			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
+			const std::vector<SERVER_PLAYER*>* playerTargets = nullptr) const;
 
 		/* Advances every object the player's skills spawned: moves it, fires
 		its contact and timed hits, and drops it once its distance or life is
@@ -149,7 +150,8 @@ namespace LostArk::Server
 			const CGameplayCatalog& catalog,
 			float fixedDeltaSeconds,
 			std::uint32_t serverTick,
-			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents);
+			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
+			const std::vector<SERVER_PLAYER*>* playerTargets = nullptr);
 
 		/* Root motion advances by clip delta, so it has to answer the same
 		question a walk step does: how far along this tick's displacement can the

@@ -381,6 +381,16 @@ bool Client::CNetworkPlayerCommandSink::Consume_ColosseumQueueState(
 	return CNetworkManager::Get().Try_Consume_ColosseumQueueState(outState);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_ColosseumLoadReady(const std::uint32_t matchId)
+{
+	return CNetworkManager::Get().Send_ColosseumLoadReady(matchId);
+}
+
+bool Client::CNetworkPlayerCommandSink::Request_ColosseumReturn(const std::uint32_t matchId)
+{
+	return CNetworkManager::Get().Send_ColosseumReturn(matchId);
+}
+
 bool Client::CNetworkPlayerCommandSink::Consume_GateProgressState(
 	LostArk::Shared::S2C_GATE_PROGRESS_STATE& outState)
 {

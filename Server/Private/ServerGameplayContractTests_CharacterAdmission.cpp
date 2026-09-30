@@ -9,6 +9,8 @@
 #include "ServerNavigation.h"
 #include "ServerApp.h"
 #include "ServerTriggerSystem.h"
+#include "ServerCombatHitRuntime.h"
+#include "PlayerSkillSystem.h"
 #include "WorldBootstrap.h"
 #include "WorldDestructionBootstrapContractTests.h"
 #include <Windows.h>
@@ -38,6 +40,124 @@
 
 using namespace LostArk::Server;
 using namespace LostArk::Shared;
+
+int LostArk::Server::CServerGameplayContractRunner::Run_ColosseumOnly()
+{
+	TESTS tests;
+	auto room = std::make_unique<CGameRoom>(WORLD_ID::COLOSSEUM);
+	tests.Require(room->Is_Ready(), "Colosseum published world/navigation loads");
+	if (!room->Is_Ready()) { std::cout << room->Get_Status() << '\n'; return 1; }
+	const std::vector<SESSION_ID> sessions{81001u,81002u,81003u,81004u};
+	tests.Require(room->Configure_ColosseumMatch(71u, sessions), "Four ordered sessions configure isolated Colosseum match");
+	bool admissions = true;
+	for (std::size_t index = 0u; index < sessions.size(); ++index)
+	{
+		auto session = std::make_shared<CClientSession>(sessions[index], INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		C2S_ENTER_WORLD enter{}; enter.iProtocolVersion = NETWORK_PROTOCOL_VERSION; enter.eWorldId = WORLD_ID::COLOSSEUM;
+		enter.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER; enter.strNickName = "Colosseum-" + std::to_string(index);
+		CGameRoom::STAGED_PLAYER_ENTRY entry{}; SESSION_DIAGNOSTIC_REASON reason{}; std::string status;
+		if (!room->Stage_PlayerEntry(session, enter, {}, entry, reason, status))
+		{ std::cout << status << '\n'; admissions = false; break; }
+		admissions = admissions && entry.Player.iColosseumTeam == index % 2u &&
+			entry.Player.iColosseumArrivalIndex == index &&
+			(entry.Player.fPositionX < 0.f) == (index % 2u == 0u);
+		room->Commit_PlayerEntry(entry);
+	}
+	tests.Require(admissions && room->m_Players.size() == 4u, "Arrival 1/3 use left team spawns and 2/4 use right team spawns");
+	if (!admissions) return 1;
+	for (std::size_t index = 0u; index < 3u; ++index) room->Handle_ColosseumLoadReady(sessions[index], {71u});
+	room->Update_ColosseumMatch(20u);
+	tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::LOADING, "Three readiness messages cannot release four players");
+	room->Handle_ColosseumLoadReady(sessions.back(), {72u}); room->Update_ColosseumMatch(21u);
+	tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::LOADING, "Stale match readiness is ignored");
+	room->Handle_ColosseumLoadReady(sessions.back(), {71u}); room->Update_ColosseumMatch(22u);
+	tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::INTRO && room->m_iColosseumPhaseStart == 52u && room->m_iColosseumPhaseEnd == 310u,
+		"All ready schedules one future 8.6-second intro clock");
+	room->Update_ColosseumMatch(310u);
+	tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::COUNTDOWN && room->m_iColosseumPhaseEnd == 610u,
+		"Intro completion starts exactly ten seconds of countdown");
+	room->Update_ColosseumMatch(610u);
+	tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::PLAYING && room->m_iColosseumPhaseEnd == 4210u,
+		"Countdown completion starts exactly 120 seconds of combat");
+	auto& caster = room->m_Players.at(room->m_PlayerIdBySessionId.at(sessions[0]));
+	auto& enemy = room->m_Players.at(room->m_PlayerIdBySessionId.at(sessions[1]));
+	auto& ally = room->m_Players.at(room->m_PlayerIdBySessionId.at(sessions[2]));
+	const auto& catalog = room->m_GameplayCatalog.Active();
+	SERVER_PLAYER_TO_WORLD_HIT hit{}; hit.iSourcePlayerId = caster.iPlayerId; hit.iRawDamage = 1000000000u; hit.iServerTick = 615u;
+	std::vector<DAMAGE_EVENT> events;
+	const auto allyHp = ally.iCurrentHp;
+	tests.Require(CServerCombatHitRuntime::Apply_PlayerToPlayer(caster, ally, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED && ally.iCurrentHp == allyHp,
+		"Friendly fire rejected before HP/shield/reaction mutation");
+	tests.Require(CServerCombatHitRuntime::Apply_PlayerToPlayer(caster, enemy, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::KILLED,
+		"Opposing team takes authoritative PvP damage and dies");
+	room->Score_ColosseumKills(615u); room->Score_ColosseumKills(616u);
+	tests.Require(room->m_iColosseumScores[0] == 1u && enemy.iColosseumRespawnTick == 705u,
+		"One death scores once and schedules a three-second respawn");
+	room->Update_ColosseumMatch(704u); tests.Require(enemy.iCurrentHp == 0u, "Corpse remains until respawn deadline");
+	room->Update_ColosseumMatch(705u);
+	tests.Require(enemy.iCurrentHp == enemy.iMaximumHp && enemy.fPositionX == enemy.fColosseumSpawnX && enemy.fPositionZ == enemy.fColosseumSpawnZ,
+		"Respawn restores health at the original team waiting spawn");
+	// Use the actual published basic attack, not an independent test-only damage formula.
+	caster.fPositionX = caster.fPositionY = caster.fPositionZ = 0.f;
+	enemy.fPositionX = ally.fPositionX = 0.f; enemy.fPositionZ = ally.fPositionZ = 1.f;
+	enemy.fPositionY = ally.fPositionY = 0.f; enemy.iCurrentHp = enemy.iMaximumHp = 100000000u;
+	std::vector<SERVER_PLAYER*> targets{&caster,&enemy,&ally}; std::vector<SERVER_WORLD_ENTITY> world;
+	C2S_USE_SKILL skill{}; skill.iClientSequence = 1u; skill.iSkillId = 34010u; skill.fAimZ = 1.f;
+	CPlayerSkillSystem skills;
+	const bool began = skills.Try_Start(caster, skill, catalog, 710u);
+	for (std::uint32_t tick = 711u; tick < 830u; ++tick) skills.Update(caster, world, catalog, nullptr, nullptr, 1.f/30.f, tick, events, &targets);
+	tests.Require(began && enemy.iCurrentHp < enemy.iMaximumHp && ally.iCurrentHp == allyHp,
+		"Published melee windows hit enemy players while overlapping allies remain untouched");
+	// Exercise the same room-owned projectile/area adapter used by published skills.
+	caster.fPositionX = caster.fPositionY = caster.fPositionZ = 0.f;
+	caster.fSkillAimDirectionX = 0.f; caster.fSkillAimDirectionZ = 1.f; caster.fSkillAimDistance = 5.f;
+	enemy.fPositionX = ally.fPositionX = 0.f; enemy.fPositionZ = 2.f; ally.fPositionZ = 1.f;
+	PLAYER_SKILL_PROJECTILE projectile{}; projectile.eKind = PLAYER_PROJECTILE_KIND::MISSILE;
+	projectile.fSpeed = 30.f; projectile.fMinDistance = projectile.fMaxDistance = 5.f; projectile.iLifeMs = 1000u;
+	PLAYER_PROJECTILE_HIT projectileHit{}; projectileHit.isContact = true;
+	projectileHit.Hit.iAreaType = 1u; projectileHit.Hit.fRange = .1f; projectileHit.Hit.iMaxTargets = 1u;
+	projectile.Hits.push_back(projectileHit);
+	const auto* basic = catalog.Find_Skill(34010u);
+	CCombatObjectRuntime objects; auto transaction = objects.Begin_Transaction(); std::string projectileStatus;
+	const bool projectileStaged = basic && objects.Stage_PlayerProjectile(transaction, caster, *basic, projectile,
+		0u, 0u, 100000u, 1u, 0u, 840u, projectileStatus) && objects.Commit(std::move(transaction));
+	const auto beforeProjectile = enemy.iCurrentHp;
+	objects.Update(room->m_Players, world, catalog, 1.f / 30.f, 841u, events);
+	const bool allyPassed = ally.iCurrentHp == allyHp && enemy.iCurrentHp == beforeProjectile &&
+		objects.Get_LiveObjects().size() == 1u && objects.Get_LiveObjects().front().ContactMarks.empty();
+	objects.Update(room->m_Players, world, catalog, 1.f / 30.f, 842u, events);
+	tests.Require(projectileStaged && allyPassed && enemy.iCurrentHp < beforeProjectile,
+		"Projectile passes an ally without consuming contact and damages the enemy beyond it");
+	objects.Reset(); projectile.eKind = PLAYER_PROJECTILE_KIND::FIXAREA; projectile.fSpeed = 0.f;
+	projectile.Hits.front().isContact = false; projectile.Hits.front().Hit.fRange = 3.f;
+	transaction = objects.Begin_Transaction();
+	const bool areaStaged = basic && objects.Stage_PlayerProjectile(transaction, caster, *basic, projectile,
+		0u, 0u, 100000u, 1u, 0u, 850u, projectileStatus) && objects.Commit(std::move(transaction));
+	const auto beforeArea = enemy.iCurrentHp;
+	objects.Update(room->m_Players, world, catalog, 1.f / 30.f, 851u, events);
+	tests.Require(areaStaged && enemy.iCurrentHp < beforeArea && ally.iCurrentHp == allyHp,
+		"Timed area target cap excludes a closer ally before selecting its enemy victim");
+	room->Update_ColosseumMatch(4210u);
+	const auto hpAtEnd = enemy.iCurrentHp;
+	tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::FINISHED &&
+		CServerCombatHitRuntime::Apply_PlayerToPlayer(caster, enemy, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED && enemy.iCurrentHp == hpAtEnd,
+		"Time zero freezes combat and refuses stale projectile damage");
+	room->Handle_ColosseumReturn(sessions[0], {72u});
+	tests.Require(room->m_PendingWorldTransfers.empty(), "Stale result cannot return a different match");
+	room->Handle_ColosseumReturn(sessions[0], {71u}); room->Handle_ColosseumReturn(sessions[0], {71u});
+	tests.Require(room->m_PendingWorldTransfers.size() == 1u && room->m_PendingWorldTransfers.front().eTargetWorldId == WORLD_ID::BERN,
+		"Finished winner return is a single Server-authorized Bern transfer");
+	auto second = std::make_unique<CGameRoom>(WORLD_ID::COLOSSEUM);
+	tests.Require(second->Configure_ColosseumMatch(72u, {82001u,82002u,82003u,82004u}) && second->m_Players.empty() && second->m_iColosseumScores[0] == 0u,
+		"Another match owns independent players and scores");
+	room->m_eColosseumPhase = COLOSSEUM_MATCH_PHASE::LOADING; room->m_iColosseumPhaseEnd = 8000u;
+	room->Remove_ColosseumExpectedSession(sessions[3]); room->m_Players.at(room->m_PlayerIdBySessionId.at(sessions[3])).bColosseumReady = false;
+	room->Update_ColosseumMatch(4300u);
+	tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::INTRO && ally.iColosseumArrivalIndex == 2u && ally.iColosseumTeam == 0u,
+		"Loading departure releases remaining ready players without reseating teams");
+	std::cout << "colosseum failures: " << tests.failures << '\n'; return tests.failures ? 1 : 0;
+}
 
 int LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmissionOnly()
 {

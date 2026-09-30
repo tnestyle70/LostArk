@@ -75,6 +75,7 @@ bool LostArk::Server::CGameRoom::Send_Spawned(
         message.strWaterpangNpcArchetypeId = player.strWaterpangNpcArchetypeId;
 	message.strNickName = player.strNickName;
 	message.iVoiceType = player.iVoiceType;
+	message.strAppearanceJson = player.strAppearanceJson;
 	message.fPositionX = player.fPositionX;
 	message.fPositionY = player.fPositionY;
 	message.fPositionZ = player.fPositionZ;
