@@ -59,6 +59,12 @@ main에서 새로 들어온 것(15커밋, 파일 200개): PR #488(아바타: 모
 - `Data/Balance/NumericSourceBindings.json`: 다른 domain의 생성 해시 갱신(쿠크 문서 2개의 sha256)이 작업 폴더에 남은 것으로 이번 작업과 무관하고 main도 같은 파일을 바꿨다. 복사본을 `tmp/NumericSourceBindings.json.local_before_merge`에 두고 작업 폴더에서는 HEAD 상태로 되돌렸다.
 - `Data/UI/Loading/LoadingLayout.json`, `Data/UI/ScreenUI/ScreenUI.json`: 줄바꿈만 다른 상태여서 내용 변경이 없어 커밋하지 않았다.
 
+## 6-1. PR
+
+- PR #492: https://github.com/tnestyle70/LostArk/pull/492 (base `main`, head `codex/colosseum-pvp-entry-0930`, 5커밋 + 이 링크 추가 커밋, 변경 파일 116개)
+- 생성 직후 GitHub API 조회 결과: `mergeable=true`, `mergeable_state=clean`
+- push: force 없이 새 브랜치로 올렸고 LFS 객체 14개(14MB) 업로드 성공
+
 ## 7. 알아둘 점
 
 - **Server와 Client를 함께 빌드하고 재시작해야 한다.** protocol이 128이라 이전 버전 peer와는 접속이 거절된다.
