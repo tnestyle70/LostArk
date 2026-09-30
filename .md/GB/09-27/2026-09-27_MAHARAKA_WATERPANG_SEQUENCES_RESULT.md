@@ -40,6 +40,9 @@ Maharaka 검사 CLI는 중복 추가를 제거했다. 별도 Lobby 120초 미커
 아래 G06의 미게시/미push 기록은 이전 단계 기록이다. Client 육안 검증은 미실행이다.
 통합 Product Debug는 Client 공통 셰이더 컴파일 중이며 아직 전체 PASS로 기록하지 않는다.
 통합 후 Release Product는 미실행이다. 위 통합 전 빌드 성공과 구분한다.
+후속 PR: https://github.com/tnestyle70/LostArk/pull/498 (base main `b83d646be`).
+생성 후 GitHub `mergeable=true`, `mergeable_state=clean` 확인. #495를 다시 수정하지 않았다.
+진행 중 전체 Client 빌드를 코드·서버 계약 검증 성공이나 최종 실행 준비 완료와 혼동하지 않는다.
 
 ## 2026-10-01 G06 — 경기 남은60초 원본 외곽 발판 붕괴
 
