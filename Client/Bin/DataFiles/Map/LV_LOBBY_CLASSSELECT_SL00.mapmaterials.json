@@ -36607,6 +36607,38 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_227.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_227.dds"
       }
+    },
+    {
+      "assetId": "MAP_5971062ADC78_FM_D_RECTAN3CROSS_001",
+      "materialName": "bfx_spotlight_nonparticle_01_01_ad",
+      "sourceMaterial": "lv_kur_death_06.mat_v.lv_spotlight_nonparticle_01_06_ad_mi_01",
+      "family": "source.map.spotlight.v1",
+      "parameters": {
+        "dust_density": 0.5,
+        "dust_speed": 0.6000000238418579,
+        "opacity": 2.0,
+        "color": [
+          0.7458288669586182,
+          0.7458288669586182,
+          0.7458288669586182,
+          1.0
+        ],
+        "selectioncolor": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "textures": [
+        {
+          "expressionIndex": 0,
+          "assetId": "Map/LV_LUT_MIDNIGHTC_ED/SourceMaterials/c48f3bf2434b_fx_d_cloud_033.dds",
+          "colorSpace": "srgb"
+        }
+      ],
+      "renderMode": "additive",
+      "cullMode": "none"
     }
   ],
   "placementLighting": [

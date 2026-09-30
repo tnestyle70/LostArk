@@ -7,8 +7,12 @@ Transform을 JSON으로 복구하는 읽기 전용 도구다.
 ## 팀 재추출 순서: 가시성·기하·재질을 함께 보존
 
 1. `extract_ue3_placements.py`의 schema3 출력을 사용한다. 실제 actor/component와
-   archetype/CDO의 `sourceVisibility`가 visible을 결정한다. `LV_MODULE`, nav, water,
-   FX 이름은 진단 힌트이며 숨김 조건이 아니다. navigation 참여와 가시성은 별개다.
+   archetype/CDO의 `sourceVisibility`와 실제 LevelStreaming 연결을 읽고, 초기
+   `LevelLoaded`/`LevelStartup -> ToggleHidden`의 target과 외부 actor 참조를 대조한다.
+   schema3의 instance/CDO visible이나 AlwaysLoaded만으로 최종 표시를 확정하지 않는다.
+   owner·카메라 부착 배우와 Matinee 제어 객체는 원본 부착·재생 소비자를 구분하며 독립
+   상시 지형으로 바꾸지 않는다. `LV_MODULE`, nav, water, FX 이름은 숨김 조건이 아니다.
+   navigation 참여와 가시성은 별개다.
 2. 기존 Bern/map variant cook은 `cook_wmodel_geometry_contract.py`를 호출해 source
    glTF의 UV1/UV2, tangent.w, COLOR0를 WModel에 보존한다. 원본 UPK→glTF에서 이미
    사라진 채널까지 생성하거나 원본과 동일하다고 인증하는 기능은 아니다. 필요한 채널이

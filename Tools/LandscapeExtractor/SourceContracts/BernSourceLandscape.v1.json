@@ -1,0 +1,5446 @@
+{
+  "schema": "lostark.source-landscape-painted-contract.v1",
+  "scope": "Bern painted layer01..06, 42 native-matched components; no runtime or visual validation claim",
+  "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+  "baseMaterialId": "2cf1c13888745046a6a2742eff3f6b86",
+  "uvScale": 0.1,
+  "rotationRadiansMultiplier": 3.140000104904175,
+  "sourceNormalConvention": "Sample linear RG; do not rotate decoded XY; reconstruct positive Z then apply source intensity. Height BA supplies the pixel Landscape basis.",
+  "components": [
+    {
+      "assetId": "MAP_3F75ADDC7A9C_LAND01_LC_00615",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "3c6d0b4c38e481e9b96961414bdbfedba54385d7585052fa732bc4fe0a6725e9",
+      "pixelShaderId": "74680d03b43a224d99398699a3104534"
+    },
+    {
+      "assetId": "MAP_92AC87707ED8_LAND01_LC_00616",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 4,
+          "uv": [
+            1.399999976158142,
+            -10.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.7497514486312866,
+            0.6906191110610962,
+            1.0
+          ],
+          "specular": [
+            0.9481240510940552,
+            0.9493335485458374,
+            1.0,
+            0.5
+          ],
+          "factors": [
+            0.5,
+            0.75,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03a_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03_n_ksr"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        }
+      ],
+      "shaderMapKey": "0a7aa62e137f7e123ee9cf922c5729b1b3294e2c5f16edd722c9be75472a106b",
+      "pixelShaderId": "0851a34aef4a02469f4c1d5fe91b8676"
+    },
+    {
+      "assetId": "MAP_7C2A0372F916_LAND01_LC_00617",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 4,
+          "uv": [
+            1.399999976158142,
+            -10.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.7497514486312866,
+            0.6906191110610962,
+            1.0
+          ],
+          "specular": [
+            0.9481240510940552,
+            0.9493335485458374,
+            1.0,
+            0.5
+          ],
+          "factors": [
+            0.5,
+            0.75,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03a_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03_n_ksr"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        }
+      ],
+      "shaderMapKey": "0a7aa62e137f7e123ee9cf922c5729b1b3294e2c5f16edd722c9be75472a106b",
+      "pixelShaderId": "0851a34aef4a02469f4c1d5fe91b8676"
+    },
+    {
+      "assetId": "MAP_65D0A2BF261E_LAND01_LC_00618",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        }
+      ],
+      "shaderMapKey": "00262f91c80941790638d93b25c102f619534078a163cbdffd32b2b3382ff6e4",
+      "pixelShaderId": "b168570e5bd2194ea1c9b234f54e95b4"
+    },
+    {
+      "assetId": "MAP_B14B876EEC0A_LAND01_LC_00619",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 4,
+          "uv": [
+            1.399999976158142,
+            -10.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.7497514486312866,
+            0.6906191110610962,
+            1.0
+          ],
+          "specular": [
+            0.9481240510940552,
+            0.9493335485458374,
+            1.0,
+            0.5
+          ],
+          "factors": [
+            0.5,
+            0.75,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03a_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03_n_ksr"
+        },
+        {
+          "layerIndex": 3,
+          "uv": [
+            3.0,
+            1.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.8674082159996033,
+            1.0,
+            0.9207988977432251,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_42_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "b233efce4e3292e4ae2969805bd77152958628557b2464fda9cbcf9cb2dbe9f7",
+      "pixelShaderId": "e1ebae47db1a9a4aa37851b61b381f9d"
+    },
+    {
+      "assetId": "MAP_11D198C1A3AB_LAND01_LC_00620",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 4,
+          "uv": [
+            1.399999976158142,
+            -10.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.7497514486312866,
+            0.6906191110610962,
+            1.0
+          ],
+          "specular": [
+            0.9481240510940552,
+            0.9493335485458374,
+            1.0,
+            0.5
+          ],
+          "factors": [
+            0.5,
+            0.75,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03a_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03_n_ksr"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 3,
+          "uv": [
+            3.0,
+            1.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.8674082159996033,
+            1.0,
+            0.9207988977432251,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_42_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 0,
+          "uv": [
+            2.0,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9879593253135681,
+            0.7782260179519653,
+            1.0
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.30000001192092896
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            0,
+            0
+          ],
+          "diffuseSourceObject": "lv_ground_01.tex.lv_common_ground_60_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "545d3a56c53a8d9b0323e265fb32b781ab23783e3376cebeef77c0753bf33878",
+      "pixelShaderId": "b709757b9db9a648b594ef01975f6e04"
+    },
+    {
+      "assetId": "MAP_8462EDFBE73F_LAND01_LC_00621",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 4,
+          "uv": [
+            1.399999976158142,
+            -10.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.7497514486312866,
+            0.6906191110610962,
+            1.0
+          ],
+          "specular": [
+            0.9481240510940552,
+            0.9493335485458374,
+            1.0,
+            0.5
+          ],
+          "factors": [
+            0.5,
+            0.75,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03a_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03_n_ksr"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 3,
+          "uv": [
+            3.0,
+            1.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.8674082159996033,
+            1.0,
+            0.9207988977432251,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_42_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "17c80424b597008140b7fd0e656ba109a3cdcedbd107b1124dc456d522e205bf",
+      "pixelShaderId": "475a3cb38adf0b40ac0c34f543eaa743"
+    },
+    {
+      "assetId": "MAP_4EC52FE2DC08_LAND01_LC_00622",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 4,
+          "uv": [
+            1.399999976158142,
+            -10.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.7497514486312866,
+            0.6906191110610962,
+            1.0
+          ],
+          "specular": [
+            0.9481240510940552,
+            0.9493335485458374,
+            1.0,
+            0.5
+          ],
+          "factors": [
+            0.5,
+            0.75,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03a_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03_n_ksr"
+        },
+        {
+          "layerIndex": 3,
+          "uv": [
+            3.0,
+            1.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.8674082159996033,
+            1.0,
+            0.9207988977432251,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_42_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        }
+      ],
+      "shaderMapKey": "4716a59af603af1335ac38d48ac2431515016c736ba18c029cd7a4448a6d55de",
+      "pixelShaderId": "1214bdd3f0bc154b929471e76129689f"
+    },
+    {
+      "assetId": "MAP_A7FB38300D8B_LAND01_LC_00623",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        }
+      ],
+      "shaderMapKey": "00262f91c80941790638d93b25c102f619534078a163cbdffd32b2b3382ff6e4",
+      "pixelShaderId": "b168570e5bd2194ea1c9b234f54e95b4"
+    },
+    {
+      "assetId": "MAP_93154FDE4C02_LAND01_LC_00624",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "3c6d0b4c38e481e9b96961414bdbfedba54385d7585052fa732bc4fe0a6725e9",
+      "pixelShaderId": "74680d03b43a224d99398699a3104534"
+    },
+    {
+      "assetId": "MAP_98981A2BCBED_LAND01_LC_00625",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "3c6d0b4c38e481e9b96961414bdbfedba54385d7585052fa732bc4fe0a6725e9",
+      "pixelShaderId": "74680d03b43a224d99398699a3104534"
+    },
+    {
+      "assetId": "MAP_8A93644CEE27_LAND01_LC_00626",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        }
+      ],
+      "shaderMapKey": "00262f91c80941790638d93b25c102f619534078a163cbdffd32b2b3382ff6e4",
+      "pixelShaderId": "b168570e5bd2194ea1c9b234f54e95b4"
+    },
+    {
+      "assetId": "MAP_4DA81C6BACD6_LAND01_LC_00627",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        }
+      ],
+      "shaderMapKey": "00262f91c80941790638d93b25c102f619534078a163cbdffd32b2b3382ff6e4",
+      "pixelShaderId": "b168570e5bd2194ea1c9b234f54e95b4"
+    },
+    {
+      "assetId": "MAP_E3B133199495_LAND01_LC_00628",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        }
+      ],
+      "shaderMapKey": "618236f414f452d598b1631f9185433254405303d15735e171ef00a089e3be46",
+      "pixelShaderId": "bacf4bbdaa46af45810d8a8d0055b430"
+    },
+    {
+      "assetId": "MAP_7665BD954DA6_LAND01_LC_00629",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 4,
+          "uv": [
+            1.399999976158142,
+            -10.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.7497514486312866,
+            0.6906191110610962,
+            1.0
+          ],
+          "specular": [
+            0.9481240510940552,
+            0.9493335485458374,
+            1.0,
+            0.5
+          ],
+          "factors": [
+            0.5,
+            0.75,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03a_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03_n_ksr"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 3,
+          "uv": [
+            3.0,
+            1.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.8674082159996033,
+            1.0,
+            0.9207988977432251,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_42_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "17c80424b597008140b7fd0e656ba109a3cdcedbd107b1124dc456d522e205bf",
+      "pixelShaderId": "475a3cb38adf0b40ac0c34f543eaa743"
+    },
+    {
+      "assetId": "MAP_F27D621AF450_LAND01_LC_00630",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 4,
+          "uv": [
+            1.399999976158142,
+            -10.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.7497514486312866,
+            0.6906191110610962,
+            1.0
+          ],
+          "specular": [
+            0.9481240510940552,
+            0.9493335485458374,
+            1.0,
+            0.5
+          ],
+          "factors": [
+            0.5,
+            0.75,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03a_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03_n_ksr"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        }
+      ],
+      "shaderMapKey": "0a7aa62e137f7e123ee9cf922c5729b1b3294e2c5f16edd722c9be75472a106b",
+      "pixelShaderId": "0851a34aef4a02469f4c1d5fe91b8676"
+    },
+    {
+      "assetId": "MAP_F3C63A746783_LAND01_LC_00631",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        }
+      ],
+      "shaderMapKey": "618236f414f452d598b1631f9185433254405303d15735e171ef00a089e3be46",
+      "pixelShaderId": "bacf4bbdaa46af45810d8a8d0055b430"
+    },
+    {
+      "assetId": "MAP_0E2C6FC31A87_LAND01_LC_00632",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "3c6d0b4c38e481e9b96961414bdbfedba54385d7585052fa732bc4fe0a6725e9",
+      "pixelShaderId": "74680d03b43a224d99398699a3104534"
+    },
+    {
+      "assetId": "MAP_9DBFD49E605D_LAND01_LC_00633",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "3c6d0b4c38e481e9b96961414bdbfedba54385d7585052fa732bc4fe0a6725e9",
+      "pixelShaderId": "74680d03b43a224d99398699a3104534"
+    },
+    {
+      "assetId": "MAP_BFCC178FF0E6_LAND01_LC_00634",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "3c6d0b4c38e481e9b96961414bdbfedba54385d7585052fa732bc4fe0a6725e9",
+      "pixelShaderId": "74680d03b43a224d99398699a3104534"
+    },
+    {
+      "assetId": "MAP_F913A992E7E1_LAND01_LC_00635",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 4,
+          "uv": [
+            1.399999976158142,
+            -10.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.7497514486312866,
+            0.6906191110610962,
+            1.0
+          ],
+          "specular": [
+            0.9481240510940552,
+            0.9493335485458374,
+            1.0,
+            0.5
+          ],
+          "factors": [
+            0.5,
+            0.75,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03a_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03_n_ksr"
+        },
+        {
+          "layerIndex": 3,
+          "uv": [
+            3.0,
+            1.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.8674082159996033,
+            1.0,
+            0.9207988977432251,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_42_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "40bf54773ed3e81fec43757c0b717bfbe0e0032dc9049a5c7f0708333d6d0b6e",
+      "pixelShaderId": "2d7cb21813779341b87915be1693a1e6"
+    },
+    {
+      "assetId": "MAP_F978EC1D4FE7_LAND01_LC_00636",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 4,
+          "uv": [
+            1.399999976158142,
+            -10.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.7497514486312866,
+            0.6906191110610962,
+            1.0
+          ],
+          "specular": [
+            0.9481240510940552,
+            0.9493335485458374,
+            1.0,
+            0.5
+          ],
+          "factors": [
+            0.5,
+            0.75,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03a_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03_n_ksr"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        }
+      ],
+      "shaderMapKey": "5cccad46cdddf79469f8c63ba113ba62a88609228b7b6592f42eb212edad2a7b",
+      "pixelShaderId": "321704f1480f9045b4434628fa39e9b3"
+    },
+    {
+      "assetId": "MAP_26546A0FC4C2_LAND02_LC_00752",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 0,
+          "uv": [
+            2.0,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9879593253135681,
+            0.7782260179519653,
+            1.0
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.30000001192092896
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            0,
+            0
+          ],
+          "diffuseSourceObject": "lv_ground_01.tex.lv_common_ground_60_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "41c9f12420c188d004ae47a9f02a3f278640fafff45d2e74355e1fbf60189bec",
+      "pixelShaderId": "2303b9ba66ec1349aa59980a4425fe03"
+    },
+    {
+      "assetId": "MAP_E6841E9DBB0A_LAND02_LC_00753",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 0,
+          "uv": [
+            2.0,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9879593253135681,
+            0.7782260179519653,
+            1.0
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.30000001192092896
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            0,
+            0
+          ],
+          "diffuseSourceObject": "lv_ground_01.tex.lv_common_ground_60_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 3,
+          "uv": [
+            3.0,
+            1.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.8674082159996033,
+            1.0,
+            0.9207988977432251,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_42_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 4,
+          "uv": [
+            1.399999976158142,
+            -10.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.7497514486312866,
+            0.6906191110610962,
+            1.0
+          ],
+          "specular": [
+            0.9481240510940552,
+            0.9493335485458374,
+            1.0,
+            0.5
+          ],
+          "factors": [
+            0.5,
+            0.75,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03a_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03_n_ksr"
+        }
+      ],
+      "shaderMapKey": "a555b52074b5d0acb0ccfa9bce226144a2a27c684ab60c885b5db3f5f3d97aac",
+      "pixelShaderId": "c49939fd9775d3468d0ee4911bb25db7"
+    },
+    {
+      "assetId": "MAP_E62C381E8537_LAND02_LC_00754",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 4,
+          "uv": [
+            1.399999976158142,
+            -10.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.7497514486312866,
+            0.6906191110610962,
+            1.0
+          ],
+          "specular": [
+            0.9481240510940552,
+            0.9493335485458374,
+            1.0,
+            0.5
+          ],
+          "factors": [
+            0.5,
+            0.75,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03a_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03_n_ksr"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 3,
+          "uv": [
+            3.0,
+            1.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.8674082159996033,
+            1.0,
+            0.9207988977432251,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_42_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 0,
+          "uv": [
+            2.0,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9879593253135681,
+            0.7782260179519653,
+            1.0
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.30000001192092896
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "diffuseSourceObject": "lv_ground_01.tex.lv_common_ground_60_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "2f84ed77e42a04b4cb6db3095387c5d85bd6ff2b0fdf1007ab926355b291f76a",
+      "pixelShaderId": "7162157d2eb4a74ea562d609fa5e258c"
+    },
+    {
+      "assetId": "MAP_0268B030B539_LAND02_LC_00755",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 4,
+          "uv": [
+            1.399999976158142,
+            -10.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.7497514486312866,
+            0.6906191110610962,
+            1.0
+          ],
+          "specular": [
+            0.9481240510940552,
+            0.9493335485458374,
+            1.0,
+            0.5
+          ],
+          "factors": [
+            0.5,
+            0.75,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03a_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03_n_ksr"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 3,
+          "uv": [
+            3.0,
+            1.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.8674082159996033,
+            1.0,
+            0.9207988977432251,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_42_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "1a368b17fc820ecca099c5e92f7605e78ae2a71535929b2a2e793e1e3065617f",
+      "pixelShaderId": "60f2a66f6b04be40a8735d4aacae520d"
+    },
+    {
+      "assetId": "MAP_A566661BA67A_LAND02_LC_00756",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        }
+      ],
+      "shaderMapKey": "00262f91c80941790638d93b25c102f619534078a163cbdffd32b2b3382ff6e4",
+      "pixelShaderId": "b168570e5bd2194ea1c9b234f54e95b4"
+    },
+    {
+      "assetId": "MAP_9DF26C137AA6_LAND02_LC_00757",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "3c6d0b4c38e481e9b96961414bdbfedba54385d7585052fa732bc4fe0a6725e9",
+      "pixelShaderId": "74680d03b43a224d99398699a3104534"
+    },
+    {
+      "assetId": "MAP_2107B3D4F1C8_LAND02_LC_00758",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "3c6d0b4c38e481e9b96961414bdbfedba54385d7585052fa732bc4fe0a6725e9",
+      "pixelShaderId": "74680d03b43a224d99398699a3104534"
+    },
+    {
+      "assetId": "MAP_148B4E1F30BC_LAND02_LC_00759",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 3,
+          "uv": [
+            3.0,
+            1.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.8674082159996033,
+            1.0,
+            0.9207988977432251,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_42_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 0,
+          "uv": [
+            2.0,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9879593253135681,
+            0.7782260179519653,
+            1.0
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.30000001192092896
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            0,
+            0
+          ],
+          "diffuseSourceObject": "lv_ground_01.tex.lv_common_ground_60_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "acd1eb0791093b6a73bac66ebb3c3a63bd1d2297feec6417fb67f70151ddd800",
+      "pixelShaderId": "0fe6efc93526ba49a0345da62560c2e5"
+    },
+    {
+      "assetId": "MAP_CC5AFD32D757_LAND02_LC_00760",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 0,
+          "uv": [
+            2.0,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9879593253135681,
+            0.7782260179519653,
+            1.0
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.30000001192092896
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            0,
+            0
+          ],
+          "diffuseSourceObject": "lv_ground_01.tex.lv_common_ground_60_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "499603adbcf6bdd4b2b2725358a8932ce9e52a474fd9b033db8905a37e1b7b30",
+      "pixelShaderId": "d0a07a7551f1d2499295392ba0604c1d"
+    },
+    {
+      "assetId": "MAP_D279778EBDA1_LAND02_LC_00761",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        }
+      ],
+      "shaderMapKey": "618236f414f452d598b1631f9185433254405303d15735e171ef00a089e3be46",
+      "pixelShaderId": "bacf4bbdaa46af45810d8a8d0055b430"
+    },
+    {
+      "assetId": "MAP_110E3C287A41_LAND02_LC_00762",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        }
+      ],
+      "shaderMapKey": "618236f414f452d598b1631f9185433254405303d15735e171ef00a089e3be46",
+      "pixelShaderId": "bacf4bbdaa46af45810d8a8d0055b430"
+    },
+    {
+      "assetId": "MAP_B7D651CE3EF8_LAND02_LC_00763",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        }
+      ],
+      "shaderMapKey": "49d5af48d2a940d37977f78f508daba9dc72d983d274e82a456731c705dcaa8a",
+      "pixelShaderId": "43eb8ad61b95bc49a56c84b5a7697e88"
+    },
+    {
+      "assetId": "MAP_5D640CBD65A3_LAND02_LC_00764",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 4,
+          "uv": [
+            1.399999976158142,
+            -10.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.7497514486312866,
+            0.6906191110610962,
+            1.0
+          ],
+          "specular": [
+            0.9481240510940552,
+            0.9493335485458374,
+            1.0,
+            0.5
+          ],
+          "factors": [
+            0.5,
+            0.75,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03a_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03_n_ksr"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 0,
+          "uv": [
+            2.0,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9879593253135681,
+            0.7782260179519653,
+            1.0
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.30000001192092896
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            2,
+            0,
+            0
+          ],
+          "diffuseSourceObject": "lv_ground_01.tex.lv_common_ground_60_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 3,
+          "uv": [
+            3.0,
+            1.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.8674082159996033,
+            1.0,
+            0.9207988977432251,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_42_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "0d2ecfa2e1efe3e87f43e4b3dbdbd57dbfe6069b114d9bf00e3dda0eed4398d9",
+      "pixelShaderId": "116a199bc0f320449e9167df38b384fc"
+    },
+    {
+      "assetId": "MAP_0BCA100ACD94_LAND02_LC_00765",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 3,
+          "uv": [
+            3.0,
+            1.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.8674082159996033,
+            1.0,
+            0.9207988977432251,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_42_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "59e58a36aad629d4001450ddacfcbc3ef4f134ac1fe2c88f21858bfcf4d7e4ba",
+      "pixelShaderId": "c16b43881f09494f8c673e9a2f10c5f8"
+    },
+    {
+      "assetId": "MAP_C03C521671AC_LAND02_LC_00766",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 4,
+          "uv": [
+            1.399999976158142,
+            -10.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.7497514486312866,
+            0.6906191110610962,
+            1.0
+          ],
+          "specular": [
+            0.9481240510940552,
+            0.9493335485458374,
+            1.0,
+            0.5
+          ],
+          "factors": [
+            0.5,
+            0.75,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03a_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03_n_ksr"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 3,
+          "uv": [
+            3.0,
+            1.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.8674082159996033,
+            1.0,
+            0.9207988977432251,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_42_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "1a368b17fc820ecca099c5e92f7605e78ae2a71535929b2a2e793e1e3065617f",
+      "pixelShaderId": "60f2a66f6b04be40a8735d4aacae520d"
+    },
+    {
+      "assetId": "MAP_5874C824DE48_LAND02_LC_00767",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        }
+      ],
+      "shaderMapKey": "00262f91c80941790638d93b25c102f619534078a163cbdffd32b2b3382ff6e4",
+      "pixelShaderId": "b168570e5bd2194ea1c9b234f54e95b4"
+    },
+    {
+      "assetId": "MAP_1C22488EE82E_LAND02_LC_00768",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "3c6d0b4c38e481e9b96961414bdbfedba54385d7585052fa732bc4fe0a6725e9",
+      "pixelShaderId": "74680d03b43a224d99398699a3104534"
+    },
+    {
+      "assetId": "MAP_42C1C61882EB_LAND02_LC_00769",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 0,
+          "uv": [
+            2.0,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9879593253135681,
+            0.7782260179519653,
+            1.0
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.30000001192092896
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            0,
+            0
+          ],
+          "diffuseSourceObject": "lv_ground_01.tex.lv_common_ground_60_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "6c543ad7a3017e5eb407cd935c26b9e0d1c0a3db054476efd2c04eb51784718e",
+      "pixelShaderId": "803c4ad5153b2a49b45340626c199e7a"
+    },
+    {
+      "assetId": "MAP_776E1E32168A_LAND02_LC_00770",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 0,
+          "uv": [
+            2.0,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9879593253135681,
+            0.7782260179519653,
+            1.0
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.30000001192092896
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            0,
+            0
+          ],
+          "diffuseSourceObject": "lv_ground_01.tex.lv_common_ground_60_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 4,
+          "uv": [
+            1.399999976158142,
+            -10.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.7497514486312866,
+            0.6906191110610962,
+            1.0
+          ],
+          "specular": [
+            0.9481240510940552,
+            0.9493335485458374,
+            1.0,
+            0.5
+          ],
+          "factors": [
+            0.5,
+            0.75,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03a_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03_n_ksr"
+        },
+        {
+          "layerIndex": 3,
+          "uv": [
+            3.0,
+            1.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.8674082159996033,
+            1.0,
+            0.9207988977432251,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_42_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "a555b52074b5d0acb0ccfa9bce226144a2a27c684ab60c885b5db3f5f3d97aac",
+      "pixelShaderId": "c49939fd9775d3468d0ee4911bb25db7"
+    },
+    {
+      "assetId": "MAP_9509484262D2_LAND02_LC_00771",
+      "sourceMaterial": "lv_ber_berncastle.landscape.lv_ber_berncastle_land_01_mi",
+      "castsShadow": true,
+      "castShadowEvidence": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361",
+      "layers": [
+        {
+          "layerIndex": 1,
+          "uv": [
+            2.4000000953674316,
+            1.2000000476837158,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.7752808928489685,
+            0.9753059148788452,
+            1.0,
+            0.8999999761581421
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_24_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 4,
+          "uv": [
+            1.399999976158142,
+            -10.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.7497514486312866,
+            0.6906191110610962,
+            1.0
+          ],
+          "specular": [
+            0.9481240510940552,
+            0.9493335485458374,
+            1.0,
+            0.5
+          ],
+          "factors": [
+            0.5,
+            0.75,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            1,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03a_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_ber_berncastle_d.tex.bg_ber_berncastle_floor03_n_ksr"
+        },
+        {
+          "layerIndex": 0,
+          "uv": [
+            2.0,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9879593253135681,
+            0.7782260179519653,
+            1.0
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.30000001192092896
+          ],
+          "factors": [
+            0.4000000059604645,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            2,
+            0,
+            0
+          ],
+          "diffuseSourceObject": "lv_ground_01.tex.lv_common_ground_60_d",
+          "diffuseColorSpace": "SRGB"
+        },
+        {
+          "layerIndex": 2,
+          "uv": [
+            1.5,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.5704693794250488,
+            0.5093441009521484,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            0.30000001192092896,
+            60.0,
+            0
+          ],
+          "weight": [
+            0,
+            3,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 5,
+          "uv": [
+            3.5999999046325684,
+            0.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            1.0,
+            0.9337040781974792,
+            0.9672751426696777,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "factors": [
+            0.25,
+            0.6000000238418579,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            1,
+            1,
+            0
+          ],
+          "diffuseSourceObject": "lv_ber_berncastle.tex.bg_pap_sforest_floor01d_d_ksr",
+          "diffuseColorSpace": "SRGB",
+          "normalSourceObject": "bg_pap_sforest_a.tex.bg_pap_sforest_floor01a_n_ksr"
+        },
+        {
+          "layerIndex": 3,
+          "uv": [
+            3.0,
+            1.0,
+            0,
+            0
+          ],
+          "diffuse": [
+            0.8674082159996033,
+            1.0,
+            0.9207988977432251,
+            0.800000011920929
+          ],
+          "specular": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "factors": [
+            0.20000000298023224,
+            1.0,
+            60.0,
+            0
+          ],
+          "weight": [
+            1,
+            2,
+            1,
+            1
+          ],
+          "diffuseSourceObject": "lv_grass_01.tex.lv_common_grass_42_d",
+          "diffuseColorSpace": "SRGB"
+        }
+      ],
+      "shaderMapKey": "c1a93c7a1b5bab4fc70839781d0e340b9d9af3ae192e2d8207207ee8f52abd7c",
+      "pixelShaderId": "0c4b08b1ce864b468cb4d87142ce0e93"
+    }
+  ],
+  "castShadowEvidence": {
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:615": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_0",
+      "serialSha256": "bc8b5799c1dc8065e29544b0c1da3f5a1a010dabe3f5ae69b67c8c41359370f4",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u:18361": {
+      "objectPath": "Default__LandscapeComponent",
+      "serialSha256": "f45ae041f99acb915bdc9043a224156bff19382139dfe1ff50e8785a81cf37df",
+      "castShadow": true
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:616": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_1",
+      "serialSha256": "04daddae032448592425e3010e2cbfb25f72b7b3ad738b715e5d47e2a60cea2e",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:617": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_10",
+      "serialSha256": "169147bf13051dff58ef5be57e38af88678b61d41bdea5261d25091214fe75c1",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:618": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_11",
+      "serialSha256": "9c97af86145da7832f37bc3d364c429ef5b6fa902cb42d98f1e2e10f237a1780",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:619": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_12",
+      "serialSha256": "76b4727fb512d1ac7d0389fbd84aa8e9377efd8baa25f7f5aefa6f1adade8495",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:620": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_13",
+      "serialSha256": "2b3b4184b8166d28ea8c58651c44227b40d4716159a7e67488fdbcb0296ea7be",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:621": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_14",
+      "serialSha256": "071700ff71f27eef66a0f25649ba8496cfbf4ef74e5e7d1f9c64abf57fb8ad4e",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:622": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_15",
+      "serialSha256": "1d78a81e40aa012dd7847e217bb0f496c676bb202911caf6f9cb3b556a2556a3",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:623": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_16",
+      "serialSha256": "66360784b66259dae9a3bdb497cc104544dd917de55b0c97281f467cd7ab1545",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:624": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_17",
+      "serialSha256": "bf3922529a86de5c1db797ad2e77b978f7e1e90f75216ab9922d82a9c74de676",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:625": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_18",
+      "serialSha256": "5161407b04bacdb52b5b4410359ee015c57b249f090b54e954bcbf9437d491ba",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:626": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_19",
+      "serialSha256": "f0a2b818b017071a45d9d459528410818f8255b9b6df661d95a2898f128364b4",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:627": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_2",
+      "serialSha256": "11cdb1fcd6d12b011ca67df44ee31b1fa32524f46d79cbe1e4763a1ea771aea7",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:628": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_20",
+      "serialSha256": "b366635326bcad1b6e62ef7bbfeb15eb40d70f1de8d4c749199d8376395ff6b9",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:629": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_21",
+      "serialSha256": "aeaa1cc9953c7a16823e2f849280889bfc8fa13a66d0b5501bdcb17c2bcf1852",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:630": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_22",
+      "serialSha256": "47f3d0d9433690e77217fa7dcafda6fba0271bd0933412807b5c5d0d4585adc0",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:631": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_23",
+      "serialSha256": "243c97aaa1c8735e8be805e303625c917ec037efbe6522c5659bb11bbc0bc4f7",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:632": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_27",
+      "serialSha256": "e658cb651971f2e9185fcd8e1717f2a7145fcec65c3d97bd9501962fa2b399c5",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:633": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_28",
+      "serialSha256": "a72e45b3a7be9c9f5770ed921c3aa4dc0abac5d9e5c25e77a47c9c0074b65bd2",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:634": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_29",
+      "serialSha256": "521d6c2e9ff252dfbc12e51459b3e61a20bb9b18d1c11ec1667059ed5fc567bb",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:635": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_3",
+      "serialSha256": "1375bf834b97b0a83b24ea35e1f653563b249ddc5ac9740d3598debcb060d1cd",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk:636": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_4",
+      "serialSha256": "06d0611e7533b15acb71df828caed1380f7364f3088889876abf71436afedd11",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:752": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_0",
+      "serialSha256": "0fdcf2e15d6d7617a85f4d35517f4ea45d35e1fb6ec7c0beffa2c135735278a4",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:753": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_1",
+      "serialSha256": "3c30daaf7f14bbda84b7eb446b5f4479ae92922d21a2a4c016e00dd159309813",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:754": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_10",
+      "serialSha256": "c8ba65080e5a42ba8101e1f7ba93dbc0b6f02371024150be76aab15c18363d41",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:755": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_11",
+      "serialSha256": "8962d20974954c7bbcb9d65d3cf4595497c3d5b68724ff4a677ff2e6c8cd92ca",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:756": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_12",
+      "serialSha256": "72f04774e6bf36f02a07ac4609423e0a3e964f222248d4551f8d70b71c7c93ec",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:757": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_13",
+      "serialSha256": "0f63a945fe476feda54d8140136818be97dd2f2c7cf31bd0740377d1ae7e50b8",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:758": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_14",
+      "serialSha256": "2dabcbf3a4372f3c68a49de76867edd8cc6247ec422da20caa0231c46b9461e5",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:759": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_15",
+      "serialSha256": "3db6b95aa5ea5ac22bc2554887ed6a6d5e1be6d6bbb63e284c83c5043046fef3",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:760": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_16",
+      "serialSha256": "82116fcbe743a711b1d3840307ecb50d2d9a4023e6389ef61e953d47fe6ba118",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:761": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_17",
+      "serialSha256": "b18712c03be26b8ff02036c8201e5a00a234ba7d72dc54c041ded70a1fa82fda",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:762": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_18",
+      "serialSha256": "67ff2fc574643806109454b23af40708beb729c0e36f09b03eff4423b55cd491",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:763": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_19",
+      "serialSha256": "ca6addb4161c9242a5b7f48420a5f4746ca3a0f6d91ee06537304dc92908bcd6",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:764": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_2",
+      "serialSha256": "967cd85c2eba3976e82ca3dc3b127f47b51767d1ce8aa7a6e1f58e404db45af2",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:765": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_3",
+      "serialSha256": "4a205236bbb1396c95191ac7a6ac078cc38219b86e04bfcdf894abf08b816efb",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:766": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_4",
+      "serialSha256": "62b2390c6023f57675f22b41e997ffae19903771510337335d1a1f70a06f918c",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:767": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_5",
+      "serialSha256": "59ceae3242643a0bcb0e132a3d29959b90f20ec67e6b9a4974f40c798e0f9c6e",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:768": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_6",
+      "serialSha256": "1cbfc0cba8ae3eda633f0e9959d09532d819c96c2506c14a2ffa924b2b138d8f",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:769": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_7",
+      "serialSha256": "b1f7e89e3006dfd5b7bf6fc9e7afbbb3e2916c8566b405c4ba1d4733ff269f6c",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:770": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_8",
+      "serialSha256": "59933a8742339f7e542bb067cdcdbf8341ea3ef2fea79dff172fb07a34399b2c",
+      "castShadow": null
+    },
+    "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk:771": {
+      "objectPath": "theworld.persistentlevel.landscapeproxy_0.landscapecomponent_9",
+      "serialSha256": "b33a14698904048333a1f9ac469877ca638985f5902d36dc8ed74fe148d077ae",
+      "castShadow": null
+    }
+  },
+  "provenance": {
+    "materialParameters": "bern-landscape-parameters.json",
+    "nativeMatches": "bern-all42-native-matches.json",
+    "nativeDecodeScript": "audit-bern-layer-cache.py"
+  }
+}
