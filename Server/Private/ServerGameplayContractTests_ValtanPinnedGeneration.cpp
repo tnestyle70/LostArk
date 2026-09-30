@@ -143,7 +143,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 			bool counterStarted = false, counterDamageLess = false;
 			CPlayerSkillSystem counterSkills;
 			std::uint32_t counterTick = 0u, impactTick = 0u, terminalTick = 0u;
-			for (std::uint32_t tick = 1000u; tick < 2200u && valid; ++tick)
+			for (std::uint32_t tick = 1000u; tick < 3200u && valid; ++tick)
 			{
 				if ("STEP_08" == boss.strPatternStageId)
 				{
@@ -157,7 +157,11 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 						player.fPositionZ = boss.fPositionZ + std::cos(radians) * distance;
 					}
 				}
-				if (branch == 3u && "STEP_07" == boss.strPatternStageId &&
+				const bool counterAfterRequiredRetry =
+					(branch == 0u && reachedRetryExhausted && "RETRY_WINDUP_02" == boss.strPatternStageId) ||
+					(branch == 1u && reachedSlam && reachedRetryWait02 && "RETRY_WINDUP_02" == boss.strPatternStageId) ||
+					(branch == 3u && "STEP_07" == boss.strPatternStageId);
+				if (counterAfterRequiredRetry &&
 					!counterStarted)
 				{
 					const float radians = boss.fYawDegrees *
@@ -179,7 +183,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 				}
 				const std::uint32_t hpBeforeAdvance = boss.iCurrentHp;
 				valid = advance(*room, tick);
-				if (branch == 3u && counterStarted && !counter &&
+				if (counterStarted && !counter &&
 					2u == room->m_Players.at(19200u).iComboStage)
 				{
 					counter = true;
@@ -239,16 +243,20 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 			if (branch == 0u)
 				tests.Require(valid && reachedMiss && reachedRetryWait02 &&
 					reachedRetryRush02 && reachedRetryWait03 && reachedRetryRush03 &&
-					reachedRetryExhausted && !captured && counterTick == 0u && completed,
-					"Trash NONE completes its full finite three-rush miss path before exhausting retries");
+					reachedRetryExhausted && !captured && counterTick == 0u &&
+					counterStarted && counter && counterDamageLess && completed,
+					"Trash NONE repeats after three missed rushes and completes only after a real counter on the next cast");
 			if (branch == 1u)
 				tests.Require(valid && captured && reachedSlam && !reachedExecution && detached &&
-					impactTick - counterTick == 45u && completed,
-					"Trash PARTIAL applies captured-only damage, detaches and completes its finite tail");
+					impactTick - counterTick == 45u && reachedRetryWait02 &&
+					counterStarted && counter && counterDamageLess && completed,
+					"Trash PARTIAL damages and releases its capture, retries, then completes only after a real counter");
 			if (branch == 2u)
-				tests.Require(valid && captured && reachedExecution && detached && completed &&
-					impactTick - counterTick == 45u && terminalTick - impactTick == 45u,
-					"Trash ALL executes every captured living player atomically and completes its targetless 1500ms tail");
+				tests.Require(valid && captured && reachedExecution && detached && !completed &&
+					reachedRetryWait02 && terminalTick > impactTick + 44u &&
+					boss.PatternTerminalReceipt.eResult == SERVER_BOSS_PATTERN_TERMINAL_RESULT::ABORTED &&
+					impactTick - counterTick == 45u,
+					"Trash ALL retains its atomic punishment and tail, then waits for a target without reporting counter success");
 			if (branch == 3u)
 				tests.Require(valid && !captured && counterStarted && counter &&
 					counterDamageLess && detached && completed && !reachedSlam &&
@@ -1807,19 +1815,31 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 			auto room = prepareRoom();
 			room->m_WorldEntities.front().PendingPatternIds = { patternId };
 			bool finished = false;
+			bool counterSucceeded = false;
 			for (std::uint32_t tick = 1u; tick < 600u && room->Is_Ready(); ++tick)
 			{
 				room->m_iServerTick = tick - 1u;
 				room->Update_WorldEntities(1.f / 30.f);
-				const auto& boss = room->m_WorldEntities.front();
+				auto& boss = room->m_WorldEntities.front();
+				// The full IF graph now intentionally repeats until a confirmed counter.
+				if (boss.strPatternId == "VALTAN_TRASH_CATCH_IF" &&
+					CBossCombatRuntime::Has_Flag(boss.BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE))
+				{
+					BOSS_INCOMING_HIT hit{};
+					hit.iSourcePlayerId = 19200u; hit.iSkillId = 34580u; hit.iServerTick = tick;
+					hit.iCounterPower = 1u; hit.bCounterFromPrimarySlot = true;
+					hit.fSourceX = boss.fPositionX; hit.fSourceZ = boss.fPositionZ;
+					counterSucceeded = CBossCombatRuntime::Apply_PlayerHit(boss, hit).bCounterTriggered;
+				}
 				finished = boss.strPatternId.empty() && boss.iPatternSequence == 1u &&
 					SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED == boss.PatternTerminalReceipt.eResult;
 				if (finished) break;
 			}
 			tests.Require(room->Is_Ready() && finished &&
+				(std::string_view(patternId) != "VALTAN_TRASH_CATCH_IF" || counterSucceeded) &&
 				std::all_of(room->m_Players.begin(), room->m_Players.end(),
 					[](const auto& entry) { return entry.second.iAttachmentOwnerNetEntityId == INVALID_NET_ENTITY_ID; }),
-				"Trash IF, SUCCESS and FAIL standalone fragments finish without cross-pattern attachment carry");
+				"Trash IF finishes after its required counter; SUCCESS and FAIL fragments finish without attachment carry");
 		}
 		const auto releaseFailurePreservesPlayers = [&prepareRoom, &stageById,
 			&trashDefinition](const std::shared_ptr<CGameplayCatalog>& exitGeneration)

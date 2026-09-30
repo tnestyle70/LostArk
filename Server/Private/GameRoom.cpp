@@ -1512,6 +1512,31 @@ bool LostArk::Server::CGameRoom::Commit_NumericBalance(
         boss.iMaximumHp = profile->iMaximumHp; boss.iMaximumHealthBars = profile->iMaximumHealthBars;
         boss.iAttackPower = profile->iAttackPower; boss.fCollisionRadius = profile->fCollisionRadius;
         boss.fEngageDistance = profile->fEngageDistance; boss.fMoveSpeed = profile->fMoveSpeed;
+        const auto commonStagger = m_GameplayCatalog.Active().Get_RaidStaggerMaximum();
+        if (commonStagger && Uses_RaidStaggerPolicy(boss))
+        {
+            if (boss.iKoukuItemStaggerMaximum)
+            {
+                boss.iKoukuItemStaggerCredit = ratio(boss.iKoukuItemStaggerCredit,
+                    boss.iKoukuItemStaggerMaximum, commonStagger, false);
+                boss.iKoukuItemStaggerMaximum = commonStagger;
+            }
+            for (const auto& retained : boss.KoukuRetainedLogicOwners)
+                if (const auto owner = retained.lock(); owner && owner->iKoukuItemStaggerMaximum)
+                {
+                    owner->iKoukuItemStaggerCredit = ratio(owner->iKoukuItemStaggerCredit,
+                        owner->iKoukuItemStaggerMaximum, commonStagger, false);
+                    owner->iKoukuItemStaggerMaximum = commonStagger;
+                }
+            if (boss.BossCombat.iStaggerMaximum)
+            {
+                boss.BossCombat.iStaggerCurrent = ratio(boss.BossCombat.iStaggerCurrent,
+                    boss.BossCombat.iStaggerMaximum, commonStagger, false);
+                boss.BossCombat.iStaggerMaximum = commonStagger;
+                ++boss.BossCombat.iStateRevision;
+            }
+            continue;
+        }
         if (!boss.BossCombat.iStaggerMaximum) continue;
         const auto* pinned = m_GameplayCatalog.Resolve(boss.PinnedDefinitionRevision);
         const auto* patterns = pinned ? pinned->Find_BossPatterns(boss.strEncounterId) : nullptr;

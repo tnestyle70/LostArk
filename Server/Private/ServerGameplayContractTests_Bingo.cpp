@@ -515,7 +515,8 @@ int LostArk::Server::Run_ServerBingoContractTests()
             KOUKUSAYDON_LOGIC_OUTPUT lineOutput;
             CKoukuSaydonLogicRuntime::Update(owner, linePattern, lineLedger, room->m_Players, room->m_GameplayCatalog, nullptr, 6200u, damage, lineOutput);
             room->m_KoukuBingoDuration.bLastLineCompletionSucceeded = lineOutput.BingoLineCompletion.value_or(false);
-            tests.Require(lineOutput.BingoLineCompletion == true && player.iInvulnerableEndTick == 7100u && unsafe.iInvulnerableEndTick == 7100u,
+            tests.Require(lineOutput.BingoLineCompletion == true && player.iInvulnerableEndTick == 7100u && unsafe.iInvulnerableEndTick == 7100u &&
+                player.iKoukuBingoLineProtectionEndTick == 7100u && unsafe.iKoukuBingoLineProtectionEndTick == 7100u,
                 "One completed red row grants every living player a thirty-second buff independent of tile position");
             BOSS_PATTERN_MECHANIC_TRIGGER detonation; detonation.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_DETONATION;
             room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, detonation});
@@ -534,12 +535,31 @@ int LostArk::Server::Run_ServerBingoContractTests()
             tests.Require(player.iCurrentHp == 100u && unsafe.iCurrentHp == 100u && owner.iCurrentHp == 8700u,
                 "An active thirty-second line reward survives failed Bingo detonation without awarding boss damage");
             room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, detonation});
+            player.iInvulnerableEndTick = unsafe.iInvulnerableEndTick = 8000u; // An unrelated immunity cannot extend earned line protection.
             room->Commit_KoukuMechanicTriggers(7100u);
             tests.Require(player.iCurrentHp == 0u && unsafe.iCurrentHp == 0u && owner.iCurrentHp == 8700u,
                 "At the exact protection deadline failed Bingo detonation again wipes through shields without damaging the boss");
             tests.Require(player.iInvulnerabilityZonePulseTick == 6550u && unsafe.iInvulnerabilityZonePulseTick == 6550u &&
                 player.iInvulnerabilityZoneContactTick != 7100u && unsafe.iInvulnerabilityZoneContactTick != 7100u,
                 "An expired black-hole verdict never reports another invulnerable combat-text occurrence");
+
+            player.iCurrentHp = unsafe.iCurrentHp = 100u;
+            player.eAction = unsafe.eAction = PLAYER_ACTION_STATE::NONE;
+            player.iInvulnerableEndTick = unsafe.iInvulnerableEndTick = 8000u;
+            player.iKoukuBingoLineProtectionEndTick = unsafe.iKoukuBingoLineProtectionEndTick = 0u;
+            player.iEstherZoneProtectionEndTick = unsafe.iEstherZoneProtectionEndTick = 0u;
+            unsafe.fPositionX = player.fPositionX + 20.f;
+            room->Open_EstherZone(EstherStrike::ZONES[0], player.fPositionX, player.fPositionZ, 7200u);
+            room->Update_EstherZones(7200u);
+            room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, detonation});
+            room->Commit_KoukuMechanicTriggers(7200u);
+            tests.Require(player.iCurrentHp == 100u && player.iEstherZoneProtectionEndTick == 7202u && !unsafe.iCurrentHp,
+                "Only the real Inanna zone source satisfies Bingo detonation; identical generic immunity outside does not");
+            room->m_EstherZones.clear();
+            room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, detonation});
+            room->Commit_KoukuMechanicTriggers(7202u);
+            tests.Require(!player.iCurrentHp,
+                "Bingo protection expires at Inanna's exact source deadline even when generic immunity lasts longer");
 
             player.iCurrentHp = 100u; player.eAction = PLAYER_ACTION_STATE::NONE; player.isCombatReady = true;
             player.fPositionX = owner.fPositionX + 1.f; player.fPositionZ = owner.fPositionZ;
@@ -648,7 +668,11 @@ int LostArk::Server::Run_ServerBingoContractTests()
                 (void)CServerCombatHitRuntime::Apply_WorldToPlayer(expected, original, room->m_GameplayCatalog.Active(), expectedDamage);
                 runtime.Update(victims, pushOwners, room->m_GameplayCatalog.Active(), 1.f / 30.f, 20001u, actualDamage);
                 const auto& actual = victims.at(1u);
-                tests.Require(actual.iCurrentHp == 900u && actual.iCurrentHp == expected.iCurrentHp &&
+                tests.Require(actual.iCurrentHp >= 890u && actual.iCurrentHp <= 910u && actual.iCurrentHp == expected.iCurrentHp &&
+                    actual.iIncomingDamageSampleSerial == 1u && expected.iIncomingDamageSampleSerial == 1u &&
+                    actualDamage.size() == 1u && expectedDamage.size() == 1u &&
+                    actualDamage.front().iAmount == 1000u - actual.iCurrentHp &&
+                    expectedDamage.front().iAmount == actualDamage.front().iAmount &&
                     actual.eAction == expected.eAction && actual.bKnockbackBallistic == expected.bKnockbackBallistic &&
                     std::abs(actual.fKnockbackDirectionX - expected.fKnockbackDirectionX) < .00001f &&
                     std::abs(actual.fKnockbackDirectionZ - expected.fKnockbackDirectionZ) < .00001f &&
@@ -668,15 +692,26 @@ int LostArk::Server::Run_ServerBingoContractTests()
             auto copy = owner; copy.iNetEntityId = owner.iNetEntityId + 1u; copy.fPositionX += 30.f;
             player.iCurrentHp = 100u; player.fPositionX = owner.fPositionX; player.fPositionZ = owner.fPositionZ;
             unsafe.iCurrentHp = 100u; unsafe.fPositionX = copy.fPositionX; unsafe.fPositionZ = copy.fPositionZ;
+            const auto contactEventStart = room->m_TickDamageEvents.size();
             room->Update_KoukuActorContacts(owner, contact, room->m_GameplayCatalog.Active(), 6400u);
             room->Update_KoukuActorContacts(copy, contact, room->m_GameplayCatalog.Active(), 6400u);
             room->Update_KoukuActorContacts(owner, contact, room->m_GameplayCatalog.Active(), 6400u);
-            tests.Require(player.iCurrentHp == 90u && unsafe.iCurrentHp == 90u && owner.KoukuContactLedger != copy.KoukuContactLedger,
+            const auto firstContactHp = player.iCurrentHp, cloneContactHp = unsafe.iCurrentHp;
+            tests.Require(firstContactHp >= 89u && firstContactHp <= 91u && cloneContactHp >= 89u && cloneContactHp <= 91u &&
+                room->m_TickDamageEvents.size() == contactEventStart + 2u &&
+                room->m_TickDamageEvents[contactEventStart].iTargetNetEntityId == player.iNetEntityId &&
+                room->m_TickDamageEvents[contactEventStart].iAmount == 100u - firstContactHp &&
+                room->m_TickDamageEvents[contactEventStart + 1u].iTargetNetEntityId == unsafe.iNetEntityId &&
+                room->m_TickDamageEvents[contactEventStart + 1u].iAmount == 100u - cloneContactHp &&
+                owner.KoukuContactLedger != copy.KoukuContactLedger,
                 "Direction actors own separate periodic contact ledgers and use their actual positions without duplicate-tick damage");
             owner.fPositionX += 60.f;
             room->Update_KoukuActorContacts(owner, contact, room->m_GameplayCatalog.Active(), 6403u);
             room->Update_KoukuActorContacts(copy, contact, room->m_GameplayCatalog.Active(), 6403u);
-            tests.Require(player.iCurrentHp == 90u && unsafe.iCurrentHp == 80u,
+            tests.Require(player.iCurrentHp == firstContactHp && cloneContactHp - unsafe.iCurrentHp >= 9u &&
+                cloneContactHp - unsafe.iCurrentHp <= 11u && room->m_TickDamageEvents.size() == contactEventStart + 3u &&
+                room->m_TickDamageEvents.back().iTargetNetEntityId == unsafe.iNetEntityId &&
+                room->m_TickDamageEvents.back().iAmount == cloneContactHp - unsafe.iCurrentHp,
                 "Moving the real direction actor moves its fire region while a clone retains its own next contact tick");
 
             // Drive the real planted-bomb consumer with the pinned authored one-line reward.

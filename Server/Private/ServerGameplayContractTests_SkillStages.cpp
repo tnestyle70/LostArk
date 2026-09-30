@@ -202,23 +202,81 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SkillStages(TESTS& test
 		CBossCombatRuntime::Set_StaggerGauge(boss.BossCombat, 100u);
 		CBossCombatRuntime::Set_Flag(boss.BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, true);
 		SERVER_PLAYER_TO_WORLD_HIT hit{}; hit.iSkillId = 34040u; hit.iSourcePlayerId = 1u; hit.iServerTick = 1u;
-		hit.iStaggerDamage = 99u;
+		hit.iStaggerDamage = 99u; hit.iRawDamage = 99000u; hit.bHealthDamageDisabled = true;
 		std::vector<DAMAGE_EVENT> events;
 		(void)CServerCombatHitRuntime::Apply_PlayerToWorld(boss, hit, events);
 		tests.Require(events.size() == 1u && !events.front().isStaggerSuccess && !events.front().isCounterSuccess &&
 			events.front().iAmount == 0u && events.front().iStaggerAmount == 99u,
 			"A hit below the boss stagger threshold carries gauge contribution without a success notification");
-		hit.iStaggerDamage = 1u; hit.iCounterPower = 1u; hit.iServerTick = 2u;
+		hit.iStaggerDamage = 1u; hit.iRawDamage = 1000u; hit.iCounterPower = 1u; hit.iServerTick = 2u;
 		(void)CServerCombatHitRuntime::Apply_PlayerToWorld(boss, hit, events);
 		tests.Require(events.size() == 2u && events.back().isStaggerSuccess && events.back().isCounterSuccess &&
 			events.back().isOutgoing && events.back().iSourcePlayerId == 1u && events.back().iAmount == 0u &&
 			boss.iCurrentHp == 1000u && boss.BossCombat.iStaggerCurrent == 100u,
 			"The authoritative hit publishes independent counter and stagger success with zero HP damage");
-		hit.iRawDamage = 1u; hit.iServerTick = 3u;
+		hit.iRawDamage = 1u; hit.bHealthDamageDisabled = false; hit.iServerTick = 3u;
 		(void)CServerCombatHitRuntime::Apply_PlayerToWorld(boss, hit, events);
 		tests.Require(events.size() == 3u && !events.back().isStaggerSuccess && !events.back().isCounterSuccess &&
 			std::count_if(events.begin(), events.end(), [](const auto& event) { return event.isStaggerSuccess; }) == 1,
 			"Later hits cannot repeat the closed counter or completed stagger success notification");
+	}
+	{
+		// Cast the real skill pipeline with separate DAMAGE/COUNTER/STAGGER rows.
+		// Damage shares must feed stagger without double HP loss or double credit.
+		for (int path = 0; path != 3; ++path) for (const bool reduction : { false, true })
+		{
+			auto fixture = std::make_unique<CGameplayCatalog>(catalog);
+			auto* skill = const_cast<PLAYER_SKILL_DEFINITION*>(fixture->Find_Skill(34040u));
+			auto* profile = const_cast<PLAYER_RUNTIME_PROFILE*>(fixture->Find_Player(CHARACTER_CLASS_ID::LANCE_MASTER));
+			auto* damage = skill ? const_cast<CGameplayCatalog::DAMAGE_PROFILE*>(fixture->Find_DamageProfile(skill->strDamageProfileId)) : nullptr;
+			tests.Require(skill && profile && damage, "Resolve the published cast's skill/player/damage catalogue for channel parity");
+			if (!skill || !profile || !damage) continue;
+			profile->iAttackPower = 1000003u; profile->iCriticalChancePercent = 0u;
+			damage->iAttackCoefficientBp = 10000u; damage->iDamageAddend = 0u;
+			damage->iDamageSpreadPercent = 0u; damage->iBossHealthBarDamage = 0u;
+			skill->RootMotion.clear(); skill->ComboStages.clear(); skill->Hits.clear(); skill->Projectiles.clear();
+			skill->eSkillKind = PLAYER_SKILL_KIND::ACTIVE; skill->fMovementDistance = 0.f;
+			skill->iActionDurationMs = 500u; skill->iResourceCost = skill->iIdentityCost = 0u;
+			skill->iStaggerDamage = 137u; skill->iCounterPower = skill->iPartDamage = 0u;
+			skill->fMaximumRange = 4.f;
+			PLAYER_SKILL_PROJECTILE projectile{};
+			projectile.eKind = PLAYER_PROJECTILE_KIND::FIXAREA;
+			projectile.eOrigin = PLAYER_PROJECTILE_ORIGIN::CASTER;
+			projectile.iLifeMs = 500u; projectile.fRadius = 4.f;
+			for (const auto kind : { 1u, 3u, 2u })
+			{
+				PLAYER_SKILL_HIT shape{};
+				shape.iTimeMs = 100u; shape.iRepeatCount = 3u; shape.iRepeatMs = 100u;
+				shape.iAreaType = 1u; shape.fRange = 4.f; shape.fHeight = 2.f; shape.iMaxTargets = 1u;
+				shape.iResultKind = kind;
+				if (path == 0) skill->Hits.push_back(shape);
+				else { PLAYER_PROJECTILE_HIT hit{}; hit.Hit = shape; hit.isContact = path == 2; projectile.Hits.push_back(hit); }
+			}
+			if (path) skill->Projectiles.push_back(projectile);
+			SERVER_WORLD_ENTITY boss{};
+			boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS; boss.strArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
+			boss.iNetEntityId = 99851u; boss.fPositionZ = 1.f; boss.fCollisionRadius = 1.f;
+			boss.iCurrentHp = boss.iMaximumHp = 10000000u;
+			boss.iKoukuDamageReductionWindows = reduction ? 1u : 0u;
+			CBossCombatRuntime::Set_StaggerGauge(boss.BossCombat, 40000u);
+			std::vector<SERVER_WORLD_ENTITY> targets{ boss };
+			SERVER_PLAYER player{}; player.iPlayerId = 99850u;
+			player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			player.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+			player.iCurrentHp = player.iMaximumHp = 10000u;
+			player.iCurrentResource = player.iMaximumResource = 10000u;
+			C2S_USE_SKILL command{}; command.iSkillId = skill->iSkillId; command.iClientSequence = 1u; command.fAimZ = 3.f;
+			CPlayerSkillSystem runtime; std::vector<DAMAGE_EVENT> events;
+			const bool started = runtime.Try_Start(player, command, *fixture, 1u);
+			if (started) for (std::uint32_t tick = 2u; tick != 40u; ++tick)
+				runtime.Update(player, targets, *fixture, nullptr, nullptr, 1.f / 30.f, tick, events);
+			const auto hpDamage = reduction ? 999u : 1000003u;
+			tests.Require(started && boss.iCurrentHp - targets.front().iCurrentHp == hpDamage &&
+				targets.front().BossCombat.iStaggerCurrent == 999u &&
+				std::count_if(events.begin(), events.end(), [](const auto& event) { return event.iAmount != 0u; }) == 3 &&
+				std::count_if(events.begin(), events.end(), [](const auto& event) { return event.iStaggerAmount != 0u; }) == 3,
+				"Caster and timed/contact projectile triple-result casts preserve one HP channel and damage/1000 stagger independently of Mario reduction");
+		}
 	}
 	{
 		SERVER_WORLD_ENTITY largeSaydon{};
@@ -986,11 +1044,27 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SkillStages(TESTS& test
 			knightCommand.fAimZ = 3.f;
 			std::vector<DAMAGE_EVENT> knightEvents;
 			const bool knightStarted = knightSkills.Try_Start(knight, knightCommand, catalog, 10u);
-			for (std::uint32_t tick = 11u; knightStarted && tick < 200u &&
+			std::uint32_t knightNextTick = 11u;
+			if (knightStarted && knightSkillId == 49420u)
+			{
+				const auto* breath = catalog.Find_Skill(knightSkillId);
+				tests.Require(breath && breath->iHitTimeMs == 3800u && breath->Hits.size() == 3u &&
+					std::all_of(breath->Hits.begin(), breath->Hits.end(), [](const auto& hit) { return hit.iTimeMs == 3800u; }),
+					"Guardian Alt V damage, counter and stagger shapes share the breath/follow-camera boundary");
+				knightSkills.Update(knight, knightTargets, catalog, nullptr, nullptr, 3.799f, 123u, knightEvents);
+				tests.Require(knightTargets[0].iCurrentHp == knightTarget.iCurrentHp && knightEvents.empty(),
+					"Guardian Alt V cannot damage the adjacent boss during its opening camera presentation");
+				knightSkills.Update(knight, knightTargets, catalog, nullptr, nullptr, .002f, 124u, knightEvents);
+				tests.Require(knightTargets[0].iCurrentHp < knightTarget.iCurrentHp && knightEvents.size() == 1u &&
+					knightEvents.front().iAmount == knightTarget.iCurrentHp - knightTargets[0].iCurrentHp,
+					"Guardian Alt V applies its first real HP damage and matching event when breath begins after camera return");
+				knightNextTick = 125u;
+			}
+			for (std::uint32_t tick = knightNextTick; knightStarted && tick < 200u &&
 				PLAYER_ACTION_STATE::SKILL == knight.eAction; ++tick)
 				knightSkills.Update(knight, knightTargets, catalog, nullptr, nullptr, 1.f / 30.f, tick, knightEvents);
 			tests.Require(knightStarted && knightTargets[0].iCurrentHp < knightTarget.iCurrentHp &&
-				!knightEvents.empty(),
+				!knightEvents.empty() && (knightSkillId != 49420u || knightEvents.size() == 1u),
 				("Guardian Knight human-form skill " + std::to_string(knightSkillId) +
 					" lands its caster shape on an adjacent boss").c_str());
 		}

@@ -12,7 +12,8 @@ public:
 		DEFAULT = 0u,
 		AUTHORING_PREVIEW = 10u,
 		REFERENCE_AUDITION = 20u,
-		SERVER_CINEMATIC = 100u
+		SERVER_CINEMATIC = 100u,
+		OBSERVER_HOLD = 200u
 	};
 
 	typedef struct tagCameraDesc : public CGameObject::GAMEOBJECT_DESC

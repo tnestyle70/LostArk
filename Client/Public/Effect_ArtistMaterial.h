@@ -245,9 +245,14 @@ inline bool Has_ArtistMaterialContract(const EFFECT_ELEMENT_DESC& Element)
 {
     const auto& Source=Element.Material.SourceMaterial;
     const auto* Program=Find_ArtistProgram(Source.strRuntimeShaderProfileId);
+    // Valtan's two armour MICs share the same base/static shader key and named
+    // inputs. Plate 2 keeps its own textures and scalar values on program 2520.
+    const bool bValtanPlate2 = Program && Program->iProfileIndex == 2520u &&
+        Program->strSourceMaterialPath == "mn_rpbf_01.mat.mn_rpbf_01_1_mi" &&
+        Element.Material.strSourceMaterialPath == "mn_rpbf_01.mat.mn_rpbf_01_2_mi";
     if (!Program || Program->bModelCue || Element.Material.Execution.bEnabled || Element.Material.Execution.bFailClosed ||
         Element.Material.eRenderProfile!=Program->eRenderProfile ||
-        Element.Material.strSourceMaterialPath!=Program->strSourceMaterialPath) return false;
+        (Element.Material.strSourceMaterialPath!=Program->strSourceMaterialPath && !bValtanPlate2)) return false;
     // Recovered CEF PlayStaticMesh actors share the native mesh draw path, but
     // must not enter the Cascade emitter carrier merely because its VF is mesh.
     const bool bGuardianStaticAction = Program->bMesh && Program->strRendererShape == "mesh" &&

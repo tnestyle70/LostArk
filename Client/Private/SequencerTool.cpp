@@ -780,8 +780,9 @@ namespace
                 {
                     const double start = m_Callbacks.mapTime(drag.before.classId, drag.before.loop, drag.startMovie, true);
                     double end = m_Callbacks.mapTime(drag.before.classId, drag.before.loop, drag.endMovie, true);
-                    // Moving preserves source duration even across a slow-motion boundary.
-                    if (drag.gesture == Client::CLASS_MOVIE_TIMING_EDIT::MOVE && drag.before.kind != "Camera")
+                    // Visual tracks preserve source duration; Sound preserves its WAV duration.
+                    if (drag.gesture == Client::CLASS_MOVIE_TIMING_EDIT::MOVE &&
+                        drag.before.kind != "Camera" && drag.before.kind != "Sound")
                         end = start + m_Callbacks.mapTime(drag.before.classId, drag.before.loop, drag.originalEnd, true)
                             - m_Callbacks.mapTime(drag.before.classId, drag.before.loop, drag.originalStart, true);
                     if (m_Callbacks.editTiming(drag.before, start, end, drag.gesture, m_EditStatus))

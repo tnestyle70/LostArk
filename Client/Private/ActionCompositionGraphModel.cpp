@@ -121,6 +121,20 @@ namespace
 		return Client::ACTION_COMPOSITION_GRAPH_INVALID_INDEX;
 	}
 
+	bool Is_CounterRetryEdge(
+		const Client::ACTION_COMPOSITION_GRAPH_SNAPSHOT& Snapshot,
+		const Client::ACTION_COMPOSITION_GRAPH_EDGE& Edge)
+	{
+		if (Edge.bTerminal || Edge.strOutcome != "TIMEOUT" ||
+			(Snapshot.strPatternId != "VALTAN_TRASH" &&
+			 Snapshot.strPatternId != "VALTAN_TRASH_CATCH_IF")) return false;
+		const auto& Source = Snapshot.Nodes[Edge.iSourceNodeIndex];
+		return Source.iBranchCount == 1u &&
+			(Source.Key.strStageId == "RETRY_EXHAUSTED" ||
+			 Source.Key.strStageId == "CATCH_SLAM" || Source.Key.strStageId == "EXECUTE_TAIL") &&
+			Snapshot.Nodes[Edge.iTargetNodeIndex].Key.strStageId == "RECHARGE_WAIT_02";
+	}
+
 	bool Build_Path(
 		const Client::ACTION_COMPOSITION_GRAPH_SNAPSHOT& Snapshot,
 		const std::vector<std::vector<std::size_t>>& OutgoingEdges,
@@ -160,6 +174,11 @@ namespace
 			if (Edge.bTerminal)
 			{
 				OutPath.bTerminal = true;
+				break;
+			}
+			if (Is_CounterRetryEdge(Snapshot, Edge))
+			{
+				OutPath.bRepeats = true;
 				break;
 			}
 			iNode = Edge.iTargetNodeIndex;
@@ -490,7 +509,7 @@ bool Client::CActionCompositionGraphModel::Project(
 	std::vector<std::size_t> Indegrees(Staged.Nodes.size(), 0u);
 	for (const ACTION_COMPOSITION_GRAPH_EDGE& Edge : Staged.Edges)
 	{
-		if (!Edge.bTerminal)
+		if (!Edge.bTerminal && !Is_CounterRetryEdge(Staged, Edge))
 			++Indegrees[Edge.iTargetNodeIndex];
 	}
 	std::set<std::size_t> Ready;
@@ -509,7 +528,7 @@ bool Client::CActionCompositionGraphModel::Project(
 		for (const std::size_t iEdge : OutgoingEdges[iNode])
 		{
 			const ACTION_COMPOSITION_GRAPH_EDGE& Edge = Staged.Edges[iEdge];
-			if (Edge.bTerminal)
+			if (Edge.bTerminal || Is_CounterRetryEdge(Staged, Edge))
 				continue;
 			if (0u == --Indegrees[Edge.iTargetNodeIndex])
 				Ready.insert(Edge.iTargetNodeIndex);
@@ -522,7 +541,7 @@ bool Client::CActionCompositionGraphModel::Project(
 			++iCycleNode;
 		return Fail(OutError,
 			ACTION_COMPOSITION_GRAPH_ERROR_CODE::CYCLE,
-			"Pattern graph contains a cycle; v1 supports bounded DAG paths only.",
+			"Pattern graph contains a cycle outside the authored Trash counter retry edges.",
 			Pattern.strPatternId,
 			iCycleNode < Staged.Nodes.size() ?
 				Staged.Nodes[iCycleNode].Key.strStageId : std::string{},
@@ -567,7 +586,8 @@ bool Client::CActionCompositionGraphModel::Project(
 		for (const std::size_t iEdge : OutgoingEdges[iNode])
 		{
 			const ACTION_COMPOSITION_GRAPH_EDGE& Edge = Staged.Edges[iEdge];
-			const std::uint64_t iChildDuration = Edge.bTerminal ? 0u :
+			const std::uint64_t iChildDuration =
+				(Edge.bTerminal || Is_CounterRetryEdge(Staged, Edge)) ? 0u :
 				MaximumDuration[Edge.iTargetNodeIndex];
 			if (ACTION_COMPOSITION_GRAPH_INVALID_INDEX == MaximumEdge[iNode] ||
 				iChildDuration > iBestChildDuration)
@@ -601,6 +621,11 @@ bool Client::CActionCompositionGraphModel::Project(
 			Staged.MaximumPath.bTerminal = true;
 			break;
 		}
+		if (Is_CounterRetryEdge(Staged, Staged.Edges[iEdge]))
+		{
+			Staged.MaximumPath.bRepeats = true;
+			break;
+		}
 		iMaximumNode = Staged.Edges[iEdge].iTargetNodeIndex;
 	}
 	Staged.MaximumPath.iDurationMs =
@@ -611,7 +636,7 @@ bool Client::CActionCompositionGraphModel::Project(
 		for (const std::size_t iEdge : OutgoingEdges[iNode])
 		{
 			const ACTION_COMPOSITION_GRAPH_EDGE& Edge = Staged.Edges[iEdge];
-			if (!Edge.bTerminal)
+			if (!Edge.bTerminal && !Is_CounterRetryEdge(Staged, Edge))
 			{
 				Staged.Nodes[Edge.iTargetNodeIndex].iGraphDepth = (std::max)(
 					Staged.Nodes[Edge.iTargetNodeIndex].iGraphDepth,

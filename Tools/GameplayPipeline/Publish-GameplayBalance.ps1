@@ -147,7 +147,13 @@ function Assert-FinitePatternGraph([object]$Pattern) {
             if ($null -eq $branch) { continue }
             if ([string]$branch.outcome -ceq 'TIMEOUT') { $hasTimeout = $true }
             if ($null -ne $branch.nextActionId) {
-                $targets.Add([string]$branch.nextActionId)
+                $targetStage = @($stages | Where-Object { [string]$_.actionId -ceq [string]$branch.nextActionId })
+                # Preserve finite validation everywhere except the three Trash counter retries.
+                $counterRetry = ([string]$Pattern.patternId -cin @('VALTAN_TRASH', 'VALTAN_TRASH_CATCH_IF')) -and
+                    ([string]$stage.stageId -cin @('RETRY_EXHAUSTED', 'CATCH_SLAM', 'EXECUTE_TAIL')) -and
+                    $targetStage.Count -eq 1 -and [string]$targetStage[0].stageId -ceq 'RECHARGE_WAIT_02' -and
+                    @($stage.branches).Count -eq 1 -and [string]$branch.outcome -ceq 'TIMEOUT'
+                if (-not $counterRetry) { $targets.Add([string]$branch.nextActionId) }
             }
         }
         if (-not $hasTimeout -and $index + 1 -lt $stages.Count) {
@@ -683,6 +689,7 @@ $balanceProfilePlayers = @{}
 $balanceProfileSkills = @{}
 $balanceProfileBosses = @{}
 $balanceProfileStaggerScale = 0
+$raidStaggerRows = @()
 $balanceProfileMadnessAddPercent = -1
 $balanceProfileMadness = $null
 $balanceProfileDamage = @{}
@@ -692,7 +699,7 @@ if (-not [string]::IsNullOrWhiteSpace($BalanceProfile)) {
     $profileRelativePath = "Data/Balance/Profiles/$BalanceProfile.balanceprofile.json"
     $balanceProfileDocument = Read-JsonDocument $profileRelativePath
     Assert-ExactProperties $balanceProfileDocument @(
-        'schema','formatVersion','profileId','displayName','staggerGaugeScale',
+        'schema','formatVersion','profileId','displayName','staggerGaugeScale','raidStaggerMaximum',
         'players','skills','bosses','monsters',
         'madnessGaugeAddPercent','madness','damageProfiles','skillBuffs') 'balance profile document'
     Assert-JsonString $balanceProfileDocument.schema 'balance profile schema'
@@ -704,6 +711,8 @@ if (-not [string]::IsNullOrWhiteSpace($BalanceProfile)) {
     Assert-JsonInteger $balanceProfileDocument.staggerGaugeScale `
         'balance profile staggerGaugeScale' 1 100000
     $balanceProfileStaggerScale = [uint32]$balanceProfileDocument.staggerGaugeScale
+    Assert-JsonInteger $balanceProfileDocument.raidStaggerMaximum 'shared raid stagger maximum' 1 1000000000
+    $raidStaggerRows = @("RAIDSTAGGER`t$([uint32]$balanceProfileDocument.raidStaggerMaximum)")
     Assert-JsonInteger $balanceProfileDocument.madnessGaugeAddPercent `
         'balance profile madnessGaugeAddPercent' -1 100
     $balanceProfileMadnessAddPercent =
@@ -2518,6 +2527,10 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			$stageProperties += @('playerResponse','attachmentSlot','gripLocalOffset')
 		}
 		Assert-ExactProperties $stage $stageProperties 'encounter pattern stage'
+		# The branch validator below requires both gauge ENTER and EXIT.
+		$hasStaggerResponse = $hasStageBranches -and @($stage.branches | Where-Object {
+			[string]$_.outcome -ceq 'STAGGER_BROKEN'
+		}).Count -gt 0
 		$stageVerticalOffsetM = 0.0
 		if ($hasStageVerticalOffset) {
 			Assert-JsonNumber $stage.verticalOffsetM `
@@ -2527,8 +2540,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				[double]::IsInfinity($stageVerticalOffsetM) -or
 				$stageVerticalOffsetM -eq 0.0 -or
 				[Math]::Abs($stageVerticalOffsetM) -gt 100.0 -or
-				-not $hasBossResponse -or $hasServerMotion -or $hasStageMotion) {
-				throw "Pattern stage verticalOffsetM requires an active boss response without server motion: $($pattern.patternId) stage $stageIndex"
+				(-not $hasBossResponse -and -not $hasStaggerResponse) -or $hasServerMotion -or $hasStageMotion) {
+				throw "Pattern stage verticalOffsetM requires an active boss response or closed stagger gauge without server motion: $($pattern.patternId) stage $stageIndex"
 			}
 		}
 		$partDamagePolicy = 'NORMAL'
@@ -5798,7 +5811,7 @@ $presentationGenerationRow = @(
     [string]$presentationGeneration.generationId
 ) -join "`t"
 
-$rows = @($damageRows + $skillRows + $balanceProfileBuffRows + $playerRows + $bossRows +
+$rows = @($raidStaggerRows + $damageRows + $skillRows + $balanceProfileBuffRows + $playerRows + $bossRows +
 	$bossPartRows + $combatObjectRows + $rootMotionRows + $hitShapeRows +
 	$patternRows + @($presentationGenerationRow) | Sort-Object -Property @{
 		Expression = { Get-BootstrapRowSortKey -Row $_ } })
@@ -5814,7 +5827,7 @@ $maximumGameplayBootstrapRows = [uint32]::Parse($maximumGameplayBootstrapRowsMat
 if ($rows.Count -eq 0 -or $rows.Count -gt $maximumGameplayBootstrapRows) {
     throw "Gameplay bootstrap row count must be in 1..$maximumGameplayBootstrapRows (got $($rows.Count))"
 }
-$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 37 } elseif (
+$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 38 } elseif (
 	$rotationFormatVersion -eq 3) { 21 } else { 18 }
 $lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t$gameplayBootstrapVersion`t$($rows.Count)") + $rows
 $maximumGameplayBootstrapBytesMatch = [regex]::Match($gameplayRevisionContract,

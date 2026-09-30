@@ -121,10 +121,13 @@ namespace LostArk::Shared
 	// 122 carries each player's latest Waterpang water gun cast (skill id and Server start tick).
 	// 124 combines saved-character restore, raid EXIT votes and ground-target battle items.
 	// 125 merges the 122 water gun cast wire with the 124 main line; no packet numbers were renumbered.
-	// 126 adds WORLD_ID::COLOSSEUM (Proving Grounds walk-around arena, no PvP rules).
-	// 127 appends the Colosseum match queue: accept/leave commands, queue state and the
-	// Server-decided team roster sent before the world transfer.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 127;
+	// Independently released 125 peers carry water gun casts, avatar items, or minigame deadlines.
+	// 126 combines all three layouts and rejects those incompatible 125 peers.
+	// 127 adds WORLD_ID::COLOSSEUM (Proving Grounds walk-around arena, no PvP rules).
+	// 128 appends the Colosseum match queue: accept/leave commands, queue state and the
+	// Server-decided team roster sent before the world transfer. It sits on top of the complete 126 layout,
+	// so peers built at 126 or at the branch-only 127 are rejected.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 128;
 
 	enum class WORLD_ID : std::uint16_t
 	{

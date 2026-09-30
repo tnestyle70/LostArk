@@ -711,23 +711,37 @@ bool CClassSelectionPresentation::Edit_AuthoringTiming(const CLASS_MOVIE_AUTHORI
         }
         return Apply_AuthoringBox(before, replacement, status);
     }
+    if (before.kind == "Sound")
+    {
+        // The gesture arrives in visual source time. Birth remains there, but
+        // trimming consumes undilated WAV milliseconds, including instance rate.
+        const double rate = selected->playbackRate;
+        const double oldStart = replacement.Find("startMs")->Get_Number();
+        const double storedStart = std::round(oldStart + (start - selected->sourceStartMs) * rate);
+        const double actualStart = selected->sourceStartMs + (storedStart - oldStart) / rate;
+        const double movieStart = Map_TimelineTime(before.classId, before.loop, actualStart, false);
+        const double movieEnd = Map_TimelineTime(before.classId, before.loop, end, false);
+        double sourceIn = selected->sourceOffsetMs;
+        double duration = replacement.Find("durationMs")->Get_Number();
+        if (gesture == CLASS_MOVIE_TIMING_EDIT::TRIM_START)
+        {
+            const double trimMs = std::round((movieStart - selected->movieStartMs) * rate);
+            sourceIn += trimMs; duration -= trimMs;
+        }
+        else if (gesture == CLASS_MOVIE_TIMING_EDIT::TRIM_END)
+            duration = std::round((movieEnd - selected->movieStartMs) * rate);
+        if (storedStart < 0. || sourceIn < 0. || duration < 1. ||
+            sourceIn + duration > CWorldSequenceDocument::MAX_DURATION_MS)
+        { status = "Sound trim is outside its source window; the current draft is preserved."; return false; }
+        replacement = Set(Set(Set(replacement, "startMs", Json::Number(storedStart)),
+            "durationMs", Json::Number(duration)), "sourceStartMs", Json::Number(sourceIn));
+        return Apply_AuthoringBox(before, replacement, status);
+    }
     // Reorder uses a cursor insertion point; it never stores that fractional
     // position. Rounding it could make a valid drop near the phase end empty.
     if (before.kind != "Camera" || gesture != CLASS_MOVIE_TIMING_EDIT::MOVE)
     { start = std::round(start); end = std::round(end); }
     if (end <= start) { status = "This box requires at least one source millisecond."; return false; }
-    if (before.kind == "Sound")
-    {
-        double sourceIn = selected->sourceOffsetMs;
-        if (gesture == CLASS_MOVIE_TIMING_EDIT::TRIM_START)
-            sourceIn += start - selected->sourceStartMs;
-        sourceIn = std::round(sourceIn);
-        if (sourceIn < 0. || sourceIn + end - start > CWorldSequenceDocument::MAX_DURATION_MS)
-        { status = "Sound trim is outside its source window; the current draft is preserved."; return false; }
-        replacement = Set(Set(Set(replacement, "startMs", Json::Number(start)),
-            "durationMs", Json::Number(end - start)), "sourceStartMs", Json::Number(sourceIn));
-        return Apply_AuthoringBox(before, replacement, status);
-    }
     if (before.kind == "Animation")
     {
         if (selected->loopAnimation || selected->nativeDurationMs <= 0.)

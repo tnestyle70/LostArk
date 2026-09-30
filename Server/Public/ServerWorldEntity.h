@@ -452,6 +452,7 @@ namespace LostArk::Server
 		of landing. Owned by CKoukuSaydonLogicRuntime for one window. */
 		std::uint32_t iKoukuItemStaggerMaximum = 0u;
 		std::uint32_t iKoukuItemStaggerCredit = 0u;
+		std::uint32_t iKoukuDamageReductionWindows = 0u;
 		bool bKoukuShieldActive = false;
 		float fKoukuShieldArcDegrees = 0.f;
 		float fKoukuShieldNormalYawOffsetDegrees = 0.f;

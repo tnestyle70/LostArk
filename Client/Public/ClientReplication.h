@@ -14,7 +14,10 @@
 #include "ReplicatedPlayerHealth.h"
 #include "CombatDebugVisibility.h"
 #include "ValtanPresentationGenerationAdmission.h"
+#include "EquipmentPresentationCatalog.h"
+#include "EquipmentPresentationService.h"
 
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <deque>
@@ -31,6 +34,8 @@
 #include <vector>
 
 //Network Event瑜??ㅼ젣 Engine GameObject ?앹꽦 ?쒓굅濡?踰덉뿭?섎뒗 ???섎굹??main-thread 寃쎄퀎
+
+namespace Engine { class CTransform; }
 
 namespace Client
 {
@@ -355,6 +360,20 @@ namespace Client
 			const COMBAT_DEBUG_VISIBILITY_SNAPSHOT& Visibility);
 
 		std::shared_ptr<CCharacter> Get_LocalCharacter() const;
+		// Presentation selection only: local commands always retain their local character.
+		bool_t Cycle_SpectateTarget();
+		bool_t Is_SpectateTargetDead() const;
+		void Reset_SpectateTarget();
+		bool_t Is_Spectating() const { return m_iSpectateEntityId != LostArk::Shared::INVALID_NET_ENTITY_ID; }
+		std::shared_ptr<CCharacter> Get_CameraCharacter() const;
+		std::shared_ptr<Engine::CTransform> Resolve_CameraTarget();
+		std::shared_ptr<Engine::CTransform> Get_CameraTarget() const;
+		const LostArk::Shared::PLAYER_SNAPSHOT* Get_CameraPlayerSnapshot() const;
+		// Mario world UI follows the camera subject; roster and gameplay remain complete.
+		LostArk::Shared::NET_ENTITY_ID Get_KoukuWorldUISubjectId() const;
+		bool_t Should_ShowKoukuPlayerWorldUI(LostArk::Shared::NET_ENTITY_ID entityId) const;
+		bool_t Should_ShowKoukuDamageWorldUI(LostArk::Shared::NET_ENTITY_ID targetId,
+			LostArk::Shared::PLAYER_ID sourcePlayerId) const;
 		std::shared_ptr<CValtan> Find_PrimaryValtanPresentation() const;
 		/* Debug tuning only: the live CNpc body of one primary KoukuSaydon
 		arena boss archetype, or null while that boss is not replicated. */
@@ -547,6 +566,12 @@ namespace Client
 			f32_t yawDegrees,
 			bool_t isLocallyControlled,
 			std::shared_ptr<CCharacter>& outCharacter);
+		/* Puts the snapshot's worn avatar items on the character through the equipment
+		   presentation service; idempotent per (entity, head, outfit). A failure keeps the
+		   character as it is and is not retried until the worn pair changes. */
+		void Apply_AvatarPresentation(
+			LostArk::Shared::NET_ENTITY_ID iNetEntityId, CCharacter& character,
+			const LostArk::Shared::PLAYER_SNAPSHOT& player);
 		bool Apply_PlayerSnapshot(const LostArk::Shared::PLAYER_SNAPSHOT& player,
 			std::uint32_t serverTick,
 			const std::vector<LostArk::Shared::WORLD_ENTITY_SNAPSHOT>& entities);
@@ -708,6 +733,9 @@ namespace Client
 		std::unordered_set<uint8_t> m_FailedPlayerAssetClasses;
 		//index slot, slotindex, generation
 		OBJECT_HANDLE m_LocalCharacterHandle;
+		LostArk::Shared::NET_ENTITY_ID m_iSpectateEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		std::shared_ptr<Engine::CTransform> m_pSpectateDeathTarget;
+		bool_t m_bSpectateTargetWasAlive = false;
 		bool m_isInitialized = false;
 		bool m_wasConnected = false;
 		bool m_hasPendingConnectionLoss = false;
@@ -771,6 +799,15 @@ namespace Client
 		/* Latest snapshot's worn honor title per player, read by Collect_PlayerViews. */
 		std::unordered_map<LostArk::Shared::NET_ENTITY_ID, LostArk::Shared::HONOR_TITLE_ID>
 			m_HonorTitleByNetEntityId;
+		/* Worn avatar item ids this replication last applied (or failed to apply) per player.
+		   Erased on despawn and on body replacement so the fresh body is dressed again. */
+		std::unordered_map<LostArk::Shared::NET_ENTITY_ID, std::pair<std::string, std::string>>
+			m_AppliedAvatarByNetEntityId;
+		/* Built on first avatar; the catalog is Data/Actors/EquipmentPresentationCatalog.json. */
+		CEquipmentPresentationCatalog m_EquipmentCatalog;
+		unique_ptr<CEquipmentPresentationService> m_pEquipmentPresentation;
+		bool_t m_isEquipmentCatalogLoaded = false;
+		bool_t m_isEquipmentCatalogLoadAttempted = false;
 		COMBAT_DEBUG_VISIBILITY_SNAPSHOT m_CombatDebugVisibility{};
 #ifdef _DEBUG
 		bool_t m_isCombatObjectHitAreaDebugLoadAttempted = false;

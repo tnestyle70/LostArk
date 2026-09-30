@@ -1,6 +1,7 @@
 #include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
 #include "GameplayCatalog.h"
+#include "ServerCombatHitRuntime.h"
 #include "GameRoom.h"
 #include "ClientSession.h"
 #include "Network/PacketReader.h"
@@ -432,6 +433,38 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 			tests.Require(chargeEntered && wallPublished && groggyEntered && heldBeforeDeadline && boss.strPatternId.empty() &&
 				SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED == boss.PatternTerminalReceipt.eResult,
 				"Wall-contact Dash enters and completes GROGGY on the published stage durations, preserving the last pre-deadline tick");
+		}
+		{
+			const auto* struggling = findPattern("VALTAN_STRUGGLING");
+			const auto* charge = findStage(struggling, "STEP_02");
+			const auto* center = findStage(struggling, "STEP_03");
+			const bool authored = charge && center && charge->iDurationMs == 500u &&
+				charge->Motion.eKind == BOSS_PATTERN_STAGE_MOTION_KIND::FORWARD &&
+				charge->Motion.fDistance == 6.f && charge->Motion.RootMotion.empty() &&
+				center->Motion.eKind == BOSS_PATTERN_STAGE_MOTION_KIND::TO_ARENA_CENTER;
+			bool forward = authored;
+			if (authored)
+			{
+				CValtanBrain brain;
+				for (const float yaw : { 0.f, 90.f, 180.f, 270.f })
+				{
+					SERVER_WORLD_ENTITY boss{};
+					boss.ePatternStageMotionKind = charge->Motion.eKind;
+					boss.fPatternForcedMotionSpeed = charge->Motion.fDistance * 1000.f / charge->iDurationMs;
+					boss.fYawDegrees = yaw;
+					for (std::uint32_t tick = 0u; tick != 15u; ++tick)
+					{
+						float x = 0.f, z = 0.f;
+						forward = brain.Try_BuildStageMotion(boss, 1.f / 30.f, x, z) && forward;
+						boss.fPositionX = x; boss.fPositionZ = z;
+					}
+					const float radians = yaw * 3.14159265358979323846f / 180.f;
+					forward = forward && std::abs(boss.fPositionX - std::sin(radians) * 6.f) < 0.0001f &&
+						std::abs(boss.fPositionZ - std::cos(radians) * 6.f) < 0.0001f;
+				}
+			}
+			tests.Require(forward,
+				"Struggling charges six metres into its forward portal over 500ms before its separate arena-center return");
 		}
 		tests.Require(
 			nullptr != catchBreath && nullptr != catchGrab &&
@@ -1005,13 +1038,14 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 			std::array<std::vector<std::string>, 8> loops;
 			std::size_t windowIndex = 0u;
 			std::uint32_t previousSequence = 0u, synchronizedTicks = 0u, terminalSnapshots = 0u;
+			std::uint32_t legacyEntranceOccurrences = 0u;
 			std::array<std::uint32_t, 4> clearPackets{}, rewardPackets{};
 			bool waitingForMechanic = false, mechanicStarted = false, ghostRestored = false;
 			bool stableIdentity = true, automatic = true, wireParity = true, allAlive = true;
 			bool arrivalChecked = false, allArrived = false, killIssued = false, killedByPlayer = false;
 			bool progressionComplete = false;
 			bool mechanicSuccessInputsValid = true;
-			std::uint32_t staggerSuccesses = 0u, tripleCounterSuccesses = 0u;
+			std::uint32_t staggerSuccesses = 0u, tripleCounterSuccesses = 0u, trashCounterSuccesses = 0u;
 			const auto consumeSnapshots = [&]()
 			{
 				std::vector<std::uint8_t> baseline;
@@ -1070,19 +1104,30 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 				// These are confirmed incoming hits at the existing combat boundary, not
 				// forced outcomes or stage changes. The next Room tick consumes success.
 				if (boss->strPatternId == "VALTAN_STAGGER_SLOT" && boss->strPatternStageId == "CHANNEL" &&
-					!boss->bPatternBossResponsePublished)
+					boss->BossCombat.iStaggerCurrent < boss->BossCombat.iStaggerMaximum)
 				{
-					BOSS_INCOMING_HIT hit{};
+					SERVER_PLAYER_TO_WORLD_HIT hit{};
 					hit.iSourcePlayerId = sessions.front()->Get_PlayerId();
 					hit.iSkillId = 34010u; hit.iServerTick = room->m_iServerTick;
-					hit.iRawDamage = boss->iPatternBossResponseThreshold;
+					const std::uint64_t rawDamage = static_cast<std::uint64_t>(boss->BossCombat.iStaggerMaximum) * 1000u;
+					if (rawDamage > (std::numeric_limits<std::uint32_t>::max)())
+					{
+						mechanicSuccessInputsValid = false;
+						break;
+					}
+					hit.iRawDamage = static_cast<std::uint32_t>(rawDamage);
 					hit.bHealthDamagePreResolved = true;
-					const auto result = CBossCombatRuntime::Apply_PlayerHit(*boss, hit);
-					mechanicSuccessInputsValid = mechanicSuccessInputsValid && result.bHealthDamageThresholdReached &&
-						result.iHealthDamage == hit.iRawDamage;
-					if (result.bHealthDamageThresholdReached) ++staggerSuccesses;
+					hit.bHealthDamageDisabled = true;
+					const auto hp = boss->iCurrentHp;
+					(void)CServerCombatHitRuntime::Apply_PlayerToWorld(*boss, hit, room->m_TickDamageEvents);
+					const bool completed = boss->BossCombat.iStaggerMaximum == boss->BossCombat.iStaggerCurrent &&
+						std::any_of(boss->BossCombat.PendingOutcomes.begin(), boss->BossCombat.PendingOutcomes.end(),
+							[](const auto& outcome) { return outcome.eOutcome == BOSS_PATTERN_STAGE_OUTCOME::STAGGER_BROKEN; });
+					mechanicSuccessInputsValid = mechanicSuccessInputsValid && completed && boss->iCurrentHp == hp;
+					if (completed) ++staggerSuccesses;
 				}
-				if (boss->strPatternId == "VALTAN_TRIPLE_COUNTER" && boss->strPatternStageId == "COUNTER_1" &&
+				const bool trashCounter = boss->strPatternId == "VALTAN_TRASH";
+				if (((boss->strPatternId == "VALTAN_TRIPLE_COUNTER" && boss->strPatternStageId == "COUNTER_1") || trashCounter) &&
 					CBossCombatRuntime::Has_Flag(boss->BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE))
 				{
 					BOSS_INCOMING_HIT hit{};
@@ -1092,14 +1137,17 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 					hit.fSourceX = boss->fPositionX; hit.fSourceZ = boss->fPositionZ;
 					const auto result = CBossCombatRuntime::Apply_PlayerHit(*boss, hit);
 					mechanicSuccessInputsValid = mechanicSuccessInputsValid && result.bCounterTriggered;
-					if (result.bCounterTriggered) ++tripleCounterSuccesses;
+					if (result.bCounterTriggered) { if (trashCounter) ++trashCounterSuccesses; else ++tripleCounterSuccesses; }
 				}
 				if (boss->strPatternId.empty() || previousSequence == boss->iPatternSequence) continue;
 				previousSequence = boss->iPatternSequence;
 				std::cout << "[VALTAN_4P] tick=" << room->m_iServerTick << " pattern=" << boss->strPatternId
 					<< " phase=" << unsigned(boss->iPhase) << " bars=" << CValtanBrain::Calculate_HealthBar(*boss)
 					<< " sequence=" << boss->iPatternSequence << '\n';
-				if (entryOrder.size() < 3u) entryOrder.push_back(boss->strPatternId);
+				// Record every occurrence before the rotation-membership filter below.
+				// An inserted legacy pattern must not disappear from the opening oracle.
+				if (entryOrder.size() < 8u) entryOrder.push_back(boss->strPatternId);
+				if (boss->strPatternId == "VALTAN_ENTRANCE_WHIRLWIND") ++legacyEntranceOccurrences;
 				if (!arrivalChecked && boss->strPatternId == "VALTAN_WHIRLWIND")
 				{
 					arrivalChecked = true;
@@ -1159,9 +1207,14 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 					killIssued = player.iCurrentSkillId == skill.iSkillId;
 				}
 			}
-			tests.Require(entryOrder == std::vector<std::string>{"VALTAN_ENTRANCE_CINEMATIC", "VALTAN_ENTRANCE_WHIRLWIND", "VALTAN_WHIRLWIND"} &&
+			tests.Require(entryOrder == std::vector<std::string>{
+				"VALTAN_ENTRANCE_CINEMATIC", "VALTAN_WHIRLWIND", "VALTAN_DASH_CHARGE",
+				"VALTAN_HIGH_JUMP", "VALTAN_FOUR_SLASH", "VALTAN_CROSS",
+				"VALTAN_DASH_CHARGE", "VALTAN_WHIRLWIND"} &&
 				cinematicStages == std::vector<std::string>{"ESTABLISH", "ARENA_REVEAL", "HERO_HANDOFF"} && allArrived,
-				"Four-player entry completes every cinematic stage, arrival and mandatory intro before health loops");
+				"Four-player G entry runs the cinematic then the exact six-pattern opening and wraps to Whirlwind without inserted occurrences");
+			tests.Require(legacyEntranceOccurrences == 0u,
+				"Automatic raid never selects the legacy entrance whirlwind after the authored cinematic");
 			for (std::size_t index = 0u; index < windows.size(); ++index)
 			{
 				const auto* rotation = catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", windows[index].phase, windows[index].bars);
@@ -1174,8 +1227,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 			for (std::size_t index = 0u; index < 7u; ++index) expectedMechanics.emplace_back(windows[index].mechanic);
 			tests.Require(mechanics == expectedMechanics && revival == std::vector<std::string>{"VALTAN_GHOST_DEATH_AUDITION", "VALTAN_GHOST_RESPAWN_AUDITION"} && ghostRestored,
 				"All seven health mechanics run once in order and real Death-to-Respawn restores the primary to forty bars");
-			tests.Require(mechanicSuccessInputsValid && staggerSuccesses == 5u && tripleCounterSuccesses == 2u,
-				"Continuous success run supplies all five real health-damage thresholds and both Triple Counter successes without bypassing wipes");
+			tests.Require(mechanicSuccessInputsValid && staggerSuccesses == 5u && tripleCounterSuccesses == 2u && trashCounterSuccesses == 1u,
+				"Continuous success run supplies all five real health-damage thresholds, both Triple Counters, and the required Trash counter without bypassing wipes");
 			tests.Require(room->Is_Ready() && stableIdentity && automatic && allAlive && progressionComplete && killedByPlayer,
 				"The uninterrupted four-player raid reaches ghost skill death and authoritative clear without reset or audition override");
 			tests.Require(wireParity && synchronizedTicks > 1000u && terminalSnapshots == 4u &&

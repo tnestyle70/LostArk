@@ -290,10 +290,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 			"Damage one overlapping player from the hit pulse at 5000ms, emit one presentation edge per rock, and despawn at 6200ms");
 	}
 	{
-		/* The split Part Break recovery intentionally reuses the Ground Roar
-		   radial geometry through its own exact owner. A wall-contact reaction
-		   may begin at the arena edge, so its damaging roots use the same bounded
-		   navigation projection and atomic transaction. */
+		/* Armor fracture owns only its reaction and recovery clock. In particular,
+		   the recovery must not borrow Ground Roar's damaging rock volley. The
+		   preceding Ground Roar case retains the live object/pinned-definition
+		   contract for the pattern that still owns those objects. */
 		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
 		auto partBreakRoomStorage = std::make_unique<CGameRoom>(LostArk::Shared::WORLD_ID::VALTAN_ARENA);
 		CGameRoom& partBreakRoom = *partBreakRoomStorage;
@@ -302,7 +302,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 		SERVER_WORLD_ENTITY partBreakBoss{};
 		partBreakBoss.iNetEntityId = 8380u;
 		partBreakBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
-		partBreakBoss.eAction = SERVER_ENTITY_ACTION::IDLE;
+		partBreakBoss.eAction = SERVER_ENTITY_ACTION::PATTERN_RECOVERY;
 		partBreakBoss.strArchetypeId = "BOSS_VALTAN";
 		partBreakBoss.strEncounterId = "ENCOUNTER_VALTAN";
 		partBreakBoss.iCurrentHp = 60000u;
@@ -317,7 +317,12 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 		partBreakBoss.fSpawnPositionY = partBreakBoss.fPositionY;
 		partBreakBoss.fSpawnPositionZ = partBreakBoss.fPositionZ;
 		partBreakBoss.fYawDegrees = 37.f;
+		partBreakBoss.bIntroPatternConsumed = true;
 		partBreakBoss.iPatternSequence = 2u;
+		partBreakBoss.iPatternStageIndex = 1u;
+		partBreakBoss.iActionStartTick = 2050u;
+		partBreakBoss.iPatternStageFirstEvaluationTick = 2051u;
+		partBreakBoss.iPatternStageDurationMs = 5183u;
 		partBreakBoss.strPatternId = "VALTAN_PART_BREAK";
 		partBreakBoss.strPatternStageId = "PART_BREAK_RECOVERY";
 		partBreakBoss.strActionId = "valtan.reaction.part-break.recovery";
@@ -326,74 +331,58 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 		partBreakRoom.m_WorldEntities.push_back(partBreakBoss);
 		SERVER_WORLD_ENTITY* livePartBreakBoss =
 			&partBreakRoom.m_WorldEntities.back();
+		SERVER_PLAYER target{};
+		target.iPlayerId = 8381u;
+		target.iNetEntityId = 8382u;
+		target.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		target.iCurrentHp = 10000u;
+		target.iMaximumHp = 10000u;
+		target.isCombatReady = true;
+		target.fPositionX = partBreakBoss.fPositionX;
+		target.fPositionY = partBreakBoss.fPositionY;
+		target.fPositionZ = partBreakBoss.fPositionZ + 1.f;
+		partBreakRoom.m_Players.emplace(target.iPlayerId, target);
 		const bool stagedPartBreak = initializedPartBreakRoom &&
 			partBreakRoom.Apply_BossPatternStageActions(
 				*livePartBreakBoss, "VALTAN_PART_BREAK",
 				"valtan.reaction.part-break.recovery",
 				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 2050u);
-		const auto& objects =
-			partBreakRoom.m_CombatObjectRuntime.Get_LiveObjects();
-		bool exactPartBreakRoots = stagedPartBreak && 4u == objects.size();
-		bool hasOffNavigationPartBreakRoot = false;
-		std::set<std::pair<int, int>> positions;
-		for (std::size_t ordinal = 0u;
-			exactPartBreakRoots && ordinal < objects.size(); ++ordinal)
-		{
-			const SERVER_COMBAT_OBJECT& object = objects[ordinal];
-			const float degrees = partBreakBoss.fYawDegrees + 45.f +
-				90.f * static_cast<float>(ordinal);
-			const float radians = degrees * 0.01745329251994329577f;
-			const float expectedX = partBreakBoss.fPositionX +
-				std::sin(radians) * 4.9497475f;
-			const float expectedZ = partBreakBoss.fPositionZ +
-				std::cos(radians) * 4.9497475f;
-			hasOffNavigationPartBreakRoot = hasOffNavigationPartBreakRoot ||
-				!partBreakRoom.m_ServerNavigation.Is_PointWalkableExact(
-					expectedX, expectedZ);
-			positions.emplace(
-				static_cast<int>(std::lround(
-					object.LiveState.CurrentPose.fPositionX * 1000.f)),
-				static_cast<int>(std::lround(
-					object.LiveState.CurrentPose.fPositionZ * 1000.f)));
-			exactPartBreakRoots =
-				"combatobject.valtan.part-break.rock" ==
-					object.strCombatObjectArchetypeId &&
-				"combatobject.visual.valtan.part-break.rock.v1" ==
-					object.strClientVisualId &&
-				1u == object.Hits.size() && object.PresentationPulses.empty() &&
-				"hit.valtan.part-break.rock.explode" ==
-					object.Hits.front().strHitId &&
-				std::abs(object.fCoverRadiusM - 1.5f) < 0.0001f &&
-				partBreakRoom.m_ServerNavigation.Is_PointWalkableExact(
-					object.LiveState.CurrentPose.fPositionX,
-					object.LiveState.CurrentPose.fPositionZ) &&
-				std::hypot(
-					object.LiveState.CurrentPose.fPositionX - expectedX,
-					object.LiveState.CurrentPose.fPositionZ - expectedZ) <= 2.0001f;
-		}
+		std::vector<DAMAGE_EVENT> damageEvents;
+		partBreakRoom.m_ValtanBrain.Update(
+			*livePartBreakBoss, partBreakRoom.m_Players,
+			partBreakRoom.m_GameplayCatalog, partBreakRoom.m_ServerNavigation,
+			1.f / 30.f, 2205u, {}, damageEvents);
+		const bool recoveryStillRunningBeforeDeadline =
+			"VALTAN_PART_BREAK" == livePartBreakBoss->strPatternId &&
+			"PART_BREAK_RECOVERY" == livePartBreakBoss->strPatternStageId;
+		partBreakRoom.m_ValtanBrain.Update(
+			*livePartBreakBoss, partBreakRoom.m_Players,
+			partBreakRoom.m_GameplayCatalog, partBreakRoom.m_ServerNavigation,
+			1.f / 30.f, 2206u, {}, damageEvents);
+		const bool exitedPartBreak = partBreakRoom.Apply_BossPatternStageActions(
+			*livePartBreakBoss, "VALTAN_PART_BREAK",
+			"valtan.reaction.part-break.recovery",
+			BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT, 2206u);
+		tests.Require(
+			stagedPartBreak && recoveryStillRunningBeforeDeadline && exitedPartBreak &&
+			livePartBreakBoss->strPatternId.empty() &&
+			2u == livePartBreakBoss->PatternTerminalReceipt.iPatternSequence &&
+			SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
+				livePartBreakBoss->PatternTerminalReceipt.eResult,
+			"Keep Part Break recovery running for 155 ticks and complete its 5183ms clock on tick 156");
 		std::vector<S2C_COMBAT_OBJECT_SPAWNED> spawned;
 		std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT> presentation;
 		std::vector<S2C_COMBAT_OBJECT_DESPAWNED> despawned;
 		partBreakRoom.m_CombatObjectRuntime.Drain_Lifecycle(
 			spawned, presentation, despawned);
-		bool partBreakSpawnMessagesExact = 4u == spawned.size();
-		for (std::size_t ordinal = 0u;
-			partBreakSpawnMessagesExact && ordinal < spawned.size(); ++ordinal)
-		{
-			partBreakSpawnMessagesExact =
-				spawned[ordinal].iCombatObjectId == objects[ordinal].iCombatObjectId &&
-				std::abs(spawned[ordinal].fPositionX -
-					objects[ordinal].LiveState.CurrentPose.fPositionX) < 0.001f &&
-				std::abs(spawned[ordinal].fPositionY -
-					objects[ordinal].LiveState.CurrentPose.fPositionY) < 0.001f &&
-				std::abs(spawned[ordinal].fPositionZ -
-					objects[ordinal].LiveState.CurrentPose.fPositionZ) < 0.001f;
-		}
 		tests.Require(
-			exactPartBreakRoots && hasOffNavigationPartBreakRoot &&
-			4u == positions.size() && partBreakSpawnMessagesExact &&
-			presentation.empty() && despawned.empty(),
-			"Project four damaging Part Break recovery rocks onto nearby navigation through one atomic Server transaction");
+			stagedPartBreak && exitedPartBreak &&
+			partBreakRoom.m_CombatObjectRuntime.Get_LiveObjects().empty() &&
+			spawned.empty() && presentation.empty() && despawned.empty() &&
+			damageEvents.empty() &&
+			nullptr == partBreakRoom.m_GameplayCatalog.Find_BossCombatObject(
+				"combatobject.valtan.part-break.rock"),
+			"Complete Part Break recovery without a rock definition, live objects, damage, or object lifecycle events");
 	}
 	{
 		/* Six Pizza and Struggling both delay a damaging four-pillar wave.

@@ -224,6 +224,7 @@ void LostArk::Server::CGameRoom::Stop_KoukuBingoDuration(const bool clearBoard)
             Broadcast_WorldSequencePlay("world.sequence.instance.kouku.bingo.bomb.planted.slot." + std::to_string(slot),
                 1.f, 0.f, 0.f, 0.f, 0u, {}, WORLD_SEQUENCE_OPERATION::STOP);
         m_KoukuBingo.Reset(); m_iKoukuBingoBoardEpoch = 0u;
+        for (auto& [id, player] : m_Players) player.iKoukuBingoLineProtectionEndTick = 0u;
     }
 }
 
@@ -390,7 +391,12 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
 					if (eligible(id, player))
 						for (const auto& result : reward->OnSuccess)
 							if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::PLAYER_INVULNERABILITY)
+							{
 								CKoukuSaydonLogicRuntime::Apply_Result(player, result, *owner, *product, policy, tick, m_TickDamageEvents);
+								const auto until = CKoukuSaydonLogicRuntime::Add_Ticks(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(result.iDurationMs));
+								if (!player.iKoukuBingoLineProtectionEndTick || CKoukuSaydonLogicRuntime::Has_ReachedTick(until, player.iKoukuBingoLineProtectionEndTick))
+									player.iKoukuBingoLineProtectionEndTick = until;
+							}
 				duration.bLineRewardSinceLastJudgement = true;
 			}
 			if (bombs[slot].iMarkOrdinal && bombs[slot].iMarkOrdinal % 3u == 0u)
@@ -759,7 +765,40 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerModes(
 	}
 	CKoukuSaydonLogicRuntime::Update_PlayerModes(
 		m_Players, ledger, policy, serverTick);
-
+	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId) return;
+	bool mazeExpired = false;
+	for (auto& [id, player] : m_Players)
+	{
+		const bool mario = player.iMarioStage != 0u;
+		const bool maze = player.eKoukuAreaHudMode == KOUKU_HUD_MODE::MAZE &&
+			m_KoukuCardMaze.Get_Phase() != CKoukuCardMazeRuntime::PHASE::COMPLETE;
+		if (!player.Is_Human() || !player.iCurrentHp || (!mario && !maze))
+		{ player.iKoukuMinigameEndTick = 0u; continue; }
+		if (!player.iKoukuMinigameEndTick)
+			player.iKoukuMinigameEndTick = Add_ServerTicksSkippingReservedZero(serverTick, 90u * SERVER_TICK_HZ);
+		if (!Has_ReachedServerTick(serverTick, player.iKoukuMinigameEndTick)) continue;
+		if (maze) { mazeExpired = true; continue; }
+		SERVER_WORLD_TO_PLAYER_HIT death{};
+		death.iRawDamage = player.iCurrentHp; death.iServerTick = serverTick;
+		death.bEncounterWipe = death.bIgnoreDefense = death.bIgnoreCounter = true;
+		(void)CServerCombatHitRuntime::Apply_WorldToPlayer(player, death, m_GameplayCatalog.Active(), m_TickDamageEvents);
+		player.iKoukuMinigameEndTick = 0u;
+		Update_MarioControlState(player);
+	}
+	if (mazeExpired)
+	{
+		for (auto& [id, player] : m_Players)
+		{
+			if (!player.Is_Human() || !player.iCurrentHp) continue;
+			SERVER_WORLD_TO_PLAYER_HIT death{};
+			death.iRawDamage = player.iCurrentHp; death.iServerTick = serverTick;
+			death.bEncounterWipe = death.bIgnoreDefense = death.bIgnoreCounter = true;
+			(void)CServerCombatHitRuntime::Apply_WorldToPlayer(player, death, m_GameplayCatalog.Active(), m_TickDamageEvents);
+			player.iKoukuMinigameEndTick = 0u;
+		}
+		Reset_CardMaze();
+		m_strStatus = "Card maze exceeded its ninety-second escape deadline; party defeated";
+	}
 }
 
 void LostArk::Server::CGameRoom::Apply_KoukuGateEntryCard(

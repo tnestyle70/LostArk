@@ -1178,7 +1178,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$insideFail = if ($window.insideOutcome -ceq 'FAIL') { 1 } else { 0 }
 		$windowEndMs = [uint64]$window.startMs + [uint64]$window.durationMs
 		if ($windowKind -cnotin @(
-				'CARD_DICE_BIND','ROULETTE_CARD_MATCH','GAZE_REAL_BOSS','POSE_INPUT','STAGGER_WINDOW','COUNTER_WINDOW','AREA_OVERLAP','ENTER_AREA','OBJECT_OVERLAP','OBJECT_CONTACT','EXTERNAL_SIGNAL','ATTACHMENT_HOLD','PATTERN_COMPLETION_COUNT','INVULNERABILITY_ZONE','BINGO_COMPLETED_LINES') -or
+				'CARD_DICE_BIND','ROULETTE_CARD_MATCH','GAZE_REAL_BOSS','POSE_INPUT','STAGGER_WINDOW','COUNTER_WINDOW','AREA_OVERLAP','ENTER_AREA','OBJECT_OVERLAP','OBJECT_CONTACT','EXTERNAL_SIGNAL','ATTACHMENT_HOLD','PATTERN_COMPLETION_COUNT','INVULNERABILITY_ZONE','BINGO_COMPLETED_LINES','BOSS_DAMAGE_REDUCTION') -or
 			-not $koukuWindowIds.Add([string]$window.windowId) -or
 			[uint32]$window.durationMs -eq 0 -or
 			$windowEndMs -gt $koukuPatternDurationMs -or

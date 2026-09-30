@@ -3505,18 +3505,6 @@
       "startMs": 700
     },
     {
-      "bindingId": "cue.sound.valtan.reaction.part-break.recovery.clip-01.01",
-      "occurrenceId": "cue.sound.valtan.reaction.part-break.recovery.clip-01.01.occurrence.01",
-      "patternId": "VALTAN_PART_BREAK",
-      "stageId": "PART_BREAK_RECOVERY",
-      "actionId": "valtan.reaction.part-break.recovery",
-      "clipOccurrenceId": "valtan.reaction.part-break.recovery.clip.01",
-      "soundBank": "S_Mob_G_Voltan2",
-      "soundEvent": "G_Voltan2_Attack09_ProjCreat1",
-      "repeatPolicy": "once",
-      "startMs": 1
-    },
-    {
       "bindingId": "cue.sound.valtan.reaction.part-break.recovery.clip.01.01",
       "occurrenceId": "cue.sound.valtan.reaction.part-break.recovery.clip.01.01.occurrence.01",
       "patternId": "VALTAN_PART_BREAK",

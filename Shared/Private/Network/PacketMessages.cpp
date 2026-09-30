@@ -154,6 +154,8 @@ namespace
 		return true;
 	}
 
+    bool Is_Valid_ItemId(const std::string& value);
+
     //유효한 플레이어 스냅샷인지 검증 - netentityid, position x y z, locomotion state
     bool Is_Valid_PlayerSnapshot(
         const LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
@@ -161,6 +163,8 @@ namespace
         return
             snapshot.iNetEntityId != LostArk::Shared::INVALID_NET_ENTITY_ID &&
             LostArk::Shared::Is_Known_Player_Control_Kind(snapshot.eControlKind) &&
+            (snapshot.strAvatarHeadItemId.empty() || Is_Valid_ItemId(snapshot.strAvatarHeadItemId)) &&
+            (snapshot.strAvatarOutfitItemId.empty() || Is_Valid_ItemId(snapshot.strAvatarOutfitItemId)) &&
 			LostArk::Shared::Is_Supported_Playable_Character_Class(
 				snapshot.eCharacterClass) &&
             std::isfinite(snapshot.fPositionX) &&
@@ -658,6 +662,9 @@ namespace
 			(LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB != damage.eHitFlag ||
 				(0u != damage.iAmount && 0u == damage.iStaggerAmount && !damage.isCounterSuccess && !damage.isStaggerSuccess &&
 					damage.eCardMazeSuit == LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE)) &&
+			((damage.eHitFlag != LostArk::Shared::DAMAGE_HIT_FLAG::DAMAGE_REDUCED &&
+				damage.eHitFlag != LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL_DAMAGE_REDUCED) ||
+				(damage.isOutgoing && damage.iAmount && damage.eCardMazeSuit == LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE)) &&
 			/* Stagger and counters are things a player did to a boss. */
 			((0 == damage.iStaggerAmount && !damage.isCounterSuccess && !damage.isStaggerSuccess) || damage.isOutgoing) &&
 			LostArk::Shared::Is_Valid_MechanicCardSymbol(damage.eCardMazeSuit) &&
@@ -3276,6 +3283,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 				static_cast<int>(player.ModeSkillIndexBySlot[slot]) + 1));
 		}
 		writer.Write_U8(player.iMarioStage);
+		writer.Write_U32(player.iKoukuMinigameEndTick);
 		writer.Write_U8(player.iMarioLayoutVariant);
 		writer.Write_U16(player.iMarioPoppedBallMask);
 		writer.Write_U8(player.iMarioCurseReleasedMask);
@@ -3325,6 +3333,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(player.iVehicleFlightPhaseStartTick);
 		writer.Write_F32(player.fVehicleFlightPhaseDurationSeconds);
 		writer.Write_U32(player.iHonorTitleId);
+		if (!writer.Write_String(player.strAvatarHeadItemId, MAX_ITEM_ID_BYTES)) return false;
+		if (!writer.Write_String(player.strAvatarOutfitItemId, MAX_ITEM_ID_BYTES)) return false;
     }
 	for (const WORLD_ENTITY_SNAPSHOT& entity : message.Entities)
 	{
@@ -3601,6 +3611,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			rawHudMode >= static_cast<std::uint8_t>(KOUKU_HUD_MODE::END) ||
 			!Read_KoukuHudSlots(reader, player) ||
 			!reader.Read_U8(player.iMarioStage) || player.iMarioStage > 4u ||
+			!reader.Read_U32(player.iKoukuMinigameEndTick) ||
 			!reader.Read_U8(player.iMarioLayoutVariant) || player.iMarioLayoutVariant > 3u ||
 			(player.iMarioStage == 0u && player.iMarioLayoutVariant != 0u) ||
 			!reader.Read_U16(player.iMarioPoppedBallMask) || player.iMarioPoppedBallMask > 0x0FFFu ||
@@ -3706,7 +3717,9 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U8(rawVehicleFlightPhase) ||
 			!reader.Read_U32(player.iVehicleFlightPhaseStartTick) ||
 			!reader.Read_F32(player.fVehicleFlightPhaseDurationSeconds) ||
-			!reader.Read_U32(player.iHonorTitleId))
+			!reader.Read_U32(player.iHonorTitleId) ||
+			!reader.Read_String(player.strAvatarHeadItemId, MAX_ITEM_ID_BYTES) ||
+			!reader.Read_String(player.strAvatarOutfitItemId, MAX_ITEM_ID_BYTES))
 		{
 			return false;
 		}

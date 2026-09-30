@@ -242,6 +242,15 @@ namespace
 					const auto next = stageByAction.find(target->Get_String());
 					if (stageByAction.end() == next)
 						return false;
+					std::string patternId, sourceStageId, targetStageId;
+					if (Read_String(pattern, "patternId", false, patternId) &&
+						Read_String(rows[index], "stageId", false, sourceStageId) &&
+						Read_String(rows[next->second], "stageId", false, targetStageId) &&
+						(patternId == "VALTAN_TRASH" || patternId == "VALTAN_TRASH_CATCH_IF") &&
+						(sourceStageId == "RETRY_EXHAUSTED" || sourceStageId == "CATCH_SLAM" ||
+						 sourceStageId == "EXECUTE_TAIL") && targetStageId == "RECHARGE_WAIT_02" &&
+						branches->Get_Array().size() == 1u && outcome == "TIMEOUT")
+						continue;
 					successors[index].push_back(next->second);
 					++incoming[next->second];
 				}
@@ -1192,7 +1201,6 @@ bool_t Client::CEncounterPatternReference::Load(
 					!std::isfinite(stageVerticalOffset->Get_Number()) ||
 					0.0 == stageVerticalOffset->Get_Number() ||
 					std::fabs(stageVerticalOffset->Get_Number()) > 100.0 ||
-					nullptr == stageEntry.Find("bossResponse") ||
 					(nullptr != stageMotion && !stageMotion->Is_Null()) ||
 					(nullptr != patternMotion && !patternMotion->Is_Null()))
 				{
@@ -1438,6 +1446,23 @@ bool_t Client::CEncounterPatternReference::Load(
 				outStatus = "Encounter stage v4 branches are invalid: " +
 					pattern.patternId + "/" + stage.stageId;
 				return false;
+			}
+			if (0.f != stage.fVerticalOffsetM && nullptr == stageEntry.Find("bossResponse"))
+			{
+				const auto* staggerBranches = stageEntry.Find("branches");
+				const bool_t hasStaggerOutcome = nullptr != staggerBranches && staggerBranches->Is_Array() &&
+					std::any_of(staggerBranches->Get_Array().begin(), staggerBranches->Get_Array().end(),
+						[](const DATA_JSON_VALUE& branch)
+						{
+							const auto* outcome = branch.Find("outcome");
+							return nullptr != outcome && outcome->Is_String() &&
+								outcome->Get_String() == "STAGGER_BROKEN";
+						});
+				if (!hasStaggerEnter || !hasStaggerExit || !hasStaggerOutcome)
+				{
+					outStatus = "Encounter stage vertical offset has no active response: " + pattern.patternId + "/" + stage.stageId;
+					return false;
+				}
 			}
 			const DATA_JSON_VALUE* branches = stageEntry.Find("branches");
 			if (nullptr != branches)

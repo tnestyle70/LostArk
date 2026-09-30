@@ -88,7 +88,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
                 documents[pipeline.COMBAT_AUTHORING_REL],
             )
 
-    def test_magic_orb_damage_threshold_and_wipe_are_exact_typed_edges(self) -> None:
+    def test_magic_orb_independent_stagger_and_wipe_are_exact_typed_edges(self) -> None:
         pattern = self.gameplay_by_id["VALTAN_STAGGER_SLOT"]
         self.assertEqual("마력구 파괴 패턴", pattern["displayName"])
         self.assertEqual("NONE", pattern["targetPolicy"])
@@ -99,13 +99,14 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         self.assertEqual(12000, channel["durationMs"])
         self.assertEqual(0.5, channel["verticalOffsetM"])
         self.assertNotIn("verticalOffsetM", final_attack)
+        self.assertNotIn("bossResponse", channel)
         self.assertEqual(
-            {"kind": "ACCUMULATED_HEALTH_DAMAGE", "threshold": 10000},
-            channel["bossResponse"],
+            [("ENTER", "SET_STAGGER_GAUGE", 50000), ("EXIT", "SET_STAGGER_GAUGE", 0)],
+            [(row["trigger"], row["kind"], row["value"]) for row in channel["events"]],
         )
         self.assertEqual(
             [
-                ("HEALTH_DAMAGE_THRESHOLD_REACHED", None,
+                ("STAGGER_BROKEN", None,
                  "VALTAN_GROGGY_FOLLOWUP"),
                 ("TIMEOUT", "valtan.authoring.stagger-slot.final-attack", None),
             ],
@@ -145,6 +146,12 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         )
         self.assertNotIn("verticalOffsetM", product_pattern)
         self.assertEqual(0.5, product_pattern["stages"][0]["verticalOffsetM"])
+        self.assertNotIn("bossResponse", product_pattern["stages"][0])
+        self.assertEqual("STAGGER_BROKEN", product_pattern["stages"][0]["branches"][0]["outcome"])
+        self.assertEqual(
+            [("ENTER", "SET_STAGGER_GAUGE", 50000), ("EXIT", "SET_STAGGER_GAUGE", 0)],
+            [(row["trigger"], row["kind"], row["value"]) for row in product_pattern["stages"][0]["actions"]],
+        )
         self.assertNotIn("verticalOffsetM", product_pattern["stages"][1])
 
         groggy = self.gameplay_by_id["VALTAN_GROGGY_FOLLOWUP"]
@@ -177,7 +184,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         )
 
     def test_stage_vertical_offset_rejects_zero_missing_response_or_motion(self) -> None:
-        for defect in ("zero", "missing response", "stage motion"):
+        for defect in ("zero", "missing response", "missing enter", "missing exit", "stage motion"):
             with self.subTest(defect=defect):
                 invalid = copy.deepcopy(self.gameplay)
                 pattern = next(
@@ -188,11 +195,13 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
                 if defect == "zero":
                     channel["verticalOffsetM"] = 0.0
                 elif defect == "missing response":
-                    del channel["bossResponse"]
                     channel["branches"] = [
                         branch for branch in channel["branches"]
-                        if branch["outcome"] != "HEALTH_DAMAGE_THRESHOLD_REACHED"
+                        if branch["outcome"] != "STAGGER_BROKEN"
                     ]
+                elif defect in ("missing enter", "missing exit"):
+                    trigger = "ENTER" if defect == "missing enter" else "EXIT"
+                    channel["events"] = [event for event in channel["events"] if event["trigger"] != trigger]
                 else:
                     channel["motion"] = {"kind": "FORWARD", "distance": 1.0}
                 with self.assertRaisesRegex(
@@ -206,13 +215,15 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         self.assertEqual("속박 패턴", bind["displayName"])
         self.assertEqual("LOCK_RANDOM_ALIVE_ON_START", bind["targetPolicy"])
         self.assertEqual([420623, 400442], bind["sourceActionIds"])
+        bind_duration = bind["stages"][0]["durationMs"]
+        self.assertGreater(bind_duration, 0)
         self.assertEqual(
-            [("STEP_01", 5000), ("RECOVERY", 3533)],
+            [("STEP_01", bind_duration), ("RECOVERY", 3533)],
             [(row["stageId"], row["durationMs"]) for row in bind["stages"]],
         )
         bind_events = bind["stages"][0]["events"]
         self.assertEqual(
-            [("ENTER", "SET_PLAYER_BIND", 5.0, 5000),
+            [("ENTER", "SET_PLAYER_BIND", 5.0, bind_duration),
              ("EXIT", "SET_PLAYER_BIND", 0.0, 0)],
             [(row["trigger"], row["kind"], row["heightM"], row["durationMs"])
              for row in bind_events],

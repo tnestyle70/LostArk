@@ -1575,36 +1575,19 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanResetlessNext(TES
 					completedTick = room.m_iServerTick;
 			}
 			SERVER_PLAYER& player = room.m_Players.at(NEXT_OWNER_PLAYER);
-			const bool completedAfterTail = room.Is_Ready() && captured && executed &&
-				0u != counterTick && impactTick - counterTick == 45u && completedTick - impactTick == 45u &&
-				boss->strPatternId.empty() && 1u == boss->iPatternSequence &&
-				SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED == boss->PatternTerminalReceipt.eResult;
-			for (std::uint32_t step = 0u; step < 500u && room.Is_Ready(); ++step)
-				room.Tick(1.f / 30.f);
-			const auto waitingEdges = readNextLifecycle(fixture.Session);
-			const auto completed = std::find_if(waitingEdges.begin(), waitingEdges.end(), [](const auto& edge)
+			// A full-party capture is a failed attempt, never the counter-success
+			// receipt that promotes a queued Next pattern.
+			const auto lifecycle = readNextLifecycle(fixture.Session);
+			const bool incorrectlyCompleted = std::any_of(lifecycle.begin(), lifecycle.end(), [](const auto& edge)
 				{ return edge.iRequestSequence == 1u && edge.eState == VALTAN_AUDITION_LIFECYCLE_STATE::COMPLETED; });
-			const auto waiting = std::find_if(waitingEdges.begin(), waitingEdges.end(), [](const auto& edge)
-				{ return edge.iRequestSequence == 2u && edge.eState == VALTAN_AUDITION_LIFECYCLE_STATE::WAITING_FOR_PLAYER; });
-			const auto waitingCount = std::count_if(waitingEdges.begin(), waitingEdges.end(), [](const auto& edge)
-				{ return edge.iRequestSequence == 2u && edge.eState == VALTAN_AUDITION_LIFECYCLE_STATE::WAITING_FOR_PLAYER; });
-			const bool heldForRevive = completedAfterTail && room.Is_Ready() && room.m_ValtanNextPattern &&
-				0u == player.iCurrentHp && 1u == boss->iPatternSequence && boss->strPatternId.empty() &&
-				completed != waitingEdges.end() && waiting != waitingEdges.end() && completed < waiting && waitingCount == 1;
-			C2S_REVIVE_PLAYER revive{};
-			revive.iClientSequence = 1u;
-			room.Handle_RevivePlayer(NEXT_OWNER_SESSION, revive);
-			room.Tick(1.f / 30.f);
-			const bool promoted = CGameRoom::VALTAN_PATTERN_ID_AUDITION_PHASE::PENDING ==
-				room.m_ValtanPatternIdAudition.ePhase && 2u == room.m_ValtanPatternIdAudition.iRequestSequence;
-			room.Tick(1.f / 30.f);
-			tests.Require(VALTAN_AUDITION_RESULT::QUEUED == queued && heldForRevive && promoted &&
-				room.Is_Ready() && "VALTAN_FIST_IN_OUT" == boss->strPatternId && 2u == boss->iPatternSequence &&
-				CGameRoom::VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE == room.m_ValtanPatternIdAudition.ePhase &&
-				0u != player.iCurrentHp && bossHp == boss->iCurrentHp &&
-				roomEpoch == room.m_ValtanPatternIdAudition.iRoomAuditionEpoch &&
+			tests.Require(VALTAN_AUDITION_RESULT::QUEUED == queued && room.Is_Ready() &&
+				captured && executed && 0u != counterTick && impactTick - counterTick == 45u &&
+				completedTick == 0u && !incorrectlyCompleted &&
+				SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED != boss->PatternTerminalReceipt.eResult &&
+				"VALTAN_FIST_IN_OUT" != boss->strPatternId && 0u == player.iCurrentHp &&
+				bossHp == boss->iCurrentHp && roomEpoch == room.m_ValtanPatternIdAudition.iRoomAuditionEpoch &&
 				worldEpoch == room.m_WorldDestructionRuntime.Get_EncounterEpoch(),
-				"Real Trash capture executes all living players, completes its tail, waits without auto-revive, then starts Next after typed revive");
+				"A full-party Trash capture never reports counter success or promotes a queued Next pattern");
 		}
 		fixture.Session->Request_Close();
 	}

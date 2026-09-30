@@ -42,6 +42,110 @@ using namespace LostArk::Shared;
 
 void LostArk::Server::CServerGameplayContractRunner::Run_KoukuMarioEntryContact(TESTS& tests)
 {
+    for (const bool maze : { false, true })
+    {
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        SERVER_PLAYER entrant{};
+        entrant.iPlayerId = 99701u; entrant.iNetEntityId = 99702u;
+        entrant.iCurrentHp = entrant.iMaximumHp = 1000u; entrant.isCombatReady = true;
+        entrant.iShield = 100000u; entrant.iInvulnerableEndTick = 10000u;
+        entrant.iMarioStage = maze ? 0u : 2u;
+        entrant.eKoukuAreaHudMode = maze ? KOUKU_HUD_MODE::MAZE : KOUKU_HUD_MODE::MARIO;
+        room->m_Players.emplace(entrant.iPlayerId, entrant);
+        auto partner = entrant; partner.iPlayerId = 99703u; partner.iNetEntityId = 99704u;
+        partner.iMarioStage = 0u; partner.eKoukuAreaHudMode = KOUKU_HUD_MODE::NONE;
+        partner.isCombatReady = false;
+        room->m_Players.emplace(partner.iPlayerId, partner);
+        room->Update_KoukuPlayerModes(100u);
+        tests.Require(room->m_Players.at(entrant.iPlayerId).iKoukuMinigameEndTick == 2800u &&
+            !room->m_Players.at(partner.iPlayerId).iKoukuMinigameEndTick,
+            "The Server starts one ninety-second minigame deadline only for its participant");
+        room->Update_KoukuPlayerModes(2799u);
+        tests.Require(room->m_Players.at(entrant.iPlayerId).iCurrentHp == 1000u,
+            "The minigame participant remains alive one tick before the ninety-second deadline");
+        room->Update_KoukuPlayerModes(2800u);
+        tests.Require(!room->m_Players.at(entrant.iPlayerId).iCurrentHp &&
+            !room->m_Players.at(entrant.iPlayerId).iKoukuMinigameEndTick &&
+            (maze ? !room->m_Players.at(partner.iPlayerId).iCurrentHp : room->m_Players.at(partner.iPlayerId).iCurrentHp == 1000u),
+            "Mario timeout kills only its entrant; card maze timeout kills the party through shields and invulnerability");
+        auto& escaped = room->m_Players.at(entrant.iPlayerId);
+        escaped.iCurrentHp = 1000u; escaped.iMarioStage = 0u;
+        escaped.eKoukuAreaHudMode = KOUKU_HUD_MODE::NONE; escaped.iKoukuMinigameEndTick = 2900u;
+        room->Update_KoukuPlayerModes(2899u);
+        tests.Require(!escaped.iKoukuMinigameEndTick && escaped.iCurrentHp == 1000u,
+            "Leaving the minigame clears its deadline instead of carrying it into the next run");
+    }
+    for (const std::uint8_t source : { 1u, 2u })
+    {
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        const auto* policy = room->m_GameplayCatalog.Active().Find_KoukuMadnessPolicy("ENCOUNTER_KAKULSAYDON_G1");
+        tests.Require(policy && policy->iBallGainPercent == 10u && policy->iBallMultiplierPercent == 200u &&
+            policy->iDollGainPercent == 10u && policy->iDollMultiplierPercent == 200u && policy->iSpecialIntervalMs == 1000u,
+            "The published ball and doll policy independently owns twenty percent madness per second");
+        if (!policy) continue;
+        SERVER_WORLD_ENTITY boss{}; boss.iNetEntityId = 99601u; boss.iPatternSequence = 1u;
+        boss.iCurrentHp = boss.iMaximumHp = 1000u;
+        BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "contract.shield.madness";
+        auto& world = pattern.WorldSequences.emplace_back();
+        world.strOccurrenceId = "contract.special.world"; world.bAuthoredMadness = true;
+        world.strInstanceId = source == 1u ? "world.object.instance.kouku.mario_circus_ball.aura" :
+            "world.object.instance.kouku.odd_doll.att_battle_2_01";
+        auto& window = pattern.LogicWindows.emplace_back(); window.strWindowId = "contract.special.contact";
+        window.strOwnerWorldOccurrenceId = world.strOccurrenceId;
+        window.eKind = BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP; window.iDurationMs = 1000u;
+        window.iRepeatIntervalMs = 100u;
+        auto& region = window.CardRegions.emplace_back(); region.strRegionId = "contract.special.region";
+        region.bCircle = true; region.fRadiusM = 2.f; region.fHalfX = region.fHalfZ = 2.f;
+        BOSS_PATTERN_LOGIC_RESULT hit{}; hit.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE; hit.iDamageAmount = 10u;
+        BOSS_PATTERN_LOGIC_RESULT madness{}; madness.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT;
+        madness.iPercent = 99u; window.OnSuccess = { hit, madness };
+        SERVER_PLAYER player{}; player.iPlayerId = 99602u; player.iNetEntityId = 99603u;
+        player.iCurrentHp = player.iMaximumHp = 1000u; player.iShield = 100000u;
+        player.iMaximumMadness = 100u; player.isCombatReady = true; player.iMadnessDamageGainPercent = 99u;
+        std::map<PLAYER_ID, SERVER_PLAYER> players{{player.iPlayerId, player}};
+        KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output; std::vector<DAMAGE_EVENT> damage;
+        CKoukuSaydonLogicRuntime::Build(pattern, boss, 100u, ledger);
+        tests.Require(ledger.Windows.front().iMadnessSource == source,
+            "Authored special contact resolves its exact WORLD occurrence and ball/doll instance identity");
+        for (std::uint32_t tick = 100u; tick < 130u; tick += 3u)
+            CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, room->m_GameplayCatalog.Active(),
+                policy, tick, damage, output);
+        const auto& target = players.at(player.iPlayerId);
+        tests.Require(target.iCurrentHp == 1000u && target.iShield < 100000u && target.iCurrentMadness == 20u &&
+            target.iMadnessDamageGainPercent == 99u && damage.empty(),
+            "Ten shield-absorbed 100-ms ball/doll hits add twenty percent madness without HP damage, combat text or double gain");
+        enum class CONTACT_CASE { INVULNERABLE, HOLY_CHARM, ZERO_DAMAGE, OUTSIDE, TIME_STOP, DEAD, NOT_READY, CLOWN };
+        for (const auto scenario : { CONTACT_CASE::INVULNERABLE, CONTACT_CASE::HOLY_CHARM, CONTACT_CASE::ZERO_DAMAGE,
+            CONTACT_CASE::OUTSIDE, CONTACT_CASE::TIME_STOP, CONTACT_CASE::DEAD, CONTACT_CASE::NOT_READY, CONTACT_CASE::CLOWN })
+        {
+            auto& contactPlayer = players.at(player.iPlayerId);
+            contactPlayer = player;
+            window.OnSuccess.front().iDamageAmount = 10u;
+            switch (scenario)
+            {
+            case CONTACT_CASE::INVULNERABLE: contactPlayer.iInvulnerableEndTick = 1000u; break;
+            case CONTACT_CASE::HOLY_CHARM: contactPlayer.iHolyCharmProtectionEndTick = 1000u; break;
+            case CONTACT_CASE::ZERO_DAMAGE: window.OnSuccess.front().iDamageAmount = 0u; break;
+            case CONTACT_CASE::OUTSIDE: contactPlayer.fPositionX = 20.f; break;
+            case CONTACT_CASE::TIME_STOP: contactPlayer.iTimeStopEndTick = 1000u; break;
+            case CONTACT_CASE::DEAD: contactPlayer.iCurrentHp = 0u; break;
+            case CONTACT_CASE::NOT_READY: contactPlayer.isCombatReady = false; break;
+            case CONTACT_CASE::CLOWN: contactPlayer.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN; break;
+            }
+            damage.clear(); output = {};
+            CKoukuSaydonLogicRuntime::Build(pattern, boss, 100u, ledger);
+            for (std::uint32_t tick = 100u; tick < 130u; ++tick)
+                CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, room->m_GameplayCatalog.Active(),
+                    policy, tick, damage, output);
+            const bool independentGain = scenario == CONTACT_CASE::INVULNERABLE ||
+                scenario == CONTACT_CASE::HOLY_CHARM || scenario == CONTACT_CASE::ZERO_DAMAGE;
+            tests.Require(contactPlayer.iCurrentMadness == (independentGain ? 20u : 0u) && damage.empty() &&
+                contactPlayer.iCurrentHp == (scenario == CONTACT_CASE::DEAD ? 0u : 1000u) &&
+                contactPlayer.iMadnessDamageGainPercent == 99u &&
+                (!independentGain || contactPlayer.iShield == player.iShield),
+                "Special contact charges without HP/shield loss or text; outside, time stop, dead, unready and clown do not charge");
+        }
+    }
 #ifdef _DEBUG
     for (const bool cancelled : { false, true })
     {
@@ -236,7 +340,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuMarioEntryContact(
             tests.Require(CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(ended, anchor, player, afterEnd) &&
                 !CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(ended, anchor, player, afterEnd, true) &&
                 CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(ended, anchor, player, afterEnd - 1u, true),
-                "Only a non-chain Mario entry closes with its ENTER_AREA window end");
+                "The room can require every Mario entry to close at its authored ENTER_AREA deadline");
         }
     }
     {
@@ -362,6 +466,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_KoukuProductOnly()
         std::cout << std::unitbuf;
         TESTS tests{}; CGameplayCatalog catalog;
         if (!catalog.Load()) { std::cout << catalog.Get_Status() << '\n'; return; }
+        Run_KoukuSaydonLogicRuntimeContracts(tests, catalog);
         Run_KoukuMarioEntryContact(tests);
         Run_KoukuProduct(tests, catalog);
         std::cout << "failures : " << tests.failures << '\n';
@@ -733,8 +838,11 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
             // This fixture exercises optional success with no entrant, independently of
             // a designer-authored failure policy on the current product's entry window.
             if (definitions) for (auto& definition : *definitions) if (definition.strPatternId == "KAKULSAYDON_G1_PATTERN_34")
-                for (auto& window : definition.LogicWindows) if (window.eKind == BOSS_PATTERN_LOGIC_KIND::ENTER_AREA)
+                for (auto& window : definition.LogicWindows) if (window.eKind == BOSS_PATTERN_LOGIC_KIND::ENTER_AREA) {
                     window.OnTimeout.clear();
+                    window.iDurationMs = 100000u;
+                    definition.iTimelineDurationMs = (std::max)(definition.iTimelineDurationMs, window.iStartMs + window.iDurationMs);
+                }
             room->m_pKoukuPublishedProductGeneration = std::move(generation);
         }
         const auto bossId = boss.iNetEntityId;
@@ -961,7 +1069,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 
         tests.Require(bounded && retained && wire && selected.size() == 2u && std::set<std::string>(selected.begin(), selected.end()).size() == 2u &&
             std::all_of(selected.begin(), selected.end(), [&](const auto& id) { return marioCandidates.contains(id); }) &&
-            completed == 2u && (noFollowup ? terminalCompleted && !phase2Tick : (interruptedScenario ? (scenario == MARIO_SCENARIO::DEATH ? mechanicFailed : aborted) && !phase2Tick : phase2Tick > completionTick)),
+            completed == 2u && (noFollowup ? terminalCompleted && !phase2Tick : (interruptedScenario ? (scenario == MARIO_SCENARIO::DEATH ? phase2Tick > completionTick : aborted && !phase2Tick) : phase2Tick > completionTick)),
             "Count two distinct Server-selected real pattern completions and preserve optional terminal or followup behavior");
         const auto expectedNextStage = scenario == MARIO_SCENARIO::DISCONNECT ? 1u : (enterPortal ? marioStage + 1u : marioStage);
         tests.Require(entryCommitted == enterPortal && room->m_iNextMarioEntryStage == expectedNextStage,
@@ -978,17 +1086,11 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
         if (scenario == MARIO_SCENARIO::DISCONNECT)
             tests.Require(waited && aborted && !phase2Tick, "A solo entrant disconnect retains explicit departure cleanup without phase-2 success");
         if (scenario == MARIO_SCENARIO::DEATH) {
-            tests.Require(waited && mechanicFailed && !phase2Tick,
-                "Mario 2 entrant death completes the failed mechanic and preserves the boss without phase-2 success");
-            // Exercise the same raid receipt consumer that previously removed the living boss.
+            tests.Require(waited && phase2Tick > completionTick &&
+                room->m_KoukuSaydonPatternAudition.Members.front().bCompletionChainSuccessQueued,
+                "A dead or immediately revived Mario entrant releases the solo return gate and continues phase 2");
             auto& raid = room->m_KoukuRaid;
             raid.pCatalog = room->m_pKoukuPublishedProductGeneration;
-            auto* gate = const_cast<KOUKU_RAID_GATE_DEFINITION*>(raid.pCatalog->Find_KoukuRaidGate("GATE3"));
-            if (!gate || gate->Entries.empty()) {
-                tests.Require(false, "Load the published Gate 3 flow for Mario death recovery");
-                return selected;
-            }
-            gate->Entries.front().iWaitAfterMs = 1000u;
             raid.iOwnerSessionId = player.iSessionId; raid.PlayerIds = {player.iPlayerId};
             raid.iPrimaryBossId = bossId; raid.bEntryRunning = true;
             raid.iAuditionEpoch = result.iRoomAuditionEpoch;
@@ -997,22 +1099,15 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
             raid.State.PinnedGameplayRevision = room->m_GameplayCatalog.Get_ActiveRevision();
             auto& entrant = room->m_Players.at(player.iPlayerId);
             room->Update_MarioControlState(entrant);
-            room->Update_KoukuRaid(room->m_iServerTick);
-            const auto* live = room->Find_KoukuSaydonArenaBoss(request.Scope.strBossPlacementId, request.Scope.strBossArchetypeId);
-            tests.Require(mechanicFailed && room->Is_KoukuRaidRunning() && !raid.bEntryRunning &&
-                live && live->iNetEntityId == bossId && live->iCurrentHp && raid.iNextEntryTick > room->m_iServerTick &&
-                (immediateRevive ? entrant.iCurrentHp == entrant.iMaximumHp && entrant.eAction == PLAYER_ACTION_STATE::NONE :
-                    !entrant.iCurrentHp && entrant.eAction == PLAYER_ACTION_STATE::DEAD) &&
-                !entrant.iMarioStage && !entrant.MarioReturnPosition,
-                "A failed Mario occurrence advances the raid flow, keeps the boss, and preserves the requested revival state");
             entrant.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
             C2S_REVIVE_PLAYER revive{}; revive.iClientSequence = immediateRevive ? 2u : 1u;
             room->Handle_RevivePlayer(player.iSessionId, revive);
-            live = room->Find_KoukuSaydonArenaBoss(request.Scope.strBossPlacementId, request.Scope.strBossArchetypeId);
+            const auto* live = room->Find_KoukuSaydonArenaBoss(request.Scope.strBossPlacementId, request.Scope.strBossArchetypeId);
             tests.Require(entrant.iCurrentHp == entrant.iMaximumHp && entrant.isCombatReady &&
                 entrant.eAction == PLAYER_ACTION_STATE::NONE && !entrant.iMarioStage &&
-                room->Is_KoukuRaidRunning() && live && live->iNetEntityId == bossId && live->iCurrentHp,
-                "Typed revival after Mario 2 death restores the player while preserving the same living raid boss");
+                room->Is_KoukuRaidRunning() && live && live->iNetEntityId == bossId && live->iCurrentHp &&
+                live->strPatternId == "KAKULSAYDON_G1_PATTERN_33",
+                "Typed revival after Mario death preserves the same living boss and the running phase-2 occurrence");
         }
         return selected;
     };
@@ -1041,6 +1136,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
     (void)marioScenario(MARIO_SCENARIO::DEATH, 71023u, true);
     (void)marioScenario(MARIO_SCENARIO::DISCONNECT);
     (void)marioScenario(MARIO_SCENARIO::LAST_TICK_ENTRY);
+    for (const auto& [patternId, expectedStage] : std::array<std::pair<const char*, std::uint8_t>, 2u>{
+        {{"KAKULSAYDON_G1_PATTERN_88", 1u}, {"KAKULSAYDON_G1_PATTERN_91", 2u}}})
     {
         // Exercise the unmodified saved Parent, including its damaging WORLD rows.
         // Its 4.667-second opening is followed by real children through 41.109 seconds;
@@ -1049,7 +1146,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
         const auto* placement = room->Find_Placement("boss.kakulsaydon.g3.saydon");
         SERVER_WORLD_ENTITY boss{}; std::string status;
         const auto* parent = CKoukuSaydonBrain::Find_AnimationOnlyPattern(room->m_GameplayCatalog.Active(),
-            "KAKULSAYDON_G1_PATTERN_88", status);
+            patternId, status);
         const auto entry = parent ? std::find_if(parent->LogicWindows.begin(), parent->LogicWindows.end(), [](const auto& window) {
             return window.eKind == BOSS_PATTERN_LOGIC_KIND::ENTER_AREA && !window.CardRegions.empty() &&
                 window.OnSuccess.size() == 1u && window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER;
@@ -1095,7 +1192,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
                 }
                 reachedPhaseTwo = live->strPatternId == "KAKULSAYDON_G1_PATTERN_33";
                 if (reachedPhaseTwo) break;
-                if (!room->Update_KoukuSaydonBoss(*live, tick)) break;
+                room->Prepare_KoukuAuditionTick(tick);
+                room->Commit_KoukuMarioEntries();
+                live = room->Find_KoukuSaydonArenaBoss(placement->strPlacementId, placement->strArchetypeId);
+                if (!live || !room->Update_KoukuSaydonBoss(*live, tick)) break;
                 room->Commit_KoukuMechanicTriggers(tick); room->Commit_KoukuMarioEntries();
                 if (room->m_Players.at(970u).iMarioStage && !entered) { entered = true; entryTick = tick; }
                 if (room->m_KoukuSaydonPatternAudition.ePhase == CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE) break;
@@ -1106,9 +1206,9 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
                     << " phaseTwo=" << reachedPhaseTwo << " tick=" << room->m_iServerTick << " root=" << rootStart
                     << " entry=" << entryTick << " hp=" << entrant.iCurrentHp << " form=" << unsigned(entrant.eMadnessForm)
                     << " status=" << room->Get_Status() << '\n';
-            tests.Require(queued && lateChild && entered && reachedPhaseTwo && entrant.iMarioStage == 1u &&
-                room->m_iNextMarioEntryStage == 2u && entryTick - rootStart >= CKoukuSaydonLogicRuntime::Ticks_FromMs(entry->iStartMs),
-                "Actual P88 admits the late portal during its saved child, keeps damaging WORLD rows and reaches P33 exactly once");
+            tests.Require(queued && lateChild && entered && reachedPhaseTwo && entrant.iMarioStage == expectedStage &&
+                room->m_iNextMarioEntryStage == expectedStage + 1u && entryTick - rootStart == CKoukuSaydonLogicRuntime::Ticks_FromMs(enterMs),
+                "Actual Mario 1 and 2 commit on the first contacting tick during their saved child, before child damage, then reach P33");
         }
     }
     // Plain entry is an optional runtime contract, separate from the saved P88 Parent.
@@ -1253,7 +1353,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
                 auto& entrant = room->m_Players.at(player.iPlayerId);
                 entrant.fPositionX = region.fCenterX; entrant.fPositionY = region.fCenterY; entrant.fPositionZ = region.fCenterZ;
                 // The stagger threshold is crossed on the same next tick that judges the entrant inside the region.
-                if (finalTick) live->iCurrentHp -= 1000u;
+                if (finalTick) live->iKoukuItemStaggerCredit = live->iKoukuItemStaggerMaximum;
                 moved = true;
             }
             if (member.bMarioEntryConsumed && !entryTick) entryTick = tick;

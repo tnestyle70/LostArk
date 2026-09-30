@@ -181,8 +181,8 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         room.Update_KoukuRaid(room.m_iServerTick);
         tests.Require(run.bEntryRunning, "The first authored flow entry starts at the three-second boundary");
     };
-    for (const auto& [marioPattern, bars] : std::array<std::pair<const char*, unsigned>, 3u>{
-        {{"KAKULSAYDON_G1_PATTERN_88", 155u}, {"KAKULSAYDON_G1_PATTERN_92", 80u}, {"KAKULSAYDON_G1_PATTERN_93", 55u}}})
+    for (const auto& [marioPattern, bars] : std::array<std::pair<const char*, unsigned>, 4u>{
+        {{"KAKULSAYDON_G1_PATTERN_88", 155u}, {"KAKULSAYDON_G1_PATTERN_91", 125u}, {"KAKULSAYDON_G1_PATTERN_92", 80u}, {"KAKULSAYDON_G1_PATTERN_93", 55u}}})
     {
         auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
         auto& run = room->m_KoukuRaid;
@@ -214,11 +214,11 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                 const auto bossId = boss->iNetEntityId;
                 boss->iCurrentHp = static_cast<std::uint32_t>(static_cast<std::uint64_t>(boss->iMaximumHp) * (bars + 1u) / boss->iMaximumHealthBars);
                 run.State.iFlowEntryIndex = static_cast<std::uint32_t>(mechanic - gate->Entries.begin() - 1u);
-                bool alive = true, entered = false, penaltyCompleted = false, continuedLoop = false;
+                bool alive = true, entered = false, penaltyCompleted = false, continuedLoop = false, phaseTwoSeen = false;
                 std::uint32_t marioDeadline = 0u, previousFlowIndex = run.State.iFlowEntryIndex;
                 for (std::uint32_t tick = 190u; tick < 17500u && alive && !continuedLoop; ++tick)
                 {
-                    room->m_iServerTick = tick; player.iInvulnerableEndTick = marioDeadline && tick + 1u >= marioDeadline ? 0u : tick + 600u;
+                    room->m_iServerTick = tick; player.iInvulnerableEndTick = tick + 600u; player.iShield = 200000000u;
                     room->Prepare_KoukuAuditionTick(tick);
                     room->Update_KoukuPatternTails(tick);
                     boss = room->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.g3.saydon", "BOSS_KAKULSAYDON_G3_SAYDON");
@@ -239,6 +239,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                     }
                     room->Update_KoukuSaydonBoss(*boss, tick);
                     room->Commit_KoukuMechanicTriggers(tick);
+                    phaseTwoSeen = phaseTwoSeen || (boss->strPatternId == "KAKULSAYDON_G1_PATTERN_33" && !player.iCurrentHp);
                     room->Update_KoukuWorldBodies(tick);
                     const auto receipt = room->m_KoukuSaydonPatternAuditionReceiptBySessionId.find(501u);
                     penaltyCompleted = penaltyCompleted || (entered && !player.iCurrentHp && receipt != room->m_KoukuSaydonPatternAuditionReceiptBySessionId.end() &&
@@ -252,10 +253,10 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                         std::any_of(room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
                             [&](const auto& entity) { return entity.iNetEntityId == bossId && entity.iCurrentHp; });
                 }
-                tests.Require(alive && entered && penaltyCompleted && continuedLoop && !player.iCurrentHp &&
+                tests.Require(alive && entered && penaltyCompleted && continuedLoop && phaseTwoSeen && !player.iCurrentHp &&
                     run.State.iFlowEntryIndex > static_cast<std::uint32_t>(mechanic - gate->Entries.begin()) &&
                     run.bEntryRunning && room->m_KoukuSaydonPatternAudition.Request.strPatternId != marioPattern,
-                    "Mario 1/3/4 timeout keeps players dead while the same raid boss completes and repeats its next normal flow");
+                    "Mario 1/2/3/4 timeout bypasses shield/invulnerability, keeps players dead through phase 2 and repeats normal flow");
                 if (!alive || !penaltyCompleted || !continuedLoop) std::cout << "[MARIO ENTRY] pattern=" << marioPattern << " deadline=" << marioDeadline << " hp=" << player.iCurrentHp << " reason=" << run.State.strReason << " status=" << room->m_strStatus << '\n';
             }
         }

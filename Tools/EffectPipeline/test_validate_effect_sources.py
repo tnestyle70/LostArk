@@ -53,6 +53,54 @@ class EffectSourceValidatorTests(unittest.TestCase):
         with self.assertRaisesRegex(MODULE.ContractError, "portable authored"):
             MODULE._validate_authored_module_overrides(source, "fixture")
 
+    def test_element_display_name_uses_utf8_byte_boundary(self) -> None:
+        for version in (6, 13, 14, 15):
+            for name in ("a" * 64, "가" * 21 + "a", "😀" * 16, "\u00a0"):
+                with self.subTest(version=version, name=name):
+                    MODULE.validate_element_display_names({
+                        "version": version, "displayName": "document label " * 10,
+                        "elements": [{"id": "element.one", "displayName": name}],
+                    }, "fixture")
+            for name in ("a" * 65, "가" * 21 + "ab", "😀" * 16 + "a", "", " \t\r\n\v\f"):
+                with self.subTest(version=version, name=name):
+                    with self.assertRaisesRegex(MODULE.ContractError, "1-64 UTF-8 bytes"):
+                        MODULE.validate_element_display_names({
+                            "version": version,
+                            "elements": [{"id": "element.one", "displayName": name}],
+                        }, "fixture")
+
+    def test_element_display_name_requires_string_in_current_versions(self) -> None:
+        for value in (None, False, 7, [], {}):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(MODULE.ContractError, "displayName must be a string"):
+                    MODULE.validate_element_display_names({
+                        "version": 13, "elements": [{"id": "element.one", "displayName": value}],
+                    }, "fixture")
+        with self.assertRaisesRegex(MODULE.ContractError, "displayName must be a string"):
+            MODULE.validate_element_display_names({"version": 15, "elements": [{"id": "element.one"}]}, "fixture")
+        with self.assertRaisesRegex(MODULE.ContractError, "valid UTF-8"):
+            MODULE.validate_element_display_names({
+                "version": 13, "elements": [{"displayName": "\ud800"}],
+            }, "fixture")
+
+    def test_legacy_element_name_comes_from_id(self) -> None:
+        for version in (3, 4, 5):
+            MODULE.validate_element_display_names({
+                "version": version, "elements": [{"id": "a" * 64, "displayName": None}],
+            }, "legacy")
+            with self.assertRaisesRegex(MODULE.ContractError, "1-64 UTF-8 bytes"):
+                MODULE.validate_element_display_names({
+                    "version": version, "elements": [{"id": "a" * 65, "displayName": "short"}],
+                }, "legacy")
+
+    def test_repository_validation_rejects_overlong_element_label(self) -> None:
+        path = self.root / f"Data/Effects/Authored/{self.effect_id}.effect.json"
+        source = json.loads(path.read_text(encoding="utf-8"))
+        source["elements"] = [{"id": "element.one", "displayName": "가" * 22}]
+        self._write_json(path, source)
+        with self.assertRaisesRegex(MODULE.ContractError, "element.one.*66 bytes"):
+            MODULE.validate_repository(self.root)
+
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
@@ -116,7 +164,7 @@ class EffectSourceValidatorTests(unittest.TestCase):
         if model:
             source["modelCues"] = [{"modelAssetId": resource_id}]
         else:
-            source["elements"] = [{"resources": [{"assetId": resource_id}]}]
+            source["elements"] = [{"displayName": "Resource fixture", "resources": [{"assetId": resource_id}]}]
         self._write_json(path, source)
 
     def test_native_particle_options_validate_without_source_fallback(self) -> None:
@@ -181,7 +229,7 @@ class EffectSourceValidatorTests(unittest.TestCase):
                 material = {"templateId": "effect.standard"}
                 if flag is not None:
                     material["colorTexturesSRGB"] = flag
-                source["elements"] = [{"material": material}]
+                source["elements"] = [{"displayName": "Material fixture", "material": material}]
                 self._write_json(path, source)
                 self.assertEqual(MODULE.validate_repository(self.root).direct_source_count, 1)
         MODULE._validate_authored_material_color_space({"elements": [{
@@ -199,7 +247,7 @@ class EffectSourceValidatorTests(unittest.TestCase):
         source = json.loads(path.read_text(encoding="utf-8"))
         for invalid in (None, 0, 1, "true", [], {}):
             with self.subTest(value=invalid):
-                source["elements"] = [{"material": {
+                source["elements"] = [{"displayName": "Material fixture", "material": {
                     "templateId": "effect.standard", "colorTexturesSRGB": invalid,
                 }}]
                 self._write_json(path, source)
@@ -300,7 +348,7 @@ class EffectSourceValidatorTests(unittest.TestCase):
     def test_repository_validation_consumes_attachment_orientation(self) -> None:
         path = self.root / f"Data/Effects/Authored/{self.effect_id}.effect.json"
         source = json.loads(path.read_text(encoding="utf-8"))
-        source["elements"] = [{"actionCueAttachment": {"orientation": "unknown"}}]
+        source["elements"] = [{"displayName": "Attachment fixture", "actionCueAttachment": {"orientation": "unknown"}}]
         self._write_json(path, source)
         with self.assertRaisesRegex(MODULE.ContractError, "attachment orientation"):
             MODULE.validate_repository(self.root)
@@ -402,6 +450,7 @@ class EffectSourceValidatorTests(unittest.TestCase):
                 "elements": [
                     {
                         "id": "source.ribbon.1",
+                        "displayName": "Ribbon fixture",
                         "visible": True,
                         "kind": "trail",
                         "runtimeCarrier": {
@@ -628,6 +677,76 @@ class EffectSourceValidatorTests(unittest.TestCase):
         self._write_v15_source(self.effect_id)
         report = MODULE.validate_repository(self.root)
         self.assertEqual(report.direct_source_count, 1)
+
+    def test_v15_beam_carrier_matches_native_codec_kind_and_typedata(self) -> None:
+        self._write_v15_source(self.effect_id)
+        path = self.root / f"Data/Effects/Authored/{self.effect_id}.effect.json"
+        source = json.loads(path.read_text(encoding="utf-8"))
+        element = source["elements"][0]
+        element["runtimeCarrier"]["kind"] = "cascadeBeamV1"
+        recipe = element["sourceRecipe"]
+        recipe["rendererShape"] = "beam"
+        recipe["modules"][0]["className"] = "Engine.ParticleModuleTypeDataBeam2"
+        self._write_json(path, source)
+        self.assertEqual(MODULE.validate_repository(self.root).direct_source_count, 1)
+        for class_name in ("ParticleModuleTypeDataRibbon", "UnsupportedParticleModuleTypeDataBeam2"):
+            with self.subTest(class_name=class_name):
+                recipe["modules"][0]["className"] = class_name
+                self._write_json(path, source)
+                with self.assertRaisesRegex(MODULE.ContractError, "TypeData join is not unique"):
+                    MODULE.validate_repository(self.root)
+
+    def test_v15_beam_carrier_rejects_wrong_shape_and_ambiguous_join(self) -> None:
+        self._write_v15_source(self.effect_id)
+        path = self.root / f"Data/Effects/Authored/{self.effect_id}.effect.json"
+        source = json.loads(path.read_text(encoding="utf-8"))
+        element = source["elements"][0]
+        element["runtimeCarrier"]["kind"] = "cascadeBeamV1"
+        recipe = element["sourceRecipe"]
+        recipe["modules"][0]["className"] = "ParticleModuleTypeDataBeam2"
+        for shape in (None, "ribbon"):
+            with self.subTest(shape=shape):
+                recipe["rendererShape"] = shape
+                self._write_json(path, source)
+                with self.assertRaisesRegex(MODULE.ContractError, "Beam target shape is invalid"):
+                    MODULE.validate_repository(self.root)
+        recipe["rendererShape"] = "beam"
+        module = dict(recipe["modules"][0])
+        for modules in ([], [module, dict(module)]):
+            with self.subTest(module_count=len(modules)):
+                recipe["modules"] = modules
+                self._write_json(path, source)
+                with self.assertRaisesRegex(MODULE.ContractError, "TypeData join is not unique"):
+                    MODULE.validate_repository(self.root)
+
+    def test_v15_empty_runtime_extensions_do_not_require_a_carrier(self) -> None:
+        self._write_v15_source(self.effect_id)
+        path = self.root / f"Data/Effects/Authored/{self.effect_id}.effect.json"
+        source = json.loads(path.read_text(encoding="utf-8"))
+        del source["elements"][0]["runtimeCarrier"]
+        self._write_json(path, source)
+        self.assertEqual(MODULE.validate_repository(self.root).direct_source_count, 1)
+
+    def test_v15_without_carriers_still_rejects_orphaned_history(self) -> None:
+        self._write_v15_source(self.effect_id)
+        path = self.root / f"Data/Effects/Authored/{self.effect_id}.effect.json"
+        source = json.loads(path.read_text(encoding="utf-8"))
+        del source["elements"][0]["runtimeCarrier"]
+        source["runtimeExtensions"]["bakedEdgeHistories"] = [{
+            "historyId": "orphan.history",
+            "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS",
+            "sourceEndTimeSeconds": 1.0,
+            "playbackClampSeconds": 0.5,
+            "samples": [{
+                "relativeTimeSeconds": time,
+                "firstEdgeUE3Cm": [0, 0, 0],
+                "controlPointUE3Cm": [0, 0, 0],
+                "secondEdgeUE3Cm": [0, 0, 0],
+            } for time in (0.0, 1.0)],
+        }]
+        self._write_json(path, source)
+        with self.assertRaisesRegex(MODULE.ContractError, "histories are orphaned"):
+            MODULE.validate_repository(self.root)
 
     def test_v15_runtime_carrier_requires_closed_history(self) -> None:
         self._write_v15_source(self.effect_id)

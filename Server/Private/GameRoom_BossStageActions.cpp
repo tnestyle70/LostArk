@@ -227,7 +227,8 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 				return false;
 			}
 			(void)CBossCombatRuntime::Set_StaggerGauge(
-				stagedCombat, action.iValue);
+				stagedCombat, action.iValue && Uses_RaidStaggerPolicy(boss) && m_GameplayCatalog.Active().Get_RaidStaggerMaximum() ?
+					m_GameplayCatalog.Active().Get_RaidStaggerMaximum() : action.iValue);
 			break;
 		case BOSS_PATTERN_STAGE_ACTION_KIND::SET_SHIELD:
 			if ("boss.gauge.shield" != action.strTargetId)

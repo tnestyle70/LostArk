@@ -43,8 +43,9 @@ namespace LostArk::Server
 		std::optional<BOSS_PATTERN_BOSS_MOTION> ChargeMotion;
 		std::set<std::pair<std::string, std::string>> AppliedWorldMotions;
 		std::set<std::string> ContactedWorldOccurrences;
-		/* STAGGER_WINDOW measures the health the boss lost since it opened. */
-		std::uint32_t iBossHpAtOpen = 0u;
+		// Exact WORLD owner of a periodic ball/doll contact; other damage keeps HP-based madness.
+		std::uint8_t iMadnessSource = 0u;
+		std::uint32_t iMadnessContactIntervalMs = 0u;
 		std::map<LostArk::Shared::PLAYER_ID, KOUKUSAYDON_LOGIC_ANSWER> Answers;
 		std::set<LostArk::Shared::PLAYER_ID> InsidePlayers;
 		std::map<LostArk::Shared::PLAYER_ID, std::uint32_t> NextContactHitTicks;
@@ -231,7 +232,7 @@ namespace LostArk::Server
 			const BOSS_ENCOUNTER_MADNESS_POLICY* pMadnessPolicy,
 			std::uint32_t serverTick,
 			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
-			const std::array<float, 2u>* pContactCenter = nullptr);
+			const std::array<float, 2u>* pContactCenter = nullptr, bool encounterWipe = true);
 		/* The gauge reached its maximum or a RESULT asked for it: the player
 		presents the clown body until the hold expires. durationMs 0 takes the
 		encounter policy hold. */

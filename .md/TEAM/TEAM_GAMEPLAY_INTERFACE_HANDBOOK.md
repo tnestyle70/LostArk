@@ -1002,8 +1002,10 @@ Death→Respawn 연결이 phase 3으로 이어진다. Respawn 성공 완료 때�
 window가 실제 구간을 결정한다. `VALTAN_ARENA_BREAK_109`, `VALTAN_SIX_PIZZA_106`과 원본 stage ID는
 immutable 참조이므로 현재 trigger 줄수에 맞춰 이름을 바꾸지 않는다. 상세 경계와 ID 표는 `발탄인수인계서.md` 8.2~8.4를 따른다.
 
-자동 입장은 기존 G trigger → 입장 이동 → optional `entranceCinematicPatternId` → 기존
-`introPatternId` 등장 휠윈드 → health rotation 순서다. 컷씬·등장 휠윈드는 각각 한 번 소비한다.
+자동 HEALTH_BAR_ROTATIONS 입장은 G trigger → 입장 이동 → optional `entranceCinematicPatternId`
+→ 저장된 health rotation의 첫 occurrence 순서다. 컷씬이 있는 자동 경로는 legacy `introPatternId`를
+소비 처리하여 등장 휠윈드와 첫 일반 휠윈드를 연속 삽입하지 않는다. 컷씬 없는 legacy 입장과 명시적
+F1 audition의 등장 공격은 기존 범위 조건을 유지한다.
 같은 primary archetype의 phase3 HUD는 ghost profile의40줄과 snapshot HP를 사용한다.
 finale의 optional `auxiliarySpawnIntervalMs`는 보조 유령 소멸 후 재생성 대기(현재5000ms),
 `portalSpawnIntervalMs`는 삼각 포탈 시작 간격이며 현재0으로 자동 삼각 돌진을 끈다.
@@ -2528,17 +2530,51 @@ Client가 소유하며 새로운 투사체 manager나 local hit 판정을 추가
 
 성스러운 부적은 대상 공포를 즉시 해제하고 3초간 공포·피해를 막는다. 시간 정지는 자신을
 3초간 공격 collider hit 대상에서 제외하고 이동·스킬을 제한한다. 두 상태는 기존 무적 tick과
-분리되며 `bEncounterWipe` 직접 전멸은 그대로 적용한다. 바닥·벽·낙하 물리는 유지한다.
+분리되며 `bEncounterWipe` 전멸과 `bInstantDeath` 즉사는 보호막·무적·시간 정지·사망 방지를 무시한다.
+명시적 INSTANT_DEATH와 최대 HP 100% 이상 피해가 이 경로를 사용한다. 바닥·벽·낙하 물리는 유지한다.
 Server snapshot의 `ActiveBuffs` 32282/33500 및 종료 tick이 표현 수명의 정본이다.
 원작 부적/시간 정지 Effect는 대상 Character root에 부착하고 시간 정지의 흰 `buffcolor`는
 기존 ownerControls에서 제어한다. class 교체·사망·해제·이탈 때 해당 occurrence만 정리한다.
 
 회오리 수류탄의 현재 프로젝트 정책은 HP 피해 0과 최대 무력화량의 `ceil(max/3)`이다.
 `battleUse.staggerMaximumDivisor=3`을 서버 projectile hit에 고정하며 남은 게이지의 1/3이 아니다.
-쿠크 `STAGGER_WINDOW`의 기존 일반 스킬 HP 감소 기여는 유지하되 수류탄 기여는 별도 credit로
-계산하고 같은 mechanic gauge와 성공 판정에만 합산한다. 발탄 typed gauge는 기존 stagger 경로를
-소비한다. 다음 창·종료된 창으로 credit를 재사용하지 않는다.
+쿠크 `STAGGER_WINDOW`와 발탄 typed gauge는 보스 HP와 독립적으로 방어 적용 피해의 1/1000을
+누적한다. 저작된 DAMAGE/STAGGER/COUNTER 채널은 중복 기여하지 않는다. 최대치는 Retail의
+`raidStaggerMaximum=40000` 하나이며 Debug/Release F1 Balance Test `STAGGER/RAID_COMMON`에서
+Server Save + Apply로 저장·전 room 갱신한다. 다음 창·종료된 창으로 credit를 재사용하지 않는다.
+
+마리오 `BOSS_DAMAGE_REDUCTION` Duration은 실제 HP 피해에 별도로 1/1000(양수 최소 1)을 적용한다.
+겹친 Duration과 retained parent도 중복 배율을 적용하지 않으며 끝난 틱에 정상 피해로 복귀한다.
+실제 감소한 outgoing damage event의 DAMAGE_REDUCED/CRITICAL_DAMAGE_REDUCED가 숫자 아래
+흰색 피해 감소 문구를 표시한다. 공·인형의 저작 광기는 유효 접촉이 보호막에 흡수되어도 현재
+Retail gain·multiplier·interval을 사용한다. 다른 공격의 HP 비례 광기는 그대로 유지한다.
 
 Debug/Release 공통 F1 `Battle Items`의 `Give all four (10 each)`와 개별 지급은 기존
 `C2S_DEBUG_GIVE_ITEM`을 typed command sink로 제출한다. 아이템 사용을 우회하거나 local effect를
 즉시 재생하지 않는다. 인벤토리(I)에서 HUD1~4에 배치하고 F1을 닫은 후 실제 사용을 검증한다.
+
+
+## Raid 관전과 미니게임·아이템 HUD
+
+관전은 ClientReplication이 party roster 순서로 인간의 stable NetEntityId를 선택하는 presentation
+상태다. 대상 사망 시 당시 시점을 유지하고 같은 ID의 부활을 다시 추적한다. camera subject는
+Arena shot과 ALT_V/local-only effect를 소유하며 gameplay command는 local player만 소유한다.
+
+통합 Protocol 126의 `PLAYER_SNAPSHOT::iKoukuMinigameEndTick`은 absolute Server tick(0 비활성)이다.
+Mario/card maze 입장 때 Server가 90초 deadline을 설정하고 탈출·timeout을 판정한다. Client는
+이 값으로 Debug/Release 타이머를 표시한다. 아이템 cooldown은 item catalog `battleUse.skillId`로
+기존 `Cooldowns`에 복제하며 최대 32개를 보낸다. Client는 slot item ID를 소비하지 않고 Server
+Inventory 수량과 cooldown만 표시한다. `DAMAGE_REDUCED`/`CRITICAL_DAMAGE_REDUCED`는
+실제 Duration 피해 감소가 적용된 outgoing damage이며 숫자 아래 흰색 설명을 추가한다.
+
+일반 World→Player HP 피해는 방어·받는피해 buff 이후 shield 흡수 직전에 고정 ±10% 정수
+표본을 Server가 1회 적용한다. 범위는 최종 계산값 ± floor(계산값/10), uint32 경계에서는
+대칭 축소다. 서버 내부 hit serial/tick/entity가 표본을 소유하고 Client는 실제 HP 감소 event만
+표시한다. instant-death/encounter-wipe, outgoing 피해·stagger·저작 madness gain은 이 정책의
+대상이 아니다. 이 정책은 Numeric Balance 편집 필드가 아니다.
+
+일반 World→Player 피해는 방어·받는 피해 buff 계산 후 보호막 적용 전에 서버가 ±10% 정수
+표본을 한 번 정한다. 실제 HP/흡수량과 DamageEvent가 같은 표본을 쓰며 Client에서 다시
+난수를 만들지 않는다. 명시적 즉사·전멸, outgoing 피해와 저작 광기 gain에는 이 표본을 적용하지 않는다.
+빙고 검은 구멍은 실제 줄 완성 보상과 이난나 영역의 서버 전용 종료 tick만 성공 보호로 인정한다.
+일반 무적 tick은 전멸 회피 조건이 아니다.

@@ -570,9 +570,14 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
                     CMonsterBrain brain;
                     brain.Update(attacker, victims, room->m_GameplayCatalog.Active(), room->m_ServerNavigation,
                         room->m_ServerCollisionSystem, 1.f / 30.f, 100u, events);
-                    tests.Require(victims.at(victim.iPlayerId).iCurrentHp == victim.iCurrentHp - (13200u - shield) &&
-                        victims.at(victim.iPlayerId).iShield == 0u && !events.empty(),
-                        "A real rain-soldier circle hit deals 13200 after armor and consumes shields before HP");
+                    const auto hpLost = victim.iCurrentHp - victims.at(victim.iPlayerId).iCurrentHp;
+                    std::uint32_t eventHp = 0u, eventAbsorb = 0u;
+                    for (const auto& event : events)
+                        if (event.eHitFlag == DAMAGE_HIT_FLAG::ABSORB) eventAbsorb += event.iAmount;
+                        else eventHp += event.iAmount;
+                    tests.Require(hpLost + shield >= 11880u && hpLost + shield <= 14520u &&
+                        victims.at(victim.iPlayerId).iShield == 0u && eventHp == hpLost && eventAbsorb == shield,
+                        "A real rain-soldier hit varies 13200 by ten percent after armor and reports exact shield and HP loss");
                     attacker.hasAppliedPatternDamage = false; attacker.fPositionX += 100.f;
                     const auto before = victims.at(victim.iPlayerId).iCurrentHp;
                     brain.Update(attacker, victims, room->m_GameplayCatalog.Active(), room->m_ServerNavigation,

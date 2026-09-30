@@ -27724,7 +27724,7 @@
       "displayName": "Source 42062430 radius / tracking-axe growing warning",
       "groupId": "effect.valtan.struggling.source-underfoot.active",
       "sourceNode": "authored-copy:effect.valtan.tracking-axe.large-circle.warning|source-projectile-42062430|skills-42062411-42062412-42062413",
-      "visible": true,
+      "visible": false,
       "kind": "decal",
       "resources": [],
       "material": {

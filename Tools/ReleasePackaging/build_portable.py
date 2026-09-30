@@ -9,10 +9,14 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import zipfile
 
 SCRIPT_ROOT = Path(__file__).resolve().parent
 ROOT = SCRIPT_ROOT.parents[1]
+sys.path.insert(0, str(ROOT / 'Tools/EffectPipeline'))
+from validate_effect_sources import validate_element_display_names
+
 OUTPUT_ROOT = ROOT / 'out/ReleasePackaging'
 HOST = '192.168.0.22'
 MODULES = ('Client.exe', 'Engine.dll', 'assimp-vc143-mt.dll', 'fmod.dll',
@@ -152,6 +156,8 @@ def collect(root=ROOT):
         for relative, path in pending:
             inspected.add(relative)
             document = read(path)
+            if isinstance(document, dict) and document.get('schema') == 'lostark.effect-authoring':
+                validate_element_display_names(document, relative)
             for value in strings(document):
                 if not value.lower().endswith(('.json', '.animevents')):
                     continue

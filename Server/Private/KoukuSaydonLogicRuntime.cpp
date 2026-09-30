@@ -18,6 +18,15 @@ namespace
 	constexpr double DEGREES_PER_RADIAN = 57.295779513082320876;
 	constexpr float DEFAULT_CLOWN_HOLD_MS = 15000.f;
 
+    bool Has_LethalResult(const std::vector<LostArk::Server::BOSS_PATTERN_LOGIC_RESULT>& results)
+    {
+        using namespace LostArk::Server;
+        return std::any_of(results.begin(), results.end(), [](const auto& result) {
+            return result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH ||
+                (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE && result.iPercent >= 100u);
+        });
+    }
+
 	bool Try_CounterLanding(const LostArk::Server::SERVER_WORLD_ENTITY& boss,
 		const LostArk::Server::CServerNavigation* navigation,
 		const LostArk::Server::CServerCollisionSystem* collision, float& landingY)
@@ -132,6 +141,16 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Build(
 		const BOSS_PATTERN_LOGIC_WINDOW& window = pattern.LogicWindows[index];
 		KOUKUSAYDON_LOGIC_WINDOW_STATE state{};
 		state.iWindowIndex = static_cast<std::uint32_t>(index);
+		if (window.iRepeatIntervalMs && !window.strOwnerWorldOccurrenceId.empty())
+			for (const auto& world : pattern.WorldSequences)
+				if (world.strOccurrenceId == window.strOwnerWorldOccurrenceId && world.bAuthoredMadness)
+				{
+					if (world.strInstanceId == "world.object.instance.kouku.mario_circus_ball.aura") state.iMadnessSource = 1u;
+					else if (world.strInstanceId == "world.object.instance.kouku.odd_doll.large.att_battle_2_01" ||
+						world.strInstanceId == "world.object.instance.kouku.odd_doll.att_battle_2_01") state.iMadnessSource = 2u;
+					state.iMadnessContactIntervalMs = window.iRepeatIntervalMs;
+					break;
+				}
 		state.iStartTick = Add_Ticks(startTick, Ticks_FromMs(window.iStartMs));
 		state.iEndTick = Add_Ticks(startTick,
 			Ticks_FromMs(window.iStartMs + window.iDurationMs));
@@ -928,6 +947,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Discard(
 	{
 		pBoss->iKoukuItemStaggerMaximum = 0u;
 		pBoss->iKoukuItemStaggerCredit = 0u;
+		pBoss->iKoukuDamageReductionWindows = 0u;
 		pBoss->bKoukuShieldActive = false;
 		pBoss->fKoukuShieldArcDegrees = 0.f;
 		pBoss->KoukuShieldRegions.clear();
@@ -1145,7 +1165,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Open_Window(
 	state.Answers.clear();
 	state.InsidePlayers.clear();
 	state.NextContactHitTicks.clear();
-	state.iBossHpAtOpen = boss.iCurrentHp;
+
 	Capture_StartRegions(boss, window, state, Ticks_FromMs(window.iStartMs));
 	switch (window.eKind)
 	{
@@ -1201,6 +1221,9 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Open_Window(
     case BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW:
         (void)CBossCombatRuntime::Set_Flag(boss.BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, true);
         break;
+	case BOSS_PATTERN_LOGIC_KIND::BOSS_DAMAGE_REDUCTION:
+		++boss.iKoukuDamageReductionWindows;
+		break;
 	case BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW:
 		boss.iKoukuItemStaggerMaximum = window.iThreshold;
 		boss.iKoukuItemStaggerCredit = 0u;
@@ -1234,7 +1257,10 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Close_Window(
 	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players)
 {
 	using namespace LostArk::Shared;
+	if (state.bClosed) return;
 	state.bClosed = true;
+	if (state.bOpened && window.eKind == BOSS_PATTERN_LOGIC_KIND::BOSS_DAMAGE_REDUCTION && boss.iKoukuDamageReductionWindows)
+		--boss.iKoukuDamageReductionWindows;
     if (window.eKind == BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW)
         (void)CBossCombatRuntime::Set_Flag(boss.BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, false);
 	for (const auto& [id, entityId] : state.BoundPlayers)
@@ -1416,7 +1442,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
 	const BOSS_ENCOUNTER_MADNESS_POLICY* const pMadnessPolicy,
 	const std::uint32_t serverTick,
 	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
-	const std::array<float, 2u>* const pContactCenter)
+	const std::array<float, 2u>* const pContactCenter, const bool encounterWipe)
 {
 	using namespace LostArk::Shared;
 	switch (result.eKind)
@@ -1463,6 +1489,9 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
 		hit.iServerTick = serverTick;
 		hit.bIgnoreDefense = true;
 		hit.bIgnoreCounter = true;
+		hit.bInstantDeath = result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH ||
+			(result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE && result.iPercent >= 100u);
+		hit.bEncounterWipe = encounterWipe && hit.bInstantDeath;
 		if (pContactCenter && Is_CurrentBossHandCapture(player, boss.iNetEntityId, boss.iPatternSequence, serverTick))
 		{
 			hit.iCaptureOwnerId = boss.iNetEntityId;
@@ -1615,10 +1644,11 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Results(
 	const bool hasAuthoredMadness = std::any_of(results.begin(), results.end(), [](const auto& result) {
 		return result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT;
 	});
+	const bool independentMadness = spatialContact && pContactCenter && state.iMadnessSource != 0u;
 	std::set<LostArk::Shared::PLAYER_ID> damagedPlayers;
-	// Resolve a verdict's damage before its explicit gauge reward regardless of
-	// authoring order. A blocked/absorbed hit cannot gain gauge, and an authored
-	// amount replaces the automatic HP-proportional gain for this verdict only.
+	// Ordinary explicit gauge follows landed HP damage. Ball/doll contact owns its
+	// gauge independently of damage mitigation, shields and damage-blocking effects.
+	// Explicit amounts still replace automatic HP-proportional gain for this verdict.
 	std::vector<const BOSS_PATTERN_LOGIC_RESULT*> ordered;
 	ordered.reserve(results.size());
 	for (const auto& result : results)
@@ -1661,20 +1691,42 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Results(
 				outOutput.FollowupPatternIds.push_back(result.strPatternId);
 			continue;
 		}
+		const bool lethal = result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH ||
+			(result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE && result.iPercent >= 100u);
 		const auto apply = [&](SERVER_PLAYER& player) {
-			if (invulnerablePlayers.contains(player.iPlayerId) &&
-				(result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH ||
-				 result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE ||
+			if (!lethal && invulnerablePlayers.contains(player.iPlayerId) &&
+				(result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE ||
 				 result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE ||
 				 result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR)) return;
-			if (hasDamage && result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT &&
-				(!damagedPlayers.contains(player.iPlayerId) || !player.iCurrentHp ||
-				 player.eMadnessForm != LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL)) return;
+			if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT &&
+				((independentMadness && !Can_ReceiveSpatialContact(player)) ||
+				 (hasDamage && ((!independentMadness && !damagedPlayers.contains(player.iPlayerId)) ||
+				  !player.iCurrentHp || player.eMadnessForm != LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL)))) return;
 			const auto automaticGain = player.iMadnessDamageGainPercent;
 			const auto hpBefore = player.iCurrentHp;
+			const auto firstDamageEvent = outDamageEvents.size();
 			if (hasAuthoredMadness && isDamage(result)) player.iMadnessDamageGainPercent = 0u;
-			Apply_Result(player, result, boss, catalog, pMadnessPolicy, serverTick, outDamageEvents, pContactCenter);
+			if (state.iMadnessSource && pMadnessPolicy && pMadnessPolicy->iSpecialIntervalMs &&
+				result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT)
+			{
+				const bool ball = state.iMadnessSource == 1u;
+				const double gain = static_cast<double>(player.iMaximumMadness) *
+					(ball ? pMadnessPolicy->iBallGainPercent : pMadnessPolicy->iDollGainPercent) / 100. *
+					(ball ? pMadnessPolicy->iBallMultiplierPercent : pMadnessPolicy->iDollMultiplierPercent) / 100. *
+					state.iMadnessContactIntervalMs / pMadnessPolicy->iSpecialIntervalMs;
+				CServerCombatHitRuntime::Add_MadnessGauge(player, gain);
+				if (player.iMaximumMadness && player.iCurrentMadness >= player.iMaximumMadness)
+					Transform_ToClown(player, pMadnessPolicy, serverTick, 0u);
+			}
+			else Apply_Result(player, result, boss, catalog, pMadnessPolicy, serverTick, outDamageEvents, pContactCenter,
+				!spatialContact && lethal);
 			player.iMadnessDamageGainPercent = automaticGain;
+			// Special gauge-only contact has no combat-text occurrence when shielded.
+			// Preserve actual HP damage and every event from earlier results/targets.
+			if (independentMadness && isDamage(result))
+				outDamageEvents.erase(std::remove_if(outDamageEvents.begin() + firstDamageEvent, outDamageEvents.end(),
+					[&](const auto& event) { return !event.isOutgoing && event.iTargetNetEntityId == player.iNetEntityId &&
+						event.eHitFlag == LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB; }), outDamageEvents.end());
 			if (isDamage(result) && player.iCurrentHp < hpBefore) damagedPlayers.insert(player.iPlayerId);
 		};
 		if (nullptr != pPlayer)
@@ -1686,7 +1738,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Results(
 		for (auto& [playerId, player] : players)
 		{
 			(void)playerId;
-			if (Is_Judgeable(player))
+			if (Is_Judgeable(player) || (!spatialContact && player.Is_Human() && player.iCurrentHp && lethal))
 				apply(player);
 		}
 	}
@@ -2009,13 +2061,23 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 						return result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::PLAYER_INVULNERABILITY; });
 				for (auto& [id, player] : players)
 					if (player.iCurrentHp && player.eAction != LostArk::Shared::PLAYER_ACTION_STATE::DEAD)
+					{
 						Apply_Results(results, state, &player, players, boss, catalog, pMadnessPolicy,
 							serverTick, outDamageEvents, outOutput, invulnerablePlayers);
+						if (passed) for (const auto& result : results)
+							if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::PLAYER_INVULNERABILITY && result.iDurationMs)
+							{
+								const auto until = Add_Ticks(serverTick, Ticks_FromMs(result.iDurationMs));
+								if (!player.iKoukuBingoLineProtectionEndTick || Has_ReachedTick(until, player.iKoukuBingoLineProtectionEndTick))
+									player.iKoukuBingoLineProtectionEndTick = until;
+							}
+					}
 				outOutput.BingoLineCompletion = passed;
 				Close_Window(boss, window, state, players);
 			}
 			else if (reachedEnd) Close_Window(boss, window, state, players);
 			break;
+		case BOSS_PATTERN_LOGIC_KIND::BOSS_DAMAGE_REDUCTION:
 		case BOSS_PATTERN_LOGIC_KIND::INVULNERABILITY_ZONE:
 			if (reachedEnd) Close_Window(boss, window, state, players);
 			break;
@@ -2088,10 +2150,10 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
         }
 		case BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW:
 		{
-			const std::uint32_t lost = state.iBossHpAtOpen > boss.iCurrentHp ?
-				state.iBossHpAtOpen - boss.iCurrentHp : 0u;
-			const std::uint64_t progress = static_cast<std::uint64_t>(lost) + boss.iKoukuItemStaggerCredit;
-			if (window.iThreshold > 0u && progress >= window.iThreshold)
+			const auto maximum = catalog.Get_RaidStaggerMaximum() ? catalog.Get_RaidStaggerMaximum() : window.iThreshold;
+			boss.iKoukuItemStaggerMaximum = maximum;
+			const std::uint64_t progress = boss.iKoukuItemStaggerCredit;
+			if (maximum > 0u && progress >= maximum)
 			{
 				Close_Window(boss, window, state, players);
 				Apply_Results(window.OnSuccess, state, nullptr, players, boss, catalog,
@@ -2131,7 +2193,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
                 if (reachedEnd) { Close_Window(boss, window, state, players); break; }
                 for (auto& [playerId, player] : players)
                 {
-                    if (!Is_Judgeable(player) || state.Answers[playerId] == KOUKUSAYDON_LOGIC_ANSWER::FAIL ||
+                    if ((!Is_Judgeable(player) && !(player.Is_Human() && player.iCurrentHp && Has_LethalResult(window.OnFail))) ||
+                        state.Answers[playerId] == KOUKUSAYDON_LOGIC_ANSWER::FAIL ||
                         Judge_Gaze(window, boss, player) != KOUKUSAYDON_LOGIC_ANSWER::FAIL) continue;
                     state.Answers[playerId] = KOUKUSAYDON_LOGIC_ANSWER::FAIL;
                     Apply_Results(window.OnFail, state, &player, players, boss, catalog, pMadnessPolicy,
@@ -2146,11 +2209,13 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 			std::vector<std::pair<LostArk::Shared::PLAYER_ID, KOUKUSAYDON_LOGIC_ANSWER>> verdicts;
 			for (auto& [playerId, player] : players)
 			{
-				if (!Is_Judgeable(player))
-					continue;
+				if (!player.Is_Human() || !player.iCurrentHp) continue;
 				const KOUKUSAYDON_LOGIC_ANSWER answer =
 					BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH == window.eKind ?
 						Judge_Roulette(window, boss, player) : Judge_Gaze(window, boss, player);
+                const auto& results = answer == KOUKUSAYDON_LOGIC_ANSWER::SUCCESS ? window.OnSuccess :
+                    answer == KOUKUSAYDON_LOGIC_ANSWER::FAIL ? window.OnFail : window.OnTimeout;
+                if (!Is_Judgeable(player) && !Has_LethalResult(results)) continue;
 				state.Answers[playerId] = answer;
 				verdicts.emplace_back(playerId, answer);
 			}
@@ -2217,12 +2282,19 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 						result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE;
 				});
 			};
-			const bool captureContact = enter && harmful(window.bInsideIsFail ? window.OnFail : window.OnSuccess);
+			const auto& contactResults = window.bInsideIsFail ? window.OnFail : window.OnSuccess;
+			const bool lethalContact = std::any_of(contactResults.begin(), contactResults.end(), [](const auto& result) {
+				return result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH ||
+					(result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE && result.iPercent >= 100u);
+			});
+			const bool captureContact = enter && harmful(contactResults);
 			for (auto& [playerId, player] : players)
 			{
 				const bool ownedCapture = captureContact && Is_CurrentBossHandCapture(
 					player, boss.iNetEntityId, boss.iPatternSequence, serverTick);
-				if (player.Has_TimeStop(serverTick) || (!Can_ReceiveSpatialContact(player) && !ownedCapture) || (enter && !window.bRearmOnExit && !window.bRepeatAfterKnockback && !window.iRepeatIntervalMs &&
+                const bool receivesContact = !player.Has_TimeStop(serverTick) && (Can_ReceiveSpatialContact(player) || ownedCapture);
+                const bool lethalTimeout = reachedEnd && player.Is_Human() && Has_LethalResult(window.OnTimeout);
+				if (!player.iCurrentHp || (!lethalContact && !receivesContact && !lethalTimeout) || (enter && !window.bRearmOnExit && !window.bRepeatAfterKnockback && !window.iRepeatIntervalMs &&
 					KOUKUSAYDON_LOGIC_ANSWER::SUCCESS == state.Answers[playerId]))
 					continue;
 				const auto caught = std::find_if(window.CardRegions.begin(), window.CardRegions.end(),
@@ -2238,6 +2310,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
                                     state.iStartTick - ledger.iPatternStartTick, state.iEndTick - ledger.iPatternStartTick)));
 					});
 				const bool inside = window.CardRegions.end() != caught;
+                // A timeout exception may reach this point solely for an outside verdict.
+                if (inside && !lethalContact && !receivesContact) continue;
 				if (player.Is_Guide() && !inside)
                 { state.InsidePlayers.erase(playerId); continue; }
 				const bool captureCandidate = inside && enter && !window.OnSuccess.empty() &&
@@ -2331,11 +2405,13 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 			std::vector<std::pair<LostArk::Shared::PLAYER_ID, KOUKUSAYDON_LOGIC_ANSWER>> verdicts;
 			for (auto& [playerId, player] : players)
 			{
-				if (!Is_Judgeable(player))
-					continue;
+				if (!player.Is_Human() || !player.iCurrentHp) continue;
 				const auto answer = state.Answers.find(playerId);
-				verdicts.emplace_back(playerId,
-					state.Answers.end() == answer ? KOUKUSAYDON_LOGIC_ANSWER::NONE : answer->second);
+                const auto value = state.Answers.end() == answer ? KOUKUSAYDON_LOGIC_ANSWER::NONE : answer->second;
+                const auto& results = value == KOUKUSAYDON_LOGIC_ANSWER::SUCCESS ? window.OnSuccess :
+                    value == KOUKUSAYDON_LOGIC_ANSWER::FAIL ? window.OnFail : window.OnTimeout;
+                if (!Is_Judgeable(player) && !Has_LethalResult(results)) continue;
+				verdicts.emplace_back(playerId, value);
 			}
 			Close_Window(boss, window, state, players);
 			for (const auto& [playerId, answer] : verdicts)
@@ -3185,11 +3261,10 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Project_MechanicGauge(
 			!Has_ReachedTick(serverTick, state.iStartTick) || Has_ReachedTick(serverTick, state.iEndTick)) continue;
 		const auto& window = pattern.LogicWindows[state.iWindowIndex];
 		if (window.eKind != BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW || !window.iThreshold) continue;
-		const auto lost = state.iBossHpAtOpen > boss.iCurrentHp ? state.iBossHpAtOpen - boss.iCurrentHp : 0u;
+		const auto maximum = boss.iKoukuItemStaggerMaximum;
 		snapshot.eMechanicGaugeKind = BOSS_MECHANIC_GAUGE_KIND::STAGGER;
-		snapshot.iMaximumMechanicGauge = window.iThreshold;
-		snapshot.iCurrentMechanicGauge = window.iThreshold - static_cast<std::uint32_t>((std::min)(
-			static_cast<std::uint64_t>(lost) + boss.iKoukuItemStaggerCredit, static_cast<std::uint64_t>(window.iThreshold)));
+		snapshot.iMaximumMechanicGauge = maximum;
+		snapshot.iCurrentMechanicGauge = maximum - (std::min)(boss.iKoukuItemStaggerCredit, maximum);
 		return;
 	}
 	// The typed detonation is scheduled in parent time too: its preceding 13 s

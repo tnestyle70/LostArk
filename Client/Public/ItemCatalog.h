@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace Client
@@ -14,10 +15,8 @@ namespace Client
 		{ "BATTLE_HOLY_CHARM", "effect.world.item.holy_charm" },
 		{ "BATTLE_TIME_STOP_POTION", "effect.world.item.time_stop" }
 	}};
-	/* One row of Data/Items/ItemCatalog.json. Debug-only slice: the F1 Give
-	Item dropdown needs a display name, which the Server bootstrap does not
-	carry, so the Client reads the source document directly the same way
-	CPlayerSkillCatalog reads PlayerSkills.json. */
+	/* Read-only item presentation from Data/Items/ItemCatalog.json. Inventory and
+	quick slots use these names/icons; Server bootstrap remains use authority. */
 	struct ITEM_DEFINITION
 	{
 		std::string strItemId;
@@ -30,6 +29,8 @@ namespace Client
 		// actually authoritative when a use is applied.
 		std::uint32_t iHealPercent = 0;
 		float fTargetRangeM = 0.f;
+		std::uint32_t iBattleSkillId = 0u;
+		std::uint32_t iCooldownMs = 0u;
 		// "combat" (equipment, shown under the InventoryView Combat filter and
 		// the item-upgrade window) or "use" (consumables/materials/currency,
 		// shown under the Use filter). Display/filter-only, never sent to Server.
@@ -41,6 +42,12 @@ namespace Client
 		std::string strEquipSlot;
 		std::string strCharacterClass;
 		std::string strGrade;
+		/* Avatar only: the EquipmentPresentationCatalog visual set the character wears when
+		   this item sits in its avatar slot. Empty for gear and for a shop template. */
+		std::string strVisualSetId;
+		/* Shop template only: characterClass -> the class item the Server hands the buyer.
+		   Shown in the shop under the template's own name and icon; never equippable itself. */
+		std::unordered_map<std::string, std::string> ClassVariants;
 	};
 
 	/* One stock line of an NPC shop (ItemCatalog.json "shops"). The Server's copy, published

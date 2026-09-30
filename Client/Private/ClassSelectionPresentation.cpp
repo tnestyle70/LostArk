@@ -573,8 +573,11 @@ std::shared_ptr<const CLASS_MOVIE_TIMELINE> CClassSelectionPresentation::Get_Tim
         }
         for (const auto& track : sequence->soundTracks)
         {
-            auto value = box(id + "." + track.soundTrackId, track.soundTrackId, track.assetId,
-                track.startMs, track.startMs + track.durationMs);
+            const double birthMs = instance->startDelayMs + track.startMs / double(instance->playbackSpeed);
+            auto value = box(id + "." + track.soundTrackId, track.soundTrackId, track.assetId, birthMs, birthMs);
+            value.movieEndMs = value.movieStartMs + track.durationMs / double(instance->playbackSpeed);
+            value.sourceEndMs = phase.SourceTimeMs(value.movieEndMs);
+            value.playbackRate = instance->playbackSpeed;
             value.sourceOffsetMs = track.sourceStartMs;
             add("Sound", id + "." + track.soundTrackId, sequence->displayName, std::move(value));
         }
@@ -969,6 +972,9 @@ bool CClassSelectionPresentation::Start_Phase(const SCENE& scene, const bool loo
         return false;
     }
     staged->Set_Paused(true);
+    staged->Set_ExternalSoundClockRate(static_cast<float>(m_PlaybackRate));
+    staged->Set_ExternalSoundTime(static_cast<float>(elapsedMs),
+        [phaseClock = &phase](float sourceMs) { return static_cast<float>(phaseClock->MovieTimeMs(sourceMs)); });
     const float initialSourceMs = (std::min)(static_cast<float>(phase.SourceTimeMs(elapsedMs)),
         std::nextafter(static_cast<float>(phase.durationMs), 0.f));
     for (const auto& id : phase.instanceIds)
@@ -1062,7 +1068,9 @@ bool CClassSelectionPresentation::Sample_Frame()
     const auto& phase = m_Looping ? m_Scene->loop : m_Scene->intro;
     const float sampleMs = (std::min)(static_cast<float>(phase.SourceTimeMs(m_ElapsedMs)),
         std::nextafter(static_cast<float>(phase.durationMs), 0.f));
-    m_Active->Set_ExternalSoundClockRate(static_cast<float>(m_PlaybackRate * Get_SourceRate()));
+    m_Active->Set_ExternalSoundClockRate(static_cast<float>(m_PlaybackRate));
+    m_Active->Set_ExternalSoundTime(static_cast<float>(m_ElapsedMs),
+        [phaseClock = &phase](float sourceMs) { return static_cast<float>(phaseClock->MovieTimeMs(sourceMs)); });
     for (const auto& id : phase.instanceIds)
         if (!m_Active->Seek_InstanceToMs(id, static_cast<float>(sampleMs), m_Targets, false))
         { m_Status = "Class selection world sample failed: " + id + "; " + m_Active->Get_Status(); return false; }

@@ -559,6 +559,8 @@ namespace
 			output = BOSS_PATTERN_LOGIC_KIND::POSE_INPUT;
 		else if ("CARD_DICE_BIND" == value)
 			output = BOSS_PATTERN_LOGIC_KIND::CARD_DICE_BIND;
+		else if ("BOSS_DAMAGE_REDUCTION" == value)
+			output = BOSS_PATTERN_LOGIC_KIND::BOSS_DAMAGE_REDUCTION;
 		else if ("STAGGER_WINDOW" == value)
 			output = BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW;
 		else if ("INVULNERABILITY_ZONE" == value)
@@ -931,8 +933,16 @@ namespace
 				const auto next = std::find_if(pattern.Stages.begin(), pattern.Stages.end(),
 					[&branch](const auto& stage)
 					{ return stage.strActionId == branch.strNextActionId; });
-				if (next == pattern.Stages.end() ||
-					!self(self, static_cast<std::size_t>(next - pattern.Stages.begin())))
+				if (next == pattern.Stages.end()) return false;
+				const auto& source = pattern.Stages[index];
+				// Only the authored Trash retry edges may loop until a landed counter.
+				if ((pattern.strPatternId == "VALTAN_TRASH" || pattern.strPatternId == "VALTAN_TRASH_CATCH_IF") &&
+					(source.strStageId == "RETRY_EXHAUSTED" || source.strStageId == "CATCH_SLAM" ||
+					 source.strStageId == "EXECUTE_TAIL") && next->strStageId == "RECHARGE_WAIT_02" &&
+					source.Branches.size() == 1u &&
+					branch.eOutcome == LostArk::Server::BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT)
+					continue;
+				if (!self(self, static_cast<std::size_t>(next - pattern.Stages.begin())))
 					return false;
 			}
 			visited[index] = 2u;
@@ -1825,6 +1835,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 	m_DamageRatePercentByProfileId.clear();
 	m_ValtanPresentationGenerationId = {};
 	m_iKoukuSaydonProductSourceRevision = 0u;
+	m_iRaidStaggerMaximum = 0u;
 
 	LostArk::Shared::GameplayDataRevision admittedRevision{};
 	if (!Calculate_GameplayDataRevision(bootstrapBytes, admittedRevision))
@@ -1908,6 +1919,12 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					"Valtan presentation generation row is invalid or duplicated";
 				return false;
 			}
+		}
+		else if (!fields.empty() && "RAIDSTAGGER" == fields[0])
+		{
+			if (fields.size() != 2u || m_iRaidStaggerMaximum ||
+				!ParseNumber(fields[1], m_iRaidStaggerMaximum) || !m_iRaidStaggerMaximum || m_iRaidStaggerMaximum > 1000000000u)
+			{ m_strStatus = "Invalid or duplicate raid stagger policy"; return false; }
 		}
 		else if (!fields.empty() && "DAMAGE" == fields[0])
 		{
@@ -7197,13 +7214,17 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				const std::string stageVerticalOffsetKey =
 					pattern.strEncounterId + "\n" + pattern.strPatternId + "\n" +
 					stage.strActionId;
+				const bool hasStaggerResponse = std::any_of(
+					stage.Branches.begin(), stage.Branches.end(),
+					[](const BOSS_PATTERN_STAGE_BRANCH& branch)
+					{ return branch.eOutcome == BOSS_PATTERN_STAGE_OUTCOME::STAGGER_BROKEN; });
 				const bool hasStageVerticalOffset =
 					0.f != stage.fVerticalOffsetM;
 				const bool validStageVerticalOffset =
 					std::isfinite(stage.fVerticalOffsetM) &&
 					std::fabs(stage.fVerticalOffsetM) <= 100.f &&
 					(!hasStageVerticalOffset ||
-					 (hasBossResponse &&
+					 ((hasBossResponse || hasStaggerResponse) &&
 					  BOSS_PATTERN_MOTION_KIND::NONE == pattern.Motion.eKind &&
 					  BOSS_PATTERN_STAGE_MOTION_KIND::NONE == stage.Motion.eKind &&
 					  patternStageVerticalOffsetOwners.contains(
@@ -8888,10 +8909,10 @@ namespace
             columns.back().id = "H|" + std::string(fields[1]) + "|" + std::string(fields[2]) + "|" +
                 std::string(fields[3]) + "|" + std::string(fields[4]) + "|" + std::string(fields[5]) + "|" + std::string(fields[6]);
         }
-        else if (fields[0] == "PATTERNSTAGEACTION" && fields.size() >= 10u && fields[6] == "SET_STAGGER_GAUGE" && fields[8] != "0")
+        else if (fields[0] == "RAIDSTAGGER" && fields.size() == 2u)
         {
-            add(NUMERIC_DOMAIN::STAGGER, "staggerGaugeMaximum", 8);
-            columns.back().id = std::string(fields[1]) + "|" + std::string(fields[2]) + "|" + std::string(fields[3]) + "|" + std::string(fields[4]);
+            add(NUMERIC_DOMAIN::STAGGER, "staggerGaugeMaximum", 1);
+            columns.back().id = "RAID_COMMON";
         }
         return columns;
     }

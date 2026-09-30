@@ -507,10 +507,17 @@ HRESULT CLoader::Ready_For_Lobby()
 	CLevelResourceRollbackScope rollback(ETOUI(LEVEL::LOBBY));
 	Declare_Phases(3u);
 	Set_Status(TEXT("LOBBY: stage selection UI"));
-	/* Lobby has no gameplay characters. Occupied cards prepare their own class on first open;
-	   an empty session does no model/skill authoring work, in Debug and Release alike. */
-	if (FAILED(Ready_StaticMeshShader(ETOUI(LEVEL::LOBBY))))
-		OutputDebugStringA("[Loader][Lobby] Static mesh shader preparation failed.\n");
+	/* Occupied cards prepare only their saved class on first open. Their shared
+	   rendering prototypes must exist even though Lobby preloads no class models. */
+	const uint32_t levelIndex = ETOUI(LEVEL::LOBBY);
+	CPlayableCharacterAssetService::Begin_LevelLoad(levelIndex);
+	if (FAILED(Ready_StaticMeshShader(levelIndex)) ||
+		FAILED(Ready_AnimatedMeshShader(levelIndex)) ||
+		FAILED(Ready_Character_Shared_Prototypes(levelIndex)))
+	{
+		OutputDebugStringA("[Loader][Lobby] Shared character rendering preparation failed.\n");
+		return E_FAIL;
+	}
 	Set_Status(TEXT("Lobby loading complete"));
 	rollback.Commit();
 	return S_OK;

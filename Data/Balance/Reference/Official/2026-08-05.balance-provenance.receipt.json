@@ -5,9 +5,9 @@
     "damageProfileCount": 129,
     "bossProfileCount": 8,
     "encounterPatternCount": 38,
-    "fieldEntryCount": 4295,
+    "fieldEntryCount": 4281,
     "bossPartCount": 2,
-    "bossCombatObjectCount": 18
+    "bossCombatObjectCount": 17
   },
   "entries": [
     {
@@ -43820,11 +43820,11 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "animation-reference-hit-timing-v1"
+        "policyId": "guardianknight-altv-breath-camera-sync-v1"
       },
-      "sourceValue": 300,
-      "transform": "identity",
-      "resultValue": 300
+      "sourceValue": 3790,
+      "transform": "project align source breath 3790ms with follow-camera return 3800ms (30Hz tick 114)",
+      "resultValue": 3800
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -45311,240 +45311,6 @@
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.part-break.rock",
-      "targetField": "clientVisualId",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": "combatobject.visual.valtan.part-break.rock.v1",
-      "transform": "Balance Tool authored override",
-      "resultValue": "combatobject.visual.valtan.part-break.rock.v1",
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.part-break.rock",
-      "targetField": "combatObjectArchetypeId",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": "combatobject.valtan.part-break.rock",
-      "transform": "Balance Tool authored override",
-      "resultValue": "combatobject.valtan.part-break.rock",
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.part-break.rock",
-      "targetField": "coverRadiusM",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": 1.5,
-      "transform": "Balance Tool authored override",
-      "resultValue": 1.5,
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.part-break.rock",
-      "targetField": "directionPolicy",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": "NONE",
-      "transform": "Balance Tool authored override",
-      "resultValue": "NONE",
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.part-break.rock",
-      "targetField": "hits",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": [
-        {
-          "hitShape": "CIRCLE",
-          "hitOuterRadius": 3.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitId": "hit.valtan.part-break.rock.explode",
-          "trigger": "TIMED",
-          "atMs": 5000,
-          "repeatCount": 1,
-          "repeatIntervalMs": 0,
-          "serverDamageProfileId": "damage.valtan.stomp",
-          "pushRangeM": 1.5,
-          "pushMs": 150,
-          "knockdown": true,
-          "downMs": 1000
-        }
-      ],
-      "transform": "Balance Tool authored override",
-      "resultValue": [
-        {
-          "hitShape": "CIRCLE",
-          "hitOuterRadius": 3.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitId": "hit.valtan.part-break.rock.explode",
-          "trigger": "TIMED",
-          "atMs": 5000,
-          "repeatCount": 1,
-          "repeatIntervalMs": 0,
-          "serverDamageProfileId": "damage.valtan.stomp",
-          "pushRangeM": 1.5,
-          "pushMs": 150,
-          "knockdown": true,
-          "downMs": 1000
-        }
-      ],
-      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.part-break.rock",
-      "targetField": "kind",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": "FIXED_AREA",
-      "transform": "Balance Tool authored override",
-      "resultValue": "FIXED_AREA",
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.part-break.rock",
-      "targetField": "lifeMs",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": 6200,
-      "transform": "Balance Tool authored override",
-      "resultValue": 6200,
-      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.part-break.rock",
-      "targetField": "maximumDistanceM",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": 0.0,
-      "transform": "Balance Tool authored override",
-      "resultValue": 0.0,
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.part-break.rock",
-      "targetField": "offsetForwardM",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": 0.0,
-      "transform": "Balance Tool authored override",
-      "resultValue": 0.0,
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.part-break.rock",
-      "targetField": "offsetRightM",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": 0.0,
-      "transform": "Balance Tool authored override",
-      "resultValue": 0.0,
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.part-break.rock",
-      "targetField": "originPolicy",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": "BOSS_POSITION",
-      "transform": "Balance Tool authored override",
-      "resultValue": "BOSS_POSITION",
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.part-break.rock",
-      "targetField": "ownerPatternId",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": "VALTAN_PART_BREAK",
-      "transform": "Balance Tool authored override",
-      "resultValue": "VALTAN_PART_BREAK",
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.part-break.rock",
-      "targetField": "ownerStageActionId",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": "valtan.reaction.part-break.recovery",
-      "transform": "Balance Tool authored override",
-      "resultValue": "valtan.reaction.part-break.recovery",
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.part-break.rock",
-      "targetField": "speedMps",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": 0.0,
-      "transform": "Balance Tool authored override",
-      "resultValue": 0.0,
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
       "targetId": "combat-object:combatobject.valtan.red-blade-wave.projectile",
       "targetField": "clientVisualId",
       "basis": "PROJECT_TUNED",
@@ -46276,9 +46042,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 18,
+      "sourceValue": 17,
       "transform": "Balance Tool authored override",
-      "resultValue": 18,
+      "resultValue": 17,
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
@@ -64953,7 +64719,7 @@
           "branches": [
             {
               "outcome": "TIMEOUT",
-              "nextActionId": null
+              "nextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02"
             }
           ]
         },
@@ -65044,7 +64810,7 @@
           "branches": [
             {
               "outcome": "TIMEOUT",
-              "nextActionId": null
+              "nextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02"
             }
           ]
         },
@@ -65079,7 +64845,7 @@
           "branches": [
             {
               "outcome": "TIMEOUT",
-              "nextActionId": null
+              "nextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02"
             }
           ]
         },
@@ -65713,7 +65479,7 @@
           "branches": [
             {
               "outcome": "TIMEOUT",
-              "nextActionId": null
+              "nextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02"
             }
           ]
         },
@@ -65804,7 +65570,7 @@
           "branches": [
             {
               "outcome": "TIMEOUT",
-              "nextActionId": null
+              "nextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02"
             }
           ]
         },
@@ -65839,7 +65605,7 @@
           "branches": [
             {
               "outcome": "TIMEOUT",
-              "nextActionId": null
+              "nextActionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02"
             }
           ]
         },
@@ -65895,7 +65661,7 @@
           ]
         }
       ],
-      "note": "Admitted to automatic combat through the authored decision model; official source binding is not claimed."
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -66787,7 +66553,8 @@
           "knockdown": false,
           "downMs": 0,
           "motion": {
-            "kind": "TO_ARENA_CENTER"
+            "kind": "FORWARD",
+            "distance": 6.0
           }
         },
         {
@@ -67747,7 +67514,8 @@
           "knockdown": false,
           "downMs": 0,
           "motion": {
-            "kind": "TO_ARENA_CENTER"
+            "kind": "FORWARD",
+            "distance": 6.0
           }
         },
         {
@@ -71886,9 +71654,25 @@
           "pushMs": 0,
           "knockdown": false,
           "downMs": 0,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "SET_STAGGER_GAUGE",
+              "targetId": "boss.gauge.stagger",
+              "value": 50000,
+              "durationMs": 0
+            },
+            {
+              "trigger": "EXIT",
+              "kind": "SET_STAGGER_GAUGE",
+              "targetId": "boss.gauge.stagger",
+              "value": 0,
+              "durationMs": 0
+            }
+          ],
           "branches": [
             {
-              "outcome": "HEALTH_DAMAGE_THRESHOLD_REACHED",
+              "outcome": "STAGGER_BROKEN",
               "nextActionId": null,
               "nextPatternId": "VALTAN_GROGGY_FOLLOWUP"
             },
@@ -71897,10 +71681,6 @@
               "nextActionId": "valtan.authoring.stagger-slot.final-attack"
             }
           ],
-          "bossResponse": {
-            "kind": "ACCUMULATED_HEALTH_DAMAGE",
-            "threshold": 10000
-          },
           "verticalOffsetM": 0.5
         },
         {
@@ -71945,9 +71725,25 @@
           "pushMs": 0,
           "knockdown": false,
           "downMs": 0,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "SET_STAGGER_GAUGE",
+              "targetId": "boss.gauge.stagger",
+              "value": 50000,
+              "durationMs": 0
+            },
+            {
+              "trigger": "EXIT",
+              "kind": "SET_STAGGER_GAUGE",
+              "targetId": "boss.gauge.stagger",
+              "value": 0,
+              "durationMs": 0
+            }
+          ],
           "branches": [
             {
-              "outcome": "HEALTH_DAMAGE_THRESHOLD_REACHED",
+              "outcome": "STAGGER_BROKEN",
               "nextActionId": null,
               "nextPatternId": "VALTAN_GROGGY_FOLLOWUP"
             },
@@ -71956,10 +71752,6 @@
               "nextActionId": "valtan.authoring.stagger-slot.final-attack"
             }
           ],
-          "bossResponse": {
-            "kind": "ACCUMULATED_HEALTH_DAMAGE",
-            "threshold": 10000
-          },
           "verticalOffsetM": 0.5
         },
         {

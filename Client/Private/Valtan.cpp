@@ -5394,14 +5394,21 @@ bool_t CValtan::Apply_BossCombatEvent(
 	if (event.iEventSequence <= m_iLastBossCombatEventSequence)
 		return true;
 
+	// Replication applies the entity state before its reliable events. Require
+	// actual removal in that snapshot, and announce each plate only once.
+	const uint32_t removedMask = m_hasBossCombatState ?
+		(event.iPartMask & (~m_BossCombatState.iAlivePartMask | m_iBrokenArmorMask)) : 0u;
+	const uint32_t newBreakMask = removedMask & ~m_iArmorBreakFeedbackPartMask;
+	m_iLastBossCombatEventSequence = event.iEventSequence;
+	if (newBreakMask == 0u) return true;
+	m_iArmorBreakFeedbackPartMask |= newBreakMask;
 	for (const auto& [stateMask, partTag] : m_ArmorPartTagsByStateMask)
 	{
 		(void)partTag;
-		if (0u != (event.iPartMask & stateMask))
+		if (0u != (newBreakMask & stateMask))
 			Set_ArmorPartVisible(stateMask, false);
 	}
-	m_iLastBossCombatEventSequence = event.iEventSequence;
-	if (m_strArchetypeId == "BOSS_VALTAN" && (event.iPartMask & 3u) != 0u)
+	if (m_strArchetypeId == "BOSS_VALTAN" && (newBreakMask & 3u) != 0u)
 	{
 		m_fArmorBreakFeedbackRemainingSeconds = 1.4f;
 		if (Is_PresentationVisible() && m_hasBossCombatState && m_BossCombatState.iGameplayPhase < 3u)
@@ -5410,7 +5417,7 @@ bool_t CValtan::Apply_BossCombatEvent(
 			// Parts2 and both hands. Reliable event identity owns one attempt.
 			for (uint32_t part = 0u; part < 2u; ++part)
 			{
-				if ((event.iPartMask & (1u << part)) == 0u) continue;
+				if ((newBreakMask & (1u << part)) == 0u) continue;
 				EFFECT_SPAWN_DESC spawn;
 				spawn.strEffectAssetId = part == 0u ?
 					"effect.valtan.action.420627.stage000.full.restore" :
@@ -5594,6 +5601,7 @@ void CValtan::Reset_ReplicatedOccurrenceState()
 	m_iBrokenArmorMask = 0u;
 	m_iLastBossCombatEventSequence = 0u;
 	m_fArmorBreakFeedbackRemainingSeconds = 0.f;
+	m_iArmorBreakFeedbackPartMask = 0u;
 	m_fHitFlashRemainingSeconds = 0.f;
 	m_HitFlash = {};
 	m_iNetworkSampleCount = 0u;
@@ -5913,14 +5921,40 @@ bool_t CValtan::Apply_NetworkState(
 			{
 				return false;
 			}
-			if (iPatternSequence == m_iServerPatternSequence &&
-				(m_strServerPatternId != patternId ||
-				 iPatternStageIndex < m_iServerPatternStageIndex ||
-				 (iPatternStageIndex == m_iServerPatternStageIndex &&
-				  m_iServerActionStartTick != 0u &&
-				  iActionStartTick != m_iServerActionStartTick)))
+			if (iPatternSequence == m_iServerPatternSequence)
 			{
-				return false;
+				const bool_t bActionStartChanged = m_iServerActionStartTick != 0u &&
+					iActionStartTick != m_iServerActionStartTick;
+				const bool_t bNewerActionStart = bActionStartChanged &&
+					Client::CActionPresentationTimeline::Is_ForwardTick(
+						iActionStartTick, m_iServerActionStartTick);
+				const auto Is_TrashRetryAction = [patternId](std::string_view candidate)
+				{
+					const std::string_view prefix = patternId == "VALTAN_TRASH" ?
+						"valtan.sequence.center-trash-rush-if." :
+						patternId == "VALTAN_TRASH_CATCH_IF" ?
+						"valtan.sequence.rush-if." : "";
+					if (prefix.empty() || !candidate.starts_with(prefix)) return false;
+					candidate.remove_prefix(prefix.size());
+					constexpr std::string_view retryActions[]{
+						"recharge-wait-02", "retry-windup-02", "retry-rush-02", "retry-miss-02",
+						"recharge-wait-03", "retry-windup-03", "retry-rush-03", "retry-exhausted",
+						"catch-counter", "catch-pre-impact", "catch-slam", "execute-tail" };
+					return std::find(std::begin(retryActions), std::end(retryActions), candidate) !=
+						std::end(retryActions);
+				};
+				// Trash loops retain their pattern sequence. A later action start
+				// also admits coalesced snapshots from the next pass of the same stage.
+				const bool_t bTrashRetry = bNewerActionStart &&
+					Is_TrashRetryAction(m_strServerActionId) && Is_TrashRetryAction(actionId);
+				if (m_strServerPatternId != patternId ||
+					(bActionStartChanged && !bNewerActionStart) ||
+					(iPatternStageIndex < m_iServerPatternStageIndex && !bTrashRetry) ||
+					(iPatternStageIndex == m_iServerPatternStageIndex &&
+					 bActionStartChanged && !bTrashRetry))
+				{
+					return false;
+				}
 			}
 		}
 	}

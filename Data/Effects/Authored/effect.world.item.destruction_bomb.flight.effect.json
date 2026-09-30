@@ -13,7 +13,7 @@
   "elements": [
     {
       "id": "effect.world.item.destruction_bomb.flight.particlespriteemitter_5",
-      "displayName": "effect.world.item.destruction_bomb.flight | particlespriteemitter_5",
+      "displayName": "particlespriteemitter_5",
       "groupId": "effect.world.item.destruction_bomb.flight",
       "sourceNode": "effect.world.item.destruction_bomb.flight|fx_bs_05.prj.par_l_steelbomb_prj_01.particlespriteemitter_5",
       "visible": true,
@@ -1451,7 +1451,7 @@
     },
     {
       "id": "effect.world.item.destruction_bomb.flight.particlespriteemitter_2",
-      "displayName": "effect.world.item.destruction_bomb.flight | particlespriteemitter_2",
+      "displayName": "particlespriteemitter_2",
       "groupId": "effect.world.item.destruction_bomb.flight",
       "sourceNode": "effect.world.item.destruction_bomb.flight|fx_bs_05.prj.par_l_steelbomb_prj_01.particlespriteemitter_2",
       "visible": true,
@@ -3000,7 +3000,7 @@
     },
     {
       "id": "effect.world.item.destruction_bomb.flight.particlespriteemitter_0",
-      "displayName": "effect.world.item.destruction_bomb.flight | particlespriteemitter_0",
+      "displayName": "particlespriteemitter_0",
       "groupId": "effect.world.item.destruction_bomb.flight",
       "sourceNode": "effect.world.item.destruction_bomb.flight|fx_bs_05.prj.par_l_steelbomb_prj_01.particlespriteemitter_0",
       "visible": true,
@@ -4924,7 +4924,7 @@
     },
     {
       "id": "effect.world.item.destruction_bomb.flight.particlespriteemitter_15",
-      "displayName": "effect.world.item.destruction_bomb.flight | particlespriteemitter_15",
+      "displayName": "particlespriteemitter_15",
       "groupId": "effect.world.item.destruction_bomb.flight",
       "sourceNode": "effect.world.item.destruction_bomb.flight|fx_bs_05.prj.par_l_steelbomb_prj_01.particlespriteemitter_15",
       "visible": true,
@@ -6188,7 +6188,7 @@
     },
     {
       "id": "effect.world.item.destruction_bomb.flight.particlespriteemitter_16",
-      "displayName": "effect.world.item.destruction_bomb.flight | particlespriteemitter_16",
+      "displayName": "particlespriteemitter_16",
       "groupId": "effect.world.item.destruction_bomb.flight",
       "sourceNode": "effect.world.item.destruction_bomb.flight|fx_bs_05.prj.par_l_steelbomb_prj_01.particlespriteemitter_16",
       "visible": true,
@@ -7405,7 +7405,7 @@
     },
     {
       "id": "effect.world.item.destruction_bomb.flight.particlespriteemitter_17",
-      "displayName": "effect.world.item.destruction_bomb.flight | particlespriteemitter_17",
+      "displayName": "particlespriteemitter_17",
       "groupId": "effect.world.item.destruction_bomb.flight",
       "sourceNode": "effect.world.item.destruction_bomb.flight|fx_bs_05.prj.par_l_steelbomb_prj_01.particlespriteemitter_17",
       "visible": true,

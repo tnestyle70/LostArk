@@ -122,3 +122,31 @@ PART_BROKEN 전송을 검사한다. 회오리 수류탄·성스러운 부적·�
 정본을 찾아 현재값의10배로 설정한다. 모든 스킬이나 전역 Retail 배율에 전파하지 않는다.
 회오리 수류탄의 현재 최대 게이지1/3 기여 정책은 보존한다. 기존값·변경값·대상 stable ID와
 게시된 소비값은 RESULT에 기록하고 정본 publisher로 Gameplay/Composition을 갱신한다.
+
+
+## G10. 배포 후 미실행 회귀와 실패 분류
+
+배포한 protocol124 Release Server와 현재 소스를 기준으로 남은 쿠크·발탄·아이템·입장·
+통신 검사를 수행한다. 사용자 Client/Server가 실행 중이므로 종료하거나 UI를 조작하지 않는다.
+headless runner의 listener 이전 분기를 확인하고 테스트마다 격리 DataFiles·TEMP를 사용한다.
+numeric 저장 검사는 복사본만 수정하며 배포 ZIP과 실행 중 Server의 원본 Data는 보존한다.
+Debug 조건으로 제외된 Release 검사는 assertion 수와 함께 표시하며 실행되지 않은 검사를
+PASS로 대신하지 않는다. 실패는 실제 제품 결함, 최신 protocol/저장값과 어긋난 fixture,
+검사 호출 환경 문제로 구분하고 재현 근거를 확인한 최소 범위만 교정한다.
+기존 NetworkProtocolHarness의 protocol122 기대값 11개는 통합124 계약과 비교해
+packet ID·부정 입력 검사를 보존한 채 최신 기대값으로 갱신하고 전체 검사를 다시 실행한다.
+새 제품 C++ 파일은 추가하지 않으며 기존 등록과 harness 프로젝트를 사용한다.
+
+## G11. 통합 병목의 증거와 재발 방지 계약
+
+직전 두 Release receipt와 MSBuild diagnostic/binlog, source snapshot, shader 보존 증거를
+대조한다. branch 이름, 실제 파일 재작성, bytes/줄바꿈, 수정시각, compiler command와
+tracking/toolchain을 분리하여 재컴파일 원인을 판정한다. 2273개 입력의 SHA256·mtime을
+보존한 동일 tree 전환을 먼저 검증했다. 두 거대 Mesh/AnimMesh effect의 include·pass·
+variant 컴파일 비용을 조사하되 Client 전체 경과를 단일 shader 시간으로 기록하지 않는다.
+컴파일 비용과 게임 GPU 비용을 구분하고 현 상태의 재사용과 향후 shader 분리 최적화의
+검증 기준을 명시한다. 구현하지 않은 shader 최적화를 완료라고 기록하지 않는다.
+사용자가 명시한 AGENTS.md와 gotchas.md에 source/cache/merge/publish/build/package의
+세부 절차와 금지 우회, 정확한 증거·한계 및 남은 최적화 항목을 기록한다.
+검증과 문서를 PR로 main에 병합한다. 코드 수정이 필요한 경우 실제 영향받는 최소 대상만
+컴파일하며 사용 중인 제품 EXE/DLL을 덮어쓰는 build 또는 shader 전체 재빌드는 수행하지 않는다.

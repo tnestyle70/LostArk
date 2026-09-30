@@ -555,9 +555,8 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 				member.iMarioEntrantPlayerId != player.iPlayerId ||
 				member.iMarioEntrantSessionId != player.iSessionId ||
 				member.iMarioEntrantNetEntityId != player.iNetEntityId) continue;
-			member.bCompleted = true;
-			m_strStatus = "Mario solo entrant died before phase 2; mechanic completed as failed";
-			Clear_KoukuSaydonPatternAudition(true);
+			member.bMarioSoloReturnRequired = false;
+			m_strStatus = "Mario solo entrant revived; phase 2 continues after phase 1";
 			break;
 		}
 	}
@@ -1267,6 +1266,7 @@ void LostArk::Server::CGameRoom::Update_EstherZones(const std::uint32_t serverTi
 				}
 				continue;
 			}
+			if (zone.eEstherId == ESTHER_ID::INANNA) player.iEstherZoneProtectionEndTick = protectUntil;
 			if (0u == player.iInvulnerableEndTick ||
 				CKoukuSaydonLogicRuntime::Has_ReachedTick(protectUntil, player.iInvulnerableEndTick))
 			{
