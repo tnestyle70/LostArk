@@ -1213,6 +1213,8 @@ bool_t Client::CWorldGameplayDocument::Is_Valid(
 								event.eTargetWorldId ||
 							LostArk::Shared::WORLD_ID::MAHARAKA ==
 								event.eTargetWorldId ||
+							LostArk::Shared::WORLD_ID::COLOSSEUM ==
+								event.eTargetWorldId ||
 							LostArk::Shared::WORLD_ID::VALTAN_ARENA ==
 								event.eTargetWorldId ||
 							LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA ==
@@ -1461,6 +1463,7 @@ const char_t* Client::CWorldGameplayDocument::WorldId_ToString(
 	case WORLD_ID::VALTAN_ARENA: return "VALTAN_ARENA";
 	case WORLD_ID::KAKULSAYDON_ARENA: return "KAKULSAYDON_ARENA";
 	case WORLD_ID::MAHARAKA: return "MAHARAKA";
+	case WORLD_ID::COLOSSEUM: return "COLOSSEUM";
 	default: return "invalid";
 	}
 }
@@ -1478,6 +1481,8 @@ bool_t Client::CWorldGameplayDocument::Try_ParseWorldId(
 		outWorldId = WORLD_ID::KAKULSAYDON_ARENA;
 	else if ("MAHARAKA" == value)
 		outWorldId = WORLD_ID::MAHARAKA;
+	else if ("COLOSSEUM" == value)
+		outWorldId = WORLD_ID::COLOSSEUM;
 	else
 		return false;
 	return true;

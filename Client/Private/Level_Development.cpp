@@ -5,9 +5,15 @@
 #include "Character.h"
 #include "CharacterSelectionState.h"
 #include "CombatHUDViewModel.h"
+#include "ColosseumIntroCutscene.h"
+#include "ColosseumMatchStart.h"
 #include "EffectFailureDiagnostic.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
+#pragma push_macro("new")
+#undef new
+#include "imgui.h"
+#pragma pop_macro("new")
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MainApp.h"
@@ -162,6 +168,19 @@ HRESULT CLevel_Development::Initialize()
 		return E_FAIL;
 	}
 
+	if (LEVEL::COLOSSEUM == m_eLevel)
+	{
+		// Match intro cutscene. A rejected document only skips it; the arena stays playable.
+		auto intro = std::make_unique<CColosseumIntroCutscene>();
+		// Kept even when the document was rejected, so the F1 section can retry it.
+		(void)intro->Initialize(m_pDevice, m_pContext, ETOUI(m_eLevel), m_pCamera.lock());
+		m_ColosseumIntro = std::move(intro);
+		// Countdown banner + gate. Also kept when its document was rejected, so F1 can retry it.
+		auto matchStart = std::make_unique<CColosseumMatchStart>();
+		(void)matchStart->Initialize(m_pDevice, m_pContext, ETOUI(m_eLevel), &m_MapRuntime);
+		m_ColosseumMatchStart = std::move(matchStart);
+	}
+
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
 	if (!m_PlayerController.Initialize_TargetingPreview(
@@ -265,9 +284,109 @@ void CLevel_Development::Update(const f32_t fTimeDelta)
 	if (m_InteractPrompt)
 		m_InteractPrompt->Update(fTimeDelta,localCharacter,CCombatHUDViewModel::Get().Get_InteractPromptTriggerId(),
 			!editing && camera && !camera->Is_PresentationOverrideActive());
+	if (m_ColosseumIntro)
+		m_ColosseumIntro->Update(fTimeDelta, m_Replication);
+	if (m_ColosseumMatchStart)
+	{
+		// The count starts the moment the intro cutscene is over, or at once when there is none;
+		// replaying the cutscene from F1 closes the gate and hides the banner again.
+		const bool_t bIntroActive = Is_ColosseumIntroActive();
+		if (bIntroActive && (m_bColosseumMatchStartArmed || !m_bColosseumIntroWasActive))
+			m_ColosseumMatchStart->Reset();
+		else if (!bIntroActive && (m_bColosseumMatchStartArmed || m_bColosseumIntroWasActive))
+			m_ColosseumMatchStart->Begin();
+		m_bColosseumIntroWasActive = bIntroActive;
+		m_bColosseumMatchStartArmed = false;
+		m_ColosseumMatchStart->Update(fTimeDelta);
+	}
 	m_PlayerController.Update(
 		nullptr != camera && camera->Is_FollowEnabled() &&
+		!Is_ColosseumIntroActive() &&
 		(LEVEL::MAHARAKA != m_eLevel || !camera->Is_PresentationOverrideActive()));
+}
+
+bool_t CLevel_Development::Is_ColosseumIntroActive() const
+{
+	return nullptr != m_ColosseumIntro && m_ColosseumIntro->Is_Active();
+}
+
+void Client::CLevel_Development::Render_ColosseumIntroControls()
+{
+	if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::COLOSSEUM))
+		return;
+	ImGui::PushID("ColosseumIntroCutscene");
+	if (ImGui::CollapsingHeader("Colosseum Intro Cutscene", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		CLevel_Development* const level = Get_Active(LEVEL::COLOSSEUM);
+		if (nullptr == level || nullptr == level->m_ColosseumIntro)
+		{
+			ImGui::TextDisabled("The Colosseum intro is not loaded.");
+		}
+		else
+		{
+			CColosseumIntroCutscene& intro = *level->m_ColosseumIntro;
+			if (ImGui::Button(intro.Is_Active() ? "Restart" : "Play"))
+				(void)intro.Restart();
+			ImGui::SameLine();
+			ImGui::BeginDisabled(!intro.Is_Playing());
+			if (ImGui::Button(intro.Is_Paused() ? "Resume" : "Pause"))
+				intro.Set_Paused(!intro.Is_Paused());
+			ImGui::EndDisabled();
+			ImGui::SameLine();
+			ImGui::BeginDisabled(!intro.Is_Active());
+			if (ImGui::Button("Stop"))
+				intro.Stop();
+			ImGui::EndDisabled();
+			if (intro.Is_Playing())
+			{
+				f32_t fSeconds = intro.Get_ClockMs() * 0.001f;
+				if (ImGui::SliderFloat("Time (s)", &fSeconds, 0.f, intro.Get_DurationMs() * 0.001f, "%.2f"))
+					intro.Seek(fSeconds * 1000.f);
+			}
+			ImGui::Text("State: %s | FOV x %.1f | lineup actors %u", intro.Get_PhaseLabel(),
+				intro.Get_FovXDegrees(), static_cast<unsigned>(intro.Get_ActorCount()));
+			if (!intro.Get_Status().empty())
+				ImGui::TextWrapped("%s", intro.Get_Status().c_str());
+			ImGui::TextWrapped("Play re-reads Data/Camera/ColosseumIntro.cutscene.json, so edit the camera, FOV or timing there and press Play again (no rebuild). Only players connected to this room stand in the six slots. Input and HUD stay blocked while it runs; press Stop to leave early.");
+		}
+	}
+	if (ImGui::CollapsingHeader("Colosseum Match Start (countdown + gate)", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		CLevel_Development* const level = Get_Active(LEVEL::COLOSSEUM);
+		if (nullptr == level || nullptr == level->m_ColosseumMatchStart)
+		{
+			ImGui::TextDisabled("The Colosseum match start is not loaded.");
+		}
+		else
+		{
+			CColosseumMatchStart& start = *level->m_ColosseumMatchStart;
+			ImGui::BeginDisabled(level->Is_ColosseumIntroActive());
+			if (ImGui::Button("Play Countdown + Gate"))
+				(void)start.Restart();
+			ImGui::EndDisabled();
+			ImGui::SameLine();
+			ImGui::BeginDisabled(!start.Is_Running());
+			if (ImGui::Button(start.Is_Paused() ? "Resume##matchstart" : "Pause##matchstart"))
+				start.Set_Paused(!start.Is_Paused());
+			ImGui::SameLine();
+			if (ImGui::Button("Stop / close gate##matchstart"))
+				start.Reset();
+			ImGui::EndDisabled();
+			if (start.Is_Running())
+			{
+				f32_t fSeconds = start.Get_ClockMs() * 0.001f;
+				if (ImGui::SliderFloat("Match time (s)", &fSeconds, 0.f, start.Get_TimelineMs() * 0.001f, "%.2f"))
+					start.Seek(fSeconds * 1000.f);
+			}
+			ImGui::Text("State: %s | count %u | gate sunk %.2f m (%u leaves)", start.Get_PhaseLabel(),
+				static_cast<unsigned>(start.Get_CountDigit()), start.Get_GateSinkMeters(),
+				static_cast<unsigned>(start.Get_GateCount()));
+			if (!start.Get_Status().empty())
+				ImGui::TextWrapped("%s", start.Get_Status().c_str());
+			ImGui::TextWrapped("Play re-reads Data/Camera/ColosseumMatchStart.json (count, bar, colours, text positions, gate timing and depth), so edit it and press Play again (no rebuild). The count starts by itself when the intro cutscene ends. Presentation only: the Server has no match rules for the Colosseum yet, so the gate does not block anyone.");
+		}
+	}
+	ImGui::PopID();
 }
 
 bool_t CLevel_Development::Load_TriggerMarkers(const char* pAreaId)
@@ -414,6 +533,8 @@ HRESULT CLevel_Development::Render()
 		return E_FAIL;
 	if (m_InteractPrompt) m_InteractPrompt->Render_Text();
 	if (m_Waterpang) m_Waterpang->Render();
+	if (m_ColosseumIntro) m_ColosseumIntro->Render();
+	if (m_ColosseumMatchStart) m_ColosseumMatchStart->Render();
 
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(m_isMapEditorWorkspace ?

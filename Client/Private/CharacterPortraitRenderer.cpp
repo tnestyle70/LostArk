@@ -2,6 +2,9 @@
 
 #include "Character.h"
 #include "GameInstance.h"
+#include "Model.h"
+
+#include <cmath>
 
 namespace
 {
@@ -46,6 +49,31 @@ HRESULT Client::CCharacterPortraitRenderer::Ensure_Target(const uint32_t iWidth,
 	return S_OK;
 }
 
+bool_t Client::CCharacterPortraitRenderer::Try_Measure_EyeHeight(const CCharacter& Character, f32_t& fOutMetres)
+{
+	const std::shared_ptr<Engine::CModel> pModel = Character.Get_BodyModel();
+	if (nullptr == pModel)
+		return false;
+	static constexpr const char_t* EYE_BONE_NAMES[] = { "b_fc_l_eye_ani", "b_fc_r_eye_ani" };
+	f32_t fSum = 0.f;
+	int32_t iFound = 0;
+	for (const char_t* pBoneName : EYE_BONE_NAMES)
+	{
+		if (!pModel->Has_Bone(pBoneName))
+			continue;
+		const f32_t fY = XMVectorGetY(pModel->Get_BoneMatrix(pBoneName).r[3]);
+		if (!std::isfinite(fY) || fY <= 0.f)
+			continue;
+		fSum += fY;
+		++iFound;
+	}
+	const f32_t fScale = Character.Get_PresentationScale();
+	if (0 == iFound || !std::isfinite(fScale) || fScale <= 0.f)
+		return false;
+	fOutMetres = fSum / static_cast<f32_t>(iFound) * fScale;
+	return true;
+}
+
 HRESULT Client::CCharacterPortraitRenderer::Render(const std::shared_ptr<CCharacter>& pCharacter,
 	const uint32_t iWidth, const uint32_t iHeight, const CAMERA& Camera,
 	const uint32_t iAvatarOverrideKinds, const uint32_t iAvatarHiddenKinds)
@@ -65,9 +93,12 @@ HRESULT Client::CCharacterPortraitRenderer::Render(const std::shared_ptr<CCharac
 	const vector_t vDirection = XMVector3TransformNormal(
 		vLook, XMMatrixRotationY(XMConvertToRadians(Camera.fYawDegrees)));
 	const vector_t vUp = XMVectorSet(0.f, 1.f, 0.f, 0.f);
+	/* Screen-right of a level camera looking back at the character (left-handed: up x forward). */
+	const vector_t vShift = XMVectorScale(
+		XMVector3Normalize(XMVector3Cross(vUp, XMVectorNegate(vDirection))), Camera.fLateralOffset);
 	const vector_t vEye = XMVectorSetW(
-		vPosition + vDirection * Camera.fDistance + vUp * Camera.fEyeHeight, 1.f);
-	const vector_t vAt = XMVectorSetW(vPosition + vUp * Camera.fLookHeight, 1.f);
+		vPosition + vDirection * Camera.fDistance + vUp * Camera.fEyeHeight + vShift, 1.f);
+	const vector_t vAt = XMVectorSetW(vPosition + vUp * Camera.fLookHeight + vShift, 1.f);
 
 	float4x4_t ViewMatrix{};
 	float4x4_t ProjectionMatrix{};

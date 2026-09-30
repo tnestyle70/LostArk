@@ -70,6 +70,40 @@ namespace
 	sprite fonts bake into their line spacing. The exact ratio is not recoverable from either
 	side, so this is the one approximated number here. */
 	constexpr f32_t EM_TO_LINE_SPACING = 1.25f;
+
+	/* ---- Colosseum match-loading screen ---------------------------------------------------
+	Stage space is the retail movie's 1920x1080; these are its label anchors measured against
+	the retail capture (art positions live in Data/UI/Colosseum/MatchLoading_Layout.json).
+	Names, classes and team sizes are the Server's roster (S2C_COLOSSEUM_MATCH_FOUND); only the
+	rank / KDA lines below are SAMPLE data, the project keeps no PvP record. */
+	constexpr f32_t MATCH_STAGE_W = 1920.f, MATCH_STAGE_H = 1080.f;
+	constexpr f32_t MATCH_SLOT_X0[2] = { 61.f, 1098.f };
+	constexpr f32_t MATCH_SLOT_PITCH = 260.f;
+	constexpr f32_t MATCH_SLOT_CENTER_DX = 130.f;
+	constexpr f32_t MATCH_PANEL_CENTER_X[2] = { 442.f, 1478.f };
+	constexpr uint32_t MATCH_KEY_SLOT[2] = { 2u, 0u };	/* zero-based key slot per team */
+	struct MATCH_LOADING_PLAYER
+	{
+		const wchar_t* pRank;
+		const wchar_t* pKda;
+	};
+	const MATCH_LOADING_PLAYER MATCH_ROSTER[2][3] = {
+		{ { L"4\xB2E8", L"KDA 1.6" }, { L"8\xB2E8", L"KDA 2.4" }, { L"2\xB2E8", L"KDA 2.3" } },
+		{ { L"8\xB2E8", L"KDA 1.7" }, { L"7\xB2E8", L"KDA 1.7" }, { L"6\xB2E8", L"KDA 1.7" } } };
+	/* The card art is authored for three cards per team around the team's card block. A team with
+	fewer participants lays out just that many cards around the same centre, so three cards keep
+	the authored positions and one or two stay centred. */
+	constexpr uint32_t MATCH_MAX_TEAM_SIZE = 3u;
+	constexpr f32_t MATCH_CARD_BLOCK_CENTER_X[2] = { 451.f, 1488.f };
+	f32_t Find_MatchCardCenterX(const uint32_t iTeam, const uint32_t iCount, const uint32_t iIndex)
+	{
+		return MATCH_CARD_BLOCK_CENTER_X[iTeam] +
+			(static_cast<f32_t>(iIndex) - 0.5f * static_cast<f32_t>(iCount - 1u)) * MATCH_SLOT_PITCH;
+	}
+	f32_t Find_MatchArtCenterX(const uint32_t iTeam, const uint32_t iArtSlot)
+	{
+		return MATCH_SLOT_X0[iTeam] + static_cast<f32_t>(iArtSlot) * MATCH_SLOT_PITCH + MATCH_SLOT_CENTER_DX;
+	}
 	/* TitleTip's markup colour, #ffdd8a. */
 	const XMVECTORF32 SCENARIO_TEXT_COLOR = { { { 1.f, 0.867f, 0.541f, 1.f } } };
 }
@@ -90,6 +124,8 @@ CLevel_Loading::~CLevel_Loading()
 	}
 	if (m_pRecoveryView)
 		m_pRecoveryView->Release_Sprites();
+	if (m_pMatchView)
+		m_pMatchView->Release_Sprites();
 	for (const auto& sprite : m_ChromeSprites)
 	{
 		// Hide queued draws too; normal Change_Level may already have removed the layer.
@@ -170,6 +206,14 @@ HRESULT CLevel_Loading::Initialize(
 		m_strScenarioLabel = L"\xC815\xBCF4";
 		m_strTipText = L"\xB9C8\xD558\xB77C\xCE74 \xC12C\xC758 \xB2E4\xC591\xD55C \xB180\xC774\xC5D0 \xCC38\xC5EC\xD558\xBA74 \xB9C8\xD558\xB77C\xCE74 \xC78E\xC0C8\xB97C \xC5BB\xC744 \xC218 \xC788\xC2B5\xB2C8\xB2E4.";
 	}
+	else if (LEVEL::COLOSSEUM == m_eNextLevelID)
+	{
+		/* Zone 30201: retail's colosseumLoadingS3 match-loading movie. Title is its top label,
+		   the tip is the hint line the retail capture shows (sys.hint.zone_colosseum_010). */
+		m_strTitleText = L"\xC12C\xBA78\xC804 - \xCF5C\xB85C\xC138\xC6C0";
+		m_strScenarioLabel = L"\xD301";
+		m_strTipText = L"\xC0C1\xB300\xD300 PvP \xACC4\xAE09\xC774 \xB108\xBB34 \xB192\xB098\xC694? \xAC71\xC815 \xB9C8\xC138\xC694. \xC2E4\xB825 \xD3C9\xC810\xC740 \xBE44\xC2B7\xD569\xB2C8\xB2E4.";
+	}
 	else if (LEVEL::BERN == m_eNextLevelID &&
 		LEVEL::MAHARAKA == CLevelTransitionService::Get_LastWorldTransferOrigin())
 	{
@@ -194,9 +238,14 @@ HRESULT CLevel_Loading::Initialize(
 		m_strTipText = L"\xC81C 1\xB300 \xC774\xD399\xD2B8 \xB2F4\xB2F9\xC790\xB294 \xADF9\xC2EC\xD55C \xC6B0\xC6B8\xC99D\xC744 \xD638\xC18C\xD558\xBA70 \xC774\xD399\xD2B8 \xB2F4\xB2F9\xC9C1\xC744 \xC0AC\xD1F4\xD588\xC2B5\xB2C8\xB2E4";
 	}
 
-	const HRESULT chromeResult = LEVEL::LOBBY == m_eNextLevelID ? S_OK : Ready_Layer_Chrome();
+	/* The Colosseum match screen is its own full-screen movie, not the shared loading chrome. */
+	const bool_t bColosseumMatch = LEVEL::COLOSSEUM == m_eNextLevelID;
+	const HRESULT chromeResult =
+		(LEVEL::LOBBY == m_eNextLevelID || bColosseumMatch) ? S_OK : Ready_Layer_Chrome();
 	if (FAILED(chromeResult))
 		return reject(chromeResult, "loading.initialize.chrome", "Loading chrome initialization failed.");
+	if (bColosseumMatch)
+		Ready_ColosseumMatchView();
 	m_pRecoveryView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::LOADING), TEXT("Layer_UI"),
 		L"UI/Loading/LoadingRecovery.json");
@@ -427,6 +476,7 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 		}
 	}
 
+	Update_ColosseumMatchProgress();
 	__super::Update(fTimeDelta);
 }
 
@@ -456,10 +506,13 @@ HRESULT CLevel_Loading::Render()
 			float2_t(0.5f, 0.f), fScale);
 	};
 
-	Fn_DrawLine(TEXT("Font_YoonGasiIIM"), m_strTitleText.c_str(),
-		m_vTitlePos, TITLE_TEXT_SIZE, Colors::White);
+	if (nullptr != m_pMatchView)
+		Render_ColosseumMatchText();
+	else
+		Fn_DrawLine(TEXT("Font_YoonGasiIIM"), m_strTitleText.c_str(),
+			m_vTitlePos, TITLE_TEXT_SIZE, Colors::White);
 
-	if (!m_strTipText.empty())
+	if (!m_strTipText.empty() && nullptr == m_pMatchView)
 	{
 		/* Colour is the one the field's own markup carries. */
 		Fn_DrawLine(TEXT("Font_YoonGasiIIM"), m_strScenarioLabel.c_str(),
@@ -477,6 +530,249 @@ HRESULT CLevel_Loading::Render()
 		m_pLoader->Print_Text();
 #endif
 	return S_OK;
+}
+
+namespace
+{
+	const wchar_t* Find_MatchClassName(const std::uint8_t iClass)
+	{
+		switch (iClass)
+		{
+		case 0: return L"\xCC3D\xC220\xC0AC";
+		case 1: return L"\xAC74\xC2AC\xB9C1\xC5B4";
+		case 2: return L"\xC2AC\xB808\xC774\xC5B4";
+		case 3: return L"\xB3C4\xD654\xAC00";
+		case 4: return L"\xB514\xC2A4\xD2B8\xB85C\xC774\xC5B4";
+		case 5: return L"\xCC28\xC6D0\xC220\xC0AC";
+		case 6: return L"\xC6CC\xB85C\xB4DC";
+		case 7: return L"\xAC00\xB514\xC5B8\xB098\xC774\xD2B8";
+		default: return nullptr;
+		}
+	}
+
+	/* UI/ClassSelect/<folder>/Illustration.png; the Destroyer has no illustration. */
+	const char* Find_MatchIllustrationFolder(const std::uint8_t iClass)
+	{
+		switch (iClass)
+		{
+		case 0: return "LanceMaster";
+		case 1: return "Gunslinger";
+		case 2: return "Slayer";
+		case 3: return "Artist";
+		case 5: return "DimensionMaster";
+		case 6: return "Warlord";
+		case 7: return "GuardianKnight";
+		default: return nullptr;
+		}
+	}
+}
+
+namespace
+{
+	/* Shows only the participants' cards. Card i takes art slot i's shield and plate; the key card's glow,
+	gauge and highlight (authored on one slot per team) move onto it. A team with nobody loses its whole
+	half: portrait, frame, title and every card art. */
+	void Layout_MatchTeams(CUILayoutRuntime& View, const std::uint32_t (&Counts)[2])
+	{
+		const auto Fn_Move = [&View](const string& strId, const f32_t fDeltaStage)
+		{
+			f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
+			if (0.f != fDeltaStage && View.Get_SlotRect(strId, fX, fY, fW, fH))
+				View.Set_SlotPosition(strId, fX + fDeltaStage * GFX_TO_REF, fY);
+		};
+		const char* const TEAM_PREFIX[2] = { "MatchLoading_TeamA_", "MatchLoading_TeamB_" };
+		for (uint32_t iTeam = 0; iTeam < 2u; ++iTeam)
+		{
+			const string strTeam = TEAM_PREFIX[iTeam];
+			const uint32_t iCount = (std::min)(Counts[iTeam], MATCH_MAX_TEAM_SIZE);
+			if (0u == iCount)
+			{
+				for (const char* pPart : { "WedgeGlow", "Portrait", "PanelBorder", "TitleBackground" })
+					View.Set_SlotVisible(strTeam + pPart, false);
+				for (uint32_t iArt = 1u; iArt <= MATCH_MAX_TEAM_SIZE; ++iArt)
+					for (const char* pPart : { "Shield", "Plate", "Glow", "Gauge", "Highlight" })
+						View.Set_SlotVisible(strTeam + "Slot" + std::to_string(iArt) + "_" + pPart, false);
+				continue;
+			}
+			for (uint32_t iArt = 0; iArt < MATCH_MAX_TEAM_SIZE; ++iArt)
+			{
+				const bool_t bUsed = iArt < iCount;
+				const f32_t fDelta = bUsed
+					? Find_MatchCardCenterX(iTeam, iCount, iArt) - Find_MatchArtCenterX(iTeam, iArt) : 0.f;
+				for (const char* pPart : { "Shield", "Plate" })
+				{
+					const string strId = strTeam + "Slot" + std::to_string(iArt + 1u) + "_" + pPart;
+					View.Set_SlotVisible(strId, bUsed);
+					Fn_Move(strId, fDelta);
+				}
+			}
+			const uint32_t iKeyCard = (std::min)(MATCH_KEY_SLOT[iTeam], iCount - 1u);
+			const f32_t fKeyDelta =
+				Find_MatchCardCenterX(iTeam, iCount, iKeyCard) - Find_MatchArtCenterX(iTeam, MATCH_KEY_SLOT[iTeam]);
+			for (const char* pPart : { "Glow", "Gauge", "Highlight" })
+				Fn_Move(strTeam + "Slot" + std::to_string(MATCH_KEY_SLOT[iTeam] + 1u) + "_" + pPart, fKeyDelta);
+		}
+	}
+}
+
+void CLevel_Loading::Ready_ColosseumMatchView()
+{
+	m_pMatchView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::LOADING), TEXT("Layer_UI"),
+		L"UI/Colosseum/MatchLoading_Layout.json");
+
+	CHARACTER_ENTRY_IDENTITY identity;
+	if (CCharacterSelectionState::Try_Resolve_ForWorld(
+		LostArk::Shared::WORLD_ID::COLOSSEUM, identity) &&
+		LostArk::Shared::CHARACTER_CLASS_ID::END != identity.eCharacterClass)
+	{
+		m_iMatchLocalClass = static_cast<std::uint8_t>(identity.eCharacterClass);
+		const int iWide = MultiByteToWideChar(CP_UTF8, 0, identity.strNickname.c_str(),
+			static_cast<int>(identity.strNickname.size()), nullptr, 0);
+		if (iWide > 0)
+		{
+			m_strMatchLocalName.assign(static_cast<size_t>(iWide), L'\0');
+			MultiByteToWideChar(CP_UTF8, 0, identity.strNickname.c_str(),
+				static_cast<int>(identity.strNickname.size()), m_strMatchLocalName.data(), iWide);
+		}
+	}
+
+	/* The roster the Server decided for this match (it arrives in Bern just before the transfer). The
+	entering player's team is drawn on the left with the player on that team's key card, the other team
+	on the right. Without one (a Debug Lobby entry) only the entering player is listed. */
+	LostArk::Shared::S2C_COLOSSEUM_MATCH_FOUND match{};
+	if (CLevelTransitionService::Try_Get_ColosseumMatch(match))
+	{
+		CLevelTransitionService::Clear_ColosseumMatch();
+		const auto Fn_Utf8ToWide = [](const std::string& strUtf8) -> wstring_t
+		{
+			const int iWide = MultiByteToWideChar(CP_UTF8, 0, strUtf8.c_str(),
+				static_cast<int>(strUtf8.size()), nullptr, 0);
+			if (iWide <= 0)
+				return wstring_t();
+			wstring_t strWide(static_cast<size_t>(iWide), L'\0');
+			MultiByteToWideChar(CP_UTF8, 0, strUtf8.c_str(),
+				static_cast<int>(strUtf8.size()), strWide.data(), iWide);
+			return strWide;
+		};
+		const std::uint8_t iLeftTeam = match.Participants[match.iLocalIndex].iTeam;
+		std::vector<MATCH_CARD> leftOthers;
+		for (std::size_t iIndex = 0u; iIndex < match.Participants.size(); ++iIndex)
+		{
+			if (iIndex == match.iLocalIndex)
+				continue;
+			const LostArk::Shared::COLOSSEUM_MATCH_PARTICIPANT& participant = match.Participants[iIndex];
+			(participant.iTeam == iLeftTeam ? leftOthers : m_MatchCards[1]).push_back(MATCH_CARD{
+				static_cast<std::uint8_t>(participant.eCharacterClass), Fn_Utf8ToWide(participant.strNickname) });
+		}
+		const LostArk::Shared::COLOSSEUM_MATCH_PARTICIPANT& local = match.Participants[match.iLocalIndex];
+		leftOthers.insert(
+			leftOthers.begin() + static_cast<std::ptrdiff_t>((std::min)(
+				static_cast<std::size_t>(MATCH_KEY_SLOT[0]), leftOthers.size())),
+			MATCH_CARD{ static_cast<std::uint8_t>(local.eCharacterClass), Fn_Utf8ToWide(local.strNickname) });
+		m_MatchCards[0] = std::move(leftOthers);
+	}
+	else
+		m_MatchCards[0].push_back(MATCH_CARD{ m_iMatchLocalClass, m_strMatchLocalName });
+	for (uint32_t iTeam = 0u; iTeam < 2u; ++iTeam)
+		m_iMatchTeamCount[iTeam] = static_cast<std::uint32_t>(
+			(std::min)(m_MatchCards[iTeam].size(), static_cast<std::size_t>(MATCH_MAX_TEAM_SIZE)));
+
+	/* Key characters: our class on the left, the other team's featured player on the right. */
+	const std::uint8_t iEnemyClass = m_MatchCards[1].empty()
+		? (2u == m_iMatchLocalClass ? 6u : 2u) : m_MatchCards[1].front().iClass;
+	if (const char* pFolder = Find_MatchIllustrationFolder(m_iMatchLocalClass))
+		m_pMatchView->Set_SlotTexture("MatchLoading_TeamA_Portrait",
+			std::string("UI/ClassSelect/") + pFolder + "/Illustration.png");
+	if (const char* pFolder = 0u < m_iMatchTeamCount[1] ? Find_MatchIllustrationFolder(iEnemyClass) : nullptr)
+		m_pMatchView->Set_SlotTexture("MatchLoading_TeamB_Portrait",
+			std::string("UI/ClassSelect/") + pFolder + "/Illustration.png");
+	/* The player's own customized 3D portrait (drawn in Bern just before the transfer) replaces the
+	class illustration on the left; with no snapshot the illustration above stays. The right team's
+	featured character is the 2D class illustration. */
+	if (const ComPtr<ID3D11ShaderResourceView> pPortrait = CLevelTransitionService::Get_TransferPortraitSRV())
+	{
+		m_pMatchView->Set_SlotTextureSRV("MatchLoading_TeamA_Portrait", pPortrait);
+		OutputDebugStringA("[Colosseum.MatchLoading] portrait=3d\n");
+	}
+	else
+		OutputDebugStringA("[Colosseum.MatchLoading] portrait=2d reason=no-transfer-snapshot\n");
+
+	Layout_MatchTeams(*m_pMatchView, m_iMatchTeamCount);
+
+	/* The bar starts empty; Update_ColosseumMatchProgress drives it from the real load. */
+	m_pMatchView->Set_SlotFillRatio("MatchLoading_ProgressFill", 0.f);
+	/* Key-slot gauges show a partial fill like retail's highlighted plate. */
+	m_pMatchView->Set_SlotFillRatio("MatchLoading_TeamA_Slot3_Gauge", 0.78f);
+	m_pMatchView->Set_SlotFillRatio("MatchLoading_TeamB_Slot1_Gauge", 0.22f);
+}
+
+void CLevel_Loading::Update_ColosseumMatchProgress()
+{
+	if (nullptr == m_pMatchView)
+		return;
+	const f32_t fRatio = std::clamp(m_fShownProgress, 0.f, 1.f);
+	m_pMatchView->Set_SlotFillRatio("MatchLoading_ProgressFill", fRatio);
+
+	f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
+	if (!m_pMatchView->Get_SlotRect("MatchLoading_ProgressBackground", fX, fY, fW, fH))
+		return;
+	f32_t fHeadX = 0.f, fHeadY = 0.f, fHeadW = 0.f, fHeadH = 0.f;
+	if (!m_pMatchView->Get_SlotRect("MatchLoading_ProgressHead", fHeadX, fHeadY, fHeadW, fHeadH))
+		return;
+	m_pMatchView->Set_SlotPosition("MatchLoading_ProgressHead",
+		fX + fW * fRatio - fHeadW * GLOW_ANCHOR_RATIO, fHeadY);
+}
+
+void CLevel_Loading::Render_ColosseumMatchText()
+{
+	const auto viewport = CGameInstance::Get().Get_ViewportSize();
+	const float sx = viewport.x / MATCH_STAGE_W, sy = viewport.y / MATCH_STAGE_H;
+	const auto Fn_Draw = [sx, sy](const wchar_t* pFamily, const wstring_t& strText,
+		const float2_t& vCenter, const f32_t fEmSize, const fvector_t& vColor)
+	{
+		if (strText.empty())
+			return;
+		f32_t fScale = 1.f;
+		const wstring_t strFont = UILabelFont::Resolve(
+			pFamily, fEmSize * EM_TO_LINE_SPACING * (std::min)(sx, sy), fScale);
+		CGameInstance::Get().Draw_Text(strFont, strText.c_str(),
+			float2_t(vCenter.x * sx, vCenter.y * sy), vColor, 0.f,
+			float2_t(0.5f, 0.5f), fScale);
+	};
+	const fvector_t vGray = XMVectorSet(0.72f, 0.72f, 0.72f, 1.f);
+	const fvector_t vGold = XMVectorSet(1.f, 0.82f, 0.25f, 1.f);
+	const fvector_t vBlue = XMVectorSet(0.55f, 0.72f, 0.95f, 1.f);
+
+	Fn_Draw(L"Font_YoonGasiIIM", m_strTitleText, float2_t(960.f, 22.f), 28.f, Colors::White);
+	Fn_Draw(L"Font_YoonGasiIIM", m_strScenarioLabel, float2_t(960.f, 918.f), 16.f, Colors::White);
+	Fn_Draw(L"Font_YG760", m_strTipText, float2_t(960.f, 969.f), 17.f, Colors::White);
+
+	const wstring_t strKeyTitle = L"\xC8FC\xBAA9\xD560 \xCE90\xB9AD\xD130";
+	for (uint32_t iTeam = 0; iTeam < 2u; ++iTeam)
+	{
+		const uint32_t iCount = (std::min)(m_iMatchTeamCount[iTeam], MATCH_MAX_TEAM_SIZE);
+		if (0u == iCount)
+			continue;
+		const uint32_t iKeyCard = (std::min)(MATCH_KEY_SLOT[iTeam], iCount - 1u);
+		const std::vector<MATCH_CARD>& Cards = m_MatchCards[iTeam];
+		const f32_t fCX = MATCH_PANEL_CENTER_X[iTeam];
+		Fn_Draw(L"Font_YoonGasiIIM", strKeyTitle, float2_t(fCX, 122.f), 16.f, vBlue);
+		if (iKeyCard < Cards.size())
+			Fn_Draw(L"Font_YoonGasiIIM", Cards[iKeyCard].strName, float2_t(fCX, 186.f), 19.f, Colors::White);
+
+		for (uint32_t iSlot = 0; iSlot < iCount && iSlot < Cards.size(); ++iSlot)
+		{
+			const MATCH_LOADING_PLAYER& Player =
+				MATCH_ROSTER[iTeam][iSlot == iKeyCard ? MATCH_KEY_SLOT[iTeam] : iSlot];
+			const f32_t fX = Find_MatchCardCenterX(iTeam, iCount, iSlot);
+			const wchar_t* pClass = Find_MatchClassName(Cards[iSlot].iClass);
+			Fn_Draw(L"Font_YoonGasiIIM", wstring_t(pClass ? pClass : L""), float2_t(fX, 737.f), 12.f, vGray);
+			Fn_Draw(L"Font_YoonGasiIIM", Player.pRank, float2_t(fX, 757.f), 12.f, vGold);
+			Fn_Draw(L"Font_YoonGasiIIM", Cards[iSlot].strName, float2_t(fX, 789.f), 15.f, Colors::White);
+			Fn_Draw(L"Font_YoonGasiIIM", Player.pKda, float2_t(fX, 851.f), 14.f, vGold);
+		}
+	}
 }
 
 void CLevel_Loading::Render_LoadingRecoveryProduct()
@@ -1319,6 +1615,9 @@ HRESULT CLevel_Loading::Ready_Layer_Chrome()
 		/* Maharaka: zone 57009's own loading art (ExtRes/Loading/ZONE ISLAND_57009). */
 		if ("Background" == strId && LEVEL::MAHARAKA == m_eNextLevelID)
 			strTexturePath = "UI/Loading/Loading_Background_Maharaka.png";
+		/* Proving Grounds (zone 30201). */
+		if ("Background" == strId && LEVEL::COLOSSEUM == m_eNextLevelID)
+			strTexturePath = "UI/Loading/Loading_Background_Colosseum.png";
 		/* Leaving Maharaka: zone 30703's loading group 30700 holds three equal-weight images
 		   (VOYAGE_COMMON_0/1/2); retail picks one at random per load. The project keeps only
 		   VOYAGE_COMMON_0 (Sea_0) on purpose. */

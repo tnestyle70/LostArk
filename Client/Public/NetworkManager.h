@@ -298,6 +298,12 @@ public:
 		std::uint32_t requestSequence, std::uint32_t proposalId, bool accepted);
 	bool Try_Consume_GateProgressState(LostArk::Shared::S2C_GATE_PROGRESS_STATE& outState);
 	bool Try_Consume_RaidMvpResult(LostArk::Shared::S2C_RAID_MVP_RESULT& outResult);
+	/* Colosseum match queue (Bern): JOIN answers the NPC offer, LEAVE is the wait window's Esc. The
+	Server's state changes come back through Try_Consume_ColosseumQueueState; the team roster
+	(S2C_COLOSSEUM_MATCH_FOUND) is stored in CLevelTransitionService for the loading screen. */
+	bool Send_ColosseumQueueJoin(std::uint32_t requestSequence, std::string_view npcPlacementId);
+	bool Send_ColosseumQueueLeave(std::uint32_t requestSequence);
+	bool Try_Consume_ColosseumQueueState(LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE& outState);
 	// Raid Clear screen's "돌아가기" button, Valtan Arena only -- reverse trip
 	// of Send_ConfirmNpcEntry, no NPC target needed.
 	bool Send_ReturnToBern(std::uint32_t requestSequence);
@@ -614,6 +620,7 @@ private:
 	std::deque<LostArk::Shared::S2C_SET_HONOR_TITLE_RESULT> m_HonorTitleResults;
 	std::deque<LostArk::Shared::S2C_GATE_PROGRESS_STATE> m_GateProgressStates;
 	std::deque<LostArk::Shared::S2C_RAID_MVP_RESULT> m_RaidMvpResults;
+	std::deque<LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE> m_ColosseumQueueStates;
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT> m_DebugKoukuHudModeResults;
 	struct WORLD_ENTITY_SPAWN_REQUEST
 	{

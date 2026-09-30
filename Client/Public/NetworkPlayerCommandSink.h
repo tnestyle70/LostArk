@@ -140,6 +140,10 @@ public:
 	bool Request_GateProgressRespond(
 		std::uint32_t clientSequence, std::uint32_t proposalId, bool accepted) override;
 	bool Consume_GateProgressState(LostArk::Shared::S2C_GATE_PROGRESS_STATE& outState) override;
+	bool Request_ColosseumQueueJoin(
+		std::uint32_t clientSequence, const std::string& npcPlacementId) override;
+	bool Request_ColosseumQueueLeave(std::uint32_t clientSequence) override;
+	bool Consume_ColosseumQueueState(LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE& outState) override;
 	bool Consume_RaidMvpResult(LostArk::Shared::S2C_RAID_MVP_RESULT& outResult) override;
 	bool Request_ReturnToBern(
 		std::uint32_t clientSequence) override;

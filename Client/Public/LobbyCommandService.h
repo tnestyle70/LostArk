@@ -15,6 +15,7 @@ enum class LOBBY_STAGE
 	BERN,
 	KOUKU_SAYDON,
 	MAHARAKA,
+	COLOSSEUM,
 	END
 };
 

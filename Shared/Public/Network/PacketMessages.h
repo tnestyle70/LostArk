@@ -3013,6 +3013,87 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		C2S_CONFIRM_NPC_ENTRY& message);
 
+	// Colosseum (Proving Grounds) match queue, Bern only. JOIN is the answer to the Colosseum
+	// NPC's offer (the 15 second accept/decline countdown is Client UI and a decline sends
+	// nothing); the Server re-tests that the player is near that NPC. LEAVE takes only the
+	// requesting player out of the queue (the wait window's Esc). The Server owns the queue,
+	// the head count (Debug builds start with one player, Release needs four) and the random
+	// team split.
+	struct C2S_COLOSSEUM_QUEUE_JOIN
+	{
+		std::uint32_t iRequestSequence = 0;
+		std::string strNpcPlacementId;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_COLOSSEUM_QUEUE_JOIN& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_COLOSSEUM_QUEUE_JOIN& message);
+
+	struct C2S_COLOSSEUM_QUEUE_LEAVE
+	{
+		std::uint32_t iRequestSequence = 0;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_COLOSSEUM_QUEUE_LEAVE& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_COLOSSEUM_QUEUE_LEAVE& message);
+
+	// WAITING: the join was accepted (or the head count changed); LEFT: the leave was applied;
+	// REJECTED: the join changed nothing, so the wait window must close.
+	enum class COLOSSEUM_QUEUE_STATE : std::uint8_t
+	{
+		WAITING = 0,
+		LEFT,
+		REJECTED,
+		END
+	};
+
+	struct S2C_COLOSSEUM_QUEUE_STATE
+	{
+		COLOSSEUM_QUEUE_STATE eState = COLOSSEUM_QUEUE_STATE::END;
+		std::uint8_t iQueuedCount = 0;
+		std::uint8_t iRequiredCount = 0;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_COLOSSEUM_QUEUE_STATE& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_COLOSSEUM_QUEUE_STATE& message);
+
+	inline constexpr std::size_t MAX_COLOSSEUM_MATCH_PLAYERS = 4;
+
+	struct COLOSSEUM_MATCH_PARTICIPANT
+	{
+		std::string strNickname;
+		CHARACTER_CLASS_ID eCharacterClass = CHARACTER_CLASS_ID::END;
+		// 0 = left team (the entering player's side on the loading screen), 1 = right team.
+		std::uint8_t iTeam = 0;
+	};
+
+	// The Server-decided roster, one message per queued session right before its world transfer.
+	// iLocalIndex is the recipient's own row (nickname is not a lookup key). The Client only
+	// draws it on the match loading screen.
+	struct S2C_COLOSSEUM_MATCH_FOUND
+	{
+		std::uint8_t iLocalIndex = 0;
+		std::vector<COLOSSEUM_MATCH_PARTICIPANT> Participants;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_COLOSSEUM_MATCH_FOUND& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_COLOSSEUM_MATCH_FOUND& message);
+
 	// Offered to the one session standing in an interact-gated trigger box, and
 	// withdrawn when it leaves. bAvailable false clears whatever the Client is
 	// showing; the placement id is carried both ways so a stale offer can never

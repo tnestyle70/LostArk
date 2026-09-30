@@ -231,6 +231,11 @@ public:
 	/* True while riding a ship: the rider is not drawn, only the ship sails on the water. */
 	bool_t Is_ShipPresentation() const { return m_isShipPresentation; }
 	void Set_CinematicPresentationSuppressed(bool_t suppressed);
+	/* Colosseum match intro: the lineup pose the cutscene shows this character in. Only the
+	   presentation transform is overridden each Update; snapshots keep arriving and the Server
+	   position is untouched, so clearing snaps straight back to it. */
+	void Set_CutscenePoseOverride(const float3_t& position, f32_t yawDegrees);
+	void Clear_CutscenePoseOverride() { m_isCutscenePoseOverride = false; }
 	bool_t Is_WorldPresentationHidden() const
 	{ return m_isNetworkPresentationHidden || m_isSourcePawnHidden || m_isCinematicPresentationSuppressed; }
     // Transient cue overlays never replace replicated stance or user part visibility.
@@ -466,6 +471,9 @@ private:
 	wstring_t m_strNavigationPrototypeTag;
 	bool_t m_isNetworkPresentationHidden = false;
 	bool_t m_isCinematicPresentationSuppressed = false;
+	bool_t m_isCutscenePoseOverride = false;
+	float3_t m_vCutscenePosePosition = {};
+	f32_t m_fCutscenePoseYawDegrees = 0.f;
     bool_t m_isSourcePawnHidden = false, m_isSourceWeaponHidden = false, m_isSourceIdentityHidden = false;
     bool_t m_isSourceIdentityVisible = false;
 	std::uint32_t m_iVehicleId = 0u;

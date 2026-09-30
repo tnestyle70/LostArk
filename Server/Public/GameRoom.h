@@ -1156,6 +1156,20 @@ namespace LostArk::Server
 		void Handle_ConfirmNpcEntry(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_CONFIRM_NPC_ENTRY& request);
+		// Colosseum match queue (BERN only). JOIN is the answer to the Colosseum NPC's offer: the
+		// Server re-tests distance/state, queues the session and, once the head count is met
+		// (Debug: one player, Release: four), splits the queue into two random teams, sends each
+		// session its roster and stages the ordinary solo world transfer to COLOSSEUM.
+		// LEAVE removes only the requesting session.
+		void Handle_ColosseumQueueJoin(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_COLOSSEUM_QUEUE_JOIN& request);
+		void Handle_ColosseumQueueLeave(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_COLOSSEUM_QUEUE_LEAVE& request);
+		void Send_ColosseumQueueState(
+			SESSION_ID sessionId, LostArk::Shared::COLOSSEUM_QUEUE_STATE state);
+		void Try_FormColosseumMatch();
 		// The player pressed the key an interact-gated trigger box offered.
 		// Names only the box; the trigger system re-tests that this player is
 		// still standing in it before anything runs, so a stale or forged
@@ -1824,6 +1838,13 @@ namespace LostArk::Server
 		// 파티 레이드 입장 투표 상태. struct RAID_ENTRY_PROPOSAL은 위 메서드 선언부에 정의한다.
 		std::vector<RAID_ENTRY_PROPOSAL> m_RaidEntryProposals;
 		std::uint32_t m_iNextRaidEntryProposalId = 1u;
+		// Colosseum match queue: accepted sessions in join order (BERN room only).
+		struct COLOSSEUM_QUEUE_ENTRY
+		{
+			SESSION_ID iSessionId = INVALID_SESSION_ID;
+			std::uint32_t iRequestSequence = 0u;
+		};
+		std::vector<COLOSSEUM_QUEUE_ENTRY> m_ColosseumQueue;
 		GATE_PROGRESS_STATE m_GateProgress;
 		std::vector<SERVER_MVP_LEDGER_ROW> m_GateMvpLedger;
 		std::uint32_t m_iNextGateProposalId = 1u;

@@ -3413,7 +3413,7 @@ namespace
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 125u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 125");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 127u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb, ember, Colosseum world and Colosseum queue use protocol 127");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -3902,8 +3902,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(125u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 125");
+			testRunner.Require(127u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 127");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -7487,8 +7487,8 @@ namespace
 		}
 
 		testRunner.Require(
-			125u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 125");
+			126u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 126");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -7515,8 +7515,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			125u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 125");
+			126u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 126");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -8930,9 +8930,107 @@ void Test_CharacterRestoreProtocol(TEST_RUNNER& tests)
         Is_Known_Packet_Type(PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT), "Both restore packet directions are registered");
 }
 
+void Test_ColosseumQueueProtocol(TEST_RUNNER& tests)
+{
+	using namespace LostArk::Shared;
+	tests.Require(NETWORK_PROTOCOL_VERSION == 127u &&
+		static_cast<std::uint16_t>(PACKET_TYPE::C2S_COLOSSEUM_QUEUE_JOIN) ==
+			static_cast<std::uint16_t>(PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT) + 1u &&
+		static_cast<std::uint16_t>(PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND) ==
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_COLOSSEUM_QUEUE_JOIN) + 3u &&
+		Is_Known_Packet_Type(PACKET_TYPE::C2S_COLOSSEUM_QUEUE_JOIN) &&
+		Is_Known_Packet_Type(PACKET_TYPE::C2S_COLOSSEUM_QUEUE_LEAVE) &&
+		Is_Known_Packet_Type(PACKET_TYPE::S2C_COLOSSEUM_QUEUE_STATE) &&
+		Is_Known_Packet_Type(PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND),
+		"Colosseum queue packets are appended after the restore result and known");
+
+	C2S_COLOSSEUM_QUEUE_JOIN join{};
+	join.iRequestSequence = 5u;
+	join.strNpcPlacementId = "npc.bern.25184_1.2";
+	CPacketWriter joinWriter;
+	C2S_COLOSSEUM_QUEUE_JOIN decodedJoin{};
+	{
+		const bool written = Write_Message(joinWriter, join);
+		CPacketReader reader{ joinWriter.Get_Buffer() };
+		tests.Require(written && Read_Message(reader, decodedJoin) && 0u == reader.Get_RemainingSize() &&
+			5u == decodedJoin.iRequestSequence && join.strNpcPlacementId == decodedJoin.strNpcPlacementId,
+			"Colosseum queue join round trips");
+	}
+	C2S_COLOSSEUM_QUEUE_JOIN invalidJoin{};
+	CPacketWriter invalidJoinWriter;
+	tests.Require(!Write_Message(invalidJoinWriter, invalidJoin), "Colosseum queue join needs a sequence and an NPC id");
+
+	C2S_COLOSSEUM_QUEUE_LEAVE leave{};
+	leave.iRequestSequence = 6u;
+	CPacketWriter leaveWriter;
+	{
+		const bool written = Write_Message(leaveWriter, leave);
+		CPacketReader reader{ leaveWriter.Get_Buffer() };
+		C2S_COLOSSEUM_QUEUE_LEAVE decoded{};
+		tests.Require(written && Read_Message(reader, decoded) && 0u == reader.Get_RemainingSize() &&
+			6u == decoded.iRequestSequence, "Colosseum queue leave round trips");
+	}
+
+	for (const COLOSSEUM_QUEUE_STATE state : { COLOSSEUM_QUEUE_STATE::WAITING,
+		COLOSSEUM_QUEUE_STATE::LEFT, COLOSSEUM_QUEUE_STATE::REJECTED })
+	{
+		S2C_COLOSSEUM_QUEUE_STATE message{};
+		message.eState = state;
+		message.iQueuedCount = 2u;
+		message.iRequiredCount = 4u;
+		CPacketWriter writer;
+		const bool written = Write_Message(writer, message);
+		CPacketReader reader{ writer.Get_Buffer() };
+		S2C_COLOSSEUM_QUEUE_STATE decoded{};
+		tests.Require(written && Read_Message(reader, decoded) && 0u == reader.Get_RemainingSize() &&
+			state == decoded.eState && 2u == decoded.iQueuedCount && 4u == decoded.iRequiredCount,
+			"Colosseum queue state round trips");
+	}
+	S2C_COLOSSEUM_QUEUE_STATE invalidState{};
+	CPacketWriter invalidStateWriter;
+	tests.Require(!Write_Message(invalidStateWriter, invalidState), "Colosseum queue state rejects an unknown state");
+
+	S2C_COLOSSEUM_MATCH_FOUND match{};
+	match.iLocalIndex = 2u;
+	match.Participants = {
+		{ "Alpha", CHARACTER_CLASS_ID::ARTIST, 0u },
+		{ "Beta", CHARACTER_CLASS_ID::WARLORD, 1u },
+		{ "Gamma", CHARACTER_CLASS_ID::SLAYER, 0u },
+		{ "Delta", CHARACTER_CLASS_ID::LANCE_MASTER, 1u } };
+	CPacketWriter matchWriter;
+	{
+		const bool written = Write_Message(matchWriter, match);
+		CPacketReader reader{ matchWriter.Get_Buffer() };
+		S2C_COLOSSEUM_MATCH_FOUND decoded{};
+		tests.Require(written && Read_Message(reader, decoded) && 0u == reader.Get_RemainingSize() &&
+			2u == decoded.iLocalIndex && 4u == decoded.Participants.size() &&
+			"Gamma" == decoded.Participants[2].strNickname &&
+			CHARACTER_CLASS_ID::SLAYER == decoded.Participants[2].eCharacterClass &&
+			1u == decoded.Participants[3].iTeam,
+			"Colosseum match roster round trips with each player's team");
+	}
+	S2C_COLOSSEUM_MATCH_FOUND badIndex = match;
+	badIndex.iLocalIndex = 4u;
+	CPacketWriter badIndexWriter;
+	tests.Require(!Write_Message(badIndexWriter, badIndex), "Colosseum match roster rejects a local index outside the list");
+	S2C_COLOSSEUM_MATCH_FOUND badTeam = match;
+	badTeam.Participants[0].iTeam = 2u;
+	CPacketWriter badTeamWriter;
+	tests.Require(!Write_Message(badTeamWriter, badTeam), "Colosseum match roster rejects a team other than 0 or 1");
+	S2C_COLOSSEUM_MATCH_FOUND empty{};
+	CPacketWriter emptyWriter;
+	tests.Require(!Write_Message(emptyWriter, empty), "Colosseum match roster rejects an empty list");
+	S2C_COLOSSEUM_MATCH_FOUND solo{};
+	solo.Participants = { { "Alpha", CHARACTER_CLASS_ID::ARTIST, 0u } };
+	CPacketWriter soloWriter;
+	tests.Require(Write_Message(soloWriter, solo), "Colosseum match roster allows one player (Debug builds start with one)");
+}
+
 int main(const int argumentCount, char* arguments[])
 {
 	TEST_RUNNER testRunner{};
+    if (argumentCount == 2 && std::string_view(arguments[1]) == "--colosseum-queue-only")
+    { Test_ColosseumQueueProtocol(testRunner); return testRunner.iFailureCount ? 1 : 0; }
     if (argumentCount == 2 && std::string_view(arguments[1]) == "--character-restore-only")
     { Test_CharacterRestoreProtocol(testRunner); return testRunner.iFailureCount ? 1 : 0; }
     if (argumentCount == 2 && std::string_view(arguments[1]) == "--battle-items-only")
@@ -9044,6 +9142,7 @@ int main(const int argumentCount, char* arguments[])
 	Test_KoukuSaydonPatternAuditionProtocol(testRunner);
 	Test_GuideCompanionProtocol(testRunner);
 	Test_ChatProtocol(testRunner);
+	Test_ColosseumQueueProtocol(testRunner);
 
 	Test_StreamFraming(testRunner);
 

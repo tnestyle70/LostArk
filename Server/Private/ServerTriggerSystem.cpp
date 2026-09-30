@@ -921,7 +921,8 @@ bool LostArk::Server::CServerTriggerSystem::Build_WorldTransfer(
 	if (WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL != action.eKind ||
 		(WORLD_ID::BERN != action.eTargetWorldId &&
 			WORLD_ID::VALTAN_ARENA != action.eTargetWorldId &&
-			WORLD_ID::MAHARAKA != action.eTargetWorldId) ||
+			WORLD_ID::MAHARAKA != action.eTargetWorldId &&
+			WORLD_ID::COLOSSEUM != action.eTargetWorldId) ||
 		INVALID_SESSION_ID == player.iSessionId ||
 		CHARACTER_CLASS_ID::END == player.eCharacterClass ||
 		player.strNickName.empty() || 0u == player.iCurrentHp ||
@@ -938,7 +939,8 @@ bool LostArk::Server::CServerTriggerSystem::Build_WorldTransfer(
 	   title, the bag and the purse ride along instead of resetting to a fresh entry.
 	   The Bern <-> Valtan boxes keep their established fresh-entry behaviour. */
 	if (WORLD_ID::MAHARAKA == action.eTargetWorldId ||
-		WORLD_ID::MAHARAKA == fromWorldId)
+		WORLD_ID::MAHARAKA == fromWorldId ||
+		WORLD_ID::COLOSSEUM == action.eTargetWorldId)
 	{
 		outTransfer.iHonorTitleId = player.iHonorTitleId;
 		outTransfer.CarriedInventory = player.Inventory;

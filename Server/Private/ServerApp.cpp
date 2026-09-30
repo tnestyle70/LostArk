@@ -2559,7 +2559,8 @@ int LostArk::Server::CServerApp::Run(
 		!stageSharedSimulation(WORLD_ID::VALTAN_ARENA) ||
 		!stageSharedSimulation(WORLD_ID::TRAINING_GROUND) ||
 		!stageSharedSimulation(WORLD_ID::KAKULSAYDON_ARENA) ||
-		!stageSharedSimulation(WORLD_ID::MAHARAKA))
+		!stageSharedSimulation(WORLD_ID::MAHARAKA) ||
+		!stageSharedSimulation(WORLD_ID::COLOSSEUM))
 	{
 		return 1;
 	}
@@ -2628,7 +2629,7 @@ int LostArk::Server::CServerApp::Run(
 		0 == ::_isatty(::_fileno(stdin));
 	std::cout << "Listening on " << bindAddress << ':' << port
 		<< " with shared BERN, VALTAN_ARENA, TRAINING_GROUND, "
-		<< "KAKULSAYDON_ARENA, MAHARAKA and "
+		<< "KAKULSAYDON_ARENA, MAHARAKA, COLOSSEUM and "
 		<< "session-private CHARACTER_SELECT_ARENA simulations.";
 	if (0u == automaticShutdownMilliseconds && useHeadlessMode)
 	{
@@ -3488,6 +3489,28 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		}
 		command.eType = ROOM_COMMAND_TYPE::CONFIRM_NPC_ENTRY;
 		command.ConfirmNpcEntry = request;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_COLOSSEUM_QUEUE_JOIN)
+	{
+		C2S_COLOSSEUM_QUEUE_JOIN request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_COLOSSEUM_QUEUE_JOIN");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::COLOSSEUM_QUEUE_JOIN;
+		command.ColosseumQueueJoin = std::move(request);
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_COLOSSEUM_QUEUE_LEAVE)
+	{
+		C2S_COLOSSEUM_QUEUE_LEAVE request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_COLOSSEUM_QUEUE_LEAVE");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::COLOSSEUM_QUEUE_LEAVE;
+		command.ColosseumQueueLeave = request;
 	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_INTERACT_TRIGGER)
 	{

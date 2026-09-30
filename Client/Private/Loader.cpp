@@ -989,6 +989,46 @@ HRESULT CLoader::Ready_For_Maharaka()
 	return S_OK;
 }
 
+HRESULT CLoader::Ready_For_Colosseum()
+{
+	CNpcPresentationAssetService::Begin_LevelLoad(ETOUI(LEVEL::COLOSSEUM));
+	CNpcPlacementPresentationService::Begin_LevelLoad(ETOUI(LEVEL::COLOSSEUM));
+	if (FAILED(CNpcPlacementPresentationService::Load(
+		ETOUI(LEVEL::COLOSSEUM), "COLOSSEUM")))
+	{
+		OutputDebugStringA(("[Loader][NpcPresentation] " +
+			CNpcPlacementPresentationService::Get_Status() + "\n").c_str());
+	}
+	CLevelResourceRollbackScope rollback(ETOUI(LEVEL::COLOSSEUM));
+	Declare_Phases(5u);
+	Set_Status(TEXT("COLOSSEUM: arena catalog and placements"));
+
+	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
+		CLevelRegistry::Find(LEVEL::COLOSSEUM);
+	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId ||
+		FAILED(Ready_MapArea(
+			ETOUI(LEVEL::COLOSSEUM),
+			pEntry->pMapAreaId,
+			pEntry->MapLoadScope)))
+	{
+		return E_FAIL;
+	}
+
+	Set_Status(TEXT("COLOSSEUM: session character bundle"));
+	const std::array selectedClass =
+	{
+		m_ePreparedCharacterClass
+	};
+	if (FAILED(Ready_Character_Rendering(
+		ETOUI(LEVEL::COLOSSEUM),
+		selectedClass)))
+		return E_FAIL;
+
+	Set_Status(TEXT("Colosseum loading complete"));
+	rollback.Commit();
+	return S_OK;
+}
+
 HRESULT CLoader::Ready_MapArea(
 	const uint32_t iLevelIndex,
 	const std::string& areaId,
@@ -1300,6 +1340,7 @@ HRESULT CLoader::Ready_MapAuthoringCore(const uint32_t iLevelIndex)
 	   spawn anchor boxes as TriggerBox clones under that level's index. */
 	if ((iLevelIndex == ETOUI(LEVEL::DEVELOPMENT) ||
 		iLevelIndex == ETOUI(LEVEL::MAHARAKA) ||
+		iLevelIndex == ETOUI(LEVEL::COLOSSEUM) ||
 		iLevelIndex == ETOUI(LEVEL::CHARACTER_SELECT) ||
 		iLevelIndex == ETOUI(LEVEL::BERN) ||
 		iLevelIndex == ETOUI(LEVEL::VALTAN_ARENA) ||

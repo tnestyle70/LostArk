@@ -352,6 +352,23 @@ bool Client::CNetworkPlayerCommandSink::Request_GateProgressRespond(
 		clientSequence, proposalId, accepted);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_ColosseumQueueJoin(
+	const std::uint32_t clientSequence, const std::string& npcPlacementId)
+{
+	return CNetworkManager::Get().Send_ColosseumQueueJoin(clientSequence, npcPlacementId);
+}
+
+bool Client::CNetworkPlayerCommandSink::Request_ColosseumQueueLeave(const std::uint32_t clientSequence)
+{
+	return CNetworkManager::Get().Send_ColosseumQueueLeave(clientSequence);
+}
+
+bool Client::CNetworkPlayerCommandSink::Consume_ColosseumQueueState(
+	LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE& outState)
+{
+	return CNetworkManager::Get().Try_Consume_ColosseumQueueState(outState);
+}
+
 bool Client::CNetworkPlayerCommandSink::Consume_GateProgressState(
 	LostArk::Shared::S2C_GATE_PROGRESS_STATE& outState)
 {

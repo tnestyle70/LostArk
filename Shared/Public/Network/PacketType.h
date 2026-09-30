@@ -121,7 +121,10 @@ namespace LostArk::Shared
 	// 122 carries each player's latest Waterpang water gun cast (skill id and Server start tick).
 	// 124 combines saved-character restore, raid EXIT votes and ground-target battle items.
 	// 125 merges the 122 water gun cast wire with the 124 main line; no packet numbers were renumbered.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 125;
+	// 126 adds WORLD_ID::COLOSSEUM (Proving Grounds walk-around arena, no PvP rules).
+	// 127 appends the Colosseum match queue: accept/leave commands, queue state and the
+	// Server-decided team roster sent before the world transfer.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 127;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -131,6 +134,7 @@ namespace LostArk::Shared
 		CHARACTER_SELECT_ARENA = 4,
 		KAKULSAYDON_ARENA = 5,
 		MAHARAKA = 6,
+		COLOSSEUM = 7,
 		END
 	};
 
@@ -142,7 +146,8 @@ namespace LostArk::Shared
 			WORLD_ID::TRAINING_GROUND == worldId ||
 			WORLD_ID::CHARACTER_SELECT_ARENA == worldId ||
 			WORLD_ID::KAKULSAYDON_ARENA == worldId ||
-			WORLD_ID::MAHARAKA == worldId;
+			WORLD_ID::MAHARAKA == worldId ||
+			WORLD_ID::COLOSSEUM == worldId;
 	}
 
 	enum class CHARACTER_CLASS_ID : std::uint8_t
@@ -445,7 +450,15 @@ namespace LostArk::Shared
 		// right after entering Bern. Every admitted request receives a typed result;
 		// success follows the authoritative inventory snapshot in the reliable queue.
 		C2S_RESTORE_CHARACTER,
-		S2C_RESTORE_CHARACTER_RESULT
+		S2C_RESTORE_CHARACTER_RESULT,
+		// Colosseum match queue (Bern). The Client answers the NPC offer with JOIN (a decline
+		// sends nothing), Esc on the wait window sends LEAVE, and the Server answers with
+		// QUEUE_STATE. When the head count is met it sends MATCH_FOUND (the random team split)
+		// to each queued session just before the ordinary world transfer. Append-only.
+		C2S_COLOSSEUM_QUEUE_JOIN,
+		C2S_COLOSSEUM_QUEUE_LEAVE,
+		S2C_COLOSSEUM_QUEUE_STATE,
+		S2C_COLOSSEUM_MATCH_FOUND
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -577,6 +590,10 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_BALANCE_SNAPSHOT:
 		case PACKET_TYPE::C2S_BALANCE_PATCH:
 		case PACKET_TYPE::S2C_BALANCE_RESULT:
+		case PACKET_TYPE::C2S_COLOSSEUM_QUEUE_JOIN:
+		case PACKET_TYPE::C2S_COLOSSEUM_QUEUE_LEAVE:
+		case PACKET_TYPE::S2C_COLOSSEUM_QUEUE_STATE:
+		case PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND:
 			return true;
 		default:
 			return  false;

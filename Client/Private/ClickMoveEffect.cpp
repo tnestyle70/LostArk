@@ -22,7 +22,8 @@ bool_t Client::CClickMoveEffect::Uses_LevelMarkers(const LEVEL level)
 {
 	return LEVEL::CHARACTER_SELECT == level || LEVEL::BERN == level ||
 		LEVEL::VALTAN_ARENA == level || LEVEL::KAKULSAYDON_ARENA == level ||
-		LEVEL::DEVELOPMENT == level || LEVEL::MAHARAKA == level;
+		LEVEL::DEVELOPMENT == level || LEVEL::MAHARAKA == level ||
+		LEVEL::COLOSSEUM == level;
 }
 
 std::vector<std::string> Client::CClickMoveEffect::Queue_LevelResources(const LEVEL level)
