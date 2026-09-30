@@ -6,7 +6,8 @@
 PR #494의 내구도·수리, #495의 경기 표현·승패·외형 복제, #496의 이동·Guide·용병·Waterpang을 합쳤다.
 Kouku 인형·칼날·랜덤 출구는 `out/KoukuIntegrationAudit20261001`의 실제 소스/저작 diff 범위로 반영했다.
 게시 데이터는 옛 snapshot을 덮지 않고 최종 통합 소스에서 publisher로 다시 생성했다.
-이 문서 작성 시 원격 병합과 ZIP 전달은 아직 진행 중이다. 완료 근거는 마지막 검증 표에서 구분한다.
+통합 PR은 https://github.com/tnestyle70/LostArk/pull/497 이다. 원격 병합 상태는 PR에서,
+빌드·ZIP 완료 근거와 사용자 화면 확인 범위는 아래 검증 표에서 구분한다.
 
 ## G01. 60 FPS 이하 이동과 근거의 범위
 
@@ -82,9 +83,10 @@ ZIP은 Resources를 포함하지 않고 기존 완전한 Resources만 읽는다.
 | Kouku tuning Python | 15 검사 통과 |
 | Release Kouku overlap / product / world playback | 모두 failures 0 |
 | Release 카드 미로 실제 Q·snapshot·랜덤 출구 | failures 0 |
-| Debug/Release 최종 통합 빌드 | Release Product PASS, Debug 진행 중 |
+| Debug/Release 최종 통합 빌드 | 모두 정상 Product PASS, 누락·무효 런타임 입력 0 |
 | Server 회귀 | Release focused 955 / Debug 1210 검사, failures 0 |
-| 원격 병합 / ZIP CRC·manifest·launcher 검사 | 진행 중 |
+| 원격 통합 | 원본 3개 PR head ancestry를 보존한 통합 PR #497 |
+| ZIP CRC·manifest·launcher 검사 | 모두 PASS, 게임 프로세스 실행 없음 |
 | Client 화면·실청·실제 다인 LAN | 사용자 확인 필요 |
 
 원본 작업 폴더의 다른 세션 변경을 reset/stash/checkout하지 않았다.
@@ -158,3 +160,24 @@ SHA256은 `bf3feb6c99a9f1752aecc67454139540ab2cadcbec54ebd8b5f2125868fa59d8`이�
 별도 읽기 전용 12.177초 계측에서는 실제 Debug Client/Server와 실행 파일 hash를 확인했다.
 빌드 프로세스가 없는 5표본에서 Server CPU 평균은 한 논리 코어 기준 0.8%, Client GPU 3D는
 28.4%였다. 이는 frame별 hitch 판정 자료가 아니며 위 F7 capture와도 같은 시각 표본이 아니다.
+
+## G09. 최종 실행 파일과 ZIP
+
+정상 Product 빌드는 Release 230968ms, Debug 296193ms에 통과했다.
+각 receipt는 `out/BuildPipeline/runs/20260930T214859834Z-release-product.json`과
+`20260930T215618535Z-debug-product.json`이며 skip 없이 실제 컴파일·링크한 결과다.
+기존 파일 인코딩 및 vendor PDB 관련 경고는 있었지만 컴파일·링크 오류는 없었다.
+최종 변경 JSON 44개 parse와 git diff check, numeric 원본 6개 Git checkout byte hash도 통과했다.
+
+`LostArk-Release-20261001-PR494-496.zip`은 소스 commit
+`7721f0e955a18f5d3f6e3d0c2b3054312a44b1f2`의 Release 산출물과 최종 데이터를 담는다.
+이후 완료 기록 변경은 실행 코드·데이터에 영향을 주지 않는다.
+ZIP은 169735298 bytes이며 SHA256은
+`c78ff6603affb0f709e1674095209fef630902cc5a23ac20a699aef73b52d661`이다.
+기본 payload 2820개 파일(Data 2178, shader 254), numeric 587 fields,
+Kouku source 2498 / sequence 183 / protocol 132를 검증했다.
+ZIP CRC·중복 경로·전체 manifest 파일 SHA256과 실제 launcher --check가 통과했다.
+Client/Server 실행은 0회이며 Resources는 외부 완전한 폴더를 선택한다.
+내부 `release-ready.receipt.json`은 실제 EXE/DLL hash와 소스 commit을 기록한다.
+증거는 `out/ReleasePackaging/portable-delivery.receipt.json`과
+`preflight-20261001-pr494-496-final.json`에 있다.
