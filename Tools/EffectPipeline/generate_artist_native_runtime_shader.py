@@ -489,7 +489,15 @@ for ordinal, selection in enumerate(selections):
                     ('ea196d5080bed8449612de3b1bfc28c3', 3, 'opacity', [0, 3, 4, 5]),
                 ('e386f4f096d15843a75f1c661c5d9d9d', 'cf097fb30a0d434facb4ded0faee0083'):
                     ('cf097fb30a0d434facb4ded0faee0083', 7, 'opacity', [0, 7, 8, 9]),
+                ('a6a80de806ee4a458710a061784f6ca4', 'cf097fb30a0d434facb4ded0faee0083'):
+                    ('cf097fb30a0d434facb4ded0faee0083', 4, 'opacity', [0, 4, 5, 6]),
             }.get(source_pair, kouku_lit)
+        if sid == 'a6a80de806ee4a458710a061784f6ca4':
+            assert selection['rendererShape'] == 'sprite'
+            assert selection['sourceVF'] == 'fparticledynamicparametervertexfactory'
+            assert p['disassembly']['instructionSha256'] == 'bf3913c0f13cc89dcd0bbdc6c1bd1147e798bb3dcd02f2c00696700f6fde31dd'
+            assert 'mad r0.xyz, r0.xxxx, cb0[4].xyzx, r0.yzwy' in instructions
+            assert 'mul r0.xyz, r0.xyzx, cb0[6].wwww' in instructions
         if kouku_lit:
             assert selection['sourceVS'] == kouku_lit[0], ('Kouku lit vertex shader mismatch', selection['sourceVS'], kouku_lit[0])
             assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == kouku_lit[3], ('Kouku lit engine rows mismatch', bindings['constantBufferClosure']['unownedConstantBuffer0Slots'], kouku_lit[3])
@@ -555,10 +563,19 @@ for ordinal, selection in enumerate(selections):
             # Destruction Bomb: original LocalDecal projection/color/opacity,
             # sky rows 12..14; declared suffix padding 10/11 is unused.
             'ac639f46d134fb4d8c0b10ae1cc97fed': ('5d79421dc8571c45aa49790f50274f51', 12, [0, 1, 2, 10, 11, 12, 13, 14]),
+            # Waterpang water-bomb puddle: the same LocalDecal projection,
+            # particle RGBA/opacity and tangent-up sky rows 12..14.
+            '9d7c0616bcbe3848ad574cca4970b976': ('5d79421dc8571c45aa49790f50274f51', 12, [0, 1, 2, 10, 11, 12, 13, 14]),
         }.get(sid) if decal else None
         if kouku_decal:
             assert selection['sourceVS'] == kouku_decal[0]
             assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == kouku_decal[2]
+        if decal and sid == '9d7c0616bcbe3848ad574cca4970b976':
+            assert selection['sourceVF'] == 'flocaldecalvertexfactory'
+            assert p['disassembly']['instructionSha256'] == '1a84137ced70d45734395181e94c197ca862f8d4983c339027e550b0c96bcaea'
+            assert bindings['bindingSemanticSha256'] == '4ef4f2fd17c3d4f360fbf8e1c39cc41f1b8a5733c81fa6da6592e2ce4f577b9d'
+            assert bindings['textureSampleClosure']['unownedEngineSamplePairs'] == []
+            assert not any(re.search(r'cb0\[(?:10|11)\]', line) for line in instructions)
         if decal and sid == 'ac639f46d134fb4d8c0b10ae1cc97fed':
             assert selection['sourceVF'] == 'flocaldecalvertexfactory'
             assert p['disassembly']['instructionSha256'] == 'db185a4b77af6ebca777c9ce74934fcb3e413ffd95ee11e886257e165e28e73a'
@@ -842,6 +859,17 @@ for ordinal, selection in enumerate(selections):
             assert 'mul o0.w, r0.w, cb0[0].x' in instructions
         action_post_rt0 = (arguments.profile_domain == 'kouku' and sid in (
             '599a6ad60ea6494a83850077e6cd3356', '5a405d04c4e0fa42a1342f8da1615ca0'))
+        watergun_bubble_rt0 = arguments.profile_domain == 'kouku' and sid == 'eb6a24bbbb7c4246b22f07ef44605ec5'
+        if watergun_bubble_rt0:
+            # The source bubble writes normal/material MRTs before its final
+            # RT0 alpha. Preserve the complete RT0 expression on the existing
+            # forward mesh carrier; archived auxiliary MRTs are not RT0 inputs.
+            assert mesh and selection['sourceVF'] == 'flocalvertexfactory'
+            assert selection['sourceVS'] == 'a56e2bb4d7bc804db910c19ed4896bed'
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0, 1]
+            assert p['disassembly']['instructionSha256'] == 'dee3d2a1f44d407baad81ae7507f942e0b65bcbe99f334fd1b15940cf14b900d'
+            assert bindings['bindingSemanticSha256'] == '3b7fdf24de3f353751d5efc99912182b9b7e9d4090cc12ffa5f324c3d4a3a3bb'
+            assert bindings['textureSampleClosure']['unownedEngineSamplePairs'] == []
         if action_post_rt0:
             # Typed action material effect on the same full-screen LocalVF.
             # Only RT0 is composited; preserve auxiliary native MRTs in archive.
@@ -964,7 +992,7 @@ for ordinal, selection in enumerate(selections):
                 skip.add(sampleIndex+1);skip.update(range(reconstructionIndex+1,reconstructionIndex+4));break
             else:raise ValueError(('unclosed native depth sample',sid,sampleInstruction))
         for i,ins in enumerate(instructions):
-            if (model or decal or kouku_lit or kouku_ice or kouku_glass_post or source_motion_blur or action_post_rt0) and re.search(r'\bo[1-9]\.',ins):continue # Existing forward carrier consumes RT0; other native MRT writes remain recorded in the source archive.
+            if (model or decal or kouku_lit or kouku_ice or kouku_glass_post or source_motion_blur or action_post_rt0 or watergun_bubble_rt0) and re.search(r'\bo[1-9]\.',ins):continue # Existing forward carrier consumes RT0; other native MRT writes remain recorded in the source archive.
             if i in skip:continue
             if i in depthReconstruct:
                 raw,dst=depthReconstruct[i]

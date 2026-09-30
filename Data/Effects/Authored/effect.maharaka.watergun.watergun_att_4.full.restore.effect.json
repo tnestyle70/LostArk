@@ -2,7 +2,7 @@
   "schema": "lostark.effect-authoring",
   "version": 13,
   "effectAssetId": "effect.maharaka.watergun.watergun_att_4.full.restore",
-  "displayName": "Waterpang water gun watergun_att_4",
+  "displayName": "워터팡 | MK2 단발 물총 총구",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

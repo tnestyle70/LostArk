@@ -1156,7 +1156,7 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 	for (const auto& [id, player] : m_Players)
 	{
 		(void)id;
-		if (player.Is_Guide()) continue;
+		if (!player.Is_Human()) continue;
 		if (std::find(leaderFirstSessionIds.begin(), leaderFirstSessionIds.end(),
 			player.iSessionId) != leaderFirstSessionIds.end()) continue;
 		CLIENT_SESSION_RELIABLE_BATCH observer{ Find_Session(player.iSessionId), {} };
@@ -1175,7 +1175,7 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 	for (const auto& [id, player] : target.m_Players)
 	{
 		(void)id;
-		if (player.Is_Guide()) continue;
+		if (!player.Is_Human()) continue;
 		CLIENT_SESSION_RELIABLE_BATCH observer{ target.Find_Session(player.iSessionId), {} };
 		for (const auto& entry : entries)
 		{
@@ -1803,6 +1803,7 @@ bool LostArk::Server::CGameRoom::Try_StartMaharakaWaterGunSkill(
 	MAHARAKA_WATERGUN_SHOT shot{};
 	shot.iOwnerId = player.iPlayerId;
 	shot.iSkillId = skill->iSkillId;
+	shot.iSourceNetEntityId = player.iNetEntityId;
 	shot.iSpawnTick = Add_ServerTicksSkippingReservedZero(startTick, Get_MaharakaWaterGunTicks(skill->iSpawnMs));
 	shot.fAimDistanceM = (std::min)(skill->fMaxRangeM, (std::max)(aimDistance, 1.f));
 	m_MaharakaWaterGunShots.push_back(std::move(shot));
@@ -1849,8 +1850,21 @@ void LostArk::Server::CGameRoom::Update_MaharakaWaterGunShots(const std::uint32_
 			shot.fX = owner.fPositionX;
 			shot.fY = owner.fPositionY;
 			shot.fZ = owner.fPositionZ;
+            if (MAHARAKA_WATERGUN_KIND::GRENADE != skill->eKind)
+            {
+                shot.fX += shot.fDirX * .70f + shot.fDirZ * .11f;
+                shot.fZ += shot.fDirZ * .70f - shot.fDirX * .11f;
+            }
 			shot.fReachM = MAHARAKA_WATERGUN_KIND::GRENADE == skill->eKind ?
 				shot.fAimDistanceM : skill->fSpeedMps * skill->fLifeSeconds;
+            auto transaction = m_CombatObjectRuntime.Begin_Transaction();
+            std::string status;
+            if (m_CombatObjectRuntime.Stage_WaterGunPresentation(transaction, owner,
+                shot.iSkillId, m_GameplayCatalog, shot.iSpawnTick, status))
+            {
+                const auto visualId = transaction.Objects.back().iCombatObjectId;
+                if (m_CombatObjectRuntime.Commit(std::move(transaction))) shot.iVisualObjectId = visualId;
+            }
 		}
 		const float step = (std::min)(skill->fSpeedMps * fixedDeltaSeconds, shot.fReachM - shot.fTravelM);
 		if (step > 0.f)
@@ -1859,6 +1873,20 @@ void LostArk::Server::CGameRoom::Update_MaharakaWaterGunShots(const std::uint32_
 			shot.fZ += shot.fDirZ * step;
 			shot.fTravelM += step;
 		}
+        if (shot.iVisualObjectId)
+        {
+            float visualY = shot.fY + .75f;
+            if (MAHARAKA_WATERGUN_KIND::GRENADE == skill->eKind)
+            {
+                // Source grenade height is 60..90 cm, apex ratio .4. The room
+                // supplies a bounded piecewise parabola; collision remains at ground arrival.
+                const float progress = shot.fReachM > .0001f ? std::clamp(shot.fTravelM / shot.fReachM, 0.f, 1.f) : 1.f;
+                const float u = progress <= .4f ? progress / .4f : (1.f - progress) / .6f;
+                visualY = shot.fY + .75f * (2.f * u - u * u);
+            }
+            (void)m_CombatObjectRuntime.Set_OwnedVisualPosition(shot.iVisualObjectId,
+                shot.iSourceNetEntityId, shot.iSpawnTick, shot.fX, visualY, shot.fZ);
+        }
 		const bool grenade = MAHARAKA_WATERGUN_KIND::GRENADE == skill->eKind;
 		const bool landed = shot.fTravelM + 0.0001f >= shot.fReachM;
 		// A thrown bomb only bursts where it lands; a missile touches bodies along the way.
@@ -1881,8 +1909,10 @@ void LostArk::Server::CGameRoom::Update_MaharakaWaterGunShots(const std::uint32_
 				hit.bIgnoreCounter = true;
 				hit.fSourceX = shot.fX;
 				hit.fSourceZ = shot.fZ;
-				hit.fPushRangeM = skill->fPushRangeM;
-				hit.iPushMs = skill->iPushMs;
+                // User-selected Kouku laser knockback, shared by humans and bots.
+                hit.fPushRangeM = m_MaharakaAITuning.fKnockbackRangeM;
+                hit.iPushMs = m_MaharakaAITuning.iKnockbackMs;
+                hit.bForcePush = true;
 				// A missile carries the body along its own line; a burst pushes away from its centre.
 				hit.bUsePushDirection = !grenade;
 				hit.fPushDirectionX = shot.fDirX;
@@ -1899,7 +1929,18 @@ void LostArk::Server::CGameRoom::Update_MaharakaWaterGunShots(const std::uint32_
 		}
 		if (landed)
 			shot.bSpent = true;
+        if (shot.bSpent && shot.iVisualObjectId)
+        {
+            const bool impact = grenade ? landed : !shot.Struck.empty();
+            (void)m_CombatObjectRuntime.Finish_WaterGunPresentation(shot.iVisualObjectId,
+                shot.iSourceNetEntityId, shot.iSpawnTick, updateTick, impact);
+            shot.iVisualObjectId = INVALID_COMBAT_OBJECT_ID;
+        }
 	}
+    for (const auto& shot : m_MaharakaWaterGunShots)
+        if (shot.bSpent && shot.iVisualObjectId)
+            (void)m_CombatObjectRuntime.Cancel_OwnedVisualObject(shot.iVisualObjectId,
+                shot.iSourceNetEntityId, shot.iSpawnTick);
 	m_MaharakaWaterGunShots.erase(
 		std::remove_if(m_MaharakaWaterGunShots.begin(), m_MaharakaWaterGunShots.end(),
 			[](const MAHARAKA_WATERGUN_SHOT& shot) { return shot.bSpent; }),

@@ -388,6 +388,8 @@ void CMaharakaWaterpangPresentation::Trace_Waterfall(const LostArk::Shared::MAHA
 void CMaharakaWaterpangPresentation::Accept(const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& play)
 {
     using namespace LostArk::Shared;
+    if (play.strSequenceInstanceId == MAHARAKA_WATERPANG_INTRO_INSTANCE && play.eOperation == WORLD_SEQUENCE_OPERATION::STOP)
+    { Stop(); return; }
     MAHARAKA_WATERPANG_EVENT_KIND forcedKind{};
     if (m_Ready && play.eOperation==WORLD_SEQUENCE_OPERATION::PLAY && play.iStartTick &&
         Find_MaharakaWaterpangDebugKind(play.strSequenceInstanceId,forcedKind))
@@ -522,6 +524,21 @@ void CMaharakaWaterpangPresentation::Render() const
         L"\uBAA8\uCF54\uBAA8\uCF54 \uC5B4\uD2B8\uB809\uC158\uC5D0\uC11C \uBB3C\uBCBC\uB77D\uC774 \uC3DF\uC544\uC9D1\uB2C8\uB2E4."};
     if (m_Notice>=0 && m_Notice<3)
         UILabelFont::Draw_Centered(TEXT("Font_YoonGasiIIM"),NOTICES[m_Notice],viewport.x*.5f,viewport.y*.18f,22.f*scale,DirectX::Colors::White);
+    if (m_Scheduled && !m_Failed && m_LastTick)
+    {
+        using namespace LostArk::Shared;
+        const auto elapsed = static_cast<int32_t>(m_LastTick - m_StartTick);
+        const auto begin = MAHARAKA_WATERPANG_FIRST_EVENT_SECONDS * MAHARAKA_WATERPANG_TICK_HZ;
+        if (elapsed >= static_cast<int32_t>(begin))
+        {
+            const auto ticks = elapsed < static_cast<int32_t>(MAHARAKA_WATERPANG_MATCH_END_TICKS) ?
+                MAHARAKA_WATERPANG_MATCH_END_TICKS - static_cast<uint32_t>(elapsed) : 0u;
+            const auto seconds = (ticks + MAHARAKA_WATERPANG_TICK_HZ - 1u) / MAHARAKA_WATERPANG_TICK_HZ;
+            wchar_t remaining[64]{};
+            std::swprintf(remaining, 64, L"Waterpang  %02u:%02u", seconds / 60u, seconds % 60u);
+            UILabelFont::Draw_Centered(TEXT("Font_YoonGasiIIM"), remaining, viewport.x * .5f, viewport.y * .11f, 22.f * scale, DirectX::Colors::White);
+        }
+    }
     if (!m_Countdown || m_Failed) return;
     const std::wstring text=L"\uC6CC\uD130\uD321 \uC544\uB808\uB098\uAC00 "+std::to_wstring(m_Countdown)+L"\uCD08 \uB4A4\uC5D0 \uC2DC\uC791\uD569\uB2C8\uB2E4";
     UILabelFont::Draw_Centered(TEXT("Font_YoonGasiIIM"),text.c_str(),viewport.x*.5f,viewport.y*.25f,26.f*scale,DirectX::Colors::Yellow);

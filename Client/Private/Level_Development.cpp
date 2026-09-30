@@ -27,6 +27,11 @@ void Client::CLevel_Development::Set_MapAuthoringActive(bool_t active)
     if (active && m_Waterpang) m_Waterpang->Suspend_ForAuthoring();
     m_bMapAuthoringActive = active;
 }
+void Client::CLevel_Development::Set_WaterpangEffectAuthoringActive(bool_t active)
+{
+    if (active && m_Waterpang) m_Waterpang->Suspend_ForAuthoring();
+    m_bWaterpangEffectAuthoringActive = active;
+}
 #endif
 #include "InteractKeyPromptView.h"
 
@@ -255,7 +260,7 @@ void CLevel_Development::Update(const f32_t fTimeDelta)
 	const shared_ptr<CCamera_Free> camera = m_pCamera.lock();
 	bool editing = false;
 #ifdef _DEBUG
-	editing = m_bMapAuthoringActive;
+	editing = m_bMapAuthoringActive || m_bWaterpangEffectAuthoringActive;
 #endif
 	if (m_Waterpang)
 	{

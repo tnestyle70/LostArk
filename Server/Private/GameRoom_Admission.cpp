@@ -378,6 +378,7 @@ bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
 		message.iNetEntityId = player.iNetEntityId;
 		message.eCharacterClass = player.eCharacterClass;
 		message.eControlKind = player.eControlKind;
+        message.strWaterpangNpcArchetypeId = player.strWaterpangNpcArchetypeId;
 		message.strNickName = player.strNickName;
 		message.fPositionX = player.fPositionX;
 		message.fPositionY = player.fPositionY;

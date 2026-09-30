@@ -48,6 +48,7 @@ public:
 	const ComPtr<ID3D11Device>& Get_MapAuthoringDevice() const { return m_pDevice; }
 	const ComPtr<ID3D11DeviceContext>& Get_MapAuthoringContext() const { return m_pContext; }
 	void Set_MapAuthoringActive(bool_t active);
+	void Set_WaterpangEffectAuthoringActive(bool_t active);
 	std::shared_ptr<CCharacter> Get_DebugLocalCharacter() const { return m_Replication.Get_LocalCharacter(); }
 	// Debug F1 typed Server requests (Waterpang forced patterns) go through the level's sink.
 	std::shared_ptr<IPlayerCommandSink> Get_DebugCommandSink() const { return m_pPlayerCommandSink; }
@@ -69,6 +70,7 @@ private:
 	CDeployPropRuntime m_WaterpangDeploy;
 #ifdef _DEBUG
 	bool_t m_bMapAuthoringActive = false;
+	bool_t m_bWaterpangEffectAuthoringActive = false;
 #endif
 	// Maharaka only: the published source lights of the island, submitted every frame.
 	shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;

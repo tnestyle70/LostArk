@@ -2,7 +2,7 @@
   "schema": "lostark.effect-authoring",
   "version": 13,
   "effectAssetId": "effect.maharaka.waterpang.cannon.att_battle_3_02.part2.full.restore",
-  "displayName": "Waterpang cannon att_battle_3_02.part2",
+  "displayName": "워터팡 | 중앙 기둥 회전 분사 2",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

@@ -200,6 +200,8 @@ def main() -> int:
     parser.add_argument("--scale", type=float, default=1.0,
                         help="applied to PSA translations; the shipped sets are "
                              "already in the cooked unit, so default is 1")
+    parser.add_argument("--coordinate-profile", choices=("actorx", "umodel-gltf"), default="actorx",
+                        help="The original body cooker basis; UModel glTF maps PSA XYZ to XZY")
     args = parser.parse_args()
     section_name = args.name or args.clip
 
@@ -255,16 +257,19 @@ def main() -> int:
         for frame in range(info["frames"]):
             px, py, pz, _qx, _qy, _qz, _qw, _t = PSA_ANIM_KEY.unpack_from(
                 keys, (frame * info["bones"] + bone_index) * PSA_ANIM_KEY.size)
-            key_blob += VECTOR_KEY.pack(float(frame), px * args.scale,
-                                        py * args.scale, -pz * args.scale)
+            position = (px, pz, py) if args.coordinate_profile == "umodel-gltf" else (px, py, -pz)
+            key_blob += VECTOR_KEY.pack(float(frame), *(v * args.scale for v in position))
         rot_at = len(key_blob)
         for frame in range(info["frames"]):
             _px, _py, _pz, qx, qy, qz, qw, _t = PSA_ANIM_KEY.unpack_from(
                 keys, (frame * info["bones"] + bone_index) * PSA_ANIM_KEY.size)
-            if 0 == bone_index:
-                key_blob += QUATERNION_KEY.pack(float(frame), -qx, -qy, qz, qw)
+            if args.coordinate_profile == "umodel-gltf":
+                # The existing glTF NPC cooker exchanges Y/Z; the PSA root is
+                # unconjugated while every descendant is stored conjugated.
+                rotation = (-qx, -qz, -qy, qw) if bone_index == 0 else (qx, qz, qy, qw)
             else:
-                key_blob += QUATERNION_KEY.pack(float(frame), qx, qy, -qz, qw)
+                rotation = (-qx, -qy, qz, qw) if bone_index == 0 else (qx, qy, -qz, qw)
+            key_blob += QUATERNION_KEY.pack(float(frame), *rotation)
         scl_at = len(key_blob)
         scale = scale_by_hash.get(name_hash, (1.0, 1.0, 1.0))
         for frame in range(info["frames"]):

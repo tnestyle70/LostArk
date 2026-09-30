@@ -72,6 +72,7 @@ bool LostArk::Server::CGameRoom::Send_Spawned(
 	message.iNetEntityId = player.iNetEntityId;
 	message.eCharacterClass = player.eCharacterClass;
 	message.eControlKind = player.eControlKind;
+        message.strWaterpangNpcArchetypeId = player.strWaterpangNpcArchetypeId;
 	message.strNickName = player.strNickName;
 	message.fPositionX = player.fPositionX;
 	message.fPositionY = player.fPositionY;
@@ -603,6 +604,9 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 			snapshot.ActiveBuffs[snapshot.iActiveBuffCount++] = {33500u, player.iTimeStopEndTick};
 		if (player.Has_HolyCharmProtection(m_iServerTick))
 			snapshot.ActiveBuffs[snapshot.iActiveBuffCount++] = {32282u, player.iHolyCharmProtectionEndTick};
+        if (m_eWorldId == LostArk::Shared::WORLD_ID::MAHARAKA && player.iCurrentHp &&
+            player.iWaterGunSpeedEndTick && static_cast<std::int32_t>(player.iWaterGunSpeedEndTick - m_iServerTick) > 0)
+            snapshot.ActiveBuffs[snapshot.iActiveBuffCount++] = {569200u, player.iWaterGunSpeedEndTick};
 		for (const auto& buff : player.ActiveBuffs)
 		{
 			if (snapshot.iActiveBuffCount == LostArk::Shared::MAX_ACTIVE_BUFFS) break;

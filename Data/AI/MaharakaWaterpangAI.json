@@ -1,0 +1,14 @@
+{
+  "schema": "lostark.maharaka-waterpang-ai",
+  "formatVersion": 1,
+  "revision": 1,
+  "botCount": 20,
+  "decisionTicks": 9,
+  "moveRetargetTicks": 45,
+  "skillIntervalTicks": 60,
+  "targetRangeM": 9,
+  "moveProbability": 0.8,
+  "aggression": 0.8,
+  "knockbackRangeM": 6,
+  "knockbackMs": 242
+}

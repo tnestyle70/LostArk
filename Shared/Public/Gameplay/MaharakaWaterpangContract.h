@@ -131,6 +131,11 @@ namespace LostArk::Shared
     inline constexpr std::uint32_t MAHARAKA_WATERPANG_EVENT_GAP_SECONDS = 8u;
     // First hazard: the countdown and the intro cutscene own the cast until then.
     inline constexpr std::uint32_t MAHARAKA_WATERPANG_FIRST_EVENT_SECONDS = 20u;
+    // Project match duration: three minutes of play after the intro owns the stage.
+    inline constexpr std::uint32_t MAHARAKA_WATERPANG_MATCH_SECONDS = 180u;
+    inline constexpr std::uint32_t MAHARAKA_WATERPANG_MATCH_END_TICKS =
+        (MAHARAKA_WATERPANG_FIRST_EVENT_SECONDS + MAHARAKA_WATERPANG_MATCH_SECONDS) * MAHARAKA_WATERPANG_TICK_HZ;
+    inline constexpr std::size_t MAHARAKA_WATERPANG_AI_COUNT = 20u;
 
     constexpr std::uint32_t Get_MaharakaWaterpangNextStartSeconds(
         const std::uint32_t startSeconds, const MAHARAKA_WATERPANG_EVENT& event) noexcept
@@ -370,6 +375,24 @@ namespace LostArk::Shared
         { 56910u, 'W', MAHARAKA_WATERGUN_KIND::GRENADE, 8000u, 1000u, 200u, 5u, 7.f, 8.f, 6.f, 1.05f, 0.2f, 200u, 0u, 1.f },
         { 56920u, 'E', MAHARAKA_WATERGUN_KIND::SPEED_BUFF, 7000u, 0u, 0u, 0u, 0.f, 0.f, 0.f, 0.f, 0.f, 0u, 5000u, 1.3f },
         { 56930u, 'R', MAHARAKA_WATERGUN_KIND::MISSILE, 0u, 1000u, 402u, 1u, 4.f, 3.f, 1.5f, 1.f, 0.18f, 5u, 0u, 1.f } } };
+
+    // Stable gameplay identities; only Client presentation maps these to resources.
+    inline constexpr const char* MaharakaWaterGunProjectileArchetype(const std::uint32_t skillId) noexcept
+    {
+        switch (skillId)
+        {
+        case 56900u: return "maharaka.watergun.burst";
+        case 56910u: return "maharaka.watergun.bomb";
+        case 56930u: return "maharaka.watergun.single";
+        default: return nullptr;
+        }
+    }
+    inline constexpr bool Is_MaharakaWaterGunProjectile(const std::string_view id) noexcept
+    {
+        return id == "maharaka.watergun.burst" || id == "maharaka.watergun.bomb" ||
+            id == "maharaka.watergun.single";
+    }
+    inline constexpr std::uint32_t MAHARAKA_WATERGUN_SPEED_BUFF_ID = 569200u;
 
     // A struck body must stand within this height of the shot to be hit.
     inline constexpr float MAHARAKA_WATERGUN_HIT_HEIGHT_M = 1.5f;
