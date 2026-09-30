@@ -5,7 +5,7 @@
     "damageProfileCount": 129,
     "bossProfileCount": 8,
     "encounterPatternCount": 38,
-    "fieldEntryCount": 4281,
+    "fieldEntryCount": 4282,
     "bossPartCount": 2,
     "bossCombatObjectCount": 17
   },
@@ -45604,7 +45604,7 @@
           "hitHalfWidth": 0.0,
           "hitId": "hit.valtan.six-pizza.rock-pillar.explode",
           "trigger": "TIMED",
-          "atMs": 0,
+          "atMs": 1820,
           "repeatCount": 1,
           "repeatIntervalMs": 0,
           "serverDamageProfileId": "damage.valtan.stomp",
@@ -45625,7 +45625,7 @@
           "hitHalfWidth": 0.0,
           "hitId": "hit.valtan.six-pizza.rock-pillar.explode",
           "trigger": "TIMED",
-          "atMs": 0,
+          "atMs": 1820,
           "repeatCount": 1,
           "repeatIntervalMs": 0,
           "serverDamageProfileId": "damage.valtan.stomp",
@@ -45860,7 +45860,7 @@
           "hitHalfWidth": 0.0,
           "hitId": "hit.valtan.struggling.rock-pillar.explode",
           "trigger": "TIMED",
-          "atMs": 4133,
+          "atMs": 5953,
           "repeatCount": 1,
           "repeatIntervalMs": 0,
           "serverDamageProfileId": "damage.valtan.stomp",
@@ -45881,7 +45881,7 @@
           "hitHalfWidth": 0.0,
           "hitId": "hit.valtan.struggling.rock-pillar.explode",
           "trigger": "TIMED",
-          "atMs": 4133,
+          "atMs": 5953,
           "repeatCount": 1,
           "repeatIntervalMs": 0,
           "serverDamageProfileId": "damage.valtan.stomp",
@@ -45916,9 +45916,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 5333,
+      "sourceValue": 7153,
       "transform": "Balance Tool authored override",
-      "resultValue": 5333,
+      "resultValue": 7153,
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
@@ -46017,6 +46017,30 @@
       "sourceValue": 0.0,
       "transform": "Balance Tool authored override",
       "resultValue": 0.0,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.struggling.rock-pillar",
+      "targetField": "presentationEvents",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": [
+        {
+          "presentationEventId": "event.valtan.struggling.rock-pillar.prepare",
+          "atMs": 4133
+        }
+      ],
+      "transform": "Balance Tool authored override",
+      "resultValue": [
+        {
+          "presentationEventId": "event.valtan.struggling.rock-pillar.prepare",
+          "atMs": 4133
+        }
+      ],
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -46586,7 +46610,7 @@
           "hitHalfWidth": 0.0,
           "hitId": "hit.valtan.terrain-3.combo-rock.explode",
           "trigger": "TIMED",
-          "atMs": 0,
+          "atMs": 1820,
           "repeatCount": 1,
           "repeatIntervalMs": 0,
           "serverDamageProfileId": "damage.valtan.stomp",
@@ -46607,7 +46631,7 @@
           "hitHalfWidth": 0.0,
           "hitId": "hit.valtan.terrain-3.combo-rock.explode",
           "trigger": "TIMED",
-          "atMs": 0,
+          "atMs": 1820,
           "repeatCount": 1,
           "repeatIntervalMs": 0,
           "serverDamageProfileId": "damage.valtan.stomp",
@@ -46617,7 +46641,7 @@
           "downMs": 1000
         }
       ],
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -46842,7 +46866,7 @@
           "hitHalfWidth": 0.0,
           "hitId": "hit.valtan.terrain-9.combo-rock.explode",
           "trigger": "TIMED",
-          "atMs": 0,
+          "atMs": 1820,
           "repeatCount": 1,
           "repeatIntervalMs": 0,
           "serverDamageProfileId": "damage.valtan.stomp",
@@ -46863,7 +46887,7 @@
           "hitHalfWidth": 0.0,
           "hitId": "hit.valtan.terrain-9.combo-rock.explode",
           "trigger": "TIMED",
-          "atMs": 0,
+          "atMs": 1820,
           "repeatCount": 1,
           "repeatIntervalMs": 0,
           "serverDamageProfileId": "damage.valtan.stomp",
@@ -46873,7 +46897,7 @@
           "downMs": 1000
         }
       ],
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -67467,7 +67491,7 @@
             {
               "outcome": "TIMEOUT",
               "nextActionId": null,
-              "nextPatternId": "VALTAN_GHOST_DEATH_AUDITION"
+              "nextPatternId": "VALTAN_GHOST_RESPAWN_AUDITION"
             }
           ]
         }
@@ -68428,7 +68452,7 @@
             {
               "outcome": "TIMEOUT",
               "nextActionId": null,
-              "nextPatternId": "VALTAN_GHOST_DEATH_AUDITION"
+              "nextPatternId": "VALTAN_GHOST_RESPAWN_AUDITION"
             }
           ]
         }

@@ -75,8 +75,8 @@
           "armedPresentationEventId": "event.valtan.six-pizza.rock-pillar.armed",
           "armedEffectAssetId": "effect.valtan.source.itr-02326.off.full",
           "stopActiveOnHit": true,
-          "stopActiveOnArmed": false,
-          "armedEffectOwnsTerminal": false
+          "stopActiveOnArmed": true,
+          "armedEffectOwnsTerminal": true
         },
         {
           "combatObjectArchetypeId": "combatobject.valtan.struggling.rock-pillar",
@@ -88,7 +88,11 @@
             1,
             1,
             1
-          ]
+          ],
+          "armedEffectAssetId": "effect.valtan.source.itr-02326.off.full",
+          "stopActiveOnArmed": true,
+          "armedEffectOwnsTerminal": true,
+          "armedPresentationEventId": "event.valtan.struggling.rock-pillar.prepare"
         },
         {
           "combatObjectArchetypeId": "combatobject.valtan.ghost.portal-charge",
@@ -107,8 +111,8 @@
           "armedPresentationEventId": "event.valtan.terrain-3.combo-rock.armed",
           "armedEffectAssetId": "effect.valtan.source.itr-02326.off.full",
           "stopActiveOnHit": true,
-          "stopActiveOnArmed": false,
-          "armedEffectOwnsTerminal": false
+          "stopActiveOnArmed": true,
+          "armedEffectOwnsTerminal": true
         },
         {
           "combatObjectArchetypeId": "combatobject.valtan.terrain-9.combo-rock",
@@ -118,8 +122,8 @@
           "armedPresentationEventId": "event.valtan.terrain-9.combo-rock.armed",
           "armedEffectAssetId": "effect.valtan.source.itr-02326.off.full",
           "stopActiveOnHit": true,
-          "stopActiveOnArmed": false,
-          "armedEffectOwnsTerminal": false
+          "stopActiveOnArmed": true,
+          "armedEffectOwnsTerminal": true
         },
         {
           "combatObjectArchetypeId": "combatobject.valtan.struggling.underfoot-01",
