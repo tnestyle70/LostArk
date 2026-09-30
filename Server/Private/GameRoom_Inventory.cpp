@@ -387,6 +387,41 @@ void LostArk::Server::CGameRoom::Handle_SetEquipment(
 	}
 }
 
+void LostArk::Server::CGameRoom::Handle_RepairEquipment(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_REPAIR_EQUIPMENT& request)
+{
+	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (nullptr == session || sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end())
+		return;
+	/* Only worn gear wears, so "repair equipped" and "repair all" restore the same parts. Each
+	   part costs silver in proportion to how worn it is: 1000 silver at 0 percent, rounded up.
+	   A purse that cannot cover the whole bill repairs nothing; the answer below still goes out
+	   so the window sees the unchanged state. */
+	SERVER_PLAYER& player = playerIter->second;
+	constexpr std::uint32_t MAX_REPAIR_SILVER_PER_PART = 1000u;
+	std::uint32_t cost = 0u;
+	for (const std::uint8_t percent : player.DurabilityPercent)
+		cost += (MAX_REPAIR_SILVER_PER_PART * (100u - percent) + 99u) / 100u;
+	if (player.Purse.iSilver >= cost)
+	{
+		player.Purse.iSilver -= cost;
+		player.DurabilityPercent.fill(100);
+		player.bDurabilityDirty = false;
+		if (0u != cost)
+			player.bRestoreAvailable = false;
+	}
+	if (!Send_InventorySnapshot(
+		session, request.iRequestSequence, playerIter->second))
+	{
+		session->Request_Close();
+	}
+}
+
 bool LostArk::Server::CGameRoom::Apply_BuyItems(
 	SERVER_PLAYER& player, const LostArk::Shared::C2S_BUY_ITEMS& request) const
 {
@@ -435,6 +470,11 @@ bool LostArk::Server::CGameRoom::Apply_BuyItems(
 			if (nullptr == granted)
 				return false;
 		}
+		/* An avatar is bought once: worn or in the bag, owning it refuses another copy. */
+		if (0 == granted->strEquipSlot.compare(0, 6, "avatar") &&
+			std::any_of(staged.begin(), staged.end(), [granted](const INVENTORY_ITEM_SNAPSHOT& item)
+				{ return item.strItemId == granted->strItemId; }))
+			return false;
 		const std::uint64_t cost = static_cast<std::uint64_t>(stock->iPrice) * entry.iQuantity;
 		std::uint32_t& purse = stagedPurse.Amount(stock->eCurrency);
 		if (purse < cost)

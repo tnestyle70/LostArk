@@ -1118,6 +1118,11 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_SET_EQUIPMENT& request);
 		bool Apply_SetEquipment(SERVER_PLAYER& player,
 			const LostArk::Shared::C2S_SET_EQUIPMENT& request) const;
+		/* Repair NPC window: every worn part goes back to 100 percent (free for now); the
+		   inventory answer carries the repaired percents. */
+		void Handle_RepairEquipment(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_REPAIR_EQUIPMENT& request);
 		/* After a class change: items bound to another class go back to the bag. */
 		bool Unequip_OtherClassItems(SERVER_PLAYER& player) const;
 		/* NPC shop basket. The player must stand by that shop NPC; every line must be in

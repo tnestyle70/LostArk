@@ -13,6 +13,19 @@ namespace
 		static std::vector<Client::CHARACTER_ROSTER_ENTRY> entries(Client::CCharacterRoster::MAX_CHARACTERS);
 		return entries;
 	}
+
+	int32_t Class_Rank(const LostArk::Shared::CHARACTER_CLASS_ID eClass)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		switch (eClass)
+		{
+		case CHARACTER_CLASS_ID::WARLORD: return 0;
+		case CHARACTER_CLASS_ID::LANCE_MASTER: return 1;
+		case CHARACTER_CLASS_ID::ARTIST: return 2;
+		case CHARACTER_CLASS_ID::GUARDIANKNIGHT: return 3;
+		default: return 4 + static_cast<int32_t>(eClass);
+		}
+	}
 }
 
 const std::vector<Client::CHARACTER_ROSTER_ENTRY>& Client::CCharacterRoster::Get_Entries()
@@ -105,8 +118,23 @@ bool_t Client::CCharacterRoster::Add(
 	static uint64_t nextIdentity = 0u;
 	CHARACTER_ROSTER_ENTRY created{ eCharacterClass, strNickname, strAppearanceJson };
 	created.strCharacterId = "session.character." + std::to_string(++nextIdentity);
-	outIndex = slot;
+	const std::string strCreatedId = created.strCharacterId;
 	entries[slot] = std::move(created);
+	/* Card order: Warlord, Lance Master, Artist and Guardian Knight from the left, any other
+	   class after by class id, empty cards last. Warlord must stand leftmost or the next card
+	   covers its weapons. Characters keep a stable id, so moving a card changes no state. */
+	std::stable_sort(entries.begin(), entries.end(),
+		[](const CHARACTER_ROSTER_ENTRY& lhs, const CHARACTER_ROSTER_ENTRY& rhs)
+		{
+			const bool_t bLhsEmpty = lhs.strCharacterId.empty();
+			const bool_t bRhsEmpty = rhs.strCharacterId.empty();
+			if (bLhsEmpty || bRhsEmpty)
+				return !bLhsEmpty && bRhsEmpty;
+			return Class_Rank(lhs.eCharacterClass) < Class_Rank(rhs.eCharacterClass);
+		});
+	outIndex = static_cast<size_t>(std::find_if(entries.begin(), entries.end(),
+		[&strCreatedId](const CHARACTER_ROSTER_ENTRY& entry) { return entry.strCharacterId == strCreatedId; }) -
+		entries.begin());
 	outStatus = "Character created for this session.";
 	return true;
 }

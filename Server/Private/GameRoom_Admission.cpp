@@ -254,6 +254,7 @@ bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
 	inventory.Items = entry.Player.Inventory;
 	inventory.iSilver = entry.Player.Purse.iSilver;
 	inventory.iGold = entry.Player.Purse.iGold;
+	inventory.DurabilityPercent = entry.Player.DurabilityPercent;
 	if (!append(PACKET_TYPE::S2C_INVENTORY_SNAPSHOT, inventory)) return false;
 	if (WORLD_ID::VALTAN_ARENA == m_eWorldId)
 	{

@@ -242,7 +242,7 @@
   ],
   "currencies": [
     { "currencyId": "SILVER", "displayName": "실링", "iconPath": "UI/Common/Money_Silver.png", "startingAmount": 161161 },
-    { "currencyId": "GOLD", "displayName": "골드", "iconPath": "UI/Common/Money_Gold.png", "startingAmount": 161 }
+    { "currencyId": "GOLD", "displayName": "골드", "iconPath": "UI/Common/Money_Gold.png", "startingAmount": 500 }
   ],
   "shops": [
     {

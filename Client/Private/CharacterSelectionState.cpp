@@ -139,6 +139,10 @@ bool_t Client::CCharacterSelectionState::Stage_ExistingEntry(
 std::string Client::CCharacterSelectionState::Get_ActiveAppearanceJson()
 {
 	std::scoped_lock lock{ g_SelectionMutex };
+	/* The entering character spawns before Bern's identity commit, so its look is the pending
+	   one; without this the first entry showed the previous character's look, or none. */
+	if (g_PendingCreation.has_value())
+		return g_PendingCreation->strAppearanceJson;
 	return g_ActiveAppearanceJson;
 }
 

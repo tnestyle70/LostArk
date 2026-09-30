@@ -59,6 +59,10 @@ public:
 	/* LOA-font text pass, after CImGuiLayer::EndFrame(). */
 	void Render_Text();
 	void Hide();
+	/* A double click in the book asks the Server to wear / take off a bought avatar; CMainApp
+	sends it the same way it sends the bag's request. */
+	bool_t Try_Consume_EquipRequest(string& outItemId);
+	bool_t Try_Consume_UnequipRequest(LostArk::Shared::EQUIPMENT_SLOT& outSlot);
 
 private:
 	struct AVATAR_ENTRY
@@ -67,6 +71,8 @@ private:
 		EQUIPMENT_SLOT_KIND eKind = EQUIPMENT_SLOT_KIND::DEFAULT;
 		int32_t iPreviewSlot = -1;   /* mannequin slot index (AB_SlotBg_k), -1 = none */
 		int32_t iShowCheck = -1;     /* eye toggle beside that slot (AB_ShowCheck_k), -1 = none */
+		/* A bought avatar (has a visual set): worn state is the Server's, not the preview mask. */
+		bool_t bServerAvatar = false;
 	};
 
 	struct DISPLAY_DATA
@@ -93,6 +99,7 @@ private:
 	void Rebuild_Entries(const std::shared_ptr<CCharacter>& pLocalCharacter,
 		LostArk::Shared::CHARACTER_CLASS_ID eClass, const CCharacterInfoWindowView& InfoView);
 	void Reset_PreviewToReal(const std::shared_ptr<CCharacter>& pLocalCharacter);
+	bool_t Is_EntryWorn(const AVATAR_ENTRY& Entry) const;
 	void Update_Visibility();
 	void Update_PanelDrag();
 	/* Keeps the whole window inside the reference resolution (a title-bar drag could otherwise
@@ -122,6 +129,8 @@ private:
 
 	bool_t m_bOpen = false;
 	bool_t m_bJustOpened = false;
+	/* Bag size the entries were built for; a purchase changes it and rebuilds the list. */
+	size_t m_iOwnedItemCount = 0;
 	bool_t m_bDraggingPanel = false;
 	bool_t m_bDraggingPortrait = false;
 	f32_t m_fLastDragMouseX = 0.f;
@@ -132,6 +141,8 @@ private:
 	int32_t m_iSelectedCamera = 0;
 	/* Bit (1 << ETOUI(EQUIPMENT_SLOT_KIND)) per avatar kind the mannequin draws without. */
 	uint32_t m_iPreviewHiddenAvatarKinds = 0u;
+	string m_strPendingEquipItemId;
+	LostArk::Shared::EQUIPMENT_SLOT m_ePendingUnequipSlot = LostArk::Shared::EQUIPMENT_SLOT::NONE;
 
 	vector<AVATAR_ENTRY>			m_Entries;
 	std::chrono::steady_clock::time_point m_LastClickTime{};

@@ -3445,6 +3445,17 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::SET_EQUIPMENT;
 		command.SetEquipment = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_REPAIR_EQUIPMENT)
+	{
+		C2S_REPAIR_EQUIPMENT request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_REPAIR_EQUIPMENT");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::REPAIR_EQUIPMENT;
+		command.RepairEquipment = request;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_BUY_ITEMS)
 	{
 		C2S_BUY_ITEMS request{};

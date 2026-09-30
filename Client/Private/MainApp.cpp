@@ -580,6 +580,9 @@ namespace
 	owner now instead of an implicit "wasn't drawn this frame". */
 	constexpr const char_t* ITEM_UPGRADE_ALL_SLOTS[] =
 	{
+		/* Solid backdrop under the whole window (same rect as the result modal). The centre art
+		fades out at both edges, so without it the world shows through between the three panels. */
+		"ItemUpgrade_WindowBg",
 		"ItemUpgrade_SuccessModalBg", "ItemUpgrade_PanelBg", "ItemUpgrade_RecipeIconBgExample",
 		"ItemUpgrade_RecipeMaterial0", "ItemUpgrade_RecipeAmount0", "ItemUpgrade_RecipeIconBg1",
 		"ItemUpgrade_RecipeMaterial1", "ItemUpgrade_RecipeAmount1", "ItemUpgrade_RecipeIconBg2",
@@ -4629,6 +4632,7 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	{
 		Hide_CombatHUD();
 		if (m_pCombatAnalysisView) m_pCombatAnalysisView->Hide();
+		if (m_pDurabilityHudView) m_pDurabilityHudView->Hide();
 		if (m_pQuickSlotDragView) { m_pQuickSlotDragView->Cancel(); m_pQuickSlotDragView->Hide(); }
 		return;
 	}
@@ -5075,9 +5079,10 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		bool_t bRepairAllSlots = false;
 		if (m_pRepairWindowView->Try_Consume_RepairRequest(bRepairAllSlots))
 		{
-			/* No Server contract for repair yet: this slice is the window only. The press is
-			consumed here so the button cannot latch, and this is the single place the later
-			vertical slice hooks the typed command into. */
+			/* The Server restores the worn gear and answers with the inventory snapshot that
+			carries the repaired percents the durability HUD reads. */
+			CMainApp::Play_UIButtonClickSound();
+			(void)CNetworkManager::Get().Send_RepairEquipment(m_iNextUseItemSequence++, bRepairAllSlots);
 		}
 	}
 	if (nullptr != m_pShopWindowView)
@@ -5095,11 +5100,26 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	carries item durability, so only the silhouette draws. */
 	if (nullptr != m_pDurabilityHudView)
 	{
-		/* The class-select map shows no gear wear, so its armor silhouette stays hidden there. */
-		if (currentLevel == ETOUI(LEVEL::CHARACTER_SELECT))
-			m_pDurabilityHudView->Hide();
-		else
+		/* Gear wear shows only in Bern and the two raid arenas; every other Level hides it. */
+		if (currentLevel == ETOUI(LEVEL::BERN) ||
+			currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+			currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		{
+			/* Server-owned wear: below 30% a part reads damaged (red), at 0 it reads destroyed.
+			The wire order is weapon, helmet, top, gloves, bottoms, shoulder -- the first six
+			CDurabilityHudView parts. */
+			const auto& DurabilityPercent = CCombatHUDViewModel::Get().Get_Inventory().DurabilityPercent;
+			for (uint32_t iPart = 0; iPart < static_cast<uint32_t>(DurabilityPercent.size()); ++iPart)
+			{
+				const uint8_t iPercent = DurabilityPercent[iPart];
+				m_pDurabilityHudView->Set_PartState(static_cast<CDurabilityHudView::PART>(iPart),
+					0u == iPercent ? CDurabilityHudView::PART_STATE::DESTROYED :
+					(iPercent < 30u ? CDurabilityHudView::PART_STATE::DAMAGED : CDurabilityHudView::PART_STATE::NORMAL));
+			}
 			m_pDurabilityHudView->Update();
+		}
+		else
+			m_pDurabilityHudView->Hide();
 	}
 	if (nullptr != m_pInventoryView)
 	{
@@ -5107,7 +5127,10 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		/* Right-click equip: the first free slot of the item's kind (the two earrings / two
 		   rings), or the first one when both are worn. The Server checks kind and class. */
 		string strEquipItemId;
-		if (m_pInventoryView->Try_Consume_EquipRequest(strEquipItemId))
+		bool_t bEquipRequested = m_pInventoryView->Try_Consume_EquipRequest(strEquipItemId);
+		if (!bEquipRequested && nullptr != m_pAvatarBookView)
+			bEquipRequested = m_pAvatarBookView->Try_Consume_EquipRequest(strEquipItemId);
+		if (bEquipRequested)
 		{
 			using LostArk::Shared::EQUIPMENT_SLOT;
 			const ITEM_DEFINITION* pEquip = CItemCatalog::Find_ById(strEquipItemId);
@@ -5136,7 +5159,10 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 					m_iNextUseItemSequence++, eTarget, true, strEquipItemId);
 		}
 		LostArk::Shared::EQUIPMENT_SLOT eAvatarUnequipSlot = LostArk::Shared::EQUIPMENT_SLOT::NONE;
-		if (m_pInventoryView->Try_Consume_UnequipRequest(eAvatarUnequipSlot))
+		bool_t bUnequipRequested = m_pInventoryView->Try_Consume_UnequipRequest(eAvatarUnequipSlot);
+		if (!bUnequipRequested && nullptr != m_pAvatarBookView)
+			bUnequipRequested = m_pAvatarBookView->Try_Consume_UnequipRequest(eAvatarUnequipSlot);
+		if (bUnequipRequested)
 			(void)CNetworkManager::Get().Send_SetEquipment(
 				m_iNextUseItemSequence++, eAvatarUnequipSlot, false, {});
 	}
@@ -6393,7 +6419,7 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 	}
 
 	/* Bottom icon buttons. 종료 closes the game (WM_CLOSE -> WM_DESTROY -> quit, the same
-	path as the title-bar X); 뒤로 (retail: back to the login page) and 환경설정 have no
+	path as the title-bar X); 환경설정 has no
 	product target here yet, so they only show their hover art. */
 	struct LOBBY_ICON_BUTTON
 	{
@@ -6401,10 +6427,9 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 		const char* pOverTexture;
 		bool_t bExit;
 	};
-	constexpr LOBBY_ICON_BUTTON IconButtons[3] =
+	constexpr LOBBY_ICON_BUTTON IconButtons[2] =
 	{
 		{ "Lobby_ExitIcon", "UI/Lobby/ServerSelect/btn_exit_over.png", true },
-		{ "Lobby_PrevIcon", "UI/Lobby/ServerSelect/btn_prev_over.png", false },
 		{ "Lobby_OptionIcon", "UI/Lobby/ServerSelect/btn_option_over.png", false },
 	};
 	for (const LOBBY_ICON_BUTTON& Icon : IconButtons)
@@ -6462,6 +6487,8 @@ void CMainApp::Close_RuntimeWindowsForLoading()
 	if (nullptr != m_pInventoryView) m_pInventoryView->Close();
 	if (nullptr != m_pRepairWindowView) m_pRepairWindowView->Close();
 	if (nullptr != m_pShopWindowView) m_pShopWindowView->Close();
+	/* Not a window, but its STATIC sprites would keep drawing over the loading screen. */
+	if (nullptr != m_pDurabilityHudView) m_pDurabilityHudView->Hide();
 	if (nullptr != m_pCharacterInfoView) m_pCharacterInfoView->Close();
 	if (nullptr != m_pAvatarBookView) m_pAvatarBookView->Close();
 	if (nullptr != m_pVehicleWindowView) m_pVehicleWindowView->Close();
@@ -6919,10 +6946,9 @@ void CMainApp::RenderLobbyButtonText()
 		}
 	}
 	struct LOBBY_ICON_CAPTION { const char* pSlotId; const wchar_t* pLabel; f32_t fCenterX; };
-	const LOBBY_ICON_CAPTION IconCaptions[3] =
+	const LOBBY_ICON_CAPTION IconCaptions[2] =
 	{
 		{ "Lobby_ExitIcon", L"\xC885\xB8CC", 54.667f },
-		{ "Lobby_PrevIcon", L"\xB4A4\xB85C", 133.333f },
 		{ "Lobby_OptionIcon", L"\xD658\xACBD\xC124\xC815", 1226.667f },
 	};
 	for (const LOBBY_ICON_CAPTION& Caption : IconCaptions)
@@ -7503,7 +7529,7 @@ void CMainApp::Set_ItemUpgradeCenterPanelVisible(bool_t bVisible)
 
 	constexpr const char_t* CENTER_PANEL_SLOTS[] =
 	{
-		"ItemUpgrade_PanelBg",
+		"ItemUpgrade_WindowBg", "ItemUpgrade_PanelBg",
 		"ItemUpgrade_RecipeIconBgExample", "ItemUpgrade_RecipeMaterial0", "ItemUpgrade_RecipeAmount0",
 		"ItemUpgrade_RecipeIconBg1", "ItemUpgrade_RecipeMaterial1", "ItemUpgrade_RecipeAmount1",
 		"ItemUpgrade_RecipeIconBg2", "ItemUpgrade_RecipeMaterial2", "ItemUpgrade_RecipeAmount2",

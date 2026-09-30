@@ -18,6 +18,7 @@
 #include "UITextOcclusion.h"
 #include "UILayoutRuntime.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <fstream>
@@ -87,6 +88,13 @@ namespace
 		case CHARACTER_CLASS_ID::GUARDIANKNIGHT: return "GuardianKnight";
 		default: return nullptr;
 		}
+	}
+
+	bool_t Owns_Item(const string& strItemId)
+	{
+		const auto& Items = CCombatHUDViewModel::Get().Get_Inventory().Items;
+		return std::any_of(Items.begin(), Items.end(),
+			[&strItemId](const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& Owned) { return Owned.strItemId == strItemId; });
 	}
 
 	bool_t Starts_With(const string& strId, const char* pPrefix)
@@ -245,6 +253,7 @@ void Client::CAvatarBookWindowView::Rebuild_Entries(const std::shared_ptr<CChara
 	const LostArk::Shared::CHARACTER_CLASS_ID eClass, const CCharacterInfoWindowView& InfoView)
 {
 	m_Entries.clear();
+	m_iOwnedItemCount = CCombatHUDViewModel::Get().Get_Inventory().Items.size();
 	const char* pClassKey = Class_CatalogKey(eClass);
 	for (const ITEM_DEFINITION& Item : CItemCatalog::Get_Items())
 	{
@@ -257,8 +266,15 @@ void Client::CAvatarBookWindowView::Rebuild_Entries(const std::shared_ptr<CChara
 		if (Item.strEquipSlot == "avatarHead") Entry.eKind = EQUIPMENT_SLOT_KIND::AVATAR_HEAD;
 		else if (Item.strEquipSlot == "avatarOutfit") Entry.eKind = EQUIPMENT_SLOT_KIND::AVATAR_ARMOR;
 		else continue;
+		Entry.bServerAvatar = !Item.strVisualSetId.empty();
+		if (Entry.bServerAvatar)
+		{
+			/* A bought avatar: listed once the Server's bag holds it (worn or not). */
+			if (!Owns_Item(Item.strItemId))
+				continue;
+		}
 		/* Only an avatar the character actually carries as a part can go on the mannequin. */
-		if (nullptr == pLocalCharacter || !pLocalCharacter->Has_AvatarPart(Entry.eKind))
+		else if (nullptr == pLocalCharacter || !pLocalCharacter->Has_AvatarPart(Entry.eKind))
 			continue;
 		const bool_t bHead = EQUIPMENT_SLOT_KIND::AVATAR_HEAD == Entry.eKind;
 		Entry.iPreviewSlot = bHead ? m_Display.iSlotHead : m_Display.iSlotOutfit;
@@ -275,9 +291,39 @@ void Client::CAvatarBookWindowView::Reset_PreviewToReal(const std::shared_ptr<CC
 		return;
 	for (const AVATAR_ENTRY& Entry : m_Entries)
 	{
-		if (!pLocalCharacter->Is_AvatarPartVisible(Entry.eKind))
+		if (!Entry.bServerAvatar && !pLocalCharacter->Is_AvatarPartVisible(Entry.eKind))
 			m_iPreviewHiddenAvatarKinds |= Kind_Bit(Entry.eKind);
 	}
+}
+
+bool_t Client::CAvatarBookWindowView::Is_EntryWorn(const AVATAR_ENTRY& Entry) const
+{
+	if (!Entry.bServerAvatar)
+		return 0u == (m_iPreviewHiddenAvatarKinds & Kind_Bit(Entry.eKind));
+	const LostArk::Shared::EQUIPMENT_SLOT eSlot = EQUIPMENT_SLOT_KIND::AVATAR_HEAD == Entry.eKind ?
+		LostArk::Shared::EQUIPMENT_SLOT::AVATAR_HEAD : LostArk::Shared::EQUIPMENT_SLOT::AVATAR_OUTFIT;
+	const auto& Items = CCombatHUDViewModel::Get().Get_Inventory().Items;
+	return std::any_of(Items.begin(), Items.end(),
+		[&Entry, eSlot](const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& Owned)
+		{ return Owned.strItemId == Entry.pItem->strItemId && Owned.eEquippedSlot == eSlot; });
+}
+
+bool_t Client::CAvatarBookWindowView::Try_Consume_EquipRequest(string& outItemId)
+{
+	if (m_strPendingEquipItemId.empty())
+		return false;
+	outItemId = std::move(m_strPendingEquipItemId);
+	m_strPendingEquipItemId.clear();
+	return true;
+}
+
+bool_t Client::CAvatarBookWindowView::Try_Consume_UnequipRequest(LostArk::Shared::EQUIPMENT_SLOT& outSlot)
+{
+	if (LostArk::Shared::EQUIPMENT_SLOT::NONE == m_ePendingUnequipSlot)
+		return false;
+	outSlot = m_ePendingUnequipSlot;
+	m_ePendingUnequipSlot = LostArk::Shared::EQUIPMENT_SLOT::NONE;
+	return true;
 }
 
 void Client::CAvatarBookWindowView::Update(const f32_t fTimeDelta,
@@ -300,7 +346,8 @@ void Client::CAvatarBookWindowView::Update(const f32_t fTimeDelta,
 		(void)ConvertUtf8ToWide(pLocalCharacter->Get_NickName(), m_strNickName);
 	else
 		m_strNickName.clear();
-	if (m_bJustOpened || bCharacterChanged || m_eClass != Player.eCharacterClass)
+	if (m_bJustOpened || bCharacterChanged || m_eClass != Player.eCharacterClass ||
+		m_iOwnedItemCount != CCombatHUDViewModel::Get().Get_Inventory().Items.size())
 	{
 		m_eClass = Player.eCharacterClass;
 		m_strClassName = InfoView.Get_ClassDisplayName(m_eClass);
@@ -487,14 +534,26 @@ void Client::CAvatarBookWindowView::Update_Grid()
 		m_pView->Set_SlotVisible("AB_CellBg_" + strSuffix, true);
 		m_pView->Set_SlotVisible("AB_CellGrade_" + strSuffix, bHasEntry);
 		m_pView->Set_SlotVisible("AB_CellIcon_" + strSuffix, bHasEntry);
-		const bool_t bWorn = nullptr != pEntry &&
-			0u == (m_iPreviewHiddenAvatarKinds & Kind_Bit(pEntry->eKind));
+		const bool_t bWorn = nullptr != pEntry && Is_EntryWorn(*pEntry);
 		m_pView->Set_SlotVisible("AB_CellEquipped_" + strSuffix, bWorn);
 		m_pView->Set_SlotVisible("AB_CellSelected_" + strSuffix, bHasEntry && k == m_iSelectedCell);
 
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!bHasEntry || !m_pView->Get_SlotRect("AB_CellBg_" + strSuffix, fX, fY, fWidth, fHeight))
 			continue;
+		/* A bought avatar: a right click asks the Server to wear it, or to take it off. */
+		if (pEntry->bServerAvatar && Router.Is_RightClickEdge() &&
+			Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+		{
+			CMainApp::Play_UIButtonClickSound();
+			m_iSelectedCell = k;
+			if (bWorn)
+				m_ePendingUnequipSlot = EQUIPMENT_SLOT_KIND::AVATAR_HEAD == pEntry->eKind ?
+					LostArk::Shared::EQUIPMENT_SLOT::AVATAR_HEAD : LostArk::Shared::EQUIPMENT_SLOT::AVATAR_OUTFIT;
+			else
+				m_strPendingEquipItemId = pEntry->pItem->strItemId;
+			continue;
+		}
 		if (Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight) &&
 			Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		{
@@ -502,6 +561,8 @@ void Client::CAvatarBookWindowView::Update_Grid()
 			real equip on the world character (retail). */
 			CMainApp::Play_UIButtonClickSound();
 			m_iSelectedCell = k;
+			if (pEntry->bServerAvatar)
+				continue;
 			m_iPreviewHiddenAvatarKinds &= ~Kind_Bit(pEntry->eKind);
 			if (Register_Click("AB_CellBg_" + strSuffix))
 			{
@@ -534,9 +595,13 @@ void Client::CAvatarBookWindowView::Update_PreviewSlots(const std::shared_ptr<CC
 		const string strIconId = "AB_SlotIcon_" + std::to_string(iSlot);
 		const AVATAR_ENTRY* pEntry = nullptr;
 		for (const AVATAR_ENTRY& Entry : m_Entries)
-			if (Entry.iPreviewSlot == iSlot) { pEntry = &Entry; break; }
-		const bool_t bWorn = nullptr != pEntry &&
-			0u == (m_iPreviewHiddenAvatarKinds & Kind_Bit(pEntry->eKind));
+		{
+			if (Entry.iPreviewSlot != iSlot)
+				continue;
+			if (nullptr == pEntry || (!Is_EntryWorn(*pEntry) && Is_EntryWorn(Entry)))
+				pEntry = &Entry;
+		}
+		const bool_t bWorn = nullptr != pEntry && Is_EntryWorn(*pEntry);
 		if (bWorn)
 			m_pView->Set_SlotTexture(strIconId, pEntry->pItem->strIconPath);
 		m_pView->Set_SlotVisible(strIconId, bWorn);
@@ -545,6 +610,18 @@ void Client::CAvatarBookWindowView::Update_PreviewSlots(const std::shared_ptr<CC
 		/* Double click on a worn slot: the real unequip on the world character (retail). */
 		const string strBgId = "AB_SlotBg_" + std::to_string(iSlot);
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (pEntry->bServerAvatar)
+		{
+			/* A bought avatar comes off with a right click on its worn slot. */
+			if (Router.Is_RightClickEdge() && m_pView->Get_SlotRect(strBgId, fX, fY, fWidth, fHeight) &&
+				Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+			{
+				CMainApp::Play_UIButtonClickSound();
+				m_ePendingUnequipSlot = EQUIPMENT_SLOT_KIND::AVATAR_HEAD == pEntry->eKind ?
+					LostArk::Shared::EQUIPMENT_SLOT::AVATAR_HEAD : LostArk::Shared::EQUIPMENT_SLOT::AVATAR_OUTFIT;
+			}
+			continue;
+		}
 		if (m_pView->Get_SlotRect(strBgId, fX, fY, fWidth, fHeight) &&
 			Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight) &&
 			Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
@@ -568,7 +645,7 @@ void Client::CAvatarBookWindowView::Update_PreviewSlots(const std::shared_ptr<CC
 			continue;
 		const AVATAR_ENTRY* pEntry = nullptr;
 		for (const AVATAR_ENTRY& Entry : m_Entries)
-			if (Entry.iShowCheck == k) { pEntry = &Entry; break; }
+			if (Entry.iShowCheck == k && !Entry.bServerAvatar) { pEntry = &Entry; break; }
 		if (nullptr == pEntry)
 		{
 			m_pView->Set_SlotTexture(strCheckId, "UI/AvatarBook/show_check_normal.png");
@@ -626,7 +703,8 @@ void Client::CAvatarBookWindowView::Update_Buttons(const std::shared_ptr<CCharac
 		{
 			/* The one real equip/unequip: the mannequin state becomes the world character's. */
 			for (const AVATAR_ENTRY& Entry : m_Entries)
-				pLocalCharacter->Set_AvatarPartVisible(Entry.eKind,
+				if (!Entry.bServerAvatar)
+					pLocalCharacter->Set_AvatarPartVisible(Entry.eKind,
 					0u == (m_iPreviewHiddenAvatarKinds & Kind_Bit(Entry.eKind)));
 		}
 		/* Edit/preset/search/stepper: press feedback only, no collection data behind them yet. */

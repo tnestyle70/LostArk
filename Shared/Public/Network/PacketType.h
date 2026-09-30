@@ -122,7 +122,8 @@ namespace LostArk::Shared
 	// 124 combines saved-character restore, raid EXIT votes and ground-target battle items.
 	// Independently released 125 peers carry water gun casts, avatar items, or minigame deadlines.
 	// 126 combines all three layouts and rejects those incompatible 125 peers.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 126;
+	// 127 appends the worn-gear durability percents to the inventory snapshot.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 127;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -446,7 +447,10 @@ namespace LostArk::Shared
 		// right after entering Bern. Every admitted request receives a typed result;
 		// success follows the authoritative inventory snapshot in the reliable queue.
 		C2S_RESTORE_CHARACTER,
-		S2C_RESTORE_CHARACTER_RESULT
+		S2C_RESTORE_CHARACTER_RESULT,
+		// Repair NPC window: restores the worn gear's durability. The Server answers with
+		// an S2C_INVENTORY_SNAPSHOT that carries the repaired percents.
+		C2S_REPAIR_EQUIPMENT
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -574,6 +578,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_BUY_ITEMS:
 		case PACKET_TYPE::C2S_RESTORE_CHARACTER:
 		case PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT:
+		case PACKET_TYPE::C2S_REPAIR_EQUIPMENT:
 		case PACKET_TYPE::C2S_BALANCE_QUERY:
 		case PACKET_TYPE::S2C_BALANCE_SNAPSHOT:
 		case PACKET_TYPE::C2S_BALANCE_PATCH:
