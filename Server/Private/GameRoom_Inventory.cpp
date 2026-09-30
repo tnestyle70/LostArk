@@ -1316,7 +1316,15 @@ void LostArk::Server::CGameRoom::Score_ColosseumKills(const std::uint32_t tick)
 		if (player.iCurrentHp || player.iColosseumRespawnTick) continue;
 		const auto killer = m_Players.find(player.iColosseumKillerId);
 		if (killer != m_Players.end() && killer->second.iColosseumTeam < 2u && killer->second.iColosseumTeam != player.iColosseumTeam)
+		{
 			++m_iColosseumScores[killer->second.iColosseumTeam];
+			++killer->second.iColosseumKills;
+			m_ColosseumRecentKills.push_back({ ++m_iColosseumKillSequence, tick,
+				killer->first, id, killer->second.iColosseumTeam, player.iColosseumTeam,
+				killer->second.strNickName, player.strNickName });
+			if (m_ColosseumRecentKills.size() > MAX_COLOSSEUM_RECENT_KILLS)
+				m_ColosseumRecentKills.erase(m_ColosseumRecentKills.begin());
+		}
 		player.iColosseumKillerId = INVALID_PLAYER_ID; player.iColosseumRespawnTick = tick + 90u;
 		player.Projectiles.clear(); m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
 	}
@@ -1329,12 +1337,13 @@ void LostArk::Server::CGameRoom::Broadcast_ColosseumMatchState()
 	state.iMatchId = m_iColosseumMatchId; state.iServerTick = m_iServerTick; state.ePhase = m_eColosseumPhase;
 	state.iPhaseStartTick = m_iColosseumPhaseStart; state.iPhaseEndTick = m_iColosseumPhaseEnd;
 	state.iLeftScore = m_iColosseumScores[0]; state.iRightScore = m_iColosseumScores[1];
+	state.RecentKills = m_ColosseumRecentKills;
 	state.iExpectedPlayers = static_cast<std::uint8_t>(std::count_if(m_ColosseumSessions.begin(), m_ColosseumSessions.end(), [](const auto id) { return id != INVALID_SESSION_ID; }));
 	if (state.ePhase == COLOSSEUM_MATCH_PHASE::FINISHED && state.iLeftScore != state.iRightScore)
 		state.iWinningTeam = state.iLeftScore > state.iRightScore ? 0u : 1u;
 	for (const auto& [id, player] : m_Players)
 		if (std::find(m_ColosseumSessions.begin(), m_ColosseumSessions.end(), player.iSessionId) != m_ColosseumSessions.end())
-			state.Participants.push_back({id, player.iNetEntityId, player.iColosseumTeam, player.iColosseumArrivalIndex, player.bColosseumReady});
+			state.Participants.push_back({id, player.iNetEntityId, player.iColosseumTeam, player.iColosseumArrivalIndex, player.bColosseumReady, player.iColosseumKills});
 	CPacketWriter writer;
 	if (!Write_Message(writer, state)) return;
 	for (const auto& [id, player] : m_Players)

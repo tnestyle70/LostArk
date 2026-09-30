@@ -1876,6 +1876,8 @@ namespace LostArk::Server
 		LostArk::Shared::COLOSSEUM_MATCH_PHASE m_eColosseumPhase = LostArk::Shared::COLOSSEUM_MATCH_PHASE::LOADING;
 		std::uint32_t m_iColosseumPhaseStart = 0u, m_iColosseumPhaseEnd = 0u;
 		std::uint32_t m_iColosseumScores[2]{};
+		std::uint32_t m_iColosseumKillSequence = 0u;
+		std::vector<LostArk::Shared::COLOSSEUM_KILL_EVENT> m_ColosseumRecentKills;
 		GATE_PROGRESS_STATE m_GateProgress;
 		std::uint32_t m_iArenaAssemblyStartTick = 0u;
 		std::uint32_t m_iArenaAssemblyRaidEpoch = 0u;

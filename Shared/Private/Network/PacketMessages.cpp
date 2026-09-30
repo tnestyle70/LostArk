@@ -6498,6 +6498,17 @@ namespace
 		if (!state.iMatchId || state.ePhase >= COLOSSEUM_MATCH_PHASE::END ||
 			(state.iWinningTeam > 1u && state.iWinningTeam != COLOSSEUM_DRAW_TEAM) ||
 			state.iExpectedPlayers > MAX_COLOSSEUM_MATCH_PLAYERS || state.Participants.size() > state.iExpectedPlayers) return false;
+		if (state.RecentKills.size() > MAX_COLOSSEUM_RECENT_KILLS) return false;
+		std::uint32_t previousSequence = 0u;
+		for (const auto& kill : state.RecentKills)
+		{
+			if (kill.iSequence <= previousSequence || !kill.iKillerId || !kill.iVictimId ||
+				kill.iKillerId == kill.iVictimId || kill.iKillerTeam > 1u || kill.iVictimTeam > 1u ||
+				kill.iKillerTeam == kill.iVictimTeam ||
+				static_cast<std::int32_t>(state.iServerTick - kill.iServerTick) < 0 ||
+				!Is_Valid_PlayerNickname(kill.strKillerNickname) || !Is_Valid_PlayerNickname(kill.strVictimNickname)) return false;
+			previousSequence = kill.iSequence;
+		}
 		std::uint8_t seats = 0u;
 		for (const auto& row : state.Participants)
 		{
@@ -6522,6 +6533,16 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_COLOSSEUM_M
 	{
 		writer.Write_U32(row.iPlayerId); writer.Write_U32(row.iNetEntityId);
 		writer.Write_U8(row.iTeam); writer.Write_U8(row.iArrivalIndex); writer.Write_U8(row.bReady ? 1u : 0u);
+		writer.Write_U32(row.iKills);
+	}
+	writer.Write_U8(static_cast<std::uint8_t>(message.RecentKills.size()));
+	for (const auto& kill : message.RecentKills)
+	{
+		writer.Write_U32(kill.iSequence); writer.Write_U32(kill.iServerTick);
+		writer.Write_U32(kill.iKillerId); writer.Write_U32(kill.iVictimId);
+		writer.Write_U8(kill.iKillerTeam); writer.Write_U8(kill.iVictimTeam);
+		if (!writer.Write_String(kill.strKillerNickname, MAX_NICKNAME_BYTES) ||
+			!writer.Write_String(kill.strVictimNickname, MAX_NICKNAME_BYTES)) return false;
 	}
 	return true;
 }
@@ -6537,9 +6558,17 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_COLOSSEUM_MATCH_ST
 	{
 		std::uint8_t ready = 0u;
 		if (!reader.Read_U32(row.iPlayerId) || !reader.Read_U32(row.iNetEntityId) || !reader.Read_U8(row.iTeam) ||
-			!reader.Read_U8(row.iArrivalIndex) || !reader.Read_U8(ready) || ready > 1u) return false;
+			!reader.Read_U8(row.iArrivalIndex) || !reader.Read_U8(ready) || ready > 1u || !reader.Read_U32(row.iKills)) return false;
 		row.bReady = ready != 0u;
 	}
+	if (!reader.Read_U8(count) || count > MAX_COLOSSEUM_RECENT_KILLS) return false;
+	value.RecentKills.resize(count);
+	for (auto& kill : value.RecentKills)
+		if (!reader.Read_U32(kill.iSequence) || !reader.Read_U32(kill.iServerTick) ||
+			!reader.Read_U32(kill.iKillerId) || !reader.Read_U32(kill.iVictimId) ||
+			!reader.Read_U8(kill.iKillerTeam) || !reader.Read_U8(kill.iVictimTeam) ||
+			!reader.Read_String(kill.strKillerNickname, MAX_NICKNAME_BYTES) ||
+			!reader.Read_String(kill.strVictimNickname, MAX_NICKNAME_BYTES)) return false;
 	if (!ValidColosseumState(value)) return false;
 	message = std::move(value); return true;
 }

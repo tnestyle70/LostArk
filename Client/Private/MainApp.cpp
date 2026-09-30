@@ -4794,6 +4794,7 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
 		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
 		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ||
+		currentLevel == ETOUI(LEVEL::COLOSSEUM) ||
 		Is_WaterGunHudLevel(currentLevel, CCombatHUDViewModel::Get().Get_Player());
 	/* The Skill Window (when one exists) and the Debug O-key raid-entry preview both replace
 	this whole screen region -- same gates the old ImGui pass applied at its call sites. */
@@ -5474,7 +5475,8 @@ void CMainApp::RenderShipHudTexts()
 void CMainApp::RenderQuickSlotKeyLabels()
 {
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::BERN) &&
+	if (currentLevel != ETOUI(LEVEL::COLOSSEUM) &&
+		currentLevel != ETOUI(LEVEL::BERN) &&
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
 		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
@@ -8415,7 +8417,8 @@ void CMainApp::Update_SkillCooldowns()
 void CMainApp::RenderSkillCooldownText()
 {
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::BERN) &&
+	if (currentLevel != ETOUI(LEVEL::COLOSSEUM) &&
+		currentLevel != ETOUI(LEVEL::BERN) &&
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
 		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
@@ -10023,7 +10026,8 @@ void CMainApp::Update_QuickSlotFlash()
 void CMainApp::RenderCombatHUDText()
 {
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::BERN) &&
+	if (currentLevel != ETOUI(LEVEL::COLOSSEUM) &&
+		currentLevel != ETOUI(LEVEL::BERN) &&
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
 		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&

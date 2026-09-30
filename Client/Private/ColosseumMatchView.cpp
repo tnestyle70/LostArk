@@ -67,13 +67,14 @@ namespace
 	{
 		return { a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t };
 	}
-	void Text(const std::wstring& text, float centerX, float topY, float pixels, const float4_t& color)
+	void Text(const std::wstring& text, float centerX, float topY, float pixels, const float4_t& color, float maxWidth = 0.f)
 	{
 		if (text.empty()) return;
 		auto& game = CGameInstance::Get();
 		float scale = 1.f;
 		const auto font = UILabelFont::Resolve(TEXT("Font_YG760"), pixels, scale);
 		const auto size = game.Measure_Text(font, text.c_str());
+		if (maxWidth > 0.f && size.x * scale > maxWidth) scale = maxWidth / size.x;
 		const float2_t position(std::round(centerX - size.x * scale * .5f), std::round(topY));
 		game.Draw_Text(font, text.c_str(), float2_t(position.x + 1.f, position.y + 1.f),
 			XMVectorSet(0.f, 0.f, 0.f, color.w), 0.f, float2_t(), scale);
@@ -116,9 +117,12 @@ struct CColosseumMatchView::IMPLEMENTATION
 		size_t slot = 0;
 	};
 
-	std::unique_ptr<CUILayoutRuntime> hud, result, bars;
+	struct COMBAT_TEXT { std::string slot; std::wstring text; float pixels; float4_t color; };
+	std::vector<COMBAT_TEXT> combatText;
+	std::unique_ptr<CUILayoutRuntime> hud, result, bars, combat;
 	std::weak_ptr<CCamera_Free> camera;
-	std::vector<RECT> hudRects, resultRects;
+	std::vector<RECT> hudRects, resultRects, combatRects;
+	bool combatReady = false;
 	std::vector<ACTOR> actors;
 	DOCUMENT document;
 	S2C_COLOSSEUM_MATCH_STATE state;
@@ -264,6 +268,61 @@ struct CColosseumMatchView::IMPLEMENTATION
 			view.Set_SlotRect(rect.id, 640.f + (rect.x - 640.f) * xScale,
 				rect.y, rect.width * xScale, rect.height);
 	}
+	void Update_Combat(const CClientReplication& replication)
+	{
+		combatText.clear();
+		if (!combat) return;
+		combat->Set_AllSlotsVisible(false);
+		if (!showHud || !combatReady) return;
+		const auto viewport = CGameInstance::Get().Get_ViewportSize();
+		if (viewport.x <= 0.f || viewport.y <= 0.f) return;
+		const float xScale = (viewport.y / 720.f) * (1280.f / viewport.x);
+		for (const auto& rect : combatRects)
+		{
+			const bool left = rect.id.rfind("Left", 0) == 0;
+			combat->Set_SlotRect(rect.id, left ? rect.x * xScale : 1280.f - (1280.f - rect.x) * xScale,
+				rect.y, rect.width * xScale, rect.height);
+		}
+		std::vector<REPLICATED_PLAYER_VIEW> players;
+		replication.Collect_PlayerViews(players);
+		const float4_t white(1.f, 1.f, 1.f, 1.f), gold(1.f, .85f, .3f, 1.f);
+		for (const auto& row : state.Participants)
+		{
+			if (row.iTeam > 1u || row.iArrivalIndex >= MAX_COLOSSEUM_MATCH_PLAYERS) continue;
+			const std::string prefix = std::string(row.iTeam == 0u ? "Left" : "Right") + std::to_string(row.iArrivalIndex / 2u) + "_";
+			const auto player = std::find_if(players.begin(), players.end(), [&](const auto& item) {
+				return item.iPlayerId == row.iPlayerId && item.iNetEntityId == row.iNetEntityId;
+			});
+			const auto health = player != players.end() ? replication.Get_PlayerHealth().Find(row.iNetEntityId) : REPLICATED_PLAYER_HEALTH{};
+			std::wstring name = L"...";
+			if (player != players.end()) (void)CWorldPlayerNameplateView::Try_ConvertUtf8(player->strNickname, name);
+			for (const char* part : { "BG", "HP", "Frame" }) combat->Set_SlotVisible(prefix + part, true);
+			combat->Set_SlotFillRatio(prefix + "HP", std::clamp(health.Get_Ratio(), 0.f, 1.f));
+			const bool local = player != players.end() && player->isLocal;
+			combatText.push_back({prefix + "Name", name, 11.f, local ? gold : white});
+			combatText.push_back({prefix + "Number", std::to_wstring(row.iArrivalIndex / 2u + 1u), 15.f, white});
+			combatText.push_back({prefix + "Kills", std::to_wstring(row.iKills) + L"\xD0AC", 12.f, white});
+			const std::wstring hp = !health.hasSnapshot ? L"..." : health.iCurrentHp == 0u ? L"\xC0AC\xB9DD" :
+				std::to_wstring(health.iCurrentHp) + L" / " + std::to_wstring(health.iMaximumHp);
+			combatText.push_back({prefix + "Health", hp, 10.f, white});
+		}
+		size_t slot = 0u;
+		for (auto it = state.RecentKills.rbegin(); it != state.RecentKills.rend() && slot < 3u; ++it)
+		{
+			const double age = serverTick - static_cast<double>(it->iServerTick);
+			if (age < 0.0 || age >= 6.0 * TICKS_PER_SECOND) continue;
+			const std::string prefix = "Feed" + std::to_string(slot++) + "_";
+			const bool red = it->iKillerTeam == 0u;
+			combat->Set_SlotVisible(prefix + "BG", true);
+			combat->Set_SlotVisible(prefix + (red ? "Red" : "Blue"), true);
+			combat->Set_SlotVisible(prefix + (red ? "RedIcon" : "BlueIcon"), true);
+			std::wstring killer, victim;
+			(void)CWorldPlayerNameplateView::Try_ConvertUtf8(it->strKillerNickname, killer);
+			(void)CWorldPlayerNameplateView::Try_ConvertUtf8(it->strVictimNickname, victim);
+			combatText.push_back({prefix + "Killer", killer, 12.f, white});
+			combatText.push_back({prefix + "Victim", victim, 12.f, white});
+		}
+	}
 	void Clear_Actors()
 	{
 		for (auto& actor : actors)
@@ -382,7 +441,7 @@ struct CColosseumMatchView::IMPLEMENTATION
 		const auto viewport = CGameInstance::Get().Get_ViewportSize();
 		if (viewport.x <= 0.f || viewport.y <= 0.f || !view.Get_SlotRect(id, x, y, width, height)) return;
 		Text(text, (x + width * .5f) * viewport.x / 1280.f,
-			y * viewport.y / 720.f, pixels * viewport.y / 720.f, color);
+			y * viewport.y / 720.f, pixels * viewport.y / 720.f, color, width * viewport.x / 1280.f);
 	}
 	float Banner_Duration() const
 	{
@@ -413,7 +472,7 @@ CColosseumMatchView::CColosseumMatchView() : m_Impl(std::make_unique<IMPLEMENTAT
 CColosseumMatchView::~CColosseumMatchView()
 {
 	m_Impl->End_Camera();
-	for (auto* view : { m_Impl->hud.get(), m_Impl->result.get(), m_Impl->bars.get() })
+	for (auto* view : { m_Impl->hud.get(), m_Impl->result.get(), m_Impl->bars.get(), m_Impl->combat.get() })
 		if (view) view->Release_Sprites();
 }
 
@@ -427,6 +486,12 @@ bool_t CColosseumMatchView::Initialize(ComPtr<ID3D11Device> device, ComPtr<ID3D1
 	p.result = std::make_unique<CUILayoutRuntime>(device, context, level, L"Layer_ColosseumResult", L"UI/Colosseum/Result_Layout.json");
 	p.bars = std::make_unique<CUILayoutRuntime>(device, context, level, L"Layer_ColosseumVictoryBars", L"UI/Colosseum/IntroCutscene_Layout.json");
 	p.hud->Set_UISortLayer(UI_TEXT_LAYER::HUD);
+	p.combat = std::make_unique<CUILayoutRuntime>(device, context, level, L"Layer_ColosseumCombat", L"UI/Colosseum/CombatHUD_Layout.json");
+	p.combat->Set_UISortLayer(UI_TEXT_LAYER::HUD);
+	p.combat->Set_AllSlotsVisible(false);
+	p.combatRects = IMPLEMENTATION::Capture_Rects(*p.combat);
+	p.combatReady = p.combatRects.size() == 49u;
+	if (!p.combatReady) p.Diagnose("team HP/kill feed layout is incomplete; other HUD remains available");
 	p.result->Set_UISortLayer(UI_TEXT_LAYER::MODAL);
 	p.bars->Set_UISortLayer(UI_TEXT_LAYER::MODAL + 1);
 	for (auto* view : { p.hud.get(), p.result.get(), p.bars.get() }) view->Set_AllSlotsVisible(false);
@@ -469,6 +534,7 @@ void CColosseumMatchView::Sample_Presentation(const CClientReplication& replicat
 	const auto& state = p.state;
 	p.showHud = state.ePhase == COLOSSEUM_MATCH_PHASE::PLAYING;
 	p.hud->Set_AllSlotsVisible(p.showHud);
+	p.Update_Combat(replication);
 	IMPLEMENTATION::Anchor(*p.hud, p.hudRects);
 	p.result->Set_AllSlotsVisible(false);
 	p.showReturn = false;
@@ -635,7 +701,7 @@ void CColosseumMatchView::Stop_DebugPreview()
 {
 	auto& p = *m_Impl;
 	p.End_Camera();
-	for (auto* view : { p.hud.get(), p.result.get(), p.bars.get() })
+	for (auto* view : { p.hud.get(), p.result.get(), p.bars.get(), p.combat.get() })
 		if (view) view->Set_AllSlotsVisible(false);
 	p.debugPreview = DEBUG_PREVIEW::NONE;
 	p.debugClockMs = 0.f;
@@ -656,9 +722,11 @@ f32_t CColosseumMatchView::Get_DebugPreviewClockMs() const { return m_Impl->debu
 void CColosseumMatchView::Render()
 {
 	auto& p = *m_Impl;
-	if (p.showHud)
+	if (p.showHud && !CUIInputRouter::Get().Is_CinematicSuppressed())
 	{
 		CUITextLayerScope scope(UI_TEXT_LAYER::HUD);
+		for (const auto& text : p.combatText)
+			p.Slot_Text(*p.combat, text.slot.c_str(), text.text, text.pixels, text.color);
 		const auto remaining = static_cast<uint32_t>(std::ceil((std::max)(0.0,
 			static_cast<double>(p.state.iPhaseEndTick) - p.serverTick) / TICKS_PER_SECOND));
 		p.Slot_Text(*p.hud, "Score_Time", std::to_wstring(remaining), 20.f, {1.f, 1.f, 1.f, 1.f});

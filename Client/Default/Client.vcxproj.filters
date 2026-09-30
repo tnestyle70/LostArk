@@ -6122,6 +6122,7 @@
     <None Include="..\..\Data\Camera\ColosseumIntro.cutscene.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Camera\ColosseumVictory.cutscene.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\UI\Colosseum\MatchHUD_Layout.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\UI\Colosseum\CombatHUD_Layout.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\UI\Colosseum\Result_Layout.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\UI\Colosseum\Result_Victory.keyframes.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\UI\Colosseum\Result_Defeat.keyframes.json"><Filter>96.DataFiles</Filter></None>

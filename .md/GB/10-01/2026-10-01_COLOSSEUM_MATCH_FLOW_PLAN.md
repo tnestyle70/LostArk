@@ -92,6 +92,21 @@ Pause/Stop, 실제 매치 격리, 종료 시 UI 숨김과 카메라/배우 복�
 해당 두 줄은 main의 30초를 유지한다. main 직접 push·force push·한쪽 전체 선택은 하지 않는다.
 push 전 main을 다시 확인하고, 새 변경이 있으면 양쪽 diff를 확인한 뒤 병합한다.
 
+## G09. 콜로세움 플레이어 HUD·팀 체력·처치 기록
+
+MainApp의 플레이어 HUD·수치·키 라벨·쿨다운 레벨 허용 목록에 COLOSSEUM을 연결한다.
+기존 컷신 숨김과 서버 HUD ViewModel을 유지하며 별도 전투 HUD 런타임은 만들지 않는다.
+좌우 두 명씩은 서버 arrival/team으로 고정하고, HP는 기존 replicated player health를
+정확한 player/entity ID로 조인한다. 미수신 HP를 만피로 표시하지 않는다.
+개인 킬과 최근 8개 처치는 서버의 한 번뿐인 득점 처리에서 생성해 protocol 131로 전달한다.
+Client는 최근 6초 이내 3개만 우측 상단에 보여주고 사망/HP 변화로 킬을 추측하지 않는다.
+원본 EFUI_COLOSSEUM의 HP frame/track 및 killScore row를 추출해 별도 CombatHUD JSON으로
+연결한다. 화면 가장자리 고정, 본인 이름 강조, 사망·퇴장·다음 경기 초기화를 검증한다.
+새 C++ 파일은 없고 새 JSON만 기존 96.DataFiles와 filters에 등록한다.
+새 Resources는 게임 Resources와 CY_Resource에 같은 상대 경로로 배포한다.
+protocol roundtrip/오류 rollback, 서버 중복 득점 방지, UI 계약 검사와 Debug/Release 빌드 후
+PR #495에 추가한다. 사용자 육안 확인 전 visual PASS로 기록하지 않는다.
+
 <!-- BEGIN GENERATED CODE SNAPSHOT -->
 ## G별 실제 반영 코드 전문
 
@@ -10826,13 +10841,14 @@ namespace
 	{
 		return { a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t };
 	}
-	void Text(const std::wstring& text, float centerX, float topY, float pixels, const float4_t& color)
+	void Text(const std::wstring& text, float centerX, float topY, float pixels, const float4_t& color, float maxWidth = 0.f)
 	{
 		if (text.empty()) return;
 		auto& game = CGameInstance::Get();
 		float scale = 1.f;
 		const auto font = UILabelFont::Resolve(TEXT("Font_YG760"), pixels, scale);
 		const auto size = game.Measure_Text(font, text.c_str());
+		if (maxWidth > 0.f && size.x * scale > maxWidth) scale = maxWidth / size.x;
 		const float2_t position(std::round(centerX - size.x * scale * .5f), std::round(topY));
 		game.Draw_Text(font, text.c_str(), float2_t(position.x + 1.f, position.y + 1.f),
 			XMVectorSet(0.f, 0.f, 0.f, color.w), 0.f, float2_t(), scale);
@@ -10875,9 +10891,12 @@ struct CColosseumMatchView::IMPLEMENTATION
 		size_t slot = 0;
 	};
 
-	std::unique_ptr<CUILayoutRuntime> hud, result, bars;
+	struct COMBAT_TEXT { std::string slot; std::wstring text; float pixels; float4_t color; };
+	std::vector<COMBAT_TEXT> combatText;
+	std::unique_ptr<CUILayoutRuntime> hud, result, bars, combat;
 	std::weak_ptr<CCamera_Free> camera;
-	std::vector<RECT> hudRects, resultRects;
+	std::vector<RECT> hudRects, resultRects, combatRects;
+	bool combatReady = false;
 	std::vector<ACTOR> actors;
 	DOCUMENT document;
 	S2C_COLOSSEUM_MATCH_STATE state;
@@ -11023,6 +11042,61 @@ struct CColosseumMatchView::IMPLEMENTATION
 			view.Set_SlotRect(rect.id, 640.f + (rect.x - 640.f) * xScale,
 				rect.y, rect.width * xScale, rect.height);
 	}
+	void Update_Combat(const CClientReplication& replication)
+	{
+		combatText.clear();
+		if (!combat) return;
+		combat->Set_AllSlotsVisible(false);
+		if (!showHud || !combatReady) return;
+		const auto viewport = CGameInstance::Get().Get_ViewportSize();
+		if (viewport.x <= 0.f || viewport.y <= 0.f) return;
+		const float xScale = (viewport.y / 720.f) * (1280.f / viewport.x);
+		for (const auto& rect : combatRects)
+		{
+			const bool left = rect.id.rfind("Left", 0) == 0;
+			combat->Set_SlotRect(rect.id, left ? rect.x * xScale : 1280.f - (1280.f - rect.x) * xScale,
+				rect.y, rect.width * xScale, rect.height);
+		}
+		std::vector<REPLICATED_PLAYER_VIEW> players;
+		replication.Collect_PlayerViews(players);
+		const float4_t white(1.f, 1.f, 1.f, 1.f), gold(1.f, .85f, .3f, 1.f);
+		for (const auto& row : state.Participants)
+		{
+			if (row.iTeam > 1u || row.iArrivalIndex >= MAX_COLOSSEUM_MATCH_PLAYERS) continue;
+			const std::string prefix = std::string(row.iTeam == 0u ? "Left" : "Right") + std::to_string(row.iArrivalIndex / 2u) + "_";
+			const auto player = std::find_if(players.begin(), players.end(), [&](const auto& item) {
+				return item.iPlayerId == row.iPlayerId && item.iNetEntityId == row.iNetEntityId;
+			});
+			const auto health = player != players.end() ? replication.Get_PlayerHealth().Find(row.iNetEntityId) : REPLICATED_PLAYER_HEALTH{};
+			std::wstring name = L"...";
+			if (player != players.end()) (void)CWorldPlayerNameplateView::Try_ConvertUtf8(player->strNickname, name);
+			for (const char* part : { "BG", "HP", "Frame" }) combat->Set_SlotVisible(prefix + part, true);
+			combat->Set_SlotFillRatio(prefix + "HP", std::clamp(health.Get_Ratio(), 0.f, 1.f));
+			const bool local = player != players.end() && player->isLocal;
+			combatText.push_back({prefix + "Name", name, 11.f, local ? gold : white});
+			combatText.push_back({prefix + "Number", std::to_wstring(row.iArrivalIndex / 2u + 1u), 15.f, white});
+			combatText.push_back({prefix + "Kills", std::to_wstring(row.iKills) + L"\xD0AC", 12.f, white});
+			const std::wstring hp = !health.hasSnapshot ? L"..." : health.iCurrentHp == 0u ? L"\xC0AC\xB9DD" :
+				std::to_wstring(health.iCurrentHp) + L" / " + std::to_wstring(health.iMaximumHp);
+			combatText.push_back({prefix + "Health", hp, 10.f, white});
+		}
+		size_t slot = 0u;
+		for (auto it = state.RecentKills.rbegin(); it != state.RecentKills.rend() && slot < 3u; ++it)
+		{
+			const double age = serverTick - static_cast<double>(it->iServerTick);
+			if (age < 0.0 || age >= 6.0 * TICKS_PER_SECOND) continue;
+			const std::string prefix = "Feed" + std::to_string(slot++) + "_";
+			const bool red = it->iKillerTeam == 0u;
+			combat->Set_SlotVisible(prefix + "BG", true);
+			combat->Set_SlotVisible(prefix + (red ? "Red" : "Blue"), true);
+			combat->Set_SlotVisible(prefix + (red ? "RedIcon" : "BlueIcon"), true);
+			std::wstring killer, victim;
+			(void)CWorldPlayerNameplateView::Try_ConvertUtf8(it->strKillerNickname, killer);
+			(void)CWorldPlayerNameplateView::Try_ConvertUtf8(it->strVictimNickname, victim);
+			combatText.push_back({prefix + "Killer", killer, 12.f, white});
+			combatText.push_back({prefix + "Victim", victim, 12.f, white});
+		}
+	}
 	void Clear_Actors()
 	{
 		for (auto& actor : actors)
@@ -11141,7 +11215,7 @@ struct CColosseumMatchView::IMPLEMENTATION
 		const auto viewport = CGameInstance::Get().Get_ViewportSize();
 		if (viewport.x <= 0.f || viewport.y <= 0.f || !view.Get_SlotRect(id, x, y, width, height)) return;
 		Text(text, (x + width * .5f) * viewport.x / 1280.f,
-			y * viewport.y / 720.f, pixels * viewport.y / 720.f, color);
+			y * viewport.y / 720.f, pixels * viewport.y / 720.f, color, width * viewport.x / 1280.f);
 	}
 	float Banner_Duration() const
 	{
@@ -11172,7 +11246,7 @@ CColosseumMatchView::CColosseumMatchView() : m_Impl(std::make_unique<IMPLEMENTAT
 CColosseumMatchView::~CColosseumMatchView()
 {
 	m_Impl->End_Camera();
-	for (auto* view : { m_Impl->hud.get(), m_Impl->result.get(), m_Impl->bars.get() })
+	for (auto* view : { m_Impl->hud.get(), m_Impl->result.get(), m_Impl->bars.get(), m_Impl->combat.get() })
 		if (view) view->Release_Sprites();
 }
 
@@ -11186,6 +11260,12 @@ bool_t CColosseumMatchView::Initialize(ComPtr<ID3D11Device> device, ComPtr<ID3D1
 	p.result = std::make_unique<CUILayoutRuntime>(device, context, level, L"Layer_ColosseumResult", L"UI/Colosseum/Result_Layout.json");
 	p.bars = std::make_unique<CUILayoutRuntime>(device, context, level, L"Layer_ColosseumVictoryBars", L"UI/Colosseum/IntroCutscene_Layout.json");
 	p.hud->Set_UISortLayer(UI_TEXT_LAYER::HUD);
+	p.combat = std::make_unique<CUILayoutRuntime>(device, context, level, L"Layer_ColosseumCombat", L"UI/Colosseum/CombatHUD_Layout.json");
+	p.combat->Set_UISortLayer(UI_TEXT_LAYER::HUD);
+	p.combat->Set_AllSlotsVisible(false);
+	p.combatRects = IMPLEMENTATION::Capture_Rects(*p.combat);
+	p.combatReady = p.combatRects.size() == 49u;
+	if (!p.combatReady) p.Diagnose("team HP/kill feed layout is incomplete; other HUD remains available");
 	p.result->Set_UISortLayer(UI_TEXT_LAYER::MODAL);
 	p.bars->Set_UISortLayer(UI_TEXT_LAYER::MODAL + 1);
 	for (auto* view : { p.hud.get(), p.result.get(), p.bars.get() }) view->Set_AllSlotsVisible(false);
@@ -11228,6 +11308,7 @@ void CColosseumMatchView::Sample_Presentation(const CClientReplication& replicat
 	const auto& state = p.state;
 	p.showHud = state.ePhase == COLOSSEUM_MATCH_PHASE::PLAYING;
 	p.hud->Set_AllSlotsVisible(p.showHud);
+	p.Update_Combat(replication);
 	IMPLEMENTATION::Anchor(*p.hud, p.hudRects);
 	p.result->Set_AllSlotsVisible(false);
 	p.showReturn = false;
@@ -11394,7 +11475,7 @@ void CColosseumMatchView::Stop_DebugPreview()
 {
 	auto& p = *m_Impl;
 	p.End_Camera();
-	for (auto* view : { p.hud.get(), p.result.get(), p.bars.get() })
+	for (auto* view : { p.hud.get(), p.result.get(), p.bars.get(), p.combat.get() })
 		if (view) view->Set_AllSlotsVisible(false);
 	p.debugPreview = DEBUG_PREVIEW::NONE;
 	p.debugClockMs = 0.f;
@@ -11415,9 +11496,11 @@ f32_t CColosseumMatchView::Get_DebugPreviewClockMs() const { return m_Impl->debu
 void CColosseumMatchView::Render()
 {
 	auto& p = *m_Impl;
-	if (p.showHud)
+	if (p.showHud && !CUIInputRouter::Get().Is_CinematicSuppressed())
 	{
 		CUITextLayerScope scope(UI_TEXT_LAYER::HUD);
+		for (const auto& text : p.combatText)
+			p.Slot_Text(*p.combat, text.slot.c_str(), text.text, text.pixels, text.color);
 		const auto remaining = static_cast<uint32_t>(std::ceil((std::max)(0.0,
 			static_cast<double>(p.state.iPhaseEndTick) - p.serverTick) / TICKS_PER_SECOND));
 		p.Slot_Text(*p.hud, "Score_Time", std::to_wstring(remaining), 20.f, {1.f, 1.f, 1.f, 1.f});
@@ -22331,6 +22414,7 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
 		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
 		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ||
+		currentLevel == ETOUI(LEVEL::COLOSSEUM) ||
 		Is_WaterGunHudLevel(currentLevel, CCombatHUDViewModel::Get().Get_Player());
 	/* The Skill Window (when one exists) and the Debug O-key raid-entry preview both replace
 	this whole screen region -- same gates the old ImGui pass applied at its call sites. */
@@ -23011,7 +23095,8 @@ void CMainApp::RenderShipHudTexts()
 void CMainApp::RenderQuickSlotKeyLabels()
 {
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::BERN) &&
+	if (currentLevel != ETOUI(LEVEL::COLOSSEUM) &&
+		currentLevel != ETOUI(LEVEL::BERN) &&
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
 		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
@@ -25952,7 +26037,8 @@ void CMainApp::Update_SkillCooldowns()
 void CMainApp::RenderSkillCooldownText()
 {
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::BERN) &&
+	if (currentLevel != ETOUI(LEVEL::COLOSSEUM) &&
+		currentLevel != ETOUI(LEVEL::BERN) &&
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
 		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
@@ -27560,7 +27646,8 @@ void CMainApp::Update_QuickSlotFlash()
 void CMainApp::RenderCombatHUDText()
 {
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::BERN) &&
+	if (currentLevel != ETOUI(LEVEL::COLOSSEUM) &&
+		currentLevel != ETOUI(LEVEL::BERN) &&
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
 		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
@@ -49911,6 +49998,1945 @@ if (-not $InspectOnly) {
       ]
     }
   }
+}
+```
+
+### C:/Users/USER/source/졸업팀폴/LostArk/Data/UI/Colosseum/CombatHUD_Layout.json
+
+변경 종류: 현재 반영본 전문. 적용 위치: 파일 처음부터 끝까지.
+
+```json
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": {
+    "width": 1280,
+    "height": 720
+  },
+  "classes": [
+    "Default"
+  ],
+  "slots": [
+    {
+      "id": "Left0_BG",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 8.0,
+        "y": 316.0,
+        "width": 177.60000000000002,
+        "height": 46.400000000000006
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_273.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left0_HP",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 15.2,
+        "y": 324.0,
+        "width": 164.8,
+        "height": 28.8
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_280.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left0_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 10.4,
+        "y": 311.2,
+        "width": 180.0,
+        "height": 45.6
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_276.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left0_Number",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 12,
+        "y": 330,
+        "width": 20,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left0_Name",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 37,
+        "y": 323,
+        "width": 108,
+        "height": 16
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left0_Health",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 37,
+        "y": 340,
+        "width": 108,
+        "height": 14
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left0_Kills",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 149,
+        "y": 331,
+        "width": 34,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left1_BG",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 8.0,
+        "y": 368.0,
+        "width": 177.60000000000002,
+        "height": 46.400000000000006
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_273.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left1_HP",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 15.2,
+        "y": 376.0,
+        "width": 164.8,
+        "height": 28.8
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_280.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left1_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 10.4,
+        "y": 363.2,
+        "width": 180.0,
+        "height": 45.6
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_276.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left1_Number",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 12,
+        "y": 382,
+        "width": 20,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left1_Name",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 37,
+        "y": 375,
+        "width": 108,
+        "height": 16
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left1_Health",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 37,
+        "y": 392,
+        "width": 108,
+        "height": 14
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left1_Kills",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 149,
+        "y": 383,
+        "width": 34,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right0_BG",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1088.0,
+        "y": 316.0,
+        "width": 177.60000000000002,
+        "height": 46.400000000000006
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_273.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right0_HP",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1095.2,
+        "y": 324.0,
+        "width": 164.8,
+        "height": 28.8
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_282.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right0_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1090.4,
+        "y": 311.2,
+        "width": 180.0,
+        "height": 45.6
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_276.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right0_Number",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1092,
+        "y": 330,
+        "width": 20,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right0_Name",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1117,
+        "y": 323,
+        "width": 108,
+        "height": 16
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right0_Health",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1117,
+        "y": 340,
+        "width": 108,
+        "height": 14
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right0_Kills",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1229,
+        "y": 331,
+        "width": 34,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right1_BG",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1088.0,
+        "y": 368.0,
+        "width": 177.60000000000002,
+        "height": 46.400000000000006
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_273.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right1_HP",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1095.2,
+        "y": 376.0,
+        "width": 164.8,
+        "height": 28.8
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_282.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right1_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1090.4,
+        "y": 363.2,
+        "width": 180.0,
+        "height": 45.6
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_276.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right1_Number",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1092,
+        "y": 382,
+        "width": 20,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right1_Name",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1117,
+        "y": 375,
+        "width": 108,
+        "height": 16
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right1_Health",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1117,
+        "y": 392,
+        "width": 108,
+        "height": 14
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right1_Kills",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1229,
+        "y": 383,
+        "width": 34,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed0_BG",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 94.0,
+        "width": 260.0,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_12.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed0_Red",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 94.0,
+        "width": 263.90000000000003,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_15.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed0_Blue",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 94.0,
+        "width": 263.90000000000003,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_18.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed0_RedIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1091.8,
+        "y": 97.25,
+        "width": 40.300000000000004,
+        "height": 23.400000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_29.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed0_BlueIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1091.8,
+        "y": 97.25,
+        "width": 40.300000000000004,
+        "height": 23.400000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_31.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed0_Killer",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 987,
+        "y": 103,
+        "width": 100,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed0_Victim",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1152,
+        "y": 103,
+        "width": 100,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed1_BG",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 129.0,
+        "width": 260.0,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_12.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed1_Red",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 129.0,
+        "width": 263.90000000000003,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_15.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed1_Blue",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 129.0,
+        "width": 263.90000000000003,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_18.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed1_RedIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1091.8,
+        "y": 132.25,
+        "width": 40.300000000000004,
+        "height": 23.400000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_29.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed1_BlueIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1091.8,
+        "y": 132.25,
+        "width": 40.300000000000004,
+        "height": 23.400000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_31.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed1_Killer",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 987,
+        "y": 138,
+        "width": 100,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed1_Victim",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1152,
+        "y": 138,
+        "width": 100,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed2_BG",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 164.0,
+        "width": 260.0,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_12.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed2_Red",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 164.0,
+        "width": 263.90000000000003,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_15.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed2_Blue",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 164.0,
+        "width": 263.90000000000003,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_18.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed2_RedIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1091.8,
+        "y": 167.25,
+        "width": 40.300000000000004,
+        "height": 23.400000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_29.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed2_BlueIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1091.8,
+        "y": 167.25,
+        "width": 40.300000000000004,
+        "height": 23.400000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_31.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed2_Killer",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 987,
+        "y": 173,
+        "width": 100,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed2_Victim",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1152,
+        "y": 173,
+        "width": 100,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    }
+  ]
 }
 ```
 
@@ -487573,7 +489599,15 @@ void LostArk::Server::CGameRoom::Score_ColosseumKills(const std::uint32_t tick)
 		if (player.iCurrentHp || player.iColosseumRespawnTick) continue;
 		const auto killer = m_Players.find(player.iColosseumKillerId);
 		if (killer != m_Players.end() && killer->second.iColosseumTeam < 2u && killer->second.iColosseumTeam != player.iColosseumTeam)
+		{
 			++m_iColosseumScores[killer->second.iColosseumTeam];
+			++killer->second.iColosseumKills;
+			m_ColosseumRecentKills.push_back({ ++m_iColosseumKillSequence, tick,
+				killer->first, id, killer->second.iColosseumTeam, player.iColosseumTeam,
+				killer->second.strNickName, player.strNickName });
+			if (m_ColosseumRecentKills.size() > MAX_COLOSSEUM_RECENT_KILLS)
+				m_ColosseumRecentKills.erase(m_ColosseumRecentKills.begin());
+		}
 		player.iColosseumKillerId = INVALID_PLAYER_ID; player.iColosseumRespawnTick = tick + 90u;
 		player.Projectiles.clear(); m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
 	}
@@ -487586,12 +489620,13 @@ void LostArk::Server::CGameRoom::Broadcast_ColosseumMatchState()
 	state.iMatchId = m_iColosseumMatchId; state.iServerTick = m_iServerTick; state.ePhase = m_eColosseumPhase;
 	state.iPhaseStartTick = m_iColosseumPhaseStart; state.iPhaseEndTick = m_iColosseumPhaseEnd;
 	state.iLeftScore = m_iColosseumScores[0]; state.iRightScore = m_iColosseumScores[1];
+	state.RecentKills = m_ColosseumRecentKills;
 	state.iExpectedPlayers = static_cast<std::uint8_t>(std::count_if(m_ColosseumSessions.begin(), m_ColosseumSessions.end(), [](const auto id) { return id != INVALID_SESSION_ID; }));
 	if (state.ePhase == COLOSSEUM_MATCH_PHASE::FINISHED && state.iLeftScore != state.iRightScore)
 		state.iWinningTeam = state.iLeftScore > state.iRightScore ? 0u : 1u;
 	for (const auto& [id, player] : m_Players)
 		if (std::find(m_ColosseumSessions.begin(), m_ColosseumSessions.end(), player.iSessionId) != m_ColosseumSessions.end())
-			state.Participants.push_back({id, player.iNetEntityId, player.iColosseumTeam, player.iColosseumArrivalIndex, player.bColosseumReady});
+			state.Participants.push_back({id, player.iNetEntityId, player.iColosseumTeam, player.iColosseumArrivalIndex, player.bColosseumReady, player.iColosseumKills});
 	CPacketWriter writer;
 	if (!Write_Message(writer, state)) return;
 	for (const auto& [id, player] : m_Players)
@@ -504011,6 +506046,13 @@ int LostArk::Server::CServerGameplayContractRunner::Run_ColosseumOnly()
 	room->Score_ColosseumKills(615u); room->Score_ColosseumKills(616u);
 	tests.Require(room->m_iColosseumScores[0] == 1u && enemy.iColosseumRespawnTick == 705u,
 		"One death scores once and schedules a three-second respawn");
+	tests.Require(caster.iColosseumKills == 1u && room->m_ColosseumRecentKills.size() == 1u &&
+		room->m_ColosseumRecentKills.front().iKillerId == caster.iPlayerId &&
+		room->m_ColosseumRecentKills.front().iVictimId == enemy.iPlayerId &&
+		room->m_ColosseumRecentKills.front().strKillerNickname == caster.strNickName &&
+		room->m_ColosseumRecentKills.front().strVictimNickname == enemy.strNickName &&
+		room->m_ColosseumRecentKills.front().iServerTick == 615u,
+		"Server records one personal kill and one identity-preserving feed event per death");
 	room->Update_ColosseumMatch(704u); tests.Require(enemy.iCurrentHp == 0u, "Corpse remains until respawn deadline");
 	room->Update_ColosseumMatch(705u);
 	tests.Require(enemy.iCurrentHp == enemy.iMaximumHp && enemy.fPositionX == enemy.fColosseumSpawnX && enemy.fPositionZ == enemy.fColosseumSpawnZ,
@@ -504068,6 +506110,19 @@ int LostArk::Server::CServerGameplayContractRunner::Run_ColosseumOnly()
 	auto second = std::make_unique<CGameRoom>(WORLD_ID::COLOSSEUM);
 	tests.Require(second->Configure_ColosseumMatch(72u, {82001u,82002u,82003u,82004u}) && second->m_Players.empty() && second->m_iColosseumScores[0] == 0u,
 		"Another match owns independent players and scores");
+	tests.Require(second->m_ColosseumRecentKills.empty() && second->m_iColosseumKillSequence == 0u && caster.iColosseumKills == 1u,
+		"Respawn keeps personal kills; a different room never inherits feed history");
+	room->m_eColosseumPhase = COLOSSEUM_MATCH_PHASE::PLAYING;
+	for (std::uint32_t i = 0; i < 12u; ++i)
+	{
+		enemy.iCurrentHp = 0u; enemy.iColosseumRespawnTick = 0u;
+		enemy.iColosseumKillerId = caster.iPlayerId;
+		room->Score_ColosseumKills(4300u + i);
+	}
+	tests.Require(room->m_ColosseumRecentKills.size() == MAX_COLOSSEUM_RECENT_KILLS &&
+		room->m_ColosseumRecentKills.front().iSequence == 6u &&
+		room->m_ColosseumRecentKills.back().iSequence == 13u && caster.iColosseumKills == 13u,
+		"Recent kill history is bounded and evicts the oldest event without losing personal totals");
 	room->m_eColosseumPhase = COLOSSEUM_MATCH_PHASE::LOADING; room->m_iColosseumPhaseEnd = 8000u;
 	room->Remove_ColosseumExpectedSession(sessions[3]); room->m_Players.at(room->m_PlayerIdBySessionId.at(sessions[3])).bColosseumReady = false;
 	room->Update_ColosseumMatch(4300u);
@@ -508014,6 +510069,8 @@ namespace LostArk::Server
 		LostArk::Shared::COLOSSEUM_MATCH_PHASE m_eColosseumPhase = LostArk::Shared::COLOSSEUM_MATCH_PHASE::LOADING;
 		std::uint32_t m_iColosseumPhaseStart = 0u, m_iColosseumPhaseEnd = 0u;
 		std::uint32_t m_iColosseumScores[2]{};
+		std::uint32_t m_iColosseumKillSequence = 0u;
+		std::vector<LostArk::Shared::COLOSSEUM_KILL_EVENT> m_ColosseumRecentKills;
 		GATE_PROGRESS_STATE m_GateProgress;
 		std::uint32_t m_iArenaAssemblyStartTick = 0u;
 		std::uint32_t m_iArenaAssemblyRaidEpoch = 0u;
@@ -509396,6 +511453,7 @@ namespace LostArk::Server
 	{
 		// Nonzero only in an isolated Colosseum match. Never inferred from position.
 		std::uint32_t iColosseumMatchId = 0u, iColosseumRespawnTick = 0u;
+		std::uint32_t iColosseumKills = 0u;
 		LostArk::Shared::PLAYER_ID iColosseumKillerId = LostArk::Shared::INVALID_PLAYER_ID;
 		std::uint8_t iColosseumTeam = 255u, iColosseumArrivalIndex = 255u;
 		bool bColosseumReady = false, bColosseumCombatActive = false;
@@ -516698,6 +518756,17 @@ namespace
 		if (!state.iMatchId || state.ePhase >= COLOSSEUM_MATCH_PHASE::END ||
 			(state.iWinningTeam > 1u && state.iWinningTeam != COLOSSEUM_DRAW_TEAM) ||
 			state.iExpectedPlayers > MAX_COLOSSEUM_MATCH_PLAYERS || state.Participants.size() > state.iExpectedPlayers) return false;
+		if (state.RecentKills.size() > MAX_COLOSSEUM_RECENT_KILLS) return false;
+		std::uint32_t previousSequence = 0u;
+		for (const auto& kill : state.RecentKills)
+		{
+			if (kill.iSequence <= previousSequence || !kill.iKillerId || !kill.iVictimId ||
+				kill.iKillerId == kill.iVictimId || kill.iKillerTeam > 1u || kill.iVictimTeam > 1u ||
+				kill.iKillerTeam == kill.iVictimTeam ||
+				static_cast<std::int32_t>(state.iServerTick - kill.iServerTick) < 0 ||
+				!Is_Valid_PlayerNickname(kill.strKillerNickname) || !Is_Valid_PlayerNickname(kill.strVictimNickname)) return false;
+			previousSequence = kill.iSequence;
+		}
 		std::uint8_t seats = 0u;
 		for (const auto& row : state.Participants)
 		{
@@ -516722,6 +518791,16 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_COLOSSEUM_M
 	{
 		writer.Write_U32(row.iPlayerId); writer.Write_U32(row.iNetEntityId);
 		writer.Write_U8(row.iTeam); writer.Write_U8(row.iArrivalIndex); writer.Write_U8(row.bReady ? 1u : 0u);
+		writer.Write_U32(row.iKills);
+	}
+	writer.Write_U8(static_cast<std::uint8_t>(message.RecentKills.size()));
+	for (const auto& kill : message.RecentKills)
+	{
+		writer.Write_U32(kill.iSequence); writer.Write_U32(kill.iServerTick);
+		writer.Write_U32(kill.iKillerId); writer.Write_U32(kill.iVictimId);
+		writer.Write_U8(kill.iKillerTeam); writer.Write_U8(kill.iVictimTeam);
+		if (!writer.Write_String(kill.strKillerNickname, MAX_NICKNAME_BYTES) ||
+			!writer.Write_String(kill.strVictimNickname, MAX_NICKNAME_BYTES)) return false;
 	}
 	return true;
 }
@@ -516737,9 +518816,17 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_COLOSSEUM_MATCH_ST
 	{
 		std::uint8_t ready = 0u;
 		if (!reader.Read_U32(row.iPlayerId) || !reader.Read_U32(row.iNetEntityId) || !reader.Read_U8(row.iTeam) ||
-			!reader.Read_U8(row.iArrivalIndex) || !reader.Read_U8(ready) || ready > 1u) return false;
+			!reader.Read_U8(row.iArrivalIndex) || !reader.Read_U8(ready) || ready > 1u || !reader.Read_U32(row.iKills)) return false;
 		row.bReady = ready != 0u;
 	}
+	if (!reader.Read_U8(count) || count > MAX_COLOSSEUM_RECENT_KILLS) return false;
+	value.RecentKills.resize(count);
+	for (auto& kill : value.RecentKills)
+		if (!reader.Read_U32(kill.iSequence) || !reader.Read_U32(kill.iServerTick) ||
+			!reader.Read_U32(kill.iKillerId) || !reader.Read_U32(kill.iVictimId) ||
+			!reader.Read_U8(kill.iKillerTeam) || !reader.Read_U8(kill.iVictimTeam) ||
+			!reader.Read_String(kill.strKillerNickname, MAX_NICKNAME_BYTES) ||
+			!reader.Read_String(kill.strVictimNickname, MAX_NICKNAME_BYTES)) return false;
 	if (!ValidColosseumState(value)) return false;
 	message = std::move(value); return true;
 }
@@ -521478,6 +523565,15 @@ namespace LostArk::Shared
 		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
 		std::uint8_t iTeam = 0u, iArrivalIndex = 0u;
 		bool bReady = false;
+		std::uint32_t iKills = 0u;
+	};
+	inline constexpr std::size_t MAX_COLOSSEUM_RECENT_KILLS = 8u;
+	struct COLOSSEUM_KILL_EVENT
+	{
+		std::uint32_t iSequence = 0u, iServerTick = 0u;
+		PLAYER_ID iKillerId = INVALID_PLAYER_ID, iVictimId = INVALID_PLAYER_ID;
+		std::uint8_t iKillerTeam = COLOSSEUM_DRAW_TEAM, iVictimTeam = COLOSSEUM_DRAW_TEAM;
+		std::string strKillerNickname, strVictimNickname;
 	};
 	struct S2C_COLOSSEUM_MATCH_STATE
 	{
@@ -521488,6 +523584,7 @@ namespace LostArk::Shared
 		std::uint8_t iWinningTeam = COLOSSEUM_DRAW_TEAM;
 		std::uint8_t iExpectedPlayers = 0u;
 		std::vector<COLOSSEUM_MATCH_PLAYER_STATE> Participants;
+		std::vector<COLOSSEUM_KILL_EVENT> RecentKills;
 	};
 	bool Write_Message(CPacketWriter&, const C2S_COLOSSEUM_LOAD_READY&);
 	bool Read_Message(CPacketReader&, C2S_COLOSSEUM_LOAD_READY&);
@@ -522366,7 +524463,8 @@ namespace LostArk::Shared
 	// Independently released 127 branches add voice, durability, or Waterpang AI.
 	// Colosseum 128 adds its world and queue on top of 126. Those peers cannot
 	// decode the combined layout. 129 carries all four contracts together.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 130;
+	// 130 adds match phases and appearance; 131 appends personal kills and bounded kill history.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 131;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -522942,6 +525040,112 @@ def main():
 if __name__=='__main__':main()
 ```
 
+### C:/Users/USER/source/졸업팀폴/LostArk/Tools/LpkPipeline/build_colosseum_combat_ui.py
+
+변경 종류: 현재 반영본 전문. 적용 위치: 파일 처음부터 끝까지.
+
+```python
+"""Extract exact retail HP/kill-row bitmap shapes; author a two-player team layout.
+
+Uses the same GFX decoder as result extraction. Dynamic clipping is performed by
+CUI_Sprite fill ratio, not by baking a fake full-HP image or a screenshot.
+"""
+import argparse
+import json
+from pathlib import Path
+
+from build_colosseum_match_result_ui import Extractor, slot, write
+
+
+SHAPES = (273, 276, 280, 282, 12, 15, 18, 29, 31)
+
+
+def validate(repo):
+    path = repo / 'Data/UI/Colosseum/CombatHUD_Layout.json'
+    doc = json.loads(path.read_text(encoding='utf-8'))
+    assert doc['schema'] == 'lostark.ui-layout' and doc['formatVersion'] == 1
+    slots = {s['id']: s for s in doc['slots']}
+    assert len(slots) == len(doc['slots'])
+    required = {f'{side}{i}_{part}' for side in ('Left', 'Right') for i in range(2)
+                for part in ('BG', 'HP', 'Frame', 'Name', 'Health', 'Kills', 'Number')}
+    required |= {f'Feed{i}_{part}' for i in range(3)
+                 for part in ('BG', 'Red', 'Blue', 'RedIcon', 'BlueIcon', 'Killer', 'Victim')}
+    assert required <= slots.keys()
+    assets = set()
+    for s in slots.values():
+        r = s['rect']
+        assert 0 <= r['x'] < 1280 and 0 <= r['y'] < 720
+        assert r['width'] > 0 and r['height'] > 0
+        for layer in s['layers']:
+            asset = layer['path']
+            assert asset.startswith('UI/Colosseum/Combat/') and '..' not in asset and ':' not in asset
+            assert (repo / 'Client/Bin/Resources' / asset).is_file(), asset
+            assets.add(asset)
+    print(f'Colosseum combat UI: {len(slots)} slots, {len(assets)} exact source images validated')
+
+
+def build(repo, movie, textures):
+    target = repo / 'Client/Bin/Resources/UI/Colosseum/Combat'
+    ex = Extractor(movie, textures, target)
+    bounds = {}
+    for cid in SHAPES:
+        image, x, y = ex.shape(cid)
+        image.save(target / f'shape_{cid}.png')
+        bounds[cid] = (x, y, *image.size)
+    slots = []
+
+    def image_slot(name, cid, x, y, scale):
+        bx, by, w, h = bounds[cid]
+        item = slot(name, x + bx * scale, y + by * scale, w * scale, h * scale,
+                    f'UI/Colosseum/Combat/shape_{cid}.png')
+        slots.append(item)
+        return item
+
+    # Source sprite 327 -> hpBarFrame_mc 294: backing, clip target at (9,10),
+    # track 286 -> bg 285 (three team states), frame 276. No clip-mask geometry.
+    for side, x, fill in [('Left', 8, 280), ('Right', 1088, 282)]:
+        for i in range(2):
+            prefix = f'{side}{i}_'
+            y, scale = 316 + i * 52, .8
+            image_slot(prefix + 'BG', 273, x, y, scale)
+            image_slot(prefix + 'HP', fill, x + 9 * scale, y + 10 * scale, scale)
+            image_slot(prefix + 'Frame', 276, x, y, scale)
+            slots += [slot(prefix + 'Number', x + 4, y + 14, 20, 18),
+                      slot(prefix + 'Name', x + 29, y + 7, 108, 16),
+                      slot(prefix + 'Health', x + 29, y + 24, 108, 14),
+                      slot(prefix + 'Kills', x + 141, y + 15, 34, 18)]
+    # Sprite 35: background, team ribbon, arrow/cross icon, fromUser/toUser.
+    for i in range(3):
+        prefix, x, y, scale = f'Feed{i}_', 980, 94 + i * 35, .65
+        image_slot(prefix + 'BG', 12, x, y, scale)
+        image_slot(prefix + 'Red', 15, x, y, scale)
+        image_slot(prefix + 'Blue', 18, x, y, scale)
+        image_slot(prefix + 'RedIcon', 29, x + 172 * scale, y + 5 * scale, scale)
+        image_slot(prefix + 'BlueIcon', 31, x + 172 * scale, y + 5 * scale, scale)
+        slots += [slot(prefix + 'Killer', x + 7, y + 9, 100, 18),
+                  slot(prefix + 'Victim', x + 172, y + 9, 100, 18)]
+    write(repo / 'Data/UI/Colosseum/CombatHUD_Layout.json',
+          {'schema': 'lostark.ui-layout', 'formatVersion': 1,
+           'resolution': {'width': 1280, 'height': 720},
+           'classes': ['Default'], 'slots': slots})
+    validate(repo)
+
+
+if __name__ == '__main__':
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--repo', type=Path, default=Path(__file__).resolve().parents[2])
+    ap.add_argument('--movie', type=Path)
+    ap.add_argument('--tex', type=Path)
+    ap.add_argument('--validate', action='store_true')
+    args = ap.parse_args()
+    if args.validate:
+        validate(args.repo)
+    else:
+        if not args.movie or not args.tex:
+            ap.error('--movie and --tex are required')
+        build(args.repo, args.movie, args.tex)
+```
+
 ### C:/Users/USER/source/졸업팀폴/LostArk/Tools/LpkPipeline/build_colosseum_match_result_ui.py
 
 변경 종류: 현재 반영본 전문. 적용 위치: 파일 처음부터 끝까지.
@@ -523374,6 +525578,80 @@ def main():
 
 
 if __name__=='__main__':main()
+```
+
+### C:/Users/USER/source/졸업팀폴/LostArk/Tools/LpkPipeline/test_colosseum_combat_hud_contract.py
+
+변경 종류: 현재 반영본 전문. 적용 위치: 파일 처음부터 끝까지.
+
+```python
+"""Non-visual source/data wiring regression; actual pixels are user-reviewed."""
+import json
+import unittest
+from pathlib import Path
+from build_colosseum_combat_ui import validate
+from test_colosseum_debug_preview_contract import source, function
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+class CombatHUDContract(unittest.TestCase):
+    def test_all_four_player_hud_gates_admit_colosseum(self):
+        app = source('Client/Private/MainApp.cpp')
+        for name in ('Update_CombatHUD', 'RenderCombatHUDText', 'RenderQuickSlotKeyLabels', 'RenderSkillCooldownText'):
+            self.assertIn('LEVEL::COLOSSEUM', function(app, f'void CMainApp::{name}('))
+
+    def test_source_images_and_layout(self):
+        validate(ROOT)
+        doc = json.loads((ROOT / 'Data/UI/Colosseum/CombatHUD_Layout.json').read_text())
+        self.assertEqual(doc['resolution'], {'width': 1280, 'height': 720})
+        for slot in doc['slots']:
+            r = slot['rect']
+            self.assertLessEqual(r['x'] + r['width'], 1280)
+            self.assertLessEqual(r['y'] + r['height'], 720)
+
+    def test_hp_uses_exact_replicated_identity_not_estimated_full_health(self):
+        view = source('Client/Private/ColosseumMatchView.cpp')
+        self.assertIn('item.iPlayerId == row.iPlayerId && item.iNetEntityId == row.iNetEntityId', view)
+        self.assertIn('replication.Get_PlayerHealth().Find(row.iNetEntityId)', view)
+        self.assertIn('std::clamp(health.Get_Ratio(), 0.f, 1.f)', view)
+        self.assertIn('!health.hasSnapshot ? L"..."', view)
+
+    def test_kill_feed_bounded_age_and_no_local_scoring(self):
+        view = source('Client/Private/ColosseumMatchView.cpp')
+        self.assertIn('state.RecentKills.rbegin()', view)
+        self.assertIn('slot < 3u', view)
+        self.assertIn('age >= 6.0 * TICKS_PER_SECOND', view)
+        self.assertNotIn('RecentKills.push_back', view)
+        self.assertNotIn('iKills++', view)
+
+    def test_no_feed_outside_play_and_sprite_lifetime(self):
+        view = source('Client/Private/ColosseumMatchView.cpp')
+        self.assertIn('combatText.clear();', view)
+        self.assertIn('combat->Set_AllSlotsVisible(false);', view)
+        self.assertIn('if (!showHud || !combatReady) return;', view)
+        stop = function(view, 'void CColosseumMatchView::Stop_DebugPreview()')
+        self.assertIn('p.combat.get()', stop)
+        self.assertIn('m_Impl->combat.get()', view[view.index('CColosseumMatchView::~'):])
+
+    def test_edge_anchor_geometry_for_wide_and_standard_screens(self):
+        # Independent numeric expectation for the expression used by the consumer.
+        for w, h in ((1280, 720), (1920, 1080), (3440, 1440), (1280, 1024)):
+            scale = h / 720 * 1280 / w
+            left = 8 * scale * w / 1280
+            right = (1280 - (1280 - 1088) * scale) * w / 1280
+            self.assertAlmostEqual(left, 8 * h / 720)
+            self.assertAlmostEqual(w - right, 192 * h / 720)
+        view = source('Client/Private/ColosseumMatchView.cpp')
+        self.assertIn('left ? rect.x * xScale : 1280.f - (1280.f - rect.x) * xScale', view)
+
+    def test_project_registration(self):
+        for file in ('Client.vcxproj', 'Client.vcxproj.filters'):
+            self.assertEqual(source('Client/Default/' + file).count('Colosseum\\CombatHUD_Layout.json'), 1)
+
+
+if __name__ == '__main__':
+    unittest.main()
 ```
 
 ### C:/Users/USER/source/졸업팀폴/LostArk/Tools/LpkPipeline/test_colosseum_debug_preview_contract.py
@@ -525800,11 +528078,11 @@ namespace
         killed.eResult = DEBUG_KILL_GATE_BOSSES_RESULT::DISABLED; CPacketWriter rejectedKill;
         testRunner.Require(!Write_Message(rejectedKill, killed), "Rejected Gate Kill cannot claim a kill count");
 
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 131u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS) + 1u,
-			"Protocol 130 preserves flight and Debug Esther without renumbering packets");
+			"Protocol 131 preserves flight and Debug Esther without renumbering packets");
 		for (const auto esther : { ESTHER_ID::SILLIAN, ESTHER_ID::WEI,
 			ESTHER_ID::BAHUNTUR, ESTHER_ID::NINAV, ESTHER_ID::INANNA })
 		{
@@ -525988,10 +528266,10 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 131u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
-			"Mario direction packet retains its appended identity in protocol 130");
+			"Mario direction packet retains its appended identity in protocol 131");
 	}
 
 
@@ -526683,11 +528961,11 @@ namespace
 				unchanged.eWorldId == WORLD_ID::BERN && unchanged.eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION,
 				"Invalid Mario return verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 131u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_RETURN) && Is_Known_Packet_Type(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) == static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) == static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) + 1u,
-			"Protocol 130 preserves Mario return packet identities");
+			"Protocol 131 preserves Mario return packet identities");
 	}
 
 	void Test_DebugMarioJumpProtocol(TEST_RUNNER& testRunner)
@@ -526804,14 +529082,14 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 131u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) + 1u,
-			"Protocol 130 preserves Mario jump packet identities without renumbering existing peers");
+			"Protocol 131 preserves Mario jump packet identities without renumbering existing peers");
 	}
 
 	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
@@ -526989,14 +529267,14 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 130u,
+			NETWORK_PROTOCOL_VERSION == 131u,
 			"Riding packet identities append without renumbering peers");
 	}
 
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u, "World lifecycle and existing gameplay retain their IDs in Colosseum match protocol 130");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 131u, "World lifecycle and existing gameplay retain their IDs in Colosseum match protocol 131");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -527368,8 +529646,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 130u,
-			"Protocol 130 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 131u,
+			"Protocol 131 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -527485,8 +529763,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(130u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 130");
+			testRunner.Require(131u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 131");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -527730,8 +530008,8 @@ namespace
         testRunner.Require(!Write_Message(rejectHp, badState), "Guide Trace Rejects HP Outside Unit Interval");
         state.fEvadeScore = std::numeric_limits<float>::quiet_NaN(); CPacketWriter rejectNan;
         testRunner.Require(!Write_Message(rejectNan, state), "Guide Trace Rejects Nonfinite Scores");
-        testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
-            Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v130 Peers");
+        testRunner.Require(NETWORK_PROTOCOL_VERSION == 131u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
+            Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v131 Peers");
     }
 
 	void Test_ChatProtocol(TEST_RUNNER& testRunner)
@@ -527966,7 +530244,7 @@ namespace
         testRunner.Require(written && Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
             decoded.iSilver == inventory.iSilver && decoded.iGold == inventory.iGold &&
             decoded.Items.size() == 1u && decoded.Items.front().iQuantity == 3u,
-            "Protocol 130 preserves shop purse alongside inventory items");
+            "Protocol 131 preserves shop purse alongside inventory items");
         auto truncated = writer.Get_Buffer();
         if (!truncated.empty()) truncated.pop_back();
         CPacketReader shortReader{truncated}; decoded.iSilver = 91u; decoded.iGold = 92u;
@@ -527984,7 +530262,7 @@ namespace
             basketReader.Get_RemainingSize() == 0u && basket.strNpcPlacementId == purchase.strNpcPlacementId &&
             basket.Entries.size() == 1u && basket.Entries.front().iQuantity == 2u &&
             Is_Known_Packet_Type(PACKET_TYPE::C2S_BUY_ITEMS),
-            "Protocol 130 preserves the appended shop request");
+            "Protocol 131 preserves the appended shop request");
 
         C2S_SET_EQUIPMENT wear{};
         wear.iRequestSequence = 79u;
@@ -527999,7 +530277,7 @@ namespace
             worn.bEquip && worn.strItemId == wear.strItemId &&
             std::string_view("avatarOutfit") == Equipment_SlotKind(EQUIPMENT_SLOT::AVATAR_OUTFIT) &&
             std::string_view("avatarHead") == Equipment_SlotKind(EQUIPMENT_SLOT::AVATAR_HEAD),
-            "Protocol 130 carries the avatar equipment slots");
+            "Protocol 131 carries the avatar equipment slots");
     }
 	void Test_WorldSnapshotRoundTrip(
 		TEST_RUNNER& testRunner)
@@ -531105,8 +533383,8 @@ namespace
 		}
 
 		testRunner.Require(
-			130u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 130");
+			131u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 131");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -531133,8 +533411,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			130u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 130");
+			131u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 131");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -532551,7 +534829,7 @@ void Test_CharacterRestoreProtocol(TEST_RUNNER& tests)
 void Test_ColosseumQueueProtocol(TEST_RUNNER& tests)
 {
 	using namespace LostArk::Shared;
-	tests.Require(NETWORK_PROTOCOL_VERSION == 130u &&
+	tests.Require(NETWORK_PROTOCOL_VERSION == 131u &&
 		static_cast<std::uint16_t>(PACKET_TYPE::C2S_COLOSSEUM_QUEUE_JOIN) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT) + 1u &&
 		static_cast<std::uint16_t>(PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND) ==
@@ -532654,6 +534932,45 @@ void Test_ColosseumQueueProtocol(TEST_RUNNER& tests)
 	tests.Require(stateWritten && Read_Message(stateReader, decodedState) && !stateReader.Get_RemainingSize() &&
 		decodedState.iExpectedPlayers == 4u && decodedState.iPhaseStartTick == 41u && decodedState.Participants[3].iTeam == 1u,
 		"Colosseum server clock and explicit four-player identities round trip");
+	state.Participants[0].iKills = 3u;
+	state.RecentKills = {{1u, 10u, 1u, 2u, 0u, 1u, "Alpha", "Beta"}};
+	CPacketWriter killWriter;
+	const bool killWritten = Write_Message(killWriter, state);
+	CPacketReader killReader{killWriter.Get_Buffer()};
+	tests.Require(killWritten && Read_Message(killReader, decodedState) && !killReader.Get_RemainingSize() &&
+		decodedState.Participants[0].iKills == 3u && decodedState.RecentKills.size() == 1u &&
+		decodedState.RecentKills[0].iKillerId == 1u && decodedState.RecentKills[0].strVictimNickname == "Beta",
+		"Personal kills and server-authored bounded kill feed round trip");
+	for (int invalidCase = 0; invalidCase < 7; ++invalidCase)
+	{
+		auto invalid = state;
+		auto& kill = invalid.RecentKills.front();
+		switch (invalidCase)
+		{
+		case 0: kill.iVictimId = kill.iKillerId; break;
+		case 1: kill.iVictimTeam = kill.iKillerTeam; break;
+		case 2: kill.iServerTick = 12u; break;
+		case 3: kill.strKillerNickname.assign(MAX_NICKNAME_BYTES + 1u, 'x'); break;
+		case 4: kill.iSequence = 0u; break;
+		case 5: invalid.RecentKills.push_back(kill); break;
+		case 6: invalid.RecentKills.resize(MAX_COLOSSEUM_RECENT_KILLS + 1u, kill); break;
+		}
+		CPacketWriter rejected;
+		tests.Require(!Write_Message(rejected, invalid) && rejected.Get_Buffer().empty(),
+			"Kill feed rejects invalid identity/team/time/name/sequence/size before serialization");
+	}
+	if (killWritten)
+	{
+		auto truncated = killWriter.Get_Buffer(); truncated.pop_back();
+		CPacketReader bad{truncated}; auto unchanged = state; unchanged.iMatchId = 99u;
+		tests.Require(!Read_Message(bad, unchanged) && unchanged.iMatchId == 99u && unchanged.RecentKills[0].strVictimNickname == "Beta",
+			"Truncated kill feed rolls back the entire match state");
+		// 28-byte header + four 15-byte participant rows, then bounded event count.
+		auto oversized = killWriter.Get_Buffer(); oversized[28u + 4u * 15u] = 255u;
+		CPacketReader oversizedReader{oversized};
+		tests.Require(!Read_Message(oversizedReader, unchanged) && unchanged.iMatchId == 99u,
+			"Wire kill count is bounded before allocation and preserves prior state");
+	}
 	auto malformedState = state; malformedState.Participants[2].iArrivalIndex = 0u;
 	CPacketWriter duplicateWriter;
 	tests.Require(!Write_Message(duplicateWriter, malformedState), "Colosseum state rejects duplicate arrival identity");
@@ -532835,14 +535152,14 @@ void Test_Integrated129Protocol(TEST_RUNNER& tests)
         PACKET_TYPE::C2S_MAHARAKA_AI_TUNING,
         PACKET_TYPE::S2C_MAHARAKA_AI_TUNING
     };
-    bool identities = NETWORK_PROTOCOL_VERSION == 130u && !Is_Known_Packet_Type(PACKET_TYPE::INVALID);
+    bool identities = NETWORK_PROTOCOL_VERSION == 131u && !Is_Known_Packet_Type(PACKET_TYPE::INVALID);
     for (std::size_t i = 1u; i < wireIdentities.size(); ++i)
         identities &= static_cast<std::uint16_t>(wireIdentities[i]) == i && Is_Known_Packet_Type(wireIdentities[i]);
-    tests.Require(identities, "Protocol 130 preserves the integrated packet IDs 1..119");
+    tests.Require(identities, "Protocol 131 preserves the integrated packet IDs 1..119");
     tests.Require(Is_Known_World_Id(WORLD_ID::COLOSSEUM) &&
         static_cast<std::uint16_t>(WORLD_ID::COLOSSEUM) == 7u &&
         static_cast<std::uint8_t>(PLAYER_CONTROL_KIND::WATERPANG_AI) == 2u,
-        "Protocol 130 preserves Colosseum world 7 and Waterpang actor kind 2");
+        "Protocol 131 preserves Colosseum world 7 and Waterpang actor kind 2");
 
     bool spawnContract = true;
     std::vector<std::uint8_t> botBytes;
@@ -534660,7 +536977,7 @@ int wmain(int argc, wchar_t** argv)
 
 ```diff
 diff --git a/Client/Default/Client.vcxproj b/Client/Default/Client.vcxproj
-index b3a75be52..d143967a2 100644
+index b3a75be52..ffeb6c94c 100644
 --- a/Client/Default/Client.vcxproj
 +++ b/Client/Default/Client.vcxproj
 @@ -200,0 +201,4 @@
@@ -534670,16 +536987,17 @@ index b3a75be52..d143967a2 100644
 +    <ClInclude Include="..\Public\ColosseumMatchStart.h" />
 @@ -502,0 +507 @@
 +    <ClCompile Include="..\Private\ColosseumMatchView.cpp" />
-@@ -4459,0 +4465,7 @@
+@@ -4459,0 +4465,8 @@
 +    <None Include="..\..\Data\Camera\ColosseumVictory.cutscene.json"></None>
 +    <None Include="..\..\Data\UI\Colosseum\MatchHUD_Layout.json"></None>
++    <None Include="..\..\Data\UI\Colosseum\CombatHUD_Layout.json"></None>
 +    <None Include="..\..\Data\UI\Colosseum\Result_Layout.json"></None>
 +    <None Include="..\..\Data\UI\Colosseum\Result_Victory.keyframes.json"></None>
 +    <None Include="..\..\Data\UI\Colosseum\Result_Defeat.keyframes.json"></None>
 +    <None Include="..\..\Data\UI\Colosseum\Result_Draw.keyframes.json"></None>
 +    <None Include="..\..\Data\UI\Colosseum\Result_TitleTracks.json"></None>
 diff --git a/Client/Default/Client.vcxproj.filters b/Client/Default/Client.vcxproj.filters
-index 6a27d3449..06331b6f6 100644
+index 6a27d3449..6dbe429b2 100644
 --- a/Client/Default/Client.vcxproj.filters
 +++ b/Client/Default/Client.vcxproj.filters
 @@ -353,0 +354,3 @@
@@ -534691,9 +537009,10 @@ index 6a27d3449..06331b6f6 100644
 +    <ClInclude Include="..\Public\ColosseumMatchView.h"><Filter>01.Levels\06. Development</Filter></ClInclude>
 +    <ClInclude Include="..\Public\ColosseumIntroCutscene.h"><Filter>01.Levels\06. Development</Filter></ClInclude>
 +    <ClInclude Include="..\Public\ColosseumMatchStart.h"><Filter>01.Levels\06. Development</Filter></ClInclude>
-@@ -6115,0 +6123,7 @@
+@@ -6115,0 +6123,8 @@
 +    <None Include="..\..\Data\Camera\ColosseumVictory.cutscene.json"><Filter>96.DataFiles</Filter></None>
 +    <None Include="..\..\Data\UI\Colosseum\MatchHUD_Layout.json"><Filter>96.DataFiles</Filter></None>
++    <None Include="..\..\Data\UI\Colosseum\CombatHUD_Layout.json"><Filter>96.DataFiles</Filter></None>
 +    <None Include="..\..\Data\UI\Colosseum\Result_Layout.json"><Filter>96.DataFiles</Filter></None>
 +    <None Include="..\..\Data\UI\Colosseum\Result_Victory.keyframes.json"><Filter>96.DataFiles</Filter></None>
 +    <None Include="..\..\Data\UI\Colosseum\Result_Defeat.keyframes.json"><Filter>96.DataFiles</Filter></None>

@@ -3148,6 +3148,15 @@ namespace LostArk::Shared
 		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
 		std::uint8_t iTeam = 0u, iArrivalIndex = 0u;
 		bool bReady = false;
+		std::uint32_t iKills = 0u;
+	};
+	inline constexpr std::size_t MAX_COLOSSEUM_RECENT_KILLS = 8u;
+	struct COLOSSEUM_KILL_EVENT
+	{
+		std::uint32_t iSequence = 0u, iServerTick = 0u;
+		PLAYER_ID iKillerId = INVALID_PLAYER_ID, iVictimId = INVALID_PLAYER_ID;
+		std::uint8_t iKillerTeam = COLOSSEUM_DRAW_TEAM, iVictimTeam = COLOSSEUM_DRAW_TEAM;
+		std::string strKillerNickname, strVictimNickname;
 	};
 	struct S2C_COLOSSEUM_MATCH_STATE
 	{
@@ -3158,6 +3167,7 @@ namespace LostArk::Shared
 		std::uint8_t iWinningTeam = COLOSSEUM_DRAW_TEAM;
 		std::uint8_t iExpectedPlayers = 0u;
 		std::vector<COLOSSEUM_MATCH_PLAYER_STATE> Participants;
+		std::vector<COLOSSEUM_KILL_EVENT> RecentKills;
 	};
 	bool Write_Message(CPacketWriter&, const C2S_COLOSSEUM_LOAD_READY&);
 	bool Read_Message(CPacketReader&, C2S_COLOSSEUM_LOAD_READY&);

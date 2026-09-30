@@ -1,0 +1,1932 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": {
+    "width": 1280,
+    "height": 720
+  },
+  "classes": [
+    "Default"
+  ],
+  "slots": [
+    {
+      "id": "Left0_BG",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 8.0,
+        "y": 316.0,
+        "width": 177.60000000000002,
+        "height": 46.400000000000006
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_273.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left0_HP",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 15.2,
+        "y": 324.0,
+        "width": 164.8,
+        "height": 28.8
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_280.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left0_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 10.4,
+        "y": 311.2,
+        "width": 180.0,
+        "height": 45.6
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_276.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left0_Number",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 12,
+        "y": 330,
+        "width": 20,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left0_Name",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 37,
+        "y": 323,
+        "width": 108,
+        "height": 16
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left0_Health",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 37,
+        "y": 340,
+        "width": 108,
+        "height": 14
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left0_Kills",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 149,
+        "y": 331,
+        "width": 34,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left1_BG",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 8.0,
+        "y": 368.0,
+        "width": 177.60000000000002,
+        "height": 46.400000000000006
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_273.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left1_HP",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 15.2,
+        "y": 376.0,
+        "width": 164.8,
+        "height": 28.8
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_280.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left1_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 10.4,
+        "y": 363.2,
+        "width": 180.0,
+        "height": 45.6
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_276.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left1_Number",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 12,
+        "y": 382,
+        "width": 20,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left1_Name",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 37,
+        "y": 375,
+        "width": 108,
+        "height": 16
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left1_Health",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 37,
+        "y": 392,
+        "width": 108,
+        "height": 14
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Left1_Kills",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 149,
+        "y": 383,
+        "width": 34,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right0_BG",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1088.0,
+        "y": 316.0,
+        "width": 177.60000000000002,
+        "height": 46.400000000000006
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_273.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right0_HP",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1095.2,
+        "y": 324.0,
+        "width": 164.8,
+        "height": 28.8
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_282.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right0_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1090.4,
+        "y": 311.2,
+        "width": 180.0,
+        "height": 45.6
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_276.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right0_Number",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1092,
+        "y": 330,
+        "width": 20,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right0_Name",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1117,
+        "y": 323,
+        "width": 108,
+        "height": 16
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right0_Health",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1117,
+        "y": 340,
+        "width": 108,
+        "height": 14
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right0_Kills",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1229,
+        "y": 331,
+        "width": 34,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right1_BG",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1088.0,
+        "y": 368.0,
+        "width": 177.60000000000002,
+        "height": 46.400000000000006
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_273.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right1_HP",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1095.2,
+        "y": 376.0,
+        "width": 164.8,
+        "height": 28.8
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_282.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right1_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1090.4,
+        "y": 363.2,
+        "width": 180.0,
+        "height": 45.6
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_276.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right1_Number",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1092,
+        "y": 382,
+        "width": 20,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right1_Name",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1117,
+        "y": 375,
+        "width": 108,
+        "height": 16
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right1_Health",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1117,
+        "y": 392,
+        "width": 108,
+        "height": 14
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Right1_Kills",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1229,
+        "y": 383,
+        "width": 34,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed0_BG",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 94.0,
+        "width": 260.0,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_12.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed0_Red",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 94.0,
+        "width": 263.90000000000003,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_15.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed0_Blue",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 94.0,
+        "width": 263.90000000000003,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_18.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed0_RedIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1091.8,
+        "y": 97.25,
+        "width": 40.300000000000004,
+        "height": 23.400000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_29.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed0_BlueIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1091.8,
+        "y": 97.25,
+        "width": 40.300000000000004,
+        "height": 23.400000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_31.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed0_Killer",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 987,
+        "y": 103,
+        "width": 100,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed0_Victim",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1152,
+        "y": 103,
+        "width": 100,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed1_BG",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 129.0,
+        "width": 260.0,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_12.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed1_Red",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 129.0,
+        "width": 263.90000000000003,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_15.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed1_Blue",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 129.0,
+        "width": 263.90000000000003,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_18.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed1_RedIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1091.8,
+        "y": 132.25,
+        "width": 40.300000000000004,
+        "height": 23.400000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_29.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed1_BlueIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1091.8,
+        "y": 132.25,
+        "width": 40.300000000000004,
+        "height": 23.400000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_31.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed1_Killer",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 987,
+        "y": 138,
+        "width": 100,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed1_Victim",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1152,
+        "y": 138,
+        "width": 100,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed2_BG",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 164.0,
+        "width": 260.0,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_12.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed2_Red",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 164.0,
+        "width": 263.90000000000003,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_15.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed2_Blue",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 980.0,
+        "y": 164.0,
+        "width": 263.90000000000003,
+        "height": 26.650000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_18.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed2_RedIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1091.8,
+        "y": 167.25,
+        "width": 40.300000000000004,
+        "height": 23.400000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_29.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed2_BlueIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1091.8,
+        "y": 167.25,
+        "width": 40.300000000000004,
+        "height": 23.400000000000002
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/Combat/shape_31.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed2_Killer",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 987,
+        "y": 173,
+        "width": 100,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    },
+    {
+      "id": "Feed2_Victim",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1152,
+        "y": 173,
+        "width": 100,
+        "height": 18
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": false
+      }
+    }
+  ]
+}

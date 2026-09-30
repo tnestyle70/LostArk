@@ -94,6 +94,13 @@ int LostArk::Server::CServerGameplayContractRunner::Run_ColosseumOnly()
 	room->Score_ColosseumKills(615u); room->Score_ColosseumKills(616u);
 	tests.Require(room->m_iColosseumScores[0] == 1u && enemy.iColosseumRespawnTick == 705u,
 		"One death scores once and schedules a three-second respawn");
+	tests.Require(caster.iColosseumKills == 1u && room->m_ColosseumRecentKills.size() == 1u &&
+		room->m_ColosseumRecentKills.front().iKillerId == caster.iPlayerId &&
+		room->m_ColosseumRecentKills.front().iVictimId == enemy.iPlayerId &&
+		room->m_ColosseumRecentKills.front().strKillerNickname == caster.strNickName &&
+		room->m_ColosseumRecentKills.front().strVictimNickname == enemy.strNickName &&
+		room->m_ColosseumRecentKills.front().iServerTick == 615u,
+		"Server records one personal kill and one identity-preserving feed event per death");
 	room->Update_ColosseumMatch(704u); tests.Require(enemy.iCurrentHp == 0u, "Corpse remains until respawn deadline");
 	room->Update_ColosseumMatch(705u);
 	tests.Require(enemy.iCurrentHp == enemy.iMaximumHp && enemy.fPositionX == enemy.fColosseumSpawnX && enemy.fPositionZ == enemy.fColosseumSpawnZ,
@@ -151,6 +158,19 @@ int LostArk::Server::CServerGameplayContractRunner::Run_ColosseumOnly()
 	auto second = std::make_unique<CGameRoom>(WORLD_ID::COLOSSEUM);
 	tests.Require(second->Configure_ColosseumMatch(72u, {82001u,82002u,82003u,82004u}) && second->m_Players.empty() && second->m_iColosseumScores[0] == 0u,
 		"Another match owns independent players and scores");
+	tests.Require(second->m_ColosseumRecentKills.empty() && second->m_iColosseumKillSequence == 0u && caster.iColosseumKills == 1u,
+		"Respawn keeps personal kills; a different room never inherits feed history");
+	room->m_eColosseumPhase = COLOSSEUM_MATCH_PHASE::PLAYING;
+	for (std::uint32_t i = 0; i < 12u; ++i)
+	{
+		enemy.iCurrentHp = 0u; enemy.iColosseumRespawnTick = 0u;
+		enemy.iColosseumKillerId = caster.iPlayerId;
+		room->Score_ColosseumKills(4300u + i);
+	}
+	tests.Require(room->m_ColosseumRecentKills.size() == MAX_COLOSSEUM_RECENT_KILLS &&
+		room->m_ColosseumRecentKills.front().iSequence == 6u &&
+		room->m_ColosseumRecentKills.back().iSequence == 13u && caster.iColosseumKills == 13u,
+		"Recent kill history is bounded and evicts the oldest event without losing personal totals");
 	room->m_eColosseumPhase = COLOSSEUM_MATCH_PHASE::LOADING; room->m_iColosseumPhaseEnd = 8000u;
 	room->Remove_ColosseumExpectedSession(sessions[3]); room->m_Players.at(room->m_PlayerIdBySessionId.at(sessions[3])).bColosseumReady = false;
 	room->Update_ColosseumMatch(4300u);

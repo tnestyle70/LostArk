@@ -258,3 +258,51 @@ Client 실행·UI 조작·캡처는 하지 않았다. 실제 화면과 원본 �
   캐릭터 카탈로그 필드(승리 animation set 7개 추가 외), 기존 packet ID 값은 모두 보존했다.
   다른 세션의 두 줄을 index에서 분리하기 전후 `Level_Lobby.cpp` 디스크 내용도 동일했다.
   `git diff --cached --check`와 미스테이징 diff 검사를 통과했다.
+
+## G09. 기본 HUD 복구·좌우 팀 체력·처치 알림
+
+### 실제 반영
+
+- 원인: `MainApp`의 HUD sprite, HP/resource 수치, quick-slot 키 라벨, cooldown text
+  네 레벨 허용 목록에 COLOSSEUM이 없었다. 네 호출자를 모두 연결했으며 기존 컷신 숨김은 유지한다.
+- `CColosseumMatchView`의 기존 제품 이미지 런타임에 CombatHUD를 추가했다. 서버 arrival index로
+  좌측 team 0 / 우측 team 1 두 행씩 고정한다. 이름·HP·개인 킬 수, 자기 이름 강조,
+  사망 표시를 제공한다. HP 미수신은 빈 바/`...`이며 만피로 꾸미지 않는다.
+- HP는 기존 `CReplicatedPlayerHealth`와 실제 player/entity identity를 조인한다.
+  개인 킬과 최근 8개 처치는 Server 득점 처리에서 한 번만 생성한다. protocol 131로 함께
+  전달하며 UI는 최근 6초 이내 3개만 우측 상단에 표시한다. 서버 이벤트를 다시 받아도
+  수명이나 기록 수를 늘리지 않는다. 새 경기/종료/Preview 정리 시 이전 표시는 남기지 않는다.
+- `EFUI_COLOSSEUM.colosseumplaying_loc_int.gfx`의 원본 sprite 327→294 HP frame/track,
+  sprite 35의 배경·팀 색·화살표 이미지를 추출했다. 2인 행과 화면 가장자리 배치는 프로젝트
+  2대2 규칙에 맞춘 authoring이며 원본 3대3 전체 화면/버프 아이콘/모든 Flash 효과 복원 주장은 아니다.
+- Data/UI 직접 소비 계약이므로 `CombatHUD_Layout.json`을 정본에 저장했다. World/Navigation
+  게시 데이터는 변경하지 않았다. 새 C++ 파일 없이 기존 View를 확장하고 JSON만 project/filter에 등록했다.
+
+### 리소스 동시 배포
+
+새 PNG 9개, 총 49,460 bytes를 다음 양쪽에 같은 `UI/Colosseum/Combat/shape_*.png` 경로로 넣었다.
+
+- 게임: `C:/Users/USER/source/졸업팀폴/LostArk/Client/Bin/Resources/UI/Colosseum/Combat`
+- 요청한 추가 배포: `C:/Users/USER/OneDrive/바탕 화면/CY_Resource/UI/Colosseum/Combat`
+
+기존 `CY_Resources`, `CY_Resources１`, `CY_Resources_추가분_20261001`은 건드리지 않았다.
+9개 전체 복사 내용 일치를 확인했다. Drive 업로드는 하지 않았으며 코드/Data는 PR #495로 전달한다.
+
+### 자동 검증과 수동 확인 경계
+
+- Debug Product PASS: `out/BuildPipeline/runs/20260930T202318778Z-debug-product.json`.
+- Release Product PASS: `out/BuildPipeline/runs/20260930T202702085Z-release-product.json`.
+  Debug/Release 모두 Engine/Shared/Server/Client 빌드 성공, CSO 변경 0개.
+- Debug/Release Server `--colosseum-contract-test`: 각 24 PASS, failures 0.
+- Debug/Release NetworkProtocolHarness 전체 실행: failures 0. Debug focused Colosseum 40 PASS.
+- 기존 Preview source contract 11 PASS, 새 CombatHUD source/data contract 7 PASS.
+- 기존 UI validator PASS, 새 CombatHUD 49 slots/9 source image 검증 PASS.
+- JSON duplicate key/XML parse 및 중복 프로젝트 등록 검사 PASS. PLAN 전문에는 별도 세션
+  Lobby 120초 변경을 넣지 않았으며 작업 디스크의 해당 두 줄은 보존했다.
+- 빌드 중 C4819/외부 PDB 경고를 관찰했다. Release 하네스 링크에는 Shared PDB LNK4020도
+  있었으나 실행 검사는 통과했다. 경고를 없애려는 무관한 인코딩 변경이나 산출물 전체 삭제는 하지 않았다.
+
+사용자는 새 Server/Client를 함께 재시작한 뒤 콜로세움에서 기본 HUD를 확인한다.
+Debug `F1 → Colosseum HUD / Result UI Preview → Show Score HUD`는 실제 로컬 행만 표시한다.
+좌우 4인 HP 갱신, 개인 킬/우측 처치 알림과 6초 뒤 제거는 실제 4인 경기에서 확인해야 한다.
+Client/UI 실행·조작·캡처와 최종 visual PASS는 수행하지 않았다.

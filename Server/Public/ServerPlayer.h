@@ -170,6 +170,7 @@ namespace LostArk::Server
 	{
 		// Nonzero only in an isolated Colosseum match. Never inferred from position.
 		std::uint32_t iColosseumMatchId = 0u, iColosseumRespawnTick = 0u;
+		std::uint32_t iColosseumKills = 0u;
 		LostArk::Shared::PLAYER_ID iColosseumKillerId = LostArk::Shared::INVALID_PLAYER_ID;
 		std::uint8_t iColosseumTeam = 255u, iColosseumArrivalIndex = 255u;
 		bool bColosseumReady = false, bColosseumCombatActive = false;

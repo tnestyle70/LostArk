@@ -4464,6 +4464,7 @@
     <None Include="..\..\Data\Camera\ColosseumIntro.cutscene.json"></None>
     <None Include="..\..\Data\Camera\ColosseumVictory.cutscene.json"></None>
     <None Include="..\..\Data\UI\Colosseum\MatchHUD_Layout.json"></None>
+    <None Include="..\..\Data\UI\Colosseum\CombatHUD_Layout.json"></None>
     <None Include="..\..\Data\UI\Colosseum\Result_Layout.json"></None>
     <None Include="..\..\Data\UI\Colosseum\Result_Victory.keyframes.json"></None>
     <None Include="..\..\Data\UI\Colosseum\Result_Defeat.keyframes.json"></None>

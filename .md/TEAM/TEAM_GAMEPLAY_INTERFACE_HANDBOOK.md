@@ -474,7 +474,16 @@ Release Server는 예전처럼 플레이어가 밟으면 그룹을 시작한다.
 결과 메시지는 없고 monster는 world snapshot으로 온다. 거절 사유는 Server 콘솔의 `[WaveMonsters]` 줄에 남는다.
 
 Release Server는 이 명령을 무시한다. `Stage_MiniBoss_Spawn`, `Stage_3`, 다른 월드의 트리거는 Debug에서도
-예전처럼 동작한다. Valtan의 이전 `Stage_Boss`/`Stage_Boss_ArenaEntry`는 비활성이고 최초 입장은 아래 집결 계약을 사용한다. 다른 protocol의 Server/Client를 섞어 실행하지 않는다. 현재 wire 정본은 `PacketType.h`의 `NETWORK_PROTOCOL_VERSION` 130이다. 음성·내구도·Colosseum 대기열·Waterpang AI layout에 Colosseum 경기와 customizing 외형 복제를 함께 소비한다. Colosseum 대기열은 113~116, 수리는 117, Waterpang 튜닝은 118~119, Colosseum 준비 완료·경기 상태·귀환은 120~122다. 위 protocol 99 표기는 해당 명령이 도입된 버전이며 현재 실행 파일의 호환 버전으로 사용하지 않는다.
+예전처럼 동작한다. Valtan의 이전 `Stage_Boss`/`Stage_Boss_ArenaEntry`는 비활성이고 최초 입장은 아래 집결 계약을 사용한다. 다른 protocol의 Server/Client를 섞어 실행하지 않는다. 현재 wire 정본은 `PacketType.h`의 `NETWORK_PROTOCOL_VERSION` 131이다. 음성·내구도·Colosseum 대기열·Waterpang AI layout에 Colosseum 경기와 customizing 외형 복제를 함께 소비한다. Colosseum 대기열은 113~116, 수리는 117, Waterpang 튜닝은 118~119, Colosseum 준비 완료·경기 상태·귀환은 120~122다. 위 protocol 99 표기는 해당 명령이 도입된 버전이며 현재 실행 파일의 호환 버전으로 사용하지 않는다.
+
+Colosseum 경기 상태(121)는 참가자의 개인 킬 수와 최근 8개 서버 처치 이벤트를 포함한다.
+처치 이벤트는 방별 sequence/tick, 가해자·피해자 PlayerId/팀/발생 당시 nickname을 소유한다.
+UI는 HP 변화로 처치를 추측하지 않는다. 6초 이내 최근 3개만 오른쪽 위에 표시한다.
+좌측 team 0, 우측 team 1의 2개 슬롯은 arrival index를 유지하며 기존 replicated HP를
+PlayerId/NetEntityId로 조인한다. HUD layout은 `Data/UI/Colosseum/CombatHUD_Layout.json`,
+이미지는 `UI/Colosseum/Combat/shape_*.png` (물리 `Client/Bin/Resources/UI/Colosseum/Combat`)다.
+Server와 Client를 모두 새 protocol로 빌드·재시작해야 한다. Debug Score HUD는 실제 로컬
+플레이어 행만 보이며 가상 상대나 가짜 처치 기록을 경기 데이터에 넣지 않는다.
 
 ### Colosseum 4인 경기·표현 계약
 
