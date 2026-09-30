@@ -258,7 +258,6 @@ bool LostArk::Server::CGameRoom::Send_InventorySnapshot(
 	message.Items = player.Inventory;
 	message.iSilver = player.Purse.iSilver;
 	message.iGold = player.Purse.iGold;
-	message.DurabilityPercent = player.DurabilityPercent;
 	CPacketWriter writer;
 	return nullptr != session && Write_Message(writer, message) &&
 		session->Send_Frame(

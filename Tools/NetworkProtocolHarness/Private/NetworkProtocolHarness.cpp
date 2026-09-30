@@ -2274,7 +2274,7 @@ namespace
         killed.eResult = DEBUG_KILL_GATE_BOSSES_RESULT::DISABLED; CPacketWriter rejectedKill;
         testRunner.Require(!Write_Message(rejectedKill, killed), "Rejected Gate Kill cannot claim a kill count");
 
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 132u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS) + 1u,
@@ -2462,7 +2462,7 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 132u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
 			"Mario direction packet retains its appended identity in protocol 129");
@@ -3157,7 +3157,7 @@ namespace
 				unchanged.eWorldId == WORLD_ID::BERN && unchanged.eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION,
 				"Invalid Mario return verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 132u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_RETURN) && Is_Known_Packet_Type(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) == static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) == static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) + 1u,
@@ -3278,7 +3278,7 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 132u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
@@ -3463,14 +3463,14 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 130u,
+			NETWORK_PROTOCOL_VERSION == 132u,
 			"Riding packet identities append without renumbering peers");
 	}
 
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb, ember, Colosseum world and Colosseum queue use protocol 130");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 132u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb, ember, Colosseum world and Colosseum queue use protocol 132");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -3842,7 +3842,7 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 130u,
+			NETWORK_PROTOCOL_VERSION == 132u,
 			"Protocol 129 preserves main trigger identities with WORLD occurrence placement");
 	}
 
@@ -4018,8 +4018,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(130u == NETWORK_PROTOCOL_VERSION,
-				"Party and integrated gameplay contracts use protocol 130");
+			testRunner.Require(132u == NETWORK_PROTOCOL_VERSION,
+				"Party and integrated gameplay contracts use protocol 132");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -4222,8 +4222,8 @@ namespace
         testRunner.Require(!Write_Message(rejectHp, badState), "Guide Trace Rejects HP Outside Unit Interval");
         state.fEvadeScore = std::numeric_limits<float>::quiet_NaN(); CPacketWriter rejectNan;
         testRunner.Require(!Write_Message(rejectNan, state), "Guide Trace Rejects Nonfinite Scores");
-        testRunner.Require(NETWORK_PROTOCOL_VERSION == 130u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
-            Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v130 Peers");
+        testRunner.Require(NETWORK_PROTOCOL_VERSION == 132u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
+            Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v132 Peers");
     }
 
 	void Test_ChatProtocol(TEST_RUNNER& testRunner)
@@ -7597,8 +7597,8 @@ namespace
 		}
 
 		testRunner.Require(
-			129u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 129");
+			132u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 132");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -7625,8 +7625,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			129u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 129");
+			132u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 132");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -9043,7 +9043,7 @@ void Test_CharacterRestoreProtocol(TEST_RUNNER& tests)
 void Test_ColosseumQueueProtocol(TEST_RUNNER& tests)
 {
 	using namespace LostArk::Shared;
-	tests.Require(NETWORK_PROTOCOL_VERSION == 130u &&
+	tests.Require(NETWORK_PROTOCOL_VERSION == 132u &&
 		static_cast<std::uint16_t>(PACKET_TYPE::C2S_COLOSSEUM_QUEUE_JOIN) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT) + 1u &&
 		static_cast<std::uint16_t>(PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND) ==
@@ -9266,14 +9266,14 @@ void Test_Integrated130Protocol(TEST_RUNNER& tests)
         PACKET_TYPE::S2C_COLOSSEUM_MATCH_STATE,
         PACKET_TYPE::C2S_GUIDE_CONTROL
     };
-    bool identities = NETWORK_PROTOCOL_VERSION == 130u && !Is_Known_Packet_Type(PACKET_TYPE::INVALID);
+    bool identities = NETWORK_PROTOCOL_VERSION == 132u && !Is_Known_Packet_Type(PACKET_TYPE::INVALID);
     for (std::size_t i = 1u; i < wireIdentities.size(); ++i)
         identities &= static_cast<std::uint16_t>(wireIdentities[i]) == i && Is_Known_Packet_Type(wireIdentities[i]);
-    tests.Require(identities, "Integrated 130 preserves packet IDs 1..112 and pins appended IDs through 122");
+    tests.Require(identities, "Integrated 132 preserves packet IDs 1..112 and pins appended IDs through 122");
     tests.Require(Is_Known_World_Id(WORLD_ID::COLOSSEUM) &&
         static_cast<std::uint16_t>(WORLD_ID::COLOSSEUM) == 7u &&
         static_cast<std::uint8_t>(PLAYER_CONTROL_KIND::WATERPANG_AI) == 2u,
-        "Integrated 130 preserves Colosseum world 7 and Waterpang actor kind 2");
+        "Integrated 132 preserves Colosseum world 7 and Waterpang actor kind 2");
 
     bool spawnContract = true;
     std::vector<std::uint8_t> botBytes;
@@ -9321,25 +9321,32 @@ void Test_Integrated130Protocol(TEST_RUNNER& tests)
 
     S2C_INVENTORY_SNAPSHOT inventory;
     inventory.iRequestSequence = 31u; inventory.iSilver = 123u; inventory.iGold = 456u;
-    inventory.DurabilityPercent = {0u, 1u, 37u, 50u, 99u, 100u};
+    {
+        INVENTORY_ITEM_SNAPSHOT helmet{}; helmet.strItemId = "HELMET_A"; helmet.iQuantity = 1u;
+        helmet.eEquippedSlot = EQUIPMENT_SLOT::HELMET; helmet.iDurabilityPercent = 37u;
+        INVENTORY_ITEM_SNAPSHOT spare{}; spare.strItemId = "SPARE_WEAPON"; spare.iQuantity = 1u;
+        spare.iDurabilityPercent = 0u;
+        INVENTORY_ITEM_SNAPSHOT potion{}; potion.strItemId = "POTION_A"; potion.iQuantity = 5u;
+        inventory.Items = {helmet, spare, potion};
+    }
     CPacketWriter inventoryWriter; bool durability = Write_Message(inventoryWriter, inventory);
     auto inventoryBytes = inventoryWriter.Get_Buffer();
     CPacketReader inventoryReader{inventoryBytes}; S2C_INVENTORY_SNAPSHOT decodedInventory;
-    durability &= inventoryBytes.size() == 20u && Read_Message(inventoryReader, decodedInventory) &&
-        inventoryReader.Get_RemainingSize() == 0u && decodedInventory.DurabilityPercent == inventory.DurabilityPercent &&
+    durability &= Read_Message(inventoryReader, decodedInventory) &&
+        inventoryReader.Get_RemainingSize() == 0u && decodedInventory.Items.size() == 3u &&
+        decodedInventory.Items[0].iDurabilityPercent == 37u && decodedInventory.Items[1].iDurabilityPercent == 0u &&
+        decodedInventory.Items[2].iDurabilityPercent == 100u &&
         decodedInventory.iSilver == inventory.iSilver && decodedInventory.iGold == inventory.iGold;
-    auto invalidInventory = inventory; invalidInventory.DurabilityPercent[2] = 101u;
+    auto invalidInventory = inventory; invalidInventory.Items[0].iDurabilityPercent = 101u;
     CPacketWriter rejectedInventory; durability &= !Write_Message(rejectedInventory, invalidInventory);
     const auto rejectsInventory = [](const std::vector<std::uint8_t>& bytes) {
-        S2C_INVENTORY_SNAPSHOT keep; keep.iSilver = 999u; keep.DurabilityPercent.fill(77u);
+        S2C_INVENTORY_SNAPSHOT keep; keep.iSilver = 999u;
         CPacketReader reader{bytes};
-        return !Read_Message(reader, keep) && keep.iSilver == 999u &&
-            std::all_of(keep.DurabilityPercent.begin(), keep.DurabilityPercent.end(), [](auto v) {return v == 77u;});
+        return !Read_Message(reader, keep) && keep.iSilver == 999u && keep.Items.empty();
     };
     for (std::size_t count = 0u; count < inventoryBytes.size(); ++count)
         durability &= rejectsInventory(std::vector<std::uint8_t>(inventoryBytes.begin(), inventoryBytes.begin() + count));
-    if (!inventoryBytes.empty()) {auto invalid = inventoryBytes; invalid.back() = 101u; durability &= rejectsInventory(invalid);}
-    tests.Require(durability, "All six durability bytes round trip and malformed inventory preserves purse and wear");
+    tests.Require(durability, "Each inventory entry carries its own durability byte and malformed inventory preserves the previous snapshot");
 
     bool repair = true;
     for (const bool all : {false, true})
@@ -9417,11 +9424,11 @@ void Test_Integrated130Protocol(TEST_RUNNER& tests)
 
 void Test_ColosseumMatchProtocol(TEST_RUNNER& tests)
 {
-    tests.Require(NETWORK_PROTOCOL_VERSION == 130u &&
+    tests.Require(NETWORK_PROTOCOL_VERSION == 132u &&
         static_cast<std::uint16_t>(PACKET_TYPE::C2S_COLOSSEUM_RECRUIT) == 120u &&
         static_cast<std::uint16_t>(PACKET_TYPE::S2C_COLOSSEUM_MATCH_STATE) == 121u &&
         Is_Known_Player_Control_Kind(PLAYER_CONTROL_KIND::COLOSSEUM_MERCENARY_AI),
-        "Colosseum authority is protocol 130 with appended packet and control identities");
+        "Colosseum authority is protocol 132 with appended packet and control identities");
     S2C_PLAYER_SPAWNED mercenary;
     mercenary.iPlayerId = 51u; mercenary.iNetEntityId = 61u;
     mercenary.eCharacterClass = CHARACTER_CLASS_ID::ARTIST; mercenary.strNickName = "Mercenary";
@@ -9492,7 +9499,7 @@ void Test_ColosseumMatchProtocol(TEST_RUNNER& tests)
 
 void Test_GuideControlProtocol(TEST_RUNNER& tests)
 {
-    tests.Require(NETWORK_PROTOCOL_VERSION == 130u &&
+    tests.Require(NETWORK_PROTOCOL_VERSION == 132u &&
         static_cast<std::uint16_t>(PACKET_TYPE::C2S_GUIDE_CONTROL) == 122u &&
         Is_Known_Packet_Type(PACKET_TYPE::C2S_GUIDE_CONTROL),
         "Guide START/STOP appends packet 122 without changing existing protocol 130 IDs");

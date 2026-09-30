@@ -90,7 +90,6 @@ bool LostArk::Server::CGameRoom::Stage_ReturnToBern(
 	transfer.eCharacterClass = player.eCharacterClass;
 	transfer.strNickName = player.strNickName;
 	transfer.iVoiceType = player.iVoiceType;
-	transfer.CarriedDurability = player.Get_DurabilityState();
 	transfer.iHonorTitleId = player.iHonorTitleId;
 	transfer.iPartyRequestSequence = requestSequence;
 	transfer.strSpawnPlacementOverrideId = player.strRaidReturnNpcPlacementId.empty() ?
@@ -777,7 +776,6 @@ bool LostArk::Server::CGameRoom::Stage_PartyWorldTransfer(
 	transfer.eCharacterClass = leader.eCharacterClass;
 	transfer.strNickName = leader.strNickName;
 	transfer.iVoiceType = leader.iVoiceType;
-	transfer.CarriedDurability = leader.Get_DurabilityState();
 	transfer.iHonorTitleId = leader.iHonorTitleId;
 	transfer.iPartyRequestSequence = requestSequence;
 	for (const PLAYER_ID memberId : batchMemberIds)
@@ -1154,7 +1152,7 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 		SESSION_DIAGNOSTIC_REASON reason{};
 		if (!target.Stage_PlayerEntry(session, enter, entries, entry, reason, status,
 			spawnPlacementOverrideId, member->second.Inventory, member->second.iHonorTitleId, raidReturnNpcPlacementId,
-			member->second.Purse, member->second.Get_DurabilityState()))
+			member->second.Purse))
 		{
 			outResult = SESSION_DIAGNOSTIC_REASON::SERVER_EXPECTED_ROOM_FULL == reason ?
 				PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL : PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED;

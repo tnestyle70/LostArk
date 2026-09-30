@@ -339,6 +339,7 @@ bool LostArk::Server::CGameRoom::Apply_SetEquipment(
 		equipped.strItemId = request.strItemId;
 		equipped.iQuantity = 1u;
 		equipped.eEquippedSlot = request.eSlot;
+		equipped.iDurabilityPercent = bagEntry->iDurabilityPercent;
 		inventory.push_back(std::move(equipped));
 	}
 	else
@@ -398,19 +399,29 @@ void LostArk::Server::CGameRoom::Handle_RepairEquipment(
 	const auto playerIter = m_Players.find(sessionIter->second);
 	if (playerIter == m_Players.end())
 		return;
-	/* Only worn gear wears, so "repair equipped" and "repair all" restore the same parts. Each
-	   part costs silver in proportion to how worn it is: 1000 silver at 0 percent, rounded up.
-	   A purse that cannot cover the whole bill repairs nothing; the answer below still goes out
-	   so the window sees the unchanged state. */
+	/* The window's two buttons: "repair equipped" mends the worn weapon and armor, "repair all"
+	   mends every damaged piece, worn or in the bag. Only gear ever drops below 100, so the
+	   percent alone says what is damaged. Each piece costs silver in proportion to its wear:
+	   1000 silver at 0 percent, rounded up. A purse that cannot cover the whole bill repairs
+	   nothing; the answer below still goes out so the window sees the unchanged state. */
 	SERVER_PLAYER& player = playerIter->second;
-	constexpr std::uint32_t MAX_REPAIR_SILVER_PER_PART = 1000u;
 	std::uint32_t cost = 0u;
-	for (const std::uint8_t percent : player.DurabilityPercent)
-		cost += (MAX_REPAIR_SILVER_PER_PART * (100u - percent) + 99u) / 100u;
+	for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& item : player.Inventory)
+	{
+		if (item.iDurabilityPercent >= 100u ||
+			(!request.bAllSlots && !LostArk::Shared::Is_Durable_Slot(item.eEquippedSlot)))
+			continue;
+		cost += LostArk::Shared::Repair_Silver_Cost(item.iDurabilityPercent);
+	}
 	if (player.Purse.iSilver >= cost)
 	{
 		player.Purse.iSilver -= cost;
-		player.DurabilityPercent.fill(100);
+		for (LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& item : player.Inventory)
+		{
+			if (item.iDurabilityPercent < 100u &&
+				(request.bAllSlots || LostArk::Shared::Is_Durable_Slot(item.eEquippedSlot)))
+				item.iDurabilityPercent = 100u;
+		}
 		player.bDurabilityDirty = false;
 		if (0u != cost)
 			player.bRestoreAvailable = false;
@@ -918,7 +929,6 @@ void LostArk::Server::CGameRoom::Handle_ConfirmNpcEntry(
 	transfer.eCharacterClass = player.eCharacterClass;
 	transfer.strNickName = player.strNickName;
 	transfer.iVoiceType = player.iVoiceType;
-	transfer.CarriedDurability = player.Get_DurabilityState();
 	transfer.iHonorTitleId = player.iHonorTitleId;
 	transfer.iPartyRequestSequence = request.iRequestSequence;
 	for (const PLAYER_ID memberId : batchMemberIds)

@@ -681,7 +681,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 		false, outDamageEvents, damageSource, 0u, false, pPvPResolved && pPvPResolved->bCritical, DAMAGE_HIT_FLAG::NORMAL, false, hit.eMarioHitSource);
 	/* Gear wears when a hit actually takes HP; the guide companion wears none. */
 	if (target.Is_Human() && hpBefore > target.iCurrentHp)
-		target.Wear_Durability(10u);
+		target.Wear_Durability(5u);
 	if (0u == target.iCurrentHp)
 	{
 		target.iKoukuBingoLineProtectionEndTick = target.iEstherZoneProtectionEndTick = 0u;

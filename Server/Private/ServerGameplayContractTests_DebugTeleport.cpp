@@ -302,7 +302,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 			drain();
 		}
 		player.Purse.iSilver = 12345u; player.Purse.iGold = 678u;
-		player.DurabilityPercent.fill(73u); player.iDurabilityWearCursor = 2u;
+		for (auto& item : player.Inventory) item.iDurabilityPercent = 73u;
 		if (2u == holeId) player.Inventory.clear();
 		const auto original = std::make_unique<SERVER_PLAYER>(player);
 		const auto sourceParties = source->m_PartyMembersByPartyId;
@@ -373,12 +373,12 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 		const bool resolved = target->Resolve_SquareHoleDestination(arrived, holeId, landing);
 		const bool inventoryEqual = arrived.Inventory.size() == original->Inventory.size() &&
 			std::equal(arrived.Inventory.begin(), arrived.Inventory.end(), original->Inventory.begin(),
-				[](const auto& a, const auto& b) { return a.strItemId == b.strItemId && a.iQuantity == b.iQuantity && a.eEquippedSlot == b.eEquippedSlot; });
+				[](const auto& a, const auto& b) { return a.strItemId == b.strItemId && a.iQuantity == b.iQuantity && a.eEquippedSlot == b.eEquippedSlot &&
+					a.iDurabilityPercent == b.iDurabilityPercent; });
 		tests.Require(resolved && arrived.fPositionX == landing.x && arrived.fPositionY == landing.y &&
 			arrived.fPositionZ == landing.z && arrived.strSpawnPlacementId == transfer.strSpawnPlacementOverrideId &&
 			arrived.iSessionId == sessionId && arrived.strNickName == original->strNickName &&
 			arrived.eCharacterClass == original->eCharacterClass && arrived.iVoiceType == original->iVoiceType &&
-			arrived.DurabilityPercent == original->DurabilityPercent && arrived.iDurabilityWearCursor == original->iDurabilityWearCursor &&
 			arrived.Purse.iSilver == original->Purse.iSilver && arrived.Purse.iGold == original->Purse.iGold && inventoryEqual &&
 			binding.eWorldId == WORLD_ID::BERN && binding.pSimulation == target && !session->Is_Closing() &&
 			!source->m_PlayerIdBySessionId.contains(sessionId) && target->m_PartyMembersByPartyId.empty() &&

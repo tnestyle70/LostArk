@@ -48,8 +48,6 @@ namespace LostArk::Server
 		std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT> CarriedInventory;
 		/* The purse, carried under the same rule as CarriedInventory. */
 		SERVER_PURSE CarriedPurse;
-		// Server-only world transfer state; independent of inventory grant semantics.
-		SERVER_DURABILITY_STATE CarriedDurability;
 	};
 
 	/* One player's view of one interact-gated box changing. The room turns

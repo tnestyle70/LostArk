@@ -62,10 +62,10 @@ int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
 			tests.Require(admitted && entry.Player.strRaidReturnNpcPlacementId == guideId,
 				"Raid admission retains the exact source NPC for each player");
 			if (!admitted) continue;
-			tests.Require(entry.Player.DurabilityPercent == SERVER_DURABILITY_STATE{}.DurabilityPercent &&
+			tests.Require(std::all_of(entry.Player.Inventory.begin(), entry.Player.Inventory.end(),
+				[](const auto& item) { return item.iDurabilityPercent == 100u; }) &&
 				entry.Player.iDurabilityWearCursor == 0u, "Fresh session admission starts with repaired equipment");
-			entry.Player.DurabilityPercent = { 0u, 12u, 34u, 56u, 78u, 99u };
-			entry.Player.iDurabilityWearCursor = 4u;
+			for (auto& item : entry.Player.Inventory) item.iDurabilityPercent = 34u;
 			entry.Player.iVoiceType = 6u;
 			raid->m_Players.emplace(entry.Player.iPlayerId, entry.Player);
 			raid->m_PlayerIdBySessionId.emplace(sid, entry.Player.iPlayerId);
@@ -85,11 +85,11 @@ int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
 				raid->m_PendingWorldTransfers.front().strSpawnPlacementOverrideId,
 			raid->m_PendingWorldTransfers.front().CarriedInventory,
 			raid->m_PendingWorldTransfers.front().iHonorTitleId, {},
-			raid->m_PendingWorldTransfers.front().CarriedPurse,
-			raid->m_PendingWorldTransfers.front().CarriedDurability);
-			tests.Require(landed && landing.Player.DurabilityPercent == entry.Player.DurabilityPercent &&
-				landing.Player.iDurabilityWearCursor == 4u && landing.Player.iVoiceType == 6u &&
-				!landing.Player.bDurabilityDirty, "Raid return preserves six wear values, cursor and chosen voice");
+			raid->m_PendingWorldTransfers.front().CarriedPurse);
+			tests.Require(landed && std::all_of(landing.Player.Inventory.begin(), landing.Player.Inventory.end(),
+					[](const auto& item) { return item.iDurabilityPercent == 34u; }) &&
+				landing.Player.iVoiceType == 6u &&
+				!landing.Player.bDurabilityDirty, "Raid return keeps each piece's wear and the chosen voice");
 			if (landed)
 			{
 				const bool framesBuilt = bern->Build_PlayerEntryFrames(landing,
@@ -100,22 +100,25 @@ int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
 					if (frame.ePacketType != PACKET_TYPE::S2C_INVENTORY_SNAPSHOT) continue;
 					CPacketReader reader{ frame.Payload }; S2C_INVENTORY_SNAPSHOT snapshot;
 					publishedWear = Read_Message(reader, snapshot) &&
-						snapshot.DurabilityPercent == entry.Player.DurabilityPercent;
+						std::all_of(snapshot.Items.begin(), snapshot.Items.end(),
+							[](const auto& item) { return item.iDurabilityPercent == 34u; });
 				}
 				tests.Require(framesBuilt && publishedWear, "Admission publishes carried wear in its initial inventory snapshot");
+				/* Wear lands on a worn piece of gear only: with nothing worn nothing wears, and a worn
+				   piece loses exactly the asked percent. */
+				for (auto& item : landing.Player.Inventory) item.eEquippedSlot = EQUIPMENT_SLOT::NONE;
+				landing.Player.bDurabilityDirty = false;
 				landing.Player.Wear_Durability(1u);
-				tests.Require(landing.Player.DurabilityPercent[4] == 77u && landing.Player.iDurabilityWearCursor == 5u,
-					"The next hit after transfer wears the next original part");
-				SERVER_DURABILITY_STATE invalid = entry.Player.Get_DurabilityState();
-				invalid.DurabilityPercent[0] = 101u;
-				CGameRoom::STAGED_PLAYER_ENTRY rejected{}; rejected.Player.strNickName = "unchanged";
-				const bool badPercent = !bern->Stage_PlayerEntry(session, enter, {}, rejected, reason, status,
-					guideId, {}, INVALID_HONOR_TITLE_ID, {}, {}, invalid);
-				invalid = entry.Player.Get_DurabilityState(); invalid.iDurabilityWearCursor = 6u;
-				const bool badCursor = !bern->Stage_PlayerEntry(session, enter, {}, rejected, reason, status,
-					guideId, {}, INVALID_HONOR_TITLE_ID, {}, {}, invalid);
-				tests.Require(badPercent && badCursor && rejected.Player.strNickName == "unchanged",
-					"Invalid carried wear rejects transactionally without replacing a staged entry");
+				tests.Require(!landing.Player.bDurabilityDirty &&
+					std::all_of(landing.Player.Inventory.begin(), landing.Player.Inventory.end(),
+						[](const auto& item) { return item.iDurabilityPercent == 34u; }),
+					"Gear that is not worn takes no wear");
+				INVENTORY_ITEM_SNAPSHOT probe{}; probe.strItemId = "WEAR_PROBE"; probe.iQuantity = 1u;
+				probe.eEquippedSlot = EQUIPMENT_SLOT::WEAPON; probe.iDurabilityPercent = 50u;
+				landing.Player.Inventory.push_back(probe);
+				landing.Player.Wear_Durability(1u);
+				tests.Require(landing.Player.bDurabilityDirty && landing.Player.Inventory.back().iDurabilityPercent == 49u,
+					"A hit wears the worn piece by the asked percent");
 			}
 			const auto* guide = bern->Find_Placement(guideId);
 			const float dx = guide ? landing.Player.fPositionX - guide->fPositionX : 1000.f;
@@ -185,8 +188,8 @@ int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
 				auto& player = raid->m_Players.at(peers[index]->Get_PlayerId());
 				player.strRaidReturnNpcPlacementId = index % 2u ? "npc.bern.aylara" : "npc.bern.beda.guide";
 				player.Purse.iSilver = 1000u + index; player.Purse.iGold = 100u + index; player.iHonorTitleId = 30001u;
-				player.DurabilityPercent.fill(static_cast<std::uint8_t>(50u + index));
-				player.iDurabilityWearCursor = static_cast<std::uint8_t>(index);
+				for (auto& item : player.Inventory)
+					item.iDurabilityPercent = static_cast<std::uint8_t>(50u + index);
 				player.iVoiceType = static_cast<std::uint8_t>(index + 2u);
 			}
 			const auto clearFrames = [&]() {
@@ -237,13 +240,11 @@ int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
 				carried &= transfer.eTargetWorldId == WORLD_ID::BERN && transfer.strNickName == player.strNickName &&
 					transfer.strSpawnPlacementOverrideId == player.strRaidReturnNpcPlacementId &&
 					transfer.iVoiceType == player.iVoiceType &&
-					transfer.CarriedDurability.DurabilityPercent == player.DurabilityPercent &&
-					transfer.CarriedDurability.iDurabilityWearCursor == player.iDurabilityWearCursor &&
 					transfer.CarriedPurse.iSilver == player.Purse.iSilver && transfer.CarriedPurse.iGold == player.Purse.iGold &&
 					transfer.iHonorTitleId == player.iHonorTitleId && transfer.CarriedInventory.size() == player.Inventory.size() &&
 					std::equal(transfer.CarriedInventory.begin(), transfer.CarriedInventory.end(), player.Inventory.begin(),
 						[](const auto& a, const auto& b) { return a.strItemId == b.strItemId && a.iQuantity == b.iQuantity &&
-							a.eEquippedSlot == b.eEquippedSlot; });
+							a.eEquippedSlot == b.eEquippedSlot && a.iDurabilityPercent == b.iDurabilityPercent; });
 			}
 			tests.Require(carried && raid->m_Players.size() == 4u,
 				"Unanimous EXIT stages each player's exact NPC, equipment, inventory, purse and title before source removal");

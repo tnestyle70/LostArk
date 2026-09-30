@@ -33,14 +33,6 @@ namespace LostArk::Server
 		}
 	};
 
-	/* Server-owned state carried only between worlds of the same session.
-	   Fresh Lobby admission keeps the default repaired equipment. */
-	struct SERVER_DURABILITY_STATE final
-	{
-		std::array<std::uint8_t, 6> DurabilityPercent{ { 100, 100, 100, 100, 100, 100 } };
-		std::uint8_t iDurabilityWearCursor = 0;
-	};
-
 	struct SERVER_TRIGGER_MOVE_SAMPLE
 	{
 		std::uint32_t iTimeMs = 0u;
@@ -378,24 +370,28 @@ namespace LostArk::Server
 
 		std::uint32_t iCurrentHp = 1000;
 		std::uint32_t iMaximumHp = 1000;
-		/* Worn-gear durability per HUD part (weapon, helmet, top, gloves, bottoms, shoulder),
-		   percent 0..100. A hit that takes HP wears one part in turn; the owner's inventory
-		   snapshot carries it. Not kept across sessions. */
-		std::array<std::uint8_t, 6> DurabilityPercent{ { 100, 100, 100, 100, 100, 100 } };
+		/* Durability lives on each worn piece of gear (Inventory[].iDurabilityPercent). A hit
+		   that takes HP wears one worn weapon or armor piece in turn; bDurabilityDirty owes the
+		   owner an inventory snapshot that carries it. With nothing worn nothing wears. */
 		std::uint8_t iDurabilityWearCursor = 0;
 		bool bDurabilityDirty = false;
-		SERVER_DURABILITY_STATE Get_DurabilityState() const noexcept
-		{
-			return { DurabilityPercent, iDurabilityWearCursor };
-		}
 		void Wear_Durability(const std::uint8_t percentLoss) noexcept
 		{
-			std::uint8_t& part = DurabilityPercent[iDurabilityWearCursor % DurabilityPercent.size()];
-			iDurabilityWearCursor = static_cast<std::uint8_t>(
-				(iDurabilityWearCursor + 1u) % DurabilityPercent.size());
-			if (0u == part)
+			LostArk::Shared::INVENTORY_ITEM_SNAPSHOT* worn[6] = {};
+			std::size_t count = 0;
+			for (LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& item : Inventory)
+			{
+				if (LostArk::Shared::Is_Durable_Slot(item.eEquippedSlot) && count < 6u)
+					worn[count++] = &item;
+			}
+			if (0u == count)
 				return;
-			part = part > percentLoss ? static_cast<std::uint8_t>(part - percentLoss) : std::uint8_t{ 0 };
+			LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& piece = *worn[iDurabilityWearCursor % count];
+			iDurabilityWearCursor = static_cast<std::uint8_t>((iDurabilityWearCursor + 1u) % 60u);
+			if (0u == piece.iDurabilityPercent)
+				return;
+			piece.iDurabilityPercent = piece.iDurabilityPercent > percentLoss ?
+				static_cast<std::uint8_t>(piece.iDurabilityPercent - percentLoss) : std::uint8_t{ 0 };
 			bDurabilityDirty = true;
 		}
 		// Server-only per-hit stream; same-tick contacts must not share one damage roll.

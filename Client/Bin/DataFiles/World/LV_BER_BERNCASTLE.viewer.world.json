@@ -503,7 +503,7 @@
                                             "startDelayMs":  450,
                                             "idleMinMs":  0,
                                             "idleMaxMs":  0,
-                                            "lookTargetPlacementId":  "npc.bern.plaza.05",
+                                            "lookTargetPlacementId":  null,
                                             "waypoints":  [
 
                                                           ],
@@ -545,7 +545,7 @@
                                             "startDelayMs":  600,
                                             "idleMinMs":  0,
                                             "idleMaxMs":  0,
-                                            "lookTargetPlacementId":  "npc.bern.plaza.04",
+                                            "lookTargetPlacementId":  "npc.bern.src.31",
                                             "waypoints":  [
 
                                                           ],
@@ -563,11 +563,11 @@
                                                         ]
                                         },
                            "position":  [
-                                            132.738007,
-                                            42.5770569,
-                                            -83.6880035
+                                            225.17,
+                                            43.52,
+                                            -68.19
                                         ],
-                           "yawDegrees":  -90,
+                           "yawDegrees":  135.0,
                            "enabled":  true
                        },
                        {
@@ -1049,7 +1049,7 @@
                                             "startDelayMs":  2400,
                                             "idleMinMs":  0,
                                             "idleMaxMs":  0,
-                                            "lookTargetPlacementId":  "npc.bern.plaza.19",
+                                            "lookTargetPlacementId":  null,
                                             "waypoints":  [
 
                                                           ],
@@ -1067,11 +1067,11 @@
                                                         ]
                                         },
                            "position":  [
-                                            131.738007,
-                                            42.5770607,
-                                            -75.1880035
+                                            46.20,
+                                            35.82,
+                                            160.20
                                         ],
-                           "yawDegrees":  68.1989975,
+                           "yawDegrees":  -61.7,
                            "enabled":  true
                        },
                        {
@@ -1133,7 +1133,7 @@
                                             "startDelayMs":  2700,
                                             "idleMinMs":  0,
                                             "idleMaxMs":  0,
-                                            "lookTargetPlacementId":  "npc.bern.plaza.17",
+                                            "lookTargetPlacementId":  null,
                                             "waypoints":  [
 
                                                           ],

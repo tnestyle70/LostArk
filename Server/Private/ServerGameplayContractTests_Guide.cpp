@@ -141,7 +141,7 @@ int CServerGameplayContractRunner::Run_GuideAI()
  // Each authoritative return type selects only its own configured event, using the real Join commit.
  for(const auto world:{WORLD_ID::KAKULSAYDON_ARENA,WORLD_ID::MAHARAKA,WORLD_ID::COLOSSEUM}){
   source->Leave(ownerId,PLAYER_DESPAWN_REASON::LEVEL_CHANGED);drain();source->Handle_Register(sessions[0]);C2S_ENTER_WORLD enter;enter.eWorldId=WORLD_ID::BERN;enter.eCharacterClass=CHARACTER_CLASS_ID::DIMENSIONMASTER;enter.strNickName="GuideReturn";
-  const bool admitted=source->Join(ownerId,enter,{}, {},INVALID_HONOR_TITLE_ID,{}, {}, {},world);
+  const bool admitted=source->Join(ownerId,enter,{}, {},INVALID_HONOR_TITLE_ID,{}, {},world);
   const char* name=world==WORLD_ID::KAKULSAYDON_ARENA?"KAKULSAYDON_ARENA":world==WORLD_ID::MAHARAKA?"MAHARAKA":"COLOSSEUM";
   const auto event=std::find_if(source->m_GuideCatalog.Triggers.begin(),source->m_GuideCatalog.Triggers.end(),[&](const auto& t){return t.Enabled&&(t.Type=="RAID_RETURNED"||t.Type=="WORLD_RETURNED")&&t.PatternId==name;});
   const auto& current=source->m_PersonalGuides.at(ownerId);

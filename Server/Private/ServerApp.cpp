@@ -5431,7 +5431,6 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	enterCommand.eEntrySourceWorldId = sourceWorldId;
 	enterCommand.CarriedInventory = transfer.CarriedInventory;
 	enterCommand.CarriedPurse = transfer.CarriedPurse;
-	enterCommand.CarriedDurability = transfer.CarriedDurability;
 	enterCommand.iCarriedHonorTitleId = transfer.iHonorTitleId;
 	const ROOM_COMMAND_ENQUEUE_RESULT targetEnterResult =
 		targetSimulation->Enqueue_Detailed(std::move(enterCommand));
