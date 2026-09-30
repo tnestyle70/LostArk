@@ -302,7 +302,7 @@
         "startDelayMs": 450,
         "idleMinMs": 0,
         "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.05",
+        "lookTargetPlacementId": null,
         "waypoints": [],
         "actions": [
           { "actionId": "npc.ambient.plaza.04.talk", "clipName": "npc_sc_talk_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1, "blendSeconds": 0.200000003 }
@@ -329,14 +329,14 @@
         "startDelayMs": 600,
         "idleMinMs": 0,
         "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.04",
+        "lookTargetPlacementId": "npc.bern.src.31",
         "waypoints": [],
         "actions": [
           { "actionId": "npc.ambient.plaza.05.affirm", "clipName": "npc_sc_affirmation_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 0.949999988, "blendSeconds": 0.200000003 }
         ]
       },
-      "position": [132.738007, 42.5770569, -83.6880035],
-      "yawDegrees": -90,
+      "position": [225.17, 43.52, -68.19],
+      "yawDegrees": 135.0,
       "enabled": true
     },
     {
@@ -653,14 +653,14 @@
         "startDelayMs": 2400,
         "idleMinMs": 0,
         "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.19",
+        "lookTargetPlacementId": null,
         "waypoints": [],
         "actions": [
           { "actionId": "npc.ambient.plaza.17.jeer", "clipName": "npc_sc_jeer_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1, "blendSeconds": 0.200000003 }
         ]
       },
-      "position": [131.738007, 42.5770607, -75.1880035],
-      "yawDegrees": 68.1989975,
+      "position": [46.20, 35.82, 160.20],
+      "yawDegrees": -61.7,
       "enabled": true
     },
     {
@@ -707,7 +707,7 @@
         "startDelayMs": 2700,
         "idleMinMs": 0,
         "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.17",
+        "lookTargetPlacementId": null,
         "waypoints": [],
         "actions": [
           { "actionId": "npc.ambient.plaza.19.cheer", "clipName": "npc_sc_cheer_loop_2", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.04999995, "blendSeconds": 0.200000003 }
