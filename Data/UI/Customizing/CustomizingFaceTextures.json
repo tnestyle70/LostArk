@@ -1958,6 +1958,539 @@
      "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_21.dds"
     }
    ]
+  },
+  "GuardianKnight": {
+   "iris": [
+    {
+     "index": 0,
+     "sourceName": "PC_DK_00_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "PC_DK_01_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 2,
+     "sourceName": "PC_DK_02_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 3,
+     "sourceName": "PC_DK_03_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 4,
+     "sourceName": "PC_DK_04_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 5,
+     "sourceName": "PC_DK_05_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 6,
+     "sourceName": "PC_DK_06_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 7,
+     "sourceName": "PC_DK_07_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 8,
+     "sourceName": "PC_DK_08_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 9,
+     "sourceName": "PC_DK_09_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 10,
+     "sourceName": "PC_DK_10_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 11,
+     "sourceName": "PC_DK_11_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 12,
+     "sourceName": "PC_DK_12_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 13,
+     "sourceName": "PC_DK_13_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 14,
+     "sourceName": "PC_DK_14_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 15,
+     "sourceName": "PC_DK_15_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 16,
+     "sourceName": "PC_DK_16_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 17,
+     "sourceName": "PC_DK_17_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 18,
+     "sourceName": "PC_DK_18_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 19,
+     "sourceName": "PC_DK_19_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 20,
+     "sourceName": "PC_DK_20_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 21,
+     "sourceName": "PC_DK_21_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 22,
+     "sourceName": "PC_DK_22_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 23,
+     "sourceName": "PC_DK_23_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 24,
+     "sourceName": "PC_DK_24_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 25,
+     "sourceName": "PC_DK_25_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 26,
+     "sourceName": "PC_DK_26_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 27,
+     "sourceName": "PC_DK_27_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 28,
+     "sourceName": "PC_DK_28_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 29,
+     "sourceName": "PC_DK_29_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 30,
+     "sourceName": "PC_DK_30_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 31,
+     "sourceName": "PC_DK_31_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 32,
+     "sourceName": "PC_DK_32_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 33,
+     "sourceName": "PC_DK_33_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 34,
+     "sourceName": "PC_DK_34_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 35,
+     "sourceName": "PC_DK_35_EYEiris_D",
+     "textureAssetId": null
+    }
+   ],
+   "eyemake": [
+    {
+     "index": 0,
+     "sourceName": null,
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_DK_eyemake_00",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/eyemake/CC_DK_eyemake_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_DK_eyemake_01",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/eyemake/CC_DK_eyemake_01.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_DK_eyemake_02",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/eyemake/CC_DK_eyemake_02.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_DK_eyemake_05",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/eyemake/CC_DK_eyemake_05.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_DK_eyemake_06",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/eyemake/CC_DK_eyemake_06.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_DK_eyemake_07",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/eyemake/CC_DK_eyemake_07.dds"
+    }
+   ],
+   "cheek": [
+    {
+     "index": 0,
+     "sourceName": null,
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_DK_Cheek_00",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/cheek/CC_DK_Cheek_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_DK_Cheek_01",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/cheek/CC_DK_Cheek_01.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_DK_Cheek_02",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/cheek/CC_DK_Cheek_02.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_DK_Cheek_03",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/cheek/CC_DK_Cheek_03.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_DK_Cheek_04",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/cheek/CC_DK_Cheek_04.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_DK_Cheek_05",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/cheek/CC_DK_Cheek_05.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_DK_Cheek_06",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/cheek/CC_DK_Cheek_06.dds"
+    }
+   ],
+   "lip": [
+    {
+     "index": 0,
+     "sourceName": null,
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_DK_Lip_00",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/lip/CC_DK_Lip_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_DK_Lip_01",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/lip/CC_DK_Lip_01.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_DK_Lip_02",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/lip/CC_DK_Lip_02.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_DK_Lip_03",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/lip/CC_DK_Lip_03.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_DK_Lip_06",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/lip/CC_DK_Lip_06.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_DK_Lip_07",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/lip/CC_DK_Lip_07.dds"
+    }
+   ],
+   "decal13": [
+    {
+     "index": 0,
+     "sourceName": null,
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_DK_Decal_00",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_DK_Decal_05",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_05.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_DK_Decal_13",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_13.dds"
+    }
+   ],
+   "decal14": [
+    {
+     "index": 0,
+     "sourceName": "CC_DK_Decal_02",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_02.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_DK_Decal_03",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_03.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_DK_Decal_04",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_04.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_DK_Decal_12",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_12.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_DK_Decal_26",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_26.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_DK_Decal_27",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_27.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_DK_Decal_28",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_28.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_DK_Decal_29",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_29.dds"
+    },
+    {
+     "index": 8,
+     "sourceName": "CC_DK_Decal_30",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_30.dds"
+    },
+    {
+     "index": 9,
+     "sourceName": "CC_DK_Decal_31",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_31.dds"
+    },
+    {
+     "index": 10,
+     "sourceName": "CC_DK_Decal_35",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_35.dds"
+    },
+    {
+     "index": 11,
+     "sourceName": "CC_DK_Decal_36",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_36.dds"
+    },
+    {
+     "index": 12,
+     "sourceName": "CC_DK_Decal_37",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_37.dds"
+    },
+    {
+     "index": 13,
+     "sourceName": "CC_DK_Decal_41",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_41.dds"
+    },
+    {
+     "index": 14,
+     "sourceName": "CC_DK_Decal_46",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_46.dds"
+    },
+    {
+     "index": 15,
+     "sourceName": "CC_DK_Decal_47",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_47.dds"
+    }
+   ],
+   "decal15": [
+    {
+     "index": 0,
+     "sourceName": "CC_DK_Decal_01",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_01.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_DK_Decal_06",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_06.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_DK_Decal_08",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_08.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_DK_Decal_09",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_09.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_DK_Decal_10",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_10.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_DK_Decal_11",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_11.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_DK_Decal_21",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_21.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_DK_Decal_22",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_22.dds"
+    },
+    {
+     "index": 8,
+     "sourceName": "CC_DK_Decal_23",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_23.dds"
+    },
+    {
+     "index": 9,
+     "sourceName": "CC_DK_Decal_24",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_24.dds"
+    },
+    {
+     "index": 10,
+     "sourceName": "CC_DK_Decal_25",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_25.dds"
+    },
+    {
+     "index": 11,
+     "sourceName": "CC_DK_Decal_32",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_32.dds"
+    },
+    {
+     "index": 12,
+     "sourceName": "CC_DK_Decal_33",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_33.dds"
+    },
+    {
+     "index": 13,
+     "sourceName": "CC_DK_Decal_34",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_34.dds"
+    },
+    {
+     "index": 14,
+     "sourceName": "CC_DK_Decal_39",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_39.dds"
+    },
+    {
+     "index": 15,
+     "sourceName": "CC_DK_Decal_48",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_48.dds"
+    }
+   ],
+   "decal16": [
+    {
+     "index": 0,
+     "sourceName": "CC_DK_Decal_07",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_07.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_DK_Decal_15",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_15.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_DK_Decal_16",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_16.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_DK_Decal_17",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_17.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_DK_Decal_18",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_18.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_DK_Decal_19",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_19.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_DK_Decal_20",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_20.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_DK_Decal_38",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_38.dds"
+    },
+    {
+     "index": 8,
+     "sourceName": "CC_DK_Decal_40",
+     "textureAssetId": "Character/GuardianKnight/FaceTextures/decal/CC_DK_Decal_40.dds"
+    }
+   ]
   }
  }
 }

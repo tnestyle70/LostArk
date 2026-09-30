@@ -9642,6 +9642,1106 @@
           "hiddenMeshMask": 0
         }
       ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_55_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_55_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_57_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_57_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_58_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_58_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_59_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_59_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_03_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_03_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_04_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_04_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_05_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_05_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_07_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_07_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_09_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_09_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_10_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_10_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_11_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_11_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_12_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_12_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_13_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_13_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_14_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_14_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_15_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_15_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_18_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_18_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_19_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_19_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_20_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_20_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_21_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_21_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_22_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_22_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_23_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_23_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_25_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_25_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_26_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_26_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_27_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_27_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_28_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_28_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_29_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_29_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_30_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_30_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_31_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_31_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_32_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_32_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_33_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_33_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_34_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_34_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_38_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_38_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_39_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_39_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_40_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_40_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_42_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_42_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_44_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_44_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_45_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_45_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_46_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_46_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_47_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_47_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_48_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_48_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_49_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_49_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_50_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_50_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_51_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_51_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_52_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_52_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_53_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_53_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_54_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_54_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_60_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_60_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_61_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_61_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_62_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_62_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.pc_dk_63_hair.head",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/pc_dk_63_hair/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
     }
   ]
 }
