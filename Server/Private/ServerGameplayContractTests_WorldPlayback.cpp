@@ -38,6 +38,65 @@ using namespace LostArk::Shared;
 
 int LostArk::Server::CServerGameplayContractRunner::Run_WorldPlayback(TESTS& tests)
 {
+    {
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::MAHARAKA);
+        CCombatObjectRuntime runtime;
+        SERVER_PLAYER owner; owner.iPlayerId=1001u; owner.iNetEntityId=1002u;
+        owner.fPositionX=10.f; owner.fPositionY=20.f; owner.fPositionZ=30.f; owner.fYawDegrees=90.f;
+        std::string status;
+        for (const auto skill : {56900u, 56910u, 56930u})
+        {
+            auto staged=runtime.Begin_Transaction();
+            tests.Require(runtime.Stage_WaterGunPresentation(staged,owner,skill,room->m_GameplayCatalog,500u,status),
+                "Watergun stages a source-owned projectile");
+            if (staged.Objects.empty()) continue;
+            const auto id=staged.Objects.front().iCombatObjectId;
+            tests.Require(runtime.Get_LiveObjects().empty() && runtime.Commit(std::move(staged)),
+                "Staging never exposes a partial projectile");
+            std::vector<S2C_COMBAT_OBJECT_SPAWNED> spawned;
+            std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT> events;
+            std::vector<S2C_COMBAT_OBJECT_DESPAWNED> despawned;
+            runtime.Drain_Lifecycle(spawned,events,despawned);
+            const float expectedX=skill==56910u?10.f:10.7f;
+            const float expectedY=skill==56910u?20.f:20.75f;
+            const float expectedZ=skill==56910u?30.f:29.89f;
+            tests.Require(spawned.size()==1u && std::abs(spawned[0].fPositionX-expectedX)<.001f &&
+                std::abs(spawned[0].fPositionY-expectedY)<.001f && std::abs(spawned[0].fPositionZ-expectedZ)<.001f,
+                "Source forward/right/up launch offset is converted once at yaw90");
+            tests.Require(!runtime.Finish_WaterGunPresentation(id,999u,500u,501u,true) &&
+                !runtime.Finish_WaterGunPresentation(id,owner.iNetEntityId,499u,501u,true) &&
+                runtime.Get_LiveObjects().size()==1u,"Wrong owner or cast cannot finish a live watergun object");
+            tests.Require(runtime.Set_OwnedVisualPosition(id,owner.iNetEntityId,500u,15.f,20.f,34.f),
+                "Watergun flight consumes the authoritative room pose");
+            std::vector<S2C_COMBAT_OBJECT_SPAWNED> late;
+            runtime.Build_LiveSpawnMessages(510u,late);
+            tests.Require(late.size()==1u && late[0].iSpawnTick==500u && late[0].iServerTick==510u &&
+                late[0].fPositionX==15.f && late[0].fPositionZ==34.f,
+                "Late join keeps cast age and current projectile position");
+            tests.Require(runtime.Finish_WaterGunPresentation(id,owner.iNetEntityId,500u,511u,true) &&
+                !runtime.Finish_WaterGunPresentation(id,owner.iNetEntityId,500u,512u,true),
+                "A projectile impact finishes exactly once");
+            runtime.Drain_Lifecycle(spawned,events,despawned);
+            tests.Require(events.size()==1u && despawned.size()==1u && runtime.Get_LiveObjects().empty() &&
+                events[0].strHitId=="maharaka.watergun.impact" && events[0].fPositionX==15.f &&
+                events[0].fPositionZ==34.f && events[0].PinnedDefinitionRevision==room->m_GameplayCatalog.Get_ActiveRevision(),
+                "Impact and despawn carry the last authoritative pose and pinned revision");
+        }
+        auto invalid=runtime.Begin_Transaction();
+        tests.Require(!runtime.Stage_WaterGunPresentation(invalid,owner,56920u,room->m_GameplayCatalog,520u,status) &&
+            invalid.Objects.empty() && invalid.Spawned.empty(),"Speed buff cannot create a water projectile");
+        auto expired=runtime.Begin_Transaction();
+        const bool staged=runtime.Stage_WaterGunPresentation(expired,owner,56900u,room->m_GameplayCatalog,530u,status);
+        const auto id=staged?expired.Objects.front().iCombatObjectId:0u;
+        tests.Require(staged && runtime.Commit(std::move(expired)) &&
+            runtime.Finish_WaterGunPresentation(id,owner.iNetEntityId,530u,560u,false),
+            "A missed watergun projectile expires without impact");
+        std::vector<S2C_COMBAT_OBJECT_SPAWNED> spawned;
+        std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT> events;
+        std::vector<S2C_COMBAT_OBJECT_DESPAWNED> despawned;
+        runtime.Drain_Lifecycle(spawned,events,despawned);
+        tests.Require(events.empty() && despawned.size()==1u,"Miss expiry emits no fabricated hit");
+    }
         {
             auto room = std::make_unique<CGameRoom>(WORLD_ID::MAHARAKA);
             tests.Require(room->Is_Ready(), "Waterpang published room loads");

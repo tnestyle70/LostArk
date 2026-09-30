@@ -5,6 +5,7 @@
 #include "Camera_Free.h"
 #include "GameInstance.h"
 #include "LevelTransitionService.h"
+#include "Level_CharacterSelect.h"
 #include "MainApp.h"
 #include "MapEditorWorkspaceService.h"
 #include "MapStaticBatchObject.h"
@@ -428,6 +429,36 @@ void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
 		if (!m_bRuntimeAuthoring && ImGui::Button("Retry runtime map binding"))
 			m_iAuthoringLevelIndex = ETOUI(LEVEL::END);
 	}
+#ifdef _DEBUG
+	if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+		if (auto* level = CLevel_CharacterSelect::Get_Active())
+		{
+			const auto& movie = level->Get_ClassSelectionPresentation();
+			const auto background = movie.Is_Active() ?
+				level->Get_ClassCinematicBackgroundArea(movie.Get_ActiveClass()) : std::string{};
+			const auto primary = level->Get_MapAuthoringRuntime().Get_Catalog().Get_AreaId();
+			const auto selectedTarget = m_ClassMovieBackgroundAreaId.empty() ? primary : m_ClassMovieBackgroundAreaId;
+			ImGui::SetNextItemWidth(440.f);
+			if (ImGui::BeginCombo("Character Select target", selectedTarget.c_str()))
+			{
+				if (ImGui::Selectable(("Primary map: " + primary).c_str(), m_ClassMovieBackgroundAreaId.empty()))
+					(void)Open_ClassMovieBackground(primary, m_Status);
+				if (!background.empty() && background != primary && level->Find_ClassCinematicBackgroundRuntime(background))
+					if (ImGui::Selectable(("Current Movie background: " + background).c_str(), selectedTarget == background))
+						(void)Open_ClassMovieBackground(background, m_Status);
+				ImGui::EndCombo();
+			}
+			if (!m_ClassMovieBackgroundAreaId.empty())
+			{
+				ImGui::TextWrapped("Background target stays fixed when the Movie class changes. Hierarchy search: sky, asset ID or source placement ID.");
+				ImGui::TextWrapped("Visible off mutes only that placement and is saved. Movie Show background is a separate preview filter.");
+				ImGui::TextWrapped("Source: Data/Maps/Authoring/%s/%s.mapplacements",
+					m_ClassMovieBackgroundAreaId.c_str(), m_ClassMovieBackgroundAreaId.c_str());
+				ImGui::TextWrapped("After Save, publish this Area with Publish-MapAuthoring.ps1 -Scope Placements.");
+				(void)Can_ChangeRuntimeStructure();
+			}
+		}
+#endif
 	if (!isAssetTest)
 	{
 		ImGui::TextWrapped(
@@ -1051,6 +1082,12 @@ bool_t Client::CMapTool::Has_UnsavedAuthoring() const
 
 void Client::CMapTool::Render_ModeBar()
 {
+	if (!m_ClassMovieBackgroundAreaId.empty())
+	{
+		m_eToolMode = TOOL_MODE::MAP_ASSETS;
+		ImGui::TextUnformatted("Movie background placements");
+		return;
+	}
 	const TOOL_MODE previousMode = m_eToolMode;
 	if (ImGui::RadioButton(
 		"Map Assets",
@@ -1160,7 +1197,9 @@ void Client::CMapTool::Render_Toolbar()
 	ImGui::SameLine();
 	if (ImGui::Button("Reload"))
 	{
-		if (m_bDeployDirty)
+		if (!m_ClassMovieBackgroundAreaId.empty() && Has_UnsavedAuthoring())
+			m_Status = "Save the background placement draft before reloading.";
+		else if (m_bDeployDirty)
 		{
 			m_Status =
 				"Save or discard the animated prop changes before reloading";
@@ -1184,6 +1223,7 @@ void Client::CMapTool::Render_Toolbar()
 		m_bDirty ? "  *unsaved" : "");
 	ImGui::TextDisabled(
 		"DeployProp authoring is excluded until its source/stage contract is complete.");
+	ImGui::BeginDisabled(!m_ClassMovieBackgroundAreaId.empty());
 	ImGui::TextUnformatted("Sky phase:");
 	ImGui::SameLine();
 	if (ImGui::RadioButton("Baseline##EnvironmentPhase",
@@ -1197,6 +1237,7 @@ void Client::CMapTool::Render_Toolbar()
 	if (ImGui::RadioButton("ChaosGate##EnvironmentPhase",
 		m_EnvironmentPhase == ENVIRONMENT_PHASE::CHAOS_GATE))
 		Set_EnvironmentPhase(ENVIRONMENT_PHASE::CHAOS_GATE);
+	ImGui::EndDisabled();
 
 	if (ImGui::BeginPopupModal("Clear all placements?", nullptr,
 		ImGuiWindowFlags_AlwaysAutoResize))
@@ -1334,22 +1375,34 @@ void Client::CMapTool::Render_Palette(f32_t childHeight)
 void Client::CMapTool::Render_Hierarchy(f32_t childHeight)
 {
 	ImGui::TextUnformatted("Hierarchy");
+	ImGui::InputTextWithHint("##PlacementFilter", "name, asset ID, source placement ID...",
+		m_PlacementFilter, sizeof(m_PlacementFilter));
+	const auto& placements = Authoring_Placements();
+	const bool_t hasFilter = m_PlacementFilter[0] != '\0';
+	std::vector<const PLACED_ENTRY*> filtered;
+	if (hasFilter)
+		for (const auto& entry : placements)
+		{
+			const auto* asset = m_Catalog.Find(entry.record.assetId);
+			if (MatchesFilter((asset ? asset->label : std::string{}) + " " + entry.record.assetId +
+				" " + entry.record.sourcePlacementId, m_PlacementFilter)) filtered.push_back(&entry);
+		}
 	const f32_t listHeight = (std::max)(120.f, childHeight -
-		ImGui::GetTextLineHeightWithSpacing());
+		ImGui::GetTextLineHeightWithSpacing() * 3.f);
 	ImGui::BeginChild("PlacementHierarchy", ImVec2(0.f, listHeight), true);
 	ImGuiListClipper clipper;
-	clipper.Begin(static_cast<int>(Authoring_Placements().size()));
+	clipper.Begin(static_cast<int>(hasFilter ? filtered.size() : placements.size()));
 	while (clipper.Step())
 	{
 		for (int index = clipper.DisplayStart; index < clipper.DisplayEnd; ++index)
 		{
-			const PLACED_ENTRY& entry = Authoring_Placements()[index];
+			const PLACED_ENTRY& entry = hasFilter ? *filtered[index] : placements[index];
 			const MAP_ASSET_ENTRY* pAsset =
 				m_Catalog.Find(entry.record.assetId);
 			const std::string assetLabel = nullptr == pAsset ?
 				entry.record.assetId : pAsset->label;
 			const std::string label = "[" + entry.record.sourceLevel + "] " +
-				assetLabel + "###placement-" +
+				assetLabel + " | " + entry.record.sourcePlacementId + "###placement-" +
 				std::to_string(entry.record.placementId);
 			ImGui::PushID(reinterpret_cast<void*>(
 				static_cast<uintptr_t>(entry.record.placementId)));

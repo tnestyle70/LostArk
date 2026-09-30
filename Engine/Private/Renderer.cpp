@@ -883,6 +883,10 @@ HRESULT CRenderer::Draw()
 	if (FAILED(hResult))
 		return FailFrame("Ready_ScenePostTargets", hResult);
 	{
+		CProfilerScope scope(pProfiler, "Render.FinalCameraSubmission");
+		CGameInstance::Get().Submit_FinalCameraObjects();
+	}
+	{
 		CProfilerScope scope(pProfiler, "Render.Shadow");
 		CProfilerGpuScope gpuScope(pProfiler, "Render.Shadow", true);
 		hResult = Render_Shadow();

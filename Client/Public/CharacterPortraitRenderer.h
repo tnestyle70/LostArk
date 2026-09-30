@@ -26,6 +26,9 @@ public:
 		f32_t fLookHeight = 0.95f;
 		f32_t fFovDegrees = 35.f;
 		f32_t fYawDegrees = 0.f;     /* extra turn around the up axis (0 = facing the camera) */
+		/* Metres the whole camera slides along screen-right (eye and target together). 0 keeps the
+		character on the view axis; a negative value moves the character to the right of the frame. */
+		f32_t fLateralOffset = 0.f;
 	};
 
 public:
@@ -39,6 +42,10 @@ public:
 	HRESULT Render(const std::shared_ptr<CCharacter>& pCharacter, uint32_t iWidth, uint32_t iHeight,
 		const CAMERA& Camera, uint32_t iAvatarOverrideKinds, uint32_t iAvatarHiddenKinds);
 	ComPtr<ID3D11ShaderResourceView> Get_SRV() const { return m_pSRV; }
+	/* World height in metres of the character's eyes (rig eye bones times its presentation scale),
+	for framings that follow the model instead of assuming one body height. False without a body
+	model or eye bones. */
+	static bool_t Try_Measure_EyeHeight(const CCharacter& Character, f32_t& fOutMetres);
 
 private:
 	HRESULT Ensure_Target(uint32_t iWidth, uint32_t iHeight);

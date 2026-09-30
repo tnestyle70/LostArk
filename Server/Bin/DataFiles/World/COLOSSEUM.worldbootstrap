@@ -1,0 +1,47 @@
+LOSTARK_WORLD_BOOTSTRAP	12	COLOSSEUM	LV_PVP_COLOSSEUM	3	46	0	0	0	0
+npc.colosseum.spectator.01	npc	NPC_11748	-	26.741	17.025	-3.785	-84.76	1	0
+npc.colosseum.spectator.02	npc	NPC_13203	-	26.666	13.85	7.88	-112.05	1	0
+npc.colosseum.spectator.03	npc	NPC_11752	-	28.242	17.14	2.054	-91.74	1	0
+npc.colosseum.spectator.04	npc	NPC_12905	-	25.833	17.301	4.648	-107.04	1	0
+npc.colosseum.spectator.05	npc	NPC_12250	-	25.873	16.883	-0.112	-89.18	1	0
+npc.colosseum.spectator.06	npc	NPC_18394	-	9.967	13.659	15.627	-149.62	1	0
+npc.colosseum.spectator.07	npc	NPC_12917	-	24.368	13.529	10.106	-119.6	1	0
+npc.colosseum.spectator.08	npc	NPC_12249	-	17.559	16.075	17.099	-134.12	1	0
+npc.colosseum.spectator.09	npc	NPC_11592	-	12.363	13.5	22.819	-158.95	1	0
+npc.colosseum.spectator.10	npc	NPC_11816	-	16.882	13.294	11.062	-124.3	1	0
+npc.colosseum.spectator.11	npc	NPC_11749	-	4.584	13.704	19.83	-173.87	1	0
+npc.colosseum.spectator.12	npc	NPC_12911	-	-9.33	13.27	23.319	151.64	1	0
+npc.colosseum.spectator.13	npc	NPC_11748	-	-2.731	16.286	27.92	173.21	1	0
+npc.colosseum.spectator.14	npc	NPC_13203	-	4.333	13.45	26.482	-165.48	1	0
+npc.colosseum.spectator.15	npc	NPC_11752	-	-5.187	13.67	18.861	158.6	1	0
+npc.colosseum.spectator.16	npc	NPC_12905	-	-15.572	13.643	11.9	122.96	1	0
+npc.colosseum.spectator.17	npc	NPC_12250	-	-9.912	15.931	23.257	158.96	1	0
+npc.colosseum.spectator.18	npc	NPC_18394	-	-25.407	13.58	10.778	120.15	1	0
+npc.colosseum.spectator.19	npc	NPC_12917	-	-15.648	16.049	19.786	142.89	1	0
+npc.colosseum.spectator.20	npc	NPC_12249	-	-10.26	13.639	15.665	145.12	1	0
+npc.colosseum.spectator.21	npc	NPC_11592	-	-27.625	17.312	0.425	98.5	1	0
+npc.colosseum.spectator.22	npc	NPC_11816	-	-28.275	16.869	-4.383	73.93	1	0
+npc.colosseum.spectator.23	npc	NPC_11749	-	-28.308	17.112	4.878	105.51	1	0
+npc.colosseum.spectator.24	npc	NPC_12911	-	-28.612	17.026	-1.912	82.81	1	0
+npc.colosseum.spectator.25	npc	NPC_11748	-	-28.521	16.94	2.62	89.56	1	0
+npc.colosseum.spectator.26	npc	NPC_13203	-	-11.338	13.806	-14.75	31.43	1	0
+npc.colosseum.spectator.27	npc	NPC_11752	-	-20.745	15.532	-13.789	53.32	1	0
+npc.colosseum.spectator.28	npc	NPC_12905	-	-9.844	16.017	-23.396	27.88	1	0
+npc.colosseum.spectator.29	npc	NPC_12250	-	-15.589	13.634	-10.774	50.24	1	0
+npc.colosseum.spectator.30	npc	NPC_18394	-	-14.833	15.974	-19.103	39.13	1	0
+npc.colosseum.spectator.31	npc	NPC_12917	-	-8.555	15.781	-20.658	24.72	1	0
+npc.colosseum.spectator.32	npc	NPC_12249	-	8.714	15.98	-23.015	-22.78	1	0
+npc.colosseum.spectator.33	npc	NPC_11592	-	3.488	13.618	-18.122	-10.13	1	0
+npc.colosseum.spectator.34	npc	NPC_11816	-	-6.016	13.4	-25.534	6.26	1	0
+npc.colosseum.spectator.35	npc	NPC_11749	-	3.774	14.241	-22.961	-16.38	1	0
+npc.colosseum.spectator.36	npc	NPC_12911	-	17.131	13.453	-16.124	-51.44	1	0
+npc.colosseum.spectator.37	npc	NPC_11748	-	9.492	13.675	-15.304	-28.92	1	0
+npc.colosseum.spectator.38	npc	NPC_13203	-	14.471	13.752	-11.036	-53.83	1	0
+npc.colosseum.spectator.39	npc	NPC_11752	-	14.502	16.013	-19.335	-39.84	1	0
+npc.colosseum.spectator.40	npc	NPC_12905	-	17.349	13.787	-12.373	-53.14	1	0
+player.spawn.colosseum.teama.01	playerSpawn	-	-	-24.4	12.220000267028809	-2.6	90	1
+player.spawn.colosseum.teama.02	playerSpawn	-	-	-24.4	12.220000267028809	0.3	90	1
+player.spawn.colosseum.teama.03	playerSpawn	-	-	-24.4	12.220000267028809	3	90	1
+player.spawn.colosseum.teamb.01	playerSpawn	-	-	23	12.220000267028809	-2.6	-90	1
+player.spawn.colosseum.teamb.02	playerSpawn	-	-	23	12.220000267028809	0.3	-90	1
+player.spawn.colosseum.teamb.03	playerSpawn	-	-	23	12.220000267028809	3	-90	1

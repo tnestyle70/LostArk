@@ -35,6 +35,10 @@ public:
 
 private:
 	friend class CModel;
+    bool_t Advance_Clock(f32_t fTimeDelta, bool_t isLoop);
+    // WModel compact tracks only; append extrema without sampling any live pose.
+    bool_t Accumulate_TransformEnvelope(std::span<std::array<double, 3>> translations,
+        std::span<double> scales) const;
 	bool_t Is_BoneTransformConstant(uint32_t iBoneIndex) const;
 	bool_t Sample_LocalBoneTransforms(
 		f32_t fTrackPosition,

@@ -353,7 +353,24 @@ namespace Client
 			"ground-target confirm LMB ownership regressed");
 	}
 
-	/* Pure state contract for a two-step ground-target skill. DirectInput,
+	enum class GROUND_TARGETING_KIND : std::uint8_t { NONE, SKILL, ITEM };
+
+	enum class GROUND_TARGETING_CLICK : std::uint8_t { NONE, CANCEL, CONFIRM };
+	/* Observe raw edges even when a filtered button is unavailable. A blocked
+	   press must be released before it can confirm; cancel wins simultaneous clicks. */
+	inline GROUND_TARGETING_CLICK Poll_GroundTargetingClick(
+		bool_t confirmDown, bool_t cancelDown, bool_t confirmAllowed, bool_t cancelAllowed,
+		bool_t& wasConfirmDown, bool_t& wasCancelDown)
+	{
+		const bool_t cancelEdge = cancelAllowed && cancelDown && !wasCancelDown;
+		const bool_t confirmEdge = confirmAllowed && confirmDown && !wasConfirmDown;
+		wasConfirmDown = confirmDown;
+		wasCancelDown = cancelDown;
+		return cancelEdge ? GROUND_TARGETING_CLICK::CANCEL :
+			confirmEdge ? GROUND_TARGETING_CLICK::CONFIRM : GROUND_TARGETING_CLICK::NONE;
+	}
+
+	/* Pure state contract for two-step ground-target skill/item input. DirectInput,
 	 networking, navigation and rendering remain outside, which lets the focused
 	 frontend harness pin clamp/cancel/confirm behavior without launching Client. */
 	class CGROUND_TARGETING_STATE final
@@ -368,11 +385,32 @@ namespace Client
 			{
 				return false;
 			}
+			m_eKind = GROUND_TARGETING_KIND::SKILL;
+			m_strItemId.clear();
+			m_iItemRequestSequence = 0u;
 			m_iSkillId = skillId;
 			m_fMaximumRange = maximumRange;
 			m_TargetPosition = {};
 			m_hasCursor = false;
-			m_isWalkable = false;
+			m_hasTargetSample = false;
+			m_isActive = true;
+			return true;
+		}
+
+		bool_t Begin_Item(const std::string& itemId,
+			std::uint32_t requestSequence, f32_t maximumRange)
+		{
+			if (itemId.empty() || 0u == requestSequence ||
+				!std::isfinite(maximumRange) || maximumRange <= 0.f)
+				return false;
+			m_eKind = GROUND_TARGETING_KIND::ITEM;
+			m_iSkillId = LostArk::Shared::INVALID_SKILL_ID;
+			m_strItemId = itemId;
+			m_iItemRequestSequence = requestSequence;
+			m_fMaximumRange = maximumRange;
+			m_TargetPosition = {};
+			m_hasCursor = false;
+			m_hasTargetSample = false;
 			m_isActive = true;
 			return true;
 		}
@@ -395,7 +433,7 @@ namespace Client
 				if (m_isActive)
 				{
 					m_hasCursor = false;
-					m_isWalkable = false;
+					m_hasTargetSample = false;
 				}
 				return false;
 			}
@@ -415,11 +453,11 @@ namespace Client
 				casterPosition.y,
 				casterPosition.z + deltaZ };
 			m_hasCursor = true;
-			m_isWalkable = false;
+			m_hasTargetSample = false;
 			return true;
 		}
 
-		bool_t Apply_WalkableSample(const float3_t& sampledPosition)
+		bool_t Apply_TargetSample(const float3_t& sampledPosition)
 		{
 			if (!m_isActive || !m_hasCursor ||
 				!std::isfinite(sampledPosition.x) ||
@@ -428,12 +466,18 @@ namespace Client
 				std::abs(sampledPosition.x - m_TargetPosition.x) > 0.001f ||
 				std::abs(sampledPosition.z - m_TargetPosition.z) > 0.001f)
 			{
-				m_isWalkable = false;
+				m_hasTargetSample = false;
 				return false;
 			}
 			m_TargetPosition = sampledPosition;
-			m_isWalkable = true;
+			m_hasTargetSample = true;
 			return true;
+		}
+
+		// The skill caller must first approve navigation; item callers only stage intent.
+		bool_t Apply_WalkableSample(const float3_t& sampledPosition)
+		{
+			return Apply_TargetSample(sampledPosition);
 		}
 
 		void Invalidate_Cursor(const float3_t& casterPosition)
@@ -442,25 +486,32 @@ namespace Client
 				return;
 			m_TargetPosition = casterPosition;
 			m_hasCursor = false;
-			m_isWalkable = false;
+			m_hasTargetSample = false;
 		}
 
 		bool_t Is_Active() const { return m_isActive; }
+		bool_t Is_Item() const { return GROUND_TARGETING_KIND::ITEM == m_eKind; }
+		GROUND_TARGETING_KIND Get_Kind() const { return m_eKind; }
+		const std::string& Get_ItemId() const { return m_strItemId; }
+		std::uint32_t Get_ItemRequestSequence() const { return m_iItemRequestSequence; }
 		bool_t Can_Confirm() const
 		{
-			return m_isActive && m_hasCursor && m_isWalkable;
+			return m_isActive && m_hasCursor && m_hasTargetSample;
 		}
 		LostArk::Shared::SKILL_ID Get_SkillId() const { return m_iSkillId; }
 		f32_t Get_MaximumRange() const { return m_fMaximumRange; }
 		const float3_t& Get_TargetPosition() const { return m_TargetPosition; }
 
 	private:
+		GROUND_TARGETING_KIND m_eKind = GROUND_TARGETING_KIND::NONE;
+		std::string m_strItemId;
+		std::uint32_t m_iItemRequestSequence = 0u;
 		LostArk::Shared::SKILL_ID m_iSkillId =
 			LostArk::Shared::INVALID_SKILL_ID;
 		f32_t m_fMaximumRange = 0.f;
 		float3_t m_TargetPosition{};
 		bool_t m_hasCursor = false;
-		bool_t m_isWalkable = false;
+		bool_t m_hasTargetSample = false;
 		bool_t m_isActive = false;
 	};
 
@@ -733,6 +784,8 @@ namespace Client
 		fresh just because the plain-slot pass was ruled out that frame. */
 		std::array<bool_t, 3> m_wasEstherKeyDown{};
 		CGROUND_TARGETING_STATE m_GroundTargeting;
+		LostArk::Shared::CHARACTER_CLASS_ID m_eItemTargetingClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
+		uint32_t m_iItemTargetingLevel = 0xffffffffu;
 		shared_ptr<CSkillGroundTargetPreview> m_pGroundTargetPreview;
 		shared_ptr<CClickMoveEffect> m_pClickMoveEffect;
 		bool_t m_wasTargetingLeftMouseDown = false;

@@ -95,6 +95,8 @@ public:
 		float3_t vPosition = {};
 
 		std::string strNickName;
+		/* Character-creation voice type (1..8) the Server replicated with the spawn. */
+		uint8_t iVoiceType = { 1u };
 		bool_t isLocallyControlled = { false };
 	} CHARACTER_DESC;
 
@@ -180,7 +182,7 @@ public:
 	   class weapons and overrides idle/run; disarm restores both. */
 	bool_t Apply_WaterGunPresentation(bool_t isArmed);
 #ifdef _DEBUG
-	void Set_WaterGunPreviewForced(bool_t forced);
+	bool_t Set_WaterGunPreviewForced(bool_t forced);
 	bool_t Is_WaterGunPreviewForced() const { return m_bWaterGunPreviewForced; }
 	// Local preview of watergun_att_1..6; att_1..4 also spawn their source muzzle effect.
 	bool_t Play_WaterGunAttackPreview(uint32_t attack);
@@ -231,6 +233,11 @@ public:
 	/* True while riding a ship: the rider is not drawn, only the ship sails on the water. */
 	bool_t Is_ShipPresentation() const { return m_isShipPresentation; }
 	void Set_CinematicPresentationSuppressed(bool_t suppressed);
+	/* Colosseum match intro: the lineup pose the cutscene shows this character in. Only the
+	   presentation transform is overridden each Update; snapshots keep arriving and the Server
+	   position is untouched, so clearing snaps straight back to it. */
+	void Set_CutscenePoseOverride(const float3_t& position, f32_t yawDegrees);
+	void Clear_CutscenePoseOverride() { m_isCutscenePoseOverride = false; }
 	bool_t Is_WorldPresentationHidden() const
 	{ return m_isNetworkPresentationHidden || m_isSourcePawnHidden || m_isCinematicPresentationSuppressed; }
     // Transient cue overlays never replace replicated stance or user part visibility.
@@ -466,6 +473,9 @@ private:
 	wstring_t m_strNavigationPrototypeTag;
 	bool_t m_isNetworkPresentationHidden = false;
 	bool_t m_isCinematicPresentationSuppressed = false;
+	bool_t m_isCutscenePoseOverride = false;
+	float3_t m_vCutscenePosePosition = {};
+	f32_t m_fCutscenePoseYawDegrees = 0.f;
     bool_t m_isSourcePawnHidden = false, m_isSourceWeaponHidden = false, m_isSourceIdentityHidden = false;
     bool_t m_isSourceIdentityVisible = false;
 	std::uint32_t m_iVehicleId = 0u;
@@ -516,6 +526,7 @@ private:
 	int32_t m_iChainStep = {};
 
 	std::string m_strNickName;
+	uint8_t m_iVoiceType = { 1u };
 	bool_t m_isLocallyControlled = { false };
 
 	//network persentation state

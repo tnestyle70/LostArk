@@ -21,6 +21,9 @@ struct REPLICATED_PLAYER_HEALTH final
 	std::uint32_t iInvulnerabilityZonePulseTick = 0u;
 	bool bRonaunGuard = false;
 	std::uint32_t iRonaunGrantTick = 0u;
+	// Read-only Server bind occurrence for world status text on the actual target.
+	bool isPatternBound = false;
+	std::uint32_t iPatternBindEndTick = 0u;
 
 	float Get_Ratio() const
 	{
@@ -56,7 +59,8 @@ public:
 					true, player.iCurrentHp, player.iMaximumHp,
 					player.iCurrentMadness, player.iMaximumMadness,
 					player.iInvulnerabilityZonePulseTick, player.bRonaunGuard,
-					player.iRonaunGrantTick }).second)
+					player.iRonaunGrantTick, player.isPatternBound,
+					player.iPatternBindEndTick }).second)
 			{
 				return false;
 			}

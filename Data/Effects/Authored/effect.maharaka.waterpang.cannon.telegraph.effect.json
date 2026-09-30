@@ -2,7 +2,7 @@
   "schema": "lostark.effect-authoring",
   "version": 13,
   "effectAssetId": "effect.maharaka.waterpang.cannon.telegraph",
-  "displayName": "Waterpang cannon telegraph (SkillDecal 1103)",
+  "displayName": "워터팡 | 중앙 기둥 물 뿜기 예고",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

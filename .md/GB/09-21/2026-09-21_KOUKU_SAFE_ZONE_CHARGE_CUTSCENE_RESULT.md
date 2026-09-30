@@ -158,3 +158,59 @@ Runtime blocker에는 원본 바닥이 있으므로 그대로 막힌다. 외곽 
 막는 조건이며 데이터 병합이나 격리 검증을 막지 않는다. 사용자는 새 Client/Server 빌드·재시작 후 최신
 저장본을 열어 직접 Publish하고 실제 Play·밀림·낙사·사운드·모델 화면을 확인한다. 이전 Client 메모리
 문서를 새 디스크 파일 위에 다시 저장하거나 자동 Reload하는 동작은 에이전트가 수행하지 않았다.
+
+## G07. 2026-09-30 파1빨2 정확 인원의 즉사 보호 복원
+
+최근6a988d7037의 일반 즉사 우회 변경에서 Apply_Results가 lethal 결과에 한해
+INVULNERABILITY_ZONE의 성공 집합을 무시했다. 인원은 맞게 집계하고 파란 무적 pulse도
+보내지만 실제 광역 즉사는 관통했다. 동일 Pattern의 성공 안전존이 막는 Result에
+INSTANT_DEATH를 복원하고 MAX_HP_PERCENT100%도 같은 집합에서 먼저 차단한다.
+개인 무적·실드·시간 정지의 일반 즉사 우회 정책과 다른 Pattern의 전멸은 유지한다.
+
+현재 source2497/Client patternbindings/Server bootstrap은 파랑2원·빨강2원이다.
+각각 정확1/2명, 반경2m, 종료17.491~17.506초이며 실제 즉사 세 번의 시작은
+2585/9252/15919ms다. 각 원의 독립 인간 집계와 Guide/사망/비준비/낙하/잡힘 제외를
+보존했다. 사용자 저장 중심·시각·데이터·publisher·protocol은 변경하지 않았다.
+
+KoukuSaydonLogicRuntime.cpp와 기존 ServerGameplayContractTests_KoukuLogic.cpp만
+이 작업에서 수정했다. 새 fixture는 실제 게시 P11의 네 원, 각1~3명, 세 번의 즉사,
+공포·50% 피해, 인원 이탈과 복귀, 보호 종료와 다른 Pattern을 함께 소비한다. 별도
+synthetic 사례는 즉사 및 HP100% 모두 정확 인원만 생존하고 일반 무적·실드가 잘못된
+인원을 살리지 않는지 검사한다. 기존 ObjectOverlap의 일반 치명타 회귀도 함께 실행했다.
+
+동일 새 fixture와 전체 원본 TU를 사용한 격리 Release 결과:
+구 runtime79 PASS/22 FAIL/exit1 → 수정 runtime101 PASS/0 FAIL/exit0.
+22개는22개 원인이 아니라 정확 lethal6·실제P11 보호12와 선행 사망의 후속4 assertion이다.
+근거는 out/KoukuBlueRedZone20260930/build.log, before.log, after.log와 해당 rsp/EXE다.
+원본 제품 테스트 함수를 그대로 호출했고 fixture 본문을 별도로 재구현하지 않았다.
+UTF-8 BOM없음/CRLF, 기존 project등록, 변경 diff-check와 독립 소스 검토를 통과했다.
+
+현재 표준 Release Client44796/Server29912는 사용자 테스트로 실행 중이므로 임의 종료하지
+않았다. 위 격리 실행은 제품 EXE 교체나 실행 중 Server 적용을 뜻하지 않는다. 최종 제품
+빌드 결과는 아래 후속 기록을 따르며 다인 아레나의 화면은 사용자가 확인한다.
+G07 최종 경계: 사용자가 테스트를 계속하며 소스만 준비하도록 명시했다. 표준 Debug/Release
+제품 빌드·EXE 교체·데이터 publish·프로세스 종료를 수행하지 않았다. 현재 실행 중인
+게임과 Server에는 이 수정이 아직 반영되지 않았다. Client2TU와 Server2TU의 Debug/Release
+격리 최소 컴파일은 모두 exit0이며, Server의 실제 게시 파1빨2 회귀는101 PASS/0 FAIL이다.
+Server 세부 증거는 out/KoukuBlueRedZone20260930/validation-receipt.json을 따른다.
+
+### G07 후속: 2026-09-30 통합 Debug/Release 제품 빌드
+
+사용자가 다른 세션 변경까지 포함한 전체 빌드를 요청하여, EXE 점유가 없는 상태에서
+현재 공유 작업 폴더의 Engine → Shared → Server → Client Product 빌드를 순차 완료했다.
+Debug 160.469초, Release 167.417초이며 두 설정 모두 컴파일·링크·기존 배포 단계 PASS다.
+이로써 앞선 소스만 준비 상태를 해소했고 파1빨2 수정도 표준 Server EXE에 포함됐다.
+각 설정의 게시 Item/Valtan reward 및 Navigation 점검 41개도 PASS이며 누락·불일치는 없다.
+이번 빌드는 데이터를 다시 publish하지 않았다.
+
+새 Release 제품 EXE의 기존 native 검증은 battle-items 183 PASS, kouku-raid 2066 PASS,
+valtan-presentation 43 PASS, valtan-lifecycle 152 PASS이며 각각 failures:0, exit0이다.
+쿠크 검증 로그에는 실제 게시 P11 네 원의 정확 인원·세 lethal 시점·보호 종료 사례가 포함된다.
+변경 JSON/XML 36개 parse와 전체 git diff --check도 PASS다. 소스 입력 2277개는 수집한
+두 fingerprint 사이에서 동일했다. Client/UI와 정상 Server listener는 실행하지 않았다.
+
+통합 근거는 out/CombinedProductBuild20260930/summary.json과 해당 폴더의 로그다.
+정본 Product receipt는 out/BuildPipeline/runs/20260930T111509561Z-debug-product.json,
+20260930T111804716Z-release-product.json이다. C4819/C4828 인코딩, C4244 변환 및
+Release 외부 DirectXTK LNK4099 PDB 경고는 남아 있으므로 경고 0으로 기록하지 않는다.
+실제 다인 화면 판정은 사용자 확인 범위다.

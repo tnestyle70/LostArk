@@ -665,6 +665,78 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
 			staged[assetId].push_back(std::move(material));
 			continue;
 		}
+        if (family == "bg-source-landscape-opaque")
+        {
+            const auto reject = [&](const char* reason) {
+                m_Status = "Invalid source landscape material: " + assetId + "/" + material.materialName + " / " + reason;
+                return false;
+            };
+            const auto* inputs = row.Find("sourceLandscape");
+            const auto* casts = row.Find("castsShadow");
+            if (version->Get_Number() != 2.0 || !exactFields(row, { "assetId", "materialName", "sourceMaterial", "family", "castsShadow", "sourceLandscape" }) ||
+                !inputs || !exactFields(*inputs, { "grid", "weightmapScaleBias", "heightmapScaleBias", "weightmaps", "heightmapTexture", "layers" }) ||
+                !casts || !casts->Is_Boolean() || sourceWind || sourceBaked ||
+                (renderMode != MODEL_SURFACE_RENDER_MODE::INHERIT && renderMode != MODEL_SURFACE_RENDER_MODE::DEFERRED)) return reject("fields or draw policy");
+            auto& surface = material.surface;
+            auto& source = surface.sourceLandscape;
+            auto& paths = material.sourceLandscapeTextures;
+            surface.family = MODEL_SURFACE_FAMILY::SOURCE_LANDSCAPE_OPAQUE;
+            surface.castsShadow = casts->Get_Boolean();
+            const auto vector = [](const DATA_JSON_VALUE& owner, const char* name, float4_t& output) {
+                const auto* value = owner.Find(name);
+                if (!value || !value->Is_Array() || value->Get_Array().size() != 4u) return false;
+                float result[4]{};
+                for (size_t i = 0u; i < 4u; ++i) {
+                    const auto& item = value->Get_Array()[i];
+                    if (!item.Is_Number() || !std::isfinite(item.Get_Number()) || std::abs(item.Get_Number()) > 1e6) return false;
+                    const std::string field(name);
+                    if (((field == "grid" && i < 2u) || field == "weight") && std::floor(item.Get_Number()) != item.Get_Number()) return false;
+                    if (((field == "uv" && i >= 2u) || (field == "factors" && i == 3u)) && item.Get_Number() != 0.0) return false;
+                    result[i] = static_cast<float>(item.Get_Number());
+                }
+                output = float4_t(result[0], result[1], result[2], result[3]); return true;
+            };
+            const auto texture = [&](const DATA_JSON_VALUE* value, std::filesystem::path& output) {
+                if (!value || !value->Is_String() || value->Get_String().empty()) return false;
+                const auto& name = value->Get_String(); const std::filesystem::path relative(name); std::error_code error;
+                output = ResolveRuntimePath(relative);
+                return !relative.is_absolute() && !relative.has_root_path() && name.find(':') == std::string::npos &&
+                    std::none_of(relative.begin(), relative.end(), [](const std::filesystem::path& part) { return part == ".."; }) &&
+                    relative.extension() == L".dds" && !output.empty() && IsInsideRoot(CRuntimeAssetRoot::Get(), output) &&
+                    IsRegularFile(output, error) && !error;
+            };
+            if (!vector(*inputs, "grid", source.grid) || !vector(*inputs, "weightmapScaleBias", source.weightmapScaleBias) ||
+                !vector(*inputs, "heightmapScaleBias", source.heightmapScaleBias) ||
+                !texture(inputs->Find("heightmapTexture"), paths.heightmap)) return reject("grid or height input");
+            const auto* weights = inputs->Find("weightmaps"); const auto* layers = inputs->Find("layers");
+            if (!weights || !weights->Is_Array() || weights->Get_Array().empty() || weights->Get_Array().size() > SOURCE_LANDSCAPE_WEIGHTMAP_COUNT ||
+                !layers || !layers->Is_Array() || layers->Get_Array().empty() || layers->Get_Array().size() > SOURCE_LANDSCAPE_LAYER_COUNT) return reject("bounded input counts");
+            source.weightmapCount = static_cast<uint32_t>(weights->Get_Array().size());
+            for (size_t i = 0u; i < weights->Get_Array().size(); ++i)
+                if (!texture(&weights->Get_Array()[i], paths.weightmaps[i])) return reject("weight texture");
+            for (const auto& layer : layers->Get_Array())
+            {
+                std::unordered_set<std::string> fields = { "layerIndex", "uv", "diffuse", "specular", "factors", "weight", "diffuseTexture", "diffuseColorSpace" };
+                const auto* normal = layer.Find("normalTexture"); if (normal) fields.insert("normalTexture");
+                const auto* index = layer.Find("layerIndex"); std::string space;
+                if (!exactFields(layer, fields) || !index || !index->Is_Number() || !std::isfinite(index->Get_Number()) ||
+                    index->Get_Number() < 0.0 || index->Get_Number() >= SOURCE_LANDSCAPE_LAYER_COUNT || std::floor(index->Get_Number()) != index->Get_Number() ||
+                    !readString(layer, "diffuseColorSpace", space) || (space != "srgb" && space != "linear")) return reject("layer identity or fields");
+                const auto i = static_cast<uint32_t>(index->Get_Number());
+                if (source.layerMask & (1u << i)) return reject("duplicate layer");
+                source.layerMask |= 1u << i; source.diffuseSRGB[i] = space == "srgb";
+                if (!vector(layer, "uv", source.uv[i]) || !vector(layer, "diffuse", source.diffuse[i]) ||
+                    !vector(layer, "specular", source.specular[i]) || !vector(layer, "factors", source.factors[i]) ||
+                    !vector(layer, "weight", source.weight[i]) || !texture(layer.Find("diffuseTexture"), paths.diffuse[i])) return reject("layer values or diffuse texture");
+                if (normal) {
+                    if (!texture(normal, paths.normal[i])) return reject("normal texture");
+                    source.normalMask |= 1u << i;
+                }
+            }
+            if (!source.Has_ValidInputs()) return reject("grid, layer bounds, normal selection, or weight allocation");
+            staged[assetId].push_back(std::move(material));
+            continue;
+        }
         if (family.starts_with("source."))
         {
             const auto reject = [&](const char* reason) {

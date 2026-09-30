@@ -6,6 +6,7 @@
 #include "GameInstance.h"
 #include "CombatHUDViewModel.h"
 #include "Network/PacketMessages.h"
+#include "CustomizingView.h"
 
 #include <Windows.h>
 
@@ -139,6 +140,10 @@ bool_t Client::CCharacterSelectionState::Stage_ExistingEntry(
 std::string Client::CCharacterSelectionState::Get_ActiveAppearanceJson()
 {
 	std::scoped_lock lock{ g_SelectionMutex };
+	/* The entering character spawns before Bern's identity commit, so its look is the pending
+	   one; without this the first entry showed the previous character's look, or none. */
+	if (g_PendingCreation.has_value())
+		return g_PendingCreation->strAppearanceJson;
 	return g_ActiveAppearanceJson;
 }
 
@@ -152,7 +157,8 @@ void Client::CCharacterSelectionState::Capture_ActiveWorldState()
 	}
 	const auto level = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
 	if (level != LEVEL::BERN && level != LEVEL::VALTAN_ARENA &&
-		level != LEVEL::KAKULSAYDON_ARENA && level != LEVEL::MAHARAKA) return;
+		level != LEVEL::KAKULSAYDON_ARENA && level != LEVEL::MAHARAKA &&
+		level != LEVEL::COLOSSEUM) return;
 	const CCombatHUDViewModel& ViewModel = CCombatHUDViewModel::Get();
 	const LostArk::Shared::S2C_INVENTORY_SNAPSHOT& Inventory = ViewModel.Get_Inventory();
 	const auto& Player = ViewModel.Get_Player();
@@ -261,6 +267,8 @@ bool_t Client::CCharacterSelectionState::Try_Resolve_ForWorld(
 		{
 			staged.eCharacterClass = g_PendingCreation->eCharacterClass;
 			staged.strNickname = g_PendingCreation->strNickname;
+			staged.iVoiceType = CCustomizingView::Read_SavedVoiceType(
+				g_PendingCreation->strAppearanceJson);
 			staged.eSource =
 				CHARACTER_ENTRY_IDENTITY_SOURCE::PENDING_CREATION;
 			break;
@@ -272,11 +280,13 @@ bool_t Client::CCharacterSelectionState::Try_Resolve_ForWorld(
 	case WORLD_ID::VALTAN_ARENA:
 	case WORLD_ID::KAKULSAYDON_ARENA:
 	case WORLD_ID::MAHARAKA:
+	case WORLD_ID::COLOSSEUM:
 		staged.eCharacterClass = g_SelectedClass.value_or(
 			CHARACTER_CLASS_ID::LANCE_MASTER);
 		if (g_CreatedNickname.has_value())
 		{
 			staged.strNickname = *g_CreatedNickname;
+			staged.iVoiceType = CCustomizingView::Read_SavedVoiceType(g_ActiveAppearanceJson);
 			staged.eSource = CHARACTER_ENTRY_IDENTITY_SOURCE::CREATED;
 		}
 		else

@@ -5,6 +5,7 @@
 #include "ServerCombatHitRuntime.h"
 
 #include "Gameplay/WorldCollisionContract.h"
+#include "Gameplay/MaharakaWaterpangContract.h"
 
 #include <algorithm>
 #include <cmath>
@@ -271,6 +272,85 @@ bool LostArk::Server::CCombatObjectRuntime::Allocate_Id(
 			1u : candidate + 1u;
 	}
 	return false;
+}
+
+bool LostArk::Server::CCombatObjectRuntime::Stage_WaterGunPresentation(
+    SERVER_COMBAT_OBJECT_TRANSACTION& transaction, const SERVER_PLAYER& source,
+    const std::uint32_t skillId, const CGameplayCatalog& catalog,
+    const std::uint32_t spawnTick, std::string& status) const
+{
+    const char* archetype = LostArk::Shared::MaharakaWaterGunProjectileArchetype(skillId);
+    if (!archetype || !source.iNetEntityId || !spawnTick || !catalog.Get_ActiveRevision().Is_Valid() ||
+        !std::isfinite(source.fPositionX) || !std::isfinite(source.fPositionY) ||
+        !std::isfinite(source.fPositionZ) || !std::isfinite(source.fYawDegrees))
+    { status = "Waterpang projectile presentation source is invalid"; return false; }
+    SERVER_COMBAT_OBJECT object;
+    if (!Allocate_Id(transaction, object.iCombatObjectId))
+    { status = "Waterpang projectile presentation capacity is exhausted"; return false; }
+    object.eSourceKind = SERVER_COMBAT_OBJECT_SOURCE_KIND::PLAYER;
+    object.iSourcePlayerId = source.iPlayerId;
+    object.iSourceNetEntityId = source.iNetEntityId;
+    object.iSourceSkillId = skillId;
+    object.iSpawnTick = spawnTick;
+    object.strCombatObjectArchetypeId = object.strClientVisualId = archetype;
+    object.PinnedDefinitionRevision = catalog.Get_ActiveRevision();
+    object.bReplicated = object.bPersistentLifetime = object.bRoomOwnedTracking = true;
+    object.LiveState.iOwnerPatternSequence = spawnTick;
+    object.LiveState.strOwnerPatternId = "maharaka.watergun";
+    object.LiveState.strOwnerStageActionId = "maharaka.watergun.shot";
+    auto& pose = object.LiveState.CurrentPose;
+    pose.fPositionX = source.fPositionX; pose.fPositionY = source.fPositionY; pose.fPositionZ = source.fPositionZ;
+    pose.fYawDegrees = source.fYawDegrees;
+    pose.fDirectionX = std::sin(source.fYawDegrees * DEGREES_TO_RADIANS);
+    pose.fDirectionZ = std::cos(source.fYawDegrees * DEGREES_TO_RADIANS);
+    if (skillId != 56910u)
+    {
+        // GADGET Q/R Effect: UE launch offset (70,11,75) cm, forward/right/up.
+        pose.fPositionX += pose.fDirectionX * .70f + pose.fDirectionZ * .11f;
+        pose.fPositionZ += pose.fDirectionZ * .70f - pose.fDirectionX * .11f;
+        pose.fPositionY += .75f;
+    }
+    object.LiveState.PreviousPose = pose;
+    transaction.Spawned.push_back(To_SpawnedMessage(object));
+    transaction.Objects.push_back(std::move(object));
+    return true;
+}
+
+bool LostArk::Server::CCombatObjectRuntime::Finish_WaterGunPresentation(
+    const LostArk::Shared::COMBAT_OBJECT_ID objectId, const LostArk::Shared::NET_ENTITY_ID sourceId,
+    const std::uint32_t spawnTick, const std::uint32_t serverTick, const bool impact)
+{
+    using namespace LostArk::Shared;
+    for (std::size_t index = 0u; index < m_Objects.size(); ++index)
+    {
+        const auto& object = m_Objects[index];
+        if (object.iCombatObjectId != objectId) continue;
+        if (!serverTick || object.iSourceNetEntityId != sourceId || object.iSpawnTick != spawnTick ||
+            !object.bRoomOwnedTracking || !object.Hits.empty() ||
+            !Is_MaharakaWaterGunProjectile(object.strCombatObjectArchetypeId)) return false;
+        if (impact)
+        {
+            S2C_COMBAT_OBJECT_PRESENTATION_EVENT event;
+            event.iEventSequence = m_iNextPresentationEventSequence++;
+            if (!m_iNextPresentationEventSequence) m_iNextPresentationEventSequence = 1u;
+            event.iServerTick = serverTick;
+            event.iCombatObjectId = objectId; event.iSourceNetEntityId = sourceId;
+            event.eKind = COMBAT_OBJECT_PRESENTATION_EVENT_KIND::HIT_PULSE;
+            event.strCombatObjectArchetypeId = object.strCombatObjectArchetypeId;
+            event.strOwnerPatternId = object.LiveState.strOwnerPatternId;
+            event.strOwnerStageActionId = object.LiveState.strOwnerStageActionId;
+            event.strHitId = "maharaka.watergun.impact";
+            event.fPositionX = object.LiveState.CurrentPose.fPositionX;
+            event.fPositionY = object.LiveState.CurrentPose.fPositionY;
+            event.fPositionZ = object.LiveState.CurrentPose.fPositionZ;
+            event.fYawDegrees = object.LiveState.CurrentPose.fYawDegrees;
+            event.PinnedDefinitionRevision = object.PinnedDefinitionRevision;
+            m_PendingPresentationEvents.push_back(std::move(event));
+        }
+        Despawn_At(index);
+        return true;
+    }
+    return false;
 }
 
 bool LostArk::Server::CCombatObjectRuntime::Stage_BattleItemProjectile(
@@ -1087,11 +1167,14 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 					m_iNextPresentationEventSequence = 1u;
 			};
 
-		if (object.bOwnerHitChainArmed && !object.bOwnerHitChainWarningApplied)
+		if (object.bOwnerHitChainArmed && !object.bOwnerHitChainWarningApplied &&
+			static_cast<std::uint64_t>(serverTick - object.iOwnerHitChainArmedTick) * 1000u >=
+			static_cast<std::uint64_t>(object.iOwnerHitChainDelayMs) * SERVER_TICK_HZ)
 		{
+			// The direct/delayed classification schedules the full preparation visual.
+			// The hit's own atMs below adds its authored preparation duration.
 			object.bOwnerHitChainWarningApplied = true;
-			if (object.iOwnerHitChainDelayMs > 0u)
-				QueuePresentationPulse(object.OwnerHitChain.strArmedPresentationEventId, 0u);
+			QueuePresentationPulse(object.OwnerHitChain.strArmedPresentationEventId, 0u);
 		}
 
 		bool contactTermination = false;
@@ -1279,7 +1362,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 					const auto elapsedTicks = serverTick - object.iOwnerHitChainArmedTick;
 					if (!object.bOwnerHitChainArmed ||
 						static_cast<std::uint64_t>(elapsedTicks) * 1000u <
-						static_cast<std::uint64_t>(object.iOwnerHitChainDelayMs) * SERVER_TICK_HZ)
+						(static_cast<std::uint64_t>(object.iOwnerHitChainDelayMs) + hit.iAtMs) * SERVER_TICK_HZ)
 						break;
 				}
 				else if (object.fElapsedMilliseconds < dueMilliseconds)

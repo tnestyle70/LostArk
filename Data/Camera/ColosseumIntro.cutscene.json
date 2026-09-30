@@ -1,0 +1,150 @@
+{
+  "schema": "lostark.colosseum-intro",
+  "formatVersion": 1,
+  "source": {
+    "package": "LV_PVP_COLOSSEUM_SCENE01A",
+    "interpData": "interpdata_3",
+    "note": "retail 3v3 match intro; see .md/GB/09-30/2026-09-30_COLOSSEUM_INTRO_CUTSCENE_RESULT.md"
+  },
+  "durationMs": 8000,
+  "returnFadeMs": 600,
+  "waitForCharacterTimeoutMs": 6000,
+  "floorY": 12.64,
+  "arenaCenterX": -0.65,
+  "fovXDegrees": 90.814,
+  "letterboxAspect": 2.35,
+  "fade": [
+    {
+      "timeMs": 0,
+      "value": 1.0
+    },
+    {
+      "timeMs": 674,
+      "value": 0.0
+    },
+    {
+      "timeMs": 7768,
+      "value": 0.0
+    },
+    {
+      "timeMs": 8000,
+      "value": 1.0
+    }
+  ],
+  "shots": [
+    {
+      "startMs": 0,
+      "endMs": 3000,
+      "keys": [
+        {
+          "timeMs": 0,
+          "eye": [
+            -0.33587,
+            29.135591,
+            25.168384
+          ]
+        },
+        {
+          "timeMs": 3000,
+          "eye": [
+            -0.33587,
+            29.135605,
+            24.207332
+          ]
+        }
+      ],
+      "forward": [
+        0.0,
+        -0.624859,
+        -0.780737
+      ]
+    },
+    {
+      "startMs": 3000,
+      "endMs": 8000,
+      "keys": [
+        {
+          "timeMs": 3000,
+          "eye": [
+            -2.4e-05,
+            15.021697,
+            4.837077
+          ]
+        },
+        {
+          "timeMs": 8000,
+          "eye": [
+            -2.4e-05,
+            15.021699,
+            5.035369
+          ]
+        }
+      ],
+      "forward": [
+        0.0,
+        -0.225084,
+        -0.974339
+      ]
+    }
+  ],
+  "vs": {
+    "showMs": 3596,
+    "hideMs": 7278
+  },
+  "rows": [
+    {
+      "showMs": 3683,
+      "hideMs": 7395
+    },
+    {
+      "showMs": 3882,
+      "hideMs": 7583
+    },
+    {
+      "showMs": 4036,
+      "hideMs": 7748
+    }
+  ],
+  "teams": {
+    "A": [
+      {
+        "x": -2.660979,
+        "z": -1.574005,
+        "yawDegrees": 61.743,
+        "row": 1
+      },
+      {
+        "x": -1.800003,
+        "z": -2.599556,
+        "yawDegrees": 22.324,
+        "row": 0
+      },
+      {
+        "x": -3.089357,
+        "z": -0.391021,
+        "yawDegrees": 81.255,
+        "row": 2
+      }
+    ],
+    "B": [
+      {
+        "x": 2.753981,
+        "z": -1.539315,
+        "yawDegrees": -54.58,
+        "row": 1
+      },
+      {
+        "x": 1.789874,
+        "z": -2.551304,
+        "yawDegrees": -35.398,
+        "row": 0
+      },
+      {
+        "x": 3.161369,
+        "z": -0.298558,
+        "yawDegrees": -77.014,
+        "row": 2
+      }
+    ]
+  }
+}

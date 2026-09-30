@@ -233,15 +233,28 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 		return false;
 	}
 
-	const std::array<std::pair<const char_t*, const char_t*>, 6> targets =
-	{{
+	std::vector<std::pair<std::string, std::string>> targets =
+	{
 		{ "LV_LOBBY_CLASSSELECT_SL00", "Character Select" },
 		{ "LV_BER_BERNCASTLE", "Bern" },
 		{ "LV_LUT_HEARTRB_ED", "Valtan" },
 		{ "LV_LUT_MIDNIGHTC_ED", "KoukuSaydon / MidnightC ED" },
 		{ "LV_SHS_RCARENA_D", "Training Map" },
 		{ "LV_OCN_EVENTIS_MHP", "Maharaka Paradise" },
-	}};
+	};
+#ifdef _DEBUG
+	if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+		if (auto* level = CLevel_CharacterSelect::Get_Active())
+			for (const auto& area : areas->Get_Array())
+			{
+				const auto* id = area.Find("id");
+				if (!id || !id->Is_String() ||
+					!level->Find_ClassCinematicBackgroundRuntime(id->Get_String()) ||
+					std::any_of(targets.begin(), targets.end(), [&](const auto& target) {
+						return target.first == id->Get_String(); })) continue;
+				targets.emplace_back(id->Get_String(), "Class Movie background: " + id->Get_String());
+			}
+#endif
 	std::vector<EDITOR_AREA_DESCRIPTOR> staged;
 	staged.reserve(targets.size());
 	for (const auto& target : targets)
@@ -477,7 +490,55 @@ Client::CMapTool::Get_ActiveEditorArea() const
 		&m_EditorAreas[m_iActiveEditorArea] : nullptr;
 }
 
-CWorldSequencePlayer::TARGET_SET Client::CMapTool::Runtime_AuthoringTargets() const
+bool_t Client::CMapTool::Open_ClassMovieBackground(
+	const std::string& areaId, std::string& status)
+{
+#ifdef _DEBUG
+	auto* level = CLevel_CharacterSelect::Get_Active();
+	const auto levelIndex = CGameInstance::Get().Get_CurrentLevelID();
+	if (!level || levelIndex != ETOUI(LEVEL::CHARACTER_SELECT))
+	{ status = "Movie background editing requires the active Character Select level."; return false; }
+	const auto& primaryArea = level->Get_MapAuthoringRuntime().Get_Catalog().Get_AreaId();
+	const std::string target = areaId == primaryArea ? std::string{} : areaId;
+	if (!target.empty())
+	{
+		const auto& movie = level->Get_ClassSelectionPresentation();
+		if (!movie.Is_Active() || level->Get_ClassCinematicBackgroundArea(movie.Get_ActiveClass()) != target ||
+			!level->Find_ClassCinematicBackgroundRuntime(target))
+		{ status = "The requested Movie background is not the active loaded Area; the current target was preserved."; return false; }
+	}
+	if ((Has_UnsavedAuthoring() || Is_CameraShotDraftDirty()) && (target != m_ClassMovieBackgroundAreaId ||
+		!m_bRuntimeAuthoring || m_iAuthoringLevelIndex != levelIndex))
+	{ status = "Save the current Map Tool draft before changing the background target."; return false; }
+	SetOpen(true);
+	Handle_LevelTransition(levelIndex, true);
+	if (!m_bRuntimeAuthoring || target != m_ClassMovieBackgroundAreaId)
+	{
+		const std::string requestedArea = target.empty() ? primaryArea : target;
+		const auto found = std::find_if(m_EditorAreas.begin(), m_EditorAreas.end(),
+			[&](const auto& entry) { return entry.areaId == requestedArea; });
+		if (found == m_EditorAreas.end())
+		{ status = "The loaded Movie background is not registered for authoring: " + requestedArea; return false; }
+		if (!Switch_EditorArea(static_cast<size_t>(found - m_EditorAreas.begin()), &target))
+		{ status = m_Status; return false; }
+		m_PlacementFilter[0] = '\0';
+		if (!target.empty()) std::copy_n("sky", 4, m_PlacementFilter);
+	}
+	m_eToolMode = TOOL_MODE::MAP_ASSETS;
+	m_ePlacementState = PLACEMENT_STATE::IDLE;
+	status = "Editing " + m_Catalog.Get_AreaId() +
+		". Select a Hierarchy row to edit Position, Rotation or Visible. Save stores map placements; publish separately.";
+	m_Status = status;
+	return true;
+#else
+	(void)areaId;
+	status = "Movie background authoring is available in Debug builds.";
+	return false;
+#endif
+}
+
+CWorldSequencePlayer::TARGET_SET Client::CMapTool::Runtime_AuthoringTargets(
+	const std::string* classMovieBackgroundArea) const
 {
 #ifdef _DEBUG
 	const uint32_t levelIndex = CGameInstance::Get().Get_CurrentLevelID();
@@ -541,10 +602,14 @@ CWorldSequencePlayer::TARGET_SET Client::CMapTool::Runtime_AuthoringTargets() co
 	{
 		if (auto* level = CLevel_CharacterSelect::Get_Active())
 		{
+			const auto& areaId = classMovieBackgroundArea ? *classMovieBackgroundArea : m_ClassMovieBackgroundAreaId;
+			auto* runtime = areaId.empty() ? &level->Get_MapAuthoringRuntime() :
+				level->Find_ClassCinematicBackgroundRuntime(areaId);
+			if (!runtime) return {};
 			CWorldSequencePlayer::TARGET_SET targets;
 			targets.levelIndex = levelIndex;
-			targets.pCatalog = &level->Get_MapAuthoringRuntime().Get_Catalog();
-			targets.pPlacements = &level->Get_MapAuthoringRuntime().Get_MutablePlacements();
+			targets.pCatalog = &runtime->Get_Catalog();
+			targets.pPlacements = &runtime->Get_MutablePlacements();
 			targets.pDeployRuntime = &level->Get_MapAuthoringDeploy();
 			targets.device = level->Get_MapAuthoringDevice();
 			targets.context = level->Get_MapAuthoringContext();
@@ -589,7 +654,11 @@ vector<Client::CMapTool::STATIC_BATCH_ENTRY>& Client::CMapTool::Authoring_Batche
 				return bern->Get_MapAuthoringRuntime().Get_AuthoringBatches();
 		if (auto* select = CLevel_CharacterSelect::Get_Active())
 			if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
-				return select->Get_MapAuthoringRuntime().Get_AuthoringBatches();
+			{
+				auto* runtime = m_ClassMovieBackgroundAreaId.empty() ? &select->Get_MapAuthoringRuntime() :
+					select->Find_ClassCinematicBackgroundRuntime(m_ClassMovieBackgroundAreaId);
+				if (runtime) return runtime->Get_AuthoringBatches();
+			}
 	}
 #endif
 	return m_StaticBatches;
@@ -607,6 +676,22 @@ const CDeployPropRuntime& Client::CMapTool::Authoring_Deploy() const
 
 bool_t Client::CMapTool::Can_ChangeRuntimeStructure()
 {
+#ifdef _DEBUG
+	if (!m_ClassMovieBackgroundAreaId.empty())
+	{
+		auto* level = CLevel_CharacterSelect::Get_Active();
+		if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT) ||
+			!level->Find_ClassCinematicBackgroundRuntime(m_ClassMovieBackgroundAreaId) ||
+			!level->Get_ClassSelectionPresentation().Is_Active() ||
+			level->Get_ClassCinematicBackgroundArea(level->Get_ClassSelectionPresentation().Get_ActiveClass()) != m_ClassMovieBackgroundAreaId ||
+			!level->Get_ClassSelectionPresentation().Is_InspectionBackgroundVisible())
+		{
+			m_Status = "This background target is fixed to " + m_ClassMovieBackgroundAreaId +
+				". Play its Movie with Show background enabled to edit; the current draft is preserved.";
+			return false;
+		}
+	}
+#endif
 	if (m_bRuntimeAuthoring && m_pWorldSequenceToolPanel && m_pWorldSequenceToolPanel->Is_PreviewActive())
 	{
 		m_Status = "Stop / Restore the Map Tool sequence before changing object membership.";
@@ -846,10 +931,16 @@ void Client::CMapTool::Update_EditorAreaPreload()
 	Switch_EditorArea(iCommitIndex);
 }
 
-bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
+bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex,
+	const std::string* classMovieBackgroundArea)
 {
-	const auto runtimeTargets = Runtime_AuthoringTargets();
+	const auto runtimeTargets = Runtime_AuthoringTargets(classMovieBackgroundArea);
 	const bool_t runtimeAttach = runtimeTargets.pPlacements && runtimeTargets.pDeployRuntime && runtimeTargets.pCatalog;
+	if (classMovieBackgroundArea && !runtimeAttach)
+	{
+		m_Status = "Movie background runtime became unavailable; the previous target was preserved.";
+		return false;
+	}
 	if (descriptorIndex >= m_EditorAreas.size() || !Is_MapAuthoringLevel() ||
 		(runtimeAttach && m_EditorAreas[descriptorIndex].areaId != runtimeTargets.pCatalog->Get_AreaId()))
 	{
@@ -1082,10 +1173,6 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		}
 	}
 
-	/* Read-only here: a rejected shot document must never block the Area, it
-	   only leaves the list empty with a reported reason. */
-	(void)Load_CameraShots(descriptor);
-
 	if (!runtimeAttach && !Ensure_AuthoringPrototypes(stagedCatalog))
 		return false;
 	const bool_t stagedDebrisPrototypesReady =
@@ -1224,6 +1311,7 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		Authoring_Batches() = std::move(stagedBatches);
 		Authoring_Deploy() = std::move(stagedDeployRuntime);
 	}
+	if (classMovieBackgroundArea) m_ClassMovieBackgroundAreaId = *classMovieBackgroundArea;
 	m_bRuntimeAuthoring = runtimeAttach;
 	Reset_RuntimePlacementDraft(runtimeAttach ? records : vector<MAP_PLACEMENT_RECORD>{});
 	if (runtimeAttach)
@@ -1259,6 +1347,9 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	m_NavigationBakeDesc = navigationLoaded ?
 		m_NavigationDocument.Get_BakeDesc() : NAVGRID_BAKE_DESC{};
 	m_iActiveEditorArea = descriptorIndex;
+	/* Optional shot loading mutates the camera draft, so it follows the Area
+	   commit. A failed target stage must keep the previous camera state too. */
+	(void)Load_CameraShots(descriptor);
 	m_bDestructionDebrisPrototypesReady = stagedDebrisPrototypesReady;
 	m_DestructionDebrisPrototypeStatus = stagedDebrisPrototypeStatus;
 	m_iPendingEditorArea = SIZE_MAX;
@@ -1370,6 +1461,8 @@ void Client::CMapTool::Handle_LevelTransition(
 	m_CameraPreviewSuppressedDeployPlacementIds.clear();
 	// Old level ownership is already gone during a Level transition. Never clear borrowed containers.
 	m_bRuntimeAuthoring = false;
+	m_ClassMovieBackgroundAreaId.clear();
+	m_PlacementFilter[0] = '\0';
 	m_RuntimePlacementDraft.clear();
 	m_RuntimePlacementIndex.clear();
 	if (nullptr != m_pWorldSequenceToolPanel && m_Catalog.Is_Ready())

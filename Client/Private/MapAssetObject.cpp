@@ -137,6 +137,7 @@ void CMapAssetObject::Update(f32_t fTimeDelta)
 void CMapAssetObject::Late_Update(f32_t fTimeDelta)
 {
 	UNREFERENCED_PARAMETER(fTimeDelta);
+	m_bFinalCameraCullPrepared = false;
 
 	Engine::CProfiler* pProfiler =
 		CGameInstance::Get().Get_Profiler();
@@ -151,31 +152,47 @@ void CMapAssetObject::Late_Update(f32_t fTimeDelta)
 		pProfiler->Add_Counter(
 			Engine::EProfilerCounter::MapFallbackObjects);
 	}
+}
 
-	if (!Is_Rendered())
-		return;
+void CMapAssetObject::Submit_FinalCamera()
+{
+    auto& game = CGameInstance::Get();
+    if (!Is_Rendered() || m_fPresentationOpacityMultiplier <= 0.f ||
+        game.Is_SceneEnvironmentReplaced()) return;
+
+    const auto* camera = CMapAssetRenderUtils::Capture_CameraCullSnapshotView();
+    const bool cameraVisible = !camera || !Should_CullCamera(*camera);
     bool queued[static_cast<size_t>(RENDERGROUP::END)]{};
+    bool hasVertexDisplacement = false;
     for (uint32_t mesh = 0; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
     {
         const auto profile = Get_MaterialRenderProfile(mesh);
         const auto* surface = m_pModelCom->Get_MaterialSurface(mesh);
-        if (surface && surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
-            ((surface->sourceCharacter.program >= 38u && surface->sourceCharacter.program <= 43u) ||
-             SourceMovieMaterial::Needs_SceneColor(surface->sourceCharacter.program)))
-            CGameInstance::Get().Request_SceneColorSnapshot();
         const auto group = MaterialRenderGroup(profile);
-        if (group == RENDERGROUP::END) continue;
-        queued[static_cast<size_t>(group)] = true;
+        hasVertexDisplacement |= m_pModelCom->Has_MorphBaseVertices(mesh) ||
+            (surface && surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
+                surface->sourceCharacter.program == 43u);
+        if (group != RENDERGROUP::END && (group == RENDERGROUP::PRIORITY || cameraVisible))
+        {
+            queued[static_cast<size_t>(group)] = true;
+            if (surface && surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
+                ((surface->sourceCharacter.program >= 38u && surface->sourceCharacter.program <= 43u) ||
+                 SourceMovieMaterial::Needs_SceneColor(surface->sourceCharacter.program)))
+                game.Request_SceneColorSnapshot();
+        }
         if (profile.renderMode == MAP_ASSET_RENDER_MODE::DEFERRED && profile.castsShadow &&
-            CGameInstance::Get().Is_ShadowLightEnabled())
+            game.Is_ShadowLightEnabled())
             queued[static_cast<size_t>(RENDERGROUP::SHADOW)] = true;
     }
-    // This playable translucent floor has no opaque G-buffer contribution.
-    // Reuse its actual geometry for cursor picking after all scene consumers.
-    if (Client::IsCardMazeFloorReceiver(m_iPlacementId, m_AssetId))
+    MAP_SHADOW_CULL_SNAPSHOT light;
+    if (queued[static_cast<size_t>(RENDERGROUP::SHADOW)] && m_bHasWorldCullBounds &&
+        !hasVertexDisplacement && CMapAssetRenderUtils::Capture_ShadowCullSnapshot(light) &&
+        !CMapAssetRenderUtils::Intersects_ShadowCullSnapshot(light, m_vWorldCullCenter, m_fWorldCullRadius))
+        queued[static_cast<size_t>(RENDERGROUP::SHADOW)] = false;
+    if (cameraVisible && Client::IsCardMazeFloorReceiver(m_iPlacementId, m_AssetId))
         queued[static_cast<size_t>(RENDERGROUP::PICKING)] = true;
     for (size_t group = 0; group < std::size(queued); ++group)
-        if (queued[group]) CGameInstance::Get().Add_RenderObject(static_cast<RENDERGROUP>(group),
+        if (queued[group]) game.Add_RenderObject(static_cast<RENDERGROUP>(group),
             static_pointer_cast<CGameObject>(shared_from_this()));
 }
 
@@ -198,6 +215,8 @@ int32_t CMapAssetObject::Get_BlendSortPriority() const
 
 HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
 {
+    Engine::CProfiler* const renderProfiler = CGameInstance::Get().Get_Profiler();
+    Engine::CProfilerWorkScope renderWork(renderProfiler, Engine::EProfilerWork::MapObjectRender);
     const bool picking = group == RENDERGROUP::PICKING;
     if (picking && !Client::IsCardMazeFloorReceiver(m_iPlacementId, m_AssetId)) return S_OK;
 	/* Late_Update may already have queued this object when a presentation cue
@@ -232,6 +251,9 @@ HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
             auto presentationProfile = Get_MaterialRenderProfile(meshIndex);
             if (!picking && MaterialRenderGroup(presentationProfile) != group) continue;
             const bool_t bWater = presentationProfile.renderMode == MAP_ASSET_RENDER_MODE::WATER && m_bHasWaterProfile;
+            // Water is a nested subset of the whole object callback, never an additive total.
+            Engine::CProfilerWorkScope waterWork(bWater ? renderProfiler : nullptr,
+                Engine::EProfilerWork::MapWaterRender);
             if (presentationProfile.renderMode == MAP_ASSET_RENDER_MODE::WATER && !m_bHasWaterProfile)
                 presentationProfile.renderMode = MAP_ASSET_RENDER_MODE::TRANSLUCENT;
             // Appended 25..27 use the same cull/mirror choice and exact vertex path.
@@ -502,6 +524,7 @@ void CMapAssetObject::Set_PlacementTransform(const float3_t& position,
 	Update_WorldCullBounds();
 	m_FrustumState = {};
 	m_bCameraCullCached = false;
+	m_bFinalCameraCullPrepared = false;
 }
 
 void CMapAssetObject::Ready_StaticShadowInputs()
@@ -534,7 +557,8 @@ bool_t CMapAssetObject::Should_CullCamera(const MAP_CAMERA_CULL_SNAPSHOT& snapsh
 {
 	if (!m_bHasWorldCullBounds)
 		return false;
-	if (m_bCameraCullCached && m_iCameraCullRevision == snapshot.revision)
+	if ((m_bCameraCullCached || m_bFinalCameraCullPrepared) &&
+		m_iCameraCullRevision == snapshot.revision)
 		return !m_bCameraCullShouldRender;
 	MAP_FRUSTUM_CULL_DECISION decision{};
 	if (!CMapAssetRenderUtils::Evaluate_FrustumVisibility(m_FrustumCulling, snapshot,
@@ -542,12 +566,14 @@ bool_t CMapAssetObject::Should_CullCamera(const MAP_CAMERA_CULL_SNAPSHOT& snapsh
 		m_fWorldCullRadius, m_FrustumState, decision))
 	{
 		m_bCameraCullCached = false;
+		m_bFinalCameraCullPrepared = false;
 		return false;
 	}
 	m_iCameraCullRevision = snapshot.revision;
 	m_bCameraCullShouldRender = decision.shouldRender;
-	// Reject hysteresis advances on each existing Render_Group call. Cache only
-	// once the result is stable, including bypass and diagnostic transitions.
+	m_bFinalCameraCullPrepared = true;
+	// Stable results survive frames. A final-camera preparation also survives
+	// this frame's Render_Group callbacks so reject grace advances only once.
 	m_bCameraCullCached = decision.wouldBeVisible || !decision.shouldRender || m_FrustumCulling.bypass;
 	return !decision.shouldRender;
 }

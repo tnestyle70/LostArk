@@ -4,6 +4,49 @@
 `LandscapeProxy`, `LandscapeComponent`, Heightmap, Weightmap, 레이어 할당,
 재질 인스턴스를 직접 해독해서 보존하는 도구다.
 
+## 검증된 원본 레이어 런타임 후보
+
+`build_source_landscape_candidate.py`는 기존 추출기의 `SourceRaw`와 원본 셰이더를
+대조한 레이어 계약, 원본 DDS mip 전달 기록으로 `bg-source-landscape-opaque`
+재질 행과 source-painted WModel 후보를 만든다. 기존 추출기의 256 베이크와
+절벽 side-projection은 이 후보의 레이어 입력으로 사용하지 않는다.
+
+```powershell
+python Tools/LandscapeExtractor/build_source_landscape_candidate.py `
+  --source-root out/BernTerrainRestore_20260930/source-support/full-cook/SourceRaw `
+  --source-contract Tools/LandscapeExtractor/SourceContracts/BernSourceLandscape.v1.json `
+  --texture-closure out/BernTerrainRestore_20260930/source-support/native-layer-inputs/texture-closure.json `
+  --output out/BernTerrainRestore_20260930/source-support/native-bern42-candidate
+```
+
+한 컴포넌트를 먼저 검증하려면 `--only-asset <assetId>`를 추가한다. 출력은
+저장소 `out` 아래의 새 폴더만 허용한다. `candidate-manifest.json`이 생성된
+후보만 검증 완료 산출물이며, 이 도구는 제품 파일 설치·publish·배치 변경을
+수행하지 않는다. `--geometry-only`는 재질 계약 전에 형상만 검증하는 모드다.
+이미 검증된 DDS 전달 기록이 없으면 `--texture-closure` 대신
+`--package-root <ReleasePC/Packages> --umodel <umodel_lostark_v7.exe>`를 지정한다.
+이 경로는 SourceRaw의 원본 dependency metadata와 package hash를 확인하고
+기존 `extract_ue3_texture_mips`로 실제 활성 D/N 입력의 전체 압축 mip를 추출한다.
+`--source-contract`는 원본 셰이더 검증 결과이며 베른 정본은 Git 관리하는
+`SourceContracts/BernSourceLandscape.v1.json`에 보존한다. 일반 Landscape
+재추출이나 이 builder는 ShaderCache의 static key, 레이어별 compiled blend mode와
+수식을 자동 복원하지 않는다. SourceRaw만 남기고 계약을 삭제한 경우 임의 기본값으로
+대체할 수 없으며, 검증된 계약을 복구하거나 원본 ShaderCache 감사를 다시 수행해야 한다.
+
+- 모든 삼각형에 component UV0를 부여하고 원본 위치·packed normal·tangent·
+  winding·hole topology와 현재 설치 모델의 위치·topology를 대조한다.
+- 원본 Height/Weight BGRA와 모든 기존 mip를 그대로 DDS에 보존한다.
+  공통 diffuse/normal은 전달 기록의 원본 압축 DDS hash를 확인하며 재압축하거나
+  누락 mip를 생성하지 않는다.
+- 재질은 최대 6개 레이어, 2개 weightmap, 1개 heightmap이다. 원본 셰이더에서
+  비활성인 normal 입력은 런타임 intensity를 0으로 기록하고 원본 unused scalar는
+  manifest에 보존한다. `__DataLayer__`는 기존 hole topology를 유지한다.
+- WModel의 `LANDSCAPE_BAKED` 슬롯 이름과 기존 embedded PNG 두 개는 유지한다.
+  그 PNG는 변경 없는 모델 의존성이며 native family는 typed 원본 DDS를 소비한다.
+  manifest의 `resources`만 새 후보이고 `unchangedDependencies`는 기존 파일이다.
+- 이 출력은 수치·리소스 검증 결과다. 런타임 소비 코드, Area publish와 사용자
+  화면 확인은 별도로 수행해야 한다.
+
 ## 출력 계약
 
 - `SourceRaw`가 원본 해독 결과의 정본이다.
@@ -87,10 +130,11 @@ LOSTARK_MAP_AREA_SELECTION 1 "LV_BER_BERNCASTLE_LANDSCAPE"
 - 4개 `__DataLayer__` hole mask 보존 및 hole quad render topology 제거
 - 모든 `.wmodel`의 WINT/WMOD header, material path, texture pack을 converter `info`로 검증
 
-## 현재 한계
+## 기본 베이크 출력의 한계와 제품 연결
 
-- UE3 원본 다층 Landscape 셰이더를 현재 `CMaterial`이 직접 실행하지 못하므로
-  런타임 색/노멀은 Weightmap을 이용한 결정적 표시용 베이크다.
+- 기본 추출 명령의 색/노멀 출력은 Weightmap을 이용한 결정적 표시용 베이크다.
+  베른의 원본 레이어 소비는 위 후보 builder와 family14를 연결한 `CModel -> CMaterial`
+  경로를 사용하며 기본 베이크 자체가 원본 셰이더로 바뀌지는 않는다.
 - cooked 패키지에 부모 material expression graph의 완전한 연산 연결이 남아 있지 않아
   cliff 혼합 임계값과 projection은 원본 텍스처·파라미터·source normal을 사용하는
   결정적 근사다. specular와 reflection도 실행하지 않으므로 원본 최종 외형과
@@ -98,11 +142,11 @@ LOSTARK_MAP_AREA_SELECTION 1 "LV_BER_BERNCASTLE_LANDSCAPE"
 - hole mask는 UE3의 strict `__DataLayer__ > 170` 분류를 보존하고, top-left 샘플이
   소유하는 quad의 두 render 삼각형을 제거한다.
 - collision/nav 전용 geometry는 아직 생성하지 않는다.
-- 이 catalog는 Landscape 42개만 담은 별도 검증 영역이다. 기존 베른성 정적 에셋
-  catalog와 합치면 현재 `MAX_ASSET_COUNT == 512` 제한을 넘기므로 바로 병합하지 않는다.
+- 기본 catalog는 Landscape42개만 담은 독립 검증 영역이다. 제품 베른은 기존
+  shard-set의 안정적인 asset ID를 사용하며 native 후보도 배치·shard 구성을 바꾸지 않는다.
 - `CVIBuffer_Terrain`의 8비트 BMP 경로와
   `LandscapeHeightfieldCollisionComponent` 우회 경로는 사용하지 않는다.
 - 베른성 바닥 외형을 함께 구성하는 별도 StaticMesh 바닥, DecalActor, foliage,
   light/shadow map은 이 Landscape 전용 팩의 범위가 아니다.
-- 자동 placement 생성은 현재 Debug MapTool 경로다. Release 게임 레벨 연결은
-  별도 런타임 배선이 필요하다.
+- 독립 catalog의 자동 placement 생성과 제품 베른의 기존 배치는 구분한다.
+  제품 적용은 기존 Area publisher로 수행하며 stable placement ID와 TRS를 보존한다.

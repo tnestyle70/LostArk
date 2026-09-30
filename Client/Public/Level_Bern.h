@@ -160,6 +160,8 @@ private:
 	/* 매 프레임 파티 레이드 입장 투표 replication 이벤트를 소비한다. 프롬프트면 수락/거절
 	   창을 열고(모달이 안 열려 있어도), 거절/타임아웃/취소 종료면 창을 닫아 Bern에 남는다. */
 	void Poll_RaidEntryVote();
+	/* Colosseum match queue: the Server refusing the join or dropping the player closes the wait window. */
+	void Poll_ColosseumQueueState();
 	/* The bottom-right icon buttons: the options window and the way back to character select. */
 	void Update_SystemMenuButtons();
 	/* Offers the character's saved inventory, purse and honor title to the Server once. */
@@ -266,6 +268,8 @@ private:
 	{
 		std::string strPlacementId;
 		float3_t vPosition{};
+		/* The castle-interior NPC that opens the Colosseum confirm instead of the raid screen. */
+		bool_t isColosseum = false;
 	};
 	std::vector<VALTAN_ENTRY_NPC> m_ValtanEntryNpcs;
 	unique_ptr<CRaidEntryPreviewView> m_pValtanEntryView;

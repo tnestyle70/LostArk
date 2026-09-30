@@ -3,6 +3,7 @@
 #include "DataJson.h"
 #include "PlayerSkillCatalog.h"
 #include "CombatHUDViewModel.h"
+#include "LevelTransitionService.h"
 #include "ProjectDataRoot.h"
 #include "ValtanPatternTree.h"
 
@@ -901,6 +902,8 @@ bool CNetworkManager::Has_DispatchCapacity(
 		return m_DebugKillGateBossesResults.size() < MAX_REVISION_CONTROL_QUEUE;
 	case PACKET_TYPE::S2C_SET_COOLDOWN_MODE_RESULT:
 		return m_SetCooldownModeResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_MAHARAKA_AI_TUNING:
+		return m_MaharakaAITuningResults.size() < MAX_REVISION_CONTROL_QUEUE;
 	case PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT:
 		return m_DebugWorldPlaybackResults.size() < MAX_REVISION_CONTROL_QUEUE;
 	case PACKET_TYPE::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT:
@@ -927,6 +930,8 @@ bool CNetworkManager::Has_DispatchCapacity(
 		return m_ValtanPatternFlowLifecycleEvents.size() < MAX_REVISION_CONTROL_QUEUE;
 	case PACKET_TYPE::S2C_GATE_PROGRESS_STATE:
 		return m_GateProgressStates.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_COLOSSEUM_QUEUE_STATE:
+		return m_ColosseumQueueStates.size() < MAX_REVISION_CONTROL_QUEUE;
 	case PACKET_TYPE::S2C_RAID_MVP_RESULT:
 		return m_RaidMvpResults.size() < MAX_REVISION_CONTROL_QUEUE;
 	case PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT:
@@ -1204,7 +1209,8 @@ bool CNetworkManager::Connect_To_Server(
 bool CNetworkManager::Send_EnterWorld(
 	LostArk::Shared::WORLD_ID worldId,
 	LostArk::Shared::CHARACTER_CLASS_ID characterClass,
-	std::string_view nickName)
+	std::string_view nickName,
+	const std::uint8_t voiceType)
 {
 	using namespace LostArk::Shared;
 
@@ -1223,6 +1229,7 @@ bool CNetworkManager::Send_EnterWorld(
 	message.eWorldId = worldId;
 	message.eCharacterClass = characterClass;
 	message.strNickName = std::string{ nickName };
+	message.iVoiceType = voiceType;
 
 	CPacketWriter payloadWriter;
 	if (!Write_Message(payloadWriter, message))
@@ -1935,6 +1942,25 @@ bool CNetworkManager::Send_ConfirmNpcEntry(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_MaharakaAITuning(const LostArk::Shared::C2S_MAHARAKA_AI_TUNING& request)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || m_eWorldId != WORLD_ID::MAHARAKA || INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	CPacketWriter writer;
+	std::vector<std::uint8_t> frame;
+	return Write_Message(writer, request) &&
+		Build_Packet_Frame(PACKET_TYPE::C2S_MAHARAKA_AI_TUNING, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_MaharakaAITuning(LostArk::Shared::S2C_MAHARAKA_AI_TUNING& result)
+{
+	if (m_MaharakaAITuningResults.empty()) return false;
+	result = std::move(m_MaharakaAITuningResults.front());
+	m_MaharakaAITuningResults.pop_front();
+	return true;
+}
+
 bool CNetworkManager::Send_DebugWorldPlayback(const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request)
 {
 	using namespace LostArk::Shared;
@@ -2024,6 +2050,47 @@ bool CNetworkManager::Send_RaidEntryRespond(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_ColosseumQueueJoin(
+	const std::uint32_t requestSequence,
+	const std::string_view npcPlacementId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_COLOSSEUM_QUEUE_JOIN message{};
+	message.iRequestSequence = requestSequence;
+	message.strNpcPlacementId = std::string{ npcPlacementId };
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_COLOSSEUM_QUEUE_JOIN,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_ColosseumQueueLeave(const std::uint32_t requestSequence)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_COLOSSEUM_QUEUE_LEAVE message{};
+	message.iRequestSequence = requestSequence;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_COLOSSEUM_QUEUE_LEAVE,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_GateProgressPropose(
 	const std::uint32_t requestSequence, const LostArk::Shared::GATE_PROGRESS_KIND kind)
 {
@@ -2067,6 +2134,16 @@ bool CNetworkManager::Try_Consume_GateProgressState(
 		return false;
 	outState = m_GateProgressStates.front();
 	m_GateProgressStates.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_ColosseumQueueState(
+	LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE& outState)
+{
+	if (m_ColosseumQueueStates.empty())
+		return false;
+	outState = m_ColosseumQueueStates.front();
+	m_ColosseumQueueStates.pop_front();
 	return true;
 }
 
@@ -2294,6 +2371,27 @@ bool CNetworkManager::Send_SetEquipment(
 	std::vector<std::uint8_t> frameBytes;
 	return Build_Packet_Frame(
 		PACKET_TYPE::C2S_SET_EQUIPMENT,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_RepairEquipment(
+	const std::uint32_t requestSequence, const bool bAllSlots)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_REPAIR_EQUIPMENT message{};
+	message.iRequestSequence = requestSequence;
+	message.bAllSlots = bAllSlots;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_REPAIR_EQUIPMENT,
 		payloadWriter.Get_Buffer(),
 		frameBytes) && Send_All(frameBytes);
 }
@@ -2809,10 +2907,12 @@ void CNetworkManager::Reset_WorldInboundState()
 	Client::CPlayerSkillCatalog::Apply_ServerNumericSnapshot({});
 	Client::CCombatHUDViewModel::Get().Apply_ServerNumericSnapshot({});
 	m_DebugWorldPlaybackResults.clear();
+	m_MaharakaAITuningResults.clear();
 	m_DebugMadnessFormResults.clear();
 	m_VehicleRidingResults.clear();
 	m_HonorTitleResults.clear();
 	m_GateProgressStates.clear();
+	m_ColosseumQueueStates.clear();
 	m_RaidMvpResults.clear();
 	m_DebugKoukuHudModeResults.clear();
 	m_WorldEntitySpawnResults.clear();
@@ -4105,6 +4205,21 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		m_SetCooldownModeResults.push_back(result);
 		break;
 	}
+	case PACKET_TYPE::S2C_MAHARAKA_AI_TUNING:
+	{
+		S2C_MAHARAKA_AI_TUNING result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{ Fail_Protocol(WSAEINVAL); return; }
+		if (m_eWorldId != WORLD_ID::MAHARAKA) break;
+		if (m_MaharakaAITuningResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_MaharakaAITuningResults overflow");
+			return;
+		}
+		m_MaharakaAITuningResults.push_back(std::move(result));
+		break;
+	}
 	case PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT:
 	{
 		S2C_DEBUG_WORLD_PLAYBACK_RESULT result{};
@@ -4646,6 +4761,43 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::RAID_ENTRY_PROMPT;
 		event.RaidEntryPrompt = std::move(prompt);
 		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_COLOSSEUM_QUEUE_STATE:
+	{
+		S2C_COLOSSEUM_QUEUE_STATE state{};
+		if (!Read_Message(reader, state) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_COLOSSEUM_QUEUE_STATE,
+				"S2C_COLOSSEUM_QUEUE_STATE payload decode or trailing-byte validation failed.");
+			return;
+		}
+		if (m_ColosseumQueueStates.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_ColosseumQueueStates depth=" + std::to_string(m_ColosseumQueueStates.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_ColosseumQueueStates.push_back(state);
+		break;
+	}
+	case PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND:
+	{
+		S2C_COLOSSEUM_MATCH_FOUND match{};
+		if (!Read_Message(reader, match) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND,
+				"S2C_COLOSSEUM_MATCH_FOUND payload decode or trailing-byte validation failed.");
+			return;
+		}
+		// Stored directly (not through the replication queue): it must survive the world
+		// transfer that follows, which clears every typed queue on ENTER_ACCEPTED.
+		Client::CLevelTransitionService::Set_ColosseumMatch(match);
 		break;
 	}
 	case PACKET_TYPE::S2C_GATE_PROGRESS_STATE:

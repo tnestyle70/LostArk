@@ -109,12 +109,20 @@ namespace
 		return CLevel_Development::Create(pDevice, pContext, LEVEL::MAHARAKA);
 	}
 
+	unique_ptr<CLevel> CreateColosseum(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext)
+	{
+		// Proving Grounds arena: same Development shell, walk-around only.
+		return CLevel_Development::Create(pDevice, pContext, LEVEL::COLOSSEUM);
+	}
+
 }
 
 const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 	const LEVEL eLevel)
 {
-	static const std::array<CLIENT_LEVEL_DESCRIPTOR, 7> levels =
+	static const std::array<CLIENT_LEVEL_DESCRIPTOR, 8> levels =
 	{{
 		{
 			LEVEL::LOBBY,
@@ -188,12 +196,21 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			CLIENT_LEVEL_KIND::PRODUCT,
 			"world.maharaka",
 			"LV_OCN_EVENTIS_MHP",
-			// The Bern profile carries Bern-space environment regions; the neutral
-			// profile keeps the island free of them until it gets its own.
-			"scene.development.neutral.v1",
+			// Maharaka owns the source island environment; other Area profiles remain independent.
+			"scene.maharaka.source-day.v1",
 			MakeFullMapScope(),
 			CreateMaharaka,
 			[](CLoader& loader) -> HRESULT { return loader.Ready_For_Maharaka(); }
+		},
+		{
+			LEVEL::COLOSSEUM,
+			CLIENT_LEVEL_KIND::PRODUCT,
+			"world.colosseum",
+			"LV_PVP_COLOSSEUM",
+			"scene.development.neutral.v1",
+			MakeFullMapScope(),
+			CreateColosseum,
+			[](CLoader& loader) -> HRESULT { return loader.Ready_For_Colosseum(); }
 		}
 	}};
 

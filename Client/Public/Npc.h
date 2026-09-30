@@ -246,6 +246,9 @@ public:
 		monsters interpolate snapshot transforms; local previews and Esther keep
 		their existing immediate-transform behavior. */
 		bool_t bInterpolateNetworkTransform = false;
+        // Only ordinary Server-owned town placements opt in. Combat/cinematic
+        // callers retain their current pose and attachment update contract.
+        bool_t bAllowOffscreenAnimationCulling = false;
 		/* Inverted-hull outline in world metres; 0 disables. Only shaders that
 		expose an Outline pass (esther) honour it. */
 		f32_t fOutlineWidth = {};
@@ -372,12 +375,25 @@ public:
 	virtual void Priority_Update(f32_t fTimeDelta) override;
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
+    uint8_t Get_UpdatePhaseMask() const override { return UPDATE_PHASE_UPDATE | UPDATE_PHASE_LATE; }
+    bool_t Uses_FinalCameraSubmission() const override { return true; }
+    void Submit_FinalCamera() override;
 	virtual HRESULT Render() override;
 	virtual HRESULT Render_Group(RENDERGROUP group) override;
     virtual HRESULT Render_DeferredOverlay() override;
     bool_t Try_PickPresentation(const float3_t& origin, const float3_t& direction, f32_t& distance) const;
 
 private:
+    bool_t Can_DeferAnimationPose(f32_t& radius) const;
+    bool_t Is_AnimationEnvelopeOutsideCamera(f32_t radius) const;
+    void Resolve_PendingAnimationPose();
+    void Require_ImmediateAnimationPose() const;
+    bool_t m_bAllowOffscreenAnimationCulling = false;
+    mutable bool_t m_bExternalPoseConsumer = false;
+    bool_t m_bPendingAnimationPose = false;
+    bool_t m_bFinalCameraSubmission = false;
+    bool_t m_bDeferredLateUpdate = false;
+    f32_t m_fDeferredLateDelta = 0.f;
 	shared_ptr<Engine::CShader> m_pShaderCom = { nullptr };
 	bool_t m_bNativeBinaryBasePass = false;
     bool m_ChargeAfterimageEnabled = false;

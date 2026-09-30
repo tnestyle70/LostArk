@@ -226,6 +226,9 @@ public:
 		const std::string& hitId,
 		VALTAN_COMBAT_OBJECT_RING_HIT_EDIT& hit,
 		std::string& status) const;
+	bool Set_ValtanCombatObjectImpactDraft(const std::string& patternId,
+		const std::string& stageId, const std::string& archetypeId,
+		const VALTAN_COMBAT_OBJECT_HIT_VIEW& hit, uint32_t chainDelayMs, std::string& status);
 	bool Set_ValtanCombatObjectRingHitDraft(
 		const std::string& patternId,
 		const std::string& stageId,
@@ -493,6 +496,8 @@ public:
 	{
 		std::string patternSoundBaselineBytes;
 		std::string patternSoundCandidateBytes;
+		std::string combatObjectSoundBaselineBytes;
+		std::string combatObjectSoundCandidateBytes;
 		std::string patternShakeBaselineBytes;
 		std::string patternShakeCandidateBytes;
 		std::string effectV2BaselineBytes;

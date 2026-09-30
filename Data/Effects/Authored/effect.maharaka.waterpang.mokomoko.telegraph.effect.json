@@ -2,7 +2,7 @@
   "schema": "lostark.effect-authoring",
   "version": 13,
   "effectAssetId": "effect.maharaka.waterpang.mokomoko.telegraph",
-  "displayName": "Waterpang mokoko telegraph (SkillDecal 1106, yellow centre disc)",
+  "displayName": "워터팡 | 중앙 바닥 장판",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

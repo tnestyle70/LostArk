@@ -250,6 +250,7 @@
       ],
       "requiredOutputPatterns": [
         "Server/Bin/DataFiles/World/BERN.worldbootstrap",
+        "Server/Bin/DataFiles/World/COLOSSEUM.worldbootstrap",
         "Server/Bin/DataFiles/World/CHARACTER_SELECT_ARENA.worldbootstrap",
         "Server/Bin/DataFiles/World/KAKULSAYDON_ARENA.worldbootstrap",
         "Server/Bin/DataFiles/World/MAHARAKA.worldbootstrap",
@@ -294,6 +295,7 @@
         "Server/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid",
         "Server/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.navgrid",
         "Server/Bin/DataFiles/Navigation/LV_OCN_EVENTIS_MHP.navgrid",
+        "Server/Bin/DataFiles/Navigation/LV_PVP_COLOSSEUM.navgrid",
         "Client/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid",
         "Client/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.navgrid"
       ],

@@ -38,6 +38,7 @@ public:
 	HRESULT Resize_Viewport(uint32_t width, uint32_t height);
 	HRESULT Set_FullscreenMode(bool fullscreen, uint32_t width, uint32_t height);
 	void Update_Engine(f32_t fTimeDelta);
+	void Submit_FinalCameraObjects();
 	HRESULT Render_Begin(const float4_t* pClearColor);
 	HRESULT Render();
 	HRESULT Render_End();

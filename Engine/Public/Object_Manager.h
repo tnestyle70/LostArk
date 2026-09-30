@@ -28,6 +28,7 @@ public:
 	void Update(f32_t fTimeDelta);
 	void Post_Physics_Update(f32_t fTimeDelta);
 	void Late_Update(f32_t fTimeDelta);
+	void Submit_FinalCamera();
 	HRESULT Clear(uint32_t iClearLevelID);
 
 

@@ -194,6 +194,14 @@ namespace LostArk::Server
 	public:
 		[[nodiscard]] SERVER_COMBAT_OBJECT_TRANSACTION Begin_Transaction() const;
 
+        // The room retains Waterpang hit authority and supplies each replicated pose.
+        bool Stage_WaterGunPresentation(SERVER_COMBAT_OBJECT_TRANSACTION& transaction,
+            const SERVER_PLAYER& source, std::uint32_t skillId, const CGameplayCatalog& catalog,
+            std::uint32_t spawnTick, std::string& status) const;
+        bool Finish_WaterGunPresentation(LostArk::Shared::COMBAT_OBJECT_ID objectId,
+            LostArk::Shared::NET_ENTITY_ID sourceId, std::uint32_t spawnTick,
+            std::uint32_t serverTick, bool impact);
+
 		bool Stage_BattleItemProjectile(SERVER_COMBAT_OBJECT_TRANSACTION& transaction,
 			const SERVER_PLAYER& source, const SERVER_BATTLE_ITEM_USE& use,
 			float targetX, float targetY, float targetZ, const CGameplayCatalog& catalog,

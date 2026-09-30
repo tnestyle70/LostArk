@@ -1077,6 +1077,12 @@ bool LostArk::Shared::Is_Valid_SequenceInstanceId(
 	return true;
 }
 
+bool LostArk::Shared::Is_Valid_VoiceType(
+	const std::uint8_t voiceType) noexcept
+{
+	return voiceType >= MIN_VOICE_TYPE && voiceType <= MAX_VOICE_TYPE;
+}
+
 bool LostArk::Shared::Is_Valid_PlayerNickname(
 	const std::string_view nickname) noexcept
 {
@@ -1178,7 +1184,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_ENTER_WORLD
         CHARACTER_CLASS_ID::END))
         return false;
 
-	if (!Is_Valid_PlayerNickname(message.strNickName))
+	if (!Is_Valid_PlayerNickname(message.strNickName) ||
+		!Is_Valid_VoiceType(message.iVoiceType))
         return false;
 
 	writer.Write_U16(message.iProtocolVersion);
@@ -1188,9 +1195,13 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_ENTER_WORLD
 	writer.Write_U8(rawCharacterClass);
 
     //nickname write
-    return writer.Write_String(
+    if (!writer.Write_String(
         message.strNickName,
-        MAX_NICKNAME_BYTES);
+        MAX_NICKNAME_BYTES))
+        return false;
+
+	writer.Write_U8(message.iVoiceType);
+	return true;
 }
 
 bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_ENTER_WORLD& message)
@@ -1199,6 +1210,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_ENTER_WORLD& messa
 	std::uint16_t rawWorldId = {};
 	std::uint8_t rawCharacterClass = {};
 	std::string nickName;
+	std::uint8_t voiceType = {};
 
 	if (!reader.Read_U16(protocolVersion) ||
 		!reader.Read_U16(rawWorldId) ||
@@ -1225,8 +1237,12 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_ENTER_WORLD& messa
 	if (!Is_Valid_PlayerNickname(nickName))
         return false;
 
+	if (!reader.Read_U8(voiceType) || !Is_Valid_VoiceType(voiceType))
+		return false;
+
 	C2S_ENTER_WORLD decoded{};
 	decoded.iProtocolVersion = protocolVersion;
+	decoded.iVoiceType = voiceType;
 	decoded.eWorldId = static_cast<WORLD_ID>(rawWorldId);
 
     decoded.eCharacterClass =
@@ -1382,7 +1398,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer,
         static_cast<std::uint8_t>(CHARACTER_CLASS_ID::END))
         return false;
 
-	if (!Is_Valid_PlayerNickname(spawned.strNickName))
+	if (!Is_Valid_PlayerNickname(spawned.strNickName) ||
+		!Is_Valid_VoiceType(spawned.iVoiceType))
         return false;
 
     //position X/Y/Z가 finite인지 검사
@@ -1393,6 +1410,10 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer,
 
     //yawDegrees가 finite인지 검사
     if (!std::isfinite(spawned.fYawDegrees))
+        return false;
+
+    if (!Is_Valid_StableId(spawned.strWaterpangNpcArchetypeId, true) ||
+        (!spawned.strWaterpangNpcArchetypeId.empty() && spawned.eControlKind != PLAYER_CONTROL_KIND::WATERPANG_AI))
         return false;
 
     //playerid, net entity, character class, nickname
@@ -1414,8 +1435,9 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer,
     writer.Write_F32(spawned.fPositionY);
     writer.Write_F32(spawned.fPositionZ);
     writer.Write_F32(spawned.fYawDegrees);
+    writer.Write_U8(spawned.iVoiceType);
 
-    return true;
+    return writer.Write_String(spawned.strWaterpangNpcArchetypeId, MAX_STABLE_NETWORK_ID_BYTES);
 }
 
 bool LostArk::Shared::Read_Message(CPacketReader& reader, 
@@ -1430,11 +1452,13 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
     std::uint8_t rawCharacterClass = {};
     std::uint8_t rawControlKind = 0u;
     std::string nickName;
+    std::string waterpangNpcArchetypeId;
 
     float positionX = 0.f;
     float positionY = 0.f;
     float positionZ = 0.f;
     float yawDegrees = 0.f;
+    std::uint8_t voiceType = 0u;
 
     if (!reader.Read_U32(iPlayerId))
         return false;
@@ -1463,6 +1487,12 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
         return false;
 
     if (!reader.Read_F32(yawDegrees))
+        return false;
+    if (!reader.Read_U8(voiceType) || !Is_Valid_VoiceType(voiceType))
+        return false;
+    if (!reader.Read_String(waterpangNpcArchetypeId, MAX_STABLE_NETWORK_ID_BYTES) ||
+        !Is_Valid_StableId(waterpangNpcArchetypeId, true) ||
+        (!waterpangNpcArchetypeId.empty() && static_cast<PLAYER_CONTROL_KIND>(rawControlKind) != PLAYER_CONTROL_KIND::WATERPANG_AI))
         return false;
 
     if (iPlayerId == INVALID_PLAYER_ID)
@@ -1494,6 +1524,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
     S2C_PLAYER_SPAWNED decoded{};
 
     decoded.iPlayerId = iPlayerId;
+    decoded.strWaterpangNpcArchetypeId = std::move(waterpangNpcArchetypeId);
     decoded.eControlKind = static_cast<PLAYER_CONTROL_KIND>(rawControlKind);
     decoded.iNetEntityId = iNetEntityId;
 
@@ -1507,6 +1538,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
     decoded.fPositionY = positionY;
     decoded.fPositionZ = positionZ;
     decoded.fYawDegrees = yawDegrees;
+    decoded.iVoiceType = voiceType;
 
     spawned = std::move(decoded);
 
@@ -5796,6 +5828,12 @@ bool LostArk::Shared::Write_Message(
 	}
 	writer.Write_U32(message.iSilver);
 	writer.Write_U32(message.iGold);
+	for (const std::uint8_t percent : message.DurabilityPercent)
+	{
+		if (percent > 100u)
+			return false;
+		writer.Write_U8(percent);
+	}
 	return true;
 }
 
@@ -5826,6 +5864,11 @@ bool LostArk::Shared::Read_Message(
 	}
 	if (!reader.Read_U32(decoded.iSilver) || !reader.Read_U32(decoded.iGold))
 		return false;
+	for (std::uint8_t& percent : decoded.DurabilityPercent)
+	{
+		if (!reader.Read_U8(percent) || percent > 100u)
+			return false;
+	}
 	if (!Is_Valid_InventoryItems(decoded.Items))
 		return false;
 	message = std::move(decoded);
@@ -5906,6 +5949,29 @@ bool LostArk::Shared::Read_Message(
 		(decoded.bEquip ? !Is_Valid_ItemId(decoded.strItemId) : !decoded.strItemId.empty()))
 		return false;
 	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_REPAIR_EQUIPMENT& message)
+{
+	if (0u == message.iRequestSequence)
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U8(message.bAllSlots ? 1u : 0u);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_REPAIR_EQUIPMENT& message)
+{
+	C2S_REPAIR_EQUIPMENT decoded{};
+	std::uint8_t allSlots = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U8(allSlots) ||
+		0u == decoded.iRequestSequence || allSlots > 1u)
+		return false;
+	decoded.bAllSlots = 1u == allSlots;
+	message = decoded;
 	return true;
 }
 
@@ -6160,6 +6226,158 @@ bool LostArk::Shared::Read_Message(
 	{
 		return false;
 	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_COLOSSEUM_QUEUE_JOIN& message)
+{
+	if (0u == message.iRequestSequence || message.strNpcPlacementId.empty() ||
+		message.strNpcPlacementId.size() > MAX_NPC_PLACEMENT_ID_BYTES)
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	return writer.Write_String(message.strNpcPlacementId, MAX_NPC_PLACEMENT_ID_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_COLOSSEUM_QUEUE_JOIN& message)
+{
+	C2S_COLOSSEUM_QUEUE_JOIN decoded{};
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_String(decoded.strNpcPlacementId, MAX_NPC_PLACEMENT_ID_BYTES) ||
+		0u == decoded.iRequestSequence || decoded.strNpcPlacementId.empty())
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_COLOSSEUM_QUEUE_LEAVE& message)
+{
+	if (0u == message.iRequestSequence)
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_COLOSSEUM_QUEUE_LEAVE& message)
+{
+	C2S_COLOSSEUM_QUEUE_LEAVE decoded{};
+	if (!reader.Read_U32(decoded.iRequestSequence) || 0u == decoded.iRequestSequence)
+		return false;
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_COLOSSEUM_QUEUE_STATE& message)
+{
+	if (message.eState >= COLOSSEUM_QUEUE_STATE::END ||
+		message.iRequiredCount > MAX_COLOSSEUM_MATCH_PLAYERS ||
+		message.iQueuedCount > MAX_COLOSSEUM_MATCH_PLAYERS)
+	{
+		return false;
+	}
+	writer.Write_U8(static_cast<std::uint8_t>(message.eState));
+	writer.Write_U8(message.iQueuedCount);
+	writer.Write_U8(message.iRequiredCount);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_COLOSSEUM_QUEUE_STATE& message)
+{
+	std::uint8_t state = 0u;
+	S2C_COLOSSEUM_QUEUE_STATE decoded{};
+	if (!reader.Read_U8(state) || !reader.Read_U8(decoded.iQueuedCount) ||
+		!reader.Read_U8(decoded.iRequiredCount) ||
+		state >= static_cast<std::uint8_t>(COLOSSEUM_QUEUE_STATE::END) ||
+		decoded.iQueuedCount > MAX_COLOSSEUM_MATCH_PLAYERS ||
+		decoded.iRequiredCount > MAX_COLOSSEUM_MATCH_PLAYERS)
+	{
+		return false;
+	}
+	decoded.eState = static_cast<COLOSSEUM_QUEUE_STATE>(state);
+	message = decoded;
+	return true;
+}
+
+namespace
+{
+	bool Is_Valid_ColosseumMatch(const LostArk::Shared::S2C_COLOSSEUM_MATCH_FOUND& match)
+	{
+		using namespace LostArk::Shared;
+		if (match.Participants.empty() || match.Participants.size() > MAX_COLOSSEUM_MATCH_PLAYERS ||
+			match.iLocalIndex >= match.Participants.size())
+		{
+			return false;
+		}
+		for (const COLOSSEUM_MATCH_PARTICIPANT& participant : match.Participants)
+		{
+			if (!Is_Valid_PlayerNickname(participant.strNickname) ||
+				!Is_Known_Character_Class(participant.eCharacterClass) || participant.iTeam > 1u)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_COLOSSEUM_MATCH_FOUND& message)
+{
+	if (!Is_Valid_ColosseumMatch(message))
+		return false;
+	writer.Write_U8(message.iLocalIndex);
+	writer.Write_U8(static_cast<std::uint8_t>(message.Participants.size()));
+	for (const COLOSSEUM_MATCH_PARTICIPANT& participant : message.Participants)
+	{
+		if (!writer.Write_String(participant.strNickname, MAX_NICKNAME_BYTES))
+			return false;
+		writer.Write_U8(static_cast<std::uint8_t>(participant.eCharacterClass));
+		writer.Write_U8(participant.iTeam);
+	}
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_COLOSSEUM_MATCH_FOUND& message)
+{
+	S2C_COLOSSEUM_MATCH_FOUND decoded{};
+	std::uint8_t count = 0u;
+	if (!reader.Read_U8(decoded.iLocalIndex) || !reader.Read_U8(count) ||
+		0u == count || count > MAX_COLOSSEUM_MATCH_PLAYERS)
+	{
+		return false;
+	}
+	decoded.Participants.resize(count);
+	for (COLOSSEUM_MATCH_PARTICIPANT& participant : decoded.Participants)
+	{
+		std::uint8_t characterClass = 0u;
+		if (!reader.Read_String(participant.strNickname, MAX_NICKNAME_BYTES) ||
+			!reader.Read_U8(characterClass) || !reader.Read_U8(participant.iTeam))
+		{
+			return false;
+		}
+		participant.eCharacterClass = static_cast<CHARACTER_CLASS_ID>(characterClass);
+	}
+	if (!Is_Valid_ColosseumMatch(decoded))
+		return false;
 	message = std::move(decoded);
 	return true;
 }
@@ -7686,4 +7904,58 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_GUIDE_STATE& messa
         !reader.Read_String(staged.strComboId, MAX_STABLE_NETWORK_ID_BYTES) || !ValidGuideState(staged)) return false;
     staged.bSurvivalOverride = survivalOverride != 0u;
     message = std::move(staged); return true;
+}
+
+bool LostArk::Shared::Is_Valid_MaharakaAITuning(const MAHARAKA_AI_TUNING& t)
+{
+    return t.iRevision && t.iBotCount <= 20u && t.iDecisionTicks >= 1u && t.iDecisionTicks <= 300u &&
+        t.iMoveRetargetTicks >= t.iDecisionTicks && t.iMoveRetargetTicks <= 900u &&
+        t.iSkillIntervalTicks >= 6u && t.iSkillIntervalTicks <= 1800u &&
+        std::isfinite(t.fTargetRangeM) && t.fTargetRangeM >= 1.f && t.fTargetRangeM <= 30.f &&
+        std::isfinite(t.fMoveProbability) && t.fMoveProbability >= 0.f && t.fMoveProbability <= 1.f &&
+        std::isfinite(t.fAggression) && t.fAggression >= 0.f && t.fAggression <= 1.f &&
+        std::isfinite(t.fKnockbackRangeM) && t.fKnockbackRangeM >= 0.f && t.fKnockbackRangeM <= 12.f &&
+        t.iKnockbackMs >= 1u && t.iKnockbackMs <= 3000u;
+}
+namespace
+{
+    void Write_MaharakaTuning(LostArk::Shared::CPacketWriter& w, const LostArk::Shared::MAHARAKA_AI_TUNING& t)
+    {
+        w.Write_U32(t.iRevision); w.Write_U32(t.iBotCount); w.Write_U32(t.iDecisionTicks);
+        w.Write_U32(t.iMoveRetargetTicks); w.Write_U32(t.iSkillIntervalTicks);
+        w.Write_F32(t.fTargetRangeM); w.Write_F32(t.fMoveProbability); w.Write_F32(t.fAggression);
+        w.Write_F32(t.fKnockbackRangeM); w.Write_U32(t.iKnockbackMs);
+    }
+    bool Read_MaharakaTuning(LostArk::Shared::CPacketReader& r, LostArk::Shared::MAHARAKA_AI_TUNING& t)
+    {
+        return r.Read_U32(t.iRevision) && r.Read_U32(t.iBotCount) && r.Read_U32(t.iDecisionTicks) &&
+            r.Read_U32(t.iMoveRetargetTicks) && r.Read_U32(t.iSkillIntervalTicks) && r.Read_F32(t.fTargetRangeM) &&
+            r.Read_F32(t.fMoveProbability) && r.Read_F32(t.fAggression) && r.Read_F32(t.fKnockbackRangeM) && r.Read_U32(t.iKnockbackMs);
+    }
+}
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_MAHARAKA_AI_TUNING& value)
+{
+    if (!value.iRequestSequence || value.eOperation > MAHARAKA_AI_OPERATION::SAVE) return false;
+    writer.Write_U32(value.iRequestSequence); writer.Write_U32(value.iExpectedRevision);
+    writer.Write_U8(static_cast<std::uint8_t>(value.eOperation)); Write_MaharakaTuning(writer, value.Tuning); return true;
+}
+bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_MAHARAKA_AI_TUNING& value)
+{
+    C2S_MAHARAKA_AI_TUNING staged; std::uint8_t operation = 0;
+    if (!reader.Read_U32(staged.iRequestSequence) || !reader.Read_U32(staged.iExpectedRevision) || !reader.Read_U8(operation) ||
+        operation > static_cast<std::uint8_t>(MAHARAKA_AI_OPERATION::SAVE) || !staged.iRequestSequence || !Read_MaharakaTuning(reader, staged.Tuning)) return false;
+    staged.eOperation = static_cast<MAHARAKA_AI_OPERATION>(operation); value = std::move(staged); return true;
+}
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_MAHARAKA_AI_TUNING& value)
+{
+    if (!value.iRequestSequence || value.eResult > MAHARAKA_AI_RESULT::SAVE_FAILED || !Is_Valid_MaharakaAITuning(value.Tuning) || value.strStatus.size() > 256u) return false;
+    writer.Write_U32(value.iRequestSequence); writer.Write_U8(static_cast<std::uint8_t>(value.eResult));
+    Write_MaharakaTuning(writer, value.Tuning); return writer.Write_String(value.strStatus, 256u);
+}
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_MAHARAKA_AI_TUNING& value)
+{
+    S2C_MAHARAKA_AI_TUNING staged; std::uint8_t result = 0;
+    if (!reader.Read_U32(staged.iRequestSequence) || !reader.Read_U8(result) || result > static_cast<std::uint8_t>(MAHARAKA_AI_RESULT::SAVE_FAILED) ||
+        !staged.iRequestSequence || !Read_MaharakaTuning(reader, staged.Tuning) || !Is_Valid_MaharakaAITuning(staged.Tuning) || !reader.Read_String(staged.strStatus, 256u)) return false;
+    staged.eResult = static_cast<MAHARAKA_AI_RESULT>(result); value = std::move(staged); return true;
 }

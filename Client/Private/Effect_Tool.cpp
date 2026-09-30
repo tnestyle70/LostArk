@@ -1088,6 +1088,7 @@ void Client::CEffect_Tool::Render_EffectTypeSelector()
 
 void Client::CEffect_Tool::Hide_WorldPreview()
 {
+    if (m_pAuthoringSequencer) m_pAuthoringSequencer->Stop();
 	m_bValtanEtherFallPreviewPlaying = false;
     if (Has_ClassMovieContext() && m_ClassMovieCallbacks.stop) m_ClassMovieCallbacks.stop();
     m_bPreviewPlaying = false;

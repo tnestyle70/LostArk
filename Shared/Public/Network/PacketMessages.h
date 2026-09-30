@@ -5,6 +5,7 @@
 #include "Network/PacketType.h"
 #include "NetworkIds.h"
 
+#include <array>
 #include <string>
 #include <string_view>
 #include <limits>
@@ -24,6 +25,9 @@ namespace LostArk::Shared
 	[[nodiscard]] bool Is_Valid_PlayerNickname(
 		std::string_view nickname) noexcept;
 
+	[[nodiscard]] bool Is_Valid_VoiceType(
+		std::uint8_t voiceType) noexcept;
+
 	// Same stable-ID alphabet the authored world sequence document enforces, so
 	// a wire value can never name something the Client could not have loaded.
 	[[nodiscard]] bool Is_Valid_SequenceInstanceId(
@@ -39,6 +43,7 @@ namespace LostArk::Shared
 			CHARACTER_CLASS_ID::END;
 
 		std::string strNickName;
+		std::uint8_t iVoiceType = MIN_VOICE_TYPE;
 	};
 
 	bool Write_Message(
@@ -98,6 +103,8 @@ namespace LostArk::Shared
 	//Player Spawn
 	struct S2C_PLAYER_SPAWNED
 	{
+        // Immutable NPC presentation for a Server-owned Waterpang contestant.
+        std::string strWaterpangNpcArchetypeId;
 		PLAYER_ID iPlayerId = INVALID_PLAYER_ID;
 		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
 		CHARACTER_CLASS_ID eCharacterClass = CHARACTER_CLASS_ID::END;
@@ -109,6 +116,7 @@ namespace LostArk::Shared
 		//서버 기준 Y축 회전 각도
 		float fYawDegrees = 0.f;
 		PLAYER_CONTROL_KIND eControlKind = PLAYER_CONTROL_KIND::HUMAN;
+		std::uint8_t iVoiceType = MIN_VOICE_TYPE;
 	};
 
 	bool Write_Message(
@@ -2891,6 +2899,10 @@ namespace LostArk::Shared
 		EQUIPMENT_SLOT eEquippedSlot = EQUIPMENT_SLOT::NONE;
 	};
 
+	/* Worn-gear parts the durability HUD draws, in wire order: weapon, helmet, top, gloves,
+	   bottoms, shoulder. Each carries a percent, 0 (broken) to 100 (undamaged). */
+	inline constexpr std::size_t DURABILITY_PART_COUNT = 6;
+
 	// Replace-in-full, the same shape S2C_ENCOUNTER_PROP_SYNC uses: one message
 	// carries the whole current inventory, so a late joiner or a re-entering
 	// session is correct without replaying every past give.
@@ -2901,6 +2913,8 @@ namespace LostArk::Shared
 		/* The purse (silver / gold). Currencies are not bag items, so they ride beside them. */
 		std::uint32_t iSilver = 0;
 		std::uint32_t iGold = 0;
+		/* Server-owned wear of the worn gear, one percent per durability HUD part. */
+		std::array<std::uint8_t, DURABILITY_PART_COUNT> DurabilityPercent{ { 100, 100, 100, 100, 100, 100 } };
 	};
 
 	bool Write_Message(
@@ -2936,6 +2950,16 @@ namespace LostArk::Shared
 	};
 	bool Write_Message(CPacketWriter& writer, const C2S_SET_EQUIPMENT& message);
 	bool Read_Message(CPacketReader& reader, C2S_SET_EQUIPMENT& message);
+
+	/* Repair NPC window: bAllSlots is the window's "repair all" button, otherwise "repair
+	   equipped". Only worn gear wears today, so both restore every part to 100 percent. */
+	struct C2S_REPAIR_EQUIPMENT
+	{
+		std::uint32_t iRequestSequence = 0;
+		bool bAllSlots = false;
+	};
+	bool Write_Message(CPacketWriter& writer, const C2S_REPAIR_EQUIPMENT& message);
+	bool Read_Message(CPacketReader& reader, C2S_REPAIR_EQUIPMENT& message);
 
 	/* The shop window's basket: up to ten lines, each one catalog item and a count, bought
 	   from the named shop NPC in one go. */
@@ -3025,6 +3049,87 @@ namespace LostArk::Shared
 	bool Read_Message(
 		CPacketReader& reader,
 		C2S_CONFIRM_NPC_ENTRY& message);
+
+	// Colosseum (Proving Grounds) match queue, Bern only. JOIN is the answer to the Colosseum
+	// NPC's offer (the 15 second accept/decline countdown is Client UI and a decline sends
+	// nothing); the Server re-tests that the player is near that NPC. LEAVE takes only the
+	// requesting player out of the queue (the wait window's Esc). The Server owns the queue,
+	// the head count (Debug builds start with one player, Release needs four) and the random
+	// team split.
+	struct C2S_COLOSSEUM_QUEUE_JOIN
+	{
+		std::uint32_t iRequestSequence = 0;
+		std::string strNpcPlacementId;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_COLOSSEUM_QUEUE_JOIN& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_COLOSSEUM_QUEUE_JOIN& message);
+
+	struct C2S_COLOSSEUM_QUEUE_LEAVE
+	{
+		std::uint32_t iRequestSequence = 0;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_COLOSSEUM_QUEUE_LEAVE& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_COLOSSEUM_QUEUE_LEAVE& message);
+
+	// WAITING: the join was accepted (or the head count changed); LEFT: the leave was applied;
+	// REJECTED: the join changed nothing, so the wait window must close.
+	enum class COLOSSEUM_QUEUE_STATE : std::uint8_t
+	{
+		WAITING = 0,
+		LEFT,
+		REJECTED,
+		END
+	};
+
+	struct S2C_COLOSSEUM_QUEUE_STATE
+	{
+		COLOSSEUM_QUEUE_STATE eState = COLOSSEUM_QUEUE_STATE::END;
+		std::uint8_t iQueuedCount = 0;
+		std::uint8_t iRequiredCount = 0;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_COLOSSEUM_QUEUE_STATE& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_COLOSSEUM_QUEUE_STATE& message);
+
+	inline constexpr std::size_t MAX_COLOSSEUM_MATCH_PLAYERS = 4;
+
+	struct COLOSSEUM_MATCH_PARTICIPANT
+	{
+		std::string strNickname;
+		CHARACTER_CLASS_ID eCharacterClass = CHARACTER_CLASS_ID::END;
+		// 0 = left team (the entering player's side on the loading screen), 1 = right team.
+		std::uint8_t iTeam = 0;
+	};
+
+	// The Server-decided roster, one message per queued session right before its world transfer.
+	// iLocalIndex is the recipient's own row (nickname is not a lookup key). The Client only
+	// draws it on the match loading screen.
+	struct S2C_COLOSSEUM_MATCH_FOUND
+	{
+		std::uint8_t iLocalIndex = 0;
+		std::vector<COLOSSEUM_MATCH_PARTICIPANT> Participants;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_COLOSSEUM_MATCH_FOUND& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_COLOSSEUM_MATCH_FOUND& message);
 
 	// Offered to the one session standing in an interact-gated trigger box, and
 	// withdrawn when it leaves. bAvailable false clears whatever the Client is
@@ -3731,5 +3836,33 @@ namespace LostArk::Shared
 	bool Read_Message(CPacketReader&, C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST&);
 	bool Write_Message(CPacketWriter&, const S2C_KOUKUSAYDON_RAID_STATE&);
 	bool Read_Message(CPacketReader&, S2C_KOUKUSAYDON_RAID_STATE&);
+
+    struct MAHARAKA_AI_TUNING final
+    {
+        std::uint32_t iRevision = 1u, iBotCount = 20u, iDecisionTicks = 9u;
+        std::uint32_t iMoveRetargetTicks = 45u, iSkillIntervalTicks = 60u;
+        float fTargetRangeM = 9.f, fMoveProbability = .8f, fAggression = .8f, fKnockbackRangeM = 6.f;
+        std::uint32_t iKnockbackMs = 242u;
+    };
+    enum class MAHARAKA_AI_OPERATION : std::uint8_t { GET, APPLY, SAVE };
+    enum class MAHARAKA_AI_RESULT : std::uint8_t { ACCEPTED, REVISION_CONFLICT, INVALID_VALUE, WRONG_WORLD, SAVE_FAILED };
+    struct C2S_MAHARAKA_AI_TUNING final
+    {
+        std::uint32_t iRequestSequence = 0u, iExpectedRevision = 0u;
+        MAHARAKA_AI_OPERATION eOperation = MAHARAKA_AI_OPERATION::GET;
+        MAHARAKA_AI_TUNING Tuning;
+    };
+    struct S2C_MAHARAKA_AI_TUNING final
+    {
+        std::uint32_t iRequestSequence = 0u;
+        MAHARAKA_AI_RESULT eResult = MAHARAKA_AI_RESULT::ACCEPTED;
+        MAHARAKA_AI_TUNING Tuning;
+        std::string strStatus;
+    };
+    bool Is_Valid_MaharakaAITuning(const MAHARAKA_AI_TUNING&);
+    bool Write_Message(CPacketWriter&, const C2S_MAHARAKA_AI_TUNING&);
+    bool Read_Message(CPacketReader&, C2S_MAHARAKA_AI_TUNING&);
+    bool Write_Message(CPacketWriter&, const S2C_MAHARAKA_AI_TUNING&);
+    bool Read_Message(CPacketReader&, S2C_MAHARAKA_AI_TUNING&);
 
 }

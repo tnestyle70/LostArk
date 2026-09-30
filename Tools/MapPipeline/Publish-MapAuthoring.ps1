@@ -3009,6 +3009,7 @@ function Read-MapMaterialDocument {
             if ($property.Name -cin @('renderMode','cullMode')) {
                 if ($document.formatVersion -ne 2 -or $row.family -ceq 'diffuse-sampler' -or $property.Value -isnot [string]) { throw 'Invalid per-material draw state' }
                 if ($property.Name -ceq 'renderMode' -and $property.Value -cnotin @('deferred','translucent','background','additive','water')) { throw 'Unknown material render mode' }
+                if ($row.family -ceq 'bg-source-landscape-opaque' -and $property.Name -ceq 'renderMode' -and $property.Value -cne 'deferred') { throw 'Landscape material requires deferred rendering' }
                 if ($property.Name -ceq 'cullMode' -and $property.Value -cnotin @('back','front','none')) { throw 'Unknown material cull mode' }
             } elseif ($property.Name -ceq 'foliageWind') {
                 Assert-SourceFoliageWind $property.Value $row.family
@@ -3051,6 +3052,69 @@ function Read-MapMaterialDocument {
             if (-not $modelNames[$modelPath].ContainsKey($row.materialName) -or $modelNames[$modelPath][$row.materialName] -lt 1) {
                 throw "Map diffuse sampler material does not exist: $($row.assetId)/$($row.materialName)"
             }
+            continue
+        }
+        if ($row.family -ceq 'bg-source-landscape-opaque') {
+            if ($document.formatVersion -ne 2) { throw 'Landscape material requires formatVersion 2' }
+            Assert-ExactJsonProperties $row @('assetId','materialName','sourceMaterial','family','castsShadow','sourceLandscape') 'Landscape material'
+            foreach ($key in @('assetId','materialName','sourceMaterial')) {
+                if ($row.$key -isnot [string] -or [string]::IsNullOrWhiteSpace($row.$key) -or $row.$key -match '[\x00-\x1f\x7f]') { throw 'Invalid landscape identity' }
+            }
+            if ([Text.Encoding]::UTF8.GetByteCount($row.materialName) -gt 63 -or [Text.Encoding]::UTF8.GetByteCount($row.sourceMaterial) -gt 512 -or
+                -not $keys.Add($row.assetId + "`n" + $row.materialName) -or -not $script:mapMaterialModels.ContainsKey($row.assetId) -or $row.castsShadow -isnot [bool]) { throw 'Invalid or duplicate landscape identity or shadow policy' }
+            $landscape = $row.sourceLandscape
+            Assert-ExactJsonProperties $landscape @('grid','weightmapScaleBias','heightmapScaleBias','weightmaps','heightmapTexture','layers') 'Landscape inputs'
+            foreach ($key in @('grid','weightmapScaleBias','heightmapScaleBias')) {
+                if ($landscape.$key -isnot [array] -or $landscape.$key.Count -ne 4) { throw 'Invalid landscape vector' }
+                foreach ($value in $landscape.$key) {
+                    if (-not (Test-JsonNumber $value) -or [Math]::Abs([double]$value) -gt 1000000) { throw 'Invalid landscape vector value' }
+                }
+            }
+            if ($landscape.grid[2] -ne 62 -or $landscape.grid[3] -ne 31 -or
+                [Math]::Floor($landscape.grid[0]) -ne $landscape.grid[0] -or [Math]::Floor($landscape.grid[1]) -ne $landscape.grid[1]) { throw 'Unsupported landscape grid' }
+            foreach ($key in @('weightmapScaleBias','heightmapScaleBias')) {
+                if ($landscape.$key[0] -le 0 -or $landscape.$key[1] -le 0) { throw 'Invalid landscape texture scale' }
+            }
+            if ($landscape.weightmaps -isnot [array] -or $landscape.weightmaps.Count -lt 1 -or $landscape.weightmaps.Count -gt 2 -or
+                $landscape.layers -isnot [array] -or $landscape.layers.Count -lt 1 -or $landscape.layers.Count -gt 6) { throw 'Invalid landscape layer or weightmap count' }
+            foreach ($texture in $landscape.weightmaps) { & $validateLightingTexture $texture }
+            & $validateLightingTexture $landscape.heightmapTexture
+            $layerIndices = [Collections.Generic.HashSet[int]]::new()
+            $weightChannels = [Collections.Generic.HashSet[int]]::new()
+            $usedWeightmaps = [Collections.Generic.HashSet[int]]::new()
+            foreach ($layer in $landscape.layers) {
+                $layerFields = @('layerIndex','uv','diffuse','specular','factors','weight','diffuseTexture','diffuseColorSpace')
+                if ($null -ne $layer.PSObject.Properties['normalTexture']) { $layerFields += 'normalTexture' }
+                Assert-ExactJsonProperties $layer $layerFields 'Landscape layer'
+                if (-not (Test-JsonNumber $layer.layerIndex) -or $layer.layerIndex -lt 0 -or $layer.layerIndex -gt 5 -or
+                    [Math]::Floor($layer.layerIndex) -ne $layer.layerIndex -or -not $layerIndices.Add([int]$layer.layerIndex)) { throw 'Invalid or duplicate landscape layer index' }
+                foreach ($key in @('uv','diffuse','specular','factors','weight')) {
+                    if ($layer.$key -isnot [array] -or $layer.$key.Count -ne 4) { throw 'Invalid landscape layer vector' }
+                    foreach ($value in $layer.$key) {
+                        if (-not (Test-JsonNumber $value) -or [Math]::Abs([double]$value) -gt 1000000) { throw 'Invalid landscape layer value' }
+                    }
+                }
+                if ($layer.uv[0] -le 0 -or $layer.uv[2] -ne 0 -or $layer.uv[3] -ne 0) { throw 'Invalid landscape UV' }
+                foreach ($value in @($layer.diffuse) + @($layer.specular)) {
+                    if ($value -lt 0) { throw 'Invalid landscape color or multiplier' }
+                }
+                if ($layer.factors[0] -lt 0 -or $layer.factors[0] -gt 1 -or $layer.factors[1] -lt 0 -or $layer.factors[1] -gt 16 -or
+                    $layer.factors[2] -lt 1 -or $layer.factors[2] -gt 4096 -or $layer.factors[3] -ne 0) { throw 'Invalid landscape factors' }
+                foreach ($value in $layer.weight) {
+                    if ($value -lt 0 -or [Math]::Floor($value) -ne $value) { throw 'Invalid landscape weight binding' }
+                }
+                if ($layer.weight[0] -ge $landscape.weightmaps.Count -or $layer.weight[1] -gt 3 -or $layer.weight[2] -gt 1 -or $layer.weight[3] -gt 1 -or
+                    -not $weightChannels.Add([int]($layer.weight[0] * 4 + $layer.weight[1]))) { throw 'Invalid or duplicate landscape weight channel' }
+                [void]$usedWeightmaps.Add([int]$layer.weight[0])
+                if ($layer.diffuseColorSpace -isnot [string] -or $layer.diffuseColorSpace -cnotin @('srgb','linear')) { throw 'Invalid landscape diffuse color space' }
+                & $validateLightingTexture $layer.diffuseTexture
+                if ($null -ne $layer.PSObject.Properties['normalTexture']) { & $validateLightingTexture $layer.normalTexture }
+                elseif ($layer.factors[1] -ne 0) { throw 'Landscape normal intensity requires a normal texture' }
+            }
+            if ($usedWeightmaps.Count -ne $landscape.weightmaps.Count) { throw 'Unused landscape weightmap' }
+            $modelPath = [string]$script:mapMaterialModels[$row.assetId]
+            if (-not $modelNames.ContainsKey($modelPath)) { $modelNames[$modelPath] = (Read-WModelMaterialNames (Join-Path $runtimeResourceRoot $modelPath)).Names }
+            if (-not $modelNames[$modelPath].ContainsKey($row.materialName) -or $modelNames[$modelPath][$row.materialName] -ne 1) { throw 'Landscape material does not exist or is ambiguous in WModel' }
             continue
         }
         if ($row.family -cin @('bg-source-snowice-opaque','bg-source-vertexblend-opaque','bg-source-wet-opaque')) {

@@ -336,6 +336,47 @@ void CProfiler::End_GpuScope(uint32_t token) noexcept
     }
 }
 
+FProfilerWorkToken CProfiler::Begin_Work(EProfilerWork work) const noexcept
+{
+    if (!m_Collecting.load(std::memory_order_relaxed) ||
+        !m_FrameActive.load(std::memory_order_relaxed) ||
+        GetCurrentThreadId() != m_MainThreadId ||
+        static_cast<size_t>(work) >= static_cast<size_t>(EProfilerWork::Count))
+        return {};
+    return {Query_Tick(), m_FrameNumber,
+        m_CaptureEpoch.load(std::memory_order_relaxed), m_InstanceId};
+}
+
+void CProfiler::End_Work(EProfilerWork work, FProfilerWorkToken token) noexcept
+{
+    if (token.BeginTick == 0 || !m_Collecting.load(std::memory_order_relaxed) ||
+        !m_FrameActive.load(std::memory_order_relaxed) ||
+        GetCurrentThreadId() != m_MainThreadId || token.InstanceId != m_InstanceId ||
+        token.FrameNumber != m_FrameNumber ||
+        token.CaptureEpoch != m_CaptureEpoch.load(std::memory_order_relaxed))
+        return;
+    const size_t index = static_cast<size_t>(work);
+    if (index >= m_CurrentFrame.CpuWork.size()) return;
+    const uint64_t endTick = Query_Tick();
+    if (endTick < token.BeginTick) return;
+    auto& stats = m_CurrentFrame.CpuWork[index];
+    ++stats.Calls;
+    stats.CpuMs += Ticks_ToMs(endTick - token.BeginTick);
+}
+
+const char* CProfiler::Get_WorkName(EProfilerWork work) noexcept
+{
+    static constexpr const char* names[] = {
+        "Map.Batch.Render", "Map.Batch.Visibility", "Map.Batch.Material",
+        "Map.Batch.Pass", "Map.Batch.Draw", "Map.Object.Render", "Map.Water.Render",
+        "Npc.Update", "Npc.LateUpdate", "Npc.Render",
+        "Ambient.Visibility", "Ambient.Advance", "Ambient.Submit"
+    };
+    static_assert(std::size(names) == static_cast<size_t>(EProfilerWork::Count));
+    const size_t index = static_cast<size_t>(work);
+    return index < std::size(names) ? names[index] : "<invalid>";
+}
+
 FProfilerModelAnimationToken CProfiler::Begin_ModelAnimation() const noexcept
 {
     if (GetCurrentThreadId() != m_MainThreadId || !m_FrameActive ||
@@ -463,6 +504,7 @@ bool CProfiler::Get_LiveStats(FProfilerLiveStats& outStats) const
     outStats.CpuFrameMs = latest.CpuFrameMs;
     outStats.FrameIntervalMs = latest.FrameIntervalMs;
     outStats.Animation = latest.Animation;
+    outStats.CpuWork = latest.CpuWork;
     outStats.Counters = latest.Counters;
     outStats.LatestFrameGpuStatus = latest.GpuStatus;
     outStats.GpuScopesSupported = m_GpuScopeQueriesAvailable;

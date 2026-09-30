@@ -588,7 +588,8 @@ bool Is_Valid_EnterWorld(const C2S_ENTER_WORLD& message)
 		return message.iProtocolVersion == NETWORK_PROTOCOL_VERSION &&
 			Is_Known_World_Id(message.eWorldId) &&
 			Is_Supported_Playable_Character_Class(message.eCharacterClass) &&
-			Is_Valid_PlayerNickname(message.strNickName);
+			Is_Valid_PlayerNickname(message.strNickName) &&
+			Is_Valid_VoiceType(message.iVoiceType);
 	}
 
 bool Is_NewerSequence(

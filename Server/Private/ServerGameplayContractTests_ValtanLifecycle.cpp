@@ -994,36 +994,34 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 		}
 		tests.Require(joined && 4u == room->Count_HumanPlayers() && 4u == room->m_Players.size(),
 			"Four real session admissions share the published Valtan room");
-		const auto* trigger = room->Find_Placement("Stage_Boss");
-		const auto* arrival = room->Find_Placement("Stage_Boss_ArenaEntry");
-		bool entered = joined && trigger && arrival;
+		const auto* trigger = room->Find_Placement("Stage_Boss_Assembly");
+		bool entered = joined && trigger && trigger->isEnabled;
 		if (entered)
 		{
 			for (auto& [id, player] : room->m_Players)
 			{
 				(void)id;
 				player.fPositionX = trigger->fPositionX;
-				player.fPositionY = trigger->fPositionY - WorldCollision::PLAYER_CENTER_OFFSET_Y;
+				player.fPositionY = trigger->fPositionY;
 				player.fPositionZ = trigger->fPositionZ;
 				player.iInvulnerableEndTick = 200000u;
-				// Real entrants walk to G; this accepted command marks admission combat-ready.
+				// The ordinary move command admits the actual human before assembly.
 				C2S_MOVE move{}; move.iClientSequence = 1u;
 				move.fGoalX = player.fPositionX; move.fGoalZ = player.fPositionZ;
 				room->Handle_Move(player.iSessionId, move);
 			}
-			room->Tick(1.f / 30.f);
-			drain();
-			for (const auto& session : sessions)
+			// Readiness starts on the second tick after the exact roster is observed.
+			for (std::uint32_t tick = 0u; tick < 302u; ++tick)
 			{
-				C2S_INTERACT_TRIGGER interact{};
-				interact.iRequestSequence = 1u;
-				interact.strTriggerPlacementId = "Stage_Boss";
-				room->Handle_InteractTrigger(session->Get_SessionId(), interact);
+				room->Tick(1.f / 30.f);
+				drain();
 			}
-			entered = room->Find_AuditionBoss() && std::all_of(room->m_Players.begin(), room->m_Players.end(),
-				[](const auto& pair) { return pair.second.TriggerMove.isActive; });
+
+			entered = room->Find_AuditionBoss() && room->m_GateProgress.iCurrentGate == 1u &&
+				!room->m_GateProgress.iProposalId && std::all_of(room->m_Players.begin(), room->m_Players.end(),
+				[](const auto& pair) { return !pair.second.TriggerMove.isActive && pair.second.isCombatReady; });
 		}
-		tests.Require(entered, "All four typed G requests enter the same encounter through authored movement");
+		tests.Require(entered, "All four humans complete ten-second assembly and enter one encounter automatically without a proposal");
 		if (entered)
 		{
 			struct WINDOW final { std::uint8_t phase; std::uint32_t bars; std::uint32_t gate; const char* mechanic; };
@@ -1151,9 +1149,14 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 				if (!arrivalChecked && boss->strPatternId == "VALTAN_WHIRLWIND")
 				{
 					arrivalChecked = true;
-					allArrived = std::all_of(room->m_Players.begin(), room->m_Players.end(), [&arrival](const auto& pair)
-					{ return !pair.second.TriggerMove.isActive && std::hypot(pair.second.fPositionX - arrival->fPositionX,
-						pair.second.fPositionZ - arrival->fPositionZ) < .05f; });
+					std::size_t arrivalIndex = 0u;
+					allArrived = std::all_of(room->m_Players.begin(), room->m_Players.end(), [&](const auto& pair)
+					{
+						const auto* arrival = room->Find_Placement("valtan.entry.slot." + std::to_string(++arrivalIndex));
+						return arrival && !pair.second.TriggerMove.isActive &&
+							std::hypot(pair.second.fPositionX - arrival->fPositionX,
+								pair.second.fPositionZ - arrival->fPositionZ) < .05f;
+					});
 					// Place the invulnerable observers inside the remaining central floor.
 					std::size_t index = 0u;
 					for (auto& [id, player] : room->m_Players)
@@ -1212,7 +1215,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 				"VALTAN_HIGH_JUMP", "VALTAN_FOUR_SLASH", "VALTAN_CROSS",
 				"VALTAN_DASH_CHARGE", "VALTAN_WHIRLWIND"} &&
 				cinematicStages == std::vector<std::string>{"ESTABLISH", "ARENA_REVEAL", "HERO_HANDOFF"} && allArrived,
-				"Four-player G entry runs the cinematic then the exact six-pattern opening and wraps to Whirlwind without inserted occurrences");
+				"Four-player automatic assembly runs the cinematic then the exact six-pattern opening and wrap to Whirlwind without inserted occurrences");
 			tests.Require(legacyEntranceOccurrences == 0u,
 				"Automatic raid never selects the legacy entrance whirlwind after the authored cinematic");
 			for (std::size_t index = 0u; index < windows.size(); ++index)
@@ -1225,8 +1228,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 			}
 			std::vector<std::string> expectedMechanics;
 			for (std::size_t index = 0u; index < 7u; ++index) expectedMechanics.emplace_back(windows[index].mechanic);
-			tests.Require(mechanics == expectedMechanics && revival == std::vector<std::string>{"VALTAN_GHOST_DEATH_AUDITION", "VALTAN_GHOST_RESPAWN_AUDITION"} && ghostRestored,
-				"All seven health mechanics run once in order and real Death-to-Respawn restores the primary to forty bars");
+			tests.Require(mechanics == expectedMechanics && revival == std::vector<std::string>{"VALTAN_GHOST_RESPAWN_AUDITION"} && ghostRestored,
+				"All seven health mechanics run once in order and Struggling directly enters Respawn to restore the primary to forty bars");
 			tests.Require(mechanicSuccessInputsValid && staggerSuccesses == 5u && tripleCounterSuccesses == 2u && trashCounterSuccesses == 1u,
 				"Continuous success run supplies all five real health-damage thresholds, both Triple Counters, and the required Trash counter without bypassing wipes");
 			tests.Require(room->Is_Ready() && stableIdentity && automatic && allAlive && progressionComplete && killedByPlayer,

@@ -86,6 +86,7 @@ LostArk::Server::CGameRoom::CGameRoom(
 		LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA == worldId ||
 		LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == worldId ||
 		LostArk::Shared::WORLD_ID::MAHARAKA == worldId ||
+		LostArk::Shared::WORLD_ID::COLOSSEUM == worldId ||
 		LostArk::Shared::WORLD_ID::BERN == worldId) &&
 		!m_ServerNavigation.Load(m_WorldBootstrap.Get_AreaId()))
 	{
@@ -876,7 +877,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 			Join(command.iSessionId, command.EnterWorld,
 				command.strSpawnPlacementOverrideId, command.CarriedInventory,
 				command.iCarriedHonorTitleId, command.strRaidReturnNpcPlacementId,
-				command.CarriedPurse);
+				command.CarriedPurse, command.CarriedDurability);
 			break;
 		case ROOM_COMMAND_TYPE::MOVE:
 			Handle_Move(command.iSessionId, command.Move);
@@ -1004,6 +1005,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		case ROOM_COMMAND_TYPE::SET_EQUIPMENT:
 			Handle_SetEquipment(command.iSessionId, command.SetEquipment);
 			break;
+		case ROOM_COMMAND_TYPE::REPAIR_EQUIPMENT:
+			Handle_RepairEquipment(command.iSessionId, command.RepairEquipment);
+			break;
 		case ROOM_COMMAND_TYPE::BUY_ITEMS:
 			Handle_BuyItems(command.iSessionId, command.BuyItems);
 			break;
@@ -1026,6 +1030,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 			Handle_ReturnToBern(
 				command.iSessionId, command.ReturnToBern);
 			break;
+        case ROOM_COMMAND_TYPE::MAHARAKA_AI_TUNING:
+            Handle_MaharakaAITuning(command.iSessionId, command.MaharakaAITuning);
+            break;
 		case ROOM_COMMAND_TYPE::DEBUG_WORLD_PLAYBACK:
 			Handle_DebugWorldPlayback(command.iSessionId, command.DebugWorldPlayback);
 			break;
@@ -1043,6 +1050,14 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		case ROOM_COMMAND_TYPE::RAID_ENTRY_RESPOND:
 			Handle_RaidEntryRespond(
 				command.iSessionId, command.RaidEntryRespond);
+			break;
+		case ROOM_COMMAND_TYPE::COLOSSEUM_QUEUE_JOIN:
+			Handle_ColosseumQueueJoin(
+				command.iSessionId, command.ColosseumQueueJoin);
+			break;
+		case ROOM_COMMAND_TYPE::COLOSSEUM_QUEUE_LEAVE:
+			Handle_ColosseumQueueLeave(
+				command.iSessionId, command.ColosseumQueueLeave);
 			break;
 		case ROOM_COMMAND_TYPE::GATE_PROGRESS_PROPOSE:
 			Handle_GateProgressPropose(
@@ -1092,6 +1107,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 	for (const auto& [id, player] : m_Players)
 		if (player.eCardMazeRole != LostArk::Shared::CARD_MAZE_ROLE::NONE)
 			m_CardMazePreviousPositions[id] = {player.fPositionX, player.fPositionZ};
+	Update_MaharakaWaterpangMatch(updateTick);
 	Update_Guides(fixedDeltaSeconds);
 	Update_WorldPickups(updateTick, false);
 	Update_Players(fixedDeltaSeconds);
@@ -1232,6 +1248,16 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 	m_iServerTick = updateTick;
 	Expire_RaidEntryProposals();
 	Expire_GateProgressVote();
+	/* A hit that wore gear answers its owner with the inventory snapshot that carries the wear. */
+	for (auto& [wornPlayerId, wornPlayer] : m_Players)
+	{
+		if (!wornPlayer.bDurabilityDirty || !wornPlayer.Is_Human())
+			continue;
+		wornPlayer.bDurabilityDirty = false;
+		const std::shared_ptr<CClientSession> wornSession = Find_Session(wornPlayer.iSessionId);
+		if (nullptr != wornSession && !Send_InventorySnapshot(wornSession, 0u, wornPlayer))
+			wornSession->Request_Close();
+	}
 	if (Count_HumanPlayers() != 0u)
 		Broadcast_WorldSnapshot();
 	std::vector<LostArk::Shared::GameplayDataRevision> liveGenerationPins;

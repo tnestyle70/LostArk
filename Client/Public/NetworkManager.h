@@ -158,7 +158,8 @@ public:
 	bool Send_EnterWorld(
 		LostArk::Shared::WORLD_ID worldId,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass,
-		std::string_view nickName);
+		std::string_view nickName,
+		std::uint8_t voiceType);
 	//playercontroller�� ��ǥ XZ�� �����ϴ� public ���
 	bool Send_VehicleFlightInput(std::uint32_t sequence, float x, float z, float vertical);
 	bool Send_MoveGoal(
@@ -272,6 +273,8 @@ public:
 	bool Send_SetCooldownMode(const LostArk::Shared::C2S_SET_COOLDOWN_MODE& request);
 	bool Try_Consume_DebugKillGateBossesResult(LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT& result);
 	bool Try_Consume_SetCooldownModeResult(LostArk::Shared::S2C_SET_COOLDOWN_MODE_RESULT& result);
+	bool Send_MaharakaAITuning(const LostArk::Shared::C2S_MAHARAKA_AI_TUNING& request);
+	bool Try_Consume_MaharakaAITuning(LostArk::Shared::S2C_MAHARAKA_AI_TUNING& result);
 	bool Send_DebugWorldPlayback(const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request);
 	bool Try_Consume_DebugWorldPlaybackResult(LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT& result);
 	bool Send_InteractTrigger(
@@ -298,6 +301,12 @@ public:
 		std::uint32_t requestSequence, std::uint32_t proposalId, bool accepted);
 	bool Try_Consume_GateProgressState(LostArk::Shared::S2C_GATE_PROGRESS_STATE& outState);
 	bool Try_Consume_RaidMvpResult(LostArk::Shared::S2C_RAID_MVP_RESULT& outResult);
+	/* Colosseum match queue (Bern): JOIN answers the NPC offer, LEAVE is the wait window's Esc. The
+	Server's state changes come back through Try_Consume_ColosseumQueueState; the team roster
+	(S2C_COLOSSEUM_MATCH_FOUND) is stored in CLevelTransitionService for the loading screen. */
+	bool Send_ColosseumQueueJoin(std::uint32_t requestSequence, std::string_view npcPlacementId);
+	bool Send_ColosseumQueueLeave(std::uint32_t requestSequence);
+	bool Try_Consume_ColosseumQueueState(LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE& outState);
 	// Raid Clear screen's "돌아가기" button, Valtan Arena only -- reverse trip
 	// of Send_ConfirmNpcEntry, no NPC target needed.
 	bool Send_ReturnToBern(std::uint32_t requestSequence);
@@ -345,6 +354,8 @@ public:
 		LostArk::Shared::EQUIPMENT_SLOT slot,
 		bool bEquip,
 		std::string_view itemId);
+	/* Repair NPC window: asks the Server to restore the worn gear's durability. */
+	bool Send_RepairEquipment(std::uint32_t requestSequence, bool bAllSlots);
 	/* Debug Valtan pattern audition. The Server owns the verdict; this only
 	carries the request and hands back whatever it answered. */
 	bool Send_ValtanAudition(
@@ -608,12 +619,14 @@ private:
 	std::deque<LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT> m_DebugKillGateBossesResults;
 	std::deque<LostArk::Shared::S2C_SET_COOLDOWN_MODE_RESULT> m_SetCooldownModeResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT> m_DebugWorldPlaybackResults;
+	std::deque<LostArk::Shared::S2C_MAHARAKA_AI_TUNING> m_MaharakaAITuningResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT>
 		m_DebugMadnessFormResults;
 	std::deque<LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT> m_VehicleRidingResults;
 	std::deque<LostArk::Shared::S2C_SET_HONOR_TITLE_RESULT> m_HonorTitleResults;
 	std::deque<LostArk::Shared::S2C_GATE_PROGRESS_STATE> m_GateProgressStates;
 	std::deque<LostArk::Shared::S2C_RAID_MVP_RESULT> m_RaidMvpResults;
+	std::deque<LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE> m_ColosseumQueueStates;
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT> m_DebugKoukuHudModeResults;
 	struct WORLD_ENTITY_SPAWN_REQUEST
 	{

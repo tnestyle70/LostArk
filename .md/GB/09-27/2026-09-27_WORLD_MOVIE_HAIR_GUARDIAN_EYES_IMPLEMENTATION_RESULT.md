@@ -430,3 +430,61 @@ Artist12/Warlord25/DimensionMaster13개이며 두 face 트랙의 여섯 필드 �
 `865b6154fb550852414efc3008ecbd8107a5bcb6983241d599cee579711b7258`이며
 `out/LanceMovieMaterialTrackRepair20260929/install-receipt.json`에 기준 SHA와 백업을 기록했다.
 Resources 추가 없이 저장 데이터만 교정했고 실제 Movie 재생 화면은 사용자 확인 대상이다.
+
+
+## G12. 가디언나이트 Movie 표면 원본 mip 복구 (2026-09-30)
+
+실제 Movie 얼굴a12265.p0와 피부a12253.p4의 hdr07/BRDF는 이미 G10의10mip TGA를 사용한다.
+HR00 갑옷5개는 native199의128²/8mip scene cube를 사용하며 ORM green(linear) 거칠기로
+양수 cube LOD를 계산한다. 갑옷별 visible mip0의 roughness 중앙값은0.417/0.276/0.715/0.678/0.423,
+대응 cubeLOD는2.08/1.38/3.57/3.39/2.12로 반사가 항상mip0이라는 증거는 없다.
+확인된 누락은 갑옷5개·무기1개의 normal/diffuse/ORM/color mask/emissive DDS30개가1mip인 점이다.
+
+원본 pc_ddk_hr_00/wp_ddk_hr_00 package에는29개11mip(1024²), 무기ORM1개10mip(512²)가 있다.
+기존 extract_ue3_texture_mips.py와 LostArk용 UModel을 사용해 원본 BC1/BC3/BC5 block을
+회수했다. 재필터·재압축·normal 변환은 하지 않았다. 기존 설치 DDS와 mip0 압축bytes는
+30개 모두 exact이며 원본 package와 기존 공유DDS도 보존했다. Movie전용 SourceMips 아래
+신규30파일은 총30,238,368bytes다. 기존입력22,679,296bytes에 원본 하위mip를 추가한 결과다.
+
+후보는 objectResources의 가디언 갑옷a12253.p0~p3/a12256.p0와 무기a744.p0의
+materialProfile.textures[expressionIndex].assetId30개만 교체한다. 모델·geometry·material family·
+roughness/scalar·색공간·scene cube·공유DDS·일반캐릭터·보스·shader·렌더링 옵션은 유지한다.
+원본 복구 receipt와 mip0 동일성은 out/GuardianMovieMaterial20260930/receipts와
+candidate-receipt.json에 기록했고, roughness 근거는 guardian-roughness-audit.json에 있다.
+
+실제 DirectXTK DDS parser/FillInitData에 후보30개를 전달해 전체 mip payload 수용과
+잘린 payload 거부를 확인했다(dds-loader-cpu.log). D3D device/SRV나 화면을 생성한 검사는 아니다.
+후속 공식 publisher 검증과 최종 설치·게시 결과는 아래에 구분해 기록한다. 표면 축소용 원본 mip
+복구를 전체 밝기나 유리 같은 질감의 최종 화면 해결로 기록하지 않는다.
+
+코드 소비 경로도 확인했다. Reload saved movie는 Camera와 WorldSequences 원본을 함께 읽고
+Prepare_Authoring/Commit_Authoring을 수행한다. Same_ObjectModelInputs는 materialProfile도
+비교하므로 texture 참조가 바뀐6개 모델은 유지 캐시에서 제외되어 다음 Play에 새 입력을 준비한다.
+따라서 데이터 재읽기는 EXE 재빌드를 요구하지 않는다. 사용자는 현재 Client/Server를 계속 사용하고
+빌드를 나중으로 미뤘으므로 실행 중 draft를 Reload하거나 프로세스를 종료하지 않았다.
+
+
+G12 최종 반영: 공식 격리 WorldSequences Validate가 exit0/FileCount1을 통과했다.
+검토한 sourceSHA d6841d7119e410c3a83546602865579234c0c96e55ef1c5903d9dc0f858fd5df에
+texture assetId30필드와 revision14→15만 byte-preserving 병합했다. 22:57~22:58 KST에
+최신 hash/CAS, ReplaceFileW 실제교체본백업, source/runtime 소유변경 rollback 경계로 설치하고
+공식 Publish-MapAuthoring.ps1의 Scope WorldSequences만 게시했다. mapplacements·mapmaterials·
+Lights·Deploy·다른Area 데이터는 게시 대상에 넣지 않았다. 기존 공유DDS와 package는 불변이다.
+
+설치sourceSHA는5b1931dc4d194014aa6de2c2bda2808d0dd221fe4e480d9dfdfc241007acdc68,
+게시runtimeSHA는91d368d8eca33da722ad168a65a731a0821f2f2b28ec3a1c10f71b7a063061d0이다.
+줄바꿈 정규화로 bytes는 다르지만 JSON은 정확히 같다. 신규30리소스를 Client/Bin/Resources와
+GBResources에 각1부 배치해 두 경로 모두 후보hash와 일치했다(복사본총60/60,476,736bytes).
+검증·설치 근거는 out/GuardianMovieMaterial20260930/publisher-validation-receipt.json,
+installed-20260930T135721832706Z/receipt.json 및 publish.log,
+final-installed-verification.json이다. 실제 source/runtime 교체전 백업도 보존했다.
+
+최종검사에서 카메라G23 설치hash와 다섯class repeatMovie=true가 유지되고, 모든 mip0 공유파일
+hash와 신규30리소스/미러가 일치했다. 저장소 git diff --check도exit0이다. 사용자 요청대로
+Product 빌드는 보류했고 Client/Server 종료·실행·UI조작·Reload는 수행하지 않았다.
+갑옷·무기의 거리별 표면 mip 입력은 반영 완료지만 최종 밝기·유리 느낌과 구도는 사용자 확인 대기다.
+
+
+G12 후속 빌드: 사용자가 빌드 보류를 해제한 뒤 Debug·Release Product 빌드를 모두 통과했다.
+빌드 후 source/runtime hash와 mip30개·GBResources 미러는 설치본 그대로다. 실제 빌드 receipt와
+남은 화면 확인 경계는09-26 WORLD_MOVIE_EFFECT_EDITOR RESULT의 G24 후속 절에 기록했다.

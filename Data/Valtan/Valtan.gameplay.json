@@ -8831,7 +8831,7 @@
             {
               "outcome": "TIMEOUT",
               "nextActionId": null,
-              "nextPatternId": "VALTAN_GHOST_DEATH_AUDITION"
+              "nextPatternId": "VALTAN_GHOST_RESPAWN_AUDITION"
             }
           ]
         }

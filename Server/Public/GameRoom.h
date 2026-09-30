@@ -330,7 +330,8 @@ namespace LostArk::Server
 			LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId =
 				LostArk::Shared::INVALID_HONOR_TITLE_ID,
 			const std::string& raidReturnNpcPlacementId = {},
-			const SERVER_PURSE& carriedPurse = {});
+			const SERVER_PURSE& carriedPurse = {},
+			const SERVER_DURABILITY_STATE& carriedDurability = {});
 		bool Build_PlayerEntryFrames(STAGED_PLAYER_ENTRY& entry,
 			std::span<const STAGED_PLAYER_ENTRY> batch, std::string& status);
 		void Commit_PlayerEntry(const STAGED_PLAYER_ENTRY& entry);
@@ -345,7 +346,8 @@ namespace LostArk::Server
 			LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId =
 				LostArk::Shared::INVALID_HONOR_TITLE_ID,
 			const std::string& raidReturnNpcPlacementId = {},
-			const SERVER_PURSE& carriedPurse = {});
+			const SERVER_PURSE& carriedPurse = {},
+			const SERVER_DURABILITY_STATE& carriedDurability = {});
 		void Leave(
 			SESSION_ID sessionId,
 			LostArk::Shared::PLAYER_DESPAWN_REASON reason, bool publishDeparture = true);
@@ -1118,6 +1120,11 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_SET_EQUIPMENT& request);
 		bool Apply_SetEquipment(SERVER_PLAYER& player,
 			const LostArk::Shared::C2S_SET_EQUIPMENT& request) const;
+		/* Repair NPC window: every worn part goes back to 100 percent (free for now); the
+		   inventory answer carries the repaired percents. */
+		void Handle_RepairEquipment(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_REPAIR_EQUIPMENT& request);
 		/* After a class change: items bound to another class go back to the bag. */
 		bool Unequip_OtherClassItems(SERVER_PLAYER& player) const;
 		/* NPC shop basket. The player must stand by that shop NPC; every line must be in
@@ -1156,6 +1163,20 @@ namespace LostArk::Server
 		void Handle_ConfirmNpcEntry(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_CONFIRM_NPC_ENTRY& request);
+		// Colosseum match queue (BERN only). JOIN is the answer to the Colosseum NPC's offer: the
+		// Server re-tests distance/state, queues the session and, once the head count is met
+		// (Debug: one player, Release: four), splits the queue into two random teams, sends each
+		// session its roster and stages the ordinary solo world transfer to COLOSSEUM.
+		// LEAVE removes only the requesting session.
+		void Handle_ColosseumQueueJoin(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_COLOSSEUM_QUEUE_JOIN& request);
+		void Handle_ColosseumQueueLeave(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_COLOSSEUM_QUEUE_LEAVE& request);
+		void Send_ColosseumQueueState(
+			SESSION_ID sessionId, LostArk::Shared::COLOSSEUM_QUEUE_STATE state);
+		void Try_FormColosseumMatch();
 		// The player pressed the key an interact-gated trigger box offered.
 		// Names only the box; the trigger system re-tests that this player is
 		// still standing in it before anything runs, so a stale or forged
@@ -1219,6 +1240,12 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_GATE_PROGRESS_RESPOND& request);
 		void Close_GateProgressVote(LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result);
 		void Expire_GateProgressVote();
+		bool Complete_GateProgressTransition(const GATE_PROGRESS_STATE& transition);
+		void Update_ArenaAssembly();
+		bool Complete_ArenaAssembly();
+		bool Collect_KoukuEntryParticipants(std::vector<LostArk::Shared::PLAYER_ID>& participants, std::uint32_t& raidEpoch) const;
+		bool Collect_ValtanEntryParticipants(std::vector<LostArk::Shared::PLAYER_ID>& participants) const;
+		bool Start_ValtanEntry(const std::vector<LostArk::Shared::PLAYER_ID>& expectedParticipants);
 		// A primary boss is about to be removed DEAD: clears its gate when it was the last one.
 		void Notify_GateBossDeath(const SERVER_WORLD_ENTITY& deadBoss);
 		// A gate placement came up (Debug button or Advance_Gate): that gate is now current.
@@ -1230,7 +1257,8 @@ namespace LostArk::Server
 		bool Build_GateProgressState(LostArk::Shared::S2C_GATE_PROGRESS_STATE& message,
 			bool bClosed, LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result) const;
 		void Broadcast_GateProgressState(
-			bool bClosed, LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result);
+			bool bClosed, LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result,
+			LostArk::Shared::GATE_PROGRESS_KIND completedKind = LostArk::Shared::GATE_PROGRESS_KIND::END);
 		std::uint8_t Gate_Count() const;
 		std::uint8_t Resolve_CurrentKoukuGate() const;
 		bool Resolve_KoukuRevivePosition(const SERVER_PLAYER& player, SERVER_NAV_POINT& position, float& yaw) const;
@@ -1612,6 +1640,11 @@ namespace LostArk::Server
 		void Update_MarioBouncingBallContacts(SERVER_PLAYER& player, std::uint32_t updateTick);
 		// Rotating cannon jets and the big mokoko waterfall of a live Waterpang match.
 		void Update_MaharakaWaterpangHazards(SERVER_PLAYER& player, std::uint32_t updateTick);
+        void Handle_MaharakaAITuning(SESSION_ID sessionId, const LostArk::Shared::C2S_MAHARAKA_AI_TUNING& request);
+        bool Spawn_MaharakaWaterpangAI();
+        void Update_MaharakaWaterpangMatch(std::uint32_t updateTick);
+        void Clear_MaharakaWaterpangAI(std::uint32_t keepCount = 0u);
+        bool Finish_MaharakaWaterpangMatch();
 		// The running Debug forced event first, else the match schedule; false when neither runs.
 		bool Sample_MaharakaWaterpangNow(std::uint32_t tick, LostArk::Shared::MAHARAKA_WATERPANG_EVENT_SAMPLE& out) const;
 		// The Server's water gun arming rule: replicated as PLAYER_SNAPSHOT.isWaterpangArmed.
@@ -1824,7 +1857,18 @@ namespace LostArk::Server
 		// 파티 레이드 입장 투표 상태. struct RAID_ENTRY_PROPOSAL은 위 메서드 선언부에 정의한다.
 		std::vector<RAID_ENTRY_PROPOSAL> m_RaidEntryProposals;
 		std::uint32_t m_iNextRaidEntryProposalId = 1u;
+		// Colosseum match queue: accepted sessions in join order (BERN room only).
+		struct COLOSSEUM_QUEUE_ENTRY
+		{
+			SESSION_ID iSessionId = INVALID_SESSION_ID;
+			std::uint32_t iRequestSequence = 0u;
+		};
+		std::vector<COLOSSEUM_QUEUE_ENTRY> m_ColosseumQueue;
 		GATE_PROGRESS_STATE m_GateProgress;
+		std::uint32_t m_iArenaAssemblyStartTick = 0u;
+		std::uint32_t m_iArenaAssemblyRaidEpoch = 0u;
+		bool m_bArenaAssemblyAttempted = false;
+		std::vector<LostArk::Shared::PLAYER_ID> m_ArenaAssemblyParticipants;
 		std::vector<SERVER_MVP_LEDGER_ROW> m_GateMvpLedger;
 		std::uint32_t m_iNextGateProposalId = 1u;
 
@@ -1841,6 +1885,16 @@ namespace LostArk::Server
 		CServerNavigation m_ServerNavigation;
 		CServerCollisionSystem m_ServerCollisionSystem;
 		CServerTriggerSystem m_ServerTriggerSystem;
+        struct MAHARAKA_WATERPANG_AI final
+        {
+            std::uint32_t iSlot = 0u, iSequence = 0u, iNextThinkTick = 0u, iNextMoveTick = 0u, iNextShotTick = 0u, iSkillSlot = 0u;
+        };
+        std::map<LostArk::Shared::PLAYER_ID, MAHARAKA_WATERPANG_AI> m_MaharakaWaterpangAI;
+        LostArk::Shared::PLAYER_ID m_iNextWaterpangAIPlayerId = 0x90000000u;
+        std::uint32_t m_iWaterpangAIRetryTick = 0u;
+        LostArk::Shared::MAHARAKA_AI_TUNING m_MaharakaAITuning;
+        bool m_bMaharakaAITuningLoaded = false;
+        std::string m_strMaharakaAISourceBytes;
 		// One room-wide scheduled intro, retained for late join until the room empties.
 		std::optional<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> m_MaharakaWaterpangIntro;
 		// A Waterpang water gun shot from cast to burst; bodies already struck are remembered.
@@ -1849,6 +1903,8 @@ namespace LostArk::Server
 			LostArk::Shared::PLAYER_ID iOwnerId = 0;
 			std::uint32_t iSkillId = 0u;
 			std::uint32_t iSpawnTick = 0u;
+            LostArk::Shared::COMBAT_OBJECT_ID iVisualObjectId = LostArk::Shared::INVALID_COMBAT_OBJECT_ID;
+            LostArk::Shared::NET_ENTITY_ID iSourceNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 			float fAimDistanceM = 0.f;
 			bool bLaunched = false;
 			bool bSpent = false;

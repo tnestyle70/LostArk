@@ -4,6 +4,7 @@
 #include "GameRoom.h"
 #include "Network/PacketWriter.h"
 #include "ServerNavigation.h"
+#include "ValtanBrain.h"
 #include "WorldBootstrap.h"
 #include "WorldDestructionBootstrapContractTests.h"
 #include <Windows.h>
@@ -408,13 +409,13 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 				"VALTAN_SIX_PIZZA_106", "STEP_01",
 				"valtan.sequence.center-six-pizza-charge.step-01",
 				"combatobject.valtan.six-pizza.rock-pillar",
-				"hit.valtan.six-pizza.rock-pillar.explode", 30u, 0u, 32000u,
+				"hit.valtan.six-pizza.rock-pillar.explode", 30u, 1820u, 32000u,
 				10.f, true },
 			DELAYED_ROCK_PILLAR_CASE{
 				"VALTAN_STRUGGLING", "STEP_08",
 				"valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-08",
 				"combatobject.valtan.struggling.rock-pillar",
-				"hit.valtan.struggling.rock-pillar.explode", 36u, 4133u, 5333u,
+				"hit.valtan.struggling.rock-pillar.explode", 36u, 5953u, 7153u,
 				5.8639610307f, true }
 		};
 		bool delayedDamagingPillarSetsExact = true;
@@ -508,7 +509,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 					testCase.combatObjectId ==
 						object.strCombatObjectArchetypeId &&
 					1u == object.Hits.size() &&
-					object.PresentationPulses.empty() &&
+					(caseIndex == 0u ? object.PresentationPulses.empty() :
+					 (object.PresentationPulses.size() == 1u && object.PresentationPulses.front().iAtMs == 4133u)) &&
 					testCase.hitId == object.Hits.front().strHitId &&
 					testCase.hitAtMs == object.Hits.front().iAtMs &&
 					std::abs(object.fRemainingMilliseconds -
@@ -558,6 +560,106 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 		tests.Require(
 			delayedDamagingPillarSetsExact,
 			"Schedule both Six Pizza and Struggling damaging pillar sets at their exact due tick and atomically project all four roots onto navigation");
+	}
+	{
+		// Exercise actual Server HP and reliable presentation pulses on the 30 Hz clock.
+		// The prepare event starts the off Effect; its authored impact is 1820 ms later.
+		CGameplayCatalog catalog;
+		const bool loaded = catalog.Load();
+		tests.Require(loaded, "Load published rock prepare/impact timing definitions");
+		const std::array<const char*, 4u> ids{
+			"combatobject.valtan.six-pizza.rock-pillar",
+			"combatobject.valtan.terrain-3.combo-rock",
+			"combatobject.valtan.terrain-9.combo-rock",
+			"combatobject.valtan.struggling.rock-pillar" };
+		for (std::size_t caseIndex = 0u; loaded && caseIndex < ids.size(); ++caseIndex)
+		{
+			const bool chained = caseIndex < 3u;
+			const auto* definition = catalog.Find_BossCombatObject(ids[caseIndex]);
+			const bool contract = definition && definition->Hits.size() == 1u &&
+				definition->Hits.front().iAtMs == (chained ? 1820u : 5953u) &&
+				(chained ? definition->OwnerHitChain.iDelayMs == 1500u :
+				 (definition->PresentationPulses.size() == 1u && definition->PresentationPulses.front().iAtMs == 4133u));
+			tests.Require(contract, (std::string("Admit published rock prepare/impact contract: ") + ids[caseIndex]).c_str());
+			if (!contract) continue;
+			CCombatObjectRuntime runtime;
+			SERVER_WORLD_ENTITY boss{};
+			boss.iNetEntityId = 8991u; boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+			boss.eAction = SERVER_ENTITY_ACTION::PATTERN_ACTIVE;
+			boss.strArchetypeId = "BOSS_VALTAN"; boss.strEncounterId = "ENCOUNTER_VALTAN";
+			boss.iCurrentHp = boss.iMaximumHp = 600000u; boss.iAttackPower = 100u;
+			boss.iPatternSequence = 17u; boss.strPatternId = definition->strOwnerPatternId;
+			boss.strActionId = definition->strOwnerStageActionId;
+			boss.PinnedDefinitionRevision = catalog.Get_ActiveRevision();
+			std::vector<SERVER_WORLD_ENTITY> owners{ boss };
+			std::map<PLAYER_ID, SERVER_PLAYER> players;
+			auto transaction = runtime.Begin_Transaction();
+			std::string status;
+			bool staged = true;
+			const std::uint32_t count = chained ? 2u : 1u;
+			constexpr std::uint32_t SPAWN_TICK = 1000u, ARM_TICK = SPAWN_TICK + 2u;
+			for (std::uint32_t i = 0u; i < count; ++i)
+			{
+				boss.fPositionZ = i ? -10.f : 10.f;
+				staged = staged && runtime.Stage_BossCombatObject(transaction, boss, nullptr,
+					*definition, nullptr, catalog, 1u, SPAWN_TICK, status);
+				SERVER_PLAYER target{}; target.iPlayerId = i + 1u; target.iNetEntityId = 8992u + i;
+				target.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
+				target.iCurrentHp = target.iMaximumHp = 1000000u;
+				target.isCombatReady = true; target.fPositionZ = boss.fPositionZ;
+				players.emplace(target.iPlayerId, target);
+			}
+			staged = staged && runtime.Commit(std::move(transaction));
+			tests.Require(staged, (std::string("Stage actual rock timing objects: ") + ids[caseIndex]).c_str());
+			if (!staged) continue;
+			std::vector<S2C_COMBAT_OBJECT_SPAWNED> spawned;
+			std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT> pulses;
+			std::vector<S2C_COMBAT_OBJECT_DESPAWNED> despawned;
+			runtime.Drain_Lifecycle(spawned, pulses, despawned);
+			bool exact = spawned.size() == count && pulses.empty();
+			if (!exact) { tests.Require(false, "Rock timing fixture receives all reliable spawns"); continue; }
+			std::vector<COMBAT_OBJECT_ID> objectIds;
+			for (const auto& spawn : spawned) objectIds.push_back(spawn.iCombatObjectId);
+			std::array<std::uint32_t, 2u> prepared{}, impacted{};
+			std::vector<DAMAGE_EVENT> damage;
+			const std::string prepareId = chained ? definition->OwnerHitChain.strArmedPresentationEventId :
+				definition->PresentationPulses.front().strPresentationEventId;
+			SERVER_BOSS_PATTERN_HIT ownerHit{};
+			ownerHit.iSourceNetEntityId = boss.iNetEntityId; ownerHit.iPatternSequence = boss.iPatternSequence;
+			ownerHit.strPatternId = definition->strOwnerPatternId;
+			ownerHit.strActionId = definition->OwnerHitChain.strTriggerActionId;
+			ownerHit.Cone.fForwardZ = 1.f; ownerHit.Cone.fLength = 20.f; ownerHit.Cone.fAngleDegrees = 30.f;
+			const auto ceilTicks = [](std::uint32_t ms) { return (ms * 30u + 999u) / 1000u; };
+			const std::uint32_t finalTick = chained ? ARM_TICK + ceilTicks(1500u + 1820u) : SPAWN_TICK + ceilTicks(5953u);
+			for (std::uint32_t tick = SPAWN_TICK + 1u; tick <= finalTick + 2u; ++tick)
+			{
+				runtime.Update(players, owners, catalog, 1.f / 30.f, tick, damage);
+				if (chained && (tick == ARM_TICK || tick == ARM_TICK + 1u))
+					runtime.Apply_OwnerHits({ ownerHit }, players, owners, catalog, tick, damage);
+				spawned.clear(); pulses.clear(); despawned.clear();
+				runtime.Drain_Lifecycle(spawned, pulses, despawned);
+				for (const auto& pulse : pulses)
+				{
+					const auto it = std::find(objectIds.begin(), objectIds.end(), pulse.iCombatObjectId);
+					if (it == objectIds.end()) { exact = false; continue; }
+					const auto i = static_cast<std::size_t>(it - objectIds.begin());
+					const auto prepareTick = chained ? ARM_TICK + ceilTicks(i ? 1500u : 0u) : SPAWN_TICK + ceilTicks(4133u);
+					const auto impactTick = chained ? ARM_TICK + ceilTicks((i ? 1500u : 0u) + 1820u) : SPAWN_TICK + ceilTicks(5953u);
+					if (pulse.strHitId == prepareId) { ++prepared[i]; exact &= pulse.iServerTick == prepareTick; }
+					else if (pulse.strHitId == definition->Hits.front().strHitId) { ++impacted[i]; exact &= pulse.iServerTick == impactTick; }
+					else exact = false;
+				}
+				for (std::uint32_t i = 0u; i < count; ++i)
+				{
+					const auto prepareTick = chained ? ARM_TICK + ceilTicks(i ? 1500u : 0u) : SPAWN_TICK + ceilTicks(4133u);
+					const auto impactTick = chained ? ARM_TICK + ceilTicks((i ? 1500u : 0u) + 1820u) : SPAWN_TICK + ceilTicks(5953u);
+					exact &= prepared[i] == (tick >= prepareTick ? 1u : 0u) && impacted[i] == (tick >= impactTick ? 1u : 0u);
+					exact &= tick < impactTick ? players.at(i + 1u).iCurrentHp == 1000000u : players.at(i + 1u).iCurrentHp < 1000000u;
+				}
+			}
+			tests.Require(exact && damage.size() == count,
+				(std::string("Rock prepare stays harmless; exactly one damage/sound-driving hit pulse follows 1820ms later at the first eligible 30Hz tick: ") + ids[caseIndex]).c_str());
+		}
 	}
 	{
 		/* A damaging cover set whose authored roots have no projection within the

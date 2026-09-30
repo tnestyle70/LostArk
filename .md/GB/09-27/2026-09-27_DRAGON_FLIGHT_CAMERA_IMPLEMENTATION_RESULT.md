@@ -44,3 +44,19 @@ Client/UI는 실행·조작하지 않았다. 새 Server/Client 빌드로 Bern �
 최소 검증은 해당 TU를 제품 산출물과 분리한 out 폴더에서 Debug/Release 각각 컴파일하여 exit0를 확인했다. `out/DragonCamera20260927/free-camera-gate/compile-report.json`에 두 명령과 최종 소스 SHA256을 기록했다. shader 및 다른 제품 C++은 이 보강에서 수정하지 않았다.
 
 이 F6 gate를 포함한 최종 통합 Debug Product `out/BuildPipeline/runs/20260926T215804868Z-debug-product.json`도 PASS이며, 전체 공식 DLL/CSO 배포 완료 후 확인했다.
+
+
+## G07. 2026-09-30 비행 중 몸체 하강 재현·수정
+
+GameInstance의 Object Update → Level snapshot → Object Late_Update 순서에서 Set_FlightPlayback이 Update의 mount 높이 보정을 원본 pose로 덮어썼다. 실제 설치 AncientSea와 GuardianKnight_RideDragon2AnimSet을 사용하는 CModel/WARP 측정에서 비행 loop 361개 pose 모두 몸체·seat가 1.121806~1.301000 m 왕복했다. 원본2.0초 seat는2.59392262 → 보정1.32350636 → snapshot2.59392262 m이며 rider root 자체는 안정적이었다.
+
+Part_Vehicle의 private Pose_FlightMount가 기존 mount-only bip001 local Z 보정을 pose 설치 직후 적용한다. Set_FlightPlayback과 Update가 모두 같은 함수를 호출하며 rider와 Server XYZ, flight clock·속도·camera·bob·저작 데이터는 보존했다. 신규 C++ 파일과 Resources는 없다.
+
+실행 증거:
+
+- 기존 Release Server --vehicle-riding-contract-test:99 PASS/0 FAIL, exit0. out/DragonFlight20260930/server-vehicle-result.json.
+- 수정 전 실제 모델 probe:1128 rows/361 flight poses. dragon-pose-result.json 및 dragon-pose-samples.jsonl.
+- 현재 제품 함수6개를 원문 그대로 추출한 native adapter: TAKEOFF109/FLYING361/LANDING101, 합계571 pose PASS. 수정 전 snapshot 높이 차이1.12~1.30m, 수정 후 같은 시각 snapshot 차이0, rider 변형0. 같은 phase 60Hz seat 최대step0.0253295898m. dragon-fixed-probe.log와 part-flight-extraction.json.
+- 변경 Part_Vehicle.cpp를 Debug/Release 옵션으로 각각 독립 컴파일:exit0. compile-Debug.log, compile-Release.log. 이는 제품 전체 링크 완료 증거와 구분한다.
+
+Client/UI는 실행하지 않았다. 최종 제품 빌드 상태는 이번 배틀 아이템 조준 통합 RESULT에 기록하며, 실제 비행 정지·이동·이륙·착륙 화면은 사용자 검증 범위다.

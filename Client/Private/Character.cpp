@@ -228,6 +228,7 @@ HRESULT CCharacter::Initialize(void* pArg)
 		pDesc->fSpeedPerSec : 5.f;
 	//nickname과 local control 여부 추가
 	m_strNickName = pDesc->strNickName;
+	m_iVoiceType = pDesc->iVoiceType;
 	m_isLocallyControlled = pDesc->isLocallyControlled;
 
 	if (nullptr != pDesc->pNavigationPrototypeTag)
@@ -909,8 +910,12 @@ void CCharacter::Update_SoundCues()
 		iCue < m_EffectCueDocument.Sounds.size(); ++iCue)
 	{
 		const ANIMATION_SOUND_CUE& Cue = m_EffectCueDocument.Sounds[iCue];
-		const std::vector<std::string>& Variants =
-			CSoundCueCatalog::Find_Variants(strClassName, Cue.strEventName);
+		const std::vector<std::string>& VoiceVariants =
+			CSoundCueCatalog::Find_VoiceVariants(
+				strClassName, Cue.strEventName, m_iVoiceType);
+		const std::vector<std::string>& Variants = VoiceVariants.empty() ?
+			CSoundCueCatalog::Find_Variants(strClassName, Cue.strEventName) :
+			VoiceVariants;
 		if (Variants.empty())
 			continue;
 
@@ -2256,6 +2261,16 @@ void CCharacter::Update_PresentationRootMatrix()
 	Try_Get_PresentationRootMatrix(&m_PresentationRootMatrix);
 }
 
+void CCharacter::Set_CutscenePoseOverride(const float3_t& position, const f32_t yawDegrees)
+{
+	if (!std::isfinite(position.x) || !std::isfinite(position.y) ||
+		!std::isfinite(position.z) || !std::isfinite(yawDegrees))
+		return;
+	m_vCutscenePosePosition = position;
+	m_fCutscenePoseYawDegrees = yawDegrees;
+	m_isCutscenePoseOverride = true;
+}
+
 void CCharacter::Set_Position(fvector_t vPosition)
 {
 	m_pTransformCom->Set_State(STATE::POSITION, vPosition);
@@ -2454,10 +2469,10 @@ bool_t CCharacter::Apply_WaterGunPresentation(bool_t isArmed)
 }
 
 #ifdef _DEBUG
-void CCharacter::Set_WaterGunPreviewForced(const bool_t forced)
+bool_t CCharacter::Set_WaterGunPreviewForced(const bool_t forced)
 {
 	m_bWaterGunPreviewForced = forced;
-	(void)Apply_WaterGunPresentation(m_bWaterGunServerArmed);
+	return Apply_WaterGunPresentation(m_bWaterGunServerArmed);
 }
 
 bool_t CCharacter::Play_WaterGunAttackPreview(const uint32_t attack)
@@ -4029,6 +4044,13 @@ void CCharacter::Update(f32_t fTimeDelta)
 	{
 		Update_NetworkTransform(fTimeDelta);
 		Update_NetworkAttachmentTransform(fTimeDelta);
+		if (m_isCutscenePoseOverride && nullptr != m_pTransformCom)
+		{
+			m_pTransformCom->Set_State(STATE::POSITION, XMVectorSet(
+				m_vCutscenePosePosition.x, m_vCutscenePosePosition.y,
+				m_vCutscenePosePosition.z, 1.f));
+			m_pTransformCom->Rotation(0.f, m_fCutscenePoseYawDegrees, 0.f);
+		}
 	}
 	else
 	{

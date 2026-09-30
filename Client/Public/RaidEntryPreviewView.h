@@ -5,6 +5,7 @@
 #include "Network/PacketMessages.h"
 
 #include <memory>
+#include <string>
 
 NS_BEGIN(Client)
 
@@ -67,7 +68,7 @@ public:
 	   입장하기 = PROPOSE(선택 탭의 target), 수락/거절 창의 수락·거절 = RESPOND. */
 	struct RAID_ENTRY_INTENT
 	{
-		enum KIND { NONE, PROPOSE, RESPOND } eKind = NONE;
+		enum KIND { NONE, PROPOSE, RESPOND, SIMPLE_ACCEPT, COLOSSEUM_JOIN, COLOSSEUM_LEAVE } eKind = NONE;
 		LostArk::Shared::RAID_ENTRY_TARGET eTarget =
 			LostArk::Shared::RAID_ENTRY_TARGET::VALTAN;
 		std::uint32_t iProposalId = 0u;
@@ -81,9 +82,25 @@ public:
 		LostArk::Shared::RAID_ENTRY_TARGET target);
 	/* 투표가 거절/타임아웃/취소로 종료되면 수락/거절 창을 닫고 Bern에 남는다. */
 	void Close_VoteConfirm();
+	/* Plain 수락/거절 confirm with owner-supplied text and no vote behind it (the Colosseum NPC).
+	   Only 수락 reports back, as RAID_ENTRY_INTENT::SIMPLE_ACCEPT; 거절/Esc just close. */
+	void Open_SimpleConfirm(const wchar_t* pTitle, const wchar_t* pDescription);
+
+	/* Colosseum match queue dialogs (the retail generic timer dialog, Data/UI/Colosseum/
+	QueueDialog_Layout.json). Open_ColosseumOffer shows the accept / decline offer with a bar that
+	shrinks over 15 seconds; declining or letting it run out closes it and sends nothing. Accepting
+	reports COLOSSEUM_JOIN and turns the window into the wait window (a turning ring) that stays
+	until the transfer happens; Esc there reports COLOSSEUM_LEAVE and closes it. Close_ColosseumWait
+	is the Server's answer that the join was refused or the player left the queue. */
+	void Open_ColosseumOffer();
+	void Close_ColosseumWait();
 
 private:
 	bool_t Render_ConfirmStep();
+	bool_t Render_ColosseumQueue(bool_t wasJustOpened, bool_t escapePressed);
+	void RenderText_ColosseumQueue();
+	void Apply_ColosseumSlots();
+	void Hide_QueueSlots();
 	void RenderText_ConfirmStep();
 	/* Hides every slot that carries real art in either document. The
 	   position-only marker slots (authored tint alpha 0 -- boss portrait, text
@@ -133,6 +150,18 @@ private:
 	std::uint32_t m_iVoteProposalId = 0u;
 	LostArk::Shared::RAID_ENTRY_TARGET m_eVoteTarget =
 		LostArk::Shared::RAID_ENTRY_TARGET::END;
+	/* Set while the confirm step shows Open_SimpleConfirm's own text instead of a raid vote. */
+	bool_t m_isSimpleConfirm = false;
+	std::wstring m_strSimpleTitle;
+	std::wstring m_strSimpleDescription;
+
+	/* Colosseum queue dialogs: OFFER is the 15 second accept / decline, WAIT the ring until the
+	transfer. The layout has its own document; the text anchors are hidden marker slots in it. */
+	enum class COLOSSEUM_QUEUE_MODE { NONE, OFFER, WAIT };
+	COLOSSEUM_QUEUE_MODE m_eColosseumMode = COLOSSEUM_QUEUE_MODE::NONE;
+	unique_ptr<CUILayoutRuntime> m_pQueueView;
+	f32_t m_fColosseumOfferRemaining = 0.f;
+	f32_t m_fColosseumRingSeconds = 0.f;
 };
 
 NS_END

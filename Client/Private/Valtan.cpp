@@ -566,6 +566,38 @@ void CValtan::Draw_PatternHitAreaDebug() const
 		isPreviewDriven ? m_strPreviewHitActionId : m_strServerActionId;
 	if (nullptr == m_pTransformCom || strActionId.empty())
 		return;
+	if (isPreviewDriven && m_bLocalPatternAuthoringPreview)
+	{
+		const auto start = m_LocalPreviewStageStartMsByActionId.find(strActionId);
+		if (start != m_LocalPreviewStageStartMsByActionId.end())
+		{
+			const double clock = start->second + m_fPreviewHitAgeSeconds * 1000.0;
+			for (const auto& instance : m_LocalPreviewCombatObjectInstances)
+			{
+				const auto& object = instance.Template;
+				const double age = clock - object.iOwnerStageStartMs - object.iFirstSpawnOffsetMs;
+				if (age < 0.0 || age > object.iLifetimeMs) continue;
+				float4x4_t root;
+				XMStoreFloat4x4(&root, XMMatrixTranslation(instance.vPosition.x, instance.vPosition.y + .05f, instance.vPosition.z));
+				for (const auto& hit : object.Hits)
+				{
+					if (hit.strHitShape != "CIRCLE" && hit.strHitShape != "RING") continue;
+					bool pulse = false;
+					if (object.bOwnerHitChain)
+						pulse = instance.fChainExplosionPatternMs >= 0.0 && clock >= instance.fChainExplosionPatternMs && clock <= instance.fChainExplosionPatternMs + 300.0;
+					else for (uint32_t repeat = 0u; repeat < hit.iRepeatCount; ++repeat)
+					{
+						const double at = hit.iAtMs + double(repeat) * hit.iRepeatIntervalMs;
+						pulse |= age >= at && age <= at + 300.0;
+					}
+					HIT_AREA_SHAPE shape{}; shape.iAreaType = 1;
+					shape.iAreaRange = static_cast<int32_t>(hit.fOuterRadiusM * 100.f + .5f);
+					shape.iAreaInner = static_cast<int32_t>(hit.fInnerRadiusM * 100.f + .5f);
+					CHitAreaWire::Draw(root, shape, pulse ? 0xffff3cffu : 0xd228b9ffu);
+				}
+			}
+		}
+	}
 	const auto& HitAreas = isPreviewDriven && m_bLocalPatternAuthoringPreview ?
 		m_LocalPreviewHitAreaByActionId : m_PatternHitAreaByActionId;
 	const auto iter = HitAreas.find(strActionId);
@@ -1778,8 +1810,9 @@ void CValtan::Update_LocalPreviewCombatObjectHitChains(const double fPatternAgeM
 				continue;
 			for (size_t i = 0u; i < Wave.size(); ++i)
 			{
-				Wave[i]->fChainArmedPatternMs = HitClockMs;
-				Wave[i]->fChainExplosionPatternMs = static_cast<double>(HitClockMs) + Delays[i];
+				Wave[i]->fChainArmedPatternMs = static_cast<double>(HitClockMs) + Delays[i];
+				Wave[i]->fChainExplosionPatternMs = Wave[i]->fChainArmedPatternMs +
+					Wave[i]->Template.Hits.front().iAtMs;
 			}
 			break;
 		}
@@ -1890,11 +1923,11 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 			m_strArchetypeId, Instance.Template.strCombatObjectArchetypeId, Instance.Template.strClientVisualId);
 		if (nullptr == Visual || Visual->effectAssetId != Instance.Template.strActiveEffectAssetId ||
 			Visual->hitEffectAssetId != Instance.Template.strTerminalEffectAssetId ||
-			(Instance.Template.bOwnerHitChain &&
-				(Visual->armedEffectAssetId != Instance.Template.strArmedEffectAssetId ||
-				 Visual->stopActiveOnHit != Instance.Template.bStopActiveOnHit ||
-				 Visual->stopActiveOnArmed != Instance.Template.bStopActiveOnArmed ||
-				 Visual->armedEffectOwnsTerminal != Instance.Template.bArmedEffectOwnsTerminal)))
+			Visual->armedEffectAssetId != Instance.Template.strArmedEffectAssetId ||
+			Visual->armedPresentationEventId != Instance.Template.strArmedPresentationEventId ||
+			Visual->stopActiveOnHit != Instance.Template.bStopActiveOnHit ||
+			Visual->stopActiveOnArmed != Instance.Template.bStopActiveOnArmed ||
+			Visual->armedEffectOwnsTerminal != Instance.Template.bArmedEffectOwnsTerminal)
 			return Rollback("Local combat-object preview catalog visual changed after staging.");
 		const float4x4_t Root = Visual->Make_WorldRoot(Instance.vPosition, Instance.fYawDegrees);
 		const std::string Occurrence = "valtan:local-preview:combat-object:owner:" +
@@ -1942,7 +1975,8 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 		};
 		if (Instance.Template.bOwnerHitChain)
 		{
-			const bool_t Armed = Instance.fChainArmedPatternMs >= 0.0;
+			const bool_t Armed = Instance.fChainArmedPatternMs >= 0.0 &&
+				fPatternAgeMs + 0.01 >= Instance.fChainArmedPatternMs;
 			const bool_t Exploded = Armed && fPatternAgeMs + 0.01 >= Instance.fChainExplosionPatternMs;
 			if ((Exploded && Instance.Template.bStopActiveOnHit) ||
 				(Armed && Instance.Template.bStopActiveOnArmed))
@@ -1977,8 +2011,14 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 		}
 		// Product despawn releases a natural visual tail. Sample the same authored
 		// Effect lifetime rather than truncating it at the owning Stage boundary.
-		if (!SampleRoot(Visual->effectAssetId, "/active", fObjectAgeSeconds,
-				Instance.iActiveHandle))
+		const auto& Events = Instance.Template.PresentationEvents;
+		const bool armedOccurred = std::any_of(Events.begin(), Events.end(), [&](const auto& event) {
+			return event.strPresentationEventId == Visual->armedPresentationEventId && fObjectAgeMs + .01 >= event.iAtMs; });
+		const bool hitOccurred = std::any_of(Events.begin(), Events.end(), [&](const auto& event) {
+			return event.strPresentationEventId != Visual->armedPresentationEventId && fObjectAgeMs + .01 >= event.iAtMs; });
+		if ((armedOccurred && Visual->stopActiveOnArmed) || (hitOccurred && Visual->stopActiveOnHit))
+			StopHandle(Instance.iActiveHandle);
+		else if (!SampleRoot(Visual->effectAssetId, "/active", fObjectAgeSeconds, Instance.iActiveHandle))
 			return Rollback(strOutStatus);
 		for (size_t iEvent = 0u; iEvent < Instance.Template.PresentationEvents.size(); ++iEvent)
 		{
@@ -1988,7 +2028,14 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 				StopHandle(Instance.TerminalHandles[iEvent]);
 				continue;
 			}
-			if (!SampleRoot(Visual->hitEffectAssetId, "/event:" + Event.strPresentationEventId,
+			const bool armed = Event.strPresentationEventId == Visual->armedPresentationEventId;
+			if (!armed && armedOccurred && Visual->armedEffectOwnsTerminal)
+			{
+				StopHandle(Instance.TerminalHandles[iEvent]);
+				continue;
+			}
+			if (!SampleRoot(armed ? Visual->armedEffectAssetId : Visual->hitEffectAssetId,
+					"/event:" + Event.strPresentationEventId,
 					static_cast<f32_t>((std::max)(0.0, fObjectAgeMs - Event.iAtMs) * 0.001),
 					Instance.TerminalHandles[iEvent]))
 				return Rollback(strOutStatus);
@@ -1998,6 +2045,39 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 		" local combat-object root(s) on the selected Pattern clock.";
 	m_strLocalPreviewCombatObjectStatus = strOutStatus;
 	return true;
+}
+
+void CValtan::Collect_LocalCombatObjectSoundEvents(
+	std::vector<LOCAL_COMBAT_OBJECT_SOUND_EVENT>& events) const
+{
+	events.clear();
+	if (m_isServerAuthoritative || !m_bLocalPatternAuthoringPreview) return;
+	for (const auto& instance : m_LocalPreviewCombatObjectInstances)
+	{
+		const auto& object = instance.Template;
+		const std::string prefix = "object:" + object.strOwnerActionId + "/" +
+			std::to_string(object.iTemplateOrdinal) + "/" + std::to_string(instance.iOrdinal) + "/";
+		if (object.bOwnerHitChain)
+		{
+			if (instance.fChainExplosionPatternMs < 0.0) continue;
+			if (!object.strArmedPresentationEventId.empty())
+				events.push_back({ prefix + object.strArmedPresentationEventId, object.strCombatObjectArchetypeId,
+					object.strArmedPresentationEventId, instance.fChainArmedPatternMs });
+			for (const auto& hit : object.Hits)
+				if (hit.strTriggerKind == "TIMED")
+					events.push_back({ prefix + hit.strHitId, object.strCombatObjectArchetypeId,
+						hit.strHitId, instance.fChainExplosionPatternMs });
+			continue;
+		}
+		for (const auto& event : object.PresentationEvents)
+		{
+			// The occurrence suffix distinguishes repeated pulses; the Sound binding uses the stable hitId.
+			const auto repeat = event.strPresentationEventId.find("/repeat:");
+			const std::string source = event.strPresentationEventId.substr(0u, repeat);
+			events.push_back({ prefix + event.strPresentationEventId, object.strCombatObjectArchetypeId,
+				source, static_cast<double>(object.iOwnerStageStartMs) + object.iFirstSpawnOffsetMs + event.iAtMs });
+		}
+	}
 }
 
 bool_t CValtan::Stage_LocalPatternAuthoringPreview(
@@ -2336,7 +2416,13 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 			Template.fAngleStepDegrees = Source.fVolleyAngleStepDegrees;
 			Template.iFirstSpawnOffsetMs = Source.iFirstSpawnOffsetMs;
 			Template.iLifetimeMs = Source.iLifetimeMs;
+			Template.Hits = Source.Hits;
 			Template.bArenaCenterOrigin = bArenaCenterOrigin;
+			Template.strArmedEffectAssetId = Visual->armedEffectAssetId;
+			Template.strArmedPresentationEventId = Visual->armedPresentationEventId;
+			Template.bStopActiveOnHit = Visual->stopActiveOnHit;
+			Template.bStopActiveOnArmed = Visual->stopActiveOnArmed;
+			Template.bArmedEffectOwnsTerminal = Visual->armedEffectOwnsTerminal;
 			if (Source.OwnerHitChain)
 			{
 				const auto& Chain = *Source.OwnerHitChain;
@@ -2344,6 +2430,8 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 					[&](const auto& Candidate) { return Candidate.strActionId == Chain.strTriggerActionId; });
 				const auto TriggerStart = StagedStageStarts.find(Chain.strTriggerActionId);
 				if (Trigger == Pattern.Stages.end() || TriggerStart == StagedStageStarts.end() ||
+					Source.Hits.size() != 1u || Source.Hits.front().strTriggerKind != "TIMED" ||
+					Source.Hits.front().iRepeatCount != 1u ||
 					Trigger->strHitShape != "CONE" || !std::isfinite(Source.fCoverRadiusM) || Source.fCoverRadiusM <= 0.f ||
 					Visual->hitEffectAssetId.empty() || Visual->armedEffectAssetId.empty() ||
 					Visual->armedPresentationEventId != Chain.strArmedPresentationEventId)
@@ -2359,10 +2447,6 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 				Template.fChainForwardOffsetM = Trigger->fHitAnchorForwardOffsetM;
 				Template.fChainRightOffsetM = Trigger->fHitAnchorRightOffsetM;
 				Template.fChainYawOffsetDegrees = Trigger->fHitAnchorYawOffsetDegrees;
-				Template.strArmedEffectAssetId = Visual->armedEffectAssetId;
-				Template.bStopActiveOnHit = Visual->stopActiveOnHit;
-				Template.bStopActiveOnArmed = Visual->stopActiveOnArmed;
-				Template.bArmedEffectOwnsTerminal = Visual->armedEffectOwnsTerminal;
 				if (!Trigger->HitOffsetsMs.empty())
 					for (const uint32_t Offset : Trigger->HitOffsetsMs)
 						Template.ChainHitPatternClocks.push_back(TriggerStart->second + Offset);
@@ -2490,6 +2574,23 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 		// Preview uses the explicitly authored landing pose. Product instead receives
 		// the Server pin, including target-relative landings and mid-pattern joins.
 		StagedPatternLanding = { true, Landing[0], Landing[1], Landing[2] };
+	}
+	// Arena-centred volleys and effects do not require a LEAP motion. Resolve
+	// the same canonical placement before committing any preview state.
+	const bool needsArenaCenter =
+		std::any_of(StagedEffectCues.begin(), StagedEffectCues.end(), [](const auto& entry) {
+			return std::any_of(entry.second.begin(), entry.second.end(), [](const auto& cue) {
+				return Is_ArenaCenterCueAnchor(cue.strAnchorSlotId); }); }) ||
+		std::any_of(StagedCombatObjects.begin(), StagedCombatObjects.end(), [](const auto& entry) {
+			return std::any_of(entry.second.begin(), entry.second.end(), [](const auto& object) {
+				return object.bArenaCenterOrigin; }); }) ||
+		std::any_of(StagedAimWindows.begin(), StagedAimWindows.end(), [](const auto& entry) {
+			return entry.second.bArenaCenterPivot; });
+	if (needsArenaCenter && !StagedArenaCenters.contains(Pattern.strPatternId))
+	{
+		float3_t center{};
+		if (!Try_ReadValtanArenaCenter(center, strOutStatus)) return false;
+		StagedArenaCenters.emplace(Pattern.strPatternId, center);
 	}
 	for (const auto& [ActionId, Cues] : StagedEffectCues)
 	{

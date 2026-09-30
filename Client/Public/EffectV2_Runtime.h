@@ -76,6 +76,9 @@ struct EFFECT_V2_CLIP_OCCURRENCE_CLOCK final
 class CEffectV2Runtime final
 {
 public:
+    // Read-only frame admission: pending or living target effects can consume
+    // the model's bone pose even when the actor itself is outside the camera.
+    static bool_t Requires_CurrentPose(const Engine::CGameObject* target);
 	static void Notify_Clip(
 		const EFFECT_V2_TARGET& Target,
 		const char_t* pClipName);

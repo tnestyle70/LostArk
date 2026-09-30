@@ -1,7 +1,7 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 2496,
+  "revision": 2497,
   "compositionId": "boss.composition.kakulsaydon.gate1",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -12044,7 +12044,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_26.presentation.2",
           "resourceId": "kakulsaydon.effect.3752b9539b9a350a1c4a",
           "startMs": 15577,
-          "durationMs": 2066,
+          "durationMs": 1420,
           "positionOffset": [
             4.340000152587891,
             10,
@@ -12202,9 +12202,9 @@
           "startMs": 16997,
           "durationMs": 100,
           "positionOffset": [
-            0,
-            0,
-            0.6000000238418579
+            4.340000152587891,
+            10,
+            323.1000061035156
           ],
           "rotationDegrees": [
             0,
@@ -12223,14 +12223,14 @@
           "brightnessMultiplier": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
+          "followBoss": false,
           "debugRender": true,
-          "bone": "b_rpct_01",
-          "boneTarget": "WEAPON",
+          "bone": "",
+          "boneTarget": "BODY",
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "BOSS",
+          "anchorKind": "MAP",
           "worldId": "",
           "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_26.logic.1",
           "worldOccurrenceId": ""

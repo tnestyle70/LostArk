@@ -138,6 +138,33 @@ namespace
 		return false;
 	}
 
+	/* Local admission only: the Server remains the inventory/cooldown/target authority. */
+	bool_t Is_GroundTargetItemAvailable(const Client::ITEM_DEFINITION& item,
+		const Client::HUD_PLAYER_STATE& player,
+		const LostArk::Shared::S2C_INVENTORY_SNAPSHOT& inventory)
+	{
+		using namespace LostArk::Shared;
+		if (!item.isGroundTargeted || !std::isfinite(item.fTargetRangeM) || item.fTargetRangeM <= 0.f ||
+			!player.isValid || player.isPreview || !player.iCurrentHp || !player.isCombatReady ||
+			player.isPatternBound || player.eAction != PLAYER_ACTION_STATE::NONE ||
+			player.iVehicleId != 0u || player.eMadnessForm != PLAYER_MADNESS_FORM::NORMAL ||
+			player.eKoukuHudMode != KOUKU_HUD_MODE::NONE)
+			return false;
+		for (const auto& cooldown : player.Cooldowns)
+			if (cooldown.iSkillId == item.iBattleSkillId &&
+				static_cast<std::int32_t>(player.iServerTick - cooldown.iCooldownEndTick) < 0)
+				return false;
+		for (std::size_t index = 0u; index < player.iActiveBuffCount && index < MAX_ACTIVE_BUFFS; ++index)
+			if (player.ActiveBuffs[index].iBuffId == 33500u &&
+				static_cast<std::int32_t>(player.iServerTick - player.ActiveBuffs[index].iEndTick) < 0)
+				return false;
+		return std::any_of(inventory.Items.begin(), inventory.Items.end(), [&](const auto& owned)
+		{
+			return owned.strItemId == item.strItemId && owned.iQuantity > 0u &&
+				owned.eEquippedSlot == EQUIPMENT_SLOT::NONE;
+		});
+	}
+
 	bool_t Is_PlayerControlCaptured(const Client::HUD_PLAYER_STATE& player)
 	{
 		return player.isPatternBound ||
@@ -257,6 +284,7 @@ void Client::CPlayerController::Update(
 	}
 	const auto& pingPlayer = CCombatHUDViewModel::Get().Get_Player();
 	const bool_t pingEnabled = gameplayCommandsEnabled && !isControlCaptured && !marioControlsActive &&
+		!m_GroundTargeting.Is_Item() &&
 		pingPlayer.iVehicleId != LostArk::Shared::ANCIENT_SEA_VEHICLE_ID &&
 		!isMoveClickSuppressed && !m_pLocalCharacter.expired() && pingPlayer.isValid &&
 		0u != pingPlayer.iCurrentHp && !CGameInstance::Get().IsMouseInputBlocked() &&
@@ -298,10 +326,13 @@ void Client::CPlayerController::Update(
 		if (isControlCaptured || (marioControlsActive && key != DIK_Q && key != DIK_W))
 			m_wasKeyDown[key] = down;
 	}
+	/* Targeting owns both physical presses through release, including the frame
+	   that cancels for UI/focus or confirms while mouse buttons are swapped. */
+	const bool_t itemOwnsMouse = m_GroundTargeting.Is_Item();
 	m_CaptureInputGate.Observe(CPLAYER_CAPTURE_INPUT_GATE::LEFT_MOUSE,
-		isLeftMousePhysicallyDown, isControlCaptured || marioControlsActive);
+		isLeftMousePhysicallyDown, isControlCaptured || marioControlsActive || itemOwnsMouse);
 	m_CaptureInputGate.Observe(CPLAYER_CAPTURE_INPUT_GATE::RIGHT_MOUSE,
-		isRightMousePhysicallyDown, isControlCaptured || marioControlsActive);
+		isRightMousePhysicallyDown, isControlCaptured || marioControlsActive || itemOwnsMouse);
 	if (m_pClickMoveEffect && (!gameplayCommandsEnabled || isControlCaptured || marioControlsActive))
 		m_pClickMoveEffect->Clear_Move();
 	if (isControlCaptured || marioControlsActive)
@@ -371,12 +402,25 @@ void Client::CPlayerController::Update(
 	if (m_GroundTargeting.Is_Active())
 	{
 		const auto& playerState = CCombatHUDViewModel::Get().Get_Player();
-		const PLAYER_SKILL_DEFINITION* targetingDefinition =
+		const bool_t isItem = m_GroundTargeting.Is_Item();
+		const PLAYER_SKILL_DEFINITION* targetingDefinition = isItem ? nullptr :
 			CPlayerSkillCatalog::Find_ById(m_GroundTargeting.Get_SkillId());
+		const ITEM_DEFINITION* targetingItem = isItem ?
+			CItemCatalog::Find_ById(m_GroundTargeting.Get_ItemId()) : nullptr;
+		const bool_t itemInputBlocked = isItem &&
+			(CGameInstance::Get().IsMouseInputBlocked() ||
+			 CGameInstance::Get().IsKeyboardInputBlocked() ||
+			 CUIInputRouter::Get().Is_MouseClaimedThisFrame() ||
+			 CUIInputRouter::Get().Is_TextInputActive() || ImGui::GetIO().WantTextInput);
+		const bool_t targetAvailable = isItem ?
+			(targetingItem && !itemInputBlocked &&
+			 playerState.eCharacterClass == m_eItemTargetingClass &&
+			 CGameInstance::Get().Get_CurrentLevelID() == m_iItemTargetingLevel &&
+			 CCombatHUDViewModel::Get().Has_Inventory() &&
+			 Is_GroundTargetItemAvailable(*targetingItem, playerState, CCombatHUDViewModel::Get().Get_Inventory())) :
+			(targetingDefinition && Is_GroundTargetSkillAvailable(*targetingDefinition, playerState));
 		if (!gameplayCommandsEnabled || nullptr == character ||
-			nullptr == commandSink || nullptr == m_pGroundTargetPreview ||
-			nullptr == targetingDefinition ||
-			!Is_GroundTargetSkillAvailable(*targetingDefinition, playerState))
+			nullptr == commandSink || nullptr == m_pGroundTargetPreview || !targetAvailable)
 		{
 			Cancel_GroundTargeting();
 		}
@@ -399,8 +443,20 @@ void Client::CPlayerController::Update(
 					float3_t sampled{};
 					const float3_t& clamped =
 						m_GroundTargeting.Get_TargetPosition();
-					if (character->Try_SampleTargetGround(
-							clamped.x, clamped.z, sampled))
+					const bool_t hasWalkableSample = character->Try_SampleTargetGround(
+						clamped.x, clamped.z, sampled);
+					if (isItem)
+					{
+						// Client navigation lacks the Server surface/void contract.
+						// Preserve the existing clamped item intent; a walkable sample
+						// only refines marker height. The Server admits the actual throw.
+						float3_t previewTarget = clamped;
+						if (hasWalkableSample && std::isfinite(sampled.y) &&
+							std::abs(sampled.y - caster.y) <= 3.f)
+							previewTarget.y = sampled.y;
+						(void)m_GroundTargeting.Apply_TargetSample(previewTarget);
+					}
+					else if (hasWalkableSample)
 					{
 						(void)m_GroundTargeting.Apply_WalkableSample(sampled);
 					}
@@ -413,37 +469,44 @@ void Client::CPlayerController::Update(
 					caster, m_GroundTargeting.Get_TargetPosition(),
 					m_GroundTargeting.Can_Confirm());
 
-				const bool_t cancelEdge = isRightMouseDown &&
-					isRightMousePhysicallyDown &&
-					!m_wasTargetingRightMouseDown;
-				const bool_t confirmEdge =
-					!CGameInstance::Get().IsMouseInputBlocked() &&
-					!m_PingInputGate.Owns_LeftPress() &&
-					0 != (CGameInstance::Get().Get_DIMouseState(Attack_MouseButton()) & 0x80) &&
-					isLeftMousePhysicallyDown &&
-					!m_wasTargetingLeftMouseDown;
-				m_wasTargetingLeftMouseDown = isLeftMousePhysicallyDown;
-				m_wasTargetingRightMouseDown = isRightMousePhysicallyDown;
-				if (cancelEdge)
+				const Engine::DIM confirmButton = isItem ? Engine::DIM::LB : Attack_MouseButton();
+				const Engine::DIM cancelButton = isItem ? Engine::DIM::RB : Move_MouseButton();
+				const bool_t confirmDown = 0 != (CGameInstance::Get().Get_DIMouseStateRaw(confirmButton) & 0x80);
+				const bool_t cancelDown = 0 != (CGameInstance::Get().Get_DIMouseStateRaw(cancelButton) & 0x80);
+				const auto click = Poll_GroundTargetingClick(confirmDown, cancelDown,
+					!CGameInstance::Get().IsMouseInputBlocked() && !m_PingInputGate.Owns_LeftPress() &&
+					0 != (CGameInstance::Get().Get_DIMouseState(confirmButton) & 0x80),
+					isItem || isRightMouseDown,
+					m_wasTargetingLeftMouseDown, m_wasTargetingRightMouseDown);
+				if (GROUND_TARGETING_CLICK::CANCEL == click)
 				{
 					Cancel_GroundTargeting();
 				}
-				else if (confirmEdge && m_GroundTargeting.Can_Confirm())
+				else if (GROUND_TARGETING_CLICK::CONFIRM == click && m_GroundTargeting.Can_Confirm())
 				{
 					const float3_t target =
 						m_GroundTargeting.Get_TargetPosition();
-					const auto requestGroundTargetSkill = [&]()
+					const auto requestGroundTarget = [&]()
 					{
+						if (isItem)
+						{
+							LostArk::Shared::C2S_USE_ITEM request;
+							request.iRequestSequence = m_GroundTargeting.Get_ItemRequestSequence();
+							request.strItemId = m_GroundTargeting.Get_ItemId();
+							request.hasGroundTarget = true;
+							request.fTargetX = target.x;
+							request.fTargetZ = target.z;
+							return commandSink->Request_UseItem(request);
+						}
 						return commandSink->Request_UseGroundTargetSkill(
 							m_iNextActionSequence,
 							m_GroundTargeting.Get_SkillId(),
 							target.x, target.z);
 					};
 					if (Try_Commit_GroundTargetConfirmation(
-							m_BasicAttackResendGate, requestGroundTargetSkill))
+							m_BasicAttackResendGate, requestGroundTarget))
 					{
-						++m_iNextActionSequence;
-						if (0u == m_iNextActionSequence)
+						if (!isItem && 0u == ++m_iNextActionSequence)
 							m_iNextActionSequence = 1u;
 						Cancel_GroundTargeting();
 					}
@@ -1027,6 +1090,30 @@ bool_t Client::CPlayerController::Request_UseItem(
 	if (!m_bGameplayCommandsEnabled || !m_pCommandSink || !character || !item ||
 		!player.isValid || player.isPreview || !player.iCurrentHp || Is_PlayerControlCaptured(player))
 		return false;
+	if (item->isGroundTargeted)
+	{
+		if (!m_pGroundTargetPreview || !CCombatHUDViewModel::Get().Has_Inventory() ||
+			GetForegroundWindow() != g_hWnd || CGameInstance::Get().IsKeyboardInputBlocked() ||
+			CGameInstance::Get().IsMouseInputBlocked() || CUIInputRouter::Get().Is_MouseClaimedThisFrame() ||
+			CUIInputRouter::Get().Is_TextInputActive() || ImGui::GetIO().WantTextInput ||
+			!Is_GroundTargetItemAvailable(*item, player, CCombatHUDViewModel::Get().Get_Inventory()))
+			return false;
+		Cancel_GroundTargeting();
+		if (!m_pGroundTargetPreview->Begin(item->RangePreview, item->TargetPreview) ||
+			!m_GroundTargeting.Begin_Item(itemId, requestSequence, item->fTargetRangeM))
+		{
+			Cancel_GroundTargeting();
+			return false;
+		}
+		m_eItemTargetingClass = player.eCharacterClass;
+		m_iItemTargetingLevel = CGameInstance::Get().Get_CurrentLevelID();
+		m_wasTargetingLeftMouseDown =
+			0 != (CGameInstance::Get().Get_DIMouseStateRaw(Engine::DIM::LB) & 0x80);
+		m_wasTargetingRightMouseDown =
+			0 != (CGameInstance::Get().Get_DIMouseStateRaw(Engine::DIM::RB) & 0x80);
+		return true;
+	}
+	if (m_GroundTargeting.Is_Active()) return false;
 	LostArk::Shared::C2S_USE_ITEM request;
 	request.iRequestSequence = requestSequence;
 	request.strItemId = itemId;
@@ -1038,21 +1125,6 @@ bool_t Client::CPlayerController::Request_UseItem(
 		XMStoreFloat3(&origin, rayOrigin); XMStoreFloat3(&direction, rayDirection);
 		request.iTargetPlayerNetEntityId = m_ItemTargetResolver(origin, direction);
 		if (request.iTargetPlayerNetEntityId == LostArk::Shared::INVALID_NET_ENTITY_ID) return false;
-	}
-	else if (item->fTargetRangeM > 0.f)
-	{
-		const auto transform = character->Get_Transform();
-		if (!transform) return false;
-		float3_t origin, picked;
-		XMStoreFloat3(&origin, transform->Get_State(STATE::POSITION));
-		if (!Try_PickGroundPlane(origin.y, picked)) return false;
-		const float dx = picked.x - origin.x, dz = picked.z - origin.z;
-		const float length = std::hypot(dx, dz);
-		if (!std::isfinite(length)) return false;
-		const float scale = length > item->fTargetRangeM ? item->fTargetRangeM / length : 1.f;
-		request.hasGroundTarget = true;
-		request.fTargetX = origin.x + dx * scale;
-		request.fTargetZ = origin.z + dz * scale;
 	}
 	return m_pCommandSink->Request_UseItem(request);
 }
@@ -1490,6 +1562,7 @@ void Client::CPlayerController::Set_CommandSink(
 {
 	if (m_pCommandSink != commandSink)
 	{
+		Cancel_GroundTargeting();
 		m_iLastMarioMoveDirection = 0;
 		m_pendingVehicleRidingSequence = 0u;
 		m_pendingHonorTitleSequence = 0u;
@@ -2090,6 +2163,8 @@ bool_t Client::CPlayerController::Initialize_ClickMoveEffect(
 void Client::CPlayerController::Cancel_GroundTargeting()
 {
 	m_GroundTargeting.Cancel();
+	m_eItemTargetingClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
+	m_iItemTargetingLevel = 0xffffffffu;
 	if (nullptr != m_pGroundTargetPreview)
 		m_pGroundTargetPreview->Clear();
 	m_wasTargetingLeftMouseDown = false;
@@ -2233,7 +2308,7 @@ bool_t Client::CPlayerController::Request_MoveToPointResolved(
 	const bool_t playClickEffect,
 	const float3_t* const pExactClickSurface)
 {
-	if (Is_PlayerControlCaptured(
+	if (m_GroundTargeting.Is_Item() || Is_PlayerControlCaptured(
 			CCombatHUDViewModel::Get().Get_Player()))
 	{
 		return false;

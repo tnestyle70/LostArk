@@ -27731,3 +27731,12 @@ bool LostArk::Server::CServerCollisionSystem::Sweep_CircleAgainstBox(
 	return true;
 }
 ````
+
+
+## G07. 2026-09-30 비행 포즈 높이 보정의 모든 진입점 통일
+
+현재 GameInstance는 Object Update 다음 Level의 snapshot 적용, 마지막 Object Late_Update 순으로 실행한다. Part_Vehicle::Update에서만 bip001 local Z를 rest 값으로 보정하지만 Set_FlightPlayback은 원본 포즈를 다시 설치한다. 실제 AncientSea CModel의 비행 구간 361개 sample에서 좌석과 몸체가 1.121806~1.301000 m 왕복하며, GuardianKnight rider의 root는 안정적이다. 서버 비행 검증 99개는 통과했다.
+
+Client/Public/Part_Vehicle.h의 private Pose_FlightMount와 Client/Private/Part_Vehicle.cpp의 구현은 기존 Pose_FlightRider로 설치한 mount 포즈에만 같은 local Z 보정을 즉시 적용한다. Set_FlightPlayback과 Update가 모두 이 함수를 호출하여 snapshot이 뒤에 적용되어도 보정을 잃지 않게 한다. rider 포즈, 서버 좌표, 비행 시간·속도·bob·사용자 데이터는 변경하지 않는다. 기존 파일 두 개만 수정하므로 프로젝트/filter 신규 등록은 없다.
+
+설치 모델을 사용하는 무창 WARP probe에서 frame 포즈와 snapshot 재설치 후 몸체·좌석 높이가 일치하는지 대조하고, TAKEOFF/FLYING/LANDING과 반복 blend를 확인한다. Debug/Release 제품 컴파일·링크와 diff check를 실행한다. 사용자 실행 중 EXE는 종료하지 않으며 실제 화면 검증은 사용자에게 남긴다.

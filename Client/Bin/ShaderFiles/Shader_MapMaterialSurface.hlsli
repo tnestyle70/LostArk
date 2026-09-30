@@ -255,6 +255,7 @@ struct MAP_SURFACE_SAMPLE
 {
     float4 diffuse;
     float3 worldNormal;
+    float3 geometricNormal; // Program 14: packed Landscape height-normal input.
     float3 tangentNormal;
     float3 specular;
     float3 reflectionDelta;
@@ -268,8 +269,11 @@ struct MAP_SURFACE_SAMPLE
 };
 
 #include "Shader_SourceSpecialSurface.hlsli"
+#include "Shader_SourceLandscapeSurface.hlsli"
 
-bool IsMapSurfaceSourceSpecial() { return g_SurfaceProgram >= 11u && g_SurfaceProgram <= 13u; }
+bool IsMapSurfaceSourceSpecial() { return g_SurfaceProgram >= 11u && g_SurfaceProgram <= 14u; }
+
+bool IsMapSurfaceSourceLandscape() { return g_SurfaceProgram == 14u; }
 
 bool IsMapSurfaceSourceFoliage() { return g_SurfaceProgram == 9u || g_SurfaceProgram == 10u; }
 
@@ -804,6 +808,8 @@ MAP_STONE_GBUFFER EvaluateMapSourceStoneGeometry(float2 meshUV, float4 vertexCol
 MAP_SURFACE_SAMPLE EvaluateMapSurface(float2 meshUV, float4 vertexColor, float3 worldPosition,
     float3 tangent, float3 binormal, float3 normal)
 {
+    if (g_SurfaceProgram == 14u)
+        return EvaluateMapSourceLandscapeSurface(meshUV, tangent, binormal, normal);
     if (g_SurfaceProgram == 11u)
         return EvaluateMapSourceIceSurface(meshUV, vertexColor, worldPosition, tangent, binormal, normal);
     if (g_SurfaceProgram == 12u)

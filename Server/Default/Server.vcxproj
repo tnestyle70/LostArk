@@ -61,6 +61,8 @@
   <ItemGroup>
     <ClCompile Include="..\Private\ClientSession.cpp" />
     <ClCompile Include="..\Private\GuideCatalog.cpp" />
+    <ClCompile Include="..\Private\GameRoom_MaharakaAI.cpp" />
+    <ClCompile Include="..\Private\ServerGameplayContractTests_MaharakaAI.cpp" />
     <ClCompile Include="..\Private\GameRoom_Guide.cpp" />
     <ClCompile Include="..\Private\GameRoom_GuideThreat.cpp" />
     <ClCompile Include="..\Private\ServerGameplayContractTests_Guide.cpp" />

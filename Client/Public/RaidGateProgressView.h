@@ -53,6 +53,8 @@ public:
 	/* LOA-font text pass; call from the Level's Render after its own sprites. The panel's
 	   labels are HUD text, the prompt's are modal text (CUITextOcclusion). */
 	void Render_Text() const;
+	/* Shared pre-entry message and countdown, matching the Kouku gate 3 terrace. */
+	static void Render_AssemblyCountdown(f32_t secondsLeft);
 
 private:
 	void Set_PromptVisible(bool_t bVisible);

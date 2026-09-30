@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "compositionId": "boss.composition.valtan",
   "sourceRevision": 4,
-  "compositionRevision": "ec88cb27193085d19b85572f268db9c9b07f4c8c1cf6116d98db29423ece15f8",
+  "compositionRevision": "b6ffaf21e0c7eac376458f8282e27be21bdec12520bebb63146a500b69ff1a20",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "Valtan Boss Composition",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "ec88cb27193085d19b85572f268db9c9b07f4c8c1cf6116d98db29423ece15f8",
+    "sourceManifestId": "b6ffaf21e0c7eac376458f8282e27be21bdec12520bebb63146a500b69ff1a20",
     "files": [
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
@@ -27,8 +27,8 @@
       },
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
-        "sha256": "96d281e97847c8fe53291ef8d1d825494cefef35f3ae9a8eb20fb6a0bdad4032",
-        "bytes": 138890
+        "sha256": "ac49f5aba903867df4605700c5b4de0bcd528ffe32b4f7c640311d457f4e198a",
+        "bytes": 140990
       },
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json",
@@ -481,6 +481,16 @@
         "bytes": 27565
       },
       {
+        "path": "Data/Effects/Authored/effect.valtan.sky.source.chaosgate.effect.json",
+        "sha256": "2a660053bb7e4a84ee2e285c1c8fabf7d2a9396d7c18cf2299cd106d7b8ceb3a",
+        "bytes": 653476
+      },
+      {
+        "path": "Data/Effects/Authored/effect.valtan.sky.source.spacehole.effect.json",
+        "sha256": "58684569df8c3afa36ec7ab25da6bd2030ac57917a05c14f669955f71fa8c33f",
+        "bytes": 115239
+      },
+      {
         "path": "Data/Effects/Authored/effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_atk_01_03.effect.json",
         "sha256": "d44ce2f9f6f69bab31a782cc18195759aba5700bbe992a7667bd3bedefd24a6a",
         "bytes": 981105
@@ -502,8 +512,8 @@
       },
       {
         "path": "Data/Effects/Authored/effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_04.effect.json",
-        "sha256": "cea66ec6d06f3e89619be4b1d2d7d92bba1655f52af26d062cbd0b9e75a06092",
-        "bytes": 262466
+        "sha256": "918a0a9f0e7aac546a2af29ccfae07a8a7c09b72451e176476062239f261d549",
+        "bytes": 229600
       },
       {
         "path": "Data/Effects/Authored/effect.valtan.struggling.source-portal-dash.effect.json",
@@ -522,8 +532,8 @@
       },
       {
         "path": "Data/Effects/EffectCatalog.json",
-        "sha256": "ebd63f0d051f188d327114aba6872349ff8e60b710f22782360423efb5003055",
-        "bytes": 378574
+        "sha256": "a5fa518f6df4739da4e1e4af50c178eb6e7b0c73e020fc6bbe888361363697b3",
+        "bytes": 386422
       },
       {
         "path": "Data/Effects/V2/Authored/bingo.bomb.mark_1.effectv2.json",
@@ -2132,8 +2142,8 @@
       },
       {
         "path": "Data/Encounters/Valtan/ValtanEncounter.json",
-        "sha256": "034861ec81db5d0bf1f38c04c36668a31d3e761eab13ac84be5530171218402c",
-        "bytes": 343198
+        "sha256": "0c1d58db456a207e604e2ef38f11c535b31faa94e36644431a7e67101f2d9dc7",
+        "bytes": 343200
       },
       {
         "path": "Data/Sound/CharacterSoundCatalog.json",
@@ -2142,13 +2152,13 @@
       },
       {
         "path": "Data/Valtan/Valtan.combatobjects.json",
-        "sha256": "2101455a6e864be010eba3e42980d3acc60e4059a8b83ad415985ed3951b7662",
-        "bytes": 17961
+        "sha256": "10998bd10a149a7b676b6d043c343214b6a399d6c30301f7de4e7c48e5862dce",
+        "bytes": 18166
       },
       {
         "path": "Data/Valtan/Valtan.gameplay.json",
-        "sha256": "9e21e8d0916a520dd51d47c979bb4b2a30ee4a819b962a29258edb018550aacf",
-        "bytes": 282858
+        "sha256": "18346b43298cddb027f2d76c0ddf7135c6861f58a2159c608f96e38a3422b601",
+        "bytes": 282860
       },
       {
         "path": "Data/Valtan/Valtan.legacy-compatibility.json",
@@ -2157,8 +2167,8 @@
       },
       {
         "path": "Data/Valtan/Valtan.presentation.json",
-        "sha256": "55e5e31476488c14d793aeedf16c8186648fb1b0733d689f670e96faa6c04c6e",
-        "bytes": 343569
+        "sha256": "cd2137f286a1abf7efb729fe37852f0b5cbcd4099adeb15446889336c48d9077",
+        "bytes": 356574
       },
       {
         "path": "Data/Valtan/Valtan.worldeventsets.json",
@@ -6586,7 +6596,7 @@
                   "repeatPolicy": "once",
                   "localTransform": {
                     "position": [
-                      0,
+                      -0.75,
                       0,
                       0
                     ],
@@ -7538,7 +7548,7 @@
                   "repeatPolicy": "once",
                   "localTransform": {
                     "position": [
-                      0,
+                      -0.75,
                       0,
                       0
                     ],
@@ -10062,6 +10072,82 @@
                     ]
                   },
                   "mappingBasis": "PROJECT_AUTHORED"
+                },
+                {
+                  "cueId": "cue.valtan.six-pizza.sky.spacehole",
+                  "occurrenceId": "cue.valtan.six-pizza.sky.spacehole.occurrence.01",
+                  "effectAssetId": "effect.valtan.sky.source.spacehole",
+                  "timingBasis": "STAGE_CLOCK",
+                  "stageOffsetMs": 0,
+                  "stageEndMs": 20400,
+                  "playbackOffsetMs": 3000,
+                  "anchorSlotId": "map",
+                  "followPolicy": "snapshot",
+                  "stopPolicy": "cue_end",
+                  "repeatPolicy": "once",
+                  "localTransform": {
+                    "position": [
+                      156.574375,
+                      60.043125,
+                      -121.97296875
+                    ],
+                    "rotationDegrees": [
+                      180,
+                      0,
+                      0
+                    ],
+                    "scale": [
+                      0.359999991953373,
+                      0.479999989271164,
+                      0.359999991953373
+                    ]
+                  },
+                  "scalePolicy": {
+                    "kind": "ARENA_ABSOLUTE",
+                    "worldScale": [
+                      1,
+                      1,
+                      1
+                    ]
+                  }
+                },
+                {
+                  "cueId": "cue.valtan.six-pizza.sky.chaosgate",
+                  "occurrenceId": "cue.valtan.six-pizza.sky.chaosgate.occurrence.01",
+                  "effectAssetId": "effect.valtan.sky.source.chaosgate",
+                  "timingBasis": "STAGE_CLOCK",
+                  "stageOffsetMs": 0,
+                  "stageEndMs": 20400,
+                  "playbackOffsetMs": 8000,
+                  "anchorSlotId": "map",
+                  "followPolicy": "snapshot",
+                  "stopPolicy": "cue_end",
+                  "repeatPolicy": "once",
+                  "localTransform": {
+                    "position": [
+                      158.42,
+                      138.4,
+                      -125.12
+                    ],
+                    "rotationDegrees": [
+                      0,
+                      0,
+                      0
+                    ],
+                    "scale": [
+                      0.5,
+                      0.5,
+                      0.5
+                    ]
+                  },
+                  "scalePolicy": {
+                    "kind": "ARENA_ABSOLUTE",
+                    "worldScale": [
+                      1,
+                      1,
+                      1
+                    ]
+                  }
                 }
               ],
               "cameraInvocations": []
@@ -10669,8 +10755,8 @@
                   "repeatPolicy": "once",
                   "localTransform": {
                     "position": [
-                      0,
-                      0,
+                      -3.6700000762939453,
+                      0.6600000262260437,
                       0
                     ],
                     "rotationDegrees": [
@@ -17468,7 +17554,7 @@
                     ],
                     "rotationDegrees": [
                       0,
-                      0,
+                      90,
                       0
                     ],
                     "scale": [
@@ -19681,7 +19767,7 @@
                 {
                   "outcome": "TIMEOUT",
                   "nextActionId": null,
-                  "nextPatternId": "VALTAN_GHOST_DEATH_AUDITION"
+                  "nextPatternId": "VALTAN_GHOST_RESPAWN_AUDITION"
                 }
               ],
               "animation": {
@@ -33722,7 +33808,7 @@
                   "rotationBasis": "BOSS_YAW",
                   "localTransform": {
                     "translation": [
-                      0,
+                      -0.75,
                       0,
                       0
                     ],
@@ -36788,7 +36874,7 @@
                   "rotationBasis": "BOSS_YAW",
                   "localTransform": {
                     "translation": [
-                      0,
+                      -0.75,
                       0,
                       0
                     ],
@@ -46169,6 +46255,118 @@
                 }
               },
               {
+                "cueId": "cue.valtan.six-pizza.sky.chaosgate",
+                "kind": "EFFECT_V1",
+                "scope": {
+                  "patternId": "VALTAN_SIX_PIZZA_106",
+                  "stageId": "STEP_01",
+                  "actionId": "valtan.sequence.center-six-pizza-charge.step-01"
+                },
+                "clock": {
+                  "basis": "STAGE",
+                  "startMs": 0,
+                  "repeatPolicy": "ONCE"
+                },
+                "stopPolicy": "CUE_END",
+                "anchor": {
+                  "kind": "BOSS_SLOT",
+                  "slotId": "map",
+                  "followPolicy": "SNAPSHOT",
+                  "rotationBasis": "BOSS_YAW",
+                  "localTransform": {
+                    "translation": [
+                      158.42,
+                      138.4,
+                      -125.12
+                    ],
+                    "rotation": [
+                      0,
+                      0,
+                      0
+                    ],
+                    "scale": [
+                      0.5,
+                      0.5,
+                      0.5
+                    ]
+                  }
+                },
+                "payload": {
+                  "effectAssetId": "effect.valtan.sky.source.chaosgate",
+                  "playbackOffsetMs": 8000,
+                  "scalePolicy": {
+                    "kind": "ARENA_ABSOLUTE",
+                    "worldScale": [
+                      1,
+                      1,
+                      1
+                    ]
+                  },
+                  "sourceClock": {
+                    "basis": "STAGE",
+                    "startMs": 0,
+                    "endMs": 20400
+                  }
+                },
+                "endMs": 20400
+              },
+              {
+                "cueId": "cue.valtan.six-pizza.sky.spacehole",
+                "kind": "EFFECT_V1",
+                "scope": {
+                  "patternId": "VALTAN_SIX_PIZZA_106",
+                  "stageId": "STEP_01",
+                  "actionId": "valtan.sequence.center-six-pizza-charge.step-01"
+                },
+                "clock": {
+                  "basis": "STAGE",
+                  "startMs": 0,
+                  "repeatPolicy": "ONCE"
+                },
+                "stopPolicy": "CUE_END",
+                "anchor": {
+                  "kind": "BOSS_SLOT",
+                  "slotId": "map",
+                  "followPolicy": "SNAPSHOT",
+                  "rotationBasis": "BOSS_YAW",
+                  "localTransform": {
+                    "translation": [
+                      156.574375,
+                      60.043125,
+                      -121.97296875
+                    ],
+                    "rotation": [
+                      180,
+                      0,
+                      0
+                    ],
+                    "scale": [
+                      0.359999991953373,
+                      0.479999989271164,
+                      0.359999991953373
+                    ]
+                  }
+                },
+                "payload": {
+                  "effectAssetId": "effect.valtan.sky.source.spacehole",
+                  "playbackOffsetMs": 3000,
+                  "scalePolicy": {
+                    "kind": "ARENA_ABSOLUTE",
+                    "worldScale": [
+                      1,
+                      1,
+                      1
+                    ]
+                  },
+                  "sourceClock": {
+                    "basis": "STAGE",
+                    "startMs": 0,
+                    "endMs": 20400
+                  }
+                },
+                "endMs": 20400
+              },
+              {
                 "cueId": "cue.sound.valtan.sequence.center-six-pizza-charge.step-01.clip-01.01",
                 "kind": "SOUND",
                 "scope": {
@@ -48932,8 +49130,8 @@
                   "rotationBasis": "BOSS_YAW",
                   "localTransform": {
                     "translation": [
-                      0,
-                      0,
+                      -3.6700000762939453,
+                      0.6600000262260437,
                       0
                     ],
                     "rotation": [
@@ -78735,7 +78933,7 @@
                     ],
                     "rotation": [
                       0,
-                      0,
+                      90,
                       0
                     ],
                     "scale": [
@@ -88198,7 +88396,7 @@
                 {
                   "outcome": "TIMEOUT",
                   "nextActionId": null,
-                  "nextPatternId": "VALTAN_GHOST_DEATH_AUDITION"
+                  "nextPatternId": "VALTAN_GHOST_RESPAWN_AUDITION"
                 }
               ]
             },
@@ -118974,7 +119172,7 @@
             ],
             "rotationDegrees": [
               0,
-              0,
+              90,
               0
             ],
             "scale": [
@@ -119536,7 +119734,7 @@
           "repeatPolicy": "once",
           "localTransform": {
             "position": [
-              0,
+              -0.75,
               0,
               0
             ],
@@ -119606,7 +119804,7 @@
           "repeatPolicy": "once",
           "localTransform": {
             "position": [
-              0,
+              -0.75,
               0,
               0
             ],
@@ -119641,8 +119839,8 @@
           "repeatPolicy": "once",
           "localTransform": {
             "position": [
-              0,
-              0,
+              -3.6700000762939453,
+              0.6600000262260437,
               0
             ],
             "rotationDegrees": [
@@ -120308,6 +120506,88 @@
             "kind": "OWNER_RELATIVE"
           },
           "playbackOffsetMs": 0
+        },
+        {
+          "bindingId": "cue.valtan.six-pizza.sky.spacehole",
+          "occurrenceId": "cue.valtan.six-pizza.sky.spacehole.occurrence.01",
+          "patternId": "VALTAN_SIX_PIZZA_106",
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.center-six-pizza-charge.step-01",
+          "timingBasis": "STAGE_CLOCK",
+          "stageOffsetMs": 0,
+          "stageEndMs": 20400,
+          "effectAssetId": "effect.valtan.sky.source.spacehole",
+          "anchorSlotId": "map",
+          "followPolicy": "snapshot",
+          "stopPolicy": "cue_end",
+          "repeatPolicy": "once",
+          "localTransform": {
+            "position": [
+              156.574375,
+              60.043125,
+              -121.97296875
+            ],
+            "rotationDegrees": [
+              180,
+              0,
+              0
+            ],
+            "scale": [
+              0.359999991953373,
+              0.479999989271164,
+              0.359999991953373
+            ]
+          },
+          "scalePolicy": {
+            "kind": "ARENA_ABSOLUTE",
+            "worldScale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "playbackOffsetMs": 3000
+        },
+        {
+          "bindingId": "cue.valtan.six-pizza.sky.chaosgate",
+          "occurrenceId": "cue.valtan.six-pizza.sky.chaosgate.occurrence.01",
+          "patternId": "VALTAN_SIX_PIZZA_106",
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.center-six-pizza-charge.step-01",
+          "timingBasis": "STAGE_CLOCK",
+          "stageOffsetMs": 0,
+          "stageEndMs": 20400,
+          "effectAssetId": "effect.valtan.sky.source.chaosgate",
+          "anchorSlotId": "map",
+          "followPolicy": "snapshot",
+          "stopPolicy": "cue_end",
+          "repeatPolicy": "once",
+          "localTransform": {
+            "position": [
+              158.42,
+              138.4,
+              -125.12
+            ],
+            "rotationDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "scalePolicy": {
+            "kind": "ARENA_ABSOLUTE",
+            "worldScale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "playbackOffsetMs": 8000
         }
       ]
     },

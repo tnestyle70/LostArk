@@ -34,6 +34,9 @@ public:
 	virtual HRESULT Render() override;
 
 	bool_t Begin(const PLAYER_SKILL_DEFINITION& skill);
+	bool_t Begin(
+		const PLAYER_SKILL_TARGET_PREVIEW& rangePreview,
+		const PLAYER_SKILL_TARGET_PREVIEW& targetPreview);
 	void Set_State(
 		const float3_t& casterPosition,
 		const float3_t& targetPosition,

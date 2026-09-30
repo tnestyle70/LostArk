@@ -2211,7 +2211,7 @@ bool_t Client::CValtanActionWorkbench::Select_PatternById(
 				Revision, bAuthoringDirty, AuthoringStatus);
 		}
 		std::string SoundStatus;
-		if (bAuthoringDirty || Is_PatternSoundDraftDirty(SoundStatus) ||
+		if (bAuthoringDirty || Is_PatternSoundDraftDirty(SoundStatus) || m_CombatObjectSounds.bDraftDirty ||
 			CEffectV2Catalog::Get().Has_BossValtanBindingDraft())
 		{
 			strOutStatus =
@@ -2581,6 +2581,11 @@ bool_t Client::CValtanActionWorkbench::Reload_Canonical(
 	m_bLoadAttempted = true;
 	m_bCanonicalReloadRetryPending = false;
 	Invalidate_EffectivePatternCache();
+	if (m_CombatObjectSounds.bDraftDirty)
+	{
+		m_strStatus = "Canonical reload blocked: save or explicitly discard the unsaved Object Sound draft.";
+		return false;
+	}
 	std::string SoundDraftStatus;
 	if (Is_PatternSoundDraftDirty(SoundDraftStatus))
 	{
@@ -5280,7 +5285,8 @@ bool_t Client::CValtanActionWorkbench::Play_EffectivePreview(
 	m_PendingLocalPreview.reset();
 	Ensure_TimelineCache(&Pattern);
 	if (!m_pAnimationTool->Play_ValtanCompositionDraftPattern(
-			Pattern, m_ePreviewPath, status, m_iTimelineDurationMs))
+			Pattern, m_ePreviewPath, status, m_iTimelineDurationMs,
+			m_bCombatObjectSoundsReady ? &m_CombatObjectSounds : nullptr))
 	{
 		return false;
 	}
@@ -5305,7 +5311,7 @@ bool_t Client::CValtanActionWorkbench::Play_ServerVerification(
 	std::string& status)
 {
 #ifdef _DEBUG
-	if (m_bAuthoringDraftDirty || m_bPatternSoundDependencyDirty || CEffectV2Catalog::Get().Has_BossValtanBindingDraft())
+	if (m_bAuthoringDraftDirty || m_bPatternSoundDependencyDirty || m_CombatObjectSounds.bDraftDirty || CEffectV2Catalog::Get().Has_BossValtanBindingDraft())
 	{
 		status = "Save and publish the Pattern before Play Pattern. Play Preview uses the current draft.";
 		return false;
@@ -6436,6 +6442,8 @@ bool_t Client::CValtanActionWorkbench::Has_UnsavedCompositionDrafts(
 	std::string SoundStatus;
 	if (Is_PatternSoundDraftDirty(SoundStatus))
 		DirtyOwners.emplace_back("Pattern Sound");
+	if (m_CombatObjectSounds.bDraftDirty)
+		DirtyOwners.emplace_back("Object Sound");
 	if (CEffectV2Catalog::Get().Has_BossValtanBindingDraft())
 		DirtyOwners.emplace_back("Effect V2");
 	if (DirtyOwners.empty())
@@ -6468,6 +6476,10 @@ Discard_CompositionDraftsAndReload()
 			"Pattern switch discard requires the Pattern and Pattern Sound typed owners; the current selection was preserved.";
 		return false;
 	}
+	const bool_t bDiscardObjectSound = m_CombatObjectSounds.bDraftDirty;
+	VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT stagedObjectSounds;
+	if (bDiscardObjectSound && !CValtanCombatObjectSoundCueDocument::Load_Source(stagedObjectSounds, m_strCombatObjectSoundStatus))
+	{ m_strStatus = "Object Sound discard/reload rejected; drafts preserved. " + m_strCombatObjectSoundStatus; return false; }
 	const bool_t bDiscardBalance = m_pBalanceTool->Is_ValtanDraftDirty();
 	std::string SoundStatus;
 	const bool_t bDiscardSound = Is_PatternSoundDraftDirty(SoundStatus);
@@ -6514,6 +6526,7 @@ Discard_CompositionDraftsAndReload()
 			DiscardStatus;
 		return false;
 	}
+	if (bDiscardObjectSound) m_CombatObjectSounds = std::move(stagedObjectSounds);
 	if (!Reload_Canonical())
 	{
 		m_strStatus =
@@ -6762,8 +6775,9 @@ bool_t Client::CValtanActionWorkbench::Save_Reload()
 	const bool_t bSaveSound = Is_PatternSoundDraftDirty(SoundStatus);
 	const bool_t bSaveEffectV2 =
 		CEffectV2Catalog::Get().Has_BossValtanBindingDraft();
+	const bool_t bSaveObjectSound = m_CombatObjectSounds.bDraftDirty;
 	const bool_t bSaveShake = m_PatternShakes.bDraftDirty;
-	if (!bSavePattern && !bSaveSound && !bSaveEffectV2 && !bSaveShake)
+	if (!bSavePattern && !bSaveSound && !bSaveEffectV2 && !bSaveShake && !bSaveObjectSound)
 	{
 		if (bPublishAfterSave)
 		{
@@ -6844,7 +6858,17 @@ bool_t Client::CValtanActionWorkbench::Save_Reload()
 	if (bSaveShake && !CValtanPatternShakeCueDocument::Prepare_Save(m_PatternShakes,
 		PatternShakeBaselineBytes, PatternShakeCandidateBytes, iPatternShakeDraftGeneration, m_strShakeStatus))
 	{ m_strStatus = "[Camera Shake] Nothing was saved. " + m_strShakeStatus; return false; }
+	std::string ObjectSoundBaselineBytes, ObjectSoundCandidateBytes;
+	uint64_t iObjectSoundDraftGeneration = 0u;
+	if (bSaveObjectSound && !CValtanCombatObjectSoundCueDocument::Prepare_Save(m_CombatObjectSounds,
+		ObjectSoundBaselineBytes, ObjectSoundCandidateBytes, iObjectSoundDraftGeneration, m_strCombatObjectSoundStatus))
+	{ m_strStatus = "[Object Sound] Nothing was saved. " + m_strCombatObjectSoundStatus; return false; }
 	CBalanceTool::VALTAN_COMPOSITION_OWNER_DRAFTS OwnerDrafts;
+	if (bSaveObjectSound)
+	{
+		OwnerDrafts.combatObjectSoundBaselineBytes = std::move(ObjectSoundBaselineBytes);
+		OwnerDrafts.combatObjectSoundCandidateBytes = ObjectSoundCandidateBytes;
+	}
 	if (bSaveShake)
 	{
 		OwnerDrafts.patternShakeBaselineBytes = std::move(PatternShakeBaselineBytes);
@@ -6876,6 +6900,9 @@ bool_t Client::CValtanActionWorkbench::Save_Reload()
 	m_iPendingPatternSoundDraftGeneration =
 		iPatternSoundDraftGeneration;
 	m_iPendingEffectV2DraftRevision = iEffectV2DraftRevision;
+	m_iPendingCombatObjectSoundDraftGeneration = iObjectSoundDraftGeneration;
+	m_strPendingCombatObjectSoundCandidateBytes = std::move(ObjectSoundCandidateBytes);
+	m_bPendingCombatObjectSoundOwner = bSaveObjectSound;
 	m_iPendingPatternShakeDraftGeneration = iPatternShakeDraftGeneration;
 	m_strPendingPatternShakeCandidateBytes = std::move(PatternShakeCandidateBytes);
 	m_bPendingPatternShakeOwner = bSaveShake;
@@ -6904,6 +6931,9 @@ void Client::CValtanActionWorkbench::Mark_SourceCommitted(
 
 void Client::CValtanActionWorkbench::Clear_PendingSaveOwnerReceipt()
 {
+	m_iPendingCombatObjectSoundDraftGeneration = 0u;
+	m_strPendingCombatObjectSoundCandidateBytes.clear();
+	m_bPendingCombatObjectSoundOwner = false;
 	m_iPendingPatternShakeDraftGeneration = 0u;
 	m_strPendingPatternShakeCandidateBytes.clear();
 	m_bPendingPatternShakeOwner = false;
@@ -6960,6 +6990,17 @@ bool_t Client::CValtanActionWorkbench::Accept_PendingSaveOwners(
 			m_bPendingEffectV2Owner = false;
 			m_strPendingEffectV2CandidateBytes.clear();
 			m_iPendingEffectV2DraftRevision = 0u;
+		}
+	}
+	if (m_bPendingCombatObjectSoundOwner)
+	{
+		if (!CValtanCombatObjectSoundCueDocument::Accept_Save(m_CombatObjectSounds,
+			m_iPendingCombatObjectSoundDraftGeneration, m_strPendingCombatObjectSoundCandidateBytes, OwnerStatus))
+		{ bAccepted = false; strOutStatus += " [Object Sound] " + OwnerStatus; }
+		else
+		{
+			m_bPendingCombatObjectSoundOwner = false; m_iPendingCombatObjectSoundDraftGeneration = 0u;
+			m_strPendingCombatObjectSoundCandidateBytes.clear();
 		}
 	}
 	if (m_bPendingPatternShakeOwner)
@@ -7536,6 +7577,11 @@ Render_PendingPatternSelectionModal()
 	if (Is_PatternSoundDraftDirty(SoundStatus))
 	{
 		ImGui::BulletText("Pattern Sound owner");
+		bListedDraft = true;
+	}
+	if (m_CombatObjectSounds.bDraftDirty)
+	{
+		ImGui::BulletText("Object Sound owner");
 		bListedDraft = true;
 	}
 	if (CEffectV2Catalog::Get().Has_BossValtanBindingDraft())
@@ -8170,7 +8216,7 @@ void Client::CValtanActionWorkbench::Render_Preview(
 	ImGui::TextWrapped(
 		"Use this Play for Pattern order verification. It resets the authoritative Valtan from boss.valtan.center and runs the saved Server stages, movement, combat objects, animation, Effect, Sound, camera and world events.");
 	ImGui::BeginDisabled(nullptr == pPattern || !bServerVerificationAdmitted || !m_bProductSourceReady ||
-		m_bAuthoringDraftDirty || m_bPatternSoundDependencyDirty || CEffectV2Catalog::Get().Has_BossValtanBindingDraft() ||
+		m_bAuthoringDraftDirty || m_bPatternSoundDependencyDirty || m_CombatObjectSounds.bDraftDirty || CEffectV2Catalog::Get().Has_BossValtanBindingDraft() ||
 		IsValtanServerPlaybackBusy(m_pValtanBossTool));
 	if (ImGui::Button("Play Pattern##PreviewPanel", ImVec2(-1.f, 0.f)))
 	{
@@ -8180,7 +8226,7 @@ void Client::CValtanActionWorkbench::Render_Preview(
 	}
 	ImGui::EndDisabled();
 	if (!bServerVerificationAdmitted || !m_bProductSourceReady || m_bAuthoringDraftDirty ||
-		m_bPatternSoundDependencyDirty || CEffectV2Catalog::Get().Has_BossValtanBindingDraft())
+		m_bPatternSoundDependencyDirty || m_CombatObjectSounds.bDraftDirty || CEffectV2Catalog::Get().Has_BossValtanBindingDraft())
 	{
 		ImGui::TextDisabled(
 			"Save and publish the selected Pattern, start the Debug Server, enter Valtan, and keep a living combat-ready player in the arena.");
@@ -10043,6 +10089,42 @@ bool_t Client::CValtanActionWorkbench::Apply_StageDurationDraft(
 			m_bPatternShakesReady ? &m_PatternShakes : nullptr, pattern, *stage, draft, status);
 }
 
+void Client::CValtanActionWorkbench::Render_CombatObjectSoundDetails(
+	const std::string& archetypeId, const std::string& hitId, const bool_t editable)
+{
+	if (!m_bCombatObjectSoundsReady)
+	{ ImGui::TextWrapped("Object Sound unavailable: %s", m_strCombatObjectSoundStatus.c_str()); return; }
+	const auto found = std::find_if(m_CombatObjectSounds.Cues.begin(), m_CombatObjectSounds.Cues.end(),
+		[&](const auto& cue) { return cue.strCombatObjectArchetypeId == archetypeId && cue.strHitId == hitId; });
+	if (found == m_CombatObjectSounds.Cues.end())
+	{ ImGui::TextDisabled("This hit has no authored Object Sound binding."); return; }
+	// A value copy survives a successful document replacement from the controls below.
+	const auto cue = *found;
+	std::string event = cue.strSoundEvent;
+	int offset = static_cast<int>(cue.iPlaybackOffsetMs);
+	bool changed = false;
+	ImGui::PushID(cue.strBindingId.c_str());
+	ImGui::BeginDisabled(!editable);
+	if (ImGui::BeginCombo("Explosion Sound event", event.c_str()))
+	{
+		for (const auto& value : m_PatternSoundEvents)
+			if (ImGui::Selectable(value.c_str(), value == event))
+			{ event = value; changed = event != cue.strSoundEvent; }
+		ImGui::EndCombo();
+	}
+	changed |= ImGui::DragInt("Sound source offset (ms)", &offset, 1.f, 0, 600000, "%d", ImGuiSliderFlags_AlwaysClamp);
+	if (changed)
+	{
+		(void)CValtanCombatObjectSoundCueDocument::Update_CueDraft(m_CombatObjectSounds,
+			cue.strBindingId, event, static_cast<uint32_t>(offset), m_strCombatObjectSoundStatus);
+		m_strStatus = m_strCombatObjectSoundStatus;
+	}
+	ImGui::EndDisabled();
+	ImGui::TextDisabled("Sound fires with this hit. Source offset skips WAV lead-in; it does not delay the explosion.");
+	ImGui::TextDisabled("Save & Publish commits Object Sound with the collider edits.");
+	ImGui::PopID();
+}
+
 bool_t Client::CValtanActionWorkbench::Render_AuxiliaryDetails(
 	const VALTAN_PATTERN_VIEW& pattern, const VALTAN_STAGE_VIEW& stage, bool editable)
 {
@@ -10142,6 +10224,39 @@ bool_t Client::CValtanActionWorkbench::Render_AuxiliaryDetails(
 		auto cue = *found;
 		ImGui::TextWrapped("%s", cue.strCombatObjectArchetypeId.c_str());
 		ImGui::TextWrapped("Shared archetype lifetime changes affect all occurrences of this resource.");
+		ImGui::TextWrapped("Active Effect: %s", cue.strEffectAssetId.c_str());
+		for (const auto& sourceHit : cue.Hits)
+		{
+			if (sourceHit.strTriggerKind != "TIMED" || (sourceHit.strHitShape != "CIRCLE" && sourceHit.strHitShape != "RING")) continue;
+			auto hit = sourceHit;
+			ImGui::PushID(hit.strHitId.c_str());
+			ImGui::SeparatorText("Explosion / Damage Collider");
+			ImGui::TextWrapped("%s | %s", hit.strHitId.c_str(), hit.strServerDamageProfileId.c_str());
+			ImGui::BeginDisabled(!editable || !m_pBalanceTool);
+			if (cue.OwnerHitChain) ImGui::Text("Original preparation: %u ms. Direct rock explodes after preparation; other rocks add the delay below.", hit.iAtMs);
+			int clock = static_cast<int>(cue.OwnerHitChain ? cue.OwnerHitChain->iDelayMs : hit.iAtMs);
+			bool impactChanged = ImGui::DragInt(cue.OwnerHitChain ? "Other rocks preparation delay (ms)" : "Explosion after spawn (ms)",
+				&clock, 1.f, cue.OwnerHitChain ? 1 : 0, static_cast<int>(cue.iLifetimeMs - 1u), "%d", ImGuiSliderFlags_AlwaysClamp);
+			impactChanged |= ImGui::DragFloat("Collider radius (m)", &hit.fOuterRadiusM, .05f, .01f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+			if (hit.strHitShape == "RING") impactChanged |= ImGui::DragFloat("Inner radius (m)", &hit.fInnerRadiusM, .05f, 0.f, 999.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+			impactChanged |= ImGui::DragFloat("Knockback distance (m)", &hit.fPushRangeM, .05f, 0.f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+			int pushMs = static_cast<int>(hit.iPushMs), downMs = static_cast<int>(hit.iDownMs);
+			impactChanged |= ImGui::DragInt("Knockback duration (ms)", &pushMs, 1.f, 0, 600000, "%d", ImGuiSliderFlags_AlwaysClamp);
+			impactChanged |= ImGui::Checkbox("Knockdown", &hit.bKnockdown);
+			impactChanged |= ImGui::DragInt("Down duration (ms)", &downMs, 10.f, 0, 600000, "%d", ImGuiSliderFlags_AlwaysClamp);
+			hit.iPushMs = static_cast<uint32_t>(pushMs); hit.iDownMs = static_cast<uint32_t>(downMs);
+			if (!cue.OwnerHitChain) hit.iAtMs = static_cast<uint32_t>(clock);
+			if (impactChanged)
+			{
+				std::string status;
+				finish(m_pBalanceTool->Set_ValtanCombatObjectImpactDraft(pattern.strPatternId, stage.strStageId,
+					cue.strCombatObjectArchetypeId, hit, cue.OwnerHitChain ? static_cast<uint32_t>(clock) : 0u, status), status);
+			}
+			ImGui::EndDisabled();
+			Render_CombatObjectSoundDetails(cue.strCombatObjectArchetypeId, hit.strHitId, editable);
+			ImGui::TextDisabled("Effect, Sound and damage share this Server hit. Preview wires do not damage players.");
+			ImGui::PopID();
+		}
 		ImGui::BeginDisabled(!editable || !m_pBalanceTool);
 		int start = static_cast<int>(cue.iFirstSpawnOffsetMs), lifetime = static_cast<int>(cue.iLifetimeMs);
 		int count = static_cast<int>(cue.iSpawnValue), waves = static_cast<int>((std::max)(1u, cue.iSpawnScheduleCount)), interval = static_cast<int>(cue.iSpawnIntervalMs);
@@ -10240,7 +10355,7 @@ void Client::CValtanActionWorkbench::Render_Details(
 	ImGui::SeparatorText("Box Detail");
     const bool saveReady = pPattern && bPatternMutationAdmitted && m_pBalanceTool &&
         !m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() && !m_pBalanceTool->Is_ServerRuntimeSetPublishRunning() &&
-        (m_bAuthoringDraftDirty || m_bPatternSoundDependencyDirty || CEffectV2Catalog::Get().Has_BossValtanBindingDraft() ||
+        (m_bAuthoringDraftDirty || m_bPatternSoundDependencyDirty || m_CombatObjectSounds.bDraftDirty || CEffectV2Catalog::Get().Has_BossValtanBindingDraft() ||
             Has_PendingSelectedEffectDetails(pPattern));
     ImGui::BeginDisabled(!saveReady);
     if (ImGui::Button("Save Source##ValtanBoxDetail"))
@@ -12141,7 +12256,7 @@ void Client::CValtanActionWorkbench::Render_Timeline(
         m_bTimelineMoveActive = m_bTimelineTrimActive = false;
         m_strStatus = "Timeline gesture canceled because Escape was pressed or its source draft changed; timing preserved.";
     }
-	const bool_t bHasUnsavedChanges = m_bAuthoringDraftDirty || m_bPatternSoundDependencyDirty ||
+	const bool_t bHasUnsavedChanges = m_bAuthoringDraftDirty || m_bPatternSoundDependencyDirty || m_CombatObjectSounds.bDraftDirty ||
 		CEffectV2Catalog::Get().Has_BossValtanBindingDraft() || Has_PendingSelectedEffectDetails(pPattern);
 	const bool_t bSaveJobBlocking = m_pBalanceTool &&
 		(m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() || m_pBalanceTool->Is_ServerRuntimeSetPublishRunning());
@@ -15701,7 +15816,8 @@ void Client::CValtanActionWorkbench::Render_WorkbenchPane(
 		break;
 	case COMPOSITION_WORKBENCH_PANE::PATTERNS:
 		Render_PendingPatternSelectionModal();
-		Render_PatternsPane(m_pWorkbenchFramePattern, m_pWorkbenchFrameStage,
+		if (m_bObjectWorkspace) Render_WorldObjectResources();
+		else Render_PatternsPane(m_pWorkbenchFramePattern, m_pWorkbenchFrameStage,
 			m_bWorkbenchFramePatternMutationAdmitted);
 		break;
 	case COMPOSITION_WORKBENCH_PANE::RESOURCES:

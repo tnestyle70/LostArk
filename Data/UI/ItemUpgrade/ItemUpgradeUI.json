@@ -5,6 +5,19 @@
   "classes": ["Default"],
   "slots": [
     {
+      "id": "ItemUpgrade_WindowBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 191.809723, "y": 98.5712891, "width": 948, "height": 489.333313 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/buildup_result_modal_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
       "id": "ItemUpgrade_SuccessModalBg",
       "ownerClass": null,
       "type": 0,

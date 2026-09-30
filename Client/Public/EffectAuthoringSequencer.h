@@ -18,6 +18,7 @@
 #include "EffectResourceCatalog.h"
 #include "EffectV2_Catalog.h"
 #include "EffectV2_Runtime.h"
+#include "WorldSequencePlayer.h"
 #include <functional>
 #include <memory>
 #include <optional>
@@ -29,6 +30,7 @@ namespace Engine { class CCamera; }
 namespace Client
 {
 class CEffectObject;
+class CLevel_Development;
 class DATA_JSON_VALUE;
 struct EFFECT_DOCUMENT_DESC;
 struct ANIMATION_SKILL_BINDING;
@@ -43,6 +45,7 @@ class CEffectAuthoringSequencer final
 public:
     using V1_FACTORY = std::function<bool(const EFFECT_RESOURCE_KEY&, const std::vector<std::string>&, const float4x4_t&,
         std::shared_ptr<CEffectObject>&, std::uint32_t&, std::uint32_t&, std::string&)>;
+    using V1_DOCUMENT_PROVIDER = std::function<bool(const EFFECT_RESOURCE_KEY&, EFFECT_DOCUMENT_DESC&, std::string&)>;
     using V1_RELEASE = std::function<void(const std::shared_ptr<CEffectObject>&)>;
     using V1_ANCHOR_PROVIDER = std::function<bool(const std::shared_ptr<CEffectObject>&,
         const float4x4_t&, bool, float, std::unordered_map<std::string, float4x4_t>&, std::string&)>;
@@ -57,6 +60,7 @@ public:
     void Set_Camera(const std::shared_ptr<Engine::CCamera>& camera);
     void Set_V1Callbacks(V1_FACTORY factory, V1_RELEASE release);
     void Set_V1AnchorProvider(V1_ANCHOR_PROVIDER provider);
+    void Set_V1DocumentProvider(V1_DOCUMENT_PROVIDER provider) { m_V1Documents = std::move(provider); }
     bool Resolve_KoukuSourceAnchors(const EFFECT_DOCUMENT_DESC& document, const float4x4_t& root, float seconds,
         std::unordered_map<std::string, float4x4_t>& anchors, std::string& error) const;
     void Set_V2SnapshotProvider(V2_SNAPSHOT_PROVIDER provider);
@@ -324,6 +328,24 @@ private:
     // Tool-only target; the saved arrangement and its dirty state never change.
     std::optional<KOUKU_EFFECT_PREVIEW_TARGET> m_KoukuEffectPreview, m_PendingKoukuEffectPreview;
     CKoukuSaydonPresentationPlayer* m_Player = nullptr;
+    struct WORLD_EFFECT_PREVIEW final
+    {
+        std::string assetId, instanceId;
+        std::shared_ptr<CWorldSequencePlayer> player;
+        CWorldSequencePlayer::TARGET_SET targets;
+        CLevel_Development* level = nullptr;
+        std::uint32_t durationMs = 1u;
+    };
+    std::optional<WORLD_EFFECT_PREVIEW> m_WorldEffectPreview, m_PendingWorldEffectPreview;
+    bool Select_MaharakaWorldEffect(const std::string& assetId);
+    bool Select_MaharakaWaterGunEffect(const std::string& assetId);
+    bool Preview_MaharakaWorldEffect(const EFFECT_RESOURCE_KEY& key,
+        const std::vector<std::string>& elements = {}, std::uint32_t focusMs = 0u, bool loop = false);
+    std::weak_ptr<CCharacter> m_WaterGunPreviewCharacter;
+    bool m_PreviousWaterGunPreviewForced = false;
+    std::string m_WaterGunEffectId;
+    std::vector<CLIP> m_WaterGunClips;
+    V1_DOCUMENT_PROVIDER m_V1Documents;
     V1_FACTORY m_V1Factory;
     V1_RELEASE m_V1Release;
     V1_ANCHOR_PROVIDER m_V1Anchors;

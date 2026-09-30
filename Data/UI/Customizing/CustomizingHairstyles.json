@@ -1092,6 +1092,316 @@
           "visualSetId": "character.warlord.pc_wr_48_hair.head"
         }
       ]
+    },
+    "GuardianKnight": {
+      "hairstyle": [
+        {
+          "index": 0,
+          "sourceHairId": "PC_DK_55_Hair",
+          "setId": "pc_dk_55_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_55_hair.head"
+        },
+        {
+          "index": 1,
+          "sourceHairId": "PC_DK_56_Hair",
+          "setId": "pc_dk_56_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_56_hair.head"
+        },
+        {
+          "index": 2,
+          "sourceHairId": "PC_DK_57_Hair",
+          "setId": "pc_dk_57_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_57_hair.head"
+        },
+        {
+          "index": 3,
+          "sourceHairId": "PC_DK_58_Hair",
+          "setId": "pc_dk_58_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_58_hair.head"
+        },
+        {
+          "index": 4,
+          "sourceHairId": "PC_DK_59_Hair",
+          "setId": "pc_dk_59_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_59_hair.head"
+        },
+        {
+          "index": 5,
+          "sourceHairId": "PC_DK_03_Hair",
+          "setId": "pc_dk_03_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_03_hair.head"
+        },
+        {
+          "index": 6,
+          "sourceHairId": "PC_DK_04_Hair",
+          "setId": "pc_dk_04_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_04_hair.head"
+        },
+        {
+          "index": 7,
+          "sourceHairId": "PC_DK_05_Hair",
+          "setId": "pc_dk_05_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_05_hair.head"
+        },
+        {
+          "index": 8,
+          "sourceHairId": "PC_DK_07_Hair",
+          "setId": "pc_dk_07_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_07_hair.head"
+        },
+        {
+          "index": 9,
+          "sourceHairId": "PC_DK_09_Hair",
+          "setId": "pc_dk_09_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_09_hair.head"
+        },
+        {
+          "index": 10,
+          "sourceHairId": "PC_DK_10_Hair",
+          "setId": "pc_dk_10_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_10_hair.head"
+        },
+        {
+          "index": 11,
+          "sourceHairId": "PC_DK_11_Hair",
+          "setId": "pc_dk_11_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_11_hair.head"
+        },
+        {
+          "index": 12,
+          "sourceHairId": "PC_DK_12_Hair",
+          "setId": "pc_dk_12_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_12_hair.head"
+        },
+        {
+          "index": 13,
+          "sourceHairId": "PC_DK_13_Hair",
+          "setId": "pc_dk_13_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_13_hair.head"
+        },
+        {
+          "index": 14,
+          "sourceHairId": "PC_DK_14_Hair",
+          "setId": "pc_dk_14_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_14_hair.head"
+        },
+        {
+          "index": 15,
+          "sourceHairId": "PC_DK_15_Hair",
+          "setId": "pc_dk_15_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_15_hair.head"
+        },
+        {
+          "index": 16,
+          "sourceHairId": "PC_DK_18_Hair",
+          "setId": "pc_dk_18_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_18_hair.head"
+        },
+        {
+          "index": 17,
+          "sourceHairId": "PC_DK_19_Hair",
+          "setId": "pc_dk_19_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_19_hair.head"
+        },
+        {
+          "index": 18,
+          "sourceHairId": "PC_DK_20_Hair",
+          "setId": "pc_dk_20_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_20_hair.head"
+        },
+        {
+          "index": 19,
+          "sourceHairId": "PC_DK_21_Hair",
+          "setId": "pc_dk_21_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_21_hair.head"
+        },
+        {
+          "index": 20,
+          "sourceHairId": "PC_DK_22_Hair",
+          "setId": "pc_dk_22_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_22_hair.head"
+        },
+        {
+          "index": 21,
+          "sourceHairId": "PC_DK_23_Hair",
+          "setId": "pc_dk_23_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_23_hair.head"
+        },
+        {
+          "index": 22,
+          "sourceHairId": "PC_DK_25_Hair",
+          "setId": "pc_dk_25_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_25_hair.head"
+        },
+        {
+          "index": 23,
+          "sourceHairId": "PC_DK_26_Hair",
+          "setId": "pc_dk_26_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_26_hair.head"
+        },
+        {
+          "index": 24,
+          "sourceHairId": "PC_DK_27_Hair",
+          "setId": "pc_dk_27_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_27_hair.head"
+        },
+        {
+          "index": 25,
+          "sourceHairId": "PC_DK_28_Hair",
+          "setId": "pc_dk_28_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_28_hair.head"
+        },
+        {
+          "index": 26,
+          "sourceHairId": "PC_DK_29_Hair",
+          "setId": "pc_dk_29_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_29_hair.head"
+        },
+        {
+          "index": 27,
+          "sourceHairId": "PC_DK_30_Hair",
+          "setId": "pc_dk_30_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_30_hair.head"
+        },
+        {
+          "index": 28,
+          "sourceHairId": "PC_DK_31_Hair",
+          "setId": "pc_dk_31_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_31_hair.head"
+        },
+        {
+          "index": 29,
+          "sourceHairId": "PC_DK_32_Hair",
+          "setId": "pc_dk_32_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_32_hair.head"
+        },
+        {
+          "index": 30,
+          "sourceHairId": "PC_DK_33_Hair",
+          "setId": "pc_dk_33_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_33_hair.head"
+        },
+        {
+          "index": 31,
+          "sourceHairId": "PC_DK_34_Hair",
+          "setId": "pc_dk_34_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_34_hair.head"
+        },
+        {
+          "index": 32,
+          "sourceHairId": "PC_DK_38_Hair",
+          "setId": "pc_dk_38_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_38_hair.head"
+        },
+        {
+          "index": 33,
+          "sourceHairId": "PC_DK_39_Hair",
+          "setId": "pc_dk_39_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_39_hair.head"
+        },
+        {
+          "index": 34,
+          "sourceHairId": "PC_DK_40_Hair",
+          "setId": "pc_dk_40_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_40_hair.head"
+        },
+        {
+          "index": 35,
+          "sourceHairId": "PC_DK_42_Hair",
+          "setId": "pc_dk_42_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_42_hair.head"
+        },
+        {
+          "index": 36,
+          "sourceHairId": "PC_DK_44_Hair",
+          "setId": "pc_dk_44_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_44_hair.head"
+        },
+        {
+          "index": 37,
+          "sourceHairId": "PC_DK_45_Hair",
+          "setId": "pc_dk_45_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_45_hair.head"
+        },
+        {
+          "index": 38,
+          "sourceHairId": "PC_DK_46_Hair",
+          "setId": "pc_dk_46_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_46_hair.head"
+        },
+        {
+          "index": 39,
+          "sourceHairId": "PC_DK_47_Hair",
+          "setId": "pc_dk_47_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_47_hair.head"
+        },
+        {
+          "index": 40,
+          "sourceHairId": "PC_DK_48_Hair",
+          "setId": "pc_dk_48_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_48_hair.head"
+        },
+        {
+          "index": 41,
+          "sourceHairId": "PC_DK_49_Hair",
+          "setId": "pc_dk_49_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_49_hair.head"
+        },
+        {
+          "index": 42,
+          "sourceHairId": "PC_DK_50_Hair",
+          "setId": "pc_dk_50_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_50_hair.head"
+        },
+        {
+          "index": 43,
+          "sourceHairId": "PC_DK_51_Hair",
+          "setId": "pc_dk_51_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_51_hair.head"
+        },
+        {
+          "index": 44,
+          "sourceHairId": "PC_DK_52_Hair",
+          "setId": "pc_dk_52_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_52_hair.head"
+        },
+        {
+          "index": 45,
+          "sourceHairId": "PC_DK_53_Hair",
+          "setId": "pc_dk_53_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_53_hair.head"
+        },
+        {
+          "index": 46,
+          "sourceHairId": "PC_DK_54_Hair",
+          "setId": "pc_dk_54_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_54_hair.head"
+        },
+        {
+          "index": 47,
+          "sourceHairId": "PC_DK_60_Hair",
+          "setId": "pc_dk_60_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_60_hair.head"
+        },
+        {
+          "index": 48,
+          "sourceHairId": "PC_DK_61_Hair",
+          "setId": "pc_dk_61_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_61_hair.head"
+        },
+        {
+          "index": 49,
+          "sourceHairId": "PC_DK_62_Hair",
+          "setId": "pc_dk_62_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_62_hair.head"
+        },
+        {
+          "index": 50,
+          "sourceHairId": "PC_DK_63_Hair",
+          "setId": "pc_dk_63_hair",
+          "visualSetId": "character.guardian_knight.pc_dk_63_hair.head"
+        }
+      ]
     }
   }
 }

@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_OCN_EVENTIS_MHP",
-  "revision": 9,
+  "revision": 11,
   "objectResources": [
     {
       "objectId": "world.object.maharaka.waterpang.source.intro15.mokomoko",
@@ -262,7 +262,7 @@
           },
           {
             "expressionIndex": 3,
-            "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+            "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
             "colorSpace": "srgb"
           },
           {
@@ -277,7 +277,7 @@
           },
           {
             "expressionIndex": 6,
-            "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+            "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
             "colorSpace": "linear"
           }
         ]
@@ -541,7 +541,7 @@
           },
           {
             "expressionIndex": 3,
-            "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+            "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
             "colorSpace": "srgb"
           },
           {
@@ -556,7 +556,7 @@
           },
           {
             "expressionIndex": 6,
-            "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+            "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
             "colorSpace": "linear"
           }
         ]
@@ -390578,7 +390578,7 @@
     },
     {
       "sequenceId": "sequence.maharaka.waterpang.attack.mokomoko",
-      "displayName": "Waterpang attack / mokomoko (att_battle_1_01)",
+      "displayName": "워터팡 | 중앙 바닥 장판·터지기",
       "category": "World",
       "durationMs": 6000,
       "interpolation": "LINEAR",
@@ -390876,7 +390876,7 @@
     },
     {
       "sequenceId": "sequence.maharaka.waterpang.attack.cannon.start",
-      "displayName": "Waterpang attack / cannon.start (att_battle_3_01)",
+      "displayName": "워터팡 | 중앙 기둥 분사 시작",
       "category": "World",
       "durationMs": 1500,
       "interpolation": "LINEAR",
@@ -390996,7 +390996,7 @@
     },
     {
       "sequenceId": "sequence.maharaka.waterpang.attack.cannon.loop.cw",
-      "displayName": "Waterpang attack / cannon.loop.cw (att_battle_3_02)",
+      "displayName": "워터팡 | 중앙 기둥 물 뿜기·시계 회전",
       "category": "World",
       "durationMs": 24000,
       "interpolation": "LINEAR",
@@ -391198,7 +391198,7 @@
     },
     {
       "sequenceId": "sequence.maharaka.waterpang.attack.cannon.loop.ccw",
-      "displayName": "Waterpang attack / cannon.loop.ccw (att_battle_3_03)",
+      "displayName": "워터팡 | 중앙 기둥 물 뿜기·반시계 회전",
       "category": "World",
       "durationMs": 24000,
       "interpolation": "LINEAR",
@@ -391400,7 +391400,7 @@
     },
     {
       "sequenceId": "sequence.maharaka.waterpang.attack.cannon.end",
-      "displayName": "Waterpang attack / cannon.end (att_battle_3_04)",
+      "displayName": "워터팡 | 중앙 기둥 분사 종료",
       "category": "World",
       "durationMs": 1000,
       "interpolation": "LINEAR",

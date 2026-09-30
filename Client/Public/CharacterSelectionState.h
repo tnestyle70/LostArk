@@ -21,6 +21,8 @@ struct CHARACTER_ENTRY_IDENTITY final
 	LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
 		LostArk::Shared::CHARACTER_CLASS_ID::END;
 	std::string strNickname;
+	/* From the look document the entry carries; the first type without one. */
+	std::uint8_t iVoiceType = LostArk::Shared::MIN_VOICE_TYPE;
 	CHARACTER_ENTRY_IDENTITY_SOURCE eSource =
 		CHARACTER_ENTRY_IDENTITY_SOURCE::END;
 };

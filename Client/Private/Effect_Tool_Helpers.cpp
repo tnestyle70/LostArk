@@ -2283,7 +2283,8 @@ namespace EffectToolDetail
 
     bool Is_WorldEffectAssetId(const std::string_view strEffectAssetId)
     {
-        return strEffectAssetId.starts_with("effect.world.");
+        return strEffectAssetId.starts_with("effect.world.") ||
+            strEffectAssetId.starts_with("effect.maharaka.");
     }
 
     bool Is_SceneAnchoredEffectAssetId(const std::string_view strEffectAssetId)
@@ -2304,7 +2305,8 @@ namespace EffectToolDetail
             { "effect.guardianknight.", "GuardianKnight" },
             { "effect.valtan.", "Valtan" },
             { "effect.kouku.", "KoukuSaydon" },
-            { "effect.world.", "World" }
+            { "effect.world.", "World" },
+            { "effect.maharaka.", "World" }
         };
         for (const auto& [Prefix, DomainId] : Domains)
         {

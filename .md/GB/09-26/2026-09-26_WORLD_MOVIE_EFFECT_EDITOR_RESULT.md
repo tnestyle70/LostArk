@@ -693,3 +693,212 @@ G20의 새 데이터까지 같은 Desktop ZIP에 반영 완료했다. 최종stag
 SHA256은`a8a515153db60fc732e1c3def0ceb7e4207e93a5183c6236fdb831c78beb27fb`다. CRC/전체manifest/preflight와 source/runtime 두파일의
 ZIP내 해시 대조PASS다. 영수증은out/MovieSoundUntrim20260930/package-receipt.json.
 Resources·EXE변경은없고 기존ZIP은백업됐다.
+
+## G21. 차원술사 첫 구도 기준 후속 카메라 보정과 반복 복구 (2026-09-30)
+
+사용자가 모든 편집을 저장하고 반영을 승인한 최신 `ClassSelection.cinematics.json`에서
+차원술사 Intro Camera2·3·4·5의 첫0ms 키를 기준으로 후속 포즈를 보정했다. 네 첫 키의
+Eye/LookAt/Up과 나머지 필드를 정확히 보존했다. 수정 전 기준은 직전 movie 백업이며 해당
+Intro/Loop camera 배열이 HEAD와 같음을 확인했다. 다른 class, Intro Camera1과 사용자가
+추가한 excludedWorldObjectIds를 포함한 World·Effect·Sound·material·light 필드는 그대로다.
+
+각 컷의 이전·새 첫 camera basis 사이 회전으로 상대 Eye 위치, 시선 벡터와 Up을 변환했다.
+Use free cam pos의 약10길이 LookAt 벡터와 원본의 약1길이 차이는 컷마다 일정한 시선 길이
+비율로 처리했다. 카메라 경로의 거리·시간·FOV는 확대하지 않았다. 대응하는 Loop Camera1~4도
+자기 원본 첫 키·곡선·FOV를 사용해 Intro2~5의 새 기준 포즈로 각각 보정했다. 총8컷에서
+사용자 첫 키4개를 유지하고1,163개 키의 포즈를 바꿨다. 수정한 Loop source는 PROJECT_TUNED로
+표시했고 차원술사 repeatMovie만true로 바꿨다. holdAfterCameraId는 보존되며 Repeat ON에서는
+정지 경계로 소비되지 않는다. 전체 키의 stable ID, timeMs, cut, 보간, easing, FOV와 source clock은 보존했다.
+
+실제 `CClassSelectionPresentation::Parse`와 `CEffectRecoveryCamera::Sample`을 사용하는 별도
+CPU 콘솔 검사에서8컷의 전체41,668ms를1ms 간격으로 샘플링했다. 부동소수점 런타임 기준
+예상 회전·평행이동과의 최대 Eye 오차는0.4573mm, 시선 방향은0.0197도, Up은0.00374도다.
+키 사이 Eye 거리의 double 계산 오차는4.4e-13m 미만이며 경로 배율은1이다. 첫0→1ms의
+최대 Eye 이동은0.0229mm, 시선 변화는0.00888도여서 첫 키 직후 예전 구도로 복귀하는
+불연속이 사라졌음을 수치로 확인했다. FOV·키 시간과 네 기준 포즈의 정확한 보존도 검사했다.
+이는8컷의 반복 표본 검사이며 별도 기능 수나 화면 합격 수로 집계하지 않는다.
+
+검토된 후보를2026-09-30 21:42 KST에 최신 저장본 hash 재확인과 Windows ReplaceFileW로
+원자 반영했다. 실제 교체된 파일을 백업하고 그 bytes가 직전 저장본과 일치함을 확인했다.
+설치본을 다시 읽어 같은 실제 parser/sampler 검사를 통과했다. 반영 전 SHA256은
+`d85aef471bbd5a738e637b25452860acbc65a16009525ba72b7f4abf58bc5d41`, 설치본은
+`dd61e689964c861d4758f547aa4852ae8c5f9e0451be0260402f67cf6bde5b30`이다.
+근거는 `out/DimensionMovieRebase20260930`의 `candidate-validation.json`,
+`stable-field-patches.json`, `focused-proof-summary.json`, `install-receipt.json`과
+`installed-20260930T124247586321Z/installed-parser.log`다. 같은 폴더의 실제 백업은 보존했다.
+
+기존 컷 전환 시각과 즉시 전환 방식은 유지했다. 사용자가 각 컷을 독립적으로 다시 잡았으므로
+Loop 마지막→처음 컷의 Eye 간격은6.5678m, 시선 방향 차이는50.4607도다. 원본도 해당 경계에서
+즉시 컷을 전환하며, 이번에는 컷 사이 블렌딩이나 무봉합 연결을 추가하지 않았다. 화면 구도와
+전환의 자연스러움은 사용자 확인 대기다. 추가 Product 빌드·Client/Server 실행·종료·UI 조작·
+Reload·GPU 검사는 하지 않았다. 실행 중 메모리 초안과 Server는 자동 갱신하지 않았으며,
+사용자는 기존 WORLD 편집기의 `Reload saved movie` 후 차원술사 `Play All`로 설치본을 확인한다.
+
+
+## G22. 차원술사 정적 배경의 소유자와 Map Tool 편집 연결 (2026-09-30)
+
+첨부 화면의 하늘은 Movie WORLD Object가 아니라 `LV_LOBBY_CLASSSELECT_SL12`의 정적 배치다.
+기존 `Pick in scene`은 WorldSequence sampled object만 검사했으며 MapTool도 primary SL00만
+빌렸으므로 사용자가 보던 배경에 도달할 수 없었다. Show background는 SL12 전체의 임시 필터다.
+
+실제 설치 WModel을 읽은 결과 sky_multi_sm 후보1876/1949는 각각8정점·4삼각형의 유한 사각형이며
+deferred opaque 경로다. source native1112/1157/1115/1116 shader 함수에는 clip/discard가 없고
+native dispatch는 generic diffuse alpha discard 전에 반환한다. 새 Intro2~5 첫 구도를 기준으로
+16:9 CPU ray81개씩 검사했을 때1876은34/10/4/12개 hit,1949는모두0개였다.1876의 아래 외곽이
+화면에서 사선을 만들어 새로운 카메라가 평면의 범위 밖을 보게 되는 근거를 확인했다. 정확한
+첨부 당시 자유카메라와 다른 물체의 occlusion은 재현하지 않았으므로 최종 GPU 화면 판정은 별도다.
+배치의 stable ID는 `LV_LOBBY_CLASSSELECT_SL12:export:1876`, asset은
+`SL12_82D2D1E4E4F51A1AF5968E66`, 모델은
+`Map/LV_LOBBY_CLASSSELECT_SL12/Models/f95dbb4bacb9f3b9/f95dbb4bacb9f3b9.wmodel`이다.
+
+Level_CharacterSelect는 이미 로드한 배경을 stable Area로 조회하는 Debug getter만 제공한다.
+ClassMovieInspector는 배경 Area와 source 경로를 표시하고 `Edit background in Map Tool`을
+MainApp의 typed callback으로 연결한다. 현재 class·Area·runtime을 재확인한 뒤 기존 MapTool을
+열고 현재 구도를 자유 카메라로 넘긴다. 성공 시 기존 WORLD pick만 취소하고 MAP 입력과 포커스를
+선택하며 Movie 시계와 Sequencer 선택은 유지한다. 버튼은 WORLD picking의 범위를 명시한다.
+
+MapTool의 `Character Select target`은 primary와 현재 Movie 배경을 구분한다. 고정 Area ID를
+stage/commit하므로 class를 변경해도 저장 대상이 다른 배경으로 자동 전환되지 않는다. dirty
+초안의 target 변경을 거부하고 배경이 재생 중이 아니거나 전체 preview가 꺼지면 편집을 막는다.
+Hierarchy에 이름·asset ID·sourcePlacementId 검색을 추가했고 기존 Position·Rotation quaternion·
+Signed scale·Visible 편집을 재사용한다. 검색이 비어 있으면 기존 clipper의 직접 index 경로를
+유지한다. 배경 mode는 placement 편집으로 한정해 다른 Area의 gameplay/sky-phase를 적용하지 않는다.
+
+Save placements는 기존 `Data/Maps/Authoring/<Area>/<Area>.mapplacements` linked transaction을
+사용한다. 존재하지 않고 수정되지 않은 optional WorldSequences는 새로 쓰지 않지만 기존
+freshness·backup·verification·rollback 경계는 유지한다. 원래 존재하거나 편집한 sequence는 기존
+저장을 따른다. 저장한 배경의 실행 데이터는 기존 `Publish-MapAuthoring.ps1 -AreaId
+LV_LOBBY_CLASSSELECT_SL12 -Scope Placements -Mode Publish` 대상이다. 이번에는 편집 연결만
+추가했으며 하늘 위치·크기·가시성·재질·렌더링 옵션과 source/runtime map 데이터는 바꾸지 않았다.
+새 runtime이나 저장 schema, C++ 파일과 project/filter 항목은 추가하지 않았다.
+
+검증 증거는 `out/ClassMovieBackground20260930`에 있다. actual CMapAssetCatalog::Load_Source와
+CMapPlacementDocument::Read/Write로1461배치를 읽어1876만 위치(+.5,-200,+.25)·visible=false로
+out 파일에 저장·재로드했다. 나머지1460배치의 모든 필드와 대상의 비수정 필드가 정확히 같았고,
+원래 값으로 되돌린 out 저장본도 원본의 parsed record와 일치했다. 실제 Data 원본과 게시 파일의
+hash는 전후 동일하다. `placement-codec-verification.json`, `placement-source-hashes.json`,
+`sky-geometry-audit.json`으로 입출력·geometry 근거를 구분한다. 이는 제품 codec 검사이며 실행 중
+MapTool 입력 조작이나 GPU 표시 검사가 아니다.
+
+Level getter와 linked save TU는 격리 Debug/Release 컴파일을 통과했다. MainApp·Inspector의
+격리 Debug 컴파일 근거는 `out/DimensionMovieRebase20260930/inspector-route/compile-validation.json`이다.
+기존 include의 C4819 경고는 남아 있다. MapTool 최종 컴파일·집중 전환 검사·Product 빌드 결과는
+아래 후속 검증에 기록한다. 현재 Product guard는 Debug Client61832와 Server84960 점유를
+확인했으며, 사용자에게 저장·종료를 요청했다. 프로세스 종료와 UI 조작은 자동 수행하지 않았다.
+
+G22 후속 검증: MapTool.cpp/MapTool_Area.cpp의 격리 Debug·Release 컴파일4개가 통과했다.
+실제 Open_ClassMovieBackground/Can_ChangeRuntimeStructure 본문을 추출하고 Level/runtime/stage
+경계만 대체한 CPU 검사15개에서 dirty 전환 거절, camera draft 거절, 현재 class·runtime 오류,
+같은 dirty target 유지, class 변경·Stop·Show background OFF의 편집 차단과 명시적인 clean
+primary 복귀를 검사했다. 전체 Switch 실행이나 GPU를 검사한 것으로 집계하지 않는다.
+`maptool-validation.json`, `maptool-target-probe.cpp/.log`에 근거를 기록했다. 실제 source/runtime
+SL12 문서는1461개의 ID·asset 매핑·TRS·visible 의미값이 모두 같고, 서로 다른 파일 해시는
+직렬화 차이임을 `placement-source-runtime-comparison.json`으로 확인했다.
+
+독립 코드 검토에서 optional Load_CameraShots가 Switch의 commit 전에 기존 camera 상태를
+바꾸는 경계를 발견했다. 최종 target commit 이후로 이동해 다른 source 검증 실패 시 기존
+camera owner도 보존하도록 보완하고 해당 TU의 Debug/Release 컴파일을 다시 통과했다.
+사용자 종료 답변 뒤 Client/Server process가 없고 G21 카메라·리벤지 스피어 설치 hash가
+유지됨을 재확인했다. `Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product`가
+Engine·Shared·Server·Client 컴파일/링크/배포 및 포함된 runtime 입력 검사를 통과했다.
+receipt는 `out/BuildPipeline/runs/20260930T125746734Z-debug-product.json`이며 result=PASS,
+elapsedMs=56862다. 기존 C4819/C4828과 DirectXTK PDB LNK4099 경고가 남았고 오류는 없었다.
+이 Product 작업은 data publisher를 실행하지 않았다. 빌드 후 G21 카메라·리벤지 스피어의
+설치 hash와 배경 source/runtime의 기존 hash를 `final-installed-hashes.json`으로 재확인했다.
+현재 Debug 실행 파일까지 반영 완료이며, 새 Release EXE 빌드와 Client/GPU 화면 판정은 수행하지 않았다.
+
+
+## G23. 저장된 다섯 클래스의 후속 Camera·Loop 보정 반영 (2026-09-30)
+
+사용자의 추가 저장본 SHA7fca8ba0af04ddc24708768e17d654465895c22a573d8cc71019006c80257e36을
+G21 설치본과 비교했다. 차원술사 Intro2, 가디언나이트·도화가·워로드 Intro2~5, 창술사 Intro2~4의
+첫0ms pose16개만 변경되었다. 차원술사 Intro3는 이전 설치본과 같아 중복 보정하지 않았다.
+워로드의 새 excludedWorldObjectIds(a1936 포함)와 모든 사용자 기준 키를 유지했다.
+
+실제 source export와 컷 순서를 확인해 Intro/Loop32컷의 후속 pose8,557개를 보정했다.
+사용자 anchor16개는 exact 보존하며 대상 총8,573키다. Loop 자체의 키·FOV·시각·clock을 사용하고,
+창술사·워로드의 편집하지 않은 Intro1/Loop1은 그대로다. 다섯 클래스 모두 repeatMovie=true로
+설정했으며 hold marker는 보존했다. pose25,671/source15/repeat4의 총25,690필드만 변경했다.
+
+실제 제품 parser와 CEffectRecoveryCamera/ValtanCinematicCameraController sampler의
+557,179표본에서1,679,442수치 검사를 통과했다. 최대Eye오차0.000620896m, 시선0.033575도,
+Up0.004132도이며 첫1ms 이동은 최대0.000020385m였다. 실제 구현을 재사용한 CPU검사이며
+UI/GPU 화면 합격을 뜻하지 않는다. 설치 스크립트의 stable-field CAS와 입력 의존 guard는
+무관 제외목록 병합을 허용하고 기준키·새로 편집한 비대상컷·뒤 pose·repeat 충돌을 거절했다.
+
+22:46 KST에 최신 저장본을 재확인하고 ReplaceFileW/실제교체본백업/ownedrollback 경계로
+반영했다. 설치SHA는2f7efcb35f86572c4c17b12e9b01c0c45c6f1abade1bb3cdbf51dfae9121281a이며
+설치본의 actual parser/sampler도PASS다. 근거는 out/ClassMovieCameraBatch20260930의
+candidate-validation.json, loop-mapping.json, focused-proof-summary.json,
+install-guard-validation.json, install-receipt.json과 installed-20260930T134613893969Z다.
+
+기존 hard cut을 유지했으므로 서로 독립적으로 잡은 구도 사이의 경계는 연속이 아니다.
+워로드 Intro3→4는7.25862m/143.12895도, 차원 Loop wrap은12.13485m/48.95903도다.
+카메라 구도·컷 전환의 사용자 화면 판정은 대기이며 자동 블렌딩은 추가하지 않았다.
+디스크 반영과 열려 있는 Movie draft는 구분한다. 에이전트는 Reload·Client/Server 종료·실행을
+하지 않았으며 사용자는 Reload saved movie→Play All로 새 반복과 구도를 확인한다.
+
+## G24. Character Select F1 상단의 자유 카메라 속도 (2026-09-30)
+
+기존 speed UI는 F1 아래쪽의 접힌 Camera에 있었으므로 Character Select에서 찾기 어려웠다.
+같은 RenderCameraSpeedControls를 현재Level 표시 바로 아래에서 한 번 호출하고
+Character Select Camera 헤더를 기본으로 펼쳤다. 다른 Level의 위치는 유지했다.
+CurrentCamera는 이 Level의 실제 소유 camera를 Debug/Release 공통 getter로 읽는다.
+기존0.1~400m/s slider·Reset20·Shift배율30과 speed getter/setter를 그대로 사용한다.
+Movie clock/재생 배속은 바뀌지 않고 자유카메라 이동 속도에만 적용된다.
+
+MainApp.cpp/MainApp_Dragon.cpp/Level_CharacterSelect.h의 기존인코딩을 보존했다.
+새 파일·runtime·project/filter 등록은 없다. 두CPP의 Debug/Release 격리컴파일4개PASS,
+실제 helper와 CCamera_Free setter 본문을 사용한 Debug9/Release9 CPU검사PASS다.
+UI입력/Level 경계는stub이므로 실제 F1 조작이나 화면검증으로 기록하지 않는다.
+근거는 out/ClassSelectCameraSpeed20260930/camera-speed-validation.json과
+camera-speed-only.diff다. 사용자가 현재 Client/Server 사용을 계속하며 빌드를 나중으로 미뤘다.
+새 Product EXE 링크는 미실시이고 기존 실행 파일은 유지한다. F1 UI 변경은 다음 빌드부터 적용된다.
+
+G23 독립 검토에서32컷의 별도 변환 수식과 설치값 차이는 최대4.55e-13이었다. 미대상13컷과
+Intro 첫 키24개는 저장본과 같다. 차원술사의 반복 보정은 최초 원본→최신 anchor 단일 변환과
+최대9.38e-13 차이로 중복 적용이 없었고, Look 길이 비율1.000009147로 다시10배 늘지 않았다.
+
+## G25. 가디언나이트 화면의 회색 배경 후보 확인 (2026-09-30)
+
+가디언나이트의 backgroundAreaId 생략은 Level fallback LV_LOBBY_CLASSSELECT_SL10을 사용한다.
+WORLD 목록은 캐릭터·그림자·용 배우이며, 이 Area의 정적 배치는 Movie WORLD picking 범위 밖이다.
+기존 G22 Edit background in Map Tool로 같은 Level 소유 runtime을 편집할 수 있다.
+
+설치 geometry와 실제 source5367ms/movie5818ms 카메라1 pose의81개CPU ray를 비교했다.
+배경의 sky_mirror_sm/export704는 구체이며 중앙까지 약548m 떨어져 있다. 화면 가까이 걸리는
+구체적인 후보는 lv_anh_horizonold_planecircle02_sm 수면으로 source ID는
+LV_LOBBY_CLASSSELECT_SL10:export:811, placementId17522923997188417410,
+assetId SL10_3E2567A22176EFC6E268C788이다. 원본 재질은
+bg_pcselect14.mat.bg_scd_yorn_water_02_mi_lnh(native237), translucent/opacity0.4/depth_bias-60이다.
+실제 수면의 가장 높은Y=-44.56105721은 카메라 EyeY=-44.44331741보다0.11774m 아래다.
+
+전체1356visible placement/81unique 설치 모델 검사에서 오른쪽 아래 ray13/81(source5367),
+11/81(movie5818)가 이 수면을0.475~5.80m 앞에서 최근접으로 만났다. 중앙ray는 나무·바위로
+약41~49m 앞이었다. 첨부 당시 자유카메라와 저장된 Movie pose의 동일성이 확인되지 않았으므로
+회색 영역 전체가 수면이라고 확정하지 않는다. 실제 화면 판정은 사용자 확인 대기다.
+Map Tool Hierarchy 검색을 기본sky에서811로 바꾸면 해당 배치를 선택할 수 있다.
+Position의 가운데Y는 월드 높이이고 Visible은 해당 배치의 저장된 숨김이다. 이 조사에서는
+위치·rotation·visible·재질·렌더링 옵션을 바꾸거나 mapplacements를 publish하지 않았다.
+근거는 out/GuardianMovieBackground20260930의 all-map-ray-audit.json과 water-plane-811-summary.json이다.
+
+
+### G24 후속 — Debug·Release 제품 빌드 완료 (2026-09-30)
+
+사용자가 보류를 해제하고 전체 빌드를 요청했다. 실행 중 Client/Server와 경쟁 MSBuild가 없음을
+확인한 뒤 정본 Invoke-BuildAndRegression.ps1 -Profile Product를 Debug, Release 순서로 실행했다.
+두 구성 모두 Engine→Shared→Server→Client의 필요한 증분 컴파일·링크·SDK/CSO/runtime DLL 배포와
+필수 runtime 입력 검사를 통과했다. Debug44,735ms, Release88,107ms이며 실제 receipt는 아래다.
+
+- out/BuildPipeline/runs/20260930T140358282Z-debug-product.json
+- out/BuildPipeline/runs/20260930T140536992Z-release-product.json
+
+F1 상단 카메라 속도 변경이 두 구성의 Client.exe에 포함됐다. C4819/C4828 인코딩 경고와
+Release DirectXTK.pdb 누락 LNK4099 경고는 남았지만 빌드 오류는 없다. 기존 유효한 shader tracking을
+사용했으며 강제 Clean/Rebuild나 별도 광역 진단은 수행하지 않았다. 이 제품 빌드는 data publisher를
+실행하지 않는다. 카메라G23 hash와 다섯class Repeat, Guardian G12 source/runtime 및 mip30개와
+미러의 설치값이 유지됨을 확인했다. 실제 Engine.dll과 각 Client 배포본 hash도 같다.
+
+근거는 out/ClassMovieFullBuild20260930/build-summary.json, debug-build.log, release-build.log,
+read-only-installed-verification.json이다. 에이전트는 Client/Server/UI를 실행·조작하지 않았으며
+최종 구도·Loop 전환·재질 화면 판정은 사용자 확인 단계로 유지한다.

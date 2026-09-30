@@ -118,6 +118,9 @@ bool LostArk::Server::CServerTriggerSystem::Initialize(
 	std::vector<RUNTIME_TRIGGER> staged;
 	for (const WORLD_BOOTSTRAP_PLACEMENT& placement : placements)
 	{
+		// The room owns this collider's timed all-player vote; entry and G cannot bypass consent.
+		if (m_eWorldId == LostArk::Shared::WORLD_ID::VALTAN_ARENA &&
+			placement.strPlacementId == "Stage_Boss_Assembly") continue;
 		if (WORLD_BOOTSTRAP_KIND::TRIGGER_BOX != placement.eKind ||
 			!placement.isEnabled)
 		{
@@ -614,7 +617,7 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 	{
 		for (const auto& [playerId, player] : players)
 		{
-			if (player.Is_Guide()) continue;
+			if (!player.Is_Human()) continue;
 				if (LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction ||
 					LostArk::Shared::PLAYER_ACTION_STATE::WALL_CLIMB == player.eAction)
 				m_TriggerMoveInFlight.insert(playerId);
@@ -642,7 +645,7 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 		std::unordered_set<LostArk::Shared::PLAYER_ID> currentInside;
 		for (auto& [playerId, player] : players)
 		{
-			if (player.Is_Guide()) continue;
+			if (!player.Is_Human()) continue;
 			if (0u == player.iCurrentHp || !Contains(trigger, player))
 				continue;
 			// Keep membership unset during the jump: landing creates the entry edge.
@@ -921,7 +924,8 @@ bool LostArk::Server::CServerTriggerSystem::Build_WorldTransfer(
 	if (WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL != action.eKind ||
 		(WORLD_ID::BERN != action.eTargetWorldId &&
 			WORLD_ID::VALTAN_ARENA != action.eTargetWorldId &&
-			WORLD_ID::MAHARAKA != action.eTargetWorldId) ||
+			WORLD_ID::MAHARAKA != action.eTargetWorldId &&
+			WORLD_ID::COLOSSEUM != action.eTargetWorldId) ||
 		INVALID_SESSION_ID == player.iSessionId ||
 		CHARACTER_CLASS_ID::END == player.eCharacterClass ||
 		player.strNickName.empty() || 0u == player.iCurrentHp ||
@@ -934,11 +938,14 @@ bool LostArk::Server::CServerTriggerSystem::Build_WorldTransfer(
 	outTransfer.eTargetWorldId = action.eTargetWorldId;
 	outTransfer.eCharacterClass = player.eCharacterClass;
 	outTransfer.strNickName = player.strNickName;
+	outTransfer.iVoiceType = player.iVoiceType;
+	outTransfer.CarriedDurability = player.Get_DurabilityState();
 	/* The Maharaka trips leave and re-enter Bern with the same character, so the worn
 	   title, the bag and the purse ride along instead of resetting to a fresh entry.
 	   The Bern <-> Valtan boxes keep their established fresh-entry behaviour. */
 	if (WORLD_ID::MAHARAKA == action.eTargetWorldId ||
-		WORLD_ID::MAHARAKA == fromWorldId)
+		WORLD_ID::MAHARAKA == fromWorldId ||
+		WORLD_ID::COLOSSEUM == action.eTargetWorldId)
 	{
 		outTransfer.iHonorTitleId = player.iHonorTitleId;
 		outTransfer.CarriedInventory = player.Inventory;

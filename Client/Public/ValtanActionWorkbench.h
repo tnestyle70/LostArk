@@ -180,6 +180,8 @@ public:
 	void Update_SaveState();
 	void Render();
 	void On_WorkbenchDeactivated() override;
+	void Select_WorkbenchTarget(COMPOSITION_WORKBENCH_TARGET target) override
+	{ m_bObjectWorkspace = target == COMPOSITION_WORKBENCH_TARGET::OBJECT; }
 	void Begin_WorkbenchFrame() override;
 	void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) override;
 	void End_WorkbenchFrame() override;
@@ -476,6 +478,8 @@ private:
 	bool_t Apply_AuxiliaryTimelineTiming(const VALTAN_PATTERN_VIEW& pattern,
 		const TIMELINE_ITEM& item, uint32_t newStartMs, uint32_t newEndMs,
 		bool trim, std::string& status);
+	void Render_CombatObjectSoundDetails(const std::string& archetypeId,
+		const std::string& hitId, bool_t editable);
 	bool_t Render_AuxiliaryDetails(const VALTAN_PATTERN_VIEW& pattern,
 		const VALTAN_STAGE_VIEW& stage, bool editable);
 	void Render_Timeline(
@@ -532,6 +536,7 @@ private:
 		const VALTAN_PATTERN_VIEW* pPattern,
 		const VALTAN_STAGE_VIEW* pStage,
 		bool_t bPatternMutationAdmitted);
+	bool m_bObjectWorkspace = false;
 	void Render_PatternsWindow(
 		const VALTAN_PATTERN_VIEW* pPattern,
 		const VALTAN_STAGE_VIEW* pStage,
@@ -754,6 +759,9 @@ private:
 	std::uint64_t m_iPendingSaveJobId = 0u;
 	std::uint64_t m_iPendingPatternSoundDraftGeneration = 0u;
 	std::uint64_t m_iPendingEffectV2DraftRevision = 0u;
+	std::uint64_t m_iPendingCombatObjectSoundDraftGeneration = 0u;
+	std::string m_strPendingCombatObjectSoundCandidateBytes;
+	bool_t m_bPendingCombatObjectSoundOwner = false;
 	std::uint64_t m_iPendingPatternShakeDraftGeneration = 0u;
 	std::string m_strPendingPatternShakeCandidateBytes;
 	bool_t m_bPendingPatternShakeOwner = false;

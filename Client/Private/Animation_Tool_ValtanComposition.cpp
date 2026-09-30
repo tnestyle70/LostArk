@@ -140,6 +140,7 @@ bool_t Client::CAnimation_Tool::Play_ValtanCompositionPattern(
 		return false;
 	}
 	m_bValtanCompositionDraftPreviewReady = false;
+	m_ValtanCompositionObjectSoundPreview.reset();
 	m_ValtanCompositionDraftPreview = {};
 	m_eValtanPatternMasterPath = ePath;
 	const bool_t bStarted = Start_ValtanPatternMasterPreview(
@@ -152,7 +153,8 @@ bool_t Client::CAnimation_Tool::Play_ValtanCompositionDraftPattern(
 	const VALTAN_PATTERN_VIEW& Pattern,
 	const VALTAN_PATTERN_PREVIEW_PATH ePath,
 	std::string& strOutStatus,
-	const uint32_t iPresentationDurationMs)
+	const uint32_t iPresentationDurationMs,
+	const VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT* const objectSounds)
 {
 	if (Pattern.strPatternId.empty() || Pattern.Stages.empty())
 	{
@@ -171,6 +173,9 @@ bool_t Client::CAnimation_Tool::Play_ValtanCompositionDraftPattern(
 			"The dedicated Valtan preview model disappeared before draft playback.";
 		return false;
 	}
+	const auto previousObjectSounds = m_ValtanCompositionObjectSoundPreview;
+	m_ValtanCompositionObjectSoundPreview = objectSounds ?
+		std::optional<VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT>(*objectSounds) : std::nullopt;
 	m_ValtanCompositionDraftPreview = Pattern;
 	m_bValtanCompositionDraftPreviewReady = true;
 	m_eValtanPatternMasterPath = ePath;
@@ -187,6 +192,7 @@ bool_t Client::CAnimation_Tool::Play_ValtanCompositionDraftPattern(
 	}
 	if (!bStarted)
 	{
+		m_ValtanCompositionObjectSoundPreview = previousObjectSounds;
 		m_bValtanCompositionDraftPreviewReady = false;
 		m_ValtanCompositionDraftPreview = {};
 	}
@@ -209,10 +215,11 @@ bool_t Client::CAnimation_Tool::Seek_ValtanCompositionPattern(
 			m_ValtanCompositionDraftPreview.strPatternId == strPatternId;
 		const VALTAN_PATTERN_VIEW DraftCopy = bDraftMatches ?
 			m_ValtanCompositionDraftPreview : VALTAN_PATTERN_VIEW{};
+		const auto ObjectSoundsCopy = m_ValtanCompositionObjectSoundPreview;
 		const bool_t bStarted = bDraftMatches ?
 			Play_ValtanCompositionDraftPattern(
 				DraftCopy,
-				VALTAN_PATTERN_PREVIEW_PATH::NORMAL, strOutStatus) :
+				VALTAN_PATTERN_PREVIEW_PATH::NORMAL, strOutStatus, 0u, ObjectSoundsCopy ? &*ObjectSoundsCopy : nullptr) :
 			Play_ValtanCompositionPattern(
 				strPatternId, VALTAN_PATTERN_PREVIEW_PATH::NORMAL, strOutStatus);
 		if (!bStarted)

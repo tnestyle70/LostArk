@@ -29,6 +29,9 @@ public:
 	virtual bool Consume_DebugKillGateBossesResult(LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT&) { return false; }
 	virtual bool Consume_SetCooldownModeResult(LostArk::Shared::S2C_SET_COOLDOWN_MODE_RESULT&) { return false; }
 	virtual bool Request_KoukuRaid(const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST&) { return false; }
+	// Waterpang AI authoring sends typed intent; the Server owns persistence.
+	virtual bool Request_MaharakaAITuning(const LostArk::Shared::C2S_MAHARAKA_AI_TUNING&) { return false; }
+	virtual bool Consume_MaharakaAITuning(LostArk::Shared::S2C_MAHARAKA_AI_TUNING&) { return false; }
 	virtual bool Request_DebugWorldPlayback(const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK&) { return false; }
 	virtual bool Consume_DebugWorldPlaybackResult(LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT&) { return false; }
 
@@ -190,6 +193,11 @@ public:
 	/* Raid-clear award input: each player's contribution to the cleared gate, as the Server
 	recorded it. Sinks without a Server have none. */
 	virtual bool Consume_RaidMvpResult(LostArk::Shared::S2C_RAID_MVP_RESULT&) { return false; }
+	/* Colosseum match queue (Bern): the accepted offer, the wait window's Esc and the Server's queue
+	state changes. Sinks without a Server reject / have nothing. */
+	virtual bool Request_ColosseumQueueJoin(std::uint32_t, const std::string&) { return false; }
+	virtual bool Request_ColosseumQueueLeave(std::uint32_t) { return false; }
+	virtual bool Consume_ColosseumQueueState(LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE&) { return false; }
 	// Raid Clear screen's own "돌아가기" (return) button, Valtan Arena only --
 	// the reverse trip of Request_ConfirmNpcEntry. No target NPC to name (the
 	// button has no proximity requirement); the Server lands the player back

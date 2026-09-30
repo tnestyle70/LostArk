@@ -16,6 +16,9 @@
 #include "DeferredMaterialRenderUtils.h"
 #include "GameInstance.h"
 #include "Model.h"
+#include "BinaryAsset/ModelAssetData.h"
+#include "MapAssetRenderUtils.h"
+#include "Profiler.h"
 #include "Shader.h"
 #include "Transform.h"
 
@@ -76,6 +79,7 @@ HRESULT CNpc::Initialize(void* pArg)
 	m_vOutlineColor = pDesc->vOutlineColor;
 	m_bSuppressRootMotion = pDesc->bSuppressRootMotion;
 	m_bInterpolateNetworkTransform = pDesc->bInterpolateNetworkTransform;
+    m_bAllowOffscreenAnimationCulling = pDesc->bAllowOffscreenAnimationCulling;
 
 	/* With no animation set the bone palette is never filled, so every vertex
 	collapses onto the origin and the NPC simply vanishes -- a wrong clip name
@@ -104,6 +108,13 @@ HRESULT CNpc::Initialize(void* pArg)
 			ROOT_MOTION_BONE, ROOT_MOTION_VERTICAL_AXIS);
 	}
 
+    if (m_bAllowOffscreenAnimationCulling)
+    {
+        // Scan immutable clip keys during actor creation, not its first active update.
+        f32_t envelopeRadius = 0.f;
+        (void)Can_DeferAnimationPose(envelopeRadius);
+    }
+
 	return S_OK;
 }
 
@@ -115,6 +126,7 @@ void CNpc::Synchronize_WeaponPose()
 bool_t CNpc::Try_GetAnimationModelTarget(const ANIMATION_BONE_TARGET target,
 	ANIMATION_MODEL_TARGET_VIEW& outView) const
 {
+    Require_ImmediateAnimationPose();
 	if (!m_pModelCom || !m_pTransformCom) return false;
 	ANIMATION_MODEL_TARGET_VIEW staged;
 	staged.TargetRoot = *m_pTransformCom->Get_WorldMatrixPtr();
@@ -163,6 +175,7 @@ bool_t CNpc::Try_Get_PlayerHandGripSocketView(const LostArk::Shared::PLAYER_ATTA
     if (slot != LostArk::Shared::PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND ||
         !m_PlayerHandGripLocalOffset || !m_pModelCom || !m_pTransformCom ||
         !m_pModelCom->Has_Bone(PLAYER_LEFT_HAND_BONE)) return false;
+    Require_ImmediateAnimationPose();
     PLAYER_HAND_GRIP_SOCKET_VIEW staged{};
     const auto* root = m_pTransformCom->Get_WorldMatrixPtr();
     XMStoreFloat4x4(&staged.SocketWorld,
@@ -177,6 +190,7 @@ bool_t CNpc::Try_Get_PlayerHandGripSocketView(const LostArk::Shared::PLAYER_ATTA
 
 bool_t CNpc::Set_Animation(const char_t* pClipName, bool_t isLoop)
 {
+    Resolve_PendingAnimationPose();
 	m_iPendingHitReactionSoundClip = UINT32_MAX;
 	if (nullptr == pClipName || nullptr == m_pModelCom)
 		return false;
@@ -223,6 +237,7 @@ bool_t CNpc::Try_SampleNetworkAnimationTicks(const f32_t animationAgeSeconds,
 bool_t CNpc::Set_NetworkAnimationWindow(const f32_t ageSeconds, const f32_t holdSeconds,
     const f32_t startOffsetSeconds, const uint32_t sourceStartMs, const uint32_t sourceEndMs)
 {
+    Resolve_PendingAnimationPose();
     if (!m_pModelCom || !std::isfinite(ageSeconds) || ageSeconds < 0.f ||
         !std::isfinite(holdSeconds) || holdSeconds < 0.f || holdSeconds > 600.f ||
         !std::isfinite(startOffsetSeconds) || startOffsetSeconds < 0.f || startOffsetSeconds > 600.f) return false;
@@ -260,6 +275,7 @@ bool_t CNpc::Set_NetworkAnimationBlendWindows(
     const std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW>& windows,
     const std::string_view semanticOccurrenceId, const f32_t patternAgeSeconds)
 {
+    Resolve_PendingAnimationPose();
     if (!m_pModelCom || !m_bNetworkAnimationWindow || !std::isfinite(patternAgeSeconds) || patternAgeSeconds < 0.f)
         return false;
     std::string status;
@@ -311,6 +327,7 @@ bool_t CNpc::Set_NetworkAnimationBlendWindows(
 bool_t CNpc::Apply_NetworkAnimationTransition(const char_t* sourceClip, const f32_t sourceMs,
     const f32_t durationMs, const f32_t ageSeconds, const f32_t playRate)
 {
+    Resolve_PendingAnimationPose();
     if (!m_pModelCom || !m_bNetworkAnimationWindow || !sourceClip ||
         !std::isfinite(sourceMs) || sourceMs < 0.f ||
         !std::isfinite(durationMs) || durationMs <= 0.f || durationMs > 1000.f ||
@@ -350,6 +367,7 @@ bool_t CNpc::Play_NetworkAction(
 	const f32_t fBlendSeconds,
 	const f32_t fRootVerticalScale)
 {
+    Resolve_PendingAnimationPose();
 	m_iPendingHitReactionSoundClip = UINT32_MAX;
 	m_strClipEndEffect.clear();
 	m_fClipEndEffectRemaining = 0.f;
@@ -798,6 +816,11 @@ void CNpc::Priority_Update(f32_t fTimeDelta)
 
 void CNpc::Update(f32_t fTimeDelta)
 {
+	Engine::CProfiler* profiler = CGameInstance::Get().Get_Profiler();
+	Engine::CProfilerWorkScope workScope(profiler, Engine::EProfilerWork::NpcUpdate);
+	// Authored/composition visibility only; this is not a camera-frustum result.
+	if (profiler && !Is_PresentationVisible())
+		profiler->Add_Counter(Engine::EProfilerCounter::NpcAuthoredHiddenUpdates);
 	if (m_bInterpolateNetworkTransform)
 		Update_NetworkTransform(fTimeDelta);
 	if (m_fTransientActionRemainingSeconds > 0.f)
@@ -823,8 +846,17 @@ void CNpc::Update(f32_t fTimeDelta)
     const float animationAge = m_bNetworkAnimationWindow && m_iNetworkSemanticAbsoluteStartMs != UINT32_MAX ?
         float((std::max)(0.0, m_fNetworkPatternAgeSeconds - double(m_iNetworkSemanticAbsoluteStartMs) * .001)) :
         (std::max)(0.f, m_fNetworkAnimationAgeSeconds - m_fNetworkAnimationStartOffsetSeconds);
-    if (m_bNetworkAnimationWindow)
+    f32_t envelopeRadius = 0.f;
+    if (Can_DeferAnimationPose(envelopeRadius))
     {
+        // Advance only playback/blend clocks. The final camera decides whether
+        // this frame needs channel sampling, bone combination and GPU palettes.
+        (void)m_pModelCom->Advance_AnimationClock(frameDelta, m_bSuppressRootMotion);
+        m_bPendingAnimationPose = true;
+    }
+    else if (m_bNetworkAnimationWindow)
+    {
+        Resolve_PendingAnimationPose();
         const auto clip = m_iNetworkSemanticClip;
         float ticks = 0.f;
         bool sampled = Try_SampleNetworkAnimationTicks(animationAge, clip,
@@ -864,13 +896,15 @@ void CNpc::Update(f32_t fTimeDelta)
     }
     else if (m_bSuppressRootMotion)
     {
+        Resolve_PendingAnimationPose();
         m_pModelCom->Update_Animation(frameDelta);
     }
     else
     {
+        Resolve_PendingAnimationPose();
         m_pModelCom->Play_Animation(frameDelta);
     }
-	Synchronize_WeaponPose();
+    if (!m_bPendingAnimationPose) Synchronize_WeaponPose();
 	Update_CombatCollider();
 	if (!m_strClipEndEffect.empty())
 	{
@@ -1088,8 +1122,124 @@ void CNpc::Set_CounterAfterimageEnabled(const bool enabled, const float previewC
     if (externalClock) m_CounterAfterimageClockSeconds = previewClockSeconds;
 }
 
+bool_t CNpc::Can_DeferAnimationPose(f32_t& radius) const
+{
+    if (!m_bAllowOffscreenAnimationCulling || m_bExternalPoseConsumer ||
+        !m_pModelCom || !m_pTransformCom || !m_bNativeBinaryBasePass ||
+        m_pWeaponModelCom || m_pSaydonHatModel || m_fOutlineWidth != 0.f ||
+        m_bNetworkAnimationWindow || m_bNetworkAnimationTransition ||
+        !m_NetworkAnimationBlendWindows.empty() || m_PlayerHandGripLocalOffset ||
+        !m_strEffectV2BindingOwner.empty() || !m_strNpcActionEffectArchetype.empty() ||
+        !m_strClipEndEffect.empty() || m_iPendingHitReactionSoundClip != UINT32_MAX ||
+        m_ChargeAfterimageEnabled || m_CounterAfterimageEnabled ||
+        m_BodyAfterimage.Has_Samples() || m_WeaponAfterimage.Has_Samples() ||
+        m_HatAfterimage.Has_Samples()) return false;
+    if (CEffectV2Runtime::Requires_CurrentPose(this)) return false;
+    // The geometric envelope does not claim to enclose arbitrary native
+    // shader vertex displacement. Bern's town models use the legacy skin VS.
+    for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
+    {
+        const auto* surface = m_pModelCom->Get_MaterialSurface(mesh);
+        if (surface && surface->family != Engine::MODEL_SURFACE_FAMILY::LEGACY) return false;
+    }
+    return m_pModelCom->Try_GetAnimationEnvelopeRadius(radius);
+}
+
+void CNpc::Resolve_PendingAnimationPose()
+{
+    if (!m_bPendingAnimationPose || !m_pModelCom) return;
+    m_bPendingAnimationPose = false;
+    // The clock already contains every hidden frame. Evaluate once at that
+    // time; never replay hidden frames or advance the clip a second time.
+    (void)m_pModelCom->Play_Animation(0.f);
+    Synchronize_WeaponPose();
+    if (auto* profiler = CGameInstance::Get().Get_Profiler())
+        profiler->Add_Counter(Engine::EProfilerCounter::NpcDeferredPoseEvaluations);
+}
+
+void CNpc::Require_ImmediateAnimationPose() const
+{
+    // Socket/effect/tool consumers can need bones before the final camera.
+    // Keep their actor on the original eager path for the rest of its lifetime.
+    m_bExternalPoseConsumer = true;
+    const_cast<CNpc*>(this)->Resolve_PendingAnimationPose();
+}
+
+bool_t CNpc::Is_AnimationEnvelopeOutsideCamera(const f32_t radius) const
+{
+    if (!m_pTransformCom || !std::isfinite(radius) || radius <= 0.f) return false;
+    const auto* camera = CMapAssetRenderUtils::Capture_CameraCullSnapshotView();
+    if (!camera) return false;
+    const auto& world = *m_pTransformCom->Get_WorldMatrixPtr();
+    for (const auto& row : world.m)
+        for (const float value : row)
+            if (!std::isfinite(value)) return false;
+    if (world._14 != 0.f || world._24 != 0.f || world._34 != 0.f || world._44 != 1.f) return false;
+    // sqrt(||A A^T||_infinity) bounds the spectral norm, including shear.
+    double normSquared = 0.0;
+    for (size_t row = 0u; row < 3u; ++row)
+    {
+        double sum = 0.0;
+        for (size_t other = 0u; other < 3u; ++other)
+        {
+            double dot = 0.0;
+            for (size_t axis = 0u; axis < 3u; ++axis)
+                dot += double(world.m[row][axis]) * world.m[other][axis];
+            sum += std::abs(dot);
+        }
+        normSquared = (std::max)(normSquared, sum);
+    }
+    const double worldRadius = double(radius) * std::sqrt(normSquared) * 1.00001 + 0.001;
+    if (!std::isfinite(worldRadius) || worldRadius <= 0.0 || worldRadius > 1.e6) return false;
+    MAP_FRUSTUM_CULLING_POLICY policy;
+    policy.baseMargin = 0.f;
+    policy.largeObjectRadiusThreshold = 0.f;
+    policy.largeObjectAbsoluteMargin = 0.f;
+    policy.largeObjectRelativeMargin = 0.f;
+    MAP_FRUSTUM_RUNTIME_STATE state;
+    MAP_FRUSTUM_CULL_DECISION decision;
+    const float3_t center(world._41, world._42, world._43);
+    return CMapAssetRenderUtils::Evaluate_FrustumVisibility(policy, *camera,
+        {}, {}, 0u, center, static_cast<f32_t>(worldRadius), state, decision) &&
+        !decision.shouldRender;
+}
+
+void CNpc::Submit_FinalCamera()
+{
+    if (!m_bDeferredLateUpdate) return;
+    m_bDeferredLateUpdate = false;
+    auto* profiler = CGameInstance::Get().Get_Profiler();
+    // The camera and transform are current here. Recheck admission because an
+    // external action/tool may have changed this actor after normal Update.
+    f32_t radius = 0.f;
+    const bool_t admitted = Can_DeferAnimationPose(radius);
+    if (admitted && !Is_PresentationVisible()) return;
+    if (admitted && profiler)
+        profiler->Add_Counter(Engine::EProfilerCounter::NpcCullingCandidates);
+    if (admitted && Is_AnimationEnvelopeOutsideCamera(radius))
+    {
+        if (profiler) profiler->Add_Counter(Engine::EProfilerCounter::NpcCulled);
+        return;
+    }
+    Resolve_PendingAnimationPose();
+    m_bFinalCameraSubmission = true;
+    Late_Update(m_fDeferredLateDelta);
+    m_bFinalCameraSubmission = false;
+}
+
 void CNpc::Late_Update(f32_t fTimeDelta)
 {
+	Engine::CProfilerWorkScope workScope(
+		CGameInstance::Get().Get_Profiler(), Engine::EProfilerWork::NpcLateUpdate);
+    // A failed/skipped render may leave the previous frame unsubmitted.
+    // This frame's normal Late_Update owns a fresh submission decision.
+    m_bDeferredLateUpdate = false;
+    if (m_bPendingAnimationPose && !m_bFinalCameraSubmission)
+    {
+        m_bDeferredLateUpdate = true;
+        m_fDeferredLateDelta = fTimeDelta;
+        return;
+    }
     if (!Is_PresentationVisible())
     {
         m_HitFlash.isCombatHovered = false;
@@ -1268,6 +1418,9 @@ HRESULT CNpc::Render_Group(const RENDERGROUP group)
 
 HRESULT CNpc::Render()
 {
+	Engine::CProfilerWorkScope workScope(
+		CGameInstance::Get().Get_Profiler(), Engine::EProfilerWork::NpcRender);
+    Resolve_PendingAnimationPose();
     if (!Is_PresentationVisible()) return S_OK;
 	if (FAILED(Bind_ShaderResources()))
 		return E_FAIL;
@@ -1335,6 +1488,9 @@ HRESULT CNpc::Render()
 
 bool_t CNpc::Try_PickPresentation(const float3_t& origin, const float3_t& direction, f32_t& distance) const
 {
+    // A picking request consumes the actual pose even when the preceding frame
+    // was culled. It does not permanently turn a town actor into a bone owner.
+    const_cast<CNpc*>(this)->Resolve_PendingAnimationPose();
     if (!Is_PresentationVisible() || !m_pTransformCom) return false;
     bool hit = false;
     float closest = (std::numeric_limits<float>::max)();
@@ -1358,6 +1514,7 @@ bool_t CNpc::Try_PickPresentation(const float3_t& origin, const float3_t& direct
 
 HRESULT CNpc::Render_DeferredOverlay()
 {
+    Resolve_PendingAnimationPose();
     if (!Is_PresentationVisible() || !m_bNativeBinaryBasePass || !m_HitFlash.isCombatHovered) return S_OK;
     if (FAILED(Bind_ShaderResources())) return E_FAIL;
     const auto& world = *m_pTransformCom->Get_WorldMatrixPtr();

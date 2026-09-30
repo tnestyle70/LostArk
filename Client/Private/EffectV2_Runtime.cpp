@@ -1648,6 +1648,15 @@ void Client::CEffectV2Runtime::Sample_LocalClipPreview(
 		if (const auto object = effect.pObject.lock()) object->Set_PlaybackPaused(bPaused);
 }
 
+bool_t Client::CEffectV2Runtime::Requires_CurrentPose(const Engine::CGameObject* target)
+{
+    const auto found = g_TargetStates.find(target);
+    if (found == g_TargetStates.end()) return false;
+    const auto& state = found->second;
+    return !state.Pending.empty() || !state.StagePending.empty() ||
+        !state.Spawned.empty() || !state.StageTails.empty();
+}
+
 void Client::CEffectV2Runtime::Tick(
 	const EFFECT_V2_TARGET& Target,
 	const ComPtr<ID3D11Device>& pDevice,

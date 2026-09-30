@@ -2596,13 +2596,8 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 			viewport.x * 0.5f, viewport.y * heightRatio,
 			promptLineSpacing * promptScale * sizeMultiplier, tint);
 	};
-	if (m_bGate3AuraOccupied && !m_bGate3AuraSubmitted)
-	{
-		drawPrompt(L"\uC7A0\uC2DC \uD6C4 \uB2E4\uC74C \uC9C0\uC810\uC73C\uB85C \uC774\uB3D9\uB429\uB2C8\uB2E4.",
-			0.72f, 0.625f, Colors::White);
-		const std::wstring countdown = std::to_wstring(static_cast<int>(std::ceil(m_fGate3AuraSecondsLeft))) + L"\uCD08";
-		drawPrompt(countdown.c_str(), 0.755f, 0.7f, Colors::Yellow);
-	}
+	if (m_bGate3AuraOccupied)
+		CRaidGateProgressView::Render_AssemblyCountdown(m_fGate3AuraSecondsLeft);
 	const std::string& offered =
 		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
 	if (!offered.empty() && 0u != CCombatHUDViewModel::Get().Get_Player().iMarioStage)
@@ -3007,7 +3002,7 @@ void Client::CLevel_KakulSaydonArena::Apply_GateProgressState(
 	if (0u != State.iProposalId && !State.bClosed)
 	{
 		const bool_t bMine = State.iProposerNetEntityId == CNetworkManager::Get().Get_LocalEntityId();
-		if (bMine || !Can_InteractGateProgress())
+		if (GATE_PROGRESS_KIND::ENTER_GATE3 == State.eKind || bMine || !Can_InteractGateProgress())
 		{
 			if (Is_GateVotePromptOpen())
 				m_GateProgressView.Close_Prompt();
@@ -3022,7 +3017,13 @@ void Client::CLevel_KakulSaydonArena::Apply_GateProgressState(
 	{
 		m_GateProgressView.Close_Prompt();
 		m_bGateVoteAnswered = false;
-		if (GATE_PROGRESS_VOTE_RESULT::ALL_ACCEPTED != State.eResult)
+		if (GATE_PROGRESS_KIND::ENTER_GATE3 == State.eKind &&
+			GATE_PROGRESS_VOTE_RESULT::ALL_ACCEPTED != State.eResult)
+		{
+			m_GateProgressView.Show_Notice(
+				L"\uC785\uC7A5\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uC9D1\uACB0 \uC9C0\uC810\uC5D0\uC11C \uB098\uAC14\uB2E4\uAC00 \uB2E4\uC2DC \uB4E4\uC5B4\uC640 \uC8FC\uC138\uC694.", 4.f);
+		}
+		else if (GATE_PROGRESS_VOTE_RESULT::ALL_ACCEPTED != State.eResult)
 		{
 			/* sys.commander.progress_vote_fail_dialog_desc */
 			const wstring_t strOutcome = GATE_PROGRESS_KIND::EXIT == State.eKind ?
@@ -3035,47 +3036,70 @@ void Client::CLevel_KakulSaydonArena::Apply_GateProgressState(
 	}
 }
 
-void Client::CLevel_KakulSaydonArena::Update_Gate3EntryAura(const bool_t canPropose, const bool_t entryAvailable)
+void Client::CLevel_KakulSaydonArena::Update_Gate3EntryAura(const bool_t entryAvailable)
 {
-	const auto epoch = Get_KoukuRaidState().iRunEpoch;
-	if (epoch != m_iGate3AuraRunEpoch)
-	{
-		m_iGate3AuraRunEpoch = epoch;
-		m_bGate3AuraOccupied = false;
-		m_bGate3AuraSubmitted = false;
-	}
-	float3_t position{};
-	const auto& roster = m_Replication.Get_PartyRoster();
+	using namespace LostArk::Shared;
+	const auto& raid = Get_KoukuRaidState();
+	const auto epoch = Is_ServerRaidActive() ? raid.iRunEpoch : 0u;
 	std::vector<REPLICATED_PLAYER_VIEW> players;
 	m_Replication.Collect_PlayerViews(players);
-	const auto leader = std::find_if(players.begin(), players.end(), [&](const auto& player) {
-		return roster.Members.empty() ? player.isLocal : player.iNetEntityId == roster.Members.front().iNetEntityId;
-	});
-	const auto character = leader != players.end() ? leader->pCharacter.lock() : nullptr;
-	const bool_t alive = leader != players.end() && m_Replication.Get_PlayerHealth().Find(leader->iNetEntityId).iCurrentHp > 0u;
-	if (character && character->Get_Transform())
-		XMStoreFloat3(&position, character->Get_Transform()->Get_State(STATE::POSITION));
-	const bool_t occupied = entryAvailable && alive && character && character->Get_Transform() &&
-		LostArk::Shared::Is_KoukuGate3EntryAura(position.x, position.y, position.z);
+	std::vector<NET_ENTITY_ID> participants;
+	if (Is_ServerRaidActive())
+	{
+		auto playerIds = raid.ParticipantPlayerIds;
+		const auto owner = std::find(playerIds.begin(), playerIds.end(), raid.iOwnerPlayerId);
+		if (owner != playerIds.end())
+		{
+			std::rotate(playerIds.begin(), owner, owner + 1);
+			for (const auto id : playerIds)
+			{
+				const auto player = std::find_if(players.begin(), players.end(),
+					[&](const auto& view) { return view.iPlayerId == id; });
+				participants.push_back(player != players.end() ? player->iNetEntityId : INVALID_NET_ENTITY_ID);
+			}
+		}
+	}
+	else
+	{
+		for (const auto& member : m_Replication.Get_PartyRoster().Members)
+			participants.push_back(member.iNetEntityId);
+		if (participants.empty()) participants.push_back(CNetworkManager::Get().Get_LocalEntityId());
+	}
+	if (epoch != m_iGate3AuraRunEpoch || participants != m_Gate3AuraParticipants)
+	{
+		m_iGate3AuraRunEpoch = epoch;
+		m_Gate3AuraParticipants = participants;
+		m_bGate3AuraOccupied = false;
+	}
+	std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
+	std::vector<KOUKU_CARD_PRESENTATION_VIEW> snapshots;
+	m_Replication.Collect_KoukuPresentationViews(bosses, snapshots);
+	bool_t occupied = entryAvailable && !participants.empty() && participants.size() <= 4u;
+	for (size_t i = 0u; occupied && i < participants.size(); ++i)
+	{
+		const auto player = std::find_if(snapshots.begin(), snapshots.end(),
+			[&](const auto& view) { return view.Snapshot.iNetEntityId == participants[i]; });
+		if (player == snapshots.end()) { occupied = false; break; }
+		const auto& state = player->Snapshot;
+		occupied = state.eControlKind == PLAYER_CONTROL_KIND::HUMAN && state.iCurrentHp > 0u &&
+			state.eAction != PLAYER_ACTION_STATE::DEAD && state.eAction != PLAYER_ACTION_STATE::FALLING &&
+			state.eAction != PLAYER_ACTION_STATE::TRIGGER_MOVE;
+		if (i == 0u)
+			occupied = occupied && Is_KoukuGate3EntryAura(state.fPositionX, state.fPositionY, state.fPositionZ);
+	}
 	if (!occupied)
 	{
 		m_bGate3AuraOccupied = false;
-		m_bGate3AuraSubmitted = false;
 		m_fGate3AuraSecondsLeft = 10.f;
 		return;
 	}
 	const auto tick = m_Replication.Get_LastServerTick();
 	if (!m_bGate3AuraOccupied) m_iGate3AuraStartTick = tick;
 	m_bGate3AuraOccupied = true;
-	// Count confirmed Server time, never paused or local frame time.
+	// Presentation only: the Server owns the 300-tick hold and commits entry without a vote.
 	const auto elapsed = tick - m_iGate3AuraStartTick;
 	if (elapsed > 0x7fffffffu) { m_iGate3AuraStartTick = tick; m_fGate3AuraSecondsLeft = 10.f; return; }
 	m_fGate3AuraSecondsLeft = (std::max)(0.f, 10.f - static_cast<float>(elapsed) / 30.f);
-	if (!canPropose || m_bGate3AuraSubmitted || elapsed < 300u || !m_pPlayerCommandSink) return;
-	m_bGate3AuraSubmitted = true;
-	if (!m_pPlayerCommandSink->Request_GateProgressPropose(m_iNextGateRequestSequence++,
-		LostArk::Shared::GATE_PROGRESS_KIND::ENTER_GATE3))
-		m_GateProgressView.Show_Notice(L"Gate 3 entry request failed. Leave the aura and retry.", 4.f);
 }
 
 void Client::CLevel_KakulSaydonArena::Clear_Gate3Auras()
@@ -3155,7 +3179,8 @@ void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta
 	if (!canInteract || (!Is_GateVotePromptOpen() && !Is_LocalRaidLeader()))
 		m_GateProgressView.Close_Prompt();
 	const bool_t bMvpVisible = nullptr != m_pMvpResultView && m_pMvpResultView->Is_Visible();
-	const bool_t bVoteOpen = 0u != m_GateProgress.iProposalId && !m_GateProgress.bClosed;
+	const bool_t bVoteOpen = 0u != m_GateProgress.iProposalId && !m_GateProgress.bClosed &&
+		m_GateProgress.eKind != GATE_PROGRESS_KIND::ENTER_GATE3;
 	if (canInteract && bVoteOpen && !m_bGateVoteAnswered &&
 		CRaidGateProgressView::PROMPT::NONE == m_GateProgressView.Get_Prompt() &&
 		m_GateProgress.iProposerNetEntityId != CNetworkManager::Get().Get_LocalEntityId())
@@ -3197,7 +3222,7 @@ void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta
 	const bool_t canPropose = canInteract && Is_LocalRaidLeader() && !bVoteOpen;
 	/* The final exit is the player's own trip back to Bern, so it is not the leader's alone. */
 	const bool_t canExit = canInteract && !bVoteOpen;
-	Update_Gate3EntryAura(canPropose, bAtGate3Deck && canInteract);
+	Update_Gate3EntryAura(bAtGate3Deck && canInteract);
 	m_GateProgressView.Set_Button(eButton,
 		CRaidGateProgressView::BUTTON::EXIT == eButton ? canExit : canPropose);
 	// Bingo is the encore after the three displayed gate icons.
@@ -3212,11 +3237,6 @@ void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta
 		if (!canPropose) break;
 		(void)m_pPlayerCommandSink->Request_GateProgressPropose(m_iNextGateRequestSequence++, GATE_PROGRESS_KIND::ADVANCE);
 		break;
-    case CRaidGateProgressView::INTENT::PROPOSE_ENTER_GATE3:
-        if (!canPropose || m_bGate3AuraSubmitted || eButton != CRaidGateProgressView::BUTTON::ENTER_GATE3) break;
-        m_bGate3AuraSubmitted = true;
-        (void)m_pPlayerCommandSink->Request_GateProgressPropose(m_iNextGateRequestSequence++, GATE_PROGRESS_KIND::ENTER_GATE3);
-        break;
 	case CRaidGateProgressView::INTENT::PROPOSE_RESTART:
 		if (!canPropose) break;
 		(void)m_pPlayerCommandSink->Request_GateProgressPropose(m_iNextGateRequestSequence++, GATE_PROGRESS_KIND::RESTART);

@@ -2,8 +2,148 @@
     "schema":  "lostark.world-gameplay",
     "formatVersion":  6,
     "areaId":  "LV_LUT_HEARTRB_ED",
-    "revision":  646,
+    "revision":  647,
     "placements":  [
+                       {
+                           "placementId":  "Stage_Boss_Assembly",
+                           "kind":  "triggerBox",
+                           "position":  [
+                                            123.38,
+                                            23.05,
+                                            -89.2
+                                        ],
+                           "yawDegrees":  48,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               3.610384827,
+                                               1.5,
+                                               3.633995132
+                                           ],
+                           "requiresInteract":  true,
+                           "triggerOnce":  false,
+                           "events":  [
+                                          {
+                                              "type":  "activateEncounter",
+                                              "targetPlacementId":  "boss.valtan.center"
+                                          }
+                                      ]
+                       },
+                       {
+                           "placementId":  "valtan.entry.slot.1",
+                           "kind":  "triggerBox",
+                           "position":  [
+                                            148,
+                                            23,
+                                            -117
+                                        ],
+                           "yawDegrees":  135,
+                           "enabled":  false,
+                           "halfExtents":  [
+                                               0.1,
+                                               0.1,
+                                               0.1
+                                           ],
+                           "triggerOnce":  false,
+                           "events":  [
+                                          {
+                                              "type":  "movePlayer",
+                                              "targetPosition":  [
+                                                                     148,
+                                                                     23,
+                                                                     -117
+                                                                 ],
+                                              "durationSeconds":  0.05,
+                                              "arcHeight":  0
+                                          }
+                                      ]
+                       },
+                       {
+                           "placementId":  "valtan.entry.slot.2",
+                           "kind":  "triggerBox",
+                           "position":  [
+                                            150,
+                                            22.99,
+                                            -115.73
+                                        ],
+                           "yawDegrees":  135,
+                           "enabled":  false,
+                           "halfExtents":  [
+                                               0.1,
+                                               0.1,
+                                               0.1
+                                           ],
+                           "triggerOnce":  false,
+                           "events":  [
+                                          {
+                                              "type":  "movePlayer",
+                                              "targetPosition":  [
+                                                                     150,
+                                                                     22.99,
+                                                                     -115.73
+                                                                 ],
+                                              "durationSeconds":  0.05,
+                                              "arcHeight":  0
+                                          }
+                                      ]
+                       },
+                       {
+                           "placementId":  "valtan.entry.slot.3",
+                           "kind":  "triggerBox",
+                           "position":  [
+                                            149.27,
+                                            23,
+                                            -119
+                                        ],
+                           "yawDegrees":  135,
+                           "enabled":  false,
+                           "halfExtents":  [
+                                               0.1,
+                                               0.1,
+                                               0.1
+                                           ],
+                           "triggerOnce":  false,
+                           "events":  [
+                                          {
+                                              "type":  "movePlayer",
+                                              "targetPosition":  [
+                                                                     149.27,
+                                                                     23,
+                                                                     -119
+                                                                 ],
+                                              "durationSeconds":  0.05,
+                                              "arcHeight":  0
+                                          }
+                                      ]
+                       },
+                       {
+                           "placementId":  "valtan.entry.slot.4",
+                           "kind":  "triggerBox",
+                           "position":  [
+                                            151.27,
+                                            22.99,
+                                            -117.73
+                                        ],
+                           "yawDegrees":  135,
+                           "enabled":  false,
+                           "halfExtents":  [
+                                               0.1,
+                                               0.1,
+                                               0.1
+                                           ],
+                           "triggerOnce":  false,
+                           "events":  [
+                                          {
+                                              "type":  "movePlayer",
+                                              "targetPosition":  [
+                                                                     151.27,
+                                                                     22.99,
+                                                                     -117.73
+                                                                 ],
+                                              "durationSeconds":  0.05,
+                                              "arcHeight":  0
+                                          }
+                                      ]
+                       },
                        {
                            "placementId":  "Stage_1",
                            "kind":  "triggerBox",
@@ -1543,7 +1683,7 @@
                                             -96.8499985
                                         ],
                            "yawDegrees":  48,
-                           "enabled":  true,
+                           "enabled":  false,
                            "halfExtents":  [
                                                2,
                                                1.5,
@@ -1567,7 +1707,7 @@
                                             -107.550003
                                         ],
                            "yawDegrees":  45.5,
-                           "enabled":  true,
+                           "enabled":  false,
                            "halfExtents":  [
                                                2.5,
                                                1.5,

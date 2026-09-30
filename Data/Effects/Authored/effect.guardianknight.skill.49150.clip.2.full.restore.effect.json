@@ -8594,33 +8594,7 @@
         "masterElementId": ""
       },
       "detail": {
-        "transform": {
-          "position": [
-            0.3,
-            0.05,
-            -0.0
-          ],
-          "rotationDegrees": [
-            0.0,
-            0.0,
-            -0.0
-          ],
-          "revolutionDegreesPerSecond": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scale": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "velocityPerSecond": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
+        "transform": {"position": [-1.60000026, -1.20637143, -0.0740000159], "rotationDegrees": [-90, 0, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [1, 1, 1], "velocityPerSecond": [0, 0, 0]},
         "color": {
           "offset": [
             0.0,
@@ -8674,7 +8648,7 @@
         },
         "sprite": {
           "billboard": true
-        },
+        , "followEmitterAxisRotation": true},
         "decal": {
           "size": [
             1.85,
@@ -8772,7 +8746,7 @@
             1.85,
             3.0800000667572025
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -10727,33 +10701,7 @@
         "masterElementId": ""
       },
       "detail": {
-        "transform": {
-          "position": [
-            0.3,
-            0.05,
-            -0.0
-          ],
-          "rotationDegrees": [
-            0.0,
-            0.0,
-            -0.0
-          ],
-          "revolutionDegreesPerSecond": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scale": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "velocityPerSecond": [
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
+        "transform": {"position": [-1.60000026, -1.20637143, -0.0740000159], "rotationDegrees": [-90, 0, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [1, 1, 1], "velocityPerSecond": [0, 0, 0]},
         "color": {
           "offset": [
             0.0,
@@ -10807,7 +10755,7 @@
         },
         "sprite": {
           "billboard": true
-        },
+        , "followEmitterAxisRotation": true},
         "decal": {
           "size": [
             1.85,
@@ -10905,7 +10853,7 @@
             1.85,
             3.0800000667572025
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {

@@ -831,6 +831,9 @@
     <ClCompile Include="..\Private\ClientReplication_BattleItems.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\ClientReplication_WaterGun.cpp">
+      <Filter>04. Network</Filter>
+    </ClCompile>
 	<ClCompile Include="..\Private\CombatObjectProjectionRuntime.cpp">
 	  <Filter>04. Network</Filter>
 	</ClCompile>
@@ -3123,6 +3126,9 @@
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_SourceSpecialSurface.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceLandscapeSurface.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_SourceFoliageWind.hlsli">
@@ -5998,9 +6004,12 @@
   <ItemGroup>
     <ClInclude Include="..\Public\GuideAIDocument.h"><Filter>03. Tools\00. Map</Filter></ClInclude>
     <ClInclude Include="..\Public\GuideAITool.h"><Filter>03. Tools\00. Map</Filter></ClInclude>
+    <ClInclude Include="..\Public\MaharakaAITool.h"><Filter>03. Tools\00. Map</Filter></ClInclude>
+    <ClCompile Include="..\Private\MaharakaAITool.cpp"><Filter>03. Tools\00. Map</Filter></ClCompile>
     <ClCompile Include="..\Private\GuideAIDocument.cpp"><Filter>03. Tools\00. Map</Filter></ClCompile>
     <ClCompile Include="..\Private\GuideAITool.cpp"><Filter>03. Tools\00. Map</Filter></ClCompile>
     <ClCompile Include="..\Private\GuideAITool_Combat.cpp"><Filter>03. Tools\00. Map</Filter></ClCompile>
+    <None Include="..\..\Data\AI\MaharakaWaterpangAI.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Guide\GuideCatalog.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Guide\DimensionMaster\Placement.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Guide\DimensionMaster\Prompts.json"><Filter>96.DataFiles</Filter></None>
@@ -6040,6 +6049,8 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_01.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_02.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_04.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sky.source.spacehole.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sky.source.chaosgate.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_07.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_itr_02326.par_l_itr_02326_off_01.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_itr_02326.par_l_itr_02326_off_02.effect.json"><Filter>96.DataFiles</Filter></None>
@@ -6074,5 +6085,47 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup5312.hlsli"><Filter>97.ShaderFiles</Filter></None>
     <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases5312.hlsli"><Filter>97.ShaderFiles</Filter></None>
     <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup5312.hlsli"><Filter>97.ShaderFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.waterpang.cannon.jet.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.waterpang.cannon.telegraph.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.waterpang.cannon.att_battle_3_01.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.waterpang.cannon.att_battle_3_04.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.waterpang.cannon.att_battle_3_02.part0.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.waterpang.cannon.att_battle_3_02.part1.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.waterpang.cannon.att_battle_3_02.part2.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.waterpang.cannon.att_battle_3_02.part3.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.waterpang.mokomoko.telegraph.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.waterpang.mokomoko.ground.att_battle_1_01.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.waterpang.mokomoko.att_battle_1_01.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.watergun_att_2.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.q.flight.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.q.hit.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.w.flight.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.w.hit.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.e.speed.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.watergun_att_1.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.r.flight.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.r.hit.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.shot.start.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.watergun_att_3.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.watergun_att_4.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Camera\ColosseumIntro.cutscene.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Camera\ColosseumMatchStart.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Customizing\FaceSliders\DK.facesliders.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Maps\Authoring\LV_PVP_COLOSSEUM\LV_PVP_COLOSSEUM.mapplacements"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Maps\Imported\LV_PVP_COLOSSEUM\LV_PVP_COLOSSEUM.build.receipt.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Maps\Imported\LV_PVP_COLOSSEUM\LV_PVP_COLOSSEUM.mapassets"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Maps\Imported\LV_PVP_COLOSSEUM\LV_PVP_COLOSSEUM.mapplacements"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Maps\Imported\LV_PVP_COLOSSEUM\LV_PVP_COLOSSEUM.renderprofiles.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Navigation\LV_PVP_COLOSSEUM.navsource"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Sound\CharacterVoiceTypes.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\UI\Colosseum\IntroCutscene_Layout.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\UI\Colosseum\MatchCountdown_Layout.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\UI\Colosseum\MatchLoading_Layout.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\UI\Colosseum\QueueDialog_Layout.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Worlds\LV_PVP_COLOSSEUM\Gameplay.world.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
 </Project>

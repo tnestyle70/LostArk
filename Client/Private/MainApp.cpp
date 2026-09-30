@@ -40,6 +40,7 @@
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "Level_Bern.h"
+#include "CharacterPortraitRenderer.h"
 #include "Level_Development.h"
 #include "Gameplay/MaharakaWaterpangContract.h"
 #include "Level_Lobby.h"
@@ -58,6 +59,7 @@
 #include "ProfilerTool.h"
 #include "AnimationTargetService.h"
 #include "Character.h"
+#include "EffectFailureDiagnostic.h"
 #include "Presentation_Manager.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
@@ -119,6 +121,7 @@
 #include "WorldObjectTool.h"
 #include "WorldLevelTool.h"
 #include "GuideAITool.h"
+#include "MaharakaAITool.h"
 #include "ValtanPatternAuditionService.h"
 #include "ValtanPatternFlowService.h"
 #include "ValtanTuningCommandService.h"
@@ -145,6 +148,15 @@ namespace
 		"mechanicHeadOffsetX", "mechanicHeadOffsetY", "allyOffsetX", "allyOffsetY", "enemyOffsetX", "enemyOffsetY",
 		"koukuSaydonOffsetX", "koukuSaydonOffsetY", "koukuOffsetX", "koukuOffsetY", "valtanOffsetX", "valtanOffsetY" };
 	constexpr const char* HUD_MECHANIC_SCALE_KEYS[] = { "mechanicWidthScale", "mechanicHeightScale" };
+	constexpr const char* HUD_VALTAN_MECHANIC_KEYS[] = {
+		"valtanStaggerHeadOffsetX", "valtanStaggerHeadOffsetY", "valtanStaggerWidthScale", "valtanStaggerHeightScale",
+		"valtanArmorBreakOffsetX", "valtanArmorBreakOffsetY", "valtanArmorBreakWidthScale", "valtanArmorBreakHeightScale" };
+
+	bool IsValtanBossArchetype(const std::string& id)
+	{
+		return id == "BOSS_VALTAN" || id == "BOSS_VALTAN_GHOST";
+	}
+
 	constexpr const char* HUD_MECHANIC_SLOTS[] = { "Boss_StaggerBg", "Boss_StaggerTrack", "Boss_StaggerFill" };
 
 	bool ReadHudBarText(const std::filesystem::path& path, std::string& text)
@@ -156,7 +168,7 @@ namespace
 	}
 
 	bool ReadHudBarPositions(const Client::DATA_JSON_VALUE& root, std::array<f32_t, 12>& offsets,
-		std::array<f32_t, 2>& mechanicScale)
+		std::array<f32_t, 2>& mechanicScale, std::array<f32_t, 8>& valtanTuning)
 	{
 		const auto* schema = root.Find("schema");
 		const auto* version = root.Find("formatVersion");
@@ -189,8 +201,20 @@ namespace
 					stagedScale[i] = static_cast<f32_t>(value->Get_Number());
 				}
 		}
+		// Inherit existing Kouku tuning once on load, then keep each boss independently editable.
+		std::array<f32_t, 8> stagedValtan{ staged[0], staged[1], stagedScale[0], stagedScale[1], -24.f, -40.f, 1.f, 1.f };
+		if (const auto* positions = root.Find("healthBarPositions"))
+			for (size_t i = 0u; i < stagedValtan.size(); ++i)
+				if (const auto* value = positions->Find(HUD_VALTAN_MECHANIC_KEYS[i]))
+				{
+					if (!value->Is_Number() || !std::isfinite(value->Get_Number())) return false;
+					const double number = value->Get_Number();
+					if (i % 4u < 2u ? std::abs(number) > 1280.0 : number < 0.1 || number > 3.0) return false;
+					stagedValtan[i] = static_cast<f32_t>(number);
+				}
 		offsets = staged;
 		mechanicScale = stagedScale;
+		valtanTuning = stagedValtan;
 		return true;
 	}
 
@@ -222,13 +246,21 @@ namespace
 	}
 
 #ifdef _DEBUG
-    Client::CLASS_MOVIE_INSPECTION_CALLBACKS ClassMovieInspectionCallbacks()
+    Client::CLASS_MOVIE_INSPECTION_CALLBACKS ClassMovieInspectionCallbacks(
+        Client::CLASS_MOVIE_INSPECTION_CALLBACKS::OPEN_BACKGROUND openBackground)
     {
         Client::CLASS_MOVIE_INSPECTION_CALLBACKS callbacks;
-        callbacks.state = [](const std::string& classId, bool loop) {
+        callbacks.openBackground = std::move(openBackground);
+        callbacks.state = [canOpenBackground = static_cast<bool>(callbacks.openBackground)](const std::string& classId, bool loop) {
             auto* level = CLevel_CharacterSelect::Get_Active();
             if (level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
-                return level->Get_ClassSelectionPresentation().Get_WorldInspection(classId, loop);
+            {
+                auto state = level->Get_ClassSelectionPresentation().Get_WorldInspection(classId, loop);
+                state.backgroundAreaId = level->Get_ClassCinematicBackgroundArea(classId);
+                state.canEditBackground = canOpenBackground && state.active && level->Get_ClassMovieId() == classId &&
+                    !state.backgroundAreaId.empty() && level->Find_ClassCinematicBackgroundRuntime(state.backgroundAreaId) != nullptr;
+                return state;
+            }
             Client::CLASS_MOVIE_INSPECTION_STATE state;
             state.classId = classId; state.loop = loop;
             state.status = "Enter Character Select to inspect Movie models.";
@@ -243,7 +275,8 @@ namespace
         };
         return callbacks;
     }
-    void ConfigureClassMovieEditor(Client::CEffect_Tool& tool)
+    void ConfigureClassMovieEditor(Client::CEffect_Tool& tool,
+        Client::CLASS_MOVIE_INSPECTION_CALLBACKS::OPEN_BACKGROUND openBackground)
     {
         CEffect_Tool::CLASS_MOVIE_CALLBACKS movieCallbacks;
         movieCallbacks.state = [](const std::string& classId) {
@@ -407,7 +440,7 @@ namespace
             return !level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT) ||
                 level->Get_ClassSelectionPresentation().Clear_EffectPreviews(status);
         };
-        movieCallbacks.inspection = ClassMovieInspectionCallbacks();
+        movieCallbacks.inspection = ClassMovieInspectionCallbacks(std::move(openBackground));
         tool.Set_ClassMovieCallbacks(std::move(movieCallbacks));
     }
 #endif
@@ -580,6 +613,9 @@ namespace
 	owner now instead of an implicit "wasn't drawn this frame". */
 	constexpr const char_t* ITEM_UPGRADE_ALL_SLOTS[] =
 	{
+		/* Solid backdrop under the whole window (same rect as the result modal). The centre art
+		fades out at both edges, so without it the world shows through between the three panels. */
+		"ItemUpgrade_WindowBg",
 		"ItemUpgrade_SuccessModalBg", "ItemUpgrade_PanelBg", "ItemUpgrade_RecipeIconBgExample",
 		"ItemUpgrade_RecipeMaterial0", "ItemUpgrade_RecipeAmount0", "ItemUpgrade_RecipeIconBg1",
 		"ItemUpgrade_RecipeMaterial1", "ItemUpgrade_RecipeAmount1", "ItemUpgrade_RecipeIconBg2",
@@ -1242,10 +1278,11 @@ HRESULT CMainApp::Initialize()
 	means CCharacter::Update_SoundCues() finds no variants for every cue and silently plays
 	nothing (Client-only presentation, no gameplay authority depends on it). */
 	std::string soundCatalogStatus;
-	if (!Client::CSoundCueCatalog::Load(soundCatalogStatus))
+	const bool_t soundCatalogLoaded = Client::CSoundCueCatalog::Load(soundCatalogStatus);
 	{
-		const std::string diagnostic =
-			"[MainApp] Sound Cue Catalog initialization failed: " + soundCatalogStatus + "\n";
+		const std::string diagnostic = (soundCatalogLoaded ?
+			"[MainApp] Sound Cue Catalog: " :
+			"[MainApp] Sound Cue Catalog initialization failed: ") + soundCatalogStatus + "\n";
 		OutputDebugStringA(diagnostic.c_str());
 	}
 	std::string estherActionSoundStatus;
@@ -1970,12 +2007,17 @@ void CMainApp::Sync_CinematicUI()
 	// character owner before queued body/equipment/shadow draws consume it.
 	if (arena) arena->Sync_CinematicPlayerVisibility();
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	const auto* valtanArena = CLevel_ValtanArena::Get_Active();
+	auto* valtanArena = CLevel_ValtanArena::Get_Active();
+	if (valtanArena && currentLevel == ETOUI(LEVEL::VALTAN_ARENA))
+		valtanArena->Sync_CinematicPlayerVisibility();
 	const bool_t suppressed =
 		(arena && currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
 		 arena->Is_CinematicInputBlocked()) ||
 		(valtanArena && currentLevel == ETOUI(LEVEL::VALTAN_ARENA) &&
-		 valtanArena->Is_CinematicHUDSuppressed());
+		 valtanArena->Is_CinematicHUDSuppressed()) ||
+		(currentLevel == ETOUI(LEVEL::COLOSSEUM) &&
+		 CLevel_Development::Get_Active(LEVEL::COLOSSEUM) &&
+		 CLevel_Development::Get_Active(LEVEL::COLOSSEUM)->Is_ColosseumIntroActive());
 	auto& router = CUIInputRouter::Get();
 	if (suppressed && !router.Is_CinematicSuppressed())
 	{
@@ -2000,6 +2042,12 @@ void CMainApp::Update(const f32_t fTimeDelta)
 {
 #ifdef _DEBUG
 	if (m_pGuideAITool) m_pGuideAITool->Update();
+	if (m_pMaharakaAITool)
+	{
+		m_pMaharakaAITool->Set_Active(static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID()) == LEVEL::MAHARAKA &&
+			CNetworkManager::Get().Is_Connected());
+		m_pMaharakaAITool->Update();
+	}
 #endif
 	// Commit last frame's request before this frame builds UI and render queues.
 	// The newly active Level must Update/Late_Update before its first Render.
@@ -2171,22 +2219,27 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	if (nullptr != m_pEstherCutinService)
 		m_pEstherCutinService->Update(fTimeDelta);
 
-	/* 1/2/3/4 use whatever item is registered on Item_1..4 (drag-drop from the inventory --
-	see Update_ItemQuickSlots). Same gating as K/I; the Server is the one that actually
-	validates ownership and resolves the selected item, this only submits typed intent. */
-	if (!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive())
+	/* Always observe physical edges, including capture/focus frames. A held key
+	   cannot arm an item when the UI closes. Thrown items reserve this request
+	   sequence locally and only submit it after PlayerController confirms. */
 	{
-		constexpr int VIRTUAL_KEYS[4] = { 0x31, 0x32, 0x33, 0x34 }; // VK_1..VK_4
-		const bool_t windowFocused =
-			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+		constexpr int VIRTUAL_KEYS[4] = { 0x31, 0x32, 0x33, 0x34 };
+		const bool_t inputAllowed = GetForegroundWindow() == g_hWnd &&
+			!ImGui::GetIO().WantTextInput && !ImGui::GetIO().WantCaptureKeyboard &&
+			!CUIInputRouter::Get().Is_TextInputActive() &&
+			!CUIInputRouter::Get().Is_MouseClaimedThisFrame() &&
+			!CUIInputRouter::Get().Is_CinematicSuppressed() &&
+			!(m_pQuickSlotDragView && m_pQuickSlotDragView->Is_Carrying());
 		for (int32_t i = 0; i < 4; ++i)
 		{
-			const bool_t keyDown = windowFocused &&
-				0 != (GetAsyncKeyState(VIRTUAL_KEYS[i]) & 0x8000);
-			if (keyDown && !m_bItemKeyDown[i] && !m_strItemQuickSlot[i].empty())
+			const bool_t keyDown = 0 != (GetAsyncKeyState(VIRTUAL_KEYS[i]) & 0x8000);
+			if (inputAllowed && keyDown && !m_bItemKeyDown[i] && !m_strItemQuickSlot[i].empty())
 			{
-				if (CPlayerController* pController = Find_ActivePlayerController())
-					(void)pController->Request_UseItem(m_iNextUseItemSequence++, m_strItemQuickSlot[i]);
+				if (CPlayerController* pController = Find_ActivePlayerController(); pController &&
+					pController->Request_UseItem(m_iNextUseItemSequence, m_strItemQuickSlot[i]))
+				{
+					if (0u == ++m_iNextUseItemSequence) m_iNextUseItemSequence = 1u;
+				}
 			}
 			m_bItemKeyDown[i] = keyDown;
 		}
@@ -2549,7 +2602,9 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			(IsDebugToolVisible(DEBUG_TOOL::ANIMATION) &&
 			 DEBUG_TOOL::ANIMATION == m_eDebugInputOwner) ||
 			(IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && m_pSequencerTool &&
-			 ((m_pSequencerTool->Is_BossSelected() && DEBUG_TOOL::SEQUENCER == m_eDebugInputOwner) ||
+			 (((m_pSequencerTool->Is_BossSelected() ||
+			   (m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::OBJECT &&
+			    m_pSequencerTool->Uses_ValtanSession())) && DEBUG_TOOL::SEQUENCER == m_eDebugInputOwner) ||
 			  (m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::SEQUENCE &&
 			   DEBUG_TOOL::SEQUENCER_BENCHMARK == m_eDebugInputOwner))) ||
 			(IsDebugToolVisible(DEBUG_TOOL::SEQUENCER_BENCHMARK) &&
@@ -2774,7 +2829,9 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	};
 	const std::array<COMPOSITION_SESSION_ROUTE, 2> compositionRoutes{{
 		{DEBUG_TOOL::SEQUENCER, m_pKoukuSaydonActionWorkbench.get(),
-            m_pSequencerTool && m_pSequencerTool->Is_BossSelected() ? m_pSequencerTool.get() : nullptr},
+            m_pSequencerTool && (m_pSequencerTool->Is_BossSelected() ||
+                (m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::OBJECT &&
+                 m_pSequencerTool->Uses_ValtanSession())) ? m_pSequencerTool.get() : nullptr},
 		{DEBUG_TOOL::SEQUENCER_BENCHMARK, m_pSequenceActionWorkbench.get(),
             m_pSequencerTool && m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::SEQUENCE ?
                 m_pSequencerTool.get() : nullptr}
@@ -3783,12 +3840,13 @@ void CMainApp::Update(const f32_t fTimeDelta)
         shipFogTuning.fMaximumOpacity = pShipFog->maximumOpacity;
     }
     const auto localCharacter = CAnimationTargetService::Resolve_SceneCharacter();
-    float vehicleBrightness = localCharacter ? localCharacter->Get_VehicleDirectionalBrightness() : 1.f;
     float controlsBrightness=1.f;float4_t controlsColor{};
     const auto selectedCharacter=CAnimationTargetService::Resolve_Character();
     if(!(selectedCharacter&&selectedCharacter->Get_PresentationDirectionalControl(controlsBrightness,controlsColor)) && localCharacter)
         localCharacter->Get_PresentationDirectionalControl(controlsBrightness,controlsColor);
-    vehicleBrightness=std::clamp(vehicleBrightness*controlsBrightness,0.f,16.f);
+    // Vehicle source cues own their presentation; they must not dim the map
+    // directional light. Keep explicit character presentation controls intact.
+    controlsBrightness=std::clamp(controlsBrightness,0.f,16.f);
     /* The Lobby's authored scene light is black: it draws no world. While the character-select
     window stands the roster up, its portraits borrow the creation screen's key light
     (scene.character-select.customizing-dark.v1 colours), aimed at the characters' faces.
@@ -3809,7 +3867,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
     if (!m_RenderingProfiles.Apply_CameraEnvironment(fTimeDelta, environmentStatus,
         koukuCinematic || valtanCinematic || marioStage || nullptr != pShipFog,
         characterSelectLit ? &characterSelectLight : nullptr,
-        vehicleBrightness, &controlsColor, shipFogThinned ? &shipFogTuning : nullptr))
+        controlsBrightness, &controlsColor, shipFogThinned ? &shipFogTuning : nullptr))
         OutputDebugStringA((environmentStatus + "\n").c_str());
 	}
 
@@ -3859,6 +3917,89 @@ void CMainApp::Register_UITextOccluders()
 	if (ETOUI(LEVEL::CHARACTER_SELECT) == iLevel && nullptr != CLevel_CharacterSelect::Get_Active() &&
 		CLevel_CharacterSelect::Get_Active()->Is_CustomizingOpen())
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::MODAL, 0.f, 0.f, vViewport.x, vViewport.y);
+}
+
+/* The Colosseum match loading screen shows the player's own customized 3D character. The Bern
+character only lives until the level change, so on the last frame it is rendered (the transfer
+request is already pending, the switch happens at the next Update) it is drawn once into an owned
+target and the target is handed to the loading screen. Any other transition, or no character, leaves
+nothing behind and the loading screen keeps its 2D class illustration. */
+void CMainApp::Render_ColosseumTransferPortrait()
+{
+	const uint32_t iLevel = CGameInstance::Get().Get_CurrentLevelID();
+	if (ETOUI(LEVEL::BERN) != iLevel)
+	{
+		/* Kept while LOADING shows it; dropped once any other level (or the lobby recovery) runs. */
+		if (ETOUI(LEVEL::LOADING) != iLevel)
+			CLevelTransitionService::Set_TransferPortraitSRV(nullptr);
+		return;
+	}
+
+	LEVEL_TRANSITION_REQUEST Request;
+	if (!CLevelTransitionService::Peek_Pending(Request) ||
+		LEVEL_TRANSITION_PHASE::LOAD != Request.ePhase ||
+		LEVEL::COLOSSEUM != Request.eTargetLevel)
+		return;
+
+	CLevel_Bern* pBern = CLevel_Bern::Get_Active();
+	const shared_ptr<CCharacter> pCharacter =
+		nullptr != pBern ? pBern->Get_LocalCharacter() : nullptr;
+	const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
+	if (nullptr == pCharacter || vViewport.x <= 0.f || vViewport.y <= 0.f)
+	{
+		CLevelTransitionService::Set_TransferPortraitSRV(nullptr);
+		OutputDebugStringA("[Colosseum.MatchLoading] portrait snapshot skipped: no local character\n");
+		return;
+	}
+	if (nullptr == m_pTransferPortrait)
+		m_pTransferPortrait = std::make_unique<CCharacterPortraitRenderer>(m_pDevice, m_pContext);
+
+	/* MatchLoading_TeamA_Portrait: 373.333 x 324 of the 1280 x 720 layout. */
+	const uint32_t iWidth = static_cast<uint32_t>(std::lround(373.333f * vViewport.x / 1280.f));
+	const uint32_t iHeight = static_cast<uint32_t>(std::lround(324.f * vViewport.y / 720.f));
+	/* Framing measured off the retail loading avatar (capture 171625, panel 499 x 433 px): hair top at
+	   10.5 % and the eyes at 25.4 % of the panel height, the panel spanning 1.03 x the eye height, the
+	   body centred at 72 % of the width and turned about 18 degrees. Everything follows the character's
+	   own eye height because the classes differ (rig eyes: Lance Master 1.04 m, Artist 0.86 m x 1.05);
+	   the earlier fixed 1.3 m span assumed a 1.7 m body and left these 1.2 m characters small and low. */
+	/* Round 3 (capture 052127 retail vs 211807 ours, both measured): the head is 25 % of the name-to-label band
+	   in retail against 17 % here, so the span shrinks to 0.71 x eye height (x1.45 zoom) with the crown at the
+	   slot top; the body is on the view axis (no lateral shift) and the camera no longer orbits, which had turned
+	   the body 18 degrees to the viewer's left. */
+	constexpr f32_t PORTRAIT_SPAN_PER_EYE = 0.71f;
+	constexpr f32_t PORTRAIT_LOOK_PER_EYE = 0.767f;
+	constexpr f32_t PORTRAIT_FOV_DEGREES = 30.f;
+	constexpr f32_t PORTRAIT_YAW_DEGREES = 0.f;
+	constexpr f32_t PORTRAIT_SHIFT_RIGHT = 0.f;
+	const f32_t fScale = (std::max)(pCharacter->Get_PresentationScale(), 0.1f);
+	f32_t fEyeHeight = 0.f;
+	if (!CCharacterPortraitRenderer::Try_Measure_EyeHeight(*pCharacter, fEyeHeight))
+		fEyeHeight = 1.04f * fScale;
+	const f32_t fSpan = PORTRAIT_SPAN_PER_EYE * fEyeHeight;
+	CCharacterPortraitRenderer::CAMERA Camera{};
+	Camera.fFovDegrees = PORTRAIT_FOV_DEGREES;
+	Camera.fLookHeight = PORTRAIT_LOOK_PER_EYE * fEyeHeight;
+	Camera.fEyeHeight = Camera.fLookHeight;
+	Camera.fDistance = fSpan / (2.f * std::tan(XMConvertToRadians(Camera.fFovDegrees) * 0.5f));
+	Camera.fYawDegrees = PORTRAIT_YAW_DEGREES;
+	Camera.fLateralOffset = -PORTRAIT_SHIFT_RIGHT * fSpan * static_cast<f32_t>(iWidth) / static_cast<f32_t>(iHeight);
+	/* Retail poses the loading avatar unarmed but in its gear (same as the award page). The
+	   Bern character is destroyed by the level change that follows this frame. */
+	pCharacter->Set_WeaponPartsVisible(false);
+	const HRESULT hResult = m_pTransferPortrait->Render(pCharacter, iWidth, iHeight, Camera, 0u, 0u);
+	{
+		char szLog[256];
+		sprintf_s(szLog, "portrait=3d eyeWorld=%.3f dist=%.2f camH=%.2f look=%.2f fov=%.0f yaw=%.0f lateral=%.3f scale=%.2f rt=%ux%u\n",
+			fEyeHeight, Camera.fDistance, Camera.fEyeHeight, Camera.fLookHeight, Camera.fFovDegrees,
+			Camera.fYawDegrees, Camera.fLateralOffset, fScale, iWidth, iHeight);
+		OutputDebugStringA("[Colosseum.MatchLoading] ");
+		OutputDebugStringA(szLog);
+		Write_EffectFailureDiagnostic("Colosseum.MatchLoading", szLog);
+	}
+	CLevelTransitionService::Set_TransferPortraitSRV(
+		S_OK == hResult ? m_pTransferPortrait->Get_SRV() : nullptr);
+	if (S_OK != hResult)
+		OutputDebugStringA("[Colosseum.MatchLoading] portrait snapshot failed: render returned not-OK\n");
 }
 
 HRESULT CMainApp::Render()
@@ -3913,6 +4054,7 @@ HRESULT CMainApp::Render()
 		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
 		pValtan->Render_MvpPortraits();
 	}
+	Render_ColosseumTransferPortrait();
 
 	CEffectPresentationService::Submit_VisibleLevelPresentations();
 
@@ -4126,6 +4268,13 @@ HRESULT CMainApp::Render()
 			};
 #ifdef _DEBUG
 			RenderWorldLevelTool();
+			if (m_pMaharakaAITool && IsDebugToolVisible(DEBUG_TOOL::MAHARAKA_AI))
+			{
+				focusNextWindow(DEBUG_TOOL::MAHARAKA_AI);
+				m_pMaharakaAITool->Render();
+				if (m_pMaharakaAITool->Consume_InteractionRequest()) m_eDebugInputOwner = DEBUG_TOOL::MAHARAKA_AI;
+				if (!m_pMaharakaAITool->Is_Open()) SetDebugToolVisible(DEBUG_TOOL::MAHARAKA_AI, false);
+			}
 			if (m_pGuideAITool)
 			{
 				if (IsDebugToolVisible(DEBUG_TOOL::GUIDE_AI))
@@ -4212,7 +4361,8 @@ HRESULT CMainApp::Render()
                     m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::CHARACTER)
                     m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
 				if (m_pWorldObjectTool && m_pWorldObjectTool->Consume_InteractionRequest() &&
-					m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::OBJECT)
+					m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::OBJECT &&
+					!m_pSequencerTool->Uses_ValtanSession())
 					m_eDebugInputOwner = DEBUG_TOOL::WORLD_OBJECT;
 				if (!m_pSequencerTool->Is_Open())
 					SetDebugToolVisible(DEBUG_TOOL::SEQUENCER, false);
@@ -4629,6 +4779,7 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	{
 		Hide_CombatHUD();
 		if (m_pCombatAnalysisView) m_pCombatAnalysisView->Hide();
+		if (m_pDurabilityHudView) m_pDurabilityHudView->Hide();
 		if (m_pQuickSlotDragView) { m_pQuickSlotDragView->Cancel(); m_pQuickSlotDragView->Hide(); }
 		return;
 	}
@@ -5075,9 +5226,10 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		bool_t bRepairAllSlots = false;
 		if (m_pRepairWindowView->Try_Consume_RepairRequest(bRepairAllSlots))
 		{
-			/* No Server contract for repair yet: this slice is the window only. The press is
-			consumed here so the button cannot latch, and this is the single place the later
-			vertical slice hooks the typed command into. */
+			/* The Server restores the worn gear and answers with the inventory snapshot that
+			carries the repaired percents the durability HUD reads. */
+			CMainApp::Play_UIButtonClickSound();
+			(void)CNetworkManager::Get().Send_RepairEquipment(m_iNextUseItemSequence++, bRepairAllSlots);
 		}
 	}
 	if (nullptr != m_pShopWindowView)
@@ -5095,11 +5247,26 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	carries item durability, so only the silhouette draws. */
 	if (nullptr != m_pDurabilityHudView)
 	{
-		/* The class-select map shows no gear wear, so its armor silhouette stays hidden there. */
-		if (currentLevel == ETOUI(LEVEL::CHARACTER_SELECT))
-			m_pDurabilityHudView->Hide();
-		else
+		/* Gear wear shows only in Bern and the two raid arenas; every other Level hides it. */
+		if (currentLevel == ETOUI(LEVEL::BERN) ||
+			currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+			currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		{
+			/* Server-owned wear: below 30% a part reads damaged (red), at 0 it reads destroyed.
+			The wire order is weapon, helmet, top, gloves, bottoms, shoulder -- the first six
+			CDurabilityHudView parts. */
+			const auto& DurabilityPercent = CCombatHUDViewModel::Get().Get_Inventory().DurabilityPercent;
+			for (uint32_t iPart = 0; iPart < static_cast<uint32_t>(DurabilityPercent.size()); ++iPart)
+			{
+				const uint8_t iPercent = DurabilityPercent[iPart];
+				m_pDurabilityHudView->Set_PartState(static_cast<CDurabilityHudView::PART>(iPart),
+					0u == iPercent ? CDurabilityHudView::PART_STATE::DESTROYED :
+					(iPercent < 30u ? CDurabilityHudView::PART_STATE::DAMAGED : CDurabilityHudView::PART_STATE::NORMAL));
+			}
 			m_pDurabilityHudView->Update();
+		}
+		else
+			m_pDurabilityHudView->Hide();
 	}
 	if (nullptr != m_pInventoryView)
 	{
@@ -5107,7 +5274,10 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		/* Right-click equip: the first free slot of the item's kind (the two earrings / two
 		   rings), or the first one when both are worn. The Server checks kind and class. */
 		string strEquipItemId;
-		if (m_pInventoryView->Try_Consume_EquipRequest(strEquipItemId))
+		bool_t bEquipRequested = m_pInventoryView->Try_Consume_EquipRequest(strEquipItemId);
+		if (!bEquipRequested && nullptr != m_pAvatarBookView)
+			bEquipRequested = m_pAvatarBookView->Try_Consume_EquipRequest(strEquipItemId);
+		if (bEquipRequested)
 		{
 			using LostArk::Shared::EQUIPMENT_SLOT;
 			const ITEM_DEFINITION* pEquip = CItemCatalog::Find_ById(strEquipItemId);
@@ -5136,7 +5306,10 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 					m_iNextUseItemSequence++, eTarget, true, strEquipItemId);
 		}
 		LostArk::Shared::EQUIPMENT_SLOT eAvatarUnequipSlot = LostArk::Shared::EQUIPMENT_SLOT::NONE;
-		if (m_pInventoryView->Try_Consume_UnequipRequest(eAvatarUnequipSlot))
+		bool_t bUnequipRequested = m_pInventoryView->Try_Consume_UnequipRequest(eAvatarUnequipSlot);
+		if (!bUnequipRequested && nullptr != m_pAvatarBookView)
+			bUnequipRequested = m_pAvatarBookView->Try_Consume_UnequipRequest(eAvatarUnequipSlot);
+		if (bUnequipRequested)
 			(void)CNetworkManager::Get().Send_SetEquipment(
 				m_iNextUseItemSequence++, eAvatarUnequipSlot, false, {});
 	}
@@ -6393,7 +6566,7 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 	}
 
 	/* Bottom icon buttons. 종료 closes the game (WM_CLOSE -> WM_DESTROY -> quit, the same
-	path as the title-bar X); 뒤로 (retail: back to the login page) and 환경설정 have no
+	path as the title-bar X); 환경설정 has no
 	product target here yet, so they only show their hover art. */
 	struct LOBBY_ICON_BUTTON
 	{
@@ -6401,10 +6574,9 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 		const char* pOverTexture;
 		bool_t bExit;
 	};
-	constexpr LOBBY_ICON_BUTTON IconButtons[3] =
+	constexpr LOBBY_ICON_BUTTON IconButtons[2] =
 	{
 		{ "Lobby_ExitIcon", "UI/Lobby/ServerSelect/btn_exit_over.png", true },
-		{ "Lobby_PrevIcon", "UI/Lobby/ServerSelect/btn_prev_over.png", false },
 		{ "Lobby_OptionIcon", "UI/Lobby/ServerSelect/btn_option_over.png", false },
 	};
 	for (const LOBBY_ICON_BUTTON& Icon : IconButtons)
@@ -6462,6 +6634,8 @@ void CMainApp::Close_RuntimeWindowsForLoading()
 	if (nullptr != m_pInventoryView) m_pInventoryView->Close();
 	if (nullptr != m_pRepairWindowView) m_pRepairWindowView->Close();
 	if (nullptr != m_pShopWindowView) m_pShopWindowView->Close();
+	/* Not a window, but its STATIC sprites would keep drawing over the loading screen. */
+	if (nullptr != m_pDurabilityHudView) m_pDurabilityHudView->Hide();
 	if (nullptr != m_pCharacterInfoView) m_pCharacterInfoView->Close();
 	if (nullptr != m_pAvatarBookView) m_pAvatarBookView->Close();
 	if (nullptr != m_pVehicleWindowView) m_pVehicleWindowView->Close();
@@ -6919,10 +7093,9 @@ void CMainApp::RenderLobbyButtonText()
 		}
 	}
 	struct LOBBY_ICON_CAPTION { const char* pSlotId; const wchar_t* pLabel; f32_t fCenterX; };
-	const LOBBY_ICON_CAPTION IconCaptions[3] =
+	const LOBBY_ICON_CAPTION IconCaptions[2] =
 	{
 		{ "Lobby_ExitIcon", L"\xC885\xB8CC", 54.667f },
-		{ "Lobby_PrevIcon", L"\xB4A4\xB85C", 133.333f },
 		{ "Lobby_OptionIcon", L"\xD658\xACBD\xC124\xC815", 1226.667f },
 	};
 	for (const LOBBY_ICON_CAPTION& Caption : IconCaptions)
@@ -7503,7 +7676,7 @@ void CMainApp::Set_ItemUpgradeCenterPanelVisible(bool_t bVisible)
 
 	constexpr const char_t* CENTER_PANEL_SLOTS[] =
 	{
-		"ItemUpgrade_PanelBg",
+		"ItemUpgrade_WindowBg", "ItemUpgrade_PanelBg",
 		"ItemUpgrade_RecipeIconBgExample", "ItemUpgrade_RecipeMaterial0", "ItemUpgrade_RecipeAmount0",
 		"ItemUpgrade_RecipeIconBg1", "ItemUpgrade_RecipeMaterial1", "ItemUpgrade_RecipeAmount1",
 		"ItemUpgrade_RecipeIconBg2", "ItemUpgrade_RecipeMaterial2", "ItemUpgrade_RecipeAmount2",
@@ -8450,9 +8623,24 @@ bool_t CMainApp::Set_MechanicBarScale(const std::array<f32_t, 2>& scale)
 	return true;
 }
 
+bool_t CMainApp::Set_ValtanMechanicTuning(const std::array<f32_t, 8>& tuning)
+{
+	for (size_t i = 0u; i < tuning.size(); ++i)
+		if (!std::isfinite(tuning[i]) ||
+			(i % 4u < 2u ? std::abs(tuning[i]) > 1280.f : tuning[i] < 0.1f || tuning[i] > 3.f)) return false;
+	m_ValtanMechanicTuning = tuning;
+	Apply_MechanicBarRect();
+	return true;
+}
+
 void CMainApp::Apply_MechanicBarRect()
 {
 	if (!m_pBossUIView) return;
+	const bool valtan = IsValtanBossArchetype(CCombatHUDViewModel::Get().Get_Boss().strArchetypeId);
+	const std::array<f32_t, 2> scale = valtan ?
+		std::array<f32_t, 2>{ m_ValtanMechanicTuning[2], m_ValtanMechanicTuning[3] } : m_MechanicBarScale;
+	const float2_t offset = valtan ? float2_t(m_ValtanMechanicTuning[0], m_ValtanMechanicTuning[1]) :
+		float2_t(m_HealthBarOffsets[0], m_HealthBarOffsets[1]);
 	float2_t center{}, placementCenter{};
 	bool hasCenter = false;
 	for (size_t i = 0u; i < m_MechanicBarBaseRects.size(); ++i)
@@ -8462,7 +8650,7 @@ void CMainApp::Apply_MechanicBarRect()
 			center = float2_t(base.x + base.z * 0.5f, base.y + base.w * 0.5f);
 			// Like the health bar, keep the complete frame 3 reference pixels above the head.
 			placementCenter = m_bMechanicBarHasHeadAnchor ? float2_t(m_MechanicBarHeadAnchor.x,
-				m_MechanicBarHeadAnchor.y - 3.f - base.w * m_MechanicBarScale[1] * 0.5f) : center;
+				m_MechanicBarHeadAnchor.y - 3.f - base.w * scale[1] * 0.5f) : center;
 			hasCenter = true;
 			break;
 		}
@@ -8473,9 +8661,9 @@ void CMainApp::Apply_MechanicBarRect()
 		{
 			const auto& base = m_MechanicBarBaseRects[i];
 			m_pBossUIView->Set_SlotRect(HUD_MECHANIC_SLOTS[i],
-				placementCenter.x + (base.x - center.x) * m_MechanicBarScale[0] + m_HealthBarOffsets[0],
-				placementCenter.y + (base.y - center.y) * m_MechanicBarScale[1] + m_HealthBarOffsets[1],
-				base.z * m_MechanicBarScale[0], base.w * m_MechanicBarScale[1]);
+				placementCenter.x + (base.x - center.x) * scale[0] + offset.x,
+				placementCenter.y + (base.y - center.y) * scale[1] + offset.y,
+				base.z * scale[0], base.w * scale[1]);
 		}
 }
 
@@ -8490,9 +8678,12 @@ void CMainApp::Update_MechanicBarAnchor()
 	const auto& hud = CCombatHUDViewModel::Get();
 	const auto& boss = hud.Get_Boss();
 	using KIND = LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND;
+	const bool preview = m_bValtanStaggerDebug && IsValtanBossArchetype(boss.strArchetypeId) &&
+		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA);
 	if (!m_bMechanicBarUIAllowed || Is_RuntimeUIScreenSuppressed() || Is_KoukuMinigameHUDHidden() ||
-		Is_MvpResultPageOpen() || !boss.isValid || !boss.iCurrentHp || !boss.iMaximumMechanicGauge ||
-		(boss.eMechanicGaugeKind != KIND::STAGGER && boss.eMechanicGaugeKind != KIND::BOSS_HP))
+		Is_MvpResultPageOpen() || !boss.isValid || !boss.iCurrentHp ||
+		(!preview && (!boss.iMaximumMechanicGauge ||
+		(boss.eMechanicGaugeKind != KIND::STAGGER && boss.eMechanicGaugeKind != KIND::BOSS_HP))))
 		return;
 	if (boss.hasPosition)
 	{
@@ -8515,7 +8706,8 @@ void CMainApp::Update_MechanicBarAnchor()
 		m_bMechanicBarHasHeadAnchor = true;
 	}
 	Apply_MechanicBarRect();
-	const f32_t ratio = static_cast<f32_t>((std::min)(boss.iCurrentMechanicGauge, boss.iMaximumMechanicGauge)) /
+	const f32_t ratio = preview ? 0.65f :
+		static_cast<f32_t>((std::min)(boss.iCurrentMechanicGauge, boss.iMaximumMechanicGauge)) /
 		static_cast<f32_t>(boss.iMaximumMechanicGauge);
 	m_pBossUIView->Set_SlotVisible("Boss_StaggerBg", true);
 	m_pBossUIView->Set_SlotVisible("Boss_StaggerTrack", false);
@@ -8529,13 +8721,16 @@ bool_t CMainApp::Reload_HealthBarPositions(std::string& status)
 	DATA_JSON_VALUE root;
 	std::array<f32_t, 12> staged{};
 	std::array<f32_t, 2> stagedScale{};
+	std::array<f32_t, 8> stagedValtan{};
 	if (!ReadHudBarText(CProjectDataRoot::Resolve(L"UI/KoukuSaydon/KoukuHudModes.json"), text) ||
-		!CDataJson::Parse(text, root, error) || !ReadHudBarPositions(root, staged, stagedScale))
+		!CDataJson::Parse(text, root, error) || !ReadHudBarPositions(root, staged, stagedScale, stagedValtan))
 	{ status = "Invalid health bar positions; current preview preserved. " + error; return false; }
 	(void)Set_HealthBarPositions(staged);
 	(void)Set_MechanicBarScale(stagedScale);
 	m_SavedHealthBarOffsets = staged;
 	m_SavedMechanicBarScale = stagedScale;
+	(void)Set_ValtanMechanicTuning(stagedValtan);
+	m_SavedValtanMechanicTuning = stagedValtan;
 	status = "Reloaded saved health bar positions and stagger size.";
 	return true;
 }
@@ -8553,7 +8748,8 @@ bool_t CMainApp::Save_HealthBarPositions(std::string& status)
 	DATA_JSON_VALUE root;
 	std::array<f32_t, 12> saved{};
 	std::array<f32_t, 2> savedScale{};
-	if (!ReadHudBarText(path, before) || !CDataJson::Parse(before, root, error) || !ReadHudBarPositions(root, saved, savedScale))
+	std::array<f32_t, 8> savedValtan{};
+	if (!ReadHudBarText(path, before) || !CDataJson::Parse(before, root, error) || !ReadHudBarPositions(root, saved, savedScale, savedValtan))
 	{ status = "HUD configuration could not be read; disk and preview preserved. " + error; return false; }
 	std::array<bool, 12> changed{};
 	bool anyChanged = false;
@@ -8572,10 +8768,19 @@ bool_t CMainApp::Save_HealthBarPositions(std::string& status)
 		if (scaleChanged[i] && savedScale[i] != m_SavedMechanicBarScale[i])
 		{ status = "Edited stagger size field changed on disk. Reload before saving; preview preserved."; return false; }
 	}
+	std::array<bool, 8> valtanChanged{};
+	for (size_t i = 0u; i < valtanChanged.size(); ++i)
+	{
+		valtanChanged[i] = m_ValtanMechanicTuning[i] != m_SavedValtanMechanicTuning[i];
+		anyChanged |= valtanChanged[i];
+		if (valtanChanged[i] && savedValtan[i] != m_SavedValtanMechanicTuning[i])
+		{ status = "Edited Valtan HUD field changed on disk. Reload before saving; preview preserved."; return false; }
+	}
 	if (!anyChanged)
 	{
 		(void)Set_HealthBarPositions(saved); m_SavedHealthBarOffsets = saved;
 		(void)Set_MechanicBarScale(savedScale); m_SavedMechanicBarScale = savedScale;
+		(void)Set_ValtanMechanicTuning(savedValtan); m_SavedValtanMechanicTuning = savedValtan;
 		status = "No edits; refreshed health bar positions and stagger size from disk.";
 		return true;
 	}
@@ -8588,13 +8793,16 @@ bool_t CMainApp::Save_HealthBarPositions(std::string& status)
 	for (size_t i = 0u; i < scaleChanged.size(); ++i)
 		if (scaleChanged[i] || !positions.contains(HUD_MECHANIC_SCALE_KEYS[i]))
 			positions[HUD_MECHANIC_SCALE_KEYS[i]] = DATA_JSON_VALUE::Number(scaleChanged[i] ? m_MechanicBarScale[i] : savedScale[i]);
+	for (size_t i = 0u; i < valtanChanged.size(); ++i)
+		if (valtanChanged[i] || !positions.contains(HUD_VALTAN_MECHANIC_KEYS[i]))
+			positions[HUD_VALTAN_MECHANIC_KEYS[i]] = DATA_JSON_VALUE::Number(valtanChanged[i] ? m_ValtanMechanicTuning[i] : savedValtan[i]);
 	fields["healthBarPositions"] = DATA_JSON_VALUE::Object(std::move(positions));
 	std::ostringstream serialized;
 	serialized.imbue(std::locale::classic());
 	WriteHudBarJson(serialized, DATA_JSON_VALUE::Object(std::move(fields)));
 	const std::string after = serialized.str() + "\n";
 	DATA_JSON_VALUE verified;
-	if (!CDataJson::Parse(after, verified, error) || !ReadHudBarPositions(verified, saved, savedScale))
+	if (!CDataJson::Parse(after, verified, error) || !ReadHudBarPositions(verified, saved, savedScale, savedValtan))
 	{ status = "Position serialization rejected; disk and preview preserved."; return false; }
 	const auto suffix = std::to_wstring(GetCurrentProcessId()) + L"." + std::to_wstring(GetTickCount64());
 	const std::filesystem::path temporary = path.wstring() + L".tmp." + suffix;
@@ -8623,6 +8831,7 @@ bool_t CMainApp::Save_HealthBarPositions(std::string& status)
 	}
 	(void)Set_HealthBarPositions(saved); m_SavedHealthBarOffsets = saved;
 	(void)Set_MechanicBarScale(savedScale); m_SavedMechanicBarScale = savedScale;
+	(void)Set_ValtanMechanicTuning(savedValtan); m_SavedValtanMechanicTuning = savedValtan;
 	status = "Saved health bar positions and stagger size. Backup: " + backup.string();
 	return true;
 }
@@ -8639,6 +8848,7 @@ void CMainApp::Update_WorldHealthBars(const f32_t fTimeDelta)
 		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
 		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
 		currentLevel == ETOUI(LEVEL::MAHARAKA) ||
+		currentLevel == ETOUI(LEVEL::COLOSSEUM) ||
 		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA);
 	const bool_t characterPresentation = currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) &&
 		CLevel_CharacterSelect::Get_Active() && CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen();
@@ -8653,6 +8863,10 @@ void CMainApp::Update_WorldHealthBars(const f32_t fTimeDelta)
 	if (arena) std::erase_if(worldBars, [arena](const auto& state) {
 		return state.isPlayer && !arena->Should_ShowPlayerWorldUI(state.iNetEntityId);
 	});
+	(void)m_pWorldHealthBarView->Set_ValtanArmorBreakTuning(
+		float2_t(m_ValtanMechanicTuning[4], m_ValtanMechanicTuning[5]),
+		float2_t(m_ValtanMechanicTuning[6], m_ValtanMechanicTuning[7]),
+		m_bValtanArmorBreakDebug && currentLevel == ETOUI(LEVEL::VALTAN_ARENA));
 	m_pWorldHealthBarView->Update(fTimeDelta, worldBars,
 		isSupportedLevel && !Is_RuntimeUIScreenSuppressed() && !characterPresentation && !Is_MvpResultPageOpen(), cardMazeActive);
 }
@@ -9512,9 +9726,9 @@ void CMainApp::Update_EstherGauge(const f32_t fTimeDelta)
 	}
 	else
 	{
-		m_pEstherUIView->Set_SlotTexture("Esther_Slot1_Icon", "UI/Esther/esther_portrait_bahuntur.png");
+		m_pEstherUIView->Set_SlotTexture("Esther_Slot1_Icon", "UI/Esther/esther_portrait_sillian.png");
 		m_pEstherUIView->Set_SlotTexture("Esther_Slot2_Icon", "UI/Esther/esther_portrait_wei.png");
-		m_pEstherUIView->Set_SlotTexture("Esther_Slot3_Icon", "UI/Esther/esther_portrait_sillian.png");
+		m_pEstherUIView->Set_SlotTexture("Esther_Slot3_Icon", "UI/Esther/esther_portrait_bahuntur.png");
 	}
 
 	const uint32_t gauge = CCombatHUDViewModel::Get().Get_EstherGauge();
@@ -10524,7 +10738,8 @@ HRESULT CMainApp::Ready_Prototype_For_LoadingChrome()
 		L"UI/Loading/Loading_Background_Kouku.png",
 		L"UI/Loading/Loading_Background_Prologue.png",
 		L"UI/Loading/Loading_Background_Maharaka.png",
-		L"UI/Loading/Loading_Background_Sea_0.png" })
+		L"UI/Loading/Loading_Background_Sea_0.png",
+		L"UI/Loading/Loading_Background_Colosseum.png" })
 	{
 		const filesystem::path resolvedPath =
 			CRuntimeAssetRoot::Resolve(pLoadingBackground);
@@ -10661,7 +10876,8 @@ void CMainApp::Apply_LevelRequest()
 			(iPreviousLevel == ETOUI(LEVEL::BERN) ||
 			 iPreviousLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
 			 iPreviousLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ||
-			 iPreviousLevel == ETOUI(LEVEL::MAHARAKA)))
+			 iPreviousLevel == ETOUI(LEVEL::MAHARAKA) ||
+			 iPreviousLevel == ETOUI(LEVEL::COLOSSEUM)))
 			CCharacterSelectionState::Capture_ActiveWorldState();
 		const HRESULT result = Start_Level(
 			request.eTargetLevel,
@@ -11070,6 +11286,36 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Open");
 #ifdef _DEBUG
+    // The callbacks are owned by this app's tools and copy this closure, never a local reference.
+    const CLASS_MOVIE_INSPECTION_CALLBACKS::OPEN_BACKGROUND openMovieBackground =
+        [this](const std::string& classId, const std::string& expectedAreaId, std::string& status) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+            { status = "Background editing requires the active Character Select Movie."; return false; }
+            auto& preview = level->Get_ClassSelectionPresentation();
+            const std::string currentAreaId = level->Get_ClassCinematicBackgroundArea(classId);
+            if (!preview.Is_Active() || preview.Get_ActiveClass() != classId || level->Get_ClassMovieId() != classId ||
+                expectedAreaId.empty() || currentAreaId != expectedAreaId ||
+                !level->Find_ClassCinematicBackgroundRuntime(expectedAreaId))
+            { status = "The Movie or its loaded background changed. Refresh the Movie inspector; the current Map Tool draft was preserved."; return false; }
+            if (FAILED(EnsureDebugTool(DEBUG_TOOL::MAP, false)) || !m_pMapTool)
+            { status = "Map Tool could not be prepared; the Movie preview was preserved."; return false; }
+            if (!m_pMapTool->Open_ClassMovieBackground(expectedAreaId, status)) return false;
+            std::string cameraStatus;
+            if (!preview.Set_InspectionFreeCamera(true, cameraStatus))
+                status += " Free camera handoff failed: " + cameraStatus;
+            if (preview.Get_WorldInspection(classId, preview.Is_Looping()).pickArmed)
+            {
+                CLASS_MOVIE_INSPECTION_COMMAND cancelPick;
+                cancelPick.action = CLASS_MOVIE_INSPECTION_ACTION::PICK_IN_SCENE;
+                cancelPick.enabled = false;
+                (void)preview.Inspect_World(classId, preview.Is_Looping(), cancelPick, cameraStatus);
+            }
+            SetDebugToolVisible(DEBUG_TOOL::MAP, true);
+            m_eDebugInputOwner = DEBUG_TOOL::MAP;
+            m_eDebugWindowFocusPending = DEBUG_TOOL::MAP;
+            return true;
+        };
 	/* Keep the old enum value as an internal compatibility route only. */
 	if (DEBUG_TOOL::EFFECT_COMPOSITION == eTool)
 		return EnsureDebugTool(DEBUG_TOOL::EFFECT, bShowWindow);
@@ -11102,6 +11348,12 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 	case DEBUG_TOOL::WORLD_LEVEL:
 		if (!m_pWorldLevelTool) m_pWorldLevelTool = make_unique<CWorldLevelTool>();
 		m_pWorldLevelTool->Open(GetWorldLevelAreaId());
+		break;
+	case DEBUG_TOOL::MAHARAKA_AI:
+		if (!m_pMaharakaAITool) m_pMaharakaAITool = make_unique<CMaharakaAITool>(make_shared<CNetworkPlayerCommandSink>());
+		m_pMaharakaAITool->Set_Active(static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID()) == LEVEL::MAHARAKA &&
+			CNetworkManager::Get().Is_Connected());
+		m_pMaharakaAITool->Open();
 		break;
 	case DEBUG_TOOL::GUIDE_AI:
 		if (!m_pGuideAITool) m_pGuideAITool = make_unique<CGuideAITool>();
@@ -11147,7 +11399,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 			}
 		}
         m_pEffectTool->Configure_AuthoringWorkspace(m_pKoukuPresentationPlayer.get());
-                ConfigureClassMovieEditor(*m_pEffectTool);
+                ConfigureClassMovieEditor(*m_pEffectTool, openMovieBackground);
         m_pEffectTool->Set_KoukuPatternPreviewProvider(
             [this](const std::string& effectId, EFFECT_TOOL_KOUKU_PATTERN_PREVIEW& context, std::string& status)
             {
@@ -11287,7 +11539,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 				m_pEffectTool = make_unique<CEffect_Tool>(m_pDevice, m_pContext,
 					m_pCharacterPreviewPanel, m_pBalanceTool.get());
 				m_pEffectTool->Configure_AuthoringWorkspace(m_pKoukuPresentationPlayer.get());
-                ConfigureClassMovieEditor(*m_pEffectTool);
+                ConfigureClassMovieEditor(*m_pEffectTool, openMovieBackground);
 			}
 			m_pCharacterActionWorkbench = make_unique<CCharacterActionWorkbench>(m_pCharacterPreviewPanel,
 				m_pEffectTool->Create_CompositionSequencer("character.actions"), m_pAnimationTool.get());
@@ -11457,7 +11709,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
                 status = "Movie Effect opened in V1. Edit Elements with the Movie actors; Play All replays the complete Movie.";
                 return true;
             };
-            classSelection.inspection = ClassMovieInspectionCallbacks();
+            classSelection.inspection = ClassMovieInspectionCallbacks(openMovieBackground);
             m_pSequencerTool->Set_ClassSelectionPreviewCallbacks(std::move(classSelection));
 			/* The Map Tool hosts the same Sequence session for its integrated
 			   cutscene view. One owner and one draft, borrowed per frame. */
@@ -11473,7 +11725,8 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 			m_pSequencerTool->Set_TargetChangedCallback([this](COMPOSITION_WORKBENCH_TARGET target) {
 				StopCompositionPreview(m_eCompositionPreviewOwner);
 				if (m_pValtanActionWorkbench) m_pValtanActionWorkbench->Set_PreviewOwnerActive(false);
-				m_eDebugInputOwner = target == COMPOSITION_WORKBENCH_TARGET::OBJECT ? DEBUG_TOOL::WORLD_OBJECT :
+				m_eDebugInputOwner = target == COMPOSITION_WORKBENCH_TARGET::OBJECT &&
+					!m_pSequencerTool->Uses_ValtanSession() ? DEBUG_TOOL::WORLD_OBJECT :
 					(target == COMPOSITION_WORKBENCH_TARGET::SEQUENCE ? DEBUG_TOOL::SEQUENCER_BENCHMARK : DEBUG_TOOL::SEQUENCER);
 			});
             if (bShowWindow)
@@ -11736,7 +11989,8 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 	CLevel_CharacterSelect* characterSelect = LEVEL::CHARACTER_SELECT == level ?
 		CLevel_CharacterSelect::Get_Active() : nullptr;
 	CLevel_Bern* bern = LEVEL::BERN == level ? CLevel_Bern::Get_Active() : nullptr;
-	CLevel_Development* development = LEVEL::DEVELOPMENT == level || LEVEL::MAHARAKA == level ?
+	CLevel_Development* development = LEVEL::DEVELOPMENT == level || LEVEL::MAHARAKA == level ||
+		LEVEL::COLOSSEUM == level ?
 		CLevel_Development::Get_Active(level) : nullptr;
 	shared_ptr<CCamera_Free> camera;
 	CPlayerController* controller = nullptr;
@@ -11767,7 +12021,8 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 	else if (nullptr != development)
 	{
 		camera = development->Get_DebugCamera();
-		mapName = LEVEL::MAHARAKA == level ? "Maharaka" : "Development / Training";
+		mapName = LEVEL::MAHARAKA == level ? "Maharaka" :
+			LEVEL::COLOSSEUM == level ? "Colosseum" : "Development / Training";
 	}
 	if (camera && ImGui::CollapsingHeader("Map Camera / Player", ImGuiTreeNodeFlags_DefaultOpen))
 	{
@@ -14113,12 +14368,27 @@ void CMainApp::RenderHUDBarPositionControls()
 
 	ImGui::SeparatorText("Health bar positions");
 	auto offsets = Get_HealthBarPositions();
-	bool changed = ImGui::DragFloat2("Stagger head X / Y##HUDBar", &offsets[0], 1.f, -1280.f, 1280.f, "%.1f");
+	bool changed = ImGui::DragFloat2("Kouku Stagger head X / Y##HUDBar", &offsets[0], 1.f, -1280.f, 1280.f, "%.1f");
 	auto mechanicScale = Get_MechanicBarScale();
-	bool sizeChanged = ImGui::SliderFloat("Stagger width##HUDBar", &mechanicScale[0], 0.1f, 3.f, "%.3fx");
-	sizeChanged |= ImGui::SliderFloat("Stagger thickness##HUDBar", &mechanicScale[1], 0.1f, 3.f, "%.3fx");
+	bool sizeChanged = ImGui::SliderFloat("Kouku Stagger width##HUDBar", &mechanicScale[0], 0.1f, 3.f, "%.3fx");
+	sizeChanged |= ImGui::SliderFloat("Kouku Stagger thickness##HUDBar", &mechanicScale[1], 0.1f, 3.f, "%.3fx");
 	if (sizeChanged && !Set_MechanicBarScale(mechanicScale))
 		m_strHealthBarPositionStatus = "Stagger size must be finite and between 0.1 and 3.";
+	ImGui::SeparatorText("Valtan Stagger");
+	ImGui::Checkbox("Show debug##ValtanStagger", &m_bValtanStaggerDebug);
+	auto valtanTuning = m_ValtanMechanicTuning;
+	bool valtanChanged = ImGui::DragFloat2("Head X / Y##ValtanStagger", &valtanTuning[0], 1.f, -1280.f, 1280.f, "%.1f");
+	valtanChanged |= ImGui::SliderFloat("Width##ValtanStagger", &valtanTuning[2], 0.1f, 3.f, "%.3fx");
+	valtanChanged |= ImGui::SliderFloat("Thickness##ValtanStagger", &valtanTuning[3], 0.1f, 3.f, "%.3fx");
+	ImGui::SeparatorText("Valtan Armor Break PNG");
+	ImGui::Checkbox("Show debug##ValtanArmorBreak", &m_bValtanArmorBreakDebug);
+	valtanChanged |= ImGui::DragFloat2("Head X / Y##ValtanArmorBreak", &valtanTuning[4], 1.f, -1280.f, 1280.f, "%.1f");
+	valtanChanged |= ImGui::SliderFloat("Width##ValtanArmorBreak", &valtanTuning[6], 0.1f, 3.f, "%.3fx");
+	valtanChanged |= ImGui::SliderFloat("Height##ValtanArmorBreak", &valtanTuning[7], 0.1f, 3.f, "%.3fx");
+	if (valtanChanged && !Set_ValtanMechanicTuning(valtanTuning))
+		m_strHealthBarPositionStatus = "Valtan HUD values must be finite; offsets -1280..1280, size 0.1..3.";
+	ImGui::TextDisabled("Show debug uses the live Valtan head; it does not change combat state.");
+	ImGui::SeparatorText("World HP offsets");
 	changed |= ImGui::DragFloat2("Ally HP X / Y##HUDBar", &offsets[2], 1.f, -1280.f, 1280.f, "%.1f");
 	changed |= ImGui::DragFloat2("Normal monster HP X / Y##HUDBar", &offsets[4], 1.f, -1280.f, 1280.f, "%.1f");
 	changed |= ImGui::DragFloat2("KoukuSaydon HP X / Y##HUDBar", &offsets[6], 1.f, -1280.f, 1280.f, "%.1f");
@@ -14130,7 +14400,7 @@ void CMainApp::RenderHUDBarPositionControls()
 	ImGui::SameLine();
 	if (ImGui::Button("Reload saved positions and size##HUDBar")) (void)Reload_HealthBarPositions(m_strHealthBarPositionStatus);
 	ImGui::TextDisabled("1280 x 720 reference pixels; +Y moves down. Frames and shields move together.");
-	ImGui::TextDisabled("Stagger X/Y offsets the boss head, like the world health bar.");
+	ImGui::TextDisabled("Kouku and Valtan stagger settings are independent; X/Y offsets the boss head.");
 	ImGui::TextDisabled("Size uses the authored frame center. Default width 0.333x; thickness 1x.");
 	ImGui::TextDisabled("Save writes Data/UI/KoukuSaydon/KoukuHudModes.json. Applies across levels.");
 	if (!m_strHealthBarPositionStatus.empty()) ImGui::TextWrapped("%s", m_strHealthBarPositionStatus.c_str());
@@ -14192,6 +14462,8 @@ void CMainApp::RenderDeveloperTools()
 		ETOUI(LEVEL::DEVELOPMENT) == currentLevelId &&
 		CMapEditorWorkspaceService::Is_Active();
 	ImGui::Text("Current level id: %u", currentLevelId);
+	if (currentLevelId == ETOUI(LEVEL::CHARACTER_SELECT))
+		RenderCameraSpeedControls();
 #ifdef _DEBUG
 	ImGui::TextDisabled(isMapEditorWorkspace ?
 		"Map Editor is active. Open Map Tool to author the selected Area." :
@@ -14253,6 +14525,7 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Effect Tool V2", DEBUG_TOOL::EFFECT_V2);
 		toolCell("World Level Tool", DEBUG_TOOL::WORLD_LEVEL);
 		toolCell("Guide AI", DEBUG_TOOL::GUIDE_AI);
+		toolCell("Waterpang AI Tool", DEBUG_TOOL::MAHARAKA_AI);
 		toolCell("Map Tool", DEBUG_TOOL::MAP);
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
 #endif
@@ -14268,12 +14541,13 @@ void CMainApp::RenderDeveloperTools()
 	if (ImGui::Button("Close All Tools"))
 		CloseAllDebugTools();
 #ifdef _DEBUG
-	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 17>
+	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 18>
 		TOOL_FOCUS_OPTIONS = {{
 			{ DEBUG_TOOL::MAP, "Map Tool" },
 			{ DEBUG_TOOL::WORLD_OBJECT, "Action Workbench / Object" },
 			{ DEBUG_TOOL::WORLD_LEVEL, "Open World Level Tool" },
 			{ DEBUG_TOOL::GUIDE_AI, "Guide AI Tool" },
+			{ DEBUG_TOOL::MAHARAKA_AI, "Waterpang AI Tool" },
 			{ DEBUG_TOOL::SEQUENCER, "Action Workbench" },
 			{ DEBUG_TOOL::SEQUENCER_BENCHMARK, "Action Workbench / Sequence" },
 			{ DEBUG_TOOL::ANIMATION, "Animation Clip Tool" },
@@ -14361,8 +14635,10 @@ void CMainApp::RenderDeveloperTools()
 		ImGui::TextWrapped("Aim bombs at the ground and Holy Charm at another party member. Time Stop protects yourself for 3 seconds. Item cooldowns still apply.");
 		if (!m_strDebugItemStatus.empty()) ImGui::TextWrapped("%s", m_strDebugItemStatus.c_str());
 	}
-	RenderCameraSpeedControls();
+	if (currentLevelId != ETOUI(LEVEL::CHARACTER_SELECT))
+		RenderCameraSpeedControls();
 	RenderDragonControls();
+	CLevel_Development::Render_ColosseumIntroControls();
 	ImGui::TextWrapped("%s", m_strToolStatus.c_str());
 	if (ImGui::CollapsingHeader("Character Select Movie", ImGuiTreeNodeFlags_DefaultOpen))
 		CLevel_CharacterSelect::Render_ClassSelectMovieControls();
@@ -15150,6 +15426,7 @@ void CMainApp::Free()
 	m_pMapEffectPlacementRequest.reset();
 	m_pWorldLevelTool.reset();
 	m_pGuideAITool.reset();
+	m_pMaharakaAITool.reset();
 	m_pWorldObjectTool.reset();
 #endif
 #ifdef _DEBUG

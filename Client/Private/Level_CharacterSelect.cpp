@@ -1992,6 +1992,26 @@ std::string CLevel_CharacterSelect::Resolve_ClassCinematicBackgroundArea(const s
 	return authored.empty() ? m_strClassCinemaFallbackAreaId : authored;
 }
 
+#ifdef _DEBUG
+CMapPlacementRuntime* CLevel_CharacterSelect::Find_ClassCinematicBackgroundRuntime(const std::string& areaId)
+{
+	if (areaId.empty()) return nullptr;
+	if (m_MapRuntime.Get_Catalog().Is_Ready() && areaId == m_MapRuntime.Get_Catalog().Get_AreaId())
+		return &m_MapRuntime;
+	const auto background = std::find_if(m_ClassCinemaBackgrounds.begin(), m_ClassCinemaBackgrounds.end(),
+		[&](const auto& value) { return value.areaId == areaId; });
+	if (background == m_ClassCinemaBackgrounds.end() || !background->failure.empty() ||
+		!background->runtime || !background->runtime->Get_Catalog().Is_Ready()) return nullptr;
+	return background->runtime.get();
+}
+
+std::string CLevel_CharacterSelect::Get_ClassCinematicBackgroundArea(const std::string& classId) const
+{
+	return m_ClassSelectionPresentation.Has_Class(classId) ?
+		Resolve_ClassCinematicBackgroundArea(classId) : std::string{};
+}
+#endif
+
 bool_t CLevel_CharacterSelect::Check_ClassCinematicBackground(const std::string& classId,
 	std::string& outFailure) const
 {

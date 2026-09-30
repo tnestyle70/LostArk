@@ -278,6 +278,7 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 	m_ePendingPurpose = purpose;
 	m_ePendingCharacterClass = identity.eCharacterClass;
 	m_strPendingNickname = identity.strNickname;
+	m_iPendingVoiceType = identity.iVoiceType;
 	m_hasPendingCharacterCreationEntry = usesPendingCreation;
 
 	switch (Submit_PendingNetworkEntry())
@@ -342,7 +343,8 @@ CLevel_Lobby::ENTRY_REQUEST_RESULT CLevel_Lobby::Submit_PendingNetworkEntry()
 	if (!networkManager.Send_EnterWorld(
 		m_ePendingWorldId,
 		m_ePendingCharacterClass,
-		m_strPendingNickname))
+		m_strPendingNickname,
+		m_iPendingVoiceType))
 	{
 		return ENTRY_REQUEST_RESULT::SEND_FAILED;
 	}
@@ -420,6 +422,7 @@ void CLevel_Lobby::Reset_PendingEntryState()
 	m_ePendingPurpose = LOBBY_COMMAND_PURPOSE::GAMEPLAY;
 	m_ePendingCharacterClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
 	m_strPendingNickname.clear();
+	m_iPendingVoiceType = LostArk::Shared::MIN_VOICE_TYPE;
 	m_strPendingServerHost.clear();
 	m_hasPendingCharacterCreationEntry = false;
 	m_ApprovalDeadline = {};
@@ -474,6 +477,12 @@ bool_t CLevel_Lobby::Resolve_Stage(
 		outWorldId = WORLD_ID::MAHARAKA;
 		outTargetLevel = LEVEL::MAHARAKA;
 		return true;
+#ifdef _DEBUG
+	case LOBBY_STAGE::COLOSSEUM:
+		outWorldId = WORLD_ID::COLOSSEUM;
+		outTargetLevel = LEVEL::COLOSSEUM;
+		return true;
+#endif
 	default:
 		return false;
 	}
@@ -631,6 +640,9 @@ void CLevel_Lobby::Render_StagePanel()
 	ImGui::SameLine();
 	if (ImGui::Button("Maharaka"))
 		CLobbyCommandService::Request(LOBBY_STAGE::MAHARAKA);
+	ImGui::SameLine();
+	if (ImGui::Button("Colosseum"))
+		CLobbyCommandService::Request(LOBBY_STAGE::COLOSSEUM);
 	ImGui::EndDisabled();
 
 	ImGui::TextWrapped("%s", m_strStatus.c_str());

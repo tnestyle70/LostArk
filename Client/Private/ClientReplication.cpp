@@ -1,6 +1,7 @@
 #include "ClientReplication.h"
 
 #include "Profiler.h"
+#include "Gameplay/MaharakaWaterpangContract.h"
 #include "LevelTransitionService.h"
 
 #include "ActionPresentationTimeline.h"
@@ -171,6 +172,8 @@ namespace
 		record.eControlKind = spawned.eControlKind;
 
 		record.strNickName = spawned.strNickName;
+		record.strWaterpangNpcArchetypeId = spawned.strWaterpangNpcArchetypeId;
+		record.iVoiceType = spawned.iVoiceType;
 
 		record.fPositionX = spawned.fPositionX;
 		record.fPositionY = spawned.fPositionY;
@@ -192,6 +195,8 @@ namespace
 			left.eCharacterClass == right.eCharacterClass &&
 			left.eControlKind == right.eControlKind &&
 			left.strNickName == right.strNickName &&
+			left.strWaterpangNpcArchetypeId == right.strWaterpangNpcArchetypeId &&
+			left.iVoiceType == right.iVoiceType &&
 			left.fPositionX == right.fPositionX &&
 			left.fPositionY == right.fPositionY &&
 			left.fPositionZ == right.fPositionZ &&
@@ -536,6 +541,7 @@ bool Client::CClientReplication::Update()
 	allSucceeded = Advance_PlayerAssetPreparation() && allSucceeded;
 	Advance_GuideBubbles();
 	Update_DeathPresentations();
+    Update_WaterGunSpeedAnchors();
 #ifdef _DEBUG
 	if (m_CombatDebugVisibility.bCombatObjectHit)
 		Draw_CombatObjectHitAreaDebug();
@@ -2418,6 +2424,7 @@ bool Client::CClientReplication::Create_Character(
 	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 	const LostArk::Shared::PLAYER_MADNESS_FORM madnessForm,
 	const std::string_view nickName,
+	const std::uint8_t voiceType,
 	const float3_t& position,
 	const f32_t yawDegrees,
 	const bool_t isLocallyControlled,
@@ -2462,6 +2469,7 @@ bool Client::CClientReplication::Create_Character(
 	desc.fRotationPerSec = 180.f;
 	desc.vPosition = position;
 	desc.strNickName = nickName;
+	desc.iVoiceType = voiceType;
 	desc.isLocallyControlled = isLocallyControlled;
 
 	std::shared_ptr<CGameObject> gameObject;
@@ -2557,6 +2565,7 @@ bool Client::CClientReplication::Commit_PlayerSpawn(
 		spawned.eCharacterClass,
 		LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL,
 		spawned.strNickName,
+		spawned.iVoiceType,
 		float3_t(
 			spawned.fPositionX,
 			spawned.fPositionY,
@@ -2568,6 +2577,12 @@ bool Client::CClientReplication::Commit_PlayerSpawn(
 		return false;
 	}
 
+    WATERPANG_NPC_PLAYER_VIEW npcView;
+    if (!spawned.strWaterpangNpcArchetypeId.empty() && !Create_WaterpangNpcPlayer(spawned, npcView))
+    {
+        CGameInstance::Get().Remove_GameObject_from_Layer(m_Desc.iLayerLevelIndex, m_Desc.strPlayerLayerTag, character);
+        return false;
+    }
 	OBJECT_HANDLE handle{};
 
 	if (!m_Registry.Register(
@@ -2579,8 +2594,15 @@ bool Client::CClientReplication::Commit_PlayerSpawn(
 			m_Desc.iLayerLevelIndex,
 			m_Desc.strPlayerLayerTag,
 			character);
+        if (const auto npc = npcView.npc.lock())
+            CGameInstance::Get().Remove_GameObject_from_Layer(m_Desc.iLayerLevelIndex, m_Desc.strWorldEntityLayerTag, npc);
 		return false;
 	}
+    if (!spawned.strWaterpangNpcArchetypeId.empty())
+    {
+        m_WaterpangNpcPlayers.insert_or_assign(spawned.iNetEntityId, std::move(npcView));
+        character->Apply_NetworkPresentationHidden(true);
+    }
 
 	if (isLocallyControlled)
 	{
@@ -2591,10 +2613,101 @@ bool Client::CClientReplication::Commit_PlayerSpawn(
 	return true;
 }
 
+bool Client::CClientReplication::Create_WaterpangNpcPlayer(
+    const LostArk::Shared::S2C_PLAYER_SPAWNED& spawned, WATERPANG_NPC_PLAYER_VIEW& out)
+{
+    if (spawned.eControlKind != LostArk::Shared::PLAYER_CONTROL_KIND::WATERPANG_AI ||
+        m_Desc.iLayerLevelIndex != ETOUI(LEVEL::MAHARAKA)) return false;
+    const auto* actor = CActorCatalog::Find_Npc(spawned.strWaterpangNpcArchetypeId);
+    if (!actor || FAILED(CNpcPresentationAssetService::Ensure_Prototypes(
+        m_Desc.pDevice, m_Desc.pContext, m_Desc.iPrototypeLevelIndex, spawned.strWaterpangNpcArchetypeId))) return false;
+    CNpc::NPC_DESC desc{};
+    desc.iPrototypeLevelIndex = m_Desc.iPrototypeLevelIndex;
+    desc.strModelTag = CNpcPresentationAssetService::Get_ModelPrototypeTag(spawned.strWaterpangNpcArchetypeId);
+    desc.strShaderTag = actor->shaderProfile == "esther" ? TEXT("Prototype_Component_Shader_VtxEstherNpc") :
+        TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
+    desc.pIdleClip = actor->idleClip.c_str();
+    desc.vPosition = {spawned.fPositionX, spawned.fPositionY, spawned.fPositionZ};
+    desc.fYawDegree = spawned.fYawDegrees;
+    desc.bSuppressRootMotion = true;
+    desc.bInterpolateNetworkTransform = true;
+    std::shared_ptr<CGameObject> object;
+    if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(m_Desc.iPrototypeLevelIndex,
+        TEXT("Prototype_GameObject_Npc"), m_Desc.iLayerLevelIndex, m_Desc.strWorldEntityLayerTag, &desc, &object))) return false;
+    const auto npc = std::dynamic_pointer_cast<CNpc>(object);
+    if (!npc || !npc->Apply_NetworkState(desc.vPosition, desc.fYawDegree) || !npc->Get_Model())
+    {
+        CGameInstance::Get().Remove_GameObject_from_Layer(m_Desc.iLayerLevelIndex, m_Desc.strWorldEntityLayerTag, object);
+        return false;
+    }
+    const auto model = npc->Get_Model();
+    const auto hasClip = [&](const char* name) {
+        for (uint32_t i = 0; i < model->Get_NumAnimations(); ++i)
+            if (const auto* clip = model->Get_AnimationName(i); clip && std::string_view(clip) == name) return true;
+        return false;
+    };
+    WATERPANG_NPC_PLAYER_VIEW staged;
+    staged.npc = npc; staged.idleClip = staged.currentClip = actor->idleClip;
+    for (const auto* clip : {"npc_run_battle_1", "npc_run_away_1", "npc_walk_normal_1", "run_battle_1", "walk_normal_1"})
+        if (hasClip(clip)) { staged.runClip = clip; break; }
+    // Town residents with only their source idle retain that real clip. Never
+    // substitute a player rig or invent a water-gun socket/animation for an NPC.
+    for (const auto* clip : {"watergun_att_1", "npc_att_battle_1", "att_battle_1"})
+        if (hasClip(clip)) { staged.attackClip = clip; break; }
+    if (staged.runClip.empty()) staged.runClip = staged.idleClip;
+    out = std::move(staged);
+    return true;
+}
+
+bool Client::CClientReplication::Update_WaterpangNpcPlayer(
+    const LostArk::Shared::PLAYER_SNAPSHOT& player, const std::uint32_t serverTick)
+{
+    const auto found = m_WaterpangNpcPlayers.find(player.iNetEntityId);
+    if (found == m_WaterpangNpcPlayers.end()) return true;
+    auto& view = found->second;
+    const auto npc = view.npc.lock();
+    if (!npc) return false;
+    const bool visible = player.iCurrentHp != 0u &&
+        (player.CardMaze.flags & LostArk::Shared::CARD_MAZE_ENTRY_HIDDEN) == 0u;
+    npc->Set_PresentationVisible(visible);
+    if (!npc->Apply_NetworkState({player.fPositionX, player.fPositionY, player.fPositionZ}, player.fYawDegrees, serverTick)) return false;
+    const auto* gun = LostArk::Shared::Find_MaharakaWaterGunSkill(player.iWaterGunSkillId);
+    const bool firing = gun && player.iWaterGunCastTick &&
+        static_cast<int32_t>(serverTick - player.iWaterGunCastTick) >= 0 &&
+        static_cast<int32_t>(serverTick - player.iWaterGunCastTick) <
+            static_cast<int32_t>(LostArk::Shared::Get_MaharakaWaterGunTicks(gun->iActionMs));
+    const std::string& clip = firing && !view.attackClip.empty() ? view.attackClip :
+        player.eLocomotionState == LostArk::Shared::PLAYER_LOCOMOTION_STATE::MOVING ? view.runClip : view.idleClip;
+    const bool restart = firing && !view.attackClip.empty() && view.castTick != player.iWaterGunCastTick;
+    if (clip != view.currentClip || restart)
+    {
+        if (!npc->Play_NetworkAction(clip.c_str(), !firing || view.attackClip.empty(), 1.f, .08f)) return false;
+        view.currentClip = clip;
+    }
+    view.castTick = player.iWaterGunCastTick;
+    return true;
+}
+
+void Client::CClientReplication::Clear_WaterpangNpcPlayer(const LostArk::Shared::NET_ENTITY_ID id)
+{
+    const auto found = m_WaterpangNpcPlayers.find(id);
+    if (found == m_WaterpangNpcPlayers.end()) return;
+    if (const auto npc = found->second.npc.lock())
+        CGameInstance::Get().Remove_GameObject_from_Layer(m_Desc.iLayerLevelIndex, m_Desc.strWorldEntityLayerTag, npc);
+    m_WaterpangNpcPlayers.erase(found);
+}
+
+void Client::CClientReplication::Clear_WaterpangNpcPlayers()
+{
+    while (!m_WaterpangNpcPlayers.empty()) Clear_WaterpangNpcPlayer(m_WaterpangNpcPlayers.begin()->first);
+}
+
 bool Client::CClientReplication::Apply_Despawn(
 	const LostArk::Shared::S2C_PLAYER_DESPAWNED& despawned)
 {
 	Clear_BattleItemProtection(despawned.iNetEntityId);
+    Clear_WaterpangNpcPlayer(despawned.iNetEntityId);
+	Clear_WaterGunSpeed(despawned.iNetEntityId);
 	CCombatHUDViewModel::Get().Remove_WorldHealthBar(despawned.iNetEntityId);
 	m_PendingPlayerSpawns.erase(despawned.iNetEntityId);
 	m_PendingPlayerPresentations.erase(despawned.iNetEntityId);
@@ -2770,6 +2883,10 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		summons have no placement document and retain their action-chain travel. */
 		desc.bSuppressRootMotion = hasPlacementPresentation;
 		desc.bInterpolateNetworkTransform = hasPlacementPresentation;
+        // Only this town-NPC path opts in; monsters, bosses and local/movie
+        // previews keep their existing eager pose/attachment behavior.
+        desc.bAllowOffscreenAnimationCulling = !spawned.strPlacementId.empty() &&
+            actor->shaderProfile != "esther";
 		desc.vPosition = float3_t(
 			spawned.fPositionX,
 			spawned.fPositionY,
@@ -3433,8 +3550,11 @@ bool Client::CClientReplication::Apply_CombatObjectSpawn(
 	const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned)
 {
 	using namespace LostArk::Shared;
-	if (Is_BattleItemProjectile(spawned.strCombatObjectArchetypeId))
-	{
+    if (Is_BattleItemProjectile(spawned.strCombatObjectArchetypeId) ||
+        Is_MaharakaWaterGunProjectile(spawned.strCombatObjectArchetypeId))
+    {
+        if (Is_MaharakaWaterGunProjectile(spawned.strCombatObjectArchetypeId) &&
+            m_Desc.iLayerLevelIndex != ETOUI(LEVEL::MAHARAKA)) return false;
 		if (spawned.strClientVisualId != spawned.strCombatObjectArchetypeId ||
 			(!m_Registry.Find_Record(spawned.iSourceNetEntityId) &&
 			 !m_PendingPlayerSpawns.contains(spawned.iSourceNetEntityId))) return false;
@@ -3487,6 +3607,8 @@ bool Client::CClientReplication::Apply_CombatObjectSpawn(
 bool Client::CClientReplication::Apply_CombatObjectPresentationEvent(
 	const LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event)
 {
+    if (LostArk::Shared::Is_MaharakaWaterGunProjectile(event.strCombatObjectArchetypeId))
+        return Apply_WaterGunImpact(event);
 	if (Is_BattleItemProjectile(event.strCombatObjectArchetypeId))
 		return Apply_BattleItemImpact(event);
 	const auto source = m_WorldEntities.find(event.iSourceNetEntityId);
@@ -3610,6 +3732,8 @@ bool Client::CClientReplication::Spawn_CombatObjectPresentation(
 	std::string& outStatus)
 {
 	outHandle.Reset();
+    if (LostArk::Shared::Is_MaharakaWaterGunProjectile(spawned.strCombatObjectArchetypeId))
+        return Spawn_WaterGunProjectile(spawned, outHandle, outStatus);
 	if (Is_BattleItemProjectile(spawned.strCombatObjectArchetypeId))
 		return Spawn_BattleItemProjectile(spawned, outHandle, outStatus);
 	const auto source = m_WorldEntities.find(spawned.iSourceNetEntityId);
@@ -3748,7 +3872,8 @@ bool Client::CClientReplication::Update_CombatObjectPresentation(
 {
 	const COMBAT_OBJECT_PROJECTION_RECORD* record =
 		m_CombatObjectProjectionRuntime.Find(snapshot.iCombatObjectId);
-	if (record && Is_BattleItemProjectile(record->strCombatObjectArchetypeId))
+    if (record && (Is_BattleItemProjectile(record->strCombatObjectArchetypeId) ||
+        LostArk::Shared::Is_MaharakaWaterGunProjectile(record->strCombatObjectArchetypeId)))
 	{
 		if (record->iSourceNetEntityId != snapshot.iSourceNetEntityId ||
 			record->Snapshot.PinnedDefinitionRevision != snapshot.PinnedDefinitionRevision ||
@@ -4513,6 +4638,7 @@ Client::CClientReplication::Replace_CharacterClass(
 		snapshot.eCharacterClass,
 		snapshot.eMadnessForm,
 		oldRecord.strNickName,
+		oldRecord.iVoiceType,
 		float3_t(snapshot.fPositionX, snapshot.fPositionY, snapshot.fPositionZ),
 		snapshot.fYawDegrees,
 		isLocallyControlled,
@@ -4617,7 +4743,9 @@ void Client::CClientReplication::Update_DeathPresentations()
 
 void Client::CClientReplication::Reset_World()
 {
+    Clear_WaterpangNpcPlayers();
 	Clear_BattleItemProtection();
+	Clear_WaterGunSpeed();
 	m_WorldCombatTargets.clear();
 	m_PendingWorldCombatHits.clear();
 	if (const auto character = Get_LocalCharacter())
@@ -4844,12 +4972,18 @@ bool Client::CClientReplication::Apply_PlayerSnapshot(
 		allSucceeded = false;
 	}
 	Apply_BattleItemProtection(player, serverTick, character);
+	Apply_WaterGunSpeed(player, serverTick, character);
 	character->Apply_NetworkStance(player.eStance);
 	character->Apply_NetworkVehicle(player.iVehicleId);
-	(void)character->Apply_WaterGunPresentation(player.isWaterpangArmed);
-	character->Apply_NetworkWaterGunCast(player.iWaterGunSkillId, player.iWaterGunCastTick, serverTick);
-	character->Apply_NetworkPresentationHidden((player.CardMaze.flags & LostArk::Shared::CARD_MAZE_ENTRY_HIDDEN) != 0u);
-	Apply_AvatarPresentation(player.iNetEntityId, *character, player);
+    const bool npcAppearance = m_WaterpangNpcPlayers.contains(player.iNetEntityId);
+    if (!npcAppearance)
+    {
+        (void)character->Apply_WaterGunPresentation(player.isWaterpangArmed);
+        character->Apply_NetworkWaterGunCast(player.iWaterGunSkillId, player.iWaterGunCastTick, serverTick);
+    }
+	character->Apply_NetworkPresentationHidden(npcAppearance || (player.CardMaze.flags & LostArk::Shared::CARD_MAZE_ENTRY_HIDDEN) != 0u);
+    if (npcAppearance) allSucceeded = Update_WaterpangNpcPlayer(player, serverTick) && allSucceeded;
+	else Apply_AvatarPresentation(player.iNetEntityId, *character, player);
 	if (isLocallyControlled && m_Desc.iLayerLevelIndex == ETOUI(LEVEL::MAHARAKA))
 		Trace_MaharakaLocalPlayer(*character, player, serverTick);
 	if (PLAYER_ACTION_STATE::GRABBED == player.eAction)

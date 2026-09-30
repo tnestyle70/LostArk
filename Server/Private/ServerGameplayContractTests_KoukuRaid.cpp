@@ -22,7 +22,6 @@ using namespace LostArk::Shared;
 
 void CServerGameplayContractRunner::Run_KoukuGate3Entry(TESTS& tests)
 {
-#ifdef _DEBUG
     tests.Require(Is_KoukuGate3EntryAura(-22.20617676f, 25.59f, 954.5942993f) &&
         !Is_KoukuGate3EntryAura(-11.9999292f, 25.59f, 964.54328125f) &&
         !Is_KoukuGate3EntryAura(-22.20617676f, 1.32f, 954.5942993f) &&
@@ -44,10 +43,12 @@ void CServerGameplayContractRunner::Run_KoukuGate3Entry(TESTS& tests)
     tests.Require(!Read_Message(invalidReader, decoded), "Unknown gate proposal kind remains rejected");
     S2C_GATE_PROGRESS_STATE state; state.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
     state.iGateCount = 4u; state.eKind = GATE_PROGRESS_KIND::ENTER_GATE3;
-    CPacketWriter stateWriter; tests.Require(Write_Message(stateWriter, state), "Gate 3 entry vote state encodes");
+    state.bClosed = true; state.eResult = GATE_PROGRESS_VOTE_RESULT::CANCELLED;
+    CPacketWriter stateWriter; tests.Require(Write_Message(stateWriter, state), "Automatic Gate 3 closed result with no proposal encodes");
     CPacketReader stateReader{stateWriter.Get_Buffer()}; S2C_GATE_PROGRESS_STATE decodedState;
-    tests.Require(Read_Message(stateReader, decodedState) && decodedState.eKind == GATE_PROGRESS_KIND::ENTER_GATE3,
-        "Gate 3 entry vote intent survives the state packet");
+    tests.Require(Read_Message(stateReader, decodedState) && decodedState.eKind == GATE_PROGRESS_KIND::ENTER_GATE3 &&
+        decodedState.bClosed && !decodedState.iProposalId && decodedState.eResult == GATE_PROGRESS_VOTE_RESULT::CANCELLED,
+        "Automatic Gate 3 failure remains a closed result with no vote through the state packet");
 
     for (unsigned count = 1u; count <= 4u; ++count)
     {
@@ -60,7 +61,7 @@ void CServerGameplayContractRunner::Run_KoukuGate3Entry(TESTS& tests)
             auto& player = room->m_Players[id]; player.iPlayerId = id; player.iSessionId = 500u + id;
             player.iNetEntityId = 100u + id; player.iCurrentHp = player.iMaximumHp = 100u;
             player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER; player.isCombatReady = true;
-            player.fPositionX = -17.5f - .3f * id; player.fPositionY = 25.6f; player.fPositionZ = 960.5f;
+            player.fPositionX = -22.20617676f; player.fPositionY = 25.6f; player.fPositionZ = 954.5942993f;
             if (id > count) { player.fPositionX = 20.f; player.fPositionZ = 970.f; }
             room->m_PlayerIdBySessionId[player.iSessionId] = id;
             auto connection = std::make_shared<CClientSession>(player.iSessionId, INVALID_SOCKET,
@@ -75,16 +76,19 @@ void CServerGameplayContractRunner::Run_KoukuGate3Entry(TESTS& tests)
         const auto previousPlayers = room->m_Players;
         const auto previousEntities = room->m_WorldEntities;
         unsigned sequence = 1u;
-        const auto propose = [&](unsigned id = 1u) {
+        const auto manual = [&](unsigned id = 1u) {
             auto request = wire; request.iRequestSequence = sequence++;
             room->Handle_GateProgressPropose(500u + id, request);
         };
-        const auto respond = [&](unsigned id, bool accepted) {
-            C2S_GATE_PROGRESS_RESPOND response; response.iRequestSequence = sequence++;
-            response.iProposalId = room->m_GateProgress.iProposalId; response.bAccepted = accepted;
-            room->Handle_GateProgressRespond(500u + id, response);
+        const auto beginCountdown = [&]() {
+            auto& leader = room->m_Players.at(1u);
+            leader.fPositionY = 1.32f; ++room->m_iServerTick; room->Expire_GateProgressVote();
+            leader.fPositionY = 25.6f; ++room->m_iServerTick; room->Expire_GateProgressVote();
+            ++room->m_iServerTick; room->Expire_GateProgressVote();
         };
-        const auto acceptAll = [&]() { for (unsigned id = 2u; id <= count; ++id) respond(id, true); };
+        const auto completeCountdown = [&]() {
+            beginCountdown(); room->m_iServerTick += 300u; room->Expire_GateProgressVote();
+        };
         const auto preserved = [&]() {
             tests.Require(!room->m_GateProgress.iProposalId && room->m_GateProgress.iCurrentGate == previousGate &&
                 room->m_WorldEntities.size() == previousEntities.size(), "Rejected entry preserves current gate and existing boss count");
@@ -100,59 +104,64 @@ void CServerGameplayContractRunner::Run_KoukuGate3Entry(TESTS& tests)
                     "Rejected entry preserves participant and observer positions");
             }
         };
-        if (count > 1u) { propose(count); preserved(); }
-        room->m_Players.at(1u).fPositionY = 1.32f; propose();
-        room->m_Players.at(1u).fPositionY = 25.6f; preserved();
-        room->m_Players.at(count).bPatternBound = true; propose(); acceptAll();
+        manual(); preserved();
+        if (count > 1u) { manual(count); preserved(); }
+        beginCountdown(); room->m_iServerTick += 299u; manual(); room->Expire_GateProgressVote(); preserved();
+        tests.Require(room->m_iArenaAssemblyStartTick && !room->m_bArenaAssemblyAttempted,
+            "Gate 3 manual commands cannot bypass the 300-tick Server countdown");
+        room->m_Players.at(count).iCurrentHp = 0u; room->Expire_GateProgressVote();
+        tests.Require(!room->m_iArenaAssemblyStartTick, "A dead participant resets Gate 3 assembly readiness");
+        room->m_Players.at(count).iCurrentHp = 100u; preserved();
+        room->m_Players.at(count).bPatternBound = true; completeCountdown();
         room->m_Players.at(count).bPatternBound = false; preserved();
+        tests.Require(room->m_bArenaAssemblyAttempted, "A failed automatic admission latches until the leader leaves");
+        const auto failedId = room->m_iNextNetEntityId;
+        const auto failedFrames = sessions.front()->m_OutboundFrames.size();
+        room->m_iServerTick += 30u; room->Expire_GateProgressVote();
+        tests.Require(room->m_iNextNetEntityId == failedId && room->m_GateProgress.iCurrentGate == previousGate &&
+            sessions.front()->m_OutboundFrames.size() == failedFrames,
+            "An occupied failed assembly does not retry or send another failure frame every tick");
         const auto nextId = room->m_iNextNetEntityId; room->m_iNextNetEntityId = INVALID_NET_ENTITY_ID;
-        propose(); acceptAll(); room->m_iNextNetEntityId = nextId; preserved();
+        completeCountdown(); room->m_iNextNetEntityId = nextId; preserved();
         const auto navigation = room->m_ServerNavigation; room->m_ServerNavigation = {};
-        propose(); acceptAll(); room->m_ServerNavigation = navigation; preserved();
+        completeCountdown(); room->m_ServerNavigation = navigation; preserved();
         auto* gatePlacement = const_cast<WORLD_BOOTSTRAP_PLACEMENT*>(room->Find_Placement("boss.kakulsaydon.g3.saydon"));
         tests.Require(gatePlacement != nullptr, "Gate 3 staged boss has an authored placement");
         if (gatePlacement)
         {
             const auto archetype = gatePlacement->strArchetypeId; gatePlacement->strArchetypeId = "invalid.gate3.contract";
-            propose(); acceptAll(); gatePlacement->strArchetypeId = archetype; preserved();
+            completeCountdown(); gatePlacement->strArchetypeId = archetype; preserved();
         }
         if (count > 1u)
         {
-            propose(); tests.Require(room->m_GateProgress.Voters.size() == count, "Gate 3 vote contains the existing party only");
-            respond(2u, false); preserved();
-            propose(); room->m_iServerTick = room->m_GateProgress.iDeadlineTick; room->Expire_GateProgressVote(); preserved();
-            propose(); room->m_Players.at(1u).fPositionY = 1.32f; acceptAll();
-            room->m_Players.at(1u).fPositionY = 25.6f; preserved();
-            propose(); std::swap(room->m_PartyMembersByPartyId[77u].front(), room->m_PartyMembersByPartyId[77u].back());
-            acceptAll(); std::swap(room->m_PartyMembersByPartyId[77u].front(), room->m_PartyMembersByPartyId[77u].back()); preserved();
-            propose(); room->m_PartyMembersByPartyId[77u].push_back(count + 1u); acceptAll();
+            beginCountdown(); room->m_iServerTick += 300u;
+            std::swap(room->m_PartyMembersByPartyId[77u].front(), room->m_PartyMembersByPartyId[77u].back());
+            room->Expire_GateProgressVote();
+            tests.Require(!room->m_iArenaAssemblyStartTick, "Leader changes reset the exact Gate 3 countdown roster");
+            std::swap(room->m_PartyMembersByPartyId[77u].front(), room->m_PartyMembersByPartyId[77u].back()); preserved();
+            beginCountdown(); room->m_iServerTick += 300u;
+            room->m_PartyMembersByPartyId[77u].push_back(count + 1u); room->Expire_GateProgressVote();
+            tests.Require(!room->m_iArenaAssemblyStartTick, "Membership changes cannot commit the previous countdown roster");
             room->m_PartyMembersByPartyId[77u].pop_back(); preserved();
         }
-        propose();
-        if (count > 1u)
-        {
-            tests.Require(room->m_GateProgress.iCurrentGate == previousGate && room->m_WorldEntities.size() == previousEntities.size(),
-                "Partial approval cannot despawn or teleport the party");
-            acceptAll();
-        }
+        completeCountdown();
         tests.Require(!room->m_GateProgress.iProposalId && room->m_GateProgress.iCurrentGate == 3u && !room->Is_KoukuRaidRunning(),
-            "Explicit non-raid entry targets Gate 3 regardless of prior Gate 0 or Gate 1");
+            "Automatic non-raid entry targets Gate 3 after ten seconds without a proposal");
         tests.Require(std::any_of(room->m_WorldEntities.begin(), room->m_WorldEntities.end(), [](const auto& entity) {
             return entity.strPlacementId == "boss.kakulsaydon.g3.saydon"; }), "Prebuilt Gate 3 boss commits through the existing spawn consumer");
         for (unsigned id = 1u; id <= count; ++id)
         {
             const auto& player = room->m_Players.at(id);
             tests.Require(std::abs(player.fPositionX + 2.45f) < .01f && std::abs(player.fPositionZ - 945.17f) < .01f,
-                "Every consenting party participant reaches the original Gate 3 combat spawn");
+                "Every assembled party participant reaches the original Gate 3 combat spawn");
         }
         const auto& observer = room->m_Players.at(count + 1u);
         tests.Require(observer.fPositionX == previousPlayers.at(count + 1u).fPositionX &&
-            observer.fPositionZ == previousPlayers.at(count + 1u).fPositionZ, "Unrelated room observer is never moved by the party vote");
-        const auto committedId = room->m_iNextNetEntityId; propose();
+            observer.fPositionZ == previousPlayers.at(count + 1u).fPositionZ, "Unrelated room observer is never moved by automatic party entry");
+        const auto committedId = room->m_iNextNetEntityId; manual(); room->Expire_GateProgressVote();
         tests.Require(!room->m_GateProgress.iProposalId && room->m_iNextNetEntityId == committedId,
             "A duplicate entry command from the combat floor cannot restart the boss");
     }
-#endif
 }
 
 void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
@@ -1490,7 +1499,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             {
                 tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY && !run.bEntryRunning &&
                     run.iPrimaryBossId == INVALID_NET_ENTITY_ID && room->Is_KoukuRaidInputBlocked(),
-                    "Gate 3 intro holds the authored arrival positions with gameplay blocked until entry approval");
+                    "Gate 3 intro holds the authored arrival positions with gameplay blocked until assembly completes");
                 CPacketWriter writer;
                 tests.Require(Write_Message(writer, run.State), "Gate 3 entry wait has a valid replicated packet");
                 CPacketReader reader{writer.Get_Buffer()}; S2C_KOUKUSAYDON_RAID_STATE decoded;
@@ -1500,7 +1509,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                 tests.Require(!Write_Message(invalidWriter, invalid), "Other gates cannot claim Gate 3 entry wait");
                 room->m_iServerTick = end + 900u; room->Update_KoukuRaid(end + 900u);
                 tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY && !run.bEntryRunning,
-                    "Elapsed time cannot start Gate 3 combat without the entry button vote");
+                    "Elapsed cinematic time cannot start Gate 3 combat before the leader gathers in the entry aura");
                 const auto firstX = room->m_Players.at(1u).fPositionX;
                 room->m_Players.at(count).bPatternBound = true;
                 tests.Require(!room->Enter_KoukuRaidCombat(3u, room->m_iServerTick) && room->m_Players.at(1u).fPositionX == firstX &&
@@ -1524,17 +1533,19 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                         "Rejected first-flow admission preserves every Gate 3 player");
                 }
                 run.State.PinnedGameplayRevision = gameplayPin;
-                propose(GATE_PROGRESS_KIND::ENTER_GATE3);
-                for (unsigned id = 2u; id <= count; ++id)
-                {
-                    tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY,
-                        "Partial Gate 3 entry approval cannot teleport participants or spawn combat");
-                    respond(id, true);
-                }
+                auto& entryLeader = room->m_Players.at(run.State.iOwnerPlayerId);
+                entryLeader.fPositionX = -22.20617676f; entryLeader.fPositionY = 25.6f;
+                entryLeader.fPositionZ = 954.5942993f;
+                ++room->m_iServerTick; room->Expire_GateProgressVote();
+                ++room->m_iServerTick; room->Expire_GateProgressVote();
+                room->m_iServerTick += 299u; room->Expire_GateProgressVote();
+                tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY && !room->m_GateProgress.iProposalId,
+                    "At 299 Server ticks the prepared Gate 3 raid remains on the terrace without a vote");
+                ++room->m_iServerTick; room->Expire_GateProgressVote();
                 for (const auto id : run.PlayerIds)
                     tests.Require(std::abs(room->m_Players.at(id).fPositionX + 2.45f) < .01f &&
                         std::abs(room->m_Players.at(id).fPositionZ - 945.17f) < .01f,
-                        "Approved Gate 3 entry moves every player to the existing combat spawn");
+                        "Automatic Gate 3 entry moves every player to the existing combat spawn");
                 tests.Require(run.bGate3CombatEntered && !room->Is_KoukuRaidInputBlocked(),
                     "First Gate 3 entry enables combat and future restart semantics");
             }

@@ -33,6 +33,7 @@ NS_END
 NS_BEGIN(Client)
 
 struct VALTAN_PATTERN_VIEW;
+struct VALTAN_COMBAT_OBJECT_HIT_VIEW;
 enum class VALTAN_PATTERN_PREVIEW_PATH : uint8_t;
 
 inline constexpr size_t VALTAN_MAX_PATTERN_EFFECT_OCCURRENCES_PER_SCAN = 256u;
@@ -350,6 +351,15 @@ public:
 	{
 		return !m_isServerAuthoritative && m_bLocalPatternAuthoringPreview;
 	}
+	struct LOCAL_COMBAT_OBJECT_SOUND_EVENT final
+	{
+		std::string strOccurrenceId;
+		std::string strArchetypeId;
+		std::string strSourceId;
+		double fTimelineStartMs = 0.0;
+	};
+	// The audio transport consumes the very same instance clocks as the local Effect/collider mirror.
+	void Collect_LocalCombatObjectSoundEvents(std::vector<LOCAL_COMBAT_OBJECT_SOUND_EVENT>& events) const;
 	/* Effect Tool-only combat-object clock. The staged Product topology is
 	   reused, but boss animation, Product cues, hit debug, and Effect V2 stage
 	   playback remain untouched so an independent world-root lifecycle can be
@@ -632,6 +642,7 @@ private:
 		std::string strActiveEffectAssetId;
 		std::string strTerminalEffectAssetId;
 		std::string strArmedEffectAssetId;
+		std::string strArmedPresentationEventId;
 		bool_t bStopActiveOnHit = false;
 		bool_t bStopActiveOnArmed = false;
 		bool_t bArmedEffectOwnsTerminal = false;
@@ -654,6 +665,7 @@ private:
 		   arena-center anchor with world-absolute angles instead of the boss pose. */
 		bool_t bArenaCenterOrigin = false;
 		std::vector<LOCAL_PATTERN_COMBAT_OBJECT_EVENT> PresentationEvents;
+		std::vector<VALTAN_COMBAT_OBJECT_HIT_VIEW> Hits;
 	};
 	struct LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE final
 	{

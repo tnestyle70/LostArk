@@ -26,6 +26,7 @@ public:
 	HRESULT Bind_SurfaceTexture(shared_ptr<class CShader> pShader,
 		const char_t* pConstantName, aiTextureType eType);
 	HRESULT Bind_SourceSpecialSurface(shared_ptr<class CShader> shader);
+    HRESULT Bind_SourceLandscapeSurface(shared_ptr<class CShader> shader);
 	HRESULT Bind_SurfaceLighting(shared_ptr<class CShader> pShader);
     HRESULT Bind_StaticShadow(shared_ptr<class CShader> shader);
     HRESULT Bind_SourceCharacter(shared_ptr<class CShader> shader);
@@ -126,6 +127,10 @@ private:
 	ComPtr<ID3D11ShaderResourceView> m_SurfaceORM;
     ComPtr<ID3D11ShaderResourceView> m_SourceFoliageMask;
     ComPtr<ID3D11ShaderResourceView> m_SourceSpecialMask;
+    std::array<ComPtr<ID3D11ShaderResourceView>, SOURCE_LANDSCAPE_LAYER_COUNT> m_SourceLandscapeDiffuse;
+    std::array<ComPtr<ID3D11ShaderResourceView>, SOURCE_LANDSCAPE_LAYER_COUNT> m_SourceLandscapeNormal;
+    std::array<ComPtr<ID3D11ShaderResourceView>, SOURCE_LANDSCAPE_WEIGHTMAP_COUNT> m_SourceLandscapeWeights;
+    ComPtr<ID3D11ShaderResourceView> m_SourceLandscapeHeight;
     ComPtr<ID3D11ShaderResourceView> m_SourceBlendDiffuseG;
     ComPtr<ID3D11ShaderResourceView> m_SourceBlendDiffuseB;
     ComPtr<ID3D11ShaderResourceView> m_SourceBlendNormalG;

@@ -1,0 +1,220 @@
+{
+  "schemaVersion": 1,
+  "areaId": "LV_PVP_COLOSSEUM",
+  "profiles": [
+    {
+      "assetId": "MAP_00DFE29CF53F_BG_SHS_COMMON_SHIELD01C_SM_JJY",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_0BAA2115CCD1_BG_SHS_COMMON_SHIELD01B_SM_JJY",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_137CD82FC1EA_BG_SHS_RCARENA_DECO04C_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_154DCF727126_BG_SHS_RCARENA_WALL08A_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_155D64437A34_BG_SHS_RCARENA_DECO07A_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_17AEC48F0C26_BG_LUT_LUCASTLE_ARENA01_SM_KSH",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_17AEC48F0C26_BG_LUT_LUCASTLE_ARENA01_SM_KSH_OVR_EB79F55E80B6",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_17EB20B90730_BG_LUT_MEMONAST_MODULEB_SM_LJD_OVR_4AA237ED9734",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_186BF940B6D8_BG_SHS_ETC_FARM01A_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_18FDB9B00CC6_BG_LUT_MEMONAST_MODULEFRAME02B_SM_PHS_OVR_F7E32328E986",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_22B3D72B379D_BG_LUT_MEMONAST_MODULEC_SM_LJD_OVR_4AA237ED9734",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_271E708BFB74_BG_SHS_BWINDHILL_SWORDTOMB01D_SM_LJD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_27AF48E6D464_BG_LUT_LUCASTLE_ARCH03_SM_YSI_OVR_0DC6DE2C14FD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_2865D2A4DB3D_BG_LUT_MEMONAST_MODULEFRAME02D_SM_PHS_OVR_F7E32328E986",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_2B3CCC0918C4_BG_SHS_RCARENA_WALL06C_SM_OLD_LOC_INT",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_2C6BBF6721A4_BG_SHS_RCARENA_FENCE01C_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_2E8FA9865013_BG_SHS_COMMON_BOX01E_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_470C720AEC15_BG_LUT_MEMONAST_MODULEFRAME02A_SM_PHS_OVR_F7E32328E986",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4841BEF2C0BE_BG_SHS_COMMON_CHAIN01B_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_49D6D3575DFF_BG_SHS_COMMON_DECO05A_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4F79E47709A7_BG_LUT_MEMONAST_MODULEA_SM_SUP",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4F79E47709A7_BG_LUT_MEMONAST_MODULEA_SM_SUP_OVR_4AA237ED9734",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4F79E47709A7_BG_LUT_MEMONAST_MODULEA_SM_SUP_OVR_95CB9BD8F45C",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_54949C2E25CA_BG_LUT_LUCASTLE_CHURCHTOWER04_SM_KSH_OVR_9F7557E3EAAC",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_55864E75A79B_BG_SHS_COMMON_BRAZIER01A_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_57A6DD3F4E1B_BG_SHS_RCARENA_FENCE01A_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_69DA033E9E1A_BG_LUT_WAGLOY_CIRCLEFLOOR02_SM_ARTREE_LOC_INT_OVR_03E45C4A8035",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_76616D9451D0_BG_SHS_RCARENA_DECO01C_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_7AE53543B519_BG_LUT_MEMONAST_MODULEFRAME02E_SM_PHS_OVR_F7E32328E986",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_7E5C5FCE9A12_BG_SHS_RCARENA_DECO04L_SM_BJH",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_8399890E2070_BG_LUT_LUCASTLE_CHURCHTOWER12_SM_KSH_OVR_9F7557E3EAAC",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_915C73C9E903_BG_LUT_ZAMOUNT_BALLISTA04_SM_CWK_OVR_0C2ADABA67B2",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_959DE1ABB4BC_BG_LUT_MEMONAST_MODULE_SM_SUP_OVR_4AA237ED9734",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_959DE1ABB4BC_BG_LUT_MEMONAST_MODULE_SM_SUP_OVR_824646225DF5",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_99EDEB6669F1_SKY_MIRROR_SM_OVR_1D8FC6CEB1F9",
+      "renderMode": "Sky",
+      "cullMode": "None"
+    },
+    {
+      "assetId": "MAP_9DA4FD9CF158_BG_LUT_WAGLOY_CIRCLEFLOOR02A_SM_ARTREE_LOC_INT_OVR_03E45C4A8035",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_9F0FE26F7CC4_BG_SHS_BWINDHILL_SWORDTOMB01F_SM_LJD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_A271D761454A_BG_LUT_LUCASTLE_LIBRARYWALL01_SM_YSI_OVR_E70C845C5DED",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_AEBAD0E6C68E_BG_LUT_MEMONAST_MODULEFRAME02C_SM_PHS_OVR_F7E32328E986",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_B8E71471AB9E_BG_SHS_RCARENA_DECO04H_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_BBBF34E797B4_BG_SHS_RCARENA_DECO01E_SM_OLD_OVR_A0A391EEB822",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_BD3B8727472A_BG_SHS_RCARENA_FENCE01B_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_BDE39B522ADB_BG_SHS_RCARENA_DECO02B_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_BE20045CE619_BG_SHS_ETC_ARMS01D_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_C4D5EA5FF0E2_BG_LUT_LUCASTLE_CASTLEFLAG04_SM_BJH",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_DCC6DA3C41B3_BG_SHS_COMMON_BOX01H_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_E494916E9170_BG_CHS_PHNTMS_FLOOR01_SM_LKJ_OVR_40FA9FBC2592",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_ED8D3016A2F2_BG_LUT_MEMONAST_TORCH02_SM_SUP",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_F0D232D72EC8_BG_LUT_ZAMOUNT_HOUSEARMS02_SM_MSJ_OVR_C2A06E76E28D",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_F4B3FBEB1E0D_BG_LUT_LUCASTLE_ARENADOOR01_SM_BJH",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_F76F2DD91907_BG_SHS_ETC_ARMS01E_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_F9CF4D9EFA42_BG_LUT_MEMONAST_ELEVATOR02_SM_YSI",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_FA22DA8A1731_BG_SHS_COMMON_CARGO01H_SM_OLD",
+      "emissiveIntensity": 0.0
+    }
+  ],
+  "visibilityOverrides": []
+}

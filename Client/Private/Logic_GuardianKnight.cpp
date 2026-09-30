@@ -52,11 +52,11 @@ namespace
 	different content invalidates them. */
 	constexpr uint32_t COVERED_BY_ARMOUR = (1u << 1) | (1u << 2);
 
-	/* The hair this cooked body draws by itself (pc_ft_15_hair, submesh 0). Kept at
-	zero on purpose, like GunSlinger: this class has no cooked hair sets, so nothing can
-	take over from the body's own hair and hiding it leaves the head bare. Put the bit
-	back once its hairstyle sets exist and it gets a hair part like Warlord. */
-	constexpr uint32_t BAKED_HAIR = 0u;
+	/* The hair this cooked body draws by itself (pc_ft_15_hair, submesh 0). Hidden now
+	that this class has cooked hairstyle sets (Character/GuardianKnight/Equipment/pc_dk_*_hair):
+	character creation wears one of them as a HEAD set, and a hair the body also draws would
+	show through it. The default outfit's helmet covers the head in the world. */
+	constexpr uint32_t BAKED_HAIR = (1u << 0);
 
 	/* The dragon form is a posture, not a weapon swap: the class stands and runs
 	on its identity clips until it leaves the stance. */

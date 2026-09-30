@@ -275,7 +275,7 @@ bool CPart_Vehicle::Set_FlightPlayback(const std::vector<std::string>& clips,
     m_FlightPhase = phase; m_fFlightDuration = phaseDuration;
     m_fFlightClipDuration = duration; m_fFlightLoopStart = loopStart;
     m_fFlightLoopEnd = loopEnd; m_fFlightLandingStart = landingStart;
-    return Pose_FlightRider(m_pModelCom, m_iFlightAnimation);
+    return Pose_FlightMount();
 }
 
 void CPart_Vehicle::Resolve_FlightPoseTimes(f32_t& source, f32_t& target, f32_t& blend) const
@@ -312,6 +312,25 @@ f32_t CPart_Vehicle::Get_FlightClipSeconds() const
     f32_t source = 0.f, target = 0.f, blend = 0.f;
     Resolve_FlightPoseTimes(source, target, blend);
     return target;
+}
+
+bool CPart_Vehicle::Pose_FlightMount()
+{
+    if (!Pose_FlightRider(m_pModelCom, m_iFlightAnimation)) return false;
+    // Snapshot application follows Object::Update and can install another pose
+    // before rendering. Correct every mount pose, not just the frame update:
+    // the installed bip001 local Z contains about 1.2 m of authored ascent,
+    // while the Server already owns that altitude. Rider bones stay unchanged.
+    const int body = m_pModelCom->Find_BoneIndex("bip001");
+    matrix_t local{}, rest{};
+    if (body >= 0 && m_pModelCom->Get_BoneLocalMatrix(body, local) &&
+        m_pModelCom->Get_BoneRestLocalMatrix(body, rest))
+    {
+        local.r[3] = XMVectorSetZ(local.r[3], XMVectorGetZ(rest.r[3]));
+        m_pModelCom->Set_BoneLocalMatrix(body, local);
+        m_pModelCom->Refresh_BoneCombinedMatrices();
+    }
+    return true;
 }
 
 bool CPart_Vehicle::Pose_FlightRider(const shared_ptr<CModel>& model, const uint32_t animation) const
@@ -451,18 +470,7 @@ void CPart_Vehicle::Update(f32_t fTimeDelta)
 			m_fFlightAge += fTimeDelta + correction;
 			m_fFlightAgeCorrection -= correction;
 		}
-		(void)Pose_FlightRider(m_pModelCom, m_iFlightAnimation);
-		// The Server owns altitude. Remove only this clip's authored body lift, whose
-		// installed skeleton uses local Z; retaining it would add the ascent twice.
-		const int body = m_pModelCom->Find_BoneIndex("bip001");
-		matrix_t local{}, rest{};
-		if (body >= 0 && m_pModelCom->Get_BoneLocalMatrix(body, local) &&
-			m_pModelCom->Get_BoneRestLocalMatrix(body, rest))
-		{
-			local.r[3] = XMVectorSetZ(local.r[3], XMVectorGetZ(rest.r[3]));
-			m_pModelCom->Set_BoneLocalMatrix(body, local);
-			m_pModelCom->Refresh_BoneCombinedMatrices();
-		}
+		(void)Pose_FlightMount();
 	}
 	else m_pModelCom->Update_Animation(fTimeDelta);
 	if (std::isfinite(fTimeDelta) && fTimeDelta > 0.f)

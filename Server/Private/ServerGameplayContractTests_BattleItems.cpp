@@ -10,6 +10,7 @@
 #include "Network/PacketWriter.h"
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <vector>
 
@@ -19,6 +20,80 @@ using namespace LostArk::Shared;
 int CServerGameplayContractRunner::Run_BattleItemsOnly()
 {
     TESTS tests;
+    {
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+        std::vector<std::shared_ptr<CClientSession>> peers;
+        bool admitted = room->Is_Ready();
+        for (unsigned index = 0; index < 4u && admitted; ++index)
+        {
+            auto peer = std::make_shared<CClientSession>(95000u + index, INVALID_SOCKET,
+                CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+            peer->m_isSendRunning.store(true); room->Handle_Register(peer);
+            C2S_ENTER_WORLD entry; entry.eWorldId = WORLD_ID::VALTAN_ARENA;
+            entry.eCharacterClass = CHARACTER_CLASS_ID::WARLORD; entry.strNickName = "Assembly" + std::to_string(index);
+            admitted = room->Join(peer->Get_SessionId(), entry); peers.push_back(peer);
+        }
+        const auto* assembly = room->Find_Placement("Stage_Boss_Assembly");
+        tests.Require(admitted && assembly && room->Count_HumanPlayers() == 4u,
+            "Valtan assembly admits four humans and reads its published collider");
+        if (admitted && assembly)
+        {
+            for (auto& [id, player] : room->m_Players) if (player.Is_Human())
+            { player.fPositionX = assembly->fPositionX; player.fPositionY = assembly->fPositionY; player.fPositionZ = assembly->fPositionZ; }
+            room->m_iServerTick = 100u; room->Expire_GateProgressVote();
+            room->m_iServerTick = 101u; room->Expire_GateProgressVote();
+            C2S_GATE_PROGRESS_PROPOSE propose; propose.iRequestSequence = 1u;
+            propose.eWorldId = WORLD_ID::VALTAN_ARENA; propose.eKind = GATE_PROGRESS_KIND::ADVANCE;
+            room->m_iServerTick = 400u; room->Handle_GateProgressPropose(peers.front()->Get_SessionId(), propose);
+            tests.Require(!room->m_GateProgress.iProposalId && room->m_WorldEntities.empty(),
+                "A Valtan raid proposal before ten confirmed seconds cannot move players or spawn the boss");
+            auto& last = room->m_Players.at(room->m_PlayerIdBySessionId.at(peers.back()->Get_SessionId()));
+            last.fPositionX += 20.f; room->Expire_GateProgressVote();
+            tests.Require(!room->m_GateProgress.iProposalId && !room->m_iArenaAssemblyStartTick && room->m_WorldEntities.empty(),
+                "Leaving the assembly clears its ten-second readiness without opening a vote");
+            last.fPositionX = assembly->fPositionX;
+            for (const auto action : {PLAYER_ACTION_STATE::DEAD, PLAYER_ACTION_STATE::FALLING})
+            {
+                last.eAction = PLAYER_ACTION_STATE::NONE;
+                room->Expire_GateProgressVote();
+                ++room->m_iServerTick; room->Expire_GateProgressVote();
+                last.eAction = action; room->Expire_GateProgressVote();
+                tests.Require(!room->m_iArenaAssemblyStartTick && room->m_WorldEntities.empty(),
+                    "A dead or falling participant resets Valtan assembly before admission");
+            }
+            last.eAction = PLAYER_ACTION_STATE::NONE;
+            room->m_iServerTick = 500u; room->Expire_GateProgressVote();
+            room->m_iServerTick = 501u; room->Expire_GateProgressVote();
+            room->m_iServerTick = 800u; room->Expire_GateProgressVote();
+            tests.Require(room->m_WorldEntities.empty() && !room->m_GateProgress.iProposalId &&
+                std::all_of(room->m_Players.begin(), room->m_Players.end(), [assembly](const auto& row) {
+                    const auto& player = row.second; return player.Is_Guide() ||
+                        (player.fPositionX == assembly->fPositionX && player.fPositionY == assembly->fPositionY &&
+                         player.fPositionZ == assembly->fPositionZ); }),
+                "At 299 ticks every player remains at assembly and no dialog proposal exists");
+            room->m_iServerTick = 801u; room->Expire_GateProgressVote();
+            bool arrived = room->m_GateProgress.iCurrentGate == 1u && !room->m_GateProgress.iProposalId &&
+                std::count_if(room->m_WorldEntities.begin(), room->m_WorldEntities.end(), [](const auto& boss) {
+                    return boss.strPlacementId == "boss.valtan.center"; }) == 1;
+            for (unsigned i = 0; i < 4; ++i)
+            {
+                const auto& player = room->m_Players.at(room->m_PlayerIdBySessionId.at(peers[i]->Get_SessionId()));
+                const auto* slot = room->Find_Placement("valtan.entry.slot." + std::to_string(i + 1));
+                arrived &= slot && std::abs(player.fPositionX - slot->fPositionX) < .55f &&
+                    std::abs(player.fPositionZ - slot->fPositionZ) < .55f;
+            }
+            tests.Require(arrived, "Ten confirmed seconds automatically start one encounter and commit all four admitted arrival slots without a command or vote");
+            if (arrived)
+            {
+                room->Tick(1.f / 30.f);
+                const auto* boss = room->Find_AuditionBoss();
+                tests.Require(boss && boss->strPatternId == "VALTAN_ENTRANCE_CINEMATIC",
+                    "Automatic entry starts the authored entrance cinematic through the normal Server boss brain");
+            }
+        }
+        for (const auto& peer : peers) peer->Request_Close();
+    }
+
     {
         // Use real admission and typed F1/restore handlers. Each connection owns
         // an independent saved character and receives its own inventory only.
@@ -655,7 +730,7 @@ int CServerGameplayContractRunner::Run_BattleItemsOnly()
                 }
                 std::uint32_t expectedBroken = 0u;
                 if (attempt) for (const auto& part : boss.BossCombat.Parts)
-                    if (part.iStateMask & beforeMask) { expectedBroken = part.iStateMask; break; }
+                    if (part.iStateMask & beforeMask) expectedBroken |= part.iStateMask;
                 C2S_USE_ITEM request;
                 request.strItemId = "BATTLE_DESTRUCTION_BOMB";
                 request.hasGroundTarget = true;
@@ -684,7 +759,7 @@ int CServerGameplayContractRunner::Run_BattleItemsOnly()
                 tests.Require(arena->m_CombatObjectRuntime.Get_LiveObjects().empty() &&
                     boss.BossCombat.iAlivePartMask == (beforeMask & ~expectedBroken) &&
                     boss.bPendingArmorBreakReaction == (expectedBroken != 0u),
-                    "Destruction contact breaks exactly one eligible plate only while groggy");
+                    "The first eligible destruction contact breaks the complete armor set only while groggy");
                 if (beforeMask == 0u)
                     tests.Require(!boss.BossCombat.iAlivePartMask &&
                         boss.BossCombat.PendingPartBreakEdges.empty() && boss.BossCombat.PendingOutcomes.empty() &&
@@ -744,7 +819,7 @@ int CServerGameplayContractRunner::Run_BattleItemsOnly()
             }
             tests.Require(!boss.BossCombat.iAlivePartMask && std::all_of(boss.ArmorPlates.begin(), boss.ArmorPlates.end(),
                 [](const auto& plate) { return !plate.iRemainingDurability; }),
-                "Two separate groggy windows remove both typed and legacy armor plates");
+                "The first groggy bomb removes both typed and legacy armor plates; later bombs cannot replay the break");
         }
         for (const auto& observer : observers) observer->Request_Close();
     }

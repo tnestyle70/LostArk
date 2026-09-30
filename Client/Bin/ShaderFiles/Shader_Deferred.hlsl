@@ -455,7 +455,8 @@ PS_OUT_LIGHT Resolve_MapSourceSpecularLight(PS_IN input, float3 worldPosition,
     const float3 v = normalize(g_vCamPosition.xyz - worldPosition);
     const float3 sum = l + v;
     const float3 h = sum * rsqrt(max(dot(sum, sum), 1e-12f));
-    const float ndoth = abs(dot(n, h));
+    const bool sourceLandscape = g_DepthTexture.Load(pixel).w == 14.f;
+    const float ndoth = sourceLandscape ? saturate(dot(n, h)) : abs(dot(n, h));
     const float specularPower = g_DepthTexture.Load(pixel).z;
     const float lobe = ndoth < 0.000001f ? 0.f : min(pow(ndoth, specularPower), 1.f);
     const float4 material = g_MaterialSpecularTexture.Load(pixel);
@@ -480,7 +481,8 @@ PS_OUT_LIGHT Resolve_MapSourceSpecularLight(PS_IN input, float3 worldPosition,
         specular += g_CharacterSurfaceTexture.Load(pixel).rgb * directShadow *
             saturate(-dot(Decode_MapPBRGeometricNormal(pixel), l));
     }
-    else if (g_DepthTexture.Load(pixel).w == 11.f) { /* Native ice does not cap RGB specular. */ }
+    else if (g_DepthTexture.Load(pixel).w == 11.f || sourceLandscape)
+    { /* Native ice and Landscape do not cap RGB specular. */ }
     else if (g_DepthTexture.Load(pixel).w == 13.f)
         specular = clamp(material.rgb * lobe, 0.f, 2.f) * directShadow;
     else
@@ -607,7 +609,7 @@ bool Reject_LightReceiver(PS_IN input, DEFERRED_LIGHT_INPUT light)
             (IsSourceMovieStatic(g_SourceCharacterProgram) ? g_MaterialSpecularTexture.Load(pixel).z < 0.f :
          (IsSourceStaticMapSL10() ? g_MaterialSpecularTexture.Load(pixel).z : g_MaterialSpecularTexture.Load(pixel).w) > .5f);
     const bool sourceMap = marker == 3.f || marker == 4.f ||
-        (marker >= 7.f && marker <= 13.f);
+        (marker >= 7.f && marker <= 14.f);
     return sourceMap && (asuint(g_GeometricNormalTexture.Load(pixel).w) & 0x00400000u) != 0u;
 }
 
@@ -667,7 +669,7 @@ PS_OUT_LIGHT Resolve_DirectionalLight(PS_IN In, DEFERRED_LIGHT_INPUT light)
         return Resolve_MapSourceStoneLight(In, vWorldPos.xyz, -light.direction.xyz, 1.f, fDirectionalShadow, light, true);
     if (sourceDepth.w == 9.f || sourceDepth.w == 10.f)
         return Resolve_MapSourceFoliageLight(In, vWorldPos.xyz, -light.direction.xyz, 1.f, fDirectionalShadow, light);
-    if (sourceDepth.w == 4.f || sourceDepth.w == 8.f || (sourceDepth.w >= 11.f && sourceDepth.w <= 13.f))
+    if (sourceDepth.w == 4.f || sourceDepth.w == 8.f || (sourceDepth.w >= 11.f && sourceDepth.w <= 14.f))
         return Resolve_MapSourceSpecularLight(In, vWorldPos.xyz, -light.direction.xyz,
             1.f, fDirectionalShadow, light);
     if (g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0)).w == 3.f)
@@ -780,7 +782,7 @@ PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot, DEFERRED_LIGHT_INPUT light
         return Resolve_MapSourceStoneLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow, light, false);
     if (sourceDepth.w == 9.f || sourceDepth.w == 10.f)
         return Resolve_MapSourceFoliageLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow, light);
-    if (sourceDepth.w == 4.f || sourceDepth.w == 8.f || (sourceDepth.w >= 11.f && sourceDepth.w <= 13.f))
+    if (sourceDepth.w == 4.f || sourceDepth.w == 8.f || (sourceDepth.w >= 11.f && sourceDepth.w <= 14.f))
         return Resolve_MapSourceSpecularLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow, light);
     if (g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0)).w == 3.f)
         return Resolve_MapPBRLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow, light);
@@ -1784,7 +1786,7 @@ PS_OUT_BACKBUFFER PS_MAIN_FINAL(PS_IN In)
             Out.vBackBuffer = float4(color, 1.f);
             return Out;
         }
-        if (marker == 1.f || marker == 2.f || marker == 3.f || (marker == 4.f || marker == 8.f || marker == 9.f || marker == 10.f || (marker >= 11.f && marker <= 13.f)))
+        if (marker == 1.f || marker == 2.f || marker == 3.f || (marker == 4.f || marker == 8.f || marker == 9.f || marker == 10.f || (marker >= 11.f && marker <= 14.f)))
         {
             if (g_MaterialDebugView == 2u)
                 color = g_NormalTexture.Load(pixel).rgb;
@@ -1818,7 +1820,7 @@ PS_OUT_BACKBUFFER PS_MAIN_FINAL(PS_IN In)
             {
                 color = g_MaterialDebugView == 3u ?
                     g_SpecularTexture.Load(pixel).rgb : g_DiffuseTexture.Load(pixel).rgb;
-                if ((marker == 4.f || marker == 8.f || marker == 9.f || marker == 10.f || (marker >= 11.f && marker <= 13.f)) && g_MaterialDebugView != 3u)
+                if ((marker == 4.f || marker == 8.f || marker == 9.f || marker == 10.f || (marker >= 11.f && marker <= 14.f)) && g_MaterialDebugView != 3u)
                     color *= g_MaterialSpecularTexture.Load(pixel).a;
                 // Source contributions bypass scene exposure, Bloom and FXAA.
                 // Specular can be HDR; compress only this diagnostic display.

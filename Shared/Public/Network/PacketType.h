@@ -120,9 +120,13 @@ namespace LostArk::Shared
 	// 121 carries each Mario entrant's required colour and matching-ball progress.
 	// 122 carries each player's latest Waterpang water gun cast (skill id and Server start tick).
 	// 124 combines saved-character restore, raid EXIT votes and ground-target battle items.
+	// 125 merges the 122 water gun cast wire with the 124 main line; no packet numbers were renumbered.
 	// Independently released 125 peers carry water gun casts, avatar items, or minigame deadlines.
 	// 126 combines all three layouts and rejects those incompatible 125 peers.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 126;
+	// Independently released 127 branches add voice, durability, or Waterpang AI.
+	// Colosseum 128 adds its world and queue on top of 126. Those peers cannot
+	// decode the combined layout. 129 carries all four contracts together.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 129;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -132,6 +136,7 @@ namespace LostArk::Shared
 		CHARACTER_SELECT_ARENA = 4,
 		KAKULSAYDON_ARENA = 5,
 		MAHARAKA = 6,
+		COLOSSEUM = 7,
 		END
 	};
 
@@ -143,7 +148,8 @@ namespace LostArk::Shared
 			WORLD_ID::TRAINING_GROUND == worldId ||
 			WORLD_ID::CHARACTER_SELECT_ARENA == worldId ||
 			WORLD_ID::KAKULSAYDON_ARENA == worldId ||
-			WORLD_ID::MAHARAKA == worldId;
+			WORLD_ID::MAHARAKA == worldId ||
+			WORLD_ID::COLOSSEUM == worldId;
 	}
 
 	enum class CHARACTER_CLASS_ID : std::uint8_t
@@ -196,9 +202,9 @@ namespace LostArk::Shared
 	}
 
 	// v116: server-owned companion identity, separate party companion, prompt and trace.
-	enum class PLAYER_CONTROL_KIND : std::uint8_t { HUMAN = 0, GUIDE_AI = 1 };
+	enum class PLAYER_CONTROL_KIND : std::uint8_t { HUMAN = 0, GUIDE_AI = 1, WATERPANG_AI = 2 };
 	constexpr bool Is_Known_Player_Control_Kind(PLAYER_CONTROL_KIND kind)
-	{ return kind == PLAYER_CONTROL_KIND::HUMAN || kind == PLAYER_CONTROL_KIND::GUIDE_AI; }
+	{ return kind == PLAYER_CONTROL_KIND::HUMAN || kind == PLAYER_CONTROL_KIND::GUIDE_AI || kind == PLAYER_CONTROL_KIND::WATERPANG_AI; }
 
 	enum class PACKET_TYPE : std::uint16_t
 	{
@@ -446,7 +452,15 @@ namespace LostArk::Shared
 		// right after entering Bern. Every admitted request receives a typed result;
 		// success follows the authoritative inventory snapshot in the reliable queue.
 		C2S_RESTORE_CHARACTER,
-		S2C_RESTORE_CHARACTER_RESULT
+		S2C_RESTORE_CHARACTER_RESULT,
+		// Preserve Colosseum's published range; append repair and Waterpang tuning.
+		C2S_COLOSSEUM_QUEUE_JOIN = 113,
+		C2S_COLOSSEUM_QUEUE_LEAVE = 114,
+		S2C_COLOSSEUM_QUEUE_STATE = 115,
+		S2C_COLOSSEUM_MATCH_FOUND = 116,
+		C2S_REPAIR_EQUIPMENT = 117,
+		C2S_MAHARAKA_AI_TUNING = 118,
+		S2C_MAHARAKA_AI_TUNING = 119
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -574,10 +588,17 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_BUY_ITEMS:
 		case PACKET_TYPE::C2S_RESTORE_CHARACTER:
 		case PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT:
+		case PACKET_TYPE::C2S_MAHARAKA_AI_TUNING:
+		case PACKET_TYPE::S2C_MAHARAKA_AI_TUNING:
+		case PACKET_TYPE::C2S_REPAIR_EQUIPMENT:
 		case PACKET_TYPE::C2S_BALANCE_QUERY:
 		case PACKET_TYPE::S2C_BALANCE_SNAPSHOT:
 		case PACKET_TYPE::C2S_BALANCE_PATCH:
 		case PACKET_TYPE::S2C_BALANCE_RESULT:
+		case PACKET_TYPE::C2S_COLOSSEUM_QUEUE_JOIN:
+		case PACKET_TYPE::C2S_COLOSSEUM_QUEUE_LEAVE:
+		case PACKET_TYPE::S2C_COLOSSEUM_QUEUE_STATE:
+		case PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND:
 			return true;
 		default:
 			return  false;
@@ -588,6 +609,11 @@ namespace LostArk::Shared
 	//inline : 이 헤더를 여러 .cpp가 include해도 동일한 변수 정의로 취급한다.
 	//constexpr : 컴파일 타임 시간 상수
 	inline constexpr std::size_t MAX_NICKNAME_BYTES = 32;
+
+	// Character-creation voice type: the original's customizing table offers
+	// Type1..Type8 per class. 0 is never on the wire.
+	inline constexpr std::uint8_t MIN_VOICE_TYPE = 1;
+	inline constexpr std::uint8_t MAX_VOICE_TYPE = 8;
 
 	// Same as Character Select Arena's own room cap (see
 	// Run-CharacterSelectIsolationHarness.ps1's 4/4 ROOM_FULL contract).

@@ -35,6 +35,7 @@ MANIFEST_REL = "Data/Valtan/Valtan.animation-chain-promotions.json"
 DEBUG_REL = "Data/Valtan/Valtan.presentation.debug.json"
 GAMEPLAY_REL = "Data/Valtan/Valtan.gameplay.json"
 PRESENTATION_REL = "Data/Valtan/Valtan.presentation.json"
+COMBAT_OBJECT_SOUND_REL = "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json"
 PATTERN_SOUND_REL = (
     "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json"
 )
@@ -3514,6 +3515,30 @@ def _validate_source_sidecar(owner: str, payload: bytes) -> None:
     finite_tree(value)
     if owner == PATTERN_SHAKE_REL:
         _validate_pattern_shake_source(payload)
+    elif owner == COMBAT_OBJECT_SOUND_REL:
+        _exact(value, ('schema', 'formatVersion', 'ownerArchetypeId', 'cues'), owner)
+        if value['schema'] != 'lostark.valtan-combat-object-sound-cues' or type(value['formatVersion']) is not int or value['formatVersion'] != 1 or value['ownerArchetypeId'] != 'BOSS_VALTAN':
+            raise PromotionError('Combat Object Sound source header is invalid')
+        rows = value['cues']; bindings = set(); sources = set()
+        if not isinstance(rows, list) or len(rows) > 256:
+            raise PromotionError('Combat Object Sound rows invalid')
+        for row in rows:
+            if not isinstance(row, dict) or ('hitId' in row) == ('presentationEventId' in row):
+                raise PromotionError('Combat Object Sound requires one hit or presentation event')
+            event_key = 'hitId' if 'hitId' in row else 'presentationEventId'
+            keys = ('bindingId', 'combatObjectArchetypeId', event_key, 'soundBank', 'soundEvent')
+            _required_with_optional(row, keys, ('playbackOffsetMs',), 'Combat Object Sound row')
+            for key in keys: _stable(row[key], 'Combat Object Sound ' + key)
+            if row['soundBank'] != 'S_Mob_G_Voltan2':
+                raise PromotionError('Combat Object Sound bank invalid')
+            source = (row['combatObjectArchetypeId'], row[event_key])
+            if row['bindingId'] in bindings or source in sources:
+                raise PromotionError('duplicate Combat Object Sound identity')
+            bindings.add(row['bindingId']); sources.add(source)
+            if 'playbackOffsetMs' in row:
+                integer(row['playbackOffsetMs'], 'Combat Object Sound playbackOffsetMs')
+                if row['playbackOffsetMs'] > 600000:
+                    raise PromotionError('Combat Object Sound playbackOffsetMs exceeds storage range')
     elif owner == PATTERN_SOUND_REL:
         _exact(value, ('schema', 'formatVersion', 'ownerArchetypeId', 'cues'), owner)
         if value['schema'] != 'lostark.valtan-pattern-sound-cues' or value['formatVersion'] != 1 or value['ownerArchetypeId'] != 'BOSS_VALTAN':
@@ -3565,6 +3590,8 @@ def _validate_source_sidecar(owner: str, payload: bytes) -> None:
 
 def commit_source_authoring_patch(
     repo_root: Path, draft_patch_path: Path, *, source_baseline_root: Path,
+    combat_object_sound_baseline_path: Path | None = None,
+    combat_object_sound_candidate_path: Path | None = None,
     pattern_sound_baseline_path: Path | None = None,
     pattern_sound_candidate_path: Path | None = None,
     pattern_shake_baseline_path: Path | None = None,
@@ -3615,6 +3642,7 @@ def commit_source_authoring_patch(
             targets[repo_root/relative]=_json_text(value).encode('utf-8')
             expected[repo_root/relative]=physical
         for relative,baseline_path,candidate_path in (
+            (COMBAT_OBJECT_SOUND_REL,combat_object_sound_baseline_path,combat_object_sound_candidate_path),
             (PATTERN_SOUND_REL,pattern_sound_baseline_path,pattern_sound_candidate_path),
             (PATTERN_SHAKE_REL,pattern_shake_baseline_path,pattern_shake_candidate_path),
             (EFFECT_V2_BINDINGS_REL,effect_v2_baseline_path,effect_v2_candidate_path)):
@@ -3660,6 +3688,8 @@ def commit_typed_authoring_patch(
     draft_patch_path: Path,
     *,
     authoring_root: Path | None = None,
+    combat_object_sound_baseline_path: Path | None = None,
+    combat_object_sound_candidate_path: Path | None = None,
     pattern_sound_baseline_path: Path | None = None,
     pattern_sound_candidate_path: Path | None = None,
     pattern_shake_baseline_path: Path | None = None,
@@ -3817,6 +3847,12 @@ def commit_typed_authoring_patch(
                 docs[pipeline.WORLD_SET_REL],
                 committed_combat,
             )
+            combat_object_sound_pair = read_owner_pair(
+                "Combat Object Sound", combat_object_sound_baseline_path, combat_object_sound_candidate_path,
+            )
+            if combat_object_sound_pair is not None:
+                _validate_source_sidecar(COMBAT_OBJECT_SOUND_REL, combat_object_sound_pair[1])
+            combat_object_sound_target = repo_root / COMBAT_OBJECT_SOUND_REL
             pattern_shake_pair = read_owner_pair(
                 "Pattern Shake", pattern_shake_baseline_path, pattern_shake_candidate_path,
             )
@@ -3932,6 +3968,9 @@ def commit_typed_authoring_patch(
             for relative, text in outputs.items():
                 target_payloads[repo_root / relative] = text.encode("utf-8")
             provided_baselines: dict[Path, bytes] = {}
+            if combat_object_sound_pair is not None:
+                target_payloads[combat_object_sound_target] = combat_object_sound_pair[1]
+                provided_baselines[combat_object_sound_target] = combat_object_sound_pair[0]
             if pattern_sound_pair is not None:
                 target_payloads[pattern_sound_target] = pattern_sound_pair[1]
                 provided_baselines[pattern_sound_target] = pattern_sound_pair[0]

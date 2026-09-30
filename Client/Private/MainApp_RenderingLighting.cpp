@@ -783,6 +783,8 @@ void Client::CMainApp::RenderSceneProfileDetail()
 	ImGui::SeparatorText("Height Fog");
 	sceneChanged |= ImGui::Checkbox(
 		"Height Fog Enabled", &m_SceneRenderingDraft.Fog.bEnabled);
+	if (ImGui::IsItemHovered()) ImGui::SetTooltip(
+		"Enables this scene and its region fog. Turning it off preserves every density, height and region setting.");
 	ImGui::BeginDisabled(!m_SceneRenderingDraft.Fog.bEnabled);
 	sceneChanged |= ImGui::ColorEdit3(
 		"Fog Color", &m_SceneRenderingDraft.Fog.vColor.x);
@@ -842,7 +844,8 @@ void Client::CMainApp::RenderSceneProfileDetail()
 		"Coverage 100%% is one blanket. Lower it and the fog breaks into banks that the wind walks across world XZ; Patch Scale sets their size.");
 	ImGui::EndDisabled();
 	ImGui::TextDisabled(
-		"Fog fills below Top Height and is applied in the deferred combine, so effects and the blend group stay clear of it.");
+		"Height Fog Enabled controls the whole selected scene, including source environment regions. "
+		"Region fog keeps its own density and height. Save Light and Publish Light persist the switch.");
 	if (sceneChanged)
 	{
 		m_SceneRenderingDraft.Light.vDirection.w = 0.f;

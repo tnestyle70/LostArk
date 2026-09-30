@@ -33,6 +33,14 @@ namespace LostArk::Server
 		}
 	};
 
+	/* Server-owned state carried only between worlds of the same session.
+	   Fresh Lobby admission keeps the default repaired equipment. */
+	struct SERVER_DURABILITY_STATE final
+	{
+		std::array<std::uint8_t, 6> DurabilityPercent{ { 100, 100, 100, 100, 100, 100 } };
+		std::uint8_t iDurabilityWearCursor = 0;
+	};
+
 	struct SERVER_TRIGGER_MOVE_SAMPLE
 	{
 		std::uint32_t iTimeMs = 0u;
@@ -162,7 +170,9 @@ namespace LostArk::Server
 	{
 		LostArk::Shared::PLAYER_CONTROL_KIND eControlKind = LostArk::Shared::PLAYER_CONTROL_KIND::HUMAN;
 		bool Is_Guide() const noexcept { return eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::GUIDE_AI; }
-		bool Is_Human() const noexcept { return !Is_Guide(); }
+		bool Is_Human() const noexcept { return eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::HUMAN; }
+        bool Is_WaterpangAI() const noexcept { return eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::WATERPANG_AI; }
+        std::string strWaterpangNpcArchetypeId;
 		SESSION_ID iSessionId = INVALID_SESSION_ID;
 		LostArk::Shared::PLAYER_ID iPlayerId =
 			LostArk::Shared::INVALID_PLAYER_ID;
@@ -172,6 +182,8 @@ namespace LostArk::Server
 			LostArk::Shared::CHARACTER_CLASS_ID::END;
 
 		std::string strNickName;
+		// Character-creation voice type (1..8), carried like the nickname.
+		std::uint8_t iVoiceType = LostArk::Shared::MIN_VOICE_TYPE;
 		std::string strSpawnPlacementId;
 		// Server-validated Bern entry guide; retained until this raid visit ends.
 		std::string strRaidReturnNpcPlacementId;
@@ -357,6 +369,26 @@ namespace LostArk::Server
 
 		std::uint32_t iCurrentHp = 1000;
 		std::uint32_t iMaximumHp = 1000;
+		/* Worn-gear durability per HUD part (weapon, helmet, top, gloves, bottoms, shoulder),
+		   percent 0..100. A hit that takes HP wears one part in turn; the owner's inventory
+		   snapshot carries it. Not kept across sessions. */
+		std::array<std::uint8_t, 6> DurabilityPercent{ { 100, 100, 100, 100, 100, 100 } };
+		std::uint8_t iDurabilityWearCursor = 0;
+		bool bDurabilityDirty = false;
+		SERVER_DURABILITY_STATE Get_DurabilityState() const noexcept
+		{
+			return { DurabilityPercent, iDurabilityWearCursor };
+		}
+		void Wear_Durability(const std::uint8_t percentLoss) noexcept
+		{
+			std::uint8_t& part = DurabilityPercent[iDurabilityWearCursor % DurabilityPercent.size()];
+			iDurabilityWearCursor = static_cast<std::uint8_t>(
+				(iDurabilityWearCursor + 1u) % DurabilityPercent.size());
+			if (0u == part)
+				return;
+			part = part > percentLoss ? static_cast<std::uint8_t>(part - percentLoss) : std::uint8_t{ 0 };
+			bDurabilityDirty = true;
+		}
 		// Server-only per-hit stream; same-tick contacts must not share one damage roll.
 		std::uint64_t iIncomingDamageSampleSerial = 0u;
 		std::uint32_t iCurrentResource = 100;

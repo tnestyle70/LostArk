@@ -20,9 +20,10 @@ struct CLASS_MOVIE_WORLD_ITEM final
 };
 struct CLASS_MOVIE_INSPECTION_STATE final
 {
-    std::string classId, selectedId, status;
+    std::string classId, selectedId, status, backgroundAreaId;
     bool loop = false, active = false, freeCamera = false, pickArmed = false;
     bool showBackground = true, showEffects = true, dirty = false;
+    bool canEditBackground = false;
     double movieMs = 0., sourceMs = 0.;
     float3_t cameraPosition{};
     uint32_t pickedMesh = UINT32_MAX;
@@ -41,7 +42,10 @@ struct CLASS_MOVIE_INSPECTION_COMMAND final
 };
 struct CLASS_MOVIE_INSPECTION_CALLBACKS final
 {
+    // MainApp revalidates the displayed class/Area before opening the existing Map Tool.
+    using OPEN_BACKGROUND = std::function<bool(const std::string&, const std::string&, std::string&)>;
     std::function<CLASS_MOVIE_INSPECTION_STATE(const std::string&, bool)> state;
     std::function<bool(const std::string&, bool, const CLASS_MOVIE_INSPECTION_COMMAND&, std::string&)> command;
+    OPEN_BACKGROUND openBackground;
 };
 }

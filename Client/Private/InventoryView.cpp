@@ -515,6 +515,10 @@ vector<size_t> Client::CInventoryView::Build_FilteredIndices(
 			LostArk::Shared::EQUIPMENT_SLOT::AVATAR_HEAD != items[i].eEquippedSlot &&
 			LostArk::Shared::EQUIPMENT_SLOT::AVATAR_OUTFIT != items[i].eEquippedSlot)
 			continue;
+		/* Avatars live in the avatar book, not the bag window. */
+		const ITEM_DEFINITION* pAvatarCheck = CItemCatalog::Find_ById(items[i].strItemId);
+		if (nullptr != pAvatarCheck && "avatar" == pAvatarCheck->strGrade)
+			continue;
 		if (bShowAll)
 		{
 			filteredIndices.push_back(i);

@@ -844,9 +844,9 @@ private:
 	std::uint32_t m_iGate3AuraStartTick = 0u;
 	std::uint32_t m_iGate3AuraRunEpoch = 0u;
 	bool_t m_bGate3AuraOccupied = false;
-	bool_t m_bGate3AuraSubmitted = false;
+	std::vector<LostArk::Shared::NET_ENTITY_ID> m_Gate3AuraParticipants;
 	f32_t m_fGate3AuraSecondsLeft = 10.f;
-	void Update_Gate3EntryAura(bool_t canPropose, bool_t entryAvailable);
+	void Update_Gate3EntryAura(bool_t entryAvailable);
 	void Submit_Gate3Auras();
 	void Clear_Gate3Auras();
 	// Attempt once on each playback edge; missing media never retries every frame.

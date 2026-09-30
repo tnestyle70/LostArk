@@ -43,7 +43,8 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& carriedInventory,
 	const LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId,
 	const std::string& raidReturnNpcPlacementId,
-	const SERVER_PURSE& carriedPurse)
+	const SERVER_PURSE& carriedPurse,
+	const SERVER_DURABILITY_STATE& carriedDurability)
 {
 	using namespace LostArk::Shared;
 	outReason = SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED;
@@ -55,6 +56,11 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 		status = detail;
 		return false;
 	};
+	if (carriedDurability.iDurabilityWearCursor >= carriedDurability.DurabilityPercent.size() ||
+		std::any_of(carriedDurability.DurabilityPercent.begin(), carriedDurability.DurabilityPercent.end(),
+			[](const std::uint8_t percent) { return percent > 100u; }))
+		return reject(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED,
+			"invalid carried equipment durability");
 	const std::size_t offset = precedingEntries.size();
 	if (!raidReturnNpcPlacementId.empty() &&
 		((WORLD_ID::VALTAN_ARENA != m_eWorldId && WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId) ||
@@ -115,6 +121,11 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	player.iNetEntityId = m_iNextNetEntityId + static_cast<NET_ENTITY_ID>(offset);
 	player.eCharacterClass = enterWorld.eCharacterClass;
 	player.strNickName = enterWorld.strNickName;
+	player.iVoiceType = enterWorld.iVoiceType;
+	player.DurabilityPercent = carriedDurability.DurabilityPercent;
+	player.iDurabilityWearCursor = carriedDurability.iDurabilityWearCursor;
+	// The initial inventory frame publishes these values before admission commits.
+	player.bDurabilityDirty = false;
 	/* A transfer keeps the title it wore; the target room's own bootstrap still has the
 	last word, so an id it does not list arrives bare. */
 	player.iHonorTitleId = m_HonorTitleCatalog.Has_Title(carriedHonorTitleId) ?
@@ -254,6 +265,7 @@ bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
 	inventory.Items = entry.Player.Inventory;
 	inventory.iSilver = entry.Player.Purse.iSilver;
 	inventory.iGold = entry.Player.Purse.iGold;
+	inventory.DurabilityPercent = entry.Player.DurabilityPercent;
 	if (!append(PACKET_TYPE::S2C_INVENTORY_SNAPSHOT, inventory)) return false;
 	if (WORLD_ID::VALTAN_ARENA == m_eWorldId)
 	{
@@ -378,7 +390,9 @@ bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
 		message.iNetEntityId = player.iNetEntityId;
 		message.eCharacterClass = player.eCharacterClass;
 		message.eControlKind = player.eControlKind;
+        message.strWaterpangNpcArchetypeId = player.strWaterpangNpcArchetypeId;
 		message.strNickName = player.strNickName;
+		message.iVoiceType = player.iVoiceType;
 		message.fPositionX = player.fPositionX;
 		message.fPositionY = player.fPositionY;
 		message.fPositionZ = player.fPositionZ;
@@ -415,7 +429,8 @@ bool LostArk::Server::CGameRoom::Join(
 	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& carriedInventory,
 	const LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId,
 	const std::string& raidReturnNpcPlacementId,
-	const SERVER_PURSE& carriedPurse)
+	const SERVER_PURSE& carriedPurse,
+	const SERVER_DURABILITY_STATE& carriedDurability)
 {
 	using namespace LostArk::Shared;
 
@@ -533,7 +548,7 @@ bool LostArk::Server::CGameRoom::Join(
 	std::string status;
 	if (!Stage_PlayerEntry(session, enterWorld, {}, entry, reason, status,
 			spawnPlacementOverrideId, carriedInventory, carriedHonorTitleId,
-			raidReturnNpcPlacementId, carriedPurse))
+			raidReturnNpcPlacementId, carriedPurse, carriedDurability))
 	{
 		session->Request_Close(reason, WSAEINVAL, status);
 		return false;
@@ -565,6 +580,10 @@ void LostArk::Server::CGameRoom::Leave(
 	const LostArk::Shared::PLAYER_DESPAWN_REASON reason, const bool publishDeparture)
 {
 	using namespace LostArk::Shared;
+
+	// A queued player who disconnects or moves on drops out of the Colosseum queue; the rest keep waiting.
+	std::erase_if(m_ColosseumQueue,
+		[sessionId](const COLOSSEUM_QUEUE_ENTRY& entry) { return entry.iSessionId == sessionId; });
 
 	if (Is_KoukuRaidRunning())
 	{

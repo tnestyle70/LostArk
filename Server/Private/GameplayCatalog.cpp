@@ -7953,7 +7953,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				combatObject.Hits[0].eTrigger != BOSS_COMBAT_OBJECT_HIT_TRIGGER::TIMED ||
 				!combatObject.PresentationPulses.empty() || triggerStage == nullptr ||
 				triggerStage->eHitShape != BOSS_PATTERN_HIT_SHAPE::CONE || triggerStage->iHitCount == 0u ||
-				combatObject.OwnerHitChain.iDelayMs >= combatObject.iLifeMs ||
+				static_cast<std::uint64_t>(combatObject.OwnerHitChain.iDelayMs) + combatObject.Hits[0].iAtMs >= combatObject.iLifeMs ||
 				combatObject.OwnerHitChain.strArmedPresentationEventId == combatObject.Hits[0].strHitId)
 			{
 				m_strStatus = "Boss combat object owner hit chain requires one timed hit and an owner cone action";

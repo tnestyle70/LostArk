@@ -386,3 +386,201 @@ PR488에서 파일이 제공되지 않은 아바타 아이콘30개는 여전히 
 PR487/488 원본 commit을 보존한 통합 PR은
 https://github.com/tnestyle70/LostArk/pull/489 이며 최종 merge 상태는 GitHub가 정본이다.
 실제4Client LAN 입장과 화면·음향은 사용자 확인 범위다.
+
+
+## G14. 속박 진입 시 방 중단의 실측과 공중 복원 수정
+
+실제 실행 로그에서 확인한 최초 실패는 다음과 같다. 사용자 플레이어의 XYZ는 이 로그에
+없으므로 아래 실행 기록과 결정적 native fixture의 공중 좌표를 같은 사실로 취급하지 않는다.
+
+- Debug Server37244, session1, 2026-09-30 16:42:23.333 KST, tick18920.
+  Server/Bin/Debug/Diagnostics/server-session-37244.jsonl:2가
+  SERVER_ROOM_RUNTIME_FAILED / world-update.pattern-stage-transition /
+  Boss player-bind restore pose is not navigable을 기록했다.
+- Release Server15308도14:49:28.382 KST session3과14:49:31.180 session4가
+  같은 최초 실패 tick14443/source/detail을 기록했다. 근거는
+  Server/Bin/Release/Diagnostics/server-session-15308.jsonl:4와:5다.
+- 두 실행의 종료 기록에서 reliableRejected와 sendFailures는0이다.
+  Debug Client82620의25~28행은 lastServerTick18920, Server FIN,
+  level-valtan.network-connection-lost, Lobby의 Server entry failed 표시 순서를 기록했다.
+  TCP 종료는 room 실패의 후속 결과로 확인되며 일반 네트워크 타임아웃으로 분류하지 않는다.
+
+실제 로그 원문 발췌는 out/ValtanAuthoring20260930/BindAirborne/live-failure-excerpts.json에
+보존했다. 수정 전 GameRoom_BossStageActions.cpp도 같은 폴더의
+GameRoom_BossStageActions.before.cpp에 보관했으며 SHA256은
+4d7972870da2bc4b0f777f9b0ac0a0fd2600ceeef9e03928eadfe86e64a11f07이다.
+
+소스에서는 Stage와 Commit이 Resolve_BossPlayerBindGround를 공용으로 사용하도록
+수정했다. 정상 bounded ballistic reaction의 supportY만 지면 탐색 기준으로 허용하고,
+일반 대상은 현재 Y를 사용한다. walkable/finite 및 지면과 기준 높이 차이1.5m 제한은
+유지한다. Commit은 탐색 지면 XYZ를 복원 위치로 저장하고 ground+5m로 속박한다.
+기존 Cancel_PlayerActionForPatternStatus와 Clear_Attachment가 flight flag/velocity/
+remaining을 끝내므로 전역 넉백 취소 함수를 바꾸지 않았다. invalid support, floating,
+비finite 또는 탐색 실패는 계속 거절하며 그때만 target/currentXYZ/groundSampled/
+groundY/ballistic/supportY와 구분된 reason을 실패 상태에 기록한다.
+
+기존 Run_ValtanRevision에3개 검증을 추가했다. 게시된 FOUR_SLASH의6개 contact 시간과
+수치로 실제 Arm_PlayerHitReaction 및 Advance_PlayerKnockback을 실행하고, 실제
+Brain→Stage→Commit의 Bind 입장과 EXIT 지면 복원 및 후속 넉백을 검사한다. 이 fixture는
+6회 명중을 입력으로 가정하며 live 실플레이에서6회가 모두 명중했다는 주장이 아니다.
+나머지는 invalid support/nonfinite support/nonballistic floating/nonwalkable 위치의
+거절과 실패 진단을 검사한다. --valtan-presentation-contract-test가 이 fixture를 실행한다.
+
+### G14 native 수정 전후 검증
+
+root가 같은 최신 native fixture를 두 번 빌드해 비교했다. 실행 명령은 기존
+Server.exe --valtan-presentation-contract-test이며 별도 Client/UI를 실행하지 않았다.
+
+- 구 StageActions와 새 fixture: Release 빌드 성공,41 PASS /2 FAIL, exit1.
+  첫 실패는 실제 Bind Stage가 기존 문구로 입장을 거절한 것이다. 둘째 실패는
+  신규 상세 진단이 구코드에는 없는 차이다. 기존 음수4종은 구코드에서도 거절됐으며,
+  진단 assertion 실패를4종 모두 잘못 허용한 것으로 해석하지 않는다.
+- 수정 StageActions와 같은 fixture: Release 빌드 성공,43 PASS /0 FAIL.
+  Bind 입장, flight 종료, EXIT의 지면 XYZ, 이후 reaction 재시작을 모두 통과했다.
+  invalid support/NaN support/비ballistic floating/nonwalkable X도 모두 거절됐다.
+- 두 실행 모두 게시 contact6개, 패턴 총7867ms, oldPoseGuardRejects=1이었다.
+  실제 fixture 입력은 Y28.4542866, 현재 XZ의 탐색 지면Y23.0910301,
+  최초 supportY22.9975071, 남은 비행시간0.199999869초다. 현재 Y와 지면의 차이는
+  약5.36m여서 구조건은 실패하지만 support와 지면의 차이는 약0.094m로1.5m 안이다.
+  이것은 native 재현 입력의 실측이며 live tick18920/14443의 미기록 XYZ를 복원한 값이 아니다.
+
+근거는 out/ValtanAuthoring20260930/BindAirborne의 build-before.log,
+test-before.log, build-after.log, test-after.log이며 root가 보관한 수정본
+GameRoom_BossStageActions.after.cpp의 SHA256은
+bf50b5d925c68018b4849c4f77616035eafd5883c7a9f9da720ca281188362a6이다.
+독립 runtime/fixture 코드 검토와 git diff --check도 통과했다.
+수정 후 CLI exit0도 root가 확인했다. 이후 EXE 점유 해제를 확인하고 Guardian 병합 및
+G15의 속박 문구를 포함한 Debug/Release Product 컴파일·링크도 완료했다.
+receipt는 out/BuildPipeline/runs/20260930T091228557Z-debug-product.json과
+20260930T091359049Z-release-product.json이며 둘 다 PASS다.
+새 C++ 파일/public header/project/filter 등록, 데이터 교체 또는 Client/UI 실행은 없다.
+
+## G15. 실제 속박 대상의 보라색 상태 문구
+
+Client/Public/ReplicatedPlayerHealth.h가 기존 PLAYER_SNAPSHOT의 isPatternBound와
+iPatternBindEndTick을 entity별 read-only join에 전달한다. ClientReplication의 기존
+Apply_Snapshot 호출과 Level_ValtanArena::Update_StatusEffectText를 연결하여 실제
+속박된 살아 있는 player의 character anchor에 ‘속박’, 보라색0x8041D9를 제출한다.
+기존 CStatusEffectTextView가 owner·word·Server deadline으로 한 번만 생성한다.
+지속 snapshot과 문구 수명 종료 후 같은 속박은 재표시하지 않고 새 deadline은 다시 표시한다.
+두 플레이어가 같은 deadline을 사용해도 각자의 머리 위에 독립적으로 표시한다.
+
+기존 character 위치+1.6m, 텍스트 애니메이션, Font_YG760와 상태 문구 표시 옵션을 재사용한다.
+Server 동작·위치·Shared packet·HUD 저장 JSON은 바꾸지 않았다. 기존 두 제품 파일의
+인코딩과 CRLF를 유지했고 신규 제품 파일/project/filter 등록은 없다.
+
+out/FinalRaidGuardian20260930/bind-text-probe.cpp는 실제 health/packet 헤더와
+Update_StatusEffectText, StatusEffectTextView의 Submit/Update, Is_ForwardTick의
+원문 함수 본문을 사용한다. Character/settings/replication holder만 작은 fixture이며
+Client/UI나 GPU를 실행한 검사가 아니다. 원격 대상과 anchor, 색/단어,120회 중복 입력,
+문구 소멸 후 중복 방지, 해제와 재속박, 다른 대상, 새 deadline, 사망/0deadline 거절,
+기존 표시 옵션까지18개 검사 PASS/실패0/exit0다. build-bind-text-probe.log와
+bind-text-probe.log, 원문 hash manifest를 같은 out 폴더에 기록했다.
+
+관련 diff --check가 통과했고 HUD SHA256은
+EA5721200A0B4EBC4BA9FF094594955ED364675502F6DC824CD31BA16B8AE65F로 유지된다.
+제품 소스는 동결 후 최종 Debug/Release Product 컴파일·링크까지 통과했다. receipt는 G14의
+최종 빌드 기록과 같다. 실제 화면의 문구 위치·색은 사용자 판정으로 구분한다.
+
+## G16. Debug 전원 붙잡기 fixture의 종료 계약 교정
+
+최종 Debug 제품의 네 native suite 실행을 완료했다. presentation98, battle-items183,
+Kouku2028개가 각각 실패0/exit0였다. lifecycle는239 PASS/1 FAIL/exit1였으며 원본 로그와
+집계는 out/FinalRaidGuardian20260930/debug-native-results.json 및 debug-*.log에 보존했다.
+실패 항목은 전원 붙잡기 뒤 예약 Next를 승격하지 않는 기존 Debug fixture 하나였다.
+
+제품 Debug object를 재사용한 out 전용 진단에서 유일한 실패 조건을 확인했다.
+CATCH_COUNTER tick415→EXECUTE_TAIL tick460으로45tick, HP999995286→0의 단일 정확한
+즉사 피해, DEAD/비전투/attachment 해제, tick505의 tail 종료와 tick506 ABORTED,
+완료 통지·Next 승격 부재, 보스HP741285439와 world epoch1 보존은 모두 정상이다.
+종료된 audition epoch만1→0이 되어 기존의 동일 epoch 기대가 실패했다.
+GameRoom_KoukuAudition.cpp의 Cancel_ValtanPatternIdAudition은 본 occurrence와 예약
+Next를 원래 epoch로 ABORTED 통지한 다음 INACTIVE/epoch0으로 초기화하므로 제품
+잡기·즉사 또는 Next 진행의 회귀가 아니다.
+
+ServerGameplayContractTests_ValtanResetlessNext.cpp의 해당 fixture만 수정했다.
+기존 조건을 유지하며 counter-success event와 모든 COMPLETED 통지가 없음을 확인하고,
+원래 epoch·pattern sequence·revision에 상관된 본 occurrence/Next의 ABORTED 각각1개,
+정확한 ABORTED receipt와 INACTIVE/epoch0/빈 예약을 검증한다. 원본 UTF-8(BOM없음),
+CRLF를 유지했다. gameplay 제품 코드·데이터·프로젝트 등록 변경은 없다.
+
+최신 수정 원본 TU 전체를 별도 full-source-compile.obj로 최소 컴파일하여 exit0을 확인했다.
+최신 원본의 공통 lambda와 해당 fixture 본문을 그대로 추출해 기존 제품 Debug object와
+out의 ServerProbeAfter.exe를 연결했고 준비1개+대상1개가2 PASS/0 FAIL/exit0이다.
+검증은 Server/Bin/DataFiles를 명시한 private room이며 Client/UI를 실행하지 않았다.
+근거는 out/FinalRaidGuardian20260930/trash-next-diagnostic의 probe.log,
+probe-after.log, build-after.log와 correction-receipt.json이다. receipt가 수정 source SHA,
+전후 EXE SHA, 전체 원본 TU object와 정확히 추출한 fixture SHA 및 실행 결과를 소유한다.
+
+전체 lifecycle suite를 수정 후 다시 실행한 것은 아니다. 최초239/1 로그는 그대로 남기며
+수정한 한 fixture의 targeted PASS와 구분한다. 현재 Debug/Release 제품 EXE SHA는
+교정 전후 동일하다. 사용자가 실행하는 게임 기능과 검증된 빌드·게시물은 그대로이고,
+이번 tests-only 수정은 다음 정상 제품 빌드에서 CLI 테스트에 포함된다. 기존 EXE의
+Debug lifecycle CLI에는 이전 assertion이 남아 있다. 사용자 프로세스를 종료하지 않았다.
+
+## G17. 버러지 왼손 찍기 뒤 반대편·비이동 지면 해제 수정
+
+살아남는 일부 인원 잡기에서 Server는 포획 당시 actor-local offset으로 해제하고,
+Client는 실제 왼손 bone에서 그 snapshot XYZ로0.2초 보간했다. 원본13_05-1은 찍을 때
+b_root가180도 돌아가므로 포획 당시+Z2m가 실제 찍는 손의 반대편이었다. 실물 CModel,
+제품 native0.0001/visualYaw−90/actorScale1.4/root translation suppression으로 측정한
+source1500ms의 손은 right+0.599339m, forward−2.037886m이다. 근거는
+out/FinalRaidGuardian20260930/trash-hand-geometry.jsonl이다. root 회전을 유지하는 제품
+소비자까지 확인한 CPU 기하 측정이며 Client/GPU 화면을 자동 실행하지 않았다.
+
+제품 Tick2인 partial 재현에서45/135/225도는 내려놓은 뒤 walkable0/clear0였다.
+예를 들어135도 tick460의 boss(161.768,22.9975,−127.798), player(163.182,22.9975,−129.212)는
+붙잡기 해제·피해·전투가능 상태까지 확정되지만 움직일 수 없는 곳이었다.
+GameRoom_BossStageActions.cpp의 Prepare_GrabbedPlayerImpact에서 살아남는 정상 피해만
+실제 손 기준 지면을 준비한다. 세 Trash 계열 CATCH_SLAM 모두 같은 clip/source시각을
+사용하며, 측정 XZ를 boss yaw로 한 번 합성한다. 같은 nav grid, 정확 walkability,
+같은높이±1.5m, owner부터의 LOS와 collision clearance를 확인한다. 막힌 손 지점은
+같은방향 반구·손 주변1.8m 안에서만 가장 가까운 허용 지면을 찾는다. 이1.8/1.5m는
+게임플레이 안전 경계이며 원본 bone 측정값이 아니다. 후보가 없으면 HP/attachment가
+변경되기 전 기존 stage transaction이 원자적으로 거절한다. 스폰 teleport는 없다.
+
+일반 Release_PlayerAttachment, 전원 EXECUTE 처형, 쿠크 hook과 arena ejection은
+변경하지 않았다. 피해 event XYZ는 실제 staged landing을 사용한다. 기존 속박 복원
+수정도 유지했다. 두 제품 CPP의 UTF-8(BOM없음)/CRLF를 보존했고 신규 파일 등록은 없다.
+
+기존 제품 Debug object와 변경 StageActions object를 같은 실제 Room fixture에 연결한
+A/B는 수정 전 준비8 PASS/착지8 FAIL, 수정 후16 PASS/0 FAIL/exit0였다. 모든 방향에서
+실제 손 쪽의 같은층·충돌 없는 지면과 생존 해제를 확인했다. 로그는
+out/ValtanTrashLanding20260930/assert-before.log, assert-after.log, assert-results.json이다.
+
+추가 native fixture의 첫 실행은45 PASS/14 FAIL이었다. 직접 배치한8개 실측 root 중7개는
+Fresh의 아직 온전한 벽 cell에 놓여 bosswalk0/LOS0였다. 대부분 palmwalk1/clear1이어도
+resolver는 벽을 건너는 배치를 거절했다. 실제 rush는 접촉 벽 파괴 후 그 위치에 도착한다.
+이 전제 차이는 landing-diagnostic-gates.log에 각 predicate로 기록했다. fixture에서 그7개를
+원자적 거절로 명시하고 ORDINARY_WALLS_GONE의8방향도 실제 root walkability에 따라
+허용 착지와 원자적 거절을 구분해 검사했다. 실패를 삭제하거나
+제품 LOS를 완화하지 않았다. Floor84/Floor84+30 중앙8방향의 착지·실제 move와 invalid
+입력 거절, 기존 NONE/PARTIAL/ALL/counter4분기는 첫 추가 검사에서도 통과했다.
+최신 source fixture의 최종 재실행 결과는 아래 후속 기록과 receipt를 따른다.
+
+전체 원본 PinnedGeneration.cpp와 변경 StageActions.cpp 최소컴파일 및 diff --check는 PASS다.
+원본 함수의 공통 준비와 해당 fixture를 그대로 추출해 별도 out 실행파일에 연결했으며,
+검증 source/compile/runtime hash는 landing-correction-receipt.json에 기록한다.
+제품 Debug/Release 통합 빌드·fresh Release lifecycle와 ZIP은 통합 담당의 후속 기록이 정본이다.
+
+G17 최종 focused 실행은 63 PASS/0 FAIL/exit0로 완료됐다.
+landing-contract-final.log와 landing-contract-final-result.json에 원본 source SHA와 실행 PID/시각을
+보존했다. 네 arena 상태의 입장 가능 지면/불가능 root 구분, 실제 이동, 원자적 거절과
+기존 전원 처형·counter 분기가 모두 통과했다. 제품 source는 이 결과 기준 동결했다.
+
+## G18. 최종 제품 빌드와 Release lifecycle 재검증
+
+G16의 대기 중이던 테스트 수정과 G17 제품·테스트 변경까지 포함해 Debug/Release Product
+전체 컴파일·링크·배포를 완료했다. 최종 receipt는
+out/BuildPipeline/runs/20260930T100413252Z-debug-product.json과
+20260930T100434924Z-release-product.json이며 모두 PASS/SkipBuild=false다.
+따라서 G16의 기존 EXE에 옛 assertion이 남아 있다는 설명은 그 당시 상태이며 현재에는 해당하지 않는다.
+
+최종 Release Server SHA256은
+51d4204baa085f5f1394c491c399eb128b25354a2a47978b01cf3d4cb26d75f0이다.
+이 바이너리의 --valtan-lifecycle-contract-test는152 PASS/0 FAIL/exit0로 완료됐다.
+out/FinalRaidGuardian20260930/final-release-lifecycle-corrected.result.json과 대응 log가 증거다.
+직전 Release 실행의134 PASS/14 FAIL은 G17의 잘못된 Fresh 직접 배치 전제였고 원본 로그를
+보존했다. 수정 후 전체18분 Debug lifecycle를 재실행한 것으로 기록하지 않는다.
+제품 코드를 추가 변경하지 않았으므로 직전 Release의 presentation43, battle-items183,
+Kouku2023 PASS와 최종 focused63 PASS를 함께 회귀 근거로 사용한다.

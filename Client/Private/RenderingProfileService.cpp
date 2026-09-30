@@ -717,6 +717,9 @@ bool_t CRenderingProfileService::Apply_CameraRegionEnvironment(f32_t deltaSecond
     const auto mixColor = [&mix](const float4_t& a, const float4_t& b)
     { return float4_t(mix(a.x,b.x), mix(a.y,b.y), mix(a.z,b.z), mix(a.w,b.w)); };
     auto fog = selected ? selected->Fog : profile->Fog;
+    // The authored scene switch gates region fog without replacing its values.
+    // Re-enabling the profile resolves the same region density and height.
+    fog.bEnabled = profile->Fog.bEnabled && fog.bEnabled;
     const auto& from = fromFog;
     fog.vColor = mixColor(from.vColor, fog.vColor);
     fog.vInscatteringColor = mixColor(from.vInscatteringColor, fog.vInscatteringColor);
@@ -906,7 +909,7 @@ bool_t CRenderingProfileService::Delete_Profile(string_view id, string& status)
 {
 	static constexpr const char* required[] = { "scene.loading.neutral.v1", "scene.lobby.neutral.v1",
 		"scene.character-select.warm-high-key.v1", "scene.bern.neutral-day.v1", "scene.valtan.cool-low-key.v1",
-		"scene.development.neutral.v1", "scene.kakulsaydon.g1.base.v1" };
+		"scene.development.neutral.v1", "scene.kakulsaydon.g1.base.v1", "scene.maharaka.source-day.v1" };
 	if (id == m_strActiveProfileId || id == m_strLevelQualityProfileId || find(begin(required), end(required), id) != end(required) ||
 		find(m_ProtectedProfileIds.begin(), m_ProtectedProfileIds.end(), id) != m_ProtectedProfileIds.end())
 	{ status = "The active, Level base, or Composition-referenced profile cannot be deleted."; return false; }

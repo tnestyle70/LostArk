@@ -414,6 +414,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 		}
 		if (hit.bHealthDamageDisabled) { incoming.iRawDamage = 0u; damageReduced = false; }
 		incoming.iPartDamage = hasTypedParts && !hit.bGuideSource && canDamageArmor ? hit.iPartDamage : 0u;
+		incoming.bDestroyAllEligibleParts = requiresDestructionBomb && hit.bDestructionBombSource && !hit.bGuideSource;
 		incoming.iCounterPower = hit.bGuideSource ? 0u : hit.iCounterPower;
 		incoming.bCounterFromPrimarySlot = !hit.bGuideSource && hit.bCounterFromPrimarySlot;
 		incoming.iServerTick = hit.iServerTick;
@@ -656,6 +657,9 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 		target.iNetEntityId, hpBefore - target.iCurrentHp,
 		target.fPositionX, target.fPositionY, target.fPositionZ,
 		false, outDamageEvents, INVALID_PLAYER_ID, 0u, false, false, DAMAGE_HIT_FLAG::NORMAL, false, hit.eMarioHitSource);
+	/* Gear wears when a hit actually takes HP; the guide companion wears none. */
+	if (target.Is_Human() && hpBefore > target.iCurrentHp)
+		target.Wear_Durability(10u);
 	if (0u == target.iCurrentHp)
 	{
 		target.iKoukuBingoLineProtectionEndTick = target.iEstherZoneProtectionEndTick = 0u;

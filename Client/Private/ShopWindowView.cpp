@@ -51,8 +51,8 @@ namespace
 	const wchar_t* BUY_AMOUNT_TEXT = L"\xAD6C\xB9E4 \xAE08\xC561";
 	const wchar_t* BALANCE_TEXT = L"\xAD6C\xB9E4 \xD6C4 \xC794\xC561";
 	/* Page plates: prev / next page; the page counter goes on the title line. */
-	const wchar_t* PAGE_PREV_TEXT = L"\x25C0 \xC774\xC804 \xD398\xC774\xC9C0";
-	const wchar_t* PAGE_NEXT_TEXT = L"\xB2E4\xC74C \xD398\xC774\xC9C0 \x25B6";
+	const wchar_t* PAGE_PREV_TEXT = L"< \xC774\xC804 \xD398\xC774\xC9C0";
+	const wchar_t* PAGE_NEXT_TEXT = L"\xB2E4\xC74C \xD398\xC774\xC9C0 >";
 
 	/* Item grade colours as GameMsg writes them (same table as Level_ValtanArena's
 	Item_GradeRgb): rare #00B5FF, uncommon #91FE02 and so on; white for no grade. */
@@ -104,6 +104,41 @@ namespace
 		for (int32_t iAt = static_cast<int32_t>(strDigits.size()) - 3; iAt > 0; iAt -= 3)
 			strDigits.insert(static_cast<size_t>(iAt), L",");
 		return iValue < 0 ? L"-" + strDigits : strDigits;
+	}
+
+	const char* Currency_IconPath(const std::string& strCurrencyId)
+	{
+		return "GOLD" == strCurrencyId ? "UI/Common/Money_Gold.png" : "UI/Common/Money_Silver.png";
+	}
+
+	/* A shop template is one icon for every class; the Server grants the buyer's own class
+	   variant. True when the bag already holds that granted item, worn or not. */
+	bool_t Owns_ShopItem(const std::string& strItemId)
+	{
+		const Client::ITEM_DEFINITION* pItem = Client::CItemCatalog::Find_ById(strItemId);
+		std::string strGranted = strItemId;
+		if (nullptr != pItem && !pItem->ClassVariants.empty())
+		{
+			const char* pClassKey = nullptr;
+			switch (CCombatHUDViewModel::Get().Get_Player().eCharacterClass)
+			{
+			case LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER: pClassKey = "LanceMaster"; break;
+			case LostArk::Shared::CHARACTER_CLASS_ID::ARTIST: pClassKey = "Artist"; break;
+			case LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER: pClassKey = "DimensionMaster"; break;
+			case LostArk::Shared::CHARACTER_CLASS_ID::WARLORD: pClassKey = "Warlord"; break;
+			case LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT: pClassKey = "GuardianKnight"; break;
+			default: break;
+			}
+			if (nullptr == pClassKey)
+				return false;
+			const auto Variant = pItem->ClassVariants.find(pClassKey);
+			if (pItem->ClassVariants.end() == Variant)
+				return false;
+			strGranted = Variant->second;
+		}
+		const auto& Items = CCombatHUDViewModel::Get().Get_Inventory().Items;
+		return std::any_of(Items.begin(), Items.end(),
+			[&strGranted](const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& Owned) { return Owned.strItemId == strGranted; });
 	}
 }
 
@@ -341,13 +376,19 @@ void Client::CShopWindowView::Update_Stock()
 		if (!Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 			continue;
 
-		/* One more of this item: an existing line grows, otherwise a free slot takes it. */
+		/* One more of this item: an existing line grows, otherwise a free slot takes it. A
+		   single-stack item (an avatar) is bought once: never twice in the basket, never again
+		   once the bag holds it. */
 		const SHOP_ITEM_DEFINITION& Stock = m_pShop->Items[iStock];
+		const ITEM_DEFINITION* pStockItem = CItemCatalog::Find_ById(Stock.strItemId);
+		const bool_t bSingleStack = nullptr != pStockItem && pStockItem->iMaxStack <= 1u;
+		if (bSingleStack && Owns_ShopItem(Stock.strItemId))
+			continue;
 		auto Line = std::find_if(m_Basket.begin(), m_Basket.end(),
 			[&Stock](const BASKET_LINE& Candidate) { return Candidate.strItemId == Stock.strItemId; });
 		if (m_Basket.end() != Line)
 		{
-			if (Line->iQuantity < LostArk::Shared::MAX_SHOP_BASKET_QUANTITY)
+			if (!bSingleStack && Line->iQuantity < LostArk::Shared::MAX_SHOP_BASKET_QUANTITY)
 				++Line->iQuantity;
 		}
 		else if (m_Basket.size() < BASKET_COUNT)
@@ -424,6 +465,15 @@ void Client::CShopWindowView::Refresh_Icons()
 		const ITEM_DEFINITION* pItem = CItemCatalog::Find_ById(m_pShop->Items[iStock].strItemId);
 		if (nullptr != pItem && !pItem->strIconPath.empty())
 			m_pBackgroundView->Set_SlotTexture(Make_Id("Shop_CellIcon_", iCell), pItem->strIconPath);
+		m_pBackgroundView->Set_SlotTexture(Make_Id("Shop_CellCoin_", iCell),
+			Currency_IconPath(m_pShop->Items[iStock].strCurrencyId));
+	}
+	if (!m_pShop->Items.empty())
+	{
+		/* The basket total and the balance are paid in the shop's first line's currency. */
+		const char* pCoinPath = Currency_IconPath(m_pShop->Items.front().strCurrencyId);
+		m_pBackgroundView->Set_SlotTexture("Shop_BuyAmountCoin", pCoinPath);
+		m_pBackgroundView->Set_SlotTexture("Shop_BalanceCoin", pCoinPath);
 	}
 	for (uint32_t iSlot = 0; iSlot < m_Basket.size(); ++iSlot)
 	{

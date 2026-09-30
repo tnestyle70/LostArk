@@ -37,6 +37,62 @@ namespace
 		return nullptr != value && value->Get_Type() == type ? value : nullptr;
 	}
 
+	bool ReadPreviewTint(const DATA_JSON_VALUE* value, float4_t& output)
+	{
+		if (!value || !value->Is_Array() || value->Get_Array().size() != 4u)
+			return false;
+		float components[4]{};
+		for (size_t index = 0u; index < 4u; ++index)
+		{
+			const auto& entry = value->Get_Array()[index];
+			if (!entry.Is_Number() || !std::isfinite(entry.Get_Number()) ||
+				entry.Get_Number() < 0. || entry.Get_Number() > 100. ||
+				(index == 3u && entry.Get_Number() > 1.))
+				return false;
+			components[index] = static_cast<float>(entry.Get_Number());
+		}
+		output = { components[0], components[1], components[2], components[3] };
+		return true;
+	}
+
+	bool ReadGroundPreview(const DATA_JSON_VALUE* value,
+		Client::PLAYER_SKILL_TARGET_PREVIEW& output)
+	{
+		if (!value || !value->Is_Object() || value->Get_Object().size() != 8u)
+			return false;
+		const auto* asset = Required(*value, "textureAssetId", DATA_JSON_TYPE::STRING);
+		const auto* coverage = Required(*value, "coverageChannel", DATA_JSON_TYPE::STRING);
+		const auto* diameterFraction = Required(*value, "textureDiameterFraction", DATA_JSON_TYPE::NUMBER);
+		const auto* identity = Required(*value, "assetIdentityBasis", DATA_JSON_TYPE::STRING);
+		const auto* usage = Required(*value, "usageBasis", DATA_JSON_TYPE::STRING);
+		const auto* evidence = Required(*value, "sourceEvidence", DATA_JSON_TYPE::STRING);
+		if (!asset || !coverage || !identity || !usage || !evidence ||
+			!diameterFraction || !std::isfinite(diameterFraction->Get_Number()) ||
+			diameterFraction->Get_Number() <= 0. || diameterFraction->Get_Number() > 1. ||
+			coverage->Get_String() != "R" ||
+			identity->Get_String() != "SOURCE_VERIFIED" ||
+			usage->Get_String() != "PROJECT_COMPOSITION" || evidence->Get_String().empty() ||
+			!ReadPreviewTint(value->Find("validTint"), output.vValidTint) ||
+			!ReadPreviewTint(value->Find("invalidTint"), output.vInvalidTint))
+			return false;
+		const auto& path = asset->Get_String();
+		if (path.rfind("Effect/", 0u) != 0u || path.size() > 260u ||
+			path.size() < 4u || path.substr(path.size() - 4u) != ".dds" ||
+			path.find('\\') != std::string::npos || path.find(':') != std::string::npos)
+			return false;
+		for (const auto& component : std::filesystem::path(path))
+			if (component == ".." || component == ".")
+				return false;
+		output.fDiameter = static_cast<float>(1. / diameterFraction->Get_Number());
+		if (!std::isfinite(output.fDiameter))
+			return false;
+		output.strAssetId = path;
+		output.strAssetIdentityBasis = identity->Get_String();
+		output.strUsageBasis = usage->Get_String();
+		output.strSourceEvidence = evidence->Get_String();
+		return true;
+	}
+
 	bool HasFormatVersion(
 		const DATA_JSON_VALUE& document,
 		const double expected)
@@ -106,7 +162,8 @@ bool Client::CItemCatalog::Load(std::string& outStatus)
 		if (const auto* battle = value.Find("battleUse"))
 		{
 			const auto* range = Required(*battle, "rangeCm", DATA_JSON_TYPE::NUMBER);
-			if (!range || range->Get_Number() < 0. || range->Get_Number() > 5000.)
+			if (!range || !std::isfinite(range->Get_Number()) ||
+				range->Get_Number() < 0. || range->Get_Number() > 5000.)
 			{ outStatus = "ItemCatalog.json has an invalid battle target range"; return false; }
 			const auto* skillId = Required(*battle, "skillId", DATA_JSON_TYPE::NUMBER);
 			const auto* cooldownMs = Required(*battle, "cooldownMs", DATA_JSON_TYPE::NUMBER);
@@ -121,7 +178,31 @@ bool Client::CItemCatalog::Load(std::string& outStatus)
 			definition.fTargetRangeM = static_cast<float>(range->Get_Number() * .01);
 			definition.iBattleSkillId = static_cast<std::uint32_t>(skillId->Get_Number());
 			definition.iCooldownMs = static_cast<std::uint32_t>(cooldownMs->Get_Number());
+			const auto* kind = Required(*battle, "kind", DATA_JSON_TYPE::STRING);
+			if (!kind)
+			{ outStatus = "ItemCatalog.json has an invalid battle kind"; return false; }
+			definition.isGroundTargeted = kind->Get_String() == "DESTRUCTION" ||
+				kind->Get_String() == "WHIRLWIND";
+			if (definition.isGroundTargeted)
+			{
+				const auto* radius = Required(*battle, "radiusCm", DATA_JSON_TYPE::NUMBER);
+				const auto* preview = Required(value, "groundTargetPreview", DATA_JSON_TYPE::OBJECT);
+				if (!radius || !std::isfinite(radius->Get_Number()) ||
+					radius->Get_Number() <= 0. || radius->Get_Number() > 5000. ||
+					definition.fTargetRangeM <= 0.f || !preview ||
+					preview->Get_Object().size() != 2u ||
+					!ReadGroundPreview(preview->Find("rangePreview"), definition.RangePreview) ||
+					!ReadGroundPreview(preview->Find("targetPreview"), definition.TargetPreview))
+				{ outStatus = "ItemCatalog.json has an invalid ground target preview"; return false; }
+				definition.RangePreview.fDiameter *= 2.f * definition.fTargetRangeM;
+				definition.TargetPreview.fDiameter *= static_cast<float>(radius->Get_Number() * .02);
+				if (!std::isfinite(definition.RangePreview.fDiameter) || !std::isfinite(definition.TargetPreview.fDiameter))
+				{ outStatus = "ItemCatalog.json has an invalid ground preview extent"; return false; }
+			}
+
 		}
+		if (value.Find("groundTargetPreview") && !definition.isGroundTargeted)
+		{ outStatus = "ItemCatalog.json assigns a ground preview to a non-thrown item"; return false; }
 		definition.strCategory = category->Get_String();
 		const auto ReadOptionalText = [&value](const char* pKey, std::string& outText)
 		{

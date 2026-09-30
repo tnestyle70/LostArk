@@ -277,7 +277,8 @@ void LostArk::Server::CGameRoom::Handle_GateProgressPropose(
 	const LostArk::Shared::C2S_GATE_PROGRESS_PROPOSE& request)
 {
 	using namespace LostArk::Shared;
-	if (0u == Gate_Count() || request.eWorldId != m_eWorldId)
+	const bool valtanEntry = m_eWorldId == WORLD_ID::VALTAN_ARENA;
+	if ((!valtanEntry && 0u == Gate_Count()) || request.eWorldId != m_eWorldId)
 		return;
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionIter == m_PlayerIdBySessionId.end())
@@ -286,6 +287,13 @@ void LostArk::Server::CGameRoom::Handle_GateProgressPropose(
 	const auto playerIter = m_Players.find(proposerId);
 	if (playerIter == m_Players.end() || playerIter->second.iSessionId != sessionId)
 		return;
+	if (valtanEntry || (m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA && request.eKind == GATE_PROGRESS_KIND::ENTER_GATE3))
+	{
+		if (request.eKind == (valtanEntry ? GATE_PROGRESS_KIND::ADVANCE : GATE_PROGRESS_KIND::ENTER_GATE3) &&
+			!m_ArenaAssemblyParticipants.empty() && m_ArenaAssemblyParticipants.front() == proposerId)
+			(void)Complete_ArenaAssembly();
+		return;
+	}
 	/* One vote at a time. ADVANCE needs a raised gate that is cleared and a next gate to
 	   exist; RESTART re-raises the current gate whether it fell or not, and with no gate
 	   raised yet (fresh room) it raises the first one. */
@@ -299,11 +307,6 @@ void LostArk::Server::CGameRoom::Handle_GateProgressPropose(
     const bool raid = Is_KoukuRaidRunning();
     if (raid && m_KoukuRaid.State.strGateId == "GATE3" &&
         m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE && m_KoukuRaid.State.iEndTick) return;
-    if (request.eKind == GATE_PROGRESS_KIND::ENTER_GATE3 &&
-        (raid ? (m_KoukuRaid.State.strGateId != "GATE3" ||
-            m_KoukuRaid.State.ePhase != KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY) :
-            !Is_KoukuGate3EntryTerrace(playerIter->second.fPositionX,
-                playerIter->second.fPositionY, playerIter->second.fPositionZ))) return;
     if (raid && (proposerId != m_KoukuRaid.State.iOwnerPlayerId ||
         m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING ||
         m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC ||
@@ -376,6 +379,64 @@ void LostArk::Server::CGameRoom::Handle_GateProgressRespond(
 		Broadcast_GateProgressState(false, GATE_PROGRESS_VOTE_RESULT::NONE);
 }
 
+bool LostArk::Server::CGameRoom::Complete_GateProgressTransition(const GATE_PROGRESS_STATE& transition)
+{
+	using namespace LostArk::Shared;
+	bool entered = false;
+	if (m_eWorldId == WORLD_ID::VALTAN_ARENA)
+		entered = transition.eKind == GATE_PROGRESS_KIND::ADVANCE && Start_ValtanEntry(transition.Voters);
+	else if (transition.eKind == GATE_PROGRESS_KIND::ENTER_GATE3)
+	{
+		if (transition.iRaidEpoch)
+		{
+			entered = Is_KoukuRaidRunning() && transition.iRaidEpoch == m_KoukuRaid.State.iRunEpoch &&
+				transition.iProposerId == m_KoukuRaid.State.iOwnerPlayerId &&
+				m_KoukuRaid.State.strGateId == "GATE3" &&
+				m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY && Enter_KoukuRaidCombat(3u, m_iServerTick);
+		}
+		else if (!Is_KoukuRaidRunning())
+		{
+			// Admission belongs to this exact party. Moving off the deck or changing
+			// leadership/membership during assembly must not move the old roster.
+			std::vector<PLAYER_ID> currentVoters{transition.iProposerId};
+			const auto party = m_PartyIdByPlayerId.find(transition.iProposerId);
+			if (party != m_PartyIdByPlayerId.end())
+			{
+				const auto members = m_PartyMembersByPartyId.find(party->second);
+				if (members != m_PartyMembersByPartyId.end()) currentVoters = members->second;
+			}
+			const auto proposer = m_Players.find(transition.iProposerId);
+			entered = !currentVoters.empty() && currentVoters.front() == transition.iProposerId &&
+				currentVoters == transition.Voters && proposer != m_Players.end() &&
+				Is_KoukuGate3EntryTerrace(proposer->second.fPositionX, proposer->second.fPositionY, proposer->second.fPositionZ) &&
+				Advance_Gate(3u, &transition.Voters);
+		}
+	}
+	else if (transition.eKind == GATE_PROGRESS_KIND::EXIT)
+	{
+		/* Every voter still in the room goes back to Bern. The raid stops on its own
+		   once its participants have left (Stop_KoukuRaid). */
+		entered = !transition.iRaidEpoch || (Is_KoukuRaidRunning() &&
+			transition.iRaidEpoch == m_KoukuRaid.State.iRunEpoch);
+		if (entered)
+		{
+			bool staged = false;
+			for (const PLAYER_ID voterId : transition.Voters)
+				staged = Stage_ReturnToBern(voterId, transition.iRequestSequence) || staged;
+			entered = staged;
+		}
+	}
+	else
+	{
+		const std::uint8_t iTarget = GATE_PROGRESS_KIND::RESTART == transition.eKind ?
+			(std::max<std::uint8_t>)(transition.iCurrentGate, 1u) :
+			static_cast<std::uint8_t>(transition.iCurrentGate + 1u);
+		entered = (!transition.iRaidEpoch || (Is_KoukuRaidRunning() &&
+			transition.iRaidEpoch == m_KoukuRaid.State.iRunEpoch)) && Advance_Gate(iTarget);
+	}
+	return entered;
+}
+
 void LostArk::Server::CGameRoom::Close_GateProgressVote(
 	const LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result)
 {
@@ -383,56 +444,7 @@ void LostArk::Server::CGameRoom::Close_GateProgressVote(
 	GATE_PROGRESS_VOTE_RESULT finalResult = result;
 	if (GATE_PROGRESS_VOTE_RESULT::ALL_ACCEPTED == result)
 	{
-		bool entered = false;
-		if (m_GateProgress.eKind == GATE_PROGRESS_KIND::ENTER_GATE3)
-		{
-			if (m_GateProgress.iRaidEpoch)
-			{
-				entered = Is_KoukuRaidRunning() && m_GateProgress.iRaidEpoch == m_KoukuRaid.State.iRunEpoch &&
-					m_GateProgress.iProposerId == m_KoukuRaid.State.iOwnerPlayerId &&
-					m_KoukuRaid.State.strGateId == "GATE3" &&
-					m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY && Enter_KoukuRaidCombat(3u, m_iServerTick);
-			}
-			else if (!Is_KoukuRaidRunning())
-			{
-				// Consent belongs to this exact party. Moving off the deck or changing
-				// leadership/membership during the vote must not move the old roster.
-				std::vector<PLAYER_ID> currentVoters{m_GateProgress.iProposerId};
-				const auto party = m_PartyIdByPlayerId.find(m_GateProgress.iProposerId);
-				if (party != m_PartyIdByPlayerId.end())
-				{
-					const auto members = m_PartyMembersByPartyId.find(party->second);
-					if (members != m_PartyMembersByPartyId.end()) currentVoters = members->second;
-				}
-				const auto proposer = m_Players.find(m_GateProgress.iProposerId);
-				entered = !currentVoters.empty() && currentVoters.front() == m_GateProgress.iProposerId &&
-					currentVoters == m_GateProgress.Voters && proposer != m_Players.end() &&
-					Is_KoukuGate3EntryTerrace(proposer->second.fPositionX, proposer->second.fPositionY, proposer->second.fPositionZ) &&
-					Advance_Gate(3u, &m_GateProgress.Voters);
-			}
-		}
-		else if (m_GateProgress.eKind == GATE_PROGRESS_KIND::EXIT)
-		{
-			/* Every voter still in the room goes back to Bern. The raid stops on its own
-			   once its participants have left (Stop_KoukuRaid). */
-			entered = !m_GateProgress.iRaidEpoch || (Is_KoukuRaidRunning() &&
-				m_GateProgress.iRaidEpoch == m_KoukuRaid.State.iRunEpoch);
-			if (entered)
-			{
-				bool staged = false;
-				for (const PLAYER_ID voterId : m_GateProgress.Voters)
-					staged = Stage_ReturnToBern(voterId, m_GateProgress.iRequestSequence) || staged;
-				entered = staged;
-			}
-		}
-		else
-		{
-			const std::uint8_t iTarget = GATE_PROGRESS_KIND::RESTART == m_GateProgress.eKind ?
-				(std::max<std::uint8_t>)(m_GateProgress.iCurrentGate, 1u) :
-				static_cast<std::uint8_t>(m_GateProgress.iCurrentGate + 1u);
-			entered = (!m_GateProgress.iRaidEpoch || (Is_KoukuRaidRunning() &&
-				m_GateProgress.iRaidEpoch == m_KoukuRaid.State.iRunEpoch)) && Advance_Gate(iTarget);
-		}
+		const bool entered = Complete_GateProgressTransition(m_GateProgress);
 		if (!entered) finalResult = GATE_PROGRESS_VOTE_RESULT::CANCELLED;
 	}
 	/* The closing message still names the proposal, then the vote is gone. */
@@ -449,8 +461,170 @@ void LostArk::Server::CGameRoom::Close_GateProgressVote(
 
 void LostArk::Server::CGameRoom::Expire_GateProgressVote()
 {
+	Update_ArenaAssembly();
 	if (0u != m_GateProgress.iProposalId && m_iServerTick >= m_GateProgress.iDeadlineTick)
 		Close_GateProgressVote(LostArk::Shared::GATE_PROGRESS_VOTE_RESULT::TIMEOUT);
+}
+
+
+bool LostArk::Server::CGameRoom::Collect_KoukuEntryParticipants(
+	std::vector<LostArk::Shared::PLAYER_ID>& participants, std::uint32_t& raidEpoch) const
+{
+	using namespace LostArk::Shared;
+	participants.clear(); raidEpoch = 0u;
+	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA) return false;
+	const bool raid = Is_KoukuRaidRunning();
+	if (raid)
+	{
+		if (m_KoukuRaid.State.strGateId != "GATE3" ||
+			m_KoukuRaid.State.ePhase != KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY) return false;
+		participants = m_KoukuRaid.PlayerIds;
+		raidEpoch = m_KoukuRaid.State.iRunEpoch;
+		const auto leader = std::find(participants.begin(), participants.end(), m_KoukuRaid.State.iOwnerPlayerId);
+		if (leader == participants.end()) { participants.clear(); return false; }
+		std::rotate(participants.begin(), leader, leader + 1);
+	}
+	else
+	{
+		if (m_GateProgress.iCurrentGate > 3u || std::any_of(m_WorldEntities.begin(), m_WorldEntities.end(),
+			[](const auto& boss) { return boss.strPlacementId == "boss.kakulsaydon.g3.saydon"; })) return false;
+		// Retain the existing leader-only aura condition and that leader's party.
+		for (const auto& [id, player] : m_Players)
+		{
+			if (player.Is_Guide() || !Is_KoukuGate3EntryAura(player.fPositionX, player.fPositionY, player.fPositionZ)) continue;
+			const auto party = m_PartyIdByPlayerId.find(id);
+			if (party == m_PartyIdByPlayerId.end()) { participants.push_back(id); break; }
+			const auto members = m_PartyMembersByPartyId.find(party->second);
+			if (members == m_PartyMembersByPartyId.end() || members->second.empty() || members->second.front() != id) continue;
+			participants = members->second; break;
+		}
+	}
+	if (participants.empty() || participants.size() > 4u) { participants.clear(); return false; }
+	for (const auto id : participants)
+	{
+		const auto player = m_Players.find(id);
+		if (player == m_Players.end() || player->second.Is_Guide() || !player->second.iCurrentHp ||
+			player->second.TriggerMove.isActive || player->second.eAction == PLAYER_ACTION_STATE::DEAD ||
+			player->second.eAction == PLAYER_ACTION_STATE::FALLING)
+		{ participants.clear(); return false; }
+	}
+	const auto& leader = m_Players.at(participants.front());
+	if (!Is_KoukuGate3EntryAura(leader.fPositionX, leader.fPositionY, leader.fPositionZ))
+	{ participants.clear(); return false; }
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Update_ArenaAssembly()
+{
+	using namespace LostArk::Shared;
+	if (m_eWorldId != WORLD_ID::VALTAN_ARENA && m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA) return;
+	std::vector<PLAYER_ID> participants;
+	std::uint32_t epoch = 0u;
+	const bool occupied = m_eWorldId == WORLD_ID::VALTAN_ARENA ?
+		Collect_ValtanEntryParticipants(participants) : Collect_KoukuEntryParticipants(participants, epoch);
+	if (!occupied || participants != m_ArenaAssemblyParticipants || epoch != m_iArenaAssemblyRaidEpoch)
+	{
+		m_iArenaAssemblyStartTick = 0u;
+		m_ArenaAssemblyParticipants = std::move(participants);
+		m_iArenaAssemblyRaidEpoch = epoch;
+		m_bArenaAssemblyAttempted = false;
+		return;
+	}
+	if (!m_iArenaAssemblyStartTick) m_iArenaAssemblyStartTick = m_iServerTick;
+	(void)Complete_ArenaAssembly();
+}
+
+bool LostArk::Server::CGameRoom::Complete_ArenaAssembly()
+{
+	using namespace LostArk::Shared;
+	if (m_bArenaAssemblyAttempted || m_GateProgress.iProposalId || !m_iArenaAssemblyStartTick ||
+		m_iServerTick - m_iArenaAssemblyStartTick < 300u) return false;
+	std::vector<PLAYER_ID> participants;
+	std::uint32_t epoch = 0u;
+	const bool valtan = m_eWorldId == WORLD_ID::VALTAN_ARENA;
+	if (!(valtan ? Collect_ValtanEntryParticipants(participants) : Collect_KoukuEntryParticipants(participants, epoch)) ||
+		participants != m_ArenaAssemblyParticipants || epoch != m_iArenaAssemblyRaidEpoch) return false;
+	GATE_PROGRESS_STATE transition;
+	transition.eKind = valtan ? GATE_PROGRESS_KIND::ADVANCE : GATE_PROGRESS_KIND::ENTER_GATE3;
+	transition.iCurrentGate = m_GateProgress.iCurrentGate;
+	transition.iProposerId = participants.front();
+	transition.iRaidEpoch = epoch;
+	transition.Voters = participants;
+	// No proposal or synthetic votes: the same completion validator commits both paths.
+	m_bArenaAssemblyAttempted = true;
+	const bool entered = Complete_GateProgressTransition(transition);
+	Broadcast_GateProgressState(true, entered ? GATE_PROGRESS_VOTE_RESULT::ALL_ACCEPTED :
+		GATE_PROGRESS_VOTE_RESULT::CANCELLED, transition.eKind);
+	return entered;
+}
+
+bool LostArk::Server::CGameRoom::Collect_ValtanEntryParticipants(
+	std::vector<LostArk::Shared::PLAYER_ID>& participants) const
+{
+	using namespace LostArk::Shared;
+	participants.clear();
+	const auto* assembly = Find_Placement("Stage_Boss_Assembly");
+	if (m_eWorldId != WORLD_ID::VALTAN_ARENA || !assembly || !assembly->isEnabled ||
+		m_GateProgress.iCurrentGate || std::any_of(m_WorldEntities.begin(), m_WorldEntities.end(),
+			[](const auto& boss) { return boss.strPlacementId == "boss.valtan.center"; })) return false;
+	for (const auto& [id, player] : m_Players)
+	{
+		if (player.Is_Guide()) continue;
+		if (!player.iCurrentHp || player.TriggerMove.isActive || player.eAction == PLAYER_ACTION_STATE::DEAD ||
+			player.eAction == PLAYER_ACTION_STATE::FALLING || !CServerTriggerSystem::Contains_Placement(*assembly, player)) { participants.clear(); return false; }
+		participants.push_back(id);
+	}
+	if (participants.empty() || participants.size() > 4u) { participants.clear(); return false; }
+	// Preserve the party leader as proposer; unpartied room entries use the oldest human.
+	for (const auto id : participants)
+	{
+		const auto party = m_PartyIdByPlayerId.find(id);
+		if (party == m_PartyIdByPlayerId.end()) continue;
+		const auto roster = m_PartyMembersByPartyId.find(party->second);
+		if (roster == m_PartyMembersByPartyId.end() || roster->second.empty()) continue;
+		const auto leader = std::find(participants.begin(), participants.end(), roster->second.front());
+		if (leader != participants.end()) std::rotate(participants.begin(), leader, leader + 1);
+		break;
+	}
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Start_ValtanEntry(
+	const std::vector<LostArk::Shared::PLAYER_ID>& expectedParticipants)
+{
+	using namespace LostArk::Shared;
+	std::vector<PLAYER_ID> participants;
+	if (!Collect_ValtanEntryParticipants(participants) || participants != expectedParticipants ||
+		participants != m_ArenaAssemblyParticipants || !m_iArenaAssemblyStartTick ||
+		m_iServerTick - m_iArenaAssemblyStartTick < 300u) return false;
+	std::vector<SERVER_NAV_POINT> destinations;
+	for (std::size_t index = 0; index < participants.size(); ++index)
+	{
+		const auto* slot = Find_Placement("valtan.entry.slot." + std::to_string(index + 1u));
+		if (!slot) return false;
+		C2S_DEBUG_TELEPORT_TO_POSITION move{};
+		move.eWorldId = m_eWorldId;
+		move.iRequestSequence = 1u;
+		move.fPositionX = slot->fPositionX; move.fPositionY = slot->fPositionY; move.fPositionZ = slot->fPositionZ;
+		SERVER_NAV_POINT ground{};
+		if (Validate_DebugTeleportDestination(m_Players.at(participants[index]), move, ground) !=
+			DEBUG_TELEPORT_RESULT::ACCEPTED) return false;
+		destinations.push_back(ground);
+	}
+	// No player moves unless every destination and the existing encounter are admitted.
+	if (!Activate_Encounter("boss.valtan.center")) return false;
+	for (std::size_t index = 0; index < participants.size(); ++index)
+	{
+		auto& player = m_Players.at(participants[index]);
+		Reset_PlayerForDebugTeleport(player);
+		player.fPositionX = destinations[index].x; player.fPositionY = destinations[index].y;
+		player.fPositionZ = destinations[index].z; player.fYawDegrees = 135.f;
+		Guide_AnchorArrived(player);
+	}
+	m_GateProgress.iCurrentGate = 1u;
+	m_iArenaAssemblyStartTick = 0u;
+	m_ArenaAssemblyParticipants.clear();
+	return true;
 }
 
 bool LostArk::Server::CGameRoom::Spawn_GatePlacement(const std::string& placementId)
@@ -695,11 +869,11 @@ bool LostArk::Server::CGameRoom::Build_GateProgressState(
 	const LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result) const
 {
 	using namespace LostArk::Shared;
-	if (0u == Gate_Count())
+	if (0u == Gate_Count() && m_eWorldId != WORLD_ID::VALTAN_ARENA)
 		return false;
 	message = {};
 	message.eWorldId = m_eWorldId;
-	message.iGateCount = Gate_Count();
+	message.iGateCount = m_eWorldId == WORLD_ID::VALTAN_ARENA ? 1u : Gate_Count();
 	message.iCurrentGate = m_GateProgress.iCurrentGate;
 	message.iClearedMask = m_GateProgress.iClearedMask;
 	message.iProposalId = m_GateProgress.iProposalId;
@@ -714,12 +888,14 @@ bool LostArk::Server::CGameRoom::Build_GateProgressState(
 }
 
 void LostArk::Server::CGameRoom::Broadcast_GateProgressState(
-	const bool bClosed, const LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result)
+	const bool bClosed, const LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result,
+	const LostArk::Shared::GATE_PROGRESS_KIND completedKind)
 {
 	using namespace LostArk::Shared;
 	S2C_GATE_PROGRESS_STATE message{};
 	if (!Build_GateProgressState(message, bClosed, result))
 		return;
+	if (completedKind != GATE_PROGRESS_KIND::END) message.eKind = completedKind;
 	CPacketWriter writer;
 	if (!Write_Message(writer, message))
 		return;

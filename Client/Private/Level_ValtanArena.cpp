@@ -44,6 +44,7 @@ below is a real Release-build feature, so the include is no longer guarded. */
 #include "ValtanCinematicEffectLibrary.h"
 #include <set>
 #include "WorldGameplayDocument.h"
+#include "Gameplay/WorldCollisionContract.h"
 
 #include "DataJson.h"
 #include "DeployPropObject.h"
@@ -664,6 +665,7 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	frame's replicated player list, so Collect_PlayerViews moves here
 	instead of Render(). */
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
+	Sync_CinematicPlayerVisibility();
 	Update_StatusEffectText(fTimeDelta);
 	m_InteractKeyPrompt.Update(fTimeDelta, m_Replication.Get_LocalCharacter(),
 		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId(),
@@ -698,13 +700,7 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 		m_pMvpResultView->Update(fTimeDelta);
 	}
 	m_GateProgressView.Set_Progress(1u, m_fRaidClearElapsedSeconds >= 0.f ? 1u : 0u);
-	/* One gate and no Server gate progress here: the only panel button is exit, once the
-	   award page has closed (the same trip as the clear screen's own return button). */
-	m_GateProgressView.Set_Button(
-		m_bRaidClearReturnAvailable ? CRaidGateProgressView::BUTTON::EXIT : CRaidGateProgressView::BUTTON::NONE, true);
-	if (CRaidGateProgressView::INTENT::EXIT == m_GateProgressView.Update(fTimeDelta) &&
-		nullptr != m_pPlayerCommandSink)
-		m_pPlayerCommandSink->Request_ReturnToBern(m_iNextReturnToBernSequence++);
+	Update_EntryAssembly(fTimeDelta);
 	const bool_t isRaidClearActive = m_fRaidClearElapsedSeconds >= 0.f;
 	m_PartyInteraction.Register_TextOccluders();
 	if (!isRaidClearActive && m_PartyInteraction.Update(
@@ -2101,6 +2097,16 @@ bool_t CLevel_ValtanArena::Ready_CinematicCamera()
 	return true;
 }
 
+void CLevel_ValtanArena::Sync_CinematicPlayerVisibility()
+{
+	// The entrance actor and its camera handoff own separate presentation tails.
+	const bool_t suppressed = m_strSourceCinematic == "entrance" ||
+		(m_bCinematicCameraApplied && m_bCinematicCameraHidesPlayers);
+	for (const auto& player : m_NameplatePlayers)
+		if (const auto character = player.pCharacter.lock())
+			character->Set_CinematicPresentationSuppressed(suppressed);
+}
+
 void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 {
 	const VALTAN_PRESENTATION_STATE& boss =
@@ -2169,7 +2175,7 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 	m_MapEffectPresentationRuntime.Update_ServerPresentation(boss, fTimeDelta);
 	if (nullptr == m_pCamera)
 	{
-		End_CinematicCameraOverride();
+		End_CinematicCamera();
 		return;
 	}
 
@@ -2205,6 +2211,8 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 	// The current camera owner, including its bounded exit blend, hides HUD
 	// only for the introduction and ending. A battle camera replaces this flag.
 	m_bCinematicCameraHidesHUD = input.isBossDead ||
+		input.strPatternId == "VALTAN_ENTRANCE_CINEMATIC";
+	m_bCinematicCameraHidesPlayers =
 		input.strPatternId == "VALTAN_ENTRANCE_CINEMATIC";
 
 	if (!m_bCinematicCameraApplied)
@@ -2309,8 +2317,10 @@ void CLevel_ValtanArena::End_CinematicCameraOverride()
 	m_bCinematicRestoreFollowRequested = false;
 	m_bCinematicCameraApplied = false;
 	m_bCinematicCameraHidesHUD = false;
+	m_bCinematicCameraHidesPlayers = false;
 	m_iCinematicCameraOwnerId = 0u;
 	m_ValtanCinematicCameraController.Cancel_ExitTransition();
+	Sync_CinematicPlayerVisibility();
 }
 
 void CLevel_ValtanArena::End_CinematicCamera()
@@ -2334,6 +2344,14 @@ void CLevel_ValtanArena::Update_StatusEffectText(const f32_t fTimeDelta)
 		CStatusEffectTextView::REQUEST request{};
 		request.iOwnerEntityId = player.iNetEntityId;
 		request.pAnchor = player.pCharacter;
+		if (health.isPatternBound && 0u != health.iPatternBindEndTick)
+		{
+			// The same Server deadline stays one occurrence across repeated snapshots.
+			request.iOccurrenceKey = health.iPatternBindEndTick;
+			request.strWord = L"\uC18D\uBC15";
+			request.iColorRgb = 0x8041D9u;
+			m_StatusEffectTextView.Submit(request);
+		}
 		if (0u != health.iInvulnerabilityZonePulseTick)
 		{
 			request.iOccurrenceKey = health.iInvulnerabilityZonePulseTick;
@@ -2371,6 +2389,8 @@ HRESULT CLevel_ValtanArena::Render()
 		m_PartyInteraction.Render(m_pPlayerCommandSink);
 		/* Award page labels over everything else this Level draws; its image layers are
 		   CUI_Sprite objects on Layer_UI and need no call. */
+		if (m_bEntryAssemblyOccupied && !Is_MvpResultVisible())
+			CRaidGateProgressView::Render_AssemblyCountdown(m_fEntryAssemblySecondsLeft);
 		m_GateProgressView.Render_Text();
 		if (nullptr != m_pMvpResultView)
 		{
@@ -2384,6 +2404,100 @@ HRESULT CLevel_ValtanArena::Render()
 #endif
 
 	return S_OK;
+}
+
+
+void CLevel_ValtanArena::Update_EntryAssembly(const f32_t deltaSeconds)
+{
+	using namespace LostArk::Shared;
+	using Intent = CRaidGateProgressView::INTENT;
+	S2C_GATE_PROGRESS_STATE state{};
+	while (m_pPlayerCommandSink && m_pPlayerCommandSink->Consume_GateProgressState(state))
+	{
+		if (state.eWorldId != WORLD_ID::VALTAN_ARENA) continue;
+		m_EntryGateState = state;
+		if (state.bClosed)
+		{
+			m_GateProgressView.Close_Prompt();
+			if (state.eResult != GATE_PROGRESS_VOTE_RESULT::ALL_ACCEPTED)
+				m_GateProgressView.Show_Notice(L"\uB808\uC774\uB4DC \uC785\uC7A5\uC774 \uCDE8\uC18C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.", 4.f);
+		}
+	}
+	const bool available = m_bEntryAssemblyLoaded && !m_EntryGateState.iCurrentGate &&
+		!CCombatHUDViewModel::Get().Get_Boss().isValid && !Is_CinematicHUDSuppressed() &&
+		m_fRaidClearElapsedSeconds < 0.f;
+	const auto& roster = m_Replication.Get_PartyRoster();
+	std::vector<const REPLICATED_PLAYER_VIEW*> humans;
+	for (const auto& player : m_NameplatePlayers)
+		if (player.eControlKind == PLAYER_CONTROL_KIND::HUMAN) humans.push_back(&player);
+	std::sort(humans.begin(), humans.end(), [](const auto* a, const auto* b) { return a->iPlayerId < b->iPlayerId; });
+	if (!roster.Members.empty())
+	{
+		const auto leader = std::find_if(humans.begin(), humans.end(), [&](const auto* player) {
+			return player->iNetEntityId == roster.Members.front().iNetEntityId;
+		});
+		if (leader != humans.end()) std::rotate(humans.begin(), leader, leader + 1);
+	}
+	bool occupied = available && !humans.empty() && humans.size() <= 4u;
+	std::vector<PLAYER_ID> participants;
+	const float yaw = XMConvertToRadians(m_fEntryAssemblyYaw), cosine = std::cos(yaw), sine = std::sin(yaw);
+	for (const auto* player : humans)
+	{
+		participants.push_back(player->iPlayerId);
+		const auto character = player->pCharacter.lock();
+		if (!character || !character->Get_Transform() || !m_Replication.Get_PlayerHealth().Find(player->iNetEntityId).iCurrentHp)
+		{ occupied = false; continue; }
+		float3_t position; XMStoreFloat3(&position, character->Get_Transform()->Get_State(STATE::POSITION));
+		const float dx = position.x - m_EntryAssemblyPosition.x, dz = position.z - m_EntryAssemblyPosition.z;
+		occupied = occupied && std::abs(cosine * dx - sine * dz) <= m_EntryAssemblyHalfExtents.x + WorldCollision::PLAYER_HALF_EXTENT_X &&
+			std::abs(sine * dx + cosine * dz) <= m_EntryAssemblyHalfExtents.z + WorldCollision::PLAYER_HALF_EXTENT_Z &&
+			std::abs(position.y + WorldCollision::PLAYER_CENTER_OFFSET_Y - m_EntryAssemblyPosition.y) <=
+				m_EntryAssemblyHalfExtents.y + WorldCollision::PLAYER_HALF_EXTENT_Y;
+	}
+	const auto tick = m_Replication.Get_LastServerTick();
+	if (!occupied || participants != m_EntryAssemblyParticipants)
+	{
+		m_bEntryAssemblyOccupied = false;
+		m_iEntryAssemblyStartTick = 0u; m_EntryAssemblyParticipants = participants;
+		m_fEntryAssemblySecondsLeft = 10.f;
+	}
+	if (occupied)
+	{
+		if (!m_bEntryAssemblyOccupied) m_iEntryAssemblyStartTick = tick;
+		m_bEntryAssemblyOccupied = true;
+		const auto elapsed = tick - m_iEntryAssemblyStartTick;
+		if (elapsed > 0x7fffffffu)
+		{
+			m_iEntryAssemblyStartTick = tick;
+			m_fEntryAssemblySecondsLeft = 10.f;
+		}
+		else
+			m_fEntryAssemblySecondsLeft = (std::max)(0.f, 10.f - static_cast<float>(elapsed) / 30.f);
+	}
+	m_GateProgressView.Set_Button(m_bRaidClearReturnAvailable ? CRaidGateProgressView::BUTTON::EXIT :
+		CRaidGateProgressView::BUTTON::NONE, true);
+	const auto intent = m_GateProgressView.Update(deltaSeconds);
+	if (m_pPlayerCommandSink && intent == Intent::EXIT)
+		m_pPlayerCommandSink->Request_ReturnToBern(m_iNextReturnToBernSequence++);
+	if (!available)
+	{
+		CEffectPresentationService::Stop_WorldRoot(m_EntryAuraHandle); m_EntryAuraHandle = {}; m_strEntryAuraAsset.clear();
+		return;
+	}
+	const std::string asset = occupied ? "effect.world.entry_aura.active" : "effect.world.entry_aura";
+	if (asset == m_strEntryAuraAsset) return;
+	EFFECT_LEVEL_PLACEMENT_SPAWN_DESC desc;
+	desc.iLevelIndex = ETOUI(LEVEL::VALTAN_ARENA); desc.strPlacementId = "valtan.entry.assembly";
+	desc.strEffectAssetId = asset; desc.bOwnerSustainedSourceLoops = true;
+	XMStoreFloat4x4(&desc.RootWorld, XMMatrixRotationY(yaw) * XMMatrixTranslation(
+		m_EntryAssemblyPosition.x, m_EntryAssemblyPosition.y, m_EntryAssemblyPosition.z));
+	EFFECT_WORLD_ROOT_HANDLE staged; std::string status;
+	if (!CEffectPresentationService::Spawn_LevelPlacement(desc, staged, status)) return;
+	CEffectPresentationService::Commit_PendingWorldRootSpawns({staged});
+	if (!CEffectPresentationService::Update_WorldRoot(staged, desc.RootWorld))
+	{ CEffectPresentationService::Stop_WorldRoot(staged); return; }
+	CEffectPresentationService::Stop_WorldRoot(m_EntryAuraHandle);
+	m_EntryAuraHandle = staged; m_strEntryAuraAsset = asset;
 }
 
 bool_t CLevel_ValtanArena::Load_TriggerMarkers()
@@ -2405,10 +2519,19 @@ bool_t CLevel_ValtanArena::Load_TriggerMarkers()
 		return false;
 	}
 	std::vector<TRIGGER_MARKER> staged;
+	m_bEntryAssemblyLoaded = false;
 	for (const WORLD_GAMEPLAY_PLACEMENT& placement : document.Get_Placements())
 	{
 		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind || !placement.isEnabled)
 			continue;
+		if (placement.placementId == "Stage_Boss_Assembly")
+		{
+			m_EntryAssemblyPosition = placement.position;
+			m_EntryAssemblyHalfExtents = placement.halfExtents;
+			m_fEntryAssemblyYaw = placement.yawDegrees;
+			m_bEntryAssemblyLoaded = true;
+			continue;
+		}
 		/* The marker sits on the box the player steps on to go somewhere: every player-move
 		   box except an arrival box, plus the boss entry box. Stage_Boss is an
 		   activateEncounter, but firing it also moves the player to Stage_Boss_ArenaEntry,
@@ -2437,6 +2560,9 @@ bool_t CLevel_ValtanArena::Load_TriggerMarkers()
 
 void CLevel_ValtanArena::Clear_TriggerMarkers()
 {
+	CEffectPresentationService::Stop_WorldRoot(m_EntryAuraHandle);
+	m_EntryAuraHandle = {};
+	m_strEntryAuraAsset.clear();
 	for (auto& marker : m_TriggerMarkers)
 		CEffectPresentationService::Stop_WorldRoot(marker.handle);
 	m_TriggerMarkers.clear();
