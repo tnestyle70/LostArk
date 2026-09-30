@@ -10742,6 +10742,281 @@
           "hiddenMeshMask": 0
         }
       ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.class_select_hr00.customizing_outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "upper",
+          "partRole": "UPPER",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/class_select_hr00/upper.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "lower",
+          "partRole": "LOWER",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/class_select_hr00/lower.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "arm",
+          "partRole": "HANDS",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/class_select_hr00/arm.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "shoulder",
+          "partRole": "SHOULDER",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/class_select_hr00/shoulder.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.original_00.customizing_outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "upper",
+          "partRole": "UPPER",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/original_00/upper.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "lower",
+          "partRole": "LOWER",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/original_00/lower.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "arm",
+          "partRole": "HANDS",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/original_00/arm.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "shoulder",
+          "partRole": "SHOULDER",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/original_00/shoulder.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.source_ddk_01.customizing_outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "upper",
+          "partRole": "UPPER",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/source_ddk_01/upper.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "lower",
+          "partRole": "LOWER",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/source_ddk_01/lower.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "arm",
+          "partRole": "HANDS",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/source_ddk_01/arm.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "shoulder",
+          "partRole": "SHOULDER",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/source_ddk_01/shoulder.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.source_ddk_02.customizing_outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "upper",
+          "partRole": "UPPER",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/source_ddk_02/upper.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "lower",
+          "partRole": "LOWER",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/source_ddk_02/lower.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "arm",
+          "partRole": "HANDS",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/source_ddk_02/arm.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "shoulder",
+          "partRole": "SHOULDER",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/source_ddk_02/shoulder.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.guardian_knight.source_ddk_03.customizing_outfit",
+      "classId": "GUARDIANKNIGHT",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "upper",
+          "partRole": "UPPER",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/source_ddk_03/upper.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "lower",
+          "partRole": "LOWER",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/source_ddk_03/lower.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "arm",
+          "partRole": "HANDS",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/source_ddk_03/arm.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "shoulder",
+          "partRole": "SHOULDER",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GuardianKnight/Equipment/source_ddk_03/shoulder.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
     }
   ]
 }

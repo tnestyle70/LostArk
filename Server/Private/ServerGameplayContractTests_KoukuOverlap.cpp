@@ -1369,7 +1369,14 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
 	Run_KoukuObjectOverlapContracts(tests, catalog);
 	Run_GuideHazardPolicyContracts(tests, catalog);
 	Run_KoukuObjectContactContracts(tests, catalog);
-	Run_KoukuFearAndCounterContracts(tests, catalog);
+	{
+		// This helper also verifies installed P11 data; other synthetic fixtures keep the empty catalog.
+		CGameplayCatalog publishedCatalog;
+		const bool publishedCatalogLoaded = publishedCatalog.Load();
+		tests.Require(publishedCatalogLoaded, "Load published gameplay catalog for Kouku fear, counter and P11 contracts");
+		if (publishedCatalogLoaded) Run_KoukuFearAndCounterContracts(tests, publishedCatalog);
+		else std::cout << publishedCatalog.Get_Status() << std::endl;
+	}
 	Run_KoukuWorldPlacementContracts(tests, catalog);
 	Run_KoukuBoneContactContracts(tests, catalog);
 #ifdef _DEBUG

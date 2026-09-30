@@ -357,8 +357,9 @@ MAP_SURFACE_SAMPLE EvaluateMapSourceBGSurface(float2 meshUV, float4 vertexColor,
         else encodedNormal = g_NormalTexture.Sample(SurfaceAnisotropicSampler, normalUV);
         const float2 raw = encodedNormal.rg * 2.f - 1.f;
         const float vertexStrength = (g_SourceBgFlags & 128u) != 0u ? vertexColor.a : 1.f;
-        const float2 detail = (g_SourceBgFlags & 32768u) != 0u ?
-            (g_DetailNormalTexture.Sample(SurfaceAnisotropicSampler, surfaceUV * g_SurfaceDetailNormalTiling).rg * 2.f - 1.f) * g_SurfaceDetailNormalIntensity : 0.f;
+        float2 detail = 0.f;
+        [branch] if ((g_SourceBgFlags & 32768u) != 0u)
+            detail = (g_DetailNormalTexture.Sample(SurfaceAnisotropicSampler, surfaceUV * g_SurfaceDetailNormalTiling).rg * 2.f - 1.f) * g_SurfaceDetailNormalIntensity;
         tangentNormal = normalize(float3((raw * g_SurfaceNormalIntensity + detail) * vertexStrength,
             sqrt(max(1.f - dot(raw, raw), 0.f)) + 0.00001f));
     }
@@ -371,8 +372,9 @@ MAP_SURFACE_SAMPLE EvaluateMapSourceBGSurface(float2 meshUV, float4 vertexColor,
     float3 subspecularColor = 0.f;
     if ((g_SourceBgFlags & 4u) != 0u || g_SourceBgSubspecular.x != 0.f)
     {
-        const float3 sampledSpecular = (g_SourceBgFlags & 8u) != 0u ?
-            g_SpecularTexture.Sample(SurfaceAnisotropicSampler, surfaceUV).rgb : diffuse.rgb;
+        float3 sampledSpecular = diffuse.rgb;
+        [branch] if ((g_SourceBgFlags & 8u) != 0u)
+            sampledSpecular = g_SpecularTexture.Sample(SurfaceAnisotropicSampler, surfaceUV).rgb;
         const float3 specular = lerp(dot(sampledSpecular, float3(0.3f, 0.59f, 0.11f)).xxx,
             sampledSpecular, g_SourceBgSpecularSaturation);
         subspecularColor = ((g_SourceBgFlags & 256u) != 0u && (g_SourceBgFlags & 8u) == 0u ?

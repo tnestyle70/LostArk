@@ -2284,7 +2284,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		const uint32_t chatLevel = CGameInstance::Get().Get_CurrentLevelID();
 		const bool_t chatLevelAllowed =
 			ETOUI(LEVEL::BERN) == chatLevel || ETOUI(LEVEL::VALTAN_ARENA) == chatLevel ||
-			ETOUI(LEVEL::KAKULSAYDON_ARENA) == chatLevel;
+			ETOUI(LEVEL::KAKULSAYDON_ARENA) == chatLevel ||
+			ETOUI(LEVEL::MAHARAKA) == chatLevel || ETOUI(LEVEL::COLOSSEUM) == chatLevel;
 		const bool_t windowFocused =
 			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
 		const bool_t enterDown = chatLevelAllowed && windowFocused &&
@@ -4144,6 +4145,8 @@ HRESULT CMainApp::Render()
 			if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
 				pBern->Render_ValtanEntryModal();
 		}
+		else if (CLevel_Development* island = CLevel_Development::Get_Active(LEVEL::MAHARAKA))
+			island->Render_TravelModal();
 #ifdef _DEBUG
 		/* O-key visual-only preview of the same raid-entry panel from Character
 		   Select -- same foreground-drawlist ordering requirement as Bern's real
@@ -4172,7 +4175,7 @@ HRESULT CMainApp::Render()
 				for (const CClientReplication::CHAT_LINE& Line : chatLines)
 					m_pChatWindowView->Append_ReceivedLine(Line.strNickname, Line.strText);
 				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Chat.Build");
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Chat.Update");
 					m_pChatWindowView->Render(
 					nullptr != pBern ? pBern->Get_PlayerCommandSink() : nullptr);
 				}
@@ -4185,7 +4188,7 @@ HRESULT CMainApp::Render()
 				for (const CClientReplication::CHAT_LINE& Line : chatLines)
 					m_pChatWindowView->Append_ReceivedLine(Line.strNickname, Line.strText);
 				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Chat.Build");
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Chat.Update");
 					m_pChatWindowView->Render(
 					nullptr != pValtanArena ?
 						pValtanArena->Get_PlayerCommandSink() : nullptr);
@@ -4199,10 +4202,18 @@ HRESULT CMainApp::Render()
 				for (const CClientReplication::CHAT_LINE& Line : chatLines)
 					m_pChatWindowView->Append_ReceivedLine(Line.strNickname, Line.strText);
 				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Chat.Build");
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Chat.Update");
 					m_pChatWindowView->Render(
 						nullptr != pKouku ? pKouku->Get_PlayerCommandSink() : nullptr);
 				}
+			}
+			else if (ETOUI(LEVEL::MAHARAKA) == chatLevel || ETOUI(LEVEL::COLOSSEUM) == chatLevel)
+			{
+				CLevel_Development* social = CLevel_Development::Get_Active(static_cast<LEVEL>(chatLevel));
+				if (social) social->Drain_ChatLines(chatLines);
+				for (const auto& line : chatLines) m_pChatWindowView->Append_ReceivedLine(line.strNickname, line.strText);
+				Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Chat.Update");
+				m_pChatWindowView->Render(social ? social->Get_PlayerCommandSink() : nullptr);
 			}
 		}
 		if (nullptr != m_pPartyWindowView)
@@ -4217,7 +4228,7 @@ HRESULT CMainApp::Render()
 					m_pPartyWindowView->Sync_From_Roster(
 						pBern->Get_PartyRoster(), pBern->Get_PlayerHealth());
 				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Party.Build");
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Party.Update");
 					m_pPartyWindowView->Render();
 				}
 			}
@@ -4227,7 +4238,7 @@ HRESULT CMainApp::Render()
 					m_pPartyWindowView->Sync_From_Roster(
 						pValtanArena->Get_PartyRoster(), pValtanArena->Get_PlayerHealth());
 				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Party.Build");
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Party.Update");
 					m_pPartyWindowView->Render();
 				}
 			}
@@ -4237,9 +4248,16 @@ HRESULT CMainApp::Render()
 					m_pPartyWindowView->Sync_From_Roster(
 						pKoukuArena->Get_PartyRoster(), pKoukuArena->Get_PlayerHealth());
 				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Party.Build");
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Party.Update");
 					m_pPartyWindowView->Render();
 				}
+			}
+			else if (ETOUI(LEVEL::MAHARAKA) == partyLevel || ETOUI(LEVEL::COLOSSEUM) == partyLevel)
+			{
+				if (CLevel_Development* social = CLevel_Development::Get_Active(static_cast<LEVEL>(partyLevel)))
+					m_pPartyWindowView->Sync_From_Roster(social->Get_PartyRoster(), social->Get_PlayerHealth());
+				Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Party.Update");
+				m_pPartyWindowView->Render();
 			}
 		}
 		}
@@ -4289,6 +4307,19 @@ HRESULT CMainApp::Render()
 					focusNextWindow(DEBUG_TOOL::GUIDE_AI);
 					m_pGuideAITool->Render();
 					if (m_pGuideAITool->Consume_InteractionRequest()) m_eDebugInputOwner = DEBUG_TOOL::GUIDE_AI;
+                    if (m_pGuideAITool->Consume_PlacementPickRequest())
+                    {
+                        if (m_pWorldLevelTool) m_pWorldLevelTool->Cancel_PlacementPick({});
+                        if (auto* bern = CLevel_Bern::Get_Active()) bern->Get_PlayerController().Cancel_DebugPlayerPlacement();
+                        if (auto* arena = CLevel_ValtanArena::Get_Active()) arena->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
+                        if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
+                        if (auto* select = CLevel_CharacterSelect::Get_Active()) select->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
+                        m_eWorldLevelPickOwner = DEBUG_TOOL::GUIDE_AI;
+                        m_eDebugInputOwner = DEBUG_TOOL::GUIDE_AI;
+                        m_bWorldLevelPickArmed = true;
+                        m_iWorldLevelPickLevel = CGameInstance::Get().Get_CurrentLevelID();
+                        m_bWorldLevelPickLeftDown = true;
+                    }
 					if (!m_pGuideAITool->Is_Open()) SetDebugToolVisible(DEBUG_TOOL::GUIDE_AI, false);
 				}
 			}
@@ -4680,6 +4711,24 @@ HRESULT CMainApp::Render()
 			pValtanArena->Render_PartyInviteText();
 		}
 	}
+	else if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == CGameInstance::Get().Get_CurrentLevelID())
+	{
+		if (CLevel_KakulSaydonArena* kouku = CLevel_KakulSaydonArena::Get_Active())
+		{
+			CUITextLayerScope modal(UI_TEXT_LAYER::MODAL);
+			kouku->Render_TransferFailureNotice();
+		}
+	}
+	if (const LEVEL socialLevel = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
+		socialLevel == LEVEL::MAHARAKA || socialLevel == LEVEL::COLOSSEUM)
+	{
+		if (CLevel_Development* social = CLevel_Development::Get_Active(socialLevel))
+		{
+			CUITextLayerScope modal(UI_TEXT_LAYER::MODAL);
+			social->Render_PartyInviteText();
+			social->Render_TravelModalText();
+		}
+	}
 	CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 	/* The chat sprites are only driven in the levels that own a chat (see the Render call
 	above); its labels follow them, or the channel label and the last lines sit over the
@@ -4688,7 +4737,8 @@ HRESULT CMainApp::Render()
 		const uint32_t chatTextLevel = CGameInstance::Get().Get_CurrentLevelID();
 		const bool_t bChatTextLevel = ETOUI(LEVEL::BERN) == chatTextLevel ||
 			ETOUI(LEVEL::VALTAN_ARENA) == chatTextLevel ||
-			ETOUI(LEVEL::KAKULSAYDON_ARENA) == chatTextLevel;
+			ETOUI(LEVEL::KAKULSAYDON_ARENA) == chatTextLevel ||
+			ETOUI(LEVEL::MAHARAKA) == chatTextLevel || ETOUI(LEVEL::COLOSSEUM) == chatTextLevel;
 		if (nullptr != m_pChatWindowView && bChatTextLevel)
 			m_pChatWindowView->RenderText();
 	}
@@ -4698,7 +4748,8 @@ HRESULT CMainApp::Render()
 		const uint32_t partyTextLevel = CGameInstance::Get().Get_CurrentLevelID();
 		const bool_t bPartyTextLevel = ETOUI(LEVEL::BERN) == partyTextLevel ||
 			ETOUI(LEVEL::VALTAN_ARENA) == partyTextLevel ||
-			ETOUI(LEVEL::KAKULSAYDON_ARENA) == partyTextLevel;
+			ETOUI(LEVEL::KAKULSAYDON_ARENA) == partyTextLevel ||
+			ETOUI(LEVEL::MAHARAKA) == partyTextLevel || ETOUI(LEVEL::COLOSSEUM) == partyTextLevel;
 		if (nullptr != m_pPartyWindowView && bPartyTextLevel)
 			m_pPartyWindowView->RenderText();
 	}
@@ -5675,6 +5726,11 @@ CPlayerController* CMainApp::Find_ActivePlayerController() const
 	{
 		if (CLevel_KakulSaydonArena* pKoukuArena = CLevel_KakulSaydonArena::Get_Active())
 			return &pKoukuArena->Get_DebugPlayerController();
+	}
+	else if (ETOUI(LEVEL::COLOSSEUM) == currentLevel)
+	{
+		if (CLevel_Development* pColosseum = CLevel_Development::Get_Active(LEVEL::COLOSSEUM))
+			return &pColosseum->Get_PlayerController();
 	}
 	return nullptr;
 }
@@ -6739,6 +6795,8 @@ bool_t CMainApp::Close_TopEscapeWindow()
 
 bool_t CMainApp::Is_EscapeOwnedElsewhere() const
 {
+	if (const auto* island = CLevel_Development::Get_Active(LEVEL::MAHARAKA);
+		island && island->Is_TravelModalOpen()) return true;
 	/* These read the same press in their own Update, which runs later this frame. */
 	if (nullptr != m_pQuickSlotDragView && m_pQuickSlotDragView->Is_Carrying())
 		return true;
@@ -6942,6 +7000,15 @@ void CMainApp::Update_Minimap(const f32_t fTimeDelta)
 			bHasSnapshot = true;
 		}
 	}
+	else if (ETOUI(LEVEL::COLOSSEUM) == iLevel)
+	{
+		if (CLevel_Development* pColosseum = CLevel_Development::Get_Active(LEVEL::COLOSSEUM))
+		{
+			pColosseum->Collect_MinimapMarkers(Snapshot);
+			eLevel = LEVEL::COLOSSEUM;
+			bHasSnapshot = true;
+		}
+	}
 	/* Part of the in-game HUD, so it clears for the award page like the rest.
 	   A null snapshot is this view's own documented "hide every slot". */
 	if (Is_MvpResultPageOpen() || Is_KoukuMinigameHUDHidden())
@@ -6957,7 +7024,17 @@ void CMainApp::Update_Minimap(const f32_t fTimeDelta)
 		if (m_pWorldMapWindowView->Take_SquareHoleRequest(iHoleId))
 		{
 			CPlayerController* pController = Find_ActivePlayerController();
-			if (nullptr == pController || !pController->Request_UseSquareHole(iHoleId))
+			bool_t finishedColosseumReturn = false;
+			if (const auto arena = CLevel_Development::Get_Active(LEVEL::COLOSSEUM))
+			{
+				const auto& match = arena->Get_Replication().Get_ColosseumMatchState();
+				const auto local = CNetworkManager::Get().Get_LocalEntityId();
+				finishedColosseumReturn = match.iMatchId != 0u &&
+					match.ePhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::FINISHED &&
+					std::any_of(match.Players.begin(), match.Players.end(), [local](const auto& row)
+						{ return row.iNetEntityId == local && row.bParticipant && row.iTeam < 2u; });
+			}
+			if (nullptr == pController || !pController->Request_UseSquareHole(iHoleId, finishedColosseumReturn))
 				OutputDebugStringA("[Client][WorldMapWindow] Square hole request not sent (no controller, or the player is busy).\n");
 		}
 		if (m_pWorldMapWindowView->Take_ShipTravelRequest())
@@ -7109,53 +7186,6 @@ void CMainApp::RenderLobbyButtonText()
 	DrawAt(L"(C) Smilegate RPG, Inc. All rights reserved.", strYG760, 9.333f, 640.f,
 		711.f, 0.5f, 800.f, Rgb(0xeeeeee));
 
-#ifndef _DEBUG
-	/* Release product status line (Debug shows the same status inside the Lobby debug panel
-	instead). Was an ImGui wrapped-text draw; Draw_Text has no wrapping, so the whole line is
-	scaled to fit the status rect's width instead -- status strings are one sentence. */
-	LOBBY_PRODUCT_RECT StatusRect{ 240.f, 566.f, 800.f, 54.f };
-	LOBBY_PRODUCT_RECT AuthoredStatusRect{};
-	if (m_pLobbyBackgroundView->Get_SlotRect(
-		"Lobby_StatusText", AuthoredStatusRect.fX, AuthoredStatusRect.fY,
-		AuthoredStatusRect.fWidth, AuthoredStatusRect.fHeight) &&
-		Is_ValidProductRect(AuthoredStatusRect))
-	{
-		StatusRect = AuthoredStatusRect;
-	}
-	const string strStatus = CLevel_Lobby::Get_ProductStatus();
-	if (!strStatus.empty())
-	{
-		wstring strWideStatus;
-		const int iRequiredLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
-			strStatus.data(), static_cast<int>(strStatus.size()), nullptr, 0);
-		if (iRequiredLength > 0)
-		{
-			strWideStatus.resize(static_cast<size_t>(iRequiredLength));
-			if (iRequiredLength == MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
-				strStatus.data(), static_cast<int>(strStatus.size()),
-				strWideStatus.data(), iRequiredLength))
-			{
-				const float2_t vStatusMeasured = CGameInstance::Get().Measure_Text(
-					TEXT("Font_YoonGasiIIM"), strWideStatus.c_str());
-				const f32_t fScaleByHeight = (vStatusMeasured.y > 0.f) ?
-					(16.f / vStatusMeasured.y) : 1.f;
-				const f32_t fScaleByWidth = (vStatusMeasured.x > 0.f) ?
-					((StatusRect.fWidth - 16.f) / vStatusMeasured.x) : 1.f;
-				const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
-				const f32_t fCenterX = StatusRect.fX + StatusRect.fWidth * 0.5f;
-				const f32_t fCenterY = StatusRect.fY + StatusRect.fHeight * 0.5f;
-				CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strWideStatus.c_str(),
-					float2_t(fCenterX * textScaleX + 1.f, fCenterY * textScaleY + 1.f),
-					XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f, float2_t(0.5f, 0.5f),
-					fScale * textUiScale);
-				CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strWideStatus.c_str(),
-					float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
-					XMVectorSet(1.f, 225.f / 255.f, 150.f / 255.f, 1.f), 0.f,
-					float2_t(0.5f, 0.5f), fScale * textUiScale);
-			}
-		}
-	}
-#endif
 }
 
 void CMainApp::Load_LobbyServers()
@@ -11826,7 +11856,6 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 	return S_OK;
 }
 
-#ifdef _DEBUG
 bool_t CMainApp::RequestDebugLevelNavigation(const LEVEL eTargetLevel)
 {
 	const LEVEL currentLevel = static_cast<LEVEL>(
@@ -11872,11 +11901,11 @@ bool_t CMainApp::RequestDebugLevelNavigation(const LEVEL eTargetLevel)
 			CLevel_CharacterSelect* pCharacterSelect =
 				CLevel_CharacterSelect::Get_Active();
 			accepted = nullptr != pCharacterSelect &&
-				pCharacterSelect->Debug_Request_ProductStage(stage);
+				pCharacterSelect->Submit_StageEntry(stage);
 			if (!accepted)
 			{
 				m_strDebugLevelNavigationStatus = nullptr != pCharacterSelect ?
-					pCharacterSelect->Debug_GetNavigationStatus() :
+					pCharacterSelect->Get_NavigationStatus() :
 					"The active Character Select owner is unavailable.";
 				return false;
 			}
@@ -11931,40 +11960,6 @@ bool_t CMainApp::RequestDebugLevelNavigation(const LEVEL eTargetLevel)
 			"Typed Lobby return staged. Gameplay Areas remain Server-authoritative and no destination admission was fabricated.";
 		return true;
 	}
-	if (LEVEL::KAKULSAYDON_ARENA == eTargetLevel)
-	{
-		if (LEVEL::CHARACTER_SELECT == currentLevel)
-		{
-			CLevel_CharacterSelect* pCharacterSelect =
-				CLevel_CharacterSelect::Get_Active();
-			if (nullptr == pCharacterSelect ||
-				!pCharacterSelect->Debug_Request_KakulSaydonArena())
-			{
-				m_strDebugLevelNavigationStatus = nullptr != pCharacterSelect ?
-					pCharacterSelect->Debug_GetNavigationStatus() :
-					"The active Character Select owner is unavailable.";
-				return false;
-			}
-			m_eDebugLevelNavigationTarget = LEVEL::KAKULSAYDON_ARENA;
-			m_DebugLevelNavigationDeadline =
-				std::chrono::steady_clock::now() + std::chrono::seconds(15);
-			m_bDebugLevelNavigationDeadlineActive = true;
-			m_strDebugLevelNavigationStatus =
-				pCharacterSelect->Debug_GetNavigationStatus();
-			return true;
-		}
-
-		if (!routeThroughLobby(
-			LOBBY_STAGE::CHARACTER_SELECT,
-			LEVEL::CHARACTER_SELECT,
-			"Character Select (required before KoukuSaydon)"))
-		{
-			return false;
-		}
-		m_strDebugLevelNavigationStatus =
-			"KoukuSaydon requires its existing Character Select command sink. Routing to Server-approved Character Select first; press KoukuSaydon again after admission.";
-		return true;
-	}
 	if (LEVEL::CHARACTER_SELECT == eTargetLevel)
 		return routeThroughLobby(
 			LOBBY_STAGE::CHARACTER_SELECT, eTargetLevel, "Character Select");
@@ -11972,12 +11967,19 @@ bool_t CMainApp::RequestDebugLevelNavigation(const LEVEL eTargetLevel)
 		return routeThroughLobby(LOBBY_STAGE::BERN, eTargetLevel, "Bern");
 	if (LEVEL::VALTAN_ARENA == eTargetLevel)
 		return routeThroughLobby(LOBBY_STAGE::VALTAN, eTargetLevel, "Valtan");
+	if (LEVEL::KAKULSAYDON_ARENA == eTargetLevel)
+		return routeThroughLobby(LOBBY_STAGE::KOUKU_SAYDON, eTargetLevel, "KoukuSaydon");
+	if (LEVEL::COLOSSEUM == eTargetLevel)
+		return routeThroughLobby(LOBBY_STAGE::COLOSSEUM, eTargetLevel, "Entrance PvP Arena");
+	if (LEVEL::MAHARAKA == eTargetLevel)
+		return routeThroughLobby(LOBBY_STAGE::MAHARAKA, eTargetLevel, "Maharaka");
 
 	m_strDebugLevelNavigationStatus =
-		"F1 Level Navigation exposes only Lobby, Character Select, Bern, Valtan and KoukuSaydon.";
+		"The selected destination is not available in F1 Level Navigation.";
 	return false;
 }
 
+#ifdef _DEBUG
 void CMainApp::RenderArenaCameraAndPlayerControls()
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.CameraAndPlayer");
@@ -12423,6 +12425,8 @@ void CMainApp::RenderKoukuUiPreviewControls()
 	ImGui::TextDisabled("Preview only (no Server truth). Modes: %zu loaded.", m_KoukuHudModes.size());
 }
 
+#endif
+
 void CMainApp::RenderDebugLevelNavigation()
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.LevelNavigation");
@@ -12435,6 +12439,8 @@ void CMainApp::RenderDebugLevelNavigation()
 		case LEVEL::BERN: return "Bern";
 		case LEVEL::VALTAN_ARENA: return "Valtan";
 		case LEVEL::KAKULSAYDON_ARENA: return "KoukuSaydon";
+		case LEVEL::COLOSSEUM: return "Entrance PvP Arena";
+		case LEVEL::MAHARAKA: return "Maharaka";
 		case LEVEL::LOADING: return "Loading";
 		case LEVEL::DEVELOPMENT: return "Development";
 		default: return "Other";
@@ -12454,6 +12460,7 @@ void CMainApp::RenderDebugLevelNavigation()
 		m_bDebugLevelNavigationDeadlineActive = false;
 	}
 	else if (LEVEL::END != m_eDebugLevelNavigationTarget &&
+		LEVEL::LOADING != currentLevel &&
 		m_bDebugLevelNavigationDeadlineActive &&
 		std::chrono::steady_clock::now() >=
 			m_DebugLevelNavigationDeadline)
@@ -12477,29 +12484,36 @@ void CMainApp::RenderDebugLevelNavigation()
 			levelName(m_eDebugLevelNavigationTarget) :
 			(transitionPending ? "typed transition" : "None"));
 	ImGui::TextWrapped("%s", m_strDebugLevelNavigationStatus.c_str());
-	ImGui::TextDisabled(
-		"Bern/Valtan/Character Select use Lobby admission. KoukuSaydon uses Character Select's world-transfer command sink.");
+	if (LEVEL::LOBBY == currentLevel)
+		ImGui::TextWrapped("Entry: %s", CLevel_Lobby::Get_ProductStatus().c_str());
+	ImGui::TextDisabled("Destinations require Server approval. PvP Arena opens Colosseum directly; matchmaking remains in Bern.");
 
-	constexpr std::array<std::pair<LEVEL, const char_t*>, 5> destinations = {{
+	constexpr std::array<std::pair<LEVEL, const char_t*>, 7> destinations = {{
 		{ LEVEL::LOBBY, "Lobby" },
 		{ LEVEL::CHARACTER_SELECT, "Character Select" },
 		{ LEVEL::BERN, "Bern" },
 		{ LEVEL::VALTAN_ARENA, "Valtan" },
 		{ LEVEL::KAKULSAYDON_ARENA, "KoukuSaydon" },
+		{ LEVEL::COLOSSEUM, "Entrance PvP Arena" },
+		{ LEVEL::MAHARAKA, "Maharaka" },
 	}};
-	for (size_t iDestination = 0u;
-		iDestination < destinations.size(); ++iDestination)
+	const float width = ImGui::GetContentRegionAvail().x;
+	const int columns = width >= 660.f ? 3 : (width >= 420.f ? 2 : 1);
+	if (ImGui::BeginTable("##LevelNavigationDestinations", columns, ImGuiTableFlags_SizingStretchSame))
 	{
-		if (0u != iDestination)
-			ImGui::SameLine();
-		const LEVEL target = destinations[iDestination].first;
-		const bool_t disable = currentLevel == target ||
-			LEVEL::END != m_eDebugLevelNavigationTarget ||
-			transitionPending || LEVEL::LOADING == currentLevel;
-		ImGui::BeginDisabled(disable);
-		if (ImGui::SmallButton(destinations[iDestination].second))
-			(void)RequestDebugLevelNavigation(target);
-		ImGui::EndDisabled();
+		for (const auto& [target, label] : destinations)
+		{
+			ImGui::TableNextColumn();
+			const bool_t disable = currentLevel == target ||
+				LEVEL::END != m_eDebugLevelNavigationTarget || transitionPending ||
+				LEVEL::LOADING == currentLevel ||
+				(LEVEL::LOBBY == currentLevel && !CLevel_Lobby::Can_SubmitProductCommand());
+			ImGui::BeginDisabled(disable);
+			if (ImGui::Button(label, ImVec2(ImGui::GetContentRegionAvail().x, 0.f)))
+				(void)RequestDebugLevelNavigation(target);
+			ImGui::EndDisabled();
+		}
+		ImGui::EndTable();
 	}
 	if (transitionPending)
 	{
@@ -12509,6 +12523,7 @@ void CMainApp::RenderDebugLevelNavigation()
 	}
 }
 
+#ifdef _DEBUG
 void CMainApp::RefreshDebugResourceFiles()
 {
 	struct RESOURCE_ROOT
@@ -14464,6 +14479,7 @@ void CMainApp::RenderDeveloperTools()
 	ImGui::Text("Current level id: %u", currentLevelId);
 	if (currentLevelId == ETOUI(LEVEL::CHARACTER_SELECT))
 		RenderCameraSpeedControls();
+	RenderDebugLevelNavigation();
 #ifdef _DEBUG
 	ImGui::TextDisabled(isMapEditorWorkspace ?
 		"Map Editor is active. Open Map Tool to author the selected Area." :
@@ -14524,7 +14540,7 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Effect Tool V1", DEBUG_TOOL::EFFECT);
 		toolCell("Effect Tool V2", DEBUG_TOOL::EFFECT_V2);
 		toolCell("World Level Tool", DEBUG_TOOL::WORLD_LEVEL);
-		toolCell("Guide AI", DEBUG_TOOL::GUIDE_AI);
+		toolCell("DimensionMaster Guide", DEBUG_TOOL::GUIDE_AI);
 		toolCell("Waterpang AI Tool", DEBUG_TOOL::MAHARAKA_AI);
 		toolCell("Map Tool", DEBUG_TOOL::MAP);
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
@@ -14546,7 +14562,7 @@ void CMainApp::RenderDeveloperTools()
 			{ DEBUG_TOOL::MAP, "Map Tool" },
 			{ DEBUG_TOOL::WORLD_OBJECT, "Action Workbench / Object" },
 			{ DEBUG_TOOL::WORLD_LEVEL, "Open World Level Tool" },
-			{ DEBUG_TOOL::GUIDE_AI, "Guide AI Tool" },
+			{ DEBUG_TOOL::GUIDE_AI, "DimensionMaster Guide" },
 			{ DEBUG_TOOL::MAHARAKA_AI, "Waterpang AI Tool" },
 			{ DEBUG_TOOL::SEQUENCER, "Action Workbench" },
 			{ DEBUG_TOOL::SEQUENCER_BENCHMARK, "Action Workbench / Sequence" },
@@ -14596,7 +14612,6 @@ void CMainApp::RenderDeveloperTools()
 			"Map Tool is open in inspect-only mode. Enter Lobby > Test > Map Editor to save map placement/navigation.");
 	}
 
-	RenderDebugLevelNavigation();
 	RenderArenaCameraAndPlayerControls();
 	if (!CLevel_KakulSaydonArena::Get_Active()) RenderHUDBarPositionControls();
 #else

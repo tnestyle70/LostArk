@@ -246,3 +246,23 @@ SCENE03A의 별도 trigger37081_113→Matinee7/InterpData862→Track1239는 팝�
 새 Resources는 설치본과 Desktop/GBResources의 같은 상대경로로 전달한다. 실제 Data·
 publisher 출력과 C++를 통합해 Debug/Release Product Build, 관련 focused tests 및
 JSON/XML parse·diff 검사를 수행한다. 화면·소리의 최종 판정과 Client 실행은 사용자 몫이다.
+
+### G15 후속. 2026-10-01 최초 WORLD 음원의 연속 재생
+
+첫 음원은 circus_finale WORLD의 scene_midnightc_ed_circuspopup.source.wav이며
+200ms에 시작한다. Server 소유 WORLD의 매 frame Seek_AllToMs가 무조건 seekSounds를
+설정하므로 Apply_Sounds가 같은 음원을 정지·재생성한다. 뒤의 Composition SOUND와
+Movie의 슬로모션 시간 보정은 이 결함의 소비자가 아니다.
+
+Client/Public/WorldSequencePlayer.h와 Client/Private/WorldSequencePlayer.cpp의
+Seek_AllToMs에 기존 Seek_InstanceToMs와 동일한 discontinuous 인자를 추가한다.
+기본 true는 최초 catch-up·명시 scrub을 보존한다. false에서는 연속 전진의 채널과
+retired tail을 유지하고 역방향 또는 250ms 초과 이동은 다시 seek한다. 실패 인스턴스의
+Stop_Instance rollback과 다른 인스턴스 적용은 기존대로 둔다.
+Client/Private/Level_KakulSaydonArena.cpp의 m_OwnedWorldCues frame 갱신만 false로
+호출한다. 편집기 scrub·초기 admission·원본 WAV·volume·sound timing은 변경하지 않는다.
+기존 파일만 수정하므로 vcxproj/filters 신규 등록과 데이터 publish는 필요 없다.
+
+원본 함수로 최초 음원의 반복 채널 재생성을 수정 전 재현하고, 연속 재생·명시 scrub·
+역방향·큰 이동·정지·실패 격리를 수정 후 검사한다. 일반 Debug Product Build와
+변경 diff 검사를 실행하며 Client 실행·실청 최종 판정은 사용자가 수행한다.

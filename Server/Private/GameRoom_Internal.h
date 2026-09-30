@@ -5,6 +5,7 @@
 #include <set>
 #include <cmath>
 #include <cstdlib>
+#include <string_view>
 
 namespace GameRoomDetail
 {
@@ -12,6 +13,15 @@ namespace GameRoomDetail
 using namespace LostArk::Shared;
 
 using namespace LostArk::Server;
+
+// Only these authored Bern destinations are exposed by the remote Colosseum map.
+inline std::uint16_t Resolve_BernSquareHoleId(const std::string_view placementId)
+{
+	if (placementId == "squarehole.1") return 1u;
+	if (placementId == "squarehole.2") return 2u;
+	if (placementId == "squarehole.3") return 3u;
+	return 0u;
+}
 
 /* The pillars rise at the tail of the one pillar pattern the encounter
 	   already owns. The video shows three further cycles, but no product

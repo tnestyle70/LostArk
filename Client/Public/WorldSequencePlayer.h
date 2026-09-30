@@ -268,9 +268,9 @@ public:
     void Set_SoundAudience(std::function<bool(const std::string&)> audience) { m_SoundAudience = std::move(audience); }
     void Retire_InstanceSoundTails(const std::string& instanceId);
 	bool_t Is_Paused() const noexcept { return m_bPaused; }
-	/* Moves every playing instance to the same wall-clock point and applies
-	   that frame at once. false means nothing is playing to scrub. */
-	bool_t Seek_AllToMs(f32_t elapsedMs, const TARGET_SET& targets);
+	/* Samples every playing instance at the same wall-clock point. Pass discontinuous=false
+	   for a live external clock to preserve audio; explicit scrub keeps the default true. */
+	bool_t Seek_AllToMs(f32_t elapsedMs, const TARGET_SET& targets, bool_t discontinuous = true);
 	bool_t Seek_InstanceToMs(const std::string& instanceId, f32_t elapsedMs, const TARGET_SET& targets, bool_t discontinuous = true);
 	void Stop_Instance(const std::string& instanceId, const TARGET_SET& targets, bool_t restorePlacements, bool_t preserveSoundTail = false);
 	/* The longest authored span across the playing instances, so the tool can

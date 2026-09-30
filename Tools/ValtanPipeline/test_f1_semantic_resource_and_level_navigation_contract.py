@@ -135,12 +135,15 @@ class F1SemanticResourceAndLevelNavigationContractTests(unittest.TestCase):
         )
         for token in (
             "CLevel_Lobby::Submit_ProductCommand(stage)",
-            "Debug_Request_ProductStage(stage)",
+            "Submit_StageEntry(stage)",
             "CLobbyCommandService::Request(stage, token)",
             "CLevelTransitionService::Request_Load(",
-            "Debug_Request_KakulSaydonArena()",
             "LOBBY_STAGE::CHARACTER_SELECT",
-            "press KoukuSaydon again after admission",
+            "LOBBY_STAGE::BERN",
+            "LOBBY_STAGE::VALTAN",
+            "LOBBY_STAGE::KOUKU_SAYDON",
+            "LOBBY_STAGE::COLOSSEUM",
+            "LOBBY_STAGE::MAHARAKA",
         ):
             self.assertIn(token, request)
         for forbidden in (
@@ -148,6 +151,8 @@ class F1SemanticResourceAndLevelNavigationContractTests(unittest.TestCase):
             "CNetworkManager",
             "Send_DebugEnterKakulSaydonArena",
             "LOBBY_STAGE::KAKUL",
+            "Debug_Request_KakulSaydonArena()",
+            "press KoukuSaydon again after admission",
         ):
             self.assertNotIn(forbidden, request)
         for token in (
@@ -159,11 +164,65 @@ class F1SemanticResourceAndLevelNavigationContractTests(unittest.TestCase):
             'LEVEL::BERN, "Bern"',
             'LEVEL::VALTAN_ARENA, "Valtan"',
             'LEVEL::KAKULSAYDON_ARENA, "KoukuSaydon"',
+            'LEVEL::COLOSSEUM, "Entrance PvP Arena"',
+            'LEVEL::MAHARAKA, "Maharaka"',
             "ImGui::BeginDisabled(disable)",
             "timed out after 15 seconds and was unlocked",
             "m_bDebugLevelNavigationDeadlineActive = false",
         ):
             self.assertIn(token, render)
+
+    def test_level_navigation_preserves_pending_and_failed_request_owners(self) -> None:
+        request = function_body(
+            self.main_cpp, "bool_t CMainApp::RequestDebugLevelNavigation("
+        )
+        for token in (
+            "LEVEL::LOADING == currentLevel",
+            "eTargetLevel == currentLevel",
+            "LEVEL::END != m_eDebugLevelNavigationTarget",
+            "CLevelTransitionService::Is_Pending()",
+            "CLobbyCommandService::Cancel(",
+            'token, "F1 Level Navigation load was rejected"',
+        ):
+            self.assertIn(token, request)
+        self.assertLess(
+            request.index("CLevelTransitionService::Is_Pending()"),
+            request.index("auto routeThroughLobby"),
+        )
+        self.assertLess(
+            request.index("CLobbyCommandService::Cancel("),
+            request.index("m_eDebugLevelNavigationTarget = finalTarget"),
+        )
+
+    def test_character_select_stage_route_preserves_class_and_token(self) -> None:
+        enter = function_body(
+            self.character_select_cpp,
+            "bool_t CLevel_CharacterSelect::Enter_Stage(",
+        )
+        sources = function_body(
+            self.character_select_cpp, "const char_t* Get_StageTransitionSource("
+        )
+        for stage in (
+            "CHARACTER_SELECT", "BERN", "VALTAN", "KOUKU_SAYDON", "COLOSSEUM", "MAHARAKA"
+        ):
+            self.assertIn(f"case LOBBY_STAGE::{stage}:", sources)
+        for token in (
+            "m_iPendingClassIndex.has_value()",
+            "Is_ClassPresentationPreparationPending()",
+            "CCharacterSelectionState::Select(",
+            "SUPPORTED_CLASSES[m_iSelectedClassIndex]",
+            "CLobbyCommandService::Request(stage, token)",
+            "CLobbyCommandService::Cancel(",
+            "m_eMode = MODE::RETURNING_TO_LOBBY",
+        ):
+            self.assertIn(token, enter)
+        self.assertLess(
+            enter.index("CCharacterSelectionState::Select("),
+            enter.index("CLobbyCommandService::Request(stage, token)"),
+        )
+        for forbidden in ("CNetworkManager", "Change_Level"):
+            self.assertNotIn(forbidden, enter)
+        self.assertIn("bool_t Submit_StageEntry(LOBBY_STAGE", self.character_select_h)
 
     def test_kakul_wrapper_is_the_character_select_sink_owner(self) -> None:
         wrapper = function_body(

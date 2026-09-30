@@ -521,13 +521,13 @@ void Client::CCombatHUDViewModel::Debug_Set_Esther_Preview(const bool enable)
 void Client::CCombatHUDViewModel::Apply_DamageEvents(
 	const std::uint32_t serverTick,
 	const std::vector<LostArk::Shared::DAMAGE_EVENT>& events,
-	const LostArk::Shared::PLAYER_ID localPlayerId)
+	const LostArk::Shared::PLAYER_ID localPlayerId, const bool playerCombat)
 {
 	constexpr std::size_t MAX_RETAINED_DAMAGE_EVENTS = 128u;
 	for (const LostArk::Shared::DAMAGE_EVENT& event : events)
 	{
 		if (LostArk::Shared::INVALID_PLAYER_ID != localPlayerId &&
-			event.iSourcePlayerId == localPlayerId && event.isOutgoing &&
+			event.iSourcePlayerId == localPlayerId && (event.isOutgoing || playerCombat) &&
 			event.eHitFlag != LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB &&
 			event.eHitFlag != LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE)
 		{
@@ -551,6 +551,7 @@ void Client::CCombatHUDViewModel::Apply_DamageEvents(
 		HUD_DAMAGE_EVENT retained{};
 		retained.iServerTick = serverTick;
 		retained.Event = event;
+        if (playerCombat) retained.Event.isOutgoing = event.iSourcePlayerId == localPlayerId;
 		m_DamageEvents.push_back(std::move(retained));
 	}
 	if (m_DamageEvents.size() > MAX_RETAINED_DAMAGE_EVENTS)

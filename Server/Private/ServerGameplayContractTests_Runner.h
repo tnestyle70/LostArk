@@ -36,6 +36,8 @@ public:
     static int Run_NumericBalanceOnly();
     static int Run_ValtanPresentationOnly();
     static int Run_SkillStagesOnly();
+    static int Run_ColosseumCombat();
+    static int Run_ColosseumMatch();
     static int Run_ValtanArenaSupport();
     static int Run_ValtanPatternControl();
     static int Run_NpcRaidReturn();
@@ -43,6 +45,7 @@ public:
     static void Run_KoukuPushContracts(TESTS& tests, const CGameplayCatalog& catalog);
 
 private:
+    static int Run_ColosseumMatchContracts();
     static int Run_WorldPlayback(TESTS& tests);
     static int Run_DebugTeleport(TESTS& tests);
     static void Run_KoukuBundles(TESTS& tests);

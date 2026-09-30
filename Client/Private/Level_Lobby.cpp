@@ -477,12 +477,10 @@ bool_t CLevel_Lobby::Resolve_Stage(
 		outWorldId = WORLD_ID::MAHARAKA;
 		outTargetLevel = LEVEL::MAHARAKA;
 		return true;
-#ifdef _DEBUG
 	case LOBBY_STAGE::COLOSSEUM:
 		outWorldId = WORLD_ID::COLOSSEUM;
 		outTargetLevel = LEVEL::COLOSSEUM;
 		return true;
-#endif
 	default:
 		return false;
 	}

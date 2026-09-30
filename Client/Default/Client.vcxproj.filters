@@ -6101,6 +6101,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.watergun_att_2.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.q.flight.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.q.hit.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.q.start.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.w.flight.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.w.hit.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.maharaka.watergun.e.speed.effect.json"><Filter>96.DataFiles</Filter></None>
@@ -6116,6 +6117,8 @@
     <None Include="..\..\Data\Camera\ColosseumMatchStart.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Customizing\FaceSliders\DK.facesliders.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Maps\Authoring\LV_PVP_COLOSSEUM\LV_PVP_COLOSSEUM.mapplacements"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Maps\Authoring\LV_PVP_COLOSSEUM\LV_PVP_COLOSSEUM.mapmaterials.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Maps\Authoring\LV_PVP_COLOSSEUM\LV_PVP_COLOSSEUM.maplights.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Maps\Imported\LV_PVP_COLOSSEUM\LV_PVP_COLOSSEUM.build.receipt.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Maps\Imported\LV_PVP_COLOSSEUM\LV_PVP_COLOSSEUM.mapassets"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Maps\Imported\LV_PVP_COLOSSEUM\LV_PVP_COLOSSEUM.mapplacements"><Filter>96.DataFiles</Filter></None>

@@ -168,3 +168,39 @@ Skill executor가 range/resource/cooldown/state를 확인하고 승인한 단계
 변경 C++ 컴파일, JSON/XML parse와 diff-check다.
 Client와 아레나 화면은 사용자가 직접 확인한다. 실행하지 않은 화면·라이브 LAN 테스트를
 완료로 기록하지 않는다. Protocol이 바뀌므로 Client와 Server는 같은 빌드를 사용한다.
+
+
+## G08. 서버 단일 안내와 귀환 이벤트로 전환 (2026-10-01 요청)
+
+이 항목은 G03의 파티 companion·레이드 동행 기획을 대체한다. 가이드 시작은 기존 typed
+명시적인 안내 시작/종료 typed command를 사용하며 인간 파티를 생성하거나 roster slot을 차지하지 않는다.
+서버의 shared Bern에 처음 배치한 단일 actor를 유지한다. 안내 시작은 clone을 생성하지 않고
+그 actor를 최초 요청 owner session에 귀속한다. 다른 사용자는 안내 중으로 표시하며 제어권을
+빼앗지 않는다. 첫 인사와 공간 대사는 안내 사용자에게만 보낸다.
+보스 레이드 동행은 폐기하며 보스 HP·damage·기믹·보상은 수정하지 않는다.
+
+Guide는 배 승선 또는 레이드·콜로세움·마하라카 이동 성공 때 마지막 Bern 위치에 대기한다.
+실패한 transfer는 기존 안내 상태도 보존한다. 실제 Bern 입장 commit 후 같은 owner session을
+새 player identity와 연결하고 기존 navigation 이동으로 접근한다. 이 접근 중 원거리 복구
+teleport를 사용하지 않는다. 안내 종료와 owner disconnect는 대기·예약 대사·추종 상태를
+해제하며 actor는 유지한다. 종료 후 늦게 도착한 world 귀환으로 다시 활성화하지 않는다.
+다른 사용자가 같은 actor에서 안내를 시작할 수 있다. 용의 탑승·비행 추종은 유지한다.
+
+GUIDE_STARTED는 안내 시작, RAID_RETURNED는 raidWorldId의 발탄/쿠크 귀환,
+WORLD_RETURNED는 sourceWorldId의 MAHARAKA/COLOSSEUM 귀환을 뜻한다. 모두 Bern category만
+허용한다. 과거 PARTY_JOINED 입력은 reader 호환 범위로 남기되 새 저작은 GUIDE_STARTED다.
+SPACE_ENTER는 Bern의 owner player와 기존 Guide OBB의 outside→inside 전이로 판정한다.
+guideId → triggerId / boxId → promptId → text segments의 기존 JSON 저장 구조를 유지한다.
+
+수리 NPC npc.bern.src.31/48, 항구 shipwright.1/2와 harbormaster.1에 실제 Gameplay 배치
+좌표를 사용한다. 물 안내는 현재 mapwater가 참조하는 WATER01 mesh의 실제 authoring 배치
+[107.434014,35.9760303,-28.5882275]를 중심으로 준비한다. 해당 문구는 각각 수리·승선·
+생명의 나무 안내이며 발탄/쿠크 귀환 문구는 사용자 지정 원문을 저장한다.
+
+F1 Debug의 DimensionMaster Guide는 저장 대사·trigger를 선택하고 바닥을 한 번 picking해
+box 중심을 지정한다. half extents/yaw 조절과 화면 preview, stable ID 참조, Save/Publish의
+기존 CAS·원자 교체·실패 rollback을 재사용한다. Tool draft·디스크·게시본·Server 적용은 구분한다.
+
+Server guide 전용 계약에서 단일 actor/시작·종료/다른 사용자 선점 차단/인사/공간재진입/승선대기/용추종/실패보존/실제4인·solo
+raid귀환/PvP·섬귀환/disconnect를 검사한다. publisher는 신규 event·잘못된 world/category와
+동시 저장 보존을 검사한다. 최종 Debug/Release Product와 제품 UI 사용자 확인을 분리한다.

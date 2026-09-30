@@ -489,6 +489,7 @@ namespace Client
 			return m_PartyRoster;
 		}
 		const CReplicatedPlayerHealth& Get_PlayerHealth() const { return m_PlayerHealth; }
+		const LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE& Get_ColosseumMatchState() const { return m_ColosseumMatchState; }
 		LostArk::Shared::NET_ENTITY_ID Find_ItemTargetPlayerFromRay(
 			const float3_t& origin, const float3_t& direction) const;
 		/* Server-decided world sequence starts, in arrival order. The caller
@@ -797,6 +798,7 @@ namespace Client
 		bool m_hasPendingPartyInvite = false;
 		LostArk::Shared::S2C_PARTY_INVITE_RECEIVED m_PendingPartyInvite{};
 		LostArk::Shared::S2C_PARTY_ROSTER m_PartyRoster{};
+		LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE m_ColosseumMatchState{};
 		CReplicatedPlayerHealth m_PlayerHealth;
 		bool m_hasPendingPartyTransferResult = false;
 		LostArk::Shared::S2C_PARTY_TRANSFER_RESULT m_PendingPartyTransferResult{};

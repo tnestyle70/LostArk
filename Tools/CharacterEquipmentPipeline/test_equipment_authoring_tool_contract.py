@@ -327,9 +327,20 @@ class EquipmentAuthoringToolContractTests(unittest.TestCase):
             "Apply_DefaultEquipmentVisibility(occupiedSlotsMask)",
             self.character_cpp,
         )
-        # The body never draws hair; the class's hair part does.
+
+    def test_body_hair_policy_is_shared_by_spawn_and_committed_equipment(self):
+        # Spawn and committed equipment changes must share the fallback policy.
         self.assertIn("iBodyHairMeshMask", self.character_spec_h)
+        self.assertIn("bool_t isBodyHairFallback = false", self.character_spec_h)
         self.assertIn(
+            "bodyDesc.iHiddenMeshMask = ResolveBodyHiddenMeshMask(*m_pSpec, 0u)",
+            self.character_cpp,
+        )
+        self.assertIn(
+            "ResolveBodyHiddenMeshMask(*m_pSpec, occupiedSlotsMask)",
+            self.character_cpp,
+        )
+        self.assertNotIn(
             "m_pSpec->iBodyHiddenMeshMask | m_pSpec->iBodyHairMeshMask",
             self.character_cpp,
         )

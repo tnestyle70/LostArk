@@ -5,6 +5,7 @@
 #include "Gameplay/CombatCollisionContract.h"
 #include "Gameplay/WorldCollisionContract.h"
 #include "ServerCombatHitRuntime.h"
+#include "ColosseumCombatPolicy.h"
 
 #include <algorithm>
 #include <cmath>
@@ -218,6 +219,81 @@ namespace
 			target, incoming, outDamageEvents);
 	}
 
+    void ApplyColosseumPlayerHitDamage(
+        LostArk::Server::SERVER_PLAYER& target, LostArk::Server::SERVER_PLAYER& caster,
+        const LostArk::Server::PLAYER_SKILL_DEFINITION& skill,
+        const LostArk::Server::CGameplayCatalog& catalog,
+        const LostArk::Server::PLAYER_SKILL_HIT* hit,
+        const std::uint64_t wholeCastDamage, const std::uint32_t subHitTotal,
+        const std::uint32_t subHitIndex, const float sourceX, const float sourceZ,
+        const std::uint32_t serverTick,
+        const LostArk::Server::SERVER_COLOSSEUM_COMBAT_CONTEXT& context,
+        std::vector<LostArk::Shared::DAMAGE_EVENT>& events)
+    {
+        using namespace LostArk::Server;
+        using namespace LostArk::Shared;
+        if (!Is_ColosseumOpponent(context, caster, target) || (hit && !OwnsHealthDamage(*hit))) return;
+        const auto* damageProfile = catalog.Find_DamageProfile(skill.strDamageProfileId);
+        const bool barDamage = damageProfile && damageProfile->iBossHealthBarDamage;
+        if (barDamage && target.iColosseumDamageReferenceHp == 0u) return;
+        const bool artistT = skill.eCharacterClass == CHARACTER_CLASS_ID::ARTIST && skill.strInputSlot == "T";
+        std::uint64_t total = wholeCastDamage;
+        if (barDamage)
+        {
+            // Use the captured full HP, never four times the rounded quarter-HP pool.
+            const std::uint64_t scaled = std::uint64_t(target.iColosseumDamageReferenceHp) * damageProfile->iBossHealthBarDamage;
+            total = (std::min)((scaled + COLOSSEUM_DAMAGE_REFERENCE_HEALTH_BARS - 1u) / COLOSSEUM_DAMAGE_REFERENCE_HEALTH_BARS,
+                std::uint64_t((std::numeric_limits<std::uint32_t>::max)()));
+        }
+        // Scale the whole cast once, then preserve its exact cumulative sub-hit sum.
+        if (artistT) total /= 5u;
+        std::uint32_t damage = DamageOfSubHit(total, subHitTotal, subHitIndex, barDamage || artistT);
+        bool critical = false;
+        if (!barDamage && damage)
+        {
+            const auto* casterProfile = catalog.Find_Player(caster.eCharacterClass);
+            const auto* targetProfile = catalog.Find_Player(target.eCharacterClass);
+            const bool estherGuarded = serverTick < target.iEstherGuardEndTick;
+            damage = CServerBuffRuntime::Scale_Damage(damage,
+                CServerBuffRuntime::Damage_DealtPercent(catalog, caster.ActiveBuffs) +
+                CServerBuffRuntime::Damage_TakenPercent(catalog, target.ActiveBuffs) +
+                (estherGuarded ? target.iEstherGuardDamageTakenPercent : 0));
+            damage = RollDamageSpread(damage, DamageSpreadOf(catalog, skill.strDamageProfileId));
+            if (casterProfile && RollCriticalHit(casterProfile->iCriticalChancePercent))
+            {
+                critical = true;
+                damage = ScaleCriticalDamage(damage, casterProfile->iCriticalDamagePercent);
+            }
+            damage = CGameplayCatalog::Apply_Defense(damage, targetProfile ? targetProfile->iDefense : 0u);
+        }
+        SERVER_WORLD_TO_PLAYER_HIT incoming;
+        incoming.iRawDamage = damage;
+        incoming.iServerTick = serverTick;
+        incoming.fSourceX = sourceX; incoming.fSourceZ = sourceZ;
+        incoming.fPushRangeM = hit ? hit->fPushRange : 0.f;
+        incoming.iPushMs = hit ? hit->iPushMs : 0u;
+        incoming.bIgnoreDefense = true; // already resolved with the player-to-world order above
+        if (const auto* buffs = catalog.Find_SkillBuffs(skill.iSkillId))
+            for (const auto& buff : *buffs)
+                if (buff.eTarget == CGameplayCatalog::SKILL_BUFF_TARGET::ENEMY)
+                    incoming.iDownMs = (std::max)(incoming.iDownMs, buff.iStunMs);
+        incoming.bKnockdown = incoming.iDownMs != 0u;
+        if (skill.strInputSlot == "ALT_V" || skill.strInputSlot == "V")
+        {
+            // Arena policy mirrors published Saydon wind (logic119) / front wind (logic134).
+            // The raid definitions remain untouched; the arena boundary always contains the push.
+            const bool strong = skill.strInputSlot == "ALT_V";
+            incoming.fPushRangeM = strong ? 16.f : 5.1f;
+            incoming.iPushMs = strong ? 1500u : 2161u;
+            incoming.bForcePush = incoming.bPushBallistic = true;
+            incoming.bPushCanLeaveArena = false;
+        }
+        const SERVER_COLOSSEUM_RESOLVED_DAMAGE resolved{&context, &caster, critical};
+        const auto result = CServerCombatHitRuntime::Apply_WorldToPlayer(target, incoming, catalog, events, &resolved);
+        if (result == SERVER_COMBAT_HIT_RESULT::LANDED)
+            CServerBuffRuntime::Apply_ColosseumEnemyBuffs(catalog, skill.iSkillId, caster, target, serverTick, context);
+    }
+
 	LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ TargetBodyOf(
 		const LostArk::Server::CGameplayCatalog& catalog,
 		const LostArk::Server::SERVER_WORLD_ENTITY& entity)
@@ -285,6 +361,37 @@ namespace
 			return false;
 		}
 	}
+
+    std::vector<std::pair<float, LostArk::Server::SERVER_PLAYER*>> ColosseumTargets(
+        const LostArk::Server::SERVER_COLOSSEUM_COMBAT_CONTEXT* context,
+        const LostArk::Server::SERVER_PLAYER& caster,
+        const LostArk::Server::PLAYER_SKILL_HIT& hit,
+        const float x, const float y, const float z, const float forwardX, const float forwardZ)
+    {
+        using namespace LostArk::Server;
+        using namespace LostArk::Shared;
+        std::vector<std::pair<float, SERVER_PLAYER*>> result;
+        if (!context || !Is_ColosseumCombatParticipant(*context, caster)) return result;
+        const float height = hit.fHeight > 0.f ? hit.fHeight : WorldCollision::PLAYER_HALF_EXTENT_Y * 2.f;
+        for (SERVER_PLAYER* target : context->Players)
+        {
+            if (!target || !Is_ColosseumOpponent(*context, caster, *target)) continue;
+            const float targetBottom = target->fPositionY + WorldCollision::PLAYER_CENTER_OFFSET_Y -
+                WorldCollision::PLAYER_HALF_EXTENT_Y;
+            const float targetTop = targetBottom + WorldCollision::PLAYER_HALF_EXTENT_Y * 2.f;
+            if (targetTop < y || targetBottom > y + height ||
+                !Hit_ShapeOverlaps(hit, x, z, forwardX, forwardZ,
+                    {target->fPositionX, target->fPositionZ, WorldCollision::PLAYER_HALF_EXTENT_X})) continue;
+            const float dx = target->fPositionX - x, dz = target->fPositionZ - z;
+            result.emplace_back(dx * dx + dz * dz, target);
+        }
+        std::sort(result.begin(), result.end(), [](const auto& left, const auto& right)
+        {
+            return left.first < right.first || (left.first == right.first &&
+                left.second->iNetEntityId < right.second->iNetEntityId);
+        });
+        return result;
+    }
 
 	bool IsNewerSequence(
 		const std::uint32_t candidate,
@@ -845,7 +952,8 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 	const CGameplayCatalog& catalog,
 	const float fixedDeltaSeconds,
 	const std::uint32_t serverTick,
-	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
+    const SERVER_COLOSSEUM_COMBAT_CONTEXT* pPvPContext)
 {
 	using namespace LostArk::Shared;
 	for (std::size_t index = 0; index < player.Projectiles.size();)
@@ -948,6 +1056,33 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 					mark->fNextSeconds = projectile.fElapsedSeconds +
 						static_cast<float>(hit.Hit.iRepeatMs) * MILLISECONDS_TO_SECONDS;
 				}
+                // Player bodies share the projectile's contact ledger and repeat clock.
+                for (auto& [distanceSquared, target] : ColosseumTargets(pPvPContext, player,
+                    hit.Hit, projectile.fPositionX, projectile.fPositionY, projectile.fPositionZ,
+                    projectile.fDirectionX, projectile.fDirectionZ))
+                {
+                    auto mark = std::find_if(projectile.ContactMarks.begin(), projectile.ContactMarks.end(),
+                        [&](const auto& entry) { return entry.iNetEntityId == target->iNetEntityId && entry.iHitIndex == hitIndex; });
+                    if (mark == projectile.ContactMarks.end())
+                    {
+                        const auto count = std::count_if(projectile.ContactMarks.begin(), projectile.ContactMarks.end(),
+                            [&](const auto& entry) { return entry.iHitIndex == hitIndex; });
+                        if (hit.Hit.iMaxTargets && count >= hit.Hit.iMaxTargets) continue;
+                        SERVER_PROJECTILE_CONTACT_MARK fresh{};
+                        fresh.iNetEntityId = target->iNetEntityId;
+                        fresh.iHitIndex = static_cast<std::uint8_t>(hitIndex);
+                        projectile.ContactMarks.push_back(fresh);
+                        mark = projectile.ContactMarks.end() - 1;
+                    }
+                    if (mark->iAppliedCount >= hit.Hit.iRepeatCount ||
+                        projectile.fElapsedSeconds < mark->fNextSeconds) continue;
+                    ApplyColosseumPlayerHitDamage(*target, player, *skill, catalog, &hit.Hit,
+                        projectile.iTotalDamage, projectile.iSubHitTotal, subHitIndex + mark->iAppliedCount,
+                        projectile.fPositionX, projectile.fPositionZ, serverTick, *pPvPContext, outDamageEvents);
+                    ++mark->iAppliedCount;
+                    mark->fNextSeconds = projectile.fElapsedSeconds +
+                        static_cast<float>(hit.Hit.iRepeatMs) * MILLISECONDS_TO_SECONDS;
+                }
 				if (ownsDamage) subHitIndex += hit.Hit.iRepeatCount;
 				if (hit.Hit.iResultKind == 2u) staggerSubHitIndex += hit.Hit.iRepeatCount;
 				continue;
@@ -1004,6 +1139,16 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 						projectile.fDirectionX, projectile.fDirectionZ,
 						serverTick, outDamageEvents);
 				}
+                auto playerTargets = ColosseumTargets(pPvPContext, player, hit.Hit,
+                    projectile.fPositionX, projectile.fPositionY, projectile.fPositionZ,
+                    projectile.fDirectionX, projectile.fDirectionZ);
+                const std::size_t remainingTargets = hit.Hit.iMaxTargets ?
+                    hit.Hit.iMaxTargets - targets.size() : playerTargets.size();
+                if (playerTargets.size() > remainingTargets) playerTargets.resize(remainingTargets);
+                for (auto& [distanceSquared, target] : playerTargets)
+                    ApplyColosseumPlayerHitDamage(*target, player, *skill, catalog, &hit.Hit,
+                        projectile.iTotalDamage, projectile.iSubHitTotal, subHitIndex,
+                        projectile.fPositionX, projectile.fPositionZ, serverTick, *pPvPContext, outDamageEvents);
 			}
 		}
 		if (expired)
@@ -1116,7 +1261,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	const CServerCollisionSystem* collision,
 	const float fixedDeltaSeconds,
 	const std::uint32_t serverTick,
-	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents) const
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
+    const SERVER_COLOSSEUM_COMBAT_CONTEXT* pPvPContext) const
 {
 	using namespace LostArk::Shared;
 	if (PLAYER_ACTION_STATE::DEAD == player.eAction || 0u == player.iCurrentHp)
@@ -1145,7 +1291,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			Update_Identity(player, *identityProfile);
 	}
 	Update_Projectiles(player, worldEntities, catalog, fixedDeltaSeconds,
-		serverTick, outDamageEvents);
+		serverTick, outDamageEvents, pPvPContext);
 	if (PLAYER_ACTION_STATE::SKILL != player.eAction)
 	{
 		(void)serverTick;
@@ -1544,7 +1690,25 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 						subHitTotal, hit.iResultKind == 2u ? staggerSubHitIndex : subHitIndex);
 					player.HitWindowTargets.emplace_back(windowIndex, target->iNetEntityId);
 				}
-				if (!targets.empty())
+                auto playerTargets = ColosseumTargets(pPvPContext, player, hit, hitOriginX,
+                    player.hasSkillTarget ? player.fSkillTargetY : player.fPositionY, hitOriginZ,
+                    player.fSkillAimDirectionX, player.fSkillAimDirectionZ);
+                std::erase_if(playerTargets, [&](const auto& candidate)
+                {
+                    return std::any_of(player.HitWindowTargets.begin(), player.HitWindowTargets.end(),
+                        [&](const auto& entry) { return entry.first == windowIndex && entry.second == candidate.second->iNetEntityId; });
+                });
+                windowHits += targets.size();
+                const std::size_t remainingTargets = hit.iMaxTargets ? hit.iMaxTargets - windowHits : playerTargets.size();
+                if (playerTargets.size() > remainingTargets) playerTargets.resize(remainingTargets);
+                for (auto& [distanceSquared, target] : playerTargets)
+                {
+                    ApplyColosseumPlayerHitDamage(*target, player, *skill, catalog, &hit,
+                        totalDamage, subHitTotal, subHitIndex, hitOriginX, hitOriginZ,
+                        serverTick, *pPvPContext, outDamageEvents);
+                    player.HitWindowTargets.emplace_back(windowIndex, target->iNetEntityId);
+                }
+				if (!targets.empty() || !playerTargets.empty())
 					Gain_EmberGauge(player, catalog);
 			}
 		}
@@ -1584,7 +1748,18 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 				closestBoss = &entity;
 			}
 		}
-		if (nullptr != closestBoss)
+        PLAYER_SKILL_HIT fallbackShape{};
+        fallbackShape.iAreaType = 1u; fallbackShape.fRange = skill->fMaximumRange;
+        auto playerTargets = ColosseumTargets(pPvPContext, player, fallbackShape, hitOriginX,
+            player.hasSkillTarget ? player.fSkillTargetY : player.fPositionY, hitOriginZ,
+            player.fSkillAimDirectionX, player.fSkillAimDirectionZ);
+        if (!playerTargets.empty() && (!closestBoss || playerTargets.front().first < closestDistanceSquared))
+        {
+            ApplyColosseumPlayerHitDamage(*playerTargets.front().second, player, *skill, catalog, nullptr,
+                resolveRawDamage(), 1u, 0u, hitOriginX, hitOriginZ, serverTick, *pPvPContext, outDamageEvents);
+            Gain_EmberGauge(player, catalog);
+        }
+        else if (nullptr != closestBoss)
 		{
 			applyDamage(*closestBoss, resolveRawDamage(), nullptr, 1u, 0u);
 			Gain_EmberGauge(player, catalog);

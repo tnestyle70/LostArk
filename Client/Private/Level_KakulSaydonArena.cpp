@@ -1797,6 +1797,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			"[Level_KakulSaydonArena] Failed to apply replication event.\n");
 	}
 	CEstherActionSoundCueDocument::Update_SoundAudience();
+	m_PartyTransferNotice.Update_TransferNotice(m_Replication);
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
 	m_InteractKeyPrompt.Update(fTimeDelta, m_Replication.Get_LocalCharacter(),
 		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId(),
@@ -2104,7 +2105,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		else value.clockMs += fTimeDelta * 1000.f;
 		auto cueTargets = targets;
 		cueTargets.objectEmissionAnchor = value.emissionAnchor;
-		(void)value.player->Seek_AllToMs(value.clockMs, cueTargets);
+		(void)value.player->Seek_AllToMs(value.clockMs, cueTargets, false);
 		value.player->Update(0.f, cueTargets);
 		if (!value.player->Has_ActiveInstances()) cue = m_OwnedWorldCues.erase(cue);
 		else ++cue;

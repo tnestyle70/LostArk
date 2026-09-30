@@ -52,10 +52,9 @@ namespace
 	different content invalidates them. */
 	constexpr uint32_t COVERED_BY_ARMOUR = (1u << 1) | (1u << 2);
 
-	/* The hair this cooked body draws by itself (pc_ft_15_hair, submesh 0). Hidden now
-	that this class has cooked hairstyle sets (Character/GuardianKnight/Equipment/pc_dk_*_hair):
-	character creation wears one of them as a HEAD set, and a hair the body also draws would
-	show through it. The default outfit's helmet covers the head in the world. */
+	/* The body supplies pc_ft_15_hair at submesh 0 when no separate HEAD set is
+	worn. Keep its mask so a committed hairstyle replaces it without overlap;
+	this class has no default hair part to cover an uncustomized spawn. */
 	constexpr uint32_t BAKED_HAIR = (1u << 0);
 
 	/* The dragon form is a posture, not a weapon swap: the class stands and runs
@@ -204,6 +203,7 @@ const CHARACTER_SPEC Spec_GuardianKnight =
 	static_cast<uint32_t>(size(BoneChains)),
 
 	"DK",
+	true, // Preserve the body hairstyle until a HEAD replacement commits.
 };
 
 NS_END

@@ -153,6 +153,9 @@ namespace
 		case LOBBY_STAGE::CHARACTER_SELECT: return "Character Select";
 		case LOBBY_STAGE::BERN: return "Bern";
 		case LOBBY_STAGE::VALTAN: return "Valtan";
+		case LOBBY_STAGE::KOUKU_SAYDON: return "KoukuSaydon";
+		case LOBBY_STAGE::MAHARAKA: return "Maharaka";
+		case LOBBY_STAGE::COLOSSEUM: return "Colosseum";
 		default: return "Unknown";
 		}
 	}
@@ -165,6 +168,9 @@ namespace
 		case LOBBY_STAGE::CHARACTER_SELECT: return "character-select.server-entry";
 		case LOBBY_STAGE::BERN: return "character-select.enter-bern";
 		case LOBBY_STAGE::VALTAN: return "character-select.enter-valtan";
+		case LOBBY_STAGE::KOUKU_SAYDON: return "character-select.enter-koukusaydon";
+		case LOBBY_STAGE::MAHARAKA: return "character-select.enter-maharaka";
+		case LOBBY_STAGE::COLOSSEUM: return "character-select.enter-colosseum";
 		default: return nullptr;
 		}
 	}
@@ -494,7 +500,6 @@ HRESULT CLevel_CharacterSelect::Render()
 	if (!isClassListTextHidden)
 		Render_ClassListText();
 	Render_CreateCharacterProductInputHost();
-	Render_ProductStatus();
 	return S_OK;
 }
 
@@ -2378,6 +2383,8 @@ void CLevel_CharacterSelect::Remove_CustomizingCostume(
 		return;
 	}
 	m_CustomizingOutfit = std::move(selected);
+	if (m_pCustomizingView)
+		m_pCustomizingView->Reapply_HairControls(m_pActiveCharacter);
 	m_strStatus = "Costume removed";
 }
 
@@ -2430,6 +2437,8 @@ void CLevel_CharacterSelect::Wear_CustomizingSet(
 		return;
 	}
 	m_CustomizingOutfit = std::move(selected);
+	if (m_pCustomizingView)
+		m_pCustomizingView->Reapply_HairControls(m_pActiveCharacter);
 	m_strStatus = std::string(pWhat) + " applied: " + strSetId;
 }
 
@@ -2479,6 +2488,25 @@ void CLevel_CharacterSelect::Apply_CustomizingHair()
 	m_pCustomizingView->Configure_HairDefault(pSpec->pAssetName,
 		m_HairstyleDocument.Get_DefaultIndex(pSpec->pAssetName));
 	const int32_t iSelected = m_pCustomizingView->Get_SelectedHair();
+	if (-1 == iSelected && pSpec->isBodyHairFallback &&
+		-1 == m_HairstyleDocument.Get_DefaultIndex(pSpec->pAssetName))
+	{
+		/* The body is this class's default hairstyle. Remove only the explicit HEAD
+		selection; the costume remains part of the same equipment transaction. */
+		auto selected = m_CustomizingOutfit;
+		selected[ETOI(EQUIPMENT_SLOT_ID::HEAD)].clear();
+		std::string error;
+		if (!m_pEquipmentPresentation->Apply_Preview(
+			*m_pActiveCharacter, m_EquipmentCatalog, selected, error))
+		{
+			m_strStatus = "Default hair: " + error;
+			return;
+		}
+		m_CustomizingOutfit = std::move(selected);
+		m_pCustomizingView->Reapply_HairControls(m_pActiveCharacter);
+		m_strStatus = "Default body hair applied";
+		return;
+	}
 	if (nullptr == pSetIds || iSelected < 0 ||
 		static_cast<size_t>(iSelected) >= pSetIds->size())
 	{
@@ -2621,60 +2649,6 @@ void CLevel_CharacterSelect::Render_CustomizingText()
 {
 	if (nullptr != m_pCustomizingView)
 		m_pCustomizingView->Render_Text();
-}
-
-void CLevel_CharacterSelect::Render_ProductStatus()
-{
-	/* Release-only: in Debug the same text is already visible in the F1 selection panel.
-	Drawn with the LOA font like every other product label -- ImGui is Debug-tool-only, and
-	this is the one product screen element that used to draw through it in Release builds. */
-#ifndef _DEBUG
-	if (nullptr == m_pClassSelectView || m_isCreateCharacterModalOpen || Is_ClassCinematicActive() || m_strStatus.empty())
-		return;
-
-	f32_t fX = 300.f;
-	f32_t fY = 24.f;
-	f32_t fWidth = 600.f;
-	f32_t fHeight = 54.f;
-	f32_t fAuthoredX = 0.f, fAuthoredY = 0.f;
-	f32_t fAuthoredWidth = 0.f, fAuthoredHeight = 0.f;
-	if (m_pClassSelectView->Get_SlotRect(
-		"CharacterSelect_StatusText", fAuthoredX, fAuthoredY,
-		fAuthoredWidth, fAuthoredHeight) &&
-		std::isfinite(fAuthoredX) && std::isfinite(fAuthoredY) &&
-		std::isfinite(fAuthoredWidth) && std::isfinite(fAuthoredHeight) &&
-		fAuthoredWidth > 0.f && fAuthoredHeight > 0.f)
-	{
-		fX = fAuthoredX;
-		fY = fAuthoredY;
-		fWidth = fAuthoredWidth;
-		fHeight = fAuthoredHeight;
-	}
-	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
-	const f32_t fScaleX = vViewportSize.x / 1280.f;
-	const f32_t fScaleY = vViewportSize.y / 720.f;
-	const f32_t fUiScale = (std::min)(fScaleX, fScaleY);
-	/* The status strings are ASCII, so the byte-wise widen is exact. */
-	const wstring_t strStatusWide(m_strStatus.begin(), m_strStatus.end());
-	const float2_t vMeasured =
-		CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), strStatusWide.c_str());
-	if (vMeasured.y <= 0.f)
-		return;
-	f32_t fScale = (16.f / vMeasured.y) * fUiScale;
-	/* Draw_Text has no wrapping, so an over-long line shrinks to fit its authored width
-	instead of running past it the way the old AddText wrap would have folded it. */
-	const f32_t fMaxWidth = (fWidth - 16.f) * fScaleX;
-	if (vMeasured.x * fScale > fMaxWidth && vMeasured.x > 0.f)
-		fScale = fMaxWidth / vMeasured.x;
-	const float2_t vPos((fX + 8.f) * fScaleX, (fY + 6.f) * fScaleY);
-	CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strStatusWide.c_str(),
-		float2_t(vPos.x + 1.f, vPos.y + 1.f),
-		XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f, float2_t(0.f, 0.f), fScale);
-	CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strStatusWide.c_str(),
-		vPos,
-		XMVectorSet(1.f, 225.f / 255.f, 150.f / 255.f, 1.f), 0.f,
-		float2_t(0.f, 0.f), fScale);
-#endif
 }
 
 #ifdef _DEBUG

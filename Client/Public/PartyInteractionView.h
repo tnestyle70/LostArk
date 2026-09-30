@@ -40,6 +40,9 @@ public:
 		const std::vector<REPLICATED_PLAYER_VIEW>& OtherPlayers,
 		bool_t worldInteractionAllowed);
 	void Render(const std::shared_ptr<IPlayerCommandSink>& pCommandSink);
+	// Notice-only consumers need no popup initialization or gameplay input ownership.
+	void Update_TransferNotice(CClientReplication& Replication);
+	void Render_TransferNoticeText();
 	/* CGameInstance::Draw_Text submits immediately (SpriteBatch), but
 	   Render_InvitePopup's popup art composites later inside
 	   CImGuiLayer::EndFrame() -- same reason Level_Bern's Valtan-entry modal
@@ -57,6 +60,7 @@ private:
 	bool_t Update_ContextMenuTrigger(
 		const std::vector<REPLICATED_PLAYER_VIEW>& OtherPlayers,
 		const LostArk::Shared::S2C_PARTY_ROSTER& Roster,
+		const LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE& Match,
 		bool_t worldInteractionAllowed);
 	void Render_ContextMenu(
 		const std::shared_ptr<IPlayerCommandSink>& pCommandSink);
@@ -86,6 +90,11 @@ private:
 	LostArk::Shared::NET_ENTITY_ID m_iContextMenuTargetNetEntityId =
 		LostArk::Shared::INVALID_NET_ENTITY_ID;
 	std::string m_strContextMenuTargetNickname;
+	bool m_bContextMercenary = false;
+    bool m_bContextGuide = false;
+    bool m_bGuideStatusKnown = false, m_bGuideBusy = false, m_bGuideOwned = false;
+    float2_t m_ContextPanelSize{}, m_ContextButtonSize{};
+	std::uint64_t m_iContextMatchId = 0u;
 
 	bool_t m_isInvitePopupOpen = false;
 	bool_t m_hasInvitePopupJustOpened = false;

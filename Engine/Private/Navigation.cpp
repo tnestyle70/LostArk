@@ -426,6 +426,43 @@ bool_t CNavigation::Try_SampleWalkablePoint(
 	return std::isfinite(outPosition.y);
 }
 
+bool_t CNavigation::Is_GroundedSegmentContinuous(
+	fvector_t vFromPosition,
+	fvector_t vToPosition) const
+{
+	if (MODE::NAVGRID_ASTAR != m_eMode || nullptr == m_pNavGrid)
+		return false;
+	float3_t from{};
+	float3_t to{};
+	XMStoreFloat3(&from, vFromPosition);
+	XMStoreFloat3(&to, vToPosition);
+	if (!std::isfinite(from.x) || !std::isfinite(from.y) || !std::isfinite(from.z) ||
+		!std::isfinite(to.x) || !std::isfinite(to.y) || !std::isfinite(to.z))
+		return false;
+
+	const CNavigation* fromOwner = Select_Region(from.x, from.z, from.y);
+	const CNavigation* toOwner = Select_Region(to.x, to.z, to.y);
+	if (nullptr == fromOwner)
+		fromOwner = this;
+	if (nullptr == toOwner)
+		toOwner = this;
+	// A walkable upper floor does not prove a vertical transfer from another
+	// layer. Do not project either endpoint onto a different owner or height.
+	if (fromOwner != toOwner || nullptr == fromOwner->m_pNavGrid)
+		return false;
+
+	float3_t fromGround{};
+	float3_t toGround{};
+	constexpr f32_t GROUND_HEIGHT_TOLERANCE = 0.001f;
+	if (!fromOwner->Try_SampleWalkablePoint(vFromPosition, fromGround) ||
+		!fromOwner->Try_SampleWalkablePoint(vToPosition, toGround) ||
+		std::abs(from.y - fromGround.y) > GROUND_HEIGHT_TOLERANCE ||
+		std::abs(to.y - toGround.y) > GROUND_HEIGHT_TOLERANCE)
+		return false;
+	return fromOwner->m_pNavGrid->Is_SegmentWalkable(
+		vFromPosition, vToPosition, fromOwner->m_fMaxStepHeight);
+}
+
 bool_t CNavigation::Register_RuntimeBlocker(
 	const std::string& blockerId,
 	const vector<uint32_t>& cellIndices,

@@ -133,7 +133,9 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	player.strSpawnPlacementId = spawn->strPlacementId;
 	player.strRaidReturnNpcPlacementId = raidReturnNpcPlacementId;
 	player.fPositionY = spawn->fPositionY;
-	if (!spawnPlacementOverrideId.empty())
+	const std::uint16_t bernSquareHoleId = WORLD_ID::BERN == m_eWorldId ?
+		Resolve_BernSquareHoleId(spawnPlacementOverrideId) : 0u;
+	if (!spawnPlacementOverrideId.empty() && 0u == bernSquareHoleId)
 	{
 		/* An override names an NPC's own placement, not an authored player-standing
 		spot -- its exact point is often flush against a wall or counter (the NPC's
@@ -169,7 +171,17 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
 	player.Clear_KoukuInteractionState();
 	player.isCombatReady = WORLD_ID::VALTAN_ARENA != m_eWorldId;
-	if (m_ServerNavigation.Is_Loaded())
+	if (0u != bernSquareHoleId)
+	{
+		SERVER_NAV_POINT landing{};
+		if (!Resolve_SquareHoleDestination(player, bernSquareHoleId, landing))
+			return reject(SESSION_DIAGNOSTIC_REASON::SERVER_NAVIGATION_FAILED,
+				"Bern square hole failed authored landing admission");
+		player.fPositionX = landing.x;
+		player.fPositionY = landing.y;
+		player.fPositionZ = landing.z;
+	}
+	else if (m_ServerNavigation.Is_Loaded())
 	{
 		SERVER_NAV_POINT projected{};
 		if (!m_ServerNavigation.Project_Point(player.fPositionX, player.fPositionZ, projected,
@@ -182,7 +194,7 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	}
 	/* Coming back from Maharaka to the sea: the session boards the ship it left Bern on, with the pier it
 	   sailed from as its dock, exactly like a normal boarding. Without a record it stands on foot. */
-	if (WORLD_ID::BERN == m_eWorldId && !spawnPlacementOverrideId.empty())
+	if (WORLD_ID::BERN == m_eWorldId && !spawnPlacementOverrideId.empty() && 0u == bernSquareHoleId)
 	{
 		const auto shipIter = m_MaharakaShipReturnBySession.find(session->Get_SessionId());
 		if (shipIter != m_MaharakaShipReturnBySession.end() &&
@@ -196,7 +208,7 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 			player.fShipDockYawDegrees = shipIter->second.fDockYawDegrees;
 		}
 	}
-	if (!carriedInventory.empty())
+	if (!carriedInventory.empty() || 0u != bernSquareHoleId)
 	{
 		// A world transfer carrying the departing player's own live inventory
 		// (e.g. Handle_ReturnToBern) replaces the default fresh-entry grant
@@ -430,7 +442,8 @@ bool LostArk::Server::CGameRoom::Join(
 	const LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId,
 	const std::string& raidReturnNpcPlacementId,
 	const SERVER_PURSE& carriedPurse,
-	const SERVER_DURABILITY_STATE& carriedDurability)
+	const SERVER_DURABILITY_STATE& carriedDurability,
+	const LostArk::Shared::WORLD_ID sourceWorld)
 {
 	using namespace LostArk::Shared;
 
@@ -567,6 +580,7 @@ bool LostArk::Server::CGameRoom::Join(
 	}
 	Commit_PlayerEntry(entry);
 	outbound.Commit();
+	Resume_PersonalGuide(sessionId, sourceWorld);
 	Broadcast_Spawned(entry.Player, sessionId);
 	std::cout << "Player joined. World=" << static_cast<unsigned>(m_eWorldId)
 		<< ", SessionId=" << sessionId << ", PlayerId=" << entry.Player.iPlayerId
@@ -580,6 +594,11 @@ void LostArk::Server::CGameRoom::Leave(
 	const LostArk::Shared::PLAYER_DESPAWN_REASON reason, const bool publishDeparture)
 {
 	using namespace LostArk::Shared;
+
+	// Each new Client level owns a fresh Guide control request sequence.
+	m_GuideControlSequences.erase(sessionId);
+	if (reason == PLAYER_DESPAWN_REASON::LEVEL_CHANGED) Suspend_PersonalGuide(sessionId);
+	else Remove_Guide(sessionId, publishDeparture);
 
 	// A queued player who disconnects or moves on drops out of the Colosseum queue; the rest keep waiting.
 	std::erase_if(m_ColosseumQueue,

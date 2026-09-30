@@ -3131,6 +3131,36 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		S2C_COLOSSEUM_MATCH_FOUND& message);
 
+	// Persistent Colosseum authority; candidates exist as replicated players but
+	// only bParticipant rows may fight. A match owns two human/two mercenary seats per team.
+	enum class COLOSSEUM_MATCH_PHASE : std::uint8_t { RECRUITING, ACTIVE, FINISHED, END };
+	inline constexpr std::size_t MAX_COLOSSEUM_STATE_PLAYERS = 14;
+	inline constexpr std::uint8_t COLOSSEUM_NO_TEAM = 255u;
+	struct COLOSSEUM_MATCH_PLAYER_STATE
+	{
+		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
+		std::uint8_t iTeam = COLOSSEUM_NO_TEAM;
+		bool bParticipant = false;
+	};
+	struct C2S_COLOSSEUM_RECRUIT
+	{
+		std::uint32_t iRequestSequence = 0;
+		std::uint64_t iMatchId = 0;
+		NET_ENTITY_ID iMercenaryNetEntityId = INVALID_NET_ENTITY_ID;
+	};
+	struct S2C_COLOSSEUM_MATCH_STATE
+	{
+		std::uint64_t iMatchId = 0;
+		COLOSSEUM_MATCH_PHASE ePhase = COLOSSEUM_MATCH_PHASE::END;
+		std::uint8_t iWinnerTeam = COLOSSEUM_NO_TEAM;
+		std::uint32_t iRevision = 0;
+		std::vector<COLOSSEUM_MATCH_PLAYER_STATE> Players;
+	};
+	bool Write_Message(CPacketWriter& writer, const C2S_COLOSSEUM_RECRUIT& message);
+	bool Read_Message(CPacketReader& reader, C2S_COLOSSEUM_RECRUIT& message);
+	bool Write_Message(CPacketWriter& writer, const S2C_COLOSSEUM_MATCH_STATE& message);
+	bool Read_Message(CPacketReader& reader, S2C_COLOSSEUM_MATCH_STATE& message);
+
 	// Offered to the one session standing in an interact-gated trigger box, and
 	// withdrawn when it leaves. bAvailable false clears whatever the Client is
 	// showing; the placement id is carried both ways so a stale offer can never
@@ -3307,6 +3337,16 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		S2C_CHAT& message);
 
+    enum class GUIDE_CONTROL_ACTION : std::uint8_t { START, STOP, END };
+    struct C2S_GUIDE_CONTROL
+    {
+        std::uint32_t iRequestSequence = 0u;
+        NET_ENTITY_ID iGuideNetEntityId = INVALID_NET_ENTITY_ID;
+        GUIDE_CONTROL_ACTION eAction = GUIDE_CONTROL_ACTION::START;
+    };
+    bool Write_Message(CPacketWriter& writer, const C2S_GUIDE_CONTROL& message);
+    bool Read_Message(CPacketReader& reader, C2S_GUIDE_CONTROL& message);
+
 	// Authored dialogue is a server event, independent of player chat's byte limit.
 	inline constexpr std::size_t MAX_GUIDE_PROMPT_TEXT_BYTES = 512u;
 	struct S2C_GUIDE_PROMPT
@@ -3369,6 +3409,8 @@ namespace LostArk::Shared
 	{
 		VALTAN = 0,
 		KAKULSAYDON,
+		MAHARAKA,
+		MAHARAKA_RETURN,
 		END
 	};
 

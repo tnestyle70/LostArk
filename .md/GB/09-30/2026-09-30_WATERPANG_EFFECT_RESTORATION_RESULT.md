@@ -1,5 +1,8 @@
 # 워터팡 효과·AI 리소스 정리와 통합 인계
 
+> G00~G05는 9월30일 당시의 기록이다. 현재 Q 보완·codec 검증은 G06~G07,
+> 최신 GBResources2 전달과 최종 제품 빌드 대기 상태는 G08을 따른다.
+
 ## G00. 최종 상태와 작업 중단 범위
 
 사용자가 다른 통합 세션에서 merge/build를 진행한다고 지시하여 이 세션의 추가 빌드와
@@ -8,7 +11,7 @@
 통합 Product Build, 실제 경기 실행, Client 화면 검증은 완료로 기록하지 않는다.
 이 작업은 commit/push하지 않았다. 기존 다수 미커밋 변경을 보존했다.
 
-현재 기능 브랜치는 `codex/valtan-authoring-and-entry-20260930`이다.
+9월30일 당시 기능 브랜치는 `codex/valtan-authoring-and-entry-20260930`이었다.
 통합 세션은 tracked diff뿐 아니라 아래 신규 파일도 포함해야 한다.
 
 - `Client/Public/MaharakaAITool.h`, `Client/Private/MaharakaAITool.cpp`
@@ -134,3 +137,85 @@ typed command sink를 사용한다. Server가 revision CAS 및 범위를 검사�
 백업은 `out/WaterpangEffects20260930/restoration-install-backup`, `library/backup`,
 `npc-locomotion/install-backup`에 있다. 이전 문서 전체로 롤백하지 말고 최신 저장본과
 변경 필드를 비교해야 다른 세션의 편집을 보존할 수 있다.
+
+
+## G06. 10월1일 Q 세 갈래·provider·bubble 보완
+
+Q는 원본 MK2 action57002/Att4의 notify703.593ms에서 projectile570020 세 발을 생성한다.
+기존 gameplay skill56900과3초 cooldown을 유지하고 총구 offset은 owner basis의
+forward70/right20/up75cm 한 번만 적용한다. 각 ray의 yaw는0/+30/-30도이고 속도10m/s,
+최대거리3.3m다. R56930은 기존 단발10m/s·3m, W56910은 기존 수류탄식 비행과 착탄1회 폭발이다.
+MK2의 정지형 mine W를 사용자가 요청한 수류탄 W로 바꾸지 않았다.
+
+실제 로그의 Q flight codec 거부는 original ERM_None provider가 drawing source material을
+가지고 있던 원인이다. non-drawing provider의 shader를 effect.standard로 보존하고 source material을
+비활성화했다. Q.flight10/Q.hit9/Q.start4 emitter는 원본 source ID를 사용하며 기존39 particle
+resource를 hash 동일하게 재사용한다. 새 Q.start를 catalog/tree·Client prewarm·cast에 연결했고,
+Att4 shot 음원3 WAV를 Client Resources와 GBResources에 동일 hash로 설치했다.
+
+program5275는 실제 material의 ShaderObject byte268과 VS16~23을 추적한 전용 carrier 분기에서
+UV sin-wave normal 변형을 복원했다.16,632개 수치 비교의 최대오차0이며 cm→m를 한 번 적용한다.
+PS/material 성공을 VS 성공으로 대신했던 이전 미복원 항목은 소스·수치 단계까지 해소됐다.
+이 섹션은 이전 G05의 해당 미완료 소스 상태를 갱신하며 실제 GPU 화면 판정은 여전히 사용자 확인이다.
+
+증거는 out/WaterpangQFan20261001의 installation/product-validation/server-apply-receipt,
+audio/delivery-receipt 및 out/Waterpang5275Vertex20261001에 있다.
+현 단계 JSON/XML/resource/hash/재생성 검사는 통과했다. 최종 제품 빌드와 실제 codec·room 계약
+결과는 후속 검증 섹션에 기록한다. Client/UI는 에이전트가 실행하지 않았다.
+
+## G07. 실제 codec 및 Debug 빌드 추적 복구
+
+2026-10-01 정상 Debug Product가 완료된 현재 OBJ로 실제 CEffectDocumentCodec probe를 다시
+링크했다. Resource 경계12개와 Q flight/hit/start 및 provider fixture를 포함한5문서 검사는
+failures0, expected rejection1로 통과했다. 이전 Q의 non-drawing provider를 metadata 누락이
+아닌 원래 비표시 render mode 불일치로 거절하는 것도 확인했다.
+증거: out/WaterpangQFan20261001/native-debug/codec-recovered.log.
+
+이전 실패는 Debug Client의240개 OBJ가 PCH만 헤더 의존성으로 기록하여 오래된 재질 registry와
+class ABI를 재사용한 것이었다. manifest SHA를 확인한240개 OBJ만 out으로 백업·격리했다.
+소스·PCH·tlog·Release·shader timestamp를 변경하지 않고 정상 Product Build가240OBJ를 다시
+생성했다. 재검사에서 PCH-only 누락은 Debug0/Release0이며 데이터/validator 완화는 없었다.
+quarantine-receipt.json과 tracking-after-recovered-build.json에 전후 증거가 있다.
+Debug Product receipt는 20260930T184933055Z-debug-product.json, PASS다.
+이 검사는 GPU 물줄기·소리 출력 또는 사용자 화면 판정을 대신하지 않는다.
+
+## G08. Q 리소스 전달 재검증과 최신 제품 빌드 경계
+
+현재 효과 구성은 Q.start 추가 후 24개다. 최초 GBResources 정리에서 Q의 기존 source resource 39개를 다시 확인한 결과,
+`GBResources`에 없던 `fm_k_tornado_01.wmodel`과 텍스처 3개를 같은 Resources 상대 경로로
+추가했다. 이 4개는 Client 설치본을 그대로 전달했으며 원본 asset 생성·변경은 없다.
+기존 Att4 shot WAV 3개는 이미 동일하므로 다시 복사하지 않았다.
+
+| Q 후속 전달 범위 | 파일 수 | bytes | GBResources 처리 |
+|---|---:|---:|---|
+| 기존 source에서 재사용한 누락 mesh/texture | 4 | 603,164 | 신규 복사 |
+| Att4 shot WAV | 3 | 901,240 | 동일 hash 확인 후 건너뜀 |
+
+Q 후속 전달 7개와 재사용 의존성 39개 모두 Client 설치본·GBResources SHA-256이 일치한다.
+전체 통합 전달은 콜로세움 1,109개를 포함해 1,116개이며 신규 1,113개, 동일 3개,
+기존 파일 교체·삭제 0개다. 최초 전달 증거는
+`out/GuidePersonal20261001/resource-delivery/{preflight,delivery-manifest,delivery-summary}.json`이다.
+기존 G01의 626개는 당시 전달분이며 이 증분 수치로 과거 기록을 덮어쓰지 않는다.
+
+사용자가 최종 목적지를 `C:/Users/user/Desktop/GBResources2`로 지정하여 위 Q 후속 7개를
+그곳에 신규 추가했다. mesh/texture 4개 603,164 bytes와 WAV 3개 901,240 bytes,
+합계 1,504,404 bytes다. 기존 콜로세움 1,109개 / 411,358,322 bytes는 동일하여 건너뛰었다.
+선택한 총 1,116개 / 412,862,726 bytes는 모두 Client 설치본과 SHA-256이 일치하며,
+상이한 기존 파일 교체·백업과 삭제는 0개다. 기존 GBResources는 그대로 보존했다.
+Q 재사용 의존성 39개 중 이 증분의 4개 외 나머지 35개는 이미 업로드한 GBResources의
+동일 hash 기준분을 사용한다. 최종 전달 증거는
+`out/GuidePersonal20261001/resource-delivery/delivery-manifest-gbresources2.json` 및
+`delivery-summary-gbresources2.json`이다.
+
+G07의 실제 codec PASS와 04:43 KST의 이전 Debug·Release Product PASS는 확인된 검증이다.
+이후 최종 이동 수정·실패 알림 연결을 포함하는 최신 Product 빌드는 아직 대기 중이다.
+최신 전체 빌드 성공이나 Q 세 갈래 물줄기·W 폭발·음원의 GPU/사용자 화면 판정이 완료됐다고
+기록하지 않는다. 코드·Data/DataFiles는 저장소 변경을 함께 사용하고, 전달 폴더의
+`Effect`와 `Sound`는 팀 PC의 `Client/Bin/Resources` 아래 동일 경로에 반영한다.
+
+## G09. 최종 Q/W/R 제품 빌드
+
+이동 보완과 모든 최신 Client/Server 소스를 포함한 정상 Product Debug/Release가 모두 성공했다.
+앞선 EXE 잠금·최종 링크/제품 빌드 대기는 해소됐으며 실행 파일과 실제 로그는
+`../09-27/2026-09-27_GUIDE_AI_TOOL_IMPLEMENTATION_RESULT.md`의 G09에 기록했다.
+이 결과는 기존 기능별 검증을 대체하거나 실제 Client 화면·다인 플레이·성능 확인으로 확대하지 않는다.

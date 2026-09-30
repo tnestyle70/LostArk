@@ -227,6 +227,10 @@ namespace LostArk::Server
 			const LostArk::Shared::GameplayDataRevision& activeRevision,
 			std::string reason);
 		void Retire_QuiescentCharacterSelectArenas();
+		void Retire_QuiescentColosseumMatches();
+		bool Begin_ColosseumPreparation(const std::shared_ptr<CGameRoom>& source,
+			const SERVER_WORLD_TRANSFER_REQUEST& transfer);
+		void Advance_ColosseumPreparation();
 		void Handle_WorldTransfers(
 			const std::shared_ptr<CGameRoom>& sourceSimulation);
 		struct SESSION_WORLD_TRANSFER_FAILURE final
@@ -236,6 +240,7 @@ namespace LostArk::Server
 			int iNativeErrorCode = 0;
 			std::string strContext;
 			bool bRollbackCleanupRequired = false;
+			bool bSourcePreservedOnRejection = false;
 			bool bRollbackCleanupEnqueued = false;
 			LostArk::Shared::PARTY_TRANSFER_RESULT ePartyResult =
 				LostArk::Shared::PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE;
@@ -343,6 +348,21 @@ namespace LostArk::Server
 		std::unordered_map<
 			SESSION_ID,
 			std::shared_ptr<CGameRoom>> m_CharacterSelectArenas;
+		std::map<std::uint64_t, std::shared_ptr<CGameRoom>> m_ColosseumMatches;
+		std::uint64_t m_iNextColosseumMatchId = 1u;
+		struct COLOSSEUM_PREPARATION_RESULT final
+		{
+			std::shared_ptr<CGameRoom> Room;
+			std::string Status;
+			double ElapsedMilliseconds = 0.;
+		};
+		// Only the RoomThread owns the future; the worker captures immutable inputs
+		// and a cancellation flag, never this or live session/player containers.
+		std::future<COLOSSEUM_PREPARATION_RESULT> m_ColosseumPreparationWorker;
+		std::shared_ptr<std::atomic_bool> m_ColosseumPreparationCancelled;
+		std::shared_ptr<CGameRoom> m_ColosseumPreparationSource;
+		SERVER_WORLD_TRANSFER_REQUEST m_ColosseumPreparationTransfer;
+		std::shared_ptr<CGameRoom> m_PreparedColosseumRoom;
 		//실행 상태 - 여러 스레드가 읽고 쓰기 때문에 atomic을 사용한다.
 		std::atomic_bool m_isRunning{ false };
 		std::atomic<SESSION_ID> m_iNextSessionId{ 1 };

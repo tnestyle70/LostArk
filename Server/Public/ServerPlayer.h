@@ -181,6 +181,13 @@ namespace LostArk::Server
 		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
 			LostArk::Shared::CHARACTER_CLASS_ID::END;
 
+		// Authority exists only inside one private Colosseum match.
+		std::uint64_t iColosseumMatchId = 0u;
+		// Full 160-bar damage reference is pinned independently of the 40-bar HP pool.
+		std::uint32_t iColosseumDamageReferenceHp = 0u;
+		std::uint8_t iColosseumTeam = 255u;
+		bool bColosseumParticipant = false;
+		bool Is_ColosseumMercenary() const noexcept { return eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::COLOSSEUM_MERCENARY_AI; }
 		std::string strNickName;
 		// Character-creation voice type (1..8), carried like the nickname.
 		std::uint8_t iVoiceType = LostArk::Shared::MIN_VOICE_TYPE;
@@ -248,6 +255,8 @@ namespace LostArk::Server
 		// Safe arena revive point retained through the fall's below-floor death pose.
 		std::optional<std::array<float, 3u>> KoukuFallRevivePosition;
 		bool bKoukuFallDeath = false;
+		// Retained for this match after leaving the deck; cleared by the atomic match return.
+		bool bWaterpangParticipant = false;
 		// A push off the live Waterpang arena revives on the nearest jump box at the fall deadline.
 		bool bWaterpangFall = false;
 		// Last tick a Waterpang cannon jet struck this player; jets re-apply every 0.4 s.

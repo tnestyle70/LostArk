@@ -9,7 +9,14 @@
   UModel-glTF 주민의 position(x,z,y), root quaternion(-x,-z,-y,w), 나머지(x,z,y,w)을
   다른 ActorX 모델의 기본값으로 전파하지 않는다. 추가 clip 외 기존 section은 byte를 보존한다.
 - native deferred0·shader 컴파일을 원본 VS 변형·화면 성공으로 대신하지 않는다.
-  워터팡 program5275의 Q/W/R bubble 물결 변형은 별도 미복원 경계다.
+  워터팡 program5275의 bubble 변형은 원본 VS16~23의 UV·time·DynamicParameter와
+  normal 방향을 복원한 family7/group5248/profile5275 전용 경로다. CPU 동치 검증과
+  shader 컴파일은 실제 GPU 화면 검증과 구분한다. 다른 profile에 같은 변형을 전파하지 않는다.
+- ERM_None/Point처럼 원본에서 그리지 않는 provider emitter는 effect.standard와
+  disabled source material로 보존한다. 비어 있는 sourceMaterialSlots 배열을 기록하지 않는다.
+  codec load 실패를 발사/수명/카메라 문제로 단정하지 말고 EffectFailure 로그부터 확인한다.
+- 물총 Q의 MK2 3갈래는 같은 총구 원점에서 owner yaw에 0/+30/-30도를 더한다.
+  발사 offset을 회전한 각 ray에 다시 적용하거나 Speed와 MaxDistance 열을 바꾸지 않는다.
 
 ### Movie 카메라 기준 키와 정적 배경의 소유자
 
@@ -5662,3 +5669,92 @@ placement ID와 TRS가 일치해도 오래된 Landscape WModel의 축이 반대�
 큰 타일을256px로 베이크한 결과는 원본 반복 텍스처를 복원한 것이 아니다. 베른은 원본 grid×0.1, 중심 회전의 source scalar×3.1400001049, layer tiling을 사용한다. component 폭으로 나누거나 rotation을 degree로 해석하면 무늬 크기부터 달라진다. 단순 upsample·mip bias로 보정하지 않는다.
 
 actor의 Landscape material instance static key와 원본 ShaderCache PS/VF를 맞춘 뒤 layer별 paint/height blend, linear 색 공간, sample normal RG 및 Heightmap BA의 pixel basis를 함께 연결한다. diffuse와 normal의 height blend는 같다고 가정하지 않는다. source PS가 layercliff를 샘플하지 않으면 경사면에 별도 cliff layer를 만들지 않는다. 원본 weight/height의 subsection 중복 경계와 모든 mip, geometry hole을 보존한다. WARP의 constant-sample 수치 일치를 실제 공간 UV·화면 검증으로 확대하지 않는다.
+
+### 본체 헤어를 숨기기 전에 기본 대체 파츠를 확인한다
+
+새 hairstyle catalog 등록만으로 모든 캐릭터 생성 경로에 별도 헤어가 장착되지는 않는다.
+Guardian은 기본 파츠에 helmet만 있고 preview·직접 audition·저장 외형 없는 spawn은
+본체 hair submesh를 사용한다. iBodyHairMeshMask를 무조건 OR하면 파일에 정상 헤어가
+남아 있어도 대머리와 기존 머리 장식만 표시될 수 있다. CHARACTER_SPEC의
+isBodyHairFallback은 성공한 HEAD 교체가 있을 때만 본체 헤어를 숨기며 reset은 되살린다.
+기존 별도 기본 hair 파츠를 가진 class는 이전 숨김 정책을 유지한다. WModel 파손·교체와
+표시 mask 회귀를 구분하고, 실제 submesh/material 및 spawn·commit·실패 보존을 확인한다.
+생성창의 기본은 별도 경로다. hairstyle defaultBodyHair=true는 기존 index를 재정렬하지 않고
+-1로 본체 기본 머리를 유지한다. 원본 full outfit이 HEAD까지 점유하면 머리를 함께 제거하므로
+생성창은 HEAD 없는 torso variant를 참조한다. 저장 복원도 같은 문서를 사용하고 의상+머리를
+한 transaction으로 적용한다. 미선택 머리 색은 alpha -1이며 초기 zero 값을 검정 선택으로
+저장하지 않는다. 장비 재생성 뒤에는 실제로 선택한 색과 투톤만 다시 적용한다.
+
+
+### UE3 static mesh COLOR0와 배치별 static shadow
+
+- UModel glTF에 COLOR_0가 있다는 사실만으로 원본 vertex color의 존재를 확정하지 않는다.
+  native position/UV stream 다음 FStaticMeshColorStream의 count와 실제 bytes를 확인한다.
+  KR868/16의 빈 stream에서 생긴 임의 색은 제거하고 CMesh의 기존 white fallback을 사용한다.
+  실제 stream만 BGRA→RGBA로 연결하며 position/UV/basis/index/bounds/WMAT를 보존한다.
+- static shadow는 같은 RNM atlas pair의 같은 모델이라도 배치마다 다를 수 있다.
+  atlas뿐 아니라 light GUID/channel/penumbra/exponent까지 같은 경우에만 재질을 공유한다.
+  source shadow가 없는 배치를 별도로 구분해 다른 배치의 shadow를 상속시키지 않는다.
+- 재현 도구는 `restore_static_source_colors.py`, `build_map_static_shadow_variant_set.py`,
+  측정값과 남은 경계는 `10-01/2026-10-01_COLOSSEUM_MATERIAL_RESTORE_RESULT.md`를 따른다.
+
+
+### Local movement 보정의 총 이동량과 지면 높이 연속성
+
+- 잔여 위치 오차만 이동 속도로 줄여도 snapshot projection이 같은 방향으로 전진하면
+  합산 표시 속도는 두 배가 될 수 있다. 최종 XZ 이동량에 frame budget을 적용하고,
+  같은 시각의 재호출이 예산을 다시 소비하지 않게 한다. 서버 이동 중 오차를 줄이려면
+  작은 catch-up 여유가 필요하며1배 제한은 지연을 영구 유지할 수 있다.
+- 이동 불연속의 수평 속도 한계와 navigation이 허용하는 계단 높이를 혼동하지 않는다.
+  XZ 한계 안의 수직 변화만 실제 같은 grid/layer의 양끝 지면과 segment walkability로
+  증명한다. 다른 층·공중·막힌 구간·수평 teleport는 완화하지 않는다. 전체3D threshold를
+  높이거나 Y를 무조건 무시하는 방식으로 수정하지 않는다.
+- ACK를 적용하는 wall 시각에서 이전 frame의 visual pose 보정을 다시 시작하면
+  Object→Level 사이 처리 시간만큼 표시 시간이 사라져 가감속을 반복할 수 있다.
+  freshness·수신 관측은 wall clock, projection·보정은 Engine delta를 한 번씩 누적하는 frame clock을
+  사용한다. min(Engine delta, Object 호출 wall 간격)도 호출 위상 jitter에서 시간을 잃는다.
+  ACK 즉시 조회와 같은 frame 재호출은 위치·presentation 시간을 추가 소비하지 않는다.
+- MOVE ACK RTT를 매번 projection lead에 넣거나 재클릭마다 경로·보정 시간을 초기화하면
+  입력 빈도가 표시 속도를 바꾼다. command ACK와 path 수명, Server tick/수신 clock,
+  frame당 한 번 소비하는 이동·보정을 분리한다. 같은 직선의 다른 거리 목표와 수신 gap도 검사한다.
+- 40/60FPS에서 최신 snapshot의 음수 age를 0으로 자르면 30Hz 수신 위상이 목표 위치를 흔든다.
+  같은 Server 시점의 sample로 비교하고, 각 클릭·ACK 전후 frame과 steady 절대 속도를 함께
+  검사한다. single과 연타가 같은 잘못된 가감속을 반복하는 경우를 동등성만으로 통과시키지 않는다.
+- known Server corner의 sample만 polyline으로 만들어도 visual→최신 waypoint 기본 이동과
+  residual이 코너 안쪽을 가를 수 있다. 실제 지난 이전 waypoint를 먼저 소비하고, 새 경로의
+  fast ACK에는 cached corner를 폐기한다. 새 입력 후 local frame이 없는 ACK도 별도로 검사한다.
+- 프레임 순서는 Character Update → Level replication → Controller 입력이다.
+  평균 FPS만 같게 만든 fixture와 실제 입력 순간의 GPU readback stall을 구분한다.
+  숫자 재현·컴파일과 사용자의 최종 화면 재현을 별도 기록한다.
+
+### 워터팡 종료와 snapshot의 latest-cast 쌍
+
+- 물총 `iWaterGunSkillId`와 `iWaterGunCastTick`은 둘 다0이거나 둘 다 유효해야 한다.
+  종료 때 ID만 지우면 Shared writer가 방 전체 snapshot을 거부한다. Client 입력·클릭 효과와
+  Server tick이 살아 있어도 위치가 마지막 snapshot에 멈출 수 있으므로 먼저 encode 실패와
+  cast 쌍을 대조한다. navigation 데이터를 지우거나 Client transform으로 우회하지 않는다.
+- 종료는 최초 admission spawn의 전원 착지를 먼저 준비하고 participant 상태·물총·낙사·
+  발사대를 함께 정리한다. deck 밖으로 떨어진 사람도 참가자로 기억하며 일반 방문자는 제외한다.
+  intro 저장값뿐 아니라 trigger의 sequence 활성화도 해제해야 같은 방에서 재입장할 수 있다.
+- 실제 인간 발사 → 종료 tick → 모든 session의 snapshot decode → 이동 → G 재입장과
+  다음 intro/AI 생성까지 확인한다. 단순 AI 제거 개수만으로 종료 성공을 판정하지 않는다.
+
+### GPU 최적화에서 실제 texture fetch와 scene-color 소비 순서
+
+- HLSL 삼항식은 OFF 재질에서도 sample 후 선택으로 컴파일될 수 있다. 재질 공통 flag에만
+  명시 분기를 적용하고 실제 FXC DXBC를 검사한다. ON 수식·OFF fallback·sampler를 보존해도
+  GPU 시간 개선과 최종 화면 확인은 사용자 캡처 전 확정하지 않는다.
+- Effect의 초기 scene snapshot을 없앨 때 모든 live 소비 전에 occurrence refresh가 있는지
+  확인한다. Map/World 요청과 HDR/Bloom pair는 별도이며 frozen capture는 실제 source target을
+  사용한다. Bloom OFF만 보고 native PS의 추가 평가를 지우면 scene 입력에 따른 clip/coverage가
+  달라질 수 있다. 맵 draw 수가 줄었는데 Blend GPU 시간이 늘어난 캡처를 mesh 과다로 단정하지 않는다.
+
+### WORLD 외부 시계의 연속 샘플과 Sound 재생성
+
+쿠크처럼 Server 시각을 매 frame WORLD에 전달할 때는 Seek_AllToMs의 continuous
+호출을 사용한다. 기본 discontinuous scrub으로 샘플하면 Apply_Sounds가 이미 재생 중인
+soundTracks 채널을 frame마다 Stop/Play하여 정상 WAV도 끊겨 들린다. 최초 catch-up과
+명시 scrub은 기존 seek를 유지하고, 실제 연속 재생·역방향·큰 시각 이동을 각각 검사한다.
+Composition SOUND와 WORLD soundTracks는 소비자가 다르므로 한쪽이 정상이어도 다른
+쪽의 채널 수명은 따로 추적한다. 원본 WAV 실청, 채널 재생 횟수, Client 최종 실청은
+구분한다. 수정·수치 근거는 09-26 KOUKU_PLAYTEST_RECOVERY RESULT의 G15 후속에 둔다.

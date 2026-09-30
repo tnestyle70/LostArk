@@ -23,6 +23,28 @@
 
 namespace
 {
+    bool Can_Recruit(const LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE& match,
+        const std::vector<Client::REPLICATED_PLAYER_VIEW>& players,
+        const LostArk::Shared::NET_ENTITY_ID target)
+    {
+        using namespace LostArk::Shared;
+        if (!match.iMatchId || match.ePhase != COLOSSEUM_MATCH_PHASE::RECRUITING) return false;
+        const auto local = std::find_if(players.begin(), players.end(), [](const auto& player) { return player.isLocal; });
+        const auto mercenary = std::find_if(players.begin(), players.end(),
+            [target](const auto& player) { return player.iNetEntityId == target; });
+        if (local == players.end() || mercenary == players.end() ||
+            mercenary->eControlKind != PLAYER_CONTROL_KIND::COLOSSEUM_MERCENARY_AI) return false;
+        const auto own = std::find_if(match.Players.begin(), match.Players.end(),
+            [&](const auto& row) { return row.iNetEntityId == local->iNetEntityId; });
+        const auto candidate = std::find_if(match.Players.begin(), match.Players.end(),
+            [target](const auto& row) { return row.iNetEntityId == target; });
+        if (own == match.Players.end() || candidate == match.Players.end() ||
+            !own->bParticipant || candidate->bParticipant || candidate->iTeam != own->iTeam) return false;
+        return std::count_if(match.Players.begin(), match.Players.end(),
+            [&](const auto& row) { return row.iTeam == own->iTeam && row.bParticipant; }) < 4;
+    }
+
+
 	/* Same MultiByteToWideChar pattern as Level_ValtanArena.cpp's own file-local
 	   ConvertUtf8ToWide (this project already has that conversion duplicated per-file rather
 	   than shared, e.g. WorldPlayerNameplateView.cpp's own Try_ConvertUtf8) -- for
@@ -84,6 +106,8 @@ void Client::CPartyInteractionView::Initialize(
 	{
 		m_fContextMenuHighlightOffsetX = fHighlightX - fPanelX;
 		m_fContextMenuHighlightOffsetY = fHighlightY - fPanelY;
+        m_ContextPanelSize = {fPanelW, fPanelH};
+        m_ContextButtonSize = {fHighlightW, fHighlightH};
 	}
 
 	/* Same first-draw-invisible issue CLevel_Bern's Valtan-entry popup had --
@@ -103,14 +127,7 @@ bool_t Client::CPartyInteractionView::Update(
 	const bool_t worldInteractionAllowed)
 {
 	UNREFERENCED_PARAMETER(pCommandSink);
-	LostArk::Shared::S2C_PARTY_TRANSFER_RESULT transferResult{};
-	if (Replication.Try_Consume_PartyTransferResult(transferResult))
-	{
-		const wchar_t* notice = Get_PartyTransferFailureText(transferResult.eResult);
-		m_strTransferFailureNotice = nullptr != notice ? notice : L"";
-		m_TransferNoticeExpiresAt = std::chrono::steady_clock::now() +
-			std::chrono::seconds(8);
-	}
+	Update_TransferNotice(Replication);
 
 	LostArk::Shared::S2C_PARTY_INVITE_RECEIVED received{};
 	if (Replication.Try_Consume_PartyInviteReceived(received))
@@ -124,13 +141,48 @@ bool_t Client::CPartyInteractionView::Update(
 		CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
 	}
 
-	(void)Update_ContextMenuTrigger(OtherPlayers, Replication.Get_PartyRoster(), worldInteractionAllowed);
+    const auto& match = Replication.Get_ColosseumMatchState();
+    if (m_hasContextMenuTarget && m_bContextMercenary &&
+        (m_iContextMatchId != match.iMatchId || !Can_Recruit(match, OtherPlayers, m_iContextMenuTargetNetEntityId)))
+    {
+        m_hasContextMenuTarget = false;
+        m_pContextMenuView->Set_SlotVisible("PartyContextMenu_Panel", false);
+        m_pContextMenuView->Set_SlotVisible("PartyContextMenu_HoverHighlight", false);
+    }
+	(void)Update_ContextMenuTrigger(OtherPlayers, Replication.Get_PartyRoster(), match, worldInteractionAllowed);
+    m_bGuideStatusKnown = m_bGuideBusy = m_bGuideOwned = false;
+    if (m_hasContextMenuTarget && m_bContextGuide)
+    {
+        const auto* state = Replication.Get_GuideState();
+        const auto local = std::find_if(OtherPlayers.begin(), OtherPlayers.end(),
+            [](const REPLICATED_PLAYER_VIEW& player) { return player.isLocal; });
+        m_bGuideStatusKnown = state && state->iGuideNetEntityId == m_iContextMenuTargetNetEntityId;
+        if (m_bGuideStatusKnown)
+        {
+            m_bGuideBusy = state->iOwnerNetEntityId != LostArk::Shared::INVALID_NET_ENTITY_ID;
+            m_bGuideOwned = m_bGuideBusy && local != OtherPlayers.end() &&
+                state->iOwnerNetEntityId == local->iNetEntityId;
+        }
+    }
 	return m_hasContextMenuTarget || m_isInvitePopupOpen;
+}
+
+void Client::CPartyInteractionView::Update_TransferNotice(CClientReplication& Replication)
+{
+	LostArk::Shared::S2C_PARTY_TRANSFER_RESULT transferResult{};
+	if (Replication.Try_Consume_PartyTransferResult(transferResult))
+	{
+		const wchar_t* notice = Get_PartyTransferFailureText(transferResult.eResult);
+		m_strTransferFailureNotice = nullptr != notice ? notice : L"";
+		m_TransferNoticeExpiresAt = std::chrono::steady_clock::now() +
+			std::chrono::seconds(8);
+	}
 }
 
 bool_t Client::CPartyInteractionView::Update_ContextMenuTrigger(
 	const std::vector<REPLICATED_PLAYER_VIEW>& OtherPlayers,
 	const LostArk::Shared::S2C_PARTY_ROSTER& Roster,
+	const LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE& Match,
 	const bool_t worldInteractionAllowed)
 {
 	const bool_t isRightMouseDown =
@@ -160,6 +212,12 @@ bool_t Client::CPartyInteractionView::Update_ContextMenuTrigger(
 	{
 		if (player.isLocal)
 			continue;
+        if (Match.iMatchId)
+        {
+            if (!Can_Recruit(Match, OtherPlayers, player.iNetEntityId)) continue;
+        }
+        else if (player.eControlKind != LostArk::Shared::PLAYER_CONTROL_KIND::HUMAN &&
+            player.eControlKind != LostArk::Shared::PLAYER_CONTROL_KIND::GUIDE_AI) continue;
 		/* The menu's only item is the invite: someone already in this party has nothing to
 		   be offered, so the right-click falls through as if it hit no one. */
 		const bool_t bAlreadyMember = std::any_of(Roster.Members.begin(), Roster.Members.end(),
@@ -220,17 +278,25 @@ bool_t Client::CPartyInteractionView::Update_ContextMenuTrigger(
 	m_fContextMenuScreenX = static_cast<f32_t>(cursor.x) * (fResolutionWidth / vViewportSize.x);
 	m_fContextMenuScreenY = static_cast<f32_t>(cursor.y) * (fResolutionHeight / vViewportSize.y);
 
-	m_pContextMenuView->Set_SlotPosition(
-		"PartyContextMenu_Panel", m_fContextMenuScreenX, m_fContextMenuScreenY);
-	m_pContextMenuView->Set_SlotPosition(
-		"PartyContextMenu_HoverHighlight",
-		m_fContextMenuScreenX + m_fContextMenuHighlightOffsetX,
-		m_fContextMenuScreenY + m_fContextMenuHighlightOffsetY);
+    m_bContextGuide = pHit->eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::GUIDE_AI;
+    const f32_t panelWidth = m_bContextGuide ? (std::max)(320.f, m_ContextPanelSize.x) : m_ContextPanelSize.x;
+    const f32_t buttonWidth = m_bContextGuide ? (std::max)(320.f, m_ContextButtonSize.x) : m_ContextButtonSize.x;
+    m_fContextMenuScreenX = (std::max)(0.f, (std::min)(m_fContextMenuScreenX,
+        fResolutionWidth - (std::max)(panelWidth, buttonWidth + m_fContextMenuHighlightOffsetX)));
+    m_fContextMenuScreenY = (std::max)(0.f, (std::min)(m_fContextMenuScreenY,
+        fResolutionHeight - (std::max)(m_ContextPanelSize.y, m_ContextButtonSize.y + m_fContextMenuHighlightOffsetY)));
+    m_pContextMenuView->Set_SlotRect("PartyContextMenu_Panel", m_fContextMenuScreenX,
+        m_fContextMenuScreenY, panelWidth, m_ContextPanelSize.y);
+    m_pContextMenuView->Set_SlotRect("PartyContextMenu_HoverHighlight",
+        m_fContextMenuScreenX + m_fContextMenuHighlightOffsetX,
+        m_fContextMenuScreenY + m_fContextMenuHighlightOffsetY, buttonWidth, m_ContextButtonSize.y);
 	m_pContextMenuView->Set_SlotVisible("PartyContextMenu_Panel", true);
 	m_pContextMenuView->Set_SlotVisible("PartyContextMenu_HoverHighlight", true);
 
 	m_iContextMenuTargetNetEntityId = pHit->iNetEntityId;
 	m_strContextMenuTargetNickname = pHit->strNickname;
+	m_bContextMercenary = pHit->eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::COLOSSEUM_MERCENARY_AI;
+	m_iContextMatchId = m_bContextMercenary ? Match.iMatchId : 0u;
 	m_hasContextMenuTarget = true;
 	m_hasContextMenuJustOpened = true;
 	return true;
@@ -295,6 +361,8 @@ void Client::CPartyInteractionView::Render_ContextMenu(
 			float4_t(1.f, 1.f, 1.f, 1.f) :
 			float4_t(210.f / 255.f, 210.f / 255.f, 210.f / 255.f, 1.f));
 
+    const bool guideDisabled = m_bContextGuide && (!m_bGuideStatusKnown || (m_bGuideBusy && !m_bGuideOwned));
+    if (guideDisabled) m_pContextMenuView->Set_SlotTint("PartyContextMenu_HoverHighlight", float4_t(.5f,.5f,.5f,1.f));
 	bool_t closeMenu = false;
 	if (isButtonHovered)
 	{
@@ -302,12 +370,24 @@ void Client::CPartyInteractionView::Render_ContextMenu(
 		   claims the mouse for this frame regardless of whether the click edge fires too --
 		   the menu keeps owning input while the cursor sits over its button. */
 		if (Router.Is_Clicked(
-				fButtonX, fButtonY, fButtonW, fButtonH, fResolutionWidth, fResolutionHeight))
+				fButtonX, fButtonY, fButtonW, fButtonH, fResolutionWidth, fResolutionHeight) && !guideDisabled)
 		{
 			if (nullptr != pCommandSink)
 			{
-				pCommandSink->Request_PartyInvite(
-					m_iNextRequestSequence++, m_iContextMenuTargetNetEntityId);
+                if (m_bContextGuide)
+                {
+                    LostArk::Shared::C2S_GUIDE_CONTROL request;
+                    request.iRequestSequence = m_iNextRequestSequence++;
+                    request.iGuideNetEntityId = m_iContextMenuTargetNetEntityId;
+                    request.eAction = m_bGuideOwned ? LostArk::Shared::GUIDE_CONTROL_ACTION::STOP :
+                        LostArk::Shared::GUIDE_CONTROL_ACTION::START;
+                    pCommandSink->Request_GuideControl(request);
+                }
+                else if (m_bContextMercenary)
+                    pCommandSink->Request_ColosseumRecruit(
+                        m_iNextRequestSequence++, m_iContextMatchId, m_iContextMenuTargetNetEntityId);
+                else pCommandSink->Request_PartyInvite(
+                    m_iNextRequestSequence++, m_iContextMenuTargetNetEntityId);
 			}
 			CMainApp::Play_UIButtonClickSound();
 			closeMenu = true;
@@ -431,7 +511,7 @@ void Client::CPartyInteractionView::Render_InvitePopup(
 	}
 }
 
-void Client::CPartyInteractionView::Render_InvitePopupText()
+void Client::CPartyInteractionView::Render_TransferNoticeText()
 {
 	if (!m_strTransferFailureNotice.empty() &&
 		std::chrono::steady_clock::now() < m_TransferNoticeExpiresAt)
@@ -441,6 +521,11 @@ void Client::CPartyInteractionView::Render_InvitePopupText()
 			m_strTransferFailureNotice.c_str(), float2_t(viewport.x * 0.5f, viewport.y * 0.2f),
 			Colors::Orange, 0.f, float2_t(0.5f, 0.5f), viewport.y / 1080.f);
 	}
+}
+
+void Client::CPartyInteractionView::Render_InvitePopupText()
+{
+	Render_TransferNoticeText();
 	if (!m_isInvitePopupOpen || nullptr == m_pInviteView)
 		return;
 
@@ -541,9 +626,11 @@ void Client::CPartyInteractionView::Render_ContextMenuText()
 	}
 
 	// "파티초대"
-	constexpr wchar_t INVITE_LABEL[] =
-		L"\xD30C\xD2F0\xCD08\xB300";
+	const wchar_t* INVITE_LABEL = m_bContextGuide
+        ? (!m_bGuideStatusKnown ? L"\uAC00\uC774\uB4DC - \uC0C1\uD0DC \uD655\uC778 \uC911" : m_bGuideOwned ? L"\uAC00\uC774\uB4DC - \uC548\uB0B4 \uC885\uB8CC" :
+            m_bGuideBusy ? L"\uAC00\uC774\uB4DC - \uB2E4\uB978 \uD50C\uB808\uC774\uC5B4 \uC548\uB0B4 \uC911" : L"\uAC00\uC774\uB4DC - \uCC28\uC6D0\uC220\uC0AC \uC548\uB0B4 \uC2DC\uC791")
+        : m_bContextMercenary ? L"\xC6A9\xBCD1 \xCD08\xB300" : L"\xD30C\xD2F0\xCD08\xB300";
 	(void)UILabelFont::Draw_Centered(TEXT("Font_YoonGasiIIM"), INVITE_LABEL,
 		(fButtonX + fButtonW * 0.5f) * textScaleX, (fButtonY + fButtonH * 0.5f) * textScaleY,
-		fButtonH * 0.5f * textUiScale, Colors::White);
+		fButtonH * 0.5f * textUiScale, Colors::White, (fButtonW - 12.f) * textScaleX);
 }

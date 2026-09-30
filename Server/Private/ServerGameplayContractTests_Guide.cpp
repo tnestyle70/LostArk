@@ -1,9 +1,12 @@
 #include "ServerGameplayContractTests_Runner.h"
 #include "GameRoom.h"
+#include "ServerApp.h"
 #include "ClientSession.h"
+#include "Network/PacketReader.h"
 #include <algorithm>
 #include <memory>
 #include <cmath>
+#include <array>
 
 using namespace LostArk::Server;
 using namespace LostArk::Shared;
@@ -11,79 +14,309 @@ using namespace LostArk::Shared;
 int CServerGameplayContractRunner::Run_GuideAI()
 {
  TESTS tests;
- auto source=std::make_unique<CGameRoom>(WORLD_ID::BERN);
- auto target=std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+ auto source=std::make_shared<CGameRoom>(WORLD_ID::BERN);
+ auto target=std::make_shared<CGameRoom>(WORLD_ID::VALTAN_ARENA);
  tests.Require(source->Is_Ready()&&target->Is_Ready()&&source->m_GuideCatalog.Loaded&&target->m_GuideCatalog.Loaded,"Guide published catalogs load in Bern and Valtan");
  if(!source->Is_Ready()||!target->Is_Ready()||!source->m_GuideCatalog.Loaded||!source->m_iGuideReceptionId)return 1;
  const auto reception=source->m_Players.at(source->m_iGuideReceptionId);
- tests.Require(reception.Is_Guide()&&!reception.isCombatReady&&reception.iSessionId==INVALID_SESSION_ID&&source->Count_HumanPlayers()==0,"Reception guide has no fake session or human slot");
+ const auto guideId=reception.iPlayerId;
+ tests.Require(reception.Is_Guide()&&!reception.isCombatReady&&reception.iSessionId==INVALID_SESSION_ID&&source->Count_HumanPlayers()==0,"One placed guide has no fake session or human slot");
+ tests.Require(std::none_of(target->m_Players.begin(),target->m_Players.end(),[](const auto& p){return p.second.Is_Guide();}),"A raid room contains no guide actor");
  std::vector<std::shared_ptr<CClientSession>> sessions;
  auto drain=[&](){for(auto& session:sessions){session->m_OutboundFrames.clear();session->m_iQueuedOutboundBytes=0;session->m_OutboundMetrics.iCurrentQueuedByteCount=0;session->m_OutboundMetrics.iCurrentQueuedFrameCount=0;}};
+ auto hasFrame=[](const auto& session,PACKET_TYPE type){return std::any_of(session->m_OutboundFrames.begin(),session->m_OutboundFrames.end(),[&](const auto& f){return f.ePacketType==type;});};
+ auto lastState=[](const auto& session){S2C_GUIDE_STATE result;for(const auto& frame:session->m_OutboundFrames)if(frame.ePacketType==PACKET_TYPE::S2C_GUIDE_STATE){CPacketReader reader{std::span<const std::uint8_t>(frame.Bytes).subspan(PACKET_HEADER_BYTES)};(void)Read_Message(reader,result);}return result;};
  bool joined=true;
  for(unsigned i=0;i<4;++i){auto session=std::make_shared<CClientSession>(99101u+i,INVALID_SOCKET,CClientSession::FRAME_HANDLER{},CClientSession::CLOSED_HANDLER{});session->m_isSendRunning.store(true);source->Handle_Register(session);C2S_ENTER_WORLD enter;enter.eWorldId=WORLD_ID::BERN;enter.eCharacterClass=CHARACTER_CLASS_ID::DIMENSIONMASTER;enter.strNickName="GuideContract"+std::to_string(i);joined=source->Join(session->Get_SessionId(),enter)&&joined;sessions.push_back(session);drain();}
- tests.Require(joined&&source->Count_HumanPlayers()==4,"Four human admissions remain available beside the reception guide");
+ tests.Require(joined&&source->Count_HumanPlayers()==4,"Four human admissions remain available beside the single guide");
  if(!joined)return 1;
  auto& leader=source->m_Players.at(sessions[0]->Get_PlayerId());
- for(unsigned i=1;i<4;++i){C2S_PARTY_INVITE invite;invite.iTargetNetEntityId=source->m_Players.at(sessions[i]->Get_PlayerId()).iNetEntityId;source->Handle_PartyInvite(leader.iSessionId,invite);C2S_PARTY_INVITE_RESPOND answer;answer.iFromNetEntityId=leader.iNetEntityId;answer.bAccepted=true;source->Handle_PartyInviteRespond(sessions[i]->Get_SessionId(),answer);drain();}
- C2S_PARTY_INVITE invitation;invitation.iTargetNetEntityId=reception.iNetEntityId;source->Handle_PartyInvite(leader.iSessionId,invitation);
- tests.Require(source->m_Guides.size()==1&&source->m_PartyMembersByPartyId.begin()->second.size()==4&&source->Count_HumanPlayers()==4,"Guide invitation auto accepts without consuming any of four human party slots");
- if(source->m_Guides.empty())return 1;
- const auto partyId=source->m_Guides.begin()->first,guideId=source->m_Guides.begin()->second.PlayerId;
- const auto actorCount=source->m_Players.size();source->Handle_PartyInvite(leader.iSessionId,invitation);
- tests.Require(source->m_Players.size()==actorCount&&source->m_Guides.at(partyId).PromptQueue.size()==1,"Duplicate invite preserves one companion and one greeting");
+ leader.fPositionX=reception.fPositionX+2.f;leader.fPositionY=reception.fPositionY;leader.fPositionZ=reception.fPositionZ;
+ const auto ownerId=leader.iSessionId;
+ auto control=[&](SESSION_ID owner,std::uint32_t sequence,GUIDE_CONTROL_ACTION action){C2S_GUIDE_CONTROL request;request.iRequestSequence=sequence;request.iGuideNetEntityId=reception.iNetEntityId;request.eAction=action;source->Handle_GuideControl(owner,request);};
+ const auto actorCount=source->m_Players.size();
+ C2S_PARTY_INVITE legacy;legacy.iTargetNetEntityId=reception.iNetEntityId;source->Handle_PartyInvite(ownerId,legacy);
+ tests.Require(source->m_PersonalGuides.empty()&&source->m_PartyMembersByPartyId.empty(),"A legacy party invitation cannot create guidance or a hidden party");
+ control(ownerId,1,GUIDE_CONTROL_ACTION::START);
+ tests.Require(source->m_PersonalGuides.size()==1&&source->m_PersonalGuides.at(ownerId).PlayerId==guideId&&source->m_Players.size()==actorCount&&source->m_PartyMembersByPartyId.empty(),"Typed start binds the placed actor without a clone or internal party");
+ if(source->m_PersonalGuides.empty())return 1;
+ control(ownerId,2,GUIDE_CONTROL_ACTION::START);
+ tests.Require(source->m_Players.size()==actorCount&&source->m_PersonalGuides.at(ownerId).PromptQueue.size()==1,"Duplicate start preserves the actor and one lowercase-category greeting");
+ control(sessions[1]->Get_SessionId(),1,GUIDE_CONTROL_ACTION::START);
+ control(sessions[1]->Get_SessionId(),2,GUIDE_CONTROL_ACTION::STOP);
+ tests.Require(source->m_PersonalGuides.size()==1&&source->m_PersonalGuides.contains(ownerId),"Another human cannot take over or stop an occupied guide");
+ tests.Require(lastState(sessions[1]).iOwnerNetEntityId==leader.iNetEntityId,"All Bern observers receive the occupied owner identity");
  source->Update_Guides(.2f);
- tests.Require(std::any_of(sessions[0]->m_OutboundFrames.begin(),sessions[0]->m_OutboundFrames.end(),[](const auto& frame){return frame.ePacketType==PACKET_TYPE::S2C_GUIDE_PROMPT;}),"Accepted invitation emits the reliable prepared greeting");
+ tests.Require(hasFrame(sessions[0],PACKET_TYPE::S2C_GUIDE_PROMPT)&&!hasFrame(sessions[1],PACKET_TYPE::S2C_GUIDE_PROMPT),"Prepared greeting is delivered only to the owner");
+ const auto firstPrompt=std::find_if(sessions[0]->m_OutboundFrames.begin(),sessions[0]->m_OutboundFrames.end(),[](const auto& f){return f.ePacketType==PACKET_TYPE::S2C_GUIDE_PROMPT;});
+ tests.Require(firstPrompt!=sessions[0]->m_OutboundFrames.end()&&std::any_of(sessions[0]->m_OutboundFrames.begin(),firstPrompt,[](const auto& f){return f.ePacketType==PACKET_TYPE::S2C_GUIDE_STATE;}),"Ownership state is queued before the first greeting");
+ const auto firstEventSequence=source->m_iGuideEventSequence;
  drain();
- auto& state=source->m_Guides.at(partyId);
+ auto& state=source->m_PersonalGuides.at(ownerId);
+ auto& guide=source->m_Players.at(guideId);
  const auto command=std::find_if(source->m_GuideCatalog.Commands.begin(),source->m_GuideCatalog.Commands.end(),[](const auto& c){return c.Enabled&&!c.Stop;});
  tests.Require(command!=source->m_GuideCatalog.Commands.end(),"Published help command is present");
  if(command!=source->m_GuideCatalog.Commands.end())
  {
+  source->Guide_ChatCommand(source->m_Players.at(sessions[1]->Get_PlayerId()),command->Aliases.front());tests.Require(state.ComboId.empty(),"A non-owner cannot command the singleton guide");
   source->Guide_ChatCommand(leader,"prefix "+command->Aliases.front());tests.Require(state.ComboId.empty(),"A substring does not activate a help command");
-  source->Guide_ChatCommand(leader,command->Aliases.front());tests.Require(state.ComboId==command->ComboId&&state.ComboStep==0,"Exact party help command stages its published combo");
+  source->Guide_ChatCommand(leader,command->Aliases.front());tests.Require(state.ComboId==command->ComboId&&state.ComboStep==0,"Exact owner help command stages its published combo");
   source->Guide_ChatCommand(leader,command->Aliases.front());tests.Require(state.ComboStep==0&&state.PendingComboId.empty(),"Duplicate active combo does not restart or queue");
  }
- // Drive the actual decision loop against a world enemy after the exact help command.
- auto& guide=source->m_Players.at(guideId);const auto* combo=source->m_GuideCatalog.Find_Combo(state.ComboId);
+ const auto* combo=source->m_GuideCatalog.Find_Combo(state.ComboId);
  if(combo&&!combo->Skills.empty())
  {
   SERVER_WORLD_ENTITY enemy;enemy.iNetEntityId=900001;enemy.eKind=WORLD_BOOTSTRAP_KIND::MONSTER;enemy.iCurrentHp=enemy.iMaximumHp=1000;enemy.fPositionX=guide.fPositionX;enemy.fPositionY=guide.fPositionY;enemy.fPositionZ=guide.fPositionZ+1;enemy.eAction=SERVER_ENTITY_ACTION::PATTERN_WINDUP;
   source->m_WorldEntities.push_back(enemy);source->Update_Guides(.2f);
-  tests.Require(state.Action==3&&state.ComboStep==1&&guide.iCurrentSkillId==combo->Skills.front()&&guide.eAction==PLAYER_ACTION_STATE::SKILL,"Exact help command executes the next real skill through the automatic decision loop");
+  tests.Require(state.Action==3&&state.ComboStep==1&&guide.iCurrentSkillId==combo->Skills.front()&&guide.eAction==PLAYER_ACTION_STATE::SKILL,"Owner help executes a real skill through the common decision loop");
   source->m_WorldEntities.pop_back();
  }
- const auto rescue=std::find_if(source->m_GuideCatalog.Commands.begin(),source->m_GuideCatalog.Commands.end(),[&](const auto& c){return c.Enabled&&!c.Stop&&c.ComboId!=state.ComboId;});
- if(rescue!=source->m_GuideCatalog.Commands.end()){source->Guide_ChatCommand(leader,rescue->Aliases.front());tests.Require(state.PendingComboId==rescue->ComboId,"A different rescue command is admitted immediately despite the previous command cooldown");const auto pending=state.PendingComboId;source->Guide_ChatCommand(leader,rescue->Aliases.front());tests.Require(state.PendingComboId==pending,"Repeating the same rescue command is idempotent during its own cooldown");}
- source->m_iServerTick+=200;auto stop=std::find_if(source->m_GuideCatalog.Commands.begin(),source->m_GuideCatalog.Commands.end(),[](const auto& c){return c.Enabled&&c.Stop;});if(stop!=source->m_GuideCatalog.Commands.end()){source->Guide_ChatCommand(leader,stop->Aliases.front());tests.Require(state.ComboId.empty()&&state.PendingComboId.empty(),"Stop command cancels future combo steps");}
- guide.iCurrentHp=0;guide.eAction=PLAYER_ACTION_STATE::DEAD;source->Update_Guides(.2f);tests.Require(guide.iCurrentHp==guide.iMaximumHp&&guide.Is_Guide(),"A dead guide revives through a validated landing while humans live");drain();
- // Human-only minigames never pull the companion into the participant field.
- const float guideX=guide.fPositionX,guideZ=guide.fPositionZ;
- leader.iMarioStage=1;source->Guide_AnchorArrived(leader);
- tests.Require(guide.fPositionX==guideX&&guide.fPositionZ==guideZ,"A Mario participant arrival cannot teleport the guide into the minigame");
- for(const auto& session:sessions)source->m_Players.at(session->Get_PlayerId()).iMarioStage=1;
- source->Update_Guides(.2f);tests.Require(state.Action==8&&!guide.hasMoveGoal&&state.ComboId.empty(),"The guide waits outside when every human is in a minigame");
- for(const auto& session:sessions)source->m_Players.at(session->Get_PlayerId()).iMarioStage=0;
- // Riding uses the same permission path, and three-axis follow uses the common move executor.
+ source->Reset_PlayerForDebugTeleport(guide);state.ComboId.clear();state.PendingComboId.clear();state.PromptQueue.clear();state.PromptRemaining=100.f;state.HoldElapsed=10.f;
+ // Put only the owner collider in a tiny authored-style box, away from the guide.
+ const auto ownerPose=std::array{leader.fPositionX,leader.fPositionY,leader.fPositionZ};
+ GUIDE_TRIGGER box;box.Id="guide.contract.owner-box";box.Type="SPACE_ENTER";box.Category=source->m_GuideCatalog.Categories.at(WORLD_ID::BERN);box.PromptId=source->m_GuideCatalog.Prompts.front().Id;box.Box.fPositionX=guide.fPositionX+12.f;box.Box.fPositionY=guide.fPositionY+1.f;box.Box.fPositionZ=guide.fPositionZ;box.Box.fHalfExtentX=box.Box.fHalfExtentY=box.Box.fHalfExtentZ=.5f;
+ source->m_GuideCatalog.Triggers.push_back(box);leader.fPositionX=box.Box.fPositionX;leader.fPositionZ=box.Box.fPositionZ;source->Update_Guides(.2f);
+ tests.Require(state.InsideBoxes.contains(box.Id),"Bern SPACE_ENTER uses the human collider while the guide is outside");
+ state.InsideBoxes.erase(box.Id);leader.fPositionX=guide.fPositionX;leader.fPositionZ=guide.fPositionZ;guide.fPositionX=box.Box.fPositionX;source->Update_Guides(.2f);
+ tests.Require(!state.InsideBoxes.contains(box.Id),"Guide-only contact cannot trigger the owner's Bern space event");
+ source->m_GuideCatalog.Triggers.pop_back();guide.fPositionX=reception.fPositionX;guide.fPositionY=reception.fPositionY;guide.fPositionZ=reception.fPositionZ;leader.fPositionX=ownerPose[0];leader.fPositionY=ownerPose[1];leader.fPositionZ=ownerPose[2];source->Reset_PlayerForDebugTeleport(guide);
+ // The admitted dragon and three-axis common executor remain unchanged.
  C2S_SET_VEHICLE_RIDING riding;riding.eWorldId=WORLD_ID::BERN;riding.iRequestSequence=100;riding.iVehicleId=ANCIENT_SEA_VEHICLE_ID;
  (void)source->Apply_SetVehicleRiding(leader,riding);source->Update_Guides(.2f);
- tests.Require(leader.iVehicleId==ANCIENT_SEA_VEHICLE_ID&&guide.iVehicleId==leader.iVehicleId,"Guide mounts the same admitted dragon as the anchor");
+ tests.Require(leader.iVehicleId==ANCIENT_SEA_VEHICLE_ID&&guide.iVehicleId==leader.iVehicleId,"Guide mounts the same admitted dragon as the owner");
  leader.eVehicleFlightPhase=guide.eVehicleFlightPhase=VEHICLE_FLIGHT_PHASE::FLYING;const float anchorY=leader.fPositionY;leader.fPositionY=guide.fPositionY+2;
  source->Update_Guides(.2f);tests.Require(state.Action==6&&guide.fVehicleFlightInputY>0&&guide.iLastMoveSequence>0,"Airborne guide emits admitted three-axis flight follow input");
  leader.fPositionY=anchorY;leader.eVehicleFlightPhase=guide.eVehicleFlightPhase=VEHICLE_FLIGHT_PHASE::GROUNDED;riding.iRequestSequence=200;riding.iVehicleId=INVALID_VEHICLE_ID;(void)source->Apply_SetVehicleRiding(leader,riding);source->Update_Guides(.2f);drain();
+ // bShipDockValid is set only by the successful server boarding contract.
+ const auto pierPose=std::array{guide.fPositionX,guide.fPositionY,guide.fPositionZ};
+ leader.bShipDockValid=true;leader.iVehicleId=8200;leader.fPositionX+=100.f;guide.hasMoveGoal=true;guide.fMoveGoalX=guide.fPositionX+10.f;
+ source->Update_Guides(.2f);source->Update_Players(.5f);
+ tests.Require(state.WaitingForShip&&!guide.hasMoveGoal&&guide.iVehicleId!=8200&&guide.fPositionX==pierPose[0]&&guide.fPositionY==pierPose[1]&&guide.fPositionZ==pierPose[2],"Successful ship boarding holds the same guide at the pier without copying the ship");
+ leader.bShipDockValid=false;leader.iVehicleId=INVALID_VEHICLE_ID;source->Update_Guides(.2f);
+ tests.Require(!state.WaitingForShip&&state.ReturningOnFoot&&guide.fPositionX==pierPose[0],"Disembarking resumes an on-foot approach without relocating the guide");
+ leader.fPositionX=ownerPose[0];leader.fPositionZ=ownerPose[2];source->Reset_PlayerForDebugTeleport(guide);state.ReturningOnFoot=false;
+ // Existing four-human parties still enter a raid; the guide is outside that transaction.
+ for(unsigned i=1;i<4;++i){C2S_PARTY_INVITE invite;invite.iTargetNetEntityId=source->m_Players.at(sessions[i]->Get_PlayerId()).iNetEntityId;source->Handle_PartyInvite(ownerId,invite);C2S_PARTY_INVITE_RESPOND answer;answer.iFromNetEntityId=leader.iNetEntityId;answer.bAccepted=true;source->Handle_PartyInviteRespond(sessions[i]->Get_SessionId(),answer);drain();}
+ tests.Require(source->m_PartyMembersByPartyId.size()==1&&source->m_PartyMembersByPartyId.begin()->second.size()==4,"The guide does not occupy or alter a four-human party");
  std::vector<SESSION_ID> batch;for(const auto& session:sessions)batch.push_back(session->Get_SessionId());
- PARTY_TRANSFER_RESULT result;std::string status;const auto revision=target->m_GuideCatalog.Revision;target->m_GuideCatalog.Revision^=1;
- tests.Require(!source->Transfer_PartyTo(*target,batch,result,status)&&source->m_Guides.size()==1&&source->Count_HumanPlayers()==4&&target->Count_HumanPlayers()==0,"Guide generation failure keeps the whole source party and guide unchanged");target->m_GuideCatalog.Revision=revision;
+ PARTY_TRANSFER_RESULT result;std::string status;
+ const auto waitingPose=std::array{guide.fPositionX,guide.fPositionY,guide.fPositionZ};
+ const auto queued=state.PromptQueue;const auto nextEntity=source->m_iNextNetEntityId;
+ sessions[1]->m_OutboundFrames.resize(CClientSession::MAX_OUTBOUND_FRAME_COUNT);
+ const bool failed=!source->Transfer_PartyTo(*target,batch,result,status);
+ tests.Require(failed&&result==PARTY_TRANSFER_RESULT::REJECTED_OUTBOUND_BUSY&&source->Count_HumanPlayers()==4&&target->Count_HumanPlayers()==0,"Actual outbound capacity rejection preserves the whole source party");
+ tests.Require(!state.WaitingForOwner&&state.PromptQueue==queued&&guide.fPositionX==waitingPose[0]&&guide.iNetEntityId==reception.iNetEntityId&&source->m_iNextNetEntityId==nextEntity,"Failed transfer preserves guide owner, identity, pose and pending prompts");drain();
  const bool moved=source->Transfer_PartyTo(*target,batch,result,status);
- tests.Require(moved&&source->Count_HumanPlayers()==0&&source->m_Guides.empty()&&target->Count_HumanPlayers()==4&&target->m_Guides.size()==1,"Four humans and one guide transfer in the same transaction");
- if(!moved)std::cout<<"Guide transfer detail: "<<status<<'\n';
- if(moved){const auto& companion=target->m_Guides.begin()->second;tests.Require(companion.ComboId.empty()&&companion.PromptQueue.empty()&&target->m_Players.at(companion.PlayerId).iSessionId==INVALID_SESSION_ID,"Transfer clears old combo and dialogue occurrences without a guide session");drain();for(const auto& session:sessions)target->Leave(session->Get_SessionId(),PLAYER_DESPAWN_REASON::LEVEL_CHANGED);tests.Require(target->m_Guides.empty()&&target->Count_HumanPlayers()==0,"Last human departure despawns the companion");}
- // Direct NPC admission must preserve a singleton party's separate companion.
- auto solo=sessions.front();source->Handle_Register(solo);C2S_ENTER_WORLD reenter;reenter.eWorldId=WORLD_ID::BERN;reenter.eCharacterClass=CHARACTER_CLASS_ID::DIMENSIONMASTER;reenter.strNickName="GuideSolo";
- const bool rejoined=source->Join(solo->Get_SessionId(),reenter);
- if(rejoined){auto& owner=source->m_Players.at(solo->Get_PlayerId());source->Handle_PartyInvite(owner.iSessionId,invitation);const auto* npc=source->Find_Placement("npc.bern.beda.guide");if(npc){owner.fPositionX=npc->fPositionX;owner.fPositionY=npc->fPositionY;owner.fPositionZ=npc->fPositionZ;}C2S_CONFIRM_NPC_ENTRY entry;entry.iRequestSequence=1;entry.strNpcPlacementId="npc.bern.beda.guide";source->Handle_ConfirmNpcEntry(owner.iSessionId,entry);SERVER_WORLD_TRANSFER_REQUEST request;const bool staged=source->Try_DequeueWorldTransfer(request)&&request.PartyBatchSessionIds.size()==1;
-  tests.Require(staged,"Direct NPC entry batches one human with its separate companion");drain();const bool soloMoved=staged&&source->Transfer_PartyTo(*target,request.PartyBatchSessionIds,result,status,request.strRaidReturnNpcPlacementId,request.strSpawnPlacementOverrideId);tests.Require(soloMoved&&target->m_Guides.size()==1&&target->Count_HumanPlayers()==1,"Singleton NPC transfer commits the human and guide together");
-  if(soloMoved){target->m_bValtanRaidCleared=true;C2S_RETURN_TO_BERN back;back.iRequestSequence=2;target->Handle_ReturnToBern(solo->Get_SessionId(),back);SERVER_WORLD_TRANSFER_REQUEST returning;const bool backStaged=target->Try_DequeueWorldTransfer(returning)&&returning.PartyBatchSessionIds.size()==1;drain();const bool returned=backStaged&&target->Transfer_PartyTo(*source,returning.PartyBatchSessionIds,result,status,returning.strRaidReturnNpcPlacementId,returning.strSpawnPlacementOverrideId);tests.Require(returned&&source->m_Guides.size()==1&&source->Count_HumanPlayers()==1&&target->m_Guides.empty(),"Cleared raid returns the singleton companion transactionally to Bern");if(!returned)std::cout<<"Guide return detail: "<<status<<'\n';}
+ tests.Require(moved&&source->Count_HumanPlayers()==0&&source->m_Players.size()==1&&source->m_PersonalGuides.size()==1&&state.WaitingForOwner&&target->Count_HumanPlayers()==4&&target->m_PersonalGuides.empty(),"Four humans enter while the same single guide waits in Bern");
+ if(!moved){std::cout<<"Guide transfer detail: "<<status<<'\n';return 1;}
+ tests.Require(std::none_of(target->m_Players.begin(),target->m_Players.end(),[](const auto& p){return p.second.Is_Guide();}),"Successful raid entry creates no raid guide actor or fake participant");
+ source->Update_Guides(10.f);source->Update_Players(1.f);
+ tests.Require(guide.fPositionX==waitingPose[0]&&guide.fPositionY==waitingPose[1]&&guide.fPositionZ==waitingPose[2]&&!guide.isCombatReady&&state.ComboId.empty()&&state.PromptQueue.empty(),"Last human departure keeps an inactive guide at exactly its committed Bern pose");drain();
+ const bool returned=target->Transfer_PartyTo(*source,{ownerId},result,status,"","npc.bern.beda.guide");
+ tests.Require(returned,"A committed human raid return re-enters Bern");
+ if(!returned){std::cout<<"Guide return detail: "<<status<<'\n';return 1;}
+ auto& returnedGuide=source->m_Players.at(guideId);
+ tests.Require(!state.WaitingForOwner&&state.ReturningOnFoot&&state.AnchorId==sessions[0]->Get_PlayerId()&&returnedGuide.iNetEntityId==reception.iNetEntityId&&returnedGuide.fPositionX==waitingPose[0]&&returnedGuide.fPositionZ==waitingPose[2],"Raid return rebinds the new human identity while preserving the guide identity and pose");
+ const auto returnTrigger=std::find_if(source->m_GuideCatalog.Triggers.begin(),source->m_GuideCatalog.Triggers.end(),[](const auto& t){return t.Enabled&&t.Type=="RAID_RETURNED"&&t.PatternId=="VALTAN_ARENA";});
+ tests.Require(returnTrigger!=source->m_GuideCatalog.Triggers.end()&&std::any_of(state.PromptQueue.begin(),state.PromptQueue.end(),[&](const auto& p){return p.first==returnTrigger->PromptId;}),"Actual raid return queues the matching published lowercase-category prompt");
+ const auto count=state.PromptQueue.size();source->Resume_PersonalGuide(ownerId,WORLD_ID::VALTAN_ARENA);tests.Require(state.PromptQueue.size()==count,"A repeated resume notification cannot duplicate the return prompt");
+ auto& returnedOwner=source->m_Players.at(sessions[0]->Get_PlayerId());
+ const auto returnOwnerPose=std::array{returnedOwner.fPositionX,returnedOwner.fPositionY,returnedOwner.fPositionZ};returnedOwner.hasMoveGoal=false;
+ // Make the actual return path fall inside the ordinary follow hysteresis band.
+ const float originalResumeDistance=source->m_GuideCatalog.ResumeDistance;
+ source->m_GuideCatalog.ResumeDistance=std::hypot(returnedOwner.fPositionX-returnedGuide.fPositionX,returnedOwner.fPositionZ-returnedGuide.fPositionZ)+1.f;
+ source->Update_Guides(source->m_GuideCatalog.RecoverDelay+1.f);
+ source->m_GuideCatalog.ResumeDistance=originalResumeDistance;
+ tests.Require(returnedGuide.fPositionX==waitingPose[0]&&returnedGuide.fPositionZ==waitingPose[2]&&state.ReturningOnFoot&&returnedGuide.hasMoveGoal,"Far return uses the existing nav move goal and never the recovery teleport");
+ tests.Require(returnedOwner.fPositionX==returnOwnerPose[0]&&returnedOwner.fPositionY==returnOwnerPose[1]&&returnedOwner.fPositionZ==returnOwnerPose[2]&&!returnedOwner.hasMoveGoal,"Guide approach leaves the returning human's pose and move intent untouched");
+ // Stopping discards all future occurrences and does not respawn the singleton.
+ tests.Require(!hasFrame(sessions[0],PACKET_TYPE::S2C_GUIDE_PROMPT),"Return speech stays queued until the guide approaches its owner");
+ const auto lastSequence=returnedGuide.iLastMoveSequence;control(ownerId,1,GUIDE_CONTROL_ACTION::STOP);
+ tests.Require(source->m_PersonalGuides.empty()&&source->m_Players.contains(guideId)&&!returnedGuide.hasMoveGoal&&!returnedGuide.isCombatReady&&lastState(sessions[0]).iOwnerNetEntityId==0,"New-level STOP sequence 1 clears guidance and broadcasts idle while retaining the placed actor");
+ source->Resume_PersonalGuide(ownerId,WORLD_ID::VALTAN_ARENA);tests.Require(source->m_PersonalGuides.empty(),"A stopped guide cannot resume from a stale world-return notification");
+ control(ownerId,1,GUIDE_CONTROL_ACTION::START);tests.Require(source->m_PersonalGuides.empty(),"A stale START cannot undo a newer STOP");
+ returnedOwner.fPositionX=returnedGuide.fPositionX+2.f;returnedOwner.fPositionY=returnedGuide.fPositionY;returnedOwner.fPositionZ=returnedGuide.fPositionZ;
+ control(ownerId,2,GUIDE_CONTROL_ACTION::START);source->Update_Guides(.2f);
+ tests.Require(source->m_PersonalGuides.size()==1&&returnedGuide.iNetEntityId==reception.iNetEntityId&&source->m_iGuideEventSequence>firstEventSequence&&source->m_PersonalGuides.at(ownerId).Sequence>=lastSequence,"Restart preserves actor identity, monotonic prompts and admitted internal command sequences");
+ // Each authoritative return type selects only its own configured event, using the real Join commit.
+ for(const auto world:{WORLD_ID::KAKULSAYDON_ARENA,WORLD_ID::MAHARAKA,WORLD_ID::COLOSSEUM}){
+  source->Leave(ownerId,PLAYER_DESPAWN_REASON::LEVEL_CHANGED);drain();source->Handle_Register(sessions[0]);C2S_ENTER_WORLD enter;enter.eWorldId=WORLD_ID::BERN;enter.eCharacterClass=CHARACTER_CLASS_ID::DIMENSIONMASTER;enter.strNickName="GuideReturn";
+  const bool admitted=source->Join(ownerId,enter,{}, {},INVALID_HONOR_TITLE_ID,{}, {}, {},world);
+  const char* name=world==WORLD_ID::KAKULSAYDON_ARENA?"KAKULSAYDON_ARENA":world==WORLD_ID::MAHARAKA?"MAHARAKA":"COLOSSEUM";
+  const auto event=std::find_if(source->m_GuideCatalog.Triggers.begin(),source->m_GuideCatalog.Triggers.end(),[&](const auto& t){return t.Enabled&&(t.Type=="RAID_RETURNED"||t.Type=="WORLD_RETURNED")&&t.PatternId==name;});
+  const auto& current=source->m_PersonalGuides.at(ownerId);
+  tests.Require(admitted&&!current.WaitingForOwner&&event!=source->m_GuideCatalog.Triggers.end()&&std::any_of(current.PromptQueue.begin(),current.PromptQueue.end(),[&](const auto& p){return p.first==event->PromptId;}),"Committed return resolves the matching Kouku, island or Colosseum prompt");
  }
+ source->Leave(ownerId,PLAYER_DESPAWN_REASON::LEVEL_CHANGED);sessions[0]->Request_Close();source->Update_Guides(.2f);
+ tests.Require(source->m_PersonalGuides.empty()&&source->m_Players.size()==1&&source->m_Players.at(guideId).iNetEntityId==reception.iNetEntityId,"Disconnect while away releases the owner but keeps exactly the same singleton guide");
+ for(unsigned i=1;i<4;++i)target->Leave(sessions[i]->Get_SessionId(),PLAYER_DESPAWN_REASON::LEVEL_CHANGED);
+ // Exercise the actual ServerApp dispatcher: guidance cannot rely on a hidden party
+ // to obtain atomic destination admission and reliable initial-frame preparation.
+ {
+  auto app = std::make_unique<CServerApp>();
+  app->m_SharedGameRooms.emplace(WORLD_ID::BERN, source);
+  app->m_SharedGameRooms.emplace(WORLD_ID::VALTAN_ARENA, target);
+  const SESSION_ID soloId = 99109u;
+  auto session = std::make_shared<CClientSession>(soloId, INVALID_SOCKET,
+   CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+  session->m_isSendRunning.store(true);
+  sessions.push_back(session);
+  source->Handle_Register(session);
+  C2S_ENTER_WORLD enter{};
+  enter.eWorldId = WORLD_ID::BERN;
+  enter.eCharacterClass = CHARACTER_CLASS_ID::DIMENSIONMASTER;
+  enter.strNickName = "GuideSoloTransaction";
+  const bool admitted = source->Join(soloId, enter);
+  tests.Require(admitted, "Solo guide transaction starts with a real Bern admission");
+  if (!admitted) return 1;
+  app->m_Sessions.emplace(soloId, session);
+  CServerApp::SESSION_GAMEPLAY_BINDING binding{};
+  binding.eWorldId = WORLD_ID::BERN;
+  binding.pSimulation = source;
+  app->m_GameplayBindingBySessionId.emplace(soloId, binding);
+  auto& solo = source->m_Players.at(session->Get_PlayerId());
+  const auto& placed = source->m_Players.at(guideId);
+  const auto heldPose = std::array{placed.fPositionX, placed.fPositionY, placed.fPositionZ};
+  solo.fPositionX = placed.fPositionX + 2.f;
+  solo.fPositionY = placed.fPositionY;
+  solo.fPositionZ = placed.fPositionZ;
+  control(soloId, 1u, GUIDE_CONTROL_ACTION::START);
+  auto unrelated = std::make_shared<CClientSession>(soloId, INVALID_SOCKET,
+   CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+  tests.Require(source->Has_PersonalGuideOwner(session) && !source->Has_PersonalGuideOwner(unrelated) &&
+   source->m_PartyMembersByPartyId.empty(), "Guide ownership matches the live session object without creating a solo party");
+  if (!source->Has_PersonalGuideOwner(session)) return 1;
+  const auto npc = std::find_if(source->m_WorldEntities.begin(), source->m_WorldEntities.end(),
+   [](const auto& entity) { return entity.eKind == WORLD_BOOTSTRAP_KIND::NPC && entity.strPlacementId == "npc.bern.beda.guide"; });
+  tests.Require(npc != source->m_WorldEntities.end(), "Solo fixture resolves the real raid entrance NPC");
+  if (npc == source->m_WorldEntities.end()) return 1;
+  solo.fPositionX = npc->fPositionX;
+  solo.fPositionY = npc->fPositionY;
+  solo.fPositionZ = npc->fPositionZ;
+  C2S_CONFIRM_NPC_ENTRY confirm{};
+  confirm.iRequestSequence = 81u;
+  confirm.strNpcPlacementId = "npc.bern.beda.guide";
+  source->Handle_ConfirmNpcEntry(soloId, confirm);
+  SERVER_WORLD_TRANSFER_REQUEST entry{};
+  const bool staged = source->Try_DequeueWorldTransfer(entry) && entry.iSessionId == soloId &&
+   entry.eTargetWorldId == WORLD_ID::VALTAN_ARENA && entry.PartyBatchSessionIds.empty();
+  tests.Require(staged, "Typed solo NPC entry remains one human and carries no fabricated party");
+  if (!staged) return 1;
+  drain();
+  const auto entryPlayer = std::make_unique<SERVER_PLAYER>(solo);
+  const auto entryPrompts = source->m_PersonalGuides.at(soloId).PromptQueue;
+  const auto hasTransferFailure = [&](WORLD_ID destination, std::uint32_t sequence, PARTY_TRANSFER_RESULT reason)
+  {
+   for (const auto& frame : session->m_OutboundFrames)
+   {
+    if (frame.ePacketType != PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT || frame.Bytes.size() < PACKET_HEADER_BYTES) continue;
+    CPacketReader reader{std::span<const std::uint8_t>(frame.Bytes).subspan(PACKET_HEADER_BYTES)};
+    S2C_PARTY_TRANSFER_RESULT decoded{};
+    if (Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
+     decoded.eTargetWorldId == destination && decoded.iRequestSequence == sequence && decoded.eResult == reason) return true;
+   }
+   return false;
+  };
+  const auto guidePreserved = [&](bool waiting)
+  {
+   const auto& actor = source->m_Players.at(guideId);
+   const auto owner = source->m_PersonalGuides.find(soloId);
+   return owner != source->m_PersonalGuides.end() && owner->second.WaitingForOwner == waiting &&
+    actor.iNetEntityId == reception.iNetEntityId && actor.fPositionX == heldPose[0] &&
+    actor.fPositionY == heldPose[1] && actor.fPositionZ == heldPose[2];
+  };
+  const auto playerPreserved = [&](const auto& room, const auto& destination, const SERVER_PLAYER& before)
+  {
+   const auto player = room->m_Players.find(before.iPlayerId);
+   const auto& actualBinding = app->m_GameplayBindingBySessionId.at(soloId);
+   return player != room->m_Players.end() && session->Get_PlayerId() == before.iPlayerId &&
+    player->second.fPositionX == before.fPositionX && player->second.fPositionY == before.fPositionY &&
+    player->second.fPositionZ == before.fPositionZ && player->second.iCurrentHp == before.iCurrentHp &&
+    !session->Is_Closing() && actualBinding.eWorldId == room->Get_WorldId() && actualBinding.pSimulation == room &&
+    !destination->m_PlayerIdBySessionId.contains(soloId) && !hasFrame(session, PACKET_TYPE::S2C_ENTER_ACCEPTED) &&
+    room->m_PartyMembersByPartyId.empty() && destination->m_PartyMembersByPartyId.empty();
+  };
+  // Both failures pass through Handle_WorldTransfers, including its rejection policy.
+  const auto targetNextEntity = target->m_iNextNetEntityId;
+  target->m_iNextNetEntityId = INVALID_NET_ENTITY_ID;
+  source->m_PendingWorldTransfers.push_back(entry);
+  app->Handle_WorldTransfers(source);
+  target->m_iNextNetEntityId = targetNextEntity;
+  tests.Require(playerPreserved(source, target, *entryPlayer) && guidePreserved(false) &&
+   source->m_PersonalGuides.at(soloId).PromptQueue == entryPrompts &&
+   hasTransferFailure(WORLD_ID::VALTAN_ARENA, 81u, PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED),
+   "Solo destination admission failure keeps Bern player, guide and connection and reports typed rejection");
+  drain();
+  session->m_OutboundFrames.resize(CClientSession::MAX_OUTBOUND_FRAME_COUNT);
+  source->m_PendingWorldTransfers.push_back(entry);
+  app->Handle_WorldTransfers(source);
+  tests.Require(playerPreserved(source, target, *entryPlayer) && guidePreserved(false) &&
+   source->m_PersonalGuides.at(soloId).PromptQueue == entryPrompts && source->m_PendingPartyTransferResults.contains(soloId),
+   "Solo entry FIFO failure preserves source and guide and defers its rejection without disconnecting");
+  drain();
+  source->Flush_PartyTransferResults();
+  tests.Require(hasTransferFailure(WORLD_ID::VALTAN_ARENA, 81u, PARTY_TRANSFER_RESULT::REJECTED_OUTBOUND_BUSY), "Deferred solo entry rejection decodes with the actual destination and sequence after FIFO drains");
+  drain();
+  CServerApp::SESSION_WORLD_TRANSFER_FAILURE transferFailure{};
+  const bool entered = app->Transfer_SessionWorld(source, entry, transferFailure);
+  tests.Require(entered && source->Count_HumanPlayers() == 0 && target->Count_HumanPlayers() == 1 &&
+   guidePreserved(true) && source->Has_PersonalGuideOwner(session) &&
+   source->m_PartyMembersByPartyId.empty() && target->m_PartyMembersByPartyId.empty() &&
+   std::none_of(target->m_Players.begin(), target->m_Players.end(), [](const auto& value) { return value.second.Is_Guide(); }) &&
+   app->m_GameplayBindingBySessionId.at(soloId).pSimulation == target,
+   "Successful atomic solo entry leaves the same guide in Bern and creates no raid guide or hidden party");
+  if (!entered) { std::cout << "Solo guide entry detail: " << transferFailure.strContext << '\n'; return 1; }
+  drain();
+  target->m_bValtanRaidCleared = true;
+  C2S_RETURN_TO_BERN returnRequest{};
+  returnRequest.iRequestSequence = 82u;
+  target->Handle_ReturnToBern(soloId, returnRequest);
+  SERVER_WORLD_TRANSFER_REQUEST returning{};
+  const bool returnStaged = target->Try_DequeueWorldTransfer(returning) && returning.iSessionId == soloId &&
+   returning.eTargetWorldId == WORLD_ID::BERN && returning.PartyBatchSessionIds.empty();
+  tests.Require(returnStaged, "The actual solo raid-clear return retains its ordinary typed one-human request");
+  if (!returnStaged) return 1;
+  const auto raidPlayer = std::make_unique<SERVER_PLAYER>(target->m_Players.at(session->Get_PlayerId()));
+  const auto bernNextEntity = source->m_iNextNetEntityId;
+  source->m_iNextNetEntityId = INVALID_NET_ENTITY_ID;
+  target->m_PendingWorldTransfers.push_back(returning);
+  app->Handle_WorldTransfers(target);
+  source->m_iNextNetEntityId = bernNextEntity;
+  const bool returnAdmissionPlayer = playerPreserved(target, source, *raidPlayer);
+  const bool returnAdmissionGuide = guidePreserved(true) && source->m_PersonalGuides.at(soloId).PromptQueue.empty();
+  const bool returnAdmissionNotice = hasTransferFailure(WORLD_ID::BERN, 82u, PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED);
+  if (!returnAdmissionPlayer || !returnAdmissionGuide || !returnAdmissionNotice)
+   std::cout << "Solo return admission detail: player=" << returnAdmissionPlayer << " guide=" << returnAdmissionGuide
+    << " notice=" << returnAdmissionNotice << " status=" << target->m_strStatus << '\n';
+  tests.Require(returnAdmissionPlayer && returnAdmissionGuide && returnAdmissionNotice,
+   "Solo Bern admission failure retains the raid player and waiting guide and decodes the actual Bern rejection");
+  drain();
+  session->m_OutboundFrames.resize(CClientSession::MAX_OUTBOUND_FRAME_COUNT);
+  target->m_PendingWorldTransfers.push_back(returning);
+  app->Handle_WorldTransfers(target);
+  const bool returnFifoPlayer = playerPreserved(target, source, *raidPlayer);
+  const bool returnFifoGuide = guidePreserved(true) && source->m_PersonalGuides.at(soloId).PromptQueue.empty();
+  const bool returnFifoNotice = target->m_PendingPartyTransferResults.contains(soloId);
+  if (!returnFifoPlayer || !returnFifoGuide || !returnFifoNotice)
+   std::cout << "Solo return FIFO detail: player=" << returnFifoPlayer << " guide=" << returnFifoGuide
+    << " pendingNotice=" << returnFifoNotice << " status=" << target->m_strStatus << '\n';
+  tests.Require(returnFifoPlayer && returnFifoGuide && returnFifoNotice,
+   "Solo return FIFO failure preserves the raid binding and waiting guide without closing the owner");
+  drain();
+  target->Flush_PartyTransferResults();
+  tests.Require(hasTransferFailure(WORLD_ID::BERN, 82u, PARTY_TRANSFER_RESULT::REJECTED_OUTBOUND_BUSY), "Deferred solo return rejection decodes Bern and the return sequence after FIFO drains");
+  drain();
+  const bool returnedSolo = app->Transfer_SessionWorld(target, returning, transferFailure);
+  tests.Require(returnedSolo && source->Count_HumanPlayers() == 1 && target->Count_HumanPlayers() == 0 &&
+   guidePreserved(false) && source->m_PersonalGuides.at(soloId).AnchorId == session->Get_PlayerId() &&
+   !source->m_PersonalGuides.at(soloId).PromptQueue.empty() &&
+   source->m_PartyMembersByPartyId.empty() && target->m_PartyMembersByPartyId.empty() &&
+   app->m_GameplayBindingBySessionId.at(soloId).pSimulation == source,
+   "Committed solo return rebinds the original guide and queues its return speech without making a party");
+  if (!returnedSolo) { std::cout << "Solo guide return detail: " << transferFailure.strContext << '\n'; return 1; }
+  source->Leave(soloId, PLAYER_DESPAWN_REASON::DISCONNECTED);
+ }
+
  // Use one real Kouku room for the human-only Mario admission boundaries.
  {
   auto mario=std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
@@ -106,10 +339,9 @@ int CServerGameplayContractRunner::Run_GuideAI()
     const auto makePlayer=[](PLAYER_ID id){SERVER_PLAYER p;p.iPlayerId=id;p.iNetEntityId=100+id;p.iSessionId=99000+id;p.iCurrentHp=p.iMaximumHp=100;p.isCombatReady=true;p.eCharacterClass=CHARACTER_CLASS_ID::DIMENSIONMASTER;p.fPositionX=20.f+id;p.fPositionY=1.32f;p.fPositionZ=950.f;return p;};
     for(unsigned humans:{2u,4u})
     {
-     mario->m_Players.clear();mario->m_Guides.clear();mario->m_MarioLayoutRandom.seed(3);
+     mario->m_Players.clear();mario->m_PersonalGuides.clear();mario->m_MarioLayoutRandom.seed(3);
      auto companion=makePlayer(1);companion.eControlKind=PLAYER_CONTROL_KIND::GUIDE_AI;companion.iSessionId=INVALID_SESSION_ID;mario->m_Players.emplace(1,companion);
      for(unsigned id=2;id<humans+2;++id){auto human=makePlayer(id);if(id==humans+1)human.iMarioStage=1;mario->m_Players.emplace(id,human);}
-     if(humans==4){CGameRoom::GUIDE_RUNTIME runtime;runtime.PlayerId=1;runtime.AnchorId=2;mario->m_Guides.emplace(91,std::move(runtime));}
      const bool committed=mario->Commit_KoukuMarioPhasePlayers(boss,*formation,130);
      tests.Require(committed,"Mario phase-2 formation admits human participants beside a separate guide");
      const auto& after=mario->m_Players.at(1);unsigned humanBound=0;std::vector<float> humanSlots;
@@ -118,9 +350,9 @@ int CServerGameplayContractRunner::Run_GuideAI()
      for(std::size_t slot=0;slot<humanSlots.size();++slot)exactSlots=exactSlots&&std::abs(humanSlots[slot]-(formation->fTeleportX+float(slot)*1.25f))<.01f;
      tests.Require(exactSlots&&!after.bPatternBound&&!after.MarioReturnPosition&&humanBound==(humans>=3?1u:0u),"Guide consumes no Mario formation slot, captive target or living-participant threshold");
      if(humans==2)tests.Require(after.fPositionX==companion.fPositionX&&after.fPositionZ==companion.fPositionZ,"Two humans plus guide remain a duo without a prisoner or guide formation teleport");
-     else {const auto& anchor=mario->m_Players.at(2);tests.Require(mario->m_Guides.at(91).Reason=="Following committed anchor arrival"&&std::hypot(after.fPositionX-anchor.fPositionX,after.fPositionZ-anchor.fPositionZ)<7.f,"A real companion follows only the committed human anchor through separate safe landing");}
+     else tests.Require(after.fPositionX==companion.fPositionX&&after.fPositionZ==companion.fPositionZ,"Synthetic nonhuman control kind remains outside raid formation without guide runtime");
     }
-    mario->m_Players.clear();mario->m_Guides.clear();
+    mario->m_Players.clear();mario->m_PersonalGuides.clear();
     auto companion=makePlayer(1);companion.eControlKind=PLAYER_CONTROL_KIND::GUIDE_AI;companion.iSessionId=INVALID_SESSION_ID;mario->m_Players.emplace(1,companion);
     auto entrant=makePlayer(2);entrant.eMadnessForm=PLAYER_MADNESS_FORM::CLOWN;mario->m_Players.emplace(2,entrant);
     CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_MEMBER member;member.strMemberId="guide.solo-mario";member.iBossEntityId=boss.iNetEntityId;member.iPatternSequence=boss.iPatternSequence;member.PatternIds.push_back(phase->strPatternId);member.MarioEntryAnchor=boss;member.iMarioEntryStartTick=100;member.iMarioEntryStage=1;member.strCompletionChainSuccessPatternId=phase->strPatternId;member.ePhase=CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE;

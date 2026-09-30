@@ -2,6 +2,7 @@
 #include "ServerGameplayContractTests.h"
 #include "GameplayCatalog.h"
 #include "GameRoom.h"
+#include "ServerApp.h"
 #include "ClientSession.h"
 #include "Network/PacketReader.h"
 #include "ServerNavigation.h"
@@ -239,6 +240,163 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 		tests.Require(koukuRoom->Is_Ready() &&
 			!koukuRoom->Resolve_SquareHoleDestination(*koukuStorage, 1u, noLanding),
 			"A world without square hole rows refuses the request, so no song starts");
+	}
+	for (std::uint16_t holeId = 1u; holeId <= 3u; ++holeId)
+	{
+		auto app = std::make_unique<CServerApp>();
+		auto source = std::make_shared<CGameRoom>(WORLD_ID::COLOSSEUM);
+		auto target = std::make_shared<CGameRoom>(WORLD_ID::BERN);
+		tests.Require(source->Is_Ready() && target->Is_Ready(), "Colosseum square hole transfer worlds load");
+		if (!source->Is_Ready() || !target->Is_Ready()) continue;
+		app->m_SharedGameRooms.emplace(WORLD_ID::COLOSSEUM, source);
+		app->m_SharedGameRooms.emplace(WORLD_ID::BERN, target);
+		std::vector<std::shared_ptr<CClientSession>> sessions;
+		const auto drain = [&]()
+		{
+			for (const auto& session : sessions)
+			{
+				session->m_OutboundFrames.clear(); session->m_iQueuedOutboundBytes = 0u;
+				session->m_OutboundMetrics.iCurrentQueuedByteCount = 0u;
+				session->m_OutboundMetrics.iCurrentQueuedFrameCount = 0u;
+			}
+		};
+		bool joined = true;
+		// The last destination also leaves one human party member in Colosseum.
+		for (unsigned index = 0u; index < (3u == holeId ? 2u : 1u); ++index)
+		{
+			const SESSION_ID id = 99500u + holeId * 10u + index;
+			auto session = std::make_shared<CClientSession>(id, INVALID_SOCKET,
+				CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+			session->m_isSendRunning.store(true);
+			source->Handle_Register(session);
+			C2S_ENTER_WORLD enter{};
+			enter.eWorldId = WORLD_ID::COLOSSEUM;
+			enter.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			enter.strNickName = "ColosseumTravel" + std::to_string(index);
+			enter.iVoiceType = 2u;
+			joined = source->Join(id, enter) && joined;
+			sessions.push_back(session);
+			app->m_Sessions.emplace(id, session);
+			CServerApp::SESSION_GAMEPLAY_BINDING binding{};
+			binding.eWorldId = WORLD_ID::COLOSSEUM;
+			binding.pSimulation = source;
+			app->m_GameplayBindingBySessionId.emplace(id, binding);
+			drain();
+		}
+		tests.Require(joined, "Colosseum map travel uses an admitted session and player");
+		if (!joined) continue;
+		const auto session = sessions.front();
+		const SESSION_ID sessionId = session->Get_SessionId();
+		const PLAYER_ID sourcePlayerId = session->Get_PlayerId();
+		auto& player = source->m_Players.at(sourcePlayerId);
+		if (sessions.size() == 2u)
+		{
+			C2S_PARTY_INVITE invite{};
+			invite.iTargetNetEntityId = source->m_Players.at(sessions[1]->Get_PlayerId()).iNetEntityId;
+			source->Handle_PartyInvite(sessionId, invite);
+			C2S_PARTY_INVITE_RESPOND respond{};
+			respond.iFromNetEntityId = player.iNetEntityId; respond.bAccepted = true;
+			source->Handle_PartyInviteRespond(sessions[1]->Get_SessionId(), respond);
+			tests.Require(source->m_PartyMembersByPartyId.size() == 1u,
+				"Colosseum travel fixture forms the existing human party");
+			drain();
+		}
+		player.Purse.iSilver = 12345u; player.Purse.iGold = 678u;
+		player.DurabilityPercent.fill(73u); player.iDurabilityWearCursor = 2u;
+		if (2u == holeId) player.Inventory.clear();
+		const auto original = std::make_unique<SERVER_PLAYER>(player);
+		const auto sourceParties = source->m_PartyMembersByPartyId;
+		const auto targetPlayerCount = target->m_Players.size();
+		const auto targetNextPlayer = target->m_iNextPlayerId;
+		const auto targetNextParty = target->m_iNextPartyId;
+		const auto preserved = [&]()
+		{
+			const auto found = source->m_Players.find(sourcePlayerId);
+			const auto& binding = app->m_GameplayBindingBySessionId.at(sessionId);
+			return found != source->m_Players.end() && session->Get_PlayerId() == sourcePlayerId &&
+				found->second.fPositionX == original->fPositionX && found->second.fPositionZ == original->fPositionZ &&
+				found->second.iCurrentHp == original->iCurrentHp && found->second.eAction == PLAYER_ACTION_STATE::NONE &&
+				source->m_PartyMembersByPartyId == sourceParties && !session->Is_Closing() &&
+				binding.eWorldId == WORLD_ID::COLOSSEUM && binding.pSimulation == source &&
+				target->m_Players.size() == targetPlayerCount && target->m_iNextPlayerId == targetNextPlayer &&
+				std::none_of(session->m_OutboundFrames.begin(), session->m_OutboundFrames.end(),
+					[](const auto& frame) { return frame.ePacketType == PACKET_TYPE::S2C_ENTER_ACCEPTED; });
+		};
+		C2S_USE_SQUAREHOLE request{ 91u, holeId };
+		for (const std::uint16_t invalidId : { std::uint16_t{0u}, std::uint16_t{4u}, WORLD_MAP_SHIP_TRAVEL_DESTINATION_ID })
+		{
+			request.iSquareHoleId = invalidId;
+			source->Handle_UseSquareHole(sessionId, request);
+		}
+		request.iSquareHoleId = holeId;
+		player.iCurrentHp = 0u;
+		source->Handle_UseSquareHole(sessionId, request);
+		player.iCurrentHp = original->iCurrentHp;
+		player.eAction = PLAYER_ACTION_STATE::SKILL;
+		source->Handle_UseSquareHole(sessionId, request);
+		player.eAction = PLAYER_ACTION_STATE::NONE;
+		tests.Require(source->m_PendingWorldTransfers.empty() && preserved(),
+			"Colosseum refuses unknown, ship, dead and busy square hole requests without leaving");
+		source->Handle_UseSquareHole(sessionId, request);
+		source->Handle_UseSquareHole(sessionId, request);
+		SERVER_WORLD_TRANSFER_REQUEST transfer{};
+		const bool staged = source->m_PendingWorldTransfers.size() == 1u && source->Try_DequeueWorldTransfer(transfer) &&
+			transfer.eTargetWorldId == WORLD_ID::BERN && transfer.PartyBatchSessionIds == std::vector<SESSION_ID>{sessionId} &&
+			transfer.strSpawnPlacementOverrideId == "squarehole." + std::to_string(holeId);
+		tests.Require(staged && preserved(), "A repeated Colosseum request stages one singleton and preserves its source");
+		if (!staged) continue;
+		const auto* row = target->Find_Placement(transfer.strSpawnPlacementOverrideId);
+		tests.Require(row && row->TriggerActions.size() == 1u, "Bern map travel destination exists in published gameplay");
+		if (!row || row->TriggerActions.size() != 1u) continue;
+		const auto& move = row->TriggerActions.front();
+		CServerApp::SESSION_WORLD_TRANSFER_FAILURE failure{};
+		SERVER_WORLD_ENTITY blocker{};
+		blocker.iNetEntityId = 999999u; blocker.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+		blocker.fPositionX = move.fTargetX; blocker.fPositionY = move.fTargetY; blocker.fPositionZ = move.fTargetZ;
+		target->m_WorldEntities.push_back(blocker);
+		tests.Require(!app->Transfer_SessionWorld(source, transfer, failure) && preserved(),
+			"Blocked Bern landing preserves Colosseum player, party, binding and outbound acceptance");
+		target->m_WorldEntities.pop_back();
+		const std::array<std::uint8_t, 1u> payload{ 1u };
+		for (std::size_t index = 0u; index < CClientSession::MAX_OUTBOUND_FRAME_COUNT; ++index)
+			(void)session->Send_Frame(PACKET_TYPE::S2C_CHAT, payload);
+		tests.Require(!app->Transfer_SessionWorld(source, transfer, failure) && preserved() &&
+			failure.ePartyResult == PARTY_TRANSFER_RESULT::REJECTED_OUTBOUND_BUSY,
+			"Full initial-send queue preserves Colosseum membership and session instead of departing");
+		drain();
+		const bool committed = app->Transfer_SessionWorld(source, transfer, failure);
+		tests.Require(committed, "Colosseum singleton commits through the existing ServerApp transaction");
+		if (!committed) { std::cout << "Colosseum transfer detail: " << failure.strContext << '\n'; continue; }
+		const auto& arrived = target->m_Players.at(session->Get_PlayerId());
+		const auto& binding = app->m_GameplayBindingBySessionId.at(sessionId);
+		SERVER_NAV_POINT landing{};
+		const bool resolved = target->Resolve_SquareHoleDestination(arrived, holeId, landing);
+		const bool inventoryEqual = arrived.Inventory.size() == original->Inventory.size() &&
+			std::equal(arrived.Inventory.begin(), arrived.Inventory.end(), original->Inventory.begin(),
+				[](const auto& a, const auto& b) { return a.strItemId == b.strItemId && a.iQuantity == b.iQuantity && a.eEquippedSlot == b.eEquippedSlot; });
+		tests.Require(resolved && arrived.fPositionX == landing.x && arrived.fPositionY == landing.y &&
+			arrived.fPositionZ == landing.z && arrived.strSpawnPlacementId == transfer.strSpawnPlacementOverrideId &&
+			arrived.iSessionId == sessionId && arrived.strNickName == original->strNickName &&
+			arrived.eCharacterClass == original->eCharacterClass && arrived.iVoiceType == original->iVoiceType &&
+			arrived.DurabilityPercent == original->DurabilityPercent && arrived.iDurabilityWearCursor == original->iDurabilityWearCursor &&
+			arrived.Purse.iSilver == original->Purse.iSilver && arrived.Purse.iGold == original->Purse.iGold && inventoryEqual &&
+			binding.eWorldId == WORLD_ID::BERN && binding.pSimulation == target && !session->Is_Closing() &&
+			!source->m_PlayerIdBySessionId.contains(sessionId) && target->m_PartyMembersByPartyId.empty() &&
+			target->m_PartyIdByPlayerId.empty() && target->m_iNextPartyId == targetNextParty,
+			"Bern uses the exact authored hole and preserves identity, empty/nonempty inventory and purse without creating a party");
+		tests.Require(1u == std::count_if(session->m_OutboundFrames.begin(), session->m_OutboundFrames.end(),
+			[](const auto& frame) { return frame.ePacketType == PACKET_TYPE::S2C_ENTER_ACCEPTED; }) &&
+			std::none_of(session->m_OutboundFrames.begin(), session->m_OutboundFrames.end(),
+				[](const auto& frame) { return frame.ePacketType == PACKET_TYPE::S2C_PARTY_ROSTER; }),
+			"Successful Colosseum travel emits one acceptance and no synthetic party roster");
+		if (sessions.size() == 2u)
+		{
+			const auto remainingId = sessions[1]->Get_PlayerId();
+			tests.Require(source->m_Players.contains(remainingId) && source->m_PartyMembersByPartyId.size() == 1u &&
+				source->m_PartyMembersByPartyId.begin()->second == std::vector<PLAYER_ID>{remainingId} &&
+				app->m_GameplayBindingBySessionId.at(sessions[1]->Get_SessionId()).pSimulation == source,
+				"Solo map departure keeps the remaining Colosseum party member and its binding");
+		}
 	}
 		for (const WORLD_ID world : { WORLD_ID::BERN, WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
 		{

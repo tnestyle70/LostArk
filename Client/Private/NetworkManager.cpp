@@ -960,6 +960,7 @@ bool CNetworkManager::Has_DispatchCapacity(
 	case PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY:
 	case PACKET_TYPE::S2C_INTERACT_PROMPT:
 	case PACKET_TYPE::S2C_PARTY_ROSTER:
+	case PACKET_TYPE::S2C_COLOSSEUM_MATCH_STATE:
 	case PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT:
 	case PACKET_TYPE::S2C_RAID_ENTRY_PROMPT:
 	case PACKET_TYPE::S2C_RAID_ENTRY_VOTE:
@@ -2070,6 +2071,28 @@ bool CNetworkManager::Send_ColosseumQueueJoin(
 		PACKET_TYPE::C2S_COLOSSEUM_QUEUE_JOIN,
 		payloadWriter.Get_Buffer(),
 		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_GuideControl(const LostArk::Shared::C2S_GUIDE_CONTROL& request)
+{
+    using namespace LostArk::Shared;
+    if (!Is_Connected() || m_eWorldId != WORLD_ID::BERN) return false;
+    CPacketWriter writer;
+    if (!Write_Message(writer, request)) return false;
+    std::vector<std::uint8_t> frame;
+    return Build_Packet_Frame(PACKET_TYPE::C2S_GUIDE_CONTROL, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_ColosseumRecruit(const std::uint32_t requestSequence,
+    const std::uint64_t matchId, const LostArk::Shared::NET_ENTITY_ID mercenaryNetEntityId)
+{
+    using namespace LostArk::Shared;
+    if (!Is_Connected() || m_eWorldId != WORLD_ID::COLOSSEUM) return false;
+    C2S_COLOSSEUM_RECRUIT message{requestSequence, matchId, mercenaryNetEntityId};
+    CPacketWriter writer;
+    if (!Write_Message(writer, message)) return false;
+    std::vector<std::uint8_t> frame;
+    return Build_Packet_Frame(PACKET_TYPE::C2S_COLOSSEUM_RECRUIT, writer.Get_Buffer(), frame) && Send_All(frame);
 }
 
 bool CNetworkManager::Send_ColosseumQueueLeave(const std::uint32_t requestSequence)
@@ -4715,6 +4738,21 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}
+    case PACKET_TYPE::S2C_COLOSSEUM_MATCH_STATE:
+    {
+        S2C_COLOSSEUM_MATCH_STATE state{};
+        if (!Read_Message(reader, state) || reader.Get_RemainingSize() != 0u)
+        {
+            Fail_Protocol(WSAEINVAL, SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+                PACKET_TYPE::S2C_COLOSSEUM_MATCH_STATE, "Invalid Colosseum match state.");
+            return;
+        }
+        Client::CLIENT_REPLICATION_EVENT event{};
+        event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::COLOSSEUM_MATCH_STATE;
+        event.ColosseumMatchState = std::move(state);
+        Enqueue_ReplicationEvent(std::move(event));
+        break;
+    }
 	case PACKET_TYPE::S2C_PARTY_ROSTER:
 	{
 		S2C_PARTY_ROSTER roster{};

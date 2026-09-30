@@ -245,7 +245,7 @@ void Client::CWorldHealthBarView::Update(const f32_t timeDelta,
 		const double total = (std::max)(static_cast<double>(state.iMaximumHp), hp + shield);
 		const f32_t hpRatio = static_cast<f32_t>(hp / total);
 		const f32_t shieldRatio = static_cast<f32_t>(shield / total);
-		const size_t fill = state.isPlayer ? 2u : 1u;
+		const size_t fill = state.isPlayer && !state.isEnemyPlayer ? 2u : 1u;
 		bar.view->Set_SlotVisible(SLOTS[0], true);
 		bar.view->Set_SlotVisible(SLOTS[fill], hpRatio > 0.f);
 		bar.view->Set_SlotFillRatio(SLOTS[fill], hpRatio);

@@ -933,8 +933,7 @@ void LostArk::Server::CGameRoom::Handle_ConfirmNpcEntry(
 				guideIter->eTargetWorldId, PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE);
 			return;
 		}
-		if (batchMemberIds.size() > 1u ||
-            (partyIdIter != m_PartyIdByPlayerId.end() && m_Guides.contains(partyIdIter->second)))
+		if (batchMemberIds.size() > 1u)
 			transfer.PartyBatchSessionIds.push_back(memberIter->second.iSessionId);
 	}
 	m_PendingWorldTransfers.push_back(std::move(transfer));
@@ -945,12 +944,8 @@ namespace
 	// The Colosseum NPC inside the Bern castle; the queue request names it and the Server re-tests
 	// that the player stands next to it.
 	constexpr const char* COLOSSEUM_QUEUE_NPC_PLACEMENT_ID = "npc.bern.25184_1.2";
-	// Debug builds start a match with the one player who joined; Release needs a full four.
-#ifdef _DEBUG
-	constexpr std::uint8_t COLOSSEUM_MATCH_REQUIRED_PLAYERS = 1u;
-#else
+	// Product matchmaking always requires four humans in both configurations.
 	constexpr std::uint8_t COLOSSEUM_MATCH_REQUIRED_PLAYERS = 4u;
-#endif
 }
 
 void LostArk::Server::CGameRoom::Send_ColosseumQueueState(
@@ -1045,14 +1040,13 @@ void LostArk::Server::CGameRoom::Handle_ColosseumQueueJoin(
 		return;
 	}
 
-	// The queue moves players one by one, so a formed party (a companion guide counts as a member)
-	// would be split across two rooms. Refuse instead of splitting it.
+	// A randomized four-human match must not split an existing human party.
+	// Personal guides wait in Bern and do not occupy queue or team slots.
 	if (const auto partyIdIter = m_PartyIdByPlayerId.find(playerIter->first);
 		partyIdIter != m_PartyIdByPlayerId.end())
 	{
 		const auto membersIter = m_PartyMembersByPartyId.find(partyIdIter->second);
-		if (m_Guides.contains(partyIdIter->second) ||
-			(membersIter != m_PartyMembersByPartyId.end() && membersIter->second.size() > 1u))
+		if (membersIter != m_PartyMembersByPartyId.end() && membersIter->second.size() > 1u)
 		{
 			Fn_Reject();
 			return;
@@ -1078,7 +1072,7 @@ void LostArk::Server::CGameRoom::Handle_ColosseumQueueLeave(
 void LostArk::Server::CGameRoom::Try_FormColosseumMatch()
 {
 	using namespace LostArk::Shared;
-	if (WORLD_ID::BERN != m_eWorldId)
+	if (WORLD_ID::BERN != m_eWorldId || m_bColosseumTransferPending)
 		return;
 
 	const auto isStaged = [this](const SESSION_ID sessionId)
@@ -1100,8 +1094,18 @@ void LostArk::Server::CGameRoom::Try_FormColosseumMatch()
 		const auto sessionIter = m_PlayerIdBySessionId.find(entryIter->iSessionId);
 		const auto playerIter = sessionIter == m_PlayerIdBySessionId.end()
 			? m_Players.end() : m_Players.find(sessionIter->second);
+        const bool conflictingParty = playerIter != m_Players.end() && [&]()
+        {
+            const auto party = m_PartyIdByPlayerId.find(playerIter->first);
+            if (party == m_PartyIdByPlayerId.end()) return false;
+            const auto members = m_PartyMembersByPartyId.find(party->second);
+            return members == m_PartyMembersByPartyId.end() || members->second.size() > 1u;
+        }();
+        const bool pendingVote = playerIter != m_Players.end() && std::any_of(
+            m_RaidEntryProposals.begin(), m_RaidEntryProposals.end(), [&playerIter](const auto& vote)
+            { return std::find(vote.Voters.begin(), vote.Voters.end(), playerIter->first) != vote.Voters.end(); });
 		if (playerIter == m_Players.end() || 0u == playerIter->second.iCurrentHp ||
-			isStaged(entryIter->iSessionId))
+			isStaged(entryIter->iSessionId) || conflictingParty || pendingVote)
 		{
 			dropped.push_back(entryIter->iSessionId);
 			entryIter = m_ColosseumQueue.erase(entryIter);
@@ -1114,66 +1118,19 @@ void LostArk::Server::CGameRoom::Try_FormColosseumMatch()
 
 	if (m_ColosseumQueue.size() < COLOSSEUM_MATCH_REQUIRED_PLAYERS)
 		return;
-	const std::size_t count = (std::min)(m_ColosseumQueue.size(), MAX_COLOSSEUM_MATCH_PLAYERS);
-
-	// Random team split: shuffle the seats, the first half (rounded up) is the left team. One player
-	// leaves the right team empty, three make 2 v 1.
-	std::vector<std::size_t> seats(count);
-	for (std::size_t index = 0u; index < count; ++index)
-		seats[index] = index;
+	std::vector<SESSION_ID> seats;
+	for (std::size_t i = 0; i < MAX_COLOSSEUM_MATCH_PLAYERS; ++i)
+		seats.push_back(m_ColosseumQueue[i].iSessionId);
 	static thread_local std::mt19937 generator{ std::random_device{}() };
 	std::shuffle(seats.begin(), seats.end(), generator);
-	std::vector<std::uint8_t> teams(count, 1u);
-	for (std::size_t index = 0u; index < (count + 1u) / 2u; ++index)
-		teams[seats[index]] = 0u;
-
-	struct MATCHED_SEAT
-	{
-		COLOSSEUM_QUEUE_ENTRY Entry;
-		CHARACTER_CLASS_ID eCharacterClass = CHARACTER_CLASS_ID::END;
-		std::string strNickName;
-		std::uint8_t iVoiceType = MIN_VOICE_TYPE;
-		HONOR_TITLE_ID iHonorTitleId = INVALID_HONOR_TITLE_ID;
-		SERVER_DURABILITY_STATE Durability;
-	};
-	std::vector<MATCHED_SEAT> seatsToMove;
-	S2C_COLOSSEUM_MATCH_FOUND match{};
-	for (std::size_t index = 0u; index < count; ++index)
-	{
-		const COLOSSEUM_QUEUE_ENTRY& entry = m_ColosseumQueue[index];
-		const SERVER_PLAYER& player = m_Players.at(m_PlayerIdBySessionId.at(entry.iSessionId));
-		seatsToMove.push_back(MATCHED_SEAT{
-			entry, player.eCharacterClass, player.strNickName, player.iVoiceType,
-			player.iHonorTitleId, player.Get_DurabilityState() });
-		match.Participants.push_back(COLOSSEUM_MATCH_PARTICIPANT{
-			player.strNickName, player.eCharacterClass, teams[index] });
-	}
-	m_ColosseumQueue.erase(
-		m_ColosseumQueue.begin(), m_ColosseumQueue.begin() + static_cast<std::ptrdiff_t>(count));
-
-	for (std::size_t index = 0u; index < seatsToMove.size(); ++index)
-	{
-		const MATCHED_SEAT& seat = seatsToMove[index];
-		const std::shared_ptr<CClientSession> session = Find_Session(seat.Entry.iSessionId);
-		match.iLocalIndex = static_cast<std::uint8_t>(index);
-		CPacketWriter writer;
-		if (nullptr == session || !Write_Message(writer, match))
-			continue;
-		if (!session->Send_Frame(PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND, writer.Get_Buffer()))
-		{
-			session->Request_Close();
-			continue;
-		}
-		// The ordinary solo world transfer; the Colosseum has no raid return NPC, so none is named.
-		SERVER_WORLD_TRANSFER_REQUEST transfer{};
-		transfer.iSessionId = seat.Entry.iSessionId;
-		transfer.eTargetWorldId = WORLD_ID::COLOSSEUM;
-		transfer.eCharacterClass = seat.eCharacterClass;
-		transfer.strNickName = seat.strNickName;
-		transfer.iVoiceType = seat.iVoiceType;
-		transfer.CarriedDurability = seat.Durability;
-		transfer.iHonorTitleId = seat.iHonorTitleId;
-		transfer.iPartyRequestSequence = seat.Entry.iRequestSequence;
-		m_PendingWorldTransfers.push_back(std::move(transfer));
-	}
+	const auto& leader = m_Players.at(m_PlayerIdBySessionId.at(seats.front()));
+	SERVER_WORLD_TRANSFER_REQUEST transfer;
+	transfer.iSessionId = seats.front();
+	transfer.eTargetWorldId = WORLD_ID::COLOSSEUM;
+	transfer.eCharacterClass = leader.eCharacterClass;
+	transfer.strNickName = leader.strNickName;
+	transfer.PartyBatchSessionIds = std::move(seats);
+	transfer.bColosseumMatch = true;
+	m_PendingWorldTransfers.push_back(std::move(transfer));
+	m_bColosseumTransferPending = true;
 }

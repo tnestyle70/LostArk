@@ -57,6 +57,12 @@ public:
 	bool_t Try_SampleWalkablePoint(
 		fvector_t vWorldPosition,
 		float3_t& outPosition) const;
+	/* Read-only continuity proof for two authoritative grounded positions. Both
+	 endpoints must belong to the same grid/layer and match its actual ground;
+	 the existing segment traversal enforces that grid's step/blocker policy. */
+	bool_t Is_GroundedSegmentContinuous(
+		fvector_t vFromPosition,
+		fvector_t vToPosition) const;
 	/* A detail region is another NavGrid navigation for the grid
 	 "<AreaId>.<regionId>" loaded beside this base grid. A query whose XZ lies
 	 inside a region footprint is answered by that region alone, the rule the

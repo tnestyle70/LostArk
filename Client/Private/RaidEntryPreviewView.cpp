@@ -1032,7 +1032,9 @@ void CRaidEntryPreviewView::Open_VoteConfirm(
 	const std::uint32_t iProposalId,
 	const LostArk::Shared::RAID_ENTRY_TARGET target)
 {
-	if (nullptr == Find_RaidDefinition(target))
+	if (nullptr == Find_RaidDefinition(target) &&
+		target != LostArk::Shared::RAID_ENTRY_TARGET::MAHARAKA &&
+		target != LostArk::Shared::RAID_ENTRY_TARGET::MAHARAKA_RETURN)
 		return;
 	m_isSimpleConfirm = false;
 	m_iVoteProposalId = iProposalId;
@@ -1073,7 +1075,9 @@ void CRaidEntryPreviewView::Open_SimpleConfirm(
 void CRaidEntryPreviewView::RenderText_ConfirmStep()
 {
 	const RAID_DEF* pRaid = Find_RaidDefinition(m_eVoteTarget);
-	if (nullptr == m_pConfirmView || (!m_isSimpleConfirm && nullptr == pRaid))
+	const bool islandEntry = m_eVoteTarget == LostArk::Shared::RAID_ENTRY_TARGET::MAHARAKA;
+	const bool islandReturn = m_eVoteTarget == LostArk::Shared::RAID_ENTRY_TARGET::MAHARAKA_RETURN;
+	if (nullptr == m_pConfirmView || (!m_isSimpleConfirm && nullptr == pRaid && !islandEntry && !islandReturn))
 		return;
 
 	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
@@ -1099,7 +1103,7 @@ void CRaidEntryPreviewView::RenderText_ConfirmStep()
 	{
 		// "레이드 입장"
 		Fn_DrawCentered(fTitleX + fTitleW * 0.5f, fTitleY + fTitleH * 0.5f,
-			m_isSimpleConfirm ? m_strSimpleTitle.c_str() : L"\xB808\xC774\xB4DC \xC785\xC7A5",
+			m_isSimpleConfirm ? m_strSimpleTitle.c_str() : (islandEntry || islandReturn) ? L"\uC12C \uC774\uB3D9" : L"\xB808\xC774\xB4DC \xC785\xC7A5",
 			24.f, Colors::White);
 	}
 
@@ -1108,6 +1112,8 @@ void CRaidEntryPreviewView::RenderText_ConfirmStep()
 		"ValtanEntry_DescTextBox", fDescX, fDescY, fDescW, fDescH))
 	{
 		const std::wstring description = m_isSimpleConfirm ? m_strSimpleDescription :
+			islandEntry ? L"\uC6CC\uD130\uD321 \uC544\uC77C\uB79C\uB4DC\uC5D0 \uC785\uC7A5\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?" :
+			islandReturn ? L"\uD30C\uD2F0\uC640 \uD568\uAED8 \uAE30\uC5D0\uB098\uC758 \uBC14\uB2E4\uB85C \uB098\uAC00\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?" :
 			std::wstring(pRaid->pRaidName) +
 			L"\xC5D0 \xC785\xC7A5\xD558\xC2DC\xACA0\xC2B5\xB2C8\xAE4C?";
 		Fn_DrawCentered(fDescX + fDescW * 0.5f, fDescY + fDescH * 0.5f,

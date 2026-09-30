@@ -1020,7 +1020,8 @@ void CWorldSequencePlayer::Release_DeployPreviews(
 
 bool_t CWorldSequencePlayer::Seek_AllToMs(
 	const f32_t elapsedMs,
-	const TARGET_SET& targets)
+	const TARGET_SET& targets,
+	const bool_t discontinuous)
 {
 	if (m_Active.empty() || !targets.Is_Complete() ||
 		!std::isfinite(elapsedMs) || elapsedMs < 0.f)
@@ -1034,8 +1035,10 @@ bool_t CWorldSequencePlayer::Seek_AllToMs(
 	for (size_t index = 0; index < m_Active.size();)
 	{
 		ACTIVE_INSTANCE& active = m_Active[index];
-        Stop_RetiredSounds(active.instanceId);
-        active.seekSounds = true;
+        // Match per-instance sampling: a live external clock must not restart audio every frame.
+        if (discontinuous) Stop_RetiredSounds(active.instanceId);
+        active.seekSounds = discontinuous || elapsedMs < active.elapsedMs || elapsedMs - active.elapsedMs > 250.f;
+        if (active.seekSounds) active.soundPlaybackFinished = false;
 		active.elapsedMs = elapsedMs;
 		if (APPLY_RESULT::FAILED == Apply_Instance(active, targets))
 		{

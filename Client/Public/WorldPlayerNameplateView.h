@@ -18,8 +18,8 @@ class CCharacter;
    Retail headstatus.gfx PcHeadStatusMc reduced to what the project shows: the name plate only
    ($YG760 12 px, centred, one line). The worn honor title (snapshot id -> CHonorTitleCatalog name)
    goes ahead of the name on the same line, as BaseHeadStatus.updateTitle does. Guild, the
-   functional line and the HP gauge are not drawn: the Server carries no guild data and the
-   reference screen shows no gauge over a player. The anchor is the character's head (eye bones
+   functional line and guild are absent. Colosseum additionally projects each admitted combatant
+   HP and remaining 160-bar count from its Server snapshot; unselected candidates have no HP label. The anchor is the character's head (eye bones
    of the body model plus the crown offset), so the plate sits just above the hair whatever the
    class scale. Sizes are layout-reference px (1280x720) like the rest of the runtime UI. */
 class CWorldPlayerNameplateView final
@@ -55,7 +55,9 @@ public:
 	/* The party roster tells own / party / other apart for the system option nametag rows
 	(name and honor title per relation); without it every non-local player counts as other. */
 	void Render(const std::vector<REPLICATED_PLAYER_VIEW>& Players,
-		const LostArk::Shared::S2C_PARTY_ROSTER* pPartyRoster = nullptr);
+		const LostArk::Shared::S2C_PARTY_ROSTER* pPartyRoster = nullptr,
+		const LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE* pMatch = nullptr,
+		const CReplicatedPlayerHealth* pHealth = nullptr);
 };
 
 NS_END

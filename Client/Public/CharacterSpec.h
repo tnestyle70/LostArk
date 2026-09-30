@@ -187,10 +187,9 @@ struct CHARACTER_SPEC
 	/* Bit i hides body submesh i, for the skin the equipment already carries. */
 	uint32_t iBodyHiddenMeshMask;
 
-	/* The hair the cooked body draws by itself. It is whichever style the source
-	SkeletalMesh happened to carry, so a worn hairstyle has to replace it rather than
-	stack on top of it -- these bits are hidden only while a HEAD set is worn, which
-	leaves the in-world look alone. 0 for a body that ships no hair at all. */
+	/* Hair submeshes baked into the body. Normally hidden in favor of separate
+	hair parts; isBodyHairFallback keeps them until a HEAD replacement is worn.
+	Zero means there is no baked hair to suppress. */
 	uint32_t iBodyHairMeshMask;
 
 	const tchar_t* pWeaponShaderTag;
@@ -221,6 +220,10 @@ struct CHARACTER_SPEC
 	Data/Customizing/FaceSliders/<race>.facesliders.json drives this class's face
 	customizing sliders. Null leaves the face untouched. */
 	const char_t* pFaceSliderRace = nullptr;
+
+	/* Classes without a default hair part may keep the baked hairstyle until a
+	HEAD replacement commits. Other classes retain their existing hair policy. */
+	bool_t isBodyHairFallback = false;
 };
 
 NS_END

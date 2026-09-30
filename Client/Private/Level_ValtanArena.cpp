@@ -702,6 +702,8 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	m_GateProgressView.Set_Progress(1u, m_fRaidClearElapsedSeconds >= 0.f ? 1u : 0u);
 	Update_EntryAssembly(fTimeDelta);
 	const bool_t isRaidClearActive = m_fRaidClearElapsedSeconds >= 0.f;
+	if (isRaidClearActive)
+		m_PartyInteraction.Update_TransferNotice(m_Replication);
 	m_PartyInteraction.Register_TextOccluders();
 	if (!isRaidClearActive && m_PartyInteraction.Update(
 		m_Replication, m_pPlayerCommandSink, m_NameplatePlayers,

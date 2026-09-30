@@ -68,7 +68,7 @@ private:
 	CUIWindowDrag m_Drag;
 	string m_strPartyTitle;
 	vector<PARTY_MEMBER> m_Members;
-	/* Four human seats and one separately owned companion presentation row. */
+	/* Four roster seats (including Colosseum mercenaries) and one separate guide row. */
 	static constexpr size_t MAX_ROWS = 5u;
 };
 

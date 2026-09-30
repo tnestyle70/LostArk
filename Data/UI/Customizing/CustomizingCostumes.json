@@ -578,23 +578,23 @@
       "costume": [
         {
           "objectUnit": 0,
-          "visualSetId": "character.guardian_knight.class_select_hr00.outfit"
+          "visualSetId": "character.guardian_knight.class_select_hr00.customizing_outfit"
         },
         {
           "objectUnit": 1,
-          "visualSetId": "character.guardian_knight.original_00.outfit"
+          "visualSetId": "character.guardian_knight.original_00.customizing_outfit"
         },
         {
           "objectUnit": 2,
-          "visualSetId": "character.guardian_knight.source_ddk_01.outfit"
+          "visualSetId": "character.guardian_knight.source_ddk_01.customizing_outfit"
         },
         {
           "objectUnit": 3,
-          "visualSetId": "character.guardian_knight.source_ddk_02.outfit"
+          "visualSetId": "character.guardian_knight.source_ddk_02.customizing_outfit"
         },
         {
           "objectUnit": 4,
-          "visualSetId": "character.guardian_knight.source_ddk_03.outfit"
+          "visualSetId": "character.guardian_knight.source_ddk_03.customizing_outfit"
         }
       ]
     }

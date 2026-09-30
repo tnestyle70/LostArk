@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RoomCommand.h"
+#include <atomic>
 #include "ServerPlayer.h"
 #include "ServerWorldEntity.h"
 #include "WorldBootstrap.h"
@@ -222,7 +223,8 @@ namespace LostArk::Server
 	public:
 		explicit CGameRoom(
 			LostArk::Shared::WORLD_ID worldId,
-			std::shared_ptr<const CGameplayCatalog> initialGameplayGeneration = {});
+			std::shared_ptr<const CGameplayCatalog> initialGameplayGeneration = {},
+			const std::atomic_bool* pPreparationCancelled = nullptr);
 
 		bool Enqueue(ROOM_COMMAND command);
 		[[nodiscard]] ROOM_COMMAND_ENQUEUE_RESULT Enqueue_Detailed(
@@ -288,11 +290,16 @@ namespace LostArk::Server
 		// process its queued ENTER_WORLD and bind the same session again.
 		[[nodiscard]] bool Commit_WorldTransferDeparture(SESSION_ID sessionId);
 		// Room-thread only, while ServerApp holds its session-binding mutex.
+		[[nodiscard]] bool Has_PersonalGuideOwner(const std::shared_ptr<CClientSession>& ownerSession) const;
 		bool Transfer_PartyTo(CGameRoom& target,
 			const std::vector<SESSION_ID>& leaderFirstSessionIds,
 			LostArk::Shared::PARTY_TRANSFER_RESULT& outResult, std::string& status,
 			const std::string& raidReturnNpcPlacementId = {},
             const std::string& spawnPlacementOverrideId = {});
+		bool Transfer_ColosseumMatchTo(CGameRoom& target,
+			const std::vector<SESSION_ID>& shuffledSeats, std::uint64_t matchId, std::string& status);
+		void Notify_ColosseumTransferResult(bool committed);
+		[[nodiscard]] bool Try_SealColosseumForRetirement();
 		void Notify_PartyTransferFailure(SESSION_ID sessionId,
 			std::uint32_t requestSequence, LostArk::Shared::WORLD_ID targetWorldId,
 			LostArk::Shared::PARTY_TRANSFER_RESULT result);
@@ -304,13 +311,22 @@ namespace LostArk::Server
 		bool Build_GuidePlayer(LostArk::Shared::PLAYER_ID playerId, LostArk::Shared::NET_ENTITY_ID entityId,
 			float x, float y, float z, SERVER_PLAYER& outPlayer) const;
 		bool Find_GuideLanding(const SERVER_PLAYER& guide, float x, float y, float z, SERVER_NAV_POINT& point) const;
-		bool Invite_Guide(const SERVER_PLAYER& inviter, LostArk::Shared::NET_ENTITY_ID target);
+		bool Start_Guide(const SERVER_PLAYER& inviter, LostArk::Shared::NET_ENTITY_ID target);
+		void Handle_GuideControl(SESSION_ID sessionId, const LostArk::Shared::C2S_GUIDE_CONTROL& request);
+		void Broadcast_GuideOwnership();
+		void Broadcast_GuideState(const LostArk::Shared::S2C_GUIDE_STATE& message);
 		void Update_Guides(float seconds);
+		void Update_Colosseum(float seconds);
+		void Handle_ColosseumRecruit(SESSION_ID sessionId, const LostArk::Shared::C2S_COLOSSEUM_RECRUIT& request);
+		LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE Build_ColosseumState() const;
+		void Broadcast_ColosseumState();
         float Predict_GuideContactRisk(const SERVER_PLAYER& guide, float x, float z);
 		void Guide_AnchorArrived(const SERVER_PLAYER& anchor);
 		void Guide_ChatCommand(const SERVER_PLAYER& sender, const std::string& text);
-		void Remove_Guide(std::uint32_t partyId, bool publish = true);
-		void Queue_GuidePrompt(std::uint32_t partyId, const std::string& promptId);
+		void Remove_Guide(SESSION_ID ownerSessionId, bool publish = true);
+		void Suspend_PersonalGuide(SESSION_ID ownerSessionId);
+		void Resume_PersonalGuide(SESSION_ID ownerSessionId, LostArk::Shared::WORLD_ID sourceWorld);
+		void Queue_GuidePrompt(SESSION_ID ownerSessionId, const std::string& promptId);
 		void Execute_PlayerMove(SERVER_PLAYER& player, const LostArk::Shared::C2S_MOVE& move);
 		bool Execute_PlayerSkill(SERVER_PLAYER& player, const LostArk::Shared::C2S_USE_SKILL& skill);
 		struct STAGED_PLAYER_ENTRY final
@@ -347,7 +363,8 @@ namespace LostArk::Server
 				LostArk::Shared::INVALID_HONOR_TITLE_ID,
 			const std::string& raidReturnNpcPlacementId = {},
 			const SERVER_PURSE& carriedPurse = {},
-			const SERVER_DURABILITY_STATE& carriedDurability = {});
+			const SERVER_DURABILITY_STATE& carriedDurability = {},
+			LostArk::Shared::WORLD_ID sourceWorld = LostArk::Shared::WORLD_ID::BERN);
 		void Leave(
 			SESSION_ID sessionId,
 			LostArk::Shared::PLAYER_DESPAWN_REASON reason, bool publishDeparture = true);
@@ -1165,8 +1182,8 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_CONFIRM_NPC_ENTRY& request);
 		// Colosseum match queue (BERN only). JOIN is the answer to the Colosseum NPC's offer: the
 		// Server re-tests distance/state, queues the session and, once the head count is met
-		// (Debug: one player, Release: four), splits the queue into two random teams, sends each
-		// session its roster and stages the ordinary solo world transfer to COLOSSEUM.
+		// (four humans in both configurations), reserves two random teams for one atomic
+		// admission into a private Colosseum match. Only a committed transfer consumes the queue.
 		// LEAVE removes only the requesting session.
 		void Handle_ColosseumQueueJoin(
 			SESSION_ID sessionId,
@@ -1309,7 +1326,8 @@ namespace LostArk::Server
 		bool Stage_PartyWorldTransfer(
 			const std::vector<LostArk::Shared::PLAYER_ID>& batchMemberIds,
 			LostArk::Shared::WORLD_ID targetWorldId,
-			std::uint32_t requestSequence, const std::string& raidReturnNpcPlacementId);
+			std::uint32_t requestSequence, const std::string& raidReturnNpcPlacementId,
+			const std::string& spawnPlacementOverrideId = {});
 		// player가 알려진 Valtan 입장 guide NPC 근처(proximity)인지 검증한다.
 		bool Is_PlayerNearValtanEntryNpc(
 			const SERVER_PLAYER& player, const std::string& npcPlacementId) const;
@@ -1803,10 +1821,13 @@ namespace LostArk::Server
 		struct GUIDE_RUNTIME
 		{
 			LostArk::Shared::PLAYER_ID PlayerId = 0, AnchorId = 0;
+			std::weak_ptr<CClientSession> OwnerSession;
+			LostArk::Shared::NET_ENTITY_ID OwnerNetEntityId = 0;
+			bool WaitingForOwner = false, WaitingForShip = false, ReturningOnFoot = false;
 			std::string ComboId, PendingComboId, Reason;
 			std::size_t ComboStep = 0;
 			float ThinkElapsed = 0.f, ComboElapsed = 0.f, StepElapsed = 0.f, FarElapsed = 0.f, HoldElapsed = 0.f, PromptRemaining = 0.f;
-			std::uint32_t Sequence = 0, EventSequence = 0;
+			std::uint32_t Sequence = 0;
             std::map<std::string, std::uint32_t> CommandTicks;
 			std::uint8_t Action = 0;
             float FollowScore = 0.f, EvadeScore = 0.f, CombatScore = 0.f;
@@ -1816,7 +1837,11 @@ namespace LostArk::Server
 			std::map<LostArk::Shared::NET_ENTITY_ID, std::uint32_t> PatternSequences;
 		};
 		CGuideCatalog m_GuideCatalog;
-		std::map<std::uint32_t, GUIDE_RUNTIME> m_Guides;
+		// At most one owner binds the one placed Bern guide; no companion clone or party slot.
+		std::map<SESSION_ID, GUIDE_RUNTIME> m_PersonalGuides;
+		std::uint32_t m_iGuideEventSequence = 0;
+		float m_fGuideOwnershipElapsed = 0.f;
+		std::unordered_map<SESSION_ID, std::uint32_t> m_GuideControlSequences;
 		LostArk::Shared::PLAYER_ID m_iGuideReceptionId = 0;
         LostArk::Shared::PLAYER_ID m_iNextGuidePlayerId = 0x80000000u;
 		/* Grants what a started skill buffs, to the caster, the party in this room
@@ -1864,6 +1889,25 @@ namespace LostArk::Server
 			std::uint32_t iRequestSequence = 0u;
 		};
 		std::vector<COLOSSEUM_QUEUE_ENTRY> m_ColosseumQueue;
+		bool m_bColosseumTransferPending = false;
+		std::uint32_t m_iColosseumRetryTick = 0u;
+		std::uint64_t m_iColosseumMatchId = 0u;
+		LostArk::Shared::COLOSSEUM_MATCH_PHASE m_eColosseumPhase = LostArk::Shared::COLOSSEUM_MATCH_PHASE::RECRUITING;
+		std::uint8_t m_iColosseumWinnerTeam = 255u;
+		std::uint32_t m_iColosseumRevision = 1u;
+		std::array<std::uint32_t, 2> m_ColosseumTeamPartyIds{};
+		struct COLOSSEUM_MERCENARY_RUNTIME final
+		{
+			float fThinkElapsed = 0.f;
+			std::uint32_t iSequence = 0u;
+			std::size_t iSkillCursor = 0u;
+			std::vector<LostArk::Shared::SKILL_ID> ComboSkills;
+			float fComboElapsed = 0.f, fStepWaitElapsed = 0.f;
+			float fComboTimeout = 45.f, fStepWaitTimeout = 5.f;
+			const char* pReason = "Waiting for recruitment";
+		};
+		std::map<LostArk::Shared::PLAYER_ID, COLOSSEUM_MERCENARY_RUNTIME> m_ColosseumMercenaries;
+		std::unordered_map<SESSION_ID, std::uint32_t> m_ColosseumRecruitSequences;
 		GATE_PROGRESS_STATE m_GateProgress;
 		std::uint32_t m_iArenaAssemblyStartTick = 0u;
 		std::uint32_t m_iArenaAssemblyRaidEpoch = 0u;
@@ -1903,6 +1947,7 @@ namespace LostArk::Server
 			LostArk::Shared::PLAYER_ID iOwnerId = 0;
 			std::uint32_t iSkillId = 0u;
 			std::uint32_t iSpawnTick = 0u;
+            std::uint32_t iProjectileIndex = 0u;
             LostArk::Shared::COMBAT_OBJECT_ID iVisualObjectId = LostArk::Shared::INVALID_COMBAT_OBJECT_ID;
             LostArk::Shared::NET_ENTITY_ID iSourceNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 			float fAimDistanceM = 0.f;

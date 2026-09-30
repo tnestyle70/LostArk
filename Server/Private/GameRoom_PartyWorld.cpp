@@ -100,10 +100,7 @@ bool LostArk::Server::CGameRoom::Stage_ReturnToBern(
 	// silently reset the player back to just 3 starting potions.
 	transfer.CarriedInventory = player.Inventory;
 	transfer.CarriedPurse = player.Purse;
-    if (const auto party = m_PartyIdByPlayerId.find(player.iPlayerId); party != m_PartyIdByPlayerId.end())
-        if (const auto companion = m_Guides.find(party->second); companion != m_Guides.end() &&
-            (companion->second.AnchorId == player.iPlayerId || m_PartyMembersByPartyId.at(party->second).size() == 1u))
-            transfer.PartyBatchSessionIds.push_back(sessionId);
+
 	m_PendingWorldTransfers.push_back(std::move(transfer));
 	return true;
 }
@@ -112,6 +109,7 @@ void LostArk::Server::CGameRoom::Handle_PartyInvite(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::C2S_PARTY_INVITE& request)
 {
+	if (m_iColosseumMatchId != 0u) return;
 	using namespace LostArk::Shared;
 
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
@@ -122,7 +120,6 @@ void LostArk::Server::CGameRoom::Handle_PartyInvite(
 	if (inviterIter == m_Players.end())
 		return;
 	const SERVER_PLAYER& inviter = inviterIter->second;
-	if (Invite_Guide(inviter, request.iTargetNetEntityId)) return;
 
 	const auto targetPlayerIdIter =
 		m_PlayerIdByEntityId.find(request.iTargetNetEntityId);
@@ -136,6 +133,7 @@ void LostArk::Server::CGameRoom::Handle_PartyInvite(
 	if (targetIter == m_Players.end())
 		return;
 	const SERVER_PLAYER& target = targetIter->second;
+	if (target.Is_Guide()) return; // Guidance has its own typed START/STOP command.
 
 	const auto inviterPartyIter = m_PartyIdByPlayerId.find(inviterId);
 	const std::uint32_t inviterPartyId = inviterPartyIter != m_PartyIdByPlayerId.end() ?
@@ -182,6 +180,7 @@ void LostArk::Server::CGameRoom::Handle_PartyInviteRespond(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::C2S_PARTY_INVITE_RESPOND& request)
 {
+	if (m_iColosseumMatchId != 0u) return;
 	using namespace LostArk::Shared;
 
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
@@ -249,13 +248,10 @@ void LostArk::Server::CGameRoom::Broadcast_PartyRoster(
 		member.iNetEntityId = playerIter->second.iNetEntityId;
 		member.strNickname = playerIter->second.strNickName;
 		member.eCharacterClass = playerIter->second.eCharacterClass;
+		member.eControlKind = playerIter->second.eControlKind;
 		message.Members.push_back(std::move(member));
 	}
-	if (const auto companion = m_Guides.find(partyId); companion != m_Guides.end())
-	{
-		const auto actor = m_Players.find(companion->second.PlayerId);
-		if (actor != m_Players.end()) message.GuideCompanion = PARTY_ROSTER_MEMBER{actor->second.iNetEntityId, actor->second.strNickName, actor->second.eCharacterClass, actor->second.eControlKind};
-	}
+
 	CPacketWriter writer;
 	if (!Write_Message(writer, message))
 		return;
@@ -430,6 +426,19 @@ void LostArk::Server::CGameRoom::Handle_InteractTrigger(
 	   through the same pending list the tick uses. */
 	for (SERVER_WORLD_TRANSFER_REQUEST& transfer : transfers)
 	{
+		// The validated G dock opens one Server-owned vote; it never splits a party.
+		if ((m_eWorldId == WORLD_ID::BERN && transfer.eTargetWorldId == WORLD_ID::MAHARAKA) ||
+			(m_eWorldId == WORLD_ID::MAHARAKA && transfer.eTargetWorldId == WORLD_ID::BERN))
+		{
+			C2S_RAID_ENTRY_PROPOSE proposal{};
+			proposal.iRequestSequence = request.iRequestSequence;
+			proposal.eTarget = transfer.eTargetWorldId == WORLD_ID::MAHARAKA ?
+				RAID_ENTRY_TARGET::MAHARAKA : RAID_ENTRY_TARGET::MAHARAKA_RETURN;
+			proposal.strNpcPlacementId = transfer.eTargetWorldId == WORLD_ID::MAHARAKA ?
+				"island.dock.to.maharaka" : "island.exit.to.bern";
+			Handle_RaidEntryPropose(sessionId, proposal);
+			continue;
+		}
 		if (!m_PlayerIdBySessionId.contains(transfer.iSessionId))
 			continue;
 		const bool alreadyStaged = std::any_of(
@@ -696,7 +705,6 @@ void LostArk::Server::CGameRoom::Remove_FromParty(
 		members.end());
 	if (members.empty())
 	{
-		Remove_Guide(partyId);
 		m_PartyMembersByPartyId.erase(membersIter);
 		return;
 	}
@@ -735,7 +743,8 @@ bool LostArk::Server::CGameRoom::Is_PlayerNearValtanEntryNpc(
 bool LostArk::Server::CGameRoom::Stage_PartyWorldTransfer(
 	const std::vector<LostArk::Shared::PLAYER_ID>& batchMemberIds,
 	const LostArk::Shared::WORLD_ID targetWorldId,
-	const std::uint32_t requestSequence, const std::string& raidReturnNpcPlacementId)
+	const std::uint32_t requestSequence, const std::string& raidReturnNpcPlacementId,
+	const std::string& spawnPlacementOverrideId)
 {
 	using namespace LostArk::Shared;
 	if (batchMemberIds.empty())
@@ -762,6 +771,9 @@ bool LostArk::Server::CGameRoom::Stage_PartyWorldTransfer(
 	transfer.iSessionId = leader.iSessionId;
 	transfer.eTargetWorldId = targetWorldId;
 	transfer.strRaidReturnNpcPlacementId = raidReturnNpcPlacementId;
+	transfer.strSpawnPlacementOverrideId = spawnPlacementOverrideId;
+	transfer.CarriedInventory = leader.Inventory;
+	transfer.CarriedPurse = leader.Purse;
 	transfer.eCharacterClass = leader.eCharacterClass;
 	transfer.strNickName = leader.strNickName;
 	transfer.iVoiceType = leader.iVoiceType;
@@ -774,11 +786,14 @@ bool LostArk::Server::CGameRoom::Stage_PartyWorldTransfer(
 		if (memberIter == m_Players.end() ||
 			CHARACTER_CLASS_ID::END == memberIter->second.eCharacterClass ||
 			memberIter->second.strNickName.empty() ||
+			((m_eWorldId == WORLD_ID::MAHARAKA || targetWorldId == WORLD_ID::MAHARAKA) &&
+				(!memberIter->second.iCurrentHp || memberIter->second.eAction != PLAYER_ACTION_STATE::NONE)) ||
 			isAlreadyStaged(memberIter->second.iSessionId))
 		{
 			return false;
 		}
-		if (batchMemberIds.size() > 1u || (m_PartyIdByPlayerId.contains(leader.iPlayerId) && m_Guides.contains(m_PartyIdByPlayerId.at(leader.iPlayerId))))
+		if (m_eWorldId == WORLD_ID::MAHARAKA || targetWorldId == WORLD_ID::MAHARAKA ||
+			batchMemberIds.size() > 1u)
 			transfer.PartyBatchSessionIds.push_back(memberIter->second.iSessionId);
 	}
 	m_PendingWorldTransfers.push_back(std::move(transfer));
@@ -823,7 +838,10 @@ void LostArk::Server::CGameRoom::Handle_RaidEntryPropose(
 	// 30Hz 기준 30초 미응답이면 tick 루프가 TIMEOUT으로 닫는다.
 	constexpr std::uint32_t VOTE_TIMEOUT_TICKS = 30u * 30u;
 
-	if (WORLD_ID::BERN != m_eWorldId || request.eTarget >= RAID_ENTRY_TARGET::END)
+	const bool islandEntry = request.eTarget == RAID_ENTRY_TARGET::MAHARAKA;
+	const bool islandReturn = request.eTarget == RAID_ENTRY_TARGET::MAHARAKA_RETURN;
+	if ((islandReturn ? m_eWorldId != WORLD_ID::MAHARAKA : m_eWorldId != WORLD_ID::BERN) ||
+		request.eTarget >= RAID_ENTRY_TARGET::END)
 		return;
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionIter == m_PlayerIdBySessionId.end())
@@ -840,7 +858,14 @@ void LostArk::Server::CGameRoom::Handle_RaidEntryPropose(
 	{
 		return;
 	}
-	if (!Is_PlayerNearValtanEntryNpc(proposer, request.strNpcPlacementId))
+	if (islandEntry || islandReturn)
+	{
+		const char* expected = islandEntry ? "island.dock.to.maharaka" : "island.exit.to.bern";
+		const auto* dock = Find_Placement(expected);
+		if (request.strNpcPlacementId != expected || !dock || !dock->isEnabled ||
+			!CServerTriggerSystem::Contains_Placement(*dock, proposer)) return;
+	}
+	else if (!Is_PlayerNearValtanEntryNpc(proposer, request.strNpcPlacementId))
 		return;
 
 	// 한 플레이어는 동시에 하나의 열린 proposal에만 속한다.
@@ -958,14 +983,20 @@ void LostArk::Server::CGameRoom::Close_RaidEntryVote(
 	RAID_ENTRY_VOTE_RESULT finalResult = result;
 	if (RAID_ENTRY_VOTE_RESULT::ALL_ACCEPTED == result)
 	{
-		const WORLD_ID targetWorld =
-			(RAID_ENTRY_TARGET::KAKULSAYDON == proposal.eTarget)
-			? WORLD_ID::KAKULSAYDON_ARENA : WORLD_ID::VALTAN_ARENA;
+		const bool islandEntry = proposal.eTarget == RAID_ENTRY_TARGET::MAHARAKA;
+		const bool islandReturn = proposal.eTarget == RAID_ENTRY_TARGET::MAHARAKA_RETURN;
+		const WORLD_ID targetWorld = islandEntry ? WORLD_ID::MAHARAKA : islandReturn ? WORLD_ID::BERN :
+			(proposal.eTarget == RAID_ENTRY_TARGET::KAKULSAYDON ? WORLD_ID::KAKULSAYDON_ARENA : WORLD_ID::VALTAN_ARENA);
+		const auto* dock = (islandEntry || islandReturn) ? Find_Placement(proposal.strNpcPlacementId) : nullptr;
+		const auto leader = proposal.Voters.empty() ? m_Players.end() : m_Players.find(proposal.Voters.front());
+		const bool dockValid = !(islandEntry || islandReturn) ||
+			(dock && leader != m_Players.end() && CServerTriggerSystem::Contains_Placement(*dock, leader->second));
 		// 수락 완료와 실제 stage 사이에 멤버가 unavailable해졌으면 전송하지 않고
 		// CANCELLED로 낮춰 전원이 Bern에 남게 한다(부분 이동 금지).
-		if (!Stage_PartyWorldTransfer(
+		if (!dockValid || !Stage_PartyWorldTransfer(
 				proposal.Voters, targetWorld, proposal.iRequestSequence,
-				proposal.strNpcPlacementId))
+				(islandEntry || islandReturn) ? std::string{} : proposal.strNpcPlacementId,
+				islandReturn ? "island.return.sea.landing" : std::string{}))
 		{
 			finalResult = RAID_ENTRY_VOTE_RESULT::CANCELLED;
 		}
@@ -1021,6 +1052,20 @@ void LostArk::Server::CGameRoom::Cancel_RaidEntryProposalsInvolving(
 	}
 }
 
+bool LostArk::Server::CGameRoom::Has_PersonalGuideOwner(
+    const std::shared_ptr<CClientSession>& ownerSession) const
+{
+    if (m_eWorldId != LostArk::Shared::WORLD_ID::BERN || !ownerSession || ownerSession->Is_Closing()) return false;
+    const auto ownerId = ownerSession->Get_SessionId();
+    const auto guide = m_PersonalGuides.find(ownerId);
+    if (guide == m_PersonalGuides.end() || guide->second.OwnerSession.lock() != ownerSession ||
+        guide->second.PlayerId != m_iGuideReceptionId || !m_Players.contains(m_iGuideReceptionId)) return false;
+    const auto binding = m_PlayerIdBySessionId.find(ownerId);
+    if (guide->second.WaitingForOwner) return binding == m_PlayerIdBySessionId.end();
+    return binding != m_PlayerIdBySessionId.end() && binding->second == guide->second.AnchorId &&
+        Find_Session(ownerId) == ownerSession;
+}
+
 bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 	CGameRoom& target, const std::vector<SESSION_ID>& leaderFirstSessionIds,
 	LostArk::Shared::PARTY_TRANSFER_RESULT& outResult, std::string& status,
@@ -1034,35 +1079,44 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 		status = detail;
 		return false;
 	};
+	const bool colosseumSquareHole = m_eWorldId == WORLD_ID::COLOSSEUM &&
+		target.m_eWorldId == WORLD_ID::BERN &&
+		0u != Resolve_BernSquareHoleId(spawnPlacementOverrideId) && raidReturnNpcPlacementId.empty();
     const bool returning = target.m_eWorldId == WORLD_ID::BERN &&
         (m_eWorldId == WORLD_ID::VALTAN_ARENA || m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA);
+	const bool singleDeparture = returning || colosseumSquareHole;
+	const bool islandTransfer = (m_eWorldId == WORLD_ID::BERN && target.m_eWorldId == WORLD_ID::MAHARAKA) ||
+		(m_eWorldId == WORLD_ID::MAHARAKA && target.m_eWorldId == WORLD_ID::BERN);
     const bool entering = m_eWorldId == WORLD_ID::BERN &&
         (target.m_eWorldId == WORLD_ID::VALTAN_ARENA || target.m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA);
-	if (!m_isReady || !target.m_isReady || (!entering && !returning) ||
-		leaderFirstSessionIds.empty() || leaderFirstSessionIds.size() > MAX_PARTY_MEMBERS || (returning && leaderFirstSessionIds.size() != 1u))
+	if (!m_isReady || !target.m_isReady || (!entering && !singleDeparture && !islandTransfer) ||
+		leaderFirstSessionIds.empty() || leaderFirstSessionIds.size() > MAX_PARTY_MEMBERS || (singleDeparture && leaderFirstSessionIds.size() != 1u))
 		return reject(PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED, "invalid party transfer world/batch");
 	const auto leader = m_PlayerIdBySessionId.find(leaderFirstSessionIds.front());
 	if (leader == m_PlayerIdBySessionId.end())
 		return reject(PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE, "party leader is no longer present");
 	const auto sourceParty = m_PartyIdByPlayerId.find(leader->second);
-	if (sourceParty == m_PartyIdByPlayerId.end())
+	const auto ownerSession = Find_Session(leaderFirstSessionIds.front());
+	const bool guideSolo = leaderFirstSessionIds.size() == 1u &&
+		((entering && Has_PersonalGuideOwner(ownerSession)) ||
+		 (returning && target.Has_PersonalGuideOwner(ownerSession)));
+	const bool unpartiedSolo = (islandTransfer || guideSolo) && leaderFirstSessionIds.size() == 1u &&
+		sourceParty == m_PartyIdByPlayerId.end();
+	// A transactional guide-owner transfer must not create a hidden human party.
+	const bool createTargetParty = !colosseumSquareHole && !unpartiedSolo && !guideSolo;
+	if (sourceParty == m_PartyIdByPlayerId.end() && !colosseumSquareHole && !unpartiedSolo)
 		return reject(PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE, "source party no longer exists");
-	const auto sourceMembers = m_PartyMembersByPartyId.find(sourceParty->second);
-	if (sourceMembers == m_PartyMembersByPartyId.end() ||
-		(!returning && (sourceMembers->second.size() != leaderFirstSessionIds.size() ||
+	const std::uint32_t sourcePartyId = sourceParty == m_PartyIdByPlayerId.end() ? 0u : sourceParty->second;
+	const auto sourceMembers = m_PartyMembersByPartyId.find(sourcePartyId);
+	if ((0u != sourcePartyId && sourceMembers == m_PartyMembersByPartyId.end()) ||
+		(!singleDeparture && !unpartiedSolo && (sourceMembers->second.size() != leaderFirstSessionIds.size() ||
 		sourceMembers->second.front() != leader->second)))
 		return reject(PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE, "source party changed before transfer");
-	if (0u == target.m_iNextPartyId || target.m_PartyMembersByPartyId.contains(target.m_iNextPartyId))
+	if (createTargetParty &&
+		(0u == target.m_iNextPartyId || target.m_PartyMembersByPartyId.contains(target.m_iNextPartyId)))
 		return reject(PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED, "target party identity is exhausted");
 
-    const std::uint32_t sourcePartyId = sourceParty->second;
-    const std::vector<PLAYER_ID> departingMembers = returning ? std::vector<PLAYER_ID>{leader->second} : sourceMembers->second;
-    const auto sourceGuide = m_Guides.find(sourcePartyId);
-    const bool carryGuide = sourceGuide != m_Guides.end() &&
-        (!returning || sourceGuide->second.AnchorId == leader->second || sourceMembers->second.size() == 1u);
-    std::optional<SERVER_PLAYER> guideEntry;
-    GUIDE_RUNTIME guideRuntime;
-    std::vector<PACKET_FRAME> guideFrames;
+    const std::vector<PLAYER_ID> departingMembers = (singleDeparture || unpartiedSolo) ? std::vector<PLAYER_ID>{leader->second} : sourceMembers->second;
 	std::vector<STAGED_PLAYER_ENTRY> entries;
 	std::vector<NET_ENTITY_ID> departingEntities;
 	entries.reserve(leaderFirstSessionIds.size());
@@ -1075,6 +1129,18 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 			std::find(leaderFirstSessionIds.begin(), leaderFirstSessionIds.begin() + index,
 				leaderFirstSessionIds[index]) != leaderFirstSessionIds.begin() + index)
 			return reject(PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE, "source party member identity changed");
+		if (islandTransfer && (0u == member->second.iCurrentHp ||
+			member->second.eAction != PLAYER_ACTION_STATE::NONE ||
+			member->second.fKnockbackRemainingSeconds > 0.f || member->second.TriggerMove.isActive))
+			return reject(PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE, "island player state changed before travel");
+		const bool finishedColosseumReturn = colosseumSquareHole && m_iColosseumMatchId != 0u &&
+			m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::FINISHED && member->second.Is_Human() &&
+			member->second.bColosseumParticipant && member->second.iColosseumMatchId == m_iColosseumMatchId &&
+			member->second.iColosseumTeam < 2u;
+		if (colosseumSquareHole && !finishedColosseumReturn && (0u == member->second.iCurrentHp ||
+			member->second.fKnockbackRemainingSeconds > 0.f || member->second.bPatternBound ||
+			INVALID_VEHICLE_ID != member->second.iVehicleId || PLAYER_ACTION_STATE::NONE != member->second.eAction))
+			return reject(PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE, "Colosseum player state changed before travel");
 		const auto session = Find_Session(member->second.iSessionId);
 		if (nullptr == session || session->Is_Closing())
 			return reject(PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE, "party member session is terminal");
@@ -1094,54 +1160,21 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 				PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL : PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED;
 			return false;
 		}
+		if (islandTransfer)
+		{
+			// An intentionally empty bag/purse must not become a fresh-entry grant.
+			entry.Player.Inventory = member->second.Inventory;
+			entry.Player.Purse = member->second.Purse;
+		}
 		entries.push_back(std::move(entry));
 		departingEntities.push_back(member->second.iNetEntityId);
 	}
-    if (carryGuide)
-    {
-        if (!target.m_GuideCatalog.Loaded || target.m_GuideCatalog.Revision != m_GuideCatalog.Revision ||
-            target.m_Players.size() + entries.size() + 1u > MAX_WORLD_SNAPSHOT_PLAYERS)
-            return reject(PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED, "guide generation or destination capacity is unavailable");
-        const auto anchor = std::find(departingMembers.begin(), departingMembers.end(), sourceGuide->second.AnchorId);
-        const auto index = anchor == departingMembers.end() ? 0u : static_cast<std::size_t>(anchor - departingMembers.begin());
-        const auto& owner = entries[index].Player;
-        SERVER_PLAYER companion;
-        bool guideAdmitted = false;
-        for (unsigned candidate = 0; candidate < 16 && !guideAdmitted; ++candidate)
-        {
-            const float angle = static_cast<float>(candidate) * 3.14159265359f / 8.f;
-            if (!target.Build_GuidePlayer(target.m_iNextGuidePlayerId,
-                target.m_iNextNetEntityId + static_cast<NET_ENTITY_ID>(entries.size()),
-                owner.fPositionX + std::sin(angle) * target.m_GuideCatalog.DesiredDistance,
-                owner.fPositionY,
-                owner.fPositionZ + std::cos(angle) * target.m_GuideCatalog.DesiredDistance, companion)) continue;
-            guideAdmitted = std::none_of(entries.begin(), entries.end(), [&](const auto& entry) {
-                return std::abs(entry.Player.fPositionY - companion.fPositionY) < 1.5f &&
-                    std::hypot(entry.Player.fPositionX - companion.fPositionX,
-                        entry.Player.fPositionZ - companion.fPositionZ) < .75f;
-            });
-        }
-        if (!guideAdmitted)
-            return reject(PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED, "guide destination failed navigation or collision admission");
-        guideRuntime.PlayerId = companion.iPlayerId; guideRuntime.AnchorId = owner.iPlayerId;
-        guideRuntime.EventSequence = sourceGuide->second.EventSequence;
-        guideEntry = companion;
-        const auto oldActor = m_Players.find(sourceGuide->second.PlayerId);
-        if (oldActor == m_Players.end()) return reject(PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE, "guide actor disappeared before transfer");
-        departingEntities.push_back(oldActor->second.iNetEntityId);
-        S2C_PLAYER_SPAWNED spawn;
-        spawn.iPlayerId=companion.iPlayerId;spawn.iNetEntityId=companion.iNetEntityId;spawn.eCharacterClass=companion.eCharacterClass;
-        spawn.eControlKind=companion.eControlKind;spawn.strNickName=companion.strNickName;spawn.iVoiceType=companion.iVoiceType;
-        spawn.fPositionX=companion.fPositionX;spawn.fPositionY=companion.fPositionY;spawn.fPositionZ=companion.fPositionZ;spawn.fYawDegrees=companion.fYawDegrees;
-        CPacketWriter writer;if(!Write_Message(writer,spawn))return reject(PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED,"guide spawn encoding failed");
-        guideFrames.push_back({PACKET_TYPE::S2C_PLAYER_SPAWNED,writer.Get_Buffer()});
-    }
 	std::vector<CLIENT_SESSION_RELIABLE_BATCH> outboundBatches;
 	S2C_PARTY_ROSTER roster{};
-	for (const auto& entry : entries)
-		roster.Members.push_back({ entry.Player.iNetEntityId, entry.Player.strNickName,
-			entry.Player.eCharacterClass });
-    if (guideEntry) roster.GuideCompanion = PARTY_ROSTER_MEMBER{guideEntry->iNetEntityId,guideEntry->strNickName,guideEntry->eCharacterClass,guideEntry->eControlKind};
+	if (createTargetParty)
+		for (const auto& entry : entries)
+			roster.Members.push_back({ entry.Player.iNetEntityId, entry.Player.strNickName,
+				entry.Player.eCharacterClass });
 	CPacketWriter rosterWriter;
 	if (!Write_Message(rosterWriter, roster))
 		return reject(PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED, "target party roster failed encoding");
@@ -1152,8 +1185,8 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 			outResult = PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED;
 			return false;
 		}
-		entry.Frames.insert(entry.Frames.end(),guideFrames.begin(),guideFrames.end());
-		entry.Frames.push_back({ PACKET_TYPE::S2C_PARTY_ROSTER, rosterWriter.Get_Buffer() });
+		if (createTargetParty)
+			entry.Frames.push_back({ PACKET_TYPE::S2C_PARTY_ROSTER, rosterWriter.Get_Buffer() });
 		outboundBatches.push_back({ entry.pSession, entry.Frames });
 	}
 	// Include observer notifications in the same bounded FIFO reservation;
@@ -1199,7 +1232,6 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 				return reject(PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED, "target spawn payload failed encoding");
 			observer.Frames.push_back({ PACKET_TYPE::S2C_PLAYER_SPAWNED, writer.Get_Buffer() });
 		}
-        observer.Frames.insert(observer.Frames.end(),guideFrames.begin(),guideFrames.end());
 		outboundBatches.push_back(std::move(observer));
 	}
 
@@ -1211,7 +1243,6 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 	auto targetSessions = target.m_Sessions;
 	auto targetPartyIds = target.m_PartyIdByPlayerId;
 	auto targetParties = target.m_PartyMembersByPartyId;
-    auto targetGuides = target.m_Guides;
 	std::vector<PLAYER_ID> targetMembers;
 	targetMembers.reserve(entries.size());
 	for (const auto& entry : entries)
@@ -1221,11 +1252,14 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 		targetSessionPlayers.emplace(player.iSessionId, player.iPlayerId);
 		targetEntityPlayers.emplace(player.iNetEntityId, player.iPlayerId);
 		targetSessions.insert_or_assign(player.iSessionId, entry.pSession);
-		targetPartyIds.emplace(player.iPlayerId, target.m_iNextPartyId);
-		targetMembers.push_back(player.iPlayerId);
+		if (createTargetParty)
+		{
+			targetPartyIds.emplace(player.iPlayerId, target.m_iNextPartyId);
+			targetMembers.push_back(player.iPlayerId);
+		}
 	}
-    if(guideEntry){targetPlayers.emplace(guideEntry->iPlayerId,*guideEntry);targetEntityPlayers.emplace(guideEntry->iNetEntityId,guideEntry->iPlayerId);targetGuides.emplace(target.m_iNextPartyId,guideRuntime);}
-	targetParties.emplace(target.m_iNextPartyId, std::move(targetMembers));
+	if (createTargetParty)
+		targetParties.emplace(target.m_iNextPartyId, std::move(targetMembers));
 	CClientSession::RELIABLE_BATCH_TRANSACTION outbound;
 	if (!outbound.Prepare(outboundBatches, status))
 	{
@@ -1235,10 +1269,13 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 	// No callback here may send to the locked queues. Whole-party removal has
 	// no intermediate roster; all departures/arrivals were staged above.
     for (const PLAYER_ID memberId : departingMembers) m_PartyIdByPlayerId.erase(memberId);
-    for (const auto id : departingMembers) std::erase(sourceMembers->second,id);
-    const bool sourcePartyRemains = !sourceMembers->second.empty();
-    if(!sourcePartyRemains) m_PartyMembersByPartyId.erase(sourceMembers);
-    if(carryGuide) Remove_Guide(sourcePartyId,false);
+	bool sourcePartyRemains = false;
+	if (sourceMembers != m_PartyMembersByPartyId.end())
+	{
+		for (const auto id : departingMembers) std::erase(sourceMembers->second, id);
+		sourcePartyRemains = !sourceMembers->second.empty();
+		if (!sourcePartyRemains) m_PartyMembersByPartyId.erase(sourceMembers);
+	}
 	for (const SESSION_ID sessionId : leaderFirstSessionIds)
 		Leave(sessionId, PLAYER_DESPAWN_REASON::LEVEL_CHANGED, false);
 	target.m_Players.swap(targetPlayers);
@@ -1247,14 +1284,14 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 	target.m_Sessions.swap(targetSessions);
 	target.m_PartyIdByPlayerId.swap(targetPartyIds);
 	target.m_PartyMembersByPartyId.swap(targetParties);
-    target.m_Guides.swap(targetGuides);
 	target.m_iNextPlayerId += static_cast<PLAYER_ID>(entries.size());
-    if(guideEntry) ++target.m_iNextGuidePlayerId;
-	target.m_iNextNetEntityId += static_cast<NET_ENTITY_ID>(entries.size() + (guideEntry ? 1u : 0u));
-	++target.m_iNextPartyId;
+	target.m_iNextNetEntityId += static_cast<NET_ENTITY_ID>(entries.size());
+	if (createTargetParty) ++target.m_iNextPartyId;
 	for (const auto& entry : entries)
 		entry.pSession->Bind_PlayerId(entry.Player.iPlayerId);
 	outbound.Commit();
+	for (const auto& entry : entries)
+		target.Resume_PersonalGuide(entry.Player.iSessionId, m_eWorldId);
     if(sourcePartyRemains) Broadcast_PartyRoster(sourcePartyId);
 	status = "party transfer committed";
 	return true;
@@ -1806,13 +1843,17 @@ bool LostArk::Server::CGameRoom::Try_StartMaharakaWaterGunSkill(
 	const float aimDistance = std::sqrt(aimX * aimX + aimZ * aimZ);
 	if (!player.hasMoveGoal && aimDistance > 0.1f)
 		player.fYawDegrees = std::atan2(aimX, aimZ) * RADIANS_TO_DEGREES;
-	MAHARAKA_WATERGUN_SHOT shot{};
-	shot.iOwnerId = player.iPlayerId;
-	shot.iSkillId = skill->iSkillId;
-	shot.iSourceNetEntityId = player.iNetEntityId;
-	shot.iSpawnTick = Add_ServerTicksSkippingReservedZero(startTick, Get_MaharakaWaterGunTicks(skill->iSpawnMs));
-	shot.fAimDistanceM = (std::min)(skill->fMaxRangeM, (std::max)(aimDistance, 1.f));
-	m_MaharakaWaterGunShots.push_back(std::move(shot));
+	for (std::uint32_t index = 0u; index < skill->iProjectileCount; ++index)
+	{
+		MAHARAKA_WATERGUN_SHOT shot{};
+		shot.iOwnerId = player.iPlayerId;
+		shot.iSkillId = skill->iSkillId;
+		shot.iSourceNetEntityId = player.iNetEntityId;
+		shot.iSpawnTick = Add_ServerTicksSkippingReservedZero(startTick, Get_MaharakaWaterGunTicks(skill->iSpawnMs));
+		shot.iProjectileIndex = index;
+		shot.fAimDistanceM = (std::min)(skill->fMaxRangeM, (std::max)(aimDistance, 1.f));
+		m_MaharakaWaterGunShots.push_back(std::move(shot));
+	}
 	return true;
 }
 
@@ -1849,24 +1890,21 @@ void LostArk::Server::CGameRoom::Update_MaharakaWaterGunShots(const std::uint32_
 				shot.bSpent = true;
 				continue;
 			}
-			const float yawRadians = owner.fYawDegrees / RADIANS_TO_DEGREES;
+            const auto launch = Sample_MaharakaWaterGunLaunch(*skill, shot.iProjectileIndex,
+                owner.fPositionX, owner.fPositionY, owner.fPositionZ, owner.fYawDegrees);
 			shot.bLaunched = true;
-			shot.fDirX = std::sin(yawRadians);
-			shot.fDirZ = std::cos(yawRadians);
-			shot.fX = owner.fPositionX;
+			shot.fDirX = launch.fDirX;
+			shot.fDirZ = launch.fDirZ;
+			shot.fX = launch.fX;
 			shot.fY = owner.fPositionY;
-			shot.fZ = owner.fPositionZ;
-            if (MAHARAKA_WATERGUN_KIND::GRENADE != skill->eKind)
-            {
-                shot.fX += shot.fDirX * .70f + shot.fDirZ * .11f;
-                shot.fZ += shot.fDirZ * .70f - shot.fDirX * .11f;
-            }
+			shot.fZ = launch.fZ;
 			shot.fReachM = MAHARAKA_WATERGUN_KIND::GRENADE == skill->eKind ?
-				shot.fAimDistanceM : skill->fSpeedMps * skill->fLifeSeconds;
+                (std::min)(shot.fAimDistanceM, skill->fProjectileMaxDistanceM) :
+                (std::min)(skill->fProjectileMaxDistanceM, skill->fSpeedMps * skill->fLifeSeconds);
             auto transaction = m_CombatObjectRuntime.Begin_Transaction();
             std::string status;
             if (m_CombatObjectRuntime.Stage_WaterGunPresentation(transaction, owner,
-                shot.iSkillId, m_GameplayCatalog, shot.iSpawnTick, status))
+                shot.iSkillId, m_GameplayCatalog, shot.iSpawnTick, status, shot.iProjectileIndex))
             {
                 const auto visualId = transaction.Objects.back().iCombatObjectId;
                 if (m_CombatObjectRuntime.Commit(std::move(transaction))) shot.iVisualObjectId = visualId;

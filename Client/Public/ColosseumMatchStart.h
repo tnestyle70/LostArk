@@ -32,8 +32,8 @@ NS_BEGIN(Client)
      - the wooden gate leaves (ARENADOOR01) in front of both holding pens sinking into the floor
        a moment after the start text.
 
-   Presentation only. The Server has no match rules for the Colosseum yet, so nothing here gates
-   movement or combat: the clock is the Client's own and starts when the intro cutscene ends. The
+   Presentation only. Server match phase admits combat after recruitment; Begin_ApprovedMatch
+   shows the start beat after that admission. Restart retains the tool countdown preview. The
    gate leaves are ordinary map placements; their pose is written through
    CMapPlacementRuntime::Apply_PlacementTransform (the same path a sequence or the Map Editor
    uses), and the placed pose, the closed gate, is restored by Reset(). A missing or invalid
@@ -85,6 +85,13 @@ public:
 		m_bRunning = true;
 		m_bSkipStep = true;
 	}
+
+    // Server already admitted combat; show its start beat without inventing a second countdown.
+    void Begin_ApprovedMatch()
+    {
+        Begin();
+        Seek(m_Doc.fTotalMs);
+    }
 
 	void Set_Paused(const bool_t bPaused) { if (m_bRunning) m_bPaused = bPaused; }
 	void Seek(const f32_t fMs)

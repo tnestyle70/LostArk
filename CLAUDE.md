@@ -375,7 +375,7 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조와 `MonsterProfiles.json` formatVersion 2의 추적 유지 거리·회전·가속·감속·도착 감속 반경을 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 spawn-group bootstrap v4를 한 transaction으로 생성하며 데이터 배포 시 이 publisher를 명시 실행한다. 제품 일반 몬스터는 Server에서 타깃 hysteresis, 공격 중 대상/방향 고정, navigation 경로 단축, 제한 회전과 가감속, 기존 원형 body sweep/slide를 사용하고 Client에서 2-tick transform 보간, occurrence 기반 결정적 공격 clip pool, 비공격 중 transient hit clip을 사용한다. presentation clip과 playback rate는 `MonsterCatalog.json` formatVersion 2가 소유하며 Server timing을 바꾸지 않는다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v129 snapshot으로 보낸다. v129는 Colosseum 대기열, 장비 내구도·수리, Waterpang AI 외형·튜닝과 캐릭터 생성창 음성 타입(1~8)을 통합한다. 음성 타입은 `C2S_ENTER_WORLD`와 `S2C_PLAYER_SPAWNED`에 실어 모든 Client가 같은 성우로 그 플레이어의 대사를 재생한다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v130 snapshot으로 보낸다. v129에서 Colosseum 대기열, 장비 내구도·수리, Waterpang AI 외형·튜닝과 캐릭터 생성창 음성 타입(1~8)을 통합했다. v130은 용병 초대 `C2S_COLOSSEUM_RECRUIT(120)`, 지속 경기 상태 `S2C_COLOSSEUM_MATCH_STATE(121)`, 단일 Guide 시작·종료 `C2S_GUIDE_CONTROL(122)`와 Maharaka 파티 이동 target을 추가한다. 음성 타입은 `C2S_ENTER_WORLD`와 `S2C_PLAYER_SPAWNED`에 실어 모든 Client가 같은 성우로 그 플레이어의 대사를 재생한다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
 발탄 World 에테르 구슬은 Area `LV_LUT_HEARTRB_ED.mapeffects.json`의 optional `pickup`이
 정본이다. `Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId LV_LUT_HEARTRB_ED -Scope Effects
@@ -424,26 +424,30 @@ Lobby에는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster, Warlord �
 
 Area Loader는 여섯 class binary를 전부 선로드하지 않는다. `CPlayableCharacterAssetService`가 선택 class를 먼저 admission하고 `CClientReplication`이 다른 class의 최초 spawn을 받을 때 같은 경로로 한 번만 추가한다. 이 경계를 우회하는 두 번째 model loader나 silent fallback을 만들지 않는다.
 
-### Guide AI Tool과 가이드 차원술사
+### DimensionMaster Guide와 안내 저작
 
-Debug F1의 `Guide AI` 또는 World Level Tool의 `Guide AI`에서 저작 창을 연다.
-Position/Rotation Y, 베른·발탄·쿠크세이튼 대사, Guide Box와 패턴 연결, 콤보/도움 별칭을
-편집한다. `Combat Detail`은 상황 가중치와 실제 Server 판단을 보여주는 별도 창이다.
-`Rewrite`는 저장된 대사를 수정하는 기능이다.
+기존 Guide AI Tool을 확장한 창이다. Debug F1 → `DimensionMaster Guide`, 또는
+World Level Tool → `DimensionMaster Guide`에서 같은 창을 연다. 별도 AI 통합 창을
+중복 생성하지 않는다. 기본 창960×740에서 대사·트리거·콤보와 기존 Combat Detail을 편집한다.
+
+Bern의 단일 가이드를 우클릭해 `가이드 - 차원술사 안내 시작`을 선택한다. 다른 사용자가
+안내 중이면 `다른 플레이어 안내 중`을 비활성으로 표시한다. owner는 같은 메뉴의 `안내 종료`를 사용할 수 있다.
+시작 시 새 actor·파티 생성은 없으며 `IPlayerCommandSink::Request_GuideControl`이 protocol130의 `C2S_GUIDE_CONTROL(122)` START/STOP을 보낸다. 서버가 안내 상태를 확정하고 인사·지역 대사는 owner의 채팅과 머리 위 말풍선으로 표시한다.
+배 승선 또는 레이드/PvP/섬 이동 시 같은 가이드는 마지막 Bern 위치에서 기다린다.
+Bern 복귀가 서버에서 commit되면 다시 걸어와 안내한다. 종료·접속 해제 뒤에는 옛 귀환
+신호가 안내를 되살리지 않는다. 기존 용 탑승·비행 추종은 유지한다. 보스 레이드 동행은 폐기했다.
 
 정본은 `Data/Guide/GuideCatalog.json`과 `DimensionMaster/{Placement,Prompts,Triggers,Combat}.json`이다.
-Save는 이 원본만 변경하고 Publish는 `Tools/GuidePipeline/Publish-Guide.ps1 -Mode Publish`로
-Client/Server의 `Bin/DataFiles/Guide/Guide.runtime.json`만 교체한다. `-Mode Validate`와
-`-Mode CheckPublished`로 검증한다. Publish 전에는 draft를 Save해야 하고, 실행 중 Server는
-시작 때 읽은 revision을 유지하므로 재시작 후 새 정의를 소비한다. Client 재시작/Reload를
-도구가 강제로 실행하지 않는다.
+Guide ID → Trigger/Box ID → Prompt ID → Text segments를 연결한다. Bern category의
+SPACE_ENTER는 플레이어의 진입을 감지한다. 박스를 선택한 뒤 위치 Picking을 시작하여
+맵을 한 번 클릭하고 half extents/yaw를 조절한다. ESC·우클릭·선택 변경 시 기존 위치를 보존한다.
+수리 NPC2곳, 항구 NPC3곳, 레이드 NPC·제련·물 위치의 박스와 귀환 문구가 준비되어 있다.
 
-Bern 시작 위치의 가이드를 우클릭해 초대하면 자동으로 파티에 동행한다. 인간 최대 4명과
-별도 가이드 1명을 표시하며 leader/입장 인원/투표는 인간 roster를 사용한다.
-`도움!`·`도와줘`·`도와줘!`는 기본 콤보, `살려줘`·`살려줘!`는 ALT_V로 시작하는 콤보,
-`그만`·`그만!`·`멈춰`는 보조 중단이다. 기존 player/vehicle 실행기가 이동과 스킬을 승인한다.
-가이드는 boss target/쿠크 기믹 배정에서 제외하지만 장판·갈고리·즉사칼날의 공간 접촉은 받는다.
-Guide actor/별도 roster/대사/진단과 보스 기믹 게이지는 protocol 117을 사용하므로 Server와 Client를 함께 빌드한다.
+Save는 원본만 변경하고 Publish는 `Tools/GuidePipeline/Publish-Guide.ps1 -Mode Publish`로
+Client/Server `Bin/DataFiles/Guide/Guide.runtime.json`만 교체한다. `-Mode Validate`와
+`-Mode CheckPublished`로 검증한다. 실행 중 Server는 시작 때 읽은 revision을 유지하므로
+파일 게시와 재시작 후 적용은 구분한다. 도구가 Client/Server 종료나 Reload를 강제하지 않는다.
+현재 protocol130의 Server/Client를 함께 빌드한다.
 
 ### 바이너리 에셋 파이프라인
 
@@ -469,7 +473,7 @@ Guide actor/별도 roster/대사/진단과 보스 기믹 게이지는 protocol 1
 
 ### 디버그 툴 (ImGui / MapTool)
 
-`CMainApp`이 Debug/Release 공통 Developer Tools 허브를 소유하고 F1로 토글한다. Release 허브는 Balance Test, Profiler, 광기·체력바 위치 조절과 저장·재로드, Valtan/Kouku Boss Tool과 아레나 Load/Complete Play/Kill Boss, Valtan 벽·지형 상태 선택을 제공하며 기본은 닫힘이다. F6는 gameplay camera의 follow/free mode를 전환한다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용하며 그동안 `CPlayerController`는 물리 key/mouse edge만 동기화하고 gameplay command는 제출하지 않는다. follow 복귀 뒤 새 press부터 제출한다. F7은 Debug/Release 공통 Profiler 창만 열고 닫는다. F2~F5와 F8~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막되 Character Select Server gameplay는 text input이 아닐 때만 명시적 keyboard passthrough를 사용한다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
+`CMainApp`이 Debug/Release 공통 Developer Tools 허브를 소유하고 F1로 토글한다. Release 허브는 Level Navigation(Lobby, Character Select, Bern, Valtan, KoukuSaydon, Entrance PvP Arena, Maharaka), Balance Test, Profiler, 광기·체력바 위치 조절과 저장·재로드, Valtan/Kouku Boss Tool과 아레나 Load/Complete Play/Kill Boss, Valtan 벽·지형 상태 선택을 제공하며 기본은 닫힘이다. F6는 gameplay camera의 follow/free mode를 전환한다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용하며 그동안 `CPlayerController`는 물리 key/mouse edge만 동기화하고 gameplay command는 제출하지 않는다. follow 복귀 뒤 새 press부터 제출한다. F7은 Debug/Release 공통 Profiler 창만 열고 닫는다. F2~F5와 F8~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막되 Character Select Server gameplay는 text input이 아닐 때만 명시적 keyboard passthrough를 사용한다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
 베른·발탄·쿠크 자유 카메라의 기본 속도는 20m/s다. Debug/Release 공통 F1 `Camera`에서
 0.1~400m/s로 조절한다. Debug 발탄·쿠크는 같은 아레나의 process-session 값을 유지하고,
 베른과 Release 조절값은 현재 맵 방문 동안 적용한다. Shift는 현재 속도의 30배다.
@@ -1218,8 +1222,24 @@ Refresh는 Server 적용값을 받고 Apply는 현재 방에 적용하며 Save +
 Server 저장소의 `Data/AI/MaharakaWaterpangAI.json`까지 저장한다. revision 충돌·실패 시
 현재 실행값과 편집 draft를 보존한다. Client가 정본 파일을 직접 쓰지 않는다.
 
-통합 protocol 127의 Client와 Server를 함께 빌드해야 NPC 외형 및 AI Tool 메시지가 일치한다.
+NPC 외형 및 AI Tool 메시지는 protocol 127에서 도입됐다. 현재 Client와 Server는 통합 protocol 130으로 함께 빌드한다.
 AI는 인간 4인과 별도인 Server-owned 최대20명이며, 실제 경기 시간은 도입 연출 후180초다.
 종료 후 참가 인간은 같은 마하라카의 섬 바깥쪽으로 복귀해 탐험한다.
 All Effects의 `World → 마하라카 → 워터팡`에서 중앙 장치와 Q/W/E/R 효과를 고른다.
-원본 MK2 총구2종은 별도 변형 폴더에 있으며 현재 Q/W/E/R에 잘못 연결하지 않는다.
+원본 MK2 Att4 총구는 Q에 연결된다. 별도 변형 폴더에는 MK1 Att2와 MK2 Att3 총구를 보관한다.
+
+
+### 콜로세움 경기 및 워터팡 섬 동행
+
+콜로세움 매칭은 Debug/Release 모두 인간4명으로 시작한다. Server가 경기별 private room에
+무작위2인 팀을 배치하고 자동 파티를 만든다. 시작 위치 앞 다섯 직업 용병 후보 중 팀별2명을
+우클릭 메뉴의 용병 초대로 모집하면 ACTIVE로 전환해 인간2+용병2 대 인간2+용병2가 전투한다.
+각 참가자의 실제HP는 활성 발탄160줄 profile의40줄 분량이며 기존 스킬 피해량은 유지한다. 별도 match 없는 직접 콜로세움 입장은 저작 미리보기이며 PvP가 활성화되지 않는다.
+
+워터팡 섬과 콜로세움은 기존 닉네임·채팅·파티 UI를 사용한다. 베른의 섬 선착장 G와 섬 출구 G는
+파티 전체 확인창을 열고 전원 동의 뒤 함께 이동한다. 물총 Q는 세 갈래, W는 수류탄식 착탄 폭발,
+R은 단발이다. 워터팡 낙사는 시작 지면2m 아래에서 기존 점프대 생환을 처리한다.
+
+현재 wire protocol130은 Client와 Server를 같이 갱신해야 한다. headless 회귀 명령은
+`Server.exe --colosseum-match-contract-test`, `--colosseum-combat-contract-test`, `--maharaka-ai-contract-test`이며,
+제품 화면·실제4인 조작은 사용자가 실행하여 확인한다. 에이전트가 Client/UI를 자율 실행하지 않는다.

@@ -87,6 +87,8 @@ public:
 	static uint8_t Read_SavedVoiceType(const std::string& strJson);
 	/* Seed only a class first visited in this view; explicit selections and saved slots win. */
 	void Configure_HairDefault(const std::string& classAssetId, int32_t defaultIndex);
+	/* Equipment transactions clone the hair again; reapply only controls the user chose. */
+	void Reapply_HairControls(const shared_ptr<CCharacter>& pCharacter) const;
 	/* The character's whole look as one JSON document, the same one a preset slot holds. */
 	std::string Serialize_Appearance(const shared_ptr<CCharacter>& pCharacter) const;
 	/* Puts a saved look (Serialize_Appearance's document) on a character with no screen open:
@@ -245,7 +247,11 @@ private:
 	bool_t m_bLastDyeApplied = false;
 	/* What each surface is currently wearing, so a swatch shows the choice and re-opening
 	the picker starts from it. w < 0 means the authored colour is still in place. */
-	std::array<float4_t, SURFACE_COLOR_COUNT> m_SurfaceColors{};
+	std::array<float4_t, SURFACE_COLOR_COUNT> m_SurfaceColors = [] {
+		std::array<float4_t, SURFACE_COLOR_COUNT> colors{};
+		colors.fill(float4_t(0.f, 0.f, 0.f, -1.f));
+		return colors;
+	}();
 	/* How strongly each make-up layer shows. Measured on the retail values: the cheek colour
 	is authored with alpha 0 and the lip with 1, so alpha is the layer's strength and the
 	page's strength slider is that channel. Indexed by adorn sub-tab, with the eye-line page's
@@ -319,6 +325,7 @@ private:
 	bool_t m_bHairChanged = false;
 	/* Sub-tab state of the secondary tabs. */
 	bool_t m_isHairTwoTone = false;
+	bool_t m_hasHairTwoToneOverride = false;
 	bool_t m_isEyeOddSelected = false;
 	int32_t m_iSelectedAdornSub = 0;
 	bool_t m_isFaceDefaultExpanded = false;

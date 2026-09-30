@@ -5,6 +5,7 @@
 #include "GameInstance.h"
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <fstream>
 #include <sstream>
 
@@ -40,6 +41,47 @@ bool References(const J& root,const char* field,const std::string& id)
 std::string CGuideAITool::New_Id(const char* prefix){return std::string(prefix)+"."+std::to_string(GetTickCount64())+"."+std::to_string(++m_NextId);}
 void CGuideAITool::Open(){m_Open=true;if(!m_Document.Is_Loaded())m_Document.Load();}
 void CGuideAITool::Update(){m_Document.Poll();if(m_Document.Is_Loaded()&&!m_Document.Is_Busy()&&!m_ReferencesReady)Refresh_References();}
+bool CGuideAITool::Is_PlacementPickArmed() const
+{
+    if (!m_Open || !m_Document.Is_Loaded() || m_Document.Is_Busy() || m_Rewrite ||
+        m_PickTriggerId.empty() || m_TriggerId != m_PickTriggerId || m_Category != m_PickCategory)
+        return false;
+    const auto& rows = Field(Field(m_Document.Draft(), "triggers"), "triggers").Get_Array();
+    const auto index = Selected(rows, "triggerId", m_PickTriggerId);
+    if (index >= rows.size()) return false;
+    const auto& event = Field(rows[index], "event");
+    return String(rows[index], "categoryId") == m_PickCategory &&
+        String(event, "type") == "SPACE_ENTER" && String(event, "boxId") == m_PickBoxId &&
+        CGuideAIDocument::Serialize(event) == m_PickEvent;
+}
+bool CGuideAITool::Consume_PlacementPickRequest()
+{
+    const bool requested = m_PickRequested;
+    m_PickRequested = false;
+    return requested;
+}
+void CGuideAITool::Cancel_PlacementPick(std::string reason)
+{
+    m_PickRequested = false;
+    m_PickArea.clear(); m_PickCategory.clear(); m_PickTriggerId.clear(); m_PickBoxId.clear(); m_PickEvent.clear();
+    if (!reason.empty()) m_Document.Set_Status(std::move(reason));
+}
+void CGuideAITool::Complete_PlacementPick(const float3_t& position)
+{
+    if (!Is_PlacementPickArmed() || !std::isfinite(position.x) ||
+        !std::isfinite(position.y) || !std::isfinite(position.z))
+    { Cancel_PlacementPick("The selected Guide box changed; its previous position was preserved."); return; }
+    auto document = Field(m_Document.Draft(), "triggers");
+    auto rows = Field(document, "triggers").Get_Array();
+    const auto index = Selected(rows, "triggerId", m_PickTriggerId);
+    auto event = Field(rows[index], "event");
+    Set(event, "position", J::Array({J::Number(position.x, true), J::Number(position.y, true), J::Number(position.z, true)}));
+    Set(event, "anchorPlacementId", Str(""));
+    Set(rows[index], "event", std::move(event));
+    Set(document, "triggers", J::Array(std::move(rows)));
+    Set(m_Document.Draft(), "triggers", std::move(document));
+    Cancel_PlacementPick("Picked position staged in this Guide box. Save keeps the source; Publish updates runtime files.");
+}
 void CGuideAITool::Refresh_References()
 {
     m_ReferencesReady=true;
@@ -65,11 +107,11 @@ void CGuideAITool::Render()
 {
     if(!m_Open){Render_Combat();return;}
     ImGui::SetNextWindowSize(ImVec2(960,740),ImGuiCond_FirstUseEver);
-    if(ImGui::Begin("Guide AI Tool",&m_Open))
+    if(ImGui::Begin("DimensionMaster Guide",&m_Open))
     {
         m_InteractionRequested|=ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
         ImGui::BeginDisabled(m_Document.Is_Busy()||m_Rewrite);
-        if(ImGui::Button("Load")){if(m_Document.Load())m_ReferencesReady=false;}ImGui::SameLine();if(ImGui::Button("Save"))m_Document.Start_Save();ImGui::SameLine();if(ImGui::Button("Publish"))m_Document.Start_Publish();
+        if(ImGui::Button("Load")){Cancel_PlacementPick({});if(m_Document.Load())m_ReferencesReady=false;}ImGui::SameLine();if(ImGui::Button("Save")){Cancel_PlacementPick({});m_Document.Start_Save();}ImGui::SameLine();if(ImGui::Button("Publish")){Cancel_PlacementPick({});m_Document.Start_Publish();}
         ImGui::SameLine();ImGui::TextUnformatted(m_Document.Is_Dirty()?"Modified source":"Saved source");ImGui::EndDisabled();
         ImGui::TextWrapped("%s",m_Document.Status().c_str());
         if(m_Document.Is_Loaded())
@@ -78,7 +120,7 @@ void CGuideAITool::Render()
             ImGui::Text("Published revision: %llu / Server revision: %llu",static_cast<unsigned long long>(m_Document.Published_Revision()),static_cast<unsigned long long>(m_Runtime?m_Runtime->iRevision:0));
             ImGui::BeginDisabled(m_Document.Is_Busy()||m_Rewrite);
             auto placement=Field(m_Document.Draft(),"placement");EditVector("Start position (m)",placement,"position");EditNumber("Rotation Y (degrees)",placement,"yawDegrees",0.5f);
-            Choose("Follow anchor",placement,"anchorPolicy",{{"INVITER_THEN_LEADER","Inviter, then party leader"},{"PARTY_LEADER","Party leader"}});Set(m_Document.Draft(),"placement",std::move(placement));
+            ImGui::TextUnformatted("One server Guide follows one player at a time and waits in Bern during travel.");Set(m_Document.Draft(),"placement",std::move(placement));
             if(ImGui::Button("베른 시작 위치 가져오기"))Import_BernStart();
             ImGui::Separator();for(const auto& category:Field(Field(m_Document.Draft(),"catalog"),"categories").Get_Array())
             {const auto id=String(category,"categoryId");if(ImGui::Selectable(String(category,"displayName").c_str(),m_Category==id,0,ImVec2(140,0))){m_Category=id;Refresh_References();}ImGui::SameLine();}ImGui::NewLine();ImGui::EndDisabled();
@@ -124,16 +166,31 @@ void CGuideAITool::Render_Triggers()
     auto document=Field(m_Document.Draft(),"triggers");auto rows=Field(document,"triggers").Get_Array();
     if(ImGui::BeginTable("GuideTriggerRows",4,ImGuiTableFlags_Borders|ImGuiTableFlags_RowBg))
     {ImGui::TableSetupColumn("Type / ID");ImGui::TableSetupColumn("Prompt");ImGui::TableSetupColumn("Cooldown (ms)");ImGui::TableSetupColumn("Enabled");ImGui::TableHeadersRow();for(auto& row:rows)if(String(row,"categoryId")==m_Category){const auto id=String(row,"triggerId");ImGui::PushID(id.c_str());ImGui::TableNextRow();ImGui::TableNextColumn();if(ImGui::Selectable(id.c_str(),m_TriggerId==id))m_TriggerId=id;ImGui::TextUnformatted(String(Field(row,"event"),"type").c_str());ImGui::TableNextColumn();ImGui::TextWrapped("%s",String(row,"promptId").c_str());ImGui::TableNextColumn();ImGui::Text("%.0f",Number(row,"cooldownMs"));ImGui::TableNextColumn();EditBool("##Enabled",row,"enabled");ImGui::PopID();}ImGui::EndTable();}
-    if(ImGui::Button("+ Trigger")){m_TriggerId=New_Id("guide.trigger");rows.push_back(J::Object({{"triggerId",J::String(m_TriggerId)},{"categoryId",J::String(m_Category)},{"enabled",J::Boolean(false)},{"event",J::Object({{"type",Str("PARTY_JOINED")}})},{"promptId",Str("")},{"comboId",Str("")},{"cooldownMs",J::Number(30000)},{"priority",J::Number(10)}}));}
+    if(ImGui::Button("+ Trigger")){m_TriggerId=New_Id("guide.trigger");rows.push_back(J::Object({{"triggerId",J::String(m_TriggerId)},{"categoryId",J::String(m_Category)},{"enabled",J::Boolean(false)},{"event",J::Object({{"type",Str("GUIDE_STARTED")}})},{"promptId",Str("")},{"comboId",Str("")},{"cooldownMs",J::Number(30000)},{"priority",J::Number(10)}}));}
     const auto index=Selected(rows,"triggerId",m_TriggerId);if(index<rows.size())
     {
-        auto& row=rows[index];auto event=Field(row,"event");const auto previous=String(event,"type");if(Choose("Event type",event,"type",{{"PARTY_JOINED","First party invitation"},{"SPACE_ENTER","Guide enters a box"},{"BOSS_PATTERN_STARTED","Boss pattern begins"},{"HELP_COMMAND","Help command"}}))
-        {const auto type=String(event,"type");event=J::Object({{"type",J::String(type)}});if(type=="SPACE_ENTER"){Set(event,"boxId",J::String(New_Id("guide.box")));Set(event,"position",Field(Field(m_Document.Draft(),"placement"),"position"));Set(event,"halfExtents",J::Array({J::Number(3),J::Number(3),J::Number(3)}));Set(event,"yawDegrees",J::Number(0));Set(event,"anchorPlacementId",Str(""));}else if(type=="BOSS_PATTERN_STARTED")Set(event,"patternId",Str(""));else if(type=="HELP_COMMAND")Set(event,"commandId",Str(""));}
+        auto& row=rows[index];auto event=Field(row,"event");
+        ImGui::TextWrapped("Guide ID: %s / Trigger ID: %s",String(document,"guideId").c_str(),m_TriggerId.c_str());
+        ImGui::TextWrapped("Prompt ID: %s",String(row,"promptId").c_str());
+        if(Choose("Event type",event,"type",{{"GUIDE_STARTED","Personal guidance starts"},{"PARTY_JOINED","Legacy guidance start"},{"SPACE_ENTER","Owner player enters a box"},{"RAID_RETURNED","Returns from a raid to Bern"},{"WORLD_RETURNED","Returns from island / Colosseum to Bern"},{"BOSS_PATTERN_STARTED","Boss pattern begins"},{"HELP_COMMAND","Help command"}}))
+        {const auto type=String(event,"type");event=J::Object({{"type",J::String(type)}});if(type=="SPACE_ENTER"){Set(event,"boxId",J::String(New_Id("guide.box")));Set(event,"position",Field(Field(m_Document.Draft(),"placement"),"position"));Set(event,"halfExtents",J::Array({J::Number(3),J::Number(3),J::Number(3)}));Set(event,"yawDegrees",J::Number(0));Set(event,"anchorPlacementId",Str(""));}else if(type=="BOSS_PATTERN_STARTED")Set(event,"patternId",Str(""));else if(type=="HELP_COMMAND")Set(event,"commandId",Str(""));else if(type=="RAID_RETURNED")Set(event,"raidWorldId",Str("VALTAN_ARENA"));else if(type=="WORLD_RETURNED")Set(event,"sourceWorldId",Str("MAHARAKA"));}
         Choose("Prompt",row,"promptId",Choices(Field(Field(m_Document.Draft(),"prompts"),"prompts").Get_Array(),"promptId","title",true));if(String(event,"type")=="HELP_COMMAND")Choose("Combo",row,"comboId",Choices(Field(Field(m_Document.Draft(),"combat"),"combos").Get_Array(),"comboId","displayName",true));else Set(row,"comboId",Str(""));EditMilliseconds("Cooldown (ms)",row,"cooldownMs");EditMilliseconds("Priority",row,"priority");
         const auto type=String(event,"type");
         if(type=="SPACE_ENTER")
         {
-            ImGui::TextWrapped("Box ID: %s",String(event,"boxId").c_str());EditVector("Box position (m)",event,"position");EditVector("Half extents (m)",event,"halfExtents");EditNumber("Box rotation Y",event,"yawDegrees");
+            EditText("Box ID / name",event,"boxId");
+            std::string area;for(const auto& category:Field(Field(m_Document.Draft(),"catalog"),"categories").Get_Array())if(String(category,"categoryId")==m_Category)area=String(category,"areaId");
+            ImGui::BeginDisabled(area.empty()||area!=m_ActiveArea);
+            if(ImGui::Button("Pick box position in world (one click)"))
+            {
+                m_PickArea=area;m_PickCategory=m_Category;m_PickTriggerId=m_TriggerId;m_PickBoxId=String(event,"boxId");
+                m_PickEvent=CGuideAIDocument::Serialize(event);m_PickRequested=true;m_InteractionRequested=true;
+                m_Document.Set_Status("Click a visible world surface once. Esc / right-click cancels; Save keeps the picked position.");
+            }
+            ImGui::EndDisabled();
+            if(!m_PickTriggerId.empty()){ImGui::SameLine();if(ImGui::Button("Cancel pick"))Cancel_PlacementPick("Pick cancelled; the previous box position was preserved.");}
+            if(area!=m_ActiveArea)ImGui::TextWrapped("Enter %s to pick or preview this box.",area.c_str());
+            EditVector("Box position (m)",event,"position");EditVector("Half extents (m)",event,"halfExtents");EditNumber("Box rotation Y",event,"yawDegrees");
             if(Choose("NPC anchor",event,"anchorPlacementId",m_NpcChoices))for(const auto& p:Field(m_NpcWorld,"placements").Get_Array())if(String(p,"placementId")==String(event,"anchorPlacementId")){Set(event,"position",Field(p,"position"));Set(event,"yawDegrees",Field(p,"yawDegrees"));break;}
             ImGui::Checkbox("Show selected box in active Area",&m_ShowBox);Render_BoxPreview(event);
         }
@@ -142,6 +199,8 @@ void CGuideAITool::Render_Triggers()
             Choose("Published pattern",event,"patternId",m_PatternChoices);
         }
         else if(type=="HELP_COMMAND")Choose("Command",event,"commandId",Choices(Field(Field(m_Document.Draft(),"combat"),"commands").Get_Array(),"commandId","displayName"));
+        else if(type=="RAID_RETURNED")Choose("Raid world",event,"raidWorldId",{{"VALTAN_ARENA","Valtan"},{"KAKULSAYDON_ARENA","KoukuSaydon"}});
+        else if(type=="WORLD_RETURNED")Choose("Returned world",event,"sourceWorldId",{{"MAHARAKA","Maharaka"},{"COLOSSEUM","Colosseum"}});
         Set(row,"event",std::move(event));if(ImGui::Button("Delete trigger")){rows.erase(rows.begin()+index);m_TriggerId.clear();}
     }
     Set(document,"triggers",J::Array(std::move(rows)));Set(m_Document.Draft(),"triggers",std::move(document));

@@ -29,6 +29,8 @@ namespace LostArk::Server
 		/* One immutable leader-first batch, not independent transfers. The
 		   room thread stages all target admissions before any source departure. */
 		std::vector<SESSION_ID> PartyBatchSessionIds;
+		// Exactly four shuffled seats: first two team A, last two team B.
+		bool bColosseumMatch = false;
 		std::uint32_t iPartyRequestSequence = 0u;
 		/* Empty picks the target world's usual free PLAYER_SPAWN placement
 		(Stage_PlayerEntry's default). Non-empty names ANY placement id in the

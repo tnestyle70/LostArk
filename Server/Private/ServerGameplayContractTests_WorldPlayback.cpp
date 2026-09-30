@@ -59,7 +59,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_WorldPlayback(TESTS& tes
             runtime.Drain_Lifecycle(spawned,events,despawned);
             const float expectedX=skill==56910u?10.f:10.7f;
             const float expectedY=skill==56910u?20.f:20.75f;
-            const float expectedZ=skill==56910u?30.f:29.89f;
+            const float expectedZ=skill==56910u?30.f:skill==56900u?29.8f:29.89f;
             tests.Require(spawned.size()==1u && std::abs(spawned[0].fPositionX-expectedX)<.001f &&
                 std::abs(spawned[0].fPositionY-expectedY)<.001f && std::abs(spawned[0].fPositionZ-expectedZ)<.001f,
                 "Source forward/right/up launch offset is converted once at yaw90");
@@ -96,6 +96,158 @@ int LostArk::Server::CServerGameplayContractRunner::Run_WorldPlayback(TESTS& tes
         std::vector<S2C_COMBAT_OBJECT_DESPAWNED> despawned;
         runtime.Drain_Lifecycle(spawned,events,despawned);
         tests.Require(events.empty() && despawned.size()==1u,"Miss expiry emits no fabricated hit");
+        // Independent source fields, rather than the old misread MaxDistance-as-Speed:
+        // EFSequenceSummonsProjectile Speed=1000cm/s; Q570020/R569320 distance=330/300cm.
+        const auto* fan = Find_MaharakaWaterGunSkillBySlot('Q');
+        const auto* bomb = Find_MaharakaWaterGunSkillBySlot('W');
+        const auto* single = Find_MaharakaWaterGunSkillBySlot('R');
+        tests.Require(fan && bomb && single && fan->iSkillId == 56900u &&
+            fan->iAttackClip == 4u && fan->iSpawnMs == 704u && fan->iCooldownMs == 3000u &&
+            fan->iProjectileCount == 3u && fan->fSpreadDegrees == 30.f &&
+            fan->fSpeedMps == 10.f && fan->fProjectileMaxDistanceM == 3.3f &&
+            bomb->fSpeedMps == 10.f && bomb->fProjectileMaxDistanceM == 8.f && bomb->fMaxRangeM == 7.f &&
+            single->fSpeedMps == 10.f && single->fProjectileMaxDistanceM == 3.f,
+            "Watergun keeps stable input IDs and project cooldown while restoring source fan and projectile units");
+        auto invalidRay = runtime.Begin_Transaction();
+        tests.Require(!runtime.Stage_WaterGunPresentation(invalidRay,owner,56900u,
+            room->m_GameplayCatalog,600u,status,3u) && invalidRay.Objects.empty() && invalidRay.Spawned.empty(),
+            "An invalid fan ray is rejected before staging any replicated object");
+
+        // Exercise the actual room authority, not a duplicate trajectory simulation.
+        tests.Require(room->Is_Ready(), "Watergun trajectory fixture loads the published Maharaka room");
+        if (room->Is_Ready())
+        {
+            S2C_WORLD_SEQUENCE_PLAY intro;
+            intro.eOperation = WORLD_SEQUENCE_OPERATION::PLAY;
+            intro.strSequenceInstanceId = MAHARAKA_WATERPANG_INTRO_INSTANCE;
+            intro.iStartTick = 1000u;
+            room->m_MaharakaWaterpangIntro = intro;
+            room->m_iServerTick = 1000u;
+            owner.fPositionX = MAHARAKA_WATERPANG_CANNON_X + 4.f;
+            owner.fPositionY = 22.4f;
+            owner.fPositionZ = MAHARAKA_WATERPANG_CANNON_Z;
+            room->m_Players.emplace(owner.iPlayerId, owner);
+            auto& shooter = room->m_Players.at(owner.iPlayerId);
+            C2S_USE_SKILL command;
+            command.iClientSequence = 1u; command.iSkillId = 56900u;
+            command.fAimX = shooter.fPositionX - 7.f; command.fAimZ = shooter.fPositionZ;
+            tests.Require(room->Try_StartMaharakaWaterGunSkill(shooter, command) &&
+                room->m_MaharakaWaterGunShots.size() == 3u,
+                "One accepted Q queues three independent shots under one cast and cooldown");
+            if (room->m_MaharakaWaterGunShots.size() == 3u)
+            {
+                const auto launchTick = room->m_MaharakaWaterGunShots.front().iSpawnTick;
+                room->Update_MaharakaWaterGunShots(launchTick - 1u);
+                tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().empty(),
+                    "Q does not emit before its source action notify");
+                room->Update_MaharakaWaterGunShots(launchTick);
+                room->m_CombatObjectRuntime.Drain_Lifecycle(spawned,events,despawned);
+                bool exactFan = spawned.size() == 3u && room->m_MaharakaWaterGunShots.size() == 3u;
+                const std::array<float,3u> yawOffset{0.f,30.f,-30.f};
+                std::set<COMBAT_OBJECT_ID> uniqueIds;
+                for (std::size_t ray = 0u; exactFan && ray < spawned.size(); ++ray)
+                {
+                    const auto& message = spawned[ray];
+                    const auto& shot = room->m_MaharakaWaterGunShots[ray];
+                    uniqueIds.insert(message.iCombatObjectId);
+                    exactFan = message.iSpawnTick == launchTick &&
+                        std::abs(message.fYawDegrees - shooter.fYawDegrees - yawOffset[ray]) < .001f &&
+                        std::abs(message.fPositionX - (shooter.fPositionX - .70f)) < .001f &&
+                        std::abs(message.fPositionY - (shooter.fPositionY + .75f)) < .001f &&
+                        std::abs(message.fPositionZ - (shooter.fPositionZ + .20f)) < .001f &&
+                        std::abs(shot.fTravelM - (10.f / 30.f)) < .001f &&
+                        std::abs(shot.fX - message.fPositionX - shot.fDirX * shot.fTravelM) < .001f &&
+                        std::abs(shot.fZ - message.fPositionZ - shot.fDirZ * shot.fTravelM) < .001f;
+                }
+                tests.Require(exactFan && uniqueIds.size() == 3u,
+                    "Q fan shares one muzzle but replicates three source yaws and independent authoritative rays");
+                for (unsigned step = 1u; step < 10u; ++step)
+                    room->Update_MaharakaWaterGunShots(launchTick + step);
+                room->m_CombatObjectRuntime.Drain_Lifecycle(spawned,events,despawned);
+                tests.Require(room->m_MaharakaWaterGunShots.empty() && events.empty() && despawned.size() == 3u,
+                    "Q rays expire independently at 3.3m without invented impacts");
+            }
+
+            room->m_iServerTick = 2000u;
+            command.iClientSequence = 2u; command.iSkillId = 56930u;
+            tests.Require(room->Try_StartMaharakaWaterGunSkill(shooter, command) &&
+                room->m_MaharakaWaterGunShots.size() == 1u,
+                "R retains one basic projectile");
+            if (room->m_MaharakaWaterGunShots.size() == 1u)
+            {
+                const auto launchTick = room->m_MaharakaWaterGunShots.front().iSpawnTick;
+                room->Update_MaharakaWaterGunShots(launchTick);
+                tests.Require(std::abs(room->m_MaharakaWaterGunShots.front().fTravelM - 10.f/30.f) < .001f,
+                    "R advances at the reflected 10m/s speed");
+                for (unsigned step = 1u; step < 9u; ++step)
+                    room->Update_MaharakaWaterGunShots(launchTick + step);
+                room->m_CombatObjectRuntime.Drain_Lifecycle(spawned,events,despawned);
+                tests.Require(room->m_MaharakaWaterGunShots.empty() && spawned.size() == 1u &&
+                    events.empty() && despawned.size() == 1u,
+                    "R stops at its independent 3m MaxDistance");
+            }
+
+            SERVER_PLAYER target;
+            target.iPlayerId = 1003u; target.iNetEntityId = 1004u;
+            target.fPositionX = shooter.fPositionX - 3.f;
+            target.fPositionY = shooter.fPositionY; target.fPositionZ = shooter.fPositionZ;
+            room->m_Players.emplace(target.iPlayerId,target);
+            SERVER_PLAYER outside = target;
+            outside.iPlayerId = 1005u; outside.iNetEntityId = 1006u; outside.fPositionZ += 2.f;
+            room->m_Players.emplace(outside.iPlayerId,outside);
+            room->m_iServerTick = 3000u;
+            command.iClientSequence = 3u; command.iSkillId = 56910u;
+            command.fAimX = target.fPositionX; command.fAimZ = target.fPositionZ;
+            tests.Require(room->Try_StartMaharakaWaterGunSkill(shooter,command) &&
+                room->m_MaharakaWaterGunShots.size() == 1u,"W queues one aimed grenade");
+            if (room->m_MaharakaWaterGunShots.size() == 1u)
+            {
+                const auto launchTick = room->m_MaharakaWaterGunShots.front().iSpawnTick;
+                float peakY = shooter.fPositionY;
+                for (unsigned step = 0u; step < 8u; ++step)
+                {
+                    room->Update_MaharakaWaterGunShots(launchTick + step);
+                    const auto& live = room->m_CombatObjectRuntime.Get_LiveObjects();
+                    if (!live.empty()) peakY = (std::max)(peakY,live.front().LiveState.CurrentPose.fPositionY);
+                }
+                room->m_CombatObjectRuntime.Drain_Lifecycle(spawned,events,despawned);
+                tests.Require(events.empty() && despawned.empty() &&
+                    room->m_Players.at(target.iPlayerId).fKnockbackRemainingSeconds == 0.f &&
+                    peakY > shooter.fPositionY + .6f && peakY <= shooter.fPositionY + .751f,
+                    "W follows its bounded source-height arc and cannot hit during flight");
+                room->Update_MaharakaWaterGunShots(launchTick + 8u);
+                room->m_CombatObjectRuntime.Drain_Lifecycle(spawned,events,despawned);
+                tests.Require(room->m_MaharakaWaterGunShots.empty() && events.size() == 1u &&
+                    despawned.size() == 1u && std::abs(events[0].fPositionX - target.fPositionX) < .001f &&
+                    std::abs(events[0].fPositionY - target.fPositionY) < .001f &&
+                    room->m_Players.at(target.iPlayerId).fKnockbackRemainingSeconds > 0.f &&
+                    room->m_Players.at(target.iPlayerId).iCurrentHp == target.iCurrentHp &&
+                    room->m_Players.at(outside.iPlayerId).fKnockbackRemainingSeconds == 0.f,
+                    "W bursts once at authoritative ground arrival, preserves HP, and respects its hit radius");
+            }
+
+            room->m_Players.erase(outside.iPlayerId);
+            auto& overlapping = room->m_Players.at(target.iPlayerId);
+            overlapping = target;
+            overlapping.fPositionX = shooter.fPositionX - 1.f;
+            overlapping.fPositionZ = shooter.fPositionZ + .20f;
+            room->m_iServerTick = 4000u;
+            command.iClientSequence = 4u; command.iSkillId = 56900u;
+            command.fAimX = shooter.fPositionX - 7.f; command.fAimZ = shooter.fPositionZ;
+            tests.Require(room->Try_StartMaharakaWaterGunSkill(shooter,command),
+                "Q can be cast again after its existing project cooldown");
+            if (!room->m_MaharakaWaterGunShots.empty())
+            {
+                room->Update_MaharakaWaterGunShots(room->m_MaharakaWaterGunShots.front().iSpawnTick);
+                room->m_CombatObjectRuntime.Drain_Lifecycle(spawned,events,despawned);
+                tests.Require(room->m_MaharakaWaterGunShots.empty() && events.size() == 3u &&
+                    despawned.size() == 3u && overlapping.iCurrentHp == target.iCurrentHp &&
+                    std::abs(overlapping.fKnockbackSpeed - room->m_MaharakaAITuning.fKnockbackRangeM /
+                        (float(room->m_MaharakaAITuning.iKnockbackMs) * .001f)) < .001f,
+                    "Each nonpiercing fan ray consumes on its first body; overlapping rays replace rather than triple push velocity");
+            }
+        }
+
     }
         {
             auto room = std::make_unique<CGameRoom>(WORLD_ID::MAHARAKA);

@@ -11,6 +11,7 @@
 #include "MapPlacementRuntime.h"
 #include "MapLightPresentationRuntime.h"
 #include "PlayerController.h"
+#include "PartyInteractionView.h"
 #include "StatusEffectTextView.h"
 #include "RaidGateProgressView.h"
 #include "InteractKeyPromptView.h"
@@ -165,6 +166,7 @@ public:
 	{
 		m_Replication.Drain_ChatLines(outLines);
 	}
+	void Render_TransferFailureNotice() { m_PartyTransferNotice.Render_TransferNoticeText(); }
 	const LostArk::Shared::S2C_GUIDE_STATE* Get_GuideState() const { return m_Replication.Get_GuideState(); }
 	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
 	{
@@ -675,6 +677,7 @@ private:
 	/* Same over-head name + HP gauge as Bern/Valtan (this room has nicknames too). */
 	CWorldPlayerNameplateView m_PlayerNameplateView;
 	CWorldPlayerChatBubbleView m_ChatBubbleView;
+	CPartyInteractionView m_PartyTransferNotice;
 	std::vector<REPLICATED_PLAYER_VIEW> m_NameplatePlayers;
 	std::vector<KAKUL_STAGE_MARKER> m_StageMarkers;
 	std::unordered_set<std::string> m_StageMarkerPlacementIds;

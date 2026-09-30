@@ -2599,6 +2599,7 @@ int LostArk::Server::CServerApp::Run(
 		m_isRuntimeActivePersistenceEnabled = false;
 #endif
 		m_CharacterSelectArenas.clear();
+		m_ColosseumMatches.clear();
 		m_GameplayBindingBySessionId.clear();
 	}
 
@@ -3512,6 +3513,17 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::COLOSSEUM_QUEUE_JOIN;
 		command.ColosseumQueueJoin = std::move(request);
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_COLOSSEUM_RECRUIT)
+	{
+		C2S_COLOSSEUM_RECRUIT request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_COLOSSEUM_RECRUIT");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::COLOSSEUM_RECRUIT;
+		command.ColosseumRecruit = request;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_COLOSSEUM_QUEUE_LEAVE)
 	{
 		C2S_COLOSSEUM_QUEUE_LEAVE request{};
@@ -3560,6 +3572,14 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		}
 		command.eType = ROOM_COMMAND_TYPE::RETURN_TO_BERN;
 		command.ReturnToBern = request;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_GUIDE_CONTROL)
+	{
+		C2S_GUIDE_CONTROL request{};
+		if (!Read_Message(reader, request) || reader.Get_RemainingSize() != 0u)
+		{ closeMalformedPayload("C2S_GUIDE_CONTROL"); return; }
+		command.eType = ROOM_COMMAND_TYPE::GUIDE_CONTROL;
+		command.GuideControl = request;
 	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_PARTY_INVITE)
 	{
@@ -4316,6 +4336,11 @@ bool LostArk::Server::CServerApp::Validate_DataRevisionTransactionMembership(
 		(void)sessionId;
 		if (nullptr != room) currentRooms.insert(room.get());
 	}
+	for (const auto& [matchId, room] : m_ColosseumMatches)
+	{
+		(void)matchId;
+		if (nullptr != room) currentRooms.insert(room.get());
+	}
 	if (currentRooms.size() != m_DataRevisionTransaction.Simulations.size())
 	{
 		status = "Process gameplay room set changed during prepare";
@@ -4541,6 +4566,11 @@ bool LostArk::Server::CServerApp::Commit_DataRevisionTransaction()
 		for (const auto& [sessionId, room] : m_CharacterSelectArenas)
 		{
 			(void)sessionId;
+			if (nullptr != room) currentRooms.insert(room.get());
+		}
+		for (const auto& [matchId, room] : m_ColosseumMatches)
+		{
+			(void)matchId;
 			if (nullptr != room) currentRooms.insert(room.get());
 		}
 		if (currentRooms.size() !=
@@ -4878,6 +4908,11 @@ void LostArk::Server::CServerApp::Advance_ServerControlTransactions()
 					if (nullptr != simulation)
 						staged.Simulations.push_back(simulation);
 				}
+				for (const auto& [matchId, simulation] : m_ColosseumMatches)
+				{
+					(void)matchId;
+					if (simulation) staged.Simulations.push_back(simulation);
+				}
 				const bool requesterParticipates = std::any_of(
 					staged.Participants.begin(), staged.Participants.end(),
 					[&event](const DATA_REVISION_PARTICIPANT& participant)
@@ -4956,6 +4991,7 @@ void LostArk::Server::CServerApp::Tick_GameplaySimulations(
 	/* Control transactions commit before any room consumes this fixed step, so
 	   every process room observes one generation on this tick boundary. */
 	Advance_ServerControlTransactions();
+	Advance_ColosseumPreparation();
 	std::vector<std::shared_ptr<CGameRoom>> simulations;
 	{
 		std::scoped_lock lock{ m_SessionsMutex };
@@ -4972,6 +5008,11 @@ void LostArk::Server::CServerApp::Tick_GameplaySimulations(
 			(void)sessionId;
 			if (nullptr != simulation)
 				simulations.push_back(simulation);
+		}
+		for (const auto& [matchId, simulation] : m_ColosseumMatches)
+		{
+			(void)matchId;
+			if (simulation) simulations.push_back(simulation);
 		}
 	}
 
@@ -5005,6 +5046,7 @@ void LostArk::Server::CServerApp::Tick_GameplaySimulations(
 		Handle_WorldTransfers(simulation);
 	}
 	Retire_QuiescentCharacterSelectArenas();
+	Retire_QuiescentColosseumMatches();
 }
 
 void LostArk::Server::CServerApp::Retire_QuiescentCharacterSelectArenas()
@@ -5033,6 +5075,109 @@ void LostArk::Server::CServerApp::Retire_QuiescentCharacterSelectArenas()
 	}
 }
 
+bool LostArk::Server::CServerApp::Begin_ColosseumPreparation(
+    const std::shared_ptr<CGameRoom>& source, const SERVER_WORLD_TRANSFER_REQUEST& transfer)
+{
+    using namespace LostArk::Shared;
+    if (!source || !transfer.bColosseumMatch || source->Get_WorldId() != WORLD_ID::BERN ||
+        transfer.eTargetWorldId != WORLD_ID::COLOSSEUM || transfer.PartyBatchSessionIds.size() != 4u ||
+        m_ColosseumPreparationWorker.valid()) return false;
+    std::shared_ptr<const CGameplayCatalog> generation;
+    {
+        std::scoped_lock lock{ m_SessionsMutex };
+        generation = m_pActiveGameplayGeneration;
+    }
+    if (!generation) return false;
+    try
+    {
+        auto cancelled = std::make_shared<std::atomic_bool>(false);
+        m_ColosseumPreparationTransfer = transfer;
+        m_ColosseumPreparationSource = source;
+        m_ColosseumPreparationCancelled = cancelled;
+        m_ColosseumPreparationWorker = std::async(std::launch::async,
+            [generation = std::move(generation), cancelled]()
+            {
+                COLOSSEUM_PREPARATION_RESULT result;
+                const auto start = std::chrono::steady_clock::now();
+                try
+                {
+                    if (!cancelled->load(std::memory_order_relaxed))
+                        result.Room = std::make_shared<CGameRoom>(WORLD_ID::COLOSSEUM, generation, cancelled.get());
+                    if (cancelled->load(std::memory_order_relaxed) || !result.Room || !result.Room->Is_Ready())
+                    {
+                        result.Status = result.Room ? result.Room->Get_Status() : "Colosseum preparation cancelled";
+                        result.Room.reset(); // Release a failed preparation on its worker.
+                    }
+                }
+                catch (const std::exception& error) { result.Status = error.what(); result.Room.reset(); }
+                catch (...) { result.Status = "Colosseum preparation failed"; result.Room.reset(); }
+                result.ElapsedMilliseconds = std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - start).count();
+                return result;
+            });
+        return true;
+    }
+    catch (...)
+    {
+        m_ColosseumPreparationSource.reset();
+        m_ColosseumPreparationCancelled.reset();
+        return false;
+    }
+}
+
+void LostArk::Server::CServerApp::Advance_ColosseumPreparation()
+{
+    if (!m_ColosseumPreparationWorker.valid()) return;
+    bool sourceBound = true;
+    {
+        std::scoped_lock lock{ m_SessionsMutex };
+        for (const auto sessionId : m_ColosseumPreparationTransfer.PartyBatchSessionIds)
+        {
+            const auto session = m_Sessions.find(sessionId);
+            const auto binding = m_GameplayBindingBySessionId.find(sessionId);
+            if (session == m_Sessions.end() || !session->second || session->second->Is_Closing() ||
+                binding == m_GameplayBindingBySessionId.end() || binding->second.pSimulation != m_ColosseumPreparationSource)
+            { sourceBound = false; break; }
+        }
+    }
+    if (!sourceBound && m_ColosseumPreparationCancelled)
+        m_ColosseumPreparationCancelled->store(true, std::memory_order_relaxed);
+    if (m_ColosseumPreparationWorker.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
+    // An in-progress generation commit owns admission. Keep a completed immutable
+    // result queued instead of discarding and repeatedly loading it during the save.
+    if (sourceBound && (m_DataRevisionTransaction.Is_Active() || m_NumericAdmissionPaused)) return;
+    COLOSSEUM_PREPARATION_RESULT result;
+    try { result = m_ColosseumPreparationWorker.get(); }
+    catch (...) { result.Status = "Colosseum preparation future failed"; }
+    m_PreparedColosseumRoom = std::move(result.Room);
+    SESSION_WORLD_TRANSFER_FAILURE failure;
+    const bool cancelled = m_ColosseumPreparationCancelled &&
+        m_ColosseumPreparationCancelled->load(std::memory_order_relaxed);
+    const bool committed = sourceBound && !cancelled && m_PreparedColosseumRoom &&
+        Transfer_SessionWorld(m_ColosseumPreparationSource, m_ColosseumPreparationTransfer, failure);
+    if (m_ColosseumPreparationSource) m_ColosseumPreparationSource->Notify_ColosseumTransferResult(committed);
+    std::cout << "[ColosseumPreparation] workerMs=" << result.ElapsedMilliseconds
+        << " committed=" << (committed ? "true" : "false")
+        << " status=" << (result.Status.empty() ? failure.strContext : result.Status) << '\n';
+    m_ColosseumPreparationSource.reset();
+    m_ColosseumPreparationCancelled.reset();
+    m_PreparedColosseumRoom.reset();
+    m_ColosseumPreparationTransfer = {};
+}
+
+void LostArk::Server::CServerApp::Retire_QuiescentColosseumMatches()
+{
+	std::scoped_lock lock{ m_SessionsMutex };
+	for (auto it = m_ColosseumMatches.begin(); it != m_ColosseumMatches.end();)
+	{
+		const auto& room = it->second;
+		const bool bound = std::any_of(m_GameplayBindingBySessionId.begin(), m_GameplayBindingBySessionId.end(),
+			[&room](const auto& binding) { return binding.second.pSimulation == room; });
+		if (!bound && room && room->Try_SealColosseumForRetirement()) it = m_ColosseumMatches.erase(it);
+		else ++it;
+	}
+}
+
 void LostArk::Server::CServerApp::Handle_WorldTransfers(
 	const std::shared_ptr<CGameRoom>& sourceSimulation)
 {
@@ -5042,10 +5187,17 @@ void LostArk::Server::CServerApp::Handle_WorldTransfers(
 	SERVER_WORLD_TRANSFER_REQUEST transfer{};
 	while (sourceSimulation->Try_DequeueWorldTransfer(transfer))
 	{
-		SESSION_WORLD_TRANSFER_FAILURE failure{};
-		if (!Transfer_SessionWorld(sourceSimulation, transfer, failure))
+		if (transfer.bColosseumMatch)
 		{
-			if (!transfer.PartyBatchSessionIds.empty())
+			if (!Begin_ColosseumPreparation(sourceSimulation, transfer)) sourceSimulation->Notify_ColosseumTransferResult(false);
+			continue;
+		}
+		SESSION_WORLD_TRANSFER_FAILURE failure{};
+		const bool committed = Transfer_SessionWorld(sourceSimulation, transfer, failure);
+		if (transfer.bColosseumMatch) sourceSimulation->Notify_ColosseumTransferResult(committed);
+		if (!committed)
+		{
+			if (!transfer.PartyBatchSessionIds.empty() || failure.bSourcePreservedOnRejection)
 			{
 				std::cerr << "Party transfer rejected without source departure: "
 					<< failure.strContext << '\n';
@@ -5107,6 +5259,45 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	}
 
 	const WORLD_ID sourceWorldId = sourceSimulation->Get_WorldId();
+	if (transfer.bColosseumMatch)
+	{
+		std::scoped_lock lock{ m_SessionsMutex };
+		if (sourceWorldId != WORLD_ID::BERN || transfer.eTargetWorldId != WORLD_ID::COLOSSEUM ||
+			transfer.PartyBatchSessionIds.size() != 4u || m_iNextColosseumMatchId == 0u ||
+			!m_pActiveGameplayGeneration || m_DataRevisionTransaction.Is_Active() || m_NumericAdmissionPaused)
+		{ setFailure(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_PREFLIGHT_FAILED, WSAEINVAL, "Colosseum batch validation"); return false; }
+		for (const auto sessionId : transfer.PartyBatchSessionIds)
+		{
+			const auto session = m_Sessions.find(sessionId);
+			const auto binding = m_GameplayBindingBySessionId.find(sessionId);
+			if (session == m_Sessions.end() || !session->second || session->second->Is_Closing() ||
+				binding == m_GameplayBindingBySessionId.end() || binding->second.pSimulation != sourceSimulation)
+			{ setFailure(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_PREFLIGHT_FAILED, WSAENOTCONN, "Colosseum source binding"); return false; }
+		}
+		const auto target = m_PreparedColosseumRoom;
+		if (!target || !target->Is_Ready() || target->Get_WorldId() != WORLD_ID::COLOSSEUM ||
+			target->Get_ActiveGameplayGeneration() != m_pActiveGameplayGeneration)
+		{ setFailure(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_PREFLIGHT_FAILED, WSAEINVAL, "Colosseum prepared generation is unavailable or stale"); return false; }
+		const auto matchId = m_iNextColosseumMatchId;
+		const auto [entry, inserted] = m_ColosseumMatches.emplace(matchId, target);
+		if (!inserted)
+		{ setFailure(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_PREFLIGHT_FAILED, WSAEINVAL, "Colosseum match identity"); return false; }
+		std::string status;
+		if (!sourceSimulation->Transfer_ColosseumMatchTo(*target, transfer.PartyBatchSessionIds, matchId, status))
+		{
+			m_ColosseumMatches.erase(entry);
+			setFailure(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_PREFLIGHT_FAILED, WSAEINVAL, status); return false;
+		}
+		for (const auto sessionId : transfer.PartyBatchSessionIds)
+		{
+			auto& binding = m_GameplayBindingBySessionId.at(sessionId);
+			binding.eWorldId = WORLD_ID::COLOSSEUM;
+			binding.iPrivateArenaOwnerSessionId = INVALID_SESSION_ID;
+			binding.pSimulation = target;
+		}
+		++m_iNextColosseumMatchId;
+		return true;
+	}
 	const std::shared_ptr<CGameRoom> targetSimulation =
 		Find_SharedSimulation(transfer.eTargetWorldId);
 	if (nullptr == targetSimulation ||
@@ -5149,15 +5340,28 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 			"source-session-terminal-recheck");
 		return false;
 	}
-	if (!transfer.PartyBatchSessionIds.empty())
+	// A guide owner's solo raid trip gets the same admission/FIFO transaction as a party,
+	// while its participant list remains one human and no party is created.
+	auto transactionSessions = transfer.PartyBatchSessionIds;
+	const bool bernRaidPair =
+		(sourceWorldId == WORLD_ID::BERN && (transfer.eTargetWorldId == WORLD_ID::VALTAN_ARENA || transfer.eTargetWorldId == WORLD_ID::KAKULSAYDON_ARENA)) ||
+		(transfer.eTargetWorldId == WORLD_ID::BERN && (sourceWorldId == WORLD_ID::VALTAN_ARENA || sourceWorldId == WORLD_ID::KAKULSAYDON_ARENA));
+	if (transactionSessions.empty() && bernRaidPair &&
+		(sourceSimulation->Has_PersonalGuideOwner(sessionIter->second) || targetSimulation->Has_PersonalGuideOwner(sessionIter->second)))
 	{
-		if (transfer.PartyBatchSessionIds.front() != transfer.iSessionId)
+		transactionSessions.push_back(transfer.iSessionId);
+		outFailure.bSourcePreservedOnRejection = true;
+	}
+
+	if (!transactionSessions.empty())
+	{
+		if (transactionSessions.front() != transfer.iSessionId)
 		{
 			setFailure(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED,
 				WSAEINVAL, "party-leader-identity");
 			return false;
 		}
-		for (const SESSION_ID memberId : transfer.PartyBatchSessionIds)
+		for (const SESSION_ID memberId : transactionSessions)
 		{
 			const auto member = m_Sessions.find(memberId);
 			const auto binding = m_GameplayBindingBySessionId.find(memberId);
@@ -5172,14 +5376,14 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 		}
 		std::string status;
 		if (!sourceSimulation->Transfer_PartyTo(*targetSimulation,
-			transfer.PartyBatchSessionIds, outFailure.ePartyResult, status,
+			transactionSessions, outFailure.ePartyResult, status,
 			transfer.strRaidReturnNpcPlacementId, transfer.strSpawnPlacementOverrideId))
 		{
 			setFailure(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_PREFLIGHT_FAILED,
 				WSAEINVAL, status);
 			return false;
 		}
-		for (const SESSION_ID memberId : transfer.PartyBatchSessionIds)
+		for (const SESSION_ID memberId : transactionSessions)
 		{
 			auto& binding = m_GameplayBindingBySessionId.at(memberId);
 			binding.eWorldId = transfer.eTargetWorldId;
@@ -5224,6 +5428,7 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	enterCommand.EnterWorld = std::move(enterWorld);
 	enterCommand.strSpawnPlacementOverrideId = transfer.strSpawnPlacementOverrideId;
 	enterCommand.strRaidReturnNpcPlacementId = transfer.strRaidReturnNpcPlacementId;
+	enterCommand.eEntrySourceWorldId = sourceWorldId;
 	enterCommand.CarriedInventory = transfer.CarriedInventory;
 	enterCommand.CarriedPurse = transfer.CarriedPurse;
 	enterCommand.CarriedDurability = transfer.CarriedDurability;
@@ -5289,6 +5494,19 @@ void LostArk::Server::CServerApp::Shutdown()
 		m_AcceptThread.join();
 	if (m_RoomThread.joinable())
 		m_RoomThread.join();
+	if (m_ColosseumPreparationWorker.valid())
+	{
+		if (m_ColosseumPreparationCancelled) m_ColosseumPreparationCancelled->store(true, std::memory_order_relaxed);
+		if (m_ColosseumPreparationWorker.wait_for(std::chrono::seconds(30)) != std::future_status::ready)
+		{
+			std::cerr << "Colosseum preparation did not stop within the shutdown deadline.\n";
+			::ExitProcess(ERROR_TIMEOUT);
+		}
+		try { (void)m_ColosseumPreparationWorker.get(); } catch (...) { }
+	}
+	m_ColosseumPreparationSource.reset();
+	m_PreparedColosseumRoom.reset();
+	m_ColosseumPreparationCancelled.reset();
     if (m_NumericBalanceWorker.valid())
     {
         if (m_NumericBalanceWorker.wait_for(std::chrono::seconds(30)) != std::future_status::ready)
@@ -5337,6 +5555,7 @@ void LostArk::Server::CServerApp::Shutdown()
 	{
 		std::scoped_lock lock{ m_SessionsMutex };
 		m_CharacterSelectArenas.clear();
+		m_ColosseumMatches.clear();
 		m_SharedGameRooms.clear();
 		m_pActiveGameplayGeneration.reset();
 		m_ActiveGameplayBootstrapContentRevision = {};
@@ -5515,6 +5734,7 @@ void LostArk::Server::CServerApp::Advance_NumericBalanceTransaction()
                 m_NumericBalanceSimulations.reserve(m_SharedGameRooms.size() + m_CharacterSelectArenas.size());
                 for (const auto& [world, room] : m_SharedGameRooms) if (room) m_NumericBalanceSimulations.push_back(room);
                 for (const auto& [owner, room] : m_CharacterSelectArenas) if (room) m_NumericBalanceSimulations.push_back(room);
+                for (const auto& [matchId, room] : m_ColosseumMatches) if (room) m_NumericBalanceSimulations.push_back(room);
                 for (const auto& room : m_NumericBalanceSimulations)
                     if (!room->Stage_NumericBalance(m_NumericBalanceTransactionSequence, prepared.Generation, status)) break;
                 if (status.empty()) m_NumericAdmissionPaused = true;

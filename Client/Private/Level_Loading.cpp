@@ -1015,7 +1015,7 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
     }
     if (LEVEL::MAHARAKA == m_eNextLevelID && !m_isEffectPreparationRegistered)
     {
-        for (const char* suffix : {"q.flight", "q.hit", "w.flight", "w.hit", "r.flight", "r.hit", "shot.start", "e.speed"})
+        for (const char* suffix : {"q.flight", "q.hit", "q.start", "w.flight", "w.hit", "r.flight", "r.hit", "shot.start", "e.speed"})
             sourceCinematicEffects.push_back(std::string("effect.maharaka.watergun.") + suffix);
         for (unsigned attack = 1u; attack <= 4u; ++attack)
             sourceCinematicEffects.push_back("effect.maharaka.watergun.watergun_att_" + std::to_string(attack) + ".full.restore");

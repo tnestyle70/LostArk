@@ -6382,6 +6382,85 @@ bool LostArk::Shared::Read_Message(
 	return true;
 }
 
+namespace
+{
+    bool ValidColosseumState(const LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE& state)
+    {
+        using namespace LostArk::Shared;
+        if (!state.iMatchId || !state.iRevision || state.ePhase >= COLOSSEUM_MATCH_PHASE::END ||
+            (state.iWinnerTeam > 1u && state.iWinnerTeam != COLOSSEUM_NO_TEAM) ||
+            (state.ePhase != COLOSSEUM_MATCH_PHASE::FINISHED && state.iWinnerTeam != COLOSSEUM_NO_TEAM) ||
+            state.Players.empty() || state.Players.size() > MAX_COLOSSEUM_STATE_PLAYERS) return false;
+        std::size_t participants[2]{};
+        for (std::size_t index = 0; index < state.Players.size(); ++index)
+        {
+            const auto& row = state.Players[index];
+            if (!row.iNetEntityId || row.iTeam > 1u) return false;
+            if (row.bParticipant && ++participants[row.iTeam] > 4u) return false;
+            for (std::size_t prior = 0; prior < index; ++prior)
+                if (state.Players[prior].iNetEntityId == row.iNetEntityId) return false;
+        }
+        return true;
+    }
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_COLOSSEUM_RECRUIT& message)
+{
+    if (!message.iRequestSequence || !message.iMatchId || !message.iMercenaryNetEntityId) return false;
+    writer.Write_U32(message.iRequestSequence);
+    Write_U64(writer, message.iMatchId);
+    writer.Write_U32(message.iMercenaryNetEntityId);
+    return true;
+}
+
+bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_COLOSSEUM_RECRUIT& message)
+{
+    C2S_COLOSSEUM_RECRUIT decoded{};
+    if (!reader.Read_U32(decoded.iRequestSequence) || !Read_U64(reader, decoded.iMatchId) ||
+        !reader.Read_U32(decoded.iMercenaryNetEntityId) || !decoded.iRequestSequence ||
+        !decoded.iMatchId || !decoded.iMercenaryNetEntityId) return false;
+    message = decoded;
+    return true;
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_COLOSSEUM_MATCH_STATE& message)
+{
+    if (!ValidColosseumState(message)) return false;
+    Write_U64(writer, message.iMatchId);
+    writer.Write_U8(static_cast<std::uint8_t>(message.ePhase));
+    writer.Write_U8(message.iWinnerTeam);
+    writer.Write_U32(message.iRevision);
+    writer.Write_U8(static_cast<std::uint8_t>(message.Players.size()));
+    for (const auto& row : message.Players)
+    {
+        writer.Write_U32(row.iNetEntityId);
+        writer.Write_U8(row.iTeam);
+        writer.Write_U8(row.bParticipant ? 1u : 0u);
+    }
+    return true;
+}
+
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_COLOSSEUM_MATCH_STATE& message)
+{
+    S2C_COLOSSEUM_MATCH_STATE decoded{};
+    std::uint8_t phase = 0u, count = 0u;
+    if (!Read_U64(reader, decoded.iMatchId) || !reader.Read_U8(phase) ||
+        !reader.Read_U8(decoded.iWinnerTeam) || !reader.Read_U32(decoded.iRevision) ||
+        !reader.Read_U8(count) || count > MAX_COLOSSEUM_STATE_PLAYERS) return false;
+    decoded.ePhase = static_cast<COLOSSEUM_MATCH_PHASE>(phase);
+    decoded.Players.resize(count);
+    for (auto& row : decoded.Players)
+    {
+        std::uint8_t participant = 0u;
+        if (!reader.Read_U32(row.iNetEntityId) || !reader.Read_U8(row.iTeam) ||
+            !reader.Read_U8(participant) || participant > 1u) return false;
+        row.bParticipant = participant != 0u;
+    }
+    if (!ValidColosseumState(decoded)) return false;
+    message = std::move(decoded);
+    return true;
+}
+
 bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer,
 	const C2S_RETURN_TO_BERN& message)
@@ -6514,13 +6593,17 @@ namespace
                 Is_Valid_PlayerNickname(member.strNickname) && Is_Known_Character_Class(member.eCharacterClass) &&
                 member.eControlKind == kind;
         };
+        std::size_t mercenaries = 0u;
         for (std::size_t index = 0; index < roster.Members.size(); ++index)
         {
-            if (!valid(roster.Members[index], PLAYER_CONTROL_KIND::HUMAN)) return false;
+            const bool mercenary = roster.Members[index].eControlKind == PLAYER_CONTROL_KIND::COLOSSEUM_MERCENARY_AI;
+            if (!valid(roster.Members[index], mercenary ? PLAYER_CONTROL_KIND::COLOSSEUM_MERCENARY_AI : PLAYER_CONTROL_KIND::HUMAN)) return false;
+            if (mercenary) ++mercenaries;
             for (std::size_t prior = 0; prior < index; ++prior)
                 if (roster.Members[prior].iNetEntityId == roster.Members[index].iNetEntityId) return false;
             if (roster.GuideCompanion && roster.GuideCompanion->iNetEntityId == roster.Members[index].iNetEntityId) return false;
         }
+        if (mercenaries && (mercenaries > 2u || roster.Members.size() - mercenaries > 2u || roster.GuideCompanion)) return false;
         return !roster.GuideCompanion || valid(*roster.GuideCompanion, PLAYER_CONTROL_KIND::GUIDE_AI);
     }
 }
@@ -6680,8 +6763,11 @@ bool LostArk::Shared::Write_Message(
 {
 	const auto result = static_cast<std::uint8_t>(message.eResult);
 	if (0u == message.iRequestSequence ||
-		(WORLD_ID::VALTAN_ARENA != message.eTargetWorldId &&
-		 WORLD_ID::KAKULSAYDON_ARENA != message.eTargetWorldId) || result < 1u || result > 5u)
+		(WORLD_ID::BERN != message.eTargetWorldId &&
+		 WORLD_ID::VALTAN_ARENA != message.eTargetWorldId &&
+		 WORLD_ID::KAKULSAYDON_ARENA != message.eTargetWorldId &&
+		 WORLD_ID::MAHARAKA != message.eTargetWorldId &&
+		 WORLD_ID::COLOSSEUM != message.eTargetWorldId) || result < 1u || result > 5u)
 		return false;
 	writer.Write_U32(message.iRequestSequence);
 	writer.Write_U16(static_cast<std::uint16_t>(message.eTargetWorldId));
@@ -6697,8 +6783,11 @@ bool LostArk::Shared::Read_Message(
 	std::uint8_t result = 0u;
 	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(world) ||
 		!reader.Read_U8(result) || 0u == decoded.iRequestSequence ||
-		(static_cast<std::uint16_t>(WORLD_ID::VALTAN_ARENA) != world &&
-		 static_cast<std::uint16_t>(WORLD_ID::KAKULSAYDON_ARENA) != world) ||
+		(static_cast<std::uint16_t>(WORLD_ID::BERN) != world &&
+		 static_cast<std::uint16_t>(WORLD_ID::VALTAN_ARENA) != world &&
+		 static_cast<std::uint16_t>(WORLD_ID::KAKULSAYDON_ARENA) != world &&
+		 static_cast<std::uint16_t>(WORLD_ID::MAHARAKA) != world &&
+		 static_cast<std::uint16_t>(WORLD_ID::COLOSSEUM) != world) ||
 		result < 1u || result > 5u)
 		return false;
 	decoded.eTargetWorldId = static_cast<WORLD_ID>(world);
@@ -7859,6 +7948,27 @@ namespace
             std::isfinite(value.fHpRatio) && value.fHpRatio >= 0.f && value.fHpRatio <= 1.f &&
             ValidGuideText(value.strReason, 512u, true) && Is_Valid_StableId(value.strComboId, true);
     }
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_GUIDE_CONTROL& message)
+{
+    if (!message.iRequestSequence || !message.iGuideNetEntityId || message.eAction >= GUIDE_CONTROL_ACTION::END)
+        return false;
+    writer.Write_U32(message.iRequestSequence);
+    writer.Write_U32(message.iGuideNetEntityId);
+    writer.Write_U8(static_cast<std::uint8_t>(message.eAction));
+    return true;
+}
+bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_GUIDE_CONTROL& message)
+{
+    C2S_GUIDE_CONTROL staged;
+    std::uint8_t action = 0u;
+    if (!reader.Read_U32(staged.iRequestSequence) || !reader.Read_U32(staged.iGuideNetEntityId) ||
+        !reader.Read_U8(action) || !staged.iRequestSequence || !staged.iGuideNetEntityId ||
+        action >= static_cast<std::uint8_t>(GUIDE_CONTROL_ACTION::END)) return false;
+    staged.eAction = static_cast<GUIDE_CONTROL_ACTION>(action);
+    message = staged;
+    return true;
 }
 
 bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_GUIDE_PROMPT& message)

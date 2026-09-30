@@ -9,6 +9,8 @@
 
 namespace LostArk::Server
 {
+	struct SERVER_COLOSSEUM_RESOLVED_DAMAGE;
+    struct SERVER_COLOSSEUM_COMBAT_CONTEXT;
 	enum class SERVER_COMBAT_HIT_RESULT : std::uint8_t
 	{
 		NOT_ADMITTED,
@@ -123,6 +125,10 @@ namespace LostArk::Server
 			std::vector<SERVER_PLAYER*>& allies,
 			std::vector<SERVER_WORLD_ENTITY*>& enemies,
 			std::uint32_t serverTick);
+        // Enemy player marks are granted only by a landed arena collider hit.
+        static void Apply_ColosseumEnemyBuffs(const CGameplayCatalog& catalog, std::uint32_t skillId,
+            const SERVER_PLAYER& caster, SERVER_PLAYER& target, std::uint32_t serverTick,
+            const SERVER_COLOSSEUM_COMBAT_CONTEXT& context);
 		/* Drops what has run out. Called once per tick for every holder. */
 		static void Expire(
 			std::vector<LostArk::Shared::ACTIVE_BUFF>& buffs,
@@ -159,6 +165,7 @@ namespace LostArk::Server
 			SERVER_PLAYER& target,
 			const SERVER_WORLD_TO_PLAYER_HIT& hit,
 			const CGameplayCatalog& catalog,
-			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents);
+			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
+            const SERVER_COLOSSEUM_RESOLVED_DAMAGE* pPvPResolved = nullptr);
 	};
 }

@@ -375,6 +375,13 @@ bool Client::CNetworkPlayerCommandSink::Request_ColosseumQueueLeave(const std::u
 	return CNetworkManager::Get().Send_ColosseumQueueLeave(clientSequence);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_ColosseumRecruit(
+    const std::uint32_t clientSequence, const std::uint64_t matchId,
+    const LostArk::Shared::NET_ENTITY_ID mercenaryNetEntityId)
+{
+    return CNetworkManager::Get().Send_ColosseumRecruit(clientSequence, matchId, mercenaryNetEntityId);
+}
+
 bool Client::CNetworkPlayerCommandSink::Consume_ColosseumQueueState(
 	LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE& outState)
 {
@@ -397,6 +404,11 @@ bool Client::CNetworkPlayerCommandSink::Request_ReturnToBern(
 	const std::uint32_t clientSequence)
 {
 	return CNetworkManager::Get().Send_ReturnToBern(clientSequence);
+}
+
+bool Client::CNetworkPlayerCommandSink::Request_GuideControl(const LostArk::Shared::C2S_GUIDE_CONTROL& request)
+{
+    return CNetworkManager::Get().Send_GuideControl(request);
 }
 
 bool Client::CNetworkPlayerCommandSink::Request_PartyInvite(

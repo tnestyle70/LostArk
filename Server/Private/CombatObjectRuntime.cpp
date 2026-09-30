@@ -277,10 +277,11 @@ bool LostArk::Server::CCombatObjectRuntime::Allocate_Id(
 bool LostArk::Server::CCombatObjectRuntime::Stage_WaterGunPresentation(
     SERVER_COMBAT_OBJECT_TRANSACTION& transaction, const SERVER_PLAYER& source,
     const std::uint32_t skillId, const CGameplayCatalog& catalog,
-    const std::uint32_t spawnTick, std::string& status) const
+    const std::uint32_t spawnTick, std::string& status, const std::uint32_t projectileIndex) const
 {
     const char* archetype = LostArk::Shared::MaharakaWaterGunProjectileArchetype(skillId);
-    if (!archetype || !source.iNetEntityId || !spawnTick || !catalog.Get_ActiveRevision().Is_Valid() ||
+    const auto* skill = LostArk::Shared::Find_MaharakaWaterGunSkill(skillId);
+    if (!archetype || !skill || projectileIndex >= skill->iProjectileCount || !source.iNetEntityId || !spawnTick || !catalog.Get_ActiveRevision().Is_Valid() ||
         !std::isfinite(source.fPositionX) || !std::isfinite(source.fPositionY) ||
         !std::isfinite(source.fPositionZ) || !std::isfinite(source.fYawDegrees))
     { status = "Waterpang projectile presentation source is invalid"; return false; }
@@ -299,17 +300,12 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_WaterGunPresentation(
     object.LiveState.strOwnerPatternId = "maharaka.watergun";
     object.LiveState.strOwnerStageActionId = "maharaka.watergun.shot";
     auto& pose = object.LiveState.CurrentPose;
-    pose.fPositionX = source.fPositionX; pose.fPositionY = source.fPositionY; pose.fPositionZ = source.fPositionZ;
-    pose.fYawDegrees = source.fYawDegrees;
-    pose.fDirectionX = std::sin(source.fYawDegrees * DEGREES_TO_RADIANS);
-    pose.fDirectionZ = std::cos(source.fYawDegrees * DEGREES_TO_RADIANS);
-    if (skillId != 56910u)
-    {
-        // GADGET Q/R Effect: UE launch offset (70,11,75) cm, forward/right/up.
-        pose.fPositionX += pose.fDirectionX * .70f + pose.fDirectionZ * .11f;
-        pose.fPositionZ += pose.fDirectionZ * .70f - pose.fDirectionX * .11f;
-        pose.fPositionY += .75f;
-    }
+    const auto launch = LostArk::Shared::Sample_MaharakaWaterGunLaunch(*skill, projectileIndex,
+        source.fPositionX, source.fPositionY, source.fPositionZ, source.fYawDegrees);
+    pose.fPositionX = launch.fX; pose.fPositionY = launch.fY; pose.fPositionZ = launch.fZ;
+    pose.fYawDegrees = launch.fYawDegrees;
+    pose.fDirectionX = launch.fDirX;
+    pose.fDirectionZ = launch.fDirZ;
     object.LiveState.PreviousPose = pose;
     transaction.Spawned.push_back(To_SpawnedMessage(object));
     transaction.Objects.push_back(std::move(object));

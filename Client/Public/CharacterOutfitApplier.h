@@ -26,13 +26,13 @@ public:
 
 	/* iCostume < 0 wears no try-on set; iHair outside the class' hairstyle list wears the class
 	default hair. Costume goes on before hair, the order the screen consumes a loaded slot in.
-	True when at least one set was put on. */
+	True when the complete outfit commits, including a default body-hair-only look. */
 	bool_t Apply(const shared_ptr<CCharacter>& pCharacter,
 		int32_t iHair, int32_t iCostume);
 
 private:
 	bool_t Ensure_Loaded();
-	/* Adds strSetId to the local outfit (dropping what it overlaps) and previews the outfit. */
+	/* Composes strSetId into the local candidate; Apply commits the completed outfit once. */
 	bool_t Wear_Set(CCharacter& character, const std::string& strSetId,
 		std::array<std::string, ETOI(EQUIPMENT_SLOT_ID::END)>& outfit);
 	/* The service remembers which models it admitted per prototype level, but a level change

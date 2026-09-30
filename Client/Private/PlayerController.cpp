@@ -537,7 +537,12 @@ void Client::CPlayerController::Update(
 		const shared_ptr<CTransform> transform =
 			character->Get_Transform();
 
-		if (nullptr != transform)
+		// Skip GPU picking while a held command is still inside its resend interval.
+		// A fresh press remains immediate; the goal checks below still own admission.
+		if (nullptr != transform &&
+			(!m_wasRightMouseDown ||
+				std::chrono::steady_clock::now() - m_LastMoveGoalSentAt >=
+					MOVE_GOAL_RESEND_INTERVAL))
 		{
 			const vector_t position =
 				transform->Get_State(STATE::POSITION);
@@ -1377,13 +1382,14 @@ void Client::CPlayerController::Update_HonorTitle()
 	}
 }
 
-bool_t Client::CPlayerController::Request_UseSquareHole(const std::uint16_t holeId)
+bool_t Client::CPlayerController::Request_UseSquareHole(const std::uint16_t holeId,
+	const bool_t finishedColosseumReturn)
 {
 	if (nullptr == m_pCommandSink || 0u == holeId)
 		return false;
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 	if (!player.isValid || player.isPreview ||
-		LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction ||
+		(!finishedColosseumReturn && LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction) ||
 		nullptr == m_pLocalCharacter.lock())
 	{
 		return false;

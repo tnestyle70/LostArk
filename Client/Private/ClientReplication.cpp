@@ -441,6 +441,14 @@ bool Client::CClientReplication::Update()
 			Apply_PartyInviteReceived(event.PartyInviteReceived);
 			break;
 
+        case CLIENT_REPLICATION_EVENT_TYPE::COLOSSEUM_MATCH_STATE:
+            if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::COLOSSEUM) &&
+                (!m_ColosseumMatchState.iMatchId ||
+                 (event.ColosseumMatchState.iMatchId == m_ColosseumMatchState.iMatchId &&
+                  static_cast<std::int32_t>(event.ColosseumMatchState.iRevision - m_ColosseumMatchState.iRevision) > 0)))
+                m_ColosseumMatchState = event.ColosseumMatchState;
+            break;
+
 		case CLIENT_REPLICATION_EVENT_TYPE::PARTY_ROSTER:
 			Apply_PartyRoster(event.PartyRoster);
 			break;
@@ -653,8 +661,8 @@ void Client::CClientReplication::Apply_PartyRoster(
 	// Apply_EncounterPropSync -- the Server always sends the whole current
 	// membership, never a delta.
 	m_PartyRoster = roster;
-	if (m_GuideState && (!roster.GuideCompanion ||
-		roster.GuideCompanion->iNetEntityId != m_GuideState->iGuideNetEntityId)) m_GuideState.reset();
+    // Personal guidance is associated by the Server's owner entity, independent of party membership.
+    // Actor despawn and world Reset retire its state.
 }
 
 bool Client::CClientReplication::Try_Consume_PartyTransferResult(
@@ -690,6 +698,11 @@ bool Client::CClientReplication::Try_Consume_RaidEntryVote(
 void Client::CClientReplication::Apply_GuidePrompt(const LostArk::Shared::S2C_GUIDE_PROMPT& prompt)
 {
     using namespace LostArk::Shared;
+    // The singleton's owner status arrives before its private dialogue. Idle/other-owner
+    // state rejects dialogue that was queued before guidance stopped or changed owner.
+    if (!m_GuideState || m_GuideState->iGuideNetEntityId != prompt.iGuideNetEntityId ||
+        !m_GuideState->iOwnerNetEntityId ||
+        m_GuideState->iOwnerNetEntityId != CNetworkManager::Get().Get_LocalEntityId()) return;
     // Spawn and dialogue use the same reliable ordered event queue. A staged body
     // may still be loading its assets; the authoritative identity is already known.
     const auto* record = m_Registry.Find_Record(prompt.iGuideNetEntityId);
@@ -733,6 +746,12 @@ void Client::CClientReplication::Apply_GuideState(const LostArk::Shared::S2C_GUI
         (pending == m_PendingPlayerSpawns.end() || pending->second.eControlKind != LostArk::Shared::PLAYER_CONTROL_KIND::GUIDE_AI)) return;
     if (m_GuideState && m_GuideState->iGuideNetEntityId == state.iGuideNetEntityId &&
         state.iServerTick < m_GuideState->iServerTick) return;
+    if (!state.iOwnerNetEntityId || !m_GuideState ||
+        m_GuideState->iOwnerNetEntityId != state.iOwnerNetEntityId)
+    {
+        m_PendingGuideBubbles.erase(state.iGuideNetEntityId);
+        m_ChatBubblesByNetEntityId.erase(state.iGuideNetEntityId);
+    }
     m_GuideState = state;
 }
 
@@ -4561,7 +4580,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 	CCombatHUDViewModel::Get().Apply_DamageEvents(
 		snapshot.iServerTick,
 		snapshot.DamageEvents,
-		CNetworkManager::Get().Get_LocalPlayerId());
+		CNetworkManager::Get().Get_LocalPlayerId(),
+        m_Desc.iLayerLevelIndex == ETOUI(LEVEL::COLOSSEUM) && m_ColosseumMatchState.iMatchId != 0u);
 	CCombatHUDViewModel::Get().Apply_EstherGauge(
 		snapshot.iEstherGauge,
 		snapshot.iEstherGaugeMaximum);
@@ -4572,10 +4592,16 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 	std::vector<HUD_WORLD_HEALTH_BAR_STATE> healthBars;
 	healthBars.reserve(snapshot.Players.size() + snapshot.Entities.size());
 	const auto localEntityId = CNetworkManager::Get().Get_LocalEntityId();
+    const bool colosseum = m_Desc.iLayerLevelIndex == ETOUI(LEVEL::COLOSSEUM) && m_ColosseumMatchState.iMatchId != 0u;
+    const auto localTeam = std::find_if(m_ColosseumMatchState.Players.begin(), m_ColosseumMatchState.Players.end(),
+        [localEntityId](const auto& row) { return row.iNetEntityId == localEntityId; });
 	for (const auto& player : snapshot.Players)
 	{
 		if (player.iNetEntityId == localEntityId || !player.iCurrentHp || !player.iMaximumHp)
 			continue;
+        const auto combatant = std::find_if(m_ColosseumMatchState.Players.begin(), m_ColosseumMatchState.Players.end(),
+            [&](const auto& row) { return row.iNetEntityId == player.iNetEntityId; });
+        if (colosseum && (combatant == m_ColosseumMatchState.Players.end() || !combatant->bParticipant)) continue;
 		OBJECT_HANDLE handle{};
 		if (!m_Registry.Find_Handle(player.iNetEntityId, handle)) continue;
 		const auto character = m_Registry.Resolve(handle);
@@ -4583,6 +4609,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		HUD_WORLD_HEALTH_BAR_STATE state;
 		state.iNetEntityId = player.iNetEntityId;
 		state.isPlayer = true;
+        state.isEnemyPlayer = colosseum && localTeam != m_ColosseumMatchState.Players.end() && combatant->iTeam != localTeam->iTeam;
 		state.iCurrentHp = player.iCurrentHp;
 		state.iMaximumHp = player.iMaximumHp;
 		state.iShield = player.iShield;
@@ -4838,6 +4865,7 @@ void Client::CClientReplication::Reset_World()
 	m_PlayerHealth.Reset();
 	Reset_SpectateTarget();
 	m_PartyRoster = {};
+	m_ColosseumMatchState = {};
 	m_hasPendingPartyInvite = false;
 	m_PendingPartyInvite = {};
 	m_hasPendingPartyTransferResult = false;

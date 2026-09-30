@@ -127,6 +127,34 @@ class GuidePipelineTests(unittest.TestCase):
             self.assertEqual(combo["resolvedSkillIds"], [expected[slot] for slot in combo["inputSlots"]])
         self.assertGreater(runtime["revision"], 0)
 
+    def test_personal_start_and_committed_return_events_are_published(self):
+        runtime = read(self.root / RUNTIMES[0])
+        events = [t["event"] for t in runtime["triggers"]]
+        self.assertIn({"type": "GUIDE_STARTED"}, events)
+        for world in ("VALTAN_ARENA", "KAKULSAYDON_ARENA"):
+            self.assertIn({"type": "RAID_RETURNED", "raidWorldId": world}, events)
+        for world in ("MAHARAKA", "COLOSSEUM"):
+            self.assertIn({"type": "WORLD_RETURNED", "sourceWorldId": world}, events)
+        boxes = [t for t in runtime["triggers"] if t["event"]["type"] == "SPACE_ENTER"]
+        self.assertEqual(len({t["event"]["boxId"] for t in boxes}), len(boxes))
+        for npc in ("npc.bern.src.31", "npc.bern.src.48", "npc.bern.ship.harbormaster.1"):
+            self.assertTrue(any(t["event"]["anchorPlacementId"] == npc for t in boxes))
+
+    def test_raid_return_rejects_nonraid_source_and_preserves_outputs(self):
+        def mutate(doc):
+            next(t for t in doc["triggers"] if t["event"]["type"] == "RAID_RETURNED")["event"]["raidWorldId"] = "BERN"
+        self.invalid_publish("triggers", mutate, "supported source raid")
+
+    def test_world_return_rejects_raid_source_and_preserves_outputs(self):
+        def mutate(doc):
+            next(t for t in doc["triggers"] if t["event"]["type"] == "WORLD_RETURNED")["event"]["sourceWorldId"] = "VALTAN_ARENA"
+        self.invalid_publish("triggers", mutate, "supported source world")
+
+    def test_personal_return_rejects_nonbern_destination_category(self):
+        def mutate(doc):
+            next(t for t in doc["triggers"] if t["event"]["type"] == "RAID_RETURNED")["categoryId"] = "valtan"
+        self.invalid_publish("triggers", mutate, "Raid return requires Bern")
+
     def test_malformed_json_preserves_both_runtime_files(self):
         self.path("prompts").write_bytes(b'{"prompts": [')
         before = self.snapshot()

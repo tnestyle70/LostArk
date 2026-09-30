@@ -720,8 +720,24 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 	CUIPointerScope PointerScope(this);
 	(void)fTimeDelta;
 	m_Texts.clear();
-	const AREA* pArea = nullptr != pSnapshot && pSnapshot->hasLocal ?
-		Find_Area(eLevel, pSnapshot->fLocalX, pSnapshot->fLocalZ) : nullptr;
+	// Colosseum offers the authored Bern destinations through this same map window.
+	const LEVEL eMapLevel = LEVEL::COLOSSEUM == eLevel ? LEVEL::BERN : eLevel;
+	const bool_t bCurrentMap = eMapLevel == eLevel;
+	const AREA* pArea = nullptr;
+	if (nullptr != pSnapshot && pSnapshot->hasLocal)
+	{
+		if (bCurrentMap)
+			pArea = Find_Area(eMapLevel, pSnapshot->fLocalX, pSnapshot->fLocalZ);
+		else
+		{
+			for (const AREA& Area : m_Areas)
+				if (Area.eLevel == eMapLevel && Area.bDefault)
+				{
+					pArea = &Area;
+					break;
+				}
+		}
+	}
 	if (!m_bOpen || nullptr == pArea || nullptr == pSnapshot || !pSnapshot->hasLocal)
 	{
 		if (m_bOpen && nullptr == pArea)
@@ -738,7 +754,13 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 	if (m_bRecenterOnUpdate)
 	{
 		m_bRecenterOnUpdate = false;
-		Center_On(pSnapshot->fLocalX, pSnapshot->fLocalZ);
+		if (bCurrentMap)
+			Center_On(pSnapshot->fLocalX, pSnapshot->fLocalZ);
+		else
+		{
+			m_iZoomLevel = ZOOM_FIT;
+			m_fCenterU = m_fCenterV = 0.5f;
+		}
 	}
 	for (const string& strId : m_SlotIds)
 		m_pView->Set_SlotVisible(strId, true);
@@ -752,7 +774,7 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 	(void)m_pView->Get_SlotRect("WM_Map", fMapX, fMapY, fMapW, fMapH);
 	const f32_t fUiScale = fMapW / CONTENT_W;		/* layout px per retail canvas px */
 	const bool_t bDialog = 0u != m_iDialogHoleId;
-	const SQUARE_HOLE* pDialogHole = bDialog ? Find_Hole(eLevel, m_iDialogHoleId) : nullptr;
+	const SQUARE_HOLE* pDialogHole = bDialog ? Find_Hole(eMapLevel, m_iDialogHoleId) : nullptr;
 	if (bDialog && nullptr == pDialogHole)
 		m_iDialogHoleId = 0u;
 
@@ -857,7 +879,7 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 			Body.vColor2 = COLOR_WHITE;
 			Body.bDialog = true;
 			m_Texts.push_back(std::move(Body));
-			if (pDialogHole->iFare > 0)
+			if (bCurrentMap && pDialogHole->iFare > 0)
 			{
 				m_Texts.push_back({ FONT_YG760, std::to_wstring(pDialogHole->iFare), fDX + fDW * 0.5f + 4.f * fUiScale,
 					fDY + DLG_FARE_CENTER_Y * fUiScale, DLG_BODY_PX * fUiScale, COLOR_WHITE, 1,
@@ -896,12 +918,12 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 			m_fCenterU = 0.5f;
 			m_fCenterV = 0.5f;
 		}
-		if (Button("WM_BtnMyLocation", "UI/WorldMap/WorldMap_BtnMyLocation_Normal.png", "UI/WorldMap/WorldMap_BtnMyLocation_Over.png"))
+		if (Button("WM_BtnMyLocation", "UI/WorldMap/WorldMap_BtnMyLocation_Normal.png", "UI/WorldMap/WorldMap_BtnMyLocation_Over.png", bCurrentMap))
 		{
 			CMainApp::Play_UIButtonClickSound();
 			Center_On(pSnapshot->fLocalX, pSnapshot->fLocalZ);
 		}
-		if (Button("WM_BtnPlayerMark", "UI/WorldMap/WorldMap_BtnPlayerMark_Normal.png", "UI/WorldMap/WorldMap_BtnPlayerMark_Over.png"))
+		if (Button("WM_BtnPlayerMark", "UI/WorldMap/WorldMap_BtnPlayerMark_Normal.png", "UI/WorldMap/WorldMap_BtnPlayerMark_Over.png", bCurrentMap))
 		{
 			CMainApp::Play_UIButtonClickSound();
 			m_bShowMarkers = !m_bShowMarkers;
@@ -1024,7 +1046,7 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 
 	/* Hover test of the square holes against the *previous* pan state is good enough for a
 	click; it is re-placed after the pan below. A click opens the confirm dialog. */
-	const HOLE_SET* pHoles = Find_Holes(eLevel);
+	const HOLE_SET* pHoles = Find_Holes(eMapLevel);
 	const bool_t bShowHoles = Is_LegendChecked("background");
 	if (nullptr != pHoles && bShowHoles && bHaveMouse && !bDragging && !bOverChrome)
 	{
@@ -1105,7 +1127,7 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 	}
 	/* NPC function symbols: only placements the symbol document knows. */
 	{
-		const bool_t bShowNpcs = Is_LegendChecked("npc");
+		const bool_t bShowNpcs = bCurrentMap && Is_LegendChecked("npc");
 		size_t iSlot = 0;
 		if (bShowNpcs)
 		{
@@ -1132,7 +1154,7 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 		f32_t fU = 0.f, fV = 0.f, fSX = 0.f, fSY = 0.f;
 		if (nullptr != pMarker)
 			ToUV(pMarker->fX, pMarker->fZ, fU, fV);
-		(void)PlaceAt(pSlotId, fU, fV, nullptr != pMarker && m_bShowMarkers, fSX, fSY);
+		(void)PlaceAt(pSlotId, fU, fV, bCurrentMap && nullptr != pMarker && m_bShowMarkers, fSX, fSY);
 	};
 	size_t iParty = 0;
 	for (const CClientReplication::MINIMAP_MARKER& Marker : pSnapshot->Players)
@@ -1149,7 +1171,7 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 		/* The player pin (icon_worldmap_pc) stands on the position with its tip; no turn. */
 		f32_t fU = 0.f, fV = 0.f, fSX = 0.f, fSY = 0.f;
 		ToUV(pSnapshot->fLocalX, pSnapshot->fLocalZ, fU, fV);
-		if (PlaceAt("WM_Player", fU, fV, m_bShowMarkers, fSX, fSY, 0.5f, 1.f))
+		if (PlaceAt("WM_Player", fU, fV, bCurrentMap && m_bShowMarkers, fSX, fSY, 0.5f, 1.f))
 			m_pView->Set_SlotRotation("WM_Player", 0.f);
 	}
 
@@ -1162,7 +1184,7 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 	}
 	m_Texts.push_back({ FONT_YOON, pArea->strAreaName,
 		fMapX + CONTENT_W * 0.5f * fUiScale, fMapY + ZONE_TITLE_CENTER_Y * fUiScale, ZONE_TITLE_PX * fUiScale, COLOR_WHITE, 0 });
-	if (const ZONE_SET* pZonesForTitle = Find_Zones(eLevel))
+	if (const ZONE_SET* pZonesForTitle = Find_Zones(eMapLevel))
 	{
 		if (!pZonesForTitle->strContinentName.empty())
 		{
@@ -1179,7 +1201,7 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 		}
 	}
 	size_t iPortal = 0;
-	if (const LABEL_SET* pLabels = Find_Labels(eLevel))
+	if (const LABEL_SET* pLabels = Find_Labels(eMapLevel))
 	{
 		for (const LABEL& Label : pLabels->Labels)
 		{
@@ -1223,7 +1245,7 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 		for (const char* pSlotId : { "WM_PanelTile", "WM_PanelHeader" })
 			m_pView->Set_SlotVisible(pSlotId, bPanelOpen);
 		std::vector<PANEL_ROW> Rows;
-		Build_PanelRows(eLevel, Rows);
+		Build_PanelRows(eMapLevel, Rows);
 		for (size_t i = 0; i < PANEL_ROW_COUNT; ++i)
 		{
 			const string strIndex = std::to_string(i);

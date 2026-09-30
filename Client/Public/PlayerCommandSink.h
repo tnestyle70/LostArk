@@ -132,6 +132,7 @@ public:
 		const std::string& triggerPlacementId) = 0;
 	// Same-room-only party invite -- targetNetEntityId names another player
 	// currently replicated in this room (right-clicked locally).
+	virtual bool Request_GuideControl(const LostArk::Shared::C2S_GUIDE_CONTROL&) { return false; }
 	virtual bool Request_PartyInvite(
 		std::uint32_t clientSequence,
 		LostArk::Shared::NET_ENTITY_ID targetNetEntityId) = 0;
@@ -197,6 +198,7 @@ public:
 	state changes. Sinks without a Server reject / have nothing. */
 	virtual bool Request_ColosseumQueueJoin(std::uint32_t, const std::string&) { return false; }
 	virtual bool Request_ColosseumQueueLeave(std::uint32_t) { return false; }
+	virtual bool Request_ColosseumRecruit(std::uint32_t, std::uint64_t, LostArk::Shared::NET_ENTITY_ID) { return false; }
 	virtual bool Consume_ColosseumQueueState(LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE&) { return false; }
 	// Raid Clear screen's own "돌아가기" (return) button, Valtan Arena only --
 	// the reverse trip of Request_ConfirmNpcEntry. No target NPC to name (the

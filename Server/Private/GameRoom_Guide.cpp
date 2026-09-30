@@ -60,7 +60,7 @@ bool CGameRoom::Build_GuidePlayer(PLAYER_ID playerId,NET_ENTITY_ID entityId,floa
 
 void CGameRoom::Initialize_Guide()
 {
- if(m_eWorldId!=WORLD_ID::BERN&&m_eWorldId!=WORLD_ID::VALTAN_ARENA&&m_eWorldId!=WORLD_ID::KAKULSAYDON_ARENA)return;
+ if(m_eWorldId!=WORLD_ID::BERN&&m_eWorldId!=WORLD_ID::VALTAN_ARENA&&m_eWorldId!=WORLD_ID::KAKULSAYDON_ARENA&&m_eWorldId!=WORLD_ID::COLOSSEUM)return;
  std::string status;
  if(!m_GuideCatalog.Load(status)){std::cout<<"[Guide] "<<status<<'\n';return;}
  // Class/slot references are checked again against the actual installed Server generation.
@@ -76,41 +76,120 @@ void CGameRoom::Initialize_Guide()
  m_PlayerIdByEntityId.emplace(reception.iNetEntityId,reception.iPlayerId);m_Players.emplace(reception.iPlayerId,std::move(reception));++m_iNextGuidePlayerId;++m_iNextNetEntityId;
 }
 
-bool CGameRoom::Invite_Guide(const SERVER_PLAYER& inviter,const NET_ENTITY_ID target)
+bool CGameRoom::Start_Guide(const SERVER_PLAYER& inviter,const NET_ENTITY_ID target)
 {
  const auto targetId=m_PlayerIdByEntityId.find(target);
  if(targetId==m_PlayerIdByEntityId.end())return false;
  const auto actor=m_Players.find(targetId->second);
  if(actor==m_Players.end()||!actor->second.Is_Guide())return false;
  if(!inviter.Is_Human()||!inviter.iCurrentHp||m_eWorldId!=WORLD_ID::BERN||!m_GuideCatalog.Loaded)return true;
- auto membership=m_PartyIdByPlayerId.find(inviter.iPlayerId);
- const auto partyId=membership==m_PartyIdByPlayerId.end()?m_iNextPartyId:membership->second;
- if(auto existing=m_Guides.find(partyId);existing!=m_Guides.end()){Broadcast_PartyRoster(partyId);return true;}
- if(targetId->second!=m_iGuideReceptionId||distance(inviter,actor->second)>10.f||!partyId)return true;
- SERVER_PLAYER guide;
- const float yaw=inviter.fYawDegrees*PI/180.f;
- if(!Build_GuidePlayer(m_iNextGuidePlayerId,m_iNextNetEntityId,inviter.fPositionX-std::sin(yaw)*m_GuideCatalog.DesiredDistance,inviter.fPositionY,inviter.fPositionZ-std::cos(yaw)*m_GuideCatalog.DesiredDistance,guide))return true;
- GUIDE_RUNTIME runtime;runtime.PlayerId=guide.iPlayerId;runtime.AnchorId=inviter.iPlayerId;
- // All validation finishes before either membership or the companion changes.
- if(membership==m_PartyIdByPlayerId.end()){m_PartyMembersByPartyId.emplace(partyId,std::vector<PLAYER_ID>{inviter.iPlayerId});m_PartyIdByPlayerId.emplace(inviter.iPlayerId,partyId);++m_iNextPartyId;}
- m_PlayerIdByEntityId.emplace(guide.iNetEntityId,guide.iPlayerId);m_Players.emplace(guide.iPlayerId,guide);m_Guides.emplace(partyId,std::move(runtime));++m_iNextGuidePlayerId;++m_iNextNetEntityId;
- Broadcast_Spawned(guide,INVALID_SESSION_ID);Broadcast_PartyRoster(partyId);
- for(const auto& trigger:m_GuideCatalog.Triggers)if(trigger.Enabled&&trigger.Type=="PARTY_JOINED")Queue_GuidePrompt(partyId,trigger.PromptId);
+ const auto ownerSessionId=inviter.iSessionId;
+ auto ownerSession=Find_Session(ownerSessionId);
+ if(!ownerSession||ownerSession->Is_Closing()||!ownerSessionId)return true;
+ if(!m_PersonalGuides.empty()){Broadcast_GuideOwnership();return true;}
+ if(targetId->second!=m_iGuideReceptionId||distance(inviter,actor->second)>10.f)return true;
+ auto& guide=actor->second;
+ // Restarting with a grounded owner uses the existing validated flight landing.
+ if(guide.eVehicleFlightPhase!=VEHICLE_FLIGHT_PHASE::GROUNDED&&inviter.iVehicleId!=ANCIENT_SEA_VEHICLE_ID){End_VehicleSkill(guide);if(guide.eAction==PLAYER_ACTION_STATE::FALLING)return true;}
+ Reset_PlayerForDebugTeleport(guide);guide.isCombatReady=true;
+ GUIDE_RUNTIME runtime;runtime.PlayerId=guide.iPlayerId;runtime.AnchorId=inviter.iPlayerId;runtime.OwnerSession=ownerSession;runtime.OwnerNetEntityId=inviter.iNetEntityId;
+ runtime.Sequence=(std::max)({guide.iLastMoveSequence,guide.iLastSkillSequence,guide.LastVehicleRidingResult.iRequestSequence});
+ // Bind the already placed actor. Starting guidance never creates a player or a party.
+ m_PersonalGuides.emplace(ownerSessionId,std::move(runtime));
+ Broadcast_GuideOwnership();
+ const auto category=m_GuideCatalog.Categories.find(WORLD_ID::BERN);
+ for(const auto& trigger:m_GuideCatalog.Triggers)if(trigger.Enabled&&category!=m_GuideCatalog.Categories.end()&&trigger.Category==category->second&&(trigger.Type=="GUIDE_STARTED"||trigger.Type=="PARTY_JOINED"))Queue_GuidePrompt(ownerSessionId,trigger.PromptId);
  return true;
 }
 
-void CGameRoom::Remove_Guide(std::uint32_t partyId,bool publish)
+void CGameRoom::Handle_GuideControl(SESSION_ID sessionId,const C2S_GUIDE_CONTROL& request)
 {
- auto guide=m_Guides.find(partyId);if(guide==m_Guides.end())return;
- auto actor=m_Players.find(guide->second.PlayerId);
- if(actor!=m_Players.end()){m_CombatObjectRuntime.Cancel_Source(actor->second.iNetEntityId);m_ServerTriggerSystem.Remove_Player(actor->first);if(publish)Broadcast_Despawned(actor->second.iNetEntityId,PLAYER_DESPAWN_REASON::LEVEL_CHANGED);m_PlayerIdByEntityId.erase(actor->second.iNetEntityId);m_Players.erase(actor);}
- m_Guides.erase(guide);
+ if(m_eWorldId!=WORLD_ID::BERN||request.iRequestSequence==0)return;
+ auto& last=m_GuideControlSequences[sessionId];
+ if(last&&static_cast<std::int32_t>(request.iRequestSequence-last)<=0)return;
+ last=request.iRequestSequence;
+ const auto binding=m_PlayerIdBySessionId.find(sessionId);
+ if(binding==m_PlayerIdBySessionId.end())return;
+ const auto owner=m_Players.find(binding->second),actor=m_Players.find(m_iGuideReceptionId);
+ if(owner==m_Players.end()||actor==m_Players.end()||!owner->second.Is_Human()||request.iGuideNetEntityId!=actor->second.iNetEntityId)return;
+ if(request.eAction==GUIDE_CONTROL_ACTION::START)(void)Start_Guide(owner->second,request.iGuideNetEntityId);
+ else if(request.eAction==GUIDE_CONTROL_ACTION::STOP&&m_PersonalGuides.contains(sessionId))Remove_Guide(sessionId);
 }
 
-void CGameRoom::Queue_GuidePrompt(std::uint32_t partyId,const std::string& promptId)
+void CGameRoom::Broadcast_GuideState(const S2C_GUIDE_STATE& message)
 {
- auto guide=m_Guides.find(partyId);const auto* prompt=m_GuideCatalog.Find_Prompt(promptId);
- if(guide==m_Guides.end()||!prompt||guide->second.PromptQueue.size()>=16)return;
+ CPacketWriter writer;if(!Write_Message(writer,message))return;
+ for(const auto& [id,human]:m_Players)if(human.Is_Human())if(auto session=Find_Session(human.iSessionId);session&&!session->Is_Closing()&&!session->Send_Frame(PACKET_TYPE::S2C_GUIDE_STATE,writer.Get_Buffer()))session->Request_Close();
+}
+
+void CGameRoom::Broadcast_GuideOwnership()
+{
+ const auto actor=m_Players.find(m_iGuideReceptionId);if(actor==m_Players.end())return;
+ S2C_GUIDE_STATE state;state.iGuideNetEntityId=actor->second.iNetEntityId;state.iRevision=m_GuideCatalog.Revision;state.iServerTick=m_iServerTick?m_iServerTick:1;
+ if(!m_PersonalGuides.empty()){const auto& runtime=m_PersonalGuides.begin()->second;state.iOwnerNetEntityId=runtime.OwnerNetEntityId;state.iAction=runtime.WaitingForOwner||runtime.WaitingForShip?8:1;state.strReason="Guidance is reserved for its current owner";}
+ else state.strReason="Ready to start guidance";
+ Broadcast_GuideState(state);
+}
+
+void CGameRoom::Remove_Guide(SESSION_ID ownerSessionId,bool publish)
+{
+ const auto found=m_PersonalGuides.find(ownerSessionId);if(found==m_PersonalGuides.end())return;
+ auto actor=m_Players.find(found->second.PlayerId);
+ if(actor!=m_Players.end()){
+  Reset_PlayerForDebugTeleport(actor->second);actor->second.isCombatReady=false;
+  actor->second.fVehicleFlightInputX=actor->second.fVehicleFlightInputY=actor->second.fVehicleFlightInputZ=0.f;
+  actor->second.fVehicleFlightVelocityX=actor->second.fVehicleFlightVelocityY=actor->second.fVehicleFlightVelocityZ=0.f;
+ }
+ // Releasing guidance discards every pending occurrence, while the same actor remains placed.
+ m_PersonalGuides.erase(found);
+ if(publish)Broadcast_GuideOwnership();
+}
+
+void CGameRoom::Suspend_PersonalGuide(SESSION_ID ownerSessionId)
+{
+ if(m_eWorldId!=WORLD_ID::BERN)return;
+ const auto found=m_PersonalGuides.find(ownerSessionId);if(found==m_PersonalGuides.end())return;
+ auto& state=found->second;
+ auto actor=m_Players.find(state.PlayerId);
+ if(actor!=m_Players.end()){
+  Reset_PlayerForDebugTeleport(actor->second);
+  actor->second.isCombatReady=false;
+  actor->second.fVehicleFlightInputX=actor->second.fVehicleFlightInputY=actor->second.fVehicleFlightInputZ=0.f;
+  actor->second.fVehicleFlightVelocityX=actor->second.fVehicleFlightVelocityY=actor->second.fVehicleFlightVelocityZ=0.f;
+ }
+ // Called inside a transfer commit: no packets or callbacks to outbound queues.
+ state.WaitingForOwner=true;state.ReturningOnFoot=false;state.ComboId.clear();state.PendingComboId.clear();state.Reason.clear();
+ state.PromptQueue.clear();state.PromptRemaining=0.f;state.InsideBoxes.clear();state.FarElapsed=0.f;
+}
+
+void CGameRoom::Resume_PersonalGuide(SESSION_ID ownerSessionId,WORLD_ID sourceWorld)
+{
+ if(m_eWorldId!=WORLD_ID::BERN)return;
+ const auto found=m_PersonalGuides.find(ownerSessionId);if(found==m_PersonalGuides.end()||!found->second.WaitingForOwner)return;
+ auto& state=found->second;const auto owner=state.OwnerSession.lock();
+ const auto binding=m_PlayerIdBySessionId.find(ownerSessionId);
+ if(!owner||owner->Is_Closing()||owner!=Find_Session(ownerSessionId)||binding==m_PlayerIdBySessionId.end())return;
+ const auto actor=m_Players.find(state.PlayerId);if(actor==m_Players.end())return;
+ state.AnchorId=binding->second;state.OwnerNetEntityId=m_Players.at(binding->second).iNetEntityId;state.WaitingForOwner=false;state.ReturningOnFoot=true;state.FarElapsed=0.f;
+ actor->second.isCombatReady=actor->second.iCurrentHp!=0;
+ state.Reason="Owner returned; approaching on the existing navigation path";
+ const char* type=nullptr;const char* world=nullptr;
+ switch(sourceWorld){
+ case WORLD_ID::VALTAN_ARENA:type="RAID_RETURNED";world="VALTAN_ARENA";break;
+ case WORLD_ID::KAKULSAYDON_ARENA:type="RAID_RETURNED";world="KAKULSAYDON_ARENA";break;
+ case WORLD_ID::MAHARAKA:type="WORLD_RETURNED";world="MAHARAKA";break;
+ case WORLD_ID::COLOSSEUM:type="WORLD_RETURNED";world="COLOSSEUM";break;
+ default:break;
+ }
+ // This runs only after successful entry commit. Actual sending stays in Update_Guides.
+ const auto category=m_GuideCatalog.Categories.find(WORLD_ID::BERN);
+ if(type)for(const auto& trigger:m_GuideCatalog.Triggers)if(trigger.Enabled&&category!=m_GuideCatalog.Categories.end()&&trigger.Category==category->second&&trigger.Type==type&&trigger.PatternId==world)Queue_GuidePrompt(ownerSessionId,trigger.PromptId);
+}
+
+void CGameRoom::Queue_GuidePrompt(SESSION_ID ownerSessionId,const std::string& promptId)
+{
+ auto guide=m_PersonalGuides.find(ownerSessionId);const auto* prompt=m_GuideCatalog.Find_Prompt(promptId);
+ if(guide==m_PersonalGuides.end()||!prompt||guide->second.PromptQueue.size()>=16)return;
  if(std::none_of(guide->second.PromptQueue.begin(),guide->second.PromptQueue.end(),[&](const auto& queued){return queued.first==promptId;})){
   auto priority=[&](const std::string& id){int result=0;for(const auto& trigger:m_GuideCatalog.Triggers)if(trigger.Enabled&&trigger.PromptId==id)result=(std::max)(result,trigger.Priority);return result;};
   auto place=guide->second.PromptQueue.begin();if(place!=guide->second.PromptQueue.end()&&place->second>0)++place;
@@ -122,8 +201,7 @@ void CGameRoom::Queue_GuidePrompt(std::uint32_t partyId,const std::string& promp
 void CGameRoom::Guide_ChatCommand(const SERVER_PLAYER& sender,const std::string& line)
 {
  if(!sender.Is_Human())return;
- auto party=m_PartyIdByPlayerId.find(sender.iPlayerId);if(party==m_PartyIdByPlayerId.end())return;
- auto guide=m_Guides.find(party->second);if(guide==m_Guides.end())return;
+ auto guide=m_PersonalGuides.find(sender.iSessionId);if(guide==m_PersonalGuides.end()||guide->second.WaitingForOwner||guide->second.WaitingForShip)return;
  const auto input=trim(line);auto& state=guide->second;
  for(const auto& command:m_GuideCatalog.Commands)
  {
@@ -135,14 +213,14 @@ void CGameRoom::Guide_ChatCommand(const SERVER_PLAYER& sender,const std::string&
   std::string comboId=command.ComboId;int comboPriority=(std::numeric_limits<int>::min)();
   const auto category=m_GuideCatalog.Categories.find(m_eWorldId);
   for(const auto& trigger:m_GuideCatalog.Triggers)if(trigger.Enabled&&trigger.Type=="HELP_COMMAND"&&trigger.PatternId==command.Id&&category!=m_GuideCatalog.Categories.end()&&trigger.Category==category->second&&!trigger.ComboId.empty()&&trigger.Priority>comboPriority){comboId=trigger.ComboId;comboPriority=trigger.Priority;}
-  if(command.Stop){state.ComboId.clear();state.PendingComboId.clear();state.ComboStep=0;state.Reason="Assistance stopped by party command";}
+  if(command.Stop){state.ComboId.clear();state.PendingComboId.clear();state.ComboStep=0;state.Reason="Assistance stopped by owner command";}
   else if(state.ComboId!=comboId)
   {
    auto actor=m_Players.find(state.PlayerId);
    if(actor!=m_Players.end()&&actor->second.eAction==PLAYER_ACTION_STATE::SKILL)state.PendingComboId=comboId;
    else {state.ComboId=comboId;state.ComboStep=0;state.ComboElapsed=state.StepElapsed=0;}
   }
-  for(const auto& trigger:m_GuideCatalog.Triggers)if(trigger.Enabled&&trigger.Type=="HELP_COMMAND"&&trigger.PatternId==command.Id&&category!=m_GuideCatalog.Categories.end()&&trigger.Category==category->second)Queue_GuidePrompt(party->second,trigger.PromptId);
+  for(const auto& trigger:m_GuideCatalog.Triggers)if(trigger.Enabled&&trigger.Type=="HELP_COMMAND"&&trigger.PatternId==command.Id&&category!=m_GuideCatalog.Categories.end()&&trigger.Category==category->second)Queue_GuidePrompt(sender.iSessionId,trigger.PromptId);
   return;
  }
 }
@@ -150,47 +228,60 @@ void CGameRoom::Guide_ChatCommand(const SERVER_PLAYER& sender,const std::string&
 void CGameRoom::Guide_AnchorArrived(const SERVER_PLAYER& anchor)
 {
  if(!anchor.Is_Human()||isMinigameAnchor(anchor))return;
- for(auto& [party,state]:m_Guides)
- {
-  if(state.AnchorId!=anchor.iPlayerId)continue;
-  auto actor=m_Players.find(state.PlayerId);if(actor==m_Players.end())continue;
-  auto& guide=actor->second;SERVER_NAV_POINT destination;
-  const float yaw=anchor.fYawDegrees*PI/180.f;
-  if(!Find_GuideLanding(guide,anchor.fPositionX-std::sin(yaw)*m_GuideCatalog.DesiredDistance,anchor.fPositionY,anchor.fPositionZ-std::cos(yaw)*m_GuideCatalog.DesiredDistance,destination)){state.Reason="Anchor arrived; no safe companion landing";continue;}
-  Reset_PlayerForDebugTeleport(guide);guide.fPositionX=destination.x;guide.fPositionY=destination.y;guide.fPositionZ=destination.z;guide.fYawDegrees=anchor.fYawDegrees;
-  state.ComboId.clear();state.PendingComboId.clear();state.InsideBoxes.clear();state.FarElapsed=0;state.Reason="Following committed anchor arrival";
- }
+ const auto found=m_PersonalGuides.find(anchor.iSessionId);
+ if(found==m_PersonalGuides.end()||found->second.WaitingForOwner)return;
+ auto& state=found->second;
+ if(state.AnchorId!=anchor.iPlayerId)return;
+ auto actor=m_Players.find(state.PlayerId);if(actor==m_Players.end())return;
+ Reset_PlayerForDebugTeleport(actor->second);
+ state.ComboId.clear();state.PendingComboId.clear();state.InsideBoxes.clear();state.FarElapsed=0.f;
+ state.ReturningOnFoot=true;state.Reason="Following committed owner arrival on foot";
+
 }
 
 void CGameRoom::Update_Guides(float seconds)
 {
- if(!m_GuideCatalog.Loaded)return;
- for(auto it=m_Guides.begin();it!=m_Guides.end();)
+ if(!m_GuideCatalog.Loaded||m_eWorldId!=WORLD_ID::BERN)return;
+ m_fGuideOwnershipElapsed+=seconds;
+ if(m_fGuideOwnershipElapsed>=m_GuideCatalog.ThinkSeconds&&(m_PersonalGuides.empty()||m_PersonalGuides.begin()->second.WaitingForOwner)){m_fGuideOwnershipElapsed=0.f;Broadcast_GuideOwnership();}
+ for(auto it=m_PersonalGuides.begin();it!=m_PersonalGuides.end();)
  {
-  const auto partyId=it->first;auto& state=it->second;auto party=m_PartyMembersByPartyId.find(partyId);
-  if(party==m_PartyMembersByPartyId.end()||party->second.empty()){++it;Remove_Guide(partyId);continue;}
-  if(m_GuideCatalog.AnchorPolicy=="PARTY_LEADER"||std::find(party->second.begin(),party->second.end(),state.AnchorId)==party->second.end())state.AnchorId=party->second.front();
-  auto guideIt=m_Players.find(state.PlayerId),anchorIt=m_Players.find(state.AnchorId);
-  if(guideIt==m_Players.end()||anchorIt==m_Players.end()){++it;Remove_Guide(partyId);continue;}
-  bool anchorSuppressed=isMinigameAnchor(anchorIt->second);
-  if(anchorSuppressed)for(const auto humanId:party->second){auto candidate=m_Players.find(humanId);if(candidate!=m_Players.end()&&candidate->second.Is_Human()&&candidate->second.iCurrentHp&&!isMinigameAnchor(candidate->second)){anchorIt=candidate;anchorSuppressed=false;break;}}
+  const auto ownerSessionId=it->first;auto& state=it->second;
+  const auto ownerSession=state.OwnerSession.lock();
+  if(!ownerSession||ownerSession->Is_Closing()){++it;Remove_Guide(ownerSessionId);continue;}
+  auto guideIt=m_Players.find(state.PlayerId);
+  if(guideIt==m_Players.end()){++it;Remove_Guide(ownerSessionId);continue;}
+  if(state.WaitingForOwner){++it;continue;}
+  const auto binding=m_PlayerIdBySessionId.find(ownerSessionId);
+  if(binding==m_PlayerIdBySessionId.end()){++it;continue;}
+  state.AnchorId=binding->second;
+  auto anchorIt=m_Players.find(state.AnchorId);if(anchorIt==m_Players.end()){++it;continue;}
+  const bool anchorSuppressed=isMinigameAnchor(anchorIt->second);
   auto& guide=guideIt->second;const auto& anchor=anchorIt->second;
-  auto send=[&](PACKET_TYPE kind,const auto& message){CPacketWriter writer;if(!Write_Message(writer,message))return;for(auto id:party->second){auto human=m_Players.find(id);if(human!=m_Players.end())if(auto session=Find_Session(human->second.iSessionId);session&&!session->Send_Frame(kind,writer.Get_Buffer()))session->Request_Close();}};
+  auto send=[&](PACKET_TYPE kind,const auto& message){CPacketWriter writer;if(Write_Message(writer,message)&&!ownerSession->Send_Frame(kind,writer.Get_Buffer()))ownerSession->Request_Close();};
   float evaluatedThreat=0.f;bool survivalOverride=false;
-  auto publishTrace=[&](){S2C_GUIDE_STATE trace;trace.iGuideNetEntityId=guide.iNetEntityId;trace.iOwnerNetEntityId=anchor.iNetEntityId;trace.iRevision=m_GuideCatalog.Revision;trace.iServerTick=m_iServerTick?m_iServerTick:1;trace.iContext=state.ComboId.empty()?0:1;trace.iAction=state.Action;trace.fFollowScore=state.FollowScore;trace.fEvadeScore=state.EvadeScore;trace.fCombatScore=state.CombatScore;trace.fThreat=evaluatedThreat;trace.fAnchorDistance=distance(guide,anchor);trace.fHpRatio=guide.iMaximumHp?std::clamp(static_cast<float>(guide.iCurrentHp)/guide.iMaximumHp,0.f,1.f):0.f;trace.bSurvivalOverride=survivalOverride;trace.strReason=state.Reason;trace.strComboId=state.ComboId;trace.iComboStep=static_cast<std::uint32_t>(state.ComboStep);send(PACKET_TYPE::S2C_GUIDE_STATE,trace);};
-  state.PromptRemaining-=seconds;
-  if(state.PromptRemaining<=0&&!state.PromptQueue.empty())
+  auto publishTrace=[&](){S2C_GUIDE_STATE trace;trace.iGuideNetEntityId=guide.iNetEntityId;trace.iOwnerNetEntityId=anchor.iNetEntityId;trace.iRevision=m_GuideCatalog.Revision;trace.iServerTick=m_iServerTick?m_iServerTick:1;trace.iContext=state.ComboId.empty()?0:1;trace.iAction=state.Action;trace.fFollowScore=state.FollowScore;trace.fEvadeScore=state.EvadeScore;trace.fCombatScore=state.CombatScore;trace.fThreat=evaluatedThreat;trace.fAnchorDistance=distance(guide,anchor);trace.fHpRatio=guide.iMaximumHp?std::clamp(static_cast<float>(guide.iCurrentHp)/guide.iMaximumHp,0.f,1.f):0.f;trace.bSurvivalOverride=survivalOverride;trace.strReason=state.Reason;trace.strComboId=state.ComboId;trace.iComboStep=static_cast<std::uint32_t>(state.ComboStep);Broadcast_GuideState(trace);};
+  // Ships leave the guide at the pier; the dragon still uses the shared flight path below.
+  if(anchor.bShipDockValid){
+   if(!state.WaitingForShip){Reset_PlayerForDebugTeleport(guide);guide.isCombatReady=false;state.WaitingForShip=true;state.ComboId.clear();state.PendingComboId.clear();}
+   state.Action=8;state.FarElapsed=0.f;state.Reason="Waiting at the pier while the owner sails";publishTrace();++it;continue;
+  }
+  if(state.WaitingForShip){state.WaitingForShip=false;state.ReturningOnFoot=true;guide.isCombatReady=true;}
+  const bool waitingToSpeak=state.ReturningOnFoot&&distance(guide,anchor)>m_GuideCatalog.MaximumDistance;
+  if(!waitingToSpeak)state.PromptRemaining-=seconds;
+  // Ownership precedes every new prompt, including a world-return first frame.
+  if(!waitingToSpeak&&state.PromptRemaining<=0&&!state.PromptQueue.empty())publishTrace();
+  if(!waitingToSpeak&&state.PromptRemaining<=0&&!state.PromptQueue.empty())
   {
    auto& queued=state.PromptQueue.front();const auto* prompt=m_GuideCatalog.Find_Prompt(queued.first);
-   if(prompt&&queued.second<prompt->Segments.size()){const auto& segment=prompt->Segments[queued.second++];S2C_GUIDE_PROMPT message;message.iGuideNetEntityId=guide.iNetEntityId;message.iEventSequence=++state.EventSequence;if(!message.iEventSequence)message.iEventSequence=++state.EventSequence;message.iRevision=m_GuideCatalog.Revision;message.strPromptId=prompt->Id;message.strText=segment.Text;message.iDurationMs=segment.DurationMs;send(PACKET_TYPE::S2C_GUIDE_PROMPT,message);state.PromptRemaining=segment.DurationMs/1000.f;}
+   if(prompt&&queued.second<prompt->Segments.size()){const auto& segment=prompt->Segments[queued.second++];S2C_GUIDE_PROMPT message;message.iGuideNetEntityId=guide.iNetEntityId;message.iEventSequence=++m_iGuideEventSequence;if(!message.iEventSequence)message.iEventSequence=++m_iGuideEventSequence;message.iRevision=m_GuideCatalog.Revision;message.strPromptId=prompt->Id;message.strText=segment.Text;message.iDurationMs=segment.DurationMs;send(PACKET_TYPE::S2C_GUIDE_PROMPT,message);state.PromptRemaining=segment.DurationMs/1000.f;}
    if(!prompt||queued.second>=prompt->Segments.size())state.PromptQueue.pop_front();
   }
   state.ThinkElapsed+=seconds;state.HoldElapsed+=seconds;if(!state.ComboId.empty())state.ComboElapsed+=seconds;
   if(state.ThinkElapsed<m_GuideCatalog.ThinkSeconds){++it;continue;}
   const float elapsed=state.ThinkElapsed;state.ThinkElapsed=0;state.FollowScore=state.EvadeScore=state.CombatScore=0;
   if(anchorSuppressed){guide.hasMoveGoal=false;guide.MovePath.clear();state.Action=8;state.ComboId.clear();state.PendingComboId.clear();state.Reason="Waiting outside the human-only minigame";publishTrace();++it;continue;}
-  const bool humansAlive=std::any_of(party->second.begin(),party->second.end(),[&](PLAYER_ID id){auto p=m_Players.find(id);return p!=m_Players.end()&&p->second.iCurrentHp&&p->second.eAction!=PLAYER_ACTION_STATE::DEAD;});
-  if(!humansAlive){state.Action=7;guide.hasMoveGoal=false;state.ComboId.clear();state.PendingComboId.clear();state.Reason="All human party members are down";publishTrace();++it;continue;}
+  if(!anchor.iCurrentHp||anchor.eAction==PLAYER_ACTION_STATE::DEAD){state.Action=7;guide.hasMoveGoal=false;guide.MovePath.clear();state.ComboId.clear();state.PendingComboId.clear();state.Reason="Waiting for the owner to revive";publishTrace();++it;continue;}
   if(!guide.iCurrentHp)
   {
    state.Action=4;
@@ -205,16 +296,17 @@ void CGameRoom::Update_Guides(float seconds)
   {
    if(!trigger.Enabled||category==m_GuideCatalog.Categories.end()||trigger.Category!=category->second)continue;
    bool fire=false;
-   if(trigger.Type=="SPACE_ENTER"){const bool inside=CServerTriggerSystem::Contains_Placement(trigger.Box,guide);const bool was=state.InsideBoxes.contains(trigger.Id);if(inside)state.InsideBoxes.insert(trigger.Id);else state.InsideBoxes.erase(trigger.Id);fire=inside&&!was;}
+   if(trigger.Type=="SPACE_ENTER"){const bool inside=CServerTriggerSystem::Contains_Placement(trigger.Box,anchor);const bool was=state.InsideBoxes.contains(trigger.Id);if(inside)state.InsideBoxes.insert(trigger.Id);else state.InsideBoxes.erase(trigger.Id);fire=inside&&!was;}
    else if(trigger.Type=="BOSS_PATTERN_STARTED")for(const auto& boss:m_WorldEntities)if(boss.iCurrentHp&&boss.strPatternId==trigger.PatternId&&boss.iPatternSequence&&state.PatternSequences[boss.iNetEntityId]!=boss.iPatternSequence){fire=true;break;}
-   auto last=state.TriggerTicks.find(trigger.Id);if(fire&&(last==state.TriggerTicks.end()||m_iServerTick-last->second>=ticks(trigger.CooldownMs))){Queue_GuidePrompt(partyId,trigger.PromptId);state.TriggerTicks[trigger.Id]=m_iServerTick;}
+   auto last=state.TriggerTicks.find(trigger.Id);if(fire&&(last==state.TriggerTicks.end()||m_iServerTick-last->second>=ticks(trigger.CooldownMs))){Queue_GuidePrompt(ownerSessionId,trigger.PromptId);state.TriggerTicks[trigger.Id]=m_iServerTick;}
   }
   for(const auto& boss:m_WorldEntities)if(!boss.strPatternId.empty())state.PatternSequences[boss.iNetEntityId]=boss.iPatternSequence;
   SERVER_WORLD_ENTITY* enemy=nullptr;float enemyDistance=100000;
   for(auto& candidate:m_WorldEntities)if((candidate.eKind==WORLD_BOOTSTRAP_KIND::BOSS||candidate.eKind==WORLD_BOOTSTRAP_KIND::MONSTER)&&candidate.iCurrentHp&&!candidate.isEstherSummon){const float d=std::hypot(candidate.fPositionX-guide.fPositionX,candidate.fPositionZ-guide.fPositionZ);if(d<enemyDistance){enemy=&candidate;enemyDistance=d;}}
   const bool battle=enemy&&enemyDistance<35.f&&(enemy->eAction!=SERVER_ENTITY_ACTION::IDLE||!state.ComboId.empty());
   const float anchorDistance=distance(guide,anchor);
-  state.FarElapsed=anchorDistance>m_GuideCatalog.RecoverDistance&&!battle?state.FarElapsed+elapsed:0.f;
+  if(state.ReturningOnFoot&&anchorDistance<=m_GuideCatalog.MaximumDistance)state.ReturningOnFoot=false;
+  state.FarElapsed=!state.ReturningOnFoot&&anchorDistance>m_GuideCatalog.RecoverDistance&&!battle?state.FarElapsed+elapsed:0.f;
   if(state.FarElapsed>=m_GuideCatalog.RecoverDelay){state.Action=4;Guide_AnchorArrived(anchor);publishTrace();++it;continue;}
   if(guide.bPatternBound||guide.TriggerMove.isActive||guide.eAction==PLAYER_ACTION_STATE::GRABBED||guide.eAction==PLAYER_ACTION_STATE::FALLING||guide.fKnockbackRemainingSeconds>0){state.Action=5;state.Reason="Contact reaction owns the guide movement";publishTrace();++it;continue;}
   if(anchor.iVehicleId!=guide.iVehicleId&&guide.eAction==PLAYER_ACTION_STATE::NONE){C2S_SET_VEHICLE_RIDING command;command.eWorldId=m_eWorldId;command.iRequestSequence=++state.Sequence;command.iVehicleId=anchor.iVehicleId;(void)Apply_SetVehicleRiding(guide,command);}
@@ -238,7 +330,7 @@ void CGameRoom::Update_Guides(float seconds)
    for(const auto& to:path){const float length=std::hypot(to.x-from.x,to.z-from.z);const unsigned count=(std::max)(1u,static_cast<unsigned>(std::ceil(length/.5f)));if(samples+count>128)return false;for(unsigned i=1;i<=count;++i){float t=float(i)/count;if(danger(from.x+(to.x-from.x)*t,from.z+(to.z-from.z)*t)>currentRisk+.001f)return false;}samples+=count;from=to;}return true;
   };
   const float risk=danger(guide.fPositionX,guide.fPositionZ);const auto& weight=combo?m_GuideCatalog.AssistWeights:m_GuideCatalog.FollowWeights;
-  const bool needsFollow=anchorDistance>m_GuideCatalog.ResumeDistance||(guide.hasMoveGoal&&anchorDistance>m_GuideCatalog.MaximumDistance)||anchorDistance<m_GuideCatalog.MinimumDistance;
+  const bool needsFollow=(state.ReturningOnFoot&&anchorDistance>m_GuideCatalog.MaximumDistance)||anchorDistance>m_GuideCatalog.ResumeDistance||(guide.hasMoveGoal&&anchorDistance>m_GuideCatalog.MaximumDistance)||anchorDistance<m_GuideCatalog.MinimumDistance;
   const float distanceError=anchorDistance<m_GuideCatalog.MinimumDistance?m_GuideCatalog.MinimumDistance-anchorDistance:anchorDistance-m_GuideCatalog.MaximumDistance;
   const float followScore=(needsFollow?weight.Follow:0.f)*std::clamp(distanceError/(std::max)(1.f,m_GuideCatalog.ResumeDistance),0.f,1.f);
   const float evadeScore=weight.Avoid*std::clamp(risk,0.f,1.f);const float combatScore=combo&&enemy?weight.Attack:0;

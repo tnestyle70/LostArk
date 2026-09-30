@@ -75,9 +75,10 @@ namespace
 		const auto accepts = [&](const int32_t index) {
 			return index >= 0 && static_cast<size_t>(index) < available->size() && (*available)[index];
 		};
-		if (accepts(requested)) return requested;
 		const int32_t fallback = admission.Hairstyles.Get_DefaultIndex(classAssetId);
-		if (accepts(fallback)) return fallback;
+		if (requested == -1 && fallback == -1) return -1;
+		if (accepts(requested)) return requested;
+		if (fallback == -1 || accepts(fallback)) return fallback;
 		const auto first = std::find(available->begin(), available->end(), true);
 		return first == available->end() ? -1 : static_cast<int32_t>(first - available->begin());
 	}
@@ -496,10 +497,8 @@ void Client::CCustomizingView::Open()
 	m_fZoomBlend = 0.f;
 	m_bDecideRequested = false;
 	m_bBackRequested = false;
-	/* The hair a cooked body happens to draw by itself is not the retail starting look --
-	one class shows a style nobody picked and another has no hair mesh at all. Asking for
-	the selected style up front puts a real hairstyle on every class, and it is the same
-	apply the grid uses, so nothing about it is a second path. */
+	/* Apply the selected class default through the same path as a hair-grid choice.
+	Most classes wear a separate set; a configured body-hair default keeps its baked style. */
 	m_bHairChanged = true;
 	/* The outfit is the opposite case: the screen opens on the class's own default
 	equipment and a try-on set goes on only when its row is clicked. Starting outside the
@@ -569,7 +568,7 @@ bool_t Client::CCustomizingView::Try_Consume_CostumeChange()
 void Client::CCustomizingView::Configure_HairDefault(
 	const std::string& classAssetId, const int32_t defaultIndex)
 {
-	if (classAssetId.empty() || defaultIndex < 0) return;
+	if (classAssetId.empty() || defaultIndex < -1) return;
 	m_iDefaultHair = Resolve_AvailableHair(classAssetId, defaultIndex);
 	if (m_strHairClassAssetId == classAssetId) return;
 	if (!m_strHairClassAssetId.empty())
@@ -578,8 +577,22 @@ void Client::CCustomizingView::Configure_HairDefault(
 	const auto previous = m_HairSelectionsByClass.find(classAssetId);
 	m_iSelectedHair = Resolve_AvailableHair(classAssetId,
 		previous == m_HairSelectionsByClass.end() ? m_iDefaultHair : previous->second);
-	m_iHairScrollRow = m_iSelectedHair / GRID_COLUMNS;
+	m_iHairScrollRow = (std::max)(0, m_iSelectedHair) / GRID_COLUMNS;
 	m_bHairChanged = true;
+}
+
+void Client::CCustomizingView::Reapply_HairControls(
+	const shared_ptr<CCharacter>& pCharacter) const
+{
+	if (nullptr == pCharacter || nullptr == pCharacter->Get_Spec() ||
+		nullptr == pCharacter->Get_Spec()->pAssetName ||
+		m_strIconClassAssetId != pCharacter->Get_Spec()->pAssetName)
+		return;
+	const float4_t& color = m_SurfaceColors[static_cast<size_t>(CCharacter::DYE_SURFACE::HAIR)];
+	if (color.w >= 0.f)
+		pCharacter->Set_DyeColor(CCharacter::DYE_SURFACE::HAIR, color, color);
+	if (m_hasHairTwoToneOverride)
+		pCharacter->Set_HairTwoTone(m_fHairTwoToneStrength, m_fHairTwoToneRange);
 }
 
 bool_t Client::CCustomizingView::Try_Consume_HairChange()
@@ -965,6 +978,7 @@ std::string Client::CCustomizingView::Serialize_Appearance(
 	out << "  \"eyeIrisAlpha\": "; WriteNumber(out, m_fEyeIrisAlpha); out << ",\n";
 	out << "  \"eyeOdd\": " << (m_isEyeOddSelected ? "true" : "false") << ",\n";
 	out << "  \"hairTwoTone\": " << (m_isHairTwoTone ? "true" : "false") << ",\n";
+	out << "  \"hairTwoToneOverride\": " << (m_hasHairTwoToneOverride ? "true" : "false") << ",\n";
 	out << "  \"hairTwoToneStrength\": "; WriteNumber(out, m_fHairTwoToneStrength); out << ",\n";
 	out << "  \"hairTwoToneRange\": "; WriteNumber(out, m_fHairTwoToneRange); out << ",\n";
 	out << "  \"hair\": " << Resolve_AvailableHair(m_strIconClassAssetId, m_iSelectedHair) << ",\n";
@@ -1031,6 +1045,9 @@ bool_t Client::CCustomizingView::Apply_Appearance(
 	if (nullptr == pClass || !pClass->Is_String() || pClass->Get_String() != m_strIconClassAssetId)
 		return false;
 
+	const auto* pTwoToneOverride = root.Find("hairTwoToneOverride");
+	if (nullptr != pTwoToneOverride && !pTwoToneOverride->Is_Boolean())
+		return false;
 	/* Back to the authored state first, so anything the slot does not mention is the class'
 	own value rather than whatever the screen happened to be showing. */
 	Reset_All(pCharacter);
@@ -1084,6 +1101,11 @@ bool_t Client::CCustomizingView::Apply_Appearance(
 			float4_t vColor{};
 			if (!ReadVector(&Rows[i], vColor) || vColor.w < 0.f)
 				continue;
+			/* Older first-open saves wrote an untouched hair swatch as all zeroes.
+			The picker writes alpha one, including an intentionally chosen black. */
+			if (i == static_cast<size_t>(CCharacter::DYE_SURFACE::HAIR) &&
+				vColor.x == 0.f && vColor.y == 0.f && vColor.z == 0.f && vColor.w == 0.f)
+				continue;
 			m_SurfaceColors[i] = vColor;
 			Apply_SurfaceColor(pCharacter, static_cast<int32_t>(i), vColor);
 		}
@@ -1123,7 +1145,12 @@ bool_t Client::CCustomizingView::Apply_Appearance(
 		root.Find("hairTwoTone")->Is_Boolean() && root.Find("hairTwoTone")->Get_Boolean();
 	m_fHairTwoToneStrength = ReadNumber(root.Find("hairTwoToneStrength"), m_fHairTwoToneStrength);
 	m_fHairTwoToneRange = ReadNumber(root.Find("hairTwoToneRange"), m_fHairTwoToneRange);
-	pCharacter->Set_HairTwoTone(m_fHairTwoToneStrength, m_fHairTwoToneRange);
+	const int32_t legacyHair = Resolve_AvailableHair(m_strIconClassAssetId,
+		static_cast<int32_t>(ReadNumber(root.Find("hair"), -1.f)));
+	m_hasHairTwoToneOverride = nullptr != pTwoToneOverride ? pTwoToneOverride->Get_Boolean() :
+		legacyHair >= 0 || m_fHairTwoToneStrength != 0.f || m_fHairTwoToneRange != 0.f;
+	if (m_hasHairTwoToneOverride)
+		pCharacter->Set_HairTwoTone(m_fHairTwoToneStrength, m_fHairTwoToneRange);
 
 	/* The stamps and the meshes the lists pick are applied by the tab that owns them; the
 	load states the choice and marks it changed so the owning Level re-dresses the model. */
@@ -1361,14 +1388,14 @@ void Client::CCustomizingView::Reset_All(const shared_ptr<CCharacter>& pCharacte
 	m_AdornStrength = { 1.f, 0.f, 1.f, 1.f, 1.f };
 	m_fHairTwoToneStrength = 0.f;
 	m_fHairTwoToneRange = 0.f;
-	pCharacter->Set_HairTwoTone(m_fHairTwoToneStrength, m_fHairTwoToneRange);
+	m_hasHairTwoToneOverride = false;
 	m_isHairTwoTone = false;
 	m_isEyeOddSelected = false;
 	m_iSelectedEyeIris = -1;
 	m_iSelectedVoiceType = LostArk::Shared::MIN_VOICE_TYPE;
 	m_iSelectedAdornSub = 0;
 	m_iFacePresetScrollRow = 0;
-	m_iHairScrollRow = m_iDefaultHair / GRID_COLUMNS;
+	m_iHairScrollRow = (std::max)(0, m_iDefaultHair) / GRID_COLUMNS;
 	m_iEyeIrisScrollRow = 0;
 	m_iAdornScrollRow = 0;
 	if (m_iDefaultHair != m_iSelectedHair)
@@ -1458,6 +1485,24 @@ void Client::CCustomizingView::Apply_ListIcons(const shared_ptr<CCharacter>& pCh
 	if (nullptr == pAssetName || m_strIconClassAssetId == pAssetName)
 		return;
 	m_strIconClassAssetId = pAssetName;
+	/* A picker edits live every frame. Its previous-class colour and cancel target
+	must be discarded before Update_ColorPicker sees the new character. */
+	m_iPickerSurface = PICKER_SURFACE_NONE;
+	m_isPickerCapturingPointer = false;
+	m_isPickerWheelDragging = false;
+	m_isPickerBarDragging = false;
+	m_vPickerRestore = float4_t(0.f, 0.f, 0.f, -1.f);
+	m_fPickerHue = 0.f;
+	m_fPickerSaturation = 0.f;
+	m_fPickerValue = 1.f;
+	m_bLastDyeApplied = false;
+	/* A new class starts on its own authored colours. Unchosen swatches must not
+	serialize the previous class's dye, or a zero-filled black placeholder. */
+	m_SurfaceColors.fill(float4_t(0.f, 0.f, 0.f, -1.f));
+	m_fHairTwoToneStrength = 0.f;
+	m_fHairTwoToneRange = 0.f;
+	m_hasHairTwoToneOverride = false;
+	m_isHairTwoTone = false;
 
 	if (!m_IconDocument.Load())
 	{
@@ -1743,8 +1788,13 @@ bool_t Client::CCustomizingView::Apply_SurfaceColor(
 		{
 			return true;
 		}
-		return pCharacter->Set_DyeColor(
-			static_cast<CCharacter::DYE_SURFACE>(iSurface), vColor, vColor);
+		const auto surface = static_cast<CCharacter::DYE_SURFACE>(iSurface);
+		const bool_t applied = pCharacter->Set_DyeColor(surface, vColor, vColor);
+		/* Legacy hair stores two-tone controls in the dye colours' alpha channels.
+		Colour preview, apply and cancel must preserve the user's slider choices. */
+		if (applied && surface == CCharacter::DYE_SURFACE::HAIR && m_hasHairTwoToneOverride)
+			pCharacter->Set_HairTwoTone(m_fHairTwoToneStrength, m_fHairTwoToneRange);
+		return applied;
 	}
 	if (EYE_BASE_SURFACE_INDEX == iSurface || EYE_IRIS_SURFACE_INDEX == iSurface)
 	{
@@ -2050,6 +2100,7 @@ void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>
 			Fn_ShowSlider("CC_Slider_hair_range", bHair, &m_fHairTwoToneRange);
 		if ((bStrength || bRange) && nullptr != pCharacter)
 		{
+			m_hasHairTwoToneOverride = true;
 			pCharacter->Set_HairTwoTone(m_fHairTwoToneStrength, m_fHairTwoToneRange);
 		}
 	}

@@ -51,7 +51,7 @@ Lobby의 `KoukuSaydon` 버튼은 기존 `CLobbyCommandService -> C2S_ENTER_WORLD
 
 `CHARACTER_SELECT_ARENA`의 gameplay authority는 Server에 남지만 simulation ownership은 session-private이다. 각 session은 자기 `CGameRoom`의 player, audition entity, HP와 damage event만 snapshot으로 받고 다른 Character Select session과 만나지 않는다. 퇴장한 session의 private room은 queued `LEAVE`와 reset을 처리한 뒤 폐기한다. Bern, Valtan, Training Ground는 기존처럼 world별 shared room이므로 그 안에서는 여러 player가 같은 authoritative 상태를 본다.
 
-Character Select의 `Create Character`는 선택 class와 공통 validator를 통과한 1~32-byte UTF-8 nickname을 `CCharacterSelectionState`의 pending identity로 stage한다. Lobby가 그 exact identity로 Bern entry를 승인받고 loading resource, rendering profile, 실제 `Change_Level(BERN)`까지 성공한 뒤에만 created identity로 commit한다. 중간 실패는 pending만 취소하고 기존 created identity는 유지한다. created identity가 없는 direct Bern, Character Select, Training, Valtan, KoukuSaydon entry는 process-local `Test-<process-id>` audition nickname을 사용한다. Bern은 pending 생성이 있으면 이를 우선하며, Lobby/F1의 직접 audition 입장은 생성 commit을 만들지 않는다. Server의 `SERVER_PLAYER::strNickName`과 world transfer가 session lifetime 동안 exact nickname을 보존하고 `S2C_PLAYER_SPAWNED`로 복제한다. nickname은 display text이며 player lookup, Party member ID, 고유성 검사 또는 Client 재실행 뒤 영구 저장에 사용하지 않는다. Bern과 Valtan은 `CClientReplication::Collect_PlayerViews`의 Server-replicated nickname과 weak character presentation을 `CWorldPlayerNameplateView`에 전달한다. projection, UTF-8 변환, font draw 실패는 gameplay와 replication을 건드리지 않고 해당 nameplate만 생략한다.
+Character Select의 `Create Character`는 선택 class와 공통 validator를 통과한 1~32-byte UTF-8 nickname을 `CCharacterSelectionState`의 pending identity로 stage한다. Lobby가 그 exact identity로 Bern entry를 승인받고 loading resource, rendering profile, 실제 `Change_Level(BERN)`까지 성공한 뒤에만 created identity로 commit한다. 중간 실패는 pending만 취소하고 기존 created identity는 유지한다. created identity가 없는 direct Bern, Character Select, Training, Valtan, KoukuSaydon entry는 process-local `Test-<process-id>` audition nickname을 사용한다. Bern은 pending 생성이 있으면 이를 우선하며, Lobby/F1의 직접 audition 입장은 생성 commit을 만들지 않는다. Server의 `SERVER_PLAYER::strNickName`과 world transfer가 session lifetime 동안 exact nickname을 보존하고 `S2C_PLAYER_SPAWNED`로 복제한다. nickname은 display text이며 player lookup, Party member ID, 고유성 검사 또는 Client 재실행 뒤 영구 저장에 사용하지 않는다. Bern, Valtan, KoukuSaydon, Maharaka, Colosseum은 `CClientReplication::Collect_PlayerViews`의 Server-replicated nickname과 weak character presentation을 `CWorldPlayerNameplateView`에 전달한다. projection, UTF-8 변환, font draw 실패는 gameplay와 replication을 건드리지 않고 해당 nameplate만 생략한다.
 
 캐릭터 선택은 EXE별 메모리 로스터의 고정 6슬롯을 사용한다. 첫 실행은 빈 슬롯이며 같은 슬롯에서 생성한 캐릭터의 local ID·닉네임·외형과 마지막 Server 인벤토리(장착 포함)·실링·골드·칭호를 캐릭터 선택 복귀 때 보관한다. 다시 선택하면 Bern admission 뒤 검증된 one-shot 복원 결과를 받아 활성화하고, 실패·대기 상태에서는 기존 저장 상태를 보존한다. 여러 캐릭터가 같은 직업이나 닉네임이어도 local ID와 슬롯으로 구분한다. 이 상태는 EXE 종료와 함께 사라지며 LocalAppData의 기존 CharacterRoster.json이나 Git 파일을 읽고 쓰지 않는다. Lobby 로딩은 캐릭터를 미리 준비하지 않고 실제 열린 선택창의 채워진 슬롯에 한해 기존 async asset 경로를 사용한다. 생성용 프리뷰는 별도 생성 화면 진입의 기존 로더가 준비한다.
 
@@ -238,28 +238,39 @@ roster와 leader를 재구성한다. 실제 commit 뒤 발생하는 연결 종�
 받지 못했으면 이름은 유지하되 체력을 100%로 꾸미지 않는다. 파티/NPC 메뉴에서 소비한
 마우스 버튼은 물리적으로 놓을 때까지 이동·공격 입력으로 다시 해석하지 않는다.
 
-### 1.3 가이드 차원술사 companion
+### 1.3 서버 단일 가이드 차원술사
 
-Guide는 인간 최대 4명에 별도 1명이다. 인간 `Members` 배열을 늘리지 않고
-`S2C_PARTY_ROSTER::GuideCompanion`을 optional로 보낸다. `PLAYER_CONTROL_KIND::GUIDE_AI`가
-Server spawn/snapshot에 유지되며 nickname이나 class로 bot 여부를 추측하지 않는다.
-공용 Bern 초대용 actor와 파티 소유 companion은 서로 다른 identity다. Guide에 TCP session을
-할당하지 않고 기존 `CGameRoom` 이동/스킬/vehicle 실행기와 `CClientReplication` 표현을 재사용한다.
-파티 이동은 companion의 target admission과 초기 복제도 함께 준비한다.
+GUIDE_AI는 서버 shared Bern의 단일 안내 actor이며 시작 때 clone이나 인간 파티를 만들지 않는다.
+최초 owner session이 안내를 제어하고, 다른 사람의 요청은 제어권을 바꾸지 않는다.
+`IPlayerCommandSink::Request_GuideControl -> CNetworkManager -> C2S_GUIDE_CONTROL(122)`이
+request sequence·Guide NetEntityId·`GUIDE_CONTROL_ACTION::START/STOP`을 제출한다.
+Server는 현재 Bern session과 정확한 단일 actor를 검증하며 STOP은 owner만 허용한다.
+Guide를 `C2S_PARTY_INVITE`로 시작하지 않는다.
+안내 종료/disconnect는 예약 대사·대기·추종을 해제하며 같은 actor를 재사용한다.
+GuideCompanion wire 필드의 이전 파티 동행 의미는 새 안내 발신에서 사용하지 않는다.
+닉네임/직업으로 Guide 여부를 추측하지 않고 replicated PLAYER_CONTROL_KIND를 사용한다.
 
-Guide는 boss target·카드·광기·마리오·빙고 머리 표식·인간 인원·MVP에서 제외한다.
-Guide가 넣는 HP 피해는 허용하지만 counter/stagger/part contribution은 제외한다.
-Guide가 받는 물리 collision damage/CC/갈고리/칼날은 일반 player 경로를 유지한다.
-참여하지 않는 기믹의 미응답/전멸 결과와 공간 접촉을 구분한다.
+배 승선·raid/PvP/island 출발에는 Bern의 마지막 위치에 남는다. 인간의 전송 admission과
+초기 reliable 송신이 성공하기 전에 안내 상태를 바꾸지 않는다. Bern 복귀가 commit된 뒤만
+owner를 새 player identity에 연결해 기존 navigation으로 접근하며 대기 actor를 teleport하지 않는다.
+레이드 방에는 안내 actor를 전송하지 않으며 boss HP·피해·기믹·보상에 Guide 설정을 적용하지 않는다.
+용 탑승·비행은 기존 vehicle executor와 snapshot을 사용한다.
 
-`Data/Guide`가 가이드 저작 정본이다. Save는 stable ID/필드 단위 병합을 하고
-`Tools/GuidePipeline/Publish-Guide.ps1`만 Client/Server Guide runtime을 게시한다.
-다른 gameplay domain의 값은 Guide Publish가 변경하지 않는다.
-`S2C_GUIDE_PROMPT`는 prompt ID/revision/event sequence/UTF-8 segment/수명을 전송한다.
-Client 채팅과 말풍선은 이 서버 이벤트를 소비하며 외부 언어 모델이나 local trigger로 대사를 만들지 않는다.
-`S2C_GUIDE_STATE`는 실제 서버 점수·입력 변수·선택 이유를 Combat Detail에 전달하는 읽기 전용 자료다.
-도구 draft와 적용 revision을 구분하고 게시 후 Server가 새 revision을 소비했는지 확인한다.
-현재 wire는 protocol 117이며 이전 Server/Client와 혼용하지 않는다.
+Data/Guide가 저작 정본이다. guideId → triggerId/boxId → promptId → segments를 연결한다.
+GUIDE_STARTED는 안내 시작, SPACE_ENTER는 Bern owner의 박스 진입, RAID_RETURNED는
+VALTAN_ARENA/KAKULSAYDON_ARENA, WORLD_RETURNED는 MAHARAKA/COLOSSEUM의 실제 귀환을 소비한다.
+귀환 event는 Bern category에만 둘 수 있다. 과거 PARTY_JOINED는 reader 호환만 유지한다.
+`S2C_GUIDE_STATE`는 Bern 인간 모두에게 단일 actor의 현재 owner를 알린다. owner0은 안내 가능,
+local owner는 안내 종료, 다른 owner는 안내 중 비활성으로 표시한다. 늦게 진입해도 같은 상태를 받는다.
+`S2C_GUIDE_PROMPT`는 owner에게만 보내며 상태가 먼저 도착한다. Client는 자신의 owner 상태와
+actor ID를 확인한 뒤 revision/단조 sequence/text/수명을 기존 채팅·말풍선으로 전달한다.
+종료·owner 변경 상태는 해당 Guide의 대기·활성 말풍선만 정리하고 채팅 기록은 보존한다.
+도구의 draft는 서버 적용값이 아니다.
+
+Save는 stable ID/필드 단위 병합과 source freshness 검사를 유지한다.
+Tools/GuidePipeline/Publish-Guide.ps1만 두 Guide.runtime.json을 게시하며 다른 gameplay domain은
+변경하지 않는다. Debug의 DimensionMaster Guide에서 대사·박스 picking/크기/yaw를 편집한다.
+현재 protocol130의 양쪽 실행 파일과 같은 게시 revision을 사용한다.
 
 ## 2. 팀원이 먼저 읽을 파일
 
@@ -366,6 +377,18 @@ Client payload에는 PlayerId와 NetEntityId가 없다. Server가 SessionId로 p
 - Client `CNavigation`, mesh picking, animation root motion은 Server 위치를 확정하지 않는다.
 
 walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 공격은 room-owned `CCombatObjectRuntime`의 pure XZ pose/swept primitive가 Server fixed tick에서 판정한다. 플레이어 투사체와 발탄 전투 객체는 spawn adapter만 다르고 같은 live set과 hit resolver를 사용한다. Shared combat-object lifecycle/full snapshot과 Client world-root Effect는 위치 표현만 담당하며 Client collider가 피해를 판정하지 않는다. 동적 capsule-vs-capsule와 knockback obstacle collision은 아직 public 계약이 아니므로 추가할 때 Server collision owner, shape ID, broad/narrow phase, snapshot correction, harness를 한 변경 단위로 닫는다.
+
+### 4.0 F1 Level Navigation
+
+Debug/Release 공통 F1의 Level Navigation은 Lobby, Character Select, Bern, Valtan,
+KoukuSaydon, Entrance PvP Arena, Maharaka 일곱 버튼을 제공한다. Lobby 복귀는 기존
+LevelTransition request를 사용하고, 나머지는 Lobby의 Server admission을 한 번 요청한다.
+Character Select에서 이동하면 현재 선택 class를 `Submit_StageEntry`로 보존한다.
+일반 world의 Lobby 경유는 기존 캐릭터별 상태 capture 경로를 사용한다. 이동 중·로딩 중·
+현재 목적지 버튼은 비활성화하며, 거절·연결 상태는 같은 F1의 Entry 표시에서 확인한다.
+Character Select는 Server arena이며 Lobby의 local roster 창과 별개다. Entrance PvP Arena는
+Colosseum 직접 입장이고 인간 4인 매칭은 Bern의 기존 NPC 흐름을 사용한다. UI는 packet,
+socket이나 직접 Change_Level을 호출하지 않는다.
 
 ### 4.1 F1 아레나 카메라와 플레이어 위치 작업
 
@@ -474,7 +497,7 @@ Release Server는 예전처럼 플레이어가 밟으면 그룹을 시작한다.
 결과 메시지는 없고 monster는 world snapshot으로 온다. 거절 사유는 Server 콘솔의 `[WaveMonsters]` 줄에 남는다.
 
 Release Server는 이 명령을 무시한다. `Stage_MiniBoss_Spawn`, `Stage_3`, 다른 월드의 트리거는 Debug에서도
-예전처럼 동작한다. Valtan의 이전 `Stage_Boss`/`Stage_Boss_ArenaEntry`는 비활성이고 최초 입장은 아래 집결 계약을 사용한다. 다른 protocol의 Server/Client를 섞어 실행하지 않는다. 현재 wire 정본은 `PacketType.h`의 `NETWORK_PROTOCOL_VERSION` 129이다. 129는 음성·내구도·Colosseum 대기열·Waterpang AI layout을 함께 소비하며 신규 패킷은 Colosseum 113~116, 수리 117, Waterpang 튜닝 118~119다. 위 protocol 99 표기는 해당 명령이 도입된 버전이며 현재 실행 파일의 호환 버전으로 사용하지 않는다.
+예전처럼 동작한다. Valtan의 이전 `Stage_Boss`/`Stage_Boss_ArenaEntry`는 비활성이고 최초 입장은 아래 집결 계약을 사용한다. 다른 protocol의 Server/Client를 섞어 실행하지 않는다. 현재 wire 정본은 `PacketType.h`의 `NETWORK_PROTOCOL_VERSION` 130이다. 129에서 음성·내구도·Colosseum 대기열·Waterpang AI layout을 통합했고, 그때의 신규 패킷은 Colosseum 113~116, 수리 117, Waterpang 튜닝 118~119다. 130은 용병 초대 120, 지속 경기 상태 121, 단일 Guide 시작·종료 122와 Maharaka 파티 이동 target을 추가한다. 위 protocol 99 표기는 해당 명령이 도입된 버전이며 현재 실행 파일의 호환 버전으로 사용하지 않는다.
 
 ### 4.2 마리오 변신·방향키 조작·Debug 점프
 
@@ -1997,7 +2020,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - Valtan Debug MapTool의 12-piece Mesh Emitter PhysX audition과 All/Emitter/Fragment Solo
 - `dev.training.ground` 최소 Area, class-neutral player spawn, RCArena 10종 admission, 서버 navigation
 - Lobby의 Lance Master/Gunslinger/Slayer/Artist/DimensionMaster/Warlord 여섯 선택 slot, Lobby 승인 Character Select visual map, Server-authoritative class 변경, 여섯 class Loader/Server profile과 runtime HUD. DimensionMaster는 combined body와 L/S/P/E 네 정적 기본 무기 파츠를 사용하며 runtime payload는 팀장 관리 Resources 물리 폴더를 사용한다.
-- Character Select `Create Character`의 process-session pending/created nickname transaction, Server-approved Bern commit, created/audition direct Bern/Valtan/KoukuSaydon identity, Bern/Valtan Server-replicated nameplate
+- Character Select `Create Character`의 process-session pending/created nickname transaction, Server-approved Bern commit, created/audition direct Bern/Valtan/KoukuSaydon identity, Bern/Valtan/KoukuSaydon/Maharaka/Colosseum Server-replicated nameplate
 
 별도 수직 슬라이스:
 
@@ -2286,6 +2309,7 @@ BOSS_TRACK_TARGET/회전 Logic으로 먼저 설정하고, Collider는 그 순간
 
 Logic Box Detail은 연결된 Success/Fail/Timeout Result의 typed 수치를 편집한다. 같은 stable Logic ID를 공유하는 창은 같은 값을 소비하며 표시 이름에 피해·넉백 수치를 고정하지 않는다. BOSS/WORLD 본 Collider는 실제 모델의 전체 bone basis에 local XYZ TRS를 먼저 합성한 뒤 최종 XZ 중심·yaw를 얻는다. damageable WORLD의 `ownerWorldOccurrenceId`는 body 사망·취소·만료와 contact ledger의 수명을 묶고, 명시적 전체 수명 광기의 `authoredMadness`만 기존 aura를 대체한다.
 
+
 빙고는 각 실제 폭탄 폭발의 바닥 반전·줄 승격 뒤 아직 보상에 쓰지 않은 빨간 가로·세로 줄을 집계한다. pinned `bingoSpecialPatternId`의 `BINGO_COMPLETED_LINES` threshold(1..10, 현재1) 단위로 새 줄을 사용 처리하고 기존 Success의 `PLAYER_INVULNERABILITY` Result(현재30000ms)를 같은 레이드 생존 참가자에게 즉시 적용한다. 현재 규칙은 새1줄마다30초이며 같은 폭발에서 완성된 여러 새 줄도 모두 사용 처리한다. 사용한 줄은 다음 집계에서 제외하고 빨간 바닥 자체는 유지한다. 다른 새 줄이 완성되면 그 시점부터30초로 갱신한다. 세 번째 폭탄의 Parent 판정은 해당 주기의 보상 성공을 소비하며 이미 지급한 무적 시간을 다시 연장하지 않는다. 후속 `BINGO_DETONATION`은 해당 주기 성공이면 보스13줄 피해를 주고, 플레이어는 성공·실패와 관계없이 폭발 시점의 유효 무적으로만 생존한다. 쿠크 이난나는 소환 2초 뒤 이난나 위치 반경7m 보호 지대를10초 동안 열고, 그 안의 레이드 생존 참가자에게 무적과 초당 광기10% 감소를 주며 해제 순간 안에 있던 참가자의 생명력을 최대치의35% 회복시킨다. 블랙홀 시점에 지대 안에 있으면 새 빨간 줄 없이도 생존한다. Bingo 폭발만 이 무적을 존중하며 다른 encounter wipe의 기존 무적 우회 계약은 유지한다. 보드·폭탄은 encounter가 유지하고, 이동→첫 클립→메두사→블랙홀13초의 작은 Parent는 일반 반복 Flow에 삽입한다. 폭탄의 표식6초+대기2초+fuse4초는 Parent 애니메이션 길이와 독립이다.
 
 빙고 전투 묶음은 `patternFlows`의 일반 entry/loop와 `bingoSpecialPatternId`의 특수 Parent를 함께 저장한다. 이 참조는 제품 BINGO에 필수이며 같은 gate·encounter·boss와 유일한 폭발을 가진 유효 Parent만 게시한다. `RAIDBINGOSPECIAL` supplemental 행을 Server gate definition에 고정하고 이름 검색이나 전체 패턴 추론으로 선택하지 않는다. 빙고 페이즈 진입 때 encounter 시계를 시작하며 매 세 번째 머리 표식에 현재 일반 occurrence를 정리하고 특수 Parent를 실행한다. 완료 뒤 중단했던 일반 entry를 처음부터 재생한다. 보드·폭탄 시계와 raid owner는 유지하며 동시에 두 패턴이 보스를 제어하지 않는다. 기존 다중 actor 동시 재생 Bundle 계약은 유지한다.
@@ -2525,6 +2549,17 @@ Delete from Movie / Restore to Movie는 해당 클래스의 Intro/Loop에 실제
 소유권은 `CharacterCatalog`의 해당 character가 소유하며 같은 모델의 global lazy override를
 중복 등록하지 않는다.
 
+`CHARACTER_SPEC.isBodyHairFallback`은 별도 기본 hair 파츠가 없는 class의 본체 헤어를
+HEAD 대체 장착이 commit될 때까지 유지한다. 현재 Guardian만 사용하며 reset은 본체
+헤어를 복구한다. 기존 class의 기본 hair 파츠와 full outfit의 HEAD 점유 계약은 유지한다.
+`CustomizingHairstyles.json`의 optional `defaultBodyHair: true`는 hairstyle 문서 전용이며
+`defaultVisualSetId`와 동시에 지정할 수 없다. 기본 index -1은 해당 fallback class의 본체
+헤어를 뜻하고 기존 hairstyle index는 바꾸지 않는다. Guardian의 CustomizingCostumes 5행은
+HEAD 없는 `.customizing_outfit`을 참조해 의상과 머리를 독립 착용한다. 원래 full outfit ID는
+장비 도구용으로 유지한다. 저장 외형 복원은 완성된 의상+머리 후보를 한 번 commit한다.
+미선택 surface의 alpha -1과 실제 검정 alpha1을 구분하며, optional `hairTwoToneOverride`는
+명시 변경된 투톤만 장비 교체·저장 복원 시 적용하도록 표시한다.
+
 ### Boss combat-object visual 정의 한도
 
 `Data/Actors/BossCatalog.json`의 보스별 `combatObjectVisuals`는 최대32개 정의를 저장한다.
@@ -2624,9 +2659,49 @@ Debug F1 `Waterpang AI Tool`은 `IPlayerCommandSink`에 `C2S_MAHARAKA_AI_TUNING`
 `S2C_MAHARAKA_AI_TUNING` 성공 전 UI가 적용 완료를 확정하지 않으며 실패·충돌·timeout은
 편집 draft를 보존한다. tick은30Hz이고 기본값은 JSON이 정본이다.
 
-실제 경기180초는 예약된 intro 시작20초 후부터 계산한다. 종료 시 AI·물총 객체를 정리하고
-참가 인간을 `island.spawn.party02` 주변의 navigation/collision 검증 위치로 이동한다.
-이미 섬을 탐험하던 인간은 보존한다. 물총 비행·피격은 기존 replicated CombatObject의
+실제 경기180초는 예약된 intro 시작20초 후부터 계산한다. 종료 시 참가 인간 각자의 최초
+admission spawn placement를 navigation/collision 검증해 전원 착지를 준비한 뒤 함께 이동한다.
+이미 아레나에서 떨어진 참가자도 포함하고 일반 섬 방문자는 보존한다. AI·물총 객체와 참가자의
+발사 ID/tick·낙사·발사대·물총 cooldown을 정리하고 HP를 회복한다. intro trigger 예약도 해제하여
+같은 방에서 다시 G 점프 진입으로 새 경기를 시작할 수 있다. 목적지 검증 실패는 이동·종료를
+commit하지 않는다. 물총 비행·피격은 기존 replicated CombatObject의
 확정 pose·spawn tick·pinned revision을 소비하고 E는 active buff569200으로 복제한다.
-All Effects `World → 마하라카 → 워터팡`의23개 문서와 경기 재생이 같은 effect ID를 쓴다.
+All Effects `World → 마하라카 → 워터팡`의24개 문서와 경기 재생이 같은 effect ID를 쓴다.
 적용·검증·미복원 경계는09-30 Waterpang RESULT를 확인한다.
+
+## 콜로세움 월드맵 귀환
+
+콜로세움 인트로 뒤 M은 기존 베른 목적지 지도를 열고 스퀘어홀1~3을 선택한다.
+다른 월드의 플레이어 위치는 그리지 않으며 출항과 요금 차감은 없다. UI는 기존
+`CPlayerController -> IPlayerCommandSink -> C2S_USE_SQUAREHOLE`로 hole ID만 제출한다.
+Server는 베른의 `squarehole.N` 단일 movePlayer 착지점과 navigation/collision을 검증하고
+기존 batch transfer를 한 session에 적용한다. 입장·초기 송신 준비 실패는 현재 콜로세움을
+보존하며 성공한 `S2C_ENTER_ACCEPTED`만 Client의 기존 Level 전환으로 이어진다.
+대상 파티를 새로 만들지 않고 남은 콜로세움 파티원 및 이동자의 인벤토리·재화·내구도를 보존한다.
+실제 경기의 FINISHED 인간 참가자는 사망 중에도 이 경로로 귀환한다. Bern admission은
+대상 class profile의 정상 최대HP와 생존 상태로 초기화하며 경기HP·용병·팀 파티를 옮기지 않는다.
+마지막 인간의 퇴장과 대기 입력 정리가 끝나면 남은 AI를 포함해 해당 private room을 폐기한다.
+
+
+## 콜로세움 PvP와 마하라카 동행
+
+protocol130의 C2S_COLOSSEUM_RECRUIT(120)은 request sequence, match ID, 용병 NetEntityId를
+typed IPlayerCommandSink로 제출한다. S2C_COLOSSEUM_MATCH_STATE(121)는 match/revision,
+RECRUITING·ACTIVE·FINISHED와 각 entity의 team/participant, winnerTeam을 유지한다.
+winnerTeam은 종료 전 또는 무승부에255이며 승리 팀은0/1이다. 기존 MATCH_FOUND는
+로딩 표현이며 피해 권위는 지속 match state를 소유한 Server room에 있다.
+
+COLOSSEUM_MERCENARY_AI(3)는 팀 파티 슬롯을 사용하지만 인간 session·match 인원으로 세지 않는다.
+인간4명 입장과 팀별5후보 spawn은 admission 및 reliable FIFO 준비 후 함께 commit한다.
+각 팀은 인간2명과 선택한 용병2명을 유지한다. 후보는 피해 대상과 전투HP 표시에서 제외한다.
+혼합 `S2C_PARTY_ROSTER::Members`는 인간 최대2명·용병 최대2명이며 GuideCompanion을 포함하지 않는다.
+이 roster는 콜로세움 경기에서만 발신하며 일반 월드의 인간 최대4명 파티 계약은 유지하며 안내 Guide는 roster에 넣지 않는다.
+각 combatant의 최대HP는 활성 발탄160줄 profile의40줄 분량이며, 이름표는 복제된 current/max HP 비율로 최대40줄을 표시한다. 스킬 피해는 기존160줄 기준HP로 계산하여 유지한다.
+콜로세움 world·동일 ACTIVE match·적팀 participant guard는 damage/CC commit에서 재확인하며,
+보스 레이드의 balance 데이터·기본 damage/knockback 경로는 변경하지 않는다. Artist T1/5도 PvP만 적용한다.
+
+RAID_ENTRY_TARGET 끝에 MAHARAKA/MAHARAKA_RETURN을 추가해 기존 발탄·쿠크 값은 유지한다.
+Bern↔Maharaka의 G dock은 같은 전원 확인 UI와 all-or-none party transfer를 사용한다.
+이동 실패는 기존 방과 party를 보존하며 solo도 같은 transaction을 사용한다. 각 member의
+닉네임·인벤토리·재화·내구도·배 복귀 기록을 유지한다. Maharaka 및 Colosseum의 제품 이름표·파티
+초대·채팅은 기존 replication read-only view와 typed command 경계를 사용한다.

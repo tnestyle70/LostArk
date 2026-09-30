@@ -25,6 +25,8 @@ int main(const int argumentCount, char** arguments)
 	}
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--character-admission-contract-test")
         return LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmissionOnly();
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--maharaka-ai-contract-test")
+        return LostArk::Server::CServerGameplayContractRunner::Run_MaharakaAI();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--guide-ai-contract-test")
         return LostArk::Server::CServerGameplayContractRunner::Run_GuideAI();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--valtan-pattern-control-contract-test")
@@ -43,6 +45,10 @@ int main(const int argumentCount, char** arguments)
 		return LostArk::Server::CServerGameplayContractRunner::Run_NumericBalanceOnly();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--valtan-lifecycle-contract-test")
 		return LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycleOnly();
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--colosseum-match-contract-test")
+        return LostArk::Server::CServerGameplayContractRunner::Run_ColosseumMatch();
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--colosseum-combat-contract-test")
+		return LostArk::Server::CServerGameplayContractRunner::Run_ColosseumCombat();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--skill-stages-contract-test")
 		return LostArk::Server::CServerGameplayContractRunner::Run_SkillStagesOnly();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--kouku-dice-hit-contract-test")
@@ -182,9 +188,9 @@ int main(const int argumentCount, char** arguments)
 			"--kouku-object-overlap-contract-test | --kouku-support-surface-contract-test | --kouku-showtime-bomb-contract-test | "
 			"--kouku-bundle-contract-test | --card-maze-contract-test | "
 			"--kouku-raid-contract-test | --kouku-dice-hit-contract-test | --kouku-draft-contract-test | --kouku-product-contract-test | "
-			"--valtan-lifecycle-contract-test | --valtan-presentation-contract-test | --skill-stages-contract-test | "
+			"--valtan-lifecycle-contract-test | --valtan-presentation-contract-test | --skill-stages-contract-test | --colosseum-combat-contract-test | "
 			"--bingo-contract-test | --vehicle-riding-contract-test | "
-			"--navigation-contract-test | --valtan-arena-support-contract-test | "
+			"--navigation-contract-test | --valtan-arena-support-contract-test | --maharaka-ai-contract-test | "
 			"--debug-teleport-contract-test | "
 			"--dimensionmaster-ground-target-contract | "
 			"--reset-valtan-runtime-to-packaged | "

@@ -1076,29 +1076,9 @@ HRESULT Client::CEffectObject::Submit_RenderGroups()
 		return S_FALSE;
 	const shared_ptr<CEffectObject> Self =
 		static_pointer_cast<CEffectObject>(shared_from_this());
-	const auto& Particles = Get_PresentationFrame().Particles;
-	// Staging validates material contracts once for this immutable playback
-	// document. Current visibility, particle alpha and Solo selection still
-	// decide whether this frame actually needs the shared scene-color snapshot.
-	const EFFECT_ELEMENT_DESC* pSceneColorElement = nullptr;
-	bool_t bElementNeedsSceneColor = false;
-	const bool_t bNeedsSceneColor = !m_SceneColorElementIds.empty() &&
-		std::ranges::any_of(Particles,
-		[this, &pSceneColorElement, &bElementNeedsSceneColor](
-			const EFFECT_EVALUATED_PARTICLE& Particle)
-		{
-			if (nullptr == Particle.pElement || !Should_SubmitPreviewElement(Particle.pElement) ||
-				Particle.Color.w <= 0.f) return false;
-			if (pSceneColorElement == Particle.pElement)
-				return bElementNeedsSceneColor;
-			pSceneColorElement = Particle.pElement;
-			bElementNeedsSceneColor = std::binary_search(
-				m_SceneColorElementIds.begin(), m_SceneColorElementIds.end(),
-				Particle.pElement->strElementId);
-			return bElementNeedsSceneColor;
-		});
-	if (bNeedsSceneColor)
-		CGameInstance::Get().Request_SceneColorSnapshot();
+	// Each scene-color occurrence refreshes its HDR/bloom snapshot immediately
+	// before drawing in Render_CompositionPhase. A pre-BLEND request here would
+	// duplicate that copy; map and world-sequence consumers request their own.
 	const HRESULT hProviderResult =
 		CPresentation_Manager::Get().Add_FrameProvider(
 			static_pointer_cast<IPresentationProvider>(Self));
