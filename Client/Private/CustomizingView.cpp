@@ -20,9 +20,68 @@
 #include <fstream>
 #include <iterator>
 #include <sstream>
+#include <unordered_map>
 
 namespace
 {
+	/* Keep authored hairstyle indices paired with their icons. A missing equipment set is
+	an unavailable cell, never a reason to compact the list or save an unworn selection.
+	The same catalog admission is used for clicks, preset loads and saved-look restores. */
+	struct HAIR_AVAILABILITY
+	{
+		Client::CCustomizingCostumeDocument Hairstyles{
+			"lostark.customizing-hairstyles", "UI/Customizing/CustomizingHairstyles.json", "hairstyle" };
+		Client::CEquipmentPresentationCatalog Equipment;
+		std::unordered_map<std::string, std::vector<bool>> ByClass;
+		bool_t isLoaded = false;
+
+		HAIR_AVAILABILITY()
+		{
+			std::string error;
+			isLoaded = Hairstyles.Load() && Equipment.Load(error);
+		}
+
+		const std::vector<bool>* Find(const std::string& classAssetId)
+		{
+			if (!isLoaded) return nullptr;
+			const auto* ids = Hairstyles.Find(classAssetId);
+			if (nullptr == ids) return nullptr;
+			const auto found = ByClass.find(classAssetId);
+			if (found != ByClass.end()) return &found->second;
+			std::vector<bool> available;
+			available.reserve(ids->size());
+			for (const std::string& id : *ids)
+			{
+				const auto* set = Equipment.Find_Set(id);
+				available.push_back(nullptr != set &&
+					set->primarySlot == Client::EQUIPMENT_SLOT_ID::HEAD && !set->parts.empty());
+			}
+			return &ByClass.emplace(classAssetId, std::move(available)).first->second;
+		}
+	};
+
+	HAIR_AVAILABILITY& Hair_Availability()
+	{
+		static HAIR_AVAILABILITY availability;
+		return availability;
+	}
+
+	int32_t Resolve_AvailableHair(const std::string& classAssetId, const int32_t requested)
+	{
+		auto& admission = Hair_Availability();
+		const auto* available = admission.Find(classAssetId);
+		// Missing documents keep the existing soft-failure behavior; the UI admits no clicks.
+		if (nullptr == available) return requested;
+		const auto accepts = [&](const int32_t index) {
+			return index >= 0 && static_cast<size_t>(index) < available->size() && (*available)[index];
+		};
+		if (accepts(requested)) return requested;
+		const int32_t fallback = admission.Hairstyles.Get_DefaultIndex(classAssetId);
+		if (accepts(fallback)) return fallback;
+		const auto first = std::find(available->begin(), available->end(), true);
+		return first == available->end() ? -1 : static_cast<int32_t>(first - available->begin());
+	}
+
 	constexpr f32_t REF_WIDTH = 1280.f;
 	constexpr f32_t REF_HEIGHT = 720.f;
 
@@ -511,13 +570,14 @@ void Client::CCustomizingView::Configure_HairDefault(
 	const std::string& classAssetId, const int32_t defaultIndex)
 {
 	if (classAssetId.empty() || defaultIndex < 0) return;
-	m_iDefaultHair = defaultIndex;
+	m_iDefaultHair = Resolve_AvailableHair(classAssetId, defaultIndex);
 	if (m_strHairClassAssetId == classAssetId) return;
 	if (!m_strHairClassAssetId.empty())
 		m_HairSelectionsByClass[m_strHairClassAssetId] = m_iSelectedHair;
 	m_strHairClassAssetId = classAssetId;
 	const auto previous = m_HairSelectionsByClass.find(classAssetId);
-	m_iSelectedHair = previous == m_HairSelectionsByClass.end() ? defaultIndex : previous->second;
+	m_iSelectedHair = Resolve_AvailableHair(classAssetId,
+		previous == m_HairSelectionsByClass.end() ? m_iDefaultHair : previous->second);
 	m_iHairScrollRow = m_iSelectedHair / GRID_COLUMNS;
 	m_bHairChanged = true;
 }
@@ -907,7 +967,7 @@ std::string Client::CCustomizingView::Serialize_Appearance(
 	out << "  \"hairTwoTone\": " << (m_isHairTwoTone ? "true" : "false") << ",\n";
 	out << "  \"hairTwoToneStrength\": "; WriteNumber(out, m_fHairTwoToneStrength); out << ",\n";
 	out << "  \"hairTwoToneRange\": "; WriteNumber(out, m_fHairTwoToneRange); out << ",\n";
-	out << "  \"hair\": " << m_iSelectedHair << ",\n";
+	out << "  \"hair\": " << Resolve_AvailableHair(m_strIconClassAssetId, m_iSelectedHair) << ",\n";
 	out << "  \"eyeIris\": " << m_iSelectedEyeIris << ",\n";
 	out << "  \"voiceType\": " << static_cast<int32_t>(m_iSelectedVoiceType) << ",\n";
 	out << "  \"costume\": " << m_iSelectedCostume << "\n";
@@ -1078,7 +1138,8 @@ bool_t Client::CCustomizingView::Apply_Appearance(
 		}
 	}
 	m_iSelectedEyeIris = static_cast<int32_t>(ReadNumber(root.Find("eyeIris"), -1.f));
-	const int32_t iHair = static_cast<int32_t>(ReadNumber(root.Find("hair"), static_cast<f32_t>(m_iDefaultHair)));
+	const int32_t iHair = Resolve_AvailableHair(m_strIconClassAssetId,
+		static_cast<int32_t>(ReadNumber(root.Find("hair"), static_cast<f32_t>(m_iDefaultHair))));
 	if (iHair != m_iSelectedHair)
 	{
 		m_iSelectedHair = iHair;
@@ -1152,6 +1213,8 @@ bool_t Client::CCustomizingView::Read_SavedOutfit(
 	if (!CDataJson::Parse(strJson, root, error) || !root.Is_Object())
 		return false;
 	outHair = static_cast<int32_t>(ReadNumber(root.Find("hair"), -1.f));
+	if (const auto* pClass = root.Find("class"); nullptr != pClass && pClass->Is_String())
+		outHair = Resolve_AvailableHair(pClass->Get_String(), outHair);
 	outCostume = static_cast<int32_t>(ReadNumber(root.Find("costume"), -1.f));
 	return true;
 }
@@ -1955,6 +2018,14 @@ void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>
 			const int32_t iEntry = m_iHairScrollRow * GRID_COLUMNS + i;
 			if (iEntry >= iCount)
 				break;
+			const auto* available = Hair_Availability().Find(m_strIconClassAssetId);
+			const bool_t enabled = nullptr != available &&
+				static_cast<size_t>(iEntry) < available->size() && (*available)[iEntry];
+			const f32_t tint = enabled ? 1.f : 0.3f;
+			const string cell = "CC_HairShape" + std::to_string(i);
+			m_pView->Set_SlotTint(cell, float4_t(tint, tint, tint, 1.f));
+			m_pView->Set_SlotTint(cell + "_Plate", float4_t(tint, tint, tint, 1.f));
+			if (!enabled) continue;
 			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 			if (!Get_SlotRect(("CC_HairShape" + std::to_string(i)).c_str(),
 				fX, fY, fWidth, fHeight))
