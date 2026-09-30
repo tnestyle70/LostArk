@@ -474,7 +474,7 @@ Release Server는 예전처럼 플레이어가 밟으면 그룹을 시작한다.
 결과 메시지는 없고 monster는 world snapshot으로 온다. 거절 사유는 Server 콘솔의 `[WaveMonsters]` 줄에 남는다.
 
 Release Server는 이 명령을 무시한다. `Stage_MiniBoss_Spawn`, `Stage_3`, 다른 월드의 트리거는 Debug에서도
-예전처럼 동작한다. Valtan의 이전 `Stage_Boss`/`Stage_Boss_ArenaEntry`는 비활성이고 최초 입장은 아래 집결 계약을 사용한다. 다른 protocol의 Server/Client를 섞어 실행하지 않는다. 현재 wire 정본은 `PacketType.h`의 `NETWORK_PROTOCOL_VERSION` 115이다. 위 protocol 99 표기는 해당 명령이 도입된 버전이며 현재 실행 파일의 호환 버전으로 사용하지 않는다.
+예전처럼 동작한다. Valtan의 이전 `Stage_Boss`/`Stage_Boss_ArenaEntry`는 비활성이고 최초 입장은 아래 집결 계약을 사용한다. 다른 protocol의 Server/Client를 섞어 실행하지 않는다. 현재 wire 정본은 `PacketType.h`의 `NETWORK_PROTOCOL_VERSION` 129이다. 129는 음성·내구도·Colosseum 대기열·Waterpang AI layout을 함께 소비하며 신규 패킷은 Colosseum 113~116, 수리 117, Waterpang 튜닝 118~119다. 위 protocol 99 표기는 해당 명령이 도입된 버전이며 현재 실행 파일의 호환 버전으로 사용하지 않는다.
 
 ### 4.2 마리오 변신·방향키 조작·Debug 점프
 

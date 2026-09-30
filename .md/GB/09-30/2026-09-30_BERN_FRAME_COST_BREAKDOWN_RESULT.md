@@ -60,7 +60,9 @@ NPC는 기존 코드에서 authored visibility만 검사하여 camera 밖에서�
 
 사용자의 추가 요청에 따라 마하라카 환경 조명 복원과 반사/mip 보완도 통합 범위로 확인했다. G08 설치 7파일·감사 입력 6파일 hash, 맵 정본/게시 4쌍, 현재 RenderingProfiles rev88 의미 일치 PASS다. 리소스 222개/26,887,404 bytes의 설치본과 GBResources hash·크기가 전부 일치하고 반사 DDS25개 full mip 및 TGA2개 입력이 정상이다. 최초 rev86 이후 저장된 마하라카 bloom OFF와 발탄 bloom 튜닝, scene fog gate를 보존했다.
 
-제품 FxCompile 대상은 Engine 30개+Client 224개=254개/config다. Product runner는 별도 shader closure 전에 return하므로 통합 빌드 뒤 `Test-CompiledShaderClosure.ps1 -Configuration <Debug/Release> -Modules Product`를 별도로 실행한다. 동적 SourceGroup 소비자와 Engine→Client 30개 CSO 배포 hash, source/include freshness도 별도로 확인한다. 최종 결과는 진행 중이다.
+제품 FxCompile 대상은 Engine 30개+Client 224개=254개/config다. Product runner는 별도 shader closure 전에 return하므로 Release의 `Test-CompiledShaderClosure.ps1 -Configuration Release -Modules Product`를 별도로 실행해 PASS했다. 동적 SourceGroup84개, Engine→Client30개 CSO 배포 hash와 source/include freshness도 PASS다.
+
+후속 PR490·491·492 및 워터팡 통합을 같은 브랜치에서 완료했고 최종 Release Product 4개 프로젝트가 PASS했다(`out/BuildPipeline/runs/20260930T153129533Z-release-product.json`). 최적화26파일 중25개는 동일하고 ClientReplication에는 voice 전달6줄만 추가되어 camera cull/clock-only 경로가 유지된다. 추가 FXC는 이전 빌드 뒤 변경된 워터팡 effect7개이며 MeshBinary/AnimMeshBinary 재컴파일은 없었다. 사용자 요청에 따라 Release 실행본을 우선 전달하고 최종 Debug 전체 재빌드는 수행하지 않았다. 후속 공유 리소스 수신으로 앞서 누락됐던 항구 WModel2종과 실제 texture 의존10파일의 존재·hash도 확인했다. 이전46종 envelope 수치 검증을 이2종까지 확장한 것으로 기록하지 않는다. 최종 병합·리소스·배포 증거는 [통합 RESULT](../10-01/2026-10-01_PR490_PR491_PR492_WATERPANG_COLOSSEUM_INTEGRATION_RESULT.md)에 있다.
 
 베른·캐릭터 선택 지형 복원 인계도 포함한다. [해당 RESULT](2026-09-30_BERN_AND_CHARACTER_SELECT_TERRAIN_RESTORATION_RESULT.md)의 최신 receipt 우선 병합으로 설치 322경로 hash 불일치 0, 누계 리소스 371개/85,445,734 bytes의 설치본·GBResources 일치를 재확인했다. Landscape 리소스 134개와 기존 PNG84개, 정본/게시 23,200재질 중 family14 42행, 최종 shader source6파일 hash 및 ordinary/instanced 등록이 유지된다. Model.h/.cpp는 지형 final source와 일치하는 baseline에 이번 animation 최적화를 추가한 상태이며 지형 consumer를 보존했다. Bern runtime mapset은 인계 문서의 `d11bb2050ea951ceb7d46a4b8665243e1aa20141b8be12219e3d4ed34b2d6862`와 같다.
 
