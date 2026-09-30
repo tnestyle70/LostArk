@@ -918,6 +918,7 @@ void LostArk::Server::CGameRoom::Handle_ConfirmNpcEntry(
 	transfer.eCharacterClass = player.eCharacterClass;
 	transfer.strNickName = player.strNickName;
 	transfer.iVoiceType = player.iVoiceType;
+	transfer.CarriedDurability = player.Get_DurabilityState();
 	transfer.iHonorTitleId = player.iHonorTitleId;
 	transfer.iPartyRequestSequence = request.iRequestSequence;
 	for (const PLAYER_ID memberId : batchMemberIds)
@@ -1131,7 +1132,9 @@ void LostArk::Server::CGameRoom::Try_FormColosseumMatch()
 		COLOSSEUM_QUEUE_ENTRY Entry;
 		CHARACTER_CLASS_ID eCharacterClass = CHARACTER_CLASS_ID::END;
 		std::string strNickName;
+		std::uint8_t iVoiceType = MIN_VOICE_TYPE;
 		HONOR_TITLE_ID iHonorTitleId = INVALID_HONOR_TITLE_ID;
+		SERVER_DURABILITY_STATE Durability;
 	};
 	std::vector<MATCHED_SEAT> seatsToMove;
 	S2C_COLOSSEUM_MATCH_FOUND match{};
@@ -1140,7 +1143,8 @@ void LostArk::Server::CGameRoom::Try_FormColosseumMatch()
 		const COLOSSEUM_QUEUE_ENTRY& entry = m_ColosseumQueue[index];
 		const SERVER_PLAYER& player = m_Players.at(m_PlayerIdBySessionId.at(entry.iSessionId));
 		seatsToMove.push_back(MATCHED_SEAT{
-			entry, player.eCharacterClass, player.strNickName, player.iHonorTitleId });
+			entry, player.eCharacterClass, player.strNickName, player.iVoiceType,
+			player.iHonorTitleId, player.Get_DurabilityState() });
 		match.Participants.push_back(COLOSSEUM_MATCH_PARTICIPANT{
 			player.strNickName, player.eCharacterClass, teams[index] });
 	}
@@ -1166,6 +1170,8 @@ void LostArk::Server::CGameRoom::Try_FormColosseumMatch()
 		transfer.eTargetWorldId = WORLD_ID::COLOSSEUM;
 		transfer.eCharacterClass = seat.eCharacterClass;
 		transfer.strNickName = seat.strNickName;
+		transfer.iVoiceType = seat.iVoiceType;
+		transfer.CarriedDurability = seat.Durability;
 		transfer.iHonorTitleId = seat.iHonorTitleId;
 		transfer.iPartyRequestSequence = seat.Entry.iRequestSequence;
 		m_PendingWorldTransfers.push_back(std::move(transfer));

@@ -62,6 +62,11 @@ int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
 			tests.Require(admitted && entry.Player.strRaidReturnNpcPlacementId == guideId,
 				"Raid admission retains the exact source NPC for each player");
 			if (!admitted) continue;
+			tests.Require(entry.Player.DurabilityPercent == SERVER_DURABILITY_STATE{}.DurabilityPercent &&
+				entry.Player.iDurabilityWearCursor == 0u, "Fresh session admission starts with repaired equipment");
+			entry.Player.DurabilityPercent = { 0u, 12u, 34u, 56u, 78u, 99u };
+			entry.Player.iDurabilityWearCursor = 4u;
+			entry.Player.iVoiceType = 6u;
 			raid->m_Players.emplace(entry.Player.iPlayerId, entry.Player);
 			raid->m_PlayerIdBySessionId.emplace(sid, entry.Player.iPlayerId);
 			raid->m_bValtanRaidCleared = true;
@@ -74,9 +79,44 @@ int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
 				raid->m_PendingWorldTransfers.front().strSpawnPlacementOverrideId == guideId;
 			tests.Require(routed, "Valtan and Kouku completion return to the recorded guide, not a fixed guide");
 			enter.eWorldId = WORLD_ID::BERN;
+			if (routed) enter.iVoiceType = raid->m_PendingWorldTransfers.front().iVoiceType;
 			CGameRoom::STAGED_PLAYER_ENTRY landing{};
 			const bool landed = routed && bern->Stage_PlayerEntry(session, enter, {}, landing, reason, status,
-				raid->m_PendingWorldTransfers.front().strSpawnPlacementOverrideId);
+				raid->m_PendingWorldTransfers.front().strSpawnPlacementOverrideId,
+			raid->m_PendingWorldTransfers.front().CarriedInventory,
+			raid->m_PendingWorldTransfers.front().iHonorTitleId, {},
+			raid->m_PendingWorldTransfers.front().CarriedPurse,
+			raid->m_PendingWorldTransfers.front().CarriedDurability);
+			tests.Require(landed && landing.Player.DurabilityPercent == entry.Player.DurabilityPercent &&
+				landing.Player.iDurabilityWearCursor == 4u && landing.Player.iVoiceType == 6u &&
+				!landing.Player.bDurabilityDirty, "Raid return preserves six wear values, cursor and chosen voice");
+			if (landed)
+			{
+				const bool framesBuilt = bern->Build_PlayerEntryFrames(landing,
+					std::span<const CGameRoom::STAGED_PLAYER_ENTRY>{ &landing, 1u }, status);
+				bool publishedWear = false;
+				for (const auto& frame : landing.Frames)
+				{
+					if (frame.ePacketType != PACKET_TYPE::S2C_INVENTORY_SNAPSHOT) continue;
+					CPacketReader reader{ frame.Payload }; S2C_INVENTORY_SNAPSHOT snapshot;
+					publishedWear = Read_Message(reader, snapshot) &&
+						snapshot.DurabilityPercent == entry.Player.DurabilityPercent;
+				}
+				tests.Require(framesBuilt && publishedWear, "Admission publishes carried wear in its initial inventory snapshot");
+				landing.Player.Wear_Durability(1u);
+				tests.Require(landing.Player.DurabilityPercent[4] == 77u && landing.Player.iDurabilityWearCursor == 5u,
+					"The next hit after transfer wears the next original part");
+				SERVER_DURABILITY_STATE invalid = entry.Player.Get_DurabilityState();
+				invalid.DurabilityPercent[0] = 101u;
+				CGameRoom::STAGED_PLAYER_ENTRY rejected{}; rejected.Player.strNickName = "unchanged";
+				const bool badPercent = !bern->Stage_PlayerEntry(session, enter, {}, rejected, reason, status,
+					guideId, {}, INVALID_HONOR_TITLE_ID, {}, {}, invalid);
+				invalid = entry.Player.Get_DurabilityState(); invalid.iDurabilityWearCursor = 6u;
+				const bool badCursor = !bern->Stage_PlayerEntry(session, enter, {}, rejected, reason, status,
+					guideId, {}, INVALID_HONOR_TITLE_ID, {}, {}, invalid);
+				tests.Require(badPercent && badCursor && rejected.Player.strNickName == "unchanged",
+					"Invalid carried wear rejects transactionally without replacing a staged entry");
+			}
 			const auto* guide = bern->Find_Placement(guideId);
 			const float dx = guide ? landing.Player.fPositionX - guide->fPositionX : 1000.f;
 			const float dz = guide ? landing.Player.fPositionZ - guide->fPositionZ : 1000.f;
@@ -145,6 +185,9 @@ int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
 				auto& player = raid->m_Players.at(peers[index]->Get_PlayerId());
 				player.strRaidReturnNpcPlacementId = index % 2u ? "npc.bern.aylara" : "npc.bern.beda.guide";
 				player.Purse.iSilver = 1000u + index; player.Purse.iGold = 100u + index; player.iHonorTitleId = 30001u;
+				player.DurabilityPercent.fill(static_cast<std::uint8_t>(50u + index));
+				player.iDurabilityWearCursor = static_cast<std::uint8_t>(index);
+				player.iVoiceType = static_cast<std::uint8_t>(index + 2u);
 			}
 			const auto clearFrames = [&]() {
 				for (const auto& peer : peers) { peer->m_OutboundFrames.clear(); peer->m_iQueuedOutboundBytes = 0u; }
@@ -193,6 +236,9 @@ int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
 				const auto& player = raid->m_Players.at(raid->m_PlayerIdBySessionId.at(transfer.iSessionId));
 				carried &= transfer.eTargetWorldId == WORLD_ID::BERN && transfer.strNickName == player.strNickName &&
 					transfer.strSpawnPlacementOverrideId == player.strRaidReturnNpcPlacementId &&
+					transfer.iVoiceType == player.iVoiceType &&
+					transfer.CarriedDurability.DurabilityPercent == player.DurabilityPercent &&
+					transfer.CarriedDurability.iDurabilityWearCursor == player.iDurabilityWearCursor &&
 					transfer.CarriedPurse.iSilver == player.Purse.iSilver && transfer.CarriedPurse.iGold == player.Purse.iGold &&
 					transfer.iHonorTitleId == player.iHonorTitleId && transfer.CarriedInventory.size() == player.Inventory.size() &&
 					std::equal(transfer.CarriedInventory.begin(), transfer.CarriedInventory.end(), player.Inventory.begin(),

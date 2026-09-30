@@ -330,7 +330,8 @@ namespace LostArk::Server
 			LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId =
 				LostArk::Shared::INVALID_HONOR_TITLE_ID,
 			const std::string& raidReturnNpcPlacementId = {},
-			const SERVER_PURSE& carriedPurse = {});
+			const SERVER_PURSE& carriedPurse = {},
+			const SERVER_DURABILITY_STATE& carriedDurability = {});
 		bool Build_PlayerEntryFrames(STAGED_PLAYER_ENTRY& entry,
 			std::span<const STAGED_PLAYER_ENTRY> batch, std::string& status);
 		void Commit_PlayerEntry(const STAGED_PLAYER_ENTRY& entry);
@@ -345,7 +346,8 @@ namespace LostArk::Server
 			LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId =
 				LostArk::Shared::INVALID_HONOR_TITLE_ID,
 			const std::string& raidReturnNpcPlacementId = {},
-			const SERVER_PURSE& carriedPurse = {});
+			const SERVER_PURSE& carriedPurse = {},
+			const SERVER_DURABILITY_STATE& carriedDurability = {});
 		void Leave(
 			SESSION_ID sessionId,
 			LostArk::Shared::PLAYER_DESPAWN_REASON reason, bool publishDeparture = true);

@@ -33,6 +33,14 @@ namespace LostArk::Server
 		}
 	};
 
+	/* Server-owned state carried only between worlds of the same session.
+	   Fresh Lobby admission keeps the default repaired equipment. */
+	struct SERVER_DURABILITY_STATE final
+	{
+		std::array<std::uint8_t, 6> DurabilityPercent{ { 100, 100, 100, 100, 100, 100 } };
+		std::uint8_t iDurabilityWearCursor = 0;
+	};
+
 	struct SERVER_TRIGGER_MOVE_SAMPLE
 	{
 		std::uint32_t iTimeMs = 0u;
@@ -367,6 +375,10 @@ namespace LostArk::Server
 		std::array<std::uint8_t, 6> DurabilityPercent{ { 100, 100, 100, 100, 100, 100 } };
 		std::uint8_t iDurabilityWearCursor = 0;
 		bool bDurabilityDirty = false;
+		SERVER_DURABILITY_STATE Get_DurabilityState() const noexcept
+		{
+			return { DurabilityPercent, iDurabilityWearCursor };
+		}
 		void Wear_Durability(const std::uint8_t percentLoss) noexcept
 		{
 			std::uint8_t& part = DurabilityPercent[iDurabilityWearCursor % DurabilityPercent.size()];

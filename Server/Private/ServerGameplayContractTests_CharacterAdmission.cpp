@@ -497,7 +497,14 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 				enter.eWorldId = WORLD_ID::BERN;
 				enter.eCharacterClass = classes[index];
 				enter.strNickName = "PartyContract" + std::to_string(index);
+				enter.iVoiceType = static_cast<std::uint8_t>(index + 2u);
 				fixture->Ready = fixture->Source->Join(id, enter);
+				if (fixture->Ready)
+				{
+					auto& player = fixture->Source->m_Players.at(session->Get_PlayerId());
+					player.DurabilityPercent.fill(static_cast<std::uint8_t>(60u + index));
+					player.iDurabilityWearCursor = static_cast<std::uint8_t>(index);
+				}
 				fixture->Sessions.push_back(session);
 				fixture->App->m_Sessions.emplace(id, session);
 				CServerApp::SESSION_GAMEPLAY_BINDING binding{};
@@ -586,6 +593,16 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 				1u == fixture->Target->m_PartyMembersByPartyId.size();
 			for (const auto& session : fixture->Sessions)
 			{
+				const auto index = static_cast<std::uint8_t>(session->Get_SessionId() - 96001u);
+				const auto foundPlayer = fixture->Target->m_Players.find(session->Get_PlayerId());
+				exactRoster = exactRoster && foundPlayer != fixture->Target->m_Players.end();
+				if (foundPlayer != fixture->Target->m_Players.end())
+				{
+					const auto& player = foundPlayer->second;
+					exactRoster = exactRoster && player.iVoiceType == index + 2u && player.iDurabilityWearCursor == index &&
+						std::all_of(player.DurabilityPercent.begin(), player.DurabilityPercent.end(),
+							[index](const auto value) { return value == 60u + index; });
+				}
 				std::size_t accepted = 0u;
 				S2C_PARTY_ROSTER roster{};
 				for (const auto& frame : session->m_OutboundFrames)
@@ -792,6 +809,16 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 						S2C_ENTER_ACCEPTED message{};
 						committed = Read_Message(reader, message) && message.eWorldId == WORLD_ID::KAKULSAYDON_ARENA && committed;
 						++accepted;
+					}
+					const auto index = static_cast<std::uint8_t>(session->Get_SessionId() - 96001u);
+					const auto foundPlayer = fixture->Target->m_Players.find(session->Get_PlayerId());
+					committed = committed && foundPlayer != fixture->Target->m_Players.end();
+					if (foundPlayer != fixture->Target->m_Players.end())
+					{
+						const auto& player = foundPlayer->second;
+						committed = committed && player.iVoiceType == index + 2u && player.iDurabilityWearCursor == index &&
+							std::all_of(player.DurabilityPercent.begin(), player.DurabilityPercent.end(),
+								[index](const auto value) { return value == 60u + index; });
 					}
 					const auto& binding = fixture->App->m_GameplayBindingBySessionId.at(session->Get_SessionId());
 					committed = committed && 1u == accepted && binding.eWorldId == WORLD_ID::KAKULSAYDON_ARENA &&
