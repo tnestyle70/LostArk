@@ -477,6 +477,12 @@ bool_t CLevel_Lobby::Resolve_Stage(
 		outWorldId = WORLD_ID::MAHARAKA;
 		outTargetLevel = LEVEL::MAHARAKA;
 		return true;
+#ifdef _DEBUG
+	case LOBBY_STAGE::COLOSSEUM:
+		outWorldId = WORLD_ID::COLOSSEUM;
+		outTargetLevel = LEVEL::COLOSSEUM;
+		return true;
+#endif
 	default:
 		return false;
 	}
@@ -634,6 +640,9 @@ void CLevel_Lobby::Render_StagePanel()
 	ImGui::SameLine();
 	if (ImGui::Button("Maharaka"))
 		CLobbyCommandService::Request(LOBBY_STAGE::MAHARAKA);
+	ImGui::SameLine();
+	if (ImGui::Button("Colosseum"))
+		CLobbyCommandService::Request(LOBBY_STAGE::COLOSSEUM);
 	ImGui::EndDisabled();
 
 	ImGui::TextWrapped("%s", m_strStatus.c_str());

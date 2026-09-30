@@ -93,6 +93,7 @@ private:
 	HRESULT Ready_For_KakulSaydonArena();
 	HRESULT Ready_For_Development();
 	HRESULT Ready_For_Maharaka();
+	HRESULT Ready_For_Colosseum();
 
 	HRESULT Ready_MapArea(
 		uint32_t iLevelIndex,

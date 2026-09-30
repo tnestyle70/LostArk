@@ -15,6 +15,8 @@ class CMapLightPresentationRuntime;
 class IPlayerCommandSink;
 class CMaharakaWaterpangPresentation;
 class CInteractKeyPromptView;
+class CColosseumIntroCutscene;
+class CColosseumMatchStart;
 
 class CLevel_Development final : public CLevel
 {
@@ -41,6 +43,10 @@ public:
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera.lock(); }
 	// Maharaka only: marker over each authored jump (movePlayer) trigger box, like Kouku/Valtan.
 	void Submit_TriggerMarkers();
+	// Colosseum only: true from level entry until the match intro cutscene has faded out.
+	bool_t Is_ColosseumIntroActive() const;
+	// Colosseum only: F1 Developer Tools section that replays the match intro cutscene.
+	static void Render_ColosseumIntroControls();
 #ifdef _DEBUG
 	// Borrow the existing Maharaka map; the Level remains its owner.
 	CMapPlacementRuntime& Get_MapAuthoringRuntime() { return m_MapRuntime; }
@@ -83,6 +89,11 @@ private:
 	CPlayerController m_PlayerController;
 	std::unique_ptr<CMaharakaWaterpangPresentation> m_Waterpang;
 	std::unique_ptr<CInteractKeyPromptView> m_InteractPrompt;
+	std::unique_ptr<CColosseumIntroCutscene> m_ColosseumIntro;
+	// Colosseum only: the countdown banner and the gate that follow the intro cutscene.
+	std::unique_ptr<CColosseumMatchStart> m_ColosseumMatchStart;
+	bool_t m_bColosseumIntroWasActive = false;
+	bool_t m_bColosseumMatchStartArmed = true;
 	// Maharaka only. One effect.world.move_destination on the exact centre of every enabled
 	// single-movePlayer trigger box of the published viewer world document.
 	struct TRIGGER_MARKER final

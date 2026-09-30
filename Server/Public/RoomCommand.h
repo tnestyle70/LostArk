@@ -67,6 +67,8 @@ namespace LostArk::Server
 		PARTY_INVITE_RESPOND,
 		RAID_ENTRY_PROPOSE,
 		RAID_ENTRY_RESPOND,
+		COLOSSEUM_QUEUE_JOIN,
+		COLOSSEUM_QUEUE_LEAVE,
 		GATE_PROGRESS_PROPOSE,
 		GATE_PROGRESS_RESPOND,
 		CHAT,
@@ -160,6 +162,8 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_PARTY_INVITE_RESPOND PartyInviteRespond;
 		LostArk::Shared::C2S_RAID_ENTRY_PROPOSE RaidEntryPropose;
 		LostArk::Shared::C2S_RAID_ENTRY_RESPOND RaidEntryRespond;
+		LostArk::Shared::C2S_COLOSSEUM_QUEUE_JOIN ColosseumQueueJoin;
+		LostArk::Shared::C2S_COLOSSEUM_QUEUE_LEAVE ColosseumQueueLeave;
 		LostArk::Shared::C2S_GATE_PROGRESS_PROPOSE GateProgressPropose;
 		LostArk::Shared::C2S_GATE_PROGRESS_RESPOND GateProgressRespond;
 		LostArk::Shared::C2S_CHAT Chat;

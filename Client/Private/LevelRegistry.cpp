@@ -109,12 +109,20 @@ namespace
 		return CLevel_Development::Create(pDevice, pContext, LEVEL::MAHARAKA);
 	}
 
+	unique_ptr<CLevel> CreateColosseum(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext)
+	{
+		// Proving Grounds arena: same Development shell, walk-around only.
+		return CLevel_Development::Create(pDevice, pContext, LEVEL::COLOSSEUM);
+	}
+
 }
 
 const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 	const LEVEL eLevel)
 {
-	static const std::array<CLIENT_LEVEL_DESCRIPTOR, 7> levels =
+	static const std::array<CLIENT_LEVEL_DESCRIPTOR, 8> levels =
 	{{
 		{
 			LEVEL::LOBBY,
@@ -193,6 +201,16 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			MakeFullMapScope(),
 			CreateMaharaka,
 			[](CLoader& loader) -> HRESULT { return loader.Ready_For_Maharaka(); }
+		},
+		{
+			LEVEL::COLOSSEUM,
+			CLIENT_LEVEL_KIND::PRODUCT,
+			"world.colosseum",
+			"LV_PVP_COLOSSEUM",
+			"scene.development.neutral.v1",
+			MakeFullMapScope(),
+			CreateColosseum,
+			[](CLoader& loader) -> HRESULT { return loader.Ready_For_Colosseum(); }
 		}
 	}};
 

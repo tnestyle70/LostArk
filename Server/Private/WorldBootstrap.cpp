@@ -29,6 +29,7 @@ namespace
 		case WORLD_ID::KAKULSAYDON_ARENA:
 			return "KAKULSAYDON_ARENA";
 		case WORLD_ID::MAHARAKA: return "MAHARAKA";
+		case WORLD_ID::COLOSSEUM: return "COLOSSEUM";
 		default: return {};
 		}
 	}
@@ -157,6 +158,8 @@ namespace
 			outWorldId = WORLD_ID::KAKULSAYDON_ARENA;
 		else if ("MAHARAKA" == value)
 			outWorldId = WORLD_ID::MAHARAKA;
+		else if ("COLOSSEUM" == value)
+			outWorldId = WORLD_ID::COLOSSEUM;
 		else
 			return false;
 		return true;

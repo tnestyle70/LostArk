@@ -2261,6 +2261,16 @@ void CCharacter::Update_PresentationRootMatrix()
 	Try_Get_PresentationRootMatrix(&m_PresentationRootMatrix);
 }
 
+void CCharacter::Set_CutscenePoseOverride(const float3_t& position, const f32_t yawDegrees)
+{
+	if (!std::isfinite(position.x) || !std::isfinite(position.y) ||
+		!std::isfinite(position.z) || !std::isfinite(yawDegrees))
+		return;
+	m_vCutscenePosePosition = position;
+	m_fCutscenePoseYawDegrees = yawDegrees;
+	m_isCutscenePoseOverride = true;
+}
+
 void CCharacter::Set_Position(fvector_t vPosition)
 {
 	m_pTransformCom->Set_State(STATE::POSITION, vPosition);
@@ -4034,6 +4044,13 @@ void CCharacter::Update(f32_t fTimeDelta)
 	{
 		Update_NetworkTransform(fTimeDelta);
 		Update_NetworkAttachmentTransform(fTimeDelta);
+		if (m_isCutscenePoseOverride && nullptr != m_pTransformCom)
+		{
+			m_pTransformCom->Set_State(STATE::POSITION, XMVectorSet(
+				m_vCutscenePosePosition.x, m_vCutscenePosePosition.y,
+				m_vCutscenePosePosition.z, 1.f));
+			m_pTransformCom->Rotation(0.f, m_fCutscenePoseYawDegrees, 0.f);
+		}
 	}
 	else
 	{

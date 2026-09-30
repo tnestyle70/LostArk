@@ -14,6 +14,8 @@ namespace
 	std::optional<Client::CLIENT_RECOVERY_DIAGNOSTIC> g_RecoveryDiagnostic;
 	std::string g_Status = "No level transition is pending.";
 	LEVEL g_LastWorldTransferOrigin = LEVEL::END;
+	ComPtr<ID3D11ShaderResourceView> g_TransferPortraitSRV;
+	std::optional<LostArk::Shared::S2C_COLOSSEUM_MATCH_FOUND> g_ColosseumMatch;
 
 	std::uint64_t Get_UnixMilliseconds() noexcept
 	{
@@ -64,6 +66,52 @@ bool_t Client::CLevelTransitionService::Is_Pending()
 {
 	std::scoped_lock lock{ g_TransitionMutex };
 	return g_PendingRequest.has_value();
+}
+
+bool_t Client::CLevelTransitionService::Peek_Pending(
+	LEVEL_TRANSITION_REQUEST& outRequest)
+{
+	std::scoped_lock lock{ g_TransitionMutex };
+	if (!g_PendingRequest.has_value())
+		return false;
+	outRequest = *g_PendingRequest;
+	return true;
+}
+
+void Client::CLevelTransitionService::Set_TransferPortraitSRV(
+	ComPtr<ID3D11ShaderResourceView> pSRV)
+{
+	std::scoped_lock lock{ g_TransitionMutex };
+	g_TransferPortraitSRV = std::move(pSRV);
+}
+
+ComPtr<ID3D11ShaderResourceView> Client::CLevelTransitionService::Get_TransferPortraitSRV()
+{
+	std::scoped_lock lock{ g_TransitionMutex };
+	return g_TransferPortraitSRV;
+}
+
+void Client::CLevelTransitionService::Set_ColosseumMatch(
+	const LostArk::Shared::S2C_COLOSSEUM_MATCH_FOUND& match)
+{
+	std::scoped_lock lock{ g_TransitionMutex };
+	g_ColosseumMatch = match;
+}
+
+bool_t Client::CLevelTransitionService::Try_Get_ColosseumMatch(
+	LostArk::Shared::S2C_COLOSSEUM_MATCH_FOUND& outMatch)
+{
+	std::scoped_lock lock{ g_TransitionMutex };
+	if (!g_ColosseumMatch.has_value())
+		return false;
+	outMatch = *g_ColosseumMatch;
+	return true;
+}
+
+void Client::CLevelTransitionService::Clear_ColosseumMatch()
+{
+	std::scoped_lock lock{ g_TransitionMutex };
+	g_ColosseumMatch.reset();
 }
 
 std::string Client::CLevelTransitionService::Get_Status()
@@ -219,6 +267,9 @@ Client::CLevelTransitionService::Pump_ServerApprovedWorldTransfer(
 			break;
 		case WORLD_ID::MAHARAKA:
 			targetLevel = LEVEL::MAHARAKA;
+			break;
+		case WORLD_ID::COLOSSEUM:
+			targetLevel = LEVEL::COLOSSEUM;
 			break;
 		default:
 			break;

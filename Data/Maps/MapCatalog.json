@@ -159,6 +159,21 @@
      "cameraShots": "Client/Bin/DataFiles/Map/LV_OCN_EVENTIS_MHP.camerashots.json"
     },
     {
+      "id": "LV_PVP_COLOSSEUM",
+      "kind": "product",
+      "catalogType": "single",
+      "sourceCatalog": "Data/Maps/Imported/LV_PVP_COLOSSEUM/LV_PVP_COLOSSEUM.mapassets",
+      "sourcePlacements": "Data/Maps/Authoring/LV_PVP_COLOSSEUM/LV_PVP_COLOSSEUM.mapplacements",
+      "catalog": "Client/Bin/DataFiles/Map/LV_PVP_COLOSSEUM.mapassets",
+      "placements": "Client/Bin/DataFiles/Map/LV_PVP_COLOSSEUM.mapplacements",
+      "navigationSource": "Data/Navigation/LV_PVP_COLOSSEUM.navsource",
+      "navigationRuntime": "Client/Bin/DataFiles/Navigation/LV_PVP_COLOSSEUM.navgrid",
+      "gameplayDocument": "Data/Worlds/LV_PVP_COLOSSEUM/Gameplay.world.json",
+      "placementCount": 1294,
+      "assetCount": 103,
+      "runtimeAssetRoot": "Map/LV_PVP_COLOSSEUM"
+    },
+    {
       "id": "LV_LOBBY_CLASSSELECT_SL10",
       "kind": "product",
       "catalogType": "single",

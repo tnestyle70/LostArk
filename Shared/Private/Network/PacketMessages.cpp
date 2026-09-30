@@ -1488,12 +1488,11 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
 
     if (!reader.Read_F32(yawDegrees))
         return false;
+    if (!reader.Read_U8(voiceType) || !Is_Valid_VoiceType(voiceType))
+        return false;
     if (!reader.Read_String(waterpangNpcArchetypeId, MAX_STABLE_NETWORK_ID_BYTES) ||
         !Is_Valid_StableId(waterpangNpcArchetypeId, true) ||
         (!waterpangNpcArchetypeId.empty() && static_cast<PLAYER_CONTROL_KIND>(rawControlKind) != PLAYER_CONTROL_KIND::WATERPANG_AI))
-        return false;
-
-    if (!reader.Read_U8(voiceType) || !Is_Valid_VoiceType(voiceType))
         return false;
 
     if (iPlayerId == INVALID_PLAYER_ID)
@@ -6227,6 +6226,158 @@ bool LostArk::Shared::Read_Message(
 	{
 		return false;
 	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_COLOSSEUM_QUEUE_JOIN& message)
+{
+	if (0u == message.iRequestSequence || message.strNpcPlacementId.empty() ||
+		message.strNpcPlacementId.size() > MAX_NPC_PLACEMENT_ID_BYTES)
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	return writer.Write_String(message.strNpcPlacementId, MAX_NPC_PLACEMENT_ID_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_COLOSSEUM_QUEUE_JOIN& message)
+{
+	C2S_COLOSSEUM_QUEUE_JOIN decoded{};
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_String(decoded.strNpcPlacementId, MAX_NPC_PLACEMENT_ID_BYTES) ||
+		0u == decoded.iRequestSequence || decoded.strNpcPlacementId.empty())
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_COLOSSEUM_QUEUE_LEAVE& message)
+{
+	if (0u == message.iRequestSequence)
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_COLOSSEUM_QUEUE_LEAVE& message)
+{
+	C2S_COLOSSEUM_QUEUE_LEAVE decoded{};
+	if (!reader.Read_U32(decoded.iRequestSequence) || 0u == decoded.iRequestSequence)
+		return false;
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_COLOSSEUM_QUEUE_STATE& message)
+{
+	if (message.eState >= COLOSSEUM_QUEUE_STATE::END ||
+		message.iRequiredCount > MAX_COLOSSEUM_MATCH_PLAYERS ||
+		message.iQueuedCount > MAX_COLOSSEUM_MATCH_PLAYERS)
+	{
+		return false;
+	}
+	writer.Write_U8(static_cast<std::uint8_t>(message.eState));
+	writer.Write_U8(message.iQueuedCount);
+	writer.Write_U8(message.iRequiredCount);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_COLOSSEUM_QUEUE_STATE& message)
+{
+	std::uint8_t state = 0u;
+	S2C_COLOSSEUM_QUEUE_STATE decoded{};
+	if (!reader.Read_U8(state) || !reader.Read_U8(decoded.iQueuedCount) ||
+		!reader.Read_U8(decoded.iRequiredCount) ||
+		state >= static_cast<std::uint8_t>(COLOSSEUM_QUEUE_STATE::END) ||
+		decoded.iQueuedCount > MAX_COLOSSEUM_MATCH_PLAYERS ||
+		decoded.iRequiredCount > MAX_COLOSSEUM_MATCH_PLAYERS)
+	{
+		return false;
+	}
+	decoded.eState = static_cast<COLOSSEUM_QUEUE_STATE>(state);
+	message = decoded;
+	return true;
+}
+
+namespace
+{
+	bool Is_Valid_ColosseumMatch(const LostArk::Shared::S2C_COLOSSEUM_MATCH_FOUND& match)
+	{
+		using namespace LostArk::Shared;
+		if (match.Participants.empty() || match.Participants.size() > MAX_COLOSSEUM_MATCH_PLAYERS ||
+			match.iLocalIndex >= match.Participants.size())
+		{
+			return false;
+		}
+		for (const COLOSSEUM_MATCH_PARTICIPANT& participant : match.Participants)
+		{
+			if (!Is_Valid_PlayerNickname(participant.strNickname) ||
+				!Is_Known_Character_Class(participant.eCharacterClass) || participant.iTeam > 1u)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_COLOSSEUM_MATCH_FOUND& message)
+{
+	if (!Is_Valid_ColosseumMatch(message))
+		return false;
+	writer.Write_U8(message.iLocalIndex);
+	writer.Write_U8(static_cast<std::uint8_t>(message.Participants.size()));
+	for (const COLOSSEUM_MATCH_PARTICIPANT& participant : message.Participants)
+	{
+		if (!writer.Write_String(participant.strNickname, MAX_NICKNAME_BYTES))
+			return false;
+		writer.Write_U8(static_cast<std::uint8_t>(participant.eCharacterClass));
+		writer.Write_U8(participant.iTeam);
+	}
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_COLOSSEUM_MATCH_FOUND& message)
+{
+	S2C_COLOSSEUM_MATCH_FOUND decoded{};
+	std::uint8_t count = 0u;
+	if (!reader.Read_U8(decoded.iLocalIndex) || !reader.Read_U8(count) ||
+		0u == count || count > MAX_COLOSSEUM_MATCH_PLAYERS)
+	{
+		return false;
+	}
+	decoded.Participants.resize(count);
+	for (COLOSSEUM_MATCH_PARTICIPANT& participant : decoded.Participants)
+	{
+		std::uint8_t characterClass = 0u;
+		if (!reader.Read_String(participant.strNickname, MAX_NICKNAME_BYTES) ||
+			!reader.Read_U8(characterClass) || !reader.Read_U8(participant.iTeam))
+		{
+			return false;
+		}
+		participant.eCharacterClass = static_cast<CHARACTER_CLASS_ID>(characterClass);
+	}
+	if (!Is_Valid_ColosseumMatch(decoded))
+		return false;
 	message = std::move(decoded);
 	return true;
 }

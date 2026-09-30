@@ -231,6 +231,26 @@ namespace
 		"ValtanEntry_ConfirmButton", "ValtanEntry_CancelButton",
 		"ValtanEntry_AcceptIcon", "ValtanEntry_DeclineIcon",
 	};
+
+	/* Colosseum queue dialogs (QueueDialog_Layout.json). The text anchors are position-only markers
+	(tint alpha 0) that stay out of the show / hide lists. */
+	constexpr const char* QUEUE_OFFER_SLOTS[] =
+	{
+		"QueueOffer_Border", "QueueOffer_Backdrop", "QueueOffer_Panel",
+		"QueueOffer_BarTrack", "QueueOffer_BarFill", "QueueOffer_BarCap",
+		"QueueOffer_AcceptButton", "QueueOffer_DeclineButton",
+		"QueueOffer_AcceptIcon", "QueueOffer_DeclineIcon",
+	};
+	constexpr const char* QUEUE_WAIT_SLOTS[] =
+	{
+		"QueueWait_Border", "QueueWait_Backdrop", "QueueWait_Panel",
+		"QueueWait_RingBlue", "QueueWait_RingWhite",
+	};
+	/* The offer runs 15 seconds (the user's spec). The ring speeds are assumptions: the retail
+	loading circle's own timing was not recoverable from its atlas. */
+	constexpr f32_t COLOSSEUM_OFFER_SECONDS = 15.f;
+	constexpr f32_t COLOSSEUM_RING_BLUE_DEGREES_PER_SECOND = 270.f;
+	constexpr f32_t COLOSSEUM_RING_WHITE_DEGREES_PER_SECOND = 360.f;
 }
 
 CRaidEntryPreviewView::CRaidEntryPreviewView(
@@ -243,11 +263,15 @@ CRaidEntryPreviewView::CRaidEntryPreviewView(
 	, m_pConfirmView(std::make_unique<CUILayoutRuntime>(
 		pDevice, pContext, iOwnerLevelIndex, TEXT("Layer_UI"),
 		L"UI/RaidEntry/BernValtanEntry_Layout.json"))
+	, m_pQueueView(std::make_unique<CUILayoutRuntime>(
+		pDevice, pContext, iOwnerLevelIndex, TEXT("Layer_UI"),
+		L"UI/Colosseum/QueueDialog_Layout.json"))
 {
 	/* A CUI_Sprite is visible from construction, unlike the old ImGui path that simply did not
 	   draw while closed -- this popup starts closed. */
 	Hide_AllSlots();
 	Hide_ConfirmSlots();
+	Hide_QueueSlots();
 }
 
 CRaidEntryPreviewView::~CRaidEntryPreviewView() = default;
@@ -266,6 +290,16 @@ void CRaidEntryPreviewView::Hide_ConfirmSlots()
 		return;
 	for (const char* pSlotId : CONFIRM_ART_SLOTS)
 		m_pConfirmView->Set_SlotVisible(pSlotId, false);
+}
+
+void CRaidEntryPreviewView::Hide_QueueSlots()
+{
+	if (nullptr == m_pQueueView)
+		return;
+	for (const char* pSlotId : QUEUE_OFFER_SLOTS)
+		m_pQueueView->Set_SlotVisible(pSlotId, false);
+	for (const char* pSlotId : QUEUE_WAIT_SLOTS)
+		m_pQueueView->Set_SlotVisible(pSlotId, false);
 }
 
 void CRaidEntryPreviewView::Open()
@@ -480,6 +514,7 @@ bool_t CRaidEntryPreviewView::Render()
 	{
 		Hide_AllSlots();
 		Hide_ConfirmSlots();
+		Hide_QueueSlots();
 		m_hasJustOpened = false;
 		return false;
 	}
@@ -501,8 +536,12 @@ bool_t CRaidEntryPreviewView::Render()
 		0 != (GetAsyncKeyState(VK_ESCAPE) & 0x8000);
 	const bool_t escapePressed = isEscapeDown && !m_wasEscapeDown;
 	m_wasEscapeDown = isEscapeDown;
+	/* The Colosseum queue dialogs own the frame and read Escape themselves (decline / leave). */
+	if (COLOSSEUM_QUEUE_MODE::NONE != m_eColosseumMode)
+		return Render_ColosseumQueue(wasJustOpened, escapePressed);
 	if (escapePressed)
 	{
+		m_isSimpleConfirm = false;
 		m_isConfirmStepOpen = false;
 		m_isOpen = false;
 		m_eVoteTarget = LostArk::Shared::RAID_ENTRY_TARGET::END;
@@ -618,6 +657,12 @@ void CRaidEntryPreviewView::RenderText()
 {
 	if (!m_isOpen)
 		return;
+
+	if (COLOSSEUM_QUEUE_MODE::NONE != m_eColosseumMode)
+	{
+		RenderText_ColosseumQueue();
+		return;
+	}
 
 	if (m_isConfirmStepOpen)
 	{
@@ -954,9 +999,18 @@ bool_t CRaidEntryPreviewView::Render_ConfirmStep()
 	if (cancelClicked || confirmClicked)
 	{
 		// 수락·거절 둘 다 서버에 응답을 보낸다(거절도 투표를 종료시켜 전원이 Bern에 남게 함).
-		m_Intent.eKind = RAID_ENTRY_INTENT::RESPOND;
-		m_Intent.iProposalId = m_iVoteProposalId;
-		m_Intent.bAccepted = confirmClicked;
+		if (m_isSimpleConfirm)
+		{
+			m_Intent.eKind = confirmClicked ?
+				RAID_ENTRY_INTENT::SIMPLE_ACCEPT : RAID_ENTRY_INTENT::NONE;
+			m_isSimpleConfirm = false;
+		}
+		else
+		{
+			m_Intent.eKind = RAID_ENTRY_INTENT::RESPOND;
+			m_Intent.iProposalId = m_iVoteProposalId;
+			m_Intent.bAccepted = confirmClicked;
+		}
 		m_isConfirmStepOpen = false;
 		m_isOpen = false;
 		m_iVoteProposalId = 0u;
@@ -980,6 +1034,7 @@ void CRaidEntryPreviewView::Open_VoteConfirm(
 {
 	if (nullptr == Find_RaidDefinition(target))
 		return;
+	m_isSimpleConfirm = false;
 	m_iVoteProposalId = iProposalId;
 	m_eVoteTarget = target;
 	m_isOpen = true;
@@ -990,6 +1045,7 @@ void CRaidEntryPreviewView::Open_VoteConfirm(
 
 void CRaidEntryPreviewView::Close_VoteConfirm()
 {
+	m_isSimpleConfirm = false;
 	m_isConfirmStepOpen = false;
 	m_isOpen = false;
 	m_iVoteProposalId = 0u;
@@ -999,10 +1055,25 @@ void CRaidEntryPreviewView::Close_VoteConfirm()
 	Hide_AllSlots();
 }
 
+void CRaidEntryPreviewView::Open_SimpleConfirm(
+	const wchar_t* pTitle, const wchar_t* pDescription)
+{
+	m_strSimpleTitle = nullptr != pTitle ? pTitle : L"";
+	m_strSimpleDescription = nullptr != pDescription ? pDescription : L"";
+	m_isSimpleConfirm = true;
+	m_iVoteProposalId = 0u;
+	m_eVoteTarget = LostArk::Shared::RAID_ENTRY_TARGET::END;
+	m_Intent = RAID_ENTRY_INTENT{};
+	m_isOpen = true;
+	m_isConfirmStepOpen = true;
+	m_hasJustOpened = true;
+	CMainApp::Play_PopupRequestSound();
+}
+
 void CRaidEntryPreviewView::RenderText_ConfirmStep()
 {
 	const RAID_DEF* pRaid = Find_RaidDefinition(m_eVoteTarget);
-	if (nullptr == m_pConfirmView || nullptr == pRaid)
+	if (nullptr == m_pConfirmView || (!m_isSimpleConfirm && nullptr == pRaid))
 		return;
 
 	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
@@ -1028,14 +1099,16 @@ void CRaidEntryPreviewView::RenderText_ConfirmStep()
 	{
 		// "레이드 입장"
 		Fn_DrawCentered(fTitleX + fTitleW * 0.5f, fTitleY + fTitleH * 0.5f,
-			L"\xB808\xC774\xB4DC \xC785\xC7A5", 24.f, Colors::White);
+			m_isSimpleConfirm ? m_strSimpleTitle.c_str() : L"\xB808\xC774\xB4DC \xC785\xC7A5",
+			24.f, Colors::White);
 	}
 
 	f32_t fDescX = 0.f, fDescY = 0.f, fDescW = 0.f, fDescH = 0.f;
 	if (m_pConfirmView->Get_SlotRect(
 		"ValtanEntry_DescTextBox", fDescX, fDescY, fDescW, fDescH))
 	{
-		const std::wstring description = std::wstring(pRaid->pRaidName) +
+		const std::wstring description = m_isSimpleConfirm ? m_strSimpleDescription :
+			std::wstring(pRaid->pRaidName) +
 			L"\xC5D0 \xC785\xC7A5\xD558\xC2DC\xACA0\xC2B5\xB2C8\xAE4C?";
 		Fn_DrawCentered(fDescX + fDescW * 0.5f, fDescY + fDescH * 0.5f,
 			description.c_str(), 18.f, Colors::White);
@@ -1069,4 +1142,187 @@ void CRaidEntryPreviewView::RenderText_ConfirmStep()
 			(fIconRight + fButtonRight) * 0.5f, fButtonY + fButtonH * 0.5f,
 			label.pLabel, fButtonH * 0.48f, Colors::White);
 	}
+}
+
+void CRaidEntryPreviewView::Open_ColosseumOffer()
+{
+	if (nullptr == m_pQueueView)
+		return;
+	m_Intent = RAID_ENTRY_INTENT{};
+	m_isSimpleConfirm = false;
+	m_isConfirmStepOpen = false;
+	m_eColosseumMode = COLOSSEUM_QUEUE_MODE::OFFER;
+	m_fColosseumOfferRemaining = COLOSSEUM_OFFER_SECONDS;
+	m_fColosseumRingSeconds = 0.f;
+	m_isOpen = true;
+	m_hasJustOpened = true;
+	Hide_AllSlots();
+	Hide_ConfirmSlots();
+	Apply_ColosseumSlots();
+	CMainApp::Play_PopupRequestSound();
+}
+
+void CRaidEntryPreviewView::Close_ColosseumWait()
+{
+	if (COLOSSEUM_QUEUE_MODE::WAIT != m_eColosseumMode)
+		return;
+	m_eColosseumMode = COLOSSEUM_QUEUE_MODE::NONE;
+	m_isOpen = false;
+	Hide_QueueSlots();
+}
+
+void CRaidEntryPreviewView::Apply_ColosseumSlots()
+{
+	if (nullptr == m_pQueueView)
+		return;
+	const bool_t isOffer = COLOSSEUM_QUEUE_MODE::OFFER == m_eColosseumMode;
+	const bool_t isWait = COLOSSEUM_QUEUE_MODE::WAIT == m_eColosseumMode;
+	for (const char* pSlotId : QUEUE_OFFER_SLOTS)
+		m_pQueueView->Set_SlotVisible(pSlotId, isOffer);
+	for (const char* pSlotId : QUEUE_WAIT_SLOTS)
+		m_pQueueView->Set_SlotVisible(pSlotId, isWait);
+}
+
+bool_t CRaidEntryPreviewView::Render_ColosseumQueue(
+	const bool_t wasJustOpened, const bool_t escapePressed)
+{
+	if (nullptr == m_pQueueView)
+	{
+		m_eColosseumMode = COLOSSEUM_QUEUE_MODE::NONE;
+		m_isOpen = false;
+		return false;
+	}
+	/* Timer_60 is the shared rendered-frame delta despite its legacy name. */
+	const f32_t fDelta = (std::min)((std::max)(
+		CGameInstance::Get().Get_TimeDelta(TEXT("Timer_60")), 0.f), 0.1f);
+
+	if (COLOSSEUM_QUEUE_MODE::WAIT == m_eColosseumMode)
+	{
+		m_fColosseumRingSeconds += fDelta;
+		m_pQueueView->Set_SlotRotation("QueueWait_RingBlue",
+			std::fmod(m_fColosseumRingSeconds * COLOSSEUM_RING_BLUE_DEGREES_PER_SECOND, 360.f));
+		m_pQueueView->Set_SlotRotation("QueueWait_RingWhite",
+			std::fmod(m_fColosseumRingSeconds * COLOSSEUM_RING_WHITE_DEGREES_PER_SECOND, 360.f));
+		if (escapePressed)
+		{
+			/* Only this player leaves the queue; the Server keeps everyone else waiting. */
+			m_Intent.eKind = RAID_ENTRY_INTENT::COLOSSEUM_LEAVE;
+			m_eColosseumMode = COLOSSEUM_QUEUE_MODE::NONE;
+			m_isOpen = false;
+			Hide_QueueSlots();
+		}
+		return false;
+	}
+
+	/* Offer: no answer inside the countdown counts as a decline. */
+	m_fColosseumOfferRemaining -= fDelta;
+	if (escapePressed || m_fColosseumOfferRemaining <= 0.f)
+	{
+		m_eColosseumMode = COLOSSEUM_QUEUE_MODE::NONE;
+		m_isOpen = false;
+		Hide_QueueSlots();
+		return false;
+	}
+
+	const f32_t fRatio = std::clamp(m_fColosseumOfferRemaining / COLOSSEUM_OFFER_SECONDS, 0.f, 1.f);
+	m_pQueueView->Set_SlotFillRatio("QueueOffer_BarFill", fRatio);
+	f32_t fTrackX = 0.f, fTrackY = 0.f, fTrackW = 0.f, fTrackH = 0.f;
+	f32_t fCapX = 0.f, fCapY = 0.f, fCapW = 0.f, fCapH = 0.f;
+	if (m_pQueueView->Get_SlotRect("QueueOffer_BarTrack", fTrackX, fTrackY, fTrackW, fTrackH) &&
+		m_pQueueView->Get_SlotRect("QueueOffer_BarCap", fCapX, fCapY, fCapW, fCapH))
+	{
+		/* The bright end cap rides the fill's right edge as it shrinks. */
+		m_pQueueView->Set_SlotPosition("QueueOffer_BarCap",
+			fTrackX + fTrackW * fRatio - fCapW, fTrackY);
+		m_pQueueView->Set_SlotVisible("QueueOffer_BarCap", fRatio > 0.f);
+	}
+
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pQueueView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pQueueView->Get_ResolutionHeight();
+	struct OFFER_BUTTON
+	{
+		const char* pSlotId;
+		bool_t isAccept;
+	};
+	static constexpr OFFER_BUTTON BUTTONS[2] =
+	{
+		{ "QueueOffer_AcceptButton", true },
+		{ "QueueOffer_DeclineButton", false },
+	};
+	bool_t acceptClicked = false;
+	bool_t declineClicked = false;
+	for (const OFFER_BUTTON& button : BUTTONS)
+	{
+		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
+		if (!m_pQueueView->Get_SlotRect(button.pSlotId, fX, fY, fW, fH))
+			continue;
+		const bool_t isHovered = Router.Is_Hovered(fX, fY, fW, fH, fRefWidth, fRefHeight);
+		m_pQueueView->Set_SlotTexture(button.pSlotId,
+			isHovered ? "UI/ClassSelect/Common/NormalButtonHover.png" : "");
+		if (isHovered && !wasJustOpened &&
+			Router.Is_Clicked(fX, fY, fW, fH, fRefWidth, fRefHeight))
+		{
+			CMainApp::Play_UIButtonClickSound();
+			if (button.isAccept)
+				acceptClicked = true;
+			else
+				declineClicked = true;
+		}
+	}
+	if (declineClicked)
+	{
+		m_eColosseumMode = COLOSSEUM_QUEUE_MODE::NONE;
+		m_isOpen = false;
+		Hide_QueueSlots();
+	}
+	else if (acceptClicked)
+	{
+		/* The wait window shows at once; the Server's answer only ever closes it. */
+		m_Intent.eKind = RAID_ENTRY_INTENT::COLOSSEUM_JOIN;
+		m_eColosseumMode = COLOSSEUM_QUEUE_MODE::WAIT;
+		m_fColosseumRingSeconds = 0.f;
+		Apply_ColosseumSlots();
+	}
+	return false;
+}
+
+void CRaidEntryPreviewView::RenderText_ColosseumQueue()
+{
+	if (nullptr == m_pQueueView)
+		return;
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vViewportSize.x / 1280.f;
+	const float textScaleY = vViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	const auto Fn_DrawAt = [&](const char* pMarkerId, const wchar_t* pLabel,
+		const f32_t fTargetHeight, const fvector_t& vColor)
+	{
+		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
+		if (!m_pQueueView->Get_SlotRect(pMarkerId, fX, fY, fW, fH))
+			return;
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+		const f32_t fScale = (vMeasured.y > 0.f) ? (fTargetHeight / vMeasured.y) : 1.f;
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
+			float2_t((fX + fW * 0.5f) * textScaleX, (fY + fH * 0.5f) * textScaleY),
+			vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+	};
+
+	if (COLOSSEUM_QUEUE_MODE::WAIT == m_eColosseumMode)
+	{
+		Fn_DrawAt("QueueWait_TitleText", L"\xC99D\xBA85\xC758 \xC804\xC7A5 \xC785\xC7A5 \xB300\xAE30", 24.f, Colors::White);
+		Fn_DrawAt("QueueWait_BodyText", L"\xD22C\xAE30\xC7A5 \xBC14\xB2E5\xC744 \xCCAD\xC18C \xC911..", 18.f, Colors::White);
+		return;
+	}
+	const int32_t iSeconds = (std::min)((std::max)(
+		static_cast<int32_t>(std::ceil(m_fColosseumOfferRemaining)), 1), static_cast<int32_t>(COLOSSEUM_OFFER_SECONDS));
+	const std::wstring strSeconds = std::to_wstring(iSeconds) + L"\xCD08 \xB0A8\xC558\xC2B5\xB2C8\xB2E4.";
+	Fn_DrawAt("QueueOffer_TitleText", L"\xC99D\xBA85\xC758 \xC804\xC7A5 \xC785\xC7A5 \xB300\xAE30", 24.f, Colors::White);
+	Fn_DrawAt("QueueOffer_BodyText1", L"\xC12C\xBA78\xC804 \xC804\xD22C\xAC00 \xC900\xBE44\xB418\xC5C8\xC2B5\xB2C8\xB2E4!", 18.f, Colors::White);
+	Fn_DrawAt("QueueOffer_BodyText2", L"\xCC38\xC5EC\xD558\xC2DC\xACA0\xC2B5\xB2C8\xAE4C?", 18.f, Colors::White);
+	Fn_DrawAt("QueueOffer_SecondsText", strSeconds.c_str(), 16.f, Colors::White);
+	Fn_DrawAt("QueueOffer_AcceptLabel", L"\xC218\xB77D", 18.f, Colors::White);
+	Fn_DrawAt("QueueOffer_DeclineLabel", L"\xAC70\xC808", 18.f, Colors::White);
 }

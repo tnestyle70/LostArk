@@ -1,0 +1,247 @@
+{
+  "schema": "lostark.npc-placement-presentation",
+  "formatVersion": 2,
+  "worldId": "COLOSSEUM",
+  "entries": [
+    {
+      "placementId": "npc.colosseum.spectator.01",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.02",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.03",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.04",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.05",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.06",
+      "idleClip": "npc_sc_cheer_loop_2",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.07",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.08",
+      "idleClip": "npc_sc_cheer_loop_4",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.09",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.10",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.11",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.12",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.13",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.14",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.15",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.16",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.17",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.18",
+      "idleClip": "npc_sc_cheer_loop_2",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.19",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.20",
+      "idleClip": "npc_sc_cheer_loop_4",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.21",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.22",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.23",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.24",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.25",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.26",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.27",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.28",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.29",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.30",
+      "idleClip": "npc_sc_cheer_loop_2",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.31",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.32",
+      "idleClip": "npc_sc_cheer_loop_4",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.33",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.34",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.35",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.36",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.37",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.38",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.39",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    },
+    {
+      "placementId": "npc.colosseum.spectator.40",
+      "idleClip": "npc_sc_cheer_loop_1",
+      "walkClip": null,
+      "actions": []
+    }
+  ]
+}

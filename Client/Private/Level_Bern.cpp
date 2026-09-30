@@ -623,6 +623,7 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 	Update_ValtanEntryInteraction();
 	Advance_ValtanEntryWalk();
 	Poll_RaidEntryVote();
+	Poll_ColosseumQueueState();
 	Update_ItemUpgradeNpcInteraction();
 	Advance_ItemUpgradeNpcWalk();
 	Update_ShipNpcInteraction();
@@ -1022,11 +1023,21 @@ bool_t CLevel_Bern::Ready_ValtanEntryNpcs(const std::string& areaId)
 	if (!document.Load(documentPath, areaId, status))
 		return false;
 
+	// The only NPC inside the castle interior; Handle_ConfirmNpcEntry names the same placement.
+	static constexpr const char* COLOSSEUM_NPC_PLACEMENT_ID = "npc.bern.25184_1.2";
+	VALTAN_ENTRY_NPC colosseumNpc{};
+	bool_t hasColosseumNpc = false;
 	std::vector<VALTAN_ENTRY_NPC> staged;
 	for (const WORLD_GAMEPLAY_PLACEMENT& placement : document.Get_Placements())
 	{
 		if (WORLD_PLACEMENT_KIND::NPC != placement.eKind)
 			continue;
+		if (placement.placementId == COLOSSEUM_NPC_PLACEMENT_ID)
+		{
+			colosseumNpc = { placement.placementId, placement.position, true };
+			hasColosseumNpc = true;
+			continue;
+		}
 		const bool_t isGuide = std::any_of(
 			std::begin(GUIDE_NPC_PLACEMENT_IDS),
 			std::end(GUIDE_NPC_PLACEMENT_IDS),
@@ -1038,6 +1049,9 @@ bool_t CLevel_Bern::Ready_ValtanEntryNpcs(const std::string& areaId)
 			continue;
 		staged.push_back({ placement.placementId, placement.position });
 	}
+	// After the guides, so the Debug O-key preview (front()) keeps naming a Valtan guide.
+	if (hasColosseumNpc)
+		staged.push_back(std::move(colosseumNpc));
 
 	m_ValtanEntryNpcs = std::move(staged);
 	return !m_ValtanEntryNpcs.empty();
@@ -1168,7 +1182,23 @@ void CLevel_Bern::Advance_ValtanEntryWalk()
 
 	m_isWalkingToValtanEntryNpc = false;
 	if (nullptr != m_pValtanEntryView)
-		m_pValtanEntryView->Open();
+	{
+		if (npcIt->isColosseum)
+		{
+			// Retail's timer dialog: accept / decline within 15 seconds, then the wait window.
+			m_pValtanEntryView->Open_ColosseumOffer();
+			/* Retail's loading avatar stands in the relaxed pose, not the class's battle idle: play the
+			customizing idle now so the frame captured at the transfer already holds it. */
+			if (const shared_ptr<CCharacter> pLocal = Get_LocalCharacter();
+				nullptr != pLocal && nullptr != pLocal->Get_Spec())
+			{
+				if (const char_t* pClip = pLocal->Get_Spec()->AnimationClips[ETOUI(CHARACTER_ANIM::CUSTOMIZING_IDLE)])
+					(void)pLocal->Set_Animation(pClip, true);
+			}
+		}
+		else
+			m_pValtanEntryView->Open();
+	}
 #ifdef _DEBUG
 	OutputDebugStringA("[Level_Bern][ValtanEntryText] modal opened this frame\n");
 #endif
@@ -1830,7 +1860,21 @@ void CLevel_Bern::Render_ValtanEntryModal()
 		return;
 	const CRaidEntryPreviewView::RAID_ENTRY_INTENT intent =
 		m_pValtanEntryView->Consume_Intent();
-	if (CRaidEntryPreviewView::RAID_ENTRY_INTENT::PROPOSE == intent.eKind)
+	if (CRaidEntryPreviewView::RAID_ENTRY_INTENT::COLOSSEUM_JOIN == intent.eKind)
+	{
+		// Colosseum NPC: the offer was accepted. The Server queues the player, decides the teams once the
+		// head count is met and stages the BERN -> COLOSSEUM transfer; the Client only follows
+		// S2C_ENTER_ACCEPTED (Pump_ServerApprovedWorldTransfer). A refused send closes the wait window.
+		CLevelTransitionService::Clear_ColosseumMatch();
+		if (!m_pPlayerCommandSink->Request_ColosseumQueueJoin(
+			m_iNextNpcEntryConfirmSequence++, m_strValtanEntryNpcPlacementId))
+			m_pValtanEntryView->Close_ColosseumWait();
+	}
+	else if (CRaidEntryPreviewView::RAID_ENTRY_INTENT::COLOSSEUM_LEAVE == intent.eKind)
+	{
+		(void)m_pPlayerCommandSink->Request_ColosseumQueueLeave(m_iNextNpcEntryConfirmSequence++);
+	}
+	else if (CRaidEntryPreviewView::RAID_ENTRY_INTENT::PROPOSE == intent.eKind)
 	{
 		// 입장하기 -> 파티 전원 수락 투표 발의(솔로는 인원 1명 투표). 즉시 전송하지 않고
 		// 서버가 파티 전원에게 프롬프트를 보낸다.
@@ -1890,6 +1934,20 @@ void CLevel_Bern::Try_Send_CharacterRestore()
 	{
 		CCharacterSelectionState::Mark_RestoreRequested(1u);
 		m_bCharacterRestoreSent = true;
+	}
+}
+
+void CLevel_Bern::Poll_ColosseumQueueState()
+{
+	if (nullptr == m_pValtanEntryView || nullptr == m_pPlayerCommandSink)
+		return;
+	LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE state{};
+	while (m_pPlayerCommandSink->Consume_ColosseumQueueState(state))
+	{
+		// WAITING only confirms the join. Anything else means the Server refused it or dropped this
+		// player from the queue, so the wait window has nothing left to wait for.
+		if (LostArk::Shared::COLOSSEUM_QUEUE_STATE::WAITING != state.eState)
+			m_pValtanEntryView->Close_ColosseumWait();
 	}
 }
 

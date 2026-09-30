@@ -24,6 +24,7 @@ namespace Client
 		KAKULSAYDON_ARENA,
 		DEVELOPMENT,
 		MAHARAKA,
+		COLOSSEUM,
 		END
 	};
 }

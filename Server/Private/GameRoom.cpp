@@ -86,6 +86,7 @@ LostArk::Server::CGameRoom::CGameRoom(
 		LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA == worldId ||
 		LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == worldId ||
 		LostArk::Shared::WORLD_ID::MAHARAKA == worldId ||
+		LostArk::Shared::WORLD_ID::COLOSSEUM == worldId ||
 		LostArk::Shared::WORLD_ID::BERN == worldId) &&
 		!m_ServerNavigation.Load(m_WorldBootstrap.Get_AreaId()))
 	{
@@ -1049,6 +1050,14 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		case ROOM_COMMAND_TYPE::RAID_ENTRY_RESPOND:
 			Handle_RaidEntryRespond(
 				command.iSessionId, command.RaidEntryRespond);
+			break;
+		case ROOM_COMMAND_TYPE::COLOSSEUM_QUEUE_JOIN:
+			Handle_ColosseumQueueJoin(
+				command.iSessionId, command.ColosseumQueueJoin);
+			break;
+		case ROOM_COMMAND_TYPE::COLOSSEUM_QUEUE_LEAVE:
+			Handle_ColosseumQueueLeave(
+				command.iSessionId, command.ColosseumQueueLeave);
 			break;
 		case ROOM_COMMAND_TYPE::GATE_PROGRESS_PROPOSE:
 			Handle_GateProgressPropose(

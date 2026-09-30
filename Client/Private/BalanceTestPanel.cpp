@@ -342,6 +342,7 @@ void CBalanceTestPanel::Render_CooldownControl()
     case LEVEL::CHARACTER_SELECT: world = WORLD_ID::CHARACTER_SELECT_ARENA; break;
     case LEVEL::DEVELOPMENT: world = WORLD_ID::TRAINING_GROUND; break;
     case LEVEL::MAHARAKA: world = WORLD_ID::MAHARAKA; break;
+    case LEVEL::COLOSSEUM: world = WORLD_ID::COLOSSEUM; break;
     default: break;
     }
     S2C_SET_COOLDOWN_MODE_RESULT result;

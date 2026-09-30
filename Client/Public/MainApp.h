@@ -58,6 +58,7 @@ class CShopWindowView;
 class CDurabilityHudView;
 class CCombatAnalysisFrameView;
 class CCharacterInfoWindowView;
+class CCharacterPortraitRenderer;
 class CAvatarBookWindowView;
 class CVehicleWindowView;
 class CHonorTitleWindowView;
@@ -950,6 +951,10 @@ private:
 	live portrait renders in Render() before the world pass (see Render_Portrait). */
 	unique_ptr<CCharacterInfoWindowView> m_pCharacterInfoView = { nullptr };
 	unique_ptr<CAvatarBookWindowView> m_pAvatarBookView = { nullptr };
+	/* Colosseum entry: the Bern character drawn once on the frame before the transfer and kept
+	for the match loading screen (CLevelTransitionService::Get_TransferPortraitSRV). */
+	unique_ptr<CCharacterPortraitRenderer> m_pTransferPortrait = { nullptr };
+	void Render_ColosseumTransferPortrait();
 	bool_t m_bCharacterInfoKeyDown = false;
 	/* Not _DEBUG-gated: N opens the retail vehicle window during real gameplay (the retail
 	Alt+V is the ALT_V skill slot here). Constructed after the avatar book so it draws over

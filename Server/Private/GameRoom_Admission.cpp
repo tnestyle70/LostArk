@@ -570,6 +570,10 @@ void LostArk::Server::CGameRoom::Leave(
 {
 	using namespace LostArk::Shared;
 
+	// A queued player who disconnects or moves on drops out of the Colosseum queue; the rest keep waiting.
+	std::erase_if(m_ColosseumQueue,
+		[sessionId](const COLOSSEUM_QUEUE_ENTRY& entry) { return entry.iSessionId == sessionId; });
+
 	if (Is_KoukuRaidRunning())
 	{
 		const auto departing = m_PlayerIdBySessionId.find(sessionId);

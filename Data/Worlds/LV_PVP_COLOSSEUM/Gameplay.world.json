@@ -1,0 +1,686 @@
+{
+  "schema": "lostark.world-gameplay",
+  "formatVersion": 6,
+  "areaId": "LV_PVP_COLOSSEUM",
+  "revision": 3,
+  "placements": [
+    {
+      "placementId": "player.spawn.colosseum.teama.01",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        -24.4,
+        12.220000267028809,
+        -2.6
+      ],
+      "yawDegrees": 90.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.colosseum.teama.02",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        -24.4,
+        12.220000267028809,
+        0.3
+      ],
+      "yawDegrees": 90.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.colosseum.teama.03",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        -24.4,
+        12.220000267028809,
+        3.0
+      ],
+      "yawDegrees": 90.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.colosseum.teamb.01",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        23.0,
+        12.220000267028809,
+        -2.6
+      ],
+      "yawDegrees": -90.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.colosseum.teamb.02",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        23.0,
+        12.220000267028809,
+        0.3
+      ],
+      "yawDegrees": -90.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.colosseum.teamb.03",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        23.0,
+        12.220000267028809,
+        3.0
+      ],
+      "yawDegrees": -90.0,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.01",
+      "kind": "npc",
+      "archetypeId": "NPC_11748",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        26.741,
+        17.025,
+        -3.785
+      ],
+      "yawDegrees": -84.76,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.02",
+      "kind": "npc",
+      "archetypeId": "NPC_13203",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        26.666,
+        13.85,
+        7.88
+      ],
+      "yawDegrees": -112.05,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.03",
+      "kind": "npc",
+      "archetypeId": "NPC_11752",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        28.242,
+        17.14,
+        2.054
+      ],
+      "yawDegrees": -91.74,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.04",
+      "kind": "npc",
+      "archetypeId": "NPC_12905",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        25.833,
+        17.301,
+        4.648
+      ],
+      "yawDegrees": -107.04,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.05",
+      "kind": "npc",
+      "archetypeId": "NPC_12250",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        25.873,
+        16.883,
+        -0.112
+      ],
+      "yawDegrees": -89.18,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.06",
+      "kind": "npc",
+      "archetypeId": "NPC_18394",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_2",
+      "behavior": null,
+      "position": [
+        9.967,
+        13.659,
+        15.627
+      ],
+      "yawDegrees": -149.62,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.07",
+      "kind": "npc",
+      "archetypeId": "NPC_12917",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        24.368,
+        13.529,
+        10.106
+      ],
+      "yawDegrees": -119.6,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.08",
+      "kind": "npc",
+      "archetypeId": "NPC_12249",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_4",
+      "behavior": null,
+      "position": [
+        17.559,
+        16.075,
+        17.099
+      ],
+      "yawDegrees": -134.12,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.09",
+      "kind": "npc",
+      "archetypeId": "NPC_11592",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        12.363,
+        13.5,
+        22.819
+      ],
+      "yawDegrees": -158.95,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.10",
+      "kind": "npc",
+      "archetypeId": "NPC_11816",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        16.882,
+        13.294,
+        11.062
+      ],
+      "yawDegrees": -124.3,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.11",
+      "kind": "npc",
+      "archetypeId": "NPC_11749",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        4.584,
+        13.704,
+        19.83
+      ],
+      "yawDegrees": -173.87,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.12",
+      "kind": "npc",
+      "archetypeId": "NPC_12911",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        -9.33,
+        13.27,
+        23.319
+      ],
+      "yawDegrees": 151.64,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.13",
+      "kind": "npc",
+      "archetypeId": "NPC_11748",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        -2.731,
+        16.286,
+        27.92
+      ],
+      "yawDegrees": 173.21,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.14",
+      "kind": "npc",
+      "archetypeId": "NPC_13203",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        4.333,
+        13.45,
+        26.482
+      ],
+      "yawDegrees": -165.48,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.15",
+      "kind": "npc",
+      "archetypeId": "NPC_11752",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        -5.187,
+        13.67,
+        18.861
+      ],
+      "yawDegrees": 158.6,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.16",
+      "kind": "npc",
+      "archetypeId": "NPC_12905",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        -15.572,
+        13.643,
+        11.9
+      ],
+      "yawDegrees": 122.96,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.17",
+      "kind": "npc",
+      "archetypeId": "NPC_12250",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        -9.912,
+        15.931,
+        23.257
+      ],
+      "yawDegrees": 158.96,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.18",
+      "kind": "npc",
+      "archetypeId": "NPC_18394",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_2",
+      "behavior": null,
+      "position": [
+        -25.407,
+        13.58,
+        10.778
+      ],
+      "yawDegrees": 120.15,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.19",
+      "kind": "npc",
+      "archetypeId": "NPC_12917",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        -15.648,
+        16.049,
+        19.786
+      ],
+      "yawDegrees": 142.89,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.20",
+      "kind": "npc",
+      "archetypeId": "NPC_12249",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_4",
+      "behavior": null,
+      "position": [
+        -10.26,
+        13.639,
+        15.665
+      ],
+      "yawDegrees": 145.12,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.21",
+      "kind": "npc",
+      "archetypeId": "NPC_11592",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        -27.625,
+        17.312,
+        0.425
+      ],
+      "yawDegrees": 98.5,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.22",
+      "kind": "npc",
+      "archetypeId": "NPC_11816",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        -28.275,
+        16.869,
+        -4.383
+      ],
+      "yawDegrees": 73.93,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.23",
+      "kind": "npc",
+      "archetypeId": "NPC_11749",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        -28.308,
+        17.112,
+        4.878
+      ],
+      "yawDegrees": 105.51,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.24",
+      "kind": "npc",
+      "archetypeId": "NPC_12911",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        -28.612,
+        17.026,
+        -1.912
+      ],
+      "yawDegrees": 82.81,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.25",
+      "kind": "npc",
+      "archetypeId": "NPC_11748",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        -28.521,
+        16.94,
+        2.62
+      ],
+      "yawDegrees": 89.56,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.26",
+      "kind": "npc",
+      "archetypeId": "NPC_13203",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        -11.338,
+        13.806,
+        -14.75
+      ],
+      "yawDegrees": 31.43,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.27",
+      "kind": "npc",
+      "archetypeId": "NPC_11752",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        -20.745,
+        15.532,
+        -13.789
+      ],
+      "yawDegrees": 53.32,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.28",
+      "kind": "npc",
+      "archetypeId": "NPC_12905",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        -9.844,
+        16.017,
+        -23.396
+      ],
+      "yawDegrees": 27.88,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.29",
+      "kind": "npc",
+      "archetypeId": "NPC_12250",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        -15.589,
+        13.634,
+        -10.774
+      ],
+      "yawDegrees": 50.24,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.30",
+      "kind": "npc",
+      "archetypeId": "NPC_18394",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_2",
+      "behavior": null,
+      "position": [
+        -14.833,
+        15.974,
+        -19.103
+      ],
+      "yawDegrees": 39.13,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.31",
+      "kind": "npc",
+      "archetypeId": "NPC_12917",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        -8.555,
+        15.781,
+        -20.658
+      ],
+      "yawDegrees": 24.72,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.32",
+      "kind": "npc",
+      "archetypeId": "NPC_12249",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_4",
+      "behavior": null,
+      "position": [
+        8.714,
+        15.98,
+        -23.015
+      ],
+      "yawDegrees": -22.78,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.33",
+      "kind": "npc",
+      "archetypeId": "NPC_11592",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        3.488,
+        13.618,
+        -18.122
+      ],
+      "yawDegrees": -10.13,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.34",
+      "kind": "npc",
+      "archetypeId": "NPC_11816",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        -6.016,
+        13.4,
+        -25.534
+      ],
+      "yawDegrees": 6.26,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.35",
+      "kind": "npc",
+      "archetypeId": "NPC_11749",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        3.774,
+        14.241,
+        -22.961
+      ],
+      "yawDegrees": -16.38,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.36",
+      "kind": "npc",
+      "archetypeId": "NPC_12911",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        17.131,
+        13.453,
+        -16.124
+      ],
+      "yawDegrees": -51.44,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.37",
+      "kind": "npc",
+      "archetypeId": "NPC_11748",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        9.492,
+        13.675,
+        -15.304
+      ],
+      "yawDegrees": -28.92,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.38",
+      "kind": "npc",
+      "archetypeId": "NPC_13203",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        14.471,
+        13.752,
+        -11.036
+      ],
+      "yawDegrees": -53.83,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.39",
+      "kind": "npc",
+      "archetypeId": "NPC_11752",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        14.502,
+        16.013,
+        -19.335
+      ],
+      "yawDegrees": -39.84,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.colosseum.spectator.40",
+      "kind": "npc",
+      "archetypeId": "NPC_12905",
+      "encounterId": null,
+      "idleClip": "npc_sc_cheer_loop_1",
+      "behavior": null,
+      "position": [
+        17.349,
+        13.787,
+        -12.373
+      ],
+      "yawDegrees": -53.14,
+      "enabled": true
+    }
+  ]
+}

@@ -844,11 +844,12 @@ namespace
 			0x00, 0x00, 0x00, 0x40,
 			0x00, 0x00, 0x40, 0x40,
 			0x00, 0x00, 0xB4, 0x42,
-			0x01 // voice type
+			0x01, // voice type
+			0x00, 0x00 // empty Waterpang NPC archetype
 		};
 
 		testRunner.Require(
-			payload.size() == 35,
+			payload.size() == 37,
 			"Player Spawned Payload Size");
 
 		testRunner.Require(
@@ -2273,11 +2274,11 @@ namespace
         killed.eResult = DEBUG_KILL_GATE_BOSSES_RESULT::DISABLED; CPacketWriter rejectedKill;
         testRunner.Require(!Write_Message(rejectedKill, killed), "Rejected Gate Kill cannot claim a kill count");
 
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 127u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 129u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS) + 1u,
-			"Protocol 127 combines flight and Debug Esther without renumbering packets");
+			"Protocol 129 combines flight and Debug Esther without renumbering packets");
 		for (const auto esther : { ESTHER_ID::SILLIAN, ESTHER_ID::WEI,
 			ESTHER_ID::BAHUNTUR, ESTHER_ID::NINAV, ESTHER_ID::INANNA })
 		{
@@ -2461,10 +2462,10 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 127u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 129u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
-			"Mario direction packet retains its appended identity in protocol 127");
+			"Mario direction packet retains its appended identity in protocol 129");
 	}
 
 
@@ -3156,11 +3157,11 @@ namespace
 				unchanged.eWorldId == WORLD_ID::BERN && unchanged.eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION,
 				"Invalid Mario return verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 127u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 129u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_RETURN) && Is_Known_Packet_Type(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) == static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) == static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) + 1u,
-			"Protocol 127 preserves Mario return packet identities");
+			"Protocol 129 preserves Mario return packet identities");
 	}
 
 	void Test_DebugMarioJumpProtocol(TEST_RUNNER& testRunner)
@@ -3277,14 +3278,14 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 127u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 129u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) + 1u,
-			"Protocol 127 preserves Mario jump packet identities without renumbering existing peers");
+			"Protocol 129 preserves Mario jump packet identities without renumbering existing peers");
 	}
 
 	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
@@ -3462,14 +3463,14 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 127u,
+			NETWORK_PROTOCOL_VERSION == 129u,
 			"Riding packet identities append without renumbering peers");
 	}
 
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 127u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 127");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 129u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb, ember, Colosseum world and Colosseum queue use protocol 129");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -3841,8 +3842,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 127u,
-			"Protocol 127 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 129u,
+			"Protocol 129 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -3958,8 +3959,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(127u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 127");
+			testRunner.Require(129u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 129");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -4203,8 +4204,8 @@ namespace
         testRunner.Require(!Write_Message(rejectHp, badState), "Guide Trace Rejects HP Outside Unit Interval");
         state.fEvadeScore = std::numeric_limits<float>::quiet_NaN(); CPacketWriter rejectNan;
         testRunner.Require(!Write_Message(rejectNan, state), "Guide Trace Rejects Nonfinite Scores");
-        testRunner.Require(NETWORK_PROTOCOL_VERSION == 127u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
-            Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v127 Peers");
+        testRunner.Require(NETWORK_PROTOCOL_VERSION == 129u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
+            Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v129 Peers");
     }
 
 	void Test_ChatProtocol(TEST_RUNNER& testRunner)
@@ -4439,7 +4440,7 @@ namespace
         testRunner.Require(written && Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
             decoded.iSilver == inventory.iSilver && decoded.iGold == inventory.iGold &&
             decoded.Items.size() == 1u && decoded.Items.front().iQuantity == 3u,
-            "Protocol 127 preserves shop purse alongside inventory items");
+            "Protocol 129 preserves shop purse alongside inventory items");
         auto truncated = writer.Get_Buffer();
         if (!truncated.empty()) truncated.pop_back();
         CPacketReader shortReader{truncated}; decoded.iSilver = 91u; decoded.iGold = 92u;
@@ -4457,7 +4458,7 @@ namespace
             basketReader.Get_RemainingSize() == 0u && basket.strNpcPlacementId == purchase.strNpcPlacementId &&
             basket.Entries.size() == 1u && basket.Entries.front().iQuantity == 2u &&
             Is_Known_Packet_Type(PACKET_TYPE::C2S_BUY_ITEMS),
-            "Protocol 127 preserves the appended shop request");
+            "Protocol 129 preserves the appended shop request");
 
         C2S_SET_EQUIPMENT wear{};
         wear.iRequestSequence = 79u;
@@ -4472,7 +4473,7 @@ namespace
             worn.bEquip && worn.strItemId == wear.strItemId &&
             std::string_view("avatarOutfit") == Equipment_SlotKind(EQUIPMENT_SLOT::AVATAR_OUTFIT) &&
             std::string_view("avatarHead") == Equipment_SlotKind(EQUIPMENT_SLOT::AVATAR_HEAD),
-            "Protocol 127 carries the avatar equipment slots");
+            "Protocol 129 carries the avatar equipment slots");
     }
 	void Test_WorldSnapshotRoundTrip(
 		TEST_RUNNER& testRunner)
@@ -7578,8 +7579,8 @@ namespace
 		}
 
 		testRunner.Require(
-			127u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 126");
+			129u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 129");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -7606,8 +7607,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			127u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 127");
+			129u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 129");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -9021,9 +9022,385 @@ void Test_CharacterRestoreProtocol(TEST_RUNNER& tests)
         Is_Known_Packet_Type(PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT), "Both restore packet directions are registered");
 }
 
+void Test_ColosseumQueueProtocol(TEST_RUNNER& tests)
+{
+	using namespace LostArk::Shared;
+	tests.Require(NETWORK_PROTOCOL_VERSION == 129u &&
+		static_cast<std::uint16_t>(PACKET_TYPE::C2S_COLOSSEUM_QUEUE_JOIN) ==
+			static_cast<std::uint16_t>(PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT) + 1u &&
+		static_cast<std::uint16_t>(PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND) ==
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_COLOSSEUM_QUEUE_JOIN) + 3u &&
+		Is_Known_Packet_Type(PACKET_TYPE::C2S_COLOSSEUM_QUEUE_JOIN) &&
+		Is_Known_Packet_Type(PACKET_TYPE::C2S_COLOSSEUM_QUEUE_LEAVE) &&
+		Is_Known_Packet_Type(PACKET_TYPE::S2C_COLOSSEUM_QUEUE_STATE) &&
+		Is_Known_Packet_Type(PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND),
+		"Colosseum queue packets are appended after the restore result and known");
+
+	C2S_COLOSSEUM_QUEUE_JOIN join{};
+	join.iRequestSequence = 5u;
+	join.strNpcPlacementId = "npc.bern.25184_1.2";
+	CPacketWriter joinWriter;
+	C2S_COLOSSEUM_QUEUE_JOIN decodedJoin{};
+	{
+		const bool written = Write_Message(joinWriter, join);
+		CPacketReader reader{ joinWriter.Get_Buffer() };
+		tests.Require(written && Read_Message(reader, decodedJoin) && 0u == reader.Get_RemainingSize() &&
+			5u == decodedJoin.iRequestSequence && join.strNpcPlacementId == decodedJoin.strNpcPlacementId,
+			"Colosseum queue join round trips");
+	}
+	C2S_COLOSSEUM_QUEUE_JOIN invalidJoin{};
+	CPacketWriter invalidJoinWriter;
+	tests.Require(!Write_Message(invalidJoinWriter, invalidJoin), "Colosseum queue join needs a sequence and an NPC id");
+
+	C2S_COLOSSEUM_QUEUE_LEAVE leave{};
+	leave.iRequestSequence = 6u;
+	CPacketWriter leaveWriter;
+	{
+		const bool written = Write_Message(leaveWriter, leave);
+		CPacketReader reader{ leaveWriter.Get_Buffer() };
+		C2S_COLOSSEUM_QUEUE_LEAVE decoded{};
+		tests.Require(written && Read_Message(reader, decoded) && 0u == reader.Get_RemainingSize() &&
+			6u == decoded.iRequestSequence, "Colosseum queue leave round trips");
+	}
+
+	for (const COLOSSEUM_QUEUE_STATE state : { COLOSSEUM_QUEUE_STATE::WAITING,
+		COLOSSEUM_QUEUE_STATE::LEFT, COLOSSEUM_QUEUE_STATE::REJECTED })
+	{
+		S2C_COLOSSEUM_QUEUE_STATE message{};
+		message.eState = state;
+		message.iQueuedCount = 2u;
+		message.iRequiredCount = 4u;
+		CPacketWriter writer;
+		const bool written = Write_Message(writer, message);
+		CPacketReader reader{ writer.Get_Buffer() };
+		S2C_COLOSSEUM_QUEUE_STATE decoded{};
+		tests.Require(written && Read_Message(reader, decoded) && 0u == reader.Get_RemainingSize() &&
+			state == decoded.eState && 2u == decoded.iQueuedCount && 4u == decoded.iRequiredCount,
+			"Colosseum queue state round trips");
+	}
+	S2C_COLOSSEUM_QUEUE_STATE invalidState{};
+	CPacketWriter invalidStateWriter;
+	tests.Require(!Write_Message(invalidStateWriter, invalidState), "Colosseum queue state rejects an unknown state");
+
+	S2C_COLOSSEUM_MATCH_FOUND match{};
+	match.iLocalIndex = 2u;
+	match.Participants = {
+		{ "Alpha", CHARACTER_CLASS_ID::ARTIST, 0u },
+		{ "Beta", CHARACTER_CLASS_ID::WARLORD, 1u },
+		{ "Gamma", CHARACTER_CLASS_ID::SLAYER, 0u },
+		{ "Delta", CHARACTER_CLASS_ID::LANCE_MASTER, 1u } };
+	CPacketWriter matchWriter;
+	{
+		const bool written = Write_Message(matchWriter, match);
+		CPacketReader reader{ matchWriter.Get_Buffer() };
+		S2C_COLOSSEUM_MATCH_FOUND decoded{};
+		tests.Require(written && Read_Message(reader, decoded) && 0u == reader.Get_RemainingSize() &&
+			2u == decoded.iLocalIndex && 4u == decoded.Participants.size() &&
+			"Gamma" == decoded.Participants[2].strNickname &&
+			CHARACTER_CLASS_ID::SLAYER == decoded.Participants[2].eCharacterClass &&
+			1u == decoded.Participants[3].iTeam,
+			"Colosseum match roster round trips with each player's team");
+	}
+	S2C_COLOSSEUM_MATCH_FOUND badIndex = match;
+	badIndex.iLocalIndex = 4u;
+	CPacketWriter badIndexWriter;
+	tests.Require(!Write_Message(badIndexWriter, badIndex), "Colosseum match roster rejects a local index outside the list");
+	S2C_COLOSSEUM_MATCH_FOUND badTeam = match;
+	badTeam.Participants[0].iTeam = 2u;
+	CPacketWriter badTeamWriter;
+	tests.Require(!Write_Message(badTeamWriter, badTeam), "Colosseum match roster rejects a team other than 0 or 1");
+	S2C_COLOSSEUM_MATCH_FOUND empty{};
+	CPacketWriter emptyWriter;
+	tests.Require(!Write_Message(emptyWriter, empty), "Colosseum match roster rejects an empty list");
+	S2C_COLOSSEUM_MATCH_FOUND solo{};
+	solo.Participants = { { "Alpha", CHARACTER_CLASS_ID::ARTIST, 0u } };
+	CPacketWriter soloWriter;
+	tests.Require(Write_Message(soloWriter, solo), "Colosseum match roster allows one player (Debug builds start with one)");
+}
+
+
+void Test_Integrated129Protocol(TEST_RUNNER& tests)
+{
+    // Independent 127 branches reused IDs. Pin every pre-existing identity and
+    // the single integrated append order instead of trusting enum merge order.
+    constexpr std::array<PACKET_TYPE, 120> wireIdentities = {
+        PACKET_TYPE::INVALID,
+        PACKET_TYPE::C2S_ENTER_WORLD,
+        PACKET_TYPE::S2C_ENTER_ACCEPTED,
+        PACKET_TYPE::S2C_ENTER_REJECTED,
+        PACKET_TYPE::S2C_PLAYER_SPAWNED,
+        PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED,
+        PACKET_TYPE::C2S_SPAWN_WORLD_ENTITY,
+        PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT,
+        PACKET_TYPE::C2S_MOVE,
+        PACKET_TYPE::C2S_USE_SKILL,
+        PACKET_TYPE::C2S_RELEASE_SKILL,
+        PACKET_TYPE::C2S_UPDATE_SKILL_AIM,
+        PACKET_TYPE::C2S_USE_ESTHER_SKILL,
+        PACKET_TYPE::C2S_REVIVE_PLAYER,
+        PACKET_TYPE::C2S_DEBUG_KILL_SELF,
+        PACKET_TYPE::C2S_CHANGE_CHARACTER_CLASS,
+        PACKET_TYPE::S2C_CHARACTER_CLASS_CHANGE_RESULT,
+        PACKET_TYPE::S2C_WORLD_SNAPSHOT,
+        PACKET_TYPE::C2S_CHAT,
+        PACKET_TYPE::S2C_CHAT,
+        PACKET_TYPE::S2C_PLAYER_DESPAWNED,
+        PACKET_TYPE::S2C_WORLD_ENTITY_DESPAWNED,
+        PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC,
+        PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA,
+        PACKET_TYPE::S2C_ENCOUNTER_PROP_SYNC,
+        PACKET_TYPE::C2S_VALTAN_AUDITION_REQUEST,
+        PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT,
+        PACKET_TYPE::C2S_DEBUG_GIVE_ITEM,
+        PACKET_TYPE::S2C_INVENTORY_SNAPSHOT,
+        PACKET_TYPE::C2S_USE_ITEM,
+        PACKET_TYPE::C2S_DESPAWN_ALL_WORLD_ENTITIES,
+        PACKET_TYPE::C2S_CONFIRM_NPC_ENTRY,
+        PACKET_TYPE::S2C_COMBAT_OBJECT_SPAWNED,
+        PACKET_TYPE::S2C_COMBAT_OBJECT_DESPAWNED,
+        PACKET_TYPE::S2C_VALTAN_AUDITION_LIFECYCLE,
+        PACKET_TYPE::C2S_DATA_REVISION_PREPARE_REQUEST,
+        PACKET_TYPE::S2C_DATA_REVISION_PREPARE,
+        PACKET_TYPE::C2S_DATA_REVISION_PREPARE_RESPONSE,
+        PACKET_TYPE::S2C_DATA_REVISION_RESULT,
+        PACKET_TYPE::C2S_VALTAN_DECISION_TRACE_QUERY,
+        PACKET_TYPE::S2C_VALTAN_DECISION_TRACE_RESPONSE,
+        PACKET_TYPE::C2S_DEBUG_VALTAN_PATTERN_FLOW_START,
+        PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT,
+        PACKET_TYPE::C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT,
+        PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE,
+        PACKET_TYPE::C2S_PARTY_INVITE,
+        PACKET_TYPE::S2C_PARTY_INVITE_RECEIVED,
+        PACKET_TYPE::C2S_PARTY_INVITE_RESPOND,
+        PACKET_TYPE::S2C_PARTY_ROSTER,
+        PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT,
+        PACKET_TYPE::C2S_RETURN_TO_BERN,
+        PACKET_TYPE::S2C_COMBAT_OBJECT_PRESENTATION_EVENT,
+        PACKET_TYPE::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA,
+        PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_PLACEMENT,
+        PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY,
+        PACKET_TYPE::C2S_RAID_ENTRY_PROPOSE,
+        PACKET_TYPE::S2C_RAID_ENTRY_PROMPT,
+        PACKET_TYPE::C2S_RAID_ENTRY_RESPOND,
+        PACKET_TYPE::S2C_RAID_ENTRY_VOTE,
+        PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST,
+        PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT,
+        PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE,
+        PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_POSITION,
+        PACKET_TYPE::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT,
+        PACKET_TYPE::C2S_DEBUG_SET_MADNESS_FORM,
+        PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT,
+        PACKET_TYPE::S2C_INTERACT_PROMPT,
+        PACKET_TYPE::C2S_INTERACT_TRIGGER,
+        PACKET_TYPE::C2S_INTERACTION_SLOT,
+        PACKET_TYPE::C2S_DEBUG_SET_KOUKU_HUD_MODE,
+        PACKET_TYPE::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT,
+        PACKET_TYPE::S2C_SCENE_PROFILE_APPLY,
+        PACKET_TYPE::C2S_DEBUG_MARIO_JUMP,
+        PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT,
+        PACKET_TYPE::C2S_MARIO_MOVE,
+        PACKET_TYPE::C2S_DEBUG_WORLD_PLAYBACK,
+        PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT,
+        PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE,
+        PACKET_TYPE::C2S_DEBUG_BINGO_FILL,
+        PACKET_TYPE::C2S_DEBUG_BINGO_BOMB,
+        PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER,
+        PACKET_TYPE::C2S_SET_VEHICLE_RIDING,
+        PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT,
+        PACKET_TYPE::C2S_MARIO_RETURN,
+        PACKET_TYPE::S2C_MARIO_RETURN_RESULT,
+        PACKET_TYPE::C2S_SET_HONOR_TITLE,
+        PACKET_TYPE::S2C_SET_HONOR_TITLE_RESULT,
+        PACKET_TYPE::C2S_USE_SQUAREHOLE,
+        PACKET_TYPE::C2S_GATE_PROGRESS_PROPOSE,
+        PACKET_TYPE::C2S_GATE_PROGRESS_RESPOND,
+        PACKET_TYPE::S2C_GATE_PROGRESS_STATE,
+        PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST,
+        PACKET_TYPE::S2C_KOUKUSAYDON_RAID_STATE,
+        PACKET_TYPE::S2C_RAID_MVP_RESULT,
+        PACKET_TYPE::C2S_SET_EQUIPMENT,
+        PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS,
+        PACKET_TYPE::C2S_DEBUG_USE_ESTHER,
+        PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK,
+        PACKET_TYPE::C2S_DEBUG_KILL_GATE_BOSSES,
+        PACKET_TYPE::S2C_DEBUG_KILL_GATE_BOSSES_RESULT,
+        PACKET_TYPE::C2S_SET_COOLDOWN_MODE,
+        PACKET_TYPE::S2C_SET_COOLDOWN_MODE_RESULT,
+        PACKET_TYPE::C2S_ROOM_PING,
+        PACKET_TYPE::S2C_ROOM_PING,
+        PACKET_TYPE::S2C_GUIDE_PROMPT,
+        PACKET_TYPE::S2C_GUIDE_STATE,
+        PACKET_TYPE::C2S_BUY_ITEMS,
+        PACKET_TYPE::C2S_BALANCE_QUERY,
+        PACKET_TYPE::S2C_BALANCE_SNAPSHOT,
+        PACKET_TYPE::C2S_BALANCE_PATCH,
+        PACKET_TYPE::S2C_BALANCE_RESULT,
+        PACKET_TYPE::C2S_RESTORE_CHARACTER,
+        PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT,
+        PACKET_TYPE::C2S_COLOSSEUM_QUEUE_JOIN,
+        PACKET_TYPE::C2S_COLOSSEUM_QUEUE_LEAVE,
+        PACKET_TYPE::S2C_COLOSSEUM_QUEUE_STATE,
+        PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND,
+        PACKET_TYPE::C2S_REPAIR_EQUIPMENT,
+        PACKET_TYPE::C2S_MAHARAKA_AI_TUNING,
+        PACKET_TYPE::S2C_MAHARAKA_AI_TUNING
+    };
+    bool identities = NETWORK_PROTOCOL_VERSION == 129u && !Is_Known_Packet_Type(PACKET_TYPE::INVALID);
+    for (std::size_t i = 1u; i < wireIdentities.size(); ++i)
+        identities &= static_cast<std::uint16_t>(wireIdentities[i]) == i && Is_Known_Packet_Type(wireIdentities[i]);
+    tests.Require(identities, "Integrated 129 preserves packet IDs 1..112 and fixes all seven appended IDs");
+    tests.Require(Is_Known_World_Id(WORLD_ID::COLOSSEUM) &&
+        static_cast<std::uint16_t>(WORLD_ID::COLOSSEUM) == 7u &&
+        static_cast<std::uint8_t>(PLAYER_CONTROL_KIND::WATERPANG_AI) == 2u,
+        "Integrated 129 preserves Colosseum world 7 and Waterpang actor kind 2");
+
+    bool spawnContract = true;
+    std::vector<std::uint8_t> botBytes;
+    S2C_PLAYER_SPAWNED bot;
+    bot.iPlayerId = 13u; bot.iNetEntityId = 17u;
+    bot.eCharacterClass = CHARACTER_CLASS_ID::ARTIST; bot.strNickName = "Waterpang";
+    bot.fPositionX = 1.f; bot.fPositionY = 2.f; bot.fPositionZ = 3.f; bot.fYawDegrees = 90.f;
+    for (const auto kind : { PLAYER_CONTROL_KIND::HUMAN, PLAYER_CONTROL_KIND::GUIDE_AI, PLAYER_CONTROL_KIND::WATERPANG_AI })
+        for (const std::uint8_t voice : { MIN_VOICE_TYPE, MAX_VOICE_TYPE })
+        {
+            bot.eControlKind = kind; bot.iVoiceType = voice;
+            bot.strWaterpangNpcArchetypeId = kind == PLAYER_CONTROL_KIND::WATERPANG_AI ? "NPC_BEDA" : "";
+            CPacketWriter writer; const bool written = Write_Message(writer, bot);
+            CPacketReader reader{writer.Get_Buffer()}; S2C_PLAYER_SPAWNED decoded;
+            spawnContract &= written && Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
+                decoded.eControlKind == kind && decoded.iVoiceType == voice &&
+                decoded.strWaterpangNpcArchetypeId == bot.strWaterpangNpcArchetypeId &&
+                decoded.strNickName == bot.strNickName;
+            if (kind == PLAYER_CONTROL_KIND::WATERPANG_AI && voice == MAX_VOICE_TYPE)
+                botBytes = writer.Get_Buffer();
+        }
+    tests.Require(spawnContract && !botBytes.empty(), "Human Guide and Waterpang spawn carry voice 1 and 8 with symmetric NPC suffixes");
+    bool badSpawn = true;
+    for (const std::uint8_t voice : { std::uint8_t{0}, std::uint8_t{9} })
+    { auto bad = bot; bad.iVoiceType = voice; CPacketWriter writer; badSpawn &= !Write_Message(writer, bad); }
+    { auto bad = bot; bad.eControlKind = PLAYER_CONTROL_KIND::HUMAN; CPacketWriter writer; badSpawn &= !Write_Message(writer, bad); }
+    { auto bad = bot; bad.strWaterpangNpcArchetypeId = "../invalid"; CPacketWriter writer; badSpawn &= !Write_Message(writer, bad); }
+    const auto rejectsSpawnWithoutMutation = [](const std::vector<std::uint8_t>& payload) {
+        S2C_PLAYER_SPAWNED keep; keep.iPlayerId = 999u; keep.iVoiceType = 7u;
+        keep.strNickName = "keep"; keep.strWaterpangNpcArchetypeId = "keep.npc";
+        CPacketReader reader{payload};
+        return !Read_Message(reader, keep) && keep.iPlayerId == 999u && keep.iVoiceType == 7u &&
+            keep.strNickName == "keep" && keep.strWaterpangNpcArchetypeId == "keep.npc";
+    };
+    for (std::size_t count = 0u; count < botBytes.size(); ++count)
+        badSpawn &= rejectsSpawnWithoutMutation(std::vector<std::uint8_t>(botBytes.begin(), botBytes.begin() + count));
+    if (!botBytes.empty())
+    {
+        auto badVoice = botBytes; badVoice[28u + bot.strNickName.size()] = 0u;
+        badSpawn &= rejectsSpawnWithoutMutation(badVoice);
+        auto badKind = botBytes; badKind[9u] = static_cast<std::uint8_t>(PLAYER_CONTROL_KIND::HUMAN);
+        badSpawn &= rejectsSpawnWithoutMutation(badKind);
+    }
+    tests.Require(badSpawn, "Invalid voice NPC kind or truncated combined spawn preserves the previous object");
+
+    S2C_INVENTORY_SNAPSHOT inventory;
+    inventory.iRequestSequence = 31u; inventory.iSilver = 123u; inventory.iGold = 456u;
+    inventory.DurabilityPercent = {0u, 1u, 37u, 50u, 99u, 100u};
+    CPacketWriter inventoryWriter; bool durability = Write_Message(inventoryWriter, inventory);
+    auto inventoryBytes = inventoryWriter.Get_Buffer();
+    CPacketReader inventoryReader{inventoryBytes}; S2C_INVENTORY_SNAPSHOT decodedInventory;
+    durability &= inventoryBytes.size() == 20u && Read_Message(inventoryReader, decodedInventory) &&
+        inventoryReader.Get_RemainingSize() == 0u && decodedInventory.DurabilityPercent == inventory.DurabilityPercent &&
+        decodedInventory.iSilver == inventory.iSilver && decodedInventory.iGold == inventory.iGold;
+    auto invalidInventory = inventory; invalidInventory.DurabilityPercent[2] = 101u;
+    CPacketWriter rejectedInventory; durability &= !Write_Message(rejectedInventory, invalidInventory);
+    const auto rejectsInventory = [](const std::vector<std::uint8_t>& bytes) {
+        S2C_INVENTORY_SNAPSHOT keep; keep.iSilver = 999u; keep.DurabilityPercent.fill(77u);
+        CPacketReader reader{bytes};
+        return !Read_Message(reader, keep) && keep.iSilver == 999u &&
+            std::all_of(keep.DurabilityPercent.begin(), keep.DurabilityPercent.end(), [](auto v) {return v == 77u;});
+    };
+    for (std::size_t count = 0u; count < inventoryBytes.size(); ++count)
+        durability &= rejectsInventory(std::vector<std::uint8_t>(inventoryBytes.begin(), inventoryBytes.begin() + count));
+    if (!inventoryBytes.empty()) {auto invalid = inventoryBytes; invalid.back() = 101u; durability &= rejectsInventory(invalid);}
+    tests.Require(durability, "All six durability bytes round trip and malformed inventory preserves purse and wear");
+
+    bool repair = true;
+    for (const bool all : {false, true})
+    {
+        C2S_REPAIR_EQUIPMENT request; request.iRequestSequence = 47u; request.bAllSlots = all;
+        CPacketWriter writer; repair &= Write_Message(writer, request) && writer.Get_Buffer().size() == 5u;
+        CPacketReader reader{writer.Get_Buffer()}; C2S_REPAIR_EQUIPMENT decoded;
+        repair &= Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u && decoded.iRequestSequence == 47u && decoded.bAllSlots == all;
+        auto bytes = writer.Get_Buffer(); if (bytes.size() == 5u) bytes[4] = 2u;
+        CPacketReader badReader{bytes}; decoded.iRequestSequence = 999u;
+        repair &= !Read_Message(badReader, decoded) && decoded.iRequestSequence == 999u;
+        for (std::size_t count = 0u; count < writer.Get_Buffer().size(); ++count)
+        {
+            auto shortBytes = writer.Get_Buffer(); shortBytes.resize(count);
+            CPacketReader shortReader{shortBytes}; decoded.iRequestSequence = 999u;
+            repair &= !Read_Message(shortReader, decoded) && decoded.iRequestSequence == 999u;
+        }
+        request.iRequestSequence = 0u; CPacketWriter zero; repair &= !Write_Message(zero, request);
+    }
+    tests.Require(repair, "Repair packet keeps five-byte layout rejects zero sequence invalid bool and truncation");
+
+    const auto sameTuning = [](const MAHARAKA_AI_TUNING& a, const MAHARAKA_AI_TUNING& b) {
+        return a.iRevision == b.iRevision && a.iBotCount == b.iBotCount && a.iDecisionTicks == b.iDecisionTicks &&
+            a.iMoveRetargetTicks == b.iMoveRetargetTicks && a.iSkillIntervalTicks == b.iSkillIntervalTicks &&
+            a.fTargetRangeM == b.fTargetRangeM && a.fMoveProbability == b.fMoveProbability &&
+            a.fAggression == b.fAggression && a.fKnockbackRangeM == b.fKnockbackRangeM && a.iKnockbackMs == b.iKnockbackMs;
+    };
+    bool tuning = true;
+    for (const auto operation : { MAHARAKA_AI_OPERATION::GET, MAHARAKA_AI_OPERATION::APPLY, MAHARAKA_AI_OPERATION::SAVE })
+    {
+        C2S_MAHARAKA_AI_TUNING request; request.iRequestSequence = 51u; request.iExpectedRevision = 3u;
+        request.eOperation = operation; request.Tuning.iRevision = 4u; request.Tuning.iBotCount = 7u;
+        CPacketWriter writer; tuning &= Write_Message(writer, request) && writer.Get_Buffer().size() == 49u;
+        CPacketReader reader{writer.Get_Buffer()}; C2S_MAHARAKA_AI_TUNING decoded;
+        tuning &= Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u && decoded.iRequestSequence == 51u &&
+            decoded.iExpectedRevision == 3u && decoded.eOperation == operation && sameTuning(decoded.Tuning, request.Tuning);
+        for (std::size_t count = 0u; count < writer.Get_Buffer().size(); ++count)
+        {
+            auto bytes = writer.Get_Buffer(); bytes.resize(count); CPacketReader shortReader{bytes}; decoded.iRequestSequence = 999u;
+            tuning &= !Read_Message(shortReader, decoded) && decoded.iRequestSequence == 999u;
+        }
+        auto badBytes = writer.Get_Buffer(); if (badBytes.size() > 8u) badBytes[8] = 3u;
+        CPacketReader badReader{badBytes}; decoded.iRequestSequence = 999u;
+        tuning &= !Read_Message(badReader, decoded) && decoded.iRequestSequence == 999u;
+        request.iRequestSequence = 0u; CPacketWriter zero; tuning &= !Write_Message(zero, request);
+    }
+    // Bad numeric settings reach the Server's typed INVALID_VALUE response.
+    // The request codec validates framing, operation and sequence, not gameplay ranges.
+    C2S_MAHARAKA_AI_TUNING badValues; badValues.iRequestSequence = 52u;
+    badValues.eOperation = MAHARAKA_AI_OPERATION::APPLY; badValues.Tuning.fTargetRangeM = std::numeric_limits<float>::quiet_NaN();
+    CPacketWriter numericWriter; tuning &= Write_Message(numericWriter, badValues);
+    CPacketReader numericReader{numericWriter.Get_Buffer()}; C2S_MAHARAKA_AI_TUNING numericDecoded;
+    tuning &= Read_Message(numericReader, numericDecoded) && numericReader.Get_RemainingSize() == 0u && !Is_Valid_MaharakaAITuning(numericDecoded.Tuning);
+    for (const auto result : { MAHARAKA_AI_RESULT::ACCEPTED, MAHARAKA_AI_RESULT::REVISION_CONFLICT,
+        MAHARAKA_AI_RESULT::INVALID_VALUE, MAHARAKA_AI_RESULT::WRONG_WORLD, MAHARAKA_AI_RESULT::SAVE_FAILED })
+    {
+        S2C_MAHARAKA_AI_TUNING response; response.iRequestSequence = 53u; response.eResult = result;
+        response.strStatus = "response"; response.Tuning.iBotCount = 9u;
+        CPacketWriter writer; tuning &= Write_Message(writer, response) && writer.Get_Buffer().size() == 55u;
+        CPacketReader reader{writer.Get_Buffer()}; S2C_MAHARAKA_AI_TUNING decoded;
+        tuning &= Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u && decoded.eResult == result &&
+            decoded.strStatus == response.strStatus && sameTuning(decoded.Tuning, response.Tuning);
+        for (std::size_t count = 0u; count < writer.Get_Buffer().size(); ++count)
+        {
+            auto bytes = writer.Get_Buffer(); bytes.resize(count); CPacketReader shortReader{bytes}; decoded.iRequestSequence = 999u;
+            tuning &= !Read_Message(shortReader, decoded) && decoded.iRequestSequence == 999u;
+        }
+        auto badBytes = writer.Get_Buffer(); if (badBytes.size() > 4u) badBytes[4] = 5u;
+        CPacketReader badReader{badBytes}; decoded.iRequestSequence = 999u;
+        tuning &= !Read_Message(badReader, decoded) && decoded.iRequestSequence == 999u;
+        response.Tuning.iBotCount = 21u; CPacketWriter invalid; tuning &= !Write_Message(invalid, response);
+    }
+    tests.Require(tuning, "Waterpang tuning preserves all fields and typed invalid-value handling with transactional decoding");
+}
+
 int main(const int argumentCount, char* arguments[])
 {
 	TEST_RUNNER testRunner{};
+    if (argumentCount == 2 && std::string_view(arguments[1]) == "--integrated-129-only")
+    { Test_Integrated129Protocol(testRunner); Test_ColosseumQueueProtocol(testRunner); return testRunner.iFailureCount ? 1 : 0; }
+    if (argumentCount == 2 && std::string_view(arguments[1]) == "--colosseum-queue-only")
+    { Test_ColosseumQueueProtocol(testRunner); return testRunner.iFailureCount ? 1 : 0; }
     if (argumentCount == 2 && std::string_view(arguments[1]) == "--character-restore-only")
     { Test_CharacterRestoreProtocol(testRunner); return testRunner.iFailureCount ? 1 : 0; }
     if (argumentCount == 2 && std::string_view(arguments[1]) == "--battle-items-only")
@@ -9135,6 +9512,8 @@ int main(const int argumentCount, char* arguments[])
 	Test_KoukuSaydonPatternAuditionProtocol(testRunner);
 	Test_GuideCompanionProtocol(testRunner);
 	Test_ChatProtocol(testRunner);
+	Test_ColosseumQueueProtocol(testRunner);
+	Test_Integrated129Protocol(testRunner);
 
 	Test_StreamFraming(testRunner);
 

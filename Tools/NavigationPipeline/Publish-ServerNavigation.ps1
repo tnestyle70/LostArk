@@ -8,7 +8,7 @@ param(
     [string]$ClientOutputRoot = 'Client/Bin/DataFiles/Navigation',
     [ValidateSet('', 'LV_LUT_HEARTRB_ED', 'LV_LUT_MIDNIGHTC_ED',
         'LV_DEV_TRAINING_GROUND', 'LV_LOBBY_CLASSSELECT_SL00', 'LV_BER_BERNCASTLE',
-        'LV_OCN_EVENTIS_MHP')]
+        'LV_OCN_EVENTIS_MHP', 'LV_PVP_COLOSSEUM')]
     [string]$AreaId = ''
 )
 
@@ -1355,6 +1355,15 @@ $gridFactories = [ordered]@{
     'LV_OCN_EVENTIS_MHP' = { New-UniformNavigationGrid `
         -RelativeAuthoringPath 'Data/Navigation/LV_OCN_EVENTIS_MHP.navgrid.json' `
         -RuntimeMaximumStepHeight 0.6 }
+    # The Colosseum arena floor is one flat octagonal platform at 12.64 m baked from the
+    # placed floor meshes (Data/Navigation/LV_PVP_COLOSSEUM.navsource); the surrounding pit,
+    # stands and holding pens are not walkable.
+    'LV_PVP_COLOSSEUM' = { Convert-NavigationAuthoringGrid `
+        -RelativeSourcePath 'Data/Navigation/LV_PVP_COLOSSEUM.navsource' `
+        -RelativePaintPath 'Data/Navigation/LV_PVP_COLOSSEUM.navpaint' `
+        -MaximumStepHeight 0.6 `
+        -RuntimeMaximumStepHeight 0.6 `
+        -RequireSingleComponent }
 }
 $grids = @(foreach ($factory in $gridFactories.GetEnumerator()) {
     if (-not $AreaId -or $factory.Key -eq $AreaId) { & $factory.Value }

@@ -40,6 +40,7 @@
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "Level_Bern.h"
+#include "CharacterPortraitRenderer.h"
 #include "Level_Development.h"
 #include "Gameplay/MaharakaWaterpangContract.h"
 #include "Level_Lobby.h"
@@ -58,6 +59,7 @@
 #include "ProfilerTool.h"
 #include "AnimationTargetService.h"
 #include "Character.h"
+#include "EffectFailureDiagnostic.h"
 #include "Presentation_Manager.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
@@ -2012,7 +2014,10 @@ void CMainApp::Sync_CinematicUI()
 		(arena && currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
 		 arena->Is_CinematicInputBlocked()) ||
 		(valtanArena && currentLevel == ETOUI(LEVEL::VALTAN_ARENA) &&
-		 valtanArena->Is_CinematicHUDSuppressed());
+		 valtanArena->Is_CinematicHUDSuppressed()) ||
+		(currentLevel == ETOUI(LEVEL::COLOSSEUM) &&
+		 CLevel_Development::Get_Active(LEVEL::COLOSSEUM) &&
+		 CLevel_Development::Get_Active(LEVEL::COLOSSEUM)->Is_ColosseumIntroActive());
 	auto& router = CUIInputRouter::Get();
 	if (suppressed && !router.Is_CinematicSuppressed())
 	{
@@ -3914,6 +3919,89 @@ void CMainApp::Register_UITextOccluders()
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::MODAL, 0.f, 0.f, vViewport.x, vViewport.y);
 }
 
+/* The Colosseum match loading screen shows the player's own customized 3D character. The Bern
+character only lives until the level change, so on the last frame it is rendered (the transfer
+request is already pending, the switch happens at the next Update) it is drawn once into an owned
+target and the target is handed to the loading screen. Any other transition, or no character, leaves
+nothing behind and the loading screen keeps its 2D class illustration. */
+void CMainApp::Render_ColosseumTransferPortrait()
+{
+	const uint32_t iLevel = CGameInstance::Get().Get_CurrentLevelID();
+	if (ETOUI(LEVEL::BERN) != iLevel)
+	{
+		/* Kept while LOADING shows it; dropped once any other level (or the lobby recovery) runs. */
+		if (ETOUI(LEVEL::LOADING) != iLevel)
+			CLevelTransitionService::Set_TransferPortraitSRV(nullptr);
+		return;
+	}
+
+	LEVEL_TRANSITION_REQUEST Request;
+	if (!CLevelTransitionService::Peek_Pending(Request) ||
+		LEVEL_TRANSITION_PHASE::LOAD != Request.ePhase ||
+		LEVEL::COLOSSEUM != Request.eTargetLevel)
+		return;
+
+	CLevel_Bern* pBern = CLevel_Bern::Get_Active();
+	const shared_ptr<CCharacter> pCharacter =
+		nullptr != pBern ? pBern->Get_LocalCharacter() : nullptr;
+	const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
+	if (nullptr == pCharacter || vViewport.x <= 0.f || vViewport.y <= 0.f)
+	{
+		CLevelTransitionService::Set_TransferPortraitSRV(nullptr);
+		OutputDebugStringA("[Colosseum.MatchLoading] portrait snapshot skipped: no local character\n");
+		return;
+	}
+	if (nullptr == m_pTransferPortrait)
+		m_pTransferPortrait = std::make_unique<CCharacterPortraitRenderer>(m_pDevice, m_pContext);
+
+	/* MatchLoading_TeamA_Portrait: 373.333 x 324 of the 1280 x 720 layout. */
+	const uint32_t iWidth = static_cast<uint32_t>(std::lround(373.333f * vViewport.x / 1280.f));
+	const uint32_t iHeight = static_cast<uint32_t>(std::lround(324.f * vViewport.y / 720.f));
+	/* Framing measured off the retail loading avatar (capture 171625, panel 499 x 433 px): hair top at
+	   10.5 % and the eyes at 25.4 % of the panel height, the panel spanning 1.03 x the eye height, the
+	   body centred at 72 % of the width and turned about 18 degrees. Everything follows the character's
+	   own eye height because the classes differ (rig eyes: Lance Master 1.04 m, Artist 0.86 m x 1.05);
+	   the earlier fixed 1.3 m span assumed a 1.7 m body and left these 1.2 m characters small and low. */
+	/* Round 3 (capture 052127 retail vs 211807 ours, both measured): the head is 25 % of the name-to-label band
+	   in retail against 17 % here, so the span shrinks to 0.71 x eye height (x1.45 zoom) with the crown at the
+	   slot top; the body is on the view axis (no lateral shift) and the camera no longer orbits, which had turned
+	   the body 18 degrees to the viewer's left. */
+	constexpr f32_t PORTRAIT_SPAN_PER_EYE = 0.71f;
+	constexpr f32_t PORTRAIT_LOOK_PER_EYE = 0.767f;
+	constexpr f32_t PORTRAIT_FOV_DEGREES = 30.f;
+	constexpr f32_t PORTRAIT_YAW_DEGREES = 0.f;
+	constexpr f32_t PORTRAIT_SHIFT_RIGHT = 0.f;
+	const f32_t fScale = (std::max)(pCharacter->Get_PresentationScale(), 0.1f);
+	f32_t fEyeHeight = 0.f;
+	if (!CCharacterPortraitRenderer::Try_Measure_EyeHeight(*pCharacter, fEyeHeight))
+		fEyeHeight = 1.04f * fScale;
+	const f32_t fSpan = PORTRAIT_SPAN_PER_EYE * fEyeHeight;
+	CCharacterPortraitRenderer::CAMERA Camera{};
+	Camera.fFovDegrees = PORTRAIT_FOV_DEGREES;
+	Camera.fLookHeight = PORTRAIT_LOOK_PER_EYE * fEyeHeight;
+	Camera.fEyeHeight = Camera.fLookHeight;
+	Camera.fDistance = fSpan / (2.f * std::tan(XMConvertToRadians(Camera.fFovDegrees) * 0.5f));
+	Camera.fYawDegrees = PORTRAIT_YAW_DEGREES;
+	Camera.fLateralOffset = -PORTRAIT_SHIFT_RIGHT * fSpan * static_cast<f32_t>(iWidth) / static_cast<f32_t>(iHeight);
+	/* Retail poses the loading avatar unarmed but in its gear (same as the award page). The
+	   Bern character is destroyed by the level change that follows this frame. */
+	pCharacter->Set_WeaponPartsVisible(false);
+	const HRESULT hResult = m_pTransferPortrait->Render(pCharacter, iWidth, iHeight, Camera, 0u, 0u);
+	{
+		char szLog[256];
+		sprintf_s(szLog, "portrait=3d eyeWorld=%.3f dist=%.2f camH=%.2f look=%.2f fov=%.0f yaw=%.0f lateral=%.3f scale=%.2f rt=%ux%u\n",
+			fEyeHeight, Camera.fDistance, Camera.fEyeHeight, Camera.fLookHeight, Camera.fFovDegrees,
+			Camera.fYawDegrees, Camera.fLateralOffset, fScale, iWidth, iHeight);
+		OutputDebugStringA("[Colosseum.MatchLoading] ");
+		OutputDebugStringA(szLog);
+		Write_EffectFailureDiagnostic("Colosseum.MatchLoading", szLog);
+	}
+	CLevelTransitionService::Set_TransferPortraitSRV(
+		S_OK == hResult ? m_pTransferPortrait->Get_SRV() : nullptr);
+	if (S_OK != hResult)
+		OutputDebugStringA("[Colosseum.MatchLoading] portrait snapshot failed: render returned not-OK\n");
+}
+
 HRESULT CMainApp::Render()
 {
     const auto recordRenderFailure = [this](const char* stage, HRESULT result) noexcept
@@ -3966,6 +4054,7 @@ HRESULT CMainApp::Render()
 		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
 		pValtan->Render_MvpPortraits();
 	}
+	Render_ColosseumTransferPortrait();
 
 	CEffectPresentationService::Submit_VisibleLevelPresentations();
 
@@ -8759,6 +8848,7 @@ void CMainApp::Update_WorldHealthBars(const f32_t fTimeDelta)
 		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
 		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
 		currentLevel == ETOUI(LEVEL::MAHARAKA) ||
+		currentLevel == ETOUI(LEVEL::COLOSSEUM) ||
 		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA);
 	const bool_t characterPresentation = currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) &&
 		CLevel_CharacterSelect::Get_Active() && CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen();
@@ -10648,7 +10738,8 @@ HRESULT CMainApp::Ready_Prototype_For_LoadingChrome()
 		L"UI/Loading/Loading_Background_Kouku.png",
 		L"UI/Loading/Loading_Background_Prologue.png",
 		L"UI/Loading/Loading_Background_Maharaka.png",
-		L"UI/Loading/Loading_Background_Sea_0.png" })
+		L"UI/Loading/Loading_Background_Sea_0.png",
+		L"UI/Loading/Loading_Background_Colosseum.png" })
 	{
 		const filesystem::path resolvedPath =
 			CRuntimeAssetRoot::Resolve(pLoadingBackground);
@@ -10785,7 +10876,8 @@ void CMainApp::Apply_LevelRequest()
 			(iPreviousLevel == ETOUI(LEVEL::BERN) ||
 			 iPreviousLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
 			 iPreviousLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ||
-			 iPreviousLevel == ETOUI(LEVEL::MAHARAKA)))
+			 iPreviousLevel == ETOUI(LEVEL::MAHARAKA) ||
+			 iPreviousLevel == ETOUI(LEVEL::COLOSSEUM)))
 			CCharacterSelectionState::Capture_ActiveWorldState();
 		const HRESULT result = Start_Level(
 			request.eTargetLevel,
@@ -11897,7 +11989,8 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 	CLevel_CharacterSelect* characterSelect = LEVEL::CHARACTER_SELECT == level ?
 		CLevel_CharacterSelect::Get_Active() : nullptr;
 	CLevel_Bern* bern = LEVEL::BERN == level ? CLevel_Bern::Get_Active() : nullptr;
-	CLevel_Development* development = LEVEL::DEVELOPMENT == level || LEVEL::MAHARAKA == level ?
+	CLevel_Development* development = LEVEL::DEVELOPMENT == level || LEVEL::MAHARAKA == level ||
+		LEVEL::COLOSSEUM == level ?
 		CLevel_Development::Get_Active(level) : nullptr;
 	shared_ptr<CCamera_Free> camera;
 	CPlayerController* controller = nullptr;
@@ -11928,7 +12021,8 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 	else if (nullptr != development)
 	{
 		camera = development->Get_DebugCamera();
-		mapName = LEVEL::MAHARAKA == level ? "Maharaka" : "Development / Training";
+		mapName = LEVEL::MAHARAKA == level ? "Maharaka" :
+			LEVEL::COLOSSEUM == level ? "Colosseum" : "Development / Training";
 	}
 	if (camera && ImGui::CollapsingHeader("Map Camera / Player", ImGuiTreeNodeFlags_DefaultOpen))
 	{
@@ -14544,6 +14638,7 @@ void CMainApp::RenderDeveloperTools()
 	if (currentLevelId != ETOUI(LEVEL::CHARACTER_SELECT))
 		RenderCameraSpeedControls();
 	RenderDragonControls();
+	CLevel_Development::Render_ColosseumIntroControls();
 	ImGui::TextWrapped("%s", m_strToolStatus.c_str());
 	if (ImGui::CollapsingHeader("Character Select Movie", ImGuiTreeNodeFlags_DefaultOpen))
 		CLevel_CharacterSelect::Render_ClassSelectMovieControls();
