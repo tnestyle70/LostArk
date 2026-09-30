@@ -320,6 +320,25 @@ int LostArk::Server::CServerGameplayContractRunner::Run_WorldPlayback(TESTS& tes
                 const auto box=std::find_if(authored.Get_Placements().begin(),authored.Get_Placements().end(),
                     [&](const auto& row){return row.strPlacementId==name;});
                 if (box==authored.Get_Placements().end()) { tests.Require(false,"Waterpang jump source missing"); continue; }
+                const auto destination=std::find_if(authored.Get_Placements().begin(),authored.Get_Placements().end(),
+                    [&](const auto& row){return row.strPlacementId==std::string(name)+"_1";});
+                const bool hasDestination=destination!=authored.Get_Placements().end() && box->TriggerActions.size()==1u;
+                tests.Require(hasDestination,"Every published Waterpang jump has its saved landing marker and one action");
+                if (!hasDestination) continue;
+                const auto& move=box->TriggerActions.front();
+                tests.Require(box->isEnabled && box->requiresInteract && !box->isTriggerOnce &&
+                    !destination->isEnabled && destination->TriggerActions.empty() &&
+                    move.eKind==WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER &&
+                    move.fTargetX==destination->fPositionX && move.fTargetY==destination->fPositionY &&
+                    move.fTargetZ==destination->fPositionZ,
+                    "G jump consumes the current saved marker, never a stale copied destination");
+                bool walkable=navigation.Sample_Position(move.fTargetX,move.fTargetZ,point,move.fTargetY) &&
+                    point.y>22.3f && point.y<22.5f;
+                for (int dx=-1;dx<=1;++dx) for (int dz=-1;dz<=1;++dz)
+                    if (dx || dz) walkable=navigation.Resolve_TraversalStep(move.fTargetX,move.fTargetZ,
+                        move.fTargetX+.25f*dx,move.fTargetZ+.25f*dz,point,move.fTargetY) &&
+                        point.y>22.3f && point.y<22.5f && walkable;
+                tests.Require(walkable,"Each saved landing has deck support and eight valid first walking steps");
                 CServerTriggerSystem jump; jump.Set_WorldId(WORLD_ID::MAHARAKA);
                 tests.Require(jump.Initialize({*box},status),"Waterpang authored jump initializes");
                 player.fPositionX=box->fPositionX; player.fPositionY=box->fPositionY; player.fPositionZ=box->fPositionZ;
@@ -333,6 +352,18 @@ int LostArk::Server::CServerGameplayContractRunner::Run_WorldPlayback(TESTS& tes
                     std::abs(player.fPositionY-target.fTargetY)<.001f &&
                     std::abs(player.fPositionZ-target.fTargetZ)<.001f,
                     "Waterpang G travels to the exact authored destination");
+                const auto arena=std::find_if(authored.Get_Placements().begin(),authored.Get_Placements().end(),
+                    [](const auto& row){return row.strPlacementId=="waterpang.arena.start";});
+                tests.Require(arena!=authored.Get_Placements().end(),"Published arena start trigger exists");
+                if (arena!=authored.Get_Placements().end())
+                {
+                    CServerTriggerSystem arrival; arrival.Set_WorldId(WORLD_ID::MAHARAKA);
+                    tests.Require(arrival.Initialize({*arena},status),"Published arena start trigger initializes");
+                    fired=0;
+                    arrival.Evaluate_Entries(players,60u,transfers,activate,edges);
+                    arrival.Evaluate_Entries(players,61u,transfers,activate,edges);
+                    tests.Require(fired==1,"Every authored jump landing activates the arena countdown exactly once");
+                }
             }
         }
 		CWorldBootstrap bootstrap;

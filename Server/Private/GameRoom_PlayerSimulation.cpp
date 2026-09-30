@@ -803,6 +803,17 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 	if (player.TriggerMove.isActive ||
 		(player.iVehicleId == ANCIENT_SEA_VEHICLE_ID && player.eAction == PLAYER_ACTION_STATE::VEHICLE_SKILL &&
 		 player.eVehicleFlightPhase != VEHICLE_FLIGHT_PHASE::GROUNDED)) return false;
+	// The static island nav still contains the pre-match ring. During collapse it is
+	// no longer physical support; use the same fall/revive path as Waterpang knockback.
+	if (m_eWorldId == WORLD_ID::MAHARAKA && m_MaharakaWaterpangIntro && player.iCurrentHp &&
+		player.fPositionY >= MAHARAKA_WATERPANG_DECK_MIN_Y_M &&
+		Is_MaharakaWaterpangMissingRing(static_cast<std::int32_t>(updateTick - m_MaharakaWaterpangIntro->iStartTick),
+			player.fPositionX, player.fPositionZ))
+	{
+		Begin_PlayerFall(player, fixedDeltaSeconds, updateTick);
+		player.bWaterpangFall = true;
+		return true;
+	}
 	if (gateFence || !m_ServerNavigation.Is_Loaded() ||
 		0u == player.iCurrentHp ||
 		PLAYER_ACTION_STATE::DEAD == player.eAction ||
@@ -947,6 +958,28 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			continue;
 		}
 		const std::string authoredMoveSource = player.TriggerMove.strSourcePlacementId;
+		// Preserve the saved jump boxes. Only a live match with a missing destination
+		// extends its airborne crossing inward, so returning players do not fall forever.
+		if (m_eWorldId == LostArk::Shared::WORLD_ID::MAHARAKA && m_MaharakaWaterpangIntro &&
+			player.TriggerMove.isActive && LostArk::Shared::Is_MaharakaWaterpangJumpTrigger(authoredMoveSource) &&
+			LostArk::Shared::Is_MaharakaWaterpangMissingRing(
+				static_cast<std::int32_t>(updateTick - m_MaharakaWaterpangIntro->iStartTick),
+				player.TriggerMove.fTargetX, player.TriggerMove.fTargetZ))
+		{
+			using namespace LostArk::Shared;
+			const float dx = player.TriggerMove.fTargetX - MAHARAKA_WATERPANG_CANNON_X;
+			const float dz = player.TriggerMove.fTargetZ - MAHARAKA_WATERPANG_CANNON_Z;
+			const float scale = MAHARAKA_WATERPANG_COLLAPSED_LANDING_RADIUS_M / std::hypot(dx, dz);
+			SERVER_NAV_POINT landing{};
+			if (m_ServerNavigation.Sample_Position(MAHARAKA_WATERPANG_CANNON_X + dx * scale,
+				MAHARAKA_WATERPANG_CANNON_Z + dz * scale, landing, player.TriggerMove.fTargetY) &&
+				landing.y >= MAHARAKA_WATERPANG_DECK_MIN_Y_M)
+			{
+				player.TriggerMove.fTargetX = landing.x;
+				player.TriggerMove.fTargetY = landing.y;
+				player.TriggerMove.fTargetZ = landing.z;
+			}
+		}
 		if (m_ServerTriggerSystem.Update_PlayerMotion(
 			player, fixedDeltaSeconds))
 		{
@@ -1490,6 +1523,11 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 			floor = {desiredX, player.fKnockbackSupportY, desiredZ};
 			hasFloor = true;
 		}
+		if (hasFloor && m_eWorldId == LostArk::Shared::WORLD_ID::MAHARAKA && m_MaharakaWaterpangIntro &&
+			floor.y >= LostArk::Shared::MAHARAKA_WATERPANG_DECK_MIN_Y_M &&
+			LostArk::Shared::Is_MaharakaWaterpangMissingRing(
+				static_cast<std::int32_t>(knockbackTick - m_MaharakaWaterpangIntro->iStartTick), desiredX, desiredZ))
+			hasFloor = false;
 		if (player.fKnockbackVelocityY <= 0.f && hasFloor && player.fPositionY <= floor.y + 0.0001f)
 		{
 			player.fPositionY = floor.y;

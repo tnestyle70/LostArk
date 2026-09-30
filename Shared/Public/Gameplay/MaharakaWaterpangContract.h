@@ -141,6 +141,30 @@ namespace LostArk::Shared
     inline constexpr std::uint32_t MAHARAKA_WATERPANG_MATCH_SECONDS = 180u;
     inline constexpr std::uint32_t MAHARAKA_WATERPANG_MATCH_END_TICKS =
         (MAHARAKA_WATERPANG_FIRST_EVENT_SECONDS + MAHARAKA_WATERPANG_MATCH_SECONDS) * MAHARAKA_WATERPANG_TICK_HZ;
+    // Reuse SCENE03B Matinee42/Data157: eighteen ring tiles, 5 s, held until match STOP.
+    // The requested 60 s remaining is match time, not countdown/intro time.
+    inline constexpr const char* MAHARAKA_WATERPANG_COLLAPSE_INSTANCE =
+        "world.sequence.instance.maharaka.waterpang.source.collapse";
+    inline constexpr std::uint32_t MAHARAKA_WATERPANG_COLLAPSE_START_TICKS =
+        MAHARAKA_WATERPANG_MATCH_END_TICKS - 60u * MAHARAKA_WATERPANG_TICK_HZ;
+    inline constexpr std::uint32_t MAHARAKA_WATERPANG_COLLAPSE_DURATION_MS = 5000u;
+    // Gameplay transition: the outward spread precedes the steep descent. Remove support at 2 s.
+    inline constexpr std::uint32_t MAHARAKA_WATERPANG_COLLAPSE_SUPPORT_TICKS =
+        MAHARAKA_WATERPANG_COLLAPSE_START_TICKS + 2u * MAHARAKA_WATERPANG_TICK_HZ;
+    inline constexpr float MAHARAKA_WATERPANG_COLLAPSED_LANDING_RADIUS_M = 4.4f;
+    constexpr bool Has_MaharakaWaterpangCollapsedFloor(const std::int32_t elapsedTicks) noexcept
+    {
+        return elapsedTicks >= static_cast<std::int32_t>(MAHARAKA_WATERPANG_COLLAPSE_SUPPORT_TICKS);
+    }
+    constexpr bool Is_MaharakaWaterpangMissingRing(const std::int32_t elapsedTicks,
+        const float x, const float z) noexcept
+    {
+        const float dx = x - MAHARAKA_WATERPANG_CANNON_X, dz = z - MAHARAKA_WATERPANG_CANNON_Z;
+        const float radiusSquared = dx * dx + dz * dz;
+        return Has_MaharakaWaterpangCollapsedFloor(elapsedTicks) &&
+            radiusSquared > MAHARAKA_WATERPANG_WATERFALL_HIT_RADIUS_M * MAHARAKA_WATERPANG_WATERFALL_HIT_RADIUS_M &&
+            radiusSquared <= MAHARAKA_WATERPANG_DECK_RADIUS_M * MAHARAKA_WATERPANG_DECK_RADIUS_M;
+    }
     inline constexpr std::size_t MAHARAKA_WATERPANG_AI_COUNT = 20u;
 
     constexpr std::uint32_t Get_MaharakaWaterpangNextStartSeconds(

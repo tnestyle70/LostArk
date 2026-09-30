@@ -139,6 +139,8 @@ bool CGameRoom::Spawn_MaharakaWaterpangAI()
     const auto count = m_MaharakaAITuning.iBotCount - firstSlot;
     if (m_Players.size() + count > MAX_WORLD_SNAPSHOT_PLAYERS || !m_ServerNavigation.Is_Loaded()) return false;
     std::vector<SERVER_PLAYER> staged;
+    const bool collapsed = m_MaharakaWaterpangIntro && Has_MaharakaWaterpangCollapsedFloor(
+        static_cast<std::int32_t>(m_iServerTick - m_MaharakaWaterpangIntro->iStartTick));
     for (std::uint32_t slot = firstSlot; slot < m_MaharakaAITuning.iBotCount; ++slot)
     {
         SERVER_PLAYER ai; ai.eControlKind = PLAYER_CONTROL_KIND::WATERPANG_AI;
@@ -167,7 +169,7 @@ bool CGameRoom::Spawn_MaharakaWaterpangAI()
         }
         else ai.strWaterpangNpcArchetypeId = MAHARAKA_WATERPANG_AI_NPCS[slot - 12u];
         const float angle = (slot % 10u) * PI / 5.f + (slot / 10u) * PI / 10.f;
-        const float radius = slot < 10u ? 3.4f : 6.f;
+        const float radius = collapsed ? (slot < 10u ? 2.8f : 4.4f) : (slot < 10u ? 3.4f : 6.f);
         SERVER_NAV_POINT point;
         if (!Find_GuideLanding(ai, MAHARAKA_WATERPANG_CANNON_X + std::sin(angle) * radius, 22.4f,
             MAHARAKA_WATERPANG_CANNON_Z + std::cos(angle) * radius, point) || point.y < MAHARAKA_WATERPANG_DECK_MIN_Y_M ||
@@ -280,6 +282,7 @@ void CGameRoom::Update_MaharakaWaterpangMatch(const std::uint32_t updateTick)
     }
     if (elapsed < static_cast<std::int32_t>(MAHARAKA_WATERPANG_FIRST_EVENT_SECONDS * MAHARAKA_WATERPANG_TICK_HZ)) return;
     const auto& tuning = m_MaharakaAITuning;
+    const bool collapsed = Has_MaharakaWaterpangCollapsedFloor(elapsed);
     for (auto& [id, state] : m_MaharakaWaterpangAI)
     {
         auto& ai = m_Players.at(id);
@@ -290,7 +293,9 @@ void CGameRoom::Update_MaharakaWaterpangMatch(const std::uint32_t updateTick)
         if (radius > 7.25f || ai.fPositionY < MAHARAKA_WATERPANG_DECK_MIN_Y_M)
         {
             SERVER_NAV_POINT landing; const float angle = state.iSlot * PI * .618f;
-            if (Find_GuideLanding(ai, MAHARAKA_WATERPANG_CANNON_X + std::sin(angle) * 5.5f, 22.4f, MAHARAKA_WATERPANG_CANNON_Z + std::cos(angle) * 5.5f, landing) && landing.y >= MAHARAKA_WATERPANG_DECK_MIN_Y_M)
+            const float landingRadius = collapsed ? MAHARAKA_WATERPANG_COLLAPSED_LANDING_RADIUS_M : 5.5f;
+            if (Find_GuideLanding(ai, MAHARAKA_WATERPANG_CANNON_X + std::sin(angle) * landingRadius, 22.4f, MAHARAKA_WATERPANG_CANNON_Z + std::cos(angle) * landingRadius, landing) && landing.y >= MAHARAKA_WATERPANG_DECK_MIN_Y_M &&
+                (!collapsed || std::hypot(landing.x - MAHARAKA_WATERPANG_CANNON_X, landing.z - MAHARAKA_WATERPANG_CANNON_Z) <= MAHARAKA_WATERPANG_WATERFALL_HIT_RADIUS_M))
             {
                 ai.TriggerMove = {}; ai.TriggerMove.isActive = true; ai.TriggerMove.strSourcePlacementId = "waterpang.ai.rejoin";
                 ai.TriggerMove.fStartX = ai.fPositionX; ai.TriggerMove.fStartY = ai.fPositionY; ai.TriggerMove.fStartZ = ai.fPositionZ;
@@ -314,7 +319,8 @@ void CGameRoom::Update_MaharakaWaterpangMatch(const std::uint32_t updateTick)
             if (roll(updateTick ^ id) < tuning.fMoveProbability)
             {
                 const float angle = roll(updateTick + id * 37u) * 2.f * PI;
-                const float range = 2.8f + roll(updateTick ^ (id * 77u)) * 3.6f;
+                const float range = collapsed ? 2.2f + roll(updateTick ^ (id * 77u)) * 2.1f :
+                    2.8f + roll(updateTick ^ (id * 77u)) * 3.6f;
                 C2S_MOVE command; command.iClientSequence = ++state.iSequence;
                 command.fGoalX = MAHARAKA_WATERPANG_CANNON_X + std::sin(angle) * range;
                 command.fGoalZ = MAHARAKA_WATERPANG_CANNON_Z + std::cos(angle) * range;

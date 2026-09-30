@@ -1,5 +1,97 @@
 # 마하라카 워터팡 Camera·발판·효과음 등록 결과
 
+## 2026-10-01 G07 — 이동한 점프 도착점과 붕괴 통합 검사
+
+`jump1_1`은 [72.2330017, 23.1000004, -986.317017], `jump2_1`은
+[77.5360031, 23.2280006, -981.762024]로 저장돼 있었지만 출발 trigger의 movePlayer는
+옛 위치를 가리켰다. 사용자 마커·높이·기타 편집은 보존하고 두 이벤트의 XZ만 현재 위치에 맞췄다.
+revision371→372. 작업 직전 데이터와 비교해 달라진 것은 revision과 두 이벤트 XZ의 네 값뿐이다.
+
+두 지점은 중앙에서 각각3.456m/3.562m로 붕괴 뒤에도 남는 바닥이다. jump3_1은5.464m라
+붕괴 이후에만 런타임 목표를 같은 방위의4.4m로 조정한다. 저작 jump3 좌표는 바꾸지 않는다.
+MAHARAKA World Validate/Publish를 실행해 Server bootstrap과 Client viewer에 함께 반영했다.
+NPC presentation은 내용 변화가 없다. 원본 WorldSequences Check도 통과했다.
+
+최신 main 통합 전 검사:
+
+- Product Debug `20260930T215910156Z-debug-product.json`, Release
+  `20260930T215953822Z-release-product.json` 빌드 통과. 각 Server 검사2TU 변경, Client 재컴파일0.
+- Debug `--maharaka-ai-contract-test` exit0. 세 쌍의 실제 게시 marker/action 일치, 각 도착점8방향
+  보행, G 입력과 정확한 착지, 카운트다운1회, 붕괴 뒤 세 G 착지/생존 및 기존 경기 검사가 통과했다.
+  로그: `out/WaterpangEffects20260930/collapse-jumps-debug.log`.
+- 기존 Python EntryContract의 landing/nav와 published hold/camera 두 검사 통과.
+  첫 호출의 모듈 탐색 경로 및 Windows CP949 오류는 Tools/MapPipeline 작업 디렉터리와
+  `python -X utf8`로 바로잡았다. 테스트나 제품 JSON을 이에 맞춰 변경하지 않았다.
+
+사용자 정정대로 #495는 이미 머지됐다. main `b83d646be` 위 새 브랜치
+`codex/waterpang-collapse-landings-20261001`에 통합했다. 겹친 MaharakaAI 검사 파일은
+main의 파티/종료/귀환/재입장 검사를 전부 유지하고 붕괴 검사를 별도 상태 보존 구간으로 추가했다.
+main의 2m 낙사 높이 판정에 맞춰 검사도 실제 fixed tick 하강을 진행한다. main에 이미 있는
+Maharaka 검사 CLI는 중복 추가를 제거했다. 별도 Lobby 120초 미커밋 변경은 recoverable stash에
+보관한 뒤 main 변경 위에 그대로 복원했으며 기능 PR에는 제외한다.
+
+통합된 Debug Server `--maharaka-ai-contract-test`: **286 PASS, 0 FAIL, exit0**.
+`out/WaterpangEffects20260930/collapse-main-debug.log`에 세 점프·8방향 보행·붕괴 전후 착지,
+실제 종료 tick·snapshot·전원 귀환 뒤 이동·G 재입장·다음 AI roster 검사 결과가 있다.
+최신 publisher Validate와 기존 Python2검사도 재실행해 통과했다. 저작/viewer는 revision372,
+42개 배치로 의미적으로 동일하다. 원본 붕괴는 서로 다른18개 binding/track·5000ms·효과음1개이며
+도입 stage와 정확히 같은18개 target을 사용한다. Drive 효과음은 runtime 파일과 같다.
+
+아래 G06의 미게시/미push 기록은 이전 단계 기록이다. Client 육안 검증은 미실행이다.
+통합 Product Debug는 Client 공통 셰이더 컴파일 중이며 아직 전체 PASS로 기록하지 않는다.
+통합 후 Release Product는 미실행이다. 위 통합 전 빌드 성공과 구분한다.
+
+## 2026-10-01 G06 — 경기 남은60초 원본 외곽 발판 붕괴
+
+### 실제 적용
+
+원인은 원본 `source.collapse`가 Camera 편집 목록에만 있고 경기 재생 호출자가 없던 것이다.
+서버가 이미 복제하는 도입 시작 tick을 기준으로140초에 외곽18개/5초 원본 시퀀스를
+재생한다. 도입20초를 제외하면 경기120초 경과, 남은60초다. 중앙 노란 원판, 옆 점프대,
+캐논·큰 모코모코와 카메라는 변경하지 않았다. 도입 stage 소유자만 반환한 뒤 같은 stable ID의
+붕괴를 획득하여 기존 WorldSequencePlayer로 구동한다. 마지막 자세는 경기 STOP까지 남으며
+다음 경기/중단에는 기준 배치로 복구한다. 늦은 입장·맵툴 복귀는 현재 Server 시각으로 Seek한다.
+누락/다른 바인딩/재생 실패는 `maharaka.waterpang.collapse` 진단을 남기고 기존 배우 연출을 보존한다.
+
+프로젝트 판정은 붕괴2초 뒤 외곽 반경5~7.5m의 지지를 제거한다. 중앙5m와 낮은 탐험 바닥은
+유지하고, 서 있거나 걷는 사람·AI 및 날아오는 사람 모두 기존 Waterpang fall/점프대 복귀를
+사용한다. 이는 원본18개 삼각형의 연속 물리 시뮬레이션이나 navgrid 동적 재베이크가 아닌
+기존 측정 반경을 쓰는 Server 경기 지지 판정이다. 붕괴 후 G 점프 착지와 AI 재입장은
+중앙4.4m로 조정하며 원래 저장한 jump 좌표는 바꾸지 않는다. AI 이동 목표도 중앙으로 좁힌다.
+
+### 검증
+
+- Debug Product PASS: `out/BuildPipeline/runs/20260930T214811879Z-debug-product.json`.
+- Release Product PASS: `out/BuildPipeline/runs/20260930T215040723Z-release-product.json`.
+- 최초 구현 빌드에서 구성별 Server60TU·Client8TU 재컴파일, 이후 검증 진입점 Main1TU 증분 링크.
+  Engine/Shared 컴파일·CSO 변경0. 기존 C4819 및 Release DirectXTK PDB 경고는 남는다.
+- Debug `Server.exe --maharaka-ai-contract-test` exit0. 기존 world playback failures0 및 AI 검증,
+  남은60초 경계·지지 전환 직전/직후·정지한 플레이어 낙하·점프대 생존 복귀·중앙/낮은 바닥 보존·
+  G 점프 목적지·ballistic 착지 금지·경기 STOP/지지 복구 검사 모두 통과.
+- 원본 WorldSequences Scope Publish/Check PASS. 초기 Check는 게시본의 CRLF만 달라 실패했고,
+  publisher로 LF 정규화 후 통과했다. 정본과 게시본은 줄바꿈을 제외한 문자 내용이 정확히 동일하며
+  Git 내용 변경은 없다. 전체 Area나 사용자 Gameplay.world.json은 게시하지 않았다.
+- `git diff --check` 통과. Release 집중 실행 검사와 Client 화면 확인은 미실행.
+- 첫 추가 Release 링크 시 집중 검사 Server 프로세스가 출력 잠금에 걸려 중단됐으며,
+  검사 정상 종료 후 최종 Release 빌드는 통과했다. 사용자 프로세스를 종료하지 않았다.
+
+### 배포와 사용자 확인
+
+실행 파일은 `C:/Users/USER/source/졸업팀폴/LostArk/Client/Bin/{Debug|Release}/Client.exe`와
+`Server/Bin/{Debug|Release}/Server.exe`에 반영했다. Client/UI 자율 실행·화면 캡처는 하지 않았다.
+Server와 Client를 같은 구성으로 다시 실행하고 마하라카 아레나에서 경기 타이머01:00을 확인한다.
+5초간 원본 분리/하강 → 종료 전까지 붕괴 유지 → 경기 종료 후 발판 복귀가 수동 확인 항목이다.
+맵툴의 `Camera → 워터팡 / 원본 바닥 붕괴 (맵 동작 미리보기)`는 같은 원본 트랙을 유지한다.
+
+새 모델/텍스처는 없다. 이번 자동 경기 연출에 필요한 기존 원본 효과음
+`Sound/Maharaka/WaterpangSource/scene_maharakap_fallout_foley.wav` (660258 bytes)를
+`C:/Users/USER/OneDrive/바탕 화면/CY_Resource/Sound/Maharaka/WaterpangSource/`에 추가하고
+live Resources와 동일한 복사본임을 확인했다. 기존 배포 파일을 삭제하거나 대체하지 않았다.
+
+다른 작업의 `Client/Private/Level_Lobby.cpp`와 사용자의
+`Data/Worlds/LV_OCN_EVENTIS_MHP/Gameplay.world.json` 변경은 보존했다. 이번 G06은
+로컬 구현·빌드까지이며 commit/push/PR 수정은 하지 않았다.
+
 ## 2026-09-28 G05 — 점프 입장·10초 예약·컷신 종료 유지
 
 구현/저장/게시 완료, 사용자 화면 검증 대기. 아래 이전 G01~G04 기록보다 이 절의 현재 상태가 우선한다.

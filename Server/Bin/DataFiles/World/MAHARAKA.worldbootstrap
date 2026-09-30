@@ -1,10 +1,10 @@
-LOSTARK_WORLD_BOOTSTRAP	12	MAHARAKA	LV_OCN_EVENTIS_MHP	278	42	14	0	0	0
-island.exit.to.bern	triggerBox	-	-	62.7	20.48	-975.6	0	1	2	2	2	0	1	1	changeLevel	2	BERN	island.return.sea.landing
-jump1	triggerBox	-	-	66.6110001	23.2040005	-992.672974	0	1	1	1	1	0	1	1	movePlayer	5	71.0330353	23.1000004	-988.017334	1.2	2.5
-jump1_1	triggerBox	-	-	71.0330353	23.1000004	-988.017334	0	0	1	1	1	1	0	0
-jump2	triggerBox	-	-	83.2979965	23.4039993	-975.674988	0	1	1	1	1	0	1	1	movePlayer	5	78.8357773	23.2280006	-980.061584	1.2	2.5
-jump2_1	triggerBox	-	-	78.8357773	23.2280006	-980.061584	0	0	1	1	1	1	0	0
-jump3	triggerBox	-	-	71.764534	20.6499996	-975.366272	0	1	1	1	1	0	1	1	movePlayer	5	73.0410004	23.1289997	-979.223022	1.2	2.5
+LOSTARK_WORLD_BOOTSTRAP	12	MAHARAKA	LV_OCN_EVENTIS_MHP	372	42	14	0	0	0
+island.exit.to.bern	triggerBox	-	-	62.7000008	20.4799995	-975.599976	0	1	2	2	2	0	1	1	changeLevel	2	BERN	island.return.sea.landing
+jump1	triggerBox	-	-	66.6110001	23.2040005	-992.672974	0	1	1	1	1	0	1	1	movePlayer	5	72.2330017	23.1000004	-986.317017	1.20000005	2.5
+jump1_1	triggerBox	-	-	72.2330017	23.1000004	-986.317017	0	0	1	1	1	1	0	0
+jump2	triggerBox	-	-	83.2979965	23.4039993	-975.674988	0	1	1	1	1	0	1	1	movePlayer	5	77.5360031	23.2280006	-981.762024	1.20000005	2.5
+jump2_1	triggerBox	-	-	77.5360031	23.2280006	-981.762024	0	0	1	1	1	1	0	0
+jump3	triggerBox	-	-	71.764534	20.6499996	-975.366272	0	1	1	1	1	0	1	1	movePlayer	5	73.0410004	23.1289997	-979.223022	1.20000005	2.5
 jump3_1	triggerBox	-	-	73.0410004	23.1289997	-979.223022	0	0	1	1	1	1	0	0
 npc.maharaka.scene06a.source67	npc	NPC_MHP_RESIDENT_8FC2DB56F0AA5175	-	81.1877594	19.8260269	-995.886353	26.015625	1	0
 npc.maharaka.scene06a.source68	npc	NPC_MHP_RESIDENT_7D37CE489AF57466	-	81.9726105	19.8241005	-994.162903	229.042969	1	0
@@ -40,7 +40,7 @@ player.spawn.maharaka.party01	playerSpawn	-	-	61.1800003	20.4799995	-975.700012	
 player.spawn.maharaka.party02	playerSpawn	-	-	68.3600006	20.4799995	-968.820007	0	1
 player.spawn.maharaka.party03	playerSpawn	-	-	63.8100014	20.4799995	-971.059998	0	1
 player.spawn.maharaka.party04	playerSpawn	-	-	57.5499992	20.4799995	-982.719971	0	1
-waterpang.arena.start	triggerBox	-	-	75.05	22.65	-984.32	0	1	5.5	0.7	5.5	0	1	0	playSequence	1	world.sequence.instance.maharaka.waterpang.source.intro15.stage
+waterpang.arena.start	triggerBox	-	-	75.0500031	22.6499996	-984.320007	0	1	5.5	0.699999988	5.5	0	1	0	playSequence	1	world.sequence.instance.maharaka.waterpang.source.intro15.stage
 world.sequence.instance.maharaka.waterpang.attack.cannon.end
 world.sequence.instance.maharaka.waterpang.attack.cannon.loop.ccw
 world.sequence.instance.maharaka.waterpang.attack.cannon.loop.cw
