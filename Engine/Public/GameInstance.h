@@ -197,6 +197,9 @@ public:
 
 public: /* For.Picking */
 	bool_t Picking(float4_t& vOut);
+	uint64_t Request_Picking();
+	HRESULT Poll_Picking(uint64_t requestId, float4_t& vOut);
+	void Cancel_Picking(uint64_t requestId);
 
 public: /* For.Shadow */
 	HRESULT Apply_Shadow_Light(const SHADOW_LIGHT_DESC& ShadowLightDesc);

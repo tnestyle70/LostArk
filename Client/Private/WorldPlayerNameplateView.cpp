@@ -221,7 +221,9 @@ Client::PLAYER_RELATION Client::CWorldPlayerNameplateView::Resolve_Relation(
 
 void Client::CWorldPlayerNameplateView::Render(
 	const std::vector<REPLICATED_PLAYER_VIEW>& Players,
-	const LostArk::Shared::S2C_PARTY_ROSTER* pPartyRoster)
+	const LostArk::Shared::S2C_PARTY_ROSTER* pPartyRoster,
+	const LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE* pMatch,
+	const CReplicatedPlayerHealth* pHealth)
 {
 	CGameInstance& gameInstance = CGameInstance::Get();
 	const float4x4_t* const pViewMatrix =
@@ -267,6 +269,26 @@ void Client::CWorldPlayerNameplateView::Render(
 			continue;
 		}
 
+        if (pMatch && pHealth)
+        {
+            const auto combatant = std::find_if(pMatch->Players.begin(), pMatch->Players.end(),
+                [&](const auto& row) { return row.iNetEntityId == player.iNetEntityId; });
+            const auto health = pHealth->Find(player.iNetEntityId);
+            if (combatant != pMatch->Players.end() && combatant->bParticipant && health.hasSnapshot && health.iMaximumHp)
+            {
+                const auto lines = static_cast<std::uint32_t>((static_cast<std::uint64_t>(health.iCurrentHp) * 40u +
+                    health.iMaximumHp - 1u) / health.iMaximumHp);
+                const std::wstring text = L"HP " + std::to_wstring(health.iCurrentHp) + L" / " +
+                    std::to_wstring(health.iMaximumHp) + L"  x" + std::to_wstring(lines);
+                f32_t hpScale = 1.f;
+                const auto hpFont = UILabelFont::Resolve(FONT_YG760, 11.f * fRefToScreen, hpScale);
+                const auto size = gameInstance.Measure_Text(hpFont, text.c_str());
+                Draw_Outlined(gameInstance, hpFont, text,
+                    float2_t(std::round(vScreenPosition.x - size.x * hpScale * .5f),
+                        std::round(vScreenPosition.y - (NAME_STACK_TOP + 26.f) * fRefToScreen)),
+                    COLOR_NAME, hpScale, fRefToScreen);
+            }
+        }
 		/* System option nametag rows, per relation: no name, no plate at all. */
 		const PLAYER_RELATION eRelation = Resolve_Relation(player, pPartyRoster);
 		if (!CUserSettings::Get().Is_NametagShown(eRelation, false))

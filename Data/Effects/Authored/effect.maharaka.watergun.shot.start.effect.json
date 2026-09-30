@@ -2,7 +2,7 @@
   "schema": "lostark.effect-authoring",
   "version": 13,
   "effectAssetId": "effect.maharaka.watergun.shot.start",
-  "displayName": "워터팡 | Q·R 물방울 발사",
+  "displayName": "워터팡 | R 물방울 발사",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": -90,

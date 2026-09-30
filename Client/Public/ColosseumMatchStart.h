@@ -4,6 +4,7 @@
 #include "DataJson.h"
 #include "GameInstance.h"
 #include "MapPlacementRuntime.h"
+#include "Network/PacketMessages.h"
 #include "ProjectDataRoot.h"
 #include "UILabelFont.h"
 #include "UILayoutRuntime.h"
@@ -32,8 +33,7 @@ NS_BEGIN(Client)
      - the wooden gate leaves (ARENADOOR01) in front of both holding pens sinking into the floor
        a moment after the start text.
 
-   Presentation only. The Server has no match rules for the Colosseum yet, so nothing here gates
-   movement or combat: the clock is the Client's own and starts when the intro cutscene ends. The
+	Presentation only: the Server match state gates movement/combat and supplies this clock. The
    gate leaves are ordinary map placements; their pose is written through
    CMapPlacementRuntime::Apply_PlacementTransform (the same path a sequence or the Map Editor
    uses), and the placed pose, the closed gate, is restored by Reset(). A missing or invalid
@@ -86,6 +86,13 @@ public:
 		m_bSkipStep = true;
 	}
 
+    // Server already admitted combat; show its start beat without inventing a second countdown.
+    void Begin_ApprovedMatch()
+    {
+        Begin();
+        Seek(m_Doc.fTotalMs);
+    }
+
 	void Set_Paused(const bool_t bPaused) { if (m_bRunning) m_bPaused = bPaused; }
 	void Seek(const f32_t fMs)
 	{
@@ -122,6 +129,33 @@ public:
 		if (m_fClockMs >= m_Doc.fTotalMs)
 			return 0u;
 		return static_cast<uint32_t>(std::ceil((m_Doc.fTotalMs - m_fClockMs) / 1000.f));
+	}
+
+	void Update_ServerTimeline(const LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE& state, const double tick)
+	{
+		using P = LostArk::Shared::COLOSSEUM_MATCH_PHASE;
+		if (!m_bReady) return;
+		if (state.ePhase == P::LOADING || state.ePhase == P::RECRUITING ||
+			state.ePhase == P::ENTRY_COUNTDOWN || state.ePhase == P::INTRO)
+		{
+			if (m_bRunning) Reset();
+			return;
+		}
+		if (state.ePhase != P::COUNTDOWN && state.ePhase != P::PLAYING && state.ePhase != P::FINISHED) return;
+		m_bRunning = true;
+		m_bPaused = false;
+		m_bSkipStep = true;
+		m_bServerClock = true;
+		if (state.ePhase == P::COUNTDOWN)
+		{
+			m_Doc.fTotalMs = static_cast<f32_t>(state.iPhaseEndTick - state.iPhaseStartTick) * (1000.f/30.f);
+			m_fClockMs = static_cast<f32_t>((std::max)(0.0, tick-state.iPhaseStartTick)*(1000.0/30.0));
+		}
+		else if (state.ePhase == P::PLAYING)
+			m_fClockMs = m_Doc.fTotalMs + static_cast<f32_t>((std::max)(0.0,tick-state.iPhaseStartTick)*(1000.0/30.0));
+		else m_fClockMs = Get_TimelineMs();
+		m_fClockMs = (std::min)(m_fClockMs,Get_TimelineMs());
+		Update(0.f);
 	}
 
 	void Update(const f32_t fTimeDelta)
@@ -510,7 +544,9 @@ private:
 	{
 		if (nullptr == m_pView)
 			return;
-		const f32_t fFraction = std::clamp(Sample_Bar((std::max)(0.f, m_Doc.fTotalMs - m_fClockMs)), 0.f, 1.f);
+		const f32_t fFraction = std::clamp(m_bServerClock ?
+			(m_Doc.fTotalMs - m_fClockMs) / (std::max)(1.f,m_Doc.fTotalMs) :
+			Sample_Bar((std::max)(0.f, m_Doc.fTotalMs - m_fClockMs)), 0.f, 1.f);
 		m_pView->Set_SlotVisible("Count_BarFill", fFraction > 0.001f);
 		m_pView->Set_SlotFillRatio("Count_BarFill", fFraction);
 	}
@@ -627,6 +663,7 @@ private:
 	bool_t m_bRunning = false;
 	bool_t m_bPaused = false;
 	bool_t m_bSkipStep = false;
+	bool_t m_bServerClock = false;
 	f32_t m_fClockMs = 0.f;
 	f32_t m_fAppliedSink = 0.f;
 	f32_t m_fFittedViewportH = 0.f;

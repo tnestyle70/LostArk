@@ -788,8 +788,16 @@ void LostArk::Server::CGameRoom::Update_CardMaze(std::uint32_t tick)
 		{
 			if (!(player.CardMaze.flags & 4u))
 			{
-				// Only the successful matching kill owns a portal position.
-				m_strStatus = "Card maze exit is waiting for its defeated suit position";
+				Maze::SPAWN_REQUEST exit{};
+				if (m_KoukuCardMaze.Sample_Corridor(player.eCardMazeSuit, m_Players, m_WorldEntities,
+					m_ServerNavigation, tick ^ id, exit, true))
+				{
+					player.CardMaze.exitX = exit.fPositionX;
+					player.CardMaze.exitY = exit.fPositionY;
+					player.CardMaze.exitZ = exit.fPositionZ;
+					player.CardMaze.flags |= 4u;
+				}
+				else m_strStatus = "Card maze exit waiting for a free corridor";
 			}
 			if ((player.CardMaze.flags & 4u) && std::abs(player.fPositionY - player.CardMaze.exitY) < 1.f &&
 				distanceSquared(player.fPositionX - player.CardMaze.exitX, player.fPositionZ - player.CardMaze.exitZ) <= 1.f)

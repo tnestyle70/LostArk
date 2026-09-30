@@ -28,8 +28,9 @@ OUT = ROOT / 'out/WaterpangEffects20260930/watergun'
 PREFIX = 'effect.maharaka.watergun.'
 BUFF_FILE = '9_EF_PARTICLE_SOUND_DATA_BUFF_FX_COMMON_BUFF&DEBUFF_SpdUp.loa'
 TARGETS = {
-    PREFIX + 'q.flight': ('fx_bs_07.gadget.par_l_watergun01_sk_01_1', '워터팡 | Q 연발 샷 · 비행'),
-    PREFIX + 'q.hit': ('fx_bs_07.gadget.par_l_watergun01_sk_01_2', '워터팡 | Q 연발 샷 · 피격'),
+    PREFIX + 'q.flight': ('fx_bs_07.gadget.par_l_watergun02_sk_01_1', '워터팡 | Q 세 갈래 물총 날아가기'),
+    PREFIX + 'q.hit': ('fx_bs_07.gadget.par_l_watergun02_sk_01_2', '워터팡 | Q 세 갈래 물총 맞기'),
+    PREFIX + 'q.start': ('fx_bs_07.gadget.par_l_watergun02_sk_01_3', '워터팡 | Q 세 갈래 물방울 발사'),
     PREFIX + 'w.flight': ('fx_bs_07.gadget.par_l_watergun01_sk_02', '워터팡 | W 물 폭탄 · 비행'),
     PREFIX + 'w.hit': ('fx_bs_07.gadget.par_l_watergun01_sk_02_1', '워터팡 | W 물 폭탄 · 폭발'),
     PREFIX + 'r.flight': ('fx_bs_07.gadget.par_l_watergun01_sk_03_1', '워터팡 | R 기본 사격 · 비행'),
@@ -54,7 +55,7 @@ def original_contract():
     source = OUT / 'source'
     receipts = []
     for archive_name, domain, names in (
-        ('data1.lpk', 'Projectile', ['569020.loa', '569120.loa', '569320.loa']),
+        ('data1.lpk', 'Projectile', ['569020.loa', '570020.loa', '569120.loa', '569320.loa']),
         ('data3.lpk', 'Action', ['GADGET.loa']),
         ('data3.lpk', 'ParticleSoundNew', [BUFF_FILE]),
         ('data2.lpk', 'TableData', ['EFTable_SkillEffect.db', 'EFTable_SkillBuff.db'])):
@@ -70,21 +71,29 @@ def original_contract():
     with sqlite3.connect((source / 'TableData/EFTable_SkillEffect.db').as_uri() + '?mode=ro', uri=True) as database:
         database.row_factory = sqlite3.Row
         for action in actions['actions']:
-            if action['actionId'] not in (56902, 56912, 56932):
+            if action['actionId'] not in (56902, 57002, 56912, 56932):
                 continue
             for stage in action['stages']:
                 for notify in stage['notifies']:
                     if notify['sourceType'] != 'Effect':
                         continue
                     identifier, offset = effect_payload_id(notify['serializedPayload'])
-                    row = dict(database.execute('SELECT * FROM SkillEffect WHERE PrimaryKey=?', (identifier,)).fetchone())
-                    assert row['Key'] == 12 and row['ValueA'] == identifier
                     raw = base64.b64decode(notify['serializedPayload']['data'])
-                    launch.append(dict(actionId=action['actionId'], projectileId=identifier,
-                        timeSeconds=notify['localTimeSeconds'], sourcePositionCm=list(struct.unpack_from('<3f', raw, offset + 40)),
-                        sourceAngleDegrees=struct.unpack_from('<i', raw, offset + 4)[0], skillEffect=row))
+                    # EFSkillEffectNotifyInfo rows are 60 bytes. MK2 Q contains
+                    # three simultaneous rows; the first ID alone loses its fan.
+                    count = struct.unpack_from('<i', raw, offset - 8)[0]
+                    assert 1 <= count <= 3 and offset + count * 60 <= len(raw)
+                    for ordinal in range(count):
+                        at = offset + ordinal * 60
+                        identifier = struct.unpack_from('<i', raw, at)[0]
+                        row = dict(database.execute('SELECT * FROM SkillEffect WHERE PrimaryKey=?', (identifier,)).fetchone())
+                        assert row['Key'] == 12 and row['ValueA'] == identifier
+                        launch.append(dict(actionId=action['actionId'], projectileId=identifier,
+                            projectileOrdinal=ordinal, projectileCount=count,
+                            timeSeconds=notify['localTimeSeconds'], sourcePositionCm=list(struct.unpack_from('<3f', raw, at + 40)),
+                            sourceAngleDegrees=struct.unpack_from('<i', raw, at + 4)[0], skillEffect=row))
     particles = []
-    for name in ('569020', '569120', '569320'):
+    for name in ('569020', '570020', '569120', '569320'):
         raw = (source / 'Projectile' / (name + '.loa')).read_bytes()
         refs = [t for t in scan_length_prefixed_strings(raw, 0, len(raw)) if t['value'].startswith("ParticleSystem'")]
         for i, token in enumerate(refs):
@@ -117,7 +126,7 @@ def original_contract():
         speedBuffSource=dict(system=TARGETS[PREFIX+'e.speed'][0], sourceAnchor='FX_Buff_01',
             position=[0, 0, 0], scale=[1, 1, 1], sourceParticleByteOffset=427),
         sourceInputs=receipts, basis='Source +X forward; document yaw -90 maps to gameplay +Z. Launch offset belongs to the authoritative projectile root.',
-        startFxScales={'569020': 1, '569320': .7})
+        startFxScales={'569020': 1, '570020': 1, '569320': .7})
     world.source.write(OUT / 'source_contract.json', contract)
     return contract
 
@@ -133,7 +142,32 @@ def acquire():
     return index, occurrences, records
 
 
+def installed_materials():
+    # Reuse exact material/renderer permutations, preferring this Waterpang
+    # cohort. Generic grouped approximations cannot replace native programs.
+    installed = {}
+    paths = sorted((ROOT / 'Data/Effects/Authored').glob('*.effect.json'),
+        key=lambda path: (not path.name.startswith(PREFIX), path.name))
+    for path in paths:
+        for element in world.source.read(path).get('elements', []):
+            material = element.get('material', {})
+            profile = material.get('sourceProfile', {})
+            if not profile.get('enabled') or not re.fullmatch(
+                    r'effect\.ue3\.kouku-\d+-native\.v1', profile.get('runtimeShaderProfileId', '')):
+                continue
+            key = (material.get('sourceMaterialPath'), element.get('sourceRecipe', {}).get('rendererShape'))
+            installed.setdefault(key, material)
+    return installed
+
+
 def materials():
+    installed = installed_materials()
+    occurrences = world.source.read(OUT / 'source_occurrences.json')
+    if all((row['sourceMaterial'], row['rendererShape']) in installed for row in occurrences):
+        world.source.write(OUT / 'native/native_material_patch.json', dict(programs=[
+            dict(occurrences=[row['elementId']], material=installed[row['sourceMaterial'], row['rendererShape']])
+            for row in occurrences]))
+        return
     existing = (ROOT / 'Client/Private/Effect_ArtistMaterial_Tables.inl').read_text(encoding='utf8')
     used = {int(v) for v in re.findall(r'ARTIST_PARAMETERS_(\d+)', existing)}
     assert not used.intersection(range(FIRST, LAST+1)), 'Native program range is already installed'
@@ -152,8 +186,10 @@ def project():
         notifies.append(dict(notifyId=asset, sourceType='WaterpangProjectileOrBuff',
             cue=dict(parameterOverrides=parameters), actionId=asset))
     source.project(OUT, index, notifies, occurrences, records, OUT / 'projected')
-    patches = source.read(OUT / 'native/native_material_patch.json')['programs']
-    materials = {key.replace('.shot.end.', '.shot.start.'): row['material'] for row in patches for key in row['occurrences']}
+    patch_path = OUT / 'native/native_material_patch.json'
+    patches = source.read(patch_path)['programs'] if patch_path.is_file() else []
+    patched = {key.replace('.shot.end.', '.shot.start.'): row['material'] for row in patches for key in row['occurrences']}
+    installed = installed_materials()
     by_element = {row['elementId']: row for row in occurrences}
     resource_root = ROOT / 'Client/Bin/Resources'
     summary = []
@@ -165,7 +201,11 @@ def project():
             element['groupId'] = asset
             element['displayName'] = element['id'].rsplit('.', 1)[-1]
             element['actionCueAttachment']['enabled'] = False
-            element['material'] = copy.deepcopy(materials[element['id']])
+            occurrence = by_element[element['id']]
+            key = (occurrence['sourceMaterial'], occurrence['rendererShape'])
+            material = installed.get(key) or patched.get(element['id'])
+            assert material and material['sourceMaterialPath'] == occurrence['sourceMaterial'], key
+            element['material'] = copy.deepcopy(material)
             element['detail']['uv'].update(start=[0, 0], speed=[0, 0], wave=False, sequence=False)
             element['detail']['color']['emissiveIntensity'] = 1
             if element['sourceRecipe']['rendererShape'] == 'mesh':
@@ -188,6 +228,15 @@ def project():
                 relative = resource['assetId']
                 assert (resource_root / relative).is_file() or (OUT / 'Resources' / relative).is_file(), relative
         driver.bind_providers(document, index, by_element)
+        for element in document['elements']:
+            if element['sourceRecipe'].get('simulationOnly'):
+                # ERM_None/Point remains a simulation provider even when its
+                # source names a real material. It has no surface consumer.
+                element['resources'] = []
+                element['material'] = dict(templateId='effect.standard',
+                    sourceMaterialPath=by_element[element['id']]['sourceMaterial'],
+                    renderProfile='alpha_two_sided_depth_read', sourceProfile=dict(enabled=False))
+                element['detail']['mesh'].pop('sourceMaterialSlots', None)
         driver.clamp_trail_budget(document)
         audit(document)
         source.write(OUT / 'candidate' / (asset + '.effect.json'), document)
@@ -202,6 +251,14 @@ def audit(document):
     # class; the older generic structural audit predates this contract.
     normalized = copy.deepcopy(document)
     for element in normalized['elements']:
+        if element['sourceRecipe'].get('simulationOnly'):
+            material = element['material']
+            assert element['sourceRecipe']['rendererShape'] == 'sprite' and not element['resources']
+            assert material['templateId'] == 'effect.standard' and not material.get('sourceProfile', {}).get('enabled')
+            assert not material.get('execution', {}).get('enabled') and not element['detail']['mesh'].get('sourceMaterialSlots')
+            required = next(m for m in element['sourceRecipe']['modules'] if m['className'] == 'particlemodulerequired')
+            assert any(v['propertyPath'] == 'source.emitterrendermode' and v['value'] in ('erm_none', 'erm_point')
+                       for v in required['literals'])
         for module in element['sourceRecipe']['modules']:
             if module['className'].endswith('_seeded'):
                 module['className'] = module['className'][:-7]

@@ -3,6 +3,7 @@
 #include "Profiler.h"
 
 #include <cstring>
+#include <cmath>
 
 CPicking::CPicking(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
     : m_pDevice { pDevice }
@@ -30,7 +31,8 @@ HRESULT CPicking::Initialize(HWND hWnd)
     desc.SampleDesc.Count = 1u;
     desc.Usage = D3D11_USAGE_STAGING;
     desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-    return m_pDevice->CreateTexture2D(&desc, nullptr, &m_pTexture2D);
+    const HRESULT hr = m_pDevice->CreateTexture2D(&desc, nullptr, &m_pTexture2D);
+    return FAILED(hr) ? hr : m_pDevice->CreateTexture2D(&desc, nullptr, &m_pAsyncTexture);
 }
 
 bool_t CPicking::Read_Pixel(ID3D11Texture2D* pSource, const uint32_t x,
@@ -122,4 +124,70 @@ unique_ptr<CPicking> CPicking::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D1
     }
 
     return pInstance;
+}
+
+uint64_t CPicking::Request_Picking()
+{
+    if (GetCurrentThreadId() != m_iOwnerThreadId || !m_pAsyncTexture) return 0u;
+    m_iPendingRequestId = 0u; // A new press supersedes an older, unconsumed sample.
+    ::POINT mouse{};
+    if (!m_hWnd || !GetCursorPos(&mouse) || !ScreenToClient(m_hWnd, &mouse) ||
+        mouse.x < 0 || mouse.y < 0) return 0u;
+    const auto view = CGameInstance::Get().Get_RT_SRV(TEXT("Target_PickPos"));
+    if (!view) return 0u;
+    D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc{};
+    view->GetDesc(&viewDesc);
+    if (viewDesc.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D ||
+        viewDesc.Texture2D.MostDetailedMip != 0u) return 0u;
+    ComPtr<ID3D11Resource> resource;
+    view->GetResource(&resource);
+    ComPtr<ID3D11Texture2D> source;
+    if (!resource || FAILED(resource.As(&source))) return 0u;
+    ComPtr<ID3D11Device> sourceDevice;
+    source->GetDevice(&sourceDevice);
+    if (sourceDevice.Get() != m_pDevice.Get()) return 0u;
+    D3D11_TEXTURE2D_DESC desc{};
+    source->GetDesc(&desc);
+    if (desc.Format != DXGI_FORMAT_R32G32B32A32_FLOAT || desc.SampleDesc.Count != 1u ||
+        desc.ArraySize != 1u || uint32_t(mouse.x) >= desc.Width || uint32_t(mouse.y) >= desc.Height)
+        return 0u;
+    const D3D11_BOX box{uint32_t(mouse.x), uint32_t(mouse.y), 0u,
+        uint32_t(mouse.x + 1), uint32_t(mouse.y + 1), 1u};
+    auto* const profiler = CGameInstance::Get().Get_Profiler();
+    CProfilerScope scope(profiler, "Picking.AsyncCopy");
+    m_pContext->CopySubresourceRegion(m_pAsyncTexture.Get(), 0u, 0u, 0u, 0u, source.Get(), 0u, &box);
+    if (profiler)
+    {
+        profiler->Add_Counter(EProfilerCounter::PickingReadbacks);
+        profiler->Add_Counter(EProfilerCounter::PickingReadbackBytes, sizeof(float4_t));
+    }
+    if (++m_iNextRequestId == 0u) ++m_iNextRequestId;
+    return m_iPendingRequestId = m_iNextRequestId;
+}
+
+HRESULT CPicking::Poll_Picking(const uint64_t requestId, float4_t& vOut)
+{
+    if (GetCurrentThreadId() != m_iOwnerThreadId || !requestId || requestId != m_iPendingRequestId)
+        return E_ABORT;
+    D3D11_MAPPED_SUBRESOURCE mapped{};
+    const HRESULT hr = m_pContext->Map(m_pAsyncTexture.Get(), 0u, D3D11_MAP_READ,
+        D3D11_MAP_FLAG_DO_NOT_WAIT, &mapped);
+    if (hr == DXGI_ERROR_WAS_STILL_DRAWING) return S_FALSE;
+    m_iPendingRequestId = 0u;
+    if (FAILED(hr)) return hr;
+    float4_t position{};
+    const bool readable = mapped.pData && mapped.RowPitch >= sizeof(position);
+    if (readable) std::memcpy(&position, mapped.pData, sizeof(position));
+    m_pContext->Unmap(m_pAsyncTexture.Get(), 0u);
+    if (!readable || position.w == 0.f || !std::isfinite(position.x) ||
+        !std::isfinite(position.y) || !std::isfinite(position.z)) return E_FAIL;
+    vOut = position;
+    vOut.w = 1.f;
+    return S_OK;
+}
+
+void CPicking::Cancel_Picking(const uint64_t requestId)
+{
+    if (GetCurrentThreadId() == m_iOwnerThreadId && requestId == m_iPendingRequestId)
+        m_iPendingRequestId = 0u;
 }

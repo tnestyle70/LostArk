@@ -4,6 +4,7 @@
 #ifdef _DEBUG
 #include "Camera_Free.h"
 #include "GameInstance.h"
+#include "GuideAITool.h"
 #include "KoukuSaydonActionWorkbench.h"
 #include "LevelRegistry.h"
 #include "Level_Bern.h"
@@ -153,7 +154,7 @@ bool CMainApp::UpdateMapEffectPlacementInput()
     return true;
 }
 
-/* The World Level Tool's map edit session arms one viewport click. The loop
+/* World Level map editing and Guide trigger boxes share one viewport click. The loop
    mirrors UpdateMapEffectPlacementInput so the click keeps exactly one
    consumer: same foreground / ImGui / UI-router checks, same Esc and
    right-click cancel, same one-pixel readback. */
@@ -164,10 +165,13 @@ bool CMainApp::UpdateWorldLevelPlacementPickInput()
     if (!leftDown && !rightDown) m_bWorldLevelPickSuppressMouse = false;
     if (!m_bWorldLevelPickArmed) return m_bWorldLevelPickSuppressMouse;
     const auto currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-    const bool valid = nullptr != m_pWorldLevelTool && m_pWorldLevelTool->Is_PlacementPickArmed() &&
-        m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::WORLD_LEVEL) &&
-        m_eDebugInputOwner == DEBUG_TOOL::WORLD_LEVEL && currentLevel == m_iWorldLevelPickLevel &&
+    const bool guidePick = m_eWorldLevelPickOwner == DEBUG_TOOL::GUIDE_AI;
+    const bool targetReady = guidePick ? m_pGuideAITool && m_pGuideAITool->Is_PlacementPickArmed() &&
+        m_pGuideAITool->Get_PlacementPickAreaId() == GetWorldLevelAreaId() :
+        m_pWorldLevelTool && m_pWorldLevelTool->Is_PlacementPickArmed() &&
         m_pWorldLevelTool->Get_PlacementPickAreaId() == GetWorldLevelAreaId();
+    const bool valid = targetReady && m_bDeveloperToolsVisible && IsDebugToolVisible(m_eWorldLevelPickOwner) &&
+        m_eDebugInputOwner == m_eWorldLevelPickOwner && currentLevel == m_iWorldLevelPickLevel;
     const HWND foreground = GetForegroundWindow();
     DWORD foregroundProcess = 0u;
     if (foreground) GetWindowThreadProcessId(foreground, &foregroundProcess);
@@ -175,9 +179,10 @@ bool CMainApp::UpdateWorldLevelPlacementPickInput()
         (GetAsyncKeyState(VK_ESCAPE) & 0x8000) != 0)
     {
         m_bWorldLevelPickArmed = false;
-        if (nullptr != m_pWorldLevelTool)
-            m_pWorldLevelTool->Cancel_PlacementPick(
-                "Pick cancelled; the previous selection was preserved.");
+        if (guidePick && m_pGuideAITool)
+            m_pGuideAITool->Cancel_PlacementPick("Pick cancelled; the previous Guide box position was preserved.");
+        else if (m_pWorldLevelTool)
+            m_pWorldLevelTool->Cancel_PlacementPick("Pick cancelled; the previous selection was preserved.");
         m_bWorldLevelPickSuppressMouse = leftDown || rightDown;
         return true;
     }
@@ -193,12 +198,14 @@ bool CMainApp::UpdateWorldLevelPlacementPickInput()
         !std::isfinite(picked.y) || !std::isfinite(picked.z))
     {
         /* No surface under the pixel: stay armed so the next click can hit. */
-        m_pWorldLevelTool->Set_Status(
-            "No visible mesh surface at this pixel. Click a surface again, or Esc to cancel.");
+        const std::string status = "No visible mesh surface at this pixel. Click a surface again, or Esc to cancel.";
+        if (guidePick) m_pGuideAITool->Set_Status(status);
+        else m_pWorldLevelTool->Set_Status(status);
         return true;
     }
     m_bWorldLevelPickArmed = false;
-    m_pWorldLevelTool->Complete_PlacementPick({picked.x, picked.y, picked.z});
+    if (guidePick) m_pGuideAITool->Complete_PlacementPick({picked.x, picked.y, picked.z});
+    else m_pWorldLevelTool->Complete_PlacementPick({picked.x, picked.y, picked.z});
     return true;
 }
 
@@ -308,7 +315,7 @@ void CMainApp::RenderWorldLevelTool()
     std::string status;
     if (request.kind == WORLD_LEVEL_REQUEST_KIND::OPEN_GUIDE)
     {
-        status = SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::GUIDE_AI)) ? "Guide AI Tool opened." : "Guide AI Tool could not open.";
+        status = SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::GUIDE_AI)) ? "DimensionMaster Guide opened." : "DimensionMaster Guide could not open.";
     }
     else if (request.kind == WORLD_LEVEL_REQUEST_KIND::FOCUS)
     {
@@ -332,6 +339,8 @@ void CMainApp::RenderWorldLevelTool()
                 select->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
             if (auto* bern = CLevel_Bern::Get_Active())
                 bern->Get_PlayerController().Cancel_DebugPlayerPlacement();
+            if (m_pGuideAITool) m_pGuideAITool->Cancel_PlacementPick({});
+            m_eWorldLevelPickOwner = DEBUG_TOOL::WORLD_LEVEL;
             m_bWorldLevelPickArmed = true;
             m_iWorldLevelPickLevel = CGameInstance::Get().Get_CurrentLevelID();
             m_bWorldLevelPickLeftDown = true;

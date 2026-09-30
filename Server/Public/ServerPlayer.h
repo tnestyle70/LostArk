@@ -33,14 +33,6 @@ namespace LostArk::Server
 		}
 	};
 
-	/* Server-owned state carried only between worlds of the same session.
-	   Fresh Lobby admission keeps the default repaired equipment. */
-	struct SERVER_DURABILITY_STATE final
-	{
-		std::array<std::uint8_t, 6> DurabilityPercent{ { 100, 100, 100, 100, 100, 100 } };
-		std::uint8_t iDurabilityWearCursor = 0;
-	};
-
 	struct SERVER_TRIGGER_MOVE_SAMPLE
 	{
 		std::uint32_t iTimeMs = 0u;
@@ -168,6 +160,13 @@ namespace LostArk::Server
 
 	struct SERVER_PLAYER
 	{
+		// Nonzero only in an isolated Colosseum match. Never inferred from position.
+		std::uint32_t iColosseumRespawnTick = 0u;
+		std::uint32_t iColosseumKills = 0u;
+		LostArk::Shared::PLAYER_ID iColosseumKillerId = LostArk::Shared::INVALID_PLAYER_ID;
+		std::uint8_t iColosseumArrivalIndex = 255u;
+		bool bColosseumReady = false, bColosseumCombatActive = false;
+		float fColosseumSpawnX = 0.f, fColosseumSpawnY = 0.f, fColosseumSpawnZ = 0.f, fColosseumSpawnYaw = 0.f;
 		LostArk::Shared::PLAYER_CONTROL_KIND eControlKind = LostArk::Shared::PLAYER_CONTROL_KIND::HUMAN;
 		bool Is_Guide() const noexcept { return eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::GUIDE_AI; }
 		bool Is_Human() const noexcept { return eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::HUMAN; }
@@ -181,9 +180,17 @@ namespace LostArk::Server
 		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
 			LostArk::Shared::CHARACTER_CLASS_ID::END;
 
+		// Authority exists only inside one private Colosseum match.
+		std::uint64_t iColosseumMatchId = 0u;
+		// Full 160-bar damage reference is pinned independently of the 40-bar HP pool.
+		std::uint32_t iColosseumDamageReferenceHp = 0u;
+		std::uint8_t iColosseumTeam = 255u;
+		bool bColosseumParticipant = false;
+		bool Is_ColosseumMercenary() const noexcept { return eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::COLOSSEUM_MERCENARY_AI; }
 		std::string strNickName;
 		// Character-creation voice type (1..8), carried like the nickname.
 		std::uint8_t iVoiceType = LostArk::Shared::MIN_VOICE_TYPE;
+		std::string strAppearanceJson;
 		std::string strSpawnPlacementId;
 		// Server-validated Bern entry guide; retained until this raid visit ends.
 		std::string strRaidReturnNpcPlacementId;
@@ -248,6 +255,8 @@ namespace LostArk::Server
 		// Safe arena revive point retained through the fall's below-floor death pose.
 		std::optional<std::array<float, 3u>> KoukuFallRevivePosition;
 		bool bKoukuFallDeath = false;
+		// Retained for this match after leaving the deck; cleared by the atomic match return.
+		bool bWaterpangParticipant = false;
 		// A push off the live Waterpang arena revives on the nearest jump box at the fall deadline.
 		bool bWaterpangFall = false;
 		// Last tick a Waterpang cannon jet struck this player; jets re-apply every 0.4 s.
@@ -369,24 +378,28 @@ namespace LostArk::Server
 
 		std::uint32_t iCurrentHp = 1000;
 		std::uint32_t iMaximumHp = 1000;
-		/* Worn-gear durability per HUD part (weapon, helmet, top, gloves, bottoms, shoulder),
-		   percent 0..100. A hit that takes HP wears one part in turn; the owner's inventory
-		   snapshot carries it. Not kept across sessions. */
-		std::array<std::uint8_t, 6> DurabilityPercent{ { 100, 100, 100, 100, 100, 100 } };
+		/* Durability lives on each worn piece of gear (Inventory[].iDurabilityPercent). A hit
+		   that takes HP wears one worn weapon or armor piece in turn; bDurabilityDirty owes the
+		   owner an inventory snapshot that carries it. With nothing worn nothing wears. */
 		std::uint8_t iDurabilityWearCursor = 0;
 		bool bDurabilityDirty = false;
-		SERVER_DURABILITY_STATE Get_DurabilityState() const noexcept
-		{
-			return { DurabilityPercent, iDurabilityWearCursor };
-		}
 		void Wear_Durability(const std::uint8_t percentLoss) noexcept
 		{
-			std::uint8_t& part = DurabilityPercent[iDurabilityWearCursor % DurabilityPercent.size()];
-			iDurabilityWearCursor = static_cast<std::uint8_t>(
-				(iDurabilityWearCursor + 1u) % DurabilityPercent.size());
-			if (0u == part)
+			LostArk::Shared::INVENTORY_ITEM_SNAPSHOT* worn[6] = {};
+			std::size_t count = 0;
+			for (LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& item : Inventory)
+			{
+				if (LostArk::Shared::Is_Durable_Slot(item.eEquippedSlot) && count < 6u)
+					worn[count++] = &item;
+			}
+			if (0u == count)
 				return;
-			part = part > percentLoss ? static_cast<std::uint8_t>(part - percentLoss) : std::uint8_t{ 0 };
+			LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& piece = *worn[iDurabilityWearCursor % count];
+			iDurabilityWearCursor = static_cast<std::uint8_t>((iDurabilityWearCursor + 1u) % 60u);
+			if (0u == piece.iDurabilityPercent)
+				return;
+			piece.iDurabilityPercent = piece.iDurabilityPercent > percentLoss ?
+				static_cast<std::uint8_t>(piece.iDurabilityPercent - percentLoss) : std::uint8_t{ 0 };
 			bDurabilityDirty = true;
 		}
 		// Server-only per-hit stream; same-tick contacts must not share one damage roll.

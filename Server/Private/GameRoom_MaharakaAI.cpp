@@ -135,10 +135,6 @@ void CGameRoom::Handle_MaharakaAITuning(SESSION_ID sessionId, const C2S_MAHARAKA
 
 bool CGameRoom::Spawn_MaharakaWaterpangAI()
 {
-    static constexpr const char* NPCS[] = {
-        "NPC_MHP_RESIDENT_8FC2DB56F0AA5175", "NPC_MHP_RESIDENT_7D37CE489AF57466",
-        "NPC_MHP_RESIDENT_6C0BF3F0C656EBAB", "NPC_MHP_RESIDENT_48E52BAC20260E4C",
-        "NPC_BEDA", "NPC_AYLARA", "NPC_FORMAN", "NPC_SCHMIDT" };
     const auto firstSlot = static_cast<std::uint32_t>(m_MaharakaWaterpangAI.size());
     const auto count = m_MaharakaAITuning.iBotCount - firstSlot;
     if (m_Players.size() + count > MAX_WORLD_SNAPSHOT_PLAYERS || !m_ServerNavigation.Is_Loaded()) return false;
@@ -151,7 +147,7 @@ bool CGameRoom::Spawn_MaharakaWaterpangAI()
         ai.eCharacterClass = slot % 2u ? CHARACTER_CLASS_ID::LANCE_MASTER : CHARACTER_CLASS_ID::GUARDIANKNIGHT;
         const auto* profile = m_GameplayCatalog.Find_Player(ai.eCharacterClass);
         if (!profile) return false;
-        ai.strNickName = "Waterpang " + std::to_string(slot + 1u);
+        ai.strNickName = "Waterpang AI " + std::to_string(slot + 1u);
         ai.strSpawnPlacementId = "waterpang.ai." + std::to_string(slot);
         ai.iCurrentHp = ai.iMaximumHp = profile->iMaximumHp;
         ai.iCurrentResource = ai.iMaximumResource = profile->iMaximumResource;
@@ -169,7 +165,7 @@ bool CGameRoom::Spawn_MaharakaWaterpangAI()
                 ai.Inventory.push_back({item, 1u, equip});
             }
         }
-        else ai.strWaterpangNpcArchetypeId = NPCS[slot - 12u];
+        else ai.strWaterpangNpcArchetypeId = MAHARAKA_WATERPANG_AI_NPCS[slot - 12u];
         const float angle = (slot % 10u) * PI / 5.f + (slot / 10u) * PI / 10.f;
         const float radius = slot < 10u ? 3.4f : 6.f;
         SERVER_NAV_POINT point;
@@ -208,19 +204,25 @@ void CGameRoom::Clear_MaharakaWaterpangAI(const std::uint32_t keepCount)
 
 bool CGameRoom::Finish_MaharakaWaterpangMatch()
 {
-    const auto* spawn = Find_Placement("player.spawn.maharaka.party02");
-    if (!spawn) return false;
-    std::vector<std::pair<PLAYER_ID, SERVER_NAV_POINT>> destinations;
+    if (!m_MaharakaWaterpangIntro) return false;
+    struct RETURN_DESTINATION { PLAYER_ID id; SERVER_NAV_POINT point; float yaw; };
+    std::vector<RETURN_DESTINATION> destinations;
     for (const auto& [id, player] : m_Players)
     {
-        if (!player.Is_Human()) continue;
-        // A visitor already exploring the island is outside this match.
-        if (!Is_MaharakaWaterpangArenaFootprint(player.fPositionX, player.fPositionZ) && !player.bWaterpangFall && !player.bWaterpangLaunch) continue;
+        if (!player.Is_Human() || !player.bWaterpangParticipant) continue;
+        const auto* spawn = Find_Placement(player.strSpawnPlacementId);
         SERVER_NAV_POINT point;
-        const float offset = static_cast<float>(destinations.size()) * 1.25f;
-        if (!Find_GuideLanding(player, spawn->fPositionX + offset, spawn->fPositionY, spawn->fPositionZ, point) ||
-            Is_MaharakaWaterpangArenaFootprint(point.x, point.z)) return false;
-        destinations.emplace_back(id, point);
+        // Stage every participant's own admission spawn before sending STOP or mutating the room.
+        if (!spawn || !spawn->isEnabled || !player.iMaximumHp ||
+            !Find_GuideLanding(player, spawn->fPositionX, spawn->fPositionY, spawn->fPositionZ, point) ||
+            Is_MaharakaWaterpangArenaFootprint(point.x, point.z) ||
+            std::any_of(destinations.begin(), destinations.end(), [&](const auto& other)
+            { return std::abs(point.y - other.point.y) < 1.5f && std::hypot(point.x - other.point.x, point.z - other.point.z) < .75f; }))
+        {
+            m_strStatus = "Waterpang return pending: admission spawn landing unavailable for " + player.strSpawnPlacementId;
+            return false;
+        }
+        destinations.push_back({id, point, spawn->fYawDegrees});
     }
     S2C_WORLD_SEQUENCE_PLAY stopped = *m_MaharakaWaterpangIntro;
     stopped.eOperation = WORLD_SEQUENCE_OPERATION::STOP; stopped.iServerTick = m_iServerTick;
@@ -230,15 +232,26 @@ bool CGameRoom::Finish_MaharakaWaterpangMatch()
         (void)id; if (auto session = Find_Session(player.iSessionId); session && !session->Send_Frame(PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY, writer.Get_Buffer())) session->Request_Close();
     }
     m_MaharakaWaterGunShots.clear(); Clear_MaharakaWaterpangAI();
-    for (const auto& [id, point] : destinations)
+    for (const auto& destination : destinations)
     {
-        auto& player = m_Players.at(id);
+        auto& player = m_Players.at(destination.id);
         Reset_PlayerForDebugTeleport(player);
-        player.bWaterpangFall = player.bWaterpangLaunch = false;
-        player.iWaterGunCastEndTick = player.iWaterGunSpeedEndTick = player.iWaterGunSkillId = 0;
-        player.fPositionX = point.x; player.fPositionY = point.y; player.fPositionZ = point.z;
+        player.bWaterpangParticipant = player.bWaterpangFall = player.bWaterpangLaunch = false;
+        // The replicated latest-cast pair must become zero together, including after its clip ended.
+        player.iWaterGunSkillId = player.iWaterGunCastTick = player.iWaterGunCastEndTick = player.iWaterGunSpeedEndTick = 0u;
+        player.fWaterGunSpeedScale = 1.f; player.iWaterpangCannonHitTick = 0u;
+        for (const auto& skill : MAHARAKA_WATERGUN_SKILLS) player.CooldownEndTickBySkillId.erase(skill.iSkillId);
+        player.bKnockbackBallistic = player.bKnockbackCanLeaveArena = player.bArenaEjectionActive = false;
+        player.iEjectionOwnerNetEntityId = INVALID_NET_ENTITY_ID;
+        player.bPushOnlyHitReaction = false;
+        player.fKnockbackVelocityY = player.fKnockbackLaunchY = player.fKnockbackSupportY = 0.f;
+        player.fKnockbackGravityMps2 = SERVER_PLAYER::KNOCKBACK_GRAVITY_MPS2;
+        player.iCurrentHp = player.iMaximumHp;
+        player.fPositionX = destination.point.x; player.fPositionY = destination.point.y; player.fPositionZ = destination.point.z;
+        player.fYawDegrees = destination.yaw;
     }
     m_MaharakaWaterpangIntro.reset(); m_MaharakaWaterpangDebugEvent.reset(); m_iWaterpangAIRetryTick = 0;
+    m_ServerTriggerSystem.Reset_SequenceActivation(MAHARAKA_WATERPANG_INTRO_INSTANCE);
     std::cout << "[WaterpangAI] three-minute match finished; returned " << destinations.size() << " humans to island\n";
     return true;
 }
@@ -248,6 +261,14 @@ void CGameRoom::Update_MaharakaWaterpangMatch(const std::uint32_t updateTick)
     if (m_eWorldId != WORLD_ID::MAHARAKA) return;
     loadTuning(m_bMaharakaAITuningLoaded, m_MaharakaAITuning, m_strMaharakaAISourceBytes);
     if (!m_MaharakaWaterpangIntro) return;
+    for (auto& [id, player] : m_Players)
+    {
+        (void)id;
+        if (player.Is_Human() && (Is_MaharakaWaterpangArenaFootprint(player.fPositionX, player.fPositionZ) ||
+            player.bWaterpangFall || player.bWaterpangLaunch ||
+            (player.TriggerMove.isActive && Is_MaharakaWaterpangArenaFootprint(player.TriggerMove.fTargetX, player.TriggerMove.fTargetZ))))
+            player.bWaterpangParticipant = true;
+    }
     const auto elapsed = static_cast<std::int32_t>(updateTick - m_MaharakaWaterpangIntro->iStartTick);
     if (elapsed >= static_cast<std::int32_t>(MAHARAKA_WATERPANG_MATCH_END_TICKS)) { (void)Finish_MaharakaWaterpangMatch(); return; }
     if (m_MaharakaWaterpangAI.size() != m_MaharakaAITuning.iBotCount && reached(updateTick, m_iWaterpangAIRetryTick))

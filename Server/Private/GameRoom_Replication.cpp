@@ -75,6 +75,7 @@ bool LostArk::Server::CGameRoom::Send_Spawned(
         message.strWaterpangNpcArchetypeId = player.strWaterpangNpcArchetypeId;
 	message.strNickName = player.strNickName;
 	message.iVoiceType = player.iVoiceType;
+	message.strAppearanceJson = player.strAppearanceJson;
 	message.fPositionX = player.fPositionX;
 	message.fPositionY = player.fPositionY;
 	message.fPositionZ = player.fPositionZ;
@@ -258,7 +259,6 @@ bool LostArk::Server::CGameRoom::Send_InventorySnapshot(
 	message.Items = player.Inventory;
 	message.iSilver = player.Purse.iSilver;
 	message.iGold = player.Purse.iGold;
-	message.DurabilityPercent = player.DurabilityPercent;
 	CPacketWriter writer;
 	return nullptr != session && Write_Message(writer, message) &&
 		session->Send_Frame(

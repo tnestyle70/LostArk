@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <string_view>
 
@@ -9,6 +10,11 @@ namespace LostArk::Shared
     // S2C_WORLD_SEQUENCE_PLAY carries its future start on the 30 Hz Server clock.
     inline constexpr const char* MAHARAKA_WATERPANG_INTRO_INSTANCE =
         "world.sequence.instance.maharaka.waterpang.source.intro15.stage";
+    // Server spawn and Client level-entry preload consume the same NPC roster.
+    inline constexpr std::array<const char*, 8> MAHARAKA_WATERPANG_AI_NPCS = {
+        "NPC_MHP_RESIDENT_8FC2DB56F0AA5175", "NPC_MHP_RESIDENT_7D37CE489AF57466",
+        "NPC_MHP_RESIDENT_6C0BF3F0C656EBAB", "NPC_MHP_RESIDENT_48E52BAC20260E4C",
+        "NPC_BEDA", "NPC_AYLARA", "NPC_FORMAN", "NPC_SCHMIDT" };
     inline constexpr std::uint32_t MAHARAKA_WATERPANG_TICK_HZ = 30u;
     inline constexpr std::uint32_t MAHARAKA_WATERPANG_COUNTDOWN_TICKS = 300u;
     // Navigation detail region that bakes the arena deck and its jump pier. It spans the whole
@@ -334,16 +340,19 @@ namespace LostArk::Shared
 
     /* Water Pro MK-1 (EFTable_Prop 15000) as the Waterpang arena arms it. The
        [Maharaka] action variants (skill id + 2) own the clips and the hit rows:
-       GADGET.loa actions 56902 / 56912 / 56932, SkillEffect 569020-569021,
-       569120-569121 and 569320-569321, Projectile 569020 / 569120 / 569320. The
+       GADGET.loa actions 57002 / 56912 / 56932, SkillEffect 570020-570021,
+       569120-569121 and 569320-569321, Projectile 570020 / 569120 / 569320. The
        four quick slots are the prop's own list: Q connected shot (56900), W water
        bomb (56910), E speed up (56920) and the prop's default attack (56930) on R.
-       Times, ranges, speeds and cooldowns are the source values; a shot leaves
-       the muzzle at the action's "Effect" notify. The source hit rows also carry
+       Q uses the requested MK2 fan action/projectile while retaining stable
+       skill 56900, the existing 3 s cooldown (source MK2 is 5 s), and the selected
+       prop appearance. W/R retain their MK1 sources. Speed and MaxDistance are
+       separate reflected projectile fields; the action's "Effect" notify fires
+       every ray of the fan simultaneously. The source hit rows also carry
        HP damage and cold stacks (buff 569302, 8 stacks kill); neither is applied
        because the extracted data does not give the Waterpang stat adjustment they
-       need, so a hit only pushes and staggers the body, as the source row's push
-       fields say. Casting never locks movement (prop MoveSkillEnable = 1). */
+       need, so a hit only pushes and staggers the body using the room's
+       existing shared human/AI knockback tuning. Casting never locks movement (prop MoveSkillEnable = 1). */
     enum class MAHARAKA_WATERGUN_KIND : std::uint8_t
     {
         MISSILE,    // straight projectile from the caster along its facing
@@ -362,19 +371,55 @@ namespace LostArk::Shared
         std::uint32_t iAttackClip;    // watergun_att_N; 0 = no clip
         float fMaxRangeM;             // EFTable_Skill.MaxRange
         float fSpeedMps;              // Projectile speed
-        float fLifeSeconds;           // Projectile life (missile reach = speed * life)
+        float fLifeSeconds;           // Projectile lifetime; missile reach is also bounded by MaxDistance
         float fHitRadiusM;            // hit SkillEffect AreaRange
         float fPushRangeM;            // hit SkillEffect push range
         std::uint32_t iPushMs;        // hit SkillEffect push time
         std::uint32_t iBuffMs;        // SPEED_BUFF duration (SkillBuff 569200)
         float fBuffSpeedScale;        // SPEED_BUFF move speed factor (+30 %)
+        float fProjectileMaxDistanceM; // Projectile MaxDistance, independent of Speed and skill aim range
+        float fLaunchRightM;           // source Effect local Y; all fan rays share one muzzle position
+        std::uint32_t iProjectileCount;
+        float fSpreadDegrees;          // centre, positive, negative yaw for simultaneous source fan rows
     };
 
     inline constexpr std::array<MAHARAKA_WATERGUN_SKILL, 4u> MAHARAKA_WATERGUN_SKILLS{ {
-        { 56900u, 'Q', MAHARAKA_WATERGUN_KIND::MISSILE, 3000u, 1800u, 694u, 2u, 7.f, 4.2f, 1.5f, 1.f, 0.18f, 5u, 0u, 1.f },
-        { 56910u, 'W', MAHARAKA_WATERGUN_KIND::GRENADE, 8000u, 1000u, 200u, 5u, 7.f, 8.f, 6.f, 1.05f, 0.2f, 200u, 0u, 1.f },
-        { 56920u, 'E', MAHARAKA_WATERGUN_KIND::SPEED_BUFF, 7000u, 0u, 0u, 0u, 0.f, 0.f, 0.f, 0.f, 0.f, 0u, 5000u, 1.3f },
-        { 56930u, 'R', MAHARAKA_WATERGUN_KIND::MISSILE, 0u, 1000u, 402u, 1u, 4.f, 3.f, 1.5f, 1.f, 0.18f, 5u, 0u, 1.f } } };
+        // Stable Q input/skill ID keeps its cooldown; its requested fan uses source MK2
+        // action 57002 / projectile 570020 (Att4, one notify, 0/+30/-30 degrees).
+        { 56900u, 'Q', MAHARAKA_WATERGUN_KIND::MISSILE, 3000u, 1667u, 704u, 4u, 7.f, 10.f, 1.5f, 1.f, 0.18f, 5u, 0u, 1.f, 3.3f, .20f, 3u, 30.f },
+        { 56910u, 'W', MAHARAKA_WATERGUN_KIND::GRENADE, 8000u, 1000u, 200u, 5u, 7.f, 10.f, 6.f, 1.05f, 0.2f, 200u, 0u, 1.f, 8.f, 0.f, 1u, 0.f },
+        { 56920u, 'E', MAHARAKA_WATERGUN_KIND::SPEED_BUFF, 7000u, 0u, 0u, 0u, 0.f, 0.f, 0.f, 0.f, 0.f, 0u, 5000u, 1.3f, 0.f, 0.f, 0u, 0.f },
+        { 56930u, 'R', MAHARAKA_WATERGUN_KIND::MISSILE, 0u, 1000u, 402u, 1u, 4.f, 10.f, 1.5f, 1.f, 0.18f, 5u, 0u, 1.f, 3.f, .11f, 1u, 0.f } } };
+
+    struct MAHARAKA_WATERGUN_LAUNCH final
+    {
+        float fX, fY, fZ;
+        float fYawDegrees;
+        float fDirX, fDirZ;
+    };
+
+    // Both room collision and replicated presentation consume the same source muzzle
+    // and ray basis. The fan rotates direction, never the shared local launch offset.
+    inline MAHARAKA_WATERGUN_LAUNCH Sample_MaharakaWaterGunLaunch(
+        const MAHARAKA_WATERGUN_SKILL& skill, const std::uint32_t projectileIndex,
+        const float x, const float y, const float z, const float ownerYawDegrees) noexcept
+    {
+        constexpr float radiansPerDegree = 0.01745329251994329577f;
+        const float offset = projectileIndex == 1u ? skill.fSpreadDegrees :
+            projectileIndex == 2u ? -skill.fSpreadDegrees : 0.f;
+        MAHARAKA_WATERGUN_LAUNCH result{x, y, z, ownerYawDegrees + offset, 0.f, 0.f};
+        result.fDirX = std::sin(result.fYawDegrees * radiansPerDegree);
+        result.fDirZ = std::cos(result.fYawDegrees * radiansPerDegree);
+        if (skill.eKind == MAHARAKA_WATERGUN_KIND::MISSILE)
+        {
+            const float ownerX = std::sin(ownerYawDegrees * radiansPerDegree);
+            const float ownerZ = std::cos(ownerYawDegrees * radiansPerDegree);
+            result.fX += ownerX * .70f + ownerZ * skill.fLaunchRightM;
+            result.fZ += ownerZ * .70f - ownerX * skill.fLaunchRightM;
+            result.fY += .75f;
+        }
+        return result;
+    }
 
     // Stable gameplay identities; only Client presentation maps these to resources.
     inline constexpr const char* MaharakaWaterGunProjectileArchetype(const std::uint32_t skillId) noexcept

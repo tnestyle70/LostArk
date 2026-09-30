@@ -2,7 +2,7 @@
   "schema": "lostark.effect-authoring",
   "version": 13,
   "effectAssetId": "effect.maharaka.watergun.watergun_att_2.full.restore",
-  "displayName": "워터팡 | Q 연발 물총 총구",
+  "displayName": "워터팡 | MK1 연발 물총 총구",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

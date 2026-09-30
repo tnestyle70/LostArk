@@ -172,12 +172,12 @@ public:
 	/* emissionIndex selects one row of an authored emission list; a seeded
 	   emitter keeps the single-object contract and answers index 0 only. */
 	bool_t Try_GetObjectPivot(const std::string& instanceId, float4x4_t& out, uint32_t emissionIndex = 0u,
-		const std::string& bone = {}, bool_t boneRotation = false) const;
+		const std::string& bone = {}, bool_t boneRotation = false, const std::string& effectTrackId = {}) const;
 	// No match leaves status empty; an active but unavailable/ambiguous actor fails closed.
 	bool_t Try_GetPresentationBossAnchor(const std::string& archetype, const std::string& bone,
 		PLAYER_ANCHOR& out, std::string& status) const;
 	bool_t Try_GetSequencePivot(const std::string& instanceId, float4x4_t& out, uint32_t emissionIndex = 0u,
-		const std::string& bone = {}, bool_t boneRotation = false) const;
+		const std::string& bone = {}, bool_t boneRotation = false, const std::string& effectTrackId = {}) const;
 	std::string Get_ObjectSampleStatus(const std::string& instanceId) const;
 	// The admitted sequence retains object ownership; callers inspect the current visible pose only.
 	void Collect_VisibleObjects(std::vector<std::shared_ptr<CWorldSequenceObject>>& out) const;
@@ -268,9 +268,10 @@ public:
     void Set_SoundAudience(std::function<bool(const std::string&)> audience) { m_SoundAudience = std::move(audience); }
     void Retire_InstanceSoundTails(const std::string& instanceId);
 	bool_t Is_Paused() const noexcept { return m_bPaused; }
-	/* Moves every playing instance to the same wall-clock point and applies
-	   that frame at once. false means nothing is playing to scrub. */
-	bool_t Seek_AllToMs(f32_t elapsedMs, const TARGET_SET& targets);
+	/* Samples every playing instance at the same wall-clock point. Pass discontinuous=false
+	   for a live external clock to preserve audio across slow frames. Only backwards time
+	   or an explicit scrub restarts audio; explicit scrub keeps the default true. */
+	bool_t Seek_AllToMs(f32_t elapsedMs, const TARGET_SET& targets, bool_t discontinuous = true);
 	bool_t Seek_InstanceToMs(const std::string& instanceId, f32_t elapsedMs, const TARGET_SET& targets, bool_t discontinuous = true);
 	void Stop_Instance(const std::string& instanceId, const TARGET_SET& targets, bool_t restorePlacements, bool_t preserveSoundTail = false);
 	/* The longest authored span across the playing instances, so the tool can

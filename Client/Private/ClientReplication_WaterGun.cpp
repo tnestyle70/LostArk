@@ -53,7 +53,8 @@ bool Client::CClientReplication::Spawn_WaterGunProjectile(
     if (age < .2f && spawned.strCombatObjectArchetypeId != "maharaka.watergun.bomb")
     {
         desc.strPlacementId = "maharaka.watergun.start." + std::to_string(spawned.iCombatObjectId);
-        desc.strEffectAssetId = "effect.maharaka.watergun.shot.start";
+        desc.strEffectAssetId = spawned.strCombatObjectArchetypeId == "maharaka.watergun.burst"
+            ? "effect.maharaka.watergun.q.start" : "effect.maharaka.watergun.shot.start";
         desc.bOwnerSustainedSourceLoops = false;
         const float scale = spawned.strCombatObjectArchetypeId == "maharaka.watergun.single" ? .7f : 1.f;
         XMStoreFloat4x4(&desc.RootWorld, XMMatrixScaling(scale, scale, scale) *

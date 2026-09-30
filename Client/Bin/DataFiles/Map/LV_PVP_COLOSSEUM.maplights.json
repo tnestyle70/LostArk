@@ -1,0 +1,357 @@
+{
+  "schema": "lostark.map-light-presentation",
+  "formatVersion": 2,
+  "areaId": "LV_PVP_COLOSSEUM",
+  "provenance": "PROJECT_AUTHORED",
+  "nextLightOrdinal": 13,
+  "lights": [
+    {
+      "lightId": "light.lv_pvp_colosseum.pointlight_0_lc.233",
+      "displayName": "pointlight_0_lc / pointlight_0_lc",
+      "kind": "POINT",
+      "groupId": "source",
+      "enabled": true,
+      "position": [
+        16.52066,
+        13.805239,
+        -1.974462
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 5.216506,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.780392,
+        0.631373,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "UNBAKED"
+    },
+    {
+      "lightId": "light.lv_pvp_colosseum.pointlight_10_lc.234",
+      "displayName": "pointlight_10_lc / pointlight_10_lc",
+      "kind": "POINT",
+      "groupId": "source",
+      "enabled": true,
+      "position": [
+        20.593271,
+        17.275253,
+        0.424076
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 5.108253,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.972549,
+        0.886275,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "UNBAKED"
+    },
+    {
+      "lightId": "light.lv_pvp_colosseum.pointlight_13_lc.235",
+      "displayName": "pointlight_13_lc / pointlight_13_lc",
+      "kind": "POINT",
+      "groupId": "source",
+      "enabled": true,
+      "position": [
+        -24.133372,
+        16.240265,
+        -1.863314
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 2.726683,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.780392,
+        0.631373,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "UNBAKED"
+    },
+    {
+      "lightId": "light.lv_pvp_colosseum.pointlight_15_lc.236",
+      "displayName": "pointlight_15_lc / pointlight_15_lc",
+      "kind": "POINT",
+      "groupId": "source",
+      "enabled": true,
+      "position": [
+        -24.314019,
+        16.451165,
+        2.874933
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 2.726683,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.780392,
+        0.631373,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "UNBAKED"
+    },
+    {
+      "lightId": "light.lv_pvp_colosseum.pointlight_1_lc.237",
+      "displayName": "pointlight_1_lc / pointlight_1_lc",
+      "kind": "POINT",
+      "groupId": "source",
+      "enabled": true,
+      "position": [
+        15.840677,
+        14.495239,
+        4.545559
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 5.108253,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.780392,
+        0.631373,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "UNBAKED"
+    },
+    {
+      "lightId": "light.lv_pvp_colosseum.pointlight_3_lc.238",
+      "displayName": "pointlight_3_lc / pointlight_3_lc",
+      "kind": "POINT",
+      "groupId": "source",
+      "enabled": true,
+      "position": [
+        22.73344,
+        16.240265,
+        -1.863379
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 2.726683,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.780392,
+        0.631373,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "UNBAKED"
+    },
+    {
+      "lightId": "light.lv_pvp_colosseum.pointlight_4_lc.239",
+      "displayName": "pointlight_4_lc / pointlight_4_lc",
+      "kind": "POINT",
+      "groupId": "source",
+      "enabled": true,
+      "position": [
+        22.914116,
+        16.451165,
+        2.874886
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 2.726683,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.780392,
+        0.631373,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "UNBAKED"
+    },
+    {
+      "lightId": "light.lv_pvp_colosseum.pointlight_5_lc.240",
+      "displayName": "pointlight_5_lc / pointlight_5_lc",
+      "kind": "POINT",
+      "groupId": "source",
+      "enabled": true,
+      "position": [
+        -17.920615,
+        13.805239,
+        -1.974415
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 5.216506,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.780392,
+        0.631373,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "UNBAKED"
+    },
+    {
+      "lightId": "light.lv_pvp_colosseum.pointlight_6_lc.241",
+      "displayName": "pointlight_6_lc / pointlight_6_lc",
+      "kind": "POINT",
+      "groupId": "source",
+      "enabled": true,
+      "position": [
+        -17.240615,
+        14.495239,
+        4.545585
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 5.108253,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.780392,
+        0.631373,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "UNBAKED"
+    },
+    {
+      "lightId": "light.lv_pvp_colosseum.pointlight_7_lc.242",
+      "displayName": "pointlight_7_lc / pointlight_7_lc",
+      "kind": "POINT",
+      "groupId": "source",
+      "enabled": true,
+      "position": [
+        -13.225967,
+        14.495239,
+        0.424077
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 5.108253,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.972549,
+        0.886275,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "UNBAKED"
+    },
+    {
+      "lightId": "light.lv_pvp_colosseum.pointlight_8_lc.243",
+      "displayName": "pointlight_8_lc / pointlight_8_lc",
+      "kind": "POINT",
+      "groupId": "source",
+      "enabled": true,
+      "position": [
+        11.662656,
+        14.495222,
+        0.424019
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 5.108253,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.972549,
+        0.886275,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "UNBAKED"
+    },
+    {
+      "lightId": "light.lv_pvp_colosseum.pointlight_9_lc.244",
+      "displayName": "pointlight_9_lc / pointlight_9_lc",
+      "kind": "POINT",
+      "groupId": "source",
+      "enabled": true,
+      "position": [
+        -22.070005,
+        17.275251,
+        0.424077
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 5.108253,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.972549,
+        0.886275,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "UNBAKED"
+    }
+  ]
+}

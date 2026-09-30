@@ -39,6 +39,7 @@
 #include "CombatHUDViewModel.h"
 #include "Gameplay/WorldCollisionContract.h"
 #include "Gameplay/MaharakaWaterpangContract.h"
+#include "MaharakaWaterpangPresentation.h"
 
 #include <algorithm>
 #include <cctype>
@@ -162,6 +163,16 @@ namespace
 	constexpr int32_t ROOT_MOTION_VERTICAL_AXIS = 2;
 	constexpr const wchar_t* EQUIPMENT_PREVIEW_PART_PREFIX =
 		L"Part_80_EquipmentPreview_";
+
+	uint32_t ResolveBodyHiddenMeshMask(
+		const CHARACTER_SPEC& spec, const uint32_t occupiedSlotsMask)
+	{
+		const bool_t isHairHidden = !spec.isBodyHairFallback ||
+			0u != (occupiedSlotsMask &
+				EquipmentPresentationSlotMask(EQUIPMENT_PRESENTATION_SLOT::HEAD));
+		return spec.iBodyHiddenMeshMask |
+			(isHairHidden ? spec.iBodyHairMeshMask : 0u);
+	}
 
 	bool_t Is_RuntimePartId(const std::string& value)
 	{
@@ -1859,7 +1870,17 @@ void CCharacter::Apply_LocalMoveSnapshot(const CLocalMovePrediction::Snapshot& s
 		return;
 	const double now = LocalMoveClockSeconds();
 	const bool_t wasEnabled = m_isLocalMovePredictionEnabled;
-	const auto disposition = m_LocalMovePrediction.ApplySnapshot(snapshot, now, Get_LocalMovePose());
+	// Only navigation-proven ground changes may relax the vertical continuity test.
+	// A horizontal discontinuity or a change to another floor remains a hard reset.
+	const auto validateGround = [](const CLocalMovePrediction::Vec3& from,
+		const CLocalMovePrediction::Vec3& to, void* context) -> bool
+	{
+		const auto* navigation = static_cast<const CNavigation*>(context);
+		return nullptr != navigation && navigation->Is_GroundedSegmentContinuous(
+			XMVectorSet(from.x, from.y, from.z, 1.f), XMVectorSet(to.x, to.y, to.z, 1.f));
+	};
+	const auto disposition = m_LocalMovePrediction.ApplySnapshot(snapshot, now, Get_LocalMovePose(),
+		validateGround, m_pNavigationCom.get());
 	if (disposition == CLocalMovePrediction::SnapshotDisposition::IGNORED)
 	{
 		// Maharaka diagnostic: an ignored snapshot far from the presented body.
@@ -1909,12 +1930,18 @@ bool_t CCharacter::Predict_NetworkMoveGoal(const std::uint32_t sequence, const f
 		!std::isfinite(goal.x) || !std::isfinite(goal.y) || !std::isfinite(goal.z))
 		return false;
 
+	const CLocalMovePrediction::Vec3 moveGoal{ goal.x, goal.y, goal.z };
+	// Repeating a target only updates the command sequence. Preserve the path,
+	// its progress and its original acknowledgement/freshness horizon.
+	if (m_LocalMovePrediction.IsSameMoveGoal(moveGoal))
+		return m_LocalMovePrediction.SubmitMove(sequence, now, Get_LocalMovePose(), &moveGoal);
+
 	// Stage independently: a failed new click must not erase the old prediction.
 	CNavPathFollower stagedPath;
 	if (PATH_RESULT_CODE::SUCCESS != stagedPath.Request_Path(m_pNavigationCom,
 		m_pTransformCom->Get_State(STATE::POSITION), XMLoadFloat3(&goal),
 		m_pNavigationCom->Get_MaxStepHeight()) ||
-		!m_LocalMovePrediction.SubmitMove(sequence, now, Get_LocalMovePose()))
+		!m_LocalMovePrediction.SubmitMove(sequence, now, Get_LocalMovePose(), &moveGoal))
 		return false;
 	m_PathFollower = std::move(stagedPath);
 	Set_Locomotion(m_PathFollower.Has_Path());
@@ -1945,12 +1972,12 @@ bool_t CCharacter::Update_LocalMovePrediction(const f32_t fTimeDelta)
 	{
 		// Bound a frame stall without changing the normal frame's elapsed time.
 		m_PathFollower.Update(m_pTransformCom, m_LocalMovePrediction.Get_MoveSpeed(),
-			(std::min)(fTimeDelta, 0.1f));
+			(std::min)(m_LocalMovePrediction.Get_LocalPathDeltaSeconds(), 0.1f));
 		auto predicted = Get_LocalMovePose();
 		const vector_t look = m_pTransformCom->Get_State(STATE::LOOK);
 		predicted.yawDegrees = XMConvertToDegrees(atan2f(XMVectorGetX(look), XMVectorGetZ(look)));
 		predicted.isMoving = m_PathFollower.Has_Path();
-		frame = m_LocalMovePrediction.Update(now, fTimeDelta, predicted);
+		frame = m_LocalMovePrediction.CompleteLocalPathFrame(now, predicted);
 	}
 	if (frame.stopLocalPath)
 		m_PathFollower.Cancel();
@@ -2277,6 +2304,57 @@ void CCharacter::Set_Position(fvector_t vPosition)
 	Update_PresentationRootMatrix();
 }
 
+bool_t CCharacter::Sample_CutsceneAnimation(const std::string& clip, const f32_t seconds, const bool_t loop)
+{
+	if (!m_pBodyModel || clip.empty() || !std::isfinite(seconds) || seconds < 0.f)
+		return false;
+	uint32_t index = m_iCutsceneAnimation;
+	if (!m_hasCutsceneAnimation || clip != m_strCutsceneAnimation)
+	{
+		index = UINT32_MAX;
+		for (uint32_t i = 0; i < m_pBodyModel->Get_NumAnimations(); ++i)
+		{
+			const char_t* name = m_pBodyModel->Get_AnimationName(i);
+			if (name && clip == name)
+			{
+				if (index != UINT32_MAX) return false; // Ambiguous source names are not guessed.
+				index = i;
+			}
+		}
+	}
+	if (index == UINT32_MAX) return false;
+	f32_t position = 0.f, duration = 0.f;
+	const f32_t ticksPerSecond = m_pBodyModel->Get_AnimationTickPerSecond(index);
+	if (!m_pBodyModel->Get_AnimationProgress(index, position, duration) ||
+		!std::isfinite(duration) || duration <= 0.f || !std::isfinite(ticksPerSecond) || ticksPerSecond <= 0.f)
+		return false;
+	if (!m_hasCutsceneAnimation)
+	{
+		m_iBeforeCutsceneAnimation = m_pBodyModel->Get_CurrentAnimIndex();
+		m_bBeforeCutsceneLoop = m_pBodyModel->Is_AnimLoop();
+	}
+	m_strCutsceneAnimation = clip;
+	m_iCutsceneAnimation = index;
+	m_fCutsceneAnimationTicks = loop ? std::fmod(seconds * ticksPerSecond, duration) :
+		(std::min)(seconds * ticksPerSecond, duration);
+	m_hasCutsceneAnimation = true;
+	return true;
+}
+
+void CCharacter::Clear_CutsceneAnimation()
+{
+	if (!m_hasCutsceneAnimation) return;
+	if (m_pBodyModel)
+	{
+		m_pBodyModel->Clear_AnimationTransitionPose();
+		if (m_iBeforeCutsceneAnimation < m_pBodyModel->Get_NumAnimations())
+			m_pBodyModel->Set_Animation(m_iBeforeCutsceneAnimation, m_bBeforeCutsceneLoop);
+	}
+	m_hasCutsceneAnimation = false;
+	m_strCutsceneAnimation.clear();
+	m_iCutsceneAnimation = UINT32_MAX;
+}
+
 bool_t CCharacter::Apply_MazePresentation(const bool_t isMaze)
 {
 	if (m_pSpec == CCharacterCatalog::Find_ClownSpec()) return true;
@@ -2310,8 +2388,6 @@ namespace
 {
 	constexpr const wchar_t* WATER_GUN_PART_TAG = L"Part_96_WaterGun";
 	constexpr const wchar_t* WATER_GUN_PROTOTYPE_TAG = L"Prototype_Component_Model_MaharakaWaterGun";
-	// EFTable_Prop 15000/15002 "Water Pro MK-1" -> EFDLProp_ITR_02164.
-	constexpr const char* WATER_GUN_MODEL = "Character/Maharaka/WaterGun/ITR_02164/ITR_02164.wmodel";
 	// LookInfo player socket SC_Prop3_01 = bip001-prop3 with a zero offset on every class body.
 	constexpr const char* WATER_GUN_SOCKET_BONE = "bip001-prop3";
 	// Submesh 1 is the translucent tank (itr_02164_02_mi); its source translucency is not restored.
@@ -2335,6 +2411,8 @@ namespace
 		{ 1u, 0.2f, "Gadget_WaterPistol1_Attack3_Shot1" },
 		{ 2u, 0.f, "Gadget_WaterPistol1_Attack1_Cast1" },
 		{ 2u, 0.55f, "Gadget_WaterPistol1_Attack1_Shot1" },
+		{ 4u, 0.f, "Gadget_WaterPistol1_Attack1_Cast1" },
+		{ 4u, 0.55f, "Gadget_WaterPistol1_Attack4_Shot1" },
 		{ 5u, 0.1f, "Gadget_Enviska1_Attack1_Shot1" },
 	};
 
@@ -2344,32 +2422,7 @@ namespace
 			Write_EffectFailureDiagnostic("maharaka.watergun", detail);
 	}
 
-	HRESULT Ensure_WaterGunPrototype(ComPtr<ID3D11Device> pDevice,
-		ComPtr<ID3D11DeviceContext> pContext, const uint32_t iLevelIndex, std::string& status)
-	{
-		if (nullptr != CGameInstance::Get().Clone_Prototype(iLevelIndex, WATER_GUN_PROTOTYPE_TAG))
-			return S_FALSE;
-		Engine::MODEL_ASSET_LOAD_DESC load;
-		if (!CActorCatalog::Build_ModelLoadDescription(WATER_GUN_MODEL, load, status))
-			return E_FAIL;
-		/* Cooked in UE centimetres with axes (x, z, y). The prop bone frame is
-		   (x, y, -z) and already carries the class cm-to-m basis. */
-		auto model = Engine::CModel::Create(pDevice, pContext, MODEL::NONANIM, load,
-			XMMatrixRotationX(XMConvertToRadians(-90.f)));
-		if (!model || !model->Get_NumMeshes())
-		{
-			status = "water gun model failed to load";
-			return E_FAIL;
-		}
-		std::vector<std::pair<std::wstring, unique_ptr<Engine::CPrototype>>> staged;
-		staged.emplace_back(WATER_GUN_PROTOTYPE_TAG, std::move(model));
-		if (FAILED(CGameInstance::Get().Add_Prototypes(iLevelIndex, std::move(staged))))
-		{
-			status = "water gun prototype commit failed";
-			return E_FAIL;
-		}
-		return S_OK;
-	}
+
 }
 
 bool_t CCharacter::Apply_WaterGunPresentation(bool_t isArmed)
@@ -2405,7 +2458,7 @@ bool_t CCharacter::Apply_WaterGunPresentation(bool_t isArmed)
 	{
 		std::string status = "body has no " + std::string(WATER_GUN_SOCKET_BONE);
 		if (!m_pBodyModel || !m_pBodyModel->Has_Bone(WATER_GUN_SOCKET_BONE) ||
-			FAILED(Ensure_WaterGunPrototype(m_pDevice, m_pContext, m_iPrototypeLevelIndex, status)))
+			FAILED(CMaharakaWaterpangPresentation::Ensure_WaterGunPrototype(m_pDevice, m_pContext, m_iPrototypeLevelIndex, status)))
 		{
 			Write_WaterGunDiagnostic(std::string("kind=arm-failed class=") + className + " reason=" + status);
 			return false;
@@ -3573,14 +3626,13 @@ void CCharacter::Apply_DefaultEquipmentVisibility(
 {
 	if (nullptr == m_pSpec)
 		return;
-	/* Hair is worn, never drawn by the body. The cook put a hairstyle onto three of the
-	bodies for convenience before character creation existed; those meshes are hidden for
-	good and the class's hair part draws instead. */
+	/* Classes with a separate default hair part keep their baked hair hidden. A class
+	that uses its body hair as the fallback replaces it only after a HEAD set commits. */
 	if (auto pBody = dynamic_cast<CPart_Body*>(
 		__super::Find_PartObject(TEXT("Part_00_Body"))))
 	{
 		pBody->Set_HiddenMeshes(
-			m_pSpec->iBodyHiddenMeshMask | m_pSpec->iBodyHairMeshMask);
+			ResolveBodyHiddenMeshMask(*m_pSpec, occupiedSlotsMask));
 	}
 
 	/* An avatar piece the player hid (Set_AvatarPartVisible) neither renders nor covers
@@ -4163,6 +4215,58 @@ bool_t CCharacter::Set_DyeColor(
 	const float4_t vApplied = vColor.w < 0.f ?
 		float4_t(1.f, 1.f, 1.f, 1.f) : vColor;
 
+	bool_t isNativeHairApplied = false;
+	if (!isTintSurface)
+	{
+		static constexpr const char_t* HAIR_COLOR_PARAMETERS[] = {
+			"var_base_haircolor_base_ui", "var_base_hairtwotonecolor_ui" };
+		if (vColor.w >= 0.f)
+		{
+			isNativeHairApplied |= Set_FaceMaterialParameter(HAIR_COLOR_PARAMETERS[0], vColor);
+			isNativeHairApplied |= Set_FaceMaterialParameter(HAIR_COLOR_PARAMETERS[1], vTwoTone);
+		}
+		else if (Prepare_NativeMaterials())
+		{
+			/* Restore only this body's authored hair colours. Clearing every native override
+			would also discard the face, eye and make-up choices on the same model. */
+			const CHARACTER_ACTOR_ENTRY* const actor = CActorCatalog::Find_Character(m_eCharacterClass);
+			if (nullptr != actor)
+			{
+				const auto source = actor->modelMaterialParameters.find(actor->bodyModel);
+				if (source != actor->modelMaterialParameters.end())
+				{
+					for (CHARACTER_MATERIAL_PARAMETERS& material : m_NativeMaterials)
+					{
+						const auto authored = std::find_if(source->second.begin(), source->second.end(),
+							[&](const CHARACTER_MATERIAL_PARAMETERS& candidate) {
+								return candidate.materialName == material.materialName &&
+									candidate.family == material.family;
+							});
+						if (authored == source->second.end()) continue;
+						auto values = material.values;
+						bool_t hasHairColor = false;
+						for (const char_t* name : HAIR_COLOR_PARAMETERS)
+						{
+							const auto original = authored->values.find(name);
+							if (original == authored->values.end()) continue;
+							values[name] = original->second;
+							hasHairColor = true;
+						}
+						if (!hasHairColor) continue;
+						Engine::MODEL_SOURCE_CHARACTER_PARAMETERS packed{};
+						if (SourceCharacterMaterial::Configure(material.family, values, packed) &&
+							0u != m_pBodyModel->Override_SourceCharacterConstants(
+								material.materialName.c_str(), packed))
+						{
+							material.values = std::move(values);
+							isNativeHairApplied = true;
+						}
+					}
+				}
+			}
+		}
+	}
+
 	uint32_t iMatched = 0u;
 	if (isTintSurface)
 	{
@@ -4200,8 +4304,9 @@ bool_t CCharacter::Set_DyeColor(
 	}
 	OutputDebugStringA(("[Dye] fragment " + std::string(pFragment) + " -> " +
 		std::to_string(iMatched) + " material(s)" +
-		(isTintSurface ? " (tint)" : " (dye)") + "\n").c_str());
-	return 0u != iMatched;
+		(isTintSurface ? " (tint)" : " (dye)") +
+		(isNativeHairApplied ? " + native hair" : "") + "\n").c_str());
+	return 0u != iMatched || isNativeHairApplied;
 }
 
 namespace
@@ -4344,6 +4449,11 @@ bool_t CCharacter::Set_HairTwoTone(const f32_t fStrength, const f32_t fRange)
 	if (nullptr == m_pBodyModel)
 		return false;
 	static constexpr const char_t* HAIR_FRAGMENT = "_hair";
+	/* The native source multiplies its colour blend by this value. Its strand ranges
+	are separate A/B parameters, so the legacy single-range slider does not replace them. */
+	const f32_t nativeStrength = std::isfinite(fStrength) ? std::clamp(fStrength, 0.f, 1.f) : 0.f;
+	const bool_t isNativeHairApplied = Set_FaceMaterialParameter("var_base_hairtwotone_bool_ui",
+		float4_t(nativeStrength, nativeStrength, nativeStrength, nativeStrength));
 	uint32_t iMatched =
 		m_pBodyModel->Override_MaterialDyeTwoTone(HAIR_FRAGMENT, fStrength, fRange);
 	for (const auto& [partTag, requiredStance] : m_EquipmentPreviewPartStances)
@@ -4357,7 +4467,7 @@ bool_t CCharacter::Set_HairTwoTone(const f32_t fStrength, const f32_t fRange)
 		if (nullptr != pModel)
 			iMatched += pModel->Override_MaterialDyeTwoTone(HAIR_FRAGMENT, fStrength, fRange);
 	}
-	return 0u != iMatched;
+	return 0u != iMatched || isNativeHairApplied;
 }
 
 bool_t CCharacter::Set_FaceIrisTexture(const std::string& strTextureAssetId)
@@ -4445,6 +4555,15 @@ void CCharacter::Load_FaceMorphs()
 
 void CCharacter::Late_Update(f32_t fTimeDelta)
 {
+	// Level replication may sample a network action after Update. Cinematic pose is
+	// the last animation owner before borrowed equipment palettes and face/cloth.
+	if (m_hasCutsceneAnimation && m_pBodyModel)
+	{
+		Engine::CModel::ANIMATION_TRANSITION_POSE pose;
+		pose.sourceIndex = pose.targetIndex = m_iCutsceneAnimation;
+		pose.sourceTicks = pose.targetTicks = m_fCutsceneAnimationTicks;
+		if (!m_pBodyModel->Set_AnimationTransitionPose(pose)) Clear_CutsceneAnimation();
+	}
 	// Skip the composite part render queues without changing equipment visibility.
     Set_PresentationVisibilityControls(m_isSourcePawnHidden, m_isSourceWeaponHidden, m_isSourceIdentityHidden, m_isSourceIdentityVisible);
 	if (Is_WorldPresentationHidden()) return;
@@ -4909,8 +5028,7 @@ HRESULT CCharacter::Ready_PartObjects()
 	bodyDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
 	bodyDesc.strModelTag = m_pSpec->pBodyModelTag;
 	bodyDesc.strShaderTag = m_pSpec->pShaderTag;
-	bodyDesc.iHiddenMeshMask =
-		m_pSpec->iBodyHiddenMeshMask | m_pSpec->iBodyHairMeshMask;
+	bodyDesc.iHiddenMeshMask = ResolveBodyHiddenMeshMask(*m_pSpec, 0u);
 	bodyDesc.pInitialAnimation = m_pSpec->AnimationClips[ETOUI(CHARACTER_ANIM::IDLE)];
 	bodyDesc.pEmissiveOverride = &m_ActionEmissiveOverride;
 

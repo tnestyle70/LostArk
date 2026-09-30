@@ -1188,17 +1188,18 @@
     {"kind": "V1", "assetId": "effect.maharaka.waterpang.mokomoko.telegraph", "displayName": "워터팡 | 중앙 바닥 장판", "parentId": "world.maharaka.waterpang.hazards"},
     {"kind": "V1", "assetId": "effect.maharaka.waterpang.mokomoko.ground.att_battle_1_01.full.restore", "displayName": "워터팡 | 중앙 바닥 터지기", "parentId": "world.maharaka.waterpang.hazards"},
     {"kind": "V1", "assetId": "effect.maharaka.waterpang.mokomoko.att_battle_1_01.full.restore", "displayName": "워터팡 | 중앙 모코모코 물 폭포", "parentId": "world.maharaka.waterpang.hazards"},
-    {"kind": "V1", "assetId": "effect.maharaka.watergun.watergun_att_2.full.restore", "displayName": "워터팡 | Q 연발 물총 총구", "parentId": "world.maharaka.waterpang.skills"},
-    {"kind": "V1", "assetId": "effect.maharaka.watergun.q.flight", "displayName": "워터팡 | Q 연발 물총 날아가기", "parentId": "world.maharaka.waterpang.skills"},
-    {"kind": "V1", "assetId": "effect.maharaka.watergun.q.hit", "displayName": "워터팡 | Q 연발 물총 맞기", "parentId": "world.maharaka.waterpang.skills"},
+    {"kind": "V1", "assetId": "effect.maharaka.watergun.watergun_att_2.full.restore", "displayName": "워터팡 | MK1 연발 물총 총구", "parentId": "world.maharaka.waterpang.variants"},
+    {"kind": "V1", "assetId": "effect.maharaka.watergun.q.flight", "displayName": "워터팡 | Q 세 갈래 물총 날아가기", "parentId": "world.maharaka.waterpang.skills"},
+    {"kind": "V1", "assetId": "effect.maharaka.watergun.q.hit", "displayName": "워터팡 | Q 세 갈래 물총 맞기", "parentId": "world.maharaka.waterpang.skills"},
     {"kind": "V1", "assetId": "effect.maharaka.watergun.w.flight", "displayName": "워터팡 | W 물폭탄 던지기", "parentId": "world.maharaka.waterpang.skills"},
     {"kind": "V1", "assetId": "effect.maharaka.watergun.w.hit", "displayName": "워터팡 | W 물폭탄 터지기", "parentId": "world.maharaka.waterpang.skills"},
     {"kind": "V1", "assetId": "effect.maharaka.watergun.e.speed", "displayName": "워터팡 | E 빠르게 이동하기", "parentId": "world.maharaka.waterpang.skills"},
     {"kind": "V1", "assetId": "effect.maharaka.watergun.watergun_att_1.full.restore", "displayName": "워터팡 | R 기본 물총 총구", "parentId": "world.maharaka.waterpang.skills"},
     {"kind": "V1", "assetId": "effect.maharaka.watergun.r.flight", "displayName": "워터팡 | R 기본 물총 날아가기", "parentId": "world.maharaka.waterpang.skills"},
     {"kind": "V1", "assetId": "effect.maharaka.watergun.r.hit", "displayName": "워터팡 | R 기본 물총 맞기", "parentId": "world.maharaka.waterpang.skills"},
-    {"kind": "V1", "assetId": "effect.maharaka.watergun.shot.start", "displayName": "워터팡 | Q·R 물방울 발사", "parentId": "world.maharaka.waterpang.skills"},
+    {"kind": "V1", "assetId": "effect.maharaka.watergun.shot.start", "displayName": "워터팡 | R 물방울 발사", "parentId": "world.maharaka.waterpang.skills"},
     {"kind": "V1", "assetId": "effect.maharaka.watergun.watergun_att_3.full.restore", "displayName": "워터팡 | MK2 범위 물총 총구", "parentId": "world.maharaka.waterpang.variants"},
-    {"kind": "V1", "assetId": "effect.maharaka.watergun.watergun_att_4.full.restore", "displayName": "워터팡 | MK2 단발 물총 총구", "parentId": "world.maharaka.waterpang.variants"}
+    {"kind": "V1", "assetId": "effect.maharaka.watergun.watergun_att_4.full.restore", "displayName": "워터팡 | Q 세 갈래 물총 총구", "parentId": "world.maharaka.waterpang.skills"},
+    {"kind": "V1", "assetId": "effect.maharaka.watergun.q.start", "displayName": "워터팡 | Q 세 갈래 물방울 발사", "parentId": "world.maharaka.waterpang.skills"}
   ]
 }

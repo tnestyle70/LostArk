@@ -1,6 +1,7 @@
 #include "GameRoom.h"
 
 #include "ClientSession.h"
+#include "ColosseumCombatPolicy.h"
 #include "ServerCombatHitRuntime.h"
 
 #include "Network/PacketMessages.h"
@@ -29,6 +30,7 @@ using namespace GameRoomDetail;
 namespace
 {
 	constexpr float KOUKU_FALL_DEPTH_M = 5.f;
+	constexpr float WATERPANG_FALL_DEPTH_M = 2.f;
 	// The casino chairs sit above the generic five-metre fall plane. A body
 	// leaving its support by more than the forced-move step limit is out.
 	constexpr float KOUKU_CASINO_FALL_DEPTH_M = 1.f;
@@ -156,7 +158,8 @@ void LostArk::Server::CGameRoom::Begin_PlayerFall(
 	const std::uint32_t updateTick)
 {
 	using namespace LostArk::Shared;
-	const float fallDepth = Resolve_KoukuFallCenter(player) ? KOUKU_CASINO_FALL_DEPTH_M : KOUKU_FALL_DEPTH_M;
+	const float fallDepth = m_eWorldId == WORLD_ID::MAHARAKA ? WATERPANG_FALL_DEPTH_M :
+		(Resolve_KoukuFallCenter(player) ? KOUKU_CASINO_FALL_DEPTH_M : KOUKU_FALL_DEPTH_M);
 	player.fFallDeathPlaneY = (player.bKnockbackBallistic ? player.fKnockbackSupportY : player.fPositionY) - fallDepth;
 	player.eAction = PLAYER_ACTION_STATE::FALLING;
 	player.bKoukuFallDeath = m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA && !player.iMarioStage;
@@ -755,7 +758,8 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 		rule the cooldown deadlines use. */
 		const std::int32_t sinceDeadline = static_cast<std::int32_t>(
 			updateTick - player.iFallDeathTick);
-		const bool reachedDeath = m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA ?
+		const bool reachedDeath = (m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA ||
+			(m_eWorldId == WORLD_ID::MAHARAKA && player.bWaterpangFall)) ?
 			(!std::isfinite(player.fFallDeathPlaneY) || player.fPositionY <= player.fFallDeathPlaneY) : sinceDeadline >= 0;
 		if (!std::isfinite(player.fPositionY) || reachedDeath)
 		{
@@ -814,13 +818,25 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 
 void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 {
+	std::vector<SERVER_PLAYER*> colosseumPlayers;
+	SERVER_COLOSSEUM_COMBAT_CONTEXT colosseumContext{ m_eWorldId, m_iColosseumMatchId,
+		m_eColosseumPhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::ACTIVE, {} };
+	if (m_iColosseumMatchId != 0u)
+	{
+		colosseumPlayers.reserve(m_Players.size());
+		for (auto& [id, player] : m_Players) colosseumPlayers.push_back(&player);
+		colosseumContext.Players = colosseumPlayers;
+	}
 	const std::uint32_t updateTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
 		1u : m_iServerTick + 1u;
 	for (auto& [playerId, player] : m_Players)
 	{
 		(void)playerId;
-		if (playerId == m_iGuideReceptionId) continue;
+        if (player.iColosseumMatchId && !player.bColosseumCombatActive &&
+            !(m_eColosseumPhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::RECRUITING && player.Is_Human())) continue;
+		// Bern personal guides hold their exact pose while the owner is away or sailing.
+		if (m_eWorldId == LostArk::Shared::WORLD_ID::BERN && player.Is_Guide() && !player.isCombatReady) continue;
 		if (player.CardMaze.transferStartTick && player.iCurrentHp) continue;
 		const auto ownsLivePatternOccurrence =
 			[this](const LostArk::Shared::NET_ENTITY_ID ownerEntityId,
@@ -1046,7 +1062,8 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			&m_ServerCollisionSystem,
 			fixedDeltaSeconds,
 			updateTick,
-			m_TickDamageEvents);
+			m_TickDamageEvents,
+			m_iColosseumMatchId != 0u ? &colosseumContext : nullptr);
 		if (LostArk::Shared::PLAYER_ACTION_STATE::NONE == player.eAction &&
 			PLAYER_PENDING_COMMAND_KIND::NONE != player.PendingCommand.eKind)
 		{

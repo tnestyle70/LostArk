@@ -325,7 +325,8 @@ Client::CRaidGateProgressView::INTENT Client::CRaidGateProgressView::Update_Butt
 	}
 }
 
-void Client::CRaidGateProgressView::Render_AssemblyCountdown(const f32_t secondsLeft)
+void Client::CRaidGateProgressView::Render_AssemblyCountdown(
+	const f32_t secondsLeft, const wchar_t* message)
 {
 	if (!std::isfinite(secondsLeft) || secondsLeft <= 0.f)
 		return;
@@ -336,7 +337,7 @@ void Client::CRaidGateProgressView::Render_AssemblyCountdown(const f32_t seconds
 	const f32_t scale = (std::min)(viewport.x / 1280.f, viewport.y / 720.f);
 	const f32_t lineSpacing = CGameInstance::Get().Measure_Text(FONT_YOON, L"0").y;
 	UILabelFont::Draw_Centered(FONT_YOON,
-		L"\uC7A0\uC2DC \uD6C4 \uB2E4\uC74C \uC9C0\uC810\uC73C\uB85C \uC774\uB3D9\uB429\uB2C8\uB2E4.",
+		message ? message : L"\uC7A0\uC2DC \uD6C4 \uB2E4\uC74C \uC9C0\uC810\uC73C\uB85C \uC774\uB3D9\uB429\uB2C8\uB2E4.",
 		viewport.x * 0.5f, viewport.y * 0.72f, lineSpacing * scale * 0.625f, DirectX::Colors::White);
 	const std::wstring countdown = std::to_wstring(static_cast<int>(std::ceil(secondsLeft))) + L"\uCD08";
 	UILabelFont::Draw_Centered(FONT_YOON, countdown.c_str(),

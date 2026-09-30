@@ -238,3 +238,357 @@ header를 수동 복사하거나 SDK 이전 DLL과 새 header의 조합을 완�
 OBJ/PDB 152개(674,636,165 bytes)를 정리했다. 원본 캡처·소스·실행 로그·JSON receipt·probe EXE와
 재현 스크립트는 보존했다. 이후 전체 `git diff --check`를 다시 실행해 통과했다. 개별 검증을 다시
 실행할 때는 기존 object 재사용 단축 명령보다 각 full compile 스크립트를 먼저 사용한다.
+
+## G08. 2026-10-01 Release 저장 캡처 조사
+
+사용자 재부팅 후 최신 캡처는 `Client/Bin/ProfilerCaptures/베른성_20261001_012336_905_frame369_32536_0.json`이다.
+Release/RTX4070/3840×2126, 120frames 중 GPU valid116/pending4, dropped0이다.
+저장 시점 foreground, 사용자 FPS 제한0, Shadow OFF/SSAO ON/Bloom OFF/FXAA ON이며 설정은 변경하지 않았다.
+
+| 캡처 | 화면 크기 | 평균 frame | GPU NonBlend | GPU Lights | CPU Present |
+|---|---|---:|---:|---:|---:|
+| 00:57 릴리즈_4k_성내부 | 3840×2160 | 34.394ms | 10.513ms | 19.649ms | 23.815ms |
+| 01:02 릴리즈_도서관 | 2560×1440 | 48.933ms | 15.202ms | 3.488ms | 0.794ms |
+| 01:23 베른성, 재부팅 후 | 3840×2126 | 25.579ms | 15.434ms | 4.818ms | 12.301ms |
+
+최신 평균은39.094FPS, p9526.982ms, 최대28.738ms, GPU25.596ms다. CPU25.322ms 중
+Present12.301ms를 제외한 구간은 약13.022ms다. 이전 캡처와는 camera/해상도/visible/lightdraw가
+다르므로 재부팅이나 변경 코드의 개선율을 계산하지 않는다. 특히 도서관은4K 캡처가 아니다.
+도서관 GPU frame49.674ms에는 계측된 top-level scope 바깥27.208ms가 있어 이를 전부 shader
+연산으로 해석하지 않는다. 당시 별도 Debug shader build와 여러 실행 프로그램이 있었으나
+개별 영향은 통제된 A/B로 측정하지 않았다.
+
+## G09. 실제 맵 draw·LOD·ImGui 비용
+
+최신 캡처는 전체 draw1,066회 중 instanced789회, light93회를 포함한다. Map.Batch.Render357회가
+submesh 순회로 Map.Batch.Draw670회를 제출한다. 따라서 전체 draw를 고유 mesh 개수로 부르지 않는다.
+등록 map placements50,021/map batch16,424/fallback1,222는 보유량이다. visible counter564도
+fallback의 pass별 제출이 포함될 수 있어 고유 placement564개로 단정하지 않는다.
+120frames 모두 visibility cache hit15,794/rebuild0/upload0이며 candidates0은 캐시 재사용 결과다.
+
+전체 indices 약307.7만, VS 약125.1만, PS 약1억1,460.6만이다. NonBlend PS5,417.4만,
+Lights PS2,173.7만이며 GPU NonBlend가 전체 GPU의60.3%다. CPU map material bind1.739ms,
+pass apply0.385ms, Draw 호출0.166ms와 비교하면 단순 CPU draw 호출보다 GPU 불투명 재질·픽셀
+처리가 우선 조사 대상이다. PS 횟수만으로 순수 overdraw·shader instruction 수를 확정할 수 없고,
+material별 GPU attribution이나 동일 camera 해상도 A/B는 없다. LOD available/0/1/2 draw는
+모두0으로 계측된 geometry 절감은 없지만 개별 admission 탈락 사유나 LOD 고장을 확정하지 않았다.
+
+ImGui CPU NewFrame0.088ms + BuildAndSubmit0.241ms, GPU0.0135ms, draw4회다.
+Profiler.Panel.Refresh는6frames에서 호출당1.087ms/전체 frame 평균0.054ms이며 부모에 포함된다.
+F7이 열린 측정이므로 창을 닫은 상태나 OS background의 실측으로 대신하지 않는다.
+소스상 tool build는 열린 창에서만 수행하며, ImGui frame/backend 자체는 별도 기본 비용이 있다.
+제품 Party/Chat 업데이트 scope를 `UI.Runtime.Party.Update`/`UI.Runtime.Chat.Update`로 정정했다.
+
+최신 캡처에는 Picking readback/bytes와 navigation query가 모두0이다. 이 구간은 재클릭 증상의
+재현 증거가 아니다. 도서관 캡처는 Picking.MapWait27회/평균5.924ms/최대41.083ms였고,
+navigation6회/평균0.020ms로 해당 입력에서는 GPU readback 대기를 먼저 줄일 근거가 있었다.
+`PlayerController`는50ms 재전송 간격 안의 hold frame에서 피킹을 생략한다. 첫 클릭과 새 두 번째
+물리 클릭은 즉시 exact pixel을 읽는다. 피킹 전49ms/피킹 후51ms였던 hold는 다음 frame로 늦출
+수 있으므로 전송 시점까지 완전 동등하다고 주장하지 않는다.
+
+Profiler JSON에는 export 시점 창/process foreground, minimized, 전경·배경·선택된 FPS 제한을
+추가했다. 최신 캡처에서 새6필드를 확인했으며0은 checkbox에서 비활성인 제한을 뜻한다.
+별도 minimized message wait와 과거 모든 frame의 상태는 이 필드로 측정하지 않는다.
+G11 일반 local-light clip은 미반영이며 렌더 옵션·mesh·shader·LOD 품질 데이터는 수정하지 않았다.
+
+분석 수치와 재생 fixture는 `out/RebootCapture20261001/bern_012336_analysis.json`,
+`out/MovementAudit20261001/reclick_probe.cpp`와 `reclick_probe.jsonl`에 보존했다.
+
+## G10. 저FPS 재클릭 보정 수정
+
+일정40FPS, Server30Hz, 같은 방향150ms 간격 두 클릭, 편도0/25/50/100ms를 실제 helper로
+재생했을 때 기존 코드에서도 RESET은0이었다. 입력만으로 위치를 직접 바꾸는 Server 경로는
+없었으며, Bern Client/Server navigation16개 파일의 SHA256도 일치했다.
+100/350/1000ms stall을 포함하면 projection과 residual 합산이 정상 속도의2배에 도달했다.
+
+`CLocalMovePrediction::Update`는 최종 XZ 표시 이동을1.15×replicated speed(속도0의 정지 보정만1m/s 대체값)와
+Engine frame delta를 한 번씩 소비하는 presentation clock의 frame budget으로 제한한다. ACK에서 시작한 보정 목표는 유지하며 각 frame의
+남은 차이를 계속 따라간다. 같은 now의 재호출은 예산을 추가하지 않는다. pending local path는
+기존 Character/NavPathFollower가 소유하며 기존0.1초 cap을 유지한다. 보정까지 고정100ms로
+자르면 지속10FPS 미만에서 위치가 계속 밀리므로 보정 경로에는 그 cap을 두지 않는다. Server 속도나 명령·
+snapshot 형식은 변경하지 않았다. genuine teleport/forced state/10m 초과 시각 오차 RESET은 유지한다.
+
+350ms stall 후40FPS의 최대 한 frame 이동은0.1475m에서0.084813m로 줄고 RESET은0이었다.
+속도 여유를 줄인 만큼 긴 stall 뒤 수렴은 느려진다. speed2.95m/s에서 약2.98m가 밀리면
+최대 catch-up 여유는0.4425m/s이며 회복에 약6.7초 이상 걸릴 수 있다. 실제 화면 검증은 남았다.
+
+Bern의 실제 합법 이동은 XZ0.0983353m/Y0.9999619m인데 기존 helper의3D 한계0.8483334m를
+넘어 RESET이었다. 새 `CNavigation::Is_GroundedSegmentContinuous`는 양끝 동일 grid/layer,
+실제 지면 Y와1mm 이내 일치, 기존 segment의 blocker/maxStepHeight를 확인한다.
+Character는 할당 없는 callback으로 연결한다. helper는 snapshot 순서 검증 뒤, 기존3D 검사만
+초과하고 XZ는 한계 안인 경우에만 이 증명을 요청한다. 실패·다른 층·수평 teleport는 RESET이다.
+일반 경로에 A*나 새 이동 경로는 추가하지 않았다. 이 지형 결함이 사용자가 본 위치와 같은지는
+좌표·입력 시점 로그가 없어 확정하지 않았다.
+
+## G11. 후속 검증 증거와 실행 경계
+
+- 기존 `ClientPresentationPrimitiveContractTests.cpp`에 총 표시 이동/이동 중 수렴/정지 수렴/
+  same-now/ground proof/순서 거부/실제 teleport 회귀를 추가하고 native Debug/Release 모두 PASS.
+  지속5/8FPS 각각16초에서 RESET 없이4초 이후 오차0.25m 미만을 유지했다. 고정100ms cap의
+  이전 후보는 새 지속 저FPS 검사에서 실패하여 그 후보를 적용하지 않았다.
+  0.5m/s 감속40FPS200frames는 매frame0.014375m 상한을 지키고, speed0의0.3m 오차는0.3초 안에 정지 수렴했다.
+  원본 header에 새 이동 budget 검사를 붙인 대조 실행은 해당 검사에서 실패해 기존 결함을 검출했다.
+- 실제 새 helper + Character callback 원문 + Navigation query 원문 + 실제 NavGrid.cpp 통합17검사 PASS.
+  설치 Bern1mstep, 겹친 층, detail/base 경계, 공중, 수직 teleport, 중간 blocked cell과 revision 보존을 확인했다.
+- 실제 Navigation.cpp, Character.cpp와 PlayerController/ProfilerCaptureIO/ProfilerTool/MainApp까지
+  총6개 CPP의 독립 Release 최소 컴파일 PASS. 제품 링크나 EngineSDK 배포를 대신하지 않는다.
+  기존 header 인코딩 경고 C4819/C4828은 남으며 요청과 무관한 파일은 재인코딩하지 않았다.
+- 피킹 gate9,600개 조건과 첫/빠른 재클릭/hold/deadzone/실패 상태 재시도 검증 PASS.
+  실패는 실제 네트워크 장애 주입이 아닌 commit 이전 반환과 미갱신 상태 fixture 검사다.
+- 최신 profiler JSON의 새6필드와 scope 이름 일치 확인. 소유 C++ BOM/CRLF 보존 및 전체 diff-check PASS.
+
+증거는 `out/MovementAudit20261001/primitive_{debug,release}.log`,
+`out/MovementAudit20261001/budget_mutation.log`, `out/MovementAudit20261001/client-compile/Character.log`,
+`out/RebootCapture20261001/focused/validation.json`,
+`%LOCALAPPDATA%/Temp/lostark-prediction-server-20261001/integration_probe.cpp`,
+`out/MovementAudit20261001/ground-integration.log`에 보존했다.
+검토 시점 Client/Server 실행 중으로 표준 Release Product build의 최종 교체를 위해 사용자 종료를
+요청했다. Client 자율 실행·조작은 하지 않았다. 실제40FPS 재클릭 화면과 변경 후 profiler의 FPS
+검증은 사용자가 수행하며, 기존 캡처를 변경 후 성능이나 증상 해결 증거로 쓰지 않는다.
+
+## G12. 추가 발탄4K 캡처
+
+`발탄_레이드_4k_20261001_014417_488_frame863_11668_0.json`은10,236,403bytes,
+SHA256 `dc8ecbeec3ad6dbea3ccac1c19619443c7f5270200fd3ffd0e725c9b6c1cc2da`다.
+120frames744–863/GPU valid116/pending4, dropped0, 상세CPU 계측OFF다. 저장 시점은
+Release/RTX4070/3840×2160/foreground/FPS 제한0이며 Shadow ON/SSAO OFF/Bloom OFF/FXAA ON이다.
+실행 Client PID11668은이번 prediction 수정 제품 빌드 이전 바이너리다.
+
+| 시간 순서의 구간 | frame 평균 | 전체 draw 평균 | visible 평균 | CPU NonBlend | GPU NonBlend | GPU Blend |
+|---|---:|---:|---:|---:|---:|---:|
+| 744–773 | 17.259ms | 1,034 | 1,138 | 5.148ms | 9.499ms | 3.354ms |
+| 774–803 | 17.658ms | 1,901 | 2,505 | 8.718ms | 9.194ms | 3.531ms |
+| 804–833 | 21.002ms | 3,045 | 4,557 | 12.718ms | 11.769ms | 4.083ms |
+| 834–863 | 30.299ms | 572 | 419 | 2.581ms | 11.471ms | 16.299ms |
+
+전체 평균21.554ms(46.39FPS), p9539.977ms, 최대43.376ms다. 후반30frames는33FPS 수준이며
+해당 GPU 유효26frames 평균33.463ms다. table은 안정 장면 A/B가 아닌 시간 흐름이며 GPU 평균은
+각 구간 유효 표본만 사용한다. 카메라가 변하며 visibility rebuild4,036/cachehit0이 매frame 관측된다.
+
+GPU 최악 frame848은43.638ms 중 Blend25.719ms, Blend PS523,881,920회/VS6,959회다.
+이때 전체 draw454/map visible329/Blend submissions17, CPU NonBlend1.628ms/Present29.652ms다.
+중간 구간보다 맵 draw가 줄었는데 후반이 더 느리므로 이 구간은 메시 개수보다 투명 렌더링의
+픽셀 작업이 강한 병목 근거다. `CRenderer::Render_Blend`는 전체 BLEND object queue를 그리므로
+물·투명 맵 표면·이펙트 중 어느 occurrence/asset이 원인인지 현재 GPU scope만으로 확정하지 않는다.
+중간804–833 구간의 CPU 맵 제출 비용까지 없다고 주장하지 않는다.
+
+전체 GPU 평균 NonBlend10.449/Blend6.490/Lights2.795ms다. Shadow는 static caster5,207개
+등록량과 달리 cache hit120/120이며 GPU0.088ms다. scene color copy는6–10회/평균425.8MB,
+GPU0.856ms이고 frame848은8회/530,841,600bytes다. ImGui CPU NewFrame+BuildAndSubmit0.337ms,
+GPU0.0247ms/draw4회로 주요 하락 원인 근거가 없다. Picking readback/navigation query는0이다.
+
+베른은 GPU NonBlend15.434ms가 중심인 반면 발탄 후반은 Blend가 중심이다. 두 장소의 체감40FPS를
+동일 원인이나 PC 성능 보정·40FPS 제한으로 해석하지 않는다.01:46:20 별도 live nvidia-smi는
+전체 GPU100%, VRAM10,318/12,282MiB, graphics2790MHz,57°C를 보여줬다. 캡처 이후 단일 시점이며
+Client 단독 귀속이나 캡처 당시 사용률로 쓰지 않는다.
+분석은 `out/RebootCapture20261001/valtan_014417_analysis.json`, 보조 샘플은
+`out/RebootCapture20261001/gpu_live_014620.json`에 보존했다. 이번 발탄 추가 조사에서 렌더 소스·
+품질 옵션·설치 데이터는 변경하지 않았다.
+
+## G13. ACK 적용 위상과 최종 presentation clock 수정
+
+사용자는60FPS에서도 빠른 동일 방향 재클릭 때 끊김을 보고했다. 실제 프레임 순서를 유지하고
+Character Update 뒤 snapshot 적용까지8/12/15ms가 걸리는 조건을 추가하니 기존 helper는
+60FPS/30Hz에서 속도가 각각0.6842↔1.3158,0.4375↔1.5625,0.1818↔1.8182배로 반복했다.
+일반 FPS만 고정한 초기 재생은 이 처리 시간을 포함하지 않아 이 결함을 검출하지 못했다.
+총 속도 상한만 추가한1차 후보도 늦은 ACK 위상에서 빠른 frame만 제한하여 지속 지연이 생겼다.
+
+최종 `LocalMovePrediction.h`는 `m_receivedAt`/RTT/timeout을 wall clock으로 유지하며,
+`m_presentationSeconds`/`m_snapshotPresentationAt`/`m_correctionPresentationAt`을 별도로 둔다.
+Engine delta는 새 Update 시각마다 한 번만 누적한다. 같은 시각의 재호출은0초다.
+snapshot projection과 보정 residual은 같은 presentation 시계에서 시작하므로 ACK 적용이
+Object Update보다 늦어도 다음 frame 전체를 진행한다. ACK 직후 동일 시각 조회는 최신 yaw와
+이동 상태를 반환하되 표시 위치와 frame 시계는 유지한다. Server simulation·packet·Engine 호출 순서는 그대로다.
+
+최종 실제 제품 header와 영구 회귀의 Debug/Release 실행을 모두 통과했다.60FPS의
+0/8/12/15ms ACK 위상과1/3/6ms Object jitter에서 steady 속도0.99998–1.00002배/RESET0,
+누적 지연이 없었다.40FPS는30Hz 양자화의 잔여 가감속이 있지만 위상과 무관한 평균 속도로
+수렴했다. 원본과1차 속도 상한 후보는 새 영구 phase 검사에서 각각 실패했다.
+지속5/8FPS·감속·정지·pending 만료·실제 teleport·같은 frame 두 번 Update·ACK 즉시 위치
+보존 검사도 포함한다. 실제 Character.cpp 최종 Release 최소 컴파일을 다시 통과했다.
+
+짧은 다음 waypoint 밖을 임의 외삽하지 않으므로 코너 직전의 감속까지 제거하지는 않았다.
+1m 간격90도 코너 fixture는60/40FPS 모두 RESET0, 최대 위치 오차 약0.193/0.205m였다.
+현재 캡처의 Player layer 시작→Replication 시작은 Bern01:23 평균0.658ms/최대0.850ms,
+Valtan01:44 평균0.785ms/최대1.568ms이고, 이전 도서관은평균2.883ms/최대50.129ms다.
+이는 상위 scope 경계이며 정확한 prediction/개별 snapshot 적용 시각이 아니다.8/12/15ms
+조건을 사용자의 실제 입력 순간 실측으로 바꾸어 설명하지 않는다.
+
+사용자가01:58–01:59 직접 수행한 Engine→Client Release 빌드는1차 소스를 포함했다.
+Character.obj01:58:24의 read tlog에서 LocalMovePrediction.h 의존성을 확인했고 Engine SDK의
+새 Navigation API도 배포됐다.01:59:57 Client.exe/PID23052에는 이 최종 frame clock 수정이
+포함되지 않았다. 그 실행에서 사용자가 보고한 끊김은 최종본 재현 판정이 아니다.
+
+최종 증거: `out/MovementAudit20261001/movement_budget_validation.json`,
+`ack_phase_original.jsonl`, `ack_phase_speedcap_only.jsonl`, `ack_presentation_clock.jsonl`,
+`capture_phase_bounds.json`, `client-compile/Character.log`. 새 최종 제품 빌드와 사용자 화면 검증은 별도다.
+
+## G14. Source BG의 불필요한 sample과 Effect 중복 복사 제거
+
+`Client/Bin/ShaderFiles/Shader_MapMaterialSurface.hlsli`의 두 재질 공통 flag를 명시적인
+`[branch] if`로 변경했다. detail normal OFF는0, specular texture OFF는 diffuse.rgb를 유지하며
+ON 수식·UV·sampler·재질 입력·coverage는 그대로다. 실제 PS_MAIN_SOURCE_BG의 FXC /O1
+DXBC는 변경 전 t3/t2 sample 뒤 movc, 변경 후 if_nz 내부 sample임을 확인했다. instruction
+slot343→347이므로 instruction 개수 감소나 GPU ms 개선을 이 검사로 주장하지 않는다.
+설치 Bern BG13,228 material slot 중 normal ON/detail OFF12,979개, specular 계산에서
+texture OFF3,866개가 해당하지만 이는 실제 frame의 가시 픽셀이나 GPU 시간 비율이 아니다.
+
+`CEffectObject::Submit_RenderGroups`의 particle scan과 초기 scene snapshot 요청23줄을
+삭제하고 occurrence 소비 계약 주석3줄을 남겼다. NORMAL/WORLD_MARK의
+Render_CompositionPhase는 live scene-color를 읽는 occurrence의 afterimage/element/particle/trail
+보다 먼저 refresh한다. SourceMaterialSlots의 scene 요구는 부모로 합쳐지고 fallback blocked/
+suppressed는 draw도 생략한다. ModelCue의 deferred/masked는 live snapshot을 바인딩하지 않으며
+frozen capture는 별도 실제 HDR/Bloom target을 사용한다. Map/World 요청, occurrence별
+HDR/Bloom pair, 합성 순서는 바꾸지 않았다. 기존 cached staging metadata와 헤더 layout도 보존했다.
+
+Effect만 초기 복사를 요청하던 frame에서는4K 전체화면 복사2회/논리 payload132,710,400bytes를
+줄일 수 있다. Map/World가 요청한 frame은 초기 복사를 유지하므로 매frame 절감을 확정하지 않는다.
+이는 발탄 최악 Blend25.719ms 전체를 해결한다는 뜻이 아니다. 더 큰 Bloom OFF 재평가 생략은
+native material의 scene-dependent clip 동등성이 입증되지 않아 적용하지 않았다.
+
+실제 Effect_Object.cpp 독립 Release 컴파일은 VS18 Insiders/MSVC14.44.35207/SDK26100,
+/O2 /MD에서 exit0, object2,619,083bytes로 통과했다. 기존 include의 C4819만 남았다.
+BOM 없는 UTF-8/CRLF와 다른 소비자11개 파일 hash 불변, diff-check를 확인했다.
+`out/RebootCapture20261001/effect_snapshot/validation.json`, `Effect_Object.log`,
+`Effect_Object.rsp`, `compile.cmd`가 검증 근거다. GPU 출력 비교·최종 Client 링크·화면·성능은
+여기에 포함하지 않는다. 사용자가 최종 소스로 직접 Release를 빌드하고 화면을 확인하기로 했으며
+실행 중인 Client/Server를 에이전트가 종료하거나 조작하지 않았다.
+## G15. 추가 쿠크 레이드4K 캡처
+
+`쿠크세이튼_40fps_20261001_021554_984_frame258_23052_0.json`은16,963,707bytes,
+SHA256 `4edae40cd20b0c2487ffbe8b0f8226163c4ed86590bd00c97023fddbf50be0a2`다.
+Release/RTX4070/3840×2126/foreground/전경·배경 제한0, 저장 시점 Shadow/SSAO/Bloom/FXAA는
+모두 OFF다. 설정 metadata는 export 시점이며 과거 전체 frame 상태를 대신하지 않는다.
+120frames139–258의 평균33.2796ms(30.05FPS), p9538.4931ms, 최대39.1254ms다.
+GPU는139–254의116개만 유효하고 마지막4개는 pending이며 scope drop/partial은 없다.
+
+| 시간 순서 구간 | frame 평균 | GPU 유효 수 | GPU 평균 | NonBlend | Lights | Blend |
+|---|---:|---:|---:|---:|---:|---:|
+| 139–168 |35.226ms|30|35.807ms|12.531ms|10.432ms|11.210ms|
+| 169–198 |37.187ms|30|36.832ms|13.173ms|11.035ms|11.019ms|
+| 199–228 |30.557ms|30|29.774ms|12.600ms|11.633ms|3.965ms|
+| 229–258 |30.149ms|26|30.568ms|12.619ms|14.397ms|1.986ms|
+
+전체 GPU33.3378ms 중 NonBlend12.7345/Lights11.7873/Blend7.2196ms 합계는95.2115%다.
+후반 Blend가 줄어도 조명 비용이 증가해 약30ms가 남는다. CPU32.7583ms 중 Present20.9683ms를
+제외하면11.7901ms다. GPU timestamp는 제출 공백을 포함할 수 있지만 이 시간 분포와 PS 작업량은
+GPU 중심 병목의 강한 근거다. 고정 camera의 A/B나 해상도별 비교로 취급하지 않는다.
+
+전체 draw 평균668과 맵 가시 인스턴스53–63/map submesh draw50–55를 구분한다.
+VS 전체 약55.3만에 비해 전체 PS 약6.3150억, 조명 PS만 약3.8996억이다. 조명 record660.4개는
+StageAndSubmit/UploadAndDraw52회 반복 제출에서 합한 값이며 고유 조명 수가 아니다.
+light draw208은 매frame 같고 local candidate608.4/rejected0도 반복 소비된 분모다.
+메시 개수만 늘어서30FPS라는 판정 대신 불투명 재질·조명·투명 픽셀 작업을 각각 조사한다.
+
+ImGui는 CPU NewFrame0.124042+BuildAndSubmit0.261885=0.385927ms,
+GPU backend0.010596ms/draw4다. backend와 같은 RenderDrawData scope를 중복 합산하지 않는다.
+SceneColorCopy는 평균2.133회/GPU0.225695ms이고 마지막30frames는0이다. picking/navigation은0으로
+이번 창을 빠른 재클릭 재현으로 취급하지 않는다. GPU 최악frame189는39.240832ms 중
+NonBlend13.5024/Lights11.11552/Blend12.887232ms였다.
+
+QPC→현재 wall clock anchor 환산의 근사 구간은02:15:50.979–54.974이며 isolated FXC 검증의
+02:14:49 이후 실행과 겹친다. CPU 경합 가능성을 남기고 컴파일 없는 정상 baseline으로 확정하지 않는다.
+PID23052의 시작01:59:58/EXE01:59:57.600은 최종 prediction02:03:48과
+Effect snapshot02:13:18 수정 전이다. 따라서 수정 후 FPS나 끊김 해결 증거가 아니다.
+분석·분모·한계는 `out/RebootCapture20261001/kouku_021554_analysis.json`에 보존했다.
+이번 추가 캡처 분석으로 렌더 옵션·품질 데이터나 제품 소스를 추가 변경하지 않았다.
+쿠크 조명 소비자를 추가 확인했다. Renderer는 ordinary pass 이후 이번 view에 등록된
+CMaterial row마다 전체 light 목록을 다시 제출한다. 단일 view라면52회는 ordinary1+source51과
+일치한다. row는 program 종류가 아닌 CMaterial 객체/입력별 단위이며 미등록 prototype을
+일괄 순회하는 경로는 없다. Shader_Deferred는 depth marker/row ID를 normal·world reconstruction·
+shadow보다 먼저 검사한다. 따라서 PS3.8996억을 모두 비싼 source shading 완료 횟수로 해석하지 않는다.
+다만 row 등록은 GPU 가림/alpha 결과 전이므로 최종 픽셀이0인 제출 재질을 별도로 제거하지 않는다.
+공통 source stencil은 있지만 row별 coverage 제한은 없다. 후속 방향은 이미 있는 early discard의
+중복 추가가 아닌 row별 영역과 재제출 감소이며, 이번 소스에는 그 구조 변경을 적용하지 않았다.
+
+## G16. 최종 소스 검증과 사용자 빌드 인계
+
+Source BG의 실제 전후 PS 컴파일2회와 전체 Effect5개(MapInstance 및 Anim source group
+001/009/017/025)는 PASS했다. 기본 Anim/Mesh의 전체 Effect는 변경하지 않은 모든 native program까지
+포함해 최적화하는 별도 큰 검증이므로 task-owned FXC2개만 종료하고
+`ABORTED_AS_OUT_OF_SCOPE_FULL_NATIVE_COMPILE`로 기록했다. 미시작52개와 구분하며59개 전체
+컴파일 성공으로 기록하지 않는다. Release include tlog의59개 dependency 연결은 별도로 확인했고
+프로젝트 /T fx_5_0 기본 optimization1과 검증 /O1이 일치한다. 최종 normal Release Product Build가
+이59개 전체의 빌드·설치 검증을 담당한다. 실제 실행한 명령·종료코드·hash는
+`out/MovementAudit20261001/source_bg_uniform_branch/audit-summary.json`,
+`compile-receipt.json`, `branch-dxbc-snippets.json`, `release-include-tlog-evidence.json`에 남겼다.
+
+최종 이동 native Debug/Release 회귀, navigation 통합17개와 변경 CPP7개의 독립 Release 최소
+컴파일을 통과했다. 제품 소스 SHA256은 `out/MovementAudit20261001/final-source-manifest.json`에
+기록했다. 최종 이동 clock·Shader_MapMaterialSurface·Effect_Object 소스 반영과 전체 diff-check를
+확인했다. 수정 시점 이후 Client.exe 링크·GPU 화면 동등성·변경 후 FPS·사용자 이동 화면은 아직
+확인하지 않았다. 사용자 요청에 따라 이후 최종 제품 빌드와 직접 실행은 사용자가 수행한다.
+검증용 FXC는 종료했고 Client/Server 실행·종료·UI 조작은 하지 않았다.
+
+## G17. 지속 재클릭과 독립된 Server clock·연속 이동
+
+G13의 frame clock 수정은 유지하되 MOVE ACK RTT를 projection lead로 쓰던 의존성을 제거했다.
+별도 읽기 검토에서 60FPS/150ms 지속 연타는 여전히 속도 0.924~1.084배가 반복됐으며,
+첫 ACK lead를 고정한 진단도 40FPS의 수신 위상 문제를 해결하지 못했다. 첫 ACK pin만
+적용하는 후보는 채택하지 않았다. G19 구현은 입력 명령, Server 시간 추정, frame 이동 소비를 분리한다.
+
+`LocalMovePrediction.h`는 Server tick과 수신 시각의 offset을 관찰하고 Engine delta로
+표시 시간을 한 번씩 진행한다. 현재 frame보다 앞선 최신 snapshot은 이전 sample과 같은
+Server 시점으로 맞춘다. 수신 batch나 MOVE ACK 수가 clock을 추가 진행시키지 않는다.
+수신 window의 최소값과 tick 단위 관측 불확실성을 사용하며 실제 지연 상승·하강에는
+제한된 slew로 적응한다. 절대 one-way latency 측정은 아니다. 첫 양수 frame의 anchor는
+초기 snapshot 조회 후 한동안 Update가 없던 5/8FPS fixture의 영구 시간 지연도 막는다.
+
+입력은 목표와 sequence를 갱신한다. 동일 목표는 Character의 기존 path와 최초 pending
+path 시간을 보존하고, 다른 거리의 같은 직선 목표도 남은 correction을 초기화하지 않는다.
+`Update`→기존 follower의 허용 delta→`CompleteLocalPathFrame`으로 ACK 전후 모두 같은
+frame budget을 소비한다. actual turn이 승인되기 전에는 이전 segment의 residual을 새 방향에
+덧붙이지 않는다. known Server corner는 기존 waypoint를 먼저 지난 후 다음 segment로 진행한다.
+기존 1.15배 총 XZ budget, 350ms freshness, 실제 teleport·forced state, 입력 거부와
+navigation-proven 지면 연속성 검사는 유지했다. 프로토콜과 Server simulation은 변경하지 않았다.
+
+### G17-1. native 자동 검증
+
+기존 `ClientPresentationPrimitiveContractTests.cpp`를 복사본 없이 직접 컴파일한 Debug
+(`/Od /MDd /RTC1`)와 Release (`/O2 /MD /DNDEBUG`) 전체가 PASS했다. 새 파일 등록은 없다.
+명령은 `cmd /c out\MovementAudit20261001\run_primitive_debug.cmd`와
+`cmd /c out\MovementAudit20261001\run_primitive_release.cmd`다.
+
+| 검증 | 결과 |
+|---|---|
+| 40/60FPS × 수신 phase 0/8/15ms × 5 scenario | 30 trace PASS |
+| scenario | 동일 목표 / 다른 거리의 동일 직선 / 지연 변화·batch / 90도 Server turn·body block / 다른 거리+지연·batch |
+| 150ms 연타 대 single-click, 8초의 모든 frame | 최대 표시 위치 차이 0m; 클릭·ACK 직후 포함 |
+| 2.0~2.5초 steady 절대 속도 | 40FPS 약 0.999994~1.000000배, 60FPS 약 0.999991~1.000000배 |
+| steady 속도 회귀 조건 | 두 trace 동등성과 별도로 0.995~1.005배 Require |
+| 지연 변화 | 전달 지연 25→225→25ms, 12ms jitter, 220ms packet batch |
+| 실제 90도 입력·old ACK | 이전 X residual의 새 Z 경로 사선 유도 없음 |
+| 알려진 corner·retarget | waypoint 경유, 첫 local frame 전/후 반대 목표 ACK의 오래된 cache 폐기 |
+| tick wrap | UINT_MAX→1과 일반 tick trace 동등 |
+| 기존 회귀 | 5/8FPS 수렴, 감속·속도0 정지, budget, 동일 frame 재호출, timeout·실제 teleport·지면 proof PASS |
+
+로그는 `out/MovementAudit20261001/primitive_debug.log`, `primitive_release.log`,
+집계·소스 hash는 `continuous_reclick_summary.json`에 보존했다. 기존 header를 유지하고
+새 테스트 API만 연결한 out 전용 대조 실행은 40FPS/phase0의 첫 재클릭 직후 frame7에서
+single과 0.0134248m 차이로 실패했다. `continuous_reclick_original.log`와
+`continuous_reclick_original/LocalMovePrediction.h`에 원본 동작과 adapter를 보존했다.
+최종 scoped diff-check, UTF-8(BOM 없음)/CRLF 유지도 확인했다.
+
+### G17-2. 제품 반영과 남은 경계
+
+위 native 검증은 실제 Bern 화면이나 최종 제품 링크의 성공을 대신하지 않는다. 사용자 화면
+재현, 실제 nav/body 접촉의 시각 품질, 최신 profiler의 GPU 비용은 별도 판정이다. Client UI는
+자율 실행·조작하지 않았다. 제품 Debug/Release 빌드는 이 native 소스 동결 뒤 별도로 진행한다.
+
+동결 뒤 읽기 검토가 찾은 fast-ACK corner edge는 out 전용 후보로 재현했다. 새 목표 전송과
+다음 local frame 사이에 ACK가 먼저 오고 Server가 이전 corner를 되짚어 가면 frozen 소스는
+X0.018→0.036으로 기존 corner 쪽에 한 번 되돌아간다. 이전/새 Server segment의 방향이
+달라진 cache를 폐기하는 후보는 X0.018→0.0012로 새 목표 쪽으로 간다. 각각 exit1/0이며
+`corner_fast_ack_probe.cpp`, `corner_fast_ack_{frozen,candidate}.log`에 남겼다.
+제품 빌드가 frozen 소스를 읽는 동안에는 out 후보만 검증했다. 해당 빌드 종료 후 기존 hash를
+확인하고 이전/새 segment 방향 검증 3줄만 실제 Header에 반영했다. 첫 local frame 전 ACK를
+영구 회귀에 추가한 최신 source Debug/Release가 모두 exit0/PASS이며 제품 최종 증분 빌드는
+이 source 재동결 뒤 별도로 진행한다. 최종 Header SHA256은
+`5bea248c108feb4bf74ca1115640d42851312cb0447b2b9f048f0502c7238c70`이다.
+
+## G18. 최종 Debug/Release 제품 링크
+
+이동 보완과 모든 최신 Client/Server 소스를 포함한 정상 Product Debug/Release가 모두 성공했다.
+앞선 EXE 잠금·최종 링크/제품 빌드 대기는 해소됐으며 실행 파일과 실제 로그는
+`../09-27/2026-09-27_GUIDE_AI_TOOL_IMPLEMENTATION_RESULT.md`의 G09에 기록했다.
+이 결과는 기존 기능별 검증을 대체하거나 실제 Client 화면·다인 플레이·성능 확인으로 확대하지 않는다.

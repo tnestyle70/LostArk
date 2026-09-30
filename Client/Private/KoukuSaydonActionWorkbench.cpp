@@ -13,6 +13,7 @@
 #include "NetworkManager.h"
 #include "RuntimeAssetRoot.h"
 #include "WorldGameplayDocument.h"
+#include "WorldSequenceDocument.h"
 #include "AnimationTargetService.h"
 #include "Character.h"
 #include "Transform.h"
@@ -1525,6 +1526,7 @@ namespace
 			a.strBone == b.strBone && a.strBoneTarget == b.strBoneTarget &&
 			a.strBoneRotation == b.strBoneRotation && a.strWorldId == b.strWorldId &&
 			a.strWorldOccurrenceId == b.strWorldOccurrenceId && a.iWorldEmissionIndex == b.iWorldEmissionIndex &&
+            a.strWorldEffectTrackId == b.strWorldEffectTrackId &&
             a.strAnchorPresentationOccurrenceId == b.strAnchorPresentationOccurrenceId &&
 			(a.bFollowBoss || a.iStartMs == b.iStartMs);
 	}
@@ -1561,7 +1563,7 @@ namespace
 	{
 		edit.strAnchorKind = "MAP"; edit.PositionOffset = position; edit.bFollowBoss = false;
 		edit.strBone.clear(); edit.strBoneTarget = "BODY"; edit.strBoneRotation = "TARGET_YAW";
-		edit.strWorldId.clear(); edit.strWorldOccurrenceId.clear(); edit.iWorldEmissionIndex = 0u;
+		edit.strWorldId.clear(); edit.strWorldOccurrenceId.clear(); edit.iWorldEmissionIndex = 0u; edit.strWorldEffectTrackId.clear();
 	}
 
 	bool Valid_GameplayColliderScale(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& resource,
@@ -1579,6 +1581,7 @@ namespace
 		target.Scale = source.Scale;
 		target.strColliderMotion = source.strColliderMotion;
         target.strAnchorPresentationOccurrenceId = source.strAnchorPresentationOccurrenceId;
+        target.strWorldEffectTrackId = source.strWorldEffectTrackId;
 		target.ColliderEndPositionOffset = source.ColliderEndPositionOffset;
 		target.ColliderEndScale = source.ColliderEndScale;
 		if (!effect) return;
@@ -1598,6 +1601,7 @@ namespace
 		return left.PositionOffset == right.PositionOffset && left.RotationDegrees == right.RotationDegrees &&
 			left.Scale == right.Scale && left.strColliderMotion == right.strColliderMotion &&
             left.strAnchorPresentationOccurrenceId == right.strAnchorPresentationOccurrenceId &&
+            left.strWorldEffectTrackId == right.strWorldEffectTrackId &&
 			left.ColliderEndPositionOffset == right.ColliderEndPositionOffset && left.ColliderEndScale == right.ColliderEndScale && (!effect || (left.strAnchorKind == right.strAnchorKind &&
 			left.bFollowBoss == right.bFollowBoss && left.strBone == right.strBone && left.strBoneTarget == right.strBoneTarget &&
 			left.strBoneRotation == right.strBoneRotation &&
@@ -1611,6 +1615,7 @@ namespace
 		if (!Valid_PresentationGeometry(value)) return false;
         const bool collider = resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER;
         const bool worldBone = collider && value.strAnchorKind == "WORLD" && value.bFollowBoss && value.strBoneTarget == "BODY";
+        if (!value.strWorldEffectTrackId.empty() && (!worldBone || value.strBone.empty() || value.strBoneRotation != "BONE" || value.strWorldOccurrenceId.empty())) return false;
 		if (value.strBoneRotation != "TARGET_YAW" && (value.strBoneRotation != "BONE" ||
 			(resource.eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && !collider) ||
 			(value.strAnchorKind != "BOSS" && !worldBone) || value.strBone.empty() || (collider && !value.bFollowBoss))) return false;
@@ -13082,13 +13087,14 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationWorldAnchor(
 		{
 			for (const auto& world : m_Draft.Worlds)
 				if (ImGui::Selectable((world.strDisplayName + "##" + world.strWorldId).c_str(), edit.strWorldId == world.strWorldId))
-				{ edit.strWorldId = world.strWorldId; edit.strWorldOccurrenceId.clear(); }
+				{ edit.strWorldId = world.strWorldId; edit.strWorldOccurrenceId.clear(); edit.strWorldEffectTrackId.clear(); }
 			ImGui::EndCombo();
 		}
 		if (edit.strWorldId.empty()) ImGui::TextDisabled("Select a world object from this Pattern before saving or playing.");
 		if (!edit.strWorldId.empty() && ImGui::BeginCombo("World box##Anchor", edit.strWorldOccurrenceId.empty() ? "(single matching box)" : edit.strWorldOccurrenceId.c_str()))
 		{
-			if (ImGui::Selectable("(single matching box)", edit.strWorldOccurrenceId.empty())) edit.strWorldOccurrenceId.clear();
+			if (ImGui::Selectable("(single matching box)", edit.strWorldOccurrenceId.empty()))
+                { edit.strWorldOccurrenceId.clear(); edit.strWorldEffectTrackId.clear(); }
 			for (const auto& worldBox : pattern.WorldOccurrences)
 				if (worldBox.strWorldId == edit.strWorldId && ImGui::Selectable(worldBox.strOccurrenceId.c_str(), edit.strWorldOccurrenceId == worldBox.strOccurrenceId))
 					edit.strWorldOccurrenceId = worldBox.strOccurrenceId;
@@ -13143,7 +13149,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationAnchor(
 			{
 				edit.strAnchorKind = "BOSS"; edit.bFollowBoss = true;
 				edit.PositionOffset = {0.0, 0.0, 0.0};
-				edit.strWorldId.clear(); edit.strWorldOccurrenceId.clear(); edit.iWorldEmissionIndex = 0u;
+				edit.strWorldId.clear(); edit.strWorldOccurrenceId.clear(); edit.iWorldEmissionIndex = 0u; edit.strWorldEffectTrackId.clear();
 			}
 			if (ImGui::Selectable("World", !boss) && boss) (void)chooseFixedWorld();
 			ImGui::EndCombo();
@@ -13158,7 +13164,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationAnchor(
 				{
 					edit.strAnchorKind = "WORLD"; edit.bFollowBoss = true;
 					edit.PositionOffset = {0.0, 0.0, 0.0};
-					edit.strWorldId.clear(); edit.strWorldOccurrenceId.clear(); edit.iWorldEmissionIndex = 0u;
+					edit.strWorldId.clear(); edit.strWorldOccurrenceId.clear(); edit.iWorldEmissionIndex = 0u; edit.strWorldEffectTrackId.clear();
 					edit.strBone.clear(); edit.strBoneTarget = "BODY";
 				}
 			}
@@ -13178,7 +13184,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationAnchor(
 				else
 				{
 					edit.strAnchorKind = kind;
-					edit.strWorldOccurrenceId.clear(); edit.iWorldEmissionIndex = 0u;
+					edit.strWorldOccurrenceId.clear(); edit.iWorldEmissionIndex = 0u; edit.strWorldEffectTrackId.clear();
 					if (edit.strAnchorKind != "WORLD") edit.strWorldId.clear();
 					if (edit.strAnchorKind != "BOSS") { edit.strBone.clear(); edit.strBoneTarget = "BODY"; }
 				}
@@ -13302,6 +13308,43 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationAnchor(
             edit.strBoneRotation = rotation ? "BONE" : "TARGET_YAW";
         ImGui::EndDisabled();
         ImGui::TextWrapped("The active World Object model supplies this bone's position and planar heading. An unavailable bone keeps the contact unpublished.");
+        if (edit.strBone.empty() || edit.strBoneRotation != "BONE" || !edit.bFollowBoss || edit.strWorldOccurrenceId.empty())
+            edit.strWorldEffectTrackId.clear();
+        const auto* world = Find_World(m_Draft, edit.strWorldId);
+        const auto* level = CLevel_KakulSaydonArena::Get_Active();
+        const auto* sequences = level ? &level->Get_WorldSequenceDocument() : nullptr;
+        const WORLD_SEQUENCE_INSTANCE* instance = nullptr;
+        const WORLD_SEQUENCE_TEMPLATE* motion = nullptr;
+        if (sequences && world)
+        {
+            for (const auto& row : sequences->Get_Instances())
+                if (row.instanceId == world->strSequenceInstanceId) { instance = &row; break; }
+            if (instance)
+                for (const auto& row : sequences->Get_Templates())
+                    if (row.sequenceId == instance->templateId) { motion = &row; break; }
+        }
+        ImGui::BeginDisabled(edit.strBone.empty() || edit.strBoneRotation != "BONE" || !edit.bFollowBoss || edit.strWorldOccurrenceId.empty());
+        if (ImGui::BeginCombo("World Effect frame", edit.strWorldEffectTrackId.empty() ? "Object frame" : edit.strWorldEffectTrackId.c_str()))
+        {
+            if (ImGui::Selectable("Object frame", edit.strWorldEffectTrackId.empty())) edit.strWorldEffectTrackId.clear();
+            if (instance && motion && instance->anchorKind == "WORLD" && instance->bindings.size() == 1u &&
+                instance->bindings.front().targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
+                for (const auto& track : motion->effectTracks)
+                {
+                    if (track.slotId != instance->bindings.front().slotId || track.resourceKind != "V1_EFFECT" ||
+                        !track.followObject || !track.inheritObjectRotation || !track.bone.empty() ||
+                        std::abs(track.rotationDegrees.x) > .00001f || std::abs(track.rotationDegrees.z) > .00001f ||
+                        track.scale.x <= 0.f || std::abs(track.scale.x - track.scale.y) > .00001f ||
+                        std::abs(track.scale.x - track.scale.z) > .00001f ||
+                        std::count_if(motion->effectTracks.begin(), motion->effectTracks.end(), [&](const auto& other) {
+                            return other.effectTrackId == track.effectTrackId; }) != 1) continue;
+                    if (ImGui::Selectable(track.effectTrackId.c_str(), edit.strWorldEffectTrackId == track.effectTrackId))
+                        edit.strWorldEffectTrackId = track.effectTrackId;
+                }
+            ImGui::EndCombo();
+        }
+        ImGui::EndDisabled();
+        ImGui::TextWrapped("Select an exact World box to choose its Effect frame. This contact follows that Effect's position, yaw and uniform size; Save keeps the track ID.");
     }
 	if (effect && ImGui::BeginCombo("Copy Collider anchor", "(choose Collider box)"))
 	{

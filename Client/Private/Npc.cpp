@@ -1,4 +1,6 @@
 #include "Npc.h"
+#include "Part_Equipment.h"
+#include "MaharakaWaterpangPresentation.h"
 #include "KoukuSaydonAnimationBlend.h"
 #include "KoukuSaydonCompositionDocument.h"
 #include "EffectV2_Runtime.h"
@@ -1246,6 +1248,16 @@ void CNpc::Late_Update(f32_t fTimeDelta)
         Reset_AfterimageHistory();
         return;
     }
+    if (m_pWaterGun)
+    {
+        m_pWaterGun->Set_Visible(m_bWaterGunArmed);
+        if (m_bWaterGunArmed)
+        {
+            Require_ImmediateAnimationPose();
+            m_pWaterGun->Update(fTimeDelta);
+            m_pWaterGun->Late_Update(fTimeDelta);
+        }
+    }
     if (m_bNativeBinaryBasePass)
     {
         const bool useSourceTrail = m_HasSourceAfterimageSettings &&
@@ -1642,4 +1654,27 @@ shared_ptr<CPrototype> CNpc::Clone(void* pArg)
 		MSG_BOX("Failed to Cloned : CNpc");
 
 	return pInstance;
+}
+
+bool_t CNpc::Prepare_WaterGun(const uint32_t prototypeLevelIndex)
+{
+    if (m_pWaterGun) return true;
+    if (!m_pModelCom || !m_pTransformCom || !m_pModelCom->Has_Bone("bip001-r-hand")) return false;
+    CPart_Equipment::PART_EQUIPMENT_DESC desc{};
+    desc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
+    desc.iPrototypeLevelIndex = prototypeLevelIndex;
+    desc.strModelTag = CMaharakaWaterpangPresentation::WATER_GUN_PROTOTYPE_TAG;
+    desc.strShaderTag = TEXT("Prototype_Component_Shader_VtxMeshBinary");
+    desc.pSkeletonModel = m_pModelCom;
+    desc.pSocketBoneName = "bip001-r-hand";
+    desc.iHiddenMeshMask = 1u << 1; // Same unrestored translucent tank as player water guns.
+    auto part = std::dynamic_pointer_cast<CPart_Equipment>(CGameInstance::Get().Clone_Prototype(
+        prototypeLevelIndex, TEXT("Prototype_GameObject_Part_Equipment"), &desc));
+    // Project attachment measured from installed Guardian watergun_idle: prop3 * inverse(right hand).
+    // The eight NPC rigs have a .01 metre bone basis after their respective model pre-scales.
+    if (!part || !part->Set_SocketTransform({ .112383735f, .040912395f, -.019941085f },
+        { -20.648280f, 41.948665f, 11.908303f })) return false;
+    part->Set_Visible(false);
+    m_pWaterGun = std::move(part);
+    return true;
 }

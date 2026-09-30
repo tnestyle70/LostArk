@@ -11,6 +11,7 @@
 #include "MapPlacementRuntime.h"
 #include "MapLightPresentationRuntime.h"
 #include "PlayerController.h"
+#include "PartyInteractionView.h"
 #include "StatusEffectTextView.h"
 #include "RaidGateProgressView.h"
 #include "InteractKeyPromptView.h"
@@ -165,6 +166,7 @@ public:
 	{
 		m_Replication.Drain_ChatLines(outLines);
 	}
+	void Render_TransferFailureNotice() { m_PartyTransferNotice.Render_TransferNoticeText(); }
 	const LostArk::Shared::S2C_GUIDE_STATE* Get_GuideState() const { return m_Replication.Get_GuideState(); }
 	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
 	{
@@ -339,7 +341,7 @@ public:
 	void Stop_CompositionCamera(bool_t force = false);
 	bool_t Try_GetCompositionWorldPivot(std::string_view instanceId, float4x4_t& out,
 		std::string_view occurrenceId = {}, std::uint32_t emissionIndex = 0u,
-        const std::string& bone = {}, bool_t boneRotation = false) const;
+        const std::string& bone = {}, bool_t boneRotation = false, const std::string& effectTrackId = {}) const;
     bool_t Create_CompositionPreviewActor(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
         std::shared_ptr<CNpc>& outActor, std::string& status);
     void Release_CompositionPreviewActor(const std::shared_ptr<CNpc>& actor);
@@ -358,7 +360,7 @@ public:
         const CWorldSequenceDocument* sourceDocument = nullptr) const;
 	bool_t Try_GetOwnedCompositionWorldPivot(std::uint32_t runEpoch, const std::string& memberId,
 		const std::string& sequenceId, const std::string& cueId, float4x4_t& out, std::uint32_t emissionIndex = 0u,
-        std::uint32_t patternSequence = 0u, const std::string& bone = {}, bool_t boneRotation = false) const;
+        std::uint32_t patternSequence = 0u, const std::string& bone = {}, bool_t boneRotation = false, const std::string& effectTrackId = {}) const;
 	void Get_WorldObjectValidationTargets(WORLD_SEQUENCE_PLACEMENT_MAP&, WORLD_SEQUENCE_DEPLOY_MAP&) const;
 	bool_t Reload_WorldObjectRuntime(std::string& status);
 #ifdef _DEBUG
@@ -675,6 +677,7 @@ private:
 	/* Same over-head name + HP gauge as Bern/Valtan (this room has nicknames too). */
 	CWorldPlayerNameplateView m_PlayerNameplateView;
 	CWorldPlayerChatBubbleView m_ChatBubbleView;
+	CPartyInteractionView m_PartyTransferNotice;
 	std::vector<REPLICATED_PLAYER_VIEW> m_NameplatePlayers;
 	std::vector<KAKUL_STAGE_MARKER> m_StageMarkers;
 	std::unordered_set<std::string> m_StageMarkerPlacementIds;

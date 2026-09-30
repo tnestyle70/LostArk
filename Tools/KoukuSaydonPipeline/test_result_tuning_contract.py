@@ -9,6 +9,7 @@ import unittest
 
 from Tools.KoukuSaydonPipeline import project_kouku_saydon_composition as subject
 from Tools.KoukuSaydonPipeline import test_project_kouku_saydon_composition as fixtures
+from Tools.KoukuSaydonPipeline import world_object_collider as native_collider
 
 
 class ResultTuningContractTests(unittest.TestCase):
@@ -213,6 +214,198 @@ class ResultTuningContractTests(unittest.TestCase):
                 else: current["keys"].pop()
                 with self.subTest(invalid=invalid):
                     self.assertNotEqual(0,run(value).returncode)
+
+
+class DollEffectColliderContractTests(unittest.TestCase):
+    """Installed mouth poses must meet the visible flame, including its parent TRS."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.root = subject.REPOSITORY_ROOT
+        cls.document = subject.load_json(cls.root / subject.SOURCE_PATH)
+        cls.sequences = subject.load_world_sequences(cls.root, cls.document["areaId"])
+        cls.effect = subject.load_json(cls.root / "Data/Effects/Authored/effect.kouku.gate3.doll.flame.shared.effect.json")
+        worlds = {row["worldId"]: row for row in cls.document["worlds"]}
+        cls.cases, cls.balls = [], []
+        for pattern in cls.document["patterns"]:
+            for box in pattern.get("worldOccurrences", []):
+                world = worlds[box["worldId"]]
+                identity = world["sequenceInstanceId"]
+                colliders = [row for row in pattern.get("presentationOccurrences", [])
+                             if row.get("worldOccurrenceId") == box["occurrenceId"] and row.get("logicOccurrenceId")]
+                if identity == "world.object.instance.kouku.odd_doll.large.att_battle_2_01":
+                    cls.cases.extend((pattern, world, box, row) for row in colliders if row.get("bone"))
+                elif identity == "world.object.instance.kouku.mario_circus_ball.aura":
+                    cls.balls.append((pattern, world, box, colliders))
+        cls.models = {}
+
+    @staticmethod
+    def multiply(*matrices):
+        result = matrices[0]
+        for value in matrices[1:]:
+            result = native_collider.wm.matrix_multiply(result, value)
+        return result
+
+    def flame_frame(self, sequences, world, box, collider, elapsed_ms):
+        """Independent Client element/socket/bone/Effect/Object matrix construction."""
+        instance = next(row for row in sequences["instances"] if row["instanceId"] == world["sequenceInstanceId"])
+        template = next(row for row in sequences["templates"] if row["sequenceId"] == instance["templateId"])
+        binding = instance["bindings"][0]
+        resource = next(row for row in sequences["objectResources"] if row["objectId"] == binding["targetId"])
+        effect = next(row for row in template["effectTracks"] if row["effectTrackId"] == "effect.doll.flame")
+        age = elapsed_ms * box["playbackSpeed"] * instance.get("playbackSpeed", 1) % template["durationMs"]
+
+        def load_model(asset, clips):
+            key = (asset, tuple(clips))
+            if key not in self.models:
+                self.models[key] = native_collider.wm.read_wmodel(self.root / "Client/Bin/Resources" / asset,
+                    include_geometry=False, animation_names=set(clips))
+            return self.models[key]
+
+        bone = native_collider.sample_bone(template, resource, binding["slotId"], age, collider["bone"], load_model)
+        # Client CModel keeps its .01 pre-transform on both basis and translation.
+        for axis in (0, 4, 8):
+            for component in range(3):
+                bone[axis + component] *= resource["modelPreScale"]
+        element = next(row for row in self.effect["elements"] if
+            row.get("actionCueAttachment", {}).get("runtimeBoneName") == collider["bone"] and
+            row["sourceNode"].endswith("par_g_rpct_05_fire_01_loc_int.particlespriteemitter_12"))
+        socket, local = element["actionCueAttachment"]["socketLocalTransform"], element["detail"]["transform"]
+        matrix, rotation = native_collider.matrix, native_collider.rotation
+        placement = box["placement"]
+        parent = self.multiply(matrix(effect["scale"], rotation(effect["rotationDegrees"]), effect["positionOffset"]),
+            matrix(resource["scale"]), matrix(placement["scale"], rotation(placement["rotationDegrees"]), placement["position"]))
+        frame = self.multiply(matrix(quat=rotation(local["rotationDegrees"])),
+            matrix(socket["scale"], rotation(socket["rotationDegrees"]), socket["position"]), bone, parent)
+        center = native_collider.wm.transform_point(
+            tuple(value / resource["modelPreScale"] for value in collider["positionOffset"]), self.multiply(bone, parent))
+        length = math.hypot(frame[8], frame[10])
+        return frame[12:15], (frame[8] / length, frame[10] / length), center
+
+    @staticmethod
+    def inside_box(key, half_extents, point):
+        yaw = 2 * math.atan2(key["rotationY"], key["rotationW"])
+        dx, dz = point[0] - key["positionOffset"][0], point[1] - key["positionOffset"][2]
+        x, z = math.cos(yaw) * dx - math.sin(yaw) * dz, math.sin(yaw) * dx + math.cos(yaw) * dz
+        return (abs(x) <= half_extents[0] * key["scaleMultiplier"][0] and
+                abs(z) <= half_extents[2] * key["scaleMultiplier"][2])
+
+    def test_saved_twenty_mouth_colliders_touch_flame_axis_and_reject_old_axis(self):
+        self.assertEqual(20, len(self.cases))
+        self.assertEqual({34, 88, 89, 91, 92, 93}, {int(row[0]["patternId"].rsplit("_", 1)[1]) for row in self.cases})
+        resources = {row["resourceId"]: row for row in self.document["presentationResources"]}
+        with subject._publication_session():
+            for pattern, world, box, saved in self.cases:
+                collider = dict(saved, worldEffectTrackId="effect.doll.flame")
+                current = subject._project_world_bone_collider_track(self.root, self.sequences, world, box, collider)
+                previous = subject._project_world_bone_collider_track(self.root, self.sequences, world, box,
+                    dict(collider, worldEffectTrackId=""))
+                self.assertEqual((box["startMs"], box["durationMs"]), (current["startMs"], current["durationMs"]))
+                half = [a * b for a, b in zip(resources[collider["resourceId"]]["halfExtents"], collider["scale"])]
+                for time in (2000, 4000, 8000, 12000, 16000, 19314, 36628):
+                    if time >= box["durationMs"]:
+                        continue
+                    with self.subTest(collider=collider["occurrenceId"], time=time):
+                        key = min(current["keys"], key=lambda row: abs(row["timeMs"] - time))
+                        old = next(row for row in previous["keys"] if row["timeMs"] == key["timeMs"])
+                        origin, forward, center = self.flame_frame(self.sequences, world, box, collider, key["timeMs"])
+                        self.assertLess(math.dist(center, key["positionOffset"]), .015)
+                        yaw = 2 * math.atan2(key["rotationY"], key["rotationW"])
+                        self.assertGreater(math.sin(yaw) * forward[0] + math.cos(yaw) * forward[1], .99999)
+                        flame_point = (origin[0] + 5 * forward[0], origin[2] + 5 * forward[1])
+                        self.assertTrue(self.inside_box(key, half, flame_point), "Visible flame centerline must charge madness")
+                        self.assertFalse(self.inside_box(old, half, flame_point), "Fixture must reproduce the previous missing hit")
+                        old_yaw = 2 * math.atan2(old["rotationY"], old["rotationW"])
+                        old_point = (box["placement"]["position"][0] + 5 * math.sin(old_yaw),
+                                     box["placement"]["position"][2] + 5 * math.cos(old_yaw))
+                        self.assertTrue(self.inside_box(old, half, old_point))
+                        self.assertFalse(self.inside_box(key, half, old_point), "The previous empty-space hit must disappear")
+
+    def test_effect_rotation_changes_follow_saved_track_and_empty_binding_stays_unchanged(self):
+        _, world, box, saved = self.cases[0]
+        box = copy.deepcopy(dict(box, startMs=0, durationMs=5000))
+        box["placement"].update(rotationDegrees=[0, 23, 0], scale=[1.25, 1.25, 1.25])
+        sequences = copy.deepcopy(self.sequences)
+        instance = next(row for row in sequences["instances"] if row["instanceId"] == world["sequenceInstanceId"])
+        template = next(row for row in sequences["templates"] if row["sequenceId"] == instance["templateId"])
+        effect = next(row for row in template["effectTracks"] if row["effectTrackId"] == "effect.doll.flame")
+        collider = dict(saved, worldEffectTrackId="effect.doll.flame")
+        plain = dict(saved, worldEffectTrackId="")
+        with subject._publication_session():
+            before = subject._project_world_bone_collider_track(self.root, sequences, world, box, collider)
+            unchanged = subject._project_world_bone_collider_track(self.root, sequences, world, box, plain)
+            effect["rotationDegrees"][1] = 37
+            effect["scale"] = [2, 2, 2]
+            effect["positionOffset"] = [.25, .5, -.75]
+            after = subject._project_world_bone_collider_track(self.root, sequences, world, box, collider)
+            self.assertEqual(unchanged, subject._project_world_bone_collider_track(self.root, sequences, world, box, plain))
+        for target in (2000, 4000):
+            old = min(before["keys"], key=lambda row: abs(row["timeMs"] - target))
+            key = next(row for row in after["keys"] if row["timeMs"] == old["timeMs"])
+            for previous_scale, current_scale in zip(old["scaleMultiplier"], key["scaleMultiplier"]):
+                self.assertAlmostEqual(previous_scale * 2, current_scale, places=7)
+            difference = math.degrees(2 * math.atan2(key["rotationY"], key["rotationW"]) -
+                2 * math.atan2(old["rotationY"], old["rotationW"]))
+            self.assertAlmostEqual(-53, (difference + 180) % 360 - 180, places=5)
+            _, forward, center = self.flame_frame(sequences, world, box, collider, key["timeMs"])
+            self.assertLess(math.dist(center, key["positionOffset"]), .015)
+            yaw = 2 * math.atan2(key["rotationY"], key["rotationW"])
+            self.assertGreater(math.sin(yaw) * forward[0] + math.cos(yaw) * forward[1], .99999)
+
+    def test_effect_binding_rejects_missing_duplicate_slot_and_nonfollowing_track(self):
+        _, world, saved_box, saved = self.cases[0]
+        box = dict(saved_box, durationMs=100)
+        for invalid in ("missing", "duplicate", "slot", "follow", "bone", "rotation", "kind"):
+            sequences = copy.deepcopy(self.sequences)
+            instance = next(row for row in sequences["instances"] if row["instanceId"] == world["sequenceInstanceId"])
+            template = next(row for row in sequences["templates"] if row["sequenceId"] == instance["templateId"])
+            effect = next(row for row in template["effectTracks"] if row["effectTrackId"] == "effect.doll.flame")
+            collider = dict(saved, worldEffectTrackId="effect.doll.flame")
+            if invalid == "missing": collider["worldEffectTrackId"] = "missing.effect"
+            elif invalid == "duplicate": template["effectTracks"].append(copy.deepcopy(effect))
+            elif invalid == "slot": effect["slotId"] = "other.slot"
+            elif invalid == "follow": effect["followObject"] = False
+            elif invalid == "bone": effect["bone"] = "b_mouth_f"
+            elif invalid == "rotation": effect["inheritObjectRotation"] = False
+            else: effect["resourceKind"] = "V2_EFFECT"
+            before = copy.deepcopy((sequences, collider))
+            with self.subTest(invalid=invalid), self.assertRaises(subject.CompositionError):
+                subject._project_world_bone_collider_track(self.root, sequences, world, box, collider)
+            self.assertEqual(before, (sequences, collider))
+
+    def test_effect_binding_rejects_unsupported_collider_attachment_without_mutation(self):
+        _, world, saved_box, saved = self.cases[0]
+        for change in (dict(anchorKind="MAP"), dict(bone=""), dict(boneTarget="WEAPON"),
+                       dict(followBoss=False), dict(boneRotation="TARGET_YAW")):
+            collider = dict(saved, worldEffectTrackId="effect.doll.flame", **change)
+            before = copy.deepcopy(collider)
+            with self.subTest(change=change), self.assertRaises(subject.CompositionError):
+                subject._project_world_bone_collider_track(self.root, self.sequences, world,
+                    dict(saved_box, durationMs=100), collider)
+            self.assertEqual(before, collider)
+
+    def test_ten_circus_ball_regions_remain_identical_to_published_geometry(self):
+        self.assertEqual(10, len(self.balls))
+        document = copy.deepcopy(self.document)
+        mouths = {row[3]["occurrenceId"] for row in self.cases}
+        for pattern in document["patterns"]:
+            for row in pattern.get("presentationOccurrences", []):
+                if row["occurrenceId"] in mouths:
+                    row["worldEffectTrackId"] = "effect.doll.flame"
+        published = subject.load_json(self.root / subject.ENCOUNTER_PATH)
+        products = {row["patternId"]: row for row in published["patterns"]}
+        definitions = {row["logicId"]: row for row in document["logics"]}
+        for saved_pattern, _, _, colliders in self.balls:
+            pattern = next(row for row in document["patterns"] if row["patternId"] == saved_pattern["patternId"])
+            self.assertEqual(1, len(colliders))
+            logic_id = colliders[0]["logicOccurrenceId"]
+            window = next(row for row in pattern["logicOccurrences"] if row["occurrenceId"] == logic_id)
+            with self.subTest(window=logic_id):
+                projected = subject._project_collider_regions(document, pattern, window,
+                    definitions[window["logicId"]], self.sequences, self.root)
+                expected = next(row["cardRegions"] for row in products[pattern["patternId"]]["logicWindows"]
+                    if row["windowId"] == logic_id)
+                self.assertEqual(subject.serialize_json(expected), subject.serialize_json(projected))
 
 
 if __name__ == "__main__":

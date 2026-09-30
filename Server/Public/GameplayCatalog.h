@@ -1570,6 +1570,7 @@ namespace LostArk::Server
 			const std::filesystem::path& bootstrapPath,
 			const LostArk::Shared::GameplayDataRevision& expectedBootstrapRevision,
 			const LostArk::Shared::GameplayDataRevision& parentRevision);
+		[[nodiscard]] const auto& Get_Skills() const noexcept { return m_Skills; }
 		const PLAYER_SKILL_DEFINITION* Find_Skill(
 			LostArk::Shared::SKILL_ID skillId) const;
 		const BOSS_RUNTIME_PROFILE* Find_Boss(

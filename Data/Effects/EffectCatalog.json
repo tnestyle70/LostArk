@@ -1503,6 +1503,7 @@
     {"effectAssetId": "effect.maharaka.watergun.e.speed", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.maharaka.watergun.e.speed.effect.json"},
     {"effectAssetId": "effect.maharaka.watergun.r.flight", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.maharaka.watergun.r.flight.effect.json"},
     {"effectAssetId": "effect.maharaka.watergun.r.hit", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.maharaka.watergun.r.hit.effect.json"},
-    {"effectAssetId": "effect.maharaka.watergun.shot.start", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.maharaka.watergun.shot.start.effect.json"}
+    {"effectAssetId": "effect.maharaka.watergun.shot.start", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.maharaka.watergun.shot.start.effect.json"},
+    {"effectAssetId": "effect.maharaka.watergun.q.start", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.maharaka.watergun.q.start.effect.json"}
   ]
 }

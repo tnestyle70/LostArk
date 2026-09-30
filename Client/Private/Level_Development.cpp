@@ -7,6 +7,9 @@
 #include "CombatHUDViewModel.h"
 #include "ColosseumIntroCutscene.h"
 #include "ColosseumMatchStart.h"
+#include "ColosseumLoadingView.h"
+#include "ColosseumMatchView.h"
+#include "RaidGateProgressView.h"
 #include "EffectFailureDiagnostic.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
@@ -25,7 +28,10 @@
 #include "Transform.h"
 #include "MaharakaWaterpangPresentation.h"
 #include "UILayoutRuntime.h"
+#include "UILabelFont.h"
 #include "WorldGameplayDocument.h"
+#include "RaidEntryPreviewView.h"
+#include "UITextOcclusion.h"
 
 #ifdef _DEBUG
 void Client::CLevel_Development::Set_MapAuthoringActive(bool_t active)
@@ -59,6 +65,7 @@ CLevel_Development::CLevel_Development(
 
 CLevel_Development::~CLevel_Development()
 {
+	if (m_eLevel == LEVEL::COLOSSEUM) CLevelTransitionService::Clear_ColosseumMatch();
 	Clear_TriggerMarkers();
 	m_Waterpang.reset(); // Return poses while map and replication still exist.
 	if (this == s_pActiveInstance)
@@ -184,10 +191,29 @@ HRESULT CLevel_Development::Initialize()
 		auto matchStart = std::make_unique<CColosseumMatchStart>();
 		(void)matchStart->Initialize(m_pDevice, m_pContext, ETOUI(m_eLevel), &m_MapRuntime);
 		m_ColosseumMatchStart = std::move(matchStart);
+		m_ColosseumLoading = std::make_unique<CColosseumLoadingView>(m_pDevice,m_pContext,ETOUI(m_eLevel));
+		m_ColosseumLoading->Set_Progress(1.f);
+		m_iColosseumLoadingStartedMs = GetTickCount64();
+		m_ColosseumMatchView = std::make_unique<CColosseumMatchView>();
+		m_ColosseumMatchView->Initialize(m_pDevice,m_pContext,ETOUI(m_eLevel),m_pCamera.lock());
+		LostArk::Shared::S2C_COLOSSEUM_MATCH_FOUND roster;
+		m_bColosseumPreview = !CLevelTransitionService::Try_Get_ColosseumMatch(roster);
+		if (m_bColosseumPreview)
+		{
+			m_ColosseumIntro->Stop();
+			m_ColosseumLoading->Hide();
+		}
 	}
 
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
+	if (m_eLevel == LEVEL::MAHARAKA || m_eLevel == LEVEL::COLOSSEUM)
+	{
+		m_PartyInteraction.Initialize(m_pDevice, m_pContext, ETOUI(m_eLevel));
+		m_ChatBubbleView.Initialize(m_pDevice, m_pContext, ETOUI(m_eLevel));
+		if (m_eLevel == LEVEL::MAHARAKA)
+			m_TravelEntryView = std::make_unique<CRaidEntryPreviewView>(m_pDevice, m_pContext, ETOUI(m_eLevel));
+	}
 	if (!m_PlayerController.Initialize_TargetingPreview(
 			ETOUI(m_eLevel)))
 	{
@@ -225,11 +251,10 @@ void CLevel_Development::Update(const f32_t fTimeDelta)
 	if (m_isMapEditorWorkspace)
 		return;
 
-	/* Maharaka is also reached from a live Bern session and leaves the same way: the Server
-	   approves the world change, then this level asks the transition service for the target. */
-	if (LEVEL::MAHARAKA == m_eLevel &&
+	/* Maharaka and Colosseum leave through the existing Server-approved world transfer. */
+	if ((LEVEL::MAHARAKA == m_eLevel || LEVEL::COLOSSEUM == m_eLevel) &&
 		SERVER_WORLD_TRANSFER_PUMP_RESULT::NONE !=
-			CLevelTransitionService::Pump_ServerApprovedWorldTransfer(LEVEL::MAHARAKA))
+			CLevelTransitionService::Pump_ServerApprovedWorldTransfer(m_eLevel))
 		return;
 
 	if (LEVEL::MAHARAKA == m_eLevel)
@@ -281,6 +306,32 @@ void CLevel_Development::Update(const f32_t fTimeDelta)
 #ifdef _DEBUG
 	editing = m_bMapAuthoringActive || m_bWaterpangEffectAuthoringActive;
 #endif
+	if (m_eLevel == LEVEL::MAHARAKA || m_eLevel == LEVEL::COLOSSEUM)
+	{
+		m_Replication.Collect_PlayerViews(m_NameplatePlayers);
+		if (m_TravelEntryView)
+		{
+			LostArk::Shared::S2C_RAID_ENTRY_PROMPT prompt{};
+			while (m_Replication.Try_Consume_RaidEntryPrompt(prompt))
+				m_TravelEntryView->Open_VoteConfirm(prompt.iProposalId, prompt.eTarget);
+			LostArk::Shared::S2C_RAID_ENTRY_VOTE vote{};
+			while (m_Replication.Try_Consume_RaidEntryVote(vote))
+				if (vote.bClosed) m_TravelEntryView->Close_VoteConfirm();
+		}
+		m_PartyInteraction.Register_TextOccluders();
+		if (Is_TravelModalOpen())
+		{
+			const auto viewport = CGameInstance::Get().Get_ViewportSize();
+			CUITextOcclusion::Get().Add_Occluder(UI_TEXT_LAYER::MODAL, 0.f, 0.f, viewport.x, viewport.y);
+		}
+		if (m_PartyInteraction.Update(m_Replication, m_pPlayerCommandSink, m_NameplatePlayers,
+			!editing && !Is_TravelModalOpen() && !Is_ColosseumIntroActive() && camera &&
+			camera->Is_FollowEnabled() && !camera->Is_PresentationOverrideActive()) || Is_TravelModalOpen())
+		{
+			CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
+			CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
+		}
+	}
 	if (m_Waterpang)
 	{
 		for (const auto& play:m_Replication.Consume_WorldSequencePlays()) m_Waterpang->Accept(play);
@@ -289,30 +340,94 @@ void CLevel_Development::Update(const f32_t fTimeDelta)
 	if (m_InteractPrompt)
 		m_InteractPrompt->Update(fTimeDelta,localCharacter,CCombatHUDViewModel::Get().Get_InteractPromptTriggerId(),
 			!editing && camera && !camera->Is_PresentationOverrideActive());
-	if (m_ColosseumIntro)
-		m_ColosseumIntro->Update(fTimeDelta, m_Replication);
-	if (m_ColosseumMatchStart)
-	{
-		// The count starts the moment the intro cutscene is over, or at once when there is none;
-		// replaying the cutscene from F1 closes the gate and hides the banner again.
-		const bool_t bIntroActive = Is_ColosseumIntroActive();
-		if (bIntroActive && (m_bColosseumMatchStartArmed || !m_bColosseumIntroWasActive))
-			m_ColosseumMatchStart->Reset();
-		else if (!bIntroActive && (m_bColosseumMatchStartArmed || m_bColosseumIntroWasActive))
-			m_ColosseumMatchStart->Begin();
-		m_bColosseumIntroWasActive = bIntroActive;
-		m_bColosseumMatchStartArmed = false;
-		m_ColosseumMatchStart->Update(fTimeDelta);
-	}
+	if (LEVEL::COLOSSEUM == m_eLevel) Update_ColosseumMatch(fTimeDelta);
+	bool colosseumAllowsInput = LEVEL::COLOSSEUM != m_eLevel ||
+		m_Replication.Get_ColosseumMatchState().ePhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::RECRUITING ||
+		m_Replication.Get_ColosseumMatchState().ePhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::PLAYING;
+	colosseumAllowsInput = colosseumAllowsInput || m_bColosseumPreview;
 	m_PlayerController.Update(
 		nullptr != camera && camera->Is_FollowEnabled() &&
-		!Is_ColosseumIntroActive() &&
+		!Is_ColosseumIntroActive() && !Is_TravelModalOpen() &&
+		colosseumAllowsInput &&
 		(LEVEL::MAHARAKA != m_eLevel || !camera->Is_PresentationOverrideActive()));
 }
 
 bool_t CLevel_Development::Is_ColosseumIntroActive() const
 {
-	return nullptr != m_ColosseumIntro && m_ColosseumIntro->Is_Active();
+	return (m_eLevel == LEVEL::COLOSSEUM && m_Replication.Get_ColosseumMatchState().ePhase ==
+		LostArk::Shared::COLOSSEUM_MATCH_PHASE::ENTRY_COUNTDOWN) ||
+		(m_ColosseumLoading && m_ColosseumLoading->Is_Visible()) ||
+		(m_ColosseumIntro && m_ColosseumIntro->Is_Active()) ||
+		(m_ColosseumMatchView && m_ColosseumMatchView->Is_CinematicActive());
+}
+
+void CLevel_Development::Submit_ColosseumLoadingPortraits()
+{
+	if (m_ColosseumLoading) m_ColosseumLoading->Submit_Portraits(m_Replication);
+}
+
+void CLevel_Development::Update_ColosseumMatch(const f32_t deltaSeconds)
+{
+	using P = LostArk::Shared::COLOSSEUM_MATCH_PHASE;
+	const auto& state = m_Replication.Get_ColosseumMatchState();
+	const double tick = m_Replication.Get_ColosseumServerTick();
+	if (m_bColosseumPreview && state.iMatchId)
+	{
+		// Never carry audition overrides into an authoritative match.
+#ifdef _DEBUG
+		if (m_ColosseumMatchView) m_ColosseumMatchView->Stop_DebugPreview();
+#endif
+		if (m_ColosseumIntro) m_ColosseumIntro->Stop();
+		if (m_ColosseumMatchStart) m_ColosseumMatchStart->Reset();
+		m_bColosseumPreview = false;
+		m_iColosseumLoadingStartedMs = GetTickCount64();
+	}
+	if (m_bColosseumPreview)
+	{
+		if (m_ColosseumLoading) m_ColosseumLoading->Hide();
+		if (m_ColosseumIntro) m_ColosseumIntro->Update(deltaSeconds, m_Replication);
+		if (m_ColosseumMatchStart) m_ColosseumMatchStart->Update(deltaSeconds);
+#ifdef _DEBUG
+		if (m_ColosseumMatchView) m_ColosseumMatchView->Update_DebugPreview(deltaSeconds, m_Replication);
+#endif
+		return;
+	}
+	const bool waiting = !state.iMatchId || state.ePhase == P::LOADING ||
+		(state.ePhase == P::INTRO && tick < state.iPhaseStartTick);
+	if (waiting)
+	{
+		// Asset loading is not readiness: remote class preparation and real replicated
+		// appearance commits finish here while the exact same loading screen remains visible.
+		if (state.iMatchId && state.ePhase == P::LOADING && m_iColosseumReadyMatch != state.iMatchId &&
+			m_Replication.Are_ColosseumCharactersReady() && m_pPlayerCommandSink &&
+			m_pPlayerCommandSink->Request_ColosseumLoadReady(state.iMatchId))
+			m_iColosseumReadyMatch = state.iMatchId;
+		if (m_ColosseumLoading)
+		{
+			const auto ready = std::count_if(state.Participants.begin(),state.Participants.end(),[](const auto& p){return p.bReady;});
+			m_ColosseumLoading->Set_Waiting(L"\xCC38\xAC00\xC790 \xC900\xBE44 \xC911 ("+
+				std::to_wstring(ready)+L"/"+std::to_wstring(state.iExpectedPlayers)+L")");
+		}
+		// Failed presentation or a peer that never finishes may not hide behind an
+		// infinite loading screen. Disconnect reports the failure and releases our seat.
+		if (GetTickCount64()-m_iColosseumLoadingStartedMs > 180000ull)
+		{
+			CLevelTransitionService::Report_LoadFailure(HRESULT_FROM_WIN32(WAIT_TIMEOUT),
+				"Colosseum readiness timed out: " + m_Replication.Get_PlayerPresentationFailure());
+			CNetworkManager::Get().Close_ServerConnection();
+			CLevelTransitionService::Request_Load(LEVEL::LOBBY,"colosseum.readiness-timeout");
+			return;
+		}
+	}
+	else if (m_ColosseumLoading) m_ColosseumLoading->Hide();
+	if (m_ColosseumIntro && state.iMatchId) m_ColosseumIntro->Update(deltaSeconds,m_Replication);
+	if (m_ColosseumMatchStart && state.iMatchId) m_ColosseumMatchStart->Update_ServerTimeline(state,tick);
+	if (m_ColosseumMatchView && state.iMatchId)
+	{
+		m_ColosseumMatchView->Update(deltaSeconds,m_Replication,state,tick);
+		if (m_ColosseumMatchView->Consume_ReturnIntent() && m_pPlayerCommandSink)
+			m_pPlayerCommandSink->Request_ColosseumReturn(state.iMatchId);
+	}
 }
 
 void Client::CLevel_Development::Render_ColosseumIntroControls()
@@ -320,6 +435,20 @@ void Client::CLevel_Development::Render_ColosseumIntroControls()
 	if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::COLOSSEUM))
 		return;
 	ImGui::PushID("ColosseumIntroCutscene");
+	const auto* active = Get_Active(LEVEL::COLOSSEUM);
+	const bool serverMatch = active && active->m_Replication.Get_ColosseumMatchState().iMatchId != 0u;
+	if (active && active->m_ColosseumMatchView && !active->m_ColosseumMatchView->Get_Status().empty())
+		ImGui::TextWrapped("Match presentation: %s",active->m_ColosseumMatchView->Get_Status().c_str());
+	if (active && !active->m_Replication.Get_PlayerPresentationFailure().empty())
+		ImGui::TextWrapped("Player presentation: %s",active->m_Replication.Get_PlayerPresentationFailure().c_str());
+	if (serverMatch) ImGui::TextDisabled("Server match clock: local replay/seek cannot change a live match.");
+	bool replayAllowed = !serverMatch;
+#ifdef _DEBUG
+	replayAllowed = replayAllowed && active && active->m_bColosseumPreview;
+	if (active && active->m_bColosseumPreview)
+		ImGui::TextDisabled("Debug preview only: real local character; no match score/result or Bern return is submitted.");
+#endif
+	ImGui::BeginDisabled(!replayAllowed);
 	if (ImGui::CollapsingHeader("Colosseum Intro Cutscene", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		CLevel_Development* const level = Get_Active(LEVEL::COLOSSEUM);
@@ -331,7 +460,23 @@ void Client::CLevel_Development::Render_ColosseumIntroControls()
 		{
 			CColosseumIntroCutscene& intro = *level->m_ColosseumIntro;
 			if (ImGui::Button(intro.Is_Active() ? "Restart" : "Play"))
+			{
+#ifdef _DEBUG
+				if (level->m_ColosseumMatchView) level->m_ColosseumMatchView->Stop_DebugPreview();
+#endif
+				if (level->m_ColosseumMatchStart) level->m_ColosseumMatchStart->Reset();
 				(void)intro.Restart();
+			}
+#ifdef _DEBUG
+			ImGui::SameLine();
+			if (ImGui::Button("Play Victory Cutscene") && level->m_ColosseumMatchView)
+			{
+				intro.Stop();
+				if (level->m_ColosseumMatchStart) level->m_ColosseumMatchStart->Reset();
+				(void)level->m_ColosseumMatchView->Play_DebugPreview(
+					CColosseumMatchView::DEBUG_PREVIEW::VICTORY_CUTSCENE, level->m_Replication);
+			}
+#endif
 			ImGui::SameLine();
 			ImGui::BeginDisabled(!intro.Is_Playing());
 			if (ImGui::Button(intro.Is_Paused() ? "Resume" : "Pause"))
@@ -352,9 +497,37 @@ void Client::CLevel_Development::Render_ColosseumIntroControls()
 				intro.Get_FovXDegrees(), static_cast<unsigned>(intro.Get_ActorCount()));
 			if (!intro.Get_Status().empty())
 				ImGui::TextWrapped("%s", intro.Get_Status().c_str());
-			ImGui::TextWrapped("Play re-reads Data/Camera/ColosseumIntro.cutscene.json, so edit the camera, FOV or timing there and press Play again (no rebuild). Only players connected to this room stand in the six slots. Input and HUD stay blocked while it runs; press Stop to leave early.");
+			ImGui::TextWrapped("The Server roster chooses actual participants and fixed team slots. Live matches use one Server clock; these replay controls are only available outside a match.");
 		}
 	}
+#ifdef _DEBUG
+	if (ImGui::CollapsingHeader("Colosseum HUD / Result UI Preview", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		auto* level = Get_Active(LEVEL::COLOSSEUM);
+		if (level && level->m_ColosseumMatchView)
+		{
+			auto& view = *level->m_ColosseumMatchView;
+			const auto play = [&](const CColosseumMatchView::DEBUG_PREVIEW kind) {
+				if (level->m_ColosseumIntro) level->m_ColosseumIntro->Stop();
+				if (level->m_ColosseumMatchStart) level->m_ColosseumMatchStart->Reset();
+				(void)view.Play_DebugPreview(kind, level->m_Replication);
+			};
+			if (ImGui::Button("Show Score HUD")) play(CColosseumMatchView::DEBUG_PREVIEW::SCORE_HUD);
+			ImGui::SameLine();
+			if (ImGui::Button("Play Victory UI")) play(CColosseumMatchView::DEBUG_PREVIEW::VICTORY_UI);
+			ImGui::SameLine();
+			if (ImGui::Button("Play Defeat UI")) play(CColosseumMatchView::DEBUG_PREVIEW::DEFEAT_UI);
+			ImGui::BeginDisabled(!view.Is_DebugPreviewActive());
+			if (ImGui::Button(view.Is_DebugPreviewPaused() ? "Resume Preview" : "Pause Preview"))
+				view.Set_DebugPreviewPaused(!view.Is_DebugPreviewPaused());
+			ImGui::SameLine();
+			if (ImGui::Button("Stop Preview")) view.Stop_DebugPreview();
+			ImGui::EndDisabled();
+			ImGui::Text("Preview: %s | %.2f s", view.Is_DebugPreviewActive() ? "active" : "stopped", view.Get_DebugPreviewClockMs() / 1000.f);
+			ImGui::TextWrapped("HUD sample: left 3, right 1, 120-second timer. Victory / Defeat UI: each source animated banner. Defeat sample: local left team loses 1:3. Victory cutscene: actual local character only. F1 hides this panel while playback continues.");
+		}
+	}
+#endif
 	if (ImGui::CollapsingHeader("Colosseum Match Start (countdown + gate)", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		CLevel_Development* const level = Get_Active(LEVEL::COLOSSEUM);
@@ -367,7 +540,12 @@ void Client::CLevel_Development::Render_ColosseumIntroControls()
 			CColosseumMatchStart& start = *level->m_ColosseumMatchStart;
 			ImGui::BeginDisabled(level->Is_ColosseumIntroActive());
 			if (ImGui::Button("Play Countdown + Gate"))
+			{
+#ifdef _DEBUG
+				if (level->m_ColosseumMatchView) level->m_ColosseumMatchView->Stop_DebugPreview();
+#endif
 				(void)start.Restart();
+			}
 			ImGui::EndDisabled();
 			ImGui::SameLine();
 			ImGui::BeginDisabled(!start.Is_Running());
@@ -388,9 +566,10 @@ void Client::CLevel_Development::Render_ColosseumIntroControls()
 				static_cast<unsigned>(start.Get_GateCount()));
 			if (!start.Get_Status().empty())
 				ImGui::TextWrapped("%s", start.Get_Status().c_str());
-			ImGui::TextWrapped("Play re-reads Data/Camera/ColosseumMatchStart.json (count, bar, colours, text positions, gate timing and depth), so edit it and press Play again (no rebuild). The count starts by itself when the intro cutscene ends. Presentation only: the Server has no match rules for the Colosseum yet, so the gate does not block anyone.");
+			ImGui::TextWrapped("The ten-second countdown and gate presentation follow the Server phase. The Server rejects combat and movement before PLAYING.");
 		}
 	}
+	ImGui::EndDisabled();
 	ImGui::PopID();
 }
 
@@ -536,10 +715,26 @@ HRESULT CLevel_Development::Render()
 {
 	if (FAILED(__super::Render()))
 		return E_FAIL;
+	if (m_eLevel == LEVEL::MAHARAKA || m_eLevel == LEVEL::COLOSSEUM)
+	{
+		m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster(),
+            m_eLevel == LEVEL::COLOSSEUM ? &m_Replication.Get_ColosseumMatchState() : nullptr,
+            m_eLevel == LEVEL::COLOSSEUM ? &m_Replication.Get_PlayerHealth() : nullptr);
+		m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
+		m_PartyInteraction.Render(m_pPlayerCommandSink);
+	}
 	if (m_InteractPrompt) m_InteractPrompt->Render_Text();
 	if (m_Waterpang) m_Waterpang->Render();
 	if (m_ColosseumIntro) m_ColosseumIntro->Render();
 	if (m_ColosseumMatchStart) m_ColosseumMatchStart->Render();
+	if (m_ColosseumLoading) m_ColosseumLoading->Render();
+	if (m_ColosseumMatchView) m_ColosseumMatchView->Render();
+	const auto& match = m_Replication.Get_ColosseumMatchState();
+	if (m_eLevel == LEVEL::COLOSSEUM && match.iMatchId &&
+		match.ePhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::ENTRY_COUNTDOWN)
+		CRaidGateProgressView::Render_AssemblyCountdown(
+			static_cast<f32_t>((std::max)(0.0, (match.iPhaseEndTick - m_Replication.Get_ColosseumServerTick()) / 30.0)),
+			L"\uC804\uD22C \uC544\uB808\uB098\uC5D0 \uC9C4\uC785\uD569\uB2C8\uB2E4.");
 
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(m_isMapEditorWorkspace ?
@@ -549,6 +744,55 @@ HRESULT CLevel_Development::Render()
 		TEXT("LostArk Test Training Ground"));
 #endif
 	return S_OK;
+}
+
+void CLevel_Development::Render_PartyInviteText()
+{
+	m_PartyInteraction.Render_InvitePopupText();
+	m_PartyInteraction.Render_ContextMenuText();
+    if (m_eLevel == LEVEL::COLOSSEUM && !Is_ColosseumIntroActive() &&
+        m_Replication.Get_ColosseumMatchState().iMatchId != 0u)
+    {
+        using namespace LostArk::Shared;
+        const auto& match = m_Replication.Get_ColosseumMatchState();
+        const auto local = CNetworkManager::Get().Get_LocalEntityId();
+        std::uint8_t ownTeam = COLOSSEUM_NO_TEAM;
+        std::uint32_t count[2]{};
+        for (const auto& row : match.Players)
+        {
+            if (row.iNetEntityId == local) ownTeam = row.iTeam;
+            if (row.iTeam < 2u && row.bParticipant) ++count[row.iTeam];
+        }
+        if (match.ePhase != COLOSSEUM_MATCH_PHASE::RECRUITING || ownTeam >= 2u) return;
+        const auto remaining = 4u - (std::min)(4u, count[ownTeam]);
+        std::wstring text = L"\uC6A9\uBCD1 \uBAA8\uC9D1 \u00B7 1\uD300 " + std::to_wstring(count[0]) + L"/4 \u00B7 2\uD300 " + std::to_wstring(count[1]) + L"/4";
+        text += remaining ? L"  |  \uAC19\uC740 \uD300 \uD6C4\uBCF4\uB97C \uC6B0\uD074\uB9AD\uD558\uC5EC \uC6A9\uBCD1 " + std::to_wstring(remaining) + L"\uBA85\uC744 \uCD08\uB300\uD558\uC138\uC694" :
+            L"  |  \uC0C1\uB300 \uD300 \uBAA8\uC9D1 \uC644\uB8CC\uB97C \uAE30\uB2E4\uB9AC\uB294 \uC911...";
+        const auto viewport = CGameInstance::Get().Get_ViewportSize();
+        CUITextLayerScope hudText(UI_TEXT_LAYER::HUD);
+        (void)UILabelFont::Draw_Centered(TEXT("Font_YoonGasiIIM"), text.c_str(),
+            viewport.x * .5f, viewport.y * .13f, viewport.y / 1080.f * 22.f,
+            XMVectorSet(1.f, .92f, .7f, 1.f), viewport.x * .9f);
+    }
+}
+
+bool_t CLevel_Development::Is_TravelModalOpen() const
+{
+	return m_TravelEntryView && m_TravelEntryView->Is_Open();
+}
+
+void CLevel_Development::Render_TravelModalText()
+{
+	if (m_TravelEntryView) m_TravelEntryView->RenderText();
+}
+
+void CLevel_Development::Render_TravelModal()
+{
+	if (!m_TravelEntryView || !m_pPlayerCommandSink) return;
+	m_TravelEntryView->Render();
+	const auto intent = m_TravelEntryView->Consume_Intent();
+	if (intent.eKind == CRaidEntryPreviewView::RAID_ENTRY_INTENT::RESPOND)
+		m_pPlayerCommandSink->Request_RaidEntryRespond(m_iNextTravelVoteSequence++, intent.iProposalId, intent.bAccepted);
 }
 
 HRESULT CLevel_Development::Ready_Lights()

@@ -73,9 +73,10 @@ bool_t Client::CCharacterOutfitApplier::Wear_Set(
 	std::array<std::string, ETOI(EQUIPMENT_SLOT_ID::END)>& outfit)
 {
 	const EQUIPMENT_VISUAL_SET* const pSet = m_EquipmentCatalog.Find_Set(strSetId);
-	if (nullptr == pSet || pSet->primarySlot >= EQUIPMENT_SLOT_ID::END)
+	if (nullptr == pSet || pSet->primarySlot >= EQUIPMENT_SLOT_ID::END ||
+		nullptr == character.Get_Spec() || pSet->classId != character.Get_Spec()->eCharacterClass)
 	{
-		Log_Outfit("set not in catalog: " + strSetId);
+		Log_Outfit("set is unavailable for this character: " + strSetId);
 		return false;
 	}
 
@@ -100,27 +101,14 @@ bool_t Client::CCharacterOutfitApplier::Wear_Set(
 	}
 	selected[ETOI(pSet->primarySlot)] = strSetId;
 
-	const uint32_t iLevel = character.Get_PrototypeLevelIndex();
-	Refresh_AdmissionMemory(iLevel);
-
-	std::string error;
-	if (!m_pService->Apply_Preview(character, m_EquipmentCatalog, selected, error))
-	{
-		Log_Outfit(error);
-		return false;
-	}
+	/* Compose only; Apply commits costume and hair together after both validate. */
 	outfit = std::move(selected);
-	if (!pSet->parts.empty())
-	{
-		m_iProbeLevelIndex = iLevel;
-		m_strProbeModelAssetId = pSet->parts.front().modelAssetId;
-	}
 	return true;
 }
 
 bool_t Client::CCharacterOutfitApplier::Apply(
 	const shared_ptr<CCharacter>& pCharacter,
-	const int32_t iHair, const int32_t iCostume)
+	const int32_t iHair, const int32_t iCostume, const bool_t requireAll)
 {
 	if (nullptr == pCharacter)
 		return false;
@@ -130,29 +118,73 @@ bool_t Client::CCharacterOutfitApplier::Apply(
 	if (!Ensure_Loaded())
 		return false;
 
-	/* A fresh restore target starts bare; Apply_Preview takes the whole outfit each time. */
+	/* Compose the complete saved outfit before touching the character. A missing model
+	or failed hair clone must not leave only the costume from a half-finished restore. */
 	std::array<std::string, ETOI(EQUIPMENT_SLOT_ID::END)> outfit{};
-	bool_t isApplied = false;
-
 	const std::vector<std::string>* const pCostumeIds =
 		m_CostumeDocument.Find(pSpec->pAssetName);
-	if (nullptr != pCostumeIds && iCostume >= 0 &&
-		static_cast<size_t>(iCostume) < pCostumeIds->size())
+	if (iCostume >= 0)
 	{
-		isApplied |= Wear_Set(*pCharacter, (*pCostumeIds)[static_cast<size_t>(iCostume)], outfit);
+		if (nullptr == pCostumeIds || static_cast<size_t>(iCostume) >= pCostumeIds->size() ||
+			!Wear_Set(*pCharacter, (*pCostumeIds)[static_cast<size_t>(iCostume)], outfit))
+			return false;
 	}
 
 	const std::vector<std::string>* const pHairIds =
 		m_HairstyleDocument.Find(pSpec->pAssetName);
 	if (nullptr != pHairIds)
 	{
-		int32_t iWantedHair = iHair;
-		if (iWantedHair < 0 || static_cast<size_t>(iWantedHair) >= pHairIds->size())
-			iWantedHair = m_HairstyleDocument.Get_DefaultIndex(pSpec->pAssetName);
-		if (iWantedHair >= 0 && static_cast<size_t>(iWantedHair) < pHairIds->size())
+		const int32_t iDefaultHair = m_HairstyleDocument.Get_DefaultIndex(pSpec->pAssetName);
+		if (iDefaultHair == -1 && !pSpec->isBodyHairFallback)
 		{
-			isApplied |= Wear_Set(*pCharacter, (*pHairIds)[static_cast<size_t>(iWantedHair)], outfit);
+			Log_Outfit("Body hair default is unsupported for this character.");
+			return false;
 		}
+		const auto acceptsHair = [&](const int32_t index) {
+			if (index == -1) return iDefaultHair == -1 && pSpec->isBodyHairFallback;
+			if (index < 0 || static_cast<size_t>(index) >= pHairIds->size()) return false;
+			const auto* set = m_EquipmentCatalog.Find_Set((*pHairIds)[static_cast<size_t>(index)]);
+			return nullptr != set && set->classId == pSpec->eCharacterClass &&
+				set->primarySlot == EQUIPMENT_SLOT_ID::HEAD && !set->parts.empty();
+		};
+		if (requireAll && iHair >= 0 && !acceptsHair(iHair)) return false;
+		int32_t iWantedHair = acceptsHair(iHair) ? iHair : iDefaultHair;
+		if (!acceptsHair(iWantedHair))
+		{
+			iWantedHair = -1;
+			for (size_t index = 0u; index < pHairIds->size(); ++index)
+			{
+				if (acceptsHair(static_cast<int32_t>(index)))
+				{
+					iWantedHair = static_cast<int32_t>(index);
+					break;
+				}
+			}
+		}
+		if (!acceptsHair(iWantedHair))
+			return false;
+		if (iWantedHair >= 0 &&
+			!Wear_Set(*pCharacter, (*pHairIds)[static_cast<size_t>(iWantedHair)], outfit))
+			return false;
 	}
-	return isApplied;
+
+	if (requireAll && iHair >= 0 && nullptr == pHairIds) return false;
+
+	const uint32_t iLevel = pCharacter->Get_PrototypeLevelIndex();
+	Refresh_AdmissionMemory(iLevel);
+	std::string error;
+	if (!m_pService->Apply_Preview(*pCharacter, m_EquipmentCatalog, outfit, error))
+	{
+		Log_Outfit(error);
+		return false;
+	}
+	for (const std::string& setId : outfit)
+	{
+		const auto* set = setId.empty() ? nullptr : m_EquipmentCatalog.Find_Set(setId);
+		if (nullptr == set || set->parts.empty()) continue;
+		m_iProbeLevelIndex = iLevel;
+		m_strProbeModelAssetId = set->parts.front().modelAssetId;
+		break;
+	}
+	return true;
 }

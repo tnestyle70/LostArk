@@ -232,6 +232,12 @@ namespace
             << "    \"adapter\": \"" << EscapeJson(context.Adapter) << "\",\n"
             << "    \"deviceCreationFlags\": " << context.DeviceCreationFlags << ",\n"
             << "    \"d3dDebugLayer\": " << ((context.DeviceCreationFlags & D3D11_CREATE_DEVICE_DEBUG) ? "true" : "false") << ",\n"
+            << "    \"clientWindowForeground\": " << (context.ClientWindowForeground ? "true" : "false") << ",\n"
+            << "    \"foregroundWindowOwnedByProcess\": " << (context.ProcessForeground ? "true" : "false") << ",\n"
+            << "    \"windowMinimized\": " << (context.WindowMinimized ? "true" : "false") << ",\n"
+            << "    \"configuredForegroundFpsLimit\": " << context.ForegroundFpsLimit << ",\n"
+            << "    \"configuredBackgroundFpsLimit\": " << context.BackgroundFpsLimit << ",\n"
+            << "    \"effectiveFpsLimit\": " << context.EffectiveFpsLimit << ",\n"
             << "    \"levelId\": " << context.LevelId << ",\n    \"viewport\": ";
         WriteFloatArray(stream, context.Viewport);
         stream << ",\n    \"cameraPosition\": "; WriteFloatArray(stream, context.CameraPosition);
@@ -243,7 +249,7 @@ namespace
         stream << ",\n    \"ssaoEnabled\": " << (context.SSAOEnabled ? "true" : "false")
             << ",\n    \"bloomEnabled\": " << (context.BloomEnabled ? "true" : "false")
             << ",\n    \"fxaaEnabled\": " << (context.FXAAEnabled ? "true" : "false")
-            << ",\n    \"note\": \"Current runtime context only; historical frames may have different levels, cameras, viewport sizes and settings.\"\n  },\n";
+            << ",\n    \"note\": \"Current runtime context only; historical frames may have different levels, cameras, viewport sizes, focus and settings. FPS limits are checkbox-resolved user limits (0 means disabled); effectiveFpsLimit selects by foreground process ownership and excludes the separate minimized-frame message wait.\"\n  },\n";
     }
 
 bool SaveJsonImpl(

@@ -55,6 +55,7 @@
 	<ClInclude Include="..\Public\HonorTitleCatalog.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ValtanClearRewards.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\PlayerSkillSystem.h"><Filter>Public</Filter></ClInclude>
+    <ClInclude Include="..\Public\ColosseumCombatPolicy.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ServerNavigation.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ValtanBrain.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\KoukuSaydonBrain.h"><Filter>Public</Filter></ClInclude>
@@ -88,6 +89,7 @@
     <ClCompile Include="..\Private\GameRoom_MaharakaAI.cpp" />
     <ClCompile Include="..\Private\ServerGameplayContractTests_MaharakaAI.cpp" />
     <ClCompile Include="..\Private\GameRoom_Guide.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\GameRoom_Colosseum.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\GameRoom_GuideThreat.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\ServerGameplayContractTests_Guide.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\GameRoom.cpp">
@@ -176,6 +178,8 @@
     <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanSkyAxe.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanTimelines.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\ServerGameplayContractTests_WorldTriggers.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ColosseumCombat.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ColosseumMatch.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\ServerGameplayContractTests_SkillStages.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\ServerGameplayContractTests_SpawnGroups.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanDash.cpp"><Filter>Private</Filter></ClCompile>

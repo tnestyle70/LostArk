@@ -145,10 +145,15 @@ public:
 	bool Request_ColosseumQueueJoin(
 		std::uint32_t clientSequence, const std::string& npcPlacementId) override;
 	bool Request_ColosseumQueueLeave(std::uint32_t clientSequence) override;
+	bool Request_ColosseumRecruit(std::uint32_t clientSequence, std::uint64_t matchId,
+		LostArk::Shared::NET_ENTITY_ID mercenaryNetEntityId) override;
 	bool Consume_ColosseumQueueState(LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE& outState) override;
+	bool Request_ColosseumLoadReady(std::uint64_t matchId) override;
+	bool Request_ColosseumReturn(std::uint64_t matchId) override;
 	bool Consume_RaidMvpResult(LostArk::Shared::S2C_RAID_MVP_RESULT& outResult) override;
 	bool Request_ReturnToBern(
 		std::uint32_t clientSequence) override;
+	bool Request_GuideControl(const LostArk::Shared::C2S_GUIDE_CONTROL& request) override;
 	bool Request_PartyInvite(
 		std::uint32_t clientSequence,
 		LostArk::Shared::NET_ENTITY_ID targetNetEntityId) override;

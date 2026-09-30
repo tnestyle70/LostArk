@@ -1057,7 +1057,7 @@ namespace
 			{ "positionOffset", "rotationDegrees", "scale", "fadeInMs", "fadeOutMs",
 			  "dissolveStart", "dissolveEnd", "volume", "soundSourceStartMs", "effectSourceStartMs", "effectSourceTimeKeys", "followBoss", "bone", "boneTarget",
 			  "regionId", "cardSymbol", "cardColor", "anchorKind", "worldId", "logicOccurrenceId", "debugRender", "worldOccurrenceId", "brightnessMultiplier",
-			  "worldEmissionIndex", "selectionGroupId", "fitEffectToDuration", "loopEffectToDuration",
+			  "worldEmissionIndex", "worldEffectTrackId", "selectionGroupId", "fitEffectToDuration", "loopEffectToDuration",
 			  "boneRotation", "colliderMotion", "colliderEndPositionOffset", "colliderEndScale", "anchorPresentationOccurrenceId" })) return false;
         if (const auto* motion = value.Find("colliderMotion"); motion && motion->Is_String() && motion->Get_String() == "LINEAR" &&
             (!value.Find("colliderEndPositionOffset") || !value.Find("colliderEndScale"))) return false;
@@ -1114,6 +1114,7 @@ namespace
 			Read_PresentationText(value, "worldId", row.strWorldId) &&
 			Read_PresentationText(value, "logicOccurrenceId", row.strLogicOccurrenceId) &&
 			Read_PresentationText(value, "worldOccurrenceId", row.strWorldOccurrenceId) &&
+            Read_PresentationText(value, "worldEffectTrackId", row.strWorldEffectTrackId) &&
 			Read_PresentationIndex(value, "worldEmissionIndex", row.iWorldEmissionIndex, 127u) &&
 			Read_PresentationTime(value, "startMs", row.iStartMs) &&
 			Read_PresentationTime(value, "durationMs", row.iDurationMs) &&
@@ -1646,7 +1647,7 @@ namespace
                 !std::isfinite(row.fDissolveStart) || !std::isfinite(row.fDissolveEnd) ||
                 row.fDissolveStart < 0. || row.fDissolveEnd > 1. || row.fDissolveStart > row.fDissolveEnd ||
                 row.fBrightnessMultiplier != 1. || row.strAnchorKind != "BOSS" || !row.strBone.empty() || row.strBoneTarget != "BODY" ||
-                row.strBoneRotation != "TARGET_YAW" || !row.strAnchorPresentationOccurrenceId.empty() ||
+                row.strBoneRotation != "TARGET_YAW" || !row.strWorldEffectTrackId.empty() || !row.strAnchorPresentationOccurrenceId.empty() ||
                 !row.strWorldId.empty() || !row.strRegionId.empty() || !row.strLogicOccurrenceId.empty() ||
                 !row.strWorldOccurrenceId.empty() || !row.strSelectionGroupId.empty() || row.strCardSymbol != "NONE" || row.strCardColor != "NONE")
                 return fail("common presentation supports unbound Camera only: " + row.strOccurrenceId);
@@ -2212,7 +2213,7 @@ namespace
 					if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && (row.strAnchorKind != first.strAnchorKind || row.bFollowBoss != first.bFollowBoss ||
 						row.strBone != first.strBone || row.strBoneTarget != first.strBoneTarget ||
 						row.strWorldId != first.strWorldId || row.strWorldOccurrenceId != first.strWorldOccurrenceId ||
-						row.iWorldEmissionIndex != first.iWorldEmissionIndex || row.strAnchorPresentationOccurrenceId != first.strAnchorPresentationOccurrenceId ||
+						row.iWorldEmissionIndex != first.iWorldEmissionIndex || row.strWorldEffectTrackId != first.strWorldEffectTrackId || row.strAnchorPresentationOccurrenceId != first.strAnchorPresentationOccurrenceId ||
 						(!row.bFollowBoss && row.iStartMs != first.iStartMs)))
 					{ outStatus = "Selection Group Colliders must share an anchor frame: " + row.strSelectionGroupId; return false; }
 					++group.second;
@@ -2222,6 +2223,9 @@ namespace
 				{ outStatus = "WEAPON Bone anchors require a boss Collider and an explicit weapon bone."; return false; }
                 const bool worldBoneCollider = resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER &&
                     row.strAnchorKind == "WORLD" && row.bFollowBoss && row.strBoneTarget == "BODY" && !row.strBone.empty();
+                if (!row.strWorldEffectTrackId.empty() && (!Is_StableId(row.strWorldEffectTrackId) ||
+                    !worldBoneCollider || row.strBoneRotation != "BONE" || row.strWorldOccurrenceId.empty()))
+                { outStatus = "World Effect track requires an exact World occurrence and following WORLD BODY bone Collider with BONE rotation: " + row.strOccurrenceId; return false; }
                 if (row.strAnchorKind == "WORLD" && !row.strBone.empty() && !worldBoneCollider)
                 { outStatus = "WORLD bones require a following BODY Collider."; return false; }
 				if (row.strBoneRotation != "TARGET_YAW" && (row.strBoneRotation != "BONE" ||
@@ -5573,6 +5577,7 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				<< "\", \"anchorKind\": \"" << CDataJson::Escape(row.strAnchorKind)
 				<< "\", \"worldId\": \"" << CDataJson::Escape(row.strWorldId) << "\", \"logicOccurrenceId\": \"" << CDataJson::Escape(row.strLogicOccurrenceId)
 				<< "\", \"worldOccurrenceId\": \"" << CDataJson::Escape(row.strWorldOccurrenceId) << "\""
+				<< (!row.strWorldEffectTrackId.empty() ? ", \"worldEffectTrackId\": \"" + CDataJson::Escape(row.strWorldEffectTrackId) + "\"" : std::string{})
 				<< (0u != row.iWorldEmissionIndex ? ", \"worldEmissionIndex\": " + std::to_string(row.iWorldEmissionIndex) : std::string{})
 				<< (!row.strSelectionGroupId.empty() ? ", \"selectionGroupId\": \"" + CDataJson::Escape(row.strSelectionGroupId) + "\"" : std::string{})
 				<< (row.strBoneRotation != "TARGET_YAW" ? ", \"boneRotation\": \"" + CDataJson::Escape(row.strBoneRotation) + "\"" : std::string{}) << "}"
@@ -5667,6 +5672,7 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                     << "\", \"anchorKind\": \"" << CDataJson::Escape(row.strAnchorKind) << "\", \"worldId\": \"" << CDataJson::Escape(row.strWorldId)
                     << "\", \"logicOccurrenceId\": \"" << CDataJson::Escape(row.strLogicOccurrenceId)
                     << "\", \"worldOccurrenceId\": \"" << CDataJson::Escape(row.strWorldOccurrenceId) << "\""
+                    << (!row.strWorldEffectTrackId.empty() ? ", \"worldEffectTrackId\": \"" + CDataJson::Escape(row.strWorldEffectTrackId) + "\"" : std::string{})
                     << (0u != row.iWorldEmissionIndex ? ", \"worldEmissionIndex\": " + std::to_string(row.iWorldEmissionIndex) : std::string{})
                     << (row.strBoneRotation != "TARGET_YAW" ? ", \"boneRotation\": \"" + CDataJson::Escape(row.strBoneRotation) + "\"" : std::string{}) << "}"
                     << (j + 1 < bundle.PresentationOccurrences.size() ? "," : "") << '\n';
@@ -6549,7 +6555,7 @@ bool Client::KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE::Has_ValidEffectSo
     if (EffectSourceTimeKeys.empty()) return true;
     if (EffectSourceTimeKeys.size() < 2u || EffectSourceTimeKeys.size() > 4096u ||
         strAnchorKind != "MAP" || bFollowBoss || !strBone.empty() || !strWorldId.empty() ||
-        !strAnchorPresentationOccurrenceId.empty() || iEffectSourceStartMs || bFitEffectToDuration ||
+        !strAnchorPresentationOccurrenceId.empty() || !strWorldEffectTrackId.empty() || iEffectSourceStartMs || bFitEffectToDuration ||
         bLoopEffectToDuration || iFadeInMs || iFadeOutMs ||
         EffectSourceTimeKeys.front()[0] != 0. || EffectSourceTimeKeys.back()[0] != iDurationMs ||
         EffectSourceTimeKeys.back()[1] > resourceDurationMs) return false;

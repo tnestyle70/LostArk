@@ -94,6 +94,26 @@ bool_t Client::CCustomizingCostumeDocument::Load()
 			setIds.push_back(pSetId->Get_String());
 		}
 		int32_t defaultIndex = 0;
+		if (const auto* bodyHair = value.Find("defaultBodyHair"))
+		{
+			if (m_strSchema != "lostark.customizing-hairstyles" ||
+				m_strArrayName != "hairstyle" || !bodyHair->Is_Boolean())
+			{
+				m_strStatus = path.string() + " (" + assetId +
+					"): defaultBodyHair must be a boolean in a hairstyle document";
+				return false;
+			}
+			if (bodyHair->Get_Boolean())
+			{
+				if (nullptr != value.Find("defaultVisualSetId"))
+				{
+					m_strStatus = path.string() + " (" + assetId +
+						"): defaultBodyHair and defaultVisualSetId cannot both select a default";
+					return false;
+				}
+				defaultIndex = -1;
+			}
+		}
 		if (const auto* defaultSet = value.Find("defaultVisualSetId"))
 		{
 			if (!defaultSet->Is_String() || defaultSet->Get_String().empty() ||

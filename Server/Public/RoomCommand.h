@@ -63,12 +63,16 @@ namespace LostArk::Server
 		DEBUG_WORLD_PLAYBACK,
         MAHARAKA_AI_TUNING,
 		RETURN_TO_BERN,
+		GUIDE_CONTROL,
 		PARTY_INVITE,
 		PARTY_INVITE_RESPOND,
 		RAID_ENTRY_PROPOSE,
 		RAID_ENTRY_RESPOND,
 		COLOSSEUM_QUEUE_JOIN,
 		COLOSSEUM_QUEUE_LEAVE,
+		COLOSSEUM_RECRUIT,
+		COLOSSEUM_LOAD_READY,
+		COLOSSEUM_RETURN,
 		GATE_PROGRESS_PROPOSE,
 		GATE_PROGRESS_RESPOND,
 		CHAT,
@@ -92,14 +96,14 @@ namespace LostArk::Server
 		(a real Client-sent C2S_ENTER_WORLD never populates it). */
 		std::string strSpawnPlacementOverrideId;
 		std::string strRaidReturnNpcPlacementId;
+		// Set only by authoritative world transfer, never by a Client entry packet.
+		LostArk::Shared::WORLD_ID eEntrySourceWorldId = LostArk::Shared::WORLD_ID::BERN;
 		/* Server-internal only, never part of the wire message -- see
 		SERVER_WORLD_TRANSFER_REQUEST::CarriedInventory. Empty means grant the
 		default fresh-entry loadout. */
 		std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT> CarriedInventory;
 		/* Travels with CarriedInventory: the purse the player had in the source world. */
 		SERVER_PURSE CarriedPurse;
-		// Server-only world transfer state; independent of inventory grant semantics.
-		SERVER_DURABILITY_STATE CarriedDurability;
 		/* ENTER_WORLD only, from SERVER_WORLD_TRANSFER_REQUEST::iHonorTitleId: the title the
 		player wore in the source world. INVALID for a fresh Lobby entry. */
 		LostArk::Shared::HONOR_TITLE_ID iCarriedHonorTitleId = LostArk::Shared::INVALID_HONOR_TITLE_ID;
@@ -160,12 +164,16 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK DebugWorldPlayback;
         LostArk::Shared::C2S_MAHARAKA_AI_TUNING MaharakaAITuning;
 		LostArk::Shared::C2S_RETURN_TO_BERN ReturnToBern;
+		LostArk::Shared::C2S_GUIDE_CONTROL GuideControl;
 		LostArk::Shared::C2S_PARTY_INVITE PartyInvite;
 		LostArk::Shared::C2S_PARTY_INVITE_RESPOND PartyInviteRespond;
 		LostArk::Shared::C2S_RAID_ENTRY_PROPOSE RaidEntryPropose;
 		LostArk::Shared::C2S_RAID_ENTRY_RESPOND RaidEntryRespond;
 		LostArk::Shared::C2S_COLOSSEUM_QUEUE_JOIN ColosseumQueueJoin;
 		LostArk::Shared::C2S_COLOSSEUM_QUEUE_LEAVE ColosseumQueueLeave;
+		LostArk::Shared::C2S_COLOSSEUM_RECRUIT ColosseumRecruit;
+		LostArk::Shared::C2S_COLOSSEUM_LOAD_READY ColosseumLoadReady;
+		LostArk::Shared::C2S_COLOSSEUM_RETURN ColosseumReturn;
 		LostArk::Shared::C2S_GATE_PROGRESS_PROPOSE GateProgressPropose;
 		LostArk::Shared::C2S_GATE_PROGRESS_RESPOND GateProgressRespond;
 		LostArk::Shared::C2S_CHAT Chat;

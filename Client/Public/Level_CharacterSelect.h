@@ -199,7 +199,6 @@ private:
 	bool_t Ensure_EquipmentPresentation();
 	bool_t Enter_Stage(LOBBY_STAGE eStage);
 	void Render_CreateCharacterProductInputHost();
-	void Render_ProductStatus();
 	bool_t Is_ProductPointerHovered() const;
 #ifdef _DEBUG
 	void Render_SelectionPanel();
@@ -328,6 +327,9 @@ public:
 	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
 	// F1 free-camera speed uses the same level-owned camera in Debug and Release.
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
+	// F1 in either configuration reuses the Level-owned class selection and Lobby entry.
+	bool_t Submit_StageEntry(LOBBY_STAGE eStage) { return Enter_Stage(eStage); }
+	const string& Get_NavigationStatus() const { return m_strStatus; }
 #ifdef _DEBUG
 	/* Map Tool borrows this level's live map the same way the Kouku and Valtan
 	   arenas lend theirs. The level keeps ownership; the tool only edits the
@@ -352,12 +354,7 @@ public:
 	const std::string& Debug_GetFloorSwapStatus() const { return m_FloorSwapStatus; }
 	const CHARACTER_SELECT_FLOOR_SWAP_SETTINGS& Debug_GetFloorSwapSettings() const
 	{ return m_FloorSwapAppliedSettings; }
-	bool_t Debug_Request_ProductStage(LOBBY_STAGE eStage)
-	{
-		return Enter_Stage(eStage);
-	}
 	bool_t Debug_Request_KakulSaydonArena();
-	const string& Debug_GetNavigationStatus() const { return m_strStatus; }
 
 	/* IMapAuthoringHost: the Debug Map Tool edits this Level's live map in
 	   place. Character Select owns no Deploy props and plays no map

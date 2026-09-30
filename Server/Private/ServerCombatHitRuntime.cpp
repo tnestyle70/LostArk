@@ -1,6 +1,7 @@
 #include "ServerCombatHitRuntime.h"
 
 #include "BossCombatRuntime.h"
+#include "ColosseumCombatPolicy.h"
 #include "PlayerSkillSystem.h"
 
 #include <algorithm>
@@ -194,6 +195,20 @@ void LostArk::Server::CServerBuffRuntime::Apply_SkillBuffs(
 			break;
 		}
 	}
+}
+
+void LostArk::Server::CServerBuffRuntime::Apply_ColosseumEnemyBuffs(
+    const CGameplayCatalog& catalog, const std::uint32_t skillId,
+    const SERVER_PLAYER& caster, SERVER_PLAYER& target, const std::uint32_t serverTick,
+    const SERVER_COLOSSEUM_COMBAT_CONTEXT& context)
+{
+    if (!Is_ColosseumOpponent(context, caster, target)) return;
+    const auto* definitions = catalog.Find_SkillBuffs(skillId);
+    if (!definitions) return;
+    for (const auto& definition : *definitions)
+        if (definition.eTarget == CGameplayCatalog::SKILL_BUFF_TARGET::ENEMY)
+            GrantBuff(target.ActiveBuffs, definition.iBuffId,
+                serverTick + (definition.iDurationMs * BUFF_TICK_HZ + 999u) / 1000u);
 }
 
 void LostArk::Server::CServerBuffRuntime::Expire(
@@ -569,14 +584,51 @@ namespace
 	}
 }
 
+bool LostArk::Server::CServerCombatHitRuntime::Is_EnemyPlayer(const SERVER_PLAYER& source, const SERVER_PLAYER& target) noexcept
+{
+	return source.iColosseumMatchId && source.iColosseumMatchId == target.iColosseumMatchId &&
+		source.bColosseumCombatActive && target.bColosseumCombatActive &&
+        source.bColosseumParticipant && target.bColosseumParticipant && source.isCombatReady && target.isCombatReady && source.iColosseumTeam < 2u &&
+		target.iColosseumTeam < 2u && source.iColosseumTeam != target.iColosseumTeam &&
+		source.iCurrentHp && target.iCurrentHp && source.iPlayerId != target.iPlayerId;
+}
+
+LostArk::Server::SERVER_COMBAT_HIT_RESULT
+LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToPlayer(const SERVER_PLAYER& source, SERVER_PLAYER& target,
+	const SERVER_PLAYER_TO_WORLD_HIT& hit, const CGameplayCatalog& catalog,
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& events)
+{
+	if (!Is_EnemyPlayer(source, target) || hit.bHealthDamageDisabled) return SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED;
+	SERVER_WORLD_TO_PLAYER_HIT incoming{};
+	incoming.iRawDamage = hit.iRawDamage; incoming.fSourceX = hit.fSourceX; incoming.fSourceZ = hit.fSourceZ;
+	incoming.fPushRangeM = hit.fPushRangeM; incoming.iPushMs = hit.iPushMs; incoming.iServerTick = hit.iServerTick;
+	const std::size_t first = events.size();
+	const SERVER_COLOSSEUM_COMBAT_CONTEXT context{ LostArk::Shared::WORLD_ID::COLOSSEUM, source.iColosseumMatchId, true, {} };
+    const SERVER_COLOSSEUM_RESOLVED_DAMAGE resolved{ &context, &source, hit.bCritical };
+	const auto result = Apply_WorldToPlayer(target, incoming, catalog, events, &resolved);
+	for (std::size_t index = first; index < events.size(); ++index)
+	{
+		events[index].iSourcePlayerId = source.iPlayerId;
+		if (hit.bCritical && events[index].eHitFlag == LostArk::Shared::DAMAGE_HIT_FLAG::NORMAL)
+			events[index].eHitFlag = LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL;
+	}
+	if (result == SERVER_COMBAT_HIT_RESULT::KILLED) target.iColosseumKillerId = source.iPlayerId;
+	return result;
+}
+
 LostArk::Server::SERVER_COMBAT_HIT_RESULT
 LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	SERVER_PLAYER& target,
 	const SERVER_WORLD_TO_PLAYER_HIT& hit,
 	const CGameplayCatalog& catalog,
-	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
+    const SERVER_COLOSSEUM_RESOLVED_DAMAGE* pPvPResolved)
 {
 	using namespace LostArk::Shared;
+    if (pPvPResolved && (!pPvPResolved->pContext || !pPvPResolved->pSource ||
+        !Is_ColosseumOpponent(*pPvPResolved->pContext, *pPvPResolved->pSource, target)))
+        return SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED;
+    const PLAYER_ID damageSource = pPvPResolved ? pPvPResolved->pSource->iPlayerId : INVALID_PLAYER_ID;
 	const bool lethal = hit.bEncounterWipe || hit.bInstantDeath;
 	if (!lethal && hit.bUsePushDirection && (!std::isfinite(hit.fPushDirectionX) || !std::isfinite(hit.fPushDirectionZ) ||
 		hit.fPushDirectionX * hit.fPushDirectionX + hit.fPushDirectionZ * hit.fPushDirectionZ < .000001f))
@@ -618,7 +670,9 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 		CGameplayCatalog::Apply_Defense(
 			hit.iRawDamage, nullptr == playerProfile ? 0u : playerProfile->iDefense);
 	/* A guardian's protection reduces what the hit finally takes off. */
-	const std::uint32_t damage = lethal ? target.iCurrentHp : SampleIncomingDamage(target,
+	// The arena has already resolved player buffs, spread, critical and defense.
+    // Null retains the exact boss/world incoming-damage calculation and variation.
+	const std::uint32_t damage = lethal ? target.iCurrentHp : pPvPResolved ? hit.iRawDamage : SampleIncomingDamage(target,
 		CServerBuffRuntime::Scale_Damage(mitigated,
 			CServerBuffRuntime::Damage_TakenPercent(catalog, target.ActiveBuffs) +
 				(estherGuarded ? target.iEstherGuardDamageTakenPercent : 0)), hit.iServerTick);
@@ -631,7 +685,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 		throughShield -= absorbed;
 		PushDamageEvent(target.iNetEntityId, absorbed,
 			target.fPositionX, target.fPositionY, target.fPositionZ, false, outDamageEvents,
-			INVALID_PLAYER_ID, 0u, false, false, DAMAGE_HIT_FLAG::ABSORB, false, hit.eMarioHitSource);
+			damageSource, 0u, false, false, DAMAGE_HIT_FLAG::ABSORB, false, hit.eMarioHitSource);
 	}
 	if (!lethal && throughShield >= target.iCurrentHp &&
 		0u != Death_DenyInvulnerableMs(catalog, target))
@@ -656,12 +710,13 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	PushDamageEvent(
 		target.iNetEntityId, hpBefore - target.iCurrentHp,
 		target.fPositionX, target.fPositionY, target.fPositionZ,
-		false, outDamageEvents, INVALID_PLAYER_ID, 0u, false, false, DAMAGE_HIT_FLAG::NORMAL, false, hit.eMarioHitSource);
+		false, outDamageEvents, damageSource, 0u, false, pPvPResolved && pPvPResolved->bCritical, DAMAGE_HIT_FLAG::NORMAL, false, hit.eMarioHitSource);
 	/* Gear wears when a hit actually takes HP; the guide companion wears none. */
 	if (target.Is_Human() && hpBefore > target.iCurrentHp)
-		target.Wear_Durability(10u);
+		target.Wear_Durability(5u);
 	if (0u == target.iCurrentHp)
 	{
+        if (pPvPResolved) target.iColosseumKillerId = pPvPResolved->pSource->iPlayerId;
 		target.iKoukuBingoLineProtectionEndTick = target.iEstherZoneProtectionEndTick = 0u;
 		target.iTimeStopEndTick = 0u;
 		target.iHolyCharmProtectionEndTick = 0u;

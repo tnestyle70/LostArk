@@ -1,7 +1,7 @@
 {
     "schema":  "lostark.guide-runtime",
     "formatVersion":  1,
-    "revision":  128350564805445,
+    "revision":  19755261657453,
     "guideId":  "guide.dimensionmaster",
     "characterClass":  "DIMENSIONMASTER",
     "displayName":  "가이드 차원술사",
@@ -41,10 +41,10 @@
                         "promptId":  "guide.bern.party.first_invite",
                         "categoryId":  "bern",
                         "topic":  "PARTY",
-                        "title":  "처음 파티 초대",
+                        "title":  "안내 시작",
                         "segments":  [
                                          {
-                                             "text":  "안녕, 난 이번에 가이드를 맡게 된 가이드 차원술사야.",
+                                             "text":  "안녕~~ 난 가이드 차원술사야. 베른을 둘러보면서 필요한 곳을 안내해 줄게.",
                                              "durationMs":  6000
                                          }
                                      ]
@@ -92,6 +92,90 @@
                                              "durationMs":  6000
                                          }
                                      ]
+                    },
+                    {
+                        "promptId":  "guide.bern.return.valtan",
+                        "categoryId":  "bern",
+                        "topic":  "NPC",
+                        "title":  "발탄 귀환",
+                        "segments":  [
+                                         {
+                                             "text":  "발탄 잘 처리하고 왔어? 얻은 보상을 한 번 확인해봐",
+                                             "durationMs":  6500
+                                         }
+                                     ]
+                    },
+                    {
+                        "promptId":  "guide.bern.return.kouku",
+                        "categoryId":  "bern",
+                        "topic":  "NPC",
+                        "title":  "쿠크세이튼 귀환",
+                        "segments":  [
+                                         {
+                                             "text":  "쿠크세이튼 잘 처리하고 왔어? 장비가 손상되었으니까 같이 장비 수리를 하러 가자",
+                                             "durationMs":  6500
+                                         }
+                                     ]
+                    },
+                    {
+                        "promptId":  "guide.bern.npc.repair",
+                        "categoryId":  "bern",
+                        "topic":  "NPC",
+                        "title":  "장비 수리",
+                        "segments":  [
+                                         {
+                                             "text":  "여기서 손상된 장비를 수리할 수 있어",
+                                             "durationMs":  6500
+                                         }
+                                     ]
+                    },
+                    {
+                        "promptId":  "guide.bern.water.life",
+                        "categoryId":  "bern",
+                        "topic":  "NPC",
+                        "title":  "생명의 나무와 물",
+                        "segments":  [
+                                         {
+                                             "text":  "생명의 나무와 물이야",
+                                             "durationMs":  6500
+                                         }
+                                     ]
+                    },
+                    {
+                        "promptId":  "guide.bern.npc.harbor",
+                        "categoryId":  "bern",
+                        "topic":  "NPC",
+                        "title":  "항구 승선",
+                        "segments":  [
+                                         {
+                                             "text":  "여기서 배를 탈 수 있어",
+                                             "durationMs":  6500
+                                         }
+                                     ]
+                    },
+                    {
+                        "promptId":  "guide.bern.return.maharaka",
+                        "categoryId":  "bern",
+                        "topic":  "NPC",
+                        "title":  "워터팡 귀환",
+                        "segments":  [
+                                         {
+                                             "text":  "워터팡 아일랜드에서 돌아왔구나. 다시 같이 둘러보자.",
+                                             "durationMs":  6500
+                                         }
+                                     ]
+                    },
+                    {
+                        "promptId":  "guide.bern.return.colosseum",
+                        "categoryId":  "bern",
+                        "topic":  "NPC",
+                        "title":  "콜로세움 귀환",
+                        "segments":  [
+                                         {
+                                             "text":  "콜로세움에서 돌아왔구나. 다시 같이 둘러보자.",
+                                             "durationMs":  6500
+                                         }
+                                     ]
                     }
                 ],
     "triggers":  [
@@ -100,7 +184,7 @@
                          "categoryId":  "bern",
                          "enabled":  true,
                          "event":  {
-                                       "type":  "PARTY_JOINED"
+                                       "type":  "GUIDE_STARTED"
                                    },
                          "promptId":  "guide.bern.party.first_invite",
                          "comboId":  "",
@@ -169,6 +253,208 @@
                          "comboId":  "",
                          "cooldownMs":  0,
                          "priority":  80
+                     },
+                     {
+                         "triggerId":  "guide.trigger.bern.return.valtan",
+                         "categoryId":  "bern",
+                         "enabled":  true,
+                         "event":  {
+                                       "type":  "RAID_RETURNED",
+                                       "raidWorldId":  "VALTAN_ARENA"
+                                   },
+                         "promptId":  "guide.bern.return.valtan",
+                         "comboId":  "",
+                         "cooldownMs":  30000,
+                         "priority":  100
+                     },
+                     {
+                         "triggerId":  "guide.trigger.bern.return.kouku",
+                         "categoryId":  "bern",
+                         "enabled":  true,
+                         "event":  {
+                                       "type":  "RAID_RETURNED",
+                                       "raidWorldId":  "KAKULSAYDON_ARENA"
+                                   },
+                         "promptId":  "guide.bern.return.kouku",
+                         "comboId":  "",
+                         "cooldownMs":  30000,
+                         "priority":  100
+                     },
+                     {
+                         "triggerId":  "guide.trigger.bern.return.maharaka",
+                         "categoryId":  "bern",
+                         "enabled":  true,
+                         "event":  {
+                                       "type":  "WORLD_RETURNED",
+                                       "sourceWorldId":  "MAHARAKA"
+                                   },
+                         "promptId":  "guide.bern.return.maharaka",
+                         "comboId":  "",
+                         "cooldownMs":  30000,
+                         "priority":  100
+                     },
+                     {
+                         "triggerId":  "guide.trigger.bern.return.colosseum",
+                         "categoryId":  "bern",
+                         "enabled":  true,
+                         "event":  {
+                                       "type":  "WORLD_RETURNED",
+                                       "sourceWorldId":  "COLOSSEUM"
+                                   },
+                         "promptId":  "guide.bern.return.colosseum",
+                         "comboId":  "",
+                         "cooldownMs":  30000,
+                         "priority":  100
+                     },
+                     {
+                         "triggerId":  "guide.trigger.bern.repair.1",
+                         "categoryId":  "bern",
+                         "enabled":  true,
+                         "event":  {
+                                       "type":  "SPACE_ENTER",
+                                       "boxId":  "guide.box.bern.repair.1",
+                                       "position":  [
+                                                        227.149994,
+                                                        43.5099983,
+                                                        -70.1679993
+                                                    ],
+                                       "yawDegrees":  223.070007,
+                                       "halfExtents":  [
+                                                           4,
+                                                           3,
+                                                           4
+                                                       ],
+                                       "anchorPlacementId":  "npc.bern.src.31"
+                                   },
+                         "promptId":  "guide.bern.npc.repair",
+                         "comboId":  "",
+                         "cooldownMs":  30000,
+                         "priority":  10
+                     },
+                     {
+                         "triggerId":  "guide.trigger.bern.repair.2",
+                         "categoryId":  "bern",
+                         "enabled":  true,
+                         "event":  {
+                                       "type":  "SPACE_ENTER",
+                                       "boxId":  "guide.box.bern.repair.2",
+                                       "position":  [
+                                                        195.033005,
+                                                        49.1100006,
+                                                        -146.608002
+                                                    ],
+                                       "yawDegrees":  303.75,
+                                       "halfExtents":  [
+                                                           4,
+                                                           3,
+                                                           4
+                                                       ],
+                                       "anchorPlacementId":  "npc.bern.src.48"
+                                   },
+                         "promptId":  "guide.bern.npc.repair",
+                         "comboId":  "",
+                         "cooldownMs":  30000,
+                         "priority":  10
+                     },
+                     {
+                         "triggerId":  "guide.trigger.bern.harbor.1",
+                         "categoryId":  "bern",
+                         "enabled":  true,
+                         "event":  {
+                                       "type":  "SPACE_ENTER",
+                                       "boxId":  "guide.box.bern.harbor.1",
+                                       "position":  [
+                                                        271.59,
+                                                        12.43,
+                                                        -196.7
+                                                    ],
+                                       "yawDegrees":  259.6,
+                                       "halfExtents":  [
+                                                           4,
+                                                           3,
+                                                           4
+                                                       ],
+                                       "anchorPlacementId":  "npc.bern.ship.shipwright.1"
+                                   },
+                         "promptId":  "guide.bern.npc.harbor",
+                         "comboId":  "",
+                         "cooldownMs":  30000,
+                         "priority":  10
+                     },
+                     {
+                         "triggerId":  "guide.trigger.bern.harbor.2",
+                         "categoryId":  "bern",
+                         "enabled":  true,
+                         "event":  {
+                                       "type":  "SPACE_ENTER",
+                                       "boxId":  "guide.box.bern.harbor.2",
+                                       "position":  [
+                                                        229.61,
+                                                        12.47,
+                                                        -196.5
+                                                    ],
+                                       "yawDegrees":  259.6,
+                                       "halfExtents":  [
+                                                           4,
+                                                           3,
+                                                           4
+                                                       ],
+                                       "anchorPlacementId":  "npc.bern.ship.shipwright.2"
+                                   },
+                         "promptId":  "guide.bern.npc.harbor",
+                         "comboId":  "",
+                         "cooldownMs":  30000,
+                         "priority":  10
+                     },
+                     {
+                         "triggerId":  "guide.trigger.bern.harbor.3",
+                         "categoryId":  "bern",
+                         "enabled":  true,
+                         "event":  {
+                                       "type":  "SPACE_ENTER",
+                                       "boxId":  "guide.box.bern.harbor.3",
+                                       "position":  [
+                                                        264.41,
+                                                        11.79,
+                                                        -204.03
+                                                    ],
+                                       "yawDegrees":  2.4,
+                                       "halfExtents":  [
+                                                           4,
+                                                           3,
+                                                           4
+                                                       ],
+                                       "anchorPlacementId":  "npc.bern.ship.harbormaster.1"
+                                   },
+                         "promptId":  "guide.bern.npc.harbor",
+                         "comboId":  "",
+                         "cooldownMs":  30000,
+                         "priority":  10
+                     },
+                     {
+                         "triggerId":  "guide.trigger.bern.water.life",
+                         "categoryId":  "bern",
+                         "enabled":  true,
+                         "event":  {
+                                       "type":  "SPACE_ENTER",
+                                       "boxId":  "guide.box.bern.water.life",
+                                       "position":  [
+                                                        107.434014,
+                                                        35.9760303,
+                                                        -28.5882275
+                                                    ],
+                                       "yawDegrees":  0,
+                                       "halfExtents":  [
+                                                           8,
+                                                           4,
+                                                           10
+                                                       ],
+                                       "anchorPlacementId":  ""
+                                   },
+                         "promptId":  "guide.bern.water.life",
+                         "comboId":  "",
+                         "cooldownMs":  30000,
+                         "priority":  10
                      }
                  ],
     "combat":  {

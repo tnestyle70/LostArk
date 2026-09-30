@@ -1,4 +1,5 @@
 #include "NetworkManager.h"
+#include "CharacterSelectionState.h"
 
 #include "DataJson.h"
 #include "PlayerSkillCatalog.h"
@@ -960,6 +961,7 @@ bool CNetworkManager::Has_DispatchCapacity(
 	case PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY:
 	case PACKET_TYPE::S2C_INTERACT_PROMPT:
 	case PACKET_TYPE::S2C_PARTY_ROSTER:
+	case PACKET_TYPE::S2C_COLOSSEUM_MATCH_STATE:
 	case PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT:
 	case PACKET_TYPE::S2C_RAID_ENTRY_PROMPT:
 	case PACKET_TYPE::S2C_RAID_ENTRY_VOTE:
@@ -1230,6 +1232,8 @@ bool CNetworkManager::Send_EnterWorld(
 	message.eCharacterClass = characterClass;
 	message.strNickName = std::string{ nickName };
 	message.iVoiceType = voiceType;
+	if (worldId != WORLD_ID::CHARACTER_SELECT_ARENA)
+		message.strAppearanceJson = Client::CCharacterSelectionState::Get_ActiveAppearanceJson();
 
 	CPacketWriter payloadWriter;
 	if (!Write_Message(payloadWriter, message))
@@ -2072,6 +2076,28 @@ bool CNetworkManager::Send_ColosseumQueueJoin(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_GuideControl(const LostArk::Shared::C2S_GUIDE_CONTROL& request)
+{
+    using namespace LostArk::Shared;
+    if (!Is_Connected() || m_eWorldId != WORLD_ID::BERN) return false;
+    CPacketWriter writer;
+    if (!Write_Message(writer, request)) return false;
+    std::vector<std::uint8_t> frame;
+    return Build_Packet_Frame(PACKET_TYPE::C2S_GUIDE_CONTROL, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_ColosseumRecruit(const std::uint32_t requestSequence,
+    const std::uint64_t matchId, const LostArk::Shared::NET_ENTITY_ID mercenaryNetEntityId)
+{
+    using namespace LostArk::Shared;
+    if (!Is_Connected() || m_eWorldId != WORLD_ID::COLOSSEUM) return false;
+    C2S_COLOSSEUM_RECRUIT message{requestSequence, matchId, mercenaryNetEntityId};
+    CPacketWriter writer;
+    if (!Write_Message(writer, message)) return false;
+    std::vector<std::uint8_t> frame;
+    return Build_Packet_Frame(PACKET_TYPE::C2S_COLOSSEUM_RECRUIT, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
 bool CNetworkManager::Send_ColosseumQueueLeave(const std::uint32_t requestSequence)
 {
 	using namespace LostArk::Shared;
@@ -2089,6 +2115,42 @@ bool CNetworkManager::Send_ColosseumQueueLeave(const std::uint32_t requestSequen
 		PACKET_TYPE::C2S_COLOSSEUM_QUEUE_LEAVE,
 		payloadWriter.Get_Buffer(),
 		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_ColosseumLoadReady(const std::uint64_t matchId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || m_eWorldId != WORLD_ID::COLOSSEUM || !matchId)
+		return false;
+	C2S_COLOSSEUM_LOAD_READY message{};
+	message.iMatchId = matchId;
+	CPacketWriter writer;
+	std::vector<std::uint8_t> frame;
+	return Write_Message(writer, message) && Build_Packet_Frame(
+		PACKET_TYPE::C2S_COLOSSEUM_LOAD_READY, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_ColosseumReturn(const std::uint64_t matchId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || m_eWorldId != WORLD_ID::COLOSSEUM || !matchId)
+		return false;
+	C2S_COLOSSEUM_RETURN message{};
+	message.iMatchId = matchId;
+	CPacketWriter writer;
+	std::vector<std::uint8_t> frame;
+	return Write_Message(writer, message) && Build_Packet_Frame(
+		PACKET_TYPE::C2S_COLOSSEUM_RETURN, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+double CNetworkManager::Get_ColosseumServerTick() const
+{
+	if (!m_ColosseumMatchState.iMatchId || !m_iColosseumStateReceivedMs)
+		return 0.0;
+	// The match publishes its clock at 30 Hz. A stalled connection must not run the
+	// local clock indefinitely past the last authoritative sample.
+	const auto elapsed = (std::min)(GetTickCount64() - m_iColosseumStateReceivedMs, 1000ull);
+	return static_cast<double>(m_ColosseumMatchState.iServerTick) + static_cast<double>(elapsed) * 0.03;
 }
 
 bool CNetworkManager::Send_GateProgressPropose(
@@ -2913,6 +2975,8 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_HonorTitleResults.clear();
 	m_GateProgressStates.clear();
 	m_ColosseumQueueStates.clear();
+	m_ColosseumMatchState = {};
+	m_iColosseumStateReceivedMs = 0u;
 	m_RaidMvpResults.clear();
 	m_DebugKoukuHudModeResults.clear();
 	m_WorldEntitySpawnResults.clear();
@@ -4798,6 +4862,22 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		// Stored directly (not through the replication queue): it must survive the world
 		// transfer that follows, which clears every typed queue on ENTER_ACCEPTED.
 		Client::CLevelTransitionService::Set_ColosseumMatch(match);
+		break;
+	}
+	case PACKET_TYPE::S2C_COLOSSEUM_MATCH_STATE:
+	{
+		S2C_COLOSSEUM_MATCH_STATE state{};
+		if (!Read_Message(reader, state) || reader.Get_RemainingSize() != 0u || m_eWorldId != WORLD_ID::COLOSSEUM)
+		{
+			Fail_Protocol(WSAEINVAL, SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				frame.ePacketType, "Invalid Colosseum match state or target world.");
+			return;
+		}
+		if (m_ColosseumMatchState.iMatchId == state.iMatchId &&
+			state.iServerTick < m_ColosseumMatchState.iServerTick)
+			break;
+		m_ColosseumMatchState = std::move(state);
+		m_iColosseumStateReceivedMs = GetTickCount64();
 		break;
 	}
 	case PACKET_TYPE::S2C_GATE_PROGRESS_STATE:

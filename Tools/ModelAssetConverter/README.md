@@ -269,3 +269,23 @@ Client/Bin/Resources/
 - 팀원은 각자 같은 컨버터와 같은 WMA2/WMODEL 포맷을 사용합니다.
 - `.wmodel` 이름은 달라도 상관없습니다. 내부 magic/section 포맷이 같으면 모두 같은 `CModel` 파이프라인으로 렌더됩니다.
 - 해당 domain publisher, 변경한 생성·로더의 최소 컴파일과 실제 재질 입력 검사를 수행합니다. Client/UI 화면 확인은 사용자가 직접 합니다. 관련 없는 전체 하네스를 리소스 적용의 선행조건으로 붙이지 않습니다.
+
+
+## 정적 모델의 원본 vertex color 복구
+
+`restore_static_source_colors.py`는 UE3 native color stream을 실제 position/UV/basis와
+대조해 기존 WModel의 COLOR0만 교정하는 후보 도구입니다. 원본에 색이 없으면 optional
+COLOR0를 제거하고, 실제 색이 있으면 BGRA를 RGBA로 연결합니다. 정점 위치·UV·basis·
+index·bounds·WMAT는 보존하며 입력 모델에 직접 쓰거나 Resources를 설치하지 않습니다.
+
+```powershell
+python Tools/ModelAssetConverter/restore_static_source_colors.py `
+  --source-receipt out/source/source.receipt.json `
+  --model Client/Bin/Resources/Map/Area/Asset/Asset.wmodel `
+  --output out/color-candidate/Asset.wmodel `
+  --stage-directory out/color-source `
+  --report out/color-candidate/Asset.color.receipt.json
+```
+
+receipt의 원본 package와 glTF가 있어야 합니다. 비색상 채널의 native join 실패나 모호한
+색 매핑은 실패로 처리합니다. 후보 hash·보존 증거 확인 후 별도 설치와 Area publisher를 사용합니다.

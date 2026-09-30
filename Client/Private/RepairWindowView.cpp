@@ -6,6 +6,7 @@
 
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
+#include "ItemCatalog.h"
 #include "MainApp.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
@@ -33,6 +34,18 @@ namespace
 	constexpr const char* MONEY_BAR_ID = "Repair_MoneyBar";
 	constexpr const char* EQUIP_BUTTON_ID = "Repair_EquipButton";
 	constexpr const char* ALL_BUTTON_ID = "Repair_AllButton";
+	constexpr const char* EQUIP_COST_BAR_ID = "Repair_EquipCostBar";
+	constexpr const char* ALL_COST_BAR_ID = "Repair_AllCostBar";
+	constexpr uint32_t EQUIP_SLOT_COUNT = 16;
+	constexpr uint32_t BAG_SLOT_COUNT = 24;
+
+	std::wstring Format_Silver(const uint32_t iValue)
+	{
+		std::wstring strDigits = std::to_wstring(iValue);
+		for (int32_t iAt = static_cast<int32_t>(strDigits.size()) - 3; iAt > 0; iAt -= 3)
+			strDigits.insert(static_cast<size_t>(iAt), L",");
+		return strDigits;
+	}
 
 	/* Text anchors: the document needs a rect for each label, but retail draws no plate behind
 	the title or the two section headings, so these slots exist only to be measured. */
@@ -71,6 +84,32 @@ void Client::CRepairWindowView::Hide()
 		m_pBackgroundView->Set_AllSlotsVisible(false);
 }
 
+void Client::CRepairWindowView::Refresh_DamagedGear()
+{
+	m_EquippedGear.clear();
+	m_BagGear.clear();
+	m_iEquippedCost = 0u;
+	m_iAllCost = 0u;
+	/* Only gear ever drops below 100, so the percent alone says what is damaged. */
+	for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& Item :
+		CCombatHUDViewModel::Get().Get_Inventory().Items)
+	{
+		if (Item.iDurabilityPercent >= 100u)
+			continue;
+		const uint32_t iCost = LostArk::Shared::Repair_Silver_Cost(Item.iDurabilityPercent);
+		m_iAllCost += iCost;
+		if (LostArk::Shared::Is_Durable_Slot(Item.eEquippedSlot))
+		{
+			m_iEquippedCost += iCost;
+			m_EquippedGear.push_back({ Item.strItemId, Item.iDurabilityPercent });
+		}
+		else if (LostArk::Shared::EQUIPMENT_SLOT::NONE == Item.eEquippedSlot)
+		{
+			m_BagGear.push_back({ Item.strItemId, Item.iDurabilityPercent });
+		}
+	}
+}
+
 void Client::CRepairWindowView::Update()
 {
 	/* Hit tests below belong to this window; the router refuses a press that lands on the
@@ -87,6 +126,30 @@ void Client::CRepairWindowView::Update()
 	m_pBackgroundView->Set_AllSlotsVisible(true);
 	for (const char* pAnchorId : TEXT_ANCHOR_IDS)
 		m_pBackgroundView->Set_SlotVisible(pAnchorId, false);
+
+	Refresh_DamagedGear();
+	/* The damaged pieces fill the slot frames from the first one; the rest stay empty frames. */
+	const auto FillIcons = [this](const char* pIconPrefix, const vector<GEAR_ENTRY>& Entries,
+		const uint32_t iSlotCount)
+	{
+		for (uint32_t iSlot = 0; iSlot < iSlotCount; ++iSlot)
+		{
+			const string strIconId = string(pIconPrefix) + std::to_string(iSlot);
+			const ITEM_DEFINITION* pItem = iSlot < Entries.size() ?
+				CItemCatalog::Find_ById(Entries[iSlot].strItemId) : nullptr;
+			if (nullptr != pItem && !pItem->strIconPath.empty())
+			{
+				m_pBackgroundView->Set_SlotTexture(strIconId, pItem->strIconPath);
+				m_pBackgroundView->Set_SlotVisible(strIconId, true);
+			}
+			else
+			{
+				m_pBackgroundView->Set_SlotVisible(strIconId, false);
+			}
+		}
+	};
+	FillIcons("Repair_EquipIcon_", m_EquippedGear, EQUIP_SLOT_COUNT);
+	FillIcons("Repair_InventoryIcon_", m_BagGear, BAG_SLOT_COUNT);
 
 	Update_Drag();
 	Update_Buttons();
@@ -199,9 +262,14 @@ void Client::CRepairWindowView::Update_Buttons()
 			continue;
 		const bool_t bHovered =
 			Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
-		m_pBackgroundView->Set_SlotTintMultiplier(Button.pId, bHovered ?
-			float4_t(1.25f, 1.25f, 1.25f, 1.f) : float4_t(1.f, 1.f, 1.f, 1.f));
-		if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+		/* Live only with something to repair and the silver to pay for all of it. */
+		const uint32_t iCost = Button.bAllSlots ? m_iAllCost : m_iEquippedCost;
+		const bool_t bLive = 0u != iCost &&
+			CCombatHUDViewModel::Get().Get_Inventory().iSilver >= iCost;
+		m_pBackgroundView->Set_SlotTintMultiplier(Button.pId, !bLive ?
+			float4_t(0.55f, 0.55f, 0.55f, 1.f) : (bHovered ?
+			float4_t(1.25f, 1.25f, 1.25f, 1.f) : float4_t(1.f, 1.f, 1.f, 1.f)));
+		if (bLive && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		{
 			m_bHasPendingRepair = true;
 			m_bPendingRepairAllSlots = Button.bAllSlots;
@@ -281,6 +349,14 @@ void Client::CRepairWindowView::Render_Text()
 	DrawLabel(EQUIP_BUTTON_ID, EQUIP_BUTTON_TEXT, TEXT("Font_YG760"), 16.f, 0.5f);
 	DrawLabel(ALL_BUTTON_ID, ALL_BUTTON_TEXT, TEXT("Font_YG760"), 16.f, 0.5f);
 	DrawLabel(MONEY_BAR_ID, MONEY_TEXT, TEXT("Font_YG760"), 14.f, 0.f);
+
+	/* The two bills and the purse, right-aligned in their bars. */
+	const std::wstring strEquipCost = Format_Silver(m_iEquippedCost);
+	const std::wstring strAllCost = Format_Silver(m_iAllCost);
+	const std::wstring strSilver = Format_Silver(CCombatHUDViewModel::Get().Get_Inventory().iSilver);
+	DrawLabel(EQUIP_COST_BAR_ID, strEquipCost.c_str(), TEXT("Font_YG760"), 14.f, 1.f);
+	DrawLabel(ALL_COST_BAR_ID, strAllCost.c_str(), TEXT("Font_YG760"), 14.f, 1.f);
+	DrawLabel(MONEY_BAR_ID, strSilver.c_str(), TEXT("Font_YG760"), 14.f, 1.f);
 }
 
 bool_t Client::CRepairWindowView::Get_ScreenRect(

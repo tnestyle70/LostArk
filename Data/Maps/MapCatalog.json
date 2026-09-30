@@ -169,9 +169,13 @@
       "navigationSource": "Data/Navigation/LV_PVP_COLOSSEUM.navsource",
       "navigationRuntime": "Client/Bin/DataFiles/Navigation/LV_PVP_COLOSSEUM.navgrid",
       "gameplayDocument": "Data/Worlds/LV_PVP_COLOSSEUM/Gameplay.world.json",
-      "placementCount": 1294,
-      "assetCount": 103,
-      "runtimeAssetRoot": "Map/LV_PVP_COLOSSEUM"
+      "placementCount": 1302,
+      "assetCount": 546,
+      "runtimeAssetRoot": "Map/LV_PVP_COLOSSEUM",
+      "sourceMaterials": "Data/Maps/Authoring/LV_PVP_COLOSSEUM/LV_PVP_COLOSSEUM.mapmaterials.json",
+      "materials": "Client/Bin/DataFiles/Map/LV_PVP_COLOSSEUM.mapmaterials.json",
+      "sourceLights": "Data/Maps/Authoring/LV_PVP_COLOSSEUM/LV_PVP_COLOSSEUM.maplights.json",
+      "lights": "Client/Bin/DataFiles/Map/LV_PVP_COLOSSEUM.maplights.json"
     },
     {
       "id": "LV_LOBBY_CLASSSELECT_SL10",

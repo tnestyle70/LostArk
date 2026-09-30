@@ -24,6 +24,8 @@ NS_END
 
 NS_BEGIN(Client)
 
+class CPart_Equipment;
+
 enum class ANIMATION_BONE_TARGET : uint8_t;
 struct ANIMATION_MODEL_TARGET_VIEW;
 
@@ -292,6 +294,8 @@ public:
 		PLAYER_HAND_GRIP_SOCKET_VIEW& outView) const override;
 	bool_t Try_Get_PlayerHandGripLocalOffset(LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
 		PLAYER_HAND_GRIP_LOCAL_OFFSET& outOffset) const override;
+    bool_t Prepare_WaterGun(uint32_t prototypeLevelIndex);
+    void Set_WaterGunArmed(bool_t armed) { m_bWaterGunArmed = armed; }
 	void Synchronize_WeaponPose();
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
 	/* Restarts the selected clip even when the previous action used the same
@@ -411,6 +415,8 @@ private:
     bool m_CounterAfterimageExternalClock = false;
     float m_CounterAfterimageClockSeconds = 0.f;
 	shared_ptr<Engine::CModel> m_pModelCom = { nullptr };
+    shared_ptr<CPart_Equipment> m_pWaterGun;
+    bool_t m_bWaterGunArmed = false;
 	shared_ptr<Engine::CModel> m_pSaydonHatModel;
 	wstring_t m_strModelTag;
 	std::string m_strEffectV2BindingOwner;

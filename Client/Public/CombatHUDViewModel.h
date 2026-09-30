@@ -20,6 +20,7 @@ namespace Client
 		LostArk::Shared::NET_ENTITY_ID iNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 		bool isPlayer = false;
 		bool isLocal = false;
+		bool isEnemyPlayer = false;
 		std::string strArchetypeId;
 		std::uint32_t iCurrentHp = 0;
 		std::uint32_t iMaximumHp = 0;
@@ -383,7 +384,8 @@ namespace Client
 		void Apply_DamageEvents(
 			std::uint32_t serverTick,
 			const std::vector<LostArk::Shared::DAMAGE_EVENT>& events,
-			LostArk::Shared::PLAYER_ID localPlayerId = LostArk::Shared::INVALID_PLAYER_ID);
+			LostArk::Shared::PLAYER_ID localPlayerId = LostArk::Shared::INVALID_PLAYER_ID,
+			bool playerCombat = false);
 		/* Room-shared raid Esther gauge straight from the world snapshot. A
 		maximum of 0 means this world has no Esther and the HUD draws nothing. */
 		/* Room state, not per player: the bingo board as the Server owns it. */

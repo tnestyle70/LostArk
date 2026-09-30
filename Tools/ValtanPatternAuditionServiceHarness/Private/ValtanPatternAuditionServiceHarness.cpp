@@ -17,6 +17,7 @@ int Run_BossCompositionDocumentContractTests();
 int Run_KoukuIndependentRowClockContractTests();
 int Run_KoukuSequentialParentTimingContractTests();
 int Run_KoukuCompositionEditorContractTests();
+int Run_KoukuWorldEffectFrameContractTests();
 int Run_KoukuPatternDeleteContractTests();
 int Run_KoukuSequenceDocumentContractTests();
 int Run_KoukuPreviewTransportContractTests();
@@ -1410,12 +1411,14 @@ int main(const int argc, const char* const argv[])
 		return Run_KoukuSequentialParentTimingContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--kouku-independent-row-clock-contract")
 		return Run_KoukuIndependentRowClockContractTests();
+	if (argc == 2 && std::string(argv[1]) == "--kouku-world-effect-frame-contract")
+		return Run_KoukuWorldEffectFrameContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--kouku-composition-editor-contract")
 		return Run_KoukuCompositionEditorContractTests();
 	if (argc != 1)
 	{
 		std::cerr << "Usage: ValtanPatternAuditionServiceHarness "
-			"[--action-composition-graph-contract | --cinematic-view-rebase-contract | --valtan-presentation-contract | --kouku-pattern-delete-contract | --presentation-generation-admission-contract | --kouku-composition-editor-contract | --kouku-preview-transport-contract | --kouku-sequence-document-contract | --kouku-collider-group-contract | --kouku-collider-duplicate-contract | --kouku-fixed-damage-contract | --kouku-parent-timing-contract | --kouku-independent-row-clock-contract | --kouku-sound-timeline-contract]\n";
+			"[--action-composition-graph-contract | --cinematic-view-rebase-contract | --valtan-presentation-contract | --kouku-pattern-delete-contract | --presentation-generation-admission-contract | --kouku-composition-editor-contract | --kouku-world-effect-frame-contract | --kouku-preview-transport-contract | --kouku-sequence-document-contract | --kouku-collider-group-contract | --kouku-collider-duplicate-contract | --kouku-fixed-damage-contract | --kouku-parent-timing-contract | --kouku-independent-row-clock-contract | --kouku-sound-timeline-contract]\n";
 		return 2;
 	}
 	const std::vector<std::pair<const char*, std::function<void()>>> Tests{

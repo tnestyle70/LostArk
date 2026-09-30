@@ -58,8 +58,9 @@ public:
 	void Handle_EscapeEdge();
 
 	/* Per frame. pSnapshot == nullptr (no minimap-capable level / no local character yet) or an
-	unknown eLevel hides the window. Hover / click / drag / wheel / Esc. No-op (hides) while
-	closed. */
+	unknown eLevel hides the window. Colosseum browses the existing Bern destinations without
+	drawing its local-world markers or enabling Bern-only ship travel. Hover / click / drag /
+	wheel / Esc. No-op (hides) while closed. */
 	void Update(f32_t fTimeDelta, LEVEL eLevel,
 		const CClientReplication::MINIMAP_MARKER_SNAPSHOT* pSnapshot);
 	/* LOA-font text pass -- after CImGuiLayer::EndFrame() like the other runtime windows. */

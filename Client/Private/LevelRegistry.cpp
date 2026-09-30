@@ -207,7 +207,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			CLIENT_LEVEL_KIND::PRODUCT,
 			"world.colosseum",
 			"LV_PVP_COLOSSEUM",
-			"scene.development.neutral.v1",
+			"scene.colosseum.source-day.v1",
 			MakeFullMapScope(),
 			CreateColosseum,
 			[](CLoader& loader) -> HRESULT { return loader.Ready_For_Colosseum(); }

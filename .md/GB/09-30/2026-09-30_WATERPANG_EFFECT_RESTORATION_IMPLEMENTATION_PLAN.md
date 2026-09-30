@@ -45,3 +45,36 @@ All Effects의 World 분류와 선택/미리보기 경계를 함께 확장한다
 AI Tool은 봇 수, 판단 tick, 이동 목표 갱신 tick, 스킬 간격 tick, 대상 탐색 거리, 이동 확률, 공격 성향, 넉백 거리/시간의 현재 값과 편집 draft를 분리한다. typed command sink를 통해 GET/APPLY/SAVE를 보내며 Server가 범위와 expected revision을 검사한다. 성공 응답 전에는 적용으로 표시하지 않는다.
 
 정본 `Data/AI/MaharakaWaterpangAI.json`은 서버가 읽고 Save+Apply로 원자 저장한다. 저장 실패나 revision 충돌은 이전 실행 값·파일·UI draft를 보존한다. Client가 파일 저장이나 socket 호출을 직접 하지 않는다. 변경한 wire 계약은 protocol 127로 함께 전달하며 신규 CPP/H/JSON은 기존 프로젝트/filter에 필요한 항목만 등록한다. 사용자 화면 실행은 여전히 수동이다.
+
+## G07. 10월 1일 Q 세 갈래·W 수류탄·R 기본 공격 재복원
+
+사용자 레퍼런스의 첫 이미지는 W의 원형 물폭발, 두 번째는 Q의 세 갈래 물줄기다.
+현재 Q는 원본 MK-1 action56902/projectile569020 한 갈래에 연결되어 있다.
+원본 MK-2 action57002는 Att4 1.666667초 동작의 0.703593초 notify에서
+projectile570020 세 개를 정면·좌30도·우30도로 동시에 발사한다.
+세 발은 원본 발사점 forward70/right20/up75cm를 공유하고 진행 방향만 갈라진다.
+Q의 stable gameplay skill56900과 프로젝트 쿨다운3초는 유지하고 이 발사·동작·이펙트 구성을 연결한다.
+원본 MK-2 쿨다운5초를 프로젝트 밸런스에 자동 적용하지 않는다.
+
+Shared 스킬 표에 최대 이동거리와 이동속도를 분리한다. 원본 Projectile reflection의
+Speed/MaxDistance 순서를 대조한 결과 기존 Q/R/W는 거리를 속도로 오독했다.
+Q570020은10m/s·최대3.3m·수명1.5초, R569320은10m/s·최대3m,
+W569120은10m/s·최대8m다. W의 기존 조준거리7m와 포물선·착지 시에만 폭발하는 계약은 유지한다.
+W570120은 지뢰이므로 사용자가 요청한 수류탄 W에 연결하지 않는다.
+R은 Att1 원본 단발 기본 사격을 유지한다. HP 피해0과 AI Tool 넉백 조정은 보존한다.
+
+서버는 Q 승인·쿨타임을 한 번 처리하고 같은 발사 tick에 독립 shot/CombatObject ID 세 개를 만든다.
+공통 발사점과 개별 yaw를 판정·복제 presentation이 함께 소비한다. 각 투사체는 원본의
+비관통·첫 피격 시 소멸 정책으로 처리하며 Client가 발수나 피격을 임의 생성하지 않는다.
+Q WaterGun02 원본의 flight/hit/start Cascade closure를 기존 effect ID에 복원한다.
+현재 실제 EffectFailure 로그에서 확인된 Q flight의 non-drawing provider renderMode
+계약 위반은 exporter와 결과 문서 양쪽에서 바로잡는다. 원본 비표시 provider를 표시 emitter로 바꾸지 않는다.
+
+기존 실제 Server room/CombatObject 계약 테스트에 발사 전후 발수·각도·공통 원점·독립 ID,
+Q/R 사거리·속도, W 착지 이전 무피격·착지 폭발을 검증한다. 효과 문서는 실제 로더·codec의
+provider 검증과 원본 emitter/resource 연결을 검사하고 필요한 셰이더를 정상 Product Build에 포함한다.
+새로운 C++ 파일은 추가하지 않는다. 진행 중인 Debug Product Build 뒤에 후보를 적용하고
+최종 소스 기준 Debug/Release를 모두 완료한다. 화면 재생의 최종 판정은 사용자가 한다.
+
+현재까지 완료한 이동 보정·성능·통합 변경과 이번 복원을 검증한 후 기능 파일만 커밋하고
+새 PR을 생성·병합한다. 백업·retired 파일·미참조 generation·컴파일 산출물은 보존하되 커밋에서 제외한다.

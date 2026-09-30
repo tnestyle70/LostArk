@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "lightResourceRevision": 30,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 2497,
+  "sourceRevision": 2498,
   "bindings": [
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.43",
@@ -7589,6 +7589,111 @@
       "contactEffectAssetId": "effect.kouku.card.match.explosion"
     },
     {
+      "clientVisualId": "kouku.showtime.fixed.0d260ca71fe7718c7aec9d87c67dd3c60e682efdd8a2b30e5194d3b788a981cb",
+      "combatObjectArchetypeId": "combatobject.kouku.showtime.fixed",
+      "durationMs": 3829,
+      "loop": false,
+      "resources": [
+        {
+          "resourceId": "showtime.resource.1",
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.bomb.drop.full.restore",
+          "resourceDurationMs": 5645
+        }
+      ],
+      "occurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "showtime.resource.1",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.bomb.drop.full.restore",
+          "resourceDurationMs": 5645,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "fitEffectToDuration": false,
+          "loopEffectToDuration": false,
+          "effectSourceStartMs": 0,
+          "boneTarget": "BODY",
+          "brightnessMultiplier": 1,
+          "boneRotation": "TARGET_YAW",
+          "worldEffectTrackId": "",
+          "anchorPresentationOccurrenceId": "",
+          "colliderMotion": "STATIC",
+          "colliderEndPositionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colliderEndScale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "startMs": 0,
+          "durationMs": 3829,
+          "worldSequenceInstanceId": "",
+          "occurrenceId": "showtime.presentation.1"
+        }
+      ]
+    },
+    {
       "clientVisualId": "kouku.showtime.fixed.11b0c49850cf30f454a2faecd3dfd8c8698734deb60f79495b3c932d6c4ccc4a",
       "combatObjectArchetypeId": "combatobject.kouku.showtime.fixed",
       "durationMs": 5662,
@@ -8735,6 +8840,111 @@
       ]
     },
     {
+      "clientVisualId": "kouku.showtime.fixed.66fc1185f82a44afef4541927d448170fcd44f2198005218f97539858c6c564f",
+      "combatObjectArchetypeId": "combatobject.kouku.showtime.fixed",
+      "durationMs": 2766,
+      "loop": false,
+      "resources": [
+        {
+          "resourceId": "showtime.resource.1",
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.bomb.drop.full.restore",
+          "resourceDurationMs": 5645
+        }
+      ],
+      "occurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "showtime.resource.1",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.bomb.drop.full.restore",
+          "resourceDurationMs": 5645,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "fitEffectToDuration": false,
+          "loopEffectToDuration": false,
+          "effectSourceStartMs": 0,
+          "boneTarget": "BODY",
+          "brightnessMultiplier": 1,
+          "boneRotation": "TARGET_YAW",
+          "worldEffectTrackId": "",
+          "anchorPresentationOccurrenceId": "",
+          "colliderMotion": "STATIC",
+          "colliderEndPositionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colliderEndScale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "startMs": 0,
+          "durationMs": 2766,
+          "worldSequenceInstanceId": "",
+          "occurrenceId": "showtime.presentation.1"
+        }
+      ]
+    },
+    {
       "clientVisualId": "kouku.showtime.fixed.6b8b9dc3ba41b7abdac41f6c7ee1bfff87dc881e0c05232461bf27db0580b2d9",
       "combatObjectArchetypeId": "combatobject.kouku.showtime.fixed",
       "durationMs": 4083,
@@ -9053,110 +9263,6 @@
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "",
           "occurrenceId": "showtime.presentation.4"
-        }
-      ]
-    },
-    {
-      "clientVisualId": "kouku.showtime.fixed.6bf4d523d141e1d5dbe00406176e16981a542f7db5fa3aef6b432845c04f0064",
-      "combatObjectArchetypeId": "combatobject.kouku.showtime.fixed",
-      "durationMs": 3008,
-      "loop": false,
-      "resources": [
-        {
-          "resourceId": "showtime.resource.1",
-          "resourceKind": "V1_EFFECT",
-          "elementId": "",
-          "shape": "BOX",
-          "colliderKind": "GEOMETRY",
-          "halfExtents": [
-            1,
-            1,
-            1
-          ],
-          "radiusM": 3,
-          "halfAngleDegrees": 45,
-          "soundEvent": "",
-          "subtitleText": "",
-          "subtitlePosition": "NORMAL",
-          "kind": "EFFECT",
-          "assetId": "effect.kouku.gate3.showtime.bomb.drop.full.restore",
-          "resourceDurationMs": 5645
-        }
-      ],
-      "occurrences": [
-        {
-          "resourceKind": "V1_EFFECT",
-          "elementId": "",
-          "shape": "BOX",
-          "colliderKind": "GEOMETRY",
-          "halfExtents": [
-            1,
-            1,
-            1
-          ],
-          "radiusM": 3,
-          "halfAngleDegrees": 45,
-          "soundEvent": "",
-          "subtitleText": "",
-          "subtitlePosition": "NORMAL",
-          "resourceId": "showtime.resource.1",
-          "kind": "EFFECT",
-          "assetId": "effect.kouku.gate3.showtime.bomb.drop.full.restore",
-          "resourceDurationMs": 5645,
-          "positionOffset": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "soundSourceStartMs": 0,
-          "followBoss": false,
-          "bone": "",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "MAP",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "worldEmissionIndex": 0,
-          "fitEffectToDuration": false,
-          "loopEffectToDuration": false,
-          "effectSourceStartMs": 0,
-          "boneTarget": "BODY",
-          "brightnessMultiplier": 1,
-          "boneRotation": "TARGET_YAW",
-          "anchorPresentationOccurrenceId": "",
-          "colliderMotion": "STATIC",
-          "colliderEndPositionOffset": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "colliderEndScale": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "startMs": 0,
-          "durationMs": 3008,
-          "worldSequenceInstanceId": "",
-          "occurrenceId": "showtime.presentation.1"
         }
       ]
     },
@@ -9883,111 +9989,7 @@
       ]
     },
     {
-      "clientVisualId": "kouku.showtime.fixed.86bc537e769fcbb1231d4f8fa9c0fb5963935d555fc5fc7e2a956976565c8f92",
-      "combatObjectArchetypeId": "combatobject.kouku.showtime.fixed",
-      "durationMs": 3117,
-      "loop": false,
-      "resources": [
-        {
-          "resourceId": "showtime.resource.1",
-          "resourceKind": "V1_EFFECT",
-          "elementId": "",
-          "shape": "BOX",
-          "colliderKind": "GEOMETRY",
-          "halfExtents": [
-            1,
-            1,
-            1
-          ],
-          "radiusM": 3,
-          "halfAngleDegrees": 45,
-          "soundEvent": "",
-          "subtitleText": "",
-          "subtitlePosition": "NORMAL",
-          "kind": "EFFECT",
-          "assetId": "effect.kouku.gate3.showtime.bomb.explosion.blue.full.restore",
-          "resourceDurationMs": 3300
-        }
-      ],
-      "occurrences": [
-        {
-          "resourceKind": "V1_EFFECT",
-          "elementId": "",
-          "shape": "BOX",
-          "colliderKind": "GEOMETRY",
-          "halfExtents": [
-            1,
-            1,
-            1
-          ],
-          "radiusM": 3,
-          "halfAngleDegrees": 45,
-          "soundEvent": "",
-          "subtitleText": "",
-          "subtitlePosition": "NORMAL",
-          "resourceId": "showtime.resource.1",
-          "kind": "EFFECT",
-          "assetId": "effect.kouku.gate3.showtime.bomb.explosion.blue.full.restore",
-          "resourceDurationMs": 3300,
-          "positionOffset": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "soundSourceStartMs": 0,
-          "followBoss": false,
-          "bone": "",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "MAP",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "worldEmissionIndex": 0,
-          "fitEffectToDuration": false,
-          "loopEffectToDuration": false,
-          "effectSourceStartMs": 0,
-          "boneTarget": "BODY",
-          "brightnessMultiplier": 1,
-          "boneRotation": "TARGET_YAW",
-          "anchorPresentationOccurrenceId": "",
-          "colliderMotion": "STATIC",
-          "colliderEndPositionOffset": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "colliderEndScale": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "startMs": 0,
-          "durationMs": 3117,
-          "worldSequenceInstanceId": "",
-          "occurrenceId": "showtime.presentation.1"
-        }
-      ]
-    },
-    {
-      "clientVisualId": "kouku.showtime.fixed.99533505d019b92b59aea83fcbb3a492a1c5a837ae13a2aba32aaf825b8f91af",
+      "clientVisualId": "kouku.showtime.fixed.86540672663a6743945d9ffc7c560f9133ffcde0d4d8fafd13d2bad8a62dc2fe",
       "combatObjectArchetypeId": "combatobject.kouku.showtime.fixed",
       "durationMs": 2801,
       "loop": false,
@@ -10071,6 +10073,7 @@
           "boneTarget": "BODY",
           "brightnessMultiplier": 1,
           "boneRotation": "TARGET_YAW",
+          "worldEffectTrackId": "",
           "anchorPresentationOccurrenceId": "",
           "colliderMotion": "STATIC",
           "colliderEndPositionOffset": [
@@ -10085,110 +10088,6 @@
           ],
           "startMs": 0,
           "durationMs": 2801,
-          "worldSequenceInstanceId": "",
-          "occurrenceId": "showtime.presentation.1"
-        }
-      ]
-    },
-    {
-      "clientVisualId": "kouku.showtime.fixed.9b45607b1a60ce690e79bc359eb9a69307ccd546f4801f21a8bc5a0e6ca30dc9",
-      "combatObjectArchetypeId": "combatobject.kouku.showtime.fixed",
-      "durationMs": 3318,
-      "loop": false,
-      "resources": [
-        {
-          "resourceId": "showtime.resource.1",
-          "resourceKind": "V1_EFFECT",
-          "elementId": "",
-          "shape": "BOX",
-          "colliderKind": "GEOMETRY",
-          "halfExtents": [
-            1,
-            1,
-            1
-          ],
-          "radiusM": 3,
-          "halfAngleDegrees": 45,
-          "soundEvent": "",
-          "subtitleText": "",
-          "subtitlePosition": "NORMAL",
-          "kind": "EFFECT",
-          "assetId": "effect.kouku.gate3.showtime.bomb.drop.full.restore",
-          "resourceDurationMs": 5645
-        }
-      ],
-      "occurrences": [
-        {
-          "resourceKind": "V1_EFFECT",
-          "elementId": "",
-          "shape": "BOX",
-          "colliderKind": "GEOMETRY",
-          "halfExtents": [
-            1,
-            1,
-            1
-          ],
-          "radiusM": 3,
-          "halfAngleDegrees": 45,
-          "soundEvent": "",
-          "subtitleText": "",
-          "subtitlePosition": "NORMAL",
-          "resourceId": "showtime.resource.1",
-          "kind": "EFFECT",
-          "assetId": "effect.kouku.gate3.showtime.bomb.drop.full.restore",
-          "resourceDurationMs": 5645,
-          "positionOffset": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "soundSourceStartMs": 0,
-          "followBoss": false,
-          "bone": "",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "MAP",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "worldEmissionIndex": 0,
-          "fitEffectToDuration": false,
-          "loopEffectToDuration": false,
-          "effectSourceStartMs": 0,
-          "boneTarget": "BODY",
-          "brightnessMultiplier": 1,
-          "boneRotation": "TARGET_YAW",
-          "anchorPresentationOccurrenceId": "",
-          "colliderMotion": "STATIC",
-          "colliderEndPositionOffset": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "colliderEndScale": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "startMs": 0,
-          "durationMs": 3318,
           "worldSequenceInstanceId": "",
           "occurrenceId": "showtime.presentation.1"
         }
@@ -11002,9 +10901,9 @@
       ]
     },
     {
-      "clientVisualId": "kouku.showtime.fixed.c09ea00002263499636f413e76081e0a2f2c415b5f6467f6b79722e63c3716ce",
+      "clientVisualId": "kouku.showtime.fixed.c55b1faacc0297f63700e064101c2128312d927421bf2c2635f2a981266b254d",
       "combatObjectArchetypeId": "combatobject.kouku.showtime.fixed",
-      "durationMs": 3829,
+      "durationMs": 3117,
       "loop": false,
       "resources": [
         {
@@ -11024,8 +10923,8 @@
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
           "kind": "EFFECT",
-          "assetId": "effect.kouku.gate3.showtime.bomb.drop.full.restore",
-          "resourceDurationMs": 5645
+          "assetId": "effect.kouku.gate3.showtime.bomb.explosion.blue.full.restore",
+          "resourceDurationMs": 3300
         }
       ],
       "occurrences": [
@@ -11046,8 +10945,8 @@
           "subtitlePosition": "NORMAL",
           "resourceId": "showtime.resource.1",
           "kind": "EFFECT",
-          "assetId": "effect.kouku.gate3.showtime.bomb.drop.full.restore",
-          "resourceDurationMs": 5645,
+          "assetId": "effect.kouku.gate3.showtime.bomb.explosion.blue.full.restore",
+          "resourceDurationMs": 3300,
           "positionOffset": [
             0.0,
             0.0,
@@ -11086,6 +10985,7 @@
           "boneTarget": "BODY",
           "brightnessMultiplier": 1,
           "boneRotation": "TARGET_YAW",
+          "worldEffectTrackId": "",
           "anchorPresentationOccurrenceId": "",
           "colliderMotion": "STATIC",
           "colliderEndPositionOffset": [
@@ -11099,16 +10999,16 @@
             1.0
           ],
           "startMs": 0,
-          "durationMs": 3829,
+          "durationMs": 3117,
           "worldSequenceInstanceId": "",
           "occurrenceId": "showtime.presentation.1"
         }
       ]
     },
     {
-      "clientVisualId": "kouku.showtime.fixed.df88763a921a10c05e0c4b748d54d2896a143c24d79df8630a988208f9f54b21",
+      "clientVisualId": "kouku.showtime.fixed.dae0f3f1de21947e679c3431677d7d8f875dfc700a33fb601d08ceff8f8177ae",
       "combatObjectArchetypeId": "combatobject.kouku.showtime.fixed",
-      "durationMs": 2766,
+      "durationMs": 3008,
       "loop": false,
       "resources": [
         {
@@ -11190,6 +11090,7 @@
           "boneTarget": "BODY",
           "brightnessMultiplier": 1,
           "boneRotation": "TARGET_YAW",
+          "worldEffectTrackId": "",
           "anchorPresentationOccurrenceId": "",
           "colliderMotion": "STATIC",
           "colliderEndPositionOffset": [
@@ -11203,7 +11104,112 @@
             1.0
           ],
           "startMs": 0,
-          "durationMs": 2766,
+          "durationMs": 3008,
+          "worldSequenceInstanceId": "",
+          "occurrenceId": "showtime.presentation.1"
+        }
+      ]
+    },
+    {
+      "clientVisualId": "kouku.showtime.fixed.e0d97986028895c791c0cf335f07b894a205652fc4da0b822b593327ea5aa2ff",
+      "combatObjectArchetypeId": "combatobject.kouku.showtime.fixed",
+      "durationMs": 3318,
+      "loop": false,
+      "resources": [
+        {
+          "resourceId": "showtime.resource.1",
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.bomb.drop.full.restore",
+          "resourceDurationMs": 5645
+        }
+      ],
+      "occurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "showtime.resource.1",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.bomb.drop.full.restore",
+          "resourceDurationMs": 5645,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "fitEffectToDuration": false,
+          "loopEffectToDuration": false,
+          "effectSourceStartMs": 0,
+          "boneTarget": "BODY",
+          "brightnessMultiplier": 1,
+          "boneRotation": "TARGET_YAW",
+          "worldEffectTrackId": "",
+          "anchorPresentationOccurrenceId": "",
+          "colliderMotion": "STATIC",
+          "colliderEndPositionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colliderEndScale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "startMs": 0,
+          "durationMs": 3318,
           "worldSequenceInstanceId": "",
           "occurrenceId": "showtime.presentation.1"
         }
@@ -49619,6 +49625,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -49678,6 +49685,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         }
       ]
@@ -133617,6 +133625,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -133676,6 +133685,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -133735,6 +133745,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -133794,6 +133805,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -134570,6 +134582,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -134629,6 +134642,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -136602,6 +136616,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -136661,6 +136676,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -136720,6 +136736,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -136779,6 +136796,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -137788,6 +137806,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -137847,6 +137866,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -137906,6 +137926,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -137965,6 +137986,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -138974,6 +138996,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -139033,6 +139056,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -139092,6 +139116,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -139151,6 +139176,7 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "boneRotation": "BONE",
+          "worldEffectTrackId": "effect.doll.flame",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -139955,7 +139981,8 @@
       "gateId": "GATE3",
       "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
       "actorProfileId": "MN_RPCT_05",
-      "durationMs": 12000,
+      "durationMs": 22000,
+      "stageDurationMs": 12000,
       "presentationOccurrences": []
     },
     {

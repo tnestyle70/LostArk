@@ -16,6 +16,11 @@ public:
 public:
 	HRESULT Initialize(HWND hWnd);
 	bool_t Picking(float4_t& vOut);
+	// Request captures the current pixel once; Poll never waits for the GPU.
+	uint64_t Request_Picking();
+	HRESULT Poll_Picking(uint64_t requestId, float4_t& vOut);
+	void Cancel_Picking(uint64_t requestId);
+
 
 private:
 	bool_t Read_Pixel(ID3D11Texture2D* pSource, uint32_t x, uint32_t y,
@@ -26,7 +31,10 @@ private:
 	ComPtr<ID3D11DeviceContext>			m_pContext = { nullptr };
 
 	ComPtr<ID3D11Texture2D>				m_pTexture2D = { nullptr };
-	HWND								m_hWnd = {};
+	ComPtr<ID3D11Texture2D> m_pAsyncTexture;
+	uint64_t m_iNextRequestId = 0u;
+	uint64_t m_iPendingRequestId = 0u;
+	HWND m_hWnd = {};
 
 	DWORD m_iOwnerThreadId = 0u;
 

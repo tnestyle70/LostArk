@@ -43,8 +43,7 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& carriedInventory,
 	const LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId,
 	const std::string& raidReturnNpcPlacementId,
-	const SERVER_PURSE& carriedPurse,
-	const SERVER_DURABILITY_STATE& carriedDurability)
+	const SERVER_PURSE& carriedPurse)
 {
 	using namespace LostArk::Shared;
 	outReason = SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED;
@@ -56,11 +55,6 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 		status = detail;
 		return false;
 	};
-	if (carriedDurability.iDurabilityWearCursor >= carriedDurability.DurabilityPercent.size() ||
-		std::any_of(carriedDurability.DurabilityPercent.begin(), carriedDurability.DurabilityPercent.end(),
-			[](const std::uint8_t percent) { return percent > 100u; }))
-		return reject(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED,
-			"invalid carried equipment durability");
 	const std::size_t offset = precedingEntries.size();
 	if (!raidReturnNpcPlacementId.empty() &&
 		((WORLD_ID::VALTAN_ARENA != m_eWorldId && WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId) ||
@@ -81,7 +75,17 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 			"player entry room/session/identity validation failed");
 	}
 	const WORLD_BOOTSTRAP_PLACEMENT* spawn = nullptr;
-	if (!spawnPlacementOverrideId.empty())
+	if (m_iColosseumMatchId)
+	{
+		const auto seat = std::find(m_ColosseumSessions.begin(), m_ColosseumSessions.end(), session->Get_SessionId());
+		if (seat == m_ColosseumSessions.end()) return reject(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED,
+			"session does not belong to this Colosseum match");
+		const std::size_t index = static_cast<std::size_t>(seat - m_ColosseumSessions.begin());
+		const std::string id = std::string("player.spawn.colosseum.team") + (index % 2u ? "b.0" : "a.0") + std::to_string(index / 2u + 1u);
+		spawn = Find_Placement(id);
+		if (!spawn) return reject(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED, "Colosseum team spawn missing");
+	}
+	else if (!spawnPlacementOverrideId.empty())
 	{
 		/* Not restricted to PLAYER_SPAWN kind or exclusivity -- an override names
 		one specific placement (e.g. a guide NPC) directly, and several returning
@@ -122,18 +126,24 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	player.eCharacterClass = enterWorld.eCharacterClass;
 	player.strNickName = enterWorld.strNickName;
 	player.iVoiceType = enterWorld.iVoiceType;
-	player.DurabilityPercent = carriedDurability.DurabilityPercent;
-	player.iDurabilityWearCursor = carriedDurability.iDurabilityWearCursor;
-	// The initial inventory frame publishes these values before admission commits.
-	player.bDurabilityDirty = false;
+	player.strAppearanceJson = enterWorld.strAppearanceJson;
 	/* A transfer keeps the title it wore; the target room's own bootstrap still has the
 	last word, so an id it does not list arrives bare. */
 	player.iHonorTitleId = m_HonorTitleCatalog.Has_Title(carriedHonorTitleId) ?
 		carriedHonorTitleId : INVALID_HONOR_TITLE_ID;
 	player.strSpawnPlacementId = spawn->strPlacementId;
+	if (m_iColosseumMatchId)
+	{
+		player.iColosseumMatchId = m_iColosseumMatchId;
+		player.iColosseumArrivalIndex = static_cast<std::uint8_t>(std::find(m_ColosseumSessions.begin(), m_ColosseumSessions.end(), player.iSessionId) - m_ColosseumSessions.begin());
+		player.iColosseumTeam = player.iColosseumArrivalIndex % 2u;
+        player.bColosseumParticipant = true;
+	}
 	player.strRaidReturnNpcPlacementId = raidReturnNpcPlacementId;
 	player.fPositionY = spawn->fPositionY;
-	if (!spawnPlacementOverrideId.empty())
+	const std::uint16_t bernSquareHoleId = WORLD_ID::BERN == m_eWorldId ?
+		Resolve_BernSquareHoleId(spawnPlacementOverrideId) : 0u;
+	if (!spawnPlacementOverrideId.empty() && 0u == bernSquareHoleId)
 	{
 		/* An override names an NPC's own placement, not an authored player-standing
 		spot -- its exact point is often flush against a wall or counter (the NPC's
@@ -169,7 +179,17 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
 	player.Clear_KoukuInteractionState();
 	player.isCombatReady = WORLD_ID::VALTAN_ARENA != m_eWorldId;
-	if (m_ServerNavigation.Is_Loaded())
+	if (0u != bernSquareHoleId)
+	{
+		SERVER_NAV_POINT landing{};
+		if (!Resolve_SquareHoleDestination(player, bernSquareHoleId, landing))
+			return reject(SESSION_DIAGNOSTIC_REASON::SERVER_NAVIGATION_FAILED,
+				"Bern square hole failed authored landing admission");
+		player.fPositionX = landing.x;
+		player.fPositionY = landing.y;
+		player.fPositionZ = landing.z;
+	}
+	else if (m_ServerNavigation.Is_Loaded())
 	{
 		SERVER_NAV_POINT projected{};
 		if (!m_ServerNavigation.Project_Point(player.fPositionX, player.fPositionZ, projected,
@@ -182,7 +202,7 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	}
 	/* Coming back from Maharaka to the sea: the session boards the ship it left Bern on, with the pier it
 	   sailed from as its dock, exactly like a normal boarding. Without a record it stands on foot. */
-	if (WORLD_ID::BERN == m_eWorldId && !spawnPlacementOverrideId.empty())
+	if (WORLD_ID::BERN == m_eWorldId && !spawnPlacementOverrideId.empty() && 0u == bernSquareHoleId)
 	{
 		const auto shipIter = m_MaharakaShipReturnBySession.find(session->Get_SessionId());
 		if (shipIter != m_MaharakaShipReturnBySession.end() &&
@@ -196,7 +216,7 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 			player.fShipDockYawDegrees = shipIter->second.fDockYawDegrees;
 		}
 	}
-	if (!carriedInventory.empty())
+	if (!carriedInventory.empty() || 0u != bernSquareHoleId)
 	{
 		// A world transfer carrying the departing player's own live inventory
 		// (e.g. Handle_ReturnToBern) replaces the default fresh-entry grant
@@ -265,7 +285,6 @@ bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
 	inventory.Items = entry.Player.Inventory;
 	inventory.iSilver = entry.Player.Purse.iSilver;
 	inventory.iGold = entry.Player.Purse.iGold;
-	inventory.DurabilityPercent = entry.Player.DurabilityPercent;
 	if (!append(PACKET_TYPE::S2C_INVENTORY_SNAPSHOT, inventory)) return false;
 	if (WORLD_ID::VALTAN_ARENA == m_eWorldId)
 	{
@@ -393,6 +412,7 @@ bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
         message.strWaterpangNpcArchetypeId = player.strWaterpangNpcArchetypeId;
 		message.strNickName = player.strNickName;
 		message.iVoiceType = player.iVoiceType;
+		message.strAppearanceJson = player.strAppearanceJson;
 		message.fPositionX = player.fPositionX;
 		message.fPositionY = player.fPositionY;
 		message.fPositionZ = player.fPositionZ;
@@ -415,6 +435,12 @@ void LostArk::Server::CGameRoom::Commit_PlayerEntry(const STAGED_PLAYER_ENTRY& e
 	const SERVER_PLAYER& player = entry.Player;
 	m_Sessions.insert_or_assign(player.iSessionId, entry.pSession);
 	m_Players.emplace(player.iPlayerId, player);
+	if (m_iColosseumMatchId)
+	{
+		auto& committed = m_Players.at(player.iPlayerId);
+		committed.fColosseumSpawnX = committed.fPositionX; committed.fColosseumSpawnY = committed.fPositionY;
+		committed.fColosseumSpawnZ = committed.fPositionZ; committed.fColosseumSpawnYaw = committed.fYawDegrees;
+	}
 	m_PlayerIdBySessionId.emplace(player.iSessionId, player.iPlayerId);
 	m_PlayerIdByEntityId.emplace(player.iNetEntityId, player.iPlayerId);
 	++m_iNextPlayerId;
@@ -430,7 +456,7 @@ bool LostArk::Server::CGameRoom::Join(
 	const LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId,
 	const std::string& raidReturnNpcPlacementId,
 	const SERVER_PURSE& carriedPurse,
-	const SERVER_DURABILITY_STATE& carriedDurability)
+	const LostArk::Shared::WORLD_ID sourceWorld)
 {
 	using namespace LostArk::Shared;
 
@@ -548,7 +574,7 @@ bool LostArk::Server::CGameRoom::Join(
 	std::string status;
 	if (!Stage_PlayerEntry(session, enterWorld, {}, entry, reason, status,
 			spawnPlacementOverrideId, carriedInventory, carriedHonorTitleId,
-			raidReturnNpcPlacementId, carriedPurse, carriedDurability))
+			raidReturnNpcPlacementId, carriedPurse))
 	{
 		session->Request_Close(reason, WSAEINVAL, status);
 		return false;
@@ -567,6 +593,7 @@ bool LostArk::Server::CGameRoom::Join(
 	}
 	Commit_PlayerEntry(entry);
 	outbound.Commit();
+	Resume_PersonalGuide(sessionId, sourceWorld);
 	Broadcast_Spawned(entry.Player, sessionId);
 	std::cout << "Player joined. World=" << static_cast<unsigned>(m_eWorldId)
 		<< ", SessionId=" << sessionId << ", PlayerId=" << entry.Player.iPlayerId
@@ -581,9 +608,17 @@ void LostArk::Server::CGameRoom::Leave(
 {
 	using namespace LostArk::Shared;
 
+	// Each new Client level owns a fresh Guide control request sequence.
+	m_GuideControlSequences.erase(sessionId);
+	if (reason == PLAYER_DESPAWN_REASON::LEVEL_CHANGED) Suspend_PersonalGuide(sessionId);
+	else Remove_Guide(sessionId, publishDeparture);
+
 	// A queued player who disconnects or moves on drops out of the Colosseum queue; the rest keep waiting.
-	std::erase_if(m_ColosseumQueue,
+	Remove_ColosseumExpectedSession(sessionId);
+	const auto queuedRemoved = std::erase_if(m_ColosseumQueue,
 		[sessionId](const COLOSSEUM_QUEUE_ENTRY& entry) { return entry.iSessionId == sessionId; });
+    if (m_ColosseumQueue.empty()) m_iColosseumQueueDeadline = 0u;
+    if (queuedRemoved && publishDeparture && !m_bColosseumTransferPending) Broadcast_ColosseumQueueState();
 
 	if (Is_KoukuRaidRunning())
 	{

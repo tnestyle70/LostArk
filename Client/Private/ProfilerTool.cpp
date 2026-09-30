@@ -2,6 +2,8 @@
 #include "ProfilerTool.h"
 #include "GameInstance.h"
 #include "Engine_RenderTypes.h"
+#include "ClientWindowDisplay.h"
+#include "UserSettingsDocument.h"
 #include <cstring>
 #include <dxgi.h>
 
@@ -164,7 +166,7 @@ namespace
         "ImGui.Tool.Balance.Update_ValtanSaveJob",
         "ImGui.Tool.Camera.Build",
         "ImGui.Tool.Camera.Update",
-        "ImGui.Tool.Chat.Build",
+        "UI.Runtime.Chat.Update",
         "ImGui.Tool.Composition.Build",
         "ImGui.Tool.CompositionProfiler.Build",
         "ImGui.Tool.EffectV1.Build",
@@ -178,7 +180,7 @@ namespace
         "ImGui.Tool.Map.Build",
         "ImGui.Tool.Map.Update",
         "ImGui.Tool.Open",
-        "ImGui.Tool.Party.Build",
+        "UI.Runtime.Party.Update",
         "ImGui.Tool.Rendering.Build",
         "ImGui.Tool.SequenceBenchmark.Build",
         "ImGui.Tool.ValtanBoss.Build",
@@ -507,6 +509,17 @@ void Client::CProfilerTool::Request_Save(Engine::CProfiler& profiler)
     auto context = m_CaptureContext;
     context.Valid = true;
     context.LevelId = game.Get_CurrentLevelID();
+    const HWND foregroundWindow = GetForegroundWindow();
+    DWORD foregroundProcessId = 0;
+    context.ClientWindowForeground = foregroundWindow == g_hWnd;
+    context.ProcessForeground = nullptr != foregroundWindow &&
+        0 != GetWindowThreadProcessId(foregroundWindow, &foregroundProcessId) &&
+        GetCurrentProcessId() == foregroundProcessId;
+    context.WindowMinimized = CClientWindowDisplay::Is_Minimized();
+    const auto& userSettings = CUserSettings::Get();
+    context.ForegroundFpsLimit = userSettings.Get_FrameLimit(true);
+    context.BackgroundFpsLimit = userSettings.Get_FrameLimit(false);
+    context.EffectiveFpsLimit = userSettings.Get_FrameLimit(context.ProcessForeground);
     const auto viewport = game.Get_ViewportSize();
     context.Viewport = {viewport.x, viewport.y};
     if (const auto* camera = game.Get_CamPosition())

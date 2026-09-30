@@ -1944,10 +1944,7 @@ void CLevel_Bern::Poll_ColosseumQueueState()
 	LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE state{};
 	while (m_pPlayerCommandSink->Consume_ColosseumQueueState(state))
 	{
-		// WAITING only confirms the join. Anything else means the Server refused it or dropped this
-		// player from the queue, so the wait window has nothing left to wait for.
-		if (LostArk::Shared::COLOSSEUM_QUEUE_STATE::WAITING != state.eState)
-			m_pValtanEntryView->Close_ColosseumWait();
+		m_pValtanEntryView->Set_ColosseumQueueState(state);
 	}
 }
 

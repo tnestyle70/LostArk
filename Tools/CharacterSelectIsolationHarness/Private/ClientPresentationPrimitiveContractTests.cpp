@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <limits>
+#include <vector>
 
 namespace
 {
@@ -308,6 +309,7 @@ namespace
 		(void)prediction.SubmitMove(1u, 0.01, visual);
 		visual = { { 0.25f, 0.f, 0.f }, 90.f, true };
 		(void)prediction.Update(0.05, 0.016f, visual);
+		(void)prediction.CompleteLocalPathFrame(0.05, visual);
 		auto accepted = MakeMoveSnapshot(12u, 1u);
 		accepted.position.x = 0.2f;
 		accepted.yawDegrees = 90.f;
@@ -325,9 +327,11 @@ namespace
 		if (!Require(!edge.useLocalPath && edge.pose.isMoving &&
 			NearMove(edge.pose.position.x, visual.position.x),
 			"small server correction snapped at acknowledgement") ||
-			!Require(NearMove(reconciled.pose.position.x, 0.89f),
+			!Require(reconciled.pose.position.x > visual.position.x &&
+				reconciled.pose.position.x - visual.position.x <= accepted.moveSpeed * 1.15f * 0.09f,
 				"acknowledged movement failed to advance from its authoritative snapshot") ||
-			!Require(NearMove(capped.pose.position.x, 1.1f),
+			!Require(capped.pose.position.x >= reconciled.pose.position.x &&
+				NearMove(prediction.Update(0.34, 0.04f, {}).pose.position.x, capped.pose.position.x),
 				"movement extrapolated beyond the bounded 150 ms horizon"))
 		{
 			return false;
@@ -354,7 +358,7 @@ namespace
 		(void)delayedAck.ApplySnapshot(accepted, 0.31, delayedVisual);
 		const auto latencyCapped = delayedAck.Update(0.35, 0.04f, {});
 		const auto sameFrameAgain = delayedAck.Update(0.35, 0.04f, {});
-		return Require(NearMove(latencyCapped.pose.position.x, 0.94f) &&
+		return Require(std::abs(latencyCapped.pose.position.x - delayedVisual.position.x) <= accepted.moveSpeed * 1.15f * 0.04f &&
 			NearMove(sameFrameAgain.pose.position.x, latencyCapped.pose.position.x),
 			"large ACK latency or a second frame query advanced prediction twice");
 	}
@@ -367,6 +371,7 @@ namespace
 		(void)prediction.SubmitMove(1u, 0.01, visual);
 		visual = { { 0.1f, 0.f, 0.f }, 90.f, true };
 		(void)prediction.Update(0.02, 0.01f, visual);
+		(void)prediction.CompleteLocalPathFrame(0.02, visual);
 		if (!Require(prediction.SubmitMove(2u, 0.03, visual),
 			"a quick second click could not replace the first prediction"))
 		{
@@ -374,6 +379,7 @@ namespace
 		}
 		visual = { { 0.08f, 0.f, 0.04f }, -90.f, true };
 		(void)prediction.Update(0.04, 0.01f, visual);
+		(void)prediction.CompleteLocalPathFrame(0.04, visual);
 		auto firstAck = MakeMoveSnapshot(11u, 1u);
 		firstAck.position.x = 0.1f;
 		firstAck.hasMoveGoal = true;
@@ -419,6 +425,7 @@ namespace
 		(void)prediction.SubmitMove(1u, 0.01, visual);
 		visual = { { 0.3f, 0.f, 0.f }, 90.f, true };
 		(void)prediction.Update(0.04, 0.03f, visual);
+		(void)prediction.CompleteLocalPathFrame(0.04, visual);
 		if (!Require(prediction.ApplySnapshot(MakeMoveSnapshot(11u, 1u), 0.05, visual) ==
 			MoveDisposition::RECONCILE && !prediction.HasPendingMove(),
 			"server rejection did not consume the predicted input"))
@@ -483,6 +490,7 @@ namespace
 		(void)prediction.SubmitMove(1u, 0.01, {});
 		const MovePrediction::Pose visual{ { 0.8f, 0.f, 0.f }, 90.f, true };
 		(void)prediction.Update(0.09, 0.016f, visual);
+		(void)prediction.CompleteLocalPathFrame(0.09, visual);
 		snapshot.serverTick = 4u; snapshot.processedMoveSequence = 1u;
 		if (!Require(prediction.ApplySnapshot(snapshot, 0.1, visual) == MoveDisposition::RECONCILE,
 			"ordinary ACK error reset the visual pose")) return false;
@@ -583,6 +591,7 @@ namespace
 					"delayed snapshot fixture did not admit two quick clicks")) return false;
 				const MovePrediction::Pose visual{ { 0.295f, 0.f, 0.f }, 90.f, true };
 				(void)prediction.Update(0.12, 0.1f, visual);
+				(void)prediction.CompleteLocalPathFrame(0.12, visual);
 				// The Server continues at its legal speed while the main thread stalls.
 				const double elapsed = static_cast<double>(gapTicks) / 30.0;
 				snapshot.serverTick += gapTicks;
@@ -624,6 +633,534 @@ namespace
 			MoveDisposition::RESET, "large delayed visual disagreement lost its hard reset");
 	}
 
+	bool VerifyTotalMovePresentationBudget()
+	{
+		MovePrediction prediction;
+		auto snapshot = MakeMoveSnapshot(100u);
+		snapshot.moveSpeed = 2.95f;
+		(void)prediction.ApplySnapshot(snapshot, 0.0, {});
+		if (!Require(prediction.SubmitMove(1u, 0.025, {}),
+			"bounded movement fixture rejected its first click")) return false;
+		MovePrediction::Pose visual{ { 0.07375f, 0.f, 0.f }, 90.f, true };
+		(void)prediction.Update(0.05, 0.025f, visual);
+		(void)prediction.CompleteLocalPathFrame(0.05, visual);
+		if (!Require(prediction.SubmitMove(2u, 0.075, visual),
+			"bounded movement fixture rejected its second click")) return false;
+		visual.position.x = 0.1475f;
+		(void)prediction.Update(0.1, 0.025f, visual);
+		(void)prediction.CompleteLocalPathFrame(0.1, visual);
+		snapshot.serverTick = 106u;
+		snapshot.processedMoveSequence = 2u;
+		snapshot.position.x = 0.59f;
+		snapshot.hasMoveGoal = true;
+		snapshot.nextWaypoint.x = 100.f;
+		if (!Require(prediction.ApplySnapshot(snapshot, 0.2, visual) == MoveDisposition::RECONCILE &&
+			NearMove(prediction.Update(0.2, 0.f, {}).pose.position.x, visual.position.x),
+			"double-click ACK changed the presented position immediately")) return false;
+		for (unsigned frame = 1u; frame <= 240u; ++frame)
+		{
+			const double now = 0.2 + frame / 40.0;
+			const auto next = prediction.Update(now, 0.025f, {}).pose;
+			const auto repeated = prediction.Update(now, 0.025f, {}).pose;
+			if (!Require(next.position.x >= visual.position.x - 0.00001f &&
+				next.position.x - visual.position.x <= 0.08482f &&
+				NearMove(repeated.position.x, next.position.x),
+				"40 FPS correction exceeded total travel budget or advanced twice at one time")) return false;
+			visual = next;
+			snapshot.serverTick = 106u + static_cast<unsigned>(std::floor(frame * 30.0 / 40.0));
+			snapshot.position.x = 0.59f + (snapshot.serverTick - 106u) * snapshot.moveSpeed / 30.f;
+			if (!Require(prediction.ApplySnapshot(snapshot, now, visual) != MoveDisposition::RESET,
+				"bounded catch-up converted ordinary movement into a teleport")) return false;
+		}
+		if (!Require(std::abs(snapshot.position.x - visual.position.x) < 0.2f,
+			"the presentation speed bound left permanent lag behind a moving Server")) return false;
+		snapshot.serverTick += 1u;
+		snapshot.hasMoveGoal = false;
+		(void)prediction.ApplySnapshot(snapshot, 6.225, visual);
+		for (unsigned frame = 1u; frame <= 12u; ++frame)
+			visual = prediction.Update(6.225 + frame / 40.0, 0.025f, {}).pose;
+		if (!Require(NearMove(visual.position.x, snapshot.position.x) && !visual.isMoving,
+			"bounded correction failed to settle at the stopped Server position")) return false;
+
+		MovePrediction stalled;
+		snapshot = MakeMoveSnapshot(100u);
+		snapshot.moveSpeed = 2.95f;
+		snapshot.hasMoveGoal = true;
+		snapshot.nextWaypoint.x = 100.f;
+		(void)stalled.ApplySnapshot(snapshot, 0.0, {});
+		visual = stalled.Update(0.025, 0.025f, {}).pose;
+		const auto afterStall = stalled.Update(0.325, 0.3f, {}).pose;
+		if (!Require(afterStall.position.x - visual.position.x <= snapshot.moveSpeed * 1.15f * 0.3f + 0.00001f,
+			"a frame stall exceeded the total travel budget for its real elapsed time")) return false;
+		snapshot.serverTick = 101u;
+		snapshot.position.x = 20.f;
+		return Require(stalled.ApplySnapshot(snapshot, 0.326, afterStall) == MoveDisposition::RESET &&
+			NearMove(stalled.Update(0.326, 0.f, {}).pose.position.x, 20.f),
+			"the presentation budget delayed a genuine authoritative teleport");
+	}
+
+	bool VerifySlowFramesRetainMoveConvergence()
+	{
+		for (const unsigned fps : { 5u, 8u })
+		{
+			MovePrediction prediction;
+			auto snapshot = MakeMoveSnapshot(100u);
+			snapshot.moveSpeed = 2.95f;
+			(void)prediction.ApplySnapshot(snapshot, 0.0, {});
+			(void)prediction.SubmitMove(1u, 0.025, {});
+			(void)prediction.SubmitMove(2u, 0.05, {});
+			snapshot.serverTick = 106u;
+			snapshot.processedMoveSequence = 2u;
+			snapshot.position.x = 0.59f;
+			snapshot.hasMoveGoal = true;
+			snapshot.nextWaypoint.x = 100.f;
+			MovePrediction::Pose visual{};
+			if (!Require(prediction.ApplySnapshot(snapshot, 0.2, visual) == MoveDisposition::RECONCILE,
+				"slow-frame fixture did not preserve the delayed double-click ACK")) return false;
+			(void)prediction.Update(0.2, 0.f, {});
+			const float elapsed = 1.f / fps;
+			for (unsigned frame = 1u; frame <= fps * 16u; ++frame)
+			{
+				const double now = 0.2 + static_cast<double>(frame) / fps;
+				const auto next = prediction.Update(now, elapsed, {}).pose;
+				if (!Require(next.position.x >= visual.position.x - 0.00001f &&
+					next.position.x - visual.position.x <= snapshot.moveSpeed * 1.15f * elapsed + 0.00001f,
+					"slow-frame catch-up exceeded its real elapsed-time movement budget")) return false;
+				visual = next;
+				// The product updates Character before the Level applies the latest snapshot.
+				snapshot.serverTick = 100u + static_cast<unsigned>(std::floor(now * 30.0 + 0.000001));
+				snapshot.position.x = (snapshot.serverTick - 100u) * snapshot.moveSpeed / 30.f;
+				if (!Require(prediction.ApplySnapshot(snapshot, now, visual) == MoveDisposition::RECONCILE,
+					"sustained 5/8 FPS accumulated ordinary movement into a hard reset")) return false;
+				if (frame >= fps * 4u && !Require(std::abs(snapshot.position.x - visual.position.x) < 0.25f,
+					"fresh slow-frame snapshots left increasing or permanent correction lag"))
+				{ std::cerr << "slow fps=" << fps << " frame=" << frame << " server=" << snapshot.position.x << " visual=" << visual.position.x << "\n"; return false; }
+			}
+		}
+		return true;
+	}
+	bool VerifySlowedMoveAndZeroSpeedCorrection()
+	{
+		MovePrediction prediction;
+		auto snapshot = MakeMoveSnapshot(100u);
+		snapshot.moveSpeed = 0.5f;
+		snapshot.hasMoveGoal = true;
+		snapshot.nextWaypoint.x = 100.f;
+		(void)prediction.ApplySnapshot(snapshot, 0.0, {});
+		snapshot.serverTick = 118u;
+		snapshot.position.x = 0.3f;
+		MovePrediction::Pose visual{};
+		if (!Require(prediction.ApplySnapshot(snapshot, 0.6, visual) == MoveDisposition::RECONCILE,
+			"slowed movement fixture did not preserve its delayed snapshot")) return false;
+		(void)prediction.Update(0.6, 0.f, {});
+		for (unsigned frame = 1u; frame <= 200u; ++frame)
+		{
+			const double now = 0.6 + frame / 40.0;
+			const auto next = prediction.Update(now, 0.025f, {}).pose;
+			if (!Require(next.position.x >= visual.position.x - 0.000001f &&
+				next.position.x - visual.position.x <= 0.014375f + 0.000001f,
+				"slowed movement correction exceeded 115 percent of the actual move speed")) return false;
+			visual = next;
+			snapshot.serverTick = 118u + static_cast<unsigned>(std::floor(frame * 30.0 / 40.0));
+			snapshot.position.x = 0.3f + (snapshot.serverTick - 118u) * snapshot.moveSpeed / 30.f;
+			if (!Require(prediction.ApplySnapshot(snapshot, now, visual) != MoveDisposition::RESET,
+				"slowed correction accumulated ordinary movement into a reset")) return false;
+		}
+		if (!Require(std::abs(snapshot.position.x - visual.position.x) < 0.06f,
+			"slowed correction failed to close the initial movement gap")) return false;
+		snapshot.serverTick += 1u;
+		snapshot.moveSpeed = 0.f;
+		snapshot.hasMoveGoal = false;
+		snapshot.position.x = visual.position.x - 0.3f;
+		if (!Require(prediction.ApplySnapshot(snapshot, 5.625, visual) == MoveDisposition::RECONCILE,
+			"zero-speed correction unexpectedly reset its valid stopped position")) return false;
+		for (unsigned frame = 1u; frame <= 12u; ++frame)
+			visual = prediction.Update(5.625 + frame / 40.0, 0.025f, {}).pose;
+		return Require(NearMove(visual.position.x, snapshot.position.x) && !visual.isMoving,
+			"zero-speed movement lost the fallback needed to settle its stopped position");
+	}
+	bool VerifyPresentationClockIgnoresPacketPhase()
+	{
+		struct Phase final { double receiveDelay; double updateJitter; };
+		for (const unsigned fps : { 60u, 40u })
+		{
+			for (const Phase phase : { Phase{ 0.0, 0.0 }, { 0.008, 0.0 },
+				{ 0.012, 0.0 }, { 0.015, 0.0 }, { 0.004, 0.006 } })
+			{
+				MovePrediction prediction;
+				auto snapshot = MakeMoveSnapshot(100u);
+				snapshot.moveSpeed = 2.95f;
+				snapshot.nextWaypoint.x = 100.f;
+				(void)prediction.ApplySnapshot(snapshot, 0.0, {});
+				MovePrediction::Pose visual{};
+				double firstSentAt = -1.0, secondSentAt = -1.0;
+				unsigned firstMoveTick = 0u, receivedTick = 0u;
+				const float frameSeconds = 1.f / fps;
+				for (unsigned frame = 1u; frame <= fps * 10u; ++frame)
+				{
+					const double frameAt = static_cast<double>(frame) / fps;
+					const double updateAt = frameAt + (frame % 2u ? phase.updateJitter : 0.0);
+					const double receiveAt = updateAt + phase.receiveDelay;
+					const auto previous = visual;
+					auto result = prediction.Update(updateAt, frameSeconds, visual);
+					if (result.useLocalPath)
+					{
+						visual.position.x += snapshot.moveSpeed * frameSeconds;
+						visual.isMoving = true;
+						result = prediction.CompleteLocalPathFrame(updateAt, visual);
+					}
+					visual = result.pose;
+					const auto repeated = prediction.Update(updateAt, frameSeconds, visual);
+					if (!Require(NearMove(repeated.pose.position.x, visual.position.x),
+						"a repeated frame query advanced the presentation clock twice")) return false;
+					const unsigned tick = receiveAt >= 0.025 ?
+						static_cast<unsigned>(std::floor((receiveAt - 0.025) * 30.0 + 0.000001)) : 0u;
+					if (tick > receivedTick)
+					{
+						receivedTick = tick;
+						snapshot.serverTick = 100u + tick;
+						snapshot.hasMoveGoal = firstMoveTick != 0u && tick >= firstMoveTick;
+						snapshot.processedMoveSequence = snapshot.hasMoveGoal ? 1u : 0u;
+						if (secondSentAt >= 0.0 && tick / 30.0 + 0.000001 >= secondSentAt + 0.025)
+							snapshot.processedMoveSequence = 2u;
+						snapshot.position.x = snapshot.hasMoveGoal ?
+							(tick - firstMoveTick + 1u) * snapshot.moveSpeed / 30.f : 0.f;
+						if (!Require(prediction.ApplySnapshot(snapshot, receiveAt, visual) != MoveDisposition::RESET,
+							"normal frame/packet phase differences accumulated into an authoritative reset")) return false;
+					}
+					if (frame == fps || frame == static_cast<unsigned>(fps * 1.15))
+					{
+						const unsigned sequence = frame == fps ? 1u : 2u;
+						if (!Require(prediction.SubmitMove(sequence, receiveAt, visual),
+							"packet-phase fixture rejected a same-direction double click")) return false;
+						if (sequence == 1u)
+						{
+							firstSentAt = receiveAt;
+							firstMoveTick = static_cast<unsigned>(std::ceil((firstSentAt + 0.025) * 30.0 - 0.000001));
+						}
+						else secondSentAt = receiveAt;
+					}
+					if (frameAt >= 4.0)
+					{
+						const float step = visual.position.x - previous.position.x;
+						if (!Require(step > 0.f && step <= snapshot.moveSpeed * frameSeconds * 1.15f + 0.00001f &&
+							std::abs(snapshot.position.x - visual.position.x) < 0.25f,
+							"packet or update phase caused stopped frames, excess movement, or increasing lag")) return false;
+						if (fps == 60u && !Require(std::abs(step - snapshot.moveSpeed * frameSeconds) < 0.0001f,
+							"steady 60 FPS movement alternated speed with the 30 Hz snapshot phase"))
+						{
+							std::cerr << "phase delay=" << phase.receiveDelay << " jitter=" << phase.updateJitter << " frame=" << frame << " step=" << step << "\n";
+							return false;
+						}
+					}
+				}
+			}
+		}
+		return true;
+	}
+	bool VerifyContinuousReclickPresentation()
+	{
+		for (const unsigned fps : { 40u, 60u })
+		for (const double phase : { 0.0, 0.008, 0.015 })
+		for (const unsigned scenario : { 0u, 1u, 2u, 3u, 4u })
+		{
+			MovePrediction single, repeated;
+			MovePrediction::Pose visual[2]{};
+			MovePrediction::Vec3 goals[2]{ { 1000.f, 0.f, 0.f }, { 1000.f, 0.f, 0.f } };
+			auto snapshot = MakeMoveSnapshot(100u);
+			snapshot.moveSpeed = 2.95f;
+			(void)single.ApplySnapshot(snapshot, 0.0, {});
+			(void)repeated.ApplySnapshot(snapshot, 0.0, {});
+			std::vector<double> sentTimes;
+			unsigned receivedTick = 0u;
+			double nextClick = 0.15;
+			float minRatio = 100.f, maxRatio = 0.f, maxDifference = 0.f;
+			for (unsigned frame = 1u; frame <= fps * 8u; ++frame)
+			{
+				const double frameAt = static_cast<double>(frame) / fps;
+				const double updateAt = frameAt + (frame % 2u ? 0.001 : 0.0);
+				const double receiveAt = updateAt + phase;
+				const float dt = 1.f / fps;
+				const auto beforeSingle = visual[0];
+				for (unsigned i = 0u; i < 2u; ++i)
+				{
+					auto& prediction = i == 0u ? single : repeated;
+					auto result = prediction.Update(updateAt, dt, visual[i]);
+					if (result.useLocalPath)
+					{
+						const double dx = goals[i].x - visual[i].position.x;
+						const double dz = goals[i].z - visual[i].position.z;
+						const double length = std::sqrt(dx * dx + dz * dz);
+						const double step = (std::min)(length, static_cast<double>(snapshot.moveSpeed *
+							prediction.Get_LocalPathDeltaSeconds()));
+						if (length > 0.00001)
+						{
+							visual[i].position.x += static_cast<float>(dx * step / length);
+							visual[i].position.z += static_cast<float>(dz * step / length);
+						}
+						visual[i].isMoving = true;
+						result = prediction.CompleteLocalPathFrame(updateAt, visual[i]);
+					}
+					visual[i] = result.pose;
+					if (!Require(NearMove(prediction.Update(updateAt, dt, visual[i]).pose.position.x,
+						visual[i].position.x), "reclick frame consumed its displacement twice")) return false;
+				}
+				const float difference = std::sqrt(
+					std::pow(visual[0].position.x - visual[1].position.x, 2.f) +
+					std::pow(visual[0].position.z - visual[1].position.z, 2.f));
+				maxDifference = (std::max)(maxDifference, difference);
+				if (!Require(difference < 0.0001f,
+					"150 ms reclick changed a displayed frame against the same Server timeline"))
+				{
+					std::cerr << "fps=" << fps << " phase=" << phase << " scenario=" << scenario
+						<< " frame=" << frame << " difference=" << difference << '\n';
+					return false;
+				}
+				const float dx = visual[0].position.x - beforeSingle.position.x;
+				const float dz = visual[0].position.z - beforeSingle.position.z;
+				const float step = std::sqrt(dx * dx + dz * dz);
+				if (!Require(step <= snapshot.moveSpeed * dt * 1.15f + 0.00002f,
+					"continuous reclick exceeded the existing presentation speed budget")) return false;
+				if (frameAt > 2.0 && frameAt < 2.5)
+				{
+					minRatio = (std::min)(minRatio, step / (snapshot.moveSpeed * dt));
+					maxRatio = (std::max)(maxRatio, step / (snapshot.moveSpeed * dt));
+				}
+				// Change true delivery latency, add jitter and a 220 ms packet batch.
+				const double delay = (scenario == 2u || scenario == 4u) ?
+					(0.025 + (frameAt >= 3.0 && frameAt < 4.2 ? 0.20 : 0.0) +
+						(frame % 3u == 0u ? 0.012 : 0.0)) : 0.025;
+				const unsigned tick = receiveAt >= delay ?
+					static_cast<unsigned>(std::floor((receiveAt - delay) * 30.0 + 0.000001)) : 0u;
+				if (tick > receivedTick && !((scenario == 2u || scenario == 4u) && frameAt >= 5.0 && frameAt < 5.22))
+				{
+					receivedTick = tick;
+					snapshot.serverTick = 100u + tick;
+					const double serverAt = tick / 30.0;
+					const double movingAt = (std::max)(0.0, (std::min)(6.0, serverAt) - 0.1);
+					snapshot.hasMoveGoal = serverAt >= 0.1 && serverAt < 6.0;
+					snapshot.position = { static_cast<float>(movingAt * snapshot.moveSpeed), 0.f, 0.f };
+					snapshot.nextWaypoint = { 1000.f, 0.f, 0.f };
+					if (scenario == 3u && serverAt >= 3.0)
+					{
+						// Same route turns 90 degrees, then body collision prevents progress
+						// while the Server still owns a live goal.
+						snapshot.position.x = 2.9f * snapshot.moveSpeed;
+						snapshot.position.z = static_cast<float>((std::min)(1.0, serverAt - 3.0) * snapshot.moveSpeed);
+						snapshot.nextWaypoint = { snapshot.position.x, 0.f, 1000.f };
+					}
+					unsigned ack = 0u;
+					while (ack < sentTimes.size() && sentTimes[ack] + 0.025 <= serverAt + 0.000001) ++ack;
+					for (unsigned i = 0u; i < 2u; ++i)
+					{
+						snapshot.processedMoveSequence = i == 0u ? (std::min)(1u, ack) : ack;
+						const auto disposition = (i == 0u ? single : repeated).ApplySnapshot(snapshot, receiveAt, visual[i]);
+						if (!Require(disposition != MoveDisposition::RESET,
+							"normal continuous motion/stop/turn/latency change reset the display")) return false;
+					}
+				}
+				if (frame == 1u || (frameAt >= nextClick && frameAt < 5.8))
+				{
+					if (frame != 1u) nextClick += 0.15;
+					sentTimes.push_back(receiveAt);
+					if (scenario == 1u || scenario == 4u) goals[1].x += 10.f;
+					if (!Require(repeated.SubmitMove(static_cast<unsigned>(sentTimes.size()), receiveAt,
+						visual[1], &goals[1]), "reclick fixture rejected a fresh command")) return false;
+					if (frame == 1u && !Require(single.SubmitMove(1u, receiveAt, visual[0], &goals[0]),
+						"single-click fixture rejected its command")) return false;
+				}
+			}
+			if (!Require(!visual[0].isMoving && !visual[1].isMoving &&
+				NearMove(visual[0].position.x, snapshot.position.x) &&
+				NearMove(visual[0].position.z, snapshot.position.z),
+				"continuous movement failed to settle at the authoritative final stop")) return false;
+			if (!Require(minRatio >= 0.995f && maxRatio <= 1.005f,
+				"steady single/reclick speed departed from nominal by more than 0.5 percent")) return false;
+			std::cout << "reclick fps=" << fps << " phase=" << phase << " scenario=" << scenario
+				<< " ratio=" << minRatio << ".." << maxRatio << " maxDifference=" << maxDifference << '\n';
+		}
+		return true;
+	}
+	bool VerifyRetargetCornerAndTickWrap()
+	{
+		MovePrediction prediction;
+		auto snapshot = MakeMoveSnapshot(100u);
+		snapshot.moveSpeed = 2.95f;
+		snapshot.hasMoveGoal = true;
+		snapshot.nextWaypoint.x = 100.f;
+		(void)prediction.ApplySnapshot(snapshot, 0.0, {});
+		auto visual = prediction.Update(0.025, 0.025f, {}).pose;
+		snapshot.serverTick = 101u;
+		snapshot.position.x = 0.04f;
+		(void)prediction.ApplySnapshot(snapshot, 0.03, visual);
+		const MovePrediction::Vec3 turnGoal{ visual.position.x, 0.f, 100.f };
+		if (!Require(prediction.SubmitMove(1u, 0.031, visual, &turnGoal),
+			"new 90-degree target failed to begin prediction")) return false;
+		for (unsigned frame = 0u; frame < 2u; ++frame)
+		{
+			const double now = 0.05 + frame * 0.025;
+			const auto before = visual;
+			const auto begin = prediction.Update(now, 0.025f, visual);
+			if (!Require(begin.useLocalPath, "old ACK retired the latest actual turn")) return false;
+			visual.position.z += snapshot.moveSpeed * prediction.Get_LocalPathDeltaSeconds();
+			visual.yawDegrees = 0.f;
+			visual = prediction.CompleteLocalPathFrame(now, visual).pose;
+			if (!Require(NearMove(visual.position.x, before.position.x) &&
+				visual.position.z > before.position.z,
+				"an old X-segment residual pulled a new Z turn diagonally")) return false;
+			snapshot.serverTick += 1u;
+			snapshot.position.x += 0.05f;
+			if (!Require(prediction.ApplySnapshot(snapshot, now + 0.001, visual) ==
+				MoveDisposition::PRESERVE_LOCAL_PATH,
+				"unacknowledged 90-degree turn lost its bounded local path")) return false;
+		}
+		snapshot.serverTick += 1u;
+		snapshot.processedMoveSequence = 1u;
+		snapshot.position = visual.position;
+		snapshot.nextWaypoint = turnGoal;
+		if (!Require(prediction.ApplySnapshot(snapshot, 0.08, visual) == MoveDisposition::RECONCILE &&
+			!prediction.UsesLocalPath() && prediction.Update(0.1, 0.025f, {}).pose.position.z > visual.position.z,
+			"actual turn ACK failed to restore authoritative continuous motion")) return false;
+
+		MovePrediction corner;
+		snapshot = MakeMoveSnapshot(100u);
+		snapshot.hasMoveGoal = true;
+		snapshot.nextWaypoint = { 0.05f, 0.f, 0.f };
+		(void)corner.ApplySnapshot(snapshot, 0.0, {});
+		visual = corner.Update(0.003, 0.003f, {}).pose;
+		snapshot.serverTick = 101u;
+		snapshot.position = { 0.05f, 0.f, 0.05f };
+		snapshot.nextWaypoint = { 0.05f, 0.f, 10.f };
+		(void)corner.ApplySnapshot(snapshot, 0.034, visual);
+		// The new ACK can arrive before any local path frame observes the turn.
+		// Retire the old corner from Server segment evidence in that ordering too.
+		auto fastAckCorner = corner;
+		const MovePrediction::Vec3 fastGoal{ -10.f, 0.f, 0.f };
+		(void)fastAckCorner.SubmitMove(1u, 0.035, visual, &fastGoal);
+		auto fastSnapshot = snapshot;
+		fastSnapshot.serverTick = 102u;
+		fastSnapshot.processedMoveSequence = 1u;
+		fastSnapshot.position = { 0.02f, 0.f, 0.f };
+		fastSnapshot.nextWaypoint = fastGoal;
+		(void)fastAckCorner.ApplySnapshot(fastSnapshot, 0.036, visual);
+		if (!Require(fastAckCorner.Update(0.04, 0.003f, visual).pose.position.x < visual.position.x,
+			"an ACK before the first local turn frame retained an obsolete Server corner")) return false;
+		auto redirectedCorner = corner;
+		const MovePrediction::Vec3 away{ -10.f, 0.f, 0.f };
+		(void)redirectedCorner.SubmitMove(1u, 0.035, visual, &away);
+		(void)redirectedCorner.Update(0.05, 0.016f, visual);
+		auto awayPose = visual;
+		awayPose.position.x -= 0.096f;
+		awayPose = redirectedCorner.CompleteLocalPathFrame(0.05, awayPose).pose;
+		auto redirectedSnapshot = snapshot;
+		redirectedSnapshot.serverTick = 102u;
+		redirectedSnapshot.processedMoveSequence = 1u;
+		redirectedSnapshot.position = awayPose.position;
+		redirectedSnapshot.nextWaypoint = away;
+		(void)redirectedCorner.ApplySnapshot(redirectedSnapshot, 0.051, awayPose);
+		const auto continuedAway = redirectedCorner.Update(0.066, 0.016f, awayPose).pose;
+		if (!Require(continuedAway.position.x < awayPose.position.x &&
+			std::abs(continuedAway.position.z) < 0.02f,
+			"a cached Server corner pulled a newly acknowledged opposite target back toward the old route")) return false;
+		visual = corner.Update(0.05, 0.016f, visual).pose;
+		if (!Require(NearMove(visual.position.x, 0.05f) && visual.position.z > 0.f,
+			"display movement or its residual cut inside the known Server corner")) return false;
+
+		// GameRoom skips reserved tick zero. A wrap must not add a fictitious tick
+		// to the receive clock, relative to an otherwise identical ordinary trace.
+		MovePrediction normal, wrapped;
+		auto ordinary = MakeMoveSnapshot(100u);
+		ordinary.hasMoveGoal = true; ordinary.nextWaypoint.x = 100.f;
+		auto wrap = ordinary; wrap.serverTick = 0xfffffffdu;
+		(void)normal.ApplySnapshot(ordinary, 0.0, {});
+		(void)wrapped.ApplySnapshot(wrap, 0.0, {});
+		MovePrediction::Pose normalPose{}, wrapPose{};
+		for (unsigned frame = 1u; frame <= 120u; ++frame)
+		{
+			const double now = frame / 60.0;
+			normalPose = normal.Update(now, 1.f / 60.f, normalPose).pose;
+			wrapPose = wrapped.Update(now, 1.f / 60.f, wrapPose).pose;
+			if (!Require(NearMove(normalPose.position.x, wrapPose.position.x),
+				"skipped-zero Server tick wrap changed the continuous movement clock")) return false;
+			if (frame % 2u != 0u) continue;
+			++ordinary.serverTick;
+			if (++wrap.serverTick == 0u) ++wrap.serverTick;
+			ordinary.position.x = wrap.position.x = frame * 0.1f;
+			(void)normal.ApplySnapshot(ordinary, now + 0.001, normalPose);
+			(void)wrapped.ApplySnapshot(wrap, now + 0.001, wrapPose);
+		}
+		return true;
+	}
+	struct GroundProof final
+	{
+		unsigned calls = 0u;
+		bool valid = false;
+		MovePrediction::Vec3 from{};
+		MovePrediction::Vec3 to{};
+	};
+
+	bool ValidateGroundStep(const MovePrediction::Vec3& from,
+		const MovePrediction::Vec3& to, void* context)
+	{
+		auto& proof = *static_cast<GroundProof*>(context);
+		++proof.calls;
+		proof.from = from;
+		proof.to = to;
+		return proof.valid;
+	}
+
+	bool VerifyNavigationProvenGroundContinuity()
+	{
+		for (const bool proofValid : { false, true })
+		{
+			MovePrediction prediction;
+			auto snapshot = MakeMoveSnapshot(100u);
+			snapshot.moveSpeed = 2.95f;
+			(void)prediction.ApplySnapshot(snapshot, 0.0, {});
+			snapshot.serverTick = 101u;
+			snapshot.position = { 0.09f, 1.25f, 0.f };
+			GroundProof proof{ 0u, proofValid };
+			const auto disposition = prediction.ApplySnapshot(snapshot, 1.0 / 30.0, {},
+				ValidateGroundStep, &proof);
+			if (!Require(proof.calls == 1u && NearMove(proof.from.x, 0.f) &&
+				NearMove(proof.to.y, 1.25f) && disposition ==
+					(proofValid ? MoveDisposition::RECONCILE : MoveDisposition::RESET),
+				"vertical ground continuity ignored the navigation proof or used another segment")) return false;
+		}
+		MovePrediction prediction;
+		auto initial = MakeMoveSnapshot(100u, 2u);
+		initial.moveSpeed = 2.95f;
+		(void)prediction.ApplySnapshot(initial, 0.0, {});
+		auto step = initial;
+		step.serverTick = 101u;
+		step.position = { 0.09f, 1.25f, 0.f };
+		if (!Require(prediction.ApplySnapshot(step, 1.0 / 30.0, {}) == MoveDisposition::RESET,
+			"an unproven vertical discontinuity lost its authoritative reset")) return false;
+		prediction.Reset();
+		GroundProof proof{ 0u, true };
+		(void)prediction.ApplySnapshot(initial, 0.0, {}, ValidateGroundStep, &proof);
+		step.position.x = 2.f;
+		if (!Require(prediction.ApplySnapshot(step, 1.0 / 30.0, {}, ValidateGroundStep, &proof) ==
+			MoveDisposition::RESET && proof.calls == 0u,
+			"a navigation callback exempted a genuine horizontal discontinuity")) return false;
+		prediction.Reset();
+		(void)prediction.ApplySnapshot(initial, 0.0, {});
+		step.position.x = 0.09f;
+		step.serverTick = 100u;
+		if (!Require(prediction.ApplySnapshot(step, 1.0 / 30.0, {}, ValidateGroundStep, &proof) ==
+			MoveDisposition::IGNORED && proof.calls == 0u,
+			"a duplicate Server tick reached the ground continuity callback")) return false;
+		step.serverTick = 101u;
+		step.processedMoveSequence = 1u;
+		if (!Require(prediction.ApplySnapshot(step, 1.0 / 30.0, {}, ValidateGroundStep, &proof) ==
+			MoveDisposition::IGNORED && proof.calls == 0u,
+			"a regressing move acknowledgement reached the ground continuity callback")) return false;
+		step.processedMoveSequence = 2u;
+		const MovePrediction::Pose farVisual{ { 20.f, 0.f, 0.f }, 0.f, false };
+		return Require(prediction.ApplySnapshot(step, 1.0 / 30.0, farVisual,
+			ValidateGroundStep, &proof) == MoveDisposition::RESET,
+			"a navigation proof bypassed the large visual/server disagreement reset");
+	}
 	bool VerifyMovePredictionTimeout()
 	{
 		MovePrediction prediction;
@@ -632,6 +1169,7 @@ namespace
 		(void)prediction.SubmitMove(1u, 0.01, visual);
 		visual = { { 0.4f, 0.f, 0.f }, 90.f, true };
 		(void)prediction.Update(0.1, 0.09f, visual);
+		(void)prediction.CompleteLocalPathFrame(0.1, visual);
 		const auto disconnected = prediction.Update(0.36, 0.26f,
 			{ { 100.f, 0.f, 0.f }, 90.f, true });
 		const auto stillDisconnected = prediction.Update(10.0, 9.64f, {});
@@ -648,6 +1186,7 @@ namespace
 		(void)prediction.ApplySnapshot(MakeMoveSnapshot(1u), 0.0, {});
 		(void)prediction.SubmitMove(1u, 0.01, {});
 		(void)prediction.Update(0.1, 0.09f, visual);
+		(void)prediction.CompleteLocalPathFrame(0.1, visual);
 		(void)prediction.ApplySnapshot(MakeMoveSnapshot(8u), 0.25, visual);
 		const auto missingAck = prediction.Update(0.37, 0.12f, visual);
 		const auto corrected = prediction.Update(0.46, 0.09f, {});
@@ -674,13 +1213,29 @@ namespace
 
 int Run_ClientPresentationPrimitiveContractTests()
 {
-	if (!VerifyKoukuVisibleCooldownSlots() || !VerifyMousePressOwnership() || !VerifyIndependentLoopedSound() ||
-		!VerifyReplicatedPartyHealth() || !VerifyPartyTransferNotice() ||
-		!VerifyImmediateMovePrediction() || !VerifyAcknowledgedMoveCorrection() ||
-		!VerifyMoveSequenceOrdering() || !VerifyMoveRejectionAndForcedState() ||
-		!VerifyMovePredictionTimeout() || !VerifyMoveCorrectionSpeedAndContinuousSnapshots() ||
-		!VerifyLatestOppositeHeadingAndGroundHeight() || !VerifyAcknowledgedBearingHasOneSmoothingOwner() ||
-		!VerifyDelayedSnapshotsPreserveNormalMotion())
+	bool failed = false;
+	failed |= !VerifyKoukuVisibleCooldownSlots();
+	failed |= !VerifyMousePressOwnership();
+	failed |= !VerifyIndependentLoopedSound();
+	failed |= !VerifyReplicatedPartyHealth();
+	failed |= !VerifyPartyTransferNotice();
+	failed |= !VerifyContinuousReclickPresentation();
+	failed |= !VerifyRetargetCornerAndTickWrap();
+	failed |= !VerifyImmediateMovePrediction();
+	failed |= !VerifyAcknowledgedMoveCorrection();
+	failed |= !VerifyMoveSequenceOrdering();
+	failed |= !VerifyMoveRejectionAndForcedState();
+	failed |= !VerifyMovePredictionTimeout();
+	failed |= !VerifyMoveCorrectionSpeedAndContinuousSnapshots();
+	failed |= !VerifyLatestOppositeHeadingAndGroundHeight();
+	failed |= !VerifyAcknowledgedBearingHasOneSmoothingOwner();
+	failed |= !VerifyDelayedSnapshotsPreserveNormalMotion();
+	failed |= !VerifyTotalMovePresentationBudget();
+	failed |= !VerifySlowFramesRetainMoveConvergence();
+	failed |= !VerifySlowedMoveAndZeroSpeedCorrection();
+	failed |= !VerifyPresentationClockIgnoresPacketPhase();
+	failed |= !VerifyNavigationProvenGroundContinuity();
+	if (failed)
 	{
 		return 1;
 	}

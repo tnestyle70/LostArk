@@ -29,9 +29,17 @@ using namespace GameRoomDetail;
 
 LostArk::Server::CGameRoom::CGameRoom(
 	const LostArk::Shared::WORLD_ID worldId,
-	std::shared_ptr<const CGameplayCatalog> initialGameplayGeneration)
+	std::shared_ptr<const CGameplayCatalog> initialGameplayGeneration,
+	const std::atomic_bool* pPreparationCancelled)
 	: m_eWorldId(worldId)
 {
+	const auto cancelled = [this, pPreparationCancelled]()
+	{
+		if (!pPreparationCancelled || !pPreparationCancelled->load(std::memory_order_relaxed)) return false;
+		m_strStatus = "Room preparation cancelled";
+		return true;
+	};
+	if (cancelled()) return;
 	if (!LostArk::Shared::Is_Known_World_Id(worldId))
 	{
 		m_strStatus = "Unknown room world ID";
@@ -42,6 +50,7 @@ LostArk::Server::CGameRoom::CGameRoom(
 		m_strStatus = m_WorldBootstrap.Get_Status();
 		return;
 	}
+	if (cancelled()) return;
 	if ((nullptr != initialGameplayGeneration &&
 			!m_GameplayCatalog.Initialize(initialGameplayGeneration)) ||
 		(nullptr == initialGameplayGeneration && !m_GameplayCatalog.Load()))
@@ -49,26 +58,31 @@ LostArk::Server::CGameRoom::CGameRoom(
 		m_strStatus = m_GameplayCatalog.Get_Status();
 		return;
 	}
+	if (cancelled()) return;
 	if (!m_ItemCatalog.Load())
 	{
 		m_strStatus = m_ItemCatalog.Get_Status();
 		return;
 	}
+	if (cancelled()) return;
 	if (!m_VehicleCatalog.Load())
 	{
 		m_strStatus = m_VehicleCatalog.Get_Status();
 		return;
 	}
+	if (cancelled()) return;
 	if (!m_HonorTitleCatalog.Load())
 	{
 		m_strStatus = m_HonorTitleCatalog.Get_Status();
 		return;
 	}
+	if (cancelled()) return;
 	if (!m_ValtanClearRewards.Load())
 	{
 		m_strStatus = m_ValtanClearRewards.Get_Status();
 		return;
 	}
+	if (cancelled()) return;
 	if (!m_SpawnGroupBootstrap.Load(worldId))
 	{
 		m_strStatus = m_SpawnGroupBootstrap.Get_Status();
@@ -76,6 +90,7 @@ LostArk::Server::CGameRoom::CGameRoom(
 	}
 	if (!m_SpawnGroupRuntime.Initialize(m_SpawnGroupBootstrap, m_strStatus))
 		return;
+	if (cancelled()) return;
 	m_EstherSkillSystem.Initialize(worldId);
 	/* Bern joins the areas that require navigation. Without a grid the room keeps
 	the spawn height for the whole session and straight-line XZ movement walks
@@ -93,6 +108,7 @@ LostArk::Server::CGameRoom::CGameRoom(
 		m_strStatus = m_ServerNavigation.Get_Status();
 		return;
 	}
+	if (cancelled()) return;
 	if (!m_NpcBehaviorRuntime.Validate_Admission(
 		m_WorldBootstrap.Get_Placements(), m_ServerNavigation, m_strStatus))
 	{
@@ -126,6 +142,7 @@ LostArk::Server::CGameRoom::CGameRoom(
 	{
 		return;
 	}
+	if (cancelled()) return;
 	if (!m_ServerCollisionSystem.Initialize(
 		m_WorldBootstrap.Get_Placements(), m_strStatus))
 	{
@@ -204,6 +221,7 @@ LostArk::Server::CGameRoom::CGameRoom(
 			return;
 		}
 	}
+	if (cancelled()) return;
 	if (!Initialize_WorldEntities())
 		return;
 	if (nullptr == Find_AvailablePlayerSpawn())
@@ -212,6 +230,7 @@ LostArk::Server::CGameRoom::CGameRoom(
 		return;
 	}
 
+	if (cancelled()) return;
 	m_isReady = true;
 	Initialize_Guide();
 	m_strStatus = m_WorldBootstrap.Get_Status();
@@ -720,6 +739,14 @@ bool LostArk::Server::CGameRoom::Try_DequeueWorldTransfer(
 	outTransfer = std::move(m_PendingWorldTransfers.front());
 	m_PendingWorldTransfers.pop_front();
 	Remember_ShipForWorldTransfer(outTransfer);
+	for (const auto member : outTransfer.PartyBatchSessionIds)
+	{
+		if (member == outTransfer.iSessionId) continue;
+		SERVER_WORLD_TRANSFER_REQUEST passenger{};
+		passenger.iSessionId = member;
+		passenger.eTargetWorldId = outTransfer.eTargetWorldId;
+		Remember_ShipForWorldTransfer(passenger);
+	}
 	return true;
 }
 
@@ -868,6 +895,13 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 
 	for (ROOM_COMMAND& command : commands)
 	{
+		if (m_iColosseumMatchId && m_eColosseumPhase != LostArk::Shared::COLOSSEUM_MATCH_PHASE::PLAYING &&
+			command.eType != ROOM_COMMAND_TYPE::REGISTER_SESSION && command.eType != ROOM_COMMAND_TYPE::ENTER_WORLD &&
+			command.eType != ROOM_COMMAND_TYPE::COLOSSEUM_LOAD_READY && command.eType != ROOM_COMMAND_TYPE::COLOSSEUM_RETURN &&
+			command.eType != ROOM_COMMAND_TYPE::ROOM_PING && command.eType != ROOM_COMMAND_TYPE::CHAT &&
+            !(m_eColosseumPhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::RECRUITING &&
+              (command.eType == ROOM_COMMAND_TYPE::MOVE || command.eType == ROOM_COMMAND_TYPE::COLOSSEUM_RECRUIT)) &&
+            !(m_eColosseumPhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::FINISHED && (command.eType == ROOM_COMMAND_TYPE::INTERACT_TRIGGER || command.eType == ROOM_COMMAND_TYPE::USE_SQUAREHOLE))) continue;
 		switch (command.eType)
 		{
 		case ROOM_COMMAND_TYPE::REGISTER_SESSION:
@@ -877,7 +911,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 			Join(command.iSessionId, command.EnterWorld,
 				command.strSpawnPlacementOverrideId, command.CarriedInventory,
 				command.iCarriedHonorTitleId, command.strRaidReturnNpcPlacementId,
-				command.CarriedPurse, command.CarriedDurability);
+				command.CarriedPurse, command.eEntrySourceWorldId);
 			break;
 		case ROOM_COMMAND_TYPE::MOVE:
 			Handle_Move(command.iSessionId, command.Move);
@@ -1036,6 +1070,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		case ROOM_COMMAND_TYPE::DEBUG_WORLD_PLAYBACK:
 			Handle_DebugWorldPlayback(command.iSessionId, command.DebugWorldPlayback);
 			break;
+		case ROOM_COMMAND_TYPE::GUIDE_CONTROL:
+			Handle_GuideControl(command.iSessionId, command.GuideControl);
+			break;
 		case ROOM_COMMAND_TYPE::PARTY_INVITE:
 			Handle_PartyInvite(command.iSessionId, command.PartyInvite);
 			break;
@@ -1058,6 +1095,15 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		case ROOM_COMMAND_TYPE::COLOSSEUM_QUEUE_LEAVE:
 			Handle_ColosseumQueueLeave(
 				command.iSessionId, command.ColosseumQueueLeave);
+			break;
+		case ROOM_COMMAND_TYPE::COLOSSEUM_RECRUIT:
+			Handle_ColosseumRecruit(command.iSessionId, command.ColosseumRecruit);
+			break;
+		case ROOM_COMMAND_TYPE::COLOSSEUM_LOAD_READY:
+			Handle_ColosseumLoadReady(command.iSessionId, command.ColosseumLoadReady);
+			break;
+		case ROOM_COMMAND_TYPE::COLOSSEUM_RETURN:
+			Handle_ColosseumReturn(command.iSessionId, command.ColosseumReturn);
 			break;
 		case ROOM_COMMAND_TYPE::GATE_PROGRESS_PROPOSE:
 			Handle_GateProgressPropose(
@@ -1108,7 +1154,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		if (player.eCardMazeRole != LostArk::Shared::CARD_MAZE_ROLE::NONE)
 			m_CardMazePreviousPositions[id] = {player.fPositionX, player.fPositionZ};
 	Update_MaharakaWaterpangMatch(updateTick);
+	Update_ColosseumMatch(updateTick);
 	Update_Guides(fixedDeltaSeconds);
+	Update_Colosseum(fixedDeltaSeconds);
 	Update_WorldPickups(updateTick, false);
 	Update_Players(fixedDeltaSeconds);
 	Update_MaharakaWaterGunShots(updateTick);
@@ -1245,7 +1293,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		return;
 	}
 	Enforce_VehicleRidingState();
+	Score_ColosseumKills(updateTick);
 	m_iServerTick = updateTick;
+	if (m_iColosseumMatchId && updateTick % 3u == 0u) Broadcast_ColosseumMatchState();
 	Expire_RaidEntryProposals();
 	Expire_GateProgressVote();
 	/* A hit that wore gear answers its owner with the inventory snapshot that carries the wear. */
@@ -1494,8 +1544,14 @@ bool LostArk::Server::CGameRoom::Commit_NumericBalance(
     {
         const auto* profile = m_GameplayCatalog.Find_Player(player.eCharacterClass);
         if (!profile) continue;
-        player.iCurrentHp = ratio(player.iCurrentHp, player.iMaximumHp, profile->iMaximumHp, true);
-        player.iMaximumHp = profile->iMaximumHp;
+        // A match pins its admitted 40-bar HP pool and full damage reference
+        // until departure; class/boss HP edits affect future admissions only.
+        const bool matchedColosseum = m_eWorldId == LostArk::Shared::WORLD_ID::COLOSSEUM &&
+            m_iColosseumMatchId != 0u && player.iColosseumMatchId == m_iColosseumMatchId &&
+            player.iColosseumTeam < 2u && (player.Is_Human() || player.Is_ColosseumMercenary());
+        const auto maximumHp = matchedColosseum ? player.iMaximumHp : profile->iMaximumHp;
+        player.iCurrentHp = ratio(player.iCurrentHp, player.iMaximumHp, maximumHp, true);
+        player.iMaximumHp = maximumHp;
         player.iCurrentResource = ratio(player.iCurrentResource, player.iMaximumResource, profile->iMaximumResource, false);
         player.iMaximumResource = profile->iMaximumResource;
         player.iCurrentIdentity = ratio(player.iCurrentIdentity, player.iMaximumIdentity, profile->iMaximumIdentity, false);

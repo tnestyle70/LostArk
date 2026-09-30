@@ -1028,8 +1028,9 @@ private:
 	unique_ptr<WORLD_LEVEL_TOOL_REQUEST> m_pWorldLevelPendingMapRequest;
 #endif
 	std::chrono::steady_clock::time_point m_WorldLevelMapDeadline{};
-	/* One armed viewport pick for the World Level Tool's map edit session. */
+	/* One armed viewport pick shared by World Level placement and Guide trigger boxes. */
 	bool m_bWorldLevelPickArmed = false;
+	DEBUG_TOOL m_eWorldLevelPickOwner = DEBUG_TOOL::WORLD_LEVEL;
 	uint32_t m_iWorldLevelPickLevel = UINT32_MAX;
 	bool m_bWorldLevelPickLeftDown = true;
 	bool m_bWorldLevelPickSuppressMouse = false;

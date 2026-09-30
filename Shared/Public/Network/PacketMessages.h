@@ -27,6 +27,9 @@ namespace LostArk::Shared
 
 	[[nodiscard]] bool Is_Valid_VoiceType(
 		std::uint8_t voiceType) noexcept;
+	inline constexpr std::size_t MAX_PLAYER_APPEARANCE_BYTES = 16384u;
+	// A bounded numeric customizing preset, never a path or a client-selected runtime asset.
+	[[nodiscard]] bool Is_Valid_PlayerAppearance(std::string_view text, CHARACTER_CLASS_ID characterClass);
 
 	// Same stable-ID alphabet the authored world sequence document enforces, so
 	// a wire value can never name something the Client could not have loaded.
@@ -44,6 +47,7 @@ namespace LostArk::Shared
 
 		std::string strNickName;
 		std::uint8_t iVoiceType = MIN_VOICE_TYPE;
+		std::string strAppearanceJson;
 	};
 
 	bool Write_Message(
@@ -117,6 +121,7 @@ namespace LostArk::Shared
 		float fYawDegrees = 0.f;
 		PLAYER_CONTROL_KIND eControlKind = PLAYER_CONTROL_KIND::HUMAN;
 		std::uint8_t iVoiceType = MIN_VOICE_TYPE;
+		std::string strAppearanceJson;
 	};
 
 	bool Write_Message(
@@ -2897,11 +2902,30 @@ namespace LostArk::Shared
 		std::string strItemId;
 		std::uint32_t iQuantity = 0;
 		EQUIPMENT_SLOT eEquippedSlot = EQUIPMENT_SLOT::NONE;
+		/* Wear of this piece of gear, 0 (broken) to 100 (undamaged). Only weapon and armor
+		   entries ever drop below 100; everything else stays 100. It travels with the entry
+		   through every path that carries the inventory. */
+		std::uint8_t iDurabilityPercent = 100;
 	};
 
-	/* Worn-gear parts the durability HUD draws, in wire order: weapon, helmet, top, gloves,
-	   bottoms, shoulder. Each carries a percent, 0 (broken) to 100 (undamaged). */
-	inline constexpr std::size_t DURABILITY_PART_COUNT = 6;
+	/* The equipment slots whose gear wears: the weapon and the five armor pieces. The
+	   durability HUD, the Server's wear and the repair window all use this one list. */
+	[[nodiscard]]
+	constexpr bool Is_Durable_Slot(const EQUIPMENT_SLOT slot) noexcept
+	{
+		return EQUIPMENT_SLOT::HELMET == slot || EQUIPMENT_SLOT::SHOULDER == slot ||
+			EQUIPMENT_SLOT::TOP == slot || EQUIPMENT_SLOT::PANTS == slot ||
+			EQUIPMENT_SLOT::GLOVES == slot || EQUIPMENT_SLOT::WEAPON == slot;
+	}
+
+	/* Silver the repair NPC charges for one piece of gear: 1000 at 0 percent, in proportion to
+	   the wear, rounded up; nothing for an undamaged piece. The Server bills with it and the
+	   repair window shows the same figure. */
+	[[nodiscard]]
+	constexpr std::uint32_t Repair_Silver_Cost(const std::uint8_t durabilityPercent) noexcept
+	{
+		return durabilityPercent >= 100u ? 0u : (1000u * (100u - durabilityPercent) + 99u) / 100u;
+	}
 
 	// Replace-in-full, the same shape S2C_ENCOUNTER_PROP_SYNC uses: one message
 	// carries the whole current inventory, so a late joiner or a re-entering
@@ -2913,8 +2937,6 @@ namespace LostArk::Shared
 		/* The purse (silver / gold). Currencies are not bag items, so they ride beside them. */
 		std::uint32_t iSilver = 0;
 		std::uint32_t iGold = 0;
-		/* Server-owned wear of the worn gear, one percent per durability HUD part. */
-		std::array<std::uint8_t, DURABILITY_PART_COUNT> DurabilityPercent{ { 100, 100, 100, 100, 100, 100 } };
 	};
 
 	bool Write_Message(
@@ -3054,8 +3076,7 @@ namespace LostArk::Shared
 	// NPC's offer (the 15 second accept/decline countdown is Client UI and a decline sends
 	// nothing); the Server re-tests that the player is near that NPC. LEAVE takes only the
 	// requesting player out of the queue (the wait window's Esc). The Server owns the queue,
-	// the head count (Debug builds start with one player, Release needs four) and the random
-	// team split.
+	// ten-second queue deadline, up to four humans, and the random team split.
 	struct C2S_COLOSSEUM_QUEUE_JOIN
 	{
 		std::uint32_t iRequestSequence = 0;
@@ -3096,6 +3117,7 @@ namespace LostArk::Shared
 		COLOSSEUM_QUEUE_STATE eState = COLOSSEUM_QUEUE_STATE::END;
 		std::uint8_t iQueuedCount = 0;
 		std::uint8_t iRequiredCount = 0;
+		std::uint32_t iServerTick = 0u, iDeadlineTick = 0u;
 	};
 
 	bool Write_Message(
@@ -3120,6 +3142,7 @@ namespace LostArk::Shared
 	// draws it on the match loading screen.
 	struct S2C_COLOSSEUM_MATCH_FOUND
 	{
+		std::uint64_t iMatchId = 0u;
 		std::uint8_t iLocalIndex = 0;
 		std::vector<COLOSSEUM_MATCH_PARTICIPANT> Participants;
 	};
@@ -3130,6 +3153,67 @@ namespace LostArk::Shared
 	bool Read_Message(
 		CPacketReader& reader,
 		S2C_COLOSSEUM_MATCH_FOUND& message);
+
+	// Server room clock is fixed at 30 Hz. Candidates remain replicated for recruitment;
+	// only selected participants take one of the four combat seats on each team.
+	enum class COLOSSEUM_MATCH_PHASE : std::uint8_t
+	{
+		LOADING, RECRUITING, ENTRY_COUNTDOWN, INTRO, COUNTDOWN, ACTIVE,
+		PLAYING = ACTIVE, FINISHED, END
+	};
+	inline constexpr std::size_t MAX_COLOSSEUM_COMBAT_PLAYERS = 8;
+	inline constexpr std::size_t MAX_COLOSSEUM_STATE_PLAYERS = 14;
+	inline constexpr std::uint8_t COLOSSEUM_NO_TEAM = 255u;
+	inline constexpr std::uint8_t COLOSSEUM_DRAW_TEAM = COLOSSEUM_NO_TEAM;
+	struct COLOSSEUM_MATCH_PLAYER_STATE
+	{
+		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
+		std::uint8_t iTeam = COLOSSEUM_NO_TEAM;
+		bool bParticipant = false;
+		PLAYER_ID iPlayerId = INVALID_PLAYER_ID;
+		// team + teamSlot * 2: selected human and mercenary seats share indices 0..7.
+		std::uint8_t iArrivalIndex = 0u;
+		bool bReady = false;
+		std::uint32_t iKills = 0u;
+	};
+	struct C2S_COLOSSEUM_RECRUIT
+	{
+		std::uint32_t iRequestSequence = 0;
+		std::uint64_t iMatchId = 0;
+		NET_ENTITY_ID iMercenaryNetEntityId = INVALID_NET_ENTITY_ID;
+	};
+	struct C2S_COLOSSEUM_LOAD_READY { std::uint64_t iMatchId = 0u; };
+	struct C2S_COLOSSEUM_RETURN { std::uint64_t iMatchId = 0u; };
+	inline constexpr std::size_t MAX_COLOSSEUM_RECENT_KILLS = 8u;
+	struct COLOSSEUM_KILL_EVENT
+	{
+		std::uint32_t iSequence = 0u, iServerTick = 0u;
+		PLAYER_ID iKillerId = INVALID_PLAYER_ID, iVictimId = INVALID_PLAYER_ID;
+		std::uint8_t iKillerTeam = COLOSSEUM_DRAW_TEAM, iVictimTeam = COLOSSEUM_DRAW_TEAM;
+		std::string strKillerNickname, strVictimNickname;
+	};
+	struct S2C_COLOSSEUM_MATCH_STATE
+	{
+		std::uint64_t iMatchId = 0;
+		COLOSSEUM_MATCH_PHASE ePhase = COLOSSEUM_MATCH_PHASE::END;
+		std::uint8_t iWinnerTeam = COLOSSEUM_NO_TEAM;
+		std::uint32_t iRevision = 0;
+		std::vector<COLOSSEUM_MATCH_PLAYER_STATE> Players;
+		std::uint32_t iServerTick = 0u, iPhaseStartTick = 0u, iPhaseEndTick = 0u;
+		std::uint32_t iLeftScore = 0u, iRightScore = 0u;
+		std::uint8_t iWinningTeam = COLOSSEUM_DRAW_TEAM;
+		std::uint8_t iExpectedPlayers = 0u;
+		std::vector<COLOSSEUM_MATCH_PLAYER_STATE> Participants;
+		std::vector<COLOSSEUM_KILL_EVENT> RecentKills;
+	};
+	bool Write_Message(CPacketWriter&, const C2S_COLOSSEUM_RECRUIT&);
+	bool Read_Message(CPacketReader&, C2S_COLOSSEUM_RECRUIT&);
+	bool Write_Message(CPacketWriter&, const C2S_COLOSSEUM_LOAD_READY&);
+	bool Read_Message(CPacketReader&, C2S_COLOSSEUM_LOAD_READY&);
+	bool Write_Message(CPacketWriter&, const C2S_COLOSSEUM_RETURN&);
+	bool Read_Message(CPacketReader&, C2S_COLOSSEUM_RETURN&);
+	bool Write_Message(CPacketWriter&, const S2C_COLOSSEUM_MATCH_STATE&);
+	bool Read_Message(CPacketReader&, S2C_COLOSSEUM_MATCH_STATE&);
 
 	// Offered to the one session standing in an interact-gated trigger box, and
 	// withdrawn when it leaves. bAvailable false clears whatever the Client is
@@ -3307,6 +3391,16 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		S2C_CHAT& message);
 
+    enum class GUIDE_CONTROL_ACTION : std::uint8_t { START, STOP, END };
+    struct C2S_GUIDE_CONTROL
+    {
+        std::uint32_t iRequestSequence = 0u;
+        NET_ENTITY_ID iGuideNetEntityId = INVALID_NET_ENTITY_ID;
+        GUIDE_CONTROL_ACTION eAction = GUIDE_CONTROL_ACTION::START;
+    };
+    bool Write_Message(CPacketWriter& writer, const C2S_GUIDE_CONTROL& message);
+    bool Read_Message(CPacketReader& reader, C2S_GUIDE_CONTROL& message);
+
 	// Authored dialogue is a server event, independent of player chat's byte limit.
 	inline constexpr std::size_t MAX_GUIDE_PROMPT_TEXT_BYTES = 512u;
 	struct S2C_GUIDE_PROMPT
@@ -3369,6 +3463,8 @@ namespace LostArk::Shared
 	{
 		VALTAN = 0,
 		KAKULSAYDON,
+		MAHARAKA,
+		MAHARAKA_RETURN,
 		END
 	};
 

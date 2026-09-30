@@ -11,11 +11,11 @@ class CUILayoutRuntime;
 CUI_Sprite GameObjects from Data/UI/Repair/RepairUI.json through CUILayoutRuntime, the same
 path CInventoryView uses.
 
-This slice owns the window only: chrome, the two section labels, the equipped 8x2 and bag 8x3
-slot frames, the two cost rows with their guild-discount icons, the two repair buttons and the
-money row. Durability values, repair cost and the Server command are a later vertical slice, so
-every slot draws its empty frame and both cost figures read 0 -- nothing here invents a number
-the Server has not sent.
+The equipped 8x2 and bag 8x3 slot frames list the damaged gear only: each slot shows the
+piece's icon (a listed piece is a damaged one; no percent is drawn). The two cost rows show what the Server
+will bill for repairing the worn pieces and for every damaged piece, and the silver row shows the
+purse. A repair button is live only when there is something to repair and the purse covers it.
+All of it reads the Server's inventory snapshot; the window invents no number.
 
 There is no toggle key: retail opens this from a repair NPC and which NPC is not decided yet.
 CMainApp drives it through Open/Close, and Escape closes it like every other runtime window. */
@@ -44,9 +44,8 @@ public:
 	LEVEL::STATIC and keep their last state across a level change unless told otherwise. */
 	void Hide();
 
-	/* One-shot: true exactly once the frame a repair button was released over itself.
-	bAllSlots distinguishes 모든 장비 수리 from 착용 장비 수리. No consumer yet -- the Server
-	contract is a later slice -- so CMainApp only consumes it so the button cannot latch. */
+	/* One-shot: true exactly once the frame a live repair button was clicked. bAllSlots tells
+	the all-gear button from the worn-gear button; CMainApp sends the typed repair request. */
 	bool_t Try_Consume_RepairRequest(bool_t& bAllSlots);
 
 private:
@@ -58,9 +57,21 @@ private:
 	void Clamp_ToScreen();
 	/* Close button and the two repair buttons: hover tint and the release edge. */
 	void Update_Buttons();
+	/* Rebuilds the worn and bag lists of damaged gear and the two bills from the snapshot. */
+	void Refresh_DamagedGear();
 
 private:
+	struct GEAR_ENTRY
+	{
+		string strItemId;
+		uint8_t iPercent = 100;
+	};
+
 	unique_ptr<CUILayoutRuntime> m_pBackgroundView;
+	vector<GEAR_ENTRY> m_EquippedGear;
+	vector<GEAR_ENTRY> m_BagGear;
+	uint32_t m_iEquippedCost = 0u;
+	uint32_t m_iAllCost = 0u;
 
 	bool_t m_bOpen = false;
 

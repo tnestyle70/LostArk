@@ -24,7 +24,7 @@ struct FProfilerCaptureFile final
 };
 
 // Context is sampled at export on the main thread; it does not assert that every
-// historical frame used the same camera, level, render settings or window size.
+// historical frame used the same camera, level, render settings, focus or window size.
 struct FProfilerCaptureContext final
 {
     bool Valid = false;
@@ -36,6 +36,11 @@ struct FProfilerCaptureContext final
     float ShadowWidth = 0.f, ShadowHeight = 0.f, ShadowStrength = 0.f;
     std::string Adapter;
     uint32_t DeviceCreationFlags = 0;
+    bool ClientWindowForeground = false, ProcessForeground = false, WindowMinimized = false;
+    // Same checkbox-resolved limits as CMainApp::Limit_FrameRate; 0 means disabled.
+    // Effective selects foreground/background by process ownership. It is not measured FPS
+    // and excludes the separate minimized-frame message wait.
+    int32_t ForegroundFpsLimit = 0, BackgroundFpsLimit = 0, EffectiveFpsLimit = 0;
 };
 
 class CProfilerCaptureIO final

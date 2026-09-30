@@ -254,17 +254,17 @@ namespace
 
 	bool_t CompositionWorldPivot(const CWorldSequencePlayer& player, const std::string& id,
 		float4x4_t& out, const uint32_t emissionIndex = 0u, const std::string& bone = {},
-        const bool_t boneRotation = false)
+        const bool_t boneRotation = false, const std::string& effectTrackId = {})
 	{
 		const auto* group = player.Get_Document().Find_ObjectResource(id);
-		if (!group || group->motionInstanceIds.empty()) return player.Try_GetSequencePivot(id, out, emissionIndex, bone, boneRotation);
+		if (!group || group->motionInstanceIds.empty()) return player.Try_GetSequencePivot(id, out, emissionIndex, bone, boneRotation, effectTrackId);
 		bool_t found = false;
 		for (const auto& member : CompositionWorldMotions(player.Get_Document(), id))
 		{
 			float4x4_t visible;
 			if (!player.Try_GetObjectPivot(member, visible)) continue;
 			float4x4_t pivot;
-			if (!player.Try_GetSequencePivot(member, pivot, emissionIndex, bone, boneRotation)) continue;
+			if (!player.Try_GetSequencePivot(member, pivot, emissionIndex, bone, boneRotation, effectTrackId)) continue;
 			if (found) return false; // Parallel visible motions have no unique effect anchor.
 			out = pivot; found = true;
 		}
@@ -1797,6 +1797,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			"[Level_KakulSaydonArena] Failed to apply replication event.\n");
 	}
 	CEstherActionSoundCueDocument::Update_SoundAudience();
+	m_PartyTransferNotice.Update_TransferNotice(m_Replication);
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
 	m_InteractKeyPrompt.Update(fTimeDelta, m_Replication.Get_LocalCharacter(),
 		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId(),
@@ -2104,7 +2105,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		else value.clockMs += fTimeDelta * 1000.f;
 		auto cueTargets = targets;
 		cueTargets.objectEmissionAnchor = value.emissionAnchor;
-		(void)value.player->Seek_AllToMs(value.clockMs, cueTargets);
+		(void)value.player->Seek_AllToMs(value.clockMs, cueTargets, false);
 		value.player->Update(0.f, cueTargets);
 		if (!value.player->Has_ActiveInstances()) cue = m_OwnedWorldCues.erase(cue);
 		else ++cue;
@@ -4787,7 +4788,7 @@ void Client::CLevel_KakulSaydonArena::Update_CardMazePresentation(f32_t dt)
 			elapsed >= float(instance.startDelayMs) && elapsed < float(instance.startDelayMs + sequence->durationMs);
 		if (!active) { m_SequencePlayer.Stop_Instance(instance.instanceId, targets, true); continue; }
 		if (!m_SequencePlayer.Is_Playing(instance.instanceId) && !m_SequencePlayer.Play(instance.instanceId, targets)) continue;
-		(void)m_SequencePlayer.Seek_InstanceToMs(instance.instanceId, elapsed, targets);
+		(void)m_SequencePlayer.Seek_InstanceToMs(instance.instanceId, elapsed, targets, false);
 	}
 	m_bCardMazeMarchPlaying = playing;
 }
@@ -5108,7 +5109,8 @@ void Client::CLevel_KakulSaydonArena::Update_TriggerMoveFade(
 
 bool_t Client::CLevel_KakulSaydonArena::Try_GetCompositionWorldPivot(
  const std::string_view instanceId, float4x4_t& out, const std::string_view occurrenceId,
- const std::uint32_t emissionIndex, const std::string& bone, const bool_t boneRotation) const
+ const std::uint32_t emissionIndex, const std::string& bone, const bool_t boneRotation,
+ const std::string& effectTrackId) const
 {
 #ifdef _DEBUG
  if (!m_CompositionWorldPreviewCues.empty())
@@ -5121,10 +5123,10 @@ bool_t Client::CLevel_KakulSaydonArena::Try_GetCompositionWorldPivot(
     if (selected) return false;
     selected = playback.player.get();
    }
-  return selected && CompositionWorldPivot(*selected, std::string(instanceId), out, emissionIndex, bone, boneRotation);
+  return selected && CompositionWorldPivot(*selected, std::string(instanceId), out, emissionIndex, bone, boneRotation, effectTrackId);
  }
 #endif
- return m_SequencePlayer.Try_GetSequencePivot(std::string(instanceId), out, emissionIndex, bone, boneRotation);
+ return m_SequencePlayer.Try_GetSequencePivot(std::string(instanceId), out, emissionIndex, bone, boneRotation, effectTrackId);
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Is_CinematicPresentationActive() const
@@ -6338,7 +6340,8 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
 bool_t Client::CLevel_KakulSaydonArena::Try_GetOwnedCompositionWorldPivot(
     std::uint32_t runEpoch, const std::string& memberId, const std::string& sequenceId,
     const std::string& cueId, float4x4_t& out, const std::uint32_t emissionIndex,
-    const std::uint32_t patternSequence, const std::string& bone, const bool_t boneRotation) const
+    const std::uint32_t patternSequence, const std::string& bone, const bool_t boneRotation,
+    const std::string& effectTrackId) const
 {
     const OWNED_WORLD_CUE* found = nullptr;
     for (const auto& [id, cue] : m_OwnedWorldCues)
@@ -6349,7 +6352,7 @@ bool_t Client::CLevel_KakulSaydonArena::Try_GetOwnedCompositionWorldPivot(
             if (found) return false;
             found = &cue;
         }
-    return found && CompositionWorldPivot(*found->player, sequenceId, out, emissionIndex, bone, boneRotation);
+    return found && CompositionWorldPivot(*found->player, sequenceId, out, emissionIndex, bone, boneRotation, effectTrackId);
 }
 
 

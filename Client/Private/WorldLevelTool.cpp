@@ -556,7 +556,7 @@ void CWorldLevelTool::Render()
     if (focused && (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right))) m_InteractionRequested = true;
     ImGui::Text("Active level: %s", m_ActiveAreaId.empty() ? "No world loaded" : m_ActiveAreaId.c_str());
     ImGui::SameLine();
-    if (ImGui::Button("Guide AI"))
+    if (ImGui::Button("DimensionMaster Guide"))
     {
         WORLD_LEVEL_TOOL_REQUEST request; request.kind = WORLD_LEVEL_REQUEST_KIND::OPEN_GUIDE;
         m_Request = std::move(request); m_InteractionRequested = true;

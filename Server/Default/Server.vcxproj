@@ -41,6 +41,7 @@
 	<ClInclude Include="..\Public\ServerCombatGeometry.h" />
 	<ClInclude Include="..\Public\ServerCombatHitRuntime.h" />
 	<ClInclude Include="..\Public\PlayerSkillSystem.h" />
+    <ClInclude Include="..\Public\ColosseumCombatPolicy.h" />
 	<ClInclude Include="..\Public\ServerNavigation.h" />
 	<ClInclude Include="..\Public\ValtanBrain.h" />
 	<ClInclude Include="..\Public\KoukuSaydonBrain.h" />
@@ -64,6 +65,7 @@
     <ClCompile Include="..\Private\GameRoom_MaharakaAI.cpp" />
     <ClCompile Include="..\Private\ServerGameplayContractTests_MaharakaAI.cpp" />
     <ClCompile Include="..\Private\GameRoom_Guide.cpp" />
+    <ClCompile Include="..\Private\GameRoom_Colosseum.cpp" />
     <ClCompile Include="..\Private\GameRoom_GuideThreat.cpp" />
     <ClCompile Include="..\Private\ServerGameplayContractTests_Guide.cpp" />
     <ClCompile Include="..\Private\GameRoom.cpp" />
@@ -345,6 +347,8 @@
     <ClCompile Include="..\Private\ServerGameplayContractTests_WorldTriggers.cpp">
 	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
 	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ColosseumCombat.cpp" />
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ColosseumMatch.cpp" />
     <ClCompile Include="..\Private\ServerGameplayContractTests_SkillStages.cpp">
 	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
 	</ClCompile>

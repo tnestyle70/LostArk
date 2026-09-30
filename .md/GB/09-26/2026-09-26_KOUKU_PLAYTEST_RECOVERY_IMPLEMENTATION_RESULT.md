@@ -771,3 +771,67 @@ Client/UI와4클라를 에이전트가 실행하지 않았다. 마리오1~4의 c
 청취 확인으로 남긴다. Server/Client 모두 protocol115의 새 실행 파일과 게시본을 사용해야
 하며 로컬 파일 게시가 원격 Server process를 갱신한 것은 아니다. 기존 사용자 RESULT의
 미커밋 기록을 보존하고 이번 G12~G15 추가 기록만 기능 커밋에 포함한다.
+
+### G15 후속. 2026-10-01 최초 진입 사운드의 frame 재시작 수정
+
+현재 1관문 P4.world.14가 0ms에 circusfinale WORLD를 시작하고, 그 template의
+sound.kouku.source.circusfinale.circuspopup이200ms에 재생된다. 문제 WAV는
+Client/Bin/Resources/Sound/KoukuSaton/Events/scene_midnightc_ed_circuspopup.source.wav다.
+float32/stereo44100Hz/452760frames(10.266667초), peak0.95739615이며 full-scale 초과와
+NaN/Inf는0이다. SHA256은8df0e3e15068a3173b505969d17d480fd246520c43c3335e9169a70fdcde0e5d다.
+사용자도 이 WAV 단독 재생은 깨지지 않는다고 확인했다.
+
+CLevel_KakulSaydonArena::Update는 owned WORLD를 매 frame Seek_AllToMs로 샘플한다.
+기존 함수가 매번 seekSounds=true로 설정하여 Apply_Sounds의 Stop_SoundCue→Play_SoundCue를
+반복했다. 영상의 시간 감속과 무관한 채널 수명 오류다. 13.496초 뒤의 Composition SOUND는
+다른 소비자이므로 첫 구간만 깨진다는 관찰과 일치한다.
+
+Seek_AllToMs에 기본true인 discontinuous 인자를 추가하고 owned WORLD 연속 갱신만false로
+호출했다. 기존 Seek_InstanceToMs와 동일하게 역행·250ms 초과 점프는 seek하고 정상전진은
+채널을 유지한다. 최초 catch-up·MapTool/preview scrub·오류 instance 정리·정지 경로를 유지했다.
+기존 C++3개 파일만 수정했고 WAV·저작 JSON·음량·시작시각·속도·protocol은 바꾸지 않았다.
+
+out/KoukuEntryAudio20261001의 probe는 실제 제품 함수9개를 추출하고 장면/오디오 장치 경계만
+stub으로 대체했다. 동일10초/60FPS 입력에서 수정 전Play589/Stop588, 수정 후Play1/Stop0;
+120FPS에서Play1177/Stop1176→Play1/Stop0이다. 수정 전1806, 수정 후1840 assertions가
+실패0으로 통과했다. 명시 scrub·역행·251ms점프·250ms경계·같은 시각·잘못된 입력·pause·tail·
+finished·missing asset·audience·실패 instance 격리·loop·Movie external clock도 포함한다.
+실행 정본은run-probe.ps1, 결과는results.json이다. FMOD 실청이나 GPU 재생의 성공 증거는 아니다.
+
+사용자 확인은 원본 WAV 단독 실청까지다. 수정한 Client의 입장 첫10초 실청은 아직 남는다.
+에이전트는 Client/UI를 실행·조작하지 않았다. 일반 Product 빌드 결과는 이어서 기록한다.
+사운드 수정의 첫 Debug Product Build는 PASS다. 영수증은
+out/BuildPipeline/runs/20260930T192918233Z-debug-product.json이며 missing/invalid runtime input은
+모두 빈 배열이다. Engine/Shared/Server는 출력 쓰기0, Client는OBJ64/CSO30/EXE1이 갱신됐다.
+작업 전부터 있던 다른 기능의 변경도 현재 작업 폴더의 정상 증분 빌드에 포함되므로 위 전체
+산출물 수를 사운드3파일의 전용 비용으로 해석하지 않는다. WAV와 sound data publish는 없다.
+사용자가 추가한 Release 화면 문구·F1 이동 버튼을 반영한 최종 Product Debug/Release도
+모두 PASS다. 영수증은20260930T194308285Z-debug-product.json과
+20260930T194348823Z-release-product.json이며 상세 산출물·증분 재사용 근거는
+.md/GB/10-01/2026-10-01_RELEASE_F1_LEVEL_NAVIGATION_RESULT.md G03에 기록했다.
+
+
+### 2026-10-01 통합: 낮은 FPS에서 입장 첫 WAV 재시작 회귀
+
+이전 수정의 `discontinuous=false` 호출에도 Seek_AllToMs와 Seek_InstanceToMs는 전진 간격이
+250ms를 넘으면 `seekSounds=true`로 바꿨다. 따라서 2~3 FPS 또는 긴 진입 프레임에서
+같은 소리를 다시 Stop/Play하는 결함이 남았다. 연속 전진은 간격과 무관하게 채널을 유지하도록
+바꾸고, 명시 scrub과 시계 역행의 재시작은 유지했다. WORLD 시각·음량·WAV는 변경하지 않았다.
+CardMaze의 매 프레임 sampler도 false를 전달한다. 이 한 줄은 Q 상호작용 회귀 해결 증거가 아니다.
+
+`out/KoukuEntryAudioContinuous20261001/run-probe.ps1`은 제품 함수9개를 추출한다.
+이전/수정 각각1,991 검사 PASS다. 기존2 FPS/10초는 Play20/Stop19, 3 FPS는 Play30/Stop29였으며
+수정 뒤에는 둘 다 Play1/Stop0이다. 60/120 FPS, explicit/backwards, pause/tail, 누락 asset,
+실패 instance 격리, 반복·종료와 Movie 외부시계 회귀도 유지했다.
+
+`run-fmod-probe.ps1`은 제품 Sound_Manager 함수10개를 추가 추출하고 실제 FMOD DLL 및
+설치된 circuspopup WAV를 사용했다. WAV SHA256은 위 기록과 같은8df0e3e…e5d이며 디코더 길이는
+10,266ms다. FMOD_OUTPUTTYPE_NOSOUND_NRT에서 이전5,794/수정5,834 검사 PASS다.
+기존2 FPS/8초의 Play16/Stop15 및3 FPS의 Play24/Stop23을 실제 FMOD 채널로 재현했고,
+수정 후에는 각각1/0, mixer 위치는 약7.8초까지 전진했다. 60/120 FPS도 채널을 유지하며
+명시 scrub·역행은 실제 채널을 교체한다. `results.json`, `fmod-results.json`,
+`source-manifest.json`에 실행결과와 소스·DLL·WAV hash를 기록했다. `git diff --check`도 통과했다.
+
+이 검사는 장면/target·focus·category 경계를 대체한 비출력 mixer 검사다. 실제 Client 전체 빌드와
+사용자 청감 확인을 대신하지 않는다. Client/UI는 실행하지 않았다. Release의 Server 기술문구
+조사는 사용자가 보류했으므로 문구 관련 코드는 바꾸지 않았다.

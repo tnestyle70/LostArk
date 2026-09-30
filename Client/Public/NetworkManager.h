@@ -306,7 +306,13 @@ public:
 	(S2C_COLOSSEUM_MATCH_FOUND) is stored in CLevelTransitionService for the loading screen. */
 	bool Send_ColosseumQueueJoin(std::uint32_t requestSequence, std::string_view npcPlacementId);
 	bool Send_ColosseumQueueLeave(std::uint32_t requestSequence);
+	bool Send_ColosseumRecruit(std::uint32_t requestSequence, std::uint64_t matchId,
+		LostArk::Shared::NET_ENTITY_ID mercenaryNetEntityId);
 	bool Try_Consume_ColosseumQueueState(LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE& outState);
+	bool Send_ColosseumLoadReady(std::uint64_t matchId);
+	bool Send_ColosseumReturn(std::uint64_t matchId);
+	const LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE& Get_ColosseumMatchState() const { return m_ColosseumMatchState; }
+	double Get_ColosseumServerTick() const;
 	// Raid Clear screen's "돌아가기" button, Valtan Arena only -- reverse trip
 	// of Send_ConfirmNpcEntry, no NPC target needed.
 	bool Send_ReturnToBern(std::uint32_t requestSequence);
@@ -314,6 +320,7 @@ public:
 	NetEntityId is a real player in this room; the answer (if any) arrives
 	as an S2C_PARTY_INVITE_RECEIVED replication event on the target's own
 	connection, not a direct reply to the sender. */
+	bool Send_GuideControl(const LostArk::Shared::C2S_GUIDE_CONTROL& request);
 	bool Send_PartyInvite(
 		std::uint32_t requestSequence,
 		LostArk::Shared::NET_ENTITY_ID targetNetEntityId);
@@ -627,6 +634,8 @@ private:
 	std::deque<LostArk::Shared::S2C_GATE_PROGRESS_STATE> m_GateProgressStates;
 	std::deque<LostArk::Shared::S2C_RAID_MVP_RESULT> m_RaidMvpResults;
 	std::deque<LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE> m_ColosseumQueueStates;
+	LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE m_ColosseumMatchState{};
+	std::uint64_t m_iColosseumStateReceivedMs = 0u;
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT> m_DebugKoukuHudModeResults;
 	struct WORLD_ENTITY_SPAWN_REQUEST
 	{

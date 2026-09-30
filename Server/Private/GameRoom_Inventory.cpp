@@ -339,6 +339,7 @@ bool LostArk::Server::CGameRoom::Apply_SetEquipment(
 		equipped.strItemId = request.strItemId;
 		equipped.iQuantity = 1u;
 		equipped.eEquippedSlot = request.eSlot;
+		equipped.iDurabilityPercent = bagEntry->iDurabilityPercent;
 		inventory.push_back(std::move(equipped));
 	}
 	else
@@ -398,19 +399,29 @@ void LostArk::Server::CGameRoom::Handle_RepairEquipment(
 	const auto playerIter = m_Players.find(sessionIter->second);
 	if (playerIter == m_Players.end())
 		return;
-	/* Only worn gear wears, so "repair equipped" and "repair all" restore the same parts. Each
-	   part costs silver in proportion to how worn it is: 1000 silver at 0 percent, rounded up.
-	   A purse that cannot cover the whole bill repairs nothing; the answer below still goes out
-	   so the window sees the unchanged state. */
+	/* The window's two buttons: "repair equipped" mends the worn weapon and armor, "repair all"
+	   mends every damaged piece, worn or in the bag. Only gear ever drops below 100, so the
+	   percent alone says what is damaged. Each piece costs silver in proportion to its wear:
+	   1000 silver at 0 percent, rounded up. A purse that cannot cover the whole bill repairs
+	   nothing; the answer below still goes out so the window sees the unchanged state. */
 	SERVER_PLAYER& player = playerIter->second;
-	constexpr std::uint32_t MAX_REPAIR_SILVER_PER_PART = 1000u;
 	std::uint32_t cost = 0u;
-	for (const std::uint8_t percent : player.DurabilityPercent)
-		cost += (MAX_REPAIR_SILVER_PER_PART * (100u - percent) + 99u) / 100u;
+	for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& item : player.Inventory)
+	{
+		if (item.iDurabilityPercent >= 100u ||
+			(!request.bAllSlots && !LostArk::Shared::Is_Durable_Slot(item.eEquippedSlot)))
+			continue;
+		cost += LostArk::Shared::Repair_Silver_Cost(item.iDurabilityPercent);
+	}
 	if (player.Purse.iSilver >= cost)
 	{
 		player.Purse.iSilver -= cost;
-		player.DurabilityPercent.fill(100);
+		for (LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& item : player.Inventory)
+		{
+			if (item.iDurabilityPercent < 100u &&
+				(request.bAllSlots || LostArk::Shared::Is_Durable_Slot(item.eEquippedSlot)))
+				item.iDurabilityPercent = 100u;
+		}
 		player.bDurabilityDirty = false;
 		if (0u != cost)
 			player.bRestoreAvailable = false;
@@ -918,7 +929,7 @@ void LostArk::Server::CGameRoom::Handle_ConfirmNpcEntry(
 	transfer.eCharacterClass = player.eCharacterClass;
 	transfer.strNickName = player.strNickName;
 	transfer.iVoiceType = player.iVoiceType;
-	transfer.CarriedDurability = player.Get_DurabilityState();
+	transfer.strAppearanceJson = player.strAppearanceJson;
 	transfer.iHonorTitleId = player.iHonorTitleId;
 	transfer.iPartyRequestSequence = request.iRequestSequence;
 	for (const PLAYER_ID memberId : batchMemberIds)
@@ -933,8 +944,7 @@ void LostArk::Server::CGameRoom::Handle_ConfirmNpcEntry(
 				guideIter->eTargetWorldId, PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE);
 			return;
 		}
-		if (batchMemberIds.size() > 1u ||
-            (partyIdIter != m_PartyIdByPlayerId.end() && m_Guides.contains(partyIdIter->second)))
+		if (batchMemberIds.size() > 1u)
 			transfer.PartyBatchSessionIds.push_back(memberIter->second.iSessionId);
 	}
 	m_PendingWorldTransfers.push_back(std::move(transfer));
@@ -945,12 +955,8 @@ namespace
 	// The Colosseum NPC inside the Bern castle; the queue request names it and the Server re-tests
 	// that the player stands next to it.
 	constexpr const char* COLOSSEUM_QUEUE_NPC_PLACEMENT_ID = "npc.bern.25184_1.2";
-	// Debug builds start a match with the one player who joined; Release needs a full four.
-#ifdef _DEBUG
-	constexpr std::uint8_t COLOSSEUM_MATCH_REQUIRED_PLAYERS = 1u;
-#else
+	// Four is queue capacity; the first accepted player opens a ten-second collection window.
 	constexpr std::uint8_t COLOSSEUM_MATCH_REQUIRED_PLAYERS = 4u;
-#endif
 }
 
 void LostArk::Server::CGameRoom::Send_ColosseumQueueState(
@@ -965,11 +971,20 @@ void LostArk::Server::CGameRoom::Send_ColosseumQueueState(
 	message.iQueuedCount = static_cast<std::uint8_t>(
 		(std::min)(m_ColosseumQueue.size(), MAX_COLOSSEUM_MATCH_PLAYERS));
 	message.iRequiredCount = COLOSSEUM_MATCH_REQUIRED_PLAYERS;
+	message.iServerTick = m_iServerTick;
+	message.iDeadlineTick = m_iColosseumQueueDeadline;
 	CPacketWriter writer;
 	if (!Write_Message(writer, message))
 		return;
 	if (!session->Send_Frame(PACKET_TYPE::S2C_COLOSSEUM_QUEUE_STATE, writer.Get_Buffer()))
 		session->Request_Close();
+}
+
+void LostArk::Server::CGameRoom::Broadcast_ColosseumQueueState()
+{
+	for (const auto& entry : m_ColosseumQueue)
+		Send_ColosseumQueueState(entry.iSessionId, LostArk::Shared::COLOSSEUM_QUEUE_STATE::WAITING);
+	m_iColosseumQueueBroadcastTick = m_iServerTick;
 }
 
 void LostArk::Server::CGameRoom::Handle_ColosseumQueueJoin(
@@ -1045,22 +1060,22 @@ void LostArk::Server::CGameRoom::Handle_ColosseumQueueJoin(
 		return;
 	}
 
-	// The queue moves players one by one, so a formed party (a companion guide counts as a member)
-	// would be split across two rooms. Refuse instead of splitting it.
+	// The queue must not split an existing human party.
+	// Personal guides wait in Bern and do not occupy queue or team slots.
 	if (const auto partyIdIter = m_PartyIdByPlayerId.find(playerIter->first);
 		partyIdIter != m_PartyIdByPlayerId.end())
 	{
 		const auto membersIter = m_PartyMembersByPartyId.find(partyIdIter->second);
-		if (m_Guides.contains(partyIdIter->second) ||
-			(membersIter != m_PartyMembersByPartyId.end() && membersIter->second.size() > 1u))
+		if (membersIter != m_PartyMembersByPartyId.end() && membersIter->second.size() > 1u)
 		{
 			Fn_Reject();
 			return;
 		}
 	}
 
+	if (m_ColosseumQueue.empty()) m_iColosseumQueueDeadline = m_iServerTick + 300u;
 	m_ColosseumQueue.push_back(COLOSSEUM_QUEUE_ENTRY{ sessionId, request.iRequestSequence });
-	Send_ColosseumQueueState(sessionId, COLOSSEUM_QUEUE_STATE::WAITING);
+	Broadcast_ColosseumQueueState();
 	Try_FormColosseumMatch();
 }
 
@@ -1073,12 +1088,14 @@ void LostArk::Server::CGameRoom::Handle_ColosseumQueueLeave(
 		[sessionId](const COLOSSEUM_QUEUE_ENTRY& entry) { return entry.iSessionId == sessionId; });
 	if (0u != removed)
 		Send_ColosseumQueueState(sessionId, LostArk::Shared::COLOSSEUM_QUEUE_STATE::LEFT);
+	if (m_ColosseumQueue.empty()) m_iColosseumQueueDeadline = 0u;
+	if (removed) Broadcast_ColosseumQueueState();
 }
 
 void LostArk::Server::CGameRoom::Try_FormColosseumMatch()
 {
 	using namespace LostArk::Shared;
-	if (WORLD_ID::BERN != m_eWorldId)
+	if (WORLD_ID::BERN != m_eWorldId || m_bColosseumTransferPending)
 		return;
 
 	const auto isStaged = [this](const SESSION_ID sessionId)
@@ -1100,8 +1117,18 @@ void LostArk::Server::CGameRoom::Try_FormColosseumMatch()
 		const auto sessionIter = m_PlayerIdBySessionId.find(entryIter->iSessionId);
 		const auto playerIter = sessionIter == m_PlayerIdBySessionId.end()
 			? m_Players.end() : m_Players.find(sessionIter->second);
+        const bool conflictingParty = playerIter != m_Players.end() && [&]()
+        {
+            const auto party = m_PartyIdByPlayerId.find(playerIter->first);
+            if (party == m_PartyIdByPlayerId.end()) return false;
+            const auto members = m_PartyMembersByPartyId.find(party->second);
+            return members == m_PartyMembersByPartyId.end() || members->second.size() > 1u;
+        }();
+        const bool pendingVote = playerIter != m_Players.end() && std::any_of(
+            m_RaidEntryProposals.begin(), m_RaidEntryProposals.end(), [&playerIter](const auto& vote)
+            { return std::find(vote.Voters.begin(), vote.Voters.end(), playerIter->first) != vote.Voters.end(); });
 		if (playerIter == m_Players.end() || 0u == playerIter->second.iCurrentHp ||
-			isStaged(entryIter->iSessionId))
+			isStaged(entryIter->iSessionId) || conflictingParty || pendingVote)
 		{
 			dropped.push_back(entryIter->iSessionId);
 			entryIter = m_ColosseumQueue.erase(entryIter);
@@ -1112,68 +1139,189 @@ void LostArk::Server::CGameRoom::Try_FormColosseumMatch()
 	for (const SESSION_ID sessionId : dropped)
 		Send_ColosseumQueueState(sessionId, COLOSSEUM_QUEUE_STATE::LEFT);
 
-	if (m_ColosseumQueue.size() < COLOSSEUM_MATCH_REQUIRED_PLAYERS)
-		return;
-	const std::size_t count = (std::min)(m_ColosseumQueue.size(), MAX_COLOSSEUM_MATCH_PLAYERS);
+	if (m_ColosseumQueue.empty()) { m_iColosseumQueueDeadline = 0u; return; }
+	if (!m_iColosseumQueueDeadline) m_iColosseumQueueDeadline = m_iServerTick + 300u;
+	if (!dropped.empty() || static_cast<std::int32_t>(m_iServerTick - m_iColosseumQueueBroadcastTick) >= 30)
+		Broadcast_ColosseumQueueState();
+	if (static_cast<std::int32_t>(m_iServerTick - m_iColosseumQueueDeadline) < 0) return;
+	std::vector<SESSION_ID> seats;
+	for (std::size_t i = 0; i < (std::min)(m_ColosseumQueue.size(), MAX_COLOSSEUM_MATCH_PLAYERS); ++i)
+		seats.push_back(m_ColosseumQueue[i].iSessionId);
+	const auto& leader = m_Players.at(m_PlayerIdBySessionId.at(seats.front()));
+	SERVER_WORLD_TRANSFER_REQUEST transfer;
+	transfer.iSessionId = seats.front();
+	transfer.eTargetWorldId = WORLD_ID::COLOSSEUM;
+	transfer.eCharacterClass = leader.eCharacterClass;
+	transfer.strNickName = leader.strNickName;
+	transfer.PartyBatchSessionIds = std::move(seats);
+	transfer.bColosseumMatch = true;
+	m_PendingWorldTransfers.push_back(std::move(transfer));
+	m_bColosseumTransferPending = true;
+}
 
-	// Random team split: shuffle the seats, the first half (rounded up) is the left team. One player
-	// leaves the right team empty, three make 2 v 1.
-	std::vector<std::size_t> seats(count);
-	for (std::size_t index = 0u; index < count; ++index)
-		seats[index] = index;
-	static thread_local std::mt19937 generator{ std::random_device{}() };
-	std::shuffle(seats.begin(), seats.end(), generator);
-	std::vector<std::uint8_t> teams(count, 1u);
-	for (std::size_t index = 0u; index < (count + 1u) / 2u; ++index)
-		teams[seats[index]] = 0u;
+bool LostArk::Server::CGameRoom::Configure_ColosseumMatch(const std::uint64_t matchId, const std::vector<SESSION_ID>& sessions)
+{
+	if (m_eWorldId != LostArk::Shared::WORLD_ID::COLOSSEUM || !matchId || m_iColosseumMatchId ||
+		(sessions.empty() || sessions.size() > LostArk::Shared::MAX_COLOSSEUM_MATCH_PLAYERS) || !m_Players.empty()) return false;
+	std::set<SESSION_ID> unique(sessions.begin(), sessions.end());
+	if (unique.size() != sessions.size() || unique.contains(INVALID_SESSION_ID)) return false;
+	m_iColosseumMatchId = matchId; m_ColosseumSessions = sessions;
+	m_eColosseumPhase = LostArk::Shared::COLOSSEUM_MATCH_PHASE::LOADING;
+	m_iColosseumPhaseStart = m_iServerTick; m_iColosseumPhaseEnd = m_iServerTick + 3600u;
+	return true;
+}
 
-	struct MATCHED_SEAT
-	{
-		COLOSSEUM_QUEUE_ENTRY Entry;
-		CHARACTER_CLASS_ID eCharacterClass = CHARACTER_CLASS_ID::END;
-		std::string strNickName;
-		std::uint8_t iVoiceType = MIN_VOICE_TYPE;
-		HONOR_TITLE_ID iHonorTitleId = INVALID_HONOR_TITLE_ID;
-		SERVER_DURABILITY_STATE Durability;
-	};
-	std::vector<MATCHED_SEAT> seatsToMove;
-	S2C_COLOSSEUM_MATCH_FOUND match{};
-	for (std::size_t index = 0u; index < count; ++index)
-	{
-		const COLOSSEUM_QUEUE_ENTRY& entry = m_ColosseumQueue[index];
-		const SERVER_PLAYER& player = m_Players.at(m_PlayerIdBySessionId.at(entry.iSessionId));
-		seatsToMove.push_back(MATCHED_SEAT{
-			entry, player.eCharacterClass, player.strNickName, player.iVoiceType,
-			player.iHonorTitleId, player.Get_DurabilityState() });
-		match.Participants.push_back(COLOSSEUM_MATCH_PARTICIPANT{
-			player.strNickName, player.eCharacterClass, teams[index] });
-	}
-	m_ColosseumQueue.erase(
-		m_ColosseumQueue.begin(), m_ColosseumQueue.begin() + static_cast<std::ptrdiff_t>(count));
+void LostArk::Server::CGameRoom::Remove_ColosseumExpectedSession(const SESSION_ID sessionId)
+{
+	// Preserve arrival indices when a participant leaves; never compress/reassign teams.
+	for (auto& expected : m_ColosseumSessions) if (expected == sessionId) expected = INVALID_SESSION_ID;
+}
 
-	for (std::size_t index = 0u; index < seatsToMove.size(); ++index)
+void LostArk::Server::CGameRoom::Handle_ColosseumLoadReady(const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_COLOSSEUM_LOAD_READY& request)
+{
+	if (!m_iColosseumMatchId || request.iMatchId != m_iColosseumMatchId ||
+		m_eColosseumPhase != LostArk::Shared::COLOSSEUM_MATCH_PHASE::LOADING) return;
+	const auto found = m_PlayerIdBySessionId.find(sessionId);
+	if (found == m_PlayerIdBySessionId.end()) return;
+	m_Players.at(found->second).bColosseumReady = true;
+}
+
+void LostArk::Server::CGameRoom::Handle_ColosseumReturn(const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_COLOSSEUM_RETURN& request)
+{
+	using namespace LostArk::Shared;
+	if (request.iMatchId != m_iColosseumMatchId || !m_iColosseumMatchId ||
+		m_eColosseumPhase != COLOSSEUM_MATCH_PHASE::FINISHED) return;
+	const auto found = m_PlayerIdBySessionId.find(sessionId);
+	if (found == m_PlayerIdBySessionId.end() || std::any_of(m_PendingWorldTransfers.begin(), m_PendingWorldTransfers.end(),
+		[sessionId](const auto& row) { return row.iSessionId == sessionId; })) return;
+	const auto& player = m_Players.at(found->second);
+	SERVER_WORLD_TRANSFER_REQUEST transfer{};
+	transfer.iSessionId = sessionId; transfer.eTargetWorldId = WORLD_ID::BERN;
+	transfer.eCharacterClass = player.eCharacterClass; transfer.strNickName = player.strNickName;
+	transfer.iVoiceType = player.iVoiceType; transfer.iHonorTitleId = player.iHonorTitleId;
+	transfer.strAppearanceJson = player.strAppearanceJson;
+	transfer.PartyBatchSessionIds.push_back(sessionId);
+	transfer.strSpawnPlacementOverrideId = COLOSSEUM_QUEUE_NPC_PLACEMENT_ID;
+	transfer.CarriedInventory = player.Inventory; transfer.CarriedPurse = player.Purse;
+	m_PendingWorldTransfers.push_back(std::move(transfer));
+}
+
+void LostArk::Server::CGameRoom::Update_ColosseumMatch(const std::uint32_t tick)
+{
+	using namespace LostArk::Shared;
+	if (!m_iColosseumMatchId) return;
+	const auto reached = [tick](std::uint32_t deadline) { return static_cast<std::int32_t>(tick - deadline) >= 0; };
+	if (m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::LOADING)
 	{
-		const MATCHED_SEAT& seat = seatsToMove[index];
-		const std::shared_ptr<CClientSession> session = Find_Session(seat.Entry.iSessionId);
-		match.iLocalIndex = static_cast<std::uint8_t>(index);
-		CPacketWriter writer;
-		if (nullptr == session || !Write_Message(writer, match))
-			continue;
-		if (!session->Send_Frame(PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND, writer.Get_Buffer()))
+		bool allReady = true; std::size_t present = 0u;
+		for (auto& expected : m_ColosseumSessions)
 		{
-			session->Request_Close();
+			if (!expected) continue;
+			const auto found = m_PlayerIdBySessionId.find(expected);
+			const bool ready = found != m_PlayerIdBySessionId.end() && m_Players.at(found->second).bColosseumReady;
+			if (!ready && reached(m_iColosseumPhaseEnd))
+			{
+				if (const auto session = Find_Session(expected)) session->Request_Close();
+				expected = INVALID_SESSION_ID; continue;
+			}
+			++present; allReady = allReady && ready;
+		}
+		if (present && allReady)
+		{
+			m_eColosseumPhase = COLOSSEUM_MATCH_PHASE::RECRUITING;
+			m_iColosseumPhaseStart = tick; m_iColosseumPhaseEnd = 0u;
+			++m_iColosseumRevision;
+			Try_StartColosseumEntry();
+		}
+	}
+	else if (m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::ENTRY_COUNTDOWN && reached(m_iColosseumPhaseEnd))
+	{
+		m_eColosseumPhase = COLOSSEUM_MATCH_PHASE::INTRO;
+		m_iColosseumPhaseStart = m_iColosseumPhaseEnd; m_iColosseumPhaseEnd += 258u;
+		++m_iColosseumRevision;
+	}
+	else if (m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::INTRO && reached(m_iColosseumPhaseEnd))
+	{
+		m_eColosseumPhase = COLOSSEUM_MATCH_PHASE::COUNTDOWN;
+		m_iColosseumPhaseStart = m_iColosseumPhaseEnd; m_iColosseumPhaseEnd += 300u;
+		++m_iColosseumRevision;
+	}
+	else if (m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::COUNTDOWN && reached(m_iColosseumPhaseEnd))
+	{
+		m_eColosseumPhase = COLOSSEUM_MATCH_PHASE::PLAYING;
+		m_iColosseumPhaseStart = m_iColosseumPhaseEnd; m_iColosseumPhaseEnd += 3600u;
+		++m_iColosseumRevision;
+	}
+	else if (m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::PLAYING && reached(m_iColosseumPhaseEnd))
+	{
+		m_eColosseumPhase = COLOSSEUM_MATCH_PHASE::FINISHED;
+		m_iColosseumPhaseStart = m_iColosseumPhaseEnd; m_iColosseumPhaseEnd = 0u;
+		m_iColosseumWinnerTeam = m_iColosseumScores[0] == m_iColosseumScores[1] ? COLOSSEUM_NO_TEAM : (m_iColosseumScores[0] > m_iColosseumScores[1] ? 0u : 1u);
+		++m_iColosseumRevision;
+	}
+	for (auto& [id, player] : m_Players)
+	{
+		player.bColosseumCombatActive = m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::PLAYING &&
+			player.bColosseumParticipant && player.iColosseumMatchId == m_iColosseumMatchId;
+		player.isCombatReady = player.bColosseumCombatActive;
+		if (!player.bColosseumCombatActive)
+		{
+			// Human movement is available while selecting allies; damage remains phase-gated.
+			if (m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::RECRUITING && player.Is_Human()) continue;
+			player.hasMoveGoal = false; player.MovePath.clear(); player.PendingCommand.Clear();
+			player.Projectiles.clear(); m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
+			if (player.iCurrentHp) { player.eAction = PLAYER_ACTION_STATE::NONE; player.iCurrentSkillId = 0u; }
 			continue;
 		}
-		// The ordinary solo world transfer; the Colosseum has no raid return NPC, so none is named.
-		SERVER_WORLD_TRANSFER_REQUEST transfer{};
-		transfer.iSessionId = seat.Entry.iSessionId;
-		transfer.eTargetWorldId = WORLD_ID::COLOSSEUM;
-		transfer.eCharacterClass = seat.eCharacterClass;
-		transfer.strNickName = seat.strNickName;
-		transfer.iVoiceType = seat.iVoiceType;
-		transfer.CarriedDurability = seat.Durability;
-		transfer.iHonorTitleId = seat.iHonorTitleId;
-		transfer.iPartyRequestSequence = seat.Entry.iRequestSequence;
-		m_PendingWorldTransfers.push_back(std::move(transfer));
+		if (!player.iCurrentHp && player.iColosseumRespawnTick && reached(player.iColosseumRespawnTick))
+		{
+			player.fPositionX = player.fColosseumSpawnX; player.fPositionY = player.fColosseumSpawnY;
+			player.fPositionZ = player.fColosseumSpawnZ; player.fYawDegrees = player.fColosseumSpawnYaw;
+			player.iCurrentHp = player.iMaximumHp; player.iCurrentResource = player.iMaximumResource;
+			player.isCombatReady = true;
+			player.eAction = PLAYER_ACTION_STATE::NONE; player.iCurrentSkillId = 0u; player.iActionStartTick = tick;
+			player.fActionElapsedSeconds = 0.f; player.iColosseumRespawnTick = 0u;
+			player.ActiveBuffs.clear(); player.iShield = 0u; player.CooldownEndTickBySkillId.clear();
+			player.hasMoveGoal = false; player.MovePath.clear(); player.PendingCommand.Clear(); player.TriggerMove = {};
+			player.fKnockbackRemainingSeconds = player.fKnockbackSpeed = 0.f;
+			player.iKnockdownEndTick = player.iHitReactionGraceEndTick = 0u; player.bPushOnlyHitReaction = false;
+			player.iFearEndTick = 0u; player.strFearPresentationId.clear();
+			player.iInvulnerableEndTick = player.iTimeStopEndTick = player.iHolyCharmProtectionEndTick = 0u;
+			player.fFallVelocityY = player.fFallDeathPlaneY = 0.f; player.iFallDeathTick = 0u;
+			player.iAppliedHitMask.reset(); player.iSpawnedProjectileMask = 0u; player.HitWindowTargets.clear();
+			player.hasAppliedSkillDamage = false; player.iComboStage = 0u; player.hasBufferedComboInput = false;
+			player.Clear_Attachment(); player.Clear_PatternBindStatus(); player.Clear_SilenceStatus(); player.Clear_SkillTarget();
+			CPlayerSkillSystem::Reset_Gauges(player, m_GameplayCatalog);
+		}
 	}
+}
+
+void LostArk::Server::CGameRoom::Score_ColosseumKills(const std::uint32_t tick)
+{
+	using namespace LostArk::Shared;
+	if (!m_iColosseumMatchId || m_eColosseumPhase != COLOSSEUM_MATCH_PHASE::PLAYING) return;
+	for (auto& [id, player] : m_Players)
+	{
+		if (!player.bColosseumParticipant || player.iCurrentHp || player.iColosseumRespawnTick) continue;
+		const auto killer = m_Players.find(player.iColosseumKillerId);
+		if (killer != m_Players.end() && killer->second.iColosseumTeam < 2u && killer->second.iColosseumTeam != player.iColosseumTeam)
+		{
+			++m_iColosseumScores[killer->second.iColosseumTeam];
+			++killer->second.iColosseumKills;
+			m_ColosseumRecentKills.push_back({ ++m_iColosseumKillSequence, tick,
+				killer->first, id, killer->second.iColosseumTeam, player.iColosseumTeam,
+				killer->second.strNickName, player.strNickName });
+			if (m_ColosseumRecentKills.size() > MAX_COLOSSEUM_RECENT_KILLS)
+				m_ColosseumRecentKills.erase(m_ColosseumRecentKills.begin());
+		}
+		player.iColosseumKillerId = INVALID_PLAYER_ID; player.iColosseumRespawnTick = tick + 90u;
+		player.Projectiles.clear(); m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
+	}
+}
+
+void LostArk::Server::CGameRoom::Broadcast_ColosseumMatchState()
+{
+	Broadcast_ColosseumState();
 }

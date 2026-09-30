@@ -103,6 +103,21 @@ VS_OUT Build_EffectMeshVertex(VS_IN input, float4x4 world, float4x4 normalMatrix
     worldPosition.xyz += Apply_WarlordNativeWorldPositionOffset(g_SourceMaterialProfile,
         input.position, input.sourceColor, dynamicParameter, world, normalMatrix);
 #endif
+#if EFFECT_SHADER_FAMILY == 7 && EFFECT_NATIVE_PROFILE_GROUP == 5248
+    if (g_SourceMaterialProfile == 5275u)
+    {
+        // Original VS a56e2bb4d7bc804db910c19ed4896bed, instructions 16-23.
+        // ShaderObject byte 268 binds vertex vector 0/1 to cb0[4]/cb0[5].
+        // Preserve the unnormalized world-transformed normal and source cm once.
+        const float2 phase = frac(g_ArtistSourceMaterialTime * float2(.8500000238418579f, 1.5f));
+        const float2 wave = sin((input.uv.yx * float2(1.f, 3.f) + phase.yx) * 6.283185f);
+        const float displacement = wave.x * 3.f + wave.y * 2.f;
+        float3 offset = mul(float4(input.normal, 0.f), world).xyz * displacement;
+        offset *= g_ArtistSourceMaterialParameters[2u].x;
+        offset *= g_ArtistSourceMaterialParameters[2u].y;
+        worldPosition.xyz += offset * .01f;
+    }
+#endif
     output.position = mul(
         worldPosition, mul(g_ViewMatrix, g_ProjMatrix));
     output.worldPosition = worldPosition.xyz;

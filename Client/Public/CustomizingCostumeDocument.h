@@ -30,7 +30,8 @@ public:
 	bool_t Load();
 	/* The class's five visual set ids, indexed by Object_Unit. Null when the class is absent. */
 	const std::vector<std::string>* Find(const std::string& strAssetId) const;
-	/* Optional stable defaultVisualSetId resolves into this unchanged icon order. */
+	/* Optional stable defaultVisualSetId resolves into this unchanged icon order.
+	A hairstyle class with defaultBodyHair=true returns -1 for its own body hair. */
 	int32_t Get_DefaultIndex(const std::string& strAssetId) const;
 	const std::string& Get_Status() const { return m_strStatus; }
 

@@ -24,11 +24,14 @@ namespace LostArk::Server
 			LostArk::Shared::CHARACTER_CLASS_ID::END;
 		std::string strNickName;
 		std::uint8_t iVoiceType = LostArk::Shared::MIN_VOICE_TYPE;
+		std::string strAppearanceJson;
 		// Worn honor title, re-applied by the target room's admission.
 		LostArk::Shared::HONOR_TITLE_ID iHonorTitleId = LostArk::Shared::INVALID_HONOR_TITLE_ID;
 		/* One immutable leader-first batch, not independent transfers. The
 		   room thread stages all target admissions before any source departure. */
 		std::vector<SESSION_ID> PartyBatchSessionIds;
+		// One to four accepted seats, in order; even indices team A, odd team B.
+		bool bColosseumMatch = false;
 		std::uint32_t iPartyRequestSequence = 0u;
 		/* Empty picks the target world's usual free PLAYER_SPAWN placement
 		(Stage_PlayerEntry's default). Non-empty names ANY placement id in the
@@ -46,8 +49,6 @@ namespace LostArk::Server
 		std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT> CarriedInventory;
 		/* The purse, carried under the same rule as CarriedInventory. */
 		SERVER_PURSE CarriedPurse;
-		// Server-only world transfer state; independent of inventory grant semantics.
-		SERVER_DURABILITY_STATE CarriedDurability;
 	};
 
 	/* One player's view of one interact-gated box changing. The room turns

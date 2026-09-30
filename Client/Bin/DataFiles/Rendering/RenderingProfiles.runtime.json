@@ -1,7 +1,7 @@
 {
     "schema":  "lostark.rendering-profiles",
     "formatVersion":  1,
-    "revision":  88,
+    "revision":  90,
     "globalQuality":  {
                           "ssaoEnabled":  true,
                           "ssaoRadius":  0.0399999991,
@@ -10388,6 +10388,153 @@
                                                                 }
                                                     }
                                                 ]
+                     },
+                     {
+                         "profileId":  "scene.colosseum.source-day.v1",
+                         "exposureMultiplier":  1,
+                         "bloomIntensityMultiplier":  0,
+                         "mapLightIntensityMultiplier":  1,
+                         "light":  {
+                                       "type":  "directional",
+                                       "direction":  [
+                                                         4.329780281177467E-17,
+                                                         -0.7071067811865476,
+                                                         -0.7071067811865476,
+                                                         0
+                                                     ],
+                                       "diffuse":  [
+                                                       1.7999999523162842,
+                                                       1.7294117188921163,
+                                                       1.630588192098281,
+                                                       1
+                                                   ],
+                                       "ambient":  [
+                                                       0.3466666718324026,
+                                                       0.370196083947724,
+                                                       0.4000000059604645,
+                                                       1
+                                                   ],
+                                       "specular":  [
+                                                        0.5,
+                                                        0.5,
+                                                        0.5,
+                                                        1
+                                                    ],
+                                       "receiver":  "ALL"
+                                   },
+                         "shadow":  {
+                                        "enabled":  false,
+                                        "focus":  [
+                                                      0,
+                                                      0,
+                                                      0
+                                                  ],
+                                        "distance":  80,
+                                        "orthographicWidth":  64,
+                                        "orthographicHeight":  64,
+                                        "near":  0.100000001,
+                                        "far":  180,
+                                        "depthBias":  0.00150000001,
+                                        "normalBias":  0.0250000004,
+                                        "strength":  0.699999988,
+                                        "dynamicBakedStrength":  0
+                                    },
+                         "fog":  {
+                                     "enabled":  true,
+                                     "color":  [
+                                                   0.41647060478434844,
+                                                   0.4894117841533586,
+                                                   0.6000000238418579,
+                                                   1
+                                               ],
+                                     "density":  0.49000000953674316,
+                                     "heightFalloff":  1.7999999523162842,
+                                     "topHeight":  12.480999755859376,
+                                     "startDistance":  16.0,
+                                     "maximumOpacity":  1.0,
+                                     "driftSpeed":  0,
+                                     "driftHeightAmplitude":  0,
+                                     "driftDensityAmplitude":  0,
+                                     "coveragePercent":  1,
+                                     "windDirectionX":  1,
+                                     "windDirectionZ":  0,
+                                     "windSpeed":  0,
+                                     "patchScale":  0.00999999978,
+                                     "patchSoftness":  0.150000006,
+                                     "sourceExponential":  {
+                                                               "inscatteringColor":  [
+                                                                                         1.5372549248676675,
+                                                                                         1.330196098252839,
+                                                                                         0.2572549057941811,
+                                                                                         1
+                                                                                     ],
+                                                               "lightDirection":  [
+                                                                                      -4.329780281177467E-17,
+                                                                                      0.7071067811865476,
+                                                                                      0.7071067811865476,
+                                                                                      0.7071067811865476
+                                                                                  ]
+                                                           }
+                                 },
+                         "displayName":  "Colosseum / Original environment",
+                         "qualityOverride":  {
+                                                 "ssaoEnabled":  false,
+                                                 "ssaoRadius":  0.0399999991,
+                                                 "ssaoBias":  0,
+                                                 "ssaoIntensity":  0.689999998,
+                                                 "ssaoPower":  2.0999999,
+                                                 "ssaoDistanceFade":  132.5,
+                                                 "bloomEnabled":  false,
+                                                 "bloomThreshold":  1,
+                                                 "bloomSoftKnee":  0.5,
+                                                 "bloomIntensity":  0.800000012,
+                                                 "bloomScatter":  1,
+                                                 "exposure":  0.730000019,
+                                                 "whitePoint":  1,
+                                                 "gamma":  2.20000005,
+                                                 "fxaaEnabled":  true,
+                                                 "fxaaSubpixel":  0,
+                                                 "fxaaEdgeThreshold":  0.0311999992,
+                                                 "fxaaEdgeThresholdMin":  0.0183000006,
+                                                 "colorAdjustment":  {
+                                                                         "bloomTint":  [
+                                                                                           1,
+                                                                                           1,
+                                                                                           1,
+                                                                                           1
+                                                                                       ],
+                                                                         "desaturation":  0
+                                                                     },
+                                                 "sourcePostProcess":  {
+                                                                           "colorGradingLut":  "",
+                                                                           "enabled":  true,
+                                                                           "toneCurve":  "UE3_CUSTOMIZABLE",
+                                                                           "toneScale":  0.8500000238418579,
+                                                                           "toneRange":  8.0,
+                                                                           "toneToe":  1.0,
+                                                                           "highlights":  [
+                                                                                              0.8999999761581421,
+                                                                                              0.8999999761581421,
+                                                                                              0.8999999761581421
+                                                                                          ],
+                                                                           "midtones":  [
+                                                                                            1.100000023841858,
+                                                                                            1.0,
+                                                                                            1.0
+                                                                                        ],
+                                                                           "shadows":  [
+                                                                                           0.0,
+                                                                                           0.0,
+                                                                                           -0.003000000026077032
+                                                                                       ],
+                                                                           "colorize":  [
+                                                                                            1.0,
+                                                                                            1.0,
+                                                                                            1.0
+                                                                                        ],
+                                                                           "desaturation":  0.0
+                                                                       }
+                                             }
                      }
                  ]
 }

@@ -57,6 +57,8 @@ void LostArk::Server::CGameRoom::Handle_Move(
 void LostArk::Server::CGameRoom::Execute_PlayerMove(
     SERVER_PLAYER& player, const LostArk::Shared::C2S_MOVE& move)
 {
+	if (player.iColosseumMatchId && !player.bColosseumCombatActive &&
+        m_eColosseumPhase != LostArk::Shared::COLOSSEUM_MATCH_PHASE::RECRUITING) return;
     const bool entryTerraceMove = Is_KoukuRaidRunning() &&
         m_KoukuRaid.State.ePhase == LostArk::Shared::KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY;
     if (Is_KoukuRaidInputBlocked() && !entryTerraceMove) return;
@@ -360,6 +362,10 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 bool LostArk::Server::CGameRoom::Execute_PlayerSkill(
     SERVER_PLAYER& player, const LostArk::Shared::C2S_USE_SKILL& useSkill)
 {
+    if (LostArk::Shared::WORLD_ID::COLOSSEUM == m_eWorldId && m_iColosseumMatchId != 0u &&
+        (m_eColosseumPhase != LostArk::Shared::COLOSSEUM_MATCH_PHASE::ACTIVE ||
+         !player.bColosseumParticipant || player.iColosseumMatchId != m_iColosseumMatchId || player.iColosseumTeam >= 2u))
+        return false;
     if (Is_KoukuRaidInputBlocked() || player.Has_TimeStop(m_iServerTick)) return false;
 	/* A mounted player's quick slots belong to the vehicle; class skills never
 	start from the saddle. */
@@ -458,7 +464,13 @@ void LostArk::Server::CGameRoom::Apply_SkillBuffs(
 	std::vector<SERVER_PLAYER*> allies;
 	allies.reserve(m_Players.size());
 	for (auto& entry : m_Players)
+    {
+        if (LostArk::Shared::WORLD_ID::COLOSSEUM == m_eWorldId && m_iColosseumMatchId != 0u &&
+            (!caster.bColosseumParticipant || caster.iColosseumMatchId != m_iColosseumMatchId || caster.iColosseumTeam >= 2u ||
+             !entry.second.bColosseumParticipant || entry.second.iColosseumMatchId != m_iColosseumMatchId ||
+             entry.second.iColosseumTeam != caster.iColosseumTeam)) continue;
 		allies.push_back(&entry.second);
+    }
 	/* Existing buff runtime owns boss debuffs and monster stun admission. */
 	std::vector<SERVER_WORLD_ENTITY*> enemies;
 	for (SERVER_WORLD_ENTITY& entity : m_WorldEntities)
@@ -711,7 +723,7 @@ void LostArk::Server::CGameRoom::Handle_DebugEnterKakulSaydonArena(
 	transfer.eCharacterClass = player.eCharacterClass;
 	transfer.strNickName = player.strNickName;
 	transfer.iVoiceType = player.iVoiceType;
-	transfer.CarriedDurability = player.Get_DurabilityState();
+	transfer.strAppearanceJson = player.strAppearanceJson;
 	transfer.iHonorTitleId = player.iHonorTitleId;
 	transfer.iPartyRequestSequence = request.iRequestSequence;
 	transfer.CarriedInventory = player.Inventory;
@@ -804,12 +816,45 @@ void LostArk::Server::CGameRoom::Handle_UseSquareHole(
 	so a world without one (or a blocked one) never plays a song that ends nowhere.
 	Update_Players lands the player once SQUAREHOLE_LOCK_TICKS have elapsed
 	(Finish_SquareHoleSong), while the Client screen is fully black. */
-	if (0u == player.iCurrentHp ||
+	const bool finishedColosseumReturn = m_eWorldId == LostArk::Shared::WORLD_ID::COLOSSEUM &&
+		m_iColosseumMatchId != 0u && m_eColosseumPhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::FINISHED &&
+		player.Is_Human() && player.bColosseumParticipant &&
+		player.iColosseumMatchId == m_iColosseumMatchId && player.iColosseumTeam < 2u;
+	// A completed arena admits defeated humans through the same staged Bern transfer.
+	// Every other song/raid keeps its existing alive and idle admission.
+	if (!finishedColosseumReturn && (0u == player.iCurrentHp ||
 		player.fKnockbackRemainingSeconds > 0.f ||
 		player.bPatternBound ||
 		LostArk::Shared::INVALID_VEHICLE_ID != player.iVehicleId ||
-		LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction)
+		LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction))
 	{
+		return;
+	}
+	if (LostArk::Shared::WORLD_ID::COLOSSEUM == m_eWorldId)
+	{
+		const std::string destination = "squarehole." + std::to_string(useSquareHole.iSquareHoleId);
+		if (0u == Resolve_BernSquareHoleId(destination) ||
+			std::any_of(m_PendingWorldTransfers.begin(), m_PendingWorldTransfers.end(),
+				[sessionId](const SERVER_WORLD_TRANSFER_REQUEST& pending)
+				{
+					return pending.iSessionId == sessionId ||
+						std::find(pending.PartyBatchSessionIds.begin(), pending.PartyBatchSessionIds.end(),
+							sessionId) != pending.PartyBatchSessionIds.end();
+				}))
+			return;
+		SERVER_WORLD_TRANSFER_REQUEST transfer{};
+		transfer.iSessionId = sessionId;
+		transfer.eTargetWorldId = LostArk::Shared::WORLD_ID::BERN;
+		transfer.eCharacterClass = player.eCharacterClass;
+		transfer.strNickName = player.strNickName;
+		transfer.iVoiceType = player.iVoiceType;
+		transfer.iHonorTitleId = player.iHonorTitleId;
+		transfer.strSpawnPlacementOverrideId = destination;
+		transfer.iPartyRequestSequence = useSquareHole.iClientSequence;
+		// The existing batch transaction validates the target and reserves all initial
+		// frames before departing. A singleton does not create a party in Bern.
+		transfer.PartyBatchSessionIds.push_back(sessionId);
+		m_PendingWorldTransfers.push_back(std::move(transfer));
 		return;
 	}
 	SERVER_NAV_POINT landing{};
@@ -888,7 +933,7 @@ void LostArk::Server::CGameRoom::Finish_SquareHoleSong(SERVER_PLAYER& player)
 	player.fPositionY = landing.y;
 	player.fPositionZ = landing.z;
 	Update_MarioControlState(player);
-	Guide_AnchorArrived(player);
+	Guide_AnchorArrived(player, true);
 }
 
 LostArk::Server::SERVER_PLAYER* LostArk::Server::CGameRoom::Find_EstherCaster(
@@ -1349,6 +1394,7 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.iEstherGuardEndTick = 0u;
 	staged.iEstherGuardDamageTakenPercent = 0;
 	staged.eCharacterClass = request.eCharacterClass;
+	staged.strAppearanceJson.clear(); // Presets are class-specific; a new class uses its default.
 	staged.iLastClassChangeSequence = request.iClientSequence;
 	staged.fMoveGoalX = 0.f;
 	staged.fMoveGoalZ = 0.f;
