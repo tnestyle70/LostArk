@@ -26,6 +26,15 @@ public:
 	virtual void Update(f32_t fTimeDelta);
 	virtual void Post_Physics_Update(f32_t fTimeDelta);
 	virtual void Late_Update(f32_t fTimeDelta);
+	static constexpr uint8_t UPDATE_PHASE_PRIORITY = 1u;
+	static constexpr uint8_t UPDATE_PHASE_UPDATE = 2u;
+	static constexpr uint8_t UPDATE_PHASE_POST_PHYSICS = 4u;
+	static constexpr uint8_t UPDATE_PHASE_LATE = 8u;
+	// Immutable per-class phase membership, selected when a Layer takes ownership.
+	virtual uint8_t Get_UpdatePhaseMask() const { return 15u; }
+	// Opt-in render preparation after camera/light providers, before any world pass.
+	virtual bool_t Uses_FinalCameraSubmission() const { return false; }
+	virtual void Submit_FinalCamera() {}
 	virtual HRESULT Render();
 	virtual HRESULT Render_Group(RENDERGROUP group);
 	// Lower values draw first within BLEND; equal values retain distance order.

@@ -386,6 +386,10 @@ namespace
         "Trigger marker sample attempts", "Trigger marker entry/reentry history requests",
         "Ambient effects suspended", "Ambient effects advanced",
         "ImGui present attempts", "ImGui present busy (deferred)", "ImGui present failures", "ImGui present occluded",
+        "Map batch visibility cache hits", "Map batch visibility rebuilds",
+        "Map batch renders: empty", "Map batch renders: visible", "Map batch broad bounds rejected",
+        "Map visible instance upload bytes", "NPC authored-hidden updates", "Ambient invalidated-bound updates",
+        "NPC culling candidates", "NPC culled", "NPC deferred pose evaluations",
     };
 
     bool Contains_CaseInsensitive(std::string_view text, const char* query)
@@ -813,6 +817,23 @@ void Client::CProfilerTool::Render_Counters() const
     if (!ImGui::BeginChild("##WorkloadScroll")) { ImGui::EndChild(); return; }
     const auto& animation = m_Live.Animation;
     ImGui::Text("CPU frame %llu", static_cast<unsigned long long>(m_Live.FrameNumber));
+    ImGui::TextWrapped("CPU work categories accumulate every main-thread call while Capture is on, independently of Detailed CPU scopes and its sample limit. Times are inclusive: parent and child rows overlap and must not be added together. Calls measure attempts, not visible draws.");
+    if (ImGui::BeginTable("##CpuWorkCategories", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH))
+    {
+        ImGui::TableSetupColumn("CPU work");
+        ImGui::TableSetupColumn("Calls (latest frame)");
+        ImGui::TableSetupColumn("Inclusive ms");
+        ImGui::TableHeadersRow();
+        for (size_t i = 0; i < m_Live.CpuWork.size(); ++i)
+        {
+            const auto& work = m_Live.CpuWork[i];
+            ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::TextUnformatted(Engine::CProfiler::Get_WorkName(static_cast<Engine::EProfilerWork>(i)));
+            ImGui::TableNextColumn(); ImGui::Text("%llu", static_cast<unsigned long long>(work.Calls));
+            ImGui::TableNextColumn(); ImGui::Text("%.3f", work.CpuMs);
+        }
+        ImGui::EndTable();
+    }
     ImGui::Text("Animation evaluation: %.3f ms | %llu calls / %llu models", animation.CpuMs,
         static_cast<unsigned long long>(animation.UpdateCalls), static_cast<unsigned long long>(animation.UpdatedModels));
     ImGui::Text("Updated, not submitted: %llu models / %.3f ms", static_cast<unsigned long long>(animation.NotSubmittedUpdatedModels), animation.NotSubmittedCpuMs);
@@ -824,6 +845,7 @@ void Client::CProfilerTool::Render_Counters() const
             static_cast<unsigned long long>(m_Live.Pipeline.IAVertices), static_cast<unsigned long long>(m_Live.Pipeline.VSInvocations),
             static_cast<unsigned long long>(m_Live.Pipeline.PSInvocations), static_cast<unsigned long long>(m_Live.Pipeline.IAPrimitives));
     ImGui::TextWrapped("Navigation timings below are Client-side queries. Authoritative Server navigation runs in another process. Texture cache counters have no producer yet and are shown as N/A.");
+    ImGui::TextWrapped("Map visibility cache hits reuse the last camera result; zero rebuild candidates does not mean culling is disabled. NPC authored-hidden updates count visibility/composition suppression, not frustum visibility. Ambient invalidated-bound updates count deferred effects whose admitted bound was invalidated by a root change; effects that never admitted a bound are excluded.");
     if (ImGui::BeginTable("##WorkCounters", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH))
     {
         ImGui::TableSetupColumn("Counter"); ImGui::TableSetupColumn("Latest CPU frame"); ImGui::TableHeadersRow();

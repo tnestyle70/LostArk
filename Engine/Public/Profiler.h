@@ -89,7 +89,52 @@ enum class EProfilerCounter : uint16_t
     ImGuiPresentBusy,
     ImGuiPresentFailures,
     ImGuiPresentOccluded,
+    MapBatchVisibilityCacheHits,
+    MapBatchVisibilityRebuilds,
+    MapBatchEmptyRenders,
+    MapBatchVisibleRenders,
+    MapBatchBoundsRejected,
+    MapBatchUploadBytes,
+    NpcAuthoredHiddenUpdates,
+    AmbientUnboundedUpdates,
+    NpcCullingCandidates,
+    NpcCulled,
+    NpcDeferredPoseEvaluations,
     Count
+};
+
+// Fixed main-thread work categories are accumulated even with raw detail disabled.
+// Times are inclusive: a parent category can overlap its instrumented children.
+enum class EProfilerWork : uint8_t
+{
+    MapBatchRender,
+    MapBatchVisibility,
+    MapBatchMaterial,
+    MapBatchPass,
+    MapBatchDraw,
+    MapObjectRender,
+    MapWaterRender,
+    NpcUpdate,
+    NpcLateUpdate,
+    NpcRender,
+    AmbientVisibility,
+    AmbientAdvance,
+    AmbientSubmit,
+    Count
+};
+
+struct FProfilerWorkStats final
+{
+    uint64_t Calls = 0;
+    double CpuMs = 0.0;
+};
+
+struct FProfilerWorkToken final
+{
+    uint64_t BeginTick = 0;
+    uint64_t FrameNumber = 0;
+    uint64_t CaptureEpoch = 0;
+    uint64_t InstanceId = 0;
 };
 
 struct FProfilerScopeSample final
@@ -166,6 +211,7 @@ struct FProfilerFrame final
     double CpuFrameMs = 0.0;
     double FrameIntervalMs = 0.0;
     FProfilerAnimationStats Animation{};
+    std::array<FProfilerWorkStats, static_cast<size_t>(EProfilerWork::Count)> CpuWork{};
     std::vector<FProfilerViewportPresent> ViewportPresents;
     uint32_t DroppedViewportPresents = 0;
     double GpuFrameMs = 0.0;
@@ -206,6 +252,7 @@ struct FProfilerLiveStats final
     double CpuFrameMs = 0.0;
     double FrameIntervalMs = 0.0;
     FProfilerAnimationStats Animation{};
+    std::array<FProfilerWorkStats, static_cast<size_t>(EProfilerWork::Count)> CpuWork{};
     std::array<uint64_t, static_cast<size_t>(EProfilerCounter::Count)> Counters{};
 
     EProfilerGpuFrameStatus LatestFrameGpuStatus = EProfilerGpuFrameStatus::Unsupported;
@@ -293,6 +340,11 @@ public:
        return UINT32_MAX. No query creation or GPU wait occurs on this path. */
     uint32_t Begin_GpuScope(std::string_view name, bool collectPipeline = false);
     void End_GpuScope(uint32_t token) noexcept;
+
+    // Main thread only. No raw samples, names, locks or allocation on this path.
+    FProfilerWorkToken Begin_Work(EProfilerWork work) const noexcept;
+    void End_Work(EProfilerWork work, FProfilerWorkToken token) noexcept;
+    static const char* Get_WorkName(EProfilerWork work) noexcept;
 
     FProfilerModelAnimationToken Begin_ModelAnimation() const noexcept;
     void End_ModelAnimation(const void* model, FProfilerModelAnimationToken token);
@@ -453,6 +505,25 @@ public:
     CProfilerDetailScope& operator=(const CProfilerDetailScope&) = delete;
 private:
     CProfilerScope m_Scope;
+};
+
+class CProfilerWorkScope final
+{
+public:
+    CProfilerWorkScope(CProfiler* profiler, EProfilerWork work) noexcept
+        : m_pProfiler(profiler), m_Work(work)
+        , m_Token(profiler ? profiler->Begin_Work(work) : FProfilerWorkToken{}) {}
+    ~CProfilerWorkScope()
+    {
+        if (m_pProfiler && m_Token.BeginTick != 0)
+            m_pProfiler->End_Work(m_Work, m_Token);
+    }
+    CProfilerWorkScope(const CProfilerWorkScope&) = delete;
+    CProfilerWorkScope& operator=(const CProfilerWorkScope&) = delete;
+private:
+    CProfiler* m_pProfiler = nullptr;
+    EProfilerWork m_Work = EProfilerWork::Count;
+    FProfilerWorkToken m_Token{};
 };
 
 class ENGINE_DLL CProfilerGpuScope final

@@ -6521,8 +6521,12 @@ void Client::CEffectPresentationService::Submit_VisibleLevelPresentations()
 			continue;
 		}
 		const float3_t center{effect.WorldRoot._41, effect.WorldRoot._42, effect.WorldRoot._43};
-		const bool_t visible = !effect.bStaticAmbientBoundsValid || Is_WorldPresentationVisible(
-			center, effect.fAmbientWorldRadius, effect.bAmbientRecentlyVisible);
+		bool_t visible = true;
+		{
+			Engine::CProfilerWorkScope workScope(profiler, Engine::EProfilerWork::AmbientVisibility);
+			visible = !effect.bStaticAmbientBoundsValid || Is_WorldPresentationVisible(
+				center, effect.fAmbientWorldRadius, effect.bAmbientRecentlyVisible);
+		}
 		if (!visible)
 		{
 			if (effect.bAmbientRecentlyVisible) effect.pObject->Set_Visible(false);
@@ -6532,18 +6536,29 @@ void Client::CEffectPresentationService::Submit_VisibleLevelPresentations()
 		}
 		if (!effect.bAmbientRecentlyVisible) effect.pObject->Set_Visible(true);
 		effect.bAmbientRecentlyVisible = true;
-		if (effect.bPendingInitialSeek)
+		// A moved root invalidates the admitted static sphere and keeps playback active.
+		if (profiler && !effect.bStaticAmbientBoundsValid)
+			profiler->Add_Counter(EProfilerCounter::AmbientUnboundedUpdates);
 		{
-			effect.pObject->Set_SampleTime(effect.fPendingInitialSampleTimeSeconds);
-			effect.bPendingInitialSeek = false;
-		}
-		else
-		{
-			effect.pObject->Advance_Preview(effect.fAmbientTickDelta);
-			effect.fElapsedCueTimeSeconds += effect.fAmbientTickDelta;
+			Engine::CProfilerWorkScope workScope(profiler, Engine::EProfilerWork::AmbientAdvance);
+			if (effect.bPendingInitialSeek)
+			{
+				effect.pObject->Set_SampleTime(effect.fPendingInitialSampleTimeSeconds);
+				effect.bPendingInitialSeek = false;
+			}
+			else
+			{
+				effect.pObject->Advance_Preview(effect.fAmbientTickDelta);
+				effect.fElapsedCueTimeSeconds += effect.fAmbientTickDelta;
+			}
 		}
 		if (profiler) profiler->Add_Counter(EProfilerCounter::EffectAmbientAdvanced);
-		if (FAILED(effect.pObject->Submit_RenderGroups()))
+		HRESULT submitResult = S_OK;
+		{
+			Engine::CProfilerWorkScope workScope(profiler, Engine::EProfilerWork::AmbientSubmit);
+			submitResult = effect.pObject->Submit_RenderGroups();
+		}
+		if (FAILED(submitResult))
 		{
 			g_strStatus = effect.pObject->Get_Status();
 			Record_ActiveEffectRuntimeFailure(effect, "V1.ambient.submit", g_strStatus);

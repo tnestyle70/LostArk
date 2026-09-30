@@ -80,7 +80,7 @@ HRESULT CObject_Manager::Add_GameObject_to_Layer(uint32_t iPrototypeLevelIndex, 
 	if (nullptr == pLayer)
 	{
 		/* 레이어를 새로 생성하여 추가한다. */
-		auto	pNewLayer = CLayer::Create();
+		auto	pNewLayer = CLayer::Create(iLayerLevelIndex, strLayerTag);
 
 		if (FAILED(pNewLayer->Add_GameObject(pClonedGameObject)))
 			return E_FAIL;
@@ -158,6 +158,13 @@ void CObject_Manager::Late_Update(f32_t fTimeDelta)
 				Pair.second->Late_Update(fTimeDelta);
 		}
 	}
+}
+
+void CObject_Manager::Submit_FinalCamera()
+{
+	for (uint32_t i = 0; i < m_iNumLevels; ++i)
+		for (auto& pair : m_pLayers[i])
+			if (pair.second) pair.second->Submit_FinalCamera();
 }
 
 HRESULT CObject_Manager::Clear(uint32_t iClearLevelID)

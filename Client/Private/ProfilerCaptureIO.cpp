@@ -71,6 +71,10 @@ namespace
             "effectMarkerSamples", "effectMarkerHistoryRequests",
             "effectAmbientSuspended", "effectAmbientAdvanced",
             "imguiPresentAttempts", "imguiPresentBusy", "imguiPresentFailures", "imguiPresentOccluded",
+            "mapBatchVisibilityCacheHits", "mapBatchVisibilityRebuilds",
+            "mapBatchEmptyRenders", "mapBatchVisibleRenders", "mapBatchBoundsRejected",
+            "mapBatchUploadBytes", "npcAuthoredHiddenUpdates", "ambientUnboundedUpdates",
+            "npcCullingCandidates", "npcCulled", "npcDeferredPoseEvaluations",
 	};
 
 	const char* GpuStatusName(const Engine::EProfilerGpuFrameStatus Status)
@@ -337,6 +341,21 @@ bool SaveJsonImpl(
 		Stream << "        \"cpuMs\": " << Frame.Animation.CpuMs << ",\n";
 		Stream << "        \"notSubmittedCpuMs\": " << Frame.Animation.NotSubmittedCpuMs << "\n";
 		Stream << "      },\n";
+        Stream << "      \"cpuWork\": [\n";
+        for (size_t iWork = 0; iWork < Frame.CpuWork.size(); ++iWork)
+        {
+            const auto& work = Frame.CpuWork[iWork];
+            if (!std::isfinite(work.CpuMs) || work.CpuMs < 0.0)
+            {
+                SetError(pOutError, "Profiler work category has invalid timing.");
+                return false;
+            }
+            Stream << "        {\"name\": \""
+                << Engine::CProfiler::Get_WorkName(static_cast<Engine::EProfilerWork>(iWork))
+                << "\", \"calls\": " << work.Calls << ", \"cpuMs\": " << work.CpuMs
+                << "}" << (iWork + 1 < Frame.CpuWork.size() ? "," : "") << "\n";
+        }
+        Stream << "      ],\n";
 		Stream << "      \"counters\": {\n";
 		for (size_t iCounter = 0; iCounter < CounterNames.size(); ++iCounter)
 		{

@@ -8,6 +8,7 @@
 #include "BinaryAsset/ModelAssetData.h"
 #include "Channel.h"
 
+#include <algorithm>
 #include <cmath>
 
 CAnimation::CAnimation()
@@ -67,6 +68,24 @@ HRESULT CAnimation::Initialize(const MODEL_ANIMATION_DATA& animation,
 bool_t CAnimation::Update_TransformationMatrix(f32_t fTimeDelta, const vector<shared_ptr<class CBone>>& Bones, bool_t isLoop)
 {
 	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Animation.Channels.Update");
+    if (!isfinite(fTimeDelta) || m_fDuration <= 0.f || m_fTickPerSecond <= 0.f)
+        return false;
+    const bool_t isFinished = Advance_Clock(fTimeDelta, isLoop);
+
+	if (m_SeparateTrackIndices.size() != m_iNumChannels)
+		m_SeparateTrackIndices.resize(m_iNumChannels);
+
+	/* 현재 재생위치에 맞게 뼈들의 상태행렬을 갱신해준다. */
+	for (uint32_t i = 0; i < m_iNumChannels; i++)
+	{
+		m_Channels[i]->Update_TransformationMatrix(m_fCurrentTrackPosition, Bones, &m_iLeftKeyFrameIndices[i], &m_SeparateTrackIndices[i]);
+	}
+
+	return isFinished;
+}
+
+bool_t CAnimation::Advance_Clock(f32_t fTimeDelta, bool_t isLoop)
+{
 	/* 현재 재생 위치를 계산해준다. */
 	if (!isfinite(fTimeDelta) || m_fDuration <= 0.f ||
 		m_fTickPerSecond <= 0.f)
@@ -102,16 +121,61 @@ bool_t CAnimation::Update_TransformationMatrix(f32_t fTimeDelta, const vector<sh
 			leftKeyFrameIndex = 0;
 	}
 
-	if (m_SeparateTrackIndices.size() != m_iNumChannels)
-		m_SeparateTrackIndices.resize(m_iNumChannels);
+    return isFinished;
+}
 
-	/* 현재 재생위치에 맞게 뼈들의 상태행렬을 갱신해준다. */
-	for (uint32_t i = 0; i < m_iNumChannels; i++)
-	{
-		m_Channels[i]->Update_TransformationMatrix(m_fCurrentTrackPosition, Bones, &m_iLeftKeyFrameIndices[i], &m_SeparateTrackIndices[i]);
-	}
-
-	return isFinished;
+bool_t CAnimation::Accumulate_TransformEnvelope(
+    const std::span<std::array<double, 3>> translations, const std::span<double> scales) const
+{
+    if (translations.size() != scales.size() || m_iNumChannels != m_Channels.size() ||
+        !std::isfinite(m_fDuration) || m_fDuration <= 0.f) return false;
+    for (const auto& channel : m_Channels)
+    {
+        // The legacy merged-key evaluator can extrapolate before its first key.
+        // Its envelope is deliberately unavailable instead of assuming interpolation.
+        if (!channel || !channel->m_bUsesSeparateTracks || channel->m_iBoneIndex < 0 ||
+            size_t(channel->m_iBoneIndex) >= scales.size()) return false;
+        const size_t bone = size_t(channel->m_iBoneIndex);
+        const auto validTimes = [](const auto& keys) {
+            double previous = -1.;
+            for (const auto& key : keys)
+            {
+                if (!std::isfinite(key.timeTicks) || key.timeTicks < 0.f || key.timeTicks < previous) return false;
+                previous = key.timeTicks;
+            }
+            return true;
+        };
+        if (!validTimes(channel->m_PositionKeys) || !validTimes(channel->m_ScaleKeys) ||
+            !validTimes(channel->m_RotationKeys)) return false;
+        for (const auto& key : channel->m_PositionKeys)
+        {
+            const double values[3] = {key.value.x, key.value.y, key.value.z};
+            for (size_t axis = 0; axis < 3; ++axis)
+            {
+                if (!std::isfinite(values[axis])) return false;
+                translations[bone][axis] = (std::max)(translations[bone][axis], std::abs(values[axis]));
+            }
+        }
+        double scale = channel->m_ScaleKeys.empty() ? 1. : 0.;
+        for (const auto& key : channel->m_ScaleKeys)
+            for (const double value : {double(key.value.x), double(key.value.y), double(key.value.z)})
+            {
+                if (!std::isfinite(value)) return false;
+                scale = (std::max)(scale, std::abs(value));
+            }
+        double quaternionError = 0.;
+        for (const auto& key : channel->m_RotationKeys)
+        {
+            const auto& q = key.value;
+            const double lengthSq = double(q.x)*q.x + double(q.y)*q.y + double(q.z)*q.z + double(q.w)*q.w;
+            if (!std::isfinite(lengthSq) || std::abs(lengthSq - 1.) > .001) return false;
+            quaternionError = (std::max)(quaternionError, std::abs(lengthSq - 1.));
+        }
+        // For shortest-path slerp, norm error stays within the endpoint bound.
+        // R(q)=|q|^2 R(q/|q|)+(1-|q|^2)I; add float interpolation slack.
+        scales[bone] = (std::max)(scales[bone], scale * (1. + 2. * quaternionError + .0001));
+    }
+    return true;
 }
 
 void CAnimation::Set_TrackPosition(f32_t fTrackPosition)
