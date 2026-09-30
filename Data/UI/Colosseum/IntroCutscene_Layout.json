@@ -1,0 +1,463 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": {
+    "width": 1280,
+    "height": 720
+  },
+  "classes": [
+    "Default"
+  ],
+  "slots": [
+    {
+      "id": "Intro_VS_Glow",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 425.833,
+        "y": 83.084,
+        "width": 450.0,
+        "height": 413.334
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/vs_glow.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            0.45
+          ],
+          "additive": true,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Intro_VS_Beam",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 450.833,
+        "y": 66.417,
+        "width": 399.166,
+        "height": 535.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/vs_beam.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            0.9
+          ],
+          "additive": true,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Intro_VS_SparksA",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 517.499,
+        "y": 141.417,
+        "width": 282.5,
+        "height": 320.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/vs_sparks_a.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": true,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Intro_VS_SparksB",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 500.833,
+        "y": 133.084,
+        "width": 286.666,
+        "height": 325.834
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/vs_sparks_b.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            0.8
+          ],
+          "additive": true,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Intro_VS_Flare",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 525.833,
+        "y": 174.751,
+        "width": 260.0,
+        "height": 267.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/vs_flare.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            0.6
+          ],
+          "additive": true,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Intro_VS_V",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 564.167,
+        "y": 271.417,
+        "width": 93.334,
+        "height": 109.166
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/vs_v.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Intro_VS_S",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 634.167,
+        "y": 273.084,
+        "width": 81.666,
+        "height": 105.834
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/vs_s.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Intro_BarTop",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1280.0,
+        "height": 88.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/black.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Intro_BarBottom",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0.0,
+        "y": 632.0,
+        "width": 1280.0,
+        "height": 88.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/black.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Intro_Fade",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1280.0,
+        "height": 720.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/black.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    }
+  ]
+}

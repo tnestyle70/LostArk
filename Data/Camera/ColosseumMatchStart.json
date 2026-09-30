@@ -1,0 +1,65 @@
+{
+  "schema": "lostark.colosseum-match-start",
+  "formatVersion": 1,
+  "source": {
+    "hud": "EFUI_COLOSSEUM.colosseumplaying_loc_int (waitGroup_mc, countDownAnnounce_mc) + EFUI_LOCALRESOURCE class colossenumPlaying_countDownAnnounce_bg; art built by Tools/LpkPipeline/build_colosseum_countdown_ui.py",
+    "gate": "LV_PVP_COLOSSEUM_PS ARENADOOR01 leaves (5 per holding pen), placed upside down by the level (spikes up, roll -180): the placed pose is the closed gate",
+    "timing": "measured on the retail video 콜로세움 창.mp4 (30 fps): digit 2 -> 1 at 0.70 s, start text at 1.70 s, gate tips at 1.87 s, gone by 1.93 s; bar and colours measured on the retail capture; see .md/GB/09-30/2026-09-30_COLOSSEUM_COUNTDOWN_GATE_RESULT.md",
+    "unmeasured": "startTextHoldMs / startTextFadeMs (the video ends 1.5 s after the start), the bar between 3.0 s and 1.7 s remaining (one 3-second screenshot, interpolated), the gate sink depth and curve (only 3 video frames)"
+  },
+  "countdown": {
+    "totalMs": 3000,
+    "startTextHoldMs": 2000,
+    "startTextFadeMs": 400,
+    "titleText": "콜로세움",
+    "remainLine": "경기 시작까지 {0} 초 남았습니다.",
+    "announceLine": "{0}초 후 경기가 시작됩니다",
+    "startText": "경기 시작!",
+    "bar": [
+      { "remainingMs": 3000, "fraction": 0.339 },
+      { "remainingMs": 1700, "fraction": 0.123 },
+      { "remainingMs": 1080, "fraction": 0.123 },
+      { "remainingMs": 100, "fraction": 0.0 },
+      { "remainingMs": 0, "fraction": 0.0 }
+    ],
+    "layout": {
+      "titleCenterY": 17.8,
+      "remainCenterY": 39.3,
+      "announceCenterY": 310.0,
+      "titleWidth": 54.0,
+      "remainWidth": 160.0,
+      "announceWidth": 199.0,
+      "banner": {
+        "gradient": { "dx": -1036.8, "y": 0.0, "w": 2073.6, "h": 147.42 },
+        "barFrame": { "dx": -130.41, "y": 46.98, "w": 259.99, "h": 8.1 },
+        "barFill": { "dx": -128.79, "y": 48.6, "w": 256.77, "h": 4.86 }
+      },
+      "announceBg": { "dx": -151.3, "y": 250.0, "w": 306.0, "h": 94.0 }
+    },
+    "colors": {
+      "title": [0.82, 0.76, 0.63, 1.0],
+      "remainLine": [0.78, 0.80, 0.80, 1.0],
+      "announce": [1.0, 0.74, 0.36, 1.0],
+      "announceGlow": [0.50, 0.04, 0.03, 0.90],
+      "shadow": [0.0, 0.0, 0.0, 0.85]
+    }
+  },
+  "gate": {
+    "delayAfterStartMs": 130,
+    "durationMs": 130,
+    "sinkMeters": 1.6,
+    "curve": "OUT_CUBIC",
+    "placements": [
+      "LV_PVP_COLOSSEUM_PS:export:3188",
+      "LV_PVP_COLOSSEUM_PS:export:3189",
+      "LV_PVP_COLOSSEUM_PS:export:3190",
+      "LV_PVP_COLOSSEUM_PS:export:3191",
+      "LV_PVP_COLOSSEUM_PS:export:3192",
+      "LV_PVP_COLOSSEUM_PS:export:2571",
+      "LV_PVP_COLOSSEUM_PS:export:2572",
+      "LV_PVP_COLOSSEUM_PS:export:2574",
+      "LV_PVP_COLOSSEUM_PS:export:2575",
+      "LV_PVP_COLOSSEUM_PS:export:2576"
+    ]
+  }
+}

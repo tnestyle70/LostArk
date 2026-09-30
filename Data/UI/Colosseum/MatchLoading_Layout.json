@@ -1,0 +1,1858 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": {
+    "width": 1280,
+    "height": 720
+  },
+  "classes": [
+    "Default"
+  ],
+  "slots": [
+    {
+      "id": "MatchLoading_Black",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1280.0,
+        "height": 720.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/black.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_Background",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0.0,
+        "y": 67.333,
+        "width": 1280.0,
+        "height": 608.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamA_WedgeGlow",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 86.667,
+        "y": 100.0,
+        "width": 373.333,
+        "height": 577.333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/wedge_left.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            0.3
+          ],
+          "additive": true,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamB_WedgeGlow",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 740.0,
+        "y": 113.333,
+        "width": 426.667,
+        "height": 522.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/wedge_right.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            0.45,
+            0.35,
+            0.3
+          ],
+          "additive": true,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamA_Portrait",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 108.0,
+        "y": 174.667,
+        "width": 373.333,
+        "height": 324.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/blank.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamB_Portrait",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 798.667,
+        "y": 174.667,
+        "width": 373.333,
+        "height": 324.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/blank.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamA_PanelBorder",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 37.333,
+        "y": 67.333,
+        "width": 516.667,
+        "height": 608.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/panel_border.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamB_PanelBorder",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 725.333,
+        "y": 67.333,
+        "width": 516.667,
+        "height": 608.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/panel_border.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TopBackground",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0.0,
+        "y": 51.333,
+        "width": 1280.0,
+        "height": 187.333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/top_bg_wide.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TopTitleBackground",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 235.333,
+        "y": 0.0,
+        "width": 765.333,
+        "height": 57.333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/top_bg_title.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamA_TitleBackground",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 48.0,
+        "y": 54.0,
+        "width": 487.333,
+        "height": 87.333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/title_blue.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamB_TitleBackground",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 738.0,
+        "y": 54.0,
+        "width": 487.333,
+        "height": 87.333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/title_red.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_VS_Glow",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 460.0,
+        "y": 86.667,
+        "width": 360.0,
+        "height": 330.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/vs_glow.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            0.45
+          ],
+          "additive": true,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_VS_Beam",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 480.0,
+        "y": 73.333,
+        "width": 319.333,
+        "height": 428.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/vs_beam.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            0.9
+          ],
+          "additive": true,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_VS_SparksA",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 533.333,
+        "y": 133.333,
+        "width": 226.0,
+        "height": 256.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/vs_sparks_a.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": true,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_VS_SparksB",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 520.0,
+        "y": 126.667,
+        "width": 229.333,
+        "height": 260.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/vs_sparks_b.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            0.8
+          ],
+          "additive": true,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_VS_Flare",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 540.0,
+        "y": 160.0,
+        "width": 208.0,
+        "height": 214.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/vs_flare.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            0.6
+          ],
+          "additive": true,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_VS_V",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 570.667,
+        "y": 237.333,
+        "width": 74.667,
+        "height": 87.333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/vs_v.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_VS_S",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 626.667,
+        "y": 238.667,
+        "width": 65.333,
+        "height": 84.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/vs_s.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamA_Slot1_Shield",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 40.667,
+        "y": 492.0,
+        "width": 173.333,
+        "height": 122.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/slot_shield.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamA_Slot1_Plate",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 51.333,
+        "y": 504.667,
+        "width": 152.0,
+        "height": 42.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/slot_plate.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamA_Slot2_Shield",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 214.0,
+        "y": 492.0,
+        "width": 173.333,
+        "height": 122.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/slot_shield.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamA_Slot2_Plate",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 224.667,
+        "y": 504.667,
+        "width": 152.0,
+        "height": 42.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/slot_plate.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamA_Slot3_Shield",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 387.333,
+        "y": 492.0,
+        "width": 173.333,
+        "height": 122.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/slot_shield.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamA_Slot3_Glow",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 410.0,
+        "y": 497.333,
+        "width": 128.0,
+        "height": 80.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/slot_glow.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": true,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamA_Slot3_Plate",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 398.0,
+        "y": 504.667,
+        "width": 152.0,
+        "height": 42.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/slot_plate.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamA_Slot3_Gauge",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 402.0,
+        "y": 510.0,
+        "width": 136.0,
+        "height": 26.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/gauge_gold.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamA_Slot3_Highlight",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 398.0,
+        "y": 503.333,
+        "width": 152.0,
+        "height": 45.333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/slot_highlight.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamB_Slot1_Shield",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 732.0,
+        "y": 492.0,
+        "width": 173.333,
+        "height": 122.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/slot_shield.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamB_Slot1_Glow",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 754.667,
+        "y": 497.333,
+        "width": 128.0,
+        "height": 80.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/slot_glow.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": true,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamB_Slot1_Plate",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 742.667,
+        "y": 504.667,
+        "width": 152.0,
+        "height": 42.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/slot_plate.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamB_Slot1_Gauge",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 746.667,
+        "y": 510.0,
+        "width": 136.0,
+        "height": 26.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/gauge_red.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamB_Slot1_Highlight",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 742.667,
+        "y": 503.333,
+        "width": 152.0,
+        "height": 45.333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/slot_highlight.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamB_Slot2_Shield",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 905.333,
+        "y": 492.0,
+        "width": 173.333,
+        "height": 122.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/slot_shield.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamB_Slot2_Plate",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 916.0,
+        "y": 504.667,
+        "width": 152.0,
+        "height": 42.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/slot_plate.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamB_Slot3_Shield",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1078.667,
+        "y": 492.0,
+        "width": 173.333,
+        "height": 122.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/slot_shield.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_TeamB_Slot3_Plate",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1089.333,
+        "y": 504.667,
+        "width": 152.0,
+        "height": 42.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/slot_plate.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_FooterDeco",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 235.333,
+        "y": 590.667,
+        "width": 783.333,
+        "height": 101.333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/footer_deco.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_ProgressBackground",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 36.0,
+        "y": 689.333,
+        "width": 1198.667,
+        "height": 5.333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/progress_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_ProgressFill",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 36.0,
+        "y": 684.0,
+        "width": 1202.0,
+        "height": 16.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/progress_fill.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MatchLoading_ProgressHead",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": -82.667,
+        "y": 676.0,
+        "width": 237.333,
+        "height": 26.667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/MatchLoading/progress_head.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": true,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    }
+  ]
+}

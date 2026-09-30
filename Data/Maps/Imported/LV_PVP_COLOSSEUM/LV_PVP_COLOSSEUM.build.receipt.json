@@ -1,0 +1,2752 @@
+{
+  "schemaVersion": 1,
+  "areaId": "LV_PVP_COLOSSEUM",
+  "outputScope": "all",
+  "assetCount": 103,
+  "exactAssetCount": 103,
+  "outputExactAssetCount": 103,
+  "overlayAssetCount": 0,
+  "sourcePlacementCount": 1294,
+  "overlayPlacementCount": 0,
+  "renderProfileCount": 53,
+  "visibilityOverrideCount": 0,
+  "sourceVisibilityBasisCounts": {
+    "ue3-instance-archetype-cdo": 1294
+  },
+  "assetNameHintsDiagnosticOnly": {
+    "module-package": 1,
+    "nav-package": 10
+  },
+  "legacyVisibilityAllowed": false,
+  "runtimeMaterialAdmission": {
+    "MAP_00DFE29CF53F_BG_SHS_COMMON_SHIELD01C_SM_JJY": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_0200448674D6_BG_LUT_LUCASTLE_FLOORFENCE03_SM_LKJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_030B73374681_BG_LUT_ZAMOUNT_FORTRESS04_SM_LKJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 2,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_0BAA2115CCD1_BG_SHS_COMMON_SHIELD01B_SM_JJY": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_137CD82FC1EA_BG_SHS_RCARENA_DECO04C_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:normal_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "vector:specular_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_154DCF727126_BG_SHS_RCARENA_WALL08A_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:normal_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_155D64437A34_BG_SHS_RCARENA_DECO07A_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:normal_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_17AEC48F0C26_BG_LUT_LUCASTLE_ARENA01_SM_KSH": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:occludedopacity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_17AEC48F0C26_BG_LUT_LUCASTLE_ARENA01_SM_KSH_OVR_927B05F63423": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_17AEC48F0C26_BG_LUT_LUCASTLE_ARENA01_SM_KSH_OVR_EB79F55E80B6": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:occludedopacity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_17EB20B90730_BG_LUT_MEMONAST_MODULEB_SM_LJD_OVR_4AA237ED9734": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:normal_intensity",
+            "scalar:overlay_amount",
+            "scalar:overlay_sharpeness",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "scalar:uv_tiling",
+            "vector:diffuse_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_186BF940B6D8_BG_SHS_ETC_FARM01A_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_dead",
+            "texture:texture_fx_panning",
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_186BF940B6D8_BG_SHS_ETC_FARM01A_SM_OLD_OVR_1D8FC6CEB1F9": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "material:authored-null-override"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_18FDB9B00CC6_BG_LUT_MEMONAST_MODULEFRAME02B_SM_PHS_OVR_F7E32328E986": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:specular_intensity",
+            "vector:diffuse_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_1BE7835EA0B7_BG_LUT_ZAMOUNT_HOUSEPILLAR01_SM_MSJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_22B3D72B379D_BG_LUT_MEMONAST_MODULEC_SM_LJD_OVR_4AA237ED9734": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:normal_intensity",
+            "scalar:overlay_amount",
+            "scalar:overlay_sharpeness",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "scalar:uv_tiling",
+            "vector:diffuse_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_23AD7C1B70BF_BG_LUT_ZAMOUNT_EAGLESTATUES01_SM_LKJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_271E708BFB74_BG_SHS_BWINDHILL_SWORDTOMB01D_SM_LJD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:overlay_brightness",
+            "scalar:overlay_sharpeness",
+            "scalar:overlay_specular_intensity",
+            "scalar:overlay_tiling",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_27662C9BB71F_BG_LUT_ZAMOUNT_BROKENSTAIR01_SM_LKJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 2,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_27AF48E6D464_BG_LUT_LUCASTLE_ARCH03_SM_YSI": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_27AF48E6D464_BG_LUT_LUCASTLE_ARCH03_SM_YSI_OVR_0DC6DE2C14FD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:occludedopacity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:specular_intensity",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_2865D2A4DB3D_BG_LUT_MEMONAST_MODULEFRAME02D_SM_PHS_OVR_F7E32328E986": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:specular_intensity",
+            "vector:diffuse_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_289C61B245B0_BG_LUT_LUCASTLE_ARENAARCH01A_SM_KSH": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_29BDDBCB2EF0_BG_LUT_LUCASTLE_CHURCHTOWER11_SM_KSH": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_2B3CCC0918C4_BG_SHS_RCARENA_WALL06C_SM_OLD_LOC_INT": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:normal_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "vector:specular_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:normal_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_2C6BBF6721A4_BG_SHS_RCARENA_FENCE01C_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:normal_intensity",
+            "scalar:overlay_amount",
+            "scalar:overlay_brightness",
+            "scalar:overlay_saturation",
+            "scalar:overlay_sharpeness",
+            "scalar:overlay_specular_intensity",
+            "scalar:overlay_tiling",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "vector:diffuse_color",
+            "vector:overlay_color",
+            "vector:overlay_direction",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_2E8FA9865013_BG_SHS_COMMON_BOX01E_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_39C68C867FF9_BG_LUT_ZAMOUNT_FORTRESS03_SM_LKJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 2,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_41661F2A6982_BG_LUT_ZAMOUNT_BROKENSTAIR02_SM_LKJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 2,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_42A11239F00E_BG_LUT_ZAMOUNT_HOUSEWINDOW02A_SM_MSJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_463DC56B21CF_BG_LUT_LUCASTLE_CHURCHTOWER03_SM_KSH": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_463DC56B21CF_BG_LUT_LUCASTLE_CHURCHTOWER03_SM_KSH_OVR_927B05F63423": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_470C720AEC15_BG_LUT_MEMONAST_MODULEFRAME02A_SM_PHS_OVR_F7E32328E986": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:specular_intensity",
+            "vector:diffuse_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_4841BEF2C0BE_BG_SHS_COMMON_CHAIN01B_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "vector:specular_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_49D6D3575DFF_BG_SHS_COMMON_DECO05A_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "vector:specular_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_4C6B6EADD55B_BG_LUT_LUCASTLE_ARENAFENCE01_SM_BJH": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_4C97E2EA3AC9_BG_LUT_ZAMOUNT_FORTRESS03F_SM_LKJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 2,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_4F79E47709A7_BG_LUT_MEMONAST_MODULEA_SM_SUP": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_4F79E47709A7_BG_LUT_MEMONAST_MODULEA_SM_SUP_OVR_4AA237ED9734": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:normal_intensity",
+            "scalar:overlay_amount",
+            "scalar:overlay_sharpeness",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "scalar:uv_tiling",
+            "vector:diffuse_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_4F79E47709A7_BG_LUT_MEMONAST_MODULEA_SM_SUP_OVR_95CB9BD8F45C": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:normal_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "scalar:uv_rotate",
+            "scalar:uv_tiling",
+            "vector:diffuse_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_54949C2E25CA_BG_LUT_LUCASTLE_CHURCHTOWER04_SM_KSH": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_54949C2E25CA_BG_LUT_LUCASTLE_CHURCHTOWER04_SM_KSH_OVR_9F7557E3EAAC": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:occludedopacity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:occludedopacity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_55864E75A79B_BG_SHS_COMMON_BRAZIER01A_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_57A6DD3F4E1B_BG_SHS_RCARENA_FENCE01A_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:normal_intensity",
+            "scalar:overlay_amount",
+            "scalar:overlay_brightness",
+            "scalar:overlay_saturation",
+            "scalar:overlay_sharpeness",
+            "scalar:overlay_specular_intensity",
+            "scalar:overlay_tiling",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "vector:diffuse_color",
+            "vector:overlay_color",
+            "vector:overlay_direction",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_60CF15DCDD84_BG_LUT_LUCASTLE_CASTLEARMS01_SM_BJH": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_6183CC80D140_BG_LUT_ZAMOUNT_FORTRESS05_SM_LKJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 2,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 3,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_62AFB8CD009B_BG_LUT_LUCASTLE_ARENAWINDOW01A_SM_KSH": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_68DBE760137C_BG_LUT_LUCASTLE_ARENAFENCE01A_SM_BJH": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_69DA033E9E1A_BG_LUT_WAGLOY_CIRCLEFLOOR02_SM_ARTREE_LOC_INT_OVR_03E45C4A8035": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "vector:diffuse_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_70744F175B39_BG_LUT_LUCASTLE_MONUMENT03_SM_SUP": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_diffuse_1",
+            "texture:texture_specular_1",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_76616D9451D0_BG_SHS_RCARENA_DECO01C_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_dead",
+            "texture:texture_fx_panning",
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:normal_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_7697F08EE00F_BG_TOT_PIRATEDEN_TABLEPROP04_SM_PHS": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_7AE53543B519_BG_LUT_MEMONAST_MODULEFRAME02E_SM_PHS_OVR_F7E32328E986": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:specular_intensity",
+            "vector:diffuse_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_7BA4AC84CD3A_LV_MODULE_WATER02_512_OVR_74DC46EFD758": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:detail_texture_normal",
+            "texture:texture_foam",
+            "texture:texture_foam_opacity",
+            "texture:texture_reflection",
+            "scalar:caustic_brightness",
+            "scalar:caustic_depth_bias",
+            "scalar:caustic_distortion",
+            "scalar:depth_bias",
+            "scalar:detail_normal_intensity",
+            "scalar:diffuse_intensity",
+            "scalar:foam_distortion",
+            "scalar:foam_opacity",
+            "scalar:foam_speed",
+            "scalar:fresnel_intensity",
+            "scalar:fresnel_power",
+            "scalar:normal_distortion_intensity",
+            "scalar:normal_intensity",
+            "scalar:opacity",
+            "scalar:opacity_power",
+            "scalar:reflection_intensity",
+            "scalar:reflection_uv_tiling",
+            "scalar:specular_distortion_intensity",
+            "scalar:specular_intensity",
+            "scalar:water_darkness",
+            "scalar:water_distortion_intensity",
+            "vector:caustic_tiling_panning",
+            "vector:detail_normal_tiling_panning",
+            "vector:diffuse_color",
+            "vector:diffuse_tiling_panning",
+            "vector:foam_color",
+            "vector:foam_tiling_panning",
+            "vector:normal_tiling_panning",
+            "vector:reflection_color",
+            "vector:specular_tiling_panning",
+            "vector:whole_tiling_panning",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_7E5C5FCE9A12_BG_SHS_RCARENA_DECO04L_SM_BJH": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:normal_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_803171758EDB_BG_LUT_LUCASTLE_MONUMENT01_SM_SUP": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_diffuse_1",
+            "texture:texture_specular_1",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_8399890E2070_BG_LUT_LUCASTLE_CHURCHTOWER12_SM_KSH": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_8399890E2070_BG_LUT_LUCASTLE_CHURCHTOWER12_SM_KSH_OVR_9F7557E3EAAC": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:occludedopacity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:occludedopacity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_915C73C9E903_BG_LUT_ZAMOUNT_BALLISTA04_SM_CWK_OVR_0C2ADABA67B2": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_959DE1ABB4BC_BG_LUT_MEMONAST_MODULE_SM_SUP_OVR_4AA237ED9734": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:normal_intensity",
+            "scalar:overlay_amount",
+            "scalar:overlay_sharpeness",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "scalar:uv_tiling",
+            "vector:diffuse_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_959DE1ABB4BC_BG_LUT_MEMONAST_MODULE_SM_SUP_OVR_824646225DF5": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:normal_intensity",
+            "scalar:overlay_amount",
+            "scalar:overlay_sharpeness",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "scalar:uv_tiling",
+            "vector:diffuse_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_95F50A52DA4C_BG_LUT_ZAMOUNT_FORTRESS02A_SM_LKJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 2,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 3,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_99EDEB6669F1_SKY_MIRROR_SM_OVR_1D8FC6CEB1F9": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "material:authored-null-override"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_9DA4FD9CF158_BG_LUT_WAGLOY_CIRCLEFLOOR02A_SM_ARTREE_LOC_INT_OVR_03E45C4A8035": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "vector:diffuse_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_9F0FE26F7CC4_BG_SHS_BWINDHILL_SWORDTOMB01F_SM_LJD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:overlay_brightness",
+            "scalar:overlay_sharpeness",
+            "scalar:overlay_specular_intensity",
+            "scalar:overlay_tiling",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_A271D761454A_BG_LUT_LUCASTLE_LIBRARYWALL01_SM_YSI_OVR_E70C845C5DED": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "material:authored-null-override"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "material:authored-null-override"
+          ]
+        },
+        {
+          "slot": 2,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:specular_intensity",
+            "vector:diffuse_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_A86E2B5602A1_BG_LUT_LUCASTLE_STREET03_SM_PHS_OVR_62D5ACB984E3": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_ABD5086E1B79_CINE_LUT_D_EV01_07_SM_MSJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_ABDB53A0A2C4_BG_LUT_LUCASTLE_CHURCHINPILLAR01_SM_PHS": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_AEBAD0E6C68E_BG_LUT_MEMONAST_MODULEFRAME02C_SM_PHS_OVR_F7E32328E986": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:specular_intensity",
+            "vector:diffuse_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_B3D0C71444CA_BG_LUT_LUCASTLE_FLOORFENCE01_SM_JJY": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_B52C54420C4C_BG_LUT_ZAMOUNT_FLAG01_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_diffuse_1",
+            "texture:texture_specular_1",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_B54F957CB328_BG_LUT_LUCASTLE_ARENAFLAG01_SM_MSJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_diffuse_1",
+            "texture:texture_specular_1",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_B8E71471AB9E_BG_SHS_RCARENA_DECO04H_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:normal_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "vector:specular_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:normal_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_BA1FC773A0EA_BG_LUT_ZAMOUNT_HOUSEPILLAR04A_SM_MSJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_BBBF34E797B4_BG_SHS_RCARENA_DECO01E_SM_OLD_OVR_A0A391EEB822": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_dead",
+            "texture:texture_fx_panning",
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:bump_offset",
+            "scalar:diffuse_saturation",
+            "scalar:reflection_contrast",
+            "scalar:reflection_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "vector:diffuse_color",
+            "vector:specular_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_BD3B8727472A_BG_SHS_RCARENA_FENCE01B_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:normal_intensity",
+            "scalar:overlay_amount",
+            "scalar:overlay_brightness",
+            "scalar:overlay_saturation",
+            "scalar:overlay_sharpeness",
+            "scalar:overlay_specular_intensity",
+            "scalar:overlay_tiling",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "vector:diffuse_color",
+            "vector:overlay_color",
+            "vector:overlay_direction",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_BDE39B522ADB_BG_SHS_RCARENA_DECO02B_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:normal_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "vector:specular_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "texture:texture_dead",
+            "texture:texture_fx_panning",
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_BE20045CE619_BG_SHS_ETC_ARMS01D_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:normal_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "vector:specular_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_C3813E5BFDAE_BG_SHS_RCARENA_FLOOR02A_SM_LJD_OVR_1D8FC6CEB1F9": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "material:authored-null-override"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_C4D5EA5FF0E2_BG_LUT_LUCASTLE_CASTLEFLAG04_SM_BJH": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_diffuse_1",
+            "texture:texture_reflection",
+            "texture:texture_specular_1",
+            "scalar:flag_vertical_direction",
+            "scalar:foliage_wind_frequency",
+            "scalar:foliage_wind_intensity",
+            "scalar:foliage_wind_speed",
+            "scalar:noise_frequency",
+            "scalar:noise_intensity",
+            "scalar:noise_speed",
+            "scalar:noise_variation",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "scalar:wave_angle_offset",
+            "scalar:wave_yaw_intensity",
+            "scalar:wind_intensity",
+            "scalar:wind_noise_frequency",
+            "scalar:wind_noise_intensity",
+            "scalar:wind_noise_speed",
+            "vector:wave_frequency",
+            "vector:wave_intensity",
+            "vector:wave_speed",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_C5405C472184_BG_LUT_ZAMOUNT_FORTRESS03D_SM_LKJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 2,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 3,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_C813EE647F25_BG_LUT_LUCASTLE_LIBRARY03_SM_PSY": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_CC42D7FBF356_BG_LUT_ZAMOUNT_FORTRESS02_SM_LKJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 2,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 3,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 4,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 5,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 6,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_CE33FC421017_LV_COMMON_MESH_CUL_BOX_3": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "material:umodel-empty-material3"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_CF557A6B8A31_BG_LUT_ZAMOUNT_BROKENFORTRESSDECO02C_SM_LKJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_D50EF0804866_BG_LUT_LUCASTLE_LIBRARYDOOR01_SM_PSY": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_DB9FBD1B9284_BG_LUT_LUCASTLE_MONUMENT02_SM_SUP": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_diffuse_1",
+            "texture:texture_specular_1",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_DCC6DA3C41B3_BG_SHS_COMMON_BOX01H_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_DEAA6F3D980A_BG_LUT_ZAMOUNT_DECODOOR01_SM_MSJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_E494916E9170_BG_CHS_PHNTMS_FLOOR01_SM_LKJ_OVR_40FA9FBC2592": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:diffuse_saturation",
+            "scalar:normal_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "scalar:uv_rotate",
+            "scalar:uv_tiling",
+            "vector:diffuse_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_ED3494AE5A29_BG_LUT_LUCASTLE_CHURCHTOWER01_SM_KSH": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_ED8D3016A2F2_BG_LUT_MEMONAST_TORCH02_SM_SUP": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_EF5B0EE580B1_BG_LUT_MEMONAST_WALLDECO1C_SM_CWK_OVR_1D8FC6CEB1F9": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "material:authored-null-override"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_F0D232D72EC8_BG_LUT_ZAMOUNT_HOUSEARMS02_SM_MSJ": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_F0D232D72EC8_BG_LUT_ZAMOUNT_HOUSEARMS02_SM_MSJ_OVR_C2A06E76E28D": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "vector:diffuse_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_F4B3FBEB1E0D_BG_LUT_LUCASTLE_ARENADOOR01_SM_BJH": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:normal_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_F60C87D0A3C0_BG_LUT_LUCASTLE_CHURCH03_SM_KSH": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_F6DA2E1162C3_BG_LUT_LUCASTLE_ARENA04_SM_KSH": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_F76F2DD91907_BG_SHS_ETC_ARMS01E_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:normal_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "vector:specular_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_F76F2DD91907_BG_SHS_ETC_ARMS01E_SM_OLD_OVR_95CB9B4F84CE": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "material:authored-null-override"
+          ]
+        },
+        {
+          "slot": 1,
+          "fields": [
+            "material:authored-null-override"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_F9CF4D9EFA42_BG_LUT_MEMONAST_ELEVATOR02_SM_YSI": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_color_fx_skin",
+            "texture:texture_dead",
+            "texture:texture_fx_panning",
+            "texture:texture_mask_variation",
+            "texture:texture_reflection",
+            "scalar:dead_texture_tiling",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_FA22DA8A1731_BG_SHS_COMMON_CARGO01H_SM_OLD": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:normal_intensity",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    }
+  },
+  "sourceMaterialBuild": null,
+  "placementCount": 1294,
+  "sourceAnyNegativeScaleCount": 639,
+  "sourceReflectedCount": 633,
+  "sourceHiddenHelperCount": 0,
+  "sourceHiddenCategoryCounts": {
+    "source-hidden": 10
+  },
+  "anyNegativeScaleCount": 639,
+  "reflectedCount": 633,
+  "hiddenHelperCount": 0,
+  "hiddenCategoryCounts": {
+    "source-hidden": 10
+  },
+  "sourceLevelCounts": {
+    "LV_PVP_COLOSSEUM_PS": 1294
+  },
+  "goldenPlacement": null,
+  "inputs": {
+    "assetManifest": "A9D1FE3CD5DA02F31A93A788BC09CC0F09B15A40411C02C801C74E1584549A35",
+    "runtimeManifest": "5F7AE6B2B1BCDBEADA843BCDE4DC18F5A914CDE1418A1D0A6A6DF6C2BB05F6B1",
+    "placementDirectories": [
+      "C:/LostArkExtract/LV_PVP_COLOSSEUM_20260930/Placements_Admitted"
+    ],
+    "placements": {
+      "LV_PVP_COLOSSEUM_PS.placements.json": "A0AE21C5538EA6020C0017BE8C90F37DF9A476DB9959DFF2026AF9048DC338CB"
+    },
+    "overlayManifest": null,
+    "renderProfileManifest": "9A9E0CD7C854036CC81C2E53D59667E01198FC7E13AB519A094E87A4DA5925BF"
+  },
+  "outputs": {
+    "catalog": "46ee2c6cebfd386e978d6b80425eca086af8ab5b1675c79dbaf6c0518e7e9247",
+    "placements": "1ad3d89024bced70438dd62947a754eedee448a8be5f0416e16ebe96207e5b1c"
+  }
+}

@@ -6,7 +6,7 @@ param(
     # Client-side World outputs of the same transaction. Pointing both roots at
     # a scratch folder stages a publish without touching live outputs.
     [string]$ClientOutputRoot = 'Client/Bin/DataFiles/World',
-    [ValidateSet('ALL', 'BERN', 'KAKULSAYDON_ARENA', 'VALTAN_ARENA', 'MAHARAKA')]
+    [ValidateSet('ALL', 'BERN', 'KAKULSAYDON_ARENA', 'VALTAN_ARENA', 'MAHARAKA', 'COLOSSEUM')]
     [string]$WorldId = 'ALL',
 	[ValidateRange(0, 12)]
 	[int]$FailureAfterPromote = 0,
@@ -961,7 +961,7 @@ function Convert-WorldDocument {
 					$hasLandingPlacement = $null -ne $event.PSObject.Properties['spawnPlacementId']
 					Assert-ExactProperties $event $(if ($hasLandingPlacement) { @('type','targetWorldId','spawnPlacementId') } else { @('type','targetWorldId') }) "$relativePath changeLevel event"
 					Assert-JsonString $event.targetWorldId "$relativePath changeLevel targetWorldId"
-					if ($event.targetWorldId -notin @('BERN','VALTAN_ARENA','MAHARAKA') -or
+					if ($event.targetWorldId -notin @('BERN','VALTAN_ARENA','MAHARAKA','COLOSSEUM') -or
 						[string]$event.targetWorldId -eq $WorldId) {
 						throw "changeLevel target is unknown or equals the source world: $($placement.placementId)"
 					}
@@ -972,6 +972,10 @@ function Convert-WorldDocument {
 					if (($WorldId -eq 'MAHARAKA' -and [string]$event.targetWorldId -ne 'BERN') -or
 						([string]$event.targetWorldId -eq 'MAHARAKA' -and $WorldId -ne 'BERN')) {
 						throw "Maharaka changeLevel connects only to Bern: $($placement.placementId)"
+					}
+					# The Colosseum is entered from Bern only; it has no changeLevel of its own yet.
+					if ([string]$event.targetWorldId -eq 'COLOSSEUM' -and $WorldId -ne 'BERN') {
+						throw "Colosseum changeLevel is entered only from Bern: $($placement.placementId)"
 					}
 					if ($hasLandingPlacement) {
 						Assert-StableId $event.spawnPlacementId "$relativePath changeLevel spawnPlacementId"
@@ -1678,6 +1682,11 @@ elseif ($WorldId -eq 'MAHARAKA') {
     $encounterPropDocuments = @((Convert-EncounterPropsDocument -AreaId 'LV_OCN_EVENTIS_MHP' -WorldId $WorldId))
     $worlds = @((Convert-WorldDocument -AreaId 'LV_OCN_EVENTIS_MHP' -WorldId $WorldId -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnDocuments[0].GroupIds))
 }
+elseif ($WorldId -eq 'COLOSSEUM') {
+    $spawnDocuments = @((Convert-SpawnGroupsDocument -AreaId 'LV_PVP_COLOSSEUM' -WorldId $WorldId -ActorIds $actorIds -MonsterProfiles $monsterProfiles))
+    $encounterPropDocuments = @((Convert-EncounterPropsDocument -AreaId 'LV_PVP_COLOSSEUM' -WorldId $WorldId))
+    $worlds = @((Convert-WorldDocument -AreaId 'LV_PVP_COLOSSEUM' -WorldId $WorldId -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnDocuments[0].GroupIds))
+}
 elseif ($WorldId -eq 'VALTAN_ARENA') {
     # Valtan only: its world, spawn-group and encounter-prop bootstraps plus its
     # NPC presentation and F1 viewer inventory. Every other world, the Kouku
@@ -1693,7 +1702,8 @@ $spawnDocuments = @(
     (Convert-SpawnGroupsDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId 'KAKULSAYDON_ARENA' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
     (Convert-SpawnGroupsDocument -AreaId 'LV_DEV_TRAINING_GROUND' -WorldId 'TRAINING_GROUND' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
     (Convert-SpawnGroupsDocument -AreaId 'LV_LOBBY_CLASSSELECT_SL00' -WorldId 'CHARACTER_SELECT_ARENA' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
-    (Convert-SpawnGroupsDocument -AreaId 'LV_OCN_EVENTIS_MHP' -WorldId 'MAHARAKA' -ActorIds $actorIds -MonsterProfiles $monsterProfiles)
+    (Convert-SpawnGroupsDocument -AreaId 'LV_OCN_EVENTIS_MHP' -WorldId 'MAHARAKA' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
+    (Convert-SpawnGroupsDocument -AreaId 'LV_PVP_COLOSSEUM' -WorldId 'COLOSSEUM' -ActorIds $actorIds -MonsterProfiles $monsterProfiles)
 )
 $spawnByWorld = @{}
 foreach ($spawn in $spawnDocuments) { $spawnByWorld[$spawn.WorldId] = $spawn }
@@ -1703,7 +1713,8 @@ $encounterPropDocuments = @(
     (Convert-EncounterPropsDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId 'KAKULSAYDON_ARENA'),
     (Convert-EncounterPropsDocument -AreaId 'LV_DEV_TRAINING_GROUND' -WorldId 'TRAINING_GROUND'),
     (Convert-EncounterPropsDocument -AreaId 'LV_LOBBY_CLASSSELECT_SL00' -WorldId 'CHARACTER_SELECT_ARENA'),
-    (Convert-EncounterPropsDocument -AreaId 'LV_OCN_EVENTIS_MHP' -WorldId 'MAHARAKA')
+    (Convert-EncounterPropsDocument -AreaId 'LV_OCN_EVENTIS_MHP' -WorldId 'MAHARAKA'),
+    (Convert-EncounterPropsDocument -AreaId 'LV_PVP_COLOSSEUM' -WorldId 'COLOSSEUM')
 )
 $worlds = @(
     (Convert-WorldDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId 'BERN' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.BERN.GroupIds),
@@ -1711,7 +1722,8 @@ $worlds = @(
     (Convert-WorldDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId 'KAKULSAYDON_ARENA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.KAKULSAYDON_ARENA.GroupIds),
     (Convert-WorldDocument -AreaId 'LV_DEV_TRAINING_GROUND' -WorldId 'TRAINING_GROUND' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.TRAINING_GROUND.GroupIds),
     (Convert-WorldDocument -AreaId 'LV_LOBBY_CLASSSELECT_SL00' -WorldId 'CHARACTER_SELECT_ARENA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.CHARACTER_SELECT_ARENA.GroupIds),
-    (Convert-WorldDocument -AreaId 'LV_OCN_EVENTIS_MHP' -WorldId 'MAHARAKA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.MAHARAKA.GroupIds)
+    (Convert-WorldDocument -AreaId 'LV_OCN_EVENTIS_MHP' -WorldId 'MAHARAKA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.MAHARAKA.GroupIds),
+    (Convert-WorldDocument -AreaId 'LV_PVP_COLOSSEUM' -WorldId 'COLOSSEUM' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.COLOSSEUM.GroupIds)
 )
 }
 

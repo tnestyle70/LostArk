@@ -1,0 +1,1048 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": {
+    "width": 1280,
+    "height": 720
+  },
+  "classes": [
+    "Default"
+  ],
+  "slots": [
+    {
+      "id": "QueueOffer_Border",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 353.5,
+        "y": 215.193,
+        "width": 573.0,
+        "height": 289.615
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0.3,
+            0.27,
+            0.22,
+            0.95
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueOffer_Backdrop",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 354.5,
+        "y": 216.193,
+        "width": 571.0,
+        "height": 287.615
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0.045,
+            0.05,
+            0.06,
+            0.95
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueOffer_Panel",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 354.5,
+        "y": 216.193,
+        "width": 571.0,
+        "height": 131.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/CreateCharacterModalPanel.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueOffer_BarTrack",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 437.683,
+        "y": 370.574,
+        "width": 404.635,
+        "height": 8.459
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0.11,
+            0.11,
+            0.12,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueOffer_BarFill",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 437.683,
+        "y": 370.574,
+        "width": 404.635,
+        "height": 8.459
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/QueueDialog/remain_bar.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueOffer_BarCap",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 437.683,
+        "y": 370.574,
+        "width": 3.102,
+        "height": 8.459
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1.0,
+            0.97,
+            0.82,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueOffer_AcceptButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 487.028,
+        "y": 438.953,
+        "width": 152.267,
+        "height": 50.756
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/NormalButton.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueOffer_DeclineButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 644.935,
+        "y": 438.953,
+        "width": 155.086,
+        "height": 50.756
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/NormalButton.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueOffer_AcceptIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 495.488,
+        "y": 450.232,
+        "width": 28.198,
+        "height": 22.558
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/Accept.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueOffer_DeclineIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 661.148,
+        "y": 454.462,
+        "width": 21.148,
+        "height": 21.148
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/Decline.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueOffer_TitleText",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 482.115,
+        "y": 235.21,
+        "width": 320.0,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueOffer_BodyText1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 480.0,
+        "y": 298.654,
+        "width": 320.0,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueOffer_BodyText2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 478.59,
+        "y": 328.967,
+        "width": 320.0,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueOffer_SecondsText",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 479.295,
+        "y": 390.296,
+        "width": 320.0,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueOffer_AcceptLabel",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 539.375,
+        "y": 451.626,
+        "width": 80.0,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueOffer_DeclineLabel",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 700.101,
+        "y": 451.626,
+        "width": 80.0,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueWait_Border",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 353.5,
+        "y": 176.811,
+        "width": 573.0,
+        "height": 366.379
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0.3,
+            0.27,
+            0.22,
+            0.95
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueWait_Backdrop",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 354.5,
+        "y": 177.811,
+        "width": 571.0,
+        "height": 364.379
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0.045,
+            0.05,
+            0.06,
+            0.95
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueWait_Panel",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 354.5,
+        "y": 177.811,
+        "width": 571.0,
+        "height": 131.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/CreateCharacterModalPanel.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueWait_RingBlue",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 565.432,
+        "y": 331.783,
+        "width": 158.07,
+        "height": 158.07
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/QueueDialog/ring_blue.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueWait_RingWhite",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 565.432,
+        "y": 331.783,
+        "width": 158.07,
+        "height": 158.07
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Colosseum/QueueDialog/ring_white.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueWait_TitleText",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 479.302,
+        "y": 196.524,
+        "width": 320.0,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "QueueWait_BodyText",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 477.208,
+        "y": 260.046,
+        "width": 320.0,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    }
+  ]
+}
