@@ -480,6 +480,7 @@ namespace
 			const bool equipped = LostArk::Shared::EQUIPMENT_SLOT::NONE != item.eEquippedSlot;
 			if (!Is_Valid_ItemId(item.strItemId) || 0u == item.iQuantity ||
 				item.eEquippedSlot >= LostArk::Shared::EQUIPMENT_SLOT::END ||
+				item.iDurabilityPercent > 100u ||
 				(equipped && 1u != item.iQuantity))
 				return false;
 			for (std::size_t other = index + 1; other < items.size(); ++other)
@@ -5825,15 +5826,10 @@ bool LostArk::Shared::Write_Message(
 			return false;
 		writer.Write_U32(item.iQuantity);
 		writer.Write_U8(static_cast<std::uint8_t>(item.eEquippedSlot));
+		writer.Write_U8(item.iDurabilityPercent);
 	}
 	writer.Write_U32(message.iSilver);
 	writer.Write_U32(message.iGold);
-	for (const std::uint8_t percent : message.DurabilityPercent)
-	{
-		if (percent > 100u)
-			return false;
-		writer.Write_U8(percent);
-	}
 	return true;
 }
 
@@ -5855,7 +5851,8 @@ bool LostArk::Shared::Read_Message(
 		std::uint8_t equippedSlot = 0u;
 		if (!reader.Read_String(item.strItemId, MAX_ITEM_ID_BYTES) ||
 			!reader.Read_U32(item.iQuantity) ||
-			!reader.Read_U8(equippedSlot))
+			!reader.Read_U8(equippedSlot) ||
+			!reader.Read_U8(item.iDurabilityPercent))
 		{
 			return false;
 		}
@@ -5864,11 +5861,6 @@ bool LostArk::Shared::Read_Message(
 	}
 	if (!reader.Read_U32(decoded.iSilver) || !reader.Read_U32(decoded.iGold))
 		return false;
-	for (std::uint8_t& percent : decoded.DurabilityPercent)
-	{
-		if (!reader.Read_U8(percent) || percent > 100u)
-			return false;
-	}
 	if (!Is_Valid_InventoryItems(decoded.Items))
 		return false;
 	message = std::move(decoded);
@@ -5990,6 +5982,7 @@ bool LostArk::Shared::Write_Message(
 			return false;
 		writer.Write_U32(item.iQuantity);
 		writer.Write_U8(static_cast<std::uint8_t>(item.eEquippedSlot));
+		writer.Write_U8(item.iDurabilityPercent);
 	}
 	writer.Write_U32(message.iSilver);
 	writer.Write_U32(message.iGold);
@@ -6011,7 +6004,8 @@ bool LostArk::Shared::Read_Message(
 		INVENTORY_ITEM_SNAPSHOT item{};
 		std::uint8_t equippedSlot = 0u;
 		if (!reader.Read_String(item.strItemId, MAX_ITEM_ID_BYTES) ||
-			!reader.Read_U32(item.iQuantity) || !reader.Read_U8(equippedSlot))
+			!reader.Read_U32(item.iQuantity) || !reader.Read_U8(equippedSlot) ||
+			!reader.Read_U8(item.iDurabilityPercent))
 			return false;
 		item.eEquippedSlot = static_cast<EQUIPMENT_SLOT>(equippedSlot);
 		decoded.Items.push_back(std::move(item));

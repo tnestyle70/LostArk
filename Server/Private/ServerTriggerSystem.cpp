@@ -939,7 +939,6 @@ bool LostArk::Server::CServerTriggerSystem::Build_WorldTransfer(
 	outTransfer.eCharacterClass = player.eCharacterClass;
 	outTransfer.strNickName = player.strNickName;
 	outTransfer.iVoiceType = player.iVoiceType;
-	outTransfer.CarriedDurability = player.Get_DurabilityState();
 	/* The Maharaka trips leave and re-enter Bern with the same character, so the worn
 	   title, the bag and the purse ride along instead of resetting to a fresh entry.
 	   The Bern <-> Valtan boxes keep their established fresh-entry behaviour. */

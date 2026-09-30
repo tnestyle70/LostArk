@@ -126,7 +126,9 @@ namespace LostArk::Shared
 	// Independently released 127 branches add voice, durability, or Waterpang AI.
 	// Colosseum 128 adds its world and queue on top of 126. Those peers cannot
 	// decode the combined layout. 129 carries all four contracts together.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 129;
+	// 130 moves durability from a per-part array onto each inventory entry (one piece of
+	// gear) and lets the repair window list and repair damaged gear.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 130;
 
 	enum class WORLD_ID : std::uint16_t
 	{

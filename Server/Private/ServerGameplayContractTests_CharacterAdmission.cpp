@@ -502,8 +502,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 				if (fixture->Ready)
 				{
 					auto& player = fixture->Source->m_Players.at(session->Get_PlayerId());
-					player.DurabilityPercent.fill(static_cast<std::uint8_t>(60u + index));
-					player.iDurabilityWearCursor = static_cast<std::uint8_t>(index);
+					for (auto& item : player.Inventory)
+						item.iDurabilityPercent = static_cast<std::uint8_t>(60u + index);
 				}
 				fixture->Sessions.push_back(session);
 				fixture->App->m_Sessions.emplace(id, session);
@@ -599,9 +599,9 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 				if (foundPlayer != fixture->Target->m_Players.end())
 				{
 					const auto& player = foundPlayer->second;
-					exactRoster = exactRoster && player.iVoiceType == index + 2u && player.iDurabilityWearCursor == index &&
-						std::all_of(player.DurabilityPercent.begin(), player.DurabilityPercent.end(),
-							[index](const auto value) { return value == 60u + index; });
+					exactRoster = exactRoster && player.iVoiceType == index + 2u &&
+						std::all_of(player.Inventory.begin(), player.Inventory.end(),
+							[index](const auto& item) { return item.iDurabilityPercent == 60u + index; });
 				}
 				std::size_t accepted = 0u;
 				S2C_PARTY_ROSTER roster{};
@@ -816,9 +816,9 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 					if (foundPlayer != fixture->Target->m_Players.end())
 					{
 						const auto& player = foundPlayer->second;
-						committed = committed && player.iVoiceType == index + 2u && player.iDurabilityWearCursor == index &&
-							std::all_of(player.DurabilityPercent.begin(), player.DurabilityPercent.end(),
-								[index](const auto value) { return value == 60u + index; });
+						committed = committed && player.iVoiceType == index + 2u &&
+							std::all_of(player.Inventory.begin(), player.Inventory.end(),
+								[index](const auto& item) { return item.iDurabilityPercent == 60u + index; });
 					}
 					const auto& binding = fixture->App->m_GameplayBindingBySessionId.at(session->Get_SessionId());
 					committed = committed && 1u == accepted && binding.eWorldId == WORLD_ID::KAKULSAYDON_ARENA &&

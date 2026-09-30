@@ -98,8 +98,6 @@ namespace LostArk::Server
 		std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT> CarriedInventory;
 		/* Travels with CarriedInventory: the purse the player had in the source world. */
 		SERVER_PURSE CarriedPurse;
-		// Server-only world transfer state; independent of inventory grant semantics.
-		SERVER_DURABILITY_STATE CarriedDurability;
 		/* ENTER_WORLD only, from SERVER_WORLD_TRANSFER_REQUEST::iHonorTitleId: the title the
 		player wore in the source world. INVALID for a fresh Lobby entry. */
 		LostArk::Shared::HONOR_TITLE_ID iCarriedHonorTitleId = LostArk::Shared::INVALID_HONOR_TITLE_ID;

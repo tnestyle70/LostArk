@@ -711,7 +711,6 @@ void LostArk::Server::CGameRoom::Handle_DebugEnterKakulSaydonArena(
 	transfer.eCharacterClass = player.eCharacterClass;
 	transfer.strNickName = player.strNickName;
 	transfer.iVoiceType = player.iVoiceType;
-	transfer.CarriedDurability = player.Get_DurabilityState();
 	transfer.iHonorTitleId = player.iHonorTitleId;
 	transfer.iPartyRequestSequence = request.iRequestSequence;
 	transfer.CarriedInventory = player.Inventory;

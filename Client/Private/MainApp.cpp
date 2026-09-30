@@ -5252,18 +5252,41 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 			currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
 			currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA))
 		{
-			/* Server-owned wear: below 30% a part reads damaged (red), at 0 it reads destroyed.
-			The wire order is weapon, helmet, top, gloves, bottoms, shoulder -- the first six
-			CDurabilityHudView parts. */
-			const auto& DurabilityPercent = CCombatHUDViewModel::Get().Get_Inventory().DurabilityPercent;
-			for (uint32_t iPart = 0; iPart < static_cast<uint32_t>(DurabilityPercent.size()); ++iPart)
+			/* Each HUD part reads the gear worn in its slot: below 30% damaged (red), at 0
+			destroyed, an empty slot or a sound piece normal. The silhouette stays hidden until
+			some part turns red. */
+			using LostArk::Shared::EQUIPMENT_SLOT;
+			struct HUD_PART_SLOT { CDurabilityHudView::PART ePart; EQUIPMENT_SLOT eSlot; };
+			constexpr HUD_PART_SLOT PART_SLOTS[] = {
+				{ CDurabilityHudView::PART::WEAPON, EQUIPMENT_SLOT::WEAPON },
+				{ CDurabilityHudView::PART::HELMET, EQUIPMENT_SLOT::HELMET },
+				{ CDurabilityHudView::PART::TOP, EQUIPMENT_SLOT::TOP },
+				{ CDurabilityHudView::PART::GLOVES, EQUIPMENT_SLOT::GLOVES },
+				{ CDurabilityHudView::PART::BOTTOMS, EQUIPMENT_SLOT::PANTS },
+				{ CDurabilityHudView::PART::SHOULDER, EQUIPMENT_SLOT::SHOULDER },
+			};
+			const auto& InventoryItems = CCombatHUDViewModel::Get().Get_Inventory().Items;
+			bool_t bAnyRed = false;
+			for (const HUD_PART_SLOT& PartSlot : PART_SLOTS)
 			{
-				const uint8_t iPercent = DurabilityPercent[iPart];
-				m_pDurabilityHudView->Set_PartState(static_cast<CDurabilityHudView::PART>(iPart),
-					0u == iPercent ? CDurabilityHudView::PART_STATE::DESTROYED :
-					(iPercent < 30u ? CDurabilityHudView::PART_STATE::DAMAGED : CDurabilityHudView::PART_STATE::NORMAL));
+				CDurabilityHudView::PART_STATE eState = CDurabilityHudView::PART_STATE::NORMAL;
+				for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& Item : InventoryItems)
+				{
+					if (Item.eEquippedSlot != PartSlot.eSlot)
+						continue;
+					if (0u == Item.iDurabilityPercent)
+						eState = CDurabilityHudView::PART_STATE::DESTROYED;
+					else if (Item.iDurabilityPercent < 30u)
+						eState = CDurabilityHudView::PART_STATE::DAMAGED;
+					break;
+				}
+				m_pDurabilityHudView->Set_PartState(PartSlot.ePart, eState);
+				bAnyRed = bAnyRed || CDurabilityHudView::PART_STATE::NORMAL != eState;
 			}
-			m_pDurabilityHudView->Update();
+			if (bAnyRed)
+				m_pDurabilityHudView->Update();
+			else
+				m_pDurabilityHudView->Hide();
 		}
 		else
 			m_pDurabilityHudView->Hide();

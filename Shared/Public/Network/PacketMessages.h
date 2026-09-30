@@ -2897,11 +2897,30 @@ namespace LostArk::Shared
 		std::string strItemId;
 		std::uint32_t iQuantity = 0;
 		EQUIPMENT_SLOT eEquippedSlot = EQUIPMENT_SLOT::NONE;
+		/* Wear of this piece of gear, 0 (broken) to 100 (undamaged). Only weapon and armor
+		   entries ever drop below 100; everything else stays 100. It travels with the entry
+		   through every path that carries the inventory. */
+		std::uint8_t iDurabilityPercent = 100;
 	};
 
-	/* Worn-gear parts the durability HUD draws, in wire order: weapon, helmet, top, gloves,
-	   bottoms, shoulder. Each carries a percent, 0 (broken) to 100 (undamaged). */
-	inline constexpr std::size_t DURABILITY_PART_COUNT = 6;
+	/* The equipment slots whose gear wears: the weapon and the five armor pieces. The
+	   durability HUD, the Server's wear and the repair window all use this one list. */
+	[[nodiscard]]
+	constexpr bool Is_Durable_Slot(const EQUIPMENT_SLOT slot) noexcept
+	{
+		return EQUIPMENT_SLOT::HELMET == slot || EQUIPMENT_SLOT::SHOULDER == slot ||
+			EQUIPMENT_SLOT::TOP == slot || EQUIPMENT_SLOT::PANTS == slot ||
+			EQUIPMENT_SLOT::GLOVES == slot || EQUIPMENT_SLOT::WEAPON == slot;
+	}
+
+	/* Silver the repair NPC charges for one piece of gear: 1000 at 0 percent, in proportion to
+	   the wear, rounded up; nothing for an undamaged piece. The Server bills with it and the
+	   repair window shows the same figure. */
+	[[nodiscard]]
+	constexpr std::uint32_t Repair_Silver_Cost(const std::uint8_t durabilityPercent) noexcept
+	{
+		return durabilityPercent >= 100u ? 0u : (1000u * (100u - durabilityPercent) + 99u) / 100u;
+	}
 
 	// Replace-in-full, the same shape S2C_ENCOUNTER_PROP_SYNC uses: one message
 	// carries the whole current inventory, so a late joiner or a re-entering
@@ -2913,8 +2932,6 @@ namespace LostArk::Shared
 		/* The purse (silver / gold). Currencies are not bag items, so they ride beside them. */
 		std::uint32_t iSilver = 0;
 		std::uint32_t iGold = 0;
-		/* Server-owned wear of the worn gear, one percent per durability HUD part. */
-		std::array<std::uint8_t, DURABILITY_PART_COUNT> DurabilityPercent{ { 100, 100, 100, 100, 100, 100 } };
 	};
 
 	bool Write_Message(
