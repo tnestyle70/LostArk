@@ -1,5 +1,7 @@
 #pragma once
 
+#include "PlayerSkillCatalog.h"
+
 #include <array>
 #include <cstdint>
 #include <string>
@@ -29,6 +31,10 @@ namespace Client
 		// actually authoritative when a use is applied.
 		std::uint32_t iHealPercent = 0;
 		float fTargetRangeM = 0.f;
+		// Client-only arm/confirm presentation; diameters derive from battleUse cm.
+		bool isGroundTargeted = false;
+		PLAYER_SKILL_TARGET_PREVIEW RangePreview;
+		PLAYER_SKILL_TARGET_PREVIEW TargetPreview;
 		std::uint32_t iBattleSkillId = 0u;
 		std::uint32_t iCooldownMs = 0u;
 		// "combat" (equipment, shown under the InventoryView Combat filter and

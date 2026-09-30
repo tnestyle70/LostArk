@@ -53,6 +53,39 @@ function Assert-Properties([object]$Value, [string[]]$Required, [string[]]$Optio
     }
 }
 
+# Presentation only; numeric diameters are derived by Client from battleUse.
+function Assert-GroundPreview([object]$Value, [string]$Context) {
+    Assert-ExactProperties $Value @('textureAssetId', 'coverageChannel', 'textureDiameterFraction', 'validTint', 'invalidTint', 'assetIdentityBasis', 'usageBasis', 'sourceEvidence') $Context
+    foreach ($field in @('textureAssetId', 'coverageChannel', 'assetIdentityBasis', 'usageBasis', 'sourceEvidence')) {
+        Assert-JsonString $Value.$field "$Context $field"
+    }
+    $fraction = $Value.textureDiameterFraction
+    if (($fraction -isnot [int] -and $fraction -isnot [long] -and $fraction -isnot [double] -and $fraction -isnot [decimal]) -or
+        [double]::IsNaN([double]$fraction) -or [double]::IsInfinity([double]$fraction) -or $fraction -le 0 -or $fraction -gt 1) {
+        throw "$Context textureDiameterFraction must be finite and in (0, 1]."
+    }
+    $asset = [string]$Value.textureAssetId
+    if (-not $asset.StartsWith('Effect/', [StringComparison]::Ordinal) -or
+        -not $asset.EndsWith('.dds', [StringComparison]::Ordinal) -or $asset.Length -gt 260 -or
+        $asset.Contains('\') -or $asset.Contains(':') -or @($asset.Split('/') | Where-Object { $_ -eq '..' -or $_ -eq '.' }).Count -ne 0 -or
+        $Value.coverageChannel -cne 'R' -or $Value.assetIdentityBasis -cne 'SOURCE_VERIFIED' -or
+        $Value.usageBasis -cne 'PROJECT_COMPOSITION' -or [string]::IsNullOrWhiteSpace($Value.sourceEvidence)) {
+        throw "$Context has an invalid resource/provenance contract."
+    }
+    foreach ($field in @('validTint', 'invalidTint')) {
+        $tint = $Value.$field
+        if ($tint -isnot [Array] -or $tint.Count -ne 4) { throw "$Context $field must have four channels." }
+        for ($index = 0; $index -lt 4; ++$index) {
+            $channel = $tint[$index]
+            if (($channel -isnot [int] -and $channel -isnot [long] -and $channel -isnot [double] -and $channel -isnot [decimal]) -or
+                [double]::IsNaN([double]$channel) -or [double]::IsInfinity([double]$channel) -or
+                $channel -lt 0 -or $channel -gt 100 -or ($index -eq 3 -and $channel -gt 1)) {
+                throw "$Context $field has an invalid channel."
+            }
+        }
+    }
+}
+
 $itemDocument = Read-JsonDocument 'Data/Items/ItemCatalog.json'
 Assert-Properties $itemDocument @('schema', 'formatVersion', 'items') @('currencies', 'shops') 'item catalog document'
 Assert-JsonString $itemDocument.schema 'item catalog schema'
@@ -78,7 +111,7 @@ foreach ($item in $items) {
     # also travel to the Server, which checks them on equip; startingEquippedSlot names the
     # equipment slot a fresh character already wears the item in. "-" marks an absent value.
     Assert-Properties $item @('itemId', 'displayName', 'maxStack', 'iconPath', 'healPercent', 'category') `
-        @('equipSlot', 'characterClass', 'grade', 'startingEquippedSlot', 'battleUse', 'visualSetId', 'classVariants') 'item'
+        @('equipSlot', 'characterClass', 'grade', 'startingEquippedSlot', 'battleUse', 'visualSetId', 'classVariants', 'groundTargetPreview') 'item'
     Assert-JsonString $item.itemId 'item itemId'
     Assert-JsonString $item.displayName 'item displayName'
     Assert-JsonInteger $item.maxStack 'item maxStack' 1 ([uint32]::MaxValue)
@@ -161,6 +194,15 @@ foreach ($item in $items) {
             (($battle.kind -in @('DESTRUCTION', 'WHIRLWIND')) -and $battle.projectileSpeedCmPerSecond -eq 0)) { throw "battleUse values are invalid: $($item.itemId)" }
         $battleRows.Add((@('BATTLEITEM', $item.itemId, $battle.kind, $battle.skillId, $battle.damageRatePercent, $battle.partDamage, $battle.staggerDamage,
             $battle.rangeCm, $battle.radiusCm, $battle.durationMs, $battle.cooldownMs, $battle.projectileSpeedCmPerSecond, $battle.projectileArcHeightCm, $battle.projectileLaunchHeightCm, $battle.staggerMaximumDivisor) -join "`t"))
+    }
+    $isThrown = $null -ne $item.PSObject.Properties['battleUse'] -and
+        @('DESTRUCTION', 'WHIRLWIND') -ccontains $item.battleUse.kind
+    $hasPreview = $null -ne $item.PSObject.Properties['groundTargetPreview']
+    if ($isThrown -ne $hasPreview) { throw "Only thrown battle items require groundTargetPreview: $($item.itemId)" }
+    if ($hasPreview) {
+        Assert-ExactProperties $item.groundTargetPreview @('rangePreview', 'targetPreview') 'groundTargetPreview'
+        Assert-GroundPreview $item.groundTargetPreview.rangePreview 'groundTargetPreview.rangePreview'
+        Assert-GroundPreview $item.groundTargetPreview.targetPreview 'groundTargetPreview.targetPreview'
     }
 }
 

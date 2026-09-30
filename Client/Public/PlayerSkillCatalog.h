@@ -17,8 +17,9 @@ namespace Client
 		float fDiameter = 0.f;
 		float4_t vValidTint = { 1.f, 1.f, 1.f, 1.f };
 		float4_t vInvalidTint = { 1.f, 0.f, 0.f, 1.f };
-		/* Kept visible to diagnostics so runtime-resource identity is never
-		 reported as source-extracted evidence. Both usages are PROJECT_TUNED. */
+		/* The owning catalog records texture identity and presentation usage
+		 separately. A source-verified item texture can still use project composition;
+		 it does not imply restoration of the complete source particle material. */
 		std::string strAssetIdentityBasis;
 		std::string strUsageBasis;
 		std::string strSourceEvidence;

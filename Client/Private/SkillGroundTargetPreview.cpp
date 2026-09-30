@@ -47,17 +47,37 @@ bool_t Client::CSkillGroundTargetPreview::Begin(
 	const PLAYER_SKILL_DEFINITION& skill)
 {
 	using LostArk::Shared::SKILL_TARGET_INTENT_KIND;
-	if (SKILL_TARGET_INTENT_KIND::GROUND_POINT != skill.eTargetIntent ||
-		skill.RangePreview.strAssetId.empty() ||
-		skill.TargetPreview.strAssetId.empty())
+	return SKILL_TARGET_INTENT_KIND::GROUND_POINT == skill.eTargetIntent &&
+		Begin(skill.RangePreview, skill.TargetPreview);
+}
+
+bool_t Client::CSkillGroundTargetPreview::Begin(
+	const PLAYER_SKILL_TARGET_PREVIEW& rangePreview,
+	const PLAYER_SKILL_TARGET_PREVIEW& targetPreview)
+{
+	const auto IsValidSpec = [](const PLAYER_SKILL_TARGET_PREVIEW& spec)
 	{
+		const auto IsValidTint = [](const float4_t& tint)
+		{
+			return std::isfinite(tint.x) && tint.x >= 0.f &&
+				std::isfinite(tint.y) && tint.y >= 0.f &&
+				std::isfinite(tint.z) && tint.z >= 0.f &&
+				std::isfinite(tint.w) && tint.w >= 0.f && tint.w <= 1.f;
+		};
+		return !spec.strAssetId.empty() && std::isfinite(spec.fDiameter) &&
+			spec.fDiameter > 0.f && IsValidTint(spec.vValidTint) &&
+			IsValidTint(spec.vInvalidTint);
+	};
+	if (!IsValidSpec(rangePreview) || !IsValidSpec(targetPreview))
 		return false;
-	}
 	const std::filesystem::path rangePath =
-		CRuntimeAssetRoot::Resolve(skill.RangePreview.strAssetId);
+		CRuntimeAssetRoot::Resolve(rangePreview.strAssetId);
 	const std::filesystem::path targetPath =
-		CRuntimeAssetRoot::Resolve(skill.TargetPreview.strAssetId);
-	if (rangePath.empty() || targetPath.empty())
+		CRuntimeAssetRoot::Resolve(targetPreview.strAssetId);
+	std::error_code resourceError;
+	if (rangePath.empty() || targetPath.empty() ||
+		!std::filesystem::is_regular_file(rangePath, resourceError) || resourceError ||
+		!std::filesystem::is_regular_file(targetPath, resourceError) || resourceError)
 		return false;
 	shared_ptr<CTexture> stagedRange = CTexture::Create(
 		m_pDevice, m_pContext, rangePath.c_str(), 1u);
@@ -68,8 +88,8 @@ bool_t Client::CSkillGroundTargetPreview::Begin(
 
 	m_pRangeTexture = std::move(stagedRange);
 	m_pTargetTexture = std::move(stagedTarget);
-	m_RangeSpec = skill.RangePreview;
-	m_TargetSpec = skill.TargetPreview;
+	m_RangeSpec = rangePreview;
+	m_TargetSpec = targetPreview;
 	m_isTargetValid = false;
 	/* Set_State publishes the first fully sampled caster/target pair. Keeping
 	 this dormant avoids a one-frame quad at world origin on the key-down frame. */
