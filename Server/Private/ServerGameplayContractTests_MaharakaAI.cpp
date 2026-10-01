@@ -297,6 +297,93 @@ int CServerGameplayContractRunner::Run_MaharakaAI()
         admitted[i] = {player.fPositionX, player.fPositionY, player.fPositionZ};
     }
     auto& human = room->m_Players.at(sessions[0]->Get_PlayerId());
+    // Isolate collapse probes from the main branch\'s independent return/snapshot regression.
+    {
+        const auto beforeCollapseHuman=human;
+        const auto beforeCollapseTick=room->m_iServerTick;
+        tests.Require(MAHARAKA_WATERPANG_MATCH_END_TICKS - MAHARAKA_WATERPANG_COLLAPSE_START_TICKS == 60u * 30u &&
+            MAHARAKA_WATERPANG_COLLAPSE_START_TICKS == (20u + 120u) * 30u,
+            "Original ring collapse starts with exactly one minute remaining, excluding countdown and intro");
+        const auto missingTick = intro.iStartTick + MAHARAKA_WATERPANG_COLLAPSE_SUPPORT_TICKS;
+        human.fPositionX = MAHARAKA_WATERPANG_CANNON_X + 6.f; human.fPositionY = 22.4f; human.fPositionZ = MAHARAKA_WATERPANG_CANNON_Z;
+        human.eAction = PLAYER_ACTION_STATE::NONE; human.TriggerMove = {};
+        human.bKnockbackBallistic = human.bArenaEjectionActive = false;
+        tests.Require(!room->Update_PlayerFall(human, 1.f / 30.f, missingTick - 1u),
+            "Ring keeps support before the collapse gameplay transition");
+        tests.Require(room->Update_PlayerFall(human, 1.f / 30.f, missingTick) &&
+            human.bWaterpangFall && human.eAction == PLAYER_ACTION_STATE::FALLING && human.fPositionY < 22.4f,
+            "A stationary contestant on the collapsed ring begins the existing Waterpang fall");
+        for (unsigned step=1;step<=60u && human.bWaterpangFall;++step)
+            room->Update_PlayerFall(human, 1.f / 30.f, missingTick+step);
+        tests.Require(human.iCurrentHp && !human.bWaterpangFall && human.eAction == PLAYER_ACTION_STATE::NONE,
+            "Collapsed ring fall returns the contestant alive to a jump pier");
+        tests.Require(!room->Update_PlayerFall(human, 1.f / 30.f, missingTick + 46u),
+            "Side jump piers do not collapse with the outer ring");
+        human.fPositionX = MAHARAKA_WATERPANG_CANNON_X + 4.f; human.fPositionY = 22.4f; human.fPositionZ = MAHARAKA_WATERPANG_CANNON_Z;
+        tests.Require(!room->Update_PlayerFall(human, 1.f / 30.f, missingTick),
+            "The yellow centre remains supported after ring collapse");
+        human.fPositionX = MAHARAKA_WATERPANG_CANNON_X + 6.f; human.fPositionY = 20.48f;
+        tests.Require(!room->Update_PlayerFall(human, 1.f / 30.f, missingTick),
+            "Ordinary exploration below the arena is not a collapsed-deck fall");
+        human.TriggerMove.isActive = true; human.TriggerMove.strSourcePlacementId = "jump1";
+        human.TriggerMove.fStartX = human.fPositionX; human.TriggerMove.fStartY = human.fPositionY; human.TriggerMove.fStartZ = human.fPositionZ;
+        human.TriggerMove.fTargetX = human.fPositionX; human.TriggerMove.fTargetY = 22.4f; human.TriggerMove.fTargetZ = human.fPositionZ;
+        human.TriggerMove.fDurationSeconds = 1.f; human.TriggerMove.fArcHeight = 2.f;
+        human.eAction = PLAYER_ACTION_STATE::TRIGGER_MOVE;
+        room->m_iServerTick = missingTick;
+        room->Update_Players(1.f / 30.f); drain();
+        tests.Require(human.TriggerMove.isActive && std::hypot(
+            human.TriggerMove.fTargetX - MAHARAKA_WATERPANG_CANNON_X,
+            human.TriggerMove.fTargetZ - MAHARAKA_WATERPANG_CANNON_Z) < MAHARAKA_WATERPANG_WATERFALL_HIT_RADIUS_M,
+            "G jump targets the remaining centre without modifying authored boxes");
+        for (const auto name : MAHARAKA_WATERPANG_JUMP_TRIGGER_IDS)
+        {
+            const auto* box=room->Find_Placement(std::string(name));
+            tests.Require(box && box->TriggerActions.size()==1u,"Collapsed match keeps each published jump action");
+            if (!box || box->TriggerActions.size()!=1u) continue;
+            human.TriggerMove={}; human.eAction=PLAYER_ACTION_STATE::NONE;
+            human.bWaterpangFall=human.bKnockbackBallistic=human.bArenaEjectionActive=false;
+            human.fKnockbackRemainingSeconds=0.f;
+            human.fPositionX=box->fPositionX; human.fPositionY=box->fPositionY; human.fPositionZ=box->fPositionZ;
+            CServerTriggerSystem jump; jump.Set_WorldId(WORLD_ID::MAHARAKA);
+            std::string status;
+            tests.Require(jump.Initialize({*box},status),"Post-collapse G trigger initializes from the real published box");
+            std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+            const auto activate=[](WORLD_TRIGGER_ACTION_KIND,const std::string&){return true;};
+            tests.Require(jump.Activate_Here(human.iPlayerId,room->m_Players,missingTick,transfers,activate)==1u,
+                "Post-collapse G input activates the saved crossing");
+            const auto& authored=box->TriggerActions.front();
+            room->m_iServerTick=missingTick;
+            room->Update_Players(1.f/30.f); drain();
+            const auto landing=human.TriggerMove;
+            const bool onMissingRing=Is_MaharakaWaterpangMissingRing(MAHARAKA_WATERPANG_COLLAPSE_SUPPORT_TICKS,
+                authored.fTargetX,authored.fTargetZ);
+            tests.Require(landing.isActive && (onMissingRing ? std::abs(std::hypot(
+                landing.fTargetX-MAHARAKA_WATERPANG_CANNON_X,landing.fTargetZ-MAHARAKA_WATERPANG_CANNON_Z)-
+                MAHARAKA_WATERPANG_COLLAPSED_LANDING_RADIUS_M)<.001f :
+                landing.fTargetX==authored.fTargetX && landing.fTargetY==authored.fTargetY && landing.fTargetZ==authored.fTargetZ),
+                "Collapse preserves safe edited landings and adapts only missing outer-ring destinations");
+            for (unsigned tick=1;tick<45;++tick)
+            {
+                room->m_iServerTick=missingTick+tick;
+                room->Update_Players(1.f/30.f); drain();
+            }
+            tests.Require(!human.TriggerMove.isActive && human.iCurrentHp && !human.bWaterpangFall &&
+                human.eAction!=PLAYER_ACTION_STATE::FALLING && human.fPositionY>=MAHARAKA_WATERPANG_DECK_MIN_Y_M &&
+                std::hypot(human.fPositionX-landing.fTargetX,human.fPositionZ-landing.fTargetZ)<.01f,
+                "Every real G jump lands alive and stays supported after collapse");
+        }
+        human.TriggerMove = {}; human.eAction = PLAYER_ACTION_STATE::NONE;
+        human.fPositionX = MAHARAKA_WATERPANG_CANNON_X + 6.f; human.fPositionY = 22.5f;
+        human.bKnockbackBallistic = true; human.bKnockbackCanLeaveArena = true;
+        human.fKnockbackRemainingSeconds = 1.f / 30.f; human.fKnockbackVelocityY = -6.f;
+        human.fKnockbackLaunchY = human.fKnockbackSupportY = 22.4f; human.fKnockbackSpeed = 0.f;
+        room->Advance_PlayerKnockback(human, 1.f / 30.f);
+        tests.Require(human.bWaterpangFall && human.eAction == PLAYER_ACTION_STATE::FALLING,
+            "Airborne knockback cannot land on the old baked ring height");
+        human=beforeCollapseHuman;
+        room->m_iServerTick=beforeCollapseTick;
+    }
     auto& fallen = room->m_Players.at(sessions[1]->Get_PlayerId());
     auto& launched = room->m_Players.at(sessions[2]->Get_PlayerId());
     auto& visitor = room->m_Players.at(sessions[3]->Get_PlayerId());
@@ -341,6 +428,14 @@ int CServerGameplayContractRunner::Run_MaharakaAI()
     tests.Require(!room->m_MaharakaWaterpangIntro && !room->m_MaharakaWaterpangDebugEvent &&
         room->m_MaharakaWaterpangAI.empty() && room->m_MaharakaWaterGunShots.empty() && room->Count_HumanPlayers() == 4u,
         "Actual expiry tick clears the match and all AI while retaining the connected humans");
+    {
+        const auto returnedHuman=human;
+        human.fPositionX=MAHARAKA_WATERPANG_CANNON_X+6.f;
+        human.fPositionY=22.4f; human.fPositionZ=MAHARAKA_WATERPANG_CANNON_Z;
+        tests.Require(!room->Update_PlayerFall(human,1.f/30.f,room->m_iServerTick),
+            "Match reset restores the ring's normal support without stale collapse state");
+        human=returnedHuman;
+    }
     room->Refresh_PlayerBlockingBodies();
     for (unsigned i = 0; i < 3u; ++i)
     {

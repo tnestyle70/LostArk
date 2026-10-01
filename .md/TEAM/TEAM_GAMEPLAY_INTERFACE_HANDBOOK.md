@@ -2681,6 +2681,20 @@ Inventory 수량과 cooldown만 표시한다. `DAMAGE_REDUCED`/`CRITICAL_DAMAGE_
 
 ## 워터팡 AI·효과의 입력과 출력
 
+경기 도입 시작 tick에서20초 뒤에180초 경기가 시작된다. 같은 Server 시계로140초 시점
+(경기 남은60초)에 `world.sequence.instance.maharaka.waterpang.source.collapse`의 원본
+18개 발판/5초 동작을 재생하고 경기 STOP까지 마지막 자세를 유지한다. Client가 별도 시작
+명령을 보내거나 로컬 시계를 권위로 쓰지 않는다. 늦은 입장과 authoring 복귀는 현재 시각을 Seek한다.
+프로젝트 지지 판정은 붕괴 시작2초 뒤 외곽 반경5~7.5m를 제거하고 기존 낙하/점프대 복귀를 쓴다.
+이는 삼각형별 동적 nav 재베이크가 아니라 기존 고정 nav 위의 경기 지지 판정이다. 중앙·점프대·낮은
+탐험 바닥은 보존하며, 붕괴 뒤 목적지가 사라진 외곽인 입장 점프와 AI 재진입만 중앙4.4m에 착지한다.
+중앙의 안전한 저작 도착점은 그대로 사용한다. `jumpN_1` 표시는 비활성 편집 마커이며 실제 이동은
+`jumpN`의 `movePlayer.targetPosition`을 사용하므로 위치를 옮기면 두 값을 함께 저장·게시해야 한다.
+맵툴의 `Camera → 워터팡 / 원본 바닥 붕괴 (맵 동작 미리보기)`는 같은 시각 연출을 사용한다.
+`Server.exe --maharaka-ai-contract-test`는 기존 경기/AI 검사와 시간 경계·지지·낙하·리셋을
+Client 실행 없이 검사한다. 기존 `Sound/Maharaka/WaterpangSource/scene_maharakap_fallout_foley.wav`
+및 맵 리소스를 사용하며 packet/schema는 바뀌지 않는다.
+
 워터팡 AI는 `PLAYER_CONTROL_KIND::WATERPANG_AI(2)`이며 인간4명과 별도로 기본20명을
 Server player 이동·물총·피격 경로로 처리한다. 인간 판정은 `HUMAN` 값과 일치해야 한다.
 protocol127의 `S2C_PLAYER_SPAWNED.strWaterpangNpcArchetypeId`는 NPC 외형의 stable ID다.

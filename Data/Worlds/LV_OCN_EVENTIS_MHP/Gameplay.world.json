@@ -2,152 +2,87 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_OCN_EVENTIS_MHP",
-  "revision": 278,
+  "revision": 372,
   "placements": [
+    {
+      "placementId": "island.exit.to.bern",
+      "kind": "triggerBox",
+      "position": [62.7000008, 20.4799995, -975.599976],
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [2, 2, 2],
+      "triggerOnce": false,
+      "requiresInteract": true,
+      "events": [
+        { "type": "changeLevel", "targetWorldId": "BERN", "spawnPlacementId": "island.return.sea.landing" }
+      ]
+    },
     {
       "placementId": "jump1",
       "kind": "triggerBox",
-      "position": [
-        66.6110001,
-        23.2040005,
-        -992.672974
-      ],
+      "position": [66.6110001, 23.2040005, -992.672974],
       "yawDegrees": 0,
       "enabled": true,
-      "halfExtents": [
-        1,
-        1,
-        1
-      ],
+      "halfExtents": [1, 1, 1],
       "triggerOnce": false,
-      "events": [
-        {
-          "type": "movePlayer",
-          "targetPosition": [
-            71.0330353,
-            23.1000004,
-            -988.017334
-          ],
-          "durationSeconds": 1.2,
-          "arcHeight": 2.5
-        }
-      ],
       "requiresInteract": true,
-      "interactAction": "tightrope"
+      "events": [
+        { "type": "movePlayer", "targetPosition": [72.2330017, 23.1000004, -986.317017], "durationSeconds": 1.20000005, "arcHeight": 2.5 }
+      ]
     },
     {
       "placementId": "jump1_1",
       "kind": "triggerBox",
-      "position": [
-        71.0330353,
-        23.1000004,
-        -988.017334
-      ],
+      "position": [72.2330017, 23.1000004, -986.317017],
       "yawDegrees": 0,
       "enabled": false,
-      "halfExtents": [
-        1,
-        1,
-        1
-      ],
+      "halfExtents": [1, 1, 1],
       "triggerOnce": true,
       "events": []
     },
     {
       "placementId": "jump2",
       "kind": "triggerBox",
-      "position": [
-        83.2979965,
-        23.4039993,
-        -975.674988
-      ],
+      "position": [83.2979965, 23.4039993, -975.674988],
       "yawDegrees": 0,
       "enabled": true,
-      "halfExtents": [
-        1,
-        1,
-        1
-      ],
+      "halfExtents": [1, 1, 1],
       "triggerOnce": false,
-      "events": [
-        {
-          "type": "movePlayer",
-          "targetPosition": [
-            78.8357773,
-            23.2280006,
-            -980.061584
-          ],
-          "durationSeconds": 1.2,
-          "arcHeight": 2.5
-        }
-      ],
       "requiresInteract": true,
-      "interactAction": "tightrope"
+      "events": [
+        { "type": "movePlayer", "targetPosition": [77.5360031, 23.2280006, -981.762024], "durationSeconds": 1.20000005, "arcHeight": 2.5 }
+      ]
     },
     {
       "placementId": "jump2_1",
       "kind": "triggerBox",
-      "position": [
-        78.8357773,
-        23.2280006,
-        -980.061584
-      ],
+      "position": [77.5360031, 23.2280006, -981.762024],
       "yawDegrees": 0,
       "enabled": false,
-      "halfExtents": [
-        1,
-        1,
-        1
-      ],
+      "halfExtents": [1, 1, 1],
       "triggerOnce": true,
       "events": []
     },
     {
       "placementId": "jump3",
       "kind": "triggerBox",
-      "position": [
-        71.764534,
-        20.6499996,
-        -975.366272
-      ],
+      "position": [71.764534, 20.6499996, -975.366272],
       "yawDegrees": 0,
       "enabled": true,
-      "halfExtents": [
-        1,
-        1,
-        1
-      ],
+      "halfExtents": [1, 1, 1],
       "triggerOnce": false,
-      "events": [
-        {
-          "type": "movePlayer",
-          "targetPosition": [
-            73.0410004,
-            23.1289997,
-            -979.223022
-          ],
-          "durationSeconds": 1.2,
-          "arcHeight": 2.5
-        }
-      ],
       "requiresInteract": true,
-      "interactAction": "climb"
+      "events": [
+        { "type": "movePlayer", "targetPosition": [73.0410004, 23.1289997, -979.223022], "durationSeconds": 1.20000005, "arcHeight": 2.5 }
+      ]
     },
     {
       "placementId": "jump3_1",
       "kind": "triggerBox",
-      "position": [
-        73.0410004,
-        23.1289997,
-        -979.223022
-      ],
+      "position": [73.0410004, 23.1289997, -979.223022],
       "yawDegrees": 0,
       "enabled": false,
-      "halfExtents": [
-        1,
-        1,
-        1
-      ],
+      "halfExtents": [1, 1, 1],
       "triggerOnce": true,
       "events": []
     },
@@ -158,11 +93,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        81.1877594,
-        19.8260269,
-        -995.886353
-      ],
+      "position": [81.1877594, 19.8260269, -995.886353],
       "yawDegrees": 26.015625,
       "enabled": true
     },
@@ -173,11 +104,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        81.9726105,
-        19.8241005,
-        -994.162903
-      ],
+      "position": [81.9726105, 19.8241005, -994.162903],
       "yawDegrees": 229.042969,
       "enabled": true
     },
@@ -188,11 +115,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        69.376091,
-        19.8571739,
-        -977.330444
-      ],
+      "position": [69.376091, 19.8571739, -977.330444],
       "yawDegrees": 335.390625,
       "enabled": true
     },
@@ -203,11 +126,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        80.022583,
-        19.8288422,
-        -993.96875
-      ],
+      "position": [80.022583, 19.8288422, -993.96875],
       "yawDegrees": 79.9804688,
       "enabled": true
     },
@@ -218,11 +137,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        58.1885262,
-        20.5162544,
-        -989.020325
-      ],
+      "position": [58.1885262, 20.5162544, -989.020325],
       "yawDegrees": 164.003906,
       "enabled": true
     },
@@ -233,11 +148,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        63.1671829,
-        20.4893456,
-        -971.183594
-      ],
+      "position": [63.1671829, 20.4893456, -971.183594],
       "yawDegrees": 207.597656,
       "enabled": true
     },
@@ -248,11 +159,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        61.858326,
-        20.4730988,
-        -972.529236
-      ],
+      "position": [61.858326, 20.4730988, -972.529236],
       "yawDegrees": 226.933594,
       "enabled": true
     },
@@ -263,11 +170,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        57.6962547,
-        20.4150639,
-        -979.905518
-      ],
+      "position": [57.6962547, 20.4150639, -979.905518],
       "yawDegrees": 194.238281,
       "enabled": true
     },
@@ -278,11 +181,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        57.5883827,
-        20.4578667,
-        -980.313599
-      ],
+      "position": [57.5883827, 20.4578667, -980.313599],
       "yawDegrees": 237.304688,
       "enabled": true
     },
@@ -293,11 +192,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        58.5163612,
-        20.4838142,
-        -989.924072
-      ],
+      "position": [58.5163612, 20.4838142, -989.924072],
       "yawDegrees": 335.390625,
       "enabled": true
     },
@@ -308,11 +203,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        83.1611786,
-        19.0788631,
-        -993.124512
-      ],
+      "position": [83.1611786, 19.0788631, -993.124512],
       "yawDegrees": 19.6875,
       "enabled": true
     },
@@ -323,11 +214,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        66.4585495,
-        19.0409317,
-        -979.424988
-      ],
+      "position": [66.4585495, 19.0409317, -979.424988],
       "yawDegrees": 185.625,
       "enabled": true
     },
@@ -338,11 +225,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        67.9532928,
-        19.7650337,
-        -977.139709
-      ],
+      "position": [67.9532928, 19.7650337, -977.139709],
       "yawDegrees": 46.0546875,
       "enabled": true
     },
@@ -353,11 +236,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        105.844025,
-        20.480999,
-        -997.317566
-      ],
+      "position": [105.844025, 20.480999, -997.317566],
       "yawDegrees": 233.4375,
       "enabled": true
     },
@@ -368,11 +247,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        57.4626961,
-        20.4810333,
-        -987.207947
-      ],
+      "position": [57.4626961, 20.4810333, -987.207947],
       "yawDegrees": 78.75,
       "enabled": true
     },
@@ -383,11 +258,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        68.014595,
-        20.0770054,
-        -978.945007
-      ],
+      "position": [68.014595, 20.0770054, -978.945007],
       "yawDegrees": 7.55859375,
       "enabled": true
     },
@@ -398,11 +269,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        77.8271713,
-        19.8731956,
-        -996.253357
-      ],
+      "position": [77.8271713, 19.8731956, -996.253357],
       "yawDegrees": 182.988281,
       "enabled": true
     },
@@ -413,11 +280,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        77.5973892,
-        19.9159966,
-        -1001.91333
-      ],
+      "position": [77.5973892, 19.9159966, -1001.91333],
       "yawDegrees": 2.8125,
       "enabled": true
     },
@@ -428,11 +291,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        69.9075699,
-        19.8085709,
-        -975.835083
-      ],
+      "position": [69.9075699, 19.8085709, -975.835083],
       "yawDegrees": 219.023438,
       "enabled": true
     },
@@ -443,11 +302,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        103.457336,
-        20.5161762,
-        -994.672729
-      ],
+      "position": [103.457336, 20.5161762, -994.672729],
       "yawDegrees": 237.128906,
       "enabled": true
     },
@@ -458,11 +313,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        106.415001,
-        20.4741802,
-        -999.049988
-      ],
+      "position": [106.415001, 20.4741802, -999.049988],
       "yawDegrees": 311.660156,
       "enabled": true
     },
@@ -473,11 +324,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        106.951668,
-        20.4149857,
-        -1002.70874
-      ],
+      "position": [106.951668, 20.4149857, -1002.70874],
       "yawDegrees": 357.363281,
       "enabled": true
     },
@@ -488,11 +335,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        106.936546,
-        20.4577885,
-        -1002.28705
-      ],
+      "position": [106.936546, 20.4577885, -1002.28705],
       "yawDegrees": 40.4296875,
       "enabled": true
     },
@@ -503,11 +346,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        102.687546,
-        20.483736,
-        -995.248596
-      ],
+      "position": [102.687546, 20.483736, -995.248596],
       "yawDegrees": 48.515625,
       "enabled": true
     },
@@ -518,11 +357,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        120.049149,
-        25.6291485,
-        -991.952759
-      ],
+      "position": [120.049149, 25.6291485, -991.952759],
       "yawDegrees": 101.425781,
       "enabled": true
     },
@@ -533,11 +368,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        125.772049,
-        25.6210766,
-        -990.517883
-      ],
+      "position": [125.772049, 25.6210766, -990.517883],
       "yawDegrees": 326.953125,
       "enabled": true
     },
@@ -548,11 +379,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        99.1400681,
-        27.7367611,
-        -969.977966
-      ],
+      "position": [99.1400681, 27.7367611, -969.977966],
       "yawDegrees": 144.140625,
       "enabled": true
     },
@@ -563,11 +390,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        108.047234,
-        27.6779785,
-        -960.222656
-      ],
+      "position": [108.047234, 27.6779785, -960.222656],
       "yawDegrees": 36.2109375,
       "enabled": true
     },
@@ -578,11 +401,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        75.1790009,
-        25.1990814,
-        -1007.26202
-      ],
+      "position": [75.1790009, 25.1990814, -1007.26202],
       "yawDegrees": 0,
       "enabled": true
     },
@@ -593,11 +412,7 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [
-        75.0500031,
-        23.6684132,
-        -984.320007
-      ],
+      "position": [75.0500031, 23.6684132, -984.320007],
       "yawDegrees": -46.0999985,
       "enabled": true
     },
@@ -606,11 +421,7 @@
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [
-        61.1800003,
-        20.4799995,
-        -975.700012
-      ],
+      "position": [61.1800003, 20.4799995, -975.700012],
       "yawDegrees": 0,
       "enabled": true
     },
@@ -619,11 +430,7 @@
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [
-        68.3600006,
-        20.4799995,
-        -968.820007
-      ],
+      "position": [68.3600006, 20.4799995, -968.820007],
       "yawDegrees": 0,
       "enabled": true
     },
@@ -632,11 +439,7 @@
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [
-        63.8100014,
-        20.4799995,
-        -971.059998
-      ],
+      "position": [63.8100014, 20.4799995, -971.059998],
       "yawDegrees": 0,
       "enabled": true
     },
@@ -645,63 +448,21 @@
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [
-        57.5499992,
-        20.4799995,
-        -982.719971
-      ],
+      "position": [57.5499992, 20.4799995, -982.719971],
       "yawDegrees": 0,
       "enabled": true
     },
     {
       "placementId": "waterpang.arena.start",
       "kind": "triggerBox",
-      "position": [
-        75.05,
-        22.65,
-        -984.32
-      ],
+      "position": [75.0500031, 22.6499996, -984.320007],
       "yawDegrees": 0,
       "enabled": true,
-      "halfExtents": [
-        5.5,
-        0.7,
-        5.5
-      ],
+      "halfExtents": [5.5, 0.699999988, 5.5],
       "triggerOnce": false,
-      "requiresInteract": false,
       "events": [
-        {
-          "type": "playSequence",
-          "sequenceInstanceId": "world.sequence.instance.maharaka.waterpang.source.intro15.stage"
-        }
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.maharaka.waterpang.source.intro15.stage" }
       ]
-    },
-    {
-      "placementId": "island.exit.to.bern",
-      "kind": "triggerBox",
-      "position": [
-        62.7,
-        20.48,
-        -975.6
-      ],
-      "yawDegrees": 0,
-      "enabled": true,
-      "halfExtents": [
-        2,
-        2,
-        2
-      ],
-      "triggerOnce": false,
-      "events": [
-        {
-          "type": "changeLevel",
-          "targetWorldId": "BERN",
-          "spawnPlacementId": "island.return.sea.landing"
-        }
-      ],
-      "requiresInteract": true,
-      "interactAction": "dock:기에나의 바다"
     }
   ]
 }

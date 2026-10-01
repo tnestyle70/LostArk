@@ -439,6 +439,49 @@ bool CMaharakaWaterpangPresentation::Sample_Now(LostArk::Shared::MAHARAKA_WATERP
     return m_Scheduled && Sample_MaharakaWaterpangEvent(static_cast<int32_t>(m_LastTick-m_StartTick),m_StartTick,event);
 }
 
+void CMaharakaWaterpangPresentation::Update_Collapse()
+{
+    using namespace LostArk::Shared;
+    const auto elapsed = static_cast<int32_t>(m_LastTick - m_StartTick);
+    if (!m_Scheduled || m_CollapseStarted || m_CollapseFailed ||
+        elapsed < static_cast<int32_t>(MAHARAKA_WATERPANG_COLLAPSE_START_TICKS)) return;
+    const auto& document = m_World.Get_Document();
+    const auto* stage = document.Find_Instance(MAHARAKA_WATERPANG_INTRO_INSTANCE);
+    const auto* collapse = document.Find_Instance(MAHARAKA_WATERPANG_COLLAPSE_INSTANCE);
+    const auto* sequence = collapse ? document.Find_Template(collapse->templateId) : nullptr;
+    // Never replace the ring by a name/position guess, or consume a partial binding set.
+    bool valid = stage && collapse && collapse->enabled && sequence &&
+        sequence->durationMs == MAHARAKA_WATERPANG_COLLAPSE_DURATION_MS &&
+        stage->bindings.size() == 18u && collapse->bindings.size() == stage->bindings.size();
+    if (valid)
+        for (const auto& binding : collapse->bindings)
+            valid = valid && binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT &&
+                std::any_of(stage->bindings.begin(), stage->bindings.end(), [&](const auto& original)
+                { return original.slotId == binding.slotId && original.targetKind == binding.targetKind &&
+                    original.targetId == binding.targetId; });
+    if (!valid)
+        m_Status = "Waterpang collapse requires the original eighteen stage bindings and 5000 ms motion";
+    else if (!m_World.Prepare_InstanceResources(MAHARAKA_WATERPANG_COLLAPSE_INSTANCE, m_Targets))
+        m_Status = m_World.Get_Status();
+    else
+    {
+        // Hand back the intro's baseline before acquiring the same placements. Other actors keep playing.
+        m_World.Stop_Instance(MAHARAKA_WATERPANG_INTRO_INSTANCE, m_Targets, true);
+        const float offset = static_cast<float>(elapsed - MAHARAKA_WATERPANG_COLLAPSE_START_TICKS) *
+            1000.f / MAHARAKA_WATERPANG_TICK_HZ;
+        if (m_World.Play(MAHARAKA_WATERPANG_COLLAPSE_INSTANCE, m_Targets) &&
+            m_World.Seek_InstanceToMs(MAHARAKA_WATERPANG_COLLAPSE_INSTANCE, offset, m_Targets, true))
+        {
+            m_CollapseStarted = true;
+            return;
+        }
+        m_Status = m_World.Get_Status();
+        m_World.Stop_Instance(MAHARAKA_WATERPANG_COLLAPSE_INSTANCE, m_Targets, true);
+    }
+    m_CollapseFailed = true;
+    Write_EffectFailureDiagnostic("maharaka.waterpang.collapse", m_Status);
+}
+
 void CMaharakaWaterpangPresentation::End_ForcedOnly()
 {
     if (!m_ForcedOnly) return;
@@ -502,6 +545,7 @@ void CMaharakaWaterpangPresentation::Update(float delta, uint32_t serverTick, bo
     m_World.Update((std::max)(0.f,m_ClockMs-m_WorldClockMs)*.001f,m_Targets);
     m_WorldClockMs=m_ClockMs;
     Update_Attacks();
+    Update_Collapse();
     if (!camera) return;
     if (m_ClockMs>=m_DurationMs) { camera->End_PresentationOverride(CAMERA_OWNER); return; }
     const CUT* cut=&m_Cuts.front();
@@ -553,6 +597,7 @@ void CMaharakaWaterpangPresentation::Stop()
     m_ActorInstances[0].clear(); m_ActorInstances[1].clear();
     m_ActorOccurrences[0]=m_ActorOccurrences[1]=UINT32_MAX;
     m_Forced=m_ForcedOnly=false;
+    m_CollapseStarted=m_CollapseFailed=false;
 }
 void CMaharakaWaterpangPresentation::Suspend_ForAuthoring()
 {
@@ -561,6 +606,7 @@ void CMaharakaWaterpangPresentation::Suspend_ForAuthoring()
     m_ActorInstances[0].clear(); m_ActorInstances[1].clear();
     m_ActorOccurrences[0]=m_ActorOccurrences[1]=UINT32_MAX;
     m_Started=false; m_Countdown=0; m_ReadinessWait=0;
+    m_CollapseStarted=m_CollapseFailed=false;
     // Keep the Server reservation. Closing the tool seeks to the current room
     // time (including HOLD after the intro), rather than replaying the event.
 }
