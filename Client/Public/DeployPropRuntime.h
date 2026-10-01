@@ -49,6 +49,8 @@ public:
 
 	bool_t Load_Area(uint32_t levelIndex, const std::string& areaId);
 	bool_t Load(uint32_t levelIndex, CDeployPropCatalog catalog);
+	bool_t Try_PickMovementSurface(const float3_t& rayOrigin,
+		const float3_t& rayDirection, f32_t maxDistance, float3_t& outPosition) const;
 	void Clear();
 	void Reset_ClearedLevelTracking();
 

@@ -308,6 +308,48 @@ HRESULT CDeployPropObject::Render()
 		Render_DebrisPreview(false) : S_OK;
 }
 
+bool_t CDeployPropObject::Try_PickMovementSurface(
+	const float3_t& rayOrigin, const float3_t& rayDirection,
+	const f32_t maxDistance, f32_t& outDistance) const
+{
+	// Keep the source visibility contract in Render; debris has no walkable authority.
+	if ((m_State == DEPLOY_PROP_STATE::DESPAWNED && !m_bAnimationAuthoringRevealHidden) ||
+		m_SurfacePresentation.fOpacity <= 0.0001f || Is_BasePresentationSuppressed() ||
+		m_bCameraPreviewSuppressed || !m_pTransformCom ||
+		!std::isfinite(maxDistance) || maxDistance < 0.f)
+		return false;
+	const float4x4_t& world = *m_pTransformCom->Get_WorldMatrixPtr();
+	if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM)
+	{
+		// Paper bridges unfold in bone space: bind-pose geometry/bounds can miss them.
+		f32_t distance = maxDistance;
+		if (!m_pIntactModelCom || !m_pIntactModelCom->Try_PickCurrentPose(
+			world, rayOrigin, rayDirection, distance) || !std::isfinite(distance) ||
+			distance < 0.f || distance >= maxDistance)
+			return false;
+		outDistance = distance;
+		return true;
+	}
+	const auto& model = m_State == DEPLOY_PROP_STATE::FRACTURED ?
+		m_pFracturedModelCom : m_pIntactModelCom;
+	if (!model) return false;
+	f32_t nearest = maxDistance;
+	bool_t hit = false;
+	for (uint32_t mesh = 0u; mesh < model->Get_NumMeshes(); ++mesh)
+	{
+		f32_t distance = nearest;
+		// Static Deploy Render_Static uses pass 0 (back-face culling).
+		if (model->Try_PickStaticSurface(mesh, world, rayOrigin, rayDirection,
+			nearest, CModel::PICK_CULL_MODE::BACK, distance) && distance < nearest)
+		{
+			nearest = distance;
+			hit = true;
+		}
+	}
+	if (hit) outDistance = nearest;
+	return hit;
+}
+
 HRESULT CDeployPropObject::Render_DeferredOverlay()
 {
 	if (Should_CullStaticIntact(false)) return S_OK;

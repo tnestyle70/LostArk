@@ -99,6 +99,11 @@ public:
 	virtual HRESULT Render_Shadow() override;
 	virtual bool_t Try_GetStaticShadowRevision(uint64_t& outRevision) const override;
 
+	/* Query the currently rendered source model; transient flying debris never
+	   becomes a movement receiver. The caller supplies a unit ray and world limit. */
+	bool_t Try_PickMovementSurface(const float3_t& rayOrigin,
+		const float3_t& rayDirection, f32_t maxDistance, f32_t& outDistance) const;
+
 	bool_t Set_State(DEPLOY_PROP_STATE state);
 	DEPLOY_PROP_STATE Get_State() const { return m_State; }
 	/* Camera-shot inspection can hide a prop without changing the Server-owned

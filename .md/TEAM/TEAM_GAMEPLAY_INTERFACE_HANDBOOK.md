@@ -377,7 +377,9 @@ Client payload에는 PlayerId와 NetEntityId가 없다. Server가 SessionId로 p
 
 우클릭 피킹은 입력 목표를 얻기 위한 Client 표현 계층이다. 제품 위치의 정답은 Server Navigation이다.
 
-일반 이동의 화면 피킹은 `CPlayerController`가 현재 입력의 camera ray를 Level이 연결한 `CMapPlacementRuntime::Try_PickMovementSurface`에 전달한다. 현재 scope에 생성된 static batch/object의 가시성·stage/camera suppression과 실제 world transform을 읽고, 기존 `CModel/CMesh`의 공유 LOD0 정적 triangle 가속 구조에서 가장 가까운 표면을 같은 입력 frame에 구한다. GPU readback의 제출·poll·대기를 이동 명령의 선행조건으로 두지 않는다. 표면이 없으면 이전 이동을 유지하며 평면이나 GPU로 fallback하지 않는다. hold의50ms 재전송·같은 goal 억제, 배 이동의 기존 수면 plane, typed 송신 성공 뒤의 예측·최초 press 표식은 유지한다. UI·포커스·텍스트 입력·사망·capture·타기팅·free camera의 기존 입력 차단도 유지한다. 이 표면은 정적 이동용 geometry이며 shader alpha 구멍·GPU 변형·렌더 LOD의 픽셀 일치를 뜻하지 않는다. masked 바닥은 포함하고 foliage/grass 및 알려진 변형 재질은 제외한다. Server는 기존 XZ command와 navigation으로 이동을 확정하며 저작 도구의 별도 피킹 API는 유지한다.
+일반 이동의 화면 피킹은 `CPlayerController`가 현재 입력의 camera ray를 Level이 연결한 `CMapPlacementRuntime::Try_PickMovementSurface`에 전달한다. 현재 scope에 생성된 static batch/object의 가시성·stage/camera suppression과 실제 world transform을 읽고, 기존 `CModel/CMesh`의 공유 LOD0 정적 triangle 가속 구조에서 가장 가까운 표면을 같은 입력 frame에 구한다. GPU readback의 제출·poll·대기를 이동 명령의 선행조건으로 두지 않는다. 표면이 없으면 이전 이동을 유지하며 평면이나 GPU로 fallback하지 않는다. hold의50ms 재전송·같은 goal 억제, 배 이동의 기존 수면 plane, typed 송신 성공 뒤의 예측·최초 press 표식은 유지한다. UI·포커스·텍스트 입력·사망·capture·타기팅·free camera의 기존 입력 차단도 유지한다. 이 Map 표면은 정적 이동용 geometry이며 shader alpha 구멍·GPU 변형·렌더 LOD의 픽셀 일치를 뜻하지 않는다. masked 바닥은 포함하고 foliage/grass 및 알려진 변형 재질은 제외한다. Server는 기존 XZ command와 navigation으로 이동을 확정하며 저작 도구의 별도 피킹 API는 유지한다.
+
+Valtan/Kouku의 Level resolver는 `CDeployPropRuntime::Try_PickMovementSurface`도 조회해 Map과 가장 가까운 표면을 선택한다. 파괴 가능한 돌판·난간과 펼쳐지는 종이 다리는 일반 Map placement가 아니다. Deploy 정적 모델은 현재 INTACT/FRACTURED 모델과 실제 world transform, 애니메이션 모델은 기존 `CModel::Try_PickCurrentPose`의 현재 골격 pose를 사용한다. Render와 같은 despawn/opacity/source suppression/camera suppression을 적용하며 날아가는 debris는 포함하지 않는다. 애니메이션 pose 검사는 양면 CPU 삼각형 검사이며 GPU alpha/culling의 픽셀 일치를 보장하지 않는다. Server navigation은 여전히 실제 이동 가능 여부를 결정한다.
 
 - 일반 이동: Server가 navgrid에서 시작/목표를 projection하고 8방향 A* path를 만든다.
 - 높이: 각 Server nav point의 Y를 사용한다.

@@ -6,6 +6,7 @@
 #include "Model.h"
 
 #include <algorithm>
+#include <cmath>
 #include <unordered_set>
 #include <utility>
 
@@ -246,6 +247,41 @@ bool_t CDeployPropRuntime::Load(
 		std::to_string(m_Catalog.Get_Assets().size()) + " assets, " +
 		std::to_string(m_Entries.size()) + " placements, " +
 		std::to_string(bindPoseOnly) + " bind-pose-only";
+	return true;
+}
+
+bool_t CDeployPropRuntime::Try_PickMovementSurface(
+	const float3_t& rayOrigin, const float3_t& rayDirection,
+	const f32_t maxDistance, float3_t& outPosition) const
+{
+	const auto finite = [](const float3_t& value)
+	{ return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z); };
+	if (!finite(rayOrigin) || !finite(rayDirection) ||
+		!std::isfinite(maxDistance) || maxDistance < 0.f ||
+		CGameInstance::Get().Is_SceneEnvironmentReplaced())
+		return false;
+	const vector_t ray = XMLoadFloat3(&rayDirection);
+	const f32_t length = XMVectorGetX(XMVector3Length(ray));
+	if (!std::isfinite(length) || length <= 1.e-8f) return false;
+	float3_t direction{};
+	XMStoreFloat3(&direction, ray / length);
+	f32_t nearest = maxDistance;
+	bool_t hit = false;
+	for (const auto& entry : m_Entries)
+	{
+		f32_t distance = nearest;
+		if (entry.object && entry.object->Try_PickMovementSurface(
+			rayOrigin, direction, nearest, distance) && distance < nearest)
+		{
+			nearest = distance;
+			hit = true;
+		}
+	}
+	if (!hit || !std::isfinite(nearest) || nearest < 0.f) return false;
+	float3_t position{};
+	XMStoreFloat3(&position, XMLoadFloat3(&rayOrigin) + XMLoadFloat3(&direction) * nearest);
+	if (!finite(position)) return false;
+	outPosition = position;
 	return true;
 }
 

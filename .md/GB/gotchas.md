@@ -5803,6 +5803,14 @@ Effect 부모를 명시하고 빈 값의 기존 동작을 보존한다. 임의90
 원본 샘플·취소를, 생산 Controller 추출 검사는 버튼 release·재입력·명령 순서를 따로 검증한다.
 40/60FPS 예측 회귀 성공과 실제 화면의 끊김 해소 판정은 구분한다.
 
+후속 CPU 전환에서 `MapPlacementRuntime`만 조회하면 별도 Deploy가 그리는 발탄 파괴 바닥·난간과
+쿠크 종이 다리가 빠진다. GPU를 대체할 때 실제 바닥의 소유 runtime을 함께 조사하고 Map/Deploy의
+최근접 표면을 합성한다. 정적 Deploy는 현재 intact/fractured 모델, animated 다리는 현재 pose를
+사용하며 bind-pose bounds로 펼쳐진 다리를 배제하지 않는다. despawn·opacity·source/camera
+suppression을 Render와 맞추고 debris를 걷는 바닥으로 승격하지 않는다. resolver 대역의 Controller
+검사만으로 carrier 연결을 검증하지 않는다. 실제 설치 geometry와 Level 연결·파괴 상태를 따로 검사한다.
+[수정 결과](10-01/2026-10-01_DEPLOY_CPU_MOVEMENT_PICKING_RESULT.md).
+
 
 ### 워터팡 AI 최초 등장 준비와 NPC 장비
 
