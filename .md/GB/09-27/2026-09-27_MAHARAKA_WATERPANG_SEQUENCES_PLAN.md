@@ -1,5 +1,48 @@
 # G01 — 마하라카 워터팡 원본 Camera·맵 발판 편집 등록
 
+## G07 — 사용자가 이동한 점프 도착점 연결 및 #495 후속 PR (2026-10-01)
+
+사용자가 저장한 `jump1_1`, `jump2_1` 위치와 출발 trigger의 `movePlayer.targetPosition`이
+서로 달랐다. 최신 revision371의 나머지 편집을 보존하고 두 이벤트만 현재 도착 마커에
+연결한 뒤 revision을 올려 MAHARAKA World publisher로 Server/Client에 함께 게시한다.
+`jump3`은 현재 일치하므로 저작 좌표를 바꾸지 않는다.
+
+기존 WorldPlayback 검사에 세 쌍의 marker/action 일치, 착지와 주변 보행 ground query,
+G 입력 경로와 실제 착지 후 시작 트리거 검사를 추가한다. 기존 MaharakaAI 검사에는
+붕괴 뒤 실제 게시된 세 점프의 이동/착지 검사를 추가한다. 중앙에 옮긴 두 도착점은 그대로
+유지하고 외곽에 남은 jump3만 기존 G06 런타임 안전 착지 정책을 적용하는지 확인한다.
+새 C++ 파일/project/filter 항목 없이 기존 검사에 연결하고 Debug/Release 빌드와 실행 검증 후
+G06과 함께 반영한다. #495가 이미 머지됐다는 사용자 정정에 따라 최신 main의 다른 기능과
+병합·재검증 후 새 브랜치와 PR을 사용한다. 다른 작업의 Lobby 변경은 포함하지 않는다.
+변경 H/CPP 전체 전문은 G06/G07 코드 부록에 함께 보존한다. Client 화면 판정은 사용자 몫이다.
+
+## G06 — 3분 경기의 남은 60초 원본 발판 붕괴 (2026-10-01)
+
+현재 원본 `source.collapse`는 SCENE03B Matinee42/Data157의 18개 배치를 5초 동안
+구동하는 편집 미리보기이며 실제 경기에는 호출자가 없다. 이번 변경은 기존 경기 시작 tick과
+WorldSequencePlayer를 연결한다. 노란 중앙 원판·점프대·배우·카메라와 저작 문서는 변경하지 않는다.
+
+- Shared `MaharakaWaterpangContract.h`: 도입 시작 +140초(20초 도입 경계 +120초 경기)부터 붕괴.
+  원본 5초 트랙을 재사용하며 2초 뒤부터 사라지는 외곽의 지지를 제거하는 프로젝트 판정을 둔다.
+  중앙 반경5m, 외곽7.5m는 기존 실측 바닥 계약을 재사용한다. 정적 navgrid 재베이크가 아니라
+  Server의 걷기/착지에서 외곽 낙하를 판정하며 섬의 낮은 수면 바닥과 옆 점프대는 제외한다.
+- Client `MaharakaWaterpangPresentation.h/.cpp`: 도입 stage 소유자를 반환하고 동일 stable ID
+  18개인 붕괴를 한 번 Play/현재 시각 Seek한다. 종료 자세 유지, authoring 복귀 시 Seek,
+  경기 Stop/다음 경기에서 기준 자세 복원. 데이터 누락은 진단을 남기고 다른 연출을 보존한다.
+- Server `GameRoom_PlayerSimulation.cpp`: 정지/걷기와 ballistic 착지 모두 무너진 링을
+  바닥으로 취급하지 않는다. 기존 Waterpang fall/점프대 복귀를 사용한다. 붕괴 후 입장 점프는
+  디스크의 원래 저작 좌표를 덮지 않고 런타임 목적지만 같은 방위의 중앙 반경4.4m로 옮긴다.
+- Server `GameRoom_MaharakaAI.cpp`: 붕괴 뒤 새 AI/재진입/이동 목표를 남은 중앙에 제한한다.
+- 기존 `ServerGameplayContractTests_MaharakaAI.cpp`에 시간 경계·낙하·중앙 보존·복구 검사를 보강한다.
+
+새 C++ 파일과 project/filter 항목, 신규 리소스, packet/schema 변경은 없다.
+기존 붕괴 WAV와 18개 맵 배치를 재사용하며 제품 Debug/Release 빌드 및 기존 집중 검증을 수행한다.
+화면 재생·육안 판정은 사용자가 마하라카 경기에서 직접 확인한다.
+G06 변경 후 H/CPP 전체 전문은 [G06 코드 부록](2026-10-01_MAHARAKA_WATERPANG_COLLAPSE_CODE.md)에 보존한다.
+초기 구현에서는 `Run_MaharakaAI` 진입점을 Main에 연결했으나, G07 최신 main 통합에서 같은
+`--maharaka-ai-contract-test`가 이미 반영돼 중복 추가를 제거했다. 최종 Main.cpp 변경은 없다.
+별도 하네스 프로젝트는 만들지 않는다.
+
 ## G05 — 아레나 입장·카운트다운·제품 컷신과 배우 유지
 
 전체 구현 전문: [G05 코드 부록](2026-09-28_MAHARAKA_WATERPANG_ENTRY_CODE.md).

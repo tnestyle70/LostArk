@@ -29,6 +29,7 @@ private:
     bool Start_World(float elapsedMs);
     // Match hazards: the authored attack sequence of each Server phase.
     void Update_Attacks();
+    void Update_Collapse(); // Original ring motion, independent of the alternating attack phase.
     bool Show_Actor(size_t actor, const char* instanceId, float offsetMs, uint32_t occurrence);
     // The running Debug forced event first, else the match schedule (the Server samples the same way).
     bool Sample_Now(LostArk::Shared::MAHARAKA_WATERPANG_EVENT_SAMPLE& event) const;
@@ -55,6 +56,7 @@ private:
     LostArk::Shared::MAHARAKA_WATERPANG_EVENT_KIND m_ForcedKind = LostArk::Shared::MAHARAKA_WATERPANG_EVENT_KIND::CANNON;
     uint32_t m_ForcedStartTick = 0, m_ForcedOnlyBaseTick = 0;
     bool m_AttackPrepared = false, m_AttackDisabled = false;
+    bool m_CollapseStarted = false, m_CollapseFailed = false;
     // Effect-only turn that puts the loop instance's bursts and jet on the Server
     // jet line, about the held cannon pivot. Shared so effect providers never
     // borrow this object.
