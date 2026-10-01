@@ -296,6 +296,8 @@ bool Client::CClientReplication::Initialize(const DESC& desc)
 	m_isInitialized = true;
 	m_wasConnected =
 		CNetworkManager::Get().Is_Connected();
+	m_iOwnedWorldInboundGeneration =
+		CNetworkManager::Get().Get_WorldInboundGeneration();
 	m_hasPendingConnectionLoss = !m_wasConnected;
 	m_hasFatalWorldDestructionFailure = false;
 	m_WorldDestructionProjectionRuntime.Reset();
@@ -386,12 +388,22 @@ bool Client::CClientReplication::Update()
 		return true;
 	}
 
+	// An accepted transfer can outlive its source Level while asynchronous model
+	// work retires. Its destination queue belongs only to the newly initialized Level.
+	const auto ownsWorldInbound = [&]()
+	{
+		return m_iOwnedWorldInboundGeneration != 0u &&
+			m_iOwnedWorldInboundGeneration == networkManager.Get_WorldInboundGeneration();
+	};
+	if (!ownsWorldInbound())
+		return true;
+
 	m_wasConnected = true;
 	bool allSucceeded = true;
 
 	CLIENT_REPLICATION_EVENT event{};
 
-	while (networkManager.Try_Consume_ReplicationEvent(event))
+	while (ownsWorldInbound() && networkManager.Try_Consume_ReplicationEvent(event))
 	{
 		switch (event.eType)
 		{
@@ -573,6 +585,10 @@ bool Client::CClientReplication::Update()
 			break;
 		}
 	}
+
+	// A handler may close the connection or reset this lifetime while draining.
+	if (!ownsWorldInbound())
+		return allSucceeded;
 
 	allSucceeded = Advance_PlayerAssetPreparation() && allSucceeded;
 	Advance_GuideBubbles();
@@ -4807,6 +4823,7 @@ void Client::CClientReplication::Update_DeathPresentations()
 
 void Client::CClientReplication::Reset_World()
 {
+	m_iOwnedWorldInboundGeneration = 0u;
     Clear_WaterpangNpcPlayers();
 	Clear_BattleItemProtection();
 	Clear_WaterGunSpeed();
