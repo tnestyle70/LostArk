@@ -60,3 +60,22 @@ Client/Private/MainApp.cpp의 기존 후보 함수와 창 열기·선택 갱신 
 섞인 획득 장비, 장착/미장착 여섯 부위, 수량0/미등록 항목, 번역명만 같은 다른 장비, 빈 목록,
 첫프레임·후속 snapshot의 행 아이콘과 선택 표시를 확인한다. Product Debug/Release 컴파일은
 G03 통합 빌드에서 수행하며 Client 화면은 사용자가 확인한다.
+
+## G06. 촬영용 Release의 F1·F7·FPS 표시 비활성화
+
+사용자는 실제 촬영을 위해 F1 ImGui 도구창, F7 프로파일러 창과 화면의 FPS 숫자를 모두
+끄도록 요청했다. 현재 공통 입력·렌더 소유자는 Client/Private/MainApp.cpp이며 Level별
+창 제목 FPS는 이미 _DEBUG 전용이다. RenderFpsText는 Release에서 사용자 FPS 표시
+선택을 검사하지 않고 항상 그리므로 함수의 출력 경계를 함께 바꾼다.
+
+기존 _DEBUG 분기로 F1 토글, F7 토글, DeveloperTools 및 Profiler 렌더 구간,
+RenderFpsText 본문을 Debug에서만 실행한다. Release는 키를 폴링하거나 새 도구창을
+생성하지 않으며 Debug의 기존 저작 도구 동작은 유지한다. 비동기 프로파일 저장 완료 회수는
+현재 Update_SaveState 경로에 남긴다. ImGui 프레임 안의 일반 채팅·파티·레이드 UI와
+backend 프레임 수명은 유지한다. F6 카메라, 프레임 제한, 계측 데이터·기존 캡처 파일은
+변경하지 않는다. 새 설정·JSON·C++ 파일 또는 project/filter 등록은 없다.
+
+MainApp.cpp의 기존 UTF-8 BOM 없음/CRLF 인코딩을 보존하고 기존 강화창 변경도 유지한다.
+변경 전후 hash와 scoped diff check를 기록한 뒤 Product Debug/Release 컴파일로 양쪽
+전처리 분기를 검증한다. Client 화면은 실행하지 않는다. AGENTS/CLAUDE/팀 사용서의
+공통 F1/F7 설명과 통합 RESULT는 root가 같은 변경에서 현재 계약으로 갱신한다.

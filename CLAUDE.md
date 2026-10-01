@@ -384,7 +384,7 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 
 Colosseum은 베른 NPC 대기열의 첫 대기자가 시작한 Server 10초 기한에 남아 있는 인간 1~4명을 입장 순서대로 양 팀에 교차 배정한다. 4명이 모여도 기한을 앞당기지 않으며 경기마다 private `CGameRoom`을 소유한다. 맵과 실제 참가자 외형의 준비 완료 후 `RECRUITING`에서 이동·우클릭 용병 초대로 각 팀을 인간+용병 4명으로 채운다. 팀별 다섯 직업 후보를 제공하며 인간이 없는 팀은 Server가 용병 네 명을 자동 선택한다. 양 팀 모집 완료 후 Server clock으로 `ENTRY_COUNTDOWN` 3초의 흰색·노란색 “전투 아레나에 진입합니다.”, `INTRO` 8.6초의 팀당 네 명 도열, 기존 `COUNTDOWN` 10초, `ACTIVE` 120초, `FINISHED` 결과를 진행한다. 선택된 최대8명의 `Participants`와 후보 포함 최대14명의 `Players`를 구분하고 arrival index는 `team + slot * 2`다. 같은 팀은 근접·장판·투사체 피해에서 제외하며 적팀 사망당 1점, 3초 뒤 최초 팀 대기 자리에서 부활한다. 종료 후 typed 귀환 요청이 승인되면 보존한 캐릭터로 베른에 돌아간다. 세부 public 계약은 팀 인터페이스 사용서의 Colosseum 절을 따른다.
 
-Debug/Release의 F1 Level Navigation은 Server 승인 및 복제를 사용하는 unmatched Colosseum 직접 입장을 유지한다. match ID가 없으므로 PvP·점수·결과를 생성하지 않으며 대기열 준비 완료를 기다리지 않는다. Debug Lobby의 `Colosseum Preview`와 F1 결과 미리보기는 동일한 제품 View에 실제 로컬 캐릭터와 예시 점수만 넣는다. 정식 queue match에서는 미리보기가 준비 장벽을 생략할 수 없고 replay/seek도 잠근다.
+Debug의 F1 Level Navigation은 Server 승인 및 복제를 사용하는 unmatched Colosseum 직접 입장을 유지한다. match ID가 없으므로 PvP·점수·결과를 생성하지 않으며 대기열 준비 완료를 기다리지 않는다. Debug Lobby의 `Colosseum Preview`와 F1 결과 미리보기는 동일한 제품 View에 실제 로컬 캐릭터와 예시 점수만 넣는다. 정식 queue match에서는 미리보기가 준비 장벽을 생략할 수 없고 replay/seek도 잠근다.
 
 콜로세움 F1 `Colosseum HUD / Result UI Preview`의 `Play Defeat UI`는 원본 `defeat_mc` 배너를 기존 제품 UI 경로로 재생한다. 정식 경기 결과는 로컬 PlayerId/NetEntityId를 Server 팀과 조인해 승리/패배/무승부를 선택하며 미확인 팀을 패배로 대신 표시하지 않는다. 결과별 원본 프레임 길이를 보존하고 양쪽 Client의 승리 팀 컷신 시작 시각은 동일하게 유지한다.
 
@@ -489,8 +489,8 @@ Client/Server `Bin/DataFiles/Guide/Guide.runtime.json`만 교체한다. `-Mode V
 
 ### 디버그 툴 (ImGui / MapTool)
 
-`CMainApp`이 Debug/Release 공통 Developer Tools 허브를 소유하고 F1로 토글한다. Release 허브는 Level Navigation(Lobby, Character Select, Bern, Valtan, KoukuSaydon, Entrance PvP Arena, Maharaka), Balance Test, Profiler, 광기·체력바 위치 조절과 저장·재로드, Valtan/Kouku Boss Tool과 아레나 Load/Complete Play/Kill Boss, Valtan 벽·지형 상태 선택을 제공하며 기본은 닫힘이다. F6는 gameplay camera의 follow/free mode를 전환한다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용하며 그동안 `CPlayerController`는 물리 key/mouse edge만 동기화하고 gameplay command는 제출하지 않는다. follow 복귀 뒤 새 press부터 제출한다. F7은 Debug/Release 공통 Profiler 창만 열고 닫는다. F2~F5와 F8~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막되 Character Select Server gameplay는 text input이 아닐 때만 명시적 keyboard passthrough를 사용한다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
-베른·발탄·쿠크 자유 카메라의 기본 속도는 20m/s다. Debug/Release 공통 F1 `Camera`에서
+`CMainApp`이 Debug Developer Tools 허브를 소유하고 F1로 토글한다. 촬영용 Release는 F1/F7 입력과 해당 창, 화면 FPS 표시를 비활성화한다. Debug 허브는 Level Navigation(Lobby, Character Select, Bern, Valtan, KoukuSaydon, Entrance PvP Arena, Maharaka), Balance Test, Profiler, 광기·체력바 위치 조절과 저장·재로드, Valtan/Kouku Boss Tool과 아레나 Load/Complete Play/Kill Boss, Valtan 벽·지형 상태 선택을 제공하며 기본은 닫힘이다. F6는 gameplay camera의 follow/free mode를 전환한다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용하며 그동안 `CPlayerController`는 물리 key/mouse edge만 동기화하고 gameplay command는 제출하지 않는다. follow 복귀 뒤 새 press부터 제출한다. F7은 Debug Profiler 창만 열고 닫는다. F2~F5와 F8~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막되 Character Select Server gameplay는 text input이 아닐 때만 명시적 keyboard passthrough를 사용한다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
+베른·발탄·쿠크 자유 카메라의 기본 속도는 20m/s다. Debug F1 `Camera`에서
 0.1~400m/s로 조절한다. Debug 발탄·쿠크는 같은 아레나의 process-session 값을 유지하고,
 베른과 Release 조절값은 현재 맵 방문 동안 적용한다. Shift는 현재 속도의 30배다.
 Debug F1 `Dragon`은 고대의 바다 탑승·하차, 비행 카메라 거리·pitch·주시 높이·방향 추종,
@@ -518,11 +518,11 @@ Client 메인 루프는 대기 중 Windows 메시지를 처리한 뒤 실제 fra
 Server fixed tick은 Client FPS와 독립이며, Profiler CPU frame time과 실제 프레임 간격은 구분한다.
 F1 허브의 Diagnostics는 profiler 활성화와 무관하게 smoothed FPS와 최근 frame time을 항상 표시하며,
 Profiler 체크박스는 별도의 CPU/GPU 상세 overlay와 capture를 활성화한다.
-Debug/Release의 F1 → `Open Composition Profiler`와 F7은 같은 Engine profiler의 CPU 구간, GPU pass, 작업량과 긴 작업을
+Debug의 F1 → `Open Composition Profiler`와 F7은 같은 Engine profiler의 CPU 구간, GPU pass, 작업량과 긴 작업을
 보여준다. `Capture`로 수집하고 `Save JSON`으로 `Client/Bin/ProfilerCaptures`에 v3 캡처를 비동기
 저장한다. `Save name`은 한글을 포함한 선택 이름이며 같은 이름으로 다시 저장해도 timestamp/frame/process/sequence가 다른 새 파일을 만든다.
 F7은 창만 열고 닫으며 수집은 창의 Capture에서 명시적으로 시작한다. 창을 닫아도 이미 시작한 수집은 계속된다. Capture/Reset과 상세 CPU 모드는 다음 프레임 경계에서 반영한다.
-Release FPS는 기존 엔진 폰트로 항상 표시하며 컷씬·로딩·HUD 숨김과 무관하다. Map/Animation/Effect/Sequence 저작 창은 Debug 전용이고 Release의 docking/외부 viewport는 비활성이다. F1의 공용 테스트 도구는 명시적으로 열 때만 표시한다.
+촬영용 Release는 FPS 문자열을 그리지 않는다. Debug FPS도 cinematic HUD 숨김을 따른다. Map/Animation/Effect/Sequence 저작 창은 Debug 전용이고 Release의 docking/외부 viewport는 비활성이다. F1 테스트 도구는 Debug에서 명시적으로 열 때만 표시한다.
 기본은 pass 시간과 작업량을 수집하고 `Detailed per-draw CPU scopes`를 켜면 map draw별 상세 scope도 기록한다.
 각 JSON은 기본으로 Frames 선택 구간(120프레임)만 복사·저장하고 선택을 해제하면 최근 최대 1200프레임을 저장한다.
 세션 전체를 무제한 누적하지 않는다. v3 additive metadata는 저장 시점의 build/adapter/viewport/camera/render 설정이며
@@ -928,7 +928,7 @@ Result `PLAY_WORLD_OBJECT_MOTION`은 Server가 Collider와 저작 target 원의 
 같은 카드 객체에 저장 Motion ID를 적용한다. target WORLD를 먼저 배치하고 판정 창 동안 유지해야 한다.
 저장·수명 제한은 팀 Area 가이드를 따른다. Client/UI 실행과 화면 판정은 사용자가 한다.
 
-F1의 카메라 편집 패널은 제거했다. 해당 위치의 `Open Balance Test` 버튼은 Debug/Release 공통
+F1의 카메라 편집 패널은 제거했다. 해당 위치의 `Open Balance Test` 버튼은 Debug에서
 `Balance Test` 독립 창을 연다. F6의 follow/free 전환과 실제 카메라 runtime은 유지한다.
 
 맵별 정본은 `Data/Camera/{CharacterSelect,Bern,Valtan,KoukuSaydon}.camera.json`이며 별도 publish 없이
@@ -1055,7 +1055,7 @@ asset path는 반드시 `UI/...` Resources-relative ID이며 `CRuntimeAssetRoot:
 창, keyframe animation과 Loading chrome도 창 크기 변경을 따른다. 폰트는 실제 출력 픽셀에
 가까운 atlas를 선택한다. 원본 저해상도 이미지의 디테일을 새로 생성하는 기능은 아니다.
 
-Debug/Release F1의 `Health bar positions`는 쿠크 무력화와 별도로 `Valtan Stagger`와
+Debug F1의 `Health bar positions`는 쿠크 무력화와 별도로 `Valtan Stagger`와
 `Valtan Armor Break PNG`의 머리 기준 X/Y와 가로·세로 배율을 조절한다. 각 `Show debug`는
 살아 있는 발탄에 표시만 강제하고 Server 상태를 바꾸지 않는다. `Save positions and stagger size`와
 `Reload saved positions and size`는 기존 `Data/UI/KoukuSaydon/KoukuHudModes.json`의

@@ -4310,6 +4310,7 @@ HRESULT CMainApp::Render()
 		if (nullptr != m_pRenderingBenchmark)
 			m_pRenderingBenchmark->Update(CGameInstance::Get().Get_Profiler());
 #endif
+#ifdef _DEBUG
 		if (m_bDeveloperToolsVisible)
 		{
 			Engine::CProfilerScope developerToolsScope(
@@ -4590,6 +4591,7 @@ HRESULT CMainApp::Render()
                 SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
             }
         }
+#endif
 		{
 			if (m_bKoukuBingoHammerColliders)
 				if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_DrawBingoHammerColliders();
@@ -10558,15 +10560,14 @@ void CMainApp::RenderCinematicSubtitles()
 
 void CMainApp::RenderFpsText()
 {
+#ifdef _DEBUG
 	/* combobox_fps: 0 always, 1 in combat only (a hit within the last few seconds), 2 never.
 	Small YG760 line in the top-left corner; the retail placement was not traced. */
 	if (m_fSmoothedFps <= 0.f)
 		return;
-#ifdef _DEBUG
 	const int32_t iMode = CUserSettings::Get().Get_FpsDisplayMode();
 	if (2 == iMode || (1 == iMode && Product_Now_Seconds() - m_dLastDamageSeconds > 6.0))
 		return;
-#endif
 	const float2_t viewportSize = CGameInstance::Get().Get_ViewportSize();
 	if (viewportSize.x <= 0.f || viewportSize.y <= 0.f)
 		return;
@@ -10580,6 +10581,7 @@ void CMainApp::RenderFpsText()
 	CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), text,
 		float2_t(std::round(8.f * refScale), std::round(6.f * refScale)),
 		XMVectorSet(1.f, 0.95f, 0.6f, 1.f), 0.f, float2_t(0.f, 0.f), 13.f * refScale / measured.y);
+#endif
 }
 
 void CMainApp::Limit_FrameRate()
@@ -11170,7 +11172,7 @@ HRESULT CMainApp::ReadyImGuiRuntime()
 	}
 
 #ifndef _DEBUG
-	// Release F1 and F7 stay in the main window; tools start closed and load on request.
+	// Recording Release keeps product UI in the main window without authoring viewports.
 	ImGui::GetIO().ConfigFlags &= ~(ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable);
 	ImGui::GetIO().IniFilename = nullptr;
 #endif
@@ -11181,6 +11183,7 @@ void CMainApp::UpdateProfilerRuntime()
 {
     // F7 only shows the profiler; Capture is an explicit action inside the window.
     if (m_pProfilerTool) m_pProfilerTool->Update_SaveState();
+#ifdef _DEBUG
     const bool_t down = IsWindowOwnedByCurrentProcess(GetForegroundWindow()) &&
         0 != (GetAsyncKeyState(VK_F7) & 0x8000);
     if (down && !m_bF7Down && !ImGui::GetIO().WantTextInput &&
@@ -11200,6 +11203,7 @@ void CMainApp::UpdateProfilerRuntime()
         else SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
     }
     m_bF7Down = down;
+#endif
 }
 
 #ifdef _DEBUG
@@ -15479,6 +15483,7 @@ void CMainApp::RenderProfilerSettings()
 
 void CMainApp::UpdateDebugToolShortcut()
 {
+#ifdef _DEBUG
 	const bool_t windowFocused =
 		IsWindowOwnedByCurrentProcess(GetForegroundWindow());
 	const bool_t f1Down = windowFocused &&
@@ -15487,6 +15492,7 @@ void CMainApp::UpdateDebugToolShortcut()
 		!CUIInputRouter::Get().Is_TextInputActive())
 		m_bDeveloperToolsVisible = !m_bDeveloperToolsVisible;
 	m_bF1Down = f1Down;
+#endif
 }
 
 unique_ptr<CMainApp> CMainApp::Create()
