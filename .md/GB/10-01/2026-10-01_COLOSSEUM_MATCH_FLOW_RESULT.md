@@ -1,5 +1,13 @@
 # 콜로세움 4인 경기 전체 연결 RESULT
 
+## 현재 4대4 계약
+
+아래 G01~G08은 최초 protocol130·2v2 구현 당시 기록이다. 현재 protocol132 정본은
+[PR494~496 통합 RESULT](2026-10-01_PR494_496_FLEXIBLE_COLOSSEUM_RESULT.md)를 따른다.
+입장은 실제 Server 참가자(인간과 직접 고용한 용병)를 양팀 최대4명씩 표시하며,
+승리는 winningTeam의 실제4명과4개 도열 자리를 사용한다. 승리 JSON과 생성기에는
+1.4m 간격, 카메라4m 후퇴·0.5m 상승이 이미 반영돼 있다. 미고용 후보는 포함하지 않는다.
+
 ## 적용 위치와 범위
 
 실제 실행 체크아웃 `C:/Users/USER/source/졸업팀폴/LostArk`, 브랜치
@@ -52,13 +60,13 @@ F1의 로컬 재생/seek가 진행 중인 서버 경기를 바꾸지 못한다. 
 - cubic Hermite 카메라 곡선을 30 Hz 151개 키로 샘플했다. 승리 카메라는 5초.
 - 7개 지원 클래스의 원본 `sc_cheer_1`을 기존 supplemental animation-set 경로로 설치했다.
   기본 바디 파일을 덮지 않았고 source fps와 바디 skeleton을 유지했다.
-- 승리 팀의 실제 두 캐릭터를 원본 승리 배우 위치로 표현하고 패배 팀은 이 연출 동안만 숨긴다.
+- 최초2v2 구현에서는 승리 팀의 실제 두 캐릭터를 원본 승리 배우 위치로 표현하고 패배 팀은 이 연출 동안만 숨긴다.
   사망 상태와 별도로 컷신 pose를 샘플한다. 연출 종료/객체 파괴 시 pose·animation·visibility를 복원한다.
 - 무승부에는 특정 팀의 승리 컷신을 재생하지 않는다. 결과 확인 뒤 모두 베른 귀환 버튼을 사용한다.
 
 ### 원본과 프로젝트 조정을 구분한 부분
 
-원본 3인 승리 도열을 요청한 2v2에 맞춰 원본 좌우 두 자리로 구성했다. 가운데 자리는 생략한다.
+최초 구현 당시에는 원본 3인 승리 도열을 요청한 2v2에 맞춰 원본 좌우 두 자리로 구성했다. 가운데 자리는 생략한다.
 raw source FOV 50은 메타데이터에 보존하고, 기존 도입과 동일한 16:9→2.35 projection 정책에 따라
 runtime FOV 63.299397을 적용했다. 이는 별도의 원본 속성을 발견했다는 뜻이 아니다.
 마지막 250 ms 복귀 fade와 베른 귀환 버튼은 프로젝트 연결이다.
@@ -349,3 +357,100 @@ Character7/Map971/UI1,848개다. GBResources2에 없는 것으로 나오는41개
 기존 전체 Resources와 추가분의 경계를 유지하여41개를 추가 복사하지 않았다.
 `out/IntegrationValidation/colosseum-resource-default-source-inspect.log`와
 `colosseum-map-inspect-existing-pngs.json`에 결과를 남겼다.
+
+
+## G11. 초기 초상·월드 텍스트와 Movie lookup 일치
+
+로딩 Portrait를 처음에는 숨기고 실제 전환 SRV 또는 동일 match의 준비된 참가자 모델 SRV만
+표시한다. 도화가를 포함한 직업 일러스트 fallback은 제거했다. 기존 팀/닉네임 카드와 준비
+상태는 유지한다. Level의 이름/HP·말풍선·파티 초대·상호작용 문구는 로딩/인트로/결과에서 숨긴다.
+
+CharacterCatalog의 hdr07_1 DDS127필드와 brdf_beckmann_spec DDS157필드를 기존 동명 TGA로
+연결했다. 기본 직업39/lazy 장비245필드이며 두 쌍의512x512 mip0 RGBA와 색공간은 동일하다.
+DDS 단일 mip 대신 기존 TGA loader의10단계 mip를 사용한다. 별도 blur shader·공통 조명·
+거칠기·AA·Guardian 환경 cube는 변경하지 않았다. 일반 캐릭터와 초상에 함께 적용되는 정본이다.
+
+writer lock·최신 hash 재확인·백업·원자 교체로 해당284필드만 반영했다. 역치환 byte 일치와
+JSON parse를 확인했다. evidence는 `out/ColosseumLoadingUi20261001/catalog/`의 validation
+receipt/field-patches/baseline/candidate/backup이다. 이 catalog는 ProjectDataRoot 정본을 직접
+소비하므로 publish 복사본은 없으며 실행 중 cache가 아닌 다음 Client 시작부터 읽는다.
+필요한 TGA 두 파일은 현재 설치 Resources에 존재한다. 별도 배포 폴더에 새 복사는 하지 않았다.
+
+## G12. 설정창 스타일 복귀 버튼·컷씬 HUD 완전 숨김
+
+`Result_Return`은 Settings와 같은 SystemOption_Btn_Normal/Over/Down/Disabled 이미지와
+Font_YoonGasiIIM을 사용한다. 중심(640,642)/폭200 유지, 높이28.8, 실제 측정 중앙 정렬·
+설정창과 같은 글자 비례/그림자를 적용했다. 원래 typed returnIntent와1초 재시도 간격을 유지한다.
+Result JSON의 해당 stable slot만 백업·최신 hash 재확인·원자 교체했고 generator도 동기화했다.
+
+MainApp의 공통 suppression은 실제 콜로세움 FINISHED 전체까지 유지한다. 일반 sprite/텍스트,
+HP·스킬창·채팅·기존 창과 FPS가 숨겨지고 Intro 자체의 직업/닉네임 텍스트도 제출하지 않는다.
+연출이 소유한 VS/페이드/결과와 복귀 버튼은 유지한다. 일반 창의 open 상태는 삭제하지 않는다.
+
+CUIPointerScope의 명시적인 cinematic owner를 복귀 버튼에서만 선택한다. 일반 HUD가 숨겨져도
+그 버튼만 hit test할 수 있고, 숨겨진 일반 창의 이전 rect가 가로채지 않는다. scope 종료와 프레임
+시작에 소유를 해제하며 일반 입력·gameplay 차단과 one press/one action·복귀 후 release 대기는 유지한다.
+
+### 실제 검증과 남은 경계
+
+- MainApp/Level_Development/UIInputRouter/WorldPlayerNameplateView를 MSVC14.44로 out에
+  개별 Release 컴파일했다. ColosseumMatchView는 기존 격리14.51 명령으로 컴파일했다. 모두 exit0이며
+  제품 EXE/DLL/중간 산출물을 교체하지 않았다. 증거: `out/ColosseumLoadingUi20261001/client-compile/`
+  의 receipt/log와 `return-button/client_compile.log`.
+- 기존 debug preview11·combat HUD9 테스트 PASS, roster381 검사 PASS, result validator는
+  2layouts/3timelines/1800image refs/151camera/7cheer를 확인했다. 이들은 GPU 화면 검증이 아니다.
+- 실제 UIInputRouter.cpp/.h snapshot을 사용한 네이티브 입력 검사29개 PASS, /W4 /WX compile exit0.
+  외부 cursor/mouse/viewport/sink만 stub했고 router 원문 hash가 일치한다. 일반 차단·result scope 허용·
+  중첩 scope 복원·press당1action·숨은 topwindow·held release 보호를 검사했다. 증거는
+  `out/ColosseumLoadingUi20261001/router-contract/receipt.json`과 result.log다. 실제 UI 실행은 아니다.
+- 복귀 문구의 한글/공백 글리프가 실제 YoonGasiIIM 원본 및 크기별13개 SpriteFont 모두에 있음을
+  확인했다. `return-button/font-coverage.json`에 파일 hash와 누락0개를 기록했다.
+- CharacterCatalog 및 Result JSON parse와 diff check를 통과했다. 원래 다른 작업의 roster/카메라/
+  모집 인원/이동 피킹/폰트 특수문자 수정은 보존했다.
+
+실행 중 Release Client/Server를 자동 종료하지 않았다. 현재 제품 링크·배포와 실제 로딩/초상
+질감/컷씬/HUD/버튼 화면 확인은 남아 있다. 위 격리 컴파일을 정상 Product 완료로 확대하지 않는다.
+
+사용자가 최종 확인에서 "지금은 계속 켜둘게요"를 선택하여 현재 Release Client/Server를 유지한다.
+정상 Product 빌드·실행 파일 교체는 사용자 선택에 따라 보류했다. 현재 실행 중 세션에는 새 C++
+동작이 적용되지 않았으며, 소스·격리 검증 결과와 다음 재빌드 경계를 구분한다.
+
+
+## G13. MVP·전체 캐릭터 모델 UI의 TGA 연결 확인과 GBResources2 전달
+
+2026-10-01 사용자가 MVP의 워로드·도화가와 다른 캐릭터 모델 UI에도 같은 TGA 재질을 요청했다.
+현재 G11의284필드 변경이 공통 CharacterCatalog에 적용되어 있어 MVP용 추가 C++나 별도
+모델·재질 사본은 필요하지 않다. 이번에는 실제 소비 경로와 전체 장비 범위를 검증하고 사용자가
+지정한 추가 리소스 폴더에 필요한 파일을 전달했다. Catalog 내용은 앞선 설치본 그대로 보존했다.
+
+발탄 Level_ValtanArena.cpp:2831, 쿠크 Level_KakulSaydonArena.cpp:2744는 Server MVP PlayerId와
+일치하는 실제 replicated Character를 전달한다. MvpResultView.cpp:794/838의 대표1명·파티3칸은
+CharacterPortraitRenderer.cpp:115의 world pass0과 Character.cpp:5061의 실제 body/equipment를
+사용한다. CharacterInfoWindowView.cpp:792, AvatarBookWindowView.cpp:803,
+CharacterSelectWindowView.cpp:629/676/757, ColosseumLoadingView.h:81 및 결과의 실제 배우도
+같은 catalog/prototype과 기존 재질을 사용한다. UI용 DDS 재질을 따로 교체하는 우회 경로는 없다.
+
+전체 hdr07_1/BRDF 참조1,019필드는 모두 TGA이며 해당 lookup의 DDS0·누락 파일0이다.
+HDR510필드의 srgb, BRDF509필드의 linear를 확인했다. 직업별 기본/lazy 장비 참조 수는
+창술사22/186, 건슬링어22/10, 슬레이어28/8, 도화가30/204, 차원술사4/151, 워로드22/172,
+가디언10/150이다. Playable Movie의58참조도 TGA이고 남은 Movie DDS36개는 소환 동물·NPC·
+돌 소품이다. 이들을 playable 모델 누락으로 오인하여 변경하지 않았다.
+
+사용자가 지정한 `C:/Users/user/Desktop/GBResources2`에 아래 실제 의존 파일3개를 신규 추가했다.
+총1,438,516bytes이며 기존 파일 교체0개, 이미지 신규 생성/가공0개다.
+
+- Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga
+- Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga
+- Character/LanceMaster/textures/brdf_beckmann_spec.tga
+
+각 파일은 containment·임시파일 hash·원자 rename·원본/대상 hash 재확인을 통과했다. 모두512²이며
+BRDF 두 상대 경로의 픽셀도 동일하다. Material.cpp:224/277의 기존 TGA loader가10단계 mip를
+만드는 입력이다. 모델·diffuse/normal·cube·roughness·shader·조명 옵션은 새로 변경하지 않았다.
+JSON parse/필드·색공간 검사와 전달 SHA256 evidence는
+`out/MvpTgaConnections20261001/coverage-and-delivery.json`이다.
+
+Catalog hash는6269f481cd08c604de6d21725b73d49ec4d70fc9fc2debf614e7f062560f9256로 유지됐다.
+ActorCatalog.cpp:1467의 process cache 때문에 현재 Client 모델은 자동 갱신하지 않으며 다음
+Client 시작부터 이 경로를 읽는다. 이 TGA 데이터 연결 자체에는 새 EXE 재빌드가 필요 없다.
+사용자의 실행 유지 요청대로 종료·Reload·Client/UI 실행은 하지 않았다. 실제 MVP 화면은 미검증이며
+앞선 UI/전투 C++의 Product 빌드 보류와 이 데이터 연결의 적용 시점을 구분한다.

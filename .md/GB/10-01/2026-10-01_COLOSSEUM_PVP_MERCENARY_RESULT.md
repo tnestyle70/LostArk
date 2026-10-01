@@ -165,3 +165,46 @@ Server 빌드와 headless 로그를 최종 Product 성공으로 대신하지 않
 앞선 EXE 잠금·최종 링크/제품 빌드 대기는 해소됐으며 실행 파일과 실제 로그는
 `../09-27/2026-09-27_GUIDE_AI_TOOL_IMPLEMENTATION_RESULT.md`의 G09에 기록했다.
 이 결과는 기존 기능별 검증을 대체하거나 실제 Client 화면·다인 플레이·성능 확인으로 확대하지 않는다.
+
+
+## G09. 넉백10%·용병 ALT_V30초·참가자 HP 절반
+
+2026-10-01 사용자 추가 요청의 현재 소스 반영 결과다. G08 이전 제품 빌드 완료를 아래 추가
+변경의 제품 배포 완료로 해석하지 않는다.
+
+- PvP 피해 adapter가 V/ALT_V override를 정한 뒤 기존 signed push 거리와 이동 시간을10%로
+  줄인다. V0.51m/217ms, ALT_V1.6m/150ms이며 일반 push/pull도 같은 비율이다. 거리 또는 시간이
+  없는 스킬에는 새 넉백을 만들지 않는다. 별도 stun/down 시간과 공용 landing recovery는 유지한다.
+- 실제 collider hit·같은 ACTIVE match·적 participant 확인 뒤에만 적용한다. ally/miss/무적/
+  시간정지/경계 처리는 유지하며 공용 PvE 넉백 경로는 바꾸지 않았다.
+- 용병별 마지막 ALT_V 승인 tick을 match runtime이 보관한다. 두 AI 선택 경로에서900tick을
+  검사하고 실제 Execute 성공 때만 갱신한다. 사망·부활·순환 초기화로 우회하지 않고 기존 더 긴
+  cooldown도 검사한다. 인간 입력에는 추가 제한을 넣지 않았다.
+- 입장 HP는 활성 발탄160줄 profile의 ceil(/8), 현재92,660,680(20줄)이다. 기존40줄의 절반이며
+  스킬 피해용 full160줄 reference는741,285,439로 유지한다. 원본 Balance와 일반132000 profile은
+  유지하고 이름표만20줄로 맞췄다. AGENTS/CLAUDE/팀 사용서의 public 수치도 일치시켰다.
+
+### 실제 검증
+
+실행 중 제품을 유지하면서 MSVC14.44.35207 / SDK10.0.26100.0의 기존 Release 옵션을 사용해
+Server101 translation unit 전체를 out에 컴파일·링크했다. 변경 GameRoom.h 의존61개를 모두
+재컴파일하여 서로 다른 struct layout의 object를 섞지 않았다. 그 검증용 EXE로 실행한 결과:
+
+| 명령 | PASS | FAIL | exit |
+|---|---:|---:|---:|
+| --colosseum-combat-contract-test | 95 | 0 | 0 |
+| --colosseum-match-contract-test | 318 | 0 | 0 |
+| --colosseum-contract-test | 25 | 0 | 0 |
+
+20줄/피해 reference 보존과 일반 HP 귀환, 다섯 직업 ALT_V의899/900tick 경계·실패 시각 미갱신·
+실제 부활·개별 용병·긴 cooldown·phase·tick wrap을 검사했다. 기존 실행 데이터174개와 제품
+EXE/OBJ/tlog/lib는 전후 같았다. 증거는 `out/ColosseumBalance20261001/run-091221-f5e10a6a/`
+의 `build-receipt.json`, `contract-receipt.json`, 세 contract log다. 검증 뒤 GameRoom.cpp의
+설명 주석40-bar만20-bar로 교정했고 실행 코드는 바꾸지 않았다.
+
+현재 Product EXE 교체와 실제 Client 화면/실전 체감은 미검증이다. 실행 중 Release Client/Server는
+종료하지 않았고 out의 검증 EXE를 제품 폴더로 복사하지 않았다.
+
+사용자가 최종 확인에서 "지금은 계속 켜둘게요"를 선택하여 현재 Release Client/Server를 유지한다.
+정상 Product 빌드·실행 파일 교체는 사용자 선택에 따라 보류했다. 현재 실행 중 세션에는 새 C++
+동작이 적용되지 않았으며, 소스·격리 검증 결과와 다음 재빌드 경계를 구분한다.

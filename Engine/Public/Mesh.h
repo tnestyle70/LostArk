@@ -99,12 +99,26 @@ private:
     };
     struct PICK_GEOMETRY final
     {
+        struct NODE final
+        {
+            float3_t minimum{}, maximum{};
+            uint32_t first = 0u, count = 0u, end = 0u;
+        };
         vector<PICK_VERTEX> vertices;
         vector<uint32_t> indices;
+        // Preorder BVH with subtree end links permits stackless, allocation-free
+        // queries. Triangle ordinals preserve the original LOD0 index stream.
+        vector<uint32_t> triangles;
+        vector<NODE> nodes;
         bool skinned = false;
     };
     // Immutable WModel geometry; shared by clones, never read back from the GPU.
     shared_ptr<const PICK_GEOMETRY> m_PickGeometry;
+    static void Prepare_StaticPickGeometry(PICK_GEOMETRY& geometry);
+    // cullSign: 0 two-sided, +1 CW-front BACK, -1 CW-front FRONT after
+    // incorporating the instance world determinant. Local direction is unit.
+    bool_t Try_PickStaticLocal(fvector_t origin, fvector_t direction,
+        f32_t maxDistance, f32_t cullSign, f32_t& distance) const;
 
 	/* The unmorphed rest position/normal per vertex, in this mesh's own local index space,
 	read back off the GPU by Make_VertexBuffer_Unique(). Null until then. Held by

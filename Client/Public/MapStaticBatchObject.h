@@ -77,6 +77,11 @@ public:
 	virtual bool_t Try_GetStaticShadowRevision(uint64_t& outRevision) const override;
 
 public:
+	/* Queries current contiguous instances without a placement hash lookup,
+	   prototype clone, vertex copy or GPU readback. Direction is normalized. */
+	bool_t Try_PickMovementSurface(const float3_t& rayOrigin,
+		const float3_t& rayDirection, f32_t maxDistance, f32_t& outDistance) const;
+
 	//Instance Update
 	HRESULT Update_Instance(
 		uint64_t placementId,

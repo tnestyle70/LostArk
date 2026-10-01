@@ -592,3 +592,288 @@ X0.018→0.036으로 기존 corner 쪽에 한 번 되돌아간다. 이전/새 Se
 앞선 EXE 잠금·최종 링크/제품 빌드 대기는 해소됐으며 실행 파일과 실제 로그는
 `../09-27/2026-09-27_GUIDE_AI_TOOL_IMPLEMENTATION_RESULT.md`의 G09에 기록했다.
 이 결과는 기존 기능별 검증을 대체하거나 실제 Client 화면·다인 플레이·성능 확인으로 확대하지 않는다.
+
+## G19. 2026-10-01 Debug 이동 캡처와 과거 Release의 독립 재검토
+
+사용자는 실행 중인 Debug 약20FPS 이동이 의도대로 움직이며 Release의60FPS 아래 이동과
+다르다고 보고했다. 이번 검토는 소스·기존 캡처·실행 파일·컴파일 추적을 읽었으며 제품 코드,
+렌더 옵션, 실행 중 Client/Server와 통합 worktree를 변경하지 않았다. 새 빌드나 화면 검증도 하지 않았다.
+
+### G19-1. 실제 비교 대상과 빌드 시점
+
+현재 Client PID16728은 `Client/Bin/Debug/Client.exe`(05:39:05), 로드된 Engine은
+같은 Debug 폴더의 DLL이다. Server PID57648도 Debug이며 실제 TCP 연결은
+`192.168.0.22:7777`이다. Debug 전용 LocalServerEndpoint.user.json 분기가 존재하지만
+이번 실행은127.0.0.1을 사용하지 않으므로 현재 Debug가 별도 loopback 경로라는 설명은 배제한다.
+과거 Release의 실제 연결과 같은 서버였다는 사실까지 이 현재 socket으로 확정하지 않는다.
+
+06:50 Debug 캡처는 PID16728, D3D debug layer ON,1920×1080이다. 비교한01:02 Release
+도서관 캡처는 PID28900, debug layer OFF,2560×1440이다. Export metadata는 마지막 시점만
+설명한다. Release 기록은 G13/G17 이동 시계 수정 전이고, Debug05:39와 설치 Release05:40은
+수정 후다. 따라서 두 캡처를 동일 소스·동일 장면의 구성 A/B로 해석하면 안 된다.
+현재 저장된 Release 캡처 중05:40 이후 기록은 확인하지 못했다.
+
+실제 Character/PlayerController/ClientReplication CL command tlog는 Debug
+`/Od /RTC1 /MDd /D _DEBUG`, Release `/O2 /Oi /GL /MD /D NDEBUG`이며 양쪽
+`/fp:precise`다. 현재 LocalMovePrediction.h SHA256은 G17 최종값
+`5bea248c108feb4bf74ca1115640d42851312cb0447b2b9f048f0502c7238c70`과 같다.
+일반 이동·보정 수식에 구성별 분기는 확인되지 않았다. 최적화가 수식을 잘못 계산했다는
+증거도 없다. 기존 양쪽 native 검사 결과는 실제 실행 시각의 동등성을 보장하지 않는다.
+
+### G19-2. 관측된 시간 차이와 인과 경계
+
+| 120frame 캡처 | Debug 이동06:50 | Release 도서관01:02 |
+|---|---:|---:|
+| 평균 FPS |18.96|20.44|
+| frame interval 평균 / p95 / 최대 ms |52.738 /56.157 /58.651|48.933 /91.713 /132.401|
+| frame interval 표준편차 ms |1.762|23.116|
+| Picking.MapWait 호출 수 |63|27|
+| MapWait 호출당 평균 / 최대 ms |0.210 /1.098|5.924 /41.083|
+
+63/27은 readback 호출 수이며 별도의 물리 클릭 개수로 단정하지 않는다.
+현재 호출 순서는 delta 측정 → network drain → Character/Object 이동 → Level snapshot 적용
+→ Controller picking → LateUpdate camera → render다. 두 캡처의 모든 MapWait도 replication
+이후다. 같은 frame의 이동을 계산한 뒤 GPU readback이 주 스레드를 막으면 표시가 늦어지고
+그 대기가 다음 frame delta에 들어간다. 이것은 멈춤·뒤따르는 큰 이동의 구체적인 경로다.
+Debug의 CPU 작업과 D3D 검사로 GPU가 먼저 준비될 수 있다는 설명은 가능한 원리이며,
+해상도·장면·빌드까지 다른 두 자료로 그 원인 하나를 분리해 확정하지 않는다.
+
+Release의 모든 긴 정지를 picking으로 설명할 수는 없다. frame7427에는 picking이 없으며
+Player layer→Replication 간50.129ms 중 WorldEntity.Update가48.523ms이고 NPC 작업 누계가
+48.502ms다. frame7428은 MapStaticBatch.FinalCamera81.690ms,7429는 Lights81.024ms다.
+세부 CPU scope가 비활성이므로 이 시간을 asset load나 특정 Map 호출로 다시 이름 붙이지 않는다.
+최대 interval132.401ms인7387은 앞선7386 CPU frame81.243ms와 그 밖의 약51.157ms를
+포함한다. 이전 CPU frame의 Present48.562ms도 확인된다. frame interval과 같은 번호의
+CPU scope를 단순히 동일 시간 구간으로 합산하지 않는다. 계측 바깥 시간을 OS 경합이나
+프로파일러 단일 원인으로 확정할 자료도 없다.
+
+### G19-3. 적용 상태와 남은 확인
+
+과거 수식 결함은 G13/G17의 실제 실패·수정 대조 로그로 증명됐지만, 최신 Release에서
+같은 결함이 남았다는 근거로 재사용하지 않는다. 별도 통합 worktree
+`C:/Users/user/.codex/worktrees/pr494-496-flexible-colosseum/LostArk`에는 요청 ID를 유지하는
+비동기 이동 picking과 `Map(DO_NOT_WAIT)`가 구현돼 있다. Desktop의 현재 Debug/Release에는
+그 변경이 아직 없으며, 통합본 구현·빌드와 사용자 화면 해결 판정은 별개다.
+
+원인 확정에 남은 비교는 동일 소스 세대·같은 서버·장면·해상도의 Debug/Release 이동 캡처다.
+현재 Profiler v3에는 frame별 표시 좌표, snapshot tick/ACK sequence, 보정 전후 좌표와
+RESET 사유가 없다. 같은 조건에서도 위치 튐이 남으면 기존 Capture 수명 안에서 이 값을
+최소 추가해야 프레임 정지와 실제 위치 보정을 구분할 수 있다. 새 계측은 이번 읽기 검토에서
+구현하지 않았다. 수치 근거는 `out/MovementAudit20261001/capture_compare_readonly_0650.json`
+및 원본 캡처이며, 핵심 frame별 귀속과 비교 요약은 같은 폴더의
+`debug_release_comparison_0650.json`에 있다. 최종 화면 판정은 사용자가 수행한다.
+
+## G21. 2026-10-01 실제 이동 소비의 세 가지 결함 수정
+
+G19 이후 protocol132가 통합된 Desktop 소스에서 별도로 재현했다. 기존 캡처의 GPU 비용과
+현재 이동 수식의 결함을 같은 원인으로 단정하지 않았다. 아래 변경은 Debug/Release 공통이다.
+
+- `Character.cpp`의 미승인 이동이 helper의 허용 시간을 다시100ms로 자르는 처리를 제거했다.
+  helper의 freshness350ms·외삽150ms·표시 속도115% 상한은 유지한다.
+- `NavPathFollower.cpp`의2cm 이내 waypoint 무료 이동을 제거했다. 짧은 마지막 segment도
+  frame 이동량에서 실제 거리를 소비하고 도착 전에 IDLE로 전환하지 않는다.
+- `GameRoom_PlayerCommands.cpp`의 새 목표 경로를 임시 vector에 검색한다. 실패하면 기존
+  경로·진행 index·목표·이동 상태를 보존하며 처리 sequence ACK는 진행한다. 성공 시에만
+  새 경로를 commit한다. Client가 Server의 위치·통과 판정을 대신하지 않는다.
+
+### G21-1. 실패와 수정 후 수치
+
+`out/MotionAuditFollower20261001`의 frozen Engine DLL/lib와 실제 CNavigation/CTransform/
+CNavPathFollower를 사용했다. 같은 helper에서 기존 follower와 최소 수정 후보를 비교했다.
+제품 Client 실행이나 화면 대조 결과는 아니다.
+
+| 재현 | 수정 전 | 수정 후 |
+|---|---:|---:|
+|2.95m/s,132.401ms, 미승인 경로|0.295m|0.390583m|
+|2.95m/s,125ms, 미승인 경로|0.295m|0.368750m|
+|40FPS,19mm 앞의 corner, follower 이동|0.092725m|0.073726m|
+|0.5m/s,25ms,19mm 앞 도착점|19mm 이동·경로 종료|12.5mm 이동·경로 유지|
+
+corner의 명목 frame 예산은0.07375m다. 수정 후 chord 거리는 회전 때문에 이 값보다 약간 작다.
+수정 전 helper의 최종115% 제한이0.084812m로 숨기던 follower 과소/과대 진행까지 구분했다.
+16.667/25/50/132.401ms, 같은 목표/retarget/90도 미승인 turn을 대조했다.
+
+### G21-2. 실제 Server 명령과 snapshot 회귀
+
+기존 `ServerGameplayContractTests_Navigation.cpp`와 runner에 `Run_MoveRetarget`를 추가했다.
+실제 `Handle_Move -> Update_Players -> Broadcast_WorldSnapshot -> PacketReader`를 사용해
+직선/우회 경로 각각 유효seq1 → 불가능한seq2 → 유효seq3을 검사한다. 실패한seq2의 snapshot은
+ACK2와 기존 waypoint를 함께 유지하며 다음 simulation step도 계속 진행한다.
+Release 제품의 `Server.exe --navigation-contract-test`는 exit0, `navigation failures : 0`이다.
+로그는 `out/MovementCpuPick20261001-server-navigation.log`다. listener나 Client UI는 실행하지 않았다.
+
+## G22. 일반 이동 클릭을 같은 frame의 CPU 표면 query로 변경
+
+`PlayerController`의 이동용 GPU request/poll/cancel 상태를 제거했다. 현재 camera ray를
+Level의 `CMapPlacementRuntime`에 전달하고 성공한 입력 frame에 기존 typed sink로 제출한다.
+새 press는 즉시 새 목표를 평가하고 hold는 기존50ms 재전송·동일 목표 억제를 유지한다.
+miss·미준비·실패는 현재 이동을 보존하며 GPU readback이나 임의 평면으로 fallback하지 않는다.
+배 이동의 수면 plane과 저작 도구의 별도 GPU picking API는 유지한다.
+
+### G22-1. 실제 연결과 수명
+
+- `CMesh`의 기존 불변 pick geometry에 triangle ordinal/BVH를 prototype당 한 번 만든다.
+  기존 model/mesh clone이 공유하고 query에서 정점 복사·asset load·geometry 재구축을 하지 않는다.
+- `CModel::Try_PickStaticSurface`는 world affine inverse, 정규화된 ray, world 거리 한계와
+  mirror determinant를 사용한다. BACK/FRONT/NONE은 실제 render pass 정책에서 전달한다.
+- `MapStaticBatchObject`와 `MapAssetObject`는 현재 world bounds·transform·visible·stage/
+  camera suppression을 읽는다. `MapPlacementRuntime`은 현재 load scope의 소유 객체만 모은다.
+  별도 placement cache나 두 번째 map runtime은 없다.
+- Bern/Valtan/Kouku/CharacterSelect/Development에 resolver를 연결했다. Development가
+  Training/Maharaka/Colosseum의 동일 controller를 연결한다. 새 제품 H/CPP가 없어 project와
+  filters 항목을 추가하지 않았다. Engine public header는 정상 Product build가 SDK에 배포한다.
+
+정적 LOD0 geometry를 이동용 표면으로 사용하는 계약이다. masked 바닥과 cardmaze receiver를
+포함하고 명시 foliage/grass·알려진 shader 변형·morph는 제외한다. shader alpha로 잘린 구멍,
+GPU vertex 변형과 화면용 LOD의 픽셀 일치를 보장하지 않는다. Server의 XZ/navigation 층 판정은
+그대로 유지한다. 렌더 옵션·해상도·Present·전역 frame timer를 바꾸지 않았다.
+
+### G22-2. 입력·기하 검증
+
+`Tools/MovementRegression/test_cpu_move_dispatch.py`는 실제 production dispatch와 admission
+함수를 변경 없이 추출해 native로 컴파일한다. camera/map/typed-send만 대역이며 GPU API
+대역은 없다. Debug/Release 모두27검사 PASS다. 같은 frame 제출·빠른 재클릭·release 이후
+지연 명령 부재·throttle·miss 보존·NaN·송신 실패·배 이동 및5Level 연결을 확인했다.
+실제 gameplay frame 실행이나 화면 성공을 대체하는 테스트는 아니다.
+
+실제 설치 WModel3종(Kouku FLOOR01, Bern 실내 FLOOR01A, Bern FLOOR04)을 읽어 정본
+Mesh/Model 함수를 native로 대조한19,200 query는 world-space brute reference와 불일치0,
+query heap 할당0이었다. 음수/비균일 scale과 컬링을 포함한다. 화면 없는 D3D11 WARP의
+12조합(BACK/FRONT/NONE×mirror×winding) raster 결과와 CPU cull 결과도 일치했다.
+근거는 `out/FramePacingAudit20261001/cpu_pick/manifest.json`, `results.txt`, `warp_results.txt`다.
+
+일반 이동의 GPU 완료 의존을 제거한 것이며 Debug/Release의 전체 GPU 실행 시간을 동일하게
+만든다는 뜻은 아니다. 전체 게임 지연·GPU 병목·다인 조작감의 최종 판정에는 최신 동일 조건의
+사용자 실행이 필요하다. Client/UI는 자율 실행·조작하지 않았다.
+
+### G22-3. 반복 입력 비용과 실제 맵 크기 검증
+
+hold 표면 검색 시각을 송신 시각과 분리했다. 같은 목표·miss·송신 실패도 다음 hold 검색까지
+50ms 간격을 지키며 새 press는 즉시 검색한다. 송신이 없다는 이유로 매 frame 검색하지 않는다.
+`MapStaticBatchObject`는 기존 bounds가 유효하고 dirty가 아닐 때만 batch 전체를 먼저 배제한다.
+dirty이면 instance 검사로 진행하며 입력 중 bounds 재구축이나 별도 cache를 만들지 않는다.
+
+실제 Bern mapset 50,021 placements / 1,276 unique models / 1,904,503 triangles의 bounds로
+256개 ray를 검사했다. 후보 평균24.07·최대127은 변경 전후 같았다. batch bounds 검사 후
+Release broadphase p50/p95는0.0693/0.0920ms, Debug는2.1603/3.3926ms였다.
+수정 전은 각각0.3131/0.4351ms,12.0124/17.2173ms다. 이 수치는 bounds 구간만 측정했으며
+실제 Level callback 순회·삼각형 검색·렌더링을 포함한 게임 frame 시간이 아니다.
+BVH 추가 보유량 추정은 unique geometry 전체 약40.05MiB다.
+
+실제 batch query의 visibility·nearest·dirty bounds·실패 출력 보존8조건과 query 할당0도
+확인했다. 인위적으로50,021개 mesh를 같은 위치에 겹친 최악 입력은 Release p95 22.91ms,
+Debug377.71ms로 비용이 남는다. 이 스트레스 입력을 실제 Bern 배치 성능으로 해석하거나
+CPU 병목이 전혀 없다고 결론 내리지 않는다. 근거는
+`out/FramePacingAudit20261001/cpu_pick/verification_summary.json`이다.
+
+실제 Character 소비자와 설치 Engine DLL을 연결한 이동 회귀는 Debug/Release 각각
+27조건·189검사 PASS다. 근거는 `out/MotionAuditFollower20261001/persistent-debug-final/result.json`,
+`persistent-release/result.json`이며 기존 Debug DLL의 짧은 waypoint 결함도 검출했다.
+Controller 최종27검사는 `out/CpuMoveDispatchRegression/final-Debug/result.json`,
+`final-Release/result.json`에 보존했다.
+
+### G20 후속. Character의 실제 capture 소비 연결
+
+기존 capture ring/export에 `Character.cpp`의 실제 Update·snapshot 적용·local command 제출을
+연결했다. 비활성 capture는 표본을 만들거나 추가 pose 조회를 하지 않는다. Frame의 before/after는
+Update 전후 표시 위치이고 snapshot의 tick/sequence는 수신 Server tick/처리 ACK다.
+Command Accepted는 local prediction 제출 성공이며 Server 승인이나 packet 전달 성공이 아니다.
+Frame의 기본 tick/authority는0이므로 QPC상 앞선 snapshot과 연관해 해석한다.
+실제 생산 함수 native21검사를 통과했다. 필드 계약과 근거는
+`out/MovementCaptureHooks20261001/hooks_contract.txt`, `hook_probe.results.txt`에 있다.
+
+## G23. 2026-10-01 08:23 베른 캡처 기반 조명 행 통합
+
+사용자가 콜로세움 종료·폰트/UI 수정은 다른 채팅에서 진행하고 이 작업은 저장된 베른
+Profiler를 기준으로 최적화하도록 범위를 변경했다. 이 G의 제품 변경은
+`Engine/Private/Material.cpp`뿐이다. 기존 이동·피킹 변경은 이 G의 성과로 합산하지 않는다.
+
+### G23-1. 저장된 캡처에서 확인한 병목
+
+입력은 `Client/Bin/ProfilerCaptures/베른_33fps_20261001_082343_324_frame214_62428_0.json`이다.
+SHA256은 `5dac9aa2e185c9219194da781841306a227a2e881b4adea40a0b630a3ecebab2`다.
+Release/RTX 4070, 3840×2126, 120프레임 중 GPU 유효116·pending4이며 scope drop은 없다.
+내보내기 시점 metadata의 foreground FPS 제한은0, SSAO/FXAA ON·Bloom/Shadow OFF다.
+이 설정을 최적화 과정에서 변경하지 않았다.
+
+| 항목 | 캡처 평균 |
+|---|---:|
+| Frame interval |30.565451ms, 약32.72FPS|
+| Frame p95 |31.4856ms|
+| GPU Lights |14.838206ms|
+| GPU NonBlend |11.596467ms|
+| GPU SSAO |1.8071ms|
+| CPU Present |19.905ms|
+| 광원 records / draw |1,497 / 717|
+
+CPU frame30.169ms에서 Present를 제외하면 약10.264ms다. 이 캡처에는 이동 표본과
+피킹 GPU readback이 없으므로 이동·AI 계산을 이번 병목으로 지목하지 않는다.
+
+게시 광원315개 중 enabled·brightness 조건을 통과한299개를 캡처 카메라로 대조했다.
+frustum을 통과한22개는 point16·spot6, receiver는 SOURCE_CHARACTER21·ALL1이다.
+scene directional을 더한 source 경로23 records/11 연속 type 구간과 일반 경로2/2로
+`65×23+2=1,497 records`, `65×11+2=717 draws`가120프레임 모두 일치한다.
+일반 ALL spotlight는 near-plane을 걸쳐 기존 bounds가 fullscreen으로 열리므로 일반 광원에
+clip flag만 확장하는 후보는 이 장면의 비용을 줄이지 못해 적용하지 않았다.
+
+### G23-2. 실제 구현
+
+기존 CMaterial frame registry에서 program·hasBakedLighting·lightTextureMask·전체64개
+float4 lightConstants의 비트·사용 slot의 override 적용 후 SRV가 모두 같은 재질만 같은
+조명 행으로 연결했다. 각 재질의 base constants와 base textures는 원래 재질에서 따로
+bind한다. 광원 순서, shader, quality 옵션, Resources와 게시 데이터는 변경하지 않았다.
+
+행 대표와 모든 alias는 frame 종료까지 shared_ptr를 보유한다. 이는 실제 CModel의
+`use_count()>1` 기반 copy-on-write 조건과 frame 중 객체 수명을 보존한다. 동일 포인터의
+빠른 lookup, forward 제외, bind 실패 시 미등록, Reset 해제와 24-bit 정확 정수 row 한계는
+유지한다. 신규 제품 C++·public API·project/filter 항목은 없다.
+
+설치된 베른 mapmaterials의 source.character43개 slot을 정확한 상수 비트·baked 여부와
+texture asset/colorSpace 기준으로 분석하면8개 lighting state가 나온다. 이 값은 전체
+catalog의 중복 후보이며 캡처의65개 실제 행을8개로 줄였다는 측정값이 아니다. 실제 frame의
+SRV·override·가시 재질 목록은 새 사용자 캡처로 확인해야 한다.
+
+### G23-3. 검증과 남은 실행 확인
+
+기존 `SourceCharacterShaderVariantProbe.cpp`와 runner에 `MaterialLightRows` 선택 검증을
+추가했다. 비공개 CMaterial은 실제 production translation unit을 직접 컴파일하고 CShader는
+제품 Engine DLL을 사용한다. 격리 출력 폴더에서 실행하며 창을 만들거나 Client를 실행하지 않는다.
+
+- 동일 clone과 base-only 변경은 행을 공유하고 실제 constant-buffer/SRV readback에서
+  각자의 base 입력을 유지한다. 마지막 light 상수·signed zero 비트·program·mask·effective
+  SRV 차이, baked 여부, 반복 bind, forward 제외, 실패한 등록과 Reset을 확인했다.
+- alias 소유권을 유지해 CModel copy-on-write의 shared ownership 조건을 보존했다.
+  300개 서로 다른 행은 실제 light constant-buffer readback으로 혼동 없이 구분했다.
+- 수정 전 HEAD의 Material.cpp로 같은 회귀를 실행하면 동일 clone이 별도 행을 만드는
+  검사에서 실패하며 수정 후 Release 후보는 통과한다.
+- 베른 Devilstone program81의 실제 light constants와 변화하는6단계 synthetic mip texture를
+  제품 deferred shader에 넣었다. 방향광/점광원/spot × 세 가지 row 경계 × UV 연속/불연속의
+  18조건에서 별도2행과 공유1행의32×32 shade/specular 출력 최대 절대차는0이었다.
+  finite·비영(非零) 조명 출력을 확인했다. 실제 설치 모델 화면·RTX 성능 측정은 아니다.
+- 기존 All Release 검사도149program·14clone·9실패 입력·564light pass 등을 통과했다.
+  기존 검증을 대체하지 않고 선택 검사를 추가했다. runner는 EXE 실행 실패가 이전 compiler의
+  exit0을 상속하지 않도록 했으며 누락 EXE 실패·정상 실행·오류 설정 복원도 확인했다.
+
+정상 VS Release 빌드 로그는 수정된 Material.cpp를08:42:58에 컴파일하고08:43:02에
+Engine.dll로 링크한 것을 확인했다. Engine/Bin과 Client/Bin의 Release DLL hash도 같다.
+별도 표준 Product runner 재검증은 실행 중인 Client PID59928·Server PID62144 때문에
+output guard에서 컴파일 전에 중단됐다. 이를 Product runner PASS로 기록하지 않는다.
+사용자 프로세스는 종료하지 않았다. 기존 인코딩·CRLF와 변경 파일의 diff 공백 검사는 통과했다.
+
+분석·재현 근거는 `out/BernLightRows20261001`의 `audit.py`,
+`capture-light-reconstruction.json`, `exact-light-key-analysis.json`,
+`devilstone-representatives.json`, `Candidate/probe.log`, `Baseline/probe.log`,
+`ExistingAllDefault/probe.log`, `release-build-evidence.json`에 있다.
+최종 선택 검사의 소스·DLL hash와 출력 수치는 `Candidate/material-light-rows-result.json`,
+`Baseline/material-light-rows-result.json`에 있다. runner의 기본 All 도구 체인 선택도 유지해
+최종 기본 인자의 Release 검사 성공을 확인했다. 재현 명령은 다음과 같다.
+
+```powershell
+& Tools/RenderingPipeline/Test-SourceCharacterShaderVariants.ps1 -Configuration Release -Focus MaterialLightRows -VCToolsVersion 14.44 -OutputDirectory out/BernLightRows20261001/Candidate
+```
+
+표준 runner 중단 기록은 `out/BuildPipeline/runs/20260930T234527945Z-release-product.json`이다.
+
+구현과 위 수치 검증은 완료했다. 같은 베른 위치·해상도·설정의 사용자 새 캡처에서
+Lights 시간·광원 draw/records·전체 frame 시간을 비교하는 절차와 최종 화면 판정은 남아 있다.
+이전01:23 캡처는 카메라가 달라 이번 변경의 전후 성능 비교로 사용하지 않는다.

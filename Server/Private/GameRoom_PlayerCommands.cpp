@@ -247,10 +247,8 @@ bool LostArk::Server::CGameRoom::Commit_MoveGoal(
 			return true;
 		}
 	}
-	player.MovePath.clear();
-	player.iMovePathIndex = 0;
-	player.fMoveRequestX = goalX;
-	player.fMoveRequestZ = goalZ;
+	// A rejected retarget must not destroy the movement already in progress.
+	std::vector<SERVER_NAV_POINT> stagedPath;
 	if (m_ServerNavigation.Is_Loaded())
 	{
 		if (!m_ServerNavigation.Find_Path(
@@ -258,10 +256,9 @@ bool LostArk::Server::CGameRoom::Commit_MoveGoal(
 			player.fPositionZ,
 			goalX,
 			goalZ,
-			player.MovePath,
+			stagedPath,
 			player.fPositionY))
 		{
-			player.hasMoveGoal = false;
 			return false;
 		}
 		m_ServerNavigation.Smooth_Path(
@@ -269,9 +266,9 @@ bool LostArk::Server::CGameRoom::Commit_MoveGoal(
 			player.fPositionZ,
 			goalX,
 			goalZ,
-			player.MovePath,
+			stagedPath,
 			player.fPositionY);
-		const SERVER_NAV_POINT& goal = player.MovePath.back();
+		const SERVER_NAV_POINT& goal = stagedPath.back();
 		player.fMoveGoalX = goal.x;
 		player.fMoveGoalZ = goal.z;
 	}
@@ -280,6 +277,10 @@ bool LostArk::Server::CGameRoom::Commit_MoveGoal(
 		player.fMoveGoalX = goalX;
 		player.fMoveGoalZ = goalZ;
 	}
+	player.MovePath = std::move(stagedPath);
+	player.iMovePathIndex = 0;
+	player.fMoveRequestX = goalX;
+	player.fMoveRequestZ = goalZ;
 	player.hasMoveGoal = true;
 	player.isCombatReady = true;
 	return true;

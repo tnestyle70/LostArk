@@ -581,9 +581,9 @@ namespace
 			strUtf8.data(), static_cast<int>(strUtf8.size()), outWide.data(), iRequiredLength);
 	}
 
-	/* Only the "combat" (equipment) category slice of the real inventory -- consumables/materials
-	/currency ("use") never belong in a 재련 list. Order follows S2C_INVENTORY_SNAPSHOT's own
-	item order (Server-assigned on Grant_Item), not an authored literal order. */
+	/* The upgrade list contains only owned Honor Whisper gear, including equipped entries.
+	The catalog has no gear set field: its stable item ID and equipment slot identify the set.
+	Order follows S2C_INVENTORY_SNAPSHOT, never a synthetic catalog loadout. */
 	vector<ITEM_UPGRADE_SLOT_INFO> BuildItemUpgradeSlots()
 	{
 		vector<ITEM_UPGRADE_SLOT_INFO> slots;
@@ -591,7 +591,15 @@ namespace
 			Client::CCombatHUDViewModel::Get().Get_Inventory().Items)
 		{
 			const ITEM_DEFINITION* pDefinition = CItemCatalog::Find_ById(item.strItemId);
-			if (nullptr == pDefinition || "combat" != pDefinition->strCategory)
+			if (!item.iQuantity || nullptr == pDefinition || "combat" != pDefinition->strCategory)
+				continue;
+			static constexpr const char* equipmentSlots[] = { "weapon", "helmet", "shoulder", "top", "pants", "gloves" };
+			if (std::find(std::begin(equipmentSlots), std::end(equipmentSlots), pDefinition->strEquipSlot) == std::end(equipmentSlots))
+				continue;
+			string setSlotSuffix = "_HONORWHISPER_";
+			for (const char letter : pDefinition->strEquipSlot)
+				setSlotSuffix.push_back(static_cast<char>(letter - 'a' + 'A'));
+			if (!pDefinition->strItemId.starts_with("EQUIP_") || !pDefinition->strItemId.ends_with(setSlotSuffix))
 				continue;
 			wstring strName;
 			if (!ConvertUtf8ToWide(pDefinition->strDisplayName, strName))
@@ -603,6 +611,30 @@ namespace
 			slots.push_back(std::move(info));
 		}
 		return slots;
+	}
+
+
+	// The authored layout has example icons; every visible row must instead name owned gear.
+	void SyncItemUpgradeSlotSprites(CUILayoutRuntime& view,
+		const vector<ITEM_UPGRADE_SLOT_INFO>& slots, int32_t& selected)
+	{
+		const int32_t count = static_cast<int32_t>((std::min)(slots.size(), size_t{6}));
+		for (int32_t i = 0; i < 6; ++i)
+		{
+			const string suffix = to_string(i);
+			view.Set_SlotVisible("ItemUpgrade_ListItemIcon" + suffix, i < count);
+			view.Set_SlotVisible("ItemUpgrade_ListGradeBg" + suffix, i < count);
+			if (i < count)
+				view.Set_SlotTexture("ItemUpgrade_ListItemIcon" + suffix, slots[i].strIconPath);
+		}
+		view.Set_SlotVisible("ItemUpgrade_ListSelectedExample", count > 0);
+		view.Set_SlotVisible("ItemUpgrade_SelectedItemIcon", count > 0);
+		selected = count > 0 ? std::clamp(selected, 0, count - 1) : 0;
+		if (!count) return;
+		view.Set_SlotTexture("ItemUpgrade_SelectedItemIcon", slots[selected].strIconPath);
+		f32_t x = 0.f, y = 0.f, width = 0.f, height = 0.f;
+		if (view.Get_SlotRect("ItemUpgrade_ListGradeBg" + to_string(selected), x, y, width, height))
+			view.Set_SlotPosition("ItemUpgrade_ListSelectedExample", x, y);
 	}
 
 	/* Every slot ItemUpgradeUI.json authors, for Hide_ItemUpgrade (all false) and
@@ -823,6 +855,7 @@ void CMainApp::Open_ItemUpgradeWindow()
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailDiamondFrame", false);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailItemIconMarker", false);
 	Set_ItemUpgradeCenterPanelVisible(true);
+	SyncItemUpgradeSlotSprites(*m_pItemUpgradeView, BuildItemUpgradeSlots(), m_iItemUpgradeSelectedSlot);
 }
 
 void CMainApp::Hide_ItemUpgrade()
@@ -2010,14 +2043,17 @@ void CMainApp::Sync_CinematicUI()
 	auto* valtanArena = CLevel_ValtanArena::Get_Active();
 	if (valtanArena && currentLevel == ETOUI(LEVEL::VALTAN_ARENA))
 		valtanArena->Sync_CinematicPlayerVisibility();
+	auto* colosseum = currentLevel == ETOUI(LEVEL::COLOSSEUM)
+		? CLevel_Development::Get_Active(LEVEL::COLOSSEUM) : nullptr;
+	const bool_t colosseumResult = colosseum &&
+		colosseum->Get_Replication().Get_ColosseumMatchState().iMatchId != 0u &&
+		colosseum->Get_Replication().Get_ColosseumMatchState().ePhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::FINISHED;
 	const bool_t suppressed =
 		(arena && currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
 		 arena->Is_CinematicInputBlocked()) ||
 		(valtanArena && currentLevel == ETOUI(LEVEL::VALTAN_ARENA) &&
 		 valtanArena->Is_CinematicHUDSuppressed()) ||
-		(currentLevel == ETOUI(LEVEL::COLOSSEUM) &&
-		 CLevel_Development::Get_Active(LEVEL::COLOSSEUM) &&
-		 CLevel_Development::Get_Active(LEVEL::COLOSSEUM)->Is_ColosseumIntroActive());
+		(colosseum && (colosseum->Is_ColosseumIntroActive() || colosseumResult));
 	auto& router = CUIInputRouter::Get();
 	if (suppressed && !router.Is_CinematicSuppressed())
 	{
@@ -4274,6 +4310,7 @@ HRESULT CMainApp::Render()
 		if (nullptr != m_pRenderingBenchmark)
 			m_pRenderingBenchmark->Update(CGameInstance::Get().Get_Profiler());
 #endif
+#ifdef _DEBUG
 		if (m_bDeveloperToolsVisible)
 		{
 			Engine::CProfilerScope developerToolsScope(
@@ -4554,6 +4591,7 @@ HRESULT CMainApp::Render()
                 SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
             }
         }
+#endif
 		{
 			if (m_bKoukuBingoHammerColliders)
 				if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_DrawBingoHammerColliders();
@@ -4791,7 +4829,7 @@ HRESULT CMainApp::Render()
 	RenderCinematicSubtitles();
 	{
 		CUITextLayerScope TopText(UI_TEXT_LAYER::PAGE);
-		RenderFpsText();
+		if (!CUIInputRouter::Get().Is_CinematicSuppressed()) RenderFpsText();
 	}
 	// Advance the event cursor even while cinematic UI is hidden; never replay old hits.
 	if (CUIInputRouter::Get().Is_CinematicSuppressed()) RenderDamageNumbers();
@@ -7353,7 +7391,7 @@ void CMainApp::RenderItemUpgradeListText()
 	this renderer is instantiated per-row purely by AS3 (no static per-row placement to trace an
 	exact position from), so the anchor rects here are a reasonable icon-relative placement for
 	the user to nudge in the Tool rather than an exact traced position. Rows only draw for items
-	actually present in the real "combat"-category inventory (BuildItemUpgradeSlots) -- fewer than
+	actually present in the owned Honor Whisper set (BuildItemUpgradeSlots) -- fewer than
 	6 owned items just leaves the remaining ItemUpgrade_ListLevel/ItemUpgrade_ListItemName slots
 	blank, same as any other real inventory-backed list. */
 	const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
@@ -7437,6 +7475,8 @@ void CMainApp::Update_ItemUpgradeSelection()
 		return;
 	}
 
+	const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
+	SyncItemUpgradeSlotSprites(*m_pItemUpgradeView, upgradeSlots, m_iItemUpgradeSelectedSlot);
 	f32_t fListX = 0.f, fListY = 0.f, fListWidth = 0.f, fListHeight = 0.f;
 	if (!m_pItemUpgradeView->Get_SlotRect(
 		"ItemUpgrade_LeftListBg", fListX, fListY, fListWidth, fListHeight))
@@ -7447,7 +7487,6 @@ void CMainApp::Update_ItemUpgradeSelection()
 	CUIInputRouter& Router = CUIInputRouter::Get();
 	const f32_t fRefWidth = m_pItemUpgradeView->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pItemUpgradeView->Get_ResolutionHeight();
-	const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
 
 	for (int32_t i = 0; i < 6 && i < static_cast<int32_t>(upgradeSlots.size()); ++i)
 	{
@@ -7488,7 +7527,7 @@ void CMainApp::Update_ItemUpgradeSelection()
 void CMainApp::Update_ItemUpgradeGrowButton()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
-		ITEM_UPGRADE_ATTEMPT_RESULT::NONE != m_eItemUpgradeAttemptResult)
+		ITEM_UPGRADE_ATTEMPT_RESULT::NONE != m_eItemUpgradeAttemptResult || BuildItemUpgradeSlots().empty())
 	{
 		return;
 	}
@@ -7532,7 +7571,7 @@ void CMainApp::Update_ItemUpgradeReforgeButton()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
 		m_bItemUpgradeGrowing || 100 != m_iItemUpgradePreviousPercent ||
-		ITEM_UPGRADE_ATTEMPT_RESULT::NONE != m_eItemUpgradeAttemptResult)
+		ITEM_UPGRADE_ATTEMPT_RESULT::NONE != m_eItemUpgradeAttemptResult || BuildItemUpgradeSlots().empty())
 	{
 		return;
 	}
@@ -7777,7 +7816,7 @@ void CMainApp::RenderItemUpgradeLevelText()
 	// nextLevel_lb.color=12057344(0xB7FB00). The ">>>" arrow is a real animated
 	// flourish icon (ItemUpgrade_LevelArrow AnimationFrames), not text.
 	// The item name/level tracks m_iItemUpgradeSelectedSlot (Update_ItemUpgradeSelection) into the
-	// real "combat"-category inventory (BuildItemUpgradeSlots) -- nothing to show while empty.
+	// owned Honor Whisper set (BuildItemUpgradeSlots) -- nothing to show while empty.
 	const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
 	if (upgradeSlots.empty())
 		return;
@@ -10521,15 +10560,14 @@ void CMainApp::RenderCinematicSubtitles()
 
 void CMainApp::RenderFpsText()
 {
+#ifdef _DEBUG
 	/* combobox_fps: 0 always, 1 in combat only (a hit within the last few seconds), 2 never.
 	Small YG760 line in the top-left corner; the retail placement was not traced. */
 	if (m_fSmoothedFps <= 0.f)
 		return;
-#ifdef _DEBUG
 	const int32_t iMode = CUserSettings::Get().Get_FpsDisplayMode();
 	if (2 == iMode || (1 == iMode && Product_Now_Seconds() - m_dLastDamageSeconds > 6.0))
 		return;
-#endif
 	const float2_t viewportSize = CGameInstance::Get().Get_ViewportSize();
 	if (viewportSize.x <= 0.f || viewportSize.y <= 0.f)
 		return;
@@ -10543,6 +10581,7 @@ void CMainApp::RenderFpsText()
 	CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), text,
 		float2_t(std::round(8.f * refScale), std::round(6.f * refScale)),
 		XMVectorSet(1.f, 0.95f, 0.6f, 1.f), 0.f, float2_t(0.f, 0.f), 13.f * refScale / measured.y);
+#endif
 }
 
 void CMainApp::Limit_FrameRate()
@@ -11133,7 +11172,7 @@ HRESULT CMainApp::ReadyImGuiRuntime()
 	}
 
 #ifndef _DEBUG
-	// Release F1 and F7 stay in the main window; tools start closed and load on request.
+	// Recording Release keeps product UI in the main window without authoring viewports.
 	ImGui::GetIO().ConfigFlags &= ~(ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable);
 	ImGui::GetIO().IniFilename = nullptr;
 #endif
@@ -11144,6 +11183,7 @@ void CMainApp::UpdateProfilerRuntime()
 {
     // F7 only shows the profiler; Capture is an explicit action inside the window.
     if (m_pProfilerTool) m_pProfilerTool->Update_SaveState();
+#ifdef _DEBUG
     const bool_t down = IsWindowOwnedByCurrentProcess(GetForegroundWindow()) &&
         0 != (GetAsyncKeyState(VK_F7) & 0x8000);
     if (down && !m_bF7Down && !ImGui::GetIO().WantTextInput &&
@@ -11163,6 +11203,7 @@ void CMainApp::UpdateProfilerRuntime()
         else SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
     }
     m_bF7Down = down;
+#endif
 }
 
 #ifdef _DEBUG
@@ -15442,6 +15483,7 @@ void CMainApp::RenderProfilerSettings()
 
 void CMainApp::UpdateDebugToolShortcut()
 {
+#ifdef _DEBUG
 	const bool_t windowFocused =
 		IsWindowOwnedByCurrentProcess(GetForegroundWindow());
 	const bool_t f1Down = windowFocused &&
@@ -15450,6 +15492,7 @@ void CMainApp::UpdateDebugToolShortcut()
 		!CUIInputRouter::Get().Is_TextInputActive())
 		m_bDeveloperToolsVisible = !m_bDeveloperToolsVisible;
 	m_bF1Down = f1Down;
+#endif
 }
 
 unique_ptr<CMainApp> CMainApp::Create()

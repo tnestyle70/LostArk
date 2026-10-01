@@ -28,6 +28,19 @@ bool EditBool(const char* label, J& value, const char* key)
 { bool flag=Boolean(value,key); if(!ImGui::Checkbox(label,&flag))return false;Set(value,key,J::Boolean(flag));return true; }
 bool EditVector(const char* label, J& value, const char* key)
 { float xyz[3]{};const auto& source=Field(value,key).Get_Array();for(size_t i=0;i<(std::min)(source.size(),size_t(3));++i)xyz[i]=static_cast<float>(source[i].Get_Number());if(!ImGui::DragFloat3(label,xyz,0.1f))return false;Set(value,key,J::Array({J::Number(xyz[0],true),J::Number(xyz[1],true),J::Number(xyz[2],true)}));return true; }
+bool EditBoxVector(const char* label, J& event, const char* key, double displayScale, double minimum, double maximum)
+{
+    const auto& source = Field(event, key).Get_Array();
+    if (source.size() != 3) return false;
+    float xyz[3];
+    for (size_t i = 0; i < 3; ++i) xyz[i] = static_cast<float>(source[i].Get_Number() * displayScale);
+    if (!ImGui::DragFloat3(label, xyz, 0.1f, static_cast<float>(minimum), static_cast<float>(maximum), "%.3f", ImGuiSliderFlags_AlwaysClamp)) return false;
+    for (const float component : xyz) if (!std::isfinite(component)) return false;
+    // Clamp in the JSON number domain: float(0.02) / 2 is slightly below the schema's 0.01 minimum.
+    const auto stored = [&](float component) { return std::clamp(component / displayScale, minimum / displayScale, maximum / displayScale); };
+    Set(event, key, J::Array({J::Number(stored(xyz[0]), true), J::Number(stored(xyz[1]), true), J::Number(stored(xyz[2]), true)}));
+    return true;
+}
 bool Choose(const char* label,J& value,const char* key,const std::vector<std::pair<std::string,std::string>>& choices)
 { bool changed=false;auto current=String(value,key);if(ImGui::BeginCombo(label,current.c_str())){for(const auto& [id,name]:choices)if(ImGui::Selectable(name.c_str(),id==current)){Set(value,key,J::String(id));changed=true;}ImGui::EndCombo();}return changed; }
 std::vector<std::pair<std::string,std::string>> Choices(const J::ARRAY& rows,const char* id,const char* label,bool empty=false)
@@ -43,7 +56,7 @@ void CGuideAITool::Open(){m_Open=true;if(!m_Document.Is_Loaded())m_Document.Load
 void CGuideAITool::Update(){m_Document.Poll();if(m_Document.Is_Loaded()&&!m_Document.Is_Busy()&&!m_ReferencesReady)Refresh_References();}
 bool CGuideAITool::Is_PlacementPickArmed() const
 {
-    if (!m_Open || !m_Document.Is_Loaded() || m_Document.Is_Busy() || m_Rewrite ||
+    if (!m_ColliderOpen || !m_Document.Is_Loaded() || m_Document.Is_Busy() || m_Rewrite ||
         m_PickTriggerId.empty() || m_TriggerId != m_PickTriggerId || m_Category != m_PickCategory)
         return false;
     const auto& rows = Field(Field(m_Document.Draft(), "triggers"), "triggers").Get_Array();
@@ -105,8 +118,13 @@ void CGuideAITool::Import_BernStart()
 }
 void CGuideAITool::Render()
 {
-    if(!m_Open){Render_Combat();return;}
-    ImGui::SetNextWindowSize(ImVec2(960,740),ImGuiCond_FirstUseEver);
+    if(!m_Open)
+    {
+        Render_ColliderDetail();
+        if(m_ColliderOpen && m_Document.Is_Loaded())Render_DebugBoxes();
+        Render_Combat();return;
+    }
+    ImGui::SetNextWindowSize(ImVec2(960,860),ImGuiCond_FirstUseEver);
     if(ImGui::Begin("DimensionMaster Guide",&m_Open))
     {
         m_InteractionRequested|=ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
@@ -118,6 +136,9 @@ void CGuideAITool::Render()
         {
             ImGui::TextUnformatted("가이드 차원술사 / DIMENSIONMASTER");
             ImGui::Text("Published revision: %llu / Server revision: %llu",static_cast<unsigned long long>(m_Document.Published_Revision()),static_cast<unsigned long long>(m_Runtime?m_Runtime->iRevision:0));
+            ImGui::Checkbox("Show Debug##GuideColliders", &m_ShowBox);
+            ImGui::SameLine();ImGui::Checkbox("All colliders in active Area", &m_ShowAllBoxes);
+            if(m_ShowBox)ImGui::TextWrapped("Draft preview: yellow = selected, cyan = enabled, gray = disabled. Save / Publish are separate.");
             ImGui::BeginDisabled(m_Document.Is_Busy()||m_Rewrite);
             auto placement=Field(m_Document.Draft(),"placement");EditVector("Start position (m)",placement,"position");EditNumber("Rotation Y (degrees)",placement,"yawDegrees",0.5f);
             ImGui::TextUnformatted("One server Guide follows one player at a time and waits in Bern during travel.");Set(m_Document.Draft(),"placement",std::move(placement));
@@ -128,6 +149,7 @@ void CGuideAITool::Render()
             if(ImGui::BeginTabBar("GuideSections"))
             {
                 if(ImGui::BeginTabItem("대사")){Render_Prompts();ImGui::EndTabItem();}
+                if(ImGui::BeginTabItem("콜라이더")){ImGui::BeginDisabled(m_Rewrite);Render_Triggers(true);ImGui::EndDisabled();ImGui::EndTabItem();}
                 if(ImGui::BeginTabItem("트리거")){ImGui::BeginDisabled(m_Rewrite);Render_Triggers();ImGui::EndDisabled();ImGui::EndTabItem();}
                 if(ImGui::BeginTabItem("콤보 / 도움 명령")){ImGui::BeginDisabled(m_Rewrite);Render_Combos();ImGui::EndDisabled();ImGui::EndTabItem();}
                 ImGui::EndTabBar();
@@ -135,7 +157,10 @@ void CGuideAITool::Render()
             ImGui::EndDisabled();ImGui::Separator();if(ImGui::Button("Combat Detail"))m_CombatOpen=true;
         }
     }
-    ImGui::End();Render_Combat();
+    ImGui::End();
+    Render_ColliderDetail();
+    if((m_Open || m_ColliderOpen) && m_Document.Is_Loaded())Render_DebugBoxes();
+    Render_Combat();
 }
 void CGuideAITool::Render_Prompts()
 {
@@ -161,49 +186,182 @@ void CGuideAITool::Render_Prompts()
     else ImGui::TextUnformatted("대사를 선택하거나 + Row로 추가하세요.");
     ImGui::EndChild();Set(document,"prompts",J::Array(std::move(rows)));Set(m_Document.Draft(),"prompts",std::move(document));
 }
-void CGuideAITool::Render_Triggers()
+void CGuideAITool::Render_Triggers(bool collidersOnly)
 {
-    auto document=Field(m_Document.Draft(),"triggers");auto rows=Field(document,"triggers").Get_Array();
-    if(ImGui::BeginTable("GuideTriggerRows",4,ImGuiTableFlags_Borders|ImGuiTableFlags_RowBg))
-    {ImGui::TableSetupColumn("Type / ID");ImGui::TableSetupColumn("Prompt");ImGui::TableSetupColumn("Cooldown (ms)");ImGui::TableSetupColumn("Enabled");ImGui::TableHeadersRow();for(auto& row:rows)if(String(row,"categoryId")==m_Category){const auto id=String(row,"triggerId");ImGui::PushID(id.c_str());ImGui::TableNextRow();ImGui::TableNextColumn();if(ImGui::Selectable(id.c_str(),m_TriggerId==id))m_TriggerId=id;ImGui::TextUnformatted(String(Field(row,"event"),"type").c_str());ImGui::TableNextColumn();ImGui::TextWrapped("%s",String(row,"promptId").c_str());ImGui::TableNextColumn();ImGui::Text("%.0f",Number(row,"cooldownMs"));ImGui::TableNextColumn();EditBool("##Enabled",row,"enabled");ImGui::PopID();}ImGui::EndTable();}
-    if(ImGui::Button("+ Trigger")){m_TriggerId=New_Id("guide.trigger");rows.push_back(J::Object({{"triggerId",J::String(m_TriggerId)},{"categoryId",J::String(m_Category)},{"enabled",J::Boolean(false)},{"event",J::Object({{"type",Str("GUIDE_STARTED")}})},{"promptId",Str("")},{"comboId",Str("")},{"cooldownMs",J::Number(30000)},{"priority",J::Number(10)}}));}
-    const auto index=Selected(rows,"triggerId",m_TriggerId);if(index<rows.size())
+    auto document = Field(m_Document.Draft(), "triggers");
+    auto rows = Field(document, "triggers").Get_Array();
+    const auto matches = [&](const J& row) {
+        return String(row, "categoryId") == m_Category &&
+            (!collidersOnly || String(Field(row, "event"), "type") == "SPACE_ENTER");
+    };
+    if (collidersOnly)
     {
-        auto& row=rows[index];auto event=Field(row,"event");
-        ImGui::TextWrapped("Guide ID: %s / Trigger ID: %s",String(document,"guideId").c_str(),m_TriggerId.c_str());
-        ImGui::TextWrapped("Prompt ID: %s",String(row,"promptId").c_str());
-        if(Choose("Event type",event,"type",{{"GUIDE_STARTED","Personal guidance starts"},{"PARTY_JOINED","Legacy guidance start"},{"SPACE_ENTER","Owner player enters a box"},{"RAID_RETURNED","Returns from a raid to Bern"},{"WORLD_RETURNED","Returns from island / Colosseum to Bern"},{"BOSS_PATTERN_STARTED","Boss pattern begins"},{"HELP_COMMAND","Help command"}}))
-        {const auto type=String(event,"type");event=J::Object({{"type",J::String(type)}});if(type=="SPACE_ENTER"){Set(event,"boxId",J::String(New_Id("guide.box")));Set(event,"position",Field(Field(m_Document.Draft(),"placement"),"position"));Set(event,"halfExtents",J::Array({J::Number(3),J::Number(3),J::Number(3)}));Set(event,"yawDegrees",J::Number(0));Set(event,"anchorPlacementId",Str(""));}else if(type=="BOSS_PATTERN_STARTED")Set(event,"patternId",Str(""));else if(type=="HELP_COMMAND")Set(event,"commandId",Str(""));else if(type=="RAID_RETURNED")Set(event,"raidWorldId",Str("VALTAN_ARENA"));else if(type=="WORLD_RETURNED")Set(event,"sourceWorldId",Str("MAHARAKA"));}
-        Choose("Prompt",row,"promptId",Choices(Field(Field(m_Document.Draft(),"prompts"),"prompts").Get_Array(),"promptId","title",true));if(String(event,"type")=="HELP_COMMAND")Choose("Combo",row,"comboId",Choices(Field(Field(m_Document.Draft(),"combat"),"combos").Get_Array(),"comboId","displayName",true));else Set(row,"comboId",Str(""));EditMilliseconds("Cooldown (ms)",row,"cooldownMs");EditMilliseconds("Priority",row,"priority");
-        const auto type=String(event,"type");
-        if(type=="SPACE_ENTER")
+        const auto selected = Selected(rows, "triggerId", m_TriggerId);
+        if (selected >= rows.size() || !matches(rows[selected]))
         {
-            EditText("Box ID / name",event,"boxId");
-            std::string area;for(const auto& category:Field(Field(m_Document.Draft(),"catalog"),"categories").Get_Array())if(String(category,"categoryId")==m_Category)area=String(category,"areaId");
-            ImGui::BeginDisabled(area.empty()||area!=m_ActiveArea);
-            if(ImGui::Button("Pick box position in world (one click)"))
-            {
-                m_PickArea=area;m_PickCategory=m_Category;m_PickTriggerId=m_TriggerId;m_PickBoxId=String(event,"boxId");
-                m_PickEvent=CGuideAIDocument::Serialize(event);m_PickRequested=true;m_InteractionRequested=true;
-                m_Document.Set_Status("Click a visible world surface once. Esc / right-click cancels; Save keeps the picked position.");
-            }
-            ImGui::EndDisabled();
-            if(!m_PickTriggerId.empty()){ImGui::SameLine();if(ImGui::Button("Cancel pick"))Cancel_PlacementPick("Pick cancelled; the previous box position was preserved.");}
-            if(area!=m_ActiveArea)ImGui::TextWrapped("Enter %s to pick or preview this box.",area.c_str());
-            EditVector("Box position (m)",event,"position");EditVector("Half extents (m)",event,"halfExtents");EditNumber("Box rotation Y",event,"yawDegrees");
-            if(Choose("NPC anchor",event,"anchorPlacementId",m_NpcChoices))for(const auto& p:Field(m_NpcWorld,"placements").Get_Array())if(String(p,"placementId")==String(event,"anchorPlacementId")){Set(event,"position",Field(p,"position"));Set(event,"yawDegrees",Field(p,"yawDegrees"));break;}
-            ImGui::Checkbox("Show selected box in active Area",&m_ShowBox);Render_BoxPreview(event);
+            m_TriggerId.clear();
+            for (const auto& row : rows) if (matches(row)) { m_TriggerId = String(row, "triggerId"); break; }
         }
-        else if(type=="BOSS_PATTERN_STARTED")
-        {
-            Choose("Published pattern",event,"patternId",m_PatternChoices);
-        }
-        else if(type=="HELP_COMMAND")Choose("Command",event,"commandId",Choices(Field(Field(m_Document.Draft(),"combat"),"commands").Get_Array(),"commandId","displayName"));
-        else if(type=="RAID_RETURNED")Choose("Raid world",event,"raidWorldId",{{"VALTAN_ARENA","Valtan"},{"KAKULSAYDON_ARENA","KoukuSaydon"}});
-        else if(type=="WORLD_RETURNED")Choose("Returned world",event,"sourceWorldId",{{"MAHARAKA","Maharaka"},{"COLOSSEUM","Colosseum"}});
-        Set(row,"event",std::move(event));if(ImGui::Button("Delete trigger")){rows.erase(rows.begin()+index);m_TriggerId.clear();}
+        ImGui::TextUnformatted("행을 선택하면 Collider Detail 창에서 위치 / 크기 / 회전을 조절하고 저장할 수 있습니다.");
     }
-    Set(document,"triggers",J::Array(std::move(rows)));Set(m_Document.Draft(),"triggers",std::move(document));
+    if (ImGui::BeginTable("GuideTriggerRows", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+        ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable, ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 7)))
+    {
+        ImGui::TableSetupColumn(collidersOnly ? "Collider / Box ID" : "Type / Trigger ID");
+        ImGui::TableSetupColumn("Prompt");
+        ImGui::TableSetupColumn("Enabled", ImGuiTableColumnFlags_WidthFixed, 70.f);
+        ImGui::TableSetupScrollFreeze(0, 1);
+        ImGui::TableHeadersRow();
+        for (auto& row : rows) if (matches(row))
+        {
+            const auto id = String(row, "triggerId");
+            const auto& event = Field(row, "event");
+            ImGui::PushID(id.c_str());ImGui::TableNextRow();ImGui::TableNextColumn();
+            const auto label = collidersOnly ? String(event, "boxId") : id;
+            if (ImGui::Selectable(label.c_str(), m_TriggerId == id))
+            {
+                m_TriggerId = id;
+                m_ColliderOpen = String(event, "type") == "SPACE_ENTER";
+            }
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", id.c_str());
+            if (!collidersOnly) ImGui::TextUnformatted(String(event, "type").c_str());
+            ImGui::TableNextColumn();ImGui::TextWrapped("%s", String(row, "promptId").c_str());
+            ImGui::TableNextColumn();EditBool("##Enabled", row, "enabled");ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+    const auto makeBox = [&]() {
+        return J::Object({{"type", Str("SPACE_ENTER")}, {"boxId", J::String(New_Id("guide.box"))},
+            {"position", Field(Field(m_Document.Draft(), "placement"), "position")},
+            {"halfExtents", J::Array({J::Number(3), J::Number(3), J::Number(3)})},
+            {"yawDegrees", J::Number(0)}, {"anchorPlacementId", Str("")}});
+    };
+    if (ImGui::Button(collidersOnly ? "+ Collider" : "+ Trigger"))
+    {
+        m_TriggerId = New_Id("guide.trigger");
+        rows.push_back(J::Object({{"triggerId", J::String(m_TriggerId)}, {"categoryId", J::String(m_Category)},
+            {"enabled", J::Boolean(false)}, {"event", collidersOnly ? makeBox() : J::Object({{"type", Str("GUIDE_STARTED")}})},
+            {"promptId", Str("")}, {"comboId", Str("")}, {"cooldownMs", J::Number(30000)}, {"priority", J::Number(10)}}));
+        if (collidersOnly) m_ColliderOpen = true;
+    }
+    const auto index = Selected(rows, "triggerId", m_TriggerId);
+    if (index < rows.size() && matches(rows[index]))
+    {
+        auto& row = rows[index];
+        auto event = Field(row, "event");
+        ImGui::PushID(m_TriggerId.c_str());
+        ImGui::TextWrapped("Trigger ID: %s", m_TriggerId.c_str());
+        if (!collidersOnly && Choose("Event type", event, "type", {{"GUIDE_STARTED", "Personal guidance starts"},
+            {"PARTY_JOINED", "Legacy guidance start"}, {"SPACE_ENTER", "Owner player enters a box"},
+            {"RAID_RETURNED", "Returns from a raid to Bern"}, {"WORLD_RETURNED", "Returns from island / Colosseum to Bern"},
+            {"BOSS_PATTERN_STARTED", "Boss pattern begins"}, {"HELP_COMMAND", "Help command"}}))
+        {
+            const auto type = String(event, "type");
+            event = J::Object({{"type", J::String(type)}});
+            if (type == "SPACE_ENTER") { event = makeBox();m_ColliderOpen = true; }
+            else if (type == "BOSS_PATTERN_STARTED") Set(event, "patternId", Str(""));
+            else if (type == "HELP_COMMAND") Set(event, "commandId", Str(""));
+            else if (type == "RAID_RETURNED") Set(event, "raidWorldId", Str("VALTAN_ARENA"));
+            else if (type == "WORLD_RETURNED") Set(event, "sourceWorldId", Str("MAHARAKA"));
+        }
+        const auto type = String(event, "type");
+        if (type == "SPACE_ENTER")
+        {
+            if (ImGui::Button("Collider Detail")) m_ColliderOpen = true;
+            ImGui::TextWrapped("Box: %s", String(event, "boxId").c_str());
+        }
+        else
+        {
+            ImGui::TextWrapped("이 이벤트는 콜라이더를 사용하지 않습니다. 공간 배치는 콜라이더 탭에서 편집하세요.");
+            if (type == "BOSS_PATTERN_STARTED") Choose("Published pattern", event, "patternId", m_PatternChoices);
+            else if (type == "HELP_COMMAND") Choose("Command", event, "commandId", Choices(Field(Field(m_Document.Draft(), "combat"), "commands").Get_Array(), "commandId", "displayName"));
+            else if (type == "RAID_RETURNED") Choose("Raid world", event, "raidWorldId", {{"VALTAN_ARENA", "Valtan"}, {"KAKULSAYDON_ARENA", "KoukuSaydon"}});
+            else if (type == "WORLD_RETURNED") Choose("Returned world", event, "sourceWorldId", {{"MAHARAKA", "Maharaka"}, {"COLOSSEUM", "Colosseum"}});
+        }
+        if (!collidersOnly)
+        {
+            Choose("Prompt", row, "promptId", Choices(Field(Field(m_Document.Draft(), "prompts"), "prompts").Get_Array(), "promptId", "title", true));
+            if (type == "HELP_COMMAND") Choose("Combo", row, "comboId", Choices(Field(Field(m_Document.Draft(), "combat"), "combos").Get_Array(), "comboId", "displayName", true));
+            else Set(row, "comboId", Str(""));
+            EditMilliseconds("Cooldown (ms)", row, "cooldownMs");EditMilliseconds("Priority", row, "priority");
+        }
+        Set(row, "event", std::move(event));
+        if (ImGui::Button("Delete trigger")) { rows.erase(rows.begin() + index);m_TriggerId.clear(); }
+        ImGui::PopID();
+    }
+    else if (collidersOnly) ImGui::TextUnformatted("이 지역에는 공간 트리거가 없습니다. + Collider로 추가하세요.");
+    Set(document, "triggers", J::Array(std::move(rows)));Set(m_Document.Draft(), "triggers", std::move(document));
+}
+void CGuideAITool::Render_ColliderDetail()
+{
+    if (!m_ColliderOpen || !m_Document.Is_Loaded()) return;
+    auto document = Field(m_Document.Draft(), "triggers");
+    auto rows = Field(document, "triggers").Get_Array();
+    const auto index = Selected(rows, "triggerId", m_TriggerId);
+    if (index >= rows.size() || String(rows[index], "categoryId") != m_Category ||
+        String(Field(rows[index], "event"), "type") != "SPACE_ENTER")
+    { m_ColliderOpen = false;return; }
+    ImGui::SetNextWindowSize(ImVec2(680, 620), ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Collider Detail##Guide", &m_ColliderOpen))
+    {
+        m_InteractionRequested |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+        ImGui::TextWrapped("%s", m_TriggerId.c_str());
+        ImGui::Checkbox("Show Debug", &m_ShowBox);ImGui::SameLine();
+        ImGui::Checkbox("All colliders in active Area", &m_ShowAllBoxes);
+        ImGui::TextWrapped("Draft: yellow = selected, cyan = enabled, gray = disabled.");
+        ImGui::Separator();
+        ImGui::BeginDisabled(m_Document.Is_Busy() || m_Rewrite);
+        ImGui::PushID(m_TriggerId.c_str());
+        auto& row = rows[index];
+        auto event = Field(row, "event");
+        Render_BoxEditor(event);
+        Set(row, "event", std::move(event));
+        EditBool("Enabled", row, "enabled");
+        Choose("Prompt", row, "promptId", Choices(Field(Field(m_Document.Draft(), "prompts"), "prompts").Get_Array(), "promptId", "title", true));
+        EditMilliseconds("Cooldown (ms)", row, "cooldownMs");EditMilliseconds("Priority", row, "priority");
+        ImGui::PopID();
+        // Save must consume this frame's edits, including changes made in the other window.
+        Set(document, "triggers", J::Array(std::move(rows)));Set(m_Document.Draft(), "triggers", std::move(document));
+        ImGui::Separator();
+        if (ImGui::Button("Save")) { Cancel_PlacementPick({});m_Document.Start_Save(); }
+        ImGui::SameLine();
+        if (ImGui::Button("Publish")) { Cancel_PlacementPick({});m_Document.Start_Publish(); }
+        ImGui::SameLine();ImGui::TextUnformatted(m_Document.Is_Dirty() ? "Modified source" : "Saved source");
+        ImGui::EndDisabled();
+        ImGui::TextWrapped("%s", m_Document.Status().c_str());
+        ImGui::TextWrapped("Save writes the Guide source. Publish installs the saved revision; the running Server is separate.");
+    }
+    ImGui::End();
+    if (!m_ColliderOpen) Cancel_PlacementPick({});
+}
+void CGuideAITool::Render_BoxEditor(J& event)
+{
+    EditText("Box ID / name", event, "boxId");
+    bool moved = EditBoxVector("Position X/Y/Z (m)", event, "position", 1., -100000., 100000.);
+    EditBoxVector("Size X/Y/Z (m)", event, "halfExtents", 2., 0.02, 200000.);
+    float yaw = static_cast<float>(Number(event, "yawDegrees"));
+    if (ImGui::DragFloat("Rotation Y (degrees)", &yaw, 0.5f, -36000.f, 36000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp) && std::isfinite(yaw))
+    { Set(event, "yawDegrees", J::Number(yaw, true));moved = true; }
+    if (moved) Set(event, "anchorPlacementId", Str(""));
+    ImGui::TextUnformatted("Position = box center. Size = full width / height / depth (not half extents).");
+    std::string area;
+    for (const auto& category : Field(Field(m_Document.Draft(), "catalog"), "categories").Get_Array())
+        if (String(category, "categoryId") == m_Category) area = String(category, "areaId");
+    ImGui::BeginDisabled(area.empty() || area != m_ActiveArea);
+    if (ImGui::Button("Pick box position in world (one click)"))
+    {
+        m_PickArea = area;m_PickCategory = m_Category;m_PickTriggerId = m_TriggerId;m_PickBoxId = String(event, "boxId");
+        m_PickEvent = CGuideAIDocument::Serialize(event);m_PickRequested = true;m_InteractionRequested = true;
+        m_ShowBox = true;
+        m_Document.Set_Status("Click a visible world surface once to set the box center. Esc / right-click cancels.");
+    }
+    ImGui::EndDisabled();
+    if (!m_PickTriggerId.empty()) { ImGui::SameLine();if (ImGui::Button("Cancel pick")) Cancel_PlacementPick("Pick cancelled; the previous box position was preserved."); }
+    if (area != m_ActiveArea) ImGui::TextWrapped("Enter %s to pick or preview this box.", area.c_str());
+    if (Choose("Copy NPC position / rotation", event, "anchorPlacementId", m_NpcChoices))
+        for (const auto& p : Field(m_NpcWorld, "placements").Get_Array())
+            if (String(p, "placementId") == String(event, "anchorPlacementId"))
+            { Set(event, "position", Field(p, "position"));Set(event, "yawDegrees", Field(p, "yawDegrees"));break; }
 }
 void CGuideAITool::Render_Combos()
 {
@@ -225,16 +383,82 @@ void CGuideAITool::Render_Combos()
     }
     Set(combat,"commands",J::Array(std::move(commands)));Set(m_Document.Draft(),"combat",std::move(combat));
 }
-void CGuideAITool::Render_BoxPreview(const J& event)
+void CGuideAITool::Render_DebugBoxes()
 {
-    std::string area;for(const auto& c:Field(Field(m_Document.Draft(),"catalog"),"categories").Get_Array())if(String(c,"categoryId")==m_Category)area=String(c,"areaId");
-    if(!m_ShowBox||area.empty()||area!=m_ActiveArea)return;
-    const auto& p=Field(event,"position").Get_Array();const auto& h=Field(event,"halfExtents").Get_Array();if(p.size()!=3||h.size()!=3)return;
-    const auto* view=CGameInstance::Get().Get_Transform(D3DTS::VIEW);const auto* projection=CGameInstance::Get().Get_Transform(D3DTS::PROJ);if(!view||!projection)return;
-    const auto transform=DirectX::XMMatrixRotationY(static_cast<float>(Number(event,"yawDegrees"))*DirectX::XM_PI/180.f)*DirectX::XMMatrixTranslation(static_cast<float>(p[0].Get_Number()),static_cast<float>(p[1].Get_Number()),static_cast<float>(p[2].Get_Number()))*DirectX::XMLoadFloat4x4(view)*DirectX::XMLoadFloat4x4(projection);
-    std::array<ImVec2,8> points{};std::array<bool,8> visible{};const auto viewport=ImGui::GetMainViewport();
-    for(size_t i=0;i<8;++i){DirectX::XMFLOAT4 clip;DirectX::XMStoreFloat4(&clip,DirectX::XMVector4Transform(DirectX::XMVectorSet(static_cast<float>(h[0].Get_Number())*((i&1)?1.f:-1.f),static_cast<float>(h[1].Get_Number())*((i&2)?1.f:-1.f),static_cast<float>(h[2].Get_Number())*((i&4)?1.f:-1.f),1.f),transform));visible[i]=clip.w>0.001f&&clip.z>=0.f;if(visible[i])points[i]=ImVec2(viewport->Pos.x+(clip.x/clip.w+1.f)*.5f*viewport->Size.x,viewport->Pos.y+(1.f-clip.y/clip.w)*.5f*viewport->Size.y);}
-    auto* draw=ImGui::GetBackgroundDrawList();for(size_t i=0;i<8;++i)for(size_t bit:{size_t(1),size_t(2),size_t(4)})if(!(i&bit)&&visible[i]&&visible[i|bit])draw->AddLine(points[i],points[i|bit],IM_COL32(255,190,30,230),2.f);
+    if (!m_ShowBox || m_ActiveArea.empty()) return;
+    const auto& categories = Field(Field(m_Document.Draft(), "catalog"), "categories").Get_Array();
+    for (const auto& row : Field(Field(m_Document.Draft(), "triggers"), "triggers").Get_Array())
+    {
+        const auto& event = Field(row, "event");
+        const bool selected = String(row, "triggerId") == m_TriggerId;
+        if (String(event, "type") != "SPACE_ENTER" || (!m_ShowAllBoxes && !selected)) continue;
+        for (const auto& category : categories)
+            if (String(category, "categoryId") == String(row, "categoryId") && String(category, "areaId") == m_ActiveArea)
+            { Render_BoxPreview(event, selected, Boolean(row, "enabled"));break; }
+    }
+}
+void CGuideAITool::Render_BoxPreview(const J& event, bool selected, bool enabled)
+{
+    const auto& p = Field(event, "position").Get_Array();
+    const auto& h = Field(event, "halfExtents").Get_Array();
+    if (p.size() != 3 || h.size() != 3 || !std::isfinite(Number(event, "yawDegrees"))) return;
+    for (size_t i = 0; i < 3; ++i)
+        if (!std::isfinite(p[i].Get_Number()) || !std::isfinite(h[i].Get_Number()) || h[i].Get_Number() <= 0.) return;
+    const auto* view = CGameInstance::Get().Get_Transform(D3DTS::VIEW);
+    const auto* projection = CGameInstance::Get().Get_Transform(D3DTS::PROJ);
+    if (!view || !projection) return;
+    const auto transform = DirectX::XMMatrixRotationY(static_cast<float>(Number(event, "yawDegrees")) * DirectX::XM_PI / 180.f) *
+        DirectX::XMMatrixTranslation(static_cast<float>(p[0].Get_Number()), static_cast<float>(p[1].Get_Number()), static_cast<float>(p[2].Get_Number())) *
+        DirectX::XMLoadFloat4x4(view) * DirectX::XMLoadFloat4x4(projection);
+    std::array<DirectX::XMFLOAT4, 8> points;
+    for (size_t i = 0; i < points.size(); ++i)
+        DirectX::XMStoreFloat4(&points[i], DirectX::XMVector4Transform(DirectX::XMVectorSet(
+            static_cast<float>(h[0].Get_Number()) * ((i & 1) ? 1.f : -1.f),
+            static_cast<float>(h[1].Get_Number()) * ((i & 2) ? 1.f : -1.f),
+            static_cast<float>(h[2].Get_Number()) * ((i & 4) ? 1.f : -1.f), 1.f), transform));
+    // Clip edges before dividing by W so boxes crossing the camera remain visible.
+    const auto planes = [](const DirectX::XMFLOAT4& v) {
+        return std::array<float, 7>{v.w - 0.001f, v.z, v.w - v.z, v.x + v.w, v.w - v.x, v.y + v.w, v.w - v.y};
+    };
+    const auto viewport = ImGui::GetMainViewport();
+    const auto project = [&](const DirectX::XMFLOAT4& a, const DirectX::XMFLOAT4& b, float t) {
+        const float w = a.w + (b.w - a.w) * t;
+        return ImVec2(viewport->Pos.x + ((a.x + (b.x - a.x) * t) / w + 1.f) * .5f * viewport->Size.x,
+            viewport->Pos.y + (1.f - (a.y + (b.y - a.y) * t) / w) * .5f * viewport->Size.y);
+    };
+    const ImU32 color = selected ? IM_COL32(255, 190, 30, 255) :
+        enabled ? IM_COL32(50, 220, 255, 220) : IM_COL32(150, 150, 150, 180);
+    auto* draw = ImGui::GetBackgroundDrawList();
+    ImVec2 labelPosition{};
+    bool hasLabel = false;
+    draw->PushClipRect(viewport->Pos, ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y), true);
+    for (size_t i = 0; i < points.size(); ++i) for (size_t bit : {size_t(1), size_t(2), size_t(4)}) if (!(i & bit))
+    {
+        const auto& a = points[i];const auto& b = points[i | bit];
+        const auto pa = planes(a);const auto pb = planes(b);
+        float start = 0.f, end = 1.f;
+        bool visible = true;
+        for (size_t plane = 0; plane < pa.size(); ++plane)
+        {
+            if (!std::isfinite(pa[plane]) || !std::isfinite(pb[plane]) || (pa[plane] < 0.f && pb[plane] < 0.f)) { visible = false;break; }
+            if (pa[plane] < 0.f) start = (std::max)(start, pa[plane] / (pa[plane] - pb[plane]));
+            else if (pb[plane] < 0.f) end = (std::min)(end, pa[plane] / (pa[plane] - pb[plane]));
+        }
+        if (!visible || start > end) continue;
+        const auto first = project(a, b, start), last = project(a, b, end);
+        draw->AddLine(first, last, color, selected ? 3.f : 1.5f);
+        if (!hasLabel || first.y < labelPosition.y) { labelPosition = first;hasLabel = true; }
+    }
+    if (hasLabel)
+    {
+        const auto label = String(event, "boxId") + (enabled ? "" : " [disabled]");
+        const auto size = ImGui::CalcTextSize(label.c_str());
+        labelPosition.x = (std::max)(viewport->Pos.x, (std::min)(labelPosition.x, viewport->Pos.x + viewport->Size.x - size.x - 8.f));
+        labelPosition.y = (std::max)(viewport->Pos.y, labelPosition.y - size.y - 6.f);
+        draw->AddRectFilled(labelPosition, ImVec2(labelPosition.x + size.x + 8.f, labelPosition.y + size.y + 4.f), IM_COL32(0, 0, 0, 190));
+        draw->AddText(ImVec2(labelPosition.x + 4.f, labelPosition.y + 2.f), color, label.c_str());
+    }
+    draw->PopClipRect();
 }
 }
 #endif

@@ -852,8 +852,22 @@ Server 소비자를 끝까지 확인한다. 이름 전용 TRIGGER/Summon은 실�
   source actor 대응이나 공통 변환을 먼저 확인하며, element 내부 회전·크기를 root에 중복 적용하지 않는다.
   실제 검사와 사용자 화면 판정은 [플레이어 앵커·폭죽 결과](09-11/2026-09-11_KOUKU_PLAYER_ANCHOR_RAINBOW_FIREWORKS_IMPLEMENTATION_RESULT.md)의 G06에서 구분한다.
 
+### 콜로세움 인원 변경과 좌표 차원의 경계를 분리한다
+
+- 인원 제한 변경은 좌표 차원을 바꾸지 않는다. Colosseum 팀 슬롯을4인으로 확장할 때
+  카메라 XYZ 파서까지4회로 바뀌어3개짜리 JSON/출력 배열의 범위를 벗어났다. 입력 길이 검증과
+  같은 실제 배열 크기로 순회하고, 팀 슬롯 검사와 실제 Client camera 파서 검사를 따로 실행한다.
+  서버 입장 계약 PASS나 C++ 컴파일 성공을 Client 컷신 로드·화면 성공으로 기록하지 않는다.
+
 ### 클릭 이동 예측의 위치·높이·회전·카메라를 각각 검증한다
 
+- prediction helper가 정한 유효 이동 시간을 Character에서 다시100ms로 자르지 않는다.
+  ACK 전 follower와 ACK 후 표시 경로가 같은 시간을 소비해야 재클릭이 긴 frame의 속도를 바꾸지 않는다.
+- 가까운 waypoint도 남은 실제 거리를 frame budget에서 뺀 뒤 소비한다. 2cm 도착 tolerance로
+  무료 이동하면 corner 속도 상승과 helper가 아직 도착하지 않았는데 RUN이 끝나는 결함이 생긴다.
+- Server의 새 이동 경로는 임시 vector에서 검색·정리한 뒤 commit한다. 실패한 retarget은
+  기존 경로·index·goal/request를 보존하고 처리 sequence만 ACK한다. 실제 충돌·도착·상태 잠금의
+  이동 종료와 경로 검색 거부를 구분한다. 재현과 수정은09-22 PROFILER RESULT의 G21에 둔다.
 - Client가 waypoint 직선을 예측하면 Server 일반 MOVE도 위치를 같은 목표 방향으로 진행해야 한다.
   몸의 제한 회전을 이동 벡터에 다시 적용하면 반대 클릭에서 곡선 이동과 ACK 되감김이 생긴다.
 - 같은 navgrid 파일만으로 경로 일치를 보장하지 않는다. 기존 publisher의 맵별 navpolicy도 제품
@@ -4981,6 +4995,8 @@ Guardian Movie watersplash native4645~4647에는 원본 shader map에도 별도 
 - Guide skill 직접 적중뿐 아니라 projectile/combat-object의 `SERVER_PLAYER_TO_WORLD_HIT::bGuideSource`도 전파해야 counter/stagger/part/MVP 제외가 동일하게 적용된다.
 - Guide Save에서 PowerShell 함수 결과의 singleton 배열을 scalar로 풀면 무관한 필드 수정이 충돌로 오판된다. `File.Replace` rollback의 null backup 인자는 PS5에서 빈 문자열로 바뀔 수 있으므로 실제 복구 fixture를 유지한다.
 - Guide 신규 C++는 UTF-8 BOM 없음이며 한글 ImGui 문자열을 가진 TU는 프로젝트의 파일별 `/utf-8` 옵션을 유지한다. 기존 CP949 파일을 일괄 변환하지 않는다.
+- Guide의 `GUIDE_STARTED`에는 박스가 없다. 공간 편집은 `콜라이더` 목록의 `SPACE_ENTER` 행을 선택해 별도 `Collider Detail`에서 수행하며, Show Debug는 현재 Area의 전체 draft 박스를 표시한다. 시작 인사에 상점 대사를 연결한 것을 상점 공간 트리거 생성으로 해석하지 않는다.
+- 전체 Size를 halfExtents로 바꿀 때 float의 `0.02 / 2`가 저장 schema 최소 `0.01`보다 작아질 수 있다. JSON double 영역에서 최소·최대값을 보정한다. 상세 창을 닫으면 그 창에서 시작한 one-shot picking도 취소한다.
 
 
 ### SourceCharacter program 번호의 독립 브랜치 충돌
@@ -5792,3 +5808,28 @@ Effect 부모를 명시하고 빈 값의 기존 동작을 보존한다. 임의90
 
 - 입장 Loader가 선택 class만 준비하면 경기 예약 뒤 20명 AI 첫 spawn에서 다른 class·24개 의상 모델·NPC8종의 decode/material 준비가 gameplay thread에 몰린다. Server roster의 2 class와 Shared NPC8 정본 및 item→visual-set 해석을 로딩 단계에서 준비하고 기존 prototype을 재사용한다.
 - NPC 외형의 hidden Character proxy에 총을 달거나 player 전용 prop3를 찾으면 실제 NPC는 맨손이다. NPC의 실제 right-hand 본과 최종 preScale basis를 확인한 뒤 기존 CPart_Equipment를 현재 NPC pose 뒤에 갱신한다. 무장·사망/숨김·해제는 snapshot을 따르고 total gun scale에 .01을 두 번 적용하지 않는다.
+
+
+### SpriteFont에 없는 UI 문자로 준비 완료 직후 Client가 종료될 수 있다
+
+- `.spritefont`에 글리프가 없고 `defaultCharacter=0`이면 `DrawString`뿐 아니라
+  `MeasureString`도 `Character not in font` 예외를 던진다. HRESULT `E_FAIL` 검사로는
+  잡히지 않으므로 종료 로그의 예외와 실제 EXE/DLL에 맞는 PDB 호출 스택을 먼저 확인한다.
+- 콜로세움에서는 준비 뒤 RECRUITING으로 전환하며 처음 표시한 모집 문구의 `·`(U+00B7)
+  두 개가 YoonGasiIIM 및 소형 파생 폰트에 없어 `Render_PartyInviteText -> Measure_Text`
+  에서 종료됐다. 컷신·AI·loader가 직전에 동작했다는 이유만으로 그쪽 결함으로 단정하지 않는다.
+- UI 문구에 특수문자를 추가할 때 실제 선택되는 원본·크기별 폰트의 글리프와 fallback을
+  확인한다. 이번 수정은 지원되는 ASCII `|`로 교체한 한 줄이며, 공통 font fallback은
+  제품에 반영하지 않았다. 다른 미지원 문자나 닉네임까지 보호됐다고 설명하지 않는다.
+- 실제 설치 폰트와 DirectXTK로 이전 문구의 예외를 재현하고 수정 문구의 측정·그리기를
+  확인한다. Server 인원 계약이나 컴파일 성공만으로 Client UI 실행까지 통과했다고
+  판단하지 않는다. 실제 다인 Client 화면 확인은 별도 검증이다.
+- 상세 호출 스택·수정·배포 증거는
+  [콜로세움 결과 G15](10-01/2026-10-01_PR494_496_FLEXIBLE_COLOSSEUM_RESULT.md#g15-사용자-실제4인-종료-모집-문구의-누락-glyph-예외)를 따른다.
+
+
+### 콜로세움 연출의 별도 텍스트 경로와 초상 lookup
+
+- HUD sprite 숨김만으로 Level의 월드 이름/HP·말풍선이나 Intro 자체의 직업/닉네임 텍스트는 숨겨지지 않는다. 연출 구간에는 별도 Draw_Text 소비자도 함께 차단한다. FINISHED 전체에서 HUD를 숨길 때 복귀 버튼의 입력까지 막히지 않도록 cinematic-owned pointer scope만 허용하고 일반 창·gameplay 차단은 유지한다.
+- 초상과 MVP 대표/파티 카드·캐릭터 정보창·아바타창은 Movie 문서를 복사해 그리는 화면이 아니라 실제 CharacterCatalog 기본 직업·lazy 장비 재질을 사용한다. Movie의 TGA mip 수정 후에도 DDS가 남으면 초상만 이전 선명한 반사를 유지할 수 있다. 같은 mip0·색공간을 확인한 뒤 실제 소비 assetId를 맞추고 공통 조명·거칠기 옵션은 바꾸지 않는다.
+- 컴파일·입력 수치 검증과 실제 Client 컷씬/초상 품질 확인은 구분한다. [콜로세움 결과](10-01/2026-10-01_COLOSSEUM_MATCH_FLOW_RESULT.md#g11-초기-초상월드-텍스트와-movie-lookup-일치)를 따른다.

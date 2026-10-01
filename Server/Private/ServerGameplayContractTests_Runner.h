@@ -43,6 +43,7 @@ public:
     static int Run_ValtanPatternControl();
     static int Run_NpcRaidReturn();
     static void Run_RuntimeSupportPrediction(TESTS& tests, const CServerNavigation& navigation);
+    static void Run_MoveRetarget(TESTS& tests, const CServerNavigation& navigation);
     static void Run_KoukuPushContracts(TESTS& tests, const CGameplayCatalog& catalog);
 
 private:

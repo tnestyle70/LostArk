@@ -204,3 +204,26 @@ box 중심을 지정한다. half extents/yaw 조절과 화면 preview, stable ID
 Server guide 전용 계약에서 단일 actor/시작·종료/다른 사용자 선점 차단/인사/공간재진입/승선대기/용추종/실패보존/실제4인·solo
 raid귀환/PvP·섬귀환/disconnect를 검사한다. publisher는 신규 event·잘못된 world/category와
 동시 저장 보존을 검사한다. 최종 Debug/Release Product와 제품 UI 사용자 확인을 분리한다.
+
+## G09. 콜라이더 편집 진입과 Show Debug (2026-10-01)
+
+현재 GUIDE_STARTED 선택에는 공간 정보가 없고, SPACE_ENTER의 위치·half extents·회전과
+preview는 긴 트리거 표 아래에서만 접근할 수 있다. CGuideAITool의 기존 draft와 world
+picking을 유지하며 콜라이더 전용 탭에서 공간 트리거만 고르고 같은 편집기를 사용한다.
+목록 높이를 제한하고 행을 선택하면 별도 `Collider Detail` ImGui 창을 연다.
+상세 창에서 위치·전체 크기·Y 회전과 대사 연결을 조절하고 Save/Publish를 실행한다.
+전체 크기는 미터 단위로 표시하고 기존 halfExtents 저장값으로 절반 변환한다.
+NPC anchor는 위치를 복사하는 기존 선택 기능이며 직접 위치·회전을 바꾸면 참조를 해제한다.
+
+GuideAITool.h의 Render_Triggers에 공간 목록 필터와 상세 창 열기를 추가하고,
+Render_ColliderDetail은 선택 stable trigger ID의 같은 draft를 편집한다. 별도 debug 표시 함수가
+현재 Area의 모든 SPACE_ENTER 또는 선택한 항목을 그린다. Show Debug는 탭 바깥에 두고,
+선택 항목·다른 활성 항목·비활성 항목의 색과 box ID를 구분한다. 다른 탭이나 접힌 창에서도
+미리보기를 유지하고 도구를 닫으면 끈다. 미리보기는 현재 draft이며 Server 적용 증거가 아니다.
+카메라 near plane을 가로지르는 박스 선분은 clip한 뒤 투영한다.
+
+수정 소스는 기존 Client/Public/GuideAITool.h와 Client/Private/GuideAITool.cpp다.
+새 C++ 파일·project/filter 등록·JSON schema·Server 판정·publisher 변경은 없다.
+기존 Save의 stable ID 병합과 원자 교체, Publish의 저장본 소비와 실패 보존을 유지한다.
+Debug Product 증분 빌드, Guide의 기존 저장/게시 회귀, scoped diff-check를 확인한다.
+Client 실행·화면 확인은 사용자가 F1 → DimensionMaster Guide → 콜라이더에서 수행한다.

@@ -207,6 +207,9 @@ HRESULT CLevel_Development::Initialize()
 
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
+	m_PlayerController.Set_MovementSurfaceResolver([this](const float3_t& origin,
+		const float3_t& direction, float3_t& surface)
+	{ return m_MapRuntime.Try_PickMovementSurface(origin, direction, surface); });
 	if (m_eLevel == LEVEL::MAHARAKA || m_eLevel == LEVEL::COLOSSEUM)
 	{
 		m_PartyInteraction.Initialize(m_pDevice, m_pContext, ETOUI(m_eLevel));
@@ -404,9 +407,16 @@ void CLevel_Development::Update_ColosseumMatch(const f32_t deltaSeconds)
 			m_iColosseumReadyMatch = state.iMatchId;
 		if (m_ColosseumLoading)
 		{
-			const auto ready = std::count_if(state.Participants.begin(),state.Participants.end(),[](const auto& p){return p.bReady;});
-			m_ColosseumLoading->Set_Waiting(L"\xCC38\xAC00\xC790 \xC900\xBE44 \xC911 ("+
-				std::to_wstring(ready)+L"/"+std::to_wstring(state.iExpectedPlayers)+L")");
+			LostArk::Shared::S2C_COLOSSEUM_MATCH_FOUND roster;
+			if (CLevelTransitionService::Try_Get_ColosseumMatch(roster) && roster.iMatchId == state.iMatchId)
+			{
+				// MATCH_FOUND owns the admitted human order. Mercenaries use later team slots.
+				const size_t expected = roster.Participants.size();
+				const auto ready = std::count_if(state.Participants.begin(), state.Participants.end(),
+					[expected](const auto& player) { return player.iArrivalIndex < expected && player.bReady; });
+				m_ColosseumLoading->Set_Waiting(L"\xCC38\xAC00\xC790 \xC900\xBE44 \xC911 (" +
+					std::to_wstring(ready) + L"/" + std::to_wstring(expected) + L")");
+			}
 		}
 		// Failed presentation or a peer that never finishes may not hide behind an
 		// infinite loading screen. Disconnect reports the failure and releases our seat.
@@ -715,7 +725,11 @@ HRESULT CLevel_Development::Render()
 {
 	if (FAILED(__super::Render()))
 		return E_FAIL;
-	if (m_eLevel == LEVEL::MAHARAKA || m_eLevel == LEVEL::COLOSSEUM)
+	const auto& match = m_Replication.Get_ColosseumMatchState();
+	const bool showWorldHUD = !Is_ColosseumIntroActive() &&
+		!(m_eLevel == LEVEL::COLOSSEUM && match.iMatchId &&
+			match.ePhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::FINISHED);
+	if (showWorldHUD && (m_eLevel == LEVEL::MAHARAKA || m_eLevel == LEVEL::COLOSSEUM))
 	{
 		m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster(),
             m_eLevel == LEVEL::COLOSSEUM ? &m_Replication.Get_ColosseumMatchState() : nullptr,
@@ -723,13 +737,12 @@ HRESULT CLevel_Development::Render()
 		m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
 		m_PartyInteraction.Render(m_pPlayerCommandSink);
 	}
-	if (m_InteractPrompt) m_InteractPrompt->Render_Text();
+	if (showWorldHUD && m_InteractPrompt) m_InteractPrompt->Render_Text();
 	if (m_Waterpang) m_Waterpang->Render();
 	if (m_ColosseumIntro) m_ColosseumIntro->Render();
 	if (m_ColosseumMatchStart) m_ColosseumMatchStart->Render();
 	if (m_ColosseumLoading) m_ColosseumLoading->Render();
 	if (m_ColosseumMatchView) m_ColosseumMatchView->Render();
-	const auto& match = m_Replication.Get_ColosseumMatchState();
 	if (m_eLevel == LEVEL::COLOSSEUM && match.iMatchId &&
 		match.ePhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::ENTRY_COUNTDOWN)
 		CRaidGateProgressView::Render_AssemblyCountdown(
@@ -748,13 +761,16 @@ HRESULT CLevel_Development::Render()
 
 void CLevel_Development::Render_PartyInviteText()
 {
+	const auto& match = m_Replication.Get_ColosseumMatchState();
+	if (Is_ColosseumIntroActive() ||
+		(m_eLevel == LEVEL::COLOSSEUM && match.iMatchId &&
+			match.ePhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::FINISHED)) return;
 	m_PartyInteraction.Render_InvitePopupText();
 	m_PartyInteraction.Render_ContextMenuText();
     if (m_eLevel == LEVEL::COLOSSEUM && !Is_ColosseumIntroActive() &&
         m_Replication.Get_ColosseumMatchState().iMatchId != 0u)
     {
         using namespace LostArk::Shared;
-        const auto& match = m_Replication.Get_ColosseumMatchState();
         const auto local = CNetworkManager::Get().Get_LocalEntityId();
         std::uint8_t ownTeam = COLOSSEUM_NO_TEAM;
         std::uint32_t count[2]{};
@@ -765,7 +781,7 @@ void CLevel_Development::Render_PartyInviteText()
         }
         if (match.ePhase != COLOSSEUM_MATCH_PHASE::RECRUITING || ownTeam >= 2u) return;
         const auto remaining = 4u - (std::min)(4u, count[ownTeam]);
-        std::wstring text = L"\uC6A9\uBCD1 \uBAA8\uC9D1 \u00B7 1\uD300 " + std::to_wstring(count[0]) + L"/4 \u00B7 2\uD300 " + std::to_wstring(count[1]) + L"/4";
+        std::wstring text = L"\uC6A9\uBCD1 \uBAA8\uC9D1 | 1\uD300 " + std::to_wstring(count[0]) + L"/4 | 2\uD300 " + std::to_wstring(count[1]) + L"/4";
         text += remaining ? L"  |  \uAC19\uC740 \uD300 \uD6C4\uBCF4\uB97C \uC6B0\uD074\uB9AD\uD558\uC5EC \uC6A9\uBCD1 " + std::to_wstring(remaining) + L"\uBA85\uC744 \uCD08\uB300\uD558\uC138\uC694" :
             L"  |  \uC0C1\uB300 \uD300 \uBAA8\uC9D1 \uC644\uB8CC\uB97C \uAE30\uB2E4\uB9AC\uB294 \uC911...";
         const auto viewport = CGameInstance::Get().Get_ViewportSize();

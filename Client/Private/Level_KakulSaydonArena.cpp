@@ -1621,6 +1621,9 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
 	m_pWorldEntityCommandSink = make_shared<CNetworkWorldEntityCommandSink>();
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
+	m_PlayerController.Set_MovementSurfaceResolver([this](const float3_t& origin,
+		const float3_t& direction, float3_t& surface)
+	{ return m_MapRuntime.Try_PickMovementSurface(origin, direction, surface); });
 	m_PlayerController.Set_ItemTargetResolver([this](const float3_t& origin, const float3_t& direction)
 	{ return m_Replication.Find_ItemTargetPlayerFromRay(origin, direction); });
 	m_ChatBubbleView.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));

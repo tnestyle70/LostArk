@@ -80,8 +80,28 @@ def strings(value):
             yield from strings(v)
 
 
+def active_valtan_presentation_generation(root):
+    gameplay = root / 'Server/Bin/DataFiles/Gameplay'
+    bootstrap = gameplay / 'Gameplay.bootstrap'
+    assert bootstrap.is_file(), 'Missing Gameplay.bootstrap for Valtan presentation generation'
+    rows = [line.split('\t') for line in bootstrap.read_text(encoding='utf-8-sig').splitlines()
+            if line.split('\t', 1)[0] == 'PATTERNPRESENTATIONGENERATION']
+    assert len(rows) == 1, 'Missing or duplicate Valtan presentation generation row'
+    row = rows[0]
+    assert (len(row) == 3 and row[1] == 'ENCOUNTER_VALTAN'
+            and re.fullmatch(r'[0-9a-fA-F]{64}', row[2]) and int(row[2], 16) != 0), \
+        'Invalid Valtan presentation generation row'
+    generation_id = row[2].lower()
+    path = gameplay / 'ValtanPresentationGenerations' / (generation_id + '.json')
+    assert path.is_file(), 'Missing active Valtan presentation generation: ' + str(path)
+    assert digest(path) == generation_id, 'Active Valtan presentation generation hash mismatch'
+    return path
+
+
 def collect(root=ROOT):
     root = root.resolve()
+    active_generation = active_valtan_presentation_generation(root)
+    generation_directory = active_generation.parent
     files = {}
     reasons = {}
 
@@ -107,6 +127,10 @@ def collect(root=ROOT):
         add(path, 'Compiled product shader')
     for folder in ('Client/Bin/DataFiles', 'Server/Bin/DataFiles'):
         for path in (root / folder).rglob('*'):
+            # The bootstrap selects one immutable descriptor; retained older
+            # generations must not add stale artifacts to the package closure.
+            if path.is_relative_to(generation_directory) and path != active_generation:
+                continue
             if path.is_file() and eligible(path.relative_to(root)):
                 add(path, 'Published runtime tree')
     for folder in DIRECT_DOMAINS:

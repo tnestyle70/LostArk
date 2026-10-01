@@ -910,7 +910,13 @@ namespace
     // Populated only by actual mesh draws on the rendering thread. Keeping a
     // shared reference until light accumulation finishes also closes teardown.
     thread_local std::vector<std::shared_ptr<CMaterial>> g_SourceCharacterFrame;
-    thread_local std::unordered_map<const CMaterial*, uint32_t> g_SourceCharacterRows;
+    struct SOURCE_CHARACTER_ROW final
+    {
+        // Keep aliases alive too: CModel uses shared ownership for copy-on-write.
+        std::shared_ptr<CMaterial> Material;
+        uint32_t Row;
+    };
+    thread_local std::unordered_map<const CMaterial*, SOURCE_CHARACTER_ROW> g_SourceCharacterRows;
     // The row lives in the R32_FLOAT depth target, not an eight-bit material index.
     // Every positive integer through 2^24 is exactly representable there.
     constexpr uint32_t SOURCE_CHARACTER_MAX_EXACT_ROW =
@@ -992,14 +998,48 @@ HRESULT CMaterial::Bind_SourceCharacter(shared_ptr<CShader> shader)
         return Bind_SourceCharacterInputs(shader, false, 0u);
     const auto found = g_SourceCharacterRows.find(this);
     if (found != g_SourceCharacterRows.end())
-        return Bind_SourceCharacterInputs(shader, false, found->second);
+        return Bind_SourceCharacterInputs(shader, false, found->second.Row);
+
+    // Deferred rows identify light inputs, not a particular material instance.
+    // The base pass still binds this material's own constants and textures.
+    const auto sameLightInputs = [&](const CMaterial& other)
+    {
+        const auto& source = m_Surface.sourceCharacter;
+        const auto& candidate = other.m_Surface.sourceCharacter;
+        if (source.program != candidate.program ||
+            source.lightTextureMask != candidate.lightTextureMask ||
+            m_Surface.hasBakedLighting != other.m_Surface.hasBakedLighting ||
+            0 != std::memcmp(source.lightConstants.data(), candidate.lightConstants.data(),
+                sizeof(source.lightConstants))) return false;
+        for (uint32_t index = 0u; index < SOURCE_CHARACTER_TEXTURE_COUNT; ++index)
+        {
+            if ((source.lightTextureMask & (1u << index)) == 0u) continue;
+            const auto repainted = m_SourceCharacterTextureOverrides.find(index);
+            const auto otherRepainted = other.m_SourceCharacterTextureOverrides.find(index);
+            const auto* texture = repainted != m_SourceCharacterTextureOverrides.end() ?
+                repainted->second.Get() : m_SourceCharacterTextures[index].Get();
+            const auto* otherTexture = otherRepainted != other.m_SourceCharacterTextureOverrides.end() ?
+                otherRepainted->second.Get() : other.m_SourceCharacterTextures[index].Get();
+            if (texture != otherTexture) return false;
+        }
+        return true;
+    };
+    for (size_t index = 0u; index < g_SourceCharacterFrame.size(); ++index)
+    {
+        if (!sameLightInputs(*g_SourceCharacterFrame[index])) continue;
+        const uint32_t row = static_cast<uint32_t>(index) + 1u;
+        const HRESULT result = Bind_SourceCharacterInputs(shader, false, row);
+        if (SUCCEEDED(result))
+            g_SourceCharacterRows.emplace(this, SOURCE_CHARACTER_ROW{shared_from_this(), row});
+        return result;
+    }
     if (g_SourceCharacterFrame.size() >= SOURCE_CHARACTER_MAX_EXACT_ROW) return E_BOUNDS;
     // Row IDs are ephemeral render indices, never serialized asset IDs.
     const uint32_t row = static_cast<uint32_t>(g_SourceCharacterFrame.size()) + 1u;
     const HRESULT result = Bind_SourceCharacterInputs(shader, false, row);
     if (FAILED(result)) return result;
     g_SourceCharacterFrame.push_back(shared_from_this());
-    g_SourceCharacterRows.emplace(this, row);
+    g_SourceCharacterRows.emplace(this, SOURCE_CHARACTER_ROW{shared_from_this(), row});
     return S_OK;
 }
 

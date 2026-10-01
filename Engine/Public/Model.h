@@ -84,6 +84,16 @@ public:
     // Also identify the nearest rendered submesh; both outputs are unchanged on failure.
     bool_t Try_PickCurrentPose(const float4x4_t& world, const float3_t& rayOrigin,
         const float3_t& rayDirection, f32_t& distance, uint32_t& meshIndex) const;
+    enum class PICK_CULL_MODE { NONE, BACK, FRONT };
+    // Movement surface query over immutable static WModel LOD0 triangles. The
+    // caller selects eligible materials and the final rasterizer's CW-front cull
+    // mode; world reflection is included when testing triangle winding. No GPU
+    // readback, query allocation, alpha test, shader displacement or animation.
+    // Direction is normalized internally; distance/maxDistance are world units.
+    // Unsupported geometry and misses leave distance unchanged.
+    bool_t Try_PickStaticSurface(uint32_t meshIndex, const float4x4_t& world,
+        const float3_t& rayOrigin, const float3_t& rayDirection, f32_t maxDistance,
+        PICK_CULL_MODE cullMode, f32_t& distance) const;
 	bool_t Has_SelfConsistentUnauthenticatedGeometryMetadata() const {
 		return m_bHasSelfConsistentUnauthenticatedGeometryMetadata;
 	}

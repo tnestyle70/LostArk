@@ -348,6 +348,8 @@ Client의 gameplay 키보드·마우스와 raw 입력은 실제 Client 창이 fo
 
 우클릭 이동의 hold 재전송은 유지하고 `effect.world.mouse_click`은 최초 물리 press에서 송신이 성공한 경우에만 생성한다. `Request_MoveToPoint(goal, playClickEffect = true)`의 일반 이동 caller는 raw press edge를 전달하고, Bern NPC 접근의 명시 클릭 caller는 기본값을 사용한다. UI·잡힘·타기팅 종료로 표식을 다시 생성하지 않는다.
 
+Server가 새 이동 목표의 경로를 찾지 못하면 기존 이동 경로와 목표를 보존한다. 해당 입력의 처리 sequence는 계속 ACK하므로 Client는 승인 대기를 끝내고 기존 Server waypoint로 보정한다. 성공한 새 경로만 교체하며 실제 도착·충돌·피격·사망에 따른 이동 종료는 기존 권위 경로를 따른다.
+
 일반 클릭 이동 예측은 `CCharacter`의 기존 `CNavigation/CNavPathFollower`와 `CLocalMovePrediction`이 소유한다. 송신 직후 RUN을 요청하고 다음 ObjectUpdate부터 위치를 전진시킨다. `ClientReplication`은 protocol 81 `PLAYER_SNAPSHOT`의 `iLastProcessedMoveSequence`, `fMoveSpeed`(태세 배율 포함), `canPredictMove`, `hasMoveGoal`, `fMoveWaypointX/Y/Z`를 전달한다. 처리 sequence는 이동 승인이 아니며, 최신 미처리 클릭은 이전 IDLE 응답으로 취소하지 않는다. 처리된 입력은 Server 위치와 다음 경유점으로 보정한다. 외삽은 150ms와 다음 경유점으로, 무응답 예측은 350ms로 제한한다. 연속 위치 오차는 최소 80ms와 오차/이동속도에 따른 기간으로 줄이며, 큰 불연속·피격·사망·패턴 구속·마리오는 예측을 해제한다. 일반 예측에서 SKILL 보간으로 넘어갈 때만 표시 잔여 offset을 120ms에 줄인다. 두 replication 소비자는 같은 SKILL 상태를 전달한다. 다른 플레이어는 기존 2 tick 보간을 사용하고 스킬·피해·충돌 권위는 Server에 남는다. Client 경로를 Server 정답으로 전송하지 않는다. Client/Server gameplay socket은 TCP_NODELAY를 사용한다.
 
 제품 Loader는 양쪽에 배포된 맵 `.navpolicy`의 최대 인접 높이 차이를 검증해 `CNavigation::Create_NavGrid`의 네 번째 인자로 전달한다. prototype/Clone이 값을 보존하고 Character 예측은 `Get_MaxStepHeight()`로 경로를 요청한다. 기존 명시적 raw/editor 호출은 기본값 0.6을 유지한다. 일반 MOVE 위치는 목표 XZ로 전진하고 얼굴 회전과 분리한다. Client는 현재 발밑 지면을 읽으며 먼 경유점 Y를 미리 보간하지 않는다. `CCharacter::Update_PresentationYaw`가 최단 회전을 소유하고 ACK helper는 각도를 다시 보간하지 않는다.
@@ -375,7 +377,7 @@ Client payload에는 PlayerId와 NetEntityId가 없다. Server가 SessionId로 p
 
 우클릭 피킹은 입력 목표를 얻기 위한 Client 표현 계층이다. 제품 위치의 정답은 Server Navigation이다.
 
-일반 이동의 화면 피킹은 `Request_Picking`이 현재 커서의1픽셀 복사를 제출하고 `Poll_Picking`이 `D3D11_MAP_FLAG_DO_NOT_WAIT`로 완료만 확인한다. main thread에서 동기 Map으로 GPU 완료를 기다리지 않는다. 픽셀·평면 fallback·최초 press·action/move sequence는 같은 요청에 묶으며 버튼을 뗀 뒤에도 유효한 최초 클릭은 한 번 처리한다. 새 press, 후속 스킬/상호작용·다른 이동 명령,350ms 기한, UI·포커스·텍스트 입력·사망·capture·타기팅·character/sink 교체는 미완료 요청을 취소한다. 취소된 GPU 요청은 평면 fallback으로 부활시키지 않는다. hold는 기존50ms 재전송과 같은 goal 억제를 유지하고, 배 이동은 기존 수면 plane을 쓴다. 완료 후 typed 송신 성공 시에만 예측과 최초 클릭 표식을 시작한다. 이 비동기 경로는 일반 이동용이며 기존 저작 피킹 호출은 유지한다.
+일반 이동의 화면 피킹은 `CPlayerController`가 현재 입력의 camera ray를 Level이 연결한 `CMapPlacementRuntime::Try_PickMovementSurface`에 전달한다. 현재 scope에 생성된 static batch/object의 가시성·stage/camera suppression과 실제 world transform을 읽고, 기존 `CModel/CMesh`의 공유 LOD0 정적 triangle 가속 구조에서 가장 가까운 표면을 같은 입력 frame에 구한다. GPU readback의 제출·poll·대기를 이동 명령의 선행조건으로 두지 않는다. 표면이 없으면 이전 이동을 유지하며 평면이나 GPU로 fallback하지 않는다. hold의50ms 재전송·같은 goal 억제, 배 이동의 기존 수면 plane, typed 송신 성공 뒤의 예측·최초 press 표식은 유지한다. UI·포커스·텍스트 입력·사망·capture·타기팅·free camera의 기존 입력 차단도 유지한다. 이 표면은 정적 이동용 geometry이며 shader alpha 구멍·GPU 변형·렌더 LOD의 픽셀 일치를 뜻하지 않는다. masked 바닥은 포함하고 foliage/grass 및 알려진 변형 재질은 제외한다. Server는 기존 XZ command와 navigation으로 이동을 확정하며 저작 도구의 별도 피킹 API는 유지한다.
 
 - 일반 이동: Server가 navgrid에서 시작/목표를 projection하고 8방향 A* path를 만든다.
 - 높이: 각 Server nav point의 Y를 사용한다.
@@ -387,7 +389,9 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 
 ### 4.0 F1 Level Navigation
 
-Debug/Release 공통 F1의 Level Navigation은 Lobby, Character Select, Bern, Valtan,
+촬영용 Release는 F1/F7 입력과 Developer Tools/Profiler 창, 화면 FPS 표시를 비활성화한다. F6와 제품 UI는 유지한다.
+
+Debug F1의 Level Navigation은 Lobby, Character Select, Bern, Valtan,
 KoukuSaydon, Entrance PvP Arena, Maharaka 일곱 버튼을 제공한다. Lobby 복귀는 기존
 LevelTransition request를 사용하고, 나머지는 Lobby의 Server admission을 한 번 요청한다.
 Character Select에서 이동하면 현재 선택 class를 `Submit_StageEntry`로 보존한다.
@@ -411,9 +415,9 @@ GameRoom은 일반 trigger의 G/진입 활성화를 차단하고 네 목적지�
 같은 OBB로 countdown·entry_aura/active를 표시하며 이동·보스 생성을 로컬로 확정하지 않는다.
 이전 Stage_Boss/Stage_Boss_ArenaEntry와 그 move_destination marker는 비활성이다.
 
-발탄 F1 `Valtan Arena`의 Start Position / Before Entrance / Arena Start는 기존 typed player teleport를 사용한다. Debug/Release 공통의 벽·지형 상태 버튼은 전체 벽 복원, 외곽 벽 제거, 3시 붕괴, 9시 붕괴, 양쪽 붕괴를 기존 `Set_ServerArenaPreset` 명령으로 요청한다. 표시 상태는 Server replication을 따르고 요청 대기 중에는 중복 제출을 막는다. 벽·지형 preset은 Pattern의 source/Product 일치 여부와 별개로 Server가 승인하므로, 미게시 Pattern 수정으로 canonical graph가 미승인 상태여도 요청할 수 있다. Save·Publish 진행 잠금과 Server의 session/world·요청·보스 상태·destruction graph 검증은 유지한다. `Despawn Valtan Boss`는 Debug/Release Server에서 ENCOUNTER_VALTAN primary와 owner 종속체만 제거하고 일반 NPC/웨이브 몬스터를 보존한다. 이후 Boss Play Pattern은 disabled placement `boss.valtan.center`를 Server에 준비 요청하고 replicated primary 도착 후 기존 revision/sound/presentation admission을 다시 통과해야 실행된다. spawn 대기는 local boss 생성으로 우회하지 않는다.
+발탄 F1 `Valtan Arena`의 Start Position / Before Entrance / Arena Start는 기존 typed player teleport를 사용한다. Debug F1의 벽·지형 상태 버튼은 전체 벽 복원, 외곽 벽 제거, 3시 붕괴, 9시 붕괴, 양쪽 붕괴를 기존 `Set_ServerArenaPreset` 명령으로 요청한다. 표시 상태는 Server replication을 따르고 요청 대기 중에는 중복 제출을 막는다. 벽·지형 preset은 Pattern의 source/Product 일치 여부와 별개로 Server가 승인하므로, 미게시 Pattern 수정으로 canonical graph가 미승인 상태여도 요청할 수 있다. Save·Publish 진행 잠금과 Server의 session/world·요청·보스 상태·destruction graph 검증은 유지한다. `Despawn Valtan Boss`는 Debug/Release Server에서 ENCOUNTER_VALTAN primary와 owner 종속체만 제거하고 일반 NPC/웨이브 몬스터를 보존한다. 이후 Boss Play Pattern은 disabled placement `boss.valtan.center`를 Server에 준비 요청하고 replicated primary 도착 후 기존 revision/sound/presentation admission을 다시 통과해야 실행된다. spawn 대기는 local boss 생성으로 우회하지 않는다.
 
-Debug/Release 공통 F1 `Camera`에서 자유 카메라 속도를 조절한다. 베른·발탄·쿠크 기본은
+Debug F1 `Camera`에서 자유 카메라 속도를 조절한다. 베른·발탄·쿠크 기본은
 20m/s이며 범위는 0.1~400m/s다. Shift는 30배 이동이다. Debug 발탄·쿠크의 설정은 아레나별
 process-session에 보관돼 재입장에도 유지한다. 베른과 Release는 현재 맵 방문 동안 적용한다.
 
@@ -518,9 +522,9 @@ Server와 Client를 모두 새 protocol로 빌드·재시작해야 한다. Debug
 ### Colosseum 유연 대기열·4 대 4 경기·표현 계약
 
 - 베른 NPC `npc.bern.25184_1.2`의 첫 대기자가 Server 10초 기한을 시작하며 기한에 남은 인간 1~4명을 입장 순서대로 좌측/team 0, 우측/team 1에 교차 배정한다. 4명이 모여도 일찍 시작하지 않는다. `S2C_COLOSSEUM_QUEUE_STATE.iServerTick/iDeadlineTick`으로 남은 초를 표시하고 서버 대기 인원을 0/4~4/4로 표시한다. match transfer는 경기별 private `CGameRoom`에 전원 admission·초기 reliable 송신을 준비한 뒤 commit한다. 서로 다른 match는 플레이어·피해·점수·시계를 공유하지 않는다.
-- Debug/Release F1 Level Navigation의 직접 Colosseum 입장과 Debug Lobby `Colosseum Preview`는 Server 승인 및 복제를 유지한 기존 unmatched 월드의 표현 확인용이다. 직접 입장은 match ID가 없어 PvP를 활성화하지 않으며 queue 준비 완료 대기도 생략한다. Debug에서 대기열 roster 없이 입장했을 때만 F1 승리 컷신/HUD/승리·패배 배너 버튼을 활성화한다. `CColosseumMatchView`의 동일 샘플러를 로컬 시계로 호출하며 로컬 캐릭터 1명과 예시 점수 3:1/120초를 보여 준다. `Play Defeat UI`의 예시는 로컬 team 0이 1:3으로 패배하며 원본 `defeat_mc`(심볼 755, 40fps 140프레임)를 사용한다. 실제 Server state를 수정하지 않고 READY/귀환 명령도 제출하지 않는다. 실제 match ID가 수신되면 preview를 정리하고 Server 시계로 돌아간다. 정식 결과는 local PlayerId/NetEntityId로 Server 팀을 확인한 뒤 표시하며 미확인 팀을 패배로 간주하지 않는다. 정식 매치에서는 F1 replay/seek를 잠그며 Preview 종료·교체·Level 종료 시 카메라/캐릭터 override를 복원한다.
-- `S2C_COLOSSEUM_MATCH_FOUND.iMatchId`와 모든 경기 요청·상태의 `iMatchId`는 uint64 identity다. 상태는 `LOADING -> RECRUITING -> ENTRY_COUNTDOWN -> INTRO -> COUNTDOWN -> ACTIVE(PLAYING alias) -> FINISHED`다. `iServerTick`, `iPhaseStartTick`, `iPhaseEndTick`은 30 Hz Server tick이며 상태는 3 tick마다 갱신한다. 후보 포함 `Players`는 최대14명, 선택된 `Participants`는 최대8명이다. 두 목록은 PlayerId/NetEntityId/team/participant/arrival index/ready/kills를 유지하며 선택된 슬롯은 `team + slot * 2`(0~7)다. `iExpectedPlayers`는 현재 선택된 인원이며 인간이 없는 팀의 자동 선택 용병도 포함한다. Client는 맵과 이 실제 참가자들의 class·customizing·avatar 준비가 끝난 뒤 typed `Request_ColosseumLoadReady(matchId)`만 제출한다. 중복 READY는 멱등이고 이전 match ID는 무시한다.
-- LOADING의 인간 준비 완료 후 RECRUITING에서 이동과 같은 팀 용병 후보 우클릭 초대를 허용한다. 팀별 다섯 직업 후보 중 부족한 인원을 선택해 인간+용병 총4명을 만든다. 인간 없는 팀은 Server가 네 명을 자동 선택한다. 양 팀이 완성되면 기존 레이드 흰색·노란색 글꼴로 “전투 아레나에 진입합니다.” 3초, 도열 INTRO 8.6초, 기존 전투 COUNTDOWN 10초, ACTIVE 120초를 순서대로 진행한다. 로딩 준비 제한은120초이며 LOADING/RECRUITING에서 입장 인간이 이탈하면 남은 인원을 무기한 모집에 가두지 않고 무승부 종료한다. Client는 자체 타이머로 phase를 바꾸지 않으며 피해는 ACTIVE에서만 허용한다.
+- Debug F1 Level Navigation의 직접 Colosseum 입장과 Debug Lobby `Colosseum Preview`는 Server 승인 및 복제를 유지한 기존 unmatched 월드의 표현 확인용이다. 직접 입장은 match ID가 없어 PvP를 활성화하지 않으며 queue 준비 완료 대기도 생략한다. Debug에서 대기열 roster 없이 입장했을 때만 F1 승리 컷신/HUD/승리·패배 배너 버튼을 활성화한다. `CColosseumMatchView`의 동일 샘플러를 로컬 시계로 호출하며 로컬 캐릭터 1명과 예시 점수 3:1/120초를 보여 준다. `Play Defeat UI`의 예시는 로컬 team 0이 1:3으로 패배하며 원본 `defeat_mc`(심볼 755, 40fps 140프레임)를 사용한다. 실제 Server state를 수정하지 않고 READY/귀환 명령도 제출하지 않는다. 실제 match ID가 수신되면 preview를 정리하고 Server 시계로 돌아간다. 정식 결과는 local PlayerId/NetEntityId로 Server 팀을 확인한 뒤 표시하며 미확인 팀을 패배로 간주하지 않는다. 정식 매치에서는 F1 replay/seek를 잠그며 Preview 종료·교체·Level 종료 시 카메라/캐릭터 override를 복원한다.
+- `S2C_COLOSSEUM_MATCH_FOUND.iMatchId`와 모든 경기 요청·상태의 `iMatchId`는 uint64 identity다. 상태는 `LOADING -> RECRUITING -> ENTRY_COUNTDOWN -> INTRO -> COUNTDOWN -> ACTIVE(PLAYING alias) -> FINISHED`다. `iServerTick`, `iPhaseStartTick`, `iPhaseEndTick`은 30 Hz Server tick이며 상태는 3 tick마다 갱신한다. 후보 포함 `Players`는 최대14명, 선택된 `Participants`는 최대8명이다. 두 목록은 PlayerId/NetEntityId/team/participant/arrival index/ready/kills를 유지하며 선택된 슬롯은 `team + slot * 2`(0~7)다. `iExpectedPlayers`는 현재 선택된 전투 인원이다. 로딩 화면은 같은 match의 MATCH_FOUND 인간 roster와 인간 arrival 범위의 bReady를 사용해1/1·2/2·3/3·4/4를 표시한다. Client는 맵과 실제 참가자들의 class·customizing·avatar 준비가 끝난 뒤 typed `Request_ColosseumLoadReady(matchId)`만 제출한다. 중복 READY는 멱등이고 이전 match ID는 무시한다.
+- LOADING의 인간 준비 완료 후 RECRUITING에서 이동과 같은 팀 용병 후보 우클릭 초대를 허용한다. 팀별 다섯 직업 후보 중 부족한 인원을 직접 선택해 인간+용병 총4명을 만든다. 인간1명 입장일 때만 인간 없는 상대 팀의 용병4명을 Server가 자동 선택하고 본인 팀은 직접3명을 고용한다.2~4인에서는 자동 선택 없이 양 팀이 직접 고용한다. 양 팀이 완성되면 기존 레이드 흰색·노란색 글꼴로 “전투 아레나에 진입합니다.” 10초, 도열 INTRO 8.6초, 기존 전투 COUNTDOWN 10초, ACTIVE 120초를 순서대로 진행한다. 모집 뒤 입장과 도입 뒤 전투 준비는 각각10초다. 로딩 준비 제한은120초이며 LOADING/RECRUITING에서 입장 인간이 이탈하면 남은 인원을 무기한 모집에 가두지 않고 무승부 종료한다. Client는 자체 타이머로 phase를 바꾸지 않으며 피해는 ACTIVE에서만 허용한다.
 - 실제 입장 캐릭터의 외형은 `C2S_ENTER_WORLD.strAppearanceJson -> SERVER_PLAYER -> S2C_PLAYER_SPAWNED`로 복제한다. payload는 16 KiB 이내의 schema/version/class 일치, finite 수치·범위, 깊이·중복 key 검증을 통과한 customizing preset이다. stable part key만 허용하며 런타임 asset path는 Client catalog가 해석한다. 외형·음성·칭호·내구도·장비 inventory·소지금은 대기열 입장과 베른 귀환 transfer 모두 보존한다. 로딩과 소개/승리 배우는 이 실제 replicated character를 사용한다.
 - Server의 기존 스킬 overlap 및 room-owned combat object 판정에서 자기 자신과 같은 팀을 먼저 제외한다. 아군은 피해·shield·피격 반응·projectile contact를 소비하지 않는다. 적팀 사망당 1점을 한 번만 부여하고 경기 중 3초 뒤 최초 navigation-projected 팀 spawn에서 HP/resource·상태를 복구한다. 종료 tick부터 잔여 projectile/장판을 취소하고 추가 점수를 받지 않는다. 점수가 같으면 winning team 255(무승부), 그렇지 않으면 0/1이다.
 - 로딩 화면·소개 컷신·12시 중앙 HUD는 같은 팀 좌우와 Server clock을 쓴다. 소개 도열·전투 HUD는 팀당4 슬롯, 승리 배우는 승리 팀4 슬롯이며 후보는 배우에서 제외한다. 소개와 승리 연출은 원본 타이밍·클립을 유지하고 카메라/배치를4인에 맞게 조정한 프로젝트 데이터다. 결과 타이틀과 승리 컷신은 Client 표현이며 경기 승패를 정하지 않는다. `Request_ColosseumReturn(matchId)`는 FINISHED에만 기존 Server world transfer로 베른 귀환을 요청한다. 중복·stale 요청은 재입장을 만들지 않고 모든 UI 명령은 typed command sink를 거친다. 원본 컷신/배너 데이터는 `Data/Camera/ColosseumVictory.cutscene.json`, `Data/UI/Colosseum`이며 시각 일치의 최종 판정은 사용자 수동 검증이다.
@@ -843,7 +847,7 @@ NetEntityId, player/local 구분, current/max HP, shield, presentation의 weak �
 `max(maxHP, HP + shield)`를 공통 분모로 사용한다. 살아 있고 화면에 투영되는 대상만 layout을
 처음 생성한다. 표시 위치는 전달받은 weak presentation의 현재 머리/모델 경계에서 계산한다.
 
-Debug/Release F1의 광기 위치 조절 아래 `Health bar positions`에서 주황 기믹, 다른 아군 HP,
+Debug F1의 광기 위치 조절 아래 `Health bar positions`에서 주황 기믹, 다른 아군 HP,
 일반 몬스터·쿠크세이튼·쿠크·발탄 HP의 X/Y offset을 각각 조절한다.
 `Data/UI/KoukuSaydon/KoukuHudModes.json`의 optional `healthBarPositions`는
 `mechanicHeadOffsetX/Y`, `allyOffsetX/Y`, `enemyOffsetX/Y`, `koukuSaydonOffsetX/Y`,
@@ -914,7 +918,7 @@ Server 실행물을 함께 배포하고 Server를 재시작한다.
 
 UI 담당자는 JSON을 매 프레임 읽지 않는다. `CCombatHUDViewModel::Initialize_Definitions()`가 정의를 준비하고 `CClientReplication`이 snapshot마다 runtime 상태를 적용한다. UI 코드에서 packet이나 socket을 사용하거나 Character·boss GameObject에서 gameplay 수치를 조회하지 않는다. 머리 위 체력바는 ViewModel이 제공한 weak presentation의 표시 위치만 읽는다.
 
-Debug/Release의 `F1 -> Balance Test -> Save + Apply`는 현재 Server의 실효 수치를 읽고
+Debug의 `F1 -> Balance Test -> Save + Apply`는 현재 Server의 실효 수치를 읽고
 `IPlayerCommandSink`의 typed numeric patch를 보낸다. Server가 base numeric revision과 field 이전값을
 검사하고 canonical source/provenance와 게시 bootstrap을 원자 저장한 뒤 모든 shared/private room의
 같은 tick 경계에서 활성화한다. 모든 접속 Client는 F1을 닫아도 새 numeric snapshot으로 표시·입력
@@ -2505,7 +2509,7 @@ Client HUD는 일치 개수가 증가할 때만 마리오 화면 하단에 `[1 /
 BINGO_BOARD는 WORLD hammer collider head × 저장 Object scale에서 투영한
 hammerHalfExtentsM(진행축·가로축)을 PATTERNBINGOHAMMER 행으로 읽는다.4방향의
 동일 footprint와20 anchor 경로 및 활성 시간[4400,6000)ms를 검증한다. 누락·불일치는
-게시를 거절하며 Server 판정과 Debug/Release F1 망치 Collider 표시가 같은 값을 쓴다.
+게시를 거절하며 Server 판정과 Debug F1 망치 Collider 표시가 같은 값을 쓴다.
 
 조커의 BOSS_RANDOM_TARGET DURATION은 BOSS_RANDOM_TARGET_PRESENTATION mechanic
 행으로 게시한다. Server가 표적을 고르고 Client는 저작 구간에만 머리 표식과 지정
@@ -2638,7 +2642,7 @@ Server snapshot의 `ActiveBuffs` 32282/33500 및 종료 tick이 표현 수명의
 `battleUse.staggerMaximumDivisor=3`을 서버 projectile hit에 고정하며 남은 게이지의 1/3이 아니다.
 쿠크 `STAGGER_WINDOW`와 발탄 typed gauge는 보스 HP와 독립적으로 방어 적용 피해의 1/1000을
 누적한다. 저작된 DAMAGE/STAGGER/COUNTER 채널은 중복 기여하지 않는다. 최대치는 Retail의
-`raidStaggerMaximum=40000` 하나이며 Debug/Release F1 Balance Test `STAGGER/RAID_COMMON`에서
+`raidStaggerMaximum=40000` 하나이며 Debug F1 Balance Test `STAGGER/RAID_COMMON`에서
 Server Save + Apply로 저장·전 room 갱신한다. 다음 창·종료된 창으로 credit를 재사용하지 않는다.
 
 마리오 `BOSS_DAMAGE_REDUCTION` Duration은 실제 HP 피해에 별도로 1/1000(양수 최소 1)을 적용한다.
@@ -2647,7 +2651,7 @@ Server Save + Apply로 저장·전 room 갱신한다. 다음 창·종료된 창�
 흰색 피해 감소 문구를 표시한다. 공·인형의 저작 광기는 유효 접촉이 보호막에 흡수되어도 현재
 Retail gain·multiplier·interval을 사용한다. 다른 공격의 HP 비례 광기는 그대로 유지한다.
 
-Debug/Release 공통 F1 `Battle Items`의 `Give all four (10 each)`와 개별 지급은 기존
+Debug F1 `Battle Items`의 `Give all four (10 each)`와 개별 지급은 기존
 `C2S_DEBUG_GIVE_ITEM`을 typed command sink로 제출한다. 아이템 사용을 우회하거나 local effect를
 즉시 재생하지 않는다. 인벤토리(I)에서 HUD1~4에 배치하고 F1을 닫은 후 실제 사용을 검증한다.
 
@@ -2748,13 +2752,16 @@ winnerTeam은 종료 전 또는 무승부에255이며 승리 팀은0/1이다. �
 
 COLOSSEUM_MERCENARY_AI(3)는 팀 파티 슬롯을 사용하지만 인간 session·match 인원으로 세지 않는다.
 인간1~4명 입장과 팀별5후보 spawn은 admission 및 reliable FIFO 준비 후 함께 commit한다.
-각 팀은 배정된 인간과 선택한 용병을 합해4명을 유지하며 인간 없는 팀은 용병4명을 자동 선택한다.
+각 팀은 배정된 인간과 직접 고용한 용병을 합해4명을 유지하며 인간 없는 팀의 용병도 미선택 후보로 남는다.
 후보는 피해 대상과 전투HP 표시에서 제외한다. 혼합 `S2C_PARTY_ROSTER::Members`는 팀당 총4명이고
 용병은 부족한 슬롯만 채운다. GuideCompanion을 포함하지 않는다.
 이 roster는 콜로세움 경기에서만 발신하며 일반 월드의 인간 최대4명 파티 계약은 유지하며 안내 Guide는 roster에 넣지 않는다.
-각 combatant의 최대HP는 활성 발탄160줄 profile의40줄 분량이며, 이름표는 복제된 current/max HP 비율로 최대40줄을 표시한다. 스킬 피해는 기존160줄 기준HP로 계산하여 유지한다.
+각 combatant의 최대HP는 활성 발탄160줄 profile의20줄 분량이며, 이름표는 복제된 current/max HP 비율로 최대20줄을 표시한다. 스킬 피해는 기존160줄 기준HP로 계산하여 유지한다.
 콜로세움 world·동일 ACTIVE match·적팀 participant guard는 damage/CC commit에서 재확인하며,
 보스 레이드의 balance 데이터·기본 damage/knockback 경로는 변경하지 않는다. Artist T1/5도 PvP만 적용한다.
+넉백은 기존 이동 거리·이동 시간의10%(V0.51m/217ms, ALT_V1.6m/150ms)이며 별도 CC 시간은 유지한다.
+용병별 ALT_V는 마지막 승인부터 최소900tick(30초) 간격을 지키고 원래 더 긴 cooldown도 검사한다.
+이 마지막 승인 tick은 사망·부활·rotation reset에서 초기화하지 않으며 인간 스킬 입력에는 적용하지 않는다.
 
 RAID_ENTRY_TARGET 끝에 MAHARAKA/MAHARAKA_RETURN을 추가해 기존 발탄·쿠크 값은 유지한다.
 Bern↔Maharaka의 G dock은 같은 전원 확인 UI와 all-or-none party transfer를 사용한다.

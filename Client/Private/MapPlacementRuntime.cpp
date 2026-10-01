@@ -4,6 +4,7 @@
 #include "MapAssetObject.h"
 #include "MapAssetRenderUtils.h"
 #include "Model.h"
+#include "Profiler.h"
 #include "DataJson.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
@@ -140,6 +141,54 @@ bool_t CMapPlacementRuntime::Load_Area(
 		std::to_string(m_Placements.size()) +
 		" placements / " + std::to_string(m_StaticBatches.size()) +
 		" batches / " + std::to_string(fallbackCount) + " fallbacks";
+	return true;
+}
+
+bool_t CMapPlacementRuntime::Try_PickMovementSurface(
+	const float3_t& rayOrigin, const float3_t& rayDirection,
+	float3_t& outPosition) const
+{
+	if (!IsFinite(rayOrigin) || !IsFinite(rayDirection) ||
+		CGameInstance::Get().Is_SceneEnvironmentReplaced())
+		return false;
+	const vector_t ray = XMLoadFloat3(&rayDirection);
+	const f32_t length = XMVectorGetX(XMVector3Length(ray));
+	if (!std::isfinite(length) || length <= 1.e-8f)
+		return false;
+	float3_t direction{};
+	XMStoreFloat3(&direction, ray / length);
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Picking.CpuMap");
+	f32_t nearest = (std::numeric_limits<f32_t>::max)();
+	bool_t hit = false;
+	// Each batch owns the current instance matrices and suppression state.
+	// Scanning its contiguous instances avoids 50,000 placement-map lookups.
+	for (const auto& entry : m_StaticBatches)
+	{
+		f32_t distance = nearest;
+		if (entry.object && entry.object->Try_PickMovementSurface(
+			rayOrigin, direction, nearest, distance) && distance < nearest)
+		{
+			nearest = distance;
+			hit = true;
+		}
+	}
+	for (const auto& entry : m_Placements)
+	{
+		f32_t distance = nearest;
+		if (entry.object && entry.object->Try_PickMovementSurface(
+			rayOrigin, direction, nearest, distance) && distance < nearest)
+		{
+			nearest = distance;
+			hit = true;
+		}
+	}
+	if (!hit || !std::isfinite(nearest) || nearest < 0.f)
+		return false;
+	float3_t position{};
+	XMStoreFloat3(&position, XMLoadFloat3(&rayOrigin) + XMLoadFloat3(&direction) * nearest);
+	if (!IsFinite(position))
+		return false;
+	outPosition = position;
 	return true;
 }
 

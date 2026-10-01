@@ -6,6 +6,7 @@
 #pragma pop_macro("new")
 #include "PlayableCharacterAssetService.h"
 #include "Profiler.h"
+#include "ProfilerCaptureIO.h"
 
 #include "AnimationSkillBindingDocument.h"
 #include "ActorCatalog.h"
@@ -48,6 +49,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <limits>
+#include <optional>
 
 namespace
 {
@@ -1879,8 +1881,36 @@ void CCharacter::Apply_LocalMoveSnapshot(const CLocalMovePrediction::Snapshot& s
 		return nullptr != navigation && navigation->Is_GroundedSegmentContinuous(
 			XMVectorSet(from.x, from.y, from.z, 1.f), XMVectorSet(to.x, to.y, to.z, 1.f));
 	};
-	const auto disposition = m_LocalMovePrediction.ApplySnapshot(snapshot, now, Get_LocalMovePose(),
+	const auto visualBefore = Get_LocalMovePose();
+	const auto* movementProfiler = CGameInstance::Get().Get_Profiler();
+	const bool_t captureMovement = movementProfiler && movementProfiler->Is_Enabled();
+	const auto disposition = m_LocalMovePrediction.ApplySnapshot(snapshot, now, visualBefore,
 		validateGround, m_pNavigationCom.get());
+	const auto recordSnapshot = [&]()
+	{
+		if (!captureMovement)
+			return;
+		const auto visualAfter = Get_LocalMovePose();
+		FProfilerMovementSample sample;
+		sample.Kind = EProfilerMovementKind::Snapshot;
+		sample.CharacterClass = static_cast<uint32_t>(m_eCharacterClass);
+		sample.ServerTick = snapshot.serverTick;
+		sample.Sequence = snapshot.processedMoveSequence;
+		sample.Disposition = static_cast<uint32_t>(disposition);
+		sample.Before = { visualBefore.position.x, visualBefore.position.y, visualBefore.position.z };
+		sample.After = { visualAfter.position.x, visualAfter.position.y, visualAfter.position.z };
+		sample.Authority = { snapshot.position.x, snapshot.position.y, snapshot.position.z };
+		sample.Waypoint = { snapshot.nextWaypoint.x, snapshot.nextWaypoint.y, snapshot.nextWaypoint.z };
+		if (disposition != CLocalMovePrediction::SnapshotDisposition::IGNORED)
+			sample.Flags |= static_cast<uint32_t>(EProfilerMovementFlags::Accepted);
+		if (m_LocalMovePrediction.UsesLocalPath())
+			sample.Flags |= static_cast<uint32_t>(EProfilerMovementFlags::PendingLocalPath);
+		if (m_isLocalMovePredictionEnabled)
+			sample.Flags |= static_cast<uint32_t>(EProfilerMovementFlags::PredictionActive);
+		if (visualAfter.isMoving)
+			sample.Flags |= static_cast<uint32_t>(EProfilerMovementFlags::Moving);
+		CProfilerCaptureIO::Record_MovementSample(movementProfiler, sample);
+	};
 	if (disposition == CLocalMovePrediction::SnapshotDisposition::IGNORED)
 	{
 		// Maharaka diagnostic: an ignored snapshot far from the presented body.
@@ -1896,6 +1926,7 @@ void CCharacter::Apply_LocalMoveSnapshot(const CLocalMovePrediction::Snapshot& s
 				" canPredict=" + std::to_string(snapshot.canPredictMove ? 1 : 0) +
 				" enabled=" + std::to_string(m_isLocalMovePredictionEnabled ? 1 : 0));
 		}
+		recordSnapshot();
 		return;
 	}
 	m_isLocalMovePredictionEnabled = snapshot.canPredictMove;
@@ -1919,22 +1950,56 @@ void CCharacter::Apply_LocalMoveSnapshot(const CLocalMovePrediction::Snapshot& s
 		Apply_LocalMovePose({ snapshot.position, snapshot.yawDegrees,
 			snapshot.canPredictMove && snapshot.hasMoveGoal }, 0.f, true);
 	}
+	recordSnapshot();
 }
 
 bool_t CCharacter::Predict_NetworkMoveGoal(const std::uint32_t sequence, const float3_t& goal)
 {
 	const double now = LocalMoveClockSeconds();
-	if (!m_isLocallyControlled || !m_hasNetworkState ||
-		!m_isLocalMovePredictionEnabled || !m_LocalMovePrediction.Can_SubmitMove(now) ||
-		nullptr == m_pTransformCom || nullptr == m_pNavigationCom ||
+	if (!m_isLocallyControlled || nullptr == m_pTransformCom ||
 		!std::isfinite(goal.x) || !std::isfinite(goal.y) || !std::isfinite(goal.z))
 		return false;
+
+	const auto* movementProfiler = CGameInstance::Get().Get_Profiler();
+	std::optional<FProfilerMovementSample> movementSample;
+	if (movementProfiler && movementProfiler->Is_Enabled())
+	{
+		movementSample.emplace();
+		movementSample->Kind = EProfilerMovementKind::Command;
+		movementSample->CharacterClass = static_cast<uint32_t>(m_eCharacterClass);
+		movementSample->Sequence = sequence;
+		movementSample->Waypoint = { goal.x, goal.y, goal.z };
+		const auto before = Get_LocalMovePose();
+		movementSample->Before = { before.position.x, before.position.y, before.position.z };
+	}
+	const auto recordCommand = [&](const bool_t localSubmitAccepted)
+	{
+		if (movementSample)
+		{
+			const auto after = Get_LocalMovePose();
+			movementSample->After = { after.position.x, after.position.y, after.position.z };
+			// This is local prediction acceptance, not Server command approval.
+			if (localSubmitAccepted)
+				movementSample->Flags |= static_cast<uint32_t>(EProfilerMovementFlags::Accepted);
+			if (m_LocalMovePrediction.UsesLocalPath())
+				movementSample->Flags |= static_cast<uint32_t>(EProfilerMovementFlags::PendingLocalPath);
+			if (m_isLocalMovePredictionEnabled)
+				movementSample->Flags |= static_cast<uint32_t>(EProfilerMovementFlags::PredictionActive);
+			if (after.isMoving)
+				movementSample->Flags |= static_cast<uint32_t>(EProfilerMovementFlags::Moving);
+			CProfilerCaptureIO::Record_MovementSample(movementProfiler, *movementSample);
+		}
+		return localSubmitAccepted;
+	};
+	if (!m_hasNetworkState || !m_isLocalMovePredictionEnabled ||
+		!m_LocalMovePrediction.Can_SubmitMove(now) || nullptr == m_pNavigationCom)
+		return recordCommand(false);
 
 	const CLocalMovePrediction::Vec3 moveGoal{ goal.x, goal.y, goal.z };
 	// Repeating a target only updates the command sequence. Preserve the path,
 	// its progress and its original acknowledgement/freshness horizon.
 	if (m_LocalMovePrediction.IsSameMoveGoal(moveGoal))
-		return m_LocalMovePrediction.SubmitMove(sequence, now, Get_LocalMovePose(), &moveGoal);
+		return recordCommand(m_LocalMovePrediction.SubmitMove(sequence, now, Get_LocalMovePose(), &moveGoal));
 
 	// Stage independently: a failed new click must not erase the old prediction.
 	CNavPathFollower stagedPath;
@@ -1942,10 +2007,10 @@ bool_t CCharacter::Predict_NetworkMoveGoal(const std::uint32_t sequence, const f
 		m_pTransformCom->Get_State(STATE::POSITION), XMLoadFloat3(&goal),
 		m_pNavigationCom->Get_MaxStepHeight()) ||
 		!m_LocalMovePrediction.SubmitMove(sequence, now, Get_LocalMovePose(), &moveGoal))
-		return false;
+		return recordCommand(false);
 	m_PathFollower = std::move(stagedPath);
 	Set_Locomotion(m_PathFollower.Has_Path());
-	return true;
+	return recordCommand(true);
 }
 
 void CCharacter::Cancel_NetworkMovePrediction()
@@ -1970,9 +2035,10 @@ bool_t CCharacter::Update_LocalMovePrediction(const f32_t fTimeDelta)
 		return false;
 	if (frame.useLocalPath)
 	{
-		// Bound a frame stall without changing the normal frame's elapsed time.
+		// Prediction already bounds freshness and the extrapolation horizon.
+		// Consume that same time before and after the move acknowledgement.
 		m_PathFollower.Update(m_pTransformCom, m_LocalMovePrediction.Get_MoveSpeed(),
-			(std::min)(m_LocalMovePrediction.Get_LocalPathDeltaSeconds(), 0.1f));
+			m_LocalMovePrediction.Get_LocalPathDeltaSeconds());
 		auto predicted = Get_LocalMovePose();
 		const vector_t look = m_pTransformCom->Get_State(STATE::LOOK);
 		predicted.yawDegrees = XMConvertToDegrees(atan2f(XMVectorGetX(look), XMVectorGetZ(look)));
@@ -4089,6 +4155,20 @@ void CCharacter::Priority_Update(f32_t fTimeDelta)
 
 void CCharacter::Update(f32_t fTimeDelta)
 {
+	const auto* movementProfiler = m_isLocallyControlled && m_pTransformCom ?
+		CGameInstance::Get().Get_Profiler() : nullptr;
+	std::optional<FProfilerMovementSample> movementSample;
+	bool_t hadLocalPath = false;
+	if (movementProfiler && movementProfiler->Is_Enabled())
+	{
+		movementSample.emplace();
+		movementSample->Kind = EProfilerMovementKind::Frame;
+		movementSample->CharacterClass = static_cast<uint32_t>(m_eCharacterClass);
+		movementSample->DeltaSeconds = fTimeDelta;
+		const auto before = Get_LocalMovePose();
+		movementSample->Before = { before.position.x, before.position.y, before.position.z };
+		hadLocalPath = m_LocalMovePrediction.UsesLocalPath() && m_PathFollower.Has_Path();
+	}
 	// Audience changes stop even a finished action's still-playing audio tail.
 	Update_CombatSoundAudience();
 	//network state -> apply snapshot, !networkstate -> pathfinding
@@ -4156,6 +4236,25 @@ void CCharacter::Update(f32_t fTimeDelta)
     Update_VehicleLifetimeEffects(fTimeDelta);
     Update_VehiclePresentationControls(fTimeDelta);
 	Update_CameraShakeCues();
+	if (movementSample)
+	{
+		const auto after = Get_LocalMovePose();
+		movementSample->After = { after.position.x, after.position.y, after.position.z };
+		// The existing helper's horizon budget, not measured distance or wall time.
+		if (m_hasNetworkState && m_isLocalMovePredictionEnabled)
+			movementSample->MotionSeconds = m_LocalMovePrediction.Get_LocalPathDeltaSeconds();
+		if (m_LocalMovePrediction.UsesLocalPath())
+		{
+			movementSample->Flags |= static_cast<uint32_t>(EProfilerMovementFlags::PendingLocalPath);
+			if (hadLocalPath && !m_PathFollower.Has_Path())
+				movementSample->Flags |= static_cast<uint32_t>(EProfilerMovementFlags::LocalPathCompleted);
+		}
+		if (m_isLocalMovePredictionEnabled)
+			movementSample->Flags |= static_cast<uint32_t>(EProfilerMovementFlags::PredictionActive);
+		if (after.isMoving)
+			movementSample->Flags |= static_cast<uint32_t>(EProfilerMovementFlags::Moving);
+		CProfilerCaptureIO::Record_MovementSample(movementProfiler, *movementSample);
+	}
 }
 
 void CCharacter::Load_FaceSliders()

@@ -65,7 +65,7 @@ class PreviewContract(unittest.TestCase):
         self.assertIn('Sample_Presentation(replication, true);', self.view)
         self.assertIn('Sample_Presentation(replication, false);', self.update)
         sampler = function(self.view, 'void CColosseumMatchView::Sample_Presentation(')
-        self.assertLess(sampler.index('if (!allowReturn) return;'), sampler.index('CUIPointerScope pointer(this);'))
+        self.assertLess(sampler.index('if (!allowReturn) return;'), sampler.index('CUIPointerScope pointer(this, true);'))
 
     def test_invalid_input_preserves_previous_preview(self):
         commit = self.play.index('Stop_DebugPreview();')

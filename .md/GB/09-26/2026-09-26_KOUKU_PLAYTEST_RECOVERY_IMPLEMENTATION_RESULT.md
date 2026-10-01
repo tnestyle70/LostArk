@@ -835,3 +835,81 @@ CardMaze의 매 프레임 sampler도 false를 전달한다. 이 한 줄은 Q 상
 이 검사는 장면/target·focus·category 경계를 대체한 비출력 mixer 검사다. 실제 Client 전체 빌드와
 사용자 청감 확인을 대신하지 않는다. Client/UI는 실행하지 않았다. Release의 Server 기술문구
 조사는 사용자가 보류했으므로 문구 관련 코드는 바꾸지 않았다.
+
+
+### G15 후속. Protocol132-v2 배포본과 현재 clock 소유권 재검증
+
+사용자가 실행한 Desktop/LostArk-Release-20261001-Protocol132-v2의 Client.exe는
+SHA256 650b8febae85f362ff61d28065f285fed469c1c400eb1545149b049396f12f41이며 원본
+pr494-496-flexible-colosseum worktree의 Release EXE 및 release-ready.receipt.json과 일치한다.
+receipt의 gitHead는 7721f0e95이고 build-evidence.json의 SHA256도 receipt와 일치한다.
+06:45:10~06:48:59 KST 빌드는 WorldSequencePlayer, WorldSequencePlayer_Objects,
+Level_KakulSaydonArena OBJ를 재작성했다. 해당 worktree의 06:12:54 소스 manifest와 실제
+함수/FMOD probe는 이미 continuous 호출 및 250ms 전진 강제 seek 제거를 포함한다.
+따라서 위 배포본의 지속 crackle을 이 두 수정의 미포함으로 설명할 근거는 없다.
+증거는 out/KoukuAudioClockAudit20261002/bundle-inclusion-audit.json에 보존했다.
+
+현재 최초 P4.world.14/circusfinale는 m_OwnedWorldCues의 별도 player가 소유한다.
+CLevel_KakulSaydonArena::Update는 server age와 이전 clock+delta 중 큰 값으로 시각을
+전진시키고 Seek_AllToMs(clock,false) 뒤 Update(0)를 호출한다. 일반 m_SequencePlayer의
+Update(delta)와 같은 instance가 아니다. 최초 player는 Movie의 external sound clock을
+설정하지 않으므로 Synchronize_SoundCue의 drift hard-seek 소비자도 아니다.
+Server의 입장 trigger는 Begin_KoukuRaidPreparation으로 변환한 뒤 broadcast 전에 반환하여,
+정상 경로에서 legacy trigger와 composition owner가 같은 WAV를 각각 재생하는 연결도 없다.
+
+out/KoukuAudioClockAudit20261002/clock_probe.cpp는 현재 제품 함수 9개를 추출하고
+장면/오디오 경계를 대체했다. 최초 owned clock의 2/3/20/30/40/60/120 FPS 모두
+Play1/Stop0/Synchronize0이다. 이것은 실제 오디오 출력의 연속성이나 청감을 증명하지 않는다.
+
+별도 CardMaze instance에는 실제 남은 시계 충돌을 재현했다. 같은 m_SequencePlayer가
+Update(delta)로 먼저 전진한 뒤 Update_CardMazePresentation에서 quantized server age로
+Seek_InstanceToMs(false)를 호출하여 역행으로 판정된다. 동등 순서의 10초 probe는
+20 FPS Play99/Stop98, 60 FPS Play90/Stop89, 120 FPS Play218/Stop217이었다.
+이 instance는 최초 입장 circusfinale와 다르므로 입장음 원인으로 확정하지 않는다.
+후속 수정은 CardMaze instance의 재생 clock을 한 소유자로 통합하고 실제 cycle wrap만
+불연속으로 처리해야 한다. 전역 backwards seek 제거로 editor scrub을 바꾸지 않는다.
+
+이번 재검증에서 제품 C++와 sound data는 수정하지 않았다. Colosseum 우선 검증 패키징의
+source freeze를 유지했다. 최초 음원의 지속 crackle은 미해결 상태이며 실제 동시 채널 수,
+owner/cue/offset, FMOD 출력 상태를 수집해야 재시작·중복 합산·출력 결함을 구분할 수 있다.
+동시 재생이나 mixer clipping은 현재 증거로 확정하지 않는다. Client/UI와 audible output은
+실행하지 않았으며 위 결과를 사용자 청취 성공으로 기록하지 않는다.
+
+
+### G15 후속. 2026-10-01 최초 입장음 연결 제거 완료
+
+사용자가 반복 수정 후에도 첫 입장음의 깨짐을 확인하여 해당 연결만 제거했다.
+원인 수정 완료로 판정하지 않는다. 기존 정상 단독 WAV와 앞선 재시작 수정의 증거를
+보존하고 최초 circus_finale WORLD가 해당 음원을 재생하지 않도록 변경했다.
+
+저작 정본은 Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/
+LV_LUT_MIDNIGHTC_ED.worldsequences.json이다. stable template
+sequence.LV_LUT_MIDNIGHTC_ED.circus_finale에서
+sound.kouku.source.circusfinale.circuspopup 한 행을 제거하여 soundTracks를 빈 배열로
+만들고 revision2289→2290을 적용했다. 다른13개 soundTrack과287개 template·345개 instance,
+해당 연출의24개 transform track·21,010ms duration은 그대로다. JSON 구조 비교로
+revision과 해당 soundTracks 외 모든 값이 동일함을 확인했다. WAV 자체는 삭제하지 않았다.
+
+적용 직전 원본/게시본은 동일 SHA256
+2c60162bd826727c303bd94ed6429503eebdc2872ffa5c29fcad11050a6fcf13이었다.
+최신 디스크 stable ID·기존 행을 확인하고 byte backup·candidate 검증·교체 직전 byte/hash CAS·
+MoveFileExW(REPLACE_EXISTING | WRITE_THROUGH) 원자 교체를 수행했다.
+적용 원본 SHA256은f8acb58c0d7550822d72116c384e0ba48cc7a7c27d4c48704ca8fae52704d286,
+공식 게시본 SHA256은09cbaf88ca6d4e924e21d0558f517448d49de21487232ed840058caa0d49ba5f다.
+이 차이는 publisher의 CRLF→LF 정규화이며 JSON 전체와 정규화한 원본 bytes는 일치한다.
+
+Tools/MapPipeline/Publish-MapAuthoring.ps1의
+-AreaId LV_LUT_MIDNIGHTC_ED -Scope WorldSequences에서 Validate/Publish/Check가
+모두 exit0으로 통과했다. FileCount1이며 Client/Bin/DataFiles/Map의 해당 JSON만 게시했다.
+WorldGameplay publisher의 소비는 instance IDs와 별도 CardMaze/Mario motion이다
+(Publish-WorldGameplay.ps1:1011–1017,1286–1375,1444–1448). 변경한 soundTracks와
+WorldSequence revision을 Server payload에 사용하지 않으므로 이번에 World 재게시하지 않았다.
+기존 sound WAV SHA256은8df0e3e15068a3173b505969d17d480fd246520c43c3335e9169a70fdcde0e5d로
+동일하다. 수정한 두 JSON의 Git diff는 각각2줄 추가/4줄 삭제이며 scoped diff --check도 통과했다.
+
+원본/게시본 backup, candidate, mutation-receipt.json과 validate.log/publish.log/check.log는
+out/KoukuEntrySoundRemoval20261001에 보존했다. 이 단계에서 C++·EXE·Resources를 바꾸거나
+별도 Product Build·Client/UI·오디오 출력을 실행하지 않았다. 사용자가 현재 Client/Server를
+계속 실행하기로 한 선택을 유지한다. 다음 쿠크 Area load 또는 사용자의 명시 WORLD reload가
+새 실행 데이터를 읽으며 현재 메모리 문서와 이미 복사된 owned cue/재생 handle은 자동 갱신하지
+않았다. 실제 입장 시 무음 처리와 나머지 소리의 사용자 청취 확인은 남는다.

@@ -1345,7 +1345,7 @@
             },
             {
               "expressionIndex": 6,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -1678,7 +1678,7 @@
             },
             {
               "expressionIndex": 6,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -2011,7 +2011,7 @@
             },
             {
               "expressionIndex": 6,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -2266,7 +2266,7 @@
             },
             {
               "expressionIndex": 6,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -2532,7 +2532,7 @@
             },
             {
               "expressionIndex": 7,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -2855,7 +2855,7 @@
             },
             {
               "expressionIndex": 4,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
               "colorSpace": "srgb"
             },
             {
@@ -2865,7 +2865,7 @@
             },
             {
               "expressionIndex": 6,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -12408,7 +12408,7 @@
             },
             {
               "expressionIndex": 7,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -12755,7 +12755,7 @@
             },
             {
               "expressionIndex": 7,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -12946,7 +12946,7 @@
             },
             {
               "expressionIndex": 7,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -13114,7 +13114,7 @@
             },
             {
               "expressionIndex": 7,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -13282,7 +13282,7 @@
             },
             {
               "expressionIndex": 7,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -13438,7 +13438,7 @@
             },
             {
               "expressionIndex": 6,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -13606,7 +13606,7 @@
             },
             {
               "expressionIndex": 7,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -13762,7 +13762,7 @@
             },
             {
               "expressionIndex": 6,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -13930,7 +13930,7 @@
             },
             {
               "expressionIndex": 7,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -14086,7 +14086,7 @@
             },
             {
               "expressionIndex": 6,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -14254,7 +14254,7 @@
             },
             {
               "expressionIndex": 7,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -14422,7 +14422,7 @@
             },
             {
               "expressionIndex": 7,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -14909,7 +14909,7 @@
             },
             {
               "expressionIndex": 6,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -17684,7 +17684,7 @@
             },
             {
               "expressionIndex": 6,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -17852,7 +17852,7 @@
             },
             {
               "expressionIndex": 6,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -18008,7 +18008,7 @@
             },
             {
               "expressionIndex": 6,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -18176,7 +18176,7 @@
             },
             {
               "expressionIndex": 6,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -18467,7 +18467,7 @@
             },
             {
               "expressionIndex": 8,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -18623,7 +18623,7 @@
             },
             {
               "expressionIndex": 7,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -18779,7 +18779,7 @@
             },
             {
               "expressionIndex": 7,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -18935,7 +18935,7 @@
             },
             {
               "expressionIndex": 7,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -19091,7 +19091,7 @@
             },
             {
               "expressionIndex": 7,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -19374,7 +19374,7 @@
             },
             {
               "expressionIndex": 8,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -19545,7 +19545,7 @@
             },
             {
               "expressionIndex": 8,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -21678,7 +21678,7 @@
             },
             {
               "expressionIndex": 4,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
               "colorSpace": "srgb"
             },
             {
@@ -21688,7 +21688,7 @@
             },
             {
               "expressionIndex": 6,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -22511,7 +22511,7 @@
             },
             {
               "expressionIndex": 4,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
               "colorSpace": "srgb"
             },
             {
@@ -22521,7 +22521,7 @@
             },
             {
               "expressionIndex": 6,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -23700,7 +23700,7 @@
             },
             {
               "expressionIndex": 4,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
               "colorSpace": "srgb"
             },
             {
@@ -23710,7 +23710,7 @@
             },
             {
               "expressionIndex": 6,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -24075,7 +24075,7 @@
             },
             {
               "expressionIndex": 4,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
               "colorSpace": "srgb"
             },
             {
@@ -24085,7 +24085,7 @@
             },
             {
               "expressionIndex": 6,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
             }
           ]
@@ -25029,7 +25029,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -25039,7 +25039,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -25350,7 +25350,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -25360,7 +25360,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -25671,7 +25671,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -25681,7 +25681,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -25932,7 +25932,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -25947,7 +25947,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -26462,7 +26462,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -26472,7 +26472,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -26723,7 +26723,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -26738,7 +26738,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -26989,7 +26989,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -27004,7 +27004,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -27478,7 +27478,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -27493,7 +27493,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -27744,7 +27744,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -27759,7 +27759,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -28010,7 +28010,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -28025,7 +28025,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -28276,7 +28276,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -28291,7 +28291,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -28566,7 +28566,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -28576,7 +28576,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -28827,7 +28827,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -28842,7 +28842,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -29123,7 +29123,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -29143,7 +29143,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -29424,7 +29424,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -29444,7 +29444,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -31520,7 +31520,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -31535,7 +31535,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -31858,7 +31858,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -31868,7 +31868,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -32191,7 +32191,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -32201,7 +32201,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -32524,7 +32524,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -32534,7 +32534,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -32779,7 +32779,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -32789,7 +32789,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -33082,7 +33082,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -33097,7 +33097,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -33595,7 +33595,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -33615,7 +33615,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -33896,7 +33896,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -33916,7 +33916,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -34227,7 +34227,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -34247,7 +34247,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -34558,7 +34558,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -34578,7 +34578,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -34895,7 +34895,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -34910,7 +34910,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -35197,7 +35197,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -35207,7 +35207,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -35512,7 +35512,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -35527,7 +35527,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -35778,7 +35778,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -35793,7 +35793,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -36044,7 +36044,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -36059,7 +36059,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -39269,7 +39269,7 @@
         },
         {
           "expressionIndex": 5,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -39284,7 +39284,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -39726,7 +39726,7 @@
         },
         {
           "expressionIndex": 5,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -39741,7 +39741,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -40052,7 +40052,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -40062,7 +40062,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -40480,7 +40480,7 @@
         },
         {
           "expressionIndex": 5,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -40495,7 +40495,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -40806,7 +40806,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -40816,7 +40816,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -41139,7 +41139,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -41159,7 +41159,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -41482,7 +41482,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -41502,7 +41502,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -41813,7 +41813,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -41823,7 +41823,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -42116,7 +42116,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -42131,7 +42131,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -42424,7 +42424,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -42439,7 +42439,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -42750,7 +42750,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -42760,7 +42760,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -43125,7 +43125,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -43135,7 +43135,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -43536,7 +43536,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -43556,7 +43556,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -43921,7 +43921,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -43931,7 +43931,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -44242,7 +44242,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -44252,7 +44252,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -44647,7 +44647,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -44662,7 +44662,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -44973,7 +44973,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -44983,7 +44983,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -45306,7 +45306,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -45326,7 +45326,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -45619,7 +45619,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -45634,7 +45634,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -45945,7 +45945,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -45955,7 +45955,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -46248,7 +46248,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -46263,7 +46263,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -46574,7 +46574,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -46584,7 +46584,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -46877,7 +46877,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -46892,7 +46892,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -47203,7 +47203,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -47213,7 +47213,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -47536,7 +47536,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -47556,7 +47556,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -47849,7 +47849,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -47864,7 +47864,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -48157,7 +48157,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -48172,7 +48172,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -48483,7 +48483,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -48493,7 +48493,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -48786,7 +48786,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -48801,7 +48801,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -49112,7 +49112,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -49122,7 +49122,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -49403,7 +49403,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -49418,7 +49418,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -49729,7 +49729,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -49739,7 +49739,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -50032,7 +50032,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -50047,7 +50047,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -50340,7 +50340,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -50355,7 +50355,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -51639,7 +51639,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -51649,7 +51649,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -53484,7 +53484,7 @@
         },
         {
           "expressionIndex": 3,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -53805,7 +53805,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -53815,7 +53815,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -55082,7 +55082,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -55092,7 +55092,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -56113,7 +56113,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -56123,7 +56123,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -57530,7 +57530,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -57540,7 +57540,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -57851,7 +57851,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -57861,7 +57861,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -59244,7 +59244,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -59254,7 +59254,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -59809,7 +59809,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -59819,7 +59819,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -60363,7 +60363,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -60373,7 +60373,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -60928,7 +60928,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -60938,7 +60938,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -61297,7 +61297,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -61317,7 +61317,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -61646,7 +61646,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -61661,7 +61661,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -62020,7 +62020,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -62040,7 +62040,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -62321,7 +62321,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -62341,7 +62341,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -62700,7 +62700,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -62720,7 +62720,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -62971,7 +62971,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -62986,7 +62986,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -63315,7 +63315,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -63330,7 +63330,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -63581,7 +63581,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -63596,7 +63596,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -63925,7 +63925,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -63940,7 +63940,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -64263,7 +64263,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -64273,7 +64273,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -64602,7 +64602,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -64617,7 +64617,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -64868,7 +64868,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -64883,7 +64883,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -65212,7 +65212,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -65227,7 +65227,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -65472,7 +65472,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -65482,7 +65482,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -65805,7 +65805,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -65815,7 +65815,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -66060,7 +66060,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -66070,7 +66070,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -66393,7 +66393,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -66403,7 +66403,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -66726,7 +66726,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -66736,7 +66736,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -67059,7 +67059,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -67069,7 +67069,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -67392,7 +67392,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -67402,7 +67402,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -67653,7 +67653,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -67668,7 +67668,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -67919,7 +67919,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -67934,7 +67934,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -68185,7 +68185,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -68200,7 +68200,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -68451,7 +68451,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -68466,7 +68466,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -68711,7 +68711,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -68721,7 +68721,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -68966,7 +68966,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -68976,7 +68976,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -69299,7 +69299,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -69309,7 +69309,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -69554,7 +69554,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -69564,7 +69564,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -69898,7 +69898,7 @@
         },
         {
           "expressionIndex": 5,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -69908,7 +69908,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -70242,7 +70242,7 @@
         },
         {
           "expressionIndex": 5,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -70252,7 +70252,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -70586,7 +70586,7 @@
         },
         {
           "expressionIndex": 5,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -70596,7 +70596,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -70847,7 +70847,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -70862,7 +70862,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -71113,7 +71113,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -71128,7 +71128,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -71379,7 +71379,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -71394,7 +71394,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -71645,7 +71645,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -71660,7 +71660,7 @@
         },
         {
           "expressionIndex": 7,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -71941,7 +71941,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -71961,7 +71961,7 @@
         },
         {
           "expressionIndex": 8,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -72206,7 +72206,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -72216,7 +72216,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -72461,7 +72461,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -72471,7 +72471,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -72716,7 +72716,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -72726,7 +72726,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -129897,7 +129897,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -130950,7 +130950,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -133068,7 +133068,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -133078,7 +133078,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -133877,7 +133877,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -133887,7 +133887,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -136046,7 +136046,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -136056,7 +136056,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -136855,7 +136855,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -136865,7 +136865,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -137420,7 +137420,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -137430,7 +137430,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -139020,7 +139020,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -139030,7 +139030,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -139829,7 +139829,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -139839,7 +139839,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]
@@ -140394,7 +140394,7 @@
         },
         {
           "expressionIndex": 4,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
           "colorSpace": "srgb"
         },
         {
@@ -140404,7 +140404,7 @@
         },
         {
           "expressionIndex": 6,
-          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.tga",
           "colorSpace": "linear"
         }
       ]

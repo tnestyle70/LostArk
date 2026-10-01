@@ -1,20 +1,20 @@
 {
-    "schema":  "lostark.guide-triggers",
+    "revision":  3,
     "formatVersion":  1,
-    "revision":  2,
     "guideId":  "guide.dimensionmaster",
+    "schema":  "lostark.guide-triggers",
     "triggers":  [
                      {
-                         "triggerId":  "guide.trigger.bern.first_invite",
                          "categoryId":  "bern",
+                         "comboId":  "",
+                         "cooldownMs":  30000,
                          "enabled":  true,
                          "event":  {
                                        "type":  "GUIDE_STARTED"
                                    },
-                         "promptId":  "guide.bern.party.first_invite",
-                         "comboId":  "",
-                         "cooldownMs":  0,
-                         "priority":  100
+                         "priority":  100,
+                         "promptId":  "guide.prompt.19889218.1",
+                         "triggerId":  "guide.trigger.bern.first_invite"
                      },
                      {
                          "triggerId":  "guide.trigger.bern.raid",
@@ -280,6 +280,18 @@
                          "comboId":  "",
                          "cooldownMs":  30000,
                          "priority":  10
+                     },
+                     {
+                         "categoryId":  "bern",
+                         "comboId":  "",
+                         "cooldownMs":  30000,
+                         "enabled":  true,
+                         "event":  {
+                                       "type":  "GUIDE_STARTED"
+                                   },
+                         "priority":  10,
+                         "promptId":  "",
+                         "triggerId":  "guide.trigger.20001546.2"
                      }
                  ]
 }

@@ -537052,3 +537052,81 @@ index a867649c2..347f872f7 100644
 +        "Character/GuardianKnight/AnimSets/GuardianKnight_ColosseumVictoryAnimSet.wmodel"
 ```
 <!-- END GENERATED CODE SNAPSHOT -->
+
+## G10. 준비 화면의 실제 초상과 월드 텍스트 분리
+
+2026-10-01 첨부 화면에서 모델 준비 전에 도화가 직업 일러스트가 보이고, 준비 화면 위로
+용병 이름·플레이어 이름·HP가 겹치는 것을 확인했다. `ColosseumLoadingView::Layout`의
+직업 일러스트 fallback과 `Level_Development::Render`의 무조건적인 월드 텍스트 호출이
+각 현상의 실제 소비 경로다.
+
+`ColosseumLoadingView.h`는 두 팀 Portrait 슬롯을 처음에는 숨기고, 기존 로컬 전환 초상 또는
+같은 match·참가자·PlayerId/NetEntityId의 준비된 실제 캐릭터 초상만 연결한다. 직업 일러스트를
+선택하는 Folder와 Illustration 경로는 제거한다. 기존 팀 순서·닉네임·직업 카드·진행률·준비 시계는
+유지하고, 초상 미준비는 빈 패널로 남긴다. 기존 renderer/SRV 수명을 그대로 사용한다.
+
+`Level_Development.cpp`의 두 Render 함수는 콜로세움 로딩·입장 연출과 실제 경기 결과가
+화면을 소유할 때 월드 이름/HP·말풍선·상호작용 텍스트를 제출하지 않는다. 모집과 전투 중 표시,
+기존 입력·서버 경기 상태는 유지한다. 현재 다른 작업의 이동 피킹·준비 인원·ASCII 구분자 수정은
+그대로 보존한다.
+
+두 파일은 기존 등록을 사용하므로 vcxproj/filter 추가가 없다. 실제 호출 순서, 미준비 초상·다른
+match/identity 거절, 일반 모집/전투 텍스트 유지와 diff를 확인하고 정상 Product Build로 검증한다.
+Client/UI는 에이전트가 실행하지 않으며 최종 화면은 사용자 확인으로 남긴다.
+## G11. Movie와 같은 캐릭터 반사 lookup 밉 입력
+
+초상은 `CCharacterPortraitRenderer -> CCharacter::Render_PreviewParts -> CModel/CMaterial`의
+실제 캐릭터 재질을 사용한다. Movie 문서를 읽는 별도 재질 경로를 만들지 않는다.
+`Data/Actors/CharacterCatalog.json`에 남은 hdr07_1 DDS127필드와 brdf_beckmann_spec DDS157필드를
+기존 SourceMaterials/efmaster_material_prologue의 동명 TGA로 연결한다. 기본 직업39필드와
+커스터마이징 장비245필드가 대상이다. 두 쌍의 512x512 mip0 RGBA와 색공간은 같고, DDS의
+단일 mip 대신 기존 TGA loader가10단계 mip를 만든다. 그림·shader·거칠기 수치·조명 옵션은 유지한다.
+
+최신 정본의 writer lock을 잡고 검증한 assetId 필드만 변경한다. 교체 직전 hash 확인·백업·원자
+교체를 유지하며 무관한 필드나 동시에 저장된 변경을 덮어쓰지 않는다. 정본은 CActorCatalog가
+ProjectDataRoot에서 직접 읽으므로 별도 publisher/런타임 복사본은 없다. 기존 TGA 두 파일을
+Resources 의존성으로 전달하며 새로운 binary resource는 만들지 않는다. catalog cache 때문에
+다음 Client 시작부터 읽으며 실행 중 Client를 자동 종료하거나 Reload하지 않는다.
+
+검증은 허용284필드 이외 구조·byte 보존, 두 lookup mip0/색공간·기존 loader 연결, 실제 참조 파일,
+JSON parse와 diff check다. 초상과 같은 일반 캐릭터에도 적용되며 최종 질감 판정은 사용자 몫이다.
+
+## G12. 설정창 스타일의 복귀 버튼과 컷씬 HUD 차단
+
+`Result_Return` stable slot은 Settings의 `SystemOption_Btn_Normal/Over/Down/Disabled.png`와
+`Font_YoonGasiIIM`을 사용한다. 중심(640,642)과 폭200을 유지하고 높이28.8, 실제 측정한 중앙
+정렬, reference14.72px 글자와1px 검정 그림자를 적용한다. 기존1초 재요청 제한·typed 복귀
+명령은 유지하며 generator도 같은 asset/rect로 맞춘다.
+
+`MainApp::Sync_CinematicUI`는 콜로세움 FINISHED 전체를 HUD 숨김 구간으로 포함한다.
+일반 UI sprite·텍스트·월드 이름/HP와 FPS는 연출 중 제출하지 않으며 Intro의 자체 직업/닉네임
+표시도 제거한다. 결과 제목·VS·페이드·복귀 버튼 등 해당 연출이 소유한 화면만 남긴다.
+숨겨진 일반 창의 열림 상태는 보존한다.
+
+복귀 버튼은 일반 HUD가 숨겨진 상태에서도 클릭해야 한다. 기존 `CUIPointerScope`에 명시적인
+cinematic pointer owner 선택을 추가하고 결과 버튼의 입력 범위에서만 허용한다. scope 종료와
+프레임 시작에 해제하며 일반 창·텍스트 입력·gameplay 차단은 유지한다. 숨겨진 일반 창의 이전
+프레임 rect는 이 버튼 클릭을 가로채지 않는다. 한 press 한 action과 눌린 채 복귀 시 release
+대기 규칙은 유지한다. 새 파일·프로젝트 등록은 없다.
+
+실제 입력 router의 일반 scope 차단/결과 scope 허용/복원/중복 클릭 방지와 기존 구조 검사를
+확인하고 변경 C++를 컴파일한다. 실행 중 제품 EXE는 자동 종료하지 않으며 화면 확인은 사용자가 한다.
+
+
+## G13. MVP와 캐릭터 UI의 공통 TGA 재질 연결·추가 리소스 전달
+
+2026-10-01 추가 요청은 워로드·도화가를 포함해 MVP 및 모델 UI가 앞서 연결한 TGA lookup을
+같이 쓰게 하는 것이다. MVP 대표1명과 파티3칸은 실제 replicated CCharacter를 기존
+CCharacterPortraitRenderer/Render_PreviewParts로 그린다. 별도 MVP 모델이나 재질 사본을 만들지
+않고 G11의 CharacterCatalog 기본 직업 및 lazy 장비 override를 공통 입력으로 사용한다.
+
+현재 전체 catalog의 hdr07_1/BRDF assetId와 실제 소비자를 대조한다. 모든7직업·장비·아바타에
+같은 입력이 연결되어 있으면 불필요한 재편집 없이 그 범위와 cache 수명을 RESULT에 기록한다.
+실제 누락이 발견되면 해당 stable model/material/expression assetId만 같은 픽셀·색공간 TGA로
+연결한다. diffuse/normal/cube·조명·roughness·shader는 이 lookup 연결의 변경 대상이 아니다.
+
+사용자가 지정한 C:/Users/user/Desktop/GBResources2에 필요한 실제 TGA 상대 경로3개를
+대조하여 누락 파일만 추가한다. 기존 파일은 hash가 같으면 유지하고 다르면 덮어쓰지 않는다.
+경로 containment·원본hash·임시 파일 검증·원자 rename 뒤 원본/대상 hash를 다시 확인한다.
+새로 추출·가공하는 이미지나 C++/프로젝트 등록은 없으며 실제 참조/JSON/파일 검증을 수행한다.
+실행 중 Client/Server를 유지하는 앞선 선택을 따르고 자동 Reload나 화면 실행은 하지 않는다.
