@@ -172,6 +172,9 @@ PROJECT_POLICY = {
     # attack power of 100, so the retail figure lands them far past a full bar.
     # Scale the retail attack power until those rates are retuned.
     "bossAttackPowerScalePercent": 10,
+    # The requested longer Valtan fight keeps 160 bars and the previous per-hit
+    # bar-damage basis. This changes real HP only, without touching PvP damage.
+    "valtanMaximumHp": 2100000000,
 }
 
 
@@ -629,14 +632,18 @@ def build_bosses(
         if npc_id is None:
             continue
         resolved = resolve_npc(balances, stats, npc_id)
-        rows.append({
+        row = {
             "archetypeId": archetype,
             "sourceNpcId": resolved["npcId"],
             "maximumHp": resolved["maximumHp"],
             "attackPower": scaled_attack_power(resolved["attackPower"]),
             "maximumHealthBars": resolved["maximumHealthBars"],
             "staggerGaugeMaximum": resolved["staggerGaugeMaximum"],
-        })
+        }
+        if archetype == "BOSS_VALTAN":
+            row["damageReferenceHp"] = row["maximumHp"]
+            row["maximumHp"] = PROJECT_POLICY["valtanMaximumHp"]
+        rows.append(row)
     return rows
 
 

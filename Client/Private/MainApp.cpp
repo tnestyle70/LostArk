@@ -4310,7 +4310,6 @@ HRESULT CMainApp::Render()
 		if (nullptr != m_pRenderingBenchmark)
 			m_pRenderingBenchmark->Update(CGameInstance::Get().Get_Profiler());
 #endif
-#ifdef _DEBUG
 		if (m_bDeveloperToolsVisible)
 		{
 			Engine::CProfilerScope developerToolsScope(
@@ -4574,6 +4573,7 @@ HRESULT CMainApp::Render()
 			}
 #endif
 		}
+#ifdef _DEBUG
         bool_t profilerWindowVisible = m_bRuntimeProfilerVisible;
         profilerWindowVisible |= m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::PROFILER);
         if (profilerWindowVisible && DEBUG_TOOL::PROFILER == m_eDebugWindowFocusPending)
@@ -14614,9 +14614,7 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Waterpang AI Tool", DEBUG_TOOL::MAHARAKA_AI);
 		toolCell("Map Tool", DEBUG_TOOL::MAP);
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
-#endif
 		toolCell("Composition Profiler", DEBUG_TOOL::PROFILER);
-#ifdef _DEBUG
 		toolCell("HUD Layout Tool", DEBUG_TOOL::UI);
 #endif
 #ifdef _DEBUG
@@ -15004,7 +15002,11 @@ void CMainApp::RenderDeveloperTools()
 	}
 
 #endif
+#ifdef _DEBUG
 	ImGui::TextDisabled("F1: Developer Tools  |  F6: Follow/Free Camera  |  F7: Profiler");
+#else
+	ImGui::TextDisabled("F1: Developer Tools  |  F6: Follow/Free Camera");
+#endif
 	ImGui::End();
 }
 
@@ -15483,7 +15485,6 @@ void CMainApp::RenderProfilerSettings()
 
 void CMainApp::UpdateDebugToolShortcut()
 {
-#ifdef _DEBUG
 	const bool_t windowFocused =
 		IsWindowOwnedByCurrentProcess(GetForegroundWindow());
 	const bool_t f1Down = windowFocused &&
@@ -15492,7 +15493,6 @@ void CMainApp::UpdateDebugToolShortcut()
 		!CUIInputRouter::Get().Is_TextInputActive())
 		m_bDeveloperToolsVisible = !m_bDeveloperToolsVisible;
 	m_bF1Down = f1Down;
-#endif
 }
 
 unique_ptr<CMainApp> CMainApp::Create()

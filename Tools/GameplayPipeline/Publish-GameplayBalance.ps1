@@ -683,8 +683,8 @@ function Assert-BalanceProvenance(
 # supplies the rate, and the caster's attack power is what turns it into damage.
 # The 34010 basic attack is rate 100, so 100 is exactly one attack power.
 $maximumDamageRatePercent = 100000
-# A balance profile overrides existing fields of the authored documents only; it
-# never introduces a property, so every Assert-ExactProperties below still holds.
+# A balance profile overrides authored numeric fields. Optional boss damage bases
+# are admitted explicitly below; the remaining authored schema stays exact.
 $balanceProfilePlayers = @{}
 $balanceProfileSkills = @{}
 $balanceProfileBosses = @{}
@@ -1494,14 +1494,24 @@ if ($balanceProfileBosses.Count -gt 0) {
         $boss.maximumHp = [uint32]$override.maximumHp
         $boss.attackPower = [uint32]$override.attackPower
         $boss.maximumHealthBars = [uint32]$override.maximumHealthBars
+        if ($override.PSObject.Properties.Name -ccontains 'damageReferenceHp') {
+            Assert-JsonInteger $override.damageReferenceHp 'boss damageReferenceHp' 1 ([uint32]::MaxValue)
+            $boss | Add-Member -NotePropertyName damageReferenceHp -NotePropertyValue ([uint32]$override.damageReferenceHp) -Force
+        }
     }
 }
 $bossIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $bossRows = [Collections.Generic.List[string]]::new()
 foreach ($boss in @($bossDocument.bosses)) {
-	Assert-ExactProperties $boss @(
+    $bossProperties = @(
 		'archetypeId','encounterId','displayName','maximumHp','maximumHealthBars','attackPower','collisionRadius',
-		'engageDistance','moveSpeed','phasePolicy','armorPlates') 'boss profile'
+		'engageDistance','moveSpeed','phasePolicy','armorPlates')
+    $hasDamageReferenceHp = $boss.PSObject.Properties.Name -ccontains 'damageReferenceHp'
+    if ($hasDamageReferenceHp) {
+        $bossProperties += 'damageReferenceHp'
+        Assert-JsonInteger $boss.damageReferenceHp 'boss damageReferenceHp' 1 ([uint32]::MaxValue)
+    }
+    Assert-ExactProperties $boss $bossProperties 'boss profile'
 	foreach ($stringField in @('archetypeId','encounterId','displayName')) {
 		Assert-JsonString $boss.$stringField "boss $stringField"
 	}
@@ -1551,14 +1561,17 @@ foreach ($boss in @($bossDocument.bosses)) {
 		[double]$boss.engageDistance -le 0.0 -or [double]$boss.moveSpeed -le 0.0) {
         throw "Boss profile is invalid: $($boss.archetypeId)"
     }
-    $bossRows.Add((@(
+    $bossFields = @(
         'BOSS', $boss.archetypeId, $boss.encounterId, [uint32]$boss.maximumHp,
 		[uint32]$boss.maximumHealthBars,
         [uint32]$boss.attackPower,
         (Format-InvariantFloat $boss.collisionRadius 'boss collisionRadius'),
         (Format-InvariantFloat $boss.engageDistance 'boss engageDistance'),
         (Format-InvariantFloat $boss.moveSpeed 'boss moveSpeed'),
-		$phasePolicyKind, $phasePolicyThreshold) -join "`t"))
+		$phasePolicyKind, $phasePolicyThreshold)
+    # Older rows keep their 11-field contract and use maximumHp as the damage basis.
+    if ($hasDamageReferenceHp) { $bossFields += [uint32]$boss.damageReferenceHp }
+    $bossRows.Add(($bossFields -join "`t"))
 	# A plate is a destructible piece of this boss: it mitigates while intact and
 	# only loses durability inside a GROGGY stage. plateIndex is also the client
 	# part order, so it must stay dense and start at zero.

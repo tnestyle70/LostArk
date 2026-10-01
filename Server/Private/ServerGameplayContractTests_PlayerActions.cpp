@@ -51,7 +51,7 @@ namespace ServerGameplayContractDetail
         {
             bool monster = false, miss = false, invulnerable = false, patternInvulnerable = false;
             bool armor = false, legacyArmor = false, projectile = false, contact = false, fallback = false, ordinary = false;
-            std::uint32_t hp = 1280621510u, bars = 180u, shield = 0u, policy = 35u;
+            std::uint32_t hp = 1280621510u, bars = 180u, shield = 0u, policy = 35u, referenceHp = 0u;
         };
         struct OUTCOME { bool started = false; std::vector<SERVER_WORLD_ENTITY> targets; std::vector<DAMAGE_EVENT> events; };
         const auto run = [&](const OPTIONS& options)
@@ -92,6 +92,7 @@ namespace ServerGameplayContractDetail
             target.eKind = options.monster ? WORLD_BOOTSTRAP_KIND::MONSTER : WORLD_BOOTSTRAP_KIND::BOSS;
             target.strArchetypeId = "BOSS_VALTAN"; target.iNetEntityId = 99601u;
             target.iCurrentHp = target.iMaximumHp = options.hp;
+            target.iDamageReferenceHp = options.referenceHp;
             target.iMaximumHealthBars = options.bars; target.fPositionZ = 1.f;
             target.fCollisionRadius = 0.5f; target.bPatternInvulnerable = options.patternInvulnerable;
             std::string status;
@@ -143,6 +144,23 @@ namespace ServerGameplayContractDetail
                 lost(result.targets[0]) == 249009739u && lost(result.targets[1]) == 162156190u,
                 contact ? "Contact projectile hits share the same per-target boss health-bar budget" :
                     "Timed projectile hits share the same per-target boss health-bar budget");
+        }
+        for (int path = 0; path < 4; ++path)
+        {
+            OPTIONS stronger;
+            stronger.hp = 2100000000u; stronger.referenceHp = 741285439u; stronger.bars = 160u;
+            stronger.projectile = path == 1 || path == 2; stronger.contact = path == 2;
+            stronger.fallback = path == 3;
+            const auto result = run(stronger);
+            tests.Require(result.started && result.targets.size() == 1u &&
+                lost(result.targets[0]) == 162156190u && CValtanBrain::Calculate_HealthBar(result.targets[0]) == 148u,
+                "2.1 billion actual Valtan HP preserves the old absolute bar damage across caster, timed, contact and fallback hits");
+            OPTIONS oldOrdinary = stronger; oldOrdinary.ordinary = true; oldOrdinary.hp = stronger.referenceHp;
+            OPTIONS newOrdinary = stronger; newOrdinary.ordinary = true;
+            const auto oldHit = run(oldOrdinary), newHit = run(newOrdinary);
+            tests.Require(oldHit.started && newHit.started && lost(oldHit.targets[0]) == lost(newHit.targets[0]) &&
+                lost(newHit.targets[0]) > 0u,
+                "Ordinary player damage is independent of increased boss health and its damage reference");
         }
         for (int blocked = 0; blocked < 3; ++blocked)
         {

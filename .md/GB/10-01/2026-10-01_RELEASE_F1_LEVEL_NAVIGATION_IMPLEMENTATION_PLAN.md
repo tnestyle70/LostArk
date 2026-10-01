@@ -41,3 +41,15 @@ load 실패는 생성한 token만 취소하고 owner의 상태를 F1에 표시�
 Release 노출, 같은 목적지·pending 거절, command 실패 token 정리와 class 보존 호출을
 확인하고 최종 Product Debug/Release는 통합 담당이 수행한다. Client/UI 실행과 실제
 버튼 이동 확인은 사용자가 담당한다. 실제 실행한 검사만 대응 RESULT에 기록한다.
+
+## G03. 피킹 수정 배포본의 Release F1만 재활성화
+
+사용자는 촬영용 숨김 뒤 F1 ImGui만 다시 열 수 있는 Release ZIP을 요청했다.
+`MainApp.cpp`의 `UpdateDebugToolShortcut`과 `RenderDeveloperTools` 호출을 공통으로
+복원하고 Profiler 렌더 구간부터 기존 `_DEBUG` 제한을 유지한다. F7 입력과 화면 FPS,
+Map/Effect 등 기존 Debug 전용 저작 도구는 유지한다. Release 허브에는 실행할 수 없는
+Composition Profiler 버튼과 F7 안내를 표시하지 않는다. 기본 창 상태는 계속 닫힘이다.
+
+기존 UTF-8/CRLF를 유지하며 제품 파일 추가나 project/filter 등록은 없다. 전처리 경계와
+focused diff를 확인한 뒤 Release Product Build, 새 F1 ZIP의 manifest/hash/CRC 및 launcher
+`--check`를 수행한다. 기존 발탄·쿠크 Deploy 피킹 수정과 기존 ZIP은 보존한다.

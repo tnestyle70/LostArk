@@ -5841,3 +5841,8 @@ suppression을 Render와 맞추고 debris를 걷는 바닥으로 승격하지 �
 - HUD sprite 숨김만으로 Level의 월드 이름/HP·말풍선이나 Intro 자체의 직업/닉네임 텍스트는 숨겨지지 않는다. 연출 구간에는 별도 Draw_Text 소비자도 함께 차단한다. FINISHED 전체에서 HUD를 숨길 때 복귀 버튼의 입력까지 막히지 않도록 cinematic-owned pointer scope만 허용하고 일반 창·gameplay 차단은 유지한다.
 - 초상과 MVP 대표/파티 카드·캐릭터 정보창·아바타창은 Movie 문서를 복사해 그리는 화면이 아니라 실제 CharacterCatalog 기본 직업·lazy 장비 재질을 사용한다. Movie의 TGA mip 수정 후에도 DDS가 남으면 초상만 이전 선명한 반사를 유지할 수 있다. 같은 mip0·색공간을 확인한 뒤 실제 소비 assetId를 맞추고 공통 조명·거칠기 옵션은 바꾸지 않는다.
 - 컴파일·입력 수치 검증과 실제 Client 컷씬/초상 품질 확인은 구분한다. [콜로세움 결과](10-01/2026-10-01_COLOSSEUM_MATCH_FLOW_RESULT.md#g11-초기-초상월드-텍스트와-movie-lookup-일치)를 따른다.
+
+### 생성 JSON의 CRLF/LF 차이를 게임 데이터 변경으로 오인하지 않는다
+
+- Windows Git checkout의 CRLF와 publisher의 LF가 달라도 JSON 항목·값은 같을 수 있다. `projected Product is stale`만으로 레이드 진입 실패나 컷씬 설정 누락을 단정하지 않고 실제 구조와 줄바꿈을 구분한다.
+- Kouku 생성본 검사는 CRLF를 LF로 정규화한 bytes를 비교한다. 실제 값 변경과 다른 형식 차이는 계속 거부하고, 기존 duplicate-key 검증도 유지한다. 이 판정을 고치기 위해 사용자의 원본이나 생성본을 다시 저장하지 않는다.

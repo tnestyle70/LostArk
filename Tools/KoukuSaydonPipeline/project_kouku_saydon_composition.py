@@ -6270,7 +6270,8 @@ def validate_outputs(root: Path, expected: dict[Path, bytes]) -> None:
             actual = path.read_bytes()
         except OSError as error:
             raise CompositionError(f"missing projected Product: {relative}") from error
-        if actual != content:
+        # Git may check generated JSON out with Windows CRLF; compare canonical newlines.
+        if actual.replace(b"\r\n", b"\n") != content.replace(b"\r\n", b"\n"):
             raise CompositionError(f"projected Product is stale: {relative}")
         # Reparse with duplicate-key rejection after byte parity so a writer
         # regression cannot be hidden by Python's permissive default parser.

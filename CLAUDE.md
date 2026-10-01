@@ -489,7 +489,7 @@ Client/Server `Bin/DataFiles/Guide/Guide.runtime.json`만 교체한다. `-Mode V
 
 ### 디버그 툴 (ImGui / MapTool)
 
-`CMainApp`이 Debug Developer Tools 허브를 소유하고 F1로 토글한다. 촬영용 Release는 F1/F7 입력과 해당 창, 화면 FPS 표시를 비활성화한다. Debug 허브는 Level Navigation(Lobby, Character Select, Bern, Valtan, KoukuSaydon, Entrance PvP Arena, Maharaka), Balance Test, Profiler, 광기·체력바 위치 조절과 저장·재로드, Valtan/Kouku Boss Tool과 아레나 Load/Complete Play/Kill Boss, Valtan 벽·지형 상태 선택을 제공하며 기본은 닫힘이다. F6는 gameplay camera의 follow/free mode를 전환한다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용하며 그동안 `CPlayerController`는 물리 key/mouse edge만 동기화하고 gameplay command는 제출하지 않는다. follow 복귀 뒤 새 press부터 제출한다. F7은 Debug Profiler 창만 열고 닫는다. F2~F5와 F8~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막되 Character Select Server gameplay는 text input이 아닐 때만 명시적 keyboard passthrough를 사용한다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
+`CMainApp`이 Developer Tools 허브를 소유하고 Debug/Release에서 F1로 토글한다. Release의 F7·Profiler 창과 화면 FPS 표시는 비활성화한다. Debug 허브는 Level Navigation(Lobby, Character Select, Bern, Valtan, KoukuSaydon, Entrance PvP Arena, Maharaka), Balance Test, Profiler, 광기·체력바 위치 조절과 저장·재로드, Valtan/Kouku Boss Tool과 아레나 Load/Complete Play/Kill Boss, Valtan 벽·지형 상태 선택을 제공하며 기본은 닫힘이다. F6는 gameplay camera의 follow/free mode를 전환한다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용하며 그동안 `CPlayerController`는 물리 key/mouse edge만 동기화하고 gameplay command는 제출하지 않는다. follow 복귀 뒤 새 press부터 제출한다. F7은 Debug Profiler 창만 열고 닫는다. F2~F5와 F8~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막되 Character Select Server gameplay는 text input이 아닐 때만 명시적 keyboard passthrough를 사용한다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
 베른·발탄·쿠크 자유 카메라의 기본 속도는 20m/s다. Debug F1 `Camera`에서
 0.1~400m/s로 조절한다. Debug 발탄·쿠크는 같은 아레나의 process-session 값을 유지하고,
 베른과 Release 조절값은 현재 맵 방문 동안 적용한다. Shift는 현재 속도의 30배다.
@@ -522,7 +522,7 @@ Debug의 F1 → `Open Composition Profiler`와 F7은 같은 Engine profiler의 C
 보여준다. `Capture`로 수집하고 `Save JSON`으로 `Client/Bin/ProfilerCaptures`에 v3 캡처를 비동기
 저장한다. `Save name`은 한글을 포함한 선택 이름이며 같은 이름으로 다시 저장해도 timestamp/frame/process/sequence가 다른 새 파일을 만든다.
 F7은 창만 열고 닫으며 수집은 창의 Capture에서 명시적으로 시작한다. 창을 닫아도 이미 시작한 수집은 계속된다. Capture/Reset과 상세 CPU 모드는 다음 프레임 경계에서 반영한다.
-촬영용 Release는 FPS 문자열을 그리지 않는다. Debug FPS도 cinematic HUD 숨김을 따른다. Map/Animation/Effect/Sequence 저작 창은 Debug 전용이고 Release의 docking/외부 viewport는 비활성이다. F1 테스트 도구는 Debug에서 명시적으로 열 때만 표시한다.
+촬영용 Release는 FPS 문자열을 그리지 않는다. Debug FPS도 cinematic HUD 숨김을 따른다. Map/Animation/Effect/Sequence 저작 창은 Debug 전용이고 Release의 docking/외부 viewport는 비활성이다. F1 테스트 허브는 Debug/Release에서 명시적으로 열 때만 표시한다. Release에는 기존 Level Navigation·Balance·Boss 등 공통 도구만 노출하고 Profiler 버튼은 표시하지 않는다.
 기본은 pass 시간과 작업량을 수집하고 `Detailed per-draw CPU scopes`를 켜면 map draw별 상세 scope도 기록한다.
 각 JSON은 기본으로 Frames 선택 구간(120프레임)만 복사·저장하고 선택을 해제하면 최근 최대 1200프레임을 저장한다.
 세션 전체를 무제한 누적하지 않는다. v3 additive metadata는 저장 시점의 build/adapter/viewport/camera/render 설정이며
@@ -572,9 +572,9 @@ Server PC의 `LOSTARK_PROJECT_DATA_ROOT`는 해당 배포의 `Data`여야 한다
 활성값을 보존하고 draft를 남긴다. presentation/패턴 구조 편집은 기존 Valtan/Kouku 저작 경로를 유지한다.
 세부 단위와 영속 저장은 `.md/TEAM/BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
 Retail Damage의 optional `bossHealthBarDamage`는 기본 0이며, 양수는 ACTIVE 스킬 한 번의
-보스 피해를 대상 최대 HP·전체 체력 줄 수 기준으로 고정하는 기믹 시험값이다. 다단히트에
+보스 피해를 대상 피해 기준 HP·전체 체력 줄 수 기준으로 고정하는 기믹 시험값이다. 다단히트에
 총량을 나누고 치명타·피해 편차·버프·방어 배율을 다시 적용하지 않는다. 명중·무적·실드는
-기존 판정을 유지하므로 모든 타격이 유효하게 적중했을 때 지정한 줄 수 분량을 깎는다.
+기존 판정을 유지한다. 보스 profile의 optional `damageReferenceHp`가 없으면 최대 HP를 사용하고, 명시하면 실제 최대 HP와 분리된 기준으로 피해를 고정한다. 발탄 본체는160줄/HP2100000000, 피해 기준741285439이며 유령197222731/40줄은 유지한다.
 0으로 저장·게시하고 Server를 재시작하면 기존 피해 공식으로 돌아간다.
 `Debug (3s)`와 `Release (Retail)`는 현재 방의 서버 정책을 즉시 바꾸며
 새 방은 3초로 시작한다. 기존 0초 평타·콤보는 유지하고 일반 캐릭터 스킬의 양수 쿨타임만 3초로
@@ -1251,7 +1251,7 @@ All Effects의 `World → 마하라카 → 워터팡`에서 중앙 장치와 Q/W
 Server가 입장 순서대로 양 팀과 자동 파티를 배정하고, 팀별 다섯 직업 용병 후보 중 부족한 인원을
 모집해 팀당4명으로 완성한다. 인간1명 입장일 때만 인간 없는 상대 팀의 용병4명을 자동 선택한다.
 2~4인 입장은 양쪽 모두 직접 고용한다. 양 팀 모집 완료 후 진입10초 → 도열8.6초 → 전투 준비10초 → ACTIVE120초 → 결과 순서를 Server tick으로 진행한다.
-각 참가자의 실제HP는 활성 발탄160줄 profile의20줄 분량이며 기존 스킬 피해량은 유지한다. 별도 match 없는 직접 콜로세움 입장은 저작 미리보기이며 PvP가 활성화되지 않는다.
+각 참가자의 실제HP는 발탄160줄 profile의 피해 기준HP에서20줄 분량이며 기존 스킬 피해량은 유지한다. 명시된 `damageReferenceHp`741285439를 사용하므로 발탄 본체의 실제 HP 증가와 무관하게 참가자 HP92660680을 유지한다. 별도 match 없는 직접 콜로세움 입장은 저작 미리보기이며 PvP가 활성화되지 않는다.
 
 워터팡 섬과 콜로세움은 기존 닉네임·채팅·파티 UI를 사용한다. 베른의 섬 선착장 G와 섬 출구 G는
 파티 전체 확인창을 열고 전원 동의 뒤 함께 이동한다. 물총 Q는 세 갈래, W는 수류탄식 착탄 폭발,

@@ -205,7 +205,7 @@ CModel preScale·socket offset·particle 단위를 함께 실측한다. syntheti
 - 레벨은 `STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA, KAKULSAYDON_ARENA, DEVELOPMENT, MAHARAKA`만 사용한다. 새 레벨은 enum, registry, loader, 프로젝트 등록과 실제 Server+Client 진입 검증을 한 변경 단위로 추가한다.
 - 제품 맵은 `CLevelRegistry` descriptor의 `MAP_LOAD_SCOPE`로 선언한 진입/전투 범위와 배경만 로드한다. Loader와 runtime placement는 반드시 같은 scope를 소비한다.
 - 레벨 전환 요청은 `CLevelTransitionService`로 보낸다. `Change_Level`은 현재 Level update가 끝난 뒤 `CMainApp`만 호출한다. `CLevel_Loading`은 로드 성공 시 activation 요청만 제출한다.
-- 공식 전역 기능키는 Debug Developer Tools의 F1, follow/free camera 전환의 F6, Debug Profiler 창의 F7이다. 촬영용 Release는 F1/F7 입력과 해당 도구창 및 화면 FPS 표시를 비활성화한다. Debug F1 범위는 Lobby·Character Select·Bern·Valtan·KoukuSaydon·Entrance PvP Arena(Colosseum)·Maharaka의 Level Navigation, Camera 자유 이동 속도, Balance Test, Profiler, 광기·무력화·아군/적 체력바 위치 조절과 저장·재로드, Valtan/Kouku의 게시 패턴 재생·중지·관문 보스 처치, Valtan 벽·지형 상태 선택과 Kouku 플레이어·보스 몸체 및 빙고 망치 Collider 표시와 Battle Items의 서버 인벤토리 4종 지급이며 기본은 닫힘이다. F7은 profiler 창만 열고 닫으며 Capture 수집과 이름 있는 JSON 저장은 그 창에서 수행한다. F2~F5, F8~F12로 레벨, 맵, 프로파일러, 도구 상태를 바꾸지 않는다. free camera에서는 gameplay command 입력을 보내지 않는다. Debug 아레나의 명시적 F1 `Move Player`는 예외적인 저작 명령으로, UI 밖의 한 번 피킹을 `CPlayerController -> IPlayerCommandSink`로 제출한다. Server가 현재 session/world와 navigation·collision을 검증한 뒤 자기 player만 이동하고 snapshot으로 반영하며 Client Transform을 직접 바꾸지 않는다.
+- 공식 전역 기능키는 Developer Tools의 F1, follow/free camera 전환의 F6, Debug Profiler 창의 F7이다. Release는 F1 ImGui 허브를 명시적으로 열 수 있고 F7·Profiler 창 및 화면 FPS 표시는 비활성화한다. 기존 Debug 전용 저작 도구는 Release에 추가하지 않는다. Debug F1 범위는 Lobby·Character Select·Bern·Valtan·KoukuSaydon·Entrance PvP Arena(Colosseum)·Maharaka의 Level Navigation, Camera 자유 이동 속도, Balance Test, Profiler, 광기·무력화·아군/적 체력바 위치 조절과 저장·재로드, Valtan/Kouku의 게시 패턴 재생·중지·관문 보스 처치, Valtan 벽·지형 상태 선택과 Kouku 플레이어·보스 몸체 및 빙고 망치 Collider 표시와 Battle Items의 서버 인벤토리 4종 지급이며 기본은 닫힘이다. F7은 profiler 창만 열고 닫으며 Capture 수집과 이름 있는 JSON 저장은 그 창에서 수행한다. F2~F5, F8~F12로 레벨, 맵, 프로파일러, 도구 상태를 바꾸지 않는다. free camera에서는 gameplay command 입력을 보내지 않는다. Debug 아레나의 명시적 F1 `Move Player`는 예외적인 저작 명령으로, UI 밖의 한 번 피킹을 `CPlayerController -> IPlayerCommandSink`로 제출한다. Server가 현재 session/world와 navigation·collision을 검증한 뒤 자기 player만 이동하고 snapshot으로 반영하며 Client Transform을 직접 바꾸지 않는다.
 - `Client/Bin/Resources`의 최상위 폴더는 `Fonts, Character, Deploy, Effect, Map, Sound, UI` 정확히 일곱 개다. `Resources/LostArk` 래퍼와 `SourceData`를 만들지 않는다.
 - 런타임 asset ID는 Resources 상대 경로다. 절대 경로, drive-qualified 경로, `..`로 루트를 벗어나는 경로를 거부한다.
 - UI와 gameplay 설정은 JSON만 사용한다. `.cfg` 신규 추가와 runtime cfg reader는 금지한다.
@@ -320,7 +320,7 @@ Product 빌드: Engine → Shared → Server → Client (SDK·shader·runtime DL
   선택된 Participants는 최대8명, 후보 포함 Players는 최대14명이며 arrival index는 team+slot*2다.
   COLOSSEUM_MERCENARY_AI는 fake session 없이 기존 player 이동·스킬·피격·snapshot을 사용한다.
   후보와 참가자를 구분하고, 단일 안내 Guide를 party slot에 넣지 않으며 Waterpang AI의 인간 roster 제외 규칙을 유지한다.
-- 참가자의 실제 최대HP는 입장 시 활성 발탄160줄 profile의20줄 분량으로 정하고, 스킬 피해의 기준HP는 기존160줄 값을 유지한다. 원본 Balance JSON은 수정하지 않는다.
+- 참가자의 실제 최대HP는 입장 시 발탄160줄 profile의 피해 기준HP(`damageReferenceHp`, 미지정은 `maximumHp`)에서20줄 분량으로 정하고, 스킬 피해도 같은 기준HP를 고정한다. 발탄 실제 최대HP를 따로 늘려도 명시된 피해 기준HP와 기존 PvP 수치는 유지한다.
   기존 스킬 피해 산식을 재사용하며 Artist T의1/5 및 넉백 거리·이동 시간10%(V0.51m/217ms, ALT_V1.6m/150ms)는 위 PvP guard 아래에서만 적용한다.
   용병 ALT_V는 개별 마지막 승인부터 최소30초 간격이며 기존 더 긴 cooldown도 유지한다. 사망·부활로 이 간격을 초기화하지 않는다.
 - Bern↔Maharaka G dock은 기존 typed RAID_ENTRY 전원 동의 UI를 사용한다. solo 포함 admission·초기 송신
