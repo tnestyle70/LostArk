@@ -1,5 +1,8 @@
 #include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
+#include "GameRoom.h"
+#include "ClientSession.h"
+#include "Network/PacketReader.h"
 #include "PlayerSkillSystem.h"
 #include "ServerNavigation.h"
 #include "WorldDestructionBootstrapContractTests.h"
@@ -31,7 +34,99 @@
 using namespace LostArk::Server;
 using namespace LostArk::Shared;
 
-
+void CServerGameplayContractRunner::Run_MoveRetarget(
+	TESTS& tests, const CServerNavigation& navigation)
+{
+	// Reuse the exact-cell blocker fixture through the real command and snapshot path.
+	auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
+	CGameRoom& room = *roomStorage;
+	tests.Require(room.Is_Ready(), "Prepare the real room for move-retarget admission");
+	if (!room.Is_Ready()) return;
+	room.m_ServerNavigation = navigation;
+	room.m_iServerTick = 100u;
+	room.m_WorldEntities.clear();
+	std::string collisionStatus;
+	const bool collisionReady = room.m_ServerCollisionSystem.Initialize({}, collisionStatus);
+	tests.Require(collisionReady, "Isolate navigation retargeting from unrelated world colliders");
+	if (!collisionReady) return;
+	room.m_ServerCollisionSystem.Set_BlockingBodies({});
+	constexpr SESSION_ID sessionId = 88201u;
+	constexpr PLAYER_ID playerId = 88202u;
+	auto session = std::make_shared<CClientSession>(sessionId, INVALID_SOCKET,
+		CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+	session->m_isSendRunning.store(true);
+	room.m_Sessions.emplace(sessionId, session);
+	room.m_PlayerIdBySessionId.emplace(sessionId, playerId);
+	const auto readLatest = [&](PLAYER_SNAPSHOT& snapshot)
+	{
+		room.Broadcast_WorldSnapshot();
+		if (session->m_OutboundFrames.empty()) return false;
+		const auto& bytes = session->m_OutboundFrames.back().Bytes;
+		if (bytes.size() <= PACKET_HEADER_BYTES) return false;
+		CPacketReader reader{ std::span<const std::uint8_t>{ bytes }.subspan(PACKET_HEADER_BYTES) };
+		S2C_WORLD_SNAPSHOT decoded;
+		if (!Read_Message(reader, decoded) || reader.Get_RemainingSize() != 0u || decoded.Players.size() != 1u)
+			return false;
+		snapshot = decoded.Players.front();
+		return true;
+	};
+	const auto sameMovement = [](const SERVER_PLAYER& a, const SERVER_PLAYER& b)
+	{
+		return a.hasMoveGoal == b.hasMoveGoal && a.iMovePathIndex == b.iMovePathIndex &&
+			a.fMoveRequestX == b.fMoveRequestX && a.fMoveRequestZ == b.fMoveRequestZ &&
+			a.fMoveGoalX == b.fMoveGoalX && a.fMoveGoalZ == b.fMoveGoalZ &&
+			a.fPositionX == b.fPositionX && a.fPositionY == b.fPositionY && a.fPositionZ == b.fPositionZ &&
+			a.isCombatReady == b.isCombatReady && a.MovePath.size() == b.MovePath.size() &&
+			std::equal(a.MovePath.begin(), a.MovePath.end(), b.MovePath.begin(),
+				[](const SERVER_NAV_POINT& left, const SERVER_NAV_POINT& right)
+				{ return left.x == right.x && left.y == right.y && left.z == right.z; });
+	};
+	for (const bool routed : { false, true })
+	{
+		SERVER_PLAYER player{};
+		player.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
+		player.eStance = PLAYER_STANCE_ID::WARLORD_DEFENSE;
+		player.iSessionId = sessionId; player.iPlayerId = playerId; player.iNetEntityId = playerId;
+		player.fPositionX = 0.25f; player.fPositionY = 0.f; player.fPositionZ = 1.751f;
+		room.m_Players.insert_or_assign(playerId, player);
+		SERVER_PLAYER& live = room.m_Players.at(playerId);
+		C2S_MOVE move{};
+		move.iClientSequence = 1u;
+		move.fGoalX = routed ? 1.751f : 0.25f;
+		move.fGoalZ = routed ? 0.25f : 3.5f;
+		room.Handle_Move(sessionId, move);
+		const bool admitted = live.hasMoveGoal && live.iLastMoveSequence == 1u &&
+			(routed ? live.MovePath.size() >= 2u : live.MovePath.empty());
+		tests.Require(admitted, routed ? "Admit a routed move around the fixture blocker" : "Admit a direct move beside the fixture blocker");
+		if (!admitted) continue;
+		const SERVER_PLAYER before = live;
+		move.iClientSequence = 2u; move.fGoalX = 10000.f; move.fGoalZ = 10000.f;
+		room.Handle_Move(sessionId, move);
+		tests.Require(live.iLastMoveSequence == 2u && sameMovement(live, before),
+			routed ? "Reject an unreachable retarget without clearing the active route" : "Reject an unreachable retarget without stopping direct movement");
+		const SERVER_NAV_POINT waypoint = before.MovePath.empty() ?
+			SERVER_NAV_POINT{ before.fMoveGoalX, before.fPositionY, before.fMoveGoalZ } :
+			before.MovePath[before.iMovePathIndex];
+		PLAYER_SNAPSHOT snapshot;
+		tests.Require(readLatest(snapshot) && snapshot.iLastProcessedMoveSequence == 2u &&
+			snapshot.canPredictMove && snapshot.hasMoveGoal && snapshot.fMoveWaypointX == waypoint.x &&
+			snapshot.fMoveWaypointY == waypoint.y && snapshot.fMoveWaypointZ == waypoint.z,
+			"The rejected command ACK retains the existing movement waypoint in the wire snapshot");
+		room.Update_Players(1.f / 30.f);
+		tests.Require(live.hasMoveGoal && std::hypot(live.fPositionX - before.fPositionX,
+			live.fPositionZ - before.fPositionZ) > 0.001f,
+			"The real Server movement consumer continues after the rejected retarget");
+		move.iClientSequence = 3u;
+		move.fGoalX = routed ? 0.25f : 1.751f;
+		move.fGoalZ = routed ? 3.5f : 0.25f;
+		room.Handle_Move(sessionId, move);
+		tests.Require(live.hasMoveGoal && live.iLastMoveSequence == 3u &&
+			live.fMoveRequestX == move.fGoalX && live.fMoveRequestZ == move.fGoalZ &&
+			readLatest(snapshot) && snapshot.iLastProcessedMoveSequence == 3u && snapshot.hasMoveGoal,
+			"A later valid retarget replaces the preserved move and advances its snapshot ACK");
+	}
+	session->Request_Close();
+}
 
 int LostArk::Server::Run_ServerNavigationContractTests()
 {
@@ -288,6 +383,14 @@ int LostArk::Server::Run_ServerNavigationContractTests()
 		}
 	}
 	tests.Require(cornerDetourSafe, "Keep the A-star detour when smoothing would clip a blocked corner");
+	// Construct the room from packaged data; its navigation is replaced by this fixture.
+	const bool retargetRootReady = cornerDetourSafe && !packagedDataRoot.empty() &&
+		SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", packagedDataRoot.c_str());
+	tests.Require(retargetRootReady, "Restore packaged room data for move-retarget contracts");
+	if (retargetRootReady)
+		CServerGameplayContractRunner::Run_MoveRetarget(tests, cornerNavigation);
+	tests.Require(SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", invalidPolicyRoot.c_str()) != FALSE,
+		"Restore the isolated navigation fixture after move-retarget contracts");
 	SERVER_NAVIGATION_CONDITION_STAGE openedWall;
 	std::string losStatus;
 	const bool wallOpened = cornerLoaded && cornerNavigation.Prepare_ConditionChanges(

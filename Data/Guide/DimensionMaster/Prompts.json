@@ -1,148 +1,160 @@
 {
-    "schema":  "lostark.guide-prompts",
     "formatVersion":  1,
-    "revision":  2,
     "guideId":  "guide.dimensionmaster",
     "prompts":  [
                     {
+                        "categoryId":  "bern",
                         "promptId":  "guide.bern.party.first_invite",
-                        "categoryId":  "bern",
-                        "topic":  "PARTY",
+                        "segments":  [
+                                         {
+                                             "durationMs":  6000,
+                                             "text":  "안녕~~ 난 가이드 차원술사야. 베른을 둘러보면서 필요한 곳을 안내해 줄게."
+                                         }
+                                     ],
                         "title":  "안내 시작",
-                        "segments":  [
-                                         {
-                                             "text":  "안녕~~ 난 가이드 차원술사야. 베른을 둘러보면서 필요한 곳을 안내해 줄게.",
-                                             "durationMs":  6000
-                                         }
-                                     ]
+                        "topic":  "PARTY"
                     },
                     {
+                        "categoryId":  "bern",
                         "promptId":  "guide.bern.npc.honing",
-                        "categoryId":  "bern",
-                        "topic":  "NPC",
+                        "segments":  [
+                                         {
+                                             "durationMs":  6500,
+                                             "text":  "여기는 장비를 제련하는 곳이야. 재료와 성공 확률을 확인하고 진행해 봐."
+                                         }
+                                     ],
                         "title":  "장비 제련",
-                        "segments":  [
-                                         {
-                                             "text":  "여기는 장비를 제련하는 곳이야. 재료와 성공 확률을 확인하고 진행해 봐.",
-                                             "durationMs":  6500
-                                         }
-                                     ]
+                        "topic":  "NPC"
                     },
                     {
+                        "categoryId":  "bern",
                         "promptId":  "guide.bern.npc.raid",
-                        "categoryId":  "bern",
-                        "topic":  "NPC",
+                        "segments":  [
+                                         {
+                                             "durationMs":  6500,
+                                             "text":  "여기는 레이드에 진입할 수 있는 곳이야. 파티원들과 준비를 마친 뒤 입장해 보자."
+                                         }
+                                     ],
                         "title":  "레이드 입장",
-                        "segments":  [
-                                         {
-                                             "text":  "여기는 레이드에 진입할 수 있는 곳이야. 파티원들과 준비를 마친 뒤 입장해 보자.",
-                                             "durationMs":  6500
-                                         }
-                                     ]
+                        "topic":  "NPC"
                     },
                     {
-                        "promptId":  "guide.koukusaydon.boss.find_real_saydon",
                         "categoryId":  "koukusaydon",
-                        "topic":  "BOSS_PATTERN",
+                        "promptId":  "guide.koukusaydon.boss.find_real_saydon",
+                        "segments":  [
+                                         {
+                                             "durationMs":  6500,
+                                             "text":  "진짜 세이튼 패턴이야. 1시, 5시, 7시, 10시에 분신을 포함한 세이튼 넷이 나타나."
+                                         },
+                                         {
+                                             "durationMs":  5000,
+                                             "text":  "진짜 세이튼은 하트를 발사하고, 가짜 세이튼 셋은 총을 쏴."
+                                         },
+                                         {
+                                             "durationMs":  6000,
+                                             "text":  "진짜 세이튼을 찾아서 바라봐야 해. 바라보지 않으면 즉사해."
+                                         }
+                                     ],
                         "title":  "진짜 세이튼 찾기",
-                        "segments":  [
-                                         {
-                                             "text":  "진짜 세이튼 패턴이야. 1시, 5시, 7시, 10시에 분신을 포함한 세이튼 넷이 나타나.",
-                                             "durationMs":  6500
-                                         },
-                                         {
-                                             "text":  "진짜 세이튼은 하트를 발사하고, 가짜 세이튼 셋은 총을 쏴.",
-                                             "durationMs":  5000
-                                         },
-                                         {
-                                             "text":  "진짜 세이튼을 찾아서 바라봐야 해. 바라보지 않으면 즉사해.",
-                                             "durationMs":  6000
-                                         }
-                                     ]
+                        "topic":  "BOSS_PATTERN"
                     },
                     {
+                        "categoryId":  "bern",
                         "promptId":  "guide.bern.return.valtan",
-                        "categoryId":  "bern",
-                        "topic":  "NPC",
+                        "segments":  [
+                                         {
+                                             "durationMs":  6500,
+                                             "text":  "발탄 잘 처리하고 왔어? 얻은 보상을 한 번 확인해봐"
+                                         }
+                                     ],
                         "title":  "발탄 귀환",
-                        "segments":  [
-                                         {
-                                             "text":  "발탄 잘 처리하고 왔어? 얻은 보상을 한 번 확인해봐",
-                                             "durationMs":  6500
-                                         }
-                                     ]
+                        "topic":  "NPC"
                     },
                     {
+                        "categoryId":  "bern",
                         "promptId":  "guide.bern.return.kouku",
-                        "categoryId":  "bern",
-                        "topic":  "NPC",
+                        "segments":  [
+                                         {
+                                             "durationMs":  6500,
+                                             "text":  "쿠크세이튼 잘 처리하고 왔어? 장비가 손상되었으니까 같이 장비 수리를 하러 가자"
+                                         }
+                                     ],
                         "title":  "쿠크세이튼 귀환",
-                        "segments":  [
-                                         {
-                                             "text":  "쿠크세이튼 잘 처리하고 왔어? 장비가 손상되었으니까 같이 장비 수리를 하러 가자",
-                                             "durationMs":  6500
-                                         }
-                                     ]
+                        "topic":  "NPC"
                     },
                     {
+                        "categoryId":  "bern",
                         "promptId":  "guide.bern.npc.repair",
-                        "categoryId":  "bern",
-                        "topic":  "NPC",
+                        "segments":  [
+                                         {
+                                             "durationMs":  6500,
+                                             "text":  "여기서 손상된 장비를 수리할 수 있어"
+                                         }
+                                     ],
                         "title":  "장비 수리",
-                        "segments":  [
-                                         {
-                                             "text":  "여기서 손상된 장비를 수리할 수 있어",
-                                             "durationMs":  6500
-                                         }
-                                     ]
+                        "topic":  "NPC"
                     },
                     {
+                        "categoryId":  "bern",
                         "promptId":  "guide.bern.water.life",
-                        "categoryId":  "bern",
-                        "topic":  "NPC",
+                        "segments":  [
+                                         {
+                                             "durationMs":  6500,
+                                             "text":  "생명의 나무와 물이야"
+                                         }
+                                     ],
                         "title":  "생명의 나무와 물",
-                        "segments":  [
-                                         {
-                                             "text":  "생명의 나무와 물이야",
-                                             "durationMs":  6500
-                                         }
-                                     ]
+                        "topic":  "NPC"
                     },
                     {
+                        "categoryId":  "bern",
                         "promptId":  "guide.bern.npc.harbor",
-                        "categoryId":  "bern",
-                        "topic":  "NPC",
+                        "segments":  [
+                                         {
+                                             "durationMs":  6500,
+                                             "text":  "여기서 배를 탈 수 있어"
+                                         }
+                                     ],
                         "title":  "항구 승선",
-                        "segments":  [
-                                         {
-                                             "text":  "여기서 배를 탈 수 있어",
-                                             "durationMs":  6500
-                                         }
-                                     ]
+                        "topic":  "NPC"
                     },
                     {
+                        "categoryId":  "bern",
                         "promptId":  "guide.bern.return.maharaka",
-                        "categoryId":  "bern",
-                        "topic":  "NPC",
-                        "title":  "워터팡 귀환",
                         "segments":  [
                                          {
-                                             "text":  "워터팡 아일랜드에서 돌아왔구나. 다시 같이 둘러보자.",
-                                             "durationMs":  6500
+                                             "durationMs":  6500,
+                                             "text":  "워터팡 아일랜드에서 돌아왔구나. 다시 같이 둘러보자."
                                          }
-                                     ]
+                                     ],
+                        "title":  "워터팡 귀환",
+                        "topic":  "NPC"
                     },
                     {
-                        "promptId":  "guide.bern.return.colosseum",
                         "categoryId":  "bern",
-                        "topic":  "NPC",
-                        "title":  "콜로세움 귀환",
+                        "promptId":  "guide.bern.return.colosseum",
                         "segments":  [
                                          {
-                                             "text":  "콜로세움에서 돌아왔구나. 다시 같이 둘러보자.",
-                                             "durationMs":  6500
+                                             "durationMs":  6500,
+                                             "text":  "콜로세움에서 돌아왔구나. 다시 같이 둘러보자."
                                          }
-                                     ]
+                                     ],
+                        "title":  "콜로세움 귀환",
+                        "topic":  "NPC"
+                    },
+                    {
+                        "categoryId":  "bern",
+                        "promptId":  "guide.prompt.19889218.1",
+                        "segments":  [
+                                         {
+                                             "durationMs":  6000,
+                                             "text":  "여기서 아바타를 구매할 수 있어. 다양한 아바타를 구매하고, 착용해봐"
+                                         }
+                                     ],
+                        "title":  "아바타 구매",
+                        "topic":  "NPC"
                     }
-                ]
+                ],
+    "revision":  3,
+    "schema":  "lostark.guide-prompts"
 }

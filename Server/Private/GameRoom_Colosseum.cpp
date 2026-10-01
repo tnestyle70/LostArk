@@ -16,6 +16,7 @@ using namespace LostArk::Shared;
 namespace
 {
     constexpr float PI = 3.14159265358979323846f;
+    constexpr std::uint32_t MERCENARY_ALT_V_INTERVAL_TICKS = 30u * 30u;
     constexpr std::array<CHARACTER_CLASS_ID, 5> MERCENARY_CLASSES = {
         CHARACTER_CLASS_ID::DIMENSIONMASTER, CHARACTER_CLASS_ID::LANCE_MASTER,
         CHARACTER_CLASS_ID::WARLORD, CHARACTER_CLASS_ID::GUARDIANKNIGHT,
@@ -151,7 +152,7 @@ bool CGameRoom::Transfer_ColosseumMatchTo(CGameRoom& target,
     const auto* hpProfile = target.m_GameplayCatalog.Find_Boss("BOSS_VALTAN");
     if (!hpProfile || hpProfile->iMaximumHp == 0u || hpProfile->iMaximumHealthBars != 160u)
         return reject("Colosseum requires the active Valtan 160-bar health profile");
-    const auto matchHp = hpProfile->iMaximumHp / 4u + (hpProfile->iMaximumHp % 4u != 0u ? 1u : 0u);
+    const auto matchHp = hpProfile->iMaximumHp / 8u + (hpProfile->iMaximumHp % 8u != 0u ? 1u : 0u);
 
     std::vector<STAGED_PLAYER_ENTRY> entries;
     std::vector<PLAYER_ID> departingIds;
@@ -258,7 +259,9 @@ bool CGameRoom::Transfer_ColosseumMatchTo(CGameRoom& target,
             anchor.fPositionX = spawn->fPositionX; anchor.fPositionY = spawn->fPositionY;
             anchor.fPositionZ = spawn->fPositionZ; anchor.fYawDegrees = spawn->fYawDegrees;
         }
-        const bool automaticTeam = human == entries.end();
+        // A solo entrant owns only their own team's recruitment. The opposite
+        // team receives four real sessionless mercenaries in this same transaction.
+        const bool automaticSoloOpponent = orderedSeats.size() == 1u && human == entries.end();
         auto& teamMembers = parties[partyIds[team]];
         const float yaw = anchor.fYawDegrees * PI / 180.f;
         for (std::size_t slot = 0u; slot < MERCENARY_CLASSES.size(); ++slot)
@@ -279,12 +282,15 @@ bool CGameRoom::Transfer_ColosseumMatchTo(CGameRoom& target,
             merc.fMoveSpeed = profile->fMoveSpeed;
             CPlayerSkillSystem::Reset_Gauges(merc, target.m_GameplayCatalog);
             merc.iColosseumMatchId = matchId; merc.iColosseumTeam = team;
-            merc.bColosseumParticipant = automaticTeam && slot < 4u; merc.isCombatReady = false;
+            // Human-owned teams, including the solo player's team, still recruit manually.
+            merc.bColosseumParticipant = automaticSoloOpponent && slot < 4u;
+            merc.isCombatReady = false;
             merc.bColosseumReady = true;
             if (merc.bColosseumParticipant)
             {
                 merc.iColosseumArrivalIndex = static_cast<std::uint8_t>(team + teamMembers.size() * 2u);
-                teamMembers.push_back(merc.iPlayerId); playerParties.emplace(merc.iPlayerId, partyIds[team]);
+                teamMembers.push_back(merc.iPlayerId);
+                playerParties.emplace(merc.iPlayerId, partyIds[team]);
             }
             merc.fYawDegrees = anchor.fYawDegrees;
             const float lateral = (static_cast<float>(slot) - 2.f) * 1.5f;
@@ -511,7 +517,7 @@ void CGameRoom::Try_StartColosseumEntry()
         if (found == m_PartyMembersByPartyId.end() || found->second.size() != 4u) return;
     }
     m_eColosseumPhase = COLOSSEUM_MATCH_PHASE::ENTRY_COUNTDOWN;
-    m_iColosseumPhaseStart = m_iServerTick; m_iColosseumPhaseEnd = m_iServerTick + 90u;
+    m_iColosseumPhaseStart = m_iServerTick; m_iColosseumPhaseEnd = m_iServerTick + 300u;
     ++m_iColosseumRevision;
     for (auto& [id, player] : m_Players)
     {
@@ -563,6 +569,18 @@ void CGameRoom::Update_Colosseum(float seconds)
         auto& merc = m_Players.at(playerId);
         if (!merc.bColosseumParticipant || merc.iCurrentHp == 0u) continue;
         const bool fixedRotation = merc.eCharacterClass == CHARACTER_CLASS_ID::DIMENSIONMASTER;
+        const auto altVReady = [&](const PLAYER_SKILL_DEFINITION& skill)
+        {
+            return skill.strInputSlot != "ALT_V" || !runtime.iLastAltVAdmissionTick ||
+                m_iServerTick - *runtime.iLastAltVAdmissionTick >= MERCENARY_ALT_V_INTERVAL_TICKS;
+        };
+        const auto trySkill = [&](const PLAYER_SKILL_DEFINITION& skill, const C2S_USE_SKILL& command)
+        {
+            if (!altVReady(skill) || !Execute_PlayerSkill(merc, command)) return false;
+            // Keep the authored cooldown; only accepted AI casts start the extra interval.
+            if (skill.strInputSlot == "ALT_V") runtime.iLastAltVAdmissionTick = m_iServerTick;
+            return true;
+        };
         runtime.fThinkElapsed += seconds;
         if (fixedRotation) runtime.fComboElapsed += seconds;
         // Manual COMBO input is sampled on every fixed Server tick, independently
@@ -720,7 +738,7 @@ void CGameRoom::Update_Colosseum(float seconds)
                 C2S_USE_SKILL command;
                 command.iClientSequence = ++runtime.iSequence; command.iSkillId = skill->iSkillId;
                 command.eTargetIntent = skill->eTargetIntent; command.fAimX = enemy->fPositionX; command.fAimZ = enemy->fPositionZ;
-                if (!Execute_PlayerSkill(merc, command)) continue;
+                if (!trySkill(*skill, command)) continue;
                 runtime.iSkillCursor = (index + 1u) % runtime.ComboSkills.size();
                 runtime.pReason = "Available class skill admitted";
                 started = true;
@@ -760,7 +778,7 @@ void CGameRoom::Update_Colosseum(float seconds)
         C2S_USE_SKILL command;
         command.iClientSequence = ++runtime.iSequence; command.iSkillId = skill->iSkillId;
         command.eTargetIntent = skill->eTargetIntent; command.fAimX = enemy->fPositionX; command.fAimZ = enemy->fPositionZ;
-        if (Execute_PlayerSkill(merc, command))
+        if (trySkill(*skill, command))
         {
             ++runtime.iSkillCursor; runtime.fStepWaitElapsed = 0.f;
             runtime.pReason = "Ordered skill admitted";
@@ -769,7 +787,8 @@ void CGameRoom::Update_Colosseum(float seconds)
         {
             runtime.fStepWaitElapsed += elapsed;
             const auto cooldown = merc.CooldownEndTickBySkillId.find(skill->iSkillId);
-            runtime.pReason = cooldown != merc.CooldownEndTickBySkillId.end() &&
+            runtime.pReason = !altVReady(*skill) ? "Waiting for the ALT_V minimum interval" :
+                cooldown != merc.CooldownEndTickBySkillId.end() &&
                 static_cast<std::int32_t>(cooldown->second - m_iServerTick) > 0 ?
                 "Waiting for the ordered skill cooldown" : "Waiting for ordered skill resources or status";
             if (runtime.fStepWaitElapsed >= runtime.fStepWaitTimeout)

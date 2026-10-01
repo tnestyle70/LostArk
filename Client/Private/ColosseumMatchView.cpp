@@ -389,6 +389,14 @@ struct CColosseumMatchView::IMPLEMENTATION
 		}
 		showingActors = true;
 	}
+	bool Has_PresentWinner() const
+	{
+		return std::any_of(actors.begin(), actors.end(), [&](const auto& actor) {
+			const auto character = actor.character.lock();
+			return actor.winner && actor.slot < document.actors.size() &&
+				character && character->Get_Transform();
+		});
+	}
 	float Fade(float time) const
 	{
 		if (time <= document.fade.front().first) return document.fade.front().second;
@@ -445,6 +453,28 @@ struct CColosseumMatchView::IMPLEMENTATION
 		if (viewport.x <= 0.f || viewport.y <= 0.f || !view.Get_SlotRect(id, x, y, width, height)) return;
 		Text(text, (x + width * .5f) * viewport.x / 1280.f,
 			y * viewport.y / 720.f, pixels * viewport.y / 720.f, color, width * viewport.x / 1280.f);
+	}
+	void Return_ButtonText() const
+	{
+		float x, y, width, height;
+		auto& game = CGameInstance::Get();
+		const auto viewport = game.Get_ViewportSize();
+		if (viewport.x <= 0.f || viewport.y <= 0.f ||
+			!result->Get_SlotRect("Result_Return", x, y, width, height)) return;
+		const float sx = viewport.x / 1280.f, sy = viewport.y / 720.f;
+		// Match the Settings Confirm/Cancel family, 16px/36px ratio and text boost.
+		float scale = 1.f;
+		const auto font = UILabelFont::Resolve(TEXT("Font_YoonGasiIIM"),
+			height * (16.f / 36.f) * 1.15f * (std::min)(sx, sy), scale);
+		const wchar_t* text = L"\xBCA0\xB978\xC73C\xB85C \xB3CC\xC544\xAC00\xAE30";
+		const auto measured = game.Measure_Text(font, text);
+		const float2_t position(std::round((x + width * .5f) * sx - measured.x * scale * .5f),
+			std::round((y + height * .5f) * sy - measured.y * scale * .5f));
+		game.Draw_Text(font, text, {position.x + 1.f, position.y + 1.f},
+			XMVectorSet(0.f, 0.f, 0.f, .75f), 0.f, float2_t(), scale);
+		const float tint = returnRequestCooldown > 0.f ? 120.f / 255.f : 1.f;
+		game.Draw_Text(font, text, position, XMVectorSet(tint, tint, tint, 1.f),
+			0.f, float2_t(), scale);
 	}
 	float Banner_Duration() const
 	{
@@ -579,6 +609,12 @@ void CColosseumMatchView::Sample_Presentation(const CClientReplication& replicat
 	if (winnerScene && p.sceneMs < p.document.duration)
 	{
 		p.Build_Actors(replication);
+		if (!p.Has_PresentWinner())
+		{
+			// Retry real replicated bodies without moving the Server-owned result clock.
+			p.End_Camera();
+			return;
+		}
 		for (auto& actor : p.actors)
 			if (const auto character = actor.character.lock())
 			{
@@ -609,12 +645,17 @@ void CColosseumMatchView::Sample_Presentation(const CClientReplication& replicat
 	p.showReturn = true;
 	p.result->Set_SlotVisible("Result_Return", true);
 	IMPLEMENTATION::Anchor(*p.result, p.resultRects);
-	CUIPointerScope pointer(this);
+	CUIPointerScope pointer(this, true);
 	auto& router = CUIInputRouter::Get();
 	float x, y, width, height;
 	if (p.result->Get_SlotRect("Result_Return", x, y, width, height))
 	{
-		if (router.Is_Hovered(x, y, width, height, 1280.f, 720.f)) router.Claim_Mouse_This_Frame();
+		const bool enabled = p.returnRequestCooldown <= 0.f;
+		const bool hovered = router.Is_Hovered(x, y, width, height, 1280.f, 720.f);
+		p.result->Set_SlotTexture("Result_Return", !enabled ? "UI/SystemOption/SystemOption_Btn_Disabled.png" :
+			(hovered ? (router.Is_LeftDown() ? "UI/SystemOption/SystemOption_Btn_Down.png" :
+				"UI/SystemOption/SystemOption_Btn_Over.png") : "UI/SystemOption/SystemOption_Btn_Normal.png"));
+		if (hovered) router.Claim_Mouse_This_Frame();
 		if (p.returnRequestCooldown <= 0.f && router.Is_Clicked(x, y, width, height, 1280.f, 720.f))
 		{
 			p.returnIntent = true;
@@ -755,7 +796,7 @@ void CColosseumMatchView::Render()
 			(p.localTeam == p.state.iWinningTeam ? L"\xC2B9\xB9AC" : L"\xD328\xBC30");
 		p.Slot_Text(*p.result, "Result_Title", title + L"  " + std::to_wstring(p.state.iLeftScore) + L" : " +
 			std::to_wstring(p.state.iRightScore), 26.f, {1.f, .9f, .65f, 1.f});
-		p.Slot_Text(*p.result, "Result_Return", L"\xBCA0\xB978\xC73C\xB85C \xB3CC\xC544\xAC00\xAE30", 16.f, {1.f, 1.f, 1.f, 1.f});
+		p.Return_ButtonText();
 	}
 }
 

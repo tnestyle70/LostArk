@@ -51,3 +51,31 @@ ALT_V는 16m/1.5s, V는 5.1m/2.161s이며 아레나 외 탈출 허용은 false�
 ## 검증
 
 변경 파일 diff와 인코딩/개행, vcxproj/filter XML parse, git diff --check를 확인한다. 네 명/팀2명, 실패 시 원본 보존, 서로 다른 두 match의 격리, 열 후보 중 두 명만 선발, 반대팀/원거리/중복 모집 거절, ACTIVE 전후 damage guard, 경기 종료/퇴장, 기존 shared preview/레이드 비적용을 계약 테스트로 확인한다. 추가로 실제 async 준비 동안 source 보존, 단일 worker 중복 거절, 미완료 future의 비차단 poll, source binding 변경 후 취소된 completion의 commit 거절을 검증한다. FINISHED의 사망 인간은 기존 square-hole transaction으로 Bern에 돌아와 일반 class HP와 무소속 상태를 받으며 ACTIVE 사망자의 조기 귀환은 차단한다. 회피는 원/고리/박스/부채꼴/360도부채꼴 다섯 경우에 실제 Update_Colosseum과 이동 executor가 안전한 navigation goal을 고르는지 검증한다. 실제 admission의 열 후보 skill 목록이 published class/stance/slot과 대응하는지 검증한다. 차원술사만 고정 순서와 LMB 금지를, 나머지 네 직업은 현재 모든 스킬과 LMB 포함을 확인한다. 실제 Update_Colosseum으로 차원술사 다음 스킬 cooldown 대기, 승인 후 action 종료 대기, CC 후 다음 순서 재개, 단계/전체 timeout을 확인한다. 워로드 E, 창술사 R/A, 도화가 R, 가디언 W의 실제 native Update로 모든 stage 도달·정상 종료·수동 window당 buffer 1회·자동 stage 무입력·추가 비용/쿨다운 없음·다음 슬롯 대기를 검사한다. 별도 좁은 260~290ms window도 실제 fixed tick에서 검사하여 5Hz think에 종속되지 않음을 확인한다. 나머지 네 직업의 native LMB 모든 단계, 전부 준비된 상태의 실제 LMB→Q→W 순환, 창술사 Z→짧아진 short stance 목록→새 LMB→Q binding, KNOCKDOWN→STANDUP 및 위험 방향 SPACE/사용 불가 시 navigation fallback을 검사한다. 첫 경기 인간을 가디언으로 구성하여 사망 종료 뒤 Bern 귀환의 일반 active profile HP(현재 132000) 복구도 검증한다. 실제 numeric parser/stage/commit으로 세 경기 phase의 HP/reference 보존과 Valtan room 일반 class HP 비율 migration을 대조한다. 컴파일과 Product build는 root 단일 runner만 수행한다. GPU와 Client 화면은 에이전트가 조작하지 않으며 최종 UI/행동 확인은 사용자 검증으로 구분한다.
+
+## G09. 콜로세움 넉백·용병 ALT_V·체력 조정
+
+2026-10-01 사용자는 UI 수정과 함께 콜로세움 넉백을 기존10%로 줄이고, 각 용병 ALT_V를
+최소30초 간격으로 제한하며 참가자 체력을 절반으로 줄이도록 요청했다.
+
+`ColosseumCombatPolicy.h`의10분의1 비율을 `PlayerSkillSystem.cpp`의 기존 PvP 적중 adapter에서
+소비한다. authored push/pull과 V/ALT_V 특례를 결정한 뒤 signed 거리와 이동 시간을10분의1로
+만든다. 시간은1ms 이상 올림하며 push가 없는 스킬은 그대로 둔다. V는0.51m/217ms,
+ALT_V는1.6m/150ms다. 공용 레이드 reaction, 별도 stun/down·착지 회복·면역·경계 검사는 유지한다.
+기존 combat 계약에서 네 hit 경로, 양방향 push/pull·무넉백·아군/범위/무적 차단과 raid parity를 확인한다.
+
+`GameRoom_Colosseum.cpp`의 입장 HP는 ceil(active BOSS_VALTAN maximumHp/8)로 정한다.
+현재40줄185321360에서20줄92660680으로 줄고, 기존160줄 스킬 피해 reference는 유지한다.
+일반 직업 HP132000과 실제 보스 profile은 바꾸지 않는다. 기존 match fixture의 입장·부활·귀환·
+numeric reload 기대값을20줄 기준으로 대조한다.
+
+`GameRoom.h`의 room-owned 용병 상태에 마지막 ALT_V 승인 tick을 optional로 보관한다.
+용병의 두 선택 경로는 이전 승인에서900tick(30Hz,30초)이 지나야 다음 ALT_V를 제출한다.
+성공한 실제 승인만 기록하고 각 용병이 독립적으로 소유한다. 죽음·부활·rotation 재시작에서
+이 기록을 지우지 않는다. 더 긴 기존 스킬 cooldown·자원·상태 검증도 계속 통과해야 한다.
+인간 ALT_V 입력과 다른 world의 AI는 수정하지 않는다. 기존 테스트에899/900tick 경계,
+실패한 승인·부활·독립 용병·긴 cooldown·tick wrap을 추가한다.
+
+기존 C++ 파일만 수정하므로 프로젝트/filter 항목 추가는 없다. 현재 dirty인1인 상대 자동 용병과
+입장·이동 수정은 보존한다. 최소 compile, 기존 combat/match 계약과 정상 Product Build 결과를
+분리해 기록한다. 실제 Client 다인 화면·체감은 사용자 확인 범위다.
+이름표의 복제 HP 비율 표시도 최대20줄로 맞추며 일반 월드 HP 표시는 유지한다.

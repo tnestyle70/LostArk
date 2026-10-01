@@ -276,7 +276,7 @@ void Client::CWorldPlayerNameplateView::Render(
             const auto health = pHealth->Find(player.iNetEntityId);
             if (combatant != pMatch->Players.end() && combatant->bParticipant && health.hasSnapshot && health.iMaximumHp)
             {
-                const auto lines = static_cast<std::uint32_t>((static_cast<std::uint64_t>(health.iCurrentHp) * 40u +
+                const auto lines = static_cast<std::uint32_t>((static_cast<std::uint64_t>(health.iCurrentHp) * 20u +
                     health.iMaximumHp - 1u) / health.iMaximumHp);
                 const std::wstring text = L"HP " + std::to_wstring(health.iCurrentHp) + L" / " +
                     std::to_wstring(health.iMaximumHp) + L"  x" + std::to_wstring(lines);

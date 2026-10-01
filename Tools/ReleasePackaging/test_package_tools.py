@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -158,10 +159,74 @@ class PortableCheckTests(unittest.TestCase):
 
 
 class ClosureTests(unittest.TestCase):
+    def valtan_generation_fixture(self, root, artifacts=None):
+        gameplay = root / 'Server/Bin/DataFiles/Gameplay'
+        directory = gameplay / 'ValtanPresentationGenerations'
+        directory.mkdir(parents=True)
+        payload = (json.dumps(dict(schema='lostark.valtan-presentation-generation',
+                                   formatVersion=1, artifacts=artifacts or [])) + '\n').encode()
+        generation_id = hashlib.sha256(payload).hexdigest()
+        active = directory / (generation_id + '.json')
+        active.write_bytes(payload)
+        bootstrap = gameplay / 'Gameplay.bootstrap'
+        bootstrap.write_text('LOSTARK_GAMEPLAY_BOOTSTRAP\t38\t1\n'
+                             'PATTERNPRESENTATIONGENERATION\tENCOUNTER_VALTAN\t'
+                             + generation_id + '\n', encoding='utf-8')
+        return bootstrap, active
+
+    def test_only_active_valtan_generation_and_its_references_are_collected(self):
+        root = builder.OUTPUT_ROOT / ('valtan-closure-' + str(time.time_ns()))
+        for relative in [*('Client/Bin/Release/' + n for n in builder.MODULES), 'Server/Bin/Release/Server.exe', 'Client/Bin/Release/Shader.cso']:
+            path = root / relative; path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(b'fixture')
+        docs = {
+            'Data/Effects/EffectCatalog.json': {},
+            'Data/Animation/Reference/active-only.json': {},
+            'Data/Animation/Reference/inactive-only.json': {},
+            'Server/Bin/DataFiles/Gameplay/other-runtime.json': {},
+        }
+        for relative, document in docs.items():
+            path = root / relative; path.parent.mkdir(parents=True, exist_ok=True); builder.write(path, document)
+        bootstrap, active = self.valtan_generation_fixture(root, [dict(path='Data/Animation/Reference/active-only.json')])
+        inactive = active.parent / ('a' * 64 + '.json')
+        builder.write(inactive, dict(artifacts=[dict(path='Data/Animation/Reference/inactive-only.json')]))
+        broken = active.parent / ('b' * 64 + '.json')
+        broken.write_bytes(b'inactive invalid JSON must not be parsed')
+        before = {path: path.read_bytes() for path in (bootstrap, active, inactive, broken)}
+        files, _ = builder.collect(root)
+        generations = [path for path in files.values() if path.parent == active.parent]
+        self.assertEqual(generations, [active])
+        self.assertIn(bootstrap.relative_to(root).as_posix(), files)
+        self.assertIn('Server/Bin/DataFiles/Gameplay/other-runtime.json', files)
+        self.assertIn('Data/Animation/Reference/active-only.json', files)
+        self.assertNotIn('Data/Animation/Reference/inactive-only.json', files)
+        self.assertEqual(before, {path: path.read_bytes() for path in before})
+
+    def test_valtan_generation_rejects_invalid_missing_or_mismatched_active_input(self):
+        root = builder.OUTPUT_ROOT / ('valtan-admission-' + str(time.time_ns()))
+        bootstrap, active = self.valtan_generation_fixture(root)
+        valid = bootstrap.read_text(encoding='utf-8')
+        row = valid.splitlines()[1]
+        for payload in ('LOSTARK_GAMEPLAY_BOOTSTRAP\t38\t0\n',
+                        valid + row + '\n',
+                        valid.replace('ENCOUNTER_VALTAN', 'ENCOUNTER_OTHER'),
+                        valid.replace(active.stem, '0' * 64),
+                        valid.replace(active.stem, '../escape'),
+                        valid.replace(active.stem, 'c' * 64)):
+            with self.subTest(payload=payload):
+                bootstrap.write_text(payload, encoding='utf-8')
+                with self.assertRaisesRegex(AssertionError, '[Vv]altan presentation generation'):
+                    builder.collect(root)
+        bootstrap.write_text(valid.replace(active.stem, active.stem.upper()), encoding='utf-8')
+        self.assertEqual(builder.active_valtan_presentation_generation(root), active)
+        active.write_bytes(b'changed descriptor')
+        with self.assertRaisesRegex(AssertionError, 'generation hash mismatch'):
+            builder.collect(root)
+
     def test_packaged_effect_element_names_use_native_byte_limit(self):
         root = builder.OUTPUT_ROOT / ('effect-labels-' + str(time.time_ns()))
         for relative in [*('Client/Bin/Release/' + n for n in builder.MODULES), 'Server/Bin/Release/Server.exe', 'Client/Bin/Release/Shader.cso']:
             path = root / relative; path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(b'fixture')
+        self.valtan_generation_fixture(root)
         effect = root / 'Data/Effects/Authored/effect.test.labels.effect.json'
         effect.parent.mkdir(parents=True)
         builder.write(root / 'Data/Effects/EffectCatalog.json', {'effects': [{'authoringPath': 'Effects/Authored/' + effect.name}]})
@@ -189,6 +254,7 @@ class ClosureTests(unittest.TestCase):
         }
         for relative, document in docs.items():
             path = root / relative; path.parent.mkdir(parents=True, exist_ok=True); builder.write(path, document)
+        self.valtan_generation_fixture(root)
         source = root / 'Client/Private/new.cpp'; source.parent.mkdir(parents=True)
         source.write_text('Load("Maps/Authoring/AREA/new.camerashots.json");', encoding='utf-8')
         files, reasons = builder.collect(root)

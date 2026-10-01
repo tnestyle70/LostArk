@@ -115,14 +115,8 @@ bool_t CNavPathFollower::Update(
 		const f32_t fDistance = XMVectorGetX(
 			XMVector3Length(vToWaypoint));
 
-		if (fDistance <= 0.02f)
-		{
-			if (!SetGroundedPosition(vWaypoint))
-				return false;
-			++m_iNextWaypoint;
-			continue;
-		}
-
+		// Even a short final segment consumes distance; otherwise corners
+		// add speed and arrival can precede the final presentation position.
 		vector_t vHorizontalTarget = XMVectorSetY(
 			vWaypoint,
 			XMVectorGetY(vPosition));

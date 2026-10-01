@@ -62,15 +62,19 @@ public:
 		std::vector<REPLICATED_PLAYER_VIEW> players;
 		replication.Collect_PlayerViews(players);
 		const auto& state = replication.Get_ColosseumMatchState();
+		// Wait for the replicated appearance transaction before replacing a captured portrait.
+		if (!state.iMatchId || state.iMatchId != m_Roster.iMatchId ||
+			!replication.Are_ColosseumCharactersReady()) return;
 		const auto viewport = CGameInstance::Get().Get_ViewportSize();
 		if (viewport.x <= 0.f || viewport.y <= 0.f) return;
 		for (unsigned team=0;team<2;++team)
 		{
 			if (m_Cards[team].empty()) continue;
 			const auto row=std::find_if(state.Participants.begin(),state.Participants.end(),[&](const auto& p){
-				return p.iArrivalIndex==m_Cards[team].front().iArrival && p.iTeam==team; });
+				return p.bParticipant && p.iArrivalIndex==m_Cards[team].front().iArrival && p.iTeam==team; });
 			if (row==state.Participants.end()) continue;
-			const auto player=std::find_if(players.begin(),players.end(),[&](const auto& p){return p.iNetEntityId==row->iNetEntityId;});
+			const auto player=std::find_if(players.begin(),players.end(),[&](const auto& p){
+				return p.iNetEntityId==row->iNetEntityId && p.iPlayerId==row->iPlayerId;});
 			if (player==players.end()) continue;
 			const auto character=player->pCharacter.lock();
 			if (!character) continue;
@@ -83,7 +87,11 @@ public:
 			const auto width=static_cast<uint32_t>((std::max)(1.f,std::round(373.333f*viewport.x/1280.f)));
 			const auto height=static_cast<uint32_t>((std::max)(1.f,std::round(324.f*viewport.y/720.f)));
 			if (S_OK==m_Portraits[team]->Render(character,width,height,camera,0u,0u))
-				m_View->Set_SlotTextureSRV(Prefix(team)+"Portrait",m_Portraits[team]->Get_SRV());
+				if (auto portrait=m_Portraits[team]->Get_SRV())
+				{
+					m_View->Set_SlotTextureSRV(Prefix(team)+"Portrait",portrait);
+					m_View->Set_SlotVisible(Prefix(team)+"Portrait",true);
+				}
 		}
 	}
 	void Render()
@@ -118,17 +126,15 @@ private:
 		using E=LostArk::Shared::CHARACTER_CLASS_ID;
 		switch(id) {case E::LANCE_MASTER:return L"\xCC3D\xC220\xC0AC";case E::GUNSLINGER:return L"\xAC74\xC2AC\xB9C1\xC5B4";case E::SLAYER:return L"\xC2AC\xB808\xC774\xC5B4";case E::ARTIST:return L"\xB3C4\xD654\xAC00";case E::DIMENSIONMASTER:return L"\xCC28\xC6D0\xC220\xC0AC";case E::WARLORD:return L"\xC6CC\xB85C\xB4DC";case E::GUARDIANKNIGHT:return L"\xAC00\xB514\xC5B8\xB098\xC774\xD2B8";default:return L"";}
 	}
-	static const char* Folder(LostArk::Shared::CHARACTER_CLASS_ID id)
-	{
-		using E=LostArk::Shared::CHARACTER_CLASS_ID;
-		switch(id) {case E::LANCE_MASTER:return "LanceMaster";case E::GUNSLINGER:return "Gunslinger";case E::SLAYER:return "Slayer";case E::ARTIST:return "Artist";case E::DIMENSIONMASTER:return "DimensionMaster";case E::WARLORD:return "Warlord";case E::GUARDIANKNIGHT:return "GuardianKnight";default:return nullptr;}
-	}
+
 	void Layout()
 	{
 		for (unsigned team=0;team<2;++team)
 		{
 			const auto prefix=Prefix(team); const auto count=m_Cards[team].size();
-			for (const char* part:{"WedgeGlow","Portrait","PanelBorder","TitleBackground"}) m_View->Set_SlotVisible(prefix+part,count!=0);
+			// Movie portrait slots contain the actual character, never class illustration art.
+			m_View->Set_SlotVisible(prefix+"Portrait",false);
+			for (const char* part:{"WedgeGlow","PanelBorder","TitleBackground"}) m_View->Set_SlotVisible(prefix+part,count!=0);
 			for (unsigned slot=0;slot<3;++slot)
 			{
 				const auto base=prefix+"Slot"+std::to_string(slot+1)+"_";
@@ -143,9 +149,12 @@ private:
 				}
 			}
 			if (count==0) continue;
-			if (const auto folder=Folder(m_Cards[team].front().iClass)) m_View->Set_SlotTexture(prefix+"Portrait",std::string("UI/ClassSelect/")+folder+"/Illustration.png");
 			if (m_Cards[team].front().bLocal)
-				if (auto portrait=CLevelTransitionService::Get_TransferPortraitSRV()) m_View->Set_SlotTextureSRV(prefix+"Portrait",portrait);
+				if (auto portrait=CLevelTransitionService::Get_TransferPortraitSRV())
+				{
+					m_View->Set_SlotTextureSRV(prefix+"Portrait",portrait);
+					m_View->Set_SlotVisible(prefix+"Portrait",true);
+				}
 			for (size_t i=0;i<count;++i) if (m_Cards[team][i].bLocal)
 			{
 				const unsigned sourceSlot=team?0u:2u;

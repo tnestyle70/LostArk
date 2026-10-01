@@ -79,6 +79,10 @@ public:
 	const float3_t& Get_SignedScale() const { return m_vSignedScale; }
 	bool_t Is_Visible() const { return m_bVisible; }
 	bool_t Is_Mirrored() const { return m_bMirrored; }
+	/* Read-only static map surface query. Direction is normalized by the map
+	   runtime; a miss never changes the supplied world-space distance. */
+	bool_t Try_PickMovementSurface(const float3_t& rayOrigin,
+		const float3_t& rayDirection, f32_t maxDistance, f32_t& outDistance) const;
 	void Set_PlacementTransform(const float3_t& position,
 		const float4_t& rotationQuaternion, const float3_t& signedScale);
 	void Set_Visible(bool_t visible) { m_bVisible = visible; }

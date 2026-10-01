@@ -315,13 +315,14 @@ Product 빌드: Engine → Shared → Server → Client (SDK·shader·runtime DL
   입장은 PvP 경기가 아니다. 발탄·쿠크 등 다른 world에는 PvP HP·피해·넉백·도화가 T 배율을 적용하지 않는다.
 - 콜로세움 대기열은 첫 대기자의 Server10초 기한에 남은 인간1~4명을 입장 순서대로 양 팀과 자동 파티에 배정한다.
   4명이 모여도 기한은 유지한다. 팀별 다섯 직업 후보 중 부족한 인원을 모집해 인간+용병4명씩 구성하고,
-  인간이 없는 팀은 Server가 용병4명을 자동 선택한다. LOADING 준비 후 RECRUITING에서 이동·초대를 허용하며,
-  양 팀 모집 완료 후 ENTRY_COUNTDOWN3초 → INTRO8.6초 → COUNTDOWN10초 → ACTIVE120초 → FINISHED를 진행한다.
+  인간1명 입장일 때만 인간이 없는 상대 팀은 Server가 용병4명을 자동 선택한다. LOADING 준비 후 RECRUITING에서 이동·초대를 허용하며,
+  양 팀 모집 완료 후 ENTRY_COUNTDOWN10초 → INTRO8.6초 → COUNTDOWN10초 → ACTIVE120초 → FINISHED를 진행한다.
   선택된 Participants는 최대8명, 후보 포함 Players는 최대14명이며 arrival index는 team+slot*2다.
   COLOSSEUM_MERCENARY_AI는 fake session 없이 기존 player 이동·스킬·피격·snapshot을 사용한다.
   후보와 참가자를 구분하고, 단일 안내 Guide를 party slot에 넣지 않으며 Waterpang AI의 인간 roster 제외 규칙을 유지한다.
-- 참가자의 실제 최대HP는 입장 시 활성 발탄160줄 profile의40줄 분량으로 정하고, 스킬 피해의 기준HP는 기존160줄 값을 유지한다. 원본 Balance JSON은 수정하지 않는다.
-  기존 스킬 피해 산식을 재사용하며 Artist T의1/5 및 V/ALT_V 넉백 조정은 위 PvP guard 아래에서만 적용한다.
+- 참가자의 실제 최대HP는 입장 시 활성 발탄160줄 profile의20줄 분량으로 정하고, 스킬 피해의 기준HP는 기존160줄 값을 유지한다. 원본 Balance JSON은 수정하지 않는다.
+  기존 스킬 피해 산식을 재사용하며 Artist T의1/5 및 넉백 거리·이동 시간10%(V0.51m/217ms, ALT_V1.6m/150ms)는 위 PvP guard 아래에서만 적용한다.
+  용병 ALT_V는 개별 마지막 승인부터 최소30초 간격이며 기존 더 긴 cooldown도 유지한다. 사망·부활로 이 간격을 초기화하지 않는다.
 - Bern↔Maharaka G dock은 기존 typed RAID_ENTRY 전원 동의 UI를 사용한다. solo 포함 admission·초기 송신
   준비가 모두 성공한 뒤 이동하며 실패 시 기존 방·파티를 보존한다. 닉네임·인벤토리·재화·배 복귀 기록을 유지한다.
 - 이 계약은 protocol132의 Client/Server를 함께 빌드·배포한다. 이전 zip과 새 Server의 혼용을 호환으로 설명하지 않는다.

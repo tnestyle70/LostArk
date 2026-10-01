@@ -257,7 +257,7 @@ Movie의 슬로모션 시간 보정은 이 결함의 소비자가 아니다.
 Client/Public/WorldSequencePlayer.h와 Client/Private/WorldSequencePlayer.cpp의
 Seek_AllToMs에 기존 Seek_InstanceToMs와 동일한 discontinuous 인자를 추가한다.
 기본 true는 최초 catch-up·명시 scrub을 보존한다. false에서는 연속 전진의 채널과
-retired tail을 유지하고 역방향 또는 250ms 초과 이동은 다시 seek한다. 실패 인스턴스의
+retired tail을 유지하고 역방향 이동만 다시 seek한다. 긴 전진 간격은 연속 재생을 보존한다. 실패 인스턴스의
 Stop_Instance rollback과 다른 인스턴스 적용은 기존대로 둔다.
 Client/Private/Level_KakulSaydonArena.cpp의 m_OwnedWorldCues frame 갱신만 false로
 호출한다. 편집기 scrub·초기 admission·원본 WAV·volume·sound timing은 변경하지 않는다.
@@ -266,3 +266,47 @@ Client/Private/Level_KakulSaydonArena.cpp의 m_OwnedWorldCues frame 갱신만 fa
 원본 함수로 최초 음원의 반복 채널 재생성을 수정 전 재현하고, 연속 재생·명시 scrub·
 역방향·큰 이동·정지·실패 격리를 수정 후 검사한다. 일반 Debug Product Build와
 변경 diff 검사를 실행하며 Client 실행·실청 최종 판정은 사용자가 수행한다.
+
+### G15 후속. 2026-10-01 반복 깨짐이 남은 최초 입장음 연결 제거
+
+사용자가 반복 수정 뒤에도 첫 입장음이 깨진다고 확인하여 해당 연결을 제거한다.
+WAV 단독 재생과 앞선 연속 재생 수정의 검증은 유지하며 이번 작업을 출력 결함의 원인
+수정으로 기록하지 않는다. 대상은 최초 circus_finale WORLD의 한 soundTrack이다.
+
+Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json의
+sequence.LV_LUT_MIDNIGHTC_ED.circus_finale template에서 아래 기존 블록을 교체한다.
+최신 디스크 revision2289를2290으로 올리고 다른 값은 보존한다.
+
+```json
+      "soundTracks": [
+        {"soundTrackId": "sound.kouku.source.circusfinale.circuspopup", "assetId": "Sound/KoukuSaton/Events/scene_midnightc_ed_circuspopup.source.wav", "startMs": 200, "durationMs": 10267, "volume": 1}
+      ]
+```
+
+교체 후 전체 블록은 다음과 같다.
+
+```json
+      "soundTracks": []
+```
+
+CWorldSequencePlayer::Apply_Sounds가 이 배열에서만 해당 Play_SoundCue handle을 만들므로
+연결 제거 뒤 이 instance의 첫 음원은 시작되지 않는다. 원본 WAV, 다른13개 soundTrack,
+21,010ms visual duration과24개 transform track, instance·binding·카메라·입장 진행은 유지한다.
+새 H/CPP, protocol, vcxproj/filters 등록이나 Resources 전달은 없다.
+
+최신 디스크를 stable template ID와 soundTrack ID로 재확인하고 byte backup·SHA256·구조 차이
+검증 후 교체 직전 byte/hash CAS와 원자 교체를 수행한다. 실패하면 자기 변경만 rollback하며
+다른 세션이 갱신한 저장본을 덮어쓰지 않는다. 기존 문서의 무관한 변경도 그대로 보존한다.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId LV_LUT_MIDNIGHTC_ED -Scope WorldSequences -Mode Validate
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId LV_LUT_MIDNIGHTC_ED -Scope WorldSequences -Mode Publish
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId LV_LUT_MIDNIGHTC_ED -Scope WorldSequences -Mode Check
+```
+
+Map publisher의 WorldSequences scope가 Client/Bin/DataFiles/Map의 해당 JSON 한 개를 검증·
+원자 게시한다. WorldGameplay의 sequence 참조 소비는 enabled instance ID와 별도 CardMaze/
+Mario gameplay motion이며 이번 sound-only 변경은 그 입력을 바꾸지 않으므로 재게시하지 않는다.
+원본/게시본 JSON parse·동등성, 제거한 한 행 외 구조 불변, git diff --check를 확인한다.
+이 단계는 데이터 변경이므로 별도 Product Build와 Client/UI 실행은 하지 않는다. 기존 실행
+중인 문서·음원 handle의 자동 Reload/종료나 사용자 실청 성공은 결과에 포함하지 않는다.

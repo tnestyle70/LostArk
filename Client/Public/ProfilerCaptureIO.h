@@ -23,6 +23,35 @@ struct FProfilerCaptureFile final
 	uint32_t VolumeSerial = 0u;
 };
 
+// Observational main-thread values only. Gameplay and prediction retain ownership.
+enum class EProfilerMovementKind : uint8_t { Frame, Snapshot, Command };
+enum class EProfilerMovementFlags : uint32_t
+{
+    None = 0, PendingLocalPath = 1, PredictionActive = 2,
+    Accepted = 4, Moving = 8, LocalPathCompleted = 16
+};
+
+struct FProfilerMovementSample final
+{
+    EProfilerMovementKind Kind = EProfilerMovementKind::Frame;
+    uint64_t QpcTick = 0; // Set by Record_MovementSample, in the existing profiler clock.
+    uint64_t FrameNumber = 0; // Assigned from completed-frame scope bounds at export.
+    uint32_t CharacterClass = 0, ServerTick = 0, Sequence = 0;
+    uint32_t Flags = 0, Disposition = 0;
+    float DeltaSeconds = 0.f, MotionSeconds = 0.f;
+    std::array<float, 3> Before{}, After{}, Authority{}, Waypoint{};
+};
+
+struct FProfilerMovementCoverage final
+{
+    bool Captured = false;
+    bool WindowMayBeTruncated = false;
+    uint64_t WindowBeginTick = 0, WindowEndTick = 0;
+    uint64_t FirstRetainedTick = 0, LastRetainedTick = 0;
+    uint64_t AcceptedSinceReset = 0, OverwrittenSinceReset = 0, RejectedSinceReset = 0;
+    size_t FramesWithBounds = 0, FramesWithoutBounds = 0, OutsideSavedFrames = 0;
+};
+
 // Context is sampled at export on the main thread; it does not assert that every
 // historical frame used the same camera, level, render settings, focus or window size.
 struct FProfilerCaptureContext final
@@ -41,11 +70,22 @@ struct FProfilerCaptureContext final
     // Effective selects foreground/background by process ownership. It is not measured FPS
     // and excludes the separate minimized-frame message wait.
     int32_t ForegroundFpsLimit = 0, BackgroundFpsLimit = 0, EffectiveFpsLimit = 0;
+    // Optional owned values copied before launching the existing save worker.
+    FProfilerMovementCoverage MovementCoverage;
+    std::vector<FProfilerMovementSample> MovementSamples;
 };
 
 class CProfilerCaptureIO final
 {
 public:
+    static constexpr size_t MAX_MOVEMENT_SAMPLES = 8192;
+    // Main-thread only. Disabled capture returns without QPC, allocation or I/O.
+    static void Record_MovementSample(const Engine::CProfiler* Profiler,
+        FProfilerMovementSample Sample) noexcept;
+    static void Reset_MovementSamples() noexcept;
+    static void Copy_MovementSamples(const Engine::FProfilerCaptureSnapshot& Snapshot,
+        FProfilerCaptureContext& Context);
+
 	static bool_t Save_Json(
 		const Engine::FProfilerCaptureSnapshot& Snapshot,
 		const filesystem::path& OutputPath,

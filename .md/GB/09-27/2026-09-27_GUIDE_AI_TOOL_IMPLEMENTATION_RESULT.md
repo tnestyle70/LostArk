@@ -355,3 +355,55 @@ G08 및 기능별 RESULT를 따른다. 기존 GBResources는 보존한다.
 제품 실행·UI·4인 LAN·GPU 성능을 자동 확인한 결과는 아니다. 새 Server와 새 Client를
 protocol130으로 함께 실행해야 하며 이전 zip을 새 서버와 혼용하지 않는다. Guide 게시 파일은
 현재 실행 중인 Server의 메모리나 열린 저작 draft를 자동 갱신하지 않는다.
+
+## G10. 콜라이더 전체 표시와 별도 상세 창 (2026-10-01)
+
+### G10-01. 실제 소스 반영
+
+`Client/Public/GuideAITool.h`, `Client/Private/GuideAITool.cpp`의 기존 도구를 확장했다.
+`콜라이더` 탭은 현재 category의 SPACE_ENTER만 표시하며 행을 선택하면 별도 ImGui
+`Collider Detail` 창을 연다. 일반 트리거 목록에서도 공간 행 선택으로 같은 창을 연다.
+목록은 높이를 제한하고 스크롤하여 편집 진입을 목록 아래에 묻지 않는다.
+
+상세 창은 월드 중심 Position, 전체 X/Y/Z Size(m), Y축 Rotation(degree), world picking,
+NPC 위치·회전 복사, Enabled, 대사, cooldown, priority와 Save/Publish를 제공한다.
+전체 Size는 저장 시 기존 halfExtents로 나누며 최소값은 JSON double 기준0.01로 보정한다.
+직접 위치·회전을 바꾸면 NPC 복사 참조를 해제한다. 피킹 중 Detail을 닫으면 취소하며
+메인 창만 닫고 Detail을 남기면 상세 편집을 계속할 수 있다.
+
+상단과 상세 창의 `Show Debug`는 공통 상태다. 기본 범위인 `All colliders in active Area`는
+현재 지역의 활성·비활성 Guide 박스를 모두 표시하고 끄면 선택한 박스만 표시한다.
+선택은 노랑, 다른 활성은 청록, 비활성은 회색이며 box ID와 disabled 표시를 붙인다.
+선분을 clip-space에서 자른 뒤 투영하여 near plane을 가로지르는 박스도 표시한다.
+탭 전환과 창 접힘에도 draft 표시를 유지한다. 모든 Guide 편집 창을 닫으면 표시하지 않는다.
+서버 판정·JSON schema·publisher·protocol·Resources 변경이나 신규 C++ 파일은 없다.
+
+### G10-02. 자동 검증과 실행 파일 경계
+
+- 최종 Debug `Client.vcxproj /t:ClCompile` exit0. `out/GuideCollider20261001/client-compile-final.log`.
+  GuideAITool와 헤더 소비자의 컴파일을 확인했고 기존 SDK 헤더의 C4828 경고는 남아 있다.
+- Client 정상 증분 `Build`에서 컴파일 후 `Client/Bin/Debug/Client.exe` 링크가 LNK1168로
+  실패했다. 실행 중인 기존 Debug Client가 출력 파일을 점유한다.
+  `out/GuideCollider20261001/client-build.log`. 마지막 피킹 취소 보완도 별도 최종 컴파일은 성공했다.
+- 기존 Guide 저장 회귀4개 성공: 독립 필드 병합·명시 게시, 동일 필드 충돌 보존,
+  잘못된 입력의 원본 보존, 동시 추가 행 보존. `out/GuideCollider20261001/save-tests.log`.
+  fixture는 임시 복사본이며 사용자 Data/Guide를 덮어쓰거나 게시하지 않았다.
+- 변경 소스의 UTF-8 BOM 없음·LF를 유지했고 scoped `git diff --check`를 확인했다.
+
+최종 EXE 링크는 사용자 Client 종료 후 이어서 수행한다. Client/UI를 실행하거나 종료하지
+않았고 실제 화면·입력·재로드 확인은 사용자에게 남아 있다. 확인 경로는 Debug F1 →
+DimensionMaster Guide → 콜라이더 → 행 선택 → Collider Detail → Show Debug →
+Position/Size/Rotation 변경 → Save → 완료 상태 확인 → Publish다.
+
+### G10-03. 사용자가 추가한 아바타 구매 행의 읽기 전용 검토
+
+검사 시 대사12/트리거15, revision277706130077721의 Validate와 CheckPublished가 성공했다.
+Client/Server Guide.runtime.json SHA256은
+`26e0ee1a4029ffe3c27e4c858e2f052b020bfc99bfa93669055bd07a743125dc`로 동일했고,
+원본5개·게시본2개·Bern Gameplay.world.json은 검사 전후 hash/수정시각이 같았다.
+
+`guide.prompt.19889218.1`의 아바타 구매 대사·6초 표시는 정상 저장됐다. 그러나 기존
+`guide.trigger.bern.first_invite`의 GUIDE_STARTED가 그 대사를 참조하고,
+신규 `guide.trigger.20001546.2`는 enabled=true / GUIDE_STARTED / promptId 빈 값이다.
+아바타 대사와 연결된 SPACE_ENTER가 없어 상점 접근 안내용 위치·크기·회전은 아직 없다.
+Publish 성공과 의도한 trigger 연결을 구분해 사용자에게 보고했으며 데이터 수정·재게시하지 않았다.

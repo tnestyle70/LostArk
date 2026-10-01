@@ -196,6 +196,54 @@ void CMapAssetObject::Submit_FinalCamera()
             static_pointer_cast<CGameObject>(shared_from_this()));
 }
 
+bool_t CMapAssetObject::Try_PickMovementSurface(
+	const float3_t& rayOrigin, const float3_t& rayDirection,
+	const f32_t maxDistance, f32_t& outDistance) const
+{
+	if (!Is_Rendered() || m_fPresentationOpacityMultiplier <= 0.f ||
+		!m_pModelCom || !m_pTransformCom || !m_bHasWorldCullBounds)
+		return false;
+	// The existing conservative sphere encloses the transformed local bounds;
+	// its enclosing AABB is a cheap, allocation-free world broadphase.
+	const BoundingBox bounds(m_vWorldCullCenter,
+		float3_t(m_fWorldCullRadius, m_fWorldCullRadius, m_fWorldCullRadius));
+	f32_t boundDistance = 0.f;
+	if (!bounds.Intersects(XMLoadFloat3(&rayOrigin), XMLoadFloat3(&rayDirection), boundDistance) ||
+		boundDistance > maxDistance)
+		return false;
+	const bool_t floorReceiver = Client::IsCardMazeFloorReceiver(m_iPlacementId, m_AssetId);
+	const float4x4_t& world = *m_pTransformCom->Get_WorldMatrixPtr();
+	f32_t nearest = maxDistance;
+	bool_t hit = false;
+	for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
+	{
+		const auto profile = Get_MaterialRenderProfile(mesh);
+		const auto* surface = m_pModelCom->Get_MaterialSurface(mesh);
+		// CPU movement uses static topology, including masked floor materials.
+		// Alpha-tested pixel holes and rendered LOD are intentionally not sampled.
+		// Foliage/wind artwork is not ground; the card-maze floor is an explicit receiver.
+		if ((!floorReceiver && profile.renderMode != MAP_ASSET_RENDER_MODE::DEFERRED) ||
+			profile.opacity <= 0.f || m_pModelCom->Has_MorphBaseVertices(mesh) ||
+			(surface && (surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED ||
+				surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED ||
+				(surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
+					surface->sourceCharacter.program == 43u))))
+			continue;
+		const uint32_t cull = CMapAssetRenderUtils::Select_Pass(profile, m_bMirrored) % 3u;
+		const auto cullMode = cull == 0u ? CModel::PICK_CULL_MODE::BACK :
+			cull == 1u ? CModel::PICK_CULL_MODE::FRONT : CModel::PICK_CULL_MODE::NONE;
+		f32_t distance = nearest;
+		if (m_pModelCom->Try_PickStaticSurface(mesh, world, rayOrigin, rayDirection,
+			nearest, cullMode, distance) && distance < nearest)
+		{
+			nearest = distance;
+			hit = true;
+		}
+	}
+	if (hit) outDistance = nearest;
+	return hit;
+}
+
 HRESULT CMapAssetObject::Render()
 {
     // Direct callers submit the same disjoint subsets as the renderer queues.

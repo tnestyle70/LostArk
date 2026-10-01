@@ -181,3 +181,255 @@ Client/Server 실행은 0회이며 Resources는 외부 완전한 폴더를 선�
 내부 `release-ready.receipt.json`은 실제 EXE/DLL hash와 소스 commit을 기록한다.
 증거는 `out/ReleasePackaging/portable-delivery.receipt.json`과
 `preflight-20261001-pr494-496-final.json`에 있다.
+
+
+## G10. 원본 Visual Studio 작업 폴더 protocol132 반영
+
+2026-10-01 사용자 요청으로 Desktop/LostArk의 기존 branch를 7013e90ad에서
+b83d646be(main PR497 병합 완료)로 fast-forward했다. Shared packet·직렬화, Server/Client
+소비자와 project 등록을 함께 반영했다. 최초 57개 작업 파일은
+`out/VSProtocol132Sync/20261001-071523`에 byte/mtime/패치 백업하고,
+`safety-vs-protocol132-sync-20261001-071523` stash도 보존했다. stash 복원 뒤
+Guide·Profiler 작업을 유지했고 미해결 충돌은 0개다. bootstrap은 공식 generation
+validator가 현재 디스크에서 계산한 e22201 generation을 사용했다. 충돌은 generation ID
+한 줄뿐이고 나머지 109865 gameplay 행은 upstream/local이 같았다.
+
+VS18 Insiders의 정상 Release Product Build가 통과했다. Engine·Shared·Server·Client를
+빌드했고 `out/BuildPipeline/runs/20260930T222020084Z-release-product.json`에 기록했다.
+Release Server 산출물 시각은 07:18:00, Client는 07:20:18이다. 별도 loopback 임시 포트의
+3초 headless Server 시작·종료는 exit0이고 실제 session diagnostic의
+networkProtocolVersion132를 확인했다. Client/UI는 실행하지 않았다.
+
+사용자가 “확인했어 다 됐어”라고 완료를 확인해 추가 작업을 마무리했다.
+Debug는 소스132 반영까지 완료됐고 별도 Product Build는 실행하지 않았다. 기존 Debug
+실행 파일은 재빌드 전 상태이며 Debug 빌드 완료로 기록하지 않는다.
+빌드 완료 뒤 관측한 Character/NavPathFollower/GameRoom_PlayerCommands의 다른 세션 변경은
+건드리지 않았다. 최종 증거는 `out/VSProtocol132Sync/completion.json`에 있다.
+
+## G11. 인간 준비 표시와 명시적 용병 모집 교정
+
+사용자가1인 입장에서 관찰한4/5는 Loader 단계가 아니라 인간1명과 자동 참가 처리된
+상대AI4명을 함께 센 준비 표시였다. 2인 입장의1/2도 같은 표시 경로다. Server의 실제
+READY 장벽은 인간 session만 기다렸으므로 표시·선발 계약과 EXE 종료 원인은 구분한다.
+
+`Level_Development`는 같은 match의 MATCH_FOUND 인간 수와 인간 arrival 범위의 bReady를
+사용해 준비 수를 표시한다. 인간 입장 순서에 따른 좌우 교대 배정은 유지한다.
+`GameRoom_Colosseum`은 양팀 각각 다섯 용병을 모두 미선택 후보로 만들고 자동 상대4명
+참가 처리를 제거했다. 같은 팀의 명시적 고용이4명 파티를 완성해야 경기 입장이 시작된다.
+3인 입장의 좌측 인간2명·용병2명, 우측 인간1명·용병3명도 같은 기존 command 경로다.
+1인 입장은1/1 준비 후 모집할 수 있지만 상대팀 고용 주체가 없어 자동 전투를 시작하지 않는다.
+
+양팀4명 완료 뒤 ENTRY_COUNTDOWN은300tick, 즉10초로 바뀌었다. 화면의
+“전투 아레나에 진입합니다.”10초 뒤 기존 도열 INTRO8.6초, 원본 창살 전투 COUNTDOWN10초,
+ACTIVE120초가 이어진다. 입장과 전투 준비의10초 두 구간을 하나로 합치지 않았다.
+Shared protocol132와 새 project/filter 등록 변경은 없다. 팀 사용서의 대응 계약도 갱신했다.
+
+변경 Server2CPP와 Client1CPP의 고유 out 최소 /c 컴파일, UTF-8 BOM 없음·CRLF 보존 및
+대상 git diff check가 통과했다. 독립 읽기 검토에서 human arrival와 고용 자리 범위의 비중복,
+빈 팀 파티의 staged transaction 보존을 확인했다. Client 기존 CP949 헤더 경고는 별도다.
+
+최종 Release Product `out/BuildPipeline/runs/20260930T225620980Z-release-product.json`
+이후 실제 `Server/Bin/Release/Server.exe --colosseum-match-contract-test`는
+178 PASS, failures0, exit0이다.1~3인 원자 admission, 모든 후보 자동선택0명, 단독 모집 유지,
+2·3인 양팀 고용,4인 고용과300tick, 기존PvP/rollback/HP 계약을 검사했다.
+실행 전후 Server SHA256은 `dda6ba915b53788b2ba52f8786c5225de9091af0d84d70dd46f2c3fe012b75cc`
+로 동일했다. 상세 로그·소스/바이너리 hash는
+`out/MotionAuditFollower20261001/colosseum_candidate`에 있다.
+Debug Product `out/BuildPipeline/runs/20260930T225733710Z-debug-product.json` 이후 같은
+focused 계약도178 PASS, failures0, exit0이다. Debug Server SHA256은
+`d7376eb9b4bd3f3023df7b13ac596bef9d5d1a6c4d4b836619f1dcd51cf294d3`이며 실행 전후 동일했다.
+Release6.99초·Debug78.55초는 실제 계약 테스트 경과 시간이며 제품 frame 성능 측정은 아니다.
+실제 Client 입장·다인 화면은 자동 실행하지 않았다.
+관찰된 c0000409/subcode7 종료가 이 수정으로 해결됐다고 판정하지 않는다.
+
+## G12. 카메라 좌표 범위 초과 수정과 종료·메인 지연의 증거 경계
+
+사용자가 제시한 `ColosseumIntroCutscene.h::Vector`의 좌표 경계 오류를 현재 소스에서
+확인했다. 입력 배열이 정확히 3개인지 검증하고 출력 포인터도 x/y/z 3개만 만들었지만,
+루프는 4회 실행해 정상 카메라 JSON에서도 `values[3]`을 읽었다. 이 잘못된 원소가
+숫자로 취급되면 이어지는 `pOut[3]` 접근도 범위를 벗어난다. 기존 `i < 4u`를
+`i < values.size()`로 바꿔 이미 검증한 3개 좌표만 처리한다. 팀당 4명, 이름 4행,
+양팀 도열 슬롯과 카메라 데이터는 변경하지 않았다.
+
+제품 헤더의 Field/Number/Array/Vector/Load_Document 전체 함수와 DOCUMENT 구조,
+실제 DataJson 파서·값 구현을 추출한 독립 native fixture에서 전후를 검증했다.
+Engine 공통 include만 primitive type alias로 대체했으며 Client·UI는 실행하지 않았다.
+현재 `Data/Camera/ColosseumIntro.cutscene.json`과 기존 Protocol132 재배포·0802 번들의
+실제 동일 경로 JSON 세 개를 각각 읽었다. 세 문서 SHA256은 모두
+`6c1f0ae52e43d46b5d76022b3517ea851cdab6e6ab1bfe2c6839d1086fbbb466`이다.
+
+| native 구성 | 수정 전 실제 문서 3개 | 수정 후 실제 문서 3개 |
+|---|---|---|
+| MSVC Debug checked STL | 3회 모두 vector subscript out of range | 각 45 checks PASS, exit0 |
+| MSVC AddressSanitizer | 3회 모두 Vector → Is_Number의 container-overflow, READ 4 bytes | 각 45 checks PASS, exit0 |
+
+수정 후 실제 6개 벡터의 유한 좌표와 원래 값, 문서 전체 로드, 2개 shot,
+팀 슬롯 4/4와 이름 4행을 확인했다. 잘못된 shape·타입·범위·NaN/무한대 15조건은
+예외로 거부하고 호출자의 반환값 대입 대상과 전후 guard를 보존했다.
+범위 끝값 ±100000도 정상 승인했다. 이전 fixture의 Debug 종료 91과 ASan 종료 92는
+독립 child에서 실패를 수집하기 위해 지정한 값이며 사용자 Client의 종료 코드가 아니다.
+확인된 메모리 접근 결함은 수정했지만, 이전 사용자 프로세스의 덤프가 없으므로
+과거 c0000409/subcode7 종료를 이 호출 하나로 역추적한 것으로 기록하지 않는다.
+
+헤더는 UTF-8 BOM 없음·CRLF를 유지했고 제품 변경은 루프 경계 1줄뿐이다.
+수정 후 SHA256은 `db049c46254dd31552ac7cfd580e77f634bdf234a961313191cf583846a7571e`이다.
+대상 diff check와 native 컴파일이 통과했다. 원문 전후, 파서·입력 hash, 빌드 명령,
+실패 stack 및 전후 12회 실행 결과는
+`out/FramePacingAudit20261001/colosseum_vector`에 있다.
+이 검증 완료 시점에는 통합 Product 재빌드와 사용자 화면 재확인이 별도 단계로 남아 있다.
+
+앞서 추가한 `Client/Default/Client.cpp` 종료 진단은 그대로 유지한다. 시작 시
+`Client/Default/ClientCrash.user.log` append handle을 준비하고 terminate/SIGABRT에서
+활성 std::exception의 what, PID/TID·시각, 최대 64개 현재 stack 주소와 모듈 base/RVA를
+고정 버퍼로 기록·flush한 뒤 기존 종료 handler/abort 동작을 따른다. 작업 스레드에는
+메인 스레드의 terminate handler가 자동 전파되지 않아 process SIGABRT hook도 연결했다.
+독립 child의 메인 예외, 작업 스레드 예외, 활성 예외 없는 terminate 세 경우에서
+로그·주소 계산·기존 종료 동작 호출을 확인했다. 기존 ExitDiagnostic은 보존했다.
+직접 fast-fail처럼 이 경로를 통과하지 않는 종료까지 수집한다고 보장하지 않는다.
+증거는 `out/FramePacingAudit20261001/terminate_diagnostic`이며 진단 자체를 원인 수정으로
+간주하지 않는다.
+
+성능 근거는 종료와 분리했다. 실제
+`Client/Bin/Release/Diagnostics/client-session-50060.jsonl`에서 Colosseum world7의
+07:42:01.704와 07:42:07.044 KST에 main-pump 간격 1610ms·2218ms가 기록됐고,
+그때 마지막 수신 경과는 각각 15ms·30ms였다. 로그의 maxMainPumpGapMs=9141은
+같은 연결 generation의 앞선 Bern world1 구간에서 누적된 최대값이므로
+Colosseum에서 새 9.1초 멈춤을 측정한 것으로 읽지 않는다.
+이 계측은 메인 네트워크 pump 호출 사이 간격이며 개별 함수 CPU 시간이나 GPU 대기 시간이
+아니다. 1초 이상 간격을 세되 stall 기록에는 5초 간격 제한도 있어 모든 hitch 목록도 아니다.
+마지막 표본의 가용 물리 메모리는 약 38.8GiB이며, 현재 자료는 OOM 판정 근거가 아니다.
+
+코드에서 `PlayableCharacterAssetService::Commit_Models`는 준비된 prototype과
+작은 readiness 항목을 등록하며 여기서 모델 decode를 다시 하지 않는다.
+Poll은 worker 완료를 0ms로 검사하고 이미 끝난 worker만 join한다. 따라서 함수 이름이나
+worker 준비 총시간만으로 1.6~2.2초 지연을 main commit 비용으로 단정하지 않는다.
+더 구체적인 후보는 `ClientReplication::Advance_PlayerAssetPreparation`이 한 프레임에서
+준비된 pending spawn과 presentation을 개수·시간 budget 없이 모두 반영하는 경계다.
+그 아래 실제 Character clone/Initialize, 바인딩 admission과 저장 외형 적용이 이어진다.
+이는 동기 작업이 모일 수 있는 구조 근거이며 아직 해당 호출의 초 단위 실측은 아니다.
+
+사용자가 다음 F7 capture를 저장하면 `Network.PlayerAssets.Advance`,
+`CharacterAssets.Commit`, `Network.PlayerPresentation.CommitSpawn/Replace`,
+`Character.Initialize` 및 Character admission scope의 해당 프레임을 먼저 비교한다.
+부모·자식 scope와 worker 시간을 합산해 메인 지연으로 만들지 않는다.
+07:42:07.044 이후 실제 종료 직전의 함수별 기록은 기존 session 로그에 없으므로,
+로딩 중 지연과 뒤의 모집 화면 전환·종료가 같은 원인이라는 결론은 남겨 두지 않는다.
+
+## G13. 피킹·모집·입장/승리 컷신 최종 통합 빌드
+
+다른 사용자 세션의 `ColosseumMatchView.cpp` 변경도 같은 Desktop 정본에서 통합했다.
+이미 있던 승리4자리와 Server participant/winningTeam 선택은 유지하며, 실제 승리 Character와
+Transform이 아직 없으면 카메라를 복원하고 다음 frame에서 다시 조회한다. 서버 결과 시계는
+연장하거나 되감지 않는다. 미고용 후보를 대체 배우로 생성하지 않는다.
+
+최신 실제 Intro/MatchView 배우 선택·정리 함수와 적용 루프를 native로 추출한545검사가
+통과했다. 양팀4명, 승리A/B의 실제1~4명, valid team/arrival을 가진 미고용 후보6명 제외,
+두 stable ID 일치, 늦은 표현·같은 ID body 교체·퇴장과 승리0명/Transform 미준비를 확인했다.
+실제 camera JSON의4자리를 읽었으며 검사 전후 소스·JSON hash가 같다.
+`out/ColosseumRosterAudit20261002`에 manifest와 결과가 있다. Replication/Character/Camera
+경계는 대역이므로 실제 Client 입장·애니메이션·GPU 표시 성공을 대신하지 않는다.
+
+최종 정상 Product build는 Release
+`out/BuildPipeline/runs/20260930T230834768Z-release-product.json`, Debug
+`out/BuildPipeline/runs/20260930T230907094Z-debug-product.json` 모두 PASS다.
+SkipBuild·Clean·Rebuild·tracking 삭제 없이 기존 build pipeline을 실행했다.
+최종 Client Release SHA256은
+`94a649dd7bea0363cc99e95285928609eb70ea55e13966ee792ea31fde3bee30`이다.
+대응 EXE/PDB는 `out/ReleasePackaging/20261001-final-symbols`에 함께 보존했다.
+최종 Intro header hash는 G12와 같고 MatchView hash는
+`c84057f75b006c4a20a6e74d45065390c314d7eacb9f9cdad316070048378bb5`다.
+Client/UI를 자동 실행하지 않았으며 사용자 재현 성공 판정은 남아 있다.
+
+피킹 변경의 상세 수치·실제 이동 소비 검사는9월22일 성능 RESULT의G21/G22에 있다.
+Server 모집 계약은 각 구성178검사, 이동 입력은 각 구성27검사, 실제 Engine follower와
+Character 소비 회귀는 각 구성189검사, 컷신 파서 수정 후 Debug/ASan은 실제 문서별45검사다.
+Client 컷신 수정 뒤 Server 바이너리는 바뀌지 않아 동일 계약 검사를 반복하지 않았다.
+
+쿠크 최초 입장음은 기존 두 수정이 Protocol132-v2에도 포함된 것을 확인했다.
+이번 조사에서 최초 입장음의 추가 수정 원인을 확정하지 못했으므로 음향 문제가 완전히
+해결됐다고 기록하지 않는다. 별도 cardmaze 시계 중복 결함은 현재 패키지 수정 범위에 넣지 않았다.
+상세 증거는 기존 KOUKU_PLAYTEST_RECOVERY RESULT와
+`out/KoukuAudioClockAudit20261002`에 있다.
+
+최종 공유 파일은 Desktop의 `LostArk-Release-20261001-Movement-Colosseum.zip` 한 개다.
+169,700,299bytes, SHA256
+`19e4d80d084f68cfba71cbf97fa63d166fd563f59285ae680a6210eb01815e0d`다.
+Release Product receipt는 위 G13의08:08 빌드이며 포함된 Client hash도 일치한다.
+패키징20검사, source bindings587필드, launcher --check, ZIP CRC와 모든 manifest 파일 hash를
+통과했다. Resources는0개이며 외부 기존 LostArk Resources와192.168.0.22:7777을 사용한다.
+
+첫 ZIP 생성 후 안내문의 이전 GPU picking/자동 상대AI 설명을 교정해 재포장했다.
+교체 직전 WinError32로 멈췄고 사용자가 .partial.zip 업로드 화면을 전달했다. 임시 ZIP의
+전체 CRC·각 파일 hash·최신 안내문을 다시 검사한 뒤 정식 이름으로 원자 교체했다.
+이전 ZIP은 이름 있는 backup으로 보존했다. 로컬 검증은 업로드 서버의 파일 내용 검증이
+아니므로 공유본을 최종 정식 이름의 ZIP으로 교체하도록 안내했다. 최종 영수증은
+`out/ReleasePackaging/20261001-final-delivery.receipt.json`이다.
+
+
+### G12 후속. 서버 참가자 도열과 승리4인 준비
+
+입장은 Server `Participants`의 실제 PlayerId+NetEntityId를 조인하고 양팀 각각4개
+자리 중 arrivalIndex/2 자리를 사용한다. 정상 경기의 인간+직접 고용 용병8명이 대상이며,
+미고용 후보를 컷신 배우로 만들지 않는다. 매 frame 실제 roster를 재조합하여 늦은 모델을
+추가하고 이탈한 참가자를 제거하되 다른 참가자의 자리 번호를 당기지 않는다.
+
+승리 JSON·생성기·runtime은 이미4개 자리였다. 현재 정본과 기존 Protocol132-v2의
+승리 JSON은 SHA256 `0158fb321ec339f8cc8b0bec866bd4e52c6f7692156505f88c051b9e197f0f6a`로
+같으며1.4m 간격, 카메라4m 후퇴·0.5m 상승,151개 key를 유지했다. 최초 MATCH_FLOW_RESULT의
+2인 설명은 당시 구현 기록임을 명시하고 현재4대4 정본 링크를 추가했다.
+
+`ColosseumMatchView.cpp`는 실제 winner Character/Transform과 유효한 자리 유무를
+`Has_PresentWinner`로 검사한다. 승리 배우가 전혀 없으면 카메라·배우 override를 해제하고
+다음 frame에 다시 시도한다. 결과 Server 시각·귀환 시점은 멈추지 않는다. 정상4인 승리,
+일부 이탈, 무승부와 연출 뒤 기존 visibility/pose/animation 복원 경로를 유지한다.
+
+`python -B Tools/LpkPipeline/test_colosseum_cutscene_roster.py --out out/ColosseumCutsceneRoster20261001`
+실행은5그룹381개 assertion, failures0으로 통과했다. 생산 ACTOR·Build_Actors·Clear_Actors·
+Has_PresentWinner 본문을 그대로 추출한 C++20 fixture이며 MSVC14.51의 checked STL,
+/RTC1, /W4 /WX로 컴파일했다.0~8명, 양쪽 승리팀4자리, 후보제외, 두 ID 정확조인,
+후발·교체·이탈·expired body, 자리 유지, 원래 suppression 복원, 승리 배우 준비를 검사했다.
+Character/replication은 모의 타입이며 Sample_Presentation 전체, GPU/animation·실제 입장은
+이 fixture로 실행하지 않았다. 이 인원 검사는 Server의 모집·시작 조건을 바꾸지 않는다.
+
+변경 CPP의 별도 Release /c 컴파일과 기존 UI/resource validator(2 layouts,3 timelines,
+1800 image refs,151 camera keys,7 cheer), Python parse, diff check도 통과했다.
+C++ UTF-8 BOM 없음·CRLF를 유지했다. 같은 저장본의 다른 세션 Product Release receipt
+`out/BuildPipeline/runs/20260930T230834768Z-release-product.json`은 PASS이며 최종 수정 뒤
+ColosseumMatchView.obj와 Level_Development.obj를 실제 재컴파일한 기록을 확인했다.
+
+최종 소스 hash·명령·로그는 `out/ColosseumCutsceneRoster20261001/verification.json`,
+`receipt.json`, `client_compile.log`, `run.log`에 있다. 이 세션은 Client/UI를 실행하지 않았다.
+사용자 요청대로 ZIP은 다른 세션에서 같은 저장본 기준으로 묶으며, 실제 다인 화면·환호
+구도 확인은 사용자에게 남는다. 기존 Protocol132-v2 EXE를 이 세션에서 덮어쓰지 않았다.
+
+
+## G14. 단독 입장의 상대4명 자동 배정과 1~4인 Server 계약
+
+사용자는 인간1인일 때만 상대 용병4명 자동 배정을 승인했다. `GameRoom_Colosseum.cpp`는 인간 roster 크기가 정확히1이고 반대 팀 인간이 없을 때만 상대 후보5명 중4명을 참가자로 확정한다. 본인 팀3명은 직접 고용하고, 인간2~4인은 기존 양팀 직접 고용을 유지한다. 기존10초 입장 시계·권위·stable identity는 보존한다.
+
+`ServerGameplayContractTests_ColosseumMatch.cpp`는 인간1~4인마다 준비·모집·입장·전투120초·결과·승리4자리·인간 전원의 typed Bern 귀환을 실제 CGameRoom fixture에서 검사한다. 격리 후보 Server.exe를 현재174개 런타임 데이터로 실행한248개 검사가 통과했다. Child의 LOSTARK_SERVER_DATA_ROOT만 명시했으며 데이터와 기존 제품 바이너리·중간 산출물을 바꾸지 않았다.
+
+증거: `out/ColosseumSolo20261001/run-082442-e6389bc6/contract-data-root-receipt.json` 및 `colosseum-match-contract-data-root.log`. 후보 SHA256 `7af7affec2885cef8013bae238b70c0376f1ae443260aaa7630fb60ea568b944`. 이 최초 격리 검증 시점에는 G13 ZIP에 아직 포함되지 않았다. 후속 제품 빌드·패키지 상태는 아래 기록을 따른다.
+
+## G15. 사용자 실제4인 종료: 모집 문구의 누락 glyph 예외
+
+사용자는 새 EXE로4인 입장해 모든 Client가 종료됐다고 보고했다. 로컬 PID62428의08:28:24.543 종료 로그는 `CXX_TERMINATE`, `std::exception what=Character not in font`를 기록했다. 정확한 G13 Client/Engine과 PDB에서 해석한 stack은 `SpriteFont::FindGlyph -> SpriteFont::MeasureString -> CGameInstance::Measure_Text -> CLevel_Development::Render_PartyInviteText -> CMainApp::Render`다. 로컬 Client 종료의 직접 원인이 확정됐으며 다른 PC의 stack은 아직 수집하지 않았다.
+
+RECRUITING 진입 때 처음 표시하는 `용병 모집 · 1팀 … · 2팀 …`의 U+00B7 두 개는 설치 YoonGasiIIM 및 소형 파생 font에 없고 defaultCharacter도0이다. 전체40개 설치 font의 glyph table과 hash를 조사했다. 해당 문구를 ASCII `|`로 변경한다. 공통 CustomFont fallback 후보는 작성·오프스크린 검증했지만, 사용자가 최종적으로 글자 수정만 우선하여 ZIP을 요청했으므로 후보를 out에 보존하고 제품 소스에서는 본인 변경만 제거했다. 이번 ZIP의 Engine font 구현은 기존과 같다.
+
+08:28:25 WER는 같은 PID·Client.exe의 ucrtbase.dll+0x7F6FE, c0000409/subcode7이다. 최근 Server WER는 없으며 모든 PC 종료를 Server crash로 단정하지 않는다. 실제 dump는 남아 있지 않아 현재 stack 주소를 해당 PDB로 해석했다. binary/PDB·원본 fatal log·WER·symbolized stack·font coverage는 `out/ColosseumFourCrash20261001`에 보존했다.
+
+사용자는 우선 글자 수정본 ZIP을 요청했다. 준비 UI의 이름/HP 누수·임시 illustration·모델 lookup mip 경로와 Bern GPU 최적화는 후속 조사로 남긴다. 해당 시각의30.6ms Bern GPU 병목과 이번 C++ 예외를 같은 원인으로 설명하지 않는다. 실제 Client4개 화면 검사와 서버/폰트 자동 검사를 구분한다.
+
+
+### G15 최소 수정 검증
+
+최종 범위는 모집 문구의 `\u00B7` 두 곳을 ASCII `|`로 바꾼1줄이다. 준비 UI/HUD/portrait 개선은 `out/ColosseumLoading20261001/pending-ui.patch`, 공통 font fallback은 `out/ColosseumFourCrash20261001/font-fallback-deferred.patch`에만 보존했고 해당 제품 소스 변경은 제거했다.
+
+원래 fallback=0인 실제 YoonGasiIIM atlas와 DirectXTK를 D3D WARP 오프스크린에서 검사했다. 이전 문구의 `Character not in font` 예외를 재현하고, 새 문구의 glyph 전부 존재·MeasureString·DrawString·GPU 픽셀 출력을 확인했다(8검사, 실패0). 근거는 `out/ColosseumFourCrash20261001/font-regression/separator-validation.json`이다. 별도 공통 font 후보의529검사는 이번 제품 변경의 검증 수로 합치지 않는다.
+
+최종 최소 범위 Release Product는 `out/BuildPipeline/runs/20260930T233923226Z-release-product.json` PASS이며, 그 앞의 `20260930T233836949Z-release-product.json`은 공통 font 후보가 포함됐던 중간 빌드라 배포 정본으로 사용하지 않는다. 정상 build pipeline으로 source 복원 후 재컴파일·배포했으며 SkipBuild는 사용하지 않았다.
+
+실제 배포 Server도 `--colosseum-match-contract-test`로248검사 PASS였다. SHA256 `6942170ffc6fb765d85ac71cf896ddf1835388fab0ee7176aa99c6156c40ca8b`, runtime174파일과 EXE hash/mtime 전후 불변이다. G14의1인 상대 용병4명 자동 배정이 이번 새 Server에 포함됐다. Client·실제4인 화면은 자동 실행하지 않았다. 포장 도구20검사 PASS, numeric source bindings587필드 유효성 검사도 통과했다.
+
+최종 ZIP을 08:41 KST에 같은 Desktop 경로로 원자 교체했다. `LostArk-Release-20261001-Movement-Colosseum.zip`, 169,702,573bytes, SHA256 `edd7a774e1c0f513a6a69ac5393906331735c2c78060df569ee52b4831c1bcc2`. 이전 G13 ZIP은 `LostArk-Release-20261001-Movement-Colosseum.backup-20261001-084153-842434.zip`으로 보존했다. 모든 ZIP entry CRC와 manifest payload SHA, launcher --check가 PASS이며 Client/Server는 시작하지 않았다. 새 배포 영수증은 `out/ColosseumFourCrash20261001/delivery.receipt.json`, 정확한 새 EXE/DLL/PDB는 동 폴더 `final-symbols`에 함께 보존했다. 이 G15 파일이 G13 배포 ZIP을 대체하는 현재 정본이다.

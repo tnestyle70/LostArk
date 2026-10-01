@@ -439,7 +439,7 @@ Area Loader는 여섯 class binary를 전부 선로드하지 않는다. `CPlayab
 
 기존 Guide AI Tool을 확장한 창이다. Debug F1 → `DimensionMaster Guide`, 또는
 World Level Tool → `DimensionMaster Guide`에서 같은 창을 연다. 별도 AI 통합 창을
-중복 생성하지 않는다. 기본 창960×740에서 대사·트리거·콤보와 기존 Combat Detail을 편집한다.
+중복 생성하지 않는다. 기본 창960×860에서 대사·콜라이더·트리거·콤보와 기존 Combat Detail을 편집한다.
 
 Bern의 단일 가이드를 우클릭해 `가이드 - 차원술사 안내 시작`을 선택한다. 다른 사용자가
 안내 중이면 `다른 플레이어 안내 중`을 비활성으로 표시한다. owner는 같은 메뉴의 `안내 종료`를 사용할 수 있다.
@@ -450,8 +450,13 @@ Bern 복귀가 서버에서 commit되면 다시 걸어와 안내한다. 종료·
 
 정본은 `Data/Guide/GuideCatalog.json`과 `DimensionMaster/{Placement,Prompts,Triggers,Combat}.json`이다.
 Guide ID → Trigger/Box ID → Prompt ID → Text segments를 연결한다. Bern category의
-SPACE_ENTER는 플레이어의 진입을 감지한다. 박스를 선택한 뒤 위치 Picking을 시작하여
-맵을 한 번 클릭하고 half extents/yaw를 조절한다. ESC·우클릭·선택 변경 시 기존 위치를 보존한다.
+SPACE_ENTER는 플레이어의 진입을 감지한다. `콜라이더` 탭에서 박스 행을 선택하면 별도
+`Collider Detail` 창이 열린다. Position은 월드 중심, Size는 전체 X/Y/Z 크기(m), Rotation은
+Y축 degree이며 기존 halfExtents로 저장한다. 상세 창에서도 Save/Publish를 실행한다.
+위치 Picking은 맵을 한 번 클릭해 중심을 지정하고 ESC·우클릭·선택 변경 시 기존 위치를 보존한다.
+`Show Debug`와 `All colliders in active Area`는 현재 지역의 모든 Guide 박스를 표시한다.
+선택은 노랑, 다른 활성 박스는 청록, 비활성은 회색이며 box ID를 함께 표시한다.
+표시는 편집 중 draft이고 실행 중 Server의 적용 증거가 아니다. 탭 전환·창 접힘에도 표시를 유지한다.
 수리 NPC2곳, 항구 NPC3곳, 레이드 NPC·제련·물 위치의 박스와 귀환 문구가 준비되어 있다.
 
 Save는 원본만 변경하고 Publish는 `Tools/GuidePipeline/Publish-Guide.ps1 -Mode Publish`로
@@ -1244,9 +1249,9 @@ All Effects의 `World → 마하라카 → 워터팡`에서 중앙 장치와 Q/W
 
 콜로세움 매칭은 Debug/Release 모두 첫 대기자의 Server 10초 기한에 인간1~4명으로 시작한다.
 Server가 입장 순서대로 양 팀과 자동 파티를 배정하고, 팀별 다섯 직업 용병 후보 중 부족한 인원을
-모집해 팀당4명으로 완성한다. 인간 없는 팀은 용병4명을 자동 선택한다. 양 팀 모집 완료 후
-진입3초 → 도열8.6초 → 전투 준비10초 → ACTIVE120초 → 결과 순서를 Server tick으로 진행한다.
-각 참가자의 실제HP는 활성 발탄160줄 profile의40줄 분량이며 기존 스킬 피해량은 유지한다. 별도 match 없는 직접 콜로세움 입장은 저작 미리보기이며 PvP가 활성화되지 않는다.
+모집해 팀당4명으로 완성한다. 인간1명 입장일 때만 인간 없는 상대 팀의 용병4명을 자동 선택한다.
+2~4인 입장은 양쪽 모두 직접 고용한다. 양 팀 모집 완료 후 진입10초 → 도열8.6초 → 전투 준비10초 → ACTIVE120초 → 결과 순서를 Server tick으로 진행한다.
+각 참가자의 실제HP는 활성 발탄160줄 profile의20줄 분량이며 기존 스킬 피해량은 유지한다. 별도 match 없는 직접 콜로세움 입장은 저작 미리보기이며 PvP가 활성화되지 않는다.
 
 워터팡 섬과 콜로세움은 기존 닉네임·채팅·파티 UI를 사용한다. 베른의 섬 선착장 G와 섬 출구 G는
 파티 전체 확인창을 열고 전원 동의 뒤 함께 이동한다. 물총 Q는 세 갈래, W는 수류탄식 착탄 폭발,

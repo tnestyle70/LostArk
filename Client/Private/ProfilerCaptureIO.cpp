@@ -13,6 +13,34 @@
 
 namespace
 {
+    struct FMovementRing final
+    {
+        std::array<Client::FProfilerMovementSample, Client::CProfilerCaptureIO::MAX_MOVEMENT_SAMPLES> Samples{};
+        size_t Next = 0, Count = 0;
+        uint64_t Accepted = 0, Overwritten = 0, Rejected = 0, LastOverwrittenTick = 0;
+    };
+    FMovementRing MovementRing; // Only the Client main thread reads or writes this ring.
+
+    const char* MovementKindName(Client::EProfilerMovementKind kind)
+    {
+        switch (kind)
+        {
+        case Client::EProfilerMovementKind::Frame: return "frame";
+        case Client::EProfilerMovementKind::Snapshot: return "snapshot";
+        case Client::EProfilerMovementKind::Command: return "command";
+        }
+        return nullptr;
+    }
+
+    bool ValidMovementSample(const Client::FProfilerMovementSample& sample)
+    {
+        const auto finite = [](const auto& values)
+        { return std::all_of(values.begin(), values.end(), [](float value) { return std::isfinite(value); }); };
+        return MovementKindName(sample.Kind) != nullptr && std::isfinite(sample.DeltaSeconds) &&
+            sample.DeltaSeconds >= 0.f && std::isfinite(sample.MotionSeconds) && sample.MotionSeconds >= 0.f && finite(sample.Before) && finite(sample.After) &&
+            finite(sample.Authority) && finite(sample.Waypoint);
+    }
+
 	constexpr std::array<const char*,
 		static_cast<size_t>(Engine::EProfilerCounter::Count)>
 		CounterNames = {
@@ -214,6 +242,49 @@ namespace
         stream << ']';
     }
 
+    bool WriteMovement(std::ostream& stream, const Client::FProfilerCaptureContext& context,
+        string* error, const std::atomic_bool* cancel)
+    {
+        const auto& coverage = context.MovementCoverage;
+        stream << "  \"movementCoverage\": {\n    \"captured\": " << (coverage.Captured ? "true" : "false")
+            << ",\n    \"capacity\": " << Client::CProfilerCaptureIO::MAX_MOVEMENT_SAMPLES
+            << ",\n    \"windowBeginTick\": " << coverage.WindowBeginTick
+            << ",\n    \"windowEndTick\": " << coverage.WindowEndTick
+            << ",\n    \"framesWithBounds\": " << coverage.FramesWithBounds
+            << ",\n    \"framesWithoutBounds\": " << coverage.FramesWithoutBounds
+            << ",\n    \"windowMayBeTruncated\": " << (coverage.WindowMayBeTruncated ? "true" : "false")
+            << ",\n    \"acceptedSinceReset\": " << coverage.AcceptedSinceReset
+            << ",\n    \"overwrittenSinceReset\": " << coverage.OverwrittenSinceReset
+            << ",\n    \"rejectedSinceReset\": " << coverage.RejectedSinceReset
+            << ",\n    \"firstRetainedTick\": " << coverage.FirstRetainedTick
+            << ",\n    \"lastRetainedTick\": " << coverage.LastRetainedTick
+            << ",\n    \"outsideSavedFrames\": " << coverage.OutsideSavedFrames
+            << ",\n    \"savedSamples\": " << context.MovementSamples.size()
+            << ",\n    \"boundsSource\": \"completed-frame-main-thread-cpu-scopes\","
+            << "\n    \"note\": \"Samples observe local character calls, not every rendered pixel. QPC ticks use ticksPerSecond. Only samples within a saved completed frame's main-thread scope bounds are included; scope bounds do not cover uninstrumented frame edges. Ring and rejected totals are since the last capture reset and can include history outside this window.\"\n  },\n";
+        stream << "  \"movementSamples\": [\n";
+        for (size_t i = 0; i < context.MovementSamples.size(); ++i)
+        {
+            if (i % 256 == 0 && Cancelled(cancel, error)) return false;
+            const auto& sample = context.MovementSamples[i];
+            if (!ValidMovementSample(sample))
+            { SetError(error, "Invalid or non-finite movement capture sample."); return false; }
+            stream << "    {\"kind\": \"" << MovementKindName(sample.Kind)
+                << "\", \"qpcTick\": " << sample.QpcTick << ", \"frameNumber\": " << sample.FrameNumber
+                << ", \"characterClass\": " << sample.CharacterClass << ", \"serverTick\": " << sample.ServerTick
+                << ", \"sequence\": " << sample.Sequence << ", \"flags\": " << sample.Flags
+                << ", \"disposition\": " << sample.Disposition << ", \"deltaSeconds\": " << sample.DeltaSeconds
+                << ", \"motionSeconds\": " << sample.MotionSeconds
+                << ", \"before\": "; WriteFloatArray(stream, sample.Before);
+            stream << ", \"after\": "; WriteFloatArray(stream, sample.After);
+            stream << ", \"authority\": "; WriteFloatArray(stream, sample.Authority);
+            stream << ", \"waypoint\": "; WriteFloatArray(stream, sample.Waypoint);
+            stream << "}" << (i + 1 < context.MovementSamples.size() ? "," : "") << "\n";
+        }
+        stream << "  ],\n";
+        return true;
+    }
+
     void WriteContext(std::ostream& stream, const Client::FProfilerCaptureContext& context)
     {
 #ifdef _DEBUG
@@ -293,6 +364,7 @@ bool SaveJsonImpl(
 	Stream << "  \"schema\": \"LostArkProfilerCapture.v3\",\n";
     WriteContext(Stream, Context);
     WriteSummary(Stream, Snapshot);
+    if (!WriteMovement(Stream, Context, pOutError, pCancel)) return false;
 	Stream << "  \"droppedCpuScopes\": " << Snapshot.DroppedCpuScopes << ",\n";
 	Stream << "  \"droppedGpuFrames\": " << Snapshot.DroppedGpuFrames << ",\n";
 	Stream << "  \"droppedGpuScopes\": " << Snapshot.DroppedGpuScopes << ",\n";
@@ -483,6 +555,79 @@ bool SaveJsonImpl(
 			return false;
 		}
 	}
+}
+
+void Client::CProfilerCaptureIO::Record_MovementSample(const Engine::CProfiler* profiler,
+    FProfilerMovementSample sample) noexcept
+{
+    if (!profiler || !profiler->Is_Enabled()) return;
+    if (GetCurrentThreadId() != profiler->Get_MainThreadId()) return;
+    if (!ValidMovementSample(sample)) { ++MovementRing.Rejected; return; }
+    LARGE_INTEGER tick{};
+    if (!QueryPerformanceCounter(&tick) || tick.QuadPart <= 0) { ++MovementRing.Rejected; return; }
+    sample.QpcTick = static_cast<uint64_t>(tick.QuadPart);
+    sample.FrameNumber = 0;
+    if (MovementRing.Count == MAX_MOVEMENT_SAMPLES)
+    {
+        ++MovementRing.Overwritten;
+        MovementRing.LastOverwrittenTick = MovementRing.Samples[MovementRing.Next].QpcTick;
+    }
+    else ++MovementRing.Count;
+    MovementRing.Samples[MovementRing.Next] = sample;
+    MovementRing.Next = (MovementRing.Next + 1) % MAX_MOVEMENT_SAMPLES;
+    ++MovementRing.Accepted;
+}
+
+void Client::CProfilerCaptureIO::Reset_MovementSamples() noexcept
+{
+    MovementRing.Next = MovementRing.Count = 0;
+    MovementRing.Accepted = MovementRing.Overwritten = MovementRing.Rejected = MovementRing.LastOverwrittenTick = 0;
+}
+
+void Client::CProfilerCaptureIO::Copy_MovementSamples(const Engine::FProfilerCaptureSnapshot& snapshot,
+    FProfilerCaptureContext& context)
+{
+    context.MovementSamples.clear();
+    context.MovementCoverage = {};
+    if (GetCurrentThreadId() != snapshot.MainThreadId) return;
+    auto& coverage = context.MovementCoverage;
+    coverage.Captured = true;
+    coverage.AcceptedSinceReset = MovementRing.Accepted;
+    coverage.OverwrittenSinceReset = MovementRing.Overwritten;
+    coverage.RejectedSinceReset = MovementRing.Rejected;
+    struct FFrameBounds final { uint64_t Number, Begin, End; };
+    std::vector<FFrameBounds> bounds;
+    bounds.reserve(snapshot.Frames.size());
+    for (const auto& frame : snapshot.Frames)
+    {
+        uint64_t begin = UINT64_MAX, end = 0;
+        for (const auto& scope : frame.CpuScopes)
+        {
+            if (scope.ThreadId != snapshot.MainThreadId || !scope.BeginTick || scope.EndTick < scope.BeginTick) continue;
+            begin = (std::min)(begin, scope.BeginTick);
+            end = (std::max)(end, scope.EndTick);
+        }
+        if (!end) { ++coverage.FramesWithoutBounds; continue; }
+        bounds.push_back({frame.FrameNumber, begin, end});
+        ++coverage.FramesWithBounds;
+        coverage.WindowBeginTick = coverage.WindowBeginTick ? (std::min)(coverage.WindowBeginTick, begin) : begin;
+        coverage.WindowEndTick = (std::max)(coverage.WindowEndTick, end);
+    }
+    coverage.WindowMayBeTruncated = coverage.FramesWithoutBounds != 0 || MovementRing.Rejected != 0 ||
+        (coverage.WindowBeginTick && MovementRing.LastOverwrittenTick >= coverage.WindowBeginTick);
+    const size_t first = (MovementRing.Next + MAX_MOVEMENT_SAMPLES - MovementRing.Count) % MAX_MOVEMENT_SAMPLES;
+    context.MovementSamples.reserve(MovementRing.Count);
+    for (size_t i = 0; i < MovementRing.Count; ++i)
+    {
+        auto sample = MovementRing.Samples[(first + i) % MAX_MOVEMENT_SAMPLES];
+        if (!i) coverage.FirstRetainedTick = sample.QpcTick;
+        coverage.LastRetainedTick = sample.QpcTick;
+        const auto frame = std::find_if(bounds.begin(), bounds.end(), [&](const auto& range)
+        { return sample.QpcTick >= range.Begin && sample.QpcTick <= range.End; });
+        if (frame == bounds.end()) { ++coverage.OutsideSavedFrames; continue; }
+        sample.FrameNumber = frame->Number;
+        context.MovementSamples.push_back(sample);
+    }
 }
 
 bool_t Client::CProfilerCaptureIO::Save_Json(

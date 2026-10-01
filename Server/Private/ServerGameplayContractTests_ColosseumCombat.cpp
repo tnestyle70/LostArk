@@ -145,10 +145,10 @@ namespace
                 if (artist) fixture.skill->eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
                 CAST bars;
                 bars.enemy.iColosseumDamageReferenceHp = 600001u;
-                bars.enemy.iMaximumHp = bars.enemy.iCurrentHp = 150001u;
+                bars.enemy.iMaximumHp = bars.enemy.iCurrentHp = 75001u;
                 bars.Finish(fixture);
-                tests.Require(bars.started && 150001u - bars.enemy.iCurrentHp == (artist ? 750u : 3751u),
-                    "40-bar HP keeps ceil(original full HP/160) cast damage, then Artist T scales once before sub-hit sharing");
+                tests.Require(bars.started && 75001u - bars.enemy.iCurrentHp == (artist ? 750u : 3751u),
+                    "20-bar HP keeps ceil(original full HP/160) cast damage, then Artist T scales once before sub-hit sharing");
             }
             fixture.skill->eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
             fixture.skill->strInputSlot = "Q";
@@ -156,13 +156,13 @@ namespace
             {
                 fixture.damage->iBossHealthBarDamage = reference == 169u ? 15u : 1u;
                 const auto expected = reference == 169u ? 16u : 4633034u;
-                CAST quarter;
-                quarter.enemy.iColosseumDamageReferenceHp = reference;
-                const auto maximum = reference / 4u + (reference % 4u != 0u ? 1u : 0u);
-                quarter.enemy.iMaximumHp = quarter.enemy.iCurrentHp = maximum;
-                quarter.Finish(fixture);
-                tests.Require(quarter.started && maximum - quarter.enemy.iCurrentHp == expected,
-                    "Caster/contact/timed/fallback retain original full-HP damage independently of quarter-HP rounding");
+                CAST eighth;
+                eighth.enemy.iColosseumDamageReferenceHp = reference;
+                const auto maximum = reference / 8u + (reference % 8u != 0u ? 1u : 0u);
+                eighth.enemy.iMaximumHp = eighth.enemy.iCurrentHp = maximum;
+                eighth.Finish(fixture);
+                tests.Require(eighth.started && maximum - eighth.enemy.iCurrentHp == expected,
+                    "Caster/contact/timed/fallback retain original full-HP damage independently of eighth-HP rounding");
             }
             CAST missingReference; missingReference.enemy.iColosseumDamageReferenceHp = 0u;
             missingReference.Finish(fixture);
@@ -196,13 +196,43 @@ namespace
             hit.iRepeatCount = 1u; hit.fPushRange = -2.f; hit.iPushMs = 500u;
             CAST cast; cast.Finish(fixture);
             const bool strong = fixture.skill->strInputSlot == "ALT_V", soft = fixture.skill->strInputSlot == "V";
-            const float range = strong ? 16.f : soft ? 5.1f : 2.f;
-            const float seconds = strong ? 1.5f : soft ? 2.161f : .5f;
+            const float range = strong ? 1.6f : soft ? .51f : .2f;
+            const float seconds = strong ? .15f : soft ? .217f : .05f;
             tests.Require(cast.started && Near(cast.enemy.fKnockbackSpeed * cast.enemy.fKnockbackRemainingSeconds, range) &&
                 Near(cast.enemy.fKnockbackRemainingSeconds, seconds) && !cast.enemy.bKnockbackCanLeaveArena &&
                 cast.enemy.bKnockbackBallistic == (strong || soft) &&
                 (strong || soft ? cast.enemy.fKnockbackDirectionZ > 0.f : cast.enemy.fKnockbackDirectionZ < 0.f),
-                "PvP preserves authored pulls, uses ALT_V 16m/1500ms and V 5.1m/2161ms, and never permits arena escape");
+                "PvP keeps one tenth of signed authored movement, ALT_V 1.6m/150ms and V 0.51m/217ms without arena escape");
+        }
+        {
+            FIXTURE fixture(source, 0); if (!fixture.ready) return;
+            auto& hit = fixture.skill->Hits.front();
+            hit.iRepeatCount = 1u; hit.fPushRange = 2.f; hit.iPushMs = 500u;
+            CAST pushed; pushed.Finish(fixture);
+            tests.Require(pushed.started && Near(pushed.enemy.fKnockbackSpeed * pushed.enemy.fKnockbackRemainingSeconds, .2f) &&
+                Near(pushed.enemy.fKnockbackRemainingSeconds, .05f) && pushed.enemy.fKnockbackDirectionZ > 0.f &&
+                pushed.ally.fKnockbackRemainingSeconds == 0.f,
+                "Ordinary authored PvP pushes shrink distance and travel time without moving an overlapping ally");
+            for (int blocked = 0; blocked < 3; ++blocked)
+            {
+                CAST cast;
+                if (blocked == 0) cast.enemy.fPositionZ = 8.f;
+                if (blocked == 1) cast.enemy.iInvulnerableEndTick = 100u;
+                if (blocked == 2) cast.enemy.iTimeStopEndTick = 100u;
+                cast.Finish(fixture);
+                tests.Require(cast.started && cast.enemy.iCurrentHp == 600000u &&
+                    cast.enemy.fKnockbackRemainingSeconds == 0.f && cast.enemy.iKnockdownEndTick == 0u,
+                    "Reduced PvP push still requires collider contact and respects invulnerability and time stop");
+            }
+            for (const bool zeroRange : {false, true})
+            {
+                hit.fPushRange = zeroRange ? 0.f : 2.f;
+                hit.iPushMs = zeroRange ? 500u : 0u;
+                CAST cast; cast.Finish(fixture);
+                tests.Require(cast.started && cast.enemy.iCurrentHp < 600000u &&
+                    cast.enemy.fKnockbackRemainingSeconds == 0.f && cast.enemy.iKnockdownEndTick == 0u,
+                    "An authored zero push distance or duration remains damage-only in PvP");
+            }
         }
         {
             FIXTURE fixture(source, 0);

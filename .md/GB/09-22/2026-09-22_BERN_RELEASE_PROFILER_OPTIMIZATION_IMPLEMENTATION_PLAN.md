@@ -257,3 +257,126 @@ body block, stop, fast ACK corner 전환, tick wrap, 긴 hitch/teleport와 속�
 평균 거리만 보지 않고 클릭·ACK 직후를 포함한 모든 frame을 single-click trace와 비교하며
 steady 속도 자체도 ±0.5% 이내로 검사한다. native Debug/Release, 제품 빌드, 사용자 화면
 판정은 RESULT에서 각각 구분한다.
+
+## G20. 최신 빌드 이동의 실제 좌표·보정 계측
+
+사용자는05:40 이후 최신 Release에서도 이동이 끊긴다고 확인했다. 구형 Release 캡처만으로
+현재 원인을 대신 설명하지 않는다. 다른 통합 작업은 CPU 지형 피킹을 소유하고 있으며,
+이번 범위는 Character의 실제 이동 소비와 기존 F7 Capture의 좌표 증거다.
+
+`ProfilerCaptureIO.h/.cpp`의 기존 저장 문맥에 이동 표본을 추가한다. 표본은 frame 이동,
+snapshot 적용, 목표 제출의 종류와 QPC 시각, 전후 위치, frame delta, Server tick·ACK,
+snapshot 위치·waypoint와 적용 결과를 보존한다. 고정 상한의 Client main-thread ring만
+사용하고 Capture OFF에서는 QPC·할당·파일 쓰기를 하지 않는다. `ProfilerTool.cpp`는
+기존 Capture 시작에 ring을 비우고 저장할 완료 frame들의 QPC 범위만 불변 vector로
+복사하여 기존 background exporter에 넘긴다. 누락·범위 밖 표본을 완전한 자료로 표현하지 않는다.
+Engine gameplay 타입, 새 저장 스레드, 별도 프로파일러, project 등록은 추가하지 않는다.
+
+`Character.cpp`는 실제 입력·snapshot·한 frame 최종 표시 위치에 위 표본을 연결한다.
+이동 제어 상태나 수식을 계측 때문에 바꾸지 않는다. 같은 최신 helper에 실제 Character 호출 순서,
+측정한 가변 frame 간격과30Hz Server 입력을 넣어 입력 전후의 좌표를 비교한다. 재현된 결함의
+최소 수정은 실패 fixture와 함께 기존 영구 회귀에 넣고, GPU 대기와 별개인 것으로 기록한다.
+
+검증은 표본의 유한 값·bounded ring·Capture OFF·완료 frame 범위·JSON parse·비동기 저장,
+변경 CPP 최소 컴파일과 사용 가능한 Release Product Build다. 실행 중 Debug Client를 종료하거나
+화면을 조작하지 않는다. 실제 새 Release/Debug 동일 장면의 조작감은 사용자 판정으로 남긴다.
+
+## G21. 재클릭 전후 이동 시간과 경로 교체의 원자성
+
+`CCharacter::Update_LocalMovePrediction`은 `CLocalMovePrediction`이 freshness와150ms
+extrapolation horizon으로 계산한 시간을 다시100ms로 제한한다. 반면 ACK 이후 helper는
+같은 horizon 안의 전체 시간을 소비한다. 따라서132.4ms frame의 미승인 재클릭은100ms만
+진행한다. 이를 평균 FPS나 Release compiler 문제로 부르지 않고 실제 소비자 불일치로 수정한다.
+
+- `Client/Private/Character.cpp`: `Get_LocalPathDeltaSeconds()`를 기존 follower에 그대로
+  전달한다. freshness350ms, extrapolation150ms, 최종 표시 속도 budget과 Server 권위는
+  `CLocalMovePrediction`이 계속 소유한다. 모든 frame delta에 무조건 큰 값을 적용하는 변경이 아니다.
+- `Engine/Private/NavPathFollower.cpp`: 2cm 이내 waypoint로 무료 이동하는 분기를 제거한다.
+  남은 segment가 짧더라도 실제 거리를 frame 예산에서 차감하고 도착 시점에만 다음 waypoint로
+  진행한다. 새 경로/physics runtime을 만들지 않는다.
+- `Server/Private/GameRoom_PlayerCommands.cpp`: `Commit_MoveGoal`의 경로 검색은 임시
+  waypoint vector에 수행한다. 실패한 새 목표가 진행 중 `MovePath`, index, request/goal을
+  지우지 않게 하고, 성공한 경로만 기존 player에 commit한다. 직접 시야 이동과 같은 목표
+  재전송의 기존 빠른 경로, 처리 sequence ACK와 skill-cancel 권위는 유지한다.
+
+실제 `CNavigation`, `CTransform`, `CNavPathFollower`를 사용한 화면 없는 native probe로
+16/25/50/132ms와 ACK 전후·corner·정지를 확인한다. header만 모사한 straight follower를
+제품 통합 증거로 쓰지 않는다. Server는 기존 gameplay contract test에서 유효 이동 중 실패
+retarget의 이전 상태 보존, 처리 sequence 진행, 후속 유효 목표 교체와 실제 이동을 검사한다.
+새 제품 H/CPP와 프로젝트 등록은 필요하지 않으며 기존 테스트 소비자에 회귀를 둔다.
+
+최소 컴파일과 Product Debug/Release 링크는 소스 반영 뒤 구분해 기록한다. 다른 세션의
+protocol132 병합·제품 빌드와 같은 출력 경로를 동시에 쓰지 않는다. 이 변경이 최신 Release의
+모든 끊김을 해결했다고 선행 판정하지 않고 G20의 실제 이동 표본과 사용자 재현으로 닫는다.
+
+## G22. 이동 피킹의 GPU 의존 제거 수용 조건
+
+현재 통합본의 비동기 GPU 피킹은 주 스레드의 `Map(READ,0)` 대기를 제거하지만, 입력 명령이
+GPU 결과가 준비되는 frame까지 지연되는 구조는 남는다. 최종 이동 목표는 클릭 시점의 카메라
+ray와 CPU의 월드 입력으로 같은 frame에 확정하고 typed command sink로 제출한다.
+Desktop의 기존 Engine/Client 파일에서 구현을 통합하고 다음 조건을 같은 변경에서 검증한다.
+
+- `Mesh.h/.cpp`는 기존 불변 `PICK_GEOMETRY`에 triangle ordinal과 preorder BVH node를
+  보관한다. prototype 로드에서 한 번 만들고 clone이 공유한다. `Model.h/.cpp`의
+  `Try_PickStaticSurface(meshIndex, world, ray, maxDistance, cullMode, distance)`는
+  affine inverse와 determinant를 검증해 월드 거리와 실제 cull 정책을 보존한다.
+  기존 `Try_PickCurrentPose`의 정적 분기도 이 가속 구조를 재사용한다. 클릭 경로에서
+  asset load/정점 복사/전체 geometry 재구축이나 query별 heap 할당이 발생하지 않아야 한다.
+- 기존 `MapPlacementRuntime`과 `CModel -> CMaterial` 소비 경로를 확장한다. runtime visible,
+  instance visible뿐 아니라 Stage/CameraPreview suppression, 파괴·숨김·level lifetime을
+  실제 렌더 소비자와 대조한다. 숨긴 상층 geometry가 hit를 가로채면 안 된다.
+- ray는 해당 입력 occurrence의 viewport/view/projection을 사용한다. 겹친 층·계단·가림·
+  음수 scale·LOD·배경 제외 scope를 검사하고, alpha-tested material의 정확한 시각 hit와
+  이동용 surface 계약을 혼동하지 않는다. 전역 shader/quality 옵션은 변경하지 않는다.
+- Server MOVE 계약은 XZ이고 Client/Server navigation은 시작 위치의 층으로 경로를 찾는다.
+  시각 hit의 Y만으로 다른 층 진입을 승인하지 않는다. 표식 Y와 실제 navigation 목적지의
+  관계를 검사하며, Client의 일부 navgrid만으로 Server가 허용할 목표를 거부하지 않는다.
+- CPU miss/데이터 미준비를 동기 GPU 피킹으로 되돌리지 않는다. 실패한 입력은 기존 이동을
+  유지하며 새 클릭·hold·버튼 release·UI 소비·free camera·level 교체를 각각 확인한다.
+
+`MapAssetObject`는 현재 world AABB, `MapStaticBatchObject`는 현재 instance별 보수적
+sphere를 먼저 검사하고 각 material mesh에 `Select_Pass`의 BACK/FRONT/NONE 정책을
+전달한다. `MapPlacementRuntime`은 현재 소유한 두 집합에서 최단 hit만 합친다. 기존
+프로토타입과 instance가 정본이며 별도 placement/transform cache를 만들지 않는다.
+masked 바닥과 cardmaze floor receiver를 포함하고 명시 foliage/grass·character 변형 재질과
+morph를 제외한다. alpha texture 구멍, GPU vertex 변형, 렌더 LOD와의 시각 일치는 별도 경계다.
+
+`PlayerController.h/.cpp`의 `MOVEMENT_SURFACE_RESOLVER`는 Level 수명 안의 map query를
+주입한다. Bern/Valtan/Kouku/CharacterSelect/Development의 기존 controller 생성 지점에서
+연결하며, Development가 Maharaka/Colosseum/Training의 동일 경로를 담당한다. 기존 GPU 요청
+ID·후속 poll·취소용 이동 상태는 없애고 query 성공 frame에 기존 typed sink로 제출한다.
+배 이동은 기존 수면 plane을 유지한다. 새 제품 C++ 파일이 없어 vcxproj/filters 등록은 없다.
+
+검증 결과에는 map 크기, 후보/triangle 수, 클릭 비용의 p50/p95/max, 이동 command 제출 frame,
+GPU readback 호출 수와 실패 이유를 남긴다. CPU 피킹 구현·빌드·설치 및 사용자 화면 확인을
+따로 기록하며 비동기 GPU 적용만으로 이 G의 완료를 선언하지 않는다.
+
+hold의 표면 검색 간격은 마지막 packet 송신 시각과 분리해50ms로 제한한다. 동일 목표와 miss도
+검색 시각을 갱신하고 새 press는 즉시 검색한다. batch bounds는 기존 cache가 clean/valid일 때만
+전체 배제에 쓰고 dirty이면 개별 instance를 검사한다. query 중 bounds 재구축은 하지 않는다.
+실제 Bern 배치 bounds와 원본 geometry로 비용·할당을 검증하며 broadphase 수치와 전체 입력
+frame 비용을 구분한다. synthetic 전체 중첩 입력의 비용도 남겨 무조건적인 성능 보장을 피한다.
+
+
+## G23. 08:23 베른 캡처의 동일 조명 재질 행 통합
+
+최신 `베른_33fps_20261001_082343_324_frame214_62428_0.json`은 Release/RTX4070,
+3840×2126에서 평균30.565ms다. 유효 GPU116frame의 Lights14.838ms가 우선 병목이며,
+현재 카메라·게시 광원으로 기본2회 + source 재질65행×11회 =717draw를 재구성했다.
+일반 local light의 화면 영역 제한은 이 카메라의 유일한 ALL 광원이 near-plane에 걸려
+fullscreen fallback이므로 이번 변경으로 선택하지 않는다.
+
+`Engine/Private/Material.cpp`의 기존 frame registry 안에서 동일한 조명 입력만 같은 행으로
+연결한다. program, baked 여부, lightTextureMask, 전체 lightConstants의 비트와 실제 사용
+texture override 적용 후 SRV가 모두 같은 경우에만 공유한다. 각 원래 재질의 base constants,
+base textures와 GBuffer 계산은 그대로 실행하며 셰이더·광원 순서·화질 설정·Resources는 유지한다.
+포인터별 lookup은 모든 alias의 shared_ptr까지 보유해 기존 CModel의 copy-on-write와 수명을
+유지하고 Reset에서 해제한다. 실패한 base bind는 alias 등록을 하지 않는다. forward 재질은
+기존대로 deferred registry에 들어오지 않는다. 공통 CMaterial 경로이며 베른 이름 분기는 없다.
+
+기존 `Tools/RenderingPipeline/SourceCharacterShaderVariantProbe.cpp`와 runner의 선택 검증으로
+동일 clone, base-only 차이, 조명 상수·program·texture 차이, 실패·Reset·alias 수명과 다수 행을
+확인한다. 제품 C++ 신규 파일·public API·project/filter 등록은 없다. 인코딩을 유지하고
+동일 설정의 정상 Release Product Build로 DLL/EXE를 연결한다. 다른 채팅의 폰트/UI 수정과
+동일 출력 build가 겹치지 않는지 확인한다. 캡처의 실제65행이 줄어든 수와 개선 FPS는 새 사용자
+캡처 전에는 확정하지 않으며 headless 수치 검증·빌드·사용자 화면을 분리해 RESULT에 기록한다.

@@ -457,6 +457,64 @@ bool_t CMapStaticBatchObject::Try_GetStaticShadowRevision(uint64_t& outRevision)
 	return true;
 }
 
+bool_t CMapStaticBatchObject::Try_PickMovementSurface(
+	const float3_t& rayOrigin, const float3_t& rayDirection,
+	const f32_t maxDistance, f32_t& outDistance) const
+{
+	if (!m_pModelCom || m_RenderProfile.opacity <= 0.f ||
+		m_RenderProfile.renderMode != MAP_ASSET_RENDER_MODE::DEFERRED)
+		return false;
+	const vector_t origin = XMLoadFloat3(&rayOrigin);
+	const vector_t direction = XMLoadFloat3(&rayDirection);
+	// The cached envelope contains every authored-visible instance. A dirty
+	// envelope cannot reject the current transform, so retain the instance scan.
+	if (!m_bBatchBoundsDirty && m_bHasBatchBounds)
+	{
+		const BoundingBox bounds(
+			float3_t(m_BatchBounds.x, m_BatchBounds.y, m_BatchBounds.z),
+			float3_t(m_BatchBounds.w, m_BatchBounds.w, m_BatchBounds.w));
+		f32_t entry = 0.f;
+		if (!bounds.Intersects(origin, direction, entry) || entry > maxDistance)
+			return false;
+	}
+	const uint32_t cull = CMapAssetRenderUtils::Select_Pass(m_RenderProfile, m_bMirrored) % 3u;
+	const auto cullMode = cull == 0u ? CModel::PICK_CULL_MODE::BACK :
+		cull == 1u ? CModel::PICK_CULL_MODE::FRONT : CModel::PICK_CULL_MODE::NONE;
+	f32_t nearest = maxDistance;
+	bool_t hit = false;
+	for (const auto& instance : m_Instances)
+	{
+		if (!instance.Visible || instance.Suppressed || instance.CameraPreviewSuppressed)
+			continue;
+		const BoundingBox bounds(instance.WorldBoundsCenter, float3_t(
+			instance.WorldBoundsRadius, instance.WorldBoundsRadius, instance.WorldBoundsRadius));
+		f32_t boundDistance = 0.f;
+		if (!bounds.Intersects(origin, direction, boundDistance) || boundDistance > nearest)
+			continue;
+		for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
+		{
+			const auto* surface = m_pModelCom->Get_MaterialSurface(mesh);
+			// Masked floor geometry remains eligible; GPU alpha coverage is not
+			// the movement contract. Animated foliage and shader displacement are excluded.
+			if (m_pModelCom->Has_MorphBaseVertices(mesh) ||
+				(surface && (surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED ||
+					surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED ||
+					(surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
+						surface->sourceCharacter.program == 43u))))
+				continue;
+			f32_t distance = nearest;
+			if (m_pModelCom->Try_PickStaticSurface(mesh, instance.World, rayOrigin, rayDirection,
+				nearest, cullMode, distance) && distance < nearest)
+			{
+				nearest = distance;
+				hit = true;
+			}
+		}
+	}
+	if (hit) outDistance = nearest;
+	return hit;
+}
+
 HRESULT CMapStaticBatchObject::Update_Instance(
 	uint64_t placementId,
 	const FMapStaticInstance& instance)

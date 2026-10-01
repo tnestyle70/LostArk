@@ -50,10 +50,10 @@ public:
 	/* Left button currently held, independent of any rect -- for a multi-frame drag gesture
 	(press on frame N, keep moving through frame N+k, release on frame N+k) that Is_Clicked's
 	single-frame edge can't express by itself. */
-	bool_t Is_LeftDown() const { return !m_bCinematicSuppressed && !m_bLeftAwaitRelease && m_bLeftDownThisFrame; }
+	bool_t Is_LeftDown() const { return !Is_PointerInputSuppressed() && !m_bLeftAwaitRelease && m_bLeftDownThisFrame; }
 	/* Real left-click up-edge this frame, independent of any rect -- the drag-release
 	counterpart to Is_LeftClickEdge. */
-	bool_t Is_LeftReleaseEdge() const { return !m_bCinematicSuppressed && !m_bLeftAwaitRelease && !m_bLeftDownThisFrame && m_bLeftDownLastFrame; }
+	bool_t Is_LeftReleaseEdge() const { return !Is_PointerInputSuppressed() && !m_bLeftAwaitRelease && !m_bLeftDownThisFrame && m_bLeftDownLastFrame; }
 	/* Current cursor position converted into the caller's own document reference-resolution
 	units (the inverse of the scaling Is_Hovered applies) -- for a drag gesture that needs the
 	real mouse delta/position between frames, not just a hit-test bool. False (position
@@ -69,7 +69,7 @@ public:
 	WM_MOUSEWHEEL (WndProc, Client.cpp) rather than DirectInput: a runtime window that has the
 	cursor claims the mouse, which blocks CGameInstance::Get_DIMouseMove for the very frames a
 	list under that cursor wants to scroll. */
-	int32_t Get_MouseWheelNotches() const { return m_bCinematicSuppressed ? 0 : m_iWheelNotchesThisFrame; }
+	int32_t Get_MouseWheelNotches() const { return Is_PointerInputSuppressed() ? 0 : m_iWheelNotchesThisFrame; }
 	/* WndProc only. */
 	void On_MouseWheel(int32_t iWheelDelta);
 	/* A modal/full-screen UI screen claims the mouse for the whole frame regardless of which
@@ -117,6 +117,12 @@ public:
 	void End_Frame();
 
 private:
+	friend class CUIPointerScope;
+	bool_t Is_PointerInputSuppressed() const
+	{
+		return m_bCinematicSuppressed &&
+			(!m_pCinematicPointerOwner || m_pPointerScope != m_pCinematicPointerOwner);
+	}
 	CUIInputRouter() = default;
 
 private:
@@ -136,6 +142,7 @@ private:
 	f32_t	m_fTopWindowWidthLastFrame = 0.f;
 	f32_t	m_fTopWindowHeightLastFrame = 0.f;
 	const void*	m_pPointerScope = nullptr;
+	const void*	m_pCinematicPointerOwner = nullptr;
 	bool_t	m_bLeftClickConsumed = false;
 	f32_t	m_fTopWindowX = 0.f;
 	f32_t	m_fTopWindowY = 0.f;
@@ -158,17 +165,25 @@ window that can overlap another one opens this at the top of its input pass. */
 class CUIPointerScope final
 {
 public:
-	explicit CUIPointerScope(const void* pOwner)
-		: m_pPrevious(CUIInputRouter::Get().Get_PointerScope())
+	explicit CUIPointerScope(const void* pOwner, bool_t allowCinematicInput = false)
+		: m_pPrevious(CUIInputRouter::Get().Get_PointerScope()),
+		  m_pPreviousCinematicOwner(CUIInputRouter::Get().m_pCinematicPointerOwner)
 	{
+		// Only a cinematic-owned control may opt in; normal windows and gameplay stay blocked.
+		CUIInputRouter::Get().m_pCinematicPointerOwner = allowCinematicInput ? pOwner : nullptr;
 		CUIInputRouter::Get().Set_PointerScope(pOwner);
 	}
-	~CUIPointerScope() { CUIInputRouter::Get().Set_PointerScope(m_pPrevious); }
+	~CUIPointerScope()
+	{
+		CUIInputRouter::Get().Set_PointerScope(m_pPrevious);
+		CUIInputRouter::Get().m_pCinematicPointerOwner = m_pPreviousCinematicOwner;
+	}
 	CUIPointerScope(const CUIPointerScope&) = delete;
 	CUIPointerScope& operator=(const CUIPointerScope&) = delete;
 
 private:
 	const void* m_pPrevious = nullptr;
+	const void* m_pPreviousCinematicOwner = nullptr;
 };
 
 NS_END

@@ -540,6 +540,11 @@ namespace Client
 		bool_t Request_VehicleRiding(std::uint32_t vehicleId);
 		bool_t Request_UseItem(std::uint32_t requestSequence, const std::string& itemId);
 		bool_t Request_DebugGiveItem(std::uint32_t requestSequence, const std::string& itemId, std::uint32_t quantity);
+		// The active Level supplies CPU map surfaces; Controller owns only input and typed intent.
+		using MOVEMENT_SURFACE_RESOLVER = std::function<bool_t(
+			const float3_t&, const float3_t&, float3_t&)>;
+		void Set_MovementSurfaceResolver(MOVEMENT_SURFACE_RESOLVER resolver)
+		{ m_MovementSurfaceResolver = std::move(resolver); }
 		using ITEM_TARGET_RESOLVER = std::function<LostArk::Shared::NET_ENTITY_ID(
 			const float3_t&, const float3_t&)>;
 		void Set_ItemTargetResolver(ITEM_TARGET_RESOLVER resolver) { m_ItemTargetResolver = std::move(resolver); }
@@ -647,7 +652,6 @@ namespace Client
 			bool_t playClickEffect,
 			const float3_t* pExactClickSurface);
 
-		void Cancel_MovePicking();
 		void Update_MovePicking(bool_t enabled, bool_t mouseDown, bool_t freshPress,
 			const shared_ptr<CCharacter>& character);
 		bool_t Update_MarioControls(bool_t gameplayCommandsEnabled);
@@ -719,6 +723,7 @@ namespace Client
 
 	private:
 		bool_t m_bGameplayCommandsEnabled = false;
+		MOVEMENT_SURFACE_RESOLVER m_MovementSurfaceResolver;
 		ITEM_TARGET_RESOLVER m_ItemTargetResolver;
 		weak_ptr<CCharacter> m_pLocalCharacter;
 		shared_ptr<IPlayerCommandSink> m_pCommandSink;
@@ -761,14 +766,8 @@ namespace Client
 	bool_t m_wasRightMousePhysicallyDown = false;
 		bool_t m_isMoveClickSuppressed = false;
 		std::chrono::steady_clock::time_point m_LastMoveGoalSentAt{};
+		std::chrono::steady_clock::time_point m_LastMoveSurfaceQueryAt{};
 		float3_t m_LastSentMoveGoal{};
-		uint64_t m_iMovePickRequest = 0u;
-		uint32_t m_iMovePickActionSequence = 0u;
-		uint32_t m_iMovePickMoveSequence = 0u;
-		std::chrono::steady_clock::time_point m_MovePickRequestedAt{};
-		bool_t m_bMovePickFreshPress = false;
-		bool_t m_bMovePickHasFallback = false;
-		float3_t m_MovePickFallback{};
 		/* Edge state indexed by DirectInput key code, not by binding position: a
 		slot that is later re-pointed at another skill must not make a key that is
 		already held read as a fresh press. */

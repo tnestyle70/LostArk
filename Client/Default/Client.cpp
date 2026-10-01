@@ -16,6 +16,8 @@
 #include "ImGuiLayer.h"
 
 #include <cstdlib>
+#include <exception>
+#include <csignal>
 #include <fstream>
 #include <filesystem>
 #include <iomanip>
@@ -36,6 +38,210 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 namespace
 {
+    // Prepare the file before a fatal C++ path; crash reporting must not depend
+    // on Engine lifetime, iostreams, a heap-built path or symbol-loader state.
+    wchar_t g_CrashLogPath[32768]{};
+    HANDLE g_CrashLogFile = INVALID_HANDLE_VALUE;
+    std::terminate_handler g_PreviousTerminateHandler = nullptr;
+    using AbortSignalHandler = void (*)(int);
+    AbortSignalHandler g_PreviousAbortHandler = SIG_DFL;
+    volatile LONG g_TerminateDiagnosticEntered = 0;
+    char g_CrashLogText[65536]{};
+
+    struct CrashText final
+    {
+        DWORD length = 0;
+
+        void Character(const char value) noexcept
+        {
+            if (length < sizeof(g_CrashLogText))
+                g_CrashLogText[length++] = value;
+        }
+
+        void Text(const char* value, const size_t limit = 4096u) noexcept
+        {
+            if (!value) value = "<null>";
+            for (size_t index = 0; index < limit && value[index]; ++index)
+                Character(value[index]);
+        }
+
+        void Escaped(const char* value, const size_t limit = 4096u) noexcept
+        {
+            if (!value) value = "<null>";
+            size_t index = 0;
+            for (; index < limit && value[index]; ++index)
+            {
+                const unsigned char ch = static_cast<unsigned char>(value[index]);
+                if (ch == '\r') Text("\\r");
+                else if (ch == '\n') Text("\\n");
+                else if (ch == '\t') Text("\\t");
+                else if (ch < 32u || ch == 127u) Character('?');
+                else Character(static_cast<char>(ch));
+            }
+            if (index == limit) Text("<truncated>");
+        }
+
+        void Number(ULONGLONG value, const unsigned int width = 0u,
+            const unsigned int radix = 10u) noexcept
+        {
+            char reversed[32]{};
+            unsigned int count = 0;
+            do
+            {
+                reversed[count++] = "0123456789ABCDEF"[value % radix];
+                value /= radix;
+            } while (value && count < sizeof(reversed));
+            for (unsigned int padding = count; padding < width; ++padding) Character('0');
+            while (count) Character(reversed[--count]);
+        }
+
+        void Address(const ULONG_PTR value) noexcept
+        {
+            Text("0x");
+            Number(value, static_cast<unsigned int>(sizeof(void*) * 2u), 16u);
+        }
+    };
+
+    void RecordFatalDiagnostic(const char* kind) noexcept
+    {
+        CrashText text;
+        SYSTEMTIME time{};
+        GetLocalTime(&time);
+        text.Text("\r\n"); text.Text(kind); text.Text(" local=");
+        text.Number(time.wYear, 4); text.Character('-');
+        text.Number(time.wMonth, 2); text.Character('-');
+        text.Number(time.wDay, 2); text.Character(' ');
+        text.Number(time.wHour, 2); text.Character(':');
+        text.Number(time.wMinute, 2); text.Character(':');
+        text.Number(time.wSecond, 2); text.Character('.');
+        text.Number(time.wMilliseconds, 3);
+        text.Text(" pid="); text.Number(GetCurrentProcessId());
+        text.Text(" tid="); text.Number(GetCurrentThreadId());
+        text.Text(" uncaught="); text.Number(static_cast<unsigned int>(std::uncaught_exceptions()));
+        text.Text("\r\nexception=");
+
+        // The standard exception facility can itself have implementation costs.
+        // The writer around it uses fixed storage, with a recursion guard outside.
+        try
+        {
+            const std::exception_ptr exception = std::current_exception();
+            if (exception) std::rethrow_exception(exception);
+            text.Text("<no active C++ exception>");
+        }
+        catch (const std::exception& exception)
+        {
+            text.Text("std::exception what=");
+            text.Escaped(exception.what());
+        }
+        catch (...)
+        {
+            text.Text("<non-std C++ exception>");
+        }
+        text.Text("\r\n");
+
+        void* frames[64]{};
+        const USHORT count = CaptureStackBackTrace(0, 64, frames, nullptr);
+        text.Text("current_stack_frames="); text.Number(count); text.Text("\r\n");
+        for (USHORT index = 0; index < count; ++index)
+        {
+            text.Character('#'); text.Number(index, 2); text.Text(" address=");
+            const ULONG_PTR address = reinterpret_cast<ULONG_PTR>(frames[index]);
+            text.Address(address);
+            MEMORY_BASIC_INFORMATION memory{};
+            if (VirtualQuery(frames[index], &memory, sizeof(memory)) &&
+                memory.Type == MEM_IMAGE && memory.AllocationBase)
+            {
+                const ULONG_PTR base = reinterpret_cast<ULONG_PTR>(memory.AllocationBase);
+                text.Text(" module_base="); text.Address(base);
+                text.Text(" rva="); text.Address(address - base);
+                wchar_t modulePath[2048]{};
+                const DWORD pathLength = GetModuleFileNameW(
+                    static_cast<HMODULE>(memory.AllocationBase), modulePath,
+                    static_cast<DWORD>(std::size(modulePath)));
+                char utf8Path[8192]{};
+                const int utf8Length = pathLength > 0 && pathLength < std::size(modulePath) ?
+                    WideCharToMultiByte(CP_UTF8, 0, modulePath, static_cast<int>(pathLength),
+                        utf8Path, static_cast<int>(sizeof(utf8Path) - 1u), nullptr, nullptr) : 0;
+                text.Text(" module=");
+                text.Escaped(utf8Length > 0 ? utf8Path : "<unavailable or truncated>", 512u);
+            }
+            else text.Text(" module=<not an image>");
+            text.Text("\r\n");
+        }
+        text.Text("END_FATAL_DIAGNOSTIC\r\n");
+
+        if (g_CrashLogFile != INVALID_HANDLE_VALUE)
+        {
+            DWORD offset = 0;
+            while (offset < text.length)
+            {
+                DWORD written = 0;
+                if (!WriteFile(g_CrashLogFile, g_CrashLogText + offset,
+                    text.length - offset, &written, nullptr) || written == 0) break;
+                offset += written;
+            }
+            FlushFileBuffers(g_CrashLogFile);
+        }
+    }
+
+    [[noreturn]] void ClientTerminateDiagnostic() noexcept
+    {
+        if (InterlockedCompareExchange(&g_TerminateDiagnosticEntered, 1, 0) == 0)
+        {
+            RecordFatalDiagnostic("CXX_TERMINATE");
+            if (g_PreviousTerminateHandler && g_PreviousTerminateHandler != &ClientTerminateDiagnostic)
+                g_PreviousTerminateHandler();
+        }
+        // A diagnostic must never turn a fatal path into a successful return.
+        std::abort();
+    }
+
+    void ClientAbortDiagnostic(const int signal) noexcept
+    {
+        // MSVC's terminate handler is thread-local. The process SIGABRT hook
+        // also observes default-terminate/explicit-abort in loader workers.
+        if (InterlockedCompareExchange(&g_TerminateDiagnosticEntered, 1, 0) == 0)
+            RecordFatalDiagnostic("CRT_SIGABRT");
+        if (g_PreviousAbortHandler != SIG_DFL && g_PreviousAbortHandler != SIG_IGN &&
+            g_PreviousAbortHandler != SIG_ERR && g_PreviousAbortHandler != &ClientAbortDiagnostic)
+            g_PreviousAbortHandler(signal);
+        // Returning to abort preserves its fatal termination behavior.
+    }
+
+    void PrepareTerminateDiagnostic() noexcept
+    {
+        DWORD length = GetModuleFileNameW(nullptr, g_CrashLogPath,
+            static_cast<DWORD>(std::size(g_CrashLogPath)));
+        bool absolutePath = length > 0 && length < std::size(g_CrashLogPath);
+        for (unsigned int parent = 0; absolutePath && parent < 3u; ++parent)
+        {
+            while (length > 0 && g_CrashLogPath[length - 1u] != L'\\' &&
+                g_CrashLogPath[length - 1u] != L'/') --length;
+            if (length == 0) absolutePath = false;
+            else g_CrashLogPath[--length] = L'\0';
+        }
+        constexpr wchar_t suffix[] = L"\\Default\\ClientCrash.user.log";
+        if (absolutePath && length + std::size(suffix) <= std::size(g_CrashLogPath))
+        {
+            for (size_t index = 0; index < std::size(suffix); ++index)
+                g_CrashLogPath[length + index] = suffix[index];
+        }
+        else
+        {
+            constexpr wchar_t fallback[] = L"ClientCrash.user.log";
+            for (size_t index = 0; index < std::size(fallback); ++index)
+                g_CrashLogPath[index] = fallback[index];
+        }
+        g_CrashLogFile = CreateFileW(g_CrashLogPath, FILE_APPEND_DATA,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
+            OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (g_CrashLogFile == INVALID_HANDLE_VALUE)
+            OutputDebugStringW(L"[CrashDiagnostic] Unable to open ClientCrash.user.log\n");
+        // The OS closes this process-lifetime handle after fatal/static teardown.
+        g_PreviousAbortHandler = std::signal(SIGABRT, &ClientAbortDiagnostic);
+        g_PreviousTerminateHandler = std::set_terminate(&ClientTerminateDiagnostic);
+    }
+
     void WriteExitDiagnostic(const char* reason, const HRESULT result = S_OK)
     {
         // Exit reporting must also work before Engine initialization succeeds.
@@ -73,6 +279,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_ LPWSTR    lpCmdLine,
                      _In_ int       nCmdShow)
 {
+    PrepareTerminateDiagnostic();
+
 #ifdef _DEBUG
     /* Tracking on, but not the CRT's own end-of-executable report: that runs before
     Engine.dll is detached, so everything an Engine static still held was listed as a leak

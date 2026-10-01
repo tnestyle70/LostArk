@@ -13,6 +13,7 @@
 #include "StaticMeshLod.h"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 CMesh::CMesh(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 	: CVIBuffer { pDevice, pContext }
@@ -171,8 +172,118 @@ HRESULT CMesh::Initialize_Prototype(MODEL eType, const MODEL_MESH_DATA& mesh,
     else
         for (const auto& vertex : staticVertices)
             pick->vertices.push_back({vertex.vPosition, {}, {}});
+    if (!isAnimated) Prepare_StaticPickGeometry(*pick);
     m_PickGeometry = std::move(pick);
 	return S_OK;
+}
+
+void CMesh::Prepare_StaticPickGeometry(PICK_GEOMETRY& geometry)
+{
+    if (geometry.skinned) return;
+    geometry.triangles.clear();
+    geometry.nodes.clear();
+    geometry.triangles.reserve(geometry.indices.size() / 3u);
+    for (size_t index = 0u; index + 2u < geometry.indices.size(); index += 3u)
+    {
+        bool valid = true;
+        for (size_t lane = 0u; lane < 3u; ++lane)
+        {
+            const uint32_t vertex = geometry.indices[index + lane];
+            if (vertex >= geometry.vertices.size()) { valid = false; break; }
+            const auto& point = geometry.vertices[vertex].position;
+            if (!std::isfinite(point.x) || !std::isfinite(point.y) || !std::isfinite(point.z))
+            { valid = false; break; }
+        }
+        if (valid) geometry.triangles.push_back(static_cast<uint32_t>(index / 3u));
+    }
+    if (geometry.triangles.empty()) return;
+    geometry.nodes.reserve(2u * (geometry.triangles.size() / 4u + 1u));
+    const auto build = [&](const auto& self, const uint32_t first, const uint32_t count) -> void
+    {
+        const uint32_t nodeIndex = static_cast<uint32_t>(geometry.nodes.size());
+        geometry.nodes.emplace_back();
+        vector_t minimum = XMVectorReplicate((std::numeric_limits<float>::max)());
+        vector_t maximum = -minimum;
+        for (uint32_t ordinal = first; ordinal < first + count; ++ordinal)
+            for (uint32_t lane = 0u; lane < 3u; ++lane)
+            {
+                const auto vertex = geometry.indices[geometry.triangles[ordinal] * 3u + lane];
+                const vector_t point = XMLoadFloat3(&geometry.vertices[vertex].position);
+                minimum = XMVectorMin(minimum, point); maximum = XMVectorMax(maximum, point);
+            }
+        XMStoreFloat3(&geometry.nodes[nodeIndex].minimum, minimum);
+        XMStoreFloat3(&geometry.nodes[nodeIndex].maximum, maximum);
+        if (count <= 8u)
+        {
+            geometry.nodes[nodeIndex].first = first;
+            geometry.nodes[nodeIndex].count = count;
+        }
+        else
+        {
+            float3_t extent;
+            XMStoreFloat3(&extent, maximum - minimum);
+            const uint32_t axis = extent.x >= extent.y && extent.x >= extent.z ? 0u :
+                (extent.y >= extent.z ? 1u : 2u);
+            const auto centroid = [&](const uint32_t triangle)
+            {
+                double value = 0.0;
+                for (uint32_t lane = 0u; lane < 3u; ++lane)
+                {
+                    const auto& point = geometry.vertices[geometry.indices[triangle * 3u + lane]].position;
+                    value += axis == 0u ? point.x : (axis == 1u ? point.y : point.z);
+                }
+                return value;
+            };
+            const uint32_t half = count / 2u;
+            std::nth_element(geometry.triangles.begin() + first,
+                geometry.triangles.begin() + first + half, geometry.triangles.begin() + first + count,
+                [&](const uint32_t left, const uint32_t right)
+                {
+                    const double a = centroid(left), b = centroid(right);
+                    return a < b || (a == b && left < right);
+                });
+            self(self, first, half);
+            self(self, first + half, count - half);
+        }
+        geometry.nodes[nodeIndex].end = static_cast<uint32_t>(geometry.nodes.size());
+    };
+    build(build, 0u, static_cast<uint32_t>(geometry.triangles.size()));
+}
+
+bool_t CMesh::Try_PickStaticLocal(fvector_t origin, fvector_t direction,
+    const f32_t maxDistance, const f32_t cullSign, f32_t& distance) const
+{
+    if (m_hasUniqueVertexBuffer || !m_PickGeometry || m_PickGeometry->skinned ||
+        m_PickGeometry->nodes.empty()) return false;
+    const auto& geometry = *m_PickGeometry;
+    float closest = maxDistance;
+    bool hit = false;
+    for (uint32_t nodeIndex = 0u; nodeIndex < geometry.nodes.size();)
+    {
+        const auto& node = geometry.nodes[nodeIndex];
+        BoundingBox bounds;
+        BoundingBox::CreateFromPoints(bounds, XMLoadFloat3(&node.minimum), XMLoadFloat3(&node.maximum));
+        float entry = 0.f;
+        if (!bounds.Intersects(origin, direction, entry) || entry > closest)
+        { nodeIndex = node.end; continue; }
+        for (uint32_t ordinal = node.first; ordinal < node.first + node.count; ++ordinal)
+        {
+            const uint32_t triangle = geometry.triangles[ordinal] * 3u;
+            const vector_t a = XMLoadFloat3(&geometry.vertices[geometry.indices[triangle]].position);
+            const vector_t b = XMLoadFloat3(&geometry.vertices[geometry.indices[triangle + 1u]].position);
+            const vector_t c = XMLoadFloat3(&geometry.vertices[geometry.indices[triangle + 2u]].position);
+            // D3D's default CW front faces have normals toward the viewer:
+            // dot(normal, incoming ray) is negative in the LH view basis.
+            if (cullSign != 0.f && XMVectorGetX(XMVector3Dot(
+                XMVector3Cross(b - a, c - a), direction)) * cullSign >= 0.f) continue;
+            float candidate;
+            if (TriangleTests::Intersects(origin, direction, a, b, c, candidate) && candidate <= closest)
+            { closest = candidate; hit = true; }
+        }
+        ++nodeIndex;
+    }
+    if (hit) distance = closest;
+    return hit;
 }
 
 HRESULT CMesh::Initialize(void* pArg)

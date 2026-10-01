@@ -26,8 +26,8 @@ NS_BEGIN(Client)
 
 /* Colosseum match intro, restored from the retail LV_PVP_COLOSSEUM_SCENE01A Matinee
    (Data/Camera/ColosseumIntro.cutscene.json): fade in, an aerial shot of the arena, a cut to the
-   lineup shot with both teams facing each other, VS and one "job / nickname" label pair under every
-   player's feet, fade to black. Afterwards the Level's own follow camera and the Server's pen
+   lineup shot with both teams facing each other and VS, without job or nickname labels, then
+   fade to black. Afterwards the Level's own follow camera and the Server's pen
    positions are back, so each team waits in its holding pen.
 
 	   The Server owns the match clock and roster. The players are the real replicated Characters: while the
@@ -208,30 +208,7 @@ public:
 
 	void Render()
 	{
-		if (PHASE::PLAYING != m_ePhase)
-			return;
-		CGameInstance& gameInstance = CGameInstance::Get();
-		const float4x4_t* const pView = gameInstance.Get_Transform(D3DTS::VIEW);
-		const float4x4_t* const pProj = gameInstance.Get_Transform(D3DTS::PROJ);
-		const float2_t vViewport = gameInstance.Get_ViewportSize();
-		if (nullptr == pView || nullptr == pProj || vViewport.x <= 0.f || vViewport.y <= 0.f)
-			return;
-		const f32_t fRefToScreen = vViewport.y / 720.f;
-		for (const ACTOR& actor : m_Actors)
-		{
-			const ROW_TIMING& row = m_Doc.Rows[actor.iRow];
-			const f32_t fAlpha = Ramp(m_fClockMs, row.fShowMs, row.fHideMs, LABEL_RAMP_MS);
-			if (fAlpha <= 0.f)
-				continue;
-			float2_t vFeet{};
-			if (!CWorldPlayerNameplateView::Try_ProjectWorldPosition(
-				float3_t(actor.vPosition.x, m_Doc.fFloorY, actor.vPosition.z), *pView, *pProj, vViewport, vFeet))
-				continue;
-			Draw_Line(gameInstance, actor.strJob, vFeet.x, vFeet.y + JOB_OFFSET_REF * fRefToScreen,
-				JOB_FONT_REF * fRefToScreen, XMVectorSet(0.66f, 0.82f, 1.f, fAlpha), fAlpha, fRefToScreen);
-			Draw_Line(gameInstance, actor.strName, vFeet.x, vFeet.y + NAME_OFFSET_REF * fRefToScreen,
-				NAME_FONT_REF * fRefToScreen, XMVectorSet(0.96f, 0.97f, 1.f, fAlpha), fAlpha, fRefToScreen);
-		}
+		// The lineup camera owns the screen: do not draw job or nickname labels over its actors.
 	}
 
 private:
@@ -385,7 +362,7 @@ private:
 			throw std::runtime_error(std::string("invalid vector: ") + pKey);
 		float3_t out{};
 		f32_t* const pOut[3] = { &out.x, &out.y, &out.z };
-		for (size_t i = 0; i < 4u; ++i)
+		for (size_t i = 0; i < values.size(); ++i)
 		{
 			if (!values[i].Is_Number() || !std::isfinite(values[i].Get_Number()) ||
 				std::abs(values[i].Get_Number()) > 100000.0)

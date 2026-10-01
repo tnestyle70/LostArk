@@ -760,10 +760,9 @@ private:
 	preview that ended up blocking everything else on screen. */
 	unique_ptr<CUILayoutRuntime> m_pItemUpgradeView = { nullptr };
 	bool_t m_bItemUpgradePreviewVisible = false;
-	/* Index into BuildItemUpgradeSlots()'s current-frame result (real "combat"-category inventory
-	items) that is the current "재련 대상" -- Update_ItemUpgradeSelection() is the only writer, on
-	a left-list row click. The list is rebuilt from the live inventory every frame, so this index
-	is clamped against its size wherever it's read rather than a fixed 0..5 range. */
+	/* Index into BuildItemUpgradeSlots()'s current-frame result (owned Honor Whisper equipment,
+	including equipped items). Row clicks choose it; opening and per-frame sprite synchronization
+	clamp it to the current visible rows. */
 	int32_t m_iItemUpgradeSelectedSlot = 0;
 	/* Real per-item level state, keyed by itemId (not a fixed-size array -- which equipment items
 	exist depends on the live inventory). ItemUpgradeLevelRef() default-inits an item's first

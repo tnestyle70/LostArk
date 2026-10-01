@@ -309,8 +309,7 @@ def main():
         titles[name]={'frameRate':anim['frameRate'],'keys':title_keys}
         print(name,'frames',anim['frameCount'],'layers',len(anim['layers']))
     slots += [slot('Result_Title',710*s,321*s,500*s,75*s),
-              slot('Result_Return',540,620,200,44,'UI/Common/White1x1.png')]
-    slots[-1]['layers'][0]['tint']=[0.05,0.11,0.18,0.95]
+              slot('Result_Return',540,627.6,200,28.8,'UI/SystemOption/SystemOption_Btn_Normal.png')]
     write(data/'Result_Layout.json',dict(base,slots=slots))
     write(data/'Result_TitleTracks.json',{'schema':'lostark.colosseum-result-title-tracks',
           'formatVersion':1,'source':source,'bannerTitles':titles})

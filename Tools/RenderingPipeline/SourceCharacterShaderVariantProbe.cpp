@@ -1,6 +1,10 @@
 // Headless product CShader verification; isolated numeric draw readback, no window/capture.
 #include "Shader.h"
 #include "Engine_VertexTypes.h"
+#ifdef SOURCE_MATERIAL_LIGHT_ROW_PROBE
+#include "Material.h"
+#include <fstream>
+#endif
 #include <array>
 #include <cmath>
 #include <type_traits>
@@ -235,17 +239,299 @@ template<class Vertex> static uint32_t CheckCombatDraw(ID3D11Device* device,
     context->ClearState(); return drawCount;
 }
 
+#ifdef SOURCE_MATERIAL_LIGHT_ROW_PROBE
+static void CheckSharedLightRowPixels(const ComPtr<ID3D11Device>& device,
+    const ComPtr<ID3D11DeviceContext>& context, const std::shared_ptr<CShader>& shader)
+{
+    // Recovered Bern devilstone program 81 constants, with deliberately distinct
+    // synthetic texture mip levels. Adjacent aliases exercise implicit gradients
+    // on quads split by the old row discard. This is not a scene screenshot.
+    const std::array<float4_t, SOURCE_CHARACTER_CONSTANT_COUNT> constants{{
+        {0,0,0,0},{0,0,0,0},{0,0,0,1},{0,0,0,1},{1,1,1,1},
+        {0,0,0,0},{0,0,0,0},{1,0,0,1},{1,-0.f,0,0},{0,1,1,1},
+        {.17f,.17f,.25f,1},{.5f,0,0,1},{0,0,0,0},{0,1.5f,.6f,1},{25,50,1,3}
+    }};
+    constexpr UINT side = 32u;
+    D3D11_TEXTURE2D_DESC td{}; td.Width = td.Height = side; td.MipLevels = td.ArraySize = 1u;
+    td.Format = DXGI_FORMAT_R32G32B32A32_FLOAT; td.SampleDesc.Count = 1u; td.BindFlags = D3D11_BIND_RENDER_TARGET;
+    std::array<ComPtr<ID3D11Texture2D>,2> targets;
+    std::array<ComPtr<ID3D11RenderTargetView>,2> views;
+    for (size_t i = 0; i < targets.size(); ++i)
+        Require(SUCCEEDED(device->CreateTexture2D(&td, nullptr, &targets[i])) &&
+            SUCCEEDED(device->CreateRenderTargetView(targets[i].Get(), nullptr, &views[i])), "row parity targets failed");
+    td.BindFlags = 0u; td.Usage = D3D11_USAGE_STAGING; td.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    ComPtr<ID3D11Texture2D> staging;
+    Require(SUCCEEDED(device->CreateTexture2D(&td, nullptr, &staging)), "row parity staging failed");
+    td.Format = DXGI_FORMAT_D24_UNORM_S8_UINT; td.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+    td.Usage = D3D11_USAGE_DEFAULT; td.CPUAccessFlags = 0u;
+    ComPtr<ID3D11Texture2D> depthStencil; ComPtr<ID3D11DepthStencilView> dsv;
+    Require(SUCCEEDED(device->CreateTexture2D(&td, nullptr, &depthStencil)) &&
+        SUCCEEDED(device->CreateDepthStencilView(depthStencil.Get(), nullptr, &dsv)), "row parity stencil failed");
+    context->ClearDepthStencilView(dsv.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 1u);
+    td.Format = DXGI_FORMAT_R32G32B32A32_FLOAT; td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    const auto bindTexture = [&](const char* name, const std::vector<float4_t>& pixels) {
+        ComPtr<ID3D11Texture2D> texture; ComPtr<ID3D11ShaderResourceView> view;
+        const D3D11_SUBRESOURCE_DATA data{pixels.data(), side * sizeof(float4_t), 0u};
+        Require(SUCCEEDED(device->CreateTexture2D(&td, &data, &texture)) &&
+            SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &view)) &&
+            SUCCEEDED(shader->Bind_Texture(name, view)), "row parity GBuffer bind failed");
+    };
+    for (UINT slot : {0u,2u,3u,4u})
+    {
+        D3D11_TEXTURE2D_DESC mipDesc = td; mipDesc.MipLevels = 6u;
+        std::array<std::vector<float4_t>,6> levels;
+        std::array<D3D11_SUBRESOURCE_DATA,6> data{};
+        for (UINT mip = 0u; mip < 6u; ++mip)
+        {
+            const UINT size = side >> mip; levels[mip].resize(size * size);
+            for (UINT y = 0; y < size; ++y) for (UINT x = 0; x < size; ++x)
+                levels[mip][y * size + x] = slot == 0u ? float4_t{.5f,.5f,1.f,1.f} :
+                    float4_t{.15f + .1f * mip + .04f * (x & 1u), .75f - .1f * mip, .3f + .1f * (y & 1u), 1.f};
+            data[mip] = {levels[mip].data(), size * sizeof(float4_t), 0u};
+        }
+        ComPtr<ID3D11Texture2D> texture; ComPtr<ID3D11ShaderResourceView> view;
+        const std::string name = "g_SourceCharacterTexture" + std::to_string(slot);
+        Require(SUCCEEDED(device->CreateTexture2D(&mipDesc, data.data(), &texture)) &&
+            SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &view)) &&
+            SUCCEEDED(shader->Bind_Texture(name.c_str(), view)), "row parity mip fixture failed");
+    }
+    const VTXTEX vertices[] = {{{-1,1,0},{0,0}},{{3,1,0},{2,0}},{{-1,-3,0},{0,2}}};
+    D3D11_BUFFER_DESC bd{}; bd.ByteWidth = sizeof(vertices); bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    const D3D11_SUBRESOURCE_DATA vertexData{vertices,0u,0u}; ComPtr<ID3D11Buffer> vb;
+    Require(SUCCEEDED(device->CreateBuffer(&bd, &vertexData, &vb)), "row parity triangle failed");
+    UINT stride = sizeof(VTXTEX), offset = 0u; ID3D11Buffer* rawVB = vb.Get();
+    context->IASetVertexBuffers(0u,1u,&rawVB,&stride,&offset);
+    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    const D3D11_VIEWPORT viewport{0,0,float(side),float(side),0,1}; context->RSSetViewports(1u,&viewport);
+    float4x4_t identity; XMStoreFloat4x4(&identity,XMMatrixIdentity());
+    for (const char* name : {"g_WorldMatrix","g_ViewMatrix","g_ProjMatrix","g_ViewMatrixInverse",
+        "g_ProjMatrixInverse","g_SourceCharacterViewMatrix","g_SourceCharacterProjMatrix"})
+        Require(SUCCEEDED(shader->Bind_Matrix(name,&identity)),"row parity matrix failed");
+    const auto raw = [&](const char* name, const auto& value) {
+        Require(SUCCEEDED(shader->Bind_RawValue(name, &value, sizeof(value))), "row parity constant bind failed"); };
+    raw("g_SourceCharacterProgram",81u); raw("g_SourceCharacterLightConstants",constants);
+    raw("g_SourceMapMonsterBakedEnabled",0u); raw("g_LightReceiver",0u); raw("g_ApplyStaticShadow",0u);
+    raw("g_iApplyDirectionalShadow",0u); raw("g_iSSAOEnabled",0u);
+    raw("g_vCamPosition",float4_t{0,0,-4,1}); raw("g_vLightDir",float4_t{0,0,1,0});
+    raw("g_vLightPos",float4_t{0,0,-2,1}); raw("g_vLightDiffuse",float4_t{1,.8f,.6f,1});
+    raw("g_vLightAmbient",float4_t{.1f,.2f,.3f,1}); raw("g_vMtrlAmbient",float4_t{1,1,1,1});
+    raw("g_fLightRange",8.f); raw("g_fLightFalloffExponent",1.f);
+    raw("g_fSpotInnerCos",.95f); raw("g_fSpotOuterCos",.5f);
+    bindTexture("g_NormalTexture",std::vector<float4_t>(side*side,{.5f,.5f,0,0}));
+    bindTexture("g_CharacterGeometryTexture",std::vector<float4_t>(side*side,{0,0,-1,1}));
+    bindTexture("g_MaterialSpecularTexture",std::vector<float4_t>(side*side,{.2f,.3f,.4f,0}));
+    bindTexture("g_EmissiveTexture",std::vector<float4_t>(side*side,{0,0,0,0}));
+    const auto read = [&] {
+        std::vector<float> result(side*side*8u);
+        for (UINT target = 0u; target < 2u; ++target)
+        {
+            context->CopyResource(staging.Get(),targets[target].Get()); D3D11_MAPPED_SUBRESOURCE mapped{};
+            Require(SUCCEEDED(context->Map(staging.Get(),0u,D3D11_MAP_READ,0u,&mapped)),"row parity readback failed");
+            for (UINT y = 0u; y < side; ++y) std::memcpy(result.data()+target*side*side*4u+y*side*4u,
+                static_cast<const uint8_t*>(mapped.pData)+y*mapped.RowPitch,side*sizeof(float4_t));
+            context->Unmap(staging.Get(),0u);
+        }
+        return result;
+    };
+    UINT cases = 0u; float maxError = 0.f, minimumEnergy = FLT_MAX, minimumSpecularEnergy = FLT_MAX;
+    for (UINT layout = 0u; layout < 3u; ++layout) for (bool discontinuous : {false,true})
+    {
+        std::vector<float4_t> depths(side*side), surfaces(side*side), positions(side*side);
+        for (UINT y = 0; y < side; ++y) for (UINT x = 0; x < side; ++x)
+        {
+            const bool second = layout == 0u ? x >= 17u : layout == 1u ? ((x+y)&1u)!=0u : x+y >= 33u;
+            const UINT i = y*side+x; const float jump = discontinuous && second ? .4375f : 0.f;
+            depths[i] = {.5f,.001f,second ? 2.f : 1.f,5.f};
+            surfaces[i] = {x*.023f+jump,y*.039f-jump,1,0};
+            positions[i] = {(x+.5f)/side*2.f-1.f,1.f-(y+.5f)/side*2.f,.5f,0};
+        }
+        bindTexture("g_CharacterSurfaceTexture",surfaces); bindTexture("g_GeometricNormalTexture",positions);
+        for (UINT pass : {19u,20u,21u})
+        {
+            const auto draw = [&](bool shared) {
+                auto encoded = depths; if (shared) for (auto& pixel : encoded) pixel.z=1.f;
+                bindTexture("g_DepthTexture",encoded);
+                const float black[4]{}; for (const auto& view : views) context->ClearRenderTargetView(view.Get(),black);
+                ID3D11RenderTargetView* rt[] = {views[0].Get(),views[1].Get()};
+                context->OMSetRenderTargets(2u,rt,dsv.Get());
+                for (UINT row=1u; row<=(shared?1u:2u); ++row)
+                { raw("g_SourceCharacterRow",row); Require(SUCCEEDED(shader->Begin(pass)),"row parity pass failed"); context->Draw(3u,0u); }
+                return read();
+            };
+            const auto separate = draw(false), shared = draw(true); float energy=0.f, specularEnergy=0.f;
+            for (size_t i=0u; i<separate.size(); ++i)
+            {
+                Require(std::isfinite(separate[i]) && std::isfinite(shared[i]),"row parity output was non-finite");
+                maxError=(std::max)(maxError,std::abs(separate[i]-shared[i]));
+                energy+=std::abs(shared[i]); if(i>=side*side*4u) specularEnergy+=std::abs(shared[i]);
+            }
+            Require(energy>1.f && specularEnergy>.001f,"row parity fixture produced no direct lighting");
+            minimumEnergy=(std::min)(minimumEnergy,energy);
+            minimumSpecularEnergy=(std::min)(minimumSpecularEnergy,specularEnergy);
+            Require(maxError<=.000001f,"shared light row changed shade/specular pixels"); ++cases;
+        }
+    }
+    context->ClearState();
+    std::printf("material rows: GPU program81 directional/point/spot adjacent/checker/diagonal and UV discontinuity cases=%u maxAbsError=%.9g PASS\n",cases,maxError);
+    std::printf("{\"materialLightRows\":true,\"identicalCloneRows\":1,\"distinctRowsChecked\":300,\"gpuProgram\":81,\"gpuCases\":%u,\"gpuPixelsPerCase\":1024,\"maximumAbsoluteError\":%.9g,\"minimumOutputEnergy\":%.9g,\"minimumSpecularEnergy\":%.9g,\"windowsCreated\":0}\n",
+        cases,maxError,minimumEnergy,minimumSpecularEnergy);
+}
+
+static void CheckMaterialLightRows(const ComPtr<ID3D11Device>& device,
+    const ComPtr<ID3D11DeviceContext>& context, const std::filesystem::path& directory)
+{
+    // A one-pixel authored texture exercises the production texture loader and
+    // its shared SRV cache without consuming or changing installed Resources.
+    const auto texturePath = directory / L"material-row-fixture.tga";
+    const unsigned char tga[] = {0,0,2,0,0,0,0,0,0,0,0,0,1,0,1,0,32,32,96,160,224,255};
+    { std::ofstream file(texturePath, std::ios::binary); file.write(reinterpret_cast<const char*>(tga), sizeof(tga));
+        Require(file.good(), "material texture fixture write failed"); }
+    std::shared_ptr<CShader> base = CShader::Create(device, context, L"Shader_VtxMeshBinary.hlsl",
+        VTXMESH::Elements, VTXMESH::iNumElements);
+    std::shared_ptr<CShader> light = CShader::Create(device, context, L"Shader_Deferred.hlsl",
+        VTXTEX::Elements, VTXTEX::iNumElements);
+    Require(base && light, "material row product shaders failed");
+    MODEL_MATERIAL_DATA descriptor{};
+    descriptor.name = "headless-material-light-row";
+    descriptor.surface.family = MODEL_SURFACE_FAMILY::SOURCE_CHARACTER;
+    auto& source = descriptor.surface.sourceCharacter;
+    source.program = 1u; source.baseTextureMask = 5u; source.lightTextureMask = 2u;
+    for (uint32_t i = 0u; i < SOURCE_CHARACTER_CONSTANT_COUNT; ++i)
+    {
+        source.baseConstants[i] = {10.125f + i, 11.25f + i, 12.5f + i, 13.75f + i};
+        source.lightConstants[i] = {100.125f + i, 101.25f + i, 102.5f + i, 103.75f + i};
+    }
+    source.lightConstants.back().w = 0.f;
+    for (auto& texture : descriptor.sourceCharacterTextures) texture.path = texturePath;
+    descriptor.bakedAveragePath = descriptor.bakedDirectionalPath = texturePath;
+    const auto make = [&](const MODEL_MATERIAL_DATA& data) {
+        auto material = CMaterial::Create(device, context, data);
+        Require(material != nullptr, "material fixture creation failed"); return material;
+    };
+    const auto bind = [&](const std::shared_ptr<CMaterial>& material, uint32_t rows) {
+        Require(SUCCEEDED(material->Bind_SourceCharacter(base)), "material base bind failed");
+        Require(CMaterial::Get_SourceCharacterFrameCount() == rows, "unexpected distinct light row count");
+    };
+    const auto beginBase = [&] { Require(SUCCEEDED(base->Begin(0u)), "material base shader pass failed"); };
+    D3D11_TEXTURE2D_DESC td{}; td.Width = td.Height = td.MipLevels = td.ArraySize = 1u;
+    td.Format = DXGI_FORMAT_R8G8B8A8_UNORM; td.SampleDesc.Count = 1u; td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    const uint32_t pixel = 0xffc08040u; const D3D11_SUBRESOURCE_DATA input{&pixel, sizeof(pixel), 0u};
+    ComPtr<ID3D11Texture2D> texture;
+    ComPtr<ID3D11ShaderResourceView> viewA, viewB;
+    Require(SUCCEEDED(device->CreateTexture2D(&td, &input, &texture)) &&
+        SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &viewA)) &&
+        SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &viewB)), "override SRV fixture failed");
+    CMaterial::Reset_SourceCharacterFrame();
+    auto original = make(descriptor);
+    Require(original->Set_SourceCharacterTextureOverride(1u, viewA), "light override fixture failed");
+    bind(original, 1u);
+    auto alias = original->Clone_ForOverrides();
+    Require(SUCCEEDED(alias->Bind_SourceCharacter(base)), "identical clone bind failed");
+    Require(CMaterial::Get_SourceCharacterFrameCount() == 1u, "identical clone allocated a duplicate light row");
+    auto baseOnly = original->Clone_ForOverrides();
+    auto baseParameters = baseOnly->Get_Surface().sourceCharacter;
+    for (auto& constant : baseParameters.baseConstants) constant = {731.f,732.f,733.f,734.f};
+    Require(baseOnly->Set_SourceCharacterConstants(baseParameters) &&
+        baseOnly->Set_SourceCharacterTextureOverride(0u, viewB), "base-only override fixture failed");
+    bind(baseOnly, 1u); beginBase();
+    Require(ConstantsBound(device.Get(), context.Get(), false, baseParameters.baseConstants.data(),
+        sizeof(baseParameters.baseConstants)) && TextureBound(context.Get(), viewB.Get()),
+        "shared light row replaced the alias base constants or texture");
+    bind(original, 1u); beginBase();
+    Require(ConstantsBound(device.Get(), context.Get(), false, source.baseConstants.data(),
+        sizeof(source.baseConstants)), "alias base constants leaked into the original material");
+    auto lightConstant = original->Clone_ForOverrides();
+    auto changed = lightConstant->Get_Surface().sourceCharacter; changed.lightConstants.back().z += .25f;
+    Require(lightConstant->Set_SourceCharacterConstants(changed), "light constant fixture failed");
+    bind(lightConstant, 2u);
+    auto signedZero = original->Clone_ForOverrides();
+    changed = signedZero->Get_Surface().sourceCharacter; changed.lightConstants.back().w = -0.f;
+    Require(signedZero->Set_SourceCharacterConstants(changed), "signed zero fixture failed");
+    bind(signedZero, 3u);
+    auto lightTexture = original->Clone_ForOverrides();
+    Require(lightTexture->Set_SourceCharacterTextureOverride(1u, viewB), "different light SRV fixture failed");
+    bind(lightTexture, 4u);
+    auto sameTexture = original->Clone_ForOverrides();
+    Require(sameTexture->Set_SourceCharacterTextureOverride(1u, viewB), "same effective SRV fixture failed");
+    bind(sameTexture, 4u);
+    auto anotherProgram = descriptor; anotherProgram.surface.sourceCharacter.program = 9u;
+    auto programMaterial = make(anotherProgram);
+    Require(programMaterial->Set_SourceCharacterTextureOverride(1u, viewA), "program-only SRV fixture failed");
+    bind(programMaterial, 5u);
+    auto anotherMask = descriptor; anotherMask.surface.sourceCharacter.lightTextureMask = 6u;
+    auto maskMaterial = make(anotherMask);
+    Require(maskMaterial->Set_SourceCharacterTextureOverride(1u, viewA), "mask-only SRV fixture failed");
+    bind(maskMaterial, 6u);
+    for (uint32_t i = 0u; i < 32u; ++i) { bind(original, 6u); bind(alias, 6u); bind(baseOnly, 6u); }
+    std::printf("material rows: clone/base-only/last-constant/signed-zero/program/mask/effective-SRV/repeat PASS\n");
+
+    CMaterial::Reset_SourceCharacterFrame();
+    auto unbaked = descriptor; unbaked.surface.sourceCharacter.program = 80u;
+    auto baked = unbaked; baked.surface.hasBakedLighting = true;
+    bind(make(unbaked), 1u); bind(make(baked), 2u);
+    auto forward = descriptor; forward.surface.sourceCharacter.program = 38u;
+    auto forwardMaterial = make(forward); bind(forwardMaterial, 2u);
+    Require(forwardMaterial.use_count() == 1, "forward material entered deferred row ownership");
+    CMaterial::Reset_SourceCharacterFrame();
+    auto owner = make(descriptor); auto retainedAlias = owner->Clone_ForOverrides();
+    std::weak_ptr<CMaterial> weakOwner = owner, weakAlias = retainedAlias;
+    bind(owner, 1u); bind(retainedAlias, 1u);
+    Require(retainedAlias.use_count() > 1, "alias lost the model copy-on-write ownership barrier");
+    owner.reset(); retainedAlias.reset();
+    Require(!weakOwner.expired() && !weakAlias.expired(), "frame did not retain every source alias");
+    auto failedAlias = weakAlias.lock()->Clone_ForOverrides();
+    std::weak_ptr<CMaterial> weakFailedAlias = failedAlias;
+    Require(FAILED(failedAlias->Bind_SourceCharacter(nullptr)) && CMaterial::Get_SourceCharacterFrameCount() == 1u,
+        "failed alias bind changed the frame");
+    failedAlias.reset(); Require(weakFailedAlias.expired(), "failed alias bind retained ownership");
+    auto failedNew = make(anotherProgram); std::weak_ptr<CMaterial> weakFailedNew = failedNew;
+    Require(FAILED(failedNew->Bind_SourceCharacter(nullptr)) && CMaterial::Get_SourceCharacterFrameCount() == 1u,
+        "failed new row bind changed the frame");
+    failedNew.reset(); Require(weakFailedNew.expired(), "failed new row bind retained ownership");
+    CMaterial::Reset_SourceCharacterFrame();
+    Require(weakOwner.expired() && weakAlias.expired() && CMaterial::Get_SourceCharacterFrameCount() == 0u,
+        "frame reset did not release row representatives and aliases");
+    Require(FAILED(CMaterial::Bind_SourceCharacterLight(light, 0u)), "empty frame light bind succeeded");
+    std::printf("material rows: baked/forward/failure/lifetime/COW/reset PASS\n");
+
+    constexpr uint32_t distinctRows = 300u;
+    for (uint32_t i = 0u; i < distinctRows; ++i)
+    {
+        auto material = original->Clone_ForOverrides(); auto parameters = material->Get_Surface().sourceCharacter;
+        parameters.lightConstants.back().w = float(i + 1u);
+        Require(material->Set_SourceCharacterConstants(parameters), "wide row fixture failed");
+        bind(material, i + 1u);
+        Require(SUCCEEDED(CMaterial::Bind_SourceCharacterLight(light, i)) && SUCCEEDED(light->Begin(19u)),
+            "wide row light bind or source shader pass failed");
+        Require(ConstantsBound(device.Get(), context.Get(), false, parameters.lightConstants.data(),
+            sizeof(parameters.lightConstants)), "wide row resolved another material's light constants");
+    }
+    Require(FAILED(CMaterial::Bind_SourceCharacterLight(light, distinctRows)), "out-of-range light row succeeded");
+    CMaterial::Reset_SourceCharacterFrame(); context->ClearState();
+    std::printf("material rows: %u distinct rows with actual light constant-buffer readback PASS; windowsCreated=0\n", distinctRows);
+    CheckSharedLightRowPixels(device, context, light);
+}
+#endif
+
 int wmain(int argc, wchar_t** argv)
 {
     try
     {
-        Require(argc == 2 || argc == 3, "expected isolated compiled shader directory [--silhouette-only]");
+        Set_NonInteractiveErrorMode(true);
+        Require(argc == 2 || argc == 3, "expected isolated compiled shader directory [--silhouette-only|--material-light-rows-only]");
         const std::filesystem::path directory = argv[1];
         ComPtr<ID3D11Device> device;
         ComPtr<ID3D11DeviceContext> context;
         D3D_FEATURE_LEVEL level{};
         Require(SUCCEEDED(D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, 0,
             nullptr, 0, D3D11_SDK_VERSION, &device, &level, &context)), "WARP device creation failed");
+#ifdef SOURCE_MATERIAL_LIGHT_ROW_PROBE
+        if (argc == 3 && std::wstring(argv[2]) == L"--material-light-rows-only")
+        {
+            CheckMaterialLightRows(device, context, directory);
+            return 0;
+        }
+#endif
         if (argc == 3 && std::wstring(argv[2]) == L"--silhouette-only")
         {
             auto shader=CShader::Create(device,context,L"HoverSilhouette.hlsl",VTXANIMMESH::Elements,VTXANIMMESH::iNumElements);

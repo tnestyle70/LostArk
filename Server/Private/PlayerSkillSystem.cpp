@@ -288,6 +288,12 @@ namespace
             incoming.bForcePush = incoming.bPushBallistic = true;
             incoming.bPushCanLeaveArena = false;
         }
+        if (incoming.fPushRangeM != 0.f && incoming.iPushMs != 0u)
+        {
+            incoming.fPushRangeM /= static_cast<float>(COLOSSEUM_KNOCKBACK_DIVISOR);
+            incoming.iPushMs = static_cast<std::uint32_t>(
+                (std::uint64_t(incoming.iPushMs) + COLOSSEUM_KNOCKBACK_DIVISOR - 1u) / COLOSSEUM_KNOCKBACK_DIVISOR);
+        }
         const SERVER_COLOSSEUM_RESOLVED_DAMAGE resolved{&context, &caster, critical};
         const auto result = CServerCombatHitRuntime::Apply_WorldToPlayer(target, incoming, catalog, events, &resolved);
         if (result == SERVER_COMBAT_HIT_RESULT::LANDED)

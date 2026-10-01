@@ -455,6 +455,7 @@ Client::CProfilerTool::CProfilerTool(ID3D11Device* device)
 void Client::CProfilerTool::Begin_Capture(Engine::CProfiler& profiler)
 {
     profiler.Reset_History();
+    CProfilerCaptureIO::Reset_MovementSamples();
     profiler.Set_Enabled(true);
     m_fLastRefreshTime = -1.0;
 }
@@ -507,6 +508,7 @@ void Client::CProfilerTool::Request_Save(Engine::CProfiler& profiler)
     { m_strCaptureStatus = "No completed frames. Enable Capture and wait before saving."; return; }
     auto& game = Engine::CGameInstance::Get();
     auto context = m_CaptureContext;
+    CProfilerCaptureIO::Copy_MovementSamples(snapshot, context);
     context.Valid = true;
     context.LevelId = game.Get_CurrentLevelID();
     const HWND foregroundWindow = GetForegroundWindow();
@@ -590,7 +592,12 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
         static_cast<int>(Engine::CProfiler::MAX_HISTORY_FRAMES), "%d", ImGuiSliderFlags_AlwaysClamp))
         m_fLastRefreshTime = -1.0;
     ImGui::SameLine();
-    if (ImGui::Button("Reset")) { profiler->Reset_History(); m_fLastRefreshTime = -1.0; }
+    if (ImGui::Button("Reset"))
+    {
+        profiler->Reset_History();
+        CProfilerCaptureIO::Reset_MovementSamples();
+        m_fLastRefreshTime = -1.0;
+    }
     ImGui::SameLine();
     ImGui::BeginDisabled(m_Exporter.IsSaving());
     if (ImGui::Button("Save JSON")) Request_Save(*profiler);
@@ -602,6 +609,7 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
     {
         profiler->Set_DetailedScopesEnabled(detailed);
         profiler->Reset_History();
+        CProfilerCaptureIO::Reset_MovementSamples();
         m_fLastRefreshTime = -1.0;
     }
     ImGui::Checkbox("Save only selected frame window", &m_bSaveWindowOnly);

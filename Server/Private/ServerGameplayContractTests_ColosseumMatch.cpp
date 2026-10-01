@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -73,10 +74,10 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
     source->m_ColosseumQueue.clear(); source->m_PendingWorldTransfers.clear(); source->m_bColosseumTransferPending = false;
     source->m_iServerTick = 0u; source->m_iColosseumQueueDeadline = 0u;
     drain();
-    for (unsigned count = 1u; count <= 3u; ++count)
+    for (unsigned count = 1u; count <= 4u; ++count)
     {
-        auto smallSource = std::make_unique<CGameRoom>(WORLD_ID::BERN, app->m_pActiveGameplayGeneration);
-        auto smallTarget = std::make_unique<CGameRoom>(WORLD_ID::COLOSSEUM, app->m_pActiveGameplayGeneration);
+        auto smallSource = std::make_shared<CGameRoom>(WORLD_ID::BERN, app->m_pActiveGameplayGeneration);
+        auto smallTarget = std::make_shared<CGameRoom>(WORLD_ID::COLOSSEUM, app->m_pActiveGameplayGeneration);
         std::vector<std::shared_ptr<CClientSession>> peers;
         std::vector<SESSION_ID> ordered;
         bool admitted = smallSource->Is_Ready() && smallTarget->Is_Ready();
@@ -95,12 +96,12 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
         }
         std::string status;
         const bool committed = admitted && smallSource->Transfer_ColosseumMatchTo(*smallTarget, ordered, 9000u + count, status);
-        tests.Require(committed, "One, two and three humans each commit through the real atomic Colosseum admission");
+        tests.Require(committed, "One through four humans each commit through the real atomic Colosseum admission");
         if (!committed) std::cout << "Flexible admission count=" << count << " status=" << status << '\n';
         if (committed)
         {
             tests.Require(smallTarget->Count_HumanPlayers() == count && smallTarget->m_Players.size() == count + 10u,
-                "Flexible admission keeps exactly the admitted humans and ten sessionless candidates");
+                "Flexible admission keeps exactly the admitted humans and ten sessionless mercenaries");
             for (std::size_t i = 0; i < ordered.size(); ++i)
             {
                 const auto& p = smallTarget->m_Players.at(smallTarget->m_PlayerIdBySessionId.at(ordered[i]));
@@ -111,10 +112,29 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
             const auto autoSelected = std::count_if(smallTarget->m_Players.begin(), smallTarget->m_Players.end(),
                 [](const auto& p) { return p.second.Is_ColosseumMercenary() && p.second.bColosseumParticipant; });
             tests.Require(autoSelected == (count == 1u ? 4 : 0),
-                "Only the team without a human receives exactly four automatically selected mercenaries");
-            smallTarget->Update_ColosseumMatch(1u);
+                "Only solo admission automatically selects four opposite-team mercenaries");
+            tests.Require(std::all_of(smallTarget->m_Players.begin(), smallTarget->m_Players.end(), [&](const auto& entry) {
+                const auto& p = entry.second;
+                if (!p.Is_ColosseumMercenary()) return true;
+                if (p.iSessionId != INVALID_SESSION_ID) return false;
+                if (!p.bColosseumParticipant) return !smallTarget->m_PartyIdByPlayerId.contains(p.iPlayerId);
+                const auto party = smallTarget->m_PartyIdByPlayerId.find(p.iPlayerId);
+                return count == 1u && p.iColosseumTeam == 1u && p.iColosseumArrivalIndex < 8u &&
+                    p.iColosseumArrivalIndex % 2u == p.iColosseumTeam && party != smallTarget->m_PartyIdByPlayerId.end() &&
+                    party->second == smallTarget->m_ColosseumTeamPartyIds[1];
+            }), "Automatic opponents use real stable combat seats and party membership without fake sessions");
+            const auto initialState = smallTarget->Build_ColosseumState();
+            CPacketWriter initialWriter;
+            tests.Require(initialState.Participants.size() == count + (count == 1u ? 4u : 0u) &&
+                Write_Message(initialWriter, initialState),
+                "Admission publishes only human participants and the explicit solo opponent team");
+            const auto advance = [&](const std::uint32_t tick) {
+                smallTarget->m_iServerTick = tick;
+                smallTarget->Update_ColosseumMatch(tick);
+            };
+            advance(1u);
             tests.Require(smallTarget->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::RECRUITING,
-                "Small matches reach recruitment without waiting for absent humans");
+                "Small matches wait for manual recruitment on each human-owned team");
             std::array<SESSION_ID, 2> recruiter{};
             for (const auto id : ordered)
             {
@@ -134,14 +154,90 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
             const auto state = smallTarget->Build_ColosseumState();
             CPacketWriter writer;
             tests.Require(state.ePhase == COLOSSEUM_MATCH_PHASE::ENTRY_COUNTDOWN && state.Participants.size() == 8u &&
-                state.iExpectedPlayers == 8u && Write_Message(writer, state),
-                "Small matches fill four members per team and publish an encodable eight-person entry countdown");
-            smallTarget->Update_ColosseumMatch(smallTarget->m_iColosseumPhaseEnd);
-            smallTarget->Update_ColosseumMatch(smallTarget->m_iColosseumPhaseEnd);
-            smallTarget->Update_ColosseumMatch(smallTarget->m_iColosseumPhaseEnd);
+                state.iExpectedPlayers == 8u && state.iPhaseEndTick - state.iPhaseStartTick == 300u && Write_Message(writer, state) &&
+                smallTarget->m_PartyMembersByPartyId.at(smallTarget->m_ColosseumTeamPartyIds[0]).size() == 4u &&
+                smallTarget->m_PartyMembersByPartyId.at(smallTarget->m_ColosseumTeamPartyIds[1]).size() == 4u,
+                "One through four humans reach two real four-person parties after explicit allied recruitment");
+            const auto entryDeadline = smallTarget->m_iColosseumPhaseEnd;
+            advance(entryDeadline - 1u);
+            tests.Require(smallTarget->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::ENTRY_COUNTDOWN &&
+                std::none_of(smallTarget->m_Players.begin(), smallTarget->m_Players.end(), [](const auto& p) { return p.second.bColosseumCombatActive; }),
+                "Small matches cannot activate combat before the full ten-second entry countdown");
+            advance(entryDeadline);
+            tests.Require(smallTarget->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::INTRO &&
+                smallTarget->m_iColosseumPhaseEnd == entryDeadline + 258u,
+                "Small matches enter the real shared 8.6-second introduction");
+            advance(smallTarget->m_iColosseumPhaseEnd);
+            tests.Require(smallTarget->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::COUNTDOWN &&
+                smallTarget->m_iColosseumPhaseEnd - smallTarget->m_iColosseumPhaseStart == 300u,
+                "Small introductions advance to the real ten-second gate countdown");
+            advance(smallTarget->m_iColosseumPhaseEnd);
             tests.Require(smallTarget->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::ACTIVE &&
+                smallTarget->m_iColosseumPhaseEnd - smallTarget->m_iColosseumPhaseStart == 3600u &&
                 std::count_if(smallTarget->m_Players.begin(), smallTarget->m_Players.end(), [](const auto& p) { return p.second.bColosseumCombatActive; }) == 8,
-                "A solo, duo or trio can finish all entry phases and activate eight combatants");
+                "One through four humans activate eight combatants for exactly 120 seconds");
+            smallTarget->Handle_ColosseumReturn(ordered.front(), {smallTarget->m_iColosseumMatchId});
+            tests.Require(smallTarget->m_PendingWorldTransfers.empty(), "The typed result return rejects an active small match");
+            const auto combatDeadline = smallTarget->m_iColosseumPhaseEnd;
+            const std::uint8_t winningTeam = count == 2u ? 1u : 0u;
+            smallTarget->m_iColosseumScores[winningTeam] = 2u;
+            smallTarget->m_iColosseumScores[1u - winningTeam] = 1u;
+            advance(combatDeadline - 1u);
+            tests.Require(smallTarget->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::ACTIVE,
+                "Small matches preserve combat until the full match deadline");
+            advance(combatDeadline);
+            const auto finished = smallTarget->Build_ColosseumState();
+            CPacketWriter resultWriter;
+            tests.Require(finished.ePhase == COLOSSEUM_MATCH_PHASE::FINISHED && finished.iWinningTeam == winningTeam &&
+                std::count_if(finished.Participants.begin(), finished.Participants.end(), [winningTeam](const auto& row) { return row.iTeam == winningTeam; }) == 4 &&
+                std::none_of(smallTarget->m_Players.begin(), smallTarget->m_Players.end(), [](const auto& p) { return p.second.isCombatReady; }) &&
+                Write_Message(resultWriter, finished),
+                "Small matches finish with an encodable four-person winning roster and no combat authority");
+
+            // The fixture owns an isolated app binding so the result button's typed
+            // command reaches the same atomic transfer used by the production Server.
+            auto returnApp = std::make_unique<CServerApp>();
+            returnApp->m_pActiveGameplayGeneration = app->m_pActiveGameplayGeneration;
+            returnApp->m_SharedGameRooms.emplace(WORLD_ID::BERN, smallSource);
+            returnApp->m_ColosseumMatches.emplace(smallTarget->m_iColosseumMatchId, smallTarget);
+            for (const auto& peer : peers)
+            {
+                returnApp->m_Sessions.emplace(peer->Get_SessionId(), peer);
+                returnApp->m_GameplayBindingBySessionId.emplace(peer->Get_SessionId(),
+                    CServerApp::SESSION_GAMEPLAY_BINDING{WORLD_ID::COLOSSEUM, INVALID_SESSION_ID, smallTarget});
+            }
+            smallTarget->Handle_ColosseumReturn(ordered.front(), {smallTarget->m_iColosseumMatchId + 1u});
+            tests.Require(smallTarget->m_PendingWorldTransfers.empty(), "The typed result return rejects another match identity");
+            for (std::size_t index = 0; index < ordered.size(); ++index)
+            {
+                for (const auto& peer : peers)
+                {
+                    peer->m_OutboundFrames.clear(); peer->m_iQueuedOutboundBytes = 0u;
+                    peer->m_OutboundMetrics.iCurrentQueuedByteCount = 0u;
+                    peer->m_OutboundMetrics.iCurrentQueuedFrameCount = 0u;
+                }
+                const auto sessionId = ordered[index];
+                smallTarget->Handle_ColosseumReturn(sessionId, {smallTarget->m_iColosseumMatchId});
+                SERVER_WORLD_TRANSFER_REQUEST back;
+                CServerApp::SESSION_WORLD_TRANSFER_FAILURE failure;
+                const bool returned = smallTarget->Try_DequeueWorldTransfer(back) &&
+                    returnApp->Transfer_SessionWorld(smallTarget, back, failure);
+                tests.Require(returned, "Every small-match human completes the typed result return to Bern");
+                if (!returned) { std::cout << "Flexible return count=" << count << " status=" << failure.strContext << '\n'; continue; }
+                const auto& restored = smallSource->m_Players.at(smallSource->m_PlayerIdBySessionId.at(sessionId));
+                const auto* profile = smallSource->m_GameplayCatalog.Find_Player(restored.eCharacterClass);
+                tests.Require(profile && restored.eCharacterClass == CHARACTER_CLASS_ID::LANCE_MASTER &&
+                    restored.strNickName == "Flexible" + std::to_string(index) &&
+                    restored.iCurrentHp == profile->iMaximumHp && restored.iMaximumHp == profile->iMaximumHp &&
+                    restored.iColosseumMatchId == 0u && !restored.bColosseumParticipant &&
+                    !smallSource->m_PartyIdByPlayerId.contains(restored.iPlayerId) &&
+                    returnApp->m_GameplayBindingBySessionId.at(sessionId).pSimulation == smallSource,
+                    "Typed return preserves identity, restores normal health and clears match-party authority");
+            }
+            tests.Require(smallSource->Count_HumanPlayers() == count && smallTarget->Count_HumanPlayers() == 0u &&
+                std::none_of(smallSource->m_Players.begin(), smallSource->m_Players.end(), [](const auto& p) { return p.second.Is_ColosseumMercenary(); }),
+                "All small-match humans return while mercenaries stay out of Bern");
+            std::cout << "Flexible lifecycle count=" << count << " autoOpponents=" << autoSelected << " returned=" << smallSource->Count_HumanPlayers() << '\n';
         }
         for (const auto& peer : peers) peer->m_isSendRunning.store(false);
     }
@@ -196,11 +292,11 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
         std::count_if(state.Players.begin(), state.Players.end(), [](const auto& p) { return p.bParticipant; }) == 4,
         "Persistent initial state marks only four humans as participants");
     const auto expectedReferenceHp = source->m_GameplayCatalog.Find_Boss("BOSS_VALTAN")->iMaximumHp;
-    const auto expectedMatchHp = expectedReferenceHp / 4u + (expectedReferenceHp % 4u ? 1u : 0u);
+    const auto expectedMatchHp = expectedReferenceHp / 8u + (expectedReferenceHp % 8u ? 1u : 0u);
     tests.Require(std::all_of(room->m_Players.begin(), room->m_Players.end(), [expectedMatchHp, expectedReferenceHp](const auto& value) {
         return value.second.iMaximumHp == expectedMatchHp && value.second.iColosseumDamageReferenceHp == expectedReferenceHp && !value.second.isCombatReady &&
             (!value.second.Is_Human() || (value.second.Inventory.empty() && value.second.Purse.iSilver >= 77u));
-    }), "Match has 40 Valtan HP bars with the full immutable damage reference and preserves empty inventory/purse");
+    }), "Match has 20 Valtan HP bars with the full immutable damage reference and preserves empty inventory/purse");
     for (const auto& [id, ai] : room->m_ColosseumMercenaries)
     {
         const auto& merc = room->m_Players.at(id);
@@ -263,8 +359,9 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
         room->Handle_ColosseumRecruit(recruiters[team], request);
     }
     tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::ENTRY_COUNTDOWN &&
+        room->m_iColosseumPhaseEnd - room->m_iColosseumPhaseStart == 300u &&
         std::count_if(room->m_Players.begin(), room->m_Players.end(), [](const auto& p) { return p.second.bColosseumParticipant; }) == 8,
-        "Two selected mercenaries per team prepare eight participants and a three-second entry countdown");
+        "Two selected mercenaries per team prepare eight participants and a ten-second entry countdown");
     const auto entryDeadline = room->m_iColosseumPhaseEnd;
     room->Update_ColosseumMatch(entryDeadline - 1u);
     tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::ENTRY_COUNTDOWN &&
@@ -272,7 +369,7 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
         "Entry countdown blocks all damage before the deadline");
     room->Update_ColosseumMatch(entryDeadline);
     tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::INTRO && room->m_iColosseumPhaseEnd == entryDeadline + 258u,
-        "Three-second entry transitions to one shared 8.6-second lineup clock");
+        "Ten-second entry transitions to one shared 8.6-second lineup clock");
     room->Update_ColosseumMatch(room->m_iColosseumPhaseEnd);
     tests.Require(room->m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::COUNTDOWN,
         "Lineup completion starts the original gate countdown");
@@ -626,6 +723,120 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
                 }
                 tests.Require(ordered, "Every other class completes native LMB then Q then W in the explicit rotation with every skill ready");
                 std::cout << "Mercenary ready rotation class=" << static_cast<unsigned>(classId) << " LMB,Q,W=" << ordered << '\n';
+            }
+            // Drive both real AI selectors against the published ALT_V binding.
+            // Player resets below isolate command admission; the production
+            // death/respawn call must preserve the match-owned interval.
+            for (const auto classId : { CHARACTER_CLASS_ID::DIMENSIONMASTER, CHARACTER_CLASS_ID::LANCE_MASTER,
+                CHARACTER_CLASS_ID::WARLORD, CHARACTER_CLASS_ID::GUARDIANKNIGHT, CHARACTER_CLASS_ID::ARTIST })
+            {
+                const auto* actorProfile = catalog->Find_Player(classId);
+                const PLAYER_SKILL_DEFINITION* awakening = nullptr;
+                for (const auto& [id, definition] : catalog->Get_Skills())
+                    if (definition.eCharacterClass == classId && definition.strInputSlot == "ALT_V") awakening = &definition;
+                tests.Require(actorProfile && awakening && awakening->eSkillKind == PLAYER_SKILL_KIND::ACTIVE,
+                    "Every Colosseum mercenary resolves its actual published ALT_V active skill");
+                if (!actorProfile || !awakening) continue;
+                auto& actor = hazardRoom->m_Players.at(merc.iPlayerId);
+                auto& interval = hazardRoom->m_ColosseumMercenaries.at(merc.iPlayerId);
+                auto& target = hazardRoom->m_Players.at(caster.iPlayerId);
+                target.eAction = PLAYER_ACTION_STATE::NONE; target.iCurrentSkillId = INVALID_SKILL_ID;
+                target.fPositionX = landing.x; target.fPositionY = landing.y; target.fPositionZ = landing.z + 1.f;
+                const auto blockOtherSkills = [&](SERVER_PLAYER& player)
+                {
+                    for (const auto& [id, definition] : catalog->Get_Skills())
+                        if (definition.eCharacterClass == classId && id != awakening->iSkillId)
+                            player.CooldownEndTickBySkillId[id] = hazardRoom->m_iServerTick + 100000u;
+                };
+                const auto freshActor = [&]()
+                {
+                    auto player = merc;
+                    player.eCharacterClass = classId; player.eStance = actorProfile->eDefaultStance;
+                    player.iCurrentResource = player.iMaximumResource = actorProfile->iMaximumResource;
+                    player.iMaximumIdentity = actorProfile->iMaximumIdentity; player.fMoveSpeed = actorProfile->fMoveSpeed;
+                    player.fColosseumSpawnX = landing.x; player.fColosseumSpawnY = landing.y;
+                    player.fColosseumSpawnZ = landing.z; player.fColosseumSpawnYaw = player.fYawDegrees;
+                    player.CooldownEndTickBySkillId.clear();
+                    CPlayerSkillSystem::Reset_Gauges(player, hazardRoom->m_GameplayCatalog);
+                    blockOtherSkills(player);
+                    return player;
+                };
+                constexpr std::uint32_t firstTick = 200000u;
+                hazardRoom->m_iServerTick = firstTick;
+                hazardRoom->m_iColosseumPhaseEnd = firstTick + 3600u;
+                hazardRoom->m_eColosseumPhase = COLOSSEUM_MATCH_PHASE::ACTIVE;
+                actor = freshActor(); interval = {}; interval.ComboSkills = { awakening->iSkillId };
+                actor.CooldownEndTickBySkillId[awakening->iSkillId] = firstTick + 1200u;
+                hazardRoom->Update_Colosseum(.25f);
+                tests.Require(actor.eAction == PLAYER_ACTION_STATE::NONE && !interval.iLastAltVAdmissionTick,
+                    "A native cooldown rejection does not consume the mercenary ALT_V interval");
+                actor.CooldownEndTickBySkillId.erase(awakening->iSkillId);
+                hazardRoom->Update_Colosseum(.25f);
+                tests.Require(actor.eAction == PLAYER_ACTION_STATE::SKILL && actor.iCurrentSkillId == awakening->iSkillId &&
+                    interval.iLastAltVAdmissionTick == firstTick,
+                    "An accepted ALT_V starts that mercenary's thirty-second admission interval");
+
+                actor.iCurrentHp = 0u; actor.eAction = PLAYER_ACTION_STATE::DEAD;
+                actor.iColosseumRespawnTick = firstTick + 90u;
+                hazardRoom->m_iServerTick = firstTick + 90u;
+                hazardRoom->Update_ColosseumMatch(hazardRoom->m_iServerTick);
+                tests.Require(actor.iCurrentHp == expectedMatchHp && actor.iMaximumHp == expectedMatchHp &&
+                    actor.CooldownEndTickBySkillId.empty() && interval.iLastAltVAdmissionTick == firstTick,
+                    "Actual arena respawn restores twenty-bar HP and clears native cooldowns while preserving the ALT_V interval");
+                blockOtherSkills(actor);
+                hazardRoom->Update_Colosseum(.25f);
+                tests.Require(actor.eAction == PLAYER_ACTION_STATE::NONE && interval.iLastAltVAdmissionTick == firstTick,
+                    "Respawn cannot authorize another mercenary ALT_V before thirty seconds");
+                hazardRoom->m_iServerTick = firstTick + 899u; actor = freshActor();
+                hazardRoom->Update_Colosseum(.25f);
+                tests.Require(actor.eAction == PLAYER_ACTION_STATE::NONE && interval.iLastAltVAdmissionTick == firstTick,
+                    "The same mercenary ALT_V stays blocked at the 899-tick boundary");
+                hazardRoom->m_iServerTick = firstTick + 900u; actor = freshActor();
+                hazardRoom->Update_Colosseum(.25f);
+                tests.Require(actor.eAction == PLAYER_ACTION_STATE::SKILL && actor.iCurrentSkillId == awakening->iSkillId &&
+                    interval.iLastAltVAdmissionTick == firstTick + 900u,
+                    "The same mercenary ALT_V is admitted at 900 ticks when its native cooldown permits");
+
+                hazardRoom->m_iServerTick = firstTick + 1800u; actor = freshActor();
+                actor.CooldownEndTickBySkillId[awakening->iSkillId] = firstTick + 2700u;
+                hazardRoom->Update_Colosseum(.25f);
+                tests.Require(actor.eAction == PLAYER_ACTION_STATE::NONE &&
+                    actor.CooldownEndTickBySkillId.at(awakening->iSkillId) == firstTick + 2700u &&
+                    interval.iLastAltVAdmissionTick == firstTick + 900u,
+                    "An existing longer native cooldown remains unchanged after the thirty-second minimum expires");
+                auto peer = freshActor(); peer.iPlayerId = 3u; peer.iNetEntityId = 103u;
+                hazardRoom->m_Players.emplace(peer.iPlayerId, peer);
+                auto& peerInterval = hazardRoom->m_ColosseumMercenaries[peer.iPlayerId];
+                peerInterval.ComboSkills = { awakening->iSkillId };
+                hazardRoom->Update_Colosseum(.25f);
+                tests.Require(hazardRoom->m_Players.at(peer.iPlayerId).iCurrentSkillId == awakening->iSkillId &&
+                    peerInterval.iLastAltVAdmissionTick == firstTick + 1800u && interval.iLastAltVAdmissionTick == firstTick + 900u,
+                    "A different mercenary owns an independent ALT_V interval");
+                hazardRoom->m_ColosseumMercenaries.erase(peer.iPlayerId); hazardRoom->m_Players.erase(peer.iPlayerId);
+                for (const auto phase : { COLOSSEUM_MATCH_PHASE::RECRUITING, COLOSSEUM_MATCH_PHASE::FINISHED })
+                {
+                    hazardRoom->m_eColosseumPhase = phase;
+                    hazardRoom->Update_Colosseum(.25f);
+                    tests.Require(interval.iLastAltVAdmissionTick == firstTick + 900u,
+                        "Recruitment and match completion do not erase a mercenary's accepted ALT_V clock");
+                }
+                hazardRoom->m_eColosseumPhase = COLOSSEUM_MATCH_PHASE::ACTIVE;
+
+                const auto beforeWrap = (std::numeric_limits<std::uint32_t>::max)() - 400u;
+                hazardRoom->m_iServerTick = beforeWrap; actor = freshActor();
+                interval = {}; interval.ComboSkills = { awakening->iSkillId };
+                hazardRoom->Update_Colosseum(.25f);
+                tests.Require(interval.iLastAltVAdmissionTick == beforeWrap && actor.iCurrentSkillId == awakening->iSkillId,
+                    "The mercenary ALT_V interval records an accepted cast near server tick wrap");
+                hazardRoom->m_iServerTick = beforeWrap + 899u; actor = freshActor();
+                hazardRoom->Update_Colosseum(.25f);
+                tests.Require(actor.eAction == PLAYER_ACTION_STATE::NONE && interval.iLastAltVAdmissionTick == beforeWrap,
+                    "Unsigned elapsed ticks keep ALT_V blocked across wrap before thirty seconds");
+                hazardRoom->m_iServerTick = beforeWrap + 900u; actor = freshActor();
+                hazardRoom->Update_Colosseum(.25f);
+                tests.Require(actor.iCurrentSkillId == awakening->iSkillId &&
+                    interval.iLastAltVAdmissionTick == beforeWrap + 900u,
+                    "ALT_V becomes eligible exactly at the thirty-second interval across tick wrap");
             }
             // The normal skill executor owns stance changes and stand-up too.
             // Neither a second stance runtime nor a synthetic direct swap is used.

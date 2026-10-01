@@ -1544,7 +1544,7 @@ bool LostArk::Server::CGameRoom::Commit_NumericBalance(
     {
         const auto* profile = m_GameplayCatalog.Find_Player(player.eCharacterClass);
         if (!profile) continue;
-        // A match pins its admitted 40-bar HP pool and full damage reference
+        // A match pins its admitted 20-bar HP pool and full damage reference
         // until departure; class/boss HP edits affect future admissions only.
         const bool matchedColosseum = m_eWorldId == LostArk::Shared::WORLD_ID::COLOSSEUM &&
             m_iColosseumMatchId != 0u && player.iColosseumMatchId == m_iColosseumMatchId &&

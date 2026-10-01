@@ -2630,6 +2630,64 @@ bool_t CModel::Try_GetBindGeometryBounds(float3_t& minimum, float3_t& maximum) c
     minimum = m_vBindGeometryBoundsMin; maximum = m_vBindGeometryBoundsMax; return true;
 }
 
+namespace
+{
+    bool MakeModelPickRay(const float4x4_t& world, const float3_t& rayOrigin,
+        const float3_t& rayDirection, vector_t& origin, vector_t& direction,
+        float& localLength, float& windingSign)
+    {
+        const auto finite = [](vector_t value) { return !XMVector3IsNaN(value) && !XMVector3IsInfinite(value); };
+        const vector_t ray = XMLoadFloat3(&rayDirection);
+        const float rayLength = XMVectorGetX(XMVector3Length(ray));
+        if (!finite(ray) || !finite(XMLoadFloat3(&rayOrigin)) ||
+            !std::isfinite(rayLength) || rayLength <= 1.e-8f) return false;
+        for (const auto& row : world.m) for (const float value : row)
+            if (!std::isfinite(value)) return false;
+        // A world transform must be affine. Reject a projective matrix rather
+        // than treating a perspective ray as a line after the inverse.
+        if (world._14 != 0.f || world._24 != 0.f || world._34 != 0.f || world._44 != 1.f) return false;
+        vector_t determinant;
+        const matrix_t inverse = XMMatrixInverse(&determinant, XMLoadFloat4x4(&world));
+        const float det = XMVectorGetX(determinant);
+        if (!std::isfinite(det) || det == 0.f) return false;
+        origin = XMVector3TransformCoord(XMLoadFloat3(&rayOrigin), inverse);
+        const vector_t localRay = XMVector3TransformNormal(ray / rayLength, inverse);
+        localLength = XMVectorGetX(XMVector3Length(localRay));
+        if (!finite(origin) || !finite(localRay) || !std::isfinite(localLength) || localLength <= 0.f) return false;
+        direction = localRay / localLength;
+        windingSign = det < 0.f ? -1.f : 1.f;
+        return true;
+    }
+}
+
+bool_t CModel::Try_PickStaticSurface(const uint32_t meshIndex, const float4x4_t& world,
+    const float3_t& rayOrigin, const float3_t& rayDirection, const f32_t maxDistance,
+    const PICK_CULL_MODE cullMode, f32_t& distance) const
+{
+    if (MODEL::NONANIM != m_eType || meshIndex >= m_Meshes.size() ||
+        !m_Meshes[meshIndex] || !m_bHasLocalBounds || !std::isfinite(maxDistance) || maxDistance < 0.f ||
+        (cullMode != PICK_CULL_MODE::NONE && cullMode != PICK_CULL_MODE::BACK &&
+            cullMode != PICK_CULL_MODE::FRONT)) return false;
+    vector_t origin, direction;
+    float localLength = 0.f, windingSign = 1.f;
+    if (!MakeModelPickRay(world, rayOrigin, rayDirection, origin, direction, localLength, windingSign)) return false;
+    const float localLimit = static_cast<float>((std::min)(
+        static_cast<double>(maxDistance) * localLength,
+        static_cast<double>((std::numeric_limits<float>::max)())));
+    BoundingBox bounds;
+    BoundingBox::CreateFromPoints(bounds, XMLoadFloat3(&m_vLocalBoundsMin), XMLoadFloat3(&m_vLocalBoundsMax));
+    float entry = 0.f;
+    if (!bounds.Intersects(origin, direction, entry) || entry > localLimit) return false;
+    const float cullSign = cullMode == PICK_CULL_MODE::NONE ? 0.f :
+        windingSign * (cullMode == PICK_CULL_MODE::BACK ? 1.f : -1.f);
+    float localDistance = 0.f;
+    if (!m_Meshes[meshIndex]->Try_PickStaticLocal(origin, direction, localLimit, cullSign, localDistance)) return false;
+    const float worldDistance = localDistance / localLength;
+    if (!std::isfinite(worldDistance) || worldDistance > maxDistance) return false;
+    distance = worldDistance;
+    return true;
+}
+
 bool_t CModel::Try_PickCurrentPose(const float4x4_t& world, const float3_t& rayOrigin,
     const float3_t& rayDirection, f32_t& distance) const
 {
@@ -2641,20 +2699,9 @@ bool_t CModel::Try_PickCurrentPose(const float4x4_t& world, const float3_t& rayO
     const float3_t& rayDirection, f32_t& distance, uint32_t& meshIndex) const
 {
     const auto finite = [](vector_t value) { return !XMVector3IsNaN(value) && !XMVector3IsInfinite(value); };
-    const vector_t ray = XMLoadFloat3(&rayDirection);
-    const float rayLength = XMVectorGetX(XMVector3Length(ray));
-    if (!finite(ray) || !finite(XMLoadFloat3(&rayOrigin)) || rayLength <= 1.e-8f) return false;
-    for (const auto& row : world.m) for (const float value : row)
-        if (!std::isfinite(value)) return false;
-    vector_t determinant;
-    const matrix_t inverse = XMMatrixInverse(&determinant, XMLoadFloat4x4(&world));
-    const float det = XMVectorGetX(determinant);
-    if (!std::isfinite(det) || std::fabs(det) < 1.e-8f) return false;
-    const vector_t origin = XMVector3TransformCoord(XMLoadFloat3(&rayOrigin), inverse);
-    const vector_t localRay = XMVector3TransformNormal(ray / rayLength, inverse);
-    const float localLength = XMVectorGetX(XMVector3Length(localRay));
-    if (!finite(origin) || !finite(localRay) || localLength <= 1.e-8f) return false;
-    const vector_t direction = localRay / localLength;
+    vector_t origin, direction;
+    float localLength = 0.f, windingSign = 1.f;
+    if (!MakeModelPickRay(world, rayOrigin, rayDirection, origin, direction, localLength, windingSign)) return false;
     float3_t minimum, maximum;
     if (!Try_GetCurrentPoseBounds(minimum, maximum)) return false;
     BoundingBox bounds;
@@ -2669,6 +2716,13 @@ bool_t CModel::Try_PickCurrentPose(const float4x4_t& world, const float3_t& rayO
         const auto& mesh = m_Meshes[meshOrdinal];
         if (!mesh || mesh->m_hasUniqueVertexBuffer || !mesh->m_PickGeometry) continue;
         const auto& geometry = *mesh->m_PickGeometry;
+        if (!geometry.skinned)
+        {
+            float candidate;
+            if (mesh->Try_PickStaticLocal(origin, direction, closest, 0.f, candidate) && candidate < closest)
+            { closest = candidate; closestMesh = meshOrdinal; hit = true; }
+            continue;
+        }
         vector<float4x4_t> palette;
         if (geometry.skinned)
         {

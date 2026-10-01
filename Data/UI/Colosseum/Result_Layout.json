@@ -149,9 +149,9 @@
       "type": 0,
       "rect": {
         "x": 540,
-        "y": 620,
+        "y": 627.6,
         "width": 200,
-        "height": 44
+        "height": 28.8
       },
       "rotation": 0,
       "stages": {
@@ -160,13 +160,13 @@
       },
       "layers": [
         {
-          "path": "UI/Common/White1x1.png",
+          "path": "UI/SystemOption/SystemOption_Btn_Normal.png",
           "hoverPath": null,
           "tint": [
-            0.05,
-            0.11,
-            0.18,
-            0.95
+            1,
+            1,
+            1,
+            1
           ],
           "additive": false,
           "flipX": false

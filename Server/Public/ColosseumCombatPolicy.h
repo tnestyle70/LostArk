@@ -17,8 +17,10 @@ namespace LostArk::Server
         std::span<SERVER_PLAYER*> Players;
     };
 
-    // Damage keeps the original 160-bar reference even when match HP uses 40 bars.
+    // Damage keeps the original 160-bar reference independently of the match HP pool.
     inline constexpr std::uint32_t COLOSSEUM_DAMAGE_REFERENCE_HEALTH_BARS = 160u;
+    // PvP keeps one tenth of the existing signed push distance and movement duration.
+    inline constexpr std::uint32_t COLOSSEUM_KNOCKBACK_DIVISOR = 10u;
 
     [[nodiscard]] inline bool Is_ColosseumCombatParticipant(
         const SERVER_COLOSSEUM_COMBAT_CONTEXT& context, const SERVER_PLAYER& player) noexcept

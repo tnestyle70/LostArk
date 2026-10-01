@@ -23,6 +23,7 @@ void Client::CUIInputRouter::Begin_Frame()
 	m_pTopWindowOwner = nullptr;
 	m_bLeftClickConsumed = false;
 	m_pPointerScope = nullptr;
+	m_pCinematicPointerOwner = nullptr;
 	m_bLeftDownThisFrame =
 		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::LB) & 0x80);
 	m_bRightDownThisFrame =
@@ -37,7 +38,7 @@ bool_t Client::CUIInputRouter::Is_Hovered(
 	f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight,
 	f32_t fRefWidth, f32_t fRefHeight) const
 {
-	if (m_bCinematicSuppressed) return false;
+	if (Is_PointerInputSuppressed()) return false;
 	/* Same GetCursorPos + ScreenToClient pattern CPlayerController::Try_PickWorldRay already
 	uses for its own world-ray picking, not ImGui::GetMousePos -- the whole point of this router
 	is for the runtime UI path not to depend on ImGui. */
@@ -80,7 +81,8 @@ bool_t Client::CUIInputRouter::Is_Clicked(
 	if (!Is_LeftClickEdge())
 		return false;
 	/* A press inside the front window's panel belongs to that window alone. */
-	if (m_bHasTopWindowLastFrame && m_pPointerScope != m_pTopWindowOwnerLastFrame)
+	// Hidden ordinary windows cannot cover the active cinematic control.
+	if (!m_bCinematicSuppressed && m_bHasTopWindowLastFrame && m_pPointerScope != m_pTopWindowOwnerLastFrame)
 	{
 		f32_t fCursorX = 0.f, fCursorY = 0.f;
 		if (Get_ClientCursorPosition(fCursorX, fCursorY) &&
@@ -101,18 +103,18 @@ bool_t Client::CUIInputRouter::Is_Clicked(
 
 bool_t Client::CUIInputRouter::Is_LeftClickEdge() const
 {
-	return !m_bCinematicSuppressed && !m_bLeftAwaitRelease && m_bLeftDownThisFrame && !m_bLeftDownLastFrame;
+	return !Is_PointerInputSuppressed() && !m_bLeftAwaitRelease && m_bLeftDownThisFrame && !m_bLeftDownLastFrame;
 }
 
 bool_t Client::CUIInputRouter::Is_RightClickEdge() const
 {
-	return !m_bCinematicSuppressed && m_bRightDownThisFrame && !m_bRightDownLastFrame;
+	return !Is_PointerInputSuppressed() && m_bRightDownThisFrame && !m_bRightDownLastFrame;
 }
 
 bool_t Client::CUIInputRouter::Get_MousePosition(
 	f32_t fRefWidth, f32_t fRefHeight, f32_t& outX, f32_t& outY) const
 {
-	if (m_bCinematicSuppressed) return false;
+	if (Is_PointerInputSuppressed()) return false;
 	::POINT cursor{};
 	if (!GetCursorPos(&cursor) || !ScreenToClient(g_hWnd, &cursor))
 		return false;
@@ -131,7 +133,7 @@ bool_t Client::CUIInputRouter::Get_MousePosition(
 
 bool_t Client::CUIInputRouter::Get_ClientCursorPosition(f32_t& outX, f32_t& outY) const
 {
-	if (m_bCinematicSuppressed) return false;
+	if (Is_PointerInputSuppressed()) return false;
 	::POINT cursor{};
 	if (!GetCursorPos(&cursor) || !ScreenToClient(g_hWnd, &cursor))
 		return false;

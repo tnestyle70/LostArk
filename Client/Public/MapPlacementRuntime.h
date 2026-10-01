@@ -102,6 +102,13 @@ public:
 		const MAP_LOAD_SCOPE& loadScope = {});
 	void Clear();
 
+	/* Current CPU map geometry, independent of the rendered picking target.
+	   Uses immutable LOD0 triangles and live placement visibility/transforms;
+	   shader alpha/displacement and rendered LOD pixel coverage are not sampled.
+	   A miss leaves outPosition and the caller's current movement unchanged. */
+	bool_t Try_PickMovementSurface(const float3_t& rayOrigin,
+		const float3_t& rayDirection, float3_t& outPosition) const;
+
 	const CMapAssetCatalog& Get_Catalog() const { return m_Catalog; }
 	const std::string& Get_Status() const { return m_Status; }
 	const std::vector<MAP_RUNTIME_PLACED_ENTRY>& Get_Placements() const

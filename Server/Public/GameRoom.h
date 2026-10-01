@@ -1907,6 +1907,8 @@ namespace LostArk::Server
 		{
 			float fThinkElapsed = 0.f;
 			std::uint32_t iSequence = 0u;
+			// Match-owned admission clock survives player respawn and rotation resets.
+			std::optional<std::uint32_t> iLastAltVAdmissionTick;
 			std::size_t iSkillCursor = 0u;
 			std::vector<LostArk::Shared::SKILL_ID> ComboSkills;
 			float fComboElapsed = 0.f, fStepWaitElapsed = 0.f;
