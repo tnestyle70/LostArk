@@ -748,6 +748,11 @@ query heap 할당0이었다. 음수/비균일 scale과 컬링을 포함한다. �
 
 ### G22-3. 반복 입력 비용과 실제 맵 크기 검증
 
+후속 실사용에서 Map 밖 Deploy carrier 누락이 확인됐다. 발탄 파괴 바닥·난간과 쿠크 종이 다리의
+현재 표시 모델/pose를 같은 CPU 이동 resolver에 합성한 수정과 Release 배포 검증은
+[Deploy 피킹 결과](../10-01/2026-10-01_DEPLOY_CPU_MOVEMENT_PICKING_RESULT.md)에 기록한다.
+아래의 기존 Map/Controller 검사는 이 Deploy 연결 누락을 검출한 근거가 아니다.
+
 hold 표면 검색 시각을 송신 시각과 분리했다. 같은 목표·miss·송신 실패도 다음 hold 검색까지
 50ms 간격을 지키며 새 press는 즉시 검색한다. 송신이 없다는 이유로 매 frame 검색하지 않는다.
 `MapStaticBatchObject`는 기존 bounds가 유효하고 dirty가 아닐 때만 batch 전체를 먼저 배제한다.

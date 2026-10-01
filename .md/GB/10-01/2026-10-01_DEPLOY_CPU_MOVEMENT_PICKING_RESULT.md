@@ -26,19 +26,34 @@ Render의 despawn/opacity/source suppression/camera suppression과 일치하며 
   `out/DeployPickingAudit20261001/history_geometry/{manifest.json,results.txt}`.
 - 기존 CPU 이동 dispatch Release27검사 PASS.
   `out/DeployPickingAudit20261001/dispatch-release/result.json`.
-- 신규 생산 Deploy/두 Level resolver 추출 Release64검사 PASS.
+- 신규 생산 Deploy/두 Level resolver 추출 Debug/Release 각각64검사 PASS.
   geometry는 deterministic CModel 대역이며 실제 설치 geometry 검증과 구분한다.
+  `out/DeployMoveSurfaceRegression/{Debug,Release}/result.json`.
+  `9497dad14`의 이전 resolver만 같은 검사에 대입하면 Deploy-only floor에서 실패한다.
+  `out/DeployMoveSurfaceRegression/BaselineResolver/result.json`에 회귀 재현을 기록했다.
 - Release Product Build PASS, SkipBuild=false. Engine/Shared/Server/Client 정상 증분 빌드와
   runtime 입력 검사를 통과했다. 기존 인코딩/PDB 경고는 남았고 compile/link 오류는 없다.
   receipt: `out/BuildPipeline/runs/20261001T015758833Z-release-product.json`.
 - 기존 C++ UTF-8/BOM/CRLF를 유지했다. 신규 제품 C++ 파일이 없어 project/filter 등록은 없다.
   데이터·shader·protocol·Server navigation·렌더링 옵션 변경은 없다.
+- Portable package 도구22검사 PASS. `out/DeployPickingAudit20261001/package-tests.log`.
 
 ## G02. 배포와 사용자 확인 경계
 
 사용자 승인으로 이 저장소 Release Server PID31712를 종료한 뒤 빌드했다.
 Client/UI를 실행하거나 화면을 캡처하지 않았다. Server도 자동 재시작하지 않았다.
-새 portable ZIP 생성·검증 결과는 완료 후 아래에 기록한다. 기존 FINAL ZIP은 보존한다.
+새 portable ZIP 생성·검증 PASS. 기존 FINAL ZIP은 보존했다.
+
+- 파일: `C:/Users/user/Desktop/LostArk-Release-20261001-PICKING-FIX.zip`
+- 크기:168,880,883bytes(약161.06MiB)
+- SHA256:`0a9a5821ca3d910f8a476b4ec7959a647bfe236b36bc65dad4c49d975e2c6c43`
+- 제품 수정 commit:`4201487a2`, draft PR:https://github.com/tnestyle70/LostArk/pull/500
+- payload2766개, 직접Data2178개, compiled shader256개, numeric source binding587개,
+  protocol132. Resources는 외부 기존 폴더를 사용한다.
+- ZIP CRC/manifest SHA256/중복경로/원본 파일 보존 및 launcher `--check` PASS.
+  `out/ReleasePackaging/preflight-20261001-deploy-picking.json`과
+  `out/DeployPickingAudit20261001/package.log`에 증거를 보존했다.
+- Release 빌드 이후 생산 코드 변경은 없고 후속 문서 commit은 검증·배포 결과만 기록한다.
 
 사용자 확인은 발탄 양쪽 외곽 돌판·난간 클릭, 파괴 뒤 사라진 표면 제외,
 쿠크 첫째/둘째 종이 다리를 펼친 뒤 이동이다. 실제 Server 이동은 여전히 navigation과
