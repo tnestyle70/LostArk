@@ -407,3 +407,75 @@ Client/Server Guide.runtime.json SHA256은
 신규 `guide.trigger.20001546.2`는 enabled=true / GUIDE_STARTED / promptId 빈 값이다.
 아바타 대사와 연결된 SPACE_ENTER가 없어 상점 접근 안내용 위치·크기·회전은 아직 없다.
 Publish 성공과 의도한 trigger 연결을 구분해 사용자에게 보고했으며 데이터 수정·재게시하지 않았다.
+
+## G11. 기능 NPC 안내와 가이드 버그 수정 (2026-10-01)
+
+### G11-01. 승인 범위와 데이터 반영
+
+사용자가 읽기 전용 검토 후 전체 수정을 승인했다. 안내 시작은 기존 일반 인사
+`guide.bern.party.first_invite`로 복원하고, 아바타 대사와 사용자가 만든 빈 trigger의
+stable ID를 보존하여 도서관 `npc.bern.plaza.17`의 SPACE_ENTER에 연결했다.
+베다 레이드 박스를 유지하고 회전을 현재 NPC와 맞췄으며 아일라라 레이드·물약·PvP
+박스를 추가했다. 기존 제련·수리·항구·물 박스와 귀환4개, 기존 대사12개 내용은 보존했다.
+
+물약 상점은 수리 NPC 옆 `npc.bern.plaza.05` 한 명만 활성화했다. 다른 배치9개는
+enabled=false로 보존하고 상점 binding에서 제외했다. 비활성 NPC를 바라보던 lookTarget
+5개는 null로 정리했다. 배틀 아이템4종과 가격·아바타 상점 상품은 변경하지 않았다.
+Guide·BERN World·Item publisher로 Client/Server 실행 데이터를 게시했다.
+
+현재 Guide revision은 `54095755338659`, 대사14개·트리거18개·SPACE_ENTER12개이며
+NPC anchor11개의 position/yaw는 활성 Gameplay NPC와 일치한다. 두 Guide 실행 파일의
+SHA256은 `77db40dd33f03fdcdf2ba9eef88b013c75a18da41864db6f7f26a0cf3d8adeb0`다.
+원본 백업·수정 hash는 `out/GuideNpcFix20261001/backup`, `manifest.json`,
+게시 이전 파일은 같은 폴더의 `runtime-before`에 있다.
+
+### G11-02. 코드 반영과 검증 경계
+
+공간 대사는 발생한 trigger 출처와 priority를 유지하고, 첫 발화 전에 실제 owner의
+현재 접촉을 검사한다. 떠난 공간의 미시작 대기를 버리고 실제 첫 송신에만 cooldown을
+소비한다. 시작 인사·실제 귀환·이미 시작한 여러 segment는 공간 이탈로 버리지 않는다.
+안내 시작과 월드 귀환 시 기존 접촉을 초기화하며, Guide만 이동할 때는 owner 접촉을
+보존하여 실제 지역 이동과 구분한다. 같은 대사를 공유하는 박스의 중첩·출처 변경도
+별도 회귀 범위다. Client 미니맵은 비활성 NPC를 제외하고, Guide 시작 메뉴는 서버와
+같은 XZ10m 조건을 표시하며 안내 종료는 원거리에서도 유지한다.
+
+Guide publisher는 삭제·비활성·비NPC anchor와 좌표·회전 불일치 및 대사·콤보가 없는
+활성 trigger를 검출한다. 편집용 Validate는 경고로 문서를 열 수 있게 하고
+Save/Publish/CheckPublished는 실패 시 원본·게시본을 보존한다. 좌표 자동 덮어쓰기는 없다.
+
+완료한 자동 검증:
+
+- BERN World Validate/Publish, Item Validate/Publish/CheckPublished, Guide Publish/CheckPublished 성공.
+- `python Tools/GuidePipeline/test_guide_pipeline.py`:34개 PASS,111.585초. 임시 fixture에서
+  저장 병합·실패 보존·anchor 오류·재복사·yaw360도·자유 배치·빈 trigger·구조 오류를 검증했다.
+- `python out/GuideNpcFix20261001/verify_data.py`:PASS. 저작/게시 source 연결, 활성 물약1명,
+  상품 보존, 기존 대사12개·무관 trigger12개 보존을 검사했다. `data-verification.json` 참조.
+
+### G11-03. 최종 컴파일·계약 검증과 남은 Release 적용
+
+Engine → Shared → Server → Client를 x64 Debug의 정상 MSBuild `/t:Build`로 실행하여
+각각 exit0을 확인했다. `Server/Bin/Debug/Server.exe`, `Client/Bin/Debug/Client.exe` 링크와
+기존 Debug 의존 DLL 배포도 성공했다. 로그는 `out/GuideNpcFix20261001/`의
+`engine-debug-build.log`, `shared-debug-build.log`, `server-debug-build.log`,
+`client-debug-build.log`다. Source/IntDir/OutDir 변경이나 Clean/Rebuild는 하지 않았다.
+Client의 기존 MainApp·EngineSDK 문자 집합 경고는 남아 있으며 이번 변경으로 일괄 변환하지 않았다.
+
+새 Debug Server의 `--guide-ai-contract-test`는 **97 PASS,0 FAIL,exit0**이다.
+`guide-debug-contract.log`, `guide-debug-result.json`에서 실제 송신 패킷을 decode하여
+이탈 예약 취소·즉시 재진입·중첩 출처 승계·미발생 출처 배제·우선순위·발화 cooldown·
+여러 segment·Guide 재배치와 실제 지역 이동의 구분을 확인했다. 기존 시작/종료·선점·
+연결 종료·승선·용 추종·원자적 입장 실패 보존·발탄/쿠크/워터팡/PvP 귀환 검사도 통과했다.
+추가 diff의 독립 리뷰에서도 중첩 후보와 참조 수명·귀환 상태 보존을 확인했다.
+
+Release Server와 Client는 `/t:ClCompile`을 각각 실행하여 exit0을 확인했다.
+`server-release-compile.log`, `client-release-compile.log` 참조. 실행 중인 기존 Release
+Server(PID39408)/Client(PID29056)의 EXE는 교체하지 않았다. 제품 runner는 실행 중인
+표준 출력을 일괄 차단하므로, 잠기지 않은 별도 Debug 출력의 정상 빌드와 Release 소스
+컴파일을 분리하여 검증했다. 사용자에게 실제 Release 종료 확인을 한 번 요청했으며
+아직 종료·Release 링크·새 Release 계약 실행·사용자 화면 확인은 남아 있다.
+
+관련 코드·게시본과 무관한 변경은 보존했다. C++는 기존 UTF-8 BOM 없음/CRLF,
+JSON은 기존 인코딩과 줄바꿈을 유지했고 `git diff --check`를 확인했다.
+새 C++ 파일·protocol·project/filter 변경은 없다. 디스크 게시를 실행 중 Server revision
+갱신이나 사용자 화면 확인으로 기록하지 않는다. 쿠크1관문 첫 팝업 음원은 이전 제거
+사유가 있는 별도 항목으로 복원하지 않았다.

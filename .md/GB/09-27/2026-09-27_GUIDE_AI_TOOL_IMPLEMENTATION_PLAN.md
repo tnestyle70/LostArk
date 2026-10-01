@@ -227,3 +227,46 @@ Render_ColliderDetail은 선택 stable trigger ID의 같은 draft를 편집한�
 기존 Save의 stable ID 병합과 원자 교체, Publish의 저장본 소비와 실패 보존을 유지한다.
 Debug Product 증분 빌드, Guide의 기존 저장/게시 회귀, scoped diff-check를 확인한다.
 Client 실행·화면 확인은 사용자가 F1 → DimensionMaster Guide → 콜라이더에서 수행한다.
+
+## G10. 기능 NPC 안내 위치와 가이드 상태 회귀 수정 (2026-10-01)
+
+사용자의 수정 승인에 따라 안내 시작은 `guide.bern.party.first_invite`로 복원한다.
+사용자가 만든 아바타 대사와 빈 trigger의 stable ID는 유지하고, 빈 trigger를
+`npc.bern.plaza.17` 중심의 SPACE_ENTER로 연결한다. 기존 베다 레이드 안내를 보존하며
+아일라라에도 레이드 안내를 추가한다. 물약 상점과 PvP 입장 안내도 실제 기능 NPC의
+Gameplay position/yaw를 복사한 OBB로 추가한다. 제련·수리·항구·생명의 물 박스와
+발탄·쿠크·워터팡·콜로세움 귀환 대사는 유지한다.
+
+`Data/Worlds/LV_BER_BERNCASTLE/Gameplay.world.json`에서는 수리 NPC 옆의
+`npc.bern.plaza.05`를 유지하고 나머지 물약 상인 배치 9개는 비활성화한다.
+`Data/Items/ItemCatalog.json`의 `shop.bern.potion`도 같은 1개 placement만 참조한다.
+기존 배치 ID·외형·좌표는 삭제하거나 재배치하지 않는다. Guide·World(BERN)·Item의
+기존 publisher로 각각 검증·게시하고 관련 Client/Server 실행 데이터만 함께 전달한다.
+
+Server의 공간 안내 큐는 현재 promptId와 segment index만 저장하여 NPC 구역을 떠난 뒤에도
+대사가 재생된다. `GameRoom.h`와 `GameRoom_Guide.cpp`의 기존 큐에 공간 trigger 출처를
+보관하고, 아직 시작하지 않은 공간 대사는 전송 직전 실제 owner가 해당 박스 안인지 확인한다.
+시작 인사·실제 월드 귀환·이미 시작한 여러 segment는 이 공간 취소 조건과 구분한다.
+추가로 시작/종료·중복 요청·승선 대기·귀환·연결 종료와 Client 대사 소비 경로를 검토하여
+재현되는 결함만 같은 기존 계약 안에서 수정한다. 새 runtime이나 protocol을 만들지 않는다.
+
+검증은 실제 저장본과 게시본의 NPC/상점/공간 연결 대조, 기존 publisher 회귀,
+`ServerGameplayContractTests_Guide.cpp`의 공간 이탈·정상 체류 회귀 및 기존 시작/종료·
+귀환 계약을 사용한다. C++ 변경은 해당 제품 Debug/Release 빌드로 확인한다.
+실행 중 Client/Server를 자동 종료하지 않으며 EXE 잠금, 디스크 게시와 실행 중 메모리,
+사용자 화면 확인은 RESULT에서 구분한다. 새 C++ 파일이 없으면 project/filter 추가도 없다.
+
+독립 검토에서 확인된 미니맵의 비활성 NPC 표시도 `Client/Private/MinimapView.cpp`의
+`Load_AreaNpcSymbols`에서 enabled=false를 제외하여 바로잡는다. 비활성 물약 NPC를 바라보던
+ambient lookTarget 참조는 null로 정리하되 나머지 행동과 배치를 보존한다.
+Guide publisher는 일회 복사 anchor의 enabled NPC/좌표·회전 일치를 저장·게시 전에 검사한다.
+편집용 Validate는 잘못된 anchor와 빈 활성 trigger를 경고하여 도구에서 고칠 수 있게 하고,
+Save/Publish/CheckPublished는 거부한다. 자동 좌표 덮어쓰기는 추가하지 않는다.
+관련 임시 fixture에서 실패 시 저작·게시본 보존과 복구 후 정상 게시를 검증한다.
+
+`PartyInteractionView.h/.cpp`는 서버 시작 조건과 같은 XZ 거리10m를 시작 메뉴에 표시한다.
+멀리서는 가까이 가서 시작하도록 비활성화하며 owner의 종료는 원거리에서도 유지한다.
+접촉 초기화는 안내 시작·월드 귀환에 한정한다. `Guide_AnchorArrived`와 가이드 부활은
+owner의 기존 접촉 기록을 보존하여 Guide만 이동한 경우의 가짜 진입을 막되 실제 스퀘어홀
+박스 진입은 허용한다. 같은 대사를 공유하는 중첩 박스는 실제 발생한 출처 후보를 유지하여
+한 박스만 벗어나도 다른 박스에 계속 있으면 안내가 한 번 전달되게 한다.

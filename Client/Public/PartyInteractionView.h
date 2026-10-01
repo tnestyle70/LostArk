@@ -93,6 +93,7 @@ private:
 	bool m_bContextMercenary = false;
     bool m_bContextGuide = false;
     bool m_bGuideStatusKnown = false, m_bGuideBusy = false, m_bGuideOwned = false;
+    bool m_bGuideStartInRange = false;
     float2_t m_ContextPanelSize{}, m_ContextButtonSize{};
 	std::uint64_t m_iContextMatchId = 0u;
 

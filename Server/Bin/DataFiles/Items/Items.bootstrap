@@ -1,4 +1,4 @@
-LOSTARK_ITEM_BOOTSTRAP	7	438
+LOSTARK_ITEM_BOOTSTRAP	7	429
 ITEM	POTION_HP_SMALL	999	15	-	-	-
 ITEM	POTION_HP_MEDIUM	999	30	-	-	-
 ITEM	POTION_HP_LARGE	999	45	-	-	-
@@ -393,15 +393,6 @@ ITEMVARIANT	AVATAR_MOKOKO_036C3_OUTFIT	GuardianKnight	AVATAR_GUARDIANKNIGHT_MOKO
 CURRENCY	SILVER	161161
 CURRENCY	GOLD	500
 SHOPNPC	shop.bern.potion	npc.bern.plaza.05
-SHOPNPC	shop.bern.potion	npc.bern.plaza.11
-SHOPNPC	shop.bern.potion	npc.bern.plaza.12
-SHOPNPC	shop.bern.potion	npc.bern.plaza.13
-SHOPNPC	shop.bern.potion	npc.bern.plaza.14
-SHOPNPC	shop.bern.potion	npc.bern.plaza.15
-SHOPNPC	shop.bern.potion	npc.bern.plaza.16
-SHOPNPC	shop.bern.potion	npc.bern.plaza.19
-SHOPNPC	shop.bern.potion	npc.bern.plaza.20
-SHOPNPC	shop.bern.potion	npc.bern.src.74
 SHOPITEM	shop.bern.potion	BATTLE_DESTRUCTION_BOMB	SILVER	161
 SHOPITEM	shop.bern.potion	BATTLE_WHIRLWIND_GRENADE	SILVER	161
 SHOPITEM	shop.bern.potion	BATTLE_HOLY_CHARM	SILVER	161

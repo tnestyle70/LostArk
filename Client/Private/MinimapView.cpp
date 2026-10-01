@@ -257,6 +257,9 @@ void Client::CMinimapView::Load_AreaNpcSymbols(const AREA& Area)
 		{
 			continue;
 		}
+		const DATA_JSON_VALUE* pEnabled = Placement.Find("enabled");
+		if (nullptr != pEnabled && pEnabled->Is_Boolean() && !pEnabled->Get_Boolean())
+			continue;
 		const DATA_JSON_VALUE* pIcon = pPlacements->Find(pId->Get_String());
 		if (nullptr == pIcon || !pIcon->Is_String() || pIcon->Get_String().empty())
 			continue;

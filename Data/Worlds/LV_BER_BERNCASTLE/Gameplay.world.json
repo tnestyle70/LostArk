@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_BER_BERNCASTLE",
-  "revision": 928,
+  "revision": 929,
   "placements": [
     {
       "placementId": "castle",
@@ -499,7 +499,7 @@
       },
       "position": [140.738007, 42.5770607, -83.6880035],
       "yawDegrees": -146.309998,
-      "enabled": true
+      "enabled": false
     },
     {
       "placementId": "npc.bern.plaza.12",
@@ -526,7 +526,7 @@
       },
       "position": [143.238007, 42.5770607, -82.1880035],
       "yawDegrees": -73.8199997,
-      "enabled": true
+      "enabled": false
     },
     {
       "placementId": "npc.bern.plaza.13",
@@ -545,7 +545,7 @@
         "startDelayMs": 1800,
         "idleMinMs": 0,
         "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.14",
+        "lookTargetPlacementId": null,
         "waypoints": [],
         "actions": [
           { "actionId": "npc.ambient.plaza.13.intimate", "clipName": "npc_sc_intimate_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.04999995, "blendSeconds": 0.200000003 }
@@ -553,7 +553,7 @@
       },
       "position": [144.238007, 42.5854645, -80.6880035],
       "yawDegrees": -33.6899986,
-      "enabled": true
+      "enabled": false
     },
     {
       "placementId": "npc.bern.plaza.14",
@@ -572,7 +572,7 @@
         "startDelayMs": 1950,
         "idleMinMs": 0,
         "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.13",
+        "lookTargetPlacementId": null,
         "waypoints": [],
         "actions": [
           { "actionId": "npc.ambient.plaza.14.apologize", "clipName": "npc_sc_apologize_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1, "blendSeconds": 0.200000003 }
@@ -580,7 +580,7 @@
       },
       "position": [143.238007, 42.5854645, -79.1880035],
       "yawDegrees": 146.309998,
-      "enabled": true
+      "enabled": false
     },
     {
       "placementId": "npc.bern.plaza.15",
@@ -599,7 +599,7 @@
         "startDelayMs": 2100,
         "idleMinMs": 0,
         "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.16",
+        "lookTargetPlacementId": null,
         "waypoints": [],
         "actions": [
           { "actionId": "npc.ambient.plaza.15.win", "clipName": "npc_evt2_win_01", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 0.949999988, "blendSeconds": 0.200000003 }
@@ -607,7 +607,7 @@
       },
       "position": [142.238007, 42.5770645, -78.1880035],
       "yawDegrees": 45,
-      "enabled": true
+      "enabled": false
     },
     {
       "placementId": "npc.bern.plaza.16",
@@ -626,7 +626,7 @@
         "startDelayMs": 2250,
         "idleMinMs": 0,
         "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.15",
+        "lookTargetPlacementId": null,
         "waypoints": [],
         "actions": [
           { "actionId": "npc.ambient.plaza.16.win", "clipName": "npc_evt2_win_02", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 1.04999995, "blendSeconds": 0.200000003 }
@@ -634,7 +634,7 @@
       },
       "position": [143.738007, 42.5770569, -76.6880035],
       "yawDegrees": -135,
-      "enabled": true
+      "enabled": false
     },
     {
       "placementId": "npc.bern.plaza.17",
@@ -680,7 +680,7 @@
         "startDelayMs": 2550,
         "idleMinMs": 0,
         "idleMaxMs": 0,
-        "lookTargetPlacementId": "npc.bern.plaza.20",
+        "lookTargetPlacementId": null,
         "waypoints": [],
         "actions": [
           { "actionId": "npc.ambient.plaza.18.shy", "clipName": "npc_sc_shyness_loop_1", "loop": true, "durationMs": 600000, "waitAfterMs": 0, "weight": 1, "playbackRate": 0.949999988, "blendSeconds": 0.200000003 }
@@ -715,7 +715,7 @@
       },
       "position": [134.238007, 42.5770607, -74.1880035],
       "yawDegrees": -111.801003,
-      "enabled": true
+      "enabled": false
     },
     {
       "placementId": "npc.bern.plaza.20",
@@ -742,7 +742,7 @@
       },
       "position": [132.738007, 42.5770607, -73.6880035],
       "yawDegrees": 161.565002,
-      "enabled": true
+      "enabled": false
     },
     {
       "placementId": "npc.bern.schmidt",
@@ -962,7 +962,7 @@
       "behavior": null,
       "position": [189.815994, 49.1100006, -146.669006],
       "yawDegrees": 276.859985,
-      "enabled": true
+      "enabled": false
     },
     {
       "placementId": "npc.bern.ship.shipwright.1",

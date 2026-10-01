@@ -265,12 +265,19 @@ Data/Guide가 저작 정본이다. guideId → triggerId/boxId → promptId → 
 GUIDE_STARTED는 안내 시작, SPACE_ENTER는 Bern owner의 박스 진입, RAID_RETURNED는
 VALTAN_ARENA/KAKULSAYDON_ARENA, WORLD_RETURNED는 MAHARAKA/COLOSSEUM의 실제 귀환을 소비한다.
 귀환 event는 Bern category에만 둘 수 있다. 과거 PARTY_JOINED는 reader 호환만 유지한다.
+SPACE_ENTER는 안내 시작·월드 귀환 시 현재 접촉을 초기화한 뒤 실제 밖→안 전이에만 발생한다.
+Guide만 재배치·부활하면 owner의 기존 접촉을 유지하고, owner의 실제 지역 이동은 새 진입을 감지한다.
+공간 안내 예약은 발생 trigger ID와 priority를 보관하며 첫 segment 전송 전에 owner의
+해당 박스 접촉을 재검사한다. 이탈한 미시작 예약은 취소하고 cooldown은 실제 전송부터 센다.
+이미 시작한 여러 segment와 시작·귀환 이벤트는 공간 이탈로 취소하지 않는다.
 `S2C_GUIDE_STATE`는 Bern 인간 모두에게 단일 actor의 현재 owner를 알린다. owner0은 안내 가능,
 local owner는 안내 종료, 다른 owner는 안내 중 비활성으로 표시한다. 늦게 진입해도 같은 상태를 받는다.
 `S2C_GUIDE_PROMPT`는 owner에게만 보내며 상태가 먼저 도착한다. Client는 자신의 owner 상태와
 actor ID를 확인한 뒤 revision/단조 sequence/text/수명을 기존 채팅·말풍선으로 전달한다.
 종료·owner 변경 상태는 해당 Guide의 대기·활성 말풍선만 정리하고 채팅 기록은 보존한다.
 도구의 draft는 서버 적용값이 아니다.
+NPC anchor는 자동 추종이 아닌 위치·회전 복사 참조다. 이동·삭제·비활성화된 anchor와
+빈 활성 trigger는 편집용 Validate에서 경고하여 수정할 수 있게 하되 Save/Publish는 거부한다.
 
 Save는 stable ID/필드 단위 병합과 source freshness 검사를 유지한다.
 Tools/GuidePipeline/Publish-Guide.ps1만 두 Guide.runtime.json을 게시하며 다른 gameplay domain은

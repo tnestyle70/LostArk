@@ -443,6 +443,8 @@ World Level Tool → `DimensionMaster Guide`에서 같은 창을 연다. 별도 
 
 Bern의 단일 가이드를 우클릭해 `가이드 - 차원술사 안내 시작`을 선택한다. 다른 사용자가
 안내 중이면 `다른 플레이어 안내 중`을 비활성으로 표시한다. owner는 같은 메뉴의 `안내 종료`를 사용할 수 있다.
+안내 시작은 서버와 같은 XZ거리10m 안에서 허용하며, 멀리서는 `가까이 가서 시작`을 표시한다.
+안내 종료에는 이 거리 제한을 적용하지 않는다.
 시작 시 새 actor·파티 생성은 없으며 `IPlayerCommandSink::Request_GuideControl`이 protocol132의 `C2S_GUIDE_CONTROL(122)` START/STOP을 보낸다. 서버가 안내 상태를 확정하고 인사·지역 대사는 owner의 채팅과 머리 위 말풍선으로 표시한다.
 배 승선 또는 레이드/PvP/섬 이동 시 같은 가이드는 마지막 Bern 위치에서 기다린다.
 Bern 복귀가 서버에서 commit되면 다시 걸어와 안내한다. 종료·접속 해제 뒤에는 옛 귀환
@@ -457,7 +459,15 @@ Y축 degree이며 기존 halfExtents로 저장한다. 상세 창에서도 Save/P
 `Show Debug`와 `All colliders in active Area`는 현재 지역의 모든 Guide 박스를 표시한다.
 선택은 노랑, 다른 활성 박스는 청록, 비활성은 회색이며 box ID를 함께 표시한다.
 표시는 편집 중 draft이고 실행 중 Server의 적용 증거가 아니다. 탭 전환·창 접힘에도 표시를 유지한다.
-수리 NPC2곳, 항구 NPC3곳, 레이드 NPC·제련·물 위치의 박스와 귀환 문구가 준비되어 있다.
+수리 NPC2곳, 항구 NPC3곳, 레이드 NPC2곳(베다·아일라라), 제련·물·아바타 상인·
+물약 상인·PvP 입장 NPC의 박스와 귀환 문구가 준비되어 있다. 시작 인사는 GUIDE_STARTED,
+상점 안내는 해당 NPC의 SPACE_ENTER로 연결한다. 안내 시작·월드 귀환 시 이미 안에 있는
+박스는 새 진입으로 세지 않는다. Guide만 재배치될 때는 owner 접촉 기록을 유지하고,
+owner가 스퀘어홀 등으로 새 박스에 실제 진입하면 안내한다. 예약 후 박스를 떠난
+미시작 공간 대사는 보내지 않는다.
+NPC anchor는 위치·회전을 복사한 참조다. NPC를 옮겼으면 Guide를 Load한 뒤 다시 복사한다.
+삭제·비활성·비NPC anchor, 복사 좌표·회전 불일치와 대사·콤보가 모두 빈 활성 trigger는
+편집용 Validate에서 경고하고 Save/Publish/CheckPublished에서 거부한다.
 
 Save는 원본만 변경하고 Publish는 `Tools/GuidePipeline/Publish-Guide.ps1 -Mode Publish`로
 Client/Server `Bin/DataFiles/Guide/Guide.runtime.json`만 교체한다. `-Mode Validate`와

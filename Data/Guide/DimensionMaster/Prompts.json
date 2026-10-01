@@ -153,8 +153,32 @@
                                      ],
                         "title":  "아바타 구매",
                         "topic":  "NPC"
+                    },
+                    {
+                        "categoryId": "bern",
+                        "promptId": "guide.bern.npc.potion",
+                        "segments": [
+                            {
+                                "durationMs": 6000,
+                                "text": "여기서 전투에 필요한 배틀 아이템을 구매할 수 있어."
+                            }
+                        ],
+                        "title": "물약·배틀 아이템 상점",
+                        "topic": "NPC"
+                    },
+                    {
+                        "categoryId": "bern",
+                        "promptId": "guide.bern.npc.pvp",
+                        "segments": [
+                            {
+                                "durationMs": 6000,
+                                "text": "여기서 콜로세움 전장에 입장할 수 있어."
+                            }
+                        ],
+                        "title": "PvP 전장 입장",
+                        "topic": "NPC"
                     }
                 ],
-    "revision":  3,
+    "revision":  4,
     "schema":  "lostark.guide-prompts"
 }

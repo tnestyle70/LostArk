@@ -1,4 +1,4 @@
-LOSTARK_WORLD_BOOTSTRAP	12	BERN	LV_BER_BERNCASTLE	928	69	0	0	0	0
+LOSTARK_WORLD_BOOTSTRAP	12	BERN	LV_BER_BERNCASTLE	929	69	0	0	0	0
 castle	triggerBox	-	-	137.009995	53.9087944	-168.600006	0	1	1	1	1	0	1	0	movePlayer	5	53.5649986	37.0986061	367.517609	0.0500000007	0
 castle.2	triggerBox	-	-	53.5649986	37.0986023	367.517609	0	1	3.20000005	1	1	0	1	0	movePlayer	5	137.009995	54.04319	-168.600006	0.0500000007	0
 collision.bern.editor-proof	collisionBox	-	-	140.800003	43.7000008	-65.3000031	0	0	0.5	1	3
@@ -26,16 +26,16 @@ npc.bern.plaza.07	npc	NPC_11816	-	131.738007	42.6108017	-81.6880035	90	1	1	stati
 npc.bern.plaza.08	npc	NPC_11831	-	133.238007	42.8413506	-81.6880035	-90	1	1	stationary	loop	sequence	1	0	1008	1050	0	0	npc.bern.plaza.07	0	1	npc.ambient.plaza.08.greet	600000	0	1
 npc.bern.plaza.09	npc	NPC_12025	-	139.738007	42.5770607	-86.1880035	0	1	1	stationary	loop	sequence	1	0	1009	1200	0	0	npc.bern.plaza.10	0	1	npc.ambient.plaza.09.greet	600000	0	1
 npc.bern.plaza.10	npc	NPC_12249	-	139.738007	42.5770607	-85.1880035	180	1	1	stationary	loop	sequence	1	0	1010	1350	0	0	npc.bern.plaza.09	0	1	npc.ambient.plaza.10.laugh	600000	0	1
-npc.bern.plaza.11	npc	NPC_12250	-	140.738007	42.5770607	-83.6880035	-146.309998	1	1	stationary	loop	sequence	1	0	1011	1500	0	0	npc.bern.plaza.10	0	1	npc.ambient.plaza.11.laugh	600000	0	1
-npc.bern.plaza.12	npc	NPC_12312	-	143.238007	42.5770607	-82.1880035	-73.8199997	1	1	stationary	loop	sequence	1	0	1012	1650	0	0	-	0	1	npc.ambient.plaza.12.pray	600000	0	1
-npc.bern.plaza.13	npc	NPC_12905	-	144.238007	42.5854645	-80.6880035	-33.6899986	1	1	stationary	loop	sequence	1	0	1013	1800	0	0	npc.bern.plaza.14	0	1	npc.ambient.plaza.13.intimate	600000	0	1
-npc.bern.plaza.14	npc	NPC_12911	-	143.238007	42.5854645	-79.1880035	146.309998	1	1	stationary	loop	sequence	1	0	1014	1950	0	0	npc.bern.plaza.13	0	1	npc.ambient.plaza.14.apologize	600000	0	1
-npc.bern.plaza.15	npc	NPC_12913	-	142.238007	42.5770645	-78.1880035	45	1	1	stationary	loop	sequence	1	0	1015	2100	0	0	npc.bern.plaza.16	0	1	npc.ambient.plaza.15.win	600000	0	1
-npc.bern.plaza.16	npc	NPC_12917	-	143.738007	42.5770569	-76.6880035	-135	1	1	stationary	loop	sequence	1	0	1016	2250	0	0	npc.bern.plaza.15	0	1	npc.ambient.plaza.16.win	600000	0	1
+npc.bern.plaza.11	npc	NPC_12250	-	140.738007	42.5770607	-83.6880035	-146.309998	0	1	stationary	loop	sequence	1	0	1011	1500	0	0	npc.bern.plaza.10	0	1	npc.ambient.plaza.11.laugh	600000	0	1
+npc.bern.plaza.12	npc	NPC_12312	-	143.238007	42.5770607	-82.1880035	-73.8199997	0	1	stationary	loop	sequence	1	0	1012	1650	0	0	-	0	1	npc.ambient.plaza.12.pray	600000	0	1
+npc.bern.plaza.13	npc	NPC_12905	-	144.238007	42.5854645	-80.6880035	-33.6899986	0	1	stationary	loop	sequence	1	0	1013	1800	0	0	-	0	1	npc.ambient.plaza.13.intimate	600000	0	1
+npc.bern.plaza.14	npc	NPC_12911	-	143.238007	42.5854645	-79.1880035	146.309998	0	1	stationary	loop	sequence	1	0	1014	1950	0	0	-	0	1	npc.ambient.plaza.14.apologize	600000	0	1
+npc.bern.plaza.15	npc	NPC_12913	-	142.238007	42.5770645	-78.1880035	45	0	1	stationary	loop	sequence	1	0	1015	2100	0	0	-	0	1	npc.ambient.plaza.15.win	600000	0	1
+npc.bern.plaza.16	npc	NPC_12917	-	143.738007	42.5770569	-76.6880035	-135	0	1	stationary	loop	sequence	1	0	1016	2250	0	0	-	0	1	npc.ambient.plaza.16.win	600000	0	1
 npc.bern.plaza.17	npc	NPC_13203	-	46.2	35.82	160.2	-61.7	1	1	stationary	loop	sequence	1	0	1017	2400	0	0	-	0	1	npc.ambient.plaza.17.jeer	600000	0	1
-npc.bern.plaza.18	npc	NPC_16773	-	133.238007	42.5770607	-75.1880035	-18.4349995	1	1	stationary	loop	sequence	1	0	1018	2550	0	0	npc.bern.plaza.20	0	1	npc.ambient.plaza.18.shy	600000	0	1
-npc.bern.plaza.19	npc	NPC_18394	-	134.238007	42.5770607	-74.1880035	-111.801003	1	1	stationary	loop	sequence	1	0	1019	2700	0	0	-	0	1	npc.ambient.plaza.19.cheer	600000	0	1
-npc.bern.plaza.20	npc	NPC_19244	-	132.738007	42.5770607	-73.6880035	161.565002	1	1	stationary	loop	sequence	1	0	1020	2850	0	0	npc.bern.plaza.18	0	1	npc.ambient.plaza.20.surprise	600000	0	1
+npc.bern.plaza.18	npc	NPC_16773	-	133.238007	42.5770607	-75.1880035	-18.4349995	1	1	stationary	loop	sequence	1	0	1018	2550	0	0	-	0	1	npc.ambient.plaza.18.shy	600000	0	1
+npc.bern.plaza.19	npc	NPC_18394	-	134.238007	42.5770607	-74.1880035	-111.801003	0	1	stationary	loop	sequence	1	0	1019	2700	0	0	-	0	1	npc.ambient.plaza.19.cheer	600000	0	1
+npc.bern.plaza.20	npc	NPC_19244	-	132.738007	42.5770607	-73.6880035	161.565002	0	1	stationary	loop	sequence	1	0	1020	2850	0	0	npc.bern.plaza.18	0	1	npc.ambient.plaza.20.surprise	600000	0	1
 npc.bern.schmidt	npc	NPC_SCHMIDT	-	143.069	46.8328629	-104.165001	-93.5	1	0
 npc.bern.ship.harbormaster.1	npc	NPC_SHIP_HARBORMASTER	-	264.41	11.79	-204.03	2.4	1	0
 npc.bern.ship.shipwright.1	npc	NPC_SHIP_SHIPWRIGHT	-	271.59	12.43	-196.7	259.6	1	0
@@ -58,7 +58,7 @@ npc.bern.src.701	npc	NPC_25306	-	58.6819992	42.2599983	-93.6610031	234.669998	1	
 npc.bern.src.713	npc	NPC_80023	-	237.425003	43.5149994	-47.5680008	161.020004	1	0
 npc.bern.src.72	npc	NPC_25057	-	195.065994	38.4599991	-40.8969994	46.5400009	1	0
 npc.bern.src.722	npc	NPC_80025	-	188.425003	49.1170006	-144.636993	289.089996	1	0
-npc.bern.src.74	npc	NPC_25025	-	189.815994	49.1100006	-146.669006	276.859985	1	0
+npc.bern.src.74	npc	NPC_25025	-	189.815994	49.1100006	-146.669006	276.859985	0	0
 player_1	playerSpawn	-	-	137.586334	42.2498169	-22.4640217	0	1
 player_2	playerSpawn	-	-	136.235718	42.3000946	-24.2058201	0	1
 player_3	playerSpawn	-	-	139.376724	42.5081787	-25.0925045	0	1

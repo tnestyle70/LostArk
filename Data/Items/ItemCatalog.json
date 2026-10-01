@@ -377,7 +377,9 @@
   "shops": [
     {
       "shopId": "shop.bern.potion",
-      "npcPlacementIds": [ "npc.bern.plaza.05", "npc.bern.plaza.11", "npc.bern.plaza.12", "npc.bern.plaza.13", "npc.bern.plaza.14", "npc.bern.plaza.15", "npc.bern.plaza.16", "npc.bern.plaza.19", "npc.bern.plaza.20", "npc.bern.src.74" ],
+      "npcPlacementIds": [
+          "npc.bern.plaza.05"
+      ],
       "items": [
         { "itemId": "BATTLE_DESTRUCTION_BOMB", "currencyId": "SILVER", "price": 161 },
         { "itemId": "BATTLE_WHIRLWIND_GRENADE", "currencyId": "SILVER", "price": 161 },
