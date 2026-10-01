@@ -47,6 +47,12 @@ namespace ServerGameplayContractDetail
             [](const PLAYER_SKILL_HIT& hit) { return hit.iResultKind <= 1u; }),
             "Lance ALT_V owns six health hits independently of counter and stagger Results");
         if (!authored) return;
+        std::size_t authoredHealthHitCount = 0u;
+        for (const auto& hit : authored->Hits)
+            if (hit.iResultKind <= 1u) authoredHealthHitCount += hit.iRepeatCount;
+        const auto healthEventCount = [](const std::vector<DAMAGE_EVENT>& events) {
+            return static_cast<std::size_t>(std::count_if(events.begin(), events.end(),
+                [](const DAMAGE_EVENT& event) { return event.isOutgoing && event.iAmount > 0u; })); };
         struct OPTIONS
         {
             bool monster = false, miss = false, invulnerable = false, patternInvulnerable = false;
@@ -130,9 +136,9 @@ namespace ServerGameplayContractDetail
         const auto lost = [](const SERVER_WORLD_ENTITY& target) { return target.iMaximumHp - target.iCurrentHp; };
         const auto expected = [](const std::uint32_t hp, const std::uint32_t bars) {
             return static_cast<std::uint32_t>((static_cast<std::uint64_t>(hp) * 35u + bars - 1u) / bars); };
-        tests.Require(exact.started && exact.targets.size() == 2u && exact.events.size() == 12u &&
+        tests.Require(exact.started && exact.targets.size() == 2u && healthEventCount(exact.events) == authoredHealthHitCount * 2u &&
             lost(exact.targets[0]) == 249009739u && lost(exact.targets[1]) == 162156190u,
-            "One six-hit cast deals exactly 35 health bars to each boss using its own maximum HP and bar count");
+            "One cast including authored repeats deals exactly 35 health bars to each boss using its own maximum HP and bar count");
         tests.Require(exact.targets.size() == 2u && CValtanBrain::Calculate_HealthBar(exact.targets[0]) == 145u &&
             CValtanBrain::Calculate_HealthBar(exact.targets[1]) == 125u,
             "Integer rounding crosses the next 35-bar threshold without losing per-hit remainders");
@@ -140,7 +146,7 @@ namespace ServerGameplayContractDetail
         {
             OPTIONS options; options.projectile = true; options.contact = contact;
             const auto result = run(options);
-            tests.Require(result.started && result.targets.size() == 2u && result.events.size() == 12u &&
+            tests.Require(result.started && result.targets.size() == 2u && healthEventCount(result.events) == authoredHealthHitCount * 2u &&
                 lost(result.targets[0]) == 249009739u && lost(result.targets[1]) == 162156190u,
                 contact ? "Contact projectile hits share the same per-target boss health-bar budget" :
                     "Timed projectile hits share the same per-target boss health-bar budget");
@@ -201,7 +207,7 @@ namespace ServerGameplayContractDetail
             "Zero sub-hit shares stay zero until the one-HP total is reached");
         OPTIONS huge; huge.hp = (std::numeric_limits<std::uint32_t>::max)(); huge.bars = 1u; huge.policy = 1000u;
         const auto large = run(huge);
-        tests.Require(large.started && large.targets[0].iCurrentHp == 0u && large.events.size() == 6u,
+        tests.Require(large.started && large.targets[0].iCurrentHp == 0u && healthEventCount(large.events) == authoredHealthHitCount,
             "Maximum HP and bar overrides saturate safely without overflow or lost split damage");
     }
     void Run_CharacterActionColliderResultContracts(TESTS& tests, const CGameplayCatalog& source)
