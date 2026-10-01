@@ -54,9 +54,35 @@ python Tools/Network/test_replication_world_handoff.py --output out/GuideRaidFix
 python Tools/Network/test_replication_world_handoff.py --output out/GuideRaidFix20261001/replay-baseline --baseline-replication out/GuideRaidFix20261001/replication-regression/ClientReplication.before.cpp
 ```
 
-## G02. 아직 완료하지 않은 배포·화면 확인
+## G02. 최종 Release 빌드·ZIP 완료
 
-현재 실행 중인 Release Client·Server의 링크 잠금을 해제한 뒤 정식 Product 빌드와
-새 Release ZIP 생성·CRC/hash·launcher --check 검증이 필요하다. 이번 CPP 수정은
-아직 실행 중인 기존 EXE에 적용된 상태가 아니다. 실제 Client/UI 실행과 반복 입장,
-강화 창의 시각적 겹침 확인은 사용자가 수행한다.
+사용자가 테스트를 끝내고 모든 EXE를 종료했다고 알린 뒤, Client·Server 프로세스가
+없는 것을 확인했다. 정식 Product runner로 Engine → Shared → Server → Client
+Release Build를 실행하여 모두 PASS, exit0을 확인했다. 이전 ClCompile 결과를
+사용한 정상 증분 링크이며 Clean/Rebuild나 shader 강제 재컴파일은 하지 않았다.
+필수 runtime 누락·불일치 배열은 모두 비었다. 기존 DirectXTK PDB 경고는 남았다.
+
+- 빌드 receipt: `out/BuildPipeline/runs/20261001T042127860Z-release-product.json`
+- 빌드 로그: `out/GuideRaidFix20261001/product-release.log`, 상세 `build-release/`
+- 새 Release Server `--guide-ai-contract-test`:97 PASS,0 FAIL,exit0.
+  `guide-release-contract.log` 참조. 검사 종료 뒤 Server listener를 남기지 않았다.
+- ZIP: `C:/Users/user/Desktop/LostArk-Release-20261001-GUIDE-RAID-FIX.zip`
+- 크기169183087 bytes, SHA256
+  `46bc1600add091587047ccb12f59590bbd2a582f601476950183f7633db62053`
+- 코드 commit `b2718d93576f4f0f6ccea025f1774e4590dfaade`.
+  이전 Guide commit `8b58818af`도 포함하며 이후 문서 기록은 제품 코드 변경이 아니다.
+- stage: `out/ReleasePackaging/20261001-guide-raid-fix`
+- 배포 receipt: `out/GuideRaidFix20261001/delivery.receipt.json`
+  원본 `out/ReleasePackaging/portable-delivery.receipt.json`과 동일하다.
+
+패키저가 전체 ZIP CRC, 모든 payload SHA256, 중복 경로, source hash/revision,
+launcher `--check`를 검증해 PASS했다. 최종 binaryPins3개도 현재 새 Client.exe,
+Server.exe, Engine.dll과 일치한다. build-evidence와 release-ready의 빌드 receipt
+hash·source commit을 별도로 대조했다. 직접Data2178개·payload2766개·CSO256개이며
+Guide 원본/양쪽 runtime, Bern NPC 원본/viewer/bootstrap, ItemCatalog/Items.bootstrap,
+ItemUpgradeUI가 모두 포함된다. backup/retired와 Resources는 포함하지 않았다.
+
+기존 ZIP은 보존했다. launcher preflight의 Client/Server 시작 플래그는 모두 false다.
+Resources는 기존 외부7폴더를 사용하며 endpoint는192.168.0.22:7777이다.
+현재 Release EXE·PDB는 같은 작업 폴더의 final-symbols에 보존했다. 실제 Client/UI
+실행과 반복 입장, 강화 창의 시각적 겹침 확인은 사용자가 수행한다.

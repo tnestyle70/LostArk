@@ -479,3 +479,14 @@ JSON은 기존 인코딩과 줄바꿈을 유지했고 `git diff --check`를 확�
 새 C++ 파일·protocol·project/filter 변경은 없다. 디스크 게시를 실행 중 Server revision
 갱신이나 사용자 화면 확인으로 기록하지 않는다. 쿠크1관문 첫 팝업 음원은 이전 제거
 사유가 있는 별도 항목으로 복원하지 않았다.
+
+### G11-04. 종료 확인 후 최종 Release 배포 완료
+
+2026-10-01 사용자가 Client·Server 종료를 알린 뒤 정식 Product Release 빌드와
+새 Release Server Guide 계약97개 PASS를 확인했다. G11-03의 Release 링크 대기는
+해소됐다. 레이드 캐릭터 생성 정보 인계와 강화 창 이름표 가림 수정도 함께 포함한
+`C:/Users/user/Desktop/LostArk-Release-20261001-GUIDE-RAID-FIX.zip`을 생성했다.
+크기169183087 bytes, SHA256
+`46bc1600add091587047ccb12f59590bbd2a582f601476950183f7633db62053`이다.
+빌드 receipt·ZIP CRC/manifest 검증·실행하지 않는 launcher 검사와 남은 사용자 화면
+확인 경계는 `../10-01/2026-10-01_RAID_ENTRY_CHARACTER_HANDOFF_RESULT.md` G02를 따른다.
