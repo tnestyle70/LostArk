@@ -82,3 +82,34 @@ Client/UI는 실행·조작·캡처하지 않았다. 사용자가 확인할 경�
 
 EXE 종료 전 슬롯 전환을 검증하며, 종료 후 상태가 사라지는 현재 계약과 구분한다.
 자동 검증은 최종 GPU 외형·클릭 UX·실제 LAN 플레이의 화면 판정을 대체하지 않는다.
+
+
+## G05. PR506의 최신 main 통합 검증
+
+PR506의 원래 head `96a06a6dd7ddd13a82782b1371532080249a6363`은 Draft 상태로 미병합이었다.
+렌더링 PR507까지 반영된 main `c7de2091dd51655b14c90c05cbed5f5ba6c7e94b`을 기능 브랜치에
+충돌 없이 병합한 통합 commit은 `5cfdfdd3af2614fd91f5c28052aebab48b4e6b73`이다.
+MainApp의 캐릭터 전환과 Profiler 계측을 함께 유지하며 Engine 렌더링 코드·기존 rendering
+설정·Data/DataFiles에는 추가 변경이 없다. 사용자 `.gitignore`와 미추적 자료도 보존했다.
+
+이 통합 소스에서 Debug Product를 다시 빌드해 PASS(exit0,435,620ms)를 확인했다.
+근거는 `out/BuildPipeline/runs/20261002T220846175Z-debug-product.json` 및
+`out/PR506Integration/product-debug.log`다. 기존 코드 페이지·shader·외부 PDB 경고는 남았고
+Client/Server UI를 시작하지 않았다. 아래 focused 검사는 모두 현재 통합 소스로 재실행했다.
+
+| 검증 | 결과 |
+|---|---|
+| Server character-state |40 PASS /0 FAIL|
+| Server battle-items |183 PASS /0 FAIL|
+| NetworkProtocolHarness 재빌드·실행 |1687 PASS /0 FAIL|
+| Client roster/state+Shared codec Debug |12/12 PASS|
+| Client receive dispatch Debug |9/9 PASS|
+| Client replication/강화 consumer Debug·Release |각9/9 PASS|
+| Client/Server/Shared project·filters XML |6개 parse PASS|
+| 정확한 PR 소스·데이터 보존·diff check |PASS|
+
+원시 로그와 집계는 `out/PR506Integration/validation.json`, `structure.json`에 있다.
+Client lifecycle, Server/Shared authority, Client network/presentation의 독립 검토 기록도 같은
+폴더에 두며, 병합 commit/tree 대조는 최종 merge 기록과 PR506에서 확인한다. 원래 G04의 사용자
+화면 확인은 여전히 남아 있고 자동 검사로 육안 결과를 대신하지 않는다. protocol133 변경 때문에
+노트북과 연결할 Server 모두 최신 main의 Client/Server Product를 함께 빌드해야 한다.
