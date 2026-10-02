@@ -98,3 +98,15 @@ Release Product,광역 regression,새 runtime publish는 수행하지 않았다.
 모든 함수·변수 전수 설명,Unreal 로컬 소스 대조,새 영상·SRT·자기소개서·최종 포트폴리오 및
 200쪽 PDF는 완료로 기록하지 않는다. 다음 설명은 새 필터에서 한 기능의 실제 코드·데이터·
 도구 조작을 함께 따라가는 단위로 이어간다.
+
+## G06. 커밋과 전달
+
+현재 사용자 작업 폴더의 필터·문서 commit은 `3b675113`이다. 기존 캐릭터 기능이 PR에
+섞이지 않도록 `origin/main c7de2091` 기준의 관리 worktree에 이 변경만 옮겼고,
+`codex/visual-studio-domain-filters`의 `415bd889`로 push했다. 네 filters, Client의
+`None` 경로2개, 문서만 포함하며 그 branch에는 별도 캐릭터 기능 commit이 없다.
+
+GitHub connector의 draft PR 생성은 `403 Resource not accessible by integration`으로
+거절되어 PR은 생성되지 않았다. 이것은 코드 검증 실패나 자동 승인 검토 거절이 아니라
+GitHub 연동의 해당 API 권한 제한이다. 원격 branch는 정상적으로 존재한다.
+[main과 필터 branch 비교 및 PR 작성](https://github.com/tnestyle70/LostArk/compare/main...codex/visual-studio-domain-filters)
