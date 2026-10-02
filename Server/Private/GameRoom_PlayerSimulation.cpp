@@ -1002,7 +1002,13 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 				if (!player.iInvulnerableEndTick || Has_ReachedServerTick(protectUntil, player.iInvulnerableEndTick))
 					player.iInvulnerableEndTick = protectUntil;
 			}
-            if (!player.TriggerMove.isActive && player.Is_Human()) Guide_AnchorArrived(player);
+            if (!player.TriggerMove.isActive && player.Is_Human())
+            {
+                // Bern's authored castle/library travel shares the squarehole arrival
+                // contract, only after its blackout hold and displacement have completed.
+                Guide_AnchorArrived(player,
+                    m_eWorldId == LostArk::Shared::WORLD_ID::BERN && !authoredMoveSource.empty());
+            }
 			continue;
 		}
 		const bool wasKnockbackActive =

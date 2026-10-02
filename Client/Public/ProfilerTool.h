@@ -10,7 +10,7 @@
 
 NS_BEGIN(Client)
 
-/* F1/F7 Profiler window, available in Debug and Release. It only reads Engine::CProfiler aggregates and never
+/* Profiler panel presented by the current Debug F1/F7 routes. It only reads Engine::CProfiler aggregates and never
    owns timing data: the Engine profiler stays the single owner of scopes,
    counters and GPU queries. */
 class CProfilerTool final
@@ -50,6 +50,7 @@ private:
 	double m_fLastRefreshTime = -1.0;
 	uint32_t m_iMainThreadId = 0u;
 	size_t m_iHistoryFrames = 0u;
+    Engine::FProfilerCaptureWindow m_SaveWindowCoverage{};
 	double m_fWindowCpuAvgMs = 0.0;
 	double m_fWindowCpuMaxMs = 0.0;
 	double m_fWindowGpuAvgMs = 0.0;

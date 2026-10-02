@@ -1,0 +1,5476 @@
+# 노트북 Wi-Fi Server endpoint 구현 계획
+
+## G00. 현재 상태와 이번 변경
+
+사용자가 노트북 Wi-Fi를 기준으로 Server와 Client 실행을 요청했다. 현재 노트북의
+`Wi-Fi`는 `192.168.0.14/24`를 Preferred 상태로 소유한다. 기존 정본
+`10.16.127.103`의 2026-10-01 계약은 만료됐다. 새 endpoint는
+`192.168.0.14:7777`, 유효 기간은 2026-10-02 23:59:59 KST다.
+Server bind는 `0.0.0.0:7777`, 명시적 process 환경값 우선과 localhost 격리 검사는 유지한다.
+
+## G01. 파일과 연결
+
+- `Tools/Network/TeamLanEndpoint.json`: sync가 읽는 주소·만료일 정본.
+- `Client/Private/NetworkManager.cpp`: `CNetworkManager::Resolve_ServerHost`의
+  `DEFAULT_SERVER_HOST`만 바꾼다. 기존 UTF-8(BOM 없음)과 CRLF를 보존한다.
+- `Client/Default/Client.vcxproj`: x64 Debug/Release `LocalDebuggerEnvironment` 두 곳.
+- `Tools/ReleasePackaging/build_portable.py`: 새 launcher/manifest의 `HOST`.
+- 같은 폴더 `test_package_tools.py`와 `README_실행방법.md`: fixture와 새 배포 실행 안내.
+- AGENTS, CLAUDE와 팀 README, interface handbook, 네트워크·runtime 전달 가이드:
+  현재 주소·만료·Server 소유자를 갱신하고 기존 ZIP과 날짜별 기록은 보존한다.
+
+`Framework.slnLaunch`에는 IP가 없다. Server project/code는 이미 `0.0.0.0` bind다.
+새 C++ 파일이나 project/filter 등록은 없으며 기존 `.filters`를 재배치하지 않는다.
+Resources, Data/DataFiles, 렌더링 값과 v143 toolset은 변경하지 않는다.
+
+## G02. 교체 가능한 설정
+
+### Endpoint JSON 전체
+
+```json
+{
+  "schema": "lostark.team-lan-endpoint",
+  "version": 1,
+  "serverBindAddress": "0.0.0.0",
+  "serverHost": "192.168.0.14",
+  "port": 7777,
+  "activeThroughKst": "2026-10-02T23:59:59+09:00"
+}
+```
+
+### Client x64 Debug/Release 공용 환경값
+
+두 configuration의 기존 `LocalDebuggerEnvironment` 노드를 각각 교체한다.
+
+```xml
+<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.14</LocalDebuggerEnvironment>
+```
+
+### Portable 주소와 fixture
+
+```python
+HOST = '192.168.0.14'
+```
+
+`PortableCheckTests.setUp`의 manifest `serverEndpoint`는
+`192.168.0.14:7777`로 교체한다. 이 변경이 기존 ZIP을 수정하거나 새 ZIP을 생성하지는 않는다.
+
+## G03. 검증과 적용 순서
+
+JSON/XML parse, 기존 `test_team_lan_endpoint_contract.py`, portable HOST/fixture 정합성,
+현재 public 주소·만료일과 역사 기록 보존, `git diff --check`를 확인한다.
+그다음 주 작업에서 `Sync-TeamLanEndpoint.ps1 -EndpointMode Team`과 TCP 7777 LocalSubnet
+방화벽을 적용하고 표준 Product Debug/Release를 각각 실행한다. `-AllowExpired`를 쓰지 않는다.
+빌드가 성공하면 사용자가 명시적으로 요청한 Release Server/Client 실행을 주 작업에서 진행한다.
+실제 다른 PC 접속과 사용자의 화면 확인은 별도 증거다.
+
+## G04. Client/Private/NetworkManager.cpp 반영 후 전체 코드
+
+이 파일은 socket 전송과 수신 queue를 소유한다. 이번 변경은 직접 실행 시 기본 주소 상수 한 곳이며
+환경변수 검증·우선순위와 Debug 개인 선택 흐름은 기존 구현을 그대로 유지한다.
+
+```cpp
+#include "NetworkManager.h"
+#include "CharacterSelectionState.h"
+
+#include "DataJson.h"
+#include "PlayerSkillCatalog.h"
+#include "CombatHUDViewModel.h"
+#include "LevelTransitionService.h"
+#include "ProjectDataRoot.h"
+#include "ValtanPatternTree.h"
+
+#include "Network/PacketReader.h"
+#include "Network/PacketWriter.h"
+
+#include <fstream>
+#include <filesystem>
+#include <iterator>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+#include <bcrypt.h>
+
+#pragma comment(lib, "bcrypt.lib")
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cwctype>
+#include <limits>
+#include <utility>
+
+namespace
+{
+	constexpr std::uint64_t ENTRY_PRESENTATION_BASELINE_RETRY_MILLISECONDS = 250u;
+
+#ifdef _DEBUG
+	std::string Resolve_DebugLocalServerHost()
+	{
+		constexpr char OVERRIDE_PATH[] = "LocalServerEndpoint.user.json";
+		std::ifstream input(OVERRIDE_PATH, std::ios::binary);
+		if (!input)
+			return {};
+
+		const std::string text(
+			(std::istreambuf_iterator<char>(input)),
+			std::istreambuf_iterator<char>());
+		if (text.empty() || text.size() > 1024u)
+			return {};
+
+		Client::DATA_JSON_VALUE root;
+		std::string error;
+		if (!Client::CDataJson::Parse(text, root, error) ||
+			!root.Is_Object() || 4u != root.Get_Object().size())
+		{
+			return {};
+		}
+
+		const Client::DATA_JSON_VALUE* schema = root.Find("schema");
+		const Client::DATA_JSON_VALUE* formatVersion =
+			root.Find("formatVersion");
+		const Client::DATA_JSON_VALUE* enabled = root.Find("enabled");
+		const Client::DATA_JSON_VALUE* host = root.Find("host");
+		if (nullptr == schema || !schema->Is_String() ||
+			"lostark.local-server-endpoint" != schema->Get_String() ||
+			nullptr == formatVersion || !formatVersion->Is_Number() ||
+			formatVersion->Was_FloatingPointToken() ||
+			1.0 != formatVersion->Get_Number() ||
+			nullptr == enabled || !enabled->Is_Boolean() ||
+			!enabled->Get_Boolean() ||
+			nullptr == host || !host->Is_String() ||
+			"127.0.0.1" != host->Get_String())
+		{
+			return {};
+		}
+
+		return host->Get_String();
+	}
+
+	constexpr std::uint64_t MAX_PRESENTATION_ALIAS_ARTIFACT_BYTES =
+		64ull * 1024ull * 1024ull;
+
+	bool IsLowerSha256(const std::string& value)
+	{
+		return value.size() ==
+			LostArk::Shared::GAMEPLAY_DATA_REVISION_HEX_BYTES &&
+			std::all_of(value.begin(), value.end(), [](const char character)
+				{
+					return ('0' <= character && character <= '9') ||
+						('a' <= character && character <= 'f');
+				});
+	}
+
+	bool IsDescendantPath(
+		const std::filesystem::path& root,
+		const std::filesystem::path& candidate)
+	{
+		std::error_code error;
+		const std::filesystem::path canonicalRoot =
+			std::filesystem::weakly_canonical(root, error);
+		if (error || canonicalRoot.empty())
+			return false;
+		error.clear();
+		const std::filesystem::path canonicalCandidate =
+			std::filesystem::weakly_canonical(candidate, error);
+		if (error || canonicalCandidate.empty())
+			return false;
+
+		auto rootPart = canonicalRoot.begin();
+		auto candidatePart = canonicalCandidate.begin();
+		for (; rootPart != canonicalRoot.end(); ++rootPart, ++candidatePart)
+		{
+			if (candidatePart == canonicalCandidate.end())
+				return false;
+			std::wstring left = rootPart->native();
+			std::wstring right = candidatePart->native();
+			std::transform(left.begin(), left.end(), left.begin(), ::towlower);
+			std::transform(right.begin(), right.end(), right.begin(), ::towlower);
+			if (left != right)
+				return false;
+		}
+		return candidatePart != canonicalCandidate.end();
+	}
+
+	bool ReadBoundedText(
+		const std::filesystem::path& path,
+		const std::uint64_t maximumBytes,
+		std::string& text,
+		std::string& status)
+	{
+		std::error_code error;
+		const std::uint64_t bytes = std::filesystem::file_size(path, error);
+		if (error || 0u == bytes || bytes > maximumBytes ||
+			bytes > static_cast<std::uint64_t>(
+				(std::numeric_limits<std::streamsize>::max)()))
+		{
+			status = "Presentation alias document size is invalid: " +
+				path.string();
+			return false;
+		}
+		std::ifstream input(path, std::ios::binary);
+		if (!input)
+		{
+			status = "Presentation alias document is missing: " + path.string();
+			return false;
+		}
+		std::string staged(static_cast<std::size_t>(bytes), '\0');
+		input.read(staged.data(), static_cast<std::streamsize>(staged.size()));
+		if (!input || input.gcount() != static_cast<std::streamsize>(staged.size()))
+		{
+			status = "Presentation alias document read was incomplete: " +
+				path.string();
+			return false;
+		}
+		text = std::move(staged);
+		return true;
+	}
+
+	bool HashFileSha256(
+		const std::filesystem::path& path,
+		std::string& sha256,
+		std::uint64_t& byteCount,
+		std::string& status)
+	{
+		std::error_code error;
+		const std::uint64_t fileBytes = std::filesystem::file_size(path, error);
+		if (error || fileBytes > MAX_PRESENTATION_ALIAS_ARTIFACT_BYTES)
+		{
+			status = "Presentation alias artifact size is invalid: " + path.string();
+			return false;
+		}
+		std::ifstream input(path, std::ios::binary);
+		if (!input)
+		{
+			status = "Presentation alias artifact is missing: " + path.string();
+			return false;
+		}
+
+		BCRYPT_ALG_HANDLE algorithm = nullptr;
+		BCRYPT_HASH_HANDLE hash = nullptr;
+		DWORD objectBytes = 0u;
+		DWORD hashBytes = 0u;
+		DWORD written = 0u;
+		std::vector<unsigned char> hashObject;
+		LostArk::Shared::GameplayDataRevision digest{};
+		bool succeeded = false;
+		if (0 <= BCryptOpenAlgorithmProvider(
+				&algorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0u) &&
+			0 <= BCryptGetProperty(
+				algorithm, BCRYPT_OBJECT_LENGTH,
+				reinterpret_cast<PUCHAR>(&objectBytes), sizeof(objectBytes),
+				&written, 0u) &&
+			0 <= BCryptGetProperty(
+				algorithm, BCRYPT_HASH_LENGTH,
+				reinterpret_cast<PUCHAR>(&hashBytes), sizeof(hashBytes),
+				&written, 0u) &&
+			hashBytes == digest.Bytes.size())
+		{
+			hashObject.resize(objectBytes);
+			if (0 <= BCryptCreateHash(
+					algorithm, &hash, hashObject.data(), objectBytes,
+					nullptr, 0u, 0u))
+			{
+				std::array<char, 64u * 1024u> buffer{};
+				std::uint64_t consumed = 0u;
+				while (input)
+				{
+					input.read(buffer.data(),
+						static_cast<std::streamsize>(buffer.size()));
+					const std::streamsize count = input.gcount();
+					if (count > 0 && 0 > BCryptHashData(
+						hash, reinterpret_cast<PUCHAR>(buffer.data()),
+						static_cast<ULONG>(count), 0u))
+					{
+						break;
+					}
+					consumed += static_cast<std::uint64_t>(count);
+				}
+				if (input.eof() && consumed == fileBytes &&
+					0 <= BCryptFinishHash(
+						hash, digest.Bytes.data(), hashBytes, 0u) &&
+					digest.Is_Valid())
+				{
+					succeeded = true;
+					byteCount = consumed;
+					sha256 = LostArk::Shared::Format_GameplayDataRevision(digest);
+				}
+			}
+		}
+		if (nullptr != hash)
+			BCryptDestroyHash(hash);
+		if (nullptr != algorithm)
+			BCryptCloseAlgorithmProvider(algorithm, 0u);
+		if (!succeeded)
+			status = "Could not hash presentation alias artifact: " + path.string();
+		return succeeded;
+	}
+
+#endif
+
+	bool HashBytesSha256(
+		const std::string_view bytes,
+		std::string& sha256)
+	{
+		if (bytes.empty() ||
+			bytes.size() > static_cast<std::size_t>(
+				(std::numeric_limits<ULONG>::max)()))
+		{
+			return false;
+		}
+
+		BCRYPT_ALG_HANDLE algorithm = nullptr;
+		BCRYPT_HASH_HANDLE hash = nullptr;
+		DWORD objectBytes = 0u;
+		DWORD hashBytes = 0u;
+		DWORD written = 0u;
+		std::vector<unsigned char> hashObject;
+		LostArk::Shared::GameplayDataRevision digest{};
+		bool succeeded = false;
+		if (0 <= BCryptOpenAlgorithmProvider(
+				&algorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0u) &&
+			0 <= BCryptGetProperty(
+				algorithm, BCRYPT_OBJECT_LENGTH,
+				reinterpret_cast<PUCHAR>(&objectBytes), sizeof(objectBytes),
+				&written, 0u) &&
+			0 <= BCryptGetProperty(
+				algorithm, BCRYPT_HASH_LENGTH,
+				reinterpret_cast<PUCHAR>(&hashBytes), sizeof(hashBytes),
+				&written, 0u) &&
+			hashBytes == digest.Bytes.size())
+		{
+			hashObject.resize(objectBytes);
+			if (0 <= BCryptCreateHash(
+					algorithm, &hash, hashObject.data(), objectBytes,
+					nullptr, 0u, 0u) &&
+				0 <= BCryptHashData(
+					hash,
+					reinterpret_cast<PUCHAR>(
+						const_cast<char*>(bytes.data())),
+					static_cast<ULONG>(bytes.size()), 0u) &&
+				0 <= BCryptFinishHash(
+					hash, digest.Bytes.data(), hashBytes, 0u) &&
+				digest.Is_Valid())
+			{
+				sha256 = LostArk::Shared::Format_GameplayDataRevision(digest);
+				succeeded = true;
+			}
+		}
+		if (nullptr != hash)
+			BCryptDestroyHash(hash);
+		if (nullptr != algorithm)
+			BCryptCloseAlgorithmProvider(algorithm, 0u);
+		return succeeded;
+	}
+
+#ifdef _DEBUG
+	bool JsonValuesEqual(
+		const Client::DATA_JSON_VALUE& left,
+		const Client::DATA_JSON_VALUE& right)
+	{
+		using Client::DATA_JSON_TYPE;
+		if (left.Get_Type() != right.Get_Type())
+			return false;
+		switch (left.Get_Type())
+		{
+		case DATA_JSON_TYPE::NULL_VALUE:
+			return true;
+		case DATA_JSON_TYPE::BOOLEAN:
+			return left.Get_Boolean() == right.Get_Boolean();
+		case DATA_JSON_TYPE::NUMBER:
+			return left.Get_Number() == right.Get_Number() &&
+				left.Was_FloatingPointToken() ==
+					right.Was_FloatingPointToken();
+		case DATA_JSON_TYPE::STRING:
+			return left.Get_String() == right.Get_String();
+		case DATA_JSON_TYPE::ARRAY:
+		{
+			const auto& leftArray = left.Get_Array();
+			const auto& rightArray = right.Get_Array();
+			if (leftArray.size() != rightArray.size())
+				return false;
+			for (std::size_t index = 0u; index < leftArray.size(); ++index)
+				if (!JsonValuesEqual(leftArray[index], rightArray[index]))
+					return false;
+			return true;
+		}
+		case DATA_JSON_TYPE::OBJECT:
+		{
+			const auto& leftObject = left.Get_Object();
+			const auto& rightObject = right.Get_Object();
+			if (leftObject.size() != rightObject.size())
+				return false;
+			for (const auto& [key, value] : leftObject)
+			{
+				const auto found = rightObject.find(key);
+				if (rightObject.end() == found ||
+					!JsonValuesEqual(value, found->second))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+		default:
+			return false;
+		}
+	}
+
+	bool ManifestMatchesRevisionIdentity(
+		const Client::DATA_JSON_VALUE& manifest,
+		const Client::DATA_JSON_VALUE& identity,
+		const std::string& revisionHex)
+	{
+		if (!manifest.Is_Object() || !identity.Is_Object() ||
+			manifest.Get_Object().size() != identity.Get_Object().size())
+		{
+			return false;
+		}
+		for (const auto& [key, value] : manifest.Get_Object())
+		{
+			const auto found = identity.Get_Object().find(key);
+			if (identity.Get_Object().end() == found)
+				return false;
+			if ("revisionId" == key)
+			{
+				if (!value.Is_String() || value.Get_String() != revisionHex ||
+					!found->second.Is_String() ||
+					!found->second.Get_String().empty())
+				{
+					return false;
+				}
+				continue;
+			}
+			if (!JsonValuesEqual(value, found->second))
+				return false;
+		}
+		return true;
+	}
+
+	bool ReadExactUnsigned(
+		const Client::DATA_JSON_VALUE& object,
+		const char* field,
+		std::uint64_t& output)
+	{
+		const Client::DATA_JSON_VALUE* value = object.Find(field);
+		if (nullptr == value || !value->Is_Number() ||
+			value->Was_FloatingPointToken() ||
+			!std::isfinite(value->Get_Number()) || value->Get_Number() < 0.0 ||
+			std::floor(value->Get_Number()) != value->Get_Number() ||
+			value->Get_Number() > static_cast<double>(
+				(std::numeric_limits<std::uint64_t>::max)()))
+		{
+			return false;
+		}
+		output = static_cast<std::uint64_t>(value->Get_Number());
+		return true;
+	}
+
+	std::uint32_t PresentationLaneBit(const std::string& lane)
+	{
+		using LostArk::Shared::GAMEPLAY_PRESENTATION_LANE;
+		if ("ANIMATION" == lane)
+			return static_cast<std::uint32_t>(
+				GAMEPLAY_PRESENTATION_LANE::ANIMATION);
+		if ("EFFECT" == lane)
+			return static_cast<std::uint32_t>(GAMEPLAY_PRESENTATION_LANE::EFFECT);
+		if ("COMBAT_VISUAL" == lane)
+			return static_cast<std::uint32_t>(
+				GAMEPLAY_PRESENTATION_LANE::COMBAT_VISUAL);
+		if ("CAMERA" == lane)
+			return static_cast<std::uint32_t>(GAMEPLAY_PRESENTATION_LANE::CAMERA);
+		if ("WORLD_EVENT_SET" == lane)
+			return static_cast<std::uint32_t>(
+				GAMEPLAY_PRESENTATION_LANE::WORLD_EVENT_SET);
+		return 0u;
+	}
+
+	bool CapturePresentationArtifactBaseline(
+		std::vector<CNetworkManager::PRESENTATION_ARTIFACT_BASELINE>& output,
+		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& receipt,
+		std::string& status,
+		Client::VALTAN_CANONICAL_READ_DIAGNOSTIC* const pOutDiagnostic = nullptr)
+	{
+		Client::CValtanPresentationGenerationReadAdmission admission;
+		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT stagedReceipt;
+		Client::VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;
+		if (!admission.Acquire_PackagedBaseline(stagedReceipt, Diagnostic) ||
+			!admission.Validate_StillCurrent(Diagnostic))
+		{
+			status = Diagnostic.strStatus;
+			if (nullptr != pOutDiagnostic)
+				*pOutDiagnostic = std::move(Diagnostic);
+			return false;
+		}
+		std::vector<CNetworkManager::PRESENTATION_ARTIFACT_BASELINE> staged;
+		staged.reserve(stagedReceipt.Artifacts.size());
+		for (const auto& artifact : stagedReceipt.Artifacts)
+		{
+			CNetworkManager::PRESENTATION_ARTIFACT_BASELINE row;
+			row.strRelativePath = artifact.strRelativePath;
+			row.strLane = artifact.strLane;
+			row.strSha256 = LostArk::Shared::Format_GameplayDataRevision(
+				artifact.Revision);
+			row.iBytes = artifact.iBytes;
+			staged.push_back(std::move(row));
+		}
+		output = std::move(staged);
+		receipt = std::move(stagedReceipt);
+		status = "Captured the current validated Client presentation sources.";
+		if (nullptr != pOutDiagnostic)
+		{
+			pOutDiagnostic->Clear();
+			pOutDiagnostic->strStatus = status;
+		}
+		return true;
+	}
+
+	bool ValidateCurrentCandidatePresentationGeneration(
+		const LostArk::Shared::GameplayDataRevision& revision,
+		const std::uint32_t requestedLaneMask,
+		const LostArk::Shared::GameplayDataRevision& presentationGenerationId,
+		const std::vector<CNetworkManager::PRESENTATION_ARTIFACT_BASELINE>&
+			baselineArtifacts,
+		std::string& status)
+	{
+		using Client::DATA_JSON_VALUE;
+		using namespace LostArk::Shared;
+		if (!revision.Is_Valid() || 0u == requestedLaneMask ||
+			0u != (requestedLaneMask & ~GAMEPLAY_PRESENTATION_KNOWN_LANE_MASK))
+		{
+			status = "Saved presentation generation request lane mask is invalid.";
+			return false;
+		}
+		const std::string revisionHex = Format_GameplayDataRevision(revision);
+		const std::filesystem::path repositoryRoot =
+			Client::CProjectDataRoot::Get().parent_path();
+		const std::filesystem::path candidateRoot =
+			repositoryRoot / L"Intermediate" / L"ValtanTuningCandidates";
+		const std::filesystem::path revisionRoot =
+			candidateRoot / L"revisions" /
+			std::filesystem::path(revisionHex);
+		const std::filesystem::path manifestPath =
+			revisionRoot / L"revision-manifest.json";
+		const std::filesystem::path identityPath =
+			revisionRoot / L"revision-identity.json";
+		if (!IsDescendantPath(candidateRoot, revisionRoot) ||
+			!IsDescendantPath(revisionRoot, manifestPath) ||
+			!IsDescendantPath(revisionRoot, identityPath))
+		{
+			status = "Candidate revision path escaped its immutable root.";
+			return false;
+		}
+
+		std::string manifestText;
+		std::string identityText;
+		if (!ReadBoundedText(
+				manifestPath, 2ull * 1024ull * 1024ull, manifestText, status) ||
+			!ReadBoundedText(
+				identityPath, 2ull * 1024ull * 1024ull, identityText, status))
+		{
+			return false;
+		}
+		std::string identitySha256;
+		if (!HashBytesSha256(identityText, identitySha256) ||
+			identitySha256 != revisionHex)
+		{
+			status = "Candidate revision identity bytes do not match the announced revision.";
+			return false;
+		}
+		DATA_JSON_VALUE manifest;
+		DATA_JSON_VALUE identity;
+		std::string parseError;
+		if (!Client::CDataJson::Parse(manifestText, manifest, parseError) ||
+			!manifest.Is_Object() ||
+			!Client::CDataJson::Parse(identityText, identity, parseError) ||
+			!identity.Is_Object())
+		{
+			status = "Candidate revision manifest/identity parse failed: " + parseError;
+			return false;
+		}
+		if (!ManifestMatchesRevisionIdentity(manifest, identity, revisionHex))
+		{
+			status = "Candidate manifest differs from its hashed parent identity.";
+			return false;
+		}
+		const DATA_JSON_VALUE* schema = manifest.Find("schema");
+		const DATA_JSON_VALUE* formatVersion = manifest.Find("formatVersion");
+		const DATA_JSON_VALUE* revisionId = manifest.Find("revisionId");
+		const DATA_JSON_VALUE* compatibility =
+			manifest.Find("clientPresentationCompatibility");
+		if (nullptr == schema || !schema->Is_String() ||
+			"lostark.valtan-tuning-revision-manifest" != schema->Get_String() ||
+			nullptr == formatVersion || !formatVersion->Is_Number() ||
+			formatVersion->Was_FloatingPointToken() ||
+			1.0 != formatVersion->Get_Number() ||
+			nullptr == revisionId || !revisionId->Is_String() ||
+			revisionHex != revisionId->Get_String() ||
+			nullptr == compatibility || !compatibility->Is_Object())
+		{
+			status = "Candidate revision manifest identity is invalid.";
+			return false;
+		}
+		const DATA_JSON_VALUE* mode = compatibility->Find("mode");
+		const DATA_JSON_VALUE* generation =
+			compatibility->Find("presentationGenerationId");
+		const DATA_JSON_VALUE* lanes = compatibility->Find("requiredLanes");
+		const DATA_JSON_VALUE* artifacts = compatibility->Find("artifacts");
+		if (nullptr == mode || !mode->Is_String() ||
+			"BYTE_IDENTICAL_TO_ACTIVE" != mode->Get_String() ||
+			nullptr == generation || !generation->Is_String() ||
+			!IsLowerSha256(generation->Get_String()) ||
+			nullptr == lanes || !lanes->Is_Array() ||
+			nullptr == artifacts || !artifacts->Is_Array())
+		{
+			status = "Candidate presentation compatibility contract is invalid.";
+			return false;
+		}
+		const std::filesystem::path generationManifestPath = revisionRoot /
+			"Runtime" / "Gameplay" / "ValtanPresentationGenerations" /
+			(generation->Get_String() + ".json");
+		std::string generationManifestSha;
+		std::uint64_t generationManifestBytes = 0u;
+		if (!IsDescendantPath(revisionRoot, generationManifestPath) ||
+			!HashFileSha256(generationManifestPath, generationManifestSha,
+				generationManifestBytes, status) ||
+			generationManifestSha != generation->Get_String())
+		{
+			status =
+				"Candidate presentation generation manifest is missing or has the wrong content identity.";
+			return false;
+		}
+
+		std::uint32_t declaredLaneMask = 0u;
+		for (const DATA_JSON_VALUE& laneValue : lanes->Get_Array())
+		{
+			if (!laneValue.Is_String())
+			{
+				status = "Candidate presentation lane is not a stable token.";
+				return false;
+			}
+			const std::uint32_t bit = PresentationLaneBit(laneValue.Get_String());
+			if (0u == bit || 0u != (declaredLaneMask & bit))
+			{
+				status = "Candidate presentation lane is unknown or duplicated.";
+				return false;
+			}
+			declaredLaneMask |= bit;
+		}
+		if (GAMEPLAY_PRESENTATION_KNOWN_LANE_MASK != declaredLaneMask ||
+			0u != (requestedLaneMask & ~declaredLaneMask))
+		{
+			status = "Candidate does not declare every required presentation lane.";
+			return false;
+		}
+
+		std::unordered_map<std::string, std::string> allowedArtifacts;
+		for (const CNetworkManager::PRESENTATION_ARTIFACT_BASELINE& baseline :
+			baselineArtifacts)
+		{
+			if (!allowedArtifacts.emplace(
+					baseline.strRelativePath, baseline.strLane).second)
+			{
+				status = "Current saved presentation artifact set is duplicated.";
+				return false;
+			}
+		}
+		std::unordered_map<std::string,
+			const CNetworkManager::PRESENTATION_ARTIFACT_BASELINE*>
+			baselineByPath;
+		for (const CNetworkManager::PRESENTATION_ARTIFACT_BASELINE& baseline :
+			baselineArtifacts)
+		{
+			const auto allowed = allowedArtifacts.find(baseline.strRelativePath);
+			if (allowedArtifacts.end() == allowed ||
+				allowed->second != baseline.strLane ||
+				!IsLowerSha256(baseline.strSha256) ||
+				baseline.iBytes > MAX_PRESENTATION_ALIAS_ARTIFACT_BYTES ||
+				!baselineByPath.emplace(
+					baseline.strRelativePath, &baseline).second)
+			{
+				status = "Current saved presentation artifact set is invalid.";
+				return false;
+			}
+		}
+		if (baselineByPath.size() != allowedArtifacts.size())
+		{
+			status = "Current saved presentation artifact set is incomplete.";
+			return false;
+		}
+		std::unordered_set<std::string> admittedPaths;
+		std::uint32_t artifactLaneMask = 0u;
+		std::string firstCurrentMismatch =
+			generation->Get_String() ==
+				Format_GameplayDataRevision(presentationGenerationId) ?
+			std::string{} : std::string{ "presentation generation M" };
+		for (const DATA_JSON_VALUE& artifact : artifacts->Get_Array())
+		{
+			if (!artifact.Is_Object())
+			{
+				status = "Candidate presentation artifact row is invalid.";
+				return false;
+			}
+			const DATA_JSON_VALUE* pathValue = artifact.Find("path");
+			const DATA_JSON_VALUE* laneValue = artifact.Find("lane");
+			const DATA_JSON_VALUE* shaValue = artifact.Find("sha256");
+			const DATA_JSON_VALUE* sourceShaValue =
+				artifact.Find("repositorySourceSha256");
+			std::uint64_t declaredBytes = 0u;
+			if (nullptr == pathValue || !pathValue->Is_String() ||
+				nullptr == laneValue || !laneValue->Is_String() ||
+				nullptr == shaValue || !shaValue->Is_String() ||
+				nullptr == sourceShaValue || !sourceShaValue->Is_String() ||
+				!ReadExactUnsigned(artifact, "bytes", declaredBytes) ||
+				declaredBytes > MAX_PRESENTATION_ALIAS_ARTIFACT_BYTES)
+			{
+				status = "Candidate presentation artifact fields are invalid.";
+				return false;
+			}
+			const std::string relative = pathValue->Get_String();
+			const auto allowed = allowedArtifacts.find(relative);
+			if (allowedArtifacts.end() == allowed ||
+				allowed->second != laneValue->Get_String() ||
+				!admittedPaths.insert(relative).second ||
+				!IsLowerSha256(shaValue->Get_String()) ||
+				!IsLowerSha256(sourceShaValue->Get_String()) ||
+				shaValue->Get_String() != sourceShaValue->Get_String())
+			{
+				status = "Candidate presentation artifact identity is not allowlisted.";
+				return false;
+			}
+			const std::filesystem::path relativePath =
+				std::filesystem::path(relative);
+			const std::filesystem::path candidatePath = revisionRoot / relativePath;
+			if (!IsDescendantPath(revisionRoot, candidatePath) ||
+				!IsDescendantPath(repositoryRoot, candidatePath))
+			{
+				status = "Candidate presentation artifact path escaped its root.";
+				return false;
+			}
+			std::string candidateSha;
+			std::uint64_t candidateBytes = 0u;
+			const auto baseline = baselineByPath.find(relative);
+			if (!HashFileSha256(
+					candidatePath, candidateSha, candidateBytes, status))
+			{
+				return false;
+			}
+			if (baselineByPath.end() == baseline ||
+				candidateBytes != declaredBytes ||
+				candidateSha != shaValue->Get_String())
+			{
+				status =
+					"Candidate presentation artifact bytes do not match its "
+					"immutable manifest: " + relative + ".";
+				return false;
+			}
+			if (baseline->second->iBytes != declaredBytes ||
+				baseline->second->strSha256 != sourceShaValue->Get_String())
+			{
+				if (firstCurrentMismatch.empty())
+					firstCurrentMismatch = relative;
+			}
+			artifactLaneMask |= PresentationLaneBit(laneValue->Get_String());
+		}
+		if (admittedPaths.size() != allowedArtifacts.size() ||
+			artifactLaneMask != GAMEPLAY_PRESENTATION_KNOWN_LANE_MASK)
+		{
+			status = "Candidate presentation compatibility artifact set is incomplete.";
+			return false;
+		}
+		if (!firstCurrentMismatch.empty())
+		{
+			status =
+				"The immutable candidate does not match the current saved typed "
+				"presentation generation at " + firstCurrentMismatch + ".";
+			return false;
+		}
+		status =
+			"The immutable candidate exactly matches the current saved typed "
+			"presentation generation.";
+		return true;
+	}
+
+#else
+	bool CapturePresentationArtifactBaseline(
+		std::vector<CNetworkManager::PRESENTATION_ARTIFACT_BASELINE>& output,
+		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& receipt,
+		std::string& status,
+		Client::VALTAN_CANONICAL_READ_DIAGNOSTIC* const pOutDiagnostic = nullptr)
+	{
+		Client::CValtanPresentationGenerationReadAdmission admission;
+		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT stagedReceipt;
+		Client::VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;
+		if (!admission.Acquire_PackagedBaseline(stagedReceipt, Diagnostic) ||
+			!admission.Validate_StillCurrent(Diagnostic))
+		{
+			status = Diagnostic.strStatus;
+			if (nullptr != pOutDiagnostic)
+				*pOutDiagnostic = std::move(Diagnostic);
+			return false;
+		}
+		std::vector<CNetworkManager::PRESENTATION_ARTIFACT_BASELINE> staged;
+		staged.reserve(stagedReceipt.Artifacts.size());
+		for (const auto& artifact : stagedReceipt.Artifacts)
+		{
+			CNetworkManager::PRESENTATION_ARTIFACT_BASELINE row;
+			row.strRelativePath = artifact.strRelativePath;
+			row.strLane = artifact.strLane;
+			row.strSha256 = LostArk::Shared::Format_GameplayDataRevision(
+				artifact.Revision);
+			row.iBytes = artifact.iBytes;
+			staged.push_back(std::move(row));
+		}
+		output = std::move(staged);
+		receipt = std::move(stagedReceipt);
+		status = "Captured the current validated Client presentation sources.";
+		if (nullptr != pOutDiagnostic)
+		{
+			pOutDiagnostic->Clear();
+			pOutDiagnostic->strStatus = status;
+		}
+		return true;
+	}
+#endif
+}
+
+//Socket worker thread�� client main thread�� �и��ϱ� ���ؼ� �����Ѵ�.
+//workter thread -> byte ���Ű� frame ������ ����
+//main thread -> frame �ؼ��� replication event ����
+
+CNetworkManager& CNetworkManager::Get()
+{
+	static CNetworkManager instance;
+	return instance;
+}
+
+std::string CNetworkManager::Resolve_ServerHost()
+{
+	/* The temporary team LAN endpoint is the direct-launch fallback. The
+	   process-local environment still wins so isolated tests can name loopback. */
+	constexpr char DEFAULT_SERVER_HOST[] = "192.168.0.14";
+	constexpr char SERVER_HOST_ENVIRONMENT[] = "LOSTARK_SERVER_HOST";
+	char configuredHost[64]{};
+	const DWORD configuredLength = ::GetEnvironmentVariableA(
+		SERVER_HOST_ENVIRONMENT,
+		configuredHost,
+		static_cast<DWORD>(std::size(configuredHost)));
+	if (0u != configuredLength &&
+		configuredLength < std::size(configuredHost) &&
+		"0.0.0.0" != std::string_view{ configuredHost })
+	{
+		return configuredHost;
+	}
+#ifdef _DEBUG
+	/* The VS debugger environment is the team endpoint authority. A developer
+	   may still opt into a loopback Server when launching outside VS, but that
+	   disabled-by-default convenience file never overrides an explicit host. */
+	if (const std::string localHost = Resolve_DebugLocalServerHost();
+		!localHost.empty())
+	{
+		return localHost;
+	}
+#endif
+	return DEFAULT_SERVER_HOST;
+}
+
+std::string CNetworkManager::Resolve_MapEditorServerHost()
+{
+	// Test(Map Editor) and product worlds must enter through the same
+	// authoritative Server endpoint. Keep this compatibility entry point so
+	// existing lobby code cannot reintroduce a private loopback route.
+	return Resolve_ServerHost();
+}
+
+bool CNetworkManager::Initialize()
+{
+	if (m_isWinSocketInitialized)
+		return true;
+
+	WSADATA winSockData{};
+	const int result = ::WSAStartup(MAKEWORD(2, 2), &winSockData);
+	if (0 != result)
+	{
+		m_iLastErrorCode = result;
+		return false;
+	}
+
+	const bool isVersionSupported =
+		2 == LOBYTE(winSockData.wVersion) &&
+		2 == HIBYTE(winSockData.wVersion);
+
+	if (!isVersionSupported)
+	{
+		m_iLastErrorCode = WSAVERNOTSUPPORTED;
+		::WSACleanup();
+		return false;
+	}
+
+	m_isWinSocketInitialized = true;
+	m_iLastErrorCode = 0;
+	return true;
+}
+
+void CNetworkManager::Shutdown()
+{
+	Close_ServerConnection();
+
+	if (!m_isWinSocketInitialized)
+		return;
+
+	::WSACleanup();
+	m_isWinSocketInitialized = false;
+}
+//�� �����Ӹ��� main thread���� ȣ��
+void CNetworkManager::Update()
+{
+	m_SessionDiagnostic.Record_MainPump();
+	if (m_hasProtocolFailure.load())
+	{
+		if (INVALID_SOCKET != m_hServerSocket)
+			Fail_Protocol(m_iLastErrorCode.load());
+		return;
+	}
+
+	// Keep undelivered frames in the worker queue. A full typed destination
+	// pauses at the FIFO head until its main-thread consumer has drained it.
+	// Handle_Frame runs outside the mutex: it may close/reset the connection.
+	for (std::size_t dispatched = 0u;
+		dispatched < MAX_INBOUND_DISPATCH_PER_UPDATE; ++dispatched)
+	{
+		LostArk::Shared::PACKET_FRAME frame;
+		{
+			std::scoped_lock lock{ m_InboundMutex };
+			if (m_InboundFrames.empty() ||
+				!Has_DispatchCapacity(m_InboundFrames.front().ePacketType))
+				break;
+			frame = std::move(m_InboundFrames.front());
+			m_InboundFrames.pop_front();
+			m_SessionDiagnostic.Record_RawQueueDepth(m_InboundFrames.size());
+		}
+		Handle_Frame(frame);
+		if (m_hasProtocolFailure.load())
+			break;
+	}
+	Pump_BalanceSnapshot();
+}
+
+bool CNetworkManager::Has_DispatchCapacity(
+	const LostArk::Shared::PACKET_TYPE packetType) const
+{
+	using LostArk::Shared::PACKET_TYPE;
+	switch (packetType)
+	{
+	case PACKET_TYPE::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT:
+		return m_DebugTeleportResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_MARIO_RETURN_RESULT:
+		return m_MarioReturnResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_ROOM_PING:
+		return m_RoomPings.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT:
+		return m_DebugMarioJumpResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_KILL_GATE_BOSSES_RESULT:
+		return m_DebugKillGateBossesResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_SET_COOLDOWN_MODE_RESULT:
+		return m_SetCooldownModeResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_MAHARAKA_AI_TUNING:
+		return m_MaharakaAITuningResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT:
+		return m_DebugWorldPlaybackResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT:
+		return m_DebugKoukuHudModeResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT:
+		return m_DebugMadnessFormResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT:
+		return m_VehicleRidingResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_SET_HONOR_TITLE_RESULT:
+		return m_HonorTitleResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT:
+		return m_WorldEntitySpawnResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_CHARACTER_CLASS_CHANGE_RESULT:
+		return m_CharacterClassChangeResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_VALTAN_AUDITION_LIFECYCLE:
+		return m_ValtanAuditionLifecycleEvents.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT:
+		return m_KoukuSaydonPatternAuditionResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE:
+		return m_KoukuSaydonPatternAuditionLifecycleEvents.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT:
+		return m_ValtanPatternFlowResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE:
+		return m_ValtanPatternFlowLifecycleEvents.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_GATE_PROGRESS_STATE:
+		return m_GateProgressStates.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_COLOSSEUM_QUEUE_STATE:
+		return m_ColosseumQueueStates.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_RAID_MVP_RESULT:
+		return m_RaidMvpResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT:
+		// Both operation-specific consumers run after Update, so neither lane
+		// may overflow while this packet still owns the FIFO head.
+		return m_ValtanAuditionResults.size() < MAX_REVISION_CONTROL_QUEUE &&
+			m_ValtanPatternAuditionByIdResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_WORLD_SNAPSHOT:
+		if (!m_ReplicationEvents.empty() &&
+			Client::Can_CoalesceAdjacentReplicationEvents(
+				m_ReplicationEvents.back().eType,
+				Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT))
+			return true;
+		[[fallthrough]];
+	case PACKET_TYPE::S2C_PLAYER_SPAWNED:
+	case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED:
+	case PACKET_TYPE::S2C_COMBAT_OBJECT_SPAWNED:
+	case PACKET_TYPE::S2C_COMBAT_OBJECT_PRESENTATION_EVENT:
+	case PACKET_TYPE::S2C_WORLD_ENTITY_DESPAWNED:
+	case PACKET_TYPE::S2C_COMBAT_OBJECT_DESPAWNED:
+	case PACKET_TYPE::S2C_INVENTORY_SNAPSHOT:
+	case PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT:
+	case PACKET_TYPE::S2C_PARTY_INVITE_RECEIVED:
+	case PACKET_TYPE::S2C_KOUKUSAYDON_RAID_STATE:
+	case PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE:
+	case PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY:
+	case PACKET_TYPE::S2C_INTERACT_PROMPT:
+	case PACKET_TYPE::S2C_PARTY_ROSTER:
+	case PACKET_TYPE::S2C_COLOSSEUM_MATCH_STATE:
+	case PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT:
+	case PACKET_TYPE::S2C_RAID_ENTRY_PROMPT:
+	case PACKET_TYPE::S2C_RAID_ENTRY_VOTE:
+	case PACKET_TYPE::S2C_GUIDE_PROMPT:
+	case PACKET_TYPE::S2C_GUIDE_STATE:
+	case PACKET_TYPE::S2C_CHAT:
+	case PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC:
+	case PACKET_TYPE::S2C_ENCOUNTER_PROP_SYNC:
+	case PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA:
+	case PACKET_TYPE::S2C_PLAYER_DESPAWNED:
+		return m_ReplicationEvents.size() < MAX_REPLICATION_EVENT_QUEUE;
+	default:
+		// Admission/revision messages do not append a typed queue. In particular,
+		// ENTER_ACCEPTED must still reset the previous world's full event queues.
+		return true;
+	}
+}
+
+bool CNetworkManager::Connect_To_Server(
+	const std::string_view host,
+	const std::uint16_t port)
+{
+	if (Is_Connected())
+		return true;
+
+	// A new explicit connect is the only boundary that clears the previous
+	// terminal latch. First reclaim any stale worker/socket from that previous
+	// generation, then start the new capture generation.
+	if (INVALID_SOCKET != m_hServerSocket || m_ReceiveThread.joinable())
+		Close_ServerConnection();
+	m_SessionDiagnostic.Begin_Attempt(
+		host, port, LostArk::Shared::NETWORK_PROTOCOL_VERSION);
+
+	if (!m_isWinSocketInitialized)
+	{
+		m_iLastErrorCode = WSANOTINITIALISED;
+		m_SessionDiagnostic.Record_Terminal(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+			WSANOTINITIALISED,
+			LostArk::Shared::PACKET_TYPE::INVALID,
+			"WinSock was not initialized before connect.");
+		return false;
+	}
+
+	if (host.empty() || host.size() > 63u || 0u == port)
+	{
+		m_iLastErrorCode = WSAEINVAL;
+		m_SessionDiagnostic.Record_Terminal(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+			WSAEINVAL,
+			LostArk::Shared::PACKET_TYPE::INVALID,
+			"Server host or port was invalid.");
+		return false;
+	}
+
+	m_hServerSocket = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (INVALID_SOCKET == m_hServerSocket)
+	{
+		m_iLastErrorCode = ::WSAGetLastError();
+		m_SessionDiagnostic.Record_Terminal(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+			m_iLastErrorCode.load(),
+			LostArk::Shared::PACKET_TYPE::INVALID,
+			"TCP socket creation failed.");
+		return false;
+	}
+
+	sockaddr_in serverAddress{};
+	serverAddress.sin_family = AF_INET;
+	const std::string hostText{ host };
+	if ("localhost" == hostText)
+	{
+		serverAddress.sin_addr.s_addr = ::htonl(INADDR_LOOPBACK);
+	}
+	else if (1 != ::InetPtonA(
+		AF_INET,
+		hostText.c_str(),
+		&serverAddress.sin_addr))
+	{
+		m_iLastErrorCode = WSAEINVAL;
+		m_SessionDiagnostic.Record_Terminal(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+			WSAEINVAL,
+			LostArk::Shared::PACKET_TYPE::INVALID,
+			"Server host was not an IPv4 address or localhost.");
+		Close_ServerConnection();
+		return false;
+	}
+	serverAddress.sin_port = ::htons(port);
+
+	u_long nonBlocking = 1;
+	if (SOCKET_ERROR == ::ioctlsocket(
+		m_hServerSocket,
+		FIONBIO,
+		&nonBlocking))
+	{
+		m_iLastErrorCode = ::WSAGetLastError();
+		m_SessionDiagnostic.Record_Terminal(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+			m_iLastErrorCode.load(),
+			LostArk::Shared::PACKET_TYPE::INVALID,
+			"Could not enable non-blocking connect mode.");
+		Close_ServerConnection();
+		return false;
+	}
+
+	const int connectResult = ::connect(
+		m_hServerSocket,
+		reinterpret_cast<const sockaddr*>(&serverAddress),
+		sizeof(serverAddress));
+	if (SOCKET_ERROR == connectResult)
+	{
+		const int connectError = ::WSAGetLastError();
+		if (WSAEWOULDBLOCK != connectError)
+		{
+			m_iLastErrorCode = connectError;
+			m_SessionDiagnostic.Record_Terminal(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+				connectError,
+				LostArk::Shared::PACKET_TYPE::INVALID,
+				"connect() failed before the socket became writable.");
+			Close_ServerConnection();
+			return false;
+		}
+
+		fd_set writableSockets;
+		FD_ZERO(&writableSockets);
+		FD_SET(m_hServerSocket, &writableSockets);
+		fd_set errorSockets;
+		FD_ZERO(&errorSockets);
+		FD_SET(m_hServerSocket, &errorSockets);
+		timeval timeout{};
+		timeout.tv_sec = 1;
+		timeout.tv_usec = 500000;
+		const int selectResult = ::select(
+			0,
+			nullptr,
+			&writableSockets,
+			&errorSockets,
+			&timeout);
+		if (selectResult <= 0)
+		{
+			m_iLastErrorCode = 0 == selectResult ?
+				WSAETIMEDOUT : ::WSAGetLastError();
+			m_SessionDiagnostic.Record_Terminal(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+				m_iLastErrorCode.load(),
+				LostArk::Shared::PACKET_TYPE::INVALID,
+				0 == selectResult ?
+					"Connect did not complete within 1500 ms." :
+					"select() failed while waiting for connect.");
+			Close_ServerConnection();
+			return false;
+		}
+
+		int socketError = 0;
+		int socketErrorSize = sizeof(socketError);
+		if (SOCKET_ERROR == ::getsockopt(
+			m_hServerSocket,
+			SOL_SOCKET,
+			SO_ERROR,
+			reinterpret_cast<char*>(&socketError),
+			&socketErrorSize) ||
+			0 != socketError)
+		{
+			m_iLastErrorCode = 0 != socketError ?
+				socketError : ::WSAGetLastError();
+			m_SessionDiagnostic.Record_Terminal(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+				m_iLastErrorCode.load(),
+				LostArk::Shared::PACKET_TYPE::INVALID,
+				"Connected socket reported SO_ERROR.");
+			Close_ServerConnection();
+			return false;
+		}
+	}
+
+	nonBlocking = 0;
+	if (SOCKET_ERROR == ::ioctlsocket(
+		m_hServerSocket,
+		FIONBIO,
+		&nonBlocking))
+	{
+		m_iLastErrorCode = ::WSAGetLastError();
+		m_SessionDiagnostic.Record_Terminal(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+			m_iLastErrorCode.load(),
+			LostArk::Shared::PACKET_TYPE::INVALID,
+			"Could not restore blocking socket mode after connect.");
+		Close_ServerConnection();
+		return false;
+	}
+
+	/* Input and snapshot frames are small: do not wait for another payload or
+	   a delayed ACK before sending a movement command. */
+	const int noDelay = 1;
+	if (SOCKET_ERROR == ::setsockopt(m_hServerSocket, IPPROTO_TCP, TCP_NODELAY,
+		reinterpret_cast<const char*>(&noDelay), sizeof(noDelay)))
+	{
+		m_iLastErrorCode = ::WSAGetLastError();
+		m_SessionDiagnostic.Record_Terminal(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+			m_iLastErrorCode.load(), LostArk::Shared::PACKET_TYPE::INVALID,
+			"Could not enable TCP_NODELAY for gameplay input.");
+		Close_ServerConnection();
+		return false;
+	}
+
+	sockaddr_in localAddress{};
+	int localAddressLength = sizeof(localAddress);
+	char localAddressText[INET_ADDRSTRLEN]{};
+	if (0 == ::getsockname(
+		m_hServerSocket,
+		reinterpret_cast<sockaddr*>(&localAddress),
+		&localAddressLength) &&
+		nullptr != ::InetNtopA(
+			AF_INET,
+			&localAddress.sin_addr,
+			localAddressText,
+			static_cast<DWORD>(std::size(localAddressText))))
+	{
+		m_SessionDiagnostic.Record_LocalEndpoint(
+			std::string{ localAddressText } + ":" +
+			std::to_string(::ntohs(localAddress.sin_port)));
+	}
+	else
+	{
+		// Correlation is best-effort and must never turn a usable gameplay
+		// connection into a failed attempt.
+		m_SessionDiagnostic.Record_LocalEndpoint("unavailable");
+	}
+
+	m_StreamParser.Reset();
+	Reset_WorldInboundState();
+	m_iLastErrorCode.store(0);
+	m_hasProtocolFailure.store(false);
+	m_isReceiveRunning.store(true);
+	// Persist success before the worker can observe an immediate FIN/RST, so
+	// JSONL event order always reflects connect before its terminal edge.
+	m_SessionDiagnostic.Record_Event("connect.succeeded");
+	m_ReceiveThread = std::thread(
+		&CNetworkManager::Receive_Loop,
+		this,
+		m_hServerSocket);
+	return true;
+}
+bool CNetworkManager::Send_EnterWorld(
+	LostArk::Shared::WORLD_ID worldId,
+	LostArk::Shared::CHARACTER_CLASS_ID characterClass,
+	std::string_view nickName,
+	const std::uint8_t voiceType)
+{
+	using namespace LostArk::Shared;
+
+	if (!Is_Connected())
+	{
+		m_SessionDiagnostic.Record_Terminal(
+			SESSION_DIAGNOSTIC_REASON::CLIENT_ENTER_SEND_FAILED,
+			WSAENOTCONN,
+			PACKET_TYPE::C2S_ENTER_WORLD,
+			"C2S_ENTER_WORLD was requested without a live socket.");
+		return false;
+	}
+
+	C2S_ENTER_WORLD message{};
+	message.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+	message.eWorldId = worldId;
+	message.eCharacterClass = characterClass;
+	message.strNickName = std::string{ nickName };
+	message.iVoiceType = voiceType;
+	if (worldId != WORLD_ID::CHARACTER_SELECT_ARENA)
+		message.strAppearanceJson = Client::CCharacterSelectionState::Get_ActiveAppearanceJson();
+
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+	{
+		m_SessionDiagnostic.Record_Terminal(
+			SESSION_DIAGNOSTIC_REASON::CLIENT_ENTER_SEND_FAILED,
+			WSAEINVAL,
+			PACKET_TYPE::C2S_ENTER_WORLD,
+			"C2S_ENTER_WORLD serialization failed.");
+		return false;
+	}
+
+	std::vector<std::uint8_t> frameBytes;
+	if (!Build_Packet_Frame(
+		PACKET_TYPE::C2S_ENTER_WORLD,
+		payloadWriter.Get_Buffer(),
+		frameBytes))
+	{
+		m_SessionDiagnostic.Record_Terminal(
+			SESSION_DIAGNOSTIC_REASON::CLIENT_ENTER_SEND_FAILED,
+			WSAEINVAL,
+			PACKET_TYPE::C2S_ENTER_WORLD,
+			"C2S_ENTER_WORLD frame construction failed.");
+		return false;
+	}
+
+	if (!Send_All(frameBytes, PACKET_TYPE::C2S_ENTER_WORLD))
+		return false;
+
+	// The request is now committed to the socket. From this point only its
+	// future acceptance may establish a world; older room events are stale.
+	Reset_WorldInboundState();
+	m_eLocalCharacterClass = characterClass;
+	m_SessionDiagnostic.Record_EnterSent(worldId);
+	return true;
+}
+
+bool CNetworkManager::Send_VehicleFlightInput(std::uint32_t sequence, float x, float z, float vertical)
+{
+    using namespace LostArk::Shared;
+    if (!Is_Connected()) return false;
+    C2S_MOVE message{};
+    message.iClientSequence = sequence;
+    message.eIntent = PLAYER_MOVE_INTENT::VEHICLE_FLIGHT;
+    message.fGoalX = x; message.fGoalZ = z; message.fVerticalInput = vertical;
+    CPacketWriter writer;
+    std::vector<std::uint8_t> frame;
+    return Write_Message(writer, message) && Build_Packet_Frame(PACKET_TYPE::C2S_MOVE,
+        writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_MoveGoal(std::uint32_t clientSequence, float goalX, float goalZ)
+{
+	//���� ���� �˻� -> C2S_MOVE �� ����ü ���� -> sequence�� goal XZ ����
+	//packetwriter�� payload ����ȭ -> C2S_MOVE frame ���� -> send_all
+	//client sequence�� animation�� ������ ��� �ִ� �ǰ�? �ִϸ��̼� 1 2 3 4 ������ ������ ��� �ִ�?
+	//�� �ִϸ��̼ǿ� ���� �κ��� ��� ó���ؾ� �ұ�?
+	using namespace LostArk::Shared;
+
+	if (!Is_Connected())
+		return false;
+
+	C2S_MOVE message{};
+	message.iClientSequence = clientSequence;
+	message.fGoalX = goalX;
+	message.fGoalZ = goalZ;
+
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	if (!Build_Packet_Frame(
+		PACKET_TYPE::C2S_MOVE,
+		payloadWriter.Get_Buffer(),
+		frameBytes))
+	{
+		return false;
+	}
+
+	return Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_UseSkill(
+	const std::uint32_t clientSequence,
+	const LostArk::Shared::SKILL_ID skillId,
+	const float aimX,
+	const float aimZ)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_USE_SKILL message{};
+	message.iClientSequence = clientSequence;
+	message.iSkillId = skillId;
+	message.fAimX = aimX;
+	message.fAimZ = aimZ;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_USE_SKILL,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_UseGroundTargetSkill(
+	const std::uint32_t clientSequence,
+	const LostArk::Shared::SKILL_ID skillId,
+	const float targetX,
+	const float targetZ)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_USE_SKILL message{};
+	message.iClientSequence = clientSequence;
+	message.iSkillId = skillId;
+	message.eTargetIntent = SKILL_TARGET_INTENT_KIND::GROUND_POINT;
+	message.fAimX = targetX;
+	message.fAimZ = targetZ;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_USE_SKILL,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_ReleaseSkill(
+	const std::uint32_t clientSequence,
+	const LostArk::Shared::SKILL_ID skillId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_RELEASE_SKILL message{};
+	message.iClientSequence = clientSequence;
+	message.iSkillId = skillId;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_RELEASE_SKILL,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_SkillAim(
+	const std::uint32_t clientSequence,
+	const LostArk::Shared::SKILL_ID skillId,
+	const float aimX,
+	const float aimZ)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_UPDATE_SKILL_AIM message{};
+	message.iClientSequence = clientSequence;
+	message.iSkillId = skillId;
+	message.fAimX = aimX;
+	message.fAimZ = aimZ;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_UPDATE_SKILL_AIM,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_EstherSkill(
+	const std::uint32_t clientSequence,
+	const std::uint8_t slotIndex,
+	const float aimX,
+	const float aimZ)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_USE_ESTHER_SKILL message{};
+	message.iClientSequence = clientSequence;
+	message.iSlotIndex = slotIndex;
+	message.fAimX = aimX;
+	message.fAimZ = aimZ;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_USE_ESTHER_SKILL,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_DebugUseEsther(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::ESTHER_ID esther,
+	const float aimX,
+	const float aimZ)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || !Is_Known_World_Id(m_eWorldId) ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_DEBUG_USE_ESTHER message{};
+	message.iRequestSequence = requestSequence;
+	message.eWorldId = m_eWorldId;
+	message.eEsther = esther;
+	message.fAimX = aimX;
+	message.fAimZ = aimZ;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_USE_ESTHER,
+		writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_UseSquareHole(
+	const std::uint32_t clientSequence,
+	const std::uint16_t holeId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_USE_SQUAREHOLE message{};
+	message.iClientSequence = clientSequence;
+	message.iSquareHoleId = holeId;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_USE_SQUAREHOLE,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_RevivePlayer(
+	const std::uint32_t clientSequence)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_REVIVE_PLAYER message{};
+	message.iClientSequence = clientSequence;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_REVIVE_PLAYER,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+#ifdef _DEBUG
+bool CNetworkManager::Send_DebugKillSelf(
+	const std::uint32_t clientSequence)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_DEBUG_KILL_SELF message{};
+	message.iClientSequence = clientSequence;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_DEBUG_KILL_SELF,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+#endif
+
+bool CNetworkManager::Send_DebugEnterKakulSaydonArena(
+	const std::uint32_t requestSequence)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_DEBUG_ENTER_KAKULSAYDON_ARENA message{};
+	message.iRequestSequence = requestSequence;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_DebugTeleportToPosition(
+	const std::uint32_t requestSequence,
+	const float pickedX, const float pickedY, const float pickedZ)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || !Is_Known_World_Id(m_eWorldId) ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_DEBUG_TELEPORT_TO_POSITION message{};
+	message.iRequestSequence = requestSequence;
+	message.eWorldId = m_eWorldId;
+	message.fPositionX = pickedX;
+	message.fPositionY = pickedY;
+	message.fPositionZ = pickedZ;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_POSITION,
+		writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_DebugTeleportResult(
+	LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result)
+{
+	if (m_DebugTeleportResults.empty())
+		return false;
+	result = m_DebugTeleportResults.front();
+	m_DebugTeleportResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Send_MarioMove(
+	const std::uint32_t clientSequence, const LostArk::Shared::MARIO_DIRECTION direction)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_MARIO_MOVE message{};
+	message.iClientSequence = clientSequence;
+	message.eWorldId = m_eWorldId;
+	message.eDirection = direction;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_MARIO_MOVE,
+		writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_MarioReturn(
+	const std::uint32_t clientSequence)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_MARIO_RETURN message{};
+	message.iClientSequence = clientSequence;
+	message.eWorldId = m_eWorldId;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_MARIO_RETURN,
+		writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_MarioReturnResult(
+	LostArk::Shared::S2C_MARIO_RETURN_RESULT& result)
+{
+	if (m_MarioReturnResults.empty())
+		return false;
+	result = m_MarioReturnResults.front();
+	m_MarioReturnResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Send_DebugMarioJump(
+	const std::uint32_t clientSequence, const LostArk::Shared::MARIO_DIRECTION direction)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_DEBUG_MARIO_JUMP message{};
+	message.iClientSequence = clientSequence;
+	message.eWorldId = m_eWorldId;
+	message.eDirection = direction;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP,
+		writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_DebugMarioJumpResult(
+	LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT& result)
+{
+	if (m_DebugMarioJumpResults.empty())
+		return false;
+	result = m_DebugMarioJumpResults.front();
+	m_DebugMarioJumpResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Send_DebugSetMadnessForm(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::PLAYER_MADNESS_FORM form)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || !Is_Known_World_Id(m_eWorldId) ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_DEBUG_SET_MADNESS_FORM message{};
+	message.iRequestSequence = requestSequence;
+	message.eWorldId = m_eWorldId;
+	message.eForm = form;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_SET_MADNESS_FORM,
+		writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_SetVehicleRiding(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::VEHICLE_ID vehicleId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || !Is_Known_World_Id(m_eWorldId) ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_SET_VEHICLE_RIDING message{};
+	message.iRequestSequence = requestSequence;
+	message.eWorldId = m_eWorldId;
+	message.iVehicleId = vehicleId;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_SET_VEHICLE_RIDING,
+		writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_SetHonorTitle(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::HONOR_TITLE_ID titleId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || !Is_Known_World_Id(m_eWorldId) ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_SET_HONOR_TITLE message{};
+	message.iRequestSequence = requestSequence;
+	message.eWorldId = m_eWorldId;
+	message.iHonorTitleId = titleId;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_SET_HONOR_TITLE,
+		writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_InteractionSlot(std::uint32_t sequence,
+ LostArk::Shared::INTERACTION_SLOT slot)
+{
+ using namespace LostArk::Shared;
+ if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
+  return false;
+ C2S_INTERACTION_SLOT message{};
+ message.iRequestSequence = sequence;
+ message.eWorldId = m_eWorldId;
+ message.eSlot = slot;
+ CPacketWriter writer;
+ if (!Write_Message(writer, message)) return false;
+ std::vector<std::uint8_t> frame;
+ return Build_Packet_Frame(PACKET_TYPE::C2S_INTERACTION_SLOT, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_DebugBingoFill(std::uint32_t sequence,
+ std::uint32_t cellMask, bool reset)
+{
+ using namespace LostArk::Shared;
+ if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
+  return false;
+ C2S_DEBUG_BINGO_FILL message{};
+ message.iRequestSequence = sequence;
+ message.eWorldId = m_eWorldId;
+ message.iCellMask = cellMask;
+ message.bReset = reset;
+ CPacketWriter writer;
+ if (!Write_Message(writer, message)) return false;
+ std::vector<std::uint8_t> frame;
+ return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_BINGO_FILL, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_DebugBingoBomb(std::uint32_t sequence)
+{
+ using namespace LostArk::Shared;
+ if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
+  return false;
+ C2S_DEBUG_BINGO_BOMB message{};
+ message.iRequestSequence = sequence;
+ message.eWorldId = m_eWorldId;
+ CPacketWriter writer;
+ if (!Write_Message(writer, message)) return false;
+ std::vector<std::uint8_t> frame;
+ return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_BINGO_BOMB, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_DebugBingoHammer(std::uint32_t sequence)
+{
+ using namespace LostArk::Shared;
+ if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
+  return false;
+ C2S_DEBUG_BINGO_HAMMER message{};
+ message.iRequestSequence = sequence;
+ message.eWorldId = m_eWorldId;
+ CPacketWriter writer;
+ if (!Write_Message(writer, message)) return false;
+ std::vector<std::uint8_t> frame;
+ return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_DebugResummonWaveMonsters(std::uint32_t sequence,
+ LostArk::Shared::WAVE_MONSTER_BUTTON button)
+{
+ using namespace LostArk::Shared;
+ if (!Is_Connected() || INVALID_PLAYER_ID == m_iLocalPlayerId ||
+  (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId && WORLD_ID::VALTAN_ARENA != m_eWorldId))
+  return false;
+ C2S_DEBUG_RESUMMON_WAVE_MONSTERS message{};
+ message.iRequestSequence = sequence;
+ message.eWorldId = m_eWorldId;
+ message.eButton = button;
+ CPacketWriter writer;
+ if (!Write_Message(writer, message)) return false;
+ std::vector<std::uint8_t> frame;
+ return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_DebugKoukuHudMode(std::uint32_t sequence,
+ LostArk::Shared::KOUKU_HUD_MODE mode)
+{
+ using namespace LostArk::Shared;
+ if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
+  return false;
+ C2S_DEBUG_SET_KOUKU_HUD_MODE message{};
+ message.iRequestSequence = sequence;
+ message.eWorldId = m_eWorldId;
+ message.eMode = mode;
+ CPacketWriter writer;
+ if (!Write_Message(writer, message)) return false;
+ std::vector<std::uint8_t> frame;
+ return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_SET_KOUKU_HUD_MODE, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_DebugKoukuHudModeResult(
+ LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& result)
+{
+ if (m_DebugKoukuHudModeResults.empty()) return false;
+ result = m_DebugKoukuHudModeResults.front();
+ m_DebugKoukuHudModeResults.pop_front();
+ return true;
+}
+
+bool CNetworkManager::Try_Consume_DebugMadnessFormResult(
+	LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT& result)
+{
+	if (m_DebugMadnessFormResults.empty())
+		return false;
+	result = m_DebugMadnessFormResults.front();
+	m_DebugMadnessFormResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_VehicleRidingResult(
+	LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT& result)
+{
+	if (m_VehicleRidingResults.empty())
+		return false;
+	result = m_VehicleRidingResults.front();
+	m_VehicleRidingResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_HonorTitleResult(
+	LostArk::Shared::S2C_SET_HONOR_TITLE_RESULT& result)
+{
+	if (m_HonorTitleResults.empty())
+		return false;
+	result = m_HonorTitleResults.front();
+	m_HonorTitleResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Send_DebugTeleportToPlacement(
+	const std::uint32_t requestSequence,
+	const std::string_view placementId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_DEBUG_TELEPORT_TO_PLACEMENT message{};
+	message.iRequestSequence = requestSequence;
+	message.strPlacementId.assign(placementId.begin(), placementId.end());
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_PLACEMENT,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_ChangeCharacterClass(
+	const std::uint32_t clientSequence,
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_CHANGE_CHARACTER_CLASS message{};
+	message.iClientSequence = clientSequence;
+	message.eCharacterClass = characterClass;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_CHANGE_CHARACTER_CLASS,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_SpawnWorldEntity(
+	const std::string_view placementId, std::uint64_t* outRequestToken)
+{
+	using namespace LostArk::Shared;
+	if (outRequestToken) *outRequestToken = 0u;
+	if (!Is_Connected() || m_nextWorldEntitySpawnToken == 0u ||
+		m_WorldEntitySpawnRequests.size() >= MAX_REVISION_CONTROL_QUEUE)
+		return false;
+
+	C2S_SPAWN_WORLD_ENTITY message{};
+	message.strPlacementId = std::string{ placementId };
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	if (!Build_Packet_Frame(PACKET_TYPE::C2S_SPAWN_WORLD_ENTITY,
+		payloadWriter.Get_Buffer(), frameBytes)) return false;
+	const std::uint64_t token = m_nextWorldEntitySpawnToken++;
+	m_WorldEntitySpawnRequests.push_back({ std::string{placementId}, token });
+	if (!Send_All(frameBytes))
+	{
+		// Send_All can close the connection and clear all inbound state.
+		if (!m_WorldEntitySpawnRequests.empty() &&
+			m_WorldEntitySpawnRequests.back().token == token)
+			m_WorldEntitySpawnRequests.pop_back();
+		return false;
+	}
+	if (outRequestToken) *outRequestToken = token;
+	return true;
+}
+
+bool CNetworkManager::Send_DespawnAllWorldEntities(
+	const std::uint32_t requestSequence)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_DESPAWN_ALL_WORLD_ENTITIES message{};
+	message.iRequestSequence = requestSequence;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_DESPAWN_ALL_WORLD_ENTITIES,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_ConfirmNpcEntry(
+	const std::uint32_t requestSequence,
+	const std::string_view npcPlacementId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_CONFIRM_NPC_ENTRY message{};
+	message.iRequestSequence = requestSequence;
+	message.strNpcPlacementId = std::string{ npcPlacementId };
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_CONFIRM_NPC_ENTRY,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_MaharakaAITuning(const LostArk::Shared::C2S_MAHARAKA_AI_TUNING& request)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || m_eWorldId != WORLD_ID::MAHARAKA || INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	CPacketWriter writer;
+	std::vector<std::uint8_t> frame;
+	return Write_Message(writer, request) &&
+		Build_Packet_Frame(PACKET_TYPE::C2S_MAHARAKA_AI_TUNING, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_MaharakaAITuning(LostArk::Shared::S2C_MAHARAKA_AI_TUNING& result)
+{
+	if (m_MaharakaAITuningResults.empty()) return false;
+	result = std::move(m_MaharakaAITuningResults.front());
+	m_MaharakaAITuningResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Send_DebugWorldPlayback(const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || request.eWorldId != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	CPacketWriter writer;
+	std::vector<std::uint8_t> frame;
+	return Write_Message(writer, request) &&
+		Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_WORLD_PLAYBACK, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_DebugWorldPlaybackResult(LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT& result)
+{
+	if (m_DebugWorldPlaybackResults.empty()) return false;
+	result = std::move(m_DebugWorldPlaybackResults.front());
+	m_DebugWorldPlaybackResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Send_InteractTrigger(
+	const std::uint32_t requestSequence,
+	const std::string_view triggerPlacementId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_INTERACT_TRIGGER message{};
+	message.iRequestSequence = requestSequence;
+	message.strTriggerPlacementId = std::string{ triggerPlacementId };
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_INTERACT_TRIGGER,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_RaidEntryPropose(
+	const std::uint32_t requestSequence,
+	const std::string_view npcPlacementId,
+	const LostArk::Shared::RAID_ENTRY_TARGET target)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_RAID_ENTRY_PROPOSE message{};
+	message.iRequestSequence = requestSequence;
+	message.strNpcPlacementId = std::string{ npcPlacementId };
+	message.eTarget = target;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_RAID_ENTRY_PROPOSE,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_RaidEntryRespond(
+	const std::uint32_t requestSequence,
+	const std::uint32_t proposalId,
+	const bool accepted)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_RAID_ENTRY_RESPOND message{};
+	message.iRequestSequence = requestSequence;
+	message.iProposalId = proposalId;
+	message.bAccepted = accepted;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_RAID_ENTRY_RESPOND,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_ColosseumQueueJoin(
+	const std::uint32_t requestSequence,
+	const std::string_view npcPlacementId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_COLOSSEUM_QUEUE_JOIN message{};
+	message.iRequestSequence = requestSequence;
+	message.strNpcPlacementId = std::string{ npcPlacementId };
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_COLOSSEUM_QUEUE_JOIN,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_GuideControl(const LostArk::Shared::C2S_GUIDE_CONTROL& request)
+{
+    using namespace LostArk::Shared;
+    if (!Is_Connected() || m_eWorldId != WORLD_ID::BERN) return false;
+    CPacketWriter writer;
+    if (!Write_Message(writer, request)) return false;
+    std::vector<std::uint8_t> frame;
+    return Build_Packet_Frame(PACKET_TYPE::C2S_GUIDE_CONTROL, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_ColosseumRecruit(const std::uint32_t requestSequence,
+    const std::uint64_t matchId, const LostArk::Shared::NET_ENTITY_ID mercenaryNetEntityId)
+{
+    using namespace LostArk::Shared;
+    if (!Is_Connected() || m_eWorldId != WORLD_ID::COLOSSEUM) return false;
+    C2S_COLOSSEUM_RECRUIT message{requestSequence, matchId, mercenaryNetEntityId};
+    CPacketWriter writer;
+    if (!Write_Message(writer, message)) return false;
+    std::vector<std::uint8_t> frame;
+    return Build_Packet_Frame(PACKET_TYPE::C2S_COLOSSEUM_RECRUIT, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_ColosseumQueueLeave(const std::uint32_t requestSequence)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_COLOSSEUM_QUEUE_LEAVE message{};
+	message.iRequestSequence = requestSequence;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_COLOSSEUM_QUEUE_LEAVE,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_ColosseumLoadReady(const std::uint64_t matchId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || m_eWorldId != WORLD_ID::COLOSSEUM || !matchId)
+		return false;
+	C2S_COLOSSEUM_LOAD_READY message{};
+	message.iMatchId = matchId;
+	CPacketWriter writer;
+	std::vector<std::uint8_t> frame;
+	return Write_Message(writer, message) && Build_Packet_Frame(
+		PACKET_TYPE::C2S_COLOSSEUM_LOAD_READY, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_ColosseumReturn(const std::uint64_t matchId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || m_eWorldId != WORLD_ID::COLOSSEUM || !matchId)
+		return false;
+	C2S_COLOSSEUM_RETURN message{};
+	message.iMatchId = matchId;
+	CPacketWriter writer;
+	std::vector<std::uint8_t> frame;
+	return Write_Message(writer, message) && Build_Packet_Frame(
+		PACKET_TYPE::C2S_COLOSSEUM_RETURN, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+double CNetworkManager::Get_ColosseumServerTick() const
+{
+	if (!m_ColosseumMatchState.iMatchId || !m_iColosseumStateReceivedMs)
+		return 0.0;
+	// The match publishes its clock at 30 Hz. A stalled connection must not run the
+	// local clock indefinitely past the last authoritative sample.
+	const auto elapsed = (std::min)(GetTickCount64() - m_iColosseumStateReceivedMs, 1000ull);
+	return static_cast<double>(m_ColosseumMatchState.iServerTick) + static_cast<double>(elapsed) * 0.03;
+}
+
+bool CNetworkManager::Send_GateProgressPropose(
+	const std::uint32_t requestSequence, const LostArk::Shared::GATE_PROGRESS_KIND kind)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || !Is_Known_World_Id(m_eWorldId))
+		return false;
+	C2S_GATE_PROGRESS_PROPOSE message{};
+	message.iRequestSequence = requestSequence;
+	message.eWorldId = m_eWorldId;
+	message.eKind = kind;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_GATE_PROGRESS_PROPOSE,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_GateProgressRespond(
+	const std::uint32_t requestSequence, const std::uint32_t proposalId, const bool accepted)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_GATE_PROGRESS_RESPOND message{};
+	message.iRequestSequence = requestSequence;
+	message.iProposalId = proposalId;
+	message.bAccepted = accepted;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_GATE_PROGRESS_RESPOND,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Try_Consume_GateProgressState(
+	LostArk::Shared::S2C_GATE_PROGRESS_STATE& outState)
+{
+	if (m_GateProgressStates.empty())
+		return false;
+	outState = m_GateProgressStates.front();
+	m_GateProgressStates.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_ColosseumQueueState(
+	LostArk::Shared::S2C_COLOSSEUM_QUEUE_STATE& outState)
+{
+	if (m_ColosseumQueueStates.empty())
+		return false;
+	outState = m_ColosseumQueueStates.front();
+	m_ColosseumQueueStates.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_RaidMvpResult(
+	LostArk::Shared::S2C_RAID_MVP_RESULT& outResult)
+{
+	if (m_RaidMvpResults.empty())
+		return false;
+	outResult = std::move(m_RaidMvpResults.front());
+	m_RaidMvpResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Send_ReturnToBern(const std::uint32_t requestSequence)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_RETURN_TO_BERN message{};
+	message.iRequestSequence = requestSequence;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_RETURN_TO_BERN,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_PartyInvite(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::NET_ENTITY_ID targetNetEntityId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_PARTY_INVITE message{};
+	message.iRequestSequence = requestSequence;
+	message.iTargetNetEntityId = targetNetEntityId;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_PARTY_INVITE,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_PartyInviteRespond(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::NET_ENTITY_ID fromNetEntityId,
+	const bool accepted)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_PARTY_INVITE_RESPOND message{};
+	message.iRequestSequence = requestSequence;
+	message.iFromNetEntityId = fromNetEntityId;
+	message.bAccepted = accepted;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_PARTY_INVITE_RESPOND,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_RoomPing(std::uint32_t sequence, float x, float y, float z)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected()) return false;
+	C2S_ROOM_PING request;
+	request.iClientSequence = sequence; request.eWorldId = m_eWorldId;
+	request.fPositionX = x; request.fPositionY = y; request.fPositionZ = z;
+	CPacketWriter writer;
+	std::vector<std::uint8_t> frame;
+	return Write_Message(writer, request) && Build_Packet_Frame(PACKET_TYPE::C2S_ROOM_PING, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_RoomPing(LostArk::Shared::S2C_ROOM_PING& ping)
+{
+	if (m_RoomPings.empty()) return false;
+	ping = m_RoomPings.front(); m_RoomPings.pop_front(); return true;
+}
+
+bool CNetworkManager::Send_Chat(const std::string& text)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_CHAT message{};
+	message.strText = text;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_CHAT,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_DebugGiveItem(
+	const std::uint32_t requestSequence,
+	const std::string_view itemId,
+	const std::uint32_t quantity)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_DEBUG_GIVE_ITEM message{};
+	message.iRequestSequence = requestSequence;
+	message.strItemId = std::string{ itemId };
+	message.iQuantity = quantity;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_DEBUG_GIVE_ITEM,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_UseItem(const LostArk::Shared::C2S_USE_ITEM& message)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_USE_ITEM,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_BuyItems(
+	const std::uint32_t requestSequence,
+	const std::string_view npcPlacementId,
+	const std::vector<LostArk::Shared::SHOP_BASKET_ENTRY>& entries)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_BUY_ITEMS message{};
+	message.iRequestSequence = requestSequence;
+	message.strNpcPlacementId = std::string{ npcPlacementId };
+	message.Entries = entries;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_BUY_ITEMS,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_RestoreCharacter(
+	const std::uint32_t requestSequence,
+	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items,
+	const std::uint32_t silver, const std::uint32_t gold, const std::uint32_t honorTitleId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_RESTORE_CHARACTER message{};
+	message.iRequestSequence = requestSequence;
+	message.Items = items;
+	message.iSilver = silver;
+	message.iGold = gold;
+	message.iHonorTitleId = honorTitleId;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_RESTORE_CHARACTER,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_SetEquipment(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::EQUIPMENT_SLOT slot,
+	const bool bEquip,
+	const std::string_view itemId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_SET_EQUIPMENT message{};
+	message.iRequestSequence = requestSequence;
+	message.eSlot = slot;
+	message.bEquip = bEquip;
+	message.strItemId = std::string{ itemId };
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_SET_EQUIPMENT,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_RepairEquipment(
+	const std::uint32_t requestSequence, const bool bAllSlots)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_REPAIR_EQUIPMENT message{};
+	message.iRequestSequence = requestSequence;
+	message.bAllSlots = bAllSlots;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_REPAIR_EQUIPMENT,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_ValtanAudition(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::VALTAN_AUDITION_OPERATION operation,
+	const std::uint32_t targetHealthBar)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_VALTAN_AUDITION_REQUEST message{};
+	message.iRequestSequence = requestSequence;
+	message.eOperation = operation;
+	message.iTargetHealthBar = targetHealthBar;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_VALTAN_AUDITION_REQUEST,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_ValtanPatternAuditionById(
+	const std::uint32_t requestSequence,
+	const std::string_view bossPlacementId,
+	const std::string_view patternId,
+	const LostArk::Shared::GameplayDataRevision&
+		expectedActiveDefinitionRevision)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_VALTAN_AUDITION_REQUEST message{};
+	message.iRequestSequence = requestSequence;
+	message.eOperation = VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID;
+	message.iTargetHealthBar = 0u;
+	message.strBossPlacementId = std::string{ bossPlacementId };
+	message.strPatternId = std::string{ patternId };
+	message.ExpectedDefinitionRevision = expectedActiveDefinitionRevision;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_VALTAN_AUDITION_REQUEST,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_ValtanPatternRestart(
+	const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& message)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() ||
+		VALTAN_AUDITION_OPERATION::RESTART_PATTERN_ID != message.eOperation)
+	{
+		return false;
+	}
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_VALTAN_AUDITION_REQUEST,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_ValtanNextPatternCommand(
+	const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& message)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() ||
+		(VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID != message.eOperation &&
+		 VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID != message.eOperation &&
+		 VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID != message.eOperation))
+		return false;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_VALTAN_AUDITION_REQUEST,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_KoukuRaid(const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected()) return false;
+	CPacketWriter writer;
+	if (!Write_Message(writer, request)) return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_KoukuSaydonPatternAudition(
+	const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST&
+		message)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() ||
+		(message.eOperation !=
+			KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED &&
+		 message.eOperation !=
+			KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL &&
+		 message.eOperation != KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_BUNDLE &&
+		 message.eOperation != KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP &&
+		 message.eOperation != KOUKUSAYDON_PATTERN_AUDITION_OPERATION::RESTART_BUNDLE))
+	{
+		return false;
+	}
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Compute_KoukuDraftRowsRevision(const std::string& rows,
+	LostArk::Shared::GameplayDataRevision& outRevision)
+{
+	if (rows.empty() || rows.size() > LostArk::Shared::MAX_KOUKUSAYDON_DRAFT_BYTES) return false;
+	std::string hash;
+	return HashBytesSha256(rows, hash) && LostArk::Shared::Try_Parse_GameplayDataRevision(hash, outRevision);
+}
+
+bool CNetworkManager::Send_KoukuSaydonPatternAuditionDraft(
+	LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& message,
+	const std::string_view rows)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || rows.empty() || rows.size() > MAX_KOUKUSAYDON_DRAFT_BYTES ||
+		(message.eOperation != KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED &&
+		 message.eOperation != KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_BUNDLE)) return false;
+	std::string hash;
+	if (!HashBytesSha256(rows, hash) || !Try_Parse_GameplayDataRevision(hash, message.Scope.DraftRowsRevision)) return false;
+	CPacketWriter requestShape;
+	if (!Write_Message(requestShape, message)) return false;
+	for (std::size_t offset = 0u; offset < rows.size(); offset += MAX_KOUKUSAYDON_DRAFT_CHUNK_BYTES)
+	{
+		C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK chunk;
+		chunk.iRequestSequence = message.iRequestSequence;
+		chunk.iOffsetBytes = static_cast<std::uint32_t>(offset);
+		chunk.iTotalBytes = static_cast<std::uint32_t>(rows.size());
+		chunk.RowsRevision = message.Scope.DraftRowsRevision;
+		chunk.strBytes = rows.substr(offset, MAX_KOUKUSAYDON_DRAFT_CHUNK_BYTES);
+		CPacketWriter writer;
+		std::vector<std::uint8_t> frame;
+		if (!Write_Message(writer, chunk) ||
+			!Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK, writer.Get_Buffer(), frame) ||
+			!Send_All(frame, PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK)) return false;
+	}
+	return Send_KoukuSaydonPatternAudition(message);
+}
+
+bool CNetworkManager::Send_ValtanPatternFlowStart(
+	const LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_START& message)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_DEBUG_VALTAN_PATTERN_FLOW_START,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_ValtanPatternFlowStopAfterCurrent(
+	const LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT&
+		message)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_DataRevisionPrepareResponse(
+	const LostArk::Shared::C2S_DATA_REVISION_PREPARE_RESPONSE& message)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_DATA_REVISION_PREPARE_RESPONSE,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_DataRevisionPrepareRequest(
+	const LostArk::Shared::C2S_DATA_REVISION_PREPARE_REQUEST& message)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() ||
+		m_GameplayRevisionState.hasOutstandingPrepareRequest)
+		return false;
+
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	if (!Build_Packet_Frame(
+			PACKET_TYPE::C2S_DATA_REVISION_PREPARE_REQUEST,
+			payloadWriter.Get_Buffer(), frameBytes) ||
+		!Send_All(frameBytes))
+	{
+		return false;
+	}
+	m_GameplayRevisionState.hasOutstandingPrepareRequest = true;
+	m_GameplayRevisionState.iOutstandingPrepareRequestSequence =
+		message.iTransactionSequence;
+	m_GameplayRevisionState.OutstandingPrepareCandidateRevision =
+		message.CandidateRevision;
+	return true;
+}
+
+bool CNetworkManager::Send_ValtanDecisionTraceQuery(
+	const std::uint32_t requestSequence,
+	const std::string_view bossPlacementId,
+	const std::uint64_t afterTraceSequence)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || m_ValtanDecisionTraceState.isQueryPending)
+		return false;
+
+	C2S_VALTAN_DECISION_TRACE_QUERY message{};
+	message.iRequestSequence = requestSequence;
+	message.strBossPlacementId = std::string{ bossPlacementId };
+	message.iAfterTraceSequence = afterTraceSequence;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	if (!Build_Packet_Frame(
+			PACKET_TYPE::C2S_VALTAN_DECISION_TRACE_QUERY,
+			payloadWriter.Get_Buffer(), frameBytes) ||
+		!Send_All(frameBytes))
+	{
+		return false;
+	}
+	m_ValtanDecisionTraceState.isQueryPending = true;
+	m_ValtanDecisionTraceState.iSubmittedRequestSequence = requestSequence;
+	m_ValtanDecisionTraceState.strSubmittedBossPlacementId =
+		std::string{ bossPlacementId };
+	m_ValtanDecisionTraceState.iSubmittedAfterTraceSequence =
+		afterTraceSequence;
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_EnterAccepted(LostArk::Shared::S2C_ENTER_ACCEPTED& message)
+{
+	// ���� �ϳ��� �� ���� �Һ��Ͽ� Lobby�� ���� �������� Level�� �ߺ� ��ȯ���� �ʰ� �Ѵ�.
+	if (!m_hasPendingEnterAccepted)
+		return false;
+
+	message = m_PendingEnterAccepted;
+
+	m_hasPendingEnterAccepted = false;
+
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_EnterRejected(
+	LostArk::Shared::S2C_ENTER_REJECTED& message)
+{
+	if (!m_hasPendingEnterRejected)
+		return false;
+
+	message = m_PendingEnterRejected;
+	m_hasPendingEnterRejected = false;
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_WorldEntitySpawnResult(
+	LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT& message,
+	std::uint64_t* outRequestToken)
+{
+	if (outRequestToken) *outRequestToken = 0u;
+	if (m_WorldEntitySpawnResults.empty())
+		return false;
+	if (outRequestToken) *outRequestToken = m_WorldEntitySpawnResults.front().token;
+	message = std::move(m_WorldEntitySpawnResults.front().message);
+	m_WorldEntitySpawnResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_CharacterClassChangeResult(
+	LostArk::Shared::S2C_CHARACTER_CLASS_CHANGE_RESULT& message)
+{
+	if (m_CharacterClassChangeResults.empty())
+		return false;
+	message = std::move(m_CharacterClassChangeResults.front());
+	m_CharacterClassChangeResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_ValtanAuditionResult(
+	LostArk::Shared::S2C_VALTAN_AUDITION_RESULT& message)
+{
+	if (m_ValtanAuditionResults.empty())
+		return false;
+	message = m_ValtanAuditionResults.front();
+	m_ValtanAuditionResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_ValtanPatternAuditionByIdResult(
+	LostArk::Shared::S2C_VALTAN_AUDITION_RESULT& message)
+{
+	if (m_ValtanPatternAuditionByIdResults.empty())
+		return false;
+	message = std::move(m_ValtanPatternAuditionByIdResults.front());
+	m_ValtanPatternAuditionByIdResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_ValtanAuditionLifecycle(
+	LostArk::Shared::S2C_VALTAN_AUDITION_LIFECYCLE& message)
+{
+	if (m_ValtanAuditionLifecycleEvents.empty())
+		return false;
+	message = std::move(m_ValtanAuditionLifecycleEvents.front());
+	m_ValtanAuditionLifecycleEvents.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_KoukuSaydonPatternAuditionResult(
+	LostArk::Shared::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& message)
+{
+	if (m_KoukuSaydonPatternAuditionResults.empty())
+		return false;
+	message = std::move(m_KoukuSaydonPatternAuditionResults.front());
+	m_KoukuSaydonPatternAuditionResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_KoukuSaydonPatternAuditionLifecycle(
+	LostArk::Shared::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE& message)
+{
+	if (m_KoukuSaydonPatternAuditionLifecycleEvents.empty())
+		return false;
+	message = std::move(m_KoukuSaydonPatternAuditionLifecycleEvents.front());
+	m_KoukuSaydonPatternAuditionLifecycleEvents.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_ValtanPatternFlowResult(
+	LostArk::Shared::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT& message)
+{
+	if (m_ValtanPatternFlowResults.empty())
+		return false;
+	message = std::move(m_ValtanPatternFlowResults.front());
+	m_ValtanPatternFlowResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_ValtanPatternFlowLifecycle(
+	LostArk::Shared::S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE& message)
+{
+	if (m_ValtanPatternFlowLifecycleEvents.empty())
+		return false;
+	message = std::move(m_ValtanPatternFlowLifecycleEvents.front());
+	m_ValtanPatternFlowLifecycleEvents.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Get_LatestValtanDecisionTrace(
+	LostArk::Shared::GameplayDataRevision& outDefinitionRevision,
+	LostArk::Shared::VALTAN_DECISION_TRACE_WIRE& outTrace) const
+{
+	if (!m_ValtanDecisionTraceState.hasLatestTrace)
+		return false;
+	outDefinitionRevision =
+		m_ValtanDecisionTraceState.LatestDefinitionRevision;
+	outTrace = m_ValtanDecisionTraceState.LatestTrace;
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_ReplicationEvent(Client::CLIENT_REPLICATION_EVENT& event)
+{
+	if (m_ReplicationEvents.empty())
+	{
+		return false;
+	}
+
+	event = std::move(m_ReplicationEvents.front());
+	m_ReplicationEvents.pop_front();
+	m_SessionDiagnostic.Record_EventQueueDepth(m_ReplicationEvents.size());
+	return true;
+}
+
+bool CNetworkManager::Enqueue_ReplicationEvent(
+	Client::CLIENT_REPLICATION_EVENT&& event)
+{
+	/* Loading levels do not own a CClientReplication consumer yet, while the
+	   admitted Server room continues to publish WORLD_SNAPSHOT at 30 Hz. Keep
+	   only the newest adjacent snapshot: spawn/despawn/destruction events stay
+	   as ordering barriers, but a cold level load can no longer fill the queue
+	   and disconnect with WSAENOBUFS before activation. */
+	if (!m_ReplicationEvents.empty() &&
+		Client::Can_CoalesceAdjacentReplicationEvents(
+			m_ReplicationEvents.back().eType, event.eType))
+	{
+		/* A snapshot's entity/player state is a full state, so the newest wins, but its
+		   DamageEvents/BossCombatEvents are that one tick's events and exist nowhere else.
+		   Carry the replaced snapshot's events ahead of the newer ones (bounded) so a
+		   coalesce never silently drops a hit. */
+		Client::CLIENT_REPLICATION_EVENT& replaced = m_ReplicationEvents.back();
+		constexpr std::size_t MAX_CARRIED_TICK_EVENTS = 256u;
+		const auto carry = [](auto& older, auto& newer)
+		{
+			if (older.empty())
+				return;
+			newer.insert(newer.begin(),
+				std::make_move_iterator(older.begin()),
+				std::make_move_iterator(older.end()));
+			if (newer.size() > MAX_CARRIED_TICK_EVENTS)
+				newer.erase(newer.begin(),
+					newer.begin() + (newer.size() - MAX_CARRIED_TICK_EVENTS));
+		};
+		carry(replaced.WorldSnapshot.DamageEvents, event.WorldSnapshot.DamageEvents);
+		carry(replaced.WorldSnapshot.BossCombatEvents, event.WorldSnapshot.BossCombatEvents);
+		replaced = std::move(event);
+		m_SessionDiagnostic.Record_EventQueueDepth(m_ReplicationEvents.size());
+		return true;
+	}
+	if (m_ReplicationEvents.size() >= MAX_REPLICATION_EVENT_QUEUE)
+	{
+		Fail_Protocol(
+			WSAENOBUFS,
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_EVENT_QUEUE_OVERFLOW,
+			LostArk::Shared::PACKET_TYPE::INVALID,
+			"Replication event queue reached its 4096-event bound.");
+		return false;
+	}
+	m_ReplicationEvents.push_back(std::move(event));
+	m_SessionDiagnostic.Record_EventQueueDepth(m_ReplicationEvents.size());
+	return true;
+}
+
+void CNetworkManager::Fail_Protocol(
+	const int errorCode,
+	const LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason,
+	const LostArk::Shared::PACKET_TYPE triggeringPacket,
+	const std::string_view detail)
+{
+	m_iLastErrorCode.store(errorCode);
+	m_SessionDiagnostic.Record_Terminal(
+		reason, errorCode, triggeringPacket, detail);
+	m_hasProtocolFailure.store(true);
+	m_isReceiveRunning.store(false);
+	const SOCKET socketToClose = m_hServerSocket;
+	m_hServerSocket = INVALID_SOCKET;
+	if (INVALID_SOCKET != socketToClose)
+	{
+		::shutdown(socketToClose, SD_BOTH);
+		::closesocket(socketToClose);
+	}
+	if (m_ReceiveThread.joinable() &&
+		m_ReceiveThread.get_id() != std::this_thread::get_id())
+	{
+		m_ReceiveThread.join();
+	}
+	{
+		std::scoped_lock lock{ m_InboundMutex };
+		m_InboundFrames.clear();
+		m_SessionDiagnostic.Record_RawQueueDepth(0u);
+	}
+	m_StreamParser.Reset();
+	Reset_WorldInboundState();
+}
+
+void CNetworkManager::Reset_WorldInboundState()
+{
+	m_iWorldInboundGeneration =
+		(std::numeric_limits<std::uint64_t>::max)() == m_iWorldInboundGeneration ?
+			1u : m_iWorldInboundGeneration + 1u;
+	m_ReplicationEvents.clear();
+	m_SessionDiagnostic.Record_EventQueueDepth(0u);
+	m_DebugTeleportResults.clear();
+	m_DebugMarioJumpResults.clear();
+	m_MarioReturnResults.clear();
+	m_RoomPings.clear();
+	m_DebugKillGateBossesResults.clear();
+	m_SetCooldownModeResults.clear();
+	m_BalanceResults.clear(); m_BalanceEntries.clear(); m_BalanceStagingEntries.clear();
+	m_BalanceNumericRevision = {}; m_BalanceStagingRevision = {}; m_BalanceExpectedRevision = {};
+	m_iBalancePendingQuery = m_iBalanceNextPage = m_iBalancePageCount = 0u;
+	m_bBalanceRefreshRequested = true;
+	Client::CPlayerSkillCatalog::Apply_ServerNumericSnapshot({});
+	Client::CCombatHUDViewModel::Get().Apply_ServerNumericSnapshot({});
+	m_DebugWorldPlaybackResults.clear();
+	m_MaharakaAITuningResults.clear();
+	m_DebugMadnessFormResults.clear();
+	m_VehicleRidingResults.clear();
+	m_HonorTitleResults.clear();
+	m_GateProgressStates.clear();
+	m_ColosseumQueueStates.clear();
+	m_ColosseumMatchState = {};
+	m_iColosseumStateReceivedMs = 0u;
+	m_RaidMvpResults.clear();
+	m_DebugKoukuHudModeResults.clear();
+	m_WorldEntitySpawnResults.clear();
+	// ENTER_ACCEPTED follows the old-room command/reply barrier on this socket.
+	// If that ordering changes, spawn replies need an echoed wire request token.
+	m_WorldEntitySpawnRequests.clear();
+	m_CharacterClassChangeResults.clear();
+	m_ValtanAuditionResults.clear();
+	m_ValtanPatternAuditionByIdResults.clear();
+	m_ValtanAuditionLifecycleEvents.clear();
+	m_KoukuSaydonPatternAuditionResults.clear();
+	m_KoukuSaydonPatternAuditionLifecycleEvents.clear();
+	m_ValtanPatternFlowResults.clear();
+	m_ValtanPatternFlowLifecycleEvents.clear();
+	m_pStagedPresentationAdmission.reset();
+	m_GameplayRevisionState = {};
+	m_ValtanDecisionTraceState = {};
+	m_hasPendingEnterAccepted = false;
+	m_PendingEnterAccepted = {};
+	m_hasPendingEnterRejected = false;
+	m_PendingEnterRejected = {};
+	m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
+	m_iLocalNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+	m_eWorldId = LostArk::Shared::WORLD_ID::END;
+	m_eLocalCharacterClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
+	m_hasLocalSpawn = false;
+	m_LocalSpawn = {};
+}
+
+void CNetworkManager::Record_WorldRevisionSet(
+	const LostArk::Shared::GameplayDataRevision& activeRevision,
+	const std::vector<LostArk::Shared::GameplayDataRevision>&
+		requiredPinnedRevisions)
+{
+	m_GameplayRevisionState.ServerActiveRevision = activeRevision;
+	m_GameplayRevisionState.RequiredPinnedRevisions =
+		requiredPinnedRevisions;
+	Prune_PresentationAliases();
+}
+
+void CNetworkManager::Prune_PresentationAliases()
+{
+	const auto isRetained = [this](
+		const LostArk::Shared::GameplayDataRevision& revision)
+	{
+		if (revision == m_GameplayRevisionState.ServerActiveRevision ||
+			(m_GameplayRevisionState.hasStagedPresentationAlias &&
+			 revision == m_GameplayRevisionState.StagedPresentationAlias))
+		{
+			return true;
+		}
+		return m_GameplayRevisionState.RequiredPinnedRevisions.end() !=
+			std::find(
+				m_GameplayRevisionState.RequiredPinnedRevisions.begin(),
+				m_GameplayRevisionState.RequiredPinnedRevisions.end(),
+				revision);
+	};
+	auto& aliases = m_GameplayRevisionState.AvailablePresentationAliases;
+	aliases.erase(
+		std::remove_if(
+			aliases.begin(), aliases.end(),
+			[&isRetained](
+				const LostArk::Shared::GameplayDataRevision& revision)
+			{
+				return !isRetained(revision);
+			}),
+		aliases.end());
+	auto& receipts =
+		m_GameplayRevisionState.AvailablePresentationReceipts;
+	receipts.erase(
+		std::remove_if(
+			receipts.begin(), receipts.end(),
+			[&isRetained](
+				const Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& receipt)
+			{
+				return !isRetained(receipt.ServerGameplayRevision);
+			}),
+		receipts.end());
+}
+
+bool CNetworkManager::Is_AnnouncedWorldRevision(
+	const LostArk::Shared::GameplayDataRevision& revision) const
+{
+	if (revision == m_GameplayRevisionState.ServerActiveRevision)
+		return true;
+	for (const LostArk::Shared::GameplayDataRevision& required :
+		m_GameplayRevisionState.RequiredPinnedRevisions)
+	{
+		if (revision == required)
+			return true;
+	}
+	return false;
+}
+
+bool CNetworkManager::Is_PresentationRevisionAvailable(
+	const LostArk::Shared::GameplayDataRevision& revision) const
+{
+	if (!revision.Is_Valid())
+		return false;
+	if (m_GameplayRevisionState.hasBootstrapPresentationRevision &&
+		revision == m_GameplayRevisionState.BootstrapPresentationRevision)
+	{
+		return true;
+	}
+	return std::find(
+		m_GameplayRevisionState.AvailablePresentationAliases.begin(),
+		m_GameplayRevisionState.AvailablePresentationAliases.end(),
+		revision) !=
+		m_GameplayRevisionState.AvailablePresentationAliases.end();
+}
+
+bool CNetworkManager::Try_Recover_EntryPresentationBaseline(
+	std::string& status)
+{
+	if (!m_GameplayRevisionState.
+		hasPendingEntryPresentationBaselineRecovery)
+	{
+		status = m_GameplayRevisionState.hasPresentationArtifactBaseline ?
+			"The world-entry Valtan presentation baseline is already available." :
+			"The world-entry Valtan presentation baseline is not recoverable.";
+		return m_GameplayRevisionState.hasPresentationArtifactBaseline;
+	}
+	const LostArk::Shared::GameplayDataRevision activeRevision =
+		m_GameplayRevisionState.ServerActiveRevision;
+	if (!activeRevision.Is_Valid())
+	{
+		m_GameplayRevisionState.
+			hasPendingEntryPresentationBaselineRecovery = false;
+		status =
+			"World-entry presentation recovery has no valid Server-active revision.";
+		return false;
+	}
+
+	const std::uint64_t nowMilliseconds = ::GetTickCount64();
+	if (nowMilliseconds < m_GameplayRevisionState.
+		iNextEntryPresentationBaselineRecoveryAtMilliseconds)
+	{
+		status =
+			"World-entry Valtan presentation recovery is waiting for the canonical transaction retry boundary.";
+		return false;
+	}
+
+	std::vector<PRESENTATION_ARTIFACT_BASELINE> stagedArtifacts;
+	Client::VALTAN_PRESENTATION_GENERATION_RECEIPT stagedReceipt;
+	Client::VALTAN_CANONICAL_READ_DIAGNOSTIC captureDiagnostic;
+	std::string captureStatus;
+	if (!CapturePresentationArtifactBaseline(
+			stagedArtifacts, stagedReceipt, captureStatus,
+			&captureDiagnostic))
+	{
+		if (captureDiagnostic.Is_AutomaticRetryable())
+		{
+			m_GameplayRevisionState.
+				iNextEntryPresentationBaselineRecoveryAtMilliseconds =
+				nowMilliseconds +
+				ENTRY_PRESENTATION_BASELINE_RETRY_MILLISECONDS;
+			status =
+				"World-entry Valtan presentation recovery is waiting for the active canonical transaction: " +
+				captureStatus;
+			return false;
+		}
+
+		m_GameplayRevisionState.
+			hasPendingEntryPresentationBaselineRecovery = false;
+		m_GameplayRevisionState.isPresentationIsolated = true;
+		m_GameplayRevisionState.strIsolationReason =
+			"World-entry presentation baseline recovery failed validation: " +
+			captureStatus;
+		status = m_GameplayRevisionState.strIsolationReason;
+		m_SessionDiagnostic.Record_Event(
+			"presentation.baseline-recovery-failed", status);
+		return false;
+	}
+	if (m_GameplayRevisionState.ServerActiveRevision != activeRevision)
+	{
+		m_GameplayRevisionState.
+			iNextEntryPresentationBaselineRecoveryAtMilliseconds =
+			nowMilliseconds + ENTRY_PRESENTATION_BASELINE_RETRY_MILLISECONDS;
+		status =
+			"Server-active revision changed while recovering the world-entry presentation baseline.";
+		return false;
+	}
+
+	stagedReceipt.ServerGameplayRevision = activeRevision;
+	m_GameplayRevisionState.PresentationArtifactBaseline =
+		std::move(stagedArtifacts);
+	m_GameplayRevisionState.BootstrapPresentationReceipt =
+		std::move(stagedReceipt);
+	m_GameplayRevisionState.hasPresentationArtifactBaseline = true;
+	m_GameplayRevisionState.hasBootstrapPresentationRevision = true;
+	m_GameplayRevisionState.BootstrapPresentationRevision = activeRevision;
+	m_GameplayRevisionState.AvailablePresentationAliases.clear();
+	for (const LostArk::Shared::GameplayDataRevision& requiredRevision :
+		m_GameplayRevisionState.RequiredPinnedRevisions)
+	{
+		if (requiredRevision == activeRevision ||
+			m_GameplayRevisionState.AvailablePresentationAliases.end() !=
+				std::find(
+					m_GameplayRevisionState.AvailablePresentationAliases.begin(),
+					m_GameplayRevisionState.AvailablePresentationAliases.end(),
+					requiredRevision))
+		{
+			continue;
+		}
+		m_GameplayRevisionState.AvailablePresentationAliases.push_back(
+			requiredRevision);
+	}
+	m_GameplayRevisionState.
+		hasPendingEntryPresentationBaselineRecovery = false;
+	m_GameplayRevisionState.
+		iNextEntryPresentationBaselineRecoveryAtMilliseconds = 0u;
+	m_GameplayRevisionState.isPresentationIsolated = false;
+	m_GameplayRevisionState.strIsolationReason.clear();
+	status =
+		"Recovered the saved Valtan presentation baseline after the canonical transaction completed.";
+	m_SessionDiagnostic.Record_Event(
+		"presentation.baseline-recovered", status);
+	return true;
+}
+
+bool CNetworkManager::Try_Get_ValtanPresentationGenerationReceipt(
+	const LostArk::Shared::GameplayDataRevision& revision,
+	Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& outReceipt,
+	std::string& status)
+{
+	if (m_GameplayRevisionState.
+		hasPendingEntryPresentationBaselineRecovery &&
+		Is_AnnouncedWorldRevision(revision) &&
+		!Try_Recover_EntryPresentationBaseline(status))
+	{
+		return false;
+	}
+	if (!Is_PresentationRevisionAvailable(revision) ||
+		!m_GameplayRevisionState.BootstrapPresentationReceipt.Is_Valid())
+	{
+		status =
+			"No admitted Valtan presentation generation receipt exists for the requested Server revision.";
+		return false;
+	}
+	if (m_GameplayRevisionState.hasBootstrapPresentationRevision &&
+		revision == m_GameplayRevisionState.BootstrapPresentationRevision)
+	{
+		outReceipt = m_GameplayRevisionState.BootstrapPresentationReceipt;
+		status = "Resolved the Valtan presentation receipt captured at world entry.";
+		return true;
+	}
+	const auto found = std::find_if(
+		m_GameplayRevisionState.AvailablePresentationReceipts.begin(),
+		m_GameplayRevisionState.AvailablePresentationReceipts.end(),
+		[&revision](
+			const Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& receipt)
+		{
+			return receipt.ServerGameplayRevision == revision;
+		});
+	if (m_GameplayRevisionState.AvailablePresentationReceipts.end() != found)
+	{
+		outReceipt = *found;
+		status = "Resolved the exact saved Valtan presentation generation receipt.";
+		return true;
+	}
+	/* Required pinned revisions announced during world entry share the one
+	   validated entry closure. They predate Client-side transaction receipts. */
+	auto entryReceipt = m_GameplayRevisionState.BootstrapPresentationReceipt;
+	entryReceipt.ServerGameplayRevision = revision;
+	outReceipt = std::move(entryReceipt);
+	status = "Resolved the validated world-entry Valtan presentation receipt.";
+	return true;
+}
+
+bool CNetworkManager::Is_CurrentPresentationBaselineIntact(
+	std::string& status) const
+{
+	if (!m_GameplayRevisionState.hasPresentationArtifactBaseline ||
+		!m_GameplayRevisionState.BootstrapPresentationReceipt.Is_Valid())
+	{
+		status = "No validated world-entry presentation source receipt is available.";
+		return false;
+	}
+	Client::CValtanPresentationGenerationReadAdmission admission;
+	return admission.Acquire_Receipt(
+		m_GameplayRevisionState.BootstrapPresentationReceipt.
+			ServerGameplayRevision,
+		m_GameplayRevisionState.BootstrapPresentationReceipt,
+		status) && admission.Validate_StillCurrent(status);
+}
+
+CNetworkManager::PRESENTATION_CANDIDATE_PREFLIGHT_RESULT
+CNetworkManager::Preflight_PresentationCandidate(
+	const LostArk::Shared::GameplayDataRevision& candidateRevision,
+	const std::uint32_t requiredPresentationLaneMask,
+	std::string& status) const
+{
+#if !defined(_DEBUG)
+	(void)candidateRevision;
+	(void)requiredPresentationLaneMask;
+	status = "Release Client does not initiate presentation revision transactions.";
+	return PRESENTATION_CANDIDATE_PREFLIGHT_RESULT::REJECTED;
+#else
+	std::vector<PRESENTATION_ARTIFACT_BASELINE> currentArtifacts;
+	Client::VALTAN_PRESENTATION_GENERATION_RECEIPT currentReceipt;
+	if (!CapturePresentationArtifactBaseline(
+			currentArtifacts, currentReceipt, status))
+	{
+		return PRESENTATION_CANDIDATE_PREFLIGHT_RESULT::REJECTED;
+	}
+	if (ValidateCurrentCandidatePresentationGeneration(
+			candidateRevision, requiredPresentationLaneMask,
+			currentReceipt.PresentationGenerationId,
+			currentArtifacts, status))
+	{
+		return PRESENTATION_CANDIDATE_PREFLIGHT_RESULT::
+			CURRENT_GENERATION_READY;
+	}
+	return PRESENTATION_CANDIDATE_PREFLIGHT_RESULT::REJECTED;
+#endif
+}
+
+bool CNetworkManager::Stage_ByteIdenticalPresentationAlias(
+	const LostArk::Shared::S2C_DATA_REVISION_PREPARE& prepare,
+	std::string& status)
+{
+	using namespace LostArk::Shared;
+	if (m_GameplayRevisionState.hasStagedPresentationAlias)
+	{
+		const bool isExactRetransmit =
+			m_GameplayRevisionState.iStagedPresentationTransactionSequence ==
+				prepare.iTransactionSequence &&
+			m_GameplayRevisionState.StagedPresentationAlias ==
+				prepare.CandidateRevision &&
+			m_GameplayRevisionState.iStagedPresentationLaneMask ==
+				prepare.iRequiredPresentationLaneMask &&
+			m_GameplayRevisionState.ServerActiveRevision == prepare.BaseRevision;
+		if (isExactRetransmit)
+		{
+			/* TCP does not require application retransmission, but accepting the
+			   byte-identical transaction is idempotent and lets the Server recover
+			   from a duplicated dispatch without re-reading candidate artifacts. */
+			if (nullptr == m_pStagedPresentationAdmission ||
+				!m_pStagedPresentationAdmission->Validate_StillCurrent(status))
+			{
+				return false;
+			}
+			status = "Exact revision prepare retransmit is already staged.";
+			return true;
+		}
+
+		status =
+			"Overlapping or stale revision prepare was rejected; the current "
+			"staged alias remains intact.";
+		return false;
+	}
+	if (!m_GameplayRevisionState.ServerActiveRevision.Is_Valid() ||
+		prepare.BaseRevision != m_GameplayRevisionState.ServerActiveRevision)
+	{
+		status = "Revision prepare base does not match the announced active revision.";
+		return false;
+	}
+	if (!prepare.CandidateRevision.Is_Valid() ||
+		prepare.CandidateRevision == prepare.BaseRevision)
+	{
+		status = "Revision prepare candidate is invalid or already active.";
+		return false;
+	}
+	/* RequiredPinnedRevisions is refreshed by every world snapshot.  Retain only
+	   the active generation, live occurrence pins, and an in-flight stage before
+	   applying the hard generation bound; obsolete aliases must not make the
+	   seventeenth sequential tuning transaction fail forever. */
+	Prune_PresentationAliases();
+	if (m_GameplayRevisionState.AvailablePresentationAliases.size() >=
+			MAX_PRESENTATION_ALIAS_GENERATIONS &&
+		!Is_PresentationRevisionAvailable(prepare.CandidateRevision))
+	{
+		status = "Presentation alias generation bound is exhausted.";
+		return false;
+	}
+	auto stagedAdmission = std::make_unique<
+		Client::CValtanPresentationGenerationReadAdmission>();
+	Client::VALTAN_PRESENTATION_GENERATION_RECEIPT currentReceipt;
+#if defined(_DEBUG)
+	if (nullptr == stagedAdmission ||
+		!stagedAdmission->Acquire_PackagedBaseline(currentReceipt, status) ||
+		!stagedAdmission->Validate_StillCurrent(status))
+	{
+		return false;
+	}
+	std::vector<PRESENTATION_ARTIFACT_BASELINE> currentArtifacts;
+	currentArtifacts.reserve(currentReceipt.Artifacts.size());
+	for (const auto& artifact : currentReceipt.Artifacts)
+	{
+		PRESENTATION_ARTIFACT_BASELINE row;
+		row.strRelativePath = artifact.strRelativePath;
+		row.strLane = artifact.strLane;
+		row.strSha256 = Format_GameplayDataRevision(artifact.Revision);
+		row.iBytes = artifact.iBytes;
+		currentArtifacts.push_back(std::move(row));
+	}
+	if (!ValidateCurrentCandidatePresentationGeneration(
+			prepare.CandidateRevision,
+			prepare.iRequiredPresentationLaneMask,
+			currentReceipt.PresentationGenerationId,
+			currentArtifacts,
+			status))
+	{
+		return false;
+	}
+#else
+	status = "Release Client rejects gameplay presentation revision staging.";
+	return false;
+#endif
+	m_GameplayRevisionState.hasStagedPresentationAlias = true;
+	m_GameplayRevisionState.StagedPresentationAlias = prepare.CandidateRevision;
+	m_GameplayRevisionState.iStagedPresentationTransactionSequence =
+		prepare.iTransactionSequence;
+	m_GameplayRevisionState.iStagedPresentationLaneMask =
+		prepare.iRequiredPresentationLaneMask;
+	currentReceipt.ServerGameplayRevision = prepare.CandidateRevision;
+	m_GameplayRevisionState.StagedPresentationReceipt =
+		std::move(currentReceipt);
+	m_pStagedPresentationAdmission = std::move(stagedAdmission);
+	return true;
+}
+
+bool CNetworkManager::Commit_StagedPresentationAlias(
+	const LostArk::Shared::S2C_DATA_REVISION_RESULT& result,
+	std::string& status)
+{
+	using namespace LostArk::Shared;
+	if (DATA_REVISION_RESULT::ABORTED == result.eResult)
+	{
+		const bool matchesStaged =
+			m_GameplayRevisionState.hasStagedPresentationAlias &&
+			m_GameplayRevisionState.iStagedPresentationTransactionSequence ==
+				result.iTransactionSequence &&
+			m_GameplayRevisionState.StagedPresentationAlias ==
+				result.CandidateRevision;
+		const bool matchesOutstanding =
+			m_GameplayRevisionState.hasOutstandingPrepareRequest &&
+			m_GameplayRevisionState.iOutstandingPrepareRequestSequence ==
+				result.iTransactionSequence &&
+			m_GameplayRevisionState.OutstandingPrepareCandidateRevision ==
+				result.CandidateRevision;
+		const bool matchesRejectedPrepare =
+			m_GameplayRevisionState.hasRejectedPrepareAwaitingAbort &&
+			m_GameplayRevisionState.iRejectedPrepareTransactionSequence ==
+				result.iTransactionSequence &&
+			m_GameplayRevisionState.RejectedPrepareBaseRevision ==
+				result.ActiveRevision &&
+			m_GameplayRevisionState.RejectedPrepareCandidateRevision ==
+				result.CandidateRevision;
+		if ((!matchesStaged && !matchesOutstanding && !matchesRejectedPrepare) ||
+			result.ActiveRevision !=
+				m_GameplayRevisionState.ServerActiveRevision)
+		{
+			status =
+				"Stale revision ABORT did not exactly match the local transaction and active generation.";
+			return false;
+		}
+		if (matchesStaged)
+			Discard_StagedPresentationAlias();
+		if (matchesOutstanding)
+		{
+			m_GameplayRevisionState.hasOutstandingPrepareRequest = false;
+			m_GameplayRevisionState.iOutstandingPrepareRequestSequence = 0u;
+			m_GameplayRevisionState.OutstandingPrepareCandidateRevision = {};
+		}
+		if (matchesRejectedPrepare)
+		{
+			m_GameplayRevisionState.hasRejectedPrepareAwaitingAbort = false;
+			m_GameplayRevisionState.iRejectedPrepareTransactionSequence = 0u;
+			m_GameplayRevisionState.RejectedPrepareBaseRevision = {};
+			m_GameplayRevisionState.RejectedPrepareCandidateRevision = {};
+		}
+		status = result.strReason;
+		return true;
+	}
+	const bool matchesOutstanding =
+		m_GameplayRevisionState.hasOutstandingPrepareRequest &&
+		m_GameplayRevisionState.iOutstandingPrepareRequestSequence ==
+			result.iTransactionSequence &&
+		m_GameplayRevisionState.OutstandingPrepareCandidateRevision ==
+			result.CandidateRevision;
+	const bool isAlreadyActiveIdempotentCommit =
+		matchesOutstanding &&
+		result.ActiveRevision == result.CandidateRevision &&
+		result.ActiveRevision ==
+			m_GameplayRevisionState.ServerActiveRevision &&
+		Is_PresentationRevisionAvailable(result.CandidateRevision);
+	if (!isAlreadyActiveIdempotentCommit &&
+		(!m_GameplayRevisionState.hasStagedPresentationAlias ||
+		m_GameplayRevisionState.iStagedPresentationTransactionSequence !=
+			result.iTransactionSequence ||
+		m_GameplayRevisionState.StagedPresentationAlias !=
+			result.CandidateRevision ||
+		result.ActiveRevision != result.CandidateRevision))
+	{
+		status = "Committed revision has no matching prepared presentation alias.";
+		return false;
+	}
+	if (!isAlreadyActiveIdempotentCommit &&
+		(nullptr == m_pStagedPresentationAdmission ||
+		 !m_GameplayRevisionState.StagedPresentationReceipt.Is_Valid() ||
+		 m_GameplayRevisionState.StagedPresentationReceipt.
+			 ServerGameplayRevision != result.CandidateRevision ||
+		 !m_pStagedPresentationAdmission->Validate_StillCurrent(status)))
+	{
+		if (status.empty())
+			status = "Prepared presentation generation is no longer current.";
+		return false;
+	}
+	if (!isAlreadyActiveIdempotentCommit &&
+		!Is_PresentationRevisionAvailable(result.CandidateRevision))
+	{
+		if (m_GameplayRevisionState.AvailablePresentationAliases.size() >=
+				MAX_PRESENTATION_ALIAS_GENERATIONS ||
+			m_GameplayRevisionState.AvailablePresentationReceipts.size() >=
+				MAX_PRESENTATION_ALIAS_GENERATIONS)
+		{
+			status = "Presentation generation bound was exceeded at commit.";
+			return false;
+		}
+		m_GameplayRevisionState.AvailablePresentationAliases.push_back(
+			result.CandidateRevision);
+		m_GameplayRevisionState.AvailablePresentationReceipts.push_back(
+			m_GameplayRevisionState.StagedPresentationReceipt);
+	}
+	if (matchesOutstanding)
+	{
+		m_GameplayRevisionState.hasOutstandingPrepareRequest = false;
+		m_GameplayRevisionState.iOutstandingPrepareRequestSequence = 0u;
+		m_GameplayRevisionState.OutstandingPrepareCandidateRevision = {};
+	}
+	if (!isAlreadyActiveIdempotentCommit)
+		Discard_StagedPresentationAlias();
+	status = result.strReason;
+	return true;
+}
+
+void CNetworkManager::Discard_StagedPresentationAlias() noexcept
+{
+	m_GameplayRevisionState.hasStagedPresentationAlias = false;
+	m_GameplayRevisionState.StagedPresentationAlias = {};
+	m_GameplayRevisionState.iStagedPresentationTransactionSequence = 0u;
+	m_GameplayRevisionState.iStagedPresentationLaneMask = 0u;
+	m_GameplayRevisionState.StagedPresentationReceipt = {};
+	m_pStagedPresentationAdmission.reset();
+}
+
+void CNetworkManager::Record_PresentationIsolation(
+	const LostArk::Shared::GameplayDataRevision& revision,
+	const std::string_view context)
+{
+	m_GameplayRevisionState.isPresentationIsolated = true;
+	if (!m_GameplayRevisionState.strIsolationReason.empty())
+		return;
+	std::string revisionText =
+		LostArk::Shared::Format_GameplayDataRevision(revision);
+	m_GameplayRevisionState.strIsolationReason =
+		std::string(context) + " requires unavailable presentation revision " +
+		(revisionText.empty() ? std::string("INVALID") : revisionText) +
+		"; the revision-dependent lane was isolated.";
+}
+
+void CNetworkManager::Close_ServerConnection()
+{
+	if (0u != m_SessionDiagnostic.Get_Snapshot().iConnectionGeneration)
+		m_SessionDiagnostic.Record_Event("connection.close-requested");
+	m_isReceiveRunning.store(false);
+	const SOCKET socketToClose = m_hServerSocket;
+	m_hServerSocket = INVALID_SOCKET;
+
+	if (INVALID_SOCKET != socketToClose)
+	{
+		::shutdown(socketToClose, SD_BOTH);
+		::closesocket(socketToClose);
+	}
+
+	if (m_ReceiveThread.joinable())
+		m_ReceiveThread.join();
+
+	{
+		std::scoped_lock lock{ m_InboundMutex };
+		m_InboundFrames.clear();
+		m_SessionDiagnostic.Record_RawQueueDepth(0u);
+	}
+
+	m_StreamParser.Reset();
+	Reset_WorldInboundState();
+	m_hasProtocolFailure.store(false);
+}
+
+bool CNetworkManager::Is_Connected() const
+{
+	return
+		INVALID_SOCKET != m_hServerSocket &&
+		m_isReceiveRunning.load();
+}
+
+int CNetworkManager::Get_LastErrorCode() const
+{
+	return m_iLastErrorCode.load();
+}
+
+void CNetworkManager::Record_SessionEvent(
+	const std::string_view eventName,
+	const std::string_view detail)
+{
+	m_SessionDiagnostic.Record_Event(eventName, detail);
+}
+
+void CNetworkManager::Record_SessionRecovery(
+	const LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason,
+	const std::string_view source,
+	const std::string_view detail)
+{
+	m_SessionDiagnostic.Record_Recovery(reason, source, detail);
+}
+
+bool CNetworkManager::Record_SessionTerminal(
+	const LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason,
+	const int wsaError,
+	const LostArk::Shared::PACKET_TYPE triggeringPacket,
+	const std::string_view detail)
+{
+	return m_SessionDiagnostic.Record_Terminal(
+		reason, wsaError, triggeringPacket, detail);
+}
+
+LostArk::Shared::PLAYER_ID CNetworkManager::Get_LocalPlayerId() const
+{
+	return m_iLocalPlayerId;
+}
+
+LostArk::Shared::NET_ENTITY_ID CNetworkManager::Get_LocalEntityId() const
+{
+	return m_iLocalNetEntityId;
+}
+
+LostArk::Shared::CHARACTER_CLASS_ID
+CNetworkManager::Get_LocalCharacterClass() const
+{
+	return m_eLocalCharacterClass;
+}
+
+bool CNetworkManager::Try_Get_LocalSpawn(
+	LostArk::Shared::S2C_PLAYER_SPAWNED& outSpawn) const
+{
+	if (!m_hasLocalSpawn)
+		return false;
+
+	outSpawn = m_LocalSpawn;
+	return true;
+}
+
+bool CNetworkManager::Enqueue_InboundFrame(
+	LostArk::Shared::PACKET_FRAME&& frame)
+{
+	using namespace LostArk::Shared;
+	std::scoped_lock lock{
+	   m_InboundMutex
+	};
+	/* Level activation can synchronously prepare GPU resources before the
+	   main thread resumes Update().  Coalesce adjacent snapshots at the
+	   worker boundary as well as the parsed-event boundary so that cold
+	   loading cannot exhaust the raw frame queue.  Any lifecycle or
+	   destruction frame remains an ordering barrier. */
+	/* Raw frames are not decoded here, so a replaced snapshot frame loses its
+	   DamageEvents/BossCombatEvents for good. Normal play delivers one or two
+	   snapshots per main-thread drain (TCP batching), so coalesce only once a
+	   real backlog has built up -- a cold level load -- and let the parsed-event
+	   queue carry events forward for the short bursts. */
+	constexpr std::size_t INBOUND_SNAPSHOT_COALESCE_DEPTH = 30u;
+	if (m_InboundFrames.size() >= INBOUND_SNAPSHOT_COALESCE_DEPTH &&
+		Client::Can_CoalesceAdjacentInboundFrames(
+			m_InboundFrames.back().ePacketType,
+			frame.ePacketType))
+	{
+		m_InboundFrames.back() = std::move(frame);
+		m_SessionDiagnostic.Record_RawSnapshotCoalesced();
+		m_SessionDiagnostic.Record_InboundFrame(
+			m_InboundFrames.back().ePacketType,
+			m_InboundFrames.size());
+		return true;
+	}
+	if (m_InboundFrames.size() >= MAX_INBOUND_FRAME_QUEUE)
+	{
+		m_iLastErrorCode.store(WSAENOBUFS);
+		m_SessionDiagnostic.Record_Terminal(
+			SESSION_DIAGNOSTIC_REASON::CLIENT_RAW_QUEUE_OVERFLOW,
+			WSAENOBUFS,
+			frame.ePacketType,
+			"Inbound raw frame queue reached its 4096-frame bound.");
+		m_hasProtocolFailure.store(true);
+		m_isReceiveRunning.store(false);
+		return false;
+	}
+	m_InboundFrames.push_back(
+		std::move(frame));
+	m_SessionDiagnostic.Record_InboundFrame(
+		m_InboundFrames.back().ePacketType,
+		m_InboundFrames.size());
+	return true;
+}
+
+void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
+{
+	//recv()�� server�� ���� ����Ʈ�� �޴´�
+	//���� ����Ʈ�� PacketStreamParser�� �߰��Ѵ�.
+	//parser���� �ϼ��� �������� �����Ѹ�ŭ ������.
+	//�ϼ��� �������� inbound queue�� �ִ´�.
+	using namespace LostArk::Shared;
+
+	std::array<std::uint8_t, 4096> receiveBuffer{};
+
+	// Main Thread�� Connect/Close�� ���� �ٲٰ� Receive Worker�� �ݺ� �������� �д´�.
+	while (m_isReceiveRunning.load())
+	{
+		//serversocket�� �ִ� data recv�� �б�
+		const int receiveByteCount = ::recv(
+			serverSocket,
+			reinterpret_cast<char*>(
+				receiveBuffer.data()),
+			static_cast<int>(
+				receiveBuffer.size()),
+			0);
+		//ByteCount�� ���ؼ� ���� �� ���� ���� �Ǵ�
+
+		//��밡 ���������� ������ �����޴�.
+		if (0 == receiveByteCount)
+		{
+			if (m_isReceiveRunning.load())
+			{
+				m_SessionDiagnostic.Record_Terminal(
+					SESSION_DIAGNOSTIC_REASON::CLIENT_PEER_CLOSED,
+					0,
+					PACKET_TYPE::INVALID,
+					"Server completed an orderly TCP close (FIN).");
+			}
+			break;
+		}
+
+		//socket I/O ���� �Ǵ� shutdown���� recv�� �����ƴ�.
+		if (SOCKET_ERROR == receiveByteCount)
+		{
+			const int errorCode = ::WSAGetLastError();
+
+			//����ڰ� ������ ����� ������ ���� ��� ������ ��� X
+			if (m_isReceiveRunning.load())
+			{
+				m_iLastErrorCode.store(errorCode);
+				m_SessionDiagnostic.Record_Terminal(
+					SESSION_DIAGNOSTIC_REASON::CLIENT_RECEIVE_ERROR,
+					errorCode,
+					PACKET_TYPE::INVALID,
+					"recv() failed while the connection was active.");
+			}
+
+			break;
+		}
+
+		// recv ����� Header�� Payload ��踦 �������� �ʴ� TCP ����Ʈ �����̴�.
+		// Parser�� ���� recv ������ �����Ͽ� �ϼ��� Frame���� �����Ѵ�.
+		const std::span<const std::uint8_t> receiveBytes
+		{
+			receiveBuffer.data(), static_cast<std::size_t>(receiveByteCount)
+		};
+		//TCP���� ���� ����Ʈ�� Parser�� ���� ���ۿ� ���δ�.
+		if (!m_StreamParser.Append(receiveBytes))
+		{
+			m_iLastErrorCode.store(WSAEMSGSIZE);
+			m_SessionDiagnostic.Record_Terminal(
+				SESSION_DIAGNOSTIC_REASON::CLIENT_PARSER_OVERFLOW,
+				WSAEMSGSIZE,
+				PACKET_TYPE::INVALID,
+				"TCP parser buffered-byte bound was exceeded.");
+			break;
+		}
+		//�̹� recv�� �ϼ��� �������� ���� �� ������ �� �ִ�. ;; ���� ���� ���鼭 �ľ�
+		for (;;)
+		{
+			// PACKET_FRAME�� Header���� ������ PacketType�� Payload�� ���� �ǹ� ������.
+			PACKET_FRAME frame{};
+
+			const PACKET_PARSE_RESULT parseResult = m_StreamParser.Try_Pop(frame);
+
+			if (PACKET_PARSE_RESULT::NEED_MORE_DATA == parseResult)
+			{
+				//���� ������ �ϳ��� �ϼ����� �ʾұ� ������, ���� ����� ��ٸ���.
+				break;
+			}
+			if (PACKET_PARSE_RESULT::INVALID_FRAME == parseResult)
+			{
+				//�߸��� ũ�� �Ǵ� ��Ŷ Ÿ���� �߰߉Ѵ�.
+				m_iLastErrorCode.store(WSAEPROTONOSUPPORT);
+				m_SessionDiagnostic.Record_Terminal(
+					SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_FRAME,
+					WSAEPROTONOSUPPORT,
+					PACKET_TYPE::INVALID,
+					"TCP parser rejected an invalid frame header or packet type.");
+
+				m_isReceiveRunning.store(false);
+				return;
+			}
+			//FRAME_READY�� ��쿡�� main thread ���� ť�� �ִ´�.
+			if (!Enqueue_InboundFrame(std::move(frame)))
+				return;
+		}
+	}
+	m_isReceiveRunning.store(false);
+}
+
+void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
+{
+	if (m_hasProtocolFailure.load())
+		return;
+
+	using namespace LostArk::Shared;
+
+	//frame�� payload ������ �д´�. packet - ������ ��� header�� payload - class,strName �̷��� 2���� ������
+	CPacketReader reader{ frame.Payload };
+
+	switch (frame.ePacketType)
+	{
+	//Server Enter
+	case PACKET_TYPE::S2C_ENTER_ACCEPTED:
+	{
+		S2C_ENTER_ACCEPTED accepted{};
+
+		if (!Read_Message(reader, accepted) ||
+			0 != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(
+				WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_ENTER_ACCEPTED,
+				"S2C_ENTER_ACCEPTED payload decode or trailing-byte validation failed.");
+			return;
+		}
+
+		/* Validate and stage the current typed Client presentation sources before
+		   the accepted world becomes observable. Server gameplay revisions remain
+		   authoritative CAS identities, but stale world-entry presentation hashes,
+		   byte counts, generation IDs, and inventories do not relabel or reject the
+		   current typed Client closure. */
+		bool stagedHasBootstrapPresentationRevision = false;
+		GameplayDataRevision stagedBootstrapPresentationRevision{};
+		std::vector<GameplayDataRevision> stagedPresentationAliases;
+		std::vector<CNetworkManager::PRESENTATION_ARTIFACT_BASELINE>
+			stagedPresentationArtifactBaseline;
+		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT
+			stagedPresentationReceipt;
+		Client::VALTAN_CANONICAL_READ_DIAGNOSTIC
+			stagedPresentationDiagnostic;
+		std::string baselineStatus;
+		const bool hasPresentationArtifactBaseline =
+			CapturePresentationArtifactBaseline(
+				stagedPresentationArtifactBaseline,
+				stagedPresentationReceipt, baselineStatus,
+				&stagedPresentationDiagnostic);
+		if (!hasPresentationArtifactBaseline)
+		{
+			/* Presentation source skew is not a gameplay protocol violation. Keep
+			   the validated Server admission, isolate presentation revision
+			   transactions, and leave an actionable reload warning. Packet decode
+			   and typed gameplay revision validation below remain fail-closed. */
+			stagedPresentationArtifactBaseline.clear();
+			stagedPresentationReceipt = {};
+			m_SessionDiagnostic.Record_Event(
+				"presentation.baseline-unavailable",
+				baselineStatus.empty() ?
+					"Client presentation sources could not be validated; gameplay entry continues and presentation reload is required." :
+					baselineStatus);
+		}
+		const auto admitEntryRevision = [
+			&stagedHasBootstrapPresentationRevision,
+			&stagedBootstrapPresentationRevision,
+			&stagedPresentationAliases](
+			const GameplayDataRevision& revision,
+			const bool_t bPrimaryRevision,
+			std::string& failure)
+		{
+			if (!revision.Is_Valid())
+			{
+				failure = "World entry announced an invalid gameplay revision.";
+				return false;
+			}
+			if ((stagedHasBootstrapPresentationRevision &&
+				 revision == stagedBootstrapPresentationRevision) ||
+				stagedPresentationAliases.end() != std::find(
+					stagedPresentationAliases.begin(),
+					stagedPresentationAliases.end(), revision))
+			{
+				return true;
+			}
+			if (bPrimaryRevision)
+			{
+				if (stagedHasBootstrapPresentationRevision &&
+					stagedBootstrapPresentationRevision != revision)
+				{
+					failure = "World entry declared conflicting bootstrap revisions.";
+					return false;
+				}
+				stagedHasBootstrapPresentationRevision = true;
+				stagedBootstrapPresentationRevision = revision;
+				return true;
+			}
+			if (stagedPresentationAliases.size() >=
+				MAX_PRESENTATION_ALIAS_GENERATIONS)
+			{
+				failure = "World entry presentation alias bound was exceeded.";
+				return false;
+			}
+			stagedPresentationAliases.push_back(revision);
+			return true;
+		};
+		std::string entryAdmissionFailure;
+		if (!admitEntryRevision(
+				accepted.ActiveGameplayRevision,
+				true, entryAdmissionFailure))
+		{
+			Fail_Protocol(
+				WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::
+					CLIENT_ENTRY_PRESENTATION_REVISION_FAILED,
+				PACKET_TYPE::S2C_ENTER_ACCEPTED,
+				entryAdmissionFailure);
+			return;
+		}
+		for (const GameplayDataRevision& required :
+			accepted.RequiredPinnedGameplayRevisions)
+		{
+			if (!admitEntryRevision(
+					required, false, entryAdmissionFailure))
+			{
+				Fail_Protocol(
+					WSAEINVAL,
+					SESSION_DIAGNOSTIC_REASON::
+						CLIENT_ENTRY_PRESENTATION_REVISION_FAILED,
+					PACKET_TYPE::S2C_ENTER_ACCEPTED,
+					entryAdmissionFailure);
+				return;
+			}
+		}
+		if (hasPresentationArtifactBaseline)
+		{
+			stagedPresentationReceipt.ServerGameplayRevision =
+				accepted.ActiveGameplayRevision;
+		}
+		// Acceptance is the generation boundary. It intentionally drops every
+		// queued event that may have arrived for the previous room while the
+		// loading transition was pending. The requested class belongs to this
+		// new generation, so preserve it for the target Level loader.
+		const CHARACTER_CLASS_ID requestedCharacterClass =
+			m_eLocalCharacterClass;
+		Reset_WorldInboundState();
+		m_eLocalCharacterClass = requestedCharacterClass;
+		m_iLocalPlayerId = accepted.iPlayerId;
+		m_iLocalNetEntityId = accepted.iNetEntityId;
+		m_eWorldId = accepted.eWorldId;
+		m_GameplayRevisionState.ServerActiveRevision =
+			accepted.ActiveGameplayRevision;
+		m_GameplayRevisionState.RequiredPinnedRevisions =
+			accepted.RequiredPinnedGameplayRevisions;
+		m_GameplayRevisionState.hasPresentationArtifactBaseline =
+			hasPresentationArtifactBaseline;
+		m_GameplayRevisionState.PresentationArtifactBaseline =
+			std::move(stagedPresentationArtifactBaseline);
+		m_GameplayRevisionState.BootstrapPresentationReceipt =
+			std::move(stagedPresentationReceipt);
+		m_GameplayRevisionState.hasBootstrapPresentationRevision =
+			hasPresentationArtifactBaseline &&
+			stagedHasBootstrapPresentationRevision;
+		m_GameplayRevisionState.BootstrapPresentationRevision =
+			hasPresentationArtifactBaseline ?
+				stagedBootstrapPresentationRevision : GameplayDataRevision{};
+		if (hasPresentationArtifactBaseline)
+		{
+			m_GameplayRevisionState.AvailablePresentationAliases =
+				std::move(stagedPresentationAliases);
+		}
+		else
+		{
+			m_GameplayRevisionState.
+				hasPendingEntryPresentationBaselineRecovery =
+					stagedPresentationDiagnostic.Is_AutomaticRetryable();
+			m_GameplayRevisionState.
+				iNextEntryPresentationBaselineRecoveryAtMilliseconds =
+				m_GameplayRevisionState.
+					hasPendingEntryPresentationBaselineRecovery ?
+				::GetTickCount64() +
+					ENTRY_PRESENTATION_BASELINE_RETRY_MILLISECONDS : 0u;
+			m_GameplayRevisionState.isPresentationIsolated = true;
+			m_GameplayRevisionState.strIsolationReason =
+				"Gameplay entry was admitted, but Client presentation source validation failed. Reload the presentation sources before using revision-dependent preview or live apply. " +
+				(baselineStatus.empty() ?
+					std::string{ "No validation detail was reported." } :
+					baselineStatus);
+		}
+		m_hasLocalSpawn = false;
+		m_LocalSpawn = {};
+		m_hasPendingEnterAccepted = true;
+		m_PendingEnterAccepted = accepted;
+		m_SessionDiagnostic.Record_EnterAccepted(
+			accepted.eWorldId, accepted.iPlayerId, accepted.iNetEntityId);
+		break;
+	}
+	case PACKET_TYPE::S2C_ENTER_REJECTED:
+	{
+		S2C_ENTER_REJECTED rejected{};
+		if (!Read_Message(reader, rejected) ||
+			0 != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(
+				WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_ENTER_REJECTED,
+				"S2C_ENTER_REJECTED payload decode or trailing-byte validation failed.");
+			return;
+		}
+		m_hasPendingEnterRejected = true;
+		m_PendingEnterRejected = rejected;
+		m_SessionDiagnostic.Record_EnterRejected(rejected.eWorldId);
+		break;
+	}
+	//Player Spawn
+	case PACKET_TYPE::S2C_PLAYER_SPAWNED:
+	{
+		S2C_PLAYER_SPAWNED spawned{};
+
+		if (!Read_Message(reader, spawned) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		//Client Replication Event ����
+		if (spawned.iPlayerId == m_iLocalPlayerId &&
+			spawned.iNetEntityId == m_iLocalNetEntityId &&
+			std::isfinite(spawned.fPositionX) &&
+			std::isfinite(spawned.fPositionY) &&
+			std::isfinite(spawned.fPositionZ) &&
+			std::isfinite(spawned.fYawDegrees))
+		{
+			m_LocalSpawn = spawned;
+			m_hasLocalSpawn = true;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::PLAYER_SPAWNED;
+		event.PlayerSpawned = std::move(spawned);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED:
+	{
+		S2C_WORLD_ENTITY_SPAWNED spawned{};
+		if (!Read_Message(reader, spawned) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (!Is_AnnouncedWorldRevision(spawned.PinnedDefinitionRevision))
+		{
+			const std::string revision = Format_GameplayDataRevision(
+				spawned.PinnedDefinitionRevision);
+			Fail_Protocol(
+				WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_SERVER_RESPONSE,
+				PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED,
+				"World-entity spawn referenced unannounced pinned revision " +
+					(revision.empty() ? std::string{ "INVALID" } : revision) + ".");
+			return;
+		}
+		/* Bind the presentation to the entity's exact occurrence generation,
+		   never to whichever room-active revision happens to be current when
+		   the network thread dequeues this reliable frame. */
+		if (!Is_PresentationRevisionAvailable(
+				spawned.PinnedDefinitionRevision))
+		{
+			Record_PresentationIsolation(
+				spawned.PinnedDefinitionRevision,
+				"World-entity spawn");
+			const std::string revision = Format_GameplayDataRevision(
+				spawned.PinnedDefinitionRevision);
+			m_SessionDiagnostic.Record_Event(
+				"presentation.authoritative-entity-forwarded",
+				"World entity " + std::to_string(spawned.iNetEntityId) +
+				" remains authoritative while revision-dependent presentation "
+				"lanes are isolated for unavailable revision " +
+				(revision.empty() ? std::string{ "INVALID" } : revision) + ".");
+			/* The reliable entity identity, transform and combat body are Server
+			   truth, not a presentation artifact. Forward the spawn so
+			   CClientReplication can create the catalog model and apply its existing
+			   primary-Valtan animation/Effect/Sound isolation policy. Dropping this
+			   one-shot packet also made every later HP snapshot unusable because a
+			   snapshot intentionally cannot recreate archetype/placement identity. */
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType =
+			Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_ENTITY_SPAWNED;
+		event.WorldEntitySpawned = std::move(spawned);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_COMBAT_OBJECT_SPAWNED:
+	{
+		S2C_COMBAT_OBJECT_SPAWNED spawned{};
+		if (!Read_Message(reader, spawned) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (!Is_PresentationRevisionAvailable(
+				spawned.PinnedDefinitionRevision))
+		{
+			Record_PresentationIsolation(
+				spawned.PinnedDefinitionRevision,
+				"Combat-object spawn");
+			break;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType =
+			Client::CLIENT_REPLICATION_EVENT_TYPE::COMBAT_OBJECT_SPAWNED;
+		event.CombatObjectSpawned = std::move(spawned);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_COMBAT_OBJECT_PRESENTATION_EVENT:
+	{
+		S2C_COMBAT_OBJECT_PRESENTATION_EVENT presentation{};
+		if (!Read_Message(reader, presentation) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (!Is_PresentationRevisionAvailable(
+				presentation.PinnedDefinitionRevision))
+		{
+			Record_PresentationIsolation(
+				presentation.PinnedDefinitionRevision,
+				"Combat-object presentation event");
+			break;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::
+			COMBAT_OBJECT_PRESENTATION;
+		event.CombatObjectPresentation = std::move(presentation);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_WORLD_ENTITY_DESPAWNED:
+	{
+		S2C_WORLD_ENTITY_DESPAWNED despawned{};
+		if (!Read_Message(reader, despawned) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType =
+			Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_ENTITY_DESPAWNED;
+		event.WorldEntityDespawned = despawned;
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_COMBAT_OBJECT_DESPAWNED:
+	{
+		S2C_COMBAT_OBJECT_DESPAWNED despawned{};
+		if (!Read_Message(reader, despawned) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType =
+			Client::CLIENT_REPLICATION_EVENT_TYPE::COMBAT_OBJECT_DESPAWNED;
+		event.CombatObjectDespawned = despawned;
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT:
+	{
+		S2C_DEBUG_TELEPORT_TO_POSITION_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (result.eWorldId != m_eWorldId)
+			break;
+		if (m_DebugTeleportResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_DebugTeleportResults depth=" + std::to_string(m_DebugTeleportResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_DebugTeleportResults.push_back(result);
+		break;
+	}
+	case PACKET_TYPE::S2C_MARIO_RETURN_RESULT:
+	{
+		S2C_MARIO_RETURN_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		if (result.eWorldId != m_eWorldId)
+			break;
+		if (m_MarioReturnResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_MarioReturnResults depth=" + std::to_string(m_MarioReturnResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_MarioReturnResults.push_back(result);
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT:
+	{
+		S2C_DEBUG_MARIO_JUMP_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (result.eWorldId != m_eWorldId)
+			break;
+		if (m_DebugMarioJumpResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_DebugMarioJumpResults depth=" + std::to_string(m_DebugMarioJumpResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_DebugMarioJumpResults.push_back(result);
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_KILL_GATE_BOSSES_RESULT:
+	{
+		S2C_DEBUG_KILL_GATE_BOSSES_RESULT result{};
+		if (!Read_Message(reader, result) || reader.Get_RemainingSize())
+		{ Fail_Protocol(WSAEINVAL); return; }
+		if (result.eWorldId != m_eWorldId) break;
+		if (m_DebugKillGateBossesResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{ Fail_Protocol(WSAENOBUFS); return; }
+		m_DebugKillGateBossesResults.push_back(result);
+		break;
+	}
+	case PACKET_TYPE::S2C_BALANCE_SNAPSHOT:
+	{
+		S2C_BALANCE_SNAPSHOT snapshot;
+		if (!Read_Message(reader, snapshot) || reader.Get_RemainingSize()) { Fail_Protocol(WSAEINVAL); return; }
+		Receive_BalanceSnapshot(snapshot);
+		break;
+	}
+	case PACKET_TYPE::S2C_BALANCE_RESULT:
+	{
+		S2C_BALANCE_RESULT result;
+		if (!Read_Message(reader, result) || reader.Get_RemainingSize()) { Fail_Protocol(WSAEINVAL); return; }
+		if (result.eResult == BALANCE_APPLY_RESULT::APPLIED)
+		{
+			m_BalanceExpectedRevision = result.ActiveNumericRevision;
+			m_bBalanceRefreshRequested = true;
+		}
+		if (result.iRequestSequence == m_iBalancePendingQuery)
+		{ m_iBalancePendingQuery = 0u; m_BalanceStagingEntries.clear(); m_bBalanceRefreshRequested = true; }
+		else if (result.iRequestSequence)
+		{
+			// Only locally requested Save replies enter this queue. A closed
+			// panel must never block the raw gameplay dispatch queue.
+			if (m_BalanceResults.size() == MAX_REVISION_CONTROL_QUEUE) m_BalanceResults.pop_front();
+			m_BalanceResults.push_back(std::move(result));
+		}
+		break;
+	}
+	case PACKET_TYPE::S2C_SET_COOLDOWN_MODE_RESULT:
+	{
+		S2C_SET_COOLDOWN_MODE_RESULT result{};
+		if (!Read_Message(reader, result) || reader.Get_RemainingSize())
+		{ Fail_Protocol(WSAEINVAL); return; }
+		if (result.eWorldId != m_eWorldId) break;
+		if (m_SetCooldownModeResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{ Fail_Protocol(WSAENOBUFS); return; }
+		m_SetCooldownModeResults.push_back(result);
+		break;
+	}
+	case PACKET_TYPE::S2C_MAHARAKA_AI_TUNING:
+	{
+		S2C_MAHARAKA_AI_TUNING result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{ Fail_Protocol(WSAEINVAL); return; }
+		if (m_eWorldId != WORLD_ID::MAHARAKA) break;
+		if (m_MaharakaAITuningResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_MaharakaAITuningResults overflow");
+			return;
+		}
+		m_MaharakaAITuningResults.push_back(std::move(result));
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT:
+	{
+		S2C_DEBUG_WORLD_PLAYBACK_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{ Fail_Protocol(WSAEINVAL); return; }
+		if (result.eWorldId != m_eWorldId) break;
+		if (m_DebugWorldPlaybackResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_DebugWorldPlaybackResults depth=" + std::to_string(m_DebugWorldPlaybackResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_DebugWorldPlaybackResults.push_back(std::move(result));
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT:
+	{
+		S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{ Fail_Protocol(WSAEINVAL); return; }
+		if (result.eWorldId != m_eWorldId) break;
+		if (m_DebugKoukuHudModeResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_DebugKoukuHudModeResults depth=" + std::to_string(m_DebugKoukuHudModeResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_DebugKoukuHudModeResults.push_back(result);
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT:
+	{
+		S2C_DEBUG_SET_MADNESS_FORM_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (result.eWorldId != m_eWorldId)
+			break;
+		if (m_DebugMadnessFormResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_DebugMadnessFormResults depth=" + std::to_string(m_DebugMadnessFormResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_DebugMadnessFormResults.push_back(result);
+		break;
+	}
+	case PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT:
+	{
+		S2C_SET_VEHICLE_RIDING_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (result.eWorldId != m_eWorldId)
+			break;
+		if (m_VehicleRidingResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_VehicleRidingResults depth=" + std::to_string(m_VehicleRidingResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_VehicleRidingResults.push_back(result);
+		break;
+	}
+	case PACKET_TYPE::S2C_SET_HONOR_TITLE_RESULT:
+	{
+		S2C_SET_HONOR_TITLE_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (result.eWorldId != m_eWorldId)
+			break;
+		if (m_HonorTitleResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_HonorTitleResults depth=" + std::to_string(m_HonorTitleResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_HonorTitleResults.push_back(result);
+		break;
+	}
+	case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT:
+	{
+		S2C_WORLD_ENTITY_SPAWN_RESULT result{};
+		if (!Read_Message(reader, result) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		std::uint64_t token = 0u;
+		const auto request = std::find_if(m_WorldEntitySpawnRequests.begin(),
+			m_WorldEntitySpawnRequests.end(), [&result](const auto& item)
+			{ return item.placementId == result.strPlacementId; });
+		if (request != m_WorldEntitySpawnRequests.end())
+		{
+			token = request->token;
+			m_WorldEntitySpawnRequests.erase(request);
+		}
+		if (m_WorldEntitySpawnResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+			m_WorldEntitySpawnResults.pop_front();
+		m_WorldEntitySpawnResults.push_back({ std::move(result), token });
+		break;
+	}
+	case PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT:
+	{
+		S2C_VALTAN_AUDITION_RESULT result{};
+		if (!Read_Message(reader, result) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID == result.eOperation ||
+			VALTAN_AUDITION_OPERATION::RESTART_PATTERN_ID == result.eOperation ||
+			VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == result.eOperation ||
+			VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID == result.eOperation ||
+			VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID == result.eOperation)
+		{
+			if (m_ValtanPatternAuditionByIdResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+			{
+				Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_ValtanPatternAuditionByIdResults depth=" + std::to_string(m_ValtanPatternAuditionByIdResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+				return;
+			}
+			m_ValtanPatternAuditionByIdResults.push_back(std::move(result));
+		}
+		else
+			m_ValtanAuditionResults.push_back(std::move(result));
+		break;
+	}
+	case PACKET_TYPE::S2C_VALTAN_AUDITION_LIFECYCLE:
+	{
+		S2C_VALTAN_AUDITION_LIFECYCLE lifecycle{};
+		if (!Read_Message(reader, lifecycle) ||
+			0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		if (m_ValtanAuditionLifecycleEvents.size() >=
+			MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_ValtanAuditionLifecycleEvents depth=" + std::to_string(m_ValtanAuditionLifecycleEvents.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_ValtanAuditionLifecycleEvents.push_back(std::move(lifecycle));
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT:
+	{
+		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL, SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_SERVER_RESPONSE,
+				frame.ePacketType, "S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT payload decode failed or trailing bytes present.");
+			return;
+		}
+		if (m_KoukuSaydonPatternAuditionResults.size() >=
+			MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_KoukuSaydonPatternAuditionResults depth=" + std::to_string(m_KoukuSaydonPatternAuditionResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_KoukuSaydonPatternAuditionResults.push_back(std::move(result));
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE:
+	{
+		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE lifecycle{};
+		if (!Read_Message(reader, lifecycle) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL, SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_SERVER_RESPONSE,
+				frame.ePacketType, "S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE payload decode failed or trailing bytes present.");
+			return;
+		}
+		if (m_KoukuSaydonPatternAuditionLifecycleEvents.size() >=
+			MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_KoukuSaydonPatternAuditionLifecycleEvents depth=" + std::to_string(m_KoukuSaydonPatternAuditionLifecycleEvents.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_KoukuSaydonPatternAuditionLifecycleEvents.push_back(
+			std::move(lifecycle));
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT:
+	{
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		if (m_ValtanPatternFlowResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_ValtanPatternFlowResults depth=" + std::to_string(m_ValtanPatternFlowResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_ValtanPatternFlowResults.push_back(std::move(result));
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE:
+	{
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE lifecycle{};
+		if (!Read_Message(reader, lifecycle) ||
+			0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		if (m_ValtanPatternFlowLifecycleEvents.size() >=
+			MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_ValtanPatternFlowLifecycleEvents depth=" + std::to_string(m_ValtanPatternFlowLifecycleEvents.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_ValtanPatternFlowLifecycleEvents.push_back(std::move(lifecycle));
+		break;
+	}
+	case PACKET_TYPE::S2C_VALTAN_DECISION_TRACE_RESPONSE:
+	{
+		S2C_VALTAN_DECISION_TRACE_RESPONSE response{};
+		if (!Read_Message(reader, response) ||
+			0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		if (!m_ValtanDecisionTraceState.isQueryPending ||
+			response.iRequestSequence !=
+				m_ValtanDecisionTraceState.iSubmittedRequestSequence ||
+			response.strBossPlacementId !=
+				m_ValtanDecisionTraceState.strSubmittedBossPlacementId ||
+			(VALTAN_DECISION_TRACE_QUERY_RESULT::TRACE == response.eResult &&
+			 response.Trace.iTraceSequence <=
+				m_ValtanDecisionTraceState.iSubmittedAfterTraceSequence))
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		m_ValtanDecisionTraceState.isQueryPending = false;
+		m_ValtanDecisionTraceState.hasLatestResponse = true;
+		m_ValtanDecisionTraceState.iLatestResponseRequestSequence =
+			response.iRequestSequence;
+		m_ValtanDecisionTraceState.eLatestResponse = response.eResult;
+		if (VALTAN_DECISION_TRACE_QUERY_RESULT::TRACE == response.eResult)
+		{
+			m_ValtanDecisionTraceState.hasLatestTrace = true;
+			m_ValtanDecisionTraceState.strLatestBossPlacementId =
+				std::move(response.strBossPlacementId);
+			m_ValtanDecisionTraceState.LatestDefinitionRevision =
+				response.DefinitionRevision;
+			m_ValtanDecisionTraceState.LatestTrace =
+				std::move(response.Trace);
+		}
+		break;
+	}
+	case PACKET_TYPE::S2C_DATA_REVISION_PREPARE:
+	{
+		S2C_DATA_REVISION_PREPARE prepare{};
+		if (!Read_Message(reader, prepare) ||
+			0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		C2S_DATA_REVISION_PREPARE_RESPONSE response{};
+		response.iTransactionSequence = prepare.iTransactionSequence;
+		response.CandidateRevision = prepare.CandidateRevision;
+		response.iRequiredPresentationLaneMask =
+			prepare.iRequiredPresentationLaneMask;
+		std::string stageStatus;
+		const bool staged = Stage_ByteIdenticalPresentationAlias(
+			prepare, stageStatus);
+		response.eStatus = staged ?
+			DATA_REVISION_PREPARE_STATUS::READY :
+			DATA_REVISION_PREPARE_STATUS::NACK;
+		response.iPreparedPresentationLaneMask = staged ?
+			prepare.iRequiredPresentationLaneMask : 0u;
+		response.iFailedPresentationLaneMask = staged ? 0u :
+			prepare.iRequiredPresentationLaneMask;
+		/* Shared requires an empty reason for READY; diagnostics are carried only
+		   on the local observation state. NACK preserves the exact admission
+		   failure for the coordinator and Balance Tool. */
+		response.strReason = staged ? std::string{} : stageStatus;
+		m_GameplayRevisionState.iLatestTransactionSequence =
+			prepare.iTransactionSequence;
+		m_GameplayRevisionState.hasLatestPrepare = true;
+		m_GameplayRevisionState.LatestPrepareBaseRevision =
+			prepare.BaseRevision;
+		m_GameplayRevisionState.LatestCandidateRevision =
+			prepare.CandidateRevision;
+		m_GameplayRevisionState.iLatestRequiredPresentationLaneMask =
+			prepare.iRequiredPresentationLaneMask;
+		m_GameplayRevisionState.eLatestPrepareResponse =
+			response.eStatus;
+		m_GameplayRevisionState.strLatestTransactionReason = stageStatus;
+		if (staged)
+		{
+			m_GameplayRevisionState.hasRejectedPrepareAwaitingAbort = false;
+			m_GameplayRevisionState.iRejectedPrepareTransactionSequence = 0u;
+			m_GameplayRevisionState.RejectedPrepareBaseRevision = {};
+			m_GameplayRevisionState.RejectedPrepareCandidateRevision = {};
+		}
+		else
+		{
+			/* NACK is not terminal: the coordinator broadcasts one matching
+			   process-wide ABORT to every participant, including this rejector. */
+			m_GameplayRevisionState.hasRejectedPrepareAwaitingAbort = true;
+			m_GameplayRevisionState.iRejectedPrepareTransactionSequence =
+				prepare.iTransactionSequence;
+			m_GameplayRevisionState.RejectedPrepareBaseRevision =
+				prepare.BaseRevision;
+			m_GameplayRevisionState.RejectedPrepareCandidateRevision =
+				prepare.CandidateRevision;
+		}
+		if (!Send_DataRevisionPrepareResponse(response))
+		{
+			const int sendError = m_iLastErrorCode.load();
+			Fail_Protocol(0 != sendError ? sendError : WSAECONNABORTED);
+			return;
+		}
+		break;
+	}
+	case PACKET_TYPE::S2C_DATA_REVISION_RESULT:
+	{
+		S2C_DATA_REVISION_RESULT result{};
+		if (!Read_Message(reader, result) ||
+			0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		std::string commitStatus;
+		const bool presentationCommitted =
+			Commit_StagedPresentationAlias(result, commitStatus);
+		if (!presentationCommitted)
+		{
+			/* A conflicting result cannot advance the observed Server generation or
+			   consume a legitimate local stage. Fail the connection before copying
+			   any result fields into the Client revision state. */
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		m_GameplayRevisionState.iLatestTransactionSequence =
+			result.iTransactionSequence;
+		m_GameplayRevisionState.hasLatestResult = true;
+		m_GameplayRevisionState.LatestCandidateRevision =
+			result.CandidateRevision;
+		m_GameplayRevisionState.eLatestResult = result.eResult;
+		m_GameplayRevisionState.strLatestTransactionReason = commitStatus;
+		if (DATA_REVISION_RESULT::COMMITTED == result.eResult)
+		{
+			m_GameplayRevisionState.ServerActiveRevision =
+				result.ActiveRevision;
+			if (!Is_PresentationRevisionAvailable(result.ActiveRevision))
+			{
+				Record_PresentationIsolation(
+					result.ActiveRevision, "Committed Server revision");
+			}
+		}
+		break;
+	}
+	case PACKET_TYPE::S2C_CHARACTER_CLASS_CHANGE_RESULT:
+	{
+		S2C_CHARACTER_CLASS_CHANGE_RESULT result{};
+		if (!Read_Message(reader, result) || 0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (CHARACTER_CLASS_CHANGE_RESULT::ACCEPTED == result.eResult)
+		{
+			m_eLocalCharacterClass = result.eActiveClass;
+			if (m_hasLocalSpawn)
+				m_LocalSpawn.eCharacterClass = result.eActiveClass;
+		}
+		m_CharacterClassChangeResults.push_back(std::move(result));
+		break;
+	}
+	case PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT:
+	{
+		S2C_RESTORE_CHARACTER_RESULT result{};
+		if (!Read_Message(reader, result) || 0 != reader.Get_RemainingSize())
+		{ m_iLastErrorCode.store(WSAEINVAL); return; }
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::RESTORE_CHARACTER_RESULT;
+		event.RestoreCharacterResult = result;
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_INVENTORY_SNAPSHOT:
+	{
+		S2C_INVENTORY_SNAPSHOT snapshot{};
+		if (!Read_Message(reader, snapshot) || 0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType =
+			Client::CLIENT_REPLICATION_EVENT_TYPE::INVENTORY_SNAPSHOT;
+		event.InventorySnapshot = std::move(snapshot);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_PARTY_INVITE_RECEIVED:
+	{
+		S2C_PARTY_INVITE_RECEIVED received{};
+		if (!Read_Message(reader, received) || 0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType =
+			Client::CLIENT_REPLICATION_EVENT_TYPE::PARTY_INVITE_RECEIVED;
+		event.PartyInviteReceived = std::move(received);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_KOUKUSAYDON_RAID_STATE:
+	{
+		S2C_KOUKUSAYDON_RAID_STATE state{};
+		if (!Read_Message(reader, state) || reader.Get_RemainingSize() != 0u) { m_iLastErrorCode.store(WSAEINVAL); return; }
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::KOUKUSAYDON_RAID_STATE;
+		event.KoukuRaidState = std::move(state); Enqueue_ReplicationEvent(std::move(event)); break;
+	}
+	case PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE:
+	{
+		S2C_KOUKUSAYDON_BUNDLE_STATE state{};
+		if (!Read_Message(reader, state) || 0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::KOUKUSAYDON_BUNDLE_STATE;
+		event.KoukuBundleState = std::move(state);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY:
+	{
+		S2C_WORLD_SEQUENCE_PLAY play{};
+		if (!Read_Message(reader, play) || 0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType =
+			Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_SEQUENCE_PLAY;
+		event.WorldSequencePlay = std::move(play);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_INTERACT_PROMPT:
+	{
+		S2C_INTERACT_PROMPT prompt{};
+		if (!Read_Message(reader, prompt) || 0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::INTERACT_PROMPT;
+		event.InteractPrompt = std::move(prompt);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_PARTY_ROSTER:
+	{
+		S2C_PARTY_ROSTER roster{};
+		if (!Read_Message(reader, roster) || 0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::PARTY_ROSTER;
+		event.PartyRoster = std::move(roster);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT:
+	{
+		S2C_PARTY_TRANSFER_RESULT result{};
+		if (!Read_Message(reader, result) || 0 != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT,
+				"S2C_PARTY_TRANSFER_RESULT payload decode or trailing-byte validation failed.");
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::PARTY_TRANSFER_RESULT;
+		event.PartyTransferResult = result;
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_RAID_ENTRY_PROMPT:
+	{
+		S2C_RAID_ENTRY_PROMPT prompt{};
+		if (!Read_Message(reader, prompt) || 0 != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_RAID_ENTRY_PROMPT,
+				"S2C_RAID_ENTRY_PROMPT payload decode or trailing-byte validation failed.");
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::RAID_ENTRY_PROMPT;
+		event.RaidEntryPrompt = std::move(prompt);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_COLOSSEUM_QUEUE_STATE:
+	{
+		S2C_COLOSSEUM_QUEUE_STATE state{};
+		if (!Read_Message(reader, state) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_COLOSSEUM_QUEUE_STATE,
+				"S2C_COLOSSEUM_QUEUE_STATE payload decode or trailing-byte validation failed.");
+			return;
+		}
+		if (m_ColosseumQueueStates.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_ColosseumQueueStates depth=" + std::to_string(m_ColosseumQueueStates.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_ColosseumQueueStates.push_back(state);
+		break;
+	}
+	case PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND:
+	{
+		S2C_COLOSSEUM_MATCH_FOUND match{};
+		if (!Read_Message(reader, match) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND,
+				"S2C_COLOSSEUM_MATCH_FOUND payload decode or trailing-byte validation failed.");
+			return;
+		}
+		// Stored directly (not through the replication queue): it must survive the world
+		// transfer that follows, which clears every typed queue on ENTER_ACCEPTED.
+		Client::CLevelTransitionService::Set_ColosseumMatch(match);
+		break;
+	}
+	case PACKET_TYPE::S2C_COLOSSEUM_MATCH_STATE:
+	{
+		S2C_COLOSSEUM_MATCH_STATE state{};
+		if (!Read_Message(reader, state) || reader.Get_RemainingSize() != 0u || m_eWorldId != WORLD_ID::COLOSSEUM)
+		{
+			Fail_Protocol(WSAEINVAL, SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				frame.ePacketType, "Invalid Colosseum match state or target world.");
+			return;
+		}
+		if (m_ColosseumMatchState.iMatchId == state.iMatchId &&
+			state.iServerTick < m_ColosseumMatchState.iServerTick)
+			break;
+		m_ColosseumMatchState = std::move(state);
+		m_iColosseumStateReceivedMs = GetTickCount64();
+		break;
+	}
+	case PACKET_TYPE::S2C_GATE_PROGRESS_STATE:
+	{
+		S2C_GATE_PROGRESS_STATE state{};
+		if (!Read_Message(reader, state) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_GATE_PROGRESS_STATE,
+				"S2C_GATE_PROGRESS_STATE payload decode or trailing-byte validation failed.");
+			return;
+		}
+		if (state.eWorldId != m_eWorldId)
+			break;
+		if (m_GateProgressStates.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_GateProgressStates depth=" + std::to_string(m_GateProgressStates.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_GateProgressStates.push_back(state);
+		break;
+	}
+	case PACKET_TYPE::S2C_RAID_MVP_RESULT:
+	{
+		S2C_RAID_MVP_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_RAID_MVP_RESULT,
+				"S2C_RAID_MVP_RESULT payload decode or trailing-byte validation failed.");
+			return;
+		}
+		if (result.eWorldId != m_eWorldId)
+			break;
+		if (m_RaidMvpResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_RaidMvpResults depth=" + std::to_string(m_RaidMvpResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_RaidMvpResults.push_back(std::move(result));
+		break;
+	}
+	case PACKET_TYPE::S2C_RAID_ENTRY_VOTE:
+	{
+		S2C_RAID_ENTRY_VOTE vote{};
+		if (!Read_Message(reader, vote) || 0 != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_RAID_ENTRY_VOTE,
+				"S2C_RAID_ENTRY_VOTE payload decode or trailing-byte validation failed.");
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::RAID_ENTRY_VOTE;
+		event.RaidEntryVote = vote;
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_ROOM_PING:
+	{
+		S2C_ROOM_PING ping{};
+		if (!Read_Message(reader, ping) || reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL, SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				frame.ePacketType, "Room ping payload decode or trailing-byte validation failed.");
+			return;
+		}
+		if (ping.eWorldId != m_eWorldId) break;
+		if (m_RoomPings.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "Room ping queue overflow.");
+			return;
+		}
+		m_RoomPings.push_back(ping);
+		break;
+	}
+	case PACKET_TYPE::S2C_GUIDE_PROMPT:
+	{
+		S2C_GUIDE_PROMPT message{};
+		if (!Read_Message(reader, message) || reader.Get_RemainingSize() != 0u)
+		{
+			Fail_Protocol(WSAEINVAL, SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				frame.ePacketType, "Guide payload decode or trailing-byte validation failed.");
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::GUIDE_PROMPT;
+		event.GuidePrompt = std::move(message);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_GUIDE_STATE:
+	{
+		S2C_GUIDE_STATE message{};
+		if (!Read_Message(reader, message) || reader.Get_RemainingSize() != 0u)
+		{
+			Fail_Protocol(WSAEINVAL, SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				frame.ePacketType, "Guide payload decode or trailing-byte validation failed.");
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::GUIDE_STATE;
+		event.GuideState = std::move(message);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_CHAT:
+	{
+		S2C_CHAT chat{};
+		if (!Read_Message(reader, chat) || 0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::CHAT_RECEIVED;
+		event.ChatReceived = std::move(chat);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	//snapshot
+	case PACKET_TYPE::S2C_WORLD_SNAPSHOT:
+	{
+		//world�� snapshot�� ���� ����ü ����
+		S2C_WORLD_SNAPSHOT snapshot{};
+
+		if (!Read_Message(reader, snapshot) ||
+			0 != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(
+				WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_WORLD_SNAPSHOT,
+				"S2C_WORLD_SNAPSHOT payload decode or trailing-byte validation failed.");
+			return;
+		}
+		if (snapshot.eWorldId != m_eWorldId)
+		{
+			const std::string detail =
+				"S2C_WORLD_SNAPSHOT world mismatch: expected " +
+				std::to_string(static_cast<std::uint16_t>(m_eWorldId)) +
+				", received " +
+				std::to_string(static_cast<std::uint16_t>(snapshot.eWorldId)) + ".";
+			Fail_Protocol(
+				WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_SERVER_RESPONSE,
+				PACKET_TYPE::S2C_WORLD_SNAPSHOT,
+				detail);
+			return;
+		}
+		if (snapshot.ActiveGameplayRevision !=
+			m_GameplayRevisionState.ServerActiveRevision)
+		{
+			const std::string expected = Format_GameplayDataRevision(
+				m_GameplayRevisionState.ServerActiveRevision);
+			const std::string received = Format_GameplayDataRevision(
+				snapshot.ActiveGameplayRevision);
+			const std::string detail =
+				"S2C_WORLD_SNAPSHOT active gameplay revision mismatch: expected " +
+				(expected.empty() ? std::string{ "INVALID" } : expected) +
+				", received " +
+				(received.empty() ? std::string{ "INVALID" } : received) + ".";
+			Fail_Protocol(
+				WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_SERVER_RESPONSE,
+				PACKET_TYPE::S2C_WORLD_SNAPSHOT,
+				detail);
+			return;
+		}
+
+		m_SessionDiagnostic.Record_ServerTick(snapshot.iServerTick);
+		Record_WorldRevisionSet(
+			snapshot.ActiveGameplayRevision,
+			snapshot.RequiredPinnedGameplayRevisions);
+		std::vector<NET_ENTITY_ID> isolatedEntityIds;
+		for (const WORLD_ENTITY_SNAPSHOT& entity : snapshot.Entities)
+		{
+			if (!Is_AnnouncedWorldRevision(
+					entity.PinnedDefinitionRevision))
+			{
+				const std::string revision = Format_GameplayDataRevision(
+					entity.PinnedDefinitionRevision);
+				Fail_Protocol(
+					WSAEINVAL,
+					SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_SERVER_RESPONSE,
+					PACKET_TYPE::S2C_WORLD_SNAPSHOT,
+					"World entity " + std::to_string(entity.iNetEntityId) +
+					" referenced unannounced pinned revision " +
+					(revision.empty() ? std::string{ "INVALID" } : revision) + ".");
+				return;
+			}
+			if (!Is_PresentationRevisionAvailable(
+					entity.PinnedDefinitionRevision))
+			{
+				isolatedEntityIds.push_back(entity.iNetEntityId);
+				Record_PresentationIsolation(
+					entity.PinnedDefinitionRevision,
+					"World-entity occurrence");
+			}
+		}
+		/* Keep every authoritative entity row. CClientReplication owns the
+		   per-entity presentation fallback and, for primary Valtan, advances HUD
+		   gameplay truth even while revision-dependent animation/Effect/Sound is
+		   isolated. Combat-object occurrences and one-shot boss presentation events
+		   below remain filtered because those lanes cannot be reconstructed without
+		   their exact presentation generation. */
+		for (const COMBAT_OBJECT_SNAPSHOT& object : snapshot.CombatObjects)
+		{
+			if (!Is_AnnouncedWorldRevision(
+					object.PinnedDefinitionRevision))
+			{
+				const std::string revision = Format_GameplayDataRevision(
+					object.PinnedDefinitionRevision);
+				Fail_Protocol(
+					WSAEINVAL,
+					SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_SERVER_RESPONSE,
+					PACKET_TYPE::S2C_WORLD_SNAPSHOT,
+					"Combat object " +
+					std::to_string(object.iCombatObjectId) +
+					" from entity " +
+					std::to_string(object.iSourceNetEntityId) +
+					" referenced unannounced pinned revision " +
+					(revision.empty() ? std::string{ "INVALID" } : revision) + ".");
+				return;
+			}
+			if (!Is_PresentationRevisionAvailable(
+					object.PinnedDefinitionRevision))
+			{
+				Record_PresentationIsolation(
+					object.PinnedDefinitionRevision,
+					"Combat-object occurrence");
+			}
+		}
+		snapshot.CombatObjects.erase(
+			std::remove_if(
+				snapshot.CombatObjects.begin(),
+				snapshot.CombatObjects.end(),
+				[this](const COMBAT_OBJECT_SNAPSHOT& object)
+				{
+					return !Is_PresentationRevisionAvailable(
+						object.PinnedDefinitionRevision);
+				}),
+			snapshot.CombatObjects.end());
+		if (!isolatedEntityIds.empty())
+		{
+			snapshot.BossCombatEvents.erase(
+				std::remove_if(
+					snapshot.BossCombatEvents.begin(),
+					snapshot.BossCombatEvents.end(),
+					[&isolatedEntityIds](const BOSS_COMBAT_EVENT& event)
+					{
+						return isolatedEntityIds.end() != std::find(
+							isolatedEntityIds.begin(),
+							isolatedEntityIds.end(),
+							event.iBossNetEntityId);
+					}),
+				snapshot.BossCombatEvents.end());
+		}
+
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType =
+			Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT;
+		event.WorldSnapshot = std::move(snapshot);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC:
+	{
+		S2C_WORLD_DESTRUCTION_FULL_SYNC sync{};
+		if (!Read_Message(reader, sync) ||
+			0 != reader.Get_RemainingSize() ||
+			WORLD_ID::VALTAN_ARENA != m_eWorldId)
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::
+			WORLD_DESTRUCTION_FULL_SYNC;
+		event.WorldDestructionFullSync = std::move(sync);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_ENCOUNTER_PROP_SYNC:
+	{
+		S2C_ENCOUNTER_PROP_SYNC sync{};
+		if (!Read_Message(reader, sync) ||
+			0 != reader.Get_RemainingSize() ||
+			WORLD_ID::VALTAN_ARENA != m_eWorldId)
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::
+			ENCOUNTER_PROP_SYNC;
+		event.EncounterPropSync = std::move(sync);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA:
+	{
+		S2C_WORLD_DESTRUCTION_DELTA delta{};
+		if (!Read_Message(reader, delta) ||
+			0 != reader.Get_RemainingSize() ||
+			WORLD_ID::VALTAN_ARENA != m_eWorldId)
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::
+			WORLD_DESTRUCTION_DELTA;
+		event.WorldDestructionDelta = std::move(delta);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	//player despawn
+	case PACKET_TYPE::S2C_PLAYER_DESPAWNED:
+	{
+		S2C_PLAYER_DESPAWNED despawned{};
+
+		if (!Read_Message(reader, despawned) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (despawned.iNetEntityId == m_iLocalNetEntityId)
+		{
+			m_hasLocalSpawn = false;
+			m_LocalSpawn = {};
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::PLAYER_DESPAWNED;
+		event.PlayerDespawned = despawned;
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	default:
+		break;
+	}
+}
+
+bool CNetworkManager::Send_All(
+	std::span<const std::uint8_t> bytes,
+	const LostArk::Shared::PACKET_TYPE triggeringPacket)
+{
+	if (!Is_Connected())
+	{
+		m_iLastErrorCode.store(WSAENOTCONN);
+		m_SessionDiagnostic.Record_Terminal(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_CONNECTION_LOST,
+			WSAENOTCONN,
+			triggeringPacket,
+			"A packet send was attempted without a live connection.");
+		return false;
+	}
+
+	std::size_t sentByteCount = 0;
+
+	while (sentByteCount < bytes.size())
+	{
+		const int result = ::send(
+			m_hServerSocket,
+			reinterpret_cast<const char*>(
+				bytes.data() + sentByteCount),
+			static_cast<int>(bytes.size() - sentByteCount),
+			0);
+
+		if (SOCKET_ERROR == result)
+		{
+			const int errorCode = ::WSAGetLastError();
+			m_iLastErrorCode.store(errorCode);
+			m_SessionDiagnostic.Record_Terminal(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_SEND_ERROR,
+				errorCode,
+				triggeringPacket,
+				"send() failed before the full packet frame was written.");
+			return false;
+		}
+
+		if (0 == result)
+		{
+			m_iLastErrorCode.store(WSAECONNRESET);
+			m_SessionDiagnostic.Record_Terminal(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_SEND_ERROR,
+				WSAECONNRESET,
+				triggeringPacket,
+				"send() returned zero before the full packet frame was written.");
+			return false;
+		}
+
+		sentByteCount += static_cast<std::size_t>(result);
+	}
+
+	return true;
+}
+
+
+bool CNetworkManager::Send_DebugKillGateBosses(const LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES& request)
+{
+ using namespace LostArk::Shared;
+ if (!Is_Connected()) return false;
+ CPacketWriter writer; std::vector<std::uint8_t> frame;
+ return Write_Message(writer, request) &&
+   Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_KILL_GATE_BOSSES, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+bool CNetworkManager::Try_Consume_DebugKillGateBossesResult(LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT& result)
+{
+ if (m_DebugKillGateBossesResults.empty()) return false;
+ result = m_DebugKillGateBossesResults.front(); m_DebugKillGateBossesResults.pop_front(); return true;
+}
+
+bool CNetworkManager::Send_SetCooldownMode(const LostArk::Shared::C2S_SET_COOLDOWN_MODE& request)
+{
+ using namespace LostArk::Shared;
+ if (!Is_Connected()) return false;
+ CPacketWriter writer; std::vector<std::uint8_t> frame;
+ return Write_Message(writer, request) &&
+   Build_Packet_Frame(PACKET_TYPE::C2S_SET_COOLDOWN_MODE, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+bool CNetworkManager::Try_Consume_SetCooldownModeResult(LostArk::Shared::S2C_SET_COOLDOWN_MODE_RESULT& result)
+{
+ if (m_SetCooldownModeResults.empty()) return false;
+ result = m_SetCooldownModeResults.front(); m_SetCooldownModeResults.pop_front(); return true;
+}
+
+bool CNetworkManager::Request_BalanceRefresh()
+{
+    if (!Is_Connected()) return false;
+    m_bBalanceRefreshRequested = true;
+    return true;
+}
+
+bool CNetworkManager::Send_BalancePatch(const LostArk::Shared::C2S_BALANCE_PATCH& request)
+{
+    using namespace LostArk::Shared;
+    if (!Is_Connected()) return false;
+    CPacketWriter writer; std::vector<std::uint8_t> frame;
+    return Write_Message(writer, request) &&
+        Build_Packet_Frame(PACKET_TYPE::C2S_BALANCE_PATCH, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_BalanceResult(LostArk::Shared::S2C_BALANCE_RESULT& result)
+{
+    if (m_BalanceResults.empty()) return false;
+    result = std::move(m_BalanceResults.front()); m_BalanceResults.pop_front(); return true;
+}
+
+bool CNetworkManager::Copy_BalanceSnapshot(LostArk::Shared::GameplayDataRevision& revision,
+    std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY>& entries) const
+{
+    if (!m_BalanceNumericRevision.Is_Valid() || revision == m_BalanceNumericRevision) return false;
+    revision = m_BalanceNumericRevision; entries = m_BalanceEntries; return true;
+}
+
+bool CNetworkManager::Send_BalanceQueryPage(const std::uint32_t page)
+{
+    using namespace LostArk::Shared;
+    C2S_BALANCE_QUERY request; request.iRequestSequence = m_iBalancePendingQuery; request.iPageIndex = page;
+    CPacketWriter writer; std::vector<std::uint8_t> frame;
+    m_iBalanceQueryStarted = GetTickCount64();
+    return Write_Message(writer, request) &&
+        Build_Packet_Frame(PACKET_TYPE::C2S_BALANCE_QUERY, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+void CNetworkManager::Pump_BalanceSnapshot()
+{
+    if (!Is_Connected() || m_iLocalPlayerId == LostArk::Shared::INVALID_PLAYER_ID) return;
+    if (m_iBalancePendingQuery && GetTickCount64() - m_iBalanceQueryStarted > 5000u)
+    {
+        m_iBalancePendingQuery = 0u; m_BalanceStagingEntries.clear(); m_bBalanceRefreshRequested = true;
+    }
+    if (m_iBalancePendingQuery || !m_bBalanceRefreshRequested) return;
+    if (++m_iBalanceQuerySequence < 0x80000000u) m_iBalanceQuerySequence = 0x80000001u;
+    m_iBalancePendingQuery = m_iBalanceQuerySequence;
+    m_iBalanceNextPage = m_iBalancePageCount = 0u;
+    m_BalanceStagingRevision = {}; m_BalanceStagingEntries.clear();
+    m_bBalanceRefreshRequested = false;
+    if (!Send_BalanceQueryPage(0u)) { m_iBalancePendingQuery = 0u; m_bBalanceRefreshRequested = true; }
+}
+
+void CNetworkManager::Receive_BalanceSnapshot(const LostArk::Shared::S2C_BALANCE_SNAPSHOT& snapshot)
+{
+    if (!m_iBalancePendingQuery || snapshot.iRequestSequence != m_iBalancePendingQuery) return;
+    if (snapshot.iPageIndex != m_iBalanceNextPage || !snapshot.iPageCount || snapshot.iPageCount > LostArk::Shared::MAX_BALANCE_PAGES ||
+        (m_iBalanceNextPage && (snapshot.NumericRevision != m_BalanceStagingRevision || snapshot.iPageCount != m_iBalancePageCount)))
+    {
+        // A concurrent accepted patch may change the next queried page. Keep
+        // the committed numeric view and restart the entire read transaction.
+        m_iBalancePendingQuery = 0u; m_BalanceStagingEntries.clear(); m_bBalanceRefreshRequested = true; return;
+    }
+    if (!m_iBalanceNextPage) { m_BalanceStagingRevision = snapshot.NumericRevision; m_iBalancePageCount = snapshot.iPageCount; }
+    m_BalanceStagingEntries.insert(m_BalanceStagingEntries.end(), snapshot.Entries.begin(), snapshot.Entries.end());
+    if (++m_iBalanceNextPage < m_iBalancePageCount)
+    {
+        if (!Send_BalanceQueryPage(m_iBalanceNextPage)) { m_iBalancePendingQuery = 0u; m_bBalanceRefreshRequested = true; }
+        return;
+    }
+    m_iBalancePendingQuery = 0u;
+    if (m_BalanceExpectedRevision.Is_Valid() && m_BalanceExpectedRevision != m_BalanceStagingRevision)
+    { m_BalanceStagingEntries.clear(); m_bBalanceRefreshRequested = true; return; }
+    std::unordered_set<std::string> identities;
+    for (const auto& entry : m_BalanceStagingEntries)
+        if (!identities.insert(std::to_string(static_cast<unsigned>(entry.eDomain)) + "|" + entry.strId + "|" + entry.strField).second)
+        { Fail_Protocol(WSAEINVAL); return; }
+    m_BalanceNumericRevision = m_BalanceStagingRevision;
+    m_BalanceExpectedRevision = {};
+    m_BalanceEntries = std::move(m_BalanceStagingEntries);
+    Client::CPlayerSkillCatalog::Apply_ServerNumericSnapshot(m_BalanceEntries);
+    Client::CCombatHUDViewModel::Get().Apply_ServerNumericSnapshot(m_BalanceEntries);
+}
+
+```

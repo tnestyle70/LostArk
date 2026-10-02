@@ -283,6 +283,9 @@ public:
 		ID3D11Buffer* pInstanceBuffer, uint32_t iInstanceStride,
 		uint32_t iNumInstances, uint32_t iInstanceByteOffset = 0u);
 	bool_t Play_Animation(f32_t fTimeDelta);
+    // World Sequence preparation opts in once; local/combined bones and all
+    // model state remain independent. Applies in both Debug and Release.
+    void Enable_AnimationSampleReuse();
 	HRESULT Bind_BoneMatrices(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex);
 	// Copy the actual mesh skin palette without changing this clone's pose or clock.
 	bool_t Capture_BoneMatrices(uint32_t iMeshIndex, vector<float4x4_t>& outMatrices) const;

@@ -7,9 +7,110 @@
 #include "GameInstance.h"
 #include "BinaryAsset/ModelAssetData.h"
 #include "Channel.h"
+#include "Bone.h"
 
 #include <algorithm>
 #include <cmath>
+#pragma push_macro("new")
+#undef new
+#include <bit>
+#include <mutex>
+#include <unordered_map>
+#pragma pop_macro("new")
+
+struct CAnimation::SAMPLE_REUSE final
+{
+    explicit SAMPLE_REUSE(const vector<shared_ptr<CChannel>>& source)
+        : channels(source), localTransforms(source.size()) {}
+    const vector<shared_ptr<CChannel>> channels;
+    // One bounded sample per live immutable channel set. Holding the lock
+    // through installation prevents a second sampling thread replacing it.
+    std::mutex mutex;
+    vector<float4x4_t> localTransforms;
+    f32_t trackPosition = 0.f;
+    bool valid = false;
+};
+
+void CAnimation::Enable_SampleReuse()
+{
+    if (m_pSampleReuse || m_Channels.empty() || m_iNumChannels != m_Channels.size()) return;
+    for (const auto& channel : m_Channels)
+        if (!channel || !channel->m_bUsesSeparateTracks || channel->m_iBoneIndex < 0) return;
+
+    // Hash individual scalar fields, never structure padding. Hash matches
+    // only select candidates: every index, key and component is compared below.
+    uint64_t hash = 14695981039346656037ull;
+    const auto add = [&](uint64_t value) {
+        for (unsigned byte = 0; byte < 8; ++byte)
+        { hash ^= (value >> (byte * 8)) & 0xffu; hash *= 1099511628211ull; }
+    };
+    const auto addKeys = [&](const auto& keys) {
+        add(keys.size());
+        for (const auto& key : keys)
+        {
+            add(std::bit_cast<uint32_t>(key.timeTicks));
+            add(std::bit_cast<uint32_t>(key.value.x));
+            add(std::bit_cast<uint32_t>(key.value.y));
+            add(std::bit_cast<uint32_t>(key.value.z));
+            if constexpr (requires { key.value.w; }) add(std::bit_cast<uint32_t>(key.value.w));
+        }
+    };
+    add(m_Channels.size());
+    for (const auto& channel : m_Channels)
+    {
+        add(static_cast<uint32_t>(channel->m_iBoneIndex));
+        addKeys(channel->m_PositionKeys);
+        addKeys(channel->m_RotationKeys);
+        addKeys(channel->m_ScaleKeys);
+    }
+    const auto equalFloat = [](const f32_t a, const f32_t b) {
+        return std::bit_cast<uint32_t>(a) == std::bit_cast<uint32_t>(b);
+    };
+    const auto equalKeys = [&](const auto& a, const auto& b) {
+        if (a.size() != b.size()) return false;
+        for (size_t i = 0; i < a.size(); ++i)
+        {
+            if (!equalFloat(a[i].timeTicks, b[i].timeTicks) ||
+                !equalFloat(a[i].value.x, b[i].value.x) ||
+                !equalFloat(a[i].value.y, b[i].value.y) ||
+                !equalFloat(a[i].value.z, b[i].value.z)) return false;
+            if constexpr (requires { a[i].value.w; })
+                if (!equalFloat(a[i].value.w, b[i].value.w)) return false;
+        }
+        return true;
+    };
+    static std::mutex registryMutex;
+    static std::unordered_map<uint64_t, vector<weak_ptr<SAMPLE_REUSE>>> registry;
+    const std::lock_guard registryLock(registryMutex);
+    for (auto entry = registry.begin(); entry != registry.end();)
+    {
+        std::erase_if(entry->second, [](const auto& owner) { return owner.expired(); });
+        if (entry->second.empty()) entry = registry.erase(entry);
+        else ++entry;
+    }
+    auto& candidates = registry[hash];
+    for (const auto& candidate : candidates)
+    {
+        const auto shared = candidate.lock();
+        if (!shared || shared->channels.size() != m_Channels.size()) continue;
+        bool equal = true;
+        for (size_t i = 0; i < m_Channels.size() && equal; ++i)
+        {
+            const auto& a = *m_Channels[i];
+            const auto& b = *shared->channels[i];
+            equal = a.m_iBoneIndex == b.m_iBoneIndex &&
+                equalKeys(a.m_PositionKeys, b.m_PositionKeys) &&
+                equalKeys(a.m_RotationKeys, b.m_RotationKeys) &&
+                equalKeys(a.m_ScaleKeys, b.m_ScaleKeys);
+        }
+        if (!equal) continue;
+        m_pSampleReuse = shared;
+        m_Channels = shared->channels;
+        return;
+    }
+    m_pSampleReuse = std::make_shared<SAMPLE_REUSE>(m_Channels);
+    candidates.push_back(m_pSampleReuse);
+}
 
 CAnimation::CAnimation()
 {
@@ -74,6 +175,33 @@ bool_t CAnimation::Update_TransformationMatrix(f32_t fTimeDelta, const vector<sh
 
 	if (m_SeparateTrackIndices.size() != m_iNumChannels)
 		m_SeparateTrackIndices.resize(m_iNumChannels);
+
+    if (m_pSampleReuse)
+    {
+        const std::lock_guard sampleLock(m_pSampleReuse->mutex);
+        if (m_pSampleReuse->valid && m_pSampleReuse->trackPosition == m_fCurrentTrackPosition)
+        {
+            Engine::CProfilerScope reuseScope(CGameInstance::Get().Get_Profiler(), "Animation.Channels.Reuse");
+            for (uint32_t i = 0; i < m_iNumChannels; ++i)
+                Bones[m_Channels[i]->m_iBoneIndex]->Update_TransformationMatrix(
+                    XMLoadFloat4x4(&m_pSampleReuse->localTransforms[i]));
+            return isFinished;
+        }
+        Engine::CProfilerScope evaluateScope(CGameInstance::Get().Get_Profiler(), "Animation.Channels.Evaluate" );
+        // Only channel-written local transforms are cached. Unkeyed bones,
+        // root suppression, blending, pretransform and combined palettes remain
+        // model-local and follow the original CModel::Play_Animation path.
+        for (uint32_t i = 0; i < m_iNumChannels; ++i)
+        {
+            m_Channels[i]->Update_TransformationMatrix(m_fCurrentTrackPosition, Bones,
+                &m_iLeftKeyFrameIndices[i], &m_SeparateTrackIndices[i]);
+            XMStoreFloat4x4(&m_pSampleReuse->localTransforms[i],
+                Bones[m_Channels[i]->m_iBoneIndex]->Get_TransformationMatrix());
+        }
+        m_pSampleReuse->trackPosition = m_fCurrentTrackPosition;
+        m_pSampleReuse->valid = true;
+        return isFinished;
+    }
 
 	/* 현재 재생위치에 맞게 뼈들의 상태행렬을 갱신해준다. */
 	for (uint32_t i = 0; i < m_iNumChannels; i++)

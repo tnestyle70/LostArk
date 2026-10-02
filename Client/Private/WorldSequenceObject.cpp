@@ -84,6 +84,9 @@ HRESULT CWorldSequenceObject::Initialize(void* argument)
     if (!m_Model || FAILED(__super::Add_Component(desc.levelIndex,
         m_Model->Is_Skinned() ? L"Prototype_Component_Shader_VtxAnimMeshBinary" :
         L"Prototype_Component_Shader_VtxMeshBinary", L"Com_Shader", m_Shader))) return E_FAIL;
+    // Split-material Movie actors often sample identical cooked channels at
+    // the same time. Reuse only interpolation; each actor keeps its own bones.
+    m_Model->Enable_AnimationSampleReuse();
     // A newly authored skinned resource may have no animation track yet.
     // Its cloned rest pose still needs the same combined matrices as a sampled clip.
     if (m_Model->Is_Skinned()) m_Model->Refresh_BoneCombinedMatrices();

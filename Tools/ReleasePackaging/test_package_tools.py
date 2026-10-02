@@ -49,7 +49,7 @@ class PortableCheckTests(unittest.TestCase):
             path = self.root / relative; path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(content)
             rows.append(dict(path=relative, bytes=len(content), sha256=builder.digest(path)))
         self.manifest = dict(schema='lostark.portable-runtime-bundle', formatVersion=1, configuration='Release', protocol=120,
-                             serverEndpoint='10.16.127.103:7777', resourcePolicy='external-only-no-install',
+                             serverEndpoint='192.168.0.14:7777', resourcePolicy='external-only-no-install',
                              dataRevisions=dict(sourceRevision=7, sequenceRevision=8), files=rows)
 
     def check(self, expected, resources=None, package_only=False, environment=None):
@@ -88,7 +88,7 @@ class PortableCheckTests(unittest.TestCase):
         self.check('FAIL')
 
     def test_wrong_endpoint_rejected(self):
-        self.manifest['serverEndpoint'] = '192.168.0.14:7777'
+        self.manifest['serverEndpoint'] = '192.168.200.142:7777'
         self.check('FAIL')
 
     def test_missing_resource_folder_rejected(self):

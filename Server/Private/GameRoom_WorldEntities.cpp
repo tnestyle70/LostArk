@@ -337,23 +337,6 @@ bool LostArk::Server::CGameRoom::Initialize_WorldEntities()
 		++m_iNextNetEntityId;
 		m_WorldEntities.push_back(std::move(entity));
 	}
-	{
-		/* The Bern3 ship NPCs were once spawned here yet never seen on screen: name each one the room
-		   really holds so a missing NPC can be told apart from a Client-side presentation failure. */
-		std::size_t shipNpcCount = 0u;
-		for (const SERVER_WORLD_ENTITY& spawned : m_WorldEntities)
-		{
-			if (WORLD_BOOTSTRAP_KIND::NPC != spawned.eKind ||
-				0 != spawned.strArchetypeId.rfind("NPC_SHIP_", 0))
-				continue;
-			++shipNpcCount;
-			std::cout << "[ShipNpc] spawned placement=" << spawned.strPlacementId
-				<< " archetype=" << spawned.strArchetypeId << " pos=(" << spawned.fPositionX << ", "
-				<< spawned.fPositionY << ", " << spawned.fPositionZ << ")\n";
-		}
-		if (0u != shipNpcCount)
-			std::cout << "[ShipNpc] " << shipNpcCount << " ship NPC(s) live in this world\n";
-	}
 	return true;
 }
 

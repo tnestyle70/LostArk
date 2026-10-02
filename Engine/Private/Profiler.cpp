@@ -183,6 +183,7 @@ void CProfiler::Reset_History()
     m_CaptureEpoch.fetch_add(1, std::memory_order_relaxed);
     std::lock_guard lock(m_Mutex);
     m_History.clear();
+    m_EvictedHistoryFrames = 0;
     m_PendingScopes.clear();
     m_LongOperations.clear();
     m_DroppedCpuScopes = 0;
@@ -473,6 +474,7 @@ FProfilerCaptureSnapshot CProfiler::Snapshot(size_t frameWindow) const
     std::lock_guard lock(m_Mutex);
     FProfilerCaptureSnapshot snapshot{};
     snapshot.ScopeNames = m_ScopeNames;
+    snapshot.CaptureWindow = Get_CaptureWindowLocked(frameWindow);
     const size_t count = (std::min)(frameWindow, m_History.size());
     snapshot.Frames.assign(m_History.end() - count, m_History.end());
     snapshot.DroppedCpuScopes = m_DroppedCpuScopes;
@@ -484,6 +486,41 @@ FProfilerCaptureSnapshot CProfiler::Snapshot(size_t frameWindow) const
     snapshot.MainThreadId = m_MainThreadId;
     snapshot.TicksPerSecond = static_cast<uint64_t>(m_Frequency.QuadPart);
     return snapshot;
+}
+
+FProfilerCaptureWindow CProfiler::Get_CaptureWindow(size_t frameWindow) const
+{
+    std::lock_guard lock(m_Mutex);
+    return Get_CaptureWindowLocked(frameWindow);
+}
+
+FProfilerCaptureWindow CProfiler::Get_CaptureWindowLocked(size_t frameWindow) const
+{
+    FProfilerCaptureWindow window{};
+    window.RequestedFrames = static_cast<uint64_t>(frameWindow);
+    window.RetainedFrames = static_cast<uint64_t>(m_History.size());
+    const size_t count = (std::min)(frameWindow, m_History.size());
+    const size_t excluded = m_History.size() - count;
+    window.SavedFrames = static_cast<uint64_t>(count);
+    window.ExcludedRetainedFrames = static_cast<uint64_t>(excluded);
+    window.EvictedFramesSinceReset = m_EvictedHistoryFrames;
+    if (!m_History.empty())
+    {
+        window.FirstRetainedFrameNumber = m_History.front().FrameNumber;
+        window.LastRetainedFrameNumber = m_History.back().FrameNumber;
+    }
+    if (count != 0)
+    {
+        window.FirstSavedFrameNumber = m_History[excluded].FrameNumber;
+        window.LastSavedFrameNumber = m_History.back().FrameNumber;
+    }
+    for (size_t index = 0; index < excluded; ++index)
+    {
+        const double interval = m_History[index].FrameIntervalMs;
+        if (std::isfinite(interval))
+            window.ExcludedMaxFrameIntervalMs = (std::max)(window.ExcludedMaxFrameIntervalMs, interval);
+    }
+    return window;
 }
 
 bool CProfiler::Get_LiveStats(FProfilerLiveStats& outStats) const
@@ -588,9 +625,11 @@ void CProfiler::Get_ScopeAggregates(
     };
 
     const size_t frameCount = (std::min)(frameWindow, m_History.size());
+    bool selfComplete = true;
     for (size_t frameIndex = m_History.size() - frameCount;
         frameIndex < m_History.size(); ++frameIndex)
     {
+        selfComplete = selfComplete && m_History[frameIndex].DroppedCpuScopes == 0;
         for (FThreadReduction& thread : threads) thread.CompletedCount = 0;
         const auto& frameScopes = m_History[frameIndex].CpuScopes;
         const size_t scopeCount = frameScopes.size();
@@ -629,8 +668,13 @@ void CProfiler::Get_ScopeAggregates(
         }
     }
     for (const FThreadReduction& thread : threads)
-        for (const FProfilerScopeAggregate& aggregate : thread.ByName)
-            if (aggregate.Calls != 0) outAggregates.push_back(aggregate);
+        for (FProfilerScopeAggregate aggregate : thread.ByName)
+            if (aggregate.Calls != 0)
+            {
+                // Even a name absent from an incomplete frame may have lost calls.
+                aggregate.SelfComplete = selfComplete;
+                outAggregates.push_back(aggregate);
+            }
     std::sort(outAggregates.begin(), outAggregates.end(),
         [](const FProfilerScopeAggregate& left, const FProfilerScopeAggregate& right)
         { return left.InclusiveMs > right.InclusiveMs; });
@@ -1029,5 +1073,8 @@ void CProfiler::Commit_CurrentFrame()
     }
     m_History.push_back(std::move(m_CurrentFrame));
     while (m_History.size() > MAX_HISTORY_FRAMES)
+    {
         m_History.pop_front();
+        ++m_EvictedHistoryFrames;
+    }
 }

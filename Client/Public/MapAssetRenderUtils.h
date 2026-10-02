@@ -28,6 +28,10 @@ struct MAP_SHADOW_CULL_SNAPSHOT final
 	float4_t worldPlanes[6] = {};
 };
 
+// VISIBILITY_ONLY preserves visibility and hysteresis; plane diagnostics are not guaranteed.
+// Diagnostic policies always request the complete plane distances and rejecting plane.
+enum class MAP_FRUSTUM_CULL_DETAIL : uint8_t { FULL, VISIBILITY_ONLY };
+
 struct MAP_FRUSTUM_CULL_DECISION final
 {
 	bool_t wouldBeVisible = true;
@@ -100,7 +104,8 @@ public:
 		f32_t worldRadius,
 		MAP_FRUSTUM_RUNTIME_STATE& state,
 		MAP_FRUSTUM_CULL_DECISION& outDecision,
-		std::string* outFailureReason = nullptr);
+		std::string* outFailureReason = nullptr,
+		MAP_FRUSTUM_CULL_DETAIL detail = MAP_FRUSTUM_CULL_DETAIL::FULL);
 	static void Begin_FrustumDiagnostics(
 		const std::string& areaId,
 		const MAP_FRUSTUM_CULLING_POLICY& policy);

@@ -1,8 +1,8 @@
-# LostArk Release 2026-10-01 통합본 실행
+# LostArk Release 노트북 Wi-Fi endpoint 실행
 
 1. 모든 PC에서 같은 ZIP 전체를 새 폴더에 압축 해제합니다. EXE 하나만 복사하지 마세요.
 2. Drive에서 받은 최신 Resources를 준비합니다. 이 ZIP은 Resources를 포함하지 않습니다.
-3. 서버 PC `10.16.127.103`에서 이번 수정이 반영된 LostArk 정본 Server를 실행하거나, 이 폴더의 `ServerHost.cmd`를 한 번 실행합니다. 같은 주소에 Server 두 개를 동시에 실행하지 마세요.
+3. 서버 PC `192.168.0.14`에서 이번 수정이 반영된 LostArk 정본 Server를 실행하거나, 이 폴더의 `ServerHost.cmd`를 한 번 실행합니다. 같은 주소에 Server 두 개를 동시에 실행하지 마세요.
 4. 각 PC에서 `LostArk.exe`를 실행하고 최신 Resources가 있는 기존 LostArk 폴더 또는 Resources 폴더를 선택합니다.
 
 선택한 기존 폴더에서는 Resources만 읽습니다. 실행 파일·Data·DataFiles는 압축 해제한 이 폴더를 사용하며 기존 저장소에 설치하거나 덮어쓰지 않습니다. Visual Studio 없이 실행하도록 필요한 VC 런타임 DLL도 포함합니다. Windows 10/11 x64 및 .NET Framework 4.x가 필요합니다.
@@ -20,7 +20,7 @@ F1 → Balance Test에서 Server 수치를 편집하고 `Save + Apply`를 누르
 Server가 저장하는 Data·bootstrap·numeric receipt는 같은 폴더에 함께 보존하세요. 실행기는 이 영수증과
 파일 hash를 검사하므로 일부 저장 파일만 이전 ZIP 파일로 덮어쓰지 마세요.
 
-모든 Client는 같은 서버 `10.16.127.103:7777`로 접속합니다. 서버 PC에서도 Client를 실행할 수 있고 한 PC에서 여러 Client를 실행할 수도 있습니다. 다른 PC는 Server를 실행하지 않습니다. 이번 통합본은 protocol 132이므로 이전 Client 또는 Server와 섞어 실행하지 마세요.
+모든 Client는 같은 서버 `192.168.0.14:7777`로 접속합니다. 서버 PC에서도 Client를 실행할 수 있고 한 PC에서 여러 Client를 실행할 수도 있습니다. 다른 PC는 Server를 실행하지 않습니다. 이번 통합본은 protocol 132이므로 이전 Client 또는 Server와 섞어 실행하지 마세요.
 
 이번 통합본의 우선 확인 항목은 다음과 같습니다.
 

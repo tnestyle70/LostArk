@@ -312,7 +312,8 @@ namespace LostArk::Server
 		void Initialize_Guide();
 		bool Build_GuidePlayer(LostArk::Shared::PLAYER_ID playerId, LostArk::Shared::NET_ENTITY_ID entityId,
 			float x, float y, float z, SERVER_PLAYER& outPlayer) const;
-		bool Find_GuideLanding(const SERVER_PLAYER& guide, float x, float y, float z, SERVER_NAV_POINT& point) const;
+		bool Find_GuideLanding(const SERVER_PLAYER& guide, float x, float y, float z, SERVER_NAV_POINT& point,
+			const SERVER_PLAYER* anchor = nullptr) const;
 		bool Start_Guide(const SERVER_PLAYER& inviter, LostArk::Shared::NET_ENTITY_ID target);
 		void Handle_GuideControl(SESSION_ID sessionId, const LostArk::Shared::C2S_GUIDE_CONTROL& request);
 		void Broadcast_GuideOwnership();

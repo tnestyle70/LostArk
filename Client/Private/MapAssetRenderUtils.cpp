@@ -190,6 +190,7 @@ namespace
 	uint64_t g_ValidatedPlaneRevision = {};
 	bool_t g_HasValidatedPlanes = false;
 	float4_t g_ValidatedPlanes[6]{};
+	double g_ValidatedMaximumPlaneOffset = 0.;
 
 	bool_t IsFiniteMatrix(const float4x4_t& matrix)
 	{
@@ -242,6 +243,10 @@ namespace
 		g_ValidatedPlaneRevision = snapshot.revision;
 		std::memcpy(g_ValidatedPlanes, snapshot.worldPlanes,
 			sizeof(g_ValidatedPlanes));
+		g_ValidatedMaximumPlaneOffset = 0.;
+		for (const auto& plane : snapshot.worldPlanes)
+			g_ValidatedMaximumPlaneOffset = (std::max)(g_ValidatedMaximumPlaneOffset,
+				std::abs(static_cast<double>(plane.w)));
 		g_HasValidatedPlanes = true;
 	}
 
@@ -578,7 +583,8 @@ bool_t CMapAssetRenderUtils::Evaluate_FrustumVisibility(
 	const f32_t worldRadius,
 	MAP_FRUSTUM_RUNTIME_STATE& state,
 	MAP_FRUSTUM_CULL_DECISION& outDecision,
-	std::string* outFailureReason)
+	std::string* outFailureReason,
+	const MAP_FRUSTUM_CULL_DETAIL detail)
 {
 	if (nullptr != outFailureReason)
 		outFailureReason->clear();
@@ -619,36 +625,71 @@ bool_t CMapAssetRenderUtils::Evaluate_FrustumVisibility(
 	}
 	candidate.margin = static_cast<f32_t>(margin);
 	candidate.effectiveRadius = static_cast<f32_t>(effectiveRadius);
-	double largestSeparation = 0.0;
-	const vector_t center = XMLoadFloat3(&worldCenter);
-	for (uint32_t index = 0; index < 6u; ++index)
+	bool visibilityOnly = false;
+	if (detail == MAP_FRUSTUM_CULL_DETAIL::VISIBILITY_ONLY && !policy.diagnostics)
 	{
-		const float4_t& plane = snapshot.worldPlanes[index];
-		const double x = static_cast<double>(plane.x) * worldCenter.x;
-		const double y = static_cast<double>(plane.y) * worldCenter.y;
-		const double z = static_cast<double>(plane.z) * worldCenter.z;
-		const f32_t planeDistance = XMVectorGetX(XMPlaneDotCoord(
-			XMLoadFloat4(&plane), center));
-		const double distance = planeDistance;
-		const double magnitude = std::abs(x) + std::abs(y) + std::abs(z) +
-			std::abs(static_cast<double>(plane.w)) + effectiveRadius;
-		const double tolerance = 8.0 * std::numeric_limits<f32_t>::epsilon() *
-			(std::max)(1.0, magnitude);
-		if (!std::isfinite(distance) ||
-			std::abs(distance) > (std::numeric_limits<f32_t>::max)())
+		// Normalized xyz components have absolute value below 2. The quarter-range
+		// bound encloses every float product and partial dot sum with rounding.
+		// Huge inputs retain the full path so a later plane's overflow still fails.
+		const double dotMagnitudeBound = 2. * (std::abs(static_cast<double>(worldCenter.x)) +
+			std::abs(static_cast<double>(worldCenter.y)) + std::abs(static_cast<double>(worldCenter.z))) +
+			g_ValidatedMaximumPlaneOffset;
+		visibilityOnly = dotMagnitudeBound < double((std::numeric_limits<f32_t>::max)()) * .25;
+	}
+	if (visibilityOnly)
+	{
+		const vector_t center = XMLoadFloat3(&worldCenter);
+		for (const float4_t& plane : snapshot.worldPlanes)
 		{
-			return ReportCullFailure(outFailureReason, "frustum distance overflow");
-		}
-		candidate.planeDistances[index] = static_cast<f32_t>(distance);
-		candidate.planeTolerances[index] = static_cast<f32_t>(tolerance);
-		const double separation = distance - effectiveRadius - tolerance;
-		if (separation > 0.0)
-		{
-			candidate.wouldBeVisible = false;
-			if (separation > largestSeparation)
+			const double x = static_cast<double>(plane.x) * worldCenter.x;
+			const double y = static_cast<double>(plane.y) * worldCenter.y;
+			const double z = static_cast<double>(plane.z) * worldCenter.z;
+			const double distance = XMVectorGetX(XMPlaneDotCoord(XMLoadFloat4(&plane), center));
+			const double magnitude = std::abs(x) + std::abs(y) + std::abs(z) +
+				std::abs(static_cast<double>(plane.w)) + effectiveRadius;
+			const double tolerance = 8.0 * std::numeric_limits<f32_t>::epsilon() *
+				(std::max)(1.0, magnitude);
+			// Keep the original subtraction order at near-tangent boundaries.
+			if (distance - effectiveRadius - tolerance > 0.0)
 			{
-				largestSeparation = separation;
-				candidate.rejectingPlane = static_cast<int32_t>(index);
+				candidate.wouldBeVisible = false;
+				break;
+			}
+		}
+	}
+	else
+	{
+		double largestSeparation = 0.0;
+		const vector_t center = XMLoadFloat3(&worldCenter);
+		for (uint32_t index = 0; index < 6u; ++index)
+		{
+			const float4_t& plane = snapshot.worldPlanes[index];
+			const double x = static_cast<double>(plane.x) * worldCenter.x;
+			const double y = static_cast<double>(plane.y) * worldCenter.y;
+			const double z = static_cast<double>(plane.z) * worldCenter.z;
+			const f32_t planeDistance = XMVectorGetX(XMPlaneDotCoord(
+				XMLoadFloat4(&plane), center));
+			const double distance = planeDistance;
+			const double magnitude = std::abs(x) + std::abs(y) + std::abs(z) +
+				std::abs(static_cast<double>(plane.w)) + effectiveRadius;
+			const double tolerance = 8.0 * std::numeric_limits<f32_t>::epsilon() *
+				(std::max)(1.0, magnitude);
+			if (!std::isfinite(distance) ||
+				std::abs(distance) > (std::numeric_limits<f32_t>::max)())
+			{
+				return ReportCullFailure(outFailureReason, "frustum distance overflow");
+			}
+			candidate.planeDistances[index] = static_cast<f32_t>(distance);
+			candidate.planeTolerances[index] = static_cast<f32_t>(tolerance);
+			const double separation = distance - effectiveRadius - tolerance;
+			if (separation > 0.0)
+			{
+				candidate.wouldBeVisible = false;
+				if (separation > largestSeparation)
+				{
+					largestSeparation = separation;
+					candidate.rejectingPlane = static_cast<int32_t>(index);
+				}
 			}
 		}
 	}
