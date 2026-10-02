@@ -38,6 +38,15 @@ namespace
 	std::optional<size_t> g_CreationSlot;
 	bool_t g_RestoreRequired = false;
 	std::uint32_t g_RestoreRequestSequence = 0u;
+	std::uint32_t g_NextStateSequence = 0u;
+	Client::CHARACTER_CAPTURE_STATUS g_CaptureStatus = Client::CHARACTER_CAPTURE_STATUS::NONE;
+	std::uint32_t g_CaptureSequence = 0u;
+	LostArk::Shared::WORLD_ID g_CaptureWorld = LostArk::Shared::WORLD_ID::BERN;
+	LostArk::Shared::PLAYER_ID g_CapturePlayer = 0u;
+	LostArk::Shared::NET_ENTITY_ID g_CaptureEntity = 0u;
+	std::uint64_t g_CaptureGeneration = 0u;
+	std::string g_CaptureCharacterId;
+	bool_t g_HasFinalCapture = false;
 
 	bool_t Stage_Pending(
 		const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
@@ -133,8 +142,8 @@ bool_t Client::CCharacterSelectionState::Stage_ExistingEntry(
 	const auto entry = std::find_if(entries.begin(), entries.end(), [&](const auto& candidate)
 		{ return candidate.strCharacterId == characterId && candidate.eCharacterClass == characterClass &&
 			candidate.strNickname == nickname; });
-	if (entry == entries.end()) return false;
-	return Stage_Pending(characterClass, nickname, appearanceJson, false, characterId);
+	if (characterId.empty() || entry == entries.end() || entry->strAppearanceJson != appearanceJson) return false;
+	return Stage_Pending(characterClass, entry->strNickname, entry->strAppearanceJson, false, entry->strCharacterId);
 }
 
 std::string Client::CCharacterSelectionState::Get_ActiveAppearanceJson()
@@ -152,7 +161,8 @@ void Client::CCharacterSelectionState::Capture_ActiveWorldState()
 	std::string characterId;
 	{
 		std::scoped_lock lock{ g_SelectionMutex };
-		if (g_ActiveCharacterId.empty() || g_RestoreRequired) return;
+		if (g_ActiveCharacterId.empty() || g_RestoreRequired || g_HasFinalCapture ||
+			g_CaptureStatus != CHARACTER_CAPTURE_STATUS::NONE) return;
 		characterId = g_ActiveCharacterId;
 	}
 	const auto level = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
@@ -176,6 +186,98 @@ void Client::CCharacterSelectionState::Capture_ActiveWorldState()
 		OutputDebugStringA(("[CharacterSelection] World state capture failed: " + strStatus + "\n").c_str());
 }
 
+bool_t Client::CCharacterSelectionState::Has_ActiveCharacter()
+{
+	std::scoped_lock lock{ g_SelectionMutex };
+	return !g_ActiveCharacterId.empty();
+}
+
+bool_t Client::CCharacterSelectionState::Is_RestorePending()
+{
+	std::scoped_lock lock{ g_SelectionMutex };
+	return g_RestoreRequired;
+}
+
+bool_t Client::CCharacterSelectionState::Is_WorldStateSyncPending()
+{
+	std::scoped_lock lock{ g_SelectionMutex };
+	// The protected saved state survives recovery, but a creation arena is a new audition.
+	const bool_t restoringBern = g_RestoreRequired &&
+		CGameInstance::Get().Get_CurrentLevelID() == static_cast<uint32_t>(LEVEL::BERN);
+	return restoringBern || g_CaptureStatus != CHARACTER_CAPTURE_STATUS::NONE;
+}
+
+std::uint32_t Client::CCharacterSelectionState::Next_StateRequestSequence()
+{
+	std::scoped_lock lock{ g_SelectionMutex };
+	if (++g_NextStateSequence == 0u) ++g_NextStateSequence;
+	return g_NextStateSequence;
+}
+
+bool_t Client::CCharacterSelectionState::Begin_WorldStateCapture(const std::uint32_t sequence,
+	const LostArk::Shared::WORLD_ID world, const LostArk::Shared::PLAYER_ID player,
+	const LostArk::Shared::NET_ENTITY_ID entity, const std::uint64_t generation)
+{
+	std::scoped_lock lock{ g_SelectionMutex };
+	if (!sequence || !player || !entity || !generation || g_ActiveCharacterId.empty() ||
+		g_RestoreRequired || g_CaptureStatus != CHARACTER_CAPTURE_STATUS::NONE) return false;
+	g_CaptureSequence = sequence;
+	g_CaptureWorld = world;
+	g_CapturePlayer = player;
+	g_CaptureEntity = entity;
+	g_CaptureGeneration = generation;
+	g_CaptureCharacterId = g_ActiveCharacterId;
+	g_CaptureStatus = CHARACTER_CAPTURE_STATUS::WAITING;
+	return true;
+}
+
+bool_t Client::CCharacterSelectionState::Apply_CaptureResult(
+	const LostArk::Shared::S2C_CAPTURE_CHARACTER_RESULT& result, const std::uint64_t generation)
+{
+	std::scoped_lock lock{ g_SelectionMutex };
+	if (g_CaptureStatus != CHARACTER_CAPTURE_STATUS::WAITING ||
+		result.iRequestSequence != g_CaptureSequence || generation != g_CaptureGeneration)
+		return false;
+	g_CaptureStatus = CHARACTER_CAPTURE_STATUS::FAILED;
+	const auto& entries = CCharacterRoster::Get_Entries();
+	const auto entry = std::find_if(entries.begin(), entries.end(), [&](const auto& candidate)
+		{ return candidate.strCharacterId == g_CaptureCharacterId; });
+	if (result.eResult != LostArk::Shared::CHARACTER_CAPTURE_RESULT::CAPTURED ||
+		result.eWorldId != g_CaptureWorld || result.iPlayerId != g_CapturePlayer ||
+		result.iNetEntityId != g_CaptureEntity || g_ActiveCharacterId != g_CaptureCharacterId ||
+		entry == entries.end() || result.eCharacterClass != entry->eCharacterClass)
+		return true;
+	CHARACTER_WORLD_STATE state{};
+	state.bValid = true;
+	state.Items = result.Items;
+	state.iSilver = result.iSilver;
+	state.iGold = result.iGold;
+	state.iHonorTitleId = result.iHonorTitleId;
+	std::string status;
+	if (CCharacterRoster::Update_WorldState(g_CaptureCharacterId, state, status))
+	{
+		g_CaptureStatus = CHARACTER_CAPTURE_STATUS::CAPTURED;
+		g_HasFinalCapture = true;
+	}
+	return true;
+}
+
+Client::CHARACTER_CAPTURE_STATUS Client::CCharacterSelectionState::Get_WorldStateCaptureStatus()
+{
+	std::scoped_lock lock{ g_SelectionMutex };
+	return g_CaptureStatus;
+}
+
+void Client::CCharacterSelectionState::Finish_WorldStateCapture()
+{
+	std::scoped_lock lock{ g_SelectionMutex };
+	// A rejected or timed-out barrier must not be replaced by the older HUD snapshot.
+	if (g_CaptureStatus != CHARACTER_CAPTURE_STATUS::NONE) g_HasFinalCapture = true;
+	g_CaptureStatus = CHARACTER_CAPTURE_STATUS::NONE;
+	g_CaptureSequence = 0u;
+	g_CaptureCharacterId.clear();
+}
+
 bool_t Client::CCharacterSelectionState::Try_Get_ActiveWorldState(CHARACTER_WORLD_STATE& outState)
 {
 	std::scoped_lock lock{ g_SelectionMutex };
@@ -197,7 +299,10 @@ bool_t Client::CCharacterSelectionState::Apply_RestoreResult(
 		return false;
 	/* Keep the rejected request latched: returning from another world cannot retry or save defaults. */
 	if (result.eResult == LostArk::Shared::CHARACTER_RESTORE_RESULT::APPLIED)
+	{
 		g_RestoreRequired = false;
+		g_HasFinalCapture = false;
+	}
 	return true;
 }
 
@@ -213,8 +318,7 @@ bool_t Client::CCharacterSelectionState::Commit_PendingCreation()
 	if (!g_PendingCreation.has_value())
 		return false;
 
-	g_SelectedClass = g_PendingCreation->eCharacterClass;
-	g_ActiveCharacterId = g_PendingCreation->strCharacterId;
+	std::string activeCharacterId = g_PendingCreation->strCharacterId;
 	/* A new character joins this process roster only once Bern is really entered. */
 	if (g_PendingCreation->bNewCharacter)
 	{
@@ -223,10 +327,16 @@ bool_t Client::CCharacterSelectionState::Commit_PendingCreation()
 		if (!CCharacterRoster::Add(g_PendingCreation->iSlot, g_PendingCreation->eCharacterClass,
 			g_PendingCreation->strNickname, g_PendingCreation->strAppearanceJson,
 			iNewIndex, strRosterStatus))
+		{
 			OutputDebugStringA(("[CharacterSelection] Roster creation failed: " + strRosterStatus + "\n").c_str());
-		else
-			g_ActiveCharacterId = CCharacterRoster::Get_Entries()[iNewIndex].strCharacterId;
+			return false;
+		}
+		activeCharacterId = CCharacterRoster::Get_Entries()[iNewIndex].strCharacterId;
 	}
+	g_SelectedClass = g_PendingCreation->eCharacterClass;
+	g_ActiveCharacterId = std::move(activeCharacterId);
+	g_HasFinalCapture = false;
+	g_CaptureStatus = CHARACTER_CAPTURE_STATUS::NONE;
 	CHARACTER_WORLD_STATE saved;
 	g_RestoreRequired = !g_ActiveCharacterId.empty() && CCharacterRoster::Try_Get_WorldState(g_ActiveCharacterId, saved);
 	g_RestoreRequestSequence = 0u;

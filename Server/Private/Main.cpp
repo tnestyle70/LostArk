@@ -35,6 +35,8 @@ int main(const int argumentCount, char** arguments)
 		return LostArk::Server::CServerGameplayContractRunner::Run_ValtanPatternControl();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--battle-items-contract-test")
 		return LostArk::Server::CServerGameplayContractRunner::Run_BattleItemsOnly();
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--character-state-contract-test")
+		return LostArk::Server::CServerGameplayContractRunner::Run_CharacterStateOnly();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--room-ping-contract-test")
 		return LostArk::Server::CServerGameplayContractRunner::Run_RoomPing();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--kouku-draft-contract-test")

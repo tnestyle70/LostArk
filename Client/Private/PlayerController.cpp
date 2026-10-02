@@ -3,6 +3,7 @@
 #include "imgui.h"
 
 #include "PlayerController.h"
+#include "CharacterSelectionState.h"
 #include "ItemCatalog.h"
 
 #include "ActorCatalog.h"
@@ -233,10 +234,11 @@ void Client::CPlayerController::Update(
 	const bool_t requestedGameplayCommandsEnabled, const bool_t debugPlacementEnabled)
 {
 	// Cancel local targeting/held intent and suppress new commands when this Client loses focus.
-	const bool_t gameplayCommandsEnabled = requestedGameplayCommandsEnabled &&
+	const bool_t syncingCharacter = CCharacterSelectionState::Is_WorldStateSyncPending();
+	const bool_t gameplayCommandsEnabled = requestedGameplayCommandsEnabled && !syncingCharacter &&
 		GetForegroundWindow() == g_hWnd;
 	m_bGameplayCommandsEnabled = gameplayCommandsEnabled;
-	Update_DebugPlayerPlacement(debugPlacementEnabled && !gameplayCommandsEnabled);
+	Update_DebugPlayerPlacement(debugPlacementEnabled && !gameplayCommandsEnabled && !syncingCharacter);
 	const bool_t marioControlsActive = Update_MarioControls(gameplayCommandsEnabled);
 	{
 		const bool_t useRawVehicleKeyboard =

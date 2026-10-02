@@ -464,6 +464,14 @@ bool Client::CClientReplication::Update()
 				event.EncounterPropSync) && allSucceeded;
 			break;
 
+		case CLIENT_REPLICATION_EVENT_TYPE::CAPTURE_CHARACTER_RESULT:
+			CCharacterSelectionState::Apply_CaptureResult(event.CaptureCharacterResult, m_iOwnedWorldInboundGeneration);
+			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::UPGRADE_EQUIPMENT_RESULT:
+			CCombatHUDViewModel::Get().Apply_UpgradeEquipmentResult(event.UpgradeEquipmentResult);
+			break;
+
 		case CLIENT_REPLICATION_EVENT_TYPE::RESTORE_CHARACTER_RESULT:
 			if (CCharacterSelectionState::Apply_RestoreResult(event.RestoreCharacterResult))
 			{

@@ -565,6 +565,8 @@ namespace
 		string strItemId;
 		wstring strName;
 		string strIconPath;
+		LostArk::Shared::EQUIPMENT_SLOT eSlot = LostArk::Shared::EQUIPMENT_SLOT::NONE;
+		uint16_t iUpgradeLevel = 0;
 	};
 
 	bool_t ConvertUtf8ToWide(const string& strUtf8, wstring& outWide)
@@ -593,13 +595,7 @@ namespace
 			const ITEM_DEFINITION* pDefinition = CItemCatalog::Find_ById(item.strItemId);
 			if (!item.iQuantity || nullptr == pDefinition || "combat" != pDefinition->strCategory)
 				continue;
-			static constexpr const char* equipmentSlots[] = { "weapon", "helmet", "shoulder", "top", "pants", "gloves" };
-			if (std::find(std::begin(equipmentSlots), std::end(equipmentSlots), pDefinition->strEquipSlot) == std::end(equipmentSlots))
-				continue;
-			string setSlotSuffix = "_HONORWHISPER_";
-			for (const char letter : pDefinition->strEquipSlot)
-				setSlotSuffix.push_back(static_cast<char>(letter - 'a' + 'A'));
-			if (!pDefinition->strItemId.starts_with("EQUIP_") || !pDefinition->strItemId.ends_with(setSlotSuffix))
+			if (!LostArk::Shared::Is_Upgradeable_Equipment(pDefinition->strItemId, pDefinition->strEquipSlot))
 				continue;
 			wstring strName;
 			if (!ConvertUtf8ToWide(pDefinition->strDisplayName, strName))
@@ -608,6 +604,8 @@ namespace
 			info.strItemId = pDefinition->strItemId;
 			info.strName = std::move(strName);
 			info.strIconPath = pDefinition->strIconPath;
+			info.eSlot = item.eEquippedSlot;
+			info.iUpgradeLevel = item.iUpgradeLevel;
 			slots.push_back(std::move(info));
 		}
 		return slots;
@@ -777,15 +775,75 @@ void CMainApp::Open_SystemOptionsWindow()
 
 bool_t CMainApp::Return_ToCharacterSelect()
 {
-	if (CLevelTransitionService::Is_Pending())
+	if (CLevelTransitionService::Is_Pending() || m_bCharacterReturnPending)
 		return false;
+	CNetworkManager& network = CNetworkManager::Get();
+	if (CCharacterSelectionState::Has_ActiveCharacter() && network.Is_Connected() &&
+		!CCharacterSelectionState::Is_RestorePending())
+	{
+		using namespace LostArk::Shared;
+		WORLD_ID world = WORLD_ID::END;
+		switch (static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID()))
+		{
+		case LEVEL::BERN: world = WORLD_ID::BERN; break;
+		case LEVEL::VALTAN_ARENA: world = WORLD_ID::VALTAN_ARENA; break;
+		case LEVEL::KAKULSAYDON_ARENA: world = WORLD_ID::KAKULSAYDON_ARENA; break;
+		case LEVEL::MAHARAKA: world = WORLD_ID::MAHARAKA; break;
+		case LEVEL::COLOSSEUM: world = WORLD_ID::COLOSSEUM; break;
+		default: break;
+		}
+		if (world != WORLD_ID::END)
+		{
+			const auto sequence = CCharacterSelectionState::Next_StateRequestSequence();
+			const auto generation = network.Get_WorldInboundGeneration();
+			if (!CCharacterSelectionState::Begin_WorldStateCapture(sequence, world,
+				network.Get_LocalPlayerId(), network.Get_LocalEntityId(), generation)) return false;
+			CNetworkPlayerCommandSink sink;
+			if (!sink.Request_CaptureCharacter(sequence))
+			{
+				CCharacterSelectionState::Finish_WorldStateCapture();
+				CLevelTransitionService::Report_Recovery(SESSION_DIAGNOSTIC_REASON::CLIENT_IDENTITY_COMMIT_FAILED,
+					"character.capture-send", "Character state could not be requested. Retry character selection.", E_FAIL);
+				return false;
+			}
+			m_bCharacterReturnPending = true;
+			m_dCharacterCaptureStartedAt = Product_Now_Seconds();
+			m_iCharacterCaptureWorldGeneration = generation;
+			// Keep the current Level updating replication until its final state arrives.
+			return false;
+		}
+	}
 	CCharacterSelectionState::Capture_ActiveWorldState();
-	if (!CLevelTransitionService::Request_Load(LEVEL::LOBBY, "world.menu.character-select"))
-		return false;
+	if (!CLevelTransitionService::Request_Load(LEVEL::LOBBY, "world.menu.character-select")) return false;
 	m_bOpenCharacterSelectOnLobby = true;
-	/* The Server removes this player through its normal disconnect handling. */
-	CNetworkManager::Get().Close_ServerConnection();
+	network.Close_ServerConnection();
 	return true;
+}
+
+void CMainApp::Pump_ReturnToCharacterSelect()
+{
+	if (!m_bCharacterReturnPending) return;
+	CNetworkManager& network = CNetworkManager::Get();
+	const auto status = CCharacterSelectionState::Get_WorldStateCaptureStatus();
+	const bool_t sameWorld = network.Get_WorldInboundGeneration() == m_iCharacterCaptureWorldGeneration;
+	if (status == CHARACTER_CAPTURE_STATUS::CAPTURED && sameWorld && !CLevelTransitionService::Is_Pending())
+	{
+		if (!CLevelTransitionService::Request_Load(LEVEL::LOBBY, "world.menu.character-select.saved")) return;
+		m_bOpenCharacterSelectOnLobby = true;
+		m_bCharacterReturnPending = false;
+		CCharacterSelectionState::Finish_WorldStateCapture();
+		network.Close_ServerConnection();
+		return;
+	}
+	if (status == CHARACTER_CAPTURE_STATUS::FAILED || !sameWorld || !network.Is_Connected() ||
+		CLevelTransitionService::Is_Pending() || Product_Now_Seconds() - m_dCharacterCaptureStartedAt >= 5.0)
+	{
+		m_bCharacterReturnPending = false;
+		CCharacterSelectionState::Finish_WorldStateCapture();
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_IDENTITY_COMMIT_FAILED,
+			"character.capture-incomplete", "Character state was not confirmed. The previous slot state is preserved; retry character selection.", E_FAIL);
+	}
 }
 
 void CMainApp::Play_PopupRequestSound()
@@ -819,6 +877,9 @@ void CMainApp::Open_ItemUpgradeWindow()
 		return;
 
 	m_bItemUpgradePreviewVisible = true;
+	m_iPendingItemUpgradeRequest = 0;
+	m_bItemUpgradeResultUnavailable = false;
+	m_bItemUpgradePendingAttemptSuccess = false;
 	/* Show every authored slot first (Hide_ItemUpgrade's own inverse) -- unlike the old
 	CHUDRuntimeView generic Render(class, revision) pass, a CUI_Sprite has no implicit
 	"wasn't drawn this frame" default, so every slot needs an explicit owner. The explicit hides
@@ -860,6 +921,10 @@ void CMainApp::Open_ItemUpgradeWindow()
 
 void CMainApp::Hide_ItemUpgrade()
 {
+	if (ITEM_UPGRADE_ATTEMPT_RESULT::WAITING == m_eItemUpgradeAttemptResult)
+		CGameInstance::Get().Stop_LoopingSound();
+	m_iPendingItemUpgradeRequest = 0;
+	m_eItemUpgradeAttemptResult = ITEM_UPGRADE_ATTEMPT_RESULT::NONE;
 	if (nullptr == m_pItemUpgradeView)
 		return;
 	for (const char_t* pSlotId : ITEM_UPGRADE_ALL_SLOTS)
@@ -984,6 +1049,7 @@ void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
 	Set_Animation_Frame override did before this migration. */
 	m_pItemUpgradeView->Update(fTimeDelta);
 
+	Update_ItemUpgradeServerResult();
 	Update_ItemUpgradeSelection();
 	Update_ItemUpgradeGrowButton();
 	/* Wait-click checked before Reforge triggers a new WAITING -- both react to the same
@@ -1082,10 +1148,6 @@ void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
 		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailEffect", false);
 
 		const bool_t bSuccess = m_bItemUpgradePendingAttemptSuccess;
-		const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
-		const bool_t bHasSelection = !upgradeSlots.empty();
-		const int32_t iSelectedSlot = bHasSelection ? std::clamp(
-			m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(upgradeSlots.size()) - 1) : 0;
 		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessOkBtn", bSuccess);
 		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailOkBtn", !bSuccess);
 		// Real success_mc/fail_mc detail: a decorative frame + item icon sit behind the settled
@@ -1097,25 +1159,8 @@ void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
 		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessDiamondFrame", true);
 		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessItemIconMarker", bSuccess);
 		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailItemIconMarker", !bSuccess);
-		if (bHasSelection)
-		{
-			if (bSuccess)
-			{
-				// Same real icon already shown in the base window's ItemUpgrade_SelectedItemIcon --
-				// the item being reforged doesn't change just because the result modal is up.
-				m_pItemUpgradeView->Set_SlotTexture(
-					"ItemUpgrade_SuccessItemIconMarker", upgradeSlots[iSelectedSlot].strIconPath);
-				// The actual level-up: a real 재련 success raises this item's own tracked level by
-				// 1, so the left list / right ladder / center 현재-다음 all read the new level once
-				// this result is dismissed. A fail leaves the level untouched.
-				++ItemUpgradeLevelRef(upgradeSlots[iSelectedSlot].strItemId);
-			}
-			else
-			{
-				m_pItemUpgradeView->Set_SlotTexture(
-					"ItemUpgrade_FailItemIconMarker", upgradeSlots[iSelectedSlot].strIconPath);
-			}
-		}
+		m_pItemUpgradeView->Set_SlotTexture(bSuccess ?
+			"ItemUpgrade_SuccessItemIconMarker" : "ItemUpgrade_FailItemIconMarker", m_strItemUpgradeAttemptIcon);
 		m_dItemUpgradeResultSettleAt = -1.0;
 	}
 
@@ -2087,6 +2132,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 #endif
 	// Commit last frame's request before this frame builds UI and render queues.
 	// The newly active Level must Update/Late_Update before its first Render.
+	Pump_ReturnToCharacterSelect();
 	Apply_LevelRequest();
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.InputAndUI.Update");
@@ -7406,35 +7452,24 @@ void CMainApp::RenderItemUpgradeListText()
 		const string strLevelSlot = "ItemUpgrade_ListLevel" + to_string(i);
 		const string strNameSlot = "ItemUpgrade_ListItemName" + to_string(i);
 		const wstring strLevel =
-			to_wstring(ItemUpgradeLevelRef(upgradeSlots[i].strItemId)) + L"\xB2E8\xACC4"; // "N단계"
+			to_wstring(upgradeSlots[i].iUpgradeLevel) + L"\xB2E8\xACC4"; // "N단계"
 		DrawFit(strLevelSlot.c_str(), strLevel.c_str(), 0.765f, vLevelColor); // "18단계" (0.85 * 0.9)
 		DrawFit(strNameSlot.c_str(), upgradeSlots[i].strName.c_str(), 0.72f, vNameColor); // 0.8 * 0.9
 	}
 
-	/* Right 재련 단계 list: 7 rows now (JSON grew GradeRowEmblem/GradeStripB/GradeRowText from 4 to
-	7, evenly filling the panel from its top edge down) -- the ask was more row slots, not more
-	stat lines per row, so this stays at 1 stat line ("공격력 +N") like before. Real reference
-	scrolls higher levels at the TOP and the current level at the BOTTOM (numbers increase
-	bottom -> top), so row 0 (topmost) is 6 above the current level and row 6 (bottom, nearest the
-	gauge) is the selected item's own CURRENT level -- 10 -> 11 reforge highlights 10, the level
-	you're actually standing at, not 11 (that's the separate curLevel/nextLevel ">>>" display
-	elsewhere). Computed from the selected item's own tracked level instead of a fixed literal so
-	this ladder shifts with the real level instead of staying frozen at the old 19/25 placeholder
-	range. GradeSelectedExample sits on row 6 to match. Non-selected rows sample as a muted gray
-	(real 24/23/22단계 rows, (103,103,103)); the selected (현재) row uses gold for the level and
-	white for its stat, matching every other "selected" element in this window reading brighter
-	than its neighbors. Stat is a placeholder "공격력 +N" (N = that row's own level) until real
-	per-level balance data exists. */
+	// The ladder reads the selected Server inventory level. Reforging has a 50% chance;
+	// no per-level attack bonus is defined by the current gameplay balance.
 	const fvector_t vRowGray = XMVectorSet(0.4039f, 0.4039f, 0.4039f, 1.f); // #676767
 	const fvector_t vSelectedGold = XMVectorSet(1.0f, 0.7412f, 0.2902f, 1.f); // #FFBD4A
 	const int32_t ROW_COUNT = 7;
 	const int32_t iSelectedForLadder = upgradeSlots.empty() ? -1 : std::clamp(
 		m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(upgradeSlots.size()) - 1);
 	const int32_t iCurrentLevel = (iSelectedForLadder >= 0) ?
-		ItemUpgradeLevelRef(upgradeSlots[iSelectedForLadder].strItemId) : 10;
+		upgradeSlots[iSelectedForLadder].iUpgradeLevel : 0;
 	int32_t ROW_LEVELS[ROW_COUNT];
 	for (int32_t i = 0; i < ROW_COUNT; ++i)
-		ROW_LEVELS[i] = iCurrentLevel + (ROW_COUNT - 1 - i);
+		ROW_LEVELS[i] = (std::min)(iCurrentLevel + (ROW_COUNT - 1 - i),
+			static_cast<int32_t>(LostArk::Shared::MAX_EQUIPMENT_UPGRADE_LEVEL));
 	for (int32_t i = 0; i < ROW_COUNT; ++i)
 	{
 		const string strSlot = "ItemUpgrade_GradeRowText" + to_string(i);
@@ -7448,7 +7483,7 @@ void CMainApp::RenderItemUpgradeListText()
 
 		const wstring strNum = to_wstring(ROW_LEVELS[i]);
 		const wchar_t* pDanggye = L"\xB2E8\xACC4"; // "단계"
-		const wstring strStat = L"\xACF5\xACA9\xB825 +" + to_wstring(ROW_LEVELS[i]); // "공격력 +N"
+		const wstring strStat = L"\xC131\xACF5\xB960 50%"; // Server success rate, no invented attack bonus.
 
 		const float2_t vNumMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strNum.c_str());
 		const f32_t fNumScale = (std::min)(
@@ -7593,18 +7628,28 @@ void CMainApp::Update_ItemUpgradeReforgeButton()
 
 	Play_UIButtonClickSound();
 
-	/* Placeholder pass/fail rate -- Data/Balance has no real 재련 success-rate field yet, so this
-	is a flat 50% purely so both result screens can be exercised while testing. The Client never
-	owns real success/fail authority; replace with a real Server-resolved outcome once one exists,
-	the same way every other "no real Server data yet" placeholder in this preview is flagged.
-	Rolled now but held in m_bItemUpgradePendingAttemptSuccess -- not shown until
-	Update_ItemUpgradeResultWaitClick() reveals it, matching the real "화면을 클릭하여 결과 즉시
-	확인" suspense screen instead of an instant reveal.
-	static std::mt19937, not std::rand(): std::rand() is never seeded (no srand() call anywhere
-	in this codebase) so its first call after process start is always the same fixed value --
-	every fresh session's first 재련 attempt was landing on the same outcome every time. */
-	static std::mt19937 s_itemUpgradeRng{ std::random_device{}() };
-	m_bItemUpgradePendingAttemptSuccess = (s_itemUpgradeRng() % 100) < 50;
+	const vector<ITEM_UPGRADE_SLOT_INFO> slots = BuildItemUpgradeSlots();
+	if (slots.empty() || !m_iNextItemUpgradeRequest || CCharacterSelectionState::Is_WorldStateSyncPending())
+		return;
+	const auto& item = slots[std::clamp(m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(slots.size()) - 1)];
+	auto* bern = CLevel_Bern::Get_Active();
+	const auto sink = bern ? bern->Get_PlayerCommandSink() : nullptr;
+	LostArk::Shared::C2S_UPGRADE_EQUIPMENT request{};
+	request.iRequestSequence = m_iNextItemUpgradeRequest++;
+	request.strItemId = item.strItemId;
+	request.eSlot = item.eSlot;
+	request.iExpectedUpgradeLevel = item.iUpgradeLevel;
+	m_strItemUpgradeAttemptItemId = item.strItemId;
+	m_strItemUpgradeAttemptIcon = item.strIconPath;
+	m_strItemUpgradeAttemptName = item.strName;
+	m_eItemUpgradeAttemptSlot = item.eSlot;
+	m_iItemUpgradeConfirmedLevel = item.iUpgradeLevel;
+	m_bItemUpgradePendingAttemptSuccess = false;
+	const bool submitted = CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::BERN) &&
+		sink && sink->Request_UpgradeEquipment(request);
+	m_iPendingItemUpgradeRequest = submitted ? request.iRequestSequence : 0;
+	m_dItemUpgradeRequestDeadline = Product_Now_Seconds() + 5.0;
+	m_bItemUpgradeResultUnavailable = !submitted;
 	m_eItemUpgradeAttemptResult = ITEM_UPGRADE_ATTEMPT_RESULT::WAITING;
 	// The wait screen replaces the whole window's content, not just the reforge button --
 	// snap the gauge back to idle 0% now instead of leaving the old 100% fill visible behind it,
@@ -7613,19 +7658,55 @@ void CMainApp::Update_ItemUpgradeReforgeButton()
 	Reset_ItemUpgradeIdleGauge();
 	Set_ItemUpgradeCenterPanelVisible(false);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitBg", true);
-	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", true);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", submitted);
 	m_pItemUpgradeView->Restart_Animation("ItemUpgrade_ResultWaitEmblem");
 
 	/* UI owns this loop independently; level/encounter BGM keeps playing. */
 	const filesystem::path waitSoundPath = CRuntimeAssetRoot::Resolve(
 		L"Sound/UI/Enhancement/sys_enhance_3_waiting1__95424590.wav");
-	CGameInstance::Get().Play_LoopingSound(waitSoundPath.wstring(), 1.f);
+	if (submitted)
+		CGameInstance::Get().Play_LoopingSound(waitSoundPath.wstring(), 1.f);
+}
+
+void CMainApp::Update_ItemUpgradeServerResult()
+{
+	if (!m_iPendingItemUpgradeRequest) return;
+	using namespace LostArk::Shared;
+	const auto& hud = CCombatHUDViewModel::Get();
+	const auto& result = hud.Get_UpgradeEquipmentResult();
+	const bool inBern = CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::BERN) &&
+		CLevel_Bern::Get_Active() && hud.Get_Player().isValid;
+	if (inBern && result.iRequestSequence == m_iPendingItemUpgradeRequest && result.eWorldId == WORLD_ID::BERN)
+	{
+		const auto& items = hud.Get_Inventory().Items;
+		const auto item = std::find_if(items.begin(), items.end(), [this](const INVENTORY_ITEM_SNAPSHOT& entry)
+		{
+			return entry.strItemId == m_strItemUpgradeAttemptItemId && entry.eEquippedSlot == m_eItemUpgradeAttemptSlot;
+		});
+		m_bItemUpgradeResultUnavailable = result.eResult == EQUIPMENT_UPGRADE_RESULT::REJECTED ||
+			item == items.end() || item->iUpgradeLevel != result.iUpgradeLevel;
+		m_bItemUpgradePendingAttemptSuccess = !m_bItemUpgradeResultUnavailable &&
+			result.eResult == EQUIPMENT_UPGRADE_RESULT::SUCCEEDED;
+		m_iItemUpgradeConfirmedLevel = result.iUpgradeLevel;
+		m_iPendingItemUpgradeRequest = 0;
+	}
+	else if (!inBern || Product_Now_Seconds() >= m_dItemUpgradeRequestDeadline)
+	{
+		m_iPendingItemUpgradeRequest = 0;
+		m_bItemUpgradeResultUnavailable = true;
+	}
+	if (m_bItemUpgradeResultUnavailable)
+	{
+		CGameInstance::Get().Stop_LoopingSound();
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", false);
+	}
 }
 
 void CMainApp::Update_ItemUpgradeResultWaitClick()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
 		ITEM_UPGRADE_ATTEMPT_RESULT::WAITING != m_eItemUpgradeAttemptResult ||
+		m_iPendingItemUpgradeRequest ||
 		!CUIInputRouter::Get().Is_LeftClickEdge())
 	{
 		return;
@@ -7635,6 +7716,13 @@ void CMainApp::Update_ItemUpgradeResultWaitClick()
 	// window's own buttons are hidden by Set_ItemUpgradeCenterPanelVisible(false)), so claiming
 	// the mouse here is a formality for consistency with every other real click this router sees.
 	CUIInputRouter::Get().Claim_Mouse_This_Frame();
+	if (m_bItemUpgradeResultUnavailable)
+	{
+		m_bItemUpgradePreviewVisible = false;
+		Hide_ItemUpgrade();
+		Open_ItemUpgradeWindow();
+		return;
+	}
 
 	// ItemUpgrade_ResultWaitBg (the same solid-black backdrop already showing behind the wait
 	// circle) stays visible all the way through burst-playing and the settled result -- it's the
@@ -7762,11 +7850,6 @@ void CMainApp::Reset_ItemUpgradeIdleGauge()
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", false);
 }
 
-int32_t& CMainApp::ItemUpgradeLevelRef(const string& strItemId)
-{
-	return m_ItemUpgradeLevels.try_emplace(strItemId, 10).first->second;
-}
-
 void CMainApp::Set_ItemUpgradeCenterPanelVisible(bool_t bVisible)
 {
 	if (nullptr == m_pItemUpgradeView)
@@ -7840,11 +7923,10 @@ void CMainApp::RenderItemUpgradeLevelText()
 		}
 	}
 
-	// "N단계" / "(N+1)단계" -- reads the same real per-item level state everything else in this
-	// preview now shares (ItemUpgradeLevelRef), instead of a fixed "18단계"/"19단계" literal.
-	const int32_t iLevel = ItemUpgradeLevelRef(upgradeSlots[iSelectedSlot].strItemId);
+	// Current and next levels consume the Server inventory snapshot.
+	const int32_t iLevel = upgradeSlots[iSelectedSlot].iUpgradeLevel;
 	const wstring strCurLevel = to_wstring(iLevel) + L"\xB2E8\xACC4";
-	const wstring strNextLevel = to_wstring(iLevel + 1) + L"\xB2E8\xACC4";
+	const wstring strNextLevel = to_wstring((std::min)(iLevel + 1, static_cast<int32_t>(LostArk::Shared::MAX_EQUIPMENT_UPGRADE_LEVEL))) + L"\xB2E8\xACC4";
 	struct LEVEL_TEXT_ENTRY
 	{
 		const char* pSlotId;
@@ -7893,28 +7975,12 @@ void CMainApp::RenderItemUpgradeMaterialCounts()
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	/* Placeholder preview economy, matching the fixed 18 -> 19 level text drawn above
-	(no live Server balance data is wired into this preview): required amount for the
-	18 -> 19 transition, i.e. targetLevel = 19.
-	  - blue crystal : 100 per level (100 * targetLevel)
-	  - pink gem     : 5 per every 5-level band (5 * ceil(targetLevel / 5))
-	  - orange gem   : 3 per every 5-level band (3 * ceil(targetLevel / 5))
-	Owned is a placeholder 9999 until real inventory data is wired in. Colors are the real
-	sampled reference (lime "owned/[B7FB00]" when owned >= required, red "0xE73517" style
-	when short) -- reference screenshot shows all three counts at one shared font size
-	regardless of digit count, so this measures the longest string once (rather than
-	independently fitting each slot's own box) and reuses that scale for all three. */
-	const int32_t iTargetLevel = 19;
-	const int32_t iBand = (iTargetLevel + 4) / 5;
-	const int32_t iOwned = 9999;
-	const int32_t iRequired[3] = { 100 * iTargetLevel, 5 * iBand, 3 * iBand };
+	// The current Server policy charges no materials or currency.
+	const wstring strAmount = L"\xBB34\xB8CC";
 	const char* SLOT_IDS[3] = { "ItemUpgrade_RecipeAmount0", "ItemUpgrade_RecipeAmount1", "ItemUpgrade_RecipeAmount2" };
 	const fvector_t vSufficientColor = XMVectorSet(0.7176f, 0.9843f, 0.0f, 1.f); // #B7FB00
-	const fvector_t vInsufficientColor = XMVectorSet(0.9059f, 0.2078f, 0.0902f, 1.f); // #E73517
 
-	/* One shared scale for all three (so digit-count differences don't change apparent size),
-	but taken as the minimum fit across all three slots' own box -- not just the first slot's
-	height -- so the longest string ("9999 / 1900") can't overflow into its neighbors. */
+	// Use one scale across the three recipe labels.
 	f32_t fSharedScale = 1.f;
 	{
 		bool_t bAny = false;
@@ -7924,7 +7990,6 @@ void CMainApp::RenderItemUpgradeMaterialCounts()
 			if (!m_pItemUpgradeView->Get_SlotRect(SLOT_IDS[i], fX, fY, fW, fH))
 				continue;
 
-			const wstring strAmount = to_wstring(iOwned) + L" / " + to_wstring(iRequired[i]);
 			const float2_t vMeasured =
 				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strAmount.c_str());
 			if (vMeasured.y <= 0.f || vMeasured.x <= 0.f)
@@ -7945,8 +8010,7 @@ void CMainApp::RenderItemUpgradeMaterialCounts()
 		const f32_t fCenterX = fX + fWidth * 0.5f;
 		const f32_t fCenterY = fY + fHeight * 0.5f;
 
-		const wstring strAmount = to_wstring(iOwned) + L" / " + to_wstring(iRequired[i]);
-		const fvector_t vColor = (iOwned >= iRequired[i]) ? vSufficientColor : vInsufficientColor;
+		const fvector_t vColor = vSufficientColor;
 		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strAmount.c_str(),
 			float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
 			vColor, 0.f, float2_t(0.5f, 0.5f), fSharedScale * textUiScale);
@@ -8004,8 +8068,11 @@ void CMainApp::RenderItemUpgradeResultWaitText()
 	The real flow has this as a second stage (a first white "버튼을 클릭해 재련 결과를 확인하세요"
 	+ its own confirm button, only after which this yellow prompt appears) -- simplified here to
 	just this one yellow line per instruction, skipping the first stage/button entirely. */
-	const wstring strPrompt =
-		L"\xD654\xBA74\xC744 \xD074\xB9AD\xD558\xC5EC \xACB0\xACFC \xC989\xC2DC \xD655\xC778";
+	const wstring strPrompt = m_iPendingItemUpgradeRequest ?
+		L"\xC11C\xBC84 \xACB0\xACFC\xB97C \xAE30\xB2E4\xB9AC\xB294 \xC911\xC785\xB2C8\xB2E4" :
+		(m_bItemUpgradeResultUnavailable ?
+		L"\xACB0\xACFC\xB97C \xD655\xC778\xD558\xC9C0 \xBABB\xD588\xC2B5\xB2C8\xB2E4. \xD074\xB9AD\xD558\xC5EC \xB3CC\xC544\xAC00\xAE30" :
+		L"\xD654\xBA74\xC744 \xD074\xB9AD\xD558\xC5EC \xACB0\xACFC \xC989\xC2DC \xD655\xC778");
 	const float2_t vMeasured =
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strPrompt.c_str());
 	const f32_t fScale = (vMeasured.y > 0.f) ? (fHeight * 0.045f / vMeasured.y) : 1.f;
@@ -8052,20 +8119,13 @@ void CMainApp::RenderItemUpgradeSuccessDetailText()
 	// Item name -- same selected-item name/gold-orange tone AND same real size (rect height 19.2,
 	// 0.95f ratio) as RenderItemUpgradeLevelText already draws over the base window's own
 	// ItemUpgrade_ItemNameLabel, directly under the icon.
-	const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
-	if (upgradeSlots.empty())
-		return;
-	const int32_t iSelectedSlot = std::clamp(
-		m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(upgradeSlots.size()) - 1);
 	const fvector_t vGoldOrange = XMVectorSet(1.0f, 0.5686f, 0.0f, 1.f);
 	DrawCentered("ItemUpgrade_SuccessItemNameMarker",
-		upgradeSlots[iSelectedSlot].strName.c_str(), 0.95f, vGoldOrange);
+		m_strItemUpgradeAttemptName.c_str(), 0.95f, vGoldOrange);
 
-	// Grade/level reached -- the selected item's level is already incremented by the time this
-	// shows (Update_ItemUpgradeResultWaitClick bumps it the instant success is revealed), so this
-	// reads the real new level directly instead of a "+1" guess.
+	// The matching Server reply confirms this level after its inventory snapshot.
 	const wstring strReachedLevel =
-		to_wstring(ItemUpgradeLevelRef(upgradeSlots[iSelectedSlot].strItemId)) + L"\xB2E8\xACC4";
+		to_wstring(m_iItemUpgradeConfirmedLevel) + L"\xB2E8\xACC4";
 	DrawCentered("ItemUpgrade_SuccessGradeMarker", strReachedLevel.c_str(), 0.9f, vGoldOrange);
 
 	// "재련 성공" -- light green (연두), by explicit user request.
@@ -8113,14 +8173,9 @@ void CMainApp::RenderItemUpgradeFailDetailText()
 	// RenderItemUpgradeLevelText already draws over the base window's own ItemUpgrade_ItemNameLabel,
 	// directly under the icon (real failItemName_lb placement traced from fail_mc's timeline; no
 	// distinct color was recoverable for it, so this reuses success's confirmed tone).
-	const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
-	if (upgradeSlots.empty())
-		return;
-	const int32_t iSelectedSlot = std::clamp(
-		m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(upgradeSlots.size()) - 1);
 	const fvector_t vGoldOrange = XMVectorSet(1.0f, 0.5686f, 0.0f, 1.f);
 	DrawCentered("ItemUpgrade_FailItemNameMarker",
-		upgradeSlots[iSelectedSlot].strName.c_str(), 0.95f, vGoldOrange);
+		m_strItemUpgradeAttemptName.c_str(), 0.95f, vGoldOrange);
 
 	// "재련 실패" -- red, by explicit user request. A failed reforge does not change level, so unlike
 	// the success screen there is no grade/level marker here -- this sits directly under the name.

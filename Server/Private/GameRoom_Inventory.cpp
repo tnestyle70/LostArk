@@ -54,6 +54,8 @@ bool LostArk::Server::CGameRoom::Grant_Item(
 		INVENTORY_ITEM_SNAPSHOT item{};
 		item.strItemId = itemId;
 		item.iQuantity = (std::min)(quantity, itemDefinition->iMaxStack);
+		if (Is_Upgradeable_Equipment(itemId, itemDefinition->strEquipSlot))
+			item.iUpgradeLevel = INITIAL_EQUIPMENT_UPGRADE_LEVEL;
 		player.Inventory.push_back(std::move(item));
 	}
 	else
@@ -340,6 +342,7 @@ bool LostArk::Server::CGameRoom::Apply_SetEquipment(
 		equipped.iQuantity = 1u;
 		equipped.eEquippedSlot = request.eSlot;
 		equipped.iDurabilityPercent = bagEntry->iDurabilityPercent;
+		equipped.iUpgradeLevel = bagEntry->iUpgradeLevel;
 		inventory.push_back(std::move(equipped));
 	}
 	else
@@ -501,6 +504,8 @@ bool LostArk::Server::CGameRoom::Apply_BuyItems(
 			INVENTORY_ITEM_SNAPSHOT item{};
 			item.strItemId = granted->strItemId;
 			item.iQuantity = entry.iQuantity;
+			if (Is_Upgradeable_Equipment(item.strItemId, granted->strEquipSlot))
+				item.iUpgradeLevel = INITIAL_EQUIPMENT_UPGRADE_LEVEL;
 			staged.push_back(std::move(item));
 		}
 		else
@@ -549,6 +554,9 @@ bool LostArk::Server::CGameRoom::Validate_RestoreCharacter(
 		const SERVER_ITEM_DEFINITION* definition = m_ItemCatalog.Find_Item(item.strItemId);
 		if (nullptr == definition || 0u == item.iQuantity || item.iQuantity > definition->iMaxStack)
 			return false;
+		if (Is_Upgradeable_Equipment(item.strItemId, definition->strEquipSlot) ?
+			item.iUpgradeLevel < INITIAL_EQUIPMENT_UPGRADE_LEVEL : item.iUpgradeLevel != 0u)
+			return false;
 		if (EQUIPMENT_SLOT::NONE == item.eEquippedSlot)
 			continue;
 		/* An equipped entry is one item in a slot of its own kind that this class can wear. */
@@ -591,13 +599,97 @@ void LostArk::Server::CGameRoom::Handle_RestoreCharacter(
 		reply(CHARACTER_RESTORE_RESULT::REJECTED_CATALOG);
 		return;
 	}
-	player.Inventory = request.Items;
+	S2C_INVENTORY_SNAPSHOT inventory{request.iRequestSequence, request.Items, request.iSilver, request.iGold};
+	S2C_RESTORE_CHARACTER_RESULT result{request.iRequestSequence, CHARACTER_RESTORE_RESULT::APPLIED, request.iHonorTitleId};
+	CPacketWriter inventoryWriter, resultWriter;
+	CClientSession::RELIABLE_BATCH_TRANSACTION outbound;
+	std::string status;
+	if (!Write_Message(inventoryWriter, inventory) || !Write_Message(resultWriter, result) ||
+		!outbound.Prepare({{session, {{PACKET_TYPE::S2C_INVENTORY_SNAPSHOT, inventoryWriter.Get_Buffer()},
+			{PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT, resultWriter.Get_Buffer()}}}}, status))
+	{ session->Request_Close(); return; }
+	player.Inventory = std::move(inventory.Items);
 	player.Purse.iSilver = request.iSilver;
 	player.Purse.iGold = request.iGold;
 	player.iHonorTitleId = request.iHonorTitleId;
-	if (!Send_InventorySnapshot(session, request.iRequestSequence, player))
+	outbound.Commit();
+}
+
+void LostArk::Server::CGameRoom::Handle_UpgradeEquipment(
+	const SESSION_ID sessionId, const LostArk::Shared::C2S_UPGRADE_EQUIPMENT& request)
+{
+	using namespace LostArk::Shared;
+	const auto session = Find_Session(sessionId);
+	const auto binding = m_PlayerIdBySessionId.find(sessionId);
+	if (!session || binding == m_PlayerIdBySessionId.end()) return;
+	const auto found = m_Players.find(binding->second);
+	if (found == m_Players.end() || found->second.iSessionId != sessionId) return;
+	auto& player = found->second;
+	S2C_UPGRADE_EQUIPMENT_RESULT result{request.iRequestSequence, EQUIPMENT_UPGRADE_RESULT::REJECTED, 0u, m_eWorldId};
+	auto staged = player.Inventory;
+	const auto item = std::find_if(staged.begin(), staged.end(), [&](const auto& owned) {
+		return owned.strItemId == request.strItemId && owned.eEquippedSlot == request.eSlot; });
+	const auto* definition = m_ItemCatalog.Find_Item(request.strItemId);
+	const auto* smith = Find_Placement("npc.bern.schmidt");
+	const bool newer = Is_NewerSequence(request.iRequestSequence, player.iLastEquipmentUpgradeSequence);
+	if (item != staged.end()) result.iUpgradeLevel = item->iUpgradeLevel;
+	auto random = m_EquipmentUpgradeRandom;
+	if (newer && WORLD_ID::BERN == m_eWorldId && player.iCurrentHp && smith &&
+		std::hypot(player.fPositionX - smith->fPositionX, player.fPositionZ - smith->fPositionZ) <= 6.f &&
+		std::abs(player.fPositionY - smith->fPositionY) <= 3.f && definition &&
+		Is_Upgradeable_Equipment(request.strItemId, definition->strEquipSlot) &&
+		Is_UsableByClass(*definition, player.eCharacterClass) && item != staged.end() &&
+		item->iQuantity == 1u && item->iUpgradeLevel == request.iExpectedUpgradeLevel &&
+		item->iUpgradeLevel >= INITIAL_EQUIPMENT_UPGRADE_LEVEL && item->iUpgradeLevel < MAX_EQUIPMENT_UPGRADE_LEVEL)
+	{
+		// Preserve the existing no-cost 50 percent policy; the Server owns the outcome.
+		const bool success = std::uniform_int_distribution<unsigned>(0u, 1u)(random) != 0u;
+		result.eResult = success ? EQUIPMENT_UPGRADE_RESULT::SUCCEEDED : EQUIPMENT_UPGRADE_RESULT::FAILED;
+		if (success) ++item->iUpgradeLevel;
+		result.iUpgradeLevel = item->iUpgradeLevel;
+	}
+	S2C_INVENTORY_SNAPSHOT inventory{request.iRequestSequence, staged, player.Purse.iSilver, player.Purse.iGold};
+	CPacketWriter inventoryWriter, resultWriter;
+	CClientSession::RELIABLE_BATCH_TRANSACTION outbound;
+	std::string status;
+	if (!Write_Message(inventoryWriter, inventory) || !Write_Message(resultWriter, result) ||
+		!outbound.Prepare({{session, {{PACKET_TYPE::S2C_INVENTORY_SNAPSHOT, inventoryWriter.Get_Buffer()},
+			{PACKET_TYPE::S2C_UPGRADE_EQUIPMENT_RESULT, resultWriter.Get_Buffer()}}}}, status))
 	{ session->Request_Close(); return; }
-	reply(CHARACTER_RESTORE_RESULT::APPLIED, player.iHonorTitleId);
+	if (newer) player.iLastEquipmentUpgradeSequence = request.iRequestSequence;
+	if (result.eResult != EQUIPMENT_UPGRADE_RESULT::REJECTED)
+	{
+		player.Inventory = std::move(staged);
+		player.bRestoreAvailable = false;
+		m_EquipmentUpgradeRandom = random;
+	}
+	outbound.Commit();
+}
+
+void LostArk::Server::CGameRoom::Handle_CaptureCharacter(
+	const SESSION_ID sessionId, const LostArk::Shared::C2S_CAPTURE_CHARACTER& request)
+{
+	using namespace LostArk::Shared;
+	const auto session = Find_Session(sessionId);
+	if (!session) return;
+	S2C_CAPTURE_CHARACTER_RESULT result;
+	result.iRequestSequence = request.iRequestSequence;
+	result.eWorldId = m_eWorldId;
+	const auto binding = m_PlayerIdBySessionId.find(sessionId);
+	const auto found = binding == m_PlayerIdBySessionId.end() ? m_Players.end() : m_Players.find(binding->second);
+	if (found != m_Players.end() && found->second.iSessionId == sessionId && found->second.Is_Human())
+	{
+		const auto& player = found->second;
+		result.eResult = CHARACTER_CAPTURE_RESULT::CAPTURED;
+		result.Items = player.Inventory;
+		result.iSilver = player.Purse.iSilver; result.iGold = player.Purse.iGold;
+		result.iHonorTitleId = player.iHonorTitleId;
+		result.iPlayerId = player.iPlayerId; result.iNetEntityId = player.iNetEntityId;
+		result.eCharacterClass = player.eCharacterClass;
+	}
+	CPacketWriter writer;
+	if (!Write_Message(writer, result) || !session->Send_Frame(PACKET_TYPE::S2C_CAPTURE_CHARACTER_RESULT, writer.Get_Buffer()))
+		session->Request_Close();
 }
 
 void LostArk::Server::CGameRoom::Handle_DespawnAllWorldEntities(

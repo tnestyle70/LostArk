@@ -955,6 +955,8 @@ bool CNetworkManager::Has_DispatchCapacity(
 	case PACKET_TYPE::S2C_COMBAT_OBJECT_DESPAWNED:
 	case PACKET_TYPE::S2C_INVENTORY_SNAPSHOT:
 	case PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT:
+	case PACKET_TYPE::S2C_UPGRADE_EQUIPMENT_RESULT:
+	case PACKET_TYPE::S2C_CAPTURE_CHARACTER_RESULT:
 	case PACKET_TYPE::S2C_PARTY_INVITE_RECEIVED:
 	case PACKET_TYPE::S2C_KOUKUSAYDON_RAID_STATE:
 	case PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE:
@@ -2383,6 +2385,31 @@ bool CNetworkManager::Send_BuyItems(
 		PACKET_TYPE::C2S_BUY_ITEMS,
 		payloadWriter.Get_Buffer(),
 		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_UpgradeEquipment(
+	const LostArk::Shared::C2S_UPGRADE_EQUIPMENT& request)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected()) return false;
+	CPacketWriter writer;
+	std::vector<std::uint8_t> frame;
+	return Write_Message(writer, request) &&
+		Build_Packet_Frame(PACKET_TYPE::C2S_UPGRADE_EQUIPMENT, writer.Get_Buffer(), frame) &&
+		Send_All(frame);
+}
+
+bool CNetworkManager::Send_CaptureCharacter(const std::uint32_t requestSequence)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected()) return false;
+	C2S_CAPTURE_CHARACTER request{};
+	request.iRequestSequence = requestSequence;
+	CPacketWriter writer;
+	std::vector<std::uint8_t> frame;
+	return Write_Message(writer, request) &&
+		Build_Packet_Frame(PACKET_TYPE::C2S_CAPTURE_CHARACTER, writer.Get_Buffer(), frame) &&
+		Send_All(frame);
 }
 
 bool CNetworkManager::Send_RestoreCharacter(
@@ -4687,6 +4714,28 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		m_CharacterClassChangeResults.push_back(std::move(result));
 		break;
 	}
+	case PACKET_TYPE::S2C_UPGRADE_EQUIPMENT_RESULT:
+	{
+		S2C_UPGRADE_EQUIPMENT_RESULT result{};
+		if (!Read_Message(reader, result) || 0 != reader.Get_RemainingSize())
+		{ m_iLastErrorCode.store(WSAEINVAL); return; }
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::UPGRADE_EQUIPMENT_RESULT;
+		event.UpgradeEquipmentResult = result;
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_CAPTURE_CHARACTER_RESULT:
+	{
+		S2C_CAPTURE_CHARACTER_RESULT result{};
+		if (!Read_Message(reader, result) || 0 != reader.Get_RemainingSize())
+		{ m_iLastErrorCode.store(WSAEINVAL); return; }
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::CAPTURE_CHARACTER_RESULT;
+		event.CaptureCharacterResult = std::move(result);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
 	case PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT:
 	{
 		S2C_RESTORE_CHARACTER_RESULT result{};
@@ -5244,6 +5293,19 @@ bool CNetworkManager::Send_All(
 			triggeringPacket,
 			"A packet send was attempted without a live connection.");
 		return false;
+	}
+
+	// A save/restore barrier must not be overtaken by gameplay or economy commands.
+	// Decode the real frame because legacy callers omit triggeringPacket.
+	if (Client::CCharacterSelectionState::Is_WorldStateSyncPending())
+	{
+		LostArk::Shared::PACKET_HEADER header{};
+		if (!LostArk::Shared::Read_Packet_Header(bytes, header) ||
+			(header.ePacketType != LostArk::Shared::PACKET_TYPE::C2S_RESTORE_CHARACTER &&
+			 header.ePacketType != LostArk::Shared::PACKET_TYPE::C2S_CAPTURE_CHARACTER &&
+			 !(header.ePacketType == LostArk::Shared::PACKET_TYPE::C2S_ENTER_WORLD &&
+			   m_iLocalPlayerId == LostArk::Shared::INVALID_PLAYER_ID)))
+			return false;
 	}
 
 	std::size_t sentByteCount = 0;

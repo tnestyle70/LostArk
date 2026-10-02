@@ -162,6 +162,7 @@ public:
 	/* Saves what the character carries, leaves the world for the Lobby and has the character
 	select window open there. False changes nothing (a Level transition is already pending). */
 	bool_t Return_ToCharacterSelect();
+	void Pump_ReturnToCharacterSelect();
 
 	static void Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle);
 	/* Every domain tool writes one stable Pattern ID into this process-wide
@@ -399,15 +400,10 @@ private:
 	ItemUpgrade_CoreFlash once, and hides WingedRingGold/LevelUpMotion2Big/CompleteEffect until
 	the fill reaches 100. */
 	void Update_ItemUpgradeGrowButton();
-	/* Hover/click hit-test for ItemUpgrade_ReforgeButton ("장비 재련"), same pattern as
-	Update_ItemUpgradeGrowButton. Only acts once the gauge is held at 100% (a completed "성장");
-	on click rolls a placeholder pass/fail (no real Server 재련 probability exists yet) into
-	m_bItemUpgradePendingAttemptSuccess and shows the "화면을 클릭하여 결과 즉시 확인" wait
-	overlay instead of the result immediately -- the roll is already decided, just not revealed. */
+	// Reforge submits the selected inventory identity and expected level to the Server.
 	void Update_ItemUpgradeReforgeButton();
-	/* While ITEM_UPGRADE_ATTEMPT_RESULT::WAITING is showing, any left-click anywhere (matching the
-	real "화면을 클릭하여 결과 즉시 확인" prompt, not one specific button rect) reveals the
-	already-rolled outcome: hides the wait overlay and shows the matching result modal. */
+	void Update_ItemUpgradeServerResult();
+	// A click reveals only a matching Server result; pending requests cannot reveal success.
 	void Update_ItemUpgradeResultWaitClick();
 	/* Hover/click hit-test for whichever of ItemUpgrade_SuccessOkBtn/_FailOkBtn is currently
 	shown. On click, hides both result modals and resets the gauge back to idle (0%) the same way
@@ -417,10 +413,6 @@ private:
 	clicked, so the wait/result screens never show the old 100% fill behind them) and
 	Update_ItemUpgradeResultOkButton (same reset on dismiss) -- an idle, non-growing 0% state. */
 	void Reset_ItemUpgradeIdleGauge();
-	/* Returns a mutable reference into m_ItemUpgradeLevels, default-initializing an itemId's first
-	lookup to 10. Every reader/writer of an item's 재련 level goes through this so a never-seen
-	item and a previously-touched one behave identically. */
-	int32_t& ItemUpgradeLevelRef(const string& strItemId);
 	/* Hides (bVisible=false) or restores (true) the base window's own center-panel content --
 	item icon, gauge, recipe materials, 성장/재련 buttons, level-transition arrow -- so none of it
 	bleeds through behind the wait/success/fail modals. Real Lost Ark's wait/result screens read
@@ -764,13 +756,6 @@ private:
 	including equipped items). Row clicks choose it; opening and per-frame sprite synchronization
 	clamp it to the current visible rows. */
 	int32_t m_iItemUpgradeSelectedSlot = 0;
-	/* Real per-item level state, keyed by itemId (not a fixed-size array -- which equipment items
-	exist depends on the live inventory). ItemUpgradeLevelRef() default-inits an item's first
-	lookup to 10 and returns a mutable reference; Update_ItemUpgradeResultWaitClick increments the
-	selected item's entry by 1 the moment a 재련 attempt actually succeeds, a fail leaves it
-	untouched. Every level display in this preview (left list, right 재련 단계 ladder, center
-	현재/다음, success detail) reads through the same helper so they can never drift out of sync. */
-	unordered_map<string, int32_t> m_ItemUpgradeLevels;
 	/* Current held ItemUpgrade_GaugeFill percent (0..100), driven by the ItemUpgrade_LevelUpBtn
 	("성장") click state machine (see m_bItemUpgradeGrowing) instead of a free-running clock. Stays
 	0 until the button is clicked, holds at 100 once the fill completes. Also read directly by
@@ -794,16 +779,23 @@ private:
 	duration later instead of together. */
 	bool_t m_bItemUpgradeCoreFlashPending = false;
 	f64_t m_dItemUpgradeShockwaveScheduledAt = -1.0;
-	/* Which result modal (if any) ItemUpgrade_ReforgeButton's last roll produced. NONE means no
+	/* Which result modal (if any) ItemUpgrade_ReforgeButton's last Server result produced. NONE means no
 	attempt is being shown, so the gauge/reforge button stays interactive; SUCCESS/FAIL means one
 	of ItemUpgrade_SuccessModalBg/_FailModalBg (+ its own OK button) is on screen and blocks a new
 	attempt until Update_ItemUpgradeResultOkButton() dismisses it. */
 	enum class ITEM_UPGRADE_ATTEMPT_RESULT { NONE, WAITING, SUCCESS, FAIL };
 	ITEM_UPGRADE_ATTEMPT_RESULT m_eItemUpgradeAttemptResult = ITEM_UPGRADE_ATTEMPT_RESULT::NONE;
-	/* Rolled the instant Update_ItemUpgradeReforgeButton() clicks, but not shown until
-	Update_ItemUpgradeResultWaitClick() reveals it -- WAITING holds this pending outcome so the
-	"화면을 클릭하여 결과 즉시 확인" suspense screen can sit in front of an already-decided result. */
+	// Presentation state only. Persistent upgrade levels live in the Server inventory snapshot.
 	bool_t m_bItemUpgradePendingAttemptSuccess = false;
+	bool_t m_bItemUpgradeResultUnavailable = false;
+	uint32_t m_iNextItemUpgradeRequest = 1;
+	uint32_t m_iPendingItemUpgradeRequest = 0;
+	f64_t m_dItemUpgradeRequestDeadline = -1.0;
+	string m_strItemUpgradeAttemptItemId;
+	string m_strItemUpgradeAttemptIcon;
+	wstring m_strItemUpgradeAttemptName;
+	LostArk::Shared::EQUIPMENT_SLOT m_eItemUpgradeAttemptSlot = LostArk::Shared::EQUIPMENT_SLOT::NONE;
+	uint16_t m_iItemUpgradeConfirmedLevel = 0;
 	/* Real reforge result flow: the SmeltLoding circle keeps playing UNDER the SmeltSuccess/Fail
 	burst only while that burst is actually playing (90 frames/30fps, real loop=false duration).
 	Update_ItemUpgradeResultWaitClick() sets this to that real duration's wall-clock end; the per-
@@ -974,6 +966,9 @@ private:
 	bool_t m_bSystemOptionKeyDown = false;
 	/* Set by Return_ToCharacterSelect: the Lobby it lands in opens the character select window. */
 	bool_t m_bOpenCharacterSelectOnLobby = false;
+	bool_t m_bCharacterReturnPending = false;
+	f64_t m_dCharacterCaptureStartedAt = 0.0;
+	uint64_t m_iCharacterCaptureWorldGeneration = 0u;
 	/* Edge for Close_RuntimeWindowsForLoading. */
 	bool_t m_bWasLoadingLevel = false;
 	/* Open toggle windows in opening order (oldest first); [0, m_iEscapeWindowCount). */

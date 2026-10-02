@@ -43,7 +43,7 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& carriedInventory,
 	const LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId,
 	const std::string& raidReturnNpcPlacementId,
-	const SERVER_PURSE& carriedPurse)
+	const SERVER_PURSE& carriedPurse, const bool hasCarriedCharacterState)
 {
 	using namespace LostArk::Shared;
 	outReason = SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED;
@@ -216,7 +216,7 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 			player.fShipDockYawDegrees = shipIter->second.fDockYawDegrees;
 		}
 	}
-	if (!carriedInventory.empty() || 0u != bernSquareHoleId)
+	if (hasCarriedCharacterState || !carriedInventory.empty() || 0u != bernSquareHoleId)
 	{
 		// A world transfer carrying the departing player's own live inventory
 		// (e.g. Handle_ReturnToBern) replaces the default fresh-entry grant
@@ -244,6 +244,9 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 			item.strItemId = itemId;
 			item.iQuantity = 1u;
 			item.eEquippedSlot = slot;
+			if (const auto* definition = m_ItemCatalog.Find_Item(itemId); definition &&
+				Is_Upgradeable_Equipment(itemId, definition->strEquipSlot))
+				item.iUpgradeLevel = INITIAL_EQUIPMENT_UPGRADE_LEVEL;
 			player.Inventory.push_back(std::move(item));
 		}
 	}
@@ -456,7 +459,7 @@ bool LostArk::Server::CGameRoom::Join(
 	const LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId,
 	const std::string& raidReturnNpcPlacementId,
 	const SERVER_PURSE& carriedPurse,
-	const LostArk::Shared::WORLD_ID sourceWorld)
+	const LostArk::Shared::WORLD_ID sourceWorld, const bool hasCarriedCharacterState)
 {
 	using namespace LostArk::Shared;
 
@@ -574,7 +577,7 @@ bool LostArk::Server::CGameRoom::Join(
 	std::string status;
 	if (!Stage_PlayerEntry(session, enterWorld, {}, entry, reason, status,
 			spawnPlacementOverrideId, carriedInventory, carriedHonorTitleId,
-			raidReturnNpcPlacementId, carriedPurse))
+			raidReturnNpcPlacementId, carriedPurse, hasCarriedCharacterState))
 	{
 		session->Request_Close(reason, WSAEINVAL, status);
 		return false;

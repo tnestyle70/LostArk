@@ -53,7 +53,15 @@ Lobby의 `KoukuSaydon` 버튼은 기존 `CLobbyCommandService -> C2S_ENTER_WORLD
 
 Character Select의 `Create Character`는 선택 class와 공통 validator를 통과한 1~32-byte UTF-8 nickname을 `CCharacterSelectionState`의 pending identity로 stage한다. Lobby가 그 exact identity로 Bern entry를 승인받고 loading resource, rendering profile, 실제 `Change_Level(BERN)`까지 성공한 뒤에만 created identity로 commit한다. 중간 실패는 pending만 취소하고 기존 created identity는 유지한다. created identity가 없는 direct Bern, Character Select, Training, Valtan, KoukuSaydon entry는 process-local `Test-<process-id>` audition nickname을 사용한다. Bern은 pending 생성이 있으면 이를 우선하며, Lobby/F1의 직접 audition 입장은 생성 commit을 만들지 않는다. Server의 `SERVER_PLAYER::strNickName`과 world transfer가 session lifetime 동안 exact nickname을 보존하고 `S2C_PLAYER_SPAWNED`로 복제한다. nickname은 display text이며 player lookup, Party member ID, 고유성 검사 또는 Client 재실행 뒤 영구 저장에 사용하지 않는다. Bern, Valtan, KoukuSaydon, Maharaka, Colosseum은 `CClientReplication::Collect_PlayerViews`의 Server-replicated nickname과 weak character presentation을 `CWorldPlayerNameplateView`에 전달한다. projection, UTF-8 변환, font draw 실패는 gameplay와 replication을 건드리지 않고 해당 nameplate만 생략한다.
 
-캐릭터 선택은 EXE별 메모리 로스터의 고정 6슬롯을 사용한다. 첫 실행은 빈 슬롯이며 같은 슬롯에서 생성한 캐릭터의 local ID·닉네임·외형과 마지막 Server 인벤토리(장착 포함)·실링·골드·칭호를 캐릭터 선택 복귀 때 보관한다. 다시 선택하면 Bern admission 뒤 검증된 one-shot 복원 결과를 받아 활성화하고, 실패·대기 상태에서는 기존 저장 상태를 보존한다. 여러 캐릭터가 같은 직업이나 닉네임이어도 local ID와 슬롯으로 구분한다. 이 상태는 EXE 종료와 함께 사라지며 LocalAppData의 기존 CharacterRoster.json이나 Git 파일을 읽고 쓰지 않는다. Lobby 로딩은 캐릭터를 미리 준비하지 않고 실제 열린 선택창의 채워진 슬롯에 한해 기존 async asset 경로를 사용한다. 생성용 프리뷰는 별도 생성 화면 진입의 기존 로더가 준비한다.
+캐릭터 선택은 EXE별 메모리 로스터의 고정 6슬롯을 사용한다. 첫 실행은 빈 슬롯이며 같은 슬롯에서 생성한 캐릭터의 local ID·닉네임·외형과 마지막 Server 인벤토리(장착 포함)·실링·골드·칭호를 캐릭터 선택 복귀 때 보관한다. protocol133의 `C2S_CAPTURE_CHARACTER → S2C_CAPTURE_CHARACTER_RESULT`는 room command FIFO에서 앞선 구매·장착·강화 처리가 끝난 상태를 돌려준다. Client는 응답 sequence·world generation·player/entity/class를 검사해 슬롯을 저장한 뒤 연결을 닫는다. 저장·복원 대기 중 새 gameplay/economy 명령은 차단하고,5초 timeout·거부는 기존 슬롯을 보존한다. 다시 선택하면 Bern의 시작 spawn에서 검증된 one-shot 복원 결과를 받아 활성화한다. 선택창 모델도 생성 외형과 저장된 장착 아바타를 함께 사용한다. 여러 캐릭터가 같은 직업이나 닉네임이어도 local ID와 슬롯으로 구분한다. 이 상태는 EXE 종료와 함께 사라지며 LocalAppData의 기존 CharacterRoster.json이나 Git 파일을 읽고 쓰지 않는다. Lobby 로딩은 캐릭터를 미리 준비하지 않고 실제 열린 선택창의 채워진 슬롯에 한해 기존 async asset 경로를 사용한다. 생성용 프리뷰는 별도 생성 화면 진입의 기존 로더가 준비한다.
+
+강화 단계는 `INVENTORY_ITEM_SNAPSHOT::iUpgradeLevel`에 포함되어 장착/해제·월드 이동·캐릭터
+capture/restore가 함께 보존한다. Bern 슈미트 NPC의 `C2S_UPGRADE_EQUIPMENT`는 item ID와
+현재 장착 slot·기대 단계를 제출하며 Server가 소유 여부·거리·sequence·기대 단계를 검사한다.
+현재 Honor Whisper 기본10단계, 무료 시도, 성공률50%를 유지하고, 성공 때 단계를1 올린다.
+Server는 inventory와 typed 결과의 reliable 송신 준비 후에만 상태를 commit한다. UI는
+확정된 단계와 결과만 표시한다. 단계에 따른 전투 능력치 증가는 현재 계약에 포함되지 않는다.
+빈 inventory를 가진 월드 이동도 carried state로 명시해 재화/시작 아이템을 재지급하지 않는다.
 
 
 2026-10-02 23:59 KST까지 공유 LAN Server는 같은 팀 LAN의 `192.168.0.14:7777`이다. 사용자 노트북 Server PC는 현재 `Wi-Fi`에서 `192.168.0.14/24`를 소유한다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `192.168.0.14:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.

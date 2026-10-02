@@ -1157,17 +1157,11 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 		SESSION_DIAGNOSTIC_REASON reason{};
 		if (!target.Stage_PlayerEntry(session, enter, entries, entry, reason, status,
 			spawnPlacementOverrideId, member->second.Inventory, member->second.iHonorTitleId, raidReturnNpcPlacementId,
-			member->second.Purse))
+			member->second.Purse, true))
 		{
 			outResult = SESSION_DIAGNOSTIC_REASON::SERVER_EXPECTED_ROOM_FULL == reason ?
 				PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL : PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED;
 			return false;
-		}
-		if (islandTransfer)
-		{
-			// An intentionally empty bag/purse must not become a fresh-entry grant.
-			entry.Player.Inventory = member->second.Inventory;
-			entry.Player.Purse = member->second.Purse;
 		}
 		entries.push_back(std::move(entry));
 		departingEntities.push_back(member->second.iNetEntityId);

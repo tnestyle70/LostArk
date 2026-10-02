@@ -583,6 +583,7 @@ void Client::CCombatHUDViewModel::Reset_RuntimeState()
 #endif
 	m_Inventory = {};
 	m_bHasInventory = false;
+	m_UpgradeEquipmentResult = {};
 }
 
 void Client::CCombatHUDViewModel::Apply_WorldHealthBars(

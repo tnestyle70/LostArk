@@ -15,6 +15,9 @@ class IPlayerCommandSink
 {
 public:
 	virtual ~IPlayerCommandSink() = default;
+	virtual bool Request_UpgradeEquipment(const LostArk::Shared::C2S_UPGRADE_EQUIPMENT&) { return false; }
+	virtual bool Request_CaptureCharacter(std::uint32_t) { return false; }
+	virtual bool Request_RestoreCharacter(const LostArk::Shared::C2S_RESTORE_CHARACTER&) { return false; }
 	virtual bool Request_UseItem(const LostArk::Shared::C2S_USE_ITEM&) { return false; }
 	virtual bool Request_DebugGiveItem(const LostArk::Shared::C2S_DEBUG_GIVE_ITEM&) { return false; }
 	// Server-owned numeric balance: remote clients never publish local Data.

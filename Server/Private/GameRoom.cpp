@@ -899,6 +899,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 			command.eType != ROOM_COMMAND_TYPE::REGISTER_SESSION && command.eType != ROOM_COMMAND_TYPE::ENTER_WORLD &&
 			command.eType != ROOM_COMMAND_TYPE::COLOSSEUM_LOAD_READY && command.eType != ROOM_COMMAND_TYPE::COLOSSEUM_RETURN &&
 			command.eType != ROOM_COMMAND_TYPE::ROOM_PING && command.eType != ROOM_COMMAND_TYPE::CHAT &&
+			command.eType != ROOM_COMMAND_TYPE::CAPTURE_CHARACTER &&
             !(m_eColosseumPhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::RECRUITING &&
               (command.eType == ROOM_COMMAND_TYPE::MOVE || command.eType == ROOM_COMMAND_TYPE::COLOSSEUM_RECRUIT)) &&
             !(m_eColosseumPhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::FINISHED && (command.eType == ROOM_COMMAND_TYPE::INTERACT_TRIGGER || command.eType == ROOM_COMMAND_TYPE::USE_SQUAREHOLE))) continue;
@@ -911,7 +912,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 			Join(command.iSessionId, command.EnterWorld,
 				command.strSpawnPlacementOverrideId, command.CarriedInventory,
 				command.iCarriedHonorTitleId, command.strRaidReturnNpcPlacementId,
-				command.CarriedPurse, command.eEntrySourceWorldId);
+				command.CarriedPurse, command.eEntrySourceWorldId, command.bHasCarriedCharacterState);
 			break;
 		case ROOM_COMMAND_TYPE::MOVE:
 			Handle_Move(command.iSessionId, command.Move);
@@ -1047,6 +1048,12 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 			break;
 		case ROOM_COMMAND_TYPE::RESTORE_CHARACTER:
 			Handle_RestoreCharacter(command.iSessionId, command.RestoreCharacter);
+			break;
+		case ROOM_COMMAND_TYPE::UPGRADE_EQUIPMENT:
+			Handle_UpgradeEquipment(command.iSessionId, command.UpgradeEquipment);
+			break;
+		case ROOM_COMMAND_TYPE::CAPTURE_CHARACTER:
+			Handle_CaptureCharacter(command.iSessionId, command.CaptureCharacter);
 			break;
 		case ROOM_COMMAND_TYPE::DESPAWN_ALL_WORLD_ENTITIES:
 			Handle_DespawnAllWorldEntities(

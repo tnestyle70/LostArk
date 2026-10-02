@@ -56,6 +56,8 @@ namespace LostArk::Server
 		SET_EQUIPMENT,
 		BUY_ITEMS,
 		RESTORE_CHARACTER,
+		UPGRADE_EQUIPMENT,
+		CAPTURE_CHARACTER,
 		REPAIR_EQUIPMENT,
 		DESPAWN_ALL_WORLD_ENTITIES,
 		CONFIRM_NPC_ENTRY,
@@ -99,8 +101,9 @@ namespace LostArk::Server
 		// Set only by authoritative world transfer, never by a Client entry packet.
 		LostArk::Shared::WORLD_ID eEntrySourceWorldId = LostArk::Shared::WORLD_ID::BERN;
 		/* Server-internal only, never part of the wire message -- see
-		SERVER_WORLD_TRANSFER_REQUEST::CarriedInventory. Empty means grant the
-		default fresh-entry loadout. */
+		SERVER_WORLD_TRANSFER_REQUEST::CarriedInventory. The explicit carry flag
+		preserves an intentionally empty bag and purse during a world transfer. */
+		bool bHasCarriedCharacterState = false;
 		std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT> CarriedInventory;
 		/* Travels with CarriedInventory: the purse the player had in the source world. */
 		SERVER_PURSE CarriedPurse;
@@ -157,6 +160,8 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_SET_EQUIPMENT SetEquipment;
 		LostArk::Shared::C2S_BUY_ITEMS BuyItems;
 		LostArk::Shared::C2S_RESTORE_CHARACTER RestoreCharacter;
+		LostArk::Shared::C2S_UPGRADE_EQUIPMENT UpgradeEquipment;
+		LostArk::Shared::C2S_CAPTURE_CHARACTER CaptureCharacter;
 		LostArk::Shared::C2S_REPAIR_EQUIPMENT RepairEquipment;
 		LostArk::Shared::C2S_DESPAWN_ALL_WORLD_ENTITIES DespawnAllWorldEntities;
 		LostArk::Shared::C2S_CONFIRM_NPC_ENTRY ConfirmNpcEntry;

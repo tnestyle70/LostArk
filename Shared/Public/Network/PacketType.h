@@ -128,7 +128,8 @@ namespace LostArk::Shared
 	// decode the combined layout. 129 carries all four contracts together.
 	// Independent 130 branches add per-item durability or match-isolated Colosseum/Guide contracts.
 	// 132 combines them with the revised Colosseum queue/start layout and rejects older peers.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 132;
+	// 133 carries character capture barriers and authoritative per-item upgrade levels.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 133;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -467,7 +468,11 @@ namespace LostArk::Shared
 		S2C_COLOSSEUM_MATCH_STATE = 121,
 		C2S_GUIDE_CONTROL = 122,
 		C2S_COLOSSEUM_LOAD_READY = 123,
-		C2S_COLOSSEUM_RETURN = 124
+		C2S_COLOSSEUM_RETURN = 124,
+		C2S_UPGRADE_EQUIPMENT = 125,
+		S2C_UPGRADE_EQUIPMENT_RESULT = 126,
+		C2S_CAPTURE_CHARACTER = 127,
+		S2C_CAPTURE_CHARACTER_RESULT = 128
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -595,6 +600,10 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_BUY_ITEMS:
 		case PACKET_TYPE::C2S_RESTORE_CHARACTER:
 		case PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT:
+		case PACKET_TYPE::C2S_UPGRADE_EQUIPMENT:
+		case PACKET_TYPE::S2C_UPGRADE_EQUIPMENT_RESULT:
+		case PACKET_TYPE::C2S_CAPTURE_CHARACTER:
+		case PACKET_TYPE::S2C_CAPTURE_CHARACTER_RESULT:
 		case PACKET_TYPE::C2S_MAHARAKA_AI_TUNING:
 		case PACKET_TYPE::S2C_MAHARAKA_AI_TUNING:
 		case PACKET_TYPE::C2S_REPAIR_EQUIPMENT:

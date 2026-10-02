@@ -587,6 +587,22 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 			"[Level_Bern] Failed to bind local character camera.\n");
 	}
 
+	Try_Send_CharacterRestore();
+	if (CCharacterSelectionState::Is_RestorePending())
+	{
+		m_fCharacterRestoreElapsed += (std::max)(0.f, fTimeDelta);
+		m_PlayerController.Update(false, false);
+		if (m_fCharacterRestoreElapsed >= 5.f)
+		{
+			CLevelTransitionService::Report_Recovery(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_IDENTITY_COMMIT_FAILED,
+				"character.restore-timeout", "Character restore was not confirmed. The saved slot was preserved.", E_FAIL);
+			CNetworkManager::Get().Close_ServerConnection();
+			CLevelTransitionService::Request_Load(LEVEL::LOBBY, "character.restore-timeout");
+		}
+		return;
+	}
+	if (CLevelTransitionService::Is_Pending()) return;
 	Update_EntranceCinematic(fTimeDelta);
 
 	const shared_ptr<CCharacter> localCharacter =
@@ -622,7 +638,6 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 	Update_ValtanEntryDebugPreviewKey();
 #endif
 	Update_SystemMenuButtons();
-	Try_Send_CharacterRestore();
 	Update_ValtanEntryInteraction();
 	Advance_ValtanEntryWalk();
 	Poll_RaidEntryVote();
@@ -1925,17 +1940,21 @@ void CLevel_Bern::Update_SystemMenuButtons()
 
 void CLevel_Bern::Try_Send_CharacterRestore()
 {
-	/* Once the local character is standing the Server has admitted this entry. A character with
-	no saved state just keeps the Server's fresh start. */
-	if (m_bCharacterRestoreSent || nullptr == m_Replication.Get_LocalCharacter())
-		return;
-	CHARACTER_WORLD_STATE State{};
-	if (!CCharacterSelectionState::Try_Get_ActiveWorldState(State))
+	// Bern activation has committed the selected identity before its first Update.
+	// Restore immediately; graphics preparation must not race a player's first command.
+	if (m_bCharacterRestoreSent || !m_pPlayerCommandSink) return;
+	CHARACTER_WORLD_STATE state{};
+	if (!CCharacterSelectionState::Try_Get_ActiveWorldState(state))
 	{ m_bCharacterRestoreSent = true; return; }
-	if (CNetworkManager::Get().Send_RestoreCharacter(
-		1u, State.Items, State.iSilver, State.iGold, State.iHonorTitleId))
+	LostArk::Shared::C2S_RESTORE_CHARACTER request{};
+	request.iRequestSequence = CCharacterSelectionState::Next_StateRequestSequence();
+	request.Items = state.Items;
+	request.iSilver = state.iSilver;
+	request.iGold = state.iGold;
+	request.iHonorTitleId = state.iHonorTitleId;
+	if (m_pPlayerCommandSink->Request_RestoreCharacter(request))
 	{
-		CCharacterSelectionState::Mark_RestoreRequested(1u);
+		CCharacterSelectionState::Mark_RestoreRequested(request.iRequestSequence);
 		m_bCharacterRestoreSent = true;
 	}
 }

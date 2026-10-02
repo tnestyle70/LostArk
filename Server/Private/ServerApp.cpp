@@ -3480,6 +3480,22 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::RESTORE_CHARACTER;
 		command.RestoreCharacter = std::move(request);
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_UPGRADE_EQUIPMENT)
+	{
+		C2S_UPGRADE_EQUIPMENT request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{ closeMalformedPayload("C2S_UPGRADE_EQUIPMENT"); return; }
+		command.eType = ROOM_COMMAND_TYPE::UPGRADE_EQUIPMENT;
+		command.UpgradeEquipment = std::move(request);
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_CAPTURE_CHARACTER)
+	{
+		C2S_CAPTURE_CHARACTER request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{ closeMalformedPayload("C2S_CAPTURE_CHARACTER"); return; }
+		command.eType = ROOM_COMMAND_TYPE::CAPTURE_CHARACTER;
+		command.CaptureCharacter = request;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_DESPAWN_ALL_WORLD_ENTITIES)
 	{
 		C2S_DESPAWN_ALL_WORLD_ENTITIES request{};
@@ -5444,6 +5460,7 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	enterCommand.strRaidReturnNpcPlacementId = transfer.strRaidReturnNpcPlacementId;
 	enterCommand.eEntrySourceWorldId = sourceWorldId;
 	enterCommand.CarriedInventory = transfer.CarriedInventory;
+	enterCommand.bHasCarriedCharacterState = true;
 	enterCommand.CarriedPurse = transfer.CarriedPurse;
 	enterCommand.iCarriedHonorTitleId = transfer.iHonorTitleId;
 	const ROOM_COMMAND_ENQUEUE_RESULT targetEnterResult =
