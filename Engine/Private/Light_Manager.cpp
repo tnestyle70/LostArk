@@ -193,6 +193,11 @@ HRESULT CLight_Manager::Render_Lights(
 
     CProfiler* const profiler = CGameInstance::Get().Get_Profiler();
     CProfilerScope stageScope(profiler, "Render.Lights.StageAndSubmit");
+    // This owner is also used by portrait lighting, outside Render.Lights.
+    const char* receiverScope = ePassReceiver == LIGHT_RECEIVER::SOURCE_CHARACTER ?
+        "Render.Lights.CharacterReceivers" : "Render.Lights.WorldReceivers";
+    CProfilerScope receiverCpuScope(profiler, receiverScope);
+    CProfilerGpuScope receiverGpuScope(profiler, receiverScope);
     const LIGHT_CAMERA_VOLUME cameraVolume(CGameInstance::Get().Get_Transform(D3DTS::VIEW),
         CGameInstance::Get().Get_Transform(D3DTS::PROJ));
     // Upload bounded shader records repeatedly; the frame has no light-count cap.

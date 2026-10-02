@@ -15071,6 +15071,7 @@ void CMainApp::RenderDeveloperTools()
 void CMainApp::RenderRenderingWorkbench()
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Rendering.Build");
+    const bool experimentOwned = m_pRenderingBenchmark && m_pRenderingBenchmark->Is_ExperimentActive();
     const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
     if (m_iRenderingLastLevel != currentLevel)
     {
@@ -15175,6 +15176,7 @@ void CMainApp::RenderRenderingWorkbench()
     };
     if (beginPane("Light Resources###LightResourcesWindowV1", m_bLightResourcesWindowVisible, 0))
     {
+        ImGui::BeginDisabled(experimentOwned);
         static constexpr LEVEL levels[] = { LEVEL::LOBBY, LEVEL::CHARACTER_SELECT, LEVEL::BERN,
             LEVEL::VALTAN_ARENA, LEVEL::KAKULSAYDON_ARENA, LEVEL::DEVELOPMENT };
         static constexpr const char* names[] = { "Lobby", "Character Select", "Bern", "Valtan", "KoukuSaydon", "Development" };
@@ -15189,16 +15191,21 @@ void CMainApp::RenderRenderingWorkbench()
             syncDraft();
         }
         RenderLightingWorkbench();
+        ImGui::EndDisabled();
         ImGui::End();
     }
     if (beginPane("Light Detail###LightDetailWindowV1", m_bLightDetailWindowVisible, 1))
     {
+        ImGui::BeginDisabled(experimentOwned);
         RenderLightDetail();
+        ImGui::EndDisabled();
         ImGui::End();
     }
     if (beginPane("Light Sequencer###LightSequencerWindowV1", m_bLightSequencerWindowVisible, 2))
     {
+        ImGui::BeginDisabled(experimentOwned);
         RenderLightSequencer();
+        ImGui::EndDisabled();
         ImGui::End();
     }
     if (beginPane("Rendering Workbench###RenderingQualityWindowV1", m_bRenderingQualityWindowVisible, 3))
@@ -15230,6 +15237,9 @@ void CMainApp::RenderRenderingWorkbench()
 			CGameInstance::Get().Get_Profiler(), strQualitySummary, m_RenderingProfiles);
 	}
 
+    const bool experimentActive = m_pRenderingBenchmark && m_pRenderingBenchmark->Is_ExperimentActive();
+    if (experimentActive) ImGui::TextWrapped("Session experiment active. End the experiment before editing or saving authored quality.");
+    ImGui::BeginDisabled(experimentActive);
 	const auto applyGlobal = [this]()
 	{
 		if (const auto* source = m_RenderingProfiles.Find_Profile(m_strRenderingQualityProfileId))
@@ -15446,6 +15456,7 @@ void CMainApp::RenderRenderingWorkbench()
 	ImGui::TextWrapped("%s", m_strRenderingStatus.c_str());
 	ImGui::TextDisabled(
 		"Save changes Authored only; Publish validates/promotes Runtime; Reload commits atomically.");
+    ImGui::EndDisabled();
 	ImGui::End();
 	}
 }

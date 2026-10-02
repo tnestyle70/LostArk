@@ -181,6 +181,15 @@ namespace
 	{
 		return
 			IsValidSourcePostProcess(Settings.SourcePostProcess) &&
+            IsFiniteInRange(Settings.fSSGIStrength, 0.f, 2.f) &&
+            IsFiniteInRange(Settings.fSSGIRadius, 0.1f, 20.f) &&
+            (Settings.iSSGISampleCount == 4u || Settings.iSSGISampleCount == 8u || Settings.iSSGISampleCount == 16u) &&
+            IsFiniteInRange(Settings.fSSRStrength, 0.f, 2.f) &&
+            IsFiniteInRange(Settings.fSSRMaxDistance, 0.1f, 100.f) &&
+            IsFiniteInRange(Settings.fSSRThickness, 0.01f, 2.f) &&
+            (Settings.iSSRStepCount == 16u || Settings.iSSRStepCount == 32u || Settings.iSSRStepCount == 64u) &&
+            (Settings.iSSAOSampleCount == 4u || Settings.iSSAOSampleCount == 8u ||
+                Settings.iSSAOSampleCount == 12u) &&
 			IsFiniteInRange(Settings.vBloomTint.x, 0.f, 1.f) &&
 			IsFiniteInRange(Settings.vBloomTint.y, 0.f, 1.f) &&
 			IsFiniteInRange(Settings.vBloomTint.z, 0.f, 1.f) &&
@@ -651,6 +660,16 @@ HRESULT CRenderer::Apply_RenderQualitySettings(
 	if (!IsValidRenderQualitySettings(Settings))
 		return E_INVALIDARG;
 
+    // Load the optional program before committing any settings. A missing or
+    // invalid program rejects the experiment while retaining the prior profile.
+    if ((Settings.bSSGIEnabled || Settings.bSSREnabled) && !m_pScreenSpaceLightingShader)
+    {
+        auto stagedShader = CShader::Create(m_pDevice, m_pContext,
+            TEXT("../Bin/ShaderFiles/Shader_ScreenSpaceLighting.hlsl"), VTXTEX::Elements, VTXTEX::iNumElements);
+        if (!stagedShader) return E_FAIL;
+        m_pScreenSpaceLightingShader = std::move(stagedShader);
+    }
+
 	ComPtr<ID3D11ShaderResourceView> stagedLut;
 	if (Settings.SourcePostProcess.bEnabled)
 	{
@@ -947,6 +966,8 @@ HRESULT CRenderer::Draw()
 		hSceneResult = Render_Priority();
 		if (SUCCEEDED(hSceneResult))
 			hSceneResult = Render_Combined();
+        if (SUCCEEDED(hSceneResult) && (m_RenderQualitySettings.bSSGIEnabled || m_RenderQualitySettings.bSSREnabled))
+            hSceneResult = Render_ScreenSpaceLighting();
 		if (SUCCEEDED(hSceneResult))
 			hSceneResult = Render_NonLight();
 		if (SUCCEEDED(hSceneResult))
@@ -1294,6 +1315,9 @@ HRESULT CRenderer::Render_SSAOPass(
 			"g_vSSAOTexelSize", &m_vSSAOTexelSize,
 			sizeof(m_vSSAOTexelSize))) ||
 		FAILED(m_pShader->Bind_RawValue(
+            "g_iSSAOSampleCount", &m_RenderQualitySettings.iSSAOSampleCount,
+            sizeof(m_RenderQualitySettings.iSSAOSampleCount))) ||
+        FAILED(m_pShader->Bind_RawValue(
 			"g_fSSAORadius", &m_RenderQualitySettings.fSSAORadius,
 			sizeof(m_RenderQualitySettings.fSSAORadius))) ||
 		FAILED(m_pShader->Bind_RawValue(
@@ -1658,6 +1682,151 @@ HRESULT CRenderer::Render_Combined(bool_t bPortrait)
 
 	return S_OK;
 }
+
+HRESULT CRenderer::Render_ScreenSpaceLighting()
+{
+    const auto& quality = m_RenderQualitySettings;
+    if (!quality.bSSGIEnabled && !quality.bSSREnabled) return S_OK;
+    if (!m_pScreenSpaceLightingShader || !m_pVIBuffer) return E_FAIL;
+    auto& game = CGameInstance::Get();
+    CProfiler* const profiler = game.Get_Profiler();
+    CProfilerScope cpuScope(profiler, "Render.ScreenSpaceLighting");
+    auto shader = m_pScreenSpaceLightingShader;
+    const auto scene = game.Get_RT_SRV(TEXT("Target_SceneHDR"));
+    const auto bloom = game.Get_RT_SRV(TEXT("Target_SceneBloom"));
+    if (!scene || !bloom) return E_FAIL;
+
+    // Validate every resource before changing the output bindings. Scratch
+    // targets already participate in the transactional viewport resize path.
+    ComPtr<ID3D11Resource> originalScene, originalBloom, scratchBloom[2];
+    scene->GetResource(originalScene.GetAddressOf());
+    bloom->GetResource(originalBloom.GetAddressOf());
+    D3D11_TEXTURE2D_DESC sceneDesc{};
+    ComPtr<ID3D11Texture2D> sceneTexture;
+    if (FAILED(originalScene.As(&sceneTexture))) return E_FAIL;
+    sceneTexture->GetDesc(&sceneDesc);
+    const auto compatible = [&sceneDesc](ID3D11Resource* resource)
+    {
+        ComPtr<ID3D11Texture2D> texture;
+        if (!resource || FAILED(resource->QueryInterface(IID_PPV_ARGS(texture.GetAddressOf())))) return false;
+        D3D11_TEXTURE2D_DESC desc{};
+        texture->GetDesc(&desc);
+        return desc.Width == sceneDesc.Width && desc.Height == sceneDesc.Height &&
+            desc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT && desc.Format == sceneDesc.Format &&
+            desc.MipLevels == 1u && desc.ArraySize == 1u && desc.SampleDesc.Count == 1u &&
+            desc.SampleDesc.Quality == sceneDesc.SampleDesc.Quality;
+    };
+    if (!compatible(originalScene.Get()) || !compatible(originalBloom.Get())) return E_INVALIDARG;
+    for (size_t index = 0; index < 2u; ++index)
+    {
+        if (!m_pScenePostRTVs[index] || !m_pScenePostSRVs[index] ||
+            !m_pSceneBloomPostRTVs[index] || !m_pSceneBloomPostSRVs[index]) return E_FAIL;
+        m_pSceneBloomPostSRVs[index]->GetResource(scratchBloom[index].GetAddressOf());
+        if (!compatible(m_pScenePostTextures[index].Get()) || !compatible(scratchBloom[index].Get()) ||
+            m_pScenePostTextures[index].Get() == originalScene.Get() ||
+            scratchBloom[index].Get() == originalBloom.Get()) return E_INVALIDARG;
+    }
+
+    struct RestoreOutputs final
+    {
+        ID3D11DeviceContext* Context;
+        ID3D11RenderTargetView* Outputs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
+        ComPtr<ID3D11DepthStencilView> Depth;
+        D3D11_VIEWPORT Viewports[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE]{};
+        UINT ViewportCount = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
+        shared_ptr<CShader> Shader;
+        ~RestoreOutputs()
+        {
+            ID3D11ShaderResourceView* empty[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
+            Context->PSSetShaderResources(0, _countof(empty), empty);
+            for (const char* name : { "g_DepthTexture", "g_NormalTexture", "g_MaterialSpecularTexture",
+                "g_DiffuseTexture", "g_RadianceTexture", "g_SceneHDRTexture", "g_SceneBloomTexture" })
+                Shader->Bind_Texture(name, nullptr);
+            Context->OMSetRenderTargets(_countof(Outputs), Outputs, Depth.Get());
+            Context->RSSetViewports(ViewportCount, Viewports);
+            for (auto* output : Outputs) if (output) output->Release();
+        }
+    } restore{m_pContext.Get()};
+    restore.Shader = shader;
+    m_pContext->OMGetRenderTargets(_countof(restore.Outputs), restore.Outputs, restore.Depth.GetAddressOf());
+    m_pContext->RSGetViewports(&restore.ViewportCount, restore.Viewports);
+    ComPtr<ID3D11Resource> activeScene, activeBloom;
+    if (restore.Outputs[0]) restore.Outputs[0]->GetResource(activeScene.GetAddressOf());
+    if (restore.Outputs[2]) restore.Outputs[2]->GetResource(activeBloom.GetAddressOf());
+    if (activeScene.Get() != originalScene.Get() || activeBloom.Get() != originalBloom.Get()) return E_INVALIDARG;
+    CRenderOutputContractScope temporaryOutput(RENDER_OUTPUT_CONTRACT::NONE, m_pContext.Get());
+    const float2_t inverseSize(1.f / sceneDesc.Width, 1.f / sceneDesc.Height);
+    const uint32_t bloomEnabled = quality.bBloomEnabled ? 1u : 0u;
+    const auto bind = [&shader](const char* name, const auto& value)
+    { return shader->Bind_RawValue(name, &value, sizeof(value)); };
+    if (FAILED(shader->Bind_Matrix("g_WorldMatrix", &m_WorldMatrix)) ||
+        FAILED(shader->Bind_Matrix("g_ViewMatrix", &m_ViewMatrix)) ||
+        FAILED(shader->Bind_Matrix("g_ProjMatrix", &m_ProjMatrix)) ||
+        FAILED(shader->Bind_Matrix("g_CameraViewMatrix", game.Get_Transform(D3DTS::VIEW))) ||
+        FAILED(shader->Bind_Matrix("g_CameraProjMatrix", game.Get_Transform(D3DTS::PROJ))) ||
+        FAILED(shader->Bind_Matrix("g_CameraProjMatrixInverse", game.Get_InverseTransform(D3DTS::PROJ))) ||
+        FAILED(game.Bind_RT_SRV(TEXT("Target_Depth"), shader, "g_DepthTexture")) ||
+        FAILED(game.Bind_RT_SRV(TEXT("Target_Normal"), shader, "g_NormalTexture")) ||
+        FAILED(game.Bind_RT_SRV(TEXT("Target_MaterialSpecular"), shader, "g_MaterialSpecularTexture")) ||
+        FAILED(game.Bind_RT_SRV(TEXT("Target_Diffuse"), shader, "g_DiffuseTexture")) ||
+        FAILED(shader->Bind_Texture("g_RadianceTexture", scene)) ||
+        FAILED(bind("g_vInverseSceneSize", inverseSize)) ||
+        FAILED(bind("g_iSSGIRayCount", quality.iSSGISampleCount)) ||
+        FAILED(bind("g_fSSGIRadius", quality.fSSGIRadius)) ||
+        FAILED(bind("g_fSSGIStrength", quality.fSSGIStrength)) ||
+        FAILED(bind("g_iSSRStepCount", quality.iSSRStepCount)) ||
+        FAILED(bind("g_fSSRMaxDistance", quality.fSSRMaxDistance)) ||
+        FAILED(bind("g_fSSRThickness", quality.fSSRThickness)) ||
+        FAILED(bind("g_fSSRStrength", quality.fSSRStrength)) ||
+        FAILED(bind("g_iBloomEnabled", bloomEnabled)) ||
+        FAILED(bind("g_fBloomThreshold", quality.fBloomThreshold)) ||
+        FAILED(bind("g_fBloomSoftKnee", quality.fBloomSoftKnee)) ||
+        FAILED(bind("g_fBloomIntensity", quality.fBloomIntensity))) return E_FAIL;
+
+    ID3D11ShaderResourceView* empty[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
+    auto baseScene = scene;
+    auto baseBloom = bloom;
+    uint32_t writtenTargets = 0u;
+    SetUp_ViewportDesc(sceneDesc.Width, sceneDesc.Height);
+    for (uint32_t pass = 0u; pass < 2u; ++pass)
+    {
+        if ((pass == 0u && !quality.bSSGIEnabled) || (pass == 1u && !quality.bSSREnabled)) continue;
+        const char* name = pass == 0u ? "Render.SSGI" : "Render.SSR";
+        CProfilerScope passCpu(profiler, name);
+        CProfilerGpuScope passGpu(profiler, name, true);
+        const uint32_t destination = writtenTargets;
+        m_pContext->PSSetShaderResources(0, _countof(empty), empty);
+        ID3D11RenderTargetView* outputs[3] = {
+            m_pScenePostRTVs[destination].Get(), nullptr, m_pSceneBloomPostRTVs[destination].Get() };
+        m_pContext->OMSetRenderTargets(3u, outputs, nullptr);
+        if (FAILED(shader->Bind_Texture("g_SceneHDRTexture", baseScene)) ||
+            FAILED(shader->Bind_Texture("g_SceneBloomTexture", baseBloom)) ||
+            FAILED(shader->Begin(pass)) || FAILED(m_pVIBuffer->Bind_Resources()) ||
+            FAILED(m_pVIBuffer->Render())) return E_FAIL;
+        baseScene = m_pScenePostSRVs[destination];
+        baseBloom = m_pSceneBloomPostSRVs[destination];
+        ++writtenTargets;
+    }
+    m_pContext->OMSetRenderTargets(0, nullptr, nullptr);
+    m_pContext->PSSetShaderResources(0, _countof(empty), empty);
+    if (FAILED(m_pDevice->GetDeviceRemovedReason())) return E_FAIL;
+    {
+        CProfilerScope copyCpu(profiler, "Render.ScreenSpaceLighting.Copy");
+        CProfilerGpuScope copyGpu(profiler, "Render.ScreenSpaceLighting.Copy");
+        // Commit only after both passes succeed. The distortion target and all
+        // authored lighting inputs remain unchanged.
+        m_pContext->CopyResource(originalScene.Get(), m_pScenePostTextures[writtenTargets - 1u].Get());
+        m_pContext->CopyResource(originalBloom.Get(), scratchBloom[writtenTargets - 1u].Get());
+        if (profiler)
+        {
+            profiler->Add_Counter(EProfilerCounter::SceneColorCopies, 2u);
+            profiler->Add_Counter(EProfilerCounter::SceneColorCopyBytes,
+                static_cast<uint64_t>(sceneDesc.Width) * sceneDesc.Height * 16u);
+        }
+    }
+    return m_pDevice->GetDeviceRemovedReason();
+}
+
 
 HRESULT CRenderer::Render_NonLight()
 {

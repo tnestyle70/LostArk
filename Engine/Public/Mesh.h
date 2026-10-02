@@ -34,6 +34,7 @@ public:
 	virtual HRESULT Initialize(void* pArg) override;
 
 public:
+	virtual HRESULT Render() override;
 	HRESULT Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 		uint32_t iInstanceStride, uint32_t iNumInstances,
 		uint32_t iInstanceByteOffset = 0u,

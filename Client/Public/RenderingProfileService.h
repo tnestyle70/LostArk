@@ -85,6 +85,35 @@ struct RENDERING_COMPARISON_OPTIONS final
     f32_t fExposureMultiplier = 1.f;
 };
 
+// Explicit session field whitelist. Values are effective renderer inputs, never
+// authored profile values; IDs are also used by benchmark JSON and fingerprints.
+enum class RENDERING_EXPERIMENT_FIELD : uint8_t
+{
+    SSAO_ENABLED, SSAO_RADIUS, SSAO_BIAS, SSAO_INTENSITY, SSAO_POWER, SSAO_FADE,
+    BLOOM_ENABLED, BLOOM_THRESHOLD, BLOOM_KNEE, BLOOM_INTENSITY, BLOOM_SCATTER,
+    FXAA_ENABLED, FXAA_BLEND, FXAA_EDGE, FXAA_EDGE_MIN, EXPOSURE, GAMMA,
+    SHADOW_ENABLED, SHADOW_STRENGTH, FOG_ENABLED, FOG_DENSITY, LUT_ENABLED, DESATURATION,
+    SSAO_SAMPLES, PCF_RADIUS,
+    PBR_DIFFUSE, PBR_SPECULAR, PBR_BAKED, PBR_ENVIRONMENT, PBR_CUBE, NORMAL_STRENGTH,
+    ROUGHNESS_OFFSET,
+    SSGI_ENABLED, SSGI_STRENGTH, SSGI_RADIUS, SSGI_SAMPLES,
+    SSR_ENABLED, SSR_STRENGTH, SSR_DISTANCE, SSR_THICKNESS, SSR_STEPS, COUNT
+};
+constexpr size_t RENDERING_EXPERIMENT_FIELD_COUNT = static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::COUNT);
+static_assert(RENDERING_EXPERIMENT_FIELD_COUNT < 64u);
+constexpr uint64_t RenderingExperimentBit(RENDERING_EXPERIMENT_FIELD field)
+{ return uint64_t{1} << static_cast<size_t>(field); }
+struct RENDERING_EXPERIMENT_FIELD_INFO final
+{
+    const char* id;
+    double minimum, maximum, step;
+    bool boolean;
+};
+struct RENDERING_EXPERIMENT_VALUES final
+{
+    std::array<double, RENDERING_EXPERIMENT_FIELD_COUNT> values{};
+};
+
 // Transient fog tuning for the frames a presentation owns. It is applied to whatever
 // fog survives the camera regions, so a region transition keeps its own authored values
 // and nothing accumulates across frames. Passing suppressFog with no tuning switches the
@@ -105,6 +134,17 @@ public:
 		"scene.loading.neutral.v1";
 
 public:
+    static const std::array<RENDERING_EXPERIMENT_FIELD_INFO, RENDERING_EXPERIMENT_FIELD_COUNT>& Experiment_Fields();
+    static RENDERING_EXPERIMENT_VALUES Read_ExperimentValues();
+    static bool_t Validate_ExperimentValues(const RENDERING_EXPERIMENT_VALUES& values, string& status);
+    bool_t Set_ExperimentPreview(const RENDERING_EXPERIMENT_VALUES& values, uint64_t fields, string& status);
+    bool_t Clear_ExperimentPreview(string& status);
+    bool_t Has_ExperimentPreview() const { return m_bExperimentActive; }
+    uint64_t Get_ExperimentGeneration() const { return m_iExperimentGeneration; }
+    uint64_t Get_ProfileGeneration() const { return m_iProfileGeneration; }
+    const SHADOW_LIGHT_DESC& Get_ExperimentShadowBasis() const { return m_ExperimentBaseShadow; }
+    const string& Get_ExperimentStatus() const { return m_strExperimentStatus; }
+    bool_t Is_EnvironmentSettled() const { return m_fEnvironmentElapsed >= m_fEnvironmentDuration; }
     const RENDERING_COMPARISON_OPTIONS& Get_ComparisonOptions() const { return m_ComparisonOptions; }
     bool_t Set_ComparisonOptions(const RENDERING_COMPARISON_OPTIONS& options);
     void Clear_ComparisonOptions() { m_ComparisonOptions = {}; }
@@ -166,6 +206,23 @@ private:
 	};
 
 private:
+    bool_t Apply_CameraEnvironmentBase(f32_t deltaSeconds, string& status,
+        bool_t suppressFog, const LIGHT_DESC* directionalOverride,
+        f32_t directionalBrightnessMultiplier, const float4_t* directionalColor,
+        const PRESENTATION_FOG_TUNING* fogTuning);
+    bool_t Restore_ExperimentPreview(string& status);
+    bool_t Apply_ExperimentPreview(string& status);
+    void Release_ExperimentForProfileCommit();
+    bool_t m_bExperimentActive = false, m_bExperimentNormalizedShadow = false, m_bExperimentNormalizedPbr = false, m_bExperimentApplied = false;
+    uint64_t m_iExperimentAppliedFields = 0, m_iExperimentFields = 0u, m_iExperimentGeneration = 0u, m_iProfileGeneration = 0u;
+    uint64_t m_iExperimentProfileGeneration = 0u;
+    uint32_t m_iExperimentLevel = 0u;
+    string m_strExperimentRegion, m_strExperimentVideo, m_strExperimentStatus;
+    RENDERING_EXPERIMENT_VALUES m_ExperimentValues;
+    RENDER_QUALITY_SETTINGS m_ExperimentBaseQuality;
+    SHADOW_LIGHT_DESC m_ExperimentAppliedShadow, m_ExperimentBaseShadow;
+    HEIGHT_FOG_SETTINGS m_ExperimentBaseFog;
+    MATERIAL_RENDER_SETTINGS m_ExperimentAppliedMaterial, m_ExperimentBaseMaterial;
     bool_t Apply_CameraRegionEnvironment(f32_t deltaSeconds, string& status);
     bool_t Restore_PresentationEnvironment(string& status);
     bool_t m_bPresentationFogOverride = false;

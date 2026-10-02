@@ -406,6 +406,57 @@ Valtan/Kouku의 Level resolver는 `CDeployPropRuntime::Try_PickMovementSurface`�
 
 walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 공격은 room-owned `CCombatObjectRuntime`의 pure XZ pose/swept primitive가 Server fixed tick에서 판정한다. 플레이어 투사체와 발탄 전투 객체는 spawn adapter만 다르고 같은 live set과 hit resolver를 사용한다. Shared combat-object lifecycle/full snapshot과 Client world-root Effect는 위치 표현만 담당하며 Client collider가 피해를 판정하지 않는다. 동적 capsule-vs-capsule와 knockback obstacle collision은 아직 public 계약이 아니므로 추가할 때 Server collision owner, shape ID, broad/narrow phase, snapshot correction, harness를 한 변경 단위로 닫는다.
 
+### Profiler 읽기 계약
+
+Debug F7의 한국어 Profiler와 JSON은 `Engine::CProfiler`의 동일 snapshot을 소비한다.
+`FProfilerGpuScopeSample::Draw`와 aggregate의 Draw는 원래 GPU 프레임에서 제출한
+Engine 작업량이며 자식을 포함한다. `SelfMs`는 계측된 자식 시간만 제외한다.
+`MeshDrawCalls/MeshInstances/MeshIndices`는 실제 CMesh 제출, `UniqueMeshes`는 프레임 내
+서로 다른 CMesh 객체 수다. 최대16,384개 이후에는 `DroppedMeshSamples`를 보고 고유 수를
+하한으로 읽는다. 포인터는 내부 중복 제거용이며 JSON 식별자가 아니다.
+`Instances`는 instanced draw만 세고 `MeshInstances`는 일반 메시 draw의1도 포함한다.
+간접 제출 counter는 현재 producer가 없는 미계측 항목이다. 실제 실행 인덱스로 추측해 합산하지 않는다.
+ImGui는 별도 draw counter를 사용하고 DirectXTK 내부 draw는 Engine draw 합계에 포함하지 않는다.
+
+상세 모드의 `FProfilerFrame::MeshDraws`는 actual CMesh 제출 순서의 bounded512개 표본이며
+초과량은 `DroppedMeshDraws`다. `IndexCount`는 인스턴스당 index, `VertexCount`는 해당 CMesh의
+geometry 정점 수다. PassNameId 미지원은 UINT32_MAX이고 이름은 해당 snapshot의 ScopeNames로만
+해석한다. mesh 표시는 stable asset/placement ID가 아니며 개별 draw GPU ms를 제공하지 않는다.
+캡처 비교는 이름과 main/worker 역할로 CPU 구간을 결합하고, 서로 다른 snapshot의 NameId를
+직접 비교하지 않는다. 과거 JSON의 새 필드 부재, incomplete Self와 GPU pending은 미계측이다.
+`FProfilerFrame::Memory`는 최대1Hz 샘플의 identity/age/validity를 가진다. process/system API와
+DXGI adapter node0의 local/nonlocal budget·usage는 독립적인 측정이며 합산하지 않는다.
+캡처 평균은 sample frame별 중복을 제거하고 구형 캡처의 부재는 N/A로 유지한다. `TextureRequests`,
+`TexturePathHits`, `TextureUniqueSrvs`는 CMaterial shared texture 경로의 시도·재사용·새 SRV 생성
+카운터다. Capture 중 worker 완료가 요청과 다른 frame에 잡힐 수 있고 현재 상주 수를 뜻하지 않는다.
+Content hash 재사용·총 GPU texture byte·allocation stack·residency는 현재 계측하지 않는다.
+타임라인의 CPU QPC와 GPU 자체 clock은 별개이고 미계측 구간을 특정 driver/queue 원인으로 단정하지 않는다.
+
+`FrameIntervalMs = PreviousCpuFrameMs + FrameGapMs`이며 현재 `CpuFrameMs`와 GPU 시간은
+독립된 경과 시간이다. IA 정점/primitive와 VS/PS 호출은 처리량이지 고유 geometry·픽셀·연산
+횟수가 아니다. Pending/Disjoint/누락은0ms가 아니며 부분 GPU 프레임을 패스 분포에서 제외한다.
+사용 경로는 [CLAUDE.md](../../CLAUDE.md), 기법·A/B 구현 계약과 후속 renderer 설계는
+[Profiler·Workbench 계획](../GB/10-03/2026-10-03_PROFILER_RENDERING_WORKBENCH_IMPLEMENTATION_PLAN.md)을 따른다.
+
+### Rendering Workbench 세션 실험
+
+`CRenderingProfileService`가 최종 환경·Video·presentation 해석 위에 실험 whitelist를 적용한다.
+`CRenderingBenchmark`는 A/B·반복·warmup·수치 sweep·조건 fingerprint와 결과 저장을 소유하며,
+UI가 저장 profile이나 Engine GPU resource를 직접 교체하지 않는다. 복원은 마지막 적용 필드만
+현재 상태에 병합한다. scene/region/Video owner 변경은 실험을 해제하고 새 입력을 유지한다.
+실험은 authored Save/Publish와 별개이며 프로파일 JSON을 자동 편집하지 않는다.
+
+`RENDER_QUALITY_SETTINGS::iSSAOSampleCount`는4/8/12만,
+`SHADOW_SETTINGS::iPCFFilterRadius`는0/1/2만 받는다. 기존12와1을 기본값으로 유지하고
+Renderer/Shadow의 실제 shader bind가 소비한다. 렌더 옵션 저장 schema로 승격하지 않는다.
+화면 공간 실험은 `bSSGIEnabled/fSSGIStrength/fSSGIRadius/iSSGISampleCount`와
+`bSSREnabled/fSSRStrength/fSSRMaxDistance/fSSRThickness/iSSRStepCount`를 같은 세션 계약으로 받는다.
+SSGI rays는4/8/16, SSR steps는16/32/64이며 기본 OFF다. 독립 shader가 marker3 MapPBR의
+불투명 HDR에 가산하며 기존 baked/IBL·distortion·저장 profile은 보존한다. 나머지 재질 family,
+화면 밖·시간 누적·denoising·DXR를 지원하는 계약은 아니다.
+GPU Gems는 자료 모음이고 Lumen·DXR·Nanite·DLSS 같은 외부 renderer/SDK 이름은 현재 실행
+가능한 옵션으로 위장하지 않는다. 기법 사전의 지원 상태와 실제 변수 목록을 함께 확인한다.
+
 ### 4.0 F1 Level Navigation
 
 Release는 F1 Developer Tools 허브를 명시적으로 열 수 있다. F7 입력·Profiler 창·화면 FPS 표시와 기존 Debug 전용 저작 도구는 비활성 상태를 유지한다. F6와 제품 UI는 유지한다.

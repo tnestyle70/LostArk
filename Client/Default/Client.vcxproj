@@ -277,6 +277,8 @@
     <ClInclude Include="..\Public\ProfilerCaptureIO.h" />
     <ClInclude Include="..\Public\ProfilerTool.h" />
     <ClInclude Include="..\Public\RenderingBenchmark.h" />
+    <ClInclude Include="..\Public\RenderingTechniqueGuide.h" />
+    <ClInclude Include="..\Public\RenderingReferenceGuide.h" />
     <ClInclude Include="..\Public\BossCompositionDocument.h" />
     <ClInclude Include="..\Public\SequencerTool.h" />
     <ClInclude Include="..\Public\AssetPreparationBatch.h" />
@@ -613,8 +615,16 @@
     <ClCompile Include="..\Private\HonorTitleCatalog.cpp" />
     <ClCompile Include="..\Private\NetworkPlayerCommandSink.cpp" />
     <ClCompile Include="..\Private\ProfilerCaptureIO.cpp" />
-    <ClCompile Include="..\Private\ProfilerTool.cpp" />
-    <ClCompile Include="..\Private\RenderingBenchmark.cpp" />
+    <ClCompile Include="..\Private\ProfilerTool.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
+    <ClCompile Include="..\Private\RenderingBenchmark.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
     <ClCompile Include="..\Private\BossCompositionDocument.cpp" />
     <ClCompile Include="..\Private\SequencerTool.cpp" />
     <ClCompile Include="..\Private\AssetPreparationBatch.cpp" />
@@ -1391,6 +1401,7 @@
     <ItemGroup>
       <ClientEngineCompiledShaders Include="$(EngineCellShaderSource)" />
       <ClientEngineCompiledShaders Include="$(EngineDeferredShaderSource)" />
+      <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_ScreenSpaceLighting.cso" />
       <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup001.cso" />
       <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup009.cso" />
       <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup017.cso" />

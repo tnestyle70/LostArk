@@ -63,6 +63,8 @@ namespace Engine
 		f32_t	fStrength = 0.7f;
         // Optional modulation of PBR baked irradiance by dynamic casters only.
         f32_t fDynamicBakedStrength = 0.f;
+        // Session quality experiment: radius 0/1/2 samples a 1/9/25-tap square.
+        uint32_t iPCFFilterRadius = 1u;
 	}SHADOW_SETTINGS;
 
 	typedef struct tagShadowLightDesc
@@ -124,6 +126,19 @@ namespace Engine
 		int32_t iColorFilterType = 0;
 		f32_t fColorFilterStrength = 0.f;
 		SOURCE_POST_PROCESS_SETTINGS SourcePostProcess{};
+        // Session quality experiment; only 4, 8 and 12 samples are supported.
+        uint32_t iSSAOSampleCount = 12u;
+        // Experimental screen-space lighting, session-only and opt-in.
+        // Receivers use the map PBR G-buffer; no history or off-screen scene.
+        bool_t bSSGIEnabled = false;
+        f32_t fSSGIStrength = 0.25f;
+        f32_t fSSGIRadius = 4.f;
+        uint32_t iSSGISampleCount = 8u;
+        bool_t bSSREnabled = false;
+        f32_t fSSRStrength = 0.5f;
+        f32_t fSSRMaxDistance = 20.f;
+        f32_t fSSRThickness = 0.2f;
+        uint32_t iSSRStepCount = 32u;
 	}RENDER_QUALITY_SETTINGS;
 
 	enum class MATERIAL_DEBUG_VIEW : uint32_t

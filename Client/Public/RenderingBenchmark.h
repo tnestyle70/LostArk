@@ -3,15 +3,25 @@
 #include "Client_Defines.h"
 #include "Profiler.h"
 #include "Engine_RenderTypes.h"
+#include "RenderingProfileService.h"
 
 #include <array>
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <future>
+#include <map>
 
 NS_BEGIN(Client)
 
 class CRenderingProfileService;
+
+struct RENDERING_BENCHMARK_PASS final
+{
+    string name;
+    uint32_t validFrames = 0;
+    double inclusiveMs = 0, selfMs = 0, drawCalls = 0, indices = 0;
+};
 
 struct RENDERING_BENCHMARK_RUN final
 {
@@ -19,6 +29,18 @@ struct RENDERING_BENCHMARK_RUN final
 	string strTimestamp;
 	string strQualitySummary;
 	string strComparisonConditions;
+    string strFullConditions, strExperimentId, strVariant, strFailureReason;
+    string strRecipeId, strExperimentGoal, strMetricGuide, strConfidence;
+    std::map<string,string> commonConditionFields, actualConditionFields, changedConditionFields;
+    uint64_t fieldMask = 0, firstFrame = 0, lastFrame = 0;
+    uint32_t warmupFrames = 0, repetition = 1, pendingGpuFrames = 0, invalidGpuFrames = 0;
+    uint64_t droppedCpuScopes = 0, droppedGpuScopes = 0;
+    RENDERING_EXPERIMENT_VALUES appliedValues;
+    double fCpuP50Ms = 0, fCpuP99Ms = 0, fGpuP50Ms = 0, fGpuP99Ms = 0;
+    double fIntervalAvgMs = 0, fIntervalP50Ms = 0, fIntervalP95Ms = 0, fIntervalP99Ms = 0, fIntervalMaxMs = 0;
+    uint32_t iIntervalFrames = 0, iGpuScopeFrames = 0, iCpuScopeFrames = 0;
+    double fMeshDrawsAvg = 0, fUniqueMeshesAvg = 0;
+    vector<RENDERING_BENCHMARK_PASS> passes, cpuPasses;
 	bool_t bSourceMaterials = true;
 	bool_t bConditionsStable = true;
 	uint32_t iFrames = 0u;
@@ -37,13 +59,13 @@ struct RENDERING_BENCHMARK_RUN final
 
 /* Rendering Workbench benchmark: captures N frames through the Engine
    profiler and records CPU/GPU/draw statistics next to the quality settings
-   that were active, so A/B changes to SSAO/Bloom/Shadow/Fog are measured on
-   the same basis. Explicit Capture A/B changes only the session material mode;
-   camera, lighting and quality remain the user's current settings. */
+   that were active. Session A/B and bounded one-field sweeps preserve authored
+   settings; legacy material-mode captures share the same sample/result path. */
 class CRenderingBenchmark final
 {
 public:
 	[[nodiscard]] bool_t Is_Capturing() const noexcept { return m_bCapturing; }
+    [[nodiscard]] bool_t Is_ExperimentActive() const noexcept { return m_bExperimentActive; }
 	bool_t Begin(
 		Engine::CProfiler* pProfiler,
 		const string& strLabel,
@@ -61,6 +83,22 @@ public:
 		CRenderingProfileService& Profiles);
 
 private:
+    void Render_ExperimentSection(Engine::CProfiler* profiler, CRenderingProfileService& profiles);
+    void Render_RecipeSection();
+    bool_t Prepare_Recipe(bool_t replaceB);
+    bool_t Start_Experiment(CRenderingProfileService& profiles);
+    bool_t Apply_ExperimentVariant(bool_t variantB);
+    void End_Experiment();
+    void Finish_Sequence();
+    bool_t Start_Sweep(Engine::CProfiler* profiler);
+    void Cancel_Capture(const string& reason);
+    void Queue_Save();
+    void Poll_Save();
+    uint64_t Experiment_FieldMask() const;
+    uint64_t Experiment_BaselineMask() const;
+    bool_t Adopt_BaselineFromB();
+    string Current_Conditions(uint64_t excludedFields, std::map<string,string>* named = nullptr) const;
+    void Render_Results();
 	bool_t Render_RestorationSection(CRenderingProfileService& Profiles);
 	bool_t Render_PixelInputs();
 	bool_t Activate_RestorationProfile(CRenderingProfileService& Profiles, const string& strProfileId);
@@ -75,12 +113,37 @@ private:
 
 private:
 	bool_t m_bCapturing = false;
+    bool_t m_bExperimentActive = false, m_bVariantB = false, m_bSequence = false;
+    bool_t m_bSequenceProfilerWasEnabled = false;
+    bool_t m_bSweep = false, m_bSweepRestoreVariantB = false;
+    int m_iSweepField = 1, m_iSweepSteps = 5;
+    float m_fSweepMinimum = .1f, m_fSweepMaximum = 2.f;
+    vector<double> m_SweepPoints;
+    RENDERING_EXPERIMENT_VALUES m_PreSweepB;
+    bool_t m_bWarmup = false, m_bCaptureExperiment = false;
+    uint32_t m_iSequenceStep = 0u, m_iSequenceTotal = 0u, m_iRepeatInput = 1u;
+    uint32_t m_iWarmupInput = 60u, m_iCaptureWarmup = 0u;
+    uint64_t m_iCaptureFields = 0u, m_iLastObservedFrame = 0u;
+    uint64_t m_iExperimentProfileGeneration = 0u;
+    uint32_t m_iExperimentLevel = 0u;
+    string m_strExperimentId, m_strExperimentOwner, m_strCaptureVariant, m_strFullConditions;
+    string m_strCaptureExperimentId, m_strFailureReason;
+    std::map<string,string> m_CaptureCommonFields, m_CaptureActualFields, m_ChangedConditionFields;
+    int m_iSelectedRecipe = 0, m_iPreparedRecipe = -1;
+    RENDERING_EXPERIMENT_VALUES m_ExperimentA, m_ExperimentB, m_ExperimentOriginal, m_CaptureValues;
+    CRenderingProfileService* m_pExperimentProfiles = nullptr; // MainApp owns both services.
+    Engine::CProfiler* m_pCaptureProfiler = nullptr;
+    int m_iCompareFirst = -1, m_iCompareSecond = -1;
+    float m_fTargetFps = 60.f;
+    struct SAVE_RESULT { bool ok = false; string message; };
+    std::future<SAVE_RESULT> m_SaveFuture;
+    bool m_bSaveQueued = false;
+    string m_strSaveStatus;
 	bool_t m_bPixelDiagnosticsActive = false;
 	uint32_t m_iPixelDiagnosticsLevel = 0u;
 	string m_strPixelMaterialKey;
 	Engine::MATERIAL_RENDER_SETTINGS m_PixelEntrySettings;
 	bool_t m_bProfilerWasEnabled = false;
-	bool_t m_bSkipActivationFrame = false;
 	uint64_t m_iStartFrame = 0u;
 	uint32_t m_iTargetFrames = 0u;
 	string m_strLabel;

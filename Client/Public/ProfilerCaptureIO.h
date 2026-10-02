@@ -9,6 +9,7 @@
 #include <thread>
 #include <string_view>
 #include <vector>
+#include <map>
 
 NS_BEGIN(Client)
 
@@ -70,15 +71,70 @@ struct FProfilerCaptureContext final
     // Effective selects foreground/background by process ownership. It is not measured FPS
     // and excludes the separate minimized-frame message wait.
     int32_t ForegroundFpsLimit = 0, BackgroundFpsLimit = 0, EffectiveFpsLimit = 0;
+    // Effective renderer values sampled at the same instant as camera/context.
+    // String entries identify assets; neither map claims per-frame provenance.
+    std::map<std::string, double> RenderingOptions;
+    std::map<std::string, std::string> RenderingAssets;
     // Optional owned values copied before launching the existing save worker.
     FProfilerMovementCoverage MovementCoverage;
     std::vector<FProfilerMovementSample> MovementSamples;
+};
+
+// Comparison values are observations. Missing fields never become measured zero.
+struct FProfilerComparisonValue final
+{
+    double Value = 0.0;
+    bool Available = false;
+};
+struct FProfilerComparisonMeshDraw final
+{
+    std::string Pass, Mesh;
+    uint32_t VertexCount = 0, IndexCount = 0, Instances = 0, MaterialSlot = 0;
+};
+struct FProfilerComparisonFrame final
+{
+    uint64_t Number = 0;
+    bool MemoryKnown = false;
+    Engine::FProfilerMemoryStats Memory{};
+    bool CpuScopesKnown = false, CpuSelfKnown = false, DetailKnown = false, Detailed = false;
+    bool GpuComplete = false;
+    bool GpuValid = false;
+    Engine::EProfilerGpuFrameStatus GpuStatus = Engine::EProfilerGpuFrameStatus::Unsupported;
+    std::map<std::string, FProfilerComparisonValue> Values;
+    bool MeshDrawsKnown = false;
+    uint64_t DroppedMeshDraws = 0;
+    std::vector<FProfilerComparisonMeshDraw> MeshDraws;
+};
+struct FProfilerComparisonCapture final
+{
+    std::string Label, Source;
+    std::map<std::string, std::string> Conditions;
+    std::vector<FProfilerComparisonFrame> Frames;
+};
+struct FProfilerComparisonMean final
+{
+    double Value = 0.0;
+    size_t Samples = 0, Expected = 0;
+    bool Available = false;
 };
 
 class CProfilerCaptureIO final
 {
 public:
     static constexpr size_t MAX_MOVEMENT_SAMPLES = 8192;
+    static constexpr size_t MAX_COMPARISON_BYTES = 32u * 1024u * 1024u;
+    static const char* Counter_Name(size_t Index);
+    static FProfilerComparisonCapture Build_Comparison(
+        const Engine::FProfilerCaptureSnapshot& Snapshot, const FProfilerCaptureContext& Context,
+        std::string Label);
+    // Bounded parser and file reader stage a complete replacement; failure preserves Out.
+    static bool_t Parse_Comparison(std::string_view Bytes, FProfilerComparisonCapture& Out,
+        std::string* Error = nullptr);
+    static bool_t Load_Comparison(const filesystem::path& Directory,
+        const FProfilerCaptureFile& Selected, FProfilerComparisonCapture& Out,
+        std::string* Error = nullptr);
+    static std::map<std::string, FProfilerComparisonMean> Compare_Means(
+        const FProfilerComparisonCapture& Capture);
     // Main-thread only. Disabled capture returns without QPC, allocation or I/O.
     static void Record_MovementSample(const Engine::CProfiler* Profiler,
         FProfilerMovementSample Sample) noexcept;

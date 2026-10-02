@@ -83,6 +83,10 @@ Product: Engine → Shared → Server → Client (SDK·shader·runtime DLL 배�
 | HLSL/HLSLI·FX 옵션·shader project 등록 | Product `Build`가 실제 include/command 의존성에 따라 CSO 갱신 | 공통 include 변경은 여러 FX에 영향을 줄 수 있음 |
 | 받은 runtime ZIP을 실행만 함 | 설치 후 실제 target을 확인한 no-build 바로가기 실행 | 최초 VS Build가 생략된다는 보장은 아님 |
 
+독립 Engine shader 추가 시 Engine FxCompile뿐 아니라 Client의 `DeployClientCompiledShaders` 목록과
+`Tools/Build/BuildDomains.json`의 product outputs·deploymentPairs에 CSO를 등록한다. Product 후
+Engine와 실제 Client 실행 폴더의 CSO가 동일한지 확인한다.
+
 외부 데이터 반영은 [AGENTS.md](AGENTS.md)의 편집 보존·적용 승인 정책을 따른다. 준비·검증 후
 최종 저장본 기준의 적용 승인은 한 번만 확인하며, 이미 받은 승인을 다시 묻지 않는다.
 최신 저장본의 필드 병합과 hash/freshness 검사는 유지한다. 파일 반영은 실행 중 도구의 draft나
@@ -529,18 +533,38 @@ Server fixed tick은 Client FPS와 독립이며, Profiler CPU frame time과 실�
 F1 허브의 Diagnostics는 profiler 활성화와 무관하게 smoothed FPS와 최근 frame time을 항상 표시하며,
 Profiler 체크박스는 별도의 CPU/GPU 상세 overlay와 capture를 활성화한다.
 Debug의 F1 → `Open Composition Profiler`와 F7은 같은 Engine profiler의 CPU 구간, GPU pass, 작업량과 긴 작업을
-보여준다. `Capture`로 수집하고 `Save JSON`으로 `Client/Bin/ProfilerCaptures`에 v3 캡처를 비동기
-저장한다. `Save name`은 한글을 포함한 선택 이름이며 같은 이름으로 다시 저장해도 timestamp/frame/process/sequence가 다른 새 파일을 만든다.
+보여준다. 한국어 `프레임 Profiler`에서 `수집 (Capture)`으로 계측하고 `JSON 저장`으로 `Client/Bin/ProfilerCaptures`에 v3 캡처를 비동기
+저장한다. `저장 이름`은 한글을 포함한 선택 이름이며 같은 이름으로 다시 저장해도 timestamp/frame/process/sequence가 다른 새 파일을 만든다.
+`한 프레임 해석`은 CPU 계측 합집합과 구간 밖 비용, 이전 CPU 처리와 프레임 사이 대기를 구분한다.
+`CPU 병목`은 메인 스레드 자체 비용 내림차순이 기본이고, `GPU 패스·draw`는 자체/전체 시간·P95와
+같은 유효 GPU 프레임의 draw·메시·인덱스·IA/VS/PS 작업량을 표시한다. 패스 draw는 하위 구간을 포함하며
+Engine 계측 경로만 센다. ImGui draw는 별도이고 DirectXTK 내부 draw는 미계측이다. 고유 CMesh는
+scene object나 고유 asset 수가 아니다. 조명 수광체·그림자·합성 비용은 정확한 ALU 연산 횟수와 구분한다.
+CPU/GPU와 중첩 부모/자식 시간을 더하지 않으며 지연 GPU 결과에는 원래 frame 번호를 표시한다.
+`프레임 비교`에서는 선택 완료 프레임과 바로 앞 프레임의 비용·작업량 증감을,
+`기준 A/B`에서는 이름 붙인 수집창 또는 검증해 불러온 JSON을 비교한다. 쿠크2관문·빙고 등
+다른 장면은 구조 비교이며 동일조건 최적화 수치로 단정하지 않는다. 표시된 context는 수집/저장
+시점의 관측값이므로 과거 모든 프레임의 조건 일치를 보장하지 않는다. 예전 JSON의 누락 필드는 미계측이다.
+상세 모드에서는 실제 CMesh draw의 패스·이름·재질 슬롯·정점·인덱스·인스턴스를 프레임당
+최대512개 기록하고 초과 수를 표시한다. 이름은 asset ID가 아니며 개별 draw GPU 시간은 없다.
+`타임라인`은 최근 완료 프레임을 고정해 CPU thread/depth와 GPU pass를 확대·이동한다. CPU QPC와
+GPU timestamp의 원점은 별개이며 lane 사이 수평 정렬로 CPU/GPU 실행 인과를 단정하지 않는다.
+`메모리`는 Capture 중 최대1Hz로 process private commit/working set, system commit/limit/available,
+현재 adapter node0의 DXGI local/nonlocal usage/budget을 표시한다. API 실패는 N/A이며 0과 다르다.
+샘플 frame·age·유효성을 표시하고 같은 샘플을 매 프레임 평균에 중복 반영하지 않는다. OS peak는
+process lifetime 값이며 현재 캡처 peak가 아니다. allocation stack·자원 residency 추적은 제공하지 않는다.
+`상용 엔진과 비교`에서 Unreal의 시간축·task/RHI·RDG·메모리·셰이더·GI 등 개념과 현재 빠진 기반,
+관측 수치의 한계 및 다음 실험을 확인한다. 병목 후보는 원인 확정이 아니라 확인할 실험을 제안한다.
 F7은 창만 열고 닫으며 수집은 창의 Capture에서 명시적으로 시작한다. 창을 닫아도 이미 시작한 수집은 계속된다. Capture/Reset과 상세 CPU 모드는 다음 프레임 경계에서 반영한다.
 촬영용 Release는 FPS 문자열을 그리지 않는다. Debug FPS도 cinematic HUD 숨김을 따른다. Map/Animation/Effect/Sequence 저작 창은 Debug 전용이고 Release의 docking/외부 viewport는 비활성이다. F1 테스트 허브는 Debug/Release에서 명시적으로 열 때만 표시한다. Release에는 기존 Level Navigation·Balance·Boss 등 공통 도구만 노출하고 Profiler 버튼은 표시하지 않는다.
-기본은 pass 시간과 작업량을 수집하고 `Detailed per-draw CPU scopes`를 켜면 map draw별 상세 scope도 기록한다.
+기본은 pass 시간과 작업량을 수집하고 `draw별 상세 CPU 계측 (추가 비용 발생)`를 켜면 map draw별 상세 scope도 기록한다.
 각 JSON은 기본으로 Frames 선택 구간(120프레임)만 복사·저장하고 선택을 해제하면 최근 최대 1200프레임을 저장한다.
 세션 전체를 무제한 누적하지 않는다. v3 additive metadata는 저장 시점의 build/adapter/viewport/camera/render 설정이며
 모든 과거 프레임의 설정으로 간주하지 않는다. summary는 frame interval P50/P95/P99와 표본 유효율·누락 수를 제공한다.
 v3의 additive `captureWindow`는 저장·보유·선택창 제외·Reset 이후 history 퇴출 프레임 수와 번호 범위를 기록한다.
 창에서 제외된 retained frame의 최대 interval도 표시한다. 제외된 프레임은 선택창을 늘려 저장할 수 있지만,
 1200-frame ring에서 퇴출된 프레임은 복구되지 않는다. 긴 저FPS 구간은 직후 Capture를 끄고 GPU pending 회수 뒤 저장한다.
-`Saved JSON` 탭에서 `Refresh files`로 목록을 갱신하고 선택한 파일을 `Delete selected JSON`으로 삭제한다.
+`저장 JSON` 탭에서 `목록 새로고침`으로 목록을 갱신하고 `선택 JSON 삭제`로 선택한 파일을 삭제한다.
 외부에서 교체·수정된 선택은 다시 선택해야 하며 기존 파일 덮어쓰기는 거부한다.
 CPU Self는 기록된 자식 구간을 제외한다. 선택 구간에 CPU scope 누락이 있으면 Self는 `--`로 표시한다.
 GPU pass는 겹치는 inclusive timestamp 구간이다.
@@ -985,6 +1009,28 @@ Rendering Workbench → Benchmark → Rendering restoration은 Bern/Character Se
 도구가 여전히 소유한 preview만 복귀한다. 외부 scene 전환·Runtime Reload는 새 소유자의 상태를 유지한다.
 쿠크의 `Kouku area profile`은 시작 지점·1/2/3관문 원본 기준과 카드미로 저장 기준을 현재 시점에서
 비교한다. 고정된 지역 look만 적용하며 플레이어·카메라·Server 관문이나 map light 배치를 이동하지 않는다.
+Workbench의 세션 실험은 현재 실효 품질을 A로 보관하고 B의 단일 변수 또는 본질 기준을
+임시 적용한다. 저장 profile·Video·region·source 입력은 유지하며, 실험 도중 기존 저작 품질과
+Light 창 편집은 잠근다. 실험 종료·도구 닫힘·scene/region/Video owner 변경은 세션을 해제한다.
+실효 설정 해석 뒤의 whitelist 필드만 overlay하고 마지막으로 소유한 필드만 복원한다.
+자동 A/B는 warmup·AB/BA 반복·유효 GPU 결과 대기를 포함하며 수치 sweep도 같은 수집 경로를 쓴다.
+run의 조건이 바뀌거나 결과가 불완전하면 이를 표시하고 유효한 단일변수 이득으로 판정하지 않는다.
+결과는 `Client/Bin/BenchmarkCaptures`의 JSON에 저장하며 CPU·프레임 간격·GPU 분포와 draw·mesh·패스
+작업량을 함께 비교한다. GPU Gems 기법 사전은 원리·현재 지원·변수·비용·공식 자료를 한국어로 제공한다.
+실험 레시피는 한 필드의 A/B와 sweep 준비를 명시적으로 적용한다. 필요한 기능이 꺼져 있으면
+먼저 표시하고 다른 옵션을 자동으로 켜지 않는다. 비교 제외 사유는 이름 있는 조건의 이전/이후 값으로 읽는다.
+기본 OFF 패스의 샘플 수를 비교하려면 B에서 ON → `현재 B를 새 A 기준으로 채택` → sample recipe를
+사용한다. 새 기준은 이전 experiment와 분리되고 종료하면 채택 전의 원래 장면으로 복원한다.
+세션 변수에는 실험용 SSGI·SSR의 활성/강도/거리/샘플 수가 포함된다. 둘 다 기본 OFF이며
+MapPBR G-buffer(marker3)만 수신한다. SSGI는 화면의 HDR 간접 diffuse 기여, SSR은 화면의
+반사 기여를 더한다. 기존 baked GI·IBL을 보존하는 가산 실험으로 에너지 보존형 교체가 아니다.
+시간 누적·노이즈 제거·화면 밖 추적·Lumen Surface Cache·DXR ray tracing은 제공하지 않는다.
+불투명 합성 후 전용 shader가 기존 ping-pong target에 계산하고 성공 후 HDR·Bloom에 반영한다.
+Profiler의 `Render.SSGI`, `Render.SSR`, `Render.ScreenSpaceLighting.Copy`로 계산과 복사를 비교한다.
+실험값은 현재 profile JSON에 저장하지 않으며 종료 시 소유권을 확인해 원래 세션값으로 복구한다.
+실제 SSAO sample4/8/12와 PCF radius0/1/2(1/9/25개 위치)는 session 품질 변수이며 기본12/1을
+유지한다. dynamic baked PCF는 위치당 두 depth를 읽는다. 이 두 필드는 현재 rendering profile
+JSON의 저장 옵션이 아니며 Lumen·DXR·Nanite 등 미구현 renderer와 구분한다.
 `RenderingProfiles.json`의 quality에는 optional `colorAdjustment`(bloomTint RGBA, desaturation)가 있고,
 환경 영역에는 optional priority와 postProcess(bloomThreshold, bloomIntensity, bloomTint, desaturation)가 있다.
 optional `qualityOverride`는 기존 quality와 같은 전체 구조를 가지며 해당 영역의 품질 기준을 고정한다.
