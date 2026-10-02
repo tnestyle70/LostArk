@@ -95,7 +95,8 @@ class GuidePipelineTests(unittest.TestCase):
         result = self.invoke(self.root, mode, *args)
         self.assertEqual(result.returncode == 0, succeeds, result.stdout)
         if contains:
-            self.assertIn(contains, result.stdout)
+            # Windows PowerShell wraps diagnostics even in the middle of a word.
+            self.assertIn("".join(contains.split()), "".join(result.stdout.split()), result.stdout)
         return result
 
     def save(self, baseline, draft, **kwargs):
@@ -154,6 +155,106 @@ class GuidePipelineTests(unittest.TestCase):
         def mutate(doc):
             next(t for t in doc["triggers"] if t["event"]["type"] == "RAID_RETURNED")["categoryId"] = "valtan"
         self.invalid_publish("triggers", mutate, "Raid return requires Bern")
+
+    def anchored_box(self, bundle):
+        trigger = next(t for t in bundle["triggers"]["triggers"]
+                       if t["event"]["type"] == "SPACE_ENTER" and t["event"]["anchorPlacementId"])
+        category = next(c for c in bundle["catalog"]["categories"] if c["categoryId"] == trigger["categoryId"])
+        world_path = self.root / "Data/Worlds" / category["areaId"] / "Gameplay.world.json"
+        return trigger, world_path
+
+    def rejected_anchor_edit(self, edit, diagnostic):
+        baseline = self.bundle()
+        trigger, world_path = self.anchored_box(baseline)
+        world = read(world_path)
+        anchor = next(p for p in world["placements"] if p["placementId"] == trigger["event"]["anchorPlacementId"])
+        edit(world, anchor)
+        write(world_path, world)
+        world_bytes = world_path.read_bytes()
+        before = self.snapshot()
+        # The tool must still be able to Load the broken source and repair its binding.
+        self.run_mode("Validate", contains=diagnostic)
+        self.assert_preserved(before)
+        self.save(baseline, copy.deepcopy(baseline), succeeds=False, contains=diagnostic)
+        for mode in ("Publish", "CheckPublished"):
+            self.run_mode(mode, succeeds=False, contains=diagnostic)
+        self.assert_preserved(before)
+        self.assertEqual(world_path.read_bytes(), world_bytes)
+
+    def test_missing_anchor_remains_editable_but_cannot_publish(self):
+        self.rejected_anchor_edit(lambda world, anchor: world["placements"].remove(anchor), "no longer exists")
+
+    def test_non_npc_anchor_remains_editable_but_cannot_publish(self):
+        self.rejected_anchor_edit(lambda world, anchor: anchor.update(kind="triggerBox"), "enabled NPC")
+
+    def test_disabled_anchor_remains_editable_but_cannot_publish(self):
+        self.rejected_anchor_edit(lambda world, anchor: anchor.update(enabled=False), "enabled NPC")
+
+    def test_moved_anchor_remains_editable_and_recopy_repairs_save(self):
+        self.rejected_anchor_edit(lambda world, anchor: anchor["position"].__setitem__(0, anchor["position"][0] + 2),
+                                  "stale position / rotation")
+        baseline = self.bundle()
+        draft = copy.deepcopy(baseline)
+        trigger, world_path = self.anchored_box(draft)
+        anchor = next(p for p in read(world_path)["placements"] if p["placementId"] == trigger["event"]["anchorPlacementId"])
+        trigger["event"]["position"] = copy.deepcopy(anchor["position"])
+        trigger["event"]["yawDegrees"] = anchor["yawDegrees"]
+        runtimes = [(self.root / path).read_bytes() for path in RUNTIMES]
+        self.save(baseline, draft)
+        self.assertEqual(runtimes, [(self.root / path).read_bytes() for path in RUNTIMES])
+        self.run_mode("Publish")
+        self.run_mode("CheckPublished")
+
+    def test_rotated_anchor_remains_editable_but_cannot_publish(self):
+        self.rejected_anchor_edit(lambda world, anchor: anchor.update(yawDegrees=anchor["yawDegrees"] + 1),
+                                  "stale position / rotation")
+
+    def test_anchor_tolerance_and_yaw_wrap_preserve_authored_values(self):
+        baseline = self.bundle()
+        draft = copy.deepcopy(baseline)
+        trigger, _ = self.anchored_box(draft)
+        trigger["event"]["position"][0] += 0.00005
+        trigger["event"]["yawDegrees"] -= 360.00005
+        trigger["event"]["halfExtents"] = [6, 3, 8]
+        self.save(baseline, draft)
+        self.run_mode("Publish")
+        actual = next(t for t in read(self.root / RUNTIMES[0])["triggers"] if t["triggerId"] == trigger["triggerId"])
+        self.assertEqual(actual["event"], trigger["event"])
+
+    def test_cleared_anchor_allows_independent_box_transform(self):
+        baseline = self.bundle()
+        draft = copy.deepcopy(baseline)
+        trigger, _ = self.anchored_box(draft)
+        trigger["event"]["anchorPlacementId"] = ""
+        trigger["event"]["position"][0] += 42
+        trigger["event"]["yawDegrees"] += 27
+        self.save(baseline, draft)
+        self.run_mode("Publish")
+        self.run_mode("CheckPublished")
+
+    def test_invalid_box_structure_still_rejects_editor_validation(self):
+        def malformed(doc):
+            next(t for t in doc["triggers"] if t["event"]["type"] == "SPACE_ENTER")["event"]["position"] = [1, 2]
+        self.mutate("triggers", malformed)
+        before = self.snapshot()
+        self.run_mode("Validate", succeeds=False, contains="requires three coordinates")
+        self.assert_preserved(before)
+
+    def test_enabled_empty_trigger_is_editable_but_requires_binding(self):
+        def empty(doc):
+            trigger = next(t for t in doc["triggers"] if t["event"]["type"] == "GUIDE_STARTED")
+            trigger.update(enabled=True, promptId="", comboId="")
+        self.mutate("triggers", empty)
+        baseline = self.bundle()
+        before = self.snapshot()
+        self.run_mode("Validate", contains="has no prompt or combo")
+        self.save(baseline, copy.deepcopy(baseline), succeeds=False, contains="has no prompt or combo")
+        self.run_mode("Publish", succeeds=False, contains="has no prompt or combo")
+        self.assert_preserved(before)
+        draft = copy.deepcopy(baseline)
+        next(t for t in draft["triggers"]["triggers"] if t["event"]["type"] == "GUIDE_STARTED")["enabled"] = False
+        self.save(baseline, draft)
+        self.run_mode("Publish")
 
     def test_malformed_json_preserves_both_runtime_files(self):
         self.path("prompts").write_bytes(b'{"prompts": [')

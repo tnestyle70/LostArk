@@ -328,7 +328,9 @@ namespace LostArk::Server
 		void Remove_Guide(SESSION_ID ownerSessionId, bool publish = true);
 		void Suspend_PersonalGuide(SESSION_ID ownerSessionId);
 		void Resume_PersonalGuide(SESSION_ID ownerSessionId, LostArk::Shared::WORLD_ID sourceWorld);
-		void Queue_GuidePrompt(SESSION_ID ownerSessionId, const std::string& promptId);
+		void Seed_GuideSpaceEntries(SESSION_ID ownerSessionId, const SERVER_PLAYER& anchor);
+		void Prune_GuideSpacePrompts(SESSION_ID ownerSessionId);
+		void Queue_GuidePrompt(SESSION_ID ownerSessionId, const GUIDE_TRIGGER& trigger);
 		void Execute_PlayerMove(SERVER_PLAYER& player, const LostArk::Shared::C2S_MOVE& move);
 		bool Execute_PlayerSkill(SERVER_PLAYER& player, const LostArk::Shared::C2S_USE_SKILL& skill);
 		struct STAGED_PLAYER_ENTRY final
@@ -1825,6 +1827,15 @@ namespace LostArk::Server
 
 		std::unordered_map<SESSION_ID, std::weak_ptr<CClientSession>> m_Sessions;
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER> m_Players;
+		struct GUIDE_PROMPT_OCCURRENCE
+		{
+			std::string PromptId, TriggerId;
+			std::size_t NextSegment = 0;
+			int Priority = 0;
+			bool IsSpaceEnter = false;
+			std::vector<std::string> SpaceTriggerIds;
+			bool operator==(const GUIDE_PROMPT_OCCURRENCE&) const = default;
+		};
 		struct GUIDE_RUNTIME
 		{
 			LostArk::Shared::PLAYER_ID PlayerId = 0, AnchorId = 0;
@@ -1838,7 +1849,7 @@ namespace LostArk::Server
             std::map<std::string, std::uint32_t> CommandTicks;
 			std::uint8_t Action = 0;
             float FollowScore = 0.f, EvadeScore = 0.f, CombatScore = 0.f;
-			std::deque<std::pair<std::string, std::size_t>> PromptQueue;
+			std::deque<GUIDE_PROMPT_OCCURRENCE> PromptQueue;
 			std::map<std::string, std::uint32_t> TriggerTicks;
 			std::unordered_set<std::string> InsideBoxes;
 			std::map<LostArk::Shared::NET_ENTITY_ID, std::uint32_t> PatternSequences;

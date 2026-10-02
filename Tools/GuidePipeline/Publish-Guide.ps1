@@ -46,6 +46,36 @@ function Read-Json([string]$path,[bool]$repositoryOwned=$true) {
     return ,$parsed
 }
 function Assert-True($condition,[string]$message) { if (-not $condition) { throw $message } }
+function Assert-EditableBinding($condition,[string]$message) {
+    if($condition){return}
+    # Validate is also the editor's Load admission. Keep broken references editable;
+    # Save and runtime publication must still reject them without replacing files.
+    if($script:Mode -eq 'Validate'){Write-Warning $message}else{throw $message}
+}
+function Assert-BoxAnchor($event,$world) {
+    Assert-True ($event.anchorPlacementId -is [string]) 'Box anchor must be a stable ID or an empty string'
+    if($event.anchorPlacementId -ceq ''){return}
+    Assert-Id $event.anchorPlacementId 'Box anchor'
+    $anchors=@($world.placements | Where-Object placementId -CEQ $event.anchorPlacementId)
+    Assert-True ($anchors.Count -le 1) "Duplicate world placement for Box anchor '$($event.anchorPlacementId)'"
+    $context="Box '$($event.boxId)' anchor '$($event.anchorPlacementId)'"
+    $repair='Load Guide, then copy the current enabled NPC position / rotation again or clear the anchor before Save / Publish.'
+    if($anchors.Count -eq 0){Assert-EditableBinding $false "$context no longer exists. $repair";return}
+    $anchor=$anchors[0]
+    if($anchor.kind -cne 'npc' -or $anchor.enabled -isnot [bool] -or -not $anchor.enabled){
+        Assert-EditableBinding $false "$context must reference an enabled NPC. $repair";return
+    }
+    Assert-Vector $anchor.position -100000 'NPC anchor position'
+    Assert-Number $anchor.yawDegrees -36000 36000 'NPC anchor yaw'
+    $matches=$true
+    for($axis=0;$axis -lt 3;$axis++){
+        if([Math]::Abs([double]$event.position[$axis]-[double]$anchor.position[$axis]) -gt 0.0001){$matches=$false}
+    }
+    $yawDelta=([double]$event.yawDegrees-[double]$anchor.yawDegrees)%360
+    if($yawDelta -gt 180){$yawDelta-=360}elseif($yawDelta -lt -180){$yawDelta+=360}
+    if([Math]::Abs($yawDelta) -gt 0.0001){$matches=$false}
+    Assert-EditableBinding $matches "$context has a stale position / rotation. $repair"
+}
 function Assert-Keys($value,[string[]]$keys,[string]$where) {
     Assert-True ($null -ne $value -and $value -is [pscustomobject]) "$where must be an object"
     $actual=@($value.PSObject.Properties.Name)
@@ -111,11 +141,13 @@ function Make-Runtime($b) {
         'GUIDE_STARTED' { Assert-Keys $t.event @('type') 'Guide start trigger'; Assert-True ($cats[$t.categoryId].worldId -ceq 'BERN') 'Guide start requires Bern' }
         'RAID_RETURNED' { Assert-Keys $t.event @('type','raidWorldId') 'Raid return trigger'; Assert-True ($cats[$t.categoryId].worldId -ceq 'BERN' -and $t.event.raidWorldId -cin @('VALTAN_ARENA','KAKULSAYDON_ARENA')) 'Raid return requires Bern and a supported source raid' }
         'WORLD_RETURNED' { Assert-Keys $t.event @('type','sourceWorldId') 'World return trigger'; Assert-True ($cats[$t.categoryId].worldId -ceq 'BERN' -and $t.event.sourceWorldId -cin @('MAHARAKA','COLOSSEUM')) 'World return requires Bern and a supported source world' }
-        'SPACE_ENTER' { Assert-Keys $t.event @('type','boxId','position','yawDegrees','halfExtents','anchorPlacementId') 'Box trigger'; Assert-Id $t.event.boxId 'Box'; Assert-Vector $t.event.position -100000 'Box position'; Assert-Vector $t.event.halfExtents 0.01 'Box half extents'; Assert-Number $t.event.yawDegrees -36000 36000 'Box yaw'; if($t.event.anchorPlacementId -cne ''){ Assert-True (@($worlds[$t.categoryId].placements | Where-Object placementId -CEQ $t.event.anchorPlacementId).Count -eq 1) 'Box anchor is not a current world placement' } }
+        'SPACE_ENTER' { Assert-Keys $t.event @('type','boxId','position','yawDegrees','halfExtents','anchorPlacementId') 'Box trigger'; Assert-Id $t.event.boxId 'Box'; Assert-Vector $t.event.position -100000 'Box position'; Assert-Vector $t.event.halfExtents 0.01 'Box half extents'; Assert-Number $t.event.yawDegrees -36000 36000 'Box yaw'; Assert-BoxAnchor $t.event $worlds[$t.categoryId] }
         'BOSS_PATTERN_STARTED' { Assert-Keys $t.event @('type','patternId') 'Pattern trigger'; Assert-Id $t.event.patternId 'Pattern'; Assert-True ($bootstrap -cmatch ('(?m)^PATTERN\t[^\t]+\t'+[Regex]::Escape($t.event.patternId)+'\t')) 'Pattern is not published' }
         'HELP_COMMAND' { Assert-Keys $t.event @('type','commandId') 'Help trigger'; Assert-True ($commandIds.ContainsKey($t.event.commandId)) 'Help command is missing' }
         default { throw 'Unknown Guide event type' }
-    } }
+    }
+    Assert-EditableBinding (-not $t.enabled -or $t.promptId -cne '' -or $t.comboId -cne '') "Enabled trigger '$($t.triggerId)' has no prompt or combo. Bind a prompt / combo or disable the trigger before Save / Publish."
+    }
     $placement=Clone $b.placement; foreach($k in @('schema','formatVersion','revision','guideId')){ $placement.PSObject.Properties.Remove($k) }
     foreach($k in @('schema','formatVersion','revision','guideId')){ $combat.PSObject.Properties.Remove($k) }
     $runtime=[ordered]@{schema='lostark.guide-runtime';formatVersion=1;revision=0;guideId=$g.guideId;characterClass=$g.characterClass;displayName=$g.displayName;categories=$b.catalog.categories;placement=$placement;prompts=$b.prompts.prompts;triggers=$b.triggers.triggers;combat=$combat}

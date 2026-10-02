@@ -4996,6 +4996,9 @@ Guardian Movie watersplash native4645~4647에는 원본 shader map에도 별도 
 - Guide Save에서 PowerShell 함수 결과의 singleton 배열을 scalar로 풀면 무관한 필드 수정이 충돌로 오판된다. `File.Replace` rollback의 null backup 인자는 PS5에서 빈 문자열로 바뀔 수 있으므로 실제 복구 fixture를 유지한다.
 - Guide 신규 C++는 UTF-8 BOM 없음이며 한글 ImGui 문자열을 가진 TU는 프로젝트의 파일별 `/utf-8` 옵션을 유지한다. 기존 CP949 파일을 일괄 변환하지 않는다.
 - Guide의 `GUIDE_STARTED`에는 박스가 없다. 공간 편집은 `콜라이더` 목록의 `SPACE_ENTER` 행을 선택해 별도 `Collider Detail`에서 수행하며, Show Debug는 현재 Area의 전체 draft 박스를 표시한다. 시작 인사에 상점 대사를 연결한 것을 상점 공간 트리거 생성으로 해석하지 않는다.
+- 공간 대사를 promptId만으로 예약하면 이탈 후 다른 장소에서 발화한다. 발생 trigger ID·priority를 보존하고 미시작 예약의 현재 접촉을 재검사한다. 취소된 예약은 cooldown을 소비하지 않는다. 안내 시작·월드 귀환만 현재 접촉을 seed하고, Guide 재배치·부활은 기존 owner 접촉을 유지하여 실제 스퀘어홀 진입을 억제하지 않는다. 같은 대사의 중첩 박스는 실제 발생한 다른 출처를 보존해 한 박스 이탈 시 남은 박스의 안내가 유실되지 않게 한다.
+- NPC anchor는 좌표·회전 복사 참조이며 NPC를 자동 추종하지 않는다. NPC 이동 뒤 Guide를 다시 Load하고 복사해야 게시할 수 있다. 잘못된 anchor를 도구 Load부터 거부하면 복구 UI가 막히므로 편집용 Validate는 경고, Save/Publish/CheckPublished는 거부로 구분한다. PowerShell helper는 동적 scope의 반복 변수와 충돌하지 않게 모드를 `$script:Mode`로 읽는다.
+- NPC 배치를 비활성화할 때 상점 binding과 authored/viewer 미니맵 소비자도 확인한다. 서버 actor만 사라지고 정적 NPC 심볼이 남는 경우가 있으므로 미니맵은 enabled=false를 제외해야 한다.
 - 전체 Size를 halfExtents로 바꿀 때 float의 `0.02 / 2`가 저장 schema 최소 `0.01`보다 작아질 수 있다. JSON double 영역에서 최소·최대값을 보정한다. 상세 창을 닫으면 그 창에서 시작한 one-shot picking도 취소한다.
 
 

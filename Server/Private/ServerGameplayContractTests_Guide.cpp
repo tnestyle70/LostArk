@@ -37,6 +37,9 @@ int CServerGameplayContractRunner::Run_GuideAI()
  const auto actorCount=source->m_Players.size();
  C2S_PARTY_INVITE legacy;legacy.iTargetNetEntityId=reception.iNetEntityId;source->Handle_PartyInvite(ownerId,legacy);
  tests.Require(source->m_PersonalGuides.empty()&&source->m_PartyMembersByPartyId.empty(),"A legacy party invitation cannot create guidance or a hidden party");
+ GUIDE_TRIGGER startBox;startBox.Id="guide.contract.start-inside";startBox.Type="SPACE_ENTER";startBox.Category=source->m_GuideCatalog.Categories.at(WORLD_ID::BERN);startBox.PromptId="guide.contract.start-space";
+ startBox.Box.fPositionX=leader.fPositionX;startBox.Box.fPositionY=leader.fPositionY+1.f;startBox.Box.fPositionZ=leader.fPositionZ;startBox.Box.fHalfExtentX=startBox.Box.fHalfExtentY=startBox.Box.fHalfExtentZ=.5f;
+ source->m_GuideCatalog.Prompts.push_back({startBox.PromptId,{{"Existing contact is not entry",1000u}}});source->m_GuideCatalog.Triggers.push_back(startBox);
  control(ownerId,1,GUIDE_CONTROL_ACTION::START);
  tests.Require(source->m_PersonalGuides.size()==1&&source->m_PersonalGuides.at(ownerId).PlayerId==guideId&&source->m_Players.size()==actorCount&&source->m_PartyMembersByPartyId.empty(),"Typed start binds the placed actor without a clone or internal party");
  if(source->m_PersonalGuides.empty())return 1;
@@ -50,6 +53,10 @@ int CServerGameplayContractRunner::Run_GuideAI()
  tests.Require(hasFrame(sessions[0],PACKET_TYPE::S2C_GUIDE_PROMPT)&&!hasFrame(sessions[1],PACKET_TYPE::S2C_GUIDE_PROMPT),"Prepared greeting is delivered only to the owner");
  const auto firstPrompt=std::find_if(sessions[0]->m_OutboundFrames.begin(),sessions[0]->m_OutboundFrames.end(),[](const auto& f){return f.ePacketType==PACKET_TYPE::S2C_GUIDE_PROMPT;});
  tests.Require(firstPrompt!=sessions[0]->m_OutboundFrames.end()&&std::any_of(sessions[0]->m_OutboundFrames.begin(),firstPrompt,[](const auto& f){return f.ePacketType==PACKET_TYPE::S2C_GUIDE_STATE;}),"Ownership state is queued before the first greeting");
+ tests.Require(source->m_PersonalGuides.at(ownerId).InsideBoxes.contains(startBox.Id)&&
+  std::none_of(source->m_PersonalGuides.at(ownerId).PromptQueue.begin(),source->m_PersonalGuides.at(ownerId).PromptQueue.end(),[&](const auto& queued){return queued.TriggerId==startBox.Id;}),
+  "Starting guidance inside a space seeds contact and emits no invented entry prompt");
+ source->m_GuideCatalog.Triggers.pop_back();source->m_GuideCatalog.Prompts.pop_back();source->m_PersonalGuides.at(ownerId).InsideBoxes.erase(startBox.Id);
  const auto firstEventSequence=source->m_iGuideEventSequence;
  drain();
  auto& state=source->m_PersonalGuides.at(ownerId);
@@ -80,6 +87,89 @@ int CServerGameplayContractRunner::Run_GuideAI()
  state.InsideBoxes.erase(box.Id);leader.fPositionX=guide.fPositionX;leader.fPositionZ=guide.fPositionZ;guide.fPositionX=box.Box.fPositionX;source->Update_Guides(.2f);
  tests.Require(!state.InsideBoxes.contains(box.Id),"Guide-only contact cannot trigger the owner's Bern space event");
  source->m_GuideCatalog.Triggers.pop_back();guide.fPositionX=reception.fPositionX;guide.fPositionY=reception.fPositionY;guide.fPositionZ=reception.fPositionZ;leader.fPositionX=ownerPose[0];leader.fPositionY=ownerPose[1];leader.fPositionZ=ownerPose[2];source->Reset_PlayerForDebugTeleport(guide);
+ // Decode actual outgoing dialogue for location cancellation, ordering and arrival boundaries.
+ {
+  const auto savedCatalog=source->m_GuideCatalog;const auto savedState=state;const auto savedGuide=guide;const auto savedOwner=leader;const auto savedTick=source->m_iServerTick;
+  source->m_GuideCatalog.Triggers.clear();state.PromptQueue.clear();state.TriggerTicks.clear();state.InsideBoxes.clear();state.ThinkElapsed=0.f;state.PromptRemaining=6.f;state.ReturningOnFoot=false;source->m_iServerTick=100u;
+  GUIDE_TRIGGER local=box;local.Id="guide.contract.queued-space";local.PromptId="guide.contract.location";local.CooldownMs=30000;local.Priority=10;
+  local.Box.fPositionX=leader.fPositionX+8.f;local.Box.fPositionY=leader.fPositionY+1.f;local.Box.fPositionZ=leader.fPositionZ;
+  source->m_GuideCatalog.Prompts.push_back({local.PromptId,{{"Location",1000u}}});source->m_GuideCatalog.Triggers.push_back(local);
+  auto step=[&](float seconds){++source->m_iServerTick;source->Update_Guides(seconds);};
+  auto enter=[&](){leader.fPositionX=local.Box.fPositionX;leader.fPositionZ=local.Box.fPositionZ;};
+  auto leave=[&](){leader.fPositionX=local.Box.fPositionX+3.f;leader.fPositionZ=local.Box.fPositionZ;};
+  auto received=[&](){std::vector<S2C_GUIDE_PROMPT> messages;for(const auto& frame:sessions[0]->m_OutboundFrames)if(frame.ePacketType==PACKET_TYPE::S2C_GUIDE_PROMPT){S2C_GUIDE_PROMPT message;CPacketReader reader{std::span<const std::uint8_t>(frame.Bytes).subspan(PACKET_HEADER_BYTES)};if(Read_Message(reader,message))messages.push_back(std::move(message));}return messages;};
+  drain();leave();step(.2f);enter();step(.2f);
+  tests.Require(state.PromptQueue.size()==1&&state.PromptQueue.front().TriggerId==local.Id&&!state.TriggerTicks.contains(local.Id),"A waiting location prompt retains its source without spending cooldown");
+  leave();step(.2f);
+  tests.Require(state.PromptQueue.empty()&&!state.TriggerTicks.contains(local.Id)&&received().empty(),"Leaving a location cancels only its unsaid prompt without sending stale dialogue");
+  enter();step(.2f);
+  tests.Require(state.PromptQueue.size()==1&&state.PromptQueue.front().PromptId==local.PromptId,"Re-entering a cancelled location can immediately reserve its dialogue again");
+  state.PromptRemaining=0.f;step(.01f);auto messages=received();
+  tests.Require(messages.size()==1&&messages.front().strPromptId==local.PromptId&&state.TriggerTicks.contains(local.Id)&&state.TriggerTicks.at(local.Id)==source->m_iServerTick,"The first actual location segment is delivered and starts cooldown");
+  drain();leave();step(.2f);enter();step(.2f);
+  tests.Require(state.PromptQueue.empty(),"An already spoken location still respects its re-entry cooldown");
+
+  // Moving directly between two shops with shared text replaces the old provenance.
+  state.PromptQueue.clear();state.PromptRemaining=6.f;state.TriggerTicks.clear();
+  GUIDE_TRIGGER nextSpace=local;nextSpace.Id="guide.contract.shared-next";nextSpace.Box.fPositionX+=8.f;
+  GUIDE_TRIGGER overlap=nextSpace;overlap.Id="guide.contract.shared-overlap";
+  source->m_GuideCatalog.Triggers.push_back(nextSpace);source->m_GuideCatalog.Triggers.push_back(overlap);
+  enter();source->Queue_GuidePrompt(ownerId,local);leader.fPositionX=nextSpace.Box.fPositionX;source->Queue_GuidePrompt(ownerId,nextSpace);
+  tests.Require(state.PromptQueue.size()==1&&state.PromptQueue.front().TriggerId==nextSpace.Id&&!state.TriggerTicks.contains(local.Id),"Same-text entry at a new shop replaces an unsaid departed source before deduplication");
+  source->Queue_GuidePrompt(ownerId,overlap);
+  tests.Require(state.PromptQueue.size()==1&&state.PromptQueue.front().TriggerId==nextSpace.Id&&state.PromptQueue.front().SpaceTriggerIds.size()==2,"Overlapping current spaces retain both fired sources in only one dialogue");
+  source->Seed_GuideSpaceEntries(ownerId,leader);state.PromptRemaining=0.f;step(.01f);messages=received();
+  tests.Require(messages.size()==1&&messages.front().strPromptId==local.PromptId&&state.TriggerTicks.contains(nextSpace.Id)&&state.TriggerTicks.contains(overlap.Id)&&!state.TriggerTicks.contains(local.Id),"Shared text speaks once and starts cooldown for every valid source that actually fired");
+  // Both spaces really fire, then only the chosen source is left before speaking.
+  drain();state.PromptQueue.clear();state.PromptRemaining=6.f;state.TriggerTicks.clear();state.InsideBoxes.clear();
+  nextSpace.Box.fHalfExtentX=2.f;nextSpace.Priority=40;overlap.Box.fHalfExtentX=2.f;overlap.Box.fPositionX=nextSpace.Box.fPositionX+3.f;
+  source->m_GuideCatalog.Triggers[source->m_GuideCatalog.Triggers.size()-2]=nextSpace;source->m_GuideCatalog.Triggers.back()=overlap;
+  GUIDE_TRIGGER unentered=overlap;unentered.Id="guide.contract.already-inside-shared";unentered.Priority=250;unentered.Box.fHalfExtentX=10.f;source->m_GuideCatalog.Triggers.push_back(unentered);
+  leader.fPositionX=nextSpace.Box.fPositionX-4.f;source->Seed_GuideSpaceEntries(ownerId,leader);step(.2f);leader.fPositionX=nextSpace.Box.fPositionX+1.5f;step(.2f);
+  tests.Require(state.PromptQueue.size()==1&&state.PromptQueue.front().TriggerId==nextSpace.Id&&state.PromptQueue.front().SpaceTriggerIds.size()==2,"Both actual overlap entry sources are retained without adopting a higher-priority unfired contact");
+  leader.fPositionX=overlap.Box.fPositionX+1.5f;step(.2f);
+  tests.Require(state.PromptQueue.size()==1&&state.PromptQueue.front().TriggerId==overlap.Id&&state.PromptQueue.front().Priority==overlap.Priority&&state.InsideBoxes.contains(overlap.Id),"Leaving the preferred source preserves the already-fired overlapping source without requiring re-entry");
+  state.PromptRemaining=0.f;step(.01f);messages=received();
+  tests.Require(messages.size()==1&&messages.front().strPromptId==local.PromptId&&state.TriggerTicks.contains(overlap.Id)&&!state.TriggerTicks.contains(nextSpace.Id),"The surviving shared source speaks once and the departed unsaid source spends no cooldown");
+  source->m_GuideCatalog.Triggers.pop_back();source->m_GuideCatalog.Triggers.pop_back();source->m_GuideCatalog.Triggers.pop_back();drain();enter();source->Seed_GuideSpaceEntries(ownerId,leader);
+
+  // An unrelated high-priority trigger sharing a prompt must not promote this occurrence.
+  state.PromptQueue.clear();state.PromptRemaining=6.f;state.TriggerTicks.clear();
+  GUIDE_TRIGGER dormant=local;dormant.Id="guide.contract.unfired-priority";dormant.Priority=250;dormant.Box.fPositionX+=50.f;
+  GUIDE_TRIGGER greeting=local;greeting.Id="guide.contract.queue-greeting";greeting.Type="GUIDE_STARTED";greeting.PromptId="guide.contract.greeting";greeting.Priority=100;
+  source->m_GuideCatalog.Prompts.push_back({greeting.PromptId,{{"Greeting",1000u}}});source->m_GuideCatalog.Triggers.push_back(dormant);source->m_GuideCatalog.Triggers.push_back(greeting);
+  source->Queue_GuidePrompt(ownerId,local);source->Queue_GuidePrompt(ownerId,greeting);
+  tests.Require(state.PromptQueue.size()==2&&state.PromptQueue.front().PromptId==greeting.PromptId&&state.PromptQueue.back().Priority==10,"Queue priority belongs to the fired trigger rather than every trigger sharing its prompt");
+  state.PromptRemaining=0.f;leave();step(.01f);messages=received();
+  tests.Require(messages.size()==1&&messages.front().strPromptId==greeting.PromptId&&state.PromptQueue.empty(),"Cancelling a stale space leaves its greeting deliverable in the same update");
+
+  // Guide-only arrival preserves contact; real owner relocation into a new space still fires.
+  drain();state.PromptQueue.clear();state.PromptRemaining=0.f;state.TriggerTicks.clear();enter();source->Seed_GuideSpaceEntries(ownerId,leader);source->Guide_AnchorArrived(leader);
+  step(.2f);
+  tests.Require(state.InsideBoxes.contains(local.Id)&&state.PromptQueue.empty()&&received().empty(),"Repeated guide arrival preserves owner contact without inventing another entry");
+  leave();step(.2f);enter();source->Guide_AnchorArrived(leader,true);step(.2f);
+  tests.Require(state.PromptQueue.size()==1&&state.PromptQueue.front().TriggerId==local.Id,"Committed local map travel from outside into a new space preserves its real entry event");
+  guide.fPositionX=leader.fPositionX+2.f;guide.fPositionY=leader.fPositionY;guide.fPositionZ=leader.fPositionZ;step(.01f);messages=received();
+  tests.Require(messages.size()==1&&messages.front().strPromptId==local.PromptId,"Actual local map travel into a shop delivers its location dialogue once");
+  drain();state.PromptRemaining=0.f;state.TriggerTicks.clear();
+  GUIDE_TRIGGER returned=greeting;returned.Id="guide.contract.return";returned.Type="RAID_RETURNED";returned.PatternId="VALTAN_ARENA";returned.PromptId="guide.contract.return-text";
+  source->m_GuideCatalog.Prompts.push_back({returned.PromptId,{{"Returned",1000u}}});source->m_GuideCatalog.Triggers.push_back(returned);
+  state.WaitingForOwner=true;state.InsideBoxes.clear();source->Resume_PersonalGuide(ownerId,WORLD_ID::VALTAN_ARENA);
+  tests.Require(state.InsideBoxes.contains(local.Id)&&state.PromptQueue.size()==1&&state.PromptQueue.front().TriggerId==returned.Id,"World return seeds nearby spaces while reserving its genuine return dialogue");
+  leave();guide.fPositionX=leader.fPositionX+2.f;guide.fPositionY=leader.fPositionY;guide.fPositionZ=leader.fPositionZ;step(.2f);messages=received();
+  tests.Require(messages.size()==1&&messages.front().strPromptId==returned.PromptId,"Return dialogue is preserved after leaving the arrival space");
+
+  // Once the first segment starts, finishing the authored sentence remains deterministic.
+  drain();state.PromptQueue.clear();state.PromptRemaining=0.f;state.TriggerTicks.clear();state.ReturningOnFoot=false;
+  GUIDE_TRIGGER multi=local;multi.Id="guide.contract.multisegment";multi.PromptId="guide.contract.multisegment-text";
+  source->m_GuideCatalog.Prompts.push_back({multi.PromptId,{{"First segment",1000u},{"Second segment",1000u}}});source->m_GuideCatalog.Triggers.push_back(multi);
+  enter();source->Seed_GuideSpaceEntries(ownerId,leader);source->Queue_GuidePrompt(ownerId,multi);step(.01f);const auto speechTick=source->m_iServerTick;
+  leave();step(.2f);
+  tests.Require(state.PromptQueue.size()==1&&state.PromptQueue.front().NextSegment==1,"Leaving a space does not discard a dialogue whose first segment already started");
+  step(1.f);messages=received();
+  tests.Require(messages.size()==2&&messages[0].strText=="First segment"&&messages[1].strText=="Second segment"&&state.TriggerTicks.contains(multi.Id)&&state.TriggerTicks.at(multi.Id)==speechTick,"Started multi-segment dialogue finishes in order without restarting its cooldown");
+  source->m_GuideCatalog=savedCatalog;state=savedState;guide=savedGuide;leader=savedOwner;source->m_iServerTick=savedTick;drain();
+ }
  // The admitted dragon and three-axis common executor remain unchanged.
  C2S_SET_VEHICLE_RIDING riding;riding.eWorldId=WORLD_ID::BERN;riding.iRequestSequence=100;riding.iVehicleId=ANCIENT_SEA_VEHICLE_ID;
  (void)source->Apply_SetVehicleRiding(leader,riding);source->Update_Guides(.2f);
@@ -148,7 +238,7 @@ int CServerGameplayContractRunner::Run_GuideAI()
  auto& returnedGuide=source->m_Players.at(guideId);
  tests.Require(!state.WaitingForOwner&&state.ReturningOnFoot&&state.AnchorId==sessions[0]->Get_PlayerId()&&returnedGuide.iNetEntityId==reception.iNetEntityId&&returnedGuide.fPositionX==waitingPose[0]&&returnedGuide.fPositionZ==waitingPose[2],"Raid return rebinds the new human identity while preserving the guide identity and pose");
  const auto returnTrigger=std::find_if(source->m_GuideCatalog.Triggers.begin(),source->m_GuideCatalog.Triggers.end(),[](const auto& t){return t.Enabled&&t.Type=="RAID_RETURNED"&&t.PatternId=="VALTAN_ARENA";});
- tests.Require(returnTrigger!=source->m_GuideCatalog.Triggers.end()&&std::any_of(state.PromptQueue.begin(),state.PromptQueue.end(),[&](const auto& p){return p.first==returnTrigger->PromptId;}),"Actual raid return queues the matching published lowercase-category prompt");
+ tests.Require(returnTrigger!=source->m_GuideCatalog.Triggers.end()&&std::any_of(state.PromptQueue.begin(),state.PromptQueue.end(),[&](const auto& p){return p.PromptId==returnTrigger->PromptId;}),"Actual raid return queues the matching published lowercase-category prompt");
  const auto count=state.PromptQueue.size();source->Resume_PersonalGuide(ownerId,WORLD_ID::VALTAN_ARENA);tests.Require(state.PromptQueue.size()==count,"A repeated resume notification cannot duplicate the return prompt");
  auto& returnedOwner=source->m_Players.at(sessions[0]->Get_PlayerId());
  const auto returnOwnerPose=std::array{returnedOwner.fPositionX,returnedOwner.fPositionY,returnedOwner.fPositionZ};returnedOwner.hasMoveGoal=false;
@@ -175,7 +265,7 @@ int CServerGameplayContractRunner::Run_GuideAI()
   const char* name=world==WORLD_ID::KAKULSAYDON_ARENA?"KAKULSAYDON_ARENA":world==WORLD_ID::MAHARAKA?"MAHARAKA":"COLOSSEUM";
   const auto event=std::find_if(source->m_GuideCatalog.Triggers.begin(),source->m_GuideCatalog.Triggers.end(),[&](const auto& t){return t.Enabled&&(t.Type=="RAID_RETURNED"||t.Type=="WORLD_RETURNED")&&t.PatternId==name;});
   const auto& current=source->m_PersonalGuides.at(ownerId);
-  tests.Require(admitted&&!current.WaitingForOwner&&event!=source->m_GuideCatalog.Triggers.end()&&std::any_of(current.PromptQueue.begin(),current.PromptQueue.end(),[&](const auto& p){return p.first==event->PromptId;}),"Committed return resolves the matching Kouku, island or Colosseum prompt");
+  tests.Require(admitted&&!current.WaitingForOwner&&event!=source->m_GuideCatalog.Triggers.end()&&std::any_of(current.PromptQueue.begin(),current.PromptQueue.end(),[&](const auto& p){return p.PromptId==event->PromptId;}),"Committed return resolves the matching Kouku, island or Colosseum prompt");
  }
  source->Leave(ownerId,PLAYER_DESPAWN_REASON::LEVEL_CHANGED);sessions[0]->Request_Close();source->Update_Guides(.2f);
  tests.Require(source->m_PersonalGuides.empty()&&source->m_Players.size()==1&&source->m_Players.at(guideId).iNetEntityId==reception.iNetEntityId,"Disconnect while away releases the owner but keeps exactly the same singleton guide");

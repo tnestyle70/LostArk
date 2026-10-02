@@ -23,6 +23,9 @@
 
 namespace
 {
+    // Matches Start_Guide admission in GameRoom_Guide.cpp (horizontal world meters).
+    constexpr float GUIDE_START_DISTANCE_M = 10.f;
+
     bool Can_Recruit(const LostArk::Shared::S2C_COLOSSEUM_MATCH_STATE& match,
         const std::vector<Client::REPLICATED_PLAYER_VIEW>& players,
         const LostArk::Shared::NET_ENTITY_ID target)
@@ -150,7 +153,7 @@ bool_t Client::CPartyInteractionView::Update(
         m_pContextMenuView->Set_SlotVisible("PartyContextMenu_HoverHighlight", false);
     }
 	(void)Update_ContextMenuTrigger(OtherPlayers, Replication.Get_PartyRoster(), match, worldInteractionAllowed);
-    m_bGuideStatusKnown = m_bGuideBusy = m_bGuideOwned = false;
+    m_bGuideStatusKnown = m_bGuideBusy = m_bGuideOwned = m_bGuideStartInRange = false;
     if (m_hasContextMenuTarget && m_bContextGuide)
     {
         const auto* state = Replication.Get_GuideState();
@@ -162,6 +165,22 @@ bool_t Client::CPartyInteractionView::Update(
             m_bGuideBusy = state->iOwnerNetEntityId != LostArk::Shared::INVALID_NET_ENTITY_ID;
             m_bGuideOwned = m_bGuideBusy && local != OtherPlayers.end() &&
                 state->iOwnerNetEntityId == local->iNetEntityId;
+        }
+        const auto target = std::find_if(OtherPlayers.begin(), OtherPlayers.end(),
+            [this](const REPLICATED_PLAYER_VIEW& player) { return player.iNetEntityId == m_iContextMenuTargetNetEntityId; });
+        if (local != OtherPlayers.end() && target != OtherPlayers.end())
+        {
+            const auto ownerBody = local->pCharacter.lock();
+            const auto guideBody = target->pCharacter.lock();
+            const auto ownerTransform = ownerBody ? ownerBody->Get_Transform() : nullptr;
+            const auto guideTransform = guideBody ? guideBody->Get_Transform() : nullptr;
+            if (ownerTransform && guideTransform)
+            {
+                const vector_t delta = XMVectorSetY(XMVectorSubtract(ownerTransform->Get_State(STATE::POSITION),
+                    guideTransform->Get_State(STATE::POSITION)), 0.f);
+                m_bGuideStartInRange = XMVectorGetX(XMVector3LengthSq(delta)) <=
+                    GUIDE_START_DISTANCE_M * GUIDE_START_DISTANCE_M;
+            }
         }
     }
 	return m_hasContextMenuTarget || m_isInvitePopupOpen;
@@ -361,7 +380,8 @@ void Client::CPartyInteractionView::Render_ContextMenu(
 			float4_t(1.f, 1.f, 1.f, 1.f) :
 			float4_t(210.f / 255.f, 210.f / 255.f, 210.f / 255.f, 1.f));
 
-    const bool guideDisabled = m_bContextGuide && (!m_bGuideStatusKnown || (m_bGuideBusy && !m_bGuideOwned));
+    const bool guideDisabled = m_bContextGuide && (!m_bGuideStatusKnown ||
+        (m_bGuideBusy && !m_bGuideOwned) || (!m_bGuideBusy && !m_bGuideStartInRange));
     if (guideDisabled) m_pContextMenuView->Set_SlotTint("PartyContextMenu_HoverHighlight", float4_t(.5f,.5f,.5f,1.f));
 	bool_t closeMenu = false;
 	if (isButtonHovered)
@@ -628,7 +648,9 @@ void Client::CPartyInteractionView::Render_ContextMenuText()
 	// "파티초대"
 	const wchar_t* INVITE_LABEL = m_bContextGuide
         ? (!m_bGuideStatusKnown ? L"\uAC00\uC774\uB4DC - \uC0C1\uD0DC \uD655\uC778 \uC911" : m_bGuideOwned ? L"\uAC00\uC774\uB4DC - \uC548\uB0B4 \uC885\uB8CC" :
-            m_bGuideBusy ? L"\uAC00\uC774\uB4DC - \uB2E4\uB978 \uD50C\uB808\uC774\uC5B4 \uC548\uB0B4 \uC911" : L"\uAC00\uC774\uB4DC - \uCC28\uC6D0\uC220\uC0AC \uC548\uB0B4 \uC2DC\uC791")
+            m_bGuideBusy ? L"\uAC00\uC774\uB4DC - \uB2E4\uB978 \uD50C\uB808\uC774\uC5B4 \uC548\uB0B4 \uC911" :
+            !m_bGuideStartInRange ? L"\uAC00\uC774\uB4DC - \uAC00\uAE4C\uC774 \uAC00\uC11C \uC2DC\uC791" :
+            L"\uAC00\uC774\uB4DC - \uCC28\uC6D0\uC220\uC0AC \uC548\uB0B4 \uC2DC\uC791")
         : m_bContextMercenary ? L"\xC6A9\xBCD1 \xCD08\xB300" : L"\xD30C\xD2F0\xCD08\xB300";
 	(void)UILabelFont::Draw_Centered(TEXT("Font_YoonGasiIIM"), INVITE_LABEL,
 		(fButtonX + fButtonW * 0.5f) * textScaleX, (fButtonY + fButtonH * 0.5f) * textScaleY,

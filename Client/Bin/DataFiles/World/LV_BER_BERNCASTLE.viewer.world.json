@@ -2,7 +2,7 @@
     "schema":  "lostark.world-gameplay",
     "formatVersion":  6,
     "areaId":  "LV_BER_BERNCASTLE",
-    "revision":  928,
+    "revision":  929,
     "placements":  [
                        {
                            "placementId":  "castle",
@@ -820,7 +820,7 @@
                                             -83.6880035
                                         ],
                            "yawDegrees":  -146.309998,
-                           "enabled":  true
+                           "enabled":  false
                        },
                        {
                            "placementId":  "npc.bern.plaza.12",
@@ -862,7 +862,7 @@
                                             -82.1880035
                                         ],
                            "yawDegrees":  -73.8199997,
-                           "enabled":  true
+                           "enabled":  false
                        },
                        {
                            "placementId":  "npc.bern.plaza.13",
@@ -881,7 +881,7 @@
                                             "startDelayMs":  1800,
                                             "idleMinMs":  0,
                                             "idleMaxMs":  0,
-                                            "lookTargetPlacementId":  "npc.bern.plaza.14",
+                                            "lookTargetPlacementId":  null,
                                             "waypoints":  [
 
                                                           ],
@@ -904,7 +904,7 @@
                                             -80.6880035
                                         ],
                            "yawDegrees":  -33.6899986,
-                           "enabled":  true
+                           "enabled":  false
                        },
                        {
                            "placementId":  "npc.bern.plaza.14",
@@ -923,7 +923,7 @@
                                             "startDelayMs":  1950,
                                             "idleMinMs":  0,
                                             "idleMaxMs":  0,
-                                            "lookTargetPlacementId":  "npc.bern.plaza.13",
+                                            "lookTargetPlacementId":  null,
                                             "waypoints":  [
 
                                                           ],
@@ -946,7 +946,7 @@
                                             -79.1880035
                                         ],
                            "yawDegrees":  146.309998,
-                           "enabled":  true
+                           "enabled":  false
                        },
                        {
                            "placementId":  "npc.bern.plaza.15",
@@ -965,7 +965,7 @@
                                             "startDelayMs":  2100,
                                             "idleMinMs":  0,
                                             "idleMaxMs":  0,
-                                            "lookTargetPlacementId":  "npc.bern.plaza.16",
+                                            "lookTargetPlacementId":  null,
                                             "waypoints":  [
 
                                                           ],
@@ -988,7 +988,7 @@
                                             -78.1880035
                                         ],
                            "yawDegrees":  45,
-                           "enabled":  true
+                           "enabled":  false
                        },
                        {
                            "placementId":  "npc.bern.plaza.16",
@@ -1007,7 +1007,7 @@
                                             "startDelayMs":  2250,
                                             "idleMinMs":  0,
                                             "idleMaxMs":  0,
-                                            "lookTargetPlacementId":  "npc.bern.plaza.15",
+                                            "lookTargetPlacementId":  null,
                                             "waypoints":  [
 
                                                           ],
@@ -1030,7 +1030,7 @@
                                             -76.6880035
                                         ],
                            "yawDegrees":  -135,
-                           "enabled":  true
+                           "enabled":  false
                        },
                        {
                            "placementId":  "npc.bern.plaza.17",
@@ -1091,7 +1091,7 @@
                                             "startDelayMs":  2550,
                                             "idleMinMs":  0,
                                             "idleMaxMs":  0,
-                                            "lookTargetPlacementId":  "npc.bern.plaza.20",
+                                            "lookTargetPlacementId":  null,
                                             "waypoints":  [
 
                                                           ],
@@ -1156,7 +1156,7 @@
                                             -74.1880035
                                         ],
                            "yawDegrees":  -111.801003,
-                           "enabled":  true
+                           "enabled":  false
                        },
                        {
                            "placementId":  "npc.bern.plaza.20",
@@ -1198,7 +1198,7 @@
                                             -73.6880035
                                         ],
                            "yawDegrees":  161.565002,
-                           "enabled":  true
+                           "enabled":  false
                        },
                        {
                            "placementId":  "npc.bern.schmidt",
@@ -1498,7 +1498,7 @@
                                             -146.669006
                                         ],
                            "yawDegrees":  276.859985,
-                           "enabled":  true
+                           "enabled":  false
                        },
                        {
                            "placementId":  "npc.bern.ship.shipwright.1",

@@ -1,5 +1,5 @@
 {
-    "revision":  3,
+    "revision":  4,
     "formatVersion":  1,
     "guideId":  "guide.dimensionmaster",
     "schema":  "lostark.guide-triggers",
@@ -13,7 +13,7 @@
                                        "type":  "GUIDE_STARTED"
                                    },
                          "priority":  100,
-                         "promptId":  "guide.prompt.19889218.1",
+                         "promptId":  "guide.bern.party.first_invite",
                          "triggerId":  "guide.trigger.bern.first_invite"
                      },
                      {
@@ -28,7 +28,7 @@
                                                         43.8576393,
                                                         -68.1880035
                                                     ],
-                                       "yawDegrees":  0,
+                                       "yawDegrees":  225,
                                        "halfExtents":  [
                                                            4,
                                                            3,
@@ -287,11 +287,99 @@
                          "cooldownMs":  30000,
                          "enabled":  true,
                          "event":  {
-                                       "type":  "GUIDE_STARTED"
-                                   },
+                             "type": "SPACE_ENTER",
+                             "boxId": "guide.box.bern.avatar",
+                             "position": [
+                                 46.2,
+                                 35.82,
+                                 160.2
+                             ],
+                             "yawDegrees": -61.7,
+                             "halfExtents": [
+                                 4,
+                                 3,
+                                 4
+                             ],
+                             "anchorPlacementId": "npc.bern.plaza.17"
+                         },
                          "priority":  10,
-                         "promptId":  "",
+                         "promptId":  "guide.prompt.19889218.1",
                          "triggerId":  "guide.trigger.20001546.2"
+                     },
+                     {
+                         "triggerId": "guide.trigger.bern.raid.aylara",
+                         "categoryId": "bern",
+                         "enabled": true,
+                         "event": {
+                             "type": "SPACE_ENTER",
+                             "boxId": "guide.box.bern.raid.aylara",
+                             "position": [
+                                 144.986389,
+                                 50.0935516,
+                                 -148.171982
+                             ],
+                             "yawDegrees": 0,
+                             "halfExtents": [
+                                 4,
+                                 3,
+                                 4
+                             ],
+                             "anchorPlacementId": "npc.bern.aylara"
+                         },
+                         "promptId": "guide.bern.npc.raid",
+                         "comboId": "",
+                         "cooldownMs": 30000,
+                         "priority": 10
+                     },
+                     {
+                         "triggerId": "guide.trigger.bern.potion",
+                         "categoryId": "bern",
+                         "enabled": true,
+                         "event": {
+                             "type": "SPACE_ENTER",
+                             "boxId": "guide.box.bern.potion",
+                             "position": [
+                                 225.17,
+                                 43.52,
+                                 -68.19
+                             ],
+                             "yawDegrees": 135.0,
+                             "halfExtents": [
+                                 4,
+                                 3,
+                                 4
+                             ],
+                             "anchorPlacementId": "npc.bern.plaza.05"
+                         },
+                         "promptId": "guide.bern.npc.potion",
+                         "comboId": "",
+                         "cooldownMs": 30000,
+                         "priority": 10
+                     },
+                     {
+                         "triggerId": "guide.trigger.bern.pvp",
+                         "categoryId": "bern",
+                         "enabled": true,
+                         "event": {
+                             "type": "SPACE_ENTER",
+                             "boxId": "guide.box.bern.pvp",
+                             "position": [
+                                 53.0803871,
+                                 41.5276375,
+                                 283.849335
+                             ],
+                             "yawDegrees": 0,
+                             "halfExtents": [
+                                 4,
+                                 3,
+                                 4
+                             ],
+                             "anchorPlacementId": "npc.bern.25184_1.2"
+                         },
+                         "promptId": "guide.bern.npc.pvp",
+                         "comboId": "",
+                         "cooldownMs": 30000,
+                         "priority": 10
                      }
                  ]
 }
