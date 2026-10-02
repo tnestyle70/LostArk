@@ -6,6 +6,7 @@
 #include <functional>
 #include <limits>
 #include <map>
+#include <psapi.h>
 
 using namespace Engine;
 
@@ -85,6 +86,16 @@ HRESULT CProfiler::Initialize(
     m_pDevice = std::move(device);
     m_pContext = std::move(context);
     m_MainThreadId = GetCurrentThreadId();
+    m_pMemoryAdapter.Reset(); m_MemoryAdapterIdentityValid = false; m_MemoryAdapterLuid = {};
+    m_MemorySample = {}; m_LastMemoryPollTick = 0;
+    ComPtr<IDXGIDevice> dxgiDevice; ComPtr<IDXGIAdapter> adapter;
+    if (SUCCEEDED(m_pDevice.As(&dxgiDevice)) && SUCCEEDED(dxgiDevice->GetAdapter(adapter.GetAddressOf())))
+    {
+        DXGI_ADAPTER_DESC desc{};
+        if (SUCCEEDED(adapter->GetDesc(&desc)))
+        { m_MemoryAdapterIdentityValid = true; m_MemoryAdapterLuid = desc.AdapterLuid; }
+        (void)adapter.As(&m_pMemoryAdapter);
+    }
     m_GpuQueriesAvailable = Create_GpuQueries();
     return S_OK;
 }
@@ -139,6 +150,7 @@ void CProfiler::Begin_Frame()
         }
     }
     m_PreviousFrameBeginTick = m_FrameBeginTick;
+    Sample_Memory(m_FrameBeginTick);
     Begin_GpuFrame(m_FrameNumber);
 }
 
@@ -153,6 +165,9 @@ void CProfiler::End_Frame()
 
     const uint64_t endTick = Query_Tick();
     m_CurrentFrame.FrameEndTick = endTick;
+    m_CurrentFrame.Memory = m_MemorySample;
+    if (m_CurrentFrame.Memory.Sampled && endTick >= m_CurrentFrame.Memory.SampleTick)
+        m_CurrentFrame.Memory.AgeMs = Ticks_ToMs(endTick - m_CurrentFrame.Memory.SampleTick);
     m_PreviousFrameEndTick = endTick;
     m_CurrentFrame.CpuFrameMs =
         static_cast<double>(endTick - m_FrameBeginTick) * 1000.0 /
@@ -196,6 +211,53 @@ void CProfiler::End_Frame()
     Resolve_GpuFrames(m_PollFrameNumber);
 }
 
+void CProfiler::Sample_Memory(uint64_t tick)
+{
+    // Begin_Frame calls this only with Capture ON. Pausing and resetting history
+    // do not reset the wall-clock throttle. No GPU query, flush or readback.
+    if (m_LastMemoryPollTick != 0 && tick >= m_LastMemoryPollTick &&
+        tick - m_LastMemoryPollTick < static_cast<uint64_t>(m_Frequency.QuadPart)) return;
+    m_LastMemoryPollTick = tick;
+    CProfilerScope memoryCost(this, "Profiler.Memory.Sample");
+    FProfilerMemoryStats sampled{};
+    sampled.Sampled = true; sampled.SampleFrameNumber = m_FrameNumber; sampled.SampleTick = tick;
+    sampled.ProcessId = GetCurrentProcessId();
+    sampled.AdapterIdentityValid = m_MemoryAdapterIdentityValid;
+    sampled.AdapterLuidLow = m_MemoryAdapterLuid.LowPart;
+    sampled.AdapterLuidHigh = m_MemoryAdapterLuid.HighPart;
+    PROCESS_MEMORY_COUNTERS_EX process{}; process.cb = sizeof(process);
+    if (K32GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&process), sizeof(process)))
+    {
+        sampled.ProcessValid = true;
+        sampled.PrivateCommitBytes = process.PrivateUsage;
+        sampled.WorkingSetBytes = process.WorkingSetSize;
+        sampled.PeakWorkingSetBytes = process.PeakWorkingSetSize;
+        sampled.PeakPrivateCommitBytes = process.PeakPagefileUsage;
+    }
+    PERFORMANCE_INFORMATION system{}; system.cb = sizeof(system);
+    if (K32GetPerformanceInfo(&system, sizeof(system)) && system.PageSize != 0)
+    {
+        sampled.SystemValid = true;
+        sampled.SystemCommitBytes = static_cast<uint64_t>(system.CommitTotal) * system.PageSize;
+        sampled.SystemCommitLimitBytes = static_cast<uint64_t>(system.CommitLimit) * system.PageSize;
+        sampled.SystemAvailableBytes = static_cast<uint64_t>(system.PhysicalAvailable) * system.PageSize;
+    }
+    if (m_pMemoryAdapter)
+    {
+        const auto read = [&](DXGI_MEMORY_SEGMENT_GROUP group, FProfilerMemorySegment& segment)
+        {
+            DXGI_QUERY_VIDEO_MEMORY_INFO info{};
+            if (SUCCEEDED(m_pMemoryAdapter->QueryVideoMemoryInfo(0, group, &info)))
+            { segment.Valid = true; segment.CurrentUsageBytes = info.CurrentUsage; segment.BudgetBytes = info.Budget; }
+        };
+        read(DXGI_MEMORY_SEGMENT_GROUP_LOCAL, sampled.Local);
+        read(DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, sampled.NonLocal);
+    }
+    // A failed attempt replaces the previous values with unavailable rather
+    // than silently presenting the last successful sample as a fresh success.
+    m_MemorySample = sampled;
+}
+
 void CProfiler::Set_Enabled(bool enabled) noexcept
 {
     m_Enabled.store(enabled, std::memory_order_relaxed);
@@ -217,6 +279,7 @@ void CProfiler::Reset_History()
     std::lock_guard lock(m_Mutex);
     m_History.clear();
     m_EvictedHistoryFrames = 0;
+    m_MemorySample = {}; // No sample from before Reset is attributed to the new history.
     m_PendingScopes.clear();
     m_LongOperations.clear();
     m_DroppedCpuScopes = 0;
@@ -624,6 +687,28 @@ FProfilerCaptureWindow CProfiler::Get_CaptureWindowLocked(size_t frameWindow) co
     return window;
 }
 
+void CProfiler::Get_MemorySamples(size_t maxFrames, std::vector<FProfilerMemoryStats>& outSamples) const
+{
+    std::lock_guard lock(m_Mutex);
+    outSamples.clear();
+    const size_t count = (std::min)(maxFrames, m_History.size());
+    const uint64_t now = Query_Tick();
+    for (size_t i = 0; i < count; ++i)
+    {
+        const auto& memory = m_History[m_History.size() - 1u - i].Memory;
+        if (!memory.Sampled) continue;
+        if (!outSamples.empty())
+        {
+            const auto& previous = outSamples.back();
+            if (previous.SampleTick == memory.SampleTick && previous.ProcessId == memory.ProcessId &&
+                previous.SampleFrameNumber == memory.SampleFrameNumber) continue;
+        }
+        outSamples.push_back(memory);
+        if (now >= memory.SampleTick) outSamples.back().AgeMs = Ticks_ToMs(now - memory.SampleTick);
+    }
+    std::reverse(outSamples.begin(), outSamples.end());
+}
+
 bool CProfiler::Get_LiveStats(FProfilerLiveStats& outStats) const
 {
     std::lock_guard lock(m_Mutex);
@@ -643,6 +728,10 @@ bool CProfiler::Get_LiveStats(FProfilerLiveStats& outStats) const
     outStats.FrameIntervalMs = latest.FrameIntervalMs;
     outStats.FrameBeginTick = latest.FrameBeginTick;
     outStats.FrameEndTick = latest.FrameEndTick;
+    outStats.Memory = latest.Memory;
+    const uint64_t now = Query_Tick();
+    if (outStats.Memory.Sampled && now >= outStats.Memory.SampleTick)
+        outStats.Memory.AgeMs = Ticks_ToMs(now - outStats.Memory.SampleTick);
     outStats.PreviousCpuFrameMs = latest.PreviousCpuFrameMs;
     outStats.FrameGapMs = latest.FrameGapMs;
     outStats.Animation = latest.Animation;
@@ -734,14 +823,21 @@ void CProfiler::Get_ScopeAggregates(
     for (size_t frameIndex = m_History.size() - frameCount;
         frameIndex < m_History.size(); ++frameIndex)
     {
-        selfComplete = selfComplete && m_History[frameIndex].DroppedCpuScopes == 0;
+        const FProfilerFrame& frame = m_History[frameIndex];
+        const bool boundsKnown = frame.FrameBeginTick != 0 && frame.FrameEndTick >= frame.FrameBeginTick;
+        selfComplete = selfComplete && frame.DroppedCpuScopes == 0 && boundsKnown;
         for (FThreadReduction& thread : threads) thread.CompletedCount = 0;
-        const auto& frameScopes = m_History[frameIndex].CpuScopes;
+        const auto& frameScopes = frame.CpuScopes;
         const size_t scopeCount = frameScopes.size();
         const FProfilerScopeSample* scopes = frameScopes.data();
         for (size_t index = 0; index < scopeCount; ++index)
         {
             const FProfilerScopeSample& sample = scopes[index];
+            // Completed events belong to the frame in which they ended. A parent
+            // crossing its bounds may have children in another frame, so this
+            // frame-local reduction cannot prove self time. Keep inclusive time.
+            if (sample.BeginTick < frame.FrameBeginTick || sample.EndTick > frame.FrameEndTick ||
+                sample.EndTick < sample.BeginTick) selfComplete = false;
             if (sample.NameId >= m_ScopeNames.size()) continue;
             FThreadReduction& thread = threadFor(sample.ThreadId);
             // There is at most one push per input sample. Allocate the bounded

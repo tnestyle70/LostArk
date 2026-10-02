@@ -30,6 +30,8 @@ struct RENDERING_BENCHMARK_RUN final
 	string strQualitySummary;
 	string strComparisonConditions;
     string strFullConditions, strExperimentId, strVariant, strFailureReason;
+    string strRecipeId, strExperimentGoal, strMetricGuide, strConfidence;
+    std::map<string,string> commonConditionFields, actualConditionFields, changedConditionFields;
     uint64_t fieldMask = 0, firstFrame = 0, lastFrame = 0;
     uint32_t warmupFrames = 0, repetition = 1, pendingGpuFrames = 0, invalidGpuFrames = 0;
     uint64_t droppedCpuScopes = 0, droppedGpuScopes = 0;
@@ -82,6 +84,8 @@ public:
 
 private:
     void Render_ExperimentSection(Engine::CProfiler* profiler, CRenderingProfileService& profiles);
+    void Render_RecipeSection();
+    bool_t Prepare_Recipe(bool_t replaceB);
     bool_t Start_Experiment(CRenderingProfileService& profiles);
     bool_t Apply_ExperimentVariant(bool_t variantB);
     void End_Experiment();
@@ -91,7 +95,9 @@ private:
     void Queue_Save();
     void Poll_Save();
     uint64_t Experiment_FieldMask() const;
-    string Current_Conditions(uint64_t excludedFields) const;
+    uint64_t Experiment_BaselineMask() const;
+    bool_t Adopt_BaselineFromB();
+    string Current_Conditions(uint64_t excludedFields, std::map<string,string>* named = nullptr) const;
     void Render_Results();
 	bool_t Render_RestorationSection(CRenderingProfileService& Profiles);
 	bool_t Render_PixelInputs();
@@ -122,7 +128,9 @@ private:
     uint32_t m_iExperimentLevel = 0u;
     string m_strExperimentId, m_strExperimentOwner, m_strCaptureVariant, m_strFullConditions;
     string m_strCaptureExperimentId, m_strFailureReason;
-    RENDERING_EXPERIMENT_VALUES m_ExperimentA, m_ExperimentB, m_CaptureValues;
+    std::map<string,string> m_CaptureCommonFields, m_CaptureActualFields, m_ChangedConditionFields;
+    int m_iSelectedRecipe = 0, m_iPreparedRecipe = -1;
+    RENDERING_EXPERIMENT_VALUES m_ExperimentA, m_ExperimentB, m_ExperimentOriginal, m_CaptureValues;
     CRenderingProfileService* m_pExperimentProfiles = nullptr; // MainApp owns both services.
     Engine::CProfiler* m_pCaptureProfiler = nullptr;
     int m_iCompareFirst = -1, m_iCompareSecond = -1;

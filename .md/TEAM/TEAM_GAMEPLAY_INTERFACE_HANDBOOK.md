@@ -416,6 +416,13 @@ geometry 정점 수다. PassNameId 미지원은 UINT32_MAX이고 이름은 해�
 해석한다. mesh 표시는 stable asset/placement ID가 아니며 개별 draw GPU ms를 제공하지 않는다.
 캡처 비교는 이름과 main/worker 역할로 CPU 구간을 결합하고, 서로 다른 snapshot의 NameId를
 직접 비교하지 않는다. 과거 JSON의 새 필드 부재, incomplete Self와 GPU pending은 미계측이다.
+`FProfilerFrame::Memory`는 최대1Hz 샘플의 identity/age/validity를 가진다. process/system API와
+DXGI adapter node0의 local/nonlocal budget·usage는 독립적인 측정이며 합산하지 않는다.
+캡처 평균은 sample frame별 중복을 제거하고 구형 캡처의 부재는 N/A로 유지한다. `TextureRequests`,
+`TexturePathHits`, `TextureUniqueSrvs`는 CMaterial shared texture 경로의 시도·재사용·새 SRV 생성
+카운터다. Capture 중 worker 완료가 요청과 다른 frame에 잡힐 수 있고 현재 상주 수를 뜻하지 않는다.
+Content hash 재사용·총 GPU texture byte·allocation stack·residency는 현재 계측하지 않는다.
+타임라인의 CPU QPC와 GPU 자체 clock은 별개이고 미계측 구간을 특정 driver/queue 원인으로 단정하지 않는다.
 
 `FrameIntervalMs = PreviousCpuFrameMs + FrameGapMs`이며 현재 `CpuFrameMs`와 GPU 시간은
 독립된 경과 시간이다. IA 정점/primitive와 VS/PS 호출은 처리량이지 고유 geometry·픽셀·연산
@@ -434,6 +441,11 @@ UI가 저장 profile이나 Engine GPU resource를 직접 교체하지 않는다.
 `RENDER_QUALITY_SETTINGS::iSSAOSampleCount`는4/8/12만,
 `SHADOW_SETTINGS::iPCFFilterRadius`는0/1/2만 받는다. 기존12와1을 기본값으로 유지하고
 Renderer/Shadow의 실제 shader bind가 소비한다. 렌더 옵션 저장 schema로 승격하지 않는다.
+화면 공간 실험은 `bSSGIEnabled/fSSGIStrength/fSSGIRadius/iSSGISampleCount`와
+`bSSREnabled/fSSRStrength/fSSRMaxDistance/fSSRThickness/iSSRStepCount`를 같은 세션 계약으로 받는다.
+SSGI rays는4/8/16, SSR steps는16/32/64이며 기본 OFF다. 독립 shader가 marker3 MapPBR의
+불투명 HDR에 가산하며 기존 baked/IBL·distortion·저장 profile은 보존한다. 나머지 재질 family,
+화면 밖·시간 누적·denoising·DXR를 지원하는 계약은 아니다.
 GPU Gems는 자료 모음이고 Lumen·DXR·Nanite·DLSS 같은 외부 renderer/SDK 이름은 현재 실행
 가능한 옵션으로 위장하지 않는다. 기법 사전의 지원 상태와 실제 변수 목록을 함께 확인한다.
 

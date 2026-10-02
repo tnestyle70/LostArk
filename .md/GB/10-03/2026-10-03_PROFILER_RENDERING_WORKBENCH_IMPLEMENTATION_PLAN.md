@@ -388,11 +388,11 @@ G06 종료는 실제 field-diff 검증, 허용 변수 외 변경 탐지, p99/동
 | Baked lightmap / RNM | 정적 geometry에 도달한 조명을 미리 계산한 texture | texel 밀도, bake sample·bounce, atlas/UV; bake 시간·용량·런타임 fetch | RNM 소비 있음. 신규 bake 시스템과 기존 추출 RNM은 별개 |
 | IBL / reflection probe | 환경 영상을 diffuse·roughness별 specular로 근사 | cube 크기·mip·회전·강도·보정 범위·갱신 주기; 메모리/샘플 | source environment specular와 cube→Lambert SH 근사 있음. native SH 원본 packing 전체 동일성은 미완료 |
 | Volumetric lightmap / irradiance probe | 공간의 조명 샘플을 보간해 움직이는 물체에 간접광 제공 | probe 간격·SH 차수·보간 범위; 메모리·빛샘 | 현재 일반 probe-volume 시스템 없음. 저장/streaming·보간·검증 필요 |
-| SSGI | 화면 depth/normal/color에서 근거리 간접광 추정 | ray·step 수, 반경·해상도·history; tracing/denoise | 미구현. 화면 밖 정보 손실·disocclusion 처리 필요. DX11의 별도 구현 후보 |
+| SSGI | 화면 depth/normal/color에서 근거리 간접광 추정 | ray·step 수, 반경·해상도·history; tracing/denoise | G21에 현재 프레임 MapPBR 가산 실험 연결. 화면 밖 정보·history·denoising은 후속 기반 |
 | 실시간 probe GI | probe 조명을 tracing으로 반복 갱신하고 공간 보간 | probe spacing, rays/probe, 업데이트 수/frame, hysteresis; trace·cache | 미구현. probe volume·scene tracing·relocation/leak 방지 설계 필요 |
 | Lumen software tracing | screen trace, mesh/global distance field, surface cache를 결합한 GI·반사 | trace 거리·scene detail·cache 품질/갱신·GI quality | 자체 엔진에 없음. distance field asset·surface cache·history 전체 시스템 필요 |
 | Lumen hardware tracing | ray tracing geometry와 surface cache 또는 hit lighting으로 GI·반사 | scene/BVH 갱신, ray budget, 반사 roughness·bounce·hit lighting | 자체 D3D11에서 DXR toggle 불가. RT 지원 backend와 scene 구조 선행 |
-| SSR | 현재 화면의 depth·색으로 반사 ray를 추적 | max roughness·step·거리·해상도·edge fade; tracing/resolve | 미구현. 화면 밖/가려진 표면을 보충할 환경 fallback 필요 |
+| SSR | 현재 화면의 depth·색으로 반사 ray를 추적 | max roughness·step·거리·해상도·edge fade; tracing/resolve | G21에 MapPBR 가산 실험 연결. 기존 IBL 보존, 화면 밖/가려진 표면·temporal 미지원 |
 | Planar reflection | 평면에 대해 반사된 camera로 장면을 다시 그림 | 반사 해상도·clip plane·거리·대상; 추가 geometry/lighting pass | 미구현. 별도 카메라/target과 scope별 중복 비용 표기 필요 |
 | Ray-traced reflection | scene geometry를 ray로 조회해 off-screen 반사 계산 | ray 수·bounce·roughness·denoising; BVH·trace·shade | 미구현. RT backend·material hit 평가·fallback 필요 |
 
@@ -531,7 +531,7 @@ GTAO는 기존 SSAO input/resolve 경계를, SSR는 SceneHDR와 depth/normal/rou
 새 pass를 넣기 전에 현재 RT에 필요한 값과 정밀도가 있는지 확인하고 추가 MRT/format의 메모리·
 대역폭 비용까지 A/B에 포함한다. 모든 재질에 없는 roughness를 임의 상수로 채워 지원 완료로 보지 않는다.
 
-TAA/TAAU/SSGI는 공통 temporal 입력을 먼저 닫는다. Engine의 현재/이전 camera matrix와 object/
+G21의 비시간누적 SSGI·SSR 실험 이후, TAA/TAAU와 간접광·반사의 시간 누적 버전은 공통 temporal 입력을 먼저 닫는다. Engine의 현재/이전 camera matrix와 object/
 skinning transform으로 velocity를 만들고 camera cut·teleport·spawn·pose reset·resize 때 history를
 무효화한다. 투명/particle의 velocity 또는 reactive mask 지원 범위를 표시한다. main scene과 portrait
 처럼 서로 다른 view는 history를 공유하지 않는다. 생성·resize 실패는 기존 non-temporal 경로를 유지한다.
@@ -682,3 +682,100 @@ Workbench의 두 필드는 owner가 활성인 동안만 실효 설정 위에 적
 whitelist·run 결과에 포함한다. 범위 밖 값은 commit 전에 거부한다. 검증은 실제 FX 컴파일,
 headless WARP의 finite/default parity, 허용/거부 값과 loop 소비 연결로 수행한다.
 화질·실제 GPU 장치 성능은 사용자의 동일조건 실험에서 판정한다.
+
+## G16. 상용 엔진 비교를 실제 도구의 진단 흐름에 연결
+
+PR505는 `8fdb3d4e6aa8c763f94aa28c683a80d7a8c84397`로 main에 병합됐다. 이후 사용자는
+언리얼의 graphics/Profiler와 비교한 부족점도 개념과 함께 전부 툴에 반영하도록 요청했다.
+이 후속 변경은 같은 브랜치를 해당 main으로 fast-forward한 뒤 진행하며 기존 저장값을 보존한다.
+
+기존 G14는 렌더링 알고리즘 사전이며 상용 프로파일러의 시간축·메모리·task/wait·resource dependency
+구조까지 보여주는 비교 도구는 아니다. `RenderingReferenceGuide.h`의 공용 catalog와 `Render()`를
+Profiler와 Workbench 양쪽에서 소비한다. 한 항목은 상용 기능의 개념, 현재 구현, 실제 부족점,
+필수 입력, 수치의 의미, 계측하지 못하는 범위, 검증 기준, 다음 실험과 공식 URL을 소유한다.
+CPU/GPU timeline, scheduling/context switch, per-draw/resource inspection, RDG, memory allocation,
+streaming, material complexity/overdraw, culling/geometry, GI/reflection/shadow, temporal/ray를 대조한다.
+
+표시 상태는 구현·부분 지원·기반 필요를 구분한다. 부족점 설명이 있다고 미구현 renderer나
+운영체제 추적까지 지원하는 것으로 표시하지 않는다. 실제 시간축·메모리 관측·기존 옵션 실험은
+아래 G17~G19에서 연결하고, 나머지 항목은 필요한 증거와 검증 절차를 툴에서 확인한다.
+새 header는 Client vcxproj와 기존 Rendering filter에 등록한다.
+
+공식 비교 근거는 [Timing Insights](https://dev.epicgames.com/documentation/unreal-engine/timing-insights-in-unreal-engine),
+[Context Switches](https://dev.epicgames.com/documentation/unreal-engine/context-switches-in-unreal-engine-5),
+[Task Graph Insights](https://dev.epicgames.com/documentation/unreal-engine/task-graph-insights-in-unreal-engine-5),
+[RDG](https://dev.epicgames.com/documentation/unreal-engine/render-dependency-graph-in-unreal-engine),
+[Memory Insights](https://dev.epicgames.com/documentation/en-us/unreal-engine/memory-insights-in-unreal-engine)와
+[GPUDump](https://dev.epicgames.com/documentation/unreal-engine/gpudump-viewer-tool-in-unreal-engine)다.
+기존 메모리 조사 정본은 `../10-02/2026-10-02_FRAME_PIPELINE_OPTIMIZATION_IMPLEMENTATION_PLAN.md` G12이며,
+그 문서의 과거 관측값을 현재 실행 측정값으로 재사용하지 않는다.
+
+## G17. CPU·GPU 시간축과 근거 있는 병목 후보
+
+`ProfilerTool.h/.cpp`는 기존 Engine snapshot을 bounded window로 읽어 완료 frame을 선택한다.
+CPU는 thread/depth별 QPC 상대 구간, GPU는 해당 frame의 query 시작 기준 상대 구간을 표시한다.
+두 축은 시계가 동기화됐다는 근거가 없으므로 같은 절대 시각처럼 합치지 않는다. 확대·이동·
+구간 선택으로 이름·elapsed·확인 가능한 self·패스 draw를 보고 clipping·worker 프레임 경계·
+누락·pending을 명시한다. 기존 범용 collector 대신 별도 계측 runtime을 만들지 않는다.
+
+CPU/GPU 예산 초과, frame gap, 애니메이션 갱신 후 미제출, draw/index 제출량과 계측 누락을
+근거로 병목 후보와 다음 실험을 안내한다. elapsed만으로 계산·스케줄러 대기·driver stall을
+구분하거나 PS 호출만으로 overdraw·ALU 포화를 확정하지 않는다. 이런 원인에는 필요한 추가
+trace를 안내하며 수집된 값 이상의 확신을 부여하지 않는다.
+
+## G18. 메모리 관측과 texture cache의 실제 생산자
+
+`Profiler.h/.cpp`는 Capture ON에서만 최대1Hz로 process private commit/working set/peak,
+system commit/limit/available RAM, DXGI adapter node0 local/nonlocal usage/budget을 수집한다.
+표본 frame/tick/age, process ID·adapter LUID·node와 각각의 validity를 DTO에 보존한다.
+같은 OS 표본을 여러 frame에 재사용하므로 메모리 timeline은 sample frame으로 중복 제거한다.
+GPU query가 실패해도 process/system 수치는 독립적으로 사용할 수 있고 실패값0은 N/A다.
+
+Working set과 private commit, OS budget과 물리 VRAM, local/nonlocal·UMA를 구분한다.
+프로세스 peak는 capture peak가 아니다. main-thread1Hz 표본은 stall 중 독립 샘플링이나 짧은
+loading peak를 보장하지 않으며 allocation/free·callstack·asset owner별 점유는 별도 미지원이다.
+JSON v3에 additive memory field를 저장하고 구형 캡처에서는 미계측으로 처리한다.
+
+`Material.cpp::LoadSharedTexture`는 기존 TextureRequests/TexturePathHits/TextureUniqueSrvs의
+실제 생산자를 연결한다. 각각 요청 시도, 성공한 shared-path 재사용, 성공한 새 SRV 생성 건수다.
+마지막 값은 현재 resident SRV 수가 아니다. worker 요청과 완료는 서로 다른 관측 frame에 속할
+수 있다. content-hash hit와 GPU 추정 bytes는 생산자가 없으므로 계속 미계측이다.
+새 capability metadata로 같은 v3의 이전 미계측0과 새 관측0을 구분한다.
+
+## G19. 원인별 실험과 조건 차이 설명
+
+`RenderingBenchmark.h/.cpp`에 한 필드만 바꾸는 명시적 recipe를 둔다. SSAO on/sample/radius,
+shadow on/PCF/strength, Bloom/FXAA, PBR direct/baked/IBL/cube/normal/roughness, fog와 노출/gamma는
+기존 세션 명령을 소비하며 G21의 신규 조명 필드를 더해 총41개를 다룬다. 자동으로 다른 옵션을 켜지 않고 현재 전제조건과 화면 기여의
+한계를 안내한다. 사용자가 기존 B 대체를 누를 때만 A를 기준으로 B를 준비·적용한다.
+해당 변수의 sweep 준비도 기존 bounded 측정 경로로 보낸다.
+
+각 recipe는 효과의 개념, 결과에서 볼 GPU pass/CPU/draw 작업량과 판정할 수 없는 원인을
+설명한다. 비교 중 변경된 조건은 opaque fingerprint뿐 아니라 이름과 전후 값으로 보여주고
+결과 JSON에도 남긴다. named 조건은 인과 증명이 아니며 동일 조건·부분 표본 계약은 유지한다.
+
+기본 OFF 패스의 품질 실험은 사용자가 ON인 B를 새 A로 채택할 수 있게 연결한다. 원래 장면과
+새 A의 차이는 공통 baseline ownership으로 복원하고, A/B 차이만 비교 제외 mask로 처리한다.
+기준 채택 때 experiment ID를 갱신해 이전 기준의 결과를 자동으로 섞지 않는다.
+
+## G20. 후속 검증과 남는 기반의 구분
+
+시간축 좌표/clipping·병목 후보의 미계측 경계, process/DXGI 실패·rate-limit·stale age·JSON
+roundtrip·legacy 부재, 실제 shared texture helper의 재사용/실패/동시 준비·계수, recipe의
+단일 필드·전제조건·sweep·이름 있는 조건 차이를 native focused 검사한다. 최종 Engine public
+header 변경은 Product Debug의 SDK·Client 컴파일까지 검증한다. Client/UI는 실행하지 않는다.
+
+OS context switch·task dependency/callstack, per-draw GPU timestamp, RDG resource lifetime,
+할당별 owner/free 추적, 중간 render-target dump, deterministic scene replay 및 새 Lumen/DXR/
+Nanite/temporal renderer는 이번 연결만으로 구현됐다고 하지 않는다. 툴에서는 각 미흡점을
+숨기지 않고 현재 지원 상태·필수 입력·추가 검증을 전부 확인할 수 있게 한다.
+
+## G21. 실제 화면 공간 간접광과 반사 실험
+
+사용자의 추가 요청에 따라 개념 카탈로그에서 멈추지 않고 D3D11의 현재 G-buffer를 소비하는 SSGI·SSR 패스를 구현한다. `Engine_RenderTypes.h`는 기본 OFF인 세션 수치 9개를 소유하고, `Renderer.cpp`는 불투명 합성 직후 별도 `Shader_ScreenSpaceLighting.hlsl`을 호출한다. 기존 Deferred pass 번호를 바꾸지 않는다. 새 shader는 Engine 프로젝트와 filters에 등록하고 정상 Product 배포가 실행 CSO와 Client 소스 사본을 전달한다.
+
+SSGI는 MapPBR 수신점의 반구 방향에서 깊이 교차를 찾아 화면의 HDR radiance를 diffuse 반사율에 따라 더한다. SSR은 반사 방향의 깊이 교차에서 Fresnel·roughness 가중 radiance를 더한다. 기존 baked GI·IBL을 유지하는 가산 실험이므로 물리적으로 완결된 GI/환경 반사 교체로 설명하지 않는다. 원본 불투명 HDR을 두 실험의 공통 radiance 입력으로 사용하고 중간 결과를 별도 ping-pong target에 쌓아 두 패스 성공 후에만 SceneHDR·Bloom을 복사한다. 실패 시 원본 target은 보존하고 기존 MRT/DSV/viewport를 복구한다.
+
+SSGI의 강도·반경·4/8/16 샘플, SSR의 강도·거리·thickness·16/32/64 단계를 Workbench 세션 소유권·A/B·sweep·named 조건에 연결한다. 데이터에 저장된 팀장 옵션은 변경하지 않는다. `Render.SSGI`, `Render.SSR`, 복사 패스를 분리 계측한다. 화면 밖·가려진 면·다중 bounce·시간 누적·denoising·Lumen Surface Cache·DXR BVH는 이 패스가 제공하지 않는다.
+
+종료 증거는 FX5 컴파일, 실제 WARP 픽셀의 유효 교차·miss·강도 0·비수신 재질·finite 결과, 설정 범위/복원/캡처 조건 검증, Debug Product 빌드다. 실제 장면의 미관·노이즈·GPU 프레임 개선 판정은 사용자 화면 A/B로 남긴다.

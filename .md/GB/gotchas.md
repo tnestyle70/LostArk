@@ -5925,3 +5925,22 @@ suppression을 Render와 맞추고 debris를 걷는 바닥으로 승격하지 �
 - sweep의 A와 모든 측정점은 동일한 독립 변수 mask로 조건을 비교한다. 측정 종료 후 Profiler
   제어 소유권을 해제하여 사용자가 새로 시작한 수집을 나중의 실험 종료가 끄지 않게 한다.
   [구현·검증 범위](10-03/2026-10-03_PROFILER_RENDERING_WORKBENCH_RESULT.md)를 따른다.
+
+### 화면 공간 조명 실험은 원본 HDR과 중간 결과를 분리한다
+
+- SSGI와 SSR이 같은 프레임의 원본 opaque radiance를 읽도록 유지한다. 앞 패스의 간접광을 다음
+  패스의 추적 radiance로 다시 읽으면 옵션 조합이 숨은 bounce/feedback을 만들어 A/B 의미가 변한다.
+- 기존 SceneHDR MRT를 Begin_MRT로 다시 열면 누적 화면이 clear된다. 별도 scratch에서 완료한 뒤
+  scene/bloom만 복사하고 원래 모든 MRT·DSV·viewport를 복구한다. 복사 전 SRV와 RTV를 unbind한다.
+- MapPBR marker3의 depth/normal/roughness/metallic ABI에만 적용한다. 다른 family를 같은 layout으로
+  해석하지 않으며 Lumen·DXR·시간 누적 지원으로 표시하지 않는다. 기본 OFF와 팀장 저장값을 보존한다.
+- Profiler의 1Hz 메모리 샘플을 매 frame의 새 측정으로 세지 않는다. Valid인 0과 API 실패/N/A,
+  process lifetime peak와 캡처 peak, DXGI node budget과 물리 VRAM 용량을 구분한다.
+
+
+### 새 Engine shader의 실행 배포 경계
+
+Engine FxCompile 등록과 CSO 생성만으로 Client에서 로드할 수 있다고 판정하지 않는다.
+독립 shader는 Client `DeployClientCompiledShaders`의 명시 목록과 BuildDomains product의
+필수 outputs·deploymentPairs까지 연결한다. 정상 Product 뒤 실제 EXE 옆 CSO와 Engine CSO의
+크기·hash를 확인한다. 추적하는 HLSL source 배포와 Git 제외 compiled CSO 배포를 구분한다.

@@ -12,6 +12,7 @@
 #include "Presentation_Manager.h"
 #include "MapAssetRenderUtils.h"
 #include "RenderingTechniqueGuide.h"
+#include "RenderingReferenceGuide.h"
 #include "UserSettingsDocument.h"
 
 #include <algorithm>
@@ -22,50 +23,189 @@
 #include <sstream>
 #include <cmath>
 #include <locale>
+#include <cstdio>
 
 namespace
 {
+    using ExperimentField=Client::RENDERING_EXPERIMENT_FIELD;
+    enum class RecipeKind { Workload, Filter, Contribution, Display };
+    struct FExperimentRecipe final
+    {
+        const char* Id; const char* Name; ExperimentField Field;
+        ExperimentField RequiredEnabled; bool SourceRequired; RecipeKind Kind;
+        double Low, High; int Steps;
+        const char* Goal; const char* Metrics; const char* Boundary;
+    };
+    constexpr auto NoGate=ExperimentField::COUNT;
+    constexpr FExperimentRecipe ExperimentRecipes[] = {
+        {"ssao.pass","SSAO 패스 ON/OFF",ExperimentField::SSAO_ENABLED,NoGate,false,RecipeKind::Workload,0,1,2,
+         "화면 공간 AO 패스와 최종 차폐 기여가 필요한지 비교합니다.","Render.SSAO GPU/self, Render.Combined, GPU frame P99, PSInvocations", "간접광 전체 OFF가 아닙니다. depth/normal·카메라·해상도·노출을 고정합니다."},
+        {"ssao.samples","SSAO 샘플 수 4/8/12",ExperimentField::SSAO_SAMPLES,ExperimentField::SSAO_ENABLED,false,RecipeKind::Workload,4,12,3,
+         "실제 sample loop 수와 AO 품질/시간의 관계를 조사합니다.","Render.SSAO GPU ms/P99, GPU frame, PSInvocations, halo/noise", "샘플 수를 줄여도 PS 호출 수는 같을 수 있습니다. ms 개선률을 sample 비율로 단정하지 않습니다."},
+        {"ssao.radius","SSAO 반경",ExperimentField::SSAO_RADIUS,ExperimentField::SSAO_ENABLED,false,RecipeKind::Filter,.25,2,5,
+         "차폐 범위와 얇은 표면 halo를 비교합니다. bias보다 크고 fade 이하인 값만 준비합니다.","Render.SSAO GPU ms, 동일 화면의 접촉 차폐·halo", "반경은 거리 입력이며 sample count가 아닙니다. 실행 loop 수가 같아도 결과가 달라집니다."},
+        {"shadow.pass","방향광 그림자 ON/OFF",ExperimentField::SHADOW_ENABLED,NoGate,false,RecipeKind::Workload,0,1,2,
+         "caster 생성과 receiver shadow 비교를 합친 기능의 총 기여를 조사합니다.","Render.Shadow StaticBuild/Dynamic/CacheCopy, Render.Lights/Combined, draw/index, cache hit/miss", "그림자 해상도는 고정입니다. cache warm/cold·caster·light pose를 동일하게 유지합니다."},
+        {"shadow.pcf","PCF kernel 1/9/25",ExperimentField::PCF_RADIUS,ExperimentField::SHADOW_ENABLED,false,RecipeKind::Workload,0,2,3,
+         "receiver 깊이 필터 sample 수와 경계 품질을 비교합니다.","Render.Lights/Render.Combined GPU, PSInvocations, Render.Shadow draw/index", "radius0/1/2는1/9/25위치이며 dynamic baked는위치당2depth입니다. caster draw 감소 실험이 아닙니다."},
+        {"shadow.strength","그림자 합성 강도",ExperimentField::SHADOW_STRENGTH,ExperimentField::SHADOW_ENABLED,false,RecipeKind::Contribution,0,1,5,
+         "그림자의 영상 기여를 분리합니다.","같은 caster 조건의 화면·GPU ms·draw/index", "강도0은 shadow pass OFF가 아니며 연산 제거를 보장하지 않습니다."},
+        {"bloom.pass","Bloom 패스 ON/OFF",ExperimentField::BLOOM_ENABLED,NoGate,false,RecipeKind::Workload,0,1,2,
+         "half-resolution Bloom 필터 전체의 시간과 영상 효과를 비교합니다.","Render.Bloom GPU/self, Render.Final, GPU P99, PSInvocations", "Bloom은 GI가 아닙니다. 노출·threshold·HDR 장면을 고정합니다."},
+        {"bloom.intensity","Bloom 강도 (패스 유지)",ExperimentField::BLOOM_INTENSITY,ExperimentField::BLOOM_ENABLED,false,RecipeKind::Contribution,0,2,5,
+         "Bloom을 계속 실행하면서 번짐의 기여만 확인합니다.","Render.Bloom/Final GPU, 밝은 경계·클리핑", "강도0과 패스 OFF의 비용 차이는 다른 실험으로 구분합니다."},
+        {"bloom.threshold","Bloom 임계값",ExperimentField::BLOOM_THRESHOLD,ExperimentField::BLOOM_ENABLED,false,RecipeKind::Filter,.5,2,5,
+         "어떤 HDR 밝기가 번짐으로 들어가는지 비교합니다.","Render.Bloom GPU, HDR/highlight 화면", "threshold는 밝기 입력입니다. 노출 변경을 함께 적용하면 단일 원인 비교가 아닙니다."},
+        {"fxaa.pass","FXAA ON/OFF",ExperimentField::FXAA_ENABLED,NoGate,false,RecipeKind::Workload,0,1,2,
+         "현재 공간 AA의 화면 효과와 최종 패스 비용을 비교합니다.","Render.Final GPU/PS, 가는 선·원거리 가장자리", "Mario의 저장된 OFF를 바꾸지 않습니다. 이 버튼은 명시적 세션 실험이며 TAA/TSR이 아닙니다."},
+        {"fxaa.blend","FXAA subpixel blend",ExperimentField::FXAA_BLEND,ExperimentField::FXAA_ENABLED,false,RecipeKind::Filter,0,1,5,
+         "subpixel 필터 기여와 선명도의 균형을 비교합니다.","Render.Final GPU ms, 가장자리·텍스트 선명도", "MSAA sample 수나 내부 render resolution을 조절하지 않습니다."},
+        {"pbr.directDiffuse","PBR 직접 diffuse 기여",ExperimentField::PBR_DIFFUSE,NoGate,true,RecipeKind::Contribution,0,1,2,
+         "지원 map PBR 표면의 직접 확산광 성분을 분리합니다.","Render.Lights/Combined GPU, light records/draw, PSInvocations와 화면", "광원 제거가 아닙니다. scale0이어도 광원 제출·BRDF 연산이 유지될 수 있습니다."},
+        {"pbr.directSpecular","PBR 직접 specular 기여",ExperimentField::PBR_SPECULAR,NoGate,true,RecipeKind::Contribution,0,1,2,
+         "지원 map PBR의 직접 반사 성분을 분리합니다.","Render.Lights/Combined GPU, roughness 고정 화면", "환경 반사 기여는 그대로이며 source character의 별도 경로까지 바뀌지 않습니다."},
+        {"pbr.baked","RNM baked 간접광 기여",ExperimentField::PBR_BAKED,NoGate,true,RecipeKind::Contribution,0,1,2,
+         "사전 저장한 RNM 간접 조명의 영상 기여를 확인합니다.","Render.Combined GPU/PS, 직접광·노출 고정 화면", "Lumen/dynamic GI를 켜거나 bounce 수를 조절하는 실험이 아닙니다."},
+        {"pbr.environment","IBL 환경 specular 기여",ExperimentField::PBR_ENVIRONMENT,NoGate,true,RecipeKind::Contribution,0,1,2,
+         "환경 cubemap 반사가 실제 표면에 기여하는지 분리합니다.","Render.Combined GPU/PS, environment asset·roughness 고정", "SSR/planar/ray reflection이 아닙니다. 필요한 환경 입력이 없으면 화면 차이가 없을 수 있습니다."},
+        {"pbr.cubeDiffuse","Cube diffuse 기여",ExperimentField::PBR_CUBE,NoGate,true,RecipeKind::Contribution,0,1,2,
+         "환경에서 근사한 확산 간접광의 기여를 분리합니다.","Render.Combined GPU/PS, SH/환경 입력·RNM 고정", "일부 family/환경 입력에 한정되며 모든 object의 GI를 끄지 않습니다."},
+        {"pbr.normal","PBR normal 강도",ExperimentField::NORMAL_STRENGTH,NoGate,true,RecipeKind::Filter,0,1,5,
+         "노멀 입력이 직접광·환경 반사에서 만드는 형태 차이를 비교합니다.","Render.Combined GPU, 하이라이트·표면 디테일", "normal texture를 제거하거나 sampling을 건너뛰는 설정은 아닙니다."},
+        {"pbr.roughness","PBR roughness offset",ExperimentField::ROUGHNESS_OFFSET,NoGate,true,RecipeKind::Filter,-.25,.25,5,
+         "표면 거칠기와 직접/환경 반사 분포를 비교합니다.","Render.Lights/Combined GPU, specular 폭·환경 mip 결과", "입력에 offset을 적용합니다. 재질별 최종 roughness clamp와 family 차이를 확인합니다."},
+        {"fog.pass","높이 안개 ON/OFF",ExperimentField::FOG_ENABLED,NoGate,false,RecipeKind::Workload,0,1,2,
+         "현재 height/exponential fog의 영상 기여와 해당 합성 비용을 비교합니다.","Render.Combined/SceneHDR GPU, PSInvocations, 원거리 대비", "volumetric froxel/raymarch 실험이 아닙니다. 시간에 따른 안개 변화는 고정 replay되지 않습니다."},
+        {"fog.density","높이 안개 밀도",ExperimentField::FOG_DENSITY,ExperimentField::FOG_ENABLED,false,RecipeKind::Contribution,0,.1,5,
+         "같은 높이·거리에서 안개 감쇠 입력을 비교합니다.","Render.Combined GPU, 원거리 대비·색", "density는 매질 입력이며 raymarch step이나 volumetric quality가 아닙니다."},
+        {"ssgi.pass","실험 SSGI ON/OFF",ExperimentField::SSGI_ENABLED,NoGate,true,RecipeKind::Workload,0,1,2,
+         "화면에 보이는 diffuse bounce 근사 기여와 추가 GPU 비용을 비교합니다.","Render.SSGI GPU/self + Render.ScreenSpaceLighting.Copy, GPU frame P99, PSInvocations", "marker3 MapPBR 수신만 지원합니다. 기존 RNM/IBL을 유지하는 추가 기여이며 Lumen·광선추적·에너지 보존 GI가 아닙니다."},
+        {"ssgi.samples","SSGI 샘플 4/8/16",ExperimentField::SSGI_SAMPLES,ExperimentField::SSGI_ENABLED,true,RecipeKind::Workload,4,16,3,
+         "같은 화면·반경에서 sample 수와 공간 노이즈/시간의 관계를 비교합니다.","Render.SSGI/SSR GPU ms/P99 + Copy, 얇은 표면·접촉 누락", "temporal history/denoise가 없습니다. sample 비율과 ms 개선률은 같지 않습니다."},
+        {"ssgi.radius","SSGI 검색 반경",ExperimentField::SSGI_RADIUS,ExperimentField::SSGI_ENABLED,true,RecipeKind::Filter,.5,8,5,
+         "화면에서 간접광을 찾는 공간 범위와 빛 번짐을 비교합니다.","Render.SSGI/SSR GPU ms + Copy, 화면 경계·접촉 light leak", "화면 밖·가려진 radiance를 복원하지 않습니다. radius는 bounce 횟수가 아닙니다."},
+        {"ssgi.strength","SSGI 기여 강도",ExperimentField::SSGI_STRENGTH,ExperimentField::SSGI_ENABLED,true,RecipeKind::Contribution,0,1,5,
+         "기존 baked/IBL 위에 더하는 screen-space 간접 성분을 분리합니다.","Render.SSGI/SSR GPU ms + Copy, 같은 노출·RNM·환경광의 화면", "강도 0은 ray 탐색을 조기 종료하지만 full-screen 패스·복사는 남습니다. 기존 간접광과 중복되어 과밝아질 수 있습니다."},
+        {"ssr.pass","실험 SSR ON/OFF",ExperimentField::SSR_ENABLED,NoGate,true,RecipeKind::Workload,0,1,2,
+         "현재 화면의 specular reflection 근사와 비용을 비교합니다.","Render.SSR GPU/self + Render.ScreenSpaceLighting.Copy, GPU P99, PSInvocations", "marker3 MapPBR 수신의 추가 반사입니다. 화면 밖·가려진 반사는 없고 기존 IBL을 대체하지 않습니다."},
+        {"ssr.steps","SSR step 16/32/64",ExperimentField::SSR_STEPS,ExperimentField::SSR_ENABLED,true,RecipeKind::Workload,16,64,3,
+         "동일 ray 거리의 탐색 횟수와 hit/누락 품질을 비교합니다.","Render.SSGI/SSR GPU ms/P99 + Copy, PSInvocations, 반사 끊김", "최대 step은 실제 GPU instruction 수가 아닙니다. 조기 종료·화면 이탈·hit에 따라 달라집니다."},
+        {"ssr.distance","SSR 최대 거리",ExperimentField::SSR_DISTANCE,ExperimentField::SSR_ENABLED,true,RecipeKind::Filter,2,40,5,
+         "반사 ray 탐색 거리와 원거리 hit를 비교합니다.","Render.SSGI/SSR GPU ms + Copy, 거리별 반사 hit/누락", "step을 고정하면 거리 증가로 탐색 간격도 변할 수 있습니다. 화면 밖 정보는 없습니다."},
+        {"ssr.thickness","SSR hit 두께",ExperimentField::SSR_THICKNESS,ExperimentField::SSR_ENABLED,true,RecipeKind::Filter,.05,.8,5,
+         "depth 근사 hit 허용 폭과 누락/잘못된 반사를 비교합니다.","Render.SSGI/SSR GPU ms + Copy, 얇은 형상·교차 표면 화면", "실제 형상 두께가 아니라 depth hit 허용치입니다. 값 증가가 정확도 개선을 보장하지 않습니다."},
+        {"ssr.strength","SSR 기여 강도",ExperimentField::SSR_STRENGTH,ExperimentField::SSR_ENABLED,true,RecipeKind::Contribution,0,1,5,
+         "기존 환경 반사 위에 더하는 SSR 성분을 분리합니다.","Render.SSGI/SSR GPU ms + Copy, IBL·roughness·노출 고정 화면", "additive 반사라 기존 IBL과 중복될 수 있습니다. 강도 0은 ray 탐색을 조기 종료하지만 패스·복사는 남습니다."},
+        {"display.exposure","노출 배율",ExperimentField::EXPOSURE,NoGate,false,RecipeKind::Display,.5,2,5,
+         "빛의 영상 배율과 tone 결과를 확인합니다.","Render.Final GPU, 밝기·클리핑·Bloom threshold 영향", "밝기 조절 실험입니다. GI/재질 기여 비교 때는 노출을 고정해야 합니다."},
+        {"display.gamma","표시 gamma",ExperimentField::GAMMA,NoGate,false,RecipeKind::Display,1.8,2.4,5,
+         "표시 변환이 중간 밝기와 색에 미치는 영향을 확인합니다.","Render.Final GPU, source grading cache 준비 CPU, 동일 장면 화면", "새 gamma의 첫 준비 비용과 steady-state를 나누고 warm-up을 사용합니다."}
+    };
+
+    bool BuildRecipeCandidate(const FExperimentRecipe& recipe, const Client::RENDERING_EXPERIMENT_VALUES& base,
+        bool sourceMaterials, Client::RENDERING_EXPERIMENT_VALUES& candidate, float& low, float& high, string& status)
+    {
+        const auto& fields=Client::CRenderingProfileService::Experiment_Fields();
+        const size_t index=static_cast<size_t>(recipe.Field);
+        if(recipe.RequiredEnabled!=NoGate && base.values[static_cast<size_t>(recipe.RequiredEnabled)]==0)
+        {status="A 기준의 해당 패스가 OFF입니다. 먼저 ON/OFF 실험을 사용하세요. ON인 B를 적용하고 위의 B를 새 A 기준으로 채택한 뒤 이 recipe를 준비하세요. 다른 변수를 자동으로 켜지 않습니다.";return false;}
+        if(recipe.SourceRequired && !sourceMaterials)
+        {status="이 recipe는 지원 source map PBR 재질이 필요합니다. 현재 source material 경로가 OFF입니다.";return false;}
+        low=static_cast<float>((std::max)(recipe.Low,fields[index].minimum));
+        high=static_cast<float>((std::min)(recipe.High,fields[index].maximum));
+        if(recipe.Field==ExperimentField::SSAO_RADIUS)
+        {
+            low=(std::max)(low,static_cast<float>(base.values[static_cast<size_t>(ExperimentField::SSAO_BIAS)])+.001f);
+            high=(std::min)(high,static_cast<float>(base.values[static_cast<size_t>(ExperimentField::SSAO_FADE)]));
+        }
+        if(!(low<high)){status="현재 A의 연결 제약에서 서로 다른 두 유효 값을 만들 수 없습니다. 이전 B는 유지합니다.";return false;}
+        auto staged=base;staged.values[index]=base.values[index]==low?high:low;
+        if(!Client::CRenderingProfileService::Validate_ExperimentValues(staged,status))return false;
+        auto endpoint=base;endpoint.values[index]=high;
+        if(!Client::CRenderingProfileService::Validate_ExperimentValues(endpoint,status))return false;
+        candidate=staged;return true;
+    }
+
+    string RecipeConfidence(RecipeKind kind)
+    {
+        switch(kind)
+        {
+        case RecipeKind::Workload:return "실제 기능/샘플 수의 단일 변수 실험. 반복 편차·화질을 확인해야 하며 탐색 결과는 인과 보증이 아닙니다.";
+        case RecipeKind::Contribution:return "화면 성분 분리용. 기여값0의 연산 생략 범위는 기법마다 다릅니다. PBR scale은 연산 유지 가능, SSGI/SSR은 trace 조기 종료 뒤 패스·복사는 남습니다.";
+        case RecipeKind::Filter:return "필터·표면 품질 입력 실험. 실행 횟수는 유지될 수 있어 화면과 측정 ms를 따로 판단합니다.";
+        case RecipeKind::Display:return "표시 변환 진단. 조명 알고리즘의 속도·정확도 비교로 해석하지 않습니다.";
+        }
+        return {};
+    }
+
+    std::map<string,string> ChangedConditionFields(const std::map<string,string>& before,const std::map<string,string>& after)
+    {
+        std::map<string,string> result;
+        const auto clipped=[](const string& value) {
+            if(value.size()<=180)return value;
+            size_t end=180;while(end && (static_cast<unsigned char>(value[end])&0xc0u)==0x80u)--end;
+            return value.substr(0,end)+"...";
+        };
+        for(const auto& [name,value]:before)
+        {
+            const auto found=after.find(name);
+            if(found==after.end())result[name]=clipped(value)+" -> (없음)";
+            else if(value!=found->second)result[name]=clipped(value)+" -> "+clipped(found->second);
+        }
+        for(const auto& [name,value]:after)if(!before.contains(name))result[name]="(없음) -> "+clipped(value);
+        return result;
+    }
+
     // Normalize only explicitly selected experiment fields. All other renderer
     // input fields below remain in the comparison; source mode is handled by caller.
-    string ComparisonConditions(uint64_t excluded = 0u, const Engine::SHADOW_LIGHT_DESC* shadowBasis = nullptr)
+    string ComparisonConditions(uint64_t excluded = 0u, const Engine::SHADOW_LIGHT_DESC* shadowBasis = nullptr, std::map<string,string>* named = nullptr)
     {
         const auto& game = Engine::CGameInstance::Get();
         auto& mutableGame = Engine::CGameInstance::Get();
         ostringstream stream;
         stream.imbue(locale::classic());
         stream << setprecision(9) << scientific;
-        const auto scalar = [&](const auto value) { stream << value << ' '; };
-        const auto vector = [&](const auto& value) {
-            scalar(value.x); scalar(value.y); scalar(value.z); scalar(value.w);
+        const auto scalar = [&](const auto value, std::string_view key = {}) {
+            stream << value << ' ';
+            if (named && !key.empty())
+            { ostringstream text; text.imbue(locale::classic()); text<<setprecision(9)<<scientific<<value; (*named)[string(key)]=text.str(); }
         };
-        scalar(game.Get_CurrentLevelID());
-        scalar(IsDebuggerPresent()!=FALSE);
+        const auto vector = [&](const auto& value, std::string_view key = {}) {
+            scalar(value.x); scalar(value.y); scalar(value.z); scalar(value.w);
+            if (named && !key.empty())
+            { ostringstream text; text.imbue(locale::classic()); text<<setprecision(9)<<scientific<<value.x<<' '<<value.y<<' '<<value.z<<' '<<value.w; (*named)[string(key)]=text.str(); }
+        };
+        scalar(game.Get_CurrentLevelID(),"scene.level");
+        scalar(IsDebuggerPresent()!=FALSE,"capture.debuggerAttached");
         const auto* profiler=mutableGame.Get_Profiler();
-        scalar(profiler && profiler->Is_CollectingDetailedScopes());
-        scalar(profiler && profiler->Is_DetailedScopesEnabled());
-        scalar(Engine::CPresentation_Manager::Get().Are_TransientLightsEnabled());
-        scalar(Engine::CPresentation_Manager::Get().Are_ScreenPostsEnabled());
+        scalar(profiler && profiler->Is_CollectingDetailedScopes(),"capture.detailActive");
+        scalar(profiler && profiler->Is_DetailedScopesEnabled(),"capture.detailRequested");
+        scalar(Engine::CPresentation_Manager::Get().Are_TransientLightsEnabled(),"presentation.transientLights");
+        scalar(Engine::CPresentation_Manager::Get().Are_ScreenPostsEnabled(),"presentation.screenPosts");
         const auto& user = Client::CUserSettings::Get().Get_Settings();
-        scalar(user.Display.width); scalar(user.Display.height); scalar(static_cast<int>(user.Display.mode));
-        for (const auto& [key, value] : user.Values) { stream << quoted(key); scalar(value); }
+        scalar(user.Display.width,"video.width"); scalar(user.Display.height,"video.height"); scalar(static_cast<int>(user.Display.mode),"video.mode");
+        for (const auto& [key, value] : user.Values) { stream << quoted(key); scalar(value,named?"video."+key:string{}); }
         DWORD foregroundProcess=0; GetWindowThreadProcessId(GetForegroundWindow(),&foregroundProcess);
-        scalar(foregroundProcess==GetCurrentProcessId());
-        scalar(Client::CUserSettings::Get().Get_FrameLimit(foregroundProcess==GetCurrentProcessId()));
-        scalar(Client::CMapLightPresentationRuntime::Get_SceneIntensityMultiplier());
+        scalar(foregroundProcess==GetCurrentProcessId(),"window.processForeground");
+        scalar(Client::CUserSettings::Get().Get_FrameLimit(foregroundProcess==GetCurrentProcessId()),"video.activeFpsCap");
+        scalar(Client::CMapLightPresentationRuntime::Get_SceneIntensityMultiplier(),"scene.mapLightIntensity");
         if (const auto* arena = Client::CLevel_KakulSaydonArena::Get_Active())
-            scalar(arena->Get_MapLightComparisonFingerprint());
-        const auto viewport = mutableGame.Get_ViewportSize(); scalar(viewport.x); scalar(viewport.y);
+            scalar(arena->Get_MapLightComparisonFingerprint(),"scene.mapLightComparison");
+        const auto viewport = mutableGame.Get_ViewportSize(); scalar(viewport.x,"viewport.width"); scalar(viewport.y,"viewport.height");
         for (const auto type : {Engine::D3DTS::VIEW, Engine::D3DTS::PROJ})
         {
             const auto* matrix = mutableGame.Get_Transform(type);
-            if (!matrix) { stream << "missing-matrix "; continue; }
+            const char* key=type==Engine::D3DTS::VIEW?"camera.view":"camera.projection";
+            if (!matrix) { stream << "missing-matrix "; if(named)(*named)[key]="missing";continue; }
+            const auto offset=stream.tellp();
             for (const auto& row : matrix->m) for (const auto value : row) scalar(value);
+            if(named)(*named)[key]=stream.str().substr(static_cast<size_t>(offset));
         }
         auto material = game.Get_MaterialRenderSettings();
         using F = Client::RENDERING_EXPERIMENT_FIELD;
         const auto omit = [&](F f) { return (excluded & Client::RenderingExperimentBit(f)) != 0u; };
         const auto zero = [&](F f, auto& target) { if (omit(f)) target = {}; };
-        const uint64_t pbrMask = ((uint64_t{1} << Client::RENDERING_EXPERIMENT_FIELD_COUNT) - 1u) &
+        const uint64_t pbrMask = ((uint64_t{1} << (static_cast<size_t>(F::ROUGHNESS_OFFSET)+1u)) - 1u) &
             ~((uint64_t{1} << static_cast<size_t>(F::PBR_DIFFUSE)) - 1u);
         if (excluded & pbrMask)
         {
@@ -76,10 +216,10 @@ namespace
             zero(F::PBR_CUBE, material.MapPBR.fCubeDiffuseScale); zero(F::NORMAL_STRENGTH, material.MapPBR.vSurfaceParameters.x);
             zero(F::ROUGHNESS_OFFSET, material.MapPBR.vSurfaceParameters.y);
         }
-        scalar(static_cast<uint32_t>(material.eDebugView));
-        scalar(material.MapPBR.bEnabled); scalar(material.MapPBR.iLevel);
-        vector(material.MapPBR.vContributionScale); vector(material.MapPBR.vSurfaceParameters);
-        scalar(material.MapPBR.fCubeDiffuseScale);
+        scalar(static_cast<uint32_t>(material.eDebugView),"material.debugView");
+        scalar(material.MapPBR.bEnabled,"material.pbr.bEnabled"); scalar(material.MapPBR.iLevel,"material.pbr.iLevel");
+        vector(material.MapPBR.vContributionScale,"material.pbr.vContributionScale"); vector(material.MapPBR.vSurfaceParameters,"material.pbr.vSurfaceParameters");
+        scalar(material.MapPBR.fCubeDiffuseScale,"material.pbr.fCubeDiffuseScale");
         auto q = game.Get_RenderQualitySettings();
         zero(F::SSAO_ENABLED,q.bSSAOEnabled); zero(F::SSAO_RADIUS,q.fSSAORadius); zero(F::SSAO_BIAS,q.fSSAOBias);
         zero(F::SSAO_INTENSITY,q.fSSAOIntensity); zero(F::SSAO_POWER,q.fSSAOPower); zero(F::SSAO_FADE,q.fSSAODistanceFade);
@@ -88,58 +228,96 @@ namespace
         zero(F::FXAA_ENABLED,q.bFXAAEnabled); zero(F::FXAA_BLEND,q.fFXAASubpixel); zero(F::FXAA_EDGE,q.fFXAAEdgeThreshold);
         zero(F::FXAA_EDGE_MIN,q.fFXAAEdgeThresholdMin); zero(F::EXPOSURE,q.fExposure); zero(F::GAMMA,q.fGamma);
         zero(F::DESATURATION,q.fSceneDesaturation);
-        zero(F::SSAO_SAMPLES,q.iSSAOSampleCount); scalar(q.iSSAOSampleCount);
+        zero(F::SSAO_SAMPLES,q.iSSAOSampleCount); scalar(q.iSSAOSampleCount,"quality.iSSAOSampleCount");
+        zero(F::SSGI_ENABLED,q.bSSGIEnabled); scalar(q.bSSGIEnabled,"quality.bSSGIEnabled");
+        zero(F::SSGI_STRENGTH,q.fSSGIStrength); scalar(q.fSSGIStrength,"quality.fSSGIStrength");
+        zero(F::SSGI_RADIUS,q.fSSGIRadius); scalar(q.fSSGIRadius,"quality.fSSGIRadius");
+        zero(F::SSGI_SAMPLES,q.iSSGISampleCount); scalar(q.iSSGISampleCount,"quality.iSSGISampleCount");
+        zero(F::SSR_ENABLED,q.bSSREnabled); scalar(q.bSSREnabled,"quality.bSSREnabled");
+        zero(F::SSR_STRENGTH,q.fSSRStrength); scalar(q.fSSRStrength,"quality.fSSRStrength");
+        zero(F::SSR_DISTANCE,q.fSSRMaxDistance); scalar(q.fSSRMaxDistance,"quality.fSSRMaxDistance");
+        zero(F::SSR_THICKNESS,q.fSSRThickness); scalar(q.fSSRThickness,"quality.fSSRThickness");
+        zero(F::SSR_STEPS,q.iSSRStepCount); scalar(q.iSSRStepCount,"quality.iSSRStepCount");
         if (omit(F::LUT_ENABLED)) q.SourcePostProcess.LutLayers.clear();
-        scalar(q.bSSAOEnabled); scalar(q.fSSAORadius); scalar(q.fSSAOBias);
-        scalar(q.fSSAOIntensity); scalar(q.fSSAOPower); scalar(q.fSSAODistanceFade);
-        scalar(q.bBloomEnabled); scalar(q.fBloomThreshold); scalar(q.fBloomSoftKnee);
-        scalar(q.fBloomIntensity); scalar(q.fBloomScatter); scalar(q.fExposure);
-        scalar(q.fWhitePoint); scalar(q.fGamma); scalar(q.bFXAAEnabled);
-        vector(q.vBloomTint); scalar(q.fSceneDesaturation);
-        scalar(q.iColorFilterType); scalar(q.fColorFilterStrength);
+        scalar(q.bSSAOEnabled,"quality.bSSAOEnabled"); scalar(q.fSSAORadius,"quality.fSSAORadius"); scalar(q.fSSAOBias,"quality.fSSAOBias");
+        scalar(q.fSSAOIntensity,"quality.fSSAOIntensity"); scalar(q.fSSAOPower,"quality.fSSAOPower"); scalar(q.fSSAODistanceFade,"quality.fSSAODistanceFade");
+        scalar(q.bBloomEnabled,"quality.bBloomEnabled"); scalar(q.fBloomThreshold,"quality.fBloomThreshold"); scalar(q.fBloomSoftKnee,"quality.fBloomSoftKnee");
+        scalar(q.fBloomIntensity,"quality.fBloomIntensity"); scalar(q.fBloomScatter,"quality.fBloomScatter"); scalar(q.fExposure,"quality.fExposure");
+        scalar(q.fWhitePoint,"quality.fWhitePoint"); scalar(q.fGamma,"quality.fGamma"); scalar(q.bFXAAEnabled,"quality.bFXAAEnabled");
+        vector(q.vBloomTint,"quality.vBloomTint"); scalar(q.fSceneDesaturation,"quality.fSceneDesaturation");
+        scalar(q.iColorFilterType,"quality.iColorFilterType"); scalar(q.fColorFilterStrength,"quality.fColorFilterStrength");
         const auto& source = q.SourcePostProcess;
-        scalar(source.bEnabled); scalar(source.fToneScale); scalar(source.fToneRange);
-        scalar(source.fToneToe); scalar(source.fDesaturation);
+        scalar(source.bEnabled,"quality.source.bEnabled"); scalar(source.fToneScale,"quality.source.fToneScale"); scalar(source.fToneRange,"quality.source.fToneRange");
+        scalar(source.fToneToe,"quality.source.fToneToe"); scalar(source.fDesaturation,"quality.source.fDesaturation");
+        size_t sourceColor=0;
         for (const auto& value : { source.vHighlights, source.vMidtones, source.vShadows, source.vColorize })
-        { scalar(value.x); scalar(value.y); scalar(value.z); }
-        scalar(source.LutLayers.size());
+        {
+            const string key=named?"quality.source.color["+std::to_string(sourceColor++)+"]":string{};
+            scalar(value.x,named?key+".x":string{}); scalar(value.y,named?key+".y":string{}); scalar(value.z,named?key+".z":string{});
+        }
+        scalar(source.LutLayers.size(),"quality.lut.count");
+        size_t lutIndex=0; const auto lutOffset=stream.tellp();
         for (const auto& layer : source.LutLayers)
         {
-            scalar(layer.fWeight);
+            const bool detail=named && lutIndex<8;
+            const string key=detail?"quality.lut["+std::to_string(lutIndex)+"]":string{}; ++lutIndex;
+            scalar(layer.fWeight,detail?key+".weight":string{});
             if (layer.pLut) stream << quoted(layer.pLut->strAssetId);
             else stream << "neutral-lut ";
+            if(detail)(*named)[key+".asset"]=layer.pLut?layer.pLut->strAssetId:"neutral";
         }
-        scalar(q.fFXAASubpixel); scalar(q.fFXAAEdgeThreshold); scalar(q.fFXAAEdgeThresholdMin);
+        if(named && source.LutLayers.size()>8)
+        {
+            uint64_t hash=14695981039346656037ull;
+            for(unsigned char ch:stream.str().substr(static_cast<size_t>(lutOffset))){hash^=ch;hash*=1099511628211ull;}
+            (*named)["quality.lut.allRecordsHash"]=std::to_string(hash);
+        }
+        scalar(q.fFXAASubpixel,"quality.fFXAASubpixel"); scalar(q.fFXAAEdgeThreshold,"quality.fFXAAEdgeThreshold"); scalar(q.fFXAAEdgeThresholdMin,"quality.fFXAAEdgeThresholdMin");
         auto fog = game.Get_HeightFogSettings(); zero(F::FOG_ENABLED,fog.bEnabled); zero(F::FOG_DENSITY,fog.fDensity);
-        scalar(fog.bEnabled); vector(fog.vColor); scalar(fog.fDensity); scalar(fog.fHeightFalloff);
-        scalar(fog.fTopHeight); scalar(fog.fStartDistance); scalar(fog.fMaximumOpacity);
-        scalar(fog.fDriftSpeed); scalar(fog.fDriftHeightAmplitude); scalar(fog.fDriftDensityAmplitude);
-        scalar(fog.fCoveragePercent); scalar(fog.fWindDirectionX); scalar(fog.fWindDirectionZ);
-        scalar(fog.fWindSpeed); scalar(fog.fPatchScale); scalar(fog.fPatchSoftness);
-        scalar(fog.bSourceExponential); vector(fog.vInscatteringColor); vector(fog.vFogLightDirection);
+        scalar(fog.bEnabled,"fog.bEnabled"); vector(fog.vColor,"fog.vColor"); scalar(fog.fDensity,"fog.fDensity"); scalar(fog.fHeightFalloff,"fog.fHeightFalloff");
+        scalar(fog.fTopHeight,"fog.fTopHeight"); scalar(fog.fStartDistance,"fog.fStartDistance"); scalar(fog.fMaximumOpacity,"fog.fMaximumOpacity");
+        scalar(fog.fDriftSpeed,"fog.fDriftSpeed"); scalar(fog.fDriftHeightAmplitude,"fog.fDriftHeightAmplitude"); scalar(fog.fDriftDensityAmplitude,"fog.fDriftDensityAmplitude");
+        scalar(fog.fCoveragePercent,"fog.fCoveragePercent"); scalar(fog.fWindDirectionX,"fog.fWindDirectionX"); scalar(fog.fWindDirectionZ,"fog.fWindDirectionZ");
+        scalar(fog.fWindSpeed,"fog.fWindSpeed"); scalar(fog.fPatchScale,"fog.fPatchScale"); scalar(fog.fPatchSoftness,"fog.fPatchSoftness");
+        scalar(fog.bSourceExponential,"fog.bSourceExponential"); vector(fog.vInscatteringColor,"fog.vInscatteringColor"); vector(fog.vFogLightDirection,"fog.vFogLightDirection");
         const auto environment = game.Get_RenderEnvironment();
-        scalar(environment.strCubePath.size());
+        scalar(environment.strCubePath.size(),"environment.cubePathLength");
+        const auto cubeOffset=stream.tellp();
         for (const auto character : environment.strCubePath) scalar(static_cast<uint32_t>(character));
-        vector(environment.vColor); vector(environment.vRotationIntensity);
-        scalar(environment.fDiffuseIntensity);
-        scalar(environment.bUseSourcePBRIndirect);
-        for (const auto& row : environment.vDiffuseSH) vector(row);
+        if(named)(*named)["environment.cubePathCodepoints"]=stream.str().substr(static_cast<size_t>(cubeOffset));
+        vector(environment.vColor,"environment.vColor"); vector(environment.vRotationIntensity,"environment.vRotationIntensity");
+        scalar(environment.fDiffuseIntensity,"environment.fDiffuseIntensity");
+        scalar(environment.bUseSourcePBRIndirect,"environment.bUseSourcePBRIndirect");
+        size_t shIndex=0;
+        for (const auto& row : environment.vDiffuseSH) vector(row,named?"environment.diffuseSH["+std::to_string(shIndex++)+"]":string{});
         auto shadow = game.Get_ShadowLightDesc();
         if (omit(F::SHADOW_ENABLED) && shadowBasis) shadow=*shadowBasis;
         zero(F::SHADOW_ENABLED,shadow.Settings.bEnabled);
-        zero(F::SHADOW_STRENGTH,shadow.Settings.fStrength); vector(shadow.vEye); vector(shadow.vAt);
-        zero(F::PCF_RADIUS,shadow.Settings.iPCFFilterRadius); scalar(shadow.Settings.iPCFFilterRadius);
-        const auto& s = shadow.Settings; scalar(s.bEnabled); scalar(s.fOrthographicWidth);
-        scalar(s.fOrthographicHeight); scalar(s.fNear); scalar(s.fFar); scalar(s.fDepthBias);
-        scalar(s.fNormalBias); scalar(s.fStrength); scalar(s.fDynamicBakedStrength);
-        const auto& lights = game.Get_SceneLights(); scalar(lights.size());
+        zero(F::SHADOW_STRENGTH,shadow.Settings.fStrength); vector(shadow.vEye,"shadow.vEye"); vector(shadow.vAt,"shadow.vAt");
+        zero(F::PCF_RADIUS,shadow.Settings.iPCFFilterRadius); scalar(shadow.Settings.iPCFFilterRadius,"shadow.settings.iPCFFilterRadius");
+        const auto& s = shadow.Settings; scalar(s.bEnabled,"shadow.settings.bEnabled"); scalar(s.fOrthographicWidth,"shadow.settings.fOrthographicWidth");
+        scalar(s.fOrthographicHeight,"shadow.settings.fOrthographicHeight"); scalar(s.fNear,"shadow.settings.fNear"); scalar(s.fFar,"shadow.settings.fFar"); scalar(s.fDepthBias,"shadow.settings.fDepthBias");
+        scalar(s.fNormalBias,"shadow.settings.fNormalBias"); scalar(s.fStrength,"shadow.settings.fStrength"); scalar(s.fDynamicBakedStrength,"shadow.settings.fDynamicBakedStrength");
+        const auto& lights = game.Get_SceneLights(); scalar(lights.size(),"scene.lights.count");
+        size_t lightIndex=0; const auto lightsOffset=stream.tellp();
         for (const auto& light : lights)
         {
-            scalar(static_cast<uint32_t>(light.eType)); vector(light.vDirection); vector(light.vPosition);
-            scalar(light.fRange); scalar(light.fFalloffExponent); vector(light.vDiffuse);
-            vector(light.vAmbient); vector(light.vSpecular); scalar(light.fSpotInnerCos); scalar(light.fSpotOuterCos);
-            vector(light.vSourceCharacterAmbient);
-            scalar(static_cast<uint32_t>(light.eReceiver)); scalar(light.staticShadowChannel);
+            const string lightKey=named && lightIndex<8?"scene.light["+std::to_string(lightIndex)+"]":string{};
+            ++lightIndex;
+            // Named detail is bounded. The complete raw fingerprint still covers every record.
+            auto* namedAll=named;if(lightIndex>8)named=nullptr;
+            scalar(static_cast<uint32_t>(light.eType),named?lightKey+".type":string{}); vector(light.vDirection,named?lightKey+".vDirection":string{}); vector(light.vPosition,named?lightKey+".vPosition":string{});
+            scalar(light.fRange,named?lightKey+".fRange":string{}); scalar(light.fFalloffExponent,named?lightKey+".fFalloffExponent":string{}); vector(light.vDiffuse,named?lightKey+".vDiffuse":string{});
+            vector(light.vAmbient,named?lightKey+".vAmbient":string{}); vector(light.vSpecular,named?lightKey+".vSpecular":string{}); scalar(light.fSpotInnerCos,named?lightKey+".fSpotInnerCos":string{}); scalar(light.fSpotOuterCos,named?lightKey+".fSpotOuterCos":string{});
+            vector(light.vSourceCharacterAmbient,named?lightKey+".vSourceCharacterAmbient":string{});
+            scalar(static_cast<uint32_t>(light.eReceiver),named?lightKey+".receiver":string{}); scalar(light.staticShadowChannel,named?lightKey+".staticShadowChannel":string{});
+            named=namedAll;
+        }
+        if(named && lights.size()>8)
+        {
+            uint64_t hash=14695981039346656037ull;
+            for(unsigned char ch:stream.str().substr(static_cast<size_t>(lightsOffset))) {hash^=ch;hash*=1099511628211ull;}
+            (*named)["scene.lights.allRecordsHash"]=std::to_string(hash);
         }
         return stream.str();
     }
@@ -193,10 +371,10 @@ namespace
 	}
 }
 
-string Client::CRenderingBenchmark::Current_Conditions(uint64_t excludedFields) const
+string Client::CRenderingBenchmark::Current_Conditions(uint64_t excludedFields, std::map<string,string>* named) const
 {
     const auto* shadowBasis=m_pExperimentProfiles?&m_pExperimentProfiles->Get_ExperimentShadowBasis():nullptr;
-    string result = ComparisonConditions(excludedFields,shadowBasis);
+    string result = ComparisonConditions(excludedFields,shadowBasis,named);
     if (shadowBasis)
     {
         // Keep the underlying shadow owner in every fingerprint even while OFF
@@ -208,14 +386,26 @@ string Client::CRenderingBenchmark::Current_Conditions(uint64_t excludedFields) 
             s.fOrthographicWidth,s.fOrthographicHeight,s.fNear,s.fFar,s.fDepthBias,s.fNormalBias,
             s.fStrength,s.fDynamicBakedStrength}) input<<v<<' ';
         input<<s.bEnabled<<' '<<s.iPCFFilterRadius;result+=" shadowBasis="+input.str();
+        if(named)(*named)["shadow.underlyingBasis"]=input.str();
     }
     if (m_bCaptureExperiment || m_bExperimentActive)
     {
-        result += Engine::CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials ? " source=1" : " source=0";
+        const bool source=Engine::CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials;
+        result += source ? " source=1" : " source=0";
+        if(named)(*named)["material.sourceEnabled"]=source?"1":"0";
         if (m_pExperimentProfiles)
+        {
+            if(named)
+            {
+                (*named)["owner.profile"]=m_pExperimentProfiles->Get_ActiveProfileId();
+                (*named)["owner.levelQuality"]=m_pExperimentProfiles->Get_LevelQualityProfileId();
+                (*named)["owner.region"]=m_pExperimentProfiles->Get_AppliedEnvironmentRegionId();
+                (*named)["owner.generation"]=std::to_string(m_pExperimentProfiles->Get_ProfileGeneration());
+            }
             result += " owner=" + m_pExperimentProfiles->Get_ActiveProfileId() + "/" +
                 m_pExperimentProfiles->Get_LevelQualityProfileId() + "/" + m_pExperimentProfiles->Get_AppliedEnvironmentRegionId() +
                 "/" + std::to_string(m_pExperimentProfiles->Get_ProfileGeneration());
+        }
     }
     return result;
 }
@@ -245,6 +435,7 @@ bool_t Client::CRenderingBenchmark::Begin(Engine::CProfiler* profiler, const str
         (Engine::CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials ? "B" : "A");
     if (m_bSweep && m_iSequenceStep) m_strCaptureVariant = "sweep=" + std::to_string(m_SweepPoints[m_iSequenceStep-1u]);
     m_strComparisonConditions.clear(); m_strFullConditions.clear(); m_strFailureReason.clear();
+    m_CaptureCommonFields.clear();m_CaptureActualFields.clear();m_ChangedConditionFields.clear();
     m_bSourceMaterials = Engine::CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials;
     m_bConditionsStable = true; m_bWarmup = true; m_bCapturing = true; m_pCaptureProfiler = profiler;
     status = "Warm-up, then sampling complete frames. Camera and scene must remain unchanged.";
@@ -276,15 +467,20 @@ void Client::CRenderingBenchmark::Update(Engine::CProfiler* profiler)
     {
         if (live.FrameNumber < m_iStartFrame) return;
         m_bWarmup = false;
-        m_strComparisonConditions = Current_Conditions(m_iCaptureFields);
-        m_strFullConditions = Current_Conditions(0u);
+        m_strComparisonConditions = Current_Conditions(m_iCaptureFields,&m_CaptureCommonFields);
+        m_strFullConditions = Current_Conditions(0u,&m_CaptureActualFields);
         m_CaptureValues = CRenderingProfileService::Read_ExperimentValues();
         m_strStatus = "Sampling (no GPU waits).";
     }
-    if (live.FrameNumber <= m_iStartFrame + m_iTargetFrames && m_strFullConditions != Current_Conditions(0u))
+    if (m_bConditionsStable && live.FrameNumber <= m_iStartFrame + m_iTargetFrames && m_strFullConditions != Current_Conditions(0u))
     {
         m_bConditionsStable = false;
-        m_strFailureReason = "Camera, viewport, renderer inputs or user settings changed during sampling.";
+        std::map<string,string> changed;Current_Conditions(0u,&changed);
+        m_ChangedConditionFields=ChangedConditionFields(m_CaptureActualFields,changed);
+        m_strFailureReason="수집 중 조건 변경: ";size_t shown=0;
+        for(const auto& [name,value]:m_ChangedConditionFields){if(shown++)m_strFailureReason+=", ";m_strFailureReason+=name;if(shown==6)break;}
+        if(m_ChangedConditionFields.empty())m_strFailureReason+="추가 raw 입력 (이름 진단 범위 밖)";
+        else if(m_ChangedConditionFields.size()>shown)m_strFailureReason+=" 외 "+std::to_string(m_ChangedConditionFields.size()-shown)+"개";
     }
     const uint64_t lastSample = m_iStartFrame + m_iTargetFrames;
     if (live.FrameNumber < lastSample + Engine::CProfiler::GPU_READ_LATENCY) return;
@@ -324,6 +520,13 @@ bool_t Client::CRenderingBenchmark::Finalize(Engine::CProfiler& profiler)
     RENDERING_BENCHMARK_RUN run;
     run.strLabel = m_strLabel; run.strTimestamp = Now_Timestamp(); run.strQualitySummary = m_strQualitySummary;
     run.strComparisonConditions = m_strComparisonConditions; run.strFullConditions = m_strFullConditions;
+    run.commonConditionFields=m_CaptureCommonFields;run.actualConditionFields=m_CaptureActualFields;run.changedConditionFields=m_ChangedConditionFields;
+    if(m_iPreparedRecipe>=0)
+    {
+        const auto& recipe=ExperimentRecipes[m_iPreparedRecipe];
+        if(m_iCaptureFields==Client::RenderingExperimentBit(recipe.Field))
+        {run.strRecipeId=recipe.Id;run.strExperimentGoal=recipe.Goal;run.strMetricGuide=recipe.Metrics;run.strConfidence=RecipeConfidence(recipe.Kind);}
+    }
     run.strExperimentId = m_strCaptureExperimentId; run.strVariant = m_strCaptureVariant;
     run.fieldMask = m_iCaptureFields; run.warmupFrames = m_iCaptureWarmup; run.repetition = m_bSweep ? m_iSequenceStep+1u : m_iSequenceStep / 2u + 1u;
     run.appliedValues = m_CaptureValues; run.bSourceMaterials = m_bSourceMaterials;
@@ -971,10 +1174,33 @@ uint64_t Client::CRenderingBenchmark::Experiment_FieldMask() const
     return mask;
 }
 
+uint64_t Client::CRenderingBenchmark::Experiment_BaselineMask() const
+{
+    uint64_t mask=0;
+    for(size_t i=0;i<RENDERING_EXPERIMENT_FIELD_COUNT;++i)
+        if(m_ExperimentA.values[i]!=m_ExperimentOriginal.values[i])mask|=uint64_t{1}<<i;
+    return mask;
+}
+
+bool_t Client::CRenderingBenchmark::Adopt_BaselineFromB()
+{
+    if(!m_bExperimentActive || m_bCapturing || !m_pExperimentProfiles)return false;
+    uint64_t ownership=0;
+    for(size_t i=0;i<RENDERING_EXPERIMENT_FIELD_COUNT;++i)
+        if(m_ExperimentB.values[i]!=m_ExperimentOriginal.values[i])ownership|=uint64_t{1}<<i;
+    if(!m_pExperimentProfiles->Set_ExperimentPreview(m_ExperimentB,ownership,m_strStatus))return false;
+    m_ExperimentA=m_ExperimentB;m_bVariantB=false;m_iPreparedRecipe=-1;
+    static uint64_t revision=0;
+    m_strExperimentId="experiment.rebase."+std::to_string(GetCurrentProcessId())+"."+
+        std::to_string(GetTickCount64())+"."+std::to_string(++revision);
+    m_strStatus="현재 B를 새 A로 채택했습니다. 새 실험 ID로 이전 기준 결과와 분리하며 종료 시 원래 장면으로 복원합니다.";
+    return true;
+}
+
 bool_t Client::CRenderingBenchmark::Start_Experiment(CRenderingProfileService& profiles)
 {
     if (m_bCapturing || m_bExperimentActive) return false;
-    m_ExperimentA=m_ExperimentB=CRenderingProfileService::Read_ExperimentValues();
+    m_ExperimentOriginal=m_ExperimentA=m_ExperimentB=CRenderingProfileService::Read_ExperimentValues();m_iPreparedRecipe=-1;
     if (!profiles.Set_ExperimentPreview(m_ExperimentA,0u,m_strStatus)) return false;
     m_pExperimentProfiles=&profiles; m_bExperimentActive=true; m_bVariantB=false;
     m_iExperimentProfileGeneration=profiles.Get_ProfileGeneration();
@@ -989,7 +1215,7 @@ bool_t Client::CRenderingBenchmark::Apply_ExperimentVariant(bool_t variantB)
 {
     if (!m_bExperimentActive || !m_pExperimentProfiles) return false;
     if (!m_pExperimentProfiles->Set_ExperimentPreview(variantB ? m_ExperimentB : m_ExperimentA,
-        Experiment_FieldMask(),m_strStatus)) return false;
+        Experiment_FieldMask()|Experiment_BaselineMask(),m_strStatus)) return false;
     m_bVariantB=variantB;
     return true;
 }
@@ -1017,6 +1243,8 @@ bool_t Client::CRenderingBenchmark::Start_Sweep(Engine::CProfiler* profiler)
     if (info.boolean) points={0,1};
     else if (m_iSweepField==static_cast<int>(RENDERING_EXPERIMENT_FIELD::SSAO_SAMPLES)) points={4,8,12};
     else if (m_iSweepField==static_cast<int>(RENDERING_EXPERIMENT_FIELD::PCF_RADIUS)) points={0,1,2};
+    else if (m_iSweepField==static_cast<int>(RENDERING_EXPERIMENT_FIELD::SSGI_SAMPLES)) points={4,8,16};
+    else if (m_iSweepField==static_cast<int>(RENDERING_EXPERIMENT_FIELD::SSR_STEPS)) points={16,32,64};
     else
     {
         if (!std::isfinite(m_fSweepMinimum) || !std::isfinite(m_fSweepMaximum) ||
@@ -1046,6 +1274,57 @@ void Client::CRenderingBenchmark::End_Experiment()
     m_bExperimentActive=false; m_pExperimentProfiles=nullptr;
 }
 
+bool_t Client::CRenderingBenchmark::Prepare_Recipe(bool_t replaceB)
+{
+    if(!m_bExperimentActive || m_bCapturing || !m_pExperimentProfiles)
+    {m_strStatus="먼저 현재 품질을 A로 보관하고 세션 실험을 시작하세요.";return false;}
+    const auto& recipe=ExperimentRecipes[m_iSelectedRecipe];
+    RENDERING_EXPERIMENT_VALUES candidate;float low=0,high=0;
+    if(!BuildRecipeCandidate(recipe,m_ExperimentA,Engine::CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials,
+        candidate,low,high,m_strStatus))return false;
+    if(replaceB)
+    {
+        // Stage through the existing owner before changing any UI draft. Rejection
+        // preserves the previous B and its active renderer preview.
+        if(!m_pExperimentProfiles->Set_ExperimentPreview(candidate,RenderingExperimentBit(recipe.Field)|Experiment_BaselineMask(),m_strStatus))return false;
+        m_ExperimentB=candidate;m_bVariantB=true;
+    }
+    m_iPreparedRecipe=m_iSelectedRecipe;m_iSweepField=static_cast<int>(recipe.Field);
+    m_fSweepMinimum=low;m_fSweepMaximum=high;m_iSweepSteps=recipe.Steps;
+    std::snprintf(m_LabelBuffer.data(),m_LabelBuffer.size(),"%s",recipe.Id);
+    m_strStatus=replaceB?"A는 보존하고 기존 B를 한 변수 후보로 대체했습니다. 다음 완전한 프레임에 적용합니다.":
+        "선택 recipe의 단일 변수 sweep 범위를 준비했습니다. B와 현재 화면은 유지합니다. 아래 sweep 시작으로 측정하세요.";
+    return true;
+}
+
+void Client::CRenderingBenchmark::Render_RecipeSection()
+{
+    if(!ImGui::CollapsingHeader("원인별 실험 recipe / 한 변수로 시작",ImGuiTreeNodeFlags_DefaultOpen))return;
+    ImGui::TextWrapped("recipe 선택만으로 설정을 바꾸지 않습니다. B 대체 버튼은 기존 B 조정을 A 기준의 한 변수로 명시적으로 교체합니다. sweep 준비는 범위만 설정합니다. 숫자는 비교 후보이며 측정 결과·추천 최적값이 아닙니다.");
+    if(ImGui::BeginCombo("실험 목표",ExperimentRecipes[m_iSelectedRecipe].Name))
+    {
+        for(int i=0;i<static_cast<int>(std::size(ExperimentRecipes));++i)
+            if(ImGui::Selectable(ExperimentRecipes[i].Name,m_iSelectedRecipe==i))m_iSelectedRecipe=i;
+        ImGui::EndCombo();
+    }
+    const auto& recipe=ExperimentRecipes[m_iSelectedRecipe];
+    const auto& field=CRenderingProfileService::Experiment_Fields()[static_cast<size_t>(recipe.Field)];
+    ImGui::Text("단일 변수: %s",field.id);ImGui::TextWrapped("목표: %s",recipe.Goal);
+    ImGui::TextWrapped("볼 수치: %s",recipe.Metrics);ImGui::TextWrapped("판정 범위: %s",recipe.Boundary);
+    const auto confidence=RecipeConfidence(recipe.Kind);ImGui::TextWrapped("신뢰도 해석: %s",confidence.c_str());
+    RENDERING_EXPERIMENT_VALUES candidate;float low=0,high=0;string reason;
+    const bool ready=BuildRecipeCandidate(recipe,m_ExperimentA,Engine::CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials,
+        candidate,low,high,reason);
+    if(ready)ImGui::Text("A %.6g → B 후보 %.6g | sweep %.6g..%.6g (%d단계 / discrete는 허용값만)",
+        m_ExperimentA.values[static_cast<size_t>(recipe.Field)],candidate.values[static_cast<size_t>(recipe.Field)],low,high,recipe.Steps);
+    else ImGui::TextWrapped("준비 불가: %s",reason.c_str());
+    ImGui::BeginDisabled(!ready);
+    if(ImGui::Button("기존 B를 이 단일 변수로 대체하고 적용"))Prepare_Recipe(true);
+    ImGui::SameLine();if(ImGui::Button("이 변수의 sweep 범위만 준비"))Prepare_Recipe(false);
+    ImGui::EndDisabled();
+    ImGui::TextWrapped("준비 후 아래 현재 A/B 측정·AB/BA 반복 또는 단일 변수 sweep 시작을 사용합니다. 화질은 같은 카메라에서 직접 확인하고 반복 편차보다 작은 시간 차이는 결론을 유보하세요.");
+}
+
 void Client::CRenderingBenchmark::Render_ExperimentSection(Engine::CProfiler* profiler, CRenderingProfileService& profiles)
 {
     ImGui::SeparatorText("렌더링 실험 / 세션 A-B");
@@ -1066,25 +1345,31 @@ void Client::CRenderingBenchmark::Render_ExperimentSection(Engine::CProfiler* pr
         if (ImGui::Button("A 적용")) Apply_ExperimentVariant(false);
         ImGui::SameLine(); if (ImGui::Button("B 적용")) Apply_ExperimentVariant(true);
         ImGui::SameLine(); if (ImGui::Button("B를 A에서 다시 복사")) { m_ExperimentB=m_ExperimentA; Apply_ExperimentVariant(true); }
+        if (ImGui::Button("현재 B를 새 A 기준으로 채택 (이전 비교와 분리)")) Adopt_BaselineFromB();
+        ImGui::TextWrapped("기본 OFF 패스의 품질 수치를 비교하려면 B에서 패스를 ON → 새 A로 채택 → samples/radius recipe 순서입니다. 두 variant의 공통 기준 변경은 실험 변수에 포함하지 않으며 종료하면 원래 장면으로 복원합니다.");
         if (ImGui::Button("B: 본질 기준 (다변수 진단)"))
         {
             m_ExperimentB=m_ExperimentA;
             for (const auto field : {RENDERING_EXPERIMENT_FIELD::SSAO_ENABLED,RENDERING_EXPERIMENT_FIELD::BLOOM_ENABLED,
                 RENDERING_EXPERIMENT_FIELD::FXAA_ENABLED,RENDERING_EXPERIMENT_FIELD::FOG_ENABLED,
-                RENDERING_EXPERIMENT_FIELD::LUT_ENABLED,RENDERING_EXPERIMENT_FIELD::DESATURATION})
+                RENDERING_EXPERIMENT_FIELD::LUT_ENABLED,RENDERING_EXPERIMENT_FIELD::DESATURATION,
+                RENDERING_EXPERIMENT_FIELD::SSGI_ENABLED,RENDERING_EXPERIMENT_FIELD::SSR_ENABLED})
                 m_ExperimentB.values[static_cast<size_t>(field)]=0;
             Apply_ExperimentVariant(true);
         }
-        ImGui::TextWrapped("본질 기준은 SSAO·Bloom·FXAA·안개·LUT·탈색만 끕니다. 재질·직접광·RNM·환경광·그림자·노출·감마는 A와 같습니다. GI 없는 화면이 아닙니다. 기여량 0도 계산 생략을 뜻하지 않습니다.");
+        ImGui::TextWrapped("본질 기준은 SSAO·SSGI·SSR·Bloom·FXAA·안개·LUT·탈색을 끕니다. 재질·직접광·RNM·환경광·그림자·노출·감마는 A와 같습니다. GI 없는 화면이 아닙니다. 기여량 0도 계산 생략을 뜻하지 않습니다.");
         static const char* labels[]={"SSAO 켜기","SSAO 반경 (m)","SSAO bias","SSAO 강도","SSAO power","SSAO 거리 감쇠 (m)",
             "Bloom 켜기","Bloom 임계값","Bloom soft knee","Bloom 강도","Bloom scatter","FXAA 켜기","FXAA blend",
             "FXAA edge threshold","FXAA 최소 threshold","노출","표시 gamma","방향광 그림자 켜기","그림자 강도",
             "안개 켜기","안개 밀도","LUT 켜기","장면 탈색","SSAO 샘플 수","PCF 반경 (0/1/2 = 1/9/25 tap)","PBR 직접 diffuse","PBR 직접 specular","PBR baked RNM",
-            "PBR 환경 specular","PBR cube diffuse","PBR normal 강도","PBR roughness offset"};
+            "PBR 환경 specular","PBR cube diffuse","PBR normal 강도","PBR roughness offset",
+            "실험 SSGI 켜기","SSGI 기여 강도","SSGI 반경 (m)","SSGI 샘플 수 (4/8/16)",
+            "실험 SSR 켜기","SSR 기여 강도","SSR 최대 거리 (m)","SSR hit 두께 (m)","SSR step 수 (16/32/64)"};
         static_assert(std::size(labels)==RENDERING_EXPERIMENT_FIELD_COUNT);
         size_t changedCount=0; const uint64_t mask=Experiment_FieldMask();
         for (size_t i=0;i<RENDERING_EXPERIMENT_FIELD_COUNT;++i) if (mask&(uint64_t{1}<<i)) ++changedCount;
         ImGui::Text("변경 필드 %zu개: %s",changedCount,changedCount==1?"단일 변수 비교":(changedCount?"다변수 진단 (개별 원인 비용 아님)":"동일 기준"));
+        Render_RecipeSection();
         if (ImGui::CollapsingHeader("B 수치 조절 / 실제 지원 필드",ImGuiTreeNodeFlags_DefaultOpen))
         {
             const auto& fields=CRenderingProfileService::Experiment_Fields();
@@ -1102,6 +1387,13 @@ void Client::CRenderingBenchmark::Render_ExperimentSection(Engine::CProfiler* pr
                     { int value=static_cast<int>(m_ExperimentB.values[i]/4.0)-1; if (ImGui::Combo("##value",&value,"4\0" "8\0" "12\0")) {m_ExperimentB.values[i]=(value+1)*4;changed=true;} }
                     else if (i==static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::PCF_RADIUS))
                     { int value=static_cast<int>(m_ExperimentB.values[i]); if (ImGui::SliderInt("##value",&value,0,2)) {m_ExperimentB.values[i]=value;changed=true;} }
+                    else if (i==static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::SSGI_SAMPLES) || i==static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::SSR_STEPS))
+                    {
+                        const bool gi=i==static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::SSGI_SAMPLES); const int first=gi?4:16;
+                        int value=m_ExperimentB.values[i]==first?0:(m_ExperimentB.values[i]==first*2?1:2);
+                        if (ImGui::Combo("##value",&value,gi?"4\0" "8\0" "16\0":"16\0" "32\0" "64\0"))
+                        { m_ExperimentB.values[i]=first*(1<<value);changed=true; }
+                    }
                     else if (fields[i].boolean)
                     { bool value=m_ExperimentB.values[i]!=0; if (ImGui::Checkbox("##value",&value)) {m_ExperimentB.values[i]=value?1:0;changed=true;} }
                     else
@@ -1111,6 +1403,7 @@ void Client::CRenderingBenchmark::Render_ExperimentSection(Engine::CProfiler* pr
                 ImGui::EndTable(); if (changed) Apply_ExperimentVariant(true);
             }
         }
+        ImGui::TextWrapped("SSGI/SSR은 source 재질의 marker3 MapPBR 수신면과 정상 FINAL view가 필요합니다. 해당 면이 없으면 영상 기여 없이 full-screen 패스·복사 비용이 발생할 수 있습니다. PSInvocations는 ray hit 수가 아닙니다. 두 기법은 같은 원본 radiance를 읽으며 SSGI 결과를 SSR 입력으로 재사용하지 않습니다.");
         ImGui::TextWrapped("PBR 기여값은 지원되는 map PBR 재질에만 적용됩니다. Source character의 별도 계산은 그대로입니다. Video OFF를 ON으로 조절하는 경우도 현재 실험에만 적용되며 사용자 파일을 변경하지 않습니다.");
         ImGui::EndDisabled();
     }
@@ -1145,13 +1438,14 @@ void Client::CRenderingBenchmark::Render_ExperimentSection(Engine::CProfiler* pr
             ImGui::EndCombo();
         }
         const auto& f=fields[m_iSweepField];
-        if (!f.boolean && m_iSweepField!=static_cast<int>(RENDERING_EXPERIMENT_FIELD::SSAO_SAMPLES) && m_iSweepField!=static_cast<int>(RENDERING_EXPERIMENT_FIELD::PCF_RADIUS))
+        if (!f.boolean && m_iSweepField!=static_cast<int>(RENDERING_EXPERIMENT_FIELD::SSAO_SAMPLES) && m_iSweepField!=static_cast<int>(RENDERING_EXPERIMENT_FIELD::PCF_RADIUS)
+            && m_iSweepField!=static_cast<int>(RENDERING_EXPERIMENT_FIELD::SSGI_SAMPLES) && m_iSweepField!=static_cast<int>(RENDERING_EXPERIMENT_FIELD::SSR_STEPS))
         {
             ImGui::DragFloat("최솟값",&m_fSweepMinimum,static_cast<float>(f.step),static_cast<float>(f.minimum),static_cast<float>(f.maximum),"%.5g",ImGuiSliderFlags_AlwaysClamp);
             ImGui::DragFloat("최댓값",&m_fSweepMaximum,static_cast<float>(f.step),static_cast<float>(f.minimum),static_cast<float>(f.maximum),"%.5g",ImGuiSliderFlags_AlwaysClamp);
             ImGui::SliderInt("단계 수",&m_iSweepSteps,2,9);
         }
-        ImGui::TextWrapped("선택 필드 외에는 A를 유지합니다. bool은 0/1, SSAO는 4/8/12, PCF는 0/1/2만 측정합니다. 각 값 준비→수집→GPU 회수 후 다음 값으로 이동하며 종료·취소 시 시작 전 A/B로 복원합니다.");
+        ImGui::TextWrapped("선택 필드 외에는 A를 유지합니다. bool은 0/1, SSAO는 4/8/12, PCF는 0/1/2, SSGI는 4/8/16, SSR은 16/32/64만 측정합니다. 각 값 준비→수집→GPU 회수 후 다음 값으로 이동하며 종료·취소 시 시작 전 A/B로 복원합니다.");
         if (ImGui::Button("A 기준 + sweep 시작")) Start_Sweep(profiler);
     }
     ImGui::EndDisabled();
@@ -1162,7 +1456,7 @@ void Client::CRenderingBenchmark::Render_ExperimentSection(Engine::CProfiler* pr
     }
     ImGui::TextWrapped("%s",m_strStatus.c_str());
     if (!m_strSaveStatus.empty()) ImGui::TextWrapped("%s",m_strSaveStatus.c_str());
-    ImGui::TextWrapped("카메라·해상도·장면·Video·도구 창 표시·Profiler 상세 계측을 고정하세요. 동적 animation/Server gameplay를 고정 재생하지 않으므로 해당 장면 결과는 탐색 측정입니다. 새 temporal 기법은 아직 없으며 현재 준비 프레임은 cache 안정화를 위한 사용자 정책입니다.");
+    ImGui::TextWrapped("카메라·해상도·장면·Video·도구 창 표시·Profiler 상세 계측을 고정하세요. 동적 animation/Server gameplay를 고정 재생하지 않으므로 해당 장면 결과는 탐색 측정입니다. SSGI/SSR은 현재 화면의 marker3 MapPBR 수신용 공간 기법이며 temporal history·화면 밖 정보는 없습니다. 준비 프레임은 cache 안정화를 위한 사용자 정책입니다.");
 }
 
 void Client::CRenderingBenchmark::Render_Results()
@@ -1192,7 +1486,17 @@ void Client::CRenderingBenchmark::Render_Results()
         const auto& a=m_Runs[m_iCompareFirst]; const auto& b=m_Runs[m_iCompareSecond];
         const bool same=a.bConditionsStable&&b.bConditionsStable&&a.fieldMask==b.fieldMask&&
             a.strComparisonConditions==b.strComparisonConditions&&a.strExperimentId==b.strExperimentId;
-        if (!same) ImGui::TextWrapped("비교 제외: 공통 조건·독립 변수·실험 ID가 다르거나 수집 중 조건이 바뀌었습니다. 각 run 원본 값은 아래에서 확인할 수 있습니다.");
+        if (!same)
+        {
+            ImGui::TextWrapped("비교 제외: 공통 조건·독립 변수·실험 ID가 다르거나 수집 중 조건이 바뀌었습니다.");
+            if(a.strExperimentId!=b.strExperimentId)ImGui::TextWrapped("experimentId: %s → %s",a.strExperimentId.c_str(),b.strExperimentId.c_str());
+            if(a.fieldMask!=b.fieldMask)ImGui::TextWrapped("선택 실험 변수 집합이 다릅니다. 두 run의 selectedFields를 확인하세요.");
+            const auto changes=ChangedConditionFields(a.commonConditionFields,b.commonConditionFields);size_t shown=0;
+            for(const auto& [name,value]:changes)
+            {ImGui::TextWrapped("%s: %s",name.c_str(),value.c_str());if(++shown==12)break;}
+            if(changes.size()>shown)ImGui::Text("추가 %zu개 조건 차이는 JSON named fields에 보관했습니다.",changes.size()-shown);
+            if(changes.empty()&&a.strComparisonConditions!=b.strComparisonConditions)ImGui::TextWrapped("추가 raw 입력 차이: 이름 진단 범위 밖이며 같은 조건으로 간주하지 않습니다.");
+        }
         else
         {
             ImGui::Text("비교 - 기준: CPU %+.3f ms | interval %+.3f ms | draw %+.0f | index %+.0f | mesh draw %+.0f",
@@ -1234,7 +1538,13 @@ void Client::CRenderingBenchmark::Render_Results()
             if (r.fIntervalAvgMs>0) ImGui::Text("관측 FPS %.2f | 목표 %.0f FPS / %.3f ms",1000.0/r.fIntervalAvgMs,m_fTargetFps,1000.0/m_fTargetFps);
             ImGui::Text("draw %.0f | mesh draw %.0f | 고유 mesh %.0f | instance %.0f | index %.0f",r.fDrawCallsAvg,r.fMeshDrawsAvg,r.fUniqueMeshesAvg,r.fInstancesAvg,r.fIndicesAvg);
             ImGui::Text("scope 누락 CPU %llu / GPU %llu",static_cast<unsigned long long>(r.droppedCpuScopes),static_cast<unsigned long long>(r.droppedGpuScopes));
+            if (!r.strRecipeId.empty())
+            {ImGui::TextWrapped("recipe %s: %s",r.strRecipeId.c_str(),r.strExperimentGoal.c_str());ImGui::TextWrapped("관찰: %s",r.strMetricGuide.c_str());ImGui::TextWrapped("해석: %s",r.strConfidence.c_str());}
             if (!r.strFailureReason.empty()) ImGui::TextWrapped("%s",r.strFailureReason.c_str());
+            size_t changesShown=0;
+            for(const auto& [name,value]:r.changedConditionFields)
+            {ImGui::TextWrapped("%s: %s",name.c_str(),value.c_str());if(++changesShown==12)break;}
+            if(r.changedConditionFields.size()>changesShown)ImGui::Text("추가 %zu개 조건 변경은 JSON에서 확인합니다.",r.changedConditionFields.size()-changesShown);
             const auto& fields=CRenderingProfileService::Experiment_Fields();
             for (size_t n=0;n<fields.size();++n) if (r.fieldMask&(uint64_t{1}<<n)) ImGui::Text("%s = %.6g",fields[n].id,r.appliedValues.values[n]);
             ImGui::TreePop();
@@ -1249,6 +1559,7 @@ void Client::CRenderingBenchmark::Render_Section(Engine::CProfiler* profiler,
     Render_ExperimentSection(profiler,profiles);
     Render_Results();
     RenderingTechniqueGuide::Render();
+    RenderingReferenceGuide::Render();
     ImGui::BeginDisabled(m_bExperimentActive);
     const bool changedProfile=Render_RestorationSection(profiles);
     const bool changedPixels=Render_PixelInputs();
@@ -1344,6 +1655,17 @@ bool_t Client::CRenderingBenchmark::Save_Json(
             }
             Stream<<']';
         };
+        const auto writeFields=[&](const char* key,const std::map<string,string>& values) {
+            Stream<<"      \""<<key<<"\": {";bool comma=false;
+            for(const auto& [name,value]:values){if(comma)Stream<<',';comma=true;Stream<<'"'<<Escape_Json(name)<<"\":\""<<Escape_Json(value)<<'"';}
+            Stream<<"},\n";
+        };
+        Stream<<"      \"recipeId\": \""<<Escape_Json(r.strRecipeId)<<"\",\n"
+            <<"      \"experimentGoal\": \""<<Escape_Json(r.strExperimentGoal)<<"\",\n"
+            <<"      \"metricGuide\": \""<<Escape_Json(r.strMetricGuide)<<"\",\n"
+            <<"      \"confidenceBoundary\": \""<<Escape_Json(r.strConfidence)<<"\",\n";
+        writeFields("commonConditionFields",r.commonConditionFields);writeFields("actualConditionFields",r.actualConditionFields);
+        writeFields("changedConditionFields",r.changedConditionFields);
         writePasses("cpuScopes",r.cpuPasses,true); Stream<<",\n";
         writePasses("gpuScopes",r.passes,false);
         int baseline=-1;

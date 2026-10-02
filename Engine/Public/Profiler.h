@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine_Defines.h"
+#include <dxgi1_4.h>
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -229,10 +230,36 @@ struct FProfilerMeshDrawSample final
     uint32_t VertexCount = 0, IndexCount = 0, Instances = 0, MaterialSlot = 0;
 };
 
+// Low-rate OS observations, not allocator/resource attribution. Each validity
+// flag is independent; unavailable must never be displayed as measured zero.
+struct FProfilerMemorySegment final
+{
+    bool Valid = false;
+    uint64_t CurrentUsageBytes = 0, BudgetBytes = 0;
+};
+struct FProfilerMemoryStats final
+{
+    bool Sampled = false, ProcessValid = false, SystemValid = false;
+    uint64_t SampleFrameNumber = 0, SampleTick = 0;
+    // Captured frames use frame End; LiveStats uses the current QPC tick.
+    double AgeMs = 0.0;
+    uint32_t ProcessId = 0;
+    uint64_t PrivateCommitBytes = 0, WorkingSetBytes = 0;
+    // OS process-lifetime peaks, not capture-window peaks.
+    uint64_t PeakWorkingSetBytes = 0, PeakPrivateCommitBytes = 0;
+    uint64_t SystemCommitBytes = 0, SystemCommitLimitBytes = 0, SystemAvailableBytes = 0;
+    bool AdapterIdentityValid = false;
+    uint32_t AdapterLuidLow = 0, AdapterNodeIndex = 0;
+    int32_t AdapterLuidHigh = 0;
+    // Local does not necessarily mean dedicated VRAM (for example on UMA).
+    FProfilerMemorySegment Local{}, NonLocal{};
+};
+
 struct FProfilerFrame final
 {
     uint64_t FrameNumber = 0;
     uint64_t FrameBeginTick = 0, FrameEndTick = 0;
+    FProfilerMemoryStats Memory{};
     std::vector<FProfilerMeshDrawSample> MeshDraws;
     uint64_t DroppedMeshDraws = 0;
     // Interval is previous Begin -> this Begin. Gap is previous End -> this
@@ -302,6 +329,7 @@ struct FProfilerLiveStats final
     double CpuFrameMs = 0.0;
     double FrameIntervalMs = 0.0;
     uint64_t FrameBeginTick = 0, FrameEndTick = 0;
+    FProfilerMemoryStats Memory{};
     double PreviousCpuFrameMs = 0.0, FrameGapMs = 0.0;
     FProfilerAnimationStats Animation{};
     std::array<FProfilerWorkStats, static_cast<size_t>(EProfilerWork::Count)> CpuWork{};
@@ -421,6 +449,9 @@ public:
     FProfilerCaptureSnapshot Snapshot(size_t frameWindow = MAX_HISTORY_FRAMES) const;
     FProfilerCaptureWindow Get_CaptureWindow(size_t frameWindow) const;
     bool Get_LiveStats(FProfilerLiveStats& outStats) const;
+    // Copies only distinct memory poll attempts from up to maxFrames retained
+    // frames, oldest first. AgeMs uses the current tick; no OS query is issued.
+    void Get_MemorySamples(size_t maxFrames, std::vector<FProfilerMemoryStats>& outSamples) const;
 
     uint32_t Get_MainThreadId() const noexcept { return m_MainThreadId; }
     double Ticks_ToMs(uint64_t ticks) const noexcept;
@@ -491,12 +522,18 @@ private:
     // The caller holds m_Mutex, keeping coverage and copied frames consistent.
     FProfilerCaptureWindow Get_CaptureWindowLocked(size_t frameWindow) const;
     FProfilerDrawStats Read_DrawCounters() const noexcept;
+    void Sample_Memory(uint64_t tick);
 
 private:
     // Distinguishes a new profiler constructed at a previously used address.
     const uint64_t m_InstanceId;
     ComPtr<ID3D11Device> m_pDevice;
     ComPtr<ID3D11DeviceContext> m_pContext;
+    ComPtr<IDXGIAdapter3> m_pMemoryAdapter;
+    bool m_MemoryAdapterIdentityValid = false;
+    LUID m_MemoryAdapterLuid{};
+    uint64_t m_LastMemoryPollTick = 0;
+    FProfilerMemoryStats m_MemorySample{};
     LARGE_INTEGER m_Frequency{};
     // UI requests are latched at Begin_Frame so a capture never starts mid-frame.
     std::atomic_bool m_Enabled = false;

@@ -94,6 +94,8 @@ struct FProfilerComparisonMeshDraw final
 struct FProfilerComparisonFrame final
 {
     uint64_t Number = 0;
+    bool MemoryKnown = false;
+    Engine::FProfilerMemoryStats Memory{};
     bool CpuScopesKnown = false, CpuSelfKnown = false, DetailKnown = false, Detailed = false;
     bool GpuComplete = false;
     bool GpuValid = false;

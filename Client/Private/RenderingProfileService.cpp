@@ -557,7 +557,7 @@ namespace
         const MATERIAL_RENDER_SETTINGS& applied, bool normalized)
     {
         using F=RENDERING_EXPERIMENT_FIELD;
-        const uint64_t pbrMask=((uint64_t{1}<<RENDERING_EXPERIMENT_FIELD_COUNT)-1u)&~((uint64_t{1}<<static_cast<size_t>(F::PBR_DIFFUSE))-1u);
+        const uint64_t pbrMask=((uint64_t{1}<<(static_cast<size_t>(F::ROUGHNESS_OFFSET)+1u))-1u)&~((uint64_t{1}<<static_cast<size_t>(F::PBR_DIFFUSE))-1u);
         if (!(fields&pbrMask)) return;
         // A different routing owner supersedes the experiment. Otherwise restore
         // selected inputs plus only normalization values that nobody changed.
@@ -616,6 +616,15 @@ namespace
         copy(F::FXAA_EDGE_MIN,q.fFXAAEdgeThresholdMin,bq.fFXAAEdgeThresholdMin); copy(F::EXPOSURE,q.fExposure,bq.fExposure);
         copy(F::GAMMA,q.fGamma,bq.fGamma); copy(F::DESATURATION,q.fSceneDesaturation,bq.fSceneDesaturation);
         copy(F::SSAO_SAMPLES,q.iSSAOSampleCount,bq.iSSAOSampleCount);
+        copy(F::SSGI_ENABLED,q.bSSGIEnabled,bq.bSSGIEnabled);
+        copy(F::SSGI_STRENGTH,q.fSSGIStrength,bq.fSSGIStrength);
+        copy(F::SSGI_RADIUS,q.fSSGIRadius,bq.fSSGIRadius);
+        copy(F::SSGI_SAMPLES,q.iSSGISampleCount,bq.iSSGISampleCount);
+        copy(F::SSR_ENABLED,q.bSSREnabled,bq.bSSREnabled);
+        copy(F::SSR_STRENGTH,q.fSSRStrength,bq.fSSRStrength);
+        copy(F::SSR_DISTANCE,q.fSSRMaxDistance,bq.fSSRMaxDistance);
+        copy(F::SSR_THICKNESS,q.fSSRThickness,bq.fSSRThickness);
+        copy(F::SSR_STEPS,q.iSSRStepCount,bq.iSSRStepCount);
         copy(F::LUT_ENABLED,q.SourcePostProcess.LutLayers,bq.SourcePostProcess.LutLayers);
         if (shadowNormalized) MergeExperimentShadowAux(bs,appliedShadow,shadow);
         copy(F::SHADOW_ENABLED,shadow.Settings.bEnabled,bs.Settings.bEnabled);
@@ -654,7 +663,12 @@ CRenderingProfileService::Experiment_Fields()
         {"shadow.pcfRadius",0,2,1,false}, {"material.pbr.diffuse",0,4,.01,false},
         {"material.pbr.specular",0,4,.01,false}, {"material.pbr.baked",0,4,.01,false},
         {"material.pbr.environment",0,4,.01,false}, {"material.pbr.cube",0,4,.01,false},
-        {"material.pbr.normal",0,4,.01,false}, {"material.pbr.roughnessOffset",-1,1,.01,false}
+        {"material.pbr.normal",0,4,.01,false}, {"material.pbr.roughnessOffset",-1,1,.01,false},
+        {"quality.ssgi.enabled",0,1,1,true}, {"quality.ssgi.strength",0,2,.01,false},
+        {"quality.ssgi.radius",.1,20,.05,false}, {"quality.ssgi.samples",4,16,4,false},
+        {"quality.ssr.enabled",0,1,1,true}, {"quality.ssr.strength",0,2,.01,false},
+        {"quality.ssr.distance",.1,100,.1,false}, {"quality.ssr.thickness",.01,2,.01,false},
+        {"quality.ssr.steps",16,64,16,false}
     }};
     return fields;
 }
@@ -672,7 +686,9 @@ RENDERING_EXPERIMENT_VALUES CRenderingProfileService::Read_ExperimentValues()
         double(s.bEnabled),s.fStrength,double(f.bEnabled),f.fDensity,double(!q.SourcePostProcess.LutLayers.empty()),q.fSceneDesaturation,
         double(q.iSSAOSampleCount),double(s.iPCFFilterRadius),
         p.vContributionScale.x,p.vContributionScale.y,p.vContributionScale.z,p.vContributionScale.w,p.fCubeDiffuseScale,
-        p.vSurfaceParameters.x,p.vSurfaceParameters.y}};
+        p.vSurfaceParameters.x,p.vSurfaceParameters.y,
+        double(q.bSSGIEnabled),q.fSSGIStrength,q.fSSGIRadius,double(q.iSSGISampleCount),
+        double(q.bSSREnabled),q.fSSRStrength,q.fSSRMaxDistance,q.fSSRThickness,double(q.iSSRStepCount)}};
     return result;
 }
 
@@ -692,6 +708,9 @@ bool_t CRenderingProfileService::Validate_ExperimentValues(const RENDERING_EXPER
     const double samples=value(RENDERING_EXPERIMENT_FIELD::SSAO_SAMPLES), radius=value(RENDERING_EXPERIMENT_FIELD::PCF_RADIUS);
     if ((samples!=4 && samples!=8 && samples!=12) || (radius!=0 && radius!=1 && radius!=2))
     { status="SSAO samples must be 4/8/12 and PCF radius must be 0/1/2."; return false; }
+    const double giSamples=value(RENDERING_EXPERIMENT_FIELD::SSGI_SAMPLES), ssrSteps=value(RENDERING_EXPERIMENT_FIELD::SSR_STEPS);
+    if ((giSamples!=4 && giSamples!=8 && giSamples!=16) || (ssrSteps!=16 && ssrSteps!=32 && ssrSteps!=64))
+    { status="SSGI samples must be 4/8/16 and SSR steps must be 16/32/64."; return false; }
     if (value(RENDERING_EXPERIMENT_FIELD::SSAO_BIAS) >= value(RENDERING_EXPERIMENT_FIELD::SSAO_RADIUS) ||
         value(RENDERING_EXPERIMENT_FIELD::SSAO_FADE) < value(RENDERING_EXPERIMENT_FIELD::SSAO_RADIUS))
     { status = "SSAO requires bias < radius <= distance fade."; return false; }
@@ -710,7 +729,7 @@ bool_t CRenderingProfileService::Set_ExperimentPreview(const RENDERING_EXPERIMEN
     { status="Shadow OFF normalizes strength; enable shadows to compare a nondefault strength."; return false; }
     if (!Get_ActiveProfile() || !Is_EnvironmentSettled())
     { status = "Wait for an active scene and its region transition to settle."; return false; }
-    const uint64_t pbrMask = validMask & ~((uint64_t{1} << static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::PBR_DIFFUSE)) - 1u);
+    const uint64_t pbrMask = ((uint64_t{1} << (static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::ROUGHNESS_OFFSET)+1u))-1u) & ~((uint64_t{1} << static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::PBR_DIFFUSE)) - 1u);
     if ((fields & pbrMask) && !CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials)
     { status = "PBR contribution comparison requires recovered source materials."; return false; }
     if ((fields & RenderingExperimentBit(RENDERING_EXPERIMENT_FIELD::LUT_ENABLED)) &&
@@ -803,10 +822,19 @@ bool_t CRenderingProfileService::Apply_ExperimentPreview(string& status)
     apply(F::FXAA_EDGE_MIN,q.fFXAAEdgeThresholdMin); apply(F::EXPOSURE,q.fExposure); apply(F::GAMMA,q.fGamma);
     apply(F::SHADOW_ENABLED,s.Settings.bEnabled); apply(F::SHADOW_STRENGTH,s.Settings.fStrength);
     apply(F::SSAO_SAMPLES,q.iSSAOSampleCount); apply(F::PCF_RADIUS,s.Settings.iPCFFilterRadius);
+    apply(F::SSGI_ENABLED,q.bSSGIEnabled);
+    apply(F::SSGI_STRENGTH,q.fSSGIStrength);
+    apply(F::SSGI_RADIUS,q.fSSGIRadius);
+    apply(F::SSGI_SAMPLES,q.iSSGISampleCount);
+    apply(F::SSR_ENABLED,q.bSSREnabled);
+    apply(F::SSR_STRENGTH,q.fSSRStrength);
+    apply(F::SSR_DISTANCE,q.fSSRMaxDistance);
+    apply(F::SSR_THICKNESS,q.fSSRThickness);
+    apply(F::SSR_STEPS,q.iSSRStepCount);
     apply(F::FOG_ENABLED,f.bEnabled); apply(F::FOG_DENSITY,f.fDensity); apply(F::DESATURATION,q.fSceneDesaturation);
     if ((m_iExperimentFields & RenderingExperimentBit(F::LUT_ENABLED)) && !m_ExperimentValues.values[static_cast<size_t>(F::LUT_ENABLED)])
         q.SourcePostProcess.LutLayers.clear();
-    const uint64_t pbrMask = ((uint64_t{1} << RENDERING_EXPERIMENT_FIELD_COUNT) - 1u) &
+    const uint64_t pbrMask = ((uint64_t{1} << (static_cast<size_t>(F::ROUGHNESS_OFFSET)+1u)) - 1u) &
         ~((uint64_t{1} << static_cast<size_t>(F::PBR_DIFFUSE)) - 1u);
     if (m_iExperimentFields & pbrMask)
     {

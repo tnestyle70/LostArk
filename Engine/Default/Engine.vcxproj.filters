@@ -729,6 +729,9 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_ScreenSpaceLighting.hlsl">
+      <Filter>03.ShaderFiles</Filter>
+    </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_Cell.hlsl">
       <Filter>03.ShaderFiles</Filter>
     </FxCompile>
