@@ -16,6 +16,7 @@
 #include <locale>
 #include <set>
 #include <sstream>
+#include <type_traits>
 
 namespace
 {
@@ -550,6 +551,292 @@ bool_t CRenderingProfileService::Reload_Runtime(string& strOutStatus)
 	return true;
 }
 
+namespace
+{
+    void MergeExperimentMaterial(uint64_t fields, const MATERIAL_RENDER_SETTINGS& base, MATERIAL_RENDER_SETTINGS& current,
+        const MATERIAL_RENDER_SETTINGS& applied, bool normalized)
+    {
+        using F=RENDERING_EXPERIMENT_FIELD;
+        const uint64_t pbrMask=((uint64_t{1}<<RENDERING_EXPERIMENT_FIELD_COUNT)-1u)&~((uint64_t{1}<<static_cast<size_t>(F::PBR_DIFFUSE))-1u);
+        if (!(fields&pbrMask)) return;
+        // A different routing owner supersedes the experiment. Otherwise restore
+        // selected inputs plus only normalization values that nobody changed.
+        if (current.MapPBR.bEnabled!=applied.MapPBR.bEnabled || current.MapPBR.iLevel!=applied.MapPBR.iLevel) return;
+        const auto copy=[&](F field,auto& target,const auto& value,const auto& last) {
+            if ((fields&RenderingExperimentBit(field)) || (normalized && target==last)) target=value;
+        };
+        current.MapPBR.bEnabled=base.MapPBR.bEnabled; current.MapPBR.iLevel=base.MapPBR.iLevel;
+        copy(F::PBR_DIFFUSE,current.MapPBR.vContributionScale.x,base.MapPBR.vContributionScale.x,applied.MapPBR.vContributionScale.x);
+        copy(F::PBR_SPECULAR,current.MapPBR.vContributionScale.y,base.MapPBR.vContributionScale.y,applied.MapPBR.vContributionScale.y);
+        copy(F::PBR_BAKED,current.MapPBR.vContributionScale.z,base.MapPBR.vContributionScale.z,applied.MapPBR.vContributionScale.z);
+        copy(F::PBR_ENVIRONMENT,current.MapPBR.vContributionScale.w,base.MapPBR.vContributionScale.w,applied.MapPBR.vContributionScale.w);
+        copy(F::PBR_CUBE,current.MapPBR.fCubeDiffuseScale,base.MapPBR.fCubeDiffuseScale,applied.MapPBR.fCubeDiffuseScale);
+        copy(F::NORMAL_STRENGTH,current.MapPBR.vSurfaceParameters.x,base.MapPBR.vSurfaceParameters.x,applied.MapPBR.vSurfaceParameters.x);
+        copy(F::ROUGHNESS_OFFSET,current.MapPBR.vSurfaceParameters.y,base.MapPBR.vSurfaceParameters.y,applied.MapPBR.vSurfaceParameters.y);
+        if (normalized && current.MapPBR.vSurfaceParameters.z==applied.MapPBR.vSurfaceParameters.z)
+            current.MapPBR.vSurfaceParameters.z=base.MapPBR.vSurfaceParameters.z;
+        if (normalized && current.MapPBR.vSurfaceParameters.w==applied.MapPBR.vSurfaceParameters.w)
+            current.MapPBR.vSurfaceParameters.w=base.MapPBR.vSurfaceParameters.w;
+    }
+
+    void MergeExperimentShadowAux(const SHADOW_LIGHT_DESC& base, const SHADOW_LIGHT_DESC& applied, SHADOW_LIGHT_DESC& current)
+    {
+        if (current.Settings.bEnabled != applied.Settings.bEnabled) return;
+        // CShadow normalizes an OFF descriptor to defaults. Undo only those
+        // auxiliary values that still match our last actual renderer result.
+        const auto copy=[](auto& target,const auto& original,const auto& last) { if(target==last)target=original; };
+        const auto vector=[&](auto& target,const auto& original,const auto& last) {
+            copy(target.x,original.x,last.x); copy(target.y,original.y,last.y);
+            copy(target.z,original.z,last.z); copy(target.w,original.w,last.w);
+        };
+        vector(current.vEye,base.vEye,applied.vEye); vector(current.vAt,base.vAt,applied.vAt);
+        auto& s=current.Settings; const auto& b=base.Settings; const auto& a=applied.Settings;
+        copy(s.fOrthographicWidth,b.fOrthographicWidth,a.fOrthographicWidth);
+        copy(s.fOrthographicHeight,b.fOrthographicHeight,a.fOrthographicHeight);
+        copy(s.fNear,b.fNear,a.fNear); copy(s.fFar,b.fFar,a.fFar);
+        copy(s.fDepthBias,b.fDepthBias,a.fDepthBias); copy(s.fNormalBias,b.fNormalBias,a.fNormalBias);
+        copy(s.fStrength,b.fStrength,a.fStrength); copy(s.fDynamicBakedStrength,b.fDynamicBakedStrength,a.fDynamicBakedStrength);
+    }
+
+    void MergeExperimentBase(uint64_t fields, const RENDER_QUALITY_SETTINGS& bq, const SHADOW_LIGHT_DESC& bs,
+        const HEIGHT_FOG_SETTINGS& bf, const MATERIAL_RENDER_SETTINGS& bm,
+        RENDER_QUALITY_SETTINGS& q, SHADOW_LIGHT_DESC& shadow, HEIGHT_FOG_SETTINGS& fog, MATERIAL_RENDER_SETTINGS& material,
+        const MATERIAL_RENDER_SETTINGS& appliedMaterial, bool normalized,
+        const SHADOW_LIGHT_DESC& appliedShadow, bool shadowNormalized)
+    {
+        using F=RENDERING_EXPERIMENT_FIELD;
+        const auto copy=[&](F field,auto& target,const auto& value) { if(fields&RenderingExperimentBit(field))target=value; };
+        copy(F::SSAO_ENABLED,q.bSSAOEnabled,bq.bSSAOEnabled); copy(F::SSAO_RADIUS,q.fSSAORadius,bq.fSSAORadius);
+        copy(F::SSAO_BIAS,q.fSSAOBias,bq.fSSAOBias); copy(F::SSAO_INTENSITY,q.fSSAOIntensity,bq.fSSAOIntensity);
+        copy(F::SSAO_POWER,q.fSSAOPower,bq.fSSAOPower); copy(F::SSAO_FADE,q.fSSAODistanceFade,bq.fSSAODistanceFade);
+        copy(F::BLOOM_ENABLED,q.bBloomEnabled,bq.bBloomEnabled); copy(F::BLOOM_THRESHOLD,q.fBloomThreshold,bq.fBloomThreshold);
+        copy(F::BLOOM_KNEE,q.fBloomSoftKnee,bq.fBloomSoftKnee); copy(F::BLOOM_INTENSITY,q.fBloomIntensity,bq.fBloomIntensity);
+        copy(F::BLOOM_SCATTER,q.fBloomScatter,bq.fBloomScatter); copy(F::FXAA_ENABLED,q.bFXAAEnabled,bq.bFXAAEnabled);
+        copy(F::FXAA_BLEND,q.fFXAASubpixel,bq.fFXAASubpixel); copy(F::FXAA_EDGE,q.fFXAAEdgeThreshold,bq.fFXAAEdgeThreshold);
+        copy(F::FXAA_EDGE_MIN,q.fFXAAEdgeThresholdMin,bq.fFXAAEdgeThresholdMin); copy(F::EXPOSURE,q.fExposure,bq.fExposure);
+        copy(F::GAMMA,q.fGamma,bq.fGamma); copy(F::DESATURATION,q.fSceneDesaturation,bq.fSceneDesaturation);
+        copy(F::SSAO_SAMPLES,q.iSSAOSampleCount,bq.iSSAOSampleCount);
+        copy(F::LUT_ENABLED,q.SourcePostProcess.LutLayers,bq.SourcePostProcess.LutLayers);
+        if (shadowNormalized) MergeExperimentShadowAux(bs,appliedShadow,shadow);
+        copy(F::SHADOW_ENABLED,shadow.Settings.bEnabled,bs.Settings.bEnabled);
+        copy(F::SHADOW_STRENGTH,shadow.Settings.fStrength,bs.Settings.fStrength);
+        copy(F::PCF_RADIUS,shadow.Settings.iPCFFilterRadius,bs.Settings.iPCFFilterRadius);
+        copy(F::FOG_ENABLED,fog.bEnabled,bf.bEnabled); copy(F::FOG_DENSITY,fog.fDensity,bf.fDensity);
+        MergeExperimentMaterial(fields,bm,material,appliedMaterial,normalized);
+    }
+
+    string ExperimentVideoIdentity()
+    {
+        const auto& settings = CUserSettings::Get().Get_Settings();
+        ostringstream stream; stream.imbue(locale::classic()); stream << setprecision(9);
+        stream << settings.Display.width << ' ' << settings.Display.height << ' ' << static_cast<int>(settings.Display.mode);
+        for (const auto& [name, value] : settings.Values) stream << ' ' << quoted(name) << ' ' << value;
+        return stream.str();
+    }
+}
+
+const std::array<RENDERING_EXPERIMENT_FIELD_INFO, RENDERING_EXPERIMENT_FIELD_COUNT>&
+CRenderingProfileService::Experiment_Fields()
+{
+    static const std::array<RENDERING_EXPERIMENT_FIELD_INFO, RENDERING_EXPERIMENT_FIELD_COUNT> fields{{
+        {"quality.ssao.enabled",0,1,1,true}, {"quality.ssao.radius",.01,8,.01,false},
+        {"quality.ssao.bias",0,1,.001,false}, {"quality.ssao.intensity",0,4,.01,false},
+        {"quality.ssao.power",.1,8,.01,false}, {"quality.ssao.fade",1,1000,.25,false},
+        {"quality.bloom.enabled",0,1,1,true}, {"quality.bloom.threshold",0,64,.01,false},
+        {"quality.bloom.knee",0,1,.01,false}, {"quality.bloom.intensity",0,16,.01,false},
+        {"quality.bloom.scatter",.25,4,.01,false}, {"quality.fxaa.enabled",0,1,1,true},
+        {"quality.fxaa.blend",0,1,.01,false}, {"quality.fxaa.edge",.0312,.333,.001,false},
+        {"quality.fxaa.edgeMin",.0156,.0833,.001,false}, {"quality.exposure",.01,32,.01,false},
+        {"quality.gamma",1,3,.005,false}, {"shadow.enabled",0,1,1,true},
+        {"shadow.strength",0,1,.01,false}, {"fog.enabled",0,1,1,true},
+        {"fog.density",0,10,.001,false}, {"quality.lut.enabled",0,1,1,true},
+        {"quality.desaturation",0,1,.01,false}, {"quality.ssao.samples",4,12,4,false},
+        {"shadow.pcfRadius",0,2,1,false}, {"material.pbr.diffuse",0,4,.01,false},
+        {"material.pbr.specular",0,4,.01,false}, {"material.pbr.baked",0,4,.01,false},
+        {"material.pbr.environment",0,4,.01,false}, {"material.pbr.cube",0,4,.01,false},
+        {"material.pbr.normal",0,4,.01,false}, {"material.pbr.roughnessOffset",-1,1,.01,false}
+    }};
+    return fields;
+}
+
+RENDERING_EXPERIMENT_VALUES CRenderingProfileService::Read_ExperimentValues()
+{
+    const auto& game = CGameInstance::Get();
+    const auto& q = game.Get_RenderQualitySettings(); const auto& s = game.Get_ShadowLightDesc().Settings;
+    const auto& f = game.Get_HeightFogSettings(); const auto& material = game.Get_MaterialRenderSettings();
+    const auto p = material.MapPBR.Is_Active(game.Get_CurrentLevelID()) ? material.MapPBR : MAP_PBR_COMPARISON_SETTINGS{};
+    RENDERING_EXPERIMENT_VALUES result;
+    result.values = {{double(q.bSSAOEnabled),q.fSSAORadius,q.fSSAOBias,q.fSSAOIntensity,q.fSSAOPower,q.fSSAODistanceFade,
+        double(q.bBloomEnabled),q.fBloomThreshold,q.fBloomSoftKnee,q.fBloomIntensity,q.fBloomScatter,
+        double(q.bFXAAEnabled),q.fFXAASubpixel,q.fFXAAEdgeThreshold,q.fFXAAEdgeThresholdMin,q.fExposure,q.fGamma,
+        double(s.bEnabled),s.fStrength,double(f.bEnabled),f.fDensity,double(!q.SourcePostProcess.LutLayers.empty()),q.fSceneDesaturation,
+        double(q.iSSAOSampleCount),double(s.iPCFFilterRadius),
+        p.vContributionScale.x,p.vContributionScale.y,p.vContributionScale.z,p.vContributionScale.w,p.fCubeDiffuseScale,
+        p.vSurfaceParameters.x,p.vSurfaceParameters.y}};
+    return result;
+}
+
+bool_t CRenderingProfileService::Validate_ExperimentValues(const RENDERING_EXPERIMENT_VALUES& values, string& status)
+{
+    const auto& fields = Experiment_Fields();
+    for (size_t i = 0; i < fields.size(); ++i)
+    {
+        const auto value = values.values[i]; const auto& field = fields[i];
+        // The public limits are floats; compare at the same precision as renderer validation.
+        if (!isfinite(value) || static_cast<float>(value) < static_cast<float>(field.minimum) ||
+            static_cast<float>(value) > static_cast<float>(field.maximum) ||
+            (field.boolean && value != 0.0 && value != 1.0))
+        { status = string("Invalid experiment value: ") + field.id; return false; }
+    }
+    const auto value = [&](RENDERING_EXPERIMENT_FIELD f) { return values.values[static_cast<size_t>(f)]; };
+    const double samples=value(RENDERING_EXPERIMENT_FIELD::SSAO_SAMPLES), radius=value(RENDERING_EXPERIMENT_FIELD::PCF_RADIUS);
+    if ((samples!=4 && samples!=8 && samples!=12) || (radius!=0 && radius!=1 && radius!=2))
+    { status="SSAO samples must be 4/8/12 and PCF radius must be 0/1/2."; return false; }
+    if (value(RENDERING_EXPERIMENT_FIELD::SSAO_BIAS) >= value(RENDERING_EXPERIMENT_FIELD::SSAO_RADIUS) ||
+        value(RENDERING_EXPERIMENT_FIELD::SSAO_FADE) < value(RENDERING_EXPERIMENT_FIELD::SSAO_RADIUS))
+    { status = "SSAO requires bias < radius <= distance fade."; return false; }
+    return true;
+}
+
+bool_t CRenderingProfileService::Set_ExperimentPreview(const RENDERING_EXPERIMENT_VALUES& values,
+    uint64_t fields, string& status)
+{
+    constexpr uint64_t validMask = (uint64_t{1} << RENDERING_EXPERIMENT_FIELD_COUNT) - 1u;
+    if (fields & ~validMask) { status="Unknown experiment field mask."; return false; }
+    if (!Validate_ExperimentValues(values, status)) return false;
+    if ((fields & RenderingExperimentBit(RENDERING_EXPERIMENT_FIELD::SHADOW_STRENGTH)) &&
+        values.values[static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::SHADOW_ENABLED)]==0 &&
+        static_cast<float>(values.values[static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::SHADOW_STRENGTH)])!=SHADOW_SETTINGS{}.fStrength)
+    { status="Shadow OFF normalizes strength; enable shadows to compare a nondefault strength."; return false; }
+    if (!Get_ActiveProfile() || !Is_EnvironmentSettled())
+    { status = "Wait for an active scene and its region transition to settle."; return false; }
+    const uint64_t pbrMask = validMask & ~((uint64_t{1} << static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::PBR_DIFFUSE)) - 1u);
+    if ((fields & pbrMask) && !CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials)
+    { status = "PBR contribution comparison requires recovered source materials."; return false; }
+    if ((fields & RenderingExperimentBit(RENDERING_EXPERIMENT_FIELD::LUT_ENABLED)) &&
+        values.values[static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::LUT_ENABLED)] != 0)
+    {
+        const auto& source=(m_bExperimentApplied?m_ExperimentBaseQuality:CGameInstance::Get().Get_RenderQualitySettings()).SourcePostProcess;
+        if (!source.bEnabled || source.LutLayers.empty())
+        { status="LUT ON is unsupported: this scene has no enabled authored LUT input."; return false; }
+    }
+    if (!m_bExperimentActive)
+    {
+        m_iExperimentProfileGeneration = m_iProfileGeneration;
+        m_iExperimentLevel = CGameInstance::Get().Get_CurrentLevelID();
+        m_strExperimentRegion = m_strAppliedEnvironmentRegion;
+        m_strExperimentVideo = ExperimentVideoIdentity();
+    }
+    m_ExperimentValues = values; m_iExperimentFields = fields;
+    m_bExperimentActive = true; ++m_iExperimentGeneration;
+    m_strExperimentStatus = status = "Session values staged for the next complete frame. Authored data is unchanged.";
+    return true;
+}
+
+bool_t CRenderingProfileService::Restore_ExperimentPreview(string& status)
+{
+    if (!m_bExperimentApplied) return true;
+    auto& game = CGameInstance::Get();
+    const auto quality = game.Get_RenderQualitySettings(); const auto shadow = game.Get_ShadowLightDesc();
+    const auto fog = game.Get_HeightFogSettings(); const auto material = game.Get_MaterialRenderSettings();
+    auto restoredQuality=quality; auto restoredShadow=shadow; auto restoredFog=fog; auto restoredMaterial=material;
+    MergeExperimentBase(m_iExperimentAppliedFields,m_ExperimentBaseQuality,m_ExperimentBaseShadow,m_ExperimentBaseFog,m_ExperimentBaseMaterial,
+        restoredQuality,restoredShadow,restoredFog,restoredMaterial,m_ExperimentAppliedMaterial,m_bExperimentNormalizedPbr,
+        m_ExperimentAppliedShadow,m_bExperimentNormalizedShadow);
+    if (FAILED(game.Apply_RenderQualitySettings(restoredQuality)) ||
+        FAILED(game.Apply_Shadow_Light(restoredShadow)) ||
+        FAILED(game.Apply_HeightFog(restoredFog)) ||
+        FAILED(game.Apply_MaterialRenderSettings(restoredMaterial)))
+    {
+        game.Apply_RenderQualitySettings(quality); game.Apply_Shadow_Light(shadow);
+        game.Apply_HeightFog(fog); game.Apply_MaterialRenderSettings(material);
+        status = m_strExperimentStatus = "Experiment restore failed; current renderer state retained.";
+        return false;
+    }
+    m_bExperimentApplied = false; m_iExperimentAppliedFields = 0;
+    return true;
+}
+
+bool_t CRenderingProfileService::Clear_ExperimentPreview(string& status)
+{
+    if (!Restore_ExperimentPreview(status)) return false;
+    if (m_bExperimentActive) ++m_iExperimentGeneration;
+    m_bExperimentActive = false; m_iExperimentFields = 0;
+    status = m_strExperimentStatus = "Session experiment ended; underlying scene restored.";
+    return true;
+}
+
+void CRenderingProfileService::Release_ExperimentForProfileCommit()
+{
+    // Profile commit already transactionally replaced quality/shadow/fog and
+    // merged only experiment-owned material fields into the latest material.
+    m_bExperimentActive = m_bExperimentApplied = false;
+    m_iExperimentAppliedFields = m_iExperimentFields = 0; ++m_iProfileGeneration; ++m_iExperimentGeneration;
+    m_strExperimentStatus = "Scene owner changed; the new profile remains active.";
+}
+
+bool_t CRenderingProfileService::Apply_ExperimentPreview(string& status)
+{
+    if (!m_bExperimentActive) return true;
+    if (m_iExperimentProfileGeneration != m_iProfileGeneration ||
+        m_iExperimentLevel != CGameInstance::Get().Get_CurrentLevelID() ||
+        m_strExperimentRegion != m_strAppliedEnvironmentRegion || m_strExperimentVideo != ExperimentVideoIdentity())
+    {
+        if (!Clear_ExperimentPreview(status)) return false;
+        m_strExperimentStatus = "Scene, region or user settings changed; experiment released."; return true;
+    }
+    auto& game = CGameInstance::Get();
+    m_ExperimentBaseQuality = game.Get_RenderQualitySettings(); m_ExperimentBaseShadow = game.Get_ShadowLightDesc();
+    m_ExperimentBaseFog = game.Get_HeightFogSettings(); m_ExperimentBaseMaterial = game.Get_MaterialRenderSettings();
+    auto q = m_ExperimentBaseQuality; auto s = m_ExperimentBaseShadow;
+    auto f = m_ExperimentBaseFog; auto material = m_ExperimentBaseMaterial;
+    using F = RENDERING_EXPERIMENT_FIELD;
+    const auto apply = [&](F field, auto& target) {
+        if (m_iExperimentFields & RenderingExperimentBit(field))
+            target = static_cast<std::remove_reference_t<decltype(target)>>(m_ExperimentValues.values[static_cast<size_t>(field)]);
+    };
+    apply(F::SSAO_ENABLED,q.bSSAOEnabled); apply(F::SSAO_RADIUS,q.fSSAORadius); apply(F::SSAO_BIAS,q.fSSAOBias);
+    apply(F::SSAO_INTENSITY,q.fSSAOIntensity); apply(F::SSAO_POWER,q.fSSAOPower); apply(F::SSAO_FADE,q.fSSAODistanceFade);
+    apply(F::BLOOM_ENABLED,q.bBloomEnabled); apply(F::BLOOM_THRESHOLD,q.fBloomThreshold); apply(F::BLOOM_KNEE,q.fBloomSoftKnee);
+    apply(F::BLOOM_INTENSITY,q.fBloomIntensity); apply(F::BLOOM_SCATTER,q.fBloomScatter);
+    apply(F::FXAA_ENABLED,q.bFXAAEnabled); apply(F::FXAA_BLEND,q.fFXAASubpixel); apply(F::FXAA_EDGE,q.fFXAAEdgeThreshold);
+    apply(F::FXAA_EDGE_MIN,q.fFXAAEdgeThresholdMin); apply(F::EXPOSURE,q.fExposure); apply(F::GAMMA,q.fGamma);
+    apply(F::SHADOW_ENABLED,s.Settings.bEnabled); apply(F::SHADOW_STRENGTH,s.Settings.fStrength);
+    apply(F::SSAO_SAMPLES,q.iSSAOSampleCount); apply(F::PCF_RADIUS,s.Settings.iPCFFilterRadius);
+    apply(F::FOG_ENABLED,f.bEnabled); apply(F::FOG_DENSITY,f.fDensity); apply(F::DESATURATION,q.fSceneDesaturation);
+    if ((m_iExperimentFields & RenderingExperimentBit(F::LUT_ENABLED)) && !m_ExperimentValues.values[static_cast<size_t>(F::LUT_ENABLED)])
+        q.SourcePostProcess.LutLayers.clear();
+    const uint64_t pbrMask = ((uint64_t{1} << RENDERING_EXPERIMENT_FIELD_COUNT) - 1u) &
+        ~((uint64_t{1} << static_cast<size_t>(F::PBR_DIFFUSE)) - 1u);
+    if (m_iExperimentFields & pbrMask)
+    {
+        if (!material.MapPBR.Is_Active(game.Get_CurrentLevelID())) material.MapPBR={};
+        material.MapPBR.bEnabled = true; material.MapPBR.iLevel = game.Get_CurrentLevelID();
+        auto& p = material.MapPBR;
+        apply(F::PBR_DIFFUSE,p.vContributionScale.x); apply(F::PBR_SPECULAR,p.vContributionScale.y);
+        apply(F::PBR_BAKED,p.vContributionScale.z); apply(F::PBR_ENVIRONMENT,p.vContributionScale.w);
+        apply(F::PBR_CUBE,p.fCubeDiffuseScale); apply(F::NORMAL_STRENGTH,p.vSurfaceParameters.x);
+        apply(F::ROUGHNESS_OFFSET,p.vSurfaceParameters.y);
+    }
+    // Record the base first so any later failure rolls back all successful steps.
+    m_bExperimentApplied = true; m_iExperimentAppliedFields = m_iExperimentFields;
+    m_ExperimentAppliedMaterial=material; m_ExperimentAppliedShadow=s;
+    m_bExperimentNormalizedShadow=!s.Settings.bEnabled &&
+        (m_iExperimentFields & (RenderingExperimentBit(F::SHADOW_ENABLED)|RenderingExperimentBit(F::SHADOW_STRENGTH)|RenderingExperimentBit(F::PCF_RADIUS)));
+    if (m_bExperimentNormalizedShadow)
+    { m_ExperimentAppliedShadow={}; m_ExperimentAppliedShadow.Settings.iPCFFilterRadius=s.Settings.iPCFFilterRadius; }
+    m_bExperimentNormalizedPbr=(m_iExperimentFields&pbrMask) && !m_ExperimentBaseMaterial.MapPBR.Is_Active(game.Get_CurrentLevelID());
+    if (FAILED(game.Apply_RenderQualitySettings(q)) || FAILED(game.Apply_Shadow_Light(s)) ||
+        FAILED(game.Apply_HeightFog(f)) || FAILED(game.Apply_MaterialRenderSettings(material)))
+    {
+        string restoreStatus; const bool restored = Restore_ExperimentPreview(restoreStatus);
+        m_bExperimentActive = false; ++m_iExperimentGeneration;
+        status = m_strExperimentStatus = restored ? "Experiment rejected; previous scene restored." : restoreStatus;
+        return false;
+    }
+    return true;
+}
+
 bool_t CRenderingProfileService::Set_ComparisonOptions(const RENDERING_COMPARISON_OPTIONS& options)
 {
     if (!Is_FiniteRange(options.fExposureMultiplier, 0.5f, 2.f)) return false;
@@ -582,6 +869,17 @@ bool_t CRenderingProfileService::Restore_PresentationEnvironment(string& status)
 }
 
 bool_t CRenderingProfileService::Apply_CameraEnvironment(f32_t deltaSeconds, string& status,
+    const bool_t suppressFog, const LIGHT_DESC* directionalOverride,
+    const f32_t directionalBrightnessMultiplier, const float4_t* directionalColor,
+    const PRESENTATION_FOG_TUNING* fogTuning)
+{
+    if (!Restore_ExperimentPreview(status)) return false;
+    if (!Apply_CameraEnvironmentBase(deltaSeconds, status, suppressFog, directionalOverride,
+        directionalBrightnessMultiplier, directionalColor, fogTuning)) return false;
+    return Apply_ExperimentPreview(status);
+}
+
+bool_t CRenderingProfileService::Apply_CameraEnvironmentBase(f32_t deltaSeconds, string& status,
     const bool_t suppressFog, const LIGHT_DESC* directionalOverride,
     const f32_t directionalBrightnessMultiplier, const float4_t* directionalColor,
     const PRESENTATION_FOG_TUNING* fogTuning)
@@ -1641,6 +1939,9 @@ bool_t CRenderingProfileService::Commit_Resolved(
 		CGameInstance::Get().Get_ShadowLightDesc();
 	const HEIGHT_FOG_SETTINGS previousFog =
 		CGameInstance::Get().Get_HeightFogSettings();
+    const auto previousMaterial=CGameInstance::Get().Get_MaterialRenderSettings();
+    auto stagedMaterial=previousMaterial;
+    if (m_bExperimentApplied) MergeExperimentMaterial(m_iExperimentAppliedFields,m_ExperimentBaseMaterial,stagedMaterial,m_ExperimentAppliedMaterial,m_bExperimentNormalizedPbr);
 	SHADOW_LIGHT_DESC stagedShadow{};
 	if (!Build_ShadowDesc(Profile, stagedShadow))
 	{
@@ -1667,8 +1968,16 @@ bool_t CRenderingProfileService::Commit_Resolved(
 		strOutStatus = "Renderer rejected the staged height fog; active state preserved.";
 		return false;
 	}
+    if (m_bExperimentApplied && FAILED(CGameInstance::Get().Apply_MaterialRenderSettings(stagedMaterial)))
+    {
+        CGameInstance::Get().Apply_HeightFog(previousFog);
+        CGameInstance::Get().Apply_Shadow_Light(previousShadow);
+        CGameInstance::Get().Apply_RenderQualitySettings(previous);
+        strOutStatus="Experiment material restore rejected; previous scene preserved."; return false;
+    }
 	if (FAILED(CGameInstance::Get().Add_Light(Profile.Light)))
 	{
+        if (m_bExperimentApplied) CGameInstance::Get().Apply_MaterialRenderSettings(previousMaterial);
 		CGameInstance::Get().Apply_HeightFog(previousFog);
 		CGameInstance::Get().Apply_Shadow_Light(previousShadow);
 		CGameInstance::Get().Apply_RenderQualitySettings(previous);
@@ -1676,6 +1985,7 @@ bool_t CRenderingProfileService::Commit_Resolved(
 		return false;
 	}
 	// A committed profile owns the new scene; an old shot may not restore over it.
+    Release_ExperimentForProfileCommit();
     m_bPresentationFogOverride = m_bPresentationLightOverride = m_bPresentationQualityOverride = false;
 	m_strAppliedEnvironmentRegion.clear();
 	CGameInstance::Get().Commit_RenderEnvironment(stagedEnvironment);

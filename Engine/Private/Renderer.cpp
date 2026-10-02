@@ -181,6 +181,8 @@ namespace
 	{
 		return
 			IsValidSourcePostProcess(Settings.SourcePostProcess) &&
+            (Settings.iSSAOSampleCount == 4u || Settings.iSSAOSampleCount == 8u ||
+                Settings.iSSAOSampleCount == 12u) &&
 			IsFiniteInRange(Settings.vBloomTint.x, 0.f, 1.f) &&
 			IsFiniteInRange(Settings.vBloomTint.y, 0.f, 1.f) &&
 			IsFiniteInRange(Settings.vBloomTint.z, 0.f, 1.f) &&
@@ -1294,6 +1296,9 @@ HRESULT CRenderer::Render_SSAOPass(
 			"g_vSSAOTexelSize", &m_vSSAOTexelSize,
 			sizeof(m_vSSAOTexelSize))) ||
 		FAILED(m_pShader->Bind_RawValue(
+            "g_iSSAOSampleCount", &m_RenderQualitySettings.iSSAOSampleCount,
+            sizeof(m_RenderQualitySettings.iSSAOSampleCount))) ||
+        FAILED(m_pShader->Bind_RawValue(
 			"g_fSSAORadius", &m_RenderQualitySettings.fSSAORadius,
 			sizeof(m_RenderQualitySettings.fSSAORadius))) ||
 		FAILED(m_pShader->Bind_RawValue(

@@ -1,4 +1,5 @@
 #include "ProfilerCaptureIO.h"
+#include "DataJson.h"
 
 #include <array>
 #include <algorithm>
@@ -10,6 +11,8 @@
 #include <locale>
 #include <sstream>
 #include <system_error>
+#include <set>
+#include <stdexcept>
 
 namespace
 {
@@ -41,9 +44,7 @@ namespace
             finite(sample.Authority) && finite(sample.Waypoint);
     }
 
-	constexpr std::array<const char*,
-		static_cast<size_t>(Engine::EProfilerCounter::Count)>
-		CounterNames = {
+	constexpr std::array CounterNames = {
 			"drawCalls",
 			"instancedDrawCalls",
 			"instances",
@@ -103,7 +104,10 @@ namespace
             "mapBatchEmptyRenders", "mapBatchVisibleRenders", "mapBatchBoundsRejected",
             "mapBatchUploadBytes", "npcAuthoredHiddenUpdates", "ambientUnboundedUpdates",
             "npcCullingCandidates", "npcCulled", "npcDeferredPoseEvaluations",
+            "meshDrawCalls", "meshInstances", "meshIndices", "uniqueMeshes", "droppedMeshSamples",
 	};
+    static_assert(CounterNames.size() == static_cast<size_t>(Engine::EProfilerCounter::Count),
+        "Every profiler counter must have exactly one JSON key.");
 
 	const char* GpuStatusName(const Engine::EProfilerGpuFrameStatus Status)
 	{
@@ -247,6 +251,34 @@ namespace
             << ",\n    \"note\": \"Frame durations include all frames; scope attribution is incomplete in frames with drops. GPU timestamps measure elapsed intervals, not utilization. Reset-scoped drop totals can include history outside this exported window.\"\n  },\n";
     }
 
+    void WriteMeasurementSemantics(std::ostream& stream)
+    {
+        stream << "  \"measurementSemantics\": {\n"
+            << "    \"drawCoverage\": \"CPU-issued draw submissions through instrumented Engine VIBuffer and CMesh paths; excludes DirectXTK internal draws and separately counted ImGui draws. Submission does not prove final pixel visibility.\",\n"
+            << "    \"instances\": \"Instances counts instanced Engine submissions only; meshInstances also counts one instance for a non-instanced CMesh draw.\",\n"
+            << "    \"indices\": \"Indices includes instance multiplication. indirectDrawCalls and indirectIndexUpperBound are reserved fields with no current producer, so zero is unmeasured. An upper bound must never be treated as exact submitted indices.\",\n"
+            << "    \"uniqueMeshes\": \"Distinct CMesh objects submitted in one frame, including shared geometry counted once; not asset IDs, scene objects or visible meshes. Internal addresses are not exported. droppedMeshSamples counts omitted distinct-key attempts; uniqueMeshes is then a lower bound.\",\n"
+            << "    \"uniqueMeshCapacity\": " << Engine::CProfiler::MAX_UNIQUE_MESHES_PER_FRAME << ",\n"
+            << "    \"meshDraws\": \"Optional detailed CMesh submission trace in issue order, capped at 512 samples per frame. Mesh and pass names are display labels, not stable asset IDs. IndexCount is per instance. Per-draw GPU time is not measured. UINT32_MAX passNameId means no observed enclosing GPU scope.\",\n"
+            << "    \"cpuAndGpu\": \"CPU and GPU overlap and must not be added. GPU timestamp intervals may include waits for CPU submission; they are not GPU utilization or shader ALU counts.\",\n"
+            << "    \"frameInterval\": \"Previous Begin to current Begin equals previousCpuFrameMs plus frameGapMs, except the first captured frame. frameGapMs spans previous measured CPU End to current Begin and includes loop waits, message processing and profiler bookkeeping. Current cpuFrameMs belongs to the current frame and must not be substituted for previousCpuFrameMs.\",\n"
+            << "    \"gpuScopeSelf\": \"selfMs subtracts direct child timestamp intervals from durationMs. Missing scopes make attribution incomplete; frames with droppedGpuScopes are excluded from complete GPU pass aggregates.\",\n"
+            << "    \"gpuScopeDraw\": \"Per-scope draw counters are inclusive begin/end submission deltas retained with the original submitted frame, even when GPU results arrive later. They include child scopes and do not correspond only to selfMs.\",\n"
+            << "    \"pipeline\": \"IA vertices and primitives are input-assembler counts, VS and PS are shader invocations. Read per-pass values only when pipelineValid is true; PS invocations are not final pixels or lighting arithmetic operations.\"\n"
+            << "  },\n";
+    }
+
+    void WriteDrawStats(std::ostream& stream, const Engine::FProfilerDrawStats& draw)
+    {
+        stream << "{\"drawCalls\": " << draw.DrawCalls
+            << ", \"instancedDrawCalls\": " << draw.InstancedDrawCalls
+            << ", \"instances\": " << draw.Instances
+            << ", \"indices\": " << draw.Indices
+            << ", \"meshDrawCalls\": " << draw.MeshDrawCalls
+            << ", \"meshInstances\": " << draw.MeshInstances
+            << ", \"meshIndices\": " << draw.MeshIndices << "}";
+    }
+
     template<size_t Size>
     void WriteFloatArray(std::ostream& stream, const std::array<float, Size>& values)
     {
@@ -337,7 +369,21 @@ namespace
         stream << ",\n    \"ssaoEnabled\": " << (context.SSAOEnabled ? "true" : "false")
             << ",\n    \"bloomEnabled\": " << (context.BloomEnabled ? "true" : "false")
             << ",\n    \"fxaaEnabled\": " << (context.FXAAEnabled ? "true" : "false")
-            << ",\n    \"note\": \"Current runtime context only; historical frames may have different levels, cameras, viewport sizes, focus and settings. FPS limits are checkbox-resolved user limits (0 means disabled); effectiveFpsLimit selects by foreground process ownership and excludes the separate minimized-frame message wait.\"\n  },\n";
+            << ",\n    \"renderingOptions\": {";
+        bool first = true;
+        for (const auto& [key, value] : context.RenderingOptions)
+        {
+            if (!first) stream << ','; first = false;
+            stream << '"' << EscapeJson(key) << "\":";
+            if (std::isfinite(value)) stream << value; else stream << "null";
+        }
+        stream << "},\n    \"renderingAssets\": {"; first = true;
+        for (const auto& [key, value] : context.RenderingAssets)
+        {
+            if (!first) stream << ','; first = false;
+            stream << '"' << EscapeJson(key) << "\":\"" << EscapeJson(value) << '"';
+        }
+        stream << "},\n    \"note\": \"Current runtime context only; historical frames may have different levels, cameras, viewport sizes, focus and settings. FPS limits are checkbox-resolved user limits (0 means disabled); effectiveFpsLimit selects by foreground process ownership and excludes the separate minimized-frame message wait.\"\n  },\n";
     }
 
 bool SaveJsonImpl(
@@ -379,6 +425,7 @@ bool SaveJsonImpl(
 	Stream << fixed << setprecision(6);
 	Stream << "{\n";
 	Stream << "  \"schema\": \"LostArkProfilerCapture.v3\",\n";
+    WriteMeasurementSemantics(Stream);
     WriteContext(Stream, Context);
     WriteCaptureWindow(Stream, Snapshot);
     WriteSummary(Stream, Snapshot);
@@ -411,6 +458,9 @@ bool SaveJsonImpl(
 		const char* pGpuStatus = GpuStatusName(Frame.GpuStatus);
 		if (nullptr == pGpuStatus || !std::isfinite(Frame.CpuFrameMs) ||
 			!std::isfinite(Frame.GpuFrameMs) || !std::isfinite(Frame.FrameIntervalMs) ||
+            !std::isfinite(Frame.PreviousCpuFrameMs) || !std::isfinite(Frame.FrameGapMs) ||
+            Frame.PreviousCpuFrameMs < 0.0 || Frame.FrameGapMs < 0.0 ||
+            Frame.FrameEndTick < Frame.FrameBeginTick ||
 			!std::isfinite(Frame.Animation.CpuMs) || !std::isfinite(Frame.Animation.NotSubmittedCpuMs))
 		{
 			SetError(pOutError, "Profiler frame has invalid GPU status or non-finite timing.");
@@ -418,6 +468,10 @@ bool SaveJsonImpl(
 		}
 		Stream << "    {\n";
 		Stream << "      \"frameNumber\": " << Frame.FrameNumber << ",\n";
+        Stream << "      \"frameBeginTick\": " << Frame.FrameBeginTick << ",\n";
+        Stream << "      \"frameEndTick\": " << Frame.FrameEndTick << ",\n";
+        Stream << "      \"previousCpuFrameMs\": " << Frame.PreviousCpuFrameMs << ",\n";
+        Stream << "      \"frameGapMs\": " << Frame.FrameGapMs << ",\n";
 		Stream << "      \"cpuFrameMs\": " << Frame.CpuFrameMs << ",\n";
         Stream << "      \"droppedCpuScopes\": " << Frame.DroppedCpuScopes << ",\n";
         Stream << "      \"detailedCpuScopes\": " << (Frame.DetailedCpuScopes ? "true" : "false") << ",\n";
@@ -461,6 +515,21 @@ bool SaveJsonImpl(
 				<< "\n";
 		}
 		Stream << "      },\n";
+
+        Stream << "      \"droppedMeshDraws\": " << Frame.DroppedMeshDraws << ",\n";
+        Stream << "      \"meshDraws\": [";
+        for (size_t i = 0; i < Frame.MeshDraws.size(); ++i)
+        {
+            const auto& draw = Frame.MeshDraws[i];
+            if (draw.MeshNameId >= Snapshot.ScopeNames.size() ||
+                (draw.PassNameId != UINT32_MAX && draw.PassNameId >= Snapshot.ScopeNames.size()))
+            { SetError(pOutError, "Mesh draw has an invalid display name."); return false; }
+            if (i) Stream << ",";
+            Stream << "{\"passNameId\":" << draw.PassNameId << ",\"meshNameId\":" << draw.MeshNameId
+                << ",\"vertexCount\":" << draw.VertexCount << ",\"indexCount\":" << draw.IndexCount
+                << ",\"instances\":" << draw.Instances << ",\"materialSlot\":" << draw.MaterialSlot << "}";
+        }
+        Stream << "],\n";
 		Stream << "      \"pipeline\": {\n";
 		Stream << "        \"iaVertices\": " << Frame.Pipeline.IAVertices << ",\n";
 		Stream << "        \"iaPrimitives\": " << Frame.Pipeline.IAPrimitives << ",\n";
@@ -511,7 +580,7 @@ bool SaveJsonImpl(
 				return false;
 			const Engine::FProfilerGpuScopeSample& Scope = Frame.GpuScopes[iScope];
 			if (!std::isfinite(Scope.BeginMs) || !std::isfinite(Scope.EndMs) ||
-				!std::isfinite(Scope.DurationMs))
+				!std::isfinite(Scope.DurationMs) || !std::isfinite(Scope.SelfMs) || Scope.SelfMs < 0.0)
 			{
 				SetError(pOutError, "Profiler GPU scope has non-finite timing.");
 				return false;
@@ -521,9 +590,15 @@ bool SaveJsonImpl(
 				<< ", \"beginMs\": " << Scope.BeginMs
 				<< ", \"endMs\": " << Scope.EndMs
 				<< ", \"durationMs\": " << Scope.DurationMs
+                << ", \"selfMs\": " << Scope.SelfMs
 				<< ", \"pipelineValid\": " << (Scope.PipelineValid ? "true" : "false")
 				<< ", \"psInvocations\": " << Scope.PSInvocations
-				<< ", \"vsInvocations\": " << Scope.VSInvocations << "}"
+				<< ", \"vsInvocations\": " << Scope.VSInvocations
+                << ", \"iaVertices\": " << Scope.IAVertices
+                << ", \"iaPrimitives\": " << Scope.IAPrimitives
+                << ", \"draw\": ";
+            WriteDrawStats(Stream, Scope.Draw);
+            Stream << "}"
 				<< (iScope + 1 < Frame.GpuScopes.size() ? "," : "") << "\n";
 		}
 		Stream << "      ]\n";
@@ -955,4 +1030,569 @@ bool_t Client::CProfilerCaptureIO::Delete_JsonFile(const filesystem::path& Direc
 		return true;
 	}
 	catch (const std::exception& Exception) { SetError(Error, string("Cannot delete capture: ") + Exception.what()); return false; }
+}
+
+namespace
+{
+    using Client::FProfilerComparisonCapture;
+    using Client::FProfilerComparisonFrame;
+    using Client::FProfilerComparisonValue;
+    using Client::DATA_JSON_VALUE;
+
+    void ComparisonAdd(FProfilerComparisonFrame& frame, const std::string& key, double value, bool valid = true)
+    {
+        auto [it, inserted] = frame.Values.try_emplace(key, FProfilerComparisonValue{0.0, valid});
+        it->second.Available = it->second.Available && valid && std::isfinite(value) && value >= 0.0;
+        if (it->second.Available) it->second.Value += value;
+    }
+
+    // Sort by each thread's interval, not NameId or completion order. Only direct
+    // child intervals subtract from a parent; workers never subtract from main.
+    void ComparisonCpu(FProfilerComparisonFrame& target,
+        const std::vector<Engine::FProfilerScopeSample>& scopes,
+        const std::vector<std::string>& names, uint32_t mainThread, uint64_t frequency)
+    {
+        if (!frequency) { target.CpuScopesKnown = target.CpuSelfKnown = false; return; }
+        std::map<uint32_t, std::vector<const Engine::FProfilerScopeSample*>> threads;
+        for (const auto& scope : scopes) threads[scope.ThreadId].push_back(&scope);
+        for (auto& [thread, samples] : threads)
+        {
+            std::stable_sort(samples.begin(), samples.end(), [](const auto* a, const auto* b)
+            {
+                if (a->BeginTick != b->BeginTick) return a->BeginTick < b->BeginTick;
+                if (a->EndTick != b->EndTick) return a->EndTick > b->EndTick;
+                return a->Depth < b->Depth;
+            });
+            std::vector<size_t> stack;
+            std::vector<double> self(samples.size());
+            for (size_t i = 0; i < samples.size(); ++i)
+            {
+                const auto& s = *samples[i];
+                if (s.NameId >= names.size() || s.EndTick < s.BeginTick) { target.CpuSelfKnown = false; continue; }
+                const double duration = double(s.EndTick - s.BeginTick) * 1000.0 / double(frequency);
+                self[i] = duration;
+                while (!stack.empty() && samples[stack.back()]->Depth >= s.Depth)
+                {
+                    // Siblings on one thread cannot overlap. A malformed depth
+                    // must not turn overlapping child time into a clamped zero self.
+                    if (s.BeginTick < samples[stack.back()]->EndTick) target.CpuSelfKnown = false;
+                    stack.pop_back();
+                }
+                if (!stack.empty())
+                {
+                    const auto& parent = *samples[stack.back()];
+                    if (s.Depth == parent.Depth + 1 && s.BeginTick >= parent.BeginTick && s.EndTick <= parent.EndTick)
+                        self[stack.back()] -= duration;
+                    else target.CpuSelfKnown = false;
+                }
+                // The enclosing scope may legitimately finish in another frame.
+                // Keep its inclusive observation, but this tree cannot prove self.
+                else if (s.Depth != 0) target.CpuSelfKnown = false;
+                stack.push_back(i);
+                const std::string role = thread == mainThread ? "cpu.main.total::" : "cpu.worker.total::";
+                ComparisonAdd(target, role + names[s.NameId], duration);
+            }
+            for (size_t i = 0; i < samples.size(); ++i)
+                if (samples[i]->NameId < names.size())
+                    ComparisonAdd(target, std::string(thread == mainThread ? "cpu.main.self::" : "cpu.worker.self::") +
+                        names[samples[i]->NameId], (std::max)(0.0, self[i]), target.CpuSelfKnown);
+        }
+        if (!target.CpuSelfKnown)
+            for (auto& [key, value] : target.Values)
+                if (key.starts_with("cpu.") && key.find(".self::") != std::string::npos) value.Available = false;
+    }
+
+    template <size_t N> std::string ComparisonArray(const std::array<float, N>& values)
+    {
+        std::ostringstream stream; stream.imbue(std::locale::classic()); stream << std::setprecision(9);
+        for (size_t i = 0; i < N; ++i) { if (i) stream << ", "; stream << values[i]; }
+        return stream.str();
+    }
+
+    constexpr const char* ComparisonPipelineNames[] = {"iaVertices", "iaPrimitives", "vsInvocations",
+        "gsInvocations", "gsPrimitives", "clipperInvocations", "clipperPrimitives", "psInvocations",
+        "hsInvocations", "dsInvocations", "csInvocations"};
+    constexpr const char* ComparisonDrawNames[] = {"drawCalls", "instancedDrawCalls", "instances", "indices",
+        "meshDrawCalls", "meshInstances", "meshIndices"};
+    constexpr const char* ComparisonPassPipelineNames[] = {"psInvocations", "vsInvocations", "iaVertices", "iaPrimitives"};
+    bool ComparisonCounterMeasured(std::string_view name)
+    {
+        return !name.starts_with("texture") && name != "indirectDrawCalls" && name != "indirectIndexUpperBound";
+    }
+
+    // A malformed optional observation is an error; an absent observation stays absent.
+    double ComparisonNumber(const DATA_JSON_VALUE& value, double maximum = 9007199254740991.0, bool integer = false)
+    {
+        if (!value.Is_Number() || !std::isfinite(value.Get_Number()) || value.Get_Number() < 0.0 ||
+            value.Get_Number() > maximum || (integer && std::floor(value.Get_Number()) != value.Get_Number()))
+            throw std::runtime_error("Capture contains an invalid or out-of-range number.");
+        return value.Get_Number();
+    }
+    const DATA_JSON_VALUE& ComparisonRequired(const DATA_JSON_VALUE& parent, const char* name)
+    {
+        const auto* value = parent.Find(name);
+        if (!value) throw std::runtime_error(std::string("Capture is missing required field: ") + name);
+        return *value;
+    }
+    uint64_t ComparisonUInt(const DATA_JSON_VALUE& parent, const char* name, uint64_t maximum = 9007199254740991ull)
+    { return static_cast<uint64_t>(ComparisonNumber(ComparisonRequired(parent, name), double(maximum), true)); }
+    bool ComparisonBool(const DATA_JSON_VALUE& value)
+    {
+        if (!value.Is_Boolean()) throw std::runtime_error("Capture contains a non-boolean flag.");
+        return value.Get_Boolean();
+    }
+    std::string ComparisonString(const DATA_JSON_VALUE& value, size_t limit = 512)
+    {
+        if (!value.Is_String() || value.Get_String().size() > limit ||
+            value.Get_String().find('\0') != std::string::npos)
+            throw std::runtime_error("Capture contains an invalid or oversized string.");
+        const auto& text = value.Get_String();
+        if (!text.empty() && !MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text.data(), static_cast<int>(text.size()), nullptr, 0))
+            throw std::runtime_error("Capture contains invalid UTF-8.");
+        return text;
+    }
+    void ComparisonObject(const DATA_JSON_VALUE& value)
+    { if (!value.Is_Object()) throw std::runtime_error("Capture object has the wrong type."); }
+    const DATA_JSON_VALUE::ARRAY& ComparisonArrayValue(const DATA_JSON_VALUE& value, size_t limit)
+    {
+        if (!value.Is_Array() || value.Get_Array().size() > limit)
+            throw std::runtime_error("Capture array has the wrong type or exceeds the limit.");
+        return value.Get_Array();
+    }
+    void ComparisonOptionalMetric(const DATA_JSON_VALUE& object, const char* field,
+        FProfilerComparisonFrame& frame, const std::string& key, bool valid = true, bool integer = false)
+    {
+        if (const auto* value = object.Find(field))
+            ComparisonAdd(frame, key, ComparisonNumber(*value, integer ? 9007199254740991.0 : 3600000.0, integer), valid);
+    }
+    void ComparisonMetadata(const DATA_JSON_VALUE& root, FProfilerComparisonCapture& capture)
+    {
+        const auto* metadata = root.Find("metadata");
+        if (!metadata) return;
+        ComparisonObject(*metadata);
+        constexpr const char* fields[] = {"sampledAtExport", "runtimeContextValid", "buildConfiguration", "adapter",
+            "deviceCreationFlags", "d3dDebugLayer", "debuggerAttached", "logicalProcessors",
+            "clientWindowForeground", "foregroundWindowOwnedByProcess", "windowMinimized",
+            "configuredForegroundFpsLimit", "configuredBackgroundFpsLimit", "effectiveFpsLimit",
+            "levelId", "viewport", "cameraPosition", "viewMatrix", "projectionMatrix",
+            "shadowEnabled", "shadowWidthHeightStrength", "ssaoEnabled", "bloomEnabled", "fxaaEnabled"};
+        for (const auto* field : fields)
+        {
+            const auto* value = metadata->Find(field); if (!value) continue;
+            const std::string_view key(field);
+            const bool stringField = key == "buildConfiguration" || key == "adapter";
+            const bool arrayField = key == "viewport" || key == "cameraPosition" || key == "viewMatrix" ||
+                key == "projectionMatrix" || key == "shadowWidthHeightStrength";
+            const bool integerField = key == "deviceCreationFlags" || key == "logicalProcessors" || key == "levelId" ||
+                key == "configuredForegroundFpsLimit" || key == "configuredBackgroundFpsLimit" || key == "effectiveFpsLimit";
+            if ((stringField && !value->Is_String()) || (arrayField && !value->Is_Array()) ||
+                (integerField && !value->Is_Number()) || (!stringField && !arrayField && !integerField && !value->Is_Boolean()))
+                throw std::runtime_error("Capture metadata has the wrong field type.");
+            std::ostringstream text; text.imbue(std::locale::classic()); text << std::setprecision(9);
+            if (value->Is_String()) text << ComparisonString(*value, 1024);
+            else if (value->Is_Boolean()) text << (value->Get_Boolean() ? "true" : "false");
+            else if (value->Is_Number()) text << ComparisonNumber(*value, UINT32_MAX, true);
+            else if (value->Is_Array())
+            {
+                const auto& array = ComparisonArrayValue(*value, 16);
+                const size_t expected = std::string_view(field) == "viewport" ? 2 :
+                    std::string_view(field) == "cameraPosition" ? 4 :
+                    std::string_view(field) == "shadowWidthHeightStrength" ? 3 : 16;
+                if (array.size() != expected) throw std::runtime_error("Capture metadata array has the wrong size.");
+                for (size_t i = 0; i < array.size(); ++i)
+                {
+                    if (!array[i].Is_Number() || !std::isfinite(array[i].Get_Number()) || std::abs(array[i].Get_Number()) > 1.0e12)
+                        throw std::runtime_error("Capture metadata contains an invalid number.");
+                    if (i) text << ", "; text << array[i].Get_Number();
+                }
+            }
+            else throw std::runtime_error("Capture metadata has the wrong type.");
+            capture.Conditions[field] = text.str();
+        }
+        const auto valid = capture.Conditions.find("runtimeContextValid");
+        for (const auto* group : {"renderingOptions", "renderingAssets"})
+            if (const auto* values = metadata->Find(group))
+            {
+                ComparisonObject(*values);
+                if (values->Get_Object().size() > 256) throw std::runtime_error("Too many rendering context fields.");
+                for (const auto& [key, value] : values->Get_Object())
+                {
+                    if (key.empty() || key.size() > 128 || key.find('\0') != std::string::npos)
+                        throw std::runtime_error("Rendering context key is invalid.");
+                    std::string text;
+                    if (std::string_view(group) == "renderingAssets") text = ComparisonString(value, 2048);
+                    else
+                    {
+                        if (!value.Is_Number() || !std::isfinite(value.Get_Number()) || std::abs(value.Get_Number()) > 1.0e12)
+                            throw std::runtime_error("Rendering context value is invalid.");
+                        std::ostringstream number; number.imbue(std::locale::classic()); number << std::setprecision(9) << value.Get_Number(); text = number.str();
+                    }
+                    if (valid != capture.Conditions.end() && valid->second == "true")
+                        capture.Conditions[std::string(group) + "." + key] = std::move(text);
+                }
+            }
+        if (valid == capture.Conditions.end() || valid->second != "true")
+            for (const auto* field : {"levelId", "viewport", "cameraPosition", "viewMatrix", "projectionMatrix", "shadowEnabled",
+                "shadowWidthHeightStrength", "ssaoEnabled", "bloomEnabled", "fxaaEnabled", "clientWindowForeground",
+                "foregroundWindowOwnedByProcess", "windowMinimized", "configuredForegroundFpsLimit", "configuredBackgroundFpsLimit", "effectiveFpsLimit"})
+                capture.Conditions.erase(field);
+    }
+}
+
+const char* Client::CProfilerCaptureIO::Counter_Name(size_t index)
+{ return index < CounterNames.size() ? CounterNames[index] : "unknown"; }
+
+Client::FProfilerComparisonCapture Client::CProfilerCaptureIO::Build_Comparison(
+    const Engine::FProfilerCaptureSnapshot& snapshot, const FProfilerCaptureContext& context, std::string label)
+{
+    FProfilerComparisonCapture result;
+    result.Label = std::move(label); result.Source = "session";
+    auto& c = result.Conditions;
+    c["sampledAtExport"] = "true"; c["runtimeContextValid"] = context.Valid ? "true" : "false";
+#ifdef _DEBUG
+    c["buildConfiguration"] = "Debug";
+#else
+    c["buildConfiguration"] = "Release";
+#endif
+    c["debuggerAttached"] = IsDebuggerPresent() ? "true" : "false";
+    c["adapter"] = context.Adapter;
+    c["deviceCreationFlags"] = std::to_string(context.DeviceCreationFlags);
+    c["d3dDebugLayer"] = context.DeviceCreationFlags & D3D11_CREATE_DEVICE_DEBUG ? "true" : "false";
+    if (context.Valid)
+    {
+        for (const auto& [key, value] : context.RenderingOptions)
+        {
+            if (!std::isfinite(value)) continue;
+            std::ostringstream number; number.imbue(std::locale::classic()); number << std::setprecision(9) << value;
+            c["renderingOptions." + key] = number.str();
+        }
+        for (const auto& [key, value] : context.RenderingAssets) c["renderingAssets." + key] = value;
+        c["levelId"] = std::to_string(context.LevelId);
+        c["viewport"] = ComparisonArray(context.Viewport);
+        c["cameraPosition"] = ComparisonArray(context.CameraPosition);
+        c["viewMatrix"] = ComparisonArray(context.ViewMatrix);
+        c["projectionMatrix"] = ComparisonArray(context.ProjectionMatrix);
+        c["shadowWidthHeightStrength"] = ComparisonArray(std::array{context.ShadowWidth, context.ShadowHeight, context.ShadowStrength});
+        c["shadowEnabled"] = context.ShadowEnabled ? "true" : "false";
+        c["ssaoEnabled"] = context.SSAOEnabled ? "true" : "false";
+        c["bloomEnabled"] = context.BloomEnabled ? "true" : "false";
+        c["fxaaEnabled"] = context.FXAAEnabled ? "true" : "false";
+        c["clientWindowForeground"] = context.ClientWindowForeground ? "true" : "false";
+        c["foregroundWindowOwnedByProcess"] = context.ProcessForeground ? "true" : "false";
+        c["windowMinimized"] = context.WindowMinimized ? "true" : "false";
+        c["configuredForegroundFpsLimit"] = std::to_string(context.ForegroundFpsLimit);
+        c["configuredBackgroundFpsLimit"] = std::to_string(context.BackgroundFpsLimit);
+        c["effectiveFpsLimit"] = std::to_string(context.EffectiveFpsLimit);
+    }
+    result.Frames.reserve(snapshot.Frames.size());
+    for (const auto& source : snapshot.Frames)
+    {
+        FProfilerComparisonFrame frame;
+        frame.Number = source.FrameNumber;
+        frame.CpuScopesKnown = snapshot.TicksPerSecond != 0;
+        frame.CpuSelfKnown = frame.CpuScopesKnown && source.DroppedCpuScopes == 0;
+        frame.DetailKnown = true; frame.Detailed = source.DetailedCpuScopes;
+        frame.GpuStatus = source.GpuStatus; frame.GpuValid = source.GpuValid;
+        frame.MeshDrawsKnown = source.DetailedCpuScopes;
+        frame.DroppedMeshDraws = source.DroppedMeshDraws;
+        for (const auto& draw : source.MeshDraws)
+        {
+            FProfilerComparisonMeshDraw item;
+            if (draw.PassNameId < snapshot.ScopeNames.size()) item.Pass = snapshot.ScopeNames[draw.PassNameId];
+            if (draw.MeshNameId < snapshot.ScopeNames.size()) item.Mesh = snapshot.ScopeNames[draw.MeshNameId];
+            item.VertexCount = draw.VertexCount; item.IndexCount = draw.IndexCount;
+            item.Instances = draw.Instances; item.MaterialSlot = draw.MaterialSlot;
+            frame.MeshDraws.push_back(std::move(item));
+        }
+        frame.GpuComplete = source.GpuValid && source.GpuScopesSupported && source.DroppedGpuScopes == 0;
+        ComparisonAdd(frame, "frame::cpu", source.CpuFrameMs);
+        ComparisonAdd(frame, "frame::interval", source.FrameIntervalMs, source.FrameIntervalMs > 0.0);
+        ComparisonAdd(frame, "frame::gap", source.FrameGapMs, source.FrameIntervalMs > 0.0);
+        ComparisonAdd(frame, "frame::previousCpu", source.PreviousCpuFrameMs, source.FrameIntervalMs > 0.0);
+        ComparisonAdd(frame, "frame::gpu", source.GpuFrameMs, source.GpuValid);
+        for (size_t i = 0; i < source.CpuWork.size(); ++i)
+        {
+            const std::string name = Engine::CProfiler::Get_WorkName(static_cast<Engine::EProfilerWork>(i));
+            ComparisonAdd(frame, "work.time::" + name, source.CpuWork[i].CpuMs);
+            ComparisonAdd(frame, "work.calls::" + name, double(source.CpuWork[i].Calls));
+        }
+        const auto& animation = source.Animation;
+        const bool completeAnimation = animation.DroppedSamples == 0;
+        ComparisonAdd(frame, "animation.time::cpuMs", animation.CpuMs, completeAnimation);
+        ComparisonAdd(frame, "animation.time::notSubmittedCpuMs", animation.NotSubmittedCpuMs, completeAnimation);
+        ComparisonAdd(frame, "animation.count::updateCalls", double(animation.UpdateCalls), completeAnimation);
+        ComparisonAdd(frame, "animation.count::updatedModels", double(animation.UpdatedModels), completeAnimation);
+        ComparisonAdd(frame, "animation.count::submittedUpdatedModels", double(animation.SubmittedUpdatedModels), completeAnimation);
+        ComparisonAdd(frame, "animation.count::notSubmittedUpdatedModels", double(animation.NotSubmittedUpdatedModels), completeAnimation);
+        ComparisonAdd(frame, "animation.count::droppedSamples", double(animation.DroppedSamples));
+        ComparisonCpu(frame, source.CpuScopes, snapshot.ScopeNames, snapshot.MainThreadId, snapshot.TicksPerSecond);
+        for (size_t i = 0; i < CounterNames.size(); ++i)
+            ComparisonAdd(frame, std::string("counter::") + CounterNames[i], double(source.Counters[i]), ComparisonCounterMeasured(CounterNames[i]));
+        const auto& p = source.Pipeline;
+        const uint64_t pipeline[] = {p.IAVertices,p.IAPrimitives,p.VSInvocations,p.GSInvocations,p.GSPrimitives,
+            p.CInvocations,p.CPrimitives,p.PSInvocations,p.HSInvocations,p.DSInvocations,p.CSInvocations};
+        for (size_t i = 0; i < std::size(pipeline); ++i)
+            ComparisonAdd(frame, std::string("pipeline::") + ComparisonPipelineNames[i], double(pipeline[i]), source.GpuValid);
+        for (const auto& s : source.GpuScopes)
+        {
+            if (s.NameId >= snapshot.ScopeNames.size()) continue;
+            const auto& name = snapshot.ScopeNames[s.NameId];
+            ComparisonAdd(frame, "gpu.total::" + name, s.DurationMs, frame.GpuComplete);
+            ComparisonAdd(frame, "gpu.self::" + name, s.SelfMs, frame.GpuComplete);
+            const uint64_t draw[] = {s.Draw.DrawCalls,s.Draw.InstancedDrawCalls,s.Draw.Instances,s.Draw.Indices,
+                s.Draw.MeshDrawCalls,s.Draw.MeshInstances,s.Draw.MeshIndices};
+            for (size_t i = 0; i < std::size(draw); ++i)
+                ComparisonAdd(frame, std::string("gpu.draw.") + ComparisonDrawNames[i] + "::" + name, double(draw[i]), frame.GpuComplete);
+            const uint64_t pass[] = {s.PSInvocations,s.VSInvocations,s.IAVertices,s.IAPrimitives};
+            for (size_t i = 0; i < std::size(pass); ++i)
+                ComparisonAdd(frame, std::string("gpu.pipeline.") + ComparisonPassPipelineNames[i] + "::" + name,
+                    double(pass[i]), frame.GpuComplete && s.PipelineValid);
+        }
+        result.Frames.push_back(std::move(frame));
+    }
+    return result;
+}
+
+bool_t Client::CProfilerCaptureIO::Parse_Comparison(std::string_view bytes, FProfilerComparisonCapture& out, std::string* error)
+{
+    try
+    {
+        DATA_JSON_VALUE root; std::string parseError;
+        DATA_JSON_PARSE_LIMITS limits; limits.iMaximumBytes = MAX_COMPARISON_BYTES;
+        limits.iMaximumDepth = 24; limits.iMaximumValues = 1500000;
+        if (!CDataJson::Parse(bytes, root, parseError, limits))
+        { SetError(error, "Cannot parse capture: " + parseError); return false; }
+        ComparisonObject(root);
+        const auto schema = ComparisonString(ComparisonRequired(root, "schema"));
+        if (schema != "LostArkProfilerCapture.v1" && schema != "LostArkProfilerCapture.v2" && schema != "LostArkProfilerCapture.v3")
+            throw std::runtime_error("Unsupported profiler capture schema.");
+        FProfilerComparisonCapture staged; staged.Source = schema;
+        ComparisonMetadata(root, staged);
+        std::vector<std::string> names;
+        for (const auto& name : ComparisonArrayValue(ComparisonRequired(root, "scopeNames"), 16384))
+            names.push_back(ComparisonString(name));
+        const auto mainThread = static_cast<uint32_t>(ComparisonUInt(root, "mainThreadId", UINT32_MAX));
+        const auto frequency = ComparisonUInt(root, "ticksPerSecond", 1000000000000ull);
+        if (!frequency) throw std::runtime_error("Capture clock frequency must be positive.");
+        const auto& frames = ComparisonArrayValue(ComparisonRequired(root, "frames"), Engine::CProfiler::MAX_HISTORY_FRAMES);
+        if (frames.empty()) throw std::runtime_error("Capture has no completed frames.");
+        size_t scopeBudget = 0;
+        for (const auto& source : frames)
+        {
+            ComparisonObject(source); FProfilerComparisonFrame frame;
+            frame.Number = ComparisonUInt(source, "frameNumber");
+            if (!staged.Frames.empty() && staged.Frames.back().Number >= frame.Number)
+                throw std::runtime_error("Capture frame numbers must increase strictly.");
+            ComparisonAdd(frame, "frame::cpu", ComparisonNumber(ComparisonRequired(source, "cpuFrameMs"), 3600000.0));
+            ComparisonOptionalMetric(source, "frameIntervalMs", frame, "frame::interval");
+            if (auto it = frame.Values.find("frame::interval"); it != frame.Values.end() && it->second.Value <= 0.0) it->second.Available = false;
+            const bool intervalKnown = frame.Values.contains("frame::interval") && frame.Values.at("frame::interval").Available;
+            ComparisonOptionalMetric(source, "frameGapMs", frame, "frame::gap", intervalKnown);
+            ComparisonOptionalMetric(source, "previousCpuFrameMs", frame, "frame::previousCpu", intervalKnown);
+            if (const auto* work = source.Find("cpuWork"))
+            {
+                std::set<std::string> seen;
+                for (const auto& item : ComparisonArrayValue(*work, 256))
+                {
+                    ComparisonObject(item);
+                    const auto name = ComparisonString(ComparisonRequired(item, "name"));
+                    if (!seen.insert(name).second) throw std::runtime_error("Capture repeats a fixed CPU work category.");
+                    ComparisonOptionalMetric(item, "cpuMs", frame, "work.time::" + name);
+                    ComparisonOptionalMetric(item, "calls", frame, "work.calls::" + name, true, true);
+                }
+            }
+            if (const auto* animation = source.Find("animation"))
+            {
+                ComparisonObject(*animation);
+                const auto* dropped = animation->Find("droppedSamples");
+                const bool complete = dropped && ComparisonNumber(*dropped, 9007199254740991.0, true) == 0;
+                for (const auto* field : {"cpuMs", "notSubmittedCpuMs"})
+                    ComparisonOptionalMetric(*animation, field, frame, std::string("animation.time::") + field, complete);
+                for (const auto* field : {"updateCalls", "updatedModels", "submittedUpdatedModels", "notSubmittedUpdatedModels", "droppedSamples"})
+                    ComparisonOptionalMetric(*animation, field, frame, std::string("animation.count::") + field,
+                        std::string_view(field) == "droppedSamples" || complete, true);
+            }
+            if (const auto* detail = source.Find("detailedCpuScopes")) { frame.DetailKnown = true; frame.Detailed = ComparisonBool(*detail); }
+            if (const auto* drop = source.Find("droppedMeshDraws")) frame.DroppedMeshDraws = static_cast<uint64_t>(ComparisonNumber(*drop, 9007199254740991.0, true));
+            if (const auto* draws = source.Find("meshDraws"))
+            {
+                frame.MeshDrawsKnown = frame.DetailKnown && frame.Detailed && source.Find("droppedMeshDraws");
+                for (const auto& draw : ComparisonArrayValue(*draws, Engine::CProfiler::MAX_MESH_DRAWS_PER_FRAME))
+                {
+                    ComparisonObject(draw); FProfilerComparisonMeshDraw item;
+                    const auto pass = ComparisonUInt(draw, "passNameId", UINT32_MAX);
+                    const auto mesh = ComparisonUInt(draw, "meshNameId", UINT32_MAX);
+                    if (mesh >= names.size() || (pass != UINT32_MAX && pass >= names.size()))
+                        throw std::runtime_error("Mesh draw display name is out of range.");
+                    if (pass != UINT32_MAX) item.Pass = names[static_cast<size_t>(pass)];
+                    item.Mesh = names[static_cast<size_t>(mesh)];
+                    item.VertexCount = static_cast<uint32_t>(ComparisonUInt(draw, "vertexCount", UINT32_MAX));
+                    item.IndexCount = static_cast<uint32_t>(ComparisonUInt(draw, "indexCount", UINT32_MAX));
+                    item.Instances = static_cast<uint32_t>(ComparisonUInt(draw, "instances", UINT32_MAX));
+                    item.MaterialSlot = static_cast<uint32_t>(ComparisonUInt(draw, "materialSlot", UINT32_MAX));
+                    frame.MeshDraws.push_back(std::move(item));
+                }
+            }
+            if (const auto* drop = source.Find("droppedCpuScopes")) frame.CpuSelfKnown = ComparisonNumber(*drop, 9007199254740991.0, true) == 0;
+            if (const auto* valid = source.Find("gpuValid")) frame.GpuValid = ComparisonBool(*valid);
+            if (const auto* status = source.Find("gpuStatus"))
+            {
+                const auto text = ComparisonString(*status); bool found = false;
+                for (const auto state : {Engine::EProfilerGpuFrameStatus::Unsupported, Engine::EProfilerGpuFrameStatus::Pending,
+                    Engine::EProfilerGpuFrameStatus::Valid, Engine::EProfilerGpuFrameStatus::Disjoint,
+                    Engine::EProfilerGpuFrameStatus::Dropped, Engine::EProfilerGpuFrameStatus::Error})
+                    if (text == GpuStatusName(state)) { frame.GpuStatus = state; found = true; break; }
+                if (!found || (frame.GpuValid != (frame.GpuStatus == Engine::EProfilerGpuFrameStatus::Valid)))
+                    throw std::runtime_error("Capture GPU validity and status disagree.");
+            }
+            else if (frame.GpuValid) frame.GpuStatus = Engine::EProfilerGpuFrameStatus::Valid;
+            bool supported = false, undropped = false;
+            if (const auto* value = source.Find("gpuScopesSupported")) supported = ComparisonBool(*value);
+            if (const auto* value = source.Find("droppedGpuScopes")) undropped = ComparisonNumber(*value, UINT32_MAX, true) == 0;
+            frame.GpuComplete = frame.GpuValid && supported && undropped && source.Find("gpuScopes");
+            ComparisonOptionalMetric(source, "gpuFrameMs", frame, "frame::gpu", frame.GpuValid);
+            if (const auto* scopes = source.Find("cpuScopes"))
+            {
+                frame.CpuScopesKnown = true; std::vector<Engine::FProfilerScopeSample> samples;
+                for (const auto& s : ComparisonArrayValue(*scopes, 32768))
+                {
+                    if (++scopeBudget > 150000) throw std::runtime_error("Capture has too many scope samples for comparison.");
+                    ComparisonObject(s); Engine::FProfilerScopeSample sample;
+                    sample.NameId = static_cast<uint32_t>(ComparisonUInt(s, "nameId", names.empty() ? 0 : names.size() - 1));
+                    if (sample.NameId >= names.size()) throw std::runtime_error("Capture scope name is out of range.");
+                    sample.ThreadId = static_cast<uint32_t>(ComparisonUInt(s, "threadId", UINT32_MAX));
+                    sample.Depth = static_cast<uint32_t>(ComparisonUInt(s, "depth", 1024));
+                    sample.BeginTick = ComparisonUInt(s, "beginTick"); sample.EndTick = ComparisonUInt(s, "endTick");
+                    if (sample.EndTick < sample.BeginTick || double(sample.EndTick - sample.BeginTick) / double(frequency) > 3600.0)
+                        throw std::runtime_error("Capture CPU scope has an invalid interval.");
+                    samples.push_back(sample);
+                }
+                ComparisonCpu(frame, samples, names, mainThread, frequency);
+            }
+            else frame.CpuSelfKnown = false;
+            for (const auto* group : {"counters", "pipeline"})
+                if (const auto* values = source.Find(group))
+                {
+                    ComparisonObject(*values);
+                    const bool isCounter = std::string_view(group) == "counters";
+                    if (isCounter)
+                        for (const auto* name : CounterNames) ComparisonOptionalMetric(*values, name, frame, std::string("counter::") + name, ComparisonCounterMeasured(name), true);
+                    else
+                        for (const auto* name : ComparisonPipelineNames) ComparisonOptionalMetric(*values, name, frame, std::string("pipeline::") + name, frame.GpuValid, true);
+                }
+            if (const auto* scopes = source.Find("gpuScopes"))
+                for (const auto& s : ComparisonArrayValue(*scopes, 2048))
+                {
+                    if (++scopeBudget > 150000) throw std::runtime_error("Capture has too many scope samples for comparison.");
+                    ComparisonObject(s);
+                    const auto id = ComparisonUInt(s, "nameId", names.empty() ? 0 : names.size() - 1);
+                    if (id >= names.size()) throw std::runtime_error("Capture GPU scope name is out of range.");
+                    const auto& name = names[static_cast<size_t>(id)];
+                    if (const auto* depth = s.Find("depth")) ComparisonNumber(*depth, 1024, true);
+                    const auto* begin = s.Find("beginMs"); const auto* end = s.Find("endMs");
+                    if (begin) ComparisonNumber(*begin, 3600000.0);
+                    if (end) ComparisonNumber(*end, 3600000.0);
+                    if (begin && end && end->Get_Number() < begin->Get_Number())
+                        throw std::runtime_error("Capture GPU scope has reversed bounds.");
+                    const auto* duration = s.Find("durationMs"); const auto* self = s.Find("selfMs");
+                    if (duration) ComparisonNumber(*duration, 3600000.0);
+                    if (self) ComparisonNumber(*self, 3600000.0);
+                    if (duration && self && self->Get_Number() > duration->Get_Number() + 0.00001)
+                        throw std::runtime_error("Capture GPU self time exceeds its inclusive interval.");
+                    for (const auto* field : {"durationMs", "selfMs"})
+                        if (!s.Find(field)) ComparisonAdd(frame, std::string(field == std::string_view("durationMs") ? "gpu.total::" : "gpu.self::") + name, 0.0, false);
+                    ComparisonOptionalMetric(s, "durationMs", frame, "gpu.total::" + name, frame.GpuComplete);
+                    ComparisonOptionalMetric(s, "selfMs", frame, "gpu.self::" + name, frame.GpuComplete);
+                    const auto* draw = s.Find("draw");
+                    if (draw) ComparisonObject(*draw);
+                    for (const auto* field : ComparisonDrawNames)
+                    {
+                        if (draw && draw->Find(field))
+                            ComparisonOptionalMetric(*draw, field, frame, std::string("gpu.draw.") + field + "::" + name, frame.GpuComplete, true);
+                        else ComparisonAdd(frame, std::string("gpu.draw.") + field + "::" + name, 0.0, false);
+                    }
+                    bool pipelineValid = false;
+                    if (const auto* valid = s.Find("pipelineValid")) pipelineValid = ComparisonBool(*valid);
+                    for (const auto* field : ComparisonPassPipelineNames)
+                        if (s.Find(field)) ComparisonOptionalMetric(s, field, frame, std::string("gpu.pipeline.") + field + "::" + name, frame.GpuComplete && pipelineValid, true);
+                        else ComparisonAdd(frame, std::string("gpu.pipeline.") + field + "::" + name, 0.0, false);
+                }
+            staged.Frames.push_back(std::move(frame));
+        }
+        out = std::move(staged); if (error) error->clear(); return true;
+    }
+    catch (const std::exception& exception) { SetError(error, std::string("Cannot import capture: ") + exception.what()); return false; }
+}
+
+std::map<std::string, Client::FProfilerComparisonMean> Client::CProfilerCaptureIO::Compare_Means(const FProfilerComparisonCapture& capture)
+{
+    std::map<std::string, FProfilerComparisonMean> result;
+    for (const auto& frame : capture.Frames) for (const auto& [key, value] : frame.Values) result.try_emplace(key);
+    for (auto& [key, mean] : result)
+    {
+        const bool cpu = key.starts_with("cpu.");
+        const bool cpuSelf = cpu && key.find(".self::") != std::string::npos;
+        const bool gpuPass = key.starts_with("gpu.");
+        const bool gpuFrame = key == "frame::gpu" || key.starts_with("pipeline::");
+        for (const auto& frame : capture.Frames)
+        {
+            if ((gpuPass && !frame.GpuComplete) || (gpuFrame && !frame.GpuValid)) continue;
+            const auto it = frame.Values.find(key);
+            // First captured interval has no predecessor and is excluded, not zero.
+            if ((key == "frame::interval" || key == "frame::gap" || key == "frame::previousCpu") &&
+                it != frame.Values.end() && !it->second.Available) continue;
+            ++mean.Expected;
+            if (cpu && (!frame.CpuScopesKnown || (cpuSelf && !frame.CpuSelfKnown))) continue;
+            if (it != frame.Values.end())
+            {
+                if (it->second.Available) { mean.Value += it->second.Value; ++mean.Samples; }
+            }
+            else if ((cpu && frame.DetailKnown && frame.Detailed && frame.CpuSelfKnown) || gpuPass)
+            {
+                // Missing field on an observed pass is unmeasured. Only an entirely
+                // absent pass in a complete GPU frame has observed zero workload.
+                const auto separator = key.find("::");
+                const auto name = key.substr(separator + 2);
+                if (cpu || !frame.Values.contains("gpu.total::" + name)) ++mean.Samples;
+            }
+        }
+        mean.Available = mean.Expected > 0 && mean.Samples == mean.Expected;
+        if (mean.Samples) mean.Value /= double(mean.Samples);
+    }
+    return result;
+}
+
+bool_t Client::CProfilerCaptureIO::Load_Comparison(const filesystem::path& directory,
+    const FProfilerCaptureFile& selected, FProfilerComparisonCapture& out, std::string* error)
+{
+    try
+    {
+        FCaptureHandle root; filesystem::path finalDirectory;
+        if (!OpenCaptureDirectory(directory, root, finalDirectory, error)) return false;
+        if (!IsCaptureFileName(selected.FileName)) { SetError(error, "Select a capture filename inside the capture directory."); return false; }
+        FCaptureHandle file;
+        // Read and validate the same handle; exclude writers and rename until parse finishes.
+        file.Value = CreateFileW((directory / selected.FileName).c_str(), GENERIC_READ, FILE_SHARE_READ,
+            nullptr, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
+        if (file.Value == INVALID_HANDLE_VALUE) return CaptureError(error, "Cannot read selected capture");
+        BY_HANDLE_FILE_INFORMATION info{}; filesystem::path finalFile;
+        if (!GetFileInformationByHandle(file.Value, &info) || !CaptureFinalPath(file.Value, finalFile, error)) return CaptureError(error, "Cannot inspect selected capture");
+        const uint64_t size = (uint64_t(info.nFileSizeHigh) << 32u) | info.nFileSizeLow;
+        const uint64_t index = (uint64_t(info.nFileIndexHigh) << 32u) | info.nFileIndexLow;
+        if ((info.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) ||
+            _wcsicmp(finalFile.parent_path().c_str(), finalDirectory.c_str()) != 0 ||
+            info.dwVolumeSerialNumber != selected.VolumeSerial || index != selected.FileIndex ||
+            size != selected.SizeBytes || CaptureTicks(info.ftLastWriteTime) != selected.LastWriteTicks)
+        { SetError(error, "Selected capture changed. Refresh the list and select it again."); return false; }
+        if (size == 0 || size > MAX_COMPARISON_BYTES)
+        { SetError(error, "Comparison import requires a nonempty capture of at most 32 MiB."); return false; }
+        std::string bytes(static_cast<size_t>(size), '\0'); DWORD read = 0;
+        if (!ReadFile(file.Value, bytes.data(), static_cast<DWORD>(size), &read, nullptr) || read != size)
+            return CaptureError(error, "Cannot read entire capture");
+        FProfilerComparisonCapture staged;
+        if (!Parse_Comparison(bytes, staged, error)) return false;
+        staged.Source = selected.DisplayName; staged.Label = selected.DisplayName;
+        out = std::move(staged); if (error) error->clear(); return true;
+    }
+    catch (const std::exception& exception) { SetError(error, std::string("Cannot load capture: ") + exception.what()); return false; }
 }

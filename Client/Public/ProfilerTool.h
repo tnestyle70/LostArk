@@ -34,10 +34,14 @@ private:
 	void Render_ImGui();
 	void Rebuild_CpuRows(bool_t bImGuiOnly);
 	void Render_Gpu();
+	void Render_FrameOverview();
 	void Render_LongOperations();
 	void Render_Counters() const;
 	bool_t Refresh_CaptureFiles();
 	void Render_CaptureFiles();
+    FProfilerCaptureContext Sample_Context() const;
+    void Render_FrameChanges(Engine::CProfiler& Profiler);
+    void Render_Comparison(Engine::CProfiler& Profiler);
 
 private:
 	bool_t m_bOpen = true;
@@ -57,6 +61,11 @@ private:
 	double m_fWindowGpuMaxMs = 0.0;
 	size_t m_iWindowFrames = 0u;
 	Engine::FProfilerLiveStats m_Live{};
+	Engine::FProfilerFrame m_LatestFrame{};
+	double m_fUnattributedCpuMs = 0.0;
+	bool_t m_bCpuSortSelf = true;
+	bool_t m_bMainThreadOnly = true;
+	bool_t m_bGpuSortSelf = true;
 	bool_t m_bLiveValid = false;
 	std::vector<std::string> m_ScopeNames;
 	std::vector<Engine::FProfilerScopeAggregate> m_Aggregates;
@@ -83,6 +92,15 @@ private:
 	bool_t m_bCaptureFilesLoaded = false;
 	std::string m_strCaptureStatus;
 	CProfilerCaptureExporter m_Exporter;
+    FProfilerComparisonCapture m_ComparisonFrames;
+    std::array<std::map<std::string, FProfilerComparisonMean>, 2> m_FrameComparisonMeans;
+    std::array<FProfilerComparisonCapture, 2> m_Baselines;
+    std::array<std::map<std::string, FProfilerComparisonMean>, 2> m_BaselineMeans;
+    std::array<std::array<char, 241>, 2> m_BaselineLabels{};
+    std::string m_ComparisonStatus;
+    bool m_bComparisonRefresh = true, m_bFollowComparisonFrames = true;
+    int m_iComparisonFrame = 0;
+    int m_iComparedFrame = -1;
 };
 
 NS_END

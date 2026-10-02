@@ -18,6 +18,25 @@ namespace
     constexpr size_t MAIN_ROOT_SCOPE_RESERVE = 128;
     constexpr size_t MAX_OPEN_SCOPES_PER_THREAD = 64;
 
+    FProfilerDrawStats DrawDifference(const FProfilerDrawStats& end, const FProfilerDrawStats& begin)
+    {
+        return {end.DrawCalls - begin.DrawCalls, end.InstancedDrawCalls - begin.InstancedDrawCalls,
+            end.Instances - begin.Instances, end.Indices - begin.Indices,
+            end.MeshDrawCalls - begin.MeshDrawCalls, end.MeshInstances - begin.MeshInstances,
+            end.MeshIndices - begin.MeshIndices};
+    }
+
+    void AddDrawStats(FProfilerDrawStats& total, const FProfilerDrawStats& value)
+    {
+        total.DrawCalls += value.DrawCalls;
+        total.InstancedDrawCalls += value.InstancedDrawCalls;
+        total.Instances += value.Instances;
+        total.Indices += value.Indices;
+        total.MeshDrawCalls += value.MeshDrawCalls;
+        total.MeshInstances += value.MeshInstances;
+        total.MeshIndices += value.MeshIndices;
+    }
+
     uint64_t AllocateProfilerInstanceId()
     {
         static std::atomic_uint64_t nextId{1};
@@ -83,6 +102,7 @@ void CProfiler::Begin_Frame()
     {
         m_CaptureEpoch.fetch_add(1, std::memory_order_relaxed);
         m_PreviousFrameBeginTick = 0;
+        m_PreviousFrameEndTick = 0;
         for (auto& counter : m_AtomicCounters) counter.store(0, std::memory_order_relaxed);
         std::lock_guard lock(m_Mutex);
         m_PendingScopes.clear();
@@ -104,9 +124,20 @@ void CProfiler::Begin_Frame()
     m_CurrentFrame.GpuScopesSupported = m_GpuScopeQueriesAvailable;
     m_ModelAnimationWork.clear();
     m_SubmittedModels.clear();
+    m_SubmittedMeshKeys.fill(nullptr);
+    m_SubmittedMeshCount = 0;
     m_FrameBeginTick = Query_Tick();
+    m_CurrentFrame.FrameBeginTick = m_FrameBeginTick;
     if (m_PreviousFrameBeginTick != 0 && m_FrameBeginTick >= m_PreviousFrameBeginTick)
+    {
         m_CurrentFrame.FrameIntervalMs = Ticks_ToMs(m_FrameBeginTick - m_PreviousFrameBeginTick);
+        if (m_PreviousFrameEndTick >= m_PreviousFrameBeginTick &&
+            m_FrameBeginTick >= m_PreviousFrameEndTick)
+        {
+            m_CurrentFrame.PreviousCpuFrameMs = Ticks_ToMs(m_PreviousFrameEndTick - m_PreviousFrameBeginTick);
+            m_CurrentFrame.FrameGapMs = Ticks_ToMs(m_FrameBeginTick - m_PreviousFrameEndTick);
+        }
+    }
     m_PreviousFrameBeginTick = m_FrameBeginTick;
     Begin_GpuFrame(m_FrameNumber);
 }
@@ -121,6 +152,8 @@ void CProfiler::End_Frame()
     m_FrameActive = false;
 
     const uint64_t endTick = Query_Tick();
+    m_CurrentFrame.FrameEndTick = endTick;
+    m_PreviousFrameEndTick = endTick;
     m_CurrentFrame.CpuFrameMs =
         static_cast<double>(endTick - m_FrameBeginTick) * 1000.0 /
         static_cast<double>(m_Frequency.QuadPart);
@@ -189,6 +222,7 @@ void CProfiler::Reset_History()
     m_DroppedCpuScopes = 0;
     m_PendingDroppedCpuScopes = 0;
     m_PreviousFrameBeginTick = 0;
+    m_PreviousFrameEndTick = 0;
     m_DroppedGpuFrames = 0;
     m_DroppedGpuScopes = 0;
     m_DroppedModelAnimationSamples = 0;
@@ -299,6 +333,8 @@ uint32_t CProfiler::Begin_GpuScope(std::string_view name, bool collectPipeline)
     scope.NameId = Intern_Name(name);
     scope.Depth = slot.OpenScopeCount;
     scope.Ended = false;
+    scope.DrawBegin = Read_DrawCounters();
+    scope.Draw = {};
     scope.PipelineIndex = UINT32_MAX;
     if (collectPipeline && m_GpuPipelineQueriesAvailable &&
         slot.PipelineScopeCount < MAX_GPU_PIPELINE_SCOPES_PER_FRAME)
@@ -328,6 +364,7 @@ void CProfiler::End_GpuScope(uint32_t token) noexcept
         while (slot.OpenScopeCount >= position)
         {
             FGpuScopeQuery& scope = slot.Scopes[slot.OpenScopes[--slot.OpenScopeCount]];
+            scope.Draw = DrawDifference(Read_DrawCounters(), scope.DrawBegin);
             m_pContext->End(scope.End.Get());
             if (scope.PipelineIndex != UINT32_MAX)
                 m_pContext->End(slot.PassPipelines[scope.PipelineIndex].Get());
@@ -449,6 +486,70 @@ void CProfiler::Record_ViewportPresent(const FProfilerViewportPresent& sample)
     m_CurrentFrame.ViewportPresents.push_back(sample);
 }
 
+void CProfiler::Record_MeshSubmitted(const void* mesh, uint32_t indexCount, uint32_t instances,
+    std::string_view meshName, uint32_t vertexCount, uint32_t materialSlot)
+{
+    if (!mesh || instances == 0u || !m_Collecting.load(std::memory_order_relaxed) ||
+        !m_FrameActive.load(std::memory_order_relaxed) || GetCurrentThreadId() != m_MainThreadId)
+        return;
+    Add_Counter(EProfilerCounter::MeshDrawCalls);
+    Add_Counter(EProfilerCounter::MeshInstances, instances);
+    Add_Counter(EProfilerCounter::MeshIndices, uint64_t(indexCount) * instances);
+
+    if (m_DetailedScopes.load(std::memory_order_relaxed))
+    {
+        if (m_CurrentFrame.MeshDraws.size() < MAX_MESH_DRAWS_PER_FRAME)
+        {
+            // Allocate one bounded block, only in the explicitly enabled detail mode.
+            if (m_CurrentFrame.MeshDraws.empty())
+                m_CurrentFrame.MeshDraws.reserve(MAX_MESH_DRAWS_PER_FRAME);
+            FProfilerMeshDrawSample sample{};
+            sample.MeshNameId = Intern_Name(meshName.empty() ? std::string_view("(unnamed mesh)") : meshName);
+            sample.VertexCount = vertexCount;
+            sample.IndexCount = indexCount;
+            sample.Instances = instances;
+            sample.MaterialSlot = materialSlot;
+            if (m_ActiveGpuSlot != UINT32_MAX && m_CurrentFrame.DroppedGpuScopes == 0)
+            {
+                const auto& gpu = m_GpuSlots[m_ActiveGpuSlot];
+                if (gpu.OpenScopeCount)
+                    sample.PassNameId = gpu.Scopes[gpu.OpenScopes[gpu.OpenScopeCount - 1]].NameId;
+            }
+            m_CurrentFrame.MeshDraws.push_back(sample);
+        }
+        else ++m_CurrentFrame.DroppedMeshDraws;
+    }
+
+    constexpr size_t mask = MAX_UNIQUE_MESHES_PER_FRAME * 2 - 1;
+    static_assert((mask & (mask + 1)) == 0);
+    const uintptr_t address = reinterpret_cast<uintptr_t>(mesh);
+    size_t slot = static_cast<size_t>((address >> 4) ^ (address >> 19)) & mask;
+    while (m_SubmittedMeshKeys[slot] != nullptr)
+    {
+        if (m_SubmittedMeshKeys[slot] == mesh) return;
+        slot = (slot + 1) & mask;
+    }
+    if (m_SubmittedMeshCount == MAX_UNIQUE_MESHES_PER_FRAME)
+    {
+        // Submission totals remain exact; unique count is a lower bound.
+        Add_Counter(EProfilerCounter::DroppedMeshSamples);
+        return;
+    }
+    m_SubmittedMeshKeys[slot] = mesh;
+    ++m_SubmittedMeshCount;
+    Add_Counter(EProfilerCounter::UniqueMeshes);
+}
+
+FProfilerDrawStats CProfiler::Read_DrawCounters() const noexcept
+{
+    const auto read = [this](EProfilerCounter counter)
+    { return m_AtomicCounters[static_cast<size_t>(counter)].load(std::memory_order_relaxed); };
+    return {read(EProfilerCounter::DrawCalls), read(EProfilerCounter::InstancedDrawCalls),
+        read(EProfilerCounter::Instances), read(EProfilerCounter::Indices),
+        read(EProfilerCounter::MeshDrawCalls), read(EProfilerCounter::MeshInstances),
+        read(EProfilerCounter::MeshIndices)};
+}
+
 void CProfiler::Add_Counter(
     EProfilerCounter counter, uint64_t value) noexcept
 {
@@ -540,6 +641,10 @@ bool CProfiler::Get_LiveStats(FProfilerLiveStats& outStats) const
     outStats.DetailedCpuScopes = latest.DetailedCpuScopes;
     outStats.CpuFrameMs = latest.CpuFrameMs;
     outStats.FrameIntervalMs = latest.FrameIntervalMs;
+    outStats.FrameBeginTick = latest.FrameBeginTick;
+    outStats.FrameEndTick = latest.FrameEndTick;
+    outStats.PreviousCpuFrameMs = latest.PreviousCpuFrameMs;
+    outStats.FrameGapMs = latest.FrameGapMs;
     outStats.Animation = latest.Animation;
     outStats.CpuWork = latest.CpuWork;
     outStats.Counters = latest.Counters;
@@ -695,6 +800,7 @@ void CProfiler::Get_GpuScopeAggregates(
     {
         FProfilerGpuScopeAggregate Aggregate;
         std::vector<double> FrameTimes;
+        std::vector<double> SelfFrameTimes;
     };
     std::map<uint32_t, FAccumulated> accumulated;
     for (size_t offset = m_History.size() - count; offset < m_History.size(); ++offset)
@@ -714,24 +820,34 @@ void CProfiler::Get_GpuScopeAggregates(
             value.Aggregate.NameId = sample.NameId;
             ++value.Aggregate.Calls;
             value.Aggregate.InclusiveMs += sample.DurationMs;
+            value.Aggregate.SelfMs += sample.SelfMs;
+            AddDrawStats(value.Aggregate.Draw, sample.Draw);
             if (sample.PipelineValid)
             {
                 ++value.Aggregate.PipelineSamples;
                 value.Aggregate.PSInvocations += sample.PSInvocations;
                 value.Aggregate.VSInvocations += sample.VSInvocations;
+                value.Aggregate.IAVertices += sample.IAVertices;
+                value.Aggregate.IAPrimitives += sample.IAPrimitives;
             }
             value.FrameTimes.resize(frameIndex + 1, 0.0);
             value.FrameTimes[frameIndex] += sample.DurationMs;
+            value.SelfFrameTimes.resize(frameIndex + 1, 0.0);
+            value.SelfFrameTimes[frameIndex] += sample.SelfMs;
         }
     }
     for (auto& [name, value] : accumulated)
     {
         value.FrameTimes.resize(outValidFrames, 0.0);
+        value.SelfFrameTimes.resize(outValidFrames, 0.0);
         std::sort(value.FrameTimes.begin(), value.FrameTimes.end());
+        std::sort(value.SelfFrameTimes.begin(), value.SelfFrameTimes.end());
         value.Aggregate.MaxFrameMs = value.FrameTimes.back();
+        value.Aggregate.SelfMaxFrameMs = value.SelfFrameTimes.back();
         const size_t percentile = static_cast<size_t>(
             std::ceil(static_cast<double>(outValidFrames) * 0.95)) - 1;
         value.Aggregate.P95FrameMs = value.FrameTimes[percentile];
+        value.Aggregate.SelfP95FrameMs = value.SelfFrameTimes[percentile];
         outAggregates.push_back(value.Aggregate);
     }
     std::sort(outAggregates.begin(), outAggregates.end(),
@@ -1021,6 +1137,8 @@ void CProfiler::Resolve_GpuFrames(uint64_t currentPollFrame)
                 sample.BeginMs = static_cast<double>(scopeBegin - begin) * scale;
                 sample.EndMs = static_cast<double>(scopeEnd - begin) * scale;
                 sample.DurationMs = static_cast<double>(scopeEnd - scopeBegin) * scale;
+                sample.SelfMs = sample.DurationMs;
+                sample.Draw = scope.Draw;
                 if (scope.PipelineIndex != UINT32_MAX)
                 {
                     D3D11_QUERY_DATA_PIPELINE_STATISTICS passPipeline{};
@@ -1033,11 +1151,26 @@ void CProfiler::Resolve_GpuFrames(uint64_t currentPollFrame)
                     {
                         sample.PSInvocations = passPipeline.PSInvocations;
                         sample.VSInvocations = passPipeline.VSInvocations;
+                        sample.IAVertices = passPipeline.IAVertices;
+                        sample.IAPrimitives = passPipeline.IAPrimitives;
                     }
                 }
             }
             if (status != EProfilerGpuFrameStatus::Error && !ready)
                 continue;
+            // Samples are ordered by Begin. Immediate-context child intervals
+            // are serial or nested, so subtract only direct children once.
+            for (uint32_t parent = 0; parent < sampleCount; ++parent)
+            {
+                auto& sample = samples[parent];
+                for (uint32_t child = parent + 1; child < sampleCount; ++child)
+                {
+                    if (samples[child].Depth <= sample.Depth) break;
+                    if (samples[child].Depth == sample.Depth + 1)
+                        sample.SelfMs -= samples[child].DurationMs;
+                }
+                sample.SelfMs = (std::max)(0.0, sample.SelfMs);
+            }
         }
         std::lock_guard lock(m_Mutex);
         const auto frame = std::find_if(m_History.rbegin(), m_History.rend(),

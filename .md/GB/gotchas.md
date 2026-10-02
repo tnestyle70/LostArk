@@ -5914,3 +5914,14 @@ suppression을 Render와 맞추고 debris를 걷는 바닥으로 승격하지 �
 - navsurface는 공식 publisher의 Server 산출물이다. Client에 임의로 추가하지 않으며 source paint와
   Client/Server grid·Server surface를 한 변경으로 전달한다. 디스크 교체와 실행 중 Server Reload는
   별도 상태다. [검증과 범위](10-02/2026-10-02_BERN_NAV_GROUND_RECOVERY_RESULT.md).
+
+### Profiler 비교의 미계측과 세션 실험 복원
+
+- GPU pending·없는 구버전 필드·누락 scope를 측정된0으로 비교하지 않는다. 같은 thread의 scope가
+  중첩 규칙을 위반하거나 부모가 없으면 inclusive 관측은 보존해도 self를 완전하다고 표시하지 않는다.
+- 세션 옵션은 선택 필드만 복원하되 renderer가 OFF 처리에서 정규화한 보조 필드도 추적한다.
+  특히 CShadow의 OFF는 눈/목표·범위·bias를 기본 descriptor로 바꾸므로 마지막 적용값과 같은
+  보조값만 되돌리고 다른 편집·새 owner는 보존한다. PBR routing 정규화도 같은 원칙을 따른다.
+- sweep의 A와 모든 측정점은 동일한 독립 변수 mask로 조건을 비교한다. 측정 종료 후 Profiler
+  제어 소유권을 해제하여 사용자가 새로 시작한 수집을 나중의 실험 종료가 끄지 않게 한다.
+  [구현·검증 범위](10-03/2026-10-03_PROFILER_RENDERING_WORKBENCH_RESULT.md)를 따른다.

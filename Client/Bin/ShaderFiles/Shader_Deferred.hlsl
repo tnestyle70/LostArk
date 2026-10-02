@@ -45,6 +45,7 @@ texture2D   g_SSAOTexture;
 
 float2      g_vSSAOTexelSize;
 uint        g_iSSAOEnabled = 0u;
+uint        g_iSSAOSampleCount = 12u;
 float       g_fSSAORadius;
 float       g_fSSAOBias;
 float       g_fSSAOIntensity;
@@ -55,6 +56,7 @@ float2      g_vShadowTexelSize;
 float       g_fShadowDepthBias;
 float       g_fShadowNormalBias;
 float       g_fShadowStrength;
+uint        g_iShadowPCFFilterRadius = 1u;
 float       g_fDynamicBakedShadowStrength = 0.f;
 uint        g_iDynamicBakedShadowEnabled = 0u;
 float2      g_vBloomTexelSize;
@@ -294,11 +296,12 @@ float Resolve_DirectionalShadow(float4 vWorldPos, float3 vNormal, DEFERRED_LIGHT
                 const float fReceiverDepth =
                     vShadowNDC.z - max(g_fShadowDepthBias, 0.f);
                 float fLitSamples = 0.f;
-                [unroll]
-                for (int iY = -1; iY <= 1; ++iY)
+                const int iFilterRadius = (int)min(g_iShadowPCFFilterRadius, 2u);
+                [loop]
+                for (int iY = -iFilterRadius; iY <= iFilterRadius; ++iY)
                 {
-                    [unroll]
-                    for (int iX = -1; iX <= 1; ++iX)
+                    [loop]
+                    for (int iX = -iFilterRadius; iX <= iFilterRadius; ++iX)
                     {
                         const float2 vSampleUV = vShadowUV +
                             float2((float)iX, (float)iY) *
@@ -311,7 +314,10 @@ float Resolve_DirectionalShadow(float4 vWorldPos, float3 vNormal, DEFERRED_LIGHT
                     }
                 }
 
-                const float fPCF = fLitSamples / 9.f;
+                const int iFilterWidth = 2 * iFilterRadius + 1;
+                // Preserve the original 3x3 normalization at the default radius.
+                const float fPCF = iFilterRadius == 1 ? fLitSamples / 9.f :
+                    fLitSamples / (float)(iFilterWidth * iFilterWidth);
                 fShadow = lerp(
                     1.f, fPCF, saturate(g_fShadowStrength));
             }
@@ -870,7 +876,7 @@ float SSAO_Hash(float2 vPosition)
         float2(12.9898f, 78.233f))) * 43758.5453f);
 }
 
-PS_OUT_BACKBUFFER PS_MAIN_SSAO_RAW(PS_IN In)
+PS_OUT_BACKBUFFER Evaluate_SSAORaw(PS_IN In, int iSampleCount)
 {
     PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
     float4 vCenterDepthDesc = g_DepthTexture.Sample(
@@ -899,9 +905,9 @@ PS_OUT_BACKBUFFER PS_MAIN_SSAO_RAW(PS_IN In)
     float fWeight = 0.f;
 
     [unroll]
-    for (int iSample = 0; iSample < 12; ++iSample)
+    for (int iSample = 0; iSample < iSampleCount; ++iSample)
     {
-        float fSampleFraction = ((float)iSample + 0.5f) / 12.f;
+        float fSampleFraction = ((float)iSample + 0.5f) / (float)iSampleCount;
         float fAngle = fRotation + fSampleFraction * 6.28318530718f;
         float fSampleRadius = lerp(0.25f, 1.f, fSampleFraction);
         float2 vDirection = float2(cos(fAngle), sin(fAngle));
@@ -950,6 +956,15 @@ PS_OUT_BACKBUFFER PS_MAIN_SSAO_RAW(PS_IN In)
     fAmbientOcclusion = lerp(fAmbientOcclusion, 1.f, fDistanceFade);
     Out.vBackBuffer = fAmbientOcclusion;
     return Out;
+}
+
+// Uniform dispatch specializes the unrolled kernel to exactly 4/8/12 taps.
+// The 12-tap path retains the original sample math and accumulation order.
+PS_OUT_BACKBUFFER PS_MAIN_SSAO_RAW(PS_IN In)
+{
+    [branch] if (g_iSSAOSampleCount == 4u) return Evaluate_SSAORaw(In, 4);
+    [branch] if (g_iSSAOSampleCount == 8u) return Evaluate_SSAORaw(In, 8);
+    return Evaluate_SSAORaw(In, 12);
 }
 
 PS_OUT_BACKBUFFER PS_MAIN_SSAO_BLUR(PS_IN In)
@@ -1053,9 +1068,10 @@ float Resolve_DynamicBakedShadow(float3 position, float3 normal)
         return 1.f;
     const float receiver = ndc.z - max(g_fShadowDepthBias, 0.f);
     float occluded = 0.f;
-    [unroll] for (int y = -1; y <= 1; ++y)
+    const int radius = (int)min(g_iShadowPCFFilterRadius, 2u);
+    [loop] for (int y = -radius; y <= radius; ++y)
     {
-        [unroll] for (int x = -1; x <= 1; ++x)
+        [loop] for (int x = -radius; x <= radius; ++x)
         {
             const float2 sampleUV = uv + float2(x, y) * g_vShadowTexelSize;
             const float complete = g_LightDepthTexture.SampleLevel(ShadowSampler, sampleUV, 0.f).r;
@@ -1065,7 +1081,9 @@ float Resolve_DynamicBakedShadow(float3 position, float3 normal)
             occluded += complete + 0.000001f < fixedDepth && receiver > complete ? 1.f : 0.f;
         }
     }
-    return 1.f - (occluded / 9.f) * saturate(g_fDynamicBakedShadowStrength);
+    const int width = 2 * radius + 1;
+    const float filtered = radius == 1 ? occluded / 9.f : occluded / (float)(width * width);
+    return 1.f - filtered * saturate(g_fDynamicBakedShadowStrength);
 }
 
 // Project diffuse sky adapter. Coefficients already contain Lambert E/pi;

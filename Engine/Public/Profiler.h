@@ -100,6 +100,11 @@ enum class EProfilerCounter : uint16_t
     NpcCullingCandidates,
     NpcCulled,
     NpcDeferredPoseEvaluations,
+    MeshDrawCalls,
+    MeshInstances,
+    MeshIndices,
+    UniqueMeshes,
+    DroppedMeshSamples,
     Count
 };
 
@@ -160,6 +165,17 @@ enum class EProfilerGpuFrameStatus : uint8_t
     Error
 };
 
+/* CPU-issued submissions through instrumented Engine VIBuffer/CMesh paths.
+   Indices includes instances; Instances counts instanced submissions only.
+   MeshInstances includes one for a non-instanced CMesh draw. These are not
+   final visible geometry, and do not include DirectXTK/ImGui internal draws.
+   Existing indirect upper-bound counters remain separate, never exact indices. */
+struct FProfilerDrawStats final
+{
+    uint64_t DrawCalls = 0, InstancedDrawCalls = 0, Instances = 0, Indices = 0;
+    uint64_t MeshDrawCalls = 0, MeshInstances = 0, MeshIndices = 0;
+};
+
 /* Inclusive timestamp interval relative to the GPU frame begin. Nested scopes
    overlap; multiple copies with the same NameId remain separate samples. */
 struct FProfilerGpuScopeSample final
@@ -169,8 +185,11 @@ struct FProfilerGpuScopeSample final
     double BeginMs = 0.0;
     double EndMs = 0.0;
     double DurationMs = 0.0;
+    double SelfMs = 0.0;
+    FProfilerDrawStats Draw{};
     bool PipelineValid = false;
     uint64_t PSInvocations = 0, VSInvocations = 0;
+    uint64_t IAVertices = 0, IAPrimitives = 0;
 };
 
 /* Main-thread animation evaluation joined to successful model submissions in
@@ -202,9 +221,23 @@ struct FProfilerViewportPresent final
     int32_t Result = 0;
 };
 
+// Optional detailed submission trace. Names are display labels, not stable
+// asset IDs. IndexCount is per instance; there is no per-draw GPU timing.
+struct FProfilerMeshDrawSample final
+{
+    uint32_t PassNameId = UINT32_MAX, MeshNameId = 0;
+    uint32_t VertexCount = 0, IndexCount = 0, Instances = 0, MaterialSlot = 0;
+};
+
 struct FProfilerFrame final
 {
     uint64_t FrameNumber = 0;
+    uint64_t FrameBeginTick = 0, FrameEndTick = 0;
+    std::vector<FProfilerMeshDrawSample> MeshDraws;
+    uint64_t DroppedMeshDraws = 0;
+    // Interval is previous Begin -> this Begin. Gap is previous End -> this
+    // Begin, so Interval = PreviousCpuFrameMs + FrameGapMs (except first frame).
+    double PreviousCpuFrameMs = 0.0, FrameGapMs = 0.0;
     // Dropped completions attributed to this frame; excludes deliberately disabled detail scopes.
     uint64_t DroppedCpuScopes = 0;
     bool DetailedCpuScopes = false;
@@ -268,6 +301,8 @@ struct FProfilerLiveStats final
     uint64_t FrameNumber = 0;
     double CpuFrameMs = 0.0;
     double FrameIntervalMs = 0.0;
+    uint64_t FrameBeginTick = 0, FrameEndTick = 0;
+    double PreviousCpuFrameMs = 0.0, FrameGapMs = 0.0;
     FProfilerAnimationStats Animation{};
     std::array<FProfilerWorkStats, static_cast<size_t>(EProfilerWork::Count)> CpuWork{};
     std::array<uint64_t, static_cast<size_t>(EProfilerCounter::Count)> Counters{};
@@ -314,9 +349,13 @@ struct FProfilerGpuScopeAggregate final
     uint32_t NameId = 0;
     uint64_t Calls = 0;
     double InclusiveMs = 0.0;
+    double SelfMs = 0.0;
     double MaxFrameMs = 0.0;
     double P95FrameMs = 0.0;
+    double SelfMaxFrameMs = 0.0, SelfP95FrameMs = 0.0;
+    FProfilerDrawStats Draw{};
     uint64_t PipelineSamples = 0, PSInvocations = 0, VSInvocations = 0;
+    uint64_t IAVertices = 0, IAPrimitives = 0;
 };
 
 class ENGINE_DLL CProfiler final
@@ -327,6 +366,8 @@ public:
     static constexpr uint32_t MAX_GPU_SCOPES_PER_FRAME = 128;
     static constexpr uint32_t MAX_GPU_PIPELINE_SCOPES_PER_FRAME = 8;
     static constexpr size_t MAX_ANIMATION_MODELS_PER_FRAME = 16384;
+    static constexpr size_t MAX_UNIQUE_MESHES_PER_FRAME = 16384;
+    static constexpr size_t MAX_MESH_DRAWS_PER_FRAME = 512;
     static constexpr size_t MAX_HISTORY_FRAMES = 1200;
     static constexpr size_t MAX_LONG_OPERATIONS = 256;
     static constexpr double LONG_OPERATION_THRESHOLD_MS = 8.0;
@@ -368,6 +409,10 @@ public:
     FProfilerModelAnimationToken Begin_ModelAnimation() const noexcept;
     void End_ModelAnimation(const void* model, FProfilerModelAnimationToken token);
     void Record_ModelSubmitted(const void* model);
+    // Main-thread CMesh draw boundary only. Pointer is an ephemeral dedup key,
+    // never exported. Geometry shared by many CModel clones counts once.
+    void Record_MeshSubmitted(const void* mesh, uint32_t indexCount, uint32_t instances = 1,
+        std::string_view meshName = {}, uint32_t vertexCount = 0, uint32_t materialSlot = 0);
     void Record_ViewportPresent(const FProfilerViewportPresent& sample);
 
     void Add_Counter(EProfilerCounter counter, uint64_t value = 1) noexcept;
@@ -414,6 +459,7 @@ private:
         uint32_t NameId = 0;
         uint32_t Depth = 0;
         bool Ended = false;
+        FProfilerDrawStats DrawBegin{}, Draw{};
     };
 
     struct FGpuQuerySlot final
@@ -444,6 +490,7 @@ private:
     void Commit_CurrentFrame();
     // The caller holds m_Mutex, keeping coverage and copied frames consistent.
     FProfilerCaptureWindow Get_CaptureWindowLocked(size_t frameWindow) const;
+    FProfilerDrawStats Read_DrawCounters() const noexcept;
 
 private:
     // Distinguishes a new profiler constructed at a previously used address.
@@ -462,6 +509,7 @@ private:
     uint64_t m_PollFrameNumber = 0;
     uint64_t m_FrameBeginTick = 0;
     uint64_t m_PreviousFrameBeginTick = 0;
+    uint64_t m_PreviousFrameEndTick = 0;
     FProfilerFrame m_CurrentFrame{};
     std::array<std::atomic_uint64_t, static_cast<size_t>(EProfilerCounter::Count)> m_AtomicCounters{};
     std::array<FGpuQuerySlot, GPU_QUERY_RING_SIZE> m_GpuSlots{};
@@ -494,6 +542,9 @@ private:
     };
     std::unordered_map<const void*, FModelAnimationWork> m_ModelAnimationWork;
     std::unordered_set<const void*> m_SubmittedModels;
+    // Fixed table avoids allocating a node for each mesh on every frame.
+    std::array<const void*, MAX_UNIQUE_MESHES_PER_FRAME * 2> m_SubmittedMeshKeys{};
+    size_t m_SubmittedMeshCount = 0;
 };
 
 class ENGINE_DLL CProfilerScope final
