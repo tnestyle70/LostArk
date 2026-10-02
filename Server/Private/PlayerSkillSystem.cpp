@@ -172,7 +172,9 @@ namespace
 		{
 			// Round the whole cast up once so a full bar boundary is crossed,
 			// then share it by cumulative differences, including any zero shares.
-			const std::uint64_t scaled = static_cast<std::uint64_t>(target.iMaximumHp) *
+			const std::uint32_t referenceHp = target.iDamageReferenceHp ?
+				target.iDamageReferenceHp : target.iMaximumHp;
+			const std::uint64_t scaled = static_cast<std::uint64_t>(referenceHp) *
 				damageProfile->iBossHealthBarDamage;
 			const std::uint64_t totalDamage = (std::min)(
 				(scaled + target.iMaximumHealthBars - 1u) / target.iMaximumHealthBars,

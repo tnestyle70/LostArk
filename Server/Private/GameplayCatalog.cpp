@@ -2513,7 +2513,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		else if (!fields.empty() && "BOSS" == fields[0])
 		{
 			BOSS_RUNTIME_PROFILE boss{};
-			if (11u != fields.size() || !IsStableId(fields[1]) ||
+			if ((11u != fields.size() && 12u != fields.size()) || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) ||
 				!ParseNumber(fields[3], boss.iMaximumHp) ||
 				!ParseNumber(fields[4], boss.iMaximumHealthBars) ||
@@ -2523,6 +2523,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				!ParseNumber(fields[8], boss.fMoveSpeed) ||
 				!ParseBossPhasePolicyKind(fields[9], boss.PhasePolicy.eKind) ||
 				!ParseNumber(fields[10], boss.PhasePolicy.iThresholdPercent) ||
+				(12u == fields.size() &&
+					(!ParseNumber(fields[11], boss.iDamageReferenceHp) || 0u == boss.iDamageReferenceHp)) ||
 				0u == boss.iMaximumHp || 0u == boss.iMaximumHealthBars ||
 				boss.iMaximumHealthBars > 1000u || 0u == boss.iAttackPower ||
 				!std::isfinite(boss.fCollisionRadius) ||
@@ -8886,6 +8888,7 @@ namespace
             add(NUMERIC_DOMAIN::BOSS, "maximumHp", 3); add(NUMERIC_DOMAIN::BOSS, "maximumHealthBars", 4);
             add(NUMERIC_DOMAIN::BOSS, "attackPower", 5); add(NUMERIC_DOMAIN::BOSS, "collisionRadius", 6, false);
             add(NUMERIC_DOMAIN::BOSS, "engageDistance", 7, false); add(NUMERIC_DOMAIN::BOSS, "moveSpeed", 8, false);
+            add(NUMERIC_DOMAIN::BOSS, "damageReferenceHp", 11);
         }
         else if (fields[0] == "KOUKUMADNESS")
         {

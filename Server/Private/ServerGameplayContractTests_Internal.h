@@ -177,6 +177,8 @@ namespace ServerGameplayContractDetail
 	void Run_KoukuSaydonLogicRuntimeContracts(
 		TESTS& tests, const LostArk::Server::CGameplayCatalog& catalog);
 
+	void Run_PlayerBossHealthBarDamageContracts(TESTS& tests, const LostArk::Server::CGameplayCatalog& catalog);
+
 	struct CONTRACT_TEST_RUN_CONTEXT final
 	{
 		bool dimensionMasterGroundTargetOnly = false;

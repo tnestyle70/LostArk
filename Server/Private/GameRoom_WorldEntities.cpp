@@ -246,6 +246,7 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 		}
 		staged.iCurrentHp = profile->iMaximumHp;
 		staged.iMaximumHp = profile->iMaximumHp;
+		staged.iDamageReferenceHp = profile->iDamageReferenceHp;
 		staged.iMaximumHealthBars = profile->iMaximumHealthBars;
 		staged.iLastEvaluatedHealthBar = profile->iMaximumHealthBars;
 		staged.iAttackPower = profile->iAttackPower;

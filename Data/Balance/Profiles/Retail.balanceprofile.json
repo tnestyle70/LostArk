@@ -1779,7 +1779,8 @@
     {
       "archetypeId": "BOSS_VALTAN",
       "sourceNpcId": 480007,
-      "maximumHp": 741285439,
+      "maximumHp": 2100000000,
+      "damageReferenceHp": 741285439,
       "attackPower": 2285,
       "maximumHealthBars": 160,
       "staggerGaugeMaximum": 40000

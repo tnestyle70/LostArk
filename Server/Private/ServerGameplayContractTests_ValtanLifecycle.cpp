@@ -46,6 +46,13 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
         GameplayDataRevision beforeNumeric, afterNumeric, beforeBytes, afterBytes, beforeShape, afterShape;
         std::string status, bytes, hitKey;
         std::vector<BALANCE_NUMERIC_CHANGE> changes;
+        const auto* healthProfile = catalog.Find_Boss("BOSS_VALTAN");
+        const auto* ghostHealthProfile = catalog.Find_Boss("BOSS_VALTAN_GHOST");
+        tests.Require(healthProfile && healthProfile->iMaximumHp == 2100000000u &&
+            healthProfile->Get_DamageReferenceHp() == 741285439u && healthProfile->iMaximumHealthBars == 160u &&
+            ghostHealthProfile && ghostHealthProfile->iMaximumHp == 197222731u &&
+            ghostHealthProfile->iDamageReferenceHp == 0u && ghostHealthProfile->iMaximumHealthBars == 40u,
+            "Published Valtan has 2.1 billion actual health while preserving its damage reference, 160 bars and the separate legacy ghost profile");
         const bool enumerated = catalog.Build_NumericBalanceSnapshot(entries,beforeNumeric,status);
         for (const auto& entry : entries)
         {
@@ -76,6 +83,18 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
             tests.Require(!rejected.Load_NumericBalancePatch(catalog,stale,bytes) &&
                 rejected.Get_ActiveRevision()==catalog.Get_ActiveRevision(),"Reject stale numeric CAS without replacing the catalogue");
             const auto* initialBoss=catalog.Find_Boss("BOSS_VALTAN");
+            tests.Require(candidate->Find_Boss("BOSS_VALTAN")->iDamageReferenceHp == initialBoss->iDamageReferenceHp,
+                "Numeric maximum-HP patches preserve the explicit damage reference");
+            if (initialBoss->iDamageReferenceHp)
+            {
+                for (const double invalid : {0., 4294967296.})
+                {
+                    const std::vector<BALANCE_NUMERIC_CHANGE> invalidReference{{BALANCE_DOMAIN::BOSS,
+                        "BOSS_VALTAN", "damageReferenceHp", double(initialBoss->iDamageReferenceHp), invalid}};
+                    tests.Require(!rejected.Load_NumericBalancePatch(catalog, invalidReference, bytes),
+                        "Native boss parser rejects zero and overflowing explicit damage references");
+                }
+            }
             const std::vector<BALANCE_NUMERIC_CHANGE> invalidBars{{BALANCE_DOMAIN::BOSS,"BOSS_VALTAN","maximumHealthBars",double(initialBoss->iMaximumHealthBars),1.}};
             tests.Require(!rejected.Load_NumericBalancePatch(catalog,invalidBars,bytes),"Reject maximum bars incompatible with the saved raid threshold program");
             const auto h=std::find_if(entries.begin(),entries.end(),[&](const auto& e){return e.strId==hitKey;});
@@ -99,8 +118,15 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
                     SERVER_SKILL_PROJECTILE projectile; projectile.iSkillId=34010u; projectile.iTotalDamage=100u; projectile.iAppliedTimedMask.set(0u);
                     state.Projectiles.push_back(projectile); room->m_Players.emplace(id,std::move(state));
                 }
-                boss->iPhase=3u; boss->bGhostPhasePatternLoopActive=true; boss->iMaximumHp=ghost->iMaximumHp;
-                boss->iCurrentHp=ghost->iMaximumHp/2u; boss->iMaximumHealthBars=ghost->iMaximumHealthBars; boss->iPatternSequence=77u;
+                tests.Require(boss->iMaximumHp == initialBoss->iMaximumHp &&
+                    boss->iDamageReferenceHp == initialBoss->iDamageReferenceHp,
+                    "The actual Valtan spawn owns its actual HP and independent damage reference");
+                boss->iPhase=3u;
+                const bool ghostActivated = room->Activate_ValtanGhostPhaseLoop(*boss, catalog);
+                tests.Require(ghostActivated && boss->strArchetypeId == "BOSS_VALTAN" &&
+                    boss->iMaximumHp == ghost->iMaximumHp && boss->iDamageReferenceHp == ghost->iDamageReferenceHp,
+                    "Real ghost activation replaces the damage reference despite retaining the Valtan primary identity");
+                boss->iCurrentHp=ghost->iMaximumHp/2u; boss->iPatternSequence=77u;
                 const auto id=boss->iNetEntityId, hp=boss->iCurrentHp;
                 auto objectTx=room->m_CombatObjectRuntime.Begin_Transaction();
                 SERVER_COMBAT_OBJECT object; object.iCombatObjectId=17u; object.eSourceKind=SERVER_COMBAT_OBJECT_SOURCE_KIND::WORLD_ENTITY;
@@ -118,7 +144,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
                     room->m_Players.at(1u).Projectiles.front().iAppliedTimedMask.test(0u),
                     "Commit four players from their current HP ratio, preserving deaths and in-flight projectile hit history");
                 tests.Require(committed && boss->iNetEntityId==id && boss->iPatternSequence==77u && boss->iPhase==3u &&
-                    boss->iMaximumHp==ghost->iMaximumHp/2u && std::abs(double(boss->iCurrentHp)-hp/2.)<=1. &&
+                    boss->iMaximumHp==ghost->iMaximumHp/2u && boss->iDamageReferenceHp==ghost->iDamageReferenceHp &&
+                    std::abs(double(boss->iCurrentHp)-hp/2.)<=1. &&
                     room->m_GameplayCatalog.Get_GenerationCount()==generations && !live.empty() && live.front().fElapsedMilliseconds==321.f &&
                     live.front().Hits.front().iAppliedTimedCount==1u && live.front().Hits.front().iDamagePercent==(h->fValue==10. ? 20u : 10u),
                     "Preserve ghost identity/sequence and refresh next attack-object percent without replay or generation growth");
@@ -1183,6 +1210,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 					++windowIndex; waitingForMechanic = false; mechanicStarted = false;
 					if (windowIndex == 7u)
 						ghostRestored = ghostProfile && boss->iMaximumHp == ghostProfile->iMaximumHp &&
+                            boss->iDamageReferenceHp == ghostProfile->iDamageReferenceHp &&
 							boss->iCurrentHp == boss->iMaximumHp && 40u == CValtanBrain::Calculate_HealthBar(*boss) &&
 							boss->iPhase == 3u && boss->bGhostPhasePatternLoopActive;
 				}

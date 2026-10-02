@@ -152,7 +152,8 @@ bool CGameRoom::Transfer_ColosseumMatchTo(CGameRoom& target,
     const auto* hpProfile = target.m_GameplayCatalog.Find_Boss("BOSS_VALTAN");
     if (!hpProfile || hpProfile->iMaximumHp == 0u || hpProfile->iMaximumHealthBars != 160u)
         return reject("Colosseum requires the active Valtan 160-bar health profile");
-    const auto matchHp = hpProfile->iMaximumHp / 8u + (hpProfile->iMaximumHp % 8u != 0u ? 1u : 0u);
+    const auto referenceHp = hpProfile->Get_DamageReferenceHp();
+    const auto matchHp = referenceHp / 8u + (referenceHp % 8u != 0u ? 1u : 0u);
 
     std::vector<STAGED_PLAYER_ENTRY> entries;
     std::vector<PLAYER_ID> departingIds;
@@ -221,7 +222,7 @@ bool CGameRoom::Transfer_ColosseumMatchTo(CGameRoom& target,
         player.fColosseumSpawnZ = position.z; player.fColosseumSpawnYaw = player.fYawDegrees;
         player.bColosseumParticipant = true;
         player.isCombatReady = false;
-        player.iColosseumDamageReferenceHp = hpProfile->iMaximumHp;
+        player.iColosseumDamageReferenceHp = referenceHp;
         player.iCurrentHp = player.iMaximumHp = matchHp;
         departingIds.push_back(source.iPlayerId);
         departingEntities.push_back(source.iNetEntityId);
@@ -275,7 +276,7 @@ bool CGameRoom::Transfer_ColosseumMatchTo(CGameRoom& target,
             merc.eCharacterClass = MERCENARY_CLASSES[slot];
             merc.strNickName = MERCENARY_NAMES[slot];
             merc.eStance = profile->eDefaultStance;
-            merc.iColosseumDamageReferenceHp = hpProfile->iMaximumHp;
+            merc.iColosseumDamageReferenceHp = referenceHp;
             merc.iCurrentHp = merc.iMaximumHp = matchHp;
             merc.iCurrentResource = merc.iMaximumResource = profile->iMaximumResource;
             merc.iMaximumIdentity = profile->iMaximumIdentity;

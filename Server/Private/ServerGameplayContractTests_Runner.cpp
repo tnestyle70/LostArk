@@ -43,6 +43,7 @@ int CServerGameplayContractRunner::Run_ValtanLifecycleOnly()
         std::cout << std::unitbuf;
         TESTS tests{}; CGameplayCatalog catalog;
         if (!catalog.Load()) { std::cout << catalog.Get_Status() << '\n'; return; }
+        Run_PlayerBossHealthBarDamageContracts(tests, catalog);
         Run_ValtanLifecycle(tests, catalog);
         Run_ValtanPinnedGeneration(tests, catalog);
         Run_ValtanResetlessNext(tests,

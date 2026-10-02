@@ -5803,6 +5803,14 @@ Effect 부모를 명시하고 빈 값의 기존 동작을 보존한다. 임의90
 원본 샘플·취소를, 생산 Controller 추출 검사는 버튼 release·재입력·명령 순서를 따로 검증한다.
 40/60FPS 예측 회귀 성공과 실제 화면의 끊김 해소 판정은 구분한다.
 
+후속 CPU 전환에서 `MapPlacementRuntime`만 조회하면 별도 Deploy가 그리는 발탄 파괴 바닥·난간과
+쿠크 종이 다리가 빠진다. GPU를 대체할 때 실제 바닥의 소유 runtime을 함께 조사하고 Map/Deploy의
+최근접 표면을 합성한다. 정적 Deploy는 현재 intact/fractured 모델, animated 다리는 현재 pose를
+사용하며 bind-pose bounds로 펼쳐진 다리를 배제하지 않는다. despawn·opacity·source/camera
+suppression을 Render와 맞추고 debris를 걷는 바닥으로 승격하지 않는다. resolver 대역의 Controller
+검사만으로 carrier 연결을 검증하지 않는다. 실제 설치 geometry와 Level 연결·파괴 상태를 따로 검사한다.
+[수정 결과](10-01/2026-10-01_DEPLOY_CPU_MOVEMENT_PICKING_RESULT.md).
+
 
 ### 워터팡 AI 최초 등장 준비와 NPC 장비
 
@@ -5833,3 +5841,8 @@ Effect 부모를 명시하고 빈 값의 기존 동작을 보존한다. 임의90
 - HUD sprite 숨김만으로 Level의 월드 이름/HP·말풍선이나 Intro 자체의 직업/닉네임 텍스트는 숨겨지지 않는다. 연출 구간에는 별도 Draw_Text 소비자도 함께 차단한다. FINISHED 전체에서 HUD를 숨길 때 복귀 버튼의 입력까지 막히지 않도록 cinematic-owned pointer scope만 허용하고 일반 창·gameplay 차단은 유지한다.
 - 초상과 MVP 대표/파티 카드·캐릭터 정보창·아바타창은 Movie 문서를 복사해 그리는 화면이 아니라 실제 CharacterCatalog 기본 직업·lazy 장비 재질을 사용한다. Movie의 TGA mip 수정 후에도 DDS가 남으면 초상만 이전 선명한 반사를 유지할 수 있다. 같은 mip0·색공간을 확인한 뒤 실제 소비 assetId를 맞추고 공통 조명·거칠기 옵션은 바꾸지 않는다.
 - 컴파일·입력 수치 검증과 실제 Client 컷씬/초상 품질 확인은 구분한다. [콜로세움 결과](10-01/2026-10-01_COLOSSEUM_MATCH_FLOW_RESULT.md#g11-초기-초상월드-텍스트와-movie-lookup-일치)를 따른다.
+
+### 생성 JSON의 CRLF/LF 차이를 게임 데이터 변경으로 오인하지 않는다
+
+- Windows Git checkout의 CRLF와 publisher의 LF가 달라도 JSON 항목·값은 같을 수 있다. `projected Product is stale`만으로 레이드 진입 실패나 컷씬 설정 누락을 단정하지 않고 실제 구조와 줄바꿈을 구분한다.
+- Kouku 생성본 검사는 CRLF를 LF로 정규화한 bytes를 비교한다. 실제 값 변경과 다른 형식 차이는 계속 거부하고, 기존 duplicate-key 검증도 유지한다. 이 판정을 고치기 위해 사용자의 원본이나 생성본을 다시 저장하지 않는다.

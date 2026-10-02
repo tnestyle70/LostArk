@@ -4190,6 +4190,7 @@ bool LostArk::Server::CServerApp::Validate_ValtanHotReloadBaseProfile(
 		return false;
 	}
 	if (activeProfile->iMaximumHp != candidateProfile->iMaximumHp ||
+		activeProfile->iDamageReferenceHp != candidateProfile->iDamageReferenceHp ||
 		activeProfile->iMaximumHealthBars !=
 			candidateProfile->iMaximumHealthBars ||
 		activeProfile->iAttackPower != candidateProfile->iAttackPower ||

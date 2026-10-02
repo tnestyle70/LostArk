@@ -230,6 +230,10 @@ namespace LostArk::Server
 		std::string strArchetypeId;
 		std::string strEncounterId;
 		std::uint32_t iMaximumHp = 0;
+		// Optional stable damage/PvP scale; zero keeps legacy maximum-HP behavior.
+		std::uint32_t iDamageReferenceHp = 0;
+		std::uint32_t Get_DamageReferenceHp() const noexcept
+		{ return iDamageReferenceHp ? iDamageReferenceHp : iMaximumHp; }
 		std::uint32_t iMaximumHealthBars = 0;
 		/* Multiplicand for every damage rate this boss casts. */
 		std::uint32_t iAttackPower = 0;

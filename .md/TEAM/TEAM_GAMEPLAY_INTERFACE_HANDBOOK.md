@@ -377,7 +377,9 @@ Client payload에는 PlayerId와 NetEntityId가 없다. Server가 SessionId로 p
 
 우클릭 피킹은 입력 목표를 얻기 위한 Client 표현 계층이다. 제품 위치의 정답은 Server Navigation이다.
 
-일반 이동의 화면 피킹은 `CPlayerController`가 현재 입력의 camera ray를 Level이 연결한 `CMapPlacementRuntime::Try_PickMovementSurface`에 전달한다. 현재 scope에 생성된 static batch/object의 가시성·stage/camera suppression과 실제 world transform을 읽고, 기존 `CModel/CMesh`의 공유 LOD0 정적 triangle 가속 구조에서 가장 가까운 표면을 같은 입력 frame에 구한다. GPU readback의 제출·poll·대기를 이동 명령의 선행조건으로 두지 않는다. 표면이 없으면 이전 이동을 유지하며 평면이나 GPU로 fallback하지 않는다. hold의50ms 재전송·같은 goal 억제, 배 이동의 기존 수면 plane, typed 송신 성공 뒤의 예측·최초 press 표식은 유지한다. UI·포커스·텍스트 입력·사망·capture·타기팅·free camera의 기존 입력 차단도 유지한다. 이 표면은 정적 이동용 geometry이며 shader alpha 구멍·GPU 변형·렌더 LOD의 픽셀 일치를 뜻하지 않는다. masked 바닥은 포함하고 foliage/grass 및 알려진 변형 재질은 제외한다. Server는 기존 XZ command와 navigation으로 이동을 확정하며 저작 도구의 별도 피킹 API는 유지한다.
+일반 이동의 화면 피킹은 `CPlayerController`가 현재 입력의 camera ray를 Level이 연결한 `CMapPlacementRuntime::Try_PickMovementSurface`에 전달한다. 현재 scope에 생성된 static batch/object의 가시성·stage/camera suppression과 실제 world transform을 읽고, 기존 `CModel/CMesh`의 공유 LOD0 정적 triangle 가속 구조에서 가장 가까운 표면을 같은 입력 frame에 구한다. GPU readback의 제출·poll·대기를 이동 명령의 선행조건으로 두지 않는다. 표면이 없으면 이전 이동을 유지하며 평면이나 GPU로 fallback하지 않는다. hold의50ms 재전송·같은 goal 억제, 배 이동의 기존 수면 plane, typed 송신 성공 뒤의 예측·최초 press 표식은 유지한다. UI·포커스·텍스트 입력·사망·capture·타기팅·free camera의 기존 입력 차단도 유지한다. 이 Map 표면은 정적 이동용 geometry이며 shader alpha 구멍·GPU 변형·렌더 LOD의 픽셀 일치를 뜻하지 않는다. masked 바닥은 포함하고 foliage/grass 및 알려진 변형 재질은 제외한다. Server는 기존 XZ command와 navigation으로 이동을 확정하며 저작 도구의 별도 피킹 API는 유지한다.
+
+Valtan/Kouku의 Level resolver는 `CDeployPropRuntime::Try_PickMovementSurface`도 조회해 Map과 가장 가까운 표면을 선택한다. 파괴 가능한 돌판·난간과 펼쳐지는 종이 다리는 일반 Map placement가 아니다. Deploy 정적 모델은 현재 INTACT/FRACTURED 모델과 실제 world transform, 애니메이션 모델은 기존 `CModel::Try_PickCurrentPose`의 현재 골격 pose를 사용한다. Render와 같은 despawn/opacity/source suppression/camera suppression을 적용하며 날아가는 debris는 포함하지 않는다. 애니메이션 pose 검사는 양면 CPU 삼각형 검사이며 GPU alpha/culling의 픽셀 일치를 보장하지 않는다. Server navigation은 여전히 실제 이동 가능 여부를 결정한다.
 
 - 일반 이동: Server가 navgrid에서 시작/목표를 projection하고 8방향 A* path를 만든다.
 - 높이: 각 Server nav point의 Y를 사용한다.
@@ -389,9 +391,9 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 
 ### 4.0 F1 Level Navigation
 
-촬영용 Release는 F1/F7 입력과 Developer Tools/Profiler 창, 화면 FPS 표시를 비활성화한다. F6와 제품 UI는 유지한다.
+Release는 F1 Developer Tools 허브를 명시적으로 열 수 있다. F7 입력·Profiler 창·화면 FPS 표시와 기존 Debug 전용 저작 도구는 비활성 상태를 유지한다. F6와 제품 UI는 유지한다.
 
-Debug F1의 Level Navigation은 Lobby, Character Select, Bern, Valtan,
+Debug/Release F1의 Level Navigation은 Lobby, Character Select, Bern, Valtan,
 KoukuSaydon, Entrance PvP Arena, Maharaka 일곱 버튼을 제공한다. Lobby 복귀는 기존
 LevelTransition request를 사용하고, 나머지는 Lobby의 Server admission을 한 번 요청한다.
 Character Select에서 이동하면 현재 선택 class를 `Submit_StageEntry`로 보존한다.
@@ -2392,8 +2394,10 @@ attachment는 Pattern 시계, explicit fade는 박스 시계를 유지한다. So
 실제 hold·기믹 Result가 연결된 window는 자동 재연결 대상이 아니다.
 
 Retail damage override의 optional `bossHealthBarDamage`는 ACTIVE 스킬 한 cast의
-보스 HP 피해 총량을 체력 줄 수로 지정한다. 기본값0은 기존 계산이며 양수는 최대 HP와
-최대 줄 수로 계산해 다단 타격에 분배한다. 이 보스 피해에는 공격 배율·편차·치명타·방어력을
+보스 HP 피해 총량을 체력 줄 수로 지정한다. 기본값0은 기존 계산이며 양수는 피해 기준 HP와
+최대 줄 수로 계산해 다단 타격에 분배한다. 보스 profile의 optional `damageReferenceHp`가
+없으면 최대 HP를 사용하며, 명시하면 실제 최대 HP와 독립된 피해 기준으로 고정한다.
+live entity 생성·numeric migration·유령 전환은 해당 profile의 참조값을 함께 반영한다. 이 보스 피해에는 공격 배율·편차·치명타·방어력을
 재적용하지 않지만 적중·무적·실드 판정은 유지한다. Publish와 Server 재시작 후 적용된다.
 
 ### F1 몸통 콜라이더와 일반 이동 목적지
@@ -2756,7 +2760,7 @@ COLOSSEUM_MERCENARY_AI(3)는 팀 파티 슬롯을 사용하지만 인간 session
 후보는 피해 대상과 전투HP 표시에서 제외한다. 혼합 `S2C_PARTY_ROSTER::Members`는 팀당 총4명이고
 용병은 부족한 슬롯만 채운다. GuideCompanion을 포함하지 않는다.
 이 roster는 콜로세움 경기에서만 발신하며 일반 월드의 인간 최대4명 파티 계약은 유지하며 안내 Guide는 roster에 넣지 않는다.
-각 combatant의 최대HP는 활성 발탄160줄 profile의20줄 분량이며, 이름표는 복제된 current/max HP 비율로 최대20줄을 표시한다. 스킬 피해는 기존160줄 기준HP로 계산하여 유지한다.
+각 combatant의 최대HP는 발탄160줄 profile의 피해 기준HP(`damageReferenceHp`, 미지정은 `maximumHp`)에서20줄 분량이며, 이름표는 복제된 current/max HP 비율로 최대20줄을 표시한다. 스킬 피해도 같은 기준HP로 계산한다. 현재 발탄 본체의 실제HP2100000000과 독립적으로 참조741285439/참가자HP92660680을 유지한다.
 콜로세움 world·동일 ACTIVE match·적팀 participant guard는 damage/CC commit에서 재확인하며,
 보스 레이드의 balance 데이터·기본 damage/knockback 경로는 변경하지 않는다. Artist T1/5도 PvP만 적용한다.
 넉백은 기존 이동 거리·이동 시간의10%(V0.51m/217ms, ALT_V1.6m/150ms)이며 별도 CC 시간은 유지한다.

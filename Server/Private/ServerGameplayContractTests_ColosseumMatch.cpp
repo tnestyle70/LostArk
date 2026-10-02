@@ -291,8 +291,11 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
     tests.Require(state.Players.size() == 14u && state.ePhase == COLOSSEUM_MATCH_PHASE::LOADING &&
         std::count_if(state.Players.begin(), state.Players.end(), [](const auto& p) { return p.bParticipant; }) == 4,
         "Persistent initial state marks only four humans as participants");
-    const auto expectedReferenceHp = source->m_GameplayCatalog.Find_Boss("BOSS_VALTAN")->iMaximumHp;
+    const auto expectedReferenceHp = source->m_GameplayCatalog.Find_Boss("BOSS_VALTAN")->Get_DamageReferenceHp();
     const auto expectedMatchHp = expectedReferenceHp / 8u + (expectedReferenceHp % 8u ? 1u : 0u);
+    tests.Require(expectedReferenceHp == 741285439u && expectedMatchHp == 92660680u &&
+        source->m_GameplayCatalog.Find_Boss("BOSS_VALTAN")->iMaximumHp == 2100000000u,
+        "New Colosseum admission preserves its original HP and damage scale when raid Valtan HP increases to 2.1 billion");
     tests.Require(std::all_of(room->m_Players.begin(), room->m_Players.end(), [expectedMatchHp, expectedReferenceHp](const auto& value) {
         return value.second.iMaximumHp == expectedMatchHp && value.second.iColosseumDamageReferenceHp == expectedReferenceHp && !value.second.isCombatReady &&
             (!value.second.Is_Human() || (value.second.Inventory.empty() && value.second.Purse.iSilver >= 77u));

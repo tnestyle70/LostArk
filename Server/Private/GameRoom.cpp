@@ -1583,6 +1583,7 @@ bool LostArk::Server::CGameRoom::Commit_NumericBalance(
         boss.iCurrentHp = ratio(boss.iCurrentHp, boss.iMaximumHp, profile->iMaximumHp, true);
         boss.iLastEvaluatedHealthBar = ratio(boss.iLastEvaluatedHealthBar, boss.iMaximumHealthBars, profile->iMaximumHealthBars, false);
         boss.iMaximumHp = profile->iMaximumHp; boss.iMaximumHealthBars = profile->iMaximumHealthBars;
+        boss.iDamageReferenceHp = profile->iDamageReferenceHp;
         boss.iAttackPower = profile->iAttackPower; boss.fCollisionRadius = profile->fCollisionRadius;
         boss.fEngageDistance = profile->fEngageDistance; boss.fMoveSpeed = profile->fMoveSpeed;
         const auto commonStagger = m_GameplayCatalog.Active().Get_RaidStaggerMaximum();

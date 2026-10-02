@@ -471,6 +471,8 @@ namespace LostArk::Server
 		std::uint32_t iStunEndTick = 0;
 		std::uint32_t iCurrentHp = 1;
 		std::uint32_t iMaximumHp = 1;
+		// Server-only profile scale for bar damage; zero follows actual maximum HP.
+		std::uint32_t iDamageReferenceHp = 0;
 		std::uint32_t iMaximumHealthBars = 1;
 		std::uint32_t iLastEvaluatedHealthBar = 1;
 		std::uint8_t iPhase = 1;

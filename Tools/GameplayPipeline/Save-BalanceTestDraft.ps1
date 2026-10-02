@@ -18,7 +18,7 @@ $domains = @{
         'actionDurationMs','hitTimeMs','movementDistance','maximumRange'))
     'Data/Balance/DamageProfiles.json' = @('profiles', 'damageProfileId', @('damageRatePercent'))
     'Data/Balance/BossProfiles.json' = @('bosses', 'archetypeId', @(
-        'maximumHp','maximumHealthBars','attackPower','collisionRadius','engageDistance','moveSpeed'))
+        'maximumHp','damageReferenceHp','maximumHealthBars','attackPower','collisionRadius','engageDistance','moveSpeed'))
 }
 $profilePath = 'Data/Balance/Profiles/Retail.balanceprofile.json'
 $profileDomains = @{
@@ -26,7 +26,7 @@ $profileDomains = @{
     'players' = @('players', 'characterClass', @('maximumHp','maximumResource','resourceRegenPerSecond','attackPower','defense','criticalChancePercent','criticalDamagePercent'))
     'skills' = @('skills', 'skillId', @('cooldownMs','resourceCost','staggerDamage','partDamage'))
     'damageProfiles' = @('damageProfiles', 'damageProfileId', @('attackCoefficientBp','damageAddend','damageSpreadPercent','bossHealthBarDamage'))
-    'bosses' = @('bosses', 'archetypeId', @('maximumHp','maximumHealthBars','attackPower'))
+    'bosses' = @('bosses', 'archetypeId', @('maximumHp','damageReferenceHp','maximumHealthBars','attackPower'))
 }
 $draft = Get-Content -LiteralPath $DraftPath -Raw -Encoding UTF8 | ConvertFrom-Json
 if ($draft.schema -cne 'lostark.balance-test-draft' -or $draft.formatVersion -ne 1 -or

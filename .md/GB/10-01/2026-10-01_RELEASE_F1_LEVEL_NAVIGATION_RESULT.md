@@ -70,3 +70,18 @@ Clean/Rebuild, Client/UI 실행, JSON·Resources publish는 수행하지 않았�
 
 사용자는 새 실행 파일에서 F1 → Level Navigation의 일곱 목적지와 Server 실패 시 Entry
 문구를 확인한다. 실제 화면·버튼 이동 성공은 아직 판정하지 않았다.
+
+## G04. Deploy 피킹 수정 배포본에서 F1만 복원
+
+촬영용 숨김 뒤 사용자의 재요청으로 MainApp.cpp의 F1 토글과 허브 렌더를
+Debug/Release 공통으로 복원했다. F7 처리·Profiler 창·화면 FPS는 Debug 제한을 유지하고
+Release에서 열 수 없는 Composition Profiler 버튼 및 F7 안내는 숨긴다.
+기본은 닫힘이며 텍스트 입력·포커스 guard와 기존 Debug 전용 저작 도구 경계는 유지한다.
+제품 변경은 MainApp.cpp 한 파일의 전처리 경계와 안내문뿐이며 UTF-8/CRLF를 보존했다.
+
+기존 Deploy 피킹 수정과 후속 발탄 HP 기준 분리를 포함한 Release Product 빌드는
+PASS다. MainApp.cpp를 실제 컴파일하고 Client.exe를 링크했으며 마지막 증분 확인
+receipt는 `out/BuildPipeline/runs/20261001T024301377Z-release-product.json`이다.
+로그는 `out/ReleaseF1Restore20261001/product-release.log`, `product-final.log`다.
+새 ZIP 결과는 HP 기준 분리 RESULT에 함께 기록한다. 사용자 승인으로 재실행된
+Release Server PID48360을 종료했으며 Client/UI는 실행하지 않았다.
