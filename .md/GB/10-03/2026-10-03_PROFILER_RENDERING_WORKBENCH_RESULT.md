@@ -1,0 +1,264 @@
+# Profiler 상세 계측·프레임 비교와 Rendering Workbench 구현 결과
+
+## G00. 반영 범위와 Git 동기화
+
+2026-10-03, 최초 확정 범위는 **확장 설계 + Profiler 구현**이었다. 이후 사용자가 프레임 차이·
+쿠크 2관문/빙고의 구조 비교와 Workbench의 실제 A/B·수치 튜닝·개념 설명까지 구현을 요청했다.
+`GPU GEN`은 `GPU Gems` 자료 모음으로 확인했다.
+최초 Profiler는 실제 Engine 수집, Debug F7 표시, JSON 저장까지 연결했다.
+추가 요청의 반영 범위는 아래 후속 절에서 구분한다.
+[구현 계획서](2026-10-03_PROFILER_RENDERING_WORKBENCH_IMPLEMENTATION_PLAN.md)에 현재 옵션 실험과
+새 renderer 기반 도입을 분리했다. GI·Lumen·Nanite 같은 renderer가 이번 변경에 구현된 것은 아니다.
+
+사용자의 후속 요청에 따라 `origin/main`을 fetch하고 `dc3a482d424b5d1317a1adb196843e3a97253388`
+기준으로 **`GB/Advanced-Rendering-Profiler-WorkBench`** 브랜치를 만들었다.
+`abeac743a`의 차원술사 가이드 건물 출입 동행·연결된 착지 수정, Bern Navigation 복구,
+Movie 성능 및 Profiler CaptureWindow·SelfComplete 변경을 함께 수신했다.
+기존 Profiler 작업과 겹친 네 파일은 양쪽 계약을 보존해 병합했다.
+
+동기화 전에 기존 추적 변경과 미추적 자료를 별도 사본 및
+`safety/2026-10-03-profiler-before-main-sync` stash
+(`18f8a3a12e6270f98941ae17ec6aabf84e012c9d`)로 보존했다. 기존 미추적 파일 18개의
+원본 바이트와 shader 입력 664개의 바이트·수정 시각이 동기화 과정에서 유지됐음을 확인했다.
+사용자 `.gitignore`, 개인 문서, 저작 backup·retired 자료는 이 기능의 변경에 포함하지 않는다.
+
+## G01. 실제 구현한 계측
+
+| 경계 | 반영 내용 | 수치의 의미와 한계 |
+|---|---|---|
+| 한 프레임 시간 | CPU 시작·종료 tick, 이전 CPU 시간, 프레임 밖 간격 | 시작 간격 = 이전 CPU 처리 + 이전 종료부터 현재 시작까지의 간격. 현재 CPU 시간과 잘못 합산하지 않는다. |
+| CPU 병목 | 기본 main-thread Self 내림차순, inclusive·worker 선택, 계측된 시간 합집합과 나머지 표시 | 중첩 구간과 worker를 프레임 시간에 중복 합산하지 않는다. 누락 표본이 있으면 SelfComplete를 따르고 Self는 `--`, 정렬은 inclusive로 전환한다. |
+| GPU 병목 | 패스별 전체·Self·P95·최대, IA 정점·primitive, VS·PS 호출 | timestamp와 query가 유효한 프레임만 집계한다. GPU elapsed는 순수 연산 포화율이나 FLOPs가 아니다. |
+| 패스 작업량 | GPU scope begin/end의 draw·instanced draw·instance·index·mesh 누계 차이 | CPU에서 제출한 작업량이며 GPU 결과의 원래 frame ID에 귀속한다. 부모 패스는 자식 제출도 포함한다. |
+| 메시 | CMesh 실제 draw 지점의 호출·인스턴스·인덱스·프레임 고유 mesh 수 | 일반 draw의 mesh instance는 1이다. index는 instance를 곱한 제출량이며 최종 가시 삼각형 수가 아니다. |
+| 직접광 | `Render.Lights.WorldReceivers`, `Render.Lights.CharacterReceivers` CPU/GPU 구간 | 월드와 초상에서 사용하는 실제 Light_Manager 경계를 분리한다. 개별 광원의 shader 명령 비용을 산출한 것은 아니다. |
+| JSON | 기존 `LostArkProfilerCapture.v3`에 시간·패스·mesh 필드와 `measurementSemantics` 추가 | 기존 필드·CaptureWindow·비동기 원자 저장을 보존한다. 비정상 시간값이면 이전 저장 파일을 유지한다. |
+
+고유 mesh 집계는 프레임마다 고정 hash table을 재사용한다. 최대 16,384개 이후에는
+고유 개수를 하한값으로 표시하고 누락 수를 기록하며 제출 총량은 계속 누적한다.
+메시 주소는 프레임 내부 중복 제거에만 사용하고 JSON으로 내보내지 않는다.
+추가 counter 다섯 개를 포함해 총 88개 counter의 저장 이름과 enum 크기를 정적으로 확인한다.
+
+기존 캡처 OFF, GPU query ring, 비동기 DONOTFLUSH 읽기와 이력 상한을 유지한다.
+draw마다 query·동기 readback을 추가하지 않았다. 기본 고유 mesh 집계는 고정 table이며,
+추가 상세 목록은 bounded vector와 최초 이름 등록 비용이 있으므로 상세 OFF와 구분해 측정한다.
+패스별 index에는 기존 indirect의 실제 실행량을 추측해 넣지 않는다. 기존 indirect LOD0 상한은
+예약 counter이며 현재 제출 생산자가 없어 미계측이다. Engine 밖 ImGui/DirectXTK 내부 draw는 이 제출 counter에 포함되지 않는다.
+
+## G02. 한국어 화면과 사용 순서
+
+Debug F7의 첫 탭에 `한 프레임 해석`을 두고 CPU/GPU 비용, 프레임 밖 간격, 메시와 조명
+작업량의 의미를 함께 표시한다. CPU·GPU·작업량·긴 작업 표와 저장 범위 안내는 한국어로
+표현하고, `World.Render` 등 원래 scope ID는 코드 검색을 위해 유지했다.
+검색은 한국어 설명과 영문 scope ID 모두 사용한다.
+생산자가 없는 texture cache counter는 0을 측정 성공처럼 표시하지 않고 미계측으로 안내한다.
+
+`ProfilerTool.cpp`의 기존 UTF-8 BOM 없는 파일 인코딩을 유지하고 해당 컴파일 항목에
+`/utf-8`, PCH 미사용을 설정했다. 새 기법 사전 header와 프로젝트 등록은 G05에 기록한다.
+Release의 F7 비활성 계약과 저장된 rendering quality는 변경하지 않았다.
+
+사용자 확인 순서는 다음과 같다.
+
+1. 새 Debug Client에서 F7을 열고 `수집(Capture)`을 켠다.
+2. 같은 장면·카메라에서 수집한다. 계측 오버헤드를 비교할 때는 상세 수집과 창 표시 상태도 고정한다.
+3. `한 프레임 해석`, CPU 병목, GPU 병목 및 패스 작업량에서 시간과 제출량을 확인한다.
+4. 이름 있는 JSON을 저장하고 저장 범위·잘린 이력·GPU pending 상태를 함께 확인한다.
+
+Client 실행·UI 조작·화면 판정은 수행하지 않았다. 위 입력 순서와 한글 font 표시·창 배치의
+최종 확인은 사용자가 직접 한다. 자동 WARP 검증은 실제 게임 FPS나 조명 품질 검증이 아니다.
+
+## G03. 최초 Profiler 구현 checkpoint 검증
+
+| 검증 | 실제 결과 | 근거 |
+|---|---|---|
+| Debug Product 정상 증분 빌드 | Engine → Shared → Server → Client 모두 PASS, exit 0 | `out/BuildPipeline/runs/20261002T192648304Z-debug-product.json`, `out/Profiler20261003/product-debug.log` |
+| 기존 Profiler 분석기 | Python unittest 6개 PASS | `python -m unittest discover -s Tools/Profiler -p 'test_*.py'` |
+| Bern Navigation 공식 Validate | root, Bern, Bern2, Bern3, BernSea 모두 PASS | `out/Profiler20261003/nav-validate.log` |
+| 수신한 nav 파일 보존 | 변경된 source/runtime 8개 파일이 동기화 HEAD와 동일 | `out/Profiler20261003/final-structure.json` |
+| 프로젝트 구조 | Client vcxproj·filters XML parse, 기존 항목의 UTF-8/PCH metadata 확인 | 같은 구조 receipt |
+
+Product 빌드는 약 185초 걸렸고, 실제 산출물은 Engine OBJ 38개·binary 2개,
+Client OBJ 228개·binary 2개가 갱신됐다. 강제 Clean/Rebuild나 전체 데이터 publish는 하지 않았다.
+기존 헤더의 코드 페이지 경고와 DirectXTK debug PDB 부재 경고는 남았고 컴파일·링크 오류는 없다.
+Product의 파일·Navigation 참조 및 Item/Valtan catalog 검사는 전체 runtime·실제 플레이 검증을 뜻하지 않는다.
+
+동기화 전 실제 Engine Profiler/CaptureIO를 연결한 headless WARP probe의 30개 검사가 통과했다.
+중첩 Self, 동일 이름 합산과 부재 프레임, 지연 GPU의 원래 frame 귀속, 실제 IA 입력 9개·primitive 3개,
+mesh 제출/instance/index, 고유 수 상한, worker no-op, capture OFF drain, reset/deferred reset,
+이전 CPU+gap 관계와 JSON roundtrip을 확인했다. NaN 저장 실패 시 이전 파일 보존·임시파일 0개도 확인했다.
+동기화 후 동일 제품 소스로 재컴파일한 추가 회귀 결과는 아래 G03-1에 기록한다.
+
+## G03-1. 동기화 후 계측·저장 회귀
+
+동기화된 실제 Engine/CaptureIO를 재컴파일하고 **41개 검사, failures 0**을 확인했다.
+CPU scope overflow가 있는 선택 범위는 모든 이름의 SelfComplete가 false이며, 누락 프레임을
+제외한 깨끗한 마지막1프레임에서는 true로 복구된다. CaptureWindow의0/1개 선택·이력 제외·최대
+간격·경계·초기화와 JSON의 captureWindow+measurementSemantics 동시 보존도 통과했다.
+
+device 없는 CPU 저장 검증에서1,202프레임을 생성하여 retained1,200/evicted2를 확인했다.
+초기 GPU를 붙인 eviction stress는 지연되어 소유한 out probe만 종료한 뒤 CPU 전용으로 교체했다.
+이 검사를 GPU eviction 성공이라고 기록하지 않는다.
+근거는 `out/Profiler20261003/post-sync/post_sync_receipt.json`, `run_probe.log`,
+`capture_json_receipt.json`이다. 이것은 추가 비교 UI/reader와 Workbench 변경 전의 계측 checkpoint다.
+
+## G04. 현대 기법의 개념·확장 설계
+
+계획서에는 현재 D3D11 renderer와 저장 profile의 실제 소비 경로, 본질 기준의 임시 세션 적용,
+owner/generation에 따른 복원, A/B 변수 whitelist·조건 fingerprint, 반복·warmup·GPU pending,
+수치 sweep와 결과 비교 계약을 정리했다. 현대 기법은 개선하는 현상·연산 비용·조절 변수·필요
+입력·현재 지원 여부와 공식 자료를 연결했다.
+
+GI의 baked/probe/screen-space/ray 방식, Lumen, SSR·planar·ray reflection, CSM·VSM,
+GTAO, clustered/Forward+·MegaLights, Nanite, TAA·TSR·업스케일링, volumetric,
+재질·투명·후처리와 path tracing을 서로 구분한다. GI는 문제 영역이고 Lumen은 여러 입력·추적·
+cache·시간 누적을 묶은 구현이라는 점을 명시했다. 현재 엔진에서 명칭만 같은 toggle로 대체하지 않는다.
+
+현재 rendering 설정·profile·게시 데이터는 그대로 유지했다. 본질 기준과 일반 변수 실험 도구의
+추가 구현은 후속 절로 기록한다. 새 현대 기법의 GPU 구현과 실제 게임 성능 비교는 별도 범위다.
+팀 LAN 계약은 수신한 main에서도 2026-10-02에 만료됐으므로 만료 우회나 endpoint 임의 변경을 하지 않았다.
+
+## G05. 실제 draw 목록과 개념 사전
+
+사용자의 “어떤 draw call이 불리는가” 요청에 맞춰 `CMesh::Render/Render_Instanced` 실제 제출
+지점에서 상세 표본을 추가했다. `FProfilerMeshDrawSample`은 가장 안쪽의 계측된 GPU 패스,
+메시 표시 이름, 재질 슬롯, geometry 정점, 인스턴스당 index와 instance를 보관한다.
+GPU 패스가 없거나 패스 누락이 있으면 미관측으로 표시한다. 이름을 global asset/placement
+identity로 사용하지 않고, raw pointer는 내보내지 않는다.
+
+상세 수집 OFF에서는 이 목록을 만들지 않는다. ON에서는 프레임당512개까지 순서대로 기록하고
+`DroppedMeshDraws`에 초과 수를 기록한다. 총 draw/mesh/index counter는 상한 뒤에도 계속
+계수한다. 개별 draw timestamp는 추가하지 않았고 개별 draw GPU ms를 추정해 표시하지 않는다.
+
+실제 Profiler를 연결한 별도 WARP probe **11개 검사, failures0**:
+OFF 총량 보존·trace 없음, ON 중첩 패스/이름,512상한+초과2, 인스턴스당 index·material slot,
+패스 없음, worker/null/zero-instance 무시, 다음 프레임 초기화와 reset을 확인했다.
+근거는 `out/Profiler20261003/compile_mesh_trace.log`, `run_mesh_trace.log`다.
+
+`RenderingTechniqueGuide.h`는 Workbench에서 검색·선택하는 읽기 전용 기법 사전이다.
+GPU Gems, PBR·RNM·IBL, SSAO/GTAO·PCF, SSGI·probe GI·SSR·Lumen, RTX/DXR·path tracing,
+TAA/TSR·DLSS/FSR/XeSS·ray reconstruction·frame generation, 다광원·Nanite·VSM,
+volume·투명/OIT·재질/SSS·DOF·VRS·파티클·굴절·texture streaming·지형 기법을 설명한다.
+각 항목은 현재 적용 범위, 조절 변수, 연산 부담, A/B 관찰법과 공식 URL을 함께 제공한다.
+미구현 기술은 추가 입력/패스 또는 backend/SDK가 필요하다고 표시하며 실행 토글을 만들지 않았다.
+
+기존 파일들의 UTF-8/원래 BOM 상태와 CRLF를 보존했고 새 header는 UTF-8 BOM 없이 작성했다.
+Client 프로젝트와 기존 Rendering filter에 header를 등록하고 호출 CPP의 UTF-8 실행 인코딩을 명시했다.
+
+## G06. 실제 SSAO·PCF 품질 변수
+
+`Engine_RenderTypes.h`, `Renderer.cpp`, `Shadow.cpp`, `Shader_Deferred.hlsl`의 기존 경로를 확장했다.
+SSAO sample 수4/8/12는 고정 수로 specialize한 kernel을 uniform branch로 고른다.
+PCF radius0/1/2는 directional shadow와 dynamic baked shadow 비교에1/9/25개 위치를 사용한다.
+후자는 위치당 complete/static depth를 각각 읽어2/18/50 fetch다. 기본12/radius1, source hair의
+별도 filter 및 baked asset은 유지한다. 범위 밖 값은 renderer/shadow commit 전에 거부한다.
+
+실제 HLSL을 headless D3D11 WARP의32×32 RGBA32Float target에서 비교했다.
+기존 SSAO12·PCF radius1·dynamic baked radius1은 모두 **bitwise 동일, 최대 차이0**이었다.
+SSAO4/8/12는 구별되는 finite 출력을 만들고 PCF0/1/2는 CPU tap oracle과 일치했다.
+uniform SSAO 선택과 bounded PCF loop가 실제 bytecode에 존재함도 확인했다.
+실제 전체 `fx_5_0`과 SSAO `ps_5_0` 컴파일도 통과했다.
+
+shader/WARP20개와 validation20개, 합계 **40개 검사, failures0**이다. validation은 제품
+Renderer 검증 함수를 그대로 추출해 실행하고 실제 Shadow Apply의 invalid/disabled/기존상태
+보존을 확인했다. 이 국소 검사는 전체 Renderer 실행이나 실제 GPU 성능 향상 판정이 아니다.
+근거는 `out/Profiler20261003/shader-quality/shader_warp_receipt.json`,
+`validation_receipt.json`, `shader_probe.log`, `validation_probe.log`, `compile_shader.log`다.
+
+Product의 기존 `Engine/Bin/ShaderFiles → EngineSDK/hlsl → Client/Bin/ShaderFiles` 배포가
+추적 중인 Client deferred HLSL 사본도 갱신했다. Engine 정본과 바이트 hash가 같은 소스 사본을
+함께 전달하며 컴파일된 CSO·EngineSDK·EXE/DLL은 커밋에서 제외한다.
+
+## G07. 이전 프레임과 쿠크 2관문·빙고 기준 비교
+
+Debug F7의 `프레임 변화` 탭에서 `최신 완료 프레임 따라가기` 또는 `현재 창 다시 가져오기`로
+완료 프레임을 가져오고 `보관 프레임 위치`를 선택한다. 선택 B와 바로 이전 보관 A의 실제 frame
+number·GPU 상태를 비교한다. 번호가 연속이 아니면 그 사실을 표시한다. `CPU·GPU 비용`,
+`draw·메시·광원·컬링 작업량`, `선택 프레임 메시 draw`를 분리해 시간과 작업량을 함께 본다.
+고정 CpuWork 이름·호출·시간 및 Animation 갱신/미제출 모델·시간·누락도 상세 OFF에서 비교한다.
+
+`기준 A/B`에서 `A 이름`/`B 이름`을 쿠크 2관문·빙고 등으로 정하고 `현재 수집창 → A/B`로
+각 장면을 보관한다. 기준은 새 수집·Reset 후에도 실행 중 유지된다. `저장 JSON`에서 파일을
+고르고 `선택 JSON → A/B`로 과거 캡처를 읽는다. 상단 저장은 버튼을 누른 시점의 수집창이며
+이미 보관한 A/B의 별도 export는 아니다. 시간·작업량 표는 B−A 증가순으로 정렬한다.
+
+`비교 조건·수집 범위`는 장면·카메라·viewport·FPS cap·실효 품질·환경/LUT 식별자·상세 계측과
+GPU 유효 분모를 보여준다. Profiler 기준의 조건은 보관/저장 시점 표본이므로 과거 모든 프레임의
+동일 조건을 보장하지 않는다. 이 비교는 장면의 구조 차이를 찾는 용도이며 자동 인과 판정이 아니다.
+쿠크 2관문과 빙고의 실제 새 캡처·게임 FPS 비교는 사용자가 수행할 항목으로 남아 있다.
+
+Reader는 즉시 자식 regular JSON만 읽고 최대32MiB·1,200프레임·150,000 scope·깊이24·파싱값
+150만 개로 제한한다. 파일 identity 재검증, 비정상 수치·형식 거부와 임시 결과의 완성 후 교체로
+실패 시 기존 기준을 보존한다. 이전 형식의 없는 필드는 미계측이며 0으로 대체하지 않는다.
+동기식 파일 읽기·분석 프레임은 성능 실험에서 제외하도록 안내한다.
+
+최종 native 비교 회귀 **66개, failures0**은 NameId/main-thread 번호 변경, CPU self/상세OFF,
+고정 작업·Animation, 인접 frame과 창 평균 분리, GPU 원래 frame/pending/partial 분모,
+메시·설정 roundtrip, 구형 필드 부재, 비정상 입력·제한·파일 identity 실패 시 기준 보존을 확인했다.
+형제 overlap·depth 건너뜀·부모 없는 depth는 수정 전3개 실패를 재현한 뒤 self 미계측으로 보완했다.
+부모 범위 이탈도 미계측이며 inclusive 관측은 유지한다. 전체 파일을 임의 거절하지 않는다.
+기존 native41개와 실제 Save_Json roundtrip도 최신 writer로 통과했다. 최종 hierarchy 보완은 reader
+내부 변경이며 그 뒤66개를 다시 통과했다. 근거는 `out/Profiler20261003/comparison/`의
+`comparison_receipt.json`, `comparison_hierarchy_before.log`, `comparison_run.log`,
+`regression_run.log`, `verify_capture_json.py`, `compile_ui.log`다.
+
+## G08. 실제 세션 A/B·반복·수치 sweep
+
+Workbench의 `현재 품질을 A로 보관하고 실험 시작`은 현재 실효값을 A/B에 보관한다.
+32개 typed 변수를 기존 renderer 경로에 임시 적용하며, 본질 기준 B는 SSAO·Bloom·FXAA·LUT·fog를
+끄고 재질·직접광·baked/IBL·그림자·tone·접근성 설정을 보존한다. 본질 기준이 간접광 전체 OFF나
+모든 장면의 정답이라는 뜻은 아니다. SSAO4/8/12·PCF0/1/2는 실제 shader 품질 실험이다.
+
+A/B1~8회 반복은 AB/BA 순서를 교대한다. 준비0~120프레임 후10~900프레임을 측정하고 GPU 결과는
+최대64프레임 추가 poll 후 pending으로 남긴다. 단일 변수 sweep은 A 기준과 최대9개 값을 같은
+순서로 측정한다. 연속값2~9점, bool0/1, SSAO4/8/12, PCF0/1/2의 유효값만 허용한다.
+CPU/GPU와 interval의 평균·중앙·P95·P99·최대, draw·mesh·index·패스 차이를 기록한다.
+
+선택 변수만 제외한 공통 조건과 실제 조건을 별도로 보관한다. 카메라·해상도·profile/region·
+light·Video·debugger·Profiler 상세 상태가 바뀌면 비교를 제외하며 GPU pending을0ms로 비교하지
+않는다. animation·Server gameplay를 결정적으로 재생하는 기능은 없으므로 안정된 입력의 run도
+탐색 측정이다. 결과는 `LostArkRenderingBenchmark.v2` JSON으로 비동기 저장한다.
+
+ProfileService가 매 프레임 기존 overlay를 복원한 뒤 원래 환경/Video/연출 경로를 적용하고
+새 overlay를 마지막에 적용한다. 종료·창 닫기·Level/region/profile/Video 변경 시 실험을 해제한다.
+복원은 소유 필드와 실험 때문에 정규화된 보조값만 처리하고 다른 편집·새 owner를 보존한다.
+실험 중 기존 저작/저장/publish 컨트롤은 비활성화한다. catalog와 저작·게시 JSON은 바꾸지 않았다.
+
+Workbench native contract **39개**, 조건 fingerprint **11개**, 합계 **50개, failures0**을 확인했다.
+32필드 검증·단일 mask·다른 품질/접근성/fog/그림자 pose/PBR 편집 보존·새 PBR owner·sample
+경계/P99·GPU pending·partial scope·JSON 새 파일 저장을 검사했다. Shadow OFF의 descriptor
+정규화는 비기본width80·눈/목표·bias를 이용해 OFF→ON→OFF와 최신 보조값 편집 보존을 확인했다.
+sweep는 A와 같은 값도 동일 mask를 유지하고, 측정 종료 후 사용자가 새로 시작한 F7 수집은 나중의
+실험 종료가 끄지 않는다. 조건 검사에는 debugger·상세 수집·viewport·카메라와 shadow 정규화
+기준이 포함된다. 소유 CPP 두 개의 Debug/Release 집중 컴파일도 각각 통과했다.
+
+이 검증은 제품 함수를 사용하는 out 전용 probe와 stub 상태로 경계를 확인한 국소 검증이다.
+실제 게임 장면의 프레임 성능·수동 슬라이더 조작·화면 품질 PASS로 확대하지 않는다.
+JSON9개 검사도 schema·한국어/control escape·32필드·pending·delta/null·무효 run 제외·scope를
+확인했다. 근거는 `out/Profiler20261003/workbench/`의 `validation_receipt.json`, `probe.log`,
+`fingerprint_probe.log`, `compile.log`, `compile_release.log`, `probe_final.json`이다.
+
+## G09. 확장 전체의 최종 검증과 남은 확인
+
+최종 소스의 `Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product`는
+**PASS, exit0, 353,025ms**다. Engine·Shared·Server·Client 모두 통과했고 변경한 deferred shader와
+공유 파생 shader를 정상 최적화 옵션으로 컴파일·배포했다. Client 단계는 OBJ159·CSO29·binary2
+갱신을 보고했다. 근거는 `out/BuildPipeline/runs/20261002T202358617Z-debug-product.json`과
+`out/Profiler20261003/product-final-debug.log`다. 앞의 G03 최초 checkpoint를 대체하는 최종
+통합 컴파일 증거이며, 실제 게임 플레이 검증은 아니다.
+
+기존 Effects deprecated·일부 shader 잠재 미초기화/pow 경고, 기존 헤더의 코드 페이지 경고와
+DirectXTK debug PDB 부재 경고가 남았다. 컴파일·링크 오류는 없고 경고를 숨기기 위해 제품
+옵션을 바꾸지 않았다. Build runner는 파일·Navigation 참조·Item/Valtan catalog를 확인했으며
+전체 데이터 publish나 Client/Server 실행을 하지 않았다.
+
+최종 Python Profiler 분석기6개, Client project/filters XML parse와 guide 단일 등록,
+한국어 CPP의 UTF-8/PCH metadata, 기존 C++/HLSL 인코딩·BOM·줄바꿈 보존, 양쪽 deferred source
+hash 동일 및 `git diff --check`를 확인했다. 구조 근거는
+`out/Profiler20261003/final-extension-structure.json`이다. Data와 Client/Server DataFiles는
+변경하지 않았고 사용자 `.gitignore`·개인 문서·backup/retired 파일을 보존했다.
+
+사용자 화면 확인은 Debug F7의 한국어 글꼴·표·이전 프레임, 쿠크2관문/빙고의 명명 A/B 저장·
+불러오기와 Workbench의 A/B·sweep·닫기 복원 순서다. 현재 같은 조건에서 새로 측정한 두 장면의
+성능 차이, GPU 장치별 품질/속도 개선, Lumen/DXR/Nanite 같은 새 renderer 구현은 완료로
+기록하지 않는다. 이번 변경은 상세 계측·구조 비교·현재 renderer의 실제 수치 실험과 현대 기법
+설명/도입 설계를 제공한다.

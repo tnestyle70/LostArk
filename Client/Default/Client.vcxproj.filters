@@ -1069,6 +1069,9 @@
     <ClInclude Include="..\Public\RenderingBenchmark.h">
       <Filter>03. Tools\10. Rendering</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\RenderingTechniqueGuide.h">
+      <Filter>03. Tools\10. Rendering</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\BossCompositionDocument.h">
       <Filter>03. Tools\05. Sequencer</Filter>
     </ClInclude>

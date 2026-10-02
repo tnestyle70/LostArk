@@ -342,6 +342,15 @@ void CMesh::Build_SkinPalette(const vector<shared_ptr<class CBone>>& Bones,
     }
 }
 
+HRESULT CMesh::Render()
+{
+    const HRESULT result = CVIBuffer::Render();
+    if (result == S_OK)
+        if (CProfiler* profiler = CGameInstance::Get().Get_Profiler())
+            profiler->Record_MeshSubmitted(this, m_iNumIndices, 1, m_szName, m_iNumVertices, m_iMaterialIndex);
+    return result;
+}
+
 HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 	uint32_t iInstanceStride, uint32_t iNumInstances,
 	uint32_t iInstanceByteOffset, const MESH_SCREEN_LOD_DESC* screenLod)
@@ -433,6 +442,9 @@ HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
         selection.firstIndex,
         0,
         0);
+
+    if (CProfiler* profiler = CGameInstance::Get().Get_Profiler())
+        profiler->Record_MeshSubmitted(this, selection.indexCount, iNumInstances, m_szName, m_iNumVertices, m_iMaterialIndex);
 
 	return S_OK;
 }

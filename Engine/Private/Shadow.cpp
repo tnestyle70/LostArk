@@ -83,10 +83,14 @@ CShadow::~CShadow()
 
 HRESULT CShadow::Apply_Shadow_Light(const SHADOW_LIGHT_DESC& ShadowLightDesc)
 {
+    // Validate the experiment even while disabled, before changing active state.
+    if (ShadowLightDesc.Settings.iPCFFilterRadius > 2u) return E_INVALIDARG;
+
 	if (!ShadowLightDesc.Settings.bEnabled)
 	{
 		SHADOW_LIGHT_DESC Disabled{};
 		Disabled.Settings.bEnabled = false;
+        Disabled.Settings.iPCFFilterRadius = ShadowLightDesc.Settings.iPCFFilterRadius;
 		m_ShadowLightDesc = Disabled;
 		XMStoreFloat4x4(
 			&m_TransformMatrices[ETOUI(D3DTS::VIEW)],
@@ -154,6 +158,9 @@ HRESULT CShadow::Bind_LightingShaderResources(shared_ptr<class CShader> pShader)
 			"g_fShadowNormalBias", &Settings.fNormalBias,
 			sizeof(Settings.fNormalBias))) ||
 		FAILED(pShader->Bind_RawValue(
+            "g_iShadowPCFFilterRadius", &Settings.iPCFFilterRadius,
+            sizeof(Settings.iPCFFilterRadius))) ||
+        FAILED(pShader->Bind_RawValue(
 			"g_fShadowStrength", &Settings.fStrength,
 			sizeof(Settings.fStrength))) ||
         FAILED(pShader->Bind_RawValue("g_fDynamicBakedShadowStrength",
