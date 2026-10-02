@@ -27,6 +27,7 @@ public:
 	static int Run_ColosseumOnly();
     static int Run_RoomPing();
     static int Run_BattleItemsOnly();
+    static int Run_CharacterStateOnly();
     static int Run_ShowtimeBombs();
     static void Run_InannaProtection(TESTS& tests, const CGameplayCatalog& catalog);
     static int Run_KoukuDiceDamageContracts();

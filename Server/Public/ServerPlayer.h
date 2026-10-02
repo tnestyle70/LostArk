@@ -677,5 +677,6 @@ namespace LostArk::Server
 		/* True only from the fresh-entry grant until the first inventory change or the
 		   one C2S_RESTORE_CHARACTER; a world transfer that carries inventory never sets it. */
 		bool bRestoreAvailable = false;
+		std::uint32_t iLastEquipmentUpgradeSequence = 0u;
 	};
 }

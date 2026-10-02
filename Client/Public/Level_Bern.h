@@ -258,6 +258,7 @@ private:
 	updating so the closing connection is not reported as a loss. */
 	bool_t m_bReturningToCharacterSelect = false;
 	bool_t m_bCharacterRestoreSent = false;
+	f32_t m_fCharacterRestoreElapsed = 0.f;
 	std::vector<REPLICATED_PLAYER_VIEW> m_NameplatePlayers;
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
 	CPartyInteractionView m_PartyInteraction;

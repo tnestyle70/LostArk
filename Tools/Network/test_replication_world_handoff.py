@@ -30,18 +30,46 @@ using bool_t = bool;
 struct CGameInstance {
     static CGameInstance& Get() { static CGameInstance instance; return instance; }
     int Get_Profiler() { return 0; }
+    unsigned Get_CurrentLevelID() { return Level; }
+    void Stop_LoopingSound() { ++StoppedSounds; }
+    unsigned Level = ETOUI(LEVEL::BERN), StoppedSounds = 0;
 };
 struct CCharacterSelectionState {
     static inline unsigned Captures = 0;
     static void Capture_ActiveWorldState() { ++Captures; }
     static bool Apply_RestoreResult(const S2C_RESTORE_CHARACTER_RESULT&) { return true; }
+    static void Apply_CaptureResult(const S2C_CAPTURE_CHARACTER_RESULT& result, std::uint64_t generation) { CaptureResult = result; CaptureGeneration = generation; }
+    static inline S2C_CAPTURE_CHARACTER_RESULT CaptureResult;
+    static inline std::uint64_t CaptureGeneration = 0;
 };
 struct CCombatHUDViewModel {
     static CCombatHUDViewModel& Get() { static CCombatHUDViewModel instance; return instance; }
     bool Initialize_Definitions() { return true; }
     void Apply_RestoredHonorTitle(HONOR_TITLE_ID) {}
+    void Apply_UpgradeEquipmentResult(const S2C_UPGRADE_EQUIPMENT_RESULT& result) { UpgradeResult = result; }
+    const S2C_UPGRADE_EQUIPMENT_RESULT& Get_UpgradeEquipmentResult() const { return UpgradeResult; }
+    const S2C_INVENTORY_SNAPSHOT& Get_Inventory() const { return Inventory; }
+    struct PLAYER { bool isValid = true; } Player;
+    const PLAYER& Get_Player() const { return Player; }
+    S2C_UPGRADE_EQUIPMENT_RESULT UpgradeResult;
+    S2C_INVENTORY_SNAPSHOT Inventory;
     void Set_InteractPromptTriggerId(const std::string&) {}
     void Apply_ServerNumericSnapshot(const std::vector<BALANCE_NUMERIC_ENTRY>&) {}
+};
+struct CLevel_Bern { static CLevel_Bern* Get_Active() { static CLevel_Bern bern; return &bern; } };
+struct UpgradeView { void Set_SlotVisible(const char*, bool) {} };
+double FixtureNow = 0.0;
+double Product_Now_Seconds() { return FixtureNow; }
+struct CMainApp {
+    void Update_ItemUpgradeServerResult();
+    std::uint32_t m_iPendingItemUpgradeRequest = 41;
+    std::string m_strItemUpgradeAttemptItemId = "EQUIP_SLAYER_HONORWHISPER_WEAPON";
+    EQUIPMENT_SLOT m_eItemUpgradeAttemptSlot = EQUIPMENT_SLOT::WEAPON;
+    bool m_bItemUpgradeResultUnavailable = false, m_bItemUpgradePendingAttemptSuccess = false;
+    std::uint16_t m_iItemUpgradeConfirmedLevel = 10;
+    double m_dItemUpgradeRequestDeadline = 5.0;
+    UpgradeView View;
+    UpgradeView* m_pItemUpgradeView = &View;
 };
 struct CLevelTransitionService {
     template<class... T> static void Report_Recovery(T&&...) {}
@@ -202,12 +230,54 @@ void HandlerClose() {
     Check(current.Update() && !net.Is_Connected() && current.Advances == 0, "handler close stops remaining generation work in this Update");
     Check(current.Update() && current.m_hasPendingConnectionLoss && current.Resets == 1, "handler close still reports disconnect next Update");
 }
+void EconomyConsumer() {
+    Begin(); CClientReplication current; Init(current);
+    S2C_UPGRADE_EQUIPMENT_RESULT upgrade; upgrade.iRequestSequence = 41; upgrade.iUpgradeLevel = 11;
+    upgrade.eResult = EQUIPMENT_UPGRADE_RESULT::SUCCEEDED;
+    S2C_CAPTURE_CHARACTER_RESULT capture; capture.iRequestSequence = 42;
+    capture.eResult = CHARACTER_CAPTURE_RESULT::CAPTURED; capture.iPlayerId = 7; capture.iNetEntityId = 9;
+    capture.eCharacterClass = CHARACTER_CLASS_ID::SLAYER; capture.iGold = 900;
+    Queue(Frame(PACKET_TYPE::S2C_UPGRADE_EQUIPMENT_RESULT, upgrade));
+    Queue(Frame(PACKET_TYPE::S2C_CAPTURE_CHARACTER_RESULT, capture)); net.Update();
+    Check(current.Update(), "production replication handles economy replies");
+    Check(Client::CCombatHUDViewModel::Get().UpgradeResult.iRequestSequence == 41, "upgrade result reaches HUD");
+    Check(Client::CCharacterSelectionState::CaptureResult.iGold == 900 &&
+        Client::CCharacterSelectionState::CaptureGeneration == net.Get_WorldInboundGeneration(), "capture reaches active generation consumer");
+}
+void UpgradeResultMatching() {
+    using namespace Client;
+    CGameInstance::Get().Level = ETOUI(LEVEL::BERN); FixtureNow = 0;
+    auto& hud = CCombatHUDViewModel::Get(); hud.Player.isValid = true; hud.Inventory = {}; hud.UpgradeResult = {};
+    INVENTORY_ITEM_SNAPSHOT item; item.strItemId = "EQUIP_SLAYER_HONORWHISPER_WEAPON";
+    item.iQuantity = 1; item.eEquippedSlot = EQUIPMENT_SLOT::WEAPON; item.iUpgradeLevel = 11;
+    hud.Inventory.Items.push_back(item);
+    hud.UpgradeResult.iRequestSequence = 40; hud.UpgradeResult.eWorldId = WORLD_ID::BERN;
+    hud.UpgradeResult.eResult = EQUIPMENT_UPGRADE_RESULT::SUCCEEDED; hud.UpgradeResult.iUpgradeLevel = 11;
+    CMainApp stale; stale.Update_ItemUpgradeServerResult();
+    Check(stale.m_iPendingItemUpgradeRequest == 41 && !stale.m_bItemUpgradePendingAttemptSuccess, "stale sequence cannot reveal success");
+    hud.UpgradeResult.iRequestSequence = 41; hud.UpgradeResult.eWorldId = WORLD_ID::VALTAN_ARENA;
+    stale.Update_ItemUpgradeServerResult();
+    Check(stale.m_iPendingItemUpgradeRequest == 41, "wrong world cannot reveal success");
+    hud.UpgradeResult.eWorldId = WORLD_ID::BERN; stale.Update_ItemUpgradeServerResult();
+    Check(!stale.m_iPendingItemUpgradeRequest && stale.m_bItemUpgradePendingAttemptSuccess &&
+        stale.m_iItemUpgradeConfirmedLevel == 11, "matching reply confirms replicated level without incrementing it");
+    Check(hud.Inventory.Items.at(0).iUpgradeLevel == 11, "presentation does not mutate inventory level");
+    hud.UpgradeResult.iUpgradeLevel = 12; CMainApp inconsistent; inconsistent.Update_ItemUpgradeServerResult();
+    Check(inconsistent.m_bItemUpgradeResultUnavailable && !inconsistent.m_bItemUpgradePendingAttemptSuccess,
+        "reply without matching inventory cannot show success");
+    hud.UpgradeResult.eResult = EQUIPMENT_UPGRADE_RESULT::REJECTED; CMainApp rejected; rejected.Update_ItemUpgradeServerResult();
+    Check(rejected.m_bItemUpgradeResultUnavailable && hud.Inventory.Items.at(0).iUpgradeLevel == 11, "rejection preserves inventory");
+    hud.UpgradeResult = {}; FixtureNow = 5.0; CMainApp timeout; timeout.Update_ItemUpgradeServerResult();
+    Check(timeout.m_bItemUpgradeResultUnavailable && !timeout.m_iPendingItemUpgradeRequest &&
+        hud.Inventory.Items.at(0).iUpgradeLevel == 11, "timeout preserves inventory and releases wait");
+}
 int main() {
     int failures = 0;
     const auto run = [&](const char* name, auto test) {
         try { test(); std::cout << "PASS " << name << '\n'; }
         catch (const std::exception& e) { ++failures; std::cout << "FAIL " << name << ": " << e.what() << '\n'; }
     };
+    run("economy_result_consumers", EconomyConsumer); run("upgrade_result_sequence_world_snapshot_timeout", UpgradeResultMatching);
     run("delayed_bern_to_valtan", [] { DelayedTransition(WORLD_ID::VALTAN_ARENA); });
     run("delayed_bern_to_kouku", [] { DelayedTransition(WORLD_ID::KAKULSAYDON_ARENA); });
     run("same_world_new_generation", [] { DelayedTransition(WORLD_ID::BERN); });
@@ -221,7 +291,7 @@ int main() {
 def generate(output: Path, baseline: Path | None) -> Path:
     cpp = receive.generate(output, None)
     source = cpp.read_text(encoding="utf-8").removesuffix(receive.TESTS)
-    source = receive.PREAMBLE + SUPPORT + source.removeprefix(receive.PREAMBLE)
+    source = "#define REPLICATION_HANDOFF_FIXTURE\n" + receive.PREAMBLE + SUPPORT + source.removeprefix(receive.PREAMBLE)
     network = receive.read_source(ROOT / "Client/Private/NetworkManager.cpp")
     for signature in ("LostArk::Shared::PLAYER_ID CNetworkManager::Get_LocalPlayerId() const",
                       "bool CNetworkManager::Try_Consume_EnterAccepted("):
@@ -233,6 +303,8 @@ def generate(output: Path, baseline: Path | None) -> Path:
                       "bool Client::CClientReplication::Update()",
                       "void Client::CClientReplication::Reset()"):
         source += "\n" + receive.cpp_function_definition(replication, signature)
+    main_app = receive.read_source(ROOT / "Client/Private/MainApp.cpp")
+    source += "\nnamespace Client {\n" + receive.cpp_function_definition(main_app, "void CMainApp::Update_ItemUpgradeServerResult()") + "\n}\n"
     reset = receive.cpp_function_body(replication, "void Client::CClientReplication::Reset_World()")
     revoke = re.search(r"\bm_iOwnedWorldInboundGeneration\s*=\s*0u;", reset)
     # Old source has no ownership to revoke. It must compile and fail runtime

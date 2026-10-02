@@ -343,6 +343,8 @@ public:
 	the answer arrives the same way -- an S2C_INVENTORY_SNAPSHOT replication
 	event, plus the next S2C_WORLD_SNAPSHOT tick for the new HP. */
 	bool Send_UseItem(const LostArk::Shared::C2S_USE_ITEM& request);
+	bool Send_UpgradeEquipment(const LostArk::Shared::C2S_UPGRADE_EQUIPMENT& request);
+	bool Send_CaptureCharacter(std::uint32_t requestSequence);
 	/* NPC shop basket; the Server answers with an S2C_INVENTORY_SNAPSHOT. */
 	bool Send_BuyItems(
 		std::uint32_t requestSequence,

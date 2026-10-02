@@ -17,6 +17,9 @@ public:
 	CNetworkPlayerCommandSink& operator=(
 		const CNetworkPlayerCommandSink&) = delete;
 
+	bool Request_UpgradeEquipment(const LostArk::Shared::C2S_UPGRADE_EQUIPMENT&) override;
+	bool Request_CaptureCharacter(std::uint32_t requestSequence) override;
+	bool Request_RestoreCharacter(const LostArk::Shared::C2S_RESTORE_CHARACTER&) override;
 	bool Request_UseItem(const LostArk::Shared::C2S_USE_ITEM&) override;
 	bool Request_DebugGiveItem(const LostArk::Shared::C2S_DEBUG_GIVE_ITEM&) override;
 	bool Request_BalanceRefresh() override;

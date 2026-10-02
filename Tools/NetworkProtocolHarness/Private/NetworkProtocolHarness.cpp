@@ -2275,7 +2275,7 @@ namespace
         killed.eResult = DEBUG_KILL_GATE_BOSSES_RESULT::DISABLED; CPacketWriter rejectedKill;
         testRunner.Require(!Write_Message(rejectedKill, killed), "Rejected Gate Kill cannot claim a kill count");
 
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 132u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 133u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS) + 1u,
@@ -2463,7 +2463,7 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 132u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 133u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
 			"Mario direction packet retains its appended identity in protocol 131");
@@ -3158,7 +3158,7 @@ namespace
 				unchanged.eWorldId == WORLD_ID::BERN && unchanged.eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION,
 				"Invalid Mario return verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 132u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 133u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_RETURN) && Is_Known_Packet_Type(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) == static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) == static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) + 1u,
@@ -3279,7 +3279,7 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 132u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 133u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
@@ -3464,14 +3464,14 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 132u,
+			NETWORK_PROTOCOL_VERSION == 133u,
 			"Riding packet identities append without renumbering peers");
 	}
 
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 132u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb, ember, Colosseum world and Colosseum queue use protocol 132");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 133u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb, ember, Colosseum world and Colosseum queue use protocol 133");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -3843,7 +3843,7 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 132u,
+			NETWORK_PROTOCOL_VERSION == 133u,
 			"Protocol 129 preserves main trigger identities with WORLD occurrence placement");
 	}
 
@@ -4019,8 +4019,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(132u == NETWORK_PROTOCOL_VERSION,
-				"Party and integrated gameplay contracts use protocol 132");
+			testRunner.Require(133u == NETWORK_PROTOCOL_VERSION,
+				"Party and integrated gameplay contracts use protocol 133");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -4223,7 +4223,7 @@ namespace
         testRunner.Require(!Write_Message(rejectHp, badState), "Guide Trace Rejects HP Outside Unit Interval");
         state.fEvadeScore = std::numeric_limits<float>::quiet_NaN(); CPacketWriter rejectNan;
         testRunner.Require(!Write_Message(rejectNan, state), "Guide Trace Rejects Nonfinite Scores");
-        testRunner.Require(NETWORK_PROTOCOL_VERSION == 132u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
+        testRunner.Require(NETWORK_PROTOCOL_VERSION == 133u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
             Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v132 Peers");
     }
 
@@ -7598,7 +7598,7 @@ namespace
 		}
 
 		testRunner.Require(
-			132u == NETWORK_PROTOCOL_VERSION,
+			133u == NETWORK_PROTOCOL_VERSION,
 			"Session Diagnostics Use Current Protocol Version 132");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
@@ -7626,7 +7626,7 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			132u == NETWORK_PROTOCOL_VERSION,
+			133u == NETWORK_PROTOCOL_VERSION,
 			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 132");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
@@ -9034,17 +9034,100 @@ void Test_CharacterRestoreProtocol(TEST_RUNNER& tests)
     S2C_RESTORE_CHARACTER_RESULT preserved{99u, CHARACTER_RESTORE_RESULT::APPLIED, 8u};
     tests.Require(!Read_Message(invalidReader, preserved) && preserved.iRequestSequence == 99u && preserved.iHonorTitleId == 8u,
         "Unknown restore result preserves the previous decoded state");
-    CPacketWriter invalidRequest;
-    request.iGold = MAX_RESTORE_PURSE_AMOUNT + 1u;
-    tests.Require(!Write_Message(invalidRequest, request), "Restore rejects an out-of-range purse");
+    CPacketWriter boundaryWriter;
+    request.iGold = request.iSilver = MAX_RESTORE_PURSE_AMOUNT;
+    const bool boundaryWritten = Write_Message(boundaryWriter, request);
+    CPacketReader boundaryReader{boundaryWriter.Get_Buffer()};
+    tests.Require(boundaryWritten && Read_Message(boundaryReader, decoded) && !boundaryReader.Get_RemainingSize() &&
+        decoded.iGold == MAX_RESTORE_PURSE_AMOUNT && decoded.iSilver == MAX_RESTORE_PURSE_AMOUNT,
+        "Restore preserves the full uint32 range of both authoritative currencies");
     tests.Require(Is_Known_Packet_Type(PACKET_TYPE::C2S_RESTORE_CHARACTER) &&
         Is_Known_Packet_Type(PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT), "Both restore packet directions are registered");
 }
 
+void Test_CharacterStateProtocol(TEST_RUNNER& tests)
+{
+    C2S_UPGRADE_EQUIPMENT upgrade{7u, "EQUIP_WARLORD_HONORWHISPER_WEAPON", EQUIPMENT_SLOT::WEAPON, 18u};
+    CPacketWriter upgradeWriter;
+    const bool upgradeWritten = Write_Message(upgradeWriter, upgrade);
+    CPacketReader upgradeReader{upgradeWriter.Get_Buffer()}; C2S_UPGRADE_EQUIPMENT decodedUpgrade;
+    tests.Require(upgradeWritten && Read_Message(upgradeReader, decodedUpgrade) && !upgradeReader.Get_RemainingSize() &&
+        decodedUpgrade.iRequestSequence == 7u && decodedUpgrade.strItemId == upgrade.strItemId &&
+        decodedUpgrade.eSlot == EQUIPMENT_SLOT::WEAPON && decodedUpgrade.iExpectedUpgradeLevel == 18u,
+        "Upgrade request carries exact inventory item and expected authoritative level");
+    bool badUpgrade = true;
+    for (std::size_t count = 0; count < upgradeWriter.Get_Buffer().size(); ++count)
+    {
+        std::vector<std::uint8_t> truncated(upgradeWriter.Get_Buffer().begin(), upgradeWriter.Get_Buffer().begin() + count);
+        CPacketReader reader{truncated}; C2S_UPGRADE_EQUIPMENT keep{99u, "keep", EQUIPMENT_SLOT::NONE, 22u};
+        badUpgrade &= !Read_Message(reader, keep) && keep.iRequestSequence == 99u && keep.strItemId == "keep" && keep.iExpectedUpgradeLevel == 22u;
+    }
+    for (unsigned invalid = 0; invalid < 3u; ++invalid)
+    {
+        auto bad = upgrade; if (invalid == 0u) bad.iRequestSequence = 0u;
+        if (invalid == 1u) bad.strItemId = "../item"; if (invalid == 2u) bad.eSlot = EQUIPMENT_SLOT::END;
+        CPacketWriter writer; badUpgrade &= !Write_Message(writer, bad);
+    }
+    tests.Require(badUpgrade, "Upgrade rejects malformed identity and truncated bytes without partial mutation");
+    bool upgradeResults = true;
+    for (const auto verdict : {EQUIPMENT_UPGRADE_RESULT::SUCCEEDED, EQUIPMENT_UPGRADE_RESULT::FAILED, EQUIPMENT_UPGRADE_RESULT::REJECTED})
+    {
+        S2C_UPGRADE_EQUIPMENT_RESULT result{7u, verdict, MAX_EQUIPMENT_UPGRADE_LEVEL, WORLD_ID::BERN};
+        CPacketWriter writer; const bool encoded = Write_Message(writer, result);
+        CPacketReader reader{writer.Get_Buffer()}; S2C_UPGRADE_EQUIPMENT_RESULT decoded;
+        upgradeResults &= encoded && Read_Message(reader, decoded) && !reader.Get_RemainingSize() &&
+            decoded.iRequestSequence == result.iRequestSequence && decoded.eResult == verdict &&
+            decoded.iUpgradeLevel == MAX_EQUIPMENT_UPGRADE_LEVEL && decoded.eWorldId == WORLD_ID::BERN;
+        for (std::size_t count = 0; count < writer.Get_Buffer().size(); ++count)
+        {
+            std::vector<std::uint8_t> truncated(writer.Get_Buffer().begin(), writer.Get_Buffer().begin() + count);
+            CPacketReader partial{truncated}; S2C_UPGRADE_EQUIPMENT_RESULT keep{99u, EQUIPMENT_UPGRADE_RESULT::REJECTED, 21u};
+            upgradeResults &= !Read_Message(partial, keep) && keep.iRequestSequence == 99u && keep.iUpgradeLevel == 21u;
+        }
+    }
+    tests.Require(upgradeResults, "Upgrade outcomes preserve world and level boundaries and reject partial responses");
+    C2S_CAPTURE_CHARACTER capture{12u}; CPacketWriter captureWriter;
+    const bool captureWritten = Write_Message(captureWriter, capture);
+    CPacketReader captureReader{captureWriter.Get_Buffer()}; C2S_CAPTURE_CHARACTER captureDecoded;
+    tests.Require(captureWritten && Read_Message(captureReader, captureDecoded) && captureDecoded.iRequestSequence == 12u &&
+        !captureReader.Get_RemainingSize(), "Capture barrier request round trips its sequence");
+    S2C_CAPTURE_CHARACTER_RESULT result;
+    result.iRequestSequence = 12u; result.eResult = CHARACTER_CAPTURE_RESULT::CAPTURED;
+    result.Items = {{upgrade.strItemId, 1u, EQUIPMENT_SLOT::WEAPON, 37u, 18u},
+        {"AVATAR_WARLORD_MOKOKO_036_HEAD", 1u, EQUIPMENT_SLOT::AVATAR_HEAD}};
+    result.iSilver = result.iGold = MAX_RESTORE_PURSE_AMOUNT; result.iHonorTitleId = 30001u;
+    result.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; result.iPlayerId = 42u; result.iNetEntityId = 57u;
+    result.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
+    CPacketWriter writer; const bool encoded = Write_Message(writer, result);
+    CPacketReader reader{writer.Get_Buffer()}; S2C_CAPTURE_CHARACTER_RESULT decoded;
+    tests.Require(encoded && Read_Message(reader, decoded) && !reader.Get_RemainingSize() && decoded.iRequestSequence == 12u &&
+        decoded.eResult == CHARACTER_CAPTURE_RESULT::CAPTURED && decoded.Items.size() == 2u &&
+        decoded.Items[0].iUpgradeLevel == 18u && decoded.Items[0].iDurabilityPercent == 37u &&
+        decoded.Items[1].eEquippedSlot == EQUIPMENT_SLOT::AVATAR_HEAD && decoded.iSilver == MAX_RESTORE_PURSE_AMOUNT &&
+        decoded.iGold == MAX_RESTORE_PURSE_AMOUNT && decoded.iHonorTitleId == 30001u && decoded.eWorldId == result.eWorldId &&
+        decoded.iPlayerId == 42u && decoded.iNetEntityId == 57u && decoded.eCharacterClass == CHARACTER_CLASS_ID::WARLORD,
+        "Capture carries complete equipment, upgrade, avatar, purse, title and character identity atomically");
+    bool badCapture = true;
+    for (std::size_t count = 0; count < writer.Get_Buffer().size(); ++count)
+    {
+        std::vector<std::uint8_t> truncated(writer.Get_Buffer().begin(), writer.Get_Buffer().begin() + count);
+        CPacketReader partial{truncated}; S2C_CAPTURE_CHARACTER_RESULT keep; keep.iGold = 123u; keep.iPlayerId = 77u;
+        badCapture &= !Read_Message(partial, keep) && keep.iGold == 123u && keep.iPlayerId == 77u && keep.Items.empty();
+    }
+    for (unsigned invalid = 0; invalid < 5u; ++invalid)
+    {
+        auto bad = result; if (invalid == 0u) bad.iRequestSequence = 0u;
+        if (invalid == 1u) bad.iPlayerId = 0u; if (invalid == 2u) bad.iNetEntityId = 0u;
+        if (invalid == 3u) bad.eCharacterClass = CHARACTER_CLASS_ID::END;
+        if (invalid == 4u) bad.eWorldId = WORLD_ID::END;
+        CPacketWriter rejected; badCapture &= !Write_Message(rejected, bad);
+    }
+    tests.Require(badCapture, "Capture rejects incomplete identity and every truncation without overwriting saved state");
+}
 void Test_ColosseumQueueProtocol(TEST_RUNNER& tests)
 {
 	using namespace LostArk::Shared;
-	tests.Require(NETWORK_PROTOCOL_VERSION == 132u &&
+	tests.Require(NETWORK_PROTOCOL_VERSION == 133u &&
 		static_cast<std::uint16_t>(PACKET_TYPE::C2S_COLOSSEUM_QUEUE_JOIN) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_RESTORE_CHARACTER_RESULT) + 1u &&
 		static_cast<std::uint16_t>(PACKET_TYPE::S2C_COLOSSEUM_MATCH_FOUND) ==
@@ -9284,7 +9367,7 @@ void Test_Integrated130Protocol(TEST_RUNNER& tests)
 {
     // Independent 127 branches reused IDs. Pin every pre-existing identity and
     // the single integrated append order instead of trusting enum merge order.
-    constexpr std::array<PACKET_TYPE, 125> wireIdentities = {
+    constexpr std::array<PACKET_TYPE, 129> wireIdentities = {
         PACKET_TYPE::INVALID,
         PACKET_TYPE::C2S_ENTER_WORLD,
         PACKET_TYPE::S2C_ENTER_ACCEPTED,
@@ -9409,16 +9492,20 @@ void Test_Integrated130Protocol(TEST_RUNNER& tests)
         PACKET_TYPE::S2C_COLOSSEUM_MATCH_STATE,
         PACKET_TYPE::C2S_GUIDE_CONTROL,
         PACKET_TYPE::C2S_COLOSSEUM_LOAD_READY,
-        PACKET_TYPE::C2S_COLOSSEUM_RETURN
+        PACKET_TYPE::C2S_COLOSSEUM_RETURN,
+        PACKET_TYPE::C2S_UPGRADE_EQUIPMENT,
+        PACKET_TYPE::S2C_UPGRADE_EQUIPMENT_RESULT,
+        PACKET_TYPE::C2S_CAPTURE_CHARACTER,
+        PACKET_TYPE::S2C_CAPTURE_CHARACTER_RESULT
     };
-    bool identities = NETWORK_PROTOCOL_VERSION == 132u && !Is_Known_Packet_Type(PACKET_TYPE::INVALID);
+    bool identities = NETWORK_PROTOCOL_VERSION == 133u && !Is_Known_Packet_Type(PACKET_TYPE::INVALID);
     for (std::size_t i = 1u; i < wireIdentities.size(); ++i)
         identities &= static_cast<std::uint16_t>(wireIdentities[i]) == i && Is_Known_Packet_Type(wireIdentities[i]);
-    tests.Require(identities, "Integrated 132 preserves packet IDs 1..112 and pins appended IDs through 124");
+    tests.Require(identities, "Integrated 133 preserves packet IDs 1..112 and pins appended IDs through 128");
     tests.Require(Is_Known_World_Id(WORLD_ID::COLOSSEUM) &&
         static_cast<std::uint16_t>(WORLD_ID::COLOSSEUM) == 7u &&
         static_cast<std::uint8_t>(PLAYER_CONTROL_KIND::WATERPANG_AI) == 2u,
-        "Integrated 132 preserves Colosseum world 7 and Waterpang actor kind 2");
+        "Integrated 133 preserves Colosseum world 7 and Waterpang actor kind 2");
 
     bool spawnContract = true;
     std::vector<std::uint8_t> botBytes;
@@ -9569,13 +9656,13 @@ void Test_Integrated130Protocol(TEST_RUNNER& tests)
 
 void Test_ColosseumMatchProtocol(TEST_RUNNER& tests)
 {
-    tests.Require(NETWORK_PROTOCOL_VERSION == 132u &&
+    tests.Require(NETWORK_PROTOCOL_VERSION == 133u &&
         static_cast<std::uint16_t>(PACKET_TYPE::C2S_COLOSSEUM_RECRUIT) == 120u &&
         static_cast<std::uint16_t>(PACKET_TYPE::S2C_COLOSSEUM_MATCH_STATE) == 121u &&
         static_cast<std::uint16_t>(PACKET_TYPE::C2S_COLOSSEUM_LOAD_READY) == 123u &&
         static_cast<std::uint16_t>(PACKET_TYPE::C2S_COLOSSEUM_RETURN) == 124u &&
         Is_Known_Player_Control_Kind(PLAYER_CONTROL_KIND::COLOSSEUM_MERCENARY_AI),
-        "Colosseum authority is protocol 132 with appended packet and control identities");
+        "Colosseum authority is protocol 133 with appended packet and control identities");
     S2C_PLAYER_SPAWNED mercenary;
     mercenary.iPlayerId = 51u; mercenary.iNetEntityId = 61u;
     mercenary.eCharacterClass = CHARACTER_CLASS_ID::ARTIST; mercenary.strNickName = "Mercenary";
@@ -9659,7 +9746,7 @@ void Test_ColosseumMatchProtocol(TEST_RUNNER& tests)
 
 void Test_GuideControlProtocol(TEST_RUNNER& tests)
 {
-    tests.Require(NETWORK_PROTOCOL_VERSION == 132u &&
+    tests.Require(NETWORK_PROTOCOL_VERSION == 133u &&
         static_cast<std::uint16_t>(PACKET_TYPE::C2S_GUIDE_CONTROL) == 122u &&
         Is_Known_Packet_Type(PACKET_TYPE::C2S_GUIDE_CONTROL),
         "Guide START/STOP appends packet 122 without changing existing protocol 130 IDs");
@@ -9728,7 +9815,8 @@ int main(const int argumentCount, char* arguments[])
     if (argumentCount == 2 && std::string_view(arguments[1]) == "--colosseum-queue-only")
     { Test_ColosseumQueueProtocol(testRunner); return testRunner.iFailureCount ? 1 : 0; }
     if (argumentCount == 2 && std::string_view(arguments[1]) == "--character-restore-only")
-    { Test_CharacterRestoreProtocol(testRunner); return testRunner.iFailureCount ? 1 : 0; }
+    { Test_CharacterRestoreProtocol(testRunner);
+    Test_CharacterStateProtocol(testRunner); return testRunner.iFailureCount ? 1 : 0; }
     if (argumentCount == 2 && std::string_view(arguments[1]) == "--battle-items-only")
     { Test_BattleItemUseProtocol(testRunner); return testRunner.iFailureCount ? 1 : 0; }
     if (argumentCount == 2 && std::string_view(arguments[1]) == "--numeric-balance-only")
@@ -9777,6 +9865,7 @@ int main(const int argumentCount, char* arguments[])
 	}
 
     Test_CharacterRestoreProtocol(testRunner);
+    Test_CharacterStateProtocol(testRunner);
     Test_BattleItemUseProtocol(testRunner);
     Test_NumericBalanceProtocol(testRunner);
 	Test_Integrated120ShopProtocol(testRunner);

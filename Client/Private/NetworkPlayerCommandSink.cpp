@@ -2,6 +2,24 @@
 
 #include "NetworkManager.h"
 
+bool Client::CNetworkPlayerCommandSink::Request_UpgradeEquipment(
+	const LostArk::Shared::C2S_UPGRADE_EQUIPMENT& request)
+{
+	return CNetworkManager::Get().Send_UpgradeEquipment(request);
+}
+
+bool Client::CNetworkPlayerCommandSink::Request_CaptureCharacter(const std::uint32_t requestSequence)
+{
+	return CNetworkManager::Get().Send_CaptureCharacter(requestSequence);
+}
+
+bool Client::CNetworkPlayerCommandSink::Request_RestoreCharacter(
+	const LostArk::Shared::C2S_RESTORE_CHARACTER& request)
+{
+	return CNetworkManager::Get().Send_RestoreCharacter(request.iRequestSequence,
+		request.Items, request.iSilver, request.iGold, request.iHonorTitleId);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_DebugGiveItem(const LostArk::Shared::C2S_DEBUG_GIVE_ITEM& request)
 {
 	return CNetworkManager::Get().Send_DebugGiveItem(request.iRequestSequence, request.strItemId, request.iQuantity);

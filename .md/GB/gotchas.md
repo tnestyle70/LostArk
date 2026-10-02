@@ -1,5 +1,20 @@
 # LostArk merge 회귀 방지 정본
 
+## 캐릭터 선택의 마지막 서버 응답과 빈 가방 이동
+
+- HUD의 마지막 inventory를 복사한 즉시 연결을 닫으면 직전에 보낸 구매·장착·강화 결과가
+  수신되지 않아 유실된다. room FIFO의 typed capture 응답을 기다리고 sequence·세대·world·
+  player/entity/class를 확인한 뒤 local character ID에 저장한다. 이후의 낡은 HUD capture로
+  이 값을 다시 덮어쓰지 않는다. 실패/timeout도 기존 슬롯을 유지한다.
+- Bern 복원 요청을 보낸 프레임부터 성공 응답까지 gameplay/economy 입력을 막는다. 새
+  admission은 계속 허용해야 거부 뒤 다른 캐릭터를 선택할 수 있다. sequence1 고정이나
+  슬롯 index·닉네임을 저장 identity로 사용하지 않는다.
+- 강화 UI의 전역 itemId map은 같은 직업 캐릭터 사이에 섞인다. 서버 inventory 항목의 단계와
+  내구도를 복원·장착·해제에서 함께 보존하고, 선택창은 생성 외형 뒤 저장된 아바타를 적용한다.
+- inventory.empty()는 fresh 입장 판정이 아니다. 이미 플레이한 빈 가방/0 재화도 명시적인
+  carried state로 전달해야 월드 이동에서 초기 지급으로 바뀌지 않는다.
+- 구현과 실행 검증은 [캐릭터 슬롯 결과](10-03/2026-10-03_CHARACTER_SLOT_STATE_RESTORE_RESULT.md)를 따른다.
+
 ## 입장 승인 뒤 이전 Level의 복제 이벤트 소비 금지
 
 - ENTER_ACCEPTED가 world inbound generation을 바꿔도 비동기 모델 준비 취소 때문에

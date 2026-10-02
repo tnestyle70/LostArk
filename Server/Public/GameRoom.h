@@ -351,7 +351,7 @@ namespace LostArk::Server
 			LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId =
 				LostArk::Shared::INVALID_HONOR_TITLE_ID,
 			const std::string& raidReturnNpcPlacementId = {},
-			const SERVER_PURSE& carriedPurse = {});
+			const SERVER_PURSE& carriedPurse = {}, bool hasCarriedCharacterState = false);
 		bool Build_PlayerEntryFrames(STAGED_PLAYER_ENTRY& entry,
 			std::span<const STAGED_PLAYER_ENTRY> batch, std::string& status);
 		void Commit_PlayerEntry(const STAGED_PLAYER_ENTRY& entry);
@@ -367,7 +367,8 @@ namespace LostArk::Server
 				LostArk::Shared::INVALID_HONOR_TITLE_ID,
 			const std::string& raidReturnNpcPlacementId = {},
 			const SERVER_PURSE& carriedPurse = {},
-			LostArk::Shared::WORLD_ID sourceWorld = LostArk::Shared::WORLD_ID::BERN);
+			LostArk::Shared::WORLD_ID sourceWorld = LostArk::Shared::WORLD_ID::BERN,
+			bool hasCarriedCharacterState = false);
 		void Leave(
 			SESSION_ID sessionId,
 			LostArk::Shared::PLAYER_DESPAWN_REASON reason, bool publishDeparture = true);
@@ -1163,6 +1164,10 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_RESTORE_CHARACTER& request);
 		bool Validate_RestoreCharacter(const SERVER_PLAYER& player,
 			const LostArk::Shared::C2S_RESTORE_CHARACTER& request) const;
+		void Handle_UpgradeEquipment(SESSION_ID sessionId,
+			const LostArk::Shared::C2S_UPGRADE_EQUIPMENT& request);
+		void Handle_CaptureCharacter(SESSION_ID sessionId,
+			const LostArk::Shared::C2S_CAPTURE_CHARACTER& request);
 		// Debug Character Select Arena "되돌리기" -- despawns every world entity the
 		// debug spawn buttons created in this room (Broadcast_WorldEntityDespawned per
 		// entity) and resets the spawn group runtime so the same groups can be
@@ -1993,6 +1998,7 @@ namespace LostArk::Server
 		CSpawnGroupBootstrap m_SpawnGroupBootstrap;
 		CSpawnGroupRuntime m_SpawnGroupRuntime;
 		std::mt19937 m_MarioLayoutRandom{std::random_device{}()};
+		std::mt19937 m_EquipmentUpgradeRandom{std::random_device{}()};
 		// Popped source-ball slots per Mario stage (index 1..4), bit = bootstrap slot.
 		std::uint16_t m_MarioPoppedBalls[5] = {};
 		std::uint8_t m_iNextMarioEntryStage = 1u;

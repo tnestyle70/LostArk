@@ -454,6 +454,14 @@ namespace Client
 			m_bHasInventory = true;
 		}
 		bool Has_Inventory() const { return m_bHasInventory; }
+		void Apply_UpgradeEquipmentResult(const LostArk::Shared::S2C_UPGRADE_EQUIPMENT_RESULT& result)
+		{
+			m_UpgradeEquipmentResult = result;
+		}
+		const LostArk::Shared::S2C_UPGRADE_EQUIPMENT_RESULT& Get_UpgradeEquipmentResult() const
+		{
+			return m_UpgradeEquipmentResult;
+		}
 		void Apply_RestoredHonorTitle(LostArk::Shared::HONOR_TITLE_ID title) { m_Player.iHonorTitleId = title; }
 		const LostArk::Shared::S2C_INVENTORY_SNAPSHOT& Get_Inventory() const
 		{
@@ -624,6 +632,7 @@ namespace Client
 #endif
 		LostArk::Shared::S2C_INVENTORY_SNAPSHOT m_Inventory{};
 		bool m_bHasInventory = false;
+		LostArk::Shared::S2C_UPGRADE_EQUIPMENT_RESULT m_UpgradeEquipmentResult{};
 		std::string m_strStatus;
 	};
 }

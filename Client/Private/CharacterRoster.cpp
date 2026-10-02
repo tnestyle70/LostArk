@@ -53,6 +53,11 @@ bool_t Client::CCharacterRoster::Rename(
 bool_t Client::CCharacterRoster::Update_WorldState(
 	const std::string& strCharacterId, const CHARACTER_WORLD_STATE& State, std::string& outStatus)
 {
+	if (strCharacterId.empty() || !State.bValid)
+	{
+		outStatus = "A valid character identity and authoritative state are required.";
+		return false;
+	}
 	auto& entries = Roster();
 	const auto found = std::find_if(entries.begin(), entries.end(),
 		[&](const auto& entry) { return entry.strCharacterId == strCharacterId; });
@@ -70,6 +75,7 @@ bool_t Client::CCharacterRoster::Update_WorldState(
 bool_t Client::CCharacterRoster::Try_Get_WorldState(
 	const std::string& strCharacterId, CHARACTER_WORLD_STATE& outState)
 {
+	if (strCharacterId.empty()) return false;
 	for (const auto& entry : Roster())
 	{
 		if (entry.strCharacterId == strCharacterId && entry.World.bValid)

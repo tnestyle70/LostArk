@@ -29,6 +29,8 @@ struct CHARACTER_ENTRY_IDENTITY final
 
 struct CHARACTER_WORLD_STATE;
 
+enum class CHARACTER_CAPTURE_STATUS { NONE, WAITING, CAPTURED, FAILED };
+
 class CCharacterSelectionState final
 {
 public:
@@ -53,6 +55,17 @@ public:
 	title, as the Client last received them) into its roster entry. Leaves the session state alone
 	when nothing was received yet, so leaving early cannot wipe it. */
 	static void Capture_ActiveWorldState();
+	static bool_t Has_ActiveCharacter();
+	static bool_t Is_RestorePending();
+	static bool_t Is_WorldStateSyncPending();
+	static std::uint32_t Next_StateRequestSequence();
+	static bool_t Begin_WorldStateCapture(std::uint32_t sequence,
+		LostArk::Shared::WORLD_ID world, LostArk::Shared::PLAYER_ID player,
+		LostArk::Shared::NET_ENTITY_ID entity, std::uint64_t generation);
+	static bool_t Apply_CaptureResult(const LostArk::Shared::S2C_CAPTURE_CHARACTER_RESULT& result,
+		std::uint64_t generation);
+	static CHARACTER_CAPTURE_STATUS Get_WorldStateCaptureStatus();
+	static void Finish_WorldStateCapture();
 	/* The session state of the character that entered the world, if it has one. */
 	static bool_t Try_Get_ActiveWorldState(CHARACTER_WORLD_STATE& outState);
 	static void Mark_RestoreRequested(std::uint32_t sequence);

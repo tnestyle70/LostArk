@@ -11,6 +11,8 @@ NS_BEGIN(Client)
 
 class CCharacter;
 class CCharacterPortraitRenderer;
+class CEquipmentPresentationCatalog;
+class CEquipmentPresentationService;
 class CPlayableCharacterAssetService;
 class CUILayoutRuntime;
 
@@ -87,6 +89,7 @@ private:
 	void Render_RenameDialogText(f32_t fScaleX, f32_t fScaleY, f32_t fUiScale);
 	void Update_Stage();
 	void Spawn_StageCharacter(int32_t iIndex);
+	void Apply_StageAvatar(int32_t iIndex, CCharacter& character);
 
 private:
 	static constexpr int32_t STAGE_COUNT = 6;
@@ -119,6 +122,10 @@ private:
 	bool_t m_bStageRequested = false;
 	bool_t m_bStageCatalogsReady = false;
 	unique_ptr<CPlayableCharacterAssetService> m_pStageAssets;
+	/* Saved equipment uses the same item/visual-set and transactional part path as world players. */
+	bool_t m_bStageEquipmentCatalogLoadAttempted = false;
+	unique_ptr<CEquipmentPresentationCatalog> m_pStageEquipmentCatalog;
+	unique_ptr<CEquipmentPresentationService> m_pStageEquipmentPresentation;
 	int32_t m_iStagePreparingIndex = -1;
 	std::weak_ptr<CCharacter> m_StageCharacters[STAGE_COUNT];
 	bool_t m_bStageFailed[STAGE_COUNT] = {};

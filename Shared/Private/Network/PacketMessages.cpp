@@ -5913,6 +5913,7 @@ bool LostArk::Shared::Write_Message(
 		writer.Write_U32(item.iQuantity);
 		writer.Write_U8(static_cast<std::uint8_t>(item.eEquippedSlot));
 		writer.Write_U8(item.iDurabilityPercent);
+		writer.Write_U16(item.iUpgradeLevel);
 	}
 	writer.Write_U32(message.iSilver);
 	writer.Write_U32(message.iGold);
@@ -5938,7 +5939,7 @@ bool LostArk::Shared::Read_Message(
 		if (!reader.Read_String(item.strItemId, MAX_ITEM_ID_BYTES) ||
 			!reader.Read_U32(item.iQuantity) ||
 			!reader.Read_U8(equippedSlot) ||
-			!reader.Read_U8(item.iDurabilityPercent))
+			!reader.Read_U8(item.iDurabilityPercent) || !reader.Read_U16(item.iUpgradeLevel))
 		{
 			return false;
 		}
@@ -6069,10 +6070,117 @@ bool LostArk::Shared::Write_Message(
 		writer.Write_U32(item.iQuantity);
 		writer.Write_U8(static_cast<std::uint8_t>(item.eEquippedSlot));
 		writer.Write_U8(item.iDurabilityPercent);
+		writer.Write_U16(item.iUpgradeLevel);
 	}
 	writer.Write_U32(message.iSilver);
 	writer.Write_U32(message.iGold);
 	writer.Write_U32(message.iHonorTitleId);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_UPGRADE_EQUIPMENT& message)
+{
+	if (!message.iRequestSequence || !Is_Valid_ItemId(message.strItemId) ||
+		message.eSlot >= EQUIPMENT_SLOT::END) return false;
+	writer.Write_U32(message.iRequestSequence);
+	if (!writer.Write_String(message.strItemId, MAX_ITEM_ID_BYTES)) return false;
+	writer.Write_U8(static_cast<std::uint8_t>(message.eSlot));
+	writer.Write_U16(message.iExpectedUpgradeLevel);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_UPGRADE_EQUIPMENT& message)
+{
+	C2S_UPGRADE_EQUIPMENT decoded;
+	std::uint8_t slot = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_String(decoded.strItemId, MAX_ITEM_ID_BYTES) || !reader.Read_U8(slot) ||
+		!reader.Read_U16(decoded.iExpectedUpgradeLevel)) return false;
+	decoded.eSlot = static_cast<EQUIPMENT_SLOT>(slot);
+	if (!decoded.iRequestSequence || !Is_Valid_ItemId(decoded.strItemId) ||
+		decoded.eSlot >= EQUIPMENT_SLOT::END) return false;
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_UPGRADE_EQUIPMENT_RESULT& message)
+{
+	if (!message.iRequestSequence || message.eResult >= EQUIPMENT_UPGRADE_RESULT::END ||
+		!Is_Known_World_Id(message.eWorldId)) return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	writer.Write_U16(message.iUpgradeLevel);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_UPGRADE_EQUIPMENT_RESULT& message)
+{
+	S2C_UPGRADE_EQUIPMENT_RESULT decoded;
+	std::uint8_t result = 0u; std::uint16_t world = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U8(result) ||
+		!reader.Read_U16(decoded.iUpgradeLevel) || !reader.Read_U16(world)) return false;
+	decoded.eResult = static_cast<EQUIPMENT_UPGRADE_RESULT>(result);
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	if (!decoded.iRequestSequence || decoded.eResult >= EQUIPMENT_UPGRADE_RESULT::END ||
+		!Is_Known_World_Id(decoded.eWorldId)) return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_CAPTURE_CHARACTER& message)
+{
+	if (!message.iRequestSequence) return false;
+	writer.Write_U32(message.iRequestSequence);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_CAPTURE_CHARACTER& message)
+{
+	C2S_CAPTURE_CHARACTER decoded;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !decoded.iRequestSequence) return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_CAPTURE_CHARACTER_RESULT& message)
+{
+	if (!message.iRequestSequence || message.eResult >= CHARACTER_CAPTURE_RESULT::END ||
+		!Is_Known_World_Id(message.eWorldId) ||
+		(message.eResult == CHARACTER_CAPTURE_RESULT::CAPTURED &&
+		 (!message.iPlayerId || !message.iNetEntityId || !Is_Supported_Playable_Character_Class(message.eCharacterClass))))
+		return false;
+	const S2C_INVENTORY_SNAPSHOT inventory{message.iRequestSequence, message.Items, message.iSilver, message.iGold};
+	if (!Write_Message(writer, inventory)) return false;
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	writer.Write_U32(message.iHonorTitleId);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U32(message.iPlayerId); writer.Write_U32(message.iNetEntityId);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eCharacterClass));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_CAPTURE_CHARACTER_RESULT& message)
+{
+	S2C_CAPTURE_CHARACTER_RESULT decoded;
+	S2C_INVENTORY_SNAPSHOT inventory;
+	std::uint8_t result = 0u, characterClass = 0u; std::uint16_t world = 0u;
+	if (!Read_Message(reader, inventory) || !reader.Read_U8(result) ||
+		!reader.Read_U32(decoded.iHonorTitleId) || !reader.Read_U16(world) ||
+		!reader.Read_U32(decoded.iPlayerId) || !reader.Read_U32(decoded.iNetEntityId) ||
+		!reader.Read_U8(characterClass)) return false;
+	decoded.iRequestSequence = inventory.iRequestSequence;
+	decoded.Items = std::move(inventory.Items);
+	decoded.iSilver = inventory.iSilver; decoded.iGold = inventory.iGold;
+	decoded.eResult = static_cast<CHARACTER_CAPTURE_RESULT>(result);
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eCharacterClass = static_cast<CHARACTER_CLASS_ID>(characterClass);
+	if (!decoded.iRequestSequence || decoded.eResult >= CHARACTER_CAPTURE_RESULT::END ||
+		!Is_Known_World_Id(decoded.eWorldId) ||
+		(decoded.eResult == CHARACTER_CAPTURE_RESULT::CAPTURED &&
+		 (!decoded.iPlayerId || !decoded.iNetEntityId || !Is_Supported_Playable_Character_Class(decoded.eCharacterClass))))
+		return false;
+	message = std::move(decoded);
 	return true;
 }
 
@@ -6091,7 +6199,7 @@ bool LostArk::Shared::Read_Message(
 		std::uint8_t equippedSlot = 0u;
 		if (!reader.Read_String(item.strItemId, MAX_ITEM_ID_BYTES) ||
 			!reader.Read_U32(item.iQuantity) || !reader.Read_U8(equippedSlot) ||
-			!reader.Read_U8(item.iDurabilityPercent))
+			!reader.Read_U8(item.iDurabilityPercent) || !reader.Read_U16(item.iUpgradeLevel))
 			return false;
 		item.eEquippedSlot = static_cast<EQUIPMENT_SLOT>(equippedSlot);
 		decoded.Items.push_back(std::move(item));

@@ -194,7 +194,7 @@ bool CGameRoom::Transfer_ColosseumMatchTo(CGameRoom& target,
         STAGED_PLAYER_ENTRY entry;
         SESSION_DIAGNOSTIC_REASON reason;
         if (!target.Stage_PlayerEntry(session, enter, entries, entry, reason, status,
-            {}, source.Inventory, source.iHonorTitleId, {}, source.Purse)) return false;
+            {}, source.Inventory, source.iHonorTitleId, {}, source.Purse, true)) return false;
         // Team spawn is an authored player standing point, not the NPC-approach override.
         const std::string spawnId = std::string("player.spawn.colosseum.team") +
             (index % 2u ? "b.0" : "a.0") + std::to_string(index / 2u + 1u);

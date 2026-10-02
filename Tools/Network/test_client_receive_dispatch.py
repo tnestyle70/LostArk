@@ -32,6 +32,16 @@ PREAMBLE = r'''
 #include <utility>
 using namespace LostArk::Shared;
 std::vector<PACKET_FRAME> Observed;
+#ifndef REPLICATION_HANDOFF_FIXTURE
+void CNetworkManager::Pump_BalanceSnapshot() {}
+void Client::CPlayerSkillCatalog::Apply_ServerNumericSnapshot(const std::vector<BALANCE_NUMERIC_ENTRY>&) {}
+namespace Client {
+struct CCombatHUDViewModel {
+    static CCombatHUDViewModel& Get() { static CCombatHUDViewModel model; return model; }
+    void Apply_ServerNumericSnapshot(const std::vector<BALANCE_NUMERIC_ENTRY>&) {}
+};
+}
+#endif
 constexpr std::uint64_t ENTRY_PRESENTATION_BASELINE_RETRY_MILLISECONDS = 250u;
 // No presentation reader is created in this network-only fixture.
 struct Client::CValtanPresentationGenerationReadAdmission::STATE {};
@@ -168,12 +178,47 @@ void RawQueue() {
     for (std::size_t i = 0; i < CNetworkManager::MAX_INBOUND_FRAME_QUEUE; ++i) Queue(n, Teleport(1));
     Check(!n.Enqueue_InboundFrame(Teleport(2)) && n.m_hasProtocolFailure && n.m_InboundFrames.size() == 4096, "raw 4096 guard unchanged");
 }
+void CharacterEconomyOrdering() {
+    CNetworkManager n; SeedWorld(n);
+    S2C_INVENTORY_SNAPSHOT inventory;
+    inventory.iRequestSequence = 41; inventory.iSilver = 1700; inventory.iGold = 900;
+    INVENTORY_ITEM_SNAPSHOT item; item.strItemId = "EQUIP_SLAYER_HONORWHISPER_WEAPON";
+    item.iQuantity = 1; item.eEquippedSlot = EQUIPMENT_SLOT::WEAPON; item.iUpgradeLevel = 11;
+    inventory.Items.push_back(item);
+    S2C_UPGRADE_EQUIPMENT_RESULT upgrade; upgrade.iRequestSequence = 41;
+    upgrade.eResult = EQUIPMENT_UPGRADE_RESULT::SUCCEEDED; upgrade.iUpgradeLevel = 11; upgrade.eWorldId = WORLD_ID::BERN;
+    S2C_CAPTURE_CHARACTER_RESULT capture; capture.iRequestSequence = 42;
+    capture.eResult = CHARACTER_CAPTURE_RESULT::CAPTURED; capture.Items = inventory.Items;
+    capture.iSilver = inventory.iSilver; capture.iGold = inventory.iGold; capture.iPlayerId = 7;
+    capture.iNetEntityId = 9; capture.eCharacterClass = CHARACTER_CLASS_ID::SLAYER;
+    Queue(n, Frame(PACKET_TYPE::S2C_INVENTORY_SNAPSHOT, inventory));
+    Queue(n, Frame(PACKET_TYPE::S2C_UPGRADE_EQUIPMENT_RESULT, upgrade));
+    Queue(n, Frame(PACKET_TYPE::S2C_CAPTURE_CHARACTER_RESULT, capture));
+    n.Update(); Check(!n.m_hasProtocolFailure && n.m_InboundFrames.empty(), "economy replies parse and dispatch");
+    Client::CLIENT_REPLICATION_EVENT event;
+    Check(n.Try_Consume_ReplicationEvent(event) && event.eType == Client::CLIENT_REPLICATION_EVENT_TYPE::INVENTORY_SNAPSHOT &&
+        event.InventorySnapshot.Items.at(0).iUpgradeLevel == 11, "inventory upgrade arrives before result");
+    Check(n.Try_Consume_ReplicationEvent(event) && event.eType == Client::CLIENT_REPLICATION_EVENT_TYPE::UPGRADE_EQUIPMENT_RESULT &&
+        event.UpgradeEquipmentResult.iRequestSequence == 41 && event.UpgradeEquipmentResult.iUpgradeLevel == 11, "typed upgrade result follows inventory");
+    Check(n.Try_Consume_ReplicationEvent(event) && event.eType == Client::CLIENT_REPLICATION_EVENT_TYPE::CAPTURE_CHARACTER_RESULT &&
+        event.CaptureCharacterResult.iRequestSequence == 42 && event.CaptureCharacterResult.iGold == 900 &&
+        event.CaptureCharacterResult.Items.at(0).iUpgradeLevel == 11, "capture preserves final purse and upgrade");
+    Check(!n.Try_Consume_ReplicationEvent(event), "economy replies consumed exactly once");
+
+    n.m_ReplicationEvents.resize(CNetworkManager::MAX_REPLICATION_EVENT_QUEUE);
+    Queue(n, Frame(PACKET_TYPE::S2C_UPGRADE_EQUIPMENT_RESULT, upgrade));
+    Queue(n, Frame(PACKET_TYPE::S2C_CAPTURE_CHARACTER_RESULT, capture));
+    n.Update(); Check(n.m_InboundFrames.size() == 2 && !n.m_hasProtocolFailure, "full queue retains reliable economy result head");
+    n.m_ReplicationEvents.clear(); n.Update();
+    Check(n.m_InboundFrames.empty() && n.m_ReplicationEvents.size() == 2, "economy result suffix resumes intact");
+}
 int main() {
     int failures = 0;
     const auto run = [&](const char* name, auto test) {
         try { test(); std::cout << "PASS " << name << '\n'; }
         catch (const std::exception& e) { ++failures; std::cout << "FAIL " << name << ": " << e.what() << '\n'; }
     };
+    run("character_economy_ordering_and_backpressure", CharacterEconomyOrdering);
     run("burst130_mixed_fifo", Burst); run("partial_queue_backpressure", Backpressure);
     run("other_destination_full", OtherDestination); run("entry_same_batch", []{EntryBoundary(false);});
     run("entry_dispatch_boundary", []{EntryBoundary(true);}); run("connection_reset_terminal", ResetAndTerminal);
@@ -213,7 +258,8 @@ def generate(output: Path, baseline_update: Path | None) -> Path:
         definitions.append(cpp_function_definition(text, signature))
     handle = cpp_function_body(source, "void CNetworkManager::Handle_Frame(")
     packets = ["S2C_ENTER_ACCEPTED", "S2C_PLAYER_SPAWNED", "S2C_WORLD_SNAPSHOT",
-        "S2C_DEBUG_TELEPORT_TO_POSITION_RESULT", "S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE"]
+        "S2C_DEBUG_TELEPORT_TO_POSITION_RESULT", "S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE",
+        "S2C_INVENTORY_SNAPSHOT", "S2C_UPGRADE_EQUIPMENT_RESULT", "S2C_CAPTURE_CHARACTER_RESULT"]
     cases = []
     for packet in packets:
         start = handle.index("case PACKET_TYPE::" + packet + ":")

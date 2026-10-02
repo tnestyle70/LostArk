@@ -122,7 +122,8 @@ int CServerGameplayContractRunner::Run_BattleItemsOnly()
         const auto sameItems = [](const auto& left, const auto& right) {
             return left.size() == right.size() && std::equal(left.begin(), left.end(), right.begin(),
                 [](const auto& a, const auto& b) { return a.strItemId == b.strItemId &&
-                    a.iQuantity == b.iQuantity && a.eEquippedSlot == b.eEquippedSlot; });
+                    a.iQuantity == b.iQuantity && a.eEquippedSlot == b.eEquippedSlot &&
+                    a.iDurabilityPercent == b.iDurabilityPercent && a.iUpgradeLevel == b.iUpgradeLevel; });
         };
         const auto hasRestoreResult = [](const auto& peer, const auto expected, const unsigned sequence) {
             for (const auto& frame : peer->m_OutboundFrames)
@@ -144,7 +145,8 @@ int CServerGameplayContractRunner::Run_BattleItemsOnly()
                 C2S_RESTORE_CHARACTER saved;
                 saved.iRequestSequence = 1u;
                 saved.Items = {{"POTION_HP_SMALL", 10u + index, EQUIPMENT_SLOT::NONE},
-                    {"EQUIP_WARLORD_HONORWHISPER_WEAPON", 1u, EQUIPMENT_SLOT::WEAPON}};
+                    {"EQUIP_WARLORD_HONORWHISPER_WEAPON", 1u, EQUIPMENT_SLOT::WEAPON, 72u,
+                        static_cast<std::uint16_t>(INITIAL_EQUIPMENT_UPGRADE_LEVEL + index)}};
                 if (index == 3u) saved.Items.clear(); // A deliberately empty saved bag is also authoritative.
                 saved.iSilver = 1000u + index; saved.iGold = 100u + index; saved.iHonorTitleId = 30001u;
                 CPacketWriter writer; C2S_RESTORE_CHARACTER decoded;
@@ -1003,6 +1005,185 @@ int CServerGameplayContractRunner::Run_BattleItemsOnly()
         tests.Require(!victim.iCurrentHp && damageEvents.size() == 1u && damageEvents.front().iAmount == 50u,
             "A randomized overkill event is capped to the HP actually removed");
     }
+    std::cout << "failures : " << tests.failures << '\n';
+    return tests.failures ? 1 : 0;
+}
+
+int CServerGameplayContractRunner::Run_CharacterStateOnly()
+{
+    TESTS tests;
+    auto room = std::make_unique<CGameRoom>(WORLD_ID::BERN);
+    tests.Require(room->Is_Ready(), "Character state fixture loads published Bern catalogs");
+    if (!room->Is_Ready()) return 1;
+    const auto sameItems = [](const auto& a, const auto& b) {
+        return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), [](const auto& x, const auto& y) {
+            return x.strItemId == y.strItemId && x.iQuantity == y.iQuantity && x.eEquippedSlot == y.eEquippedSlot &&
+                x.iDurabilityPercent == y.iDurabilityPercent && x.iUpgradeLevel == y.iUpgradeLevel;
+        });
+    };
+    const auto clear = [](const auto& peer) { peer->m_OutboundFrames.clear(); peer->m_iQueuedOutboundBytes = 0u; };
+    const auto readCapture = [](const auto& peer, S2C_CAPTURE_CHARACTER_RESULT& result) {
+        for (const auto& frame : peer->m_OutboundFrames) if (frame.ePacketType == PACKET_TYPE::S2C_CAPTURE_CHARACTER_RESULT)
+        {
+            CPacketReader reader{std::span<const std::uint8_t>(frame.Bytes).subspan(PACKET_HEADER_BYTES)};
+            if (Read_Message(reader, result) && !reader.Get_RemainingSize()) return true;
+        }
+        return false;
+    };
+    std::vector<C2S_RESTORE_CHARACTER> savedCharacters;
+    std::vector<std::shared_ptr<CClientSession>> peers;
+    for (unsigned slot = 0; slot < 6u; ++slot)
+    {
+        auto peer = std::make_shared<CClientSession>(98100u + slot, INVALID_SOCKET,
+            CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+        peer->m_isSendRunning.store(true); room->Handle_Register(peer);
+        C2S_ENTER_WORLD enter; enter.eWorldId = WORLD_ID::BERN; enter.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
+        enter.strNickName = "SavedSlot" + std::to_string(slot);
+        const bool joined = room->Join(peer->Get_SessionId(), enter);
+        tests.Require(joined, "Fresh Bern admission creates the selected character at an authored starting spawn");
+        if (!joined) { peer->Request_Close(); continue; }
+        auto& player = room->m_Players.at(peer->Get_PlayerId());
+        C2S_RESTORE_CHARACTER saved; saved.iRequestSequence = 1u;
+        saved.Items = {{"POTION_HP_SMALL", 12u + slot, EQUIPMENT_SLOT::NONE},
+            {"EQUIP_WARLORD_HONORWHISPER_WEAPON", 1u, EQUIPMENT_SLOT::WEAPON, 73u,
+                static_cast<std::uint16_t>(10u + slot)},
+            {"AVATAR_WARLORD_MOKOKO_036_HEAD", 1u, EQUIPMENT_SLOT::AVATAR_HEAD},
+            {"AVATAR_WARLORD_MOKOKO_036_OUTFIT", 1u, EQUIPMENT_SLOT::AVATAR_OUTFIT}};
+        saved.iSilver = 123456u + slot; saved.iGold = 9876u + slot; saved.iHonorTitleId = 30001u;
+        if (slot == 5u) { saved.Items.clear(); saved.iSilver = saved.iGold = MAX_RESTORE_PURSE_AMOUNT; }
+        CPacketWriter savedWriter; C2S_RESTORE_CHARACTER decodedSaved;
+        const bool savedEncoded = Write_Message(savedWriter, saved);
+        CPacketReader savedReader{savedWriter.Get_Buffer()};
+        tests.Require(savedEncoded && Read_Message(savedReader, decodedSaved) && !savedReader.Get_RemainingSize() &&
+            sameItems(decodedSaved.Items, saved.Items) && decodedSaved.iGold == saved.iGold && decodedSaved.iSilver == saved.iSilver,
+            "Restore codec retains upgraded item fields and the full uint32 currency range");
+        const float spawnX = player.fPositionX, spawnY = player.fPositionY, spawnZ = player.fPositionZ;
+        clear(peer); room->Handle_RestoreCharacter(peer->Get_SessionId(), saved);
+        tests.Require(sameItems(saved.Items, player.Inventory) && player.Purse.iGold == saved.iGold &&
+            player.Purse.iSilver == saved.iSilver && player.iHonorTitleId == saved.iHonorTitleId &&
+            !player.bRestoreAvailable && player.fPositionX == spawnX && player.fPositionY == spawnY && player.fPositionZ == spawnZ,
+            "Each character restores its own gear level, durability, avatars, gold, silver and title without restoring an old position");
+        clear(peer); room->Handle_CaptureCharacter(peer->Get_SessionId(), {2u});
+        S2C_CAPTURE_CHARACTER_RESULT captured;
+        tests.Require(readCapture(peer, captured) && captured.eResult == CHARACTER_CAPTURE_RESULT::CAPTURED &&
+            captured.iRequestSequence == 2u && captured.iPlayerId == player.iPlayerId &&
+            captured.iNetEntityId == player.iNetEntityId && captured.eCharacterClass == player.eCharacterClass &&
+            captured.eWorldId == WORLD_ID::BERN && sameItems(captured.Items, saved.Items) &&
+            captured.iSilver == saved.iSilver && captured.iGold == saved.iGold && captured.iHonorTitleId == saved.iHonorTitleId,
+            "Reliable capture returns one complete authoritative character with exact session identity");
+        savedCharacters.push_back(saved); peers.push_back(peer);
+        // Bern exposes four simultaneous spawn points; roster slots are switched sequentially.
+        if (slot > 0u && slot < 5u)
+            room->Leave(peer->Get_SessionId(), PLAYER_DESPAWN_REASON::LEVEL_CHANGED);
+    }
+    tests.Require(peers.size() == 6u, "Six sequential character selections produce six independent saved states");
+    if (!peers.empty())
+    {
+        const auto peer = peers.front(); auto& player = room->m_Players.at(peer->Get_PlayerId());
+        const auto* smith = room->Find_Placement("npc.bern.schmidt");
+        tests.Require(smith != nullptr, "Upgrade NPC is published in the actual Bern world");
+        if (smith)
+        {
+            player.fPositionX = smith->fPositionX; player.fPositionY = smith->fPositionY; player.fPositionZ = smith->fPositionZ;
+            const auto purse = player.Purse;
+            const auto readResult = [&](S2C_UPGRADE_EQUIPMENT_RESULT& result) {
+                for (const auto& frame : peer->m_OutboundFrames) if (frame.ePacketType == PACKET_TYPE::S2C_UPGRADE_EQUIPMENT_RESULT)
+                {
+                    CPacketReader reader{std::span<const std::uint8_t>(frame.Bytes).subspan(PACKET_HEADER_BYTES)};
+                    if (Read_Message(reader, result) && !reader.Get_RemainingSize()) return true;
+                }
+                return false;
+            };
+            unsigned sequence = 10u;
+            for (const bool success : {false, true})
+            {
+                unsigned seed = 0u;
+                for (;; ++seed) { std::mt19937 random{seed}; if ((std::uniform_int_distribution<unsigned>(0u, 1u)(random) != 0u) == success) break; }
+                room->m_EquipmentUpgradeRandom.seed(seed);
+                const auto before = player.Inventory[1].iUpgradeLevel;
+                C2S_UPGRADE_EQUIPMENT command{sequence++, player.Inventory[1].strItemId, EQUIPMENT_SLOT::WEAPON, before};
+                CPacketWriter writer; C2S_UPGRADE_EQUIPMENT decoded;
+                const bool encoded = Write_Message(writer, command); CPacketReader reader{writer.Get_Buffer()};
+                const bool wire = encoded && Read_Message(reader, decoded) && !reader.Get_RemainingSize();
+                clear(peer); if (wire) room->Handle_UpgradeEquipment(peer->Get_SessionId(), decoded);
+                S2C_UPGRADE_EQUIPMENT_RESULT result;
+                tests.Require(wire && readResult(result) && result.iRequestSequence == command.iRequestSequence &&
+                    result.eWorldId == WORLD_ID::BERN && result.eResult == (success ? EQUIPMENT_UPGRADE_RESULT::SUCCEEDED : EQUIPMENT_UPGRADE_RESULT::FAILED) &&
+                    result.iUpgradeLevel == before + unsigned(success) && player.Inventory[1].iUpgradeLevel == result.iUpgradeLevel &&
+                    player.Inventory[1].iDurabilityPercent == 73u && player.Purse.iSilver == purse.iSilver && player.Purse.iGold == purse.iGold &&
+                    peer->m_OutboundFrames.size() == 2u && peer->m_OutboundFrames.front().ePacketType == PACKET_TYPE::S2C_INVENTORY_SNAPSHOT,
+                    "Server RNG owns upgrade success or failure and queues current inventory before the correlated result");
+                clear(peer); room->Handle_UpgradeEquipment(peer->Get_SessionId(), command);
+                tests.Require(readResult(result) && result.eResult == EQUIPMENT_UPGRADE_RESULT::REJECTED &&
+                    player.Inventory[1].iUpgradeLevel == before + unsigned(success), "Replayed upgrade sequence never rerolls or increments twice");
+            }
+            const auto level = player.Inventory[1].iUpgradeLevel;
+            for (unsigned invalid = 0; invalid < 4u; ++invalid)
+            {
+                C2S_UPGRADE_EQUIPMENT request{sequence++, player.Inventory[1].strItemId, EQUIPMENT_SLOT::WEAPON, level};
+                if (invalid == 0u) request.iExpectedUpgradeLevel = level - 1u;
+                if (invalid == 1u) request.eSlot = EQUIPMENT_SLOT::NONE;
+                if (invalid == 2u) request.strItemId = "POTION_HP_SMALL";
+                if (invalid == 3u) player.fPositionX += 100.f;
+                clear(peer); room->Handle_UpgradeEquipment(peer->Get_SessionId(), request);
+                S2C_UPGRADE_EQUIPMENT_RESULT result;
+                tests.Require(readResult(result) && result.eResult == EQUIPMENT_UPGRADE_RESULT::REJECTED &&
+                    player.Inventory[1].iUpgradeLevel == level, "Stale level, wrong item slot, non-gear and distant NPC reject without mutation");
+            }
+            C2S_SET_EQUIPMENT unequip{30u, EQUIPMENT_SLOT::WEAPON, false, {}};
+            const bool removed = room->Apply_SetEquipment(player, unequip);
+            C2S_SET_EQUIPMENT equip{31u, EQUIPMENT_SLOT::WEAPON, true, player.Inventory[1].strItemId};
+            tests.Require(removed && room->Apply_SetEquipment(player, equip) && player.Inventory[1].iUpgradeLevel == level &&
+                player.Inventory[1].iDurabilityPercent == 73u, "Unequip and equip retain this item's level and durability");
+            // Enqueue through the production bounded FIFO; capture must include the preceding give.
+            clear(peer); ROOM_COMMAND grant; grant.eType = ROOM_COMMAND_TYPE::DEBUG_GIVE_ITEM;
+            grant.iSessionId = peer->Get_SessionId(); grant.DebugGiveItem = {40u, "BATTLE_HOLY_CHARM", 3u};
+            ROOM_COMMAND capture; capture.eType = ROOM_COMMAND_TYPE::CAPTURE_CHARACTER;
+            capture.iSessionId = peer->Get_SessionId(); capture.CaptureCharacter.iRequestSequence = 41u;
+            const bool queued = room->Enqueue(grant) && room->Enqueue(capture);
+            room->Tick(1.f / 30.f); S2C_CAPTURE_CHARACTER_RESULT captured;
+            tests.Require(queued && readCapture(peer, captured) && sameItems(captured.Items, player.Inventory) &&
+                std::any_of(captured.Items.begin(), captured.Items.end(), [](const auto& item) {
+                    return item.strItemId == "BATTLE_HOLY_CHARM" && item.iQuantity == 3u; }),
+                "Capture barrier includes mutations already queued before returning to character selection");
+        }
+    }
+    // The last character has an intentionally empty bag: moving worlds must not mint starter items or currency.
+    if (peers.size() == 6u)
+    {
+        auto target = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+        const auto peer = peers.back(); const auto& source = room->m_Players.at(peer->Get_PlayerId());
+        C2S_ENTER_WORLD enter; enter.eWorldId = WORLD_ID::VALTAN_ARENA;
+        enter.eCharacterClass = source.eCharacterClass; enter.strNickName = source.strNickName;
+        CGameRoom::STAGED_PLAYER_ENTRY staged; SESSION_DIAGNOSTIC_REASON reason; std::string status;
+        tests.Require(target->Stage_PlayerEntry(peer, enter, {}, staged, reason, status, {}, source.Inventory,
+            source.iHonorTitleId, {}, source.Purse, true) && staged.Player.Inventory.empty() &&
+            staged.Player.Purse.iGold == source.Purse.iGold && staged.Player.Purse.iSilver == source.Purse.iSilver &&
+            !staged.Player.bRestoreAvailable, "Authoritative world transfer preserves empty inventory and purse without another restore grant");
+    }
+    if (peers.size() == 6u)
+    {
+        // Fail queue preparation before any accepted restore can replace the new session's state.
+        auto peer = std::make_shared<CClientSession>(98200u, INVALID_SOCKET,
+            CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+        peer->m_isSendRunning.store(true); room->Handle_Register(peer);
+        C2S_ENTER_WORLD enter; enter.eWorldId = WORLD_ID::BERN;
+        enter.eCharacterClass = CHARACTER_CLASS_ID::WARLORD; enter.strNickName = "RestoreQueueFull";
+        const bool joined = room->Join(peer->Get_SessionId(), enter);
+        tests.Require(joined, "Queue failure fixture has a fresh admitted player");
+        if (joined)
+        {
+            auto& player = room->m_Players.at(peer->Get_PlayerId());
+            const auto before = player.Inventory; const auto purse = player.Purse;
+            peer->m_iQueuedOutboundBytes = (std::numeric_limits<std::size_t>::max)();
+            room->Handle_RestoreCharacter(peer->Get_SessionId(), savedCharacters.front());
+            tests.Require(peer->Is_Closing() && sameItems(before, player.Inventory) &&
+                player.Purse.iSilver == purse.iSilver && player.Purse.iGold == purse.iGold,
+                "Failed atomic restore response preparation preserves existing inventory and currency");
+        }
+        peer->Request_Close();
+    }
+    for (const auto& peer : peers) peer->Request_Close();
     std::cout << "failures : " << tests.failures << '\n';
     return tests.failures ? 1 : 0;
 }

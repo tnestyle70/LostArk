@@ -2894,6 +2894,20 @@ namespace LostArk::Shared
 		}
 	}
 
+	inline constexpr std::uint16_t INITIAL_EQUIPMENT_UPGRADE_LEVEL = 10u;
+	inline constexpr std::uint16_t MAX_EQUIPMENT_UPGRADE_LEVEL = 65535u;
+	[[nodiscard]] inline bool Is_Upgradeable_Equipment(
+		const std::string_view itemId, const std::string_view equipSlot)
+	{
+		if (!itemId.starts_with("EQUIP_")) return false;
+		return (equipSlot == "weapon" && itemId.ends_with("_HONORWHISPER_WEAPON")) ||
+			(equipSlot == "helmet" && itemId.ends_with("_HONORWHISPER_HELMET")) ||
+			(equipSlot == "shoulder" && itemId.ends_with("_HONORWHISPER_SHOULDER")) ||
+			(equipSlot == "top" && itemId.ends_with("_HONORWHISPER_TOP")) ||
+			(equipSlot == "pants" && itemId.ends_with("_HONORWHISPER_PANTS")) ||
+			(equipSlot == "gloves" && itemId.ends_with("_HONORWHISPER_GLOVES"));
+	}
+
 	/* One inventory entry. An equipped item stays in the same list with the slot it
 	   occupies, so every path that carries the inventory (snapshot, world transfer)
 	   carries the equipment with it. (itemId, slot) is unique and so is each slot. */
@@ -2906,6 +2920,8 @@ namespace LostArk::Shared
 		   entries ever drop below 100; everything else stays 100. It travels with the entry
 		   through every path that carries the inventory. */
 		std::uint8_t iDurabilityPercent = 100;
+		/* Zero for non-upgradeable items; Honor Whisper gear starts at ten. */
+		std::uint16_t iUpgradeLevel = 0u;
 	};
 
 	/* The equipment slots whose gear wears: the weapon and the five armor pieces. The
@@ -3005,7 +3021,7 @@ namespace LostArk::Shared
 	   (equipped entries keep their slot), the purse and the worn honor title. The Server
 	   accepts it once, in Bern, before the player changed anything, and answers with an
 	   S2C_INVENTORY_SNAPSHOT followed by S2C_RESTORE_CHARACTER_RESULT; rejection is explicit. */
-	inline constexpr std::uint32_t MAX_RESTORE_PURSE_AMOUNT = 2000000000u;
+	inline constexpr std::uint32_t MAX_RESTORE_PURSE_AMOUNT = (std::numeric_limits<std::uint32_t>::max)();
 	struct C2S_RESTORE_CHARACTER
 	{
 		std::uint32_t iRequestSequence = 0;
@@ -3027,6 +3043,46 @@ namespace LostArk::Shared
 	};
 	bool Write_Message(CPacketWriter& writer, const S2C_RESTORE_CHARACTER_RESULT& message);
 	bool Read_Message(CPacketReader& reader, S2C_RESTORE_CHARACTER_RESULT& message);
+
+	struct C2S_UPGRADE_EQUIPMENT
+	{
+		std::uint32_t iRequestSequence = 0u;
+		std::string strItemId;
+		EQUIPMENT_SLOT eSlot = EQUIPMENT_SLOT::NONE;
+		std::uint16_t iExpectedUpgradeLevel = 0u;
+	};
+	enum class EQUIPMENT_UPGRADE_RESULT : std::uint8_t { SUCCEEDED, FAILED, REJECTED, END };
+	struct S2C_UPGRADE_EQUIPMENT_RESULT
+	{
+		std::uint32_t iRequestSequence = 0u;
+		EQUIPMENT_UPGRADE_RESULT eResult = EQUIPMENT_UPGRADE_RESULT::REJECTED;
+		std::uint16_t iUpgradeLevel = 0u;
+		WORLD_ID eWorldId = WORLD_ID::BERN;
+	};
+	bool Write_Message(CPacketWriter& writer, const C2S_UPGRADE_EQUIPMENT& message);
+	bool Read_Message(CPacketReader& reader, C2S_UPGRADE_EQUIPMENT& message);
+	bool Write_Message(CPacketWriter& writer, const S2C_UPGRADE_EQUIPMENT_RESULT& message);
+	bool Read_Message(CPacketReader& reader, S2C_UPGRADE_EQUIPMENT_RESULT& message);
+
+	/* A reliable room-command barrier: every earlier mutation is included before leave. */
+	struct C2S_CAPTURE_CHARACTER { std::uint32_t iRequestSequence = 0u; };
+	enum class CHARACTER_CAPTURE_RESULT : std::uint8_t { CAPTURED, REJECTED, END };
+	struct S2C_CAPTURE_CHARACTER_RESULT
+	{
+		std::uint32_t iRequestSequence = 0u;
+		CHARACTER_CAPTURE_RESULT eResult = CHARACTER_CAPTURE_RESULT::REJECTED;
+		std::vector<INVENTORY_ITEM_SNAPSHOT> Items;
+		std::uint32_t iSilver = 0u, iGold = 0u;
+		HONOR_TITLE_ID iHonorTitleId = INVALID_HONOR_TITLE_ID;
+		WORLD_ID eWorldId = WORLD_ID::BERN;
+		PLAYER_ID iPlayerId = INVALID_PLAYER_ID;
+		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
+		CHARACTER_CLASS_ID eCharacterClass = CHARACTER_CLASS_ID::END;
+	};
+	bool Write_Message(CPacketWriter& writer, const C2S_CAPTURE_CHARACTER& message);
+	bool Read_Message(CPacketReader& reader, C2S_CAPTURE_CHARACTER& message);
+	bool Write_Message(CPacketWriter& writer, const S2C_CAPTURE_CHARACTER_RESULT& message);
+	bool Read_Message(CPacketReader& reader, S2C_CAPTURE_CHARACTER_RESULT& message);
 
 	bool Write_Message(
 		CPacketWriter& writer,

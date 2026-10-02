@@ -10,8 +10,11 @@
 #include "CharacterCatalog.h"
 #include "CharacterPortraitRenderer.h"
 #include "CharacterRoster.h"
+#include "EquipmentPresentationCatalog.h"
+#include "EquipmentPresentationService.h"
 #include "GameInstance.h"
 #include "ImGuiLayer.h"
+#include "ItemCatalog.h"
 #include "LevelTransitionService.h"
 #include "MainApp.h"
 #include "Network/PacketMessages.h"
@@ -22,6 +25,7 @@
 #include "UILayoutRuntime.h"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -696,8 +700,59 @@ void CCharacterSelectWindowView::Spawn_StageCharacter(const int32_t iIndex)
 	if (!Roster[static_cast<size_t>(iIndex)].strAppearanceJson.empty())
 		(void)CCustomizingView::Apply_SavedLook(
 			pCharacter, Roster[static_cast<size_t>(iIndex)].strAppearanceJson, m_pDevice, m_pContext);
+	Apply_StageAvatar(iIndex, *pCharacter);
 	m_StageCharacters[iIndex] = pCharacter;
 	Write_StageLog("card " + std::to_string(iIndex) + " character standing");
+}
+
+void CCharacterSelectWindowView::Apply_StageAvatar(const int32_t iIndex, CCharacter& character)
+{
+	using LostArk::Shared::EQUIPMENT_SLOT;
+	const auto& World = CCharacterRoster::Get_Entries()[static_cast<size_t>(iIndex)].World;
+	if (!World.bValid || std::none_of(World.Items.begin(), World.Items.end(), [](const auto& item)
+		{ return item.eEquippedSlot == EQUIPMENT_SLOT::AVATAR_HEAD ||
+			item.eEquippedSlot == EQUIPMENT_SLOT::AVATAR_OUTFIT; }))
+		return;
+
+	/* A catalog or model failure keeps the customized base character on this card. */
+	if (!m_bStageEquipmentCatalogLoadAttempted)
+	{
+		m_bStageEquipmentCatalogLoadAttempted = true;
+		std::string error;
+		auto catalog = std::make_unique<CEquipmentPresentationCatalog>();
+		if ((!CItemCatalog::Get_Items().empty() || CItemCatalog::Load(error)) && catalog->Load(error))
+			m_pStageEquipmentCatalog = std::move(catalog);
+		else
+			Write_StageLog("avatar catalogs unavailable: " + error);
+	}
+	if (!m_pStageEquipmentCatalog)
+		return;
+
+	std::array<std::string, ETOI(EQUIPMENT_SLOT_ID::END)> selected{};
+	for (const auto& item : World.Items)
+	{
+		EQUIPMENT_SLOT_ID slot = EQUIPMENT_SLOT_ID::END;
+		if (item.eEquippedSlot == EQUIPMENT_SLOT::AVATAR_HEAD)
+			slot = EQUIPMENT_SLOT_ID::HEAD;
+		else if (item.eEquippedSlot == EQUIPMENT_SLOT::AVATAR_OUTFIT)
+			slot = EQUIPMENT_SLOT_ID::UPPER;
+		else
+			continue;
+		const ITEM_DEFINITION* definition = CItemCatalog::Find_ById(item.strItemId);
+		if (!definition || item.iQuantity != 1u || definition->strVisualSetId.empty() ||
+			definition->strEquipSlot != LostArk::Shared::Equipment_SlotKind(item.eEquippedSlot) ||
+			!selected[ETOI(slot)].empty())
+		{
+			Write_StageLog("card " + std::to_string(iIndex) + " avatar item unavailable: " + item.strItemId);
+			return;
+		}
+		selected[ETOI(slot)] = definition->strVisualSetId;
+	}
+	if (!m_pStageEquipmentPresentation)
+		m_pStageEquipmentPresentation = std::make_unique<CEquipmentPresentationService>(m_pDevice, m_pContext);
+	std::string error;
+	if (!m_pStageEquipmentPresentation->Apply_Preview(character, *m_pStageEquipmentCatalog, selected, error))
+		Write_StageLog("card " + std::to_string(iIndex) + " avatar presentation unavailable: " + error);
 }
 
 void CCharacterSelectWindowView::Render_Portraits()
@@ -780,6 +835,12 @@ void CCharacterSelectWindowView::Release_Stage()
 	}
 	m_iStagePreparingIndex = -1;
 	m_bStageRequested = false;
+	m_bStageCatalogsReady = false;
+	if (m_pStageEquipmentPresentation)
+		m_pStageEquipmentPresentation->On_LevelChanged();
+	m_pStageEquipmentPresentation.reset();
+	m_pStageEquipmentCatalog.reset();
+	m_bStageEquipmentCatalogLoadAttempted = false;
 	for (int32_t i = 0; i < STAGE_COUNT; ++i)
 	{
 		m_StageCharacters[i].reset();
