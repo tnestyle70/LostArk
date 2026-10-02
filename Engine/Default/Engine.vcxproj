@@ -317,7 +317,14 @@
     <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <ForcedIncludeFiles />
     </ClCompile>
-    <ClCompile Include="..\private\Bone.cpp" />
+    <ClCompile Include="..\private\Bone.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
+      <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SupportJustMyCode>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+    </ClCompile>
     <ClCompile Include="..\Private\Bounding_OBB.cpp" />
     <ClCompile Include="..\private\Bounding.cpp" />
     <ClCompile Include="..\private\Bounding_AABB.cpp" />

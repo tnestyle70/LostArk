@@ -5,6 +5,7 @@
 #include "Network/PacketReader.h"
 #include "PlayerSkillSystem.h"
 #include "ServerNavigation.h"
+#include "WorldBootstrap.h"
 #include "WorldDestructionBootstrapContractTests.h"
 #include <Windows.h>
 #include <process.h>
@@ -140,6 +141,63 @@ int LostArk::Server::Run_ServerNavigationContractTests()
 		bernNavigation.Is_HeightTransitionAllowed(47.f, 47.9f) &&
 		!bernNavigation.Is_HeightTransitionAllowed(47.f, 53.f),
 		"Load Bern navigation with a one-metre deck-step guard");
+
+    // Bern squarehole routes must leave their exact authored landing, not a
+    // nearby projected island. Re-read published gameplay targets so a later
+    // legitimate placement edit is checked against its actual destination.
+    CWorldBootstrap bernWorld;
+    const bool worldLoaded = bernWorld.Load(WORLD_ID::BERN);
+    std::array<SERVER_NAV_POINT, 3> squareholes{};
+    bool landingsReady = loaded && worldLoaded;
+    const std::array<const char*, 3> squareholeIds{
+        "squarehole.1", "squarehole.2", "squarehole.3" };
+    for (std::size_t index = 0; index < squareholes.size(); ++index)
+    {
+        const auto& placements = bernWorld.Get_Placements();
+        const auto placement = std::find_if(placements.begin(), placements.end(),
+            [&](const auto& value) { return value.strPlacementId == squareholeIds[index]; });
+        bool ready = placement != placements.end();
+        if (ready)
+        {
+            const auto action = std::find_if(placement->TriggerActions.begin(), placement->TriggerActions.end(),
+                [](const auto& value) { return value.eKind == WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER; });
+            ready = action != placement->TriggerActions.end();
+            if (ready)
+            {
+                const SERVER_NAV_POINT target{ action->fTargetX, action->fTargetY, action->fTargetZ };
+                ready = bernNavigation.Is_PointWalkableExact(target.x, target.z, target.y) &&
+                    bernNavigation.Sample_Position(target.x, target.z, squareholes[index], target.y) &&
+                    std::abs(squareholes[index].y - target.y) <= .25f;
+                squareholes[index].x = target.x;
+                squareholes[index].z = target.z;
+            }
+        }
+        std::cout << "[BernNavigation] landing=" << squareholeIds[index] << '\n';
+        tests.Require(ready, "The actual published Bern squarehole destination has exact ground at its authored height");
+        landingsReady = landingsReady && ready;
+    }
+    const auto reachesExactGoal = [&](const SERVER_NAV_POINT& from, const SERVER_NAV_POINT& goal)
+    {
+        std::vector<SERVER_NAV_POINT> path;
+        if (!landingsReady || !bernNavigation.Is_PointWalkableExact(goal.x, goal.z, goal.y) ||
+            !bernNavigation.Find_Path(from.x, from.z, goal.x, goal.z, path, from.y) || path.empty()) return false;
+        if (std::adjacent_find(path.begin(), path.end(), [&](const auto& a, const auto& b) {
+            return !bernNavigation.Is_HeightTransitionAllowed(a.y, b.y);
+        }) != path.end()) return false;
+        bernNavigation.Smooth_Path(from.x, from.z, goal.x, goal.z, path, from.y);
+        return !path.empty() && std::hypot(path.back().x - goal.x, path.back().z - goal.z) < .001f &&
+            std::abs(path.back().y - goal.y) <= .25f;
+    };
+    for (std::size_t from = 0; from < squareholes.size(); ++from)
+        for (std::size_t to = 0; to < squareholes.size(); ++to)
+        {
+            if (from == to) continue;
+            std::cout << "[BernNavigation] from=" << squareholeIds[from] << " to=" << squareholeIds[to] << '\n';
+            tests.Require(reachesExactGoal(squareholes[from], squareholes[to]),
+                "Walk between the actual Bern squarehole districts in both directions without projection or a deck jump");
+        }
+    tests.Require(reachesExactGoal(squareholes[2], { 52.25f, 42.24f, -84.75f }),
+        "Leave the crafting squarehole across the formerly missing Landscape cell without stopping one metre short");
 
 	SERVER_NAV_POINT lockedGround{};
 	SERVER_NAV_POINT sampledGround{};

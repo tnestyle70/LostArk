@@ -32,6 +32,9 @@ public:
 	f32_t Get_TickPerSecond() const { return m_fTickPerSecond; }
 	f32_t Get_CurrentTrackPosition() const { return m_fCurrentTrackPosition; }
 	void Set_TrackPosition(f32_t fTrackPosition);
+    // Opt-in for externally sampled World Sequence clones. Only immutable
+    // cooked channels share local samples; each clone retains its own clock.
+    void Enable_SampleReuse();
 
 private:
 	friend class CModel;
@@ -56,6 +59,8 @@ private:
 	vector<uint32_t>					m_iLeftKeyFrameIndices;
 	// Allocate only for clips that are sampled; clone-local cursors never mutate shared tracks.
 	vector<std::array<uint32_t, 3>> m_SeparateTrackIndices;
+    struct SAMPLE_REUSE;
+    shared_ptr<SAMPLE_REUSE> m_pSampleReuse;
 
 
 public:

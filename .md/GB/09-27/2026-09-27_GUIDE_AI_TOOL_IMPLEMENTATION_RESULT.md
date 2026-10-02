@@ -490,3 +490,50 @@ JSON은 기존 인코딩과 줄바꿈을 유지했고 `git diff --check`를 확�
 `46bc1600add091587047ccb12f59590bbd2a582f601476950183f7633db62053`이다.
 빌드 receipt·ZIP CRC/manifest 검증·실행하지 않는 launcher 검사와 남은 사용자 화면
 확인 경계는 `../10-01/2026-10-01_RAID_ENTRY_CHARACTER_HANDOFF_RESULT.md` G02를 따른다.
+
+
+## G12. 건물 출입 동행·연결된 가이드 착지 (2026-10-02)
+
+Bern의 castle/castle.2/library/library.2는 Server의 authored MOVE_PLAYER다.
+기존 PlayerSimulation은 완료 후 Guide_AnchorArrived(player)의 기본 false를 전달해
+Guide가 실외에서 실내까지 도보로 접근하도록 요청했다. 완료 시 Bern의 authored 이동에만
+localMapTravel=true를 전달하여 기존 스퀘어홀 도착 경로를 재사용한다.
+
+기존 Find_GuideLanding은 base surface·높이·충돌만 확인하고 owner와 연결된 보행 영역인지
+확인하지 않았다. 실제 설치된 ship 목적지 주변에서 yaw180/195의 후보가 4칸 고립 영역에
+선택되는 nav 계산을 확인했다. 현재 Bern runtime blocker는 모두0이므로 blocked mask
+누락을 이 증상의 원인으로 단정하지 않는다.
+
+모든 후보의 exact walkability를 확인하고 local 도착은 owner부터의 navigation line of sight를
+추가로 요구한다. 선호하는 뒤쪽 위치가 없으면 owner 주변에서 찾는다. 후보를 먼저 검증한 뒤
+actor 이동·명령 초기화를 적용하며 거부 시 이전 Guide 상태를 보존한다. 실제 승선·세계 전송
+대기와 Bern 귀환 도보 접근은 유지한다. Debug/Release 공통 Server 코드다.
+
+실제 네 건물 trigger의 hold 중 위치 보존·완료 동행, 항구24방향 착지 연결성,
+nav 밖 후보의 기존 상태 보존, 기존 스퀘어홀·안내 수명·승선·세계 전송 계약을 검사했다.
+소스4파일과 PLAN 전문의 byte 일치, UTF-8 BOM 없음/CRLF 및 git diff --check를 확인했다.
+
+- 실제 v143 환경의 Server Debug ClCompile exit0, 약80초. Compile-Exit.json 참조.
+- 현재 Server product object 102개와 Shared library를 사용하는 외부 진단 EXE의 링크 exit0.
+  Link-Retry-Exit.json에서 표준 Server.exe/pdb/lib 및 link tracking 파일의 보존을 확인했다.
+- 새 외부 EXE의 --guide-ai-contract-test: 111 PASS, 0 FAIL, exit0, 53.057초.
+  Guide-Contract-Exit.json 및 Guide-Contract.stdout.log 참조. 동일 actor identity와 실제 published
+  trigger 소비, 패킷·상태 결과를 검사했으며 GUI Client를 조작한 검사가 아니다.
+- 같은 EXE의 --navigation-contract-test: exit0, navigation failures0, 12.460초.
+  Navigation-Baseline-Exit.json 참조. 기존 nav의 기본 계약 검증이며 제작 지구나 전체 맵의
+  연결성 복구 성공을 의미하지 않는다.
+
+당시 실행 중인 Debug Client/Server와 기존 표준 제품 출력은 보존했다. 공통 Server 소스이지만
+새 변경의 표준 Product Debug/Release 링크·배포 및 사용자의 실제 건물/항구 화면 확인은 남아 있다.
+
+원본 백업은 저장소 밖 LostArkTransfer/Sync-20261002/Recovery-20261002-1315/GuideTravel-20261002다.
+베른 전체 nav의 제작 구역 고립·누락 복구는 별도 조사 중이며 이 Guide 코드로 복구됐다고
+기록하지 않는다. 기존 idle build queue는 새 변경 검증을 위해 중지했으며 게임은 유지했다.
+
+
+### G12-01. 복구된 Bern nav와의 결합 검증
+
+외부 후보02의 전체 Server DataFiles를 사용한 새 진단 EXE에서 Guide111개 PASS/exit0,
+47.02초를 확인했다. Nav 추가 회귀도58개 PASS로 제작 지구 스퀘어홀 연결을 확인했다.
+데이터8파일의 정본 반영과 미구현 실내 입구, 실제 게임 재시작 경계는
+[10-02 Bern nav RESULT](../10-02/2026-10-02_BERN_NAV_GROUND_RECOVERY_RESULT.md)에 둔다.

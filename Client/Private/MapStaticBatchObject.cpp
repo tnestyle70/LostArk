@@ -834,7 +834,8 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
         broadPolicy.diagnostics = false;
         const float3_t center(m_BatchBounds.x, m_BatchBounds.y, m_BatchBounds.z);
         if (CMapAssetRenderUtils::Evaluate_FrustumVisibility(broadPolicy, *cameraSnapshot,
-            m_AssetId, m_AssetGroupId, 0u, center, m_BatchBounds.w, m_BatchFrustumState, batchDecision))
+            m_AssetId, m_AssetGroupId, 0u, center, m_BatchBounds.w, m_BatchFrustumState, batchDecision,
+            nullptr, MAP_FRUSTUM_CULL_DETAIL::VISIBILITY_ONLY))
         {
             // Diagnostics retain real placement IDs and the precise loop.
             rejectBatch = !batchDecision.shouldRender && !m_FrustumCulling.diagnostics;
@@ -866,7 +867,7 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 				instance.WorldBoundsCenter,
 				instance.WorldBoundsRadius,
 				instance.FrustumState,
-				decision);
+				decision, nullptr, MAP_FRUSTUM_CULL_DETAIL::VISIBILITY_ONLY);
 		if (evaluated && !decision.wouldBeVisible &&
 			decision.shouldRender && !m_FrustumCulling.bypass)
 		{

@@ -473,6 +473,8 @@ void Client::CProfilerTool::Refresh(Engine::CProfiler& profiler)
     m_iHistoryFrames = profiler.Get_HistoryFrameCount();
     profiler.Get_ScopeNames(m_ScopeNames);
     const size_t window = static_cast<size_t>((std::max)(m_iWindowFrameInput, 1));
+    m_SaveWindowCoverage = profiler.Get_CaptureWindow(
+        m_bSaveWindowOnly ? window : Engine::CProfiler::MAX_HISTORY_FRAMES);
     profiler.Get_ScopeAggregates(window, m_Aggregates);
     profiler.Get_GpuScopeAggregates(window, m_GpuAggregates, m_iGpuValidFrames, m_iGpuPartialFrames);
     profiler.Get_WindowFrameStats(window, m_fWindowCpuAvgMs, m_fWindowCpuMaxMs,
@@ -579,7 +581,7 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
 #ifdef _DEBUG
     ImGui::TextDisabled("Build: Debug | F7 hides/shows this window; Capture controls measurement.");
 #else
-    ImGui::TextDisabled("Build: Release | F7 hides/shows this window; Capture controls measurement.");
+    ImGui::TextDisabled("Build: Release | Capture controls measurement.");
 #endif
     ImGui::TextWrapped("For comparable runs: warm the scene, Reset, hide with F7, reproduce the same camera and actions, then reopen and Save. Closing this panel does not pause capture. Context in JSON is sampled at export.");
     bool enabled = profiler->Is_Enabled();
@@ -612,7 +614,8 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
         CProfilerCaptureIO::Reset_MovementSamples();
         m_fLastRefreshTime = -1.0;
     }
-    ImGui::Checkbox("Save only selected frame window", &m_bSaveWindowOnly);
+    if (ImGui::Checkbox("Save only selected frame window", &m_bSaveWindowOnly))
+        m_fLastRefreshTime = -1.0;
     ImGui::SameLine(); ImGui::TextDisabled("Uncheck to save all retained history (up to 1200 frames).");
 
     const double now = ImGui::GetTime();
@@ -622,6 +625,18 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
     {
         Refresh(*profiler); m_fLastRefreshTime = now;
     }
+    ImGui::TextDisabled("Save range: %llu frames (%llu - %llu); retained %llu; evicted since Reset %llu.",
+        static_cast<unsigned long long>(m_SaveWindowCoverage.SavedFrames),
+        static_cast<unsigned long long>(m_SaveWindowCoverage.FirstSavedFrameNumber),
+        static_cast<unsigned long long>(m_SaveWindowCoverage.LastSavedFrameNumber),
+        static_cast<unsigned long long>(m_SaveWindowCoverage.RetainedFrames),
+        static_cast<unsigned long long>(m_SaveWindowCoverage.EvictedFramesSinceReset));
+    if (m_SaveWindowCoverage.ExcludedRetainedFrames != 0)
+        ImGui::TextWrapped("The selected save window omits %llu retained frames (peak interval %.2f ms). Uncheck Save only selected frame window to include them.",
+            static_cast<unsigned long long>(m_SaveWindowCoverage.ExcludedRetainedFrames),
+            m_SaveWindowCoverage.ExcludedMaxFrameIntervalMs);
+    if (m_SaveWindowCoverage.EvictedFramesSinceReset != 0)
+        ImGui::TextWrapped("Older frames have left the 1200-frame history and cannot be recovered by this save. Save shorter runs before the history fills.");
     if (ImGui::BeginTable("##FrameSummary", 3, ImGuiTableFlags_SizingStretchSame))
     {
         ImGui::TableNextColumn(); ImGui::TextDisabled("FRAME INTERVAL / FPS (latest)");
@@ -690,7 +705,14 @@ void Client::CProfilerTool::Render_Bottlenecks(bool_t bImGuiOnly)
             if (row.ThreadId == m_iMainThreadId) ImGui::TextUnformatted("main");
             else ImGui::Text("worker %u", row.ThreadId);
             ImGui::TableNextColumn(); ImGui::Text("%.3f", row.InclusiveMs / frames);
-            ImGui::TableNextColumn(); ImGui::Text("%.3f", row.SelfMs / frames);
+            ImGui::TableNextColumn();
+            if (row.SelfComplete) ImGui::Text("%.3f", row.SelfMs / frames);
+            else
+            {
+                ImGui::TextDisabled("--");
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Self time is unavailable: CPU scopes were dropped in this selected window. Missing child scopes would be incorrectly charged to their parent. Reset and capture with detailed scopes off.");
+            }
             ImGui::TableNextColumn(); ImGui::Text("%.3f", row.MaxMs);
             ImGui::TableNextColumn(); ImGui::Text("%.2f", static_cast<double>(row.Calls) / frames);
         }

@@ -772,7 +772,13 @@ def _validate_v15_runtime_extensions(source: dict[str, Any], relative: str) -> N
             previous_time = sample_time
             for vector_name in BAKED_SAMPLE_KEYS[1:]:
                 _finite_vec3(sample.get(vector_name), f"{sample_label}.{vector_name}")
-        if previous_time > source_end + 1.0e-4 or clamp >= previous_time:
+        # Match the native codec's closed interval and the corpus clamp tolerance.
+        # A source-owned trail may play through its final baked sample.
+        if (
+            abs(samples[0]["relativeTimeSeconds"]) > 1.0e-6
+            or abs(previous_time - source_end) > 5.0e-5
+            or clamp > previous_time + 5.0e-5
+        ):
             raise ContractError(f"v15 baked history clamp/sample closure is invalid: {history_id}")
         total_samples += len(samples)
         histories[history_id] = history

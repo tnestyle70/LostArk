@@ -24,21 +24,22 @@ Resources 폴더 자체를 선택할 수도 있다. 받는 PC의 portable 폴더
 [Release ZIP 안내](../../Release/zipRelease.md)에서 관리한다. 이번 VS 빌드 캡처를 새 Product pipeline
 실행 receipt로 대신 기록하지 않는다. ZIP 파일 검증과 실제 4인 화면·레이드 준비 성공은 구분한다.
 기존 v5 ZIP은 보존한다.
-현재 팀 LAN 정본은 사용자 데스크탑 `10.16.127.103:7777`이다. 위 v6 ZIP의 파일명·hash와
+현재 팀 LAN 정본은 사용자 노트북 Wi-Fi `192.168.0.14:7777`이며 2026-10-02 23:59 KST까지 유효하다. 위 v6 ZIP의 파일명·hash와
 launcher의 `192.168.0.14`는 당시 배포본의 기록이며, 문서 수정만으로 기존 ZIP/launcher가 갱신되지는 않는다.
 현재 소스 실행은 [네트워크 연결 가이드](네트워크연결가이드.md)의 endpoint sync와 빌드를 따른다.
 기존 `LostArk-Release-20261001-GUIDE-RAID-FIX.zip`의 런처는 `192.168.0.22:7777`을 사용한다.
 새 endpoint는 현재 패키징 소스로 다시 생성한 배포본에 적용되며 기존 ZIP은 자동 변경되지 않는다.
 
 현재 배포 도구 정본은 `Tools/ReleasePackaging`이며 실행 방법은 그 폴더의 `README.md`를 따른다.
-현재 endpoint용 배포 목적지는 `C:/Users/user/Desktop/LostArk-Release-20261001-10.16.127.103.zip`이다.
+직전 endpoint 배포본 `C:/Users/user/Desktop/LostArk-Release-20261001-10.16.127.103.zip`은 당시 주소·hash와 함께 보존한다.
+현재 노트북 endpoint의 새 ZIP은 아직 생성하지 않았다. 아래 명령의 출력 경로는 새 배포 시 사용하는 예시다.
 과거 `LostArk-Release-20260929.zip`은 당시 배포 기록으로 보존한다.
 기존 `LostArk-Release-20260923.zip`과 위 v6 기록은 별도로 보존한다. 아래 명령은 최종 Release Product
 빌드와 필요한 레이드 검사 및 source binding 생성이 끝난 뒤 사용한다. 실제 ZIP 생성 성공·크기·SHA256은
 builder의 `out/ReleasePackaging/portable-delivery.receipt.json`과 해당 작업 RESULT에서 확인한다.
 
 ```powershell
-python Tools/ReleasePackaging/build_portable.py --stage out/ReleasePackaging/20261001-10-16-127-103 --output-zip C:/Users/user/Desktop/LostArk-Release-20261001-10.16.127.103.zip --build-receipt out/BuildPipeline/runs/<successful-release-product>.json
+python Tools/ReleasePackaging/build_portable.py --stage out/ReleasePackaging/20261002-192-168-0-14 --output-zip C:/Users/tnest/Desktop/LostArkTransfer/LostArk-Release-20261002-192.168.0.14.zip --build-receipt out/BuildPipeline/runs/<successful-release-product>.json
 ```
 
 F1 `Save + Apply`로 변경한 Server numeric source·bootstrap·영수증은 같은 배포 폴더에 함께 남긴다.
@@ -68,7 +69,7 @@ Effect V1 catalog 참조 외에도 `Effects/V2/Authored`, `Groups`, `Bindings`, 
 
 현재 패키징 소스로 생성한 `LostArk.exe`는 bundle의 Client를 `Client/Default`에서 시작하고 자식 프로세스에
 `LOSTARK_PROJECT_DATA_ROOT=<bundle>/Data`, `LOSTARK_RESOURCE_ROOT=<선택한 Resources>`,
-`LOSTARK_SERVER_HOST=10.16.127.103`을 지정한다. Server의 자식 프로세스에는
+`LOSTARK_SERVER_HOST=192.168.0.14`을 지정한다. Server의 자식 프로세스에는
 `LOSTARK_SERVER_DATA_ROOT=<bundle>/Server/Bin/DataFiles`도 명시하여 이전 개발·테스트 환경 변수를
 상속해 외부 게시본을 읽지 않게 한다. 시스템 환경 변수는 영구 변경하지 않는다.
 외부 Resources에는 `Fonts, Character, Deploy, Effect, Map, Sound, UI`가 있어야 한다.

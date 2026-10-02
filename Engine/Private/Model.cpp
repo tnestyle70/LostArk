@@ -1245,6 +1245,12 @@ HRESULT CModel::Render_OrderedStaticGeometryInstanced(const uint32_t iHandle,
     return E_INVALIDARG;
 }
 
+void CModel::Enable_AnimationSampleReuse()
+{
+    for (const auto& animation : m_Animations)
+        if (animation) animation->Enable_SampleReuse();
+}
+
 bool_t CModel::Play_Animation(f32_t fTimeDelta)
 {
     Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Animation.Play");

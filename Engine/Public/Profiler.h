@@ -226,10 +226,27 @@ struct FProfilerFrame final
     D3D11_QUERY_DATA_PIPELINE_STATISTICS Pipeline{};
 };
 
+// Describes one newest-completed-frame export without copying any frame samples.
+// Evicted frames are counted since Reset; excluded retained frames can still be saved.
+struct FProfilerCaptureWindow final
+{
+    uint64_t RequestedFrames = 0;
+    uint64_t RetainedFrames = 0;
+    uint64_t SavedFrames = 0;
+    uint64_t ExcludedRetainedFrames = 0;
+    uint64_t EvictedFramesSinceReset = 0;
+    uint64_t FirstRetainedFrameNumber = 0;
+    uint64_t LastRetainedFrameNumber = 0;
+    uint64_t FirstSavedFrameNumber = 0;
+    uint64_t LastSavedFrameNumber = 0;
+    double ExcludedMaxFrameIntervalMs = 0.0;
+};
+
 struct FProfilerCaptureSnapshot final
 {
     std::vector<std::string> ScopeNames;
     std::vector<FProfilerFrame> Frames;
+    FProfilerCaptureWindow CaptureWindow{};
     uint64_t DroppedCpuScopes = 0;
     uint64_t DroppedGpuFrames = 0;
     uint64_t DroppedGpuScopes = 0;
@@ -287,6 +304,8 @@ struct FProfilerScopeAggregate final
     uint64_t Calls = 0;
     double InclusiveMs = 0.0;
     double SelfMs = 0.0;
+    // A dropped scope anywhere in the selected window makes self attribution incomplete.
+    bool SelfComplete = true;
     double MaxMs = 0.0;
 };
 
@@ -355,6 +374,7 @@ public:
     void Set_Counter(EProfilerCounter counter, uint64_t value) noexcept;
 
     FProfilerCaptureSnapshot Snapshot(size_t frameWindow = MAX_HISTORY_FRAMES) const;
+    FProfilerCaptureWindow Get_CaptureWindow(size_t frameWindow) const;
     bool Get_LiveStats(FProfilerLiveStats& outStats) const;
 
     uint32_t Get_MainThreadId() const noexcept { return m_MainThreadId; }
@@ -422,6 +442,8 @@ private:
     void End_GpuFrame(uint64_t frameNumber);
     void Resolve_GpuFrames(uint64_t currentPollFrame);
     void Commit_CurrentFrame();
+    // The caller holds m_Mutex, keeping coverage and copied frames consistent.
+    FProfilerCaptureWindow Get_CaptureWindowLocked(size_t frameWindow) const;
 
 private:
     // Distinguishes a new profiler constructed at a previously used address.
@@ -457,6 +479,7 @@ private:
     uint64_t m_LongOperationSequence = 0;
     uint64_t m_SharedFrameNumber = 0;
     std::deque<FProfilerFrame> m_History;
+    uint64_t m_EvictedHistoryFrames = 0;
     std::vector<std::string> m_ScopeNames;
     std::unordered_map<std::string, uint32_t> m_ScopeNameLookup;
     uint64_t m_DroppedCpuScopes = 0;

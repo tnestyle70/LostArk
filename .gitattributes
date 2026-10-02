@@ -10,6 +10,9 @@
 *.spritefont filter=lfs diff=lfs merge=lfs -text
 *.dat filter=lfs diff=lfs merge=lfs -text
 
+# Authored PDF documents retain their binary bytes and binary diffs.
+*.pdf binary
+
 # Cooked W-format resources are distributed through the shared Drive pack by
 # default. A feature PR may force-add its exact pull-reproducible dependency
 # closure; those selected files remain ordinary tracked Git inputs.

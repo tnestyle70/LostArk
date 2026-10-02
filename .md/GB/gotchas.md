@@ -5868,3 +5868,49 @@ suppression을 Render와 맞추고 debris를 걷는 바닥으로 승격하지 �
 
 - Windows Git checkout의 CRLF와 publisher의 LF가 달라도 JSON 항목·값은 같을 수 있다. `projected Product is stale`만으로 레이드 진입 실패나 컷씬 설정 누락을 단정하지 않고 실제 구조와 줄바꿈을 구분한다.
 - Kouku 생성본 검사는 CRLF를 LF로 정규화한 bytes를 비교한다. 실제 값 변경과 다른 형식 차이는 계속 거부하고, 기존 duplicate-key 검증도 유지한다. 이 판정을 고치기 위해 사용자의 원본이나 생성본을 다시 저장하지 않는다.
+
+### Profiler 저장 범위와 누락된 CPU 자식을 먼저 확인한다
+
+- 기본 저장창은 최근 120프레임이며 전체 보유도 1200프레임 ring이다. 사용자가 관찰한 최저 FPS가 JSON에 실제로 있는지 frame interval과 `captureWindow`를 먼저 대조한다. 선택창 제외와 history 퇴출은 다르며, export metadata는 저장 순간의 조건이다.
+- Detailed scope가 frame cap을 넘으면 빠진 자식 시간이 부모 Self로 남을 수 있다. 누락이 있는 선택 구간의 Self를 병목 확정에 쓰지 않는다. 해당 UI는 Self를 `--`로 표시하며, 다음 비교는 Detailed OFF로 수집하고 raw 범위와 고정 cpuWork를 함께 본다.
+- frame N interval은 Begin(N-1)→Begin(N), frame N CPU는 Begin(N) 이후 작업이다. 순간 지연은 CPU 원인 행과 interval 행 사이의 차이를 고려한다. GPU pending은 0ms가 아니고 전체 GPU timestamp 경과도 utilization이 아니다.
+- 같은 actor의 애니메이션 보간 재사용, 재질별 draw 병합, GPU LOD는 별도 비용을 줄인다. 한 kernel의 절감률을 전체 게임 FPS로 환산하지 않는다. 구조·검증·남은 실측은 [프레임 통합 계획](10-02/2026-10-02_FRAME_PIPELINE_OPTIMIZATION_IMPLEMENTATION_PLAN.md)을 따른다.
+
+
+### 같은 맵 순간이동의 Guide 착지와 실제 보행 연결
+
+- Sample_Position으로 높이를 얻었다고 주변 보행 영역과 연결됐다고 판정하지 않는다.
+  Bern 항구에서는 owner와 높이가 비슷한 ARCHENTRY 위 고립4셀도 후보가 됐다. 실제 blocker가
+  0인 데이터의 결함을 runtime blocker 누락으로 설명하지 않는다.
+- Guide local 이동은 exact walkability·높이·충돌·다른 player 겹침과 owner의 navigation LOS를
+  함께 검증한다. 뒤쪽 선호 후보가 없으면 owner 주변을 탐색하며, 후보 확정 전에 이전 pose나
+  이동·combo 상태를 초기화하지 않는다. Guide actor identity는 유지한다.
+- 성·도서관의 authored MOVE_PLAYER는 hold 시작이 아니라 실제 이동 완료에서 같은 도착
+  처리를 호출한다. 성공한 Server 계약 검사를 Client 화면 확인으로 대신 기록하지 않는다.
+  [Guide 결과 G12](09-27/2026-09-27_GUIDE_AI_TOOL_IMPLEMENTATION_RESULT.md#g12-건물-출입-동행연결된-가이드-착지-2026-10-02).
+
+### Movie 분할 모델의 반복 포즈 샘플링
+
+- Debug compiler 최적화와 Debug/Release 공통 알고리즘 개선을 구분한다. /O2만으로 Release의
+  같은 입력 반복 계산이 없어지지는 않는다. Profiler의 부분 CPU 시간이나 미세 측정을 전체 FPS로
+  환산하지 않으며 CPU/GPU 구간·계측 overhead·실제 장면을 각각 확인한다.
+- 같은 Movie 배우의 분할 모델은 mutable CModel을 공유하지 않고 정확히 같은 channel 입력과
+  시각의 local 보간 결과만 재사용한다. 이름이나 skeleton/hash만으로 입력 동일성을 판정하지 않는다.
+  clone clock·unkeyed bone·root/blend/preScale·combined palette·parts는 각 모델 경로에 남긴다.
+- 실제 설치 WModel에서 local/combined/inverse-bind palette를 대조하고 역방향·loop·서로 다른
+  시계·후처리 오염·hash 충돌·동시 접근도 검사한다. Product SDK 배포·링크 및 실제 화면 검증은
+  독립 native probe 성공과 구분한다.
+  [공통 샘플 재사용 결과](10-02/2026-10-02_MOVIE_ANIMATION_SAMPLE_REUSE_RESULT.md).
+
+
+### Bern 도착점의 walkable과 구역 연결성은 별도다
+
+- 동일 source/paint를 재게시한 bytes가 같다면 다운로드 누락으로 설명하지 않는다. 도착 한 셀이
+  walkable이어도33셀 고립 영역이면 이동할 수 없다. 현재 실제 geometry와 주변 성분을 대조하고
+  native Find_Path의 bool뿐 아니라 exact 목적지와 smoothing 이후 도착점까지 확인한다.
+- 기존 paint 차단·높이는 보존하고 실제 ground·장애물 근접으로 확인한 누락만 복구한다. foliage
+  이름 전체를 장애물 예외로 삼지 않고 실제 허용 geometry를 검토한다. 고립된 roof·별도 실내·바다와
+  authored travel로 오가는 detail region은 전부 하나의 보행 영역으로 합치지 않는다.
+- navsurface는 공식 publisher의 Server 산출물이다. Client에 임의로 추가하지 않으며 source paint와
+  Client/Server grid·Server surface를 한 변경으로 전달한다. 디스크 교체와 실행 중 Server Reload는
+  별도 상태다. [검증과 범위](10-02/2026-10-02_BERN_NAV_GROUND_RECOVERY_RESULT.md).

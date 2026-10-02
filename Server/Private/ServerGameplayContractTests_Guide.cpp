@@ -205,7 +205,9 @@ int CServerGameplayContractRunner::Run_GuideAI()
    tests.Require(landed&&guide.iNetEntityId==reception.iNetEntityId&&state.PlayerId==guideId&&state.AnchorId==leader.iPlayerId&&
     !state.WaitingForOwner&&!state.WaitingForShip&&!leader.bShipDockValid&&source->m_PendingWorldTransfers.empty()&&
     std::abs(guide.fPositionY-leader.fPositionY)<=2.f&&std::hypot(guide.fPositionX-leader.fPositionX,guide.fPositionZ-leader.fPositionZ)<=6.01f&&
-    source->m_ServerCollisionSystem.Is_PlayerPositionClear(guide.fPositionX,guide.fPositionY,guide.fPositionZ,guide.iNetEntityId),
+    source->m_ServerCollisionSystem.Is_PlayerPositionClear(guide.fPositionX,guide.fPositionY,guide.fPositionZ,guide.iNetEntityId)&&
+    source->m_ServerNavigation.Is_PointWalkableExact(guide.fPositionX,guide.fPositionZ,guide.fPositionY)&&
+    source->m_ServerNavigation.Has_LineOfSight(leader.fPositionX,leader.fPositionZ,guide.fPositionX,guide.fPositionZ,leader.fPositionY),
     "Committed Bern map travel brings the same owned guide to a validated nearby landing before any ship boarding");
    drain();
   }
@@ -214,6 +216,65 @@ int CServerGameplayContractRunner::Run_GuideAI()
   tests.Require(leader.eAction==PLAYER_ACTION_STATE::NONE&&leader.fPositionX==refusedOwner[0]&&leader.fPositionZ==refusedOwner[1]&&
    guide.fPositionX==refusedGuide[0]&&guide.fPositionZ==refusedGuide[1],"Rejected map travel never relocates its owner or guide");
   leader=savedOwner;guide=savedGuide;state=savedState;source->m_iServerTick=savedTick;drain();
+ }
+ // Check every heading at the actual harbour destination, including offsets across nav seams.
+ {
+  const auto savedOwner=leader,savedGuide=guide;const auto savedState=state;
+  SERVER_NAV_POINT harbour;const bool resolved=source->Resolve_SquareHoleDestination(leader,WORLD_MAP_SHIP_TRAVEL_DESTINATION_ID,harbour);
+  bool connected=resolved;
+  if(resolved)for(unsigned heading=0;heading<24;++heading)
+  {
+   leader.fPositionX=harbour.x;leader.fPositionY=harbour.y;leader.fPositionZ=harbour.z;leader.fYawDegrees=heading*15.f;
+   source->Guide_AnchorArrived(leader,true);
+   connected=connected&&!state.ReturningOnFoot&&guide.iNetEntityId==reception.iNetEntityId&&
+    source->m_ServerNavigation.Is_PointWalkableExact(guide.fPositionX,guide.fPositionZ,guide.fPositionY)&&
+    source->m_ServerNavigation.Has_LineOfSight(leader.fPositionX,leader.fPositionZ,guide.fPositionX,guide.fPositionZ,leader.fPositionY)&&
+    source->m_ServerCollisionSystem.Is_PlayerPositionClear(guide.fPositionX,guide.fPositionY,guide.fPositionZ,guide.iNetEntityId);
+  }
+  tests.Require(connected,"All twenty-four harbour arrival headings keep the guide on collision-clear connected ground");
+  leader=savedOwner;guide=savedGuide;state=savedState;
+  const auto before=std::array{guide.fPositionX,guide.fPositionY,guide.fPositionZ};
+  guide.hasMoveGoal=true;state.ComboId="guide.contract.preserve";
+  leader.fPositionX=100000.f;leader.fPositionZ=100000.f;
+  source->Guide_AnchorArrived(leader,true);
+  tests.Require(guide.fPositionX==before[0]&&guide.fPositionY==before[1]&&guide.fPositionZ==before[2]&&
+   guide.hasMoveGoal&&state.ComboId=="guide.contract.preserve",
+   "A local arrival without navigation preserves the guide pose, active goal and pending state");
+  leader=savedOwner;guide=savedGuide;state=savedState;
+ }
+ // Real published building triggers must relocate the singleton only on completed motion.
+ {
+  const auto savedOwner=leader,savedGuide=guide;const auto savedState=state;const auto savedTick=source->m_iServerTick;
+  const auto savedTriggers=source->m_ServerTriggerSystem;
+  for(const char* id:{"castle","castle.2","library","library.2"})
+  {
+   leader=savedOwner;guide=savedGuide;state=savedState;source->m_ServerTriggerSystem=savedTriggers;
+   source->Reset_PlayerForDebugTeleport(leader);source->Reset_PlayerForDebugTeleport(guide);
+   const auto* box=source->Find_Placement(id);
+   tests.Require(box&&box->isEnabled&&box->TriggerActions.size()==1u&&
+    box->TriggerActions.front().eKind==WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER,
+    "Published castle/library entry and exit have their actual authored local travel");
+   if(!box||box->TriggerActions.size()!=1u)continue;
+   leader.fPositionX=box->fPositionX;leader.fPositionY=box->fPositionY;leader.fPositionZ=box->fPositionZ;
+   std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;std::vector<SERVER_INTERACT_PROMPT_EDGE> prompts;
+   source->m_ServerTriggerSystem.Evaluate_Entries(source->m_Players,++source->m_iServerTick,transfers,{},prompts);
+   const auto before=std::array{guide.fPositionX,guide.fPositionY,guide.fPositionZ};
+   const bool started=leader.TriggerMove.isActive&&leader.TriggerMove.strSourcePlacementId==id;
+   source->Update_Players(.1f);
+   tests.Require(started&&leader.TriggerMove.isActive&&guide.fPositionX==before[0]&&guide.fPositionY==before[1]&&guide.fPositionZ==before[2],
+    "Building blackout hold never relocates the guide early");
+   for(unsigned step=0;step<120&&leader.TriggerMove.isActive;++step){++source->m_iServerTick;source->Update_Players(1.f/30.f);}
+   const auto& move=box->TriggerActions.front();
+   tests.Require(started&&!leader.TriggerMove.isActive&&std::hypot(leader.fPositionX-move.fTargetX,leader.fPositionZ-move.fTargetZ)<.01f&&
+    !state.ReturningOnFoot&&guide.iNetEntityId==reception.iNetEntityId&&
+    source->m_ServerNavigation.Is_PointWalkableExact(guide.fPositionX,guide.fPositionZ,guide.fPositionY)&&
+    source->m_ServerNavigation.Has_LineOfSight(leader.fPositionX,leader.fPositionZ,guide.fPositionX,guide.fPositionZ,leader.fPositionY)&&
+    std::hypot(guide.fPositionX-leader.fPositionX,guide.fPositionZ-leader.fPositionZ)<=6.01f&&
+    !state.WaitingForShip&&!state.WaitingForOwner&&transfers.empty(),
+    "Completed castle/library entry and exit bring the existing guide onto connected local ground");
+   drain();
+  }
+  leader=savedOwner;guide=savedGuide;state=savedState;source->m_iServerTick=savedTick;source->m_ServerTriggerSystem=savedTriggers;drain();
  }
  // Existing four-human parties still enter a raid; the guide is outside that transaction.
  for(unsigned i=1;i<4;++i){C2S_PARTY_INVITE invite;invite.iTargetNetEntityId=source->m_Players.at(sessions[i]->Get_PlayerId()).iNetEntityId;source->Handle_PartyInvite(ownerId,invite);C2S_PARTY_INVITE_RESPOND answer;answer.iFromNetEntityId=leader.iNetEntityId;answer.bAccepted=true;source->Handle_PartyInviteRespond(sessions[i]->Get_SessionId(),answer);drain();}

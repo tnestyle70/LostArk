@@ -24,15 +24,23 @@ std::size_t CGameRoom::Count_HumanPlayers() const
  return std::count_if(m_Players.begin(),m_Players.end(),[](const auto& p){return p.second.Is_Human();});
 }
 
-bool CGameRoom::Find_GuideLanding(const SERVER_PLAYER& guide,float x,float y,float z,SERVER_NAV_POINT& point) const
+bool CGameRoom::Find_GuideLanding(const SERVER_PLAYER& guide,float x,float y,float z,SERVER_NAV_POINT& point,const SERVER_PLAYER* anchor) const
 {
+ if(anchor&&!m_ServerNavigation.Is_Loaded())return false;
  // Deterministic rings share the normal navigation and actual collision admission.
  for(unsigned sample=0;sample<49;++sample)
  {
   const float radius=sample?(.75f+static_cast<float>((sample-1)/12)*.75f):0.f;
   const float angle=static_cast<float>(sample%12)*PI/6.f;
   SERVER_NAV_POINT candidate{x+std::sin(angle)*radius,y,z+std::cos(angle)*radius};
-  if(m_ServerNavigation.Is_Loaded()&&(!m_ServerNavigation.Sample_Position(candidate.x,candidate.z,candidate,y)||std::abs(candidate.y-y)>2.f))continue;
+  if(m_ServerNavigation.Is_Loaded())
+  {
+   // Sampling height alone does not include live navigation blockers.
+   if(!m_ServerNavigation.Is_PointWalkableExact(candidate.x,candidate.z,y)||
+      !m_ServerNavigation.Sample_Position(candidate.x,candidate.z,candidate,y)||std::abs(candidate.y-y)>2.f)continue;
+   // A nearby island or another overlapping deck is not a usable follow landing.
+   if(anchor&&!m_ServerNavigation.Has_LineOfSight(anchor->fPositionX,anchor->fPositionZ,candidate.x,candidate.z,anchor->fPositionY))continue;
+  }
   if(!m_ServerCollisionSystem.Is_PlayerPositionClear(candidate.x,candidate.y,candidate.z,guide.iNetEntityId))continue;
   bool overlap=false;
   for(const auto& [id,other]:m_Players)if(id!=guide.iPlayerId&&id!=m_iGuideReceptionId&&other.iCurrentHp&&std::abs(other.fPositionY-candidate.y)<1.5f&&std::hypot(other.fPositionX-candidate.x,other.fPositionZ-candidate.z)<.75f){overlap=true;break;}
@@ -280,24 +288,35 @@ void CGameRoom::Guide_AnchorArrived(const SERVER_PLAYER& anchor, const bool loca
  auto& state=found->second;
  if(state.AnchorId!=anchor.iPlayerId)return;
  auto actor=m_Players.find(state.PlayerId);if(actor==m_Players.end())return;
+ const bool relocate=localMapTravel&&m_eWorldId==WORLD_ID::BERN&&!anchor.bShipDockValid;
+ SERVER_NAV_POINT landing;
+ if(relocate)
+ {
+  const float yaw=anchor.fYawDegrees*PI/180.f;
+  // Prefer the following offset, then search beside the committed owner. Neither
+  // search may cross a navigation seam or admit a blocked destination.
+  if(!Find_GuideLanding(actor->second,
+      anchor.fPositionX-std::sin(yaw)*m_GuideCatalog.DesiredDistance,anchor.fPositionY,
+      anchor.fPositionZ-std::cos(yaw)*m_GuideCatalog.DesiredDistance,landing,&anchor)&&
+     !Find_GuideLanding(actor->second,anchor.fPositionX,anchor.fPositionY,anchor.fPositionZ,landing,&anchor))
+  {
+   state.Reason="Owner arrived; no connected guide landing is available";
+   return;
+  }
+ }
+ // Admission precedes mutation so a refused landing preserves the existing actor.
  Reset_PlayerForDebugTeleport(actor->second);
  state.ComboId.clear();state.PendingComboId.clear();state.FarElapsed=0.f;
  // Preserve owner contact: an actual relocation into a new space still has an entry edge.
  state.ReturningOnFoot=true;state.Reason="Following committed owner arrival on foot";
- // An admitted Bern map-travel is a shared local arrival, before ship boarding.
- // The existing actor follows that relocation; cross-world returns keep their on-foot approach.
- if(localMapTravel&&m_eWorldId==WORLD_ID::BERN&&!anchor.bShipDockValid)
+ // Bern squareholes, Set Sail preparation and authored building travel are local
+ // arrivals. Actual ship boarding and cross-world returns keep their existing policy.
+ if(relocate)
  {
-  const float yaw=anchor.fYawDegrees*PI/180.f;
-  SERVER_NAV_POINT landing;
-  if(Find_GuideLanding(actor->second,
-      anchor.fPositionX-std::sin(yaw)*m_GuideCatalog.DesiredDistance,anchor.fPositionY,
-      anchor.fPositionZ-std::cos(yaw)*m_GuideCatalog.DesiredDistance,landing))
-  {
-   actor->second.fPositionX=landing.x;actor->second.fPositionY=landing.y;actor->second.fPositionZ=landing.z;
-   actor->second.fYawDegrees=anchor.fYawDegrees;actor->second.isCombatReady=actor->second.iCurrentHp!=0u;
-   state.ReturningOnFoot=false;state.WaitingForShip=false;
-  }
+  actor->second.fPositionX=landing.x;actor->second.fPositionY=landing.y;actor->second.fPositionZ=landing.z;
+  actor->second.fYawDegrees=anchor.fYawDegrees;actor->second.isCombatReady=actor->second.iCurrentHp!=0u;
+  state.ReturningOnFoot=false;state.WaitingForShip=false;
+  state.Reason="Following committed owner arrival on connected ground";
  }
 }
 

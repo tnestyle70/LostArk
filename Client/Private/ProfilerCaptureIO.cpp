@@ -195,6 +195,23 @@ namespace
             << ", \"p99Ms\": " << percentile(.99) << ", \"maxMs\": " << values.back() << "}";
     }
 
+    void WriteCaptureWindow(std::ostream& stream, const Engine::FProfilerCaptureSnapshot& snapshot)
+    {
+        const auto& window = snapshot.CaptureWindow;
+        stream << "  \"captureWindow\": {\n    \"requestedFrames\": " << window.RequestedFrames
+            << ",\n    \"retainedFrames\": " << window.RetainedFrames
+            << ",\n    \"savedFrames\": " << snapshot.Frames.size()
+            << ",\n    \"recordedFramesSinceReset\": " << window.RetainedFrames + window.EvictedFramesSinceReset
+            << ",\n    \"excludedRetainedFrames\": " << window.ExcludedRetainedFrames
+            << ",\n    \"evictedFramesSinceReset\": " << window.EvictedFramesSinceReset
+            << ",\n    \"firstRetainedFrameNumber\": " << window.FirstRetainedFrameNumber
+            << ",\n    \"lastRetainedFrameNumber\": " << window.LastRetainedFrameNumber
+            << ",\n    \"firstSavedFrameNumber\": " << window.FirstSavedFrameNumber
+            << ",\n    \"lastSavedFrameNumber\": " << window.LastSavedFrameNumber
+            << ",\n    \"excludedMaxFrameIntervalMs\": " << window.ExcludedMaxFrameIntervalMs
+            << ",\n    \"note\": \"Newest completed frames only. Excluded retained frames can still be saved with a larger window; evicted frames cannot. Frame N interval runs from Begin(N-1) to Begin(N), while frame N CPU scopes measure work after Begin(N).\"\n  },\n";
+    }
+
     void WriteSummary(std::ostream& stream, const Engine::FProfilerCaptureSnapshot& snapshot)
     {
         std::vector<double> intervals, cpu, gpu;
@@ -363,6 +380,7 @@ bool SaveJsonImpl(
 	Stream << "{\n";
 	Stream << "  \"schema\": \"LostArkProfilerCapture.v3\",\n";
     WriteContext(Stream, Context);
+    WriteCaptureWindow(Stream, Snapshot);
     WriteSummary(Stream, Snapshot);
     if (!WriteMovement(Stream, Context, pOutError, pCancel)) return false;
 	Stream << "  \"droppedCpuScopes\": " << Snapshot.DroppedCpuScopes << ",\n";

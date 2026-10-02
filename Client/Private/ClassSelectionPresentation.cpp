@@ -7,6 +7,7 @@
 #include "ProjectDataRoot.h"
 #include "WorldSequenceObject.h"
 #include "GameInstance.h"
+#include "Profiler.h"
 #include "Effect_LightPresentation.h"
 #include "Presentation_Manager.h"
 #include "SourceCharacterMaterialParameters.h"
@@ -1062,6 +1063,9 @@ bool CClassSelectionPresentation::Set_InspectionFreeCamera(const bool free, std:
 
 bool CClassSelectionPresentation::Sample_Frame()
 {
+#ifdef _DEBUG
+    Engine::CProfilerScope movieScope(Engine::CGameInstance::Get().Get_Profiler(), "ClassMovie.SampleFrame");
+#endif
     if (!m_Active || !m_Scene) return false;
     const auto camera = m_Camera.lock();
     if (!camera) { m_Status = "Class selection camera was released."; return false; }
@@ -1102,6 +1106,9 @@ bool CClassSelectionPresentation::Sample_Camera(const PHASE& phase, const float 
 
 bool CClassSelectionPresentation::Sample_Effects(const PHASE& phase, const float sampleMs)
 {
+#ifdef _DEBUG
+    Engine::CProfilerScope movieScope(Engine::CGameInstance::Get().Get_Profiler(), "ClassMovie.SampleEffects");
+#endif
     std::set<std::string> visible;
     for (const auto& track : phase.effects)
     {
@@ -1423,6 +1430,9 @@ bool CClassSelectionPresentation::Sample_MaterialsAndLights(const PHASE& phase, 
 
 void CClassSelectionPresentation::Update(const float deltaSeconds)
 {
+#ifdef _DEBUG
+    Engine::CProfilerScope movieScope(Engine::CGameInstance::Get().Get_Profiler(), "ClassMovie.Update");
+#endif
     Poll_AuthoringPublish();
     if (!m_Active || !m_Scene) return;
     // Camera_Free owns the F6 shortcut. Consume its requested mode once instead

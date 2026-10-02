@@ -767,6 +767,66 @@ class EffectSourceValidatorTests(unittest.TestCase):
         with self.assertRaisesRegex(MODULE.ContractError, "history is missing"):
             MODULE.validate_repository(self.root)
 
+    def _write_v15_baked_history(
+        self,
+        *,
+        sample_times: tuple[float, ...] = (0.0, 1.0),
+        source_end: float = 1.0,
+        clamp: float = 0.5,
+    ) -> None:
+        self._write_v15_source(self.effect_id)
+        path = self.root / f"Data/Effects/Authored/{self.effect_id}.effect.json"
+        source = json.loads(path.read_text(encoding="utf-8"))
+        source["runtimeExtensions"]["bakedEdgeHistories"] = [{
+            "historyId": "trail.fixture.history",
+            "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS",
+            "sourceEndTimeSeconds": source_end,
+            "playbackClampSeconds": clamp,
+            "samples": [{
+                "relativeTimeSeconds": time,
+                "firstEdgeUE3Cm": [0, 0, 0],
+                "controlPointUE3Cm": [0, 0, 0],
+                "secondEdgeUE3Cm": [0, 0, 0],
+            } for time in sample_times],
+        }]
+        source["elements"][0]["runtimeCarrier"] = {
+            "formatVersion": 1,
+            "kind": "animationTrailBakedEdgeV1",
+            "admission": "bounded",
+            "historyId": "trail.fixture.history",
+        }
+        source["elements"][0]["sourceRecipe"]["enabled"] = False
+        self._write_json(path, source)
+
+    def test_v15_baked_history_accepts_clamp_at_last_sample(self) -> None:
+        for source_end, clamp in ((1.0, 0.5), (1.0, 1.0),
+                                  (0.16666650772094727, 0.16666650772094727)):
+            with self.subTest(source_end=source_end, clamp=clamp):
+                self._write_v15_baked_history(
+                    sample_times=(0.0, source_end), source_end=source_end, clamp=clamp
+                )
+                self.assertEqual(MODULE.validate_repository(self.root).direct_source_count, 1)
+
+    def test_v15_baked_history_accepts_native_interval_tolerance(self) -> None:
+        for sample_times in ((5.0e-7, 1.0), (0.0, 1.0 - 4.0e-5), (0.0, 1.0 + 4.0e-5)):
+            with self.subTest(sample_times=sample_times):
+                self._write_v15_baked_history(sample_times=sample_times, clamp=1.0)
+                self.assertEqual(MODULE.validate_repository(self.root).direct_source_count, 1)
+
+    def test_v15_baked_history_rejects_invalid_interval_and_clamp(self) -> None:
+        cases = (
+            ((2.0e-6, 1.0), 0.5, "clamp/sample closure"),
+            ((0.0, 1.0 - 1.0e-4), 0.5, "clamp/sample closure"),
+            ((0.0, 1.0 + 6.0e-5), 0.5, "clamp/sample closure"),
+            ((0.0, 1.0), 1.0 + 1.0e-5, "timing is invalid"),
+            ((0.0, 1.0, 1.0), 0.5, "not strictly increasing"),
+        )
+        for sample_times, clamp, error in cases:
+            with self.subTest(sample_times=sample_times, clamp=clamp):
+                self._write_v15_baked_history(sample_times=sample_times, clamp=clamp)
+                with self.assertRaisesRegex(MODULE.ContractError, error):
+                    MODULE.validate_repository(self.root)
+
     def test_retired_payload_kind_is_rejected(self) -> None:
         bad = dict(self.row)
         bad["payloadKind"] = "DIRECT_AUTHORED_DOCUMENT_V13"
