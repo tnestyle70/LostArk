@@ -278,6 +278,7 @@
     <ClInclude Include="..\Public\ProfilerTool.h" />
     <ClInclude Include="..\Public\RenderingBenchmark.h" />
     <ClInclude Include="..\Public\RenderingTechniqueGuide.h" />
+    <ClInclude Include="..\Public\RenderingReferenceGuide.h" />
     <ClInclude Include="..\Public\BossCompositionDocument.h" />
     <ClInclude Include="..\Public\SequencerTool.h" />
     <ClInclude Include="..\Public\AssetPreparationBatch.h" />
@@ -1400,6 +1401,7 @@
     <ItemGroup>
       <ClientEngineCompiledShaders Include="$(EngineCellShaderSource)" />
       <ClientEngineCompiledShaders Include="$(EngineDeferredShaderSource)" />
+      <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_ScreenSpaceLighting.cso" />
       <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup001.cso" />
       <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup009.cso" />
       <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup017.cso" />

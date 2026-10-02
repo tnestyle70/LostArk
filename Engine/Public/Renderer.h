@@ -127,6 +127,7 @@ private:
 
 	shared_ptr<class CVIBuffer_Rect>		m_pVIBuffer = { nullptr };
 	shared_ptr<class CShader>				m_pShader = { nullptr };
+    shared_ptr<class CShader> m_pScreenSpaceLightingShader;
 
 	float4x4_t								m_WorldMatrix{}, m_ViewMatrix{}, m_ProjMatrix{};
 	uint32_t								m_iShadowMapSize = 2048u;
@@ -172,6 +173,7 @@ private:
 	HRESULT Render_Lights();
 	HRESULT Render_Portraits();
 	HRESULT Render_Combined(bool_t bPortrait = false);
+    HRESULT Render_ScreenSpaceLighting();
 	HRESULT Render_NonLight();
 	HRESULT Render_Blend();
 	HRESULT Capture_SceneColorSnapshot();

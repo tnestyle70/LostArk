@@ -4,16 +4,25 @@
 #include "Engine_RenderTypes.h"
 #include "ClientWindowDisplay.h"
 #include "UserSettingsDocument.h"
+#include "RenderingReferenceGuide.h"
 #include <cstring>
 #include <dxgi.h>
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
+#include <set>
+#include <tuple>
 
 namespace
 {
     // SCOPE_CATALOG: kept in sync with actual CProfilerScope/GpuScope call sites.
     constexpr const char* CPU_SCOPE_CATALOG[] = {
+        "Render.SSGI",
+        "Render.SSR",
+        "Render.ScreenSpaceLighting",
+        "Render.ScreenSpaceLighting.Copy",
+        "Profiler.Memory.Sample",
         "Animation.Blend",
         "Animation.Bones.Combine",
         "Animation.Channels.Sample",
@@ -317,6 +326,9 @@ namespace
         "WorldSequence.PrepareArea",
     };
     constexpr const char* GPU_SCOPE_CATALOG[] = {
+        "Render.SSGI",
+        "Render.SSR",
+        "Render.ScreenSpaceLighting.Copy",
         "ImGui.BackendSubmit",
         "ImGui.PlatformViewport.Present",
         "ImGui.PlatformViewport.Render",
@@ -371,7 +383,7 @@ namespace
         "텍스처 요청",
         "텍스처 경로 캐시 적중",
         "텍스처 내용 캐시 적중",
-        "고유 텍스처 SRV",
+        "새 텍스처 SRV 생성 성공",
         "텍스처 GPU 추정 바이트",
         "클라이언트 경로 탐색 요청",
         "클라이언트 탐색 노드",
@@ -461,6 +473,9 @@ namespace
             {"Render.Shadow.StaticBuild", "정적 그림자 생성"},
             {"Render.Shadow.Dynamic", "동적 그림자 생성"},
             {"Render.SSAO", "화면 공간 주변 차폐"}, {"Render.Lights", "월드 직접광 합산"},
+            {"Render.SSGI", "실험 화면 공간 간접광"}, {"Render.SSR", "실험 화면 공간 반사"},
+            {"Render.ScreenSpaceLighting", "실험 화면 공간 조명 전체"},
+            {"Render.ScreenSpaceLighting.Copy", "화면 공간 조명 입력 복사"},
             {"Render.Lights.WorldReceivers", "일반 수광체 직접광"},
             {"Render.Lights.CharacterReceivers", "캐릭터 수광체 직접광"},
             {"Render.Lights.StageAndSubmit", "광원 컬링·레코드 구성·제출"},
@@ -496,6 +511,8 @@ namespace
             {"ImGui.RenderDrawData", "도구 UI draw 제출"},
             {"ImGui.PlatformViewport.Present", "외부 창 제출·대기"},
             {"Profiler.Panel.Refresh", "프로파일러 표 집계"},
+            {"Profiler.Timeline.Snapshot", "타임라인 프레임 복사"},
+            {"Profiler.Memory.Sample", "OS 메모리 표본 조회"},
             {"Profiler.Capture.Snapshot", "캡처 스냅샷 복사"},
             {"Network.DrainAndDispatch", "수신 패킷 배분 (클라이언트)"},
         };
@@ -632,6 +649,7 @@ void Client::CProfilerTool::Refresh(Engine::CProfiler& profiler)
     m_fUnattributedCpuMs = (std::max)(0.0, m_LatestFrame.CpuFrameMs - profiler.Ticks_ToMs(covered));
     m_bCpuRowsDirty = true;
     m_bComparisonRefresh = true;
+    m_bTimelineRefresh = true;
 }
 
 const char_t* Client::CProfilerTool::Scope_Name(uint32_t id) const
@@ -711,6 +729,11 @@ Client::FProfilerCaptureContext Client::CProfilerTool::Sample_Context() const
     options["SSAO.radius"] = quality.fSSAORadius; options["SSAO.bias"] = quality.fSSAOBias;
     options["SSAO.intensity"] = quality.fSSAOIntensity; options["SSAO.power"] = quality.fSSAOPower;
     options["SSAO.distanceFade"] = quality.fSSAODistanceFade; options["SSAO.samples"] = quality.iSSAOSampleCount;
+    options["SSGI.enabled"] = quality.bSSGIEnabled; options["SSGI.strength"] = quality.fSSGIStrength;
+    options["SSGI.radius"] = quality.fSSGIRadius; options["SSGI.samples"] = quality.iSSGISampleCount;
+    options["SSR.enabled"] = quality.bSSREnabled; options["SSR.strength"] = quality.fSSRStrength;
+    options["SSR.maxDistance"] = quality.fSSRMaxDistance; options["SSR.thickness"] = quality.fSSRThickness;
+    options["SSR.steps"] = quality.iSSRStepCount;
     options["Bloom.threshold"] = quality.fBloomThreshold; options["Bloom.softKnee"] = quality.fBloomSoftKnee;
     options["Bloom.intensity"] = quality.fBloomIntensity; options["Bloom.scatter"] = quality.fBloomScatter;
     vector4("Bloom.tint", quality.vBloomTint);
@@ -883,6 +906,10 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
     if (ImGui::BeginTabBar("##ProfilerTabs"))
     {
         if (ImGui::BeginTabItem("한 프레임 해석")) { Render_FrameOverview(); ImGui::EndTabItem(); }
+        if (ImGui::BeginTabItem("타임라인###ScopeTimeline")) { Render_Timeline(*profiler); ImGui::EndTabItem(); }
+        if (ImGui::BeginTabItem("병목 후보·다음 실험###BottleneckCandidates")) { Render_Candidates(*profiler); ImGui::EndTabItem(); }
+        if (ImGui::BeginTabItem("RAM·GPU 메모리###MemoryTimeline")) { Render_Memory(*profiler); ImGui::EndTabItem(); }
+        if (ImGui::BeginTabItem("상용 엔진과 비교###CommercialProfilerReference")) { RenderingReferenceGuide::Render(); ImGui::EndTabItem(); }
         if (ImGui::BeginTabItem("프레임 변화###FrameChanges")) { Render_FrameChanges(*profiler); ImGui::EndTabItem(); }
         if (ImGui::BeginTabItem("기준 A/B###BaselineComparison")) { Render_Comparison(*profiler); ImGui::EndTabItem(); }
         if (ImGui::BeginTabItem("CPU 병목")) { Render_Bottlenecks(); ImGui::EndTabItem(); }
@@ -1049,7 +1076,7 @@ void Client::CProfilerTool::Render_FrameOverview()
         count(Engine::EProfilerCounter::MeshIndices), count(Engine::EProfilerCounter::UniqueMeshes));
     if (count(Engine::EProfilerCounter::DroppedMeshSamples))
         ImGui::TextColored(ImVec4(1.f, .65f, .25f, 1.f), "고유 메시 표본 %llu개 누락: 고유 수는 하한입니다.", count(Engine::EProfilerCounter::DroppedMeshSamples));
-    ImGui::TextWrapped("draw는 API 제출 횟수, 인스턴싱 제출 수는 instanced draw만의 반복 개수, 고유 CMesh는 서로 다른 CPU 메시 객체 수입니다. 인덱스는 인스턴스 수를 반영하며 고유 정점·오브젝트·화면 삼각형 수와 다릅니다. 그림자·초상 재제출도 포함합니다. DirectXTK 글자·디버그 도형 내부 draw는 위 합계에 미포함입니다. 간접 draw의 실제 인덱스는 위 인덱스 수에 미포함이며 전체 작업량의 LOD0 상한으로 별도 표시합니다.");
+    ImGui::TextWrapped("draw는 API 제출 횟수, 인스턴싱 제출 수는 instanced draw만의 반복 개수, 고유 CMesh는 서로 다른 CPU 메시 객체 수입니다. 인덱스는 인스턴스 수를 반영하며 고유 정점·오브젝트·화면 삼각형 수와 다릅니다. 그림자·초상 재제출도 포함합니다. DirectXTK 글자·디버그 도형 내부 draw는 위 합계에 미포함입니다. 간접 draw와 그 인덱스 상한은 생산자가 없는 미계측 예약 항목입니다.");
     ImGui::Separator();
     ImGui::Text("광원 레코드 제출 %llu | draw %llu | 업로드 %.1f KiB | 컬링 제외 %llu / %llu",
         count(Engine::EProfilerCounter::LightRecords), count(Engine::EProfilerCounter::LightDrawCalls),
@@ -1073,7 +1100,7 @@ void Client::CProfilerTool::Render_FrameOverview()
         ImGui::EndTable();
     }
     if (!m_iGpuValidFrames) ImGui::TextDisabled("빛 GPU 구간은 아직 유효한 완료 결과가 없습니다.");
-    ImGui::TextWrapped("이 표의 부모·자식 행은 중첩됩니다. 전체 값을 더하지 마세요. GPU timestamp는 명령 공급 대기를 포함한 경과 시간이며 GPU 점유율이 아닙니다. 개별 광원의 ALU·메모리·캐시 비용, VRAM 실제 사용량, Server 연산은 이 캡처에서 미계측입니다.");
+    ImGui::TextWrapped("이 표의 부모·자식 행은 중첩됩니다. 전체 값을 더하지 마세요. GPU timestamp는 명령 공급 대기를 포함한 경과 시간이며 GPU 점유율이 아닙니다. 개별 광원의 ALU·메모리·캐시 비용과 자원별 VRAM 귀속, Server 연산은 미계측입니다. 프로세스 GPU segment 사용량은 RAM·GPU 메모리 탭에서 확인합니다.");
     ImGui::EndChild();
 }
 
@@ -1146,7 +1173,7 @@ void Client::CProfilerTool::Render_Gpu()
     }
     if (ImGui::BeginTabItem("draw·메시·인덱스"))
     {
-        ImGui::TextWrapped("아래는 같은 유효 GPU 프레임 구간에서 CPU가 제출한 Engine draw 누계입니다. GPU가 최종 표시한 수가 아닙니다. 부모 값은 자식을 포함합니다. ImGui·DirectXTK는 이 패스 draw 표에 미포함이며 ImGui는 전체 작업량에서 별도 확인합니다. 간접 draw의 실제 인덱스는 이 표에 미포함이며 전체 작업량의 별도 상한으로 확인합니다.");
+        ImGui::TextWrapped("아래는 같은 유효 GPU 프레임 구간에서 CPU가 제출한 Engine draw 누계입니다. GPU가 최종 표시한 수가 아닙니다. 부모 값은 자식을 포함합니다. ImGui·DirectXTK는 이 패스 draw 표에 미포함이며 ImGui는 전체 작업량에서 별도 확인합니다. 간접 draw·인덱스 상한은 생산자가 없는 미계측 예약 항목입니다.");
         if (ImGui::BeginTable("##GpuDrawWork", 9, TABLE_FLAGS | ImGuiTableFlags_ScrollX, ImVec2(0, 0), 1540.f))
         {
             ImGui::TableSetupScrollFreeze(1, 1);
@@ -1201,7 +1228,7 @@ void Client::CProfilerTool::Render_Counters() const
             static_cast<unsigned long long>(m_Live.GpuFrameNumber),
             static_cast<unsigned long long>(m_Live.Pipeline.IAVertices), static_cast<unsigned long long>(m_Live.Pipeline.VSInvocations),
             static_cast<unsigned long long>(m_Live.Pipeline.PSInvocations), static_cast<unsigned long long>(m_Live.Pipeline.IAPrimitives));
-    ImGui::TextWrapped("경로 탐색은 클라이언트 측정값입니다. Server 권위 경로 탐색은 다른 프로세스에서 실행됩니다. 생산자가 없는 텍스처 캐시·간접 draw 항목은 미계측입니다. 간접 인덱스 상한은 예약 항목이며 실제 실행량이 아닙니다.");
+    ImGui::TextWrapped("경로 탐색은 클라이언트 측정값입니다. Server 연산은 별도입니다. 텍스처 요청은 LoadSharedTexture 시도(실패 포함), 경로 적중은 weak cache 재사용, 새 SRV는 생성 성공 건수이며 상주 개수가 아닙니다. worker 요청과 생성 완료는 다른 프레임일 수 있어 당프레임 hit/request를 효율로 단정하지 않습니다. content cache·추정 GPU bytes·간접 draw는 미계측 예약 항목입니다.");
     ImGui::TextWrapped("맵 가시성 캐시 적중은 이전 카메라 결과 재사용입니다. 재계산 후보 0은 컬링 비활성화를 뜻하지 않습니다. 저작 숨김 NPC는 프러스텀과 별개이며, bounds 무효화 이펙트는 root 변경으로 기존 bounds가 무효화된 항목입니다.");
     if (ImGui::BeginTable("##WorkCounters", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH))
     {
@@ -1210,7 +1237,8 @@ void Client::CProfilerTool::Render_Counters() const
         {
             ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextUnformatted(COUNTER_LABELS[i]);
             ImGui::TableNextColumn();
-            if ((i >= static_cast<size_t>(Engine::EProfilerCounter::TextureRequests) && i <= static_cast<size_t>(Engine::EProfilerCounter::TextureEstimatedGpuBytes)) ||
+            if (i == static_cast<size_t>(Engine::EProfilerCounter::TextureContentHits) ||
+                i == static_cast<size_t>(Engine::EProfilerCounter::TextureEstimatedGpuBytes) ||
                 i == static_cast<size_t>(Engine::EProfilerCounter::IndirectDrawCalls) ||
                 i == static_cast<size_t>(Engine::EProfilerCounter::IndirectIndexUpperBound))
                 ImGui::TextDisabled("미계측");
@@ -1333,6 +1361,18 @@ namespace
             };
             const auto found = labels.find(name); return found == labels.end() ? name : found->second;
         }
+        if (key.starts_with("memory::"))
+        {
+            static const std::map<std::string, std::string> labels = {
+                {"privateCommitBytes", "프로세스 전용 commit"}, {"workingSetBytes", "프로세스 Working Set"},
+                {"peakWorkingSetBytes", "프로세스 lifetime 최대 Working Set"}, {"peakPrivateCommitBytes", "프로세스 lifetime 최대 전용 commit"},
+                {"systemCommitBytes", "시스템 commit"}, {"systemCommitLimitBytes", "시스템 commit 한도"}, {"systemAvailableBytes", "시스템 가용 RAM"},
+                {"localUsageBytes", "DXGI Local 프로세스 사용량"}, {"localBudgetBytes", "DXGI Local 예산"},
+                {"nonLocalUsageBytes", "DXGI Non-local 프로세스 사용량"}, {"nonLocalBudgetBytes", "DXGI Non-local 예산"}
+            };
+            const auto found = labels.find(name);
+            return (found == labels.end() ? name : found->second) + " (MiB / OS 표본)";
+        }
         const char* prefix = "";
         if (key.starts_with("cpu.main.self::")) prefix = "CPU 메인 자체 | ";
         else if (key.starts_with("cpu.main.total::")) prefix = "CPU 메인 전체 | ";
@@ -1362,20 +1402,20 @@ namespace
     const Client::FProfilerComparisonMean* ComparisonFind(const FComparisonMeans& means, const std::string& key)
     { const auto it = means.find(key); return it == means.end() ? nullptr : &it->second; }
 
-    void ComparisonValue(const Client::FProfilerComparisonMean* value, bool time)
+    void ComparisonValue(const Client::FProfilerComparisonMean* value, bool time, double divisor = 1.0)
     {
         if (!value || !value->Available) ImGui::TextDisabled("미계측");
         else if (time) ImGui::Text("%.3f", value->Value);
-        else ImGui::Text("%.2f", value->Value);
+        else ImGui::Text("%.2f", value->Value / divisor);
         if (value && ImGui::IsItemHovered())
-            ImGui::SetTooltip("유효 표본 %zu / 대상 프레임 %zu", value->Samples, value->Expected);
+            ImGui::SetTooltip("유효 관측 %zu / 대상 관측 %zu", value->Samples, value->Expected);
     }
 
-    void ComparisonDelta(const FComparisonMeans& a, const FComparisonMeans& b, const std::string& key, bool time)
+    void ComparisonDelta(const FComparisonMeans& a, const FComparisonMeans& b, const std::string& key, bool time, double divisor = 1.0)
     {
         const auto* left = ComparisonFind(a, key); const auto* right = ComparisonFind(b, key);
         if (!left || !right || !left->Available || !right->Available) { ImGui::TextDisabled("--"); return; }
-        const double delta = right->Value - left->Value;
+        const double delta = (right->Value - left->Value) / divisor;
         ImGui::TextColored(delta > 0.0 ? ImVec4(1.f, .65f, .3f, 1.f) : ImVec4(.55f, .85f, .65f, 1.f),
             time ? "%+.3f" : "%+.2f", delta);
     }
@@ -1399,11 +1439,12 @@ namespace
         for (auto& [key, row] : joined)
             if (Contains_CaseInsensitive(row.Label, filter) || Contains_CaseInsensitive(key, filter)) rows.push_back(std::move(row));
         const auto comparable = [](const FRow& row) { return row.A && row.B && row.A->Available && row.B->Available; };
+        const auto delta = [](const FRow& row)
+        { return (row.B->Value - row.A->Value) / (row.Key.starts_with("memory::") ? 1024.0 * 1024.0 : 1.0); };
         std::stable_sort(rows.begin(), rows.end(), [&](const auto& x, const auto& y)
         {
             if (comparable(x) != comparable(y)) return comparable(x);
-            if (comparable(x) && x.B->Value - x.A->Value != y.B->Value - y.A->Value)
-                return x.B->Value - x.A->Value > y.B->Value - y.A->Value;
+            if (comparable(x) && delta(x) != delta(y)) return delta(x) > delta(y);
             return x.Key < y.Key;
         });
         ImGui::TextWrapped(time ?
@@ -1419,10 +1460,11 @@ namespace
         while (clipper.Step()) for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
         {
             const auto& row = rows[static_cast<size_t>(i)];
+            const double divisor = row.Key.starts_with("memory::") ? 1024.0 * 1024.0 : 1.0;
             ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextUnformatted(row.Label.c_str());
-            ImGui::TableNextColumn(); ComparisonValue(row.A, time);
-            ImGui::TableNextColumn(); ComparisonValue(row.B, time);
-            ImGui::TableNextColumn(); ComparisonDelta(a, b, row.Key, time);
+            ImGui::TableNextColumn(); ComparisonValue(row.A, time, divisor);
+            ImGui::TableNextColumn(); ComparisonValue(row.B, time, divisor);
+            ImGui::TableNextColumn(); ComparisonDelta(a, b, row.Key, time, divisor);
             ImGui::TableNextColumn();
             if (comparable(row) && row.A->Value > 0.0) ImGui::Text("%+.1f%%", (row.B->Value / row.A->Value - 1.0) * 100.0);
             else ImGui::TextDisabled("--");
@@ -1648,5 +1690,399 @@ void Client::CProfilerTool::Render_Comparison(Engine::CProfiler& profiler)
     RenderComparisonConditions(m_Baselines[0], m_Baselines[1]);
     ImGui::Separator();
     ImGui::TextWrapped("아래는 캡처창의 프레임당 평균입니다. CPU는 같은 이름과 main/worker 역할로 병합합니다. 고정 CPU 작업·애니메이션은 상세 OFF에서도 수집한 전체 비용이며 다른 scope와 합산하지 않습니다. GPU 패스는 유효·완료·누락 없음 프레임만 평균에 포함하며 분모를 표시합니다. 누락 필드·부분 self·생산자 없는 항목은 미계측입니다.");
+    ImGui::TextWrapped("메모리 항목만은 예외로 같은 OS 조회를 재사용한 프레임을 중복 가중하지 않습니다. memory:: 평균·분모는 서로 다른 ProcessId·SampleTick·SampleFrameNumber의 실제 OS 조회 표본 기준입니다.");
     RenderComparisonTables(m_BaselineMeans[0], m_BaselineMeans[1], m_Filter.data());
+}
+
+bool Client::CProfilerTool::Refresh_RecentFrames(Engine::CProfiler& profiler, bool force)
+{
+    if (!force && !m_bTimelineRefresh && !m_RecentFrameSnapshot.Frames.empty()) return false;
+    Engine::CProfilerScope scope(&profiler, "Profiler.Timeline.Snapshot");
+    m_RecentFrameSnapshot = profiler.Snapshot(120);
+    m_bTimelineRefresh = false;
+    if (m_bTimelineFollow) m_iTimelineBuiltFrame = -1;
+    return true;
+}
+
+const Engine::FProfilerCaptureSnapshot& Client::CProfilerTool::Timeline_Snapshot() const
+{
+    return m_bTimelineFollow ? m_RecentFrameSnapshot : m_TimelineSnapshot;
+}
+
+void Client::CProfilerTool::Freeze_Timeline()
+{
+    if (m_bTimelineFollow) m_TimelineSnapshot = m_RecentFrameSnapshot;
+    m_bTimelineFollow = false;
+}
+
+void Client::CProfilerTool::Render_Timeline(Engine::CProfiler& profiler)
+{
+    bool follow = m_bTimelineFollow;
+    const bool followChanged = ImGui::Checkbox("완료 프레임 따라가기###TimelineFollow", &follow);
+    if (followChanged)
+    {
+        if (!follow) Freeze_Timeline();
+        else { m_bTimelineFollow = true; m_bTimelineRefresh = true; }
+    }
+    ImGui::SameLine();
+    const bool refresh = ImGui::Button("완료 프레임 다시 가져오기###TimelineRefresh");
+    ImGui::SameLine();
+    const bool modeChanged = ImGui::Checkbox("최신 GPU 완료 우선###TimelinePreferGpu", &m_bTimelinePreferGpu);
+    if (m_bTimelineFollow || refresh || Timeline_Snapshot().Frames.empty())
+    {
+        const bool updated = Refresh_RecentFrames(profiler, refresh);
+        if (!m_bTimelineFollow) m_TimelineSnapshot = m_RecentFrameSnapshot;
+        if (updated || refresh || followChanged || modeChanged || m_iTimelineFrame < 0 || m_iTimelineBuiltFrame < 0)
+        {
+            m_iTimelineFrame = ProfilerLatestObservableFrame(Timeline_Snapshot(), m_bTimelinePreferGpu);
+            m_iTimelineBuiltFrame = -1; m_iTimelineSelectedEvent = -1;
+        }
+    }
+    if (Timeline_Snapshot().Frames.empty()) { ImGui::TextUnformatted("완료 프레임 없음: 수집을 켜고 프레임이 끝날 때까지 기다리세요."); return; }
+    ImGui::TextWrapped("최근 최대 120개 완료 프레임의 실제 scope입니다. CPU는 프레임 CPU 시작 QPC 기준, GPU는 같은 번호 GPU query 시작 기준의 독립 상대축입니다. 두 축의 x 위치를 동기화된 시각이나 CPU→GPU 지연으로 해석하지 마세요. GPU 응답 대기를 다른 프레임 결과로 대체하지 않습니다.");
+    ImGui::SetNextItemWidth(340.f);
+    m_iTimelineFrame = (std::clamp)(m_iTimelineFrame, 0, static_cast<int>(Timeline_Snapshot().Frames.size()) - 1);
+    if (ImGui::SliderInt("완료 프레임 위치###TimelineFrame", &m_iTimelineFrame, 0, static_cast<int>(Timeline_Snapshot().Frames.size()) - 1)) Freeze_Timeline();
+    const auto& snapshot = Timeline_Snapshot();
+    const auto& frame = snapshot.Frames[static_cast<size_t>(m_iTimelineFrame)];
+    if (m_iTimelineBuiltFrame != m_iTimelineFrame)
+    {
+        m_TimelineEvents = ProfilerBuildTimelineEvents(frame, snapshot.TicksPerSecond);
+        m_CpuTimelineView = {0.0, (std::max)(0.01, frame.CpuFrameMs)};
+        m_GpuTimelineView = {0.0, (std::max)(0.01, frame.GpuFrameMs)};
+        m_iTimelineBuiltFrame = m_iTimelineFrame; m_iTimelineSelectedEvent = -1;
+    }
+    const double covered = ProfilerMainCoveredMs(frame, snapshot.MainThreadId, snapshot.TicksPerSecond);
+    ImGui::Text("선택 #%llu / 최근 CPU 완료 #%llu | %llu 프레임 지연 | %s", static_cast<unsigned long long>(frame.FrameNumber),
+        static_cast<unsigned long long>(snapshot.Frames.back().FrameNumber),
+        static_cast<unsigned long long>(snapshot.Frames.back().FrameNumber - frame.FrameNumber),
+        m_bTimelineFollow ? (m_bTimelinePreferGpu ? "GPU 유효 완료 우선" : "최신 CPU 완료") : "수동 고정");
+    ImGui::Text("프레임 #%llu | CPU %.3f ms | GPU %s | 메인 scope 합집합 %.3f ms / 구간 밖 %.3f ms",
+        static_cast<unsigned long long>(frame.FrameNumber), frame.CpuFrameMs, ComparisonGpuStatus(frame.GpuStatus), covered,
+        (std::max)(0.0, frame.CpuFrameMs - covered));
+    ImGui::Text("상세 %s | CPU 표본 누락 %llu / GPU 패스 누락 %u / 메시 draw 누락 %llu",
+        frame.DetailedCpuScopes ? "ON" : "OFF", static_cast<unsigned long long>(frame.DroppedCpuScopes),
+        frame.DroppedGpuScopes, static_cast<unsigned long long>(frame.DroppedMeshDraws));
+    if (ImGui::CollapsingHeader("타임라인 해석: 부모·자식 / self / 대기 / 프레임 경계"))
+        ImGui::TextWrapped("행은 스레드와 호출 깊이(depth)입니다. 부모 전체 시간에는 자식이 포함되며 self는 같은 스레드의 관측된 직접 자식만 뺀 시간입니다. 미계측 자식·스케줄링 대기는 self에 남습니다. 빈 곳은 idle 증거가 아니며 OS context switch·task dependency·GPU queue/fence는 미계측입니다. worker는 완료 프레임에 귀속되어 이전 프레임에서 시작한 구간도 있습니다. 주황 테두리는 축에서 잘린 구간이며 원본 시간은 선택 정보에 남습니다. 창 밖에 있는 부모·누락·잘못된 중첩은 self를 미계측으로 만듭니다. 고정한 스냅샷의 pending GPU는 자동 갱신되지 않습니다.");
+    if (m_iTimelineSelectedEvent >= 0 && static_cast<size_t>(m_iTimelineSelectedEvent) < m_TimelineEvents.size())
+    {
+        const auto& event = m_TimelineEvents[static_cast<size_t>(m_iTimelineSelectedEvent)];
+        const char* name = event.NameId < snapshot.ScopeNames.size() ? snapshot.ScopeNames[event.NameId].c_str() : "<unknown>";
+        ImGui::Separator(); Scope_Label(name);
+        ImGui::Text("%s | thread %u / depth %u | [%.3f, %.3f] ms | 전체 %.3f ms%s", event.Gpu ? "GPU 상대축" : "CPU QPC 상대축",
+            event.ThreadId, event.Depth, event.BeginMs, event.EndMs, event.EndMs - event.BeginMs, event.CrossFrame ? " | CPU 프레임 경계 밖 포함" : "");
+        if (event.SelfKnown) ImGui::Text("관측 self %.3f ms (순수 연산 시간 아님)", event.SelfMs);
+        else ImGui::TextDisabled("self 미계측: 누락·부모 부재·계층 불완전·CPU 프레임 경계 밖");
+        if (event.Gpu)
+        {
+            ImGui::Text("패스 포함 draw %llu | index %llu | mesh draw %llu | instanced 제출 %llu",
+                static_cast<unsigned long long>(event.Draw.DrawCalls), static_cast<unsigned long long>(event.Draw.Indices),
+                static_cast<unsigned long long>(event.Draw.MeshDrawCalls), static_cast<unsigned long long>(event.Draw.Instances));
+            if (event.PipelineValid) ImGui::Text("PS %llu / VS %llu / IA 입력 정점 %llu", static_cast<unsigned long long>(event.PSInvocations),
+                static_cast<unsigned long long>(event.VSInvocations), static_cast<unsigned long long>(event.IAVertices));
+            else ImGui::TextDisabled("해당 패스 pipeline 통계 미계측");
+        }
+        else ImGui::TextDisabled("CPU event별 draw 귀속은 미계측입니다. GPU 패스 또는 '선택 프레임 메시 draw'에서 확인하세요.");
+        if (ImGui::SmallButton("선택 구간 확대###FitTimelineEvent"))
+        {
+            auto& view = event.Gpu ? m_GpuTimelineView : m_CpuTimelineView;
+            view = {event.BeginMs, (std::max)(0.001, event.EndMs - event.BeginMs)};
+        }
+    }
+    Render_TimelineAxis(false, frame);
+    Render_TimelineAxis(true, frame);
+}
+
+void Client::CProfilerTool::Render_TimelineAxis(bool gpu, const Engine::FProfilerFrame& frame)
+{
+    const auto& snapshot = Timeline_Snapshot();
+    ImGui::PushID(gpu ? "GpuTimeline" : "CpuTimeline");
+    ImGui::SeparatorText(gpu ? "GPU 패스 — GPU frame 시작 기준 ms" : "CPU 스레드·호출 깊이 — CPU frame 시작 QPC 기준 ms");
+    if (gpu && !frame.GpuValid)
+    { ImGui::TextDisabled("%s: 해당 완료 프레임의 유효 GPU 시간 없음", ComparisonGpuStatus(frame.GpuStatus)); ImGui::PopID(); return; }
+    if (!gpu && !snapshot.TicksPerSecond)
+    { ImGui::TextDisabled("QPC 주파수 미계측"); ImGui::PopID(); return; }
+    auto& view = gpu ? m_GpuTimelineView : m_CpuTimelineView;
+    if (ImGui::SmallButton("확대")) view.Zoom(0.5);
+    ImGui::SameLine(); if (ImGui::SmallButton("축소")) view.Zoom(2.0);
+    ImGui::SameLine(); if (ImGui::SmallButton("왼쪽")) view.Pan(-0.25);
+    ImGui::SameLine(); if (ImGui::SmallButton("오른쪽")) view.Pan(0.25);
+    ImGui::SameLine(); if (ImGui::SmallButton("프레임에 맞춤")) view = {0.0, (std::max)(0.01, gpu ? frame.GpuFrameMs : frame.CpuFrameMs)};
+    ImGui::SameLine(); ImGui::SetNextItemWidth(110.f); ImGui::InputDouble("시작 ms", &view.BeginMs, 0.0, 0.0, "%.3f");
+    ImGui::SameLine(); ImGui::SetNextItemWidth(100.f); ImGui::InputDouble("폭 ms", &view.SpanMs, 0.0, 0.0, "%.3f");
+    if (!std::isfinite(view.BeginMs)) view.BeginMs = 0.0;
+    if (!std::isfinite(view.SpanMs)) view.SpanMs = 16.6667;
+    view.BeginMs = (std::clamp)(view.BeginMs, -3600000.0, 3600000.0);
+    view.SpanMs = (std::clamp)(view.SpanMs, 0.001, 3600000.0);
+    using FLane = std::pair<uint32_t, uint32_t>;
+    std::vector<FLane> lanes;
+    for (const auto& event : m_TimelineEvents)
+        if (event.Gpu == gpu && std::find(lanes.begin(), lanes.end(), FLane{event.ThreadId, event.Depth}) == lanes.end())
+            lanes.emplace_back(event.ThreadId, event.Depth);
+    std::sort(lanes.begin(), lanes.end(), [&](const auto& a, const auto& b)
+    {
+        if ((a.first == snapshot.MainThreadId) != (b.first == snapshot.MainThreadId)) return a.first == snapshot.MainThreadId;
+        return a < b;
+    });
+    if (lanes.empty()) { ImGui::TextDisabled("이 축에서 관측된 구간이 없습니다. 미지원·미계측·미실행은 시간 0과 다릅니다."); ImGui::PopID(); return; }
+    const float laneHeight = ImGui::GetTextLineHeightWithSpacing() + 5.f;
+    const float labelWidth = 155.f, headerHeight = 28.f;
+    ImGui::BeginChild("Canvas", ImVec2(0.f, gpu ? 230.f : 290.f), true);
+    const auto origin = ImGui::GetCursorScreenPos();
+    const float width = (std::max)(220.f, ImGui::GetContentRegionAvail().x);
+    const float axisWidth = (std::max)(50.f, width - labelWidth - 5.f);
+    const float height = headerHeight + laneHeight * static_cast<float>(lanes.size());
+    ImGui::InvisibleButton("##TimelineCanvas", ImVec2(width, height));
+    const bool canvasHovered = ImGui::IsItemHovered();
+    const auto mouse = ImGui::GetIO().MousePos;
+    auto* draw = ImGui::GetWindowDrawList();
+    const auto visibleOrigin = ImGui::GetWindowPos(); const auto visibleSize = ImGui::GetWindowSize();
+    draw->AddRectFilled(origin, ImVec2(origin.x + width, origin.y + height), IM_COL32(25, 29, 36, 255));
+    for (int tick = 0; tick <= 5; ++tick)
+    {
+        const float x = origin.x + labelWidth + axisWidth * (float(tick) / 5.f);
+        char text[48]; std::snprintf(text, sizeof(text), "%.3f", view.BeginMs + view.SpanMs * double(tick) / 5.0);
+        draw->AddText(ImVec2(x, origin.y + 3.f), IM_COL32(190, 195, 205, 255), text);
+        draw->AddLine(ImVec2(x, origin.y + headerHeight), ImVec2(x, origin.y + height), IM_COL32(55, 60, 72, 255));
+    }
+    for (size_t lane = 0; lane < lanes.size(); ++lane)
+    {
+        const float y = origin.y + headerHeight + laneHeight * float(lane);
+        if (y + laneHeight < visibleOrigin.y || y > visibleOrigin.y + visibleSize.y) continue;
+        char label[96];
+        if (gpu) std::snprintf(label, sizeof(label), "GPU / depth %u", lanes[lane].second);
+        else std::snprintf(label, sizeof(label), "%s %u / d%u", lanes[lane].first == snapshot.MainThreadId ? "Main" : "Worker", lanes[lane].first, lanes[lane].second);
+        draw->AddText(ImVec2(origin.x + 3.f, y + 2.f), IM_COL32(205, 211, 220, 255), label);
+        draw->AddLine(ImVec2(origin.x, y + laneHeight), ImVec2(origin.x + width, y + laneHeight), IM_COL32(49, 54, 65, 255));
+    }
+    int hovered = -1; size_t clipped = 0, crossFrame = 0, filtered = 0;
+    draw->PushClipRect(ImVec2(origin.x + labelWidth, visibleOrigin.y), ImVec2(origin.x + width, visibleOrigin.y + visibleSize.y), true);
+    for (size_t index = 0; index < m_TimelineEvents.size(); ++index)
+    {
+        const auto& event = m_TimelineEvents[index]; if (event.Gpu != gpu) continue;
+        const char* name = event.NameId < snapshot.ScopeNames.size() ? snapshot.ScopeNames[event.NameId].c_str() : "<unknown>";
+        if (!Contains_CaseInsensitive(name, m_Filter.data()) && !Contains_CaseInsensitive(Scope_Description(name), m_Filter.data())) { ++filtered; continue; }
+        crossFrame += event.CrossFrame;
+        const auto clip = ProfilerClipTimeline(event.BeginMs, event.EndMs, view); if (!clip.Visible) continue;
+        clipped += clip.LeftClipped || clip.RightClipped;
+        const auto lane = std::find(lanes.begin(), lanes.end(), FLane{event.ThreadId, event.Depth});
+        const float y = origin.y + headerHeight + float(lane - lanes.begin()) * laneHeight;
+        if (y + laneHeight < visibleOrigin.y || y > visibleOrigin.y + visibleSize.y) continue;
+        const float x1 = origin.x + labelWidth + float(clip.BeginFraction) * axisWidth;
+        const float x2 = (std::max)(x1 + 1.0f, origin.x + labelWidth + float(clip.EndFraction) * axisWidth);
+        const ImVec2 lo(x1, y + 2.f), hi(x2, y + laneHeight - 2.f);
+        const auto color = ImGui::ColorConvertFloat4ToU32(ImColor::HSV(float((event.NameId * 47u) % 360u) / 360.f, .55f, .68f).Value);
+        draw->AddRectFilled(lo, hi, color, 2.f);
+        if (clip.LeftClipped || clip.RightClipped) draw->AddRect(lo, hi, IM_COL32(255, 177, 60, 255), 2.f, 0, 2.f);
+        if (static_cast<int>(index) == m_iTimelineSelectedEvent) draw->AddRect(lo, hi, IM_COL32(255, 255, 255, 255), 2.f, 0, 2.f);
+        if (x2 - x1 > 35.f)
+        {
+            draw->PushClipRect(lo, hi, true); draw->AddText(ImVec2(x1 + 3.f, y + 3.f), IM_COL32(255, 255, 255, 255), name); draw->PopClipRect();
+        }
+        if (canvasHovered && mouse.x >= lo.x && mouse.x <= hi.x && mouse.y >= lo.y && mouse.y <= hi.y) hovered = static_cast<int>(index);
+    }
+    draw->PopClipRect();
+    if (hovered >= 0)
+    {
+        const auto& event = m_TimelineEvents[static_cast<size_t>(hovered)];
+        const char* name = event.NameId < snapshot.ScopeNames.size() ? snapshot.ScopeNames[event.NameId].c_str() : "<unknown>";
+        ImGui::SetTooltip("%s\n%s\n전체 %.3f ms | 시작 %.3f / 종료 %.3f\n클릭하여 선택·스냅샷 고정", Scope_Description(name), name, event.EndMs - event.BeginMs, event.BeginMs, event.EndMs);
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) { m_iTimelineSelectedEvent = hovered; Freeze_Timeline(); }
+    }
+    ImGui::EndChild();
+    ImGui::TextDisabled("현재 축에서 잘림 %zu | CPU 프레임 경계 밖 포함 %zu | 검색으로 숨김 %zu", clipped, crossFrame, filtered);
+    ImGui::PopID();
+}
+
+void Client::CProfilerTool::Render_Candidates(Engine::CProfiler& profiler)
+{
+    Refresh_RecentFrames(profiler);
+    const int selected = ProfilerLatestObservableFrame(m_RecentFrameSnapshot);
+    if (selected < 0) { ImGui::TextUnformatted("완료 프레임이 없어 후보를 판단하지 않습니다."); return; }
+    ImGui::TextWrapped("최근 완료 CPU 프레임과 그 번호에 귀속된 GPU 결과만 사용합니다. 아래는 원인 확정이 아닌 다음 검사를 고르는 후보입니다. 프레임 경과·대기·GPU timestamp와 순수 연산 비용은 다르며 서로 더하지 않습니다.");
+    ImGui::SetNextItemWidth(120.f); ImGui::InputFloat("검토 목표 FPS", &m_fCandidateTargetFps, 1.f, 10.f, "%.1f");
+    ImGui::SameLine(); ImGui::SetNextItemWidth(120.f); ImGui::InputInt("draw 검토 기준", &m_iCandidateDrawThreshold, 100, 1000);
+    if (!std::isfinite(m_fCandidateTargetFps)) m_fCandidateTargetFps = 60.f;
+    m_fCandidateTargetFps = (std::clamp)(m_fCandidateTargetFps, 1.f, 1000.f);
+    m_iCandidateDrawThreshold = (std::clamp)(m_iCandidateDrawThreshold, 1, 10000000);
+    const auto& frame = m_RecentFrameSnapshot.Frames[static_cast<size_t>(selected)];
+    const auto evidence = ProfilerAssessCandidates(frame, 1000.0 / m_fCandidateTargetFps, static_cast<uint64_t>(m_iCandidateDrawThreshold));
+    ImGui::Text("프레임 #%llu | 검토 예산 %.3f ms | CPU %.3f ms | GPU %s", static_cast<unsigned long long>(frame.FrameNumber),
+        evidence.TargetMs, frame.CpuFrameMs, ComparisonGpuStatus(frame.GpuStatus));
+    ImGui::Text("최근 CPU 완료 #%llu보다 %llu 프레임 지연 | %s",
+        static_cast<unsigned long long>(m_RecentFrameSnapshot.Frames.back().FrameNumber),
+        static_cast<unsigned long long>(m_RecentFrameSnapshot.Frames.back().FrameNumber - frame.FrameNumber),
+        frame.GpuValid ? "최근 120개 중 최신 GPU 유효 완료: CPU·GPU 같은 원본 프레임" : "유효 GPU 완료 없음: 최신 CPU 원본의 pending / 미계측 상태 유지");
+    ImGui::TextDisabled("기준값은 이 패널의 후보 표시만 바꿉니다. 실제 FPS 제한이나 렌더 옵션을 변경하지 않습니다.");
+    if (ImGui::BeginTable("##CandidateExperiments", 4, TABLE_FLAGS, ImVec2(0.f, 330.f)))
+    {
+        ImGui::TableSetupColumn("후보 / 상태", ImGuiTableColumnFlags_WidthFixed, 180.f);
+        ImGui::TableSetupColumn("현재 표본 근거", ImGuiTableColumnFlags_WidthStretch, 1.f);
+        ImGui::TableSetupColumn("다음 A/B·확인", ImGuiTableColumnFlags_WidthStretch, 1.3f);
+        ImGui::TableSetupColumn("아직 모르는 원인", ImGuiTableColumnFlags_WidthStretch, 1.f); ImGui::TableHeadersRow();
+        const auto row = [&](const char* name, bool candidate, const std::string& observed, const char* next, const char* missing)
+        {
+            ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextWrapped("%s\n%s", name, candidate ? "검토 후보" : "기준 미충족 / 보류");
+            ImGui::TableNextColumn(); ImGui::TextWrapped("%s", observed.c_str());
+            ImGui::TableNextColumn(); ImGui::TextWrapped("%s", next);
+            ImGui::TableNextColumn(); ImGui::TextWrapped("%s", missing);
+        };
+        const auto ms = [](double value) { char text[40]; std::snprintf(text, sizeof(text), "%.3f ms", value); return std::string(text); };
+        row("CPU 경과", evidence.CpuOverBudget, "전체 " + ms(frame.CpuFrameMs) + " / 예산 " + ms(evidence.TargetMs),
+            "CPU 타임라인에서 큰 self·고정 작업·Present 구간을 확인하고 같은 장면에서 한 변수만 바꿔 A/B 비교합니다.",
+            "OS 스케줄링·동기화 wait·디스크·page fault는 미계측입니다. CPU 우세만으로 계산 병목을 확정하지 않습니다.");
+        row("GPU 경과", evidence.GpuOverBudget, frame.GpuValid ? "원래 프레임 GPU " + ms(frame.GpuFrameMs) : ComparisonGpuStatus(frame.GpuStatus),
+            "GPU 패스와 포함 draw/PS·IA를 확인합니다. 같은 카메라에서 해상도·SSAO 표본·그림자 PCF 중 하나를 바꿔 비교합니다.",
+            "queue stall·캐시·대역폭·wave 점유율·개별 draw ms는 미계측입니다. PS 호출은 광원 ALU 수가 아닙니다.");
+        row("프레임 사이 간격", evidence.GapLarge, "이전 CPU " + ms(frame.PreviousCpuFrameMs) + " + gap " + ms(frame.FrameGapMs),
+            "FPS cap·전경/배경·최소화 조건을 맞추고 A/B합니다. CPU/GPU 시간이 낮아도 cap 대기로 FPS가 제한될 수 있습니다.",
+            "gap에는 loop 대기·메시지·계측 관리가 섞입니다. 현재 CPU 시간을 이전 CPU 대신 더하지 않습니다.");
+        row("갱신 후 미제출 애니메이션", evidence.AnimationNotSubmitted,
+            "모델 " + std::to_string(frame.Animation.NotSubmittedUpdatedModels) + " / CPU " + ms(frame.Animation.NotSubmittedCpuMs),
+            "동일 장면의 카메라·저작 숨김·NPC culling·지연 pose 조건을 확인하고 미제출 CPU와 표시 결과를 함께 비교합니다.",
+            "미제출은 화면 밖 확정이 아닙니다. 숨김·preview·draw 실패도 포함하며 animation 표본 누락이면 후보를 보류합니다.");
+        row("많은 제출", evidence.ManySubmissions, "Engine + ImGui draw " + std::to_string(evidence.DrawCalls) + " / 검토 기준 " + std::to_string(m_iCandidateDrawThreshold),
+            "패스·상세 메시 목록에서 반복 제출을 보고 instancing·LOD·culling을 한 항목씩 비교합니다. UI 창 수도 동일하게 맞춥니다.",
+            "호출 수만으로 비용을 확정하지 않습니다. 재질 전환·shader 복잡도·overdraw·DirectXTK 내부 draw는 전부 귀속되지 않습니다.");
+        row("계측 범위", evidence.MissingCoverage, "CPU 누락 " + std::to_string(frame.DroppedCpuScopes) + " / GPU 누락 " + std::to_string(frame.DroppedGpuScopes) + " / 상세 " + (frame.DetailedCpuScopes ? "ON" : "OFF") + " / GPU 패스 " + (frame.GpuScopesSupported ? "지원" : "미지원"),
+            "동일 상세 수집 조건에서 다시 수집하고 GPU 응답이 완료된 원래 프레임을 확인합니다. 부모·자식과 메인·worker를 합산하지 않습니다.",
+            "미계측은 0이 아닙니다. frame 밖 scope 공백·표본 상한·unsupported GPU는 병목이 없다는 증거가 아닙니다.");
+        ImGui::EndTable();
+    }
+    ImGui::TextWrapped("기준을 넘지 않았어도 병목이 없다는 뜻은 아닙니다. 빠른 장면(쿠크 2관문·빙고 등)과 느린 장면의 차이는 '기준 A/B'에서 구조 비교로 조사하며 동일 조건 인과성으로 단정하지 않습니다.");
+}
+
+namespace
+{
+    void MemoryValueCell(const Engine::FProfilerMemoryStats& sample, Client::EProfilerMemoryMetric metric)
+    {
+        const auto value = Client::ProfilerMemoryValue(sample, metric);
+        if (value.Available) ImGui::Text("%.1f", value.MiB); else ImGui::TextDisabled("미계측");
+    }
+
+    void MemorySamplePlot(const char* id, const char* title, const char* firstName, const char* secondName,
+        const std::vector<Engine::FProfilerMemoryStats>& samples, Engine::CProfiler& profiler,
+        Client::EProfilerMemoryMetric firstMetric, Client::EProfilerMemoryMetric secondMetric)
+    {
+        ImGui::PushID(id); ImGui::TextUnformatted(title);
+        if (samples.empty()) { ImGui::TextDisabled("수집된 OS 조회 표본 없음"); ImGui::PopID(); return; }
+        const ImU32 firstColor = IM_COL32(91, 177, 244, 255), secondColor = IM_COL32(136, 212, 139, 255);
+        ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(firstColor), "%s", firstName); ImGui::SameLine();
+        ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(secondColor), "%s", secondName); ImGui::SameLine(); ImGui::TextDisabled("단위 MiB / x 실제 표본 시각 (s)");
+        const auto origin = ImGui::GetCursorScreenPos();
+        const float width = (std::max)(200.f, ImGui::GetContentRegionAvail().x), height = 100.f;
+        const float left = origin.x + 64.f, right = origin.x + width - 8.f, top = origin.y + 7.f, bottom = origin.y + height - 22.f;
+        ImGui::InvisibleButton("##MemoryChart", ImVec2(width, height)); const bool hovered = ImGui::IsItemHovered();
+        auto* draw = ImGui::GetWindowDrawList();
+        draw->AddRectFilled(origin, ImVec2(origin.x + width, origin.y + height), IM_COL32(25, 29, 36, 255));
+        const auto firstTick = samples.front().SampleTick, lastTick = samples.back().SampleTick;
+        const double seconds = (std::max)(0.001, profiler.Ticks_ToMs(lastTick - firstTick) / 1000.0);
+        double maximum = 1.0; bool anyValid = false;
+        for (const auto& sample : samples) for (const auto metric : {firstMetric, secondMetric})
+        {
+            const auto value = Client::ProfilerMemoryValue(sample, metric);
+            if (value.Available) { maximum = (std::max)(maximum, value.MiB); anyValid = true; }
+        }
+        maximum *= 1.05;
+        char number[64]; std::snprintf(number, sizeof(number), "%.0f MiB", maximum);
+        draw->AddText(ImVec2(origin.x + 2.f, top), IM_COL32(175, 182, 193, 255), number);
+        draw->AddText(ImVec2(origin.x + 2.f, bottom - 12.f), IM_COL32(175, 182, 193, 255), "0");
+        for (int tick = 0; tick <= 4; ++tick)
+        {
+            const float x = left + (right - left) * float(tick) / 4.f;
+            draw->AddLine(ImVec2(x, top), ImVec2(x, bottom), IM_COL32(55, 60, 72, 255));
+            std::snprintf(number, sizeof(number), "%.2f", seconds * double(tick) / 4.0);
+            draw->AddText(ImVec2(x, bottom + 3.f), IM_COL32(175, 182, 193, 255), number);
+        }
+        int nearest = -1; float nearestDistance = 9.f;
+        for (int series = 0; series < 2; ++series)
+        {
+            bool previousValid = false; ImVec2 previous;
+            for (size_t i = 0; i < samples.size(); ++i)
+            {
+                const auto& sample = samples[i]; const auto value = Client::ProfilerMemoryValue(sample, series ? secondMetric : firstMetric);
+                const float x = left + float(profiler.Ticks_ToMs(sample.SampleTick - firstTick) / 1000.0 / seconds) * (right - left);
+                if (!series && hovered && std::abs(ImGui::GetIO().MousePos.x - x) < nearestDistance)
+                { nearest = static_cast<int>(i); nearestDistance = std::abs(ImGui::GetIO().MousePos.x - x); }
+                if (!value.Available) { previousValid = false; continue; }
+                const ImVec2 point(x, bottom - float(value.MiB / maximum) * (bottom - top));
+                if (previousValid) draw->AddLine(previous, point, series ? secondColor : firstColor, 1.5f);
+                draw->AddCircleFilled(point, 2.5f, series ? secondColor : firstColor);
+                previous = point; previousValid = true;
+            }
+        }
+        if (!anyValid) draw->AddText(ImVec2(left + 8.f, top + 15.f), IM_COL32(200, 180, 150, 255), "N/A: no valid samples");
+        if (nearest >= 0)
+        {
+            const auto& sample = samples[static_cast<size_t>(nearest)];
+            ImGui::BeginTooltip();
+            ImGui::Text("조회 frame #%llu | PID %u | 현재 기준 %.1f ms 전", static_cast<unsigned long long>(sample.SampleFrameNumber), sample.ProcessId, sample.AgeMs);
+            for (int series = 0; series < 2; ++series)
+            {
+                const auto value = Client::ProfilerMemoryValue(sample, series ? secondMetric : firstMetric);
+                if (value.Available) ImGui::Text("%s %.1f MiB", series ? secondName : firstName, value.MiB);
+                else ImGui::Text("%s 미계측", series ? secondName : firstName);
+            }
+            ImGui::EndTooltip();
+        }
+        ImGui::PopID();
+    }
+}
+
+void Client::CProfilerTool::Render_Memory(Engine::CProfiler& profiler)
+{
+    const double now = ImGui::GetTime();
+    const bool refresh = ImGui::Button("메모리 표본 다시 읽기###MemoryRefresh");
+    if (refresh || m_fLastMemoryRefresh < 0.0 || now - m_fLastMemoryRefresh >= 0.5)
+    {
+        profiler.Get_MemorySamples(Engine::CProfiler::MAX_HISTORY_FRAMES, m_MemorySamples);
+        m_fLastMemoryRefresh = now;
+    }
+    ImGui::SameLine(); ImGui::TextDisabled("실제 OS 조회 %zu개 / 보관 최대 %zu 프레임", m_MemorySamples.size(), Engine::CProfiler::MAX_HISTORY_FRAMES);
+    ImGui::TextWrapped("Capture ON에서 main thread가 약 1Hz로 관측한 실제 조회 표본만 표시합니다. 같은 SampleFrameNumber·SampleTick·PID를 여러 프레임이 재사용해도 점은 하나입니다. 조회 실패는 0으로 연결하지 않고 차트를 끊습니다. 재조회는 보관 표본을 읽을 뿐 OS 샘플 주기를 높이지 않습니다.");
+    ImGui::TextWrapped("Private commit은 프로세스 전용 커밋, Working Set은 현재 RAM 상주량(공유 가능 페이지 포함)입니다. DXGI Local/Non-local은 이 프로세스의 adapter segment 사용량과 OS 동적 예산이며 UMA의 Local을 항상 전용 VRAM으로 볼 수 없습니다. RAM·commit·GPU 값을 합산하지 마세요.");
+    if (ImGui::CollapsingHeader("메모리 표본의 한계와 다음 실험"))
+        ImGui::TextWrapped("main thread stall 동안 표본이 없고 순간 peak를 놓칠 수 있습니다. 선 사이를 실제 연속 사용량으로 단정하지 마세요. 프로세스 lifetime peak는 이 capture의 peak가 아닙니다. 100~250ms 로딩 phase tracker·allocation callstack·resource별 bytes/owner·residency/page fault·해제 수명은 미지원입니다. 같은 프로세스에서 Lobby 안정 → 입장 → 안정 → 퇴장/재진입의 잔존량을 비교하고, 증가만으로 누수/OOM을 확정하지 마세요. 미제출/culling은 자원 메모리 해제를 뜻하지 않습니다.");
+    if (m_MemorySamples.empty()) { ImGui::TextDisabled("완료 프레임에 귀속된 OS 조회 표본이 없습니다."); return; }
+    const auto& latest = m_MemorySamples.back();
+    ImGui::Text("최신 조회 frame #%llu | PID %u | 현재 기준 %.1f ms 전", static_cast<unsigned long long>(latest.SampleFrameNumber), latest.ProcessId, latest.AgeMs);
+    if (latest.AdapterIdentityValid) ImGui::Text("Adapter LUID %08x:%08x / node %u", static_cast<unsigned>(latest.AdapterLuidHigh), latest.AdapterLuidLow, latest.AdapterNodeIndex);
+    else ImGui::TextDisabled("Adapter identity 미계측");
+    if (ImGui::BeginTable("##MemoryLatest", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH))
+    {
+        const auto row = [&](const char* label, EProfilerMemoryMetric metric)
+        { ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextUnformatted(label); ImGui::TableNextColumn(); MemoryValueCell(latest, metric); };
+        ImGui::TableSetupColumn("최신 OS 조회 항목"); ImGui::TableSetupColumn("MiB (실패는 미계측)"); ImGui::TableHeadersRow();
+        row("프로세스 전용 commit", EProfilerMemoryMetric::PrivateCommit); row("프로세스 현재 Working Set", EProfilerMemoryMetric::WorkingSet);
+        row("프로세스 lifetime 최대 전용 commit", EProfilerMemoryMetric::PeakPrivateCommit); row("프로세스 lifetime 최대 Working Set", EProfilerMemoryMetric::PeakWorkingSet);
+        row("시스템 전체 commit", EProfilerMemoryMetric::SystemCommit); row("시스템 commit 한도", EProfilerMemoryMetric::SystemLimit); row("시스템 가용 RAM", EProfilerMemoryMetric::SystemAvailable);
+        row("DXGI Local 프로세스 사용량", EProfilerMemoryMetric::LocalUsage); row("DXGI Local 동적 예산", EProfilerMemoryMetric::LocalBudget);
+        row("DXGI Non-local 프로세스 사용량", EProfilerMemoryMetric::NonLocalUsage); row("DXGI Non-local 동적 예산", EProfilerMemoryMetric::NonLocalBudget);
+        ImGui::EndTable();
+    }
+    if (ImGui::CollapsingHeader("실제 조회 표본의 시간 변화", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        MemorySamplePlot("Process", "프로세스 RAM·commit", "전용 commit", "Working Set", m_MemorySamples, profiler, EProfilerMemoryMetric::PrivateCommit, EProfilerMemoryMetric::WorkingSet);
+        MemorySamplePlot("Local", "DXGI Local segment", "프로세스 사용량", "동적 예산", m_MemorySamples, profiler, EProfilerMemoryMetric::LocalUsage, EProfilerMemoryMetric::LocalBudget);
+        MemorySamplePlot("NonLocal", "DXGI Non-local segment", "프로세스 사용량", "동적 예산", m_MemorySamples, profiler, EProfilerMemoryMetric::NonLocalUsage, EProfilerMemoryMetric::NonLocalBudget);
+        MemorySamplePlot("System", "시스템 commit", "전체 commit", "commit 한도", m_MemorySamples, profiler, EProfilerMemoryMetric::SystemCommit, EProfilerMemoryMetric::SystemLimit);
+    }
+    if (ImGui::CollapsingHeader("표본별 값·실패 확인"))
+        if (ImGui::BeginTable("##MemorySampleRows", 8, TABLE_FLAGS | ImGuiTableFlags_ScrollX, ImVec2(0.f, 220.f), 1250.f))
+        {
+            for (const char* label : {"OS 조회 frame", "현재 나이 ms", "private MiB", "WS MiB", "Local 사용 MiB", "Local 예산 MiB", "시스템 commit MiB", "시스템 가용 MiB"}) ImGui::TableSetupColumn(label);
+            ImGui::TableSetupScrollFreeze(1, 1); ImGui::TableHeadersRow();
+            ImGuiListClipper clipper; clipper.Begin(static_cast<int>(m_MemorySamples.size()));
+            while (clipper.Step()) for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
+            {
+                const auto& sample = m_MemorySamples[static_cast<size_t>(i)];
+                ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::Text("%llu", static_cast<unsigned long long>(sample.SampleFrameNumber));
+                ImGui::TableNextColumn(); ImGui::Text("%.1f", sample.AgeMs);
+                for (const auto metric : {EProfilerMemoryMetric::PrivateCommit, EProfilerMemoryMetric::WorkingSet, EProfilerMemoryMetric::LocalUsage,
+                    EProfilerMemoryMetric::LocalBudget, EProfilerMemoryMetric::SystemCommit, EProfilerMemoryMetric::SystemAvailable})
+                { ImGui::TableNextColumn(); MemoryValueCell(sample, metric); }
+            }
+            ImGui::EndTable();
+        }
 }

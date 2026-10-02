@@ -8,7 +8,8 @@
 최초 Profiler는 실제 Engine 수집, Debug F7 표시, JSON 저장까지 연결했다.
 추가 요청의 반영 범위는 아래 후속 절에서 구분한다.
 [구현 계획서](2026-10-03_PROFILER_RENDERING_WORKBENCH_IMPLEMENTATION_PLAN.md)에 현재 옵션 실험과
-새 renderer 기반 도입을 분리했다. GI·Lumen·Nanite 같은 renderer가 이번 변경에 구현된 것은 아니다.
+새 renderer 기반 도입을 분리했다. 첫 병합 이후 추가한 상용 엔진 비교·메모리·시간축과
+화면 공간 GI/SSR의 현재 상태는 아래 G10 이후에 구분한다. Lumen/DXR/Nanite 전체 구현은 아니다.
 
 사용자의 후속 요청에 따라 `origin/main`을 fetch하고 `dc3a482d424b5d1317a1adb196843e3a97253388`
 기준으로 **`GB/Advanced-Rendering-Profiler-WorkBench`** 브랜치를 만들었다.
@@ -262,3 +263,138 @@ hash 동일 및 `git diff --check`를 확인했다. 구조 근거는
 성능 차이, GPU 장치별 품질/속도 개선, Lumen/DXR/Nanite 같은 새 renderer 구현은 완료로
 기록하지 않는다. 이번 변경은 상세 계측·구조 비교·현재 renderer의 실제 수치 실험과 현대 기법
 설명/도입 설계를 제공한다.
+
+## G10. 첫 병합 확인과 상용 도구 비교 확장
+
+첫 구현 commit `398c2cb23b8358a3a84a824dc7c77cc0c053eba8`은
+[PR505](https://github.com/tnestyle70/LostArk/pull/505)로 main에 병합됐다.
+merge commit은 `8fdb3d4e6aa8c763f94aa28c683a80d7a8c84397`, 시각은2026-10-03 05:49:28 KST다.
+검증한 feature tree와 merge tree가 같음을 확인했다. 이후 같은 요청의 상용 그래픽스·Profiler 비교
+추가 구현을 위해 기능 브랜치를 이 main으로 fast-forward했다. 첫 병합이 아래 추가 구현까지
+포함한 것처럼 설명하지 않는다. 후속 병합 근거는 최종 절에서 따로 기록한다.
+
+`RenderingReferenceGuide.h`는 Profiler와 Workbench가 공유하는 읽기 전용 비교표다. 각 항목에
+상용 개념, 현재 구현, 부족한 구조, 필요한 입력, 수치 의미, 현재 결론낼 수 없는 사항, 검증 기준,
+실험 경로와 공식 문서 주소를 둔다. UE의 모든 cvar나 동일 성능을 인증하는 표가 아니다.
+실제 렌더러/계측이 없는 기능에는 조작 가능한 가짜 활성 스위치를 만들지 않았다.
+
+## G11. 시간축·병목 후보·실제 메모리
+
+Debug F7의 `타임라인`은 최근 최대120개 완료 프레임에서 CPU thread/depth·GPU pass를 선택하고
+확대·이동한다. 이벤트의 전체/self 시간·cross-frame·draw·IA/VS/PS 및 누락 상태를 표시한다.
+CPU QPC와 GPU timestamp는 독립 원점이며 두 lane의 좌표를 CPU/GPU 인과로 설명하지 않는다.
+`병목 후보·다음 실험`은 프레임 예산 초과, 프레임 틈, 많은 제출, 갱신 후 미제출 animation과
+관측 부족을 근거와 함께 안내한다. 추정은 후보이며 driver·queue·GPU 점유율의 확정 원인이 아니다.
+
+`RAM·GPU 메모리`는 Capture 중 최대1Hz로 실제 process private commit/working set/lifetime peak,
+system commit/limit/available, 현재 device adapter node0의 DXGI local/nonlocal usage/budget을 읽는다.
+API 실패는 각 valid flag의 N/A이고 정상0은0으로 유지한다. 표본 frame·QPC·PID·adapter LUID·age를
+남기고 Reset 뒤 과거 표본을 새 관측으로 돌리지 않는다. 샘플 비용은 `Profiler.Memory.Sample`이다.
+중복 표본을 chart/캡처 평균에서 제거하며 main-thread stall이나1초 사이의 순간 peak는 놓칠 수 있다.
+DXGI budget은 고정 VRAM 용량이 아니며 local과nonlocal, process와system을 더하지 않는다.
+
+`CMaterial.LoadSharedTexture`의 실제 경로에 request 시도·기존 weak-cache SRV 재사용·새 SRV 생성
+3개 producer를 연결했다. 요청과 worker 완료가 다른 프레임에 잡힐 수 있다. 새 생성 누계는 현재
+상주 texture 수가 아니고 다른 texture loader 전체를 포괄하지 않는다. v3 capability metadata가 없는
+과거 캡처는 이 세 항목도 N/A로 읽는다. ContentHits/EstimatedGpuBytes는 계속 미계측이다.
+
+시간축 순수 helper46개와 최신 ProfilerTool 집중 컴파일, 메모리 실제 native/WARP49개,
+out-only OS/DXGI 실패 주입7개, memory JSON9개, 기존 캡처 비교66개와 cross-frame29개 회귀가 통과했다.
+기본 선택은 최신 GPU 완료의 원래 프레임이며 최신 CPU와의 지연을 표시한다. GPU가 늦게 도착해도
+계속 pending만 보지 않는다. 전환·수동 선택은 각각 최신 CPU·고정 snapshot 의미를 유지한다.
+worker의 자식 종료와 부모 종료가 다른 프레임에 걸치거나 경계/이벤트가 누락되면 Self를 N/A로
+표시한다. timeline은 영향을 받은 thread에 한정하고 집계/캡처 비교는 불완전 구간을 보수적으로 처리한다.
+실제 shared-cache helper를 사용하는 WARP probe16개는 빈 경로/누락/decoder 실패·srgb/linear key·
+weak owner 소멸 후 재생성·8개 동시 요청의 단일생성·Capture OFF를 확인했다. file decoder만 fixture로
+대체했고 GPU SRV와 cache helper는 실제 실행했다. 새로운 scene 또는 UI를 실행한 결과가 아니다.
+근거는 `out/Profiler20261003/timeline/`, `memory/memory_validation_receipt.json`,
+`memory/regression/comparison_receipt.json`, `unreal/texture-cache-receipt.json`이다.
+
+## G12. 설명과 실제 실험을 연결한 Workbench
+
+세션 whitelist는41개 필드이고 원인별 recipe31개가 같은 `CRenderingProfileService` 경로를 사용한다.
+recipe는 목표·볼 GPU pass/CPU·draw·비용/화질 한계와 전제조건을 설명한다. `기존 B를 이 단일 변수로
+대체하고 적용`과 `이 변수의 sweep 범위만 준비`는 별도 명령이다. 다른 옵션을 자동으로 켜지 않는다.
+공통 상용 비교표24항목과 GPU Gems/기법 사전은 실제 상태·누락한 기반을 함께 표시한다.
+
+기본 OFF인 SSGI를 먼저 B에서 ON으로 적용한 뒤 `현재 B를 새 A 기준으로 채택`하면 그 상태에서
+samples4/8/16만 바꾸는 실험을 준비할 수 있다. 채택한 공통 기준은 종료 복원의 소유 mask에는
+포함하고, A/B에서 제외할 실험 변수 mask에는 넣지 않는다. 새 experiment ID로 이전 기준의 결과와
+자동 비교하지 않는다. 종료·profile/level 변경은 원래 OFF로 복구하고 무관한 gamma 등의 편집을 유지한다.
+source material OFF에서도 manual ON은 수신면 없는 패스 고정비 실험으로 허용한다. recipe는
+가시 MapPBR 수신면이 없거나 FINAL view가 아니면 영상 기여를 확인할 수 없음을 안내한다.
+
+조건이 달라져 비교에서 제외된 run은 opaque fingerprint와 함께 이름·이전/이후 값을 보인다.
+JSON에 common/actual/changed condition fields와 recipe/goal/metric/confidence 설명을 남긴다.
+광원 이름 상세는8개로 제한하고 전체 raw fingerprint/hash는 모든 광원을 계속 포함한다.
+GPU pending과 partial scope를0ms로 비교하지 않는 기존 분모 계약은 유지한다.
+
+실제 Benchmark+Service의 Debug/Release 집중 컴파일, native 계약114개, fingerprint22개,
+recipe/기준 채택/거부·종료·profile/level 복원24개, JSON12개가 모두 통과했다(합계172).
+새9필드의 복원, PBR mask 범위 분리, SSGI/SSR discrete 허용값, 공통 GI ON 조건을 fingerprint에서
+숨기지 않는 것, source/debug view 변화, 명명 조건 차이와 한글 저장을 확인했다.
+근거는 `out/Profiler20261003/commercial/validation_receipt.json`과 같은 폴더의 probe 로그다.
+
+## G13. 실제 SSGI·SSR 렌더링
+
+`Shader_ScreenSpaceLighting.hlsl`은 기존 Deferred pass index를 변경하지 않는 독립 FX5 프로그램이다.
+Renderer는 불투명 `Render_Combined` 뒤, NonLight·scene replacement·투명 기여 전에 실행한다.
+SSGI는 MapPBR 수신점의 cosine-weighted 반구4/8/16 rays에서 각8단계 depth 교차를 찾고,
+원본 opaque HDR radiance를 albedo·비금속 diffuse 비율·거리 가중으로 더한다. SSR은 반사 방향을
+16/32/64 단계로 찾고 현재 F0·roughness·화면 경계 가중을 적용해 radiance를 더한다.
+
+두 패스는 같은 원본 HDR radiance를 사용한다. GI 결과를 SSR의 새 radiance로 다시 넣지 않는다.
+기존 scene-post ping-pong 자원을 재사용하며 두 패스 성공 후에만 원본 HDR·Bloom에 복사한다.
+Bloom은 추가된 radiance의 bright-pass 증가분만 더하고 기존 alpha·Bloom과 RT1 distortion을 보존한다.
+모든 경로에서 원래 MRT·DSV·viewport를 복구하고 PS/effect SRV를 해제한다. shader는 최초 명시적
+ON 적용 전에 준비하며 준비 실패는 이전 설정을 유지한다. 기본 OFF에는 새 패스·copy·shader load가 없다.
+
+Profiler의 `Render.SSGI`, `Render.SSR`은 실제 CPU/GPU 범위와 draw/pipeline query를 사용한다.
+`Render.ScreenSpaceLighting.Copy`는 결과 복사를 분리한다. PSInvocations는 처리 픽셀 호출이며
+실제 ray hit/교차 수가 아니다. 강도0은 trace를 조기 종료하지만 패스와 복사는 남는다.
+엔진 수치 검증은 강도0..2, GI 반경0.1..20, SSR 거리0.1..100·두께0.01..2와 discrete 값만 허용한다.
+허용 경계/범위 밖/NaN/Inf를 포함한 실제 validator67개가 통과했다.
+
+실제 FX5/O1 및 두 PS5/O1 컴파일, WARP 픽셀46개가 통과했다. visible wall에서 양의 GI bounce와
+SSR hit, 강도 비례·sample/step 변화, 배경 clear(1,1,1,0) false hit 방지, self/offscreen/miss,
+family0/1/2/4/5/6 보존, 비정상 입력·finite·alpha/Bloom 보존을 확인했다. 실제 Renderer 함수와
+FX11을 묶은 WARP 통합49개도 통과했다. OFF/GI/SSR/둘다의 draw/copy, 두 번째 pass 실패 시 원본
+HDR/Bloom 무변경, uniform 실패, 크기 불일치, resize, MRT4개·DSV·viewport2개 복원,
+PS128slot·effect7개 SRV 해제와 debug layer warning/error0을 확인했다.
+근거는 `out/Profiler20261003/screen-space/screen_space_validation_receipt.json`,
+`integration/integration_receipt.json`, `unreal/quality/validation_receipt.json`이다.
+
+이 구현은 기존 baked GI·RNM·IBL을 유지하는 현재 화면의 가산 실험이다. 물리적으로 에너지를
+보존하는 GI/IBL 교체가 아니고, 화면 밖·가려진 면·다중 bounce·motion vector/history·시간 누적
+노이즈 제거·Lumen Surface Cache·DXR BLAS/TLAS를 구현하지 않았다. full-resolution/고정 간격 추적의
+노이즈·얇은 면 누락·화면 경계·camera 의존성과 실제 GPU 비용은 사용자 화면 A/B로 판정해야 한다.
+
+
+## G14. 후속 통합 빌드·배포 검증과 남은 확인
+
+후속 전체 C++/새 shader의 Debug Product 빌드는 PASS(exit0,99,288ms)다.
+근거는 `out/BuildPipeline/runs/20261002T214120646Z-debug-product.json`이다. 이후 실제 실행 경로
+확인에서 새 CSO의 Client 명시 배포 목록 누락을 발견해 Client project와 BuildDomains의 필수 산출물·
+배포 pair를 연결했다. 최종 증분 Product는 **PASS(exit0,3,437ms)**이고 Client에 CSO1개를 배포했다.
+최종 근거는 `out/BuildPipeline/runs/20261002T214721506Z-debug-product.json`과
+`out/Profiler20261003/product-commercial-deploy-debug.log`다. Engine/Client CSO는 모두38,382bytes,
+SHA256 `0fec9b186605dd8fde1c2b225da114bae97ef60434be22515db4f59eb3b3907d`로 일치한다.
+양쪽 HLSL source도 동일하다. native binary/CSO/EngineSDK는 Git에 넣지 않는다.
+
+기존 빌드 계약 Python39개는30 PASS·9 FAIL이다. 실패한9개를 이번 변경의 입력인 Client project와
+BuildDomains의 HEAD 원문을 메모리에서 대입해 재검사했으며 동일하게 실패했다. 기존 harness 옵션,
+Effect MSBuild item·runner 길이, output-guard fixture의 누락 module, publisher/world/Navigation
+기대값 불일치다. 이 결과를 전체 PASS로 기록하거나 본 기능에서 무관한 빌드 체계를 수정하지 않는다.
+근거는 `out/Profiler20261003/unreal/build-contract-results.json`이다.
+새 셰이더의 Debug compile/deploy, 새 JSON/XML parse와 Engine/Client 해시 검증은 통과했다.
+
+최종 구조/인코딩·등록·저장 Data 무변경·diff 검증은
+`out/Profiler20261003/unreal/final-structure.json`에 기록한다. 기존 코드 페이지·외부 라이브러리
+경고는 남아 있다. 실행하지 않은 Release 전체 Product, 실제 GPU 장치의 화질/속도, 쿠크2관문·빙고의
+새 캡처, 한국어 UI 화면은 검증 완료로 기록하지 않는다. Client/Server를 자율 실행하지 않았다.
+
+병합 전에는 push한 정확한 commit의 Engine/Profiler/배포, Workbench/Service/guide와 Profiler UI를
+독립 검토하고 PR을 통해 main에 병합한다. commit 이후 생기는 review/merge SHA와 tree 대조 근거는
+`out/Profiler20261003/commercial/`의 최종 review·merge 기록 및 연결 PR에서 확인한다.
+사용자는 Debug F1 Workbench에서 SSGI 또는 SSR을 B로 ON → 새 A 채택 → sample/step sweep을
+사용하고, F7에서 실제 pass·timeline·메모리와 명명 baseline 차이를 함께 확인한다.

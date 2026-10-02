@@ -288,6 +288,11 @@ namespace
         const filesystem::path& path, bool_t srgb,
         ComPtr<ID3D11ShaderResourceView>& view, bool_t forceLinear = false)
     {
+        // Attempts/hits/new SRVs describe this shared-material path, not all
+        // texture allocations or resident memory. Worker events land in the
+        // active observed frame, so a request and its completion may differ.
+        auto* profiler = CGameInstance::Get().Get_Profiler();
+        if (profiler) profiler->Add_Counter(Engine::EProfilerCounter::TextureRequests);
         if (path.empty()) return E_INVALIDARG;
         std::error_code error;
         const auto size = filesystem::file_size(path, error);
@@ -340,7 +345,10 @@ namespace
             const HRESULT result = LoadTexture(device, path, srgb, *shared, forceLinear);
             if (FAILED(result)) return result;
             entry->texture = shared;
+            if (profiler) profiler->Add_Counter(Engine::EProfilerCounter::TextureUniqueSrvs);
         }
+        else if (profiler)
+            profiler->Add_Counter(Engine::EProfilerCounter::TexturePathHits);
         view = *shared;
         owners.push_back(std::move(shared));
         return S_OK;

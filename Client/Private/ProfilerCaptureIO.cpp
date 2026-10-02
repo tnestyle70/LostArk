@@ -13,6 +13,7 @@
 #include <system_error>
 #include <set>
 #include <stdexcept>
+#include <tuple>
 
 namespace
 {
@@ -264,8 +265,42 @@ namespace
             << "    \"frameInterval\": \"Previous Begin to current Begin equals previousCpuFrameMs plus frameGapMs, except the first captured frame. frameGapMs spans previous measured CPU End to current Begin and includes loop waits, message processing and profiler bookkeeping. Current cpuFrameMs belongs to the current frame and must not be substituted for previousCpuFrameMs.\",\n"
             << "    \"gpuScopeSelf\": \"selfMs subtracts direct child timestamp intervals from durationMs. Missing scopes make attribution incomplete; frames with droppedGpuScopes are excluded from complete GPU pass aggregates.\",\n"
             << "    \"gpuScopeDraw\": \"Per-scope draw counters are inclusive begin/end submission deltas retained with the original submitted frame, even when GPU results arrive later. They include child scopes and do not correspond only to selfMs.\",\n"
+            << "    \"memorySampling\": \"Main-thread OS observations attempted at most once per second while Capture is ON. Frame ageMs is relative to frame End; LiveStats ageMs is relative to now. Reused frames are not independent memory samples; comparison averages deduplicate process ID, sample tick and sample frame. Stalls and between-poll peaks may be missed; this does not replace a 100-250ms loading phase sampler. Each validity flag is independent; false means unavailable, not zero.\",\n"
+            << "    \"memoryMeaning\": \"Process privateCommitBytes is private committed virtual memory; workingSetBytes is currently resident process memory and can include shared pages. Peaks are OS process-lifetime peaks, not capture peaks. System commit and available RAM are different quantities. DXGI local/nonLocal CurrentUsage and Budget are process usage and OS-assigned dynamic budgets for node 0; local is not always dedicated VRAM on UMA. Do not sum process, system, local and non-local values. Allocation callstacks, resource-level bytes/lifetimes and OS wait causes are not measured.\",\n"
+            << "    \"textureCache\": {\"producerScope\": \"CMaterial.LoadSharedTexture\", \"countersProduced\": [\"textureRequests\", \"texturePathHits\", \"textureUniqueSrvs\"], \"meaning\": \"Requests are load attempts, pathHits are successful weak-cache reuse, uniqueSrvs are successful new SRV creations during the frame, not current resident resources. Worker completions follow the capture frame counter boundary. contentHits and estimatedGpuBytes have no producer.\"},\n"
             << "    \"pipeline\": \"IA vertices and primitives are input-assembler counts, VS and PS are shader invocations. Read per-pass values only when pipelineValid is true; PS invocations are not final pixels or lighting arithmetic operations.\"\n"
             << "  },\n";
+    }
+
+    bool ValidMemory(const Engine::FProfilerMemoryStats& memory, uint64_t frameNumber, uint64_t frameEndTick)
+    {
+        if (!std::isfinite(memory.AgeMs) || memory.AgeMs < 0.0 || memory.AdapterNodeIndex != 0) return false;
+        if (!memory.Sampled)
+            return !memory.ProcessValid && !memory.SystemValid && !memory.Local.Valid && !memory.NonLocal.Valid &&
+                !memory.AdapterIdentityValid && memory.SampleFrameNumber == 0 && memory.SampleTick == 0 && memory.AgeMs == 0.0;
+        return memory.SampleFrameNumber != 0 && memory.SampleFrameNumber <= frameNumber &&
+            memory.SampleTick != 0 && (frameEndTick == 0 || memory.SampleTick <= frameEndTick) && memory.ProcessId != 0;
+    }
+
+    void WriteMemory(std::ostream& stream, const Engine::FProfilerMemoryStats& memory)
+    {
+        stream << "      \"memory\": {\n"
+            << "        \"sampled\": " << (memory.Sampled ? "true" : "false")
+            << ", \"sampleFrameNumber\": " << memory.SampleFrameNumber
+            << ", \"sampleTick\": " << memory.SampleTick << ", \"ageMs\": " << memory.AgeMs << ",\n"
+            << "        \"processId\": " << memory.ProcessId << ", \"processValid\": " << (memory.ProcessValid ? "true" : "false") << ",\n"
+            << "        \"privateCommitBytes\": " << memory.PrivateCommitBytes << ", \"workingSetBytes\": " << memory.WorkingSetBytes << ",\n"
+            << "        \"peakWorkingSetBytes\": " << memory.PeakWorkingSetBytes << ", \"peakPrivateCommitBytes\": " << memory.PeakPrivateCommitBytes << ",\n"
+            << "        \"systemValid\": " << (memory.SystemValid ? "true" : "false") << ", \"systemCommitBytes\": " << memory.SystemCommitBytes
+            << ", \"systemCommitLimitBytes\": " << memory.SystemCommitLimitBytes << ", \"systemAvailableBytes\": " << memory.SystemAvailableBytes << ",\n"
+            << "        \"adapterIdentityValid\": " << (memory.AdapterIdentityValid ? "true" : "false") << ", \"adapterLuidLow\": " << memory.AdapterLuidLow
+            << ", \"adapterLuidHigh\": " << memory.AdapterLuidHigh << ", \"adapterNodeIndex\": " << memory.AdapterNodeIndex << ",\n";
+        const auto segment = [&](const char* name, const Engine::FProfilerMemorySegment& value)
+        {
+            stream << "        \"" << name << "\": {\"valid\": " << (value.Valid ? "true" : "false")
+                << ", \"currentUsageBytes\": " << value.CurrentUsageBytes << ", \"budgetBytes\": " << value.BudgetBytes << "}";
+        };
+        segment("local", memory.Local); stream << ",\n"; segment("nonLocal", memory.NonLocal); stream << "\n      },\n";
     }
 
     void WriteDrawStats(std::ostream& stream, const Engine::FProfilerDrawStats& draw)
@@ -460,7 +495,7 @@ bool SaveJsonImpl(
 			!std::isfinite(Frame.GpuFrameMs) || !std::isfinite(Frame.FrameIntervalMs) ||
             !std::isfinite(Frame.PreviousCpuFrameMs) || !std::isfinite(Frame.FrameGapMs) ||
             Frame.PreviousCpuFrameMs < 0.0 || Frame.FrameGapMs < 0.0 ||
-            Frame.FrameEndTick < Frame.FrameBeginTick ||
+            Frame.FrameEndTick < Frame.FrameBeginTick || !ValidMemory(Frame.Memory, Frame.FrameNumber, Frame.FrameEndTick) ||
 			!std::isfinite(Frame.Animation.CpuMs) || !std::isfinite(Frame.Animation.NotSubmittedCpuMs))
 		{
 			SetError(pOutError, "Profiler frame has invalid GPU status or non-finite timing.");
@@ -482,6 +517,7 @@ bool SaveJsonImpl(
 		Stream << "      \"gpuLatencyFrames\": " << Frame.GpuLatencyFrames << ",\n";
 		Stream << "      \"gpuScopesSupported\": " << (Frame.GpuScopesSupported ? "true" : "false") << ",\n";
 		Stream << "      \"droppedGpuScopes\": " << Frame.DroppedGpuScopes << ",\n";
+        WriteMemory(Stream, Frame.Memory);
 		Stream << "      \"animation\": {\n";
 		Stream << "        \"updateCalls\": " << Frame.Animation.UpdateCalls << ",\n";
 		Stream << "        \"updatedModels\": " << Frame.Animation.UpdatedModels << ",\n";
@@ -1050,9 +1086,13 @@ namespace
     // child intervals subtract from a parent; workers never subtract from main.
     void ComparisonCpu(FProfilerComparisonFrame& target,
         const std::vector<Engine::FProfilerScopeSample>& scopes,
-        const std::vector<std::string>& names, uint32_t mainThread, uint64_t frequency)
+        const std::vector<std::string>& names, uint32_t mainThread, uint64_t frequency,
+        uint64_t frameBegin, uint64_t frameEnd)
     {
         if (!frequency) { target.CpuScopesKnown = target.CpuSelfKnown = false; return; }
+        // Missing legacy bounds and cross-frame completion cannot prove that all
+        // children are present in this frame. Inclusive observations remain valid.
+        if (frameBegin == 0 || frameEnd < frameBegin) target.CpuSelfKnown = false;
         std::map<uint32_t, std::vector<const Engine::FProfilerScopeSample*>> threads;
         for (const auto& scope : scopes) threads[scope.ThreadId].push_back(&scope);
         for (auto& [thread, samples] : threads)
@@ -1068,6 +1108,7 @@ namespace
             for (size_t i = 0; i < samples.size(); ++i)
             {
                 const auto& s = *samples[i];
+                if (s.BeginTick < frameBegin || s.EndTick > frameEnd) target.CpuSelfKnown = false;
                 if (s.NameId >= names.size() || s.EndTick < s.BeginTick) { target.CpuSelfKnown = false; continue; }
                 const double duration = double(s.EndTick - s.BeginTick) * 1000.0 / double(frequency);
                 self[i] = duration;
@@ -1115,10 +1156,12 @@ namespace
     constexpr const char* ComparisonDrawNames[] = {"drawCalls", "instancedDrawCalls", "instances", "indices",
         "meshDrawCalls", "meshInstances", "meshIndices"};
     constexpr const char* ComparisonPassPipelineNames[] = {"psInvocations", "vsInvocations", "iaVertices", "iaPrimitives"};
-    bool ComparisonCounterMeasured(std::string_view name)
+    bool ComparisonCounterMeasured(std::string_view name, const std::set<std::string>& textureProduced)
     {
-        return !name.starts_with("texture") && name != "indirectDrawCalls" && name != "indirectIndexUpperBound";
+        if (name.starts_with("texture")) return textureProduced.contains(std::string(name));
+        return name != "indirectDrawCalls" && name != "indirectIndexUpperBound";
     }
+    const std::set<std::string> TextureCountersProduced{"textureRequests", "texturePathHits", "textureUniqueSrvs"};
 
     // A malformed optional observation is an error; an absent observation stays absent.
     double ComparisonNumber(const DATA_JSON_VALUE& value, double maximum = 9007199254740991.0, bool integer = false)
@@ -1165,6 +1208,85 @@ namespace
         if (const auto* value = object.Find(field))
             ComparisonAdd(frame, key, ComparisonNumber(*value, integer ? 9007199254740991.0 : 3600000.0, integer), valid);
     }
+    void ComparisonMemory(FProfilerComparisonFrame& frame)
+    {
+        const auto& m = frame.Memory;
+        const auto add = [&](const char* name, uint64_t value, bool valid)
+        { ComparisonAdd(frame, std::string("memory::") + name, static_cast<double>(value), m.Sampled && valid); };
+        add("privateCommitBytes", m.PrivateCommitBytes, m.ProcessValid);
+        add("workingSetBytes", m.WorkingSetBytes, m.ProcessValid);
+        add("peakWorkingSetBytes", m.PeakWorkingSetBytes, m.ProcessValid);
+        add("peakPrivateCommitBytes", m.PeakPrivateCommitBytes, m.ProcessValid);
+        add("systemCommitBytes", m.SystemCommitBytes, m.SystemValid);
+        add("systemCommitLimitBytes", m.SystemCommitLimitBytes, m.SystemValid);
+        add("systemAvailableBytes", m.SystemAvailableBytes, m.SystemValid);
+        add("localUsageBytes", m.Local.CurrentUsageBytes, m.Local.Valid);
+        add("localBudgetBytes", m.Local.BudgetBytes, m.Local.Valid);
+        add("nonLocalUsageBytes", m.NonLocal.CurrentUsageBytes, m.NonLocal.Valid);
+        add("nonLocalBudgetBytes", m.NonLocal.BudgetBytes, m.NonLocal.Valid);
+    }
+
+    void ComparisonReadMemory(const DATA_JSON_VALUE& source, FProfilerComparisonFrame& frame)
+    {
+        const auto* memory = source.Find("memory");
+        if (!memory) return; // Legacy captures have no OS observation, not zero memory.
+        ComparisonObject(*memory);
+        auto& m = frame.Memory; frame.MemoryKnown = true;
+        m.Sampled = ComparisonBool(ComparisonRequired(*memory, "sampled"));
+        m.SampleFrameNumber = ComparisonUInt(*memory, "sampleFrameNumber");
+        m.SampleTick = ComparisonUInt(*memory, "sampleTick");
+        m.AgeMs = ComparisonNumber(ComparisonRequired(*memory, "ageMs"));
+        m.ProcessId = static_cast<uint32_t>(ComparisonUInt(*memory, "processId", UINT32_MAX));
+        m.ProcessValid = ComparisonBool(ComparisonRequired(*memory, "processValid"));
+        m.PrivateCommitBytes = ComparisonUInt(*memory, "privateCommitBytes");
+        m.WorkingSetBytes = ComparisonUInt(*memory, "workingSetBytes");
+        m.PeakWorkingSetBytes = ComparisonUInt(*memory, "peakWorkingSetBytes");
+        m.PeakPrivateCommitBytes = ComparisonUInt(*memory, "peakPrivateCommitBytes");
+        m.SystemValid = ComparisonBool(ComparisonRequired(*memory, "systemValid"));
+        m.SystemCommitBytes = ComparisonUInt(*memory, "systemCommitBytes");
+        m.SystemCommitLimitBytes = ComparisonUInt(*memory, "systemCommitLimitBytes");
+        m.SystemAvailableBytes = ComparisonUInt(*memory, "systemAvailableBytes");
+        m.AdapterIdentityValid = ComparisonBool(ComparisonRequired(*memory, "adapterIdentityValid"));
+        m.AdapterLuidLow = static_cast<uint32_t>(ComparisonUInt(*memory, "adapterLuidLow", UINT32_MAX));
+        const auto& high = ComparisonRequired(*memory, "adapterLuidHigh");
+        if (!high.Is_Number() || !std::isfinite(high.Get_Number()) || std::floor(high.Get_Number()) != high.Get_Number() ||
+            high.Get_Number() < INT32_MIN || high.Get_Number() > INT32_MAX)
+            throw std::runtime_error("Capture adapter LUID high part is invalid.");
+        m.AdapterLuidHigh = static_cast<int32_t>(high.Get_Number());
+        m.AdapterNodeIndex = static_cast<uint32_t>(ComparisonUInt(*memory, "adapterNodeIndex", 0));
+        const auto segment = [&](const char* name, Engine::FProfilerMemorySegment& value)
+        {
+            const auto& object = ComparisonRequired(*memory, name); ComparisonObject(object);
+            value.Valid = ComparisonBool(ComparisonRequired(object, "valid"));
+            value.CurrentUsageBytes = ComparisonUInt(object, "currentUsageBytes");
+            value.BudgetBytes = ComparisonUInt(object, "budgetBytes");
+        };
+        segment("local", m.Local); segment("nonLocal", m.NonLocal);
+        const uint64_t frameEnd = source.Find("frameEndTick") ? ComparisonUInt(source, "frameEndTick") : 0;
+        if (!ValidMemory(m, frame.Number, frameEnd)) throw std::runtime_error("Capture memory observation has inconsistent validity or sample bounds.");
+        ComparisonMemory(frame);
+    }
+
+    std::set<std::string> ComparisonTextureCapabilities(const DATA_JSON_VALUE& root)
+    {
+        std::set<std::string> produced;
+        const auto* semantics = root.Find("measurementSemantics");
+        if (!semantics) return produced;
+        ComparisonObject(*semantics);
+        const auto* texture = semantics->Find("textureCache");
+        if (!texture) return produced;
+        ComparisonObject(*texture);
+        const bool known = ComparisonString(ComparisonRequired(*texture, "producerScope")) == "CMaterial.LoadSharedTexture";
+        std::set<std::string> seen;
+        for (const auto& value : ComparisonArrayValue(ComparisonRequired(*texture, "countersProduced"), 32))
+        {
+            const auto name = ComparisonString(value);
+            if (!seen.insert(name).second) throw std::runtime_error("Capture repeats a texture producer capability.");
+            if (known && TextureCountersProduced.contains(name)) produced.insert(name);
+        }
+        return produced;
+    }
+
     void ComparisonMetadata(const DATA_JSON_VALUE& root, FProfilerComparisonCapture& capture)
     {
         const auto* metadata = root.Find("metadata");
@@ -1289,6 +1411,8 @@ Client::FProfilerComparisonCapture Client::CProfilerCaptureIO::Build_Comparison(
     {
         FProfilerComparisonFrame frame;
         frame.Number = source.FrameNumber;
+        frame.MemoryKnown = true; frame.Memory = source.Memory;
+        ComparisonMemory(frame);
         frame.CpuScopesKnown = snapshot.TicksPerSecond != 0;
         frame.CpuSelfKnown = frame.CpuScopesKnown && source.DroppedCpuScopes == 0;
         frame.DetailKnown = true; frame.Detailed = source.DetailedCpuScopes;
@@ -1325,9 +1449,10 @@ Client::FProfilerComparisonCapture Client::CProfilerCaptureIO::Build_Comparison(
         ComparisonAdd(frame, "animation.count::submittedUpdatedModels", double(animation.SubmittedUpdatedModels), completeAnimation);
         ComparisonAdd(frame, "animation.count::notSubmittedUpdatedModels", double(animation.NotSubmittedUpdatedModels), completeAnimation);
         ComparisonAdd(frame, "animation.count::droppedSamples", double(animation.DroppedSamples));
-        ComparisonCpu(frame, source.CpuScopes, snapshot.ScopeNames, snapshot.MainThreadId, snapshot.TicksPerSecond);
+        ComparisonCpu(frame, source.CpuScopes, snapshot.ScopeNames, snapshot.MainThreadId, snapshot.TicksPerSecond,
+            source.FrameBeginTick, source.FrameEndTick);
         for (size_t i = 0; i < CounterNames.size(); ++i)
-            ComparisonAdd(frame, std::string("counter::") + CounterNames[i], double(source.Counters[i]), ComparisonCounterMeasured(CounterNames[i]));
+            ComparisonAdd(frame, std::string("counter::") + CounterNames[i], double(source.Counters[i]), ComparisonCounterMeasured(CounterNames[i], TextureCountersProduced));
         const auto& p = source.Pipeline;
         const uint64_t pipeline[] = {p.IAVertices,p.IAPrimitives,p.VSInvocations,p.GSInvocations,p.GSPrimitives,
             p.CInvocations,p.CPrimitives,p.PSInvocations,p.HSInvocations,p.DSInvocations,p.CSInvocations};
@@ -1368,6 +1493,7 @@ bool_t Client::CProfilerCaptureIO::Parse_Comparison(std::string_view bytes, FPro
             throw std::runtime_error("Unsupported profiler capture schema.");
         FProfilerComparisonCapture staged; staged.Source = schema;
         ComparisonMetadata(root, staged);
+        const auto textureProduced = ComparisonTextureCapabilities(root);
         std::vector<std::string> names;
         for (const auto& name : ComparisonArrayValue(ComparisonRequired(root, "scopeNames"), 16384))
             names.push_back(ComparisonString(name));
@@ -1381,6 +1507,11 @@ bool_t Client::CProfilerCaptureIO::Parse_Comparison(std::string_view bytes, FPro
         {
             ComparisonObject(source); FProfilerComparisonFrame frame;
             frame.Number = ComparisonUInt(source, "frameNumber");
+            const uint64_t frameBegin = source.Find("frameBeginTick") ? ComparisonUInt(source, "frameBeginTick") : 0;
+            const uint64_t frameEnd = source.Find("frameEndTick") ? ComparisonUInt(source, "frameEndTick") : 0;
+            if (source.Find("frameBeginTick") && source.Find("frameEndTick") && frameEnd < frameBegin)
+                throw std::runtime_error("Capture frame bounds are reversed.");
+            ComparisonReadMemory(source, frame);
             if (!staged.Frames.empty() && staged.Frames.back().Number >= frame.Number)
                 throw std::runtime_error("Capture frame numbers must increase strictly.");
             ComparisonAdd(frame, "frame::cpu", ComparisonNumber(ComparisonRequired(source, "cpuFrameMs"), 3600000.0));
@@ -1467,7 +1598,7 @@ bool_t Client::CProfilerCaptureIO::Parse_Comparison(std::string_view bytes, FPro
                         throw std::runtime_error("Capture CPU scope has an invalid interval.");
                     samples.push_back(sample);
                 }
-                ComparisonCpu(frame, samples, names, mainThread, frequency);
+                ComparisonCpu(frame, samples, names, mainThread, frequency, frameBegin, frameEnd);
             }
             else frame.CpuSelfKnown = false;
             for (const auto* group : {"counters", "pipeline"})
@@ -1476,7 +1607,7 @@ bool_t Client::CProfilerCaptureIO::Parse_Comparison(std::string_view bytes, FPro
                     ComparisonObject(*values);
                     const bool isCounter = std::string_view(group) == "counters";
                     if (isCounter)
-                        for (const auto* name : CounterNames) ComparisonOptionalMetric(*values, name, frame, std::string("counter::") + name, ComparisonCounterMeasured(name), true);
+                        for (const auto* name : CounterNames) ComparisonOptionalMetric(*values, name, frame, std::string("counter::") + name, ComparisonCounterMeasured(name, textureProduced), true);
                     else
                         for (const auto* name : ComparisonPipelineNames) ComparisonOptionalMetric(*values, name, frame, std::string("pipeline::") + name, frame.GpuValid, true);
                 }
@@ -1530,6 +1661,8 @@ std::map<std::string, Client::FProfilerComparisonMean> Client::CProfilerCaptureI
     for (const auto& frame : capture.Frames) for (const auto& [key, value] : frame.Values) result.try_emplace(key);
     for (auto& [key, mean] : result)
     {
+        std::set<std::tuple<uint32_t, uint64_t, uint64_t>> memoryObservations;
+        const bool memoryMetric = key.starts_with("memory::");
         const bool cpu = key.starts_with("cpu.");
         const bool cpuSelf = cpu && key.find(".self::") != std::string::npos;
         const bool gpuPass = key.starts_with("gpu.");
@@ -1541,6 +1674,10 @@ std::map<std::string, Client::FProfilerComparisonMean> Client::CProfilerCaptureI
             // First captured interval has no predecessor and is excluded, not zero.
             if ((key == "frame::interval" || key == "frame::gap" || key == "frame::previousCpu") &&
                 it != frame.Values.end() && !it->second.Available) continue;
+            // Reusing a 1 Hz observation for many render frames must not weight
+            // the average toward the periods with higher render FPS.
+            if (memoryMetric && frame.MemoryKnown && frame.Memory.Sampled &&
+                !memoryObservations.emplace(frame.Memory.ProcessId, frame.Memory.SampleTick, frame.Memory.SampleFrameNumber).second) continue;
             ++mean.Expected;
             if (cpu && (!frame.CpuScopesKnown || (cpuSelf && !frame.CpuSelfKnown))) continue;
             if (it != frame.Values.end())

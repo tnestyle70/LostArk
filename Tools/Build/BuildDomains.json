@@ -584,6 +584,7 @@
       "Engine/Bin/{configuration}/Engine.lib",
       "Engine/Bin/{configuration}/Shader_Cell.cso",
       "Engine/Bin/{configuration}/Shader_Deferred.cso",
+      "Engine/Bin/{configuration}/Shader_ScreenSpaceLighting.cso",
       "Shared/Bin/{configuration}/Shared.lib",
       "Shared/Bin/{configuration}/Shared.pdb",
       "Server/Bin/{configuration}/Server.exe",
@@ -593,6 +594,7 @@
       "Client/Bin/{configuration}/Engine.dll",
       "Client/Bin/{configuration}/Shader_Cell.cso",
       "Client/Bin/{configuration}/Shader_Deferred.cso",
+      "Client/Bin/{configuration}/Shader_ScreenSpaceLighting.cso",
       "Client/Bin/{configuration}/fmod.dll",
       "Client/Bin/{configuration}/{assimpRuntimeName}",
       "Client/Bin/{configuration}/PhysX_64.dll",
@@ -620,6 +622,10 @@
       {
         "source": "Engine/Bin/{configuration}/Shader_Deferred.cso",
         "destination": "Client/Bin/{configuration}/Shader_Deferred.cso"
+      },
+      {
+        "source": "Engine/Bin/{configuration}/Shader_ScreenSpaceLighting.cso",
+        "destination": "Client/Bin/{configuration}/Shader_ScreenSpaceLighting.cso"
       },
       {
         "source": "Engine/ThirdPartyLib/FMOD/Bin/fmod.dll",

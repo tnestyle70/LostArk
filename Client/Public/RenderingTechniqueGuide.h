@@ -93,20 +93,20 @@ namespace Client::RenderingTechniqueGuide
          "CPU CullAndPack/BindAndDraw·instance upload와 GPU IA/VS를 확인합니다. 향후 indirect 실행량에는 별도 GPU 계측이 필요합니다.",
          "같은 카메라에서 index 감소와 draw 감소를 따로 봅니다. index가 줄어도 pixel 병목이면 FPS 이득이 작을 수 있습니다.",
          "https://developer.nvidia.com/gpugems/gpugems2/part-i-geometric-complexity/chapter-3-inside-geometry-instancing"},
-        {"SSGI", "간접광·반사", Availability::Foundation,
-         "현재 화면의 depth/normal/색으로 주변 표면에서 반사된 diffuse 빛을 추정합니다. 화면 밖·가려진 표면의 정보가 없습니다.",
-         "미구현. depth/normal/HDR 입력 외에 history·노이즈 제거·receiver 합성 정책이 필요합니다.",
-         "향후 ray/step 수, 반경, half/full resolution, temporal weight, 두께 허용치.",
-         "screen ray march, texture 대역폭, denoise·history 저장. RNM과 중복 가산하지 않아야 합니다.",
-         "화면 밖 광원, camera cut, disocclusion에서 빛 누락·잔상을 검증한 뒤 비용을 비교합니다.",
+        {"실험 SSGI", "간접광·반사", Availability::MaterialFamily,
+         "현재 화면의 depth/normal/radiance로 주변 표면에서 반사된 diffuse 빛을 추정합니다. 화면 밖·가려진 표면의 정보가 없습니다.",
+         "D3D11 screen-space diffuse bounce 실험입니다. source marker3 MapPBR 수신·FINAL view만 영상 기여하며 기존 RNM/IBL 위에 가산합니다. temporal/history·denoise가 없습니다.",
+         "세션 ON/OFF, 강도0..2, 반경0.1..20m, sample4/8/16. 기본OFF이며 저장 profile에 추가하지 않습니다.",
+         "Render.SSGI GPU와 Render.ScreenSpaceLighting.Copy를 함께 봅니다. 강도0은 trace 조기 종료지만 full-screen 패스·복사는 남습니다. PSInvocations는 ray hit 수가 아닙니다.",
+         "직접광·RNM·IBL·노출을 고정하고 recipe로 단일 변수 A/B/sweep합니다. 카메라 이동/화면 경계·가림·빛 누출을 확인하며 에너지 보존 GI로 간주하지 않습니다.",
          "https://dev.epicgames.com/documentation/en-us/unreal-engine/screen-space-global-illumination"},
-        {"SSR / Planar Reflection", "간접광·반사", Availability::Foundation,
-         "SSR은 화면 안에서 반사 ray를 찾습니다. planar reflection은 평면에 반사된 카메라로 scene을 다시 그립니다.",
-         "일반 SSR/planar pass는 미구현. 기존 환경 cubemap을 SSR이라고 부르지 않습니다.",
-         "향후 SSR step·thickness·roughness cutoff, planar 해상도·갱신 빈도·대상 layer.",
-         "SSR trace/filter 또는 planar의 추가 culling/draw/lighting. 투명·깊이 불연속이 난점입니다.",
-         "화면 가장자리·거친 표면·동적 물체에서 반사 누락과 비용을 함께 확인합니다.",
-         "https://dev.epicgames.com/documentation/en-us/unreal-engine/reflections-environment-in-unreal-engine"},
+        {"실험 SSR / Planar Reflection", "간접광·반사", Availability::MaterialFamily,
+         "SSR은 화면 depth를 따라 specular ray를 찾습니다. planar reflection은 반사 카메라로 scene을 다시 그리는 별개 방식입니다.",
+         "D3D11 SSR 실험은 source marker3 MapPBR 수신·FINAL view에 가산하며 기존 IBL을 유지합니다. Planar·temporal/history·화면 밖 반사는 미구현입니다.",
+         "세션 ON/OFF, 강도0..2, 최대거리0.1..100m, hit두께0.01..2m, step16/32/64. 기본OFF.",
+         "Render.SSR GPU + 공통 Copy, depth/radiance 대역폭을 봅니다. 강도0은 trace를 조기 종료하지만 패스/복사는 남고 최대step은 실제hit수와 다릅니다.",
+         "동일 roughness·IBL·노출에서 화면 경계/얇은 물체/반사 누락을 비교합니다. SSGI와 같은 원본radiance를 읽어 SSGI 결과를 새 반사입력으로 재사용하지 않습니다.",
+         "https://dev.epicgames.com/documentation/en-us/unreal-engine/screen-space-reflections-in-unreal-engine"},
         {"Probe GI / DDGI", "간접광·반사", Availability::Foundation,
          "공간에 배치한 probe의 방향별 조명과 가시성을 갱신하고 표면 위치에서 보간합니다. DDGI는 동적 갱신을 포함하는 접근입니다.",
          "동적 probe volume 미구현. probe 배치·trace backend·visibility 저장·geometry 이동 시 invalidation이 필요합니다.",
@@ -265,6 +265,7 @@ namespace Client::RenderingTechniqueGuide
     {
         if (!ImGui::CollapsingHeader("기법 사전 · GPU Gems / GI / RTX")) return;
         ImGui::TextWrapped("개념과 현재 실행 가능한 범위를 함께 표시합니다. 위 세션 실험에서 지원하는 변수만 실제 적용됩니다. 향후 변수는 설계 설명이며 이 목록이 기능을 켜거나 저장하지 않습니다.");
+        ImGui::TextWrapped("현재 기법의 실제 비교는 위 원인별 recipe에서 한 변수로 준비합니다. 아래 상용 도구 비교표는 시간축·작업 대기·자원/메모리·coverage의 계측 공백과 검증 조건을 설명합니다.");
         static ImGuiTextFilter filter;
         filter.Draw("기법 검색");
         static int selected = 0;
