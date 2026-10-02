@@ -3939,8 +3939,10 @@ void CMainApp::Register_UITextOccluders()
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_WORLD_MAP, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pSystemOptionView && m_pSystemOptionView->Get_ScreenRect(fX, fY, fWidth, fHeight))
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_SYSTEM_OPTION, fX, fY, fWidth, fHeight);
+	/* The full window and its wait/result backdrop share this footprint; the center
+	panel alone leaves world nameplates visible over both side lists. */
 	if (m_bItemUpgradePreviewVisible && nullptr != m_pItemUpgradeView)
-		Occlusion.Add_SlotOccluder(UI_TEXT_LAYER::WINDOW_ITEM_UPGRADE, *m_pItemUpgradeView, "ItemUpgrade_PanelBg");
+		Occlusion.Add_SlotOccluder(UI_TEXT_LAYER::WINDOW_ITEM_UPGRADE, *m_pItemUpgradeView, "ItemUpgrade_WindowBg");
 	/* HUD surfaces in the levels that show them. */
 	const uint32_t iLevel = CGameInstance::Get().Get_CurrentLevelID();
 	if (nullptr != m_pPartyWindowView && (ETOUI(LEVEL::BERN) == iLevel ||

@@ -1,5 +1,24 @@
 # LostArk merge 회귀 방지 정본
 
+## 입장 승인 뒤 이전 Level의 복제 이벤트 소비 금지
+
+- ENTER_ACCEPTED가 world inbound generation을 바꿔도 비동기 모델 준비 취소 때문에
+  이전 Level이 몇 프레임 더 살아 있을 수 있다. 전환 요청 직후 반환 한 번으로는
+  목적지의 PLAYER_SPAWNED 유실을 막지 못한다.
+- CClientReplication은 Initialize에서 소유 세대를 캡처하고 Update의 큐 소비와
+  후속 준비 전에 일치 여부를 확인한다. world ID만 비교하면 같은 월드 재입장을
+  구분하지 못한다. Reset은 소유 세대를 해제하며 disconnect 정리는 유지한다.
+- 캐릭터 없이 자유 카메라로 남는 증상은 카메라 강제 전환이나 로컬 캐릭터 복제로
+  가리지 말고 승인 → 초기 spawn → 새 Level 소비 순서를 먼저 확인한다.
+
+## 강화 창의 월드 텍스트 가림 영역
+
+- 강화 창은 중앙 ItemUpgrade_PanelBg가 아닌 전체 ItemUpgrade_WindowBg rect를
+  WINDOW_ITEM_UPGRADE occluder로 등록한다. 이름표는 WORLD층, 강화 자체 문구는
+  같은 WINDOW_ITEM_UPGRADE층을 사용하므로 창 밖 이름표와 창 안 문구는 유지한다.
+- 대기·성공·실패 화면의 배경 범위도 비교한다. 중앙 패널만 사용하면 좌우 목록과
+  결과 화면 위에 가이드 이름표가 그려진다.
+
 ## 콜로세움 승패 배너의 결과 identity와 마지막 프레임
 
 - 로컬 PlayerId/NetEntityId를 서버 참가자 팀과 조인하지 못한 상태를 패배로 간주하지 않는다.

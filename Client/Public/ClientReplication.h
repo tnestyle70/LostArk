@@ -771,6 +771,7 @@ namespace Client
 		std::shared_ptr<Engine::CTransform> m_pSpectateDeathTarget;
 		bool_t m_bSpectateTargetWasAlive = false;
 		bool m_isInitialized = false;
+		std::uint64_t m_iOwnedWorldInboundGeneration = 0u;
 		bool m_wasConnected = false;
 		bool m_hasPendingConnectionLoss = false;
 		bool m_hasFatalWorldDestructionFailure = false;
