@@ -1051,8 +1051,8 @@
     <None Include="..\..\Data\UI\AvatarBook\AvatarBookDisplay.json" />
     <None Include="..\..\Data\UI\ItemUpgrade\ItemUpgradeUI.json" />
     <None Include="..\..\Data\UI\ClassSelect\ClassSelect_Layout.json" />
-    <None Include="..\..\Data\UI\Bern\BernValtanEntry_Layout.json" />
-    <None Include="..\..\Data\UI\Bern\ValtanRaidEntry_Layout.json" />
+    <None Include="..\..\Data\UI\RaidEntry\BernValtanEntry_Layout.json" />
+    <None Include="..\..\Data\UI\RaidEntry\ValtanRaidEntry_Layout.json" />
     <None Include="..\..\Data\UI\Party\PartyInviteConfirm_Layout.json" />
     <None Include="..\..\Data\UI\RaidGateProgress\RaidGateProgress_Layout.json" />
     <None Include="..\..\Data\UI\SystemMenu\SystemMenuButtons_Layout.json" />
