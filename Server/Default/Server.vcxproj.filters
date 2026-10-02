@@ -1,201 +1,528 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <ItemGroup>
-    <Filter Include="Public">
+    <Filter Include="00.Main">
       <UniqueIdentifier>{9E987759-92B9-4125-A5A7-05495FB9F53B}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Private">
+    <Filter Include="01.Network">
+      <UniqueIdentifier>{88429166-D905-5ABF-9AF6-0E2952F5FFC4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.Room">
       <UniqueIdentifier>{955A4FE2-BA15-4E49-9879-188CCD1C93AD}</UniqueIdentifier>
     </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\Public\ServerApp.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\WinSockContext.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\TcpListener.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\ClientSession.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\ServerIds.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\ServerPlayer.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\RoomCommand.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\GuideCatalog.h"><Filter>Public</Filter></ClInclude>
-    <ClInclude Include="..\Public\GameRoom.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\ServerWorldEntity.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\WorldBootstrap.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\SpawnGroupBootstrap.h"><Filter>Public</Filter></ClInclude>
-    <ClInclude Include="..\Public\SpawnGroupRuntime.h"><Filter>Public</Filter></ClInclude>
-    <ClInclude Include="..\Public\MonsterBrain.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\NpcBehaviorRuntime.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\GameplayCatalog.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\ServerBalanceNumericStore.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\BossCombatRuntime.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\CombatObjectRuntime.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\ServerCombatGeometry.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\ServerCombatHitRuntime.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\ItemCatalog.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\VehicleCatalog.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\HonorTitleCatalog.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\ValtanClearRewards.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\PlayerSkillSystem.h"><Filter>Public</Filter></ClInclude>
-    <ClInclude Include="..\Public\ColosseumCombatPolicy.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\ServerNavigation.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\ValtanBrain.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\KoukuSaydonBrain.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\KoukuSaydonLogicRuntime.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\EstherSkillSystem.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\ServerGameplayContractTests.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\ServerTriggerSystem.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\ServerCollisionSystem.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\EncounterPropRuntime.h"><Filter>Public</Filter></ClInclude>
-    <ClInclude Include="..\Public\WorldDestructionRuntime.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\WorldDestructionBootstrap.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\WorldDestructionBootstrapContractTests.h"><Filter>Public</Filter></ClInclude>
+    <Filter Include="03.World">
+      <UniqueIdentifier>{95AE9072-D006-58D9-9B30-0765FD984756}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="04.NavigationCollision">
+      <UniqueIdentifier>{C14E1972-0AF1-5F76-AFD7-E45885B1CE9D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="05.Combat">
+      <UniqueIdentifier>{1A25AB83-58E0-5A2A-BF23-D8AEABCE1846}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="06.AI">
+      <UniqueIdentifier>{11ADE366-8B92-5B2E-A10C-C5AF7A610D27}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="07.Boss">
+      <UniqueIdentifier>{FC97BBB5-612E-5F97-8477-ABA02E54425B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="07.Boss\00.Shared">
+      <UniqueIdentifier>{34ABBC60-5363-5CCC-95F2-5393216630BB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="07.Boss\01.Valtan">
+      <UniqueIdentifier>{E13F3F63-427F-5C16-98AE-6C6E413DAE2E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="07.Boss\02.KoukuSaydon">
+      <UniqueIdentifier>{A0E4B3AA-0B27-543C-A0C9-4BD65448C94A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="08.Economy">
+      <UniqueIdentifier>{F4C5526C-9F5D-5BBB-A2E6-E3DA76630DD1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="09.Generation">
+      <UniqueIdentifier>{522A97D5-961F-5B7E-87C7-799D76CE02E6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="98.Tests">
+      <UniqueIdentifier>{3C53ACAC-C3A4-5CF9-89D9-2CEF502775A6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="98.Tests\00.Framework">
+      <UniqueIdentifier>{AED22ED0-2A73-5C17-B61F-A53FF71D2FB4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="98.Tests\01.Network">
+      <UniqueIdentifier>{BB9C5A90-1CE8-5798-810D-D73D4118A022}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="98.Tests\02.Room">
+      <UniqueIdentifier>{4C96A668-3B7A-5C06-BB62-568072A5E0B2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="98.Tests\03.World">
+      <UniqueIdentifier>{48032E14-4035-5CE9-B6C3-5E62241A1826}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="98.Tests\04.NavigationCollision">
+      <UniqueIdentifier>{9627CAEC-81EF-570F-93C6-07FDCFC59CF5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="98.Tests\05.Combat">
+      <UniqueIdentifier>{5F782A57-E9CA-578C-845E-2487CD5B865C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="98.Tests\06.AI">
+      <UniqueIdentifier>{24128066-82F8-5F84-8012-1C5848E9DCD3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="98.Tests\07.Boss">
+      <UniqueIdentifier>{3B9140A1-D3EB-5A73-B525-ACE184FB010D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="98.Tests\07.Boss\01.Valtan">
+      <UniqueIdentifier>{E066EA25-D145-53D4-9FD1-293E8C853BA8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="98.Tests\07.Boss\02.KoukuSaydon">
+      <UniqueIdentifier>{4C86CACB-5FB1-5D08-99E4-870A3F68152F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="98.Tests\08.Economy">
+      <UniqueIdentifier>{DB5AB541-4FF4-5AAF-9D71-C298FACA42AB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="98.Tests\09.Generation">
+      <UniqueIdentifier>{DBC2D3E1-57E1-5EB6-82A1-76EC1160A681}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="99.Default">
+      <UniqueIdentifier>{92B78042-E943-5FE7-BE6E-ADDB63CDCC58}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\Main.cpp">
-      <Filter>Private</Filter>
+      <Filter>00.Main</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\ServerApp.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\WinSockContext.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\TcpListener.cpp">
-      <Filter>Private</Filter>
+      <Filter>00.Main</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\ClientSession.cpp">
-      <Filter>Private</Filter>
+      <Filter>01.Network</Filter>
     </ClCompile>
-    <ClCompile Include="..\Private\GuideCatalog.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\GameRoom_MaharakaAI.cpp" />
-    <ClCompile Include="..\Private\ServerGameplayContractTests_MaharakaAI.cpp" />
-    <ClCompile Include="..\Private\GameRoom_Guide.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\GameRoom_Colosseum.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\GameRoom_GuideThreat.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_Guide.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\TcpListener.cpp">
+      <Filter>01.Network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\WinSockContext.cpp">
+      <Filter>01.Network</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\GameRoom.cpp">
-      <Filter>Private</Filter>
+      <Filter>02.Room</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_Admission.cpp">
+      <Filter>02.Room</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_Helpers.cpp">
+      <Filter>02.Room</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_PartyWorld.cpp">
+      <Filter>02.Room</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_Replication.cpp">
+      <Filter>02.Room</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_WorldDestruction.cpp">
+      <Filter>03.World</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_WorldEntities.cpp">
+      <Filter>03.World</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\SpawnGroupBootstrap.cpp">
+      <Filter>03.World</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\SpawnGroupRuntime.cpp">
+      <Filter>03.World</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\WorldBootstrap.cpp">
-      <Filter>Private</Filter>
+      <Filter>03.World</Filter>
     </ClCompile>
-    <ClCompile Include="..\Private\SpawnGroupBootstrap.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\SpawnGroupRuntime.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\MonsterBrain.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\NpcBehaviorRuntime.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\GameplayCatalog.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\ServerBalanceNumericStore.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\BossCombatRuntime.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\CombatObjectRuntime.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\ServerCombatGeometry.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\ServerCombatHitRuntime.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\ItemCatalog.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\VehicleCatalog.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\HonorTitleCatalog.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\ValtanClearRewards.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\PlayerSkillSystem.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\ServerNavigation.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\ValtanBrain.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\KoukuSaydonBrain.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\KoukuSaydonLogicRuntime.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\EstherSkillSystem.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\ServerGameplayContractTests.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\ServerTriggerSystem.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\ServerCollisionSystem.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\EncounterPropRuntime.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\WorldDestructionRuntime.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\WorldDestructionBootstrap.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\WorldDestructionBootstrapContractTests.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\WorldDestructionBootstrap.cpp">
+      <Filter>03.World</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\WorldDestructionRuntime.cpp">
+      <Filter>03.World</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerCollisionSystem.cpp">
+      <Filter>04.NavigationCollision</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerNavigation.cpp">
+      <Filter>04.NavigationCollision</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerTriggerSystem.cpp">
+      <Filter>04.NavigationCollision</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\EstherSkillSystem.cpp">
+      <Filter>05.Combat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameplayCatalog.cpp">
+      <Filter>05.Combat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_Colosseum.cpp">
+      <Filter>05.Combat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_PlayerCommands.cpp">
+      <Filter>05.Combat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_PlayerSimulation.cpp">
+      <Filter>05.Combat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\PlayerSkillSystem.cpp">
+      <Filter>05.Combat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerCombatGeometry.cpp">
+      <Filter>05.Combat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerCombatHitRuntime.cpp">
+      <Filter>05.Combat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_Guide.cpp">
+      <Filter>06.AI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_GuideThreat.cpp">
+      <Filter>06.AI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_MaharakaAI.cpp">
+      <Filter>06.AI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GuideCatalog.cpp">
+      <Filter>06.AI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MonsterBrain.cpp">
+      <Filter>06.AI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\NpcBehaviorRuntime.cpp">
+      <Filter>06.AI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\BossCombatRuntime.cpp">
+      <Filter>07.Boss\00.Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\CombatObjectRuntime.cpp">
+      <Filter>07.Boss\00.Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\EncounterPropRuntime.cpp">
+      <Filter>07.Boss\00.Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_BossSimulation.cpp">
+      <Filter>07.Boss\00.Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_BossStageActions.cpp">
+      <Filter>07.Boss\00.Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_GateProgress.cpp">
+      <Filter>07.Boss\00.Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_ValtanAudition.cpp">
+      <Filter>07.Boss\01.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ValtanBrain.cpp">
+      <Filter>07.Boss\01.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_KoukuAudition.cpp">
+      <Filter>07.Boss\02.KoukuSaydon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_KoukuMiniGames.cpp">
+      <Filter>07.Boss\02.KoukuSaydon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_KoukuPlayerCommands.cpp">
+      <Filter>07.Boss\02.KoukuSaydon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_KoukuRaidFlow.cpp">
+      <Filter>07.Boss\02.KoukuSaydon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\KoukuSaydonBrain.cpp">
+      <Filter>07.Boss\02.KoukuSaydon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\KoukuSaydonLogicRuntime.cpp">
+      <Filter>07.Boss\02.KoukuSaydon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_HonorTitle.cpp">
+      <Filter>08.Economy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_Inventory.cpp">
+      <Filter>08.Economy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_VehicleRiding.cpp">
+      <Filter>08.Economy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\HonorTitleCatalog.cpp">
+      <Filter>08.Economy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ItemCatalog.cpp">
+      <Filter>08.Economy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ValtanClearRewards.cpp">
+      <Filter>08.Economy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\VehicleCatalog.cpp">
+      <Filter>08.Economy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_CatalogGenerations.cpp">
+      <Filter>09.Generation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerBalanceNumericStore.cpp">
+      <Filter>09.Generation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests.cpp">
+      <Filter>98.Tests\00.Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_Helpers.cpp">
+      <Filter>98.Tests\00.Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_Runner.cpp">
+      <Filter>98.Tests\00.Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_SessionTransport.cpp">
+      <Filter>98.Tests\01.Network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_CharacterAdmission.cpp">
+      <Filter>98.Tests\02.Room</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_RoomIngress.cpp">
+      <Filter>98.Tests\02.Room</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_SpawnGroups.cpp">
+      <Filter>98.Tests\03.World</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_WorldDestruction.cpp">
+      <Filter>98.Tests\03.World</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_WorldPlayback.cpp">
+      <Filter>98.Tests\03.World</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_WorldTriggers.cpp">
+      <Filter>98.Tests\03.World</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\WorldDestructionBootstrapContractTests.cpp">
+      <Filter>98.Tests\03.World</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_DebugTeleport.cpp">
+      <Filter>98.Tests\04.NavigationCollision</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_Navigation.cpp">
+      <Filter>98.Tests\04.NavigationCollision</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ColosseumCombat.cpp">
+      <Filter>98.Tests\05.Combat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ColosseumMatch.cpp">
+      <Filter>98.Tests\05.Combat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_GroundTarget.cpp">
+      <Filter>98.Tests\05.Combat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_PlayerActions.cpp">
+      <Filter>98.Tests\05.Combat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_PlayerCombos.cpp">
+      <Filter>98.Tests\05.Combat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_SkillStages.cpp">
+      <Filter>98.Tests\05.Combat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_Guide.cpp">
+      <Filter>98.Tests\06.AI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_MaharakaAI.cpp">
+      <Filter>98.Tests\06.AI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanAudition.cpp">
+      <Filter>98.Tests\07.Boss\01.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanDash.cpp">
+      <Filter>98.Tests\07.Boss\01.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanLifecycle.cpp">
+      <Filter>98.Tests\07.Boss\01.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanMechanicLedger.cpp">
+      <Filter>98.Tests\07.Boss\01.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanPinnedGeneration.cpp">
+      <Filter>98.Tests\07.Boss\01.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanReleaseControl.cpp">
+      <Filter>98.Tests\07.Boss\01.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanResetlessNext.cpp">
+      <Filter>98.Tests\07.Boss\01.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanRevision.cpp">
+      <Filter>98.Tests\07.Boss\01.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanSkyAxe.cpp">
+      <Filter>98.Tests\07.Boss\01.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanTimelines.cpp">
+      <Filter>98.Tests\07.Boss\01.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_Bingo.cpp">
+      <Filter>98.Tests\07.Boss\02.KoukuSaydon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_CardMaze.cpp">
+      <Filter>98.Tests\07.Boss\02.KoukuSaydon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuBundles.cpp">
+      <Filter>98.Tests\07.Boss\02.KoukuSaydon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuLogic.cpp">
+      <Filter>98.Tests\07.Boss\02.KoukuSaydon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuOverlap.cpp">
+      <Filter>98.Tests\07.Boss\02.KoukuSaydon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuProduct.cpp">
+      <Filter>98.Tests\07.Boss\02.KoukuSaydon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuRaid.cpp">
+      <Filter>98.Tests\07.Boss\02.KoukuSaydon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuSupportSurface.cpp">
+      <Filter>98.Tests\07.Boss\02.KoukuSaydon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_BattleItems.cpp">
+      <Filter>98.Tests\08.Economy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_VehicleRiding.cpp">
+      <Filter>98.Tests\08.Economy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_GenerationRetention.cpp">
+      <Filter>98.Tests\09.Generation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_RevisionProtocol.cpp">
+      <Filter>98.Tests\09.Generation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Server_Pch.cpp">
+      <Filter>99.Default</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Private\Server_Pch.cpp" />
-    <ClInclude Include="..\..\Tools\Build\CppStandardPch.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\Private\GameRoom_Internal.h" />
-    <ClCompile Include="..\Private\GameRoom_CatalogGenerations.cpp" />
-    <ClCompile Include="..\Private\GameRoom_Admission.cpp" />
-    <ClCompile Include="..\Private\GameRoom_PlayerCommands.cpp" />
-    <ClCompile Include="..\Private\GameRoom_KoukuPlayerCommands.cpp" />
-    <ClCompile Include="..\Private\GameRoom_VehicleRiding.cpp" />
-    <ClCompile Include="..\Private\GameRoom_GateProgress.cpp" />
-    <ClCompile Include="..\Private\GameRoom_HonorTitle.cpp" />
-    <ClCompile Include="..\Private\GameRoom_Inventory.cpp" />
-    <ClCompile Include="..\Private\GameRoom_PartyWorld.cpp" />
-    <ClCompile Include="..\Private\GameRoom_KoukuAudition.cpp" />
-    <ClCompile Include="..\Private\GameRoom_ValtanAudition.cpp" />
-    <ClCompile Include="..\Private\GameRoom_Replication.cpp" />
-    <ClCompile Include="..\Private\GameRoom_WorldEntities.cpp" />
-    <ClCompile Include="..\Private\GameRoom_BossStageActions.cpp" />
-    <ClCompile Include="..\Private\GameRoom_WorldDestruction.cpp" />
-    <ClCompile Include="..\Private\GameRoom_KoukuMiniGames.cpp" />
-    <ClCompile Include="..\Private\GameRoom_KoukuRaidFlow.cpp" />
-    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuRaid.cpp" />
-    <ClCompile Include="..\Private\GameRoom_PlayerSimulation.cpp" />
-    <ClCompile Include="..\Private\GameRoom_BossSimulation.cpp" />
-    <ClCompile Include="..\Private\GameRoom_Helpers.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\Private\ServerGameplayContractTests_Internal.h"><Filter>Private</Filter></ClInclude>
-    <ClInclude Include="..\Private\ServerGameplayContractTests_PinnedGenerationFixture.h"><Filter>Private</Filter></ClInclude>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_Helpers.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuLogic.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_WorldPlayback.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_DebugTeleport.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuBundles.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuProduct.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanLifecycle.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanPinnedGeneration.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanRevision.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_RevisionProtocol.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_GenerationRetention.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_SessionTransport.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_RoomIngress.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_CharacterAdmission.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_GroundTarget.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_PlayerCombos.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_PlayerActions.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanMechanicLedger.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanSkyAxe.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanTimelines.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_WorldTriggers.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_ColosseumCombat.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_ColosseumMatch.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_SkillStages.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_SpawnGroups.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanDash.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanAudition.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanResetlessNext.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanReleaseControl.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_WorldDestruction.cpp"><Filter>Private</Filter></ClCompile>
-    <ClInclude Include="..\Private\ServerGameplayContractTests_Runner.h"><Filter>Private</Filter></ClInclude>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_Runner.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuOverlap.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_CardMaze.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_Bingo.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_VehicleRiding.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_BattleItems.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuSupportSurface.cpp"><Filter>Private</Filter></ClCompile>
-    <ClCompile Include="..\Private\ServerGameplayContractTests_Navigation.cpp"><Filter>Private</Filter></ClCompile>
-    <ClInclude Include="..\Private\ServerGameplayContractTests_PlayerSkillFixtures.h"><Filter>Private</Filter></ClInclude>
+    <ClInclude Include="..\Public\ServerApp.h">
+      <Filter>00.Main</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ClientSession.h">
+      <Filter>01.Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\TcpListener.h">
+      <Filter>01.Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\WinSockContext.h">
+      <Filter>01.Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\GameRoom.h">
+      <Filter>02.Room</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Private\GameRoom_Internal.h">
+      <Filter>02.Room</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\RoomCommand.h">
+      <Filter>02.Room</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ServerIds.h">
+      <Filter>02.Room</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ServerPlayer.h">
+      <Filter>02.Room</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ServerWorldEntity.h">
+      <Filter>03.World</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\SpawnGroupBootstrap.h">
+      <Filter>03.World</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\SpawnGroupRuntime.h">
+      <Filter>03.World</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\WorldBootstrap.h">
+      <Filter>03.World</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\WorldDestructionBootstrap.h">
+      <Filter>03.World</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\WorldDestructionRuntime.h">
+      <Filter>03.World</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ServerCollisionSystem.h">
+      <Filter>04.NavigationCollision</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ServerNavigation.h">
+      <Filter>04.NavigationCollision</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ServerTriggerSystem.h">
+      <Filter>04.NavigationCollision</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ColosseumCombatPolicy.h">
+      <Filter>05.Combat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EstherSkillSystem.h">
+      <Filter>05.Combat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\GameplayCatalog.h">
+      <Filter>05.Combat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\PlayerSkillSystem.h">
+      <Filter>05.Combat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ServerCombatGeometry.h">
+      <Filter>05.Combat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ServerCombatHitRuntime.h">
+      <Filter>05.Combat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\GuideCatalog.h">
+      <Filter>06.AI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\MonsterBrain.h">
+      <Filter>06.AI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\NpcBehaviorRuntime.h">
+      <Filter>06.AI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\BossCombatRuntime.h">
+      <Filter>07.Boss\00.Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\CombatObjectRuntime.h">
+      <Filter>07.Boss\00.Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EncounterPropRuntime.h">
+      <Filter>07.Boss\00.Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ValtanBrain.h">
+      <Filter>07.Boss\01.Valtan</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\KoukuSaydonBrain.h">
+      <Filter>07.Boss\02.KoukuSaydon</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\KoukuSaydonLogicRuntime.h">
+      <Filter>07.Boss\02.KoukuSaydon</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\HonorTitleCatalog.h">
+      <Filter>08.Economy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ItemCatalog.h">
+      <Filter>08.Economy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ValtanClearRewards.h">
+      <Filter>08.Economy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\VehicleCatalog.h">
+      <Filter>08.Economy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ServerBalanceNumericStore.h">
+      <Filter>09.Generation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ServerGameplayContractTests.h">
+      <Filter>98.Tests\00.Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Private\ServerGameplayContractTests_Internal.h">
+      <Filter>98.Tests\00.Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Private\ServerGameplayContractTests_Runner.h">
+      <Filter>98.Tests\00.Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\WorldDestructionBootstrapContractTests.h">
+      <Filter>98.Tests\03.World</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Private\ServerGameplayContractTests_PlayerSkillFixtures.h">
+      <Filter>98.Tests\05.Combat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Private\ServerGameplayContractTests_PinnedGenerationFixture.h">
+      <Filter>98.Tests\09.Generation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Tools\Build\CppStandardPch.h">
+      <Filter>99.Default</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

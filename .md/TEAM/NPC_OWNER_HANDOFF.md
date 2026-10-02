@@ -187,7 +187,7 @@ Server/Private/GameRoom.cpp     VALTAN_ENTRY_GUIDE_NPCS[]   (ID + 목적지 WORL
 확인창 UI 계약.
 
 ```text
-레이아웃  Data/UI/Bern/BernValtanEntry_Layout.json   (CProjectDataRoot 기준)
+레이아웃  Data/UI/RaidEntry/BernValtanEntry_Layout.json   (CProjectDataRoot 기준)
 슬롯      ValtanEntry_Panel / ValtanEntry_ConfirmButton / ValtanEntry_CancelButton
 이미지    UI/ClassSelect/Common/CreateCharacterModalPanel.png
           UI/ClassSelect/Common/NormalButton.png / NormalButtonHover.png
