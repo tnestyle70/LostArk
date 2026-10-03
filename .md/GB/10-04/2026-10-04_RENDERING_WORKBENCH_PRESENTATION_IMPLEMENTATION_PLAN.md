@@ -43,3 +43,11 @@ WARLORD의 실사용 native700/701에서 primitive opacity prefix가 0으로 남
 소유권 해제, SOURCE_MATERIALS 조건 fingerprint를 확인한다. 변경 C++/shader를 컴파일하고
 가능한 Debug·Release Product 빌드 및 git diff --check를 완료한다. 새 C++ 파일이 없으므로
 vcxproj/filter 신규 등록은 없다. 실제 촬영 화면은 사용자가 확인하며 Client를 자동 실행하지 않는다.
+
+## G04. 사용자 요청: Bern 기본 Fog OFF
+
+Bern 진입이 선택하는 `scene.bern.neutral-day.v1`의 `fog.enabled`만 false로 바꾸고 revision을
+증가시킨다. 지역 안개는 기존 `profile.Fog.bEnabled && region.Fog.bEnabled` gate를 사용한다.
+밀도·색·지역 원본값과 비교용 source profile, 다른 맵 설정을 보존한다. 최신 디스크를 다시 읽고
+hash 확인·백업·원자적 교체 후 정식 Rendering publisher로 게시한다. 구조 비교로 위 두 필드만
+변경됐는지 확인하며 실행 중 메모리 적용이나 화면 검증으로 기록하지 않는다.

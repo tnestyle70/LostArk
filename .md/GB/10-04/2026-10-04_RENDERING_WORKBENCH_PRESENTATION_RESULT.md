@@ -61,6 +61,21 @@ prefix 누락을 수정했다. 대상·수치·shader identity의 근거는
 
 ## G03. 제품 반영 상태
 
-소스 후보와 독립 컴파일·검증이 완료됐다. 현재 실행 중인 Debug Client/Server는 자동 종료하지
-않았으며 새 EXE 적용·전체 Debug/Release Product 빌드는 아직 수행하지 않았다.
-후속 지형 복구 조사를 마친 뒤 통합 소스·빌드·실제 배포 결과를 이 항목에 갱신한다.
+사용자가 저장·종료한 뒤 최초 Debug Product 빌드는 PASS했다.
+`out/BuildPipeline/runs/20261003T202441505Z-debug-product.json`에 기록됐다.
+MainApp 새 문구의 ANSI TU 호환 수정을 포함한 두 번째 Debug 빌드는 map instance FXC 작업에서
+MSB6006과 pipe EOF timeout을 기록했다. 같은 시간 다른 작업의 공통 map shader·Engine 변경이
+진행 중이었으며, 오류가 그 변경의 문법 오류라는 근거는 없다. 최종 빌드와 Release는 아직 완료되지
+않았다. 사용자 Client/UI 실행·화면 검증은 수행하지 않았다.
+
+## G04. Bern 기본 Fog OFF
+
+사용자의 명시적 요청으로 Bern 기본 진입 프로필 `scene.bern.neutral-day.v1`의 `fog.enabled`를
+false로 변경했다. RenderingProfiles revision은90→91이다. 원본 비교용 두 Bern 프로필과 지역
+밀도·색·높이, 다른 맵·FXAA·노출·감마는 보존했다. 기존 환경 영역 갱신의 scene enable gate가
+지역 안개에도 적용된다. 배 탑승 전용 presentation fog나 사용자의 이후 임시 변경은 별도 경계다.
+
+최신 원본 hash 재확인·백업·원자적 교체 후 `Publish-RenderingProfiles.ps1 -Mode Publish` PASS.
+원본/게시 JSON parse 및 의미 동치 확인, 변경은 위 bool과 revision 두 필드뿐이다.
+`out/RenderingPresentation20261004/fog/receipt.json`에 source 전후 hash를 보존했다.
+데이터 게시 완료이며 실행 중 메모리 Reload나 사용자 화면 확인 완료를 뜻하지 않는다.
