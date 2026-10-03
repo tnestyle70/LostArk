@@ -102,9 +102,15 @@ product/local preview suppression, owner/world-root stop 및 update의 유한 �
 
 ## G04. 통합과 남은 확인
 
-CPP는 집중 검증 후 동결했고 통합 담당에게 Product Debug/Release 빌드 대상으로 전달했다.
-이 문서 작성 시 해당 통합 빌드는 진행 중이므로 완료로 기록하지 않는다. 새 C++ 파일이나
-배포 데이터가 없어 프로젝트/filter 등록 또는 domain publish는 필요하지 않다.
+CPP는 집중 검증 후 동결했고 최종 통합 Debug Product 빌드·배포가 PASS했다.
+`out/BuildPipeline/runs/20261003T211650083Z-debug-product.json`과 해당 Client 컴파일 로그에서
+변경한 Effect_PresentationService.cpp의 컴파일을 확인했다. 같은 작업 폴더의 별도 Bern 최적화
+변경을 포함한 통합 빌드다. Release Product도
+`out/BuildPipeline/runs/20261003T214827750Z-release-product.json`에서 PASS했다.
+후속 Workbench 저장본까지 포함한 최종 증분 Debug/Release Product 결과는 각각 같은 폴더의
+`20261003T215100551Z-debug-product.json`, `20261003T215245108Z-release-product.json`이며
+모두 PASS다. 새 C++ 파일이나 배포 데이터가 없어 프로젝트/filter 등록 또는 domain publish는
+필요하지 않다.
 
 사용자는 새 빌드에서 발탄 106줄 상승 연출의 하늘 표시, 기존 몸체 중복 억제, 연출 종료 뒤
 하늘 정리를 화면에서 확인한다. 원본 재다운로드 완료 전의 새 원본 추출·activation 시각 대조와

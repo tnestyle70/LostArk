@@ -36,7 +36,7 @@ prefix 누락을 수정했다. 대상·수치·shader identity의 근거는
 
 사용자가 후속으로 제시한 베른 `(98.7,49.1,-103.4)`의 녹색 지형 늘어짐과 발탄 입구 돌 표면은
 별도 원인 조사 대상이다. 이 문서의 Workbench/primitive prefix 검증으로 해당 지형이 고쳐졌다고
-판정하지 않는다. Bern의 렌더링 튜닝·밝기·GI 옵션은 변경하지 않았다.
+판정하지 않는다. Bern의 밝기·GI 등 기존 튜닝은 보존했으며, 후속 요청의 기본 Fog OFF만 G04처럼 반영했다.
 
 ## G02. 검증
 
@@ -65,8 +65,19 @@ prefix 누락을 수정했다. 대상·수치·shader identity의 근거는
 `out/BuildPipeline/runs/20261003T202441505Z-debug-product.json`에 기록됐다.
 MainApp 새 문구의 ANSI TU 호환 수정을 포함한 두 번째 Debug 빌드는 map instance FXC 작업에서
 MSB6006과 pipe EOF timeout을 기록했다. 같은 시간 다른 작업의 공통 map shader·Engine 변경이
-진행 중이었으며, 오류가 그 변경의 문법 오류라는 근거는 없다. 최종 빌드와 Release는 아직 완료되지
-않았다. 사용자 Client/UI 실행·화면 검증은 수행하지 않았다.
+진행 중이었으며, 오류가 그 변경의 문법 오류라는 근거는 없다.
+
+통합 Debug Product 빌드·배포는 PASS했다.
+`out/BuildPipeline/runs/20261003T211650083Z-debug-product.json`에 Engine/Shared/Server/Client와
+제품 배포·필수 runtime 검증 결과가 기록됐다. Release Product도
+`out/BuildPipeline/runs/20261003T214827750Z-release-product.json`에서 PASS했다.
+
+그 사이 같은 작업 폴더에 저장된 후속 Workbench 변경을 포함한 최종 증분 Product 빌드·배포도
+Debug `20261003T215100551Z-debug-product.json`, Release `20261003T215245108Z-release-product.json`
+에서 모두 PASS했다. 두 영수증은 같은 `out/BuildPipeline/runs`에 있다. 최종 Release는 Client
+OBJ1·EXE1·CSO0을 갱신했다. 필수 runtime 파일·Navigation 참조·Item/Valtan reward catalog
+검사를 통과했다. 이 통합 빌드들은 별도 Bern 최적화와 후속 Workbench 변경도 포함하므로
+이 PR만의 격리 빌드라고 기록하지 않는다. 사용자 Client/UI 실행·화면 검증은 수행하지 않았다.
 
 ## G04. Bern 기본 Fog OFF
 

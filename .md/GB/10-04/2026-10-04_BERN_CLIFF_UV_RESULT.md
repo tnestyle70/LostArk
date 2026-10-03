@@ -87,7 +87,7 @@ G08의 수치 검증은 LC762 원본 PS와 제품 helper에 일정한 texture sa
 
 ## G05. 원본 재설치 후 필요한 정확한 입력
 
-사용자는 용량 때문에 원본을 삭제했다고 확인했으며 문서 작성 시 재설치 완료 보고는 없다. 종전 `C:/ProgramData/Smilegate/Games/LOSTARK/EFGame/ReleasePC/Packages`, `C:/Users/user/Desktop/Resource_LostArk`, `C:/Users/user/Desktop/Final_LostArk`, `_work`, `out/BernTerrainRestore_20260930/source-support`가 현재 없음을 확인했다. Git 관리 `BernSourceLandscape.v1.json`은 해독 결과를 보존하지만 원본 VS/DXBC와 원본 전체 geometry/control을 대신하지 않는다.
+사용자는 용량 때문에 원본을 삭제했다고 확인했으며 재설치 완료 보고는 없다. 최초 조사에서는 종전 `C:/ProgramData/Smilegate/Games/LOSTARK/EFGame/ReleasePC/Packages`, `C:/Users/user/Desktop/Resource_LostArk`, `C:/Users/user/Desktop/Final_LostArk`, `_work`, `out/BernTerrainRestore_20260930/source-support`가 없었다. 2026-10-04 06:34 KST 재확인 때 Packages 폴더와 일부 새 UPK는 생성됐지만, 아래 LAND01 UPK와 ReleasePC의 component 기본값 패키지는 아직 없었다. 다운로드 중 일부 파일의 존재를 해당 원본 준비 완료로 판정하지 않았다. Git 관리 `BernSourceLandscape.v1.json`은 해독 결과를 보존하지만 원본 VS/DXBC와 원본 전체 geometry/control을 대신하지 않는다.
 
 우선 필요한 입력을 아래 범위로 한정한다. 난독화된 물리 이름과 export 번호는 기존 설치 버전의 식별값이므로 재설치 버전의 logical package·object path·serial hash를 먼저 대조한다. 새 버전에서 같은 번호를 다른 object에 적용하지 않는다.
 
