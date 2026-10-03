@@ -309,9 +309,6 @@ private:
         const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE& occurrence, float clockMs, bool paused);
     bool Collect_LogicPreviewEffects(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, std::set<std::string>& targets);
-    static bool Is_SelectedAirborneGroupMember(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
-        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
-        const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence);
     static bool Build_SelectedAirbornePresentation(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
         const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic,

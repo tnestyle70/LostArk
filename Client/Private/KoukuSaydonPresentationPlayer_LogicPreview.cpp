@@ -61,18 +61,6 @@ bool Is_EligiblePlayer(const KOUKU_CARD_PRESENTATION_VIEW& player)
 }
 }
 
-bool Client::CKoukuSaydonPresentationPlayer::Is_SelectedAirborneGroupMember(
-    const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
-    const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
-    const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence)
-{
-    if (occurrence.strSelectionGroupId.empty()) return false;
-    return std::any_of(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(), [&](const auto& box) {
-        const auto* logic = Find_SelectedAirborneLogic(document, box);
-        return logic && logic->strSelectedEffectGroupId == occurrence.strSelectionGroupId;
-    });
-}
-
 bool Client::CKoukuSaydonPresentationPlayer::Build_SelectedAirbornePresentation(
     const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
     const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const LOGIC& logic,

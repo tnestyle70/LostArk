@@ -20,6 +20,24 @@ inline constexpr float LabelWidth = 180.f;
 inline constexpr float MinimumBoxWidth = 8.f;
 inline constexpr float BoxHeight = 22.f;
 
+inline float FitPixelsPerSecond(const float availableWidth, const double durationMs,
+	const float minimum = 1.f, const float maximum = 500.f)
+{
+	if (!std::isfinite(availableWidth) || !std::isfinite(durationMs) || durationMs <= 0.)
+		return minimum;
+	return static_cast<float>(std::clamp(double(availableWidth) * 1000. / durationMs,
+		double(minimum), double(maximum)));
+}
+
+inline void DrawTrackLabel(ImDrawList* draw, const ImVec2 origin, const float width,
+	const float height, const char* label, const ImU32 color)
+{
+	if (!draw || !label || width <= 8.f || height <= 0.f) return;
+	draw->PushClipRect(origin, ImVec2(origin.x + width - 4.f, origin.y + height), true);
+	draw->AddText(ImVec2(origin.x + 4.f, origin.y + 4.f), color, label);
+	draw->PopClipRect();
+}
+
 // Keep the legacy constants for editors that own their own row geometry.
 // Font-aware callers use the same dimensions for drawing and hit testing.
 inline float GetBoxHeight()
@@ -247,6 +265,10 @@ inline void DrawBox(ImDrawList* draw, const ImVec2 min, const ImVec2 max,
 {
 	if (nullptr == draw || max.x <= min.x || max.y <= min.y)
 		return;
+	const auto clipMin = draw->GetClipRectMin(), clipMax = draw->GetClipRectMax();
+	// The selected outline reaches beyond the box; hit items remain caller-owned.
+	if (max.x + 2.f < clipMin.x || min.x - 2.f > clipMax.x ||
+		max.y + 2.f < clipMin.y || min.y - 2.f > clipMax.y) return;
 	draw->AddRectFilled(min, max, fill, 3.f);
 	if (selected)
 		draw->AddRect(min, max, IM_COL32(255, 224, 92, 255), 3.f, 0, 2.f);

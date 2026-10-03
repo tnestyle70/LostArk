@@ -1659,6 +1659,45 @@ namespace
 	}
 }
 
+struct Client::CKoukuSaydonActionWorkbench::TIMELINE_LAYOUT_CACHE
+{
+    struct LANE
+    {
+        std::vector<CompositionTimeline::DISPLAY_INTERVAL> intervals;
+        CompositionTimeline::DISPLAY_LAYOUT layout;
+        std::size_t firstRow = 0u, rowCount = 1u;
+    };
+    struct WORLD_CLIP_LANE
+    {
+        std::string occurrenceId, slotId, label;
+        std::vector<CompositionTimeline::DISPLAY_INTERVAL> intervals;
+        std::size_t firstRow = 0u;
+    };
+    struct WORLD_CLIP_ROW
+    {
+        std::string id, occurrenceId, label, actorLabel;
+        std::uint32_t startMs = 0u, durationMs = 0u;
+        KOUKU_WORLD_ANIMATION_EDIT edit;
+        double localSpeed = 1., nativeSpeed = 1., trackRate = 1.;
+        bool editable = false;
+    };
+    bool Matches(const std::uint64_t draft, const std::uint64_t worlds,
+        const std::string& pattern, const std::uint64_t minimumBox,
+        const bool editWorldAnimation, const std::vector<std::uint32_t>& cameraTails) const
+    {
+        return draftGeneration == draft && worldGeneration == worlds && patternId == pattern &&
+            minimumBoxMs == minimumBox && canEditWorldAnimation == editWorldAnimation && cameraBlendOutMs == cameraTails;
+    }
+    std::uint64_t draftGeneration = UINT64_MAX, worldGeneration = UINT64_MAX, minimumBoxMs = 0u;
+    std::string patternId;
+    std::vector<std::uint32_t> cameraBlendOutMs;
+    bool canEditWorldAnimation = false, hasPatternLane = false, hasBossAnimations = false;
+    std::array<LANE, 12u> lanes;
+    std::vector<WORLD_CLIP_LANE> worldClipLanes;
+    std::vector<WORLD_CLIP_ROW> worldClipRows;
+    std::size_t nextRow = 1u;
+};
+
 Client::CKoukuSaydonActionWorkbench::CKoukuSaydonActionWorkbench(const bool sequenceWorkspace)
 	: m_bSequenceWorkspace(sequenceWorkspace)
 	, m_Document(sequenceWorkspace ? CKoukuSaydonCompositionDocument::Resolve_SequencePath() :
@@ -8662,17 +8701,21 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	const ImVec2 available = ImGui::GetContentRegionAvail();
 	if (m_bFitRequested && durationMs > 0u)
 	{
-		m_fPixelsPerSecond = std::clamp((available.x - labelWidth - 24.f) * 1000.f /
-			static_cast<f32_t>(durationMs), 1.f, 500.f);
+		m_fPixelsPerSecond = CompositionTimeline::FitPixelsPerSecond(available.x - labelWidth - 24.f, durationMs);
 		m_bFitRequested = false;
 	}
 	const f32_t scale = m_fPixelsPerSecond * 0.001f;
 	std::uint32_t cameraDisplayEnd = durationMs;
+	std::vector<std::uint32_t> cameraBlendOutMs;
 	for (const auto& row : pattern->PresentationOccurrences)
 		if (const auto* resource = Find_DraftPresentationResource(row.strResourceId);
 			resource && resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::CAMERA)
-			if (const auto* shot = Find_AuthoringCamera(resource->strAssetId))
-				cameraDisplayEnd = (std::max)(cameraDisplayEnd, row.iStartMs + row.iDurationMs + shot->iBlendOutMs);
+		{
+			const auto* shot = Find_AuthoringCamera(resource->strAssetId);
+			const auto tailMs = shot ? shot->iBlendOutMs : 0u;
+			cameraBlendOutMs.push_back(tailMs);
+			if (shot) cameraDisplayEnd = (std::max)(cameraDisplayEnd, row.iStartMs + row.iDurationMs + tailMs);
+		}
 	const f32_t timelineWidth = (std::max)(available.x, labelWidth + cameraDisplayEnd * scale + 24.f);
 	constexpr std::size_t animationLane = 0u, logicLane = 1u, summonLane = 2u, worldLane = 3u, sceneLane = 4u;
 	constexpr std::size_t presentationLaneBegin = 5u, patternLane = 11u, laneCount = 12u;
@@ -8680,124 +8723,125 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
         return presentationLaneBegin + (kind == KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE ?
             5u : static_cast<std::size_t>(kind));
     };
-	struct TIMELINE_LANE
-	{
-		std::vector<TIMELINE_DISPLAY_INTERVAL> intervals;
-		TIMELINE_DISPLAY_LAYOUT layout;
-		std::size_t firstRow = 0u, rowCount = 1u;
-	};
-	const bool hasPatternLane = Find_TimelineParent(m_Draft, patternId) != nullptr;
-	std::array<TIMELINE_LANE, laneCount> lanes;
-	static_assert(patternLane + 1u == laneCount);
-	std::uint64_t stageBaseMs = 0u;
-	for (const auto& stage : pattern->Stages)
-	{
-		for (const auto& box : stage.AnimationOccurrences)
-			lanes[animationLane].intervals.push_back({ box.strOccurrenceId, double(stageBaseMs + box.iStartOffsetMs), double(box.iPlayMs) });
-		stageBaseMs += stage.iDurationMs;
-	}
-	// Each occurrence/slot owns its display rows even when another actor fits
-	// inside a gap. Visual neighbors must not imply cross-actor clip ownership.
-	struct WORLD_CLIP_LANE
-	{
-		std::string occurrenceId, slotId, label;
-		std::vector<TIMELINE_DISPLAY_INTERVAL> intervals;
-		std::size_t firstRow = 0u;
-	};
-	std::vector<WORLD_CLIP_LANE> worldClipLanes;
-	const bool hasBossAnimations = !lanes[animationLane].intervals.empty();
-	struct WORLD_CLIP_ROW
-	{
-		std::string id, occurrenceId, label, actorLabel;
-		std::uint32_t startMs = 0u, durationMs = 0u;
-		KOUKU_WORLD_ANIMATION_EDIT edit;
-		double localSpeed = 1., nativeSpeed = 1., trackRate = 1.;
-		bool editable = false;
-	};
-	std::vector<WORLD_CLIP_ROW> worldClipRows;
-	for (const auto& box : pattern->WorldOccurrences)
-	{
-		const auto* world = Find_World(m_Draft, box.strWorldId);
-		if (!world) continue;
-		const auto source = std::find_if(m_WorldSequenceResources.begin(), m_WorldSequenceResources.end(),
-			[&](const auto& row) { return row.strInstanceId == world->strSequenceInstanceId; });
-		if (source == m_WorldSequenceResources.end() || box.fPlaybackSpeed <= 0.f) continue;
-		for (std::size_t index = 0u; index < source->AnimationTracks.size(); ++index)
-		{
-			const auto& clip = source->AnimationTracks[index];
-			const auto start = static_cast<std::uint32_t>(std::llround(clip.fStartMs / box.fPlaybackSpeed));
-			const auto end = (std::min)(box.iDurationMs,
-				static_cast<std::uint32_t>(std::llround(clip.fEndMs / box.fPlaybackSpeed)));
-			if (end <= start) continue;
-			WORLD_CLIP_ROW row;
-			row.id = box.strOccurrenceId + ".clip-info." + std::to_string(index);
-			row.occurrenceId = box.strOccurrenceId;
-			row.label = clip.strDisplayName.empty() ? clip.strClipName : clip.strDisplayName;
-			row.actorLabel = !source->strObjectDisplayName.empty() ? source->strObjectDisplayName :
-				(!world->strDisplayName.empty() ? world->strDisplayName : source->strDisplayName);
-			row.edit = {source->strInstanceId, clip.strSlotId, clip.strClipName,
-				clip.iLocalStartMs, clip.iLocalStartMs, clip.iSourceStartMs, clip.iSourceEndMs};
-			row.localSpeed = clip.fInstanceSpeed * box.fPlaybackSpeed;
-			row.nativeSpeed = clip.fPlaybackRate * box.fPlaybackSpeed;
-			row.trackRate = clip.fTrackPlaybackRate;
-			row.editable = !clip.bLoop && clip.iSourceEndMs > clip.iSourceStartMs &&
-				row.localSpeed > 0. && row.nativeSpeed > 0. && bool(m_EditWorldAnimation);
-			row.startMs = box.iStartMs + start; row.durationMs = end - start;
-			auto actorLane = std::find_if(worldClipLanes.begin(), worldClipLanes.end(),
-				[&](const auto& lane) { return lane.occurrenceId == box.strOccurrenceId && lane.slotId == clip.strSlotId; });
-			if (actorLane == worldClipLanes.end())
-			{
-				worldClipLanes.push_back({box.strOccurrenceId, clip.strSlotId, row.actorLabel});
-				actorLane = std::prev(worldClipLanes.end());
-			}
-			actorLane->intervals.push_back({row.id, double(row.startMs), double(row.durationMs)});
-			worldClipRows.push_back(std::move(row));
-		}
-	}
-	const auto appendIntervals = [&](const std::size_t lane, const auto& boxes)
-	{
-		for (const auto& box : boxes)
-			lanes[lane].intervals.push_back({ box.strOccurrenceId, double(box.iStartMs), double(box.iDurationMs) });
-	};
-	appendIntervals(patternLane, pattern->PatternOccurrences);
-	appendIntervals(logicLane, pattern->LogicOccurrences);
-	appendIntervals(summonLane, pattern->SummonOccurrences);
-	appendIntervals(worldLane, pattern->WorldOccurrences);
-	appendIntervals(sceneLane, pattern->SceneProfileOccurrences);
-	for (const auto& box : pattern->PresentationOccurrences)
-	{
-		const auto* resource = Find_DraftPresentationResource(box.strResourceId);
-		if (!resource) continue;
-		std::uint32_t tailMs = 0u;
-		if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::CAMERA)
-			if (const auto* shot = Find_AuthoringCamera(resource->strAssetId)) tailMs = shot->iBlendOutMs;
-		lanes[presentationLane(resource->eKind)].intervals.push_back(
-			{ box.strOccurrenceId, double(box.iStartMs), double(box.iDurationMs), double(tailMs), box.strSelectionGroupId });
-	}
-	// All box families use the same visual intervals and row allocation.
-	// Rows belong to their one named track; they do not create new saved tracks.
 	const auto minimumBoxMs = static_cast<std::uint64_t>(std::ceil(CompositionTimeline::MinimumBoxWidth / scale));
-	std::size_t nextRow = 1u; // The sequential Stage strip precedes the box tracks.
-	for (auto& lane : lanes)
+	if (!m_pTimelineLayout) m_pTimelineLayout = std::make_unique<TIMELINE_LAYOUT_CACHE>();
+	auto& cache = *m_pTimelineLayout;
+	auto& lanes = cache.lanes;
+	auto& worldClipLanes = cache.worldClipLanes;
+	auto& worldClipRows = cache.worldClipRows;
+	// Pixel position/selection stays live. Only document-derived row allocation
+	// is retained; camera authoring and the World inventory have independent owners.
+	if (!cache.Matches(m_iDraftGeneration, m_iWorldSequenceResourceGeneration, patternId,
+		minimumBoxMs, bool(m_EditWorldAnimation), cameraBlendOutMs))
 	{
-		if (!hasPatternLane && &lane == &lanes[patternLane]) { lane.firstRow = nextRow; lane.rowCount = 0u; continue; }
-		lane.layout = CompositionTimeline::AllocateDisplayRows(std::move(lane.intervals), minimumBoxMs);
-		if (&lane == &lanes[animationLane] && !worldClipLanes.empty())
+		Engine::CProfilerScope rebuildScope(CGameInstance::Get().Get_Profiler(), "ImGui.Composition.Timeline.Layout.Rebuild");
+		lanes = {};
+		worldClipLanes.clear();
+		worldClipRows.clear();
+		cache.hasPatternLane = Find_TimelineParent(m_Draft, patternId) != nullptr;
+		static_assert(patternLane + 1u == laneCount);
+		std::uint64_t stageBaseMs = 0u;
+		for (const auto& stage : pattern->Stages)
 		{
-			if (!hasBossAnimations) lane.layout.rowCount = 0u;
-			for (auto& actorLane : worldClipLanes)
+			for (const auto& box : stage.AnimationOccurrences)
+				lanes[animationLane].intervals.push_back({ box.strOccurrenceId, double(stageBaseMs + box.iStartOffsetMs), double(box.iPlayMs) });
+			stageBaseMs += stage.iDurationMs;
+		}
+		// Each occurrence/slot owns its display rows even when another actor fits
+		// inside a gap. Visual neighbors must not imply cross-actor clip ownership.
+		cache.hasBossAnimations = !lanes[animationLane].intervals.empty();
+		for (const auto& box : pattern->WorldOccurrences)
+		{
+			const auto* world = Find_World(m_Draft, box.strWorldId);
+			if (!world) continue;
+			const auto source = std::find_if(m_WorldSequenceResources.begin(), m_WorldSequenceResources.end(),
+				[&](const auto& row) { return row.strInstanceId == world->strSequenceInstanceId; });
+			if (source == m_WorldSequenceResources.end() || box.fPlaybackSpeed <= 0.f) continue;
+			for (std::size_t index = 0u; index < source->AnimationTracks.size(); ++index)
 			{
-				actorLane.firstRow = lane.layout.rowCount;
-				const auto actorLayout = CompositionTimeline::AllocateDisplayRows(std::move(actorLane.intervals), minimumBoxMs);
-				for (const auto& [id, row] : actorLayout.occurrenceRows)
-					lane.layout.occurrenceRows.emplace(id, actorLane.firstRow + row);
-				lane.layout.rowCount += actorLayout.rowCount;
+				const auto& clip = source->AnimationTracks[index];
+				const auto start = static_cast<std::uint32_t>(std::llround(clip.fStartMs / box.fPlaybackSpeed));
+				const auto end = (std::min)(box.iDurationMs,
+					static_cast<std::uint32_t>(std::llround(clip.fEndMs / box.fPlaybackSpeed)));
+				if (end <= start) continue;
+				TIMELINE_LAYOUT_CACHE::WORLD_CLIP_ROW row;
+				row.id = box.strOccurrenceId + ".clip-info." + std::to_string(index);
+				row.occurrenceId = box.strOccurrenceId;
+				row.label = clip.strDisplayName.empty() ? clip.strClipName : clip.strDisplayName;
+				row.actorLabel = !source->strObjectDisplayName.empty() ? source->strObjectDisplayName :
+					(!world->strDisplayName.empty() ? world->strDisplayName : source->strDisplayName);
+				row.edit = {source->strInstanceId, clip.strSlotId, clip.strClipName,
+					clip.iLocalStartMs, clip.iLocalStartMs, clip.iSourceStartMs, clip.iSourceEndMs};
+				row.localSpeed = clip.fInstanceSpeed * box.fPlaybackSpeed;
+				row.nativeSpeed = clip.fPlaybackRate * box.fPlaybackSpeed;
+				row.trackRate = clip.fTrackPlaybackRate;
+				row.editable = !clip.bLoop && clip.iSourceEndMs > clip.iSourceStartMs &&
+					row.localSpeed > 0. && row.nativeSpeed > 0. && bool(m_EditWorldAnimation);
+				row.startMs = box.iStartMs + start; row.durationMs = end - start;
+				auto actorLane = std::find_if(worldClipLanes.begin(), worldClipLanes.end(),
+					[&](const auto& lane) { return lane.occurrenceId == box.strOccurrenceId && lane.slotId == clip.strSlotId; });
+				if (actorLane == worldClipLanes.end())
+				{
+					worldClipLanes.push_back({box.strOccurrenceId, clip.strSlotId, row.actorLabel});
+					actorLane = std::prev(worldClipLanes.end());
+				}
+				actorLane->intervals.push_back({row.id, double(row.startMs), double(row.durationMs)});
+				worldClipRows.push_back(std::move(row));
 			}
 		}
-		lane.rowCount = lane.layout.rowCount;
-		lane.firstRow = nextRow;
-		nextRow += lane.rowCount;
+		const auto appendIntervals = [&](const std::size_t lane, const auto& boxes)
+		{
+			for (const auto& box : boxes)
+				lanes[lane].intervals.push_back({ box.strOccurrenceId, double(box.iStartMs), double(box.iDurationMs) });
+		};
+		appendIntervals(patternLane, pattern->PatternOccurrences);
+		appendIntervals(logicLane, pattern->LogicOccurrences);
+		appendIntervals(summonLane, pattern->SummonOccurrences);
+		appendIntervals(worldLane, pattern->WorldOccurrences);
+		appendIntervals(sceneLane, pattern->SceneProfileOccurrences);
+		for (const auto& box : pattern->PresentationOccurrences)
+		{
+			const auto* resource = Find_DraftPresentationResource(box.strResourceId);
+			if (!resource) continue;
+			std::uint32_t tailMs = 0u;
+			if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::CAMERA)
+				if (const auto* shot = Find_AuthoringCamera(resource->strAssetId)) tailMs = shot->iBlendOutMs;
+			lanes[presentationLane(resource->eKind)].intervals.push_back(
+				{ box.strOccurrenceId, double(box.iStartMs), double(box.iDurationMs), double(tailMs), box.strSelectionGroupId });
+		}
+		// All box families use the same visual intervals and row allocation.
+		// Rows belong to their one named track; they do not create new saved tracks.
+		std::size_t nextRow = 1u; // The sequential Stage strip precedes the box tracks.
+		for (auto& lane : lanes)
+		{
+			if (!cache.hasPatternLane && &lane == &lanes[patternLane]) { lane.firstRow = nextRow; lane.rowCount = 0u; continue; }
+			lane.layout = CompositionTimeline::AllocateDisplayRows(std::move(lane.intervals), minimumBoxMs);
+			if (&lane == &lanes[animationLane] && !worldClipLanes.empty())
+			{
+				if (!cache.hasBossAnimations) lane.layout.rowCount = 0u;
+				for (auto& actorLane : worldClipLanes)
+				{
+					actorLane.firstRow = lane.layout.rowCount;
+					const auto actorLayout = CompositionTimeline::AllocateDisplayRows(std::move(actorLane.intervals), minimumBoxMs);
+					for (const auto& [id, row] : actorLayout.occurrenceRows)
+						lane.layout.occurrenceRows.emplace(id, actorLane.firstRow + row);
+					lane.layout.rowCount += actorLayout.rowCount;
+				}
+			}
+			lane.rowCount = lane.layout.rowCount;
+			lane.firstRow = nextRow;
+			nextRow += lane.rowCount;
+		}
+		cache.nextRow = nextRow;
+		cache.draftGeneration = m_iDraftGeneration;
+		cache.worldGeneration = m_iWorldSequenceResourceGeneration;
+		cache.patternId = patternId;
+		cache.minimumBoxMs = minimumBoxMs;
+		cache.canEditWorldAnimation = bool(m_EditWorldAnimation);
+		cache.cameraBlendOutMs = std::move(cameraBlendOutMs);
 	}
+	const bool hasPatternLane = cache.hasPatternLane, hasBossAnimations = cache.hasBossAnimations;
+	std::size_t nextRow = cache.nextRow;
     std::vector<std::size_t> childDisplayRows(m_PatternChildRows.size());
     std::map<std::string, std::size_t> childAnimationLanes;
     if (m_bShowPatternChildRows)
@@ -8825,6 +8869,11 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	drawScope.emplace(CGameInstance::Get().Get_Profiler(), "ImGui.Composition.Timeline.Draw");
 	const ImVec2 origin = ImGui::GetCursorScreenPos();
 	ImDrawList* draw = ImGui::GetWindowDrawList();
+	const auto drawBox = [&](const ImVec2 min, const ImVec2 max, const ImU32 color,
+		const bool selected, const char* label, const bool leftGrip = true, const bool rightGrip = true)
+	{
+		CompositionTimeline::DrawBox(draw, min, max, color, selected, label, leftGrip, rightGrip);
+	};
 	const auto laneY = [&](const std::size_t lane) {
 		return origin.y + rulerHeight + TIMELINE_LANE_HEIGHT * static_cast<f32_t>(lanes[lane].firstRow);
 	};
@@ -8980,7 +9029,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 				newStageDuration = changed;
 			}
 		}
-		CompositionTimeline::DrawBox(draw, ImVec2(stageX, stageY),
+		drawBox(ImVec2(stageX, stageY),
 			ImVec2(stageX + shownStageWidth, stageY + 22.f), CompositionTimeline::StageColor,
 			contains(m_TimelineSelectedStageIds, stage.strStageId), stage.strStageId.c_str(), false, true);
 		hitBoxes.push_back({ stage.strStageId, {}, ImVec2(stageX, stageY),
@@ -9044,7 +9093,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 					occurrence.strOccurrenceId.c_str(), stage.strStageId.c_str(),
 					occurrence.iStartOffsetMs, occurrence.iSourceStartMs, occurrence.iPlayMs,
 					occurrence.fPlayRate, occurrence.strEndPolicy.c_str());
-			CompositionTimeline::DrawBox(draw, ImVec2(shownX, y),
+			drawBox(ImVec2(shownX, y),
 				ImVec2(shownX + shownWidth, y + 22.f), CompositionTimeline::AnimationColor,
 				contains(m_TimelineSelectedOccurrenceIds, occurrence.strOccurrenceId) ||
 				contains(m_TimelineSelectedStageIds, stage.strStageId), occurrence.strRuntimeClip.c_str());
@@ -9121,7 +9170,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		if (ImGui::IsItemHovered())
 			ImGui::SetTooltip("%s\n%s | start %u ms | lifetime %u ms",
 				box.strOccurrenceId.c_str(), label.c_str(), box.iStartMs, box.iDurationMs);
-		CompositionTimeline::DrawBox(draw, ImVec2(shownX, logicBoxY),
+		drawBox(ImVec2(shownX, logicBoxY),
 			ImVec2(shownX + shownWidth, logicBoxY + 22.f), TIMELINE_LOGIC_COLOR,
 			contains(m_TimelineSelectedOccurrenceIds, box.strOccurrenceId), label.c_str());
 		hitBoxes.push_back({ {}, box.strOccurrenceId, ImVec2(shownX, logicBoxY),
@@ -9180,7 +9229,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		if (ImGui::IsItemHovered())
 			ImGui::SetTooltip("%s\n%s | spawn %u ms | lifetime %u ms",
 				box.strOccurrenceId.c_str(), label.c_str(), box.iStartMs, box.iDurationMs);
-		CompositionTimeline::DrawBox(draw, ImVec2(shownX, summonBoxY),
+		drawBox(ImVec2(shownX, summonBoxY),
 			ImVec2(shownX + shownWidth, summonBoxY + 22.f), TIMELINE_SUMMON_COLOR,
 			contains(m_TimelineSelectedOccurrenceIds, box.strOccurrenceId), label.c_str());
 		hitBoxes.push_back({ {}, box.strOccurrenceId, ImVec2(shownX, summonBoxY),
@@ -9241,7 +9290,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		if (ImGui::IsItemHovered())
 			ImGui::SetTooltip("%s\n%s | spawn %u ms | lifetime %u ms",
 				box.strOccurrenceId.c_str(), label.c_str(), box.iStartMs, box.iDurationMs);
-		CompositionTimeline::DrawBox(draw, ImVec2(shownX, patternBoxY),
+		drawBox(ImVec2(shownX, patternBoxY),
 			ImVec2(shownX + shownWidth, patternBoxY + 22.f), IM_COL32(115, 90, 170, 255),
 			contains(m_TimelineSelectedOccurrenceIds, box.strOccurrenceId), label.c_str());
 		hitBoxes.push_back({ {}, box.strOccurrenceId, ImVec2(shownX, patternBoxY),
@@ -9263,7 +9312,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
             ImGui::PushID(row.runtimeId.c_str());
             ImGui::SetCursorScreenPos(ImVec2(x, y));
             const bool openSource = ImGui::InvisibleButton("##ExpandedChild", ImVec2(width, 22.f));
-            CompositionTimeline::DrawBox(draw, ImVec2(x, y), ImVec2(x + width, y + 22.f), row.color, false, row.label.c_str());
+            drawBox(ImVec2(x, y), ImVec2(x + width, y + 22.f), row.color, false, row.label.c_str());
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%u..%u ms in Parent\nSource: %s / %s\nClick to edit the shared source box.",
                 row.label.c_str(), row.startMs, row.startMs + row.durationMs, row.patternId.c_str(), row.occurrenceId.c_str());
             ImGui::PopID();
@@ -9344,7 +9393,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 				row.startMs, row.startMs + row.durationMs, row.edit.sourceInMs, row.edit.sourceOutMs,
 				row.editable ? "Drag center: move. Drag either edge: trim this clip. Save commits the animation." : "This legacy clip has no explicit Source Out.");
 		}
-		CompositionTimeline::DrawBox(draw, ImVec2(shownX, top.y), ImVec2(shownX + shownWidth, top.y + 22.f),
+		drawBox(ImVec2(shownX, top.y), ImVec2(shownX + shownWidth, top.y + 22.f),
 			IM_COL32(105, 151, 186, 240), m_SelectedWorldAnimationId == row.id, row.label.c_str());
 		if (row.editable)
 		{
@@ -9408,7 +9457,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		if (ImGui::IsItemHovered())
 			ImGui::SetTooltip("%s\n%s | start %u ms | shown %u ms | speed x%.2f",
 				box.strOccurrenceId.c_str(), label.c_str(), box.iStartMs, box.iDurationMs, box.fPlaybackSpeed);
-		CompositionTimeline::DrawBox(draw, ImVec2(shownX, worldBoxY),
+		drawBox(ImVec2(shownX, worldBoxY),
 			ImVec2(shownX + shownWidth, worldBoxY + 22.f), TIMELINE_WORLD_COLOR,
 			contains(m_TimelineSelectedOccurrenceIds, box.strOccurrenceId), label.c_str());
 		hitBoxes.push_back({ {}, box.strOccurrenceId, ImVec2(shownX, worldBoxY),
@@ -9466,7 +9515,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		if (ImGui::IsItemHovered())
 			ImGui::SetTooltip("%s\n%s | start %u ms | lifetime %u ms | blend %u ms",
 				box.strOccurrenceId.c_str(), label.c_str(), box.iStartMs, box.iDurationMs, box.iBlendMs);
-		CompositionTimeline::DrawBox(draw, ImVec2(shownX, sceneBoxY),
+		drawBox(ImVec2(shownX, sceneBoxY),
 			ImVec2(shownX + shownWidth, sceneBoxY + 22.f), TIMELINE_SCENE_PROFILE_COLOR,
 			contains(m_TimelineSelectedOccurrenceIds, box.strOccurrenceId), label.c_str());
 		hitBoxes.push_back({ {}, box.strOccurrenceId, ImVec2(shownX, sceneBoxY),
@@ -9583,7 +9632,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 					editedPresentationBox.iDurationMs - editedPresentationBox.iFadeInMs);
 			}
 		}
-		const std::string label = resource->strDisplayName;
+		const std::string& label = resource->strDisplayName;
 		if (ImGui::IsItemHovered())
 		{
 			if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND)
@@ -9606,7 +9655,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 					ImVec2(endX + float(shot->iBlendOutMs) * scale, presentationLaneY + 18.f), IM_COL32(94, 165, 151, 70));
 				draw->AddText(ImVec2(endX + 3.f, presentationLaneY + 3.f), IM_COL32(154, 205, 191, 255), "return");
 			}
-		CompositionTimeline::DrawBox(draw, ImVec2(shownX, presentationLaneY),
+		drawBox(ImVec2(shownX, presentationLaneY),
 			ImVec2(shownX + shownWidth, presentationLaneY + 22.f), CompositionTimeline::PresentationColor,
 			contains(m_TimelineSelectedOccurrenceIds, box.strOccurrenceId), label.c_str());
 		hitBoxes.push_back({ {}, box.strOccurrenceId, ImVec2(shownX, presentationLaneY),

@@ -178,6 +178,61 @@ const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE* Random_TargetWindow(
     return active;
 }
 
+struct PRESENTATION_LOGIC_LOOKUP final
+{
+    using LOGIC_OCCURRENCE = KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE;
+    std::vector<const LOGIC_OCCURRENCE*> randomWindows;
+    std::unordered_map<std::string_view, std::vector<const LOGIC_OCCURRENCE*>> randomWindowsByEffect;
+    std::set<std::string_view> selectedAirborneGroups;
+
+    void Resolve(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
+    {
+        // Borrow immutable IDs only for this Sample call. The next call resolves
+        // the current document again, including unsaved authoring changes.
+        std::unordered_map<std::string_view, const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION*> definitions;
+        definitions.reserve(document.Logics.size());
+        for (const auto& logic : document.Logics)
+            definitions.try_emplace(logic.strLogicId, &logic);
+        for (const auto& box : pattern.LogicOccurrences)
+        {
+            if (!box.bEnabled) continue;
+            const auto found = definitions.find(box.strLogicId);
+            if (found == definitions.end()) continue;
+            const auto& logic = *found->second;
+            if (logic.strJudgementKind == "BOSS_RANDOM_TARGET")
+            {
+                randomWindows.push_back(&box);
+                randomWindowsByEffect[logic.strTrackingPresentationOccurrenceId].push_back(&box);
+            }
+            if (logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "ALBION_AIRBORNE" &&
+                logic.strAirbornePhase == "SELECT_PLAYER" && logic.strAirborneTargetPositionPolicy == "SELECT" &&
+                !logic.strSelectedEffectGroupId.empty())
+                selectedAirborneGroups.insert(logic.strSelectedEffectGroupId);
+        }
+    }
+
+    const LOGIC_OCCURRENCE* Random_Window(const float clockMs, const std::string_view effectId,
+        bool* controlled = nullptr) const
+    {
+        if (controlled) *controlled = false;
+        const auto* windows = &randomWindows;
+        if (!effectId.empty())
+        {
+            const auto found = randomWindowsByEffect.find(effectId);
+            if (found == randomWindowsByEffect.end()) return nullptr;
+            windows = &found->second;
+        }
+        if (controlled) *controlled = !windows->empty();
+        const LOGIC_OCCURRENCE* active = nullptr;
+        // Preserve authored order: the last overlapping window owns the row.
+        for (const auto* box : *windows)
+            if (clockMs >= box->iStartMs && clockMs < double(box->iStartMs) + box->iDurationMs)
+                active = box;
+        return active;
+    }
+};
+
 bool Random_TargetPivot(const float4x4_t& owner, const float3_t& target, const float forwardYawOffset, float4x4_t& output)
 {
     const float dx = target.x - owner._41, dz = target.z - owner._43;
@@ -2746,7 +2801,13 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
     const float4x4_t& pivot, const std::shared_ptr<Engine::CModel>& model,
     const ANIMATION_MODEL_TARGET_VIEW* weaponView)
 {
+    Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Kouku.Presentation.Sample");
     if (!std::isfinite(clockMs) || clockMs < 0.f) return;
+    PRESENTATION_LOGIC_LOOKUP logicLookup;
+    {
+        Engine::CProfilerScope resolveScope(CGameInstance::Get().Get_Profiler(), "Kouku.Presentation.ResolveLogics");
+        logicLookup.Resolve(document, pattern);
+    }
     const bool previewSession = &session == &m_PreviewSession || std::any_of(
         m_BundlePreviewMembers.begin(), m_BundlePreviewMembers.end(),
         [&](const auto& member) { return &session == &member.session; }) || std::any_of(
@@ -2882,7 +2943,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
     for (const auto& box : pattern.PresentationOccurrences)
     {
         bool randomTarget = false;
-        (void)Random_TargetWindow(document, pattern, clockMs, box.strOccurrenceId, &randomTarget);
+        (void)logicLookup.Random_Window(clockMs, box.strOccurrenceId, &randomTarget);
         if (!box.bFollowBoss || (!randomTarget && box.strAnchorKind != "WORLD" && box.strBone.empty()) ||
             clockMs > double(box.iStartMs) + box.iDurationMs) continue;
         const auto resource = std::find_if(document.PresentationResources.begin(),
@@ -2891,8 +2952,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         if (resource == document.PresentationResources.end()) continue;
         auto& history = session.effectAnchorHistories[box.strOccurrenceId];
         if (randomTarget && history.recordedSeconds >= 0.f &&
-            Random_TargetWindow(document, pattern, clockMs, box.strOccurrenceId) !=
-            Random_TargetWindow(document, pattern, history.recordedSeconds * 1000.f, box.strOccurrenceId)) history = {};
+            logicLookup.Random_Window(clockMs, box.strOccurrenceId) !=
+            logicLookup.Random_Window(history.recordedSeconds * 1000.f, box.strOccurrenceId)) history = {};
         if (!history.samples) history.samples = std::make_shared<EFFECT_V2_PIVOT_HISTORY>();
         // Rewinding retains observed poses; it never appends fabricated history.
         if (rootSeconds < history.recordedSeconds) continue;
@@ -2941,7 +3002,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
     const auto sampleOne = [&](const RESOURCE& resource, const OCCURRENCE& box)
     {
         bool randomTarget = false;
-        (void)Random_TargetWindow(document, pattern, clockMs, box.strOccurrenceId, &randomTarget);
+        (void)logicLookup.Random_Window(clockMs, box.strOccurrenceId, &randomTarget);
         auto rowExactRoot = exactRoot;
         if (randomTarget)
         {
@@ -3342,14 +3403,14 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
     {
         // SELECT-owned groups replay once at the captured point through LogicPreview
         // (or the Server combat-object visual), never through this authored MAP lane.
-        if (Is_SelectedAirborneGroupMember(document, pattern, box)) continue;
+        if (!box.strSelectionGroupId.empty() && logicLookup.selectedAirborneGroups.contains(box.strSelectionGroupId)) continue;
         const auto resource = std::find_if(document.PresentationResources.begin(),
             document.PresentationResources.end(), [&box](const auto& row)
             { return row.strResourceId == box.strResourceId; });
         if (resource != document.PresentationResources.end())
         {
             bool controlled = false;
-            const auto* window = Random_TargetWindow(document, pattern, clockMs, box.strOccurrenceId, &controlled);
+            const auto* window = logicLookup.Random_Window(clockMs, box.strOccurrenceId, &controlled);
             if (controlled)
             {
                 if (!window) continue;

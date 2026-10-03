@@ -3,6 +3,7 @@
 
 #ifdef _DEBUG
 #include "CompositionTimeline.h"
+#include "GameInstance.h"
 #include "Animation.h"
 #include "ActorCatalog.h"
 #include "BinaryAsset/WModelDecoder.h"
@@ -41,6 +42,24 @@ struct WORLD_OBJECT_TRAVEL_DRAFT
 namespace
 {
 constexpr const char* AREA_ID = "LV_LUT_MIDNIGHTC_ED";
+
+void Draw_ObjectTrackFold(const char* id, const ImVec2 origin, const char* label,
+    bool& open, const ImU32 color)
+{
+    auto* draw = ImGui::GetWindowDrawList();
+    ImGui::SetCursorScreenPos(origin);
+    ImGui::InvisibleButton(id, ImVec2(CompositionTimeline::LabelWidth, CompositionTimeline::BoxHeight));
+    if (ImGui::IsItemClicked()) open = !open;
+    const ImVec2 center(origin.x + 8.f, origin.y + CompositionTimeline::BoxHeight * .5f);
+    if (open)
+        draw->AddTriangleFilled(ImVec2(center.x - 4.f, center.y - 2.f),
+            ImVec2(center.x + 4.f, center.y - 2.f), ImVec2(center.x, center.y + 3.f), color);
+    else
+        draw->AddTriangleFilled(ImVec2(center.x - 2.f, center.y - 4.f),
+            ImVec2(center.x + 3.f, center.y), ImVec2(center.x - 2.f, center.y + 4.f), color);
+    CompositionTimeline::DrawTrackLabel(draw, ImVec2(origin.x + 16.f, origin.y),
+        CompositionTimeline::LabelWidth - 16.f, CompositionTimeline::BoxHeight, label, color);
+}
 
 bool ReadSource(const std::filesystem::path& path, std::string& bytes,
     std::string& status, const bool optional = false)
@@ -739,8 +758,14 @@ void CWorldObjectTool::Deactivate()
 bool CWorldObjectTool::Load_Source()
 {
     const auto* level = CLevel_KakulSaydonArena::Get_Active();
-    if (!level)
-    { m_Status = "Enter KoukuSaydon, then Reload Source to edit and preview world objects."; return false; }
+    if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::KAKULSAYDON_ARENA))
+    {
+        m_SourceLoadDeferred = !m_Ready;
+        m_Status = "Enter KoukuSaydon to load Object Resources, or retry with Reload Source.";
+        return false;
+    }
+    // A source/validation failure requires an explicit retry, never frame-by-frame I/O.
+    m_SourceLoadDeferred = false;
     const auto directory = CProjectDataRoot::Resolve(std::filesystem::path("Maps/Authoring") / AREA_ID);
     const auto sourcePath = directory / (std::string(AREA_ID) + ".worldsequences.json");
     const auto placementPath = directory / (std::string(AREA_ID) + ".mapplacements");
@@ -1855,6 +1880,10 @@ void CWorldObjectTool::Begin_WorkbenchFrame()
 {
     m_CompositionResourceFocused = false;
     if (!m_Open) Open();
+    else if (!m_Ready && !m_Dirty && m_SourceLoadDeferred &&
+        CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
+        CLevel_KakulSaydonArena::Get_Active())
+        Load_Source();
 }
 
 void CWorldObjectTool::End_WorkbenchFrame()
@@ -2060,7 +2089,7 @@ void CWorldObjectTool::Render_WorkbenchPane(const COMPOSITION_WORKBENCH_PANE pan
     {
     case COMPOSITION_WORKBENCH_PANE::PATTERNS:
         if (m_Ready) Render_Resources(true);
-        else ImGui::TextWrapped("%s", m_Status.c_str());
+        else Render_Toolbar();
         break;
     case COMPOSITION_WORKBENCH_PANE::RESOURCES:
         if (ImGui::BeginTabBar("##ObjectResourceCategories"))
@@ -4243,21 +4272,22 @@ float CWorldObjectTool::Render_TimelineRows(WORLD_SEQUENCE_TEMPLATE& sequence, c
     auto* draw = ImGui::GetWindowDrawList();
     const auto timeX = [&](const double local) { return originX + float(timeOffsetMs + local / playbackRate) * pixelsPerMs; };
     const char* names[] = {"Transform", "Animation", "Effect", "Collider"};
-    const ImU32 colors[] = {IM_COL32(61,107,141,255), IM_COL32(113,82,147,255), IM_COL32(167,95,51,255), IM_COL32(49,143,119,255)};
+    const ImU32 colors[] = {CompositionTimeline::WorldColor, CompositionTimeline::AnimationColor,
+        CompositionTimeline::PresentationColor, CompositionTimeline::PresentationColor};
+    const ImU32 labelColors[] = {CompositionTimeline::WorldLabelColor, CompositionTimeline::AnimationLabelColor,
+        CompositionTimeline::PresentationLabelColor, CompositionTimeline::PresentationLabelColor};
     for (const auto& lane : lanes)
     {
         const auto key = instanceId + "|" + std::to_string(lane.kind) + "|" + lane.slot;
         auto [state, inserted] = m_TimelineLaneOpen.try_emplace(key, lane.kind != 0);
         ImGui::PushID(key.c_str());
-        ImGui::SetCursorScreenPos(ImVec2(originX, y));
-        ImGui::SetNextItemOpen(state->second, ImGuiCond_Always);
-        uint32_t laneStart = sequence.PresentationSpanMs(), laneEnd = 0u;
-        for (const auto& box : lane.boxes) { laneStart = (std::min)(laneStart, box.start); laneEnd = (std::max)(laneEnd, box.end); }
-        const bool open = ImGui::TreeNodeEx("Lane", ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth,
-            "%s / %s (%zu boxes, local %u..%u ms)", names[lane.kind], lane.slot.c_str(), lane.boxes.size(), laneStart, laneEnd);
-        state->second = open;
-        y += 24.f;
-        if (!open) { ImGui::PopID(); continue; }
+        const std::string label = std::string(names[lane.kind]) + " / " + lane.slot;
+        Draw_ObjectTrackFold("Lane", ImVec2(originX - CompositionTimeline::LabelWidth, y),
+            label.c_str(), state->second, labelColors[lane.kind]);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s / %s (%zu boxes). Click to expand or collapse this track.",
+                names[lane.kind], lane.slot.c_str(), lane.boxes.size());
+        if (!state->second) { y += CompositionTimeline::LaneHeight; ImGui::PopID(); continue; }
         std::vector<CompositionTimeline::DISPLAY_INTERVAL> intervals;
         for (const auto& box : lane.boxes)
             intervals.push_back({box.id, timeOffsetMs + box.start / double(playbackRate),
@@ -4266,7 +4296,7 @@ float CWorldObjectTool::Render_TimelineRows(WORLD_SEQUENCE_TEMPLATE& sequence, c
         const auto layout = CompositionTimeline::AllocateDisplayRows(std::move(intervals), CompositionTimeline::MinimumBoxWidth / pixelsPerMs);
         for (const auto& box : lane.boxes)
         {
-            const float top = y + 32.f * static_cast<float>(layout.occurrenceRows.at(box.id));
+            const float top = y + CompositionTimeline::LaneHeight * static_cast<float>(layout.occurrenceRows.at(box.id));
             const float left = timeX(box.start), semanticRight = timeX(box.end);
             const float right = (std::max)(left + CompositionTimeline::MinimumBoxWidth, semanticRight);
             const bool selected = instanceId == m_SelectedInstance && m_SelectedBoxKind == box.kind &&
@@ -4276,14 +4306,14 @@ float CWorldObjectTool::Render_TimelineRows(WORLD_SEQUENCE_TEMPLATE& sequence, c
                 draw->AddRectFilled(ImVec2(semanticRight, top + 6.f), ImVec2(timeX(box.windowEnd), top + 19.f), IM_COL32(70,58,83,160));
                 draw->AddText(ImVec2(semanticRight + 4.f, top + 5.f), IM_COL32(160,155,170,255), "Hold");
             }
-            CompositionTimeline::DrawBox(draw, ImVec2(left, top), ImVec2(right, top + 25.f), colors[box.kind], selected,
+            CompositionTimeline::DrawBox(draw, ImVec2(left, top), ImVec2(right, top + CompositionTimeline::BoxHeight), colors[box.kind], selected,
                 box.label.c_str(), box.left, box.right);
             ImGui::PushID(box.id.c_str());
             // Transform keys have their own hit items; do not let the bar capture them.
             if (box.kind != 0)
             {
                 ImGui::SetCursorScreenPos(ImVec2(left, top));
-                ImGui::InvisibleButton("Box", ImVec2(right - left, 25.f));
+                ImGui::InvisibleButton("Box", ImVec2(right - left, CompositionTimeline::BoxHeight));
                 if (ImGui::IsItemActivated())
                 {
                     if (m_SelectedInstance != instanceId) Select_State(instanceId);
@@ -4329,7 +4359,7 @@ float CWorldObjectTool::Render_TimelineRows(WORLD_SEQUENCE_TEMPLATE& sequence, c
                     }
                     edit.changed = edit.start != edit.originalStart || edit.end != edit.originalEnd ||
                         edit.sourceIn != box.sourceIn || edit.sourceOut != box.sourceOut;
-                    draw->AddRect(ImVec2(timeX(edit.start), top), ImVec2(timeX(edit.end), top + 25.f), IM_COL32(255,224,92,255), 3.f, 0, 2.f);
+                    draw->AddRect(ImVec2(timeX(edit.start), top), ImVec2(timeX(edit.end), top + CompositionTimeline::BoxHeight), IM_COL32(255,224,92,255), 3.f, 0, 2.f);
                     if (ImGui::IsMouseDragging(0)) ImGui::SetTooltip("%u..%u ms (Motion local time; release to apply)", edit.start, edit.end);
                 }
                 if (dragging && ImGui::IsItemDeactivated()) m_TimelineDrag->pending = true;
@@ -4340,14 +4370,14 @@ float CWorldObjectTool::Render_TimelineRows(WORLD_SEQUENCE_TEMPLATE& sequence, c
             else
             {
                 auto& track = sequence.tracks[box.index];
-                if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(ImVec2(left, top), ImVec2(right, top + 25.f)) && ImGui::IsMouseClicked(0))
+                if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(ImVec2(left, top), ImVec2(right, top + CompositionTimeline::BoxHeight)) && ImGui::IsMouseClicked(0))
                 { if (m_SelectedInstance != instanceId) Select_State(instanceId); m_SelectedBoxKind = 0; m_SelectedTrack = box.index; m_SelectedKey = 0; }
                 for (size_t keyIndex = 0; keyIndex < track.keys.size(); ++keyIndex)
                 {
-                    auto& key = track.keys[keyIndex]; const float x = timeX(key.timeMs), centre = top + 12.f;
+                    auto& key = track.keys[keyIndex]; const float x = timeX(key.timeMs), centre = top + CompositionTimeline::BoxHeight * .5f;
                     draw->AddQuadFilled(ImVec2(x, centre - 6), ImVec2(x + 6, centre), ImVec2(x, centre + 6), ImVec2(x - 6, centre),
                         selected && m_SelectedKey == keyIndex ? IM_COL32(255,223,87,255) : IM_COL32_WHITE);
-                    ImGui::PushID(static_cast<int>(keyIndex)); ImGui::SetCursorScreenPos(ImVec2(x - 7.f, top + 4.f));
+                    ImGui::PushID(static_cast<int>(keyIndex)); ImGui::SetCursorScreenPos(ImVec2(x - 7.f, top + 2.f));
                     ImGui::InvisibleButton("Key", ImVec2(14.f,18.f));
                     if (ImGui::IsItemClicked()) { if (m_SelectedInstance != instanceId) Select_State(instanceId); m_SelectedTrack = box.index; m_SelectedKey = keyIndex; m_SelectedBoxKind = 0; }
                     if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0) && keyIndex > 0 && keyIndex + 1 < track.keys.size())
@@ -4362,7 +4392,7 @@ float CWorldObjectTool::Render_TimelineRows(WORLD_SEQUENCE_TEMPLATE& sequence, c
             }
             ImGui::PopID();
         }
-        y += 32.f * static_cast<float>(layout.rowCount);
+        y += CompositionTimeline::LaneHeight * static_cast<float>(layout.rowCount);
         ImGui::PopID();
     }
     return y;
@@ -4418,33 +4448,35 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
         if (ImGui::SliderFloat("Motion + Effect (ms)", &clock, 0.f, extent, "%.0f")) Seek(clock);
         ImGui::TextDisabled("Playback elapsed: %.0f ms", m_ClockMs);
     }
-    ImGui::SetNextItemWidth(180.f); ImGui::SliderFloat("Zoom##ObjectTimeline", &m_Zoom, .1f, 500.f, "%.1f px/s");
+    ImGui::SetNextItemWidth(180.f); ImGui::SliderFloat("Zoom##ObjectTimeline", &m_Zoom, 1.f, 500.f, "%.1f px/s");
     ImGui::SameLine(); if (ImGui::Button("Fit##ObjectTimeline")) m_TimelineFitRequested = true;
     ImGui::TextDisabled("Ctrl + mouse wheel: zoom at cursor");
     if (ImGui::BeginChild("CombinedObjectTimeline", ImVec2(0.f, (std::max)(110.f, ImGui::GetContentRegionAvail().y)),
         true, ImGuiWindowFlags_HorizontalScrollbar))
     {
-        const ImVec2 origin = ImGui::GetCursorScreenPos();
+        const ImVec2 labelOrigin = ImGui::GetCursorScreenPos();
+        const ImVec2 origin(labelOrigin.x + CompositionTimeline::LabelWidth, labelOrigin.y);
         auto* draw = ImGui::GetWindowDrawList();
         const uint32_t duration = static_cast<uint32_t>(std::ceil(extent));
-        const float availableWidth = (std::max)(40.f, ImGui::GetContentRegionAvail().x - 12.f);
+        const float availableWidth = (std::max)(40.f, ImGui::GetContentRegionAvail().x - CompositionTimeline::LabelWidth - 24.f);
         if (m_TimelineFitRequested)
-        { m_Zoom = (std::clamp)(availableWidth * 1000.f / extent, .1f, 500.f); m_TimelineFitRequested = false; ImGui::SetScrollX(0.f); }
+        { m_Zoom = CompositionTimeline::FitPixelsPerSecond(availableWidth, extent); m_TimelineFitRequested = false; ImGui::SetScrollX(0.f); }
         float width = (std::max)(availableWidth, extent * m_Zoom * .001f);
-        float pixelsPerMs = width / extent;
+        float pixelsPerMs = m_Zoom * .001f;
         const auto& io = ImGui::GetIO();
         if (ImGui::IsWindowHovered() && io.KeyCtrl && io.MouseWheel != 0.f && !io.WantTextInput && !ImGui::IsAnyItemActive())
         {
             const float oldScale = pixelsPerMs;
-            m_Zoom = (std::clamp)(m_Zoom * std::pow(1.2f, io.MouseWheel), .1f, 500.f);
-            width = (std::max)(availableWidth, extent * m_Zoom * .001f); pixelsPerMs = width / extent;
+            m_Zoom = (std::clamp)(m_Zoom * std::pow(1.2f, io.MouseWheel), 1.f, 500.f);
+            width = (std::max)(availableWidth, extent * m_Zoom * .001f); pixelsPerMs = m_Zoom * .001f;
             ImGui::SetScrollX((std::max)(0.f, ImGui::GetScrollX() + (io.MousePos.x - origin.x) * (pixelsPerMs / oldScale - 1.f)));
         }
-        CompositionTimeline::DrawRuler(draw, origin, ImVec2(origin.x + width, origin.y + 25.f), duration, pixelsPerMs * 1000.f);
-        ImGui::InvisibleButton("RulerSeek", ImVec2(width, 25.f));
+        ImGui::SetCursorScreenPos(origin);
+        CompositionTimeline::DrawRuler(draw, origin, ImVec2(origin.x + width, origin.y + CompositionTimeline::LaneHeight), duration, m_Zoom);
+        ImGui::InvisibleButton("RulerSeek", ImVec2(width, CompositionTimeline::LaneHeight));
         if (!parentOverview && ImGui::IsItemActive())
             Seek((std::clamp)((ImGui::GetIO().MousePos.x - origin.x) / pixelsPerMs, 0.f, extent));
-        float y = origin.y + 28.f;
+        float y = origin.y + CompositionTimeline::LaneHeight;
         for (const auto& id : motionIds)
         {
             auto* instance = m_Document.Find_Instance(id);
@@ -4454,23 +4486,29 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
             const float speed = (std::max)(.05f, instance->playbackSpeed);
             const auto foldKey = "Motion|" + id;
             auto [fold, inserted] = m_TimelineLaneOpen.try_emplace(foldKey, true);
-            ImGui::SetCursorScreenPos(ImVec2(origin.x, y));
-            ImGui::SetNextItemOpen(fold->second, ImGuiCond_Always);
-            fold->second = ImGui::TreeNodeEx("Motion", ImGuiTreeNodeFlags_NoTreePushOnOpen,
-                "%s / %.0f..%.0f ms", sequence->displayName.c_str(), float(instance->startDelayMs),
-                instance->startDelayMs + sequence->PresentationSpanMs() / speed);
-            ImGui::SameLine();
-            if (ImGui::SmallButton("Select")) Select_State(id);
-            y += 24.f;
+            Draw_ObjectTrackFold("Motion", ImVec2(labelOrigin.x, y), sequence->displayName.c_str(),
+                fold->second, CompositionTimeline::StageLabelColor);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s / %.0f..%.0f ms. Click the motion box to select it.",
+                    sequence->displayName.c_str(), float(instance->startDelayMs),
+                    instance->startDelayMs + sequence->PresentationSpanMs() / speed);
+            const float left = origin.x + instance->startDelayMs * pixelsPerMs;
+            const float motionWidth = (std::max)(CompositionTimeline::MinimumBoxWidth,
+                sequence->PresentationSpanMs() * pixelsPerMs / speed);
+            ImGui::SetCursorScreenPos(ImVec2(left, y));
+            ImGui::InvisibleButton("Select", ImVec2(motionWidth, CompositionTimeline::BoxHeight));
+            if (ImGui::IsItemClicked()) Select_State(id);
+            CompositionTimeline::DrawBox(draw, ImVec2(left, y), ImVec2(left + motionWidth, y + CompositionTimeline::BoxHeight),
+                CompositionTimeline::StageColor, m_SelectedInstance == id, sequence->displayName.c_str(), false, false);
+            y += CompositionTimeline::LaneHeight;
             if (fold->second)
                 y = Render_TimelineRows(*sequence, id, origin.x, y, width, pixelsPerMs,
                     static_cast<float>(instance->startDelayMs), speed);
             ImGui::PopID();
-            y += 8.f;
         }
         const float cursor = origin.x + (std::clamp)(m_ClockMs, 0.f, extent) * pixelsPerMs;
         draw->AddLine(ImVec2(cursor, origin.y), ImVec2(cursor, y), IM_COL32(255, 217, 68, 255), 2.f);
-        ImGui::SetCursorScreenPos(origin); ImGui::Dummy(ImVec2(width, y - origin.y));
+        ImGui::SetCursorScreenPos(labelOrigin); ImGui::Dummy(ImVec2(width + CompositionTimeline::LabelWidth, y - origin.y));
     }
     ImGui::EndChild();
 }
@@ -4513,7 +4551,7 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
     float clock = (std::min)(m_ClockMs, SpanMs());
     if (ImGui::SliderFloat("Motion + Effect (ms)", &clock, 0.f, (std::max)(1.f, SpanMs()), "%.0f")) Seek(clock);
     ImGui::TextDisabled("Playback elapsed: %.0f ms", m_ClockMs);
-    ImGui::SetNextItemWidth(180.f); ImGui::SliderFloat("Zoom##ObjectTimeline", &m_Zoom, .1f, 500.f, "%.1f px/s");
+    ImGui::SetNextItemWidth(180.f); ImGui::SliderFloat("Zoom##ObjectTimeline", &m_Zoom, 1.f, 500.f, "%.1f px/s");
     ImGui::SameLine(); if (ImGui::Button("Fit##ObjectTimeline")) m_TimelineFitRequested = true;
     ImGui::TextDisabled("Ctrl + mouse wheel: zoom at cursor | Drag Stage right edge: change duration");
     ImGui::BeginDisabled((m_SelectedBoxKind != 1 && m_SelectedBoxKind != 2 && m_SelectedBoxKind != 3) ||
@@ -4527,12 +4565,12 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
             m_SelectedBoxKind == 1 ? m_SelectedAnimationRow : m_SelectedEffectRow);
     }
     ImGui::EndDisabled();
-    const float rowHeight = 32.f;
-    const float labelWidth = 110.f;
+    constexpr float rowHeight = CompositionTimeline::LaneHeight;
+    constexpr float labelWidth = CompositionTimeline::LabelWidth;
     const uint32_t timelineDuration = sequence.PresentationSpanMs();
     const float availableWidth = (std::max)(40.f, ImGui::GetContentRegionAvail().x - labelWidth - 24.f);
     float width = (std::max)(availableWidth, timelineDuration * m_Zoom * .001f);
-    float pixelsPerMs = width / timelineDuration;
+    float pixelsPerMs = m_Zoom * .001f;
     const bool showPhysics = resource && resource->sequenceInstanceId.empty();
     if (ImGui::BeginChild("ObjectTimeline", ImVec2(0, (std::max)(110.f, ImGui::GetContentRegionAvail().y)), true, ImGuiWindowFlags_HorizontalScrollbar))
     {
@@ -4540,43 +4578,46 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
         const ImVec2 origin(labelOrigin.x + labelWidth, labelOrigin.y);
         if (m_TimelineFitRequested)
         {
-            m_Zoom = (std::clamp)(availableWidth * 1000.f / timelineDuration, .1f, 500.f);
-            width = (std::max)(availableWidth, timelineDuration * m_Zoom * .001f); pixelsPerMs = width / timelineDuration;
+            m_Zoom = CompositionTimeline::FitPixelsPerSecond(availableWidth, timelineDuration);
+            width = (std::max)(availableWidth, timelineDuration * m_Zoom * .001f); pixelsPerMs = m_Zoom * .001f;
             m_TimelineFitRequested = false; ImGui::SetScrollX(0.f);
         }
         const auto& io = ImGui::GetIO();
         if (ImGui::IsWindowHovered() && io.KeyCtrl && io.MouseWheel != 0.f && !io.WantTextInput && !ImGui::IsAnyItemActive())
         {
             const float oldScale = pixelsPerMs;
-            m_Zoom = (std::clamp)(m_Zoom * std::pow(1.2f, io.MouseWheel), .1f, 500.f);
-            width = (std::max)(availableWidth, timelineDuration * m_Zoom * .001f); pixelsPerMs = width / timelineDuration;
+            m_Zoom = (std::clamp)(m_Zoom * std::pow(1.2f, io.MouseWheel), 1.f, 500.f);
+            width = (std::max)(availableWidth, timelineDuration * m_Zoom * .001f); pixelsPerMs = m_Zoom * .001f;
             ImGui::SetScrollX((std::max)(0.f, ImGui::GetScrollX() + (io.MousePos.x - origin.x) * (pixelsPerMs / oldScale - 1.f)));
         }
         auto* draw = ImGui::GetWindowDrawList();
-        const auto label = [&](const char* text, float y) { draw->AddText(ImVec2(labelOrigin.x + 4.f, y + 4.f), IM_COL32_WHITE, text); };
+        const auto label = [&](const char* text, const float y, const ImU32 color) {
+            CompositionTimeline::DrawTrackLabel(draw, ImVec2(labelOrigin.x, y), labelWidth,
+                CompositionTimeline::BoxHeight, text, color);
+        };
         ImGui::SetCursorScreenPos(origin);
-        CompositionTimeline::DrawRuler(draw, origin, ImVec2(origin.x + width, origin.y + 25.f), timelineDuration, pixelsPerMs * 1000.f);
-        ImGui::InvisibleButton("RulerSeek", ImVec2(width, 25.f));
+        CompositionTimeline::DrawRuler(draw, origin, ImVec2(origin.x + width, origin.y + rowHeight), timelineDuration, m_Zoom);
+        ImGui::InvisibleButton("RulerSeek", ImVec2(width, rowHeight));
         if (ImGui::IsItemActive())
         {
             const auto* instance = m_Document.Find_Instance(m_SelectedInstance);
             const float local = (std::clamp)((ImGui::GetIO().MousePos.x - origin.x) / pixelsPerMs, 0.f, static_cast<float>(timelineDuration));
             if (instance) Seek(instance->startDelayMs + local / instance->playbackSpeed);
         }
-        label("Stage", origin.y + 28.f);
-        const float stageEndX = origin.x + sequence.durationMs * pixelsPerMs;
-        ImGui::SetCursorScreenPos(ImVec2(origin.x, origin.y + 28.f));
-        ImGui::InvisibleButton("StageSelect", ImVec2((std::max)(1.f, stageEndX - origin.x - 7.f), 25.f));
+        label("Stage", origin.y + rowHeight, CompositionTimeline::StageLabelColor);
+        const float stageEndX = origin.x + (std::max)(CompositionTimeline::MinimumBoxWidth, sequence.durationMs * pixelsPerMs);
+        ImGui::SetCursorScreenPos(ImVec2(origin.x, origin.y + rowHeight));
+        ImGui::InvisibleButton("StageSelect", ImVec2((std::max)(1.f, stageEndX - origin.x - 7.f), CompositionTimeline::BoxHeight));
         if (ImGui::IsItemClicked()) { m_SelectedBoxKind = 4; m_DetailOpen = true; }
-        CompositionTimeline::DrawBox(draw, ImVec2(origin.x, origin.y + 28.f),
-            ImVec2(stageEndX, origin.y + 53.f), IM_COL32(96, 96, 112, 255), m_SelectedBoxKind == 4, sequence.displayName.c_str());
+        CompositionTimeline::DrawBox(draw, ImVec2(origin.x, origin.y + rowHeight),
+            ImVec2(stageEndX, origin.y + rowHeight + CompositionTimeline::BoxHeight), CompositionTimeline::StageColor, m_SelectedBoxKind == 4, sequence.displayName.c_str());
         WORLD_OBJECT_TRAVEL_DRAFT travel;
         std::string travelReason;
         const auto* stageResource = m_Document.Find_ObjectResource(m_SelectedObject);
         const bool travelOwned = stageResource && stageResource->sequenceInstanceId.empty() && ObjectTravel::Read(sequence, false, travel, travelReason);
         ImGui::BeginDisabled(travelOwned);
-        ImGui::SetCursorScreenPos(ImVec2(stageEndX - 6.f, origin.y + 28.f));
-        ImGui::InvisibleButton("StageEndResize", ImVec2(12.f, 25.f));
+        ImGui::SetCursorScreenPos(ImVec2(stageEndX - 6.f, origin.y + rowHeight));
+        ImGui::InvisibleButton("StageEndResize", ImVec2(12.f, CompositionTimeline::BoxHeight));
         if (ImGui::IsItemActivated())
         {
             m_SelectedBoxKind = 4; m_DetailOpen = true;
@@ -4589,7 +4630,7 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
             const double delta = ImGui::GetMouseDragDelta(0).x / m_StageResizePixelsPerMs;
             m_StageResizeDurationMs = static_cast<uint32_t>((std::clamp)(std::round(m_StageResizeOriginalMs + delta), 1., double(CWorldSequenceDocument::MAX_DURATION_MS)));
             const float x = origin.x + m_StageResizeDurationMs * pixelsPerMs;
-            draw->AddLine(ImVec2(x, origin.y + 28.f), ImVec2(x, origin.y + 53.f), IM_COL32(255, 223, 87, 255), 3.f);
+            draw->AddLine(ImVec2(x, origin.y + rowHeight), ImVec2(x, origin.y + rowHeight + CompositionTimeline::BoxHeight), IM_COL32(255, 223, 87, 255), 3.f);
             ImGui::SetTooltip("Stage: %u ms (release to apply)", m_StageResizeDurationMs);
         }
         if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
@@ -4602,13 +4643,14 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
             (void)Resize_Stage(sequence, requested);
         }
         const float rowsEnd = Render_TimelineRows(sequence, m_SelectedInstance, origin.x,
-            origin.y + 28.f + rowHeight, width, pixelsPerMs);
-        const float height = rowsEnd - origin.y + (showPhysics ? 64.f : 0.f);
+            origin.y + rowHeight + rowHeight, width, pixelsPerMs);
+        const float physicsHeight = rowHeight * 2.f;
+        const float height = rowsEnd - origin.y + (showPhysics ? physicsHeight : 0.f);
         if (showPhysics)
         {
             const float top = rowsEnd;
-            draw->AddRectFilled(ImVec2(origin.x, top), ImVec2(origin.x + width, top + 60.f), IM_COL32(28, 49, 48, 255));
-            draw->AddText(ImVec2(origin.x + 5.f, top + 3.f), IM_COL32(136, 227, 198, 255), "Physics Y offset / first emission");
+            label("Physics / Y offset", top, CompositionTimeline::WorldLabelColor);
+            draw->AddRectFilled(ImVec2(origin.x, top), ImVec2(origin.x + width, top + physicsHeight), IM_COL32(28, 49, 48, 255));
             const auto& motion = sequence.objectMotion;
             const float seconds = sequence.durationMs * .001f;
             const float physicsWidth = sequence.durationMs * pixelsPerMs;
@@ -4627,11 +4669,11 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
                 for (int segment = 0; segment < 64; ++segment)
                 {
                     const float from = static_cast<float>(segment) / 64.f, to = static_cast<float>(segment + 1) / 64.f;
-                    draw->AddLine(ImVec2(origin.x + physicsWidth * from, top + 56.f - 30.f * (sampleY(seconds * from) - minimum) / range),
-                        ImVec2(origin.x + physicsWidth * to, top + 56.f - 30.f * (sampleY(seconds * to) - minimum) / range), IM_COL32(91, 217, 171, 255), 2.f);
+                    draw->AddLine(ImVec2(origin.x + physicsWidth * from, top + physicsHeight - 4.f - (physicsHeight - 8.f) * (sampleY(seconds * from) - minimum) / range),
+                        ImVec2(origin.x + physicsWidth * to, top + physicsHeight - 4.f - (physicsHeight - 8.f) * (sampleY(seconds * to) - minimum) / range), IM_COL32(91, 217, 171, 255), 2.f);
                 }
             ImGui::SetCursorScreenPos(ImVec2(origin.x, top));
-            ImGui::InvisibleButton("PhysicsSeek", ImVec2(width, 60.f));
+            ImGui::InvisibleButton("PhysicsSeek", ImVec2(width, physicsHeight));
             if (ImGui::IsItemActive() && selectedInstance)
             {
                 const float local = (std::clamp)((ImGui::GetIO().MousePos.x - origin.x) / pixelsPerMs, 0.f, static_cast<float>(timelineDuration));

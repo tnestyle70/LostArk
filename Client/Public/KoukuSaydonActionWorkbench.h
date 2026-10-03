@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <functional>
 #include <map>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -231,6 +232,7 @@ namespace Client
 			std::vector<KOUKU_WORLD_SEQUENCE_RESOURCE> resources, std::string status)
 		{
 			m_WorldSequenceResources = std::move(resources);
+			++m_iWorldSequenceResourceGeneration;
 			m_strWorldSequenceResourceStatus = std::move(status);
 		}
 		void Set_RenderingProfileResources(
@@ -1228,6 +1230,9 @@ namespace Client
         std::vector<KOUKU_CINEMATIC_ANIMATION_GROUP> m_CinematicGroups;
 		bool_t m_bCinematicCatalogLoaded = false;
 		std::string m_strCinematicStatus;
+		struct TIMELINE_LAYOUT_CACHE;
+		std::unique_ptr<TIMELINE_LAYOUT_CACHE> m_pTimelineLayout;
+		std::uint64_t m_iWorldSequenceResourceGeneration = 0u;
 		std::uint64_t m_iDraftGeneration = 0u;
 		std::uint32_t m_iDragOriginOffsetMs = 0u;
 		std::uint32_t m_iDragOriginSourceMs = 0u;

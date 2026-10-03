@@ -19,7 +19,7 @@ PR #264~#266 기준 PC가 PR #267 이후 `main`을 처음 받을 때는 pull 전
 최신 Resources 전체를 다시 둔 뒤 두 validator를 실행한다. 정확한 pull 전 보존, pull 후 복원과 검증은
 [Runtime 빌드 ZIP·Drive Resources 전달 가이드](RUNTIME_BUILD_DELIVERY_GUIDE.md)를 따른다.
 
-## 2026-10-02까지 팀 LAN 세션 시작
+## 2026-10-03까지 팀 LAN 세션 시작
 
 모든 팀원과 에이전트는 pull 후 다른 작업보다 먼저 아래 명령을 실행한다.
 
@@ -31,7 +31,7 @@ endpoint와 만료일 정본은 `../../Tools/Network/TeamLanEndpoint.json`, 실�
 `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`이다.
 빠른 IP 교체, 실제 4인 LAN, Character Select loopback 독립 테스트는
 [네트워크연결가이드.md](네트워크연결가이드.md)의 실행 순서를 따른다.
-현재 공유 Server endpoint는 같은 팀 LAN의 `192.168.0.14:7777`이다.
+현재 공유 Server endpoint는 같은 팀 LAN의 `192.168.200.139:7777`이다.
 현재 Server가 꺼져 있으면 `not-listening`이 정상일 수 있으며, 스크립트가 로컬 debugger 설정을
 동기화한 뒤 출력이 `server-host`이면 Visual Studio의 `Server + Client` profile, `client`이면
 Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
