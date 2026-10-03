@@ -160,7 +160,7 @@ private:
 	string m_strComparisonConditions;
 	bool_t m_bSourceMaterials = true;
 	bool_t m_bConditionsStable = true;
-	string m_strStatus = "버튼을 누르면 현재 설정을 보관하고 임시 비교를 시작합니다.";
+	string m_strStatus = "Select a stage or technique to begin a temporary comparison.";
 	array<char_t, 64> m_LabelBuffer = { "baseline" };
 	int32_t m_iFrameInput = 300;
 	vector<RENDERING_BENCHMARK_RUN> m_Runs;

@@ -1003,13 +1003,13 @@ Anchor Light의 Map(fixed world)은 패턴 box 수명 동안의 고정 월드 �
 플레이어 위치 복사는 명시적인 Place above player (+8m) 버튼으로만 한다. Default Directional Light는 선택 Level
 base profile의 기존 광원을 편집·저장하며 maplights에 복제하지 않는다. Light Sequencer는 선택 항목을
 Play/Pause/Seek/Stop하고 Scene/Map의 임시 preview를 종료 시 복구한다. 품질 패널은 Level별 FXAA/SSAO 등을 저장한다.
-Rendering Workbench의 기본 탭은 `복원 시연`이다. 기본 재질(근사) → 원본 재질 → 환경광·baked
+Rendering Workbench의 기본 탭은 `Restoration` (복원 시연)이다. 기본 재질(근사) → 원본 재질 → 환경광·baked
 조명 → 그림자·공간 효과 → Tone·LUT → 현재 설정을 버튼 또는 이전/다음으로 비교한다.
 현재 WModel·텍스처를 유지하며 과거 EXE를 재현하지 않는다. 단계는 시작 때의 실효 값을 기준으로
 복원하므로 원래 OFF인 FXAA 등은 켜지지 않는다. `원래 화면으로 복귀`는 저장 없이 세션을 끝낸다.
-`기법 A/B`는 기법 선택 → 비교 준비 → A/B 전환, `측정 · 분석`은 수치·반복·sweep·사전·픽셀 진단,
-`저장 설정`은 저작 품질과 Save/Publish를 제공한다. 시연 중에는 저작 변경이 잠긴다.
-Rendering Workbench → 측정 · 분석 → 고급의 Rendering restoration은 Bern/Character Select/Valtan/Kouku의
+`Technique A/B`는 기법 선택 → 비교 준비 → A/B 전환, `Measure / Analyze`는 수치·반복·sweep·사전·픽셀 진단,
+`Saved Settings`는 저작 품질과 Save/Publish를 제공한다. 시연 중에는 저작 변경이 잠긴다.
+Rendering Workbench → Measure / Analyze → 고급의 Rendering restoration은 Bern/Character Select/Valtan/Kouku의
 `Before` / `Restored source profile` / `Return to entry` 비교를 제공한다. 기존 설정은 before profile에
 보존하고 네 맵의 base profile에는 원본 후처리 입력을 연결한다. 도구를 닫으면 같은 Level에서
 도구가 여전히 소유한 preview만 복귀한다. 외부 scene 전환·Runtime Reload는 새 소유자의 상태를 유지한다.

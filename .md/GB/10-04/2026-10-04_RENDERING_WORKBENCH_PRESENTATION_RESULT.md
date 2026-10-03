@@ -2,9 +2,9 @@
 
 ## G00. 구현
 
-Workbench를 `복원 시연`, `기법 A/B`, `측정 · 분석`, `저장 설정` 네 탭으로 분리했다.
+Workbench를 `Restoration`, `Technique A/B`, `Measure / Analyze`, `Saved Settings` 네 탭으로 분리했다.
 기본 화면은 여섯 단계와 이전/다음 버튼, 원래 화면 복귀만 제공한다. 수치44개·기법 사전·
-픽셀 진단은 기본으로 접으며 저작 저장 기능은 별도 탭에 있다. UI 크기는 현재 ImGui frame
+픽셀 진단은 기본으로 접으며 저작 저장 기능은 별도 탭에 있다. 기존 ANSI TU인 MainApp의 새 탭 문구는 ASCII, 기존 UTF-8 Benchmark의 상세 설명은 한국어로 유지한다. UI 크기는 현재 ImGui frame
 height와 가용 너비를 사용한다. Client를 실행해 실제 창/DPI를 확인한 것은 아니다.
 
 시연은 기본 재질(근사) → 원본 재질 → 환경광·baked → 그림자·공간 효과 → Tone·LUT → 현재

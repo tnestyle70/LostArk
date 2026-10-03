@@ -15217,25 +15217,25 @@ void CMainApp::RenderRenderingWorkbench()
         if(m_pRenderingBenchmark) m_pRenderingBenchmark->Render_SessionBar(m_RenderingProfiles);
         if(ImGui::BeginTabBar("RenderingWorkbenchTabs"))
         {
-            if(ImGui::BeginTabItem("복원 시연"))
+            if(ImGui::BeginTabItem("Restoration"))
             {
                 if(m_pRenderingBenchmark) m_pRenderingBenchmark->Render_PresentationSection(m_RenderingProfiles);
                 ImGui::EndTabItem();
             }
-            if(ImGui::BeginTabItem("기법 A/B"))
+            if(ImGui::BeginTabItem("Technique A/B"))
             {
                 if(m_pRenderingBenchmark) m_pRenderingBenchmark->Render_QuickComparison(m_RenderingProfiles);
                 ImGui::EndTabItem();
             }
-            if(ImGui::BeginTabItem("측정 · 분석"))
+            if(ImGui::BeginTabItem("Measure / Analyze"))
             {
                 if(m_pRenderingBenchmark) m_pRenderingBenchmark->Render_Section(
                     CGameInstance::Get().Get_Profiler(), m_RenderingProfiles.Get_ActiveProfileId(), m_RenderingProfiles);
                 ImGui::EndTabItem();
             }
-            if(ImGui::BeginTabItem("저장 설정"))
+            if(ImGui::BeginTabItem("Saved Settings"))
             {
-        ImGui::TextWrapped("이 탭의 품질 수정은 선택한 장면의 저작 설정에 반영됩니다. 시연과 A/B는 앞쪽 탭을 사용하세요.");
+        ImGui::TextWrapped("Edits here change the selected scene draft. Use Restoration and Technique A/B for temporary comparisons.");
 
     const bool experimentActive = m_pRenderingBenchmark && m_pRenderingBenchmark->Is_ExperimentActive();
     if (experimentActive) ImGui::TextWrapped("Session experiment active. End the experiment before editing or saving authored quality.");
