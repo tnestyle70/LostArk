@@ -5996,3 +5996,10 @@ Sample 호출 안에서 현재 문서의 연결을 한 번 resolve하고, disabl
 UI display row cache는 draft뿐 아니라 외부 World inventory, camera tail, 최소 box 시간의 변경을
 포함한다. 선택·drag·marquee hit test와 픽셀 위치는 계속 현재 프레임 값을 사용한다.
 함수 단독 benchmark의 개선량과 제품 Client의 실제 FPS를 구분한다.
+
+### 시퀀서의 DPI 대응은 글꼴과 그리기·입력 영역을 함께 계산한다
+
+`ConfigDpiScaleFonts`로 확대된 글꼴을 고정 24px 행/19px 박스에 넣으면 150% 이상에서 글자가
+잘린다. 현재 ImGui 글꼴 높이와 style padding으로 행·박스·ruler를 계산하고 모니터 DPI를 다시
+곱하지 않는다. 라벨 열은 실제 문자열 폭도 반영한다. 그리기·culling·InvisibleButton은 같은
+사각형을 사용하며 시간→픽셀 zoom과 편집 시간값은 그대로 유지한다.

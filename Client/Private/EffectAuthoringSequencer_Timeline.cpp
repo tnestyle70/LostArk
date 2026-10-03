@@ -563,17 +563,32 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
         }
         const auto& cameras = m_Transient ? m_TransientCameraRows : m_CameraRows;
         for (const auto& row : cameras) add(TRACK_KIND::CAMERA, row.id, row.label, row.startMs, row.cue.iDurationMs, row.muted, !m_Transient);
-        const float labels = CompositionTimeline::LabelWidth, rowHeight = CompositionTimeline::LaneHeight;
+        const char* regularNames[] = {"Animation", "Effect", "Collider", "Sound", "Camera", "Screen Post"};
+        const char* workbenchNames[] = {"Stages", "Animation", "Logic", "Summon", "World", "Scene Profile", "Effect", "Sound", "Camera", "Collider", "Light", "Subtitle", "Screen Post"};
+        const auto* names = embedded ? workbenchNames : regularNames;
+        const auto laneCount = embedded ? lanes.size() : 6u;
+        const auto metrics = CompositionTimeline::GetCompactRowMetrics();
+        const float labels = (std::max)(CompositionTimeline::GetCompactLabelWidth(names, laneCount),
+            ImGui::CalcTextSize("0  Timeline").x + 16.f);
+        const float rowHeight = metrics.laneHeight;
         const auto canvasMs = (std::min)(LIMIT_MS, (std::max)(10000u, DurationMs() + 1000u));
         const float width = (std::max)(ImGui::GetContentRegionAvail().x - 5.f, labels + canvasMs * m_Zoom * .001f + 30.f);
         ImGui::SetNextWindowContentSize({width, 0.f});
         if (ImGui::BeginChild("Timeline", {0.f, 0.f}, ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar))
         {
             const auto origin = ImGui::GetCursorScreenPos(); auto* draw = ImGui::GetWindowDrawList();
-            ImGui::TextDisabled("0  Timeline");
-            CompositionTimeline::DrawRuler(draw, {origin.x + labels, origin.y}, {origin.x + width, origin.y + rowHeight}, canvasMs, m_Zoom);
+            const auto drawLabel = [&](const ImVec2 min, const ImVec2 max, const ImU32 color, const char* text)
+            {
+                if (max.x <= min.x || max.y <= min.y) return;
+                draw->PushClipRect(min, max, true);
+                draw->AddText({min.x + 8.f, min.y + (max.y - min.y - ImGui::GetTextLineHeight()) * .5f}, color, text);
+                draw->PopClipRect();
+            };
+            drawLabel(origin, {origin.x + labels, origin.y + metrics.rulerHeight},
+                ImGui::GetColorU32(ImGuiCol_TextDisabled), "0  Timeline");
+            CompositionTimeline::DrawRuler(draw, {origin.x + labels, origin.y}, {origin.x + width, origin.y + metrics.rulerHeight}, canvasMs, m_Zoom);
             ImGui::SetCursorScreenPos({origin.x + labels, origin.y});
-            ImGui::InvisibleButton("Timeline cursor", {width - labels, rowHeight});
+            ImGui::InvisibleButton("Timeline cursor", {width - labels, metrics.rulerHeight});
             if (ImGui::IsItemActive())
             {
                 const auto ms = static_cast<std::uint32_t>((std::clamp)(
@@ -581,18 +596,15 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
                 if (!m_Active || ms != ClockMs()) Seek(ms);
                 m_Interaction = true;
             }
-            const char* regularNames[] = {"Animation", "Effect", "Collider", "Sound", "Camera", "Screen Post"};
-            const char* workbenchNames[] = {"Stages", "Animation", "Logic", "Summon", "World", "Scene Profile", "Effect", "Sound", "Camera", "Collider", "Light", "Subtitle", "Screen Post"};
             const ImU32 regularColors[] = {IM_COL32(68,125,177,230), IM_COL32(173,107,48,230), IM_COL32(65,171,165,230),
                 IM_COL32(130,176,83,230), IM_COL32(118,85,184,230), IM_COL32(190,90,144,230)};
             const ImU32 workbenchColors[] = {IM_COL32(108,108,126,230), IM_COL32(68,125,177,230), IM_COL32(196,118,64,230),
                 IM_COL32(103,165,140,230), IM_COL32(92,148,195,230), IM_COL32(153,150,183,230), IM_COL32(91,164,154,230),
                 IM_COL32(91,164,154,230), IM_COL32(91,164,154,230), IM_COL32(91,164,154,230), IM_COL32(91,164,154,230),
                 IM_COL32(91,164,154,230), IM_COL32(190,90,144,230)};
-            const auto* names = embedded ? workbenchNames : regularNames;
             const auto* colors = embedded ? workbenchColors : regularColors;
-            float y = origin.y + rowHeight;
-            for (std::size_t lane = 0; lane < (embedded ? lanes.size() : 6u); ++lane)
+            float y = origin.y + metrics.rulerHeight;
+            for (std::size_t lane = 0; lane < laneCount; ++lane)
             {
                 auto& boxes = lanes[lane];
                 CompositionTimeline::DISPLAY_LAYOUT layout;
@@ -610,26 +622,28 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
                 draw->AddRectFilled({origin.x, y}, {origin.x + width, y + height},
                     lane % 2 ? IM_COL32(31,34,41,255) : IM_COL32(38,41,49,255));
                 draw->AddLine({origin.x, y}, {origin.x + width, y}, IM_COL32(64,68,76,255));
-                draw->AddText({origin.x + 8.f, y + 6.f}, colors[lane], names[lane]);
-                if (boxes.empty() && !embedded) draw->AddText({origin.x + labels + 8.f, y + 6.f}, IM_COL32(115,118,127,255), integratedEffectWorkspace ? "Append from All Effects" : "Add from Composition Resources");
+                drawLabel({origin.x, y}, {origin.x + labels, y + rowHeight}, colors[lane], names[lane]);
+                if (boxes.empty() && !embedded) drawLabel({origin.x + labels, y}, {origin.x + width, y + rowHeight},
+                    IM_COL32(115,118,127,255), integratedEffectWorkspace ? "Append from All Effects" : "Add from Composition Resources");
                 for (std::size_t i = 0; i < boxes.size(); ++i)
                 {
                     const auto& box = boxes[i];
                     const bool dragging = m_DragRowId == box.id && m_DragTrack == box.kind;
                     const auto startMs = dragging ? m_DragPreviewStartMs : box.start;
                     const auto durationMs = dragging ? m_DragPreviewDurationMs : box.duration;
-                    const float top = y + layout.occurrenceRows.at(box.id) * rowHeight + 2.f;
+                    const float top = y + layout.occurrenceRows.at(box.id) * rowHeight + (rowHeight - metrics.boxHeight) * .5f;
                     const float left = origin.x + labels + startMs * m_Zoom * .001f;
                     const float right = (std::max)(left + CompositionTimeline::MinimumBoxWidth, left + durationMs * m_Zoom * .001f);
+                    const ImVec2 boxMin{left, top}, boxMax{right, top + metrics.boxHeight};
                     // Keep the active item alive while dragging beyond the viewport.
                     // The final Dummy below still owns the full scrollable layout.
-                    if (!dragging && !ImGui::IsRectVisible({left - 2.f, top - 2.f}, {right + 2.f, top + rowHeight - 3.f}))
+                    if (!dragging && !ImGui::IsRectVisible({boxMin.x - 2.f, boxMin.y - 2.f}, {boxMax.x + 2.f, boxMax.y + 2.f}))
                         continue;
-                    CompositionTimeline::DrawBox(draw, {left, top}, {right, top + rowHeight - 5.f},
+                    CompositionTimeline::DrawBox(draw, boxMin, boxMax,
                         box.muted ? IM_COL32(73,75,81,200) : colors[lane],
                         m_SelectedTrack == box.kind && m_SelectedRowId == box.id, box.label.c_str(), box.editable, box.editable);
-                    ImGui::SetCursorScreenPos({left, top}); ImGui::PushID(static_cast<int>(lane)); ImGui::PushID(box.id.c_str());
-                    ImGui::InvisibleButton("Occurrence", {right - left, rowHeight - 5.f});
+                    ImGui::SetCursorScreenPos(boxMin); ImGui::PushID(static_cast<int>(lane)); ImGui::PushID(box.id.c_str());
+                    ImGui::InvisibleButton("Occurrence", {boxMax.x - boxMin.x, boxMax.y - boxMin.y});
                     if (box.kind == TRACK_KIND::CAMERA && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                     {
                         const auto& cameras = m_Transient ? m_TransientCameraRows : m_CameraRows;
