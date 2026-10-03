@@ -2,9 +2,10 @@
 
 #include "imgui.h"
 #include <iterator>
+#include <string_view>
 
 // Shared read-only comparison with commercial rendering/profiling concepts.
-// Capability gaps are explicit; these entries never activate renderer features.
+// Workbench may consume explicit stable recipe requests; the Profiler stays read-only.
 namespace Client::RenderingReferenceGuide
 {
     enum class Support { Partial, Missing };
@@ -260,11 +261,22 @@ namespace Client::RenderingReferenceGuide
     inline const char* StatusLabel(Support value)
     { return value == Support::Partial ? "일부 관측 / 계약 차이 있음" : "현재 미구현"; }
 
-    inline void Render()
+    inline const char* RecipeFor(std::string_view id)
+    {
+        if (id == "light") return "pbr.directDiffuse";
+        if (id == "shadow") return "shadow.pass";
+        if (id == "gi") return "pbr.sourceIndirect";
+        if (id == "fog-transparency") return "fog.pass";
+        if (id == "post") return "display.sourcePostProcess";
+        return nullptr;
+    }
+
+    inline const char* Render(bool allowExperiments = false, bool experimentActive = false, bool capturing = false)
     {
         ImGui::PushID("CommercialRenderingReference");
-        if (!ImGui::CollapsingHeader("상용 도구와 비교 / 현재 관측·구조적 부족점")) { ImGui::PopID(); return; }
-        ImGui::TextWrapped("Epic의 공개 문서를 기능군별로 비교합니다. UE의 모든 cvar 목록이나 동일 성능 인증이 아닙니다. 실제 존재하는 계측과 필요한 기반을 구분하며, 이 표는 설정을 바꾸지 않습니다.");
+        if (!ImGui::CollapsingHeader("상용 도구와 비교 / 현재 관측·구조적 부족점")) { ImGui::PopID(); return nullptr; }
+        const char* requestedRecipe = nullptr;
+        ImGui::TextWrapped("Epic의 공개 문서를 기능군별로 비교합니다. UE의 모든 cvar 목록이나 동일 성능 인증이 아닙니다. 행 선택은 설정을 바꾸지 않으며 실제 구현된 실험만 명시적으로 준비할 수 있습니다.");
         static ImGuiTextFilter filter;
         filter.Draw("주제·부족점 검색");
         static int selected=0;
@@ -283,6 +295,18 @@ namespace Client::RenderingReferenceGuide
             ImGui::EndTable();
         }
         const auto& e=Entries[selected];ImGui::Text("%s / %s",e.Category,e.Name);
+        if (const char* recipe=RecipeFor(e.Id))
+        {
+            ImGui::Text("현재 엔진의 연결 실험: %s (상용 기법 전체 구현을 뜻하지 않음)",recipe);
+            if (allowExperiments)
+            {
+                ImGui::BeginDisabled(capturing);
+                if (ImGui::Button(experimentActive ? "연결된 실험으로 기존 B 대체" : "현재 A 보관 + 연결된 B 준비")) requestedRecipe=recipe;
+                ImGui::EndDisabled();
+                ImGui::TextWrapped("위 세션의 A 적용 / B 적용 / 실험 종료를 사용합니다. 저장 설정은 유지합니다.");
+            }
+            else ImGui::TextDisabled("실제 A/B 준비는 Rendering Workbench에서 실행하세요.");
+        }
         const auto field=[](const char* title,const char* value){ImGui::SeparatorText(title);ImGui::TextWrapped("%s",value);};
         field("상용 개념",e.Concept);field("현재 구현",e.Current);field("실제 부족점",e.Gap);
         field("구현에 필요한 입력",e.RequiredInputs);field("수치의 의미",e.MetricMeaning);
@@ -290,5 +314,6 @@ namespace Client::RenderingReferenceGuide
         field("지금 연결해서 볼 측정·실험",e.Experiment);field("공식 근거",e.Source);
         if(ImGui::Button("공식 문서 주소 복사"))ImGui::SetClipboardText(e.Source);
         ImGui::PopID();
+        return requestedRecipe;
     }
 }

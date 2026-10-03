@@ -626,6 +626,7 @@ namespace
         copy(F::SSR_THICKNESS,q.fSSRThickness,bq.fSSRThickness);
         copy(F::SSR_STEPS,q.iSSRStepCount,bq.iSSRStepCount);
         copy(F::LUT_ENABLED,q.SourcePostProcess.LutLayers,bq.SourcePostProcess.LutLayers);
+        copy(F::SOURCE_POST_PROCESS,q.SourcePostProcess.bEnabled,bq.SourcePostProcess.bEnabled);
         if (shadowNormalized) MergeExperimentShadowAux(bs,appliedShadow,shadow);
         copy(F::SHADOW_ENABLED,shadow.Settings.bEnabled,bs.Settings.bEnabled);
         copy(F::SHADOW_STRENGTH,shadow.Settings.fStrength,bs.Settings.fStrength);
@@ -668,7 +669,9 @@ CRenderingProfileService::Experiment_Fields()
         {"quality.ssgi.radius",.1,20,.05,false}, {"quality.ssgi.samples",4,16,4,false},
         {"quality.ssr.enabled",0,1,1,true}, {"quality.ssr.strength",0,2,.01,false},
         {"quality.ssr.distance",.1,100,.1,false}, {"quality.ssr.thickness",.01,2,.01,false},
-        {"quality.ssr.steps",16,64,16,false}
+        {"quality.ssr.steps",16,64,16,false},
+        {"environment.sourcePbrIndirect.enabled",0,1,1,true},
+        {"quality.sourcePostProcess.enabled",0,1,1,true}
     }};
     return fields;
 }
@@ -688,7 +691,8 @@ RENDERING_EXPERIMENT_VALUES CRenderingProfileService::Read_ExperimentValues()
         p.vContributionScale.x,p.vContributionScale.y,p.vContributionScale.z,p.vContributionScale.w,p.fCubeDiffuseScale,
         p.vSurfaceParameters.x,p.vSurfaceParameters.y,
         double(q.bSSGIEnabled),q.fSSGIStrength,q.fSSGIRadius,double(q.iSSGISampleCount),
-        double(q.bSSREnabled),q.fSSRStrength,q.fSSRMaxDistance,q.fSSRThickness,double(q.iSSRStepCount)}};
+        double(q.bSSREnabled),q.fSSRStrength,q.fSSRMaxDistance,q.fSSRThickness,double(q.iSSRStepCount),
+        double(game.Get_RenderEnvironment().bUseSourcePBRIndirect),double(q.SourcePostProcess.bEnabled)}};
     return result;
 }
 
@@ -730,13 +734,17 @@ bool_t CRenderingProfileService::Set_ExperimentPreview(const RENDERING_EXPERIMEN
     if (!Get_ActiveProfile() || !Is_EnvironmentSettled())
     { status = "Wait for an active scene and its region transition to settle."; return false; }
     const uint64_t pbrMask = ((uint64_t{1} << (static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::ROUGHNESS_OFFSET)+1u))-1u) & ~((uint64_t{1} << static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::PBR_DIFFUSE)) - 1u);
-    if ((fields & pbrMask) && !CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials)
-    { status = "PBR contribution comparison requires recovered source materials."; return false; }
+    if ((fields & (pbrMask | RenderingExperimentBit(RENDERING_EXPERIMENT_FIELD::SOURCE_PBR_INDIRECT))) &&
+        !CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials)
+    { status = "PBR contribution and source indirect comparison require recovered source materials."; return false; }
     if ((fields & RenderingExperimentBit(RENDERING_EXPERIMENT_FIELD::LUT_ENABLED)) &&
         values.values[static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::LUT_ENABLED)] != 0)
     {
         const auto& source=(m_bExperimentApplied?m_ExperimentBaseQuality:CGameInstance::Get().Get_RenderQualitySettings()).SourcePostProcess;
-        if (!source.bEnabled || source.LutLayers.empty())
+        const bool sourceEnabled = (fields & RenderingExperimentBit(RENDERING_EXPERIMENT_FIELD::SOURCE_POST_PROCESS))
+            ? values.values[static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::SOURCE_POST_PROCESS)] != 0
+            : source.bEnabled;
+        if (!sourceEnabled || source.LutLayers.empty())
         { status="LUT ON is unsupported: this scene has no enabled authored LUT input."; return false; }
     }
     if (!m_bExperimentActive)
@@ -771,6 +779,14 @@ bool_t CRenderingProfileService::Restore_ExperimentPreview(string& status)
         game.Apply_HeightFog(fog); game.Apply_MaterialRenderSettings(material);
         status = m_strExperimentStatus = "Experiment restore failed; current renderer state retained.";
         return false;
+    }
+    if (m_iExperimentAppliedFields & RenderingExperimentBit(RENDERING_EXPERIMENT_FIELD::SOURCE_PBR_INDIRECT))
+    {
+        // Restore only our selector; current cube resources, SH and scene tuning
+        // may have been updated by another owner since this frame began.
+        auto environment = game.Get_RenderEnvironment();
+        environment.bUseSourcePBRIndirect = m_bExperimentBaseSourcePBRIndirect;
+        game.Commit_RenderEnvironment(environment);
     }
     m_bExperimentApplied = false; m_iExperimentAppliedFields = 0;
     return true;
@@ -809,6 +825,8 @@ bool_t CRenderingProfileService::Apply_ExperimentPreview(string& status)
     m_ExperimentBaseFog = game.Get_HeightFogSettings(); m_ExperimentBaseMaterial = game.Get_MaterialRenderSettings();
     auto q = m_ExperimentBaseQuality; auto s = m_ExperimentBaseShadow;
     auto f = m_ExperimentBaseFog; auto material = m_ExperimentBaseMaterial;
+    auto environment = game.Get_RenderEnvironment();
+    m_bExperimentBaseSourcePBRIndirect = environment.bUseSourcePBRIndirect;
     using F = RENDERING_EXPERIMENT_FIELD;
     const auto apply = [&](F field, auto& target) {
         if (m_iExperimentFields & RenderingExperimentBit(field))
@@ -832,6 +850,8 @@ bool_t CRenderingProfileService::Apply_ExperimentPreview(string& status)
     apply(F::SSR_THICKNESS,q.fSSRThickness);
     apply(F::SSR_STEPS,q.iSSRStepCount);
     apply(F::FOG_ENABLED,f.bEnabled); apply(F::FOG_DENSITY,f.fDensity); apply(F::DESATURATION,q.fSceneDesaturation);
+    apply(F::SOURCE_POST_PROCESS,q.SourcePostProcess.bEnabled);
+    apply(F::SOURCE_PBR_INDIRECT,environment.bUseSourcePBRIndirect);
     if ((m_iExperimentFields & RenderingExperimentBit(F::LUT_ENABLED)) && !m_ExperimentValues.values[static_cast<size_t>(F::LUT_ENABLED)])
         q.SourcePostProcess.LutLayers.clear();
     const uint64_t pbrMask = ((uint64_t{1} << (static_cast<size_t>(F::ROUGHNESS_OFFSET)+1u)) - 1u) &
@@ -862,6 +882,10 @@ bool_t CRenderingProfileService::Apply_ExperimentPreview(string& status)
         status = m_strExperimentStatus = restored ? "Experiment rejected; previous scene restored." : restoreStatus;
         return false;
     }
+    // This existing commit cannot reject. Publish the selector only after all
+    // fallible renderer changes have succeeded, keeping rollback atomic.
+    if (m_iExperimentFields & RenderingExperimentBit(F::SOURCE_PBR_INDIRECT))
+        game.Commit_RenderEnvironment(environment);
     return true;
 }
 

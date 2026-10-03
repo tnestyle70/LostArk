@@ -446,6 +446,13 @@ UI가 저장 profile이나 Engine GPU resource를 직접 교체하지 않는다.
 현재 상태에 병합한다. scene/region/Video owner 변경은 실험을 해제하고 새 입력을 유지한다.
 실험은 authored Save/Publish와 별개이며 프로파일 JSON을 자동 편집하지 않는다.
 
+기법 사전의 지원 항목은 stable recipe ID로 같은 세션 실험에 진입한다. 현재 장면을 A로 보관하고
+B만 변경하며 기본 품질 초기화나 FXAA 강제 활성화를 A/B 시작 동작에 섞지 않는다.
+`environment.sourcePbrIndirect.enabled`는 원본 SH·cube·BRDF 선택만,
+`quality.sourcePostProcess.enabled`는 원본 tone·grading 묶음 선택만 소유한다. 후자는 순수 tone이나
+LUT 단독 스위치가 아니며 OFF는 기존 fallback 후처리를 사용한다. 종료 시 현재 환경의 cube·SH·색과
+source curve·LUT 입력을 보존하고 선택 bit만 복원한다. 측정 공통조건도 실험 대상 bit만 제외한다.
+
 `RENDER_QUALITY_SETTINGS::iSSAOSampleCount`는4/8/12만,
 `SHADOW_SETTINGS::iPCFFilterRadius`는0/1/2만 받는다. 기존12와1을 기본값으로 유지하고
 Renderer/Shadow의 실제 shader bind가 소비한다. 렌더 옵션 저장 schema로 승격하지 않는다.

@@ -15317,7 +15317,7 @@ void CMainApp::RenderRenderingWorkbench()
 	ImGui::SeparatorText("Selected Scene Quality");
 	ImGui::Text("Quality owner: %s", m_strRenderingQualityProfileId.c_str());
 	globalChanged |= ImGui::Checkbox(
-		"Enabled##SSAO", &m_RenderQualityDraft.bSSAOEnabled);
+		"SSAO enabled (crease shadows)##SSAO", &m_RenderQualityDraft.bSSAOEnabled);
 	ImGui::BeginDisabled(!m_RenderQualityDraft.bSSAOEnabled);
 	globalChanged |= ImGui::DragFloat(
 		"SSAO Radius (m)", &m_RenderQualityDraft.fSSAORadius,
@@ -15399,7 +15399,7 @@ void CMainApp::RenderRenderingWorkbench()
 		applyGlobal();
 	}
 
-	ImGui::SeparatorText("Selected Quality A/B Actions");
+	ImGui::SeparatorText("Selected Quality Actions");
 	if (ImGui::Button("Reset Selected Quality Defaults"))
 	{
 		m_RenderQualityDraft = {};
@@ -15407,17 +15407,8 @@ void CMainApp::RenderRenderingWorkbench()
 		applyGlobal();
 	}
 	ImGui::SameLine();
-	if (ImGui::Button("Selected Reference A/B Start"))
-	{
-		m_RenderQualityDraft = {};
-		m_RenderQualityDraft.fBloomThreshold = 1.4f;
-		m_RenderQualityDraft.fBloomSoftKnee = 0.45f;
-		m_RenderQualityDraft.fBloomIntensity = 0.2f;
-		m_RenderQualityDraft.fBloomScatter = 1.f;
-		m_RenderQualityDraft.fExposure = 1.2f;
-		m_RenderQualityDraft.bFXAAEnabled = true;
-		applyGlobal();
-	}
+	if (ImGui::Button("Start Session A/B from Current View") && m_pRenderingBenchmark)
+		m_pRenderingBenchmark->Start_SessionExperiment(m_RenderingProfiles);
 	ImGui::SameLine();
 	if (ImGui::Button("Reload Selected Draft"))
 	{
