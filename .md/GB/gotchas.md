@@ -5959,3 +5959,24 @@ Engine FxCompile 등록과 CSO 생성만으로 Client에서 로드할 수 있다
 독립 shader는 Client `DeployClientCompiledShaders`의 명시 목록과 BuildDomains product의
 필수 outputs·deploymentPairs까지 연결한다. 정상 Product 뒤 실제 EXE 옆 CSO와 Engine CSO의
 크기·hash를 확인한다. 추적하는 HLSL source 배포와 Git 제외 compiled CSO 배포를 구분한다.
+
+### Object 목록의 진입 전 실패와 창 열림 상태를 구분한다
+
+도구의 m_Open=true는 source load 성공이 아니다. Lobby/Loading에서 Arena가 없어 최초 로드를
+미뤘으면 실제 CurrentLevelID와 active instance를 함께 확인한 뒤 한 번 재시도한다. Arena 생성자에서
+설정한 포인터만으로 아직 구성 중인 validation target을 읽지 않는다. 파일/검증 실패의 frame별
+I/O 반복과 기존 dirty draft 자동 재로드는 금지한다. 통합 Object 목록에도 Reload를 노출하여
+도킹된 Action Workbench 탭이 숨겨져도 오류를 복구할 수 있게 한다.
+
+### 큰 Composition의 미리보기 탐색과 UI 행 배치를 분리한다
+
+시퀀서가 열린 상태의 긴 프레임을 ImGui draw 비용으로 바로 귀속하지 않는다. 현재 CPU scope의
+BundleSample/Sample과 Timeline Layout/Draw를 분리하고, frameInterval은 이전 프레임의 CPU와
+gap이라는 계약을 지킨다. scope cap에 도달한 프레임의 Self는 완전한 수치로 사용하지 않는다.
+
+presentation occurrence마다 logic occurrence와 전체 definition을 중첩 탐색하지 않는다.
+Sample 호출 안에서 현재 문서의 연결을 한 번 resolve하고, disabled/누락 정의·첫 definition·
+마지막 overlapping window의 의미를 보존한다. 다른 호출까지 임시 string_view를 보관하지 않는다.
+UI display row cache는 draft뿐 아니라 외부 World inventory, camera tail, 최소 box 시간의 변경을
+포함한다. 선택·drag·marquee hit test와 픽셀 위치는 계속 현재 프레임 값을 사용한다.
+함수 단독 benchmark의 개선량과 제품 Client의 실제 FPS를 구분한다.

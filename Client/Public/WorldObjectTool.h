@@ -188,6 +188,8 @@ private:
     bool m_CompositionSequenceWorkspace = false, m_CompositionPlacementDirty = false, m_CompositionExplicitPlacement = false;
     std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT> m_CompositionSavedPlacement, m_CompositionEditedPlacement;
     bool m_Ready = false;
+    // Retry only an initial load deferred until the arena is fully active.
+    bool m_SourceLoadDeferred = false;
     bool m_Dirty = false;
     bool m_PreviewActive = false;
     bool m_PreviewDirty = false;

@@ -57,8 +57,11 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
         for control in ("Physics / Motion / Emission", "Authored Emissions", "Revolution Offset (m)", "Render_KeyEditor(*sequence)"):
             self.assertIn(control, detail)
         timeline = code.split("void CWorldObjectTool::Render_GroupSequence", 1)[1].split("void CWorldObjectTool::Render_Sequence", 1)[0]
-        for component in ("resource.motionInstanceIds", "DrawRuler", "track.keys", "Select_State(id)", "Mark_Dirty()", "sequence->animationTracks", "sequence->effectTracks"):
+        for component in ("resource.motionInstanceIds", "DrawRuler", "Select_State(id)", "Render_TimelineRows(*sequence"):
             self.assertIn(component, timeline)
+        rows = code.split("float CWorldObjectTool::Render_TimelineRows", 1)[1].split("void CWorldObjectTool::Render_GroupSequence", 1)[0]
+        for component in ("track.keys", "Mark_Dirty()", "sequence.animationTracks", "sequence.effectTracks"):
+            self.assertIn(component, rows)
         self.assertNotIn("Orbit Radius", timeline)
 
     def setUp(self) -> None:

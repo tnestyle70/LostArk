@@ -1346,6 +1346,9 @@ Dance/Roulette의 `resetBossToSpawn`은 Server 패턴 시작 때 적용된다. W
 
 F1 Tools → World Object Tool에서 카드·조커카드·공·세토·칼날·갈고리·빙고폭탄·빙고와
 기존 커튼·룰렛을 편집한다. Object Resources는 왼쪽, Object Sequencer는 아래, Object Detail은 오른쪽의 독립 창이다.
+통합 Composition Actions의 Object를 아레나 입장 전에 열었으면 실제 Kouku Level 활성화 후
+최초 source load를 한 번 재시도한다. 미로드 목록의 `Reload Source`로도 다시 열 수 있다.
+파일 오류는 매 frame 재시도하지 않으며 이미 로드한 문서와 미저장 draft는 자동 재로드하지 않는다.
 Resources의 Map/Character/Boss 분류와 Create의 anchor는 resource.anchorKind(WORLD/PLAYER/BOSS)에 저장하고 상태 생성에 사용한다.
 Boss는 부모 Object의 `anchorBossArchetypeId`와 BODY `anchorBone`을 지정한다. 상태는 BOSS 앵커로
 같은 부모를 참조하며 매 샘플에 실제 보스 손의 위치·회전을 따라간다. 본을 비우면 보스 root다.

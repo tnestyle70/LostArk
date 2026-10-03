@@ -577,27 +577,91 @@ namespace
             ImGui::EndDisabled();
             Render_VisibilityControls();
             m_RowFilter.Draw("Filter rows", 220.f);
-            ImGui::SameLine(); ImGui::SetNextItemWidth(140.f);
-            ImGui::SliderFloat("Zoom", &m_PixelsPerSecond, 20.f, 200.f, "%.0f px/s");
+            ImGui::SameLine(); ImGui::SetNextItemWidth(155.f);
+            ImGui::BeginDisabled(m_Drag.has_value() || m_Scrubbing);
+            if (ImGui::SliderFloat("Zoom", &m_PixelsPerSecond, 1.f, 500.f, "%.1f px/s"))
+                m_TimelineFitRequested = false;
+            ImGui::SameLine();
+            if (ImGui::Button("Fit##MovieTimeline")) m_TimelineFitRequested = true;
+            ImGui::EndDisabled();
             ImGui::SameLine(); ImGui::Checkbox("Active at cursor", &m_ActiveOnly);
+            ImGui::TextDisabled("Ctrl + mouse wheel: zoom at cursor | Drag the ruler to seek on release");
             if (ImGui::BeginChild("MovieRows", ImVec2(0.f, 0.f), ImGuiChildFlags_Borders,
                 ImGuiWindowFlags_HorizontalScrollbar))
             {
                 using namespace Client::CompositionTimeline;
-                const float labelWidth = 230.f;
-                const float width = (std::max)(400.f, duration * .001f * m_PixelsPerSecond);
+                constexpr float labelWidth = LabelWidth;
                 auto* draw = ImGui::GetWindowDrawList();
                 const auto origin = ImGui::GetCursorScreenPos();
-                DrawRuler(draw, {origin.x + labelWidth, origin.y}, {origin.x + labelWidth + width, origin.y + LaneHeight},
+                const float availableWidth = (std::max)(40.f, ImGui::GetWindowSize().x -
+                    ImGui::GetStyle().WindowPadding.x * 2.f - ImGui::GetStyle().ScrollbarSize - labelWidth - 24.f);
+                if (m_TimelineFitRequested)
+                {
+                    m_PixelsPerSecond = FitPixelsPerSecond(availableWidth, duration);
+                    m_TimelineFitRequested = false;
+                    ImGui::SetScrollX(0.f);
+                }
+                const auto& io = ImGui::GetIO();
+                if (ImGui::IsWindowHovered() && io.KeyCtrl && io.MouseWheel != 0.f &&
+                    !io.WantTextInput && !ImGui::IsAnyItemActive() && !m_Drag && !m_Scrubbing)
+                {
+                    const float oldScale = m_PixelsPerSecond;
+                    m_PixelsPerSecond = std::clamp(m_PixelsPerSecond * std::pow(1.2f, io.MouseWheel), 1.f, 500.f);
+                    ImGui::SetScrollX((std::max)(0.f, ImGui::GetScrollX() +
+                        (io.MousePos.x - origin.x - labelWidth) * (m_PixelsPerSecond / oldScale - 1.f)));
+                }
+                // The canvas can fill the window without changing the authored time scale.
+                const float width = (std::max)(availableWidth, duration * .001f * m_PixelsPerSecond);
+                const float timeX = origin.x + labelWidth;
+                DrawRuler(draw, {timeX, origin.y}, {timeX + width, origin.y + LaneHeight},
                     static_cast<uint32_t>(duration), m_PixelsPerSecond);
-                ImGui::Dummy({labelWidth + width, LaneHeight});
+                ImGui::SetCursorScreenPos({timeX, origin.y});
+                const bool canRulerSeek = !m_RowDirty && !m_State.authoringPublishPending &&
+                    m_State.available && bool(m_Callbacks.seek) && !m_Drag;
+                ImGui::BeginDisabled(!canRulerSeek);
+                ImGui::InvisibleButton("MovieRulerSeek", {width, LaneHeight});
+                if (ImGui::IsItemActivated())
+                {
+                    m_Scrubbing = true; m_ScrubLoop = m_ViewLoop;
+                    m_RequestedPause = true; m_Pending = COMMAND::PAUSE;
+                }
+                if (ImGui::IsItemActive())
+                    m_EditMs = std::clamp((io.MousePos.x - timeX) * 1000.f / m_PixelsPerSecond, 0.f, (std::max)(0.f, duration));
+                if (ImGui::IsItemDeactivated())
+                {
+                    if (m_Scrubbing && canRulerSeek) Queue_Seek(m_ScrubLoop, m_EditMs);
+                    m_Scrubbing = false;
+                }
+                ImGui::EndDisabled();
+                float y = origin.y + LaneHeight;
+                const auto foldHeader = [&](const std::string& key, const std::string& label,
+                    const std::string& detail, const ImU32 color, const bool defaultOpen)
+                {
+                    auto [state, inserted] = m_TimelineFoldOpen.try_emplace(key, defaultOpen);
+                    ImGui::PushID(key.c_str());
+                    ImGui::SetCursorScreenPos({origin.x, y});
+                    if (ImGui::InvisibleButton("Fold", {labelWidth, LaneHeight})) state->second = !state->second;
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", detail.c_str());
+                    const float centre = y + LaneHeight * .5f;
+                    if (state->second)
+                        draw->AddTriangleFilled({origin.x + 4.f, centre - 3.f}, {origin.x + 12.f, centre - 3.f},
+                            {origin.x + 8.f, centre + 3.f}, color);
+                    else
+                        draw->AddTriangleFilled({origin.x + 5.f, centre - 4.f}, {origin.x + 11.f, centre},
+                            {origin.x + 5.f, centre + 4.f}, color);
+                    DrawTrackLabel(draw, {origin.x + 14.f, y}, labelWidth - 14.f, LaneHeight, label.c_str(), color);
+                    ImGui::PopID();
+                    return state->second;
+                };
+                const ImU32 labelColors[] = {WorldLabelColor, AnimationLabelColor, PresentationLabelColor,
+                    PresentationLabelColor, SceneProfileLabelColor, SceneProfileLabelColor, PresentationLabelColor, LogicLabelColor};
                 for (size_t family = 0; family < ROW_KINDS.size(); ++family)
                 {
                     const std::string kind = ROW_KINDS[family];
                     using REF = std::pair<const Client::CLASS_MOVIE_TIMELINE_ROW*, const Client::CLASS_MOVIE_TIMELINE_BOX*>;
                     std::map<std::string, std::vector<REF>> partitions;
                     size_t total = 0, active = 0;
-                    const double cursorMs = MatchesPlayback() ? m_State.clockMs : m_EditMs;
+                    const double cursorMs = m_Scrubbing ? m_EditMs : MatchesPlayback() ? m_State.clockMs : m_EditMs;
                     for (const auto& row : m_Timeline->rows) if (row.kind == kind)
                         for (const auto& box : row.boxes)
                         {
@@ -609,28 +673,27 @@ namespace
                             partitions[kind == "Animation" ? row.id : kind].push_back({&row, &box});
                         }
                     if (total == 0) continue;
-                    const std::string heading = kind + " (" + std::to_string(total) + " boxes, " + std::to_string(active) + " active)";
+                    const std::string heading = kind + " (" + std::to_string(total) + ")";
+                    const std::string detail = kind + " / " + std::to_string(total) + " boxes / " + std::to_string(active) + " active";
                     const bool compact = kind == "World Model" || kind == "Material" || kind == "Light";
-                    const bool expanded = ImGui::CollapsingHeader(heading.c_str(), compact ? ImGuiTreeNodeFlags_None : ImGuiTreeNodeFlags_DefaultOpen);
+                    const bool expanded = foldHeader("family|" + kind, heading, detail, labelColors[family], !compact);
                     if (!expanded)
-                    {
-                        const auto p = ImGui::GetCursorScreenPos();
-                        ImGui::Dummy({labelWidth + width, 8.f});
                         for (const auto& [partition, refs] : partitions) for (const auto& ref : refs)
                         {
                             const auto& box = *ref.second;
-                            draw->AddRectFilled({p.x + labelWidth + float(box.movieStartMs * .001 * m_PixelsPerSecond), p.y},
-                                {p.x + labelWidth + float(box.movieEndMs * .001 * m_PixelsPerSecond), p.y + 5.f}, IM_COL32(73,95,120,100));
+                            draw->AddRectFilled({timeX + float(box.movieStartMs * .001 * m_PixelsPerSecond), y + 9.f},
+                                {timeX + float(box.movieEndMs * .001 * m_PixelsPerSecond), y + 14.f}, IM_COL32(73,95,120,100));
                         }
-                        continue;
-                    }
+                    y += LaneHeight;
+                    if (!expanded) continue;
                     for (const auto& [partition, refs] : partitions)
                     {
                         if (kind == "Animation")
                         {
-                            ImGui::PushID(partition.c_str());
-                            const bool show = ImGui::TreeNodeEx("actor", ImGuiTreeNodeFlags_DefaultOpen, "%s", refs.front().first->label.c_str());
-                            ImGui::PopID();
+                            const auto& actor = refs.front().first->label;
+                            const bool show = foldHeader("actor|" + m_State.selectedClassId + "|" + partition,
+                                "Anim: " + actor, actor, AnimationLabelColor, true);
+                            y += LaneHeight;
                             if (!show) continue;
                         }
                         std::vector<DISPLAY_INTERVAL> intervals;
@@ -638,30 +701,32 @@ namespace
                             intervals.push_back({box->id, box->movieStartMs, box->movieEndMs - box->movieStartMs,
                                 (std::max)(0., box->movieHoldEndMs - box->movieEndMs), {}});
                         const auto layout = AllocateDisplayRows(std::move(intervals), MinimumBoxWidth * 1000. / m_PixelsPerSecond);
-                        for (size_t lane = 0; lane < layout.rowCount; ++lane)
+                        std::vector<std::vector<REF>> refsByLane(layout.rowCount);
+                        for (const auto& ref : refs) refsByLane[layout.occurrenceRows.at(ref.second->id)].push_back(ref);
+                        for (size_t lane = 0; lane < refsByLane.size(); ++lane)
                         {
-                            const auto p = ImGui::GetCursorScreenPos();
+                            const ImVec2 p{origin.x, y};
+                            const auto& laneRefs = refsByLane[lane];
                             ImGui::PushID(partition.c_str()); ImGui::PushID(static_cast<int>(lane));
+                            ImGui::SetCursorScreenPos(p);
                             ImGui::InvisibleButton("lane", {labelWidth + width, LaneHeight});
                             const bool hovered = ImGui::IsItemHovered();
-                            draw->AddRectFilled({p.x + labelWidth, p.y}, {p.x + labelWidth + width, p.y + LaneHeight}, IM_COL32(32,36,44,255));
+                            draw->AddRectFilled({timeX, y}, {timeX + width, y + LaneHeight}, IM_COL32(32,36,44,255));
                             std::string label = kind + " " + std::to_string(lane + 1u);
-                            if (kind == "World Model" || kind == "Material" || kind == "Light")
-                                for (const auto& [row, box] : refs) if (layout.occurrenceRows.at(box->id) == lane) { label = row->label; break; }
-                            draw->PushClipRect(p, {p.x + labelWidth - 5.f, p.y + LaneHeight}, true);
-                            draw->AddText({p.x + 3.f, p.y + 3.f}, IM_COL32(220,224,230,255), label.c_str()); draw->PopClipRect();
-                            for (const auto& [row, box] : refs) if (layout.occurrenceRows.at(box->id) == lane)
+                            if (compact && !laneRefs.empty()) label = laneRefs.front().first->label;
+                            DrawTrackLabel(draw, p, labelWidth, LaneHeight, label.c_str(), labelColors[family]);
+                            for (const auto& [row, box] : laneRefs)
                                 Render_TimelineBox(*row, *box, p, labelWidth, hovered, family);
-                            if (MatchesPlayback())
-                            {
-                                const float x = p.x + labelWidth + float(m_State.clockMs * .001 * m_PixelsPerSecond);
-                                draw->AddLine({x,p.y}, {x,p.y + LaneHeight}, IM_COL32(255,210,80,255), 2.f);
-                            }
                             ImGui::PopID(); ImGui::PopID();
+                            y += LaneHeight;
                         }
-                        if (kind == "Animation") ImGui::TreePop();
                     }
                 }
+                const double clockMs = m_Scrubbing ? m_EditMs : MatchesPlayback() ? m_State.clockMs : m_EditMs;
+                const float cursorX = timeX + float(clockMs * .001 * m_PixelsPerSecond);
+                draw->AddLine({cursorX, origin.y}, {cursorX, y}, IM_COL32(255,210,80,255), 2.f);
+                ImGui::SetCursorScreenPos(origin);
+                ImGui::Dummy({labelWidth + width + 24.f, y - origin.y});
             }
             ImGui::EndChild();
             const auto& io = ImGui::GetIO();
@@ -704,13 +769,13 @@ namespace
             { start = m_Drag->startMovie; end = m_Drag->endMovie; }
             const float x = p.x + labelWidth + float(start * .001 * m_PixelsPerSecond);
             const float endX = (std::max)(x + MinimumBoxWidth, p.x + labelWidth + float(end * .001 * m_PixelsPerSecond));
-            const ImVec2 min{x, p.y + 2.f}, max{endX, p.y + LaneHeight - 2.f};
+            const ImVec2 min{x, p.y}, max{endX, p.y + BoxHeight};
             const bool selected = (m_SelectedKind == row.kind && m_SelectedBox == box.id) ||
                 (row.kind == "World Model" && m_InspectedWorldId == box.id);
             const bool editable = row.kind == "Camera" || row.kind == "Effect" || row.kind == "Sound" ||
                 (row.kind == "Animation" && !box.loopAnimation && box.nativeDurationMs > 0.);
-            const ImU32 colors[] = {IM_COL32(62,94,130,255), IM_COL32(72,116,79,255), IM_COL32(105,77,154,255),
-                IM_COL32(143,89,46,255), IM_COL32(120,100,61,255), IM_COL32(135,121,45,255), IM_COL32(59,121,122,255), IM_COL32(131,72,101,255)};
+            const ImU32 colors[] = {WorldColor, AnimationColor, PresentationColor, PresentationColor,
+                SceneProfileColor, SceneProfileColor, PresentationColor, LogicColor};
             std::string label = box.label;
             ImU32 color = colors[family];
             if (row.kind == "World Model")
@@ -1014,6 +1079,8 @@ namespace
         double m_SeekMs = 0.;
         bool m_ViewLoop = false, m_FollowPlayback = true;
         float m_PixelsPerSecond = 45.f;
+        bool m_TimelineFitRequested = true;
+        std::map<std::string, bool> m_TimelineFoldOpen;
         int m_CameraKey = 0;
         bool m_LiveCamera = true;
         ImGuiTextFilter m_RowFilter;
