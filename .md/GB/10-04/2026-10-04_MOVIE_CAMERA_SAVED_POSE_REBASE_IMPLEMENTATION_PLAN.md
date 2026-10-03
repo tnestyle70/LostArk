@@ -67,3 +67,8 @@ Eye·LookAt·Up 564개 vector만 바꾼다. 다른 컷·창술사·FOV·시간·
 유지한다. 이전 증거 폴더를 덮지 않고 `out/MovieCam05Refine20261004`에서 후보·실제 sampler를
 검증하며 `out/MovieCam05Apply20261004`에서 대상 2행 guard·백업·원자 교체를 수행한다.
 카메라 데이터만 바뀌므로 제품 재빌드나 EXE 종료는 요구하지 않는다.
+
+같은 날 다시 저장한 `c3c483ff14eaded00ddd4ac17796966dd84d203622445a37a5e0e67af7ca268d`도
+cam05_a 첫 pose만 바뀌었다. 이 반복분은 main `f56c37122`와 직전 설치 `72a43675...`를
+기준으로 같은2행을 보정한다. 증거는 `out/MovieCam05RefineAgain20261004`와
+`out/MovieCam05ApplyAgain20261004`에 별도로 보존하고 이전 기준값을 다시 적용하지 않는다.

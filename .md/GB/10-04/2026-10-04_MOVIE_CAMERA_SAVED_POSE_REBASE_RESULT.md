@@ -119,3 +119,22 @@ candidate-validation 및 native-run/provenance다. 이전 증거는 덮어쓰지
 `installed-native.log`다. Git에는 이2컷과 사용자 기준 키만 포함하고 다른 사용자 저장분은
 작업 디스크에 보존한다. C++/shader 변경·추가 Product 빌드·publish·Client 종료·Reload는
 수행하지 않았다. 사용자는 `Reload saved movie → Play All`로 새 경로를 확인한다.
+
+## G06. cam05_a 재조정분 반영
+
+다시 저장한 Intro Camera2의 첫 구도를 직전 main `f56c37122`의 경로에 적용했다.
+새 Eye는 `(-2106.927490234375, 2.326296806335449, 2102.948486328125)`이며 첫 키 전체와
+FOV·시간·다른 컷·클래스를 유지했다. Intro/Loop2의 후속188키, pose564필드만 변경했다.
+첫24ms Eye 이동은3.43378686m에서0.000912546m로 줄었으며 경로 길이를 확대하지 않았다.
+
+실제 parser5scene과 두 컷12,600시점 검사에서 failures0이었다. 예상 변환 대비 최대
+Eye오차0.000516354m, 시선0.00397008도, Up0.000198986도다. 후보·설치본 모두 같은
+검사를 통과했다. 새 증거는 `out/MovieCam05RefineAgain20261004`에 별도로 보존했다.
+
+2026-10-04 04:45 KST에 대상2행과 최신 저장본을 다시 확인하고564필드만 원자 반영했다.
+실제 교체본을 백업했고 비대상 bytes를 유지했다. 저장본 SHA256은
+`c3c483ff14eaded00ddd4ac17796966dd84d203622445a37a5e0e67af7ca268d`, 설치 SHA256은
+`eb36a524cf593ed3accfd9b8177bfef3a6f711d1da24b9c838a851ffb7fe249e`다. 설치 증거는
+`out/MovieCam05ApplyAgain20261004/install-receipt-20261004T044502-1791056702397331900.json`과
+`installed-native.log`다. 제품 코드·EXE·다른 사용자 저장분은 변경하지 않았으며
+현재 실행 중인 도구의 반영은 사용자가 `Reload saved movie → Play All`로 확인한다.
