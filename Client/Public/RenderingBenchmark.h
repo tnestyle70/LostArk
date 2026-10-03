@@ -67,6 +67,9 @@ public:
 	[[nodiscard]] bool_t Is_Capturing() const noexcept { return m_bCapturing; }
     [[nodiscard]] bool_t Is_ExperimentActive() const noexcept { return m_bExperimentActive; }
     bool_t Start_SessionExperiment(CRenderingProfileService& profiles);
+    void Render_SessionBar(CRenderingProfileService& profiles);
+    void Render_PresentationSection(CRenderingProfileService& profiles);
+    void Render_QuickComparison(CRenderingProfileService& profiles);
 	bool_t Begin(
 		Engine::CProfiler* pProfiler,
 		const string& strLabel,
@@ -86,6 +89,9 @@ public:
 private:
     void Render_ExperimentSection(Engine::CProfiler* profiler, CRenderingProfileService& profiles);
     void Render_RecipeSection();
+    bool_t Apply_PresentationStage(int stage, CRenderingProfileService& profiles);
+    bool_t Prepare_QuickComparison(CRenderingProfileService& profiles);
+    bool_t Apply_PresentationCandidate(const RENDERING_EXPERIMENT_VALUES& candidate);
     bool_t Prepare_Recipe(bool_t replaceB);
     bool_t Prepare_RecipeById(const char* recipeId, CRenderingProfileService& profiles);
     bool_t Start_Experiment(CRenderingProfileService& profiles);
@@ -132,6 +138,7 @@ private:
     string m_strCaptureExperimentId, m_strFailureReason;
     std::map<string,string> m_CaptureCommonFields, m_CaptureActualFields, m_ChangedConditionFields;
     int m_iSelectedRecipe = 0, m_iPreparedRecipe = -1;
+    int m_iPresentationStage = -1, m_iQuickTechnique = 0;
     RENDERING_EXPERIMENT_VALUES m_ExperimentA, m_ExperimentB, m_ExperimentOriginal, m_CaptureValues;
     CRenderingProfileService* m_pExperimentProfiles = nullptr; // MainApp owns both services.
     Engine::CProfiler* m_pCaptureProfiler = nullptr;
@@ -153,7 +160,7 @@ private:
 	string m_strComparisonConditions;
 	bool_t m_bSourceMaterials = true;
 	bool_t m_bConditionsStable = true;
-	string m_strStatus = "Idle. Capture measures the current viewport with the current quality settings.";
+	string m_strStatus = "버튼을 누르면 현재 설정을 보관하고 임시 비교를 시작합니다.";
 	array<char_t, 64> m_LabelBuffer = { "baseline" };
 	int32_t m_iFrameInput = 300;
 	vector<RENDERING_BENCHMARK_RUN> m_Runs;

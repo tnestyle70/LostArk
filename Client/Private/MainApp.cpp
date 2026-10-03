@@ -15213,29 +15213,29 @@ void CMainApp::RenderRenderingWorkbench()
         const auto* pActiveProfile = m_RenderingProfiles.Get_ActiveProfile();
         if (!pActiveProfile || !m_RenderingProfiles.Find_Profile(m_strRenderingSelectedProfileId))
         { ImGui::TextWrapped("Selected rendering profile is unavailable."); ImGui::End(); return; }
-        ImGui::Text("Selected scene quality: %s", m_strRenderingQualityProfileId.c_str());
-	const float2_t viewportSize = CGameInstance::Get().Get_ViewportSize();
-	ImGui::Text("Pipeline: legacy_deferred_v1");
-	ImGui::Text("Scene profile: %s", m_strRenderingDraftProfileId.c_str());
-	ImGui::Text("Viewport: %.0f x %.0f", viewportSize.x, viewportSize.y);
-	ImGui::TextDisabled(
-		"FP16 Light -> SceneHDR -> Screen Post -> half-res Bloom -> Hable/FXAA -> UI");
-	ImGui::TextDisabled(
-		"Quality edits save to the owner shown below. Independent scenes such as Mario retain their own settings.");
-	if (nullptr != m_pRenderingBenchmark)
-	{
-		const auto& game = CGameInstance::Get();
-		const RENDER_QUALITY_SETTINGS Quality = game.Get_RenderQualitySettings();
-		const string strQualitySummary = "profile=" + m_RenderingProfiles.Get_ActiveProfileId() +
-			" ssao=" + (Quality.bSSAOEnabled ? "on" : "off") +
-			" bloom=" + (Quality.bBloomEnabled ? "on" : "off") +
-			" fxaa=" + (Quality.bFXAAEnabled ? "on" : "off") +
-			" shadow=" + (game.Get_ShadowLightDesc().Settings.bEnabled ? "on" : "off") +
-			" fog=" + (game.Get_HeightFogSettings().bEnabled ? "on" : "off") +
-			" exposure=" + std::to_string(Quality.fExposure);
-		m_pRenderingBenchmark->Render_Section(
-			CGameInstance::Get().Get_Profiler(), strQualitySummary, m_RenderingProfiles);
-	}
+        ImGui::Text("Scene: %s", m_RenderingProfiles.Get_ActiveProfileId().c_str());
+        if(m_pRenderingBenchmark) m_pRenderingBenchmark->Render_SessionBar(m_RenderingProfiles);
+        if(ImGui::BeginTabBar("RenderingWorkbenchTabs"))
+        {
+            if(ImGui::BeginTabItem("복원 시연"))
+            {
+                if(m_pRenderingBenchmark) m_pRenderingBenchmark->Render_PresentationSection(m_RenderingProfiles);
+                ImGui::EndTabItem();
+            }
+            if(ImGui::BeginTabItem("기법 A/B"))
+            {
+                if(m_pRenderingBenchmark) m_pRenderingBenchmark->Render_QuickComparison(m_RenderingProfiles);
+                ImGui::EndTabItem();
+            }
+            if(ImGui::BeginTabItem("측정 · 분석"))
+            {
+                if(m_pRenderingBenchmark) m_pRenderingBenchmark->Render_Section(
+                    CGameInstance::Get().Get_Profiler(), m_RenderingProfiles.Get_ActiveProfileId(), m_RenderingProfiles);
+                ImGui::EndTabItem();
+            }
+            if(ImGui::BeginTabItem("저장 설정"))
+            {
+        ImGui::TextWrapped("이 탭의 품질 수정은 선택한 장면의 저작 설정에 반영됩니다. 시연과 A/B는 앞쪽 탭을 사용하세요.");
 
     const bool experimentActive = m_pRenderingBenchmark && m_pRenderingBenchmark->Is_ExperimentActive();
     if (experimentActive) ImGui::TextWrapped("Session experiment active. End the experiment before editing or saving authored quality.");
@@ -15448,6 +15448,10 @@ void CMainApp::RenderRenderingWorkbench()
 	ImGui::TextDisabled(
 		"Save changes Authored only; Publish validates/promotes Runtime; Reload commits atomically.");
     ImGui::EndDisabled();
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
+        }
 	ImGui::End();
 	}
 }

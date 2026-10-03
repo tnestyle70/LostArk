@@ -466,6 +466,26 @@ def emit_function(document, family, number, stage):
         if stage != expected_stage or leading != [0, 1]:
             fail('Source FT06 hair primitive register evidence changed')
         lines += ['    // Original engine primitive environment/opacity identity.'] + assignments
+    # These two Movie hair permutations retain the same engine prefix as FT06.
+    # Program 700's first grouped function has no preserved shader-ID comment;
+    # pin its complete retained native instruction stream instead of guessing it.
+    if number in (700, 701):
+        expected = {
+            (700, 'base'): (None, '8286cf4f2f97129f2a7499ad9d4018fe128fe9ec469241533592d7cbe3cbc5de'),
+            (700, 'light'): (None, '1d7f9c0e5e8d32099b0422e5dda2f15fa6448af91055d5eea765243984dd3d6d'),
+            (701, 'base'): ('dea8fd54f818c441b66600ac13b9ee61', '4433cc804f8123f82c844225e090d3f4321efd2511ed2c5d9b039de3c41255b1'),
+            (701, 'light'): ('3b0966d408041a43b77c4810b621ee51', '3b7d740691ef1b0941892b8e1abd2ce549994273706ff315b0f859598c63d87c'),
+        }
+        shader, digest = expected[number, stage]
+        instructions = '\n'.join(program['disassembly']['instructions']).encode('utf8')
+        leading = program['bindings']['constantBufferClosure']['leadingUnownedConstantBuffer0Slots']
+        if (leading != [0, 1] or hashlib.sha256(instructions).hexdigest() != digest or
+                (shader is not None and program['shaderId'] != shader)):
+            fail('Source Movie hair primitive register evidence changed')
+        lines.append('    // Original engine primitive environment/opacity identity.')
+        if stage == 'base':
+            lines.append('    source[0].x = 1.f;')
+        lines.append('    source[1].w = 1.f;')
     # The transparent Movie actor's op parameter is row 3; row 0 is the
     # external primitive opacity, independent of authored zero/animated op.
     if number == 702:

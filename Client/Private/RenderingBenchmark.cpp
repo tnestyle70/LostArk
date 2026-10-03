@@ -105,7 +105,9 @@ namespace
         {"display.sourcePostProcess","Source tone + grading 묶음 ON/OFF",ExperimentField::SOURCE_POST_PROCESS,NoGate,false,RecipeKind::Display,0,1,2,
          "원본 tone curve와 grading 묶음이 밝기·색에 미치는 영향을 분리합니다.","Render.Final GPU, source grading cache 준비 CPU, 같은 HDR 입력의 화면", "SourcePostProcess.enabled 하나를 비교합니다. OFF는 기본 Hable 표시 경로이며 순수 tone-only 또는 LUT-only 실험이 아닙니다. 저장된 curve·색·LUT 입력은 보존합니다."},
         {"display.lut","Source LUT grading ON/OFF",ExperimentField::LUT_ENABLED,ExperimentField::SOURCE_POST_PROCESS,false,RecipeKind::Display,0,1,2,
-         "Source tone + grading 묶음을 켠 상태에서 저작 LUT의 색 기여만 비교합니다.","Render.Final GPU, 같은 노출·tone·색 입력의 화면", "저작 LUT 입력이 있어야 ON을 적용할 수 있습니다. LUT OFF는 source tone curve OFF가 아닙니다."}
+         "Source tone + grading 묶음을 켠 상태에서 저작 LUT의 색 기여만 비교합니다.","Render.Final GPU, 같은 노출·tone·색 입력의 화면", "저작 LUT 입력이 있어야 ON을 적용할 수 있습니다. LUT OFF는 source tone curve OFF가 아닙니다."},
+        {"material.source", "기본 / 원본 재질", ExperimentField::SOURCE_MATERIALS, NoGate, false, RecipeKind::Contribution, 0, 1, 2,
+         "지원 표면의 기본 textured shader와 복원 재질 연산을 비교합니다.", "동일 카메라의 재질·음영과 GPU frame", "현재 WModel·텍스처를 사용합니다. 미지원 native/forward 재질은 유지하며 최초 EXE의 재현은 아닙니다."}
     };
 
     bool BuildRecipeCandidate(const FExperimentRecipe& recipe, const Client::RENDERING_EXPERIMENT_VALUES& base,
@@ -133,6 +135,49 @@ namespace
         if(!Client::CRenderingProfileService::Validate_ExperimentValues(endpoint,status))return false;
         candidate=staged;return true;
     }
+
+    struct FPresentationStage { const char* Name; const char* Description; };
+    constexpr FPresentationStage PresentationStages[] = {
+        {"1  기본 재질 (근사)", "지원 표면의 기본 재질과 현재 형상·텍스처를 봅니다. 노출·감마·직접광은 유지합니다."},
+        {"2  원본 재질", "지원 표면의 복원 재질 연산을 현재 설정으로 되돌립니다."},
+        {"3  환경광 · baked 조명", "저장된 RNM·SH·환경 반사 입력과 지원 PBR 간접광 경로를 복원합니다."},
+        {"4  그림자 · 공간 효과", "현재 설정의 그림자·SSAO·안개를 복원합니다. SSGI/SSR도 원래 켜져 있던 경우만 돌아옵니다."},
+        {"5  Tone · LUT 색보정", "현재 source tone·grading·LUT·탈색 설정을 복원합니다."},
+        {"6  현재 완성 설정", "Bloom·FXAA를 포함해 시연 시작 때 보관한 설정 전체로 돌아옵니다."}
+    };
+
+    Client::RENDERING_EXPERIMENT_VALUES BuildPresentationStage(
+        const Client::RENDERING_EXPERIMENT_VALUES& original, int stage)
+    {
+        auto candidate=original;
+        const auto off=[&](ExperimentField field) { candidate.values[static_cast<size_t>(field)]=0; };
+        if(stage<1) off(ExperimentField::SOURCE_MATERIALS);
+        if(stage<2 && original.values[static_cast<size_t>(ExperimentField::SOURCE_MATERIALS)]!=0) for(auto field:{ExperimentField::SOURCE_PBR_INDIRECT,ExperimentField::PBR_BAKED,
+            ExperimentField::PBR_ENVIRONMENT,ExperimentField::PBR_CUBE}) off(field);
+        if(stage<3) for(auto field:{ExperimentField::SHADOW_ENABLED,ExperimentField::SSAO_ENABLED,
+            ExperimentField::FOG_ENABLED,ExperimentField::SSGI_ENABLED,ExperimentField::SSR_ENABLED}) off(field);
+        if(stage<4) for(auto field:{ExperimentField::SOURCE_POST_PROCESS,ExperimentField::LUT_ENABLED,
+            ExperimentField::DESATURATION}) off(field);
+        if(stage<5) for(auto field:{ExperimentField::BLOOM_ENABLED,ExperimentField::FXAA_ENABLED}) off(field);
+        return candidate;
+    }
+
+    struct FQuickTechnique { const char* Name; const char* Recipe; };
+    constexpr FQuickTechnique QuickTechniques[] = {
+        {"기본 / 원본 재질", "material.source"},
+        {"SSAO · 굴곡 음영", "ssao.pass"},
+        {"방향광 그림자", "shadow.pass"},
+        {"원본 PBR 간접광", "pbr.sourceIndirect"},
+        {"RNM · baked 조명", "pbr.baked"},
+        {"IBL · 환경 반사", "pbr.environment"},
+        {"PBR · 직접 반사", "pbr.directSpecular"},
+        {"Tone + grading", "display.sourcePostProcess"},
+        {"LUT · 색보정", "display.lut"},
+        {"Bloom · 빛 번짐", "bloom.pass"},
+        {"FXAA · 가장자리", "fxaa.pass"},
+        {"SSGI · 화면 공간 간접광 (실험)", "ssgi.pass"},
+        {"SSR · 화면 공간 반사 (실험)", "ssr.pass"}
+    };
 
     string RecipeConfidence(RecipeKind kind)
     {
@@ -400,7 +445,8 @@ string Client::CRenderingBenchmark::Current_Conditions(uint64_t excludedFields, 
     }
     if (m_bCaptureExperiment || m_bExperimentActive)
     {
-        const bool source=Engine::CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials;
+        const bool source=(excludedFields & RenderingExperimentBit(RENDERING_EXPERIMENT_FIELD::SOURCE_MATERIALS))==0 &&
+            Engine::CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials;
         result += source ? " source=1" : " source=0";
         if(named)(*named)["material.sourceEnabled"]=source?"1":"0";
         if (m_pExperimentProfiles)
@@ -1172,7 +1218,7 @@ bool_t Client::CRenderingBenchmark::Render_PixelInputs()
                 number("Emission flicker speed", s.emissiveFlickerSpeed, emissive); number("Emission phase", s.emissivePhaseOffset, emissive);
                 number("Emission sRGB decode", s.emissiveSRGB, emissive);
                 ImGui::EndTable();
-                ImGui::TextWrapped("SH/hemisphere owner constants are unresolved. The BRDF lookup is a project numerical approximation, not recovered native LUT bytes. Bound inputs are not GPU pixel readbacks.");
+                ImGui::TextWrapped("Native source PBR uses restored SH/hemisphere and native 128x32 BRDF inputs where bound; the legacy path retains project approximations. Bound inputs are not GPU pixel readbacks.");
             }
         }
     }
@@ -1203,7 +1249,7 @@ bool_t Client::CRenderingBenchmark::Adopt_BaselineFromB()
     for(size_t i=0;i<RENDERING_EXPERIMENT_FIELD_COUNT;++i)
         if(m_ExperimentB.values[i]!=m_ExperimentOriginal.values[i])ownership|=uint64_t{1}<<i;
     if(!m_pExperimentProfiles->Set_ExperimentPreview(m_ExperimentB,ownership,m_strStatus))return false;
-    m_ExperimentA=m_ExperimentB;m_bVariantB=false;m_iPreparedRecipe=-1;
+    m_ExperimentA=m_ExperimentB;m_bVariantB=false;m_iPreparedRecipe=-1;m_iPresentationStage=-1;
     static uint64_t revision=0;
     m_strExperimentId="experiment.rebase."+std::to_string(GetCurrentProcessId())+"."+
         std::to_string(GetTickCount64())+"."+std::to_string(++revision);
@@ -1219,6 +1265,8 @@ bool_t Client::CRenderingBenchmark::Start_SessionExperiment(CRenderingProfileSer
     if (m_bExperimentActive) return true;
     if (!m_strRestorationLastProfileId.empty())
     { m_strStatus="Rendering restoration에서 Return to entry를 누른 뒤 시작하세요. 현재 비교 profile은 유지합니다."; return false; }
+    if (m_bPixelDiagnosticsActive)
+    { m_strStatus="픽셀 진단을 원래 화면으로 복귀한 뒤 비교를 시작하세요."; return false; }
     if (profiles.Get_ComparisonOptions().bActive || profiles.Has_ExperimentPreview())
     { m_strStatus="기존 Live rendering comparison을 Reset한 뒤 시작하세요. 다른 비교의 설정을 자동 해제하지 않습니다."; return false; }
     return Start_Experiment(profiles);
@@ -1298,7 +1346,7 @@ void Client::CRenderingBenchmark::End_Experiment()
 {
     Cancel_Capture("Session experiment ended. Completed runs remain available.");
     if (m_pExperimentProfiles && !m_pExperimentProfiles->Clear_ExperimentPreview(m_strStatus)) return;
-    m_bExperimentActive=false; m_pExperimentProfiles=nullptr;
+    m_bExperimentActive=false; m_pExperimentProfiles=nullptr; m_iPresentationStage=-1;
 }
 
 bool_t Client::CRenderingBenchmark::Prepare_RecipeById(const char* recipeId, CRenderingProfileService& profiles)
@@ -1329,7 +1377,7 @@ bool_t Client::CRenderingBenchmark::Prepare_Recipe(bool_t replaceB)
     {m_strStatus="먼저 현재 품질을 A로 보관하고 세션 실험을 시작하세요.";return false;}
     const auto& recipe=ExperimentRecipes[m_iSelectedRecipe];
     RENDERING_EXPERIMENT_VALUES candidate;float low=0,high=0;
-    if(!BuildRecipeCandidate(recipe,m_ExperimentA,Engine::CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials,
+    if(!BuildRecipeCandidate(recipe,m_ExperimentA,m_ExperimentA.values[static_cast<size_t>(ExperimentField::SOURCE_MATERIALS)]!=0,
         candidate,low,high,m_strStatus))return false;
     if(replaceB)
     {
@@ -1338,6 +1386,7 @@ bool_t Client::CRenderingBenchmark::Prepare_Recipe(bool_t replaceB)
         if(!m_pExperimentProfiles->Set_ExperimentPreview(candidate,RenderingExperimentBit(recipe.Field)|Experiment_BaselineMask(),m_strStatus))return false;
         m_ExperimentB=candidate;m_bVariantB=true;
     }
+    m_iPresentationStage=-1;
     m_iPreparedRecipe=m_iSelectedRecipe;m_iSweepField=static_cast<int>(recipe.Field);
     m_fSweepMinimum=low;m_fSweepMaximum=high;m_iSweepSteps=recipe.Steps;
     std::snprintf(m_LabelBuffer.data(),m_LabelBuffer.size(),"%s",recipe.Id);
@@ -1346,9 +1395,156 @@ bool_t Client::CRenderingBenchmark::Prepare_Recipe(bool_t replaceB)
     return true;
 }
 
+bool_t Client::CRenderingBenchmark::Apply_PresentationCandidate(const RENDERING_EXPERIMENT_VALUES& candidate)
+{
+    if(!m_bExperimentActive || !m_pExperimentProfiles || m_bCapturing) return false;
+    uint64_t mask=0;
+    for(size_t i=0;i<RENDERING_EXPERIMENT_FIELD_COUNT;++i)
+        if(candidate.values[i]!=m_ExperimentOriginal.values[i]) mask|=uint64_t{1}<<i;
+    // The service restores fields released by the previous stage. Commit UI only
+    // after admission succeeds; application uses the next complete frame transaction.
+    if(!m_pExperimentProfiles->Set_ExperimentPreview(candidate,mask,m_strStatus)) return false;
+    if(m_ExperimentA.values!=m_ExperimentOriginal.values)
+    {
+        static uint64_t revision=0;
+        m_strExperimentId="experiment.presentation."+std::to_string(GetCurrentProcessId())+"."+
+            std::to_string(GetTickCount64())+"."+std::to_string(++revision);
+    }
+    m_ExperimentA=m_ExperimentOriginal; m_ExperimentB=candidate; m_bVariantB=true;
+    m_iPreparedRecipe=-1;
+    return true;
+}
+
+bool_t Client::CRenderingBenchmark::Apply_PresentationStage(int stage, CRenderingProfileService& profiles)
+{
+    if(stage<0 || stage>=static_cast<int>(std::size(PresentationStages))) return false;
+    const bool wasActive=m_bExperimentActive;
+    if(!Start_SessionExperiment(profiles)) return false;
+    if(!Apply_PresentationCandidate(BuildPresentationStage(m_ExperimentOriginal,stage)))
+    {
+        if(!wasActive) { const string reason=m_strStatus; End_Experiment(); m_strStatus=reason; }
+        return false;
+    }
+    m_iPresentationStage=stage;
+    std::snprintf(m_LabelBuffer.data(),m_LabelBuffer.size(),"restoration.stage.%d",stage+1);
+    m_strStatus=PresentationStages[stage].Description;
+    return true;
+}
+
+bool_t Client::CRenderingBenchmark::Prepare_QuickComparison(CRenderingProfileService& profiles)
+{
+    const bool wasActive=m_bExperimentActive;
+    if(!Start_SessionExperiment(profiles)) return false;
+    const auto& selected=QuickTechniques[m_iQuickTechnique];
+    const auto found=std::find_if(std::begin(ExperimentRecipes),std::end(ExperimentRecipes),
+        [&](const auto& recipe){return std::string_view(recipe.Id)==selected.Recipe;});
+    RENDERING_EXPERIMENT_VALUES candidate; float low=0,high=0;
+    const bool ready=found!=std::end(ExperimentRecipes) && BuildRecipeCandidate(*found,m_ExperimentOriginal,
+        m_ExperimentOriginal.values[static_cast<size_t>(ExperimentField::SOURCE_MATERIALS)]!=0,
+        candidate,low,high,m_strStatus);
+    if(!ready || !Apply_PresentationCandidate(candidate))
+    {
+        if(!wasActive) { const string reason=m_strStatus; End_Experiment(); m_strStatus=reason; }
+        return false;
+    }
+    m_iPresentationStage=-1;
+    m_iSelectedRecipe=m_iPreparedRecipe=static_cast<int>(found-std::begin(ExperimentRecipes));
+    m_iSweepField=static_cast<int>(found->Field); m_fSweepMinimum=low; m_fSweepMaximum=high; m_iSweepSteps=found->Steps;
+    std::snprintf(m_LabelBuffer.data(),m_LabelBuffer.size(),"%s",found->Id);
+    m_strStatus="A는 시연 시작 때의 설정, B는 선택한 한 기법만 바꾼 비교입니다.";
+    return true;
+}
+
+void Client::CRenderingBenchmark::Render_SessionBar(CRenderingProfileService& profiles)
+{
+    const bool active=m_bExperimentActive || m_bPixelDiagnosticsActive ||
+        !m_strRestorationLastProfileId.empty() || profiles.Get_ComparisonOptions().bActive;
+    ImGui::TextUnformatted(active?"임시 비교 중 · 저장 설정 보존":"현재 장면 · 버튼을 눌러 비교 시작");
+    if(active)
+    {
+        if(ImGui::Button("원래 화면으로 복귀"))
+        {
+            if(m_bExperimentActive) End_Experiment();
+            else
+            {
+                Cancel_Capture("Preview ended; completed measurements retained.");
+                profiles.Clear_ComparisonOptions();
+                if(!m_strRestorationLastProfileId.empty()) Return_ToEntryProfile(profiles);
+                if(m_bPixelDiagnosticsActive && SUCCEEDED(Engine::CGameInstance::Get().Apply_MaterialRenderSettings(m_PixelEntrySettings)))
+                { m_bPixelDiagnosticsActive=false; m_strPixelMaterialKey.clear(); }
+                if(auto* arena=CLevel_KakulSaydonArena::Get_Active()) arena->Reset_MapLightComparison();
+            }
+        }
+    }
+    ImGui::Separator();
+}
+
+void Client::CRenderingBenchmark::Render_PresentationSection(CRenderingProfileService& profiles)
+{
+    ImGui::TextWrapped("단계를 눌러 현재 장면의 복원 과정을 보여줍니다. 원래 꺼 둔 기능은 켜지지 않습니다.");
+    ImGui::BeginDisabled(m_bCapturing);
+    for(int i=0;i<static_cast<int>(std::size(PresentationStages));++i)
+    {
+        const bool active=m_bExperimentActive && m_bVariantB && m_iPresentationStage==i;
+        if(ImGui::Selectable(PresentationStages[i].Name,active,0,ImVec2(0,ImGui::GetFrameHeight())))
+            Apply_PresentationStage(i,profiles);
+        if(ImGui::IsItemHovered()) ImGui::SetTooltip("%s",PresentationStages[i].Description);
+    }
+    const int stage=m_bExperimentActive?m_iPresentationStage:-1;
+    ImGui::BeginDisabled(stage<=0);
+    if(ImGui::Button("이전 단계")) Apply_PresentationStage(stage-1,profiles);
+    ImGui::EndDisabled(); ImGui::SameLine();
+    ImGui::BeginDisabled(stage>=static_cast<int>(std::size(PresentationStages))-1);
+    if(ImGui::Button(stage<0?"처음부터 시작":"다음 단계")) Apply_PresentationStage(stage+1,profiles);
+    ImGui::EndDisabled();
+    ImGui::EndDisabled();
+    ImGui::TextWrapped("%s",m_strStatus.c_str());
+    if(ImGui::CollapsingHeader("시연 범위와 원본 근거"))
+    {
+        ImGui::TextWrapped("기본 단계는 현재 WModel의 기본 재질 근사입니다. 복원된 형상·텍스처는 유지하므로 최초 임포트 EXE와 동일한 화면은 아닙니다. 미지원 native/forward 재질과 이펙트는 그대로입니다.");
+        ImGui::TextWrapped("PBR 기여 조절은 지원 map 표면에 적용됩니다. 간접광 OFF는 이전 환경 경로이며 모든 GI 제거가 아닙니다. Tone OFF는 Hable 표시 경로입니다. BRDF는 양방향 반사 분포 함수이며 재질 연산의 일부입니다.");
+        ImGui::TextWrapped("원본 연산·SH/cube·LUT와 프로젝트 근사를 구분합니다. 지원 native PBR은 복원한 128x32 BRDF 입력을 사용하며 이전 경로의 근사와 구분합니다. SSGI/SSR은 프로젝트의 화면 공간 실험입니다. 단계별 비용 비교는 다변수이므로 기법별 비용은 A/B와 측정 탭에서 확인하세요.");
+    }
+}
+
+void Client::CRenderingBenchmark::Render_QuickComparison(CRenderingProfileService& profiles)
+{
+    ImGui::TextWrapped("기법을 고르고 비교 준비를 누른 뒤 A/B를 전환하세요.");
+    ImGui::BeginDisabled(m_bCapturing);
+    if(ImGui::BeginCombo("기법",QuickTechniques[m_iQuickTechnique].Name))
+    {
+        for(int i=0;i<static_cast<int>(std::size(QuickTechniques));++i)
+            if(ImGui::Selectable(QuickTechniques[i].Name,m_iQuickTechnique==i)) m_iQuickTechnique=i;
+        ImGui::EndCombo();
+    }
+    if(ImGui::Button("비교 준비")) Prepare_QuickComparison(profiles);
+    if(m_bExperimentActive)
+    {
+        if(ImGui::BeginTable("QuickVariants",2))
+        {
+            ImGui::TableNextColumn();
+            if(ImGui::Button("A · 보관한 설정",ImVec2(-FLT_MIN,0))) Apply_ExperimentVariant(false);
+            ImGui::TableNextColumn();
+            if(ImGui::Button("B · 비교 설정",ImVec2(-FLT_MIN,0))) Apply_ExperimentVariant(true);
+            ImGui::EndTable();
+        }
+        ImGui::Text("현재 적용: %s",m_bVariantB?"B":"A");
+        if(m_iPreparedRecipe>=0)
+        {
+            const auto& recipe=ExperimentRecipes[m_iPreparedRecipe];
+            const size_t field=static_cast<size_t>(recipe.Field);
+            ImGui::TextWrapped("%s | A %.4g / B %.4g",recipe.Name,m_ExperimentA.values[field],m_ExperimentB.values[field]);
+            ImGui::TextWrapped("%s",recipe.Boundary);
+        }
+        else ImGui::TextDisabled("현재 B는 복원 단계 또는 수동 후보입니다. 기법 비교를 준비하세요.");
+    }
+    ImGui::EndDisabled();
+    ImGui::TextWrapped("%s",m_strStatus.c_str());
+}
+
 void Client::CRenderingBenchmark::Render_RecipeSection()
 {
-    if(!ImGui::CollapsingHeader("원인별 실험 recipe / 한 변수로 시작",ImGuiTreeNodeFlags_DefaultOpen))return;
+    if(!ImGui::CollapsingHeader("원인별 실험 recipe / 한 변수로 시작"))return;
     ImGui::TextWrapped("recipe 선택만으로 설정을 바꾸지 않습니다. B 대체 버튼은 기존 B 조정을 A 기준의 한 변수로 명시적으로 교체합니다. sweep 준비는 범위만 설정합니다. 숫자는 비교 후보이며 측정 결과·추천 최적값이 아닙니다.");
     if(ImGui::BeginCombo("실험 목표",ExperimentRecipes[m_iSelectedRecipe].Name))
     {
@@ -1362,7 +1558,7 @@ void Client::CRenderingBenchmark::Render_RecipeSection()
     ImGui::TextWrapped("볼 수치: %s",recipe.Metrics);ImGui::TextWrapped("판정 범위: %s",recipe.Boundary);
     const auto confidence=RecipeConfidence(recipe.Kind);ImGui::TextWrapped("신뢰도 해석: %s",confidence.c_str());
     RENDERING_EXPERIMENT_VALUES candidate;float low=0,high=0;string reason;
-    const bool ready=BuildRecipeCandidate(recipe,m_ExperimentA,Engine::CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials,
+    const bool ready=BuildRecipeCandidate(recipe,m_ExperimentA,m_ExperimentA.values[static_cast<size_t>(ExperimentField::SOURCE_MATERIALS)]!=0,
         candidate,low,high,reason);
     if(ready)ImGui::Text("A %.6g → B 후보 %.6g | sweep %.6g..%.6g (%d단계 / discrete는 허용값만)",
         m_ExperimentA.values[static_cast<size_t>(recipe.Field)],candidate.values[static_cast<size_t>(recipe.Field)],low,high,recipe.Steps);
@@ -1393,12 +1589,12 @@ void Client::CRenderingBenchmark::Render_ExperimentSection(Engine::CProfiler* pr
         ImGui::BeginDisabled(m_bCapturing);
         if (ImGui::Button("A 적용")) Apply_ExperimentVariant(false);
         ImGui::SameLine(); if (ImGui::Button("B 적용")) Apply_ExperimentVariant(true);
-        ImGui::SameLine(); if (ImGui::Button("B를 A에서 다시 복사")) { m_ExperimentB=m_ExperimentA; Apply_ExperimentVariant(true); }
+        ImGui::SameLine(); if (ImGui::Button("B를 A에서 다시 복사")) { m_ExperimentB=m_ExperimentA; m_iPresentationStage=-1; Apply_ExperimentVariant(true); }
         if (ImGui::Button("현재 B를 새 A 기준으로 채택 (이전 비교와 분리)")) Adopt_BaselineFromB();
         ImGui::TextWrapped("기본 OFF 패스의 품질 수치를 비교하려면 B에서 패스를 ON → 새 A로 채택 → samples/radius recipe 순서입니다. 두 variant의 공통 기준 변경은 실험 변수에 포함하지 않으며 종료하면 원래 장면으로 복원합니다.");
         if (ImGui::Button("B: 본질 기준 (다변수 진단)"))
         {
-            m_ExperimentB=m_ExperimentA;
+            m_ExperimentB=m_ExperimentA; m_iPresentationStage=-1;
             for (const auto field : {RENDERING_EXPERIMENT_FIELD::SSAO_ENABLED,RENDERING_EXPERIMENT_FIELD::BLOOM_ENABLED,
                 RENDERING_EXPERIMENT_FIELD::FXAA_ENABLED,RENDERING_EXPERIMENT_FIELD::FOG_ENABLED,
                 RENDERING_EXPERIMENT_FIELD::LUT_ENABLED,RENDERING_EXPERIMENT_FIELD::DESATURATION,
@@ -1414,13 +1610,13 @@ void Client::CRenderingBenchmark::Render_ExperimentSection(Engine::CProfiler* pr
             "PBR 환경 specular","PBR cube diffuse","PBR normal 강도","PBR roughness offset",
             "실험 SSGI 켜기","SSGI 기여 강도","SSGI 반경 (m)","SSGI 샘플 수 (4/8/16)",
             "실험 SSR 켜기","SSR 기여 강도","SSR 최대 거리 (m)","SSR hit 두께 (m)","SSR step 수 (16/32/64)",
-            "원본 PBR 간접광 경로","Source tone + grading 묶음"};
+            "원본 PBR 간접광 경로","Source tone + grading 묶음","기본 / 원본 재질"};
         static_assert(std::size(labels)==RENDERING_EXPERIMENT_FIELD_COUNT);
         size_t changedCount=0; const uint64_t mask=Experiment_FieldMask();
         for (size_t i=0;i<RENDERING_EXPERIMENT_FIELD_COUNT;++i) if (mask&(uint64_t{1}<<i)) ++changedCount;
         ImGui::Text("변경 필드 %zu개: %s",changedCount,changedCount==1?"단일 변수 비교":(changedCount?"다변수 진단 (개별 원인 비용 아님)":"동일 기준"));
         Render_RecipeSection();
-        if (ImGui::CollapsingHeader("B 수치 조절 / 실제 지원 필드",ImGuiTreeNodeFlags_DefaultOpen))
+        if (ImGui::CollapsingHeader("B 수치 조절 / 실제 지원 필드"))
         {
             const auto& fields=CRenderingProfileService::Experiment_Fields();
             if (ImGui::BeginTable("ExperimentFields",3,ImGuiTableFlags_RowBg|ImGuiTableFlags_BordersInnerH|ImGuiTableFlags_Resizable))
@@ -1458,7 +1654,7 @@ void Client::CRenderingBenchmark::Render_ExperimentSection(Engine::CProfiler* pr
                     if (inactiveLut) ImGui::TextWrapped("Source tone + grading OFF: LUT 미사용");
                     ImGui::PopID();
                 }
-                ImGui::EndTable(); if (changed) Apply_ExperimentVariant(true);
+                ImGui::EndTable(); if (changed) { m_iPresentationStage=-1; Apply_ExperimentVariant(true); }
             }
         }
         ImGui::TextWrapped("SSGI/SSR은 source 재질의 marker3 MapPBR 수신면과 정상 FINAL view가 필요합니다. 해당 면이 없으면 영상 기여 없이 full-screen 패스·복사 비용이 발생할 수 있습니다. PSInvocations는 ray hit 수가 아닙니다. 두 기법은 같은 원본 radiance를 읽으며 SSGI 결과를 SSR 입력으로 재사용하지 않습니다.");
@@ -1617,10 +1813,14 @@ void Client::CRenderingBenchmark::Render_Section(Engine::CProfiler* profiler,
 {
     Render_ExperimentSection(profiler,profiles);
     Render_Results();
-    if (const char* recipe=RenderingTechniqueGuide::Render(m_bExperimentActive,m_bCapturing))
-        Prepare_RecipeById(recipe,profiles);
-    if (const char* recipe=RenderingReferenceGuide::Render(true,m_bExperimentActive,m_bCapturing))
-        Prepare_RecipeById(recipe,profiles);
+    if(ImGui::CollapsingHeader("기법 사전 · 구현 근거"))
+    {
+        if (const char* recipe=RenderingTechniqueGuide::Render(m_bExperimentActive,m_bCapturing))
+            Prepare_RecipeById(recipe,profiles);
+        if (const char* recipe=RenderingReferenceGuide::Render(true,m_bExperimentActive,m_bCapturing))
+            Prepare_RecipeById(recipe,profiles);
+    }
+    if(!ImGui::CollapsingHeader("고급 · 저장 프로필 비교 / 픽셀 입력")) return;
     ImGui::TextWrapped("%s",m_strStatus.c_str());
     ImGui::BeginDisabled(m_bExperimentActive);
     const bool changedProfile=Render_RestorationSection(profiles);

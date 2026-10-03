@@ -5994,6 +5994,16 @@ source postprocess는 tone·grading 묶음이므로 선택 bit만 복원/측정 
 보존한다. LUT ON 검증은 원래 profile의 enabled만 보지 않고 동시에 적용할 세션 후보의
 postprocess enabled를 사용해야 A/B 왕복과 기준 채택이 일관된다.
 
+복원 시연의 기본 재질은 현재 asset의 비교이지 최초 임포트 EXE의 재현이 아니다. material selector도
+실험 transaction이 소유해야 픽셀 진단과 두 owner가 겹치지 않는다. Native forward/hair 또는
+diffuse 없는 program을 무조건 legacy로 내리면 오히려 표면이 사라진다. 확인한 deferred program과
+유효 diffuse/override만 기존 fallback에 연결한다. 단계→한 기법 비교는 dimmed 화면이 아닌
+Original에서 재구성하고, rebased A를 바꾸면 experiment ID를 분리한다.
+
+원본 UE3 자료의 DX11/PBR/SH 존재는 UE4 이식의 증거가 아니다. UModel의 `.mat` export와
+원본 ShaderMap/DXBC·runtime binding은 별도다. 옛 SH/BRDF 미복구 기록은 이후 native 입력 복원
+결과와 대조한 뒤 인용한다. [현재 원본 근거](10-04/2026-10-04_RENDERING_SOURCE_EVIDENCE_RESULT.md)를 따른다.
+
 ### Object 목록의 진입 전 실패와 창 열림 상태를 구분한다
 
 도구의 m_Open=true는 source load 성공이 아니다. Lobby/Loading에서 Arena가 없어 최초 로드를

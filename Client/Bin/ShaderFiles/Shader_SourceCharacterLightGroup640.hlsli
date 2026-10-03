@@ -12,6 +12,8 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight700(SOURCE_CHARACTER_NATIVE_I
     source[20].x=(sin((g_SourceCharacterTime.xxxx*float4(0.100000001,0,0,0)))).x;
     source[20].y=((float4(-1,0,0,0)*sin((g_SourceCharacterTime.xxxx*float4(0.100000001,0,0,0))))).x;
     source[20].z=(cos((g_SourceCharacterTime.xxxx*float4(0.100000001,0,0,0)))).x;
+    // Original engine primitive environment/opacity identity.
+    source[1].w = 1.f;
     source[22]=float4(input.lightColor,1.0);
     source[28].x=1.0;
     float4 projection[4]; [unroll] for(uint p=0u;p<4u;++p) projection[p]=input.projection[p];
@@ -542,6 +544,8 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight701(SOURCE_CHARACTER_NATIVE_I
     source[19].x=(sin((g_SourceCharacterTime.xxxx*float4(0.100000001,0,0,0)))).x;
     source[19].y=((float4(-1,0,0,0)*sin((g_SourceCharacterTime.xxxx*float4(0.100000001,0,0,0))))).x;
     source[19].z=(cos((g_SourceCharacterTime.xxxx*float4(0.100000001,0,0,0)))).x;
+    // Original engine primitive environment/opacity identity.
+    source[1].w = 1.f;
     source[21]=float4(input.lightColor,1.0);
     source[27].x=1.0;
     float4 projection[4]; [unroll] for(uint p=0u;p<4u;++p) projection[p]=input.projection[p];
