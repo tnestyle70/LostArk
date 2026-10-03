@@ -6046,3 +6046,11 @@ UI display row cache는 draft뿐 아니라 외부 World inventory, camera tail, 
 world-root adapter에서 map 분류를 잃지 않게 하고 초기 spawn·pending→active·product/preview
 숨김 경로에 같은 제한 조건을 적용한다. 모든 map 또는 모든 tail을 예외로 만들지 않는다.
 위치·시계와 cue/owner 종료는 기존 경로를 유지하며 additive alpha0을 무조건1로 바꾸지 않는다.
+
+### 차원술사 V의 사용자 지정 시전자 기준
+
+V2050520은 사용자 지정으로 시전자 snapshot/Local Space OFF를 사용한다. 원본 camera_view를
+자동 복구하지 않는다. localSpace만 false로 바꾸면 카메라 attachment가 남으므로 follow,
+orientation, runtime anchor도 기존 caster root 경로로 전환한다. 원본 recipe/socket은 근거로
+보존하고 미사용 camera socket의 회전을 시전자 보정으로 옮기지 않는다. RGBNoise/ZoomBlur는
+별도 localOnlyElementIds 네 개로 관전 대상을 제한하며 월드 요소는 다른 플레이어도 본다.

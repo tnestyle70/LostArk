@@ -4114,6 +4114,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050100.full.restore.effect.json">
       <Filter>96.DataFiles\Effects\Authored\dimensionmaster</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Sequences\effect.dimensionmaster.skill.2050520.full.restore.effectsequence.json">
+      <Filter>96.DataFiles\Effects\Sequences</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Sequences\effect.dimensionmaster.skill.2050540.full.restore.effectsequence.json">
       <Filter>96.DataFiles\Effects\Sequences</Filter>
     </None>
