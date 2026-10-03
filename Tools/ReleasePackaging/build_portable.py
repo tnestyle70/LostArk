@@ -18,7 +18,7 @@ sys.path.insert(0, str(ROOT / 'Tools/EffectPipeline'))
 from validate_effect_sources import validate_element_display_names
 
 OUTPUT_ROOT = ROOT / 'out/ReleasePackaging'
-HOST = '192.168.0.14'
+HOST = '192.168.200.139'
 MODULES = ('Client.exe', 'Engine.dll', 'assimp-vc143-mt.dll', 'fmod.dll',
            'PhysX_64.dll', 'PhysXCommon_64.dll', 'PhysXFoundation_64.dll')
 # These current consumers enumerate whole domains at runtime, including class/event

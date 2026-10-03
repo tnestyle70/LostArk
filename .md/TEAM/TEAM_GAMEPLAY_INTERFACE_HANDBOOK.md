@@ -64,7 +64,7 @@ Server는 inventory와 typed 결과의 reliable 송신 준비 후에만 상태�
 빈 inventory를 가진 월드 이동도 carried state로 명시해 재화/시작 아이템을 재지급하지 않는다.
 
 
-2026-10-02 23:59 KST까지 공유 LAN Server는 같은 팀 LAN의 `192.168.0.14:7777`이다. 사용자 노트북 Server PC는 현재 `Wi-Fi`에서 `192.168.0.14/24`를 소유한다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `192.168.0.14:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
+2026-10-03 23:59 KST까지 공유 LAN Server는 같은 팀 LAN의 `192.168.200.139:7777`이다. Server PC는 현재 연결된 어댑터에서 `192.168.200.139`를 실제로 소유해야 한다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `192.168.200.139:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
 
 쿠크 아레나의 광기와 네 HUD는 `CCombatHUDViewModel::Get_KoukuGimmick()`을 읽는다. v63
 `PLAYER_SNAPSHOT`의 madness, `eKoukuHudMode`, cooldown 종료 tick과 카드 문양·색이 실제 상태를 소유한다.
@@ -99,7 +99,7 @@ Server와 Client가 같은 PC, 같은 LAN, 서로 다른 네트워크 중 어디
 
 | 실행 위치 | Server `--bind-address` | Client `LOSTARK_SERVER_HOST` |
 |---|---|---|
-| 현재 팀 LAN 공유 Server | `0.0.0.0` | `192.168.0.14` |
+| 현재 팀 LAN 공유 Server | `0.0.0.0` | `192.168.200.139` |
 | 같은 PC 격리 harness | 명시적 `127.0.0.1` | 명시적 `127.0.0.1` |
 | 서로 다른 장소/VPN | `0.0.0.0` | Server PC가 실제 소유한 VPN IPv4와 별도 source CIDR 방화벽 규칙 |
 | 일반 NAT 공인 IPv4 | 현 단일 endpoint sync 미지원 | advertised endpoint와 Server owner address 분리 구현을 먼저 추가 |
@@ -128,10 +128,10 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 팀 계약을 갈라놓지 않는다.
 
 ```xml
-<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.14</LocalDebuggerEnvironment>
+<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.200.139</LocalDebuggerEnvironment>
 ```
 
-`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. 현재 Client 기본값은 `192.168.0.14`이다. 주소를 바꾸면 `Tools/Network/TeamLanEndpoint.json`, Server/Client 코드 기본값, 공유 debugger 설정과 이 사용서를 같은 변경 단위에서 갱신하고 `Sync-TeamLanEndpoint.ps1`, NetworkProtocolHarness, Server contract test로 검증한다.
+`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. 현재 Client 기본값은 `192.168.200.139`이다. 주소를 바꾸면 `Tools/Network/TeamLanEndpoint.json`, Server/Client 코드 기본값, 공유 debugger 설정과 이 사용서를 같은 변경 단위에서 갱신하고 `Sync-TeamLanEndpoint.ps1`, NetworkProtocolHarness, Server contract test로 검증한다.
 
 #### pull 후 공유 Server에 들어가는 순서
 
@@ -148,12 +148,12 @@ git rev-parse HEAD
 
 두 PC의 `git rev-parse HEAD`가 같아야 한다. `Client/Bin/Resources`의 `Fonts, Character, Deploy, Effect, Map, Sound, UI` 일곱 물리 폴더도 팀장이 전달한 같은 runtime 입력이어야 하며, Git에 없는 UI/Character/Map/Sound 리소스는 별도 전달을 먼저 완료한다. Debug configuration으로 공유할 때는 두 PC 모두 Debug 정본 빌드를 실행하고, Server를 중지한 상태에서 Server PC가 `Server/Bin/Debug/Server.exe --reset-valtan-runtime-to-packaged`를 한 번 통과시킨다. cross-PC Debug Hot Reload candidate 공유는 지원하지 않는다.
 
-동기화 뒤 Visual Studio project를 Reload하거나 IDE를 재시작한다. Server PC에서 `Machine role: server-host`를 확인하고 `Server + Client` profile을 시작한다. 다른 PC는 `Machine role: client`를 확인하고 `Client Only (Server Already Running)` profile을 시작한다. 직접 EXE를 실행할 때 shell의 오래된 `LOSTARK_SERVER_HOST`가 새 기본값보다 우선하므로 값이 `127.0.0.1`이면 제거하거나 `192.168.0.14`으로 맞춘다.
+동기화 뒤 Visual Studio project를 Reload하거나 IDE를 재시작한다. Server PC에서 `Machine role: server-host`를 확인하고 `Server + Client` profile을 시작한다. 다른 PC는 `Machine role: client`를 확인하고 `Client Only (Server Already Running)` profile을 시작한다. 직접 EXE를 실행할 때 shell의 오래된 `LOSTARK_SERVER_HOST`가 새 기본값보다 우선하므로 값이 `127.0.0.1`이면 제거하거나 `192.168.200.139`로 맞춘다.
 
 Server가 `Listening on 0.0.0.0:7777`을 출력한 뒤 다른 PC에서 아래 probe가 성공해야 한다. Windows 네트워크가 `공용`이어도 repository sync가 검증하는 firewall rule은 `Profile Any`, `RemoteAddress LocalSubnet`이므로 직접 IPv4 접속에는 문제가 없다.
 
 ```powershell
-Test-NetConnection 192.168.0.14 -Port 7777
+Test-NetConnection 192.168.200.139 -Port 7777
 ```
 
 `TcpTestSucceeded: False`면 Server listener, endpoint 어댑터, TCP 7777 firewall, 공유기의 AP/client isolation 순서로 본다. `True`인데 Lobby에서 거부되거나 끊기면 서로 다른 commit/binary/protocol/gameplay bootstrap을 먼저 확인한다. 승인 뒤 `Stage loading failed`로 Lobby에 남으면 네트워크가 아니라 Client runtime Resources 또는 Loader 문제다. Bern과 Valtan은 player spawn이 네 개라 Server PC의 Client도 입장하면 다른 PC 세 대까지 같은 room에 들어갈 수 있다. Character Select는 session-private이므로 여러 PC가 같은 Server를 써도 서로 보이지 않으며, 동시 플레이 확인은 Bern 또는 Valtan에서 한다.
@@ -205,7 +205,7 @@ Get-NetIPAddress -AddressFamily IPv4 |
 
 설정 후 Visual Studio는 `.vcxproj.user`를 메모리에 캐시할 수 있으므로 Server와 Client project를 Reload하거나 Visual Studio를 재시작한다. 그다음 Server PC와 Client PC에서 각각 확인한다.
 
-`Sync-TeamLanEndpoint.ps1`은 `2026-10-02 23:59 KST`가 지나면 실패한다. 2026-10-03 이후 첫
+`Sync-TeamLanEndpoint.ps1`은 `2026-10-03 23:59 KST`가 지나면 실패한다. 2026-10-04 이후 첫
 세션은 `-AllowExpired`로 계속 쓰지 않고 새 endpoint 또는 loopback 복귀 계약을 먼저 정한다.
 
 ```powershell
@@ -217,7 +217,7 @@ Server\Bin\Debug\Server.exe --bind-address 0.0.0.0 --smoke-timeout-ms 500
 profile을 정상 시작해 listener를 계속 유지한다. 그다음 Client PC에서 확인한다.
 
 ```powershell
-Test-NetConnection 192.168.0.14 -Port 7777
+Test-NetConnection 192.168.200.139 -Port 7777
 ```
 
 `Failed to open TCP listener ... Error=10049`는 `--bind-address`에 적은 주소가 현재 Server PC의 어느 어댑터에도 없다는 뜻이다. Client의 주소나 이전 Wi-Fi 주소를 Server bind 값으로 복사하지 말고 Server는 `0.0.0.0`, Client만 도달 가능한 endpoint를 사용한다.
