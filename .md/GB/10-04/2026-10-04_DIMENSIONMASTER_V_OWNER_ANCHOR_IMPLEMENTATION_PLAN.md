@@ -153,3 +153,7 @@ Effect는 `DIRECT_AUTHORED_DOCUMENT`로 Data를 직접 읽는다. 별도 Effect 
 `Client.vcxproj.filters`의 기존 `96.DataFiles\Effects\Sequences`에 `None`으로 등록한다.
 C++/HLSL 변경이 없으므로 제품 재빌드는 필요하지 않다. 파일 교체를 실행 중 immutable document의 자동 교체나
 사용자 화면 통과로 기록하지 않는다. 도구 Reload/다음 준비와 최종 Client 확인은 별도다.
+
+## G04. 재설치 원본의 후속 대조
+
+원본 설치 완료 후 V2050520의 Action→SkillEffect DB→Projectile과11개 ParticleSystem의 module/CDO 및 native66/69 재질·shader map을 기존 추출 도구로 대조한다. 현재43개 stable ID, 사용자 시전자 root snapshot·Local Space OFF·관전자 ScreenPost 정책과 튜닝을 유지한다. 새 불일치가 입증된 필드만 후보로 만들고, 과거 편집으로 제거한 요소를 자동 복구하지 않는다. 실제 native69 PS 공간 sampling을 기존 WARP로 비교하고, 기존 Product OBJ의 실제 Codec/Playback을 격리 console entry에서 확인한다. 결과와 무수정·화면 미확인 경계는 RESULT G04에 기록한다.

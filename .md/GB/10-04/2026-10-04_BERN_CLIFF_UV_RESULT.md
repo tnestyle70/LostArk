@@ -138,3 +138,81 @@ $env:PYTHONUTF8 = '1'
 ```
 
 이 실행은 설치 WModel·DDS·typed row의 수치 대조다. Client/UI, 원본 게임, Product build, GPU raster 비교, 자동 Reload는 실행하지 않았다. 사용자 화면의 정확한 draw call 식별과 수정 후 수동 확인도 아직 수행하지 않았다. 이번 변경 파일은 본 Markdown 하나뿐이며 `git diff --no-index --check -- /dev/null <RESULT>`로 whitespace를 확인했다.
+
+
+## G08. 재설치 완료 후 현재 판정
+
+사용자의 재설치 완료 이후 원본을 다시 읽었다. G05~G07의 다운로드 대기·원본 미확인 기록은 최초 조사 시점이며, 현재 원본 대조 상태는 이 절과 G09가 정본이다. **정적 원본 데이터 대조는 완료했지만 녹색 늘어짐을 고칠 근거가 되는 차이는 찾지 못했다.** 이번에는 UV·형상·재질·가시성이나 렌더링 옵션을 바꾸지 않았다. 화면 문제를 복구 완료로 판정하지 않는다.
+
+재설치 LAND01 패키지 SHA256은 `a682e279fa5d39421d2b0c4936847e5fe73b1506ccee2c4f1020cf9b61e4abb2`다. 패키지 version868/licensee16, engine12097/cooker136이며 이 파일은 UE3 포맷이다. 이 대상 파일을 UE4 전환으로 설명할 근거는 없다. logical object path와 serial을 우선 비교했고 LC622의 export index622와 UE reference623을 구분했다. 현재 LC622 serial은 기존 `1d78a81e40aa012dd7847e217bb0f496c676bb202911caf6f9cb3b556a2556a3`와 정확히 같다.
+
+| 입력 | 재설치 원본 대조 결과 |
+|---|---|
+| 높이 texture9134 | 5개 mip의 DDS payload 전부 동일 |
+| 가중치 texture9139/9140 | 각각 7개 mip payload 전부 동일 |
+| LC622 형상 | 3,969정점·7,688삼각형의 topology/winding 동일, 위치 최대 차이2.441406e-6m |
+| static shader key | `4716a59af603af1335ac38d48ac2431515016c736ba18c029cd7a4448a6d55de` |
+| 원본 VS | `c9f016c5efaba04a9c98794fa70eac1b`, section base를 더한 평면 XY 출력 |
+| 원본 PS | `1214bdd3f0bc154b929471e76129689f`, XY에0.1/-0.5·회전·tiling 적용 |
+
+해당 원본 VS/PS에서 높이에 따라 cliff UV를 만드는 경로를 찾지 못했다. `layercliff`의 weightIndex=-1도 일치한다. 따라서 임의 triplanar나 side projection, winding 반전을 원본 복구로 넣지 않았다. 원본 부모 재질의 tagged property에는 TwoSided=true가 없지만, native/CDO의 모든 기본값을 복원한 것은 아니므로 원본 cull 상태 전체를 증명했다고 확대하지 않는다.
+
+native shader cache는 `9XUFAXIP8BXBAP1NIEG66EF.upk` export224에서 확인했고 대응 DXBC와38개 native disassembly를 보존했다. UModel의 일반 texture/mesh 출력만으로 끝내지 않고 static shader identity와 실제 VS/PS 입출력을 대조했다. 그래도 실행 중 선택된 material branch, 거리 LOD, 원본 게임의 같은 camera에서 가려지는 면과 최종 raster 값은 별개다.
+
+근거는 `out/BernSourceReload20261004/lc622-uv-contract-evidence.json`, `lc622-winding-comparison.json`, `lc622-material-map.json`, `lc622-shader-extraction.json`, `land01-shadercache-identity.json`이다. Client/UI와 원본 게임을 실행하지 않았다. 이어지는 원인 판정에는 사용자가 보는 동일 camera의 실제 draw/material branch와 원작 화면 대조가 필요하며, 이번 정적 대조만으로 shader의 다른 값을 추측해 바꾸지 않는다.
+
+## G09. 주변 geometry 누락과 표시 제어 대조
+
+### 주변 StaticMesh와 초기 표시 계약의 재설치 원본 대조
+
+2026-10-04 재설치가 완료된 원본에서 `LV_BER_BERNCASTLE_T_PS`의 `WorldInfo.streamingLevels` 배열을 해독했다. 실제 연결된 하위 레벨은 34개이며 PS를 포함한 35개 패키지만 조사했다. `AlwaysLoaded` 이름만으로 표시를 확정하지 않았고, 추출기는 actor/component의 instance → archetype → CDO 표시 값을 schema3으로 보존했다. package 범위를 Resources 파일명 검색으로 확장하지 않았다.
+
+이 원본 집합의 StaticMeshComponent 배치는 31,246개이며 property 오류와 unresolved placement는 모두 0이다. 913개 고유 StaticMesh의 native `FBoxSphereBounds`를 읽고 source actor/component TRS와 기존 UE3→Client 좌표 변환을 적용했다. component에는 독립 `CachedLocalBox/Bounds`가 없으므로 mesh의 원본 bounds를 사용했다. 표본의 native bounds는 UModel `-dump` 값과도 일치한다.
+
+| 검사 | 결과 | 범위 |
+|---|---|---|
+| PS + SL08 원본 배치 | 3,272개, 누락 0 | source ID·catalog 원본 object path·visibility 모두 일치, TRS 최대 차이 `5e-7` |
+| 실제 streaming closure | 35패키지, 31,246배치 | PS의 정확한 `streamingLevels` 참조에서만 확장 |
+| LC622 world AABB와 겹치는 배치 | 1,387개 | PS18, SL08 458, SL00 182, SL06 205, SL04 524 |
+| 위 1,387개의 현재 배치·WModel | 누락 0 | catalog의 정확한 원본 object path 불일치 0 |
+| 위 1,387개의 source/runtime visible | 불일치 0 | 표시 1,370개 + 원본부터 숨겨진 PS culling box17개 |
+| 제보 위치에서 AABB 거리 10m 이내 | 208개, 배치 누락 0 | 이름에 cliff/rock이 없는 구조물도 포함 |
+| 다른 패키지의 현재 미배치 항목 | 47개, LC622와 겹침 0 | source actor TRS 기준 최소 AABB 거리36.44m, 기존 연출/owner/camera 경계는 유지 |
+| 원점 거리65m 밖의 큰 mesh | SL00 export5059 검출 | water mesh 원점468.18m, bounds는 LC622와 겹치며 현재 표시 배치 존재 |
+
+47개 미배치 연출 항목을 독립 지형으로 바꾸거나 복원하지 않았다. 위 거리는 저작된 초기 actor/component TRS 기준이며 연출 재생 중 parent/camera 이동을 재현한 값이 아니다. 원본 cached AABB는 넓은 후보 범위를 잡는 근거일 뿐 실제 삼각형의 가림이나 GPU 표시 성공을 뜻하지 않는다.
+
+PS의 `LevelLoaded` export519(UE reference520)는 Loaded and Visible 출력에서 `AkPostEvent`, `AkStartAmbientSound`, Music/SoundStream용 `MultiLevelStreaming` 세 액션으로 연결된다. PS에는 `ToggleHidden`이 없고 SL08에는 Kismet sequence action/event가 없다. 연결35패키지의 import table에서 LC622와 겹치는 actor/component의 정확한 외부 참조1,730경로를 대조했으며 외부 직접 참조는0이다. 이 결과를 원본 엔진의 모든 동적 숨김·서버·태그 제어를 재현했다는 뜻으로 확대하지 않는다.
+
+### 가까운 구조물 5개의 실제 형상·재질 표본
+
+배치 존재만으로 가림이 정상이라고 결론내리지 않도록 가까운 벽·구조물과 기존 cliff/floor 기준 모델을 원본에서 다시 glTF로 추출했다. 원본 glTF는 meter 단위이고 설치 WModel은 기존 `geometryPreScale≈0.01`과 Z 반전을 소비한다. 이 기존 변환을 적용한 실제 정점과 triangle index를 비교했다.
+
+| source placement | 모델 | 원본/설치 정점 | 원본/설치 삼각형 | 정점 최대 차이(m) |
+|---|---|---:|---:|---:|
+| SL00:5358 | `bg_ber_berncastle_wall06b_sm_ksr` | 2,248 / 2,248 | 1,536 / 1,536 | `4.76353e-7` |
+| SL08:5414 | `bg_ber_berncastle_structure06_sm_ksr` | 3,129 / 3,129 | 2,470 / 2,470 | `4.67084e-7` |
+| SL08:6584 | `bg_ber_kronap_wall02_sm_asj` | 200 / 200 | 136 / 136 | `7.43866e-7` |
+| SL08:6148 | `bg_ber_stone_cliff03_sm_ksr` | 1,026 / 1,026 | 1,670 / 1,670 | `1.31205e-7` |
+| SL08:4983 | `bg_eud_moray_floor01b_sm_ysi` | 90 / 90 | 96 / 96 | `1.14441e-7` |
+
+합계6,693정점·5,908삼각형이며 모든 index list가 기존 handedness 변환 후 정확히 일치한다. 즉 표본에서 삼각형 손실·잘못된 scale·추가 winding 반전은 발견되지 않았다. 가장 가까운 큰 벽 SL00:5358의 world AABB는 `(92.4064,39.5327,-102.1504)`~`(112.0136,49.3473,-97.4419)`이며 제보 위치와 AABB 거리는1.23963m다. `cliff03`은 y14.31~17.54m로 해당 높은 위치의 벽 자체가 아니다.
+
+5개 모델이 실제 사용하는9개 material slot은 모두 설치 WModel의 이름과 typed source row가 연결되어 있다. 정본 authoring과 게시된 runtime의9개 행은 동일하고 모든 해당 DDS가 존재한다. 소비 family는 `bg-source-opaque-masked`와 `bg_base_opa_overlay`이며 현재 `MapAssetCatalog`가 각각 `SOURCE_BG_OPAQUE_MASKED`와 `SOURCE_OVERLAY_OPAQUE`로 처리하는 지원 경로다. 일반 catalog opacity/color alpha는1, 해당 surface diffuseColor alpha도1이며 source flag64(alpha clip)는9개 모두OFF다. `Shader_MapMaterialSurface.hlsli`의 BG/overlay clip 조건과 대조했을 때 이 표본에서 alpha0 또는 미지원 family로 전체가 사라지는 설정은 없다.
+
+glTF 추출에는 `-notex`를 사용했다. 따라서 glTF가 기록한 `dummy_material_*` 색은 원본 재질 근거로 사용하지 않았다. material identity는 원본 UModel dump, 실제 WModel slot 및 현재 typed source 행으로 확인했다. 각 MIC 전체 shader를 새로 GPU 실행한 검증은 아니며 실행 중 `bUseSourceMaterials` 값과 실제 draw call 성공도 확인하지 않았다.
+
+### 결론과 증거 경계
+
+현재 조사에서는 **원본의 별도 절벽/벽 StaticMesh가 빠져서 LC622의 녹색 면이 드러났다는 증거를 찾지 못했다.** 임의 mesh 추가, 숨김 해제, winding/two-sided 변경, side projection 또는 triplanar 보정을 적용하지 않았다. 원작의 같은 카메라 화면과 현재 draw call을 대조하지 않았으므로 해당 Landscape 픽셀의 실제 가림·색·UV 표시가 원작과 같다고 판정할 수는 없다.
+
+이 추가 조사는 원본·현재 설치본의 정적 수치 대조까지 완료한 상태다. 코드, 정본 Data, Resources, 렌더링 저장값, 원작 파일은 변경하지 않았다. Client/UI, 원작 게임, GPU 캡처, Product build, 자동 Reload도 실행하지 않았다.
+
+재실행 근거는 `out/BernCliffCoverage20261004` 아래에 있다.
+
+- `streaming-closure.json`, `source/*.placements.json`, `expand-streaming.log`: 실제 WorldInfo 참조와35패키지 schema3 원본 추출.
+- `source-mesh-bounds.json`, `closure-mesh-bounds.json`, `closure-placement-bounds.json`: 원본 bounds, 물리 package/header hash, 실제 TRS와 overlap 목록.
+- `source-runtime-comparison.json`, `closure-runtime-comparison.json`, `runtime-links.json`, `final-evidence.json`: 현재 stable source ID·TRS·visible·catalog/model/texture 존재 대조.
+- `source-control-properties.json`, `external-controls.json`: PS 초기 액션과 SL08 Kismet 및35패키지 import table 대조.
+- `source-geometry/`, `*.dump.log`, `geometry-sample-audit.json`, `final-evidence.log`: 원본5개 재추출, 실제 WModel6,693정점/5,908tri 및9재질 슬롯 검증.
+- `expand_streaming.py`, `audit_closure_bounds.py`, `compare_closure_runtime.py`, `export_geometry_samples.py`, `audit_geometry_samples.py`, `audit_external_controls.py`, `finalize_evidence.py`: 위 수치의 읽기 전용 재현 스크립트.
