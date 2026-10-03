@@ -6039,3 +6039,10 @@ UI display row cache는 draft뿐 아니라 외부 World inventory, camera tail, 
 다르므로, 기본 asset의 named material 연결 누락을 따로 확인한다. 기존 복원 기본 MIC와 geometry
 채널·DDS 동치를 확인한 뒤 non-baked 입력만 재사용하고 다른 placement의 RNM은 복사하지 않는다.
 재질 연결 보완과 비균일 placement scale에 의한 UV 확대를 별도 문제로 기록한다.
+
+### 보스 몸체 컷신 숨김과 독립 맵 이펙트
+
+보스가 수명을 소유해도 유한 map/snapshot 이펙트는 몸체 컷신의 대체 배우가 아니다.
+world-root adapter에서 map 분류를 잃지 않게 하고 초기 spawn·pending→active·product/preview
+숨김 경로에 같은 제한 조건을 적용한다. 모든 map 또는 모든 tail을 예외로 만들지 않는다.
+위치·시계와 cue/owner 종료는 기존 경로를 유지하며 additive alpha0을 무조건1로 바꾸지 않는다.

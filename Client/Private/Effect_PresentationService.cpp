@@ -1422,6 +1422,18 @@ namespace
 			fYZ <= SOURCE_BONE_ORTHOGONAL_TOLERANCE;
 	}
 
+	template<typename TEffect>
+	bool_t Is_CinematicIndependentMapTail(const TEffect& Effect)
+	{
+		// A finite map snapshot belongs to the scene; its boss only owns its lifetime.
+		return !Effect.bLevelOwned && Effect.iWorldRootHandle != 0u &&
+			Effect.strAnchorSlotId == "map" &&
+			Effect.eFollowPolicy == Client::EFFECT_FOLLOW_POLICY::SNAPSHOT &&
+			Effect.bPreserveBossActionTail &&
+			Effect.eStopPolicy == Client::EFFECT_STOP_POLICY::CUE_END &&
+			Effect.iCueDurationMs != 0u;
+	}
+
 	bool_t Prepare_TargetSet(
         ComPtr<ID3D11Device> pDevice,
         ComPtr<ID3D11DeviceContext> pContext,
@@ -5232,7 +5244,8 @@ bool_t Client::CEffectPresentationService::Spawn_WorldRoot(
 		return false;
 	}
 	EFFECT_SPAWN_DESC SpawnDesc = CueDesc;
-	SpawnDesc.strAnchorSlotId = "root";
+	// Preserve map ownership through the world-root adapter for cinematic visibility.
+	SpawnDesc.strAnchorSlotId = CueDesc.strAnchorSlotId == "map" ? "map" : "root";
 	SpawnDesc.LocalTransform = {};
 	SpawnDesc.eScalePolicy = VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE;
 	SpawnDesc.vWorldScale = { 1.f, 1.f, 1.f };
@@ -6240,7 +6253,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 	Active.WorldRoot = Desc.WorldRoot;
 	Active.bLevelOwned = Desc.bLevelOwned;
 	Active.bExternallySampled = Desc.bExternallySampled;
-	if (!Desc.bLevelOwned && Owner.pBoss &&
+	if (!Desc.bLevelOwned && Owner.pBoss && !Is_CinematicIndependentMapTail(Desc) &&
 		((Desc.bExternallySampled && Owner.pBoss->Is_LocalPatternAuthoringPreview()) ||
 		 (!Desc.bExternallySampled && Desc.bPreserveBossActionTail &&
 		  Desc.eStopPolicy == EFFECT_STOP_POLICY::CUE_END && Desc.iCueDurationMs != 0u)))
@@ -6868,7 +6881,8 @@ void Client::CEffectPresentationService::Set_BossCinematicSuppressed(
 		g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
 		[&](PENDING_EFFECT_SPAWN& pending)
 		{
-			if (pending.Desc.pBossOwner.lock() != pOwner)
+			if (pending.Desc.pBossOwner.lock() != pOwner ||
+				Is_CinematicIndependentMapTail(pending.Desc))
 				return false;
 			if (!RetainTail(pending.Desc))
 				return suppressed;
@@ -6878,7 +6892,7 @@ void Client::CEffectPresentationService::Set_BossCinematicSuppressed(
 	for (size_t index = g_ActiveEffects.size(); index-- > 0u;)
 	{
 		ACTIVE_EFFECT& effect = g_ActiveEffects[index];
-		if (effect.pBossOwner.lock() != pOwner)
+		if (effect.pBossOwner.lock() != pOwner || Is_CinematicIndependentMapTail(effect))
 			continue;
 		if (!RetainTail(effect))
 		{
@@ -6899,7 +6913,8 @@ void Client::CEffectPresentationService::Set_LocalBossPreviewCinematicSuppressed
 	for (ACTIVE_EFFECT& Effect : g_ActiveEffects)
 	{
 		if (!Effect.bExternallySampled || Effect.bLevelOwned ||
-			Effect.pBossOwner.lock() != pOwner || !Effect.pObject)
+			Effect.pBossOwner.lock() != pOwner || !Effect.pObject ||
+			Is_CinematicIndependentMapTail(Effect))
 			continue;
 		Effect.bInspectionVisible = !suppressed;
 		Effect.pObject->Set_InspectionVisible(!suppressed);
