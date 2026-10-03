@@ -1,112 +1,126 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <ItemGroup>
-    <Filter Include="Public">
-      <UniqueIdentifier>{49D8F7EE-0874-4E46-B10D-C28D4DBBA46A}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Public\Network">
+    <Filter Include="00.Network">
       <UniqueIdentifier>{FA7865EE-9C52-4D8B-9165-A21FB39F70E1}</UniqueIdentifier>
     </Filter>
-	<Filter Include="Public\Gameplay">
-	  <UniqueIdentifier>{2EFBFD79-7C18-4DFC-AD54-D73A710BD66C}</UniqueIdentifier>
-	</Filter>
-	<Filter Include="Private\Gameplay">
-	  <UniqueIdentifier>{31E24345-33B6-4CE5-99EB-92D0FD469F8A}</UniqueIdentifier>
-	</Filter>
-    <Filter Include="Private">
-      <UniqueIdentifier>{A16AD881-5291-4B14-934F-F578E797EF72}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Private\Network">
+    <Filter Include="01.Protocol">
       <UniqueIdentifier>{9E3E104B-6763-4827-8B64-1F54D73B117B}</UniqueIdentifier>
     </Filter>
+    <Filter Include="02.Gameplay">
+      <UniqueIdentifier>{2EFBFD79-7C18-4DFC-AD54-D73A710BD66C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.Gameplay\00.Combat">
+      <UniqueIdentifier>{31E24345-33B6-4CE5-99EB-92D0FD469F8A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.Gameplay\01.World">
+      <UniqueIdentifier>{8A42F549-F232-5566-828E-258E728F0EC5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.Gameplay\02.KoukuSaydon">
+      <UniqueIdentifier>{E1E77851-75EB-5C63-9BE0-862C15314A29}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.Gameplay\03.Maharaka">
+      <UniqueIdentifier>{44F56421-AC17-5431-A5CB-7C933BC86987}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.Gameplay\04.Balance">
+      <UniqueIdentifier>{55868C1E-065E-52A3-8C30-2F25B89F7B04}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03.Revision">
+      <UniqueIdentifier>{49D8F7EE-0874-4E46-B10D-C28D4DBBA46A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="99.Default">
+      <UniqueIdentifier>{A16AD881-5291-4B14-934F-F578E797EF72}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-	<ClInclude Include="..\Public\GameplayDataRevision.h">
-	  <Filter>Public</Filter>
-	</ClInclude>
-	<ClInclude Include="..\Public\Gameplay\CombatCollisionContract.h">
-	  <Filter>Public\Gameplay</Filter>
-	</ClInclude>
-	<ClInclude Include="..\Public\Gameplay\CombatObjectHitChain.h">
-	  <Filter>Public\Gameplay</Filter>
-	</ClInclude>
-	<ClInclude Include="..\Public\Gameplay\WorldCollisionContract.h">
-	  <Filter>Public\Gameplay</Filter>
-	</ClInclude>
-	<ClInclude Include="..\Public\Gameplay\MaharakaWaterpangContract.h">
-	  <Filter>Public\Gameplay</Filter>
-	</ClInclude>
-	<ClInclude Include="..\Public\Gameplay\AttackHitTemplate.h">
-	  <Filter>Public\Gameplay</Filter>
-	</ClInclude>
-	<ClInclude Include="..\Public\Gameplay\KoukuMarioBombContract.h">
-	  <Filter>Public\Gameplay</Filter>
-	</ClInclude>
-	<ClInclude Include="..\Public\Gameplay\EstherStrikeContract.h">
-	  <Filter>Public\Gameplay</Filter>
-	</ClInclude>
-	<ClInclude Include="..\Public\Gameplay\KoukuTargetTracking.h">
-	  <Filter>Public\Gameplay</Filter>
-	</ClInclude>
-	<ClInclude Include="..\Public\Gameplay\KoukuArenaReadyAreas.h">
-	  <Filter>Public\Gameplay</Filter>
-	</ClInclude>
-    <ClInclude Include="..\Public\Network\PacketWriter.h">
-      <Filter>Public\Network</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Network\PacketMessages.h">
-      <Filter>Public\Network</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Network\SessionDiagnostic.h">
-      <Filter>Public\Network</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Network\PacketReader.h">
-      <Filter>Public\Network</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Network\PacketType.h">
-      <Filter>Public\Network</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Network\PacketFrame.h">
-      <Filter>Public\Network</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Network\PacketStreamParser.h">
-      <Filter>Public\Network</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Network\NetworkIds.h">
-      <Filter>Public\Network</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-	<ClCompile Include="..\Private\GameplayDataRevision.cpp">
-	  <Filter>Private</Filter>
-	</ClCompile>
-	<ClCompile Include="..\Private\Gameplay\CombatCollisionContract.cpp">
-	  <Filter>Private\Gameplay</Filter>
-	</ClCompile>
-    <ClCompile Include="..\Private\Network\PacketWriter.cpp">
-      <Filter>Private\Network</Filter>
+    <ClCompile Include="..\Private\Network\PacketFrame.cpp">
+      <Filter>00.Network</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Network\PacketReader.cpp">
-      <Filter>Private\Network</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\Network\PacketMessages.cpp">
-      <Filter>Private\Network</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\Network\PacketFrame.cpp">
-      <Filter>Private\Network</Filter>
+      <Filter>00.Network</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Network\PacketStreamParser.cpp">
-      <Filter>Private\Network</Filter>
+      <Filter>00.Network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Network\PacketWriter.cpp">
+      <Filter>00.Network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Network\PacketMessages.cpp">
+      <Filter>01.Protocol</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Gameplay\CombatCollisionContract.cpp">
+      <Filter>02.Gameplay\00.Combat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Gameplay\BalanceNumericContract.cpp">
+      <Filter>02.Gameplay\04.Balance</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameplayDataRevision.cpp">
+      <Filter>03.Revision</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Shared_Pch.cpp">
+      <Filter>99.Default</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Private\Shared_Pch.cpp" />
-    <ClInclude Include="..\..\Tools\Build\CppStandardPch.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\Public\Gameplay\BalanceNumericContract.h"><Filter>Public\Gameplay</Filter></ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="..\Private\Gameplay\BalanceNumericContract.cpp"><Filter>Private\Gameplay</Filter></ClCompile>
+    <ClInclude Include="..\Public\Network\PacketFrame.h">
+      <Filter>00.Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Network\PacketReader.h">
+      <Filter>00.Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Network\PacketStreamParser.h">
+      <Filter>00.Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Network\PacketWriter.h">
+      <Filter>00.Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Network\SessionDiagnostic.h">
+      <Filter>00.Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Network\NetworkIds.h">
+      <Filter>01.Protocol</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Network\PacketMessages.h">
+      <Filter>01.Protocol</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Network\PacketType.h">
+      <Filter>01.Protocol</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Gameplay\AttackHitTemplate.h">
+      <Filter>02.Gameplay\00.Combat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Gameplay\CombatCollisionContract.h">
+      <Filter>02.Gameplay\00.Combat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Gameplay\CombatObjectHitChain.h">
+      <Filter>02.Gameplay\00.Combat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Gameplay\EstherStrikeContract.h">
+      <Filter>02.Gameplay\00.Combat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Gameplay\WorldCollisionContract.h">
+      <Filter>02.Gameplay\01.World</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Gameplay\KoukuArenaReadyAreas.h">
+      <Filter>02.Gameplay\02.KoukuSaydon</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Gameplay\KoukuMarioBombContract.h">
+      <Filter>02.Gameplay\02.KoukuSaydon</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Gameplay\KoukuTargetTracking.h">
+      <Filter>02.Gameplay\02.KoukuSaydon</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Gameplay\MaharakaWaterpangContract.h">
+      <Filter>02.Gameplay\03.Maharaka</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Gameplay\BalanceNumericContract.h">
+      <Filter>02.Gameplay\04.Balance</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\GameplayDataRevision.h">
+      <Filter>03.Revision</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Tools\Build\CppStandardPch.h">
+      <Filter>99.Default</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
