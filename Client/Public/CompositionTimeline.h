@@ -20,6 +20,32 @@ inline constexpr float LabelWidth = 180.f;
 inline constexpr float MinimumBoxWidth = 8.f;
 inline constexpr float BoxHeight = 22.f;
 
+struct ROW_METRICS
+{
+	float boxHeight, laneHeight, rulerHeight;
+};
+
+// The current font already includes viewport DPI. Recompute from its pixel
+// height instead of scaling fixed rows again when moving between monitors.
+inline ROW_METRICS GetCompactRowMetrics()
+{
+	const auto& style = ImGui::GetStyle();
+	const float textHeight = ImGui::GetTextLineHeight();
+	const float boxHeight = std::ceil((std::max)(BoxHeight,
+		textHeight + 2.f * (std::max)(1.f, style.FramePadding.y)));
+	return {boxHeight,
+		std::ceil((std::max)(LaneHeight, boxHeight + (std::max)(2.f, style.ItemSpacing.y))),
+		std::ceil((std::max)(LaneHeight, textHeight + 6.f))};
+}
+
+inline float GetCompactLabelWidth(const char* const* labels, const std::size_t count)
+{
+	float width = LabelWidth;
+	for (std::size_t i = 0u; i < count; ++i)
+		if (labels[i]) width = (std::max)(width, ImGui::CalcTextSize(labels[i]).x + 16.f);
+	return std::ceil(width);
+}
+
 inline float FitPixelsPerSecond(const float availableWidth, const double durationMs,
 	const float minimum = 1.f, const float maximum = 500.f)
 {
