@@ -6031,3 +6031,11 @@ UI display row cache는 draft뿐 아니라 외부 World inventory, camera tail, 
 잘린다. 현재 ImGui 글꼴 높이와 style padding으로 행·박스·ruler를 계산하고 모니터 DPI를 다시
 곱하지 않는다. 라벨 열은 실제 문자열 폭도 반영한다. 그리기·culling·InvisibleButton은 같은
 사각형을 사용하며 시간→픽셀 zoom과 편집 시간값은 그대로 유지한다.
+
+### Map shard 확인과 기존 재질 연결 보완
+
+활성 배치는 mapset이 명시한 shard로 판정한다. 남아 있는 통합 placement 파일과의 차이를
+현재 런타임 불일치로 처리하지 않는다. 원본 component용 variant와 editor 기본 asset은 key가
+다르므로, 기본 asset의 named material 연결 누락을 따로 확인한다. 기존 복원 기본 MIC와 geometry
+채널·DDS 동치를 확인한 뒤 non-baked 입력만 재사용하고 다른 placement의 RNM은 복사하지 않는다.
+재질 연결 보완과 비균일 placement scale에 의한 UV 확대를 별도 문제로 기록한다.
