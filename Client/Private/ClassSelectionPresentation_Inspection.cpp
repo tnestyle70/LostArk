@@ -50,6 +50,7 @@ CLASS_MOVIE_INSPECTION_STATE CClassSelectionPresentation::Get_WorldInspection(
     state.showEffects = !current || m_InspectionShowEffects;
     state.status = current ? m_InspectionStatus : std::string{};
     state.pickedMesh = current ? m_InspectionPickedMesh : UINT32_MAX;
+    state.selectionGeneration = current ? m_InspectionSelectionGeneration : 0u;
     if (state.active) { state.movieMs = m_ElapsedMs; state.sourceMs = Get_SourceClockMs(); }
     if (const auto* camera = CGameInstance::Get().Get_CamPosition())
         state.cameraPosition = {camera->x, camera->y, camera->z};
@@ -204,6 +205,8 @@ bool CClassSelectionPresentation::Inspect_World(const std::string& classId, cons
     }
     default: status = "Unsupported Movie inspection command."; return false;
     }
+    if (command.action == Action::SELECT || command.action == Action::SOLO || command.action == Action::FOCUS)
+        ++m_InspectionSelectionGeneration;
     Apply_WorldInspection();
     status = command.action == Action::PICK_IN_SCENE && command.enabled ?
         "Click a WORLD model in the scene. Picking uses posed triangles; texture alpha is not sampled. TAB restores mouse look." :

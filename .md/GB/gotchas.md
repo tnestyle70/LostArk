@@ -149,6 +149,18 @@ cinematic camera 활성만으로 모든 player visibility/input/HUD를 함께 �
 
 ### Movie 파생 모델 교체와 시간별 재질 트랙
 
+Movie의 보이지 않는 삼각형이 빨간 강조로 선택되면 기본 MIC opacity만 보지 않는다.
+현재 material curve가 덮어쓴 값, native program의 primitive opacity 입력, draw filter와
+별도 highlight pass를 확인한다. Warlord selection-native-702는 named `op`와 별도로
+source row0.x를 곱하며, packer가 소유하지 않는 primitive opacity의 identity가 누락되면
+최종 alpha가 0이다. 이 입력만 해당 program adapter에서 복구하고 명시적인 `op=0`이나
+다른 program의 상수를 전역적으로 1로 바꾸지 않는다.
+
+장면 Pick의 highlight ID만 갱신하면 World Model의 Details 선택은 바뀌지 않는다.
+stable ID와 새 선택 이벤트를 기존 row 편집기로 전달하고 미반영 draft는 보존한다.
+한 키만 위치를 바꾸면 다음 키에서 원래 경로로 복귀하므로 소품 전체 위치 조정에는 현재
+phase의 track 위치에 같은 이동량을 적용한다. Intro/Loop를 임의로 함께 수정하지 않는다.
+
 Movie 모델을 일반 catalog donor로 바꾸면 WorldSequences의 model/materialSource 연결뿐 아니라
 ClassSelection.cinematics의 Intro/Loop materialTracks도 실제 사용 mesh의 materialName·family에
 맞춰야 한다. 이전 이름은 override rejected, 이름만 바꾼 이전 program은 mismatch로 재생을 막는다.

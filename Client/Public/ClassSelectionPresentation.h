@@ -279,6 +279,7 @@ private:
     std::string m_InspectionClass, m_InspectionSelectedObject, m_InspectionSoloObject, m_InspectionStatus;
     std::set<std::string> m_InspectionMutedObjects;
     uint32_t m_InspectionPickedMesh = UINT32_MAX;
+    uint64_t m_InspectionSelectionGeneration = 0u;
     bool m_InspectionShowBackground = true, m_InspectionShowEffects = true;
     bool m_InspectionPickArmed = false, m_InspectionPickReleased = false;
     std::string m_Status = "Class selection cinematics are not loaded.";

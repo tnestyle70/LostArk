@@ -79,7 +79,7 @@ void Client::CClassMovieInspector::Render(const CLASS_MOVIE_INSPECTION_CALLBACKS
         ImGui::TableSetupColumn("Preview", ImGuiTableColumnFlags_WidthFixed, 105.f);
         ImGui::TableSetupColumn("In Movie", ImGuiTableColumnFlags_WidthFixed, 65.f);
         ImGui::TableSetupColumn("Authored", ImGuiTableColumnFlags_WidthFixed, 70.f);
-        ImGui::TableSetupColumn("Drawn", ImGuiTableColumnFlags_WidthFixed, 50.f);
+        ImGui::TableSetupColumn("Draw enabled", ImGuiTableColumnFlags_WidthFixed, 95.f);
         ImGui::TableSetupColumn("World XYZ (m)", ImGuiTableColumnFlags_WidthFixed, 155.f);
         ImGui::TableSetupScrollFreeze(0, 1); ImGui::TableHeadersRow();
         for (const auto& item : state.items)
@@ -118,7 +118,7 @@ void Client::CClassMovieInspector::Render(const CLASS_MOVIE_INSPECTION_CALLBACKS
         }
         ImGui::EndTable();
     }
-    ImGui::TextDisabled("%zu / %zu models. Authored is the sampled source visibility; Drawn includes preview filters.", shown, state.items.size());
+    ImGui::TextDisabled("%zu / %zu models. Authored is source visibility; Draw enabled includes preview filters, not material opacity.", shown, state.items.size());
     const auto selected = std::find_if(state.items.begin(), state.items.end(),
         [&](const auto& item) { return item.id == state.selectedId; });
     if (selected != state.items.end())

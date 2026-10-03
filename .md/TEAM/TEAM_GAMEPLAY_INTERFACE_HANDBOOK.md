@@ -2654,6 +2654,12 @@ clock·선택·draw filter를 사용한다. `CLASS_MOVIE_INSPECTION_CALLBACKS`�
 object ID로만 명령을 제출한다. Solo/Mute/선택 강조는 임시 draw 상태이며 authored visibility와
 bone provider를 변경하지 않는다. F6 자유 카메라에서도 Movie clock은 같은 owner가 유지한다.
 
+장면 Pick과 Inspector의 선택은 transient selection generation과 stable instance/slot ID로
+Sequencer의 기존 World Model 편집 행에 연결한다. 같은 모델을 다시 선택한 이벤트도 구분하며,
+미반영 row 초안이 있으면 그 초안을 보존하고 선택 전환을 보류한다. 위치 편집은 기존 WORLD
+track의 `positionOffset`만 변경한다. 현재 Intro/Loop의 한 키 또는 전체 track의 이동량을 편집하며,
+기존 Apply/Save/Publish와 revision 검증을 사용한다. 별도 모델 위치 저장 형식은 추가하지 않는다.
+
 `ClassSelection.cinematics.json`의 각 scene은 optional `excludedWorldObjectIds` 배열을 가진다.
 Delete from Movie / Restore to Movie는 해당 클래스의 Intro/Loop에 실제 바인딩된 object ID만
 이 배열에서 편집하며 Save Movie로 영구 저장한다. 공유 WORLD 리소스·WModel·서버 플레이어

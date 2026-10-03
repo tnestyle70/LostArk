@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <limits>
 #include <string_view>
 #include <utility>
 
@@ -143,6 +144,44 @@ namespace
         ImGui::EndDisabled(); ImGui::PopID(); return changed;
     }
 
+    bool EditMovieModelPosition(const Client::DATA_JSON_VALUE& row, const std::size_t keyIndex,
+        const std::array<double, 3>& position, const bool translatePhase,
+        Client::DATA_JSON_VALUE& out, std::string& status)
+    {
+        using Json = Client::DATA_JSON_VALUE;
+        const auto* source = row.Find("keys");
+        if (!source || !source->Is_Array() || source->Get_Array().empty() ||
+            (!translatePhase && keyIndex >= source->Get_Array().size()) ||
+            !std::all_of(position.begin(), position.end(), [](double value) { return std::isfinite(value); }))
+        { status = "The model position edit is invalid; the pending row was preserved."; return false; }
+        auto keys = source->Get_Array();
+        for (std::size_t i = 0u; i < keys.size(); ++i)
+        {
+            if (!translatePhase && i != keyIndex) continue;
+            const auto* current = keys[i].Find("positionOffset");
+            if (!current || !current->Is_Array() || current->Get_Array().size() != 3u)
+            { status = "This model key has no editable position; the pending row was preserved."; return false; }
+            Json::ARRAY values;
+            for (std::size_t axis = 0u; axis < 3u; ++axis)
+            {
+                const auto& component = current->Get_Array()[axis];
+                if (!component.Is_Number())
+                { status = "This model key has an invalid position; the pending row was preserved."; return false; }
+                const double value = translatePhase ? component.Get_Number() + position[axis] : position[axis];
+                if (!std::isfinite(value) || std::abs(value) > 100000.)
+                { status = "Model positions must be finite and within 100000 m; the pending row was preserved."; return false; }
+                values.push_back(Json::Number(value));
+            }
+            auto fields = keys[i].Get_Object(); fields["positionOffset"] = Json::Array(std::move(values));
+            keys[i] = Json::Object(std::move(fields), keys[i].Get_ObjectInsertionOrder());
+        }
+        auto fields = row.Get_Object(); fields["keys"] = Json::Array(std::move(keys));
+        out = Json::Object(std::move(fields), row.Get_ObjectInsertionOrder());
+        status = translatePhase ? "This phase's model position offset is staged. Apply row previews it; Save movie keeps it." :
+            "Model key position staged. Apply row previews it; Save movie keeps it.";
+        return true;
+    }
+
     class CClassSelectionWorkbenchSession final : public Client::ICompositionWorkbenchSession
     {
     public:
@@ -181,8 +220,7 @@ namespace
             }
             m_Timeline = m_Callbacks.timeline ? m_Callbacks.timeline(m_State.selectedClassId, m_ViewLoop) : nullptr;
             if (!m_Scrubbing) m_EditMs = MatchesPlayback() ? static_cast<float>(m_State.clockMs) : 0.f;
-            m_InspectedWorldId = m_Callbacks.inspection.state ?
-                m_Callbacks.inspection.state(m_State.selectedClassId, m_ViewLoop).selectedId : std::string{};
+            Sync_WorldSelection();
         }
 
         void Render_WorkbenchPane(const PANE pane) override
@@ -235,6 +273,7 @@ namespace
             Refresh_RowSource();
             Render_CameraWindow();
             Render_VisibilityWindow();
+            Sync_WorldSelection();
             if (!m_DeleteWorldItem.empty())
             {
                 if (!m_RowDirty && !m_State.authoringPublishPending)
@@ -460,6 +499,40 @@ namespace
 
         bool MatchesPlayback() const
         { return m_State.active && m_State.activeClassId == m_State.selectedClassId && m_State.looping == m_ViewLoop; }
+
+        void Sync_WorldSelection()
+        {
+            if (!m_Callbacks.inspection.state) return;
+            const auto state = m_Callbacks.inspection.state(m_State.selectedClassId, m_ViewLoop);
+            m_InspectedWorldId = state.selectedId;
+            if (m_ObservedWorldClass != m_State.selectedClassId || m_ObservedWorldLoop != m_ViewLoop)
+            {
+                m_ObservedWorldClass = m_State.selectedClassId; m_ObservedWorldLoop = m_ViewLoop;
+                m_ObservedWorldGeneration = 0u; m_ObservedWorldId.clear(); m_PendingWorldSelection.clear();
+            }
+            if (state.selectionGeneration != m_ObservedWorldGeneration || state.selectedId != m_ObservedWorldId)
+            {
+                m_ObservedWorldGeneration = state.selectionGeneration; m_ObservedWorldId = state.selectedId;
+                m_PendingWorldSelection = state.selectedId;
+            }
+            if (m_PendingWorldSelection.empty()) return;
+            if (m_SelectedKind == "World Model" && m_SelectedBox == m_PendingWorldSelection)
+            { m_PendingWorldSelection.clear(); return; }
+            if (m_RowDirty || m_Drag)
+            {
+                m_EditStatus = "A picked model is waiting. Apply, save or revert the pending row before changing selection.";
+                return;
+            }
+            if (!m_Timeline) return;
+            for (const auto& row : m_Timeline->rows) if (row.kind == "World Model")
+                for (const auto& box : row.boxes) if (box.id == m_PendingWorldSelection)
+                {
+                    Select_Box(row, box);
+                    m_PendingWorldSelection.clear();
+                    return;
+                }
+            m_PendingWorldSelection.clear();
+        }
 
         void Render_RateControl()
         {
@@ -748,7 +821,7 @@ namespace
         {
             if (m_RowDirty) { m_EditStatus = "Apply or save the edited camera before selecting another box."; return; }
             m_SelectedKind = row.kind; m_SelectedRow = row.id; m_SelectedBox = box.id;
-            if (row.kind == "World Model" && m_Callbacks.inspection.command)
+            if (row.kind == "World Model" && m_Callbacks.inspection.command && m_InspectedWorldId != box.id)
             {
                 Client::CLASS_MOVIE_INSPECTION_COMMAND command;
                 command.action = Client::CLASS_MOVIE_INSPECTION_ACTION::SELECT;
@@ -757,6 +830,7 @@ namespace
                     m_InspectedWorldId = box.id;
             }
             m_CameraKey = 0; m_EditBox.reset(); m_CameraEditor = {}; m_FollowPlayback = false;
+            m_ModelPositionDelta = {};
         }
 
         void Render_TimelineBox(const Client::CLASS_MOVIE_TIMELINE_ROW& row,
@@ -965,9 +1039,58 @@ namespace
                 }
                 ImGui::TextWrapped("Source in skips the beginning of the audio without moving the box. The left edge trims audio; dragging the body only moves it.");
             }
-            if (m_SelectedKind != "Camera" || ImGui::CollapsingHeader("All camera row fields"))
+            if (m_SelectedKind == "World Model") Render_ModelPosition();
+            const bool showRaw = m_SelectedKind == "Camera" ? ImGui::CollapsingHeader("All camera row fields") :
+                m_SelectedKind == "World Model" ? ImGui::CollapsingHeader("All model track fields") : true;
+            if (showRaw)
                 if (EditMovieValue("Row values", m_EditValue, m_KeySelections, "movie-row"))
                 { m_RowDirty = true; m_FollowPlayback = false; }
+        }
+
+        void Render_ModelPosition()
+        {
+            const auto* source = m_EditValue.Find("keys");
+            if (!source || !source->Is_Array() || source->Get_Array().empty()) return;
+            const auto& keys = source->Get_Array();
+            int& selected = m_KeySelections["movie-row/keys"];
+            ImGui::SeparatorText("Model position");
+            ImGui::Text("Editing %s only | %zu keys", m_ViewLoop ? "Loop" : "Intro", keys.size());
+            ImGui::InputInt("Position key", &selected);
+            selected = std::clamp(selected, 0, static_cast<int>(keys.size()) - 1);
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!m_Callbacks.mapTime);
+            if (ImGui::Button("Nearest key to cursor"))
+            {
+                const double clock = m_Scrubbing ? m_EditMs : MatchesPlayback() ? m_State.clockMs : m_EditMs;
+                double distance = (std::numeric_limits<double>::max)();
+                for (std::size_t i = 0u; i < keys.size(); ++i)
+                    if (const auto* time = keys[i].Find("timeMs"); time && time->Is_Number())
+                    {
+                        const double movieMs = m_Callbacks.mapTime(m_State.selectedClassId, m_ViewLoop, time->Get_Number(), false);
+                        const double candidate = std::abs(movieMs - clock);
+                        if (std::isfinite(candidate) && candidate < distance) { distance = candidate; selected = static_cast<int>(i); }
+                    }
+            }
+            ImGui::EndDisabled();
+            const auto& key = keys[static_cast<std::size_t>(selected)];
+            if (const auto* time = key.Find("timeMs"); time && time->Is_Number()) ImGui::Text("Source key: %.3f s", time->Get_Number() * .001);
+            const auto* position = key.Find("positionOffset");
+            if (!position || !position->Is_Array() || position->Get_Array().size() != 3u ||
+                !std::all_of(position->Get_Array().begin(), position->Get_Array().end(), [](const auto& value) { return value.Is_Number(); })) return;
+            std::array<double, 3> value{};
+            for (std::size_t axis = 0u; axis < value.size(); ++axis) value[axis] = position->Get_Array()[axis].Get_Number();
+            const auto stage = [&](const std::array<double, 3>& change, const bool all)
+            {
+                Client::DATA_JSON_VALUE candidate;
+                if (!EditMovieModelPosition(m_EditValue, static_cast<std::size_t>(selected), change, all, candidate, m_EditStatus)) return false;
+                m_EditValue = std::move(candidate); m_RowDirty = true; m_FollowPlayback = false; return true;
+            };
+            if (ImGui::InputScalarN("Position offset (m)", ImGuiDataType_Double, value.data(), 3, nullptr, nullptr, "%.6f")) (void)stage(value, false);
+            ImGui::TextWrapped("Sequence-local position of this key, before the instance and anchor transform. World XYZ in the model inspector is read-only. Changing one key can blend back toward later keys.");
+            ImGui::InputScalarN("Translate this phase (m)", ImGuiDataType_Double, m_ModelPositionDelta.data(), 3, nullptr, nullptr, "%.6f");
+            if (ImGui::Button("Stage translation for all keys"))
+                if (stage(m_ModelPositionDelta, true)) m_ModelPositionDelta = {};
+            ImGui::TextWrapped("Moves every key in this Intro or Loop track by the same offset. The other phase and other models are unchanged. Apply row stops playback; Play or seek previews the result. Save movie and Publish keep World changes.");
         }
 
         void Render_CameraWindow()
@@ -1093,6 +1216,10 @@ namespace
         Client::CLASS_MOVIE_INSPECTION_STATE m_Inspection;
         bool m_VisibilityWindow = false;
         std::string m_InspectedWorldId;
+        std::string m_ObservedWorldClass, m_ObservedWorldId, m_PendingWorldSelection;
+        std::uint64_t m_ObservedWorldGeneration = 0u;
+        bool m_ObservedWorldLoop = false;
+        std::array<double, 3> m_ModelPositionDelta{};
         bool m_OpenedAuthoring = false, m_RowDirty = false;
         bool m_ApplyRequested = false, m_SaveRequested = false, m_ReloadRequested = false;
         std::optional<Client::CLASS_MOVIE_AUTHORING_BOX> m_EditBox;

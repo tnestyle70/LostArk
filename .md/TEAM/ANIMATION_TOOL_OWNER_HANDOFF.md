@@ -1894,6 +1894,14 @@ Effect Tool의 Movie controls와 WORLD Action Workbench Preview에는 같은 Mov
 instance·slot·object ID, WModel, 실제 sampled XYZ와 mesh/material을 확인한다. Pick은 현재
 표시된 posed triangle의 최근접 mesh를 찾으며 texture alpha pixel까지 판정하지 않는다.
 
+장면 Pick 또는 목록에서 고른 모델은 같은 Sequencer의 World Model 편집 대상으로 연결된다.
+미반영 편집이 있으면 먼저 Apply 또는 Save한 뒤 보류된 선택을 사용한다. 위치는 기존 track의
+미터 단위 `positionOffset`을 편집하며, 한 키만 조절하거나 현재 Intro/Loop의 전체 키에 같은
+이동량을 적용할 수 있다. 전체 경로 이동은 원래 키 간 이동과 시간·회전·배율을 보존한다.
+Apply는 Movie 초안, Save는 저작 파일, Publish는 WORLD 실행 데이터 반영이므로 구분한다.
+목록의 `Draw enabled`는 가시성·preview filter가 draw를 허용한다는 뜻이며 실제 픽셀 표시를
+보장하지 않는다. 재질 alpha가 0인 삼각형도 CPU Pick과 별도 선택 강조에는 잡힐 수 있다.
+
 Composition Sequencer 상단의 `Movie visibility / models`에서도 같은 목록을 연다. World Model
 box를 고르면 상단의 `Mute model`, `Solo model`, `Delete from Movie`로 바로 조작한다.
 목록의 `M`/`S`는 임시 Mute/Solo이고 `In Movie`는 저장할 포함 여부다. 제외 후 `Save movie`를

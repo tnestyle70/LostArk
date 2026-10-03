@@ -57,3 +57,10 @@ Effect 저장의 무관한 변경은 그대로 보존한다. git diff --check �
 Client/UI를 자동 실행하거나 조작하지 않았다. 최종 Character Select에서 동일 카메라로 SSAO,
 원본 PBR 간접광, Source tone + grading을 각각 A/B하는 화면 판정은 사용자 확인 범위다.
 Lumen/DXR/DDGI/GTAO/Planar/Volumetric 등 미구현 기법을 새로 구현했다고 표시하지 않는다.
+
+## 후속 통합 제품 반영
+
+2026-10-04 사용자 종료·빌드 승인 뒤 Debug와 Release Product 빌드·배포를 모두 완료했다.
+이 문서의 변경도 해당 실행 파일에 포함된다. 두 receipt와 검증 경계는
+[Movie 통합 반영 결과 G04](2026-10-04_MOVIE_CAMERA_SAVED_POSE_REBASE_RESULT.md#g04-통합-제품-빌드)에 기록했다.
+Client/UI를 자동 실행하지 않았으며 최종 화면 확인은 사용자에게 남는다.
