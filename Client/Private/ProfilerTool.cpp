@@ -19,6 +19,8 @@ namespace
     // SCOPE_CATALOG: kept in sync with actual CProfilerScope/GpuScope call sites.
     constexpr const char* CPU_SCOPE_CATALOG[] = {
         "Render.SSGI",
+        "Render.SSGI.GatherHalf",
+        "Render.SSGI.ResolveHalf",
         "Render.SSR",
         "Render.ScreenSpaceLighting",
         "Render.ScreenSpaceLighting.Copy",
@@ -327,6 +329,8 @@ namespace
     };
     constexpr const char* GPU_SCOPE_CATALOG[] = {
         "Render.SSGI",
+        "Render.SSGI.GatherHalf",
+        "Render.SSGI.ResolveHalf",
         "Render.SSR",
         "Render.ScreenSpaceLighting.Copy",
         "ImGui.BackendSubmit",
@@ -473,7 +477,8 @@ namespace
             {"Render.Shadow.StaticBuild", "정적 그림자 생성"},
             {"Render.Shadow.Dynamic", "동적 그림자 생성"},
             {"Render.SSAO", "화면 공간 주변 차폐"}, {"Render.Lights", "월드 직접광 합산"},
-            {"Render.SSGI", "실험 화면 공간 간접광"}, {"Render.SSR", "실험 화면 공간 반사"},
+            {"Render.SSGI", "실험 화면 공간 간접광"},
+            {"Render.SSGI.GatherHalf", "GI 절반 해상도 계산"}, {"Render.SSGI.ResolveHalf", "GI 경계 보존 합성"}, {"Render.SSR", "실험 화면 공간 반사"},
             {"Render.ScreenSpaceLighting", "실험 화면 공간 조명 전체"},
             {"Render.ScreenSpaceLighting.Copy", "화면 공간 조명 입력 복사"},
             {"Render.Lights.WorldReceivers", "일반 수광체 직접광"},
@@ -731,6 +736,7 @@ Client::FProfilerCaptureContext Client::CProfilerTool::Sample_Context() const
     options["SSAO.distanceFade"] = quality.fSSAODistanceFade; options["SSAO.samples"] = quality.iSSAOSampleCount;
     options["SSGI.enabled"] = quality.bSSGIEnabled; options["SSGI.strength"] = quality.fSSGIStrength;
     options["SSGI.radius"] = quality.fSSGIRadius; options["SSGI.samples"] = quality.iSSGISampleCount;
+    options["SSGI.halfResolution"] = quality.bSSGIHalfResolution;
     options["SSR.enabled"] = quality.bSSREnabled; options["SSR.strength"] = quality.fSSRStrength;
     options["SSR.maxDistance"] = quality.fSSRMaxDistance; options["SSR.thickness"] = quality.fSSRThickness;
     options["SSR.steps"] = quality.iSSRStepCount;

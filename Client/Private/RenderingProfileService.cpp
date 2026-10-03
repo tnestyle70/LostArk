@@ -619,6 +619,7 @@ namespace
         copy(F::GAMMA,q.fGamma,bq.fGamma); copy(F::DESATURATION,q.fSceneDesaturation,bq.fSceneDesaturation);
         copy(F::SSAO_SAMPLES,q.iSSAOSampleCount,bq.iSSAOSampleCount);
         copy(F::SSGI_ENABLED,q.bSSGIEnabled,bq.bSSGIEnabled);
+        copy(F::SSGI_HALF_RESOLUTION,q.bSSGIHalfResolution,bq.bSSGIHalfResolution);
         copy(F::SSGI_STRENGTH,q.fSSGIStrength,bq.fSSGIStrength);
         copy(F::SSGI_RADIUS,q.fSSGIRadius,bq.fSSGIRadius);
         copy(F::SSGI_SAMPLES,q.iSSGISampleCount,bq.iSSGISampleCount);
@@ -674,7 +675,8 @@ CRenderingProfileService::Experiment_Fields()
         {"quality.ssr.steps",16,64,16,false},
         {"environment.sourcePbrIndirect.enabled",0,1,1,true},
         {"quality.sourcePostProcess.enabled",0,1,1,true},
-        {"material.sourceMaterials.enabled",0,1,1,true}
+        {"material.sourceMaterials.enabled",0,1,1,true},
+        {"quality.ssgi.halfResolution",0,1,1,true}
     }};
     return fields;
 }
@@ -696,7 +698,7 @@ RENDERING_EXPERIMENT_VALUES CRenderingProfileService::Read_ExperimentValues()
         double(q.bSSGIEnabled),q.fSSGIStrength,q.fSSGIRadius,double(q.iSSGISampleCount),
         double(q.bSSREnabled),q.fSSRStrength,q.fSSRMaxDistance,q.fSSRThickness,double(q.iSSRStepCount),
         double(game.Get_RenderEnvironment().bUseSourcePBRIndirect),double(q.SourcePostProcess.bEnabled),
-        double(material.bUseSourceMaterials)}};
+        double(material.bUseSourceMaterials),double(q.bSSGIHalfResolution)}};
     return result;
 }
 
@@ -849,6 +851,7 @@ bool_t CRenderingProfileService::Apply_ExperimentPreview(string& status)
     apply(F::SHADOW_ENABLED,s.Settings.bEnabled); apply(F::SHADOW_STRENGTH,s.Settings.fStrength);
     apply(F::SSAO_SAMPLES,q.iSSAOSampleCount); apply(F::PCF_RADIUS,s.Settings.iPCFFilterRadius);
     apply(F::SSGI_ENABLED,q.bSSGIEnabled);
+    apply(F::SSGI_HALF_RESOLUTION,q.bSSGIHalfResolution);
     apply(F::SSGI_STRENGTH,q.fSSGIStrength);
     apply(F::SSGI_RADIUS,q.fSSGIRadius);
     apply(F::SSGI_SAMPLES,q.iSSGISampleCount);

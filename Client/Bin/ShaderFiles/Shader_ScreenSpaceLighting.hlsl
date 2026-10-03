@@ -6,6 +6,7 @@ float4x4 g_WorldMatrix, g_ViewMatrix, g_ProjMatrix;
 float4x4 g_CameraViewMatrix, g_CameraProjMatrix, g_CameraProjMatrixInverse;
 Texture2D g_DepthTexture, g_NormalTexture, g_MaterialSpecularTexture, g_DiffuseTexture;
 Texture2D g_RadianceTexture, g_SceneHDRTexture, g_SceneBloomTexture;
+Texture2D g_SSGIHalfTexture;
 float2 g_vInverseSceneSize;
 uint g_iSSGIRayCount = 8u;
 float g_fSSGIRadius = 4.f, g_fSSGIStrength = .25f;
@@ -177,6 +178,96 @@ PS_OUT PS_SSGI(PS_IN input)
     float3 bounce = gathered / (float)g_iSSGIRayCount * saturate(albedo) * (1.f - saturate(material.a)) * g_fSSGIStrength;
     return AddContribution(output, bounce);
 }
+// Each half texel represents the lower/right pixel of its 2x2 block; clamp
+// the final odd-sized block. The resolve uses the same full-resolution guide.
+int2 SSGIRepresentativePixel(int2 halfPixel)
+{
+    uint width, height; g_DepthTexture.GetDimensions(width, height);
+    return min(halfPixel * 2 + 1, int2(width, height) - 1);
+}
+float4 PS_SSGI_GatherHalf(PS_IN halfInput) : SV_TARGET0
+{
+    if (!isfinite(g_fSSGIStrength) || g_fSSGIStrength <= 0.f || g_fSSGIStrength > 2.f ||
+        !isfinite(g_fSSGIRadius) || g_fSSGIRadius < .1f || g_fSSGIRadius > 20.f ||
+        (g_iSSGIRayCount != 4u && g_iSSGIRayCount != 8u && g_iSSGIRayCount != 16u)) return 0.f;
+    PS_IN input;
+    int2 pixel = SSGIRepresentativePixel(int2(halfInput.position.xy));
+    input.position = float4(float2(pixel) + .5f, 0.f, 1.f);
+    input.uv = clamp(input.position.xy * g_vInverseSceneSize,
+        .5f * g_vInverseSceneSize, 1.f - .5f * g_vInverseSceneSize);
+    float3 position, normal; float4 material, encoded;
+    if (!Receiver(input, position, normal, material, encoded)) return 0.f;
+    float3 helper = abs(normal.z) < .999f ? float3(0.f, 0.f, 1.f) : float3(0.f, 1.f, 0.f);
+    float3 tangent = normalize(cross(helper, normal));
+    float3 bitangent = cross(normal, tangent);
+    float rotation = frac(sin(dot(floor(input.position.xy), float2(12.9898f, 78.233f))) * 43758.5453f) * 6.28318530718f;
+    float bias = clamp(g_fSSGIRadius * .01f, .01f, .1f);
+    float3 origin = position + normal * bias;
+    float3 gathered = 0.f;
+    [loop] for (uint ray = 0u; ray < g_iSSGIRayCount; ++ray)
+    {
+        // Cosine-weighted hemisphere: mean incident radiance approximates E/pi.
+        float fraction = ((float)ray + .5f) / (float)g_iSSGIRayCount;
+        float angle = rotation + (float)ray * 2.39996322973f;
+        float radius = sqrt(fraction);
+        float3 direction = tangent * (cos(angle) * radius) + bitangent * (sin(angle) * radius) + normal * sqrt(1.f - fraction);
+        float2 hitUv; float distance;
+        if (TraceScreen(origin, direction, input.uv, g_fSSGIRadius, max(.02f, g_fSSGIRadius / 16.f), 8u, hitUv, distance))
+        {
+            float3 radiance = g_RadianceTexture.Load(PixelAt(hitUv)).rgb;
+            if (all(isfinite(radiance))) gathered += clamp(radiance, 0.f, 60000.f) * saturate(1.f - distance / g_fSSGIRadius);
+        }
+    }
+    // Store incident radiance, not albedo-modulated bounce. Full-resolution
+    // material evaluation below keeps dark/metallic edges from bleeding colour.
+    float3 incident = gathered / (float)g_iSSGIRayCount;
+    if (!all(isfinite(incident))) return 0.f;
+    return float4(clamp(incident, 0.f, 60000.f), position.z);
+}
+PS_OUT PS_SSGI_ResolveHalf(PS_IN input)
+{
+    // Raster interpolation can exceed the final pixel center by one ULP at
+    // odd viewport sizes. Rebuild and bound only this new path's receiver UV.
+    input.uv = clamp((floor(input.position.xy) + .5f) * g_vInverseSceneSize,
+        .5f * g_vInverseSceneSize, 1.f - .5f * g_vInverseSceneSize);
+    PS_OUT output = LoadBase(input);
+    if (!isfinite(g_fSSGIStrength) || g_fSSGIStrength <= 0.f || g_fSSGIStrength > 2.f) return output;
+    float3 position, normal; float4 material, encoded;
+    if (!Receiver(input, position, normal, material, encoded)) return output;
+    float3 albedo = g_DiffuseTexture.Load(int3(int2(input.position.xy), 0)).rgb;
+    if (!all(isfinite(albedo))) return output;
+    uint halfWidth, halfHeight; g_SSGIHalfTexture.GetDimensions(halfWidth, halfHeight);
+    float2 halfPosition = (floor(input.position.xy) - 1.f) * .5f;
+    int2 basePixel = int2(floor(halfPosition));
+    float2 fraction = frac(halfPosition);
+    float3 incident = 0.f;
+    float weightSum = 0.f;
+    [unroll] for (int y = 0; y < 2; ++y)
+    [unroll] for (int x = 0; x < 2; ++x)
+    {
+        int2 samplePixel = basePixel + int2(x, y);
+        if (any(samplePixel < 0) || any(samplePixel >= int2(halfWidth, halfHeight))) continue;
+        float4 sampleValue = g_SSGIHalfTexture.Load(int3(samplePixel, 0));
+        if (!all(isfinite(sampleValue)) || sampleValue.a <= .001f) continue;
+        int2 guidePixel = SSGIRepresentativePixel(samplePixel);
+        float4 guideDepth = g_DepthTexture.Load(int3(guidePixel, 0));
+        float3 guideNormal;
+        if (guideDepth.w != 3.f || !ViewNormal(g_NormalTexture.Load(int3(guidePixel, 0)), guideNormal)) continue;
+        float depthDelta = abs(sampleValue.a - position.z);
+        float depthScale = max(.02f, position.z * .01f);
+        float normalDot = saturate(dot(normal, guideNormal));
+        if (depthDelta > 2.f * depthScale || normalDot < .85f) continue;
+        float2 spatial = float2(x == 0 ? 1.f - fraction.x : fraction.x,
+            y == 0 ? 1.f - fraction.y : fraction.y);
+        float weight = spatial.x * spatial.y * exp2(-depthDelta / depthScale) * pow(normalDot, 16.f);
+        incident += max(sampleValue.rgb, 0.f) * weight;
+        weightSum += weight;
+    }
+    if (weightSum <= .000001f) return output;
+    float3 bounce = incident / weightSum * saturate(albedo) * (1.f - saturate(material.a)) * g_fSSGIStrength;
+    return AddContribution(output, bounce);
+}
+
 PS_OUT PS_SSR(PS_IN input)
 {
     PS_OUT output = LoadBase(input);
@@ -224,5 +315,23 @@ technique11 ScreenSpaceLighting
         VertexShader = ScreenSpaceVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_SSR();
+    }
+    pass SSGIGatherHalf
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = ScreenSpaceVS;
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_SSGI_GatherHalf();
+    }
+    pass SSGIResolveHalf
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = ScreenSpaceVS;
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_SSGI_ResolveHalf();
     }
 }

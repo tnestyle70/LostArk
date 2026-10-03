@@ -128,6 +128,10 @@ private:
 	shared_ptr<class CVIBuffer_Rect>		m_pVIBuffer = { nullptr };
 	shared_ptr<class CShader>				m_pShader = { nullptr };
     shared_ptr<class CShader> m_pScreenSpaceLightingShader;
+    ComPtr<ID3D11Texture2D> m_pSSGIHalfTexture;
+    ComPtr<ID3D11RenderTargetView> m_pSSGIHalfRTV;
+    ComPtr<ID3D11ShaderResourceView> m_pSSGIHalfSRV;
+    uint32_t m_iSSGIHalfWidth = 0u, m_iSSGIHalfHeight = 0u;
 
 	float4x4_t								m_WorldMatrix{}, m_ViewMatrix{}, m_ProjMatrix{};
 	uint32_t								m_iShadowMapSize = 2048u;
@@ -174,6 +178,7 @@ private:
 	HRESULT Render_Portraits();
 	HRESULT Render_Combined(bool_t bPortrait = false);
     HRESULT Render_ScreenSpaceLighting();
+    HRESULT Ready_SSGIHalfTarget(uint32_t width, uint32_t height);
 	HRESULT Render_NonLight();
 	HRESULT Render_Blend();
 	HRESULT Capture_SceneColorSnapshot();
