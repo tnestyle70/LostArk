@@ -58,3 +58,10 @@ Seek/Pause로 해당 시각에 멈추고 F6 자유 카메라로 구도를 맞춰
 키의 Eye·LookAt·Up만 변경되며 기존 시간과 FOV가 유지되는지 확인한다. F6 follow로
 돌아와 Play하면 편집한 카메라를 재생한다. 필요할 때 명시적으로 Save camera source와
 Publish saved cameras를 사용한다. 최종 구도·화면 판정은 사용자 확인으로 남는다.
+
+## 후속 통합 제품 반영
+
+2026-10-04 사용자 종료·빌드 승인 뒤 Debug와 Release Product 빌드·배포를 모두 완료했다.
+이 문서의 변경도 해당 실행 파일에 포함된다. 두 receipt와 검증 경계는
+[Movie 통합 반영 결과 G04](2026-10-04_MOVIE_CAMERA_SAVED_POSE_REBASE_RESULT.md#g04-통합-제품-빌드)에 기록했다.
+Client/UI를 자동 실행하지 않았으며 최종 화면 확인은 사용자에게 남는다.

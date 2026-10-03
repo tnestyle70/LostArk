@@ -85,4 +85,10 @@ Debug Product 빌드·배포는 `out/BuildPipeline/runs/20261003T185221321Z-debu
 에서 PASS이며 Engine, Shared, Server, Client와 shader 배포를 포함한다.
 렌더링 A/B, Effect Sequencer DPI, Effect Camera 자유 포즈 캡처 및 이번 Movie 모델 선택·위치,
 워로드 native702 불투명도 수정이 함께 포함된다. 데이터 publisher를 자동 실행하지 않았다.
-Release Product 결과는 다음 검증이 끝난 뒤 같은 절에 기록한다.
+Release Product 빌드·배포도 `out/BuildPipeline/runs/20261003T185650391Z-release-product.json`
+에서 PASS다. 두 구성 모두 실제 Build를 수행했으며 Debug 144.287초, Release 145.777초다.
+기존 C4819/C4828 인코딩 및 Release 외부 DirectXTK PDB 경고는 남지만 컴파일·링크 오류는 없다.
+빌드 후 카메라 설치 hash가 유지됨을 확인했다. Product의 runtime file/navigation/reward 검사는
+통과했으며 Client/UI 실행과 최종 구도·모델 표시 확인은 수행하지 않았다.
+독립 검토는 제품 변경 commit `0df4567904c11be66ab41c290bd03d953f10307d`에서 PASS이며
+필수 수정 결함이 없었다. 이후 변경은 이 빌드 결과와 기존 세 기능의 반영 상태 문서뿐이다.

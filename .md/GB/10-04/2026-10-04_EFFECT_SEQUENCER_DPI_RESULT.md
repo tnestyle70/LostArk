@@ -50,3 +50,10 @@ Client/UI 실행·조작·화면 캡처, Windows DPI 변경, imgui.ini 변경을
 사용자가 편집 중인 Effect·Camera·Composition·mapplacements 등 저작 데이터와 저장된 렌더링
 값은 수정하지 않았다. 이 결과는 소스 후보와 비UI 검증 완료이며 제품 빌드·반영 및 사용자의
 150% 실제 화면에서 Animation/Effect 행과 드래그 확인은 별도다.
+
+## 후속 통합 제품 반영
+
+2026-10-04 사용자 종료·빌드 승인 뒤 Debug와 Release Product 빌드·배포를 모두 완료했다.
+이 문서의 변경도 해당 실행 파일에 포함된다. 두 receipt와 검증 경계는
+[Movie 통합 반영 결과 G04](2026-10-04_MOVIE_CAMERA_SAVED_POSE_REBASE_RESULT.md#g04-통합-제품-빌드)에 기록했다.
+Client/UI를 자동 실행하지 않았으며 최종 화면 확인은 사용자에게 남는다.
