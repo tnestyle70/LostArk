@@ -53,3 +53,17 @@ CPU 검사에서 후보를 읽고 대상 컷 전체를 sample한다. 예상 회�
 후보 검증과 설치 검증을 RESULT에서 분리한다. Client/UI 실행·조작·종료·화면 캡처와
 자동 Save/Publish/Reload는 하지 않는다. 사용자는 기존 WORLD 편집기의 Reload saved movie
 후 워로드 Play All로 구도와 기존 hard cut을 확인하며 최종 화면 판단은 별도로 남는다.
+
+## G04. cam05_a 추가 저장분 반영
+
+통합 반영 뒤 사용자가 다시 저장한 `classselect.warlord.intro.camera.2`의 첫 0ms 키만
+새 기준으로 삼는다. 최신 저장본 SHA256은
+`91f04aae027f38bdb5de569a95b93fa66353baa94e62145a24000095cd7b713f`다.
+직전 설치본과 현재 main의 대상 행이 같음을 대조한 뒤, 그 직전 곡선에서 새 첫 구도로
+추가 회전·평행이동을 계산한다. 최초 원본 기준의 이전 보정량을 다시 누적하지 않는다.
+
+Intro2 94키와 Loop2 95키 중 저장한 Intro 첫 키 전체를 유지하고 나머지 188키의
+Eye·LookAt·Up 564개 vector만 바꾼다. 다른 컷·창술사·FOV·시간·curve·repeat·사용자 제외 목록은
+유지한다. 이전 증거 폴더를 덮지 않고 `out/MovieCam05Refine20261004`에서 후보·실제 sampler를
+검증하며 `out/MovieCam05Apply20261004`에서 대상 2행 guard·백업·원자 교체를 수행한다.
+카메라 데이터만 바뀌므로 제품 재빌드나 EXE 종료는 요구하지 않는다.

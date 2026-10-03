@@ -92,3 +92,30 @@ Release Product 빌드·배포도 `out/BuildPipeline/runs/20261003T185650391Z-re
 통과했으며 Client/UI 실행과 최종 구도·모델 표시 확인은 수행하지 않았다.
 독립 검토는 제품 변경 commit `0df4567904c11be66ab41c290bd03d953f10307d`에서 PASS이며
 필수 수정 결함이 없었다. 이후 변경은 이 빌드 결과와 기존 세 기능의 반영 상태 문서뿐이다.
+
+## G05. cam05_a 추가 구도 반영
+
+사용자가 추가 저장한 워로드 `cam05_a`는 Intro Camera2 첫 0ms 키의 Eye·LookAt·Up만
+변경된 상태였다. 직전 설치본 `e1c509...`와 main `b084c9dbc`의 대상 Intro/Loop 행이 같음을
+확인하고 그 직전 곡선에서 새 구도로 보정했다. 새 기준 Eye는
+`(-2105.0986328125, 1.7545170783996582, 2105.798828125)`다.
+
+Intro94키·Loop95키 중 저장한 첫 키 하나를 그대로 유지하고 나머지188키의 pose564필드만
+바꿨다. 첫0→24ms의 Eye 이동은2.8998513m에서0.000912546m로 줄었다. 첫 구도 뒤에
+옛 경로로 돌아가는 불연속을 제거했으며 경로 길이·시간·FOV·hard cut은 유지했다.
+다른 워로드 컷·창술사·제외 목록을 포함한 모든 비대상 필드가 그대로임을 확인했다.
+
+실제 현재 제품 parser로 전체5scene을 읽고 두 컷의12,600 source-ms를 sample하여
+failures0을 확인했다. 예상 변환 대비 최대 Eye 오차는0.000452723m, 시선0.00350746도,
+Up0.000394554도다. 첫1ms 최대 Eye 이동은0.00000107288m다. 증거는
+`out/MovieCam05Refine20261004`의 before/baseline/candidate, stable-field patches,
+candidate-validation 및 native-run/provenance다. 이전 증거는 덮어쓰지 않았다.
+
+2026-10-04 04:35 KST에 최신2행 의존 검증 후564필드 구간만 원자 교체하고 실제 교체본을
+백업했다. 저장본 SHA256은 `91f04aae027f38bdb5de569a95b93fa66353baa94e62145a24000095cd7b713f`,
+설치 SHA256은 `72a43675afc9f61077e0f52c617d65494a9839cca5e911aea10b9a71b88c47d5`다.
+실제 설치본의 동일 Parse/Sample 재검사도 통과했다. 근거는
+`out/MovieCam05Apply20261004/install-receipt-20261004T043519-1791056119507399700.json`과
+`installed-native.log`다. Git에는 이2컷과 사용자 기준 키만 포함하고 다른 사용자 저장분은
+작업 디스크에 보존한다. C++/shader 변경·추가 Product 빌드·publish·Client 종료·Reload는
+수행하지 않았다. 사용자는 `Reload saved movie → Play All`로 새 경로를 확인한다.
