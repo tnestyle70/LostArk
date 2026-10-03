@@ -2633,6 +2633,13 @@ Product 입력을 Save한다. 두 경로의 XYZ/FOV/키는 Client 표현 데이�
 simulation clock으로 전송하지 않는다. 원본 source clock과 Movie time의 변환은 기존 owner가
 소유하고 타임라인 표시 행 번호를 저장 ID로 사용하지 않는다.
 
+World Movie와 ALT V Recovery Camera는 공통 `Use free cam pos`로 선택 키의 Eye/LookAt/Up만
+교체한다. 원하는 키로 Seek하고 일시정지한 뒤 F6 자유 시점에서 구도를 맞춰 캡처한다.
+시간·FOV 축/값·보간·cut은 유지한다.
+Model root 행은 활성 preview의 실제 root 역행렬로 좌표와 Up 방향을 변환한다. 변환·검증
+실패는 키를 보존하고, 버튼 자체는 Save/Publish하지 않는다. 재생 확인은 F6 follow 복귀 후
+기존 Seek/Play를 사용하며 저장과 게시도 기존 camera source 명령을 따른다.
+
 World/Object Save는 `Data/Maps/Authoring` 및 필요한 연결 문서의 저작 원본을 저장한다.
 별도 Publish는 기존 WorldSequences publisher로 Client 실행 데이터를 만들고, 연결된
 Pattern/Collider/Logic에 필요하면 기존 Pattern 게시 경로를 이어 사용한다. Data가 편집 정본이며

@@ -117,14 +117,12 @@ SEQUENCE_CAMERA_EDITOR_RESULT CSequenceCameraEditor::Render(EFFECT_CAMERA_ROW& d
     result.changed |= ImGui::DragFloat3("Up", &row.upVectors[index].x, .01f);
     if (captureFreeCamera)
     {
-        ImGui::BeginDisabled(row.modelRelative);
         if (ImGui::Button("Use free cam pos"))
         {
             VALTAN_CINEMATIC_CAMERA_POSE pose;
             if (captureFreeCamera(pose, state.validationStatus))
                 result.changed |= Set_KeyPose(row, state.selectedKeyId, pose, state.validationStatus);
         }
-        ImGui::EndDisabled();
         ImGui::TextDisabled("Copies Eye, Look at and Up to this key. Time and FOV stay unchanged.");
     }
     result.changed |= ImGui::DragFloat(row.horizontalFov ? "FOV X" : "FOV Y", &selected->fFovYDegrees, .1f, 1.01f, 178.99f);
