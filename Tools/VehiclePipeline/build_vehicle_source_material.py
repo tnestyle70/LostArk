@@ -466,6 +466,17 @@ def emit_function(document, family, number, stage):
         if stage != expected_stage or leading != [0, 1]:
             fail('Source FT06 hair primitive register evidence changed')
         lines += ['    // Original engine primitive environment/opacity identity.'] + assignments
+    # The transparent Movie actor's op parameter is row 3; row 0 is the
+    # external primitive opacity, independent of authored zero/animated op.
+    if number == 702:
+        expected_shader = {'base': '3b3abe5b3d623749aeec90310df73939',
+                           'light': 'd3542163f308a34e94adac8baf7fd59d'}[stage]
+        leading = program['bindings']['constantBufferClosure']['leadingUnownedConstantBuffer0Slots']
+        if (program['shaderId'] != expected_shader or leading != [0] or
+                program['disassembly']['instructions'].count('mul o0.w, r0.x, cb0[0].x') != 1):
+            fail('Source Movie 702 primitive opacity evidence changed')
+        lines += ['    // Native engine primitive opacity; the MIC op parameter is unchanged.',
+                  '    source[0].x = 1.f;']
     # Same scene-owned reflection ABI as the existing SourceCharacter PBR families.
     environment_rows = {
         '14c753dc7e67da47b5fd1f7628119996': (36, 37),

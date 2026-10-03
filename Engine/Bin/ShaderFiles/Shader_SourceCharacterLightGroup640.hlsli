@@ -1052,6 +1052,8 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight702(SOURCE_CHARACTER_NATIVE_I
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
     float4 source[64];
     [unroll] for (uint i=0u;i<64u;++i) source[i]=g_SourceCharacterLightConstants[i];
+    // Native engine primitive opacity; the MIC op parameter is unchanged.
+    source[0].x = 1.f;
     source[4]=float4(input.lightColor,1.0);
     float4 projection[4]; [unroll] for(uint p=0u;p<4u;++p) projection[p]=input.projection[p];
     float4 passValues[5] = {float4(0.5,-0.5,0.5,0.5),float4(0,0,0,0),float4(0,0,0,0),float4(0,0,0,1),float4(1,1,1,1)};

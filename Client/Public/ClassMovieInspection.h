@@ -27,6 +27,8 @@ struct CLASS_MOVIE_INSPECTION_STATE final
     double movieMs = 0., sourceMs = 0.;
     float3_t cameraPosition{};
     uint32_t pickedMesh = UINT32_MAX;
+    // Transient selection event; selecting the same model again is observable.
+    uint64_t selectionGeneration = 0u;
     std::vector<CLASS_MOVIE_WORLD_ITEM> items;
 };
 enum class CLASS_MOVIE_INSPECTION_ACTION
