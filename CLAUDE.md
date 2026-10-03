@@ -1017,6 +1017,11 @@ Light 창 편집은 잠근다. 실험 종료·도구 닫힘·scene/region/Video 
 run의 조건이 바뀌거나 결과가 불완전하면 이를 표시하고 유효한 단일변수 이득으로 판정하지 않는다.
 결과는 `Client/Bin/BenchmarkCaptures`의 JSON에 저장하며 CPU·프레임 간격·GPU 분포와 draw·mesh·패스
 작업량을 함께 비교한다. GPU Gems 기법 사전은 원리·현재 지원·변수·비용·공식 자료를 한국어로 제공한다.
+기법 사전에서 지원 recipe를 선택해 현재 A 보관과 B 준비로 바로 연결할 수 있다. Character Select의
+굴곡 음영은 SSAO, 표면 요철은 normal 강도, baked 명암은 RNM으로 비교한다. 원본 PBR 간접광과
+원본 후처리(tone·grading 묶음)는 각각 독립된 세션 스위치이며 후처리 OFF는 기존 fallback이다.
+원본 간접광 ON에서는 cube diffuse 추가 근사를 사용하지 않는다. 지원되지 않는 GTAO·Planar·
+Volumetric과 backend/SDK 필요 항목에는 실제로 동작하는 옵션인 것처럼 스위치를 제공하지 않는다.
 실험 레시피는 한 필드의 A/B와 sweep 준비를 명시적으로 적용한다. 필요한 기능이 꺼져 있으면
 먼저 표시하고 다른 옵션을 자동으로 켜지 않는다. 비교 제외 사유는 이름 있는 조건의 이전/이후 값으로 읽는다.
 기본 OFF 패스의 샘플 수를 비교하려면 B에서 ON → `현재 B를 새 A 기준으로 채택` → sample recipe를

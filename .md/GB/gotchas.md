@@ -5965,6 +5965,17 @@ Engine FxCompile 등록과 CSO 생성만으로 Client에서 로드할 수 있다
 필수 outputs·deploymentPairs까지 연결한다. 정상 Product 뒤 실제 EXE 옆 CSO와 Engine CSO의
 크기·hash를 확인한다. 추적하는 HLSL source 배포와 Git 제외 compiled CSO 배포를 구분한다.
 
+### 렌더링 A/B는 실제 선택 필드와 지원 범위를 함께 표시한다
+
+기법 사전의 설명·공식 자료와 현재 실행할 수 있는 recipe를 구분한다. SSAO/GTAO,
+Height Fog/Volumetric Fog, SSR/Planar처럼 지원 상태가 다른 항목을 같은 구현 상태로 묶지 않는다.
+현재 값을 초기화하거나 FXAA를 강제로 켜는 preset을 A/B 시작이라고 부르지 않는다.
+원본 PBR 간접광 ON에서는 cube diffuse 근사가 억제되며, LUT가 없는 장면의 LUT 토글과
+MapPBR 전용 실험을 캐릭터에서 비교하는 경우 화면 차이가 없을 수 있다.
+source postprocess는 tone·grading 묶음이므로 선택 bit만 복원/측정 제외하고 curve·LUT 원본 입력은
+보존한다. LUT ON 검증은 원래 profile의 enabled만 보지 않고 동시에 적용할 세션 후보의
+postprocess enabled를 사용해야 A/B 왕복과 기준 채택이 일관된다.
+
 ### Object 목록의 진입 전 실패와 창 열림 상태를 구분한다
 
 도구의 m_Open=true는 source load 성공이 아니다. Lobby/Loading에서 Arena가 없어 최초 로드를

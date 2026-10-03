@@ -66,6 +66,7 @@ class CRenderingBenchmark final
 public:
 	[[nodiscard]] bool_t Is_Capturing() const noexcept { return m_bCapturing; }
     [[nodiscard]] bool_t Is_ExperimentActive() const noexcept { return m_bExperimentActive; }
+    bool_t Start_SessionExperiment(CRenderingProfileService& profiles);
 	bool_t Begin(
 		Engine::CProfiler* pProfiler,
 		const string& strLabel,
@@ -86,6 +87,7 @@ private:
     void Render_ExperimentSection(Engine::CProfiler* profiler, CRenderingProfileService& profiles);
     void Render_RecipeSection();
     bool_t Prepare_Recipe(bool_t replaceB);
+    bool_t Prepare_RecipeById(const char* recipeId, CRenderingProfileService& profiles);
     bool_t Start_Experiment(CRenderingProfileService& profiles);
     bool_t Apply_ExperimentVariant(bool_t variantB);
     void End_Experiment();

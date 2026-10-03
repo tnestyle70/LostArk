@@ -97,7 +97,8 @@ enum class RENDERING_EXPERIMENT_FIELD : uint8_t
     PBR_DIFFUSE, PBR_SPECULAR, PBR_BAKED, PBR_ENVIRONMENT, PBR_CUBE, NORMAL_STRENGTH,
     ROUGHNESS_OFFSET,
     SSGI_ENABLED, SSGI_STRENGTH, SSGI_RADIUS, SSGI_SAMPLES,
-    SSR_ENABLED, SSR_STRENGTH, SSR_DISTANCE, SSR_THICKNESS, SSR_STEPS, COUNT
+    SSR_ENABLED, SSR_STRENGTH, SSR_DISTANCE, SSR_THICKNESS, SSR_STEPS,
+    SOURCE_PBR_INDIRECT, SOURCE_POST_PROCESS, COUNT
 };
 constexpr size_t RENDERING_EXPERIMENT_FIELD_COUNT = static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::COUNT);
 static_assert(RENDERING_EXPERIMENT_FIELD_COUNT < 64u);
@@ -223,6 +224,7 @@ private:
     SHADOW_LIGHT_DESC m_ExperimentAppliedShadow, m_ExperimentBaseShadow;
     HEIGHT_FOG_SETTINGS m_ExperimentBaseFog;
     MATERIAL_RENDER_SETTINGS m_ExperimentAppliedMaterial, m_ExperimentBaseMaterial;
+    bool_t m_bExperimentBaseSourcePBRIndirect = false;
     bool_t Apply_CameraRegionEnvironment(f32_t deltaSeconds, string& status);
     bool_t Restore_PresentationEnvironment(string& status);
     bool_t m_bPresentationFogOverride = false;

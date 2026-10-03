@@ -4,8 +4,8 @@
 #include <array>
 #include <string_view>
 
-// Read-only explanations. Availability describes this renderer, never the
-// selected GPU's marketing name. Settings are owned by RenderingBenchmark.
+// Availability describes this renderer, never the selected GPU's marketing name.
+// Explicit experiment requests return stable recipe IDs; Benchmark owns settings.
 namespace Client::RenderingTechniqueGuide
 {
     enum class Availability { Current, MaterialFamily, Foundation, Backend, Reference };
@@ -20,6 +20,7 @@ namespace Client::RenderingTechniqueGuide
         const char* Cost;
         const char* Experiment;
         const char* Source;
+        const char* RecipeId = nullptr;
     };
 
     inline constexpr Technique Techniques[] = {
@@ -29,63 +30,63 @@ namespace Client::RenderingTechniqueGuide
          "AO·그림자 필터·간접광·산란·geometry 처리 중 한 문제를 고르고 해당 알고리즘의 sample 수·반경·해상도를 독립 변수로 선택합니다.",
          "draw/정점 처리, texture sampling, 메모리 대역폭, pass 수 중 어디에 비용이 생기는지 먼저 구분합니다.",
          "같은 카메라·장면·노출에서 baseline과 한 기법을 비교합니다. 화질, GPU ms, CPU 제출 ms를 함께 봅니다.",
-         "https://developer.nvidia.com/gpugems"},
+         "https://developer.nvidia.com/gpugems", "ssao.samples"},
         {"PBR / BRDF", "재질·빛", Availability::MaterialFamily,
          "표면의 base color·roughness·metallic·normal로 빛의 확산과 반사를 계산합니다. 재질 모델이며 GI 자체는 아닙니다.",
          "Map source PBR family와 source character 경로가 있습니다. legacy·forward 재질까지 같은 BRDF로 통일된 것은 아닙니다.",
          "기존 Pixel Inputs의 diffuse/specular 기여, normal 배율, roughness offset. 어떤 family가 소비하는지 확인합니다.",
          "G-buffer 대역폭, 직접광 PS 호출과 BRDF texture/ALU, 투명 재질 overdraw.",
          "roughness만 바꾸고 직접광·환경광·노출을 고정합니다. 0 기여가 shader 계산 생략을 의미하지는 않습니다.",
-         "https://dev.epicgames.com/documentation/en-us/unreal-engine/physically-based-materials-in-unreal-engine"},
+         "https://dev.epicgames.com/documentation/en-us/unreal-engine/physically-based-materials-in-unreal-engine", "pbr.normal"},
         {"GI / Baked RNM", "간접광·반사", Availability::MaterialFamily,
          "GI는 표면 사이에서 반사된 빛까지 고려하는 문제 영역입니다. baked 조명은 미리 계산해 저장하며 RNM은 방향 정보를 가진 lightmap 표현입니다.",
          "기존 map RNM baked diffuse 소비가 있습니다. 동적 오브젝트·광원 변화 전체를 재계산하는 동적 GI는 아닙니다.",
          "PBR baked diffuse contribution. 베이크 입력·receiver·직접광 중복 여부는 동일하게 유지합니다.",
          "lightmap texture sampling·대역폭과 간접 합성. 오프라인 bake 시간은 프레임 비용과 별개입니다.",
          "RNM contribution 0/1로 화면 기여를 확인합니다. 직접광만 보기와 본질 preset은 서로 다른 실험입니다.",
-         "https://dev.epicgames.com/documentation/en-us/unreal-engine/global-illumination-in-unreal-engine"},
+         "https://dev.epicgames.com/documentation/en-us/unreal-engine/global-illumination-in-unreal-engine", "pbr.baked"},
         {"IBL / 환경 반사", "간접광·반사", Availability::MaterialFamily,
          "주변 환경에서 오는 빛을 cubemap·probe로 근사합니다. roughness에 따라 반사의 퍼짐을 달리합니다. 환경 반사는 화면 공간 반사와 다릅니다.",
          "source PBR 환경 specular와 cube diffuse 입력이 있습니다. 실시간 모든 geometry 반사는 아닙니다.",
          "environment specular/cube diffuse contribution와 roughness. source 환경 입력과 exposure를 고정합니다.",
          "cubemap sampling, mip 접근, 간접광 합성 PS 비용.",
          "환경 기여를 각각 0/1로 비교하고 거울 표면에서 실제 장면 geometry와 일치하는지도 확인합니다.",
-         "https://dev.epicgames.com/documentation/en-us/unreal-engine/reflections-environment-in-unreal-engine"},
-        {"SSAO / GTAO", "차폐·그림자", Availability::Current,
+         "https://dev.epicgames.com/documentation/en-us/unreal-engine/reflections-environment-in-unreal-engine", "pbr.environment"},
+        {"SSAO", "차폐·그림자", Availability::Current,
          "AO는 주변 geometry가 환경광을 가리는 정도입니다. SSAO는 depth/normal로 화면 안의 근접 차폐를 근사합니다. GTAO는 별도의 차폐 추정 알고리즘입니다.",
          "현재 실행 가능한 것은 기존 SSAO입니다. GTAO라는 이름으로 현재 SSAO를 바꾸어 표시하지 않습니다.",
          "SSAO ON/OFF, sample 4/8/12, radius, bias, intensity, power, distance fade. intensity는 차폐 강도이며 광원 밝기가 아닙니다.",
          "Render.SSAO의 sample 비용·해상도·필터와 간접 합성. 반경이 커질 때 halo·두께 오차도 확인합니다.",
          "먼저 OFF/ON, 다음 sample 4/8/12 또는 radius만 sweep합니다. 원문 AO 알고리즘과 현재 screen-space 근사를 구분합니다.",
-         "https://developer.nvidia.com/gpugems/gpugems3/part-ii-light-and-shadows/chapter-12-high-quality-ambient-occlusion"},
+         "https://developer.nvidia.com/gpugems/gpugems3/part-ii-light-and-shadows/chapter-12-high-quality-ambient-occlusion", "ssao.pass"},
         {"Shadow map / PCF / Cache", "차폐·그림자", Availability::Current,
          "광원 시점의 깊이를 저장해 가려짐을 판정합니다. PCF는 여러 비교 sample로 경계를 필터링하며 cache는 변하지 않은 caster 결과를 재사용합니다.",
          "현재 방향광 그림자와 정적 cache·동적 제출을 계측합니다. GPU Gems의 variance shadow map은 별도 알고리즘입니다.",
          "shadow ON/OFF·strength, PCF radius 0/1/2 = 1/9/25 kernel 위치를 비교합니다. 기본3×3을 유지하며 shadow 해상도2048은 이 실험의 조절 변수가 아닙니다.",
          "caster draw/index, cache 재생성, depth texture 대역폭, 수광 PS sampling. dynamic baked 경로는 위치당 두 depth를 읽어2/18/50 fetch입니다.",
          "먼저 캐시 적중/실패와 StaticBuild/Dynamic을 비교합니다. 해상도 감소 이득과 화면 품질 손실을 함께 기록합니다.",
-         "https://developer.nvidia.com/gpugems/gpugems/part-ii-lighting-and-shadows/chapter-11-shadow-map-antialiasing"},
+         "https://developer.nvidia.com/gpugems/gpugems/part-ii-lighting-and-shadows/chapter-11-shadow-map-antialiasing", "shadow.pass"},
         {"Bloom / Tone / Exposure", "영상·재구성", Availability::Current,
          "Bloom은 밝은 영상의 번짐, tone mapping은 HDR을 표시 범위로 바꾸는 곡선, exposure는 입력 빛의 배율입니다. 셋 모두 새 간접광을 계산하지 않습니다.",
          "기존 HDR·half-resolution Bloom·source/Hable tone·gamma·LUT 경로를 사용합니다.",
          "Bloom threshold/knee/intensity/scatter, exposure, gamma, FXAA. 현재 tone 방식과 white point의 유효 여부를 확인합니다.",
          "Render.Bloom의 다운샘플·필터, Render.Final의 tone/색보정·출력 비용.",
          "GI 비교에서는 exposure와 tone을 고정합니다. Bloom 강도 0과 pass OFF가 같은 비용인지 별도로 측정합니다.",
-         "https://dev.epicgames.com/documentation/en-us/unreal-engine/post-process-effects-in-unreal-engine"},
+         "https://dev.epicgames.com/documentation/en-us/unreal-engine/post-process-effects-in-unreal-engine", "bloom.pass"},
         {"FXAA", "영상·재구성", Availability::Current,
          "최종 영상의 경계를 탐지해 공간적으로 부드럽게 만듭니다. 이전 프레임 정보가 없어 시간 흔들림이나 세부 복원은 제한됩니다.",
          "현재 제품의 AA 방식입니다. 세션 실험은 저장된 Mario/scene FXAA 값을 덮어쓰지 않습니다.",
          "ON/OFF, subpixel, edge threshold/min. UI 앞에서 적용하는 현재 순서를 유지합니다.",
          "최종 화면 PS texture sample·대역폭. 작은 디테일의 흐림과 비용을 함께 봅니다.",
          "정지 화면과 카메라 이동 둘 다 비교하되 결과를 별도 run으로 수집합니다.",
-         "https://dev.epicgames.com/documentation/en-us/unreal-engine/anti-aliasing-and-upscaling-in-unreal-engine"},
-        {"Height Fog / Volumetric Fog", "공기·투명", Availability::Current,
+         "https://dev.epicgames.com/documentation/en-us/unreal-engine/anti-aliasing-and-upscaling-in-unreal-engine", "fxaa.pass"},
+        {"Height Fog", "공기·투명", Availability::Current,
          "height fog는 거리·높이에 따른 감쇠 근사입니다. volumetric fog는 공간 격자에서 빛의 산란과 감쇠를 적분하므로 광선·볼륨 그림자를 표현할 수 있습니다.",
          "현재 실행 경로는 height fog입니다. froxel volume 조명은 미구현입니다.",
          "현재 fog ON/OFF·density·height falloff. 후속 volume에는 grid 크기·step·anisotropy·history가 필요합니다.",
          "현재 합성 PS와, 후속 volume의 light injection·ray integration·3D texture 대역폭을 분리합니다.",
          "안개 제거로 드러나는 geometry/대비 변화와 GPU 이득을 구분합니다. 높이 안개를 volumetric으로 부르지 않습니다.",
-         "https://developer.nvidia.com/gpugems/gpugems/part-vi-beyond-triangles/chapter-39-volume-rendering-techniques"},
+         "https://developer.nvidia.com/gpugems/gpugems/part-vi-beyond-triangles/chapter-39-volume-rendering-techniques", "fog.pass"},
         {"Instancing / LOD / GPU Driven", "geometry·제출", Availability::MaterialFamily,
          "instancing은 같은 geometry 제출을 묶고 LOD는 필요 정밀도를 낮춥니다. GPU driven은 가시성·제출 인자 일부를 GPU에서 생성합니다.",
          "맵 batch/instance·CPU screen LOD 경로가 있습니다. indirect counter 선언만으로 실행 경로가 있다고 볼 수 없으며 현재 GPU driven culling/indirect 제출은 미구현입니다.",
@@ -99,14 +100,56 @@ namespace Client::RenderingTechniqueGuide
          "세션 ON/OFF, 강도0..2, 반경0.1..20m, sample4/8/16. 기본OFF이며 저장 profile에 추가하지 않습니다.",
          "Render.SSGI GPU와 Render.ScreenSpaceLighting.Copy를 함께 봅니다. 강도0은 trace 조기 종료지만 full-screen 패스·복사는 남습니다. PSInvocations는 ray hit 수가 아닙니다.",
          "직접광·RNM·IBL·노출을 고정하고 recipe로 단일 변수 A/B/sweep합니다. 카메라 이동/화면 경계·가림·빛 누출을 확인하며 에너지 보존 GI로 간주하지 않습니다.",
-         "https://dev.epicgames.com/documentation/en-us/unreal-engine/screen-space-global-illumination"},
-        {"실험 SSR / Planar Reflection", "간접광·반사", Availability::MaterialFamily,
+         "https://dev.epicgames.com/documentation/en-us/unreal-engine/screen-space-global-illumination", "ssgi.pass"},
+        {"실험 SSR", "간접광·반사", Availability::MaterialFamily,
          "SSR은 화면 depth를 따라 specular ray를 찾습니다. planar reflection은 반사 카메라로 scene을 다시 그리는 별개 방식입니다.",
          "D3D11 SSR 실험은 source marker3 MapPBR 수신·FINAL view에 가산하며 기존 IBL을 유지합니다. Planar·temporal/history·화면 밖 반사는 미구현입니다.",
          "세션 ON/OFF, 강도0..2, 최대거리0.1..100m, hit두께0.01..2m, step16/32/64. 기본OFF.",
          "Render.SSR GPU + 공통 Copy, depth/radiance 대역폭을 봅니다. 강도0은 trace를 조기 종료하지만 패스/복사는 남고 최대step은 실제hit수와 다릅니다.",
          "동일 roughness·IBL·노출에서 화면 경계/얇은 물체/반사 누락을 비교합니다. SSGI와 같은 원본radiance를 읽어 SSGI 결과를 새 반사입력으로 재사용하지 않습니다.",
-         "https://dev.epicgames.com/documentation/en-us/unreal-engine/screen-space-reflections-in-unreal-engine"},
+         "https://dev.epicgames.com/documentation/en-us/unreal-engine/screen-space-reflections-in-unreal-engine", "ssr.pass"},
+        {"GTAO (미구현)", "차폐·그림자", Availability::Foundation,
+         "GTAO는 화면 공간 차폐를 추정하는 별도의 알고리즘입니다.",
+         "현재 SSAO 경로를 GTAO로 표시하지 않습니다. GTAO 전용 추정·필터 패스는 없습니다.",
+         "향후 방향·step 수, 반경, 두께와 필터 입력이 필요합니다.",
+         "depth/normal sampling과 별도 resolve/filter 비용을 검증해야 합니다.",
+         "현재 실행 가능한 AO 비교는 별도 SSAO 항목을 사용합니다.",
+         "https://developer.nvidia.com/gpugems/gpugems3/part-ii-light-and-shadows/chapter-12-high-quality-ambient-occlusion"},
+        {"Volumetric Fog (미구현)", "공기·투명", Availability::Foundation,
+         "3D 공간의 빛 산란과 감쇠를 적분하는 안개입니다.",
+         "현재 Height Fog와 다릅니다. froxel volume과 light injection은 구현되지 않았습니다.",
+         "향후 grid 크기, 적분 step, 산란 계수와 history 입력이 필요합니다.",
+         "3D texture, 조명 주입, ray integration과 시간 필터 비용이 생깁니다.",
+         "현재 Height Fog 실험 결과를 volumetric 지원이나 성능으로 해석하지 않습니다.",
+         "https://developer.nvidia.com/gpugems/gpugems/part-vi-beyond-triangles/chapter-39-volume-rendering-techniques"},
+        {"Planar Reflection (미구현)", "간접광·반사", Availability::Foundation,
+         "반사 평면의 카메라로 장면을 다시 그리는 반사 방식입니다.",
+         "현재 SSR과 별개입니다. 반사 카메라·clip plane·별도 scene render는 없습니다.",
+         "향후 반사 평면, 해상도, 갱신 간격과 대상 scene 범위가 필요합니다.",
+         "장면 재제출·geometry와 pixel 비용을 추가합니다.",
+         "현재 실행 가능한 화면 공간 반사는 별도 SSR 항목을 사용합니다.",
+         "https://dev.epicgames.com/documentation/en-us/unreal-engine/planar-reflections-in-unreal-engine"},
+        {"원본 PBR 간접광 경로", "간접광·반사", Availability::MaterialFamily,
+         "원본 재질의 SH·hemisphere·cubemap 입력을 소비하는 기존 간접광 경로입니다.",
+         "지원 PBR family와 실제 저작 입력에 한정됩니다. OFF는 이전 환경 경로로 복귀하며 GI 전체 제거가 아닙니다.",
+         "environment.sourcePbrIndirect.enabled 하나를 비교합니다. cube·색·SH 입력과 노출은 보존합니다.",
+         "지원 source material과 Render.Combined의 shader 비용·화면 기여를 함께 봅니다.",
+         "원본 경로 ON에서는 project cube diffuse slider가 소비되지 않습니다. 두 경로를 먼저 비교하고 필요할 때 OFF인 B를 새 A로 채택합니다.",
+         "https://dev.epicgames.com/documentation/en-us/unreal-engine/global-illumination-in-unreal-engine", "pbr.sourceIndirect"},
+        {"Source tone + grading 묶음", "영상·재구성", Availability::Current,
+         "원본 tone curve와 색보정 입력을 함께 적용하는 표시 변환 묶음입니다.",
+         "기존 SourcePostProcess.enabled를 비교합니다. OFF는 기본 Hable 경로이며 순수 tone-only/LUT-only 토글이 아닙니다.",
+         "quality.sourcePostProcess.enabled. 저장된 curve·색·LUT·노출·gamma 입력은 유지합니다.",
+         "Render.Final과 첫 grading cache 준비 비용을 나누어 확인합니다.",
+         "같은 HDR 장면에서 두 표시 경로를 비교합니다. LUT만 비교하려면 이 묶음을 ON으로 유지하고 LUT 항목을 고릅니다.",
+         "https://dev.epicgames.com/documentation/en-us/unreal-engine/post-process-effects-in-unreal-engine", "display.sourcePostProcess"},
+        {"Source LUT grading", "영상·재구성", Availability::Current,
+         "저장된 LUT의 색 변환 기여를 분리합니다.",
+         "Source tone + grading이 ON이고 저작 LUT 입력이 있을 때 실행 가능합니다.",
+         "quality.lut.enabled만 비교합니다. source tone curve와 다른 색 입력은 유지합니다.",
+         "Render.Final과 grading cache의 비용·최종 색을 함께 확인합니다.",
+         "LUT OFF가 source tone 전체 OFF는 아닙니다. 현재 입력이 없으면 다른 LUT를 자동으로 주입하지 않습니다.",
+         "https://dev.epicgames.com/documentation/en-us/unreal-engine/post-process-effects-in-unreal-engine", "display.lut"},
         {"Probe GI / DDGI", "간접광·반사", Availability::Foundation,
          "공간에 배치한 probe의 방향별 조명과 가시성을 갱신하고 표면 위치에서 보간합니다. DDGI는 동적 갱신을 포함하는 접근입니다.",
          "동적 probe volume 미구현. probe 배치·trace backend·visibility 저장·geometry 이동 시 invalidation이 필요합니다.",
@@ -261,11 +304,12 @@ namespace Client::RenderingTechniqueGuide
         }
     }
 
-    inline void Render()
+    inline const char* Render(bool experimentActive = false, bool capturing = false)
     {
-        if (!ImGui::CollapsingHeader("기법 사전 · GPU Gems / GI / RTX")) return;
-        ImGui::TextWrapped("개념과 현재 실행 가능한 범위를 함께 표시합니다. 위 세션 실험에서 지원하는 변수만 실제 적용됩니다. 향후 변수는 설계 설명이며 이 목록이 기능을 켜거나 저장하지 않습니다.");
-        ImGui::TextWrapped("현재 기법의 실제 비교는 위 원인별 recipe에서 한 변수로 준비합니다. 아래 상용 도구 비교표는 시간축·작업 대기·자원/메모리·coverage의 계측 공백과 검증 조건을 설명합니다.");
+        if (!ImGui::CollapsingHeader("기법 사전 · GPU Gems / GI / RTX")) return nullptr;
+        const char* requestedRecipe = nullptr;
+        ImGui::TextWrapped("선택·검색만으로 설정을 바꾸지 않습니다. 연결된 실험 버튼은 현재 A를 보관하거나 기존 세션의 B를 한 변수 후보로 명시적으로 교체합니다. 저장·Publish는 하지 않습니다.");
+        ImGui::TextWrapped("위 세션의 A 적용 / B 적용 / 실험 종료로 화면을 비교하고 복원합니다. 재질 한정 지원은 캐릭터 전체 적용을 뜻하지 않으며 미구현 기법에는 실행 버튼이 없습니다.");
         static ImGuiTextFilter filter;
         filter.Draw("기법 검색");
         static int selected = 0;
@@ -283,6 +327,15 @@ namespace Client::RenderingTechniqueGuide
         }
         const auto& item = Techniques[selected];
         ImGui::Text("%s | %s", item.Category, StatusLabel(item.Status));
+        if (item.RecipeId)
+        {
+            ImGui::Text("연결된 실험: %s",item.RecipeId);
+            ImGui::BeginDisabled(capturing);
+            if (ImGui::Button(experimentActive ? "이 기법의 실험으로 기존 B 대체" : "현재 A 보관 + 이 기법의 B 준비"))
+                requestedRecipe = item.RecipeId;
+            ImGui::EndDisabled();
+        }
+        else ImGui::TextDisabled("현재 연결된 세션 실험 없음 — 구현 범위와 필요한 입력을 아래에서 확인하세요.");
         const auto field = [](const char* title, const char* content)
         {
             ImGui::SeparatorText(title);
@@ -296,5 +349,6 @@ namespace Client::RenderingTechniqueGuide
         ImGui::SeparatorText("공식 자료");
         ImGui::TextWrapped("%s", item.Source);
         if (ImGui::Button("공식 자료 주소 복사")) ImGui::SetClipboardText(item.Source);
+        return requestedRecipe;
     }
 }

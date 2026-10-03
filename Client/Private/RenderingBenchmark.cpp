@@ -99,7 +99,13 @@ namespace
         {"display.exposure","노출 배율",ExperimentField::EXPOSURE,NoGate,false,RecipeKind::Display,.5,2,5,
          "빛의 영상 배율과 tone 결과를 확인합니다.","Render.Final GPU, 밝기·클리핑·Bloom threshold 영향", "밝기 조절 실험입니다. GI/재질 기여 비교 때는 노출을 고정해야 합니다."},
         {"display.gamma","표시 gamma",ExperimentField::GAMMA,NoGate,false,RecipeKind::Display,1.8,2.4,5,
-         "표시 변환이 중간 밝기와 색에 미치는 영향을 확인합니다.","Render.Final GPU, source grading cache 준비 CPU, 동일 장면 화면", "새 gamma의 첫 준비 비용과 steady-state를 나누고 warm-up을 사용합니다."}
+         "표시 변환이 중간 밝기와 색에 미치는 영향을 확인합니다.","Render.Final GPU, source grading cache 준비 CPU, 동일 장면 화면", "새 gamma의 첫 준비 비용과 steady-state를 나누고 warm-up을 사용합니다."},
+        {"pbr.sourceIndirect","원본 PBR 간접광 경로 ON/OFF",ExperimentField::SOURCE_PBR_INDIRECT,NoGate,true,RecipeKind::Contribution,0,1,2,
+         "원본 SH·hemisphere·환경 입력을 소비하는 지원 PBR 경로와 이전 경로를 비교합니다.","Render.Combined와 지원 source material GPU, 동일 노출·광원·재질 화면", "간접광 전체 제거가 아닙니다. OFF는 보존된 이전 환경 경로로 돌아갑니다. 캐릭터 전체나 모든 재질의 GI 토글이 아닙니다."},
+        {"display.sourcePostProcess","Source tone + grading 묶음 ON/OFF",ExperimentField::SOURCE_POST_PROCESS,NoGate,false,RecipeKind::Display,0,1,2,
+         "원본 tone curve와 grading 묶음이 밝기·색에 미치는 영향을 분리합니다.","Render.Final GPU, source grading cache 준비 CPU, 같은 HDR 입력의 화면", "SourcePostProcess.enabled 하나를 비교합니다. OFF는 기본 Hable 표시 경로이며 순수 tone-only 또는 LUT-only 실험이 아닙니다. 저장된 curve·색·LUT 입력은 보존합니다."},
+        {"display.lut","Source LUT grading ON/OFF",ExperimentField::LUT_ENABLED,ExperimentField::SOURCE_POST_PROCESS,false,RecipeKind::Display,0,1,2,
+         "Source tone + grading 묶음을 켠 상태에서 저작 LUT의 색 기여만 비교합니다.","Render.Final GPU, 같은 노출·tone·색 입력의 화면", "저작 LUT 입력이 있어야 ON을 적용할 수 있습니다. LUT OFF는 source tone curve OFF가 아닙니다."}
     };
 
     bool BuildRecipeCandidate(const FExperimentRecipe& recipe, const Client::RENDERING_EXPERIMENT_VALUES& base,
@@ -111,6 +117,8 @@ namespace
         {status="A 기준의 해당 패스가 OFF입니다. 먼저 ON/OFF 실험을 사용하세요. ON인 B를 적용하고 위의 B를 새 A 기준으로 채택한 뒤 이 recipe를 준비하세요. 다른 변수를 자동으로 켜지 않습니다.";return false;}
         if(recipe.SourceRequired && !sourceMaterials)
         {status="이 recipe는 지원 source map PBR 재질이 필요합니다. 현재 source material 경로가 OFF입니다.";return false;}
+        if(recipe.Field==ExperimentField::PBR_CUBE && base.values[static_cast<size_t>(ExperimentField::SOURCE_PBR_INDIRECT)]!=0)
+        {status="현재 A는 원본 PBR 간접광 경로입니다. 이 경로에서는 project cube diffuse가 비활성이라 해당 기여 비교를 준비할 수 없습니다. 원본 간접광 ON/OFF를 명시적으로 비교하거나, OFF인 B를 새 A로 채택하세요.";return false;}
         low=static_cast<float>((std::max)(recipe.Low,fields[index].minimum));
         high=static_cast<float>((std::min)(recipe.High,fields[index].maximum));
         if(recipe.Field==ExperimentField::SSAO_RADIUS)
@@ -238,6 +246,7 @@ namespace
         zero(F::SSR_DISTANCE,q.fSSRMaxDistance); scalar(q.fSSRMaxDistance,"quality.fSSRMaxDistance");
         zero(F::SSR_THICKNESS,q.fSSRThickness); scalar(q.fSSRThickness,"quality.fSSRThickness");
         zero(F::SSR_STEPS,q.iSSRStepCount); scalar(q.iSSRStepCount,"quality.iSSRStepCount");
+        zero(F::SOURCE_POST_PROCESS,q.SourcePostProcess.bEnabled);
         if (omit(F::LUT_ENABLED)) q.SourcePostProcess.LutLayers.clear();
         scalar(q.bSSAOEnabled,"quality.bSSAOEnabled"); scalar(q.fSSAORadius,"quality.fSSAORadius"); scalar(q.fSSAOBias,"quality.fSSAOBias");
         scalar(q.fSSAOIntensity,"quality.fSSAOIntensity"); scalar(q.fSSAOPower,"quality.fSSAOPower"); scalar(q.fSSAODistanceFade,"quality.fSSAODistanceFade");
@@ -280,7 +289,8 @@ namespace
         scalar(fog.fCoveragePercent,"fog.fCoveragePercent"); scalar(fog.fWindDirectionX,"fog.fWindDirectionX"); scalar(fog.fWindDirectionZ,"fog.fWindDirectionZ");
         scalar(fog.fWindSpeed,"fog.fWindSpeed"); scalar(fog.fPatchScale,"fog.fPatchScale"); scalar(fog.fPatchSoftness,"fog.fPatchSoftness");
         scalar(fog.bSourceExponential,"fog.bSourceExponential"); vector(fog.vInscatteringColor,"fog.vInscatteringColor"); vector(fog.vFogLightDirection,"fog.vFogLightDirection");
-        const auto environment = game.Get_RenderEnvironment();
+        auto environment = game.Get_RenderEnvironment();
+        zero(F::SOURCE_PBR_INDIRECT,environment.bUseSourcePBRIndirect);
         scalar(environment.strCubePath.size(),"environment.cubePathLength");
         const auto cubeOffset=stream.tellp();
         for (const auto character : environment.strCubePath) scalar(static_cast<uint32_t>(character));
@@ -939,7 +949,11 @@ bool_t Client::CRenderingBenchmark::Render_PixelInputs()
         changed |= ImGui::SliderFloat("Direct specular contribution", &gains.y, 0.f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
         changed |= ImGui::SliderFloat("Baked diffuse contribution (RNM)", &gains.z, 0.f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
         changed |= ImGui::SliderFloat("Environment specular contribution", &gains.w, 0.f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+        const bool nativeIndirect = game.Get_RenderEnvironment().bUseSourcePBRIndirect;
+        ImGui::BeginDisabled(nativeIndirect);
         changed |= ImGui::SliderFloat("Cube diffuse sky contribution", &settings.MapPBR.fCubeDiffuseScale, 0.f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::EndDisabled();
+        if (nativeIndirect) ImGui::TextWrapped("원본 PBR 간접광 ON: project cube diffuse는 소비되지 않습니다. 위 원본 간접광 recipe로 경로 자체를 명시적으로 비교하세요.");
         changed |= ImGui::SliderFloat("Normal strength multiplier", &surface.x, 0.f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
         changed |= ImGui::SliderFloat("Roughness offset", &surface.y, -1.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
         bool legacy = surface.z != 0.f;
@@ -954,10 +968,10 @@ bool_t Client::CRenderingBenchmark::Render_PixelInputs()
             settings = m_bPixelDiagnosticsActive ? m_PixelEntrySettings : Engine::MATERIAL_RENDER_SETTINGS{};
             changed = true;
         }
-        ImGui::TextWrapped("These controls affect PBR map receivers. Source character shaders keep their own equations. Defaults use the recovered metallic/BRDF energy split; source SH and hemisphere inputs remain unresolved.");
+        ImGui::TextWrapped("These controls affect supported PBR map receivers; source character shaders keep their own equations. Native SH and hemisphere inputs use the existing source-indirect path where authored. Missing inputs are not synthesized by these sliders.");
         const auto sky = game.Get_RenderEnvironment();
         ImGui::Text("Cube diffuse sky profile intensity: %.3f", sky.fDiffuseIntensity);
-        ImGui::TextWrapped("Cube diffuse uses the scene RGBM cube projection, once before fog, with material and screen AO. It is a project approximation; native SH packing and hemisphere ownership remain unresolved. Set its contribution to zero to compare the previous lighting.");
+        ImGui::TextWrapped("Project cube diffuse uses the scene RGBM cube projection before fog with material/screen AO. It is a separate approximation and is inactive while native source PBR indirect is ON. Its contribution slider does not control native SH or hemisphere lighting.");
         ImGui::TextDisabled("Diffuse lighting also includes the ambient fallback on surfaces without baked lighting.");
         ImGui::TextDisabled("Session only. Closing the workbench or changing Level clears this comparison. No Save or Publish.");
     }
@@ -1197,6 +1211,19 @@ bool_t Client::CRenderingBenchmark::Adopt_BaselineFromB()
     return true;
 }
 
+bool_t Client::CRenderingBenchmark::Start_SessionExperiment(CRenderingProfileService& profiles)
+{
+    if (m_bCapturing || m_bSequence || m_bSweep)
+    { m_strStatus="측정·반복·sweep를 종료한 뒤 세션 실험을 시작하세요. 현재 설정을 유지합니다."; return false; }
+    Update_RestorationPreview(profiles,true);
+    if (m_bExperimentActive) return true;
+    if (!m_strRestorationLastProfileId.empty())
+    { m_strStatus="Rendering restoration에서 Return to entry를 누른 뒤 시작하세요. 현재 비교 profile은 유지합니다."; return false; }
+    if (profiles.Get_ComparisonOptions().bActive || profiles.Has_ExperimentPreview())
+    { m_strStatus="기존 Live rendering comparison을 Reset한 뒤 시작하세요. 다른 비교의 설정을 자동 해제하지 않습니다."; return false; }
+    return Start_Experiment(profiles);
+}
+
 bool_t Client::CRenderingBenchmark::Start_Experiment(CRenderingProfileService& profiles)
 {
     if (m_bCapturing || m_bExperimentActive) return false;
@@ -1274,6 +1301,28 @@ void Client::CRenderingBenchmark::End_Experiment()
     m_bExperimentActive=false; m_pExperimentProfiles=nullptr;
 }
 
+bool_t Client::CRenderingBenchmark::Prepare_RecipeById(const char* recipeId, CRenderingProfileService& profiles)
+{
+    if (!recipeId) return false;
+    const auto found=std::find_if(std::begin(ExperimentRecipes),std::end(ExperimentRecipes),
+        [recipeId](const auto& recipe){return std::string_view(recipe.Id)==recipeId;});
+    if (found==std::end(ExperimentRecipes))
+    { m_strStatus="이 기법에는 연결된 실험 recipe가 없습니다. 현재 A/B를 유지합니다."; return false; }
+    const bool wasActive=m_bExperimentActive;
+    if (!Start_SessionExperiment(profiles)) return false;
+    const int previous=m_iSelectedRecipe;
+    m_iSelectedRecipe=static_cast<int>(found-std::begin(ExperimentRecipes));
+    if (Prepare_Recipe(true)) return true;
+    m_iSelectedRecipe=previous;
+    if (!wasActive)
+    {
+        const string reason=m_strStatus;
+        End_Experiment();
+        m_strStatus=reason;
+    }
+    return false;
+}
+
 bool_t Client::CRenderingBenchmark::Prepare_Recipe(bool_t replaceB)
 {
     if(!m_bExperimentActive || m_bCapturing || !m_pExperimentProfiles)
@@ -1332,7 +1381,7 @@ void Client::CRenderingBenchmark::Render_ExperimentSection(Engine::CProfiler* pr
     if (!m_bExperimentActive)
     {
         ImGui::BeginDisabled(m_bCapturing);
-        if (ImGui::Button("현재 품질을 A로 보관하고 실험 시작")) Start_Experiment(profiles);
+        if (ImGui::Button("현재 품질을 A로 보관하고 실험 시작")) Start_SessionExperiment(profiles);
         ImGui::EndDisabled();
     }
     else
@@ -1364,7 +1413,8 @@ void Client::CRenderingBenchmark::Render_ExperimentSection(Engine::CProfiler* pr
             "안개 켜기","안개 밀도","LUT 켜기","장면 탈색","SSAO 샘플 수","PCF 반경 (0/1/2 = 1/9/25 tap)","PBR 직접 diffuse","PBR 직접 specular","PBR baked RNM",
             "PBR 환경 specular","PBR cube diffuse","PBR normal 강도","PBR roughness offset",
             "실험 SSGI 켜기","SSGI 기여 강도","SSGI 반경 (m)","SSGI 샘플 수 (4/8/16)",
-            "실험 SSR 켜기","SSR 기여 강도","SSR 최대 거리 (m)","SSR hit 두께 (m)","SSR step 수 (16/32/64)"};
+            "실험 SSR 켜기","SSR 기여 강도","SSR 최대 거리 (m)","SSR hit 두께 (m)","SSR step 수 (16/32/64)",
+            "원본 PBR 간접광 경로","Source tone + grading 묶음"};
         static_assert(std::size(labels)==RENDERING_EXPERIMENT_FIELD_COUNT);
         size_t changedCount=0; const uint64_t mask=Experiment_FieldMask();
         for (size_t i=0;i<RENDERING_EXPERIMENT_FIELD_COUNT;++i) if (mask&(uint64_t{1}<<i)) ++changedCount;
@@ -1383,6 +1433,11 @@ void Client::CRenderingBenchmark::Render_ExperimentSection(Engine::CProfiler* pr
                     ImGui::TextUnformatted(labels[i]); if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s",fields[i].id);
                     ImGui::TableSetColumnIndex(1); ImGui::Text("%.5g",m_ExperimentA.values[i]);
                     ImGui::TableSetColumnIndex(2); ImGui::SetNextItemWidth(-1.f);
+                    const bool inactiveCube=i==static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::PBR_CUBE) &&
+                        m_ExperimentB.values[static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::SOURCE_PBR_INDIRECT)]!=0;
+                    const bool inactiveLut=i==static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::LUT_ENABLED) &&
+                        m_ExperimentB.values[static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::SOURCE_POST_PROCESS)]==0;
+                    ImGui::BeginDisabled(inactiveCube || inactiveLut);
                     if (i==static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::SSAO_SAMPLES))
                     { int value=static_cast<int>(m_ExperimentB.values[i]/4.0)-1; if (ImGui::Combo("##value",&value,"4\0" "8\0" "12\0")) {m_ExperimentB.values[i]=(value+1)*4;changed=true;} }
                     else if (i==static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::PCF_RADIUS))
@@ -1398,6 +1453,9 @@ void Client::CRenderingBenchmark::Render_ExperimentSection(Engine::CProfiler* pr
                     { bool value=m_ExperimentB.values[i]!=0; if (ImGui::Checkbox("##value",&value)) {m_ExperimentB.values[i]=value?1:0;changed=true;} }
                     else
                     { float value=static_cast<float>(m_ExperimentB.values[i]); if (ImGui::DragFloat("##value",&value,static_cast<float>(fields[i].step),static_cast<float>(fields[i].minimum),static_cast<float>(fields[i].maximum),"%.5g",ImGuiSliderFlags_AlwaysClamp)) {m_ExperimentB.values[i]=value;changed=true;} }
+                    ImGui::EndDisabled();
+                    if (inactiveCube) ImGui::TextWrapped("원본 간접광 ON: project cube diffuse 미사용");
+                    if (inactiveLut) ImGui::TextWrapped("Source tone + grading OFF: LUT 미사용");
                     ImGui::PopID();
                 }
                 ImGui::EndTable(); if (changed) Apply_ExperimentVariant(true);
@@ -1405,6 +1463,7 @@ void Client::CRenderingBenchmark::Render_ExperimentSection(Engine::CProfiler* pr
         }
         ImGui::TextWrapped("SSGI/SSR은 source 재질의 marker3 MapPBR 수신면과 정상 FINAL view가 필요합니다. 해당 면이 없으면 영상 기여 없이 full-screen 패스·복사 비용이 발생할 수 있습니다. PSInvocations는 ray hit 수가 아닙니다. 두 기법은 같은 원본 radiance를 읽으며 SSGI 결과를 SSR 입력으로 재사용하지 않습니다.");
         ImGui::TextWrapped("PBR 기여값은 지원되는 map PBR 재질에만 적용됩니다. Source character의 별도 계산은 그대로입니다. Video OFF를 ON으로 조절하는 경우도 현재 실험에만 적용되며 사용자 파일을 변경하지 않습니다.");
+        ImGui::TextWrapped("원본 PBR 간접광 OFF는 보존된 이전 환경 경로이며 모든 GI 제거가 아닙니다. Source tone + grading OFF는 Hable fallback으로 전환합니다. LUT-only 비교와 달리 tone·색보정 묶음 전체를 바꾸며 노출·감마·저장된 curve/색/LUT 입력은 보존합니다.");
         ImGui::EndDisabled();
     }
     ImGui::BeginDisabled(m_bCapturing);
@@ -1558,8 +1617,11 @@ void Client::CRenderingBenchmark::Render_Section(Engine::CProfiler* profiler,
 {
     Render_ExperimentSection(profiler,profiles);
     Render_Results();
-    RenderingTechniqueGuide::Render();
-    RenderingReferenceGuide::Render();
+    if (const char* recipe=RenderingTechniqueGuide::Render(m_bExperimentActive,m_bCapturing))
+        Prepare_RecipeById(recipe,profiles);
+    if (const char* recipe=RenderingReferenceGuide::Render(true,m_bExperimentActive,m_bCapturing))
+        Prepare_RecipeById(recipe,profiles);
+    ImGui::TextWrapped("%s",m_strStatus.c_str());
     ImGui::BeginDisabled(m_bExperimentActive);
     const bool changedProfile=Render_RestorationSection(profiles);
     const bool changedPixels=Render_PixelInputs();
