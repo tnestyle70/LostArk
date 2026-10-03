@@ -4254,6 +4254,14 @@ bool_t Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormali
 		strRuntimeAnchorSlotId == "GRABBED_SOCKET_BODY")
 		return true;
 
+	// V particles already use meters; its measured effectroot retains the import basis.
+	if (strRuntimeAnchorSlotId == "b_effectroot" &&
+		(strEffectAssetId == "effect.warlord.skill.17170.full.restore" ||
+		 strEffectAssetId == "effect.warlord.skill.17170.clip1.full.restore" ||
+		 strEffectAssetId == "effect.warlord.skill.17170.clip2.full.restore" ||
+		 strEffectAssetId == "effect.warlord.skill.17170.clip3.full.restore"))
+		return true;
+
 	// The product four-slash documents reuse the measured source weapon socket.
 	if ((strEffectAssetId == "effect.valtan.carrier-v1.attack.four-slash.active.clip-01" ||
 		strEffectAssetId == "effect.valtan.carrier-v1.attack.four-slash.active.clip-02") &&

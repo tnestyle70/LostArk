@@ -138,3 +138,86 @@ GTAO·volumetric·planar 같은 미구현 기법을 촬영 단계의 작동하�
 제품 기능 변경은 없으며 JSON/publisher 변경,
 원본 package 재추출, raw DXBC 재생, 새 C++/shader 컴파일과 Client/UI 화면 검증은 실행하지 않았다.
 최신 원작의 내부 엔진 구현·전체 활성 postprocess·전체 화면 동등성은 확정하지 않았다.
+
+## G07. 재확인한 원본 자료와 복원 경계
+
+이 문서의 앞선 G04 원본 미설치 판정 이후 사용자가 게임을 설치했다. 현재
+`C:/ProgramData/Smilegate/Games/LOSTARK/EFGame/ReleasePC`의 대상 package를 실제로 읽었다.
+Lost Ark 전용 `umodel_lostark_v7.exe`와 기존 source parser로 LAND01의 physical/logical/object identity,
+package868/licensee16/engine12097, LC622의 정확한 static key와 shader map을 확인했다. 이 숫자는
+Unreal Engine 제품 버전 번호가 아니며 설치본 전체를 검증했다는 뜻도 아니다.
+
+Bern LC622의 fresh original VS/PS는 기존 planar XY UV 전달과 일치하고 height 기반 절벽 투영은
+발견되지 않았다. height/weight 세 texture의 전체 mip payload는 설치 DDS와 일치했다. 3969정점·7688면의
+oriented topology/winding도 source와 일치하며 최대 위치 오차는2.441406e-6m다. 명시적 TwoSided=true
+override는 없었으나 native/CDO의 미직렬화 기본값까지 해석한 것은 아니므로 임의 cull/UV 변경 근거로
+쓰지 않는다. 근거는 `out/BernSourceReload20261004`의 계약·texture·winding receipt에 있다.
+
+Character Select SL00 현재 material280개 중 **181개**의 `environment.sourceIndirect`에 native SH·cube·
+BRDF 입력이 있다. RNM과 placement lighting도 별도로 연결돼 있다. 09-22 RESULT G13의 native SH packing과
+128×32 RG16 BRDF 복구를 이전의 미확정 기록으로 되돌려 설명하면 틀린다. 반면 다음 경계는 아직 원본과
+같다고 확정하지 않는다.
+
+- Static shadow CPU penumbra 값은 `PROJECT_ADAPTER`다. 현재 원본 CPU owner/SetMesh에서 정확한 값을
+  확보하기 전에는 추정 width를 원본 복원값으로 바꾸지 않는다.
+- 일부 native hair의 projected shadow owner와 dynamic source-character SH/probe는 MapPBR의181개
+  복구 입력과 다른 문제다. 현재 scene ambient/shadow adapter를 원본 동적 환경 전체 복원으로 표시하지 않는다.
+- 전체 camera/UI/volume의 실제 postprocess 활성 체인, nonuniform-scale VS basis와 원작 전체 화면
+  동등성은 미확정이다. 빈/중립 정적 LUT가 전체 활성 체인의 부재를 증명하지 않는다.
+
+이번 audit에서 이 경계의 정확한 새 교체값까지 확보한 추가 복구는 없다. 후보·미확정은 미복원으로
+분리하고, 밝기·파란 tint·환경·LUT를 근거 없이 바꾸지 않는다.
+
+## G08. assembler로 확인할 수 있는 것과 engine owner의 한계
+
+정확한 ShaderMap에서 뽑은 DXBC/assembly는 그 permutation의 연산, 분기, sample 순서, register와
+semantic 사용을 보여준다. source static set·uniform expression·texture metadata·mesh/VF 채널을
+함께 연결하면 UV 수식, COLOR0/alpha, material constant, BRDF·normal·blend 같은 static material 경로를
+현재 엔진에 복구하고 동일 입력의 원본 DXBC와 WARP 출력으로 대조할 수 있다.
+
+하지만 `cbN[index]`를 읽는 명령만으로 실제 게임이 매 프레임 그 register에 넣은 값을 알 수는 없다.
+view/primitive transform, 골격 basis, dynamic SH/probe, shadow projection·penumbra, scene HDR snapshot,
+카메라/volume의 노출·LUT 선택과 lifetime은 원본 CPU binder와 scene owner의 책임이다. 이 입력이
+미확정이면 shader 수식을 옮겨도 전체 화면 복원이 아니다. UModel의 `.mat` 연결 설명이나 LPK unpack
+성공도 이 owner를 대신하지 않는다. 누락은 원본 미확보·extractor 형식 미지원·runtime 미연결로 나눠 기록한다.
+[UE Viewer FAQ](https://www.gildor.org/projects/umodel/faq)와
+[Lost Ark 전용 UModel 지원 기록](https://www.gildor.org/smf/index.php/topic,3055.msg41220.html)을
+게임 내부 engine source의 공개 또는 전체 최신 package 지원 보장으로 해석하지 않는다.
+
+원작의 DX11 전환은 [Lost Ark 공식 공지](https://lostark.game.onstove.com/News/Notice/Views/2245)로
+확인되지만 UE4 이식을 뜻하지 않는다. UE3에도 DX11/SM5 렌더링이 있었음은
+[Epic Samaritan 설명](https://www.unrealengine.com/blog/samaritan)으로 확인된다.
+현대적 PBR·SH·BRDF가 보인다는 이유만으로 'UE4로 올라간 부분이라 UModel로 못 뽑는다'고 단정하지 않는다.
+
+## G09. 설치된 UE5와 별도 custom 확장
+
+로컬에는 `C:/Program Files/Epic Games/UE_5.8/Engine`의 Build.version5.8.3/CL58210709와 Lumen·RayTracing
+renderer/shader source가 있고, `C:/Users/user/Desktop/UnrealEngine/UnrealEngine`은5.7.4 source checkout이다.
+`C:/UE5`는 Aura 프로젝트다. 경로와 파일 존재를 확인했으며 UE 자체를 실행·빌드한 것은 아니다.
+
+현재 제품은 `Graphic_Device.cpp`에서 D3D11 device를 생성하고 ps_5_0 경로를 사용한다. 설치 UE의 Lumen은
+FScene/FRDGBuilder, Surface Cache/Mesh Cards, Global Distance Field와 scene update에 결합돼 있다.
+따라서 단일 checkbox나 shader 파일 복사로 같은 시스템이 되지 않는다. Epic도 screen trace 뒤에
+software distance field 또는 hardware scene tracing을 사용하는 구조로 설명한다.
+[Epic Lumen Technical Details](https://dev.epicgames.com/documentation/en-us/unreal-engine/lumen-technical-details-in-unreal-engine)
+
+Windows의 hardware Lumen/DXR 방향은 D3D12 장치·resource/descriptor/synchronization, BLAS/TLAS,
+동적/skinned geometry 갱신, hit material과 fallback을 실제로 구현하는 별도 기반 작업이다.
+현재 저장소에 제품 DXR 실행 경로가 있다는 의미가 아니다.
+[Epic hardware Lumen 요구와 갱신 비용](https://dev.epicgames.com/documentation/en-us/unreal-engine/lumen-technical-details-in-unreal-engine)
+
+Epic이 제시한 Lumen의 해상도·플랫폼별 성능 예산은 이 프로젝트의 FPS 보증으로 옮기지 않는다.
+[Epic Lumen Performance Guide](https://dev.epicgames.com/documentation/en-us/unreal-engine/lumen-performance-guide-for-unreal-engine)
+
+이번 첫 custom 단계는 기존 D3D11 SSGI를 독립적으로 확장한 half gather + spatial resolve다.
+UE 원문 코드를 복사하지 않았고 history·motion vector·화면 밖 scene cache·hardware RT는 추가하지 않았다.
+후속 temporal 또는 scene-space GI도 실제 입력·pass·reset·실패 복원·A/B와 GPU 비용까지 연결한 뒤
+구현 완료로 표시한다. 설명 항목에 버튼만 추가해서 구현된 것처럼 표시하지 않는다.
+
+
+재설치 후 상세 근거는 [Bern LC622 결과 G08](2026-10-04_BERN_CLIFF_UV_RESULT.md#g08-재설치-완료-후-현재-판정),
+[차원술사V 결과](2026-10-04_DIMENSIONMASTER_V_OWNER_ANCHOR_RESULT.md),
+[워로드V 결과 G19](../09-09/2026-09-09_WARLORD_ASVF_FULL_RESTORE_IMPLEMENTATION_RESULT.md#g19-10-04-v-두-번째-클립-번개의-실제-본-배율-누락-복구)로 연결한다.
+Bern의 UV/주변 geometry에서 교체할 차이는 찾지 못했다. 차원술사V의 원본 연결·분포를 대조했고
+과거 사용자 삭제·조정을 추출 누락으로 복구하지 않았다. 워로드V는 실제 모델 본의0.01 재축소를
+확인해 기존 정규화 범위만 수정했다. 각 항목의 원본 대조·수정·제품 빌드·사용자 화면 판정을 구분한다.

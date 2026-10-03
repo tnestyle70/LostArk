@@ -139,6 +139,8 @@ namespace Engine
         f32_t fSSRMaxDistance = 20.f;
         f32_t fSSRThickness = 0.2f;
         uint32_t iSSRStepCount = 32u;
+        // Opt-in half-resolution SSGI gather; false retains the original path.
+        bool_t bSSGIHalfResolution = false;
 	}RENDER_QUALITY_SETTINGS;
 
 	enum class MATERIAL_DEBUG_VIEW : uint32_t

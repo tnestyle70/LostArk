@@ -31,6 +31,8 @@ struct RENDERING_BENCHMARK_RUN final
 	string strComparisonConditions;
     string strFullConditions, strExperimentId, strVariant, strFailureReason;
     string strRecipeId, strExperimentGoal, strMetricGuide, strConfidence;
+    string strComparisonRowId, strMeasurementId, strComparisonSessionId;
+    RENDERING_EXPERIMENT_VALUES expectedA, expectedB;
     std::map<string,string> commonConditionFields, actualConditionFields, changedConditionFields;
     uint64_t fieldMask = 0, firstFrame = 0, lastFrame = 0;
     uint32_t warmupFrames = 0, repetition = 1, pendingGpuFrames = 0, invalidGpuFrames = 0;
@@ -87,6 +89,26 @@ public:
 		CRenderingProfileService& Profiles);
 
 private:
+    bool_t Prepare_PresentationPair(int stage, CRenderingProfileService& profiles);
+    bool_t Start_ComparisonMeasurement(Engine::CProfiler* profiler);
+    void Render_ComparisonCost(const char* rowId);
+    void Reset_ComparisonRows();
+    void Mark_PreparedComparison(const string& rowId);
+    struct COMPARISON_ROW
+    {
+        string sessionId, measurementId, experimentId, sceneConditions, commonConditions, failure;
+        RENDERING_EXPERIMENT_VALUES a, b;
+        uint64_t fields=0;
+        uint32_t frames=0, warmup=0;
+    };
+    struct COMPARISON_COST
+    {
+        bool cpuValid=false, gpuValid=false, partialScopes=false;
+        uint32_t frames=0, pendingGpu=0, invalidGpu=0;
+        double cpuA=0, cpuB=0, gpuA=0, gpuB=0, cpuSpreadA=0, cpuSpreadB=0;
+        string status;
+    };
+    COMPARISON_COST Build_ComparisonCost(const string& rowId, const string& sceneConditions) const;
     void Render_ExperimentSection(Engine::CProfiler* profiler, CRenderingProfileService& profiles);
     void Render_RecipeSection();
     bool_t Apply_PresentationStage(int stage, CRenderingProfileService& profiles);
@@ -105,7 +127,7 @@ private:
     uint64_t Experiment_FieldMask() const;
     uint64_t Experiment_BaselineMask() const;
     bool_t Adopt_BaselineFromB();
-    string Current_Conditions(uint64_t excludedFields, std::map<string,string>* named = nullptr) const;
+    string Current_Conditions(uint64_t excludedFields, std::map<string,string>* named = nullptr, bool rowContext = false) const;
     void Render_Results();
 	bool_t Render_RestorationSection(CRenderingProfileService& Profiles);
 	bool_t Render_PixelInputs();
@@ -123,6 +145,12 @@ private:
 	bool_t m_bCapturing = false;
     bool_t m_bExperimentActive = false, m_bVariantB = false, m_bSequence = false;
     bool_t m_bSequenceProfilerWasEnabled = false;
+    bool_t m_bComparisonMeasurement=false, m_bComparisonRestoreVariantB=false;
+    string m_strComparisonSessionId, m_strPreparedComparisonRowId, m_strMeasurementId, m_strMeasurementRowId;
+    RENDERING_EXPERIMENT_VALUES m_PreparedComparisonA, m_PreparedComparisonB;
+    std::map<string,COMPARISON_ROW> m_ComparisonRows;
+    int m_iComparisonContextUiFrame=-1;
+    string m_strComparisonContext;
     bool_t m_bSweep = false, m_bSweepRestoreVariantB = false;
     int m_iSweepField = 1, m_iSweepSteps = 5;
     float m_fSweepMinimum = .1f, m_fSweepMaximum = 2.f;

@@ -120,3 +120,39 @@ immutable cache의 자동 갱신으로 설명하지 않는다. 이미 준비된 
 최종 화면 판정은 미실행이다. 사용자가 차원술사 V를 직접 시전하고 다른 직업 관전자 화면에서
 월드 유리·파편은 시전자 위치에 남고 화면 후처리는 관전자에게 적용되지 않는지 확인해야 한다.
 원본 게임과의 최종 시각 동등성이나 모든 V carrier의 원본 복원이 완료됐다는 판정은 아니다.
+
+## G04. 새 설치 원본 재대조
+
+기준은 `2645d7cce`와 새 설치 `C:/ProgramData/Smilegate/Games/LOSTARK`다. 현재43개 요소의 원본 particle/material과711개 distribution을 대조했으며 **새로 수정해야 한다고 입증된 source 값 불일치는 찾지 못했다.** 따라서 Data, Resources, C++와 shader를 변경하지 않았다. 이것은 사용자 문제 화면의 해결 또는 원작 화면 전체 일치 판정이 아니다.
+
+10-04의 시전자 root snapshot·Local Space OFF·관전 대상 ScreenPost 정책은 그대로다. 이 원본 재대조는 위 G00~G03의 owner-anchor 결과를 대체하지 않는다.
+
+### 원본과43요소의 연결
+
+기존 LPK reader로 `data3.lpk/Action/DimensionMaster.loa`, `data1.lpk/Projectile/20505200.loa`, `data2.lpk/TableData/EFTable_SkillEffect.db`를 읽었다. 원본 Main25개 notify, V2050520의1.549999952초 Effect20505200 호출, SkillEffect의 fixed-area projectile20505200, spawn offset25cm,3.1초 projectile,4개 즉시 CreateFX와7개 damage-only timer를 기존 decoder로 검증했다. 새 dummy 호출이나 효과 ID를 만들지 않았다.
+
+원본11개 ParticleSystem에서 첫 LOD62개 emitter의 module·archetype·CDO를 해석했다. 현재43요소의 emitter/full material identity43개가 모두 일치한다.711개 저장 distribution은 원본 notify/projectile parameter override까지 적용한 뒤 float32 기준 전부 일치한다. JSON의9자리 소수 표기와 원본 float32의 긴 decimal 표기를 숫자 변경으로 오인하지 않았다. package index 등 소비하지 않는 provenance 숫자나 CDO 기본 literal을 제품 값 오류로 취급하지 않았다.
+
+현재 사라진21개 emitter는 이번 설치의 누락이 아니다. `3fc237507`의64요소가 `160b7a2af`에서43개로 저장되었고, 그43개 stable ID 집합은 현재까지 같다. 과거 편집을 원본 복구 명목으로 자동 되돌리지 않았다.
+
+원본 native66 MIC의 fresnel_pow는0.20000000298이며 현재 세 occurrence의0.5는09-21 사용자 clarity 튜닝이다. 나머지 확인한 numeric/texture identity와 native66/69의 translucent BlendMode를 유지했다. 이름의 `_ad`를 근거로 additive로 바꾸지 않았다. 기본 유리 PS와 별도 distortion pass의 구분도 유지했다.
+
+### 첫 native69의 공간 입력 수치 검증
+
+설치 RefShaderCache에서 실제 material static set로 선택한 PS `5dfee80075c74444bffc1d810344820c`를 다시 추출했다. DXBC SHA256은 `477086f17abc547d7e6858e3d256f3558d067d19279de5c2136770761ff1bd73`이다.
+
+현재 `Shader_EffectDimensionMasterVNative.hlsli::VNative69` 함수 본문, `VNativeSample0`, 주기·append helper와 SceneColorBias 읽기를 그대로 추출해 독립 PS로 컴파일했다. 기존 WARP replay를 재사용했으며 설치 DDS `fx_d_atypical_045.dds`를 명시된 sRGB로 해석하고, 공간적으로 변화하는 SceneColor, linear wrap/clamp, UV4종·화면 위치3종·alpha3종·time2종을 비교했다.72조건 모두 finite이며 원본 DXBC 대비 최대 절대 오차0이었다. alpha0도 유지했다.
+
+이는09-15의 constant SceneColor 검증이 다루지 못했던 공간 sampling 일부를 확인한 것이다. 실제 camera/mesh/billboard·깊이·톤매핑·여러 이펙트의 합성 화면을 재현한 검사가 아니다. native66의 원본 MIC/static map과 PS를 이번 설치에서 다시 확인했으나 native66 전체 화면 GPU 재검증을 실행한 것으로 기록하지 않는다.
+
+### 실제 문서 로드와 Playback
+
+root가 제공한 방식대로 기존 Debug Product OBJ에 이 조사 전용 console entry를 격리 링크했다. Client MainApp, 창, GPU viewport와 게임 actor를 시작하지 않았다. 실제 `CEffectDocumentCodec::Load`가43요소를 읽고 `Stage_Document`에 성공했으며, identity root와 명시된 anchor map으로6초간60Hz Update를 실행했다.43/43요소가 particle/light/ScreenPost frame에 모두 관측되었고 모든 검사 대상 particle 위치와 색은 finite였다. 첫 native69 두 요소의 첫 관측은0.016667초, 후속 묶음은0.716667초, 마지막 camera-origin glass는1.583333초, projectile은1.55초였다.
+
+수치 root/anchor를 사용한 실제 Playback 검사다. 실제 DimensionMaster WModel 본 부착, live 캐시 갱신, 사용자 screenshot 시점의 draw 가시성까지 검증한 것으로 대신하지 않는다. 현재 전체43요소 보존 때문에 source62 emitter 전부의 재생 성공을 주장하지 않는다.
+
+### 산출물과 남은 작업
+
+진단은 `out/DimensionMasterVOriginal20261004`의 `audit_receipt.json`, `recipe_comparison.json`, `historical_removed_21.json`, `projectile_source_contract.json`, `native69_spatial_receipt.json`, `playback.log`, `materials`와`closure`에 보관했다. 독립 compile/link 및 native69 PS/WARP는 성공했고, 제품 빌드·게시·UI Reload·사용자 화면 확인은 실행하지 않았다. 변경 코드·데이터가 없어 추가 제품 빌드나 project/filter 등록은 필요하지 않다.
+
+현재 확인한 source 값과 pixel 식을 이유 없이 바꾸는 후보는 만들지 않았다. 사용자가 owner-anchor/관전자 필터 반영 후에도 같은 문제를 확인하면 그 **현재** element·시간·시점의 geometry/depth/composition을 좁혀 확인해야 한다. 원본 camera attachment 복귀나21개 요소 재추가는 자동 해결책이 아니다.

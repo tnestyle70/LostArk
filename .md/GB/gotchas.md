@@ -6054,3 +6054,28 @@ V2050520은 사용자 지정으로 시전자 snapshot/Local Space OFF를 사용�
 orientation, runtime anchor도 기존 caster root 경로로 전환한다. 원본 recipe/socket은 근거로
 보존하고 미사용 camera socket의 회전을 시전자 보정으로 옮기지 않는다. RGBNoise/ZoomBlur는
 별도 localOnlyElementIds 네 개로 관전 대상을 제한하며 월드 요소는 다른 플레이어도 본다.
+
+
+## 원본 이펙트의 import 축척과 실제 GPU 표시
+
+WModel bone combined basis가0.01인 source skeleton에는 이미 meter로 변환한 particle 크기를
+그대로 곱하지 않는다. 같은 클래스의 이전 skill이 정규화됐더라도 새 exact asset/slot이
+`Requires_SourceBoneImportScaleNormalization`에 연결됐는지 실제 소비자까지 확인한다.
+raw bone의 회전·translation을 유지하고 기존 검증된 정규화 경로를 사용한다. 전체 effect size나
+shader gain을100배 올리는 보정으로 대체하지 않는다. 다른 source/actor의 basis까지 전파하지 않는다.
+실제 WModel·애니메이션·admission preScale의 bone sample과 최종 particle world 축을 대조하며,
+Stage/particle count/finite 성공은 GPU 표시 성공을 대신하지 않는다. 합성 카메라의 실제 draw와
+인게임 구도·가림·후처리 판정도 분리한다. 이번 사례는09-09 Warlord ASVF RESULT G19에 있다.
+
+## 원본 데이터 동일성과 추가 GI A/B의 경계
+
+재설치 시 logical object/static shader key/serial hash를 먼저 맞추고 export index와 UE reference를
+구분한다. UV가 이상해 보여도 해당 VS/PS·geometry·height/weight mip·주변 coverage가 같으면 임의
+triplanar나 hidden 해제를 원본 복원으로 넣지 않는다. 실행 중 material branch와 동일 카메라는 별도다.
+원본 CDO 기본값과 사용자 삭제/튜닝·owner 정책을 구분한다. raw float32 반올림이나 의도적 삭제를
+추출 손실로 취급하지 않는다. 코드·원본 자료가 같다는 것만으로 전체 화면 정상도 선언하지 않는다.
+
+SSGI/SSR 옵션은 actual pass와 field whitelist/Apply/Restore/fingerprint/capture까지 연결한다.
+SSGI half는 marker3 전용 추가 screen-space GI다. 기존 full 경로와 원본 RNM/IBL을 보존하고
+Lumen/DXR로 표시하지 않는다. marker5/14를 조건문에만 추가하면 서로 다른 G-buffer ABI를 잘못 읽는다.
+half texture는 홀수·1픽셀·resize·depth/normal 경계를 검증하고 full/SSR 보존을 실제 픽셀로 대조한다.
