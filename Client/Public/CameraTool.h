@@ -51,7 +51,8 @@ public:
 	CCameraTool() = default;
 	~CCameraTool();
 
-	/* Shared view capture for Area shots and cinematic cue authoring. */
+	/* Capture a valid runtime pose (1 < vertical FOV < 179); preserve output on failure.
+	   Authoring consumers validate their own document limits before committing. */
 	static bool_t Capture_ViewPose(VALTAN_CINEMATIC_CAMERA_POSE& outPose);
 	void Open();
 	bool_t Open_Cue(const CAMERA_TOOL_OPEN_REQUEST& request);

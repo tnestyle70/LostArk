@@ -901,7 +901,7 @@ bool_t Client::CCameraTool::Capture_ViewPose(VALTAN_CINEMATIC_CAMERA_POSE& outPo
 		gameInstance.Get_InverseTransform(D3DTS::VIEW);
 	const float4x4_t* projection = gameInstance.Get_Transform(D3DTS::PROJ);
 	if (nullptr == inverseView || nullptr == projection ||
-		!std::isfinite(projection->_22) || std::abs(projection->_22) <= 0.000001f)
+		!std::isfinite(projection->_22) || projection->_22 <= 0.000001f)
 	{
 		return false;
 	}
@@ -911,14 +911,31 @@ bool_t Client::CCameraTool::Capture_ViewPose(VALTAN_CINEMATIC_CAMERA_POSE& outPo
 	const f32_t lookLengthSq = XMVectorGetX(XMVector3LengthSq(lookBasis));
 	if (!std::isfinite(lookLengthSq) || lookLengthSq <= 0.000001f)
 		return false;
+	const f32_t upLengthSq = XMVectorGetX(XMVector3LengthSq(cameraWorld.r[1]));
+	if (!std::isfinite(upLengthSq) || upLengthSq <= 0.000001f)
+		return false;
 	const vector_t look = XMVector3Normalize(lookBasis);
-	XMStoreFloat3(&outPose.vEye, eye);
-	XMStoreFloat3(&outPose.vLookAt, eye + look * 10.f);
-	XMStoreFloat3(&outPose.vUp, XMVector3Normalize(cameraWorld.r[1]));
-	outPose.hasUp = true;
-	outPose.fFovYDegrees = XMConvertToDegrees(
+	const vector_t up = XMVector3Normalize(cameraWorld.r[1]);
+	const f32_t crossLengthSq = XMVectorGetX(XMVector3LengthSq(XMVector3Cross(up, look)));
+	if (!std::isfinite(crossLengthSq) || crossLengthSq <= 0.000001f)
+		return false;
+	VALTAN_CINEMATIC_CAMERA_POSE captured;
+	XMStoreFloat3(&captured.vEye, eye);
+	XMStoreFloat3(&captured.vLookAt, eye + look * 10.f);
+	XMStoreFloat3(&captured.vUp, up);
+	captured.hasUp = true;
+	captured.fFovYDegrees = XMConvertToDegrees(
 		2.f * std::atan(1.f / projection->_22));
-	return Is_ValidAuthoringPose(outPose);
+	// Capture the runtime lens range. Each authoring consumer keeps its own
+	// document limits; pose-only Movie edits retain the selected key's FOV.
+	if (!Is_ValidAuthoringPosition(captured.vEye) ||
+		!Is_ValidAuthoringPosition(captured.vLookAt) ||
+		!std::isfinite(captured.fFovYDegrees) ||
+		captured.fFovYDegrees <= 1.f || captured.fFovYDegrees >= 179.f ||
+		Distance(captured.vEye, captured.vLookAt) <= 0.001f)
+		return false;
+	outPose = captured;
+	return true;
 }
 
 bool_t Client::CCameraTool::Capture_CurrentPose(
@@ -938,11 +955,12 @@ bool_t Client::CCameraTool::Capture_CurrentPose(
 			return false;
 		}
 	}
+	if (!Is_ValidAuthoringPose(pose)) return false;
 	outKeyframe.vEye = pose.vEye;
 	outKeyframe.vLookAt = pose.vLookAt;
 	outKeyframe.fFovYDegrees = pose.fFovYDegrees;
 	if (m_bKoukuSource) { outKeyframe.vUp = pose.vUp; outKeyframe.hasUp = true; }
-	return Is_ValidAuthoringPose(pose);
+	return true;
 }
 
 bool_t Client::CCameraTool::Ensure_LookAtDummy()

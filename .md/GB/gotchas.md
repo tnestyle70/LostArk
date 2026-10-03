@@ -63,6 +63,11 @@
 
 ### Movie 카메라 기준 키와 정적 배경의 소유자
 
+공통 view pose 캡처에 Valtan 저작 문서의 수직 FOV10~120도 제한을 재사용하지 않는다.
+Movie의 수평17도는16:9에서 수직9.610678도이며 runtime에서 유효하다. 캡처는 runtime의
+1<FOV<179와 finite/nondegenerate basis를 검사하고, 저장 소비자가 자기 문서 제한을 검증한다.
+Use free cam pos는 Eye/LookAt/Up만 복사하므로 선택 key의 FOV를 보정하거나 덮어쓰지 않는다.
+
 Use free cam pos가 저장하는 LookAt 거리는 원본 키와 다를 수 있다. 첫 Eye만 바꾸거나
 첫 LookAt만 긴 벡터로 두면 다음 키 보간에서 구도가 급히 돌아간다. 수정 전·후 camera basis의
 회전을 Eye 상대 경로와 시선·Up에 함께 적용하며 시선 벡터 길이만 한 컷에서 일관되게 맞춘다.

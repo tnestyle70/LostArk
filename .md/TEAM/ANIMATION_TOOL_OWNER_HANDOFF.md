@@ -1995,6 +1995,8 @@ body 이동은 현재 source-in과 음원 길이를 보존한다. FMOD pitch에�
 Character Selection Movie의 Camera box에서 Open Sequence Camera Tool을 열고 수정할 key를
 선택한다. F6으로 자유 카메라를 활성화해 구도를 맞춘 뒤 Use free cam pos를 누르면 해당 key의
 Eye/LookAt/Up을 가져온다. key시간·FOV·cut·보간은 유지하며 follow/무비override 중에는 거절한다.
+캡처는 Movie runtime과 같은 수직 FOV1도 초과179도 미만을 허용한다. 수평17도처럼 세로로
+환산하면10도 미만인 구도도 사용할 수 있으며, 실패하면 기존 키와 캡처 출력은 보존한다.
 기존 Save movie/Publish 흐름으로 저장·게시한다. Delete key는 첫 key를 보호하면서 선택key를
 줄인다. 큰 위치 변경이나 중간key 삭제는 앞뒤 경로를 바꾸므로 재생하며 확인한다.
 
