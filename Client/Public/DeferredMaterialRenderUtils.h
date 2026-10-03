@@ -38,6 +38,11 @@ DEFERRED_MATERIAL_PROFILE Resolve_DeferredMaterialProfile(
 	std::string_view strProfileId,
 	std::string_view strMaterialName);
 
+// Session material comparison reuses the existing textured deferred shader.
+// Native forward, hair and unknown programs keep their authored dispatch.
+bool_t Uses_BasicCharacterMaterialFallback(const Engine::CModel& Model,
+    uint32_t meshIndex, bool_t hasDiffuseInput = false);
+
 HRESULT Bind_DeferredMaterialInputs(
 	Engine::CModel& Model,
 	const shared_ptr<Engine::CShader>& pShader,

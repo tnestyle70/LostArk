@@ -1,4 +1,5 @@
 #include "MapAssetRenderUtils.h"
+#include "DeferredMaterialRenderUtils.h"
 #include "SourceMovieMaterialPrograms.h"
 #include "Engine_RenderTypes.h"
 
@@ -1129,7 +1130,9 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
          FAILED(shader->Bind_RawValue("g_StaticShadowScaleBias", &shadowLighting.shadowScaleBias, sizeof(shadowLighting.shadowScaleBias)))) ||
         (hasStaticShadow && FAILED(model->Bind_SurfaceLighting(shader, meshIndex)))) return E_FAIL;
 
-    if (nativeSurface && nativeSurface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
+    const bool basicCharacterMaterial = profile.renderMode == MAP_ASSET_RENDER_MODE::DEFERRED &&
+        Uses_BasicCharacterMaterialFallback(*model, meshIndex, diffuseOverride != nullptr);
+    if (nativeSurface && nativeSurface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER && !basicCharacterMaterial)
     {
         const uint32_t noMapSurface = 0u;
         if (FAILED(shader->Bind_RawValue("g_SurfaceProgram", &noMapSurface, sizeof(noMapSurface))) ||

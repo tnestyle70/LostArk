@@ -1155,6 +1155,7 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterALTVNative.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterVNative.hlsli" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050100.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Sequences\effect.dimensionmaster.skill.2050520.full.restore.effectsequence.json" />
     <None Include="..\..\Data\Effects\Sequences\effect.dimensionmaster.skill.2050540.full.restore.effectsequence.json" />
     <None Include="..\..\Data\Effects\Sequences\effect.artist.skill.31930.full.restore.effectsequence.json" />
     <None Include="..\..\Data\Effects\Sequences\effect.lancemaster.skill.34630.full.restore.effectsequence.json" />

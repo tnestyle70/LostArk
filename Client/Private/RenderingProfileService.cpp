@@ -557,6 +557,8 @@ namespace
         const MATERIAL_RENDER_SETTINGS& applied, bool normalized)
     {
         using F=RENDERING_EXPERIMENT_FIELD;
+        if (fields & RenderingExperimentBit(F::SOURCE_MATERIALS))
+            current.bUseSourceMaterials = base.bUseSourceMaterials;
         const uint64_t pbrMask=((uint64_t{1}<<(static_cast<size_t>(F::ROUGHNESS_OFFSET)+1u))-1u)&~((uint64_t{1}<<static_cast<size_t>(F::PBR_DIFFUSE))-1u);
         if (!(fields&pbrMask)) return;
         // A different routing owner supersedes the experiment. Otherwise restore
@@ -671,7 +673,8 @@ CRenderingProfileService::Experiment_Fields()
         {"quality.ssr.distance",.1,100,.1,false}, {"quality.ssr.thickness",.01,2,.01,false},
         {"quality.ssr.steps",16,64,16,false},
         {"environment.sourcePbrIndirect.enabled",0,1,1,true},
-        {"quality.sourcePostProcess.enabled",0,1,1,true}
+        {"quality.sourcePostProcess.enabled",0,1,1,true},
+        {"material.sourceMaterials.enabled",0,1,1,true}
     }};
     return fields;
 }
@@ -692,7 +695,8 @@ RENDERING_EXPERIMENT_VALUES CRenderingProfileService::Read_ExperimentValues()
         p.vSurfaceParameters.x,p.vSurfaceParameters.y,
         double(q.bSSGIEnabled),q.fSSGIStrength,q.fSSGIRadius,double(q.iSSGISampleCount),
         double(q.bSSREnabled),q.fSSRStrength,q.fSSRMaxDistance,q.fSSRThickness,double(q.iSSRStepCount),
-        double(game.Get_RenderEnvironment().bUseSourcePBRIndirect),double(q.SourcePostProcess.bEnabled)}};
+        double(game.Get_RenderEnvironment().bUseSourcePBRIndirect),double(q.SourcePostProcess.bEnabled),
+        double(material.bUseSourceMaterials)}};
     return result;
 }
 
@@ -734,8 +738,12 @@ bool_t CRenderingProfileService::Set_ExperimentPreview(const RENDERING_EXPERIMEN
     if (!Get_ActiveProfile() || !Is_EnvironmentSettled())
     { status = "Wait for an active scene and its region transition to settle."; return false; }
     const uint64_t pbrMask = ((uint64_t{1} << (static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::ROUGHNESS_OFFSET)+1u))-1u) & ~((uint64_t{1} << static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::PBR_DIFFUSE)) - 1u);
+    // A stage may explicitly select the fallback while staging dormant PBR inputs.
+    // Without that selector, inspect the underlying owner rather than our prior preview.
+    const bool sourceMaterials = (m_bExperimentApplied ? m_ExperimentBaseMaterial :
+        CGameInstance::Get().Get_MaterialRenderSettings()).bUseSourceMaterials;
     if ((fields & (pbrMask | RenderingExperimentBit(RENDERING_EXPERIMENT_FIELD::SOURCE_PBR_INDIRECT))) &&
-        !CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials)
+        !(fields & RenderingExperimentBit(RENDERING_EXPERIMENT_FIELD::SOURCE_MATERIALS)) && !sourceMaterials)
     { status = "PBR contribution and source indirect comparison require recovered source materials."; return false; }
     if ((fields & RenderingExperimentBit(RENDERING_EXPERIMENT_FIELD::LUT_ENABLED)) &&
         values.values[static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::LUT_ENABLED)] != 0)
@@ -852,6 +860,7 @@ bool_t CRenderingProfileService::Apply_ExperimentPreview(string& status)
     apply(F::FOG_ENABLED,f.bEnabled); apply(F::FOG_DENSITY,f.fDensity); apply(F::DESATURATION,q.fSceneDesaturation);
     apply(F::SOURCE_POST_PROCESS,q.SourcePostProcess.bEnabled);
     apply(F::SOURCE_PBR_INDIRECT,environment.bUseSourcePBRIndirect);
+    apply(F::SOURCE_MATERIALS,material.bUseSourceMaterials);
     if ((m_iExperimentFields & RenderingExperimentBit(F::LUT_ENABLED)) && !m_ExperimentValues.values[static_cast<size_t>(F::LUT_ENABLED)])
         q.SourcePostProcess.LutLayers.clear();
     const uint64_t pbrMask = ((uint64_t{1} << (static_cast<size_t>(F::ROUGHNESS_OFFSET)+1u)) - 1u) &

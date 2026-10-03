@@ -1,0 +1,48 @@
+{
+  "schema": "lostark.effect-authoring-sequence",
+  "formatVersion": 4,
+  "sequenceId": "effect.dimensionmaster.skill.2050520.full.restore",
+  "model": {
+    "kind": "MODEL_SEQUENCE",
+    "assetName": "DimensionMaster",
+    "sequenceId": "skill.2050520",
+    "anchorMemberId": ""
+  },
+  "anchorMode": "MODEL_ROOT",
+  "worldPosition": [
+    0,
+    0,
+    0
+  ],
+  "effects": [
+    {
+      "occurrenceId": "dimensionmaster2050520.source.effect",
+      "owner": "V1_DOCUMENT",
+      "effectId": "effect.dimensionmaster.skill.2050520.full.restore",
+      "anchorSlotId": "root",
+      "startMs": 0,
+      "durationMs": 5800,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "muted": false,
+      "screenPost": false,
+      "productNaturalDuration": true,
+      "productSnapshot": true,
+      "productActionFacing": true
+    }
+  ],
+  "cameras": [],
+  "customAnimation": false,
+  "animationRows": [],
+  "soundRows": [],
+  "colliderRows": [],
+  "localOnlyElementIds": [
+    "authored.source-particle.full-v.41426adbb82bc4fdd49a",
+    "authored.source-particle.full-v.0476d3b62e94a1e2ac9e",
+    "dimensionmaster.2050520.projectile20505200.0fd0fc7aa0f6bebd715a",
+    "dimensionmaster.2050520.projectile20505200.41426adbb82bc4fdd49a"
+  ]
+}

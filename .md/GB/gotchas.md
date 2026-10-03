@@ -5994,6 +5994,16 @@ source postprocess는 tone·grading 묶음이므로 선택 bit만 복원/측정 
 보존한다. LUT ON 검증은 원래 profile의 enabled만 보지 않고 동시에 적용할 세션 후보의
 postprocess enabled를 사용해야 A/B 왕복과 기준 채택이 일관된다.
 
+복원 시연의 기본 재질은 현재 asset의 비교이지 최초 임포트 EXE의 재현이 아니다. material selector도
+실험 transaction이 소유해야 픽셀 진단과 두 owner가 겹치지 않는다. Native forward/hair 또는
+diffuse 없는 program을 무조건 legacy로 내리면 오히려 표면이 사라진다. 확인한 deferred program과
+유효 diffuse/override만 기존 fallback에 연결한다. 단계→한 기법 비교는 dimmed 화면이 아닌
+Original에서 재구성하고, rebased A를 바꾸면 experiment ID를 분리한다.
+
+원본 UE3 자료의 DX11/PBR/SH 존재는 UE4 이식의 증거가 아니다. UModel의 `.mat` export와
+원본 ShaderMap/DXBC·runtime binding은 별도다. 옛 SH/BRDF 미복구 기록은 이후 native 입력 복원
+결과와 대조한 뒤 인용한다. [현재 원본 근거](10-04/2026-10-04_RENDERING_SOURCE_EVIDENCE_RESULT.md)를 따른다.
+
 ### Object 목록의 진입 전 실패와 창 열림 상태를 구분한다
 
 도구의 m_Open=true는 source load 성공이 아니다. Lobby/Loading에서 Arena가 없어 최초 로드를
@@ -6021,3 +6031,26 @@ UI display row cache는 draft뿐 아니라 외부 World inventory, camera tail, 
 잘린다. 현재 ImGui 글꼴 높이와 style padding으로 행·박스·ruler를 계산하고 모니터 DPI를 다시
 곱하지 않는다. 라벨 열은 실제 문자열 폭도 반영한다. 그리기·culling·InvisibleButton은 같은
 사각형을 사용하며 시간→픽셀 zoom과 편집 시간값은 그대로 유지한다.
+
+### Map shard 확인과 기존 재질 연결 보완
+
+활성 배치는 mapset이 명시한 shard로 판정한다. 남아 있는 통합 placement 파일과의 차이를
+현재 런타임 불일치로 처리하지 않는다. 원본 component용 variant와 editor 기본 asset은 key가
+다르므로, 기본 asset의 named material 연결 누락을 따로 확인한다. 기존 복원 기본 MIC와 geometry
+채널·DDS 동치를 확인한 뒤 non-baked 입력만 재사용하고 다른 placement의 RNM은 복사하지 않는다.
+재질 연결 보완과 비균일 placement scale에 의한 UV 확대를 별도 문제로 기록한다.
+
+### 보스 몸체 컷신 숨김과 독립 맵 이펙트
+
+보스가 수명을 소유해도 유한 map/snapshot 이펙트는 몸체 컷신의 대체 배우가 아니다.
+world-root adapter에서 map 분류를 잃지 않게 하고 초기 spawn·pending→active·product/preview
+숨김 경로에 같은 제한 조건을 적용한다. 모든 map 또는 모든 tail을 예외로 만들지 않는다.
+위치·시계와 cue/owner 종료는 기존 경로를 유지하며 additive alpha0을 무조건1로 바꾸지 않는다.
+
+### 차원술사 V의 사용자 지정 시전자 기준
+
+V2050520은 사용자 지정으로 시전자 snapshot/Local Space OFF를 사용한다. 원본 camera_view를
+자동 복구하지 않는다. localSpace만 false로 바꾸면 카메라 attachment가 남으므로 follow,
+orientation, runtime anchor도 기존 caster root 경로로 전환한다. 원본 recipe/socket은 근거로
+보존하고 미사용 camera socket의 회전을 시전자 보정으로 옮기지 않는다. RGBNoise/ZoomBlur는
+별도 localOnlyElementIds 네 개로 관전 대상을 제한하며 월드 요소는 다른 플레이어도 본다.

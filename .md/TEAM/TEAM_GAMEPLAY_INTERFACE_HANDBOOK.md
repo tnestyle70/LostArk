@@ -453,6 +453,12 @@ B만 변경하며 기본 품질 초기화나 FXAA 강제 활성화를 A/B 시작
 LUT 단독 스위치가 아니며 OFF는 기존 fallback 후처리를 사용한다. 종료 시 현재 환경의 cube·SH·색과
 source curve·LUT 입력을 보존하고 선택 bit만 복원한다. 측정 공통조건도 실험 대상 bit만 제외한다.
 
+촬영용 누적 단계와 간편 A/B도 같은 Original/A/B owner를 사용한다. `material.sourceMaterials.enabled`
+필드가 기본/원본 재질 선택을 소유하며 지원되는 textured deferred 재질만 fallback한다.
+Native forward/hair·미확인 program은 유지한다. 단계는 매번 Original에서 구성하고 차이 mask만
+적용한다. 새 A를 채택한 뒤 Original 기준으로 돌아오면 실험 ID도 분리해 이전 측정 기준을
+재사용하지 않는다. 탭 선택만으로 preview나 저장값을 변경하지 않는다.
+
 `RENDER_QUALITY_SETTINGS::iSSAOSampleCount`는4/8/12만,
 `SHADOW_SETTINGS::iPCFFilterRadius`는0/1/2만 받는다. 기존12와1을 기본값으로 유지하고
 Renderer/Shadow의 실제 shader bind가 소비한다. 렌더 옵션 저장 schema로 승격하지 않는다.

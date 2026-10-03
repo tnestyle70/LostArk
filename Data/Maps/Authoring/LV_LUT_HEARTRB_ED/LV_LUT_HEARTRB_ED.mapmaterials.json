@@ -4,6 +4,73 @@
   "areaId": "LV_LUT_HEARTRB_ED",
   "materials": [
     {
+      "assetId": "MAP_557CAE338ABF_BG_FAT_STONE_ROCK02_SM",
+      "materialName": "bg_fat_stone_rock02_mi_ksr",
+      "sourceMaterial": "bg_fat_stone_a.mat.bg_fat_stone_rock02_mi_ksr",
+      "castsShadow": true,
+      "renderMode": "deferred",
+      "cullMode": "back",
+      "textureColorSpace": {
+        "diffuse": "srgb",
+        "normal": "linear",
+        "specular": "linear",
+        "reflection": "linear"
+      },
+      "diffuseBrightness": 1.0,
+      "normalIntensity": 1.0,
+      "diffuseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularIntensity": 0.30000001192092896,
+      "specularPower": 60.0,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "diffuseSaturation": 1,
+      "uvTiling": [
+        1,
+        1
+      ],
+      "sourceUV": [
+        0.0,
+        1.0,
+        0,
+        0
+      ],
+      "diffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceFullRestore/Textures/bg_fat_stone_a_tex_bg_fat_stone_rock02_d_ksr.dds",
+      "family": "bg-source-opaque-masked",
+      "sourceFlags": 133,
+      "sourceBump": [
+        0.5,
+        0.05000000074505806,
+        0.30000001192092896,
+        0
+      ],
+      "flickerMode": 0,
+      "addressU": "WRAP",
+      "normalTexture": "Map/LV_LUT_HEARTRB_ED/SourceFullRestore/Textures/bg_fat_stone_a_tex_bg_fat_stone_rock02_n_ksr.dds",
+      "reflectionContrast": 0.5,
+      "reflectionTiling": 1.0,
+      "reflectionColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "reflectionIntensity": 0,
+      "reflectionOriginOffset": [
+        0,
+        0
+      ],
+      "sourceSpecularSaturation": 1
+    },
+    {
       "assetId": "MAP_4A6CF4B84315_LV_LUT_HEARTRB_FLOOR01_SM_VST_SL00_E1271",
       "materialName": "bg_pap_stone_rock04_mi_ksr",
       "sourceMaterial": "lv_lut_heartrb.mat.bg_pap_stone_rock04_mi_ksr",

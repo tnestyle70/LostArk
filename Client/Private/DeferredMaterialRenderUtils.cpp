@@ -3,6 +3,7 @@
 #include "BinaryAsset/ModelAssetData.h"
 #include "Model.h"
 #include "GameInstance.h"
+#include "Engine_RenderTypes.h"
 #include "Shader.h"
 
 #include <cmath>
@@ -79,6 +80,20 @@ Client::DEFERRED_MATERIAL_PROFILE Client::Resolve_DeferredMaterialProfile(
 	return Profile;
 }
 
+bool_t Client::Uses_BasicCharacterMaterialFallback(const Engine::CModel& Model,
+    uint32_t meshIndex, bool_t hasDiffuseInput)
+{
+    if (Engine::CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials) return false;
+    const auto* surface = Model.Get_MaterialSurface(meshIndex);
+    if (!surface || surface->family != Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER) return false;
+    const uint32_t program = surface->sourceCharacter.program;
+    // These installed classic/real-PBR and monster programs use deferred base
+    // passes with a legacy texture branch. Hair/eyelash have separate coverage.
+    const bool texturedDeferred = (program >= 1u && program <= 5u) ||
+        (program >= 8u && program <= 17u) || (program >= 21u && program <= 32u);
+    return texturedDeferred && (hasDiffuseInput || Model.Has_MaterialTexture(meshIndex, aiTextureType_DIFFUSE));
+}
+
 HRESULT Client::Bind_DeferredMaterialInputs(
 	Engine::CModel& Model,
 	const shared_ptr<Engine::CShader>& pShader,
@@ -104,7 +119,8 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 		std::isfinite(pEmissiveOverride->fIntensity) &&
 		pEmissiveOverride->fIntensity > 0.f;
 	const auto* hitSurface = Model.Get_MaterialSurface(iMeshIndex);
-	const bool_t nativeHit = hasValidOverride && pEmissiveOverride->usesSurfaceDetailMask &&
+    const bool basicMaterial = Uses_BasicCharacterMaterialFallback(Model, iMeshIndex, diffuseOverride != nullptr);
+	const bool_t nativeHit = !basicMaterial && hasValidOverride && pEmissiveOverride->usesSurfaceDetailMask &&
 		SourceHitColorRow(hitSurface) != UINT32_MAX;
 	const uint32_t iHasFullSurfaceEmissiveOverride =
 		hasValidOverride && !nativeHit ? 1u : 0u;
@@ -124,7 +140,7 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 		return true;
 	};
 
-	const auto* surface = nativeBinaryBasePass ? Model.Get_MaterialSurface(iMeshIndex) : nullptr;
+	const auto* surface = nativeBinaryBasePass && !basicMaterial ? Model.Get_MaterialSurface(iMeshIndex) : nullptr;
 	if (surface && surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
 		surface->sourceCharacter.program != 0u)
 	{
@@ -226,6 +242,7 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 	{
 		return hFirstBindFailure;
 	}
+	if (basicMaterial) return S_OK;
 	const HRESULT native = Model.Bind_SourceCharacter(pShader, iMeshIndex);
 	return FAILED(native) ? native : BindSourceHitColor(pShader, hitSurface, pEmissiveOverride);
 }
@@ -269,7 +286,10 @@ HRESULT Client::Bind_CombatPresentationInputs(Engine::CModel& Model,
 {
     if (!pShader || meshIndex >= Model.Get_NumMeshes()) return E_INVALIDARG;
     const auto* surface = Model.Get_MaterialSurface(meshIndex);
-    const bool nativeHit = presentation.usesSurfaceDetailMask && SourceHitColorRow(surface) != UINT32_MAX;
+    // The caller has just completed material binding, including a possible
+    // explicit diffuse override on a model without its own diffuse slot.
+    const bool basicMaterial = Uses_BasicCharacterMaterialFallback(Model, meshIndex, true);
+    const bool nativeHit = !basicMaterial && presentation.usesSurfaceDetailMask && SourceHitColorRow(surface) != UINT32_MAX;
     const uint32_t enabled = !nativeHit && presentation.isEnabled && std::isfinite(presentation.fIntensity) &&
         presentation.fIntensity > 0.f ? 1u : 0u;
     const uint32_t maskMode = presentation.usesSurfaceDetailMask ? 1u : 0u;
@@ -278,5 +298,5 @@ HRESULT Client::Bind_CombatPresentationInputs(Engine::CModel& Model,
         FAILED(pShader->Bind_RawValue("g_FullSurfaceEmissiveColor", &presentation.vColor, sizeof(presentation.vColor))) ||
         FAILED(pShader->Bind_RawValue("g_FullSurfaceEmissiveIntensity", &intensity, sizeof(intensity))) ||
         FAILED(pShader->Bind_RawValue("g_FullSurfaceEmissiveMaskMode", &maskMode, sizeof(maskMode)))) return E_FAIL;
-    return BindSourceHitColor(pShader, surface, &presentation);
+    return basicMaterial ? S_OK : BindSourceHitColor(pShader, surface, &presentation);
 }
