@@ -20,6 +20,8 @@ struct SEQUENCE_CAMERA_EDITOR_RESULT final
 };
 // Edits a caller-owned draft. The document owner validates/applies it and owns
 // its clock, coordinate frame, window, Save and Publish operations.
+// The caller verifies Free camera mode and returns Eye/LookAt/Up in the edited row's
+// coordinate frame (including model-root conversion). Failure preserves the output pose.
 using SEQUENCE_CAMERA_CAPTURE = std::function<bool(VALTAN_CINEMATIC_CAMERA_POSE&, std::string&)>;
 class CSequenceCameraEditor final
 {

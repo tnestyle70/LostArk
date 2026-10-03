@@ -68,6 +68,12 @@ Movie의 수평17도는16:9에서 수직9.610678도이며 runtime에서 유효�
 1<FOV<179와 finite/nondegenerate basis를 검사하고, 저장 소비자가 자기 문서 제한을 검증한다.
 Use free cam pos는 Eye/LookAt/Up만 복사하므로 선택 key의 FOV를 보정하거나 덮어쓰지 않는다.
 
+같은 공통 편집기를 써도 capture callback을 전달하지 않으면 버튼이 나타나지 않는다.
+Model root 행을 일괄 금지하는 대신 해당 owner가 현재 preview root의 역행렬로 Eye/LookAt은
+좌표, Up은 방향으로 변환한 후보를 반환한다. determinant에 큰 고정 epsilon을 쓰면 정상적인
+작은 model preScale까지 거부하므로 singular/nonfinite와 최종 basis/문서 유효성을 검사한다.
+월드 포즈를 model-relative key에 그대로 넣거나 캡처 FOV로 저장 키의 lens를 덮어쓰지 않는다.
+
 Use free cam pos가 저장하는 LookAt 거리는 원본 키와 다를 수 있다. 첫 Eye만 바꾸거나
 첫 LookAt만 긴 벡터로 두면 다음 키 보간에서 구도가 급히 돌아간다. 수정 전·후 camera basis의
 회전을 Eye 상대 경로와 시선·Up에 함께 적용하며 시선 벡터 길이만 한 컷에서 일관되게 맞춘다.

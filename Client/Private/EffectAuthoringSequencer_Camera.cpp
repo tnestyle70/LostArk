@@ -84,6 +84,25 @@ bool Camera_CurrentAspect(float& aspect)
     aspect = projection->_22 / projection->_11;
     return std::isfinite(aspect) && aspect > 0.f;
 }
+bool Camera_ToModelPose(const float4x4_t& root, VALTAN_CINEMATIC_CAMERA_POSE& pose, std::string& status)
+{
+    const auto world = XMLoadFloat4x4(&root);
+    if (XMMatrixIsNaN(world) || XMMatrixIsInfinite(world))
+    { status = "The preview model root is not finite; the camera key was preserved."; return false; }
+    vector_t determinant;
+    const auto inverse = XMMatrixInverse(&determinant, world);
+    const float det = XMVectorGetX(determinant);
+    // Small model pre-scales are valid. Reject singular/nonfinite inverses without a fixed determinant epsilon.
+    if (!std::isfinite(det) || det == 0.f || XMMatrixIsNaN(inverse) || XMMatrixIsInfinite(inverse))
+    { status = "The preview model root cannot be inverted; the camera key was preserved."; return false; }
+    auto candidate = pose;
+    XMStoreFloat3(&candidate.vEye, XMVector3TransformCoord(XMLoadFloat3(&pose.vEye), inverse));
+    XMStoreFloat3(&candidate.vLookAt, XMVector3TransformCoord(XMLoadFloat3(&pose.vLookAt), inverse));
+    XMStoreFloat3(&candidate.vUp, XMVector3TransformNormal(XMLoadFloat3(&pose.vUp), inverse));
+    if (!candidate.hasUp || !Camera_ValidUp(candidate.vEye, candidate.vLookAt, candidate.vUp))
+    { status = "The model-relative camera basis is invalid; the camera key was preserved."; return false; }
+    pose = candidate; status.clear(); return true;
+}
 
 }
 
@@ -445,7 +464,25 @@ void CEffectAuthoringSequencer::Render_RecoveryCameraTool()
             const auto sourceMs = preview->sourceClockAtStartMs + static_cast<std::uint32_t>((ClockMs() - preview->startMs) * preview->sourcePlayRate);
             if (sourceMs >= m_RecoveryCameraDraft->startMs) localMs = (std::min)(sourceMs - m_RecoveryCameraDraft->startMs, m_RecoveryCameraDraft->cue.iDurationMs);
         }
-        const auto edit = CSequenceCameraEditor::Render(*m_RecoveryCameraDraft, m_RecoveryCameraEditor, localMs);
+        const auto captureFreeCamera = [&](VALTAN_CINEMATIC_CAMERA_POSE& pose, std::string& status) {
+            const auto camera = std::dynamic_pointer_cast<CCamera_Free>(m_Camera.lock());
+            if (!camera || camera->Is_FollowRequested() || camera->Is_PresentationOverrideActive())
+            { status = "Switch to Free camera (F6) before capturing a key."; return false; }
+            VALTAN_CINEMATIC_CAMERA_POSE captured;
+            if (!CCameraTool::Capture_ViewPose(captured))
+            { status = "The current free camera pose is invalid; the camera key was preserved."; return false; }
+            if (m_RecoveryCameraDraft->modelRelative)
+            {
+                if (!m_ModelRoot || !m_Panel || !m_Panel->Is_PreviewActive())
+                { status = "Keep the preview model active in Model root mode before capturing a key."; return false; }
+                float4x4_t root;
+                if (!Resolve_Root(root)) { status = m_Status; return false; }
+                if (!Camera_ToModelPose(root, captured, status)) return false;
+            }
+            pose = captured; status.clear(); return true;
+        };
+        const auto edit = CSequenceCameraEditor::Render(*m_RecoveryCameraDraft, m_RecoveryCameraEditor,
+            localMs, captureFreeCamera);
         // Resolve seek before Apply replaces the projected row vectors.
         std::optional<std::uint32_t> seek;
         if (edit.seekLocalMs && preview != previews.end())
