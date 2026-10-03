@@ -362,3 +362,26 @@ clip1 inner12 carrier는 낙하 추가 전의0.01초 동시 생성·정지로 �
 최종 요소 수는231/186이다. 이번 변경은 clip1의36개, clip2의18개 요소에만 적용했다. 나머지195/168개 요소와 모든 material·resource는 완전히 같고, 파일 읽기 당시 SHA와 일치할 때만 요소/key별 CAS 후보를 설치했다. 기존 제품 camera loader가 이 Sequence를 source0에서 읽는 경로를 유지하며 추가 publisher/catalog 항목은 없다. 실행 중 저작 draft나 Client/Server를 조작하지 않았다. 새 테스트 입력이 최신 파일을 읽는지와 최종 시야·큰 방패·번개 높이·검은 띠 외형은 사용자가 확인한다.
 
 근거는 `out/WarlordAltVPlacement20260915`의 `source-notifies.json`, `candidate.receipt.json`, `camera-fit.json`, `camera-verification.json`, `quad-extraction.json`, `placement.json`, `apply.json`, `validation.receipt.json`이다. `prepare.py`는 이번 입력의 격리된 후보 생성 기록이며 제품 경로에 별도 도구나 하네스를 추가하지 않았다.
+
+
+## G19. 10-04 V 두 번째 클립 번개의 실제 본 배율 누락 복구
+
+사용자가 최종 지정한 구간은 V17170의 두 번째 clip에서 방패를 위로 올리는 순간이다. 이번 설치 원본 data3.lpk의 Action/GUNLANCER.loa를 다시 읽었다(SHA256 0a1a53334aac647f1c6b829ffab5c367132d4a809a095800d3573a7dec08611e). 원본 action은 start1.16667초, loop1.33333초, attack1.16667초이며 loop0초의 Par_D_GProtection_06을 정확한 조사 대상으로 삼았다. 앞서 추가된 F native446의4개 파동과 원본 V 낙뢰를 같은 것으로 취급하지 않았다.
+
+현재 설치 UPK에서5개 particle system·31개 first-LOD emitter를 다시 읽고 full의37개 source occurrence를 대조했다. 재질 identity와 원본 분포가 일치하고7개 mesh reference 정수 차이는 package import index뿐이며 .objectpath는 일치한다. `_06`의 beam native665와 thunder native669는 원본 b_effectroot FOLLOW, identity socket, notify 위치[-0.3,0,-0.3]m를 소비한다. source StartSize1000cm는 이미10m로 투영돼 있다. 이 대조는 전체 실제 화면 일치나 모든 shader의 재검증을 뜻하지 않는다.
+
+실제 설치 Warlord.wmodel과 제품 admission0.0001·yaw-90을 CModel의 Ready_Bones/Ready_Animations/Sample_AnimationBoneCombinedMatrices로 읽었다. b_effectroot index215의3개 clip223시점에서 축 길이는0.009999996051~0.009999997914다. 기존 Requires_SourceBoneImportScaleNormalization은 Warlord Q와 Alt V만 허용하고 V17170을 빠뜨렸다. 따라서 이미 m단위인 V particle 크기와 local offset에0.01이 다시 곱해졌다. 단순 원본 shader0출력이나 미존재 native446가 이 구간의 직접 원인이 아니었다.
+
+Effect_PresentationService.cpp에8줄만 추가해 정확한 effect.warlord.skill.17170.full.restore 및 clip1/clip2/clip3.full.restore 네 ID와 b_effectroot의 조합을 기존 정규화에 연결했다. 현재 enabled/follow occurrence는 full14개·clip1 0개·clip2 14개·clip3 0개다. 기존 엄격한0.01 검증 뒤 축만 정규화하고 본 translation과 owner world 합성을 유지한다. Product, Tool, 과거 pose는 같은 선택/helper를 소비한다. JSON·Resources·shader·분포·색·방패 ring은 변경하지 않았다. 변경 전 Service bytes와 own diff는 out/WarlordVOriginal20261004/Effect_PresentationService.before-v17170.cpp 및 service-owner.diff에 있다. 변경 후 Service SHA256은0586a043fc294855b29f9d133432628f460565de2e3f44ca9f6c5d52b2337cdb이며 UTF-8 no BOM/CRLF를 보존했다.
+
+검증 결과:
+
+- 최종 Service 독립 Debug TU 컴파일 exit0. 기존 EngineSDK 헤더의 C4828 인코딩 경고가 있었으며 source를 바꾸지 않았다. 제품 OBJ·DLL은 이 최소 컴파일로 교체하지 않았다.
+- 새 Service TU와 기존 제품 OBJ를 별도 console entry에 link한 actual CModel 검증11,182 checks 통과. exact ID/slot, 다른 skill/slot 거부, 기존 Q/Alt V 유지, 실제 본223시점, 정규화 축0.9999995828~0.9999997616, translation exact 보존, owner yaw/translation 합성, 비균등 본 거부를 확인했다. 변경 전후 실제 본 샘플 자체는 같다.
+- 별도 담당자의 기존 Product Load/Stage/Playback/Render와 설치 본의 loop81시점 주입 대조1,496 checks 통과. native665는 raw 최종 Y0.1m에서 정규화 후10m, 같은42 draw에서 양수 frame0→42·누적 pixel0→13,511·peak0→1.3015였다. native669는 같은50 draw에서 누적 pixel5→126,906·peak0.000338783→21.7254·양수 frame49였다. 시간·ID·color·dynamic·particle 수·draw 수가 같고 nonfinite0이다. 모든 축은 기존0.01 중복배율만 제거됐다.
+- WARP는 합성 camera/identity owner를 사용했다. native669 SceneDepth는 실제 TargetManager/RenderTarget의 빈 depth clear(1,1,1,0)이며 실제 맵 장애물은 없다. 새 selector와 actual bone 검증은 앞선 console probe, GPU 전후 대조는 실제 raw/normalized bone 주입이라는 별도 검증 경계를 유지한다. Client/UI를 실행하거나 사용자 화면을 대신 판정하지 않았다.
+- 변경 파일 scoped diff check와 네 V JSON parse를 통과했다. root가 최종 Service를 포함한 Product Debug/Release 빌드를 완료했고 두 receipt의 result=PASS를 확인했다. 근거는 out/BuildPipeline/runs/20261003T231005474Z-debug-product.json 및 20261003T231154821Z-release-product.json이다. 이는 현재 primary 작업공간의 다른 Bern 최적화까지 포함한 통합 빌드이며 격리 PR만의 빌드라고 기록하지 않는다. 사용자 게임 화면 확인은 남아 있다.
+
+현재 방패가 원본과 다른 이유도 분리했다. V의 outer.shield.1~5와5개 장식은09-10 사용자 요청으로 Alt V의 sk_wgl_gdd_01/fx_w_wgl_gdd_02를 반경4.5m에72도 간격으로 배치한 project-authored 요소다. 원본 V의5개 방패 ring으로 기록하지 않는다. 원본 attack의 fm_d_wgl_gprotection_05는6개 사각형이 합쳐진 별도 source geometry이고 현재 occurrence도 유지된다. 원본 PlaySkeletalMesh notify의 None/None은 추가 방패 actor의 근거가 아니다. 이번 조사에서 손에 든 방패·최종 원작 외형까지 대응이 닫힌 것은 아니므로 기존 사용자 ring을 임의 삭제하거나 교체하지 않았다. 원본 EPAL_ROTATE_Z의 현재 ROTATE_Y 소비 방향도 이번 배율 결함과 구분하며 추정 회전을 추가하지 않았다.
+
+원본 조사와 최소 변경 근거는 out/WarlordVOriginal20261004의 source_acquisition.json, source_action_17170.json, closure, recipe_comparison.json, normalized_bone_samples.json, normalization_probe.log, normalization-verification.json이다. 실제 GPU 전후 결과는 out/WarlordVDraw20261004/native-v-result.json에 있다.

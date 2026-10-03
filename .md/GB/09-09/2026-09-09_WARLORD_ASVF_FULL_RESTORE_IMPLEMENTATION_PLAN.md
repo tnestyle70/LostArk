@@ -110,3 +110,12 @@ codec/playback 수치 검사를 수행한다. 제품 통합 빌드는 root가 �
 마지막 native1140은 원본 notify024~029 raw payload690bytes가 FRotator yaw 필드464..467만 다르다. 기존 Albion decoder의 정확한 named-anchor 경계로 [0,-10922,-21845,32768,21845,10922]를 읽고 해당6개에만 회전을 연결한다. emitter 회전은 중심을6방향으로 배치하고 axis-locked quad의 별도 billboardRollDegrees=-yaw는 띠의 장축을 같은 방사 방향으로 향하게 한다. 원본 StartRotation90도는 보존하며 서로 다른 위치/quad 소비자가 읽는 것이므로 이중회전이 아니다. 발생 개수와 재질은 그대로다.
 
 out의 실제 Codec/serialize/Stage/Playback, 설치 본20개와 실제 Make_ParticleSpriteWorld 본문 추출을 사용해 inner 정지/outer 하강, clip handoff, 낙뢰 XZ 및 양수 opacity, 균열6중심·법선·장축을 검증한다. 제품은 현재 bytes SHA가 동일할 때 해당 요소와 camera key만 CAS로 바꾸고 다른 저작 변경·실행 중 draft·프로세스에는 접근하지 않는다. 새 C++/shader/Resources/project 등록은 없다.
+
+
+## G19. 10-04 V 두 번째 클립의 원본 본 부착 크기 복구
+
+재설치 원본 Action/GUNLANCER.loa의17170은 start/loop/attack 세 clip이다. 사용자가 지적한 방패를 올리는 시점은 loop의0초 Par_D_GProtection_06이며, 기존 F native446 추가 파동과 구분한다. 현재37개 원본 occurrence의 재질 identity와 분포는 재추출본과 일치한다. 실제 설치 Warlord.wmodel을 제품 admission0.0001·yaw-90과 기존 CModel 샘플러로 읽은223개 시점에서 b_effectroot의 축은0.009999996~0.009999998이다. 원본 beam native665의10m StartSize에 이 축이 다시 곱해지는데 V17170만 기존 source-bone 배율 정규화 선택에서 빠져 있다.
+
+Effect_PresentationService.cpp의 Requires_SourceBoneImportScaleNormalization에 정확한17170 full/clip1/clip2/clip3 네 asset ID와 b_effectroot의 조합만 추가한다. 기존 Build_SourceBoneAnchorWorld의 엄격한0.01 검증·축 정규화·translation 보존을 Product와 Tool이 함께 소비한다. 다른 slot·skill·사용자 방패 ring·분포·색·shader·원본 provenance는 수정하지 않는다. 파일의 변경 전 bytes와 hash를 out/WarlordVOriginal20261004에 보존하고 실제 최신 bytes에 최소 삽입한다. 새 C++·project/filter·Data·Resources 변경은 없다.
+
+독립 TU 컴파일과 실제 설치 CModel의223개 bone sample, exact ID/slot 선택 및 실패 경계의 생산 함수 검증을 수행한다. 별도 담당자가 기존 Product Playback/Draw에 실제 bone sample을 넣어 native665/669의 world 축·크기와 WARP 픽셀을 비교한다. 합성 camera/identity owner를 사용하는 수치 검증은 실제 게임 화면의 완전한 동일성이나 원본 방향 복구로 기록하지 않는다. 원본 axis-lock의 방향과 사용자가 저작한 방패 ring은 별도 경계로 남긴다. 제품 통합 빌드와 사용자 화면 판정은 root가 조율한다.
