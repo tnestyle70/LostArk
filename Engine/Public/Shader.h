@@ -10,6 +10,7 @@ struct ID3DX11Effect;
 struct ID3DX11EffectVariable;
 struct ID3DX11EffectMatrixVariable;
 struct ID3DX11EffectShaderResourceVariable;
+struct ID3DX11EffectSamplerVariable;
 struct ID3DX11EffectPass;
 
 NS_BEGIN(Engine)
@@ -53,6 +54,11 @@ private:
 	};
 	// Pass annotations keep program-independent work in the owning base FX.
 	enum class PROGRAM_PASS_POLICY : uint8_t { VARIANT = 0u, BASE = 1u, UNAVAILABLE = 2u };
+	struct TEXTURE_QUALITY_SAMPLER final
+	{
+		ID3DX11EffectSamplerVariable* pVariable = nullptr;
+		ComPtr<ID3D11SamplerState> Levels[4]; // Original state, then MinLOD 1/2/3.
+	};
 	struct EFFECT_BINDINGS final
 	{
 		// A half-full table avoids Debug STL lookup/iterator work
@@ -61,6 +67,9 @@ private:
 		size_t iVariableMask = 0u;
 		std::vector<ID3DX11EffectPass*> Passes;
 		std::vector<PROGRAM_PASS_POLICY> PassPolicies;
+		// Sampler state shares the Effect owner, including all component clones.
+		std::vector<TEXTURE_QUALITY_SAMPLER> TextureQualitySamplers;
+		uint32_t iAppliedTextureMinMip = 0u;
 		uint64_t iRevision = 1u;
 	};
 	struct PROGRAM_VARIANTS;
@@ -69,6 +78,8 @@ private:
 		const std::shared_ptr<EFFECT_BINDINGS>& pBindings,
 		std::shared_ptr<PROGRAM_VARIANTS>& pVariants);
 	HRESULT Apply_ProgramVariant(uint32_t iProgram, uint32_t iPassIndex);
+	HRESULT Stage_TextureQualitySamplers(ID3DX11Effect* pEffect, EFFECT_BINDINGS& bindings);
+	HRESULT Apply_TextureQuality(uint32_t iMinMip);
 
 	VARIABLE_BINDING* Find_Variable(const char_t* pConstantName) const;
 	static uint64_t Hash_VariableName(const char_t* pConstantName) noexcept;

@@ -126,6 +126,8 @@ public: /* Renderer */
     bool_t Is_SceneEnvironmentReplaced() const;
 	HRESULT Refresh_SceneColorSnapshot();
 	RENDER_QUALITY_SETTINGS Get_RenderQualitySettings() const;
+	// Draw-time scalar view avoids copying the quality profile and LUT layers.
+	uint32_t Get_TextureMinMip() const;
 	HRESULT Apply_RenderQualitySettings(const RENDER_QUALITY_SETTINGS& Settings);
 	MATERIAL_RENDER_SETTINGS Get_MaterialRenderSettings() const;
 	HRESULT Apply_MaterialRenderSettings(const MATERIAL_RENDER_SETTINGS& settings);

@@ -75,6 +75,8 @@ public:
 
 private:
     HRESULT Prepare_StaticLod(const MODEL_MESH_DATA& mesh, fmatrix_t preTransform);
+    uint32_t Select_StaticLod(const MESH_SCREEN_LOD_DESC* view,
+        uint32_t& indexCount, uint32_t& firstIndex) const;
     std::shared_ptr<CStaticMeshLod> m_StaticLod;
 
 	char_t					m_szName[MAX_PATH] = {};

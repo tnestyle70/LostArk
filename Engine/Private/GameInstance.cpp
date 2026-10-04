@@ -546,6 +546,11 @@ RENDER_QUALITY_SETTINGS CGameInstance::Get_RenderQualitySettings() const
 	return m_pRenderer->Get_RenderQualitySettings();
 }
 
+uint32_t CGameInstance::Get_TextureMinMip() const
+{
+	return m_pRenderer ? m_pRenderer->Get_RenderQualitySettings().iTextureMinMip : 0u;
+}
+
 HRESULT CGameInstance::Apply_RenderQualitySettings(
 	const RENDER_QUALITY_SETTINGS& Settings)
 {

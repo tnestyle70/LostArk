@@ -1183,6 +1183,15 @@ DPI와 종횡비는 별개다. 같은16:9 해상도는 UI 배치 비율을 유�
 reference 좌표의 X/Y viewport 비율을 각각 적용하므로 자동 anchor 재배치나 letterbox를
 보장하지 않는다. UI 이미지를125% 크기로 미리 확대 저장했다면 asset 자체의 품질은 별도로 확인한다.
 
+환경설정 `텍스처 품질`의 최상/상/중/하는 모델 표면의 최소 mip을 0/1/2/3으로 제한한다.
+일괄 설정에도 포함되며 선택 즉시 미리보기, 취소 복원, 적용/확인 저장과 재실행 후 복원을
+같은 개인 설정 경로로 처리한다. 현재 scene/region 조명·후처리 정본 위에 개인 설정을 합성한다.
+저장값이 없을 때와 해당 항목 초기화 시 기본값은 Debug `하`, Release `최상`이다.
+기존에 명시 저장한 품질은 두 빌드 모두 우선하며 빌드 전환만으로 덮어쓰지 않는다.
+맵·인스턴스·캐릭터·장비와 해당 SourceCharacter light pass에 적용하며 UI, LUT, BRDF/반사 lookup,
+원본 이펙트 전용 sampler는 유지한다. 없는 mip은 생성하지 않으며 GPU 상주 텍스처 용량을 줄이는
+streaming 기능은 아니다. mip 체인이 있는 재질로 최상/하를 비교한다.
+
 ### 새 GameObject 추가
 
 1. `Client/Public`, `Client/Private`에 `CGameObject` 파생 클래스를 만든다.

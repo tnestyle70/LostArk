@@ -513,3 +513,83 @@ Map.Batch.Draw129ms나 수천 번 재질 제출이 모두 사라지는 것은 �
 초회 추가 비용은 `first-cost/conclusions.json`에 보존했다. 과거 구현 근거는
 `09-22/2026-09-22_BERN_RELEASE_PROFILER_OPTIMIZATION_RESULT.md`와
 `09-24/2026-09-24_RELEASE_CHARACTER_SELECT_PRELOAD_RESULT.md`다.
+
+## G16. 카메라 표현 오차로 빠지던 CPU LOD 적용 복구
+
+기존 Bern cue의10,568개 pose를 실제 sampler/inverse로 재현하면3,012개(28.50%)가
+view._44의 정확한1 비교 때문에 LOD를 거절했다. 최대 차이는1.5 float epsilon이다.
+camera snapshot에서 LOD 전용 view/보수 scale을 한 번 준비하고 두 LOD 소비자가 공유하도록
+수정했다. 원본 GPU view/projection·frustum plane은 byte 그대로 보존하며 실제 projective/
+비유한 행렬은 여전히 source LOD로 돌아간다.0.25px 기준과 기존 CPU 선택을 유지했다.
+
+실제 함수 검증에서 위 pose의 해당 거절은0이 됐다. 원본 homogeneous transform으로 구한
+253,632개 구 표면 표본의 envelope 포함, revision cache, invalid/near 경계도 통과했다.
+실제 게임 캡처에는 과거 행렬이 없으므로28.50%를 실제 저장 frame의 누락률로 확대하지 않는다.
+근거는 `out/BernLodDrawExpansion20261004/actual-affine/review-receipt.json`이다.
+
+작은 메시 생성 하한을6,144로 내리는 후보도 실제 Loader0.01 pre-transform·설치68개
+opaque submesh로 측정했다. 새51개 중3개만 감소했고 추가 준비 CPU 중앙값 합은
+Release241.60ms/Debug681.17ms, 추가 immutable index buffer550,392B였다.
+총21,702indices 감소는 배치/거리별 실제 화면 이득이 아니다. 생성 하한24,576은 유지했다.
+기존 생성 메시의 실제 query/Render_Instanced 선택은18개 거리/실패 사례에서 일치했다.
+근거는 `out/BernLodExpansion20261004/{final-generation-decision,selection-receipt}.json`이다.
+
+## G17. 작은 조명 묶음과 같은 LOD의 draw 병합
+
+같은 CMesh·비조명 재질·pass/profile·카메라 revision·선택 LOD를 가진 인접2~3개 배치를
+3slot/9SRV 전용 pass30~32로 합친다.4~8개는 기존8slot/24SRV pass27~29를 유지한다.
+다른 LOD와 다른 객체는 순서 경계이며 검색으로 뛰어넘지 않는다. 일반 draw에는 bank SRV를
+추가하지 않는다. 복사본의 bank index 외224B instance payload·wind·lighting 입력을 보존한다.
+
+설치 Bern의 가시 authored 후보 기준으로 최소4개 정책의1,103개 draw 절감 후보가 최소2개
+정책에서2,153개가 된다. 추가1,050개는 실제 카메라의 draw 절감량이나 FPS가 아니다.
+RTX4070의 staging/Map/Unmap 포함 작은 제출 fixture 중앙값은2개36.183→27.555us,
+3개46.247→23.116us다. 전체 material admission이나 게임 frame 비용은 이 측정에 없다.
+
+실제 Client banking/upload 함수80검사와 CMaterial compatibility/bind251검사는 통과했다.
+같은/다른 LOD, 순서, stale camera,2/3/4/8개, 실패 전 fallback과 제출 후 중복 draw 방지,
+bank 폭 전환과 setter 실패 시 disabled 상태를 확인했다. Debug/Release 설치 CSO 각각
+256개 GPU 비교에서8MRT가 기존 ordinary와 bitwise 같고 D3D error/warning은0이다.
+두 CSO SHA는 `fa64a095c0a62d2072b897f9193b5b0352bcbd727b631469320829195b23739e`다.
+근거는 `out/BernLodDrawExpansion20261004/bank/`의 contract 결과와
+`product-debug`, `product-release`의 input-receipt/gpu-parity다.
+
+## G18. 실제 mip 품질 연결과 빌드별 기본값
+
+작업 트리에 완료돼 있던 환경설정의 표면 sampler 연결을 필수 소비자로 검토해 함께 반영했다.
+관련 Shader/Renderer/UserSettings와 하네스 변경만 포함하며 다른 세션의 HorizonAO/SSR와
+Workbench 변경은 커밋 범위에서 제외했다. 별도 구현·기존 검증은
+[텍스처 mip 품질 결과](2026-10-04_SYSTEM_OPTION_TEXTURE_MIP_QUALITY_RESULT.md)를 따른다.
+
+이번 추가는 Debug 하(3), Release 최상(0)의 단일 기본값 함수다. 초기 로드의 missing fallback과
+실제 UI seed·Reset이 같은 함수를 사용한다. 기존 명시 저장0~3과 다른 렌더링 옵션은 보존한다.
+현재 개인 저장은0이므로 빌드 교체만으로 하가 되지 않으며 환경설정에서 하를 선택해 비교한다.
+최상0은 원본 sampler와 자동 mip 선택을 허용한다는 뜻이며 모든 표면을 항상 mip0로 읽지 않는다.
+
+실제 UserSettings/JSON/Win32 저장과 UI Effective_Default 본문을 사용하는 하네스는
+Debug/Release 각각134검사를 통과했다. 병렬 최초 실행은 제품의 공유 save mutex 때문에
+Debug 저장 검사가 실패해 로그를 보존했고, 직렬 Debug 재실행으로 통과했다. 개인 설정 파일은
+변경하지 않았다. 최종 Debug Engine.dll의 화면 없는 probe도16fixtures·sampler795·실제
+샘플400·clone160·제외상태420검사와 잘못된 품질 거부를 통과했다.
+근거는 `out/BernLodDrawExpansion20261004/mip-default/validation-receipt.json`과
+`out/BernTextureMipQualityProbe20261004/probe-result.json`이다.
+
+정상 Product 증분 compile/deploy는 Debug148,611ms, Release145,724ms에 PASS했다.
+영수증은 `out/BuildPipeline/runs/20261004T080415156Z-debug-product.json`과
+`20261004T080819210Z-release-product.json`이다. 공유 작업 트리의 별도 미커밋 렌더링 변경도
+빌드에 포함돼 있으며 이 기능의 commit 범위와 구분한다. Client/UI를 실행하지 않았고 실제
+베른·발탄 FPS와 전환 외형 확인은 사용자 재캡처가 남아 있다.60FPS 달성을 주장하지 않는다.
+
+## G19. 실제 typed 재질의 mip 입력 재대조
+
+G15의 단일 grass24 DDS는 WModel fallback 복사본이다. 현재 typed BG 재질581행은
+SourceMaterials의11단 DDS를 사용하고 Landscape42행은 NativeLayers의11단 DDS를 사용한다.
+따라서 fallback 표본을 실제 베른 잔디의 mip 부재로 확대하지 않는다. 원본 재회수 대조에서
+BG 입력의 mip0는 native와 같지만 하위10단은 다르고, Landscape 입력은11단 모두 같다.
+단계 부재와 프로젝트 생성 단계의 원본 복원은 서로 다른 작업이다.
+
+현재 runtime mapmaterials가 참조하는 비조명 DDS 기준 베른1,580개 중 단일11개,
+발탄434개 중 단일424개를 확인했다. 원본 source object와 대응시킨 실제 복원·설치 결과는
+별도 [표면 mip 복원 계획](2026-10-04_MAP_SURFACE_NATIVE_MIP_RESTORATION_IMPLEMENTATION_PLAN.md)
+및 그 대응 RESULT에서 관리한다. 이 inventory만으로 모든 단일 파일의 native 누락이나
+개별 mip의 FPS 병목 비중을 확정하지 않는다.

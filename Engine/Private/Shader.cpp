@@ -398,6 +398,10 @@ HRESULT CShader::Initialize_Prototype(const tchar_t* pShaderFilePath, const D3D1
 		}
 	}
 
+	Result = Stage_TextureQualitySamplers(Effect.Get(), *Bindings);
+	if (FAILED(Result))
+		return Fail(L"texture-quality-samplers", Result);
+
 	std::shared_ptr<PROGRAM_VARIANTS> ProgramVariants;
 	Result = Stage_ProgramVariants(pShaderFilePath, pElements, iNumElements, Bindings, ProgramVariants);
 	if (FAILED(Result))
@@ -424,6 +428,78 @@ HRESULT CShader::Initialize_Prototype(const tchar_t* pShaderFilePath, const D3D1
 
 HRESULT CShader::Initialize(void* pArg)
 {
+	return S_OK;
+}
+
+HRESULT CShader::Stage_TextureQualitySamplers(ID3DX11Effect* pEffect, EFFECT_BINDINGS& bindings)
+{
+	// These names identify surface inputs in the existing shader contract. In particular,
+	// lightmap/lookup samplers also read BRDF tables and roughness cubes and stay unchanged.
+	constexpr const char* names[] = {
+		"MaterialAnisotropicSampler", "SurfaceAnisotropicSampler",
+		"SurfaceMirrorUSampler", "SurfaceMirrorVSampler", "SurfaceMirrorUVSampler",
+		"SourceCharacterSampler", "SourceCharacterStampSampler",
+		"SourceMapMonsterStateSampler", "SourceMapSkyCloudSampler", "LinearSampler"
+	};
+	auto* const surfaceVariable = pEffect->GetVariableByName("SurfaceAnisotropicSampler");
+	const bool surface = surfaceVariable && surfaceVariable->IsValid();
+	try
+	{
+		for (const char* name : names)
+		{
+			// Instance surface passes use LinearSampler. UI and deferred postprocess use
+			// the same name without this surface contract and must keep their own state.
+			if (0 == std::strcmp(name, "LinearSampler") && !surface) continue;
+			auto* variable = pEffect->GetVariableByName(name);
+			if (!variable || !variable->IsValid()) continue;
+			auto* sampler = variable->AsSampler();
+			D3DX11_EFFECT_TYPE_DESC type{};
+			if (!sampler || !sampler->IsValid() || FAILED(variable->GetType()->GetDesc(&type)) ||
+				type.Elements != 0u) return E_FAIL;
+			TEXTURE_QUALITY_SAMPLER staged;
+			staged.pVariable = sampler;
+			HRESULT result = sampler->GetSampler(0u, staged.Levels[0].GetAddressOf());
+			if (FAILED(result) || !staged.Levels[0]) return FAILED(result) ? result : E_FAIL;
+			D3D11_SAMPLER_DESC original{};
+			staged.Levels[0]->GetDesc(&original);
+			for (uint32_t mip = 1u; mip < 4u; ++mip)
+			{
+				auto desc = original;
+				desc.MinLOD = std::min(desc.MaxLOD, std::max(desc.MinLOD, static_cast<float>(mip)));
+				result = m_pDevice->CreateSamplerState(&desc, staged.Levels[mip].GetAddressOf());
+				if (FAILED(result)) return result;
+			}
+			bindings.TextureQualitySamplers.push_back(std::move(staged));
+		}
+	}
+	catch (const std::bad_alloc&)
+	{
+		return E_OUTOFMEMORY;
+	}
+	return S_OK;
+}
+
+HRESULT CShader::Apply_TextureQuality(uint32_t iMinMip)
+{
+	if (iMinMip >= 4u) return E_INVALIDARG;
+	auto& bindings = *m_pBindings;
+	if (bindings.iAppliedTextureMinMip == iMinMip) return S_OK;
+	for (size_t i = 0u; i < bindings.TextureQualitySamplers.size(); ++i)
+	{
+		auto& sampler = bindings.TextureQualitySamplers[i];
+		const HRESULT result = sampler.pVariable->SetSampler(0u, sampler.Levels[iMinMip].Get());
+		if (FAILED(result))
+		{
+			// No draw has been submitted. Restore the previous shared Effect state.
+			for (size_t rollback = 0u; rollback <= i; ++rollback)
+			{
+				auto& previous = bindings.TextureQualitySamplers[rollback];
+				previous.pVariable->SetSampler(0u, previous.Levels[bindings.iAppliedTextureMinMip].Get());
+			}
+			return result;
+		}
+	}
+	bindings.iAppliedTextureMinMip = iMinMip;
 	return S_OK;
 }
 
@@ -702,6 +778,21 @@ HRESULT CShader::Begin(uint32_t iPassIndex)
 		// Forward-only map/vehicle programs retain their existing independent evaluator.
 		if (program != 0u && !(program >= 33u && program <= 65u) && program != 209u)
 			return Apply_ProgramVariant(program, iPassIndex);
+	}
+	if (!m_pBindings->TextureQualitySamplers.empty())
+	{
+		uint32_t minMip = CGameInstance::Get().Get_TextureMinMip();
+		if (minMip != 0u)
+		{
+			D3DX11_PASS_DESC pass{};
+			if (FAILED(m_pBindings->Passes[iPassIndex]->GetDesc(&pass))) return E_FAIL;
+			// Model effects share this FX and LinearSampler with material surfaces. Keep
+			// their native wrap/clamp/scene-read contract together. Ordinary material and
+			// masked shadow passes continue to share the selected surface quality.
+			if (pass.Name && 0 == std::strncmp(pass.Name, "EffectModelCueNative", 20u)) minMip = 0u;
+		}
+		const HRESULT qualityResult = Apply_TextureQuality(minMip);
+		if (FAILED(qualityResult)) return qualityResult;
 	}
 	m_pContext->IASetInputLayout(m_InputLayouts[iPassIndex].Get());
 

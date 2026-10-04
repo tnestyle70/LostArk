@@ -180,6 +180,7 @@ namespace
 		const RENDER_QUALITY_SETTINGS& Settings)
 	{
 		return
+			Settings.iTextureMinMip <= 3u &&
 			IsValidSourcePostProcess(Settings.SourcePostProcess) &&
             IsFiniteInRange(Settings.fSSGIStrength, 0.f, 2.f) &&
             IsFiniteInRange(Settings.fSSGIRadius, 0.1f, 20.f) &&
@@ -694,6 +695,9 @@ HRESULT CRenderer::Apply_RenderQualitySettings(
 		}
 	}
 	m_pSourceGradingLut = stagedLut;
+	// Masked static casters sample the same surface mips as their color pass.
+	if (m_RenderQualitySettings.iTextureMinMip != Settings.iTextureMinMip)
+		m_bStaticShadowCacheValid = false;
 	m_RenderQualitySettings = Settings;
 	return S_OK;
 }

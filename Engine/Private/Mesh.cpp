@@ -351,6 +351,20 @@ HRESULT CMesh::Render()
     return result;
 }
 
+uint32_t CMesh::Select_StaticLod(const MESH_SCREEN_LOD_DESC* view,
+    uint32_t& indexCount, uint32_t& firstIndex) const
+{
+    indexCount = m_iNumIndices;
+    firstIndex = 0u;
+    CStaticMeshLod::SELECTION selection{ m_iNumIndices, 0u, 0u };
+    if (!view || !m_StaticLod || Has_MorphBaseVertices() ||
+        S_OK != m_StaticLod->Select_Range(*view, selection))
+        return 0u;
+    indexCount = selection.indexCount;
+    firstIndex = selection.firstIndex;
+    return selection.level;
+}
+
 HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 	uint32_t iInstanceStride, uint32_t iNumInstances,
 	uint32_t iInstanceByteOffset, const MESH_SCREEN_LOD_DESC* screenLod)
@@ -375,8 +389,8 @@ HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
     // The view and immutable LOD errors are already CPU-owned. Select a range
     // directly instead of submitting a one-thread compute dispatch per draw.
     CStaticMeshLod::SELECTION selection{ m_iNumIndices, 0u, 0u };
-    const bool_t useLod = screenLod && m_StaticLod && !Has_MorphBaseVertices() &&
-        S_OK == m_StaticLod->Select_Range(*screenLod, selection) && selection.level > 0u;
+    selection.level = Select_StaticLod(screenLod, selection.indexCount, selection.firstIndex);
+    const bool_t useLod = selection.level > 0u;
 
 	ID3D11Buffer* vertexBuffers[] =
 	{

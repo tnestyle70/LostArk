@@ -6107,6 +6107,19 @@ SSGI half는 marker3 전용 추가 screen-space GI다. 기존 full 경로와 원
 Lumen/DXR로 표시하지 않는다. marker5/14를 조건문에만 추가하면 서로 다른 G-buffer ABI를 잘못 읽는다.
 half texture는 홀수·1픽셀·resize·depth/normal 경계를 검증하고 full/SSR 보존을 실제 픽셀로 대조한다.
 
+### 환경설정 텍스처 품질과 sampler owner
+
+`텍스처 품질`의 4등급은 원본 mip 체인의 최소 레벨0/1/2/3으로 연결한다. sampler state와
+마지막 적용 단계는 FX11 Effect와 같은 공유 owner에 보관하고, 실제 SourceCharacter variant의
+Begin에서도 적용한다. base FX의 state만 변경하면 별도 light/geometry variant가 이전 품질을 쓴다.
+인스턴스 표면의 LinearSampler를 포함하되 같은 이름의 UI/Deferred sampler에는 적용하지 않는다.
+lightmap/lookup sampler는 BRDF와 roughness cube도 공유하므로 일괄 변경하지 않는다.
+AnimMesh의 native ModelCue도 LinearSampler를 공유한다. `EffectModelCueNative*` 네 pass만
+원본으로 복원하고 다음 표면 draw에서 사용자 품질을 다시 적용한다. 모든 ModelCue pass를
+제외하면 일반 cue의 color0과 shadow15가 서로 다른 mip을 쓰므로 native 범위만 분리한다.
+최상은 원본 sampler 자체로 복귀하며 texture mip 제한이 바뀌면 masked static shadow cache도
+무효화한다. mip chain 복구와 샘플링 품질 선택, VRAM residency 절감은 별도 작업이다.
+
 ### 느린 frame의 배경 이펙트 따라잡기와 카메라 속도를 구분한다
 
 ambient fixed-step60회는 효과60개 생성이나 카메라 속도의 직접 증거가 아니다. 실제 delta와
@@ -6160,3 +6173,19 @@ zero wind/noise를 각각 유지하며 DXBC replay 수치와 실제 화면 판�
 공유 Effect clone에 preview 전용 opacity를 bind했으면 draw 뒤 기본값으로 되돌린다. state만
 검사하지 말고 valid destruction debris/suppression의 commit 직전에도 preview를 정상 종료해
 Server의 동일-state 파괴 burst가 preview root를 유지하지 않게 한다.
+
+### 카메라 행렬 오차와 인접 draw의 LOD 선택을 구분한다
+
+inverse view의 `_44`를 정확히1과 비교하면 affine 표현의 float 오차 때문에 원거리 LOD가
+건너뛰어질 수 있다. camera revision당 LOD 전용 view를 준비하고 같은 homogeneous scale로
+center·radius·error를 일관되게 계산한다. 원본 GPU view와 culling plane은 바꾸지 않는다.
+projective/비유한 행렬은 계속 거부하고 source LOD로 돌아간다. 실제 cue 재현과 화면 오차를
+함께 확인하며 생성 하한을 일괄 낮추기 전에 실제 asset의 감소율과 준비 비용을 측정한다.
+
+같은 mesh의 인접 lighting bank도 각 원래 batch가 선택한 LOD가 같을 때만 합친다. 서로 다른
+선택은 순서 경계로 남긴다. 작은2~3개 묶음은 별도3slot shader로 SRV 바인딩 비용을 제한하며
+기존4~8개 경로와 ordinary shader의 비용을 늘리지 않는다. native 수치 정합·실제 제출 비용과
+사용자 컷신 FPS 검증은 구분한다.
+
+텍스처 품질의 빌드별 기본값은 초기 로드 fallback과 UI seed·Reset에서 같은 함수를 쓴다.
+Debug 하/Release 최상은 저장값이 없는 경우의 기본값이며 기존 명시 저장값을 강제하지 않는다.
