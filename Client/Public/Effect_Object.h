@@ -191,6 +191,10 @@ public:
 	{
 		return m_Playback.Get_FixedStepClockSeconds();
 	}
+	uint64_t Get_PreviewSimulationStep() const
+	{
+		return m_Playback.Get_SimulationStep();
+	}
 	void Set_Playing(bool_t bPlaying)
 	{
 		if (!m_bRenderFailureIsolated || !bPlaying)

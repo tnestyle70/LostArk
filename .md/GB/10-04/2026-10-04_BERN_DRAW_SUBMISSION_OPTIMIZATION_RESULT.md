@@ -264,3 +264,86 @@ effect asset/placement ID와 accumulator 잔량은 현재 capture에 없어 개�
 
 근거는 `out/BernCutscene1Fps20261004_143459/summary.json`, `all-15-low-intervals.json`,
 `all-frame-attribution.json`, `effect-step-parent-attribution.json`과 같은 폴더의 분석 스크립트다.
+
+## G09. 배경 시각 시간의 지연 누적 방지
+
+기존 deferred ambient admission에만 frame당 visual delta 최대0.1초를 적용했다. rate를 곱한
+입력에서 제한하며 실제 visible Advance와 service elapsed에 같은 값을 넣는다. 초과분은 다음
+frame으로 전달하지 않는다. 숨김 pause, 첫 Seek, owner/level 오류 제거와 render 제출은 기존 흐름이다.
+정상적인1/60 fixed-step 적분·입자 age/spawn/RNG·source loop는 그대로이며 일반 Update,
+transform history, authoring Seek, 전투와 Server의 시간은 변경하지 않았다.
+기존 승인 후 root 편집으로 bounds만 무효가 된 인스턴스도 같은 배경 시각 시간 정책을 유지한다.
+
+이 변경은 긴 frame 동안 배경 시각 시계를 느리게 한다. 건너뛴 실제 시간을 나중에 따라잡거나
+입자 clock만 순간이동하지 않는다. 원본의 실제 시간 기준 phase와 동등하다는 주장은 하지 않는다.
+Bern91개 SOURCE_LOOP 중 sprite85배치와 mesh 혼합6배치를 새롭게 합쳐 승인하지 않았으며,
+이번 제한은 원래 static-sprite bounds를 통과한 경로에만 적용한다.
+
+프로파일러에 다음4개 counter와 동일 UI 이름을 추가했다. 기존 counter 순서는 보존했다.
+
+| JSON counter | 의미 |
+|---|---|
+| effectAmbientClampedUpdates | visible Advance 중 입력 시간이 제한된 효과 수 |
+| effectAmbientDiscardedMicroseconds | 효과별 제외 시간의 합계. frame wall time·절약 CPU 시간이 아님 |
+| effectAmbientFixedSteps | initial Seek·hidden frame을 제외한 실제 committed simulation step 합계 |
+| effectAmbientMaxFixedSteps | 같은 frame의 단일 ambient Advance가 commit한 최대 step 수 |
+
+step은 두 읽기 전용 getter를 통해 기존 uint64 simulation step의 전후 차이를 센다.
+기존 Get_FixedStepClockSeconds는 accumulator까지 포함하므로 횟수로 환산하지 않았다.
+새 counter는 raw CPU scope capacity와 독립적이며 capture의 measurementSemantics에도 단위를
+기록했다. 비유한 입력은 visual delta0이며 제외 시간 표본을 만들지 않는다. 제외 시간 합계는
+uint64 계측 용량을 넘을 때만 포화한다. 새로운 재생 runtime·제품 C++ 파일·리소스는 없다.
+
+## G10. 카메라 속도 가설의 확인 범위
+
+실제 입장 데이터는 `Data/Encounters/Bern/BernEntranceCamera.json`의16초/16key 곡선이며
+FOVY60°다. 기본 follow의32.642°보다 같은 거리의 수직 범위를 약1.97배 넓게 본다.
+Level_Bern은 이미 컷신 시간을 frame당0.1초로 제한한다.1FPS일 때 카메라는 실제1초에
+컷신0.1초만 진행하므로 빠른 wall-clock 카메라 이동 때문에 메시가 밀린다는 가설은 확인되지 않았다.
+
+맵 geometry는 입장 scope에서 준비되며 현재 카메라로 동기 가시성을 계산한다. Bern의3frame
+reject grace로 직전 가시 대상이 잠시 함께 제출될 수는 있으나 이 비용의 비율은 기존 capture에 없다.
+느린15frame의 가시 맵은 평균19,676개, draw10,597회이며 후반에는961개/1,057회다.
+속도만 낮춰도 같은 pose의 FOV와 가시 대상 수는 줄지 않으므로 카메라·FOV·화질은 변경하지 않았다.
+맵 제출 비용과 최초 지연 유발 요인은 후속 캡처에서 계속 구분해야 한다.
+
+근거: `out/BernCutscene1Fps20261004_143459/camera-speed-readonly-audit.json`,
+`ambient-visual-delta-source-receipt.json`. 현재 파일과 수치 모델의 결과이며 실제 캡처의
+frame별 카메라 pose가 저장됐다는 뜻은 아니다.
+
+## G11. 이번 수정의 검증과 남은 실행 확인
+
+실제 Service.Update/Submit/helper, Object.Advance와 Playback.Update·getter 본문을 추출한
+headless native fixture31개 검사가 통과했다. Step은 관찰 경계로 대체했으므로 호출 예산과
+입력·시계 소비의 증거이며 particle 최종 좌표나 GPU 표시 동등성을 주장하지 않는다.
+수명·spawn·RNG를 포함한 Playback.cpp와 Object.cpp는 실제 diff가 없다.
+
+반복2초/1초 지연 뒤 정상1/60초 입력에서 이전 코드는60step과4.01667초 잔량을 유지했고,
+새 경로는1step으로 돌아왔다.339,000회 소수 delta에서도 committed clock 오차0을 확인했다.
+직전 잔량이 tick 경계에 가까운 경우에는7step이 가능하다. 실제 저장339개 interval을 초기
+accumulator0에서 재생한 모델은 기존3,344step/상한60회 도달21frame, 수정1,417step/최대6회였다.
+실제 캡처 시작 전 잔량과 effect별 활성 이력은 없으므로 이 수치를 캡처의 전체 호출 수나 FPS
+개선율로 대신하지 않는다.
+
+Step 실패를10회 주입하면 기존 accumulator가 남아 회복 때60step이 가능함도 확인했다.
+따라서6~7step은 새 인스턴스에서 정상 Step 성공이 이어질 때의 범위이며 절대 상한이 아니다.
+현재 정적 승인과 Bern11개 문서는 실패를 유발하는 model anchor/event 구성을 포함하지 않는다.
+비정상 실패·회복 시 새 counter는 실제60회를 숨기지 않는다. 실패 시계와 일반 재생 계약을
+이 최적화에서 임의 초기화하지 않았다. hidden/resume, initial Seek, stale owner/level,
+render failure 제거, root 이동, rate 적용 후 제한과 일반 combat/history 비적용도 검사했다.
+
+실제 Profiler.cpp·ProfilerCaptureIO.cpp·DataJson.cpp로 만든 headless exporter/importer는
+native54개와 JSON/호환성33개 검사를 통과했다. 기존88개 ordinal/이름은 유지되고 새4개가
+추가됐다. raw scope8192개 누락 중에도 counter가 저장된다. 이전v3의 없는 키는 미측정,
+명시적0은 측정0으로 유지하며 malformed 입력은 이전 분석 상태를 보존한 채 거절한다.
+
+정상 Debug Product 증분 compile/deploy가 성공했다:
+`out/BuildPipeline/runs/20261004T062359755Z-debug-product.json`.
+현재 checkout의 다른 세션 렌더링 변경도 포함한 빌드이며 이번 commit에는 이 기능의 변경만 묶는다.
+기존 인코딩·형변환 경고는 남아 있고 새 Client/UI를 실행하지 않았다. diff-check도 통과했다.
+Release 빌드와 실제 새 EXE의 컷신 FPS·장식 효과 화면 확인은 이번 검증에 포함하지 않는다.
+
+검증 재료는 `out/BernAmbientCatchupFix20261004/production-body-fixture-receipt.json`,
+`run_fixture.py`, `profiler/verification-receipt.json`에 보존한다. 사용자는 새 Debug EXE에서
+F7 Capture를 켠 뒤 같은 입장 컷신을 저장하고4개 새 counter와 Ambient.Advance·Map.Batch.Render를
+함께 비교한다. 맵 제출 비용과 최초 지연 원인이 모두 해결됐다고 결론내리지 않는다.

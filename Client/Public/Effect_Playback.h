@@ -481,6 +481,7 @@ public:
 		return (std::max)(m_fDurationSeconds, m_fSourceLoopEndSeconds);
 	}
 	f64_t Get_FixedStepClockSeconds() const;
+	uint64_t Get_SimulationStep() const { return m_iSimulationStep; }
 	bool_t Is_ReconstructedSourceRuntimeActive() const
 	{
 		return m_bReconstructedSourceRuntimeActive;

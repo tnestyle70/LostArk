@@ -6107,6 +6107,19 @@ SSGI half는 marker3 전용 추가 screen-space GI다. 기존 full 경로와 원
 Lumen/DXR로 표시하지 않는다. marker5/14를 조건문에만 추가하면 서로 다른 G-buffer ABI를 잘못 읽는다.
 half texture는 홀수·1픽셀·resize·depth/normal 경계를 검증하고 full/SSR 보존을 실제 픽셀로 대조한다.
 
+### 느린 frame의 배경 이펙트 따라잡기와 카메라 속도를 구분한다
+
+ambient fixed-step60회는 효과60개 생성이나 카메라 속도의 직접 증거가 아니다. 실제 delta와
+누적 잔량을 확인한다. 베른 입장 카메라는 이미 frame당0.1초 진행 제한이 있으므로 같은 넓은
+구도의 draw 비용과 배경 simulation 비용을 나눠 본다. 기존 offscreen pause 승인을 통과한
+독립 source-loop 배경만 rate 적용 후 visual delta를0.1초로 제한하며 object와 service elapsed에
+같은 값을 전달한다. 초과 시간은 다음 frame에 보관하지 않는다. 이는 과부하 동안 시각 재생을
+느리게 하는 정책이며 원본 wall-clock phase 보존이나 실제 FPS 개선 완료로 설명하지 않는다.
+combat/history/authoring의 fixed-step·Seek는 변경하지 않는다. fixed-step clock은 잔량도 포함하므로
+실행 횟수는 실제 simulation step 정수의 차이로 계측한다. 제외 시간은 effect별 합계로,
+frame wall time·절약 CPU 시간과 다르다. 수치와 재측정 경계는
+[베른 제출 비용 결과](10-04/2026-10-04_BERN_DRAW_SUBMISSION_OPTIMIZATION_RESULT.md)를 따른다.
+
 ### 원본 DDS mip 누락과 확대된 무늬를 구분한다
 
 원본 mip0가 설치 DDS와 같아도 전체 texture 복원이 끝난 것은 아니다. 제품 DDS loader가
