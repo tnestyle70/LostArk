@@ -8,12 +8,10 @@
 #ifdef _DEBUG
 namespace Client
 {
-class CMapPlacementEditSession;
-
 enum class WORLD_LEVEL_COMPOSITION_OWNER { ACTION, SEQUENCE };
-/* PICK_PLACEMENT asks MainApp for one viewport click; the tool's map edit
-   session consumes the resolved world point. */
-enum class WORLD_LEVEL_REQUEST_KIND { OPEN_MAP, OPEN_WORLD_OBJECT, OPEN_COMPOSITION, OPEN_LIGHT, FOCUS, PICK_PLACEMENT, OPEN_GUIDE };
+/* Scene requests use the live World Scene inspector; this inventory owns no
+   second placement draft or GPU world-point selection path. */
+enum class WORLD_LEVEL_REQUEST_KIND { OPEN_MAP, OPEN_WORLD_OBJECT, OPEN_COMPOSITION, OPEN_LIGHT, FOCUS, PICK_IN_SCENE, OPEN_GUIDE };
 
 struct WORLD_LEVEL_TOOL_REQUEST final
 {
@@ -44,21 +42,11 @@ public:
     void Set_ActiveArea(const std::string& areaId);
     void Set_CompositionView(WORLD_LEVEL_COMPOSITION_OWNER owner,
         const KOUKU_SAYDON_COMPOSITION_DOCUMENT* document, uint64_t generation);
-    /* Drives the map edit session even while the window is closed, so a
-       running publish still reports and a Level change still ends it.
-       visible is the Developer Tools visibility of this window. */
-    void Update(bool visible);
     void Render();
     bool Is_Open() const { return m_Open; }
     bool Consume_InteractionRequest();
     bool Consume_Request(WORLD_LEVEL_TOOL_REQUEST& request);
     void Set_Status(std::string status) { m_Status = std::move(status); }
-
-    /* Viewport pick ownership. MainApp validates the click and calls back. */
-    bool Is_PlacementPickArmed() const;
-    const std::string& Get_PlacementPickAreaId() const;
-    void Cancel_PlacementPick(std::string reason);
-    void Complete_PlacementPick(const float3_t& worldPoint);
 
 private:
     struct AREA final
@@ -87,10 +75,6 @@ private:
     bool Load_Areas();
     bool Refresh();
     void Rebuild_Rows();
-    /* Map rows follow the edit session draft while one is bound. */
-    void Apply_SessionRows();
-    void Render_MapEditing();
-    CMapPlacementEditSession& Session();
     void Append_CompositionRows(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         WORLD_LEVEL_COMPOSITION_OWNER owner, bool draft);
     void Request_Edit(const ROW& row);
@@ -111,8 +95,6 @@ private:
     std::array<char, 256u> m_Search{};
     int m_KindFilter = 0;
     std::optional<WORLD_LEVEL_TOOL_REQUEST> m_Request;
-    unique_ptr<CMapPlacementEditSession> m_pSession;
-    uint64_t m_SessionSelectionMirror = 0u;
 };
 }
 #endif

@@ -9,7 +9,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <exception>
 #include <fstream>
+#include <new>
+#include <type_traits>
 #include <iterator>
 #include <system_error>
 #include <unordered_set>
@@ -102,103 +105,123 @@ Client::CMapPlacementEditSession::~CMapPlacementEditSession()
 bool_t Client::CMapPlacementEditSession::Bind(
 	const BIND_DESC& desc, std::string& outStatus)
 {
-    if (m_bDirty || Is_Publishing())
-    {
-        outStatus = "The previous placement draft is preserved. Save it while its Area is active, or explicitly discard the detached draft before binding again.";
-        return false;
-    }
-
-	IMapAuthoringHost* host = Find_ActiveMapAuthoringHost();
-	if (nullptr == host)
+	try
 	{
-		outStatus = "The current Level owns no live map. Enter the Level that owns this Area.";
+		if (m_bDirty || Is_Publishing())
+		{
+			outStatus = "The previous placement draft is preserved. Save it while its Area is active, or explicitly discard the detached draft before binding again.";
+			return false;
+		}
+		IMapAuthoringHost* host = Find_ActiveMapAuthoringHost();
+		if (nullptr == host)
+		{
+			outStatus = "The current Level owns no live map. Enter the Level that owns this Area.";
+			return false;
+		}
+		if (host->Get_MapAuthoringCatalog().Get_AreaId() != desc.areaId)
+		{
+			outStatus = "The current Level owns " + host->Get_MapAuthoringCatalog().Get_AreaId() +
+				"; enter the Level that owns " + desc.areaId + " to edit its placements.";
+			return false;
+		}
+		if (desc.sourceCatalog.empty() || desc.sourcePlacements.empty())
+		{
+			outStatus = "MapCatalog declares no authoring catalog/placement pair for " + desc.areaId + ".";
+			return false;
+		}
+
+		CMapAssetCatalog catalog;
+		if (!catalog.Load_SourceMetadata(desc.sourceCatalog, desc.sourcePlacements,
+			desc.areaId, desc.sourceMaterials))
+		{
+			outStatus = catalog.Get_Status();
+			return false;
+		}
+		std::string readOnlyReason;
+		/* Read placement sidecars from the loaded runtime owner before parsing
+		   the full source rows. No second material DOM or material vector copy. */
+		if (!catalog.Bind_RuntimeView(host->Get_MapAuthoringCatalog()))
+			readOnlyReason = catalog.Get_Status() + "; the rows are listed for inspection only.";
+		std::string bytes;
+		if (!ReadDocumentBytes(desc.sourcePlacements, bytes))
+		{
+			outStatus = "Could not read " + desc.sourcePlacements.filename().string() + " for the save baseline.";
+			return false;
+		}
+		std::vector<MAP_PLACEMENT_RECORD> records;
+		if (!CMapPlacementDocument::Read(desc.sourcePlacements, catalog, records, outStatus)) return false;
+		std::string parsedBytes;
+		if (!ReadDocumentBytes(desc.sourcePlacements, parsedBytes) || parsedBytes != bytes)
+		{
+			outStatus = "Source changed during binding. The previous draft is preserved.";
+			return false;
+		}
+
+		std::unordered_map<uint64_t, size_t> index;
+		index.reserve(records.size());
+		for (size_t row = 0; row < records.size(); ++row) index.emplace(records[row].placementId, row);
+		if (readOnlyReason.empty())
+		{
+			const auto& live = host->Get_MapAuthoringPlacements();
+			std::unordered_set<uint64_t> liveIds;
+			liveIds.reserve(live.size());
+			bool parity = index.size() == records.size() &&
+				(desc.allowPartialLive || live.size() == records.size());
+			for (const auto& entry : live)
+			{
+				const auto row = index.find(entry.record.placementId);
+				if (row == index.end() || !liveIds.insert(entry.record.placementId).second ||
+					records[row->second].assetId != entry.record.assetId)
+				{
+					parity = false;
+					break;
+				}
+			}
+			if (!parity)
+				readOnlyReason = "Source/live placement identities differ; inspection remains available. No rows will be replaced.";
+		}
+
+		// Allocate indexes, names and diagnostics before detaching a clean draft.
+		std::string areaId = desc.areaId;
+		std::filesystem::path sourcePlacements = desc.sourcePlacements;
+		std::string status = readOnlyReason.empty() ?
+			"Editing " + areaId + " on " + std::string(host->Get_MapAuthoringLabel()) + ": " +
+			std::to_string(records.size()) + " placements. Select an object, then edit its transform." : readOnlyReason;
+		outStatus = status;
+		static_assert(std::is_nothrow_move_assignable_v<CMapAssetCatalog>);
+		End();
+		m_SessionCreated.clear();
+		m_iNextPlacementId = 1u;
+		m_bDirty = false;
+		m_bPreserveUnloadedRows = desc.allowPartialLive;
+		m_AreaId.swap(areaId);
+		m_SourcePlacements.swap(sourcePlacements);
+		m_bDeclaresLights = desc.declaresLights;
+		m_iLevelIndex = host->Get_MapAuthoringLevelIndex();
+		m_Catalog = std::move(catalog);
+		m_Draft.swap(records);
+		m_DraftIndex.swap(index);
+		m_BaselineBytes.swap(bytes);
+		m_bReadOnly = !readOnlyReason.empty();
+		m_ReadOnlyReason.swap(readOnlyReason);
+		m_bRowsDirty = true;
+		m_Status.swap(status);
+		m_bBound = true;
+		return true;
+	}
+	catch (const std::bad_alloc&)
+	{
+		// A diagnostic itself must not turn memory pressure into a second throw.
+		try { outStatus = "Placement editing ran out of memory. The previous draft is preserved; inspection remains available."; }
+		catch (...) {}
 		return false;
 	}
-	if (host->Get_MapAuthoringCatalog().Get_AreaId() != desc.areaId)
+	catch (const std::exception&)
 	{
-		outStatus = "The current Level owns " +
-			host->Get_MapAuthoringCatalog().Get_AreaId() +
-			"; enter the Level that owns " + desc.areaId + " to edit its placements.";
+		try { outStatus = "Placement editing could not load its source. The previous draft is preserved; inspection remains available."; }
+		catch (...) {}
 		return false;
 	}
-	if (desc.sourceCatalog.empty() || desc.sourcePlacements.empty())
-	{
-		outStatus = "MapCatalog declares no authoring catalog/placement pair for " + desc.areaId + ".";
-		return false;
-	}
-
-	CMapAssetCatalog catalog;
-	if (!catalog.Load_Source(desc.sourceCatalog, desc.sourcePlacements,
-		desc.areaId, desc.sourceMaterials))
-	{
-		outStatus = catalog.Get_Status();
-		return false;
-	}
-	std::string bytes;
-	if (!ReadDocumentBytes(desc.sourcePlacements, bytes))
-	{
-		outStatus = "Could not read " + desc.sourcePlacements.filename().string() +
-			" for the save baseline.";
-		return false;
-	}
-
-    std::vector<MAP_PLACEMENT_RECORD> records;
-    if (!CMapPlacementDocument::Read(desc.sourcePlacements, catalog, records, outStatus)) return false;
-    std::string parsedBytes;
-    if (!ReadDocumentBytes(desc.sourcePlacements, parsedBytes) || parsedBytes != bytes)
-    { outStatus = "Source changed during binding. The previous draft is preserved."; return false; }
-
-	std::string readOnlyReason;
-	/* The live prototypes belong to the Level; binding them keeps one catalog
-	   for both the document writer and the runtime clone. */
-	if (!catalog.Bind_RuntimePrototypes(host->Get_MapAuthoringCatalog()))
-		readOnlyReason = catalog.Get_Status() +
-			"; the rows are listed for inspection only.";
-
-	if (readOnlyReason.empty())
-	{
-        const auto& live = host->Get_MapAuthoringPlacements();
-        std::unordered_map<uint64_t, const MAP_PLACEMENT_RECORD*> source;
-        for (const auto& record : records) source.emplace(record.placementId, &record);
-        std::unordered_set<uint64_t> liveIds;
-        bool parity = source.size() == records.size() &&
-            (desc.allowPartialLive || live.size() == records.size());
-        for (const auto& entry : live)
-        {
-            const auto row = source.find(entry.record.placementId);
-            if (row == source.end() || !liveIds.insert(entry.record.placementId).second ||
-                row->second->assetId != entry.record.assetId)
-            { parity = false; break; }
-        }
-        if (!parity)
-            readOnlyReason = "Source/live placement identities differ; inspection remains available. No rows will be replaced.";
-    }
-
-    // Stage every read/validation before detaching the previous clean session.
-    End();
-    m_SessionCreated.clear();
-    m_iNextPlacementId = 1u;
-    m_bDirty = false;
-    m_bPreserveUnloadedRows = desc.allowPartialLive;
-
-	m_bBound = true;
-	m_AreaId = desc.areaId;
-	m_SourcePlacements = desc.sourcePlacements;
-	m_bDeclaresLights = desc.declaresLights;
-	m_iLevelIndex = host->Get_MapAuthoringLevelIndex();
-	m_Catalog = std::move(catalog);
-	m_Draft = std::move(records);
-	Reindex_Draft();
-	m_BaselineBytes = std::move(bytes);
-	m_bReadOnly = !readOnlyReason.empty();
-	m_ReadOnlyReason = std::move(readOnlyReason);
-	m_bRowsDirty = true;
-	m_Status = m_bReadOnly ? m_ReadOnlyReason :
-		"Editing " + m_AreaId + " on " + std::string(host->Get_MapAuthoringLabel()) +
-		": " + std::to_string(m_Draft.size()) +
-		" placements. Pick World Object, or select a row, then drag its transform.";
-
-	return true;
 }
 
 void Client::CMapPlacementEditSession::End()
@@ -227,7 +250,8 @@ void Client::CMapPlacementEditSession::Update(const bool_t outlineVisible)
 	IMapAuthoringHost* host = Find_ActiveMapAuthoringHost();
 	if (nullptr == host ||
 		host->Get_MapAuthoringLevelIndex() != m_iLevelIndex ||
-		host->Get_MapAuthoringCatalog().Get_AreaId() != m_AreaId)
+		host->Get_MapAuthoringCatalog().Get_AreaId() != m_AreaId ||
+		(!m_bReadOnly && !m_Catalog.Is_RuntimeViewOf(host->Get_MapAuthoringCatalog())))
 	{
 		End();
 		m_Status = "Editing ended: the current Level no longer owns " + m_AreaId +
@@ -256,7 +280,8 @@ Client::IMapAuthoringHost* Client::CMapPlacementEditSession::Resolve_Host() cons
 	IMapAuthoringHost* host = Find_ActiveMapAuthoringHost();
 	if (nullptr == host || !m_bBound ||
 		host->Get_MapAuthoringLevelIndex() != m_iLevelIndex ||
-		host->Get_MapAuthoringCatalog().Get_AreaId() != m_AreaId)
+		host->Get_MapAuthoringCatalog().Get_AreaId() != m_AreaId ||
+		(!m_bReadOnly && !m_Catalog.Is_RuntimeViewOf(host->Get_MapAuthoringCatalog())))
 	{
 		return nullptr;
 	}
@@ -739,7 +764,7 @@ bool_t Client::CMapPlacementEditSession::Save()
 	m_bRollbackValid = true;
 
 	std::string publishStatus;
-	if (!m_PublishRunner.Start(m_AreaId, "Area", L"WorldLevelTool-Area", publishStatus))
+	if (!m_PublishRunner.Start(m_AreaId, "Placements", L"WorldSceneTool-Placements", publishStatus))
 	{
 		/* The authoring file is saved; only the runtime rebuild did not start,
 		   so the pre-save copy is not needed any more. */
@@ -750,7 +775,7 @@ bool_t Client::CMapPlacementEditSession::Save()
 		m_Status = "Saved " + m_SourcePlacements.string() +
 			". Publish did not start: " + publishStatus +
 			" Run Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId " + m_AreaId +
-			" -Scope Area -Mode Publish, then reload the Client.";
+			" -Scope Placements -Mode Publish, then reload the Client.";
 		return true;
 	}
 	m_Status = "Saved " + m_SourcePlacements.string() + " (" +
@@ -777,10 +802,7 @@ void Client::CMapPlacementEditSession::Poll_Publish()
 		}
 		m_bRollbackValid = false;
 		m_RollbackBytes.clear();
-		std::string produced = "Client/Bin/DataFiles/Map/" + areaId +
-			".mapplacements and " + areaId + ".mapassets";
-		if (m_bDeclaresLights)
-			produced += " and " + areaId + ".maplights.json";
+		std::string produced = "Client/Bin/DataFiles/Map/" + areaId + ".mapplacements";
 		m_Status = "Published " + areaId + ": " + produced +
 			". Commit both LFS files together: Data/Maps/Authoring/" + areaId + "/" +
 			areaId + ".mapplacements and Client/Bin/DataFiles/Map/" + areaId +
@@ -821,7 +843,7 @@ void Client::CMapPlacementEditSession::Poll_Publish()
 	m_Status = "Publish failed for " + areaId + " (exit " + std::to_string(exitCode) +
 		"); the publisher rolled its runtime files back. " + restore +
 		" Retry with Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId " + areaId +
-		" -Scope Area -Mode Publish. Log: " + logPath;
+		" -Scope Placements -Mode Publish. Log: " + logPath;
 }
 
 void Client::CMapPlacementEditSession::Refresh_Outline()

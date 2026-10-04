@@ -779,3 +779,12 @@ SSGI는 MapPBR 수신점의 반구 방향에서 깊이 교차를 찾아 화면�
 SSGI의 강도·반경·4/8/16 샘플, SSR의 강도·거리·thickness·16/32/64 단계를 Workbench 세션 소유권·A/B·sweep·named 조건에 연결한다. 데이터에 저장된 팀장 옵션은 변경하지 않는다. `Render.SSGI`, `Render.SSR`, 복사 패스를 분리 계측한다. 화면 밖·가려진 면·다중 bounce·시간 누적·denoising·Lumen Surface Cache·DXR BVH는 이 패스가 제공하지 않는다.
 
 종료 증거는 FX5 컴파일, 실제 WARP 픽셀의 유효 교차·miss·강도 0·비수신 재질·finite 결과, 설정 범위/복원/캡처 조건 검증, Debug Product 빌드다. 실제 장면의 미관·노이즈·GPU 프레임 개선 판정은 사용자 화면 A/B로 남긴다.
+
+
+## G22. 이름 있는 JSON의 전체 보관 프레임 기본 저장
+
+2026-10-04 `베른_컷신` 조사에서170개 보관 중 분석창 기본120개만 저장되는 현재 초기값을 확인했다. `CProfilerTool`의 저장 범위 제한은 기본OFF로 바꾸고, 켰을 때의 최근 프레임 수는 분석·표시 범위와 별도 session 상태로 둔다. `Refresh`의 저장 예정 범위와 `Request_Save`의 실제 Snapshot은 같은 범위 계산 함수를 사용한다. 기존 최대1,200개 이력, 퇴출·보관 중 제외 metadata와 단일 Snapshot을 exporter로 move하는 소유권을 유지한다.
+
+`ProfilerTool.h`는 저장 제한·프레임 수와 진행 중인 저장의 요약 문자열만 소유한다. `ProfilerTool.cpp`는 실제 복사한 snapshot에서 frame ID 범위, 보관 중 제외, 초기화 이후 퇴출, GPU pending/drop 및 CPU/GPU scope drop을 집계해 저장 완료와 함께 표시한다. 분석창 숫자를 바꿔도 저장 범위는 바뀌지 않고, pending을0ms 완료값으로 설명하지 않는다. Engine과 JSON schema는 변경하지 않으며 새 C++ 파일·project/filter 항목은 없다.
+
+검증은 실제 Tool 범위 선택→Engine Snapshot→CaptureIO JSON에서170개 기본 전체·명시120개·분석범위 독립,1,202개 수집의1,200개 보관/2개 퇴출과 pending/drop metadata를 확인한다. 해당 UI translation unit을 집중 컴파일하고 제품 통합 빌드·사용자 F7 화면 확인은 별도로 기록한다.

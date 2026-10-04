@@ -625,8 +625,7 @@ void Client::CProfilerTool::Refresh(Engine::CProfiler& profiler)
     m_iHistoryFrames = profiler.Get_HistoryFrameCount();
     profiler.Get_ScopeNames(m_ScopeNames);
     const size_t window = static_cast<size_t>((std::max)(m_iWindowFrameInput, 1));
-    m_SaveWindowCoverage = profiler.Get_CaptureWindow(
-        m_bSaveWindowOnly ? window : Engine::CProfiler::MAX_HISTORY_FRAMES);
+    m_SaveWindowCoverage = profiler.Get_CaptureWindow(Save_FrameWindow());
     profiler.Get_ScopeAggregates(window, m_Aggregates);
     profiler.Get_GpuScopeAggregates(window, m_GpuAggregates, m_iGpuValidFrames, m_iGpuPartialFrames);
     profiler.Get_WindowFrameStats(window, m_fWindowCpuAvgMs, m_fWindowCpuMaxMs,
@@ -667,6 +666,12 @@ std::string Client::CProfilerTool::Thread_Label(uint32_t id) const
     return id == m_iMainThreadId ? "메인" : "작업 스레드 " + std::to_string(id);
 }
 
+size_t Client::CProfilerTool::Save_FrameWindow() const noexcept
+{
+    return m_bSaveWindowOnly ? static_cast<size_t>(std::clamp(m_iSaveFrameInput,
+        1, static_cast<int32_t>(Engine::CProfiler::MAX_HISTORY_FRAMES))) : Engine::CProfiler::MAX_HISTORY_FRAMES;
+}
+
 void Client::CProfilerTool::Request_Save(Engine::CProfiler& profiler)
 {
     if (m_Exporter.IsSaving()) return;
@@ -676,8 +681,7 @@ void Client::CProfilerTool::Request_Save(Engine::CProfiler& profiler)
     Engine::FProfilerCaptureSnapshot snapshot;
     {
         Engine::CProfilerScope scope(&profiler, "Profiler.Capture.Snapshot");
-        snapshot = profiler.Snapshot(m_bSaveWindowOnly ?
-            static_cast<size_t>((std::max)(m_iWindowFrameInput, 1)) : Engine::CProfiler::MAX_HISTORY_FRAMES);
+        snapshot = profiler.Snapshot(Save_FrameWindow());
     }
     if (snapshot.Frames.empty())
     { m_strCaptureStatus = "완료 프레임이 없습니다. 수집을 켜고 기다린 뒤 저장하세요."; return; }
@@ -687,8 +691,29 @@ void Client::CProfilerTool::Request_Save(Engine::CProfiler& profiler)
     std::filesystem::path output;
     if (!CProfilerCaptureIO::Make_NamedPath(m_CaptureName.data(), frame, output, &error))
     { m_strCaptureStatus = error; return; }
-    m_strCaptureStatus = m_Exporter.BeginSave(std::move(snapshot), output, &error, std::move(context)) ?
-        "백그라운드에서 JSON 저장 중..." : error;
+    // Describe this immutable export, not the live history that keeps changing while it is saved.
+    const auto& coverage = snapshot.CaptureWindow;
+    size_t gpuPending = 0, gpuDropped = 0;
+    uint64_t cpuScopesDropped = 0, gpuScopesDropped = 0;
+    for (const auto& savedFrame : snapshot.Frames)
+    {
+        gpuPending += savedFrame.GpuStatus == Engine::EProfilerGpuFrameStatus::Pending;
+        gpuDropped += savedFrame.GpuStatus == Engine::EProfilerGpuFrameStatus::Dropped;
+        cpuScopesDropped += savedFrame.DroppedCpuScopes;
+        gpuScopesDropped += savedFrame.DroppedGpuScopes;
+    }
+    const std::string coverageText = std::to_string(snapshot.Frames.size()) + "프레임 (" +
+        std::to_string(coverage.FirstSavedFrameNumber) + " - " + std::to_string(coverage.LastSavedFrameNumber) +
+        ") | 보관 중 제외 " + std::to_string(coverage.ExcludedRetainedFrames) +
+        " | 초기화 이후 퇴출 " + std::to_string(coverage.EvictedFramesSinceReset) +
+        " | 저장 GPU 결과 대기 " + std::to_string(gpuPending) + " / 누락 " + std::to_string(gpuDropped) +
+        " | 저장 CPU/GPU 구간 누락 " + std::to_string(cpuScopesDropped) + "/" + std::to_string(gpuScopesDropped);
+    if (m_Exporter.BeginSave(std::move(snapshot), output, &error, std::move(context)))
+    {
+        m_strSavingCoverage = coverageText;
+        m_strCaptureStatus = "백그라운드에서 JSON 저장 중... " + m_strSavingCoverage;
+    }
+    else m_strCaptureStatus = error;
 }
 
 Client::FProfilerCaptureContext Client::CProfilerTool::Sample_Context() const
@@ -795,7 +820,7 @@ void Client::CProfilerTool::Update_SaveState()
     FProfilerCaptureSaveResult saveResult;
     if (!m_Exporter.Poll(saveResult)) return;
     m_strCaptureStatus = saveResult.Succeeded ?
-        "Saved " + Capture_PathLabel(saveResult.OutputPath) : saveResult.Error;
+        "Saved " + Capture_PathLabel(saveResult.OutputPath) + "\n" + m_strSavingCoverage : saveResult.Error;
     if (saveResult.Succeeded && Refresh_CaptureFiles())
         for (const auto& file : m_CaptureFiles)
             if (file.FileName == saveResult.OutputPath.filename())
@@ -831,7 +856,7 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
         profiler->Set_Enabled(enabled); m_fLastRefreshTime = -1.0;
     }
     ImGui::SameLine(); ImGui::SetNextItemWidth(100.f);
-    if (ImGui::DragInt("프레임 범위", &m_iWindowFrameInput, 1.f, 1,
+    if (ImGui::DragInt("분석·표시 프레임 범위", &m_iWindowFrameInput, 1.f, 1,
         static_cast<int>(Engine::CProfiler::MAX_HISTORY_FRAMES), "%d", ImGuiSliderFlags_AlwaysClamp))
         m_fLastRefreshTime = -1.0;
     ImGui::SameLine();
@@ -855,9 +880,17 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
         CProfilerCaptureIO::Reset_MovementSamples();
         m_fLastRefreshTime = -1.0;
     }
-    if (ImGui::Checkbox("선택한 프레임 범위만 저장", &m_bSaveWindowOnly))
+    if (ImGui::Checkbox("JSON 저장 범위 제한", &m_bSaveWindowOnly))
         m_fLastRefreshTime = -1.0;
-    ImGui::SameLine(); ImGui::TextDisabled("끄면 보관 중인 전체 프레임을 저장합니다 (최대 1200).");
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!m_bSaveWindowOnly);
+    ImGui::SetNextItemWidth(100.f);
+    if (ImGui::DragInt("최근 프레임만 저장", &m_iSaveFrameInput, 1.f, 1,
+        static_cast<int>(Engine::CProfiler::MAX_HISTORY_FRAMES), "%d", ImGuiSliderFlags_AlwaysClamp))
+        m_fLastRefreshTime = -1.0;
+    ImGui::EndDisabled();
+    ImGui::TextDisabled("기본은 보관 전체 저장 (최대 %zu). 분석·표시 범위와 별도입니다.", Engine::CProfiler::MAX_HISTORY_FRAMES);
+    ImGui::TextDisabled("GPU 결과 대기는 JSON에 pending으로 남으며, 완료된 0ms 측정값이 아닙니다.");
 
     const double now = ImGui::GetTime();
     if (m_fLastRefreshTime < 0.0 ||
@@ -873,7 +906,7 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
         static_cast<unsigned long long>(m_SaveWindowCoverage.RetainedFrames),
         static_cast<unsigned long long>(m_SaveWindowCoverage.EvictedFramesSinceReset));
     if (m_SaveWindowCoverage.ExcludedRetainedFrames != 0)
-        ImGui::TextWrapped("선택 범위에서 보관 프레임 %llu개 제외 (최대 간격 %.2f ms). 전체 보관분을 저장하려면 선택 범위만 저장을 끄세요.",
+        ImGui::TextWrapped("선택 범위에서 보관 프레임 %llu개 제외 (최대 간격 %.2f ms). 전체 보관분을 저장하려면 JSON 저장 범위 제한을 끄세요.",
             static_cast<unsigned long long>(m_SaveWindowCoverage.ExcludedRetainedFrames),
             m_SaveWindowCoverage.ExcludedMaxFrameIntervalMs);
     if (m_SaveWindowCoverage.EvictedFramesSinceReset != 0)

@@ -130,3 +130,92 @@ CS 회전 장식2개와 기존 감사의 Decal·환경 occurrence·소개 배경
 통합 산출물은 `C:/Users/user/Documents/Codex/2026-10-04/review-recent-gameplay-fixes-character-select/outputs/rendering-restoration-result.html`
 및 대응 JSON이다. 빌드 상태는 두 구성 모두 passed, 화면 상태는 not_run이다.
 여러 기능의 미커밋 변경이 섞인 기존 작업본은 자동 stage/commit하지 않았다.
+
+## G07. World Level 선택 진입 통합과 편집 Bind 메모리 중복 제거
+
+2026-10-04 사용자가 F1 World Level의 편집 진입 직후 EXE 종료를 보고했다. 당시 종료를
+특정하는 새 WER·crash dump·terminate 로그는 확보하지 못했다. 기존 로그의 다른 날짜
+실패를 이번 종료 원인으로 사용하지 않으며, 메모리 부족 또는 `bad_alloc` 발생도 미확정이다.
+확인한 부담은 편집 진입이 Bern의 95,342,906-byte material 문서와 약 304만 JSON value를
+다시 파싱하는 경로였다. 아래 변경은 그 중복과 예외 전파를 제거한 결과이며, 사용자 화면의
+종료 재현이 해결됐다는 판정은 아니다. G04·G06의 빌드 PASS는 각각 당시 입력에 대한 기록이고,
+이번 변경의 제품 검증 상태는 이 절의 표를 따른다.
+
+World Level의 `Pick in scene`과 `Inspect / Edit Map Objects`는 기존 World Scene Tool로
+선택·focus·one-shot 입력 소유권을 전달한다. World Level이 따로 소유하던 placement edit
+session과 GPU world-point 기반 placement 추정을 제거했다. Guide의 위치 선택은 기존
+계약을 유지한다. 현재 Level의 map/Deploy triangle 선택으로 mesh/material/source identity를
+확인하며, 단순 선택은 edit session을 Bind하거나 material 문서를 열지 않는다. 다른 Area와
+미로드 placement 요청은 기존 선택을 덮어쓰기 전에 거부한다. Test Level 이동 안내도 제거했다.
+
+World Level의 saved inventory는 `Load_SourceMetadata`로 source catalog의 ID·label·경로와
+재질 선언을 검증하되 material DOM을 생성하지 않는다. World Scene에서 명시적으로 편집을
+활성화할 때만 전체 source placement를 읽는다. `CMapAssetCatalog::Bind_RuntimeView`는
+source/live asset·model·default scale·anchor·render profile을 대조하고, source material을
+64KiB씩 SHA-256으로 읽어 실제 runtime 로드 시 보존한 digest와 비교한다. 현재 게시 파일만
+재비교해서 이미 로드된 이전 runtime을 새 것으로 간주하지 않는다. water는 기존에 파싱한
+21개 문자열·수치·vector 입력을 비교한다. Bern source/published water는 JSON 값이 같고
+직렬화 bytes만 달랐으므로, 포맷 차이를 입력 불일치로 판정하지 않는다.
+
+검증을 통과한 편집 catalog는 Level이 로드한 immutable payload owner를 공유한다.
+`Get_Entries`와 `Find`는 같은 material/prototype entry를 반환하며 RNM·wind·water도 같은
+owner를 사용한다. Duplicate/clone의 재질과 placement sidecar를 빈 기본값으로 대체하지 않는다.
+catalog reload와 기존 prototype 재바인딩은 공유 owner를 변경하지 않으며, live runtime owner가
+교체되면 편집 session을 분리한다. source/runtime 불일치는 inspection-only 상태로 표시한다.
+
+Bind는 source bytes의 전후 일치, 전체 미로드 행, live/source ID parity, draft index와 상태
+문구까지 준비한 뒤 기존 clean session을 교체한다. dirty/publishing 재바인딩은 계속 거부한다.
+`bad_alloc`과 `std::exception`은 UI 경계에서 실패로 반환하며 이전 draft를 보존한다. 진단 문구의
+추가 할당 실패도 재전파하지 않는다. 기존 source freshness·backup·atomic replacement·실패 시
+guarded rollback은 유지했다. 저장 publisher scope는 `Area`에서 `Placements`로 좁혀 요청하지
+않은 material·light·rendering 설정을 함께 게시하지 않는다.
+
+| 실행한 검증 | 결과와 실제 범위 | 근거 |
+|---|---|---|
+| 현재 Bern production catalog/document TU | 90,112 checks, 실패 0. 실제 16,743 assets, 23,200 material overrides, source 50,021행, RNM 49,089행, wind 24,275행. 모든 entry/sidecar owner 주소와 host 교체 뒤 수명 검증 | `out/BernCliffFrameInvestigation20261004/performance/catalog-fixture-result.json` |
+| catalog 공유·실패 경계 | 37 checks, 실패 0. water 21개 입력 각각의 변경, model/default scale/render/material bytes 불일치 거부, prototype copy-on-write와 owner 수명 | `out/BernCliffFrameInvestigation20261004/performance/catalog-boundary-result.json` |
+| placement session/document | 73 checks, 실패 0. Bind 할당 실패 sweep, bad_alloc/std exception, dirty/detached draft, partial-live 미로드 행, source freshness·저장 충돌 보존 | `out/BernCliffFrameInvestigation20261004/performance/session-result.json` |
+| Debug Product 최종 증분 | PASS, 87,193ms, `skippedBuild=false` | `out/BuildPipeline/runs/20261004T042500965Z-debug-product.json` |
+| Release Product 첫 시도 | FAIL, 29,037ms. 동시에 진행된 texture option 변경의 `UserSettingsDocument.cpp`와 SDK 사이 `iTextureMinMip` 선언 불일치로 Client 컴파일 실패 | `out/BuildPipeline/runs/20261004T042615005Z-release-product.json` |
+| Release Product 최종 재시도 | PASS, 132,744ms, `skippedBuild=false`, missing/invalid runtime input 0 | `out/BuildPipeline/runs/20261004T043343582Z-release-product.json` |
+
+최종 Release의 Client는 117,039ms, OBJ221/PCH0/CSO0/binary2였고 Engine은 13,749ms,
+OBJ37/binary2였다. 이 빌드는 같은 checkout에서 병행 중인 Engine·UserSettings의 texture mip
+변경도 포함한 실제 통합 빌드다. 그 다른 세션의 변경은 이번 F1 수정의 commit/PR에 포함하지
+않으며, 공유 작업본의 Product PASS를 이들 변경이 없는 독립 PR tree의 빌드라고 설명하지 않는다.
+
+Bern fixture는 실제 production `CMapAssetCatalog`, `CMapPlacementDocument`, `DataJson`,
+`SourceCharacterMaterialParameters` TU를 사용했다. 실행파일의 data root만 out의 현재 게시
+문서 hard link와 저장소 Resources로 연결했으며 Client·D3D·UI는 실행하지 않았다. 이 실행에서
+full runtime catalog load는 19.547초, source metadata+bind는 2.266초였다. 해당 두 시점의
+process private bytes는 497,213,440 → 535,109,632로 37,896,192bytes 증가했다. 이는 한 번의
+headless 측정이며 전체 Client의 메모리 절감량·peak·종료 원인을 측정한 수치가 아니다.
+37/73개 경계 검사는 production 함수 본문과 명시적 fixture 의존성을 사용한 별도 검증이다.
+변경 파일의 `git diff --check`도 통과했다.
+
+MapTool의 저장·게시 분리와 source/live 배경 pose 처리는
+[World Movie/Effect Editor RESULT G26·G27](../09-26/2026-09-26_WORLD_MOVIE_EFFECT_EDITOR_RESULT.md)에
+기록했다. 실제 Save/publisher 함수 본문의 18 checks가 통과했으며, root는 최신 저장된 SL12
+배경 위치를 `Placements`로 게시하고 Check까지 확인했다. source/runtime 1,461행 bytes가 같고
+사용자 저장 source·catalog·Data/Rendering 정본 4개의 SHA를 보존했다. 파일 게시를 실행 중
+도구의 Reload나 사용자 화면 반영으로 집계하지 않는다.
+
+Profiler의 기본 저장 범위 교정은
+[Profiler Workbench RESULT G15](../10-03/2026-10-03_PROFILER_RENDERING_WORKBENCH_RESULT.md)에
+기록했다. 기본 170개 전체 저장과 명시 120개 제한, 최대 보관 1,200개 및 제외/퇴출/pending/drop
+분모를 production 저장 경로 17 checks와 JSON 등 13 assertions로 확인했다. 근거는
+`out/BernCliffFrameInvestigation20261004/profiler-save/verification-receipt.json`이다.
+사용자 12:45 캡처 자체는 최근 120개만 포함하고 이전 50개를 제외했다. 제외 구간의 최대 interval
+1,122.9942ms는 제외된 50개 구간에 1FPS급 지연이 있었음을 입증한다. 해당 구간의 저FPS 프레임
+수·연속성·개별 scope는 파일에서 확인할 수 없으며 한 개만 느렸다는 뜻이 아니다. 새 저장 기본값으로
+과거의 누락 scope가 복구되지는 않는다. 캡처 분석은
+`out/BernCliffFrameInvestigation20261004/performance/comparison-summary.json`과 같은 폴더의
+`findings-and-source-consumers.json`에 보존했다.
+
+사용자 확인 경로는 `Bern → F1 → World Level Tool → Pick in scene → 화면의 대상 클릭` 또는
+`World Scene Tool → Pick in scene`이다. mesh/material/source ID 확인에는 편집 활성화가
+필요하지 않다. 실제 클릭 후 종료 재발 여부, 선택 위치, 편집·Save·다음 진입의 화면 반영은 아직
+확인하지 않았다. Debug와 Release 제품 빌드 성공은 위 receipt로 확인했으며 사용자 화면 성공과
+구분한다.
+이번 도구 변경으로 Bern 절벽 UV·원본 카메라 가림 관계나 실제 1fps 원인을 해결했다고 기록하지
+않으며, 해당 조사는 [Bern 절벽 RESULT](2026-10-04_BERN_CLIFF_UV_RESULT.md)의 남은 경계를 따른다.

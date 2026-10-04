@@ -4,7 +4,9 @@
 #include "Engine_Defines.h"
 #include "BinaryAsset/ModelAssetData.h"
 
+#include <array>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -143,6 +145,19 @@ public:
 		const std::filesystem::path& placementPath,
 		const std::string& expectedAreaId,
 		const std::filesystem::path& materialsPath = {});
+	/* Inventory/placement editing validates the same source metadata without
+	   building another material JSON DOM. It is not a renderable catalog until
+	   Bind_RuntimeView succeeds. */
+	bool_t Load_SourceMetadata(
+		const std::filesystem::path& catalogPath,
+		const std::filesystem::path& placementPath,
+		const std::string& expectedAreaId,
+		const std::filesystem::path& materialsPath = {});
+	/* Validates source bytes against the already loaded runtime payload and
+	   retains its owner. Duplicate/clone sees the original material overrides,
+	   baked lighting and wind, including after the source catalog is detached. */
+	bool_t Bind_RuntimeView(const CMapAssetCatalog& runtimeCatalog);
+	bool_t Is_RuntimeViewOf(const CMapAssetCatalog& runtimeCatalog) const;
 	bool_t Load(const std::filesystem::path& path,
 		const std::string& expectedAreaId = {});
 	// Keep source documents/metadata, but use the models owned by this live Area.
@@ -152,7 +167,8 @@ public:
 	const MAP_PLACEMENT_WIND* Find_PlacementWind(const std::string& sourcePlacementId) const;
 	const MAP_ASSET_ENTRY* Find(const std::string& assetId) const;
 	const MAP_ASSET_WATER_PROFILE* Find_Water(const std::string& assetId) const;
-	const std::vector<MAP_ASSET_ENTRY>& Get_Entries() const { return m_Entries; }
+	const std::vector<MAP_ASSET_ENTRY>& Get_Entries() const
+	{ return m_RuntimeData ? m_RuntimeData->entries : m_Data->entries; }
 	const std::vector<MAP_ASSET_SHARD>& Get_Shards() const { return m_Shards; }
 	const std::string& Get_AreaId() const { return m_AreaId; }
 	const std::string& Get_Status() const { return m_Status; }
@@ -171,6 +187,9 @@ public:
 	static std::filesystem::path Get_AreaSelectionPath();
 
 private:
+	bool_t Load_SourceInternal(const std::filesystem::path& catalogPath,
+		const std::filesystem::path& placementPath, const std::string& expectedAreaId,
+		const std::filesystem::path& materialsPath, bool_t loadMaterials);
 	bool_t Load_AreaStaged(const std::string& areaId);
 	bool_t Resolve_MaterialDocumentPath();
 	bool_t Load_MaterialOverrides();
@@ -182,11 +201,20 @@ private:
 	bool_t Load_WaterPresentation(const std::string& areaId);
 
 private:
-	std::unordered_map<std::string, MAP_PLACEMENT_LIGHTING> m_PlacementLighting;
-	std::unordered_map<std::string, MAP_PLACEMENT_WIND> m_PlacementWind;
-	std::vector<MAP_ASSET_ENTRY> m_Entries;
-	std::unordered_map<std::string, size_t> m_EntryLookup;
-	std::unordered_map<std::string, MAP_ASSET_WATER_PROFILE> m_WaterProfiles;
+	/* Loaders only mutate their staged payload. Public Load and prototype
+	   rebinding detach before writing, so runtime edit views remain immutable. */
+	struct CATALOG_DATA final
+	{
+		std::unordered_map<std::string, MAP_PLACEMENT_LIGHTING> placementLighting;
+		std::unordered_map<std::string, MAP_PLACEMENT_WIND> placementWind;
+		std::vector<MAP_ASSET_ENTRY> entries;
+		std::unordered_map<std::string, size_t> entryLookup;
+		std::unordered_map<std::string, MAP_ASSET_WATER_PROFILE> waterProfiles;
+		std::array<unsigned char, 32> materialDigest{};
+		bool_t materialPayloadReady = false;
+	};
+	std::shared_ptr<CATALOG_DATA> m_Data = std::make_shared<CATALOG_DATA>();
+	std::shared_ptr<const CATALOG_DATA> m_RuntimeData;
 	std::vector<MAP_ASSET_SHARD> m_Shards;
 	std::string m_AreaId;
 	std::string m_Status = "Catalog not loaded";

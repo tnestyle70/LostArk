@@ -5756,7 +5756,7 @@ placement ID와 TRS가 일치해도 오래된 Landscape WModel의 축이 반대�
 
 큰 타일을256px로 베이크한 결과는 원본 반복 텍스처를 복원한 것이 아니다. 베른은 원본 grid×0.1, 중심 회전의 source scalar×3.1400001049, layer tiling을 사용한다. component 폭으로 나누거나 rotation을 degree로 해석하면 무늬 크기부터 달라진다. 단순 upsample·mip bias로 보정하지 않는다.
 
-actor의 Landscape material instance static key와 원본 ShaderCache PS/VF를 맞춘 뒤 layer별 paint/height blend, linear 색 공간, sample normal RG 및 Heightmap BA의 pixel basis를 함께 연결한다. diffuse와 normal의 height blend는 같다고 가정하지 않는다. source PS가 layercliff를 샘플하지 않으면 경사면에 별도 cliff layer를 만들지 않는다. 원본 weight/height의 subsection 중복 경계와 모든 mip, geometry hole을 보존한다. WARP의 constant-sample 수치 일치를 실제 공간 UV·화면 검증으로 확대하지 않는다.
+actor의 Landscape material instance static key와 원본 ShaderCache PS/VF를 맞춘 뒤 layer별 paint/height blend, linear 색 공간, sample normal RG 및 Heightmap BA의 pixel basis를 함께 연결한다. diffuse와 normal의 height blend는 같다고 가정하지 않는다. source PS가 layercliff를 샘플하지 않으면 경사면에 별도 cliff layer를 만들지 않는다. 원본 weight/height의 subsection 중복 경계와 모든 mip, geometry hole을 보존한다. 수직면의 높이 0은 원본 height bytes·collision sample·paint·hole allocation과 선택 PS의 discard를 함께 확인한 뒤 판정한다. source 높이·hole과 설치 삼각형의 일치는 원작의 실제 draw/LOD나 사진 속 메시 식별을 대신하지 않는다. WARP의 constant-sample 수치 일치를 실제 공간 UV·화면 검증으로 확대하지 않는다.
 
 ### 본체 헤어를 숨기기 전에 기본 대체 파츠를 확인한다
 
@@ -5912,7 +5912,7 @@ suppression을 Render와 맞추고 debris를 걷는 바닥으로 승격하지 �
 
 ### Profiler 저장 범위와 누락된 CPU 자식을 먼저 확인한다
 
-- 기본 저장창은 최근 120프레임이며 전체 보유도 1200프레임 ring이다. 사용자가 관찰한 최저 FPS가 JSON에 실제로 있는지 frame interval과 `captureWindow`를 먼저 대조한다. 선택창 제외와 history 퇴출은 다르며, export metadata는 저장 순간의 조건이다.
+- 기본 JSON 저장은 현재 보유 전체(최대 1200프레임)이며 분석·표시 범위와 독립이다. `JSON 저장 범위 제한`을 켰을 때만 최근 프레임 수로 줄인다. 사용자가 관찰한 최저 FPS가 JSON에 실제로 있는지 frame interval과 `captureWindow`를 먼저 대조한다. 저장 범위 제외와 history 퇴출은 다르며 GPU pending/drop은 유효한 0ms가 아니다. export metadata는 저장 순간의 조건이다.
 - Detailed scope가 frame cap을 넘으면 빠진 자식 시간이 부모 Self로 남을 수 있다. 누락이 있는 선택 구간의 Self를 병목 확정에 쓰지 않는다. 해당 UI는 Self를 `--`로 표시하며, 다음 비교는 Detailed OFF로 수집하고 raw 범위와 고정 cpuWork를 함께 본다.
 - frame N interval은 Begin(N-1)→Begin(N), frame N CPU는 Begin(N) 이후 작업이다. 순간 지연은 CPU 원인 행과 interval 행 사이의 차이를 고려한다. GPU pending은 0ms가 아니고 전체 GPU timestamp 경과도 utilization이 아니다.
 - 같은 actor의 애니메이션 보간 재사용, 재질별 draw 병합, GPU LOD는 별도 비용을 줄인다. 한 kernel의 절감률을 전체 게임 FPS로 환산하지 않는다. 구조·검증·남은 실측은 [프레임 통합 계획](10-02/2026-10-02_FRAME_PIPELINE_OPTIMIZATION_IMPLEMENTATION_PLAN.md)을 따른다.
@@ -6134,7 +6134,9 @@ source/output hash만 있는 예전 캐시는 같은 decoder 결함을 보존할
 
 ### 복원 대상 메시 선택은 authoring AABB 추정과 분리한다
 
-Bern/Character Select/Valtan/Kouku의 원본 렌더링 대조는 독립 F1 `World Scene Tool → Pick in world`의 실제 삼각형 hit에서 placement/mesh/material ID를 함께 확보한다. GPU world-position을 가장 작은 포함 AABB로 해석한 결과는 exact mesh 증거가 아니다. 기존 CModel LOD0 CPU 질의와 현재 instance world/visibility/suppression을 소비하고, 이동 피커의 식생 제외 조건을 검사 피커에 전파하지 않는다. alpha coverage·shader wind/displacement·rendered LOD와 CPU hit는 별도다. 선택 자체는 데이터를 변경하지 않는다. 명시적 TRS/표시 편집은 기존 session을 사용하고 미로드 행·dirty draft·최신 source bytes를 보존한다. writer의 고유 temporary를 stage한 뒤 교체 직전 freshness를 다시 확인하며 stale 바이트는 덮어쓰지 않는다. self-motion/Deploy preview는 자기 Begin 성공과 host/runtime generation 소유권을 확인한 뒤에만 복원한다. Server 파괴는 Deploy preview를 정상 종료한 후 선점한다. rendering options는 변경하지 않는다. UI click과 취소 입력은 gameplay에 전달하지 않고 miss는 이전 선택을 보존한다.
+Bern/Character Select/Valtan/Kouku의 원본 렌더링 대조는 독립 F1 `World Scene Tool → Pick in scene`의 실제 삼각형 hit에서 placement/mesh/material ID를 함께 확보한다. GPU world-position을 가장 작은 포함 AABB로 해석한 결과는 exact mesh 증거가 아니다. 기존 CModel LOD0 CPU 질의와 현재 instance world/visibility/suppression을 소비하고, 이동 피커의 식생 제외 조건을 검사 피커에 전파하지 않는다. alpha coverage·shader wind/displacement·rendered LOD와 CPU hit는 별도다. 선택 자체는 데이터를 변경하지 않는다. 명시적 TRS/표시 편집은 기존 session을 사용하고 미로드 행·dirty draft·최신 source bytes를 보존한다. writer의 고유 temporary를 stage한 뒤 교체 직전 freshness를 다시 확인하며 stale 바이트는 덮어쓰지 않는다. self-motion/Deploy preview는 자기 Begin 성공과 host/runtime generation 소유권을 확인한 뒤에만 복원한다. Server 파괴는 Deploy preview를 정상 종료한 후 선점한다. rendering options는 변경하지 않는다. UI click과 취소 입력은 gameplay에 전달하지 않고 miss는 이전 선택을 보존한다.
+
+live 맵의 placement 편집을 열 때 큰 material JSON과 재질 벡터를 다시 복제하지 않는다. source metadata·material bytes·typed water 입력을 이미 로드한 runtime과 대조한 뒤 immutable payload의 소유권을 공유한다. 검증 실패는 읽기 전용으로 남기고, 새 runtime 소유자로 바뀌면 기존 draft를 보존한 채 편집을 해제한다. prototype 재바인딩은 copy-on-write로 기존 material·lighting·wind 입력을 보존한다.
 
 ### 원본 wind phase와 공유 draw state를 보존한다
 

@@ -493,6 +493,8 @@ Client::CMapTool::Get_ActiveEditorArea() const
 bool_t Client::CMapTool::Open_ClassMovieBackground(
 	const std::string& areaId, std::string& status)
 {
+	if (m_PlacementPublishRunner.Is_Running())
+	{ status = "Wait for the current placement publish before changing the background target."; return false; }
 #ifdef _DEBUG
 	auto* level = CLevel_CharacterSelect::Get_Active();
 	const auto levelIndex = CGameInstance::Get().Get_CurrentLevelID();
@@ -527,7 +529,7 @@ bool_t Client::CMapTool::Open_ClassMovieBackground(
 	m_eToolMode = TOOL_MODE::MAP_ASSETS;
 	m_ePlacementState = PLACEMENT_STATE::IDLE;
 	status = "Editing " + m_Catalog.Get_AreaId() +
-		". Select a Hierarchy row to edit Position, Rotation or Visible. Save stores map placements; publish separately.";
+		". Select a Hierarchy row to edit Position, Rotation or Visible, then use Save Data + publish placements.";
 	m_Status = status;
 	return true;
 #else
@@ -804,6 +806,8 @@ const MAP_PLACEMENT_RECORD& Client::CMapTool::Authored_Placement(const PLACED_EN
 
 bool_t Client::CMapTool::Begin_EditorAreaSwitch(const size_t descriptorIndex)
 {
+	if (m_PlacementPublishRunner.Is_Running())
+	{ m_Status = "Wait for the placement publish before changing Area."; return false; }
 	if (descriptorIndex >= m_EditorAreas.size() ||
 		m_iAuthoringLevelIndex != ETOUI(LEVEL::DEVELOPMENT) ||
 		!CMapEditorWorkspaceService::Is_Active() ||

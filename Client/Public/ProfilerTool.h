@@ -224,6 +224,7 @@ public:
 
 private:
 	void Refresh(Engine::CProfiler& Profiler);
+    size_t Save_FrameWindow() const noexcept;
 	const char_t* Scope_Name(uint32_t iNameId) const;
 	std::string Thread_Label(uint32_t iThreadId) const;
 	void Render_Bottlenecks(bool_t bImGuiOnly = false);
@@ -249,7 +250,9 @@ private:
 private:
 	bool_t m_bOpen = true;
     FProfilerCaptureContext m_CaptureContext;
-    bool_t m_bSaveWindowOnly = true;
+    bool_t m_bSaveWindowOnly = false;
+    int32_t m_iSaveFrameInput = 120;
+    std::string m_strSavingCoverage;
 	bool_t m_bShowUnobserved = true;
 	bool_t m_bCatalogRegistered = false;
 	int32_t m_iWindowFrameInput = 120;

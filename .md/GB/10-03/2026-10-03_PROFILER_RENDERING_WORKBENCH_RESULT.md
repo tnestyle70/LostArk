@@ -398,3 +398,14 @@ Effect MSBuild item·runner 길이, output-guard fixture의 누락 module, publi
 `out/Profiler20261003/commercial/`의 최종 review·merge 기록 및 연결 PR에서 확인한다.
 사용자는 Debug F1 Workbench에서 SSGI 또는 SSR을 B로 ON → 새 A 채택 → sample/step sweep을
 사용하고, F7에서 실제 pass·timeline·메모리와 명명 baseline 차이를 함께 확인한다.
+
+
+## G15. 10-04 이름 있는 캡처의 기본 저장 범위 교정
+
+`m_bSaveWindowOnly=true`와 분석창120개가 `Request_Save`의 Snapshot에 함께 쓰여,170개를 보관해도 기본 저장은 최근120개에 제한됐다. 기존 `captureWindow.excludedRetainedFrames`와 퇴출 경고는 정확했으나 기본 선택이 전체 수집 구간을 저장한다는 기대와 달랐다. 저장 범위 제한의 초기값을OFF로 바꾸고, 명시적으로 제한했을 때의 프레임 수를 분석·표시 범위와 별도로 분리했다. 저장 예정 표시와 실제 Snapshot은 `Save_FrameWindow`를 함께 사용한다.
+
+저장 시작·완료 상태에는 실제 그 snapshot의 frame ID 범위·보관 중 제외·초기화 이후 퇴출과 저장 GPU pending/drop, CPU/GPU scope drop을 남긴다. 저장 도중 live history를 초기화해도 완료 메시지의 분모는 바뀌지 않는다. 최대1,200개 이력·기존JSON schema·단일 Snapshot→move exporter·비동기 원자 저장은 유지했다. 새 파일·project/filter·Engine 변경은 없다.
+
+실제 `ProfilerTool.cpp` translation unit 집중 컴파일이 통과했다. 저장 관련 함수 원문을 발췌한 격리unit과 실제 Engine Profiler·CaptureIO를 연결한17개 검사가 통과했다. 기본170개 전부 저장, 명시120개/50개 제외, 분석범위1→900 변경의 독립성, 명시 범위 clamp,1,202개 중1,200개 보관/2개 퇴출, 저장 중 live 초기화 후170개 요약 보존을 확인했다. 생성JSON13개 assertion으로 frame 수·제외/퇴출·oldest1000ms fixture 보존·GPU pending/drop과 GPU 평균null을 검증했다. CPU전용probe의 clock과 GPU상태는 명시fixture이며 `Sample_Context`만 빈 context seam으로 대체했다. 실제GPU 측정·Client/UI 실행은 아니다.
+
+근거는 `out/BernCliffFrameInvestigation20261004/profiler-save/verification-receipt.json`, `run-probe.log`, `all-170.json`, `explicit-120.json`, `retained-1200.json`과 같은 조사폴더의 `ProfilerCaptures`에 있다. H/CPP의UTF-8 BOM없음·CRLF를 유지했고 scoped `git diff --check`를 통과했다. 기존SDK codepage 경고가 있으며 제품 통합빌드·배포와 사용자F7 화면은 이 절의 완료 범위가 아니다.

@@ -212,6 +212,8 @@ bool_t Client::CMapTool::Save_Placements(
 	const bool_t linkedTransactionAlreadyLocked,
 	vector<MAP_PLACEMENT_RECORD>* outSavedRecords)
 {
+	if (m_PlacementPublishRunner.Is_Running())
+	{ m_Status = "Placement publish is in progress; wait before saving."; return false; }
 	if (!linkedTransactionAlreadyLocked &&
 		nullptr != m_pWorldSequenceToolPanel &&
 		m_pWorldSequenceToolPanel->Is_Ready())
@@ -278,6 +280,8 @@ bool_t Client::CMapTool::Save_Placements(
 
 bool_t Client::CMapTool::Save_PlacementsAndWorldSequences()
 {
+	if (m_PlacementPublishRunner.Is_Running())
+	{ m_Status = "Placement publish is in progress; wait before saving."; return false; }
 	if (nullptr == m_pWorldSequenceToolPanel ||
 		!m_pWorldSequenceToolPanel->Is_Ready())
 	{
@@ -448,8 +452,108 @@ bool_t Client::CMapTool::Save_PlacementsAndWorldSequences()
 	return true;
 }
 
+bool_t Client::CMapTool::Save_AndPublishPlacements()
+{
+	if (m_PlacementPublishRunner.Is_Running())
+	{ m_Status = "Placement publish is already in progress."; return false; }
+	const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
+	if (!active || !m_Catalog.Is_Ready() || !Is_MapAuthoringLevel() ||
+		!m_pWorldSequenceToolPanel || !m_pWorldSequenceToolPanel->Is_Ready())
+	{ m_Status = "No validated map Area is ready to save and publish."; return false; }
+	if (m_bDeployDirty || m_pWorldSequenceToolPanel->Is_Dirty())
+	{
+		m_Status = "Save pending Deploy/World Sequence drafts with Save Data only first. This button publishes map placements only; those domains use their own publisher.";
+		return false;
+	}
+	// Keep the linked save's source freshness, full-source identity and rollback
+	// checks. Publishing has a separate outcome; a failed publish never discards
+	// the user's successfully saved authoring file.
+	const std::string areaId = active->areaId;
+	const std::filesystem::path source = active->sourcePlacements;
+	if (!Save_Placements()) return false;
+	m_PlacementPublishSource = source;
+	std::string publishStatus;
+	if (!ReadTextFile(source, m_PlacementPublishSavedBytes) ||
+		!m_pWorldSequenceToolPanel->Matches_LinkedSourceBaseline(publishStatus))
+	{
+		m_PlacementPublishStatus = "Saved " + areaId +
+			", unpublished: saved source changed or could not be verified. Authoring was preserved. " + publishStatus;
+		m_Status = m_PlacementPublishStatus;
+		return true;
+	}
+	if (!m_PlacementPublishRunner.Start(areaId, "Placements", L"MapTool-Placements", publishStatus))
+	{
+		m_PlacementPublishStatus = "Saved " + areaId + ", unpublished: " + publishStatus +
+			" Authoring was preserved. Retry Save Data + publish placements.";
+		m_Status = m_PlacementPublishStatus;
+		return true;
+	}
+	m_PlacementPublishStatus = "Saved " + areaId + "; " + publishStatus;
+	m_Status = "Map placements saved. Publishing for the next level entry; the current preview is unchanged.";
+	return true;
+}
+
+void Client::CMapTool::Poll_PlacementPublish()
+{
+	bool_t succeeded = false;
+	uint32_t exitCode = 0u;
+	if (!m_PlacementPublishRunner.Poll(succeeded, exitCode)) return;
+	const std::string areaId = m_PlacementPublishRunner.Get_AreaId();
+	const std::string log = m_PlacementPublishRunner.Get_LogPath().string();
+	std::string latestBytes;
+	const bool_t savedSourceUnchanged = ReadTextFile(m_PlacementPublishSource, latestBytes) &&
+		latestBytes == m_PlacementPublishSavedBytes;
+	if (succeeded)
+	{
+		m_PlacementPublishStatus = savedSourceUnchanged ?
+			"Saved and published " + areaId + ". Re-enter the level to load it. "
+			"For the current Movie background, use Apply saved background placements when offered." :
+			"Publisher completed for " + areaId +
+			", but the saved source changed during publishing. Reload the latest saved data before publishing again.";
+	}
+	else
+	{
+		m_PlacementPublishStatus = "Saved " + areaId + ", unpublished (exit " +
+			std::to_string(exitCode) + "). Authoring was preserved; inspect the publisher log, then retry.";
+		if (!savedSourceUnchanged)
+			m_PlacementPublishStatus += " The source also changed during publishing; reload its latest saved data first.";
+	}
+	if (const auto* active = Get_ActiveEditorArea(); active && active->areaId == areaId && m_bDirty)
+		m_PlacementPublishStatus += " Newer placement edits remain unsaved in this tool.";
+	m_PlacementPublishStatus += " Log: " + log;
+	m_PlacementPublishSavedBytes.clear();
+}
+
+bool_t Client::CMapTool::Saved_BackgroundDiffersFromRuntime() const
+{
+	if (!m_bRuntimeAuthoring || m_ClassMovieBackgroundAreaId.empty()) return false;
+	// Ignore source text -> float rounding, not a visible authored displacement.
+	const auto close = [](const f32_t a, const f32_t b, const f32_t tolerance) {
+		return std::isfinite(a) && std::isfinite(b) && std::abs(a - b) <= tolerance;
+	};
+	for (const auto& entry : Authoring_Placements())
+	{
+		const auto& saved = Authored_Placement(entry);
+		const auto& live = entry.record;
+		if (saved.visible != live.visible ||
+			!close(saved.position.x, live.position.x, 0.001f) ||
+			!close(saved.position.y, live.position.y, 0.001f) ||
+			!close(saved.position.z, live.position.z, 0.001f) ||
+			!close(saved.rotationQuaternion.x, live.rotationQuaternion.x, 0.000001f) ||
+			!close(saved.rotationQuaternion.y, live.rotationQuaternion.y, 0.000001f) ||
+			!close(saved.rotationQuaternion.z, live.rotationQuaternion.z, 0.000001f) ||
+			!close(saved.rotationQuaternion.w, live.rotationQuaternion.w, 0.000001f) ||
+			!close(saved.signedScale.x, live.signedScale.x, 0.001f) ||
+			!close(saved.signedScale.y, live.signedScale.y, 0.001f) ||
+			!close(saved.signedScale.z, live.signedScale.z, 0.001f)) return true;
+	}
+	return false;
+}
+
 bool_t Client::CMapTool::Load_Placements()
 {
+	if (m_PlacementPublishRunner.Is_Running())
+	{ m_Status = "Wait for the placement publish before reloading."; return false; }
 	if (!Can_ChangeRuntimeStructure()) return false;
 	if (!m_Catalog.Is_Ready())
 		return false;
