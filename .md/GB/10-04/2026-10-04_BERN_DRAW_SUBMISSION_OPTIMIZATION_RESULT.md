@@ -593,3 +593,13 @@ BG 입력의 mip0는 native와 같지만 하위10단은 다르고, Landscape 입
 별도 [표면 mip 복원 계획](2026-10-04_MAP_SURFACE_NATIVE_MIP_RESTORATION_IMPLEMENTATION_PLAN.md)
 및 그 대응 RESULT에서 관리한다. 이 inventory만으로 모든 단일 파일의 native 누락이나
 개별 mip의 FPS 병목 비중을 확정하지 않는다.
+
+## G20. 다음 캡처의 실효 mip 옵션 기록
+
+ProfilerTool의 기존 renderingOptions context에 `Texture.minimumMip`을 추가했다.
+renderer가 실제 소비하는 값0~3을 기록하며 기존 generic JSON writer/reader와 비교 경로를
+사용한다. 저장 시점 context이므로 과거 모든 frame의 실제 sample mip이나 texture별
+residency를 기록했다고 설명하지 않는다. frame 보관/저장 범위와 schema는 그대로다.
+최종 Debug Product 증분 compile/deploy는 PASS했으며 영수증은
+`out/BuildPipeline/runs/20261004T082217929Z-debug-product.json`이다.
+Client/UI를 실행하지 않아 새 사용자 캡처의 값 확인은 남아 있다.

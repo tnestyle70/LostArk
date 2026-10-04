@@ -223,3 +223,12 @@ Client/Private/SystemOptionWindowView.cpp다. 현재 작업 트리에 완료된 
 기존 UserSettingsContractHarness를 Debug/Release 양쪽 기본값으로 검증하고 정상 Product를
 두 구성에서 빌드한다. 텍스처에 없는 mip을 sampler 옵션이 생성하지 않으며 실제 FPS는
 사용자의 동일 컷신 재캡처로 확인한다. 새 제품 파일·JSON publish·렌더링 scene 설정 교체는 없다.
+
+## G13. 후속 캡처에서 실효 texture mip 품질 확인
+
+ProfilerTool::Build_CaptureContext의 기존 renderingOptions에 `Texture.minimumMip`을 추가한다.
+기본값이나 UI row가 아니라 renderer가 현재 소비하는 iTextureMinMip을 기록한다. 저장 당시의
+context이며 과거 모든 frame의 실제 texture sample 또는 mip residency를 의미하지 않는다.
+기존 generic JSON writer/reader·비교 경로를 사용하며 schema나 frame/counter 저장 범위를
+바꾸지 않는다. ProfilerTool.cpp 한 줄만 추가하고 인코딩/CRLF를 유지한다. Debug Product
+증분 컴파일과 기존 renderingOptions의 export/parse 연결을 확인한다.

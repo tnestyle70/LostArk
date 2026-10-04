@@ -6189,3 +6189,17 @@ projective/비유한 행렬은 계속 거부하고 source LOD로 돌아간다. �
 
 텍스처 품질의 빌드별 기본값은 초기 로드 fallback과 UI seed·Reset에서 같은 함수를 쓴다.
 Debug 하/Release 최상은 저장값이 없는 경우의 기본값이며 기존 명시 저장값을 강제하지 않는다.
+
+### 실제 typed texture와 원본 mip 근거를 먼저 연결한다
+
+WModel의 legacy texture 복사본이 단일 mip이어도 현재 mapmaterials의 typed override는 다른
+DDS를 사용할 수 있다. 실제 asset/material/texture field에서 Resources ID를 따라간 뒤
+원본 MIC 상속과 Texture2D를 연결한다. full mip count도 native 복원 증거가 아니며 생성된
+하위 단계일 수 있다. 원본 mip0뿐 아니라 모든 단계의 압축 blocks를 비교한다.
+
+원본 native height가64/32/16/8/4까지만 보관하면 없는2/1단계를 복원 명목으로 생성하지 않는다.
+DX10 DDS의 format/sRGB와 기존 channel order를 유지하고, 원본 mip0 불일치·source object
+모호성·지원하지 않는 carrier를 임의 재압축이나 이름 추정으로 통과시키지 않는다.
+Resources 설치와 현재 GPU 메모리 갱신, sampler 품질 선택과 VRAM streaming은 구분한다.
+원본에 `TMGS_NoMipmaps`가 명시되고 native1단만 있으면 생성된 하위 단계를 원본 복원으로
+남기지 않는다. 실제 소비자·mip0·형식·색 공간을 확인하고 원본1단 정책을 별도로 복구한다.
