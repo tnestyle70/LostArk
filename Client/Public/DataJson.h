@@ -4,8 +4,10 @@
 #include "Engine_Defines.h"
 
 #include <map>
+#include <memory>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
@@ -28,6 +30,13 @@ public:
 	using OBJECT = map<string, DATA_JSON_VALUE, less<>>;
 
 public:
+	DATA_JSON_VALUE() = default;
+	DATA_JSON_VALUE(const DATA_JSON_VALUE& other);
+	DATA_JSON_VALUE& operator=(const DATA_JSON_VALUE& other);
+	DATA_JSON_VALUE(DATA_JSON_VALUE&& other) noexcept = default;
+	DATA_JSON_VALUE& operator=(DATA_JSON_VALUE&& other) noexcept = default;
+	~DATA_JSON_VALUE() = default;
+
 	static DATA_JSON_VALUE Null();
 	static DATA_JSON_VALUE Boolean(bool_t value);
 	static DATA_JSON_VALUE Number(
@@ -69,19 +78,25 @@ public:
 	const DATA_JSON_VALUE* Find(string_view key) const;
 
 private:
+	friend class DATA_JSON_READER;
+
 	struct OBJECT_PAYLOAD final
 	{
 		OBJECT values;
 		vector<string> insertionOrder;
 	};
+	using OBJECT_STORAGE = std::unique_ptr<OBJECT_PAYLOAD>;
 
 	DATA_JSON_TYPE m_eType = DATA_JSON_TYPE::NULL_VALUE;
 	bool_t m_Boolean = false;
 	double m_Number = {};
 	bool_t m_bFloatingPointToken = false;
 	// Scalars must not construct empty Debug STL containers and their proxies.
-	// Each value owns only its active payload; copying still copies the subtree.
-	std::variant<std::monostate, string, ARRAY, OBJECT_PAYLOAD> m_Payload;
+	// Objects transfer one owner instead of moving their map sentinel and proxy.
+	// A moved-from object may have no payload and is read as an empty object.
+	std::variant<std::monostate, string, ARRAY, OBJECT_STORAGE> m_Payload;
+	static_assert(std::is_nothrow_move_constructible_v<decltype(m_Payload)>);
+	static_assert(std::is_nothrow_move_assignable_v<decltype(m_Payload)>);
 };
 
 struct DATA_JSON_PARSE_LIMITS final

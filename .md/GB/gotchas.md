@@ -3490,6 +3490,8 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 - Debug는 같은 문서의 3worker 처리가 1worker보다 느릴 수 있다. thread 수를 늘리기 전에 parse/decode와 renderer 준비를 분리하고 같은 입력·할당량·순서 교대 시간을 비교한다. 기존 필수 준비 장벽이나 validation을 지워 시간을 줄이지 않는다.
 - JSON value의 메모리 배치가 바뀌면 DataJson OBJ 하나만 기존 Client나 probe에 링크하지 않는다. public header를 소비하는 모든 TU를 정상 의존성 빌드로 다시 컴파일한다. /MDd와 /MD 또는 iterator ABI를 파일별로 혼합하지 않는다.
 - `Effect.Prepare.Document/Metadata/Renderer/Commit`과 `V1.prepare.*`는 CPU 단계다. 부모 total과 자식 단계, 서로 병렬인 target 시간을 합산해 전체 진입 시간으로 표시하지 않는다.
+- MSVC map은 move construction에서도 sentinel/proxy 할당이 남을 수 있다. payload owner를 분리하는 것만으로 속도 개선을 단정하지 않고, parser가 최종 owner 안에 직접 구성하는 경계까지 비교한다. 공개 값의 deep copy·이동 후 재사용·할당 실패 보존을 유지하며, 할당 감소와 wall time 감소는 별도 증거다. 10-04 실측과 재현 도구는 `10-04/2026-10-04_DEBUG_EFFECT_LOADING_IMPLEMENTATION_RESULT.md`를 따른다.
+- Raid Publish의 원문 hash/generation 봉인이나 Python 검증 cache를 Client Effect parse cache와 혼동하지 않는다. 파싱 결과를 지속 산출물로 만들고 기존 Client consumer가 읽어야 실행 시 비용을 옮길 수 있다. GPU 객체와 현재 재생 owner/clock은 별도이며, Save·Publish·실행 중 Server 적용 완료도 구분한다.
 
 ### Complete Play는 저작 revision·최종 응답·수신 소비 순서를 함께 확인한다
 
