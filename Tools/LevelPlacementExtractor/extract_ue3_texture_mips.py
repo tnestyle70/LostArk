@@ -107,7 +107,7 @@ class SourcePackage:
 
 
 def split_object(source: str) -> tuple[str, str]:
-    require(bool(re.fullmatch(r"[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+", source)),
+    require(bool(re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_-]*(?:\.[A-Za-z0-9_][A-Za-z0-9_-]*)+", source)),
             f"invalid source object path: {source}")
     logical, object_path = source.split(".", 1)
     return logical, object_path

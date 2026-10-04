@@ -49,3 +49,26 @@ Client/UI 실행·자동 Reload·종료는 수행하지 않는다. 다음 로드
 byte 검증·GPU 검증과 백업 경로를 기록한다. texture sampling의 복구를 draw 감소나60FPS
 달성으로 환산하지 않는다. Resources payload는 Git에 포함하지 않고 원본 데이터와 무관한
 전체 복구 ZIP을 만들지 않는다. 실제 화면·컷신 성능은 사용자가 새 로드 후 확인한다.
+
+## G04. 실재 원본 object 이름의 하이픈 보존
+
+실제 MIC가 참조하는 `wp_fbm_av_002-1_d/n` 원본은 존재하지만 기존 mip extractor의
+source-object 정규식이 하이픈을 거부한다. Tools/LevelPlacementExtractor/extract_ue3_texture_mips.py의
+split_object에서 각 비어 있지 않은 component의 첫 영숫자/밑줄 뒤에만 하이픈도 허용한다.
+점은 package/object 구분자로만 사용하며 slash·backslash·drive·공백·quote·빈 component와
+선행 dash 거부는 유지한다. 별도 임의 경로 또는 원본 이름 변경으로 우회하지 않는다.
+
+실제 두 원본의 native 회수와 mip0 exact·완전한 chain을 대조하고 경로성 입력 거부를
+검증한다. Python 문법 검사와 README의 원본 object 이름 계약을 갱신한다.
+이 도구 변경은 C++/HLSL 제품 재컴파일을 요구하지 않는다.
+
+## G05. 원본 NoMipmaps 정책 복원
+
+후속 원본 대조에서 foliage/normal/noise/sky/state texture5개는 모두
+MipGenSettings=TMGS_NoMipmaps를 명시하고 native1단만 가진다. 현재 DDS에는 생성된
+하위 단계가 추가되어 있다. 각 mip0의 원본 BC bytes 일치와 실제 소비자를 확인했으므로
+이5개는 current DX10 format/sRGB/dimension을 유지한 채 원본1단 범위로 복원한다.
+header의 mip count/flags/caps만1단에 맞추고 원본 mip0를 보존한다. 없는 하위 native mip을
+생성하거나 다른 texture의 chain을 재사용하지 않는다. state texture의 실제 SampleBias
+소비 경로도 원본에 없는 축소 단계를 선택할 수 있으므로 NoMipmaps를 일반 누락과 구분한다.
+별도 manifest·GPU loader 검사 후 동일 freshness/backup/atomic 설치 절차를 적용한다.

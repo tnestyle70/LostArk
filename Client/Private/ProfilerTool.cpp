@@ -756,6 +756,7 @@ Client::FProfilerCaptureContext Client::CProfilerTool::Sample_Context() const
     context.FXAAEnabled = quality.bFXAAEnabled;
     auto& options = context.RenderingOptions;
     options.clear(); context.RenderingAssets.clear();
+    options["Texture.minimumMip"] = quality.iTextureMinMip;
     const auto vector3 = [&](const std::string& key, const auto& value)
     { options[key + ".x"] = value.x; options[key + ".y"] = value.y; options[key + ".z"] = value.z; };
     const auto vector4 = [&](const std::string& key, const auto& value)
