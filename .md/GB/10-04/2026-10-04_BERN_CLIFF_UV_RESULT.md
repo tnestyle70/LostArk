@@ -349,3 +349,54 @@ LC622는 __DataLayer__ 할당과 hole이 없고, 낮은 정점도 layer03=255로
 `landscape-all42-geometry-hole.json`, `shader/current-installed-landscape-audit.json`,
 `native-all42-height-hole-audit.json`, `lc622-fresh-native-height-paint-clip.json`과 재현 Python이다.
 Client/UI 실행, 새 GPU draw 확인, 원작 해당 카메라 화면 비교는 하지 않았다.
+
+## G15. 사용자 Pick in scene 두 지점의 원본 삼각형 확인
+
+사용자가 World Scene Tool로 직접 선택한 두 지점으로 G14의 대상 식별 경계를 해소했다.
+두 선택 모두 풀 오브젝트가 아닌 Landscape mesh0이다. 화면의 `LANDSCAPE_BAKED`는 모델의
+material slot 이름이며 저작/게시 문서는 해당 slot에 `bg-source-landscape-opaque` family14를
+연결한다. 문자열만 보고 예전 baked fallback이 사용된 것으로 판정하지 않는다.
+
+| 항목 | 첫 사진 | 두 번째 사진 |
+|---|---|---|
+| source | LAND02 landscape export753 | LAND01 landscape export635 |
+| placement | 12383519469690094806 | 14713172032114739383 |
+| asset | MAP_E6841E9DBB0A_LAND02_LC_00753 | MAP_F913A992E7E1_LAND01_LC_00635 |
+| 사용자 hit(m) | (159.2495,31.2959,-5.1007) | (117.3409,23.9338,-6.6817) |
+| 설치 triangle | 995 | 1484 |
+| 원본/설치 정점 높이(m) | 34.93 / 17.01 / 17.01 | 0 / 36.55 / 36.55 |
+| 수평 grid 간격(m) | 0.64 | 0.64 |
+| 표면 면적 / XZ 투영 면적 | 39.6106 | 57.1183 |
+| component 원본 hole | 0 | 0 |
+
+표시된 XZ에서 삼각형 높이를 재계산하면 첫 사진의 Y와 0.3mm, 두 번째와 0.83mm 차이다.
+UI가 네 자리 소수로 반올림하고 급경사가 그 오차를 증폭하는 범위다. 각 세 정점의 native
+height16과 원본 collision sample, 설치 모델 위치가 일치한다. 두 지점 모두 원본 weightmap의
+layer02=255, 나머지 layer=0이며 layer02는 `lv_common_grass_24_d`를 사용한다.
+따라서 선택된 면의 늘어짐은 서로 다른 지형이 겹친 현상이 아니라 원본 급경사 한 면에
+평면 grid 기반의 잔디 UV가 적용되는 구조로 설명된다. G14의 LC622 높이0 예시를 첫 사진에
+그대로 대입하지 않는다. 첫 사진은 17.01→34.93m이고 두 번째가 0→36.55m다.
+
+각 component의 정확한 native material static key도 다시 확인했다. LAND02의 NoLightmap/
+lightmapped PS는 c49939…/e7a3bc…, LAND01은 2d7cb…/749c85…이며 네 PS 모두 clip/discard가
+없고 두 static set의 layercliff는 index -1이다. native VS는 기존 대조한 c9f016…/213423…와
+동일해 grid 기반 UV 근거를 이 두 대상에 직접 적용할 수 있다. 임의 cliff 투영이나 hole 삭제는
+원본 복구로 볼 수 없으므로 제품 데이터·재질을 변경하지 않았다.
+
+기존 원본35패키지 streaming closure의 StaticMesh bounds를 이번 두 component 전체 AABB에
+다시 대조했다. LAND02는 1,576행, LAND01은 931행이며 원본 visible 행 중 현재 게시 누락0,
+임의 hidden0, source/published TRS 최대 차이5e-7이다. 정확한 hit를 포함하는 bounds는 첫 지점의
+sky와 원본 hidden nav box, 두 번째의 sky뿐이다. 이 결과는 주변 원본 배치 행 누락을 지지하지
+않으며 AABB overlap을 실제 삼각형 가림/GPU draw 성공으로 대신하지 않는다.
+
+현재 결론은 **원본 Landscape 급경사와 잔디 UV의 늘어짐이 F6 화면에 노출된 것**이다.
+원작의 같은 위치·카메라·실제 draw 대조는 하지 않았으므로 원작 정상 카메라에서 그 면이
+어떤 오브젝트에 가려지는지까지 확정하지 않는다. geometry 추출 누락이나 잘못된 grass layer
+치환으로 확인된 결함은 없다. 선택 좌표를 제외한 사용자 카메라 pose도 임의 추정하지 않는다.
+
+증거는 `out/BernCliffFrameInvestigation20261004/shader/lc753-selected-hit-native-audit.json`,
+`lc635-selected-hit-native-audit.json`, `lc753-native-material-map.json`, `lc635-native-material-map.json`,
+각 native shader summary와 `selection753/source-runtime-coverage.json`,
+`selection635/source-runtime-coverage.json`이다. coverage의 원본35패키지 결과는 기존 추출 자료를
+재사용했고 게시본24개 shard는 현재 파일을 읽었다. 원본 shader 확인은 정확한 두 material export와
+관련 program만 읽었다. Client/UI·GPU 실행, 빌드, source/runtime/Resources 변경은 하지 않았다.
