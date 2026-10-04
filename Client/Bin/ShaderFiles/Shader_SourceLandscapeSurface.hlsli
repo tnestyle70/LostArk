@@ -154,6 +154,8 @@ MAP_SURFACE_SAMPLE EvaluateMapSourceLandscapeSurface(float2 rawUV,
     // Both ordinary and instanced VS supply their inverse-transpose XYZ axes.
     const float3x3 normalToWorld = float3x3(worldAxisX, worldAxisY, worldAxisZ);
     result.geometricNormal = MapGeometryNormalizeOrZero(mul(localNormal, normalToWorld));
+    result.landscapeTangent = MapGeometryNormalizeOrZero(mul(localTangent, normalToWorld));
+    result.landscapeBinormal = MapGeometryNormalizeOrZero(mul(localBinormal, normalToWorld));
     result.worldNormal = MapGeometryNormalizeOrZero(mul(localPerturbed, normalToWorld));
     result.ambientOcclusion = 1.f;
     return result;

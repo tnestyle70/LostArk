@@ -235,6 +235,13 @@ HRESULT CLevel_ValtanArena::Initialize()
 				"Valtan level descriptor has no map area" :
 				m_MapRuntime.Get_Status());
 	}
+	// The existing reader treats an absent document as no motion; never invent a rate.
+	if (!m_MapRuntime.Load_SelfMotions(pEntry->pMapAreaId))
+	{
+		m_MapRuntime.Clear();
+		return Report_InitFailure("[Level_ValtanArena][MapMotion]",
+			"The authored optional map self-motion document is invalid.");
+	}
 #ifdef _DEBUG
 	/* A placement that misses its static batch becomes its own draw, so the
 	   fallback count is what separates a heavy arena from a broken one. */
@@ -550,6 +557,40 @@ void CLevel_ValtanArena::Handle_WorldEntityDespawned(
 		RAID_PRELUDE_BGM_STATE::M04_POST_MINIBOSS);
 }
 
+#ifdef _DEBUG
+bool_t CLevel_ValtanArena::Can_ChangeMapAuthoringStructure(std::string& outReason) const
+{
+	if (m_SourceCinematicPlayer.Has_ActiveInstances() || m_bCinematicCameraApplied ||
+		m_ActionWorkbenchCinematicPlayer.Has_ActiveInstances() ||
+		m_EffectCinematicEditorPlayer.Has_ActiveInstances() ||
+		m_MapRuntime.Has_DebugPlacementPreview() ||
+		m_PendingWorkbenchDestruction.has_value() ||
+		m_ActionWorkbenchDestruction.Get_Runtime().Is_Staged() ||
+		m_WorldDestructionDebrisPresentationRuntime.Get_ActiveActorCount() > 0u)
+	{
+		outReason = "Stop cinematic/destruction previews and restore map overrides before editing Valtan objects.";
+		return false;
+	}
+	for (const auto& entry : m_DeployRuntime.Get_Entries())
+	{
+		if (entry.object && (entry.object->Is_AnimationAuthoringPreviewActive() ||
+			entry.object->Is_PhysicsPreviewActive() || entry.object->Is_DebrisPreviewActive() ||
+			entry.object->Is_DestructionDebrisPresentationActive() ||
+			entry.object->Is_TransientDestructionSuppressed()))
+		{
+			outReason = "A Deploy animation or destruction presentation owns the live prop; stop it before changing map structure.";
+			return false;
+		}
+	}
+	return true;
+}
+
+CWorldSequencePlayer::TARGET_SET CLevel_ValtanArena::Make_MapAuthoringTargets()
+{
+	return SourceCinematicTargets();
+}
+#endif
+
 void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
@@ -563,6 +604,10 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 		End_CinematicCamera();
 		return;
 	}
+#ifdef _DEBUG
+	if (!m_bMapAuthoringActive)
+#endif
+		m_MapRuntime.Update_SelfMotions(fTimeDelta);
 	if (nullptr != m_pMapLightPresentation &&
 		!m_pMapLightPresentation->Submit_Frame() &&
 		!m_bMapLightSubmissionFailureReported)

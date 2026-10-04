@@ -97,8 +97,10 @@ namespace Engine
 		float4_t vLightmapAverageScale = {};
 		float4_t vLightmapDirectionalScale = {};
         float4_t vStaticShadowScaleBias = {};
+        float4_t vSourceWindOwnerPosition = {};
+        float4_t vSourceWindDimensionsAndRadius = {};
 
-		static constexpr uint32_t iNumElements = { 19 };
+		static constexpr uint32_t iNumElements = { 21 };
 
 		static constexpr D3D11_INPUT_ELEMENT_DESC Elements[] =
 		{
@@ -142,9 +144,15 @@ namespace Engine
 				1, 160, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
             { "INSTANCE_SHADOW", 0, DXGI_FORMAT_R32G32B32A32_FLOAT,
                 1, 176, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+            { "INSTANCE_SOURCE_WIND", 0, DXGI_FORMAT_R32G32B32A32_FLOAT,
+                1, 192, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+            { "INSTANCE_SOURCE_WIND", 1, DXGI_FORMAT_R32G32B32A32_FLOAT,
+                1, 208, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 		};
 	} VTXMESHINSTANCE;
-	static_assert(sizeof(VTXMESHINSTANCE) == 192);
+	static_assert(sizeof(VTXMESHINSTANCE) == 224);
+    static_assert(offsetof(VTXMESHINSTANCE, vSourceWindOwnerPosition) == 192);
+    static_assert(offsetof(VTXMESHINSTANCE, vSourceWindDimensionsAndRadius) == 208);
     static_assert(offsetof(VTXMESHINSTANCE, vStaticShadowScaleBias) == 176);
 	static_assert(offsetof(VTXMESHINSTANCE, vLightmapScaleBias) == 128);
 	static_assert(offsetof(VTXMESHINSTANCE, vLightmapAverageScale) == 144);

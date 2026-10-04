@@ -18,6 +18,18 @@ struct DEPLOY_RUNTIME_ENTRY
 	shared_ptr<CDeployPropObject> object;
 };
 
+#ifdef _DEBUG
+struct DEPLOY_WORLD_MESH_PICK
+{
+	uint64_t runtimePlacementId = 0u;
+	uint32_t meshIndex = 0u;
+	float3_t hitPosition{};
+	std::string areaId, sourcePlacementId, assetId, modelAssetId, materialName;
+	DEPLOY_PROP_MODEL_KIND modelKind = DEPLOY_PROP_MODEL_KIND::STATIC;
+	DEPLOY_PROP_STATE state = DEPLOY_PROP_STATE::INTACT;
+};
+#endif
+
 class CDeployPropRuntime final
 {
 public:
@@ -51,6 +63,10 @@ public:
 	bool_t Load(uint32_t levelIndex, CDeployPropCatalog catalog);
 	bool_t Try_PickMovementSurface(const float3_t& rayOrigin,
 		const float3_t& rayDirection, f32_t maxDistance, float3_t& outPosition) const;
+#ifdef _DEBUG
+	bool_t Try_PickInspectionSurface(const float3_t& rayOrigin,
+		const float3_t& rayDirection, DEPLOY_WORLD_MESH_PICK& outSelection) const;
+#endif
 	void Clear();
 	void Reset_ClearedLevelTracking();
 

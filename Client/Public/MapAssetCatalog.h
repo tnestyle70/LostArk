@@ -100,6 +100,12 @@ struct MAP_PLACEMENT_LIGHTING
     Engine::MODEL_BAKED_LIGHTING_INSTANCE inputs;
 };
 
+struct MAP_PLACEMENT_WIND
+{
+    std::string assetId;
+    Engine::MODEL_SOURCE_FOLIAGE_WIND_INSTANCE inputs;
+};
+
 struct MAP_ASSET_ENTRY
 {
 	std::string id;
@@ -143,6 +149,7 @@ public:
 	bool_t Bind_RuntimePrototypes(const CMapAssetCatalog& runtimeCatalog);
 
 	const MAP_PLACEMENT_LIGHTING* Find_PlacementLighting(const std::string& sourcePlacementId) const;
+	const MAP_PLACEMENT_WIND* Find_PlacementWind(const std::string& sourcePlacementId) const;
 	const MAP_ASSET_ENTRY* Find(const std::string& assetId) const;
 	const MAP_ASSET_WATER_PROFILE* Find_Water(const std::string& assetId) const;
 	const std::vector<MAP_ASSET_ENTRY>& Get_Entries() const { return m_Entries; }
@@ -176,6 +183,7 @@ private:
 
 private:
 	std::unordered_map<std::string, MAP_PLACEMENT_LIGHTING> m_PlacementLighting;
+	std::unordered_map<std::string, MAP_PLACEMENT_WIND> m_PlacementWind;
 	std::vector<MAP_ASSET_ENTRY> m_Entries;
 	std::unordered_map<std::string, size_t> m_EntryLookup;
 	std::unordered_map<std::string, MAP_ASSET_WATER_PROFILE> m_WaterProfiles;

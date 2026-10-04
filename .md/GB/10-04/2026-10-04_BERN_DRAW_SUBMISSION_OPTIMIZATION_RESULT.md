@@ -1,0 +1,180 @@
+# 베른 컷신·기본 이동의 제출 비용 최적화 결과
+
+## G00. 판정과 캡처 근거
+
+현재 가장 큰 계측 구간은 CPU의 불투명 맵 제출이다. 원본 RNM·static-shadow texture가
+배치를 나누고, 각 배치에서 재질 바인딩·FX pass 적용·DrawIndexedInstanced가 반복된다.
+컷신은 기본 이동보다 Map.Batch.Draw 호출이4.127배이며 한 호출의 CPU 비용은 비슷하다.
+GPU timestamp만으로 GPU 사용률을 판단하거나 화질을 낮춰야 한다고 결론 내리지 않았다.
+
+입력은 다음 두 Debug JSON이다. RTX4070,1920×1080, Debug D3D layer·iterator debug2,
+Detailed OFF, debugger 미부착 조건이다.
+
+- `Client/Bin/ProfilerCaptures/베른성_컷신_20261004_050800_808_frame104_45964_0.json`
+- `Client/Bin/ProfilerCaptures/베른성_기본이동_20261004_051021_021_frame496_45964_1.json`
+
+| 평균 항목 | 컷신 | 기본 이동 |
+|---|---:|---:|
+| 보존 프레임 | 104 | 120 |
+| frame interval | 118.676ms | 40.650ms |
+| interval 역수 FPS | 8.43 | 24.60 |
+| CPU frame | 117.329ms | 39.821ms |
+| GPU timestamp frame | 117.412ms | 40.663ms |
+| CPU Render.NonBlend | 59.311ms | 13.476ms |
+| Map.Batch.Render | 50.829ms | 11.582ms |
+| Map.Batch.Draw | 33.059ms | 7.319ms |
+| Map.Batch.Draw 호출 | 2405.5 | 582.9 |
+| Map.Batch.Material | 8.685ms | 2.123ms |
+| Map.Batch.Pass | 7.171ms | 1.657ms |
+| Map.Batch.Visibility | 4.162ms | 2.732ms |
+| Ambient.Advance | 13.856ms | 2.890ms |
+| NONBLEND PS 호출 | 1000.56만 | 1165.27만 |
+| NONBLEND VS 호출 | 322.69만 | 82.30만 |
+
+첫 컷신 frame의 interval은 미계측이며 interval 평균은103개다. 컷신4프레임에서 CPU scope
+1313개가 누락되어 그 프레임의 Self는 판정에서 제외했다. 위 cpuWork는 보존된 고정 집계다.
+두 캡처의 GPU timestamp는 모두 유효하지만 CPU 제출 공백도 포함한다. 픽셀 호출은 컷신이
+더 적고 제출 수·VS 호출은 더 많다. Present0.331/0.036ms, frame gap0.815/0.853ms와
+VRAM4.57~4.61GiB/예산10.98GiB는 이 캡처의 주된 시간 증가를 설명하지 않는다.
+
+원래 Profiler.cpp의 독립 Debug 계측 비교에서2406회 제출당 collector 비용은 약1.01ms,
+frame 경계 약0.15ms였다. 전체 Map.Batch.Draw33.06ms를 profiler 자체 비용으로 설명할
+근거는 없었다. 이 비교는 실제 게임의 driver 내부 대기 원인을 분리한 측정은 아니다.
+
+근거는 `out/BernOptimization20261004/capture-analysis-summary.json`, `analysis-report.txt`,
+`out/BernProfilerOverhead20261004/benchmark.log`에 보존했다.
+
+## G01. 배치 분할 원인과 적용 범위
+
+설치 catalog16743개, 재질23200행을 조사했다. geometry·profile·전체 material에서 asset ID만
+제외한 동일성으로는 authored-visible 배치16286개 중11개만 줄어든다. 조명 texture path도
+구분하는 기존 방식에서는 geometry 이름만 합쳐도 핵심 분할이 남는다.
+
+RNM average/directional·static-shadow의 세 texture만 원래 SRV bank로 전달한다. 현재 범위는
+최종 카메라로 준비된 NONBLEND 인접 prefix4~8개, 같은 공유 단일 정적 mesh·비조명 재질·
+profile·시계·mirroring, 생성 LOD 없음이다. override·morph·다중 mesh·다른 family·surface
+진단 수집 중에는 기존 draw를 사용한다. 표시 순서를 재정렬하지 않는다.
+
+자료 전체의 이름순 인접 조건에서 authored-visible1103개 배치가 감소 가능한 후보였다.
+이는 실제 카메라 큐의 절감 개수나 FPS 개선 측정값이 아니다. 모든 variant를 합치는 기능이나
+컷신 단일 자리 FPS의 완전 해결을 이 수치만으로 선언하지 않는다.
+
+## G02. 구현한 파일과 실패 경계
+
+- `Engine/Public/GameObject.h`, `Engine/Private/GameObject.cpp`, `Engine/Private/Renderer.cpp`:
+  기존 NONBLEND 큐에 opt-in 인접 제출을 연결했다. 기본 객체는 한 개를 그리며 잘못된 소비
+  개수와 실패는 MRT·큐를 정리하고 프레임 실패로 반환한다.
+- `Engine/Public/Model.h`, `Engine/Private/Model.cpp`, `Engine/Public/Material.h`,
+  `Engine/Private/Material.cpp`: 공유 geometry·pretransform·실제 전체 material 값을 비교한다.
+  padding memcmp를 사용하지 않으며 비조명 SRV·legacy texture·tint·override를 검증한다.
+  원래 조명 SRV를 최대8개로 바인딩하고 성공한 마지막 단계에 bank count를 켠다.
+- `Client/Public/MapStaticBatchObject.h`, `Client/Private/MapStaticBatchObject.cpp`:
+  원래 batch 가시 payload의 순서를 유지해 전용 재사용 buffer에 복사한다. 복사본의
+  directionalScale.w만 bank index로 쓴다. 준비 실패는 draw 전에 원래 Render로 복귀하고,
+  제출 뒤 실패에는 중복 draw를 하지 않는다. 기존 visibility·shadow·placement는 보존했다.
+- `Client/Public/MapAssetRenderUtils.h`, `Client/Private/MapAssetRenderUtils.cpp`:
+  기존 surface 진단 lease의 활성 상태를 읽는 getter를 추가했다.
+- `Client/Bin/ShaderFiles/Shader_VtxMeshMapInstance.hlsl`, `Shader_MapMaterialSurface.hlsli`,
+  `Shader_StaticShadowMap.hlsli`: 원래 RNM·signed-distance shadow 식을 공유하며 실제 SRV의
+  크기·mip·포맷·sRGB·sampler를 유지한다. 기존 pass0~26을 유지하고 bank용27~29만 추가했다.
+  일반 SOURCE_BG24~26은 별도 shader로 컴파일하여 추가24개 SRV 비용을 전파하지 않는다.
+  StaticShadow include는 `Engine/Bin/ShaderFiles/Shader_StaticShadowMap.hlsli` 정본에도
+  반영했다. 첫 Product 시도에서 PrepareEngineSdk가 원래 Engine include로 Client 수정본을
+  덮어써 helper 미정의 오류가 발생했으며, 정본을 수정해 배포 시 유지되도록 교정했다.
+
+새 제품 C++ 파일·project/filter 변경·자료 재게시·Resources 변환은 없다. 렌더링 옵션과
+팀장 저장값을 바꾸지 않았다. 기존 파일 인코딩·줄바꿈과 다른 세션의 변경을 보존했다.
+
+## G03. 기본 이동의 실패 탐색
+
+캡처 frame404/408/412의 Navigation.AStar는34.831/34.306/40.534ms이며16384노드 상한까지
+확장하고 경로가 없었다. 설치 Bern navgrid의 목표는 주변49m대 바닥과 연결되지 않은
+높이52.049m의62셀 영역이었다. 도착 셀의 walkable만으로 현재 바닥과 연결됐다고 볼 수 없다.
+
+`Engine/Public/PathFinder.h`, `Engine/Private/PathFinder.cpp`에서 목표의 incoming Can_Step
+간선을 최대128셀 역탐색한다. 출발점 없이 연결 성분을 완전히 소진했을 때만 UNREACHABLE을
+반환한다. 출발점 발견·예산 초과는 새 generation에서 기존 A*를 실행한다. 동적 blocker·높이·
+대각선 조건과 성공 경로의 선택·기존16384 상한·Server 명령을 유지한다.
+
+원래 생산 CPP 전체를 사용한 독립 Debug/Release 비교를 각각2034사례 실행했다.
+설치 Bern의18개 요청, height/diagonal/blocker 변경,127·128·129셀 경계와 random2000개다.
+정상 경로·hash·확장 노드는 동일하고 false success0, 증명된 실패370개만 조기에 반환했다.
+캡처의 세 실패는 A* 확장16384→0이다.
+
+독립 Debug median 실패36.393ms→0.0236ms, 정상27.028μs→60.062μs였다. 정상 요청에는
+약33μs probe 비용이 추가된다. Release 실패4.560ms→2.167μs, 정상1.216→4.968μs다.
+이 수치를 게임 FPS 개선으로 환산하지 않는다. 근거:
+`out/BernOptimization20261004/navigation/verification.json`.
+
+## G04. 검증 상태
+
+완료된 자동 검증:
+
+- 변경 Engine CPP4개와 Client MapStaticBatchObject CPP의 실제 Debug 집중 컴파일 통과.
+- 실제 Material 타입·비교/바인딩 본문과 WARP SRV를 사용한206검사 통과. Shader setter는
+  fixture 경계이며 실제 GPU sampling 검증과 구분한다.
+- 실제 Client 인접 제출·upload 본문 비교34검사 통과: 순서·원본 payload 보존·reuse·거부 조건·
+  준비 실패 복귀·draw 실패 뒤 중복 제출 금지,2~3개 제외와4개 이상 병합을 포함한다.
+- PathFinder 생산 CPP의 Debug/Release2034사례씩 통과.
+- 최종 bank 분리 HLSL의 FXC fx_5_0 /O1 컴파일 통과.
+- 실제 설치된 library-prop RNM 두 재질을 생산 CMaterial.cpp로 초기화한 WARP 검사 통과.
+  공통 legacy/native SRV는 공유하고 조명 SRV는 다른 상태에서 병합 가능했다. 대표 재질만
+  100회 바인딩한 뒤에도 입력 동등성을 유지했다.
+- 실제 FX11 VS/PS·192byte instance와8개 RGBA32_FLOAT MRT로 WARP 및 RTX4070을 각각
+  검사했다. Debug D3D layer ON, normal/specular×baked×shadow 조합64개 출력 비교 모두
+  bitwise 동일, maxAbs0, D3D error/warning0이었다. 원본 texture는4~64px의 서로 다른
+  크기·전체 mip·linear/sRGB SRV를 사용했다. 이는 사용자 장면 전체 화면 비교는 아니다.
+- 실제 shader reflection에서 기존/수정 ordinary pass24 모두 bank SRV0개와 bank count
+  미사용, bank pass27만 bank SRV24개와 count 사용임을 확인했다.
+- 정상 Product가 생성한 실제 `Client/Bin/Debug/Shader_VtxMeshMapInstance.cso`도 RTX4070에서
+  직접 로드했다.64개 MRT 비교는 bitwise 동일/maxAbs0이며 D3D error/warning0, ordinary/bank
+  reflection도 동일하게 통과했다. 생성본292399bytes, SHA256
+  `1d16829ee3a25abcb25e2e663a67a2fa79ef64e952b9509e35f45f0cc29839b7`이다.
+  근거는 `out/BernOptimization20261004/gpu-parity/product-cso/verification.json`이다.
+- 최종 성능 비교는 제품 빌드가 끝난 뒤 HLSL 컴파일 없이 수행했다. baseline도 O1으로 맞추고
+  실제 Product CSO를 사용했다. RTX4070 Debug layer ON,31회 prefix/모드 교차×64group이며
+  일반 draw와 bank의 resource bind+FX Apply+draw CPU 중앙값은 아래와 같다.
+
+| 인접 개수 | 수정 shader의 일반 draw | bank1draw | 적용 판단 |
+|---|---:|---:|---|
+| 2 | 18.736μs | 34.669μs | 회귀, 기존 draw 유지 |
+| 3 | 28.319μs | 30.641μs | 회귀, 기존 draw 유지 |
+| 4 | 37.063μs | 29.205μs | 병합 허용 |
+| 8 | 77.042μs | 17.245μs | 병합 허용 |
+
+작은 묶음도 이득이라고 가정하지 않고 Client 최소 병합 수를4개로 확정했다. GPU 완료 대기·
+비교·CPU instance 합성/upload·전체 재질 상수 바인딩은 측정 밖이므로 게임 FPS 개선율로
+쓰지 않는다. bank는 실제 제품처럼 첫 재질의 ordinary SRV3개 설정과8slot 배열3개를
+포함했다. D3D 오류·경고는0이다. 근거:
+`out/BernOptimization20261004/gpu-parity/hardware-prefix-stable/verification.json`.
+
+증거는 `out/BernDrawEngine20261004`, `out/BernLightingBank20261004/client`,
+`out/BernOptimization20261004/gpu-parity/{warp,hardware}`에 보존한다. 정상 Debug Product
+전체 빌드·배포는 `out/BuildPipeline/runs/20261003T211650083Z-debug-product.json`에서 PASS이며
+필수 runtime 입력 누락/검사 오류는0이다. Engine DLL과 import library의 원본·배포 hash도
+일치한다. 최소 병합 수4개 보정도 최종 증분 Product에서 PASS했다:
+`out/BuildPipeline/runs/20261003T212432338Z-debug-product.json`.
+마지막 Client 단계는10.239초, OBJ1개·EXE1개만 갱신했고 추가 CSO 컴파일은0개다.
+최종 실행 파일은 `Client/Bin/Debug/Client.exe`다. 새 Client의 같은 두 구간 캡처·화면 판정은
+아직 실행하지 않았다. Client/Server를 에이전트가 실행하거나 UI를 조작하지 않았다.
+
+## G05. Ambient.Advance의 별도 반복 비용
+
+컷신의13.856ms 평균에는 초반15프레임의 fixed-step 따라잡기가 집중된다. 이15프레임의
+Ambient 평균은45.867ms이며, 완전 계측된 frame5의43개 효과는24개×9단계와19개×60단계를
+실행했다. 해당 Ambient45.355ms 중 Step43.650ms이고 ParticleUpdate28.531ms,
+Spawn8.680ms, Rebuild1.340ms였다. 단순히 효과 개수가 늘어난 현상은 아니다.
+
+이미 쌓인 accumulator와 긴 frame의 반복 시뮬레이션이2차 비용을 만들지만 최초 backlog
+유입 시점·asset ID는 이 캡처에 없다. offscreen catch-up 또는 특정 effect를 원인으로 확정하지
+않았다. MAX_CATCH_UP_STEPS60을 임의로 낮추거나 시뮬레이션을 생략하면 age·spawn·수명·
+부착 타이밍이 바뀔 수 있어 이번 소스 변경에 포함하지 않았다. draw 개선 후 재캡처에서도
+누적이 남는지 확인한 뒤 같은 상태·age 결과를 보존하는 범위에서 별도로 줄여야 한다.
+근거: `out/BernProfilerOverhead20261004/ambient-analysis.json`.
+
+## G06. 남은 확인
+
+사용자가 새 Debug Client에서 같은 컷신·기본 이동을 다시 저장해 실제 Map.Batch.Draw 호출,
+Material·Pass·NonBlend 시간과 frame interval을 비교해야 한다. 원래 RNM·그림자·표시 순서와
+이동 입력도 함께 확인한다. 단일 mesh/noLOD 범위 밖의 배치와 Ambient.Advance 비용은
+남아 있으며 전체 컷신의 목표 FPS 달성을 주장하지 않는다.

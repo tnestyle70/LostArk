@@ -106,6 +106,7 @@ HRESULT CMapAssetObject::Initialize(void* pArg)
 	m_bVisible = desc.visible;
 	m_RenderProfile = desc.renderProfile;
 	m_BakedLighting = desc.bakedLighting;
+	m_SourceWind = desc.sourceWind;
 	m_FrustumCulling = desc.frustumCulling;
 	m_bHasWaterProfile = desc.hasWaterProfile;
 	m_WaterProfile = desc.waterProfile;
@@ -244,6 +245,44 @@ bool_t CMapAssetObject::Try_PickMovementSurface(
 	return hit;
 }
 
+#ifdef _DEBUG
+bool_t CMapAssetObject::Try_PickInspectionSurface(
+    const float3_t& rayOrigin, const float3_t& rayDirection,
+    const f32_t maxDistance, f32_t& outDistance,
+    uint32_t& outMeshIndex, std::string& outMaterialName) const
+{
+    if (!Is_Rendered() || m_fPresentationOpacityMultiplier <= 0.f ||
+        !m_pModelCom || !m_pTransformCom || !m_bHasWorldCullBounds)
+        return false;
+    const BoundingBox bounds(m_vWorldCullCenter,
+        float3_t(m_fWorldCullRadius, m_fWorldCullRadius, m_fWorldCullRadius));
+    f32_t boundDistance = 0.f;
+    if (!bounds.Intersects(XMLoadFloat3(&rayOrigin), XMLoadFloat3(&rayDirection), boundDistance) ||
+        boundDistance > maxDistance) return false;
+    const auto& world = *m_pTransformCom->Get_WorldMatrixPtr();
+    f32_t nearest = maxDistance;
+    uint32_t nearestMesh = 0u;
+    bool_t hit = false;
+    for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
+    {
+        const auto profile = Get_MaterialRenderProfile(mesh);
+        if (profile.opacity <= 0.f) continue;
+        const uint32_t cull = CMapAssetRenderUtils::Select_Pass(profile, m_bMirrored) % 3u;
+        const auto mode = cull == 0u ? CModel::PICK_CULL_MODE::BACK :
+            cull == 1u ? CModel::PICK_CULL_MODE::FRONT : CModel::PICK_CULL_MODE::NONE;
+        f32_t distance = nearest;
+        if (m_pModelCom->Try_PickStaticSurface(mesh, world, rayOrigin, rayDirection,
+            nearest, mode, distance) && distance < nearest)
+        { nearest = distance; nearestMesh = mesh; hit = true; }
+    }
+    if (!hit) return false;
+    outDistance = nearest;
+    outMeshIndex = nearestMesh;
+    outMaterialName = m_pModelCom->Get_MaterialName(nearestMesh);
+    return true;
+}
+#endif
+
 HRESULT CMapAssetObject::Render()
 {
     // Direct callers submit the same disjoint subsets as the renderer queues.
@@ -320,7 +359,8 @@ HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
 				CMapAssetRenderUtils::Bind_Material(
 					m_pModelCom, m_pShaderCom, meshIndex,
 					presentationProfile, m_fElapsedTime, nullptr, m_AssetId, &m_BakedLighting,
-                    m_bHasWorldCullBounds ? &worldCullSphere : nullptr)) ||
+                    m_bHasWorldCullBounds ? &worldCullSphere : nullptr,
+                    MAP_MATERIAL_BINDING_MODE::OBJECT, &m_SourceWind)) ||
 
 				FAILED(m_pShaderCom->Begin(passIndex)) ||
 
@@ -388,7 +428,7 @@ HRESULT CMapAssetObject::Render_Shadow()
 			CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials);
 		if ((!opaqueShadow && FAILED(CMapAssetRenderUtils::Bind_ShadowMaterial(
 				m_pModelCom, m_pShaderCom, iMesh,
-				presentationProfile, m_fElapsedTime))) ||
+				presentationProfile, m_fElapsedTime, &m_SourceWind))) ||
 			FAILED(m_pShaderCom->Begin(
 				(opaqueShadow ? OPAQUE_SHADOW_PASS_BASE : STATIC_SHADOW_PASS_BASE) + iCullPass)) ||
 			FAILED(m_pModelCom->Render(iMesh)))

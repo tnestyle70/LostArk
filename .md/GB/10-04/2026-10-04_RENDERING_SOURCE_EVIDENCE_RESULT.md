@@ -221,3 +221,77 @@ UE 원문 코드를 복사하지 않았고 history·motion vector·화면 밖 sc
 Bern의 UV/주변 geometry에서 교체할 차이는 찾지 못했다. 차원술사V의 원본 연결·분포를 대조했고
 과거 사용자 삭제·조정을 추출 누락으로 복구하지 않았다. 워로드V는 실제 모델 본의0.01 재축소를
 확인해 기존 정규화 범위만 수정했다. 각 항목의 원본 대조·수정·제품 빌드·사용자 화면 판정을 구분한다.
+
+## G10. Character Select 전체 component 대조와 RNM 원본 mip 설치
+
+사용자의 전체 맵 추가 조사 요청 후 `LV_LOBBY_CLASSSELECT_SL00` 원본 package를 다시 읽었다.
+이 절은 G00~G06의 문서 조사보다 뒤에 수행한 재추출·Resources 반영 결과다. 원본 physical file은
+`756R7S99Q6LG72KKKU7UGR6RK744.upk`, SHA256은
+`55191fbeb0ebf2228c030a7807e7db287144ead3182a7921809f84f529c2d33c`다.
+1112개 export 중 StaticMeshComponent는803개, LandscapeComponent는0개다. 따라서 Bern Landscape와
+같은 CPU lightmap UV 보정을 이 맵의 일반 StaticMesh에 일괄 적용할 근거는 없다.
+
+원본 component native tail은 RNM texture lightmap799개, LOD lighting 없음3개, 기존 parser의
+vertex-lightmap kind1 미지원1개로 나뉜다. 현재 placementLighting775행 중774개가 원본 component이고
+1개는 보존한 `editor:LV_LOBBY_CLASSSELECT_SL00:2`다. 연결된 원본774개 모두 RNM atlas 이름,
+coordinateScale/Bias, average/directional decode scale이 원본과 정확히 같았다. 원본 static shadow
+reference는0개다. 현재 bakedLighting276행은 모두 linear이며 material280행 중 native sourceIndirect는181행이다.
+
+RNM을 가진 나머지25개는 현재 전부 숨김이다.24개는 CUL_BOX asset,1개는 기존409의
+`enginematerials.defaultmaterial` 미해결 평면이다. 이번에는 이25개의 원본 초기 sequence/표시 조건을
+새로 검증하거나 가시성을 바꾸지 않았다. kind1은 additive spotlight563이며, 미지원 native layout이라는
+사실을 곧바로 lit RNM 누락으로 판정하지 않았다. 기존 원본 spotlight program33 연결은 유지했다.
+
+추가로 실제 사용 RNM56 DDS에서 **원본 하위 mip 누락**을 확인해 복원했다. 반영 전56개 모두
+mip1이었고 원본은4~11mip다.56개 전체를 fresh UModel로 다시 export한 mip0 DDS가 기존 설치본과
+파일 전체 bytes까지 같았다. 일부 원본은 Crunch이므로 package bulk를 BC1 block으로 직접 간주하지
+않고, 기존 검증된 mip extractor와 같은 decoder로 각 원본 mip을 회수했다.56개 모두 mip0 압축 block을
+그대로 유지했으며 resampling·recompression·해상도 확대를 하지 않았다.
+
+검증 후보를 백업·직전 SHA 재확인·원자 교체로 설치했다. 설치 후56개 SHA가 후보와 같으며,
+제품 DirectXTK DDS loader를 사용하는 격리 WARP 검사에서56개 모두 BC1 linear SRV,
+MostDetailedMip0, Texture2D/SRV4~11mip 및 모든 GPU mip block readback 일치가 통과했다.
+합계 크기는2,446,400→3,260,384bytes다. 재질 JSON·UV·decode scale·native SH·BRDF·cube·rendering
+option은 바꾸지 않았다. DDS 하위 mip만 바뀌므로 이 작업을 위한 제품 재빌드나 Data publish는 필요하지 않다.
+기존 `Material.cpp:272`의 context 없는 DDS loader는 누락 mip을 자동 생성하지 않으며,
+`Shader_MapMaterialSurface.hlsli:121`의 trilinear sampler와`:559` 등의 derivative sampling은 이제 복원한
+하위 mip을 사용할 수 있다. 이는 축소·비스듬한 표면의 sampling 복원이며 원작 전체 화면 일치나
+사용자 장면의 선명도 개선을 확인한 결과는 아니다. 실행 중 texture cache와 사용자 화면은 별도 확인이다.
+
+증거는 `out/CharacterSelectBernRenderingReview20261004/`에 있다.
+
+| 파일 | 확인 내용 |
+|---|---|
+| `native-package-receipts.json`, `character-select-component-lighting.json` | 원본 package/export identity와803 component의 native lighting·현재 연결 대조 |
+| `character-select-rnm-texture-compare.json` | 반영 전56 DDS의 원본 mip 수·fresh mip0 exact |
+| `cs-rnm-install-candidate-receipt.json`, 각 `.dds.receipt.json` |56개 target/candidate·before/after SHA·원본 모든 mip receipt |
+| `cs-rnm-install-candidate-receipt.installed.json` | 실제 설치와 백업 위치 |
+| `installed-rnm-gpu-load.json` | 설치56개 제품 DDS loader·GPU mip readback PASS |
+
+## G11. Bern 일반 RNM 전수 header와 식생의 남은 복구 후보
+
+Bern Landscape42개의 새 RNM/static-shadow 연결은 [Bern 결과](2026-10-04_BERN_CLIFF_UV_RESULT.md)에
+별도로 기록한다. 여기서는 Landscape를 제외한 현재23,158개 material 중 bakedLighting21,321행이
+사용하는 RNM DDS를 조사했다.15개 source package군의 **4618개 모두 현재1mip**이며 합계는51,860,224bytes다.
+이 수치는 전체 설치 header 조사이며4618개의 원본 하위 mip 존재를 모두 확인했다는 뜻은 아니다.
+
+LAND01·SL00·EVENT01 세 package군에서 각각 최소/최대 해상도의 average/directional pair를 골라
+12개 원본을 다시 읽었다.12개 모두 fresh UModel mip0가 설치 DDS 전체 bytes와 같고, 원본3/8/11mip에
+비해 설치1mip여서 하위 mip 누락이 확인됐다. 표본에는4×4,128×128,1024×512,1024×1024와
+Crunch/non-Crunch가 포함된다. 정확한 경로·원본 package SHA·표본 조건은
+`bern-non-landscape-rnm-header-census.json`, `bern-non-landscape-rnm-native-sample.json`에 있다.
+이4618개는 후보 분류까지만 수행했으며 전체 변환·설치하지 않았다. 다음 단계도 source identity와
+각 mip을 검증한 묶음 단위로 진행하며 현재 mip0·색 공간·UV/scale을 유지해야 한다.
+
+식생에서도 조사할 입력 차이가 남는다. Character Select의 foliage/grass18행이 사용하는7개 MIC를
+원본에서 새로 해석했으며7개 모두 `1.use_dynamicfoliage(wind)=true`와 wind scalar를 가진다.
+현재 이18행과 Bern foliage/grass7328행에는 `foliageWind` 입력이 없고
+`MapAssetRenderUtils.cpp:28`의 enabled 조건을 만족하지 않는다. 다만 Bern7328행의 MIC를 전수 재해석한
+것은 아니며, Character Select7개도 exact ShaderMap/VF/vertex uniform·mesh bounds·scene wind owner까지
+이번 조사에서 검증하지 않았다. 따라서 범위를 정한 복구 후보로 남기고 scalar나 전역 바람 값을 임의로 넣지 않았다.
+`Shader_SourceFoliageWind.hlsli:18`의 E4FE 실제 산술 지원과 Catalog가 허용하는 A1C6/1C39 입력도
+같은 완료 범위로 취급하지 않는다. 원본 parameter receipt는 `character-select-foliage-source-parameters.json`이다.
+
+기존 static-shadow penumbra의 PROJECT_ADAPTER, dynamic character SH/probe, 실제 scene wind,
+camera/volume 활성 후처리와 전체 화면 동등성은 이번 DDS 복원으로 해결됐다고 표시하지 않는다.
+Client·원작 EXE·UI 실행, 화면 조작과 제품 전체 변환/빌드는 이 추가 audit에서 수행하지 않았다.

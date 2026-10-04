@@ -25,12 +25,16 @@ float EncodeMapStaticShadowChannel(float packedW)
 // Original signed-distance PS transfer; atlas texels, UVs and exponent come
 // from source data. CPU bias/scale use the explicit PROJECT_ADAPTER width.
 // Callers supply UV1 transformed by this placement's original shadow atlas UV.
+float EvaluateMapStaticShadowDistance(float distance)
+{
+    return pow(saturate((distance + g_StaticShadowTransfer.x) * g_StaticShadowTransfer.y),
+        g_StaticShadowTransfer.z);
+}
+
 float EvaluateMapStaticShadow(float2 shadowUV)
 {
     if (g_HasStaticShadow == 0u) return 1.f;
-    const float distance = g_StaticShadowTexture.Sample(SourceStaticShadowSampler, shadowUV).r;
-    return pow(saturate((distance + g_StaticShadowTransfer.x) * g_StaticShadowTransfer.y),
-        g_StaticShadowTransfer.z);
+    return EvaluateMapStaticShadowDistance(g_StaticShadowTexture.Sample(SourceStaticShadowSampler, shadowUV).r);
 }
 
 #endif

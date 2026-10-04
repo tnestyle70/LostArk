@@ -219,6 +219,7 @@ public:
 	uint32_t Get_MapAuthoringLevelIndex() const override
 	{ return ETOUI(LEVEL::KAKULSAYDON_ARENA); }
 	const char_t* Get_MapAuthoringLabel() const override { return "Kouku"; }
+	CMapPlacementRuntime& Get_MapAuthoringRuntime() override { return m_MapRuntime; }
 	const CMapAssetCatalog& Get_MapAuthoringCatalog() const override
 	{ return m_MapRuntime.Get_Catalog(); }
 	std::vector<MAP_RUNTIME_PLACED_ENTRY>& Get_MapAuthoringPlacements() override

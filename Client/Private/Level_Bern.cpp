@@ -395,6 +395,12 @@ HRESULT CLevel_Bern::Initialize()
 			"\n").c_str());
 		return FailActivation("bern.map-area", m_MapRuntime.Get_Status());
 	}
+	if (!m_MapRuntime.Load_SelfMotions(pEntry->pMapAreaId))
+	{
+		const std::string status = m_MapRuntime.Get_Status();
+		m_MapRuntime.Clear();
+		return FailActivation("bern.map-motion", status);
+	}
 
 	// Keep the provider local until the rest of Level initialization commits.
 	auto mapLightPresentation = make_shared<CMapLightPresentationRuntime>();
@@ -536,6 +542,31 @@ HRESULT CLevel_Bern::Initialize()
 	return S_OK;
 }
 
+#ifdef _DEBUG
+bool_t CLevel_Bern::Can_ChangeMapAuthoringStructure(std::string& outReason) const
+{
+	if (m_bEntranceCinematicApplied || m_MapRuntime.Has_DebugPlacementPreview())
+	{
+		outReason = "Wait for the entrance cinematic or restore the map preview before editing Bern objects.";
+		return false;
+	}
+	return true;
+}
+
+CWorldSequencePlayer::TARGET_SET CLevel_Bern::Make_MapAuthoringTargets()
+{
+	CWorldSequencePlayer::TARGET_SET targets;
+	targets.levelIndex = ETOUI(LEVEL::BERN);
+	targets.pCatalog = &m_MapRuntime.Get_Catalog();
+	targets.pPlacements = &m_MapRuntime.Get_MutablePlacements();
+	// Existing Level-owned empty Deploy owner; Bern declares no Deploy source pair.
+	targets.pDeployRuntime = &m_MapAuthoringDeploy;
+	targets.device = m_pDevice;
+	targets.context = m_pContext;
+	return targets;
+}
+#endif
+
 void CLevel_Bern::Update(f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
@@ -546,6 +577,11 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 	{
 		return;
 	}
+
+#ifdef _DEBUG
+	if (!m_bMapAuthoringActive)
+#endif
+		m_MapRuntime.Update_SelfMotions(fTimeDelta);
 
 	if (nullptr != m_pMapEffectPresentation)
 		m_pMapEffectPresentation->Update_LevelPresentation(fTimeDelta);

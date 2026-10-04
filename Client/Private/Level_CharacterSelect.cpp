@@ -247,6 +247,9 @@ HRESULT CLevel_CharacterSelect::Initialize()
 		return E_FAIL;
 	}
 
+	if (!m_MapRuntime.Load_SelfMotions(entry->pMapAreaId))
+		OutputDebugStringA("[Level_CharacterSelect] Optional map self-motions could not be read.\n");
+
 #ifdef _DEBUG
 	/* Optional debug authoring data must never block Server-approved entry. */
 	(void)Debug_ReloadFloorSwapOptions();
@@ -407,6 +410,15 @@ void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 {
 	Log_PresentationGate();
 	__super::Update(fTimeDelta);
+#ifdef _DEBUG
+	if (!m_bMapAuthoringActive)
+#endif
+	{
+		m_MapRuntime.Update_SelfMotions(fTimeDelta);
+		for (auto& background : m_ClassCinemaBackgrounds)
+			if (background.runtime && background.failure.empty())
+				background.runtime->Update_SelfMotions(fTimeDelta);
+	}
 	Update_CustomizingStageVisibility();
 	if (m_pMapEffectPresentation)
 		m_pMapEffectPresentation->Update_LevelPresentation(fTimeDelta);
@@ -1984,6 +1996,8 @@ bool_t CLevel_CharacterSelect::Load_ClassCinematicBackgrounds(const std::string&
 			background.failure = "Class selection background " + areaId + ": " + background.runtime->Get_Status();
 			OutputDebugStringA(("[Level_CharacterSelect][ClassCinema] " + background.failure + "\n").c_str());
 		}
+		else if (!background.runtime->Load_SelfMotions(areaId))
+			OutputDebugStringA(("[Level_CharacterSelect][ClassCinema] Optional map self-motions could not be read: " + areaId + "\n").c_str());
 		for (auto& placement : background.runtime->Get_MutablePlacements())
 			(void)CMapPlacementRuntime::Set_RuntimeSuppressed(placement, true);
 		staged.push_back(std::move(background));

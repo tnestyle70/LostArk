@@ -267,6 +267,64 @@ bool_t CMapPlacementRuntime::Try_GetCachedLoadStage(
 	return true;
 }
 
+#ifdef _DEBUG
+bool_t CMapPlacementRuntime::Try_PickInspectionSurface(const float3_t& rayOrigin,
+    const float3_t& rayDirection, MAP_WORLD_MESH_PICK& outSelection) const
+{
+    if (!IsFinite(rayOrigin) || !IsFinite(rayDirection) ||
+        CGameInstance::Get().Is_SceneEnvironmentReplaced()) return false;
+    const vector_t raw = XMLoadFloat3(&rayDirection);
+    const f32_t lengthSquared = XMVectorGetX(XMVector3LengthSq(raw));
+    if (!std::isfinite(lengthSquared) || lengthSquared <= 0.0000000001f) return false;
+    float3_t direction;
+    XMStoreFloat3(&direction, XMVector3Normalize(raw));
+    Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Picking.InspectMapMesh");
+    f32_t nearest = (std::numeric_limits<f32_t>::max)();
+    MAP_WORLD_MESH_PICK selected;
+    bool_t hit = false;
+    for (const auto& batch : m_StaticBatches)
+    {
+        f32_t distance = nearest;
+        uint64_t placement = 0u;
+        uint32_t mesh = 0u;
+        std::string material;
+        if (batch.object && batch.object->Try_PickInspectionSurface(rayOrigin, direction,
+            nearest, distance, placement, mesh, material) && distance < nearest)
+        {
+            nearest = distance; selected.placementId = placement; selected.meshIndex = mesh;
+            selected.materialName = std::move(material); hit = true;
+        }
+    }
+    for (const auto& entry : m_Placements)
+    {
+        f32_t distance = nearest;
+        uint32_t mesh = 0u;
+        std::string material;
+        if (entry.object && entry.object->Try_PickInspectionSurface(rayOrigin, direction,
+            nearest, distance, mesh, material) && distance < nearest)
+        {
+            nearest = distance; selected.placementId = entry.record.placementId; selected.meshIndex = mesh;
+            selected.materialName = std::move(material); hit = true;
+        }
+    }
+    if (!hit) return false;
+    const auto found = std::find_if(m_Placements.begin(), m_Placements.end(),
+        [&](const auto& entry) { return entry.record.placementId == selected.placementId; });
+    if (found == m_Placements.end()) return false;
+    const auto* asset = m_Catalog.Find(found->record.assetId);
+    if (!asset) return false;
+    XMStoreFloat3(&selected.hitPosition, XMLoadFloat3(&rayOrigin) + XMLoadFloat3(&direction) * nearest);
+    if (!IsFinite(selected.hitPosition)) return false;
+    selected.areaId = m_Catalog.Get_AreaId();
+    selected.sourcePlacementId = found->record.sourcePlacementId;
+    selected.sourceLevel = found->record.sourceLevel;
+    selected.assetId = found->record.assetId;
+    selected.modelAssetId = asset->modelRelativePath.generic_string();
+    outSelection = std::move(selected);
+    return true;
+}
+#endif
+
 void CMapPlacementRuntime::Clear()
 {
 	if (m_iLevelIndex < ETOUI(LEVEL::END))
@@ -281,7 +339,13 @@ void CMapPlacementRuntime::Clear()
 	}
 
 	m_iLevelIndex = ETOUI(LEVEL::END);
+	m_SelfMotions.clear();
+	m_SelfMotionModels.clear();
+	m_fSelfMotionElapsedSeconds = 0.f;
 #ifdef _DEBUG
+	m_bDebugSelfMotionPaused = false;
+	m_fDebugSelfMotionRate = 1.f;
+	++m_iDebugRuntimeGeneration;
 	m_DebugPreviewIds.clear();
 	m_DebugHiddenPlacements.clear();
 #endif
@@ -451,6 +515,7 @@ bool_t CMapPlacementRuntime::Create_Placement(
 	desc.visible = record.visible;
 	desc.renderProfile = asset->renderProfile;
 	desc.bakedLighting = record.bakedLighting;
+	desc.sourceWind = record.sourceWind;
 	if (nullptr != materialOverrides)
 	{
 		Engine::MODEL_ASSET_LOAD_DESC load;
@@ -1270,6 +1335,7 @@ CMapPlacementRuntime::Apply_PlacementTransform(
 	{
 		entry.object->Set_PlacementTransform(
 			staged.position, staged.rotationQuaternion, staged.signedScale);
+		entry.object->Set_Visible(staged.visible);
 		entry.record = staged;
 		return PLACEMENT_TRANSFORM_RESULT::APPLIED;
 	}
@@ -1374,6 +1440,7 @@ HRESULT CMapPlacementRuntime::Build_StaticInstance(
 	outInstance = {};
 	outInstance.PlacementId = record.placementId;
 	outInstance.BakedLighting = record.bakedLighting;
+	outInstance.SourceWind = record.sourceWind;
 	outInstance.Visible = record.visible;
 	outInstance.WorldBoundsCenter = worldCenter;
 	outInstance.WorldBoundsRadius = worldRadius;
@@ -1651,19 +1718,45 @@ bool_t Client::CMapPlacementRuntime::Load_SelfMotions(
 	const std::string& areaId)
 {
 	m_fSelfMotionElapsedSeconds = 0.f;
+#ifdef _DEBUG
+    m_bDebugSelfMotionPaused = false;
+    m_fDebugSelfMotionRate = 1.f;
+    ++m_iDebugRuntimeGeneration;
+#endif
 	return Read_SelfMotions(areaId, m_Placements, m_SelfMotions);
 }
 
 void Client::CMapPlacementRuntime::Update_SelfMotions(const f32_t fTimeDelta)
 {
-	if (m_SelfMotions.empty() || !std::isfinite(fTimeDelta))
-		return;
-	m_fSelfMotionElapsedSeconds += fTimeDelta;
-	if (m_fSelfMotionElapsedSeconds > SELF_MOTION_WRAP_SECONDS)
-		m_fSelfMotionElapsedSeconds -= SELF_MOTION_WRAP_SECONDS;
-	Sample_SelfMotions(m_SelfMotions, m_fSelfMotionElapsedSeconds,
-		m_iLevelIndex, m_Catalog, m_SelfMotionModels, m_Placements);
+    if (m_SelfMotions.empty() || !std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
+        return;
+    float rate = 1.f;
+#ifdef _DEBUG
+    if (m_bDebugSelfMotionPaused) return;
+    rate = m_fDebugSelfMotionRate;
+#endif
+    m_fSelfMotionElapsedSeconds = std::fmod(
+        m_fSelfMotionElapsedSeconds + fTimeDelta * rate, SELF_MOTION_WRAP_SECONDS);
+    Sample_SelfMotions(m_SelfMotions, m_fSelfMotionElapsedSeconds,
+        m_iLevelIndex, m_Catalog, m_SelfMotionModels, m_Placements);
 }
+
+#ifdef _DEBUG
+void Client::CMapPlacementRuntime::Debug_SetSelfMotionPlayback(bool paused, float rate)
+{
+    if (!std::isfinite(rate) || rate < 0.f || rate > 8.f) return;
+    m_bDebugSelfMotionPaused = paused;
+    m_fDebugSelfMotionRate = rate;
+}
+
+void Client::CMapPlacementRuntime::Debug_SeekSelfMotions(float seconds)
+{
+    if (!std::isfinite(seconds) || seconds < 0.f) return;
+    m_fSelfMotionElapsedSeconds = std::fmod(seconds, SELF_MOTION_WRAP_SECONDS);
+    Sample_SelfMotions(m_SelfMotions, m_fSelfMotionElapsedSeconds,
+        m_iLevelIndex, m_Catalog, m_SelfMotionModels, m_Placements);
+}
+#endif
 
 #ifdef _DEBUG
 void Client::CMapPlacementRuntime::Rebase_AuthoringSelfMotions(

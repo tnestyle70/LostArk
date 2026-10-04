@@ -1106,6 +1106,37 @@ HRESULT CModel::Render_Instanced(uint32_t iMeshIndex,
     return drawResult;
 }
 
+bool_t CModel::Can_BatchStaticLightingWith(const CModel& other) const
+{
+    if (m_eType != MODEL::NONANIM || other.m_eType != MODEL::NONANIM ||
+        m_Meshes.size() != 1u || other.m_Meshes.size() != 1u ||
+        !m_Meshes[0] || m_Meshes[0] != other.m_Meshes[0] ||
+        m_Meshes[0]->Has_MorphBaseVertices() || m_fGeometryPreScale != other.m_fGeometryPreScale)
+        return false;
+    for (size_t row = 0u; row < 4u; ++row)
+        for (size_t column = 0u; column < 4u; ++column)
+            if (m_PreTransformMatrix.m[row][column] != other.m_PreTransformMatrix.m[row][column]) return false;
+    const uint32_t material = m_Meshes[0]->Get_MaterialIndex();
+    return material < m_Materials.size() && material < other.m_Materials.size() &&
+        m_Materials[material] && other.m_Materials[material] &&
+        m_Materials[material]->Can_BatchStaticLightingWith(*other.m_Materials[material]);
+}
+
+HRESULT CModel::Bind_StaticLightingBank(const shared_ptr<CShader>& shader,
+    std::span<const CModel* const> models) const
+{
+    if (!shader || models.size() < 2u || models.size() > 8u || models.front() != this)
+        return E_INVALIDARG;
+    std::array<const CMaterial*, 8> materials{};
+    for (size_t i = 0u; i < models.size(); ++i)
+    {
+        if (!models[i] || !Can_BatchStaticLightingWith(*models[i])) return E_INVALIDARG;
+        materials[i] = models[i]->m_Materials[m_Meshes[0]->Get_MaterialIndex()].get();
+    }
+    return materials[0]->Bind_StaticLightingBank(shader,
+        std::span<const CMaterial* const>(materials.data(), models.size()));
+}
+
 bool_t CModel::Can_UseOrderedStaticGeometry(
     const uint32_t iFirstMesh, const uint32_t iMeshCount) const
 {
@@ -1941,8 +1972,8 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
                 !finite(b) || !finite(w) || !finite(surface.sourceFoliageWindLocalCenter) ||
                 !finite(surface.sourceFoliageWindActorPosition) || !finite(surface.sourceFoliageWindPlayerPosition) ||
                 surface.sourceFoliageWindLocalCenter.w != 1.f || surface.sourceFoliageWindActorPosition.w != 0.f ||
-                b.x <= 0.f || b.y <= 0.f || b.z <= 0.f || b.w <= 0.f || b.x > 1e5f || b.y > 1e5f || b.z > 1e5f || b.w > 1e5f ||
-                w.x != 0.f || w.y != 0.f || w.z != 1.f || w.w != 0.f ||
+                b.x < 0.f || b.y < 0.f || b.z < 0.f || b.w <= 0.f || b.x > 1e5f || b.y > 1e5f || b.z > 1e5f || b.w > 1e5f ||
+                w.w < 0.f || (w.x == 0.f && w.y == 0.f && w.z == 0.f) ||
                 !surface.Has_ValidSourceFoliageWindProgramInputs() ||
                 any_of(begin(surface.sourceFoliageWindScalars), end(surface.sourceFoliageWindScalars), [&](const float4_t& v) { return !finite(v); }))
                 return failOverride("invalid source foliage wind inputs");
@@ -1951,7 +1982,7 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
         {
             const auto& surface = replacement.surface;
             const auto& source = surface.sourceLandscape;
-            if (!source.Has_ValidInputs() || surface.hasBakedLighting || surface.hasStaticShadow ||
+            if (!source.Has_ValidInputs() ||
                 surface.hasEnvironmentCube || surface.hasSourceIndirect || surface.hasEmissive ||
                 (surface.renderMode != MODEL_SURFACE_RENDER_MODE::INHERIT && surface.renderMode != MODEL_SURFACE_RENDER_MODE::DEFERRED))
                 return failOverride("invalid source landscape parameters");
@@ -1971,6 +2002,10 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
             for (uint32_t i = 0u; i < SOURCE_LANDSCAPE_WEIGHTMAP_COUNT; ++i)
                 if (!validPath(i < source.weightmapCount, textures.weightmaps[i])) return failOverride("source landscape weight texture mismatch or escape");
             if (!validPath(true, textures.heightmap)) return failOverride("source landscape height texture missing or escape");
+            if (!validPath(surface.hasBakedLighting, replacement.bakedAveragePath) ||
+                !validPath(surface.hasBakedLighting, replacement.bakedDirectionalPath) ||
+                !validPath(surface.hasStaticShadow, replacement.staticShadowPath))
+                return failOverride("source landscape lighting texture mismatch or escape");
             size_t matches = 0u;
             for (size_t materialIndex = 0u; materialIndex < materialSource.materials.size(); ++materialIndex)
             {
@@ -1981,6 +2016,11 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
                 })) return failOverride("source landscape requires a static painted grid");
                 material.surface = surface;
                 material.sourceLandscapeTextures = textures;
+                // Landscape lightmap coordinates derive from the painted grid UV0;
+                // the existing placement scale/bias carries the native padding and atlas.
+                material.bakedAveragePath = replacement.bakedAveragePath;
+                material.bakedDirectionalPath = replacement.bakedDirectionalPath;
+                material.staticShadowPath = replacement.staticShadowPath;
                 ++matches;
             }
             if (matches != 1u) return failOverride("source landscape material name is absent or ambiguous");

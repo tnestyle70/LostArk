@@ -529,7 +529,7 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
     {
         const auto& source = m_Surface.sourceLandscape;
         const auto& paths = material.sourceLandscapeTextures;
-        if (!source.Has_ValidInputs() || m_Surface.hasBakedLighting || m_Surface.hasStaticShadow ||
+        if (!source.Has_ValidInputs() || (m_Surface.hasStaticShadow && !m_Surface.hasBakedLighting) ||
             m_Surface.hasEnvironmentCube || m_Surface.hasSourceIndirect || m_Surface.hasEmissive) return E_INVALIDARG;
         const auto load = [&](bool required, const filesystem::path& path, bool srgb,
             ComPtr<ID3D11ShaderResourceView>& texture) -> HRESULT {
@@ -548,7 +548,16 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
         }
         for (uint32_t i = 0u; i < SOURCE_LANDSCAPE_WEIGHTMAP_COUNT; ++i)
             if (FAILED(load(i < source.weightmapCount, paths.weightmaps[i], false, m_SourceLandscapeWeights[i]))) return E_FAIL;
-        return load(true, paths.heightmap, false, m_SourceLandscapeHeight);
+        if (FAILED(load(true, paths.heightmap, false, m_SourceLandscapeHeight)) ||
+            FAILED(load(m_Surface.hasBakedLighting, material.bakedAveragePath, m_Surface.bakedLightingSRGB, m_BakedAverage)) ||
+            FAILED(load(m_Surface.hasBakedLighting, material.bakedDirectionalPath, m_Surface.bakedLightingSRGB, m_BakedDirectional)) ||
+            FAILED(load(m_Surface.hasStaticShadow, material.staticShadowPath, false, m_StaticShadow))) return E_FAIL;
+        if (m_Surface.hasStaticShadow)
+        {
+            D3D11_SHADER_RESOURCE_VIEW_DESC shadow{}; m_StaticShadow->GetDesc(&shadow);
+            if (shadow.Format != DXGI_FORMAT_R8_UNORM) return E_INVALIDARG;
+        }
+        return S_OK;
     }
     if (m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
     {
@@ -1139,6 +1148,242 @@ HRESULT CMaterial::Bind_SourceSpecialSurface(shared_ptr<CShader> shader)
         (blend && (special.flags & 2u) && (FAILED(shader->Bind_Texture("g_SourceBlendDiffuseBTexture", m_SourceBlendDiffuseB)) ||
             FAILED(shader->Bind_Texture("g_SourceBlendNormalBTexture", m_SourceBlendNormalB))))) return E_FAIL;
     return S_OK;
+}
+
+namespace
+{
+    template<class T> bool SameStaticLightingValue(const T& a, const T& b) { return a == b; }
+    bool SameStaticLightingValue(const float2_t& a, const float2_t& b) { return a.x == b.x && a.y == b.y; }
+    bool SameStaticLightingValue(const float3_t& a, const float3_t& b) { return a.x == b.x && a.y == b.y && a.z == b.z; }
+    bool SameStaticLightingValue(const float4_t& a, const float4_t& b) { return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w; }
+    template<class T, size_t N> bool SameStaticLightingValue(const std::array<T, N>& a, const std::array<T, N>& b)
+    {
+        for (size_t i = 0u; i < N; ++i) if (!SameStaticLightingValue(a[i], b[i])) return false;
+        return true;
+    }
+    template<class T, size_t N> bool SameStaticLightingValue(const T (&a)[N], const T (&b)[N])
+    {
+        for (size_t i = 0u; i < N; ++i) if (!SameStaticLightingValue(a[i], b[i])) return false;
+        return true;
+    }
+    bool SameStaticLightingValue(const MODEL_COLOR_TINT& a, const MODEL_COLOR_TINT& b)
+    {
+        return SameStaticLightingValue(a.isEnabled, b.isEnabled)
+            && SameStaticLightingValue(a.isHairMask, b.isHairMask)
+            && SameStaticLightingValue(a.vDiffuse, b.vDiffuse)
+            && SameStaticLightingValue(a.vRegionA, b.vRegionA)
+            && SameStaticLightingValue(a.vRegionB, b.vRegionB)
+            && SameStaticLightingValue(a.vRegionC, b.vRegionC);
+    }
+    bool SameStaticLightingValue(const MODEL_SOURCE_CHARACTER_PARAMETERS& a, const MODEL_SOURCE_CHARACTER_PARAMETERS& b)
+    {
+        return SameStaticLightingValue(a.program, b.program)
+            && SameStaticLightingValue(a.baseTextureMask, b.baseTextureMask)
+            && SameStaticLightingValue(a.lightTextureMask, b.lightTextureMask)
+            && SameStaticLightingValue(a.requiredExtraUVMask, b.requiredExtraUVMask)
+            && SameStaticLightingValue(a.baseConstants, b.baseConstants)
+            && SameStaticLightingValue(a.lightConstants, b.lightConstants);
+    }
+    bool SameStaticLightingValue(const MODEL_SOURCE_SPECIAL_PARAMETERS& a, const MODEL_SOURCE_SPECIAL_PARAMETERS& b)
+    {
+        return SameStaticLightingValue(a.flags, b.flags)
+            && SameStaticLightingValue(a.normalTiling, b.normalTiling)
+            && SameStaticLightingValue(a.iceCoreColor, b.iceCoreColor)
+            && SameStaticLightingValue(a.iceOuterColor, b.iceOuterColor)
+            && SameStaticLightingValue(a.iceBlend, b.iceBlend)
+            && SameStaticLightingValue(a.iceBumpOffset, b.iceBumpOffset)
+            && SameStaticLightingValue(a.wetParameters, b.wetParameters)
+            && SameStaticLightingValue(a.wetSpecularPower, b.wetSpecularPower)
+            && SameStaticLightingValue(a.blendDiffuse, b.blendDiffuse)
+            && SameStaticLightingValue(a.blendSpecular, b.blendSpecular)
+            && SameStaticLightingValue(a.blendLayers, b.blendLayers)
+            && SameStaticLightingValue(a.blendSharpness, b.blendSharpness)
+            && SameStaticLightingValue(a.maskSRGB, b.maskSRGB)
+            && SameStaticLightingValue(a.blendGSRGB, b.blendGSRGB)
+            && SameStaticLightingValue(a.blendBSRGB, b.blendBSRGB);
+    }
+    bool SameStaticLightingValue(const MODEL_SOURCE_LANDSCAPE_PARAMETERS& a, const MODEL_SOURCE_LANDSCAPE_PARAMETERS& b)
+    {
+        return SameStaticLightingValue(a.layerMask, b.layerMask)
+            && SameStaticLightingValue(a.normalMask, b.normalMask)
+            && SameStaticLightingValue(a.weightmapCount, b.weightmapCount)
+            && SameStaticLightingValue(a.grid, b.grid)
+            && SameStaticLightingValue(a.weightmapScaleBias, b.weightmapScaleBias)
+            && SameStaticLightingValue(a.heightmapScaleBias, b.heightmapScaleBias)
+            && SameStaticLightingValue(a.uv, b.uv)
+            && SameStaticLightingValue(a.diffuse, b.diffuse)
+            && SameStaticLightingValue(a.specular, b.specular)
+            && SameStaticLightingValue(a.factors, b.factors)
+            && SameStaticLightingValue(a.weight, b.weight)
+            && SameStaticLightingValue(a.diffuseSRGB, b.diffuseSRGB);
+    }
+    bool SameStaticLightingValue(const MODEL_SURFACE_PARAMETERS& a, const MODEL_SURFACE_PARAMETERS& b)
+    {
+        return SameStaticLightingValue(a.renderMode, b.renderMode)
+            && SameStaticLightingValue(a.cullMode, b.cullMode)
+            && SameStaticLightingValue(a.family, b.family)
+            && SameStaticLightingValue(a.pbrAlphaMasked, b.pbrAlphaMasked)
+            && SameStaticLightingValue(a.sourceCharacter, b.sourceCharacter)
+            && SameStaticLightingValue(a.sourceBgFlags, b.sourceBgFlags)
+            && SameStaticLightingValue(a.sourceBgUnlit, b.sourceBgUnlit)
+            && SameStaticLightingValue(a.sourceBgBump, b.sourceBgBump)
+            && SameStaticLightingValue(a.sourceBgUV, b.sourceBgUV)
+            && SameStaticLightingValue(a.sourceBgFlicker, b.sourceBgFlicker)
+            && SameStaticLightingValue(a.sourceBgSubspecular, b.sourceBgSubspecular)
+            && SameStaticLightingValue(a.sourceBgRimlight, b.sourceBgRimlight)
+            && SameStaticLightingValue(a.sourceBgSpecularSaturation, b.sourceBgSpecularSaturation)
+            && SameStaticLightingValue(a.sourceBgPanning, b.sourceBgPanning)
+            && SameStaticLightingValue(a.sourceSpecial, b.sourceSpecial)
+            && SameStaticLightingValue(a.sourceLandscape, b.sourceLandscape)
+            && SameStaticLightingValue(a.sourceFoliageFlags, b.sourceFoliageFlags)
+            && SameStaticLightingValue(a.sourceFoliageTransmission, b.sourceFoliageTransmission)
+            && SameStaticLightingValue(a.sourceFoliageMaskSRGB, b.sourceFoliageMaskSRGB)
+            && SameStaticLightingValue(a.sourceFoliageWind, b.sourceFoliageWind)
+            && SameStaticLightingValue(a.sourceFoliageWindProgram, b.sourceFoliageWindProgram)
+            && SameStaticLightingValue(a.sourceFoliageWindLocalCenter, b.sourceFoliageWindLocalCenter)
+            && SameStaticLightingValue(a.sourceFoliageWindLocalBounds, b.sourceFoliageWindLocalBounds)
+            && SameStaticLightingValue(a.sourceFoliageWindActorPosition, b.sourceFoliageWindActorPosition)
+            && SameStaticLightingValue(a.sourceFoliageWindDirectionSpeed, b.sourceFoliageWindDirectionSpeed)
+            && SameStaticLightingValue(a.sourceFoliageWindPlayerPosition, b.sourceFoliageWindPlayerPosition)
+            && SameStaticLightingValue(a.sourceFoliageWindScalars, b.sourceFoliageWindScalars)
+            && SameStaticLightingValue(a.overlayColor, b.overlayColor)
+            && SameStaticLightingValue(a.overlayTiling, b.overlayTiling)
+            && SameStaticLightingValue(a.overlayNormalIntensity, b.overlayNormalIntensity)
+            && SameStaticLightingValue(a.overlaySharpness, b.overlaySharpness)
+            && SameStaticLightingValue(a.overlayBrightness, b.overlayBrightness)
+            && SameStaticLightingValue(a.overlaySaturation, b.overlaySaturation)
+            && SameStaticLightingValue(a.overlaySpecularIntensity, b.overlaySpecularIntensity)
+            && SameStaticLightingValue(a.overlaySRGB, b.overlaySRGB)
+            && SameStaticLightingValue(a.overlaySeparateSpecular, b.overlaySeparateSpecular)
+            && SameStaticLightingValue(a.sourceOverlayFlags, b.sourceOverlayFlags)
+            && SameStaticLightingValue(a.sourceOverlayDirection, b.sourceOverlayDirection)
+            && SameStaticLightingValue(a.diffuseBrightness, b.diffuseBrightness)
+            && SameStaticLightingValue(a.normalIntensity, b.normalIntensity)
+            && SameStaticLightingValue(a.specularIntensity, b.specularIntensity)
+            && SameStaticLightingValue(a.specularPower, b.specularPower)
+            && SameStaticLightingValue(a.reflectionIntensity, b.reflectionIntensity)
+            && SameStaticLightingValue(a.reflectionContrast, b.reflectionContrast)
+            && SameStaticLightingValue(a.reflectionTiling, b.reflectionTiling)
+            && SameStaticLightingValue(a.diffuseSaturation, b.diffuseSaturation)
+            && SameStaticLightingValue(a.diffuseColor, b.diffuseColor)
+            && SameStaticLightingValue(a.specularColor, b.specularColor)
+            && SameStaticLightingValue(a.reflectionColor, b.reflectionColor)
+            && SameStaticLightingValue(a.diffuseSRGB, b.diffuseSRGB)
+            && SameStaticLightingValue(a.specularSRGB, b.specularSRGB)
+            && SameStaticLightingValue(a.reflectionSRGB, b.reflectionSRGB)
+            && SameStaticLightingValue(a.ormSRGB, b.ormSRGB)
+            && SameStaticLightingValue(a.castsShadow, b.castsShadow)
+            && SameStaticLightingValue(a.hasEmissive, b.hasEmissive)
+            && SameStaticLightingValue(a.emissiveColor, b.emissiveColor)
+            && SameStaticLightingValue(a.emissiveIntensity, b.emissiveIntensity)
+            && SameStaticLightingValue(a.emissiveUVTiling, b.emissiveUVTiling)
+            && SameStaticLightingValue(a.emissiveFlickerMinimum, b.emissiveFlickerMinimum)
+            && SameStaticLightingValue(a.emissiveFlickerSpeed, b.emissiveFlickerSpeed)
+            && SameStaticLightingValue(a.emissivePhaseOffset, b.emissivePhaseOffset)
+            && SameStaticLightingValue(a.emissiveSRGB, b.emissiveSRGB)
+            && SameStaticLightingValue(a.uvTiling, b.uvTiling)
+            && SameStaticLightingValue(a.uvFixedNormal, b.uvFixedNormal)
+            && SameStaticLightingValue(a.useWorldReflection, b.useWorldReflection)
+            && SameStaticLightingValue(a.detailNormalIntensity, b.detailNormalIntensity)
+            && SameStaticLightingValue(a.detailNormalTiling, b.detailNormalTiling)
+            && SameStaticLightingValue(a.metallicIntensity, b.metallicIntensity)
+            && SameStaticLightingValue(a.metallicPower, b.metallicPower)
+            && SameStaticLightingValue(a.roughnessIntensity, b.roughnessIntensity)
+            && SameStaticLightingValue(a.roughnessPower, b.roughnessPower)
+            && SameStaticLightingValue(a.aoIntensity, b.aoIntensity)
+            && SameStaticLightingValue(a.aoPower, b.aoPower)
+            && SameStaticLightingValue(a.specularPBRIntensity, b.specularPBRIntensity)
+            && SameStaticLightingValue(a.nonmetallicBrightness, b.nonmetallicBrightness)
+            && SameStaticLightingValue(a.metallicBrightness, b.metallicBrightness)
+            && SameStaticLightingValue(a.minimumRoughness, b.minimumRoughness)
+            && SameStaticLightingValue(a.reflectionOriginOffset, b.reflectionOriginOffset)
+            && SameStaticLightingValue(a.vertexAlpha, b.vertexAlpha)
+            && SameStaticLightingValue(a.hasBakedLighting, b.hasBakedLighting)
+            && SameStaticLightingValue(a.bakedLightingSRGB, b.bakedLightingSRGB)
+            && SameStaticLightingValue(a.hasStaticShadow, b.hasStaticShadow)
+            && SameStaticLightingValue(a.staticShadowChannel, b.staticShadowChannel)
+            && SameStaticLightingValue(a.staticShadowTransfer, b.staticShadowTransfer)
+            && SameStaticLightingValue(a.hasEnvironmentCube, b.hasEnvironmentCube)
+            && SameStaticLightingValue(a.environmentColor, b.environmentColor)
+            && SameStaticLightingValue(a.environmentRotation, b.environmentRotation)
+            && SameStaticLightingValue(a.environmentLegacyEnabled, b.environmentLegacyEnabled)
+            && SameStaticLightingValue(a.hasSourceIndirect, b.hasSourceIndirect)
+            && SameStaticLightingValue(a.sourceIndirectSH, b.sourceIndirectSH)
+            && SameStaticLightingValue(a.sourceIndirectColor, b.sourceIndirectColor)
+            && SameStaticLightingValue(a.sourceIndirectRotation, b.sourceIndirectRotation)
+            && SameStaticLightingValue(a.sourceUpperSkyColor, b.sourceUpperSkyColor)
+            && SameStaticLightingValue(a.sourceLowerSkyColor, b.sourceLowerSkyColor)
+            && SameStaticLightingValue(a.sourceAmbientAndSkyFactor, b.sourceAmbientAndSkyFactor);
+    }
+}
+
+bool_t CMaterial::Can_BatchStaticLightingWith(const CMaterial& other) const
+{
+    if (m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED ||
+        other.m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED ||
+        !m_TextureOverrides.empty() || !other.m_TextureOverrides.empty() ||
+        !m_SourceCharacterTextureOverrides.empty() || !other.m_SourceCharacterTextureOverrides.empty()) return false;
+    const auto validLighting = [](const CMaterial& material)
+    {
+        return (!material.m_Surface.hasBakedLighting || (material.m_BakedAverage && material.m_BakedDirectional)) &&
+            (!material.m_Surface.hasStaticShadow || material.m_StaticShadow);
+    };
+    if (!validLighting(*this) || !validLighting(other)) return false;
+    if (this == &other) return true;
+    if (m_pDevice != other.m_pDevice || m_pContext != other.m_pContext ||
+        m_iDiffuseMirrorU != other.m_iDiffuseMirrorU ||
+        !SameStaticLightingValue(m_Surface, other.m_Surface) ||
+        !SameStaticLightingValue(m_ColorTint, other.m_ColorTint) ||
+        !SameStaticLightingValue(m_vDiffuseTint, other.m_vDiffuseTint)) return false;
+    // Preserve legacy slots as well as every surface input. Only the three
+    // original baked-light/shadow SRVs are allowed to differ.
+    for (size_t type = 0u; type < AI_TEXTURE_TYPE_MAX; ++type)
+    {
+        if (m_Textures[type].size() != other.m_Textures[type].size()) return false;
+        for (size_t slot = 0u; slot < m_Textures[type].size(); ++slot)
+            if (m_Textures[type][slot] != other.m_Textures[type][slot]) return false;
+    }
+    const auto textures = [](const CMaterial& material)
+    {
+        return std::array<ID3D11ShaderResourceView*, 20>{
+            material.m_SurfaceDiffuse.Get(), material.m_SurfaceSpecular.Get(), material.m_SurfaceReflection.Get(),
+            material.m_SurfaceNormal.Get(), material.m_SurfaceOverlayDiffuse.Get(), material.m_SurfaceOverlayNormal.Get(),
+            material.m_SurfaceDetailNormal.Get(), material.m_SurfaceORM.Get(), material.m_SourceFoliageMask.Get(),
+            material.m_SourceSpecialMask.Get(), material.m_SourceLandscapeHeight.Get(), material.m_SourceBlendDiffuseG.Get(),
+            material.m_SourceBlendDiffuseB.Get(), material.m_SourceBlendNormalG.Get(), material.m_SourceBlendNormalB.Get(),
+            material.m_SurfaceEmissive.Get(), material.m_EnvironmentCube.Get(), material.m_EnvironmentBRDF.Get(),
+            material.m_SourceIndirectBRDF.Get(), material.m_SourceIndirectCube.Get()};
+    };
+    if (textures(*this) != textures(other) ||
+        m_SourceCharacterTextures != other.m_SourceCharacterTextures ||
+        m_SourceLandscapeDiffuse != other.m_SourceLandscapeDiffuse ||
+        m_SourceLandscapeNormal != other.m_SourceLandscapeNormal ||
+        m_SourceLandscapeWeights != other.m_SourceLandscapeWeights) return false;
+    return true;
+}
+
+HRESULT CMaterial::Bind_StaticLightingBank(const shared_ptr<CShader>& shader,
+    std::span<const CMaterial* const> materials) const
+{
+    if (!shader || materials.size() < 2u || materials.size() > 8u || materials.front() != this) return E_INVALIDARG;
+    std::array<ID3D11ShaderResourceView*, 8> average{}, directional{}, shadow{};
+    for (size_t i = 0u; i < materials.size(); ++i)
+    {
+        const auto* material = materials[i];
+        if (!material || !Can_BatchStaticLightingWith(*material)) return E_INVALIDARG;
+        average[i] = material->m_Surface.hasBakedLighting ? material->m_BakedAverage.Get() : nullptr;
+        directional[i] = material->m_Surface.hasBakedLighting ? material->m_BakedDirectional.Get() : nullptr;
+        shadow[i] = material->m_Surface.hasStaticShadow ? material->m_StaticShadow.Get() : nullptr;
+    }
+    const uint32_t disabled = 0u;
+    if (FAILED(shader->Bind_RawValue("g_MapLightingBankSize", &disabled, sizeof(disabled)))) return E_FAIL;
+    if (FAILED(shader->Bind_Textures("g_MapBakedAverageBank", average.data(), 8u)) ||
+        FAILED(shader->Bind_Textures("g_MapBakedDirectionalBank", directional.data(), 8u)) ||
+        FAILED(shader->Bind_Textures("g_MapStaticShadowBank", shadow.data(), 8u))) return E_FAIL;
+    const uint32_t count = static_cast<uint32_t>(materials.size());
+    const HRESULT result = shader->Bind_RawValue("g_MapLightingBankSize", &count, sizeof(count));
+    if (FAILED(result)) (void)shader->Bind_RawValue("g_MapLightingBankSize", &disabled, sizeof(disabled));
+    return result;
 }
 
 HRESULT CMaterial::Bind_SurfaceLighting(shared_ptr<CShader> shader)

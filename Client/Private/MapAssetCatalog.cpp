@@ -510,10 +510,13 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
 	const auto* version = root.Find("formatVersion");
 	const auto* rows = root.Find("materials");
     const auto* placementRows = root.Find("placementLighting");
+    const auto* placementWindRows = root.Find("placementWind");
     std::unordered_set<std::string> rootFields = { "schema", "formatVersion", "areaId", "materials" };
     if (placementRows) rootFields.insert("placementLighting");
+    if (placementWindRows) rootFields.insert("placementWind");
 	if (!exactFields(root, rootFields) ||
         (placementRows && (!version || !version->Is_Number() || version->Get_Number() != 2.0 || !placementRows->Is_Array())) ||
+        (placementWindRows && (!version || !version->Is_Number() || version->Get_Number() != 2.0 || !placementWindRows->Is_Array())) ||
 		!readString(root, "schema", schema) || schema != "lostark.map-materials" ||
 		!version || !version->Is_Number() || (version->Get_Number() != 1.0 && version->Get_Number() != 2.0) ||
 		!readString(root, "areaId", areaId) || areaId != m_AreaId ||
@@ -620,6 +623,7 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
             if (program == "UE3_FOLIAGE_VS_E4FE") surface.sourceFoliageWindProgram = 1u;
             else if (program == "UE3_FOLIAGE_VS_A1C6") surface.sourceFoliageWindProgram = 2u;
             else if (program == "UE3_FOLIAGE_VS_1C39") surface.sourceFoliageWindProgram = 3u;
+            else if (program == "UE3_FOLIAGE_VS_098C") surface.sourceFoliageWindProgram = 4u;
             else return reject("wind program");
             if (family == "bg-source-grass-masked" && surface.sourceFoliageWindProgram == 1u) return reject("wind family");
             const auto vector = [](const DATA_JSON_VALUE* value, float4_t& result)
@@ -646,11 +650,11 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
             const auto& bounds = surface.sourceFoliageWindLocalBounds;
             const auto& direction = surface.sourceFoliageWindDirectionSpeed;
             if (surface.sourceFoliageWindLocalCenter.w != 1.f || surface.sourceFoliageWindActorPosition.w != 0.f ||
-                bounds.x <= 0.f || bounds.y <= 0.f || bounds.z <= 0.f || bounds.w <= 0.f ||
+                bounds.x < 0.f || bounds.y < 0.f || bounds.z < 0.f || bounds.w <= 0.f ||
                 bounds.x > 1e5f || bounds.y > 1e5f || bounds.z > 1e5f || bounds.w > 1e5f ||
-                direction.x != 0.f || direction.y != 0.f || direction.z != 1.f || direction.w != 0.f ||
+                direction.w < 0.f || (direction.x == 0.f && direction.y == 0.f && direction.z == 0.f) ||
                 !surface.Has_ValidSourceFoliageWindProgramInputs())
-                return reject("wind bounds or upstream no-wind contract");
+                return reject("wind bounds or native scene-wind contract");
             surface.sourceFoliageWind = true;
         }
 		if (family == "diffuse-sampler")
@@ -673,9 +677,11 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
             };
             const auto* inputs = row.Find("sourceLandscape");
             const auto* casts = row.Find("castsShadow");
-            if (version->Get_Number() != 2.0 || !exactFields(row, { "assetId", "materialName", "sourceMaterial", "family", "castsShadow", "sourceLandscape" }) ||
+            std::unordered_set<std::string> fields = { "assetId", "materialName", "sourceMaterial", "family", "castsShadow", "sourceLandscape" };
+            if (sourceBaked) fields.insert("bakedLighting");
+            if (version->Get_Number() != 2.0 || !exactFields(row, fields) ||
                 !inputs || !exactFields(*inputs, { "grid", "weightmapScaleBias", "heightmapScaleBias", "weightmaps", "heightmapTexture", "layers" }) ||
-                !casts || !casts->Is_Boolean() || sourceWind || sourceBaked ||
+                !casts || !casts->Is_Boolean() || sourceWind ||
                 (renderMode != MODEL_SURFACE_RENDER_MODE::INHERIT && renderMode != MODEL_SURFACE_RENDER_MODE::DEFERRED)) return reject("fields or draw policy");
             auto& surface = material.surface;
             auto& source = surface.sourceLandscape;
@@ -734,6 +740,16 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                 }
             }
             if (!source.Has_ValidInputs()) return reject("grid, layer bounds, normal selection, or weight allocation");
+            if (const auto* baked = row.Find("bakedLighting"))
+            {
+                std::string space;
+                if (!exactFields(*baked, { "averageTexture", "directionalTexture", "colorSpace" }) ||
+                    !readString(*baked, "colorSpace", space) || (space != "linear" && space != "srgb") ||
+                    !texture(baked->Find("averageTexture"), material.bakedAveragePath) ||
+                    !texture(baked->Find("directionalTexture"), material.bakedDirectionalPath)) return reject("baked lighting");
+                surface.hasBakedLighting = true;
+                surface.bakedLightingSRGB = space == "srgb";
+            }
             staged[assetId].push_back(std::move(material));
             continue;
         }
@@ -1809,6 +1825,43 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
 		}
 		staged[assetId].push_back(std::move(material));
 	}
+    std::unordered_map<std::string, MAP_PLACEMENT_WIND> stagedWind;
+    if (placementWindRows)
+    {
+        if (placementWindRows->Get_Array().size() > 65536u)
+        { m_Status = "Too many placement wind rows"; return false; }
+        for (const auto& row : placementWindRows->Get_Array())
+        {
+            MAP_PLACEMENT_WIND wind;
+            std::string sourceId;
+            const auto readVector = [&](const char* name, float* values, size_t count)
+            {
+                const auto* vector = row.Find(name);
+                if (!vector || !vector->Is_Array() || vector->Get_Array().size() != count) return false;
+                for (size_t i = 0; i < count; ++i)
+                {
+                    const auto& value = vector->Get_Array()[i];
+                    if (!value.Is_Number() || !std::isfinite(value.Get_Number()) || std::abs(value.Get_Number()) > 1e8) return false;
+                    values[i] = static_cast<float>(value.Get_Number());
+                }
+                return true;
+            };
+            float owner[3]{}, bounds[4]{};
+            if (!exactFields(row, { "sourcePlacementId", "assetId", "actorPositionSourceCm", "objectDimensionsAndRadiusSourceCm" }) ||
+                !readString(row, "sourcePlacementId", sourceId) || !IsValidDisplayText(sourceId, MAX_EVIDENCE_LENGTH) ||
+                !readString(row, "assetId", wind.assetId) || !staged.contains(wind.assetId) ||
+                !readVector("actorPositionSourceCm", owner, 3) || !readVector("objectDimensionsAndRadiusSourceCm", bounds, 4) ||
+                bounds[0] < 0.f || bounds[1] < 0.f || bounds[2] < 0.f || bounds[3] <= 0.f)
+            { m_Status = "Invalid placement wind inputs: " + sourceId; return false; }
+            const auto& materials = staged.at(wind.assetId);
+            if (std::none_of(materials.begin(), materials.end(), [](const auto& material) { return material.surface.sourceFoliageWind; }))
+            { m_Status = "Placement wind has no source-wind material: " + sourceId; return false; }
+            wind.inputs.actorPositionSourceCm = float4_t(owner[0], owner[1], owner[2], 1.f);
+            wind.inputs.objectDimensionsAndRadiusSourceCm = float4_t(bounds[0], bounds[1], bounds[2], bounds[3]);
+            if (!stagedWind.emplace(sourceId, std::move(wind)).second)
+            { m_Status = "Duplicate placement wind source ID: " + sourceId; return false; }
+        }
+    }
     std::unordered_map<std::string, MAP_PLACEMENT_LIGHTING> stagedLighting;
     if (placementRows)
     {
@@ -1882,6 +1935,7 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
 		}
 	}
 	m_PlacementLighting = std::move(stagedLighting);
+	m_PlacementWind = std::move(stagedWind);
 	return true;
 }
 
@@ -1889,6 +1943,12 @@ const MAP_PLACEMENT_LIGHTING* CMapAssetCatalog::Find_PlacementLighting(const std
 {
     const auto found = m_PlacementLighting.find(sourcePlacementId);
     return found == m_PlacementLighting.end() ? nullptr : &found->second;
+}
+
+const MAP_PLACEMENT_WIND* CMapAssetCatalog::Find_PlacementWind(const std::string& sourcePlacementId) const
+{
+    const auto found = m_PlacementWind.find(sourcePlacementId);
+    return found == m_PlacementWind.end() ? nullptr : &found->second;
 }
 
 bool_t CMapAssetCatalog::Load_AreaStaged(const std::string& areaId)

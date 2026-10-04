@@ -111,3 +111,9 @@ weight/height sampler에는 subsection31/32의 중복 texel 경계가 잘못된 
 `landscape-native/resource-delivery.json`은 GBResources의 신규 DDS92개, 변경 WModel41개, 동일 WModel1개를 기록한다. `landscape-native/final-verification.json`은 stage112파일, 신규 material42행,134개 리소스와 기존 PNG84개, Bern·Character Select 누계371개·85,445,734B의 실제 설치본/전달본 hash 일치를 모두 PASS로 기록한다. 이 누계는 GBResources 폴더 전체나 Maharaka 전달분을 포함하는 수치가 아니다.
 
 빌드 인계: 현재 작업본의 Engine·Client와 관련 셰이더를 함께 빌드해야 새 family14 재질을 소비한다. 이 세션은 전체 빌드·링크·SDK 또는 제품 CSO 배포를 수행하지 않았다. 이미 실행 중인 Client는 새 코드를 자동으로 갖지 않는다. 사용자 화면 확인 대상은 `(250,15,-168)`의 반복 무늬·흐림, 앞선 두 좌표의 지형, Height Fog 토글과 용 탑승 시 조명이다. 안개·탑승 변경의 별도 근거는 [해당 RESULT](2026-09-30_BERN_FOG_AND_MOUNT_LIGHTING_RESULT.md)다. 화면 PASS와 전체 조명 복원 완료를 이번 수치 검사로 대신하지 않는다.
+
+## G09. 10-04 후속 복원 연결
+
+G08에서 미연결로 남긴 Bern Landscape의 원본 RNM·static shadow를42개 component 전체에 연결하고 원본 전체 mip DDS126개를 설치했다. 원본 native CPU의 lightmap UV padding/subsection 입력과 Heightmap pixel TBN을 검증해 기존 family14와 일반·instanced draw에 연결했다. 최신 authoring 저장본에 해당 조명 필드만 병합하고 공식 publisher로 runtime material을 게시했다. 근거·빌드 상태·사용자 화면 확인 경계는 [10-04 Bern RESULT G11/G12](../10-04/2026-10-04_BERN_CLIFF_UV_RESULT.md)에 모은다.
+
+Character Select에서 실제 참조하는 원본 RNM DDS56개의 누락 mip도 원본 payload로 복구해 설치했다. 상위 mip 해상도·내용과 렌더링 저장 옵션은 유지했다. 세부 검증과 추가 미복원 후보는 [렌더링 원본 대조 RESULT](../10-04/2026-10-04_RENDERING_SOURCE_EVIDENCE_RESULT.md)를 따른다. 이 후속 복구를 지형 늘어짐의 최종 화면 해결이나 전체 환경 복원 완료로 해석하지 않는다.

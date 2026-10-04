@@ -1491,6 +1491,9 @@
     <ClCompile Include="..\Private\Level_KakulSaydonArena_WorldObjects.cpp" />
     <ClCompile Include="..\Private\WorldObjectTool.cpp" />
     <ClCompile Include="..\Private\WorldLevelTool.cpp" />
+    <ClCompile Include="..\Private\WorldSceneTool.cpp" />
+    <ClCompile Include="..\Private\WorldSceneTool_Animation.cpp" />
+    <ClInclude Include="..\Public\WorldSceneTool.h" />
     <ClCompile Include="..\Private\PhysicalResourceCatalog.cpp" />
     <ClInclude Include="..\Public\WorldSequenceObject.h" />
     <ClInclude Include="..\Public\WorldObjectTool.h" />

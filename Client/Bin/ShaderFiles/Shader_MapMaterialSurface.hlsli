@@ -256,6 +256,8 @@ struct MAP_SURFACE_SAMPLE
     float4 diffuse;
     float3 worldNormal;
     float3 geometricNormal; // Program 14: packed Landscape height-normal input.
+    float3 landscapeTangent;
+    float3 landscapeBinormal;
     float3 tangentNormal;
     float3 specular;
     float3 reflectionDelta;
@@ -530,18 +532,20 @@ float MapSourceDirectionalLightmapWeight(float3 tangentDirection, float3 coeffic
     return dot(coefficients, weights * weights);
 }
 
-float3 EvaluateMapSourceBGIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 lightmapUV,
-    float4 averageScale, float4 directionalScale, float3 worldPosition,
+// Both ordinary and instanced texture-bank draws consume the same RNM equation.
+float3 EvaluateMapSourceBGIndirectSamples(MAP_SURFACE_SAMPLE surface,
+    float3 average, float3 coefficients, float3 worldPosition,
     float3 tangent, float3 binormal, float3 normal, bool sourceSpecial)
 {
-    if (g_HasBakedLighting == 0u || averageScale.w == 0.f) return surface.subspecularRadiance;
-    const float3 average = g_BakedAverageTexture.Sample(SurfaceLightmapSampler, lightmapUV).rgb * averageScale.rgb;
-    const float3 coefficients = g_BakedDirectionalTexture.Sample(SurfaceLightmapSampler, lightmapUV).rgb * directionalScale.rgb;
     float3 radiance = surface.diffuse.rgb * average *
         MapSourceDirectionalLightmapWeight(surface.tangentNormal, coefficients);
     if (sourceSpecial || (g_SourceBgFlags & 4u) != 0u)
     {
-        const float3x3 tangentToWorld = float3x3(MapGeometryNormalizeOrZero(tangent), MapGeometryNormalizeOrZero(binormal), MapGeometryNormalizeOrZero(normal));
+        // Landscape VS varyings carry transform axes; its height texture supplies
+        // the per-pixel terrain frame used by the native RNM specular policy.
+        const float3x3 tangentToWorld = g_SurfaceProgram == 14u ?
+            float3x3(surface.landscapeTangent, surface.landscapeBinormal, surface.geometricNormal) :
+            float3x3(MapGeometryNormalizeOrZero(tangent), MapGeometryNormalizeOrZero(binormal), MapGeometryNormalizeOrZero(normal));
         const float3 tangentView = normalize(mul(tangentToWorld, g_vCamPosition.xyz - worldPosition));
         const float3 reflected = reflect(-tangentView, surface.tangentNormal);
         const float3 lobes = saturate(float3(
@@ -551,6 +555,17 @@ float3 EvaluateMapSourceBGIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 li
         radiance += surface.specular * average * dot(coefficients, pow(lobes, (sourceSpecial ? surface.specularPower : g_SurfaceSpecularPower) + 1.f));
     }
     return radiance + surface.subspecularRadiance;
+}
+
+float3 EvaluateMapSourceBGIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 lightmapUV,
+    float4 averageScale, float4 directionalScale, float3 worldPosition,
+    float3 tangent, float3 binormal, float3 normal, bool sourceSpecial)
+{
+    if (g_HasBakedLighting == 0u || averageScale.w == 0.f) return surface.subspecularRadiance;
+    const float3 average = g_BakedAverageTexture.Sample(SurfaceLightmapSampler, lightmapUV).rgb * averageScale.rgb;
+    const float3 coefficients = g_BakedDirectionalTexture.Sample(SurfaceLightmapSampler, lightmapUV).rgb * directionalScale.rgb;
+    return EvaluateMapSourceBGIndirectSamples(surface, average, coefficients,
+        worldPosition, tangent, binormal, normal, sourceSpecial);
 }
 
 // EFEngine native packer 0x5f0c30 and the exact FLOOR12_01 BasePass.

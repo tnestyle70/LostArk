@@ -1236,11 +1236,22 @@ HRESULT CRenderer::Render_NonBlend()
 		m_RenderObjects[ETOUI(RENDERGROUP::NONBLEND)];
 	auto& DeferredOverlayObjects =
 		m_RenderObjects[ETOUI(RENDERGROUP::DEFERRED_OVERLAY)];
-	for (size_t renderIndex = 0; renderIndex < NonBlendObjects.size(); ++renderIndex)
+	for (size_t renderIndex = 0; renderIndex < NonBlendObjects.size();)
 	{
 		CGameObject* const pRenderObject = NonBlendObjects[renderIndex].get();
-		if (nullptr != pRenderObject)
-			pRenderObject->Render_Group(RENDERGROUP::NONBLEND);
+		if (nullptr == pRenderObject) { ++renderIndex; continue; }
+		const auto remaining = std::span<const std::shared_ptr<CGameObject>>(
+			NonBlendObjects.data() + renderIndex, NonBlendObjects.size() - renderIndex);
+		size_t consumed = 0u;
+		const HRESULT result = pRenderObject->Render_AdjacentNonBlend(remaining, consumed);
+		if (FAILED(result) || consumed == 0u || consumed > remaining.size())
+		{
+			NonBlendObjects.clear();
+			DeferredOverlayObjects.clear();
+			(void)CGameInstance::Get().End_MRT();
+			return FAILED(result) ? result : E_UNEXPECTED;
+		}
+		renderIndex += consumed;
 	}
 
 	/* Deferred overlays must run after every opaque object while the complete

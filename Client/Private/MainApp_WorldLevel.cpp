@@ -17,12 +17,153 @@
 #include "SequencerTool.h"
 #include "UIInputRouter.h"
 #include "WorldLevelTool.h"
+#include "WorldSceneTool.h"
+#include "MapAuthoringHost.h"
 #include "WorldObjectTool.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cfloat>
+#include <sstream>
 
 using namespace Client;
+
+bool CMainApp::UpdateWorldMeshInspectionInput()
+{
+    const bool leftDown = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+    const bool rightDown = (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
+    if (!leftDown && !rightDown) m_bWorldMeshPickSuppressMouse = false;
+    const auto currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+    if (!m_bWorldMeshPickArmed) return m_bWorldMeshPickSuppressMouse;
+    if (auto* controller = Find_ActivePlayerController(); controller && controller->Is_DebugPlayerPlacementArmed())
+    {
+        m_bWorldMeshPickArmed = false;
+        if (m_pWorldSceneTool) m_pWorldSceneTool->Set_Status("Move Player owns the next world click; mesh selection was preserved.");
+        return m_bWorldMeshPickSuppressMouse;
+    }
+    auto* host = Find_ActiveMapAuthoringHost();
+    const HWND foreground = GetForegroundWindow();
+    DWORD process = 0u;
+    if (foreground) GetWindowThreadProcessId(foreground, &process);
+    if (!m_pWorldSceneTool || !m_bDeveloperToolsVisible || !IsDebugToolVisible(DEBUG_TOOL::WORLD_SCENE) ||
+        !m_pWorldSceneTool->Is_Open() || m_eDebugInputOwner != DEBUG_TOOL::WORLD_SCENE ||
+        !host || currentLevel != m_iWorldMeshPickLevel || process != GetCurrentProcessId() ||
+        rightDown || (GetAsyncKeyState(VK_ESCAPE) & 0x8000) != 0)
+    {
+        m_bWorldMeshPickArmed = false;
+        m_bWorldMeshPickSuppressMouse = leftDown || rightDown;
+        if (m_pWorldSceneTool) m_pWorldSceneTool->Set_Status("World pick cancelled; previous selection preserved.");
+        return true;
+    }
+    const bool pressed = leftDown && !m_bWorldMeshPickLeftDown;
+    m_bWorldMeshPickLeftDown = leftDown;
+    if (!pressed || foreground != g_hWnd || ImGui::GetIO().WantCaptureMouse ||
+        ImGui::GetIO().WantTextInput || CUIInputRouter::Get().Is_MouseClaimedThisFrame() ||
+        CUIInputRouter::Get().Was_MouseClaimedLastFrame()) return true;
+    CUIInputRouter::Get().Claim_Mouse_This_Frame();
+    m_bWorldMeshPickSuppressMouse = true;
+    vector_t origin, direction;
+    float3_t rayOrigin{}, rayDirection{};
+    if (CPlayerController::Try_PickWorldRay(origin, direction))
+    {
+        XMStoreFloat3(&rayOrigin, origin); XMStoreFloat3(&rayDirection, direction);
+        const auto inCameraDepth = [](const float3_t& point) {
+            const auto* view = CGameInstance::Get().Get_Transform(D3DTS::VIEW);
+            const auto* projection = CGameInstance::Get().Get_Transform(D3DTS::PROJ);
+            if (!view || !projection) return false;
+            float4_t clip{};
+            XMStoreFloat4(&clip, XMVector4Transform(XMVectorSet(point.x, point.y, point.z, 1.f),
+                XMLoadFloat4x4(view) * XMLoadFloat4x4(projection)));
+            return std::isfinite(clip.w) && std::isfinite(clip.z) && clip.w > .0001f &&
+                clip.z >= 0.f && clip.z <= clip.w;
+        };
+        MAP_WORLD_MESH_PICK mapPick; DEPLOY_WORLD_MESH_PICK deployPick;
+        const bool mapHit = host->Get_MapAuthoringRuntime().Try_PickInspectionSurface(rayOrigin, rayDirection, mapPick) && inCameraDepth(mapPick.hitPosition);
+        auto* deploy = host->Get_MapAuthoringDeployRuntime();
+        const bool deployHit = deploy && deploy->Try_PickInspectionSurface(rayOrigin, rayDirection, deployPick) && inCameraDepth(deployPick.hitPosition);
+        if (mapHit || deployHit)
+        {
+            const float mapDistance = mapHit ? XMVectorGetX(XMVector3LengthSq(XMLoadFloat3(&mapPick.hitPosition) - origin)) : FLT_MAX;
+            const float deployDistance = deployHit ? XMVectorGetX(XMVector3LengthSq(XMLoadFloat3(&deployPick.hitPosition) - origin)) : FLT_MAX;
+            if (deployHit && (!mapHit || deployDistance < mapDistance)) m_pWorldSceneTool->Complete_DeployPick(std::move(deployPick));
+            else m_pWorldSceneTool->Complete_MapPick(std::move(mapPick));
+            m_bWorldMeshPickArmed = false;
+            return true;
+        }
+    }
+    m_pWorldSceneTool->Set_Status("No live map or Deploy triangle hit. Click again, or Esc / right-click to cancel.");
+    return true;
+}
+
+void CMainApp::RenderWorldMeshInspection()
+{
+    if (!Find_ActiveMapAuthoringHost()) return;
+    ImGui::SeparatorText("World Scene");
+    if (ImGui::Button("Open World Scene Tool")) (void)EnsureDebugTool(DEBUG_TOOL::WORLD_SCENE);
+    ImGui::SameLine(); ImGui::TextDisabled("Live mesh pick / transform / map animation");
+}
+
+void CMainApp::RenderWorldSceneTool()
+{
+    if (!IsDebugToolVisible(DEBUG_TOOL::WORLD_SCENE) || !m_pWorldSceneTool) return;
+    if (m_eDebugWindowFocusPending == DEBUG_TOOL::WORLD_SCENE)
+    { ImGui::SetNextWindowFocus(); m_eDebugWindowFocusPending = DEBUG_TOOL::NONE; }
+    m_pWorldSceneTool->Render();
+    if (m_pWorldSceneTool->Consume_InteractionRequest()) m_eDebugInputOwner = DEBUG_TOOL::WORLD_SCENE;
+    if (!m_pWorldSceneTool->Is_Open()) { SetDebugToolVisible(DEBUG_TOOL::WORLD_SCENE, false); return; }
+    float3_t focus{}; float radius = 8.f;
+    if (m_pWorldSceneTool->Consume_FocusRequest(focus, radius))
+    {
+        std::string status; (void)FocusWorldLevelPosition(focus, radius, status); m_pWorldSceneTool->Set_Status(std::move(status));
+    }
+    if (m_pWorldSceneTool->Consume_PickRequest())
+    {
+        if (m_bWorldMeshPickArmed)
+        {
+            m_bWorldMeshPickArmed = false;
+            m_pWorldSceneTool->Set_Status("World pick cancelled; previous selection preserved.");
+        }
+        else
+        {
+            m_bWorldLevelPickArmed = false;
+            if (m_pWorldLevelTool) m_pWorldLevelTool->Cancel_PlacementPick("World Scene Tool owns the next click.");
+            if (m_pGuideAITool) m_pGuideAITool->Cancel_PlacementPick("World Scene Tool owns the next click.");
+            if (auto* bern = CLevel_Bern::Get_Active()) bern->Get_PlayerController().Cancel_DebugPlayerPlacement();
+            if (auto* select = CLevel_CharacterSelect::Get_Active()) select->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
+            if (auto* valtan = CLevel_ValtanArena::Get_Active()) valtan->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
+            if (auto* kouku = CLevel_KakulSaydonArena::Get_Active()) kouku->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
+            if (m_pMapEffectPlacementRequest)
+            {
+                auto* owner = m_eMapEffectPlacementOwner == DEBUG_TOOL::SEQUENCER ?
+                    m_pKoukuSaydonActionWorkbench.get() : m_pSequenceActionWorkbench.get();
+                if (owner) owner->Cancel_MapEffectPlacementRequest(m_pMapEffectPlacementRequest->iRequestToken);
+                m_pMapEffectPlacementRequest.reset(); m_eMapEffectPlacementOwner = DEBUG_TOOL::NONE;
+            }
+            m_eDebugInputOwner = DEBUG_TOOL::WORLD_SCENE;
+            m_bWorldMeshPickArmed = true; m_bWorldMeshPickLeftDown = true;
+            m_iWorldMeshPickLevel = CGameInstance::Get().Get_CurrentLevelID();
+            m_pWorldSceneTool->Set_Status("Click a world mesh outside the UI. Esc / right-click cancels.");
+        }
+    }
+    float3_t hit{};
+    if (!m_pWorldSceneTool->Try_GetSelectedHit(hit)) return;
+    const auto* view = CGameInstance::Get().Get_Transform(D3DTS::VIEW);
+    const auto* projection = CGameInstance::Get().Get_Transform(D3DTS::PROJ);
+    if (!view || !projection) return;
+    float4_t clip;
+    XMStoreFloat4(&clip, XMVector4Transform(XMVectorSet(hit.x, hit.y, hit.z, 1.f),
+        XMLoadFloat4x4(view) * XMLoadFloat4x4(projection)));
+    if (!std::isfinite(clip.w) || clip.w <= .0001f || clip.z < 0.f || clip.z > clip.w) return;
+    const float nx = clip.x / clip.w, ny = clip.y / clip.w;
+    if (!std::isfinite(nx) || !std::isfinite(ny) || std::abs(nx) > 1.f || std::abs(ny) > 1.f) return;
+    const auto* viewport = ImGui::GetMainViewport();
+    const ImVec2 center(viewport->Pos.x + (nx * .5f + .5f) * viewport->Size.x,
+        viewport->Pos.y + (.5f - ny * .5f) * viewport->Size.y);
+    auto* draw = ImGui::GetBackgroundDrawList(); const auto color = IM_COL32(255, 220, 65, 255);
+    draw->AddCircle(center, 10.f, color, 24, 2.f);
+    draw->AddLine({center.x - 15.f, center.y}, {center.x + 15.f, center.y}, color, 2.f);
+    draw->AddLine({center.x, center.y - 15.f}, {center.x, center.y + 15.f}, color, 2.f);
+}
 
 std::string CMainApp::GetWorldLevelAreaId() const
 {

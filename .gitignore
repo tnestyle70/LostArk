@@ -155,3 +155,6 @@ __pycache__/
 # reproducible outputs, not source.
 /V5.*.generated.*.json
 /CON
+
+# Personal practice files. Shared learning content lives in the Interview repository.
+/취업준비/

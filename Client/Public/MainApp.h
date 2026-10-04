@@ -43,6 +43,7 @@ class CSequencerTool;
 class CCharacterActionWorkbench;
 class CWorldObjectTool;
 class CWorldLevelTool;
+class CWorldSceneTool;
 class CGuideAITool;
 class CMaharakaAITool;
 struct WORLD_LEVEL_TOOL_REQUEST;
@@ -100,6 +101,7 @@ private:
 		PROFILER,
 		WORLD_OBJECT,
 		WORLD_LEVEL,
+		WORLD_SCENE,
 		GUIDE_AI,
 		MAHARAKA_AI,
 		EFFECT_COMPOSITION,
@@ -588,6 +590,9 @@ private:
 	bool FocusWorldLevelPosition(const float3_t& position, float radius, std::string& status);
 	bool UpdateMapEffectPlacementInput();
 	bool UpdateWorldLevelPlacementPickInput();
+	bool UpdateWorldMeshInspectionInput();
+	void RenderWorldMeshInspection();
+	void RenderWorldSceneTool();
 	void RenderMapEffectPlacementMarker();
 	void UpdateWorldLevelTool();
 	void RenderWorldLevelTool();
@@ -1017,6 +1022,10 @@ private:
 #ifdef _DEBUG
 	unique_ptr<CWorldObjectTool> m_pWorldObjectTool;
 	unique_ptr<CWorldLevelTool> m_pWorldLevelTool;
+	unique_ptr<CWorldSceneTool> m_pWorldSceneTool;
+	bool m_bWorldMeshPickArmed = false, m_bWorldMeshPickLeftDown = true;
+	bool m_bWorldMeshPickSuppressMouse = false;
+	uint32_t m_iWorldMeshPickLevel = UINT32_MAX;
 	unique_ptr<CGuideAITool> m_pGuideAITool;
 	unique_ptr<CMaharakaAITool> m_pMaharakaAITool;
 	unique_ptr<WORLD_LEVEL_TOOL_REQUEST> m_pWorldLevelPendingMapRequest;

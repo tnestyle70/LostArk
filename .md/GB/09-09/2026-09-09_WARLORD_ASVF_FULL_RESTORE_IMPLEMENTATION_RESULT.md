@@ -385,3 +385,70 @@ Effect_PresentationService.cpp에8줄만 추가해 정확한 effect.warlord.skil
 현재 방패가 원본과 다른 이유도 분리했다. V의 outer.shield.1~5와5개 장식은09-10 사용자 요청으로 Alt V의 sk_wgl_gdd_01/fx_w_wgl_gdd_02를 반경4.5m에72도 간격으로 배치한 project-authored 요소다. 원본 V의5개 방패 ring으로 기록하지 않는다. 원본 attack의 fm_d_wgl_gprotection_05는6개 사각형이 합쳐진 별도 source geometry이고 현재 occurrence도 유지된다. 원본 PlaySkeletalMesh notify의 None/None은 추가 방패 actor의 근거가 아니다. 이번 조사에서 손에 든 방패·최종 원작 외형까지 대응이 닫힌 것은 아니므로 기존 사용자 ring을 임의 삭제하거나 교체하지 않았다. 원본 EPAL_ROTATE_Z의 현재 ROTATE_Y 소비 방향도 이번 배율 결함과 구분하며 추정 회전을 추가하지 않았다.
 
 원본 조사와 최소 변경 근거는 out/WarlordVOriginal20261004의 source_acquisition.json, source_action_17170.json, closure, recipe_comparison.json, normalized_bone_samples.json, normalization_probe.log, normalization-verification.json이다. 실제 GPU 전후 결과는 out/WarlordVDraw20261004/native-v-result.json에 있다.
+
+
+### G19 재검토: 현재 설치본과 사용자 localSpace 정책 보존
+
+10-04 후속 검토의 기준은 `codex/rendering-workbench-presentation`의 HEAD `2645d7cce4608ca09fe8fdb05542ea23b8c00fde`와 현재 미커밋 변경이다. V 슬롯17170 → start/loop/attack skillbinding → loop0ms의 `effect.warlord.skill.17170.clip2.full.restore` cue → DIRECT catalog → 정규화 selector의 실제 연결을 재확인했다. Service SHA256과 네 V JSON의 SHA256은 위 G19 수치 검증 당시와 모두 같고 JSON parse를 통과했다. clip2의 일반 resource와 sourceProfile texture를 합친41개 고유 resource가 모두 설치돼 있다. Product/Tool은 같은 selector/helper를 소비하며 이번 재검토에서 C++·JSON·Resources는 수정하지 않았다.
+
+기존 Debug/Release Product receipt의 Client 변경 목록에는 모두 `Effect_PresentationService.obj`와 각 구성의 `Client.exe`가 포함된다. 현재 설치 Debug EXE의 SHA256은 `4f8f10dca13620cccc7d8aa97b9f23addb483208700a8a2de810167bd6a5d79d`, Release는 `3d4b8feb2ff9293586d241f2a8d465980ab8465085e0fffe7eb7e3ce645fb0ed`다. 설치 EXE/OBJ의 수정 시각은 각각 해당 Product 빌드 구간 안에 있고 CL 입력 추적에도 Service가 있다. 위11182/1496 검증은 기존 실행 기록을 재확인한 것으로 이번에 재실행·재빌드했다고 기록하지 않는다. Service와 이 RESULT의 scoped diff check를 확인했다.
+
+원본 Required의 `bUseLocalSpace=true`와 현재 `detail.particle.localSpace=false` 차이는 추출 손실이 아니다. `98d99eec58`에서 clip2 전체29개 flag를 true→false로 변경했고, 09-14 CHARACTER_EFFECT_AND_ARENA_RECOVERY PLAN/RESULT의 여섯 class 출생 좌표 정책과 일치한다. 기존 compiler는 원본 값을 올바로 투영했다. 이번 요청에서 이 사용자 정책을 임의로 되돌리지 않았다. 설치 loop81개 본 샘플의 basis는 전 구간 동일하고 translation의0초 대비 최대 변화는0.000239102m다. 원본 축잠금의 Z→Client Y 변환과 최종 camera/emitter-facing 소비의 원작 동치는 별도 미확정 경계로 유지하며 추정 회전을 넣지 않았다. 실제 인게임 번개 방향·가림·밝기의 최종 판정은 여전히 사용자 확인 대상이다.
+
+## G20. 10-04 V 낙뢰의 Alt V 재질 연결과 설치 검증
+
+사용자 정정은 슬롯 교환이 아니라 Alt V의 번개 모습을 V에서도 사용하라는 요청이다. 현재 V17170과 Alt V17250의 cue는 서로 다르다. 공통 F 유래 native446은 V4wave/Alt V18wave이며 색도 다르고, Alt V의 전용1166 sprite12occurrence는 V에 없었다. V의 기존 thunder669는 다른 MIC·texture·PS를 사용한다. 이번 후보는 원본 V 복원값이 아니라 사용자 표현 변경으로 구분한다.
+
+full52개/실제 loop clip2 29개 중 stable ID `authored.source-particle.full-warlord-v.c7517b0ab0450a5a1646` 한 행만 대상으로 했다. Alt V의 `authored.source-particle.full-warlord-alt_v.981227451bbcb3791340`에서 material/resources와 DynamicParameter·Color·ColorScaleOverLife module을 그대로 가져왔다.1166의 alpha-two-sided pass와4개 texture·scalar/vector/static switch가 함께 연결된다. 기존669의 random4x1 atlas는1166과 맞지 않아 Required의 interpolationmethod/randomimagetime과 SubUV module을 제거했다. renderer는 Required interpolation을 통해 UV를 자르므로 sourceProfile.subUVMode만 바꾸는 방식으로 처리하지 않았다.
+
+V의 detail 전체, identity socket과 b_effectroot attachment,16~20m StartSize·size curve·bottom pivot1,200~500cm cylinder 반경, emitter timing·burst/rate·lifetime 분포·seed는 그대로다. 기존446/665/666와5방향 방패를 포함한 다른 모든 요소·문서 필드의 차이는0이다. Alt V의13~16m 크기·15~18m 낙하·top pivot0·ground anchor 회전을 복사하지 않았다. 허용 필드는 대상 행의 `material`, `resources`, `sourceNode`, `sourceRecipe.modules`뿐이다. sourceNode에는 원래 V ID와 Alt V 재질 donor ID를 구분해 기록했다.
+
+후보와 정확한 before/after field patch는 [candidate-manifest.json](../../../out/WarlordVAltLightning20261004/candidate-manifest.json) 및 같은 폴더의 `*.effect.json.patch.json`에 있다. 경로는 저장소 기준 `out/WarlordVAltLightning20261004`이며 [검증 영수증](../../../out/WarlordVAltLightning20261004/verification.json)에 전체 SHA와 JSON 차이 경로를 기록했다. full SHA는 `0f942a820d7460c92a2884c445ae234447fd247892e23ac21ef361a0fa6f9369`→`e2aeb4963e714273d8c16408644a76c25bfcbe295f380c8448680adff691060d`, clip2는 `657bead3394b6ea4c23dfe4fdc94926ab4cde4f5e6168911c0b1d3c1ed3aafb4`→`1c068c0933facf07a9f9156d35d1371bbd858283758f62e38404dd2513e6543c`다.
+
+기존 `out/WarlordVDraw20261004/probe_v.exe`의 실제 Product Codec/Renderer Stage/Playback/Draw를 재사용했다. 관련 native669/1166 CSO는 현재 설치 Debug와 SHA가 동일하다. clip2에는 실제 설치 WModel의 정규화된 loop 본 샘플을 넣었다. 후보는51draw 모두 양수이며13,220pixel·peak9.60439·nonfinite0이다. 이전669는50draw/49양수였다. 양쪽의8개 particle 출생 frame은 `[1,8,14,19,23,27,30,33]`으로 같다. shader 입력 module이 emitter 공용 RNG 소비 순서를 바꾸므로 위치·수명의 개별 random sample과 마지막 live frame50→51은 다르다. 저장 분포와 발생 입력 보존을 검증했으며 frame별 world 행렬 동일성을 주장하지 않는다. full 후보도 Codec/Stage/Draw52양수·nonfinite0을 통과했지만, full 검사는 별도 full-action bone clock 검증이 아니다.
+
+이 검사는 합성 카메라·identity owner·빈 scene depth의 WARP 검사다. Client/UI를 실행하지 않았고 첨부 화면의 모든 광원을 한 occurrence로 확정하거나 실제 게임 화면 동일성을 판정하지 않았다. 후보 생성 담당자는 제품 Data/Resources/C++/HLSL을 바꾸지 않았으며, 최종 담당자가 최신 저장본으로 CAS·백업·원자 교체를 수행할 경계로 전달했다. EffectCatalog의 DIRECT_AUTHORED_DOCUMENT는 `CEffectCatalog::Stage_SourceDirectAuthoredCatalog`에서 `Data/Effects/Authored`를 직접 읽으므로 별도 DataFiles Effect publisher 복사본은 없다. 실행 중 메모리 draft의 Reload는 사용자 소유다.
+
+최종 담당자가 두 Data 문서를 최신 디스크 SHA 확인·백업·원자 교체로 설치했다. [설치 영수증](../../../out/WarlordVAltLightning20261004/installed-receipt.json)의 상태는INSTALLED이며 허용 필드 밖 차이는0이다. 설치 이후 후보 경로 대신 실제 `Data/Effects/Authored` 두 파일을 위 probe로 다시 읽었다. 두 파일 bytes/SHA와 전체 실행 log는 각각 검증 후보와 완전히 같고, clip2의51/51양수와full의52/52양수·nonfinite0을 재확인했다. [설치본 재검증](../../../out/WarlordVAltLightning20261004/installed-verification.json)에 파일·log hash를 기록했다. PLAN/RESULT와 두 변경 JSON의 scoped diff check를 통과했다. 이번 G20은 이미 설치된1166 shader를 재사용하는 데이터 변경이므로 새 C++/HLSL 빌드를 수행했다고 기록하지 않는다. 실행 중 Client의 메모리 Reload 및 사용자 화면 확인은 수행하지 않았다.
+
+## G21. 10-04 Alt V 돌·바닥 효과의 6방향 복구와 설치
+
+사용자가 첨부한 한 방향 돌의 원인에 해당하는 데이터 누락을 확인했다. Action17250 stage1 notify024~029는 같은 `Par_W_WGL_SuperGProtection_explo_de`를1.026193976초에 호출하며690byte payload 중464~467byte의 signed FRotator yaw만 `[0,-10922,-21845,32768,21845,10922]`로 다르다. 기존 generic decoder는 별도 int FRotator를 읽지 않고 앞쪽 float rotation0을 투영했다. G18은 이 발생 중 바닥 native1140의6개만 보완했으며 돌 메시 `fm_k_ttrrstone_02`의 emitter13/15 각6개를 포함한 나머지54개는 회전0으로 남았다. 원본 전체 분모는11종×6=66개다. 이 절은 당시 제품에 존재한10종60개를 복구하며 재질 미해결로 제외됐던 emitter16의6개는 후속 절에서 별도로 다룬다.
+
+현재60개를 stable ID로 수정했다. 누락된54개에는 원본 notify yaw와 전용 `authored.warlord.altv.guardian-ground` slot 및 socket `[90,180,0]`을 연결했다. 기존 본 배율 정규화는0.01만 제거하므로 본의 X반전·YZ교환을 제거하는 이 socket도 필요하다. 공용 b_effectroot slot은 바꾸지 않았다. EPAL_Z의 native1140/1141/1142 sprite18개에는 기존 `followEmitterAxisRotation` 소비자를 연결했다.1140의 고정 `billboardRoll=-notifyYaw`만0으로 돌리고 원본 StartRotation90도는 보존했다. 기존 고정 roll은 owner yaw가90도이면 중심의 방사 방향과 quad 장축이 직각이 되는 결함이 있었으며, 출생시 ParticleRoot를 사용하는 opt-in으로 같은 시전 방향을 소비한다. 살아 있는 world-space 입자를 이후 owner 이동에 붙이지 않는다.
+
+정확한 semantic 변경은176필드다. slot54개·socket54개·0이 아니었던 notify yaw45개·axis flag18개·0이 아니었던 manual roll5개다. 다른126개 요소와 모든 SourceRecipe·material·resource·size·lifetime·timing·seed·원본 TypeData/MeshRotation 및 사용자 localSpace=false 정책을 보존했다. 같은 source를 재추출하여 후보를 다시 생성한 bytes가 일치하고 후보에 두 번 적용하면 no-op이다. 후보 전용 `Tools/EffectPipeline/build_warlord_altv_radial_candidate.py`는 정확한 raw layout·notify·지원 emitter 분모를 검증하고 product Data를 직접 쓰지 않는다.
+
+| 검증 | 결과와 범위 |
+|---|---|
+| 독립 source/JSON 대조 | 실제 Action6notify 재추출,186중60변경·126보존,176개 manifest field와 실제 차이 완전 대응 |
+| 독립 axis-lock 수식 |90조건, owner0 기존/후보 최대오차2.23e-16, 기대 owner 회전 최대오차3.89e-16. 실제 본 재생과 별도 검사 |
+| 실제 설치 CModel 본·제품 Codec/Stage/Playback | Alt V clip2 본147샘플, socket·정규화·owner yaw0/90/180. 대상 native1140/1141/1142/1143의30occurrence에서 각 yaw22,407 particle-frame 비교 |
+| 실제 재생 보존 | 같은 frame의 발생 수·color·dynamic 일치, 축 길이 최대차9.6e-7. 후보 owner90의 최종 행렬은 owner0×Yaw90와 최대1.44e-6,180은8.9e-16 |
+| 기존1140 교체 근거 | owner0의 최종 quad 최대차1.19e-6으로 동등. 기존 owner90/180의 방향 미추적을 수정하고 중심은 보존 |
+| 실제 돌 geometry 대표 frame | 설치96정점·154삼각형·preScale0.01,12occurrence의 frame69에서1,152정점/법선 확인. owner90 기대 변환 오차는 정점7.60e-7m·unit normal1.72e-7·전방1.42e-7·축 길이2.43e-7. 원본 size0인 출생 frame68은 법선 역행렬 검사에서 제외 |
+| 격리 WARP 재생 | baseline/candidate×3yaw 모두 양수 출력·nonfinite0. 각156draw/3,788submit에는 같은 native profile을 쓰는 대상 밖6occurrence도 포함되므로60개 전부의 GPU 개별 성공 수로 해석하지 않음 |
+
+실제 로그와 설치 본·shader 근거는 `out/WarlordAltVRockDirections20261004/probe/transform-verification.json` 및 같은 폴더에 있다. 원본6방향 parent 행렬 최대오차는9.62e-8이며 실제 설치본 SHA와 검증 후보의 일치도 확인했다. 독립 감사는 `out/WarlordAltVStoneReview20261004/candidate-independent-review.json`, `axis-locked-rotation-algebra.json`에 기록했다. 합성 카메라의 headless WARP를 사용했으며 Client/UI·원작 게임·최종 화면은 실행하거나 판정하지 않았다.
+
+최신 source SHA256 `308d620b51c9c3485c181b150e1362e498c873e8f28165470d973e9de26570bb`를 재확인하고 백업·원자 교체했다.60개 수정 후 설치 SHA256은 `6aa1840a39ccad9cac95a6436c063d95a13dc2de9cb6f6f0077d1b98a628dc55`이며 후보와 byte 동일하다. `out/WarlordAltVRockDirections20261004/installed-receipt.json`이 설치 근거다. 실제 소비자는 기존 DIRECT_AUTHORED_DOCUMENT의 `Data/Effects/Authored/effect.warlord.skill.17250.clip2.full.restore.effect.json`이고 별도 runtime 복사본은 없다. 이번 수정에 새 C++·HLSL·Resources는 없다. 현재 작업공간의 Debug/Release Product 빌드 PASS는 `20261004T002815359Z-debug-product.json`, `20261004T005228448Z-release-product.json`을 따르며 data-only 수정 뒤 같은 빌드를 반복하지 않았다. 실행 중 메모리 Reload와 사용자 화면 확인은 남아 있다.
+
+## G22. 10-04 마지막 발생에서 제외된 작은 돌 6개 복구
+
+G21의 재설치 원본 ParticleSystem에는11종 emitter가 있고 notify024~029가 각각 전체를 호출한다. 원본 분모는66개다. 기존 full은10종60개만 포함했고 emitter16의6개는 이 문서와 연결된 EXCLUSIONS의 NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED 항목이었다. 같은 발생의 fm_k_ttrrstone_02 두 줄12개는 G21에서 방향을 고쳤으며, 이번 추가6개는 별도 fm_a_stone_001의 날아가는 파편이다. 단순히 현재 돌을 복제하지 않았다.
+
+Tools/EffectPipeline/build_warlord_altv_debris_candidate.py를 추가했다. 현재 설치 Action과 UE3 package/CDO를 다시 읽어14개 module·48개 source/default record를 기존 emitter_detail/flatten_source_properties로 투영한다. 원본 notify1.026193976초 뒤 emitter delay0.600000024초에8개씩 발생하고 lifetime은2~2.5초다. 원본 Mesh StartSize4는 무차원 크기이며 modelPreScale0.01가 cm→m 변환을 소유한다. scalar Rotation·RotationRate, velocity·gravity, size curve, Required random4x2 정보와 native LocalVF 소비를 보존했다. 사용자 world-space 출생 선택은 false로 유지하며 G21의 ground slot/socket과 각 원본 yaw를 연결했다. 오래된 unified의0.1초 fallback 수명이나 source class default 누락을 그대로 복제하지 않았다.
+
+재질은 현재 원본 MIC fx_m_mi_05.fx_mi.fx_e_me_ht_03_4_ma와 같은 Class Select Warlord native5111을 재사용한다. 원본 selected material key16becdfc…와 PS3a96e00b…·2texture·3scalar·2source vector·use_under_light=false가 닫혔다. 같은75명령의2452는 neutral override의 W가0이라 RGB0이 되고609는 masked coverage 대신 particle alpha를 반환하므로 사용하지 않았다.5111은 neutral override1과 masked coverage를 함께 보존한다. 다른 class shader나 rendering option은 수정하지 않았다.
+
+fm_a_stone_001의 설치 변환본들은 position/normal/tangentXYZ/UV/winding이 같으나 tangent handedness가 달랐다. 최신 원본 static mesh의32개 정점을 position/UV/packed normal/tangent로 일대일 연결해 TangentZ.w의21양수/11음수를 회수했다. 기존ClassSelect donor에서19개 tangent.w와 관련 WGEO 메타데이터만 바꾼 별도 Effect/Warlord/FullRestore/Meshes/fm_a_stone_001.wmodel 후보를 공식 metadata builder와 parser로 검증했다. 위치·UV·normal·tangentXYZ·index·bounds·material bytes는 그대로다. COLOR0는 donor bytes를 보존했으며 원본 채널로 인증하지 않는다. 선택 PS는 이 vertex color lane을 사용하지 않는다. 실제 CModel decoder에서도32개 sign이 모두 원본과 같고 CPU export decode 기준 binormal 최대오차4.84e-8,19개 binormal 외 정점/index 보존을 확인했다. 원본 VS의 packed UNORM은 byte127.5 중심이고 기존 UModel/cooked N/T는 byte128 중심이므로 이 작은 오차를 원본 GPU TBN 전체 동치로 해석하지 않는다. 이번 변경은 기존XYZ를 보존한 원본 handedness 복구다. 기존ClassSelect/Lance 공용mesh는 덮지 않는다.
+
+최종 후보는 기존186개 요소와 모든 문서 필드를 그대로 보존하고 정확 stable ID6개를 추가한192개다. 후보 SHA는5dd2899ae2203170036c1e4fa0b9df6b7166070eaaa98208e157680cea8c2c8d, 파생WModel SHA는3dc9f079f8d228c41d7af35d645f31227cddda9f14c023589ae7c7d1d1999f96이다. out/WarlordAltVRockDirections20261004/Emitter16FinalCandidate의 candidate-manifest.json에 원본·후보·donor·리소스 hash와 삽입6개를 기록했다. Python 문법·JSON parse·기존186개 불변·최종192개 재실행 bytes동일을 통과했다. G21 radial helper도 선택적으로 exact emitter16 여섯 개만 허용하도록 확장해 최종66발생에서 no-op이며 부분집합과 잘못된2452 프로필은 거부한다. 이전60개 후보·설치 영수증은 별도로 유지했다.
+
+실제 Product Codec/Stage/Playback/Draw 검증은 out의 Resources overlay로 수행했다. 설치된 Alt V clip2의 실제147개 b_effectroot pose와 ownerYaw0/90/180을 사용하며2.433333초 이후 본은 끝 pose에 고정한8초 natural-tail 검사다. 각6notify가8개씩48개를 만들고60Hz의 첫 frame98(1.633333초), 마지막247(4.116667초)까지 살아 있었다. 각 yaw에서6422 particle frame의 수·color·dynamic은 같았고 owner90도 변환 최대오차3.9e-6,축길이9.5e-7이었다. 빈 조명 fixture에서는 원본5111 식에 따라 RGB0이므로 현재 저장된 Character Select scene.source-rendering의 directional ambient[.28,.27,.26]만 검증 fixture에 연결했다. rendering 정본은 수정하지 않았다. 이 조건에서0/90/180의 HDR·alpha 양수 pixel은17852/15224/23057,양수 frame134/133/135이며 세 경우 모두150 active frame·883submit·nonfinite0이다.
+
+근거는 probe/emitter16-verification.json, probe/stone001-source-sign-actual-decode.json, probe/light-fixture.json, Emitter16FinalCandidate/generator-validation.json 및 out/WarlordAltVStoneReview20261004의 source-sign-candidate-receipt.json·source-sign-join-proof.json·emitter16-material-resolved.json이다. 이 결과는 실제 Client 화면·action 전환 성공 판정을 대신하지 않는다. 제품 파일 설치와 실행 중 저작 draft의 Reload를 구분하며 후자는 사용자가 수행한다. 이번 G22는 기존 shader/runtime을 재사용하는 Data6행·파생Resource1개 추가로 새 C++/HLSL 빌드를 수행했다고 기록하지 않는다.
+
+최종 담당자가 최신 디스크 SHA 확인·백업·원자 교체로192개 Data와11,936byte 파생WModel을 설치했다. Emitter16FinalCandidate/installed-receipt.json은INSTALLED이며 기존186개 필드 불변과 새6개만의 삽입을 확인했다. probe/emitter16-installed-verification.json에서 실제 Data·Resources SHA가 위3owner 재생/GPU 후보 및 실제 CModel32sign 검사 후보와 같음을 확인했다. 이 최종 읽기 검증은 GPU 재실행이나 Client 화면 확인으로 기록하지 않는다. 실제Source11종×6발생66개가 같은 제품cue에 연결됐으며 source direct lighting의 현재어댑터를 포함한 원본 deferred 전체 동치까지 완료했다고 주장하지 않는다. 변경 Python/PLAN/RESULT/Data의 scoped diff check를 통과했다.
+
+원본 VS 보강 근거는 out/WarlordAltVRockDirections20261004/Emitter16ShaderProof/shader-proof.json과0c1413bd3ee54d449ce7fdac8c7f1542.asm이다. 현재 설치 ShaderCache의 sc_fam_test_01_ps/export0/group23/code0에서 exact GUID의 DXBC를 읽고 D3DDisassemble만 수행했다. DXBC SHA는8f3c65d0da96298834704f68ee1fee480eadee643eea6e659502f38ec9ac5d43이다. 원본은 B=cross(N,T)×W,재직교 T=cross(B,N)×W를 만들고 W×primitive determinant를 출력한다. 이 식은 handedness 복구를 뒷받침하며 앞서 구분한 packed UNORM/CPU export 정규화 차이를 없앴다는 뜻은 아니다.

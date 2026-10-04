@@ -135,7 +135,7 @@ v1의 `bg_seamless-specular_msk`, `bg_base_msk`를 유지하며, v2는
 `bg_base_pbr_seamless_opa`, `bg_base_pbr_opa`의 원본 채널·계산을 지원한다.
 PBR 입력에는 texture별 색 공간, optional `bakedLighting`/`environment`가 있다.
 `placementLighting`은 stable `sourcePlacementId`와 일치하는 `assetId`에 atlas 좌표와 광량 계수를
-연결한다. baked 입력을 선택한 모델은 실제 UV1이 있어야 하며 환경 cube와 BRDF 입력은 함께 요구한다.
+연결한다. 일반 모델의 baked 입력은 실제 UV1이 있어야 하며 아래 Landscape는 grid UV0를 사용한다. 환경 cube와 BRDF 입력은 함께 요구한다.
 필드·원본 근거·근사 경계는 해당 바닥 복구 PLAN/RESULT를 따른다. 임의의 모든 ORM 재질을
 이 family로 대신 해석하지 않는다.
 
@@ -148,7 +148,13 @@ factors(desaturation/normal intensity/specular power/0), weight의 map/channel �
 D는 명시한 색 공간, N/weight/height는 linear다. grid는 모든 삼각형의 UV0×62로
 복원하며 초기 모델의 cliff side-projection UV를 그대로 연결하지 않는다.
 재질 이름은 WModel에서 정확1개이며 deferred만 지원한다. 누락·중복 layer/channel,
-사용하지 않는 weightmap, 미지원 RNM/environment/emissive 입력은 거부한다.
+사용하지 않는 weightmap, 미지원 environment/emissive 입력은 거부한다.
+optional `bakedLighting`은 기존 averageTexture/directionalTexture/colorSpace 및
+optional staticShadow 계약을 사용한다. 해당 `placementLighting`에는 원본 Landscape
+CPU의 grid padding 좌표와 RNM/shadow atlas 좌표를 합성한 scale/bias를 저장한다.
+ordinary/instanced shader는 이 family의 UV0에만 합성 좌표를 적용하고 표면 layer UV는
+보존한다. RNM의 view-dependent 계산은 Heightmap BA로 재구성한 pixel TBN을 사용한다.
+정적 그림자의 penumbra는 기존 `PROJECT_ADAPTER` 경계를 유지한다.
 원본 texture mip과 hole topology를 보존하며 실시간 height/weight 레이어를 샘플한다.
 이 family가 있는 게시본은 대응 Engine·Client와 두 mesh shader·Deferred를 함께 빌드한
 결과로 읽어야 한다. source contract는 `Tools/LandscapeExtractor/SourceContracts/`에
@@ -1017,3 +1023,37 @@ binding은 기존대로 양수만 허용한다. object resource의 기본 scale�
 FrontCounterClockwise만 뒤집고 원래 rasterizer를 복원하며 CullNone을 바꾸지 않는다.
 
 WORLD Animation의 첫 track은 `startMs > 0`을 허용한다. 첫 시작 전에는 해당 clip의 Source In 자세를 유지하고, 이후 기존 sample/rate 계약을 소비한다. Sequencer의 WORLD Animation 행은 가운데 이동과 양끝 Source In/Out trim을 기존 WorldObjectTool draft에 적용한다. Save는 WORLD 저작 파일만 저장하며 다른 Composition의 미저장 변경을 대신 저장하거나 자동 publish하지 않는다.
+
+### F1 World Scene Tool
+
+Debug Bern/Character Select/Valtan/Kouku는 기존 IMapAuthoringHost를 통해 현재 Level-owned map/Deploy를
+독립 F1 창에 제공한다. `Get_MapAuthoringRuntime`은 기존 runtime reference이며 새 로더가 아니다.
+nearest LOD0/static/current-skeletal geometry의 placement/source/asset/WModel/mesh/material과 hit XYZ를
+읽고 목록·Focus·clipboard를 제공한다. 피킹은 authoring parity를 요구하지 않으며 실패는 선택을 보존한다.
+
+map placement 편집은 CMapPlacementEditSession의 stable ID 계약과 공식 Area publish를 사용한다.
+부분 live scope는 전체 source draft를 보존하고 live ID/asset 검증을 통과한 변경만 저장한다. 실제 writer는
+stage·고유 temporary·교체 직전 expected source bytes 비교·atomic replace를 수행한다. 바인딩 실패,
+runtime reload와 도구 숨김은 dirty draft를 삭제하지 않는다. VALTAN_PHASE/backdrop과 active borrower
+경계는 유지한다. Delete는 session duplicate만 제거하며 원본 행의 identity는 Visible로 보존한다.
+
+Deploy preview는 기존 Begin/Sample/End를 사용하고 clip이 없는 static/bind-pose 모델도 가역 root
+position/rotation/positive uniform scale와 opacity/Reveal을 제공한다. overlay는 product packet을
+덮어쓰지 않으며 authoritative state/debris/suppression이 선점한다. SOURCE_EXACT Deploy 영구 저장은
+수행하지 않는다. self-motion preview의 host/area/level/runtime generation이 바뀌면 새 runtime에 과거
+clock을 복원하지 않는다. 렌더링 옵션과 Server gameplay는 이 도구의 저장 범위 밖이다.
+
+### 원본 식생 material·primitive wind 입력
+
+`lostark.map-materials` formatVersion 2의 optional `placementWind`는 sourcePlacementId를
+join key로 하고 `assetId`, `actorPositionSourceCm[3]`,
+`objectDimensionsAndRadiusSourceCm[4]`를 저장한다. 모두 finite이며 dimensions는 nonnegative,
+radius는 positive다. 중복 source ID·없는 asset·wind material이 없는 asset은 admission 실패다.
+optional array가 없으면 이전 자료의 기존 동작을 유지한다. loader는 material과 placement
+wind를 함께 stage한 뒤 commit하며 placement의 asset도 join 결과와 같아야 한다.
+
+재질 `foliageWind`는 원본 E4FE/1C39/098C program과 local bounds·owner·direction/speed·
+player position·scalarRows를 운반한다. asset 공유 때문에 primitive owner 입력은 placement별로
+전달하며 standalone/instanced surface와 shadow가 동일 입력을 소비한다. 좌표는 원본 cm이며
+사용자 authoring TRS와 wind owner phase를 하나의 저장 필드로 합치지 않는다.
+자료 정본은 기존 Data/Maps/Authoring mapmaterials이며 공식 publisher만 runtime 문서를 게시한다.

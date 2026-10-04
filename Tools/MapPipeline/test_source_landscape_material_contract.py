@@ -94,6 +94,51 @@ class LandscapeMaterialPublishTests(unittest.TestCase):
         finally:
             fixture.close()
 
+    def test_native_lighting_roundtrip_and_invalid_inputs_preserve_area(self):
+        fixture, path, document = self.prepare(sharded=True)
+        try:
+            document["materials"][0]["bakedLighting"] = {
+                "averageTexture": "Map/reflection.dds",
+                "directionalTexture": "Map/reflection.dds",
+                "colorSpace": "linear",
+                "staticShadow": {
+                    "texture": "Map/reflection.dds", "lightGuid": "79ad76d6208c814790c50f5f74b7b8a0",
+                    "lightChannel": 1, "penumbraWidth": 0.05,
+                    "penumbraBasis": "PROJECT_ADAPTER", "shadowExponent": 2,
+                },
+            }
+            document["placementLighting"] = [{
+                "sourcePlacementId": "baseline.A", "assetId": "FIXTURE",
+                "coordinateScale": [0.953125, 0.953125],
+                "coordinateBias": [0.015372984111309052] * 2,
+                "averageScale": [1, 1, 1], "directionalScale": [1.5683544, 1.9274721, 1.6980708],
+                "shadowCoordinateScale": [0.953125, 0.953125],
+                "shadowCoordinateBias": [0.015372984111309052] * 2,
+            }]
+            fixture.write_json(path, document)
+            result = fixture.publish()
+            self.assertEqual(0, result.returncode, result.stdout)
+            self.assertEqual(document, fixture.read_json(fixture.runtime_map / path.name))
+            before = fixture.snapshot_runtime()
+            mutations = {
+                "missing_rnm": lambda doc: doc["materials"][0]["bakedLighting"].update(averageTexture="Map/missing.dds"),
+                "escaped_shadow": lambda doc: doc["materials"][0]["bakedLighting"]["staticShadow"].update(texture="../outside.dds"),
+                "unknown_baked_field": lambda doc: doc["materials"][0]["bakedLighting"].update(mipBias=-2),
+                "missing_shadow_coordinate": lambda doc: doc["placementLighting"][0].pop("shadowCoordinateBias"),
+                "wrong_source": lambda doc: doc["placementLighting"][0].update(sourcePlacementId="absent.source"),
+                "outside_atlas": lambda doc: doc["placementLighting"][0].update(coordinateScale=[1, 1]),
+            }
+            for name, mutate in mutations.items():
+                with self.subTest(name=name):
+                    invalid = copy.deepcopy(document)
+                    mutate(invalid)
+                    fixture.write_json(path, invalid)
+                    result = fixture.publish()
+                    self.assertNotEqual(0, result.returncode, result.stdout)
+                    self.assertEqual(before, fixture.snapshot_runtime())
+        finally:
+            fixture.close()
+
 
 if __name__ == "__main__":
     unittest.main()

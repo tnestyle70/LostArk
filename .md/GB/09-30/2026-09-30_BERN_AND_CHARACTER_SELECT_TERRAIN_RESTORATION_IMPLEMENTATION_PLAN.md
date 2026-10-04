@@ -85,3 +85,22 @@ G06의 원본 ShaderCache 대조에서 전체 42컴포넌트의 native static ke
 | 기존 Bern mapmaterials 및 Landscape 리소스 | 원본 D/N/weight/height 입력 연결과 기존42개 asset의 material binding, stable placement 보존 |
 
 먼저 LC762 입력·원본 수식·shader 컴파일을 격리 산출물에서 대조하고, 같은 계약의42개 topology·holes·원본 mip과 publisher 검증을 마친 후보만 CAS/백업/원자 교체한다. 테스트용 컴파일 산출물은 제품 EXE/DLL이나 실행 중 shader를 교체하지 않는다. 사용자 실행 화면과 현재 바이너리에 새 코드가 들어갔는지는 별도 검증 상태로 유지한다. 공개 스키마 소비 계약과 실제 완료 증거는 TEAM Area guide 및 RESULT에 반영한다.
+
+## G08. 10-04 원본 Landscape 조명·그림자 입력 복원
+
+사용자가 지정한 `(98.73,49.13,-103.39)`의 LAND01 LC622를 다시 대조했다. 앞선 NoLightmapPolicy 수식 대조는 표면 레이어에 한정됐으며 실제 component가 보유한 RNM과 정적 그림자를 검증하지 못했다. 재설치 원본의 현재42개 component 모두 FLightMap2D와 정적 그림자1개를 가진다. 현재 family14 parser와 CMaterial은 이 입력을 거부한다. 원본 DistanceFieldShadowedDynamicLightDirectionalLightmapTexturePolicy와 현재 설치 EFEngine의 LandscapeLightmapScaleBias CPU 계산을 연결한 증거를 바탕으로 이 누락을 보완한다.
+
+기존 bakedLighting/placementLighting 계약을 family14에 허용한다. 각 component 자신의 RNM2장·G8 shadow와 원본 coefficient 및 atlas 좌표를 사용한다. 원본 CPU grid/padding 좌표를 현재 정규화된 mesh UV0 기준으로 환산한 값과 atlas scale/bias를 합성하여 기존 placementLighting에 저장한다. LC622는 scale0.953125, bias0.015372984111309052이며4,096정점의 원본 subsection 식과 float32 최대오차5.96e-8이다. 다른 component는 자신의 해상도·원본 상수를 검증한 뒤 같은 식을 적용한다. UV0 표면 반복과 배치 TRS는 바꾸지 않는다.
+
+ordinary/instanced VS는 family14의 조명·그림자 좌표에 UV0를 명시적으로 사용한다. RNM view-dependent specular는 Heightmap BA에서 재구성한 pixel TBN을 사용하며 VS가 운반하는 world axis를 tangent basis로 오인하지 않는다. 기존 RNM·정적 그림자 draw와 deferred 경로를 확장하고 새 renderer나 모델 형식을 만들지 않는다. 그림자의 penumbraWidth/중심은 기존 PROJECT_ADAPTER임을 유지하며 원본 CPU 복원값이라고 주장하지 않는다.
+
+| 파일·영역 | 이번 변경 책임 |
+|---|---|
+| MapAssetCatalog, CModel, CMaterial, MapAssetRenderUtils | family14의 strict baked input 검증, 경로 보존·로드·기존 draw 바인딩 |
+| MapMaterialSurface, SourceLandscapeSurface, 두 mesh shader | pixel TBN 전달, 기존 RNM 평가 및 UV0 기반 lighting 좌표 |
+| Publish-MapAuthoring 및 landscape 계약 검사 | 동일 schema 허용, texture/placement 의존성과 실패 시 이전 게시본 보존 |
+| LandscapeExtractor 후보 도구·Bern mapmaterials·Resources | 원본42개별 texture mip/계수/좌표를 재현하고 최신 저장본에 필요한 행만 병합 |
+
+원본 추출·CPU/셰이더 수치 비교 → focused shader/계약 검증 → 최소 제품 증분 컴파일 → 최신 정본 hash 재확인과 백업·원자 설치 → 공식 publisher → 파일·DDS 로드 재검증 순서로 진행한다. 기존 G00/G07의 제품 빌드 제외는09-30 작업 기록이며 이번 추가 복원의 코드 소비 확인에는 필요한 증분 빌드를 사용한다. Client/UI 실행과 화면 확인은 사용자가 한다. 렌더링 옵션을 변경하지 않는다. 사용자 요청의 캐릭터 선택·Bern 전체 추가 감사는 근거 있는 누락과 미확인 후보를 RESULT에 구분한다.
+
+캐릭터 선택 SL00의 추가 감사에서는 사용 중인 RNM56개가 원본4~11mip 중 mip0만 설치된 것을 확인했다. 기존 mip0는56개 모두 fresh UModel 결과와 byte-exact다. 동일 원본 decoder로 각 하위 mip을 회수해 원본 크기·포맷·top mip·색 공간을 보존한 DDS 후보를 만든다. 후보의 모든 mip과 실제 로더 입력을 검증하고 기존 Resources56개만 hash CAS/백업/원자 교체한다. 재질/배치/렌더링 옵션은 변경하지 않는다. Bern 일반 모델의 같은 현상은 별도로 원본 및 설치 header를 감사하며 미조사 전체를 일괄 변환하지 않는다.

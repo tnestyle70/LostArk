@@ -143,7 +143,7 @@ VS_OUT VS_MAIN(VS_IN input)
             input.vColor,g_WorldMatrix,g_SourceCharacterTime,g_SourceFoliageWindDirectionSpeed);
         output.vPosition=mul(mul(output.vWorldPos,g_ViewMatrix),g_ProjMatrix);
     }
-    if(g_SurfaceProgram==9u && g_SourceFoliageWindEnabled!=0u)
+    if(g_SourceFoliageWindEnabled!=0u)
     {
         output.vWorldPos.xyz += SourceFoliageWorldOffset(output.vWorldPos.xyz,input.vColor,g_WorldMatrix);
         output.vPosition=mul(mul(output.vWorldPos,g_ViewMatrix),g_ProjMatrix);
@@ -159,10 +159,13 @@ VS_OUT VS_MAIN(VS_IN input)
     }
 
     output.vRawTexcoord = input.vTexcoord;
-    output.vLightmapUV = input.vLightmapUV * g_LightmapScaleBias.xy + g_LightmapScaleBias.zw;
+    // Landscape's native CPU grid-to-lightmap and atlas transforms are composed
+    // in the existing placement scale/bias; its WModel stores grid UV in UV0.
+    const float2 lightingUV = IsMapSurfaceSourceLandscape() ? input.vTexcoord : input.vLightmapUV;
+    output.vLightmapUV = lightingUV * g_LightmapScaleBias.xy + g_LightmapScaleBias.zw;
     output.vLightmapAverageScale = g_LightmapAverageScale;
     output.vLightmapDirectionalScale = g_LightmapDirectionalScale;
-    output.vStaticShadowUV = input.vLightmapUV * g_StaticShadowScaleBias.xy + g_StaticShadowScaleBias.zw;
+    output.vStaticShadowUV = lightingUV * g_StaticShadowScaleBias.xy + g_StaticShadowScaleBias.zw;
     return output;
 }
 

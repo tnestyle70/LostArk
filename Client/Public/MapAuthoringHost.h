@@ -16,7 +16,7 @@ class CDeployPropRuntime;
 /* A product Level that lets the Debug Map Tool edit its live map in place.
    The Level keeps owning its placements, batches and, when it has any, its
    Deploy runtime; the tool borrows them while it is attached and never
-   stages a second copy of the Area. The KoukuSaydon arena and Character
+   stages a second copy of the Area. Bern, Valtan, KoukuSaydon and Character
    Select implement it; Development keeps the tool's own staged Area. */
 class IMapAuthoringHost
 {
@@ -26,6 +26,7 @@ public:
 	virtual uint32_t Get_MapAuthoringLevelIndex() const = 0;
 	/* Short display name for status text, e.g. "Kouku". */
 	virtual const char_t* Get_MapAuthoringLabel() const = 0;
+	virtual CMapPlacementRuntime& Get_MapAuthoringRuntime() = 0;
 	virtual const CMapAssetCatalog& Get_MapAuthoringCatalog() const = 0;
 	virtual std::vector<MAP_RUNTIME_PLACED_ENTRY>& Get_MapAuthoringPlacements() = 0;
 	virtual std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY>& Get_MapAuthoringBatches() = 0;
@@ -44,7 +45,7 @@ public:
 };
 
 /* The host of the current Level, or null when that Level exposes no live map
-   (Lobby, Bern, Valtan, Development). Always null outside Debug builds. */
+   (Lobby, Development). Always null outside Debug builds. */
 IMapAuthoringHost* Find_ActiveMapAuthoringHost();
 
 NS_END

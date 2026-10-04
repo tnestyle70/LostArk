@@ -68,3 +68,33 @@ scale 변경이나 임의 UV 반복 배수, 전역 triplanar 투영을 이번 �
 
 C++/shader 변경이 없는 데이터 수정이므로 별도 제품 재컴파일은 필요 없다.
 실행하지 않은 Client/UI 검사와 GPU 화면 결과를 PASS로 기록하지 않는다.
+
+## G03. 재설치 원본의 mip 복구와 입력 재대조
+
+사용자의 후속 전체 복원 요청에 따라 재설치된 `bg_fat_stone_a` 원본을 다시 읽는다.
+원본 D/N은 모두1024²이며11개 native mip를 갖는다. 현 설치 source D/N은
+1024² 한 mip만 있고 제품 DDS loader가 추가 mip를 생성하지 않는다. 원본 해상도를
+높이거나 무늬를 새로 만드는 작업이 아니라 축소·경사면 샘플링에 필요한 원본 mip를
+보존하는 작업이다. 이 누락을 첨부 화면의 큰 돌 흐림 원인으로 단정하지 않는다.
+
+기존 `extract_ue3_texture_mips.py`로 두 texture만 읽어
+`out/ValtanWaitingStoneReview20261004`에 후보를 만든다. mip0의 현재 압축 bytes가
+원본과 같아야 하며 나머지도 원본 block을 그대로 추출한다. 필터링·재압축·색공간
+변경과 Resources의 legacy texture 사본 수정은 하지 않는다.
+
+동시에 원본 MIC의 parent/static set을 기존 material extractor/compiler로 계산해 현재
+기본 material 행과 대조하고, 원본 mesh의 position/UV stream을 설치 WModel과 연결한다.
+새 원본 입력에서 차이가 없는 UV tiling, geometry와 사용자 placement TRS는 유지한다.
+현재 두 source texture의 소비자는 발탄17 material 행·54배치이며 편집13배치를 포함한다.
+
+제품과 같은 DirectXTK DDS loader를 별도 out WARP probe에서 호출해 후보의1024²,
+Texture2D/SRV mip11, mostDetailedMip0 및 GPU에 올라간 모든 압축 mip bytes를 확인한다.
+Client 실행·화면 캡처·최종 사용자 판정은 이 검사에 포함하지 않는다.
+
+설치 대상은 `Resources/Map/LV_LUT_HEARTRB_ED/SourceFullRestore/Textures/`의
+`bg_fat_stone_a_tex_bg_fat_stone_rock02_d_ksr.dds`와 `_n_ksr.dds` 두 파일이다.
+최신 SHA 재확인·out 백업·원자 교체·실패 시 자기 변경 복원 후 설치 hash와 loader를
+재검사한다. Data와 shader 변경이 없어 publisher·Product 재컴파일은 필요 없다.
+실행 중 Client의 기존 SRV가 파일 교체만으로 갱신됐다고 설명하지 않으며 사용자가
+다음 로드에서 확인한다. 정확 actor와 Original/Workbench 상태 및 원작 동일 위치의
+최종 화면 동등성은 여전히 별도 확인이다.

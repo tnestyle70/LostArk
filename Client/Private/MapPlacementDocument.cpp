@@ -7,6 +7,7 @@
 #include <cmath>
 #include <fstream>
 #include <iomanip>
+#include <iterator>
 #include <unordered_set>
 
 namespace
@@ -149,6 +150,12 @@ bool_t CMapPlacementDocument::Read(
             }
             record.bakedLighting = lighting->inputs;
         }
+        if (const auto* wind = catalog.Find_PlacementWind(record.sourcePlacementId))
+        {
+            if (wind->assetId != record.assetId)
+            { outStatus = "Placement wind asset mismatch: " + record.sourcePlacementId; return false; }
+            record.sourceWind = wind->inputs;
+        }
 		staged.push_back(std::move(record));
 	}
 	std::string trailing;
@@ -169,7 +176,8 @@ bool_t CMapPlacementDocument::Write(
 	const std::vector<MAP_PLACEMENT_RECORD>& records,
 	const CMapAssetCatalog& catalog,
 	std::string& outStatus,
-	std::vector<MAP_PLACEMENT_RECORD>* outStoredRecords)
+	std::vector<MAP_PLACEMENT_RECORD>* outStoredRecords,
+	const std::string* expectedPreviousBytes)
 {
 	if (records.size() > MAX_PLACEMENT_COUNT || areaId != catalog.Get_AreaId())
 	{
@@ -196,7 +204,9 @@ bool_t CMapPlacementDocument::Write(
 		outStatus = "Could not create placement directory";
 		return false;
 	}
-	const std::filesystem::path temporary = path.wstring() + L".tmp";
+    static LONG temporarySerial = 0;
+    const std::filesystem::path temporary = path.wstring() + L".tmp." +
+        std::to_wstring(GetCurrentProcessId()) + L"." + std::to_wstring(InterlockedIncrement(&temporarySerial));
 	std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
 	if (!output)
 	{
@@ -225,6 +235,17 @@ bool_t CMapPlacementDocument::Write(
 	output.flush();
 	const bool_t wroteSuccessfully = output.good();
 	output.close();
+    if (wroteSuccessfully && nullptr != expectedPreviousBytes)
+    {
+        std::ifstream current(path, std::ios::binary);
+        const std::string currentBytes{std::istreambuf_iterator<char>(current), std::istreambuf_iterator<char>()};
+        if (!current || current.bad() || currentBytes != *expectedPreviousBytes)
+        {
+            std::error_code removeError; std::filesystem::remove(temporary, removeError);
+            outStatus = "Save conflict: source changed before atomic replacement. Draft preserved.";
+            return false;
+        }
+    }
 	if (!wroteSuccessfully || !CommitTemporaryFile(path, temporary))
 	{
 		std::error_code removeError;

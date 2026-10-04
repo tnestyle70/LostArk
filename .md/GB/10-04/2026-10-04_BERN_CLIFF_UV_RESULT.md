@@ -216,3 +216,106 @@ glTF 추출에는 `-notex`를 사용했다. 따라서 glTF가 기록한 `dummy_m
 - `source-control-properties.json`, `external-controls.json`: PS 초기 액션과 SL08 Kismet 및35패키지 import table 대조.
 - `source-geometry/`, `*.dump.log`, `geometry-sample-audit.json`, `final-evidence.log`: 원본5개 재추출, 실제 WModel6,693정점/5,908tri 및9재질 슬롯 검증.
 - `expand_streaming.py`, `audit_closure_bounds.py`, `compare_closure_runtime.py`, `export_geometry_samples.py`, `audit_geometry_samples.py`, `audit_external_controls.py`, `finalize_evidence.py`: 위 수치의 읽기 전용 재현 스크립트.
+
+## G10. 분류·실행 배치·재질과 누락 Decal 독립 감사
+
+2026-10-04 지정점 `(98.73,49.13,-103.39)` 주변을 현재 게시된 `LV_BER_BERNCASTLE.mapset`의 실제24개 shard에서 다시 읽었다. G09의 authoring 배치 존재를 화면 성공으로 대신하지 않았다. **LV_MODULE 이름이나 package 분류 때문에 이 지점의 벽·풀을 제외한 증거는 찾지 못했다. 별도로 원본 static Decal의 실행 연결 누락을 확인했지만 지정점은 그 투영 범위 밖이다.** RNM/static shadow 수정·빌드 결과는 이 절의 감사 범위에 포함하지 않는다.
+
+### 로드·표시 경로와 실제 설치 재질
+
+`Client/Private/LevelRegistry.cpp`의 `MakeBernMapScope`는 전체 범위를 포함하고 excluded asset group을 지정하지 않는다. `MapPlacementRuntime::Apply_LoadScope`는 이 같은 scope를 사용한다. `build_maptool_scene.py`의 module/package 진단은 이름만으로 숨기지 않으며 `sourceVisibility`와 source ID별 명시 override를 소비한다. `Loader::Ready_MapArea`는 필요한 stable asset ID 집합을 준비하고 CModel 또는 재질 생성 실패 시 전체 stage를 실패시킨다. 필수 asset을 조용히 건너뛰는 경로는 발견하지 못했다.
+
+| 직접 다시 확인한 분모 | 결과 |
+|---|---|
+| 현재 runtime mapset24 shard | 배치50,021개, catalog16,743개 |
+| LC622 AABB와 겹치는 원본 StaticMeshComponent1,387개 | runtime source ID 누락0, object path 불일치0, visible 불일치0, WModel 누락0. visible1,370개와 원본 hidden17개 유지 |
+| overlap 안 LV_MODULE | SL00 export5059 `lv_module.mesh.lv_module_water02_512`1개, visible=true. 물 평면Y10.714266m이며 지정점 AABB 거리38.415734m |
+| LAND01/SL08/SL00/SL04/SL06 원본 foliage instance | 각각6,559/240/811/328/183개, 합계8,121개. runtime 누락0, visible 불일치0, TRS 최대오차5e-7 |
+| 지정점10m 이내 foliage origin | 189개, hidden0 |
+| 원본 static AABB거리10m 미만 + 위 foliage의 visible 모델 | 고유 WModel130개, 실제 사용 material slot206개,92,863삼각형. 빈 geometry·없는 slot·typed override 미연결·texture 파일 누락0 |
+| 위206재질의 설치 입력 | typed texture193개 존재. opacity·diffuse alpha 모두1. deferred/back202개, translucent/back4개 |
+| BG alpha clip + foliage/grass diffuse34개 DDS | decode 오류0, 전체 texel이 cutoff 아래인 texture0, 각각 최대alpha255 |
+
+foliage 비교는 원본 v868 instance array의80-byte stride와 전체 suffix 길이를 검증하고 기존 `decode_instance_matrix`로 읽은 TRS만 사용했다. RNM numeric validation과 분리했으며 이 검사를 foliage 조명 복원 성공이라고 기록하지 않는다. 모델130개의 family는 BG100, foliage76, grass12, overlay14, water1, translucent3개의 실제 사용 slot으로 분해했다. DDS에 통과 texel이 있다는 것은 해당 mesh UV의 모든 sample이나 화면 pixel 성공을 뜻하지 않는다.
+
+`MapAssetObject::Submit_FinalCamera/Render_Group`와 `MapStaticBatchObject::Render`의 runtime 표시·presentation opacity·scene environment replacement·camera culling·material render group·draw 실패 조건도 대조했다. 이들은 현재 live camera와 런타임 상태를 소비한다. 이번 정적 감사에서는 해당 상태를 실행 관측하지 않았으므로 실제 submit·culling 통과·GPU draw·가림을 PASS로 쓰지 않는다.
+
+### 원본에서 표시되지만 연결되지 않은 static Decal
+
+실제 streaming35패키지의 native export를 다시 집계한 결과 DecalComponent는86개, material은11종이다. LAND01/02는14/21개, SL03/05/06/07/08/09는2/3/1/3/40/2개다. LC622를 receiver로 지정한 것은 LAND01 export14/23/26 세 개다. 가장 가까운26은 다음 계약이다.
+
+| 입력 | 원본 실측 |
+|---|---|
+| source actor/component | `LV_BER_BERNCASTLE_T_LAND01.theworld.persistentlevel.decalactor_36.decalcomponent_0`, component index26 |
+| receiver | UE ref623 = export index622 = `landscapeproxy_0.landscapecomponent_15` |
+| 중심 | `(94.963017578125,50.709301757812504,-104.8772265625)`m, 지정점과4.346975m |
+| width/height/far plane | 215.625/215.625/315.625cm. NearPlane은 CDO에도 없고 zero default |
+| 초기 표시 | actor/component instance→archetype→CDO hidden=false. LAND01 sequence action/event/variable/interp track0,35패키지의 해당 actor 외부 직접참조0 |
+| material | `lv_decal_01.mat.lv_common_decal_05_mi` → `efbasematerial_lv_prologue.decals.decal_translucent` |
+| 선택 입력 | `texture_diffuse=lv_decal_01.tex.lv_common_decal_05_d`; native static switch `1.use_opacity_texture=false` 두 entry를 확인, diffuse alpha branch 사용 |
+
+이 material chain과 branch는 기존8월 문서만 인용하지 않고 현재 설치된 native3패키지에서 `source_evidence`를 다시 실행해 확인했다. Bern authoring/runtime Map 문서, Effect 데이터 및 Resources에서 이 source decal의 연결을 찾지 못했다. 기존 `08-01/2026-08-01_BERN_CASTLE_FULL_RECONSTRUCTION_RESULT.md`도185~200행에서 이 첫 fixture를 probe만 완료했고 runtime projection은 아직 구현하지 않았다고 구분한다.
+
+지정점의 원본 HitTangent/HitBinormal/HitNormal 좌표는 `(0.0442784,4.0496958,-1.5793018)`m다. 사각형 반폭은1.078125m이므로 지정점은 footprint 밖2.9715708m다. 나머지85개에도 지정점을 포함하는 투영 사각형이 없다. 이 누락은 **주변 LC622 장식이 미복원인 실제 사례**이지만 녹색 늘어짐 지점을 직접 덮던 절벽이나 데칼을 찾은 것은 아니다. 전체 원본 게임의 동적 서버·태그 제어를 재현했다는 뜻도 아니다.
+
+### 복원 후보의 현재 경계
+
+기존 `CMapEffectPresentationRuntime::Load_AmbientArea`와 `CEffectDocumentRenderer::Render_Decal`은 Bern의 게시 Map Effect에서 depth projector까지 연결할 수 있다. 그러나 `EFFECT_DECAL_RECEIVER_MODE`는 ALL_OPAQUE/UPWARD_SURFACES만 제공한다. 기존 shader는 actor를 제외하지만 이 원본이 지정한 특정 LandscapeComponent receiver 목록을 제한하지 못한다. CModel material family에도 이 static Decal 전용 계약은 없다.
+
+따라서 같은 diffuse를 일반 quad로 얹거나 모든 opaque 면에 투영하는 것을 원본 복구 완료로 처리하지 않는다. 기존 projector에 stable receiver 대상 계약과 검증된 원본 재질을 연결하거나, 원본 receiver 삼각형에 정확히 clip한 decal geometry를 기존 CModel/CMaterial로 전달하는 후보를 검토할 수 있다. native parent shader와 blend/depth/receiver 계약을 확인한 뒤 선택할 후속 후보이며 이번 감사에서 구현·설치하지 않았다. 원본26의 native suffix는44byte여서 이 payload만으로 복구할 완성 decal vertex buffer가 있다고 가정하지 않았다.
+
+### 이번 실행과 증거
+
+원본·runtime·WModel·DDS는 읽기만 했고 Client/UI, 원작 게임, GPU capture, Product build와 Reload는 실행하지 않았다. 이번 추가 파일 변경은 이 RESULT와 `out`의 감사 증거뿐이다. G09의 자료와 다음 기록을 함께 사용한다.
+
+- [streaming-closure.json](../../../out/BernCliffCoverage20261004/streaming-closure.json), [closure-placement-bounds.json](../../../out/BernCliffCoverage20261004/closure-placement-bounds.json): 실제35패키지 정본 범위와 overlap1,387개 source identity·TRS·표시 근거.
+- [geometry-sample-audit.json](../../../out/BernCliffCoverage20261004/geometry-sample-audit.json): G09의 원본5모델 및 실제 WModel 대응 증거. G10의130모델은 현재 설치 material/geometry 유효성 검사이며130개 전부의 원본 재추출을 뜻하지 않는다.
+- [audit_native_decals.py](../../../out/BernCliffCoverage20261004/audit_native_decals.py), [native-decal-audit.json](../../../out/BernCliffCoverage20261004/native-decal-audit.json): native86개 위치·receiver·material·원본 header/serial hash, 가장 가까운26의 CDO visibility와 현재 material chain 재검증, 지정점 footprint 배제.
+
+재현 명령은 `python out/BernCliffCoverage20261004/audit_native_decals.py`다. 이 스크립트는 감사 JSON만 `out`에 기록한다. 최초 대화형 Python 실측의 runtime/foliage/130모델 결과는 위 표에 기록했으며 이 Decal 재현 스크립트가 그 별도 검사까지 실행한다고 확대하지 않는다.
+## G11. 실제 Landscape 조명 입력 누락 확인과 구현
+
+G08/G09의 형상·표면 UV·주변 StaticMesh 대조는 그대로 유효하지만, **원본과의 차이를 찾지 못했다는 당시 결론은 지형 조명 입력을 빠뜨린 불완전한 조사였다.** 지정 위치 `(98.73,49.13,-103.39)`의 LAND01 LC622에는 원본 FLightMap2D의 RNM2개와 ShadowMap2D1개가 있고 현재 family14는 이 입력을 거부하고 있었다. 재설치 원본의 현재42개 지형도 모두 자신의 RNM·shadow를 가진다. 이 누락은 실제 코드와 원본의 차이다. 조명 누락 확인을 planar UV 늘어짐 자체의 원인 확정으로 확대하지 않는다.
+
+LC622의 lightmapped native policy는 `DistanceFieldShadowedDynamicLightDirectionalLightmapTexturePolicy`이며 PS는 `aebf747d7945b3428e591c1aba105ed8`이다. 앞선 G08은 같은 material의 NoLightmapPolicy만 대조했다. 현재 설치 EFEngine의 생성자·padding 계산·subsection vector·VF binding과 source shader constant 위치를 추적해 lightmap UV의 CPU 입력을 확인했다. DLL을 격리 helper에서 로드하고 메모리를 읽었으며 원본 엔진 함수·게임 EXE·Client/UI는 실행하지 않았다.
+
+LC622의 현재 정규화된 mesh UV0에는 `UV * 0.953125 + 0.015372984111309052`를 적용한 뒤 각 texture의 원본 atlas scale/bias를 적용한다. 원본4개 subsection×32²정점과 float32 대조 최대오차는 `5.96e-8 UV`다. 원본42개의 component62/subsection31/2개·StaticLightingResolution4를 각각 확인했고, atlas가 다른 항목에는 자기 atlas 값을 합성했다. Geometry·hole·surface tiling·placement TRS는 변경하지 않는다.
+
+family14 parser, CModel의 material 복사·경로 검증, CMaterial의 RNM/G8 shadow 로드, MapAssetRenderUtils의 기존 조명 binding을 연결했다. 일반·instanced VS는 이 family의 lighting 좌표에 UV0를 사용한다. PS는 Heightmap BA에서 복원한 pixel TBN으로 RNM의 view-dependent 입력을 계산하며 VS world axes를 그대로 사용하지 않는다. source shadow GUID는 `79ad76d6208c814790c50f5f74b7b8a0`이며 기존 channel1·penumbraWidth0.05·exponent2의 `PROJECT_ADAPTER` 경계를 유지한다. 이 transfer 상수를 원본 CPU 복원값이라고 하지 않는다. CoordinateBias `[0,0]`은 원본 ShadowMap2D→Core.Object CDO 체인까지 확인했다.
+
+| 검증 | 확인한 범위 |
+|---|---|
+| 원본 native tail 독립 재파싱 |42개 own RNM reference·coefficients·atlas·ShadowMap2D ref 일치 |
+| 원본 texture 후보 |126개, 7,357,320B, 원본 전체 mip, 업스케일·재압축·mip 생성0 |
+| 설치 후 DirectXTK WARP |126개 Texture/SRV mip 범위 및 모든 GPU mip payload 일치 |
+| RNM pixel basis 수치 |7,260조건, 원본 수식 대조 최대오차4.66e-15; CPU float64 검증 |
+| 일반·instanced shader focused compile |VS_MAIN/PS_MAIN 합계4/4 통과 |
+| 공식 publisher 계약 테스트 |4개 test method 통과; 잘못된 texture/좌표/source ID 입력에서 이전 게시본 보존 |
+| 후보 JSON 독립 대조 |기존 source에 bakedLighting42필드·placementLighting42행만 추가; 나머지 JSON 값·행순서 변경0 |
+| 교차 코드 리뷰 |일반 모델 UV1·기존 BG lighting bank·Resources 경계 보존 확인 |
+
+재현 도구는 `Tools/LandscapeExtractor/build_source_landscape_lighting_candidate.py`이며 기존 builder의 optional `--lighting-candidate`와 연결한다. `out/BernLandscapeLightingReview20261004/LightingCandidate/candidate-manifest.json`, `mapmaterials.patch.json`, `independent-candidate-audit.json`, `installed-landscape-gpu-load.json`에 대상별 근거를 보존했다. CPU 원본 경로는 `out/BernLandscapeLightmapUvReview20261004/lc622-lightmap-uv-cpu-proof.json`에 있다. source shader의 기존 X4000 경고는 수정 전 helper에서도 재현되며 이번 변경으로 새로 만든 경고가 아니다.
+
+최종 제품 빌드·authoring 반영·실제 게시 결과와 사용자 화면 확인은 다음 절에서 별도로 기록한다. 설치 파일의 GPU load 성공은 실제 베른 camera의 draw·가림·색·UV 화면 PASS가 아니다.
+
+## G12. 10-04 최신 저장본 반영과 제품 게시
+
+G11 후보를 최신 authoring 저장본의42개 stable asset ID와 source placement ID에 병합했다. 기존 값·배치 순서는 유지하고 bakedLighting42개와 placementLighting42행만 추가했다. 교체 직전 SHA256을 다시 확인하고 백업·원자적 교체·자기 변경 rollback 절차를 사용했다. authoring SHA256은 `1356438aa912774aaef98737bf579d48564fab67ebba321863e4677c0a32806b`에서 `446e171b803a4a4a47a65cabf17f99a8ff12f2be2b8ac08bbea0b4b5f7cd513c`로 바뀌었다.
+
+공식 `Publish-MapAuthoring.ps1`의 전체 Area 검증으로53개 후보 파일을 생성·검증한 뒤 같은 publisher의 `Complete-MapPublish`와 `Invoke-FileSetTransaction`으로 material 문서1개만 게시했다. 전체 게시의 mapeffects 개행 정규화가 무관한 파일까지 바꾸는 것을 확인했으므로 이번 변경에는 포함하지 않았다. 제품 publisher에 별도 scope나 두 번째 게시 경로를 추가하지 않았다. runtime material SHA256은 `8dc924d73ab3971037677a7270a8d6e160396e89a32e822d50549e6c1921ea8d`이고 authoring과 JSON 값이 같다. 나머지 runtime 파일 bytes는 유지됐다. 첫 시도는 검증 도중 중단되어 자기 authoring 변경을 rollback했으며 최종 성공 receipt만 완료 근거로 삼는다.
+
+`Client/Private/MapPlacementDocument.cpp`의 기존 `Find_PlacementLighting` 조회에는 family14 제외 조건이 없음을 확인했다. 원본126개 DDS도 설치 후 실제 DirectXTK WARP의 Texture/SRV mip 범위·GPU payload 검증을 통과했다. Client/UI 실행·Reload·저장된 렌더링 옵션 변경은 하지 않았다. 이 반영은 원본 지형 조명 입력 복구이며 지정점의 녹색 늘어짐이나 최종 화면 색을 사용자 대신 PASS로 판정하지 않는다.
+
+Debug와 Release Product의 Engine/Shared/Server/Client compile·link·deploy가 모두 PASS다. receipt는 `out/BuildPipeline/runs/20261004T002815359Z-debug-product.json`, `20261004T005228448Z-release-product.json`이며 현재 작업공간의 기존 변경도 포함한 통합 빌드다. Release Client 단계는 변경 OBJ2개·CSO59개·binary2개를 기록한다. 기존 shader X4000·SDK 인코딩·DirectXTK PDB 누락 경고가 있으나 컴파일·링크 오류는 없다. 이 빌드 도구 자체는 이번 map 데이터를 게시하지 않았으며 앞서 기록한 공식 map publisher의 게시 receipt와 구분한다.
+
+최종 설치·게시 근거는 `out/BernLandscapeLightingReview20261004/installed-publish-receipt.json`, `publish-installed.log`, `installed-landscape-gpu-load.json`이다. 복구 Resources의 전달용 물리 복사본은 `out/RenderingRestore20261004/Resources`에 준비했다. 이번 Bern126개·Character Select56개·Valtan2개를 합한184개 DDS, 12,715,152B이며 설치본과 hash가 같다. Drive 업로드는 수행하지 않았고 Git 제외 Resources를 강제 추가하지 않았다. Character Select·Valtan 원본 mip 복구의 개별 결과와 남은 후보는 각각 `2026-10-04_RENDERING_SOURCE_EVIDENCE_RESULT.md`, `2026-10-04_VALTAN_WAITING_STONE_MATERIAL_RESULT.md`를 따른다.
+
+## G13. 동시 감사의 native mip 교정 반영과 최종 파일 대조
+
+G11/G12의126개 GPU payload 일치는 당시 생성한 DDS가 GPU에 그대로 올라갔다는 검증이다. 별도 `Audit character select and Bern` 세션의 원본 bulk 전수 대조에서 LAND02 `ShadowMapTexture2D_199`의 mip4가 잘못 추출됐음이 확인됐다. 압축 컨테이너 길이와 해제 후 길이가 같을 때 기존 helper가 비압축으로 오판한 결함이다. 따라서 앞선 전체 원본 mip 일치 주장은 이1개 mip에 대해서는 정정한다.
+
+별도 세션은 bulk flags로 압축 여부를 판정하도록 extractor를 수정하고 2026-10-04 10:31:49 KST에 해당 DDS를 교체했다. 이 세션의 마지막 readback에서 발견한 hash 차이는 그 정당한 교정본이었다. `out/BernNativeLightingMipRestoration20261004/install-receipt.json`의 원본 serial·수정 전후 hash·후보·설치본을 읽어 일치함을 확인했으며 제품 파일을 다시 덮어쓰지 않았다. 이 DDS의 최종 SHA256은 `ec9b9696824c8cc0df62e4a7b1860e168872fa9655fbe6ed6dfd5c9ccf33f35d`다. 같은 별도 receipt의 기존 Bern RNM4,616개 mip 복구는 그 세션의 작업이며 G11의126개 설치와 혼동하지 않는다.
+
+이쪽 전달용 사본의 해당 DDS만 교정본으로 갱신하고 이전 bytes와 receipt를 `out/RenderingRestore20261004/reconciled-delivery-backup`에 보존했다. 워로드 작은 돌 WModel1개를 포함한 최종 전달본은185개(184DDS+1WModel),12,727,088B다. `out/RenderingRestore20261004/final-readback.json`에서185개 제품·전달 파일의 hash 일치, Bern authoring/runtime JSON 일치, 최종 Warlord V/Alt V3문서 hash, 기록한 Debug/Release 빌드 PASS를 재확인했다. 이 읽기 검증은 빌드 이후 다른 세션의 C++ 변경까지 재빌드했거나 실제 Client 화면을 확인했다는 뜻이 아니다. Drive 업로드와 실행 중 저작 도구의 Reload는 수행하지 않았다.
+
+후보 생성기의 source/output hash 확인만으로는 이전 decoder가 만든 잘못된 G8 캐시를 배제하지 못하는 재발 경로도 확인했다. `build_source_landscape_lighting_candidate.py`는 PF_DXT1 RNM에만 기존 캐시를 허용하고 PF_G8 shadow는 항상 원본 flags로 재해석하도록 수정했다. 실제 LAND02 원본·이전 shadow199 DDS·유효한 이전 receipt를 넣은 회귀 검사에서 구 dispatch는잘못된350ab08d…를, 수정 dispatch는설치본과같은ec9b9696…를 만들었다. mip4의256byte 중229byte가 교정됐고 나머지8mip은동일했다. 실제RNM1개는 UModel 호출을 차단한 상태에서도 기존 캐시를 그대로 재사용했다. 제품쓰기0과 설치hash불변을 확인했으며 Python문법·scoped diff check를 통과했다. 근거는 `out/BernLandscapeLightingCacheReview20261004/cache-regression-receipt.json`이다.

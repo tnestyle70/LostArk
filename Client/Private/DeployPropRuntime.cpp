@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <unordered_set>
 #include <utility>
 
@@ -250,6 +251,55 @@ bool_t CDeployPropRuntime::Load(
 	return true;
 }
 
+#ifdef _DEBUG
+bool_t CDeployPropRuntime::Try_PickInspectionSurface(
+	const float3_t& rayOrigin, const float3_t& rayDirection,
+	DEPLOY_WORLD_MESH_PICK& outSelection) const
+{
+	const auto finite = [](const float3_t& value)
+	{ return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z); };
+	if (!finite(rayOrigin) || !finite(rayDirection) || !Is_Loaded() ||
+		CGameInstance::Get().Is_SceneEnvironmentReplaced()) return false;
+	const vector_t raw = XMLoadFloat3(&rayDirection);
+	const f32_t lengthSquared = XMVectorGetX(XMVector3LengthSq(raw));
+	if (!std::isfinite(lengthSquared) || lengthSquared <= 1.e-10f) return false;
+	float3_t direction{};
+	XMStoreFloat3(&direction, XMVector3Normalize(raw));
+	f32_t nearest = (std::numeric_limits<f32_t>::max)();
+	const DEPLOY_RUNTIME_ENTRY* selected = nullptr;
+	uint32_t selectedMesh = 0u;
+	std::string material;
+	for (const auto& entry : m_Entries)
+	{
+		f32_t distance = nearest;
+		uint32_t mesh = 0u;
+		std::string name;
+		if (entry.object && entry.object->Try_PickInspectionSurface(rayOrigin, direction,
+			nearest, distance, mesh, name) && distance < nearest)
+		{ nearest = distance; selected = &entry; selectedMesh = mesh; material = std::move(name); }
+	}
+	if (!selected) return false;
+	const auto* asset = m_Catalog.Find(selected->placement.assetId);
+	if (!asset) return false;
+	DEPLOY_WORLD_MESH_PICK result;
+	result.runtimePlacementId = selected->placement.runtimePlacementId;
+	result.meshIndex = selectedMesh;
+	XMStoreFloat3(&result.hitPosition, XMLoadFloat3(&rayOrigin) + XMLoadFloat3(&direction) * nearest);
+	if (!finite(result.hitPosition)) return false;
+	result.areaId = m_Catalog.Get_AreaId();
+	result.sourcePlacementId = selected->placement.sourcePlacementId;
+	result.assetId = selected->placement.assetId;
+	result.modelKind = asset->kind;
+	result.state = selected->object->Get_State();
+	result.modelAssetId = (asset->kind == DEPLOY_PROP_MODEL_KIND::STATIC &&
+		result.state == DEPLOY_PROP_STATE::FRACTURED ?
+		asset->fracturedRelativePath : asset->intactRelativePath).generic_string();
+	result.materialName = std::move(material);
+	outSelection = std::move(result);
+	return true;
+}
+#endif
+
 bool_t CDeployPropRuntime::Try_PickMovementSurface(
 	const float3_t& rayOrigin, const float3_t& rayDirection,
 	const f32_t maxDistance, float3_t& outPosition) const
@@ -348,6 +398,13 @@ bool_t CDeployPropRuntime::Set_States(
 	uniqueIds.reserve(placementStates.size());
 	for (const auto& [placementId, targetState] : placementStates)
 	{
+		if (targetState != DEPLOY_PROP_STATE::INTACT &&
+			targetState != DEPLOY_PROP_STATE::FRACTURED &&
+			targetState != DEPLOY_PROP_STATE::DESPAWNED)
+		{
+			m_Status = "DeployProp state transaction has an invalid state";
+			return false;
+		}
 		const auto iter = m_EntryIndex.find(placementId);
 		if (0u == placementId || !uniqueIds.emplace(placementId, true).second ||
 			iter == m_EntryIndex.end() || iter->second >= m_Entries.size() ||

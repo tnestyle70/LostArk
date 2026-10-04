@@ -102,21 +102,11 @@ Client::CMapPlacementEditSession::~CMapPlacementEditSession()
 bool_t Client::CMapPlacementEditSession::Bind(
 	const BIND_DESC& desc, std::string& outStatus)
 {
-	End();
-	/* A Level round trip rebuilt the live placements, so a draft kept from an
-	   earlier binding cannot be re-attached to them; say so instead of
-	   silently replacing it. */
-	const bool_t discardedDraft = m_bDirty && !m_Draft.empty();
-	m_Draft.clear();
-	m_DraftIndex.clear();
-	m_SessionCreated.clear();
-	m_Catalog = CMapAssetCatalog{};
-	m_bDirty = false;
-	m_bReadOnly = false;
-	m_ReadOnlyReason.clear();
-	m_BaselineBytes.clear();
-	m_iSelectedPlacementId = 0u;
-	m_iNextPlacementId = 1u;
+    if (m_bDirty || Is_Publishing())
+    {
+        outStatus = "The previous placement draft is preserved. Save it while its Area is active, or explicitly discard the detached draft before binding again.";
+        return false;
+    }
 
 	IMapAuthoringHost* host = Find_ActiveMapAuthoringHost();
 	if (nullptr == host)
@@ -144,9 +134,6 @@ bool_t Client::CMapPlacementEditSession::Bind(
 		outStatus = catalog.Get_Status();
 		return false;
 	}
-	std::vector<MAP_PLACEMENT_RECORD> records;
-	if (!CMapPlacementDocument::Read(desc.sourcePlacements, catalog, records, outStatus))
-		return false;
 	std::string bytes;
 	if (!ReadDocumentBytes(desc.sourcePlacements, bytes))
 	{
@@ -154,6 +141,12 @@ bool_t Client::CMapPlacementEditSession::Bind(
 			" for the save baseline.";
 		return false;
 	}
+
+    std::vector<MAP_PLACEMENT_RECORD> records;
+    if (!CMapPlacementDocument::Read(desc.sourcePlacements, catalog, records, outStatus)) return false;
+    std::string parsedBytes;
+    if (!ReadDocumentBytes(desc.sourcePlacements, parsedBytes) || parsedBytes != bytes)
+    { outStatus = "Source changed during binding. The previous draft is preserved."; return false; }
 
 	std::string readOnlyReason;
 	/* The live prototypes belong to the Level; binding them keeps one catalog
@@ -164,33 +157,29 @@ bool_t Client::CMapPlacementEditSession::Bind(
 
 	if (readOnlyReason.empty())
 	{
-		/* A Level that loaded a filtered scope cannot be saved from here: the
-		   document would drop every row the Level did not load. */
-		const std::vector<MAP_RUNTIME_PLACED_ENTRY>& live =
-			host->Get_MapAuthoringPlacements();
-		std::unordered_set<uint64_t> sourceIds;
-		sourceIds.reserve(records.size());
-		for (const MAP_PLACEMENT_RECORD& record : records)
-			sourceIds.insert(record.placementId);
-		bool_t parity = live.size() == records.size() &&
-			sourceIds.size() == records.size();
-		if (parity)
-		{
-			for (const MAP_RUNTIME_PLACED_ENTRY& entry : live)
-			{
-				if (!sourceIds.contains(entry.record.placementId))
-				{
-					parity = false;
-					break;
-				}
-			}
-		}
-		if (!parity)
-			readOnlyReason = "The live Level holds " + std::to_string(live.size()) +
-				" placements but the authoring document has " +
-				std::to_string(records.size()) +
-				"; read-only inspection until they match (load scope or an external edit).";
-	}
+        const auto& live = host->Get_MapAuthoringPlacements();
+        std::unordered_map<uint64_t, const MAP_PLACEMENT_RECORD*> source;
+        for (const auto& record : records) source.emplace(record.placementId, &record);
+        std::unordered_set<uint64_t> liveIds;
+        bool parity = source.size() == records.size() &&
+            (desc.allowPartialLive || live.size() == records.size());
+        for (const auto& entry : live)
+        {
+            const auto row = source.find(entry.record.placementId);
+            if (row == source.end() || !liveIds.insert(entry.record.placementId).second ||
+                row->second->assetId != entry.record.assetId)
+            { parity = false; break; }
+        }
+        if (!parity)
+            readOnlyReason = "Source/live placement identities differ; inspection remains available. No rows will be replaced.";
+    }
+
+    // Stage every read/validation before detaching the previous clean session.
+    End();
+    m_SessionCreated.clear();
+    m_iNextPlacementId = 1u;
+    m_bDirty = false;
+    m_bPreserveUnloadedRows = desc.allowPartialLive;
 
 	m_bBound = true;
 	m_AreaId = desc.areaId;
@@ -208,8 +197,7 @@ bool_t Client::CMapPlacementEditSession::Bind(
 		"Editing " + m_AreaId + " on " + std::string(host->Get_MapAuthoringLabel()) +
 		": " + std::to_string(m_Draft.size()) +
 		" placements. Pick World Object, or select a row, then drag its transform.";
-	if (discardedDraft)
-		m_Status += " The unsaved draft of the previous binding was dropped: the Level rebuilt its placements, so the saved document is the only pose the live objects share.";
+
 	return true;
 }
 
@@ -220,6 +208,15 @@ void Client::CMapPlacementEditSession::End()
 	m_bBound = false;
 	m_iSelectedPlacementId = 0u;
 	m_ModelCache.clear();
+}
+
+bool_t Client::CMapPlacementEditSession::Discard_DetachedDraft()
+{
+    if (m_bBound || Is_Publishing()) return false;
+    m_Draft.clear(); m_DraftIndex.clear(); m_SessionCreated.clear();
+    m_bDirty = false; m_bRowsDirty = true;
+    m_Status = "Detached placement draft explicitly discarded.";
+    return true;
 }
 
 void Client::CMapPlacementEditSession::Update(const bool_t outlineVisible)
@@ -234,7 +231,7 @@ void Client::CMapPlacementEditSession::Update(const bool_t outlineVisible)
 	{
 		End();
 		m_Status = "Editing ended: the current Level no longer owns " + m_AreaId +
-			". The draft is kept in memory; re-enter the Area and press Edit placements again.";
+			". The unsaved draft is preserved. It must be explicitly discarded before a new binding.";
 		return;
 	}
 	if (!outlineVisible)
@@ -575,7 +572,7 @@ bool_t Client::CMapPlacementEditSession::Delete_Selected()
 	const uint64_t placementId = m_iSelectedPlacementId;
 	if (!Is_SessionCreated(placementId))
 	{
-		m_Status = "Delete removes only the objects duplicated in this editing session; use Map Tool for authored rows.";
+		m_Status = "Delete removes only session duplicates. Use Visible to retain the identity of an original placement.";
 		return false;
 	}
 	if (!Can_ChangeStructure())
@@ -659,12 +656,15 @@ bool_t Client::CMapPlacementEditSession::Save()
 
 	std::vector<MAP_PLACEMENT_RECORD> document;
 	const std::vector<MAP_RUNTIME_PLACED_ENTRY>& live = host->Get_MapAuthoringPlacements();
-	document.reserve(live.size());
+	if (m_bPreserveUnloadedRows) document = m_Draft;
+	else document.reserve(live.size());
+	std::unordered_set<uint64_t> liveIds;
 	for (const MAP_RUNTIME_PLACED_ENTRY& entry : live)
 	{
 		const bool_t hasObject = nullptr != entry.object;
 		const bool_t hasBatch = nullptr != entry.batch;
 		if (hasObject == hasBatch ||
+			!liveIds.insert(entry.record.placementId).second ||
 			nullptr == m_Catalog.Find(entry.record.assetId))
 		{
 			m_Status = "Save aborted: runtime representation is invalid for placement #" +
@@ -674,6 +674,8 @@ bool_t Client::CMapPlacementEditSession::Save()
 		/* The authored record, never the live one: a self motion or a sequence
 		   samples the live entry every frame. */
 		const MAP_PLACEMENT_RECORD* draft = Find_Draft(entry.record.placementId);
+        if (m_bPreserveUnloadedRows && (nullptr == draft || draft->assetId != entry.record.assetId))
+        { m_Status = "Save aborted: live/source identity changed. Draft preserved."; return false; }
 		MAP_PLACEMENT_RECORD stored = nullptr != draft ? *draft : entry.record;
 		if (stored.sourceLevel.starts_with("VALTAN_PHASE_"))
 			stored.visible = false;
@@ -683,8 +685,14 @@ bool_t Client::CMapPlacementEditSession::Save()
 				std::to_string(stored.placementId) + " has an invalid transform.";
 			return false;
 		}
-		document.push_back(std::move(stored));
-	}
+        if (!m_bPreserveUnloadedRows) document.push_back(std::move(stored));
+    }
+    for (auto& stored : document)
+    {
+        if (stored.sourceLevel.starts_with("VALTAN_PHASE_")) stored.visible = false;
+        if (!CMapPlacementDocument::Is_Valid(stored, m_Catalog))
+        { m_Status = "Save aborted: an unloaded source row failed validation. Draft preserved."; return false; }
+    }
 
 	std::string currentBytes;
 	if (!ReadDocumentBytes(m_SourcePlacements, currentBytes))
@@ -704,9 +712,12 @@ bool_t Client::CMapPlacementEditSession::Save()
 		return false;
 	}
 
+    std::string latestBytes;
+    if (!ReadDocumentBytes(m_SourcePlacements, latestBytes) || latestBytes != currentBytes)
+    { m_Status = "Save conflict: concurrent source change after backup. Draft preserved."; return false; }
 	std::string writeStatus;
 	if (!CMapPlacementDocument::Write(m_SourcePlacements, m_AreaId,
-		document, m_Catalog, writeStatus, nullptr))
+		document, m_Catalog, writeStatus, nullptr, &currentBytes))
 	{
 		std::error_code removeError;
 		std::filesystem::remove(rollback, removeError);
