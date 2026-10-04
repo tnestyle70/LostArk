@@ -141,6 +141,8 @@ namespace Engine
         uint32_t iSSRStepCount = 32u;
         // Opt-in half-resolution SSGI gather; false retains the original path.
         bool_t bSSGIHalfResolution = false;
+		// User texture detail: finest permitted surface mip, 0..3. Zero preserves source samplers.
+		uint32_t iTextureMinMip = 0u;
 	}RENDER_QUALITY_SETTINGS;
 
 	enum class MATERIAL_DEBUG_VIEW : uint32_t

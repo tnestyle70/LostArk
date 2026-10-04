@@ -211,6 +211,43 @@ namespace
 		return true;
 	}
 
+    void PrepareLodCameraView(Client::MAP_CAMERA_CULL_SNAPSHOT& snapshot)
+    {
+        const auto& source = snapshot.view;
+        // Matrix inverse can leave a uniform homogeneous scale a few ULPs
+        // from one. Canonicalize only that affine representation, never a
+        // projective view or the matrix sent to the rendering pipeline.
+        if (source._14 != 0.f || source._24 != 0.f || source._34 != 0.f ||
+            !IsFiniteMatrix(source) ||
+            std::abs(double(source._44) - 1.) > 32. * std::numeric_limits<float>::epsilon())
+            return;
+        float4x4_t canonical{};
+        for (size_t row = 0u; row < 4u; ++row)
+            for (size_t column = 0u; column < 4u; ++column)
+                canonical.m[row][column] = static_cast<float>(double(source.m[row][column]) / source._44);
+        if (!IsFiniteMatrix(canonical)) return;
+        // The row-sum bound of A*A^T encloses scale even for shear. Reuse this
+        // camera-only calculation across all batches instead of per draw.
+        double maximum = 0.;
+        for (size_t i = 0u; i < 3u; ++i)
+        {
+            double sum = 0.;
+            for (size_t j = 0u; j < 3u; ++j)
+            {
+                double dot = 0.;
+                for (size_t k = 0u; k < 3u; ++k)
+                    dot += double(canonical.m[i][k]) * canonical.m[j][k];
+                sum += std::abs(dot);
+            }
+            maximum = (std::max)(maximum, sum);
+        }
+        const double scale = std::sqrt(maximum);
+        if (!std::isfinite(scale) || scale <= 0. || scale >= (std::numeric_limits<float>::max)()) return;
+        snapshot.lodView = canonical;
+        snapshot.lodViewScale = std::nextafter(static_cast<float>(scale),
+            (std::numeric_limits<float>::infinity)());
+    }
+
 	bool_t ReportCullFailure(std::string* reason, const char* message)
 	{
 		if (nullptr != reason)
@@ -407,6 +444,7 @@ bool_t CMapAssetRenderUtils::Build_CameraCullSnapshot(
 	candidate.revision = revision;
 	candidate.view = view;
 	candidate.projection = projection;
+    PrepareLodCameraView(candidate);
 	for (uint32_t planeIndex = 0; planeIndex < 6u; ++planeIndex)
 	{
 		double plane[4]{};

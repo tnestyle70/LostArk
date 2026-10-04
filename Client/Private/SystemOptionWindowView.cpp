@@ -424,11 +424,14 @@ void Client::CSystemOptionWindowView::Write_Value(const SYSTEM_OPTION_ROW& Row, 
 bool_t Client::CSystemOptionWindowView::Is_VideoRow(const SYSTEM_OPTION_ROW& Row)
 {
 	return Row.strId == SystemOptionRowId::BRIGHTNESS || Row.strId == SystemOptionRowId::BLOOM ||
-		Row.strId == SystemOptionRowId::ANTIALIASING || Row.strId == SystemOptionRowId::SSAO;
+		Row.strId == SystemOptionRowId::ANTIALIASING || Row.strId == SystemOptionRowId::SSAO ||
+		Row.strId == SystemOptionRowId::TEXTURE_QUALITY;
 }
 
 f32_t Client::CSystemOptionWindowView::Effective_Default(const SYSTEM_OPTION_ROW& Row)
 {
+	if (Row.strId == SystemOptionRowId::TEXTURE_QUALITY)
+		return CUserSettings::Get_DefaultTextureQuality();
 	if (SYSTEM_OPTION_CONTROL::COMBOBOX != Row.eControl || Row.fDefault >= 0.f)
 		return Row.fDefault;
 	/* -1 in EFTable_SystemOption: normal cursor, 100% battle font and Korean keyboard. */
@@ -444,12 +447,14 @@ void Client::CSystemOptionWindowView::Commit_Draft(const SYSTEM_OPTION_ROW& Row)
 	/* Retail's graphics preset row: a preset writes the quality rows it owns; touching one of
 	those rows by hand turns the preset into "custom" (the last choice). */
 	const bool_t bQualityRow = Row.strId == SystemOptionRowId::ANTIALIASING ||
-		Row.strId == SystemOptionRowId::SSAO || Row.strId == SystemOptionRowId::BLOOM;
+		Row.strId == SystemOptionRowId::SSAO || Row.strId == SystemOptionRowId::BLOOM ||
+		Row.strId == SystemOptionRowId::TEXTURE_QUALITY;
 	if (Row.strId == SystemOptionRowId::GRAPHICS_PRESET)
 	{
 		const int32_t iPreset = static_cast<int32_t>(std::lround(Read_Value(Row)));
 		if (iPreset >= 0 && iPreset <= 3)
 		{
+			m_Draft.Values[SystemOptionRowId::TEXTURE_QUALITY] = static_cast<f32_t>(iPreset);
 			/* best / high / medium / low -> anti-aliasing and SSAO high/high/low/off, bloom on
 			except low. The renderer has those on/off, so high and low both mean "on". */
 			m_Draft.Values[SystemOptionRowId::ANTIALIASING] = iPreset < 3 ? (iPreset < 2 ? 0.f : 1.f) : 2.f;

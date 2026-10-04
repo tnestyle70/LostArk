@@ -154,6 +154,15 @@ bool_t Client::USER_SETTINGS::Has_SameValues(const USER_SETTINGS& Other) const
 	return Values == Other.Values && Display == Other.Display;
 }
 
+f32_t Client::CUserSettings::Get_DefaultTextureQuality() noexcept
+{
+#ifdef _DEBUG
+	return 3.f;
+#else
+	return 0.f;
+#endif
+}
+
 Client::CUserSettings& Client::CUserSettings::Get()
 {
 	static CUserSettings s_Instance;
@@ -479,6 +488,13 @@ void Client::CUserSettings::Apply_Audio() const
 
 void Client::CUserSettings::Apply_Video(RENDER_QUALITY_SETTINGS& Quality) const
 {
+	/* Texture choices cap the finest sampled mip; malformed saved row values must not
+	be converted to an unsigned index or change the authored surface's original quality. */
+	const f32_t fTextureQuality = m_Settings.Get(SystemOptionRowId::TEXTURE_QUALITY, Get_DefaultTextureQuality());
+	Quality.iTextureMinMip = std::isfinite(fTextureQuality) && fTextureQuality >= 0.f &&
+		fTextureQuality <= 3.f && std::floor(fTextureQuality) == fTextureQuality ?
+		static_cast<uint32_t>(fTextureQuality) : 0u;
+
 	const f32_t fBrightness = m_Settings.Get(SystemOptionRowId::BRIGHTNESS, BRIGHTNESS_NEUTRAL);
 	const f32_t fBrightnessScale = 1.f + BRIGHTNESS_GAMMA_SPAN *
 		(fBrightness - BRIGHTNESS_NEUTRAL) / VOLUME_MAXIMUM;

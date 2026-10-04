@@ -1737,6 +1737,14 @@ bool_t CModel::Has_StaticMeshLod(uint32_t iMeshIndex) const
 		m_Meshes[iMeshIndex]->m_StaticLod && !m_Meshes[iMeshIndex]->Has_MorphBaseVertices();
 }
 
+uint32_t CModel::Get_StaticMeshLodLevel(uint32_t iMeshIndex, const MESH_SCREEN_LOD_DESC* view) const
+{
+    if (iMeshIndex >= m_Meshes.size() || !m_Meshes[iMeshIndex])
+        return 0u;
+    uint32_t indexCount = 0u, firstIndex = 0u;
+    return m_Meshes[iMeshIndex]->Select_StaticLod(view, indexCount, firstIndex);
+}
+
 bool_t CModel::Has_MorphBaseVertices(uint32_t iMeshIndex) const
 {
 	if (iMeshIndex >= m_Meshes.size())

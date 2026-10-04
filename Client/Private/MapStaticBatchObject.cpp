@@ -93,9 +93,8 @@ namespace
         explicit VIEW_LOD_ENVELOPE(const MAP_CAMERA_CULL_SNAPSHOT* camera)
         {
             if (!camera) return;
-            view = &camera->view;
-            if (view->_14 != 0.f || view->_24 != 0.f || view->_34 != 0.f || view->_44 != 1.f) return;
-            viewScale = LinearScaleBound(*view);
+            view = &camera->lodView;
+            viewScale = camera->lodViewScale;
             valid = viewScale > 0.;
         }
 
@@ -256,8 +255,9 @@ void CMapStaticBatchObject::Submit_FinalCamera()
 HRESULT CMapStaticBatchObject::Render_AdjacentNonBlend(
     std::span<const std::shared_ptr<CGameObject>> objects, size_t& consumed)
 {
-    // Keep small groups on ordinary draws; the fixed-width SRV bank has a binding cost.
-    constexpr size_t MINIMUM_LIGHTING_BANK_BATCHES = 4u;
+    // Two/three-batch prefixes use a separate three-slot shader bank.
+    // Four/eight-batch prefixes retain the existing eight-slot path.
+    constexpr size_t MINIMUM_LIGHTING_BANK_BATCHES = 2u;
     consumed = 1u;
     auto& game = CGameInstance::Get();
     // Keep authoring diagnostics and all unsupported material/geometry paths exact.
@@ -273,7 +273,7 @@ HRESULT CMapStaticBatchObject::Render_AdjacentNonBlend(
     const auto ready = [&](const CMapStaticBatchObject& batch)
     {
         return batch.m_bFinalCameraPrepared && batch.m_pModelCom && batch.m_pShaderCom &&
-            !batch.m_bHasStaticMeshLod && batch.m_pModelCom->Get_NumMeshes() == 1u &&
+            batch.m_pModelCom->Get_NumMeshes() == 1u &&
             batch.m_bVisibleInstancesUsedCamera == hasCamera &&
             batch.m_iVisibleCameraRevision == cameraRevision &&
             !batch.m_VisibleInstances.empty() &&
@@ -281,6 +281,24 @@ HRESULT CMapStaticBatchObject::Render_AdjacentNonBlend(
     };
     if (!ready(*this) || !m_pModelCom->Can_BatchStaticLightingWith(*m_pModelCom))
         return Render();
+
+    // Match each ordinary draw's own LOD decision before combining instances.
+    // Shared CMesh identity below makes equal levels select the same index range.
+    const auto buildLodView = [&](const CMapStaticBatchObject& batch,
+        Engine::MESH_SCREEN_LOD_DESC& view)
+    {
+        const auto* surface = batch.m_pModelCom->Get_MaterialSurface(0u);
+        return camera && batch.m_RenderProfile.opacity >= 1.f && surface &&
+            (surface->sourceBgFlags & 64u) == 0u &&
+            (surface->renderMode == Engine::MODEL_SURFACE_RENDER_MODE::INHERIT ||
+             surface->renderMode == Engine::MODEL_SURFACE_RENDER_MODE::DEFERRED) &&
+            !batch.m_pModelCom->Has_MaterialTexture(0u, aiTextureType_OPACITY) &&
+            batch.Build_ScreenLodView(*camera, view);
+    };
+    Engine::MESH_SCREEN_LOD_DESC screenLod{};
+    const bool_t useScreenLod = buildLodView(*this, screenLod);
+    const uint32_t lodLevel = m_pModelCom->Get_StaticMeshLodLevel(
+        0u, useScreenLod ? &screenLod : nullptr);
 
     const auto sameProfile = [](const MAP_ASSET_RENDER_PROFILE& a,
         const MAP_ASSET_RENDER_PROFILE& b)
@@ -308,6 +326,11 @@ HRESULT CMapStaticBatchObject::Render_AdjacentNonBlend(
         if (!next || !ready(*next) || next->m_bMirrored != m_bMirrored ||
             next->m_fElapsedTime != m_fElapsedTime || !sameProfile(m_RenderProfile, next->m_RenderProfile) ||
             !m_pModelCom->Can_BatchStaticLightingWith(*next->m_pModelCom))
+            break;
+        Engine::MESH_SCREEN_LOD_DESC nextLod{};
+        const bool_t useNextLod = buildLodView(*next, nextLod);
+        if (next->m_pModelCom->Get_StaticMeshLodLevel(
+            0u, useNextLod ? &nextLod : nullptr) != lodLevel)
             break;
         if (next->m_VisibleInstances.size() > UINT32_MAX / sizeof(VTXMESHINSTANCE) - instanceCount)
             break;
@@ -364,20 +387,13 @@ HRESULT CMapStaticBatchObject::Render_AdjacentNonBlend(
     {
         Engine::CProfilerDetailScope scope(profiler, "Map.Batch.Pass.Apply");
         Engine::CProfilerWorkScope work(profiler, Engine::EProfilerWork::MapBatchPass);
-        if (FAILED(m_pShaderCom->Begin(27u + pass)))
+        const uint32_t bankPass = count < 4u ? 30u : 27u;
+        if (FAILED(m_pShaderCom->Begin(bankPass + pass)))
             return Render();
     }
 
-    // These meshes have no generated LOD. Keep the normal draw's LOD counters
-    // without changing any source batch's bounds or selecting a combined range.
-    Engine::MESH_SCREEN_LOD_DESC screenLod{};
-    const auto* surface = m_pModelCom->Get_MaterialSurface(0u);
-    const bool_t useScreenLod = camera && m_RenderProfile.opacity >= 1.f && surface &&
-        (surface->sourceBgFlags & 64u) == 0u &&
-        (surface->renderMode == Engine::MODEL_SURFACE_RENDER_MODE::INHERIT ||
-         surface->renderMode == Engine::MODEL_SURFACE_RENDER_MODE::DEFERRED) &&
-        !m_pModelCom->Has_MaterialTexture(0u, aiTextureType_OPACITY) &&
-        Build_ScreenLodView(*camera, screenLod);
+    // Every constituent chose this same immutable range from its own bounds.
+    // Reuse the first descriptor rather than selecting from a merged envelope.
     HRESULT result = E_FAIL;
     {
         Engine::CProfilerDetailScope scope(profiler, "Map.Batch.Mesh.Submit");
@@ -1379,9 +1395,8 @@ bool_t CMapStaticBatchObject::Build_ScreenLodView(const MAP_CAMERA_CULL_SNAPSHOT
         p._41 != 0.f || p._42 != 0.f || p._11 <= 0.f || p._22 <= 0.f ||
         p._33 <= 1.f || p._43 >= 0.f || m_fVisibleLodScale <= 0.f || m_VisibleLodBounds.w <= 0.f)
         return false;
-    const auto& v = camera.view;
-    if (v._14 != 0.f || v._24 != 0.f || v._34 != 0.f || v._44 != 1.f) return false;
-    const float viewScale = LinearScaleBound(v);
+    const auto& v = camera.lodView;
+    const float viewScale = camera.lodViewScale;
     if (viewScale <= 0.f) return false;
     const auto viewport = CGameInstance::Get().Get_ViewportSize();
     if (viewport.x <= 0.f || viewport.y <= 0.f) return false;

@@ -1377,9 +1377,16 @@ HRESULT CMaterial::Bind_StaticLightingBank(const shared_ptr<CShader>& shader,
     }
     const uint32_t disabled = 0u;
     if (FAILED(shader->Bind_RawValue("g_MapLightingBankSize", &disabled, sizeof(disabled)))) return E_FAIL;
-    if (FAILED(shader->Bind_Textures("g_MapBakedAverageBank", average.data(), 8u)) ||
-        FAILED(shader->Bind_Textures("g_MapBakedDirectionalBank", directional.data(), 8u)) ||
-        FAILED(shader->Bind_Textures("g_MapStaticShadowBank", shadow.data(), 8u))) return E_FAIL;
+    // The small-prefix pass references only these three-slot arrays; ordinary
+    // and eight-slot passes retain their original resource binding footprint.
+    const bool smallBank = materials.size() < 4u;
+    const uint32_t capacity = smallBank ? 3u : 8u;
+    if (FAILED(shader->Bind_Textures(smallBank ? "g_MapBakedAverageSmallBank" : "g_MapBakedAverageBank",
+            average.data(), capacity)) ||
+        FAILED(shader->Bind_Textures(smallBank ? "g_MapBakedDirectionalSmallBank" : "g_MapBakedDirectionalBank",
+            directional.data(), capacity)) ||
+        FAILED(shader->Bind_Textures(smallBank ? "g_MapStaticShadowSmallBank" : "g_MapStaticShadowBank",
+            shadow.data(), capacity))) return E_FAIL;
     const uint32_t count = static_cast<uint32_t>(materials.size());
     const HRESULT result = shader->Bind_RawValue("g_MapLightingBankSize", &count, sizeof(count));
     if (FAILED(result)) (void)shader->Bind_RawValue("g_MapLightingBankSize", &disabled, sizeof(disabled));
