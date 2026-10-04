@@ -408,3 +408,68 @@ Debug Product 증분 compile/deploy는37,763ms에 PASS했다:
 Client/UI와 Release 빌드는 실행하지 않았다. 사용자가 새 Debug 실행 파일에서 F7 Capture를
 켠 뒤 F1 버튼으로 같은 경로를 재생하고 저장해 최초 입장과 비교한다. 이 변경은 비교용 재생
 진입점이며2FPS의 원인을 해결했거나 반복 재생 FPS가 개선됐다고 기록하지 않는다.
+
+## G14. 최초 입장과 같은 컷신 반복 재생의 실제 캡처 비교
+
+사용자가 F1 재생 버튼 추가 후 같은 process43604에서 저장한 두 문서를 분석했다.
+
+| 캡처 | 저장 frame 범위 | 저장 개수 | SHA256 |
+|---|---|---:|---|
+| 베른_처음입장컷신_20261004_160635_209_frame192_43604_0.json | 1~192 | 192 | f0d61a0cbd142084d2e619e091f62a997af32261722cd9b8de6595e707862972 |
+| 베른_두번째입장컷신_20261004_160747_660_frame391_43604_1.json | 193~391 | 199 | f74e80da2d7cd4013e865e38120279b5c6c0b2a1b43615908b8f4e1e05e51b1f |
+
+두 파일 모두 수집한 보관 구간 전체가 저장됐으며 제외·퇴출·CPU/GPU scope 누락·GPU pending은0이다.
+두 번째 파일명의391은 마지막 frame 번호이며 저장 개수는199다. 첫 캡처에1,000ms 이상 interval이
+3개 있고 최대1,284.568ms다. 두 번째 최대 interval은318.672ms다. interval N의 원인 CPU는
+N-1에 대응시켰고 reset 직후 interval0인 frame1·193은 이 대응에서 제외했다.
+
+전체 평균은 컷신 뒤 구간 길이가 달라 주된 비교로 사용하지 않았다. draw가10,000회 이상인
+비슷한 제출량 구간을 나누면 다음과 같다. frame별 정확한 카메라 pose/mesh 집합 동치는 아니다.
+
+| frame당 평균 | 첫 재생12 frame | 두 번째11 frame |
+|---|---:|---:|
+| Engine draw 호출 | 10,768.92 | 10,689.36 |
+| mapVisibleInstances | 20,045.33 | 19,775.82 |
+| 제출된 고유 CMesh 객체 | 1,149.75 | 1,160.82 |
+| 제출 index 수 | 26,149,564 | 26,096,871 |
+| CPU 작업 시간 | 827.122ms | 287.503ms |
+| Client.Render inclusive | 643.140ms | 269.056ms |
+| Client.Update inclusive | 177.184ms | 15.749ms |
+
+두 번째 heavy 구간의 Map.Batch.Draw는129.053ms/9,165호출, Material30.778ms,
+Pass28.017ms다. 이들은 Batch.Render 내부 구간이며 Render 전체와 중복 합산하지 않는다.
+같은 맵 제출 과정의 반복 비용이 남아 있다는 근거이고 Draw scope 자체도 driver/API 지연을
+포함하므로 순수 GPU triangle 처리 시간으로 해석하지 않는다.
+
+두 번째의 draw2,000회 미만55 frame은 평균837.07회, CPU43.789ms와 Render31.124ms다.
+재생을 반복해도 많은 맵을 제출하는 구간에서 긴 렌더 비용이 남는다. 반면 draw·가시 instance·
+batch render 호출·batch draw 호출 각각2% 이내인 독립1:1 유사 부하29쌍에서는 모두 두 번째가
+빠르다(CPU 평균608.937→265.198ms). 따라서 물량이 주요 비용 축이라는 근거와 최초 재생에
+추가 비용이 있었다는 근거를 함께 기록한다. 첫 추가 비용의 원인을 cache/driver/할당으로
+확정하거나 모든 지연을 geometry 수 하나로 설명하지 않는다.
+
+첫 캡처에는 worker의 Texture.Load.FileAndUpload83회와 texture requests161/new SRV89개가
+있고 두 번째에는 texture requests/new SRV가0이다. 첫 추가 비용 구간에서 비동기 리소스
+준비가 함께 진행됐다는 근거는 있다. worker 구간 합은 여러 frame에 걸친 병렬 elapsed이므로
+main CPU 시간에 더하거나 두 재생 차이의 전부로 귀속하지 않는다. 두 캡처의 주 스레드 shader
+생성 scope는0이므로 첫 지연을 shader compile로 단정하지 않는다.
+
+mapVisibleInstances는 제출 대상으로 인정한 맵 instance 수이며 고유 mesh 수나 최종 화면의
+픽셀 기여 수가 아니다. draw는 여러 pass·instance 제출을 포함하고 triangle 수도 아니다.
+고유 CMesh 개수 counter는 상세 OFF에서도 별도로 집계되며 누락0이다. 반면 두 캡처의 개별
+meshDraws 기록은0개이므로 구체적인 asset별 비용 순위나 같은 mesh 집합 여부는 알 수 없다.
+GPU timestamp 경과에는 CPU 제출 지연이 포함될 수 있어 긴 GPU 시간만으로 GPU 연산 포화나
+정점·픽셀 중 어느 쪽의 한계인지 단정하지 않는다. CPU 부모·자식 scope도 합산하지 않는다.
+
+export 당시 metadata는 두 파일이 동일하다(Debug, D3D debug layer ON,1920×1080,
+RTX4070, frame limiter OFF). 이것은 과거 모든 frame의 camera·옵션 동일성을 증명하지 않는다.
+실제 GPU pipeline의 heavy 평균 IA vertices는26.158→26.114백만, PS 호출은25.607→27.944백만이다.
+두 번째가 비슷한 정점과 더 많은 PS 호출을 처리하면서도 빨라졌으므로 호출 수만으로 첫 지연을
+모두 설명하지 않는다. 저장된 메모리 표본의 local 사용량/budget 최대 비율은46.791%/46.908%로
+budget 초과 증거가 없다. 1Hz 표본은 순간 peak나 driver 내부 paging 유무를 확정하지 않는다.
+이번 작업은 사용자 측정의 분석이며 제품 코드·카메라 속도·FOV·렌더링 옵션을 변경하거나
+Client를 실행하지 않았다. 다음 최적화는 많은 맵 draw와 반복되는 제출/재질 처리 비용을
+우선 검토하며 화면을 가리는 대상의 기여나 병합 가능성을 별도 검증해야 한다.
+
+재현 스크립트와 전체 집계는 `out/BernEntranceReplayComparison20261004/independent/analyze.py`,
+`summary.json`, `first-frames.json`, `second-frames.json`에 보존했다.
