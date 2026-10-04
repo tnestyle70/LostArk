@@ -552,6 +552,10 @@ player·오래된 request sequence는 실행하지 않는다. 표시 이름은 �
 F1의 카메라 profile 수치 편집 패널 대신 `Open Balance Test`를 제공한다.
 버튼은 기존 공용 `Balance Test` 독립 창을 열며 Debug/Release에서 함께 사용한다.
 별도 `Camera` 패널은 자유 이동 속도를 조절한다. F6 follow/free 전환과 맵별 카메라 profile 소비는 유지한다.
+Debug Bern에서는 같은 속도 조절 아래 `Start Bern Cutscene`이 기존 입장 카메라를 반복 재생한다.
+ImGui는 Level에 재생 요청만 보내고 다음 Level Update가 같은 sampler·FOV·시간으로 실행한다.
+종료/ESC 뒤 시작 전 follow/free 상태를 복원하며 최초 자동 재생 latch와 정본 JSON은 유지한다.
+재생 중·다른 카메라 owner·편집·레벨 전환 충돌은 기존 상태를 유지한 채 거절한다.
 
 정본은 `Data/Camera/{CharacterSelect,Bern,Valtan,KoukuSaydon}.camera.json`이며 publisher 없이
 직접 읽는다. `CArenaCameraProfile`의 schema/version/areaId·유한 범위 검증을 통과한 profile만

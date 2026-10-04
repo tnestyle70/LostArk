@@ -91,6 +91,9 @@ public:
 		std::string& outStatus);
 #ifdef _DEBUG
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
+	bool_t Request_DebugEntranceReplay();
+	const std::string& Get_DebugEntranceReplayStatus() const
+	{ return m_strDebugEntranceReplayStatus; }
 	/* Map Tool borrows this level's live map the same way the Kouku and Valtan
 	   arenas lend theirs. The level keeps ownership; the tool only edits the
 	   placements in place. */
@@ -236,6 +239,8 @@ private:
 	void End_EntranceCinematic();
 
 #ifdef _DEBUG
+	bool_t Can_DebugEntranceReplay(std::string& outStatus) const;
+	void Consume_DebugEntranceReplay();
 	bool_t Ready_DebugLevelChangeTriggers(const std::string& areaId);
 	/* O opens m_ValtanEntryView without walking to the guide NPC first --
 	   debug-only shortcut for iterating on ValtanRaidEntry_Layout.json's visual
@@ -351,6 +356,9 @@ private:
 	weak_ptr<CTransform> m_pEntranceRestoreTarget;
 
 #ifdef _DEBUG
+	bool_t m_bDebugEntranceReplayRequested = false;
+	bool_t m_bDebugEntranceReplayActive = false;
+	std::string m_strDebugEntranceReplayStatus;
 	std::vector<shared_ptr<CTrigger_Box>> m_DebugLevelChangeTriggers;
 	bool_t m_bMapAuthoringActive = false;
 	bool_t m_wasODownForValtanEntryDebugPreview = false;

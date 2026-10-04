@@ -10,6 +10,9 @@
 #include "Level_ValtanArena.h"
 #include "Level_KakulSaydonArena.h"
 #include "Level_CharacterSelect.h"
+#ifdef _DEBUG
+#include "Level_Bern.h"
+#endif
 #include <fstream>
 #include <sstream>
 #include <locale>
@@ -122,6 +125,18 @@ void CMainApp::RenderCameraSpeedControls()
         CCamera_Free::MIN_FREE_MOVE_SPEED, CCamera_Free::MAX_FREE_MOVE_SPEED, "%.1f", ImGuiSliderFlags_AlwaysClamp))
         setSpeed(speed);
     if (ImGui::Button("Reset speed to 20 m/s")) setSpeed(20.f);
+#ifdef _DEBUG
+    if (level == LEVEL::BERN)
+    {
+        if (auto* bern = CLevel_Bern::Get_Active())
+        {
+            if (ImGui::Button("Start Bern Cutscene"))
+                (void)bern->Request_DebugEntranceReplay();
+            if (!bern->Get_DebugEntranceReplayStatus().empty())
+                ImGui::TextWrapped("%s", bern->Get_DebugEntranceReplayStatus().c_str());
+        }
+    }
+#endif
     ImGui::TextDisabled("F6: Follow / Free. Shift: x%.0f.", CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER);
     if (characterSelect)
         ImGui::TextDisabled("Applies to F6 / Movie free-camera movement; Movie playback timing stays authored.");

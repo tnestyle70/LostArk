@@ -347,3 +347,64 @@ Release 빌드와 실제 새 EXE의 컷신 FPS·장식 효과 화면 확인은 �
 `run_fixture.py`, `profiler/verification-receipt.json`에 보존한다. 사용자는 새 Debug EXE에서
 F7 Capture를 켠 뒤 같은 입장 컷신을 저장하고4개 새 counter와 Ambient.Advance·Map.Batch.Render를
 함께 비교한다. 맵 제출 비용과 최초 지연 원인이 모두 해결됐다고 결론내리지 않는다.
+
+## G12. 사용자 컷신2 재측정: 반복 제한 적용과 남은 저FPS
+
+`베른_컷신2_20261004_153522_285_frame217_80032_0.json`은217개 수집/저장, 제외/퇴출0,
+CPU/GPU scope 누락0이다. 사용자는 컷신 재생만 저장했다고 확인했다. 별도로 F6로 비슷한
+위치를 이동하면20FPS 이상이라는 관찰을 전달했지만, 이 파일에 F6 비교 구간이 있다는 뜻은 아니다.
+
+interval frame2~25의24개가400ms 이상이고 대응 CPU1~24 평균은597.400ms다.
+Map.Batch.Render292.591ms, Map.Object.Render55.172ms, Ambient.Advance65.367ms이며
+렌더 전체475.997ms, 업데이트116.676ms다. Map.Batch.Draw164.477/Material92.319/
+Pass28.014ms는 batch render의 자식이므로 다시 더하지 않는다. 느린 구간 batch render는
+평균5,599회, 전체 draw9,771.75회, 가시 맵18,021.42개다. 후반 CPU198~217은57.487ms,
+batch17.917ms/583회, draw1,200.45회와 가시 맵1,016개다. 양 끝은 동일 카메라 조건의 A/B가 아니다.
+
+새 effectAmbientMaxFixedSteps는 전체 최대6, 느린24개도 모두6이다. 이전 지연 누적 방지의
+작동은 실제 캡처로 확인했지만 컷신의 저FPS를 해결하지 못했다. 제한된 배경 효과의 갱신 비용도
+0이 아니며 입장 직후의 많은 맵 제출 비용이 계속 남는다. CPU밖 frame gap 평균2.340ms와
+Profiler.Panel.Refresh6.517ms·Memory.Sample4.698ms만으로597ms를 설명할 수 없다.
+frame197은 interval0이므로 앞 frame의 CPU에 대응시키지 않는다.
+
+카메라 source audit에서는 문서 load/Begin override의 매frame 반복이나 camera matrix revision의
+같은 frame 내 폭증을 찾지 못했다. moving frame의 batch visibility rebuild는15,794회이고
+가시성 판정이 전부 통과하는 fail-open 상태도 아니다. 실제 sampler/camera/frustum 본문을
+사용한10,568pose 검사는 같은 pose/FOV에서 cinematic과 free의 view/projection 차이0을 보였다.
+이 CPU 검사는 실제 동일경로 재생의 GPU 비용이나 FPS 동등성을 증명하지 않는다.
+
+다음 비교는 사용자가 요청한 F1 재생 버튼으로 초기 입장과 이후 반복 재생의 동일 경로·FOV를
+확보해 수행한다. 카메라 속도/FOV/화질을 바꾸거나 이번 결과를 단일 근본 원인 확정으로 기록하지 않는다.
+근거는 `out/BernCutscene2Investigation20261004/independent/summary.json`,
+`frame-rows.json`, `slow-interval-pairs.json` 및 `camera_render`의 source probe다.
+
+## G13. F1 Bern 입장 컷신 반복 재생
+
+Debug Bern의 F1 `Camera`에서 자유 이동 속도와 Reset 버튼 바로 아래에
+`Start Bern Cutscene`을 추가했다. UI는 요청만 제출하고 다음 Level Update에서 현재 상태를
+재검사한 뒤 기존 입장 컷신의 sampler·경로·FOV·재생 시간으로 실행한다. 자유 카메라 속도는
+이 재생 시간을 바꾸지 않는다. 반복 재생과 같은 process의 Bern 재입장을 모두 지원한다.
+
+재입장 때문에 cue가 준비되지 않은 경우에만 원본 문서를 임시 후보로 읽고 첫 pose까지 검증한
+뒤 반영한다. 최초 자동 재생 latch를 초기화하거나 정본 JSON을 저장하지 않는다. 정상 종료와
+ESC는 기존 camera override 종료 경로로 시작 전 pose/FOV와 follow/free 요청을 복원한다.
+중복 재생, 다른 camera owner, 레벨 전환·캐릭터 복원, 연결 종료와 placement 편집 충돌은
+기존 상태를 유지하고 이유를 표시한다. 새 제품 파일이나 프로젝트 등록은 필요하지 않았다.
+
+실제 Can/Request/Consume/Ready/Update/End 본문, DataJson·Bern parser와 shared Sample_Cue를
+실행한 native fixture25개 검사가 통과했다. 원본16key/16초, 반복·재입장, queued 요청의
+비변경, 중복, ESC edge/held ESC, consume 직전 owner 변경, 잘못된 문서·첫 pose,
+Begin/Apply 실패와 각 guard를 확인했다. Camera/Transform·network·ImGui는 경계 spy이므로
+실제 화면·GPU 행렬이나 FPS 개선 증거로 대신하지 않는다. 기존 camera contract4개도 통과했다.
+독립 소스 리뷰에서 추가 수정이 필요한 결함은 없었고 scoped diff-check도 통과했다.
+
+Debug Product 증분 compile/deploy는37,763ms에 PASS했다:
+`out/BuildPipeline/runs/20261004T065129859Z-debug-product.json`.
+같은 checkout의 다른 세션 미커밋 렌더링 변경을 포함한 빌드이며 이번 commit은 컷신 재생
+기능과 대응 문서만 포함한다. 검증 중 소스·정본 카메라 JSON hash는 유지됐다.
+재현 자료는 `out/BernEntranceReplay20261004/run_native_fixture.py`,
+`native-replay-fixture-receipt.json`과 `native-replay-fixture-run.log`다.
+
+Client/UI와 Release 빌드는 실행하지 않았다. 사용자가 새 Debug 실행 파일에서 F7 Capture를
+켠 뒤 F1 버튼으로 같은 경로를 재생하고 저장해 최초 입장과 비교한다. 이 변경은 비교용 재생
+진입점이며2FPS의 원인을 해결했거나 반복 재생 FPS가 개선됐다고 기록하지 않는다.
