@@ -206,3 +206,61 @@ UI thread에서 다시 전체 파싱하는 부담은 별도 소스 경로로 확
 `comparison-summary.json`, `analyze_current_capture.py`에 보존했다. 이 조사는 원래 1FPS
 구간의 원인을 확정하거나 성능 개선 완료를 입증하지 않는다. 저장 범위 개선 후 동일 구간의
 전체 상세 캡처가 필요하다. 에이전트는 Client를 실행하거나 rendering option을 변경하지 않았다.
+
+## G08. 사용자 14:34 전체 캡처에서 확인한 연속 1FPS 구간
+
+새 `베른_컷신_20261004_143459_089_frame339_77492_0.json`은 119,073,515byte이며 SHA256은
+`9bd24cf8fd3e875ce44d087b1fa67793fed1f3b21d9638c36cb7e38eb8b1050a`다. 보유/저장339개,
+저장창 제외0/퇴출0으로 이번에는 앞쪽 저FPS frame도 모두 포함한다. interval frame2~16의
+15개가 연속으로 1.040~2.071초, 합계18.514초, 평균1.234초(약0.81FPS)다.
+interval N은 CPU frame N-1에 대응한다. 이 등식을15개 전부 확인했으며 frame gap 평균은
+0.884ms로 프레임 사이 대기가 초 단위 지연을 설명하지 않는다.
+
+| CPU 원인 frame1~15의 별도 누적 계측 | 프레임당 평균 | 평균 CPU frame 대비 |
+|---|---:|---:|
+| 전체 CPU frame | 1,233.399ms | 100% |
+| Ambient.Advance | 573.308ms | 46.48% |
+| Map.Batch.Render | 338.094ms | 27.41% |
+| Map.Object.Render | 62.568ms | 5.07% |
+
+Map.Batch.Render 안에는 Draw196.730ms, Material99.426ms, Pass32.899ms가 포함된다.
+부모와 자식 비용을 다시 더하지 않는다. 배경 효과 갱신은43~47회, batch render는5,602~6,757회,
+batch draw/material/pass는각각8,366~9,973회다. 후기frame200~339는 Ambient.Advance가37회/
+3.969ms, Map.Batch.Render가528회/16.663ms, 전체 CPU가47.050ms로 낮아진다.
+저FPS15개와 회복된140개를 섞은 평균으로 원인을 설명하지 않는다.
+
+실제 느린 구간의 저장된 FixedStep은 Effect.Playback.Update 내부에서 발생한다.
+Update 밖 FixedStep0, HistoryUpdate0이며 frame1~76에 ordinary ambient Update의60step
+상한 도달이 관측된다. frame18은 새 wall delta487.982ms(약29step)인데31개 effect가60step,
+frame60은254.671ms(약15step)인데37개 effect가60step을 수행한다. 새 delta만 처리한 것이
+아니라 이전부터 남은 시뮬레이션 시간이 계속 소모되는 증거다. 후기frame200/300은37개 effect가
+각각2~3step 수준이다. Prewarm 평균0.0923ms와 retained FixedStep의 부모를 함께 확인해
+반복 prewarm/Seek가 주원인이라는 가설과 구별했다.
+또한 frame72~76은 CPU scope drop0인데 새 interval155~171ms(약9~10step)에 비해 여러
+ambient 효과가60step을 수행한다. 따라서 backlog 증거는 상세 scope가 누락된 frame에만
+의존하지 않는다. frame1~15의 Ambient 시간 중99.893%는 일반 Playback.Update 내부였다.
+
+소스의 Timer_60은 실제 wall delta를 넘기고 Effect_PresentationService의 ambient tick은 이를
+playback rate와 곱해 사용한다. 숨긴 동안의 delta는 overwrite되므로 offscreen 전체 시간을
+쌓았다가 복귀 때 재생하는 경로와 다르다. Effect_Playback의 일반 Update는 누적기에 시간을
+더한 뒤1/60초 step을 effect당 최대60번 처리하고 미처리 잔량을 남긴다. 따라서 느린 frame이
+다음 frame의 더 많은 따라잡기 작업으로 이어지고, 그 작업이 다시 frame을 늘리는 반복 경로가
+현재 코드와 실제 계측에 함께 나타난다. 많은 맵 draw 제출도 같은 구간의 독립적인 큰 비용이다.
+최초 지연을 무엇이 시작했는지는 frame1이 이미60step 상한 상태여서 이 파일만으로 단정하지 않는다.
+
+GPU339개 모두 valid이고 pending/partial GPU scope0이다. 하지만 GPU timestamp는 CPU의
+명령 공급 대기도 포함하므로 GPU elapsed만으로 shader 포화나 특정 지형 재질을 지목하지 않는다.
+CPU 상세 scope는 전체71개 frame에서272,850개, 저FPS 원인15개에서88,608개가 capacity로
+누락됐다. **완료 frame 누락과 상세 scope 누락은 다르다.** 위 cpuWork는 별도 누적 계측이라
+표의 전체 작업 비용은 확인 가능하다. 누락된 자식의 정확한 self 비용이나 effect별 완전한 호출
+횟수는 주장하지 않는다. 60개가 실제 저장된 개별 Update는60step 상한 도달의 직접 근거다.
+effect asset/placement ID와 accumulator 잔량은 현재 capture에 없어 개별 emitter 지목은 남는다.
+
+수정 우선 대상은 일반 배경 이펙트의 누적시간 처리·한 frame 작업량과 이 구간의 맵 draw 제출이다.
+단순히 전역 delta를 줄여 gameplay 시간을 바꾸거나 누적기를 버리는 변경은 이번 조사에서 하지
+않았다. 원인 영역을 확인한 결과이며 성능 수정·개선 후 재측정 완료로 기록하지 않는다.
+이 캡처의 export metadata는 Debug/D3D debug layer ON이지만 모든 과거 frame의 설정·카메라를
+증명하지 않는다. Client/UI 실행·빌드·렌더링 옵션 변경도 하지 않았다.
+
+근거는 `out/BernCutscene1Fps20261004_143459/summary.json`, `all-15-low-intervals.json`,
+`all-frame-attribution.json`, `effect-step-parent-attribution.json`과 같은 폴더의 분석 스크립트다.
