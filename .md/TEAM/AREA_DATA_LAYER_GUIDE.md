@@ -56,10 +56,16 @@ Debug Movie Inspector의 `Edit background in Map Tool`은 Movie의 backgroundAre
 Movie의 WORLD 삼각형 pick과 Show entire background preview는 이 개별 배치 편집과 별개다.
 
 배경 위치·회전과 `Visible=false`는 원래 `Data/Maps/Authoring/<Area>/<Area>.mapplacements`에
-저장한다. `Save placements`는 저작 저장이며 실행 데이터 반영은 기존
-`Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId <Area> -Scope Placements -Mode Publish`로
-수행한다. optional WorldSequences가 없고 편집되지 않았다면 placement 저장이 빈 sequence
-문서를 만들지 않는다. 차원술사는 SL12이며 Movie JSON에 중복 map transform을 저장하지 않는다.
+저장한다. MapTool의 `Save Data + publish placements`는 기존 linked 저장 뒤
+`Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId <Area> -Scope Placements -Mode Publish`를
+실행한다. `Save Data only`는 저작본만 저장한다. 저장 성공과 게시 실패는 별도로 표시하며 게시
+실패로 저장본을 버리지 않는다. 게시 중 Save·Reload·명시적 Area 전환만 막고 목록 선택·카메라와
+메모리 draft 편집은 계속 사용할 수 있다. 게시 이후 추가한 draft는 다시 저장해야 한다.
+게시본은 다음 Level 진입에 사용한다. 배경 inspector의 저장값과 현재 화면이 다르면
+`Apply saved background placements`로 clean draft의 저장본을 현재 preview에 명시적으로 적용한다.
+자동 Reload는 하지 않으며 실패 시 이전 표시를 보존한다. Placements scope는 재질·조명·카메라·
+렌더링 옵션을 게시하지 않는다. optional WorldSequences가 없고 편집되지 않았다면 placement 저장이
+빈 sequence 문서를 만들지 않는다. 차원술사는 SL12이며 Movie JSON에 중복 map transform을 저장하지 않는다.
 
 Debug F1의 `Character Select Floor Swap` 목록은
 `Data/Rendering/Authored/CharacterSelectFloorSwap.json`의 stable source placement ID를

@@ -178,3 +178,31 @@ Spawn8.680ms, Rebuild1.340ms였다. 단순히 효과 개수가 늘어난 현상�
 Material·Pass·NonBlend 시간과 frame interval을 비교해야 한다. 원래 RNM·그림자·표시 순서와
 이동 입력도 함께 확인한다. 단일 mesh/noLOD 범위 밖의 배치와 Ambient.Advance 비용은
 남아 있으며 전체 컷신의 목표 FPS 달성을 주장하지 않는다.
+
+## G07. 사용자 12:45 새 캡처의 저장 범위와 병목 한계
+
+사용자 파일 `Client/Bin/ProfilerCaptures/베른_컷신_20261004_124545_628_frame170_44204_0.json`
+SHA256은 `725be83e133ffa8ac1b72401c5891d35a6c7645c3403754cda7ed4f5c307e746`이다.
+170개 수집 history 중 JSON 상세는 최근 120개(frame 51~170)만 포함한다. 앞쪽 50개는
+수집 불가가 아니라 저장 window에서 제외됐다. 제외 구간 최대 interval 1122.9942ms가 있어
+약 1FPS 순간이 있었음은 확인되지만, 그 구간의 느린 frame 수·연속성·scope 원인은 파일에 없다.
+사용자가 관찰한 10개 이상 느린 frame이 모두 보존됐다고 주장하지 않는다. 저FPS라서
+수집할 수 없다는 설명은 잘못이며 Profiler 기본 저장 window와 분석 window 결합이 원인이다.
+
+저장된 120개만의 평균 interval은 126.316ms(7.92FPS), 최대 277.492ms이다. CPU frame 평균
+123.362ms, Map.Batch.Render 53.062ms(내부 Draw 34.627/Material 9.291/Pass 7.727),
+fallback Map.Object.Render 10.684ms, Ambient.Advance 18.207ms가 측정됐다. GPU query는
+120/120 valid지만 CPU scope는 10개 frame에서 22,182개가 누락됐다. detailed=false로
+per-mesh GPU 원인은 없다. navigationQueries는 모두 0이며 Present 평균 0.146ms다.
+이 구간의 지속 비용을 제외된 1FPS 구간의 확정 원인으로 대신 기록하지 않는다.
+
+저장된 메모리 표본은 VRAM budget 최대 46.75%, 최소 물리 RAM 여유 31.9GiB다. 이후
+World Level 편집 클릭 시 EXE 종료를 이 캡처로 OOM이라 확정할 수 없다. 해당 시점 새 dump,
+WER 또는 종료원인 로그도 발견되지 않았다. 편집에서 Bern 재질 JSON 95,342,906byte를
+UI thread에서 다시 전체 파싱하는 부담은 별도 소스 경로로 확인했고 F1 도구 수정에서 다룬다.
+
+재현 분석과 05:08/05:10 이전 캡처 비교는
+`out/BernCliffFrameInvestigation20261004/performance/findings-and-source-consumers.json`,
+`comparison-summary.json`, `analyze_current_capture.py`에 보존했다. 이 조사는 원래 1FPS
+구간의 원인을 확정하거나 성능 개선 완료를 입증하지 않는다. 저장 범위 개선 후 동일 구간의
+전체 상세 캡처가 필요하다. 에이전트는 Client를 실행하거나 rendering option을 변경하지 않았다.

@@ -299,7 +299,7 @@ void CWorldSceneTool::Render_DeployDetails()
     ImGui::TextWrapped("Area: %s\nSource: %s\nAsset: %s\nWModel: %s",
         selected.areaId.c_str(), selected.sourcePlacementId.c_str(), selected.assetId.c_str(), selected.modelAssetId.c_str());
     if (selected.meshIndex == UINT32_MAX)
-        ImGui::TextUnformatted("Placement selected. Use Pick in world for the exact mesh and material.");
+        ImGui::TextUnformatted("Placement selected. Use Pick in scene for the exact mesh and material.");
     else
         ImGui::TextWrapped("Mesh %u | Material: %s", selected.meshIndex, selected.materialName.c_str());
     ImGui::Text("Hit XYZ: %.4f / %.4f / %.4f m", selected.hitPosition.x, selected.hitPosition.y, selected.hitPosition.z);

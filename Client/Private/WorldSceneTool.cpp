@@ -138,6 +138,27 @@ void CWorldSceneTool::Refresh_Rows()
     for (size_t i = 0; i < m_Rows.size(); ++i)
         if (query.empty() || m_Rows[i].search.find(query) != std::string::npos) m_FilteredRows.push_back(i);
 }
+bool CWorldSceneTool::Inspect_Placement(uint64_t placementId, bool deploy)
+{
+    auto* host = Host();
+    if (!host) return false;
+    if (deploy)
+    {
+        const auto* runtime = host->Get_MapAuthoringDeployRuntime();
+        if (!runtime || std::none_of(runtime->Get_Entries().begin(), runtime->Get_Entries().end(),
+            [placementId](const auto& entry) { return entry.placement.runtimePlacementId == placementId; })) return false;
+        Select_Deploy(placementId);
+    }
+    else
+    {
+        const auto& entries = host->Get_MapAuthoringPlacements();
+        if (std::none_of(entries.begin(), entries.end(),
+            [placementId](const auto& entry) { return entry.record.placementId == placementId; })) return false;
+        Select_Map(placementId);
+    }
+    m_Status = "Selected the live placement. Pick in scene identifies its exact mesh and material.";
+    return true;
+}
 void CWorldSceneTool::Select_Map(uint64_t id)
 {
     auto* host = Host(); if (!host) return;
@@ -260,7 +281,7 @@ void CWorldSceneTool::Render_MapDetails()
     const auto& selected = *m_MapSelection;
     ImGui::Text("Map #%llu", static_cast<unsigned long long>(selected.placementId));
     if (selected.meshIndex != UINT32_MAX) ImGui::Text("Mesh %u", selected.meshIndex);
-    else ImGui::TextDisabled("Placement selected. Pick in world identifies its exact mesh and material.");
+    else ImGui::TextDisabled("Placement selected. Pick in scene identifies its exact mesh and material.");
     ImGui::TextWrapped("Source: %s | Level: %s", selected.sourcePlacementId.c_str(), selected.sourceLevel.c_str());
     ImGui::TextWrapped("Asset: %s\nWModel: %s\nMaterial: %s", selected.assetId.c_str(), selected.modelAssetId.c_str(), selected.materialName.c_str());
     ImGui::Text("Hit XYZ: %.4f / %.4f / %.4f m", selected.hitPosition.x, selected.hitPosition.y, selected.hitPosition.z);
@@ -270,7 +291,7 @@ void CWorldSceneTool::Render_MapDetails()
         out << "Area: " << selected.areaId << "\nPlacement: " << selected.placementId << "\nSource: " << selected.sourcePlacementId
             << "\nLevel: " << selected.sourceLevel << "\nAsset: " << selected.assetId << "\nWModel: " << selected.modelAssetId
             << "\nMesh: ";
-        if (selected.meshIndex == UINT32_MAX) out << "placement selected; Pick in world for exact mesh";
+        if (selected.meshIndex == UINT32_MAX) out << "placement selected; Pick in scene for exact mesh";
         else out << selected.meshIndex;
         out << "\nMaterial: " << selected.materialName << "\nHit XYZ (m): " << selected.hitPosition.x
             << ", " << selected.hitPosition.y << ", " << selected.hitPosition.z;
@@ -337,7 +358,7 @@ void CWorldSceneTool::Render()
     if (!host)
     { ImGui::TextWrapped("Enter Bern, Character Select, Valtan or KoukuSaydon to inspect its live models."); ImGui::End(); return; }
     ImGui::Text("%s | %s", host->Get_MapAuthoringLabel(), m_AreaId.c_str());
-    if (ImGui::Button("Pick in world")) m_bPickRequested = true;
+    if (ImGui::Button("Pick in scene")) m_bPickRequested = true;
     ImGui::SameLine();
     float3_t selectedHit{}; const bool selection = Try_GetSelectedHit(selectedHit);
     ImGui::BeginDisabled(!selection);
@@ -366,7 +387,7 @@ void CWorldSceneTool::Render()
     else
     {
         ImGui::BeginDisabled(!m_Edit.Is_Dirty() || m_Edit.Is_ReadOnly() || m_Edit.Is_Publishing());
-        if (ImGui::Button("Save Data + publish Area")) (void)m_Edit.Save();
+        if (ImGui::Button("Save Data + publish placements")) (void)m_Edit.Save();
         ImGui::EndDisabled(); ImGui::SameLine();
         ImGui::TextUnformatted(m_Edit.Is_Publishing() ? "Publishing..." : m_Edit.Is_Dirty() ? "Unsaved changes" : "Saved baseline");
     }

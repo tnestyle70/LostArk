@@ -85,3 +85,23 @@ regression과 production geometry picker, source write/freshness/scope/draft·De
 회귀를 실행한다. JSON/XML parse와 git diff --check를 확인한다. 광역 진단을 commit 조건으로
 추가하지 않는다. Client/UI는 에이전트가 실행하지 않으며 최종 viewport/animation/Save 재진입
 판정은 사용자 확인으로 RESULT에 분리한다.
+
+## G05. 사용자 종료 보고와 선택 진입 통합
+
+사용자가 World Level Tool의 편집 진입 뒤 EXE 종료를 보고했다. 현재 시점 종료 원인을
+기록한 crash dump는 없으므로 OOM으로 확정하지 않는다. 기존 World Level 선택은
+전체 재질 문서를 읽는 별도 placement edit session을 선행하며, World Scene의 실제
+triangle 선택과 중복된다. World Level의 맵 선택·편집 진입을 World Scene으로 연결하고
+이중 session과 GPU world-point 기반 placement 추정을 제거한다. Guide의 위치 선택은
+별도 계약으로 유지한다. saved inventory와 composition owner 연결은 보존한다.
+
+World Scene의 scene pick은 편집용 문서를 열지 않고 현재 Level의 map/Deploy를 읽는다.
+현재 Area의 inventory 행도 같은 inspector로 열고 Test Level 이동을 요구하지 않는다.
+placement 편집을 명시한 때만 source ID·전체 미로드 행·freshness를 검증하는 draft를
+준비한다. 이 준비에서 이미 로드된 runtime 재질을 재사용해 대형 JSON DOM 재생성을
+피하고 실패 시 기존 draft와 선택을 보존한다. saved source와 live identity를 검증하지
+않은 임의 material 생략이나 rendering 옵션 변경은 하지 않는다.
+
+기존 파일만 수정하며 새 프로젝트 등록은 없다. source/runtime identity 실패·부분 로드
+저장·draft 보존의 기존 좁은 회귀와 변경 TU 및 Product Debug 컴파일/링크를 확인한다.
+실제 사용자 클릭 후 종료 재발 여부와 선택 결과는 사용자의 Client 화면 확인으로 남긴다.

@@ -24,6 +24,9 @@ public:
     ~CWorldSceneTool();
     void Open();
     void Hide();
+    // Inventory handoff uses the same live selection and one-shot click owner.
+    void Request_ScenePick() { m_bPickRequested = true; }
+    bool Inspect_Placement(uint64_t placementId, bool deploy);
     bool Is_Open() const { return m_bOpen; }
     void Update(float deltaSeconds, bool visible);
     void Render();

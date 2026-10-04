@@ -4400,7 +4400,7 @@ HRESULT CMainApp::Render()
 					if (m_pGuideAITool->Consume_InteractionRequest()) m_eDebugInputOwner = DEBUG_TOOL::GUIDE_AI;
                     if (m_pGuideAITool->Consume_PlacementPickRequest())
                     {
-                        if (m_pWorldLevelTool) m_pWorldLevelTool->Cancel_PlacementPick({});
+                        m_bWorldMeshPickArmed = false;
                         if (auto* bern = CLevel_Bern::Get_Active()) bern->Get_PlayerController().Cancel_DebugPlayerPlacement();
                         if (auto* arena = CLevel_ValtanArena::Get_Active()) arena->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
                         if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
@@ -14744,11 +14744,11 @@ void CMainApp::RenderDeveloperTools()
 		}
 		ImGui::EndCombo();
 	}
-	if (!isMapEditorWorkspace && currentLevelId != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
+	if (!isMapEditorWorkspace && !Find_ActiveMapAuthoringHost() &&
 		IsDebugToolVisible(DEBUG_TOOL::MAP))
 	{
 		ImGui::TextDisabled(
-			"Map Tool is open in inspect-only mode. Enter Lobby > Test > Map Editor to save map placement/navigation.");
+			"Map Tool has no live Area to attach here. Enter its owning Level to inspect or edit the loaded map.");
 	}
 
 	RenderArenaCameraAndPlayerControls();

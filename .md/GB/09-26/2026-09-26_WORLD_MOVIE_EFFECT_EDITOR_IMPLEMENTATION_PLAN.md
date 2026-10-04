@@ -433,3 +433,27 @@ Level_CharacterSelect의 실제 소유 Camera getter를 Debug/Release 공통으�
 안내한다. MainApp.cpp, MainApp_Dragon.cpp, Level_CharacterSelect.h 기존 파일의 인코딩을 보존한다.
 신규 C++ 파일과 project/filter 등록은 없다. 실제 get/set 경로와 Debug/Release 개별 컴파일을
 검증하고 최종 Product 링크는 실행 파일 점유를 확인한 뒤 진행한다.
+
+## G26. Map Tool의 배경 저장과 placement 게시 연결 (2026-10-04)
+
+차원술사 SL12의 sky_multi_sm/export1876은 authoring Y=702.599976으로 저장됐으나 게시본은
+Y=1003.07109다. 1461개 stable ID가 같고 실질 변경은 이 배치 하나다. 기존 Save는 authoring만
+저장하고 재진입은 runtime 파일을 읽으므로 저장 성공과 화면 복귀가 함께 발생한다.
+
+MapTool.h에 기존 CMapPublishRunner와 독립적인 게시 상태를 추가한다. MapTool.cpp의 placement
+toolbar는 기존 Save를 `Save Data only`로 명확히 하고 `Save Data + publish placements`를 연결한다.
+MapTool_Placements.cpp는 기존 linked save의 freshness/백업/검증을 통과한 뒤 같은 Area를
+Placements scope로 게시한다. MapPublishRunner.cpp/h는 기존 허용 scope에 Placements만 추가한다.
+조명·재질·카메라·렌더링 옵션은 이 scope의 게시 대상이 아니다. 게시 실패는 source 저장 성공을
+취소하거나 숨기지 않고 `saved, unpublished`로 표시하며 기존 runtime rollback은 publisher가 소유한다.
+게시 중 저장·reload·명시적 Area 변경만 막고 목록 선택·카메라·메모리 draft 편집은 유지한다.
+완료 시 saved source가 외부에서 바뀌었거나 새로운 draft가 있으면 이를 별도로 알린다.
+
+Movie 배경 attach는 기존 Level 객체를 빌리므로 저장된 source draft와 표시 중 runtime의 차이를
+명시한다. `Apply saved background placements`는 clean draft에서 기존 Load_Placements의
+stage/commit을 호출하고 실패 시 이전 표시를 보존한다. 자동 Reload나 사용자 Data 수정은 하지 않는다.
+없는 Publish controls 안내와 F2/AssetTest 초기 안내는 실제 버튼과 현재 Map Tool 진입 안내로 교체한다.
+
+기존 H/CPP만 수정하므로 project/filter 등록은 없다. 검증은 기존 publisher의 SL12 Placements
+Validate/Check, 변경 TU 컴파일, 게시 상태와 기존 save/reload 실패 보존 호출 경로, diff 검사를
+대상으로 한다. Product 빌드와 사용자 저장본 게시 시점은 root가 조율하며 Client/UI는 실행하지 않는다.

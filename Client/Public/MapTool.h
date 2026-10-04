@@ -4,6 +4,7 @@
 #include "MapAssetCatalog.h"
 #include "MapPlacementDocument.h"
 #include "MapPlacementRuntime.h"
+#include "MapPublishRunner.h"
 #include "WorldSequencePlayer.h"
 #include "MapLightPresentationRuntime.h"
 #include "DeployPropRuntime.h"
@@ -570,6 +571,9 @@ private:
 	bool_t Switch_EditorArea(size_t descriptorIndex,
 		const std::string* classMovieBackgroundArea = nullptr);
 	bool_t Save_AllAuthoring();
+	bool_t Save_AndPublishPlacements();
+	void Poll_PlacementPublish();
+	bool_t Saved_BackgroundDiffersFromRuntime() const;
 	bool_t Save_PlacementsAndWorldSequences();
 	bool_t Has_UnsavedAuthoring() const;
 	const EDITOR_AREA_DESCRIPTOR* Get_ActiveEditorArea() const;
@@ -734,6 +738,10 @@ private:
 
 	/* Map Asset State */
 	bool_t m_bDirty = false;
+	CMapPublishRunner m_PlacementPublishRunner;
+	std::string m_PlacementPublishStatus;
+	std::filesystem::path m_PlacementPublishSource;
+	std::string m_PlacementPublishSavedBytes;
 	PLACEMENT_STATE m_ePlacementState = PLACEMENT_STATE::IDLE;
 
 	CMapAssetCatalog m_Catalog;
@@ -757,7 +765,7 @@ private:
 	bool_t m_bMapLightSubmissionFailureReported = false;
 	std::unique_ptr<CMapAssetPreview> m_pAssetPreview;
 	std::string m_SelectedAssetId;
-	std::string m_Status = "Enter AssetTest with F2";
+	std::string m_Status = "Open Map Tool in the current level or Lobby > Test > Map Editor.";
 	std::string m_CompletePlayStatus =
 		"Complete Play uses the workspace's selected saved Server pattern.";
 	char m_Filter[128]{};

@@ -558,11 +558,12 @@ process lifetime 값이며 현재 캡처 peak가 아니다. allocation stack·�
 F7은 창만 열고 닫으며 수집은 창의 Capture에서 명시적으로 시작한다. 창을 닫아도 이미 시작한 수집은 계속된다. Capture/Reset과 상세 CPU 모드는 다음 프레임 경계에서 반영한다.
 촬영용 Release는 FPS 문자열을 그리지 않는다. Debug FPS도 cinematic HUD 숨김을 따른다. Map/Animation/Effect/Sequence 저작 창은 Debug 전용이고 Release의 docking/외부 viewport는 비활성이다. F1 테스트 허브는 Debug/Release에서 명시적으로 열 때만 표시한다. Release에는 기존 Level Navigation·Balance·Boss 등 공통 도구만 노출하고 Profiler 버튼은 표시하지 않는다.
 기본은 pass 시간과 작업량을 수집하고 `draw별 상세 CPU 계측 (추가 비용 발생)`를 켜면 map draw별 상세 scope도 기록한다.
-각 JSON은 기본으로 Frames 선택 구간(120프레임)만 복사·저장하고 선택을 해제하면 최근 최대 1200프레임을 저장한다.
+각 JSON은 기본으로 현재 보관 중인 전체 프레임(최대 1200개)을 저장하며 `분석·표시 프레임 범위`와 독립이다.
+`JSON 저장 범위 제한`을 명시적으로 켠 경우에만 `최근 프레임만 저장`의 개수로 저장 범위를 줄인다.
 세션 전체를 무제한 누적하지 않는다. v3 additive metadata는 저장 시점의 build/adapter/viewport/camera/render 설정이며
 모든 과거 프레임의 설정으로 간주하지 않는다. summary는 frame interval P50/P95/P99와 표본 유효율·누락 수를 제공한다.
-v3의 additive `captureWindow`는 저장·보유·선택창 제외·Reset 이후 history 퇴출 프레임 수와 번호 범위를 기록한다.
-창에서 제외된 retained frame의 최대 interval도 표시한다. 제외된 프레임은 선택창을 늘려 저장할 수 있지만,
+v3의 additive `captureWindow`는 저장·보유·저장 범위 제외·Reset 이후 history 퇴출 프레임 수와 번호 범위를 기록한다.
+저장 범위에서 제외된 retained frame의 최대 interval도 표시한다. 제외된 프레임은 저장 범위 제한을 끄면 포함할 수 있지만,
 1200-frame ring에서 퇴출된 프레임은 복구되지 않는다. 긴 저FPS 구간은 직후 Capture를 끄고 GPU pending 회수 뒤 저장한다.
 `저장 JSON` 탭에서 `목록 새로고침`으로 목록을 갱신하고 `선택 JSON 삭제`로 선택한 파일을 삭제한다.
 외부에서 교체·수정된 선택은 다시 선택해야 하며 기존 파일 덮어쓰기는 거부한다.
@@ -870,14 +871,16 @@ Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 
 Debug `Lobby → KoukuSaydon → F1 → Map Tool`에서는 현재 arena가 소유한 맵을 같은 편집기로 수정·저장할 수 있다. Test처럼 다른 Area로 전환하지 않으며 재생 중 target 변경은 Stop/Restore 후 수행한다. 원본 배치와 런타임 표시 상태를 분리해 저장하고, Server gameplay는 변경하지 않는다. 연결·저장 경계는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
 
 Debug Bern/Character Select/Valtan/KoukuSaydon에서 `F1 → World Scene Tool`을 연다.
-`Pick in world`를 누른 뒤 UI 밖에서 한 번 클릭하면 live map의 LOD0 삼각형과 Deploy의
+`Pick in scene`를 누른 뒤 UI 밖에서 한 번 클릭하면 live map의 LOD0 삼각형과 Deploy의
 현재 static/skeletal pose 중 최근접 mesh를 선택한다. 목록 검색·선택과 Focus, 원본
 placement/level, asset/WModel, mesh/material/hit XYZ 및 `Copy source selection`을 제공한다.
 Esc/우클릭/F1 닫기/입력 소유권·Level 변경은 피킹을 취소하며 miss는 기존 선택을 보존한다.
+World Level Tool의 `Pick in scene`도 현재 Area를 확인한 뒤 같은 World Scene Tool을 열어 다음 클릭을 전달한다.
+선택은 기존 삼각형 질의를 사용하며 별도의 맵 편집 세션을 시작하지 않는다.
 
 `Enable map placement editing`은 별도 Map Tool 실행 없이 기존 `CMapPlacementEditSession`을
 연결한다. 이동·회전·signed scale·Visible, Undo/Reset, Duplicate/Delete duplicate를 제공하고
-`Save Data + publish Area`로 Data 원본과 공식 Area publisher를 소비한다. 미로드 원본 행,
+`Save Data + publish placements`로 Data 원본과 공식 Map publisher의 Placements scope를 소비한다. 미로드 원본 행,
 미저장 draft와 외부 저장본을 보존한다. VALTAN_PHASE/backdrop/active borrower 경계는 유지한다.
 Deploy는 가역 위치·회전·positive uniform scale·opacity/Reveal preview와 clip 선택·재생·정지·seek·loop를
 제공하며 Stop/창 숨김에서 복원한다. authoritative 파괴 상태는 preview를 선점해 정상 적용된다.

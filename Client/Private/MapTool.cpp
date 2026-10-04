@@ -140,6 +140,7 @@ void Client::CMapTool::Update(
 	if (Runtime_AuthoringTargets().pPlacements)
 		Apply_RuntimeAuthoringActive(m_bOpen && m_bRuntimeAuthoring && bAllowWorldInput);
 #endif
+	Poll_PlacementPublish();
 	Update_EditorAreaPreload();
 	/* The editor is where this content is checked, so the same idle motion
 	   the arena level plays runs here as well. Rebinding is keyed on the
@@ -454,7 +455,16 @@ void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
 				ImGui::TextWrapped("Visible off mutes only that placement and is saved. Movie Show background is a separate preview filter.");
 				ImGui::TextWrapped("Source: Data/Maps/Authoring/%s/%s.mapplacements",
 					m_ClassMovieBackgroundAreaId.c_str(), m_ClassMovieBackgroundAreaId.c_str());
-				ImGui::TextWrapped("After Save, publish this Area with Publish-MapAuthoring.ps1 -Scope Placements.");
+				ImGui::TextWrapped("Save Data + publish placements updates this background for the next level entry.");
+				if (Saved_BackgroundDiffersFromRuntime())
+				{
+					ImGui::TextWrapped("Saved background placements differ from the current preview. Inspector values show the saved data.");
+					ImGui::BeginDisabled(Has_UnsavedAuthoring() || Is_CameraShotDraftDirty() ||
+						m_PlacementPublishRunner.Is_Running());
+					if (ImGui::Button("Apply saved background placements"))
+						(void)Load_Placements();
+					ImGui::EndDisabled();
+				}
 				(void)Can_ChangeRuntimeStructure();
 			}
 		}
@@ -577,6 +587,8 @@ void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
 			static_cast<f32_t>(iTotalEntries);
 		ImGui::ProgressBar(fProgress, ImVec2(-1.f, 0.f));
 	}
+	if (!m_PlacementPublishStatus.empty())
+		ImGui::TextWrapped("Placement publish: %s", m_PlacementPublishStatus.c_str());
 	if (!m_Status.empty())
 	{
 		ImGui::Separator();
@@ -632,6 +644,8 @@ void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
 
 bool_t Client::CMapTool::Save_AllAuthoring()
 {
+	if (m_PlacementPublishRunner.Is_Running())
+	{ m_Status = "Placement publish is in progress; wait before saving."; return false; }
 	if (nullptr != m_pWorldSequenceToolPanel &&
 		m_pWorldSequenceToolPanel->Is_Ready())
 	{
@@ -947,7 +961,7 @@ int Client::CMapTool::Debug_WorldLevelSelection(const std::string& areaId,
 		}
 	}
 	m_eToolMode = deploy ? TOOL_MODE::WORLD_SEQUENCE : TOOL_MODE::MAP_ASSETS;
-	status = "Selected in Map Tool. Edit/create here, then use its Save and Publish controls.";
+	status = "Selected in Map Tool. Use Save Data + publish placements to persist map changes for the next level entry.";
 	return 1;
 }
 
@@ -1191,9 +1205,14 @@ void Client::CMapTool::Render_ModeBar()
 
 void Client::CMapTool::Render_Toolbar()
 {
-	if (ImGui::Button("Save"))
+	ImGui::BeginDisabled(m_PlacementPublishRunner.Is_Running());
+	if (ImGui::Button("Save Data + publish placements"))
+		(void)Save_AndPublishPlacements();
+	ImGui::SameLine();
+	if (ImGui::Button("Save Data only"))
 		Save_AllAuthoring();
-	ImGui::TextDisabled("Data/Maps authoring; publish required");
+	ImGui::EndDisabled();
+	ImGui::TextDisabled("Placement publish updates the next level entry. Data only saves authoring files.");
 	ImGui::SameLine();
 	if (ImGui::Button("Reload"))
 	{
