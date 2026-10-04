@@ -110,3 +110,42 @@ codec/playback 수치 검사를 수행한다. 제품 통합 빌드는 root가 �
 마지막 native1140은 원본 notify024~029 raw payload690bytes가 FRotator yaw 필드464..467만 다르다. 기존 Albion decoder의 정확한 named-anchor 경계로 [0,-10922,-21845,32768,21845,10922]를 읽고 해당6개에만 회전을 연결한다. emitter 회전은 중심을6방향으로 배치하고 axis-locked quad의 별도 billboardRollDegrees=-yaw는 띠의 장축을 같은 방사 방향으로 향하게 한다. 원본 StartRotation90도는 보존하며 서로 다른 위치/quad 소비자가 읽는 것이므로 이중회전이 아니다. 발생 개수와 재질은 그대로다.
 
 out의 실제 Codec/serialize/Stage/Playback, 설치 본20개와 실제 Make_ParticleSpriteWorld 본문 추출을 사용해 inner 정지/outer 하강, clip handoff, 낙뢰 XZ 및 양수 opacity, 균열6중심·법선·장축을 검증한다. 제품은 현재 bytes SHA가 동일할 때 해당 요소와 camera key만 CAS로 바꾸고 다른 저작 변경·실행 중 draft·프로세스에는 접근하지 않는다. 새 C++/shader/Resources/project 등록은 없다.
+
+
+## G19. 10-04 V 두 번째 클립의 원본 본 부착 크기 복구
+
+재설치 원본 Action/GUNLANCER.loa의17170은 start/loop/attack 세 clip이다. 사용자가 지적한 방패를 올리는 시점은 loop의0초 Par_D_GProtection_06이며, 기존 F native446 추가 파동과 구분한다. 현재37개 원본 occurrence의 재질 identity와 분포는 재추출본과 일치한다. 실제 설치 Warlord.wmodel을 제품 admission0.0001·yaw-90과 기존 CModel 샘플러로 읽은223개 시점에서 b_effectroot의 축은0.009999996~0.009999998이다. 원본 beam native665의10m StartSize에 이 축이 다시 곱해지는데 V17170만 기존 source-bone 배율 정규화 선택에서 빠져 있다.
+
+Effect_PresentationService.cpp의 Requires_SourceBoneImportScaleNormalization에 정확한17170 full/clip1/clip2/clip3 네 asset ID와 b_effectroot의 조합만 추가한다. 기존 Build_SourceBoneAnchorWorld의 엄격한0.01 검증·축 정규화·translation 보존을 Product와 Tool이 함께 소비한다. 다른 slot·skill·사용자 방패 ring·분포·색·shader·원본 provenance는 수정하지 않는다. 파일의 변경 전 bytes와 hash를 out/WarlordVOriginal20261004에 보존하고 실제 최신 bytes에 최소 삽입한다. 새 C++·project/filter·Data·Resources 변경은 없다.
+
+독립 TU 컴파일과 실제 설치 CModel의223개 bone sample, exact ID/slot 선택 및 실패 경계의 생산 함수 검증을 수행한다. 별도 담당자가 기존 Product Playback/Draw에 실제 bone sample을 넣어 native665/669의 world 축·크기와 WARP 픽셀을 비교한다. 합성 camera/identity owner를 사용하는 수치 검증은 실제 게임 화면의 완전한 동일성이나 원본 방향 복구로 기록하지 않는다. 원본 axis-lock의 방향과 사용자가 저작한 방패 ring은 별도 경계로 남긴다. 제품 통합 빌드와 사용자 화면 판정은 root가 조율한다.
+
+## G20. 10-04 사용자 요청에 따른 V 낙뢰의 Alt V 재질 연결
+
+사용자는 Alt V에서 본 번개가 V에서도 같은 모습으로 표시되어야 한다고 정정했다. 현재 V17170과 Alt V17250은 별도 cue이며, F에서 추가한 native446 mesh 낙뢰만 공유한다. 이 공유 파동도 V는 F의 청색, Alt V는 황금색 저작값이므로 전체 표현이 같지 않다. Alt V의 native1166은 `fx_e_electric_005`를 쓰지만 V의 기존 native669는 `fx_i_thunder_01_cl`을 사용한다. 첨부 한 장만으로 화면의 모든 빛을 특정 occurrence에 귀속하지 않는다. 이번 목표는 기존 V 낙뢰 한 carrier가 Alt V와 같은 번개 재질·텍스처·Dynamic·색 입력을 소비하도록 하는 사용자 표현 변경이며, 원본 V 자체가1166이었다고 기록하지 않는다.
+
+변경 대상은 `Data/Effects/Authored/effect.warlord.skill.17170.full.restore.effect.json`과 실제 loop cue의 `effect.warlord.skill.17170.clip2.full.restore.effect.json`에 있는 동일 stable ID `authored.source-particle.full-warlord-v.c7517b0ab0450a5a1646` 하나다. V 원본 Par_D_GProtection_06/emitter7의 thunder669와 Alt V SuperGProtection_SD_00/emitter3의1166은 모두 dynamic sprite carrier라 기존 renderer를 그대로 사용한다. `material`과 `resources`는 Alt V의 `authored.source-particle.full-warlord-alt_v.981227451bbcb3791340`에서 복사한다. SourceRecipe의 DynamicParameter와 Color/ColorScaleOverLife module은 해당 shader 입력과 함께 복사하고, Required의 material identity와 SubUV 해석만1166에 맞춘다. native669의 random4칸 atlas를1166의 전체 UV에 남기지 않으며, V의16~20m StartSize·size curve·bottom pivot1은 유지한다.
+
+V의 stable ID, 발생 시각·duration·lifetime·burst/rate, seed, b_effectroot attachment, 원본 cylinder 반경, world/local 선택, transform은 보존한다. 사용자5방향 방패와 다른 native446·665·666 및 나머지 모든 occurrence도 보존한다. sourceNode에는 사용자 표현 변경과 원래669·사용한1166 ID를 명시해 source identity를 구별한다. Alt V 두 문서, gameplay/skillbinding/animevents, C++/HLSL, Resources와 project/filter 등록은 이 변경 대상에 없다.
+
+최신 디스크 bytes를 읽어 out/WarlordVAltLightning20261004에 후보와 정확한 field patch·보존 hash를 만든다. 실제 Codec parse, 기존 Renderer Stage와 현재 설치 DDS, Playback의 발생 frame·수·world transform 보존 및 Dynamic/색 입력을 확인하고, 기존 실제 설치 bone sample을 넣은 WARP 수치 검사로1166 출력의 finite/양수 여부를 확인한다. 합성 camera·빈 scene depth의 수치 검증을 사용자 화면 동일성으로 대신하지 않는다. 검증 후 최종 담당자가 최신 디스크와 patch 대상 field를 다시 대조하여 backup·CAS·원자 교체한다. 실행 중 저작 draft의 Reload와 Client 조작은 수행하지 않는다.
+
+## G21. 10-04 Alt V 마지막 돌·먼지의 원본 6방향 복구
+
+사용자 화면의 한 방향 돌은17250 두 번째 clip의 Par_W_WGL_SuperGProtection_explo_de에 속한다. 재설치 Action 원본 notify024~029는 같은 ParticleSystem을1.026193976초에 호출하며690bytes 중464~467의 FRotator yaw만 다르다. 값은[0,-10922,-21845,32768,21845,10922]다. G18은 같은 발생의 native1140 바닥6개만 복구하여 나머지54개가 회전0과 원래 b_effectroot basis에 남았다. 실제 돌 fm_k_ttrrstone_02의 emitter13/15 각6개를 포함한 현재 제품10종60개를 우선 복구한다. 원본 전체는11종66개이며 기존에 재질 미해결로 제외한 emitter16의 fm_a_stone_001 6개는 별도 후보로 조사하고 현재60개 회전 복구와 완료 상태를 구분한다.
+
+Tools/EffectPipeline/build_warlord_altv_radial_candidate.py는 최신 저작본과 원본 Action을 읽고 exact skill/stage/notify/ParticleSystem·6개 signed rotator·10 emitter 분모를 검증한다. 기존 일반 decoder가 읽는 float rotation과 별도 int FRotator를 구분한다. 범용 decoder나 다른 skill을 일괄 변경하지 않으며 최신 입력 SHA와 stable ID별 이전/이후 field를 out 후보 manifest에 기록한다. 제품 저작본을 직접 저장하지 않는다. 전체 재생성 뒤에도 이 좁은 후보 경로를 다시 사용하며 원본 분모·기존 복구값이 달라지면 실패한다.
+
+54개에만 notify yaw와 G18의 전용 guardian-ground slot·socket[90,180,0]를 연결한다. 공용 b_effectroot slot은 바꾸지 않는다. mesh의 TypeData degree·MeshRotation turn·StartSize·0.01 modelPreScale과 사용자 world-space 출생정책은 보존한다. EPAL_Z의1141/1142 12개는 기존 followEmitterAxisRotation 소비자로 출생시 emitter basis를 quad에도 한 번 연결한다. notify yaw만 고정 billboardRoll에 더하여 owner 회전을 빠뜨리지 않는다. 기존1140 6개도 고정 -notifyYaw roll만 사용하면 ownerYaw90도에서 중심과 장축이 직각이 된다. 이6개의 manual billboardRoll만0으로 되돌리고 동일 followEmitterAxisRotation을 사용한다. 원본 StartRotation90도는 보존하며 ownerYaw0에서 기존 quad와 동등해야 한다. camera-facing·velocity sprite의 roll은 그대로 두고 기존V 낙뢰·방패·material/resource/count/lifetime/raw module·다른126개 요소는 보존한다.
+
+후보는 실제 Codec/Stage/Playback과 설치 CModel의 Alt V 두 번째 clip b_effectroot를 사용해 owner yaw0/90/180에서 검사한다. 돌12개의 중심·전방·mesh normal·축 크기와 source parent 순서를 비교하고1141/1142의 quad basis도 확인한다. 새로운 C++·shader·Resources·project/filter 등록은 없다. Python 문법·후보 JSON parse·보존 및 재실행 불변식·diff check를 수행하고 최종 담당자가 현재 저장본을 다시 읽어 field 단위 CAS로 설치한다. 수치 검증은 Client 화면 확인을 대신하지 않는다.
+
+## G22. 10-04 같은 마지막 발생에서 제외된 작은 돌 6개 복구
+
+G21의 원본 ParticleSystem 분모 조사에서 emitter16의 fm_a_stone_001 6개가 최초 full 복구의 NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED 항목으로 제외되어 있음을 확인했다. 현재 unified에는 legacy grouped-translucent carrier만 남아 있다. 실제 최신 원본의14개 module과 class default를 다시 읽어 기존 unified의 불완전 lifetime·source module 투영을 그대로 재사용하지 않는다. 원본 notify024~029,0.6초 emitter delay,burst8개,2~2.5초 lifetime과6방향을 기존 CModel/Effect 경로에 연결한다.
+
+동일 MIC fx_m_mi_05.fx_mi.fx_e_me_ht_03_4_ma의 기존 Class Select Warlord native5111을 재사용한다. Kouku2452와 같은 native75명령이지만2452의 passValues[3].w=0은 최종색을0으로 만들므로 그 프로그램을 복사하지 않는다. Lance609는 이 값이1이지만 masked coverage 대신 particle alpha를 반환한다.5111은 원본 neutral override와 masked coverage를 모두 보존한다. 최신 원본 MIC·LocalVertexFactory PS/VS·texture와5111 parameter 소비의 동치를 확인한 뒤 후보를 만든다. 다른 class shader의 수정은 이 작업 범위에 넣지 않는다.
+
+Tools/EffectPipeline/build_warlord_altv_debris_candidate.py는 원본 package와 class default를 다시 읽는 별도 candidate-only helper다. 현재 설치186개 요소를 바이트 의미상 모두 보존하고 정확한 emitter16 stable ID6개만 추가한다. 원본 SourceRecipe·mesh resource·Required4x2 random 정보와 world-space 출생 정책을 보존하고 G21 전용 guardian-ground slot·notify yaw를 함께 사용한다. source mesh LocalVF가 소비하지 않는 SubUV 보정을 임의 추가하지 않는다. 재질·texture는 기존 설치 native5111 자산을 참조한다. 기존fm_a_stone_001 변환본끼리 tangent handedness가 달라 최신 원본packed TangentZ.w와 정점을 다시 연결한다. 원본 부호와 좌표계·CModel binormal 소비가 닫히면 기존ClassSelect/Lance 파일을 덮지 않고 Effect/Warlord/FullRestore/Meshes/fm_a_stone_001.wmodel 한 개의 파생geometry를 설치한다. 위치·UV·normal·tangentXYZ와 winding은 보존하고 source sign·관련checksum/provenance만 수정하며 기존 cooker/decoder 계약으로 검증한다. 새 C++·HLSL·project/filter 등록은 없다. 이전60개 후보/검증 영수증은 유지하고 G21 helper도 후속6개가 완전한 exact source 집합일 때만 허용하여 최종192개 입력에서 멱등이어야 한다.
+
+실제 Codec/Stage/Playback/Draw, 설치 Warlord 본과 ownerYaw0/90/180으로 새6개만 검증하며 기존186개 보존·resource 존재·양수/finite GPU 출력·원본 발사 시각/수·6방향을 확인한다. 입력 hash와 exact inserted ID/field를 명시한 별도 후보를 root의최신 디스크 CAS 설치 경계로 전달한다. Client/UI와 최종 화면 판정은 사용자 소유다.
