@@ -473,3 +473,43 @@ Client를 실행하지 않았다. 다음 최적화는 많은 맵 draw와 반복�
 
 재현 스크립트와 전체 집계는 `out/BernEntranceReplayComparison20261004/independent/analyze.py`,
 `summary.json`, `first-frames.json`, `second-frames.json`에 보존했다.
+
+## G15. 거리별 geometry LOD와 texture mip의 실제 적용 범위
+
+사용자는 멀리 있는 물체의 삼각형을 줄이는 LOD를 다음 해결 방향으로 제안했다.
+현재 CStaticMeshLod는 asset 준비 때 감소 index를 생성하고, 렌더 때 거리·투영·화면 오차로
+선택한다. LOD 자체가 없는 구현은 아니지만 이번 두 캡처에서 실제 감소량은 매우 작다.
+heavy 구간의 LOD 계측 대상 source 대비 submitted index 감소율은 첫0.843%, 두 번째0.837%다.
+이 분모는 screenLod가 전달된 admitted instanced draw만 포함하며 전체 렌더 index가 아니다.
+counter0인 frame을 모든 mesh가 LOD0로 선택됐다는 뜻으로 해석하지 않는다.
+
+현재 생성은24,576~3,145,728 indices와 최대1,048,576 vertices 범위로 제한한다.
+원본 정점·UV0~2·normal/tangent/binormal·color0의 오차와 경계를 보존하며, 줄일 수 없으면
+원본을 유지한다. 거리 임계값만 전역으로 완화하기 전에 생성 여부·재질 허용 여부·화면 오차
+조건 때문에 감소하지 않는 실제 대상을 분리해야 한다.
+
+09-22 RESULT에는 draw마다 compute dispatch/UAV/indirect로 LOD를 선택하던 비용을 CPU 선택과
+direct instanced draw로 바꾼 기록이 있다. 작은 fixture의 기존 compute LOD는 LOD0보다 느렸다.
+09-24 RESULT에는 생성 LOD가 없는 batch도 매 visibility 갱신에서 tight view envelope를
+계산하던 불필요 비용을 제거한 기록이 있다. 이는 LOD 알고리즘의 선택·준비 비용도 함께
+측정해야 한다는 근거이며 사용자에게 보인 모든 이전 회귀 원인을 확정한 것은 아니다.
+
+texture mip은 geometry LOD와 별도다. 오늘 설치된 Bern 조명 RNM4,618개·32,214 native mip은
+복원 기록과 실제 DirectXTK 전체 mip 업로드 검증이 있다. 현재 RNM1024²/11단, RNM4²/3단,
+shadow256²/9단 표본의 전체 SHA도 설치 receipt와 일치한다. 반면 일반 표면 텍스처인
+`MAP_D3C64DE8FC0C_BG_BER_BERNCASTLE_FLOOR06_SM_KSR/textures/lv_common_grass_24_d.dds`는
+1024² DXT5, 유효 mip1단이다. 조명 복원을 모든 표면 텍스처의 복원 완료로 확대하지 않는다.
+현재 source lightmap의 mip-linear Sample, bank의 SampleGrad와 surface anisotropic sampler는
+하위 mip 선택을 허용한다. 개별 과거 frame이 실제 어느 mip을 샘플했는지는 이 캡처에 없다.
+
+따라서 후속 방향은 화면에서 작게 보이는 원거리 대상의 geometry LOD 적용 범위를 늘리고,
+하위 mip이 없는 실제 표면 리소스를 보완하는 것이다. 삼각형 감소만으로 두 번째 heavy의
+Map.Batch.Draw129ms나 수천 번 재질 제출이 모두 사라지는 것은 아니므로 draw 병합·가시성
+제거와 구분해 성과를 측정한다. 기존 CPU 선택과 불변 감소 geometry를 재사용하고, 제한된
+대상에서 index·draw·CPU·GPU 시간과 사용자 실루엣/전환/재질 판정을 함께 확인한다.
+이번 답변에서는 LOD 정책·리소스·옵션을 변경하지 않았다.
+
+현재 mip 실측은 `out/BernEntranceReplayComparison20261004/code-audit/mip-sample-evidence.json`,
+초회 추가 비용은 `first-cost/conclusions.json`에 보존했다. 과거 구현 근거는
+`09-22/2026-09-22_BERN_RELEASE_PROFILER_OPTIMIZATION_RESULT.md`와
+`09-24/2026-09-24_RELEASE_CHARACTER_SELECT_PRELOAD_RESULT.md`다.
