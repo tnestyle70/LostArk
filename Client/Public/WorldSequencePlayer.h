@@ -133,6 +133,13 @@ public:
 	// CPU snapshot admitted by the Loader; lookup performs no IO or GPU work.
 	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> Find_PreparedLeafSnapshot(const std::string& leafId) const;
 	bool_t Set_Document(const CWorldSequenceDocument& document, const TARGET_SET& targets, std::string& status);
+    // Prepare immutable object-only WORLD subsets before the Server clock starts.
+    // Placed/deploy targets retain their normal admission path without caching.
+    bool_t Prepare_PlaybackSubset(const std::string& root, const TARGET_SET& targets, std::string& status);
+    // Reuse the source's exact admitted subset when target identities still match;
+    // otherwise use the ordinary Build_PlaybackSubset and Set_Document path.
+    bool_t Set_PlaybackSubset(const CWorldSequencePlayer& source, const std::string& root,
+        const TARGET_SET& targets, std::string& status);
     // Editor-only projections use the same world roots, actor bones and source clock.
     // Prepare every replacement before committing; failed edits preserve the live preview.
     bool Preview_EffectDocument(const EFFECT_DOCUMENT_DESC& document,
@@ -154,6 +161,10 @@ public:
 	// Prepare hidden clones through the existing Prototype/Clone/Layer path.
 	// Stop/completion returns them for later occurrences; failure preserves the pool.
 	bool_t Prewarm_ObjectInstances(const std::string& instanceId, uint32_t copies, const TARGET_SET& targets);
+	// True may still be pending; ready becomes true only at the requested capacity.
+	// Each step creates at most one hidden clone after validating the full budget.
+	bool_t Prewarm_ObjectInstancesStep(const std::string& instanceId, uint32_t copies,
+		const TARGET_SET& targets, bool_t& ready);
 	bool_t Prewarm_HiddenObjectPose(const std::string& instanceId, f32_t elapsedMs, const TARGET_SET& targets);
 	static bool_t Resolve_BossBoneAnchor(const std::shared_ptr<Engine::CModel>& model,
 		const float4x4_t& root, const std::string& bone, PLAYER_ANCHOR& out, std::string& status);
@@ -440,6 +451,8 @@ private:
     void Stop_RetiredSounds(const std::string& ownerId = {});
 	void Release_Objects(ACTIVE_INSTANCE& active);
 	void Clear_PreparedObjects();
+	bool_t Prewarm_ObjectInstancesInternal(const std::string& instanceId, uint32_t copies,
+		const TARGET_SET& targets, uint32_t maximumNewCopies, bool_t& ready);
 	static bool_t Same_ObjectModelInputs(const WORLD_SEQUENCE_OBJECT_RESOURCE& left, const WORLD_SEQUENCE_OBJECT_RESOURCE& right);
 	bool_t Admit_PresentationBossModel(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource,
 		const TARGET_SET& targets, OBJECT_MODEL& out);
@@ -465,7 +478,16 @@ private:
     bool Commit_EffectPreviews(std::unordered_map<std::string, EFFECT_PREVIEW> previews,
         std::optional<EFFECT_SELECTION> selection, std::string& status);
 
+    struct PREPARED_PLAYBACK_SUBSET final
+    {
+        std::shared_ptr<const CWorldSequenceDocument> document;
+        uint32_t levelIndex = {};
+        ID3D11Device* deviceIdentity = nullptr;
+        ID3D11DeviceContext* contextIdentity = nullptr;
+        const CMapAssetCatalog* catalogIdentity = nullptr;
+    };
 	CWorldSequenceDocument m_Document;
+    std::unordered_map<std::string, PREPARED_PLAYBACK_SUBSET> m_PreparedPlaybackSubsets;
     std::unordered_map<std::string, EFFECT_PREVIEW> m_EffectPreviews;
     std::optional<EFFECT_SELECTION> m_EffectSelection;
 	bool_t m_bPaused = false;

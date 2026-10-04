@@ -6147,3 +6147,7 @@ zero wind/noise를 각각 유지하며 DXBC replay 수치와 실제 화면 판�
 공유 Effect clone에 preview 전용 opacity를 bind했으면 draw 뒤 기본값으로 되돌린다. state만
 검사하지 말고 valid destruction debris/suppression의 commit 직전에도 preview를 정상 종료해
 Server의 동일-state 파괴 burst가 preview root를 유지하지 않게 한다.
+
+### Mario World 생성 준비와 캐시 수명
+
+모델 사전 로드와 실제 WorldObject clone 준비를 구분한다. 고유 motion ID 집합은 반복 occurrence의 수량을 잃으므로 발생 행과 EmissionCount를 함께 세며, NEXT/APPLY_TARGET를 새 spawn으로 합산하지 않는다. Hide는 pool 반환이 아니고 기존 owner 종료가 반환 시점이다. 인형·공은 이미 준비한 clone 수가 충분할 수 있으므로 부족을 추측하기 전에 실제 수량을 대조한다. 이미 검증한 object-only 재생 subset을 재사용할 때는 owner·level·device/context/catalog·Area/revision을 맞추고 동일 revision 문서 교체에서도 폐기한다. 재생 전 준비 개선을 GPU draw/FPS 성공으로 대신 기록하지 않는다. 근거는 `10-04/2026-10-04_MARIO_WORLD_PREWARM_IMPLEMENTATION_RESULT.md`다.
