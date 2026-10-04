@@ -80,6 +80,15 @@ struct MAP_RUNTIME_STATIC_BATCH_ENTRY
 };
 
 #ifdef _DEBUG
+// Snapshot identifiers and hit position only; never retain a runtime pointer.
+struct MAP_WORLD_MESH_PICK
+{
+    uint64_t placementId = 0u;
+    uint32_t meshIndex = 0u;
+    float3_t hitPosition{};
+    std::string areaId, sourcePlacementId, sourceLevel, assetId, modelAssetId, materialName;
+};
+
 struct MAP_DEBUG_PLACEMENT_PREVIEW
 {
 	MAP_PLACEMENT_RECORD record;
@@ -108,6 +117,11 @@ public:
 	   A miss leaves outPosition and the caller's current movement unchanged. */
 	bool_t Try_PickMovementSurface(const float3_t& rayOrigin,
 		const float3_t& rayDirection, float3_t& outPosition) const;
+
+#ifdef _DEBUG
+    bool_t Try_PickInspectionSurface(const float3_t& rayOrigin,
+        const float3_t& rayDirection, MAP_WORLD_MESH_PICK& outSelection) const;
+#endif
 
 	const CMapAssetCatalog& Get_Catalog() const { return m_Catalog; }
 	const std::string& Get_Status() const { return m_Status; }
@@ -154,6 +168,14 @@ public:
 	   driving a placement wins for as long as it runs. */
 	void Update_SelfMotions(f32_t fTimeDelta);
 	size_t Get_SelfMotionCount() const { return m_SelfMotions.size(); }
+#ifdef _DEBUG
+    float Debug_GetSelfMotionTime() const { return m_fSelfMotionElapsedSeconds; }
+    bool Debug_IsSelfMotionPaused() const { return m_bDebugSelfMotionPaused; }
+    float Debug_GetSelfMotionRate() const { return m_fDebugSelfMotionRate; }
+    uint64_t Debug_GetRuntimeGeneration() const { return m_iDebugRuntimeGeneration; }
+    void Debug_SetSelfMotionPlayback(bool paused, float rate);
+    void Debug_SeekSelfMotions(float seconds);
+#endif
 
 	bool_t Try_Get_PlacementBounds(
 		float3_t& outMinimum,
@@ -313,6 +335,11 @@ private:
 	std::vector<MAP_RUNTIME_PLACED_ENTRY> m_Placements;
 	std::vector<MAP_RUNTIME_SELF_MOTION_ENTRY> m_SelfMotions;
 	f32_t m_fSelfMotionElapsedSeconds = 0.f;
+#ifdef _DEBUG
+    bool m_bDebugSelfMotionPaused = false;
+    float m_fDebugSelfMotionRate = 1.f;
+    uint64_t m_iDebugRuntimeGeneration = 0u;
+#endif
 	/* Batched placements need a model to rebuild their instance from; the
 	   clone is kept per asset so an oscillating batch does not clone one
 	   every frame. */

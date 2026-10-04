@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameInstance.h"
+#include <span>
 
 NS_BEGIN(Engine)
 
@@ -37,6 +38,9 @@ public:
 	virtual void Submit_FinalCamera() {}
 	virtual HRESULT Render();
 	virtual HRESULT Render_Group(RENDERGROUP group);
+	// Borrow the current queue only; opt-in objects may consume adjacent entries.
+	virtual HRESULT Render_AdjacentNonBlend(
+		std::span<const std::shared_ptr<CGameObject>> objects, size_t& consumed);
 	// Lower values draw first within BLEND; equal values retain distance order.
 	virtual int32_t Get_BlendSortPriority() const { return 0; }
 	/* Lower values draw first within UI; equal values keep submission order. UI objects are

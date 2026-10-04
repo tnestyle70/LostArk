@@ -334,7 +334,7 @@ public:
 	/* Map Tool borrows this level's live map the same way the Kouku and Valtan
 	   arenas lend theirs. The level keeps ownership; the tool only edits the
 	   placements in place. */
-	CMapPlacementRuntime& Get_MapAuthoringRuntime() { return m_MapRuntime; }
+	CMapPlacementRuntime& Get_MapAuthoringRuntime() override { return m_MapRuntime; }
 	/* Movie backgrounds remain owned by this Level. The editor pins the Area
 	   identity instead of following class changes to another placement vector. */
 	CMapPlacementRuntime* Find_ClassCinematicBackgroundRuntime(const std::string& areaId);
@@ -356,10 +356,9 @@ public:
 	{ return m_FloorSwapAppliedSettings; }
 	bool_t Debug_Request_KakulSaydonArena();
 
-	/* IMapAuthoringHost: the Debug Map Tool edits this Level's live map in
-	   place. Character Select owns no Deploy props and plays no map
-	   self-motion, so the Deploy runtime is null and the active flag has
-	   nothing to pause. */
+	/* IMapAuthoringHost borrows the live map. Character Select owns no
+	   Deploy props. Active authoring pauses the main and movie background
+	   self-motions so placement edits keep their authored base poses. */
 	uint32_t Get_MapAuthoringLevelIndex() const override
 	{ return ETOUI(LEVEL::CHARACTER_SELECT); }
 	const char_t* Get_MapAuthoringLabel() const override { return "Character Select"; }
@@ -392,7 +391,10 @@ public:
 	void Rebase_MapAuthoringSelfMotions(const std::vector<MAP_PLACEMENT_RECORD>& records) override
 	{ Get_MapRuntime().Rebase_AuthoringSelfMotions(records); }
 	void Set_MapAuthoringActive(bool_t active) override
-	{ if (active) m_ClassSelectionPresentation.Stop(); }
+	{
+		m_bMapAuthoringActive = active;
+		if (active) m_ClassSelectionPresentation.Stop();
+	}
 	CWorldSequencePlayer::TARGET_SET Make_MapAuthoringTargets() override
 	{
 		CWorldSequencePlayer::TARGET_SET targets;
@@ -447,6 +449,7 @@ private:
 	   attach still needs a real owner because TARGET_SET::Is_Complete() does. */
 	CDeployPropRuntime m_MapAuthoringDeploy;
 #ifdef _DEBUG
+	bool_t m_bMapAuthoringActive = false;
 	struct FLOOR_SWAP_SOURCE_PAIR
 	{
 		std::string optionId;

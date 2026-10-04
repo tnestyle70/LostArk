@@ -46,6 +46,8 @@ public:
 		/* MapCatalog declares a light pair for this Area, so the Area publish
 		   rewrites <Area>.maplights.json as well. */
 		bool_t declaresLights = false;
+		/* Keep every unloaded source row when editing a product map scope. */
+		bool_t allowPartialLive = false;
 	};
 
 	/* Reads the authoring document of the Area and binds it to the live Level
@@ -53,6 +55,8 @@ public:
 	bool_t Bind(const BIND_DESC& desc, std::string& outStatus);
 	/* Drops the outline and the pick, keeps the draft in memory. */
 	void End();
+	/* Explicitly discard a detached draft; never invoked during Bind or failure. */
+	bool_t Discard_DetachedDraft();
 	/* Per frame: reports a finished publish, ends the session when the Level
 	   stopped owning the Area, and keeps the outline on the selected pose.
 	   outlineVisible is false while the tool window is closed or hidden; the
@@ -124,6 +128,7 @@ private:
 	bool_t m_bPickArmed = false;
 	bool_t m_bRollbackValid = false;
 	bool_t m_bDeclaresLights = false;
+	bool_t m_bPreserveUnloadedRows = false;
 	uint32_t m_iLevelIndex = ETOUI(LEVEL::END);
 	uint64_t m_iSelectedPlacementId = 0u;
 	uint64_t m_iNextPlacementId = 1u;

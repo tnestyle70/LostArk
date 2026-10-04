@@ -132,7 +132,8 @@ public:
 		const shared_ptr<Engine::CShader>& shader,
 		uint32_t meshIndex,
 		const MAP_ASSET_RENDER_PROFILE& profile,
-		f32_t elapsedTime);
+		f32_t elapsedTime,
+		const Engine::MODEL_SOURCE_FOLIAGE_WIND_INSTANCE* sourceWind = nullptr);
 
 	static HRESULT Bind_Material(
 		const shared_ptr<Engine::CModel>& model,
@@ -144,13 +145,16 @@ public:
 		const std::string& diagnosticAssetId = {},
         const Engine::MODEL_BAKED_LIGHTING_INSTANCE* bakedLighting = nullptr,
         const float4_t* worldCullSphere = nullptr,
-        MAP_MATERIAL_BINDING_MODE bindingMode = MAP_MATERIAL_BINDING_MODE::OBJECT);
+        MAP_MATERIAL_BINDING_MODE bindingMode = MAP_MATERIAL_BINDING_MODE::OBJECT,
+        const Engine::MODEL_SOURCE_FOLIAGE_WIND_INSTANCE* sourceWind = nullptr);
 
 	/* Scene and transient lights, their ambient and the scene fog for a
 	source-character material drawn forward after scene lighting. */
 	static HRESULT Bind_SourceCharacterForwardLights(
 		const shared_ptr<Engine::CShader>& shader);
 
+	// Preserve asset-by-asset diagnostics while the workbench holds its lease.
+	static bool_t Is_SurfaceBindingCollectionActive();
 	static std::vector<MAP_SURFACE_BINDING_ROW> Get_RecentSurfaceBindings();
 };
 

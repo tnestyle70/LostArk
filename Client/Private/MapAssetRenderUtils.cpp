@@ -24,7 +24,8 @@
 namespace
 {
     HRESULT BindSourceFoliageWind(const std::shared_ptr<Engine::CShader>& shader,
-        const Engine::MODEL_SURFACE_PARAMETERS* surface, float time, bool skinned = false)
+        const Engine::MODEL_SURFACE_PARAMETERS* surface, float time, bool skinned = false,
+        const Engine::MODEL_SOURCE_FOLIAGE_WIND_INSTANCE* sourceWind = nullptr)
     {
         const uint32_t enabled = surface &&
             (surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED ||
@@ -38,6 +39,12 @@ namespace
         if (skinned) return enabled ? E_INVALIDARG : S_OK;
         if (FAILED(shader->Bind_RawValue("g_SourceFoliageWindEnabled", &enabled, sizeof(enabled)))) return E_FAIL;
         if (!enabled) return S_OK;
+        const Engine::MODEL_SOURCE_FOLIAGE_WIND_INSTANCE emptyDrawInputs{};
+        const auto& drawInputs = sourceWind ? *sourceWind : emptyDrawInputs;
+        if (FAILED(shader->Bind_RawValue("g_SourceFoliageWindDrawOwnerPosition", &drawInputs.actorPositionSourceCm,
+            sizeof(drawInputs.actorPositionSourceCm))) ||
+            FAILED(shader->Bind_RawValue("g_SourceFoliageWindDrawDimensionsAndRadius", &drawInputs.objectDimensionsAndRadiusSourceCm,
+            sizeof(drawInputs.objectDimensionsAndRadiusSourceCm)))) return E_FAIL;
         if (!std::isfinite(time)) return E_INVALIDARG;
         if (FAILED(shader->Bind_RawValue("g_SourceFoliageWindProgram", &surface->sourceFoliageWindProgram,
             sizeof(surface->sourceFoliageWindProgram)))) return E_FAIL;
@@ -796,6 +803,11 @@ HRESULT Client::CMapAssetRenderUtils::Bind_SourceCharacterForwardLights(
 	return CGameInstance::Get().Bind_HeightFog(shader.get());
 }
 
+bool_t Client::CMapAssetRenderUtils::Is_SurfaceBindingCollectionActive()
+{
+    return GetTickCount64() < g_SurfaceBindingRequestedUntilMs.load(std::memory_order_relaxed);
+}
+
 std::vector<Client::MAP_SURFACE_BINDING_ROW> Client::CMapAssetRenderUtils::Get_RecentSurfaceBindings()
 {
 	const uint64_t now = GetTickCount64();
@@ -877,7 +889,8 @@ HRESULT Client::CMapAssetRenderUtils::Bind_ShadowMaterial(
 	const shared_ptr<Engine::CShader>& shader,
 	uint32_t meshIndex,
 	const MAP_ASSET_RENDER_PROFILE& profile,
-	f32_t elapsedTime)
+	f32_t elapsedTime,
+	const Engine::MODEL_SOURCE_FOLIAGE_WIND_INSTANCE* sourceWind)
 {
 	if (nullptr == model || nullptr == shader ||
 		meshIndex >= model->Get_NumMeshes())
@@ -897,7 +910,8 @@ HRESULT Client::CMapAssetRenderUtils::Bind_ShadowMaterial(
 			break;
 		default:
 			// Native, layered and foliage families own additional shadow inputs.
-			return Bind_Material(model, shader, meshIndex, profile, elapsedTime);
+			return Bind_Material(model, shader, meshIndex, profile, elapsedTime, nullptr, {},
+                nullptr, nullptr, MAP_MATERIAL_BINDING_MODE::OBJECT, sourceWind);
 		}
 	}
 
@@ -931,7 +945,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_ShadowMaterial(
 	if (program != 0u &&
 		FAILED(model->Bind_SurfaceTexture(shader, "g_DiffuseTexture", meshIndex, aiTextureType_DIFFUSE)))
 		return E_FAIL;
-	if (FAILED(BindSourceFoliageWind(shader, surface, elapsedTime, model->Is_Skinned()))) return E_FAIL;
+	if (FAILED(BindSourceFoliageWind(shader, surface, elapsedTime, model->Is_Skinned(), sourceWind))) return E_FAIL;
 	return shader->Bind_RawValue("g_SurfaceProgram", &program, sizeof(program));
 }
 
@@ -943,7 +957,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 	f32_t elapsedTime, const ComPtr<ID3D11ShaderResourceView>& diffuseOverride,
 	const std::string& diagnosticAssetId,
     const Engine::MODEL_BAKED_LIGHTING_INSTANCE* bakedLighting, const float4_t* worldCullSphere,
-    MAP_MATERIAL_BINDING_MODE bindingMode)
+    MAP_MATERIAL_BINDING_MODE bindingMode, const Engine::MODEL_SOURCE_FOLIAGE_WIND_INSTANCE* sourceWind)
 {
 	if (nullptr == model ||
 		nullptr == shader ||
@@ -1182,7 +1196,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
                 FAILED(shader->Bind_RawValue("g_LightmapDirectionalScale", &lighting.directionalScale, sizeof(lighting.directionalScale))) ||
                 (hasBaked && !hasStaticShadow && FAILED(model->Bind_SurfaceLighting(shader, meshIndex)))) return E_FAIL;
         }
-        if (FAILED(BindSourceFoliageWind(shader, nativeSurface, elapsedTime, model->Is_Skinned()))) return E_FAIL;
+        if (FAILED(BindSourceFoliageWind(shader, nativeSurface, elapsedTime, model->Is_Skinned(), sourceWind))) return E_FAIL;
         if (FAILED(model->Bind_SourceCharacter(shader, meshIndex))) return E_FAIL;
         return movieForward ? model->Bind_SourceCharacterForwardLight(shader, meshIndex) : S_OK;
     }
@@ -1200,13 +1214,13 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
     const float4_t pbrParameters = pbrComparisonActive ? settings.MapPBR.vSurfaceParameters : float4_t(1.f, 0.f, 0.f, 0.f);
     if (FAILED(shader->Bind_RawValue("g_MapPBRContributionScale", &pbrContributions, sizeof(pbrContributions))) ||
         FAILED(shader->Bind_RawValue("g_MapPBRDiagnosticParameters", &pbrParameters, sizeof(pbrParameters)))) return E_FAIL;
-    if (FAILED(BindSourceFoliageWind(shader, surface, elapsedTime, model->Is_Skinned()))) return E_FAIL;
+    if (FAILED(BindSourceFoliageWind(shader, surface, elapsedTime, model->Is_Skinned(), sourceWind))) return E_FAIL;
 	// Bind last: the legacy diffuse binder resets source programs on shared shaders.
 	if (FAILED(shader->Bind_RawValue("g_SurfaceProgram", &program, sizeof(program))) ||
 		FAILED(shader->Bind_RawValue("g_HasSurfaceDefinition", &hasSurface, sizeof(hasSurface))) ||
 		FAILED(shader->Bind_RawValue("g_SurfaceDebugView", &debugView, sizeof(debugView))))
 		return E_FAIL;
-    const uint32_t hasBaked = (program == 3u || program == 4u || program == 5u || program == 7u || program == 8u || program == 9u || program == 10u || (program >= 11u && program <= 13u)) && surface->hasBakedLighting ? 1u : 0u;
+    const uint32_t hasBaked = (program == 3u || program == 4u || program == 5u || program == 7u || program == 8u || program == 9u || program == 10u || (program >= 11u && program <= 14u)) && surface->hasBakedLighting ? 1u : 0u;
     // Most map surfaces have no source indirect input. Avoid copying the
     // environment's cube reference and path string for those ordinary draws.
     const bool sourceIndirectEnabled = surface && surface->hasSourceIndirect &&

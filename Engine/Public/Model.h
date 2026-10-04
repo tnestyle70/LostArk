@@ -264,6 +264,10 @@ public:
 		uint32_t iInstanceStride, uint32_t iNumInstances,
 		uint32_t iInstanceByteOffset = 0u,
         const MESH_SCREEN_LOD_DESC* screenLod = nullptr);
+	// Only identical immutable single-mesh BG geometry may share a lighting bank.
+	bool_t Can_BatchStaticLightingWith(const CModel& other) const;
+	HRESULT Bind_StaticLightingBank(const shared_ptr<class CShader>& shader,
+		std::span<const CModel* const> models) const;
 	/* Preparation is explicit: the caller owns the proof that every source
 	   submesh in this contiguous range uses the same effective draw state.
 	   Original meshes/material slots remain intact. S_FALSE means this model

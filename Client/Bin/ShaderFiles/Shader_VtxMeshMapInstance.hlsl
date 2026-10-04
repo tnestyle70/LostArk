@@ -83,6 +83,8 @@ struct VS_IN
     float4 vLightmapAverageScale : INSTANCE_LIGHTMAP1;
     float4 vLightmapDirectionalScale : INSTANCE_LIGHTMAP2;
     float4 vStaticShadowScaleBias : INSTANCE_SHADOW0;
+    float4 vSourceWindOwnerPosition : INSTANCE_SOURCE_WIND0;
+    float4 vSourceWindDimensionsAndRadius : INSTANCE_SOURCE_WIND1;
 };
 
 struct VS_OUT
@@ -122,7 +124,8 @@ VS_OUT VS_MAIN(VS_IN input)
     float4 worldPosition =
 		mul(float4(input.vPosition, 1.f), world);
 
-    worldPosition.xyz += SourceFoliageWorldOffset(worldPosition.xyz,input.vColor,world);
+    worldPosition.xyz += SourceFoliageWorldOffset(worldPosition.xyz,input.vColor,world,
+        input.vSourceWindOwnerPosition,input.vSourceWindDimensionsAndRadius);
 
     output.vPosition =
 		mul(mul(
@@ -181,10 +184,12 @@ VS_OUT VS_MAIN(VS_IN input)
     }
 
     output.vRawTexcoord = input.vTexcoord;
-    output.vLightmapUV = input.vLightmapUV * input.vLightmapScaleBias.xy + input.vLightmapScaleBias.zw;
+    // Same native Landscape UV0 contract as the ordinary draw path.
+    const float2 lightingUV = IsMapSurfaceSourceLandscape() ? input.vTexcoord : input.vLightmapUV;
+    output.vLightmapUV = lightingUV * input.vLightmapScaleBias.xy + input.vLightmapScaleBias.zw;
     output.vLightmapAverageScale = input.vLightmapAverageScale;
     output.vLightmapDirectionalScale = input.vLightmapDirectionalScale;
-    output.vStaticShadowUV = input.vLightmapUV * input.vStaticShadowScaleBias.xy + input.vStaticShadowScaleBias.zw;
+    output.vStaticShadowUV = lightingUV * input.vStaticShadowScaleBias.xy + input.vStaticShadowScaleBias.zw;
     output.vTexcoord =
 		input.vTexcoord *
 		g_UVScale +
@@ -254,8 +259,90 @@ float4 SampleMapDiffuse(float2 texcoord, float3 worldPos)
     return sideX * weight.x + topDown * weight.y + sideZ * weight.z;
 }
 
+// Only adjacent, otherwise identical SOURCE_BG draws use this bounded bank.
+// Each SRV retains its original size, mip chain, format and color space.
+uint g_MapLightingBankSize = 0u;
+Texture2D g_MapBakedAverageBank[8];
+Texture2D g_MapBakedDirectionalBank[8];
+Texture2D g_MapStaticShadowBank[8];
+
+float4 SampleMapLightingBankAverage(float2 uv, uint slot)
+{
+    // Take gradients before per-instance selection, including primitive edges.
+    const float2 dx = ddx(uv), dy = ddy(uv);
+    [branch] switch (slot)
+    {
+    case 1u: return g_MapBakedAverageBank[1].SampleGrad(SurfaceLightmapSampler, uv, dx, dy);
+    case 2u: return g_MapBakedAverageBank[2].SampleGrad(SurfaceLightmapSampler, uv, dx, dy);
+    case 3u: return g_MapBakedAverageBank[3].SampleGrad(SurfaceLightmapSampler, uv, dx, dy);
+    case 4u: return g_MapBakedAverageBank[4].SampleGrad(SurfaceLightmapSampler, uv, dx, dy);
+    case 5u: return g_MapBakedAverageBank[5].SampleGrad(SurfaceLightmapSampler, uv, dx, dy);
+    case 6u: return g_MapBakedAverageBank[6].SampleGrad(SurfaceLightmapSampler, uv, dx, dy);
+    case 7u: return g_MapBakedAverageBank[7].SampleGrad(SurfaceLightmapSampler, uv, dx, dy);
+    default: return g_MapBakedAverageBank[0].SampleGrad(SurfaceLightmapSampler, uv, dx, dy);
+    }
+}
+
+float4 SampleMapLightingBankDirectional(float2 uv, uint slot)
+{
+    // Take gradients before per-instance selection, including primitive edges.
+    const float2 dx = ddx(uv), dy = ddy(uv);
+    [branch] switch (slot)
+    {
+    case 1u: return g_MapBakedDirectionalBank[1].SampleGrad(SurfaceLightmapSampler, uv, dx, dy);
+    case 2u: return g_MapBakedDirectionalBank[2].SampleGrad(SurfaceLightmapSampler, uv, dx, dy);
+    case 3u: return g_MapBakedDirectionalBank[3].SampleGrad(SurfaceLightmapSampler, uv, dx, dy);
+    case 4u: return g_MapBakedDirectionalBank[4].SampleGrad(SurfaceLightmapSampler, uv, dx, dy);
+    case 5u: return g_MapBakedDirectionalBank[5].SampleGrad(SurfaceLightmapSampler, uv, dx, dy);
+    case 6u: return g_MapBakedDirectionalBank[6].SampleGrad(SurfaceLightmapSampler, uv, dx, dy);
+    case 7u: return g_MapBakedDirectionalBank[7].SampleGrad(SurfaceLightmapSampler, uv, dx, dy);
+    default: return g_MapBakedDirectionalBank[0].SampleGrad(SurfaceLightmapSampler, uv, dx, dy);
+    }
+}
+
+float4 SampleMapLightingBankShadow(float2 uv, uint slot)
+{
+    // Take gradients before per-instance selection, including primitive edges.
+    const float2 dx = ddx(uv), dy = ddy(uv);
+    [branch] switch (slot)
+    {
+    case 1u: return g_MapStaticShadowBank[1].SampleGrad(SourceStaticShadowSampler, uv, dx, dy);
+    case 2u: return g_MapStaticShadowBank[2].SampleGrad(SourceStaticShadowSampler, uv, dx, dy);
+    case 3u: return g_MapStaticShadowBank[3].SampleGrad(SourceStaticShadowSampler, uv, dx, dy);
+    case 4u: return g_MapStaticShadowBank[4].SampleGrad(SourceStaticShadowSampler, uv, dx, dy);
+    case 5u: return g_MapStaticShadowBank[5].SampleGrad(SourceStaticShadowSampler, uv, dx, dy);
+    case 6u: return g_MapStaticShadowBank[6].SampleGrad(SourceStaticShadowSampler, uv, dx, dy);
+    case 7u: return g_MapStaticShadowBank[7].SampleGrad(SourceStaticShadowSampler, uv, dx, dy);
+    default: return g_MapStaticShadowBank[0].SampleGrad(SourceStaticShadowSampler, uv, dx, dy);
+    }
+}
+
+float3 EvaluateMapInstanceBGIndirect(MAP_SURFACE_SAMPLE surface, VS_OUT input)
+{
+    if (g_MapLightingBankSize == 0u)
+        return EvaluateMapSourceBGIndirectLighting(surface, input.vLightmapUV,
+            input.vLightmapAverageScale, input.vLightmapDirectionalScale, input.vWorldPos.xyz,
+            input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz, false);
+    if (g_HasBakedLighting == 0u || input.vLightmapAverageScale.w == 0.f)
+        return surface.subspecularRadiance;
+    // W is reserved in the ordinary RNM payload; only the merged GPU copy writes it.
+    const uint slot = min((uint)input.vLightmapDirectionalScale.w, g_MapLightingBankSize - 1u);
+    const float3 average = SampleMapLightingBankAverage(input.vLightmapUV, slot).rgb * input.vLightmapAverageScale.rgb;
+    const float3 coefficients = SampleMapLightingBankDirectional(input.vLightmapUV, slot).rgb * input.vLightmapDirectionalScale.rgb;
+    return EvaluateMapSourceBGIndirectSamples(surface, average, coefficients, input.vWorldPos.xyz,
+        input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz, false);
+}
+
+float EvaluateMapInstanceBGShadow(VS_OUT input)
+{
+    if (g_MapLightingBankSize == 0u) return EvaluateMapStaticShadow(input.vStaticShadowUV);
+    if (g_HasStaticShadow == 0u) return 1.f;
+    const uint slot = min((uint)input.vLightmapDirectionalScale.w, g_MapLightingBankSize - 1u);
+    return EvaluateMapStaticShadowDistance(SampleMapLightingBankShadow(input.vStaticShadowUV, slot).r);
+}
+
 // Opaque source BG uses the same material math with its family fixed at compile time.
-PS_OUT PS_MAIN_SOURCE_BG(VS_OUT input)
+PS_OUT EvaluateMapInstanceSourceBG(VS_OUT input, bool lightingBank)
 {
     PS_OUT output = (PS_OUT)0;
     const MAP_SURFACE_SAMPLE surface = EvaluateMapSourceBGSurface(input.vRawTexcoord,
@@ -284,17 +371,23 @@ PS_OUT PS_MAIN_SOURCE_BG(VS_OUT input)
     output.vPickPos.w = EncodeMapSurfaceGeometricNormal(input.vNormal.xyz,
         g_HasBakedLighting != 0u && input.vLightmapAverageScale.w != 0.f);
     output.vPickPos.w = EncodeMapStaticShadowChannel(output.vPickPos.w);
-    output.vEmissive = float4(EvaluateMapSourceBGIndirectLighting(surface,
-        input.vLightmapUV, input.vLightmapAverageScale,
-        input.vLightmapDirectionalScale, input.vWorldPos.xyz,
-        input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz, false) +
-        EvaluateMapSurfaceEmissive(input.vRawTexcoord, 8u),
-        1.f - EvaluateMapStaticShadow(input.vStaticShadowUV));
+    const float3 indirect = lightingBank ? EvaluateMapInstanceBGIndirect(surface, input) :
+        EvaluateMapSourceBGIndirectLighting(surface, input.vLightmapUV,
+            input.vLightmapAverageScale, input.vLightmapDirectionalScale, input.vWorldPos.xyz,
+            input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz, false);
+    const float shadow = lightingBank ? EvaluateMapInstanceBGShadow(input) :
+        EvaluateMapStaticShadow(input.vStaticShadowUV);
+    output.vEmissive = float4(indirect + EvaluateMapSurfaceEmissive(input.vRawTexcoord, 8u),
+        1.f - shadow);
     output.vCharacterSurface =
         float4(surface.rimlightRadiance, float(g_SourceBgFlags & 1023u));
     output.vMaterialSpecular = float4(surface.specular, diffuseScale);
     return output;
 }
+
+// Compile ordinary and bank draws separately so ordinary passes bind no bank SRVs.
+PS_OUT PS_MAIN_SOURCE_BG(VS_OUT input) { return EvaluateMapInstanceSourceBG(input, false); }
+PS_OUT PS_MAIN_SOURCE_BG_BANK(VS_OUT input) { return EvaluateMapInstanceSourceBG(input, true); }
 
 PS_OUT PS_MAIN(VS_OUT input)
 {
@@ -814,6 +907,7 @@ VertexShader MapInstanceShadowSimpleVS = compile vs_5_0 VS_SHADOW_SIMPLE();
 PixelShader MapInstanceShadowSimplePS = compile ps_5_0 PS_SHADOW_SIMPLE();
 VertexShader MapInstanceShadowOpaqueVS = compile vs_5_0 VS_SHADOW_OPAQUE();
 PixelShader MapInstanceSourceBgPS = compile ps_5_0 PS_MAIN_SOURCE_BG();
+PixelShader MapInstanceSourceBgBankPS = compile ps_5_0 PS_MAIN_SOURCE_BG_BANK();
 
 technique11 DefaultTechnique
 {
@@ -1163,6 +1257,36 @@ technique11 DefaultTechnique
         VertexShader = MapInstanceVS;
         GeometryShader = NULL;
         PixelShader = MapInstanceSourceBgPS;
+    }
+    // Appended 27-29: the same states with original per-instance lighting SRV selection.
+    pass SourceBGBankBackPass
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = MapInstanceVS;
+        GeometryShader = NULL;
+        PixelShader = MapInstanceSourceBgBankPS;
+    }
+
+    pass SourceBGBankFrontPass
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = MapInstanceVS;
+        GeometryShader = NULL;
+        PixelShader = MapInstanceSourceBgBankPS;
+    }
+
+    pass SourceBGBankTwoSidedPass
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = MapInstanceVS;
+        GeometryShader = NULL;
+        PixelShader = MapInstanceSourceBgBankPS;
     }
 
 }

@@ -256,6 +256,8 @@ def main():
     parser.add_argument("--source-root", type=Path, required=True, help="Lossless extractor SourceRaw directory")
     parser.add_argument("--source-contract", type=Path)
     parser.add_argument("--texture-closure", type=Path, help="Original compressed-mip DDS receipt; payload hashes are checked")
+    parser.add_argument("--lighting-candidate", type=Path,
+                        help="Audited Landscape lighting candidate-manifest.json; preserves native RNM/shadow inputs")
     parser.add_argument("--package-root", type=Path, help="Original ReleasePC/Packages; used when --texture-closure is omitted")
     parser.add_argument("--umodel", type=Path, help="Original-compatible UModel; extracts complete compressed mip chains")
     parser.add_argument("--baseline-resources", type=Path, default=ROOT / "Client/Bin/Resources")
@@ -269,6 +271,8 @@ def main():
     assert not output.exists(), "use a fresh candidate directory"
     if not args.geometry_only and (not args.source_contract or not (args.texture_closure or (args.package_root and args.umodel))):
         parser.error("native candidates require --source-contract and either --texture-closure or --package-root plus --umodel")
+    if args.geometry_only and args.lighting_candidate:
+        parser.error("--lighting-candidate requires native material mode")
     contract_hash = None
     contracts = {}
     if not args.geometry_only:
@@ -279,6 +283,16 @@ def main():
         assert source_contract["uvScale"] == .1 and abs(source_contract["rotationRadiansMultiplier"] - 3.140000104904175) < 1e-10
         contracts = {r["assetId"]: r for r in source_contract["components"]}
         assert len(contracts) == len(source_contract["components"]), "duplicate source contract component"
+    lighting_manifest, lighting_patches, lighting_placements = None, {}, {}
+    if args.lighting_candidate:
+        lighting_manifest = read_json(args.lighting_candidate)
+        assert lighting_manifest["schema"] == "source-landscape-lighting-candidate.v1"
+        assert lighting_manifest["sourceContract"]["sha256"] == contract_hash
+        lighting = read_json(Path(lighting_manifest["materialPatchPath"]))
+        lighting_patches = {r["assetId"]: r["bakedLighting"] for r in lighting["materials"]}
+        lighting_placements = {r["assetId"]: r for r in lighting["placementLighting"]}
+        assert len(lighting_patches) == len(lighting["materials"]) and set(lighting_patches) == set(contracts)
+        assert len(lighting_placements) == len(lighting["placementLighting"]) and set(lighting_placements) == set(contracts)
     output.mkdir(parents=True)
     texture_list = []
     if not args.geometry_only:
@@ -341,6 +355,9 @@ def main():
                 weight_ids.append(name)
         if not args.geometry_only:
             row, used = typed_row(contracts[asset], component, weight_ids, height_id, textures)
+            if lighting_manifest:
+                row["bakedLighting"] = lighting_patches[asset]
+                assert lighting_placements[asset]["sourcePlacementId"] == check["sourcePlacementId"]
             rows.append(row)
             used_textures.update(used)
             check["sourceShaderMapKey"] = contracts[asset]["shaderMapKey"]
@@ -362,7 +379,25 @@ def main():
         target = output / "Resources" / resource["resourceId"]
         write_same(target, data)
         resources[resource["resourceId"]] = {**resource, "candidatePath": str(target)}
-    write_json(output / "mapmaterials.rows.json", {"materials": rows})
+    material_document = {"materials": rows}
+    if lighting_manifest:
+        selected_lighting = [lighting_placements[r["assetId"]] for r in rows]
+        material_document["placementLighting"] = selected_lighting
+        wanted_lighting_textures = {path for row in rows for path in (
+            row["bakedLighting"]["averageTexture"], row["bakedLighting"]["directionalTexture"],
+            row["bakedLighting"]["staticShadow"]["texture"])}
+        for resource in lighting_manifest["resources"]:
+            name = resource["resourceId"]
+            if name not in wanted_lighting_textures:
+                continue
+            assert not Path(name).is_absolute() and ".." not in Path(name).parts
+            data = Path(resource["candidatePath"]).read_bytes()
+            assert sha(data) == resource["sha256"] and resource["generatedMips"] == 0 and not resource["recompressed"]
+            target = output / "Resources" / name
+            write_same(target, data)
+            resources[name] = {**resource, "candidatePath": str(target)}
+        assert wanted_lighting_textures <= set(resources)
+    write_json(output / "mapmaterials.rows.json", material_document)
     summary = dict(components=len(checks), materialRows=len(rows), sourceTriangles=sum(c["triangleCount"] for c in checks),
         sourceHoleQuads=sum(c["holeQuadCount"] for c in checks), resourceCount=len(resources),
         resourceBytes=sum(r["bytes"] for r in resources.values()), unchangedEmbeddedTextureCount=len(baseline_dependencies),
@@ -373,7 +408,10 @@ def main():
         sourceContract=None if args.geometry_only else dict(path=str(args.source_contract.resolve()), sha256=contract_hash),
         converterSha256=sha(args.converter.read_bytes()), summary=summary, geometryChecks=checks,
         resources=list(resources.values()), unchangedDependencies=list(baseline_dependencies.values()),
-        materialRowsPath=str(output / "mapmaterials.rows.json")))
+        materialRowsPath=str(output / "mapmaterials.rows.json"),
+        lightingCandidate=None if not args.lighting_candidate else dict(
+            path=str(args.lighting_candidate.resolve()), sha256=sha(args.lighting_candidate.read_bytes()),
+            placementLightingCount=len(material_document["placementLighting"]))))
     print(json.dumps(summary), flush=True)
 
 

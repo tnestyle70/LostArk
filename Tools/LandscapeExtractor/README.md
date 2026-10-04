@@ -47,6 +47,46 @@ python Tools/LandscapeExtractor/build_source_landscape_candidate.py `
 - 이 출력은 수치·리소스 검증 결과다. 런타임 소비 코드, Area publish와 사용자
   화면 확인은 별도로 수행해야 한다.
 
+## 원본 Landscape 조명 후보
+
+`build_source_landscape_lighting_candidate.py`는 현재 원본 42개 component의 native
+FLightMap2D와 각 component 자신의 ShadowMap2D를 읽는다. RNM 두 장과 G8 그림자의
+원본 전체 mip를 추출하고 기존 `bakedLighting` 및 `placementLighting` 필드만 담은
+`mapmaterials.patch.json`을 만든다. geometry, UV0 표면 반복, 배치 TRS는 변경하지 않는다.
+
+inline Texture2D BulkData는 flags 0(raw) 또는 0x80(LZ4)에 따라 디코드한다.
+압축 컨테이너 길이가 decoded 길이와 같더라도 flags 0x80이면 UE bulk header와
+block table을 해석한다. 길이 비교로 raw를 추정하지 않으며 다른 flags는 거부한다.
+Height/Weight BGRA와 G8 shadow 모두 이 동일 decoder에 native flags를 전달한다.
+
+```powershell
+python Tools/LandscapeExtractor/build_source_landscape_lighting_candidate.py `
+  --source-contract Tools/LandscapeExtractor/SourceContracts/BernSourceLandscape.v1.json `
+  --package-root "C:/ProgramData/Smilegate/Games/LOSTARK/EFGame/ReleasePC/Packages" `
+  --umodel out/BernCliffCoverage20261004/tool/umodel_lostark_v7.exe `
+  --uv-proof out/BernLandscapeLightmapUvReview20261004/lc622-lightmap-uv-cpu-proof.json `
+  --output out/BernLandscapeLightingCandidate
+```
+
+`--uv-proof`는 원본 EFEngine의 LandscapeLightmapScaleBias CPU owner, native shader
+binding과 float32 산식을 대조한 전달 기록이다. 현재 engine hash와 각 component의
+62/31/2 grid 및 proxy resolution4가 일치해야 한다. 이 범위의 정규화 UV0는
+scale0.953125/bias0.015372984111309052를 거친 뒤 각 component의 RNM·shadow atlas와
+각각 합성된다. 원본이나 입력이 달라지면 기존 상수를 재사용하지 않고 중단한다.
+
+`--texture-cache`는 DDS와 `.dds.receipt.json`이 함께 있는 이전 추출 폴더를 선택적으로
+재사용하며 source serial·package·DDS hash를 다시 확인한다. 출력 `Resources`는
+`Map/Lighting/Bern` 상대 경로를 사용한다. `candidate-manifest.json`은 texture hash,
+각 component 원본 근거와 합성된 좌표를 보관한다. 현재 shadow의 penumbraWidth0.05와
+중심 처리에는 기존 `PROJECT_ADAPTER` 계약을 사용하며 원본 CPU 복원값으로 표기하지 않는다.
+
+geometry·표면까지 다시 만들 때는 위 `build_source_landscape_candidate.py`에
+`--lighting-candidate <조명 후보의 candidate-manifest.json>`을 전달한다. 선택한
+component의 RNM·shadow resource와 placementLighting을 결과에 함께 보존한다.
+이 인자를 생략한 표면 전용 후보로 현재 조명 필드를 덮어쓰지 않는다. 최종 설치는
+최신 저작본에서 stable asset/source-placement ID별 해당 필드만 병합한 뒤 공식
+Area publisher를 사용한다. 후보 생성은 제품 설치·publish·Client 실행을 수행하지 않는다.
+
 ## 출력 계약
 
 - `SourceRaw`가 원본 해독 결과의 정본이다.

@@ -255,7 +255,7 @@ void CDeployPropObject::Late_Update(f32_t fTimeDelta)
 	UNREFERENCED_PARAMETER(fTimeDelta);
 	const bool_t sourceVisible =
 		(m_State != DEPLOY_PROP_STATE::DESPAWNED || m_bAnimationAuthoringRevealHidden) &&
-		m_SurfacePresentation.fOpacity > 0.0001f &&
+		Get_SourcePresentationOpacity() > 0.0001f &&
 		!Is_BasePresentationSuppressed() && !m_bCameraPreviewSuppressed;
 	if (!sourceVisible && !Has_VisibleDebrisPreviewInstance())
 		return;
@@ -282,7 +282,7 @@ HRESULT CDeployPropObject::Render()
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Deploy.Render");
 	const bool_t sourceVisible =
 		(m_State != DEPLOY_PROP_STATE::DESPAWNED || m_bAnimationAuthoringRevealHidden) &&
-		m_SurfacePresentation.fOpacity > 0.0001f &&
+		Get_SourcePresentationOpacity() > 0.0001f &&
 		!Is_BasePresentationSuppressed() && !m_bCameraPreviewSuppressed;
 	if (sourceVisible)
 	{
@@ -314,7 +314,7 @@ bool_t CDeployPropObject::Try_PickMovementSurface(
 {
 	// Keep the source visibility contract in Render; debris has no walkable authority.
 	if ((m_State == DEPLOY_PROP_STATE::DESPAWNED && !m_bAnimationAuthoringRevealHidden) ||
-		m_SurfacePresentation.fOpacity <= 0.0001f || Is_BasePresentationSuppressed() ||
+		Get_SourcePresentationOpacity() <= 0.0001f || Is_BasePresentationSuppressed() ||
 		m_bCameraPreviewSuppressed || !m_pTransformCom ||
 		!std::isfinite(maxDistance) || maxDistance < 0.f)
 		return false;
@@ -350,6 +350,48 @@ bool_t CDeployPropObject::Try_PickMovementSurface(
 	return hit;
 }
 
+#ifdef _DEBUG
+bool_t CDeployPropObject::Try_PickInspectionSurface(
+	const float3_t& rayOrigin, const float3_t& rayDirection,
+	const f32_t maxDistance, f32_t& outDistance,
+	uint32_t& outMeshIndex, std::string& outMaterialName) const
+{
+	if ((m_State == DEPLOY_PROP_STATE::DESPAWNED && !m_bAnimationAuthoringRevealHidden) ||
+		Get_SourcePresentationOpacity() <= 0.0001f || Is_BasePresentationSuppressed() ||
+		m_bCameraPreviewSuppressed || !m_pTransformCom ||
+		!std::isfinite(maxDistance) || maxDistance < 0.f)
+		return false;
+	const auto& world = *m_pTransformCom->Get_WorldMatrixPtr();
+	const auto& model = m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM ? m_pIntactModelCom :
+		(m_State == DEPLOY_PROP_STATE::FRACTURED ? m_pFracturedModelCom : m_pIntactModelCom);
+	if (!model) return false;
+	f32_t nearest = maxDistance;
+	uint32_t nearestMesh = 0u;
+	bool_t hit = false;
+	if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM)
+	{
+		// Bind-pose bounds/triangles can miss unfolded bridges and moving stage props.
+		hit = model->Try_PickCurrentPose(world, rayOrigin, rayDirection, nearest, nearestMesh) &&
+			std::isfinite(nearest) && nearest >= 0.f && nearest < maxDistance;
+	}
+	else
+	{
+		for (uint32_t mesh = 0u; mesh < model->Get_NumMeshes(); ++mesh)
+		{
+			f32_t distance = nearest;
+			if (model->Try_PickStaticSurface(mesh, world, rayOrigin, rayDirection,
+				nearest, CModel::PICK_CULL_MODE::BACK, distance) && distance < nearest)
+			{ nearest = distance; nearestMesh = mesh; hit = true; }
+		}
+	}
+	if (!hit) return false;
+	outDistance = nearest;
+	outMeshIndex = nearestMesh;
+	outMaterialName = model->Get_MaterialName(nearestMesh);
+	return true;
+}
+#endif
+
 HRESULT CDeployPropObject::Render_DeferredOverlay()
 {
 	if (Should_CullStaticIntact(false)) return S_OK;
@@ -368,7 +410,7 @@ HRESULT CDeployPropObject::Render_Shadow()
 	constexpr uint32_t STATIC_SHADOW_PASS = 12u;
 	const bool_t sourceVisible =
 		(m_State != DEPLOY_PROP_STATE::DESPAWNED || m_bAnimationAuthoringRevealHidden) &&
-		m_SurfacePresentation.fOpacity > 0.0001f &&
+		Get_SourcePresentationOpacity() > 0.0001f &&
 		!Is_BasePresentationSuppressed() && !m_bCameraPreviewSuppressed;
 	if (sourceVisible)
 	{
@@ -407,7 +449,7 @@ bool_t CDeployPropObject::Try_GetStaticShadowRevision(uint64_t& outRevision) con
 		m_State != DEPLOY_PROP_STATE::INTACT || !m_pIntactModelCom ||
 		!m_pTransformCom || m_pIntactModelCom->Is_Skinned() ||
 		m_pIntactModelCom->Get_NumMeshes() == 0u ||
-		m_SurfacePresentation.fOpacity != 1.f ||
+		Get_SourcePresentationOpacity() != 1.f ||
 		m_bPhysicsPreviewActive || m_bAnimationAuthoringPreviewActive ||
 		m_bAnimationAuthoringPoseActive || m_bDebrisPreviewActive ||
 		Is_BasePresentationSuppressed() || m_bCameraPreviewSuppressed ||
@@ -423,7 +465,7 @@ bool_t CDeployPropObject::Try_GetStaticShadowRevision(uint64_t& outRevision) con
 	// Match that existing consumer exactly; do not infer a different caster set.
 	// Its legacy UV/tint are identity and native elapsed time is always zero.
 	MAP_ASSET_RENDER_PROFILE profile{};
-	profile.opacity = m_SurfacePresentation.fOpacity;
+	profile.opacity = Get_SourcePresentationOpacity();
 	for (uint32_t mesh = 0u; mesh < m_pIntactModelCom->Get_NumMeshes(); ++mesh)
 	{
 		const auto* surface = m_pIntactModelCom->Get_MaterialSurface(mesh);
@@ -500,8 +542,6 @@ bool_t CDeployPropObject::Should_CullStaticIntact(const bool_t shadowPass) const
 
 bool_t CDeployPropObject::Set_State(DEPLOY_PROP_STATE state)
 {
-	if (m_bAnimationAuthoringPreviewActive)
-		return false;
 	if (state != DEPLOY_PROP_STATE::INTACT &&
 		state != DEPLOY_PROP_STATE::FRACTURED &&
 		state != DEPLOY_PROP_STATE::DESPAWNED)
@@ -510,6 +550,24 @@ bool_t CDeployPropObject::Set_State(DEPLOY_PROP_STATE state)
 	}
 	if (m_State == state)
 		return true;
+
+	/* Authoritative state changes preempt a borrowed visual preview. Validate
+	   the target role before dropping ownership; duplicate/invalid packets
+	   leave an active preview intact. Physics/debris keep their existing seams. */
+	if (m_bAnimationAuthoringPreviewActive)
+	{
+		if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
+			m_pIntactModelCom && m_pIntactModelCom->Get_NumAnimations() > 0u)
+		{
+			const std::string_view targetClip = state == DEPLOY_PROP_STATE::INTACT ?
+				m_AnimationRoles.intactClip : (state == DEPLOY_PROP_STATE::FRACTURED ?
+					m_AnimationRoles.fracturedClip : std::string_view{});
+			if (!targetClip.empty() && UINT32_MAX ==
+				Resolve_LogicalAnimationIndex(m_pIntactModelCom, targetClip))
+				return false;
+		}
+		End_AnimationAuthoringPreview();
+	}
 
 	if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
 		m_pIntactModelCom->Get_NumAnimations() > 0)
@@ -598,28 +656,31 @@ bool_t CDeployPropObject::Begin_AnimationAuthoringPreview()
 {
 	if (m_bAnimationAuthoringPreviewActive || m_bPhysicsPreviewActive ||
 		m_bDebrisPreviewActive || m_bTransientDestructionSuppressed ||
-		DEPLOY_PROP_MODEL_KIND::ANIM != m_ModelKind ||
-		nullptr == m_pIntactModelCom ||
-		0u == m_pIntactModelCom->Get_NumAnimations())
+		nullptr == m_pIntactModelCom)
 	{
 		return false;
 	}
 
-	const uint32_t animationIndex =
-		m_pIntactModelCom->Get_CurrentAnimIndex();
+	uint32_t animationIndex = UINT32_MAX;
 	f32_t trackPosition = 0.f;
-	f32_t duration = 0.f;
-	if (animationIndex >= m_pIntactModelCom->Get_NumAnimations() ||
-		!m_pIntactModelCom->Get_AnimationProgress(
-			animationIndex, trackPosition, duration))
+	if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
+		m_pIntactModelCom->Get_NumAnimations() > 0u)
 	{
-		return false;
+		animationIndex = m_pIntactModelCom->Get_CurrentAnimIndex();
+		f32_t duration = 0.f;
+		if (animationIndex >= m_pIntactModelCom->Get_NumAnimations() ||
+			!m_pIntactModelCom->Get_AnimationProgress(
+				animationIndex, trackPosition, duration))
+			return false;
 	}
 
 	m_iPreAuthoringAnimationIndex = animationIndex;
 	m_fPreAuthoringAnimationTrackPosition = trackPosition;
 	m_bPreAuthoringAnimationLoop = m_pIntactModelCom->Is_AnimLoop();
 	m_bPreAuthoringAnimationPaused = m_pIntactModelCom->Is_AnimPaused();
+	m_fAnimationAuthoringUniformScale = m_Placement.uniformScale;
+	m_fAnimationAuthoringOpacity = 1.f;
+	m_bAnimationAuthoringVisibilityActive = false;
 	m_bAnimationAuthoringPreviewActive = true;
 	return true;
 }
@@ -631,6 +692,7 @@ bool_t CDeployPropObject::Sample_AnimationAuthoringPreview(
 	const bool_t revealHidden)
 {
 	if (!m_bAnimationAuthoringPreviewActive ||
+		m_ModelKind != DEPLOY_PROP_MODEL_KIND::ANIM ||
 		!std::isfinite(normalizedTime) || normalizedTime < 0.f ||
 		normalizedTime > 1.f)
 	{
@@ -675,8 +737,11 @@ void CDeployPropObject::End_AnimationAuthoringPreview()
 	/* The walked pose belongs to the preview, so the prop snaps back to its
 	   authored placement the moment the preview ends. */
 	m_bAnimationAuthoringPoseActive = false;
+	m_bAnimationAuthoringVisibilityActive = false;
 	m_AnimationAuthoringPosition = {};
 	m_AnimationAuthoringRotation = float4_t(0.f, 0.f, 0.f, 1.f);
+	m_fAnimationAuthoringUniformScale = m_Placement.uniformScale;
+	m_fAnimationAuthoringOpacity = 1.f;
 	Apply_Transform();
 	if (nullptr != m_pIntactModelCom &&
 		m_iPreAuthoringAnimationIndex <
@@ -697,6 +762,24 @@ void CDeployPropObject::End_AnimationAuthoringPreview()
 	m_fPreAuthoringAnimationTrackPosition = 0.f;
 	m_bPreAuthoringAnimationLoop = false;
 	m_bPreAuthoringAnimationPaused = false;
+}
+
+bool_t CDeployPropObject::Apply_AnimationAuthoringVisibility(
+	const f32_t opacity, const bool_t revealHidden)
+{
+	if (!m_bAnimationAuthoringPreviewActive || !std::isfinite(opacity) ||
+		opacity < 0.f || opacity > 1.f)
+		return false;
+	m_fAnimationAuthoringOpacity = opacity;
+	m_bAnimationAuthoringVisibilityActive = true;
+	m_bAnimationAuthoringRevealHidden = revealHidden;
+	return true;
+}
+
+f32_t CDeployPropObject::Get_SourcePresentationOpacity() const
+{
+	return m_bAnimationAuthoringPreviewActive && m_bAnimationAuthoringVisibilityActive ?
+		m_fAnimationAuthoringOpacity : m_SurfacePresentation.fOpacity;
 }
 
 bool_t CDeployPropObject::Get_WorldBounds(
@@ -868,7 +951,18 @@ bool_t CDeployPropObject::Apply_AnimationAuthoringPose(
 	const float3_t& position,
 	const float4_t& rotationQuaternion)
 {
+	return Apply_AnimationAuthoringPose(position, rotationQuaternion,
+		m_bAnimationAuthoringPoseActive ? m_fAnimationAuthoringUniformScale :
+			m_Placement.uniformScale);
+}
+
+bool_t CDeployPropObject::Apply_AnimationAuthoringPose(
+	const float3_t& position,
+	const float4_t& rotationQuaternion,
+	const f32_t positiveUniformScale)
+{
 	if (!m_bAnimationAuthoringPreviewActive ||
+		!std::isfinite(positiveUniformScale) || positiveUniformScale <= 0.000001f ||
 		!std::isfinite(position.x) || !std::isfinite(position.y) ||
 		!std::isfinite(position.z) ||
 		!std::isfinite(rotationQuaternion.x) ||
@@ -884,6 +978,7 @@ bool_t CDeployPropObject::Apply_AnimationAuthoringPose(
 		return false;
 
 	m_AnimationAuthoringPosition = position;
+	m_fAnimationAuthoringUniformScale = positiveUniformScale;
 	XMStoreFloat4(
 		&m_AnimationAuthoringRotation, XMQuaternionNormalize(rotation));
 	m_bAnimationAuthoringPoseActive = true;
@@ -898,6 +993,35 @@ bool_t CDeployPropObject::Try_GetAnimationAuthoringPivot(float4x4_t& outWorld) c
 	for (const auto& row : world.m)
 		for (const auto value : row) if (!std::isfinite(value)) return false;
 	outWorld = world;
+	return true;
+}
+
+bool_t CDeployPropObject::Try_GetRenderedRootPose(
+	float3_t& outPosition, float4_t& outRotationQuaternion,
+	f32_t& outPositiveUniformScale) const
+{
+	if (!m_pTransformCom) return false;
+	const auto& stored = *m_pTransformCom->Get_WorldMatrixPtr();
+	for (const auto& row : stored.m)
+		for (const auto value : row) if (!std::isfinite(value)) return false;
+	vector_t scale{}, rotation{}, translation{};
+	if (!XMMatrixDecompose(&scale, &rotation, &translation, XMLoadFloat4x4(&stored)))
+		return false;
+	float3_t s{}, p{};
+	float4_t q{};
+	XMStoreFloat3(&s, scale);
+	XMStoreFloat3(&p, translation);
+	XMStoreFloat4(&q, XMQuaternionNormalize(rotation));
+	const f32_t tolerance = (std::max)(s.x, 1.f) * .0001f;
+	if (!std::isfinite(s.x) || s.x <= .000001f ||
+		!std::isfinite(s.y) || !std::isfinite(s.z) ||
+		std::fabs(s.y - s.x) > tolerance || std::fabs(s.z - s.x) > tolerance ||
+		!std::isfinite(q.x) || !std::isfinite(q.y) ||
+		!std::isfinite(q.z) || !std::isfinite(q.w))
+		return false;
+	outPosition = p;
+	outRotationQuaternion = q;
+	outPositiveUniformScale = s.x;
 	return true;
 }
 
@@ -1004,7 +1128,8 @@ bool_t CDeployPropObject::Begin_DebrisPresentation(
 {
 	outError.clear();
 	if (DEBRIS_PRESENTATION_OWNER::NONE == owner ||
-		m_bDebrisPreviewActive || m_bAnimationAuthoringPreviewActive)
+		m_bDebrisPreviewActive || (m_bAnimationAuthoringPreviewActive &&
+			DEBRIS_PRESENTATION_OWNER::PRODUCT_DESTRUCTION != owner))
 	{
 		outError = "A transient debris presentation is already active";
 		return false;
@@ -1083,6 +1208,8 @@ bool_t CDeployPropObject::Begin_DebrisPresentation(
 	}
 
 	/* Commit only after every shader/model/bounds validation succeeds. */
+	if (DEBRIS_PRESENTATION_OWNER::PRODUCT_DESTRUCTION == owner)
+		End_AnimationAuthoringPreview();
 	m_pDebrisShaderCom = std::move(stagedShader);
 	m_DebrisPreviewResources = std::move(stagedResources);
 	m_DebrisPreviewInstances = std::move(stagedInstances);
@@ -1219,7 +1346,7 @@ bool_t CDeployPropObject::Begin_DestructionDebrisPresentation(
 	const DESTRUCTION_DEBRIS_PRESENTATION_DESC& desc,
 	std::string& outError)
 {
-	if (m_bPhysicsPreviewActive || m_bAnimationAuthoringPreviewActive)
+	if (m_bPhysicsPreviewActive)
 	{
 		outError = "Product debris cannot overlap a MapTool physics preview";
 		return false;
@@ -1282,11 +1409,12 @@ bool_t CDeployPropObject::Begin_TransientDestructionSuppression(
 {
 	outError.clear();
 	if (m_bTransientDestructionSuppressed || m_bDebrisPreviewActive ||
-		m_bPhysicsPreviewActive || m_bAnimationAuthoringPreviewActive)
+		m_bPhysicsPreviewActive)
 	{
 		outError = "Transient destruction suppression conflicts with an active presentation";
 		return false;
 	}
+	End_AnimationAuthoringPreview();
 	m_bTransientDestructionSuppressed = true;
 	return true;
 }
@@ -1396,7 +1524,7 @@ HRESULT CDeployPropObject::Render_Static(
 		return E_FAIL;
 	const float2_t uvScale = float2_t(1.f, 1.f);
 	const float2_t uvOffset = float2_t(0.f, 0.f);
-	const float opacity = m_SurfacePresentation.fOpacity;
+	const float opacity = Get_SourcePresentationOpacity();
 	const float emissiveIntensity =
 		m_SurfacePresentation.fEmissiveIntensity *
 		m_SurfacePresentation.fTransitionMultiplier;
@@ -1529,6 +1657,11 @@ HRESULT CDeployPropObject::Render_DeferredEmissiveOverlay()
 
 HRESULT CDeployPropObject::Render_Animated(const uint32_t passIndex)
 {
+	const f32_t opacity = Get_SourcePresentationOpacity();
+	if (FAILED(m_pShaderCom->Bind_RawValue(
+		"g_DeployPresentationOpacity", &opacity, sizeof(opacity))))
+		return E_FAIL;
+	HRESULT result = S_OK;
 	for (uint32_t index = 0; index < m_pIntactModelCom->Get_NumMeshes(); ++index)
 	{
 		if (FAILED(Bind_DeferredMaterialInputs(
@@ -1537,9 +1670,18 @@ HRESULT CDeployPropObject::Render_Animated(const uint32_t passIndex)
 				m_pShaderCom, "g_BoneMatrices", index)) ||
 			FAILED(m_pShaderCom->Begin(passIndex)) ||
 			FAILED(m_pIntactModelCom->Render(index)))
-			return E_FAIL;
+		{
+			result = E_FAIL;
+			break;
+		}
 	}
-	return S_OK;
+	/* Shader clones share their Effect. Reset our draw-only lane even after a
+	   failed mesh so the next character/effect keeps its admitted coverage. */
+	const f32_t defaultOpacity = 1.f;
+	if (FAILED(m_pShaderCom->Bind_RawValue(
+		"g_DeployPresentationOpacity", &defaultOpacity, sizeof(defaultOpacity))))
+		return E_FAIL;
+	return result;
 }
 
 HRESULT CDeployPropObject::Render_DebrisPreview(const bool_t shadowPass)
@@ -1624,7 +1766,7 @@ bool_t CDeployPropObject::Should_RenderDeferredEmissiveOverlay() const
 	return m_bDeferredEmissiveOverlay &&
 		DEPLOY_PROP_MODEL_KIND::STATIC == m_ModelKind &&
 		DEPLOY_PROP_STATE::INTACT == m_State &&
-		m_SurfacePresentation.fOpacity > 0.0001f &&
+		Get_SourcePresentationOpacity() > 0.0001f &&
 		m_SurfacePresentation.fTransitionMultiplier > 0.0001f &&
 		!Is_BasePresentationSuppressed();
 }
@@ -1650,10 +1792,10 @@ void CDeployPropObject::Apply_Transform()
 		rootPosition.y += m_SurfacePresentation.vRootOffset.y;
 		rootPosition.z += m_SurfacePresentation.vRootOffset.z;
 	}
-	const matrix_t world = XMMatrixScaling(
-		m_Placement.uniformScale,
-		m_Placement.uniformScale,
-		m_Placement.uniformScale) * XMMatrixRotationQuaternion(quaternion);
+	const f32_t rootScale = m_bAnimationAuthoringPoseActive && !m_bPhysicsPreviewActive ?
+		m_fAnimationAuthoringUniformScale : m_Placement.uniformScale;
+	const matrix_t world = XMMatrixScaling(rootScale, rootScale, rootScale) *
+		XMMatrixRotationQuaternion(quaternion);
 	m_pTransformCom->Set_State(STATE::RIGHT, world.r[0]);
 	m_pTransformCom->Set_State(STATE::UP, world.r[1]);
 	m_pTransformCom->Set_State(STATE::LOOK, world.r[2]);

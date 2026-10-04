@@ -75,6 +75,14 @@ HRESULT CGameObject::Render_Group(RENDERGROUP group)
     return Render();
 }
 
+HRESULT CGameObject::Render_AdjacentNonBlend(
+    std::span<const std::shared_ptr<CGameObject>> objects, size_t& consumed)
+{
+    consumed = 1u;
+    if (objects.empty() || objects.front().get() != this) return E_INVALIDARG;
+    return Render_Group(RENDERGROUP::NONBLEND);
+}
+
 HRESULT CGameObject::Render_DeferredOverlay()
 {
     return S_OK;

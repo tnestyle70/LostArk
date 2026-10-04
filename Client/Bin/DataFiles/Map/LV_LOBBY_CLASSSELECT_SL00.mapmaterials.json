@@ -2823,6 +2823,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_150.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_150.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_1C39",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          1.1616281127929688,
+          0.5925498199462891,
+          1.158925552368164,
+          1.3505046081542968
+        ],
+        "actorPositionSourceCm": [
+          -78790.265625,
+          -19782.419921875,
+          -14234.1806640625,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          0,
+          0
+        ],
+        "scalarRows": [
+          [
+            120.0,
+            -0.30000001192092896,
+            0.029999999329447746,
+            0.30000001192092896
+          ],
+          [
+            0.0,
+            2.0,
+            0.05000000074505806,
+            0.20000000298023224
+          ],
+          [
+            0.30000001192092896,
+            2.0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0
+          ]
+        ]
       }
     },
     {
@@ -2888,6 +2947,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_74.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_74.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_1C39",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          1.103499755859375,
+          0.7714672851562501,
+          0.9458974456787109,
+          1.470006103515625
+        ],
+        "actorPositionSourceCm": [
+          -78547.5859375,
+          -19706.53125,
+          -14267.5517578125,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          0,
+          0
+        ],
+        "scalarRows": [
+          [
+            120.0,
+            -0.10000000149011612,
+            0.029999999329447746,
+            0.30000001192092896
+          ],
+          [
+            0.0,
+            1.0,
+            0.05000000074505806,
+            0.10000000149011612
+          ],
+          [
+            0.15000000596046448,
+            1.0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0
+          ]
+        ]
       }
     },
     {
@@ -2933,6 +3051,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_74.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_74.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_1C39",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          1.1616281127929688,
+          0.5925498199462891,
+          1.158925552368164,
+          1.3505046081542968
+        ],
+        "actorPositionSourceCm": [
+          -78564.9296875,
+          -19656.458984375,
+          -14234.1806640625,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          0,
+          0
+        ],
+        "scalarRows": [
+          [
+            120.0,
+            -0.30000001192092896,
+            0.029999999329447746,
+            0.30000001192092896
+          ],
+          [
+            0.0,
+            2.0,
+            0.05000000074505806,
+            0.20000000298023224
+          ],
+          [
+            0.30000001192092896,
+            2.0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0
+          ]
+        ]
       }
     },
     {
@@ -2978,6 +3155,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_227.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_227.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_1C39",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          1.1616281127929688,
+          0.5925498199462891,
+          1.158925552368164,
+          1.3505046081542968
+        ],
+        "actorPositionSourceCm": [
+          -77230.390625,
+          -18165.251953125,
+          -14234.1806640625,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          0,
+          0
+        ],
+        "scalarRows": [
+          [
+            120.0,
+            -0.30000001192092896,
+            0.029999999329447746,
+            0.30000001192092896
+          ],
+          [
+            0.0,
+            2.0,
+            0.05000000074505806,
+            0.20000000298023224
+          ],
+          [
+            0.30000001192092896,
+            2.0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0
+          ]
+        ]
       }
     },
     {
@@ -3043,6 +3279,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_227.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_227.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_1C39",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          1.103499755859375,
+          0.7714672851562501,
+          0.9458974456787109,
+          1.470006103515625
+        ],
+        "actorPositionSourceCm": [
+          -75855.8828125,
+          -19801.02734375,
+          -14267.5517578125,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          0,
+          0
+        ],
+        "scalarRows": [
+          [
+            120.0,
+            -0.10000000149011612,
+            0.029999999329447746,
+            0.30000001192092896
+          ],
+          [
+            0.0,
+            1.0,
+            0.05000000074505806,
+            0.10000000149011612
+          ],
+          [
+            0.15000000596046448,
+            1.0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0
+          ]
+        ]
       }
     },
     {
@@ -19143,6 +19438,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_247.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_247.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_E4FE",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          0.7245610046386719,
+          1.2701295471191407,
+          1.0068211364746094,
+          1.4055191040039063
+        ],
+        "actorPositionSourceCm": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          99999.0,
+          99999.0
+        ],
+        "scalarRows": [
+          [
+            99999.0,
+            99999.0,
+            120.0,
+            -0.10000000149011612
+          ],
+          [
+            0.20000000298023224,
+            0.029999999329447746,
+            0.05000000074505806,
+            0.05000000074505806
+          ],
+          [
+            0.005000000149011613,
+            1.0,
+            0.0,
+            1.0
+          ],
+          [
+            0.029999999329447746,
+            0.007000000216066837,
+            0.10000000149011612,
+            1.0
+          ]
+        ]
       }
     },
     {
@@ -19191,6 +19545,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_247.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_247.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_E4FE",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          0.7245610046386719,
+          1.2701295471191407,
+          1.0068211364746094,
+          1.4055191040039063
+        ],
+        "actorPositionSourceCm": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          99999.0,
+          99999.0
+        ],
+        "scalarRows": [
+          [
+            99999.0,
+            99999.0,
+            120.0,
+            -0.10000000149011612
+          ],
+          [
+            0.20000000298023224,
+            0.029999999329447746,
+            0.05000000074505806,
+            0.05000000074505806
+          ],
+          [
+            0.005000000149011613,
+            0.30000001192092896,
+            0.0,
+            2.0
+          ],
+          [
+            0.009999999776482582,
+            0.029999999329447746,
+            0.30000001192092896,
+            2.0
+          ]
+        ]
       }
     },
     {
@@ -19617,6 +20030,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_150.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_150.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_E4FE",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          0.7245610046386719,
+          1.2701295471191407,
+          1.0068211364746094,
+          1.4055191040039063
+        ],
+        "actorPositionSourceCm": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          99999.0,
+          99999.0
+        ],
+        "scalarRows": [
+          [
+            99999.0,
+            99999.0,
+            120.0,
+            -0.10000000149011612
+          ],
+          [
+            0.20000000298023224,
+            0.029999999329447746,
+            0.05000000074505806,
+            0.05000000074505806
+          ],
+          [
+            0.005000000149011613,
+            1.0,
+            0.0,
+            1.0
+          ],
+          [
+            0.029999999329447746,
+            0.007000000216066837,
+            0.10000000149011612,
+            1.0
+          ]
+        ]
       }
     },
     {
@@ -19665,6 +20137,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_150.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_150.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_E4FE",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          0.7245610046386719,
+          1.2701295471191407,
+          1.0068211364746094,
+          1.4055191040039063
+        ],
+        "actorPositionSourceCm": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          99999.0,
+          99999.0
+        ],
+        "scalarRows": [
+          [
+            99999.0,
+            99999.0,
+            120.0,
+            -0.10000000149011612
+          ],
+          [
+            0.20000000298023224,
+            0.029999999329447746,
+            0.05000000074505806,
+            0.05000000074505806
+          ],
+          [
+            0.005000000149011613,
+            0.30000001192092896,
+            0.0,
+            2.0
+          ],
+          [
+            0.009999999776482582,
+            0.029999999329447746,
+            0.30000001192092896,
+            2.0
+          ]
+        ]
       }
     },
     {
@@ -19787,6 +20318,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_227.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_227.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_E4FE",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          0.7245610046386719,
+          1.2701295471191407,
+          1.0068211364746094,
+          1.4055191040039063
+        ],
+        "actorPositionSourceCm": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          99999.0,
+          99999.0
+        ],
+        "scalarRows": [
+          [
+            99999.0,
+            99999.0,
+            120.0,
+            -0.10000000149011612
+          ],
+          [
+            0.20000000298023224,
+            0.029999999329447746,
+            0.05000000074505806,
+            0.05000000074505806
+          ],
+          [
+            0.005000000149011613,
+            1.0,
+            0.0,
+            1.0
+          ],
+          [
+            0.029999999329447746,
+            0.007000000216066837,
+            0.10000000149011612,
+            1.0
+          ]
+        ]
       }
     },
     {
@@ -19835,6 +20425,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_227.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_227.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_E4FE",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          0.7245610046386719,
+          1.2701295471191407,
+          1.0068211364746094,
+          1.4055191040039063
+        ],
+        "actorPositionSourceCm": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          99999.0,
+          99999.0
+        ],
+        "scalarRows": [
+          [
+            99999.0,
+            99999.0,
+            120.0,
+            -0.10000000149011612
+          ],
+          [
+            0.20000000298023224,
+            0.029999999329447746,
+            0.05000000074505806,
+            0.05000000074505806
+          ],
+          [
+            0.005000000149011613,
+            0.30000001192092896,
+            0.0,
+            2.0
+          ],
+          [
+            0.009999999776482582,
+            0.029999999329447746,
+            0.30000001192092896,
+            2.0
+          ]
+        ]
       }
     },
     {
@@ -20854,6 +21503,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_249.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_249.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_E4FE",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          0.7245610046386719,
+          1.2701295471191407,
+          1.0068211364746094,
+          1.4055191040039063
+        ],
+        "actorPositionSourceCm": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          99999.0,
+          99999.0
+        ],
+        "scalarRows": [
+          [
+            99999.0,
+            99999.0,
+            120.0,
+            -0.10000000149011612
+          ],
+          [
+            0.20000000298023224,
+            0.029999999329447746,
+            0.05000000074505806,
+            0.05000000074505806
+          ],
+          [
+            0.005000000149011613,
+            1.0,
+            0.0,
+            1.0
+          ],
+          [
+            0.029999999329447746,
+            0.007000000216066837,
+            0.10000000149011612,
+            1.0
+          ]
+        ]
       }
     },
     {
@@ -20902,6 +21610,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_249.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_249.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_E4FE",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          0.7245610046386719,
+          1.2701295471191407,
+          1.0068211364746094,
+          1.4055191040039063
+        ],
+        "actorPositionSourceCm": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          99999.0,
+          99999.0
+        ],
+        "scalarRows": [
+          [
+            99999.0,
+            99999.0,
+            120.0,
+            -0.10000000149011612
+          ],
+          [
+            0.20000000298023224,
+            0.029999999329447746,
+            0.05000000074505806,
+            0.05000000074505806
+          ],
+          [
+            0.005000000149011613,
+            0.30000001192092896,
+            0.0,
+            2.0
+          ],
+          [
+            0.009999999776482582,
+            0.029999999329447746,
+            0.30000001192092896,
+            2.0
+          ]
+        ]
       }
     },
     {
@@ -33917,6 +34684,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_74.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_74.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_E4FE",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          0.8193160247802734,
+          0.7419776916503906,
+          0.9388117218017579,
+          1.1966193389892579
+        ],
+        "actorPositionSourceCm": [
+          -78555.3203125,
+          -19716.634765625,
+          -14263.087890625,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          99999.0,
+          99999.0
+        ],
+        "scalarRows": [
+          [
+            99999.0,
+            99999.0,
+            120.0,
+            -0.5
+          ],
+          [
+            0.20000000298023224,
+            0.029999999329447746,
+            0.05000000074505806,
+            0.05000000074505806
+          ],
+          [
+            0.005000000149011613,
+            0.30000001192092896,
+            0.0,
+            2.0
+          ],
+          [
+            0.05000000074505806,
+            0.029999999329447746,
+            0.30000001192092896,
+            2.0
+          ]
+        ]
       }
     },
     {
@@ -33984,6 +34810,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_150.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_150.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_E4FE",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          0.8193160247802734,
+          0.7419776916503906,
+          0.9388117218017579,
+          1.1966193389892579
+        ],
+        "actorPositionSourceCm": [
+          -78776.6171875,
+          -19740.083984375,
+          -14263.087890625,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          99999.0,
+          99999.0
+        ],
+        "scalarRows": [
+          [
+            99999.0,
+            99999.0,
+            120.0,
+            -0.5
+          ],
+          [
+            0.20000000298023224,
+            0.029999999329447746,
+            0.05000000074505806,
+            0.05000000074505806
+          ],
+          [
+            0.005000000149011613,
+            0.30000001192092896,
+            0.0,
+            2.0
+          ],
+          [
+            0.05000000074505806,
+            0.029999999329447746,
+            0.30000001192092896,
+            2.0
+          ]
+        ]
       }
     },
     {
@@ -34051,6 +34936,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_227.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_227.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_E4FE",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          0.8193160247802734,
+          0.7419776916503906,
+          0.9388117218017579,
+          1.1966193389892579
+        ],
+        "actorPositionSourceCm": [
+          -77188.0546875,
+          -18178.916015625,
+          -14263.087890625,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          99999.0,
+          99999.0
+        ],
+        "scalarRows": [
+          [
+            99999.0,
+            99999.0,
+            120.0,
+            -0.5
+          ],
+          [
+            0.20000000298023224,
+            0.029999999329447746,
+            0.05000000074505806,
+            0.05000000074505806
+          ],
+          [
+            0.005000000149011613,
+            0.30000001192092896,
+            0.0,
+            2.0
+          ],
+          [
+            0.05000000074505806,
+            0.029999999329447746,
+            0.30000001192092896,
+            2.0
+          ]
+        ]
       }
     },
     {
@@ -36079,6 +37023,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_262.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_262.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_E4FE",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          2.4634072875976565,
+          2.880953369140625,
+          3.5435971069335936,
+          3.9766506958007812
+        ],
+        "actorPositionSourceCm": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          99999.0,
+          99999.0
+        ],
+        "scalarRows": [
+          [
+            99999.0,
+            99999.0,
+            120.0,
+            -0.10000000149011612
+          ],
+          [
+            0.20000000298023224,
+            0.029999999329447746,
+            0.05000000074505806,
+            0.05000000074505806
+          ],
+          [
+            0.005000000149011613,
+            0.30000001192092896,
+            0.0,
+            2.0
+          ],
+          [
+            0.009999999776482582,
+            0.029999999329447746,
+            0.30000001192092896,
+            2.0
+          ]
+        ]
       }
     },
     {
@@ -36127,6 +37130,65 @@
         "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_262.dds",
         "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_262.dds",
         "colorSpace": "linear"
+      },
+      "foliageWind": {
+        "program": "UE3_FOLIAGE_VS_E4FE",
+        "localCenter": [
+          0.0,
+          0.0,
+          -0.0,
+          1
+        ],
+        "localBounds": [
+          2.4634072875976565,
+          2.880953369140625,
+          3.5435971069335936,
+          3.9766506958007812
+        ],
+        "actorPositionSourceCm": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "windDirectionSpeedSource": [
+          0.699999988079071,
+          0,
+          0,
+          2.0
+        ],
+        "playerPositionSource": [
+          99999.0,
+          99999.0,
+          99999.0,
+          99999.0
+        ],
+        "scalarRows": [
+          [
+            99999.0,
+            99999.0,
+            120.0,
+            -0.10000000149011612
+          ],
+          [
+            0.20000000298023224,
+            0.029999999329447746,
+            0.05000000074505806,
+            0.05000000074505806
+          ],
+          [
+            0.005000000149011613,
+            1.0,
+            0.0,
+            1.0
+          ],
+          [
+            0.029999999329447746,
+            0.02500000037252903,
+            0.05000000074505806,
+            1.0
+          ]
+        ]
       }
     },
     {
@@ -53690,6 +54752,938 @@
         1.0,
         1.0,
         1.0
+      ]
+    }
+  ],
+  "placementWind": [
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:329",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_BF9916DD3DD4",
+      "actorPositionSourceCm": [
+        -78790.265625,
+        -19782.419921875,
+        -14234.1806640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        72.38825988769531,
+        72.38825988769531,
+        26.779531478881836,
+        59.75518798828125
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:330",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_A5B69A163566",
+      "actorPositionSourceCm": [
+        -78555.3203125,
+        -19716.634765625,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        44.00884246826172,
+        38.53450393676758,
+        34.99148178100586,
+        55.819522857666016
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:331",
+      "assetId": "MAP_2F2A4A698085_BG_ANH_FOLIAGE_CROPS04_SM_KSY_01_OVR_3BEA447AE790_FR_C2B5D9CFD249",
+      "actorPositionSourceCm": [
+        -78547.5859375,
+        -19706.53125,
+        -14267.5517578125
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        61.5529899597168,
+        54.363529205322266,
+        40.22633361816406,
+        75.74451446533203
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:332",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_BF9916DD3DD4",
+      "actorPositionSourceCm": [
+        -78788.109375,
+        -19678.431640625,
+        -14236.6865234375
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        71.00033569335938,
+        71.03276824951172,
+        26.779531478881836,
+        59.75518798828125
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:333",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_114BC34F7D51",
+      "actorPositionSourceCm": [
+        -78564.9296875,
+        -19656.458984375,
+        -14234.1806640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        83.01629638671875,
+        83.07426452636719,
+        31.961143493652344,
+        71.56481170654297
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:334",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_B6514B612774",
+      "actorPositionSourceCm": [
+        -78776.6171875,
+        -19740.083984375,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        37.787620544433594,
+        33.10514450073242,
+        30.07461929321289,
+        47.889888763427734
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:335",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_A5B69A163566",
+      "actorPositionSourceCm": [
+        -78747.6640625,
+        -19670.189453125,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        46.6557731628418,
+        48.57804489135742,
+        30.07461929321289,
+        47.889888763427734
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:337",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_A5B69A163566",
+      "actorPositionSourceCm": [
+        -78626.8984375,
+        -19618.70703125,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        46.6557731628418,
+        48.57804489135742,
+        30.07461929321289,
+        47.889888763427734
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:338",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_114BC34F7D51",
+      "actorPositionSourceCm": [
+        -78588.7578125,
+        -19856.369140625,
+        -14234.1806640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        83.01629638671875,
+        83.07426452636719,
+        31.961143493652344,
+        71.56481170654297
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:339",
+      "assetId": "MAP_2F2A4A698085_BG_ANH_FOLIAGE_CROPS04_SM_KSY_01_OVR_3BEA447AE790_FR_C2B5D9CFD249",
+      "actorPositionSourceCm": [
+        -78536.8359375,
+        -19786.34765625,
+        -14267.5517578125
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        61.5529899597168,
+        54.363529205322266,
+        40.22633361816406,
+        75.74451446533203
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:340",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_A5B69A163566",
+      "actorPositionSourceCm": [
+        -78596.546875,
+        -19808.509765625,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        37.787620544433594,
+        33.10514450073242,
+        30.07461929321289,
+        47.889888763427734
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:341",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_114BC34F7D51",
+      "actorPositionSourceCm": [
+        -78516.3046875,
+        -19764.58203125,
+        -14249.8056640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        65.91349792480469,
+        65.95938110351562,
+        25.504838943481445,
+        56.84998321533203
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:342",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_114BC34F7D51",
+      "actorPositionSourceCm": [
+        -78517.1484375,
+        -19675.26953125,
+        -14249.8056640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        57.466102600097656,
+        57.37828826904297,
+        25.504838943481445,
+        56.84998321533203
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:343",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_5A66438B60AF",
+      "actorPositionSourceCm": [
+        -77230.390625,
+        -18165.251953125,
+        -14234.1806640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        72.38825988769531,
+        72.38825988769531,
+        26.779531478881836,
+        59.75518798828125
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:344",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_A5B69A163566",
+      "actorPositionSourceCm": [
+        -77164.6015625,
+        -18400.19140625,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        38.53450393676758,
+        44.00884246826172,
+        34.99148178100586,
+        55.819522857666016
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:345",
+      "assetId": "MAP_2F2A4A698085_BG_ANH_FOLIAGE_CROPS04_SM_KSY_01_OVR_3BEA447AE790_FR_C2B5D9CFD249",
+      "actorPositionSourceCm": [
+        -77154.4921875,
+        -18407.9453125,
+        -14267.5517578125
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        54.363529205322266,
+        61.5529899597168,
+        40.22633361816406,
+        75.74451446533203
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:346",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_5A66438B60AF",
+      "actorPositionSourceCm": [
+        -77126.4140625,
+        -18167.3984375,
+        -14236.6865234375
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        71.03276824951172,
+        71.00033569335938,
+        26.779531478881836,
+        59.75518798828125
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:347",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_114BC34F7D51",
+      "actorPositionSourceCm": [
+        -77104.4296875,
+        -18390.58984375,
+        -14234.1806640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        83.07426452636719,
+        83.01629638671875,
+        31.961143493652344,
+        71.56481170654297
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:348",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_CFC1B2B525BE",
+      "actorPositionSourceCm": [
+        -77188.0546875,
+        -18178.916015625,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        33.10514450073242,
+        37.787620544433594,
+        30.07461929321289,
+        47.889888763427734
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:349",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_A5B69A163566",
+      "actorPositionSourceCm": [
+        -77118.15625,
+        -18207.873046875,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        48.57804489135742,
+        46.6557731628418,
+        30.07461929321289,
+        47.889888763427734
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:350",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_A5B69A163566",
+      "actorPositionSourceCm": [
+        -77066.671875,
+        -18328.626953125,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        48.57804489135742,
+        46.6557731628418,
+        30.07461929321289,
+        47.889888763427734
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:351",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_114BC34F7D51",
+      "actorPositionSourceCm": [
+        -77304.34375,
+        -18366.771484375,
+        -14234.1806640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        83.07426452636719,
+        83.01629638671875,
+        31.961143493652344,
+        71.56481170654297
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:352",
+      "assetId": "MAP_2F2A4A698085_BG_ANH_FOLIAGE_CROPS04_SM_KSY_01_OVR_3BEA447AE790_FR_C2B5D9CFD249",
+      "actorPositionSourceCm": [
+        -77234.3203125,
+        -18418.68359375,
+        -14267.5517578125
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        54.363529205322266,
+        61.5529899597168,
+        40.22633361816406,
+        75.74451446533203
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:353",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_A5B69A163566",
+      "actorPositionSourceCm": [
+        -77256.46875,
+        -18358.986328125,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        33.10514450073242,
+        37.787620544433594,
+        30.07461929321289,
+        47.889888763427734
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:354",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_114BC34F7D51",
+      "actorPositionSourceCm": [
+        -77212.53125,
+        -18439.23046875,
+        -14249.8056640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        65.95938110351562,
+        65.91349792480469,
+        25.504838943481445,
+        56.84998321533203
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:355",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_114BC34F7D51",
+      "actorPositionSourceCm": [
+        -77123.234375,
+        -18438.37890625,
+        -14249.8056640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        57.37828826904297,
+        57.466102600097656,
+        25.504838943481445,
+        56.84998321533203
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:356",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_5A66438B60AF",
+      "actorPositionSourceCm": [
+        -75613.2109375,
+        -19725.1328125,
+        -14234.1806640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        72.38825988769531,
+        72.38825988769531,
+        26.779531478881836,
+        59.75518798828125
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:357",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_CFC1B2B525BE",
+      "actorPositionSourceCm": [
+        -75847.265625,
+        -19790.455078125,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        44.00884246826172,
+        38.53450393676758,
+        34.99148178100586,
+        55.819522857666016
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:358",
+      "assetId": "MAP_2F2A4A698085_BG_ANH_FOLIAGE_CROPS04_SM_KSY_01_OVR_3BEA447AE790_FR_8D043C02B424",
+      "actorPositionSourceCm": [
+        -75855.8828125,
+        -19801.02734375,
+        -14267.5517578125
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        61.5529899597168,
+        54.363529205322266,
+        40.22633361816406,
+        75.74451446533203
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:359",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_5A66438B60AF",
+      "actorPositionSourceCm": [
+        -75614.484375,
+        -19828.625,
+        -14236.6865234375
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        71.00033569335938,
+        71.03276824951172,
+        26.779531478881836,
+        59.75518798828125
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:360",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_5A66438B60AF",
+      "actorPositionSourceCm": [
+        -75837.671875,
+        -19850.634765625,
+        -14234.1806640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        83.01629638671875,
+        83.07426452636719,
+        31.961143493652344,
+        71.56481170654297
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:361",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_CFC1B2B525BE",
+      "actorPositionSourceCm": [
+        -75625.9921875,
+        -19767.00390625,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        37.787620544433594,
+        33.10514450073242,
+        30.07461929321289,
+        47.889888763427734
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:362",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_CFC1B2B525BE",
+      "actorPositionSourceCm": [
+        -75654.9453125,
+        -19836.8828125,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        46.6557731628418,
+        48.57804489135742,
+        30.07461929321289,
+        47.889888763427734
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:363",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_CFC1B2B525BE",
+      "actorPositionSourceCm": [
+        -75775.703125,
+        -19888.388671875,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        46.6557731628418,
+        48.57804489135742,
+        30.07461929321289,
+        47.889888763427734
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:364",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_5A66438B60AF",
+      "actorPositionSourceCm": [
+        -75813.8515625,
+        -19650.70703125,
+        -14234.1806640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        83.01629638671875,
+        83.07426452636719,
+        31.961143493652344,
+        71.56481170654297
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:365",
+      "assetId": "MAP_2F2A4A698085_BG_ANH_FOLIAGE_CROPS04_SM_KSY_01_OVR_3BEA447AE790_FR_8D043C02B424",
+      "actorPositionSourceCm": [
+        -75865.7578125,
+        -19720.728515625,
+        -14267.5517578125
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        61.5529899597168,
+        54.363529205322266,
+        40.22633361816406,
+        75.74451446533203
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:366",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_CFC1B2B525BE",
+      "actorPositionSourceCm": [
+        -75806.0546875,
+        -19698.568359375,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        37.787620544433594,
+        33.10514450073242,
+        30.07461929321289,
+        47.889888763427734
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:367",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_5A66438B60AF",
+      "actorPositionSourceCm": [
+        -75886.296875,
+        -19742.513671875,
+        -14249.8056640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        65.91349792480469,
+        65.95938110351562,
+        25.504838943481445,
+        56.84998321533203
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:368",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_5A66438B60AF",
+      "actorPositionSourceCm": [
+        -75885.4453125,
+        -19831.822265625,
+        -14249.8056640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        57.466102600097656,
+        57.37828826904297,
+        25.504838943481445,
+        56.84998321533203
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:377",
+      "assetId": "MAP_2F2A4A698085_BG_ANH_FOLIAGE_CROPS04_SM_KSY_01_OVR_3BEA447AE790_FR_C2B5D9CFD249",
+      "actorPositionSourceCm": [
+        -77249.0078125,
+        -21099.630859375,
+        -14267.5517578125
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        54.36347579956055,
+        61.55293273925781,
+        40.226295471191406,
+        75.74444580078125
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:378",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_114BC34F7D51",
+      "actorPositionSourceCm": [
+        -77277.109375,
+        -21340.150390625,
+        -14236.6865234375
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        71.03276824951172,
+        71.00033569335938,
+        26.779531478881836,
+        59.75518798828125
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:379",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_114BC34F7D51",
+      "actorPositionSourceCm": [
+        -77299.0703125,
+        -21116.962890625,
+        -14234.1806640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        83.07427215576172,
+        83.01630401611328,
+        31.96114730834961,
+        71.5648193359375
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:380",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_A5B69A163566",
+      "actorPositionSourceCm": [
+        -77215.453125,
+        -21328.65625,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        33.105140686035156,
+        37.78761672973633,
+        30.074617385864258,
+        47.88988494873047
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:381",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_A5B69A163566",
+      "actorPositionSourceCm": [
+        -77285.34375,
+        -21299.703125,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        48.57804489135742,
+        46.6557731628418,
+        30.07461929321289,
+        47.889888763427734
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:382",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_A5B69A163566",
+      "actorPositionSourceCm": [
+        -77336.8203125,
+        -21178.935546875,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        48.57804489135742,
+        46.6557731628418,
+        30.07461929321289,
+        47.889888763427734
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:384",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_114BC34F7D51",
+      "actorPositionSourceCm": [
+        -77099.1640625,
+        -21140.798828125,
+        -14234.1806640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        83.07426452636719,
+        83.01629638671875,
+        31.961143493652344,
+        71.56481170654297
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:385",
+      "assetId": "MAP_2F2A4A698085_BG_ANH_FOLIAGE_CROPS04_SM_KSY_01_OVR_3BEA447AE790_FR_C2B5D9CFD249",
+      "actorPositionSourceCm": [
+        -77193.2421875,
+        -21103.576171875,
+        -14267.5517578125
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        65.41383361816406,
+        59.11765670776367,
+        40.22633361816406,
+        75.74451446533203
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:386",
+      "assetId": "MAP_2F2A4A698085_BG_ANH_FOLIAGE_CROPS04_SM_KSY_01_OVR_3BEA447AE790_FR_C2B5D9CFD249",
+      "actorPositionSourceCm": [
+        -77169.1875,
+        -21088.87890625,
+        -14267.5517578125
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        54.363529205322266,
+        61.5529899597168,
+        40.22633361816406,
+        75.74451446533203
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:387",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_A5B69A163566",
+      "actorPositionSourceCm": [
+        -77147.0234375,
+        -21148.591796875,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        33.10514450073242,
+        37.787620544433594,
+        30.07461929321289,
+        47.889888763427734
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:388",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_114BC34F7D51",
+      "actorPositionSourceCm": [
+        -77190.9453125,
+        -21068.337890625,
+        -14249.8056640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        65.95940399169922,
+        65.91352844238281,
+        25.504850387573242,
+        56.850006103515625
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:389",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_114BC34F7D51",
+      "actorPositionSourceCm": [
+        -77280.265625,
+        -21069.189453125,
+        -14249.8056640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        57.37828826904297,
+        57.466102600097656,
+        25.504838943481445,
+        56.84998321533203
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:489",
+      "assetId": "MAP_4513A2DAAF9D_LV_ELG_FILENYSUSM_FOLIAGE04_SM_FR_114BC34F7D51",
+      "actorPositionSourceCm": [
+        -77173.1171875,
+        -21342.306640625,
+        -14234.1806640625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        72.38822174072266,
+        72.38822174072266,
+        26.77952003479004,
+        59.75516128540039
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:494",
+      "assetId": "MAP_0B39DAEA62CA_LV_ATM_LOGHILL_FOLIAGE02_SM_OVR_D57C3C6AC11D_RESTORE_A5B69A163566",
+      "actorPositionSourceCm": [
+        -77238.890625,
+        -21107.34765625,
+        -14263.087890625
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        38.534481048583984,
+        44.00881576538086,
+        34.99146270751953,
+        55.81949234008789
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:615",
+      "assetId": "MAP_EB9B708DD5F1_BG_RHD_LOA_TREEFLOAAT01B_SM_KSY_OVR_52DCA9F97B3F_FR_EE9BE42C3C28",
+      "actorPositionSourceCm": [
+        0,
+        0,
+        0
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        141.72955322265625,
+        129.15951538085938,
+        148.4882049560547,
+        159.45474243164062
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:621",
+      "assetId": "MAP_EB9B708DD5F1_BG_RHD_LOA_TREEFLOAAT01B_SM_KSY_OVR_52DCA9F97B3F_FR_60E9BE54198F",
+      "actorPositionSourceCm": [
+        0,
+        0,
+        0
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        126.19366455078125,
+        104.71143341064453,
+        148.4882049560547,
+        159.45474243164062
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:622",
+      "assetId": "MAP_EB9B708DD5F1_BG_RHD_LOA_TREEFLOAAT01B_SM_KSY_OVR_52DCA9F97B3F_FR_805C2262443D",
+      "actorPositionSourceCm": [
+        0,
+        0,
+        0
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        129.15951538085938,
+        141.72955322265625,
+        148.4882049560547,
+        159.45474243164062
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:623",
+      "assetId": "MAP_EB9B708DD5F1_BG_RHD_LOA_TREEFLOAAT01B_SM_KSY_OVR_52DCA9F97B3F_FR_805C2262443D",
+      "actorPositionSourceCm": [
+        0,
+        0,
+        0
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        104.71143341064453,
+        126.19366455078125,
+        148.4882049560547,
+        159.45474243164062
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:624",
+      "assetId": "MAP_EB9B708DD5F1_BG_RHD_LOA_TREEFLOAAT01B_SM_KSY_OVR_52DCA9F97B3F_FR_805C2262443D",
+      "actorPositionSourceCm": [
+        0,
+        0,
+        0
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        141.72955322265625,
+        129.15951538085938,
+        148.4882049560547,
+        159.45474243164062
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:625",
+      "assetId": "MAP_EB9B708DD5F1_BG_RHD_LOA_TREEFLOAAT01B_SM_KSY_OVR_52DCA9F97B3F_FR_805C2262443D",
+      "actorPositionSourceCm": [
+        0,
+        0,
+        0
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        126.19366455078125,
+        104.71143341064453,
+        148.4882049560547,
+        159.45474243164062
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:671",
+      "assetId": "MAP_EB9B708DD5F1_BG_RHD_LOA_TREEFLOAAT01B_SM_KSY_OVR_52DCA9F97B3F_FR_0F7F549DBD8A",
+      "actorPositionSourceCm": [
+        0,
+        0,
+        0
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        129.15951538085938,
+        141.72955322265625,
+        148.4882049560547,
+        159.45474243164062
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:672",
+      "assetId": "MAP_EB9B708DD5F1_BG_RHD_LOA_TREEFLOAAT01B_SM_KSY_OVR_52DCA9F97B3F_FR_0F7F549DBD8A",
+      "actorPositionSourceCm": [
+        0,
+        0,
+        0
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        104.71143341064453,
+        126.19366455078125,
+        148.4882049560547,
+        159.45474243164062
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:708",
+      "assetId": "MAP_6786A7C70F13_BG_RHD_TREE_MAPLE01A_SM_KSY_OVR_CD46D5DD9E8F_RESTORE_2786DE07083A",
+      "actorPositionSourceCm": [
+        0,
+        0,
+        0
+      ],
+      "objectDimensionsAndRadiusSourceCm": [
+        432.3280029296875,
+        357.69964599609375,
+        303.0376281738281,
+        417.9099426269531
       ]
     }
   ]

@@ -24,6 +24,7 @@
 #include "WorldSequencePlayer.h"
 #ifdef _DEBUG
 #include "DestructionSimulationController.h"
+#include "MapAuthoringHost.h"
 #endif
 
 #include <array>
@@ -47,6 +48,9 @@ class CUILayoutRuntime;
 class CMvpResultView;
 
 class CLevel_ValtanArena final : public CLevel
+#ifdef _DEBUG
+	, public IMapAuthoringHost
+#endif
 {
 private:
 	CLevel_ValtanArena(
@@ -136,10 +140,23 @@ public:
 #ifdef _DEBUG
     /* Map Tool borrows this arena's live map the same way the Kouku arena lends
 	   it. The level keeps ownership; the tool only edits placements in place. */
-	CMapPlacementRuntime& Get_MapAuthoringRuntime() { return m_MapRuntime; }
+	CMapPlacementRuntime& Get_MapAuthoringRuntime() override { return m_MapRuntime; }
 	CDeployPropRuntime& Get_MapAuthoringDeploy() { return m_DeployRuntime; }
 	const ComPtr<ID3D11Device>& Get_MapAuthoringDevice() const { return m_pDevice; }
 	const ComPtr<ID3D11DeviceContext>& Get_MapAuthoringContext() const { return m_pContext; }
+	uint32_t Get_MapAuthoringLevelIndex() const override { return ETOUI(LEVEL::VALTAN_ARENA); }
+	const char_t* Get_MapAuthoringLabel() const override { return "Valtan"; }
+	const CMapAssetCatalog& Get_MapAuthoringCatalog() const override { return m_MapRuntime.Get_Catalog(); }
+	std::vector<MAP_RUNTIME_PLACED_ENTRY>& Get_MapAuthoringPlacements() override
+	{ return m_MapRuntime.Get_MutablePlacements(); }
+	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY>& Get_MapAuthoringBatches() override
+	{ return m_MapRuntime.Get_AuthoringBatches(); }
+	CDeployPropRuntime* Get_MapAuthoringDeployRuntime() override { return &m_DeployRuntime; }
+	bool_t Can_ChangeMapAuthoringStructure(std::string& outReason) const override;
+	void Rebase_MapAuthoringSelfMotions(const std::vector<MAP_PLACEMENT_RECORD>& records) override
+	{ m_MapRuntime.Rebase_AuthoringSelfMotions(records); }
+	void Set_MapAuthoringActive(bool_t active) override { m_bMapAuthoringActive = active; }
+	CWorldSequencePlayer::TARGET_SET Make_MapAuthoringTargets() override;
 #endif
 	/* Award page that follows the clear mark (same CMvpResultView KoukuSaydon drives).
 	   Portraits are host render targets, drawn from CMainApp's portrait pass. */
@@ -356,6 +373,9 @@ private:
 
 private:
 	CMapPlacementRuntime m_MapRuntime;
+#ifdef _DEBUG
+	bool_t m_bMapAuthoringActive = false;
+#endif
 	CDeployPropRuntime m_DeployRuntime;
 	CMapEffectPresentationRuntime m_MapEffectPresentationRuntime;
     struct COMPLETE_PLAY_PREPARATION {

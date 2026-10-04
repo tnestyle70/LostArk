@@ -57,6 +57,8 @@ uint g_HasOpacityTexture = 0u;
 float2 g_UVScale = 1.f;
 float2 g_UVOffset = 0.f;
 float g_Opacity = 1.f;
+// Deploy root previews borrow this shader; ordinary actors retain coverage 1.
+float g_DeployPresentationOpacity = 1.f;
 float g_OpacityPower = 1.f;
 float g_TriplanarHeightScale = 0.f;
 float4 g_ColorTint = 1.f;
@@ -365,8 +367,21 @@ PS_OUT Evaluate_Material(
     return output;
 }
 
+void ApplyDeployPresentationOpacityDither(float4 screenPosition)
+{
+    static const float thresholds[16] = {
+        0.5f / 16.f,  8.5f / 16.f,  2.5f / 16.f, 10.5f / 16.f,
+       12.5f / 16.f,  4.5f / 16.f, 14.5f / 16.f,  6.5f / 16.f,
+        3.5f / 16.f, 11.5f / 16.f,  1.5f / 16.f,  9.5f / 16.f,
+       15.5f / 16.f,  7.5f / 16.f, 13.5f / 16.f,  5.5f / 16.f
+    };
+    const uint2 pixel = uint2(screenPosition.xy) & 3u;
+    clip(saturate(g_DeployPresentationOpacity) - thresholds[pixel.y * 4u + pixel.x]);
+}
+
 PS_OUT PS_MAIN(VS_OUT input, bool frontFace : SV_IsFrontFace)
 {
+    ApplyDeployPresentationOpacityDither(input.vPosition);
     return Evaluate_Material(input, true, 0.3f, frontFace);
 }
 
@@ -675,6 +690,7 @@ void PS_MAIN_EFFECT_MODEL_CUE_SHADOW(VS_OUT input, bool frontFace : SV_IsFrontFa
 
 void PS_MAIN_SHADOW(VS_OUT input)
 {
+    ApplyDeployPresentationOpacityDither(input.vPosition);
     float4 diffuse = g_DiffuseTexture.Sample(MaterialAnisotropicSampler, input.vTexcoord);
     if (diffuse.a < 0.3f)
         discard;

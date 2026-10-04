@@ -24,6 +24,7 @@ struct MAP_PLACEMENT_RECORD
 	float3_t signedScale = float3_t(1.f, 1.f, 1.f);
 	bool_t visible = true;
 	Engine::MODEL_BAKED_LIGHTING_INSTANCE bakedLighting;
+	Engine::MODEL_SOURCE_FOLIAGE_WIND_INSTANCE sourceWind;
 };
 
 class CMapPlacementDocument final
@@ -41,7 +42,8 @@ public:
 		const std::vector<MAP_PLACEMENT_RECORD>& records,
 		const CMapAssetCatalog& catalog,
 		std::string& outStatus,
-		std::vector<MAP_PLACEMENT_RECORD>* outStoredRecords = nullptr);
+		std::vector<MAP_PLACEMENT_RECORD>* outStoredRecords = nullptr,
+		const std::string* expectedPreviousBytes = nullptr);
 	static bool_t Is_Valid(const MAP_PLACEMENT_RECORD& record,
 		const CMapAssetCatalog& catalog);
 };

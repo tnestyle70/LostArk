@@ -406,6 +406,16 @@ Valtan/Kouku의 Level resolver는 `CDeployPropRuntime::Try_PickMovementSurface`�
 
 walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 공격은 room-owned `CCombatObjectRuntime`의 pure XZ pose/swept primitive가 Server fixed tick에서 판정한다. 플레이어 투사체와 발탄 전투 객체는 spawn adapter만 다르고 같은 live set과 hit resolver를 사용한다. Shared combat-object lifecycle/full snapshot과 Client world-root Effect는 위치 표현만 담당하며 Client collider가 피해를 판정하지 않는다. 동적 capsule-vs-capsule와 knockback obstacle collision은 아직 public 계약이 아니므로 추가할 때 Server collision owner, shape ID, broad/narrow phase, snapshot correction, harness를 한 변경 단위로 닫는다.
 
+### 정적 맵의 인접 NONBLEND 제출
+
+`CGameObject::Render_AdjacentNonBlend`의 기본 구현은 기존 `Render_Group(NONBLEND)`로 한
+객체만 소비한다. opt-in 객체만 현재 큐의 연속 prefix를 순서대로 소비하며 큐 span을 보관하거나
+건너뛰어 재정렬하지 않는다. 실패 또는 잘못된 소비 개수는 Renderer의 프레임 실패로 처리한다.
+현재 소비자는 `CMapStaticBatchObject`의 LOD 없는 단일 SOURCE_BG mesh다.4~8개 원래
+조명 SRV를 `CModel -> CMaterial -> CShader`로 전달하고 placement·visibility·shadow·저작
+소유권은 각 객체에 유지한다. 재질 진단 수집 중에는 원래 배치별 경로를 사용한다.
+`MapBatchVisibleRenders`와 mesh draw counter는 병합 뒤 실제 제출 단위이며 authored 배치 수가 아니다.
+
 ### Profiler 읽기 계약
 
 Debug F7의 한국어 Profiler와 JSON은 `Engine::CProfiler`의 동일 snapshot을 소비한다.
@@ -458,6 +468,12 @@ source curve·LUT 입력을 보존하고 선택 bit만 복원한다. 측정 공�
 Native forward/hair·미확인 program은 유지한다. 단계는 매번 Original에서 구성하고 차이 mask만
 적용한다. 새 A를 채택한 뒤 Original 기준으로 돌아오면 실험 ID도 분리해 이전 측정 기준을
 재사용하지 않는다. 탭 선택만으로 preview나 저장값을 변경하지 않는다.
+
+Restoration의 누적 비교는 직전 단계 A와 현재 단계 B를 같은 field mask로 측정한다. 기법별
+목록은 보관한 Original에서 해당 기법만 바꾼다. 행 옆의 CPU/GPU ms는 동일 비교 조건의
+AB/BA 관측값이며 개별 pass의 고정 비용이 아니다. BG RNM·정적 shadow는 재질 복귀에
+포함되고 MapPBR 간접 diffuse 실험과 구분한다. 측정 묶음과 실제 variant가 다른 결과를 섞거나
+GPU 미수집을0으로 표시하지 않는다. 창 종료·owner 변경 시 기존 세션 복원 계약을 유지한다.
 
 `RENDER_QUALITY_SETTINGS::iSSAOSampleCount`는4/8/12만,
 `SHADOW_SETTINGS::iPCFFilterRadius`는0/1/2만 받는다. 기존12와1을 기본값으로 유지하고

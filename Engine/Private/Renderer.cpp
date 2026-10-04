@@ -1236,11 +1236,22 @@ HRESULT CRenderer::Render_NonBlend()
 		m_RenderObjects[ETOUI(RENDERGROUP::NONBLEND)];
 	auto& DeferredOverlayObjects =
 		m_RenderObjects[ETOUI(RENDERGROUP::DEFERRED_OVERLAY)];
-	for (size_t renderIndex = 0; renderIndex < NonBlendObjects.size(); ++renderIndex)
+	for (size_t renderIndex = 0; renderIndex < NonBlendObjects.size();)
 	{
 		CGameObject* const pRenderObject = NonBlendObjects[renderIndex].get();
-		if (nullptr != pRenderObject)
-			pRenderObject->Render_Group(RENDERGROUP::NONBLEND);
+		if (nullptr == pRenderObject) { ++renderIndex; continue; }
+		const auto remaining = std::span<const std::shared_ptr<CGameObject>>(
+			NonBlendObjects.data() + renderIndex, NonBlendObjects.size() - renderIndex);
+		size_t consumed = 0u;
+		const HRESULT result = pRenderObject->Render_AdjacentNonBlend(remaining, consumed);
+		if (FAILED(result) || consumed == 0u || consumed > remaining.size())
+		{
+			NonBlendObjects.clear();
+			DeferredOverlayObjects.clear();
+			(void)CGameInstance::Get().End_MRT();
+			return FAILED(result) ? result : E_UNEXPECTED;
+		}
+		renderIndex += consumed;
 	}
 
 	/* Deferred overlays must run after every opaque object while the complete
@@ -1683,6 +1694,33 @@ HRESULT CRenderer::Render_Combined(bool_t bPortrait)
 	return S_OK;
 }
 
+HRESULT CRenderer::Ready_SSGIHalfTarget(uint32_t width, uint32_t height)
+{
+    if (width == 0u || height == 0u || width > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION ||
+        height > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION) return E_INVALIDARG;
+    const uint32_t halfWidth = (width + 1u) / 2u, halfHeight = (height + 1u) / 2u;
+    if (m_iSSGIHalfWidth == halfWidth && m_iSSGIHalfHeight == halfHeight &&
+        m_pSSGIHalfTexture && m_pSSGIHalfRTV && m_pSSGIHalfSRV) return S_OK;
+    D3D11_TEXTURE2D_DESC desc{};
+    desc.Width = halfWidth; desc.Height = halfHeight;
+    desc.MipLevels = desc.ArraySize = desc.SampleDesc.Count = 1u;
+    desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+    ComPtr<ID3D11Texture2D> texture;
+    ComPtr<ID3D11RenderTargetView> target;
+    ComPtr<ID3D11ShaderResourceView> resource;
+    HRESULT result = m_pDevice->CreateTexture2D(&desc, nullptr, texture.GetAddressOf());
+    if (SUCCEEDED(result)) result = m_pDevice->CreateRenderTargetView(texture.Get(), nullptr, target.GetAddressOf());
+    if (SUCCEEDED(result)) result = m_pDevice->CreateShaderResourceView(texture.Get(), nullptr, resource.GetAddressOf());
+    if (FAILED(result)) return result;
+    // A resize only replaces this lazy scratch after every resource succeeds.
+    m_pSSGIHalfTexture = std::move(texture);
+    m_pSSGIHalfRTV = std::move(target);
+    m_pSSGIHalfSRV = std::move(resource);
+    m_iSSGIHalfWidth = halfWidth; m_iSSGIHalfHeight = halfHeight;
+    return S_OK;
+}
+
 HRESULT CRenderer::Render_ScreenSpaceLighting()
 {
     const auto& quality = m_RenderQualitySettings;
@@ -1717,6 +1755,8 @@ HRESULT CRenderer::Render_ScreenSpaceLighting()
             desc.SampleDesc.Quality == sceneDesc.SampleDesc.Quality;
     };
     if (!compatible(originalScene.Get()) || !compatible(originalBloom.Get())) return E_INVALIDARG;
+    const bool halfSSGI = quality.bSSGIEnabled && quality.bSSGIHalfResolution;
+    if (halfSSGI && FAILED(Ready_SSGIHalfTarget(sceneDesc.Width, sceneDesc.Height))) return E_FAIL;
     for (size_t index = 0; index < 2u; ++index)
     {
         if (!m_pScenePostRTVs[index] || !m_pScenePostSRVs[index] ||
@@ -1740,7 +1780,8 @@ HRESULT CRenderer::Render_ScreenSpaceLighting()
             ID3D11ShaderResourceView* empty[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
             Context->PSSetShaderResources(0, _countof(empty), empty);
             for (const char* name : { "g_DepthTexture", "g_NormalTexture", "g_MaterialSpecularTexture",
-                "g_DiffuseTexture", "g_RadianceTexture", "g_SceneHDRTexture", "g_SceneBloomTexture" })
+                "g_DiffuseTexture", "g_RadianceTexture", "g_SceneHDRTexture", "g_SceneBloomTexture",
+                "g_SSGIHalfTexture" })
                 Shader->Bind_Texture(name, nullptr);
             Context->OMSetRenderTargets(_countof(Outputs), Outputs, Depth.Get());
             Context->RSSetViewports(ViewportCount, Viewports);
@@ -1794,14 +1835,32 @@ HRESULT CRenderer::Render_ScreenSpaceLighting()
         const char* name = pass == 0u ? "Render.SSGI" : "Render.SSR";
         CProfilerScope passCpu(profiler, name);
         CProfilerGpuScope passGpu(profiler, name, true);
+        if (pass == 0u && halfSSGI)
+        {
+            CProfilerScope gatherCpu(profiler, "Render.SSGI.GatherHalf");
+            CProfilerGpuScope gatherGpu(profiler, "Render.SSGI.GatherHalf", true);
+            m_pContext->PSSetShaderResources(0, _countof(empty), empty);
+            if (FAILED(shader->Bind_Texture("g_SSGIHalfTexture", nullptr))) return E_FAIL;
+            ID3D11RenderTargetView* gatherTarget = m_pSSGIHalfRTV.Get();
+            m_pContext->OMSetRenderTargets(1u, &gatherTarget, nullptr);
+            SetUp_ViewportDesc(m_iSSGIHalfWidth, m_iSSGIHalfHeight);
+            if (FAILED(shader->Begin(2u)) || FAILED(m_pVIBuffer->Bind_Resources()) ||
+                FAILED(m_pVIBuffer->Render())) return E_FAIL;
+            m_pContext->OMSetRenderTargets(0u, nullptr, nullptr);
+            SetUp_ViewportDesc(sceneDesc.Width, sceneDesc.Height);
+        }
         const uint32_t destination = writtenTargets;
         m_pContext->PSSetShaderResources(0, _countof(empty), empty);
         ID3D11RenderTargetView* outputs[3] = {
             m_pScenePostRTVs[destination].Get(), nullptr, m_pSceneBloomPostRTVs[destination].Get() };
         m_pContext->OMSetRenderTargets(3u, outputs, nullptr);
+        const bool halfResolve = pass == 0u && halfSSGI;
+        CProfilerScope resolveCpu(halfResolve ? profiler : nullptr, "Render.SSGI.ResolveHalf");
+        CProfilerGpuScope resolveGpu(halfResolve ? profiler : nullptr, "Render.SSGI.ResolveHalf", true);
         if (FAILED(shader->Bind_Texture("g_SceneHDRTexture", baseScene)) ||
             FAILED(shader->Bind_Texture("g_SceneBloomTexture", baseBloom)) ||
-            FAILED(shader->Begin(pass)) || FAILED(m_pVIBuffer->Bind_Resources()) ||
+            (halfResolve && FAILED(shader->Bind_Texture("g_SSGIHalfTexture", m_pSSGIHalfSRV))) ||
+            FAILED(shader->Begin(halfResolve ? 3u : pass)) || FAILED(m_pVIBuffer->Bind_Resources()) ||
             FAILED(m_pVIBuffer->Render())) return E_FAIL;
         baseScene = m_pScenePostSRVs[destination];
         baseBloom = m_pSceneBloomPostSRVs[destination];

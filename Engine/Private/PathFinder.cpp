@@ -3,6 +3,7 @@
 #include "GameInstance.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
 
@@ -95,6 +96,15 @@ PATH_RESULT CPathFinder::Find_Path(
 		return Result;
 	}
 
+	Begin_Query(iNumCells);
+	// A small sealed goal region cannot be reached from the start. Prove that
+	// case before an A* search explores a much larger floor up to its limit.
+	// A bounded inconclusive probe keeps the original A* ordering and budget.
+	if (Is_GoalDisconnectedWithinBudget(NavGrid, Query))
+	{
+		Result.eCode = PATH_RESULT_CODE::UNREACHABLE;
+		return Result;
+	}
 	Begin_Query(iNumCells);
 
 	NODE_STATE& StartState = Prepare_Node(Query.iStartIndex);
@@ -284,6 +294,51 @@ bool_t CPathFinder::Can_Step(
 	}
 
 	iOutToIndex = iToIndex;
+	return true;
+}
+
+bool_t CPathFinder::Is_GoalDisconnectedWithinBudget(
+	const CNavGrid& NavGrid, const PATH_QUERY& Query)
+{
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Navigation.GoalReachability");
+	constexpr size_t PROBE_CELL_BUDGET = 128u;
+	std::array<uint32_t, PROBE_CELL_BUDGET> pending{};
+	size_t read = 0u;
+	size_t count = 1u;
+	pending[0] = Query.iGoalIndex;
+	Prepare_Node(Query.iGoalIndex).isClosed = true;
+	const auto& desc = NavGrid.Get_Desc();
+	while (read < count)
+	{
+		const uint32_t current = pending[read++];
+		const int32_t x = static_cast<int32_t>(current % desc.iWidth);
+		const int32_t z = static_cast<int32_t>(current / desc.iWidth);
+		for (const DIRECTION& direction : DIRECTIONS)
+		{
+			const int32_t fromX = x + direction.iOffsetX;
+			const int32_t fromZ = z + direction.iOffsetZ;
+			if (!NavGrid.Is_Walkable(fromX, fromZ))
+				continue;
+			const uint32_t from = NavGrid.To_Index(fromX, fromZ);
+			NODE_STATE& state = Prepare_Node(from);
+			if (state.isClosed)
+				continue;
+			uint32_t to = INVALID_CELL;
+			// Test incoming edges, including their corner and height policy.
+			// Reversing an assumed-undirected edge would be unsafe if Can_Step
+			// later gains a directional restriction.
+			if (!Can_Step(NavGrid, from, -direction.iOffsetX,
+				-direction.iOffsetZ, Query.fMaxStepHeight, to) || to != current)
+				continue;
+			if (from == Query.iStartIndex)
+				return false;
+			if (count == pending.size())
+				return false;
+			state.isClosed = true;
+			pending[count++] = from;
+		}
+	}
+	// Every predecessor of the goal component was exhausted, without start.
 	return true;
 }
 

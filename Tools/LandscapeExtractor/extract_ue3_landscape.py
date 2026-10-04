@@ -481,9 +481,17 @@ def export_serial(package: PackageData, export: Any) -> bytes:
     return package.logical[start:end]
 
 
-def decompress_texture_bulk(payload: bytes, expected_size: int) -> bytes:
-    if len(payload) == expected_size:
+def decompress_texture_bulk(payload: bytes, expected_size: int, bulk_flags: int) -> bytes:
+    # Container and decoded lengths can coincide. The native flags, rather than
+    # length equality, decide whether this inline payload is raw or LZ4.
+    if bulk_flags == 0:
+        if len(payload) != expected_size:
+            raise LandscapeError("raw Texture2D bulk payload length mismatch")
         return payload
+    if bulk_flags != 0x80:
+        raise LandscapeError(f"unsupported Texture2D bulk flags {bulk_flags:#x}")
+    if len(payload) < 16:
+        raise LandscapeError("truncated Texture2D compressed bulk header")
     reader = UE3.Reader(payload)
     tag = reader.u32()
     block_size = reader.i32()
@@ -557,7 +565,7 @@ def decode_texture(package: PackageData, texture_ref: int) -> DecodedTexture:
             raise LandscapeError(
                 f"Texture2D mip {level} offset {logical_offset:#x} != {payload_offset:#x}"
             )
-        decoded = decompress_texture_bulk(payload, element_count)
+        decoded = decompress_texture_bulk(payload, element_count, bulk_flags)
         if element_count != width * height * 4:
             raise LandscapeError(
                 f"Texture2D mip {level} is not PF_A8R8G8B8: "

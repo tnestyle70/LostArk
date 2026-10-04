@@ -81,6 +81,8 @@ private:
 		f32_t fMaxStepHeight,
 		uint32_t& iOutToIndex) const;
 
+	bool_t Is_GoalDisconnectedWithinBudget(
+		const CNavGrid& NavGrid, const PATH_QUERY& Query);
 	void Begin_Query(uint32_t iNumCells);
 	NODE_STATE& Prepare_Node(uint32_t iCellIndex);
 	void Push_Open(const OPEN_NODE& Node);

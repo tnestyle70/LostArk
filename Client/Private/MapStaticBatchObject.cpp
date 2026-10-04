@@ -14,6 +14,8 @@
 #include "Shader.h"
 
 #include <algorithm>
+#include <array>
+#include <stdexcept>
 #include <cstring>
 #include <limits>
 #include <cmath>
@@ -251,10 +253,196 @@ void CMapStaticBatchObject::Submit_FinalCamera()
     }
 }
 
+HRESULT CMapStaticBatchObject::Render_AdjacentNonBlend(
+    std::span<const std::shared_ptr<CGameObject>> objects, size_t& consumed)
+{
+    // Keep small groups on ordinary draws; the fixed-width SRV bank has a binding cost.
+    constexpr size_t MINIMUM_LIGHTING_BANK_BATCHES = 4u;
+    consumed = 1u;
+    auto& game = CGameInstance::Get();
+    // Keep authoring diagnostics and all unsupported material/geometry paths exact.
+    if (objects.size() < MINIMUM_LIGHTING_BANK_BATCHES || objects.front().get() != this ||
+        game.Is_SceneEnvironmentReplaced() ||
+        !game.Get_MaterialRenderSettings().bUseSourceMaterials ||
+        CMapAssetRenderUtils::Is_SurfaceBindingCollectionActive())
+        return Render();
+
+    const auto* camera = CMapAssetRenderUtils::Capture_CameraCullSnapshotView();
+    const bool_t hasCamera = camera != nullptr;
+    const uint64_t cameraRevision = camera ? camera->revision : 0u;
+    const auto ready = [&](const CMapStaticBatchObject& batch)
+    {
+        return batch.m_bFinalCameraPrepared && batch.m_pModelCom && batch.m_pShaderCom &&
+            !batch.m_bHasStaticMeshLod && batch.m_pModelCom->Get_NumMeshes() == 1u &&
+            batch.m_bVisibleInstancesUsedCamera == hasCamera &&
+            batch.m_iVisibleCameraRevision == cameraRevision &&
+            !batch.m_VisibleInstances.empty() &&
+            batch.m_VisibleInstances.size() <= UINT32_MAX / sizeof(VTXMESHINSTANCE);
+    };
+    if (!ready(*this) || !m_pModelCom->Can_BatchStaticLightingWith(*m_pModelCom))
+        return Render();
+
+    const auto sameProfile = [](const MAP_ASSET_RENDER_PROFILE& a,
+        const MAP_ASSET_RENDER_PROFILE& b)
+    {
+        return a.renderMode == b.renderMode && a.cullMode == b.cullMode &&
+            a.uvScale.x == b.uvScale.x && a.uvScale.y == b.uvScale.y &&
+            a.uvSpeed.x == b.uvSpeed.x && a.uvSpeed.y == b.uvSpeed.y &&
+            a.opacity == b.opacity && a.opacityPower == b.opacityPower &&
+            a.emissiveIntensity == b.emissiveIntensity &&
+            a.specularIntensity == b.specularIntensity && a.specularPower == b.specularPower &&
+            a.colorTint.x == b.colorTint.x && a.colorTint.y == b.colorTint.y &&
+            a.colorTint.z == b.colorTint.z && a.colorTint.w == b.colorTint.w &&
+            a.triplanarHeightScale == b.triplanarHeightScale && a.castsShadow == b.castsShadow;
+    };
+    std::array<const CMapStaticBatchObject*, 8u> batches{};
+    std::array<const Engine::CModel*, 8u> models{};
+    batches[0] = this;
+    models[0] = m_pModelCom.get();
+    size_t count = 1u;
+    size_t instanceCount = m_VisibleInstances.size();
+    for (; count < batches.size() && count < objects.size(); ++count)
+    {
+        const auto* next = dynamic_cast<const CMapStaticBatchObject*>(objects[count].get());
+        // A different object is an ordering barrier; never scan or sort past it.
+        if (!next || !ready(*next) || next->m_bMirrored != m_bMirrored ||
+            next->m_fElapsedTime != m_fElapsedTime || !sameProfile(m_RenderProfile, next->m_RenderProfile) ||
+            !m_pModelCom->Can_BatchStaticLightingWith(*next->m_pModelCom))
+            break;
+        if (next->m_VisibleInstances.size() > UINT32_MAX / sizeof(VTXMESHINSTANCE) - instanceCount)
+            break;
+        batches[count] = next;
+        models[count] = next->m_pModelCom.get();
+        instanceCount += next->m_VisibleInstances.size();
+    }
+    if (count < MINIMUM_LIGHTING_BANK_BATCHES)
+        return Render();
+
+    Engine::CProfiler* const profiler = game.Get_Profiler();
+    Engine::CProfilerWorkScope renderWork(profiler, Engine::EProfilerWork::MapBatchRender);
+    try
+    {
+        m_CandidateLightingBankInstances.clear();
+        m_CandidateLightingBankInstances.reserve(instanceCount);
+        for (size_t bank = 0u; bank < count; ++bank)
+        {
+            const auto& source = batches[bank]->m_VisibleInstances;
+            const size_t first = m_CandidateLightingBankInstances.size();
+            m_CandidateLightingBankInstances.insert(m_CandidateLightingBankInstances.end(),
+                source.begin(), source.end());
+            for (size_t i = first; i < m_CandidateLightingBankInstances.size(); ++i)
+                m_CandidateLightingBankInstances[i].vLightmapDirectionalScale.w = static_cast<float>(bank);
+        }
+        if (FAILED(Upload_LightingBankInstances()))
+            return Render();
+    }
+    catch (const std::bad_alloc&) { return Render(); }
+    catch (const std::length_error&) { return Render(); }
+
+    const HRESULT cameraBind = camera ?
+        CMapAssetRenderUtils::Bind_CameraCullSnapshot(m_pShaderCom, *camera) :
+        (FAILED(game.Bind_Transform(m_pShaderCom, "g_ViewMatrix", D3DTS::VIEW)) ||
+         FAILED(game.Bind_Transform(m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)) ? E_FAIL : S_OK);
+    if (FAILED(cameraBind))
+        return Render();
+    const uint32_t pass = CMapAssetRenderUtils::Select_Pass(m_RenderProfile, m_bMirrored);
+    if (pass > 2u)
+        return Render();
+    const uint32_t noBank = 0u;
+    if (FAILED(m_pShaderCom->Bind_RawValue("g_MapLightingBankSize", &noBank, sizeof(noBank))))
+        return Render();
+    {
+        Engine::CProfilerDetailScope scope(profiler, "Map.Batch.Material.Bind");
+        Engine::CProfilerWorkScope work(profiler, Engine::EProfilerWork::MapBatchMaterial);
+        if (FAILED(CMapAssetRenderUtils::Bind_Material(m_pModelCom, m_pShaderCom,
+            0u, m_RenderProfile, m_fElapsedTime, nullptr, m_AssetId, nullptr, nullptr,
+            MAP_MATERIAL_BINDING_MODE::INSTANCED)) ||
+            FAILED(m_pModelCom->Bind_StaticLightingBank(m_pShaderCom,
+                std::span<const Engine::CModel* const>(models.data(), count))))
+            return Render();
+    }
+    {
+        Engine::CProfilerDetailScope scope(profiler, "Map.Batch.Pass.Apply");
+        Engine::CProfilerWorkScope work(profiler, Engine::EProfilerWork::MapBatchPass);
+        if (FAILED(m_pShaderCom->Begin(27u + pass)))
+            return Render();
+    }
+
+    // These meshes have no generated LOD. Keep the normal draw's LOD counters
+    // without changing any source batch's bounds or selecting a combined range.
+    Engine::MESH_SCREEN_LOD_DESC screenLod{};
+    const auto* surface = m_pModelCom->Get_MaterialSurface(0u);
+    const bool_t useScreenLod = camera && m_RenderProfile.opacity >= 1.f && surface &&
+        (surface->sourceBgFlags & 64u) == 0u &&
+        (surface->renderMode == Engine::MODEL_SURFACE_RENDER_MODE::INHERIT ||
+         surface->renderMode == Engine::MODEL_SURFACE_RENDER_MODE::DEFERRED) &&
+        !m_pModelCom->Has_MaterialTexture(0u, aiTextureType_OPACITY) &&
+        Build_ScreenLodView(*camera, screenLod);
+    HRESULT result = E_FAIL;
+    {
+        Engine::CProfilerDetailScope scope(profiler, "Map.Batch.Mesh.Submit");
+        Engine::CProfilerWorkScope work(profiler, Engine::EProfilerWork::MapBatchDraw);
+        result = m_pModelCom->Render_Instanced(0u, m_pLightingBankInstanceBuffer.Get(),
+            sizeof(VTXMESHINSTANCE), static_cast<uint32_t>(instanceCount), 0u,
+            useScreenLod ? &screenLod : nullptr);
+    }
+    // A successful draw consumes the exact adjacent prefix, once and in order.
+    // Reset the shared shader state even if submission failed.
+    const HRESULT reset = m_pShaderCom->Bind_RawValue("g_MapLightingBankSize", &noBank, sizeof(noBank));
+    if (FAILED(result)) return result;
+    consumed = count;
+    if (profiler) profiler->Add_Counter(Engine::EProfilerCounter::MapBatchVisibleRenders);
+    return reset;
+}
+
+HRESULT CMapStaticBatchObject::Upload_LightingBankInstances()
+{
+    const size_t required = m_CandidateLightingBankInstances.size();
+    if (required == 0u || required > UINT32_MAX / sizeof(VTXMESHINSTANCE))
+        return E_INVALIDARG;
+    const bool_t samePayload = required == m_LightingBankInstances.size() &&
+        0 == std::memcmp(m_CandidateLightingBankInstances.data(), m_LightingBankInstances.data(),
+            required * sizeof(VTXMESHINSTANCE));
+    if (samePayload && m_pLightingBankInstanceBuffer)
+        return S_OK;
+
+    ComPtr<ID3D11Buffer> target = m_pLightingBankInstanceBuffer;
+    uint32_t capacity = m_iLightingBankInstanceCapacity;
+    if (!target || required > capacity)
+    {
+        capacity = 1u;
+        const uint32_t maximum = UINT32_MAX / sizeof(VTXMESHINSTANCE);
+        while (capacity < required && capacity <= maximum / 2u) capacity *= 2u;
+        if (capacity < required) capacity = static_cast<uint32_t>(required);
+        D3D11_BUFFER_DESC desc{};
+        desc.ByteWidth = capacity * sizeof(VTXMESHINSTANCE);
+        desc.Usage = D3D11_USAGE_DYNAMIC;
+        desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+        desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        if (FAILED(m_pDevice->CreateBuffer(&desc, nullptr, target.ReleaseAndGetAddressOf())))
+            return E_FAIL;
+    }
+    D3D11_MAPPED_SUBRESOURCE mapped{};
+    if (FAILED(m_pContext->Map(target.Get(), 0u, D3D11_MAP_WRITE_DISCARD, 0u, &mapped)))
+        return E_FAIL;
+    std::memcpy(mapped.pData, m_CandidateLightingBankInstances.data(), required * sizeof(VTXMESHINSTANCE));
+    m_pContext->Unmap(target.Get(), 0u);
+    m_pLightingBankInstanceBuffer = std::move(target);
+    m_iLightingBankInstanceCapacity = capacity;
+    m_LightingBankInstances.swap(m_CandidateLightingBankInstances);
+    if (auto* profiler = CGameInstance::Get().Get_Profiler())
+        profiler->Add_Counter(Engine::EProfilerCounter::MapBatchUploadBytes,
+            required * sizeof(VTXMESHINSTANCE));
+    return S_OK;
+}
+
 HRESULT CMapStaticBatchObject::Render()
 {
 	Engine::CProfiler* const profiler = CGameInstance::Get().Get_Profiler();
 	Engine::CProfilerWorkScope renderWork(profiler, Engine::EProfilerWork::MapBatchRender);
+	const uint32_t noBank = 0u;
+	if (!m_pShaderCom || FAILED(m_pShaderCom->Bind_RawValue("g_MapLightingBankSize", &noBank, sizeof(noBank))))
+		return E_FAIL;
 	if (CGameInstance::Get().Is_SceneEnvironmentReplaced())
 		return S_OK;
 
@@ -514,6 +702,53 @@ bool_t CMapStaticBatchObject::Try_PickMovementSurface(
 	if (hit) outDistance = nearest;
 	return hit;
 }
+
+#ifdef _DEBUG
+bool_t CMapStaticBatchObject::Try_PickInspectionSurface(
+    const float3_t& rayOrigin, const float3_t& rayDirection,
+    const f32_t maxDistance, f32_t& outDistance,
+    uint64_t& outPlacementId, uint32_t& outMeshIndex, std::string& outMaterialName) const
+{
+    if (!m_pModelCom || m_RenderProfile.opacity <= 0.f) return false;
+    const vector_t origin = XMLoadFloat3(&rayOrigin);
+    const vector_t direction = XMLoadFloat3(&rayDirection);
+    if (!m_bBatchBoundsDirty && m_bHasBatchBounds)
+    {
+        const BoundingBox bounds(float3_t(m_BatchBounds.x, m_BatchBounds.y, m_BatchBounds.z),
+            float3_t(m_BatchBounds.w, m_BatchBounds.w, m_BatchBounds.w));
+        f32_t entry = 0.f;
+        if (!bounds.Intersects(origin, direction, entry) || entry > maxDistance) return false;
+    }
+    const uint32_t cull = CMapAssetRenderUtils::Select_Pass(m_RenderProfile, m_bMirrored) % 3u;
+    const auto mode = cull == 0u ? CModel::PICK_CULL_MODE::BACK :
+        cull == 1u ? CModel::PICK_CULL_MODE::FRONT : CModel::PICK_CULL_MODE::NONE;
+    f32_t nearest = maxDistance;
+    uint64_t nearestPlacement = 0u;
+    uint32_t nearestMesh = 0u;
+    bool_t hit = false;
+    for (const auto& instance : m_Instances)
+    {
+        if (!instance.Visible || instance.Suppressed || instance.CameraPreviewSuppressed) continue;
+        const BoundingBox bounds(instance.WorldBoundsCenter, float3_t(
+            instance.WorldBoundsRadius, instance.WorldBoundsRadius, instance.WorldBoundsRadius));
+        f32_t entry = 0.f;
+        if (!bounds.Intersects(origin, direction, entry) || entry > nearest) continue;
+        for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
+        {
+            f32_t distance = nearest;
+            if (m_pModelCom->Try_PickStaticSurface(mesh, instance.World, rayOrigin, rayDirection,
+                nearest, mode, distance) && distance < nearest)
+            { nearest = distance; nearestPlacement = instance.PlacementId; nearestMesh = mesh; hit = true; }
+        }
+    }
+    if (!hit) return false;
+    outDistance = nearest;
+    outPlacementId = nearestPlacement;
+    outMeshIndex = nearestMesh;
+    outMaterialName = m_pModelCom->Get_MaterialName(nearestMesh);
+    return true;
+}
+#endif
 
 HRESULT CMapStaticBatchObject::Update_Instance(
 	uint64_t placementId,
@@ -889,6 +1124,8 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
         gpuInstance.vLightmapAverageScale = instance.BakedLighting.averageScale;
         gpuInstance.vLightmapDirectionalScale = instance.BakedLighting.directionalScale;
         gpuInstance.vStaticShadowScaleBias = instance.BakedLighting.shadowScaleBias;
+        gpuInstance.vSourceWindOwnerPosition = instance.SourceWind.actorPositionSourceCm;
+        gpuInstance.vSourceWindDimensionsAndRadius = instance.SourceWind.objectDimensionsAndRadiusSourceCm;
 
 		m_CandidateVisibleInstances.push_back(
 			gpuInstance);
@@ -1006,6 +1243,8 @@ HRESULT CMapStaticBatchObject::Upload_ShadowInstances()
 		gpuInstance.vLightmapAverageScale = instance.BakedLighting.averageScale;
 		gpuInstance.vLightmapDirectionalScale = instance.BakedLighting.directionalScale;
 		gpuInstance.vStaticShadowScaleBias = instance.BakedLighting.shadowScaleBias;
+		gpuInstance.vSourceWindOwnerPosition = instance.SourceWind.actorPositionSourceCm;
+		gpuInstance.vSourceWindDimensionsAndRadius = instance.SourceWind.objectDimensionsAndRadiusSourceCm;
 		m_CandidateShadowInstances.push_back(gpuInstance);
 	}
 

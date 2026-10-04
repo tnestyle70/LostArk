@@ -18,6 +18,8 @@ PROGRAMS = {
         'e55de237331277ac27534338bc3c1a979dc3a3c0a68169e838b7dfcfe5cb45d6', 132, 0, 7, 1),
     'UE3_FOLIAGE_VS_1C39': ('1c39a832e3e5f745a865324bed15057e',
         '5a0af0d3dc625aac63fad8350f34f1b43e1928f6666bff01c5ee9efe7038c539', 164, 1, 10, 4),
+    'UE3_FOLIAGE_VS_098C': ('098c9d03d56cd64497e15be7ff9e16a3',
+        '76dae5e30aef06090231cd17a9cebe54c0abce65625a55d85f67ed8c3c94ed4a', 132, 0, 7, 1),
 }
 
 
@@ -34,9 +36,13 @@ def validate(value):
         require(isinstance(value[key], list) and len(value[key]) == 4, 'Invalid foliage wind contract: isinstance(value[key], list) and len(value[key]) == 4')
         require(all((type(x) in (int, float) and math.isfinite(x) and (abs(x) <= 100000000.0) for x in value[key])), 'Invalid foliage wind contract: all((type(x) in (int, float) and math.isfinite(x) and (abs(x) <= 100000000.0) for x in value[key]))')
     require(value['localCenter'][3] == 1 and value['actorPositionSourceCm'][3] == 0, "Invalid foliage wind contract: value['localCenter'][3] == 1 and value['actorPositionSourceCm'][3] == 0")
-    require(all((0 < x <= 100000.0 for x in value['localBounds'])), "Invalid foliage wind contract: all((0 < x <= 100000.0 for x in value['localBounds']))")
-    # This admission has source-absent scene wind, not an invented live wind service.
-    require(value['windDirectionSpeedSource'] == [0, 0, 1, 0], "Invalid foliage wind contract: value['windDirectionSpeedSource'] == [0, 0, 1, 0]")
+    require(all((0 <= x <= 100000.0 for x in value['localBounds'][:3])) and
+            0 < value['localBounds'][3] <= 100000.0, 'Invalid native foliage extents or radius')
+    # Native FScene stores directional XYZ multiplied by Strength and Speed in W.
+    # The exact upstream no-source fallback (0,0,1,0) remains a valid input.
+    require(value['windDirectionSpeedSource'][3] >= 0 and
+            sum(x*x for x in value['windDirectionSpeedSource'][:3]) > 0,
+            'Invalid native scene wind direction or speed')
     rows = value['scalarRows']
     require(isinstance(rows, list) and len(rows) == 4, 'Invalid foliage wind contract: isinstance(rows, list) and len(rows) == 4')
     require(all((isinstance(row, list) and len(row) == 4 and all((type(x) in (int, float) and math.isfinite(x) and (abs(x) <= 100000000.0) for x in row)) for row in rows)), 'Invalid foliage wind contract: all((isinstance(row, list) and len(row) == 4 and all((type(x) in (int, float) and math.isfinite(x) and (abs(x) <= 100000000.0) for x in row)) for row in rows))')
@@ -45,7 +51,7 @@ def validate(value):
     require(flat[spec[5]] == 0 and all(x == 0 for x in flat[spec[4]:]), 'Invalid wind time or unused scalar lanes')
     if value['program'] == PROGRAM:
         require(rows[0][2] > 0, 'Non-positive original foliage affect distance')
-    elif value['program'] == 'UE3_FOLIAGE_VS_A1C6':
+    elif value['program'] in ('UE3_FOLIAGE_VS_A1C6', 'UE3_FOLIAGE_VS_098C'):
         require(value['localCenter'] == [0, 0, 0, 1] and value['playerPositionSource'] == [0, 0, 0, 0],
                 'Basic source wind pivots at object origin and has no player input')
     else:
@@ -54,12 +60,22 @@ def validate(value):
 
 
 def build(binding, material, verified_file, base, sources, tracked=None):
-    require(set(binding) == {'nativeInputs', 'vertexProgram', 'bounds', 'ownerPositionSourceCm', 'ownerPositionEvidence'}, "Invalid foliage wind contract: set(binding) == {'nativeInputs', 'vertexProgram', 'bounds', 'ownerPositionSourceCm', 'ownerPositionEvidence'}")
+    required = {'nativeInputs', 'vertexProgram', 'bounds', 'ownerPositionSourceCm', 'ownerPositionEvidence'}
+    require(required <= set(binding) <= required | {'sceneWind'}, 'Invalid foliage wind evidence fields')
     documents = {}
     for key in ('nativeInputs', 'vertexProgram', 'bounds', 'ownerPositionEvidence'):
         path, data = verified_file(binding[key], base)
         sources.append(dict(path=str(path), sha256=binding[key]['sha256']))
         documents[key] = json.loads(data)
+    wind = [0, 0, 1, 0]
+    if 'sceneWind' in binding:
+        path, data = verified_file(binding['sceneWind'], base)
+        sources.append(dict(path=str(path), sha256=binding['sceneWind']['sha256']))
+        scene_wind = json.loads(data)
+        require(scene_wind['sceneWindSourceCount'] == 1 and
+                scene_wind['nativeEngineEvidence']['singleDirectionalSource'] is True,
+                'Only the verified native single directional scene-wind closure is admitted')
+        wind = scene_wind['windDirectionSpeedSource']
     program = documents['vertexProgram']
     admitted = [key for key, spec in PROGRAMS.items() if spec[0] == program['shaderId']]
     require(len(admitted) == 1, 'Unreviewed foliage vertex program')
@@ -125,12 +141,13 @@ def build(binding, material, verified_file, base, sources, tracked=None):
     require(len(b) == 7, 'Invalid foliage wind contract: len(b) == 7')
     owner = binding['ownerPositionSourceCm']
     require(documents['ownerPositionEvidence']['actorPositionSourceCm'] == owner, "Invalid foliage wind contract: documents['ownerPositionEvidence']['actorPositionSourceCm'] == owner")
-    require(documents['ownerPositionEvidence']['sceneWindSourceCount'] == 0, "Invalid foliage wind contract: documents['ownerPositionEvidence']['sceneWindSourceCount'] == 0")
+    require(documents['ownerPositionEvidence']['sceneWindSourceCount'] == (1 if 'sceneWind' in binding else 0),
+            'Owner and native scene-wind census differ')
     # Loader's existing source-model preScale is .01; world transforms carry the
     # original dimensionless component scale. Source [x,y,z] -> runtime [x,z,-y].
     result = dict(program=program_name, localCenter=[center[0]*.01, center[2]*.01, -center[1]*.01, 1],
                   localBounds=[b[3]*.01, b[5]*.01, b[4]*.01, b[6]*.01],
-                  actorPositionSourceCm=[*owner, 0], windDirectionSpeedSource=[0,0,1,0],
+                  actorPositionSourceCm=[*owner, 0], windDirectionSpeedSource=wind,
                   playerPositionSource=player, scalarRows=[s[i:i+4] for i in range(0,16,4)])
     validate(result)
     return result

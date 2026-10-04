@@ -240,6 +240,16 @@ package·decoder SHA-256, redirect, 원본 속성, mip별 packed/block hash와 m
 기존 source metadata 계약을 계속 사용하며 이 도구가 추정하지 않는다. Resources
 설치와 map publish는 호출하는 pipeline의 별도 단계다.
 
+같은 물리 package의 대량 `Texture2D`·`LightMapTexture2D`·`ShadowMapTexture2D`는
+Python API `extract_texture_mips_batch`로 함께 회수할 수 있다. `logical_name`,
+`source_package`, `package_root`, `umodel`, `scratch_root`와 각 대상의
+`sourceObject`/`expectedMip0`/`output` 목록을 전달한다. package별 scratch에서
+해당 단계가 존재하는 texture만 native mip을 회전하고 UModel의 여러 `-obj`로
+내보낸다. 한 invocation은 최대 100개이며 object name 중복과 redirect는 거부한다.
+원본 serial·packed bytes, 완전한 chain, 각 mip 형식/크기, 현재 mip0와 입력 hash를
+단일 API와 동일하게 확인한다. package의 모든 대상이 검증되기 전에는 후보를
+쓰지 않는다. 일반 BC mip 생성, Crunch 재압축, Resources 설치는 수행하지 않는다.
+
 ## 왜 필요한가
 
 UModel의 일반 메시 export는 메시 파일 자체만 내보낸다. 레벨이 어떤 메시를

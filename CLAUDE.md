@@ -869,6 +869,24 @@ Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 
 
 Debug `Lobby → KoukuSaydon → F1 → Map Tool`에서는 현재 arena가 소유한 맵을 같은 편집기로 수정·저장할 수 있다. Test처럼 다른 Area로 전환하지 않으며 재생 중 target 변경은 Stop/Restore 후 수행한다. 원본 배치와 런타임 표시 상태를 분리해 저장하고, Server gameplay는 변경하지 않는다. 연결·저장 경계는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
 
+Debug Bern/Character Select/Valtan/KoukuSaydon에서 `F1 → World Scene Tool`을 연다.
+`Pick in world`를 누른 뒤 UI 밖에서 한 번 클릭하면 live map의 LOD0 삼각형과 Deploy의
+현재 static/skeletal pose 중 최근접 mesh를 선택한다. 목록 검색·선택과 Focus, 원본
+placement/level, asset/WModel, mesh/material/hit XYZ 및 `Copy source selection`을 제공한다.
+Esc/우클릭/F1 닫기/입력 소유권·Level 변경은 피킹을 취소하며 miss는 기존 선택을 보존한다.
+
+`Enable map placement editing`은 별도 Map Tool 실행 없이 기존 `CMapPlacementEditSession`을
+연결한다. 이동·회전·signed scale·Visible, Undo/Reset, Duplicate/Delete duplicate를 제공하고
+`Save Data + publish Area`로 Data 원본과 공식 Area publisher를 소비한다. 미로드 원본 행,
+미저장 draft와 외부 저장본을 보존한다. VALTAN_PHASE/backdrop/active borrower 경계는 유지한다.
+Deploy는 가역 위치·회전·positive uniform scale·opacity/Reveal preview와 clip 선택·재생·정지·seek·loop를
+제공하며 Stop/창 숨김에서 복원한다. authoritative 파괴 상태는 preview를 선점해 정상 적용된다.
+SOURCE_EXACT Deploy 배치를 영구 저장하거나 Server state/navigation을 변경하지 않는다.
+mapmotions JSON이 있는 Area는 기존 self-motion clock의 play/pause/seek/speed를 같은 창에서
+검사한다. 원본 단위·활성이 미확정인 motion 행을 임의로 생성하지 않는다.
+alpha holes·shader displacement·rendered LOD·animated raster cull과 CPU geometry hit는 구별하며
+최종 화면은 사용자가 확인한다. 팀장이 저장한 rendering options는 도구가 변경하지 않는다.
+
 F1 Tools → `Action Workbench`는 `Composition Actions`의 Boss / Character / Object / Sequence / World를
 같은 Resources / Sequencer / Box Detail / Preview 창에서 편집한다. Boss와
 Sequence는 관문 선택을 따로 기억하고, 대상 전환은 preview를 정리하면서 각 문서의 초안과 선택을

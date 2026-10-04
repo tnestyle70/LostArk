@@ -43,6 +43,7 @@ public:
 		bool_t visible = true;
 		MAP_ASSET_RENDER_PROFILE renderProfile;
 		Engine::MODEL_BAKED_LIGHTING_INSTANCE bakedLighting;
+		Engine::MODEL_SOURCE_FOLIAGE_WIND_INSTANCE sourceWind;
 		/* Optional immutable material clone; geometry identity must match the prototype. */
 		std::optional<Engine::MODEL_ASSET_LOAD_DESC> materialVariant;
 		MAP_FRUSTUM_CULLING_POLICY frustumCulling{};
@@ -83,6 +84,12 @@ public:
 	   runtime; a miss never changes the supplied world-space distance. */
 	bool_t Try_PickMovementSurface(const float3_t& rayOrigin,
 		const float3_t& rayDirection, f32_t maxDistance, f32_t& outDistance) const;
+#ifdef _DEBUG
+	// Read-only LOD0 inspection also includes vegetation and forward surfaces.
+	bool_t Try_PickInspectionSurface(const float3_t& rayOrigin,
+		const float3_t& rayDirection, f32_t maxDistance, f32_t& outDistance,
+		uint32_t& outMeshIndex, std::string& outMaterialName) const;
+#endif
 	void Set_PlacementTransform(const float3_t& position,
 		const float4_t& rotationQuaternion, const float3_t& signedScale);
 	void Set_Visible(bool_t visible) { m_bVisible = visible; }
@@ -135,6 +142,7 @@ private:
 
 	MAP_ASSET_RENDER_PROFILE m_RenderProfile;
 	Engine::MODEL_BAKED_LIGHTING_INSTANCE m_BakedLighting;
+	Engine::MODEL_SOURCE_FOLIAGE_WIND_INSTANCE m_SourceWind;
 	bool_t m_bHasWaterProfile = false;
 	MAP_ASSET_WATER_PROFILE m_WaterProfile;
 	/* Runtime presentation may fade a placement without mutating the authored

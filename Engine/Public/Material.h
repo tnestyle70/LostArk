@@ -7,6 +7,7 @@
 #pragma pop_macro("new")
 
 #include "BinaryAsset/ModelAssetData.h"
+#include <span>
 
 NS_BEGIN(Engine)
 
@@ -28,6 +29,9 @@ public:
 	HRESULT Bind_SourceSpecialSurface(shared_ptr<class CShader> shader);
     HRESULT Bind_SourceLandscapeSurface(shared_ptr<class CShader> shader);
 	HRESULT Bind_SurfaceLighting(shared_ptr<class CShader> pShader);
+    bool_t Can_BatchStaticLightingWith(const CMaterial& other) const;
+    HRESULT Bind_StaticLightingBank(const shared_ptr<class CShader>& shader,
+        std::span<const CMaterial* const> materials) const;
     HRESULT Bind_StaticShadow(shared_ptr<class CShader> shader);
     HRESULT Bind_SourceCharacter(shared_ptr<class CShader> shader);
     // Light constants and textures for a forward pass that also runs the base program.

@@ -2924,7 +2924,7 @@ function Assert-SourceFoliageWind {
     }
     Assert-ExactJsonProperties $Wind @('program','localCenter','localBounds','actorPositionSourceCm','windDirectionSpeedSource','playerPositionSource','scalarRows') 'Source foliage wind'
     if ($Wind.program -isnot [string] -or
-        $Wind.program -cnotin @('UE3_FOLIAGE_VS_E4FE','UE3_FOLIAGE_VS_A1C6','UE3_FOLIAGE_VS_1C39') -or
+        $Wind.program -cnotin @('UE3_FOLIAGE_VS_E4FE','UE3_FOLIAGE_VS_A1C6','UE3_FOLIAGE_VS_1C39','UE3_FOLIAGE_VS_098C') -or
         ($Family -ceq 'bg-source-grass-masked' -and $Wind.program -ceq 'UE3_FOLIAGE_VS_E4FE')) {
         throw 'Invalid source foliage wind program or family'
     }
@@ -2944,22 +2944,23 @@ function Assert-SourceFoliageWind {
         }
     }
     if ($Wind.localCenter[3] -ne 1 -or $Wind.actorPositionSourceCm[3] -ne 0 -or
-        $Wind.windDirectionSpeedSource[0] -ne 0 -or $Wind.windDirectionSpeedSource[1] -ne 0 -or
-        $Wind.windDirectionSpeedSource[2] -ne 1 -or $Wind.windDirectionSpeedSource[3] -ne 0) {
-        throw 'Invalid source wind position or no-wind input'
+        ($Wind.windDirectionSpeedSource[0] -eq 0 -and $Wind.windDirectionSpeedSource[1] -eq 0 -and $Wind.windDirectionSpeedSource[2] -eq 0) -or
+        $Wind.windDirectionSpeedSource[3] -lt 0) {
+        throw 'Invalid source wind position or native scene-wind input'
     }
-    foreach ($value in $Wind.localBounds) {
-        if ([single]$value -le 0 -or $value -gt 1e5) { throw 'Invalid source wind bounds' }
+    for ($axis = 0; $axis -lt 4; $axis++) {
+        $value = $Wind.localBounds[$axis]
+        if ([single]$value -lt 0 -or $value -gt 1e5 -or ($axis -eq 3 -and [single]$value -le 0)) { throw 'Invalid source wind bounds' }
     }
     $used = 16; $timeLane = 10
-    if ($Wind.program -ceq 'UE3_FOLIAGE_VS_A1C6') { $used = 7; $timeLane = 1 }
+    if ($Wind.program -cin @('UE3_FOLIAGE_VS_A1C6','UE3_FOLIAGE_VS_098C')) { $used = 7; $timeLane = 1 }
     elseif ($Wind.program -ceq 'UE3_FOLIAGE_VS_1C39') { $used = 10; $timeLane = 4 }
     if ($flat[$timeLane] -ne 0) { throw 'Source wind authored time lane must be zero' }
     for ($index = $used; $index -lt 16; $index++) {
         if ($flat[$index] -ne 0) { throw 'Unused source wind scalar lane must be zero' }
     }
     if ($Wind.program -ceq 'UE3_FOLIAGE_VS_E4FE' -and [single]$flat[2] -le 0) { throw 'Invalid source foliage affect distance' }
-    if ($Wind.program -ceq 'UE3_FOLIAGE_VS_A1C6' -and
+    if ($Wind.program -cin @('UE3_FOLIAGE_VS_A1C6','UE3_FOLIAGE_VS_098C') -and
         ($Wind.localCenter[0] -ne 0 -or $Wind.localCenter[1] -ne 0 -or $Wind.localCenter[2] -ne 0 -or
          @($Wind.playerPositionSource | Where-Object { $_ -ne 0 }).Count -ne 0)) { throw 'Invalid basic source wind pivot or player' }
     if ($Wind.program -ceq 'UE3_FOLIAGE_VS_1C39' -and
@@ -2972,6 +2973,42 @@ function Read-MapMaterialDocument {
     $document = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8) | ConvertFrom-Json
     $rootFields = @('schema','formatVersion','areaId','materials')
     $placementLighting = $document.PSObject.Properties['placementLighting']
+    $placementWind = $document.PSObject.Properties['placementWind']
+    if ($null -ne $placementWind) {
+        $rootFields += 'placementWind'
+        if ($document.formatVersion -ne 2 -or $placementWind.Value -isnot [array]) { throw 'Invalid placement wind root' }
+    }
+    if ($null -ne $placementWind) {
+        if ($placementWind.Value.Count -gt 65536) { throw 'Too many placement wind rows' }
+        $windPlacements = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
+        foreach ($placementLine in (Read-PlacementDocument $authoringPath)) {
+            $parsed = Parse-PlacementRow $placementLine $authoringPath
+            $windPlacements.Add($parsed.SourcePlacementId, $parsed.AssetId)
+        }
+        $windAssets = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($material in $document.materials) {
+            if ($null -ne $material.PSObject.Properties['foliageWind']) { [void]$windAssets.Add($material.assetId) }
+        }
+        $windSources = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($wind in $placementWind.Value) {
+            Assert-ExactJsonProperties $wind @('sourcePlacementId','assetId','actorPositionSourceCm','objectDimensionsAndRadiusSourceCm') 'Placement wind'
+            if ($wind.sourcePlacementId -isnot [string] -or [string]::IsNullOrWhiteSpace($wind.sourcePlacementId) -or
+                [Text.Encoding]::UTF8.GetByteCount($wind.sourcePlacementId) -gt 512 -or $wind.sourcePlacementId -match '[\x00-\x1f\x7f]' -or
+                $wind.assetId -isnot [string] -or -not $windAssets.Contains($wind.assetId) -or -not $windSources.Add($wind.sourcePlacementId) -or
+                -not $windPlacements.ContainsKey($wind.sourcePlacementId) -or $windPlacements[$wind.sourcePlacementId] -cne $wind.assetId) {
+                throw 'Invalid, duplicate, dangling, or mismatched placement wind identity'
+            }
+            foreach ($field in @('actorPositionSourceCm','objectDimensionsAndRadiusSourceCm')) {
+                $count = if ($field -ceq 'actorPositionSourceCm') { 3 } else { 4 }
+                if ($wind.$field -isnot [array] -or $wind.$field.Count -ne $count) { throw 'Invalid placement wind vector' }
+                foreach ($value in $wind.$field) {
+                    if (-not (Test-JsonNumber $value) -or [Math]::Abs([double]$value) -gt 1e8) { throw 'Invalid placement wind value' }
+                }
+            }
+            $bounds = $wind.objectDimensionsAndRadiusSourceCm
+            if ($bounds[0] -lt 0 -or $bounds[1] -lt 0 -or $bounds[2] -lt 0 -or $bounds[3] -le 0) { throw 'Invalid placement wind dimensions or radius' }
+        }
+    }
     if ($null -ne $placementLighting) {
         $rootFields += 'placementLighting'
         if ($document.formatVersion -ne 2 -or $placementLighting.Value -isnot [array]) {
@@ -3056,7 +3093,9 @@ function Read-MapMaterialDocument {
         }
         if ($row.family -ceq 'bg-source-landscape-opaque') {
             if ($document.formatVersion -ne 2) { throw 'Landscape material requires formatVersion 2' }
-            Assert-ExactJsonProperties $row @('assetId','materialName','sourceMaterial','family','castsShadow','sourceLandscape') 'Landscape material'
+            $fields = @('assetId','materialName','sourceMaterial','family','castsShadow','sourceLandscape')
+            if ($null -ne $row.PSObject.Properties['bakedLighting']) { $fields += 'bakedLighting' }
+            Assert-ExactJsonProperties $row $fields 'Landscape material'
             foreach ($key in @('assetId','materialName','sourceMaterial')) {
                 if ($row.$key -isnot [string] -or [string]::IsNullOrWhiteSpace($row.$key) -or $row.$key -match '[\x00-\x1f\x7f]') { throw 'Invalid landscape identity' }
             }
@@ -3112,6 +3151,13 @@ function Read-MapMaterialDocument {
                 elseif ($layer.factors[1] -ne 0) { throw 'Landscape normal intensity requires a normal texture' }
             }
             if ($usedWeightmaps.Count -ne $landscape.weightmaps.Count) { throw 'Unused landscape weightmap' }
+            if ($null -ne $row.PSObject.Properties['bakedLighting']) {
+                Assert-ExactJsonProperties $row.bakedLighting @('averageTexture','directionalTexture','colorSpace') 'Landscape baked lighting'
+                if ($row.bakedLighting.colorSpace -cnotin @('linear','srgb')) { throw 'Invalid landscape lightmap color space' }
+                & $validateLightingTexture $row.bakedLighting.averageTexture
+                & $validateLightingTexture $row.bakedLighting.directionalTexture
+                [void]$bakedAssets.Add($row.assetId)
+            }
             $modelPath = [string]$script:mapMaterialModels[$row.assetId]
             if (-not $modelNames.ContainsKey($modelPath)) { $modelNames[$modelPath] = (Read-WModelMaterialNames (Join-Path $runtimeResourceRoot $modelPath)).Names }
             if (-not $modelNames[$modelPath].ContainsKey($row.materialName) -or $modelNames[$modelPath][$row.materialName] -ne 1) { throw 'Landscape material does not exist or is ambiguous in WModel' }
@@ -3703,7 +3749,7 @@ function Read-MapMaterialDocument {
             $lightingFields = @('sourcePlacementId','assetId','coordinateScale','coordinateBias','averageScale','directionalScale')
             $hasShadowScale = $null -ne $lighting.PSObject.Properties['shadowCoordinateScale']
             $hasShadowBias = $null -ne $lighting.PSObject.Properties['shadowCoordinateBias']
-            if ($hasShadowScale -ne $hasShadowBias) { throw 'Incomplete placement shadow coordinates' }
+            if ($hasShadowScale -ne $hasShadowBias -or $shadowAssets.Contains($lighting.assetId) -ne $hasShadowScale) { throw 'Incomplete placement shadow coordinates' }
             if ($hasShadowScale) {
                 $lightingFields += @('shadowCoordinateScale','shadowCoordinateBias')
                 if (-not $shadowAssets.Contains($lighting.assetId) -or $lighting.shadowCoordinateScale -isnot [array] -or $lighting.shadowCoordinateScale.Count -ne 2 -or $lighting.shadowCoordinateBias -isnot [array] -or $lighting.shadowCoordinateBias.Count -ne 2) { throw 'Invalid placement shadow asset or coordinates' }

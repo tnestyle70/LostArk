@@ -4699,6 +4699,7 @@ vertex wave와 전체 원본 외형까지 복원됐다고 판정하지 않는다
 skeletal mesh 두 종류·애니메이션 10개 및 Deploy 좌표가 남아 있다. 키워드나 테이블 한 벌의
 미발견을 전체 원본 삭제로 확대하지 않는다. 추출 성공과 런타임 재질·배치·동작 연결도 구분한다.
 
+
 ### Landscape는 레벨별 packed ShaderCache도 검색한다
 
 공용 RefShaderCache에서 컴포넌트 static key를 못 찾아도 native 프로그램이 없는 것이 아니다.
@@ -4861,6 +4862,7 @@ camera origin을 함께 전달한다. 투영의 마지막 행도 같은 origin�
 높이나 Fresnel 색을 먼저 바꾸지 말고 원점에서 멀리 떨어진 같은 장면의 평행이동 불변성을 검사한다.
 추출 DDS와 설치 DDS의 mipCount는 별도로 확인한다. 추출 receipt의 성공이 Resources에
 원본 mip 체인이 설치됐다는 증거는 아니다. 09-27 MAHARAKA_MAP_RESTORATION_RESULT 참조.
+
 
 ### Landscape glTF와 최종 WModel의 좌표계를 따로 검사한다
 
@@ -5749,6 +5751,7 @@ actor/component/CDO가 visible이고 LevelStreaming이 AlwaysLoaded여도 최종
 placement ID와 TRS가 일치해도 오래된 Landscape WModel의 축이 반대일 수 있다. 원본 높이·normal·hole topology와 설치 정점을 함께 비교하고, 현행 추출기로 재변환한 뒤 tile anchor와 winding을 확인한다. 재질 bake/cliff 분리가 달라지는 전체 변환은 UV·재질 byte 불변으로 설명하지 않는다. 전체 mip 후보를 별도 overlay로 만든 경우 배포는 cook 폴더 전체 복사 대신 최종 manifest의 후보 경로를 소비한다.
 
 
+
 ### Landscape의 흐림은 해상도와 원본 UV 계약을 함께 확인한다
 
 큰 타일을256px로 베이크한 결과는 원본 반복 텍스처를 복원한 것이 아니다. 베른은 원본 grid×0.1, 중심 회전의 source scalar×3.1400001049, layer tiling을 사용한다. component 폭으로 나누거나 rotation을 degree로 해석하면 무늬 크기부터 달라진다. 단순 upsample·mip bias로 보정하지 않는다.
@@ -5915,6 +5918,21 @@ suppression을 Render와 맞추고 debris를 걷는 바닥으로 승격하지 �
 - 같은 actor의 애니메이션 보간 재사용, 재질별 draw 병합, GPU LOD는 별도 비용을 줄인다. 한 kernel의 절감률을 전체 게임 FPS로 환산하지 않는다. 구조·검증·남은 실측은 [프레임 통합 계획](10-02/2026-10-02_FRAME_PIPELINE_OPTIMIZATION_IMPLEMENTATION_PLAN.md)을 따른다.
 
 
+### 구운 조명이 나눈 draw와 실패 경로 탐색의 비용
+
+- CPU Map.Batch.Draw·Material·Pass가 호출 수에 비례하면 geometry 이름만으로 병합 가능하다고
+  판단하지 않는다. 원래 RNM average/directional·static-shadow texture identity가 배치를 나누므로
+  전체 비조명 입력과 실제 공유 geometry를 비교한다. 인접 배치의 원래 SRV를 제한된 bank로
+  전달하고 각 instance의 UV·RGB scale·표시 순서를 보존한다. LOD·다중 mesh·override와 진단 중
+  대상은 원래 draw로 남긴다. authored 배치 수의 감소 가능성을 실제 카메라 FPS 개선으로 쓰지 않는다.
+- GPU timestamp에는 CPU의 제출 지연도 포함된다. PS 호출·VS 호출·draw 수와 CPU 구간을 함께
+  비교하고 긴 GPU 경과 시간만으로 픽셀 과부하·VRAM 부족을 단정하지 않는다.
+- walkable 목표의 작은 고립 영역 때문에 A*가 출발 쪽 넓은 지형을 상한까지 탐색할 수 있다.
+  목표의 incoming Can_Step 간선을 제한된 수만 역탐색하여 연결 성분이 완전히 소진됐을 때만
+  조기 UNREACHABLE로 판정한다. 제한 초과는 불연결 증거가 아니므로 원래 A*를 유지한다.
+  성공 경로·동적 blocker·높이·대각선 조건을 원본과 비교한다.
+  [베른 제출 최적화 결과](10-04/2026-10-04_BERN_DRAW_SUBMISSION_OPTIMIZATION_RESULT.md).
+
 ### 같은 맵 순간이동의 Guide 착지와 실제 보행 연결
 
 - Sample_Position으로 높이를 얻었다고 주변 보행 영역과 연결됐다고 판정하지 않는다.
@@ -5979,6 +5997,8 @@ suppression을 Render와 맞추고 debris를 걷는 바닥으로 승격하지 �
 ### 새 Engine shader의 실행 배포 경계
 
 Engine FxCompile 등록과 CSO 생성만으로 Client에서 로드할 수 있다고 판정하지 않는다.
+공용 include가 Engine/Bin/ShaderFiles에도 있으면 Engine 정본부터 수정한다.
+Client 복사본만 수정하면 PrepareEngineSdk가 덮어써 독립 FXC와 제품 빌드 결과가 달라진다.
 독립 shader는 Client `DeployClientCompiledShaders`의 명시 목록과 BuildDomains product의
 필수 outputs·deploymentPairs까지 연결한다. 정상 Product 뒤 실제 EXE 옆 CSO와 Engine CSO의
 크기·hash를 확인한다. 추적하는 HLSL source 배포와 Git 제외 compiled CSO 배포를 구분한다.
@@ -5999,6 +6019,13 @@ postprocess enabled를 사용해야 A/B 왕복과 기준 채택이 일관된다.
 diffuse 없는 program을 무조건 legacy로 내리면 오히려 표면이 사라진다. 확인한 deferred program과
 유효 diffuse/override만 기존 fallback에 연결한다. 단계→한 기법 비교는 dimmed 화면이 아닌
 Original에서 재구성하고, rebased A를 바꾸면 experiment ID를 분리한다.
+
+누적 단계의 비용은 직전 단계 A와 현재 단계 B를 같은 mask로 측정한다. Original 대비 여러 기능을
+끈 결과를 한 기능의 비용으로 표시하지 않는다. 행·측정 묶음·반복·실제 A/B 값·공통 조건이 같은
+완료 표본만 짝짓고 누락 GPU는 N/A다. BG RNM·정적 shadow는 재질 단계에 포함되며 별도
+MapPBR 간접 diffuse 배율은 RNM·SH·hemisphere 합계를 제어한다. Source postprocess OFF에서
+보유 중인 dormant LUT를 단계마다 지웠다가 ON으로 소유하면 admission이 실패하므로 그대로
+보존한다. 날짜별 자산 복구와 현재 옵션의 누적 시연을 구분한다.
 
 원본 UE3 자료의 DX11/PBR/SH 존재는 UE4 이식의 증거가 아니다. UModel의 `.mat` export와
 원본 ShaderMap/DXBC·runtime binding은 별도다. 옛 SH/BRDF 미복구 기록은 이후 native 입력 복원
@@ -6054,3 +6081,67 @@ V2050520은 사용자 지정으로 시전자 snapshot/Local Space OFF를 사용�
 orientation, runtime anchor도 기존 caster root 경로로 전환한다. 원본 recipe/socket은 근거로
 보존하고 미사용 camera socket의 회전을 시전자 보정으로 옮기지 않는다. RGBNoise/ZoomBlur는
 별도 localOnlyElementIds 네 개로 관전 대상을 제한하며 월드 요소는 다른 플레이어도 본다.
+
+
+## 원본 이펙트의 import 축척과 실제 GPU 표시
+
+WModel bone combined basis가0.01인 source skeleton에는 이미 meter로 변환한 particle 크기를
+그대로 곱하지 않는다. 같은 클래스의 이전 skill이 정규화됐더라도 새 exact asset/slot이
+`Requires_SourceBoneImportScaleNormalization`에 연결됐는지 실제 소비자까지 확인한다.
+raw bone의 회전·translation을 유지하고 기존 검증된 정규화 경로를 사용한다. 전체 effect size나
+shader gain을100배 올리는 보정으로 대체하지 않는다. 다른 source/actor의 basis까지 전파하지 않는다.
+실제 WModel·애니메이션·admission preScale의 bone sample과 최종 particle world 축을 대조하며,
+Stage/particle count/finite 성공은 GPU 표시 성공을 대신하지 않는다. 합성 카메라의 실제 draw와
+인게임 구도·가림·후처리 판정도 분리한다. 이번 사례는09-09 Warlord ASVF RESULT G19에 있다.
+
+## 원본 데이터 동일성과 추가 GI A/B의 경계
+
+재설치 시 logical object/static shader key/serial hash를 먼저 맞추고 export index와 UE reference를
+구분한다. UV가 이상해 보여도 해당 VS/PS·geometry·height/weight mip·주변 coverage가 같으면 임의
+triplanar나 hidden 해제를 원본 복원으로 넣지 않는다. 실행 중 material branch와 동일 카메라는 별도다.
+원본 CDO 기본값과 사용자 삭제/튜닝·owner 정책을 구분한다. raw float32 반올림이나 의도적 삭제를
+추출 손실로 취급하지 않는다. 코드·원본 자료가 같다는 것만으로 전체 화면 정상도 선언하지 않는다.
+
+SSGI/SSR 옵션은 actual pass와 field whitelist/Apply/Restore/fingerprint/capture까지 연결한다.
+SSGI half는 marker3 전용 추가 screen-space GI다. 기존 full 경로와 원본 RNM/IBL을 보존하고
+Lumen/DXR로 표시하지 않는다. marker5/14를 조건문에만 추가하면 서로 다른 G-buffer ABI를 잘못 읽는다.
+half texture는 홀수·1픽셀·resize·depth/normal 경계를 검증하고 full/SSR 보존을 실제 픽셀로 대조한다.
+
+### 원본 DDS mip 누락과 확대된 무늬를 구분한다
+
+원본 mip0가 설치 DDS와 같아도 전체 texture 복원이 끝난 것은 아니다. 제품 DDS loader가
+context 없는 CreateDDSTextureFromFileEx를 쓰면 단일 mip를 자동 보완하지 않는다.
+원본 압축 mip chain을 회수하고 mip0·모든 하위 block 및 실제 GPU Texture/SRV mip 수를 대조한다.
+최고 해상도와 UV가 같은 mip 복구는 축소·경사 샘플링 입력 복구이며 확대된 배치의 무늬 크기나
+사용자 화면의 흐림 원인을 함께 해결했다고 기록하지 않는다. 실제 교체·화면 경계는
+[발탄 대기 돌 결과 G05·G06](10-04/2026-10-04_VALTAN_WAITING_STONE_MATERIAL_RESULT.md)에 둔다.
+
+원본 bulk의 압축 여부는 저장 길이와 해제 길이의 일치가 아니라 native flags로 판정한다. texture flags 0은 raw 길이를 검증하고 0x80은 길이가 같아도 LZ4 컨테이너를 해제한다. 알 수 없는 flags를 raw로 간주하지 않는다.
+GPU readback이 DDS와 같다는 결과는 추출 오류까지 검출하지 못하므로 native block을 따로 대조한다.
+source/output hash만 있는 예전 캐시는 같은 decoder 결함을 보존할 수 있다. Landscape G8 shadow는
+캐시를 재사용하지 않고 원본 flags로 재해석하며, 이전 receipt의 원본 일치 주장은 교정 이력과 함께 읽는다.
+
+### Landscape의 NoLightmapPolicy 대조를 전체 복원으로 판정하지 않는다
+
+- 원본 LandscapeComponent의 native FLightMap2D·ShadowMap 참조가 있으면 같은 static material의 lightmapped policy도 조회한다. layer D/N·weight·height와 NoLightmapPolicy가 일치해도 실제 component 조명 입력이 누락될 수 있다.
+- Landscape lightmap 좌표는 원본 CPU grid padding과 subsection 계산 뒤 atlas scale/bias를 적용한다. 현재 painted WModel의 UV0로 환산하여 기존 placementLighting에 합성하며 UV1의 존재나 raw UV0 자체를 원본 lightmap 좌표로 대신하지 않는다.
+- pixel Heightmap BA에서 복원한 TBN으로 RNM의 view-dependent 입력을 계산한다. VS가 운반하는 inverse-transpose world axes는 그 지형의 pixel tangent basis가 아니다.
+- StaticMesh와 foliage 배치 전수 대조에도 DecalComponent는 포함되지 않는다. 누락 데칼은 원본 receiver·투영 footprint·가시성을 따로 확인하며, 근처에 있다는 이유만으로 특정 픽셀 증상의 원인이라 하지 않는다.
+
+### 같은 ParticleSystem의 일부 emitter 회전만 복구하지 않는다
+
+원본 notify에 저장된 FRotator는 해당 발생의 ParticleSystem 전체에 적용되는 입력이다. 같은 source event 아래 sprite·mesh·파편·먼지를 모두 세고 각 carrier의 위치·방향 소비자를 대조한다. 바닥 띠만 방사형으로 고쳐도 같은 발생의 돌 메시가 rotation0이면 한 방향에 겹칠 수 있다. generic typed 결과가0이어도 raw payload에서 named anchor 뒤의 native FRotator를 지원하는지 확인하며, 원본의0이라고 단정하지 않는다. 이미 복구한 emitter에는 같은 보정을 다시 적용하지 않는다. 실제 설치 본의 scale·basis와 socket을 함께 확인하고 수명·크기·TypeData pre-rotation·사용자 localSpace 정책을 보존한다. 구체적인 대상과 검증은 Warlord 복원 RESULT의 해당 절에 남긴다.
+
+### 복원 대상 메시 선택은 authoring AABB 추정과 분리한다
+
+Bern/Character Select/Valtan/Kouku의 원본 렌더링 대조는 독립 F1 `World Scene Tool → Pick in world`의 실제 삼각형 hit에서 placement/mesh/material ID를 함께 확보한다. GPU world-position을 가장 작은 포함 AABB로 해석한 결과는 exact mesh 증거가 아니다. 기존 CModel LOD0 CPU 질의와 현재 instance world/visibility/suppression을 소비하고, 이동 피커의 식생 제외 조건을 검사 피커에 전파하지 않는다. alpha coverage·shader wind/displacement·rendered LOD와 CPU hit는 별도다. 선택 자체는 데이터를 변경하지 않는다. 명시적 TRS/표시 편집은 기존 session을 사용하고 미로드 행·dirty draft·최신 source bytes를 보존한다. writer의 고유 temporary를 stage한 뒤 교체 직전 freshness를 다시 확인하며 stale 바이트는 덮어쓰지 않는다. self-motion/Deploy preview는 자기 Begin 성공과 host/runtime generation 소유권을 확인한 뒤에만 복원한다. Server 파괴는 Deploy preview를 정상 종료한 후 선점한다. rendering options는 변경하지 않는다. UI click과 취소 입력은 gameplay에 전달하지 않고 miss는 이전 선택을 보존한다.
+
+### 원본 wind phase와 공유 draw state를 보존한다
+
+식생의 actor position·primitive bounds는 source component owner 입력이다. placement TRS로
+대신하면 native wind phase가 달라진다. FBox extent/radius의 +1cm padding과 BoundsScale 순서,
+ordinary/instanced surface·shadow의 동일 carrier를 확인한다. native E4FE/1C39/098C 연산과 원본
+zero wind/noise를 각각 유지하며 DXBC replay 수치와 실제 화면 판정을 분리한다.
+공유 Effect clone에 preview 전용 opacity를 bind했으면 draw 뒤 기본값으로 되돌린다. state만
+검사하지 말고 valid destruction debris/suppression의 commit 직전에도 preview를 정상 종료해
+Server의 동일-state 파괴 burst가 preview root를 유지하지 않게 한다.

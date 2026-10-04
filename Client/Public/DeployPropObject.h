@@ -103,6 +103,12 @@ public:
 	   becomes a movement receiver. The caller supplies a unit ray and world limit. */
 	bool_t Try_PickMovementSurface(const float3_t& rayOrigin,
 		const float3_t& rayDirection, f32_t maxDistance, f32_t& outDistance) const;
+#ifdef _DEBUG
+	// Exact currently rendered source model; flying debris stays a separate presentation.
+	bool_t Try_PickInspectionSurface(const float3_t& rayOrigin,
+		const float3_t& rayDirection, f32_t maxDistance, f32_t& outDistance,
+		uint32_t& outMeshIndex, std::string& outMaterialName) const;
+#endif
 
 	bool_t Set_State(DEPLOY_PROP_STATE state);
 	DEPLOY_PROP_STATE Get_State() const { return m_State; }
@@ -129,9 +135,10 @@ public:
 	}
 	bool_t Is_AnimBindPoseOnly() const;
 	std::vector<DEPLOY_PROP_ANIMATION_CLIP> Get_AnimationClips() const;
-	/* WorldSequence authoring is presentation-only. Begin snapshots the live
-	   clip cursor/loop/pause state, Sample seeks one exact stored clip name,
-	   and End restores the snapshot without changing DEPLOY_PROP_STATE. */
+	/* WorldSequence authoring is presentation-only. Begin snapshots a live
+	   clip when available and also admits STATIC/bind-pose root previews.
+	   Sample requires an exact stored clip; End drops root/visibility overlays
+	   and restores the clip without changing DEPLOY_PROP_STATE or source data. */
 	bool_t Begin_AnimationAuthoringPreview();
 	bool_t Sample_AnimationAuthoringPreview(
 		const std::string& clipName,
@@ -139,6 +146,8 @@ public:
 		bool_t loop,
 		bool_t revealHidden = false);
 	void End_AnimationAuthoringPreview();
+	// Absolute presentation opacity; the authoritative surface packet stays intact.
+	bool_t Apply_AnimationAuthoringVisibility(f32_t opacity, bool_t revealHidden);
 	bool_t Is_AnimationAuthoringPreviewActive() const
 	{
 		return m_bAnimationAuthoringPreviewActive;
@@ -168,6 +177,15 @@ public:
 	bool_t Apply_AnimationAuthoringPose(
 		const float3_t& position,
 		const float4_t& rotationQuaternion);
+	// Absolute positive uniform root scale; source uniformScale is never written.
+	bool_t Apply_AnimationAuthoringPose(
+		const float3_t& position,
+		const float4_t& rotationQuaternion,
+		f32_t positiveUniformScale);
+	f32_t Get_PlacedRootUniformScale() const { return m_Placement.uniformScale; }
+	// Read the actual current root, including presentation offsets and preview pose.
+	bool_t Try_GetRenderedRootPose(float3_t& outPosition,
+		float4_t& outRotationQuaternion, f32_t& outPositiveUniformScale) const;
 	// Read the root actually posed by the active World animation, including authored movement.
 	bool_t Try_GetAnimationAuthoringPivot(float4x4_t& outWorld) const;
 	bool_t Get_PlacedRootPose(
@@ -300,6 +318,7 @@ private:
 		bool_t visible);
 	void End_DebrisPresentation(DEBRIS_PRESENTATION_OWNER owner);
 	void Apply_Transform();
+	f32_t Get_SourcePresentationOpacity() const;
 	bool_t Should_CullStaticIntact(bool_t shadowPass) const;
 
 private:
@@ -320,8 +339,11 @@ private:
 	bool_t m_bAnimationAuthoringPreviewActive = false;
 	bool_t m_bAnimationAuthoringRevealHidden = false;
 	bool_t m_bAnimationAuthoringPoseActive = false;
+	bool_t m_bAnimationAuthoringVisibilityActive = false;
 	float3_t m_AnimationAuthoringPosition = {};
 	float4_t m_AnimationAuthoringRotation = float4_t(0.f, 0.f, 0.f, 1.f);
+	f32_t m_fAnimationAuthoringUniformScale = 1.f;
+	f32_t m_fAnimationAuthoringOpacity = 1.f;
 	bool_t m_bPhysicsPreviewActive = false;
 	float3_t m_PhysicsPreviewPosition = {};
 	float4_t m_PhysicsPreviewRotation = float4_t(0.f, 0.f, 0.f, 1.f);

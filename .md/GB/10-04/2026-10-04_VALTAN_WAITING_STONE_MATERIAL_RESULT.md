@@ -102,3 +102,79 @@ UV transform과 DDS가 같아 편집기의 scale3/3.62배로 확대된 텍스처
 첨부 화면의 정확 actor와 원작 기준 공간 UV·층 표현은 사용자 선택 및 필요시
 원본 package 재확보 후 대조해야 한다. 현재 결과를 텍스처 늘어짐 해결이나
 원작 전체 동등, 사용자 visual PASS로 설명하지 않는다.
+
+## G05. 재설치 원본 재대조와11개 mip 후보
+
+후속 검토에서 원본 `bg_fat_stone_a`를 현재 설치 게임의
+`ReleasePC/Packages/542NXYN2RGNOHQ2NYFGMHE94.upk`로 직접 resolve했다.
+package SHA256은 `a22f1b4672363f87343d58e287d6bb3e327d362957684b2bc4b426a59b92cef7`다.
+기존 캐시 또는 이전 복원 variant만 비교한 G02와 달리 이번에는 원본 native 입력을 읽었다.
+
+| 직접 확인한 입력 | 결과 |
+|---|---|
+| D/N 원본 Texture2D 크기와 OriginalSize | 모두1024² |
+| D/N 원본 native mip | 각각11개, 논리1024²부터1²까지, 작은 tail의 저장 block은4² |
+| 현재 source D/N DDS | 각각1024² 단일 mip |
+| 원본 MIC와 parent2개를 기존 compiler로 계산 | 현 base material 한 행과 전체 semantic 일치 |
+| 원본 position/UV stream→설치 WModel | 전체1696정점 대응, UV0 exact, 최대 위치 오차1.52587890625e-5cm |
+| 원본 추가 채널 | UV1=UV0, COLOR0 없음 |
+| source D/N 소비 범위 | 발탄17 material 행·54배치, 그중 편집13배치 |
+
+원본 UV tiling·회전·이동·panning static switch는 모두 OFF다. 현재 identity UV와
+flags133을 바꾸어야 할 차이를 찾지 못했다. 위 geometry 검사는 native stream의
+position/UV 대조이며 이번에 native triangle topology나 원작 actor/camera를 다시
+대조한 것으로 확대하지 않는다. 사용자는 Original 상태였는지 확인하지 못했다고 답했다.
+따라서 첨부 화면의 정확 actor·활성 material branch는 여전히 미확정이다.
+
+`Engine/Private/Material.cpp`의 DDS 경로는 context 없는
+`CreateDDSTextureFromFileEx`를 사용한다. 현재 단일 mip를 그대로 올리며 TGA의
+CPU mip 생성 경로를 이 DDS에 적용하지 않는다. source BG shader는16배 anisotropic
+WRAP sampler와 identity UV를 소비한다. 그러므로 원본 mip 누락은 확인됐으나,
+1024² 자체 또는 scale3/3.62를 화면 흐림의 확정 원인으로 기록하지 않는다.
+
+기존 extractor로 원본 압축 block11개를 각각 후보 DDS에 복구했다. mip0는 현재
+설치 DDS와 byte exact이며 색변환·재압축·resampling을 하지 않았다. 후보는 원본
+해상도 확대가 아니라 minification/filtering 입력 복구다.
+
+| 후보 | 이전 SHA256 | 후보 SHA256 |
+|---|---|---|
+| `bg_fat_stone_a_tex_bg_fat_stone_rock02_d_ksr.dds` | `bf368595d42be15ea8f139d8d838d21be92dea08153eea21acfb9656c058b8f9` | `36487d0a2db0cb7e73aa9529df117b2f8a9651ef4807d3b9b30109266a66e75d` |
+| `bg_fat_stone_a_tex_bg_fat_stone_rock02_n_ksr.dds` | `27b6eb26c2e93a75c477c0b37978af3358402f35fb96f82986898628e11a8657` | `8f1e7c7624596197f03e2131b846612ccfbb51c9035de1ef73f34eca5be9eccb` |
+
+제품과 같은 DirectXTK loader를 사용하는 out WARP probe는 기존 파일의
+Texture2D/SRV mip1과 후보의 mip11·mostDetailedMip0·1024²를 확인했다.
+D는 BC1 sRGB, N은 BC5 linear이며 GPU readback의 모든 압축 mip bytes가 후보와
+exact 일치했다. 이는 실제 GPU texture/SRV 로드 검사이며 게임 화면 판정은 아니다.
+이번 별도 probe만 MSVC14.44로 컴파일했고 Product 재빌드는 실행하지 않았다.
+
+근거는 `out/ValtanWaitingStoneReview20261004`의
+`fresh-material-parameters.json`, `source-geometry-material-review.json`,
+`install-candidate-receipt.json`, 두 `.dds.receipt.json`과 `loader_*.log`다.
+후보 준비 시점에는 제품 Resources를 교체하지 않았으며 설치 완료는 후속 절에서
+별도로 기록한다. Data/placement/geometry/shader는 변경하지 않았다.
+
+## G06. 원본 mip 설치와 실제 GPU 로드 재검증
+
+사용자의 후속 복원 요청에 따라 G05에서 검증한 D/N 두 DDS를 기존 Resources 경로에 설치했다.
+설치 직전 두 target·candidate 및 material/placement 소비 문서의 SHA를 다시 확인했고,
+`out/ValtanWaitingStoneReview20261004/install-backup-ca1ba927e6e54b1484a823e584e694f9`
+에 원본을 보존한 뒤 같은 디렉터리의 stage 파일로 각각 원자 교체했다. 실패 시 자기 설치 hash와
+일치하는 파일만 복구하도록 처리했다. 설치 SHA는 G05 후보 SHA와 동일하다.
+
+설치한 파일은 Resources 상대 경로
+`Map/LV_LUT_HEARTRB_ED/SourceFullRestore/Textures/` 아래
+`bg_fat_stone_a_tex_bg_fat_stone_rock02_d_ksr.dds`(699,192B)와
+`bg_fat_stone_a_tex_bg_fat_stone_rock02_n_ksr.dds`(1,398,256B)다.
+이 두 교체본은 다른 PC에 Drive로 함께 전달해야 하며 아직 업로드하지 않았다.
+
+설치된 target 자체를 제품과 같은 DirectXTK DDS loader로 다시 읽었다.
+D와 N 모두1024²·Texture/SRV11mip·MostDetailedMip0이고, GPU에서 읽은 모든 압축 mip
+bytes가 설치 파일과 exact 일치했다. D는 BC1 sRGB, N은 BC5 linear다.
+근거는 같은 out의 `install-receipt.json`, `loader_installed_d.log`,
+`loader_installed_n.log`이며, 기존 authoring/runtime material 및 placement는 보존했다.
+Resources만 교체했으므로 C++/HLSL 컴파일과 Map 재게시가 필요한 변경은 아니다.
+
+Client/UI 실행·자동 Reload·게임 화면 판정은 수행하지 않았다. 다음 Client가 해당 material을
+새로 준비할 때 교체 DDS를 읽으며 현재 메모리의 texture를 갱신한 것으로 설명하지 않는다.
+이번 완료 범위는 원본 mip 누락 복구이며, 화면의 정확한 actor·복원 재질 선택과 확대된 무늬의
+최종 확인은 남아 있다. 최고 해상도·UV·배치 scale을 바꾸지 않았다.

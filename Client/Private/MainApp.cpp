@@ -120,6 +120,7 @@
 #include "EffectAuthoringSequencer.h"
 #include "WorldObjectTool.h"
 #include "WorldLevelTool.h"
+#include "WorldSceneTool.h"
 #include "GuideAITool.h"
 #include "MaharakaAITool.h"
 #include "ValtanPatternAuditionService.h"
@@ -2416,9 +2417,12 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		(nullptr != m_pEffectToolV2 && m_pEffectToolV2->Update_AuthoringPlacementInput(m_bDeveloperToolsVisible &&
 			IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT_V2));
 	/* Evaluated before the OR so every armed picker still runs its own frame. */
+    if (m_pWorldSceneTool) m_pWorldSceneTool->Update(fTimeDelta,
+        m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::WORLD_SCENE));
+	const bool_t worldMeshPickConsumed = UpdateWorldMeshInspectionInput();
 	const bool_t worldLevelPickConsumed = UpdateWorldLevelPlacementPickInput();
 	const bool_t mapEffectPlacementConsumed = UpdateMapEffectPlacementInput() ||
-		authoredEffectPlacementConsumed || worldLevelPickConsumed;
+		authoredEffectPlacementConsumed || worldLevelPickConsumed || worldMeshPickConsumed;
 	const bool_t worldLeftMouseConsumed = mapEffectPlacementConsumed ||
 		(nullptr != m_pMapTool && m_pMapTool->ConsumesWorldLeftMouse());
 #else
@@ -4372,6 +4376,7 @@ HRESULT CMainApp::Render()
 			};
 #ifdef _DEBUG
 			RenderWorldLevelTool();
+			RenderWorldSceneTool();
 			if (m_pMaharakaAITool && IsDebugToolVisible(DEBUG_TOOL::MAHARAKA_AI))
 			{
 				focusNextWindow(DEBUG_TOOL::MAHARAKA_AI);
@@ -11349,6 +11354,8 @@ void CMainApp::SetDebugToolVisible(
 #ifdef _DEBUG
 		if (DEBUG_TOOL::MAP == eCanonicalTool && nullptr != m_pMapTool)
 			m_pMapTool->SetOpen(false);
+		else if (DEBUG_TOOL::WORLD_SCENE == eCanonicalTool && m_pWorldSceneTool)
+			m_pWorldSceneTool->Hide();
 		else if (DEBUG_TOOL::WORLD_OBJECT == eCanonicalTool && m_pWorldObjectTool)
 			m_pWorldObjectTool->Deactivate();
 		else if (DEBUG_TOOL::CAMERA == eCanonicalTool && nullptr != m_pCameraTool)
@@ -11502,6 +11509,10 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 	switch (eTool)
 	{
 #ifdef _DEBUG
+    case DEBUG_TOOL::WORLD_SCENE:
+        if (!m_pWorldSceneTool) m_pWorldSceneTool = make_unique<CWorldSceneTool>();
+        m_pWorldSceneTool->Open();
+        break;
 	case DEBUG_TOOL::WORLD_LEVEL:
 		if (!m_pWorldLevelTool) m_pWorldLevelTool = make_unique<CWorldLevelTool>();
 		m_pWorldLevelTool->Open(GetWorldLevelAreaId());
@@ -14608,6 +14619,7 @@ void CMainApp::RenderDeveloperTools()
 		RenderCameraSpeedControls();
 	RenderDebugLevelNavigation();
 #ifdef _DEBUG
+	RenderWorldMeshInspection();
 	ImGui::TextDisabled(isMapEditorWorkspace ?
 		"Map Editor is active. Open Map Tool to author the selected Area." :
 		(currentLevelId == ETOUI(LEVEL::KAKULSAYDON_ARENA) ?
@@ -14666,6 +14678,7 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Animation Clip Tool", DEBUG_TOOL::ANIMATION);
 		toolCell("Effect Tool V1", DEBUG_TOOL::EFFECT);
 		toolCell("Effect Tool V2", DEBUG_TOOL::EFFECT_V2);
+		toolCell("World Scene Tool", DEBUG_TOOL::WORLD_SCENE);
 		toolCell("World Level Tool", DEBUG_TOOL::WORLD_LEVEL);
 		toolCell("DimensionMaster Guide", DEBUG_TOOL::GUIDE_AI);
 		toolCell("Waterpang AI Tool", DEBUG_TOOL::MAHARAKA_AI);
@@ -14682,11 +14695,12 @@ void CMainApp::RenderDeveloperTools()
 	if (ImGui::Button("Close All Tools"))
 		CloseAllDebugTools();
 #ifdef _DEBUG
-	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 18>
+	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 19>
 		TOOL_FOCUS_OPTIONS = {{
 			{ DEBUG_TOOL::MAP, "Map Tool" },
 			{ DEBUG_TOOL::WORLD_OBJECT, "Action Workbench / Object" },
 			{ DEBUG_TOOL::WORLD_LEVEL, "Open World Level Tool" },
+            { DEBUG_TOOL::WORLD_SCENE, "World Scene Tool" },
 			{ DEBUG_TOOL::GUIDE_AI, "DimensionMaster Guide" },
 			{ DEBUG_TOOL::MAHARAKA_AI, "Waterpang AI Tool" },
 			{ DEBUG_TOOL::SEQUENCER, "Action Workbench" },
@@ -15574,6 +15588,7 @@ void CMainApp::Free()
 	if (m_pWorldObjectTool) m_pWorldObjectTool->Deactivate();
 	m_pWorldLevelPendingMapRequest.reset();
 	m_pMapEffectPlacementRequest.reset();
+	m_pWorldSceneTool.reset();
 	m_pWorldLevelTool.reset();
 	m_pGuideAITool.reset();
 	m_pMaharakaAITool.reset();

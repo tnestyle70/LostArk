@@ -322,6 +322,130 @@ def extract_texture_mips(*, source_object: str, source_package: Path, package_ro
     return result
 
 
+def extract_texture_mips_batch(*, logical_name: str, source_package: Path, package_root: Path,
+                               umodel: Path, targets: list[dict[str, Any]], scratch_root: Path,
+                               timeout_seconds: int = 180, chunk_size: int = 100) -> list[dict[str, Any]]:
+    """Decode one package's selected inline textures together, preserving native blocks.
+
+    Batching changes only how often UModel opens the read-only scratch package.
+    Every texture retains the single-texture path's native-table, mip0, format,
+    source freshness and final DDS checks. Redirectors require the single path.
+    """
+    source_package, package_root, umodel, scratch_root = (
+        path.resolve() for path in (source_package, package_root, umodel, scratch_root))
+    require(bool(targets) and 1 <= chunk_size <= 100 and timeout_seconds > 0,
+            "batch requires targets, chunk-size 1..100 and a positive timeout")
+    package = SourcePackage(source_package)
+    decoder_digest = sha256(umodel.read_bytes())
+    entries, identities, outputs = [], set(), set()
+    for target in targets:
+        source_object = str(target["sourceObject"])
+        logical, object_path = split_object(source_object)
+        require(logical.casefold() == logical_name.casefold(), "batch source package identity mismatch")
+        require(source_object.casefold() not in identities, "duplicate batch source object")
+        identities.add(source_object.casefold())
+        expected_path, output = Path(target["expectedMip0"]).resolve(), Path(target["output"]).resolve()
+        receipt = output.with_suffix(".dds.receipt.json")
+        validate_paths(source_package, package_root, umodel, expected_path, output, receipt, scratch_root)
+        require(output not in outputs, "duplicate batch destination")
+        outputs.add(output)
+        expected_bytes = expected_path.read_bytes()
+        expected = parse_dds(expected_bytes)
+        index = package.find(object_path)
+        require(package.cls(index) in TEXTURE2D_CLASSES, "unsupported batch source class")
+        serial = package.raw(index)
+        properties, end = up.parse_tagged_properties(serial, package.names, package.summary.version)
+        serial_offset = package.exports[index].serial_offset
+        records, suffix = parse_native_mips(serial, end, serial_offset)
+        require(len(records) == max(expected.width, expected.height).bit_length(),
+                f"{source_object}: source lacks the complete mip chain through 1x1")
+        for level, mip in enumerate(records):
+            dimensions = max(1, expected.width >> level), max(1, expected.height >> level)
+            require((mip.width, mip.height) in (dimensions, tuple(max(4, v) for v in dimensions)),
+                    f"{source_object}: native mip {level} dimensions disagree with DDS")
+        entries.append(dict(source_object=source_object, expected_path=expected_path, output=output,
+                            receipt=receipt, expected_bytes=expected_bytes, expected=expected,
+                            index=index, serial=serial, properties=properties, end=end,
+                            serial_offset=serial_offset, records=records, suffix=suffix,
+                            payloads=[], mip_receipts=[]))
+    object_names = [package.exports[item["index"]].object_name.casefold() for item in entries]
+    require(len(set(object_names)) == len(object_names), "batch object names are ambiguous")
+    scratch_root.mkdir(parents=True, exist_ok=True)
+    run_dir = Path(tempfile.mkdtemp(prefix="source-mips-batch-", dir=scratch_root))
+    scratch, shift = uncompressed_scratch(package)
+    scratch_path = run_dir / "source_mip.upk"
+    for level in range(max(len(item["records"]) for item in entries)):
+        selected = [item for item in entries if level < len(item["records"])]
+        for item in selected:
+            start = item["serial_offset"] + shift
+            require(start + len(item["serial"]) <= len(scratch), "scratch export outside package")
+            scratch[start:start + len(item["serial"])] = rotate_mips(
+                item["serial"], item["end"], item["serial_offset"], item["records"], item["suffix"], level)
+        scratch_path.write_bytes(scratch)
+        for chunk_index, start in enumerate(range(0, len(selected), chunk_size)):
+            chunk = selected[start:start + chunk_size]
+            export_dir = run_dir / f"export{level:02}-{chunk_index:03}"
+            command = [str(umodel), "-export", "-game=lostark", "-kr", f"-path={run_dir}",
+                       f"-out={export_dir}", "-dds", "-nomesh", "-noanim", "-nostat"]
+            command.extend("-obj=" + package.exports[item["index"]].object_name for item in chunk)
+            command.append(str(scratch_path))
+            completed = subprocess.run(command, capture_output=True, text=True, encoding="utf-8",
+                                       errors="replace", timeout=timeout_seconds,
+                                       creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
+            log = completed.stdout + "\n" + completed.stderr
+            (run_dir / f"mip{level:02}-{chunk_index:03}.umodel.log").write_text(log, encoding="utf-8")
+            require(completed.returncode == 0, f"UModel batch mip {level} failed: {log[-2000:]}")
+            exported = list(export_dir.rglob("*.dds"))
+            require(len(exported) == len(chunk), f"batch mip {level} DDS count mismatch")
+            by_name = {path.stem.casefold(): path for path in exported}
+            require(len(by_name) == len(chunk), "ambiguous batch DDS names")
+            for item in chunk:
+                mip, expected = item["records"][level], item["expected"]
+                name = package.exports[item["index"]].object_name.casefold()
+                require(name in by_name, f"missing batch DDS {name}")
+                decoded = parse_dds(by_name[name].read_bytes())
+                require(decoded.fourcc == expected.fourcc and decoded.mip_count == 1 and
+                        (decoded.width, decoded.height) == (mip.width, mip.height),
+                        f"{item['source_object']}: decoder mip {level} format/dimensions/count mismatch")
+                blocks = decoded.payloads[0]
+                if level == 0:
+                    require(blocks == expected.payloads[0], f"{item['source_object']}: mip0 bytes differ")
+                item["payloads"].append(blocks)
+                item["mip_receipts"].append(dict(level=level, width=max(1, expected.width >> level),
+                    height=max(1, expected.height >> level), sourceStorageWidth=mip.width,
+                    sourceStorageHeight=mip.height, bulkFlags=mip.flags, packedBytes=len(mip.packed),
+                    packedSHA256=sha256(mip.packed), blockBytes=len(blocks), blocksSHA256=sha256(blocks)))
+    require(sha256(package.path.read_bytes()) == package.digest, "source package changed during extraction")
+    require(sha256(umodel.read_bytes()) == decoder_digest, "decoder changed during extraction")
+    results, staged_outputs = [], []
+    for item in entries:
+        require(item["expected_path"].read_bytes() == item["expected_bytes"], "expected input changed during extraction")
+        header = list(item["expected"].header)
+        header[1] |= 0x20000
+        header[6] = len(item["records"])
+        header[26] |= 0x400008
+        staged = b"DDS " + struct.pack("<31I", *header) + b"".join(item["payloads"])
+        require(parse_dds(staged).payloads == tuple(item["payloads"]), "final batch DDS validation failed")
+        result = dict(schema="lostark.ue3-texture-mips", formatVersion=1,
+            status="SOURCE_MIP_CHAIN_VALIDATED", sourceObject=item["source_object"],
+            resolvedSourceObject=item["source_object"], redirects=[], sourceExportIndex0=item["index"],
+            sourceSerialSHA256=sha256(item["serial"]), properties=item["properties"],
+            sourcePackages=[dict(logicalName=logical_name, file=str(package.path), sha256=package.digest)],
+            decoder=dict(file=str(umodel), sha256=decoder_digest),
+            expectedMip0=dict(file=str(item["expected_path"]), sha256=sha256(item["expected_bytes"])),
+            mip0CompressedBytesIdentical=True, sourcePackagesUnchanged=True,
+            fourCC=item["expected"].fourcc.decode("ascii"), mipCount=len(item["records"]),
+            mips=item["mip_receipts"], output=str(item["output"]), outputSHA256=sha256(staged),
+            outputBytes=len(staged), scratchDirectory=str(run_dir), sourceTrailingBytes=len(item["suffix"]),
+            conversion="original cooked blocks; no filtering, recompression, color or normal conversion")
+        results.append(result)
+        staged_outputs.append((item, staged, (json.dumps(result, ensure_ascii=False, indent=2) + "\n").encode("utf-8")))
+    # A failing member cannot write a partial candidate before the whole package validates.
+    for item, staged, receipt_bytes in staged_outputs:
+        write_pair(item["output"], staged, item["receipt"], receipt_bytes)
+    return results
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-object", required=True)

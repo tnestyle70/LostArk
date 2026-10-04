@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <string>
+#include <span>
 #include <unordered_map>
 #include <vector>
 
@@ -25,6 +26,7 @@ struct FMapStaticInstance final
 {
 	uint64_t PlacementId = {};
 	Engine::MODEL_BAKED_LIGHTING_INSTANCE BakedLighting;
+	Engine::MODEL_SOURCE_FOLIAGE_WIND_INSTANCE SourceWind;
 	float4x4_t World = {};
 	float4x4_t WorldInvTranspose = {};
 	float3_t WorldBoundsCenter = {};
@@ -73,6 +75,8 @@ public:
 	virtual bool_t Uses_FinalCameraSubmission() const override { return true; }
 	virtual void Submit_FinalCamera() override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Render_AdjacentNonBlend(
+		std::span<const std::shared_ptr<CGameObject>> objects, size_t& consumed) override;
 	virtual HRESULT Render_Shadow() override;
 	virtual bool_t Try_GetStaticShadowRevision(uint64_t& outRevision) const override;
 
@@ -81,6 +85,12 @@ public:
 	   prototype clone, vertex copy or GPU readback. Direction is normalized. */
 	bool_t Try_PickMovementSurface(const float3_t& rayOrigin,
 		const float3_t& rayDirection, f32_t maxDistance, f32_t& outDistance) const;
+#ifdef _DEBUG
+	// Read-only LOD0 inspection also includes vegetation and forward surfaces.
+	bool_t Try_PickInspectionSurface(const float3_t& rayOrigin,
+		const float3_t& rayDirection, f32_t maxDistance, f32_t& outDistance,
+		uint64_t& outPlacementId, uint32_t& outMeshIndex, std::string& outMaterialName) const;
+#endif
 
 	//Instance Update
 	HRESULT Update_Instance(
@@ -134,6 +144,7 @@ private:
 		uint32_t requiredCount);
 	HRESULT Ensure_ShadowInstanceCapacity(
 		uint32_t requiredCount);
+	HRESULT Upload_LightingBankInstances();
 
 	HRESULT Upload_VisibleInstances(
 		const struct MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot);
@@ -196,9 +207,14 @@ private:
 
 	uint32_t m_iInstanceCapacity = {};
 	uint32_t m_iShadowInstanceCapacity = {};
+	// Adjacent draw coalescing never replaces an object's committed visible payload.
+	uint32_t m_iLightingBankInstanceCapacity = {};
+	std::vector<VTXMESHINSTANCE> m_LightingBankInstances;
+	std::vector<VTXMESHINSTANCE> m_CandidateLightingBankInstances;
 	
 	ComPtr<ID3D11Buffer> m_pInstanceBuffer = { nullptr };
 	ComPtr<ID3D11Buffer> m_pShadowInstanceBuffer = { nullptr };
+	ComPtr<ID3D11Buffer> m_pLightingBankInstanceBuffer = { nullptr };
 
 	shared_ptr<Engine::CModel> m_pModelCom = { nullptr };
 	shared_ptr<Engine::CShader> m_pShaderCom = { nullptr };
