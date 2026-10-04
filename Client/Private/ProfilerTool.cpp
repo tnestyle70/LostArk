@@ -460,6 +460,10 @@ namespace
         "메시 인덱스 제출",
         "고유 CMesh 객체",
         "고유 메시 계측 누락",
+        "주변 이펙트 시간 제한 적용",
+        "주변 이펙트 제외 시간 합계 (effect-us, CPU 시간 아님)",
+        "주변 이펙트 fixed-step 합계",
+        "주변 이펙트 단일 갱신 최대 fixed-step",
     };
     static_assert(std::size(COUNTER_LABELS) == static_cast<size_t>(Engine::EProfilerCounter::Count));
 

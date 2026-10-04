@@ -76,3 +76,37 @@ UNREACHABLE을 반환한다. 런타임 blocker와 높이·대각선 조건을 �
 5. 제품 출력이 점유됐으면 후보 컴파일·검증을 먼저 마치고 최종 링크를 위한 사용자 종료만 요청한다.
 6. 새 EXE의 같은 컷신·이동 캡처와 화면 판정은 사용자가 수행한다. 후보 수치 검증을 실제 FPS
    개선으로 기록하지 않으며 완료·미완료와 실행한 증거만 대응 RESULT에 남긴다.
+
+## G07. 정적 배경 효과의 지연 누적 방지와 실측 항목
+
+14:34 캡처의 CPU frame1~15는 평균1,233.399ms이며 Ambient.Advance가573.308ms다.
+회복 중 새 delta가155~171ms인 frame72~76에도 효과당60회 fixed-step이 남는다.
+카메라는 `Level_Bern.cpp`에서 이미 한 frame당0.1초까지만 진행하므로 빠른 카메라 이동이
+최초 병목이라는 근거는 없다. 카메라 경로·속도·FOV와 rendering option은 이번에 변경하지 않는다.
+
+`Client/Private/Effect_PresentationService.cpp`의 기존 deferred ambient 승인 경로만 입력 시간을
+최대0.1초로 제한한다. 이 경로는 level 소유, offscreen pause 허용, owner-sustained source loop,
+고정 sprite bounds 검증, 외부 sample/character/boss/attachment 없음 조건을 이미 만족한다.
+화면 안에서 실제 Advance를 수행할 때만 제한하며 hidden frame, initial Seek, 실패 제거의 흐름은
+유지한다. object와 service elapsed에 같은 committed delta를 전달하고 초과 시간은 보관하지 않는다.
+root 편집으로 bounds가 무효가 되어도 기존에 승인된 독립 배경 효과의 시간 정책은 유지한다.
+
+기존 Playback.Update의1/60 step, particle age/spawn/RNG/loop 적분은 변경하지 않는다.
+긴 frame에서는 배경 시각 시계가 실제 시간보다 느려지는 계약이며 wall-clock phase 보존을
+주장하지 않는다. 이미 offscreen 동안 pause하는 장식 효과에만 적용하고 combat, typed history,
+authoring Seek, 카메라와 Server 시간을 바꾸지 않는다. 새 API나 두 번째 playback 경로를 만들지 않는다.
+
+Engine/Public/Profiler.h의 enum 끝에 ambient 제한 횟수, 제외한 effect-microseconds,
+실제 fixed-step 횟수와 frame 내 단일 effect 최대 step을 추가한다. Client의 ProfilerCaptureIO와
+ProfilerTool 이름표를 함께 갱신하며 이전 counter 순서를 보존한다. Effect_Playback.h와
+Effect_Object.h에 기존 simulation step 정수의 읽기 전용 getter를 추가해 전후 차이를 집계한다.
+기존 fixed-step clock에는 accumulator가 포함되므로 실제 실행 횟수로 환산하지 않는다.
+상세 CPU scope capacity 누락과 독립적으로 JSON에 남긴다. 제외 시간은
+효과별 합계이므로 실제 frame wall time이나 절약한 CPU 시간으로 해석하지 않는다.
+
+실제 Service 함수와 Playback.Update 본문을 소비하는 headless native fixture로 정상 delta 동등성,
+연속1~2초 지연, hidden/resume, initial Seek, owner 실패 제거,33.9만회 이상 누적 및 실제339개
+캡처 delta 재생을 검증한다. Step 관찰 fixture는 호출 예산과 입력 경계의 증거이며 GPU 표시나
+수정 후 FPS를 증명하지 않는다. 기존 particle 연산 함수가 무변경인지 diff로 확인한다.
+새 제품 파일을 만들지 않으며 project/filter 등록은 유지한다. 정상 Debug Product 증분 빌드,
+JSON counter export의 구조 확인과 diff-check를 마친 뒤 사용자 재캡처로 성능과 화면을 확인한다.

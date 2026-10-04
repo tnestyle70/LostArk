@@ -106,6 +106,11 @@ enum class EProfilerCounter : uint16_t
     MeshIndices,
     UniqueMeshes,
     DroppedMeshSamples,
+    EffectAmbientClampedUpdates,
+    // Sum of omitted visual time across effects, not wall time or CPU savings.
+    EffectAmbientDiscardedMicroseconds,
+    EffectAmbientFixedSteps,
+    EffectAmbientMaxFixedSteps,
     Count
 };
 
