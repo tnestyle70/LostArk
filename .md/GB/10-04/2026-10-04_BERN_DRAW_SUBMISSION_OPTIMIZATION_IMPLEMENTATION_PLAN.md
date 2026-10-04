@@ -110,3 +110,29 @@ Effect_Object.h에 기존 simulation step 정수의 읽기 전용 getter를 추�
 수정 후 FPS를 증명하지 않는다. 기존 particle 연산 함수가 무변경인지 diff로 확인한다.
 새 제품 파일을 만들지 않으며 project/filter 등록은 유지한다. 정상 Debug Product 증분 빌드,
 JSON counter export의 구조 확인과 diff-check를 마친 뒤 사용자 재캡처로 성능과 화면을 확인한다.
+
+## G08. F1에서 같은 베른 입장 컷신 반복 재생
+
+사용자의 두 번째 캡처에서도 저FPS가 남았으며 F6 수동 이동과 정확히 같은 카메라 경로·FOV로
+비교하려면 종료 후 동일 컷신을 다시 재생할 수 있어야 한다. MainApp_Dragon.cpp의 F1
+`Camera`에서 이동 속도 조절 바로 아래에 Debug Bern 전용 `Start Bern Cutscene`을 둔다.
+버튼은 Level-owned `Request_DebugEntranceReplay`에 요청만 전달하고 상태를 읽어 표시한다.
+
+Level_Bern.h/cpp가 Debug 요청·진행 상태를 소유하며 다음 Level Update에서 기존
+Update_EntranceCinematic이 처리할 재생 상태를 준비한다. 기존 cue가 있으면 그대로 재사용하고,
+session 최초 재생 latch 때문에 로딩하지 않은 재입장에서는 같은 정본 JSON을 local candidate로
+검증한 뒤 commit한다. 실패는 기존 cue·카메라·자동 재생 latch를 보존하고 상태를 알린다.
+자동 재생의 process-session latch를 false로 돌리거나 두 번째 컷신 runtime을 만들지 않는다.
+
+동일한16key·duration·FOV·샘플러·시간 제한을 사용한다. 재생 중/중복 pending, 타 presentation
+owner, level transfer·캐릭터 복원·맵 편집·플레이어 피킹과 충돌하는 요청은 거절한다.
+처리 직전에도 상태를 재검증한다. ESC key edge를 현재 입력에 맞춰 시작해 기존의 held ESC가
+새 재생을 즉시 취소하지 않게 한다. 종료·ESC·실패는 기존 End_EntranceCinematic의 camera
+owner 해제와 시작 전 follow 요청·target·FOV·free pose 복원을 그대로 사용한다.
+
+수정 제품 파일은 Client/Private/MainApp_Dragon.cpp, Client/Private/Level_Bern.cpp,
+Client/Public/Level_Bern.h이며 새 제품 파일·project/filter 등록·JSON publish는 없다.
+실제 요청/소비/재생 본문과 기존 sampler를 사용하는 headless 검사로 반복/거절/실패 시 보존,
+자동 latch 유지와 follow/free 복원을 확인한다. Debug Product Build와 Release 조건부 컴파일
+경계·diff-check를 확인하고 실제 버튼·화면·재캡처는 사용자가 수행한다. 이 추가 자체를
+컷신 성능 해결 완료로 기록하지 않는다.

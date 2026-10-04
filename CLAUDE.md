@@ -507,6 +507,11 @@ Client/Server `Bin/DataFiles/Guide/Guide.runtime.json`만 교체한다. `-Mode V
 베른·발탄·쿠크 자유 카메라의 기본 속도는 20m/s다. Debug F1 `Camera`에서
 0.1~400m/s로 조절한다. Debug 발탄·쿠크는 같은 아레나의 process-session 값을 유지하고,
 베른과 Release 조절값은 현재 맵 방문 동안 적용한다. Shift는 현재 속도의 30배다.
+Debug Bern의 같은 `Camera` 패널에서 속도 조절 아래 `Start Bern Cutscene`으로 입장 컷신을
+반복 재생한다. 기존 경로·FOV·시간을 사용하며 종료 또는 ESC 뒤 시작 전 follow/free 상태로
+돌아간다. 컷신 재생 속도는 자유 이동 속도와 별개다. 재생·편집·전환 충돌이나 준비 실패는
+기존 상태를 유지하고 버튼 아래에 이유를 표시한다. F7 Capture를 먼저 켜고 재생하면 같은
+경로를 반복 측정할 수 있다. 최초 입장의 자동 재생 여부나 정본 카메라 JSON은 바꾸지 않는다.
 Debug F1 `Dragon`은 고대의 바다 탑승·하차, 비행 카메라 거리·pitch·주시 높이·방향 추종,
 지상·비행·상하 속도를 조절한다. 지상 탑승은 기존 캐릭터 시점을 유지하며 E로 이륙한 뒤에만
 비행 카메라를 적용한다. 속도 Save는 `Data/Vehicles/VehicleProfiles.json`의 해당 필드만 저장하고,

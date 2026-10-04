@@ -639,6 +639,9 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 		return;
 	}
 	if (CLevelTransitionService::Is_Pending()) return;
+#ifdef _DEBUG
+	Consume_DebugEntranceReplay();
+#endif
 	Update_EntranceCinematic(fTimeDelta);
 
 	const shared_ptr<CCharacter> localCharacter =
@@ -702,6 +705,95 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 
 }
 
+#ifdef _DEBUG
+bool_t CLevel_Bern::Can_DebugEntranceReplay(std::string& outStatus) const
+{
+	if (s_pActiveInstance != this || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::BERN) ||
+		nullptr == m_pCamera)
+	{
+		outStatus = "Enter Bern before starting its cutscene.";
+		return false;
+	}
+	if (m_bEntranceCinematicApplied || m_bDebugEntranceReplayActive ||
+		(m_hasEntranceCameraCue && !m_bEntranceCinematicDone))
+	{
+		outStatus = "The Bern cutscene is already playing or waiting to start.";
+		return false;
+	}
+	if (m_bReturningToCharacterSelect || CLevelTransitionService::Is_Pending() ||
+		CCharacterSelectionState::Is_RestorePending() || m_Replication.Has_PendingConnectionLoss())
+	{
+		outStatus = "Finish the level transfer or character restore before replaying.";
+		return false;
+	}
+	if (m_pCamera->Is_PresentationOverrideActive())
+	{
+		outStatus = "Another presentation currently owns the camera.";
+		return false;
+	}
+	if (m_bMapAuthoringActive || m_MapRuntime.Has_DebugPlacementPreview() ||
+		m_PlayerController.Is_DebugPlayerPlacementArmed() || m_PlayerController.Is_DebugPlayerPlacementPending())
+	{
+		outStatus = "Finish the map preview or Move Player operation before replaying.";
+		return false;
+	}
+	outStatus.clear();
+	return true;
+}
+
+bool_t CLevel_Bern::Request_DebugEntranceReplay()
+{
+	if (m_bDebugEntranceReplayRequested)
+	{
+		m_strDebugEntranceReplayStatus = "The Bern cutscene is already queued.";
+		return false;
+	}
+	if (!Can_DebugEntranceReplay(m_strDebugEntranceReplayStatus)) return false;
+	m_bDebugEntranceReplayRequested = true;
+	m_strDebugEntranceReplayStatus = "Bern cutscene queued for the next level update.";
+	return true;
+}
+
+void CLevel_Bern::Consume_DebugEntranceReplay()
+{
+	if (!m_bDebugEntranceReplayRequested) return;
+	m_bDebugEntranceReplayRequested = false;
+	if (!Can_DebugEntranceReplay(m_strDebugEntranceReplayStatus)) return;
+
+	// Re-entry can skip the automatic cue load because the first-visit latch is
+	// process-wide. Stage that missing cue without resetting the automatic latch.
+	VALTAN_CINEMATIC_CAMERA_CUE candidate;
+	const VALTAN_CINEMATIC_CAMERA_CUE* cue = &m_EntranceCameraCue;
+	if (!m_hasEntranceCameraCue)
+	{
+		const auto path = CProjectDataRoot::Resolve(L"Encounters/Bern/BernEntranceCamera.json");
+		std::string status;
+		if (!Parse_BernEntranceCamera(path, candidate, status))
+		{
+			m_strDebugEntranceReplayStatus = "Cannot start Bern cutscene: " + status;
+			return;
+		}
+		cue = &candidate;
+	}
+	VALTAN_CINEMATIC_CAMERA_POSE firstPose{};
+	if (!CValtanCinematicCameraController::Sample_Cue(*cue, 0.f, firstPose))
+	{
+		m_strDebugEntranceReplayStatus = "Cannot start Bern cutscene: the first camera pose is invalid.";
+		return;
+	}
+	if (!m_hasEntranceCameraCue)
+	{
+		m_EntranceCameraCue = std::move(candidate);
+		m_hasEntranceCameraCue = true;
+	}
+	m_bEntranceCinematicDone = false;
+	m_fEntranceCinematicSeconds = 0.f;
+	m_wasEscapeDownForEntranceSkip = 0 != (CGameInstance::Get().Get_DIKeyState(DIK_ESCAPE) & 0x80);
+	m_bDebugEntranceReplayActive = true;
+	m_strDebugEntranceReplayStatus = "Playing Bern cutscene. Esc skips.";
+}
+#endif
+
 bool_t CLevel_Bern::Ready_EntranceCinematic()
 {
 	if (s_hasPresentedBernEntranceThisSession)
@@ -747,6 +839,13 @@ void CLevel_Bern::Update_EntranceCinematic(const f32_t fTimeDelta)
 			m_pCamera->Set_FollowTarget(m_pEntranceRestoreTarget.lock());
 			m_pCamera->Set_FollowEnabled(m_bEntranceRestoreFollowRequested);
 			m_bEntranceCinematicDone = true;
+#ifdef _DEBUG
+			if (m_bDebugEntranceReplayActive)
+			{
+				m_bDebugEntranceReplayActive = false;
+				m_strDebugEntranceReplayStatus = "Cannot start Bern cutscene: camera ownership changed.";
+			}
+#endif
 			return;
 		}
 		m_bEntranceCinematicApplied = true;
@@ -783,6 +882,13 @@ void CLevel_Bern::Update_EntranceCinematic(const f32_t fTimeDelta)
 			BERN_ENTRANCE_CINEMATIC_OWNER_ID,
 			pose.vEye, pose.vLookAt, pose.fFovYDegrees))
 	{
+#ifdef _DEBUG
+		if (m_bDebugEntranceReplayActive)
+		{
+			m_bDebugEntranceReplayActive = false;
+			m_strDebugEntranceReplayStatus = "Bern cutscene stopped: camera pose or ownership is unavailable.";
+		}
+#endif
 		End_EntranceCinematic();
 		return;
 	}
@@ -808,6 +914,13 @@ void CLevel_Bern::End_EntranceCinematic()
 	m_bEntranceRestoreFollowRequested = false;
 	m_bEntranceCinematicApplied = false;
 	m_bEntranceCinematicDone = true;
+#ifdef _DEBUG
+	if (m_bDebugEntranceReplayActive)
+	{
+		m_bDebugEntranceReplayActive = false;
+		m_strDebugEntranceReplayStatus = "Bern cutscene completed.";
+	}
+#endif
 }
 
 HRESULT CLevel_Bern::Render()
