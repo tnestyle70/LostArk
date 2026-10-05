@@ -113,3 +113,69 @@ Client lifecycle, Server/Shared authority, Client network/presentation의 독립
 폴더에 두며, 병합 commit/tree 대조는 최종 merge 기록과 PR506에서 확인한다. 원래 G04의 사용자
 화면 확인은 여전히 남아 있고 자동 검사로 육안 결과를 대신하지 않는다. protocol133 변경 때문에
 노트북과 연결할 Server 모두 최신 main의 Client/Server Product를 함께 빌드해야 한다.
+
+
+## G06. 2026-10-05 선택창 복귀 전에 장착 외형 준비
+
+현재 기준선 `c999f7e91`에서 지연의 실제 원인은 슬롯 저장 누락이 아니라 준비 시점이었다.
+`Return_ToCharacterSelect`의 서버 capture는 구매·장착 뒤 상태를 저장하지만 Lobby loader는
+공통 shader/prototype만 준비했다. Lobby 활성화와 선택창 Open 후 `Update_Stage`가 실제
+class 모델을 하나씩 준비하고 그 뒤 저장된 아바타를 적용하므로 빈 카드가 먼저 보였다.
+
+명시적인 월드의 캐릭터 선택 복귀는 같은 `CLevel_Loading`에서 기존 시작되는 운명 배경·제목·
+진행바를 표시한다. 공통 prototype 준비 뒤 채워진 슬롯만 기존 async class service로 준비한다.
+각 실제 CCharacter의 생성 외형은 `Apply_SavedLook(requireExactOutfit=true)`, 장착 아바타는
+기존 `EquipmentPresentationService::Apply_Preview`로 반영한다. 둘 다 성공하고 한 번의
+Loading Render가 진행된 뒤만 Lobby activation을 요청한다. MainApp이 다음 Lobby update에서
+같은 stage를 유지한 채 창을 열므로 이후 모델을 다시 순차 준비하는 지연을 없앴다.
+
+`Get_ActiveCharacterId`를 기존 selection mutex 안에서 복사하고, 창은 그 ID와 고정 roster를
+대조해 복귀한 캐릭터의 원래 카드를 선택한다. 첫 생성 캐릭터도 직업·이름이나 첫 배열 행으로
+추측하지 않는다. 초기 EXE의 빈 Lobby는 class 모델을 준비하지 않으며 닫힌 창의 Update가
+준비 요청을 강제하던 기존 문서 불일치도 교정했다. 기존 열린 창에서 시작한 job은 Close 뒤
+정상적으로 마무리할 수 있다.
+
+반환 Loading은 MainApp 소유 창을 차용한다. 창에 정확한 `CLevel_Loading*` owner를 보관해
+Retry의 새 Loading이 먼저 만들어지고 이전 Loading이 나중에 소멸하는 순서에서도 이전 owner가
+새 준비를 취소하지 못한다. non-Lobby UI cleanup은 이 준비 중인 stage를 지우지 않는다.
+실패는 새로 만든 stage 배우만 제거하고 메모리 roster/서버 capture 저장을 유지한다. 최대5분
+준비 제한 뒤 기존 asset service의 취소·I/O 중단과5초 bounded join을 거쳐 기존 LoadingRecovery
+Retry를 제공한다. 실패 표시 이후 Update는 activation을 다시 제출하지 않는다.
+
+진행률은 공통 Loader20%와 실제 완성 카드80%를 사용한다. 모델 준비가 시작되자마자99%로
+오르는 표시는 피하고, 모든 준비가 완료된 경우에만100%를 표시한다.
+
+### G06 검증과 남은 확인
+
+- 실제 production `CharacterRoster.cpp`, `CharacterSelectionState.cpp`, Shared codec을 컴파일한
+  기존 focused 검사12/12 PASS. `out/CharacterReturn20261005/state-debug/results.json`에 기록했다.
+- Client 프로젝트와 filters XML parse 및 변경한 기존7개 H/CPP 등록이 모두 일치했다.
+- 변경한7개 C++ 파일은 기존 UTF-8 BOM 없음·CRLF를 유지했고 `git diff --check`를 통과했다.
+- root 세션의 첫 Debug Product는 `out/BuildPipeline/runs/20261004T210614691Z-debug-product.json`에서
+  PASS했다. 이후 exact outfit 인자1줄을 추가했으므로 최종 Debug 증분/Release 결과는 root의
+  아래 G07을 따른다. G06의 첫 빌드와 G07의 최종 빌드를 구분한다.
+- Client/UI를 실행하거나 화면을 캡처하지 않았다. 실제 클릭 UX와 GPU에서 보이는 첫 모코코
+  모델은 사용자 화면 확인이 남아 있다.
+
+사용자 확인 경로는 Debug 캐릭터 슬롯A로 Bern 입장 → 모코코 구매·장착 → 캐릭터 선택 복귀다.
+시작되는 운명 화면 후 같은 슬롯A가 선택되고 모코코 외형이 첫 선택창 화면에 보여야 한다.
+다른 슬롯B를 거친 뒤A로 돌아와도 동일 ID의 상태를 유지해야 한다. 실패 재시도는 기존 Retry
+버튼을 사용하며, EXE 종료 후 메모리 로스터가 사라지는 기존 수명 계약은 그대로다.
+
+## G07. 10-05 베른 후속 최적화와 함께 수행한 최종 제품 검증
+
+최종 exact outfit 인자를 포함해 정상 증분 Product를 Debug와 Release에서 통과했다. Engine·Shared·Server는 기존 유효 산출물을 재사용했고 Client의 변경된 소스와 헤더 소비자13 OBJ를 각각 컴파일·링크했다. 첫 Debug 이후 exact outfit 한 줄 보완으로 Debug를 한 번 더 빌드해 해당 OBJ1개와 EXE를 갱신했다. 세 빌드 모두 CSO 변경0, 누락/비정상 runtime 입력0이며 다른 데이터 domain을 publish하지 않았다.
+
+| 실행 | 결과 | 근거 |
+|---|---|---|
+| 첫 Debug Product |PASS,37.680초|`out/BuildPipeline/runs/20261004T210614691Z-debug-product.json`|
+| 최종 Release Product |PASS,67.998초|`out/BuildPipeline/runs/20261004T210803760Z-release-product.json`|
+| exact outfit 포함 최종 Debug 증분 |PASS,9.021초|`out/BuildPipeline/runs/20261004T210827276Z-debug-product.json`|
+| 실제 roster/state+Shared codec |12/12 PASS|`out/CharacterReturn20261005/state-debug/results.json`|
+| 기존 chunk resolver fixture |26검사 PASS|`out/BernChunkAdmission20261005`|
+| Client/Engine project·filters XML |4개 parse 성공|`out/BernRosterFollowup20261005/validation.json`|
+| 이번 수정 범위 whitespace |PASS|tracked scoped diff-check 및 미추적 chunk CPP 검사|
+
+초기 Debug·Release 상세 빌드 로그와 최종 Debug console은 `out/BernRosterFollowup20261005`에 있다. 기존 C4819/C4828 문자 집합 및 Debug 외부 DirectXTK PDB 경고는 남고 오류는0이다. 전체 worktree diff 검사에는 동시에 편집 중인 별도 Warlord PLAN의 EOF 빈 줄이 검출됐으며 이번 범위 밖이라 변경하지 않았다. 이번 C++·문서 범위 검사는 통과했다. 대규모 기존 dirty worktree와 다른 세션 변경을 보존하고 자동 stage/commit/push하지 않았다.
+
+실행 파일은 `Client/Bin/Debug/Client.exe`(10월5일06:08 KST), `Client/Bin/Release/Client.exe`(06:07 KST)다. 작업 디렉터리는 `Client/Default`다. 최종 확인 시 Client/Server는 실행 중이지 않았으며 에이전트가 실행·조작·캡처하지 않았다. 모코코 구매·장착 → 캐릭터 선택 복귀의 첫 화면과 실제 베른 FPS 상승은 사용자 확인이 남아 있다. 소스/빌드와 화면 판정을 구분한다.

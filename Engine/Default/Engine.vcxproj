@@ -512,6 +512,19 @@
     <ClInclude Include="..\Public\MeshLod.h" />
     <ClInclude Include="..\Private\StaticMeshLod.h" />
     <ClCompile Include="..\Private\StaticMeshLod.cpp" />
+    <ClInclude Include="..\private\Model_StaticCluster.inl" />
+    <ClInclude Include="..\Private\Model_StaticProxy.inl" />
+    <ClInclude Include="..\ThirdPartyLib\xatlas\xatlas.h" />
+    <ClCompile Include="..\ThirdPartyLib\xatlas\xatlas.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
+      <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SupportJustMyCode>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
+    <None Include="..\ThirdPartyLib\xatlas\LICENSE.md" />
+    <None Include="..\ThirdPartyLib\xatlas\README.md" />
     <ClInclude Include="..\ThirdPartyLib\meshoptimizer\meshoptimizer.h" />
     <ClCompile Include="..\ThirdPartyLib\meshoptimizer\simplifier.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
@@ -734,5 +747,66 @@
       <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Public\CpuJobPool.h" />
+    <ClCompile Include="..\Private\CpuJobPool.cpp">
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
+    <ClInclude Include="..\Public\OcclusionCuller.h" />
+    <ClCompile Include="..\Private\OcclusionCuller.cpp">
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+    </ClCompile>
+    <ClInclude Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCulling.h" />
+    <ClInclude Include="..\ThirdPartyLib\MaskedOcclusionCulling\CompilerSpecific.inl" />
+    <ClInclude Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCullingCommon.inl" />
+    <ClCompile Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCulling.cpp">
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <PreprocessorDefinitions>PRECISE_COVERAGE=1;USE_D3D=1;USE_AVX512=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+    </ClCompile>
+    <ClCompile Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCullingAVX2.cpp">
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <PreprocessorDefinitions>PRECISE_COVERAGE=1;USE_D3D=1;USE_AVX512=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+    </ClCompile>
+    <ClCompile Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCullingAVX512.cpp">
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <PreprocessorDefinitions>PRECISE_COVERAGE=1;USE_D3D=1;USE_AVX512=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+    </ClCompile>
+    <None Include="..\ThirdPartyLib\MaskedOcclusionCulling\README.md" />
+    <None Include="..\ThirdPartyLib\MaskedOcclusionCulling\UPSTREAM_README.md" />
+    <None Include="..\ThirdPartyLib\MaskedOcclusionCulling\license.txt" />
   </ItemGroup>
 </Project>

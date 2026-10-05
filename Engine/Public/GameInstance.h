@@ -126,6 +126,10 @@ public: /* Renderer */
     bool_t Is_SceneEnvironmentReplaced() const;
 	HRESULT Refresh_SceneColorSnapshot();
 	RENDER_QUALITY_SETTINGS Get_RenderQualitySettings() const;
+    MAP_VISIBILITY_SETTINGS Get_MapVisibilitySettings() const;
+    HRESULT Apply_MapVisibilitySettings(const MAP_VISIBILITY_SETTINGS& settings);
+    RENDER_OPTIMIZATION_SETTINGS Get_RenderOptimizationSettings() const;
+    HRESULT Apply_RenderOptimizationSettings(const RENDER_OPTIMIZATION_SETTINGS& settings);
 	// Draw-time scalar view avoids copying the quality profile and LUT layers.
 	uint32_t Get_TextureMinMip() const;
 	HRESULT Apply_RenderQualitySettings(const RENDER_QUALITY_SETTINGS& Settings);

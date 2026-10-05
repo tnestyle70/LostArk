@@ -4,6 +4,7 @@
 #include "Profiler.h"
 #include "Engine_RenderTypes.h"
 #include "RenderingProfileService.h"
+#include "ProfilerCaptureIO.h"
 
 #include <array>
 #include <filesystem>
@@ -33,6 +34,12 @@ struct RENDERING_BENCHMARK_RUN final
     string strRecipeId, strExperimentGoal, strMetricGuide, strConfidence;
     string strComparisonRowId, strMeasurementId, strComparisonSessionId;
     RENDERING_EXPERIMENT_VALUES expectedA, expectedB;
+    std::array<double, static_cast<size_t>(Engine::EProfilerCounter::Count)> counterTotals{};
+    std::array<Engine::FProfilerWorkStats, static_cast<size_t>(Engine::EProfilerWork::Count)> workTotals{};
+    double iaVerticesTotal = 0, iaPrimitivesTotal = 0, vsInvocationsTotal = 0;
+    string rawEvidencePath, rawEvidenceStatus; // Same sampled frame window; never the later live history.
+    bool rawEvidenceReady = false;
+    string applicability;
     std::map<string,string> commonConditionFields, actualConditionFields, changedConditionFields;
     uint64_t fieldMask = 0, firstFrame = 0, lastFrame = 0;
     uint32_t warmupFrames = 0, repetition = 1, pendingGpuFrames = 0, invalidGpuFrames = 0;
@@ -72,6 +79,9 @@ public:
     void Render_SessionBar(CRenderingProfileService& profiles);
     void Render_PresentationSection(CRenderingProfileService& profiles);
     void Render_QuickComparison(CRenderingProfileService& profiles);
+    void Render_OptimizationSection(CRenderingProfileService& profiles);
+    void Set_DeviceInfo(ID3D11Device* device);
+    void Shutdown(CRenderingProfileService& profiles);
 	bool_t Begin(
 		Engine::CProfiler* pProfiler,
 		const string& strLabel,
@@ -89,6 +99,10 @@ public:
 		CRenderingProfileService& Profiles);
 
 private:
+    bool_t Prepare_OptimizationPair(size_t recipeIndex, CRenderingProfileService& profiles);
+    bool Queue_RawEvidence(Engine::FProfilerCaptureSnapshot&& snapshot, RENDERING_BENCHMARK_RUN& run);
+    void Poll_RawEvidence();
+    FProfilerCaptureContext Sample_OptimizationContext() const;
     bool_t Prepare_PresentationPair(int stage, CRenderingProfileService& profiles);
     bool_t Start_ComparisonMeasurement(Engine::CProfiler* profiler);
     void Render_ComparisonCost(const char* rowId);
@@ -107,13 +121,19 @@ private:
         uint32_t frames=0, pendingGpu=0, invalidGpu=0;
         double cpuA=0, cpuB=0, gpuA=0, gpuB=0, cpuSpreadA=0, cpuSpreadB=0;
         string status;
+        std::array<double, static_cast<size_t>(Engine::EProfilerCounter::Count)> countersA{}, countersB{};
+        std::array<double, static_cast<size_t>(Engine::EProfilerWork::Count)> workA{}, workB{};
+        string applicability;
+        uint32_t evidenceReady = 0;
     };
     COMPARISON_COST Build_ComparisonCost(const string& rowId, const string& sceneConditions) const;
     void Render_ExperimentSection(Engine::CProfiler* profiler, CRenderingProfileService& profiles);
     void Render_RecipeSection();
     bool_t Apply_PresentationStage(int stage, CRenderingProfileService& profiles);
-    bool_t Prepare_QuickComparison(CRenderingProfileService& profiles);
-    bool_t Apply_PresentationCandidate(const RENDERING_EXPERIMENT_VALUES& candidate);
+    bool_t Prepare_QuickComparison(CRenderingProfileService& profiles, bool_t qualitySuiteBase = false);
+    bool_t Prepare_QualitySuiteComparison(CRenderingProfileService& profiles);
+    bool_t Apply_ComparisonPair(const RENDERING_EXPERIMENT_VALUES& base,
+        const RENDERING_EXPERIMENT_VALUES& candidate);
     bool_t Prepare_Recipe(bool_t replaceB);
     bool_t Prepare_RecipeById(const char* recipeId, CRenderingProfileService& profiles);
     bool_t Start_Experiment(CRenderingProfileService& profiles);
@@ -121,8 +141,8 @@ private:
     void End_Experiment();
     void Finish_Sequence();
     bool_t Start_Sweep(Engine::CProfiler* profiler);
-    void Cancel_Capture(const string& reason);
-    void Queue_Save();
+    void Cancel_Capture(const string& reason, bool restoreOptimization = true);
+    void Queue_Save(bool shutdown = false);
     void Poll_Save();
     uint64_t Experiment_FieldMask() const;
     uint64_t Experiment_BaselineMask() const;
@@ -142,6 +162,13 @@ private:
 	static filesystem::path Make_DefaultPath();
 
 private:
+    bool m_bOptimizationSession = false, m_bKeepOptimizationHidden = false;
+    bool m_bEvidenceDrain = false, m_bEvidenceNextVariantB = false;
+    bool m_bDeviceInfoValid = false, m_bToolVisible = true;
+    uint32_t m_DeviceCreationFlags = 0;
+    string m_AdapterName, m_RawSavePath;
+    CProfilerCaptureExporter m_RawExporter;
+    FProfilerCaptureContext m_OptimizationCaptureContext;
 	bool_t m_bCapturing = false;
     bool_t m_bExperimentActive = false, m_bVariantB = false, m_bSequence = false;
     bool_t m_bSequenceProfilerWasEnabled = false;
@@ -167,6 +194,7 @@ private:
     std::map<string,string> m_CaptureCommonFields, m_CaptureActualFields, m_ChangedConditionFields;
     int m_iSelectedRecipe = 0, m_iPreparedRecipe = -1;
     int m_iPresentationStage = -1, m_iQuickTechnique = 0;
+    bool_t m_bQuickQualitySuiteBase = false; // Candidate basis only; never replaces the original restore point.
     RENDERING_EXPERIMENT_VALUES m_ExperimentA, m_ExperimentB, m_ExperimentOriginal, m_CaptureValues;
     CRenderingProfileService* m_pExperimentProfiles = nullptr; // MainApp owns both services.
     Engine::CProfiler* m_pCaptureProfiler = nullptr;

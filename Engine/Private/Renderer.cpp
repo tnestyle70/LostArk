@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "OcclusionCuller.h"
 #include "BlendSortKey.h"
 #pragma push_macro("new")
 #undef new
@@ -1111,7 +1112,7 @@ HRESULT CRenderer::Render_Shadow()
     const auto* projection = game.Get_ShadowLightTransform(D3DTS::PROJ);
     const bool enabled = game.Is_ShadowLightEnabled();
     const bool sourceMaterials = m_MaterialRenderSettings.bUseSourceMaterials;
-    const bool allowCache = enabled && view && projection &&
+    const bool allowCache = m_RenderOptimization.StaticShadowCacheEnabled && enabled && view && projection &&
         m_pStaticShadowDepthTexture && !m_bSceneEnvironmentReplaced;
     m_CandidateStaticShadowCasters.clear();
     m_StaticShadowFlags.assign(objects.size(), 0u);
@@ -1229,8 +1230,176 @@ HRESULT CRenderer::Render_Shadow()
     return S_OK;
 }
 
+HRESULT CRenderer::Apply_RenderOptimizationSettings(const RENDER_OPTIMIZATION_SETTINGS& settings)
+{
+    if (settings.FrustumEnabled == m_RenderOptimization.FrustumEnabled &&
+        settings.MeshLodEnabled == m_RenderOptimization.MeshLodEnabled &&
+        settings.MapInstancingEnabled == m_RenderOptimization.MapInstancingEnabled &&
+        settings.IdenticalBatchEnabled == m_RenderOptimization.IdenticalBatchEnabled &&
+        settings.LightingBankEnabled == m_RenderOptimization.LightingBankEnabled &&
+        settings.StaticShadowCacheEnabled == m_RenderOptimization.StaticShadowCacheEnabled &&
+        settings.NpcPoseReuseEnabled == m_RenderOptimization.NpcPoseReuseEnabled &&
+        settings.ParticleRootCacheEnabled == m_RenderOptimization.ParticleRootCacheEnabled &&
+        settings.ParticleWorkersEnabled == m_RenderOptimization.ParticleWorkersEnabled) return S_OK;
+    // The caller's revision is not an authority. Equal repeated applications
+    // must preserve warm caches, including profile preview's per-frame update.
+    const uint64_t revision = m_RenderOptimization.Revision + 1u;
+    m_RenderOptimization = settings;
+    m_RenderOptimization.Revision = revision ? revision : 1u;
+    m_OcclusionCacheValid = false;
+    m_bStaticShadowCacheValid = false;
+    return S_OK;
+}
+
+HRESULT CRenderer::Apply_MapVisibilitySettings(const MAP_VISIBILITY_SETTINGS& settings)
+{
+    if (!std::isfinite(settings.DistanceScale) || settings.DistanceScale < .25f || settings.DistanceScale > 4.f ||
+        !std::isfinite(settings.DistanceMaxPixels) || settings.DistanceMaxPixels < 4.f || settings.DistanceMaxPixels > 128.f)
+        return E_INVALIDARG;
+    if (settings.OcclusionEnabled == m_MapVisibility.OcclusionEnabled &&
+        settings.DistanceEnabled == m_MapVisibility.DistanceEnabled &&
+        settings.ParallelPreparationEnabled == m_MapVisibility.ParallelPreparationEnabled && settings.DistanceScale == m_MapVisibility.DistanceScale &&
+        settings.DistanceMaxPixels == m_MapVisibility.DistanceMaxPixels) return S_OK;
+    const uint64_t revision = m_MapVisibility.Revision + 1u;
+    m_MapVisibility = settings;
+    m_MapVisibility.Revision = revision ? revision : 1u;
+    return S_OK;
+}
+
+void CRenderer::Cull_StaticOcclusion()
+{
+    auto& game = CGameInstance::Get();
+    auto& objects = m_RenderObjects[ETOUI(RENDERGROUP::NONBLEND)];
+    if (!m_MapVisibility.OcclusionEnabled || m_bSceneEnvironmentReplaced || objects.empty()) return;
+    const auto* view = game.Get_Transform(D3DTS::VIEW);
+    const auto* projection = game.Get_Transform(D3DTS::PROJ);
+    const auto viewport = game.Get_ViewportSize();
+    if (!view || !projection || viewport.x <= 0.f || viewport.y <= 0.f) return;
+    CProfiler* profiler = game.Get_Profiler();
+    CProfilerScope scope(profiler, "Render.MapOcclusion");
+    try
+    {
+        m_OcclusionCandidates.clear(); m_OccluderOrder.clear();
+        m_OcclusionHidden.assign(objects.size(), 0u);
+        m_OcclusionVisibleQueue.clear();
+        for (size_t i = 0; i < objects.size(); ++i)
+        {
+            if (!objects[i]) continue;
+            CGameObject::STATIC_OCCLUSION_DESC desc{};
+            if (!objects[i]->Try_GetStaticOcclusionDesc(desc) || !desc.Draws || !desc.Indices || !desc.Revision) continue;
+            const vector_t minimum = XMLoadFloat3(&desc.BoundsMin), maximum = XMLoadFloat3(&desc.BoundsMax);
+            if (XMVector3IsNaN(minimum) || XMVector3IsInfinite(minimum) || XMVector3IsNaN(maximum) ||
+                XMVector3IsInfinite(maximum) || !XMVector3LessOrEqual(minimum, maximum)) continue;
+            float3_t center{};
+            XMStoreFloat3(&center, XMVector3TransformCoord((minimum + maximum) * .5f, XMLoadFloat4x4(view)));
+            const float radius = XMVectorGetX(XMVector3Length(maximum - minimum)) * .5f;
+            const float depth = (std::max)(.1f, center.z - radius);
+            const float area = radius * radius * projection->_11 * projection->_22 / (depth * depth);
+            const size_t slot = m_OcclusionCandidates.size();
+            m_OcclusionCandidates.push_back({i, desc, area / std::sqrt(float((std::max)(1u, desc.OccluderTriangles)))});
+            // Tiny screen coverage cannot repay rasterization overhead. Large
+            // near-plane envelopes remain safe: the kernel clips/rejects them.
+            if (desc.OccluderTriangles && std::isfinite(area) && area >= .002f) m_OccluderOrder.push_back(slot);
+        }
+        if (profiler) profiler->Add_Counter(EProfilerCounter::MapOcclusionCandidates, m_OcclusionCandidates.size());
+        if (m_OcclusionCandidates.size() < 8u || m_OccluderOrder.empty()) return;
+        bool reuse = m_OcclusionCacheValid && m_OcclusionCache.size() == m_OcclusionCandidates.size() &&
+            m_OcclusionSettingsRevision == m_MapVisibility.Revision &&
+            !std::memcmp(view, &m_OcclusionView, sizeof(*view)) && !std::memcmp(projection, &m_OcclusionProjection, sizeof(*projection)) &&
+            viewport.x == m_OcclusionViewport.x && viewport.y == m_OcclusionViewport.y;
+        for (size_t i = 0; reuse && i < m_OcclusionCandidates.size(); ++i)
+        {
+            const auto& candidate = m_OcclusionCandidates[i];
+            const auto& previous = m_OcclusionCache[i];
+            const auto& owner = objects[candidate.Index];
+            reuse = !previous.Owner.owner_before(owner) && !owner.owner_before(previous.Owner) &&
+                !std::memcmp(&candidate.Desc, &previous.Desc, sizeof(candidate.Desc));
+        }
+        if (reuse)
+        {
+            if (profiler) profiler->Add_Counter(EProfilerCounter::MapOcclusionCacheHits);
+            for (size_t i = 0; i < m_OcclusionCandidates.size(); ++i)
+                if (m_OcclusionCache[i].Hidden) m_OcclusionHidden[m_OcclusionCandidates[i].Index] = 1u;
+        }
+        else
+        {
+            m_OcclusionCacheValid = false;
+            if (!m_OcclusionCuller) m_OcclusionCuller = std::make_unique<COcclusionCuller>();
+            if (!m_OcclusionCuller->Begin(*view, *projection, uint32_t(viewport.x), uint32_t(viewport.y))) return;
+            std::stable_sort(m_OccluderOrder.begin(), m_OccluderOrder.end(), [&](size_t a, size_t b) {
+                return m_OcclusionCandidates[a].Score > m_OcclusionCandidates[b].Score;
+            });
+            constexpr uint32_t triangleBudget = 100000u, maximumOccluders = 64u;
+            const auto started = std::chrono::steady_clock::now();
+            uint32_t occluders = 0u;
+            {
+                CProfilerScope rasterScope(profiler, "Render.MapOcclusion.Rasterize");
+                for (const size_t slot : m_OccluderOrder)
+                {
+                    if (occluders >= maximumOccluders || m_OcclusionCuller->GetInputTriangles() >= triangleBudget) break;
+                    // A bounded partial depth buffer is always safe; it can only
+                    // miss opportunities. Never carry an old camera's hidden set.
+                    if (std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count() > 1.5) break;
+                    const auto& candidate = m_OcclusionCandidates[slot];
+                    const auto count = objects[candidate.Index]->Rasterize_StaticOccluder(*m_OcclusionCuller,
+                        (std::min)(16384u, triangleBudget - m_OcclusionCuller->GetInputTriangles()));
+                    if (count) { ++occluders; m_OcclusionHidden[candidate.Index] = 2u; }
+                }
+            }
+            if (profiler)
+            {
+                profiler->Add_Counter(EProfilerCounter::MapOcclusionOccluders, occluders);
+                profiler->Add_Counter(EProfilerCounter::MapOcclusionRasterizedTriangles, m_OcclusionCuller->GetRasterizedTriangles());
+            }
+            // Cache a visible-only result too when the same camera produced no depth.
+        }
+        uint64_t rejected = 0u, draws = 0u, indices = 0u, tested = 0u;
+        {
+            CProfilerScope queryScope(profiler, "Render.MapOcclusion.Test");
+            for (const auto& candidate : m_OcclusionCandidates)
+            {
+                if (m_OcclusionHidden[candidate.Index] == 2u) continue;
+                if (!reuse) ++tested;
+                if (reuse ? m_OcclusionHidden[candidate.Index] != 1u :
+                    !m_OcclusionCuller->TestBounds(candidate.Desc.BoundsMin, candidate.Desc.BoundsMax)) continue;
+                m_OcclusionHidden[candidate.Index] = 1u;
+                ++rejected; draws += candidate.Desc.Draws; indices += candidate.Desc.Indices;
+            }
+        }
+        if (profiler)
+        {
+            profiler->Add_Counter(EProfilerCounter::MapOcclusionTested, tested);
+        }
+        if (!reuse)
+        {
+            m_OcclusionCache.clear(); m_OcclusionCache.reserve(m_OcclusionCandidates.size());
+            for (const auto& candidate : m_OcclusionCandidates)
+                m_OcclusionCache.push_back({objects[candidate.Index], candidate.Desc, m_OcclusionHidden[candidate.Index] == 1u});
+            m_OcclusionView = *view; m_OcclusionProjection = *projection; m_OcclusionViewport = viewport;
+            m_OcclusionSettingsRevision = m_MapVisibility.Revision;
+            m_OcclusionCacheValid = true;
+        }
+        if (!rejected) return;
+        // Commit one stable queue after every test. Original shadow/forward
+        // queues and owners survive, and adjacent instance batching still runs.
+        m_OcclusionVisibleQueue.reserve(objects.size() - size_t(rejected));
+        for (size_t i = 0; i < objects.size(); ++i)
+            if (m_OcclusionHidden[i] != 1u) m_OcclusionVisibleQueue.push_back(objects[i]);
+        objects.swap(m_OcclusionVisibleQueue);
+        m_OcclusionVisibleQueue.clear();
+        if (profiler)
+        {
+            profiler->Add_Counter(EProfilerCounter::MapOcclusionRejectedBatches, rejected);
+            profiler->Add_Counter(EProfilerCounter::MapOcclusionSourceDraws, draws);
+            profiler->Add_Counter(EProfilerCounter::MapOcclusionRejectedIndices, indices);
+        }
+    }
+    catch (...) { m_OcclusionVisibleQueue.clear(); } // Keep the original queue on preparation failure.
+}
+
 HRESULT CRenderer::Render_NonBlend()
 {
+    Cull_StaticOcclusion();
     CMaterial::Reset_SourceCharacterFrame(m_fPresentationClock);
 	/* Diffuse + Normal */
 	if (FAILED(CGameInstance::Get().Begin_MRT(TEXT("MRT_GameObject"))))
@@ -1313,6 +1482,7 @@ HRESULT CRenderer::Render_SSAOPass(
 
 	HRESULT hResult = S_OK;
 	HRESULT hBindAO = S_OK;
+    const uint32_t horizonAOEnabled = m_RenderQualitySettings.bHorizonAOEnabled ? 1u : 0u;
 	if (DEFERRED::SSAO_BLUR == ePass)
 	{
 		hBindAO = CGameInstance::Get().Bind_RT_SRV(
@@ -1332,6 +1502,8 @@ HRESULT CRenderer::Render_SSAOPass(
 		FAILED(m_pShader->Bind_RawValue(
             "g_iSSAOSampleCount", &m_RenderQualitySettings.iSSAOSampleCount,
             sizeof(m_RenderQualitySettings.iSSAOSampleCount))) ||
+        FAILED(m_pShader->Bind_RawValue(
+            "g_iHorizonAOEnabled", &horizonAOEnabled, sizeof(horizonAOEnabled))) ||
         FAILED(m_pShader->Bind_RawValue(
 			"g_fSSAORadius", &m_RenderQualitySettings.fSSAORadius,
 			sizeof(m_RenderQualitySettings.fSSAORadius))) ||
@@ -1802,6 +1974,8 @@ HRESULT CRenderer::Render_ScreenSpaceLighting()
     CRenderOutputContractScope temporaryOutput(RENDER_OUTPUT_CONTRACT::NONE, m_pContext.Get());
     const float2_t inverseSize(1.f / sceneDesc.Width, 1.f / sceneDesc.Height);
     const uint32_t bloomEnabled = quality.bBloomEnabled ? 1u : 0u;
+    const uint32_t ssrRefinementEnabled = quality.bSSRRefinementEnabled ? 1u : 0u;
+    const uint32_t ssrRoughnessFilterEnabled = quality.bSSRRoughnessFilterEnabled ? 1u : 0u;
     const auto bind = [&shader](const char* name, const auto& value)
     { return shader->Bind_RawValue(name, &value, sizeof(value)); };
     if (FAILED(shader->Bind_Matrix("g_WorldMatrix", &m_WorldMatrix)) ||
@@ -1820,6 +1994,8 @@ HRESULT CRenderer::Render_ScreenSpaceLighting()
         FAILED(bind("g_fSSGIRadius", quality.fSSGIRadius)) ||
         FAILED(bind("g_fSSGIStrength", quality.fSSGIStrength)) ||
         FAILED(bind("g_iSSRStepCount", quality.iSSRStepCount)) ||
+        FAILED(bind("g_iSSRRefinementEnabled", ssrRefinementEnabled)) ||
+        FAILED(bind("g_iSSRRoughnessFilterEnabled", ssrRoughnessFilterEnabled)) ||
         FAILED(bind("g_fSSRMaxDistance", quality.fSSRMaxDistance)) ||
         FAILED(bind("g_fSSRThickness", quality.fSSRThickness)) ||
         FAILED(bind("g_fSSRStrength", quality.fSSRStrength)) ||

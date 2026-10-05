@@ -46,6 +46,7 @@ texture2D   g_SSAOTexture;
 float2      g_vSSAOTexelSize;
 uint        g_iSSAOEnabled = 0u;
 uint        g_iSSAOSampleCount = 12u;
+uint        g_iHorizonAOEnabled = 0u;
 float       g_fSSAORadius;
 float       g_fSSAOBias;
 float       g_fSSAOIntensity;
@@ -958,10 +959,97 @@ PS_OUT_BACKBUFFER Evaluate_SSAORaw(PS_IN In, int iSampleCount)
     return Out;
 }
 
+// Horizon search within the existing AO path. Each azimuth integrates only
+// newly occluded elevation, with radial falloff; no temporal or hidden geometry.
+// Based on the horizon/tangent principle, not the NVIDIA HBAO+ implementation.
+bool HorizonAOPosition(inout float2 uv, out float3 position)
+{
+    position = 0.f;
+    if (!all(isfinite(uv)) || any(uv <= 0.f) || any(uv >= 1.f)) return false;
+    uint width, height; g_DepthTexture.GetDimensions(width, height);
+    int2 pixel = int2(uv * float2(width, height));
+    // Reconstruct the texel whose point depth was read, including half AO views.
+    uv = (float2(pixel) + .5f) / float2(width, height);
+    float4 depth = g_DepthTexture.Load(int3(pixel, 0));
+    if (!all(isfinite(depth)) || Is_SSAOBackground(depth) || depth.x < 0.f ||
+        depth.y <= .000001f) return false;
+    position = Reconstruct_SSAOViewPosition(uv, depth);
+    return all(isfinite(position)) && position.z > .001f;
+}
+
+PS_OUT_BACKBUFFER Evaluate_HorizonAO(PS_IN In)
+{
+    PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
+    Out.vBackBuffer = 1.f;
+    if (!isfinite(g_fSSAORadius) || g_fSSAORadius <= 0.f ||
+        !isfinite(g_fSSAOBias) || g_fSSAOBias < 0.f || g_fSSAOBias >= g_fSSAORadius ||
+        !isfinite(g_fSSAOIntensity) || g_fSSAOIntensity <= 0.f ||
+        !isfinite(g_fSSAOPower) || g_fSSAOPower <= 0.f ||
+        !isfinite(g_fSSAODistanceFade) || g_fSSAODistanceFade < g_fSSAORadius ||
+        (g_iSSAOSampleCount != 4u && g_iSSAOSampleCount != 8u && g_iSSAOSampleCount != 12u) ||
+        !all(isfinite(g_vSSAOTexelSize)) || any(g_vSSAOTexelSize <= 0.f)) return Out;
+    float3 center;
+    if (!HorizonAOPosition(In.vTexcoord, center)) return Out;
+    float3 normal = Decode_SSAOViewNormal(In.vTexcoord);
+    float lengthSquared = dot(center, center);
+    if (!all(isfinite(normal)) || !isfinite(lengthSquared) || lengthSquared < .000001f) return Out;
+    float3 view = -center * rsqrt(lengthSquared);
+    if (dot(normal, view) < 0.f) normal = -normal;
+    float normalView = dot(normal, view);
+    if (normalView < .0001f) return Out;
+    float projectionY = abs(g_CameraProjMatrix[1][1]);
+    if (!isfinite(projectionY) || projectionY < .0001f) return Out;
+    float radiusPixels = clamp(g_fSSAORadius * projectionY * .5f /
+        (center.z * g_vSSAOTexelSize.y), 1.f, 64.f);
+    float rotation = SSAO_Hash(floor(In.vTexcoord / g_vSSAOTexelSize)) * 6.28318530718f;
+    float occlusion = 0.f;
+    [loop] for (uint directionIndex = 0u; directionIndex < g_iSSAOSampleCount; ++directionIndex)
+    {
+        float angle = rotation + (float)directionIndex * (6.28318530718f / (float)g_iSSAOSampleCount);
+        float2 direction = float2(cos(angle), sin(angle));
+        float horizon = 0.f;
+        float directionOcclusion = 0.f;
+        [unroll] for (uint stepIndex = 1u; stepIndex <= 4u; ++stepIndex)
+        {
+            float fraction = (float)stepIndex * .25f;
+            float2 sampleUv = In.vTexcoord + direction * radiusPixels * fraction * g_vSSAOTexelSize;
+            float3 samplePosition;
+            if (!HorizonAOPosition(sampleUv, samplePosition)) continue;
+            float3 delta = samplePosition - center;
+            float distanceSquared = dot(delta, delta);
+            if (!isfinite(distanceSquared) || distanceSquared <= .000001f ||
+                distanceSquared >= g_fSSAORadius * g_fSSAORadius) continue;
+            // Pixel snapping can rotate each sample within an azimuth. Compute
+            // its tangent from that actual ray, so sloped planes remain unoccluded.
+            float3 slice = delta - view * dot(delta, view);
+            float sliceLength = dot(slice, slice);
+            if (!isfinite(sliceLength) || sliceLength < .000001f) continue;
+            slice *= rsqrt(sliceLength);
+            float normalSlice = dot(normal, slice);
+            float tangentSin = -normalSlice * rsqrt(normalView * normalView + normalSlice * normalSlice);
+            float sampleHorizon = max(0.f, dot(delta, view) * rsqrt(distanceSquared) -
+                tangentSin - g_fSSAOBias / g_fSSAORadius);
+            if (sampleHorizon > horizon)
+            {
+                float attenuation = saturate(1.f - distanceSquared / (g_fSSAORadius * g_fSSAORadius));
+                directionOcclusion += (sampleHorizon - horizon) * attenuation;
+                horizon = sampleHorizon;
+            }
+        }
+        occlusion += directionOcclusion;
+    }
+    float ao = pow(saturate(1.f - occlusion / (float)g_iSSAOSampleCount * g_fSSAOIntensity), g_fSSAOPower);
+    float fadeStart = max(g_fSSAODistanceFade * .65f, g_fSSAORadius);
+    float fade = saturate((center.z - fadeStart) / max(g_fSSAODistanceFade - fadeStart, .001f));
+    Out.vBackBuffer = isfinite(ao) ? lerp(ao, 1.f, fade) : 1.f;
+    return Out;
+}
+
 // Uniform dispatch specializes the unrolled kernel to exactly 4/8/12 taps.
 // The 12-tap path retains the original sample math and accumulation order.
 PS_OUT_BACKBUFFER PS_MAIN_SSAO_RAW(PS_IN In)
 {
+    [branch] if (g_iHorizonAOEnabled != 0u) return Evaluate_HorizonAO(In);
     [branch] if (g_iSSAOSampleCount == 4u) return Evaluate_SSAORaw(In, 4);
     [branch] if (g_iSSAOSampleCount == 8u) return Evaluate_SSAORaw(In, 8);
     return Evaluate_SSAORaw(In, 12);

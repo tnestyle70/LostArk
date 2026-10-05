@@ -1644,6 +1644,12 @@
     <ClCompile Include="..\Private\MapStaticBatchObject.cpp">
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\MapStaticChunkObject.cpp">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapStaticProxyBaker.cpp">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Level_Lobby.cpp">
       <Filter>01.Levels\00. Lobby</Filter>
     </ClCompile>
@@ -1873,6 +1879,9 @@
       <Filter>01.Levels\01. CharacterSelect</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\CharacterRoster.cpp">
+      <Filter>01.Levels\01. CharacterSelect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\CharacterSelectShowcase.cpp">
       <Filter>01.Levels\01. CharacterSelect</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Level_CharacterSelect.cpp">
@@ -2420,6 +2429,12 @@
     <ClInclude Include="..\Public\MapStaticBatchObject.h">
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\MapStaticChunkObject.h">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\MapStaticProxyBaker.h">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\Level_Lobby.h">
       <Filter>01.Levels\00. Lobby</Filter>
     </ClInclude>
@@ -2672,6 +2687,9 @@
     <ClInclude Include="..\Private\CharacterSelectArenaSpawnGate.h">
       <Filter>01.Levels\01. CharacterSelect</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\CharacterSelectShowcase.h">
+      <Filter>01.Levels\01. CharacterSelect</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\Level_CharacterSelect.h">
       <Filter>01.Levels\01. CharacterSelect</Filter>
     </ClInclude>
@@ -2896,6 +2914,9 @@
     </None>
     <None Include="..\..\Data\Rendering\Reference\KoukuImportedSourceLights.maplights.json">
       <Filter>96.DataFiles\Rendering\Reference</Filter>
+    </None>
+    <None Include="..\..\Data\Rendering\Authored\CharacterSelectShowcase.json">
+      <Filter>96.DataFiles\Rendering\Authored</Filter>
     </None>
     <None Include="..\..\Data\Rendering\Authored\CharacterSelectFloorSwap.json">
       <Filter>96.DataFiles\Rendering\Authored</Filter>
@@ -3962,6 +3983,12 @@
       <Filter>97.ShaderFiles\01.Materials\ModelPasses</Filter>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapInstance.hlsl">
+      <Filter>97.ShaderFiles\01.Materials\ModelPasses</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapChunk.hlsl">
+      <Filter>97.ShaderFiles\01.Materials\ModelPasses</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapProxy.hlsl">
       <Filter>97.ShaderFiles\01.Materials\ModelPasses</Filter>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshPreview.hlsl">

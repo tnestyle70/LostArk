@@ -45,6 +45,9 @@ namespace Engine
     };
 }
 
+#include "Model_StaticCluster.inl"
+#include "Model_StaticProxy.inl"
+
 namespace
 {
     bool NativeHairUsesExtraUV(const Engine::MODEL_SOURCE_CHARACTER_PARAMETERS& source)
@@ -111,6 +114,10 @@ CModel::CModel(const CModel& Prototype)
     , m_PreTransformMatrix { Prototype.m_PreTransformMatrix }
     , m_bRetainOrderedStaticGeometry { Prototype.m_bRetainOrderedStaticGeometry }
     , m_pOrderedStaticGeometrySource { Prototype.m_pOrderedStaticGeometrySource }
+    , m_StaticCluster { Prototype.m_StaticCluster }
+    , m_StaticProxy { Prototype.m_StaticProxy }
+    , m_StaticProxyAtlases { Prototype.m_StaticProxyAtlases }
+    , m_StaticProxyMetadata { Prototype.m_StaticProxyMetadata }
     , m_OrderedStaticGeometry { Prototype.m_OrderedStaticGeometry }
     , m_iNextOrderedStaticGeometryHandle { Prototype.m_iNextOrderedStaticGeometryHandle }
     , m_iNumMaterials { Prototype.m_iNumMaterials }
@@ -1106,32 +1113,75 @@ HRESULT CModel::Render_Instanced(uint32_t iMeshIndex,
     return drawResult;
 }
 
-bool_t CModel::Can_BatchStaticLightingWith(const CModel& other) const
+bool_t CModel::Can_ShareStaticInstanceStateWith(const CModel& other) const
 {
     if (m_eType != MODEL::NONANIM || other.m_eType != MODEL::NONANIM ||
-        m_Meshes.size() != 1u || other.m_Meshes.size() != 1u ||
-        !m_Meshes[0] || m_Meshes[0] != other.m_Meshes[0] ||
-        m_Meshes[0]->Has_MorphBaseVertices() || m_fGeometryPreScale != other.m_fGeometryPreScale)
+        m_StaticCluster || other.m_StaticCluster || m_pDevice != other.m_pDevice ||
+        m_pContext != other.m_pContext || m_Meshes.empty() || m_Meshes != other.m_Meshes ||
+        m_Materials != other.m_Materials || m_fGeometryPreScale != other.m_fGeometryPreScale)
         return false;
     for (size_t row = 0u; row < 4u; ++row)
         for (size_t column = 0u; column < 4u; ++column)
             if (m_PreTransformMatrix.m[row][column] != other.m_PreTransformMatrix.m[row][column]) return false;
-    const uint32_t material = m_Meshes[0]->Get_MaterialIndex();
-    return material < m_Materials.size() && material < other.m_Materials.size() &&
-        m_Materials[material] && other.m_Materials[material] &&
-        m_Materials[material]->Can_BatchStaticLightingWith(*other.m_Materials[material]);
+    for (const auto& mesh : m_Meshes)
+        if (!mesh || mesh->Has_MorphBaseVertices() ||
+            mesh->Get_MaterialIndex() >= m_Materials.size() || !m_Materials[mesh->Get_MaterialIndex()])
+            return false;
+    return true;
+}
+
+bool_t CModel::Can_BatchStaticLightingWith(const CModel& other) const
+{
+    if (m_eType != MODEL::NONANIM || other.m_eType != MODEL::NONANIM ||
+        m_StaticCluster || other.m_StaticCluster || m_pDevice != other.m_pDevice ||
+        m_pContext != other.m_pContext || m_Meshes.empty() || m_Meshes != other.m_Meshes ||
+        m_fGeometryPreScale != other.m_fGeometryPreScale)
+        return false;
+    for (size_t row = 0u; row < 4u; ++row)
+        for (size_t column = 0u; column < 4u; ++column)
+            if (m_PreTransformMatrix.m[row][column] != other.m_PreTransformMatrix.m[row][column]) return false;
+    for (const auto& mesh : m_Meshes)
+    {
+        if (!mesh || mesh->Has_MorphBaseVertices()) return false;
+        const uint32_t material = mesh->Get_MaterialIndex();
+        if (material >= m_Materials.size() || material >= other.m_Materials.size() ||
+            !m_Materials[material] || !other.m_Materials[material] ||
+            !m_Materials[material]->Can_BatchStaticLightingWith(*other.m_Materials[material])) return false;
+    }
+    return true;
+}
+
+bool_t CModel::Has_SameStaticLightingTextures(const CModel& other) const
+{
+    // One instance slot is shared across every submesh. A representative is
+    // reusable only when its whole ordered material-lighting bundle matches.
+    if (m_Meshes.empty() || m_Meshes.size() != other.m_Meshes.size()) return false;
+    for (size_t meshIndex = 0u; meshIndex < m_Meshes.size(); ++meshIndex)
+    {
+        const auto& mesh = m_Meshes[meshIndex];
+        const auto& otherMesh = other.m_Meshes[meshIndex];
+        if (!mesh || !otherMesh) return false;
+        const uint32_t material = mesh->Get_MaterialIndex();
+        const uint32_t otherMaterial = otherMesh->Get_MaterialIndex();
+        if (material >= m_Materials.size() || otherMaterial >= other.m_Materials.size() ||
+            !m_Materials[material] || !other.m_Materials[otherMaterial] ||
+            !m_Materials[material]->Has_SameStaticLightingTextures(*other.m_Materials[otherMaterial]))
+            return false;
+    }
+    return true;
 }
 
 HRESULT CModel::Bind_StaticLightingBank(const shared_ptr<CShader>& shader,
-    std::span<const CModel* const> models) const
+    std::span<const CModel* const> models, uint32_t meshIndex) const
 {
-    if (!shader || models.size() < 2u || models.size() > 8u || models.front() != this)
+    if (!shader || models.size() < 2u || models.size() > 8u || models.front() != this ||
+        meshIndex >= m_Meshes.size() || !m_Meshes[meshIndex])
         return E_INVALIDARG;
     std::array<const CMaterial*, 8> materials{};
     for (size_t i = 0u; i < models.size(); ++i)
     {
         if (!models[i] || !Can_BatchStaticLightingWith(*models[i])) return E_INVALIDARG;
-        materials[i] = models[i]->m_Materials[m_Meshes[0]->Get_MaterialIndex()].get();
+        materials[i] = models[i]->m_Materials[m_Meshes[meshIndex]->Get_MaterialIndex()].get();
     }
     return materials[0]->Bind_StaticLightingBank(shader,
         std::span<const CMaterial* const>(materials.data(), models.size()));
@@ -1743,6 +1793,15 @@ uint32_t CModel::Get_StaticMeshLodLevel(uint32_t iMeshIndex, const MESH_SCREEN_L
         return 0u;
     uint32_t indexCount = 0u, firstIndex = 0u;
     return m_Meshes[iMeshIndex]->Select_StaticLod(view, indexCount, firstIndex);
+}
+
+uint32_t CModel::Get_StaticMeshSelectedIndexCount(uint32_t iMeshIndex, const MESH_SCREEN_LOD_DESC* view) const
+{
+    if (iMeshIndex >= m_Meshes.size() || !m_Meshes[iMeshIndex])
+        return 0u;
+    uint32_t indexCount = 0u, firstIndex = 0u;
+    m_Meshes[iMeshIndex]->Select_StaticLod(view, indexCount, firstIndex);
+    return indexCount;
 }
 
 bool_t CModel::Has_MorphBaseVertices(uint32_t iMeshIndex) const
@@ -2618,7 +2677,7 @@ HRESULT CModel::Ready_Meshes(const MODEL_ASSET_DATA& asset)
             const auto& material = asset.materials[mesh.materialIndex];
             const auto& surface = material.surface;
             if (surface.family == MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
-                (surface.sourceBgFlags & 64u) == 0u && material.opacityPath.empty() &&
+                !surface.sourceFoliageWind && (surface.sourceBgFlags & 64u) == 0u && material.opacityPath.empty() &&
                 (surface.renderMode == MODEL_SURFACE_RENDER_MODE::INHERIT ||
                  surface.renderMode == MODEL_SURFACE_RENDER_MODE::DEFERRED))
             {
@@ -2712,6 +2771,27 @@ namespace
         windingSign = det < 0.f ? -1.f : 1.f;
         return true;
     }
+}
+
+bool_t CModel::Try_GetStaticOcclusionMesh(const uint32_t meshIndex,
+    STATIC_OCCLUSION_MESH& output) const
+{
+    if (MODEL::NONANIM != m_eType || m_StaticCluster || m_StaticProxy ||
+        meshIndex >= m_Meshes.size()) return false;
+    const auto& mesh = m_Meshes[meshIndex];
+    if (!mesh || mesh->m_hasUniqueVertexBuffer || !mesh->m_PickGeometry) return false;
+    const auto& geometry = *mesh->m_PickGeometry;
+    // Prepare_StaticPickGeometry validates every indexed position and index at
+    // initialization. A filtered triangle count means the original IB is unsafe.
+    if (geometry.skinned || geometry.vertices.empty() || geometry.nodes.empty() ||
+        geometry.vertices.size() > (std::numeric_limits<uint32_t>::max)() ||
+        geometry.indices.empty() || geometry.indices.size() % 3u != 0u ||
+        geometry.triangles.size() != geometry.indices.size() / 3u) return false;
+    static_assert(offsetof(CMesh::PICK_VERTEX, position) == 0u);
+    output = {&geometry.vertices.front().position.x,
+        static_cast<uint32_t>(geometry.vertices.size()),
+        static_cast<uint32_t>(sizeof(CMesh::PICK_VERTEX)), geometry.indices};
+    return true;
 }
 
 bool_t CModel::Try_PickStaticSurface(const uint32_t meshIndex, const float4x4_t& world,

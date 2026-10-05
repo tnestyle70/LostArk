@@ -1,0 +1,26 @@
+{
+  "schema": "lostark.character-select-showcase",
+  "formatVersion": 1,
+  "areaId": "LV_LOBBY_CLASSSELECT_SL00",
+  "lightingOrigin": [-772.0, -142.55, 197.0],
+  "placements": [
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1053",
+      "placementId": "9000101",
+      "position": [74.8114209, -0.434577217, -228.334375],
+      "rotationQuaternion": [0.0, 0.0, 0.0, 1.0],
+      "signedScale": [0.715753973, 0.715753973, 0.715753973]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1054",
+      "placementId": "9000102",
+      "position": [74.8112598, -0.00391314536, -228.336484],
+      "rotationQuaternion": [0.0, 0.0, -0.707106781, 0.707106781],
+      "signedScale": [1.0, 1.0, 1.0]
+    }
+  ],
+  "character": {
+    "position": [74.8114209, 0.075660566186353, -228.334375],
+    "yawDegrees": 180.0
+  }
+}

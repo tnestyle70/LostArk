@@ -5,6 +5,9 @@
 
 NS_BEGIN(Engine)
 
+class CLayer;
+class COcclusionCuller;
+
 class ENGINE_DLL CGameObject abstract : public CPrototype
 {
 public:
@@ -36,6 +39,41 @@ public:
 	// Opt-in render preparation after camera/light providers, before any world pass.
 	virtual bool_t Uses_FinalCameraSubmission() const { return false; }
 	virtual void Submit_FinalCamera() {}
+    // Owner-thread staging, then one exclusive CPU-only callback before Submit.
+    // The layer joins every callback before GPU submission or any owner mutation.
+    struct FINAL_CAMERA_CPU_JOB final
+    {
+        void* Context = nullptr;
+        void (*Execute)(void*) = nullptr;
+        uint32_t Cost = 0u;
+    };
+    virtual bool_t Try_PrepareFinalCameraCpuJob(FINAL_CAMERA_CPU_JOB& output)
+    { output = {}; return false; }
+    // Opt-in conservative envelope for Layer's final-camera candidate hierarchy.
+    // Radius includes all consumer-specific margins; false keeps the callback.
+    // Every bounds/policy/visibility change must invalidate before submission.
+    struct FINAL_CAMERA_SPATIAL_BOUNDS final
+    {
+        float3_t Center{};
+        f32_t Radius = 0.f;
+        uint32_t RejectGraceFrames = 0u;
+        bool_t ShadowCaster = false;
+    };
+    virtual bool_t Try_GetFinalCameraSpatialBounds(FINAL_CAMERA_SPATIAL_BOUNDS& out) const
+    { out = {}; return false; }
+    // Bounds enclose every vertex of this frame's committed visible submission.
+    // Original shadow submissions remain independent from color occlusion.
+    struct STATIC_OCCLUSION_DESC final
+    {
+        float3_t BoundsMin{}, BoundsMax{};
+        uint32_t Draws = 0u, OccluderTriangles = 0u;
+        // Nonzero revision changes with geometry, visibility, cull state or material eligibility.
+        uint64_t Indices = 0u, Revision = 0u;
+    };
+    virtual bool_t Try_GetStaticOcclusionDesc(STATIC_OCCLUSION_DESC& output) const
+    { output = {}; return false; }
+    // Only opaque, undeformed, actually rendered geometry may populate depth.
+    virtual uint32_t Rasterize_StaticOccluder(COcclusionCuller&, uint32_t) const { return 0u; }
 	virtual HRESULT Render();
 	virtual HRESULT Render_Group(RENDERGROUP group);
 	// Borrow the current queue only; opt-in objects may consume adjacent entries.
@@ -54,6 +92,23 @@ public:
     // the rendered geometry or visibility must change the nonzero revision.
     virtual bool_t Try_GetStaticShadowRevision(uint64_t& outRevision) const
     { outRevision = 0u; return false; }
+
+protected:
+    void Invalidate_FinalCameraSpatialBounds();
+
+private:
+    friend class CLayer;
+    struct FINAL_CAMERA_LAYER_LINK final
+    {
+        CLayer* Owner = nullptr;
+        size_t Index = 0u;
+        bool DirtyQueued = false;
+        FINAL_CAMERA_LAYER_LINK() = default;
+        // A prototype clone never inherits another object's layer ownership.
+        FINAL_CAMERA_LAYER_LINK(const FINAL_CAMERA_LAYER_LINK&) noexcept {}
+        FINAL_CAMERA_LAYER_LINK& operator=(const FINAL_CAMERA_LAYER_LINK&) noexcept
+        { return *this; }
+    } m_FinalCameraLayer;
 
 protected:
 	map<const wstring_t, shared_ptr<CComponent>>		m_Components;

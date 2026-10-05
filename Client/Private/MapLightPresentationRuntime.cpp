@@ -21,6 +21,7 @@ bool_t Client::CMapLightPresentationRuntime::Load(
 		return false;
 	}
 	m_Document = std::move(staged);
+	m_FrameWorldOffset = {};
 	m_Status = status;
 	return true;
 }
@@ -42,11 +43,19 @@ bool_t Client::CMapLightPresentationRuntime::Load_Runtime(
 bool_t Client::CMapLightPresentationRuntime::Replace_Document(const CMapLightDocument& document)
 {
 	if (!document.Is_Ready()) {m_Status="Cannot preview an unready light document.";return false;}
-	m_Document=document;m_Status="Map light authoring preview ready.";return true;
+	m_Document=document;
+	m_FrameWorldOffset = {};
+	m_Status="Map light authoring preview ready.";return true;
 }
 
-bool_t Client::CMapLightPresentationRuntime::Submit_Frame()
+bool_t Client::CMapLightPresentationRuntime::Submit_Frame(const float3_t& worldOffset)
 {
+	if (!std::isfinite(worldOffset.x) || !std::isfinite(worldOffset.y) ||
+		!std::isfinite(worldOffset.z))
+	{
+		m_Status = "Map light presentation offset is not finite";
+		return false;
+	}
 	if (!m_Document.Is_Ready())
 	{
 		m_Status = "Map light presentation is not ready";
@@ -66,6 +75,7 @@ bool_t Client::CMapLightPresentationRuntime::Submit_Frame()
 		m_Status = "Map light frame provider registration failed";
 		return false;
 	}
+	m_FrameWorldOffset = worldOffset;
 	return true;
 }
 
@@ -83,12 +93,19 @@ HRESULT Client::CMapLightPresentationRuntime::Submit_Presentation()
 	for (const MAP_POINT_LIGHT_RECORD& record : m_Document.Get_Lights())
 	{
 		if (!record.enabled || record.brightness == 0.f || s_fSceneIntensityMultiplier == 0.f) continue;
+		float3_t worldPosition = record.position;
+		if (record.kind == LIGHT::POINT || record.kind == LIGHT::SPOT)
+		{
+			worldPosition.x += m_FrameWorldOffset.x;
+			worldPosition.y += m_FrameWorldOffset.y;
+			worldPosition.z += m_FrameWorldOffset.z;
+		}
 		if (record.kind != LIGHT::DIRECTIONAL && !CGameInstance::Get().isIn_Frustum_InWorldSpace(
-			XMLoadFloat3(&record.position), record.radiusMeters))
+			XMLoadFloat3(&worldPosition), record.radiusMeters))
 		{ ++outsideFrustum; continue; }
 		const f32_t brightness = record.brightness * s_fSceneIntensityMultiplier;
 		EFFECT_EVALUATED_LIGHT evaluated{};
-		evaluated.vWorldPosition = record.position;
+		evaluated.vWorldPosition = worldPosition;
 		evaluated.fRange = record.radiusMeters;
 		evaluated.fIntensity = brightness;
 		evaluated.vColor = record.color;
@@ -152,5 +169,6 @@ HRESULT Client::CMapLightPresentationRuntime::Submit_Presentation()
 void Client::CMapLightPresentationRuntime::Clear()
 {
 	m_Document.Clear();
+	m_FrameWorldOffset = {};
 	m_Status = "Map light presentation is not loaded";
 }

@@ -24,6 +24,7 @@
 #include <cmath>
 #include <locale>
 #include <cstdio>
+#include <dxgi.h>
 
 namespace
 {
@@ -37,7 +38,16 @@ namespace
         const char* Goal; const char* Metrics; const char* Boundary;
     };
     constexpr auto NoGate=ExperimentField::COUNT;
+    constexpr const char* QualitySuiteRowId = "suite.dx11-quality-expansion";
     constexpr FExperimentRecipe ExperimentRecipes[] = {
+        {"texture.mip","표면 텍스처 mip 0/1/2/3",ExperimentField::TEXTURE_MIN_MIP,NoGate,false,RecipeKind::Filter,0,3,4,
+         "최상 해상도부터 허용할 표면 mip을 비교합니다.","표면 디테일·Render.World GPU ms, 같은 카메라·거리", "실제 보유 mip만 사용합니다. UI·lookup·native Effect sampler는 보존하며 VRAM 상주량을 줄이지 않습니다."},
+        {"ao.horizon","기존 SSAO / Horizon AO",ExperimentField::HORIZON_AO_ENABLED,ExperimentField::SSAO_ENABLED,false,RecipeKind::Workload,0,1,2,
+         "동일한 depth/normal 수신면에서 가림 horizon 탐색과 기존 SSAO를 비교합니다.","Render.SSAO GPU ms, 접촉 음영·평면·얇은 형상의 halo", "현재 SSAO 수신면과 blur를 공유하는 자체 horizon 근사입니다. GTAO나 HBAO+ SDK가 아닙니다."},
+        {"ssr.refinement","SSR 교차 구간 세부 탐색",ExperimentField::SSR_REFINEMENT_ENABLED,ExperimentField::SSR_ENABLED,true,RecipeKind::Workload,0,1,2,
+         "거친 step 사이의 반사 hit를 추가 탐색하는 효과를 비교합니다.","Render.SSR GPU ms, 같은 반사면의 누락·잘못된 교차", "화면의 단일 depth 교차 보정입니다. 가려진 면·화면 밖 정보는 복원하지 않습니다."},
+        {"ssr.roughnessFilter","SSR roughness 반사 필터",ExperimentField::SSR_ROUGHNESS_FILTER_ENABLED,ExperimentField::SSR_ENABLED,true,RecipeKind::Filter,0,1,2,
+         "거칠기에 따른 hit 주변 radiance 필터와 반사 디테일을 비교합니다.","Render.SSR GPU ms, 거친 표면·depth/normal 경계의 반사 번짐", "depth/normal 경계로 제한한 화면 필터이며 다중 반사 ray·시간 누적·환경 convolution은 아닙니다."},
         {"ssao.pass","SSAO 패스 ON/OFF",ExperimentField::SSAO_ENABLED,NoGate,false,RecipeKind::Workload,0,1,2,
          "화면 공간 AO 패스와 최종 차폐 기여가 필요한지 비교합니다.","Render.SSAO GPU/self, Render.Combined, GPU frame P99, PSInvocations", "간접광 전체 OFF가 아닙니다. depth/normal·카메라·해상도·노출을 고정합니다."},
         {"ssao.samples","SSAO 샘플 수 4/8/12",ExperimentField::SSAO_SAMPLES,ExperimentField::SSAO_ENABLED,false,RecipeKind::Workload,4,12,3,
@@ -109,7 +119,31 @@ namespace
         {"display.lut","Source LUT grading ON/OFF",ExperimentField::LUT_ENABLED,ExperimentField::SOURCE_POST_PROCESS,false,RecipeKind::Display,0,1,2,
          "Source tone + grading 묶음을 켠 상태에서 저작 LUT의 색 기여만 비교합니다.","Render.Final GPU, 같은 노출·tone·색 입력의 화면", "저작 LUT 입력이 있어야 ON을 적용할 수 있습니다. LUT OFF는 source tone curve OFF가 아닙니다."},
         {"material.source", "기본 / 원본 재질", ExperimentField::SOURCE_MATERIALS, NoGate, false, RecipeKind::Contribution, 0, 1, 2,
-         "지원 표면의 기본 textured shader와 복원 재질 연산을 비교합니다.", "동일 카메라의 재질·음영과 GPU frame", "현재 WModel·텍스처를 사용합니다. 미지원 native/forward 재질은 유지하며 최초 EXE의 재현은 아닙니다."}
+         "지원 표면의 기본 textured shader와 복원 재질 연산을 비교합니다.", "동일 카메라의 재질·음영과 GPU frame", "현재 WModel·텍스처를 사용합니다. 미지원 native/forward 재질은 유지하며 최초 EXE의 재현은 아닙니다."},
+        {"optimization.frustum", "프러스텀 컬링", ExperimentField::OPT_FRUSTUM, NoGate, false, RecipeKind::Workload, 0, 1, 2,
+         "Layer 후보와 맵 상세 가시성", "Map.CullingCandidates/Visible, CPU visibility, draw/index", "화면 밖 맵 제출을 제외합니다. 거리·occlusion은 별도 설정입니다."},
+        {"optimization.occlusion", "가림 컬링", ExperimentField::OPT_OCCLUSION, NoGate, false, RecipeKind::Workload, 0, 1, 2,
+         "현재 카메라의 CPU 가림 판정", "Render.MapOcclusion, rejected batches/indices, cache hit", "가려지는 후보가 없는 시점은 효과를 입증할 수 없습니다."},
+        {"optimization.distance", "거리 컬링", ExperimentField::OPT_DISTANCE, NoGate, false, RecipeKind::Workload, 0, 1, 2,
+         "작은 장식물의 거리·픽셀 제한", "distance tested/rejected instances/indices, draw/index", "거리 scale·최대 pixel은 고정합니다. 큰 지형을 지우는 실험이 아닙니다."},
+        {"optimization.mesh-lod", "화면 오차 LOD", ExperimentField::OPT_MESH_LOD, NoGate, false, RecipeKind::Workload, 0, 1, 2,
+         "준비된 정적 index LOD 선택", "LOD available/0/1/2, source/submitted indices, IA/VS", "생성된 LOD만 사용합니다. 생성 하한·캐시·UV·오차를 바꾸지 않습니다."},
+        {"optimization.map-instancing", "맵 인스턴싱", ExperimentField::OPT_MAP_INSTANCING, NoGate, false, RecipeKind::Workload, 0, 1, 2,
+         "같은 payload의 instance별 draw / instanced draw", "draw/instanced draw, mesh instances, Map.Batch.Draw", "A도 기존 배치 객체와 buffer를 사용합니다. 과거 객체 생성 비용 재현이 아닙니다."},
+        {"optimization.identical-batch", "동일 모델·재질 추가 병합", ExperimentField::OPT_IDENTICAL_BATCH, ExperimentField::OPT_MAP_INSTANCING, false, RecipeKind::Workload, 0, 1, 2,
+         "인접 batch의 같은 geometry·재질 draw 결합", "identical source draws / actual draws, Map.Batch.Draw", "기존 asset별 instancing은 유지합니다. 상위 맵 instancing이 ON이어야 합니다."},
+        {"optimization.lighting-bank", "동일 geometry 조명 bank 병합", ExperimentField::OPT_LIGHTING_BANK, ExperimentField::OPT_MAP_INSTANCING, false, RecipeKind::Workload, 0, 1, 2,
+         "원본 RNM·재질 호환 batch의 draw 결합", "lighting bank source draws / actual draws, Map.Batch.Draw", "geometry·재질 호환 조건과 원본 조명은 유지합니다. 모든 재질을 하나로 바꾸지 않습니다."},
+        {"optimization.shadow-cache", "정적 그림자 캐시", ExperimentField::OPT_SHADOW_CACHE, ExperimentField::SHADOW_ENABLED, false, RecipeKind::Workload, 0, 1, 2,
+         "같은 정적 caster 결과 재사용", "shadow hit/miss, StaticBuild/CacheCopy CPU·GPU", "그림자 ON이 전제입니다. 현재 OFF인 그림자를 자동으로 켜지 않습니다."},
+        {"optimization.npc-pose-reuse", "NPC pose 표본 재사용", ExperimentField::OPT_NPC_POSE_REUSE, NoGate, false, RecipeKind::Workload, 0, 1, 2,
+         "허용된 NPC animation sample 재사용", "animation evaluation/reuse, CPU animation·NPC work", "offscreen pose 지연과 다른 항목입니다. clip·clock·event·Server 상태를 유지합니다."},
+        {"optimization.particle-root-cache", "파티클 root 변환 재사용", ExperimentField::OPT_PARTICLE_ROOT_CACHE, NoGate, false, RecipeKind::Workload, 0, 1, 2,
+         "같은 emitter의 root inverse·회전 계산 재사용", "particle root builds/reuse, particle CPU scope", "동일 계산의 반복만 줄입니다. 이펙트 개수·재생 시간·형태를 바꾸지 않습니다."},
+        {"optimization.map-workers", "맵 CPU 준비 worker", ExperimentField::OPT_MAP_WORKERS, NoGate, false, RecipeKind::Workload, 0, 1, 2,
+         "가시성 준비의 직렬 / coarse worker 분산", "prepared batches, caller/worker jobs, Prepare/Dispatch/Join", "기본 OFF입니다. 정지 cache hit는 작업0이며 worker 시간을 main에 합산하지 않습니다."},
+        {"optimization.particle-workers", "파티클 CPU worker", ExperimentField::OPT_PARTICLE_WORKERS, NoGate, false, RecipeKind::Workload, 0, 1, 2,
+         "허용된 particle update의 직렬 / worker 분산", "particle worker participation, Update/Join CPU", "작은 작업·의존성 있는 emitter는 계속 직렬입니다. gameplay/renderer 작업은 옮기지 않습니다."}
     };
 
     bool BuildRecipeCandidate(const FExperimentRecipe& recipe, const Client::RENDERING_EXPERIMENT_VALUES& base,
@@ -136,6 +170,31 @@ namespace
         auto endpoint=base;endpoint.values[index]=high;
         if(!Client::CRenderingProfileService::Validate_ExperimentValues(endpoint,status))return false;
         candidate=staged;return true;
+    }
+
+    bool BuildQualitySuiteCandidate(const Client::RENDERING_EXPERIMENT_VALUES& base,
+        Client::RENDERING_EXPERIMENT_VALUES& candidate, string& status)
+    {
+        if (base.values[static_cast<size_t>(ExperimentField::SOURCE_MATERIALS)]==0)
+        { status="품질 확장 후보는 현재 source material 경로가 필요합니다. 재질 선택을 자동으로 바꾸지 않습니다."; return false; }
+        auto staged=base;
+        const auto set=[&](ExperimentField field,double value) { staged.values[static_cast<size_t>(field)]=value; };
+        const auto positive=[&](ExperimentField field,double fallback) {
+            if(staged.values[static_cast<size_t>(field)]==0) set(field,fallback);
+        };
+        set(ExperimentField::TEXTURE_MIN_MIP,0);
+        set(ExperimentField::SSAO_ENABLED,1); set(ExperimentField::SSAO_SAMPLES,12);
+        set(ExperimentField::HORIZON_AO_ENABLED,1); positive(ExperimentField::SSAO_INTENSITY,1);
+        set(ExperimentField::PCF_RADIUS,2);
+        set(ExperimentField::SSGI_ENABLED,1); set(ExperimentField::SSGI_SAMPLES,16);
+        set(ExperimentField::SSGI_HALF_RESOLUTION,0); positive(ExperimentField::SSGI_STRENGTH,.25);
+        set(ExperimentField::SSR_ENABLED,1); set(ExperimentField::SSR_STEPS,64);
+        set(ExperimentField::SSR_REFINEMENT_ENABLED,1); set(ExperimentField::SSR_ROUGHNESS_FILTER_ENABLED,1);
+        positive(ExperimentField::SSR_STRENGTH,.5);
+        // This is an explicit multi-field candidate. Tone, AA, bloom, lighting and
+        // authored data remain the original values; it is not a measured optimum.
+        if(!Client::CRenderingProfileService::Validate_ExperimentValues(staged,status)) return false;
+        candidate=staged; return true;
     }
 
     struct FPresentationStage { const char* Name; const char* Description; };
@@ -184,24 +243,28 @@ namespace
         return candidate;
     }
 
-    struct FQuickTechnique { const char* Name; const char* Recipe; };
+    struct FQuickTechnique { const char* Name; const char* Recipe; int Group=1; }; // 0: source, 1: current, 2: optional extras.
     constexpr FQuickTechnique QuickTechniques[] = {
-        {"기본 / 원본 재질", "material.source"},
-        {"MapPBR · 간접 diffuse (RNM / SH)", "pbr.baked"},
-        {"IBL · 환경 반사", "pbr.environment"},
-        {"원본 PBR 간접광", "pbr.sourceIndirect"},
+        {"표면 텍스처 · mip 품질", "texture.mip", 2},
+        {"Horizon AO · 기존 SSAO와 비교", "ao.horizon", 2},
+        {"SSR · 교차 구간 세부 탐색", "ssr.refinement", 2},
+        {"SSR · roughness 반사 필터", "ssr.roughnessFilter", 2},
+        {"기본 / 원본 재질", "material.source", 0},
+        {"MapPBR · 간접 diffuse (RNM / SH)", "pbr.baked", 0},
+        {"IBL · 환경 반사", "pbr.environment", 0},
+        {"원본 PBR 간접광", "pbr.sourceIndirect", 0},
         {"PBR · normal", "pbr.normal"},
         {"PBR · 직접 반사", "pbr.directSpecular"},
         {"방향광 그림자", "shadow.pass"},
         {"SSAO · 굴곡 음영", "ssao.pass"},
         {"높이 안개", "fog.pass"},
-        {"Tone + grading", "display.sourcePostProcess"},
-        {"LUT · 색보정", "display.lut"},
+        {"Tone + grading", "display.sourcePostProcess", 0},
+        {"LUT · 색보정", "display.lut", 0},
         {"Bloom · 빛 번짐", "bloom.pass"},
         {"FXAA · 가장자리", "fxaa.pass"},
-        {"SSGI · 화면 공간 간접광 (실험)", "ssgi.pass"},
-        {"SSGI · 전체 / 절반 해상도", "ssgi.resolution"},
-        {"SSR · 화면 공간 반사 (실험)", "ssr.pass"}
+        {"SSGI · 화면 공간 간접광 (실험)", "ssgi.pass", 2},
+        {"SSGI · 전체 / 절반 해상도", "ssgi.resolution", 2},
+        {"SSR · 화면 공간 반사 (실험)", "ssr.pass", 2}
     };
 
     string RecipeConfidence(RecipeKind kind)
@@ -317,6 +380,10 @@ namespace
         zero(F::SSR_DISTANCE,q.fSSRMaxDistance); scalar(q.fSSRMaxDistance,"quality.fSSRMaxDistance");
         zero(F::SSR_THICKNESS,q.fSSRThickness); scalar(q.fSSRThickness,"quality.fSSRThickness");
         zero(F::SSR_STEPS,q.iSSRStepCount); scalar(q.iSSRStepCount,"quality.iSSRStepCount");
+        zero(F::TEXTURE_MIN_MIP,q.iTextureMinMip); scalar(q.iTextureMinMip,"quality.iTextureMinMip");
+        zero(F::HORIZON_AO_ENABLED,q.bHorizonAOEnabled); scalar(q.bHorizonAOEnabled,"quality.bHorizonAOEnabled");
+        zero(F::SSR_REFINEMENT_ENABLED,q.bSSRRefinementEnabled); scalar(q.bSSRRefinementEnabled,"quality.bSSRRefinementEnabled");
+        zero(F::SSR_ROUGHNESS_FILTER_ENABLED,q.bSSRRoughnessFilterEnabled); scalar(q.bSSRRoughnessFilterEnabled,"quality.bSSRRoughnessFilterEnabled");
         zero(F::SOURCE_POST_PROCESS,q.SourcePostProcess.bEnabled);
         if (omit(F::LUT_ENABLED)) q.SourcePostProcess.LutLayers.clear();
         scalar(q.bSSAOEnabled,"quality.bSSAOEnabled"); scalar(q.fSSAORadius,"quality.fSSAORadius"); scalar(q.fSSAOBias,"quality.fSSAOBias");
@@ -400,6 +467,21 @@ namespace
             for(unsigned char ch:stream.str().substr(static_cast<size_t>(lightsOffset))) {hash^=ch;hash*=1099511628211ull;}
             (*named)["scene.lights.allRecordsHash"]=std::to_string(hash);
         }
+        const auto optimization=Client::CRenderingProfileService::Read_ExperimentValues();
+        const auto& experimentFields=Client::CRenderingProfileService::Experiment_Fields();
+        for(size_t i=static_cast<size_t>(F::OPT_FRUSTUM);i<experimentFields.size();++i)
+            scalar(omit(static_cast<F>(i))?0.0:optimization.values[i],experimentFields[i].id);
+        const auto visibility=game.Get_MapVisibilitySettings();
+        scalar(visibility.DistanceScale,"optimization.distanceScale");
+        scalar(visibility.DistanceMaxPixels,"optimization.distanceMaxPixels");
+#ifdef _DEBUG
+        scalar(1,"build.debug");
+#else
+        scalar(0,"build.debug");
+#endif
+        scalar(_ITERATOR_DEBUG_LEVEL,"build.iteratorDebugLevel");
+        scalar(_MSC_VER,"build.msvc");
+        scalar(sizeof(void*)*8u,"build.pointerBits");
         return stream.str();
     }
 	double Percentile(std::vector<double> Values, const double fPercentile)
@@ -452,10 +534,270 @@ namespace
 	}
 }
 
+namespace
+{
+    std::string OptimizationApplicability(const Client::RENDERING_BENCHMARK_RUN& run)
+    {
+        using C=Engine::EProfilerCounter;
+        const auto n=[&](C c){return run.counterTotals[static_cast<size_t>(c)];};
+        if(!run.strRecipeId.starts_with("optimization.")) return {};
+        double observed=0;
+        if(run.strRecipeId=="optimization.frustum") observed=n(C::MapCullingCandidates);
+        else if(run.strRecipeId=="optimization.occlusion") observed=n(C::MapOcclusionCandidates);
+        else if(run.strRecipeId=="optimization.distance") observed=n(C::MapDistanceTestedInstances)+n(C::MapDistanceRejectedInstances);
+        else if(run.strRecipeId=="optimization.mesh-lod") observed=n(C::MapLodAvailableDraws);
+        else if(run.strRecipeId=="optimization.map-instancing") observed=n(C::MapVisibleInstances);
+        else if(run.strRecipeId=="optimization.identical-batch") observed=n(C::MapIdenticalInstanceSourceDraws);
+        else if(run.strRecipeId=="optimization.lighting-bank") observed=n(C::MapLightingBankSourceDraws);
+        else if(run.strRecipeId=="optimization.shadow-cache") observed=n(C::ShadowStaticCasters);
+        else if(run.strRecipeId=="optimization.npc-pose-reuse") observed=n(C::AnimationSampleRequests);
+        else if(run.strRecipeId=="optimization.particle-root-cache") observed=n(C::EffectParticleRootInverseRequests);
+        else if(run.strRecipeId=="optimization.map-workers") observed=n(C::MapVisibilityPreparedBatches);
+        else if(run.strRecipeId=="optimization.particle-workers") observed=n(C::EffectParticleCallerJobs)+n(C::EffectParticleWorkerJobs);
+        // Several producers count only the enabled path. OFF zero is not proof
+        // that the scene has no candidates; use the ON phase to establish that.
+        if(observed<=0) return run.strVariant=="A" ? "A: OFF 경로; 적용 대상은 B 표본으로 확인" :
+            "B: 적용 대상 관측 0 · 최적화 효과 미입증";
+        return run.strVariant+": 적용 대상 관측됨 · 비용과 실제 감소량을 함께 확인";
+    }
+
+    size_t RawEvidenceBytes(const Engine::FProfilerCaptureSnapshot& snapshot)
+    {
+        size_t bytes=sizeof(snapshot)+snapshot.Frames.capacity()*sizeof(Engine::FProfilerFrame);
+        bytes+=snapshot.ScopeNames.capacity()*sizeof(std::string);
+        for(const auto& name:snapshot.ScopeNames) bytes+=name.capacity();
+        for(const auto& frame:snapshot.Frames)
+        {
+            bytes+=frame.CpuScopes.capacity()*sizeof(Engine::FProfilerScopeSample);
+            bytes+=frame.GpuScopes.capacity()*sizeof(Engine::FProfilerGpuScopeSample);
+            bytes+=frame.MeshDraws.capacity()*sizeof(Engine::FProfilerMeshDrawSample);
+            bytes+=frame.ViewportPresents.capacity()*sizeof(Engine::FProfilerViewportPresent);
+        }
+        return bytes;
+    }
+}
+
+void Client::CRenderingBenchmark::Set_DeviceInfo(ID3D11Device* device)
+{
+    m_bDeviceInfoValid=false; m_DeviceCreationFlags=0; m_AdapterName="unavailable";
+    if(!device) return;
+    m_DeviceCreationFlags=device->GetCreationFlags();
+    Microsoft::WRL::ComPtr<IDXGIDevice> dxgi;
+    Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
+    DXGI_ADAPTER_DESC description{};
+    if(SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(dxgi.GetAddressOf()))) &&
+        SUCCEEDED(dxgi->GetAdapter(adapter.GetAddressOf())) && SUCCEEDED(adapter->GetDesc(&description)))
+    {
+        char name[512]{};
+        if(WideCharToMultiByte(CP_UTF8,0,description.Description,-1,name,sizeof(name),nullptr,nullptr)>0)
+        { m_AdapterName=name; m_bDeviceInfoValid=true; }
+    }
+}
+
+void Client::CRenderingBenchmark::Shutdown(CRenderingProfileService& profiles)
+{
+    m_bKeepOptimizationHidden=false;
+    Update_RestorationPreview(profiles,false);
+    if(m_bCapturing || m_bSequence) Cancel_Capture("Benchmark shutdown; completed evidence retained.");
+    Poll_RawEvidence();
+    // The existing summary future owns no Engine data. Join the older summary
+    // before queueing the final owned run list; otherwise queued runs are lost.
+    if(m_SaveFuture.valid())
+    {
+        try { m_strSaveStatus=m_SaveFuture.get().message; }
+        catch(const std::exception& error) { m_strSaveStatus=error.what(); }
+    }
+    for(auto& run:m_Runs)if(!run.rawEvidencePath.empty() && !run.rawEvidenceReady && run.rawEvidencePath==m_RawSavePath)
+        run.rawEvidenceStatus="종료 시 원본 저장 완료 미확인 · 유효 증거로 사용하지 마세요";
+    if(!m_Runs.empty())Queue_Save(true);
+    // The raw exporter uses its existing cancellation/bounded join on destruction.
+    // Final summary records pending raw evidence as incomplete, never successful.
+}
+
+Client::FProfilerCaptureContext Client::CRenderingBenchmark::Sample_OptimizationContext() const
+{
+    auto& game=Engine::CGameInstance::Get();
+    FProfilerCaptureContext context;
+    context.Valid=true; context.LevelId=game.Get_CurrentLevelID();
+    context.Adapter=m_AdapterName; context.DeviceCreationFlags=m_DeviceCreationFlags;
+    const auto viewport=game.Get_ViewportSize(); context.Viewport={viewport.x,viewport.y};
+    if(const auto* p=game.Get_CamPosition()) context.CameraPosition={p->x,p->y,p->z,p->w};
+    if(const auto* p=game.Get_Transform(Engine::D3DTS::VIEW)) std::memcpy(context.ViewMatrix.data(),p,sizeof(*p));
+    if(const auto* p=game.Get_Transform(Engine::D3DTS::PROJ)) std::memcpy(context.ProjectionMatrix.data(),p,sizeof(*p));
+    const auto& shadow=game.Get_ShadowLightDesc().Settings;
+    context.ShadowEnabled=shadow.bEnabled; context.ShadowWidth=shadow.fOrthographicWidth;
+    context.ShadowHeight=shadow.fOrthographicHeight; context.ShadowStrength=shadow.fStrength;
+    const auto quality=game.Get_RenderQualitySettings();
+    context.SSAOEnabled=quality.bSSAOEnabled; context.BloomEnabled=quality.bBloomEnabled; context.FXAAEnabled=quality.bFXAAEnabled;
+    DWORD foreground=0; const auto window=GetForegroundWindow(); GetWindowThreadProcessId(window,&foreground);
+    context.ProcessForeground=foreground==GetCurrentProcessId(); context.ClientWindowForeground=window==g_hWnd;
+    context.WindowMinimized=IsIconic(g_hWnd)!=FALSE;
+    context.ForegroundFpsLimit=CUserSettings::Get().Get_FrameLimit(true);
+    context.BackgroundFpsLimit=CUserSettings::Get().Get_FrameLimit(false);
+    context.EffectiveFpsLimit=context.ProcessForeground?context.ForegroundFpsLimit:context.BackgroundFpsLimit;
+    const auto& fields=CRenderingProfileService::Experiment_Fields();
+    for(size_t i=0;i<fields.size();++i) context.RenderingOptions[fields[i].id]=m_CaptureValues.values[i];
+    const auto visibility=game.Get_MapVisibilitySettings();
+    context.RenderingOptions["optimization.distanceScale"]=visibility.DistanceScale;
+    context.RenderingOptions["optimization.distanceMaxPixels"]=visibility.DistanceMaxPixels;
+    context.RenderingOptions["benchmark.workbenchVisible"]=m_bToolVisible?1:0;
+    context.RenderingAssets["benchmark.contextSampling"]="start of sampled phase after warmup; per-frame condition fingerprint checked";
+    context.RenderingAssets["benchmark.measurementId"]=m_strMeasurementId;
+    context.RenderingAssets["benchmark.experimentId"]=m_strCaptureExperimentId;
+    context.RenderingAssets["benchmark.variant"]=m_strCaptureVariant;
+    context.RenderingAssets["benchmark.row"]=m_strMeasurementRowId;
+    return context;
+}
+
+bool Client::CRenderingBenchmark::Queue_RawEvidence(Engine::FProfilerCaptureSnapshot&& snapshot,
+    RENDERING_BENCHMARK_RUN& run)
+{
+    run.applicability=OptimizationApplicability(run);
+    if(m_RawExporter.IsSaving()) { run.rawEvidenceStatus="원본 증거 저장기가 사용 중입니다."; return false; }
+    // Preserve only this phase before a later phase can evict its history.
+    double excludedMaximum=0;
+    for(const auto& frame:snapshot.Frames)
+        if(frame.FrameNumber<run.firstFrame || frame.FrameNumber>run.lastFrame)
+            excludedMaximum=(std::max)(excludedMaximum,frame.FrameIntervalMs);
+    std::erase_if(snapshot.Frames,[&](const auto& frame){return frame.FrameNumber<run.firstFrame || frame.FrameNumber>run.lastFrame;});
+    if(snapshot.Frames.size()!=run.iFrames)
+    { run.rawEvidenceStatus="원본 증거의 프레임 범위가 측정 결과와 다릅니다."; return false; }
+    auto& window=snapshot.CaptureWindow;
+    window.RequestedFrames=run.iFrames; window.SavedFrames=snapshot.Frames.size();
+    window.ExcludedRetainedFrames=window.RetainedFrames-window.SavedFrames;
+    window.FirstSavedFrameNumber=run.firstFrame; window.LastSavedFrameNumber=run.lastFrame;
+    window.ExcludedMaxFrameIntervalMs=excludedMaximum;
+    constexpr size_t maximumBytes=64u*1024u*1024u;
+    if(RawEvidenceBytes(snapshot)>maximumBytes)
+    { run.rawEvidenceStatus="단계 원본 증거가 64 MiB 한도를 넘었습니다. 측정 프레임/상세 scope를 줄여 다시 측정하세요."; return false; }
+    auto path=Make_DefaultPath(); path.replace_filename("evidence_"+path.filename().string());
+    auto context=m_OptimizationCaptureContext;
+    context.RenderingAssets["benchmark.repetition"]=std::to_string(run.repetition);
+    context.RenderingAssets["benchmark.conditionsStable"]=run.bConditionsStable?"true":"false";
+    context.RenderingAssets["benchmark.failureReason"]=run.strFailureReason;
+    context.RenderingAssets["benchmark.frameRange"]=std::to_string(run.firstFrame)+".."+std::to_string(run.lastFrame);
+    string error;
+    run.rawEvidencePath=path.string();
+    if(!m_RawExporter.BeginSave(std::move(snapshot),path,&error,std::move(context)))
+    { run.rawEvidenceStatus="원본 증거 저장 시작 실패: "+error; return false; }
+    m_RawSavePath=run.rawEvidencePath;
+    run.rawEvidenceStatus="저장 중";
+    return true;
+}
+
+void Client::CRenderingBenchmark::Poll_RawEvidence()
+{
+    FProfilerCaptureSaveResult result;
+    if(!m_RawExporter.Poll(result)) return;
+    for(auto& run:m_Runs)
+        if(run.rawEvidencePath==m_RawSavePath)
+        {
+            run.rawEvidenceReady=result.Succeeded;
+            run.rawEvidenceStatus=result.Succeeded?"저장 완료":"저장 실패: "+result.Error;
+        }
+    m_RawSavePath.clear(); m_bSaveQueued=true;
+    if(!result.Succeeded && m_bOptimizationSession)
+        Cancel_Capture("원본 증거 저장 실패: "+result.Error);
+}
+
+bool_t Client::CRenderingBenchmark::Prepare_OptimizationPair(size_t recipeIndex, CRenderingProfileService& profiles)
+{
+    if(recipeIndex>=std::size(ExperimentRecipes) ||
+        !std::string_view(ExperimentRecipes[recipeIndex].Id).starts_with("optimization.")) return false;
+    const bool wasActive=m_bExperimentActive;
+    if(!Start_SessionExperiment(profiles)) return false;
+    const auto& recipe=ExperimentRecipes[recipeIndex];
+    auto a=m_ExperimentOriginal, b=a;
+    if(recipe.RequiredEnabled!=NoGate && a.values[static_cast<size_t>(recipe.RequiredEnabled)]==0)
+    { if(!wasActive)End_Experiment();m_strStatus="전제 설정이 OFF입니다. 다른 옵션을 자동 변경하지 않습니다."; return false; }
+    if(recipe.Field==ExperimentField::OPT_LIGHTING_BANK && a.values[static_cast<size_t>(ExperimentField::SOURCE_MATERIALS)]==0)
+    { if(!wasActive)End_Experiment();m_strStatus="조명 bank는 원본 source material 경로가 필요합니다."; return false; }
+    a.values[static_cast<size_t>(recipe.Field)]=0; b.values[static_cast<size_t>(recipe.Field)]=1;
+    if(!Apply_ComparisonPair(a,b))
+    {
+        if(!wasActive) { const auto status=m_strStatus;End_Experiment();m_strStatus=status; }
+        return false;
+    }
+    m_iWarmupInput=(std::max)(2u,m_iWarmupInput);
+    m_iPresentationStage=-1; m_iSelectedRecipe=m_iPreparedRecipe=static_cast<int>(recipeIndex);
+    m_iSweepField=static_cast<int>(recipe.Field);m_fSweepMinimum=0;m_fSweepMaximum=1;m_iSweepSteps=2;
+    Mark_PreparedComparison(recipe.Id);
+    std::snprintf(m_LabelBuffer.data(),m_LabelBuffer.size(),"%s",recipe.Id);
+    m_strStatus="A는 해당 최적화 OFF, B는 ON입니다. 종료 시 시작할 때의 전체 설정으로 복원합니다.";
+    return true;
+}
+
+void Client::CRenderingBenchmark::Render_OptimizationSection(CRenderingProfileService& profiles)
+{
+    auto& game=Engine::CGameInstance::Get();
+    const bool busy=m_bCapturing || m_bSequence || m_RawExporter.IsSaving();
+    const auto original=m_bExperimentActive?m_ExperimentOriginal:CRenderingProfileService::Read_ExperimentValues();
+    ImGui::TextWrapped("같은 장면에서 한 최적화만 OFF/ON 비교합니다. 고정 카메라 ABBA: A1 → B1 → B2 → A2. 준비·저장 시간은 표본에서 제외하고 마지막에는 이전 A/B 화면으로 돌아갑니다.");
+    ImGui::TextWrapped("카메라·viewport·다른 옵션이 바뀌면 비교를 제외합니다. 움직이는 컷신과 NPC·이펙트 재생은 결정적 replay가 아니므로 고정 시점의 비용과 원본 증거를 함께 확인하세요.");
+    ImGui::BeginDisabled(busy);
+    ImGui::SliderInt("측정 프레임##optimization",&m_iFrameInput,10,900);
+    int warm=static_cast<int>(m_iWarmupInput);
+    if(ImGui::SliderInt("준비 프레임##optimization",&warm,2,120)) m_iWarmupInput=static_cast<uint32_t>(warm);
+    ImGui::EndDisabled();
+    if(m_bOptimizationSession)
+    {
+        ImGui::Checkbox("영상 촬영: F1로 숨겨도 최적화 A/B 화면 유지",&m_bKeepOptimizationHidden);
+        if(m_bKeepOptimizationHidden) ImGui::TextWrapped("다시 F1을 열고 원래 화면으로 복귀할 수 있습니다. 종료·취소·장면 변경·실패는 계속 복원합니다. 숨김 상태는 warmup이 끝나기 전에 고정하세요.");
+    }
+    if(busy && ImGui::Button("측정 취소 · 원래값 복원")) Cancel_Capture("최적화 측정을 취소했습니다.");
+    ImGui::TextWrapped("%s",m_strStatus.c_str()); ImGui::TextWrapped("%s",m_strSaveStatus.c_str());
+    const float height=(std::max)(ImGui::GetTextLineHeightWithSpacing()*12.f,ImGui::GetContentRegionAvail().y*.65f);
+    if(ImGui::BeginTable("OptimizationComparison",3,ImGuiTableFlags_RowBg|ImGuiTableFlags_BordersInnerH|ImGuiTableFlags_Resizable|ImGuiTableFlags_ScrollY,ImVec2(0,height)))
+    {
+        ImGui::TableSetupColumn("최적화 · 실제 적용 범위",ImGuiTableColumnFlags_WidthStretch,1.4f);
+        ImGui::TableSetupColumn("A OFF / B ON",ImGuiTableColumnFlags_WidthFixed,ImGui::GetFrameHeight()*5.f);
+        ImGui::TableSetupColumn("실측 비용 · 처리량",ImGuiTableColumnFlags_WidthStretch,1.f);
+        ImGui::TableSetupScrollFreeze(0,1);ImGui::TableHeadersRow();
+        for(size_t i=0;i<std::size(ExperimentRecipes);++i)
+        {
+            const auto& recipe=ExperimentRecipes[i];if(!std::string_view(recipe.Id).starts_with("optimization."))continue;
+            string unavailable;
+            if(recipe.RequiredEnabled!=NoGate && original.values[static_cast<size_t>(recipe.RequiredEnabled)]==0)
+                unavailable=recipe.RequiredEnabled==ExperimentField::SHADOW_ENABLED?"그림자가 OFF입니다.":"상위 맵 instancing이 OFF입니다.";
+            if(recipe.Field==ExperimentField::OPT_LIGHTING_BANK && original.values[static_cast<size_t>(ExperimentField::SOURCE_MATERIALS)]==0)
+                unavailable="원본 source material이 OFF입니다.";
+            ImGui::PushID(static_cast<int>(i));ImGui::TableNextRow();ImGui::TableSetColumnIndex(0);
+            ImGui::TextUnformatted(recipe.Name);ImGui::TextWrapped("runtime · %s",recipe.Goal);
+            ImGui::TextWrapped("%s",unavailable.empty()?recipe.Boundary:unavailable.c_str());
+            ImGui::TableSetColumnIndex(1);ImGui::BeginDisabled(busy || !unavailable.empty());
+            if(ImGui::Button("A OFF")) {if(Prepare_OptimizationPair(i,profiles))Apply_ExperimentVariant(false);}
+            ImGui::SameLine();if(ImGui::Button("B ON"))Prepare_OptimizationPair(i,profiles);
+            if(ImGui::Button("ABBA 측정"))if(Prepare_OptimizationPair(i,profiles))Start_ComparisonMeasurement(game.Get_Profiler());
+            ImGui::EndDisabled();
+            if(m_bExperimentActive && m_strPreparedComparisonRowId==recipe.Id)ImGui::Text("현재 %s",m_bVariantB?"B ON":"A OFF");
+            ImGui::TableSetColumnIndex(2);Render_ComparisonCost(recipe.Id);ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+    if(ImGui::CollapsingHeader("적용 시점 · 비교 해석"))
+    {
+        ImGui::TextWrapped("맵 재준비 필요: 32m 공간 분할·생성 순서, geometry/atlas bake, LOD 생성 하한과 파생 캐시 cold/warm. 이 표의 runtime 스위치는 로드된 구조만 사용합니다. Atlas 경로는 기본 비활성 준비 상태이며 이 표로 켜지지 않습니다.");
+        ImGui::TextWrapped("별도 실행 필요: Debug/Release와 D3D debug device. 최초 진입·파생 cache·OS 파일 cache는 별도 준비 조건을 기록해야 하며 재시작만으로 cold 상태가 보장되지 않습니다.");
+        ImGui::TextWrapped("대상 관측 0은 최적화 효과 미입증입니다. 고정 카메라와 warmup 뒤의 occlusion은 warm cache 비용이며, 맵 worker 준비 작업은 cache hit로 0일 수 있습니다. CPU/GPU는 겹치고 Map render 안의 material/pass/draw도 중첩됩니다. Worker·Dispatch·Join 시간을 서로 더하지 마세요. GPU pending/invalid는 0ms가 아닙니다.");
+        ImGui::TextWrapped("각 단계는 기존 Profiler 형식의 raw JSON을 별도로 저장합니다(단계 snapshot 메모리 한도 64 MiB). 저장 후 다음 warmup을 시작하며 결과 JSON의 rawEvidencePath와 frame range로 연결합니다.");
+    }
+    Render_Results();
+}
+
 string Client::CRenderingBenchmark::Current_Conditions(uint64_t excludedFields, std::map<string,string>* named, bool rowContext) const
 {
     const auto* shadowBasis=m_pExperimentProfiles?&m_pExperimentProfiles->Get_ExperimentShadowBasis():nullptr;
     string result = ComparisonConditions(excludedFields,shadowBasis,named,rowContext);
+    result += " deviceKnown="+std::to_string(m_bDeviceInfoValid)+" deviceFlags="+
+        std::to_string(m_DeviceCreationFlags)+" adapter="+m_AdapterName;
+    if(!rowContext) result+=" toolVisible="+std::to_string(m_bToolVisible);
+    if(named)
+    {
+        (*named)["device.known"]=m_bDeviceInfoValid?"1":"0";
+        (*named)["device.creationFlags"]=std::to_string(m_DeviceCreationFlags);
+        (*named)["device.adapter"]=m_AdapterName;
+        if(!rowContext)(*named)["ui.workbenchVisible"]=m_bToolVisible?"1":"0";
+    }
     if (shadowBasis)
     {
         // Keep the underlying shadow owner in every fingerprint even while OFF
@@ -537,6 +879,25 @@ namespace
             a.warmupFrames==b.warmupFrames && SameComparisonValues(a.expectedA,b.expectedA) &&
             SameComparisonValues(a.expectedB,b.expectedB) && ComparisonRunValuesValid(a) && ComparisonRunValuesValid(b);
     }
+    bool OptimizationEvidenceComplete(const Client::RENDERING_BENCHMARK_RUN& current,
+        const std::vector<Client::RENDERING_BENCHMARK_RUN>& runs)
+    {
+        if(!current.strRecipeId.starts_with("optimization."))return true;
+        if(current.strMeasurementId.empty())return false;
+        std::array<bool,4> found{};
+        auto sameRepeat=current;
+        for(const auto& run:runs)if(run.strMeasurementId==current.strMeasurementId)
+        {
+            sameRepeat.repetition=run.repetition;
+            if(!run.rawEvidenceReady || !ComparisonRunsMatch(sameRepeat,run) ||
+                run.repetition<1 || run.repetition>2 || (run.strVariant!="A" && run.strVariant!="B"))return false;
+            const size_t index=(run.repetition-1u)*2u+(run.strVariant=="B"?1u:0u);
+            if(found[index])return false;found[index]=true;
+        }
+        return std::all_of(found.begin(),found.end(),[](bool value){return value;});
+    }
+
+
 }
 
 void Client::CRenderingBenchmark::Reset_ComparisonRows()
@@ -544,6 +905,7 @@ void Client::CRenderingBenchmark::Reset_ComparisonRows()
     static uint64_t revision=0;
     m_strComparisonSessionId=m_strExperimentId+".rows."+std::to_string(++revision);
     m_strPreparedComparisonRowId.clear(); m_ComparisonRows.clear();
+    m_bOptimizationSession=false; m_bKeepOptimizationHidden=false;
     m_iComparisonContextUiFrame=-1; m_strComparisonContext.clear();
 }
 
@@ -554,6 +916,8 @@ void Client::CRenderingBenchmark::Mark_PreparedComparison(const string& rowId)
         (!SameComparisonValues(found->second.a,m_ExperimentA) || !SameComparisonValues(found->second.b,m_ExperimentB)))
         m_ComparisonRows.erase(found);
     m_strPreparedComparisonRowId=rowId;
+    m_bOptimizationSession=rowId.starts_with("optimization.");
+    if(!m_bOptimizationSession) m_bKeepOptimizationHidden=false;
     m_PreparedComparisonA=m_ExperimentA; m_PreparedComparisonB=m_ExperimentB;
 }
 
@@ -564,16 +928,11 @@ bool_t Client::CRenderingBenchmark::Prepare_PresentationPair(int stage, CRenderi
     if(!Start_SessionExperiment(profiles)) return false;
     const auto a=BuildPresentationStage(m_ExperimentOriginal,stage>0?stage-1:0);
     const auto b=BuildPresentationStage(m_ExperimentOriginal,stage);
-    uint64_t ownership=0;
-    for(size_t i=0;i<RENDERING_EXPERIMENT_FIELD_COUNT;++i)
-        if(a.values[i]!=m_ExperimentOriginal.values[i] || b.values[i]!=m_ExperimentOriginal.values[i])
-            ownership|=uint64_t{1}<<i;
-    if(!profiles.Set_ExperimentPreview(b,ownership,m_strStatus))
+    if(!Apply_ComparisonPair(a,b))
     {
         if(!wasActive) { const string reason=m_strStatus; End_Experiment(); m_strStatus=reason; }
         return false;
     }
-    m_ExperimentA=a; m_ExperimentB=b; m_bVariantB=true;
     m_iPresentationStage=stage; m_iPreparedRecipe=-1;
     const string rowId="restoration.stage."+std::to_string(stage+1);
     Mark_PreparedComparison(rowId);
@@ -671,6 +1030,18 @@ Client::CRenderingBenchmark::COMPARISON_COST Client::CRenderingBenchmark::Build_
         cost.gpuA=(pair[0]->fGpuAvgMs+pair[2]->fGpuAvgMs)*.5;
         cost.gpuB=(pair[1]->fGpuAvgMs+pair[3]->fGpuAvgMs)*.5;
     }
+    for(const auto* run:pair)
+    {
+        auto& counters=run->strVariant=="B"?cost.countersB:cost.countersA;
+        auto& work=run->strVariant=="B"?cost.workB:cost.workA;
+        for(size_t i=0;i<counters.size();++i) counters[i]+=run->counterTotals[i]/(2.0*run->iFrames);
+        for(size_t i=0;i<work.size();++i) work[i]+=run->workTotals[i].CpuMs/(2.0*run->iFrames);
+        if(run->rawEvidenceReady) ++cost.evidenceReady;
+        if(!run->applicability.empty() && cost.applicability.find(run->applicability)==string::npos)
+        { if(!cost.applicability.empty())cost.applicability+=" / ";cost.applicability+=run->applicability; }
+    }
+    if(std::string_view(rowId).starts_with("optimization.") && cost.evidenceReady!=4u)
+    { cost.cpuValid=false;cost.gpuValid=false;cost.status="원본 증거 저장 대기 · "+std::to_string(cost.evidenceReady)+" / 4";return cost; }
     cost.status="ABBA 완료 · 프레임 차이 (탐색 측정)";
     return cost;
 }
@@ -692,13 +1063,33 @@ void Client::CRenderingBenchmark::Render_ComparisonCost(const char* rowId)
     else ImGui::TextWrapped("GPU N/A · pending %u / invalid %u",cost.pendingGpu,cost.invalidGpu);
     ImGui::TextWrapped("A/B 각 %u frames · 반복 CPU 차 %.3f / %.3f ms",cost.frames,cost.cpuSpreadA,cost.cpuSpreadB);
     if(cost.partialScopes) ImGui::TextWrapped("scope 일부 누락 · 위 수치는 전체 프레임 시간");
+    if(std::string_view(rowId).starts_with("optimization."))
+    {
+        const auto c=[&](Engine::EProfilerCounter id,bool b){return (b?cost.countersB:cost.countersA)[static_cast<size_t>(id)];};
+        ImGui::Text("draw A %.0f / B %.0f",c(Engine::EProfilerCounter::DrawCalls,false),c(Engine::EProfilerCounter::DrawCalls,true));
+        ImGui::Text("index A %.0f / B %.0f",c(Engine::EProfilerCounter::Indices,false),c(Engine::EProfilerCounter::Indices,true));
+        ImGui::Text("Map render A %.3f / B %.3f ms",cost.workA[static_cast<size_t>(Engine::EProfilerWork::MapBatchRender)],cost.workB[static_cast<size_t>(Engine::EProfilerWork::MapBatchRender)]);
+        if(std::string_view(rowId)=="optimization.map-workers")
+        {
+            const double prepared=c(Engine::EProfilerCounter::MapVisibilityPreparedBatches,true);
+            const double workers=c(Engine::EProfilerCounter::MapVisibilityWorkerJobs,true);
+            ImGui::Text("준비 batch / worker job B %.1f / %.1f",prepared,workers);
+            if(prepared==0 || workers==0) ImGui::TextWrapped("병렬 대상 없음 · 이 시간 차이로 worker 효과를 입증할 수 없습니다.");
+        }
+        if(std::string_view(rowId)=="optimization.occlusion")
+            ImGui::Text("warm cache hit A %.1f / B %.1f",c(Engine::EProfilerCounter::MapOcclusionCacheHits,false),c(Engine::EProfilerCounter::MapOcclusionCacheHits,true));
+        ImGui::TextWrapped("%s",cost.applicability.c_str());
+        ImGui::Text("원본 증거 %u / 4 단계 저장",cost.evidenceReady);
+    }
 }
 
 
 bool_t Client::CRenderingBenchmark::Begin(Engine::CProfiler* profiler, const string& label,
     uint32_t frames, const string& qualitySummary, string& status)
 {
-    if (!profiler || m_bCapturing) { status = "Profiler unavailable or a capture is already running."; return false; }
+    if (!profiler || m_bCapturing || m_RawExporter.IsSaving()) { status = "Profiler unavailable or a capture is already running."; return false; }
+    if(m_bOptimizationSession && m_iWarmupInput<2u)
+    { status="최적화 적용 경계의 이전 frame을 제외하려면 준비 프레임이 2 이상이어야 합니다.";return false; }
     // Preserve other Profiler history. A run occupies a bounded window plus a
     // drain tail, and each repeat is finalized before starting the next.
     if (frames < 10u || frames > 900u || m_iWarmupInput > 120u)
@@ -727,18 +1118,38 @@ bool_t Client::CRenderingBenchmark::Begin(Engine::CProfiler* profiler, const str
     return true;
 }
 
-void Client::CRenderingBenchmark::Cancel_Capture(const string& reason)
+void Client::CRenderingBenchmark::Cancel_Capture(const string& reason, const bool restoreOptimization)
 {
     if (m_bCapturing && m_pCaptureProfiler && m_pCaptureProfiler->Is_Enabled() && !m_bProfilerWasEnabled)
         m_pCaptureProfiler->Set_Enabled(false);
     m_bCapturing = false; m_bWarmup = false;
     m_strFailureReason = reason; m_strStatus = reason;
     Finish_Sequence();
+    if(restoreOptimization && m_bOptimizationSession && m_bExperimentActive && m_pExperimentProfiles)
+    {
+        string restored;
+        if(m_pExperimentProfiles->Clear_ExperimentPreview(restored))
+        { m_bExperimentActive=false; m_pExperimentProfiles=nullptr; Reset_ComparisonRows(); m_strStatus=reason+" 원래 설정으로 복원했습니다."; }
+        else m_strStatus=reason+" 복원 실패: "+restored;
+    }
 }
 
 void Client::CRenderingBenchmark::Update(Engine::CProfiler* profiler)
 {
+    Poll_RawEvidence();
     Poll_Save();
+    if(m_bEvidenceDrain)
+    {
+        if(m_RawExporter.IsSaving()) return;
+        m_bEvidenceDrain=false;
+        if(m_bSequence && m_bExperimentActive && profiler)
+        {
+            if(!Apply_ExperimentVariant(m_bEvidenceNextVariantB) ||
+                !Begin(profiler,m_LabelBuffer.data(),static_cast<uint32_t>(m_iFrameInput),"session experiment",m_strStatus))
+                Cancel_Capture("다음 단계 준비 실패: "+m_strStatus);
+        }
+        return;
+    }
     if (!m_bCapturing || !profiler) return;
     if (!profiler->Is_Enabled()) { Cancel_Capture("Capture stopped by the Profiler; completed runs are preserved."); return; }
     Engine::FProfilerLiveStats live{};
@@ -755,6 +1166,7 @@ void Client::CRenderingBenchmark::Update(Engine::CProfiler* profiler)
         m_strComparisonConditions = Current_Conditions(m_iCaptureFields,&m_CaptureCommonFields);
         m_strFullConditions = Current_Conditions(0u,&m_CaptureActualFields);
         m_CaptureValues = CRenderingProfileService::Read_ExperimentValues();
+        if(m_bOptimizationSession) m_OptimizationCaptureContext=Sample_OptimizationContext();
         m_bSourceMaterials = m_CaptureValues.values[static_cast<size_t>(ExperimentField::SOURCE_MATERIALS)] != 0;
         m_strStatus = "Sampling (no GPU waits).";
         if(m_bComparisonMeasurement)
@@ -797,7 +1209,13 @@ void Client::CRenderingBenchmark::Update(Engine::CProfiler* profiler)
     // keeping the session running forever; unresolved samples remain pending.
     if (pending && live.FrameNumber < lastSample + 64u) { m_strStatus = "Resolving pending GPU samples."; return; }
     const bool sequence = m_bSequence;
-    if (!Finalize(*profiler)) { Finish_Sequence(); return; }
+    if (!Finalize(*profiler))
+    {
+        if(m_bOptimizationSession)
+        { const auto found=m_ComparisonRows.find(m_strMeasurementRowId);if(found!=m_ComparisonRows.end())found->second.failure=m_strStatus;Cancel_Capture(m_strStatus); }
+        else Finish_Sequence();
+        return;
+    }
     if (sequence && m_bConditionsStable && m_bExperimentActive && ++m_iSequenceStep < m_iSequenceTotal)
     {
         // AB, BA alternation balances cache/order effects across repeats.
@@ -807,17 +1225,27 @@ void Client::CRenderingBenchmark::Update(Engine::CProfiler* profiler)
             m_ExperimentB = m_ExperimentA;
             m_ExperimentB.values[m_iSweepField] = m_SweepPoints[m_iSequenceStep-1u];
         }
+        if(m_bOptimizationSession && m_RawExporter.IsSaving())
+        {
+            m_bEvidenceDrain=true; m_bEvidenceNextVariantB=m_bSweep || nextB;
+            m_strStatus="단계 원본 증거 저장 중 · 다음 warmup은 저장 후 시작합니다.";
+            return;
+        }
         if (!Apply_ExperimentVariant(m_bSweep || nextB) ||
             !Begin(profiler, m_LabelBuffer.data(), static_cast<uint32_t>(m_iFrameInput), "session experiment", m_strStatus))
             Finish_Sequence();
     }
-    else Finish_Sequence();
+    else
+    {
+        Finish_Sequence();
+        if(m_bOptimizationSession && !m_bConditionsStable) Cancel_Capture(m_strFailureReason);
+    }
 }
 
 bool_t Client::CRenderingBenchmark::Finalize(Engine::CProfiler& profiler)
 {
     m_bCapturing = false;
-    const auto snapshot = profiler.Snapshot();
+    auto snapshot = profiler.Snapshot();
     if (!m_bProfilerWasEnabled && !m_bSequence) profiler.Set_Enabled(false);
     RENDERING_BENCHMARK_RUN run;
     run.strLabel = m_strLabel; run.strTimestamp = Now_Timestamp(); run.strQualitySummary = m_strQualitySummary;
@@ -828,6 +1256,13 @@ bool_t Client::CRenderingBenchmark::Finalize(Engine::CProfiler& profiler)
         const auto& recipe=ExperimentRecipes[m_iPreparedRecipe];
         if(m_iCaptureFields==Client::RenderingExperimentBit(recipe.Field))
         {run.strRecipeId=recipe.Id;run.strExperimentGoal=recipe.Goal;run.strMetricGuide=recipe.Metrics;run.strConfidence=RecipeConfidence(recipe.Kind);}
+    }
+    if(m_strPreparedComparisonRowId==QualitySuiteRowId)
+    {
+        run.strRecipeId=QualitySuiteRowId;
+        run.strExperimentGoal="시작 화면과 DX11 품질 확장 후보의 합성 차이";
+        run.strMetricGuide="CPU/GPU frame ms와 Render.SSAO/SSGI/SSR/Copy, 동일 카메라의 표면·반사·가림";
+        run.strConfidence="다변수 후보의 총 비용이며 개별 기법의 비용이나 화질 상승률이 아닙니다.";
     }
     run.strExperimentId = m_strCaptureExperimentId; run.strVariant = m_strCaptureVariant;
     run.fieldMask = m_iCaptureFields; run.warmupFrames = m_iCaptureWarmup; run.repetition = m_bSweep ? m_iSequenceStep+1u : m_iSequenceStep / 2u + 1u;
@@ -856,6 +1291,9 @@ bool_t Client::CRenderingBenchmark::Finalize(Engine::CProfiler& profiler)
         run.fIndicesAvg += count(frame,Engine::EProfilerCounter::Indices);
         run.fMeshDrawsAvg += count(frame,Engine::EProfilerCounter::MeshDrawCalls);
         run.fUniqueMeshesAvg += count(frame,Engine::EProfilerCounter::UniqueMeshes);
+        for(size_t i=0;i<run.counterTotals.size();++i) run.counterTotals[i]+=static_cast<double>(frame.Counters[i]);
+        for(size_t i=0;i<run.workTotals.size();++i)
+        { run.workTotals[i].CpuMs+=frame.CpuWork[i].CpuMs; run.workTotals[i].Calls+=frame.CpuWork[i].Calls; }
         run.droppedCpuScopes += frame.DroppedCpuScopes; run.droppedGpuScopes += frame.DroppedGpuScopes;
         if (frame.DetailedCpuScopes && !frame.DroppedCpuScopes && snapshot.TicksPerSecond)
         {
@@ -872,6 +1310,9 @@ bool_t Client::CRenderingBenchmark::Finalize(Engine::CProfiler& profiler)
         else if (!frame.GpuValid) ++run.invalidGpuFrames;
         if (!frame.GpuValid) continue;
         gpu.push_back(frame.GpuFrameMs); run.fPsInvocationsAvg += static_cast<double>(frame.Pipeline.PSInvocations);
+        run.iaVerticesTotal+=static_cast<double>(frame.Pipeline.IAVertices);
+        run.iaPrimitivesTotal+=static_cast<double>(frame.Pipeline.IAPrimitives);
+        run.vsInvocationsTotal+=static_cast<double>(frame.Pipeline.VSInvocations);
         if (!frame.GpuScopesSupported || frame.DroppedGpuScopes) continue;
         ++completeGpuScopes;
         for (const auto& sample : frame.GpuScopes)
@@ -905,7 +1346,9 @@ bool_t Client::CRenderingBenchmark::Finalize(Engine::CProfiler& profiler)
         pass.drawCalls/=completeGpuScopes; pass.indices/=completeGpuScopes; run.passes.push_back(pass);
     }
     if (m_Runs.size() == 128u) { m_Runs.erase(m_Runs.begin()); m_iCompareFirst=m_iCompareSecond=-1; }
+    const bool evidenceOk=!m_bOptimizationSession || Queue_RawEvidence(std::move(snapshot),run);
     m_Runs.push_back(std::move(run)); m_iCompareSecond=static_cast<int>(m_Runs.size()-1u);
+    if(!evidenceOk) { m_strStatus=m_Runs.back().rawEvidenceStatus; m_bSaveQueued=true; return false; }
     if (m_bSweep)
     {
         for (size_t i=0;i+1<m_Runs.size();++i)
@@ -919,9 +1362,9 @@ bool_t Client::CRenderingBenchmark::Finalize(Engine::CProfiler& profiler)
     return true;
 }
 
-void Client::CRenderingBenchmark::Queue_Save()
+void Client::CRenderingBenchmark::Queue_Save(const bool shutdown)
 {
-    if (m_SaveFuture.valid()) { m_bSaveQueued=true; return; }
+    if (m_SaveFuture.valid() || (!shutdown && m_RawExporter.IsSaving())) { m_bSaveQueued=true; return; }
     auto runs=m_Runs; const auto path=Make_DefaultPath(); m_bSaveQueued=false;
     try
     {
@@ -968,11 +1411,13 @@ void Client::CRenderingBenchmark::Notify_ProfileReload()
 void Client::CRenderingBenchmark::Update_RestorationPreview(
 	CRenderingProfileService& Profiles, const bool_t bToolVisible)
 {
-    if (m_bExperimentActive && (!bToolVisible || !Profiles.Has_ExperimentPreview() ||
+    m_bToolVisible=bToolVisible;
+    const bool keepHidden=m_bOptimizationSession && m_bKeepOptimizationHidden;
+    if (m_bExperimentActive && ((!bToolVisible && !keepHidden) || !Profiles.Has_ExperimentPreview() ||
         Profiles.Get_ProfileGeneration() != m_iExperimentProfileGeneration ||
         Engine::CGameInstance::Get().Get_CurrentLevelID() != m_iExperimentLevel))
         End_Experiment();
-    if (!bToolVisible && m_bCapturing) Cancel_Capture("Workbench closed; capture cancelled, completed runs preserved.");
+    if (!bToolVisible && !keepHidden && (m_bCapturing || m_bSequence)) Cancel_Capture("Workbench closed; capture cancelled, completed runs preserved.");
     auto& game = Engine::CGameInstance::Get();
     if (m_bPixelDiagnosticsActive && (!bToolVisible || game.Get_CurrentLevelID() != m_iPixelDiagnosticsLevel))
     {
@@ -1558,7 +2003,7 @@ void Client::CRenderingBenchmark::Finish_Sequence()
     if (m_pCaptureProfiler && !m_bProfilerWasEnabled && m_pCaptureProfiler->Is_Enabled())
         m_pCaptureProfiler->Set_Enabled(false);
     m_pCaptureProfiler=nullptr; // A completed run no longer owns a later F7 capture.
-    m_bSequence = false;
+    m_bSequence = false; m_bEvidenceDrain=false;
     if(m_bComparisonMeasurement)
     {
         const auto found=m_ComparisonRows.find(m_strMeasurementRowId);
@@ -1592,6 +2037,7 @@ bool_t Client::CRenderingBenchmark::Start_Sweep(Engine::CProfiler* profiler)
     if (info.boolean) points={0,1};
     else if (m_iSweepField==static_cast<int>(RENDERING_EXPERIMENT_FIELD::SSAO_SAMPLES)) points={4,8,12};
     else if (m_iSweepField==static_cast<int>(RENDERING_EXPERIMENT_FIELD::PCF_RADIUS)) points={0,1,2};
+    else if (m_iSweepField==static_cast<int>(RENDERING_EXPERIMENT_FIELD::TEXTURE_MIN_MIP)) points={0,1,2,3};
     else if (m_iSweepField==static_cast<int>(RENDERING_EXPERIMENT_FIELD::SSGI_SAMPLES)) points={4,8,16};
     else if (m_iSweepField==static_cast<int>(RENDERING_EXPERIMENT_FIELD::SSR_STEPS)) points={16,32,64};
     else
@@ -1618,7 +2064,7 @@ bool_t Client::CRenderingBenchmark::Start_Sweep(Engine::CProfiler* profiler)
 
 void Client::CRenderingBenchmark::End_Experiment()
 {
-    Cancel_Capture("Session experiment ended. Completed runs remain available.");
+    Cancel_Capture("Session experiment ended. Completed runs remain available.",false);
     if (m_pExperimentProfiles && !m_pExperimentProfiles->Clear_ExperimentPreview(m_strStatus)) return;
     m_bExperimentActive=false; m_pExperimentProfiles=nullptr; m_iPresentationStage=-1;
     Reset_ComparisonRows();
@@ -1631,6 +2077,8 @@ bool_t Client::CRenderingBenchmark::Prepare_RecipeById(const char* recipeId, CRe
         [recipeId](const auto& recipe){return std::string_view(recipe.Id)==recipeId;});
     if (found==std::end(ExperimentRecipes))
     { m_strStatus="이 기법에는 연결된 실험 recipe가 없습니다. 현재 A/B를 유지합니다."; return false; }
+    if(std::string_view(found->Id).starts_with("optimization."))
+        return Prepare_OptimizationPair(static_cast<size_t>(found-std::begin(ExperimentRecipes)),profiles);
     const bool wasActive=m_bExperimentActive;
     if (!Start_SessionExperiment(profiles)) return false;
     const int previous=m_iSelectedRecipe;
@@ -1671,23 +2119,44 @@ bool_t Client::CRenderingBenchmark::Prepare_Recipe(bool_t replaceB)
     return true;
 }
 
-bool_t Client::CRenderingBenchmark::Apply_PresentationCandidate(const RENDERING_EXPERIMENT_VALUES& candidate)
+bool_t Client::CRenderingBenchmark::Apply_ComparisonPair(const RENDERING_EXPERIMENT_VALUES& base,
+    const RENDERING_EXPERIMENT_VALUES& candidate)
 {
     if(!m_bExperimentActive || !m_pExperimentProfiles || m_bCapturing) return false;
-    uint64_t mask=0;
+    uint64_t ownership=0;
     for(size_t i=0;i<RENDERING_EXPERIMENT_FIELD_COUNT;++i)
-        if(candidate.values[i]!=m_ExperimentOriginal.values[i]) mask|=uint64_t{1}<<i;
-    // The service restores fields released by the previous stage. Commit UI only
-    // after admission succeeds; application uses the next complete frame transaction.
-    if(!m_pExperimentProfiles->Set_ExperimentPreview(candidate,mask,m_strStatus)) return false;
-    if(m_ExperimentA.values!=m_ExperimentOriginal.values)
+        if(base.values[i]!=m_ExperimentOriginal.values[i] || candidate.values[i]!=m_ExperimentOriginal.values[i])
+            ownership|=uint64_t{1}<<i;
+    // Both variants own their differences from the immutable entry values. The
+    // comparison mask itself still contains only A/B differences for measurement.
+    if(!m_pExperimentProfiles->Set_ExperimentPreview(candidate,ownership,m_strStatus)) return false;
+    if(base.values!=m_ExperimentA.values)
     {
+        // Generic captures also use the experiment identity to prevent comparing
+        // different A baselines. Row-owned ABBA records retain their own IDs.
         static uint64_t revision=0;
-        m_strExperimentId="experiment.presentation."+std::to_string(GetCurrentProcessId())+"."+
+        m_strExperimentId="experiment.pair."+std::to_string(GetCurrentProcessId())+"."+
             std::to_string(GetTickCount64())+"."+std::to_string(++revision);
     }
-    m_ExperimentA=m_ExperimentOriginal; m_ExperimentB=candidate; m_bVariantB=true;
-    m_iPreparedRecipe=-1;
+    m_ExperimentA=base; m_ExperimentB=candidate; m_bVariantB=true; m_iPreparedRecipe=-1;
+    return true;
+}
+
+bool_t Client::CRenderingBenchmark::Prepare_QualitySuiteComparison(CRenderingProfileService& profiles)
+{
+    const bool wasActive=m_bExperimentActive;
+    if(!Start_SessionExperiment(profiles)) return false;
+    RENDERING_EXPERIMENT_VALUES candidate;
+    if(!BuildQualitySuiteCandidate(m_ExperimentOriginal,candidate,m_strStatus) ||
+        !Apply_ComparisonPair(m_ExperimentOriginal,candidate))
+    {
+        if(!wasActive) { const string reason=m_strStatus; End_Experiment(); m_strStatus=reason; }
+        return false;
+    }
+    m_iPresentationStage=-1; m_iPreparedRecipe=-1;
+    Mark_PreparedComparison(QualitySuiteRowId);
+    std::snprintf(m_LabelBuffer.data(),m_LabelBuffer.size(),"%s",QualitySuiteRowId);
+    m_strStatus="A는 시작 화면, B는 DX11 품질 확장 후보입니다. 여러 기법의 합성 비교이며 측정된 우수성이나 UE5 전체 구현을 뜻하지 않습니다.";
     return true;
 }
 
@@ -1696,18 +2165,19 @@ bool_t Client::CRenderingBenchmark::Apply_PresentationStage(int stage, CRenderin
     return Prepare_PresentationPair(stage,profiles);
 }
 
-bool_t Client::CRenderingBenchmark::Prepare_QuickComparison(CRenderingProfileService& profiles)
+bool_t Client::CRenderingBenchmark::Prepare_QuickComparison(CRenderingProfileService& profiles, bool_t qualitySuiteBase)
 {
     const bool wasActive=m_bExperimentActive;
     if(!Start_SessionExperiment(profiles)) return false;
+    auto base=m_ExperimentOriginal;
     const auto& selected=QuickTechniques[m_iQuickTechnique];
     const auto found=std::find_if(std::begin(ExperimentRecipes),std::end(ExperimentRecipes),
         [&](const auto& recipe){return std::string_view(recipe.Id)==selected.Recipe;});
     RENDERING_EXPERIMENT_VALUES candidate; float low=0,high=0;
-    const bool ready=found!=std::end(ExperimentRecipes) && BuildRecipeCandidate(*found,m_ExperimentOriginal,
-        m_ExperimentOriginal.values[static_cast<size_t>(ExperimentField::SOURCE_MATERIALS)]!=0,
-        candidate,low,high,m_strStatus);
-    if(!ready || !Apply_PresentationCandidate(candidate))
+    const bool ready=(!qualitySuiteBase || BuildQualitySuiteCandidate(m_ExperimentOriginal,base,m_strStatus)) &&
+        found!=std::end(ExperimentRecipes) && BuildRecipeCandidate(*found,base,
+        base.values[static_cast<size_t>(ExperimentField::SOURCE_MATERIALS)]!=0,candidate,low,high,m_strStatus);
+    if(!ready || !Apply_ComparisonPair(base,candidate))
     {
         if(!wasActive) { const string reason=m_strStatus; End_Experiment(); m_strStatus=reason; }
         return false;
@@ -1715,9 +2185,11 @@ bool_t Client::CRenderingBenchmark::Prepare_QuickComparison(CRenderingProfileSer
     m_iPresentationStage=-1;
     m_iSelectedRecipe=m_iPreparedRecipe=static_cast<int>(found-std::begin(ExperimentRecipes));
     m_iSweepField=static_cast<int>(found->Field); m_fSweepMinimum=low; m_fSweepMaximum=high; m_iSweepSteps=found->Steps;
-    std::snprintf(m_LabelBuffer.data(),m_LabelBuffer.size(),"%s",found->Id);
-    Mark_PreparedComparison(found->Id);
-    m_strStatus="A는 시연 시작 때의 설정, B는 선택한 한 기법만 바꾼 비교입니다.";
+    const string rowId=string(qualitySuiteBase?"quality-base.":"original-base.")+found->Id;
+    std::snprintf(m_LabelBuffer.data(),m_LabelBuffer.size(),"%s",rowId.c_str());
+    Mark_PreparedComparison(rowId);
+    m_strStatus=qualitySuiteBase?"A는 품질 확장 후보, B는 그 안의 한 기법만 바꾼 설정입니다. 종료하면 시작 화면으로 복원합니다.":
+        "A는 시연 시작 때의 설정, B는 선택한 한 기법만 바꾼 비교입니다.";
     return true;
 }
 
@@ -1826,51 +2298,116 @@ void Client::CRenderingBenchmark::Render_PresentationSection(CRenderingProfileSe
 
 void Client::CRenderingBenchmark::Render_QuickComparison(CRenderingProfileService& profiles)
 {
-    ImGui::TextWrapped("복원 순서에 맞춘 단일 기법 비교입니다. A는 시연 시작 때 보관한 현재 설정, B는 해당 기법만 바꾼 설정입니다. 각 행에서 전환하고 옆에 비용을 측정합니다.");
+    const auto original=m_bExperimentActive?m_ExperimentOriginal:CRenderingProfileService::Read_ExperimentValues();
+    auto& game=Engine::CGameInstance::Get();
+    const auto quality=game.Get_RenderQualitySettings();
+    const auto environment=game.Get_RenderEnvironment();
+    const auto* profile=profiles.Get_ActiveProfile();
+    ImGui::SeparatorText("현재 연결된 원본 복구 기여 A/B");
+    ImGui::TextWrapped("A는 시작 화면, B는 현재 연결된 한 경로의 ON/OFF 또는 기여만 바꾼 설정입니다. 새 원본 값이나 프로필을 만들지 않습니다. 저장·Publish 없이 종료하면 시작 화면으로 복원합니다.");
+    ImGui::Text("현재 profile: %s | region: %s",profiles.Get_ActiveProfileId().c_str(),
+        profiles.Get_AppliedEnvironmentRegionId().empty()?"scene":profiles.Get_AppliedEnvironmentRegionId().c_str());
+    ImGui::Text("현재 source material %s / PBR indirect %s / tone + grading %s",
+        game.Get_MaterialRenderSettings().bUseSourceMaterials?"ON":"OFF",
+        environment.bUseSourcePBRIndirect?"ON":"OFF",quality.SourcePostProcess.bEnabled?"ON":"OFF");
+    if(ImGui::CollapsingHeader("현재 연결 입력 · 원작 일치 인증 아님"))
+    {
+        const char* cube=profile && !profile->strEnvironmentCubeAssetId.empty()?profile->strEnvironmentCubeAssetId.c_str():"없음";
+        ImGui::TextWrapped("Profile cube asset: %s | 현재 scene cube SRV: %s",cube,environment.pCube?"있음":"없음");
+        ImGui::Text("현재 tone scale %.4g / range %.4g / toe %.4g | LUT layers %zu",
+            quality.SourcePostProcess.fToneScale,quality.SourcePostProcess.fToneRange,
+            quality.SourcePostProcess.fToneToe,quality.SourcePostProcess.LutLayers.size());
+        for(const auto& layer:quality.SourcePostProcess.LutLayers)
+            ImGui::TextWrapped("LUT: %s | weight %.4g",layer.pLut?layer.pLut->strAssetId.c_str():"neutral lattice",layer.fWeight);
+        const auto bindings=CMapAssetRenderUtils::Get_RecentSurfaceBindings();
+        ImGui::Text("최근1초 관측한 표면 정의: %zu (최대32개)",bindings.size());
+        for(const auto& row:bindings)
+            ImGui::TextWrapped("%s | %s | program %u / RNM %s / cube %s / source indirect %s",
+                row.assetId.c_str(),row.materialName.c_str(),row.activeProgram,row.surface.hasBakedLighting?"있음":"없음",
+                row.surface.hasEnvironmentCube?"있음":"없음",row.surface.hasSourceIndirect?"있음":"없음");
+        ImGui::TextWrapped("입력의 존재와 현재 연결 상태를 표시합니다. 원본 영상과 일치한다는 판정이나 GPU 픽셀 검증은 아닙니다. 관측되지 않은 표면의 지원을 추정하지 않습니다.");
+    }
     if(m_bCapturing)
     {
         ImGui::Text("측정 중: %s | %s",m_LabelBuffer.data(),m_bWarmup?"준비":"수집 / GPU 회수");
         if(ImGui::Button("측정 중지")) Cancel_Capture("Capture cancelled; completed runs preserved.");
     }
-    const auto original=m_bExperimentActive?m_ExperimentOriginal:CRenderingProfileService::Read_ExperimentValues();
-    const float height=(std::max)(ImGui::GetTextLineHeightWithSpacing()*9.f,ImGui::GetContentRegionAvail().y*.78f);
-    if(ImGui::BeginTable("TechniqueCosts",3,ImGuiTableFlags_RowBg|ImGuiTableFlags_BordersInnerH|
-        ImGuiTableFlags_Resizable|ImGuiTableFlags_ScrollY,ImVec2(0,height)))
-    {
-        ImGui::TableSetupColumn("기법 · 비교 범위",ImGuiTableColumnFlags_WidthStretch,1.4f);
+    const auto renderRows=[&](int group,const char* tableId,bool qualitySuiteBase) {
+        auto base=original; string baseStatus;
+        const bool baseReady=!qualitySuiteBase || BuildQualitySuiteCandidate(original,base,baseStatus);
+        const float height=(std::max)(ImGui::GetTextLineHeightWithSpacing()*9.f,ImGui::GetContentRegionAvail().y*.55f);
+        if(!ImGui::BeginTable(tableId,3,ImGuiTableFlags_RowBg|ImGuiTableFlags_BordersInnerH|
+            ImGuiTableFlags_Resizable|ImGuiTableFlags_ScrollY,ImVec2(0,height))) return;
+        ImGui::TableSetupColumn("기법 · 현재 연결 범위",ImGuiTableColumnFlags_WidthStretch,1.4f);
         ImGui::TableSetupColumn("A / B",ImGuiTableColumnFlags_WidthFixed,ImGui::GetFrameHeight()*4.6f);
         ImGui::TableSetupColumn("실측 프레임 비용 (ms)",ImGuiTableColumnFlags_WidthStretch,1.f);
         ImGui::TableSetupScrollFreeze(0,1); ImGui::TableHeadersRow();
         for(int i=0;i<static_cast<int>(std::size(QuickTechniques));++i)
         {
-            const auto& technique=QuickTechniques[i];
+            const auto& technique=QuickTechniques[i]; if(technique.Group!=group) continue;
             const auto recipe=std::find_if(std::begin(ExperimentRecipes),std::end(ExperimentRecipes),
                 [&](const auto& item){return std::string_view(item.Id)==technique.Recipe;});
             if(recipe==std::end(ExperimentRecipes))continue;
             RENDERING_EXPERIMENT_VALUES candidate;float low=0,high=0;string reason;
-            const bool ready=BuildRecipeCandidate(*recipe,original,
-                original.values[static_cast<size_t>(ExperimentField::SOURCE_MATERIALS)]!=0,candidate,low,high,reason);
+            const bool ready=baseReady && BuildRecipeCandidate(*recipe,base,
+                base.values[static_cast<size_t>(ExperimentField::SOURCE_MATERIALS)]!=0,candidate,low,high,reason);
+            if(!baseReady) reason=baseStatus;
+            const string rowId=string(qualitySuiteBase?"quality-base.":"original-base.")+technique.Recipe;
             const auto prepare=[&]() {
                 const int previous=m_iQuickTechnique;m_iQuickTechnique=i;
-                if(Prepare_QuickComparison(profiles))return true;
+                if(Prepare_QuickComparison(profiles,qualitySuiteBase))return true;
                 m_iQuickTechnique=previous;return false;
             };
             ImGui::PushID(i); ImGui::TableNextRow(); ImGui::TableSetColumnIndex(0);
             ImGui::TextUnformatted(technique.Name);
             const size_t field=static_cast<size_t>(recipe->Field);
-            if(ready) ImGui::Text("A %.4g / B %.4g",original.values[field],candidate.values[field]);
+            if(ready) ImGui::Text("A %.4g / B %.4g",base.values[field],candidate.values[field]);
             ImGui::TextWrapped("%s",ready?recipe->Boundary:reason.c_str());
             ImGui::TableSetColumnIndex(1); ImGui::BeginDisabled(m_bCapturing || !ready);
             if(ImGui::Button("A")) {if(prepare())Apply_ExperimentVariant(false);}
             ImGui::SameLine();if(ImGui::Button("B"))prepare();
-            if(ImGui::Button("비용 측정"))if(prepare())Start_ComparisonMeasurement(Engine::CGameInstance::Get().Get_Profiler());
+            if(ImGui::Button("비용 측정"))if(prepare())Start_ComparisonMeasurement(game.Get_Profiler());
             ImGui::EndDisabled();
-            if(m_bExperimentActive && m_iPresentationStage<0 && m_iPreparedRecipe==recipe-std::begin(ExperimentRecipes))
+            if(m_bExperimentActive && m_strPreparedComparisonRowId==rowId)
                 ImGui::Text("적용: %s",m_bVariantB?"B":"A");
-            ImGui::TableSetColumnIndex(2); Render_ComparisonCost(technique.Recipe);
+            ImGui::TableSetColumnIndex(2); Render_ComparisonCost(rowId.c_str());
             ImGui::PopID();
         }
         ImGui::EndTable();
+    };
+    renderRows(0,"SourceRestorationCosts",false);
+    if(ImGui::CollapsingHeader("기타 현재 설정 A/B"))
+    {
+        ImGui::TextWrapped("시작 화면을 기준으로 기존 그림자·SSAO·안개·표시 설정을 한 항목씩 비교합니다. 원본 기법의 구현 여부를 판정하는 묶음이 아닙니다.");
+        renderRows(1,"CurrentTechniqueCosts",false);
+    }
+    if(ImGui::CollapsingHeader("추가 품질 실험 (원본 복구와 별도)"))
+    {
+        RENDERING_EXPERIMENT_VALUES suite; string suiteStatus;
+        const bool suiteReady=BuildQualitySuiteCandidate(original,suite,suiteStatus);
+        ImGui::SeparatorText("DX11 품질 확장 실험");
+        ImGui::TextWrapped("A는 시작 화면, B는 mip0 + 자체 Horizon AO 12방향 + PCF25 + SSGI16 전체 해상도 + SSR64 교차 보정·roughness 필터 후보입니다. 원본 복구를 뜻하지 않습니다. 저장값·노출·감마·FXAA·Bloom은 유지합니다.");
+        if(suiteReady)
+            ImGui::Text("후보 강도 AO %.3g / SSGI %.3g / SSR %.3g (원래 강도가 0일 때만 1 / 0.25 / 0.5)",
+                suite.values[static_cast<size_t>(ExperimentField::SSAO_INTENSITY)],
+                suite.values[static_cast<size_t>(ExperimentField::SSGI_STRENGTH)],
+                suite.values[static_cast<size_t>(ExperimentField::SSR_STRENGTH)]);
+        else ImGui::TextWrapped("%s",suiteStatus.c_str());
+        ImGui::BeginDisabled(m_bCapturing || !suiteReady);
+        if(ImGui::Button("시작 화면 A##qualitySuite")) { if(Prepare_QualitySuiteComparison(profiles)) Apply_ExperimentVariant(false); }
+        ImGui::SameLine(); if(ImGui::Button("품질 확장 B##qualitySuite")) Prepare_QualitySuiteComparison(profiles);
+        ImGui::SameLine(); if(ImGui::Button("통합 비용 측정##qualitySuite"))
+            if(Prepare_QualitySuiteComparison(profiles)) Start_ComparisonMeasurement(game.Get_Profiler());
+        ImGui::EndDisabled();
+        Render_ComparisonCost(QualitySuiteRowId);
+        ImGui::TextWrapped("SSGI/SSR은 marker3 MapPBR·FINAL 화면의 RNM/IBL 위에 가산합니다. Horizon AO는 현재 SSAO 수신면을 사용하며 PCF는 켜져 있는 그림자에만 보입니다. 시간 누적·UE5/Lumen·GTAO·경로 추적은 없습니다. 실제 비용과 같은 카메라의 화질을 따로 판단합니다.");
+        ImGui::BeginDisabled(m_bCapturing);
+        ImGui::Checkbox("아래 추가 실험의 A를 품질 확장 후보로 사용",&m_bQuickQualitySuiteBase);
+        ImGui::EndDisabled();
+        ImGui::TextWrapped(m_bQuickQualitySuiteBase?
+            "아래 A는 품질 후보, B는 그 안의 한 기법만 바꾼 설정입니다. 위 원본 복구 비교는 계속 시작 화면을 기준으로 합니다.":
+            "아래 A는 시작 화면, B는 한 기법만 바꾼 설정입니다. 체크하거나 영역을 펼치는 것만으로 화면은 바뀌지 않습니다.");
+        renderRows(2,"ExtraTechniqueCosts",m_bQuickQualitySuiteBase);
     }
     ImGui::TextWrapped("%s",m_strStatus.c_str());
     ImGui::TextWrapped("양수는 B의 추가 프레임 시간, 음수는 감소입니다. B가 OFF인 행은 기능을 끈 차이입니다. GPU N/A·미측정은 0 ms가 아닙니다. sample/PCF/반경 sweep와 패스별 수치는 Measure / Analyze에서 확인합니다.");
@@ -1944,7 +2481,9 @@ void Client::CRenderingBenchmark::Render_ExperimentSection(Engine::CProfiler* pr
             "PBR 환경 specular","PBR cube diffuse","PBR normal 강도","PBR roughness offset",
             "실험 SSGI 켜기","SSGI 기여 강도","SSGI 반경 (m)","SSGI 샘플 수 (4/8/16)",
             "실험 SSR 켜기","SSR 기여 강도","SSR 최대 거리 (m)","SSR hit 두께 (m)","SSR step 수 (16/32/64)",
-            "원본 PBR 간접광 경로","Source tone + grading 묶음","기본 / 원본 재질","SSGI 절반 해상도 + 경계 보존 합성"};
+            "원본 PBR 간접광 경로","Source tone + grading 묶음","기본 / 원본 재질","SSGI 절반 해상도 + 경계 보존 합성",
+            "표면 텍스처 최소 mip (0/1/2/3)","Horizon AO 사용 (SSAO 대신)","SSR 교차 구간 세부 탐색","SSR roughness 반사 필터",
+            "맵 프러스텀 컬링","맵 가림 컬링","맵 거리 컬링","메시 LOD 선택","맵 인스턴싱","동일 모델·재질 추가 병합","조명 bank 병합","정적 그림자 캐시","NPC pose 표본 재사용","파티클 root 변환 재사용","맵 CPU worker","파티클 CPU worker"};
         static_assert(std::size(labels)==RENDERING_EXPERIMENT_FIELD_COUNT);
         size_t changedCount=0; const uint64_t mask=Experiment_FieldMask();
         for (size_t i=0;i<RENDERING_EXPERIMENT_FIELD_COUNT;++i) if (mask&(uint64_t{1}<<i)) ++changedCount;
@@ -1970,8 +2509,9 @@ void Client::CRenderingBenchmark::Render_ExperimentSection(Engine::CProfiler* pr
                     ImGui::BeginDisabled(inactiveCube || inactiveLut);
                     if (i==static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::SSAO_SAMPLES))
                     { int value=static_cast<int>(m_ExperimentB.values[i]/4.0)-1; if (ImGui::Combo("##value",&value,"4\0" "8\0" "12\0")) {m_ExperimentB.values[i]=(value+1)*4;changed=true;} }
-                    else if (i==static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::PCF_RADIUS))
-                    { int value=static_cast<int>(m_ExperimentB.values[i]); if (ImGui::SliderInt("##value",&value,0,2)) {m_ExperimentB.values[i]=value;changed=true;} }
+                    else if (i==static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::PCF_RADIUS) || i==static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::TEXTURE_MIN_MIP))
+                    { const int maximum=i==static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::TEXTURE_MIN_MIP)?3:2;
+                      int value=static_cast<int>(m_ExperimentB.values[i]); if (ImGui::SliderInt("##value",&value,0,maximum)) {m_ExperimentB.values[i]=value;changed=true;} }
                     else if (i==static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::SSGI_SAMPLES) || i==static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::SSR_STEPS))
                     {
                         const bool gi=i==static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::SSGI_SAMPLES); const int first=gi?4:16;
@@ -2052,7 +2592,7 @@ void Client::CRenderingBenchmark::Render_Results()
 {
     if (m_Runs.empty()) return;
     ImGui::SeparatorText("이전 결과 비교 / 프레임 비용");
-    ImGui::BeginDisabled(m_bCapturing);
+    ImGui::BeginDisabled(m_bCapturing || m_bSequence || m_RawExporter.IsSaving());
     if (ImGui::Button("결과 JSON 저장")) Queue_Save();
     ImGui::SameLine(); if (ImGui::Button("목록 비우기")) {m_Runs.clear();m_iCompareFirst=m_iCompareSecond=-1;ImGui::EndDisabled();return;}
     ImGui::EndDisabled();
@@ -2125,6 +2665,21 @@ void Client::CRenderingBenchmark::Render_Results()
             ImGui::Text("interval 평균/중앙/p95/p99/max: %.3f / %.3f / %.3f / %.3f / %.3f ms (%u 표본)",r.fIntervalAvgMs,r.fIntervalP50Ms,r.fIntervalP95Ms,r.fIntervalP99Ms,r.fIntervalMaxMs,r.iIntervalFrames);
             if (r.fIntervalAvgMs>0) ImGui::Text("관측 FPS %.2f | 목표 %.0f FPS / %.3f ms",1000.0/r.fIntervalAvgMs,m_fTargetFps,1000.0/m_fTargetFps);
             ImGui::Text("draw %.0f | mesh draw %.0f | 고유 mesh %.0f | instance %.0f | index %.0f",r.fDrawCallsAvg,r.fMeshDrawsAvg,r.fUniqueMeshesAvg,r.fInstancesAvg,r.fIndicesAvg);
+            if(r.iGpuFrames) ImGui::Text("IA vertex / primitive / VS: %.0f / %.0f / %.0f (GPU 유효 %u 표본)",r.iaVerticesTotal/r.iGpuFrames,r.iaPrimitivesTotal/r.iGpuFrames,r.vsInvocationsTotal/r.iGpuFrames,r.iGpuFrames);
+            if(!r.applicability.empty())ImGui::TextWrapped("%s",r.applicability.c_str());
+            if(!r.rawEvidenceStatus.empty()) { ImGui::TextWrapped("원본 증거: %s",r.rawEvidenceStatus.c_str());ImGui::TextWrapped("%s",r.rawEvidencePath.c_str()); }
+            if(ImGui::TreeNode("이름 있는 counters · 프레임 평균 / 전체 합"))
+            {
+                for(size_t n=0;n<r.counterTotals.size();++n)if(r.counterTotals[n]!=0)
+                    ImGui::Text("%s: %.3f / %.0f",CProfilerCaptureIO::Counter_Name(n),r.counterTotals[n]/(std::max)(1u,r.iFrames),r.counterTotals[n]);
+                ImGui::TreePop();
+            }
+            if(ImGui::TreeNode("CPU 작업 장부 · 프레임 평균 / 전체 ms / 호출 · 합산 금지"))
+            {
+                for(size_t n=0;n<r.workTotals.size();++n)if(r.workTotals[n].Calls)
+                    ImGui::Text("%s: %.3f / %.3f / %llu",Engine::CProfiler::Get_WorkName(static_cast<Engine::EProfilerWork>(n)),r.workTotals[n].CpuMs/(std::max)(1u,r.iFrames),r.workTotals[n].CpuMs,static_cast<unsigned long long>(r.workTotals[n].Calls));
+                ImGui::TreePop();
+            }
             ImGui::Text("scope 누락 CPU %llu / GPU %llu",static_cast<unsigned long long>(r.droppedCpuScopes),static_cast<unsigned long long>(r.droppedGpuScopes));
             if (!r.strRecipeId.empty())
             {ImGui::TextWrapped("recipe %s: %s",r.strRecipeId.c_str(),r.strExperimentGoal.c_str());ImGui::TextWrapped("관찰: %s",r.strMetricGuide.c_str());ImGui::TextWrapped("해석: %s",r.strConfidence.c_str());}
@@ -2239,6 +2794,31 @@ bool_t Client::CRenderingBenchmark::Save_Json(
             << "      \"drawCallsAvg\": " << r.fDrawCallsAvg << ", \"instancesAvg\": " << r.fInstancesAvg << ", \"indicesAvg\": " << r.fIndicesAvg << ",\n"
             << "      \"meshDrawsAvg\": " << r.fMeshDrawsAvg << ", \"uniqueMeshesAvg\": " << r.fUniqueMeshesAvg << ",\n"
             << "      \"psInvocationsAvg\": " << (r.iGpuFrames?std::to_string(r.fPsInvocationsAvg):"null") << ",\n";
+        Stream<<"      \"applicability\": \""<<Escape_Json(r.applicability)<<"\",\n"
+            <<"      \"rawEvidence\": {\"path\":\""<<Escape_Json(r.rawEvidencePath)<<"\",\"status\":\""<<Escape_Json(r.rawEvidenceStatus)
+            <<"\",\"ready\":"<<(r.rawEvidenceReady?"true":"false")<<",\"schema\":\"LostArkProfilerCapture.v3\",\"firstFrame\":"<<r.firstFrame<<",\"lastFrame\":"<<r.lastFrame<<"},\n";
+        Stream<<"      \"namedCounters\": {";
+        for(size_t n=0;n<r.counterTotals.size();++n)
+        {
+            if(n)Stream<<',';
+            Stream<<'"'<<CProfilerCaptureIO::Counter_Name(n)<<"\":{\"total\":"<<r.counterTotals[n]<<",\"validFrames\":"<<r.iFrames
+                <<",\"average\":"<<(r.iFrames?std::to_string(r.counterTotals[n]/r.iFrames):"null")<<'}';
+        }
+        Stream<<"},\n      \"cpuWorkLedger\": {";
+        for(size_t n=0;n<r.workTotals.size();++n)
+        {
+            if(n)Stream<<',';const auto& w=r.workTotals[n];
+            Stream<<'"'<<Engine::CProfiler::Get_WorkName(static_cast<Engine::EProfilerWork>(n))<<"\":{\"totalMs\":"<<w.CpuMs<<",\"calls\":"<<w.Calls
+                <<",\"validFrames\":"<<r.iFrames<<",\"averageMs\":"<<(r.iFrames?std::to_string(w.CpuMs/r.iFrames):"null")<<'}';
+        }
+        Stream<<"},\n      \"pipelineTotals\": {\"validFrames\":"<<r.iGpuFrames
+            <<",\"iaVertices\":"<<(r.iGpuFrames?std::to_string(r.iaVerticesTotal):"null")
+            <<",\"iaPrimitives\":"<<(r.iGpuFrames?std::to_string(r.iaPrimitivesTotal):"null")
+            <<",\"vsInvocations\":"<<(r.iGpuFrames?std::to_string(r.vsInvocationsTotal):"null")<<"},\n"
+            <<"      \"pipelineAverages\": {\"validFrames\":"<<r.iGpuFrames
+            <<",\"iaVertices\":"<<(r.iGpuFrames?std::to_string(r.iaVerticesTotal/r.iGpuFrames):"null")
+            <<",\"iaPrimitives\":"<<(r.iGpuFrames?std::to_string(r.iaPrimitivesTotal/r.iGpuFrames):"null")
+            <<",\"vsInvocations\":"<<(r.iGpuFrames?std::to_string(r.vsInvocationsTotal/r.iGpuFrames):"null")<<"},\n";
         const auto writePasses=[&](const char* key,const auto& passes,bool cpu) {
             Stream << "      \"" << key << "\": [";
             for (size_t i=0;i<passes.size();++i)
@@ -2275,12 +2855,14 @@ bool_t Client::CRenderingBenchmark::Save_Json(
         writeFields("changedConditionFields",r.changedConditionFields);
         writePasses("cpuScopes",r.cpuPasses,true); Stream<<",\n";
         writePasses("gpuScopes",r.passes,false);
+        const bool completeEvidence=OptimizationEvidenceComplete(r,Runs);
+        Stream<<",\n      \"comparisonEvidenceComplete\": "<<(completeEvidence?"true":"false");
         int baseline=-1;
         const size_t candidateEnd=r.strMeasurementId.empty()?iRun:Runs.size();
         for (size_t previous=0;previous<candidateEnd;++previous)
         {
             const auto& a=Runs[previous];
-            if (a.strVariant=="A" && ComparisonRunsMatch(a,r) &&
+            if (completeEvidence && a.strVariant=="A" && ComparisonRunsMatch(a,r) &&
                 (r.strMeasurementId.empty() || r.strVariant=="B"))
             { baseline=static_cast<int>(previous);break; }
         }

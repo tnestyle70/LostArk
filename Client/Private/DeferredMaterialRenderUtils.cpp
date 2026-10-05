@@ -10,6 +10,32 @@
 
 namespace
 {
+	/* Source hair programs keep the original's masked/translucent switch in one
+	base constant row (read off each program's discard gate). The masked mode
+	discards below the native threshold and writes depth through the two-sided
+	deferred pass, so the hair cards occlude each other; the forward translucent
+	pass then blends only the soft edge on top. Hair programs whose source has
+	no masked mode get the same base pass with the shader's own alpha cut. */
+	constexpr uint32_t SOURCE_CHARACTER_TWO_SIDED_PASS = 6u;
+	constexpr uint32_t HAIR_MASKED_PASS_NONE = 0u;
+	constexpr uint32_t HAIR_MASKED_PASS_NATIVE = 1u;
+	constexpr uint32_t HAIR_MASKED_PASS_ALPHA_CUT = 2u;
+
+	uint32_t Resolve_HairMaskedPassMode(uint32_t program, uint32_t& maskedRow)
+	{
+		maskedRow = UINT32_MAX;
+		switch (program)
+		{
+		case 7u: maskedRow = 26u; return HAIR_MASKED_PASS_NATIVE;
+		case 166u: maskedRow = 28u; return HAIR_MASKED_PASS_NATIVE;
+		case 170u: case 172u: maskedRow = 27u; return HAIR_MASKED_PASS_NATIVE;
+		case 182u: maskedRow = 24u; return HAIR_MASKED_PASS_NATIVE;
+		case 18u: case 99u: case 160u: case 168u: case 169u:
+			return HAIR_MASKED_PASS_ALPHA_CUT;
+		default: return HAIR_MASKED_PASS_NONE;
+		}
+	}
+
     uint32_t SourceHitColorRow(const Engine::MODEL_SURFACE_PARAMETERS* surface)
     {
         if (!surface || surface->family != Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
@@ -245,6 +271,40 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 	if (basicMaterial) return S_OK;
 	const HRESULT native = Model.Bind_SourceCharacter(pShader, iMeshIndex);
 	return FAILED(native) ? native : BindSourceHitColor(pShader, hitSurface, pEmissiveOverride);
+}
+
+HRESULT Client::Render_SourceHairMaskedMesh(Engine::CModel& Model,
+    const shared_ptr<Engine::CShader>& pShader, const uint32_t meshIndex,
+    const DEFERRED_MATERIAL_PROFILE& Profile,
+    const DEFERRED_EMISSIVE_OVERRIDE* pEmissiveOverride,
+    const ComPtr<ID3D11ShaderResourceView>& diffuseOverride)
+{
+    if (!pShader || meshIndex >= Model.Get_NumMeshes()) return E_INVALIDARG;
+    const auto* surface = Model.Get_MaterialSurface(meshIndex);
+    if (!Model.Is_Skinned() || !surface ||
+        surface->family != Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER) return S_FALSE;
+    uint32_t maskedRow = UINT32_MAX;
+    const uint32_t maskedPass = Resolve_HairMaskedPassMode(surface->sourceCharacter.program, maskedRow);
+    if (HAIR_MASKED_PASS_NONE == maskedPass) return S_FALSE;
+
+    HRESULT result = Bind_DeferredMaterialInputs(Model, pShader, meshIndex,
+        Profile, pEmissiveOverride, diffuseOverride);
+    if (FAILED(result)) return result;
+    auto constants = surface->sourceCharacter.baseConstants;
+    if (UINT32_MAX != maskedRow) constants[maskedRow].x = 1.f;
+    result = pShader->Bind_RawValue("g_SourceCharacterBaseConstants", constants.data(), sizeof(constants));
+    if (SUCCEEDED(result)) result = pShader->Bind_RawValue(
+        "g_SourceCharacterHairMaskedPass", &maskedPass, sizeof(maskedPass));
+    if (SUCCEEDED(result)) result = pShader->Begin(SOURCE_CHARACTER_TWO_SIDED_PASS);
+    if (SUCCEEDED(result)) result = Model.Render(meshIndex);
+
+    const uint32_t translucentPass = HAIR_MASKED_PASS_NONE;
+    const HRESULT resetMode = pShader->Bind_RawValue(
+        "g_SourceCharacterHairMaskedPass", &translucentPass, sizeof(translucentPass));
+    const HRESULT resetConstants = pShader->Bind_RawValue("g_SourceCharacterBaseConstants",
+        surface->sourceCharacter.baseConstants.data(), sizeof(constants));
+    if (FAILED(result)) return result;
+    return FAILED(resetMode) ? resetMode : resetConstants;
 }
 
 HRESULT Client::Render_CombatHoverSilhouetteMesh(Engine::CModel& model,

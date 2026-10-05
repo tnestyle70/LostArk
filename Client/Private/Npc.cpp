@@ -112,6 +112,10 @@ HRESULT CNpc::Initialize(void* pArg)
 
     if (m_bAllowOffscreenAnimationCulling)
     {
+        // Town actors reuse identical cooked channel samples at the same exact time.
+        // Their clocks, root suppression, blending and combined palettes stay local.
+        m_pModelCom->Enable_AnimationSampleReuse();
+
         // Scan immutable clip keys during actor creation, not its first active update.
         f32_t envelopeRadius = 0.f;
         (void)Can_DeferAnimationPose(envelopeRadius);

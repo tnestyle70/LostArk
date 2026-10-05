@@ -57,6 +57,8 @@ namespace
 	   once on entry. The validation mirrors the pattern-free death-cue rules of
 	   the Valtan cinematic camera document so both consume the same sampler. */
 	constexpr uint64_t BERN_ENTRANCE_CINEMATIC_OWNER_ID = 0x4245524E43494E45ull;
+	// Advance the shared cue clock at half speed, including sampling and completion.
+	constexpr f32_t BERN_ENTRANCE_PLAYBACK_RATE = 0.5f;
 	// Main-thread presentation state outlives Level instances, not the Client process.
 	bool_t s_hasPresentedBernEntranceThisSession = false;
 	constexpr const char_t* BERN_ENTRANCE_CAMERA_SCHEMA =
@@ -570,6 +572,7 @@ CWorldSequencePlayer::TARGET_SET CLevel_Bern::Make_MapAuthoringTargets()
 void CLevel_Bern::Update(f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
+	m_MapRuntime.Advance_StaticBatchFrame(fTimeDelta);
 	if (m_bReturningToCharacterSelect)
 		return;
 	if (SERVER_WORLD_TRANSFER_PUMP_RESULT::NONE !=
@@ -623,12 +626,16 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 			"[Level_Bern] Failed to bind local character camera.\n");
 	}
 
+	if (CLevelTransitionService::Is_Pending()) return;
 	Try_Send_CharacterRestore();
 	if (CCharacterSelectionState::Is_RestorePending())
 	{
-		m_fCharacterRestoreElapsed += (std::max)(0.f, fTimeDelta);
+		// The first Bern delta can contain loading/activation time before this request.
+		// Bound the actual restore wait, independently of that previous frame.
+		const auto restoreNow = std::chrono::steady_clock::now();
+		if (!m_CharacterRestoreStarted) m_CharacterRestoreStarted = restoreNow;
 		m_PlayerController.Update(false, false);
-		if (m_fCharacterRestoreElapsed >= 5.f)
+		if (restoreNow - *m_CharacterRestoreStarted >= std::chrono::seconds(5))
 		{
 			CLevelTransitionService::Report_Recovery(
 				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_IDENTITY_COMMIT_FAILED,
@@ -638,6 +645,7 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 		}
 		return;
 	}
+	m_CharacterRestoreStarted.reset();
 	if (CLevelTransitionService::Is_Pending()) return;
 #ifdef _DEBUG
 	Consume_DebugEntranceReplay();
@@ -874,7 +882,7 @@ void CLevel_Bern::Update_EntranceCinematic(const f32_t fTimeDelta)
 		return;
 	}
 	if (std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
-		m_fEntranceCinematicSeconds += (std::min)(fTimeDelta, 0.1f);
+		m_fEntranceCinematicSeconds += (std::min)(fTimeDelta, 0.1f) * BERN_ENTRANCE_PLAYBACK_RATE;
 	VALTAN_CINEMATIC_CAMERA_POSE pose{};
 	if (!CValtanCinematicCameraController::Sample_Cue(
 		m_EntranceCameraCue, m_fEntranceCinematicSeconds, pose) ||

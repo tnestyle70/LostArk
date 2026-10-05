@@ -358,6 +358,22 @@ void CWorldSceneTool::Render()
     if (!host)
     { ImGui::TextWrapped("Enter Bern, Character Select, Valtan or KoukuSaydon to inspect its live models."); ImGui::End(); return; }
     ImGui::Text("%s | %s", host->Get_MapAuthoringLabel(), m_AreaId.c_str());
+    auto& runtime = host->Get_MapAuthoringRuntime();
+    const auto& chunkStats = runtime.Get_ChunkBuildStats();
+    if (chunkStats.chunks && ImGui::CollapsingHeader("Spatial chunks / HLOD"))
+    {
+        const auto& policy = runtime.Get_ChunkPolicy();
+        if (policy)
+        {
+            ImGui::Checkbox("Merged chunk draws", &policy->enabled);
+            ImGui::SameLine();
+            ImGui::Checkbox("Distant HLOD", &policy->hlodEnabled);
+        }
+        ImGui::Text("Prepared %u chunks from %u source draws; %u support HLOD", chunkStats.chunks,
+            chunkStats.sourceDraws, chunkStats.farChunks);
+        ImGui::Text("Geometry %.1f MiB | preparation %.0f ms", double(chunkStats.gpuBytes) / 1048576., chunkStats.buildMilliseconds);
+        ImGui::TextWrapped("Compare original draws, merged draws, then HLOD at the same camera. Reset F7 capture for each mode. Moving or hiding a placement restores its affected chunks to original draws until the map reloads.");
+    }
     if (ImGui::Button("Pick in scene")) m_bPickRequested = true;
     ImGui::SameLine();
     float3_t selectedHit{}; const bool selection = Try_GetSelectedHit(selectedHit);

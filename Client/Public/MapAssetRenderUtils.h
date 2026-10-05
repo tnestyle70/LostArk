@@ -16,6 +16,8 @@ NS_BEGIN(Client)
 struct MAP_CAMERA_CULL_SNAPSHOT final
 {
 	uint64_t revision = {};
+    uint64_t optimizationRevision = 0u;
+    bool frustumEnabled = true;
 	float4x4_t view = {};
 	float4x4_t projection = {};
 	float4_t worldPlanes[6] = {};

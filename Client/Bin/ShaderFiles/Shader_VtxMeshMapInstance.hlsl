@@ -937,6 +937,7 @@ void PS_SHADOW_SIMPLE(VS_SHADOW_SIMPLE_OUT input)
         discard;
 }
 
+#ifndef MAP_CHUNK_ONLY
 // Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
 VertexShader MapInstanceVS = compile vs_5_0 VS_MAIN();
 PixelShader MapInstancePS = compile ps_5_0 PS_MAIN();
@@ -1363,3 +1364,5 @@ technique11 DefaultTechnique
     }
 
 }
+
+#endif // MAP_CHUNK_ONLY

@@ -541,6 +541,24 @@ bool_t CGameInstance::Is_SceneEnvironmentReplaced() const
     return m_pRenderer && m_pRenderer->Is_SceneEnvironmentReplaced();
 }
 
+MAP_VISIBILITY_SETTINGS CGameInstance::Get_MapVisibilitySettings() const
+{
+    return m_pRenderer ? m_pRenderer->Get_MapVisibilitySettings() : MAP_VISIBILITY_SETTINGS{};
+}
+HRESULT CGameInstance::Apply_MapVisibilitySettings(const MAP_VISIBILITY_SETTINGS& settings)
+{
+    return m_pRenderer ? m_pRenderer->Apply_MapVisibilitySettings(settings) : E_FAIL;
+}
+
+RENDER_OPTIMIZATION_SETTINGS CGameInstance::Get_RenderOptimizationSettings() const
+{
+    return m_pRenderer ? m_pRenderer->Get_RenderOptimizationSettings() : RENDER_OPTIMIZATION_SETTINGS{};
+}
+HRESULT CGameInstance::Apply_RenderOptimizationSettings(const RENDER_OPTIMIZATION_SETTINGS& settings)
+{
+    return m_pRenderer ? m_pRenderer->Apply_RenderOptimizationSettings(settings) : E_FAIL;
+}
+
 RENDER_QUALITY_SETTINGS CGameInstance::Get_RenderQualitySettings() const
 {
 	return m_pRenderer->Get_RenderQualitySettings();

@@ -12,6 +12,7 @@ uint g_iSSGIRayCount = 8u;
 float g_fSSGIRadius = 4.f, g_fSSGIStrength = .25f;
 uint g_iSSRStepCount = 32u;
 float g_fSSRMaxDistance = 20.f, g_fSSRThickness = .2f, g_fSSRStrength = .5f;
+uint g_iSSRRefinementEnabled = 0u, g_iSSRRoughnessFilterEnabled = 0u;
 uint g_iBloomEnabled = 0u;
 float g_fBloomThreshold = 1.f, g_fBloomSoftKnee = .5f, g_fBloomIntensity = 1.f;
 
@@ -118,6 +119,118 @@ bool TraceScreen(float3 origin, float3 direction, float2 receiverUv, float maxDi
         }
     }
     return false;
+}
+bool ContinuousTraceSurface(float3 position, float3 normal, float family,
+    float3 referencePosition, float3 referenceNormal, float referenceFamily, float thickness)
+{
+    // A depth discontinuity can imitate a ray crossing. Both endpoint planes
+    // must agree before a new hit may be recovered between coarse samples.
+    float tolerance = max(thickness * 2.f, .01f);
+    return family == referenceFamily && dot(normal, referenceNormal) >= .9f &&
+        abs(dot(position - referencePosition, referenceNormal)) <= tolerance &&
+        abs(dot(position - referencePosition, normal)) <= tolerance;
+}
+bool TraceScreenRefined(float3 origin, float3 direction, float2 receiverUv, float maxDistance,
+    float thickness, uint steps, out float2 hitUv, out float hitDistance)
+{
+    hitUv = 0.f; hitDistance = 0.f;
+    bool previousValid = false;
+    float previousDistance = 0.f, previousSeparation = 0.f, previousFamily = 0.f;
+    float3 previousSurface = 0.f, previousNormal = 0.f;
+    [loop] for (uint step = 1u; step <= steps; ++step)
+    {
+        float distance = maxDistance * ((float)step / (float)steps);
+        float3 ray = origin + direction * distance;
+        float2 uv;
+        if (!ProjectView(ray, uv)) break;
+        float2 pixelOffset = (uv - receiverUv) / g_vInverseSceneSize;
+        if (dot(pixelOffset, pixelOffset) < 2.25f) { previousValid = false; continue; }
+        float4 depth = g_DepthTexture.Load(PixelAt(uv));
+        float3 surface;
+        if (!ViewPosition(uv, depth, surface)) { previousValid = false; continue; }
+        float separation = ray.z - surface.z;
+        // Preserve a hit the existing algorithm already accepted. Refinement
+        // only adds crossings that its coarse distance step skipped entirely.
+        if (separation >= 0.f && separation <= thickness)
+        {
+            hitUv = uv; hitDistance = distance;
+            return true;
+        }
+        float3 normal;
+        bool normalValid = ViewNormal(g_NormalTexture.Load(PixelAt(uv)), normal);
+        if (previousValid && normalValid && previousSeparation < 0.f && separation > thickness &&
+            ContinuousTraceSurface(surface, normal, depth.w, previousSurface, previousNormal, previousFamily, thickness))
+        {
+            float lower = previousDistance, upper = distance;
+            bool refinedHit = false;
+            [loop] for (uint refine = 0u; refine < 6u; ++refine)
+            {
+                float middle = (lower + upper) * .5f;
+                float3 middleRay = origin + direction * middle;
+                float2 middleUv;
+                if (!ProjectView(middleRay, middleUv)) break;
+                float4 middleDepth = g_DepthTexture.Load(PixelAt(middleUv));
+                float3 middleSurface, middleNormal;
+                if (!ViewPosition(middleUv, middleDepth, middleSurface) ||
+                    !ViewNormal(g_NormalTexture.Load(PixelAt(middleUv)), middleNormal) ||
+                    !ContinuousTraceSurface(middleSurface, middleNormal, middleDepth.w,
+                        surface, normal, depth.w, thickness) ||
+                    !ContinuousTraceSurface(middleSurface, middleNormal, middleDepth.w,
+                        previousSurface, previousNormal, previousFamily, thickness))
+                    break;
+                float middleSeparation = middleRay.z - middleSurface.z;
+                if (middleSeparation >= 0.f && middleSeparation <= thickness)
+                {
+                    hitUv = middleUv; hitDistance = middle;
+                    refinedHit = true;
+                    break;
+                }
+                if (middleSeparation < 0.f) lower = middle; else upper = middle;
+            }
+            if (refinedHit) return true;
+            // Rejected brackets never become implicit hits. Continue searching
+            // the remaining visible ray with the same bounded coarse budget.
+        }
+        previousDistance = distance; previousSeparation = separation;
+        previousSurface = surface; previousNormal = normal;
+        previousFamily = depth.w; previousValid = normalValid;
+    }
+    return false;
+}
+float3 FilterSSRHitRadiance(float2 hitUv, float roughness, float thickness, float3 centerRadiance)
+{
+    if (roughness <= .0001f || !all(isfinite(centerRadiance))) return centerRadiance;
+    int2 centerPixel = PixelAt(hitUv).xy;
+    float2 centerUv = (float2(centerPixel) + .5f) * g_vInverseSceneSize;
+    float4 centerDepth = g_DepthTexture.Load(int3(centerPixel, 0));
+    float3 centerPosition, centerNormal;
+    if (!ViewPosition(centerUv, centerDepth, centerPosition) ||
+        !ViewNormal(g_NormalTexture.Load(int3(centerPixel, 0)), centerNormal)) return centerRadiance;
+    // This bounded spatial approximation smooths reflected detail according to
+    // roughness. It does not replace BRDF convolution or the authored IBL.
+    float spread = saturate(roughness) * saturate(roughness);
+    int radius = spread > .35f ? 2 : 1;
+    float sigma = .35f + spread * 1.2f;
+    float3 sum = clamp(centerRadiance, 0.f, 60000.f);
+    float weightSum = 1.f;
+    [loop] for (int y = -radius; y <= radius; ++y)
+    [loop] for (int x = -radius; x <= radius; ++x)
+    {
+        if (x == 0 && y == 0) continue;
+        int2 pixel = centerPixel + int2(x, y);
+        float2 uv = (float2(pixel) + .5f) * g_vInverseSceneSize;
+        if (!ValidUv(uv)) continue;
+        float4 depth = g_DepthTexture.Load(int3(pixel, 0));
+        float3 position, normal;
+        if (!ViewPosition(uv, depth, position) || !ViewNormal(g_NormalTexture.Load(int3(pixel, 0)), normal) ||
+            !ContinuousTraceSurface(position, normal, depth.w, centerPosition, centerNormal, centerDepth.w, thickness)) continue;
+        float3 radiance = g_RadianceTexture.Load(int3(pixel, 0)).rgb;
+        if (!all(isfinite(radiance))) continue;
+        float weight = exp2(-float(x*x + y*y) / (2.f * sigma * sigma)) * pow(saturate(dot(normal, centerNormal)), 16.f);
+        sum += clamp(radiance, 0.f, 60000.f) * weight;
+        weightSum += weight;
+    }
+    return sum / weightSum;
 }
 float3 BrightPass(float3 color)
 {
@@ -283,10 +396,16 @@ PS_OUT PS_SSR(PS_IN input)
     float3 direction = reflect(incident, normal);
     float3 origin = position + normal * clamp(g_fSSRThickness * .05f, .005f, .05f);
     float2 hitUv; float distance;
-    if (!TraceScreen(origin, direction, input.uv, g_fSSRMaxDistance, g_fSSRThickness, g_iSSRStepCount, hitUv, distance)) return output;
+    bool hit;
+    [branch] if (g_iSSRRefinementEnabled != 0u)
+        hit = TraceScreenRefined(origin, direction, input.uv, g_fSSRMaxDistance, g_fSSRThickness, g_iSSRStepCount, hitUv, distance);
+    else hit = TraceScreen(origin, direction, input.uv, g_fSSRMaxDistance, g_fSSRThickness, g_iSSRStepCount, hitUv, distance);
+    if (!hit) return output;
     float3 radiance = g_RadianceTexture.Load(PixelAt(hitUv)).rgb;
     if (!all(isfinite(radiance))) return output;
     float roughness = saturate(encoded.a);
+    [branch] if (g_iSSRRoughnessFilterEnabled != 0u)
+        radiance = FilterSSRHitRadiance(hitUv, roughness, g_fSSRThickness, radiance);
     float3 f0 = saturate(material.rgb);
     float grazing = 1.f - saturate(dot(normal, -incident));
     float3 fresnel = f0 + (1.f - f0) * grazing * grazing * grazing * grazing * grazing;

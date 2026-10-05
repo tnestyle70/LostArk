@@ -1019,6 +1019,49 @@ void CMainApp::Update_CustomizingSceneProfile()
 	m_strSceneProfileBeforeCustomizing.clear();
 }
 
+void CMainApp::Update_ClassShowcaseShadowFocus()
+{
+	auto& game = CGameInstance::Get();
+	const auto original = game.Get_ShadowLightDesc();
+	if (!original.Settings.bEnabled)
+	{
+		m_bClassShowcaseShadowFocusActive = false;
+		return;
+	}
+	auto shadow = original;
+	const auto samePoint = [](const float4_t& a, const float4_t& b)
+	{
+		return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
+	};
+	// Remove only our last translation. A new profile/tool focus already replaced it.
+	if (m_bClassShowcaseShadowFocusActive && samePoint(shadow.vAt, m_vClassShowcaseShadowFocus))
+	{
+		const vector_t undo = XMLoadFloat4(&m_vShadowFocusBeforeClassShowcase) - XMLoadFloat4(&shadow.vAt);
+		XMStoreFloat4(&shadow.vEye, XMLoadFloat4(&shadow.vEye) + undo);
+		shadow.vAt = m_vShadowFocusBeforeClassShowcase;
+	}
+	const float4_t previousFocus = shadow.vAt;
+	float3_t focus{};
+	const auto* characterSelect = CLevel_CharacterSelect::Get_Active();
+	const bool_t active = characterSelect && characterSelect->Try_GetClassShowcaseFocus(focus);
+	if (active)
+	{
+		const float4_t target(focus.x, focus.y, focus.z, shadow.vAt.w);
+		const vector_t offset = XMLoadFloat4(&target) - XMLoadFloat4(&shadow.vAt);
+		XMStoreFloat4(&shadow.vEye, XMLoadFloat4(&shadow.vEye) + offset);
+		shadow.vAt = target;
+	}
+	if ((!samePoint(shadow.vEye, original.vEye) || !samePoint(shadow.vAt, original.vAt)) &&
+		FAILED(game.Apply_Shadow_Light(shadow)))
+	{
+		OutputDebugStringA("[MainApp][ClassShowcase] Shadow focus translation failed.\n");
+		return;
+	}
+	m_bClassShowcaseShadowFocusActive = active;
+	m_vShadowFocusBeforeClassShowcase = previousFocus;
+	m_vClassShowcaseShadowFocus = shadow.vAt;
+}
+
 void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.ItemUpgrade.Update");
@@ -2560,11 +2603,11 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 #ifdef _DEBUG
 	UpdateLightingPreview();
+#endif
 	if (m_pRenderingBenchmark)
 		m_pRenderingBenchmark->Update_RestorationPreview(m_RenderingProfiles,
 			m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::RENDERING) &&
 			m_bRenderingQualityWindowVisible);
-#endif
 	if (ETOUI(LEVEL::LOADING) !=
 		CGameInstance::Get().Get_CurrentLevelID())
 	{
@@ -3956,6 +3999,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
         characterSelectLit ? &characterSelectLight : nullptr,
         controlsBrightness, &controlsColor, shipFogThinned ? &shipFogTuning : nullptr))
         OutputDebugStringA((environmentStatus + "\n").c_str());
+	Update_ClassShowcaseShadowFocus();
 	}
 
 	/* Every shown runtime surface now declares where it covers the screen and on which layer,
@@ -4359,9 +4403,9 @@ HRESULT CMainApp::Render()
 			LEVEL::END : static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID()));
 		m_pLevelNavigationDebug->Render_Overlay();
 		if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Render_Debug();
+#endif
 		if (nullptr != m_pRenderingBenchmark)
 			m_pRenderingBenchmark->Update(CGameInstance::Get().Get_Profiler());
-#endif
 		if (m_bDeveloperToolsVisible)
 		{
 			Engine::CProfilerScope developerToolsScope(
@@ -4558,6 +4602,12 @@ HRESULT CMainApp::Render()
 					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.HUDLayout.Build");
 					m_pHUDLayoutTool->Render();
 				}
+			}
+#else
+			if (IsDebugToolVisible(DEBUG_TOOL::RENDERING))
+			{
+				focusNextWindow(DEBUG_TOOL::RENDERING);
+				RenderOptimizationBenchmarkPanel();
 			}
 #endif
 			if (IsDebugToolVisible(DEBUG_TOOL::BALANCE) && nullptr != m_pBalanceTool)
@@ -7017,7 +7067,8 @@ void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
 		LEVEL::STATIC. */
 		if (m_pCharacterSelectWindowView->Is_Open())
 			m_pCharacterSelectWindowView->Close();
-		m_pCharacterSelectWindowView->Release_Stage();
+		if (!m_pCharacterSelectWindowView->Is_PreparingEntry())
+			m_pCharacterSelectWindowView->Release_Stage();
 		return;
 	}
 
@@ -10950,7 +11001,9 @@ HRESULT CMainApp::Start_Level(
 			m_pDevice,
 			m_pContext,
 			eTargetLevel,
-			lobbyCommandToken);
+			lobbyCommandToken,
+			LEVEL::LOBBY == eTargetLevel && m_bOpenCharacterSelectOnLobby ?
+				m_pCharacterSelectWindowView.get() : nullptr);
 	if (nullptr == loading)
 	{
 		CLevelTransitionService::Report_Recovery(
@@ -11508,6 +11561,21 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 #endif
 	switch (eTool)
 	{
+	case DEBUG_TOOL::RENDERING:
+		if (nullptr == m_RenderingProfiles.Get_ActiveProfile()) return E_FAIL;
+#ifdef _DEBUG
+		m_bLightResourcesWindowVisible = true;
+		m_bLightDetailWindowVisible = true;
+		m_bLightSequencerWindowVisible = true;
+		m_bRenderQualityDraftInitialized = false;
+#endif
+		m_bRenderingQualityWindowVisible = true;
+		if (nullptr == m_pRenderingBenchmark)
+		{
+			m_pRenderingBenchmark = make_unique<CRenderingBenchmark>();
+			m_pRenderingBenchmark->Set_DeviceInfo(m_pDevice.Get());
+		}
+		break;
 #ifdef _DEBUG
     case DEBUG_TOOL::WORLD_SCENE:
         if (!m_pWorldSceneTool) m_pWorldSceneTool = make_unique<CWorldSceneTool>();
@@ -11592,16 +11660,6 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
         m_pEffectToolV2->Configure_AuthoringWorkspace(m_pCharacterPreviewPanel, m_pKoukuPresentationPlayer.get());
         m_pEffectToolV2->Activate();
         break;
-	case DEBUG_TOOL::RENDERING:
-		if (nullptr == m_RenderingProfiles.Get_ActiveProfile()) return E_FAIL;
-		m_bLightResourcesWindowVisible = true;
-		m_bLightDetailWindowVisible = true;
-		m_bLightSequencerWindowVisible = true;
-		m_bRenderingQualityWindowVisible = true;
-		m_bRenderQualityDraftInitialized = false;
-		if (nullptr == m_pRenderingBenchmark)
-			m_pRenderingBenchmark = make_unique<CRenderingBenchmark>();
-		break;
 	case DEBUG_TOOL::SEQUENCER:
 		if (FAILED(EnsureAnimationPreviewBackend())) return E_FAIL;
 		// Construct both independent sessions without loading the other boss's
@@ -14686,6 +14744,8 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
 		toolCell("Composition Profiler", DEBUG_TOOL::PROFILER);
 		toolCell("HUD Layout Tool", DEBUG_TOOL::UI);
+#else
+		toolCell("Optimization Benchmark", DEBUG_TOOL::RENDERING);
 #endif
 #ifdef _DEBUG
 		toolCell("Equipment Authoring Tool", DEBUG_TOOL::EQUIPMENT);
@@ -15081,6 +15141,22 @@ void CMainApp::RenderDeveloperTools()
 	ImGui::End();
 }
 
+void CMainApp::RenderOptimizationBenchmarkPanel()
+{
+	if (!m_pRenderingBenchmark || !m_bRenderingQualityWindowVisible) return;
+	ImGui::SetNextWindowSize(ImVec2(960.f, 640.f), ImGuiCond_FirstUseEver);
+	if (ImGui::Begin("Optimization Benchmark###RenderingOptimizationBenchmarkV1",
+		&m_bRenderingQualityWindowVisible))
+	{
+		ImGui::Text("Scene: %s", m_RenderingProfiles.Get_ActiveProfileId().c_str());
+		m_pRenderingBenchmark->Render_SessionBar(m_RenderingProfiles);
+		m_pRenderingBenchmark->Render_OptimizationSection(m_RenderingProfiles);
+	}
+	ImGui::End();
+	if (!m_bRenderingQualityWindowVisible)
+		SetDebugToolVisible(DEBUG_TOOL::RENDERING, false);
+}
+
 #ifdef _DEBUG
 void CMainApp::RenderRenderingWorkbench()
 {
@@ -15239,6 +15315,11 @@ void CMainApp::RenderRenderingWorkbench()
             if(ImGui::BeginTabItem("Technique A/B"))
             {
                 if(m_pRenderingBenchmark) m_pRenderingBenchmark->Render_QuickComparison(m_RenderingProfiles);
+                ImGui::EndTabItem();
+            }
+            if(ImGui::BeginTabItem("최적화 A/B"))
+            {
+                if(m_pRenderingBenchmark) m_pRenderingBenchmark->Render_OptimizationSection(m_RenderingProfiles);
                 ImGui::EndTabItem();
             }
             if(ImGui::BeginTabItem("Measure / Analyze"))
@@ -15612,11 +15693,14 @@ void CMainApp::Free()
 	CNetworkManager::Get().Shutdown();
 	CGameInstance::Get().Stop_LoopingSound();
 	CGameInstance::Get().SetInputBlocked(false, false);
+	// Cancel captures and restore session-owned settings while the Engine and
+	// profile service are still alive, including a hidden Release comparison.
+	if (m_pRenderingBenchmark) m_pRenderingBenchmark->Shutdown(m_RenderingProfiles);
+	m_pRenderingBenchmark.reset();
 
 #ifdef _DEBUG
 	m_pSequencerTool.reset();
 	m_pSequenceActionWorkbench.reset();
-	m_pRenderingBenchmark.reset();
 	m_pValtanActionWorkbench.reset();
 	m_pAnimationTool.reset();
 	m_pCharacterActionWorkbench.reset();

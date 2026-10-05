@@ -29,3 +29,7 @@ UI/postprocess/lookup/depth/cube와 원본 Effect의 별도 sampler에는 표면
 정상 증분 Debug Product Build로 Engine SDK와 Client까지 확인한다. 실제 CShader와 compiled FX를 사용한 격리 WARP 수치 검증으로 mip별 표면 샘플 변화, Clone/variant 적용, 최상 복원과 제외 sampler 보존을 확인한다. 빌드·자동 수치 검증·사용자 화면 판정을 RESULT에서 구분한다. 변경 문서/테스트 입력 parse와 scoped `git diff --check`를 확인한다.
 
 사용자는 새 Client에서 ESC → 환경설정 → 비디오 → 텍스처 품질을 최상/하로 비교하고 취소·적용·재실행을 확인한다. 이 기능은 texture sampling 품질을 바꾸며 VRAM 상주량 절감, 모델 LOD/파티클 수/그림자 해상도의 신규 구현을 포함하지 않는다. 현재 팀장 조명·Bloom/FXAA/SSAO·scene/region 저장값은 보존한다.
+
+## G04. 10-05 품질별 프레임 차이 재확인
+
+현재 Shader의 MinLOD 적용 범위와 실제 설치 Bern mapmaterials의 typed DDS mip을 확인한다. legacy 복사본 대신 실제 consumer의 Resources ID를 사용하며, 현재 설치 상태와 과거 캡처 당시 상태를 동일하다고 가정하지 않는다. 기존 사용자 최하 품질·병합 OFF/ON·방향광 OFF/ON 캡처를 읽어 CPU 제출, GPU elapsed, Present, 메모리 압박과 설정 기록을 구분한다. 비교 조건이 다른 캡처를 통제된 품질 A/B로 취급하지 않는다. 추가 Resources 변환이나 팀장 렌더링 옵션 변경은 하지 않고 실제 확인 결과를 기존 RESULT에 보존한다.

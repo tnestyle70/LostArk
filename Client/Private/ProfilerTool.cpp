@@ -464,6 +464,43 @@ namespace
         "주변 이펙트 제외 시간 합계 (effect-us, CPU 시간 아님)",
         "주변 이펙트 fixed-step 합계",
         "주변 이펙트 단일 갱신 최대 fixed-step",
+        "맵 공간 묶음 수",
+        "맵 공간 묶음 근거리 제출",
+        "맵 공간 묶음 원거리 제출",
+        "맵 공간 묶음 원본 제출 수",
+        "맵 공간 묶음 제출 인덱스",
+        "맵 공간 묶음 원본 인덱스",
+        "맵 공간 묶음 GPU 버퍼 바이트",
+        "맵 공간 묶음 무효화",
+        "맵 공간 묶음 활성 수",
+        "맵 공간 묶음 HLOD 활성 수",
+        "동일 모델 결합 전 source draw",
+        "동일 모델 결합 draw",
+        "조명 bank 결합 전 source draw",
+        "조명 bank 결합 draw",
+        "가림 검사 후보 배치",
+        "가림 검사 실행 배치",
+        "가림 제외 배치",
+        "가림 제외 mesh 제출 (인스턴싱 결합 전)",
+        "가림 제외 인덱스",
+        "가림 깊이 생성 배치",
+        "가림 깊이 래스터 삼각형",
+        "거리 검사 인스턴스",
+        "거리 제외 인스턴스",
+        "거리 제외 원본 인덱스",
+        "동일 카메라·정적 배치 가림 결과 재사용",
+        "맵 CPU 준비 batch",
+        "맵 CPU 큰 작업 묶음",
+        "맵 CPU caller 완료 작업",
+        "맵 CPU worker 완료 작업",
+        "맵 CPU 보조 callback 제출",
+        "공유 대상 애니메이션 샘플 요청",
+        "애니메이션 샘플 캐시 재사용",
+        "파티클 root 역행렬 요청",
+        "파티클 root 역행렬 캐시 재사용",
+        "파티클 CPU caller 완료 작업",
+        "파티클 CPU worker 완료 작업",
+        "파티클 CPU 보조 callback 제출",
     };
     static_assert(std::size(COUNTER_LABELS) == static_cast<size_t>(Engine::EProfilerCounter::Count));
 
@@ -474,6 +511,10 @@ namespace
             {"Client.Update", "클라이언트 전체 갱신"}, {"Client.Render", "클라이언트 렌더 제출"},
             {"Render.World", "월드 렌더 제출"}, {"Render.Draw", "렌더 패스 전체"},
             {"Render.FinalCameraSubmission", "최종 카메라 가시성·제출"},
+            {"Map.Visibility.Prepare", "맵 CPU 준비·분배 전체"},
+            {"Map.Visibility.Dispatch", "맵 CPU 작업 실행·동기화"},
+            {"Map.Visibility.Join", "맵 CPU worker 잔여 대기"},
+            {"Map.Visibility.Worker", "맵 CPU 보조 스레드 계산"},
             {"Render.SubmitFrameProviders", "프레임 제공자 제출"},
             {"Render.NonBlend", "불투명 메시·G-buffer"}, {"Render.Shadow", "그림자 전체"},
             {"Render.Shadow.CacheAdmission", "그림자 캐시 조건 확인"},
@@ -757,6 +798,12 @@ Client::FProfilerCaptureContext Client::CProfilerTool::Sample_Context() const
     auto& options = context.RenderingOptions;
     options.clear(); context.RenderingAssets.clear();
     options["Texture.minimumMip"] = quality.iTextureMinMip;
+    const auto visibility = game.Get_MapVisibilitySettings();
+    options["MapVisibility.parallelPreparation"] = visibility.ParallelPreparationEnabled;
+    options["MapVisibility.occlusion"] = visibility.OcclusionEnabled;
+    options["MapVisibility.distance"] = visibility.DistanceEnabled;
+    options["MapVisibility.distanceScale"] = visibility.DistanceScale;
+    options["MapVisibility.distanceMaxPixels"] = visibility.DistanceMaxPixels;
     const auto vector3 = [&](const std::string& key, const auto& value)
     { options[key + ".x"] = value.x; options[key + ".y"] = value.y; options[key + ".z"] = value.z; };
     const auto vector4 = [&](const std::string& key, const auto& value)
@@ -1118,6 +1165,31 @@ void Client::CProfilerTool::Render_FrameOverview()
     ImGui::Text("메시 draw %llu | 메시 인스턴스 %llu | 메시 인덱스 %llu | 고유 CMesh %llu",
         count(Engine::EProfilerCounter::MeshDrawCalls), count(Engine::EProfilerCounter::MeshInstances),
         count(Engine::EProfilerCounter::MeshIndices), count(Engine::EProfilerCounter::UniqueMeshes));
+    ImGui::Text("동일 모델 결합 %llu -> %llu draw | 조명 bank %llu -> %llu draw",
+        count(Engine::EProfilerCounter::MapIdenticalInstanceSourceDraws), count(Engine::EProfilerCounter::MapIdenticalInstanceDraws),
+        count(Engine::EProfilerCounter::MapLightingBankSourceDraws), count(Engine::EProfilerCounter::MapLightingBankDraws));
+    ImGui::TextWrapped("결합 전 수는 이번 프레임에 개별 제출했을 경우의 source draw입니다. 이전 제품 대비 감소율이나 전체 장면의 절감량을 의미하지 않습니다.");
+    auto visibility = Engine::CGameInstance::Get().Get_MapVisibilitySettings();
+    bool changedVisibility = ImGui::Checkbox("Bern parallel visibility preparation", &visibility.ParallelPreparationEnabled);
+    changedVisibility |= ImGui::Checkbox("Bern occlusion culling", &visibility.OcclusionEnabled);
+    changedVisibility |= ImGui::Checkbox("Bern distance + screen-size culling", &visibility.DistanceEnabled);
+    changedVisibility |= ImGui::SliderFloat("Distance range scale", &visibility.DistanceScale, .25f, 4.f, "%.2f");
+    changedVisibility |= ImGui::SliderFloat("Distance maximum diameter (px)", &visibility.DistanceMaxPixels, 4.f, 128.f, "%.0f");
+    if (changedVisibility) (void)Engine::CGameInstance::Get().Apply_MapVisibilitySettings(visibility);
+    ImGui::Text("가림 제외 %llu batch | 이번 재검사 %llu | 제외 인덱스 %llu | 깊이 geometry %llu triangles",
+        count(Engine::EProfilerCounter::MapOcclusionRejectedBatches), count(Engine::EProfilerCounter::MapOcclusionTested),
+        count(Engine::EProfilerCounter::MapOcclusionRejectedIndices), count(Engine::EProfilerCounter::MapOcclusionRasterizedTriangles));
+    ImGui::Text("거리 제외 %llu instances | 이번 재검사 %llu | 제외 원본 인덱스 %llu",
+        count(Engine::EProfilerCounter::MapDistanceRejectedInstances), count(Engine::EProfilerCounter::MapDistanceTestedInstances),
+        count(Engine::EProfilerCounter::MapDistanceRejectedIndices));
+    ImGui::TextWrapped("컬링은 세션 설정입니다. 범위 scale이 작을수록 가까이서 제외하며, 픽셀 제한을 높이면 더 큰 소품도 제외합니다. 가림/거리 인덱스와 draw 합계를 구분하고 Render.MapOcclusion CPU 비용도 비교하세요.");
+
+    ImGui::Text("맵 CPU 준비 %llu batch / %llu 작업 | caller %llu / worker %llu | 보조 callback %llu",
+        count(Engine::EProfilerCounter::MapVisibilityPreparedBatches), count(Engine::EProfilerCounter::MapVisibilityCpuJobs),
+        count(Engine::EProfilerCounter::MapVisibilityCallerJobs), count(Engine::EProfilerCounter::MapVisibilityWorkerJobs),
+        count(Engine::EProfilerCounter::MapVisibilityAssistants));
+    ImGui::TextWrapped("CPU 준비는 큰 작업만 worker로 나눕니다. 정지 카메라 재사용은 준비 0이며, Dispatch는 caller 계산과 Join 대기를 포함합니다. Worker 시간 합계를 메인 스레드 시간에 더하지 마세요.");
+
     if (count(Engine::EProfilerCounter::DroppedMeshSamples))
         ImGui::TextColored(ImVec4(1.f, .65f, .25f, 1.f), "고유 메시 표본 %llu개 누락: 고유 수는 하한입니다.", count(Engine::EProfilerCounter::DroppedMeshSamples));
     ImGui::TextWrapped("draw는 API 제출 횟수, 인스턴싱 제출 수는 instanced draw만의 반복 개수, 고유 CMesh는 서로 다른 CPU 메시 객체 수입니다. 인덱스는 인스턴스 수를 반영하며 고유 정점·오브젝트·화면 삼각형 수와 다릅니다. 그림자·초상 재제출도 포함합니다. DirectXTK 글자·디버그 도형 내부 draw는 위 합계에 미포함입니다. 간접 draw와 그 인덱스 상한은 생산자가 없는 미계측 예약 항목입니다.");
