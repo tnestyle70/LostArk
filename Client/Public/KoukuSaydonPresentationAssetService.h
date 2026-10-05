@@ -60,6 +60,9 @@ struct KOUKU_SAYDON_PLAY_RESOURCES final
 {
     std::vector<std::string> PatternIds, V1EffectIds, WorldInstanceIds, BossArchetypeIds;
     std::vector<std::pair<std::string, std::string>> V2Effects;
+    // Each group reserves one pattern closure, or the concurrent members of a
+    // Bundle. Repeated spawn occurrences are retained; motion changes are absent.
+    std::vector<std::vector<std::string>> WorldSpawnGroups;
 };
 
 struct KOUKU_SAYDON_DRAFT_PRODUCT final

@@ -320,6 +320,79 @@ bool_t CWorldSequencePlayer::Set_Document(const CWorldSequenceDocument& document
     return admitted;
 }
 
+bool_t CWorldSequencePlayer::Prepare_PlaybackSubset(const std::string& root,
+    const TARGET_SET& targets, std::string& status)
+{
+    if (!targets.Is_Complete())
+    { status = "World Object runtime targets are unavailable."; return false; }
+    if (const auto found = m_PreparedPlaybackSubsets.find(root);
+        found != m_PreparedPlaybackSubsets.end() && found->second.document &&
+        found->second.levelIndex == targets.levelIndex &&
+        found->second.deviceIdentity == targets.device.Get() &&
+        found->second.contextIdentity == targets.context.Get() &&
+        found->second.catalogIdentity == targets.pCatalog &&
+        found->second.document->Get_AreaId() == m_Document.Get_AreaId() &&
+        found->second.document->Get_Revision() == m_Document.Get_Revision())
+    { status.clear(); return true; }
+    CWorldSequenceDocument staged;
+    if (!m_Document.Build_PlaybackSubset({root}, staged, status)) return false;
+    // Placement/deploy and live anchors keep their original admission path.
+    // Only independent WORLD Object bindings are valid without target tables.
+    const bool objectOnly = std::all_of(staged.Get_Instances().begin(), staged.Get_Instances().end(),
+        [](const auto& instance) { return instance.anchorKind == "WORLD" &&
+            std::all_of(instance.bindings.begin(), instance.bindings.end(), [](const auto& binding) {
+                return binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE;
+            }); }) &&
+        std::all_of(staged.Get_ObjectResources().begin(), staged.Get_ObjectResources().end(),
+            [](const auto& object) { return object.anchorKind == "WORLD"; });
+    if (!objectOnly)
+    { m_PreparedPlaybackSubsets.erase(root); status.clear(); return true; }
+    if (!staged.Validate({}, {}, status)) return false;
+    PREPARED_PLAYBACK_SUBSET admitted;
+    admitted.document = std::make_shared<const CWorldSequenceDocument>(std::move(staged));
+    admitted.levelIndex = targets.levelIndex;
+    admitted.deviceIdentity = targets.device.Get();
+    admitted.contextIdentity = targets.context.Get();
+    admitted.catalogIdentity = targets.pCatalog;
+    m_PreparedPlaybackSubsets.insert_or_assign(root, std::move(admitted));
+    status.clear();
+    return true;
+}
+
+bool_t CWorldSequencePlayer::Set_PlaybackSubset(const CWorldSequencePlayer& source,
+    const std::string& root, const TARGET_SET& targets, std::string& status)
+{
+    if (targets.Is_Complete() && targets.objectPreparationOwner == &source)
+    {
+        const auto found = source.m_PreparedPlaybackSubsets.find(root);
+        if (found != source.m_PreparedPlaybackSubsets.end() && found->second.document &&
+            found->second.levelIndex == targets.levelIndex &&
+            found->second.deviceIdentity == targets.device.Get() &&
+            found->second.contextIdentity == targets.context.Get() &&
+            found->second.catalogIdentity == targets.pCatalog &&
+            found->second.document->Get_AreaId() == source.m_Document.Get_AreaId() &&
+            found->second.document->Get_Revision() == source.m_Document.Get_Revision())
+        {
+            // Stage the only copy before mutation, including source == *this.
+            // The private cache holds the exact immutable document validated at
+            // preparation; every source replacement clears it, even at equal revision.
+            CWorldSequenceDocument staged = *found->second.document;
+            Stop_All(targets, true);
+            Clear_PreparedObjects();
+            m_ObjectModels.clear();
+            m_EffectSnapshots.clear();
+            m_EffectPreviews.clear();
+            m_EffectSelection.reset();
+            m_Document = std::move(staged);
+            status = m_Status = "World Object prepared playback subset admitted.";
+            return true;
+        }
+    }
+    CWorldSequenceDocument staged;
+    if (!source.m_Document.Build_PlaybackSubset({root}, staged, status)) return false;
+    return Set_Document(staged, targets, status);
+}
+
 bool CWorldSequencePlayer::Preview_EffectDocument(const EFFECT_DOCUMENT_DESC& document,
     const TARGET_SET& targets, std::string& status)
 {
@@ -885,6 +958,20 @@ bool_t CWorldSequencePlayer::Prepare_InstanceResources(const std::string& instan
 bool_t CWorldSequencePlayer::Prewarm_ObjectInstances(const std::string& instanceId,
     const uint32_t copies, const TARGET_SET& targets)
 {
+    bool_t ready = false;
+    return Prewarm_ObjectInstancesInternal(instanceId, copies, targets, copies, ready);
+}
+
+bool_t CWorldSequencePlayer::Prewarm_ObjectInstancesStep(const std::string& instanceId,
+    const uint32_t copies, const TARGET_SET& targets, bool_t& ready)
+{
+    return Prewarm_ObjectInstancesInternal(instanceId, copies, targets, 1u, ready);
+}
+
+bool_t CWorldSequencePlayer::Prewarm_ObjectInstancesInternal(const std::string& instanceId,
+    const uint32_t copies, const TARGET_SET& targets, const uint32_t maximumNewCopies, bool_t& ready)
+{
+    ready = false;
     const auto* instance = m_Document.Find_Instance(instanceId);
     const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
     if (!instance || !sequence || !instance->enabled || instance->anchorKind != "WORLD" ||
@@ -902,12 +989,14 @@ bool_t CWorldSequencePlayer::Prewarm_ObjectInstances(const std::string& instance
     if (found != m_PreparedObjectPools.end() && (!pool->acceptsReturns || pool->levelIndex != targets.levelIndex))
     { m_Status = "World Object prewarm belongs to another level; reload its owner: " + objectId; return false; }
     if (pool->capacity >= copies)
-    { m_Status = "World Object clones already prepared: " + objectId + " / " + std::to_string(pool->capacity); return true; }
+    { ready = true; m_Status = "World Object clones already prepared: " + objectId + " / " + std::to_string(pool->capacity); return true; }
     size_t total = copies - pool->capacity;
     for (const auto& [id, prepared] : m_PreparedObjectPools) total += prepared->capacity;
     if (total > 1024u) { m_Status = "World Object prepared clone budget reached (1024)."; return false; }
+    const uint32_t nextCapacity = pool->capacity + (std::min)(copies - pool->capacity, maximumNewCopies);
     pool->idle.reserve(copies);
     std::vector<shared_ptr<CWorldSequenceObject>> staged;
+    staged.reserve(nextCapacity - pool->capacity);
     const auto rollback = [&]() {
         for (auto& object : staged)
         {
@@ -915,33 +1004,45 @@ bool_t CWorldSequencePlayer::Prewarm_ObjectInstances(const std::string& instance
             CGameInstance::Get().Remove_GameObject_from_Layer(targets.levelIndex, CWorldSequenceObject::LAYER_TAG, object);
         }
     };
-    for (uint32_t index = pool->capacity; index < copies; ++index)
+    try
     {
-        CWorldSequenceObject::DESC desc;
-        desc.levelIndex = targets.levelIndex;
-        desc.modelPrototype = model->second.model;
-        desc.diffuseTexture = model->second.diffuse;
-        Fill_PresentationParts(model->second.presentationBossArchetypeId, desc);
-        shared_ptr<CGameObject> created;
-        const HRESULT result = CGameInstance::Get().Add_GameObject_to_Layer(targets.levelIndex,
-            CWorldSequenceObject::PROTOTYPE_TAG, targets.levelIndex, CWorldSequenceObject::LAYER_TAG, &desc, &created);
-        auto object = dynamic_pointer_cast<CWorldSequenceObject>(created);
-        if (FAILED(result) || !object)
+        for (uint32_t index = pool->capacity; index < nextCapacity; ++index)
         {
-            if (created) CGameInstance::Get().Remove_GameObject_from_Layer(targets.levelIndex, CWorldSequenceObject::LAYER_TAG, created);
-            rollback();
-            m_Status = "World Object prewarm clone/shader creation failed: " + objectId +
-                " / copy " + std::to_string(index + 1u) + " / HRESULT " + std::to_string(static_cast<int32_t>(result));
-            return false;
+            CWorldSequenceObject::DESC desc;
+            desc.levelIndex = targets.levelIndex;
+            desc.modelPrototype = model->second.model;
+            desc.diffuseTexture = model->second.diffuse;
+            Fill_PresentationParts(model->second.presentationBossArchetypeId, desc);
+            shared_ptr<CGameObject> created;
+            const HRESULT result = CGameInstance::Get().Add_GameObject_to_Layer(targets.levelIndex,
+                CWorldSequenceObject::PROTOTYPE_TAG, targets.levelIndex, CWorldSequenceObject::LAYER_TAG, &desc, &created);
+            auto object = dynamic_pointer_cast<CWorldSequenceObject>(created);
+            if (FAILED(result) || !object)
+            {
+                if (created) CGameInstance::Get().Remove_GameObject_from_Layer(targets.levelIndex, CWorldSequenceObject::LAYER_TAG, created);
+                rollback();
+                m_Status = "World Object prewarm clone/shader creation failed: " + objectId +
+                    " / copy " + std::to_string(index + 1u) + " / HRESULT " + std::to_string(static_cast<int32_t>(result));
+                return false;
+            }
+            object->Hide();
+            staged.push_back(std::move(object));
         }
-        object->Hide();
-        staged.push_back(std::move(object));
+        // Reserve the owner entry before committing clones. A failed insertion
+        // removes this step's staged layer objects and leaves the old pool intact.
+        if (found == m_PreparedObjectPools.end()) m_PreparedObjectPools.emplace(objectId, pool);
+    }
+    catch (...)
+    {
+        rollback();
+        throw;
     }
     pool->idle.insert(pool->idle.end(), staged.begin(), staged.end());
     pool->levelIndex = targets.levelIndex;
-    pool->capacity = copies;
-    m_PreparedObjectPools.insert_or_assign(objectId, std::move(pool));
-    m_Status = "World Object hidden clones prepared: " + objectId + " / " + std::to_string(copies);
+    pool->capacity = nextCapacity;
+    ready = pool->capacity >= copies;
+    m_Status = ready ? "World Object hidden clones prepared: " + objectId + " / " + std::to_string(copies) :
+        "World Object hidden clones preparing: " + objectId + " / " + std::to_string(pool->capacity) + "/" + std::to_string(copies);
     return true;
 }
 
@@ -990,6 +1091,8 @@ bool_t CWorldSequencePlayer::Prewarm_HiddenObjectPose(const std::string& instanc
 
 void CWorldSequencePlayer::Clear_PreparedObjects()
 {
+    // All document replacements invalidate this receipt, including equal revisions.
+    m_PreparedPlaybackSubsets.clear();
     for (auto& [id, pool] : m_PreparedObjectPools)
     {
         // Borrowed clones keep this token alive. Once the owner resets, they

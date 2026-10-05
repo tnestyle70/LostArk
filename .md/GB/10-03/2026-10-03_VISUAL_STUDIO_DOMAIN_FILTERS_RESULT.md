@@ -84,9 +84,22 @@ UI `None`2개 경로 교정은 컴파일 입력을 바꾸지 않아 재빌드하
 - [WintersEngine과 Unreal 비교](2026-10-03_WINTERS_UNREAL_COMPARISON_CODE_GUIDE.md)
 - [전체 XML 정본 PLAN](2026-10-03_VISUAL_STUDIO_DOMAIN_FILTERS_PLAN.md)
 
-WintersEngine은 실제 source/filter를 읽었으며 수정·빌드하지 않았다. Unreal 소스 부재는
-사용자가 확인했다. Unreal 부분은 Epic 공식 문서/API를 근거로 비교하고 private repository
-접근·계정 연결 절차를 안내했다. 사용자 GitHub 권한을 확인하거나 clone을 수행하지 않았다.
+WintersEngine은 실제 source/filter를 읽었으며 수정·빌드하지 않았다. 최초 조사 때 없었던
+Unreal 소스는 이후 사용자 로그인과 다운로드 요청에 따라 공식 저장소에서 clone했다.
+`C:/Users/tnest/Desktop/UnrealEngine`의 release commit은
+`396c9f059903aed5fec78ecd3d437a40c6415368`이고 `Build.version`은 5.8.3이다.
+깊이1 clone으로 현재 추적 파일224,004개 checkout이 완료됐으며 작업 트리는 clean이다.
+과거 Git 이력과 Setup의 외부 binary dependencies는 다운로드하지 않았다.
+소스 디렉터리의 파일 길이 합계는 `.git` 포함3,558,249,571byte(약3.31GiB)였다.
+`git fsck --connectivity-only`도 exit0으로 완료됐다.
+
+이 소스의 Sequencer/MovieScene·AssetRegistry·package Save/Cook·RDG/RHI·shader compiler·
+Trace/Insights·GC·Camera·World·BehaviorTree를 세 코드 가이드의 실제 경로·행과 연결했다.
+이것은 소스 조사이며 Unreal 엔진 빌드·실행·시각 품질·성능 비교 결과가 아니다.
+추가 조사 반영 후 다섯 문서의 절대 로컬 링크401개의 파일 존재·행 범위 오류0과
+`git diff --check` 통과를 확인했다. 문서만 변경하여 추가 컴파일은 수행하지 않았다.
+이 추가 조사 문서는 조사 당시 미커밋 상태로 보존했으며, 2026-10-05 main 동기화에서
+별도 문서 커밋으로 전달한다. 당시 검증 범위와 위의 조사 수치는 그대로 유지한다.
 
 ## G05. 미실행과 후속 작업
 
@@ -95,7 +108,7 @@ VS/Client/Server를 자율 실행·조작하거나 화면을 캡처하지 않았
 Release Product,광역 regression,새 runtime publish는 수행하지 않았다.
 
 문서는 핵심 API·소유 상태·자료구조·저장 계약과 알고리즘을 이해하기 위한 첫 지도다.
-모든 함수·변수 전수 설명,Unreal 로컬 소스 대조,새 영상·SRT·자기소개서·최종 포트폴리오 및
+모든 함수·변수 전수 설명,Unreal 추가 기능 대조,새 영상·SRT·자기소개서·최종 포트폴리오 및
 200쪽 PDF는 완료로 기록하지 않는다. 다음 설명은 새 필터에서 한 기능의 실제 코드·데이터·
 도구 조작을 함께 따라가는 단위로 이어간다.
 
@@ -110,3 +123,16 @@ GitHub connector의 draft PR 생성은 `403 Resource not accessible by integrati
 거절되어 PR은 생성되지 않았다. 이것은 코드 검증 실패나 자동 승인 검토 거절이 아니라
 GitHub 연동의 해당 API 권한 제한이다. 원격 branch는 정상적으로 존재한다.
 [main과 필터 branch 비교 및 PR 작성](https://github.com/tnestyle70/LostArk/compare/main...codex/visual-studio-domain-filters)
+
+## G07. Unreal 실행 환경 인계
+
+공식 unrealengine.com 다운로드 페이지에서 받은 런처 설치 파일은
+`C:/Users/tnest/Downloads/EpicGamesLauncherInstaller.exe`에 있다. 크기264,283,136byte,
+file version2026.0709.1935.0이며 Authenticode 검사는 Valid/Epic Games Inc.였다.
+실행 요청은 보냈으나 도구가 targetable window를 확인하지 못했다. 설치 성공으로 기록하지 않는다.
+이후 사용자가 Launcher와 Unreal 에디터를 직접 다운로드·설치하겠다고 하여 설치 조작을 중단했다.
+사용자가 진행하는 설치 프로세스를 닫거나 다시 실행하지 않았다.
+
+`Setup.bat`·`GenerateProjectFiles.bat`·Unreal 소스 빌드는 수행하지 않았다.
+에디터 설치 완료·실행 성공·도구 화면 비교는 아직 확인하지 않았다. 사용자 목표인10월30일
+지원에 맞춘 영상·기술소개서 준비 흐름과 쿠크 뿅망치 촬영 후보는 코드 지도 G10에 반영했다.

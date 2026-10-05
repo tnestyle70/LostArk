@@ -575,7 +575,16 @@ private:
         uint32_t sourceRevision = 0u;
         bool wholeRaid = false;
         uint64_t v1Revision = 0u, v2Generation = 0u, worldRevision = 0u;
+        struct WORLD_CLONE_RESERVATION final
+        {
+            std::string instanceId;
+            uint32_t copies = 0u;
+        };
+        std::vector<WORLD_CLONE_RESERVATION> worldCloneReservations;
+        std::vector<std::string> worldSubsetIds;
+        size_t worldCloneCount = 0u;
         size_t actorIndex = 0u, v2Index = 0u, worldIndex = 0u;
+        size_t worldCloneIndex = 0u, worldSubsetIndex = 0u;
     };
     std::optional<COMPLETE_PLAY_PREPARATION> m_CompletePlayPreparation;
 

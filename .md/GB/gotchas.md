@@ -3539,6 +3539,8 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 - Debug는 같은 문서의 3worker 처리가 1worker보다 느릴 수 있다. thread 수를 늘리기 전에 parse/decode와 renderer 준비를 분리하고 같은 입력·할당량·순서 교대 시간을 비교한다. 기존 필수 준비 장벽이나 validation을 지워 시간을 줄이지 않는다.
 - JSON value의 메모리 배치가 바뀌면 DataJson OBJ 하나만 기존 Client나 probe에 링크하지 않는다. public header를 소비하는 모든 TU를 정상 의존성 빌드로 다시 컴파일한다. /MDd와 /MD 또는 iterator ABI를 파일별로 혼합하지 않는다.
 - `Effect.Prepare.Document/Metadata/Renderer/Commit`과 `V1.prepare.*`는 CPU 단계다. 부모 total과 자식 단계, 서로 병렬인 target 시간을 합산해 전체 진입 시간으로 표시하지 않는다.
+- MSVC map은 move construction에서도 sentinel/proxy 할당이 남을 수 있다. payload owner를 분리하는 것만으로 속도 개선을 단정하지 않고, parser가 최종 owner 안에 직접 구성하는 경계까지 비교한다. 공개 값의 deep copy·이동 후 재사용·할당 실패 보존을 유지하며, 할당 감소와 wall time 감소는 별도 증거다. 10-04 실측과 재현 도구는 `10-04/2026-10-04_DEBUG_EFFECT_LOADING_IMPLEMENTATION_RESULT.md`를 따른다.
+- Raid Publish의 원문 hash/generation 봉인이나 Python 검증 cache를 Client Effect parse cache와 혼동하지 않는다. 파싱 결과를 지속 산출물로 만들고 기존 Client consumer가 읽어야 실행 시 비용을 옮길 수 있다. GPU 객체와 현재 재생 owner/clock은 별도이며, Save·Publish·실행 중 Server 적용 완료도 구분한다.
 
 ### Complete Play는 저작 revision·최종 응답·수신 소비 순서를 함께 확인한다
 
@@ -6243,6 +6245,9 @@ zero wind/noise를 각각 유지하며 DXBC replay 수치와 실제 화면 판�
 검사하지 말고 valid destruction debris/suppression의 commit 직전에도 preview를 정상 종료해
 Server의 동일-state 파괴 burst가 preview root를 유지하지 않게 한다.
 
+### Mario World 생성 준비와 캐시 수명
+
+모델 사전 로드와 실제 WorldObject clone 준비를 구분한다. 고유 motion ID 집합은 반복 occurrence의 수량을 잃으므로 발생 행과 EmissionCount를 함께 세며, NEXT/APPLY_TARGET를 새 spawn으로 합산하지 않는다. Hide는 pool 반환이 아니고 기존 owner 종료가 반환 시점이다. 인형·공은 이미 준비한 clone 수가 충분할 수 있으므로 부족을 추측하기 전에 실제 수량을 대조한다. 이미 검증한 object-only 재생 subset을 재사용할 때는 owner·level·device/context/catalog·Area/revision을 맞추고 동일 revision 문서 교체에서도 폐기한다. 재생 전 준비 개선을 GPU draw/FPS 성공으로 대신 기록하지 않는다. 근거는 `10-04/2026-10-04_MARIO_WORLD_PREWARM_IMPLEMENTATION_RESULT.md`다.
 
 ### 원본 복구 A/B와 추가 품질 실험의 기준을 섞지 않는다
 
