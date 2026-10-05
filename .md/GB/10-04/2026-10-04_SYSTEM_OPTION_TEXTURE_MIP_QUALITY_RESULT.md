@@ -55,3 +55,42 @@ GPU probe는 hidden test HWND를 사용해 Engine만 초기화했다. ShowWindow
 새 Client에서 `ESC → 환경설정 → 비디오 → 텍스처 품질`을 최상/하로 바꾸어 같은 가까운 맵·캐릭터 표면을 비교한다. 취소 후 이전 상태 복원, 적용/확인 뒤 재실행 유지와 일괄 설정을 확인한다. 현재 저작 조명/후처리 튜닝값은 보존된다.
 
 단일 mip texture는 하위 단계가 없어 선택 차이가 없을 수 있다. 모든 texture가11mip인 것은 아니다. 이번 변경은 기존 mip 샘플링 품질이며 VRAM residency/streaming, 모델 LOD, 파티클 수, 그림자 해상도를 새로 구현한 결과가 아니다. 사용자 최종 화면 확인은 미실행으로 남긴다.
+
+## G05. 10-05 텍스처 품질과 베른 성능 재조사
+
+현재 `c999f7e91` 기능 브랜치의 기존 미커밋 최적화를 보존하며 사용자 캡처5개와 실제 설치 입력을 읽었다. 분석은 `out/BernTexturePerformanceAudit20261005/audit.json`과 같은 폴더 `analyze.py`에 있다. Client/UI를 실행하지 않았고 Resources·개인 설정·RenderingProfiles를 변경하지 않았다.
+
+### G05-1. 품질 설정이 줄이는 범위
+
+`CShader::Stage_TextureQualitySamplers`는 원본 Filter·MaxAnisotropy·MipLODBias·MaxLOD를 유지하고 MinLOD만 제한한다. 최상도 화면 footprint에 따라 자동으로 작은 mip을 선택하므로 이미 mip3 이하를 쓰는 먼 표면은 하와 같을 수 있다. 낮은 등급은 draw/geometry·재질/pass 바인딩·shader의 texture 명령 수·particle simulation을 줄이지 않는다. 실제 anisotropic 필터 설정을 유지하지만 GPU 내부의 실제 fetch 수까지 같다고 측정한 것은 아니다. 모든 mip을 가진 같은 resource/SRV를 계속 사용하므로 VRAM residency를 줄이지 않으며 RNM/lightmap·lookup·후처리는 이 옵션의 대상이 아니다.
+
+현재 설치된 `LV_BER_BERNCASTLE.mapmaterials.json` 23,200행의 typed DDS는 고유8,515개다. 표면1,580개 중 full chain1,533개, 원본 NoMipmaps 단일 mip5개, 원본 Landscape height의 부분 chain42개다. bakedLighting6,935개도 모두 full chain이다. 최근 Bern 설치 대상1,485개는 기존 설치 receipt의 SHA와 일치했다. 따라서 현재 Bern 전체가 단일 mip이라 품질 옵션이 무효라는 설명은 맞지 않는다. 이 inventory는 현재 디스크 전체 자료이며 과거 캡처의 실제 가시 텍스처나 GPU에 올라간 각 mip을 측정한 결과는 아니다.
+
+### G05-2. 사용자 최하 품질 캡처의 잔류 비용
+
+`하_20261004_181710_906_frame309_81064_0.json`의 export 시점 Texture.minimumMip은3이다. 프레임별 품질·실제 sampled mip은 기록하지 않으므로 모든309프레임의 품질 상태를 독립 증명하지 않는다.
+
+| 평균 항목 | 관측 |
+|---|---:|
+| frame interval |47.745ms|
+| CPU frame |46.943ms|
+| 유효 GPU timestamp frame |47.707ms,309/309프레임|
+| Map.Batch.Render CPU |15.739ms|
+| 그 내부 Draw / Material / Pass CPU |10.452 /2.655 /2.214ms|
+| Layer final-camera 제출 CPU |4.280ms|
+| Client.Update CPU |11.343ms|
+| Render.Lights GPU elapsed |0.787ms|
+| main Present CPU |0.040ms|
+| DXGI Local 사용량/예산 최대 비율 |23.72%|
+
+CPU 부모/자식과 GPU 시간은 중첩되므로 합산하지 않는다. 이 캡처는 메모리 예산 부족이나 main Present 대기가 시간을 지배했다는 증거를 보이지 않는다. 낮은 품질에서도 큰 제출·갱신 비용이 남으며 MinLOD 변경은 이 비용을 제거하지 않는다. GPU timestamp는 CPU 제출 공백이 포함될 수 있는 경과 시간으로 GPU 사용률이나 단독 texture bandwidth 병목을 증명하지 않는다.
+
+최상 설정이 기록된 병합 OFF/ON 캡처는 다른 프로세스·카메라·도구 상태이고 같은 위치의 최상/하 쌍이 아니다. 따라서 이 자료로 품질별 절약 시간을 확정하거나 최상 대비 하의 FPS 개선율을 만들지 않는다. 현재 구현의 영향 범위와 잔류 비용은 확인했지만, 모든 조건을 고정한 품질별 성능 차이는 미측정이다.
+
+### G05-3. Directional OFF와 추가 bake의 의미
+
+현재 `RenderingProfileService::Apply_CameraEnvironmentBase`의 LiveCompare Directional OFF는 diffuse/specular RGB만0으로 바꾼 뒤 `Add_Light`를 계속한다. ambient·source-character ambient와 RNM은 남고 `Light_Manager::Render_Lights`도 directional record를 제출한다. 이 체크박스는 직사광 기여의 시각 비교이며 조명 draw 전체를 제거하는 성능 실험이 아니다.
+
+9/30 사용자 OFF/ON 캡처는 각각120프레임, frame69.240/68.235ms, Render.Lights GPU elapsed1.031/0.957ms다. lightDrawCalls는 양쪽의 모든 프레임에서31이고 export metadata도 같다. 당시 파일은 directional 상태 필드가 없어 이름·사용자 관찰과 실제 수치를 구분한다. 이 결과만으로 모든 조명 계산을 껐다고 해석하지 않는다. 다만 전체 light 패스 자체가 약1ms인 반면 불투명 제출·재질·갱신 비용이 훨씬 크다는 것은 관측된다.
+
+Bern은 이미 RNM average/directional과 static shadow의 사전계산 입력을 사용한다. 현재 전체 material행 중 bakedLighting21,363행, staticShadow16,463행이며 화면 가시 비율은 아니다. 추가로 환경광만 굽는 것은 draw·재질 바인딩·geometry·이펙트 갱신을 없애지 못한다. 서로 다른 재질과 조명 입력까지 atlas/proxy로 합쳐 실제 제출과 shader를 줄이는 작업은 별도이며 이번에는 구현하지 않았다. 실제 병합 손익과 이번 불필요 청크 생성 제거는 기존 `BERN_SPATIAL_CHUNK_HLOD_RESULT.md`의 G07/G12에서 구분한다.

@@ -788,3 +788,132 @@ SSGI의 강도·반경·4/8/16 샘플, SSR의 강도·거리·thickness·16/32/6
 `ProfilerTool.h`는 저장 제한·프레임 수와 진행 중인 저장의 요약 문자열만 소유한다. `ProfilerTool.cpp`는 실제 복사한 snapshot에서 frame ID 범위, 보관 중 제외, 초기화 이후 퇴출, GPU pending/drop 및 CPU/GPU scope drop을 집계해 저장 완료와 함께 표시한다. 분석창 숫자를 바꿔도 저장 범위는 바뀌지 않고, pending을0ms 완료값으로 설명하지 않는다. Engine과 JSON schema는 변경하지 않으며 새 C++ 파일·project/filter 항목은 없다.
 
 검증은 실제 Tool 범위 선택→Engine Snapshot→CaptureIO JSON에서170개 기본 전체·명시120개·분석범위 독립,1,202개 수집의1,200개 보관/2개 퇴출과 pending/drop metadata를 확인한다. 해당 UI translation unit을 집중 컴파일하고 제품 통합 빌드·사용자 F7 화면 확인은 별도로 기록한다.
+
+## G23. 10-04 실시간 품질 확장과 통합 A/B
+
+사용자는 UE5·Blender의 최신 렌더링 기법을 실제 화면에서 비교하도록 추가 구현을 요청했다.
+현재 장치는 NVIDIA GeForce RTX 4070, Engine backend는 D3D11이다. Mip11은 해상도 계층이며
+새 조명·형상·시간 누적을 만들어 주지 않는다. 현재 DX11 경로에서 실행할 수 있는 품질 후보를
+먼저 실제 shader와 A/B에 연결하고, D3D12/DXR·geometry virtualization·path tracing과
+motion-vector/history가 필요한 기능은 구현 상태를 분리한다. G11의 이전 비구현 경계를
+모든 기법을 이미 구현했다는 설명으로 바꾸지 않는다.
+
+### G23-1. Engine 품질 계약과 shader
+
+수정 파일은 `Engine/Public/Engine_RenderTypes.h`, `Engine/Private/Renderer.cpp`,
+`Engine/Bin/ShaderFiles/Shader_Deferred.hlsl`, `Engine/Bin/ShaderFiles/Shader_ScreenSpaceLighting.hlsl`이다.
+새 C++/shader 파일이나 project/filter 등록은 없다. 기존 파일의 인코딩·줄바꿈을 유지한다.
+
+`RENDER_QUALITY_SETTINGS` 끝에 기본 false인 `bHorizonAOEnabled`, `bSSRRefinementEnabled`,
+`bSSRRoughnessFilterEnabled`를 추가한다. 이 값은 기존 실효 품질 위에 적용하는 session 실험이며
+저장 profile schema를 변경하지 않는다. Renderer는 HLSL uint uniform으로 변환해 전달한다.
+
+- Horizon AO는 기존 SSAO raw pass의 선택 분기로 구현한다. 현재 깊이·view normal로 각 방향의
+  가림 horizon을 탐색해 주변광 차폐를 계산한다. 4/8/12 방향마다4개 깊이 표본을 사용하고 기존
+  bilateral blur/ambient consumer를 재사용한다. NVIDIA horizon AO 원리를 참고한 자체 근사이며
+  GTAO/HBAO+ SDK 또는 ray-traced AO 구현이라고 부르지 않는다. OFF는 기존 SSAO 식을 보존한다.
+- SSR refinement는 기존 단일층 depth trace에 교차 구간 탐색·세부 교차 보정을 선택적으로 추가한다.
+  두께와 가림 경계 검증을 유지하며 ray step 사이에서 놓치는 visible surface hit를 개선한다.
+- SSR roughness filtering은 hit 주변 radiance를 roughness에 따른 화면 footprint로 모으되 depth와
+  normal 경계로 거부한다. 실제 여러 반사 ray/환경 convolution·시간 누적 구현과 구분한다.
+  두 새 SSR flag가 OFF이면 기존 SSR 수식을 보존한다. 기존 MapPBR 수신 범위를 임의 확장하지 않는다.
+
+실험은 현재 RT/immutable radiance·성공 후 HDR/Bloom commit·실패 시 원본 보존을 그대로 소비한다.
+변경하지 않은 캐릭터·native effect의 packed material ABI를 일반 PBR로 가정하지 않는다.
+
+### G23-2. Client 통합 후보와 기법별 비교
+
+`RenderingProfileService.h/.cpp`의 whitelist 끝에 `TEXTURE_MIN_MIP`, `HORIZON_AO_ENABLED`,
+`SSR_REFINEMENT_ENABLED`, `SSR_ROUGHNESS_FILTER_ENABLED`를 추가한다. 기존 field ID는 유지하고
+read→validate→preview→restore와 Benchmark fingerprint에 연결한다. Texture mip는 정수0..3이다.
+
+`RenderingBenchmark.h/.cpp`는 원래 화면을 복원본으로 보관한 뒤 `현재 화면 ↔ DX11 품질 확장 실험`
+후보를 제공한다. 후보는 texture mip0, SSAO ON/12방향/horizon, PCF radius2,
+SSGI ON/16/full-resolution, SSR ON/64/refinement/filter다. SSGI/SSR 강도는 기존 양수를 유지하며
+0인 경우에만 비교 후보에 명시적으로0.25/0.5를 사용한다. Exposure/gamma/LUT/FXAA/Bloom과
+source material·조명·저장된 scene/region 값은 후보 생성으로 바꾸지 않는다.
+
+개별 기법 비교는 원래 화면 또는 품질 패키지를 기준으로 선택한다. 패키지를 기준으로 할 때
+기법 하나만 OFF/ON으로 바꾸어 그 기법의 기여와 비용을 비교한다. 복원본은 기준 선택으로
+덮어쓰지 않으며 field mask에는 원래값에서 바뀐 모든 session 소유권을 포함한다. row identity와
+조건 비교에 선택 기준을 포함하여 이전 측정값을 다른 조건의 결과로 재사용하지 않는다.
+
+`RenderingTechniqueGuide.h`에는 실제 구현 범위·관찰할 표면·한계와 연결 recipe를 표시한다.
+현재 frame/카메라/광원/geometry가 바뀐 결과를 동일조건 A/B라고 표시하지 않는다.
+캡처의 CPU/GPU ms는 비용이며 화질 상승률로 환산하지 않는다.
+
+### G23-3. 검증과 사용자의 화면 확인
+
+기존 out 검증 코드를 확장해 새 shader의 OFF 보존, finite/background/평면·모서리,
+SSR coarse miss/refined hit·roughness filter와 depth/normal edge를 수치로 확인한다.
+Client actual service/benchmark의 신규 field validation·candidate·원본 복원·조건 지문도 검사한다.
+실행한 검증과 수동 화면 확인은 RESULT에서 분리한다. 새 정식 광역 하네스는 추가하지 않는다.
+
+Engine public header 변경이므로 정상 증분 Product runner로 Debug/Release의 Engine→SDK→Client와
+두 shader 배포를 확인한다. JSON parse와 scoped `git diff --check`를 수행하며 생성 binary/CSO와
+out 로그는 소스 변경에 포함하지 않는다. Client/UI를 자율 실행하지 않는다.
+사용자는 Debug F1 → Rendering Workbench → Technique A/B에서 통합 후보를 전환하고,
+같은 카메라·정지된 장면에서 개별 기법과 A/B 비용을 확인한다.
+### G23-4. 무엇이 보이는지와 최신 엔진의 구조적 차이
+
+현재 후보의 화질 우위는 측정 전 미확정이다. 여러 효과를 켠 영상은 밝기·차폐·반사량이 함께 달라지므로
+통합 A/B로 전체 인상을 보고, 패키지 기준의 한 기법 OFF/ON으로 원인을 분리한다.
+다음 표의 예상 변화는 알고리즘의 목적이며 사용자 장면에서 관찰을 완료했다는 뜻이 아니다.
+
+| 현재 비교 항목 | 볼 위치와 예상 변화 | 그대로 남는 한계 |
+|---|---|---|
+| Texture mip0↔3 | 가까운 맵 바닥·벽의 무늬와 작은 선 | 원본 mip0보다 높은 디테일·새 geometry를 만들지 않는다. |
+| 기존 SSAO↔Horizon AO | 벽·바닥 접점, 틈, 돌 주변의 주변광 차폐 | 화면 밖 geometry와 temporal stability는 해결하지 않는다. |
+| SSGI OFF↔ON | MapPBR 표면에 주변 색과 밝기가 번지는 기여 | 기존 baked RNM/IBL 위 가산이며 물리적 대체 GI가 아니다. |
+| SSR OFF↔ON·교차 보정 | 매끈한 MapPBR 바닥·금속에서 visible reflection과 누락 | 보이지 않는 뒤쪽/화면 밖 geometry는 반사하지 못한다. |
+| SSR roughness filter | 거친 MapPBR 반사에서 날카로운 픽셀 무늬의 완화 | 단일 hit 주변 필터이고 다중 광선 BRDF convolution이 아니다. |
+| PCF radius1↔2 | 직접 그림자 경계의 filter 폭·계단 | 고정2048 shadow map 해상도·단일 범위는 유지한다. |
+
+최신 공식 자료와 현재 Engine 코드를 대조한 구조 판단은 다음과 같다(2026-10-04 조사).
+기법들은 대체·보완 관계가 있어 모든 방식을 동시에 누적하는 것이 최고 품질을 뜻하지 않는다.
+
+| 기술군 | 현재 상태와 필요한 실제 구현 | 공식 근거 |
+|---|---|---|
+| TAA/TAAU/TSR 계열 | 현재 미구현. DX11 자체가 막는 것은 아니지만 camera/object/skinning velocity, jitter, view별 history, 가림 해제·camera cut·resize reset이 먼저 필요하다. | [Epic TSR](https://dev.epicgames.com/documentation/en-us/unreal-engine/temporal-super-resolution-in-unreal-engine) |
+| EEVEE 계열 GI·반사 | 현재 SSGI/SSR은 일부 원리를 공유하는 자체 구현이다. EEVEE 전체 이식은 아니며 probe fallback·시간 누적·denoise는 별도다. | [Blender 5.2 EEVEE](https://developer.blender.org/docs/release_notes/5.2/eevee/), [EEVEE 한계](https://docs.blender.org/manual/en/latest/render/eevee/limitations/limitations.html) |
+| Lumen | 현재 미구현. 공식 UE5.8 software 경로도 DX12/SM6와 distance field·Surface Cache를 요구한다. hardware 경로는 RT scene도 필요하다. | [Lumen 기술 상세](https://dev.epicgames.com/documentation/en-us/unreal-engine/lumen-technical-details-in-unreal-engine) |
+| DXR·UE Path Tracer·Cycles | 현재 DX11에 DXR backend가 없다. RTX4070만으로 실행 경로가 생기지 않는다. DX12 자원/동기화·BLAS/TLAS·material/light evaluation·누적/denoise 또는 별도 Cycles scene 변환이 필요하다. | [UE Path Tracer](https://dev.epicgames.com/documentation/en-us/unreal-engine/path-tracer-in-unreal-engine), [Cycles](https://docs.blender.org/manual/en/5.0/render/cycles/introduction.html) |
+| Nanite·Virtual Shadow Maps | 현재 미구현. geometry cluster·압축/streaming·가상 shadow page·캐시 무효화가 필요하며 기존 mip/LOD 또는 PCF 배율과 다르다. | [Nanite](https://dev.epicgames.com/documentation/en-us/unreal-engine/nanite-virtualized-geometry-in-unreal-engine), [VSM](https://dev.epicgames.com/documentation/en-us/unreal-engine/virtual-shadow-maps-in-unreal-engine) |
+| MegaLights·다광원 | 현재 미구현. stochastic 직접광 sampling·RT/VSM visibility·denoise가 필요하며 기존 직접광에 중복 가산하는 후처리가 아니다. | [MegaLights](https://dev.epicgames.com/documentation/en-us/unreal-engine/megalights-in-unreal-engine) |
+| AgX·ACES·시네마틱 후처리 | 기존 Source/Hable 톤 매핑과 대안으로 비교할 영역이다. 다른 tone curve를 중복 적용하거나 이를 GI·geometry 개선으로 설명하지 않는다. 현재 새 AgX/ACES 변환·DOF·motion blur 구현은 없다. | [Blender 색 변환](https://docs.blender.org/manual/id/5.2/render/color_management/displays_views.html) |
+| Volumetric fog·subsurface·hair·water | 재질/volume별 표현과 광원·깊이·투명 합성 계약이 필요하다. 현재 height fog/source material family 지원과 별도로 구현 상태를 확인해야 한다. | [UE 렌더링 요구 사항](https://dev.epicgames.com/documentation/en-us/unreal-engine/hardware-and-software-specifications-for-unreal-engine) |
+
+후속 기반의 의존 순서는 재질 ABI별 물리 입력 확인 → motion-vector/history 및 재투영 검증 →
+시간 누적 GI/반사·재구성 → 화면 밖 geometry/light representation → DX12/DXR 또는 probe trace다.
+가상 geometry/shadow와 offline path tracing은 각각 다른 자산·backend 변경 단위다.
+이 의존 순서의 문서화는 해당 기능 구현 완료가 아니다.
+### G23-5. 사용자 우선순위 확정 — 원본 복구의 Workbench 미리보기
+
+사용자는 실시간 게임 화질을 우선하고 영화용은 별도로 비교하기로 답했다. 이어서 **원본 근거에
+따른 렌더링 복구가1순위**이며 아직 기본 화면에 실제 반영하지 말고 Rendering Workbench의
+A/B로만 켜고 끄도록 요청했다. 이 요구가 앞의 통합 확장 후보보다 우선한다.
+
+기존 `Restoration` 기본 진입을 유지하고 `Technique A/B`의 첫 비교는 현재 연결된 원본 복구
+성분으로 정리한다. 지원 source material, source PBR indirect, MapPBR RNM/SH 기여,
+환경 specular, source tone+grading, LUT를 각각 현재 실효 입력 기준으로 비교한다.
+이미 있는 source shader/texture/scene 입력을 사용하며 원본에 없는 수치·resource를 만들어
+복구 후보로 삼지 않는다. 실제 활성 profile/region 및 입력의 존재 상태와 적용 범위를 보여 준다.
+
+원본 input 복구와 현재 도구의 성분 제거 실험은 다르다. 원본 DXBC/MIC/UV/COLOR0/mip 등
+고정 복구가 이미 설치된 상태에서 기여를 OFF한 화면을 과거의 결함 EXE로 설명하지 않는다.
+필드에 대응하는 원본 입력이 없거나 해당 material family가 아니면 근거 없음/적용 범위를 표시하고
+억지로 화면 차이를 만들어 성공으로 기록하지 않는다. 구체 asset 복구 대상은 사용자가 지정한
+장면·mesh·material을 기존 원본 복원 절차로 조사한 뒤 별도 후보로 만든다.
+
+G23-1~3의 신규 AO/SSR 기능은 기본OFF의 **추가 품질 실험**으로 유지한다. 통합 후보와 새
+품질 기법은 기본 접힌 별도 영역으로 옮기며 원본 복구 비교에는 자동 포함하지 않는다.
+Workbench를 열거나 비교 기준을 선택하는 것만으로 renderer 상태를 바꾸지 않는다.
+명시적인 A/B 선택에서만 session preview를 적용하고 종료/닫기는 원래 소유 필드로 복원한다.
+
+이번 작업에서 authored/runtime RenderingProfiles, 사용자 UserSettings, Resources와 map/material
+binding은 변경·설치·게시하지 않는다. 정상 빌드는 Workbench 기능이 들어간 실행 파일과 shader를
+생성하지만 새 기법을 기본ON으로 바꾸지 않는다. Save/Publish와 파일 영구 적용은 이 요청의
+완료 범위에 포함하지 않는다.
+최종 대상은 사용자가 지정한 **Character Select와 Bern의 맵 재질·조명·후처리 화질**이다.
+스킬·보스 이펙트와 그 원본 복구는 이 작업에서 수정하지 않는다. 공용 Engine 기능은 기존
+렌더 경로 안의 선택 분기로 제공하지만 적용/원작 일치 판단은 이 두 맵의 실제 수신면을 기준으로 한다.

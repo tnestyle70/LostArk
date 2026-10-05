@@ -36,6 +36,10 @@ public:
 	HRESULT Initialize();
 	HRESULT Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<CGameObject> pRenderObject);
 	HRESULT Draw();
+    MAP_VISIBILITY_SETTINGS Get_MapVisibilitySettings() const { return m_MapVisibility; }
+    HRESULT Apply_MapVisibilitySettings(const MAP_VISIBILITY_SETTINGS& settings);
+    RENDER_OPTIMIZATION_SETTINGS Get_RenderOptimizationSettings() const { return m_RenderOptimization; }
+    HRESULT Apply_RenderOptimizationSettings(const RENDER_OPTIMIZATION_SETTINGS& settings);
 
 	/* One off-screen portrait to draw through the deferred path before the world fills the
 	G-buffer this frame. The caller owns the destination texture and the draw itself: Engine
@@ -125,6 +129,30 @@ private:
 	bool_t m_bPickingDepthCaptured = false;
 	vector<shared_ptr<CGameObject>>		m_RenderObjects[ETOUI(RENDERGROUP::END)];
 
+    MAP_VISIBILITY_SETTINGS m_MapVisibility{};
+    RENDER_OPTIMIZATION_SETTINGS m_RenderOptimization{};
+    std::unique_ptr<class COcclusionCuller> m_OcclusionCuller;
+    struct OCCLUSION_CANDIDATE final
+    {
+        size_t Index = 0u;
+        CGameObject::STATIC_OCCLUSION_DESC Desc{};
+        float Score = 0.f;
+    };
+    vector<OCCLUSION_CANDIDATE> m_OcclusionCandidates;
+    vector<size_t> m_OccluderOrder;
+    vector<uint8_t> m_OcclusionHidden;
+    vector<shared_ptr<CGameObject>> m_OcclusionVisibleQueue;
+    struct OCCLUSION_CACHE_ROW final
+    {
+        weak_ptr<CGameObject> Owner;
+        CGameObject::STATIC_OCCLUSION_DESC Desc{};
+        bool Hidden = false;
+    };
+    vector<OCCLUSION_CACHE_ROW> m_OcclusionCache;
+    float4x4_t m_OcclusionView{}, m_OcclusionProjection{};
+    float2_t m_OcclusionViewport{};
+    uint64_t m_OcclusionSettingsRevision = 0u;
+    bool m_OcclusionCacheValid = false;
 	shared_ptr<class CVIBuffer_Rect>		m_pVIBuffer = { nullptr };
 	shared_ptr<class CShader>				m_pShader = { nullptr };
     shared_ptr<class CShader> m_pScreenSpaceLightingShader;
@@ -172,6 +200,7 @@ private:
 	HRESULT Render_Priority();
 	HRESULT Render_Shadow();
 	HRESULT Render_NonBlend();
+    void Cull_StaticOcclusion();
 	HRESULT Render_SSAO();
 	HRESULT Render_SSAOPass(const wstring_t& strMRTTag, DEFERRED ePass);
 	HRESULT Render_Lights();

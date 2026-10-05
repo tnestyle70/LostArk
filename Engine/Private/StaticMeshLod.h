@@ -12,6 +12,7 @@ NS_BEGIN(Engine)
 class CStaticMeshLod final
 {
 public:
+    static constexpr size_t MINIMUM_INDICES = 4096u * 3u;
     struct SELECTION final
     {
         uint32_t indexCount = 0u;

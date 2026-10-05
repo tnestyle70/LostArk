@@ -98,7 +98,11 @@ enum class RENDERING_EXPERIMENT_FIELD : uint8_t
     ROUGHNESS_OFFSET,
     SSGI_ENABLED, SSGI_STRENGTH, SSGI_RADIUS, SSGI_SAMPLES,
     SSR_ENABLED, SSR_STRENGTH, SSR_DISTANCE, SSR_THICKNESS, SSR_STEPS,
-    SOURCE_PBR_INDIRECT, SOURCE_POST_PROCESS, SOURCE_MATERIALS, SSGI_HALF_RESOLUTION, COUNT
+    SOURCE_PBR_INDIRECT, SOURCE_POST_PROCESS, SOURCE_MATERIALS, SSGI_HALF_RESOLUTION,
+    TEXTURE_MIN_MIP, HORIZON_AO_ENABLED, SSR_REFINEMENT_ENABLED, SSR_ROUGHNESS_FILTER_ENABLED,
+    OPT_FRUSTUM, OPT_OCCLUSION, OPT_DISTANCE, OPT_MESH_LOD,
+    OPT_MAP_INSTANCING, OPT_IDENTICAL_BATCH, OPT_LIGHTING_BANK, OPT_SHADOW_CACHE,
+    OPT_NPC_POSE_REUSE, OPT_PARTICLE_ROOT_CACHE, OPT_MAP_WORKERS, OPT_PARTICLE_WORKERS, COUNT
 };
 constexpr size_t RENDERING_EXPERIMENT_FIELD_COUNT = static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::COUNT);
 static_assert(RENDERING_EXPERIMENT_FIELD_COUNT < 64u);
@@ -213,6 +217,12 @@ private:
         const PRESENTATION_FOG_TUNING* fogTuning);
     bool_t Restore_ExperimentPreview(string& status);
     bool_t Apply_ExperimentPreview(string& status);
+    bool_t Apply_OptimizationPreview(string& status);
+    bool_t Restore_OptimizationPreview(string& status);
+    // Unlike quality overlays, structural flags persist between frames. Reapplying
+    // their base each frame would invalidate the very caches being measured.
+    uint64_t m_iOptimizationOwnedFields = 0;
+    RENDERING_EXPERIMENT_VALUES m_OptimizationBase, m_OptimizationLastApplied;
     void Release_ExperimentForProfileCommit();
     bool_t m_bExperimentActive = false, m_bExperimentNormalizedShadow = false, m_bExperimentNormalizedPbr = false, m_bExperimentApplied = false;
     uint64_t m_iExperimentAppliedFields = 0, m_iExperimentFields = 0u, m_iExperimentGeneration = 0u, m_iProfileGeneration = 0u;

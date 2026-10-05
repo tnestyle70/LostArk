@@ -1,6 +1,7 @@
 #include "GameObject.h"
 
 #include "GameInstance.h"
+#include "Layer.h"
 
 CGameObject::CGameObject(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
     : CPrototype { pDevice, pContext }    
@@ -62,6 +63,12 @@ void CGameObject::Post_Physics_Update(f32_t fTimeDelta)
 
 void CGameObject::Late_Update(f32_t fTimeDelta)
 {
+}
+
+void CGameObject::Invalidate_FinalCameraSpatialBounds()
+{
+    if (m_FinalCameraLayer.Owner)
+        m_FinalCameraLayer.Owner->Invalidate_FinalCameraSpatialBounds(this);
 }
 
 HRESULT CGameObject::Render()

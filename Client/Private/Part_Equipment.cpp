@@ -26,31 +26,7 @@ namespace
 			SOURCE_TRANSLUCENT_TWO_SIDED_PASS : 0u;
 	}
 
-	/* Source hair programs keep the original's masked/translucent switch in one
-	base constant row (read off each program's discard gate). The masked mode
-	discards below the native threshold and writes depth through the two-sided
-	deferred pass, so the hair cards occlude each other; the forward translucent
-	pass then blends only the soft edge on top. Hair programs whose source has
-	no masked mode get the same base pass with the shader's own alpha cut. */
-	constexpr uint32_t SOURCE_CHARACTER_TWO_SIDED_PASS = 6u;
-	constexpr uint32_t HAIR_MASKED_PASS_NONE = 0u;
-	constexpr uint32_t HAIR_MASKED_PASS_NATIVE = 1u;
-	constexpr uint32_t HAIR_MASKED_PASS_ALPHA_CUT = 2u;
 
-	uint32_t Resolve_HairMaskedPassMode(uint32_t program, uint32_t& maskedRow)
-	{
-		maskedRow = UINT32_MAX;
-		switch (program)
-		{
-		case 7u: maskedRow = 26u; return HAIR_MASKED_PASS_NATIVE;
-		case 166u: maskedRow = 28u; return HAIR_MASKED_PASS_NATIVE;
-		case 170u: case 172u: maskedRow = 27u; return HAIR_MASKED_PASS_NATIVE;
-		case 182u: maskedRow = 24u; return HAIR_MASKED_PASS_NATIVE;
-		case 18u: case 99u: case 160u: case 168u: case 169u:
-			return HAIR_MASKED_PASS_ALPHA_CUT;
-		default: return HAIR_MASKED_PASS_NONE;
-		}
-	}
 }
 
 CPart_Equipment::CPart_Equipment(ComPtr<ID3D11Device> pDevice,
@@ -299,34 +275,13 @@ HRESULT CPart_Equipment::Render_Pass(
 		/* BLEND draws these forward in both field and portrait captures. */
 		if (iPassIndex == 0u && 0u != Resolve_TranslucentSourcePass(surface))
 		{
-			uint32_t maskedRow = UINT32_MAX;
-			const uint32_t maskedPass = m_strSocketBoneName.empty() ?
-				Resolve_HairMaskedPassMode(surface->sourceCharacter.program, maskedRow) :
-				HAIR_MASKED_PASS_NONE;
-			if (HAIR_MASKED_PASS_NONE == maskedPass)
-				continue;
-			auto constants = surface->sourceCharacter.baseConstants;
-			if (UINT32_MAX != maskedRow)
-				constants[maskedRow].x = 1.f;
-			const uint32_t translucentPass = HAIR_MASKED_PASS_NONE;
+			if (!isSkinned) continue;
 			const DEFERRED_MATERIAL_PROFILE MaskedProfile =
 				Resolve_DeferredMaterialProfile(
-					m_strMaterialProfileId,
-					m_pModelCom->Get_MaterialName(i));
-			if (FAILED(Bind_DeferredMaterialInputs(
-					*m_pModelCom, m_pShaderCom, i, MaskedProfile,
-					m_pEmissiveOverride)) ||
-				FAILED(m_pShaderCom->Bind_RawValue("g_SourceCharacterBaseConstants",
-					constants.data(), sizeof(constants))) ||
-				FAILED(m_pShaderCom->Bind_RawValue("g_SourceCharacterHairMaskedPass",
-					&maskedPass, sizeof(maskedPass))) ||
-				FAILED(m_pShaderCom->Begin(SOURCE_CHARACTER_TWO_SIDED_PASS)))
-				return E_FAIL;
-			const HRESULT hDraw = m_pModelCom->Render(i);
-			(void)m_pShaderCom->Bind_RawValue("g_SourceCharacterHairMaskedPass",
-				&translucentPass, sizeof(translucentPass));
-			if (FAILED(hDraw))
-				return E_FAIL;
+					m_strMaterialProfileId, m_pModelCom->Get_MaterialName(i));
+			const HRESULT masked = Render_SourceHairMaskedMesh(
+				*m_pModelCom, m_pShaderCom, i, MaskedProfile, m_pEmissiveOverride);
+			if (FAILED(masked)) return masked;
 			continue;
 		}
 		if (m_strSocketBoneName.empty() && iPassIndex == 0u && surface &&

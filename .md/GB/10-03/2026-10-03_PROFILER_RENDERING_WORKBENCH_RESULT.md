@@ -409,3 +409,99 @@ Effect MSBuild item·runner 길이, output-guard fixture의 누락 module, publi
 실제 `ProfilerTool.cpp` translation unit 집중 컴파일이 통과했다. 저장 관련 함수 원문을 발췌한 격리unit과 실제 Engine Profiler·CaptureIO를 연결한17개 검사가 통과했다. 기본170개 전부 저장, 명시120개/50개 제외, 분석범위1→900 변경의 독립성, 명시 범위 clamp,1,202개 중1,200개 보관/2개 퇴출, 저장 중 live 초기화 후170개 요약 보존을 확인했다. 생성JSON13개 assertion으로 frame 수·제외/퇴출·oldest1000ms fixture 보존·GPU pending/drop과 GPU 평균null을 검증했다. CPU전용probe의 clock과 GPU상태는 명시fixture이며 `Sample_Context`만 빈 context seam으로 대체했다. 실제GPU 측정·Client/UI 실행은 아니다.
 
 근거는 `out/BernCliffFrameInvestigation20261004/profiler-save/verification-receipt.json`, `run-probe.log`, `all-170.json`, `explicit-120.json`, `retained-1200.json`과 같은 조사폴더의 `ProfilerCaptures`에 있다. H/CPP의UTF-8 BOM없음·CRLF를 유지했고 scoped `git diff --check`를 통과했다. 기존SDK codepage 경고가 있으며 제품 통합빌드·배포와 사용자F7 화면은 이 절의 완료 범위가 아니다.
+
+## G16. 10-04 Character Select·Bern 맵의 원본 성분 A/B와 선택형 품질 실험
+
+최종 사용자 요청은 Character Select와 Bern의 맵 재질·조명·후처리 화질이다. 원본 근거 복구를
+우선하고 Workbench에서만 A/B로 켜고 끄며, 스킬·보스 이펙트는 수정하지 않는다. 이 변경은
+현재 연결된 원본 성분의 비교와 추가 shader 후보를 제공한다. 새 원본 맵 자산을 복구하거나
+원작과의 화면 일치를 완료한 결과가 아니다. 저작/게시 RenderingProfiles, UserSettings,
+Resources와 material binding을 변경하거나 publish하지 않았다.
+
+### G16-1. 원본 성분을 우선하는 실제 사용 경로
+
+Debug F1 → Rendering Workbench → Technique A/B의 첫 표는 `현재 연결된 원본 복구 기여 A/B`다.
+source material, source indirect, MapPBR 간접 diffuse(RNM/SH), 환경 specular, source tone+grading,
+LUT의6개 항목은 언제나 실험 시작 화면을 공통 기준으로 사용한다. `Restoration`의 기존14단계도
+유지한다. 기존 shader·texture·scene 입력의 기여를 제거/복원하며 과거 결함 EXE를 재현하는 것은 아니다.
+
+접힌 근거 영역은 현재 profile/region, LUT asset ID·weight, profile cube와 실제 SRV,
+최근 표면 binding의 source/RNM/cube/program ID를 보여 준다. 입력 존재는 원작 화면 일치의
+증명이 아니며 없거나 다른 material family이면 해당 비교의 범위가 제한된다.
+Character Select SL00 자료에는 source indirect/native SH·BRDF 입력이 연결된 재질181개가 있고,
+Bern의 source indirect 목록은0개다. Bern의 BG/RNM을 같은 source indirect toggle의 소비자로
+취급하지 않는다. 원본 SH/BRDF는 기존 설치 경로이며 이번에 새로 복구했다고 기록하지 않는다.
+현재 원본 component/RNM 대조와 별도 DDS 복구의 근거는
+[원본 조사 결과 G10·G11](../10-04/2026-10-04_RENDERING_SOURCE_EVIDENCE_RESULT.md#g10-character-select-전체-component-대조와-rnm-원본-mip-설치)을 따른다.
+
+기타 현재 설정은 접힌 별도 표로, 새 기법과 통합 후보는 `추가 품질 실험 (원본 복구와 별도)`로
+분리했다. 창 열기·접힘 펼치기·기준 선택은 renderer를 바꾸지 않는다. 명시적인 A/B 버튼만
+session preview를 적용한다. 종료/닫기·profile/level 변경은 소유한 변경 필드만 시작값으로 복구한다.
+무관한 최신 gamma 등의 편집은 유지한다.
+후처리는 최종 장면 전체에 작용하므로 비교 중 이펙트의 화면색에도 영향을 줄 수 있다.
+이펙트 데이터·프로그램 수정 제외와 최종 합성색 불변은 서로 다른 범위다.
+
+### G16-2. 실제 shader에 연결한 추가 후보와 한계
+
+`RENDER_QUALITY_SETTINGS`의3개 bool은 모두 기본OFF이고 JSON schema에 추가하지 않았다.
+Horizon AO는 기존 SSAO raw pass의 선택 분기다. 현재 depth/normal의4/8/12방향×4표본을
+사용하며 실제 depth texel 중심과 표본 방향의 접평면을 기준으로 자기 가림을 피한다.
+기존 bilateral blur와 주변광 소비자를 사용한다. 자체 horizon 기반 근사이며 GTAO/HBAO+ SDK가 아니다.
+
+SSR 교차 보정은 기존 accepted hit를 보존하고, step 사이에서 놓친 연속 표면 교차만 최대6회
+세분한다. family/normal/접평면 연속성을 확인해 깊이 절벽을 반사면으로 만들지 않는다.
+roughness 필터는 단일 hit 주변3×3/5×5 radiance를 depth/normal/family 조건으로 모은다.
+물리적 BRDF convolution·다중 반사 광선·화면 밖 추적·시간 누적은 구현하지 않았다.
+SSGI/SSR은 기존 marker3 MapPBR·FINAL 수신 범위와 immutable opaque radiance를 유지하며
+두 pass 성공 후에만 HDR/Bloom에 반영한다. native effect material ABI와 효과 shader를 수정하지 않았다.
+
+통합 `DX11 품질 확장 실험`의 B는 mip0, SSAO ON/12방향/Horizon, PCF radius2,
+SSGI ON/16/full-resolution, SSR ON/64/교차 보정/roughness 필터다. SSGI/SSR 강도는 기존 양수를
+유지하고0이면 후보에서만0.25/0.5를 쓴다. 꺼진 그림자를 켜지 않으며 source material이OFF이면
+그 값을 바꾸지 않고 후보를 거부한다. exposure/gamma/LUT/FXAA/Bloom은 그대로다.
+추가 후보를 명시적으로 선택했을 때만 이 묶음이 적용된다. 기존 RNM/IBL 위 가산이어서 항상
+더 좋은 화질을 보장하지 않으며 실제 맵에서 과한 차폐·반사·간접광과 비용을 함께 비교해야 한다.
+
+### G16-3. A/B 소유권·측정 조건과 실행한 검증
+
+Service whitelist는 기존 ID를 유지한49개다. texture minMip0..3 정수와 새3개 bool의
+읽기·검증·preview·복원 및 Benchmark 지문을 연결했다. Original→A/B의 합집합은 종료 복원의
+소유권 mask이고 A→B 차이만 비교 mask다. A가 바뀌어 새 기준이 성공적으로 적용되면 새
+experiment ID를 발급해 이전 기준의 일반 캡처와 섞지 않는다. 같은 A의 B만 바꾸면 ID를 유지하고,
+거부된 변경은 이전 ID/상태를 유지한다. 행별 측정 ID와 예상 A/B 조건으로 이미 분리된 기록은 보존한다.
+
+| 실행 검증 | 결과 | 증거와 경계 |
+|---|---|---|
+| 실제 AO shader PS5/WARP |52/52 PASS|`out/ModernRenderingQuality20261004/ao/ao_warp_receipt.json`. OFF 기존 출력 bitwise 일치, 평면/원근 경사면 흰색, 모서리 차폐, 혼합 normal marker, invalid/소형/비정방 입력, bilateral 경계. 합성 depth/normal이며 Client 화면이 아니다.|
+| 실제 SSR·SSGI shader PS5/FX5/WARP |245/245 PASS|`out/SSRQuality20261004/validation-receipt.json`.64²/65²/1², 새 옵션OFF golden bitwise 일치, coarse miss 보정, 깊이/법선 경계 거부, 필터 분산 감소·constant 보존·경계 색 누출0·finite. 실제 RTX 장치 시간이나 맵 캡처가 아니다.|
+| 선택한 실제 Service/Benchmark 함수·Profiler |83/83 PASS|`out/ModernRenderingQuality20261004/contracts/contract_receipt.json`.49필드, 후보·기준·새 ID·행 기록·실패 보존·종료 복원. 상태 owner/활성 profile/restoration preview 일부는 fixture이며 실제 Renderer 적용이나 ImGui 실행이 아니다.|
+| UI 호출 지점 정적 확인 |6/6 PASS|같은 폴더 `static_receipt.json`. 원본6행의 Original 기준, 추가행만 후보 기준 사용, 열기/선택 비활성·버튼 명시 적용. 실제 UI 자동화가 아니다.|
+
+AO shader SHA256은 `3B01CB2B8319A6C09F54B211B3E9A481973898C0BA855F1EE304F8AA23891915`,
+ScreenSpaceLighting은 `AD3125F3B3CCCA9AAB108F59D01A332244C725E7E36450046DE00486E99CA46D`다.
+계약 receipt에는 실제 실행한 함수 원문·헤더·검증 소스의 해시를 남겼다. 수치/함수 검증380개와
+정적 확인6개를 사용자 맵의 화질 향상률이나 GPU 성능 개선으로 환산하지 않는다.
+
+### G16-4. 제품 빌드와 남은 사용자 화면 판정
+
+정상 증분 Debug Product의 Engine→SDK→Client compile/deploy가 PASS(exit0,455,344ms)다.
+근거는 `out/BuildPipeline/runs/20261004T060225618Z-debug-product.json`과
+`out/ModernRenderingQuality20261004/product-debug.log`다. 기존 코드 페이지·Effects deprecated·
+shader helper 경고와 DirectXTK PDB 누락 경고가 남아 있으며 무경고 빌드로 설명하지 않는다.
+
+Release Product도 Engine→SDK→Client compile/deploy가 PASS(exit0,451,098ms)다.
+근거는 `out/BuildPipeline/runs/20261004T061330368Z-release-product.json`과
+`out/ModernRenderingQuality20261004/product-release.log`다. 두 구성에서 각각 생성된 Engine.dll과
+Deferred/ScreenSpaceLighting CSO의 Engine/Client SHA가 일치하며 두 tracked HLSL 사본도 같다.
+별도 세션의 기존 미커밋 변경이 있는 공유 checkout의 빌드이며 이 기능만의 격리 빌드라고 하지 않는다.
+
+최종 `out/ModernRenderingQuality20261004/final-structure.json`의68개 확인은 모두 통과했다.
+위 수치 검증의 실제 입력 해시,11개 C++/HLSL의 기존 인코딩·BOM·CRLF,5개 Markdown의UTF-8,
+정상 제품 빌드·배포 pair와 scoped diff를 대조했다. 시작에 기록한 저작 RenderingProfiles,
+게시 RenderingProfiles.runtime.json, 사용자 UserSettings.json의 SHA가 모두 그대로이고 JSON parse도
+통과했다. 전체 `git diff --check`도 통과했다. 새 C++ 파일·project/filter·XML 변경은 없다.
+
+Client/Server나 도구 UI를 자율 실행하지 않았다. 사용자가 두 맵에서 같은 카메라로 원본6개
+성분을 먼저 확인하고 추가 후보를 선택해 미관·밝기·가림·반사·GPU 비용을 판정해야 한다.
+현재 완료 범위는 비교 기능과 선택형 shader 연결이며, 맵별 최종 튜닝·원작 일치·저장값 영구 적용은
+아직 완료하지 않았다. 스킬·보스 이펙트 복원은 이번 작업에 포함하지 않는다.

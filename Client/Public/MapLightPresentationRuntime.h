@@ -20,7 +20,8 @@ public:
 		const std::string& expectedAreaId);
 	bool_t Load_Runtime(const std::string& areaId);
 	bool_t Replace_Document(const CMapLightDocument& document);
-	bool_t Submit_Frame();
+	// Per-frame presentation translation; the authored light document stays unchanged.
+	bool_t Submit_Frame(const float3_t& worldOffset = {});
 	virtual HRESULT Submit_Presentation() override;
 	void Clear();
 
@@ -39,6 +40,7 @@ private:
 	}
 	inline static f32_t s_fSceneIntensityMultiplier = 1.f;
 	CMapLightDocument m_Document;
+	float3_t m_FrameWorldOffset{};
 	std::string m_Status = "Map light presentation is not loaded";
 };
 

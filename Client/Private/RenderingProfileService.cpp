@@ -628,6 +628,10 @@ namespace
         copy(F::SSR_DISTANCE,q.fSSRMaxDistance,bq.fSSRMaxDistance);
         copy(F::SSR_THICKNESS,q.fSSRThickness,bq.fSSRThickness);
         copy(F::SSR_STEPS,q.iSSRStepCount,bq.iSSRStepCount);
+        copy(F::TEXTURE_MIN_MIP,q.iTextureMinMip,bq.iTextureMinMip);
+        copy(F::HORIZON_AO_ENABLED,q.bHorizonAOEnabled,bq.bHorizonAOEnabled);
+        copy(F::SSR_REFINEMENT_ENABLED,q.bSSRRefinementEnabled,bq.bSSRRefinementEnabled);
+        copy(F::SSR_ROUGHNESS_FILTER_ENABLED,q.bSSRRoughnessFilterEnabled,bq.bSSRRoughnessFilterEnabled);
         copy(F::LUT_ENABLED,q.SourcePostProcess.LutLayers,bq.SourcePostProcess.LutLayers);
         copy(F::SOURCE_POST_PROCESS,q.SourcePostProcess.bEnabled,bq.SourcePostProcess.bEnabled);
         if (shadowNormalized) MergeExperimentShadowAux(bs,appliedShadow,shadow);
@@ -636,6 +640,69 @@ namespace
         copy(F::PCF_RADIUS,shadow.Settings.iPCFFilterRadius,bs.Settings.iPCFFilterRadius);
         copy(F::FOG_ENABLED,fog.bEnabled,bf.bEnabled); copy(F::FOG_DENSITY,fog.fDensity,bf.fDensity);
         MergeExperimentMaterial(fields,bm,material,appliedMaterial,normalized);
+    }
+
+    constexpr size_t OptimizationFirst = static_cast<size_t>(RENDERING_EXPERIMENT_FIELD::OPT_FRUSTUM);
+    constexpr uint64_t OptimizationMask = ((uint64_t{1} << RENDERING_EXPERIMENT_FIELD_COUNT) - 1u) &
+        ~((uint64_t{1} << OptimizationFirst) - 1u);
+
+    RENDERING_EXPERIMENT_VALUES ReadOptimizationValues(const RENDER_OPTIMIZATION_SETTINGS& render,
+        const MAP_VISIBILITY_SETTINGS& visibility)
+    {
+        RENDERING_EXPERIMENT_VALUES result;
+        using F = RENDERING_EXPERIMENT_FIELD;
+        const auto set = [&](F field, bool value) { result.values[static_cast<size_t>(field)] = double(value); };
+        set(F::OPT_FRUSTUM, render.FrustumEnabled);
+        set(F::OPT_OCCLUSION, visibility.OcclusionEnabled);
+        set(F::OPT_DISTANCE, visibility.DistanceEnabled);
+        set(F::OPT_MESH_LOD, render.MeshLodEnabled);
+        set(F::OPT_MAP_INSTANCING, render.MapInstancingEnabled);
+        set(F::OPT_IDENTICAL_BATCH, render.IdenticalBatchEnabled);
+        set(F::OPT_LIGHTING_BANK, render.LightingBankEnabled);
+        set(F::OPT_SHADOW_CACHE, render.StaticShadowCacheEnabled);
+        set(F::OPT_NPC_POSE_REUSE, render.NpcPoseReuseEnabled);
+        set(F::OPT_PARTICLE_ROOT_CACHE, render.ParticleRootCacheEnabled);
+        set(F::OPT_MAP_WORKERS, visibility.ParallelPreparationEnabled);
+        set(F::OPT_PARTICLE_WORKERS, render.ParticleWorkersEnabled);
+        return result;
+    }
+
+    bool CommitOptimizationValues(const RENDERING_EXPERIMENT_VALUES& values, uint64_t fields, string& status)
+    {
+        if (!fields) return true;
+        auto& game = CGameInstance::Get();
+        const auto oldRender = game.Get_RenderOptimizationSettings();
+        const auto oldVisibility = game.Get_MapVisibilitySettings();
+        auto render = oldRender; auto visibility = oldVisibility;
+        bool renderChanged = false, visibilityChanged = false;
+        using F = RENDERING_EXPERIMENT_FIELD;
+        const auto copy = [&](F field, bool_t& target, bool& changed) {
+            if (!(fields & RenderingExperimentBit(field))) return;
+            const bool_t value = values.values[static_cast<size_t>(field)] != 0;
+            changed |= target != value; target = value;
+        };
+        copy(F::OPT_FRUSTUM, render.FrustumEnabled, renderChanged);
+        copy(F::OPT_OCCLUSION, visibility.OcclusionEnabled, visibilityChanged);
+        copy(F::OPT_DISTANCE, visibility.DistanceEnabled, visibilityChanged);
+        copy(F::OPT_MESH_LOD, render.MeshLodEnabled, renderChanged);
+        copy(F::OPT_MAP_INSTANCING, render.MapInstancingEnabled, renderChanged);
+        copy(F::OPT_IDENTICAL_BATCH, render.IdenticalBatchEnabled, renderChanged);
+        copy(F::OPT_LIGHTING_BANK, render.LightingBankEnabled, renderChanged);
+        copy(F::OPT_SHADOW_CACHE, render.StaticShadowCacheEnabled, renderChanged);
+        copy(F::OPT_NPC_POSE_REUSE, render.NpcPoseReuseEnabled, renderChanged);
+        copy(F::OPT_PARTICLE_ROOT_CACHE, render.ParticleRootCacheEnabled, renderChanged);
+        copy(F::OPT_MAP_WORKERS, visibility.ParallelPreparationEnabled, visibilityChanged);
+        copy(F::OPT_PARTICLE_WORKERS, render.ParticleWorkersEnabled, renderChanged);
+        if (renderChanged && FAILED(game.Apply_RenderOptimizationSettings(render)))
+        { status = "Optimization change rejected; previous settings retained."; return false; }
+        if (visibilityChanged && FAILED(game.Apply_MapVisibilitySettings(visibility)))
+        {
+            const bool restored = !renderChanged || SUCCEEDED(game.Apply_RenderOptimizationSettings(oldRender));
+            status = restored ? "Visibility change rejected; optimization change rolled back." :
+                "Visibility change rejected and optimization rollback failed; restore is still required.";
+            return false;
+        }
+        return true;
     }
 
     string ExperimentVideoIdentity()
@@ -676,7 +743,23 @@ CRenderingProfileService::Experiment_Fields()
         {"environment.sourcePbrIndirect.enabled",0,1,1,true},
         {"quality.sourcePostProcess.enabled",0,1,1,true},
         {"material.sourceMaterials.enabled",0,1,1,true},
-        {"quality.ssgi.halfResolution",0,1,1,true}
+        {"quality.ssgi.halfResolution",0,1,1,true},
+        {"quality.texture.minMip",0,3,1,false},
+        {"quality.ao.horizonEnabled",0,1,1,true},
+        {"quality.ssr.refinementEnabled",0,1,1,true},
+        {"quality.ssr.roughnessFilterEnabled",0,1,1,true},
+        {"optimization.frustum.enabled",0,1,1,true},
+        {"optimization.occlusion.enabled",0,1,1,true},
+        {"optimization.distance.enabled",0,1,1,true},
+        {"optimization.meshLod.enabled",0,1,1,true},
+        {"optimization.mapInstancing.enabled",0,1,1,true},
+        {"optimization.identicalBatch.enabled",0,1,1,true},
+        {"optimization.lightingBank.enabled",0,1,1,true},
+        {"optimization.staticShadowCache.enabled",0,1,1,true},
+        {"optimization.npcPoseReuse.enabled",0,1,1,true},
+        {"optimization.particleRootCache.enabled",0,1,1,true},
+        {"optimization.mapWorkers.enabled",0,1,1,true},
+        {"optimization.particleWorkers.enabled",0,1,1,true}
     }};
     return fields;
 }
@@ -698,7 +781,12 @@ RENDERING_EXPERIMENT_VALUES CRenderingProfileService::Read_ExperimentValues()
         double(q.bSSGIEnabled),q.fSSGIStrength,q.fSSGIRadius,double(q.iSSGISampleCount),
         double(q.bSSREnabled),q.fSSRStrength,q.fSSRMaxDistance,q.fSSRThickness,double(q.iSSRStepCount),
         double(game.Get_RenderEnvironment().bUseSourcePBRIndirect),double(q.SourcePostProcess.bEnabled),
-        double(material.bUseSourceMaterials),double(q.bSSGIHalfResolution)}};
+        double(material.bUseSourceMaterials),double(q.bSSGIHalfResolution),
+        double(q.iTextureMinMip),double(q.bHorizonAOEnabled),double(q.bSSRRefinementEnabled),
+        double(q.bSSRRoughnessFilterEnabled)}};
+    const auto optimization = ReadOptimizationValues(game.Get_RenderOptimizationSettings(), game.Get_MapVisibilitySettings());
+    for (size_t i = OptimizationFirst; i < RENDERING_EXPERIMENT_FIELD_COUNT; ++i)
+        result.values[i] = optimization.values[i];
     return result;
 }
 
@@ -715,6 +803,9 @@ bool_t CRenderingProfileService::Validate_ExperimentValues(const RENDERING_EXPER
         { status = string("Invalid experiment value: ") + field.id; return false; }
     }
     const auto value = [&](RENDERING_EXPERIMENT_FIELD f) { return values.values[static_cast<size_t>(f)]; };
+    const double minMip=value(RENDERING_EXPERIMENT_FIELD::TEXTURE_MIN_MIP);
+    if (std::floor(minMip)!=minMip)
+    { status="Texture minimum mip must be an integer in 0..3."; return false; }
     const double samples=value(RENDERING_EXPERIMENT_FIELD::SSAO_SAMPLES), radius=value(RENDERING_EXPERIMENT_FIELD::PCF_RADIUS);
     if ((samples!=4 && samples!=8 && samples!=12) || (radius!=0 && radius!=1 && radius!=2))
     { status="SSAO samples must be 4/8/12 and PCF radius must be 0/1/2."; return false; }
@@ -763,6 +854,7 @@ bool_t CRenderingProfileService::Set_ExperimentPreview(const RENDERING_EXPERIMEN
         m_iExperimentLevel = CGameInstance::Get().Get_CurrentLevelID();
         m_strExperimentRegion = m_strAppliedEnvironmentRegion;
         m_strExperimentVideo = ExperimentVideoIdentity();
+        m_ExperimentBaseShadow = CGameInstance::Get().Get_ShadowLightDesc();
     }
     m_ExperimentValues = values; m_iExperimentFields = fields;
     m_bExperimentActive = true; ++m_iExperimentGeneration;
@@ -802,9 +894,68 @@ bool_t CRenderingProfileService::Restore_ExperimentPreview(string& status)
     return true;
 }
 
+bool_t CRenderingProfileService::Restore_OptimizationPreview(string& status)
+{
+    if (!m_iOptimizationOwnedFields) return true;
+    const auto& game = CGameInstance::Get();
+    auto restored = ReadOptimizationValues(game.Get_RenderOptimizationSettings(), game.Get_MapVisibilitySettings());
+    for (size_t i = OptimizationFirst; i < RENDERING_EXPERIMENT_FIELD_COUNT; ++i)
+    {
+        // A different owner can change an option during the experiment. Never
+        // overwrite that newer value while restoring the fields still ours.
+        if ((m_iOptimizationOwnedFields & (uint64_t{1} << i)) &&
+            restored.values[i] == m_OptimizationLastApplied.values[i])
+            restored.values[i] = m_OptimizationBase.values[i];
+    }
+    if (!CommitOptimizationValues(restored, m_iOptimizationOwnedFields, status))
+    { m_strExperimentStatus = status; return false; }
+    m_iOptimizationOwnedFields = 0;
+    return true;
+}
+
+bool_t CRenderingProfileService::Apply_OptimizationPreview(string& status)
+{
+    const auto& game = CGameInstance::Get();
+    const auto current = ReadOptimizationValues(game.Get_RenderOptimizationSettings(), game.Get_MapVisibilitySettings());
+    for (size_t i = OptimizationFirst; i < RENDERING_EXPERIMENT_FIELD_COUNT; ++i)
+    {
+        if ((m_iOptimizationOwnedFields & (uint64_t{1} << i)) &&
+            current.values[i] != m_OptimizationLastApplied.values[i])
+        {
+            if (!Clear_ExperimentPreview(status)) return false;
+            status = m_strExperimentStatus = "Optimization changed by another owner; comparison released and newer values preserved.";
+            return true;
+        }
+    }
+    const uint64_t nextFields = m_iExperimentFields & OptimizationMask;
+    auto base = m_OptimizationBase; auto next = current;
+    for (size_t i = OptimizationFirst; i < RENDERING_EXPERIMENT_FIELD_COUNT; ++i)
+    {
+        const uint64_t bit = uint64_t{1} << i;
+        if (nextFields & bit)
+        {
+            if (!(m_iOptimizationOwnedFields & bit)) base.values[i] = current.values[i];
+            next.values[i] = m_ExperimentValues.values[i];
+        }
+        else if (m_iOptimizationOwnedFields & bit) next.values[i] = base.values[i];
+    }
+    if (!CommitOptimizationValues(next, m_iOptimizationOwnedFields | nextFields, status))
+    {
+        // Retain a restore receipt even if the second setter AND rollback fail.
+        // Unchanged newly owned fields simply restore to their identical base.
+        m_OptimizationBase = base;
+        m_OptimizationLastApplied = ReadOptimizationValues(game.Get_RenderOptimizationSettings(), game.Get_MapVisibilitySettings());
+        m_iOptimizationOwnedFields |= nextFields;
+        m_strExperimentStatus = status; return false;
+    }
+    m_OptimizationBase = base; m_OptimizationLastApplied = next;
+    m_iOptimizationOwnedFields = nextFields;
+    return true;
+}
+
 bool_t CRenderingProfileService::Clear_ExperimentPreview(string& status)
 {
-    if (!Restore_ExperimentPreview(status)) return false;
+    if (!Restore_ExperimentPreview(status) || !Restore_OptimizationPreview(status)) return false;
     if (m_bExperimentActive) ++m_iExperimentGeneration;
     m_bExperimentActive = false; m_iExperimentFields = 0;
     status = m_strExperimentStatus = "Session experiment ended; underlying scene restored.";
@@ -817,12 +968,20 @@ void CRenderingProfileService::Release_ExperimentForProfileCommit()
     // merged only experiment-owned material fields into the latest material.
     m_bExperimentActive = m_bExperimentApplied = false;
     m_iExperimentAppliedFields = m_iExperimentFields = 0; ++m_iProfileGeneration; ++m_iExperimentGeneration;
+    string restoreStatus;
+    if (!Restore_OptimizationPreview(restoreStatus))
+    {
+        // Keep owned fields for a later retry; the successfully committed new
+        // profile must not be undone by a stale quality overlay.
+        m_strExperimentStatus = "Scene owner changed; optimization restore pending: " + restoreStatus;
+        return;
+    }
     m_strExperimentStatus = "Scene owner changed; the new profile remains active.";
 }
 
 bool_t CRenderingProfileService::Apply_ExperimentPreview(string& status)
 {
-    if (!m_bExperimentActive) return true;
+    if (!m_bExperimentActive) return Restore_OptimizationPreview(status);
     if (m_iExperimentProfileGeneration != m_iProfileGeneration ||
         m_iExperimentLevel != CGameInstance::Get().Get_CurrentLevelID() ||
         m_strExperimentRegion != m_strAppliedEnvironmentRegion || m_strExperimentVideo != ExperimentVideoIdentity())
@@ -830,6 +989,11 @@ bool_t CRenderingProfileService::Apply_ExperimentPreview(string& status)
         if (!Clear_ExperimentPreview(status)) return false;
         m_strExperimentStatus = "Scene, region or user settings changed; experiment released."; return true;
     }
+    if (!Apply_OptimizationPreview(status)) return false;
+    if (!m_bExperimentActive) return true;
+    // A flags-only comparison never applies quality/shadow/fog setters. This
+    // preserves caches and avoids adding unrelated work to measured frames.
+    if (!(m_iExperimentFields & ~OptimizationMask)) return true;
     auto& game = CGameInstance::Get();
     m_ExperimentBaseQuality = game.Get_RenderQualitySettings(); m_ExperimentBaseShadow = game.Get_ShadowLightDesc();
     m_ExperimentBaseFog = game.Get_HeightFogSettings(); m_ExperimentBaseMaterial = game.Get_MaterialRenderSettings();
@@ -860,6 +1024,10 @@ bool_t CRenderingProfileService::Apply_ExperimentPreview(string& status)
     apply(F::SSR_DISTANCE,q.fSSRMaxDistance);
     apply(F::SSR_THICKNESS,q.fSSRThickness);
     apply(F::SSR_STEPS,q.iSSRStepCount);
+    apply(F::TEXTURE_MIN_MIP,q.iTextureMinMip);
+    apply(F::HORIZON_AO_ENABLED,q.bHorizonAOEnabled);
+    apply(F::SSR_REFINEMENT_ENABLED,q.bSSRRefinementEnabled);
+    apply(F::SSR_ROUGHNESS_FILTER_ENABLED,q.bSSRRoughnessFilterEnabled);
     apply(F::FOG_ENABLED,f.bEnabled); apply(F::FOG_DENSITY,f.fDensity); apply(F::DESATURATION,q.fSceneDesaturation);
     apply(F::SOURCE_POST_PROCESS,q.SourcePostProcess.bEnabled);
     apply(F::SOURCE_PBR_INDIRECT,environment.bUseSourcePBRIndirect);
@@ -879,7 +1047,7 @@ bool_t CRenderingProfileService::Apply_ExperimentPreview(string& status)
         apply(F::ROUGHNESS_OFFSET,p.vSurfaceParameters.y);
     }
     // Record the base first so any later failure rolls back all successful steps.
-    m_bExperimentApplied = true; m_iExperimentAppliedFields = m_iExperimentFields;
+    m_bExperimentApplied = true; m_iExperimentAppliedFields = m_iExperimentFields & ~OptimizationMask;
     m_ExperimentAppliedMaterial=material; m_ExperimentAppliedShadow=s;
     m_bExperimentNormalizedShadow=!s.Settings.bEnabled &&
         (m_iExperimentFields & (RenderingExperimentBit(F::SHADOW_ENABLED)|RenderingExperimentBit(F::SHADOW_STRENGTH)|RenderingExperimentBit(F::PCF_RADIUS)));
@@ -889,8 +1057,7 @@ bool_t CRenderingProfileService::Apply_ExperimentPreview(string& status)
     if (FAILED(game.Apply_RenderQualitySettings(q)) || FAILED(game.Apply_Shadow_Light(s)) ||
         FAILED(game.Apply_HeightFog(f)) || FAILED(game.Apply_MaterialRenderSettings(material)))
     {
-        string restoreStatus; const bool restored = Restore_ExperimentPreview(restoreStatus);
-        m_bExperimentActive = false; ++m_iExperimentGeneration;
+        string restoreStatus; const bool restored = Clear_ExperimentPreview(restoreStatus);
         status = m_strExperimentStatus = restored ? "Experiment rejected; previous scene restored." : restoreStatus;
         return false;
     }

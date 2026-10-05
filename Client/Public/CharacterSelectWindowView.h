@@ -13,6 +13,7 @@ class CCharacter;
 class CCharacterPortraitRenderer;
 class CEquipmentPresentationCatalog;
 class CEquipmentPresentationService;
+class CLevel_Loading;
 class CPlayableCharacterAssetService;
 class CUILayoutRuntime;
 
@@ -29,8 +30,9 @@ class CUILayoutRuntime;
 
    Above the card bar the seated characters stand side by side. Each is a real CCharacter on a
    LEVEL::LOBBY layer, hidden from the world pass and drawn through CCharacterPortraitRenderer
-   into its CharSel_StagePortrait_N slot. The class models are prepared one at a time off the
-   main thread once the window first opens, so a character appears when its model is ready.
+   into its CharSel_StagePortrait_N slot. World-return Loading prepares occupied cards through
+   the same asynchronous class service before the window opens. Ordinary first-open preparation
+   also uses this path; a closed initial Lobby does not preload class models.
 
    Same ownership pattern as CRaidEntryPreviewView: every slot is a real CUI_Sprite on
    LEVEL::STATIC's Layer_UI via CUILayoutRuntime, and this view only reports the user's
@@ -74,6 +76,13 @@ public:
 	   cancelled without committing, and the characters (gone with the Lobby's layers) are
 	   forgotten so the next visit prepares them again. */
 	void Release_Stage();
+	/* Borrowed by the world-return Loading level. E_PENDING means keep Loading visible;
+	   S_OK means every occupied card owns its class model, saved look and equipped avatar.
+	   Failure leaves the roster untouched. End cancels/drains before rollback on failure. */
+	void Begin_EntryPreparation(const CLevel_Loading* pOwner);
+	HRESULT Advance_EntryPreparation(std::string& outStatus, f32_t& outProgress);
+	void End_EntryPreparation(const CLevel_Loading* pOwner, bool_t succeeded);
+	bool_t Is_PreparingEntry() const { return nullptr != m_pEntryPreparationOwner; }
 
 	/* Draw_Text submits immediately (SpriteBatch), so this must run after
 	   CImGuiLayer::EndFrame() -- same reasoning as every other Render_XText split. */
@@ -89,7 +98,7 @@ private:
 	void Render_RenameDialogText(f32_t fScaleX, f32_t fScaleY, f32_t fUiScale);
 	void Update_Stage();
 	void Spawn_StageCharacter(int32_t iIndex);
-	void Apply_StageAvatar(int32_t iIndex, CCharacter& character);
+	bool_t Apply_StageAvatar(int32_t iIndex, CCharacter& character);
 
 private:
 	static constexpr int32_t STAGE_COUNT = 6;
@@ -120,6 +129,8 @@ private:
 	/* Stage characters, by card index. Preparation starts on the first open and runs one class
 	at a time; a class that fails is skipped for the rest of this Lobby visit. */
 	bool_t m_bStageRequested = false;
+	const CLevel_Loading* m_pEntryPreparationOwner = nullptr;
+	uint64_t m_iEntryPreparationStartedMs = 0u;
 	bool_t m_bStageCatalogsReady = false;
 	unique_ptr<CPlayableCharacterAssetService> m_pStageAssets;
 	/* Saved equipment uses the same item/visual-set and transactional part path as world players. */

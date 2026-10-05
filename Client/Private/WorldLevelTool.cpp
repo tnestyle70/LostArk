@@ -438,6 +438,127 @@ bool CWorldLevelTool::Consume_Request(WORLD_LEVEL_TOOL_REQUEST& request)
     return true;
 }
 
+bool CWorldLevelTool::Needs_ChunkView(const std::string& area, const void* source, uint64_t generation) const
+{
+    return m_Open && (area != m_ChunkArea || source != m_ChunkSource || generation != m_ChunkGeneration ||
+        std::chrono::steady_clock::now() >= m_ChunkNextRefresh);
+}
+
+void CWorldLevelTool::Set_ChunkView(std::string area, const void* source, uint64_t generation,
+    std::vector<MAP_CHUNK_DEBUG_ROW> rows, bool enabled, bool hlodEnabled)
+{
+    if (area != m_ChunkArea || source != m_ChunkSource || generation != m_ChunkGeneration)
+        m_SelectedChunk = UINT32_MAX;
+    m_ChunkArea = std::move(area); m_ChunkSource = source; m_ChunkGeneration = generation;
+    m_ChunkRows = std::move(rows); m_ChunkEnabled = enabled; m_ChunkHlodEnabled = hlodEnabled;
+    if (std::none_of(m_ChunkRows.begin(), m_ChunkRows.end(),
+        [&](const auto& row) { return row.chunkId == m_SelectedChunk; })) m_SelectedChunk = UINT32_MAX;
+    m_ChunkNextRefresh = std::chrono::steady_clock::now() + std::chrono::milliseconds(250);
+}
+
+void CWorldLevelTool::Render_ChunkView()
+{
+    if (!ImGui::CollapsingHeader("Runtime chunks / HLOD")) return;
+    if (!m_ChunkSource || m_ChunkArea != m_SelectedAreaId || m_ChunkArea != m_ActiveAreaId)
+    { ImGui::TextDisabled("Enter this Area to inspect its live spatial chunks."); return; }
+    bool modeChanged = ImGui::Checkbox("Merged chunk draws", &m_ChunkEnabled);
+    ImGui::SameLine();
+    modeChanged |= ImGui::Checkbox("Distant HLOD", &m_ChunkHlodEnabled);
+    if (modeChanged)
+    {
+        WORLD_LEVEL_TOOL_REQUEST request;
+        request.kind = WORLD_LEVEL_REQUEST_KIND::SET_CHUNK_MODE; request.areaId = m_ChunkArea;
+        request.chunkEnabled = m_ChunkEnabled; request.chunkHlodEnabled = m_ChunkHlodEnabled;
+        request.runtimeGeneration = m_ChunkGeneration; m_Request = std::move(request);
+        m_InteractionRequested = true;
+    }
+    ImGui::TextWrapped("Performance controls above: Merged chunk draws changes rendering; Distant HLOD reduces distant geometry. Bounds controls below only draw debug lines.");
+    ImGui::Checkbox("Show chunk bounds", &m_ShowChunkBounds); ImGui::SameLine();
+    bool allBounds = Show_AllChunkBounds();
+    ImGui::BeginDisabled(m_SelectedChunk == UINT32_MAX);
+    if (ImGui::Checkbox("All chunks", &allBounds)) m_ShowAllChunkBounds = allBounds;
+    ImGui::EndDisabled(); ImGui::SameLine();
+    if (ImGui::Button("Refresh chunks")) m_ChunkNextRefresh = {};
+    if (m_ShowChunkBounds)
+        ImGui::TextWrapped("Bounds: %s. Yellow = selected, green = HLOD, blue = other valid chunks, red = invalid. Close bounds and tools when capturing performance.",
+            Show_AllChunkBounds() ? "all chunks (select a row to inspect one)" : "selected chunk only");
+    uint32_t nearDraws = 0u, farDraws = 0u;
+    uint64_t submittedIndices = 0u;
+    for (const auto& row : m_ChunkRows) if (row.submitted)
+    {
+        if (row.farSelected) ++farDraws; else ++nearDraws;
+        submittedIndices += row.farSelected ? row.farIndices : row.nearIndices;
+    }
+    ImGui::Text("Successful chunk draws: near %u / HLOD %u; indices %llu (one frame sampled every 250 ms)",
+        nearDraws, farDraws, static_cast<unsigned long long>(submittedIndices));
+    ImGui::TextWrapped("%zu prepared chunks. Each chunk groups sources with the same active shader inputs; the material name is representative, not the grouping key. Source groups are not measured saved draws. Not submitted includes camera culling. IDs last only for this loaded map. Bounds are a debug overlay, not an occlusion test.", m_ChunkRows.size());
+    if (ImGui::BeginTable("WorldLevelChunks", 5, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV |
+        ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY, ImVec2(0.f, 170.f)))
+    {
+        ImGui::TableSetupColumn("Chunk", ImGuiTableColumnFlags_WidthFixed, 65.f);
+        ImGui::TableSetupColumn("Representative material");
+        ImGui::TableSetupColumn("Source placements", ImGuiTableColumnFlags_WidthFixed, 125.f);
+        ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthFixed, 110.f);
+        ImGui::TableSetupColumn("Near / far indices", ImGuiTableColumnFlags_WidthFixed, 150.f);
+        ImGui::TableSetupScrollFreeze(0, 1); ImGui::TableHeadersRow();
+        ImGuiListClipper clipper; clipper.Begin(static_cast<int>(m_ChunkRows.size()));
+        while (clipper.Step()) for (int index = clipper.DisplayStart; index < clipper.DisplayEnd; ++index)
+        {
+            const auto& row = m_ChunkRows[index]; ImGui::PushID(static_cast<int>(row.chunkId));
+            ImGui::TableNextRow(); ImGui::TableNextColumn();
+            const std::string id = std::to_string(row.chunkId);
+            if (ImGui::Selectable(id.c_str(), row.chunkId == m_SelectedChunk, ImGuiSelectableFlags_SpanAllColumns))
+            { m_SelectedChunk = row.chunkId; m_ShowChunkBounds = true; }
+            ImGui::TableNextColumn(); ImGui::TextUnformatted(row.materialName.c_str());
+            ImGui::TableNextColumn(); ImGui::Text("%zu (%u source groups)", row.placementIds.size(), row.sourceDraws);
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(!row.valid ? "Invalid / source" : !row.active ? "Source fallback" : !row.submitted ? "Not submitted" : row.farSelected ? "HLOD" : "Merged near");
+            ImGui::TableNextColumn(); ImGui::Text("%u / %u", row.nearIndices, row.farIndices);
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+    const auto selected = std::find_if(m_ChunkRows.begin(), m_ChunkRows.end(),
+        [&](const auto& row) { return row.chunkId == m_SelectedChunk; });
+    if (selected == m_ChunkRows.end()) return;
+    const auto& row = *selected;
+    ImGui::Text("Bounds: [%.2f, %.2f, %.2f] - [%.2f, %.2f, %.2f]", row.minimum.x, row.minimum.y,
+        row.minimum.z, row.maximum.x, row.maximum.y, row.maximum.z);
+    if (ImGui::Button("Focus selected chunk"))
+    {
+        WORLD_LEVEL_TOOL_REQUEST request; request.kind = WORLD_LEVEL_REQUEST_KIND::FOCUS;
+        request.areaId = m_ChunkArea;
+        request.position = {(row.minimum.x + row.maximum.x) * .5f,
+            (row.minimum.y + row.maximum.y) * .5f, (row.minimum.z + row.maximum.z) * .5f};
+        request.focusRadius = XMVectorGetX(XMVector3Length(XMLoadFloat3(&row.maximum) - XMLoadFloat3(&request.position)));
+        m_Request = std::move(request); m_InteractionRequested = true;
+    }
+    ImGui::TextWrapped("Sources in selected chunk: select a stable placement ID to inspect its original object in the existing owner.");
+    if (ImGui::BeginTable("WorldLevelChunkSources", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV |
+        ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY, ImVec2(0.f, 105.f)))
+    {
+        ImGui::TableSetupColumn("Placement ID", ImGuiTableColumnFlags_WidthFixed, 180.f);
+        ImGui::TableSetupColumn("Asset ID"); ImGui::TableHeadersRow();
+        ImGuiListClipper clipper; clipper.Begin(static_cast<int>(row.placementIds.size()));
+        while (clipper.Step()) for (int index = clipper.DisplayStart; index < clipper.DisplayEnd; ++index)
+        {
+            ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::PushID(index);
+            const std::string id = std::to_string(row.placementIds[index]);
+            if (ImGui::Selectable(id.c_str(), false, ImGuiSelectableFlags_SpanAllColumns))
+            {
+                WORLD_LEVEL_TOOL_REQUEST request; request.kind = WORLD_LEVEL_REQUEST_KIND::OPEN_MAP;
+                request.areaId = m_ChunkArea; request.placementId = row.placementIds[index];
+                m_Request = std::move(request); m_InteractionRequested = true;
+            }
+            ImGui::TableNextColumn();
+            if (static_cast<size_t>(index) < row.assetIds.size()) ImGui::TextUnformatted(row.assetIds[index].c_str());
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+}
+
+
 void CWorldLevelTool::Render()
 {
     if (!m_Open) return;
@@ -489,6 +610,7 @@ void CWorldLevelTool::Render()
     ImGui::SameLine();
     if (ImGui::Button("Create Sequence / Effect Box")) createRequest(WORLD_LEVEL_REQUEST_KIND::OPEN_COMPOSITION, WORLD_LEVEL_COMPOSITION_OWNER::SEQUENCE);
     ImGui::EndDisabled();
+    Render_ChunkView();
     ImGui::SetNextItemWidth(340.f);
     ImGui::InputTextWithHint("##WorldLevelSearch", "Search name, asset, pattern or stable ID", m_Search.data(), m_Search.size());
     ImGui::SameLine();

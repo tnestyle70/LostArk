@@ -6,6 +6,7 @@
 #include "Effect_MaterialTemplate.h"
 #include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
+#include "Engine_RenderTypes.h"
 #include "Physics_Manager.h"
 #include "Profiler.h"
 #include "RuntimeAssetRoot.h"
@@ -35,6 +36,61 @@ namespace
 	// advances at the same rate as the authoritative action/animation clock.
 	constexpr uint32_t MAX_CATCH_UP_STEPS = 60u;
 	constexpr uint32_t MAX_SOURCE_EVENTS_PER_STEP = 4096u;
+
+    thread_local bool g_ParticleRootCacheEnabled = true;
+    struct PARTICLE_ROOT_CACHE_SCOPE;
+    thread_local PARTICLE_ROOT_CACHE_SCOPE* g_ParticleRootScope = nullptr;
+    struct PARTICLE_ROOT_CACHE_SCOPE final
+    {
+        bool Previous;
+        PARTICLE_ROOT_CACHE_SCOPE* PreviousScope;
+        Engine::CProfiler* Profiler;
+        uint64_t Requests = 0u, ReuseHits = 0u;
+        explicit PARTICLE_ROOT_CACHE_SCOPE(bool enabled, Engine::CProfiler* profiler)
+            : Previous(g_ParticleRootCacheEnabled), PreviousScope(g_ParticleRootScope),
+              Profiler(profiler && profiler->Is_Enabled() ? profiler : nullptr)
+        { g_ParticleRootCacheEnabled = enabled; g_ParticleRootScope = this; }
+        ~PARTICLE_ROOT_CACHE_SCOPE()
+        {
+            // Only the two totals cross the atomic profiler boundary, once per
+            // emitter job/frame rebuild. No atomic counter enters a particle loop.
+            if (Profiler && Requests)
+            {
+                Profiler->Add_Counter(Engine::EProfilerCounter::EffectParticleRootInverseRequests, Requests);
+                Profiler->Add_Counter(Engine::EProfilerCounter::EffectParticleRootInverseReuseHits, ReuseHits);
+            }
+            g_ParticleRootCacheEnabled = Previous; g_ParticleRootScope = PreviousScope;
+        }
+        PARTICLE_ROOT_CACHE_SCOPE(const PARTICLE_ROOT_CACHE_SCOPE&) = delete;
+        PARTICLE_ROOT_CACHE_SCOPE& operator=(const PARTICLE_ROOT_CACHE_SCOPE&) = delete;
+    };
+
+	matrix_t Inverse_ParticleRoot(const float4x4_t& Root)
+	{
+        auto* const profile = g_ParticleRootScope && g_ParticleRootScope->Profiler ? g_ParticleRootScope : nullptr;
+        if (profile) ++profile->Requests;
+        if (!g_ParticleRootCacheEnabled)
+            return XMMatrixInverse(nullptr, XMLoadFloat4x4(&Root));
+		// Stationary world-space particles retain the same spawn root. Compare all
+		// bits so moving roots, signed zero and non-finite inputs keep the original
+		// inverse calculation whenever their input changes. Each update worker owns
+		// one value-only entry; no particle or playback lifetime is retained.
+		struct PARTICLE_ROOT_INVERSE_CACHE final
+		{
+			float4x4_t Root;
+			matrix_t Inverse;
+			bool_t bValid = false;
+		};
+		thread_local PARTICLE_ROOT_INVERSE_CACHE Cache;
+		if (!Cache.bValid || 0 != std::memcmp(&Cache.Root, &Root, sizeof(Root)))
+		{
+			Cache.Root = Root;
+			Cache.Inverse = XMMatrixInverse(nullptr, XMLoadFloat4x4(&Root));
+			Cache.bValid = true;
+		}
+        else if (profile) ++profile->ReuseHits;
+		return Cache.Inverse;
+	}
 
 	bool_t Same_SourceAnchorWorlds(
 		const std::unordered_map<std::string, float4x4_t>& Left,
@@ -4943,10 +4999,15 @@ bool_t Client::CEffectPlayback::Step(
 			CEffectPlayback* pPlayback;
 			f32_t fFixedDelta;
 			const float4x4_t* pRootWorld;
-		} Context{ this, fFixedDelta, &RootWorld };
+            bool RootCacheEnabled;
+            Engine::CProfiler* Profiler;
+		} Context{ this, fFixedDelta, &RootWorld,
+            CGameInstance::Get().Get_RenderOptimizationSettings().ParticleRootCacheEnabled,
+            CGameInstance::Get().Get_Profiler() };
 		const auto Execute = [](void* pContext, const size_t iTask)
 		{
 			const auto& Batch = *static_cast<const UPDATE_CONTEXT*>(pContext);
+            PARTICLE_ROOT_CACHE_SCOPE rootCache(Batch.RootCacheEnabled, Batch.Profiler);
 			const auto& Task = Batch.pPlayback->m_ParticleUpdateTasks[iTask];
 			Batch.pPlayback->Update_Particles(
 				*Task.pElement, *Task.pState, Batch.fFixedDelta, *Batch.pRootWorld);
@@ -6848,8 +6909,7 @@ float3_t Client::CEffectPlayback::Apply_TargetAttractor(
 		Element.Detail.Particle.bLocalSpace ?
 			ElementWorld : Particle.SpawnRootWorld;
 	const matrix_t ParticleRootMatrix = XMLoadFloat4x4(&ParticleRoot);
-	const matrix_t InverseParticleRoot = XMMatrixInverse(
-		nullptr, ParticleRootMatrix);
+	const matrix_t InverseParticleRoot = Inverse_ParticleRoot(ParticleRoot);
 	const float3_t SourceWorldVelocity = Transform_Normal(
 		SourceLocalVelocity, ParticleRootMatrix);
 	float3_t TargetWorld{};
@@ -7189,8 +7249,7 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 				const float4x4_t& ParticleRoot =
 					Element.Detail.Particle.bLocalSpace ?
 						ElementWorld : Particle.SpawnRootWorld;
-				const matrix_t InverseRoot = XMMatrixInverse(
-					nullptr, XMLoadFloat4x4(&ParticleRoot));
+				const matrix_t InverseRoot = Inverse_ParticleRoot(ParticleRoot);
 				Acceleration = Transform_Normal(Acceleration, InverseRoot);
 			}
 			Particle.vVelocity = Add3(Particle.vVelocity,
@@ -8536,6 +8595,9 @@ void Client::CEffectPlayback::Append_MissedShowtimeBursts()
 void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld,
     const std::unordered_set<const EFFECT_ELEMENT_DESC*>* pParticleSelection)
 {
+    PARTICLE_ROOT_CACHE_SCOPE rootCache(
+        CGameInstance::Get().Get_RenderOptimizationSettings().ParticleRootCacheEnabled,
+        CGameInstance::Get().Get_Profiler());
 	Engine::CProfilerScope profile(
 		CGameInstance::Get().Get_Profiler(), "Effect.Playback.FrameRebuild");
 	// A provider may change or reject anchors even at the same effect time.
@@ -9032,7 +9094,7 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld,
 			const float3_t EvaluatedVelocity = Add3(SourceVelocity,
 				Transform_Normal(Particle.vTargetAttractorWorldVelocity,
 					Element.Detail.Particle.bLocalSpace ? InverseParticleElementWorld :
-						XMMatrixInverse(nullptr, XMLoadFloat4x4(&ParticleRoot))));
+						Inverse_ParticleRoot(ParticleRoot)));
 			XMStoreFloat3(&Evaluated.vWorldVelocity,
 				XMVector3TransformNormal(
 					XMLoadFloat3(&EvaluatedVelocity),

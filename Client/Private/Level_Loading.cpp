@@ -12,6 +12,7 @@
 #include "ActorCatalog.h"
 #include "CharacterCatalog.h"
 #include "CharacterSelectionState.h"
+#include "CharacterSelectWindowView.h"
 #include "ClassSelectionPresentation.h"
 #include "CharacterSpec.h"
 #include "ClickMoveEffect.h"
@@ -85,6 +86,8 @@ CLevel_Loading::CLevel_Loading(
 
 CLevel_Loading::~CLevel_Loading()
 {
+	if (m_pCharacterSelectReturn)
+		m_pCharacterSelectReturn->End_EntryPreparation(this, m_isActivationRequested);
 	if (m_isEffectLoadJobStarted && nullptr != m_pLoader)
 	{
 		CEffectPresentationService::Cancel_LoadingProductCuePreparation(
@@ -104,7 +107,8 @@ CLevel_Loading::~CLevel_Loading()
 
 HRESULT CLevel_Loading::Initialize(
 	const LEVEL eNextLevelID,
-	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
+	const LOBBY_COMMAND_TOKEN lobbyCommandToken,
+	CCharacterSelectWindowView* pCharacterSelectReturn)
 {
 	const auto reject = [](const HRESULT result, const std::string_view source,
 		const std::string_view detail)
@@ -124,6 +128,9 @@ HRESULT CLevel_Loading::Initialize(
 			"A Lobby command token cannot target a non-Lobby Level.");
 	}
 
+	if (pCharacterSelectReturn && LEVEL::LOBBY != eNextLevelID)
+		return reject(E_INVALIDARG, "loading.initialize.character-select", "Roster return must target Lobby.");
+	m_pCharacterSelectReturn = pCharacterSelectReturn;
 	m_eNextLevelID = eNextLevelID;
 	m_iLobbyCommandToken = lobbyCommandToken;
 	if (LEVEL::KAKULSAYDON_ARENA == eNextLevelID)
@@ -148,7 +155,7 @@ HRESULT CLevel_Loading::Initialize(
 	live mixed together." The label above the tip is "Scenario" except on Character Select,
 	which shows "Info" over a line about the 161st class. */
 	m_strScenarioLabel = L"\xC2DC\xB098\xB9AC\xC624";
-	if (LEVEL::CHARACTER_SELECT == m_eNextLevelID)
+	if (LEVEL::CHARACTER_SELECT == m_eNextLevelID || m_pCharacterSelectReturn)
 	{
 		m_strTitleText = L"\xC2DC\xC791\xB418\xB294 \xC6B4\xBA85";
 		m_strScenarioLabel = L"\xC815\xBCF4";
@@ -208,7 +215,7 @@ HRESULT CLevel_Loading::Initialize(
 	/* The Colosseum match screen is its own full-screen movie, not the shared loading chrome. */
 	const bool_t bColosseumMatch = LEVEL::COLOSSEUM == m_eNextLevelID;
 	const HRESULT chromeResult =
-		(LEVEL::LOBBY == m_eNextLevelID || bColosseumMatch) ? S_OK : Ready_Layer_Chrome();
+		((LEVEL::LOBBY == m_eNextLevelID && !m_pCharacterSelectReturn) || bColosseumMatch) ? S_OK : Ready_Layer_Chrome();
 	if (FAILED(chromeResult))
 		return reject(chromeResult, "loading.initialize.chrome", "Loading chrome initialization failed.");
 	if (bColosseumMatch)
@@ -239,6 +246,8 @@ HRESULT CLevel_Loading::Initialize(
 		m_iEffectLoadJobEpoch, iEffectCatalogRevision);
 	if (nullptr == m_pLoader)
 		return E_FAIL;
+	if (m_pCharacterSelectReturn)
+		m_pCharacterSelectReturn->Begin_EntryPreparation(this);
 
 	/* The target class/encounter is fixed and both Loader producers are live.
 	   Capture immutable Product requests on this owner and post them now, so
@@ -259,7 +268,7 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 		return;
 	}
 
-	if (nullptr == m_pLoader)
+	if (nullptr == m_pLoader || m_isFailureReported)
 		return;
 	if (m_pLoader->Failed())
 	{
@@ -276,6 +285,18 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 	}
 
 	const bool_t bLoaderFinished = m_pLoader->Finished();
+	if (m_pCharacterSelectReturn && !m_isActivationRequested)
+	{
+		const HRESULT ready = bLoaderFinished ?
+			m_pCharacterSelectReturn->Advance_EntryPreparation(
+				m_strCharacterSelectPreparationStatus, m_fCharacterSelectPreparationProgress) : E_PENDING;
+		if (FAILED(ready) && E_PENDING != ready)
+		{
+			Recover_FromFailure(ready);
+			return;
+		}
+		bTargetPresentationReady = S_OK == ready && m_bReturnChromeRendered;
+	}
 	// All producers have joined before recovery releases their prototype stage.
 	// Required raid Effects cannot turn a failed preparation into a live fight.
 	if (LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID && bLoaderFinished &&
@@ -324,6 +345,9 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 		fLoaderLane = (static_cast<f32_t>(iPhase) + std::clamp(fInPhase, 0.f, 1.f)) /
 			static_cast<f32_t>(LoaderProgress.iPhaseCount);
 	}
+
+	if (m_pCharacterSelectReturn)
+		fLoaderLane = 0.2f * fLoaderLane + 0.8f * m_fCharacterSelectPreparationProgress;
 
 	f32_t fEffectLane = 0.f;
 	if (bHasEffectProgress)
@@ -496,6 +520,7 @@ HRESULT CLevel_Loading::Render()
 	if (nullptr != m_pLoader)
 		m_pLoader->Print_Text();
 #endif
+	m_bReturnChromeRendered = true;
 	return S_OK;
 }
 
@@ -1197,6 +1222,8 @@ void CLevel_Loading::Recover_FromFailure(const HRESULT result)
 		return;
 
 	m_isFailureReported = true;
+	if (m_pCharacterSelectReturn)
+		m_pCharacterSelectReturn->End_EntryPreparation(this, false);
 	if (LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID)
 		Write_EffectFailureDiagnostic("Kouku.Loading.Failed",
 			"elapsed_ms=" + std::to_string(GetTickCount64() - m_iKoukuLoadStartedMs) +
@@ -1209,7 +1236,7 @@ void CLevel_Loading::Recover_FromFailure(const HRESULT result)
 	CCharacterSelectionState::Cancel_PendingCreation();
 	Cancel_LobbyCommand("target level loading failed");
 	HRESULT failureResult = result;
-	std::string failureDetail;
+	std::string failureDetail = m_strCharacterSelectPreparationStatus;
 	if (m_pLoader)
 	{
 		const auto Job = m_pLoader->Get_EffectLoadJob();
@@ -1345,7 +1372,7 @@ HRESULT CLevel_Loading::Ready_Layer_Chrome()
 		if ("Background" == strId && LEVEL::VALTAN_ARENA == m_eNextLevelID)
 			strTexturePath = "UI/Loading/Loading_Background_Valtan.png";
 		/* Character Select (creation) shows retail's prologue nebula ("시작되는 운명"). */
-		if ("Background" == strId && LEVEL::CHARACTER_SELECT == m_eNextLevelID)
+		if ("Background" == strId && (LEVEL::CHARACTER_SELECT == m_eNextLevelID || m_pCharacterSelectReturn))
 			strTexturePath = "UI/Loading/Loading_Background_Prologue.png";
 		/* KoukuSaydon Arena. The raid names itself \xD55C\xBC24\xC911\xC758 \xC11C\xCEE4\xC2A4 in
 		   EFTable_GameMsg sys.commander.dungeon_name_koukusaton, which is also what
@@ -1442,13 +1469,14 @@ unique_ptr<CLevel_Loading> CLevel_Loading::Create(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext,
 	const LEVEL eNextLevelID,
-	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
+	const LOBBY_COMMAND_TOKEN lobbyCommandToken,
+	CCharacterSelectWindowView* pCharacterSelectReturn)
 {
 	auto instance = unique_ptr<CLevel_Loading>(
 		new CLevel_Loading(pDevice, pContext));
 	if (FAILED(instance->Initialize(
 		eNextLevelID,
-		lobbyCommandToken)))
+		lobbyCommandToken, pCharacterSelectReturn)))
 		return nullptr;
 	return instance;
 }

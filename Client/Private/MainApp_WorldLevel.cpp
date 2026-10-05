@@ -431,25 +431,112 @@ void CMainApp::UpdateWorldLevelTool()
     }
 }
 
+namespace
+{
+bool ClipChunkOverlayEdge(float4_t& a, float4_t& b)
+{
+    const auto finite = [](const float4_t& p) { return std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z) && std::isfinite(p.w); };
+    if (!finite(a) || !finite(b)) return false;
+    const double av[] = {double(a.w) - .0001, double(a.x) + a.w, double(a.w) - a.x,
+        double(a.y) + a.w, double(a.w) - a.y, a.z, double(a.w) - a.z};
+    const double bv[] = {double(b.w) - .0001, double(b.x) + b.w, double(b.w) - b.x,
+        double(b.y) + b.w, double(b.w) - b.y, b.z, double(b.w) - b.z};
+    double first = 0., last = 1.;
+    for (size_t plane = 0; plane < 7; ++plane)
+    {
+        if (av[plane] < 0. && bv[plane] < 0.) return false;
+        if ((av[plane] < 0.) != (bv[plane] < 0.))
+        {
+            const double t = av[plane] / (av[plane] - bv[plane]);
+            if (av[plane] < 0.) first = (std::max)(first, t); else last = (std::min)(last, t);
+        }
+    }
+    if (first > last) return false;
+    const auto lerp = [&](double t) { return float4_t{float(a.x + (double(b.x) - a.x) * t),
+        float(a.y + (double(b.y) - a.y) * t), float(a.z + (double(b.z) - a.z) * t), float(a.w + (double(b.w) - a.w) * t)}; };
+    const float4_t begin = lerp(first), end = lerp(last); a = begin; b = end;
+    return finite(a) && finite(b) && a.w > 0.f && b.w > 0.f;
+}
+
+void DrawWorldLevelChunkBounds(const CWorldLevelTool& tool)
+{
+    if (!tool.Show_ChunkBounds()) return;
+    auto& game = CGameInstance::Get();
+    const auto* view = game.Get_Transform(D3DTS::VIEW);
+    const auto* projection = game.Get_Transform(D3DTS::PROJ);
+    if (!view || !projection) return;
+    const matrix_t vp = XMLoadFloat4x4(view) * XMLoadFloat4x4(projection);
+    auto* viewport = ImGui::GetMainViewport();
+    if (!viewport || viewport->Size.x <= 0.f || viewport->Size.y <= 0.f) return;
+    auto* draw = ImGui::GetBackgroundDrawList(viewport);
+    const auto screen = [viewport](const float4_t& p) { return ImVec2(viewport->Pos.x + (p.x / p.w * .5f + .5f) * viewport->Size.x,
+        viewport->Pos.y + (.5f - p.y / p.w * .5f) * viewport->Size.y); };
+    constexpr uint8_t edges[12][2] = {{0,1},{2,3},{4,5},{6,7},{0,2},{1,3},{4,6},{5,7},{0,4},{1,5},{2,6},{3,7}};
+    for (const auto& row : tool.Get_ChunkView())
+    {
+        const bool selected = row.chunkId == tool.Get_SelectedChunk();
+        if (!tool.Show_AllChunkBounds() && !selected) continue;
+        const auto& lo = row.minimum; const auto& hi = row.maximum;
+        if (!std::isfinite(lo.x) || !std::isfinite(lo.y) || !std::isfinite(lo.z) ||
+            !std::isfinite(hi.x) || !std::isfinite(hi.y) || !std::isfinite(hi.z) ||
+            lo.x > hi.x || lo.y > hi.y || lo.z > hi.z) continue;
+        float4_t corners[8];
+        for (size_t i = 0; i < 8; ++i) XMStoreFloat4(&corners[i], XMVector4Transform(
+            XMVectorSet(i & 1 ? hi.x : lo.x, i & 2 ? hi.y : lo.y, i & 4 ? hi.z : lo.z, 1.f), vp));
+        const ImU32 color = selected ? IM_COL32(255, 220, 65, 240) : !row.valid ? IM_COL32(255, 95, 95, 150) :
+            row.farSelected && row.active ? IM_COL32(80, 230, 150, 150) : IM_COL32(90, 175, 255, 140);
+        for (const auto& edge : edges)
+        {
+            auto a = corners[edge[0]], b = corners[edge[1]];
+            if (ClipChunkOverlayEdge(a, b)) draw->AddLine(screen(a), screen(b), color, selected ? 2.f : 1.f);
+        }
+    }
+}
+}
+
+
 void CMainApp::RenderWorldLevelTool()
 {
     if (!IsDebugToolVisible(DEBUG_TOOL::WORLD_LEVEL) || !m_pWorldLevelTool) return;
     if (m_eDebugWindowFocusPending == DEBUG_TOOL::WORLD_LEVEL)
     { ImGui::SetNextWindowFocus(); m_eDebugWindowFocusPending = DEBUG_TOOL::NONE; }
+    auto* chunkHost = Find_ActiveMapAuthoringHost();
+    auto* chunkRuntime = chunkHost ? &chunkHost->Get_MapAuthoringRuntime() : nullptr;
+    const std::string chunkArea = chunkHost ? chunkHost->Get_MapAuthoringCatalog().Get_AreaId() : GetWorldLevelAreaId();
+    const uint64_t chunkGeneration = chunkRuntime ? chunkRuntime->Debug_GetRuntimeGeneration() : 0u;
+    if (m_pWorldLevelTool->Needs_ChunkView(chunkArea, chunkRuntime, chunkGeneration))
+    {
+        const auto policy = chunkRuntime ? chunkRuntime->Get_ChunkPolicy() : nullptr;
+        m_pWorldLevelTool->Set_ChunkView(chunkArea, chunkRuntime, chunkGeneration,
+            chunkRuntime ? chunkRuntime->Get_ChunkDebugRows() : std::vector<MAP_CHUNK_DEBUG_ROW>{},
+            policy && policy->enabled, policy && policy->hlodEnabled);
+    }
     m_pWorldLevelTool->Render();
+    DrawWorldLevelChunkBounds(*m_pWorldLevelTool);
     if (m_pWorldLevelTool->Consume_InteractionRequest()) m_eDebugInputOwner = DEBUG_TOOL::WORLD_LEVEL;
     if (!m_pWorldLevelTool->Is_Open()) { SetDebugToolVisible(DEBUG_TOOL::WORLD_LEVEL, false); return; }
     WORLD_LEVEL_TOOL_REQUEST request;
     if (!m_pWorldLevelTool->Consume_Request(request)) return;
     std::string status;
-    if (request.kind == WORLD_LEVEL_REQUEST_KIND::OPEN_GUIDE)
+    if (request.kind == WORLD_LEVEL_REQUEST_KIND::SET_CHUNK_MODE)
+    {
+        if (!chunkRuntime || request.areaId != chunkArea || request.runtimeGeneration != chunkGeneration)
+            status = "Chunk source changed; refresh the live Area before changing its display mode.";
+        else if (const auto& policy = chunkRuntime->Get_ChunkPolicy())
+        {
+            policy->enabled = request.chunkEnabled;
+            policy->hlodEnabled = request.chunkHlodEnabled;
+            status = "Runtime chunk display mode changed. Saved placements and materials are unchanged.";
+        }
+    }
+    else if (request.kind == WORLD_LEVEL_REQUEST_KIND::OPEN_GUIDE)
     {
         status = SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::GUIDE_AI)) ? "DimensionMaster Guide opened." : "DimensionMaster Guide could not open.";
     }
     else if (request.kind == WORLD_LEVEL_REQUEST_KIND::FOCUS)
     {
         if (request.areaId != GetWorldLevelAreaId()) status = "Enter this Area before focusing its world position.";
-        else (void)FocusWorldLevelPosition(request.position, 8.f, status);
+        else (void)FocusWorldLevelPosition(request.position, request.focusRadius, status);
     }
     else if (request.kind == WORLD_LEVEL_REQUEST_KIND::PICK_IN_SCENE)
     {

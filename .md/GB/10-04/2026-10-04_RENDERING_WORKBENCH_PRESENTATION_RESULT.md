@@ -177,14 +177,15 @@ Client 실행·사용자 카메라 화면·실제 프레임 비용 측정은 수
 
 ## G07. 현재 상황에서 실행할 수 있는 A/B의 정확한 범위
 
-현재 `RenderingBenchmark.cpp`에는 빠른 기법 비교 **16개**, 상세 recipe **36개**, 누적 복원 단계
-**14개**가 있다. `RenderingProfileService.h`의 실험 필드는 **45개**다. recipe ID는36개 모두 고유하고,
-빠른 비교16개가 가리키는 recipe와 recipe가 가리키는 필드에 끊긴 연결은 없다. 45개 필드는 고급 수치
-입력의 whitelist이며 서로 다른45개의 독립 렌더 기법이라는 뜻은 아니다.
+2026-10-05 현재 `RenderingBenchmark.cpp`에는 빠른 기법 비교 **20개**, 상세 recipe **40개**, 누적 복원 단계
+**14개**가 있다. `RenderingProfileService.h`의 실험 필드는 **49개**다. recipe ID는40개 모두 고유하고,
+빠른 비교20개가 가리키는 recipe와 recipe가 가리키는 필드에 끊긴 연결은 없다. 49개 필드는 고급 수치
+입력의 whitelist이며 서로 다른49개의 독립 렌더 기법이라는 뜻은 아니다.
 
 빠른 비교는 기본/원본 재질, MapPBR 간접 diffuse, 환경 specular, 원본 PBR 간접광 경로,
 normal 강도, 직접 specular, 방향광 그림자, SSAO, 높이 안개, source tone+grading, 저작 LUT,
-Bloom, FXAA, SSGI, SSGI 전체/절반 해상도, SSR을 제공한다. 상세36개 recipe는 이 기능들의
+Bloom, FXAA, SSGI, SSGI 전체/절반 해상도, SSR과 추가 texture mip·Horizon AO·SSR 교차 보정·
+roughness 필터를 제공한다. 상세40개 recipe는 이 기능들의
 ON/OFF·표본 수·필터·기여 강도·표시 변환을 나눈 것이다. 각 항목은 실제 Service setter와
 renderer/shader 소비자에 연결되지만, 재질·자원·패스 조건에 따라 화면 차이가 없을 수 있다.
 모든 객체에 동시에 적용되거나 원작의 모든 렌더링 기능이 복원됐다는 뜻으로 표시하지 않는다.
@@ -240,9 +241,9 @@ GPU 표본이 부분적이면 완전한 비교로 표시하지 않는다. PBR �
 `Render.ScreenSpaceLighting.Copy` 및 전체 frame을 함께 본다.
 
 실행한 관련 검증은 half backend WARP183/0, 실제 UI/session recipe9/0, fingerprint90/0이다.
-45개 필드 중 half selector만 선택하면 해당 값만 공통 조건에서 제외되고 GI ON/강도/반경/ray,
+당시45개 필드 중 half selector만 선택하면 해당 값만 공통 조건에서 제외되고 GI ON/강도/반경/ray,
 SSR·gamma·source material은 계속 비교 조건에 남는다. 픽셀 fixture의 성공을 제품 FPS나 사용자 화면
-일치로 표시하지 않는다. 36개 recipe를 모두 제품 UI에서 클릭한 runtime smoke는 실시하지 않았다.
+일치로 표시하지 않는다. 현재40개 recipe를 모두 제품 UI에서 클릭한 runtime smoke는 실시하지 않았다.
 
 ## G09. 설명 항목과 미구현 기능
 
@@ -255,3 +256,99 @@ planar reflection·TAA/TSR·DLSS/FSR/XeSS·frame generation·Nanite·VSM 등의 
 원본 복원과 custom quality layer도 분리한다. 원본 복원은 원본 package/build/hash, stable material,
 effective static set, VF/pass/shader ID, texture/uniform binding과 실제 소비자까지 근거가 이어져야 한다.
 custom SSGI half는 사용자가 허용한 자체 엔진 품질·성능 확장이며 원작에 같은 기능이 있었다는 증거가 아니다.
+
+## G10. 2026-10-05 네 장면 촬영 목표와 현재 구현 감사
+
+사용자의 목표는 Client EXE의 ImGui Rendering Workbench에서 before-restoration을 먼저 보여주고,
+복원된 렌더링 성분과 추가 품질 옵션을 차례로 적용해 Bern·Character Select·Valtan·Kouku의
+화면 변화를 촬영하는 것이다. 이번 작업은 이전 구현과 현재 코드·게시 데이터의 대조 감사다.
+제품 코드·렌더링 옵션·Resources를 수정하거나 Client/UI를 실행하지 않았다.
+
+### G10-1. 기존 요청의 반영과 연결되지 않은 촬영 흐름
+
+08-08 HDR/Bloom Workbench, 09-06 Level/Scene 품질 저장, 09-14 Before/Restored 비교,
+09-20 Mario FXAA OFF, 10-03 snapshot A/B·계측, 10-04 네 탭·14단계로 기능이 누적되어 있다.
+현재 14단계·20개 빠른 비교·40개 상세 recipe·49개 실험 필드가 존재하고 ID 연결은 유효하다.
+이 숫자는 독립 렌더링 레이어49개나 네 장면의 모든 객체에 대한 적용 완료를 뜻하지 않는다.
+
+| 요청한 동작 | 실제 코드와 현재 판정 |
+|---|---|
+| 복원 전 화면 선택 | `Measure / Analyze → 고급: 옛 장면 프로필 비교 / 픽셀 입력 → before-restoration.v1`. 저장된 scene 조명·환경·그림자·안개·후처리 profile 비교는 연결되어 있다. 현재 shader/형상/텍스처/map-light 배치는 유지하므로 과거 EXE 전체 재현은 아니다. |
+| before에서 복원 단계를 바로 진행 | 미연결. `Start_SessionExperiment`는 profile 비교 소유권이 남아 있으면 거부한다. 먼저 `Return to entry`로 돌아와야 한다. guard만 제거하면 before 설정을 최종 Original로 잘못 보관한다. |
+| 복원 성분을 하나씩 누적 | `Restoration`의14개 단계가 현재 실효값 Original을 기준으로 연결되어 있다. 첫 단계는 현재 WModel의 기본 재질 근사이고 마지막 단계는 시작 때 설정이다. 원래 OFF인 기능은 계속 OFF다. |
+| 추가 옵션도 연속 누적 | 개별 `Technique A/B`는 매번 Original 또는 명시적으로 선택한 품질 후보를 A로 삼는다. 앞서 눌렀던 B 위에 다음 B를 쌓지 않는다. 통합 `품질 확장 B`는 있으나 추가 기법별 누적 시연은 없다. |
+| 네 Level에서 이용 | Debug F1의 Workbench는 네 Level에 연결되어 있다. Release F1에는 이 창이 없으며 F7도 제외된다. 현재 촬영 경로는 Debug Client다. |
+| F1을 숨기고 같은 실험 화면 촬영 | 지원하지 않는다. F1/Workbench 숨김은 실험 종료·복원 및 Workbench capture 취소를 의미한다. ImGui를 띄운 촬영은 이 제약에 해당하지 않는다. |
+| 장면 사이에서 같은 실험 유지 | Level/profile 전환 또는 camera region ID·사용자 Video 변경 시 실험이 종료된다. 각 장면과 고정 region에서 별도 시작해야 한다. |
+
+근거는 `MainApp.cpp`의 Workbench `_DEBUG` guard와2607줄의 표시 상태 전달,
+`RenderingBenchmark.cpp`의1012·1051·1183·1558·1769·1817·2292줄,
+`RenderingProfileService.cpp`의827·839줄이다. 줄 번호는 감사 시점 기준이다.
+구형 Saved Settings의 Live 비교는 별도 상태이므로 before profile을 촬영할 때도
+`Reset comparison` 여부를 확인한다. F7의 캡처 A/B는 통계 비교이며 화면 설정을 적용하지 않는다.
+
+프로필 닫기 실패 경로도 남아 있다. `Update_RestorationPreview`1043~1047줄은
+진입 profile 복귀에 실패해도 진입 ID를 지운다. 따라서 다시 열어 수동 복귀를 재시도할 정보가
+없어진다. 일반 A/B의83개 계약 검사에서는 이 함수가 fixture라 이 실패를 검증하지 않는다.
+이번 감사에서 수정 완료로 표시하지 않는다.
+
+### G10-2. 옵션 연결과 맵 재질의 실제 차이
+
+| 게시 mapmaterials 전체 문서 | override 행 | MapPBR 정의 행 | 원본 SH/BRDF 입력 행 |
+|---|---:|---:|---:|
+| Character Select SL00 |280|182|181|
+| Bern |23,200|1|0|
+| Valtan |4,512|0|0|
+| Kouku |1,734|0|0|
+
+이 표는 전체 게시 override 문서 집계다. 현재 load scope·가시 draw·G-buffer 픽셀 수가 아니다.
+기본 WModel에서 상속한 재질, 동적 Character/Deploy까지 전수 검사하지 않았으므로
+맵 전체의 수신 픽셀이 반드시0이라고 단정하지 않는다. 각 경로·해시·family 분모는
+`out/RenderingWorkbenchAudit20261005/material-coverage.json`에 보관했다.
+
+SSGI·SSR과 MapPBR 성분 비교는 marker3 수신 경로에 한정된다. SL00에서는 해당 재질이
+많지만 Bern/Valtan/Kouku의 주요 BG 바닥이 같은 수신 경로라는 근거는 없다. 효과가 나타나지
+않는데도 패스 비용은 발생할 수 있다. 현재 recipe의 검사 대상은 global source-material과
+선행 옵션이며 실제 화면의 재질·입력·수신 픽셀까지 검사하지 않는다.
+
+SSAO/Horizon raw 패스 실행도 모든 조명 성분의 차폐를 뜻하지 않는다. MapPBR의 RNM/IBL은
+RT7에서 AO 적용을 받지만 BG RNM은 RT4 성분을 AO 뒤에 더하므로 같은 차폐를 받지 않는다.
+native marker5도 근사 ambient와 원본 base 조명에서 적용 범위가 다르다.
+
+Bern neutral-day와 Valtan cool-low-key의 저장 FXAA는 enabled=true, subpixel=0이다.
+`Shader_Deferred.hlsl`1785줄은 subpixel<=0일 때 필터 전체를 조기 반환하므로 bool만 A/B해도
+화면은 같다. Mario의 저장 FXAA OFF를 포함해 이 값들을 자동으로 수정하지 않는다.
+실효 비활성 사유 표시와 명시적 blend 실험을 분리하는 것이 후속 보완 범위다.
+
+### G10-3. 추가 옵션과 저장값 판정
+
+텍스처 mip, Horizon AO, SSR 교차 보정·roughness 필터, SSGI full/half는 실제
+Service → Renderer → HLSL 소비자까지 연결되어 있다. 별도 묶음인 품질 확장 B도 연결되어 있다.
+Horizon/SSGI/SSR 기본값은 OFF이고 현재 profile JSON에 이 추가 실험값을 영구 저장하지 않는다.
+활성화 가능, 현재 저장값으로 활성화됨, 해당 재질에서 실제 화면에 기여함은 서로 다른 판정이다.
+
+Authored와 게시 RenderingProfiles는 revision91이며 JSON 의미상 동일하다. Mario1~4가
+공유하는 source-rendering profile과 region55의 FXAA OFF도 유지된다. 사용자 Video·region·
+연출까지 반영한 현재 화면값은 실행 중 Workbench에서 확인해야 한다.
+
+### G10-4. 이번에 실행한 검증과 남은 구현
+
+현재 source에서 추출한 Service/Benchmark 계약 fixture83개와 UI 호출 위치 정적 검사6개가
+모두 통과했다. recipe/field/빠른 비교 연결, JSON 동등성, Engine/Client의 두 shader source
+사본 일치 등7개 inventory 검사도 통과했다. 근거는 같은 out 폴더의
+`contracts/contract_receipt.json`, `contracts/static_receipt.json`, `inventory-receipt.json`이다.
+fixture는 실제 renderer endpoint와 복원 profile update 일부를 대신한다. 이 통과를
+before 전환·실제 ImGui 클릭·장면별 화질·GPU 시간 검증으로 확대하지 않는다.
+제품 코드 변경이 없어 이번 감사에서는 Product build나 WARP 검사를 반복하지 않았다.
+
+현재 가능한 촬영 순서는 Debug F1에서 before profile 촬영 → Return to entry →
+Restoration 처음부터 시작/다음 → 현재 완성 설정 → Technique A/B 추가 품질 후보 비교다.
+각 맵에서 따로 진행하고 카메라·region·해상도·노출을 고정한다. 이 흐름은 자동 연결된
+하나의 before-to-restored 누적 시연이라고 설명하지 않는다.
+
+남은 핵심은 before에서 현재 진입 profile로 안전하게 복귀하고 환경 적용 완료 뒤 시연을
+시작하는 연결, 실제 재질/실효0에 따른 적용 가능 표시, 추가 품질 단계의 명시적인 누적 비교다.
+profile 복귀 실패 시 수동 재시도 정보를 보존하는 처리도 필요하다. Release Workbench와
+도구 숨김 중 화면 유지 기능은 현재 없으며 기존 Debug/닫기 계약 변경을 수반한다.
+원본 BG/Character 전체에 SSR·SSGI 등을 확장하는 작업은 재질별 입력과 G-buffer 계약을
+추가로 연결해야 하므로 checkbox만 바꿔 해결되었다고 판정하지 않는다.

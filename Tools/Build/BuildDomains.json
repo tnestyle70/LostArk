@@ -591,6 +591,7 @@
       "Server/Bin/{configuration}/Server.pdb",
       "Client/Bin/{configuration}/Client.exe",
       "Client/Bin/{configuration}/Client.pdb",
+      "Client/Bin/{configuration}/Shader_VtxMeshMapChunk.cso",
       "Client/Bin/{configuration}/Engine.dll",
       "Client/Bin/{configuration}/Shader_Cell.cso",
       "Client/Bin/{configuration}/Shader_Deferred.cso",

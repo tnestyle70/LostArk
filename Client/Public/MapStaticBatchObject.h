@@ -7,6 +7,7 @@
 #include "MapLoadScope.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <span>
 #include <unordered_map>
@@ -21,6 +22,16 @@ struct MESH_SCREEN_LOD_DESC;
 NS_END
 
 NS_BEGIN(Client)
+
+class CMapStaticChunkObject;
+struct MAP_CHUNK_CLAIM;
+
+// One level-owned clock replaces per-object Update/Late callbacks for static batches.
+struct MAP_STATIC_BATCH_FRAME_STATE final
+{
+	f32_t elapsedTime = 0.f;
+	uint64_t frameNumber = 0u;
+};
 
 struct FMapStaticInstance final
 {
@@ -37,6 +48,10 @@ struct FMapStaticInstance final
 	// Map Tool camera inspection overlay. It does not alter the stage overlay.
 	bool_t CameraPreviewSuppressed = false;
 	MAP_FRUSTUM_RUNTIME_STATE FrustumState{};
+    // Derived presentation state, never serialized with placements.
+    float3_t OcclusionBoundsMin{}, OcclusionBoundsMax{};
+    bool OcclusionBoundsValid = false, DistanceHidden = false;
+    uint64_t DistanceSettingsRevision = 0u;
 };
 
 class CMapStaticBatchObject final : public CGameObject
@@ -52,6 +67,7 @@ public:
 		MAP_FRUSTUM_CULLING_POLICY FrustumCulling{};
 		bool_t Mirrored = false;
 		std::vector<FMapStaticInstance> Instances;
+		std::shared_ptr<MAP_STATIC_BATCH_FRAME_STATE> FrameState;
 	};
 
 private:
@@ -71,9 +87,13 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual uint8_t Get_UpdatePhaseMask() const override
-	{ return UPDATE_PHASE_UPDATE | UPDATE_PHASE_LATE; }
+	{ return m_FrameState ? 0u : UPDATE_PHASE_UPDATE | UPDATE_PHASE_LATE; }
 	virtual bool_t Uses_FinalCameraSubmission() const override { return true; }
 	virtual void Submit_FinalCamera() override;
+    bool_t Try_PrepareFinalCameraCpuJob(FINAL_CAMERA_CPU_JOB& output) override;
+    virtual bool_t Try_GetFinalCameraSpatialBounds(FINAL_CAMERA_SPATIAL_BOUNDS& bounds) const override;
+    bool_t Try_GetStaticOcclusionDesc(STATIC_OCCLUSION_DESC& output) const override;
+    uint32_t Rasterize_StaticOccluder(Engine::COcclusionCuller& culler, uint32_t triangleBudget) const override;
 	virtual HRESULT Render() override;
 	virtual HRESULT Render_AdjacentNonBlend(
 		std::span<const std::shared_ptr<CGameObject>> objects, size_t& consumed) override;
@@ -120,6 +140,9 @@ public:
 			m_VisibleInstances.size());
 	}
 
+    std::span<const uint32_t> Get_VisibleInstanceIndices() const
+    { return m_VisibleInstanceIndices; }
+
 	uint32_t Get_ShadowInstanceCount() const
 	{
 		return static_cast<uint32_t>(
@@ -131,12 +154,34 @@ public:
 		return m_AssetId;
 	}
 
+	f32_t Get_RenderElapsedTime() const
+	{
+		return m_FrameState ? m_FrameState->elapsedTime : m_fElapsedTime;
+	}
+
 	bool_t Is_Mirrored() const
 	{
 		return m_bMirrored;
 	}
 
 private:
+    friend class CMapStaticChunkObject;
+	friend class CMapPlacementRuntime;
+	bool_t Is_FinalCameraPrepared() const
+	{
+		const auto viewport = CGameInstance::Get().Get_ViewportSize();
+        return m_bFinalCameraPrepared &&
+            m_VisibleViewportSize.x == viewport.x && m_VisibleViewportSize.y == viewport.y &&
+			(!m_FrameState || m_iPreparedFrame == m_FrameState->frameNumber);
+	}
+	HRESULT Prepare_FinalCameraVisibility(const struct MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot);
+    bool Is_ChunkMeshClaimed(uint32_t mesh) const;
+    bool Are_AllChunkMeshesClaimed() const;
+    void Rebuild_InstanceOcclusionBounds(FMapStaticInstance& instance) const;
+    void Commit_DistanceSelection(uint64_t revision);
+    void Invalidate_ChunkClaims();
+    std::vector<std::shared_ptr<MAP_CHUNK_CLAIM>> m_ChunkClaims;
+    std::vector<uint32_t> m_ChunkClaimMemberIndices;
 	HRESULT Ready_Components(uint32_t prototypeLevelIndex,
 		const std::wstring& modelPrototypeTag);
 
@@ -145,12 +190,26 @@ private:
 	HRESULT Ensure_ShadowInstanceCapacity(
 		uint32_t requiredCount);
 	HRESULT Upload_LightingBankInstances();
+    HRESULT Try_RenderIdenticalInstances(
+        std::span<const std::shared_ptr<CGameObject>> objects, size_t& consumed);
+    HRESULT Render_VisibleInstances(ID3D11Buffer* buffer, uint32_t instanceCount,
+        const struct MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot);
+    bool_t Uses_MeshScreenLod(uint32_t mesh, bool_t hasScreenLod) const;
+
+
+    struct CPU_VISIBILITY_PREPARATION;
+    std::unique_ptr<CPU_VISIBILITY_PREPARATION> m_CpuVisibility;
+    bool m_bVisibleDistanceEnabled = false;
+    HRESULT Stage_VisibilityCpu(const struct MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot);
+    void Compute_VisibilityCpu();
+    static void Execute_VisibilityCpu(void* context) noexcept;
+    void Invalidate_VisibilityCpu();
 
 	HRESULT Upload_VisibleInstances(
 		const struct MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot);
 	HRESULT Upload_ShadowInstances();
 	HRESULT Rebuild_PlacementLookup();
-    void Rebuild_BatchCullBounds();
+    void Rebuild_BatchCullBounds() const;
     bool_t Build_ScreenLodView(const struct MAP_CAMERA_CULL_SNAPSHOT& camera,
         Engine::MESH_SCREEN_LOD_DESC& result) const;
 
@@ -163,12 +222,12 @@ private:
 	MAP_FRUSTUM_CULLING_POLICY m_FrustumCulling{};
 
 	bool_t m_bMirrored = false;
-    bool_t m_bBatchBoundsDirty = true;
-    bool_t m_bHasBatchBounds = false;
+    mutable bool_t m_bBatchBoundsDirty = true;
+    mutable bool_t m_bHasBatchBounds = false;
     // Map batch geometry is immutable after its model component is cloned.
     bool_t m_bHasStaticMeshLod = false;
-    float4_t m_BatchBounds = {};
-    MAP_FRUSTUM_RUNTIME_STATE m_BatchFrustumState{};
+    mutable float4_t m_BatchBounds = {};
+    mutable MAP_FRUSTUM_RUNTIME_STATE m_BatchFrustumState{};
     float4_t m_VisibleLodBounds = {};
     // Maximum |view X|, |view Y|, minimum view Z, valid flag; same camera
     // revision and transactional lifetime as the uploaded visible payload.
@@ -185,8 +244,18 @@ private:
 	bool_t m_bVisibleInstancesDirty = true;
 	// Prepared after all frame providers; do not advance reject grace twice.
 	bool_t m_bFinalCameraPrepared = false;
+	uint64_t m_iPreparedFrame = 0u;
+	std::shared_ptr<MAP_STATIC_BATCH_FRAME_STATE> m_FrameState;
 	bool_t m_bVisibleInstancesUsedCamera = false;
 	uint64_t m_iVisibleCameraRevision = {};
+    uint64_t m_iVisibilitySettingsRevision = 0u;
+    float2_t m_VisibleViewportSize{};
+    uint64_t m_DistanceRejectedInstances = 0u;
+    bool m_bDistanceEligible = false, m_bOcclusionGeometryEligible = false;
+    bool m_bVisibleOcclusionBounds = false;
+    float3_t m_VisibleOcclusionMin{}, m_VisibleOcclusionMax{};
+    std::vector<std::pair<uint32_t, bool>> m_CandidateDistanceChanges;
+    uint64_t m_DistanceSourceIndices = 0u;
 	f32_t m_fElapsedTime = {};
 	//해당 batch에 소속된 전체 placement
 	//vector - 메모리 연속, 순회가 빠름, index O(1), 프레임마다 전체 순회 좋음
@@ -197,6 +266,8 @@ private:
 	std::vector<VTXMESHINSTANCE> m_VisibleInstances;
 	// Reused staging storage; m_VisibleInstances remains the committed payload.
 	std::vector<VTXMESHINSTANCE> m_CandidateVisibleInstances;
+    std::vector<uint32_t> m_VisibleInstanceIndices, m_CandidateVisibleInstanceIndices;
+    bool m_bTrackProxySources = false;
 	uint32_t m_iAuthoredVisibleInstanceCount = {};
 	/* Committed light-volume casters are independent from camera visibility. */
 	std::vector<VTXMESHINSTANCE> m_ShadowInstances;
@@ -211,6 +282,8 @@ private:
 	uint32_t m_iLightingBankInstanceCapacity = {};
 	std::vector<VTXMESHINSTANCE> m_LightingBankInstances;
 	std::vector<VTXMESHINSTANCE> m_CandidateLightingBankInstances;
+	// Prefix batch index -> representative RNM slot; independent of the eight SRVs.
+	std::vector<uint8_t> m_CandidateLightingBankSlots;
 	
 	ComPtr<ID3D11Buffer> m_pInstanceBuffer = { nullptr };
 	ComPtr<ID3D11Buffer> m_pShadowInstanceBuffer = { nullptr };

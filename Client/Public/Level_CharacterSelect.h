@@ -32,6 +32,7 @@ class CPlayableCharacterAssetService;
 class CCustomizingView;
 class CUILayoutRuntime;
 class CCharacterSelectArenaSpawnGate;
+class CCharacterSelectShowcase;
 class CRaidEntryPreviewView;
 class IPlayerCommandSink;
 class IWorldEntityCommandSink;
@@ -301,6 +302,7 @@ public:
 	bool_t Is_DebugRaidEntryPreviewOpen() const;
 #endif
 	static CLevel_CharacterSelect* Get_Active() { return s_pActiveInstance; }
+	bool_t Try_GetClassShowcaseFocus(float3_t& outFocus) const;
 	/* The live map this Level staged from LV_LOBBY_CLASSSELECT_SL00. Debug
 	   tools edit its entries in place; the Level keeps owning them. */
 	CMapPlacementRuntime& Get_MapRuntime() { return m_MapRuntime; }
@@ -484,6 +486,8 @@ private:
 	MODE m_eMode = MODE::CONNECTING;
 	int32_t m_iLoggedPresentationOpen = -1;
 	bool_t m_bShowcaseCameraActive = false;
+	unique_ptr<CCharacterSelectShowcase> m_pClassShowcase;
+	std::string m_strClassShowcaseFailure;
 	size_t m_iSelectedClassIndex = 0;
 	std::optional<size_t> m_iPendingClassIndex;
 	std::optional<size_t> m_iRequestedClassIndex;

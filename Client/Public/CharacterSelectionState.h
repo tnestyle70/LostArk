@@ -56,6 +56,8 @@ public:
 	when nothing was received yet, so leaving early cannot wipe it. */
 	static void Capture_ActiveWorldState();
 	static bool_t Has_ActiveCharacter();
+	/* Stable local identity of the committed world character, for selecting its roster card. */
+	static std::string Get_ActiveCharacterId();
 	static bool_t Is_RestorePending();
 	static bool_t Is_WorldStateSyncPending();
 	static std::uint32_t Next_StateRequestSequence();

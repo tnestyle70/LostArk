@@ -192,6 +192,12 @@ bool_t Client::CCharacterSelectionState::Has_ActiveCharacter()
 	return !g_ActiveCharacterId.empty();
 }
 
+std::string Client::CCharacterSelectionState::Get_ActiveCharacterId()
+{
+	std::scoped_lock lock{ g_SelectionMutex };
+	return g_ActiveCharacterId;
+}
+
 bool_t Client::CCharacterSelectionState::Is_RestorePending()
 {
 	std::scoped_lock lock{ g_SelectionMutex };

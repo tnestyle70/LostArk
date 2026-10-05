@@ -195,10 +195,10 @@ namespace
 	float4x4_t g_LastShadowView{};
 	float4x4_t g_LastShadowProjection{};
 	Client::MAP_SHADOW_CULL_SNAPSHOT g_LastShadowSnapshot{};
-	uint64_t g_ValidatedPlaneRevision = {};
-	bool_t g_HasValidatedPlanes = false;
-	float4_t g_ValidatedPlanes[6]{};
-	double g_ValidatedMaximumPlaneOffset = 0.;
+	thread_local uint64_t g_ValidatedPlaneRevision = {};
+	thread_local bool_t g_HasValidatedPlanes = false;
+	thread_local float4_t g_ValidatedPlanes[6]{};
+	thread_local double g_ValidatedMaximumPlaneOffset = 0.;
 
 	bool_t IsFiniteMatrix(const float4x4_t& matrix)
 	{
@@ -495,6 +495,7 @@ bool_t CMapAssetRenderUtils::Capture_CameraCullSnapshot(
 const MAP_CAMERA_CULL_SNAPSHOT* CMapAssetRenderUtils::Capture_CameraCullSnapshotView(
 	std::string* outFailureReason)
 {
+    const auto optimization = CGameInstance::Get().Get_RenderOptimizationSettings();
 	if (nullptr != outFailureReason)
 		outFailureReason->clear();
 	const float4x4_t* view = CGameInstance::Get().Get_Transform(D3DTS::VIEW);
@@ -508,6 +509,7 @@ const MAP_CAMERA_CULL_SNAPSHOT* CMapAssetRenderUtils::Capture_CameraCullSnapshot
 	const float4x4_t& stagedView = *view;
 	const float4x4_t& stagedProjection = *projection;
 	if (g_HasCameraMatrices &&
+        g_LastCameraSnapshot.optimizationRevision == optimization.Revision &&
 		0 == std::memcmp(&g_LastView, &stagedView, sizeof(float4x4_t)) &&
 		0 == std::memcmp(&g_LastProjection, &stagedProjection, sizeof(float4x4_t)))
 	{
@@ -522,6 +524,8 @@ const MAP_CAMERA_CULL_SNAPSHOT* CMapAssetRenderUtils::Capture_CameraCullSnapshot
 	{
 		return nullptr;
 	}
+    candidate.optimizationRevision = optimization.Revision;
+    candidate.frustumEnabled = optimization.FrustumEnabled;
 	g_LastView = candidate.view;
 	g_LastProjection = candidate.projection;
 	g_CameraMatrixRevision = candidate.revision;
@@ -634,6 +638,16 @@ bool_t CMapAssetRenderUtils::Evaluate_FrustumVisibility(
 {
 	if (nullptr != outFailureReason)
 		outFailureReason->clear();
+    // A camera snapshot captures this policy on the owner thread before any
+    // synchronous visibility jobs. Distance/LOD still receive valid matrices.
+    if (!snapshot.frustumEnabled)
+    {
+        outDecision = {};
+        state.initialized = true;
+        state.lastFrustumVisible = true;
+        state.rejectGraceFrames = policy.rejectHysteresisFrames;
+        return true;
+    }
 	if (0u == snapshot.revision || !std::isfinite(worldCenter.x) ||
 		!std::isfinite(worldCenter.y) || !std::isfinite(worldCenter.z) ||
 		!std::isfinite(worldRadius) || worldRadius <= 0.f)

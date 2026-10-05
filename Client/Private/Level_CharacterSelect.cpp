@@ -15,6 +15,7 @@
 #include "Character.h"
 #include "CharacterCatalog.h"
 #include "CharacterSelectArenaSpawnGate.h"
+#include "CharacterSelectShowcase.h"
 #include "CharacterSelectionState.h"
 #include "CharacterSpec.h"
 #include "CombatHUDViewModel.h"
@@ -85,9 +86,10 @@ namespace
 	constexpr uint64_t CUSTOMIZING_CAMERA_OWNER_ID = 0x4355'53544F4D'495Aull;
 	/* Owner token for the camera override the class-standing step holds. */
 	constexpr uint64_t SHOWCASE_CAMERA_OWNER_ID = 0x5348'4F57'4341'5345ull;
-	/* Full-body framing from the front: at 4.6 m a 30 degree lens covers about 2.5 m, so a
-	class about 1.8 m tall fills roughly three quarters of the height, as the retail screen does. */
+	/* Shared standing-view framing. Warlord's lower battle idle uses a closer camera;
+	scale eye/look offsets with distance to preserve the root anchor and viewing pitch. */
 	constexpr f32_t SHOWCASE_CAMERA_METRES = 4.6f;
+	constexpr f32_t SHOWCASE_WARLORD_CAMERA_METRES = 4.4f;
 	constexpr f32_t SHOWCASE_EYE_HEIGHT = 1.05f;
 	constexpr f32_t SHOWCASE_LOOK_HEIGHT = 0.95f;
 	constexpr f32_t SHOWCASE_FOV_DEGREES = 30.f;
@@ -182,6 +184,7 @@ CLevel_CharacterSelect::CLevel_CharacterSelect(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
 	: CLevel{ pDevice, pContext },
+	m_pClassShowcase{ std::make_unique<CCharacterSelectShowcase>() },
 	m_pArenaSpawnGate{ std::make_unique<CCharacterSelectArenaSpawnGate>() }
 {
 	s_pActiveInstance = this;
@@ -190,6 +193,7 @@ CLevel_CharacterSelect::CLevel_CharacterSelect(
 CLevel_CharacterSelect::~CLevel_CharacterSelect()
 {
 	m_ClassSelectionPresentation.Clear();
+	m_pClassShowcase->Clear();
 	for (auto& background : m_ClassCinemaBackgrounds)
 		if (background.runtime) background.runtime->Clear();
 	m_ClassCinemaBackgrounds.clear();
@@ -356,6 +360,7 @@ void CLevel_CharacterSelect::Set_BrowseStage(const CLASS_BROWSE_STAGE eStage, co
 
 void CLevel_CharacterSelect::End_ClassShowcaseCamera()
 {
+	m_pClassShowcase->Hide();
 	if (!m_bShowcaseCameraActive)
 		return;
 	m_bShowcaseCameraActive = false;
@@ -377,19 +382,51 @@ void CLevel_CharacterSelect::Update_ClassShowcaseCamera()
 			return;
 		m_bShowcaseCameraActive = true;
 	}
-	/* The camera stands in front of the class along its own facing, so the class looks at the
-	viewer wherever the arena spawned it. */
-	const auto pTransform = m_pActiveCharacter->Get_Transform();
+	std::string showcaseStatus;
+	const bool_t showcaseReady = m_pClassShowcase->Show(
+		m_MapRuntime, m_pActiveCharacter, showcaseStatus);
+	if (!showcaseReady)
+	{
+		m_pClassShowcase->Hide();
+		if (!showcaseStatus.empty() && showcaseStatus != m_strClassShowcaseFailure)
+		{
+			m_strClassShowcaseFailure = showcaseStatus;
+			m_strStatus = showcaseStatus;
+			OutputDebugStringA(("[Level_CharacterSelect][Showcase] " + showcaseStatus + "\n").c_str());
+		}
+	}
+	else
+		m_strClassShowcaseFailure.clear();
+	// Only the display model and camera use the remote stage; Server state stays in the arena.
+	const auto character = showcaseReady ? m_pClassShowcase->Get_Character() : m_pActiveCharacter;
+	const auto pTransform = character->Get_Transform();
 	const vector_t vPosition = pTransform->Get_State(Engine::STATE::POSITION);
 	vector_t vLook = XMVectorSetY(pTransform->Get_State(Engine::STATE::LOOK), 0.f);
 	if (XMVector3Equal(vLook, XMVectorZero()))
 		vLook = XMVectorSet(0.f, 0.f, 1.f, 0.f);
 	vLook = XMVector3Normalize(vLook);
+	const f32_t fCameraDistance = character->Get_CharacterClass() ==
+		LostArk::Shared::CHARACTER_CLASS_ID::WARLORD ?
+		SHOWCASE_WARLORD_CAMERA_METRES : SHOWCASE_CAMERA_METRES;
+	const f32_t fFramingRatio = fCameraDistance / SHOWCASE_CAMERA_METRES;
 	float3_t vEye{}, vAt{};
-	XMStoreFloat3(&vEye, vPosition + vLook * SHOWCASE_CAMERA_METRES +
-		XMVectorSet(0.f, SHOWCASE_EYE_HEIGHT, 0.f, 0.f));
-	XMStoreFloat3(&vAt, vPosition + XMVectorSet(0.f, SHOWCASE_LOOK_HEIGHT, 0.f, 0.f));
+	XMStoreFloat3(&vEye, vPosition + vLook * fCameraDistance +
+		XMVectorSet(0.f, SHOWCASE_EYE_HEIGHT * fFramingRatio, 0.f, 0.f));
+	XMStoreFloat3(&vAt, vPosition +
+		XMVectorSet(0.f, SHOWCASE_LOOK_HEIGHT * fFramingRatio, 0.f, 0.f));
 	m_pCamera->Apply_PresentationPose(SHOWCASE_CAMERA_OWNER_ID, vEye, vAt, SHOWCASE_FOV_DEGREES);
+}
+
+bool_t CLevel_CharacterSelect::Try_GetClassShowcaseFocus(float3_t& outFocus) const
+{
+	if (!Is_ClassShowcaseOpen() || !m_pClassShowcase->Is_Visible())
+		return false;
+	const auto character = m_pClassShowcase->Get_Character();
+	if (!character || !character->Get_Transform())
+		return false;
+	XMStoreFloat3(&outFocus, character->Get_Transform()->Get_State(Engine::STATE::POSITION) +
+		XMVectorSet(0.f, SHOWCASE_LOOK_HEIGHT, 0.f, 0.f));
+	return true;
 }
 
 void CLevel_CharacterSelect::Log_PresentationGate()
@@ -419,17 +456,8 @@ void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 			if (background.runtime && background.failure.empty())
 				background.runtime->Update_SelfMotions(fTimeDelta);
 	}
-	Update_CustomizingStageVisibility();
 	if (m_pMapEffectPresentation)
 		m_pMapEffectPresentation->Update_LevelPresentation(fTimeDelta);
-	const auto& lights = m_pMapLightAuthoringOverride ?
-		m_pMapLightAuthoringOverride : m_pMapLightPresentation;
-	if (lights && !lights->Submit_Frame() && !m_bMapLightSubmissionFailureReported)
-	{
-		m_bMapLightSubmissionFailureReported = true;
-		OutputDebugStringA(("[Level_CharacterSelect][MapLight] " +
-			lights->Get_Status() + "\n").c_str());
-	}
 	switch (m_eMode)
 	{
 	case MODE::CONNECTING:
@@ -478,6 +506,17 @@ void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 		m_ClassSelectionPresentation.Update(fTimeDelta);
 	m_ClassSelectionPresentation.Update_InspectionPicking(Is_ProductPointerHovered());
 	Update_ClassCinematicBackgroundVisibility();
+	Update_CustomizingStageVisibility();
+	const auto& lights = m_pMapLightAuthoringOverride ?
+		m_pMapLightAuthoringOverride : m_pMapLightPresentation;
+	const float3_t lightOffset = m_pClassShowcase->Is_Visible() ?
+		m_pClassShowcase->Get_LightingTranslation() : float3_t{};
+	if (lights && !lights->Submit_Frame(lightOffset) && !m_bMapLightSubmissionFailureReported)
+	{
+		m_bMapLightSubmissionFailureReported = true;
+		OutputDebugStringA(("[Level_CharacterSelect][MapLight] " +
+			lights->Get_Status() + "\n").c_str());
+	}
 }
 
 HRESULT CLevel_CharacterSelect::Render()
@@ -2321,11 +2360,8 @@ bool_t CLevel_CharacterSelect::Is_CustomizingOpen() const
 
 void CLevel_CharacterSelect::Update_CustomizingStageVisibility()
 {
-	/* Character creation puts the model against a flat backdrop, not on the class-list stage.
-	Scanned down the retail screen well clear of the model, the value falls smoothly from 24 to
-	7 with no edge anywhere -- a gradient, not a floor -- so the whole stage comes down while
-	the screen is open and every placement goes back to the visibility its own authored record
-	carries on close. */
+	// Keep authored/editor visibility intact while creation or the separate remote showcase
+	// temporarily suppresses the arena. The showcase owns its own two floor placements.
 	const bool_t wantsStageHidden = Is_CustomizingOpen() || Is_ClassShowcaseOpen();
 	if (wantsStageHidden == m_isCustomizingStageHidden)
 		return;
@@ -2333,8 +2369,7 @@ void CLevel_CharacterSelect::Update_CustomizingStageVisibility()
 
 	for (MAP_RUNTIME_PLACED_ENTRY& entry : m_MapRuntime.Get_MutablePlacements())
 	{
-		(void)CMapPlacementRuntime::Set_RuntimeVisible(
-			entry, wantsStageHidden ? false : entry.record.visible);
+		(void)CMapPlacementRuntime::Set_RuntimeSuppressed(entry, wantsStageHidden);
 	}
 }
 

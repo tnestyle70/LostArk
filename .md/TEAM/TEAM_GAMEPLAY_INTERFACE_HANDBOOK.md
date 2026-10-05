@@ -53,7 +53,7 @@ Lobby의 `KoukuSaydon` 버튼은 기존 `CLobbyCommandService -> C2S_ENTER_WORLD
 
 Character Select의 `Create Character`는 선택 class와 공통 validator를 통과한 1~32-byte UTF-8 nickname을 `CCharacterSelectionState`의 pending identity로 stage한다. Lobby가 그 exact identity로 Bern entry를 승인받고 loading resource, rendering profile, 실제 `Change_Level(BERN)`까지 성공한 뒤에만 created identity로 commit한다. 중간 실패는 pending만 취소하고 기존 created identity는 유지한다. created identity가 없는 direct Bern, Character Select, Training, Valtan, KoukuSaydon entry는 process-local `Test-<process-id>` audition nickname을 사용한다. Bern은 pending 생성이 있으면 이를 우선하며, Lobby/F1의 직접 audition 입장은 생성 commit을 만들지 않는다. Server의 `SERVER_PLAYER::strNickName`과 world transfer가 session lifetime 동안 exact nickname을 보존하고 `S2C_PLAYER_SPAWNED`로 복제한다. nickname은 display text이며 player lookup, Party member ID, 고유성 검사 또는 Client 재실행 뒤 영구 저장에 사용하지 않는다. Bern, Valtan, KoukuSaydon, Maharaka, Colosseum은 `CClientReplication::Collect_PlayerViews`의 Server-replicated nickname과 weak character presentation을 `CWorldPlayerNameplateView`에 전달한다. projection, UTF-8 변환, font draw 실패는 gameplay와 replication을 건드리지 않고 해당 nameplate만 생략한다.
 
-캐릭터 선택은 EXE별 메모리 로스터의 고정 6슬롯을 사용한다. 첫 실행은 빈 슬롯이며 같은 슬롯에서 생성한 캐릭터의 local ID·닉네임·외형과 마지막 Server 인벤토리(장착 포함)·실링·골드·칭호를 캐릭터 선택 복귀 때 보관한다. protocol133의 `C2S_CAPTURE_CHARACTER → S2C_CAPTURE_CHARACTER_RESULT`는 room command FIFO에서 앞선 구매·장착·강화 처리가 끝난 상태를 돌려준다. Client는 응답 sequence·world generation·player/entity/class를 검사해 슬롯을 저장한 뒤 연결을 닫는다. 저장·복원 대기 중 새 gameplay/economy 명령은 차단하고,5초 timeout·거부는 기존 슬롯을 보존한다. 다시 선택하면 Bern의 시작 spawn에서 검증된 one-shot 복원 결과를 받아 활성화한다. 선택창 모델도 생성 외형과 저장된 장착 아바타를 함께 사용한다. 여러 캐릭터가 같은 직업이나 닉네임이어도 local ID와 슬롯으로 구분한다. 이 상태는 EXE 종료와 함께 사라지며 LocalAppData의 기존 CharacterRoster.json이나 Git 파일을 읽고 쓰지 않는다. Lobby 로딩은 캐릭터를 미리 준비하지 않고 실제 열린 선택창의 채워진 슬롯에 한해 기존 async asset 경로를 사용한다. 생성용 프리뷰는 별도 생성 화면 진입의 기존 로더가 준비한다.
+캐릭터 선택은 EXE별 메모리 로스터의 고정 6슬롯을 사용한다. 첫 실행은 빈 슬롯이며 같은 슬롯에서 생성한 캐릭터의 local ID·닉네임·외형과 마지막 Server 인벤토리(장착 포함)·실링·골드·칭호를 캐릭터 선택 복귀 때 보관한다. protocol133의 `C2S_CAPTURE_CHARACTER → S2C_CAPTURE_CHARACTER_RESULT`는 room command FIFO에서 앞선 구매·장착·강화 처리가 끝난 상태를 돌려준다. Client는 응답 sequence·world generation·player/entity/class를 검사해 슬롯을 저장한 뒤 연결을 닫는다. 저장·복원 대기 중 새 gameplay/economy 명령은 차단하고,5초 timeout·거부는 기존 슬롯을 보존한다. 다시 선택하면 Bern의 시작 spawn에서 검증된 one-shot 복원 결과를 받아 활성화한다. 선택창 모델도 생성 외형과 저장된 장착 아바타를 함께 사용한다. 여러 캐릭터가 같은 직업이나 닉네임이어도 local ID와 슬롯으로 구분한다. 이 상태는 EXE 종료와 함께 사라지며 LocalAppData의 기존 CharacterRoster.json이나 Git 파일을 읽고 쓰지 않는다. 최초 빈 Lobby는 캐릭터를 미리 준비하지 않는다. 월드의 캐릭터 선택 명령으로 복귀할 때는 기존 시작되는 운명 Loading이 채워진 슬롯만 기존 async asset 경로로 준비하고 생성 외형·장착 아바타까지 성공한 뒤 Lobby 선택창을 연다. 마지막 active local character ID로 원래 슬롯을 선택하며 실패·시간 초과는 저장 슬롯을 보존하고 Loading의 재시도로 복구한다. 준비된 모델은 activation과 창 Open에서 유지한다. 생성용 프리뷰는 별도 생성 화면 진입의 기존 로더가 준비한다.
 
 강화 단계는 `INVENTORY_ITEM_SNAPSHOT::iUpgradeLevel`에 포함되어 장착/해제·월드 이동·캐릭터
 capture/restore가 함께 보존한다. Bern 슈미트 NPC의 `C2S_UPGRADE_EQUIPMENT`는 item ID와
@@ -455,6 +455,15 @@ Content hash 재사용·총 GPU texture byte·allocation stack·residency는 현
 UI가 저장 profile이나 Engine GPU resource를 직접 교체하지 않는다. 복원은 마지막 적용 필드만
 현재 상태에 병합한다. scene/region/Video owner 변경은 실험을 해제하고 새 입력을 유지한다.
 실험은 authored Save/Publish와 별개이며 프로파일 JSON을 자동 편집하지 않는다.
+최적화 비교는 같은 서비스의12개 `optimization.*` whitelist를 사용한다. Engine Renderer의
+RENDER_OPTIMIZATION_SETTINGS9개와 기존 MAP_VISIBILITY_SETTINGS3개를 읽고 실제 값이 바뀔 때만
+적용한다. 품질의 매 프레임 restore/apply cycle로 cache를 초기화하지 않는다. 외부 제어가 바꾼 값과
+거리 scale/pixel 정책은 보존하고 실패한 복원은 소유 정보를 유지해 재시도한다.
+Debug Workbench `최적화 A/B`와 Release F1 `Optimization Benchmark`는 같은 ABBA·raw evidence 저장을
+사용한다. Release의 일반 Profiler/F7/저작 Save/Publish는 계속 비활성이다. 촬영용 숨김 유지의 명시적
+선택을 제외한 기존 닫기 복원 계약을 보존한다. runtime gate는 실제 로드된 작업 경로만 비교하며
+생성·bake·프로세스 build 차이를 즉시 toggle한 것으로 표시하지 않는다. 사용법은 CLAUDE를 따른다.
+
 
 기법 사전의 지원 항목은 stable recipe ID로 같은 세션 실험에 진입한다. 현재 장면을 A로 보관하고
 B만 변경하며 기본 품질 초기화나 FXAA 강제 활성화를 A/B 시작 동작에 섞지 않는다.

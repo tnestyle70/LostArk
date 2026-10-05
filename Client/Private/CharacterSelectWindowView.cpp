@@ -10,6 +10,7 @@
 #include "CharacterCatalog.h"
 #include "CharacterPortraitRenderer.h"
 #include "CharacterRoster.h"
+#include "CharacterSelectionState.h"
 #include "EquipmentPresentationCatalog.h"
 #include "EquipmentPresentationService.h"
 #include "GameInstance.h"
@@ -238,6 +239,14 @@ void CCharacterSelectWindowView::Open()
 	m_bStageRequested = true;
 	m_hasJustOpened = true;
 	m_eIntent = INTENT::NONE;
+	const std::string activeId = CCharacterSelectionState::Get_ActiveCharacterId();
+	const auto& roster = CCharacterRoster::Get_Entries();
+	for (size_t slot = 0; !activeId.empty() && slot < roster.size(); ++slot)
+		if (roster[slot].strCharacterId == activeId)
+		{
+			m_iSelectedCard = static_cast<int32_t>(slot);
+			break;
+		}
 }
 
 void CCharacterSelectWindowView::Close()
@@ -280,11 +289,8 @@ void CCharacterSelectWindowView::Update(f32_t fTimeDelta, const bool_t bInputBlo
 	if (nullptr == m_pView)
 		return;
 
-	/* Preparation starts as soon as the Lobby is up, while the player is still on the server
-	   select screen, so the characters are usually standing by the time the window opens. It also
-	   keeps going while the window is closed, so going back and returning does not restart a
-	   class that was halfway loaded. */
-	m_bStageRequested = true;
+	/* Open or the explicit return Loading requests preparation. A closed initial Lobby
+	   remains cheap; an already-started window job can still settle after Close. */
 	Update_Stage();
 
 	if (!m_isOpen)
@@ -576,6 +582,64 @@ void CCharacterSelectWindowView::Update_RenameDialog()
 	}
 }
 
+void CCharacterSelectWindowView::Begin_EntryPreparation(const CLevel_Loading* pOwner)
+{
+	Close();
+	Release_Stage();
+	m_pEntryPreparationOwner = pOwner;
+	m_bStageRequested = true;
+	m_iEntryPreparationStartedMs = GetTickCount64();
+}
+
+HRESULT CCharacterSelectWindowView::Advance_EntryPreparation(std::string& outStatus, f32_t& outProgress)
+{
+	if (!m_pEntryPreparationOwner)
+	{
+		outStatus = "Character selection preparation was not started.";
+		return E_UNEXPECTED;
+	}
+	if (GetTickCount64() - m_iEntryPreparationStartedMs >= 300000u)
+	{
+		outStatus = "Character selection preparation timed out; saved slots are preserved.";
+		return HRESULT_FROM_WIN32(ERROR_TIMEOUT);
+	}
+	Update_Stage();
+	size_t ready = 0u;
+	const auto& roster = CCharacterRoster::Get_Entries();
+	for (size_t slot = 0; slot < roster.size() && slot < STAGE_COUNT; ++slot)
+	{
+		if (!CCharacterRoster::Is_Occupied(slot)) continue;
+		if (m_bStageFailed[slot])
+		{
+			outStatus = "Character selection card " + std::to_string(slot) +
+				" could not prepare its saved appearance; saved slots are preserved.";
+			return E_FAIL;
+		}
+		if (!m_StageCharacters[slot].expired()) ++ready;
+	}
+	const size_t total = CCharacterRoster::Get_CharacterCount();
+	outProgress = total == 0u ? 1.f : static_cast<f32_t>(ready) / static_cast<f32_t>(total);
+	outStatus = "Character selection models and avatars: " + std::to_string(ready) +
+		"/" + std::to_string(total);
+	return ready == total ? S_OK : E_PENDING;
+}
+
+void CCharacterSelectWindowView::End_EntryPreparation(
+	const CLevel_Loading* pOwner, const bool_t succeeded)
+{
+	// A Retry creates its next Loading before the old one is destroyed. Only the
+	// exact owner may end the job, so the old destructor cannot cancel its successor.
+	if (m_pEntryPreparationOwner != pOwner) return;
+	m_pEntryPreparationOwner = nullptr;
+	if (!succeeded)
+	{
+		// The existing service cancels I/O and bounds its join before target resources
+		// are rolled back. No worker may commit into the recovery attempt's Lobby.
+		m_pStageAssets.reset();
+		Release_Stage();
+	}
+}
+
 void CCharacterSelectWindowView::Update_Stage()
 {
 	const uint32_t iLobby = ETOUI(LEVEL::LOBBY);
@@ -697,22 +761,30 @@ void CCharacterSelectWindowView::Spawn_StageCharacter(const int32_t iIndex)
 	pCharacter->Set_Animation(CHARACTER_ANIM::IDLE, true);
 	/* The card wears the look its character was made with. A document that does not fit (another
 	class, unreadable) leaves the class default. */
-	if (!Roster[static_cast<size_t>(iIndex)].strAppearanceJson.empty())
-		(void)CCustomizingView::Apply_SavedLook(
-			pCharacter, Roster[static_cast<size_t>(iIndex)].strAppearanceJson, m_pDevice, m_pContext);
-	Apply_StageAvatar(iIndex, *pCharacter);
+	const bool_t lookReady = Roster[static_cast<size_t>(iIndex)].strAppearanceJson.empty() ||
+		CCustomizingView::Apply_SavedLook(
+			pCharacter, Roster[static_cast<size_t>(iIndex)].strAppearanceJson, m_pDevice, m_pContext,
+			nullptr != m_pEntryPreparationOwner);
+	const bool_t avatarReady = Apply_StageAvatar(iIndex, *pCharacter);
+	if (m_pEntryPreparationOwner && (!lookReady || !avatarReady))
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(ETOUI(LEVEL::LOBBY), STAGE_LAYER_TAG, pObject);
+		m_bStageFailed[iIndex] = true;
+		Write_StageLog("card " + std::to_string(iIndex) + " saved appearance preparation failed");
+		return;
+	}
 	m_StageCharacters[iIndex] = pCharacter;
 	Write_StageLog("card " + std::to_string(iIndex) + " character standing");
 }
 
-void CCharacterSelectWindowView::Apply_StageAvatar(const int32_t iIndex, CCharacter& character)
+bool_t CCharacterSelectWindowView::Apply_StageAvatar(const int32_t iIndex, CCharacter& character)
 {
 	using LostArk::Shared::EQUIPMENT_SLOT;
 	const auto& World = CCharacterRoster::Get_Entries()[static_cast<size_t>(iIndex)].World;
 	if (!World.bValid || std::none_of(World.Items.begin(), World.Items.end(), [](const auto& item)
 		{ return item.eEquippedSlot == EQUIPMENT_SLOT::AVATAR_HEAD ||
 			item.eEquippedSlot == EQUIPMENT_SLOT::AVATAR_OUTFIT; }))
-		return;
+		return true;
 
 	/* A catalog or model failure keeps the customized base character on this card. */
 	if (!m_bStageEquipmentCatalogLoadAttempted)
@@ -726,7 +798,7 @@ void CCharacterSelectWindowView::Apply_StageAvatar(const int32_t iIndex, CCharac
 			Write_StageLog("avatar catalogs unavailable: " + error);
 	}
 	if (!m_pStageEquipmentCatalog)
-		return;
+		return false;
 
 	std::array<std::string, ETOI(EQUIPMENT_SLOT_ID::END)> selected{};
 	for (const auto& item : World.Items)
@@ -744,7 +816,7 @@ void CCharacterSelectWindowView::Apply_StageAvatar(const int32_t iIndex, CCharac
 			!selected[ETOI(slot)].empty())
 		{
 			Write_StageLog("card " + std::to_string(iIndex) + " avatar item unavailable: " + item.strItemId);
-			return;
+			return false;
 		}
 		selected[ETOI(slot)] = definition->strVisualSetId;
 	}
@@ -752,7 +824,11 @@ void CCharacterSelectWindowView::Apply_StageAvatar(const int32_t iIndex, CCharac
 		m_pStageEquipmentPresentation = std::make_unique<CEquipmentPresentationService>(m_pDevice, m_pContext);
 	std::string error;
 	if (!m_pStageEquipmentPresentation->Apply_Preview(character, *m_pStageEquipmentCatalog, selected, error))
+	{
 		Write_StageLog("card " + std::to_string(iIndex) + " avatar presentation unavailable: " + error);
+		return false;
+	}
+	return true;
 }
 
 void CCharacterSelectWindowView::Render_Portraits()
@@ -843,6 +919,9 @@ void CCharacterSelectWindowView::Release_Stage()
 	m_bStageEquipmentCatalogLoadAttempted = false;
 	for (int32_t i = 0; i < STAGE_COUNT; ++i)
 	{
+		if (const auto character = m_StageCharacters[i].lock())
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				ETOUI(LEVEL::LOBBY), STAGE_LAYER_TAG, character);
 		m_StageCharacters[i].reset();
 		m_bStageFailed[i] = false;
 	}
