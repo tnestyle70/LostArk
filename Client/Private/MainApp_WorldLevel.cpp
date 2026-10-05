@@ -28,6 +28,80 @@
 
 using namespace Client;
 
+bool CMainApp::Debug_PrepareMapToolAuthoring(std::string& status)
+{
+    if (!m_pWorldSceneTool) return true;
+    if (!m_pWorldSceneTool->Release_PlacementEditing(status))
+    {
+        (void)EnsureDebugTool(DEBUG_TOOL::WORLD_SCENE);
+        m_pWorldSceneTool->Set_Status(status);
+        if (m_pWorldLevelTool) m_pWorldLevelTool->Set_Status(status);
+        return false;
+    }
+    SetDebugToolVisible(DEBUG_TOOL::WORLD_SCENE, false);
+    return true;
+}
+
+bool CMainApp::Debug_PrepareWorldPlacementEditing(const std::string& areaId, std::string& status)
+{
+    if (!m_pMapTool) return true;
+    if (m_pMapTool->Debug_GetActiveAreaId() == areaId && m_pMapTool->Debug_HasPendingAuthoring())
+    { status = "Save the pending Map Tool edits before enabling Object Details placement editing."; return false; }
+    if (m_pMapTool->IsOpen())
+    {
+        m_pMapTool->SetOpen(false);
+        if (m_pMapTool->IsOpen())
+        { status = "Stop / Restore the Map Tool preview before enabling Object Details editing."; return false; }
+        SetDebugToolVisible(DEBUG_TOOL::MAP, false);
+    }
+    return true;
+}
+
+bool CMainApp::Debug_OpenWorldObjectDetails(const std::string& areaId,
+    uint64_t placementId, bool deploy, std::string& status)
+{
+    const auto* host = Find_ActiveMapAuthoringHost();
+    if (!host || areaId != host->Get_MapAuthoringCatalog().Get_AreaId())
+    {
+        status = "Object Details requires this Area's live Bern, Character Select, Valtan or Kouku map. The existing Map Tool inspector remains available for isolated or Movie backgrounds.";
+        return false;
+    }
+    if (m_pMapTool && m_pMapTool->Debug_GetActiveAreaId() == areaId &&
+        m_pMapTool->Debug_HasPendingAuthoring())
+    {
+        status = "Save the pending Map Tool edits before transferring this placement to Object Details.";
+        return false;
+    }
+    const bool mapWasOpen = m_pMapTool && m_pMapTool->IsOpen();
+    if (mapWasOpen)
+    {
+        m_pMapTool->SetOpen(false);
+        if (m_pMapTool->IsOpen())
+        { status = "Map Tool could not restore its preview. Stop / Restore there before opening Object Details."; return false; }
+    }
+    const bool sceneWasVisible = IsDebugToolVisible(DEBUG_TOOL::WORLD_SCENE);
+    const auto restoreWindows = [&] {
+        if (mapWasOpen)
+        {
+            m_pMapTool->SetOpen(true);
+            SetDebugToolVisible(DEBUG_TOOL::MAP, m_pMapTool->IsOpen());
+        }
+        if (sceneWasVisible && m_pWorldSceneTool)
+        { m_pWorldSceneTool->Open(); SetDebugToolVisible(DEBUG_TOOL::WORLD_SCENE, true); }
+        if (!sceneWasVisible) SetDebugToolVisible(DEBUG_TOOL::WORLD_SCENE, false);
+    };
+    if (FAILED(EnsureDebugTool(DEBUG_TOOL::WORLD_SCENE)))
+    { restoreWindows(); status = "Object Details could not initialize."; return false; }
+    m_pWorldSceneTool->Update(0.f, true);
+    if (placementId && !m_pWorldSceneTool->Inspect_Placement(placementId, deploy))
+    { restoreWindows(); status = "This placement is not in the current live scope; previous selection was preserved."; return false; }
+    m_pWorldSceneTool->Set_DetailsMode(true);
+    if (mapWasOpen) SetDebugToolVisible(DEBUG_TOOL::MAP, false);
+    if (m_pWorldLevelTool) m_pWorldLevelTool->Hide_MetadataDetails();
+    status = "Object Details selected the live placement. Transform edits use its existing save owner.";
+    return true;
+}
+
 bool CMainApp::UpdateWorldMeshInspectionInput()
 {
     const bool leftDown = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
@@ -87,6 +161,10 @@ bool CMainApp::UpdateWorldMeshInspectionInput()
             const float deployDistance = deployHit ? XMVectorGetX(XMVector3LengthSq(XMLoadFloat3(&deployPick.hitPosition) - origin)) : FLT_MAX;
             if (deployHit && (!mapHit || deployDistance < mapDistance)) m_pWorldSceneTool->Complete_DeployPick(std::move(deployPick));
             else m_pWorldSceneTool->Complete_MapPick(std::move(mapPick));
+            uint64_t selectedId = 0; bool selectedDeploy = false;
+            if (m_pWorldLevelTool && m_pWorldLevelTool->Is_Open() &&
+                m_pWorldSceneTool->Get_SelectedPlacement(selectedId, selectedDeploy))
+                m_pWorldLevelTool->Sync_LiveSelection(m_pWorldSceneTool->Get_AreaId(), selectedId, selectedDeploy, true);
             m_bWorldMeshPickArmed = false;
             return true;
         }
@@ -99,7 +177,10 @@ void CMainApp::RenderWorldMeshInspection()
 {
     if (!Find_ActiveMapAuthoringHost()) return;
     ImGui::SeparatorText("World Scene");
-    if (ImGui::Button("Open World Scene Tool")) (void)EnsureDebugTool(DEBUG_TOOL::WORLD_SCENE);
+    if (ImGui::Button("Open World Scene Tool"))
+    {
+        if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::WORLD_SCENE))) m_pWorldSceneTool->Set_DetailsMode(false);
+    }
     ImGui::SameLine(); ImGui::TextDisabled("Live mesh pick / transform / map animation");
 }
 
@@ -109,6 +190,10 @@ void CMainApp::RenderWorldSceneTool()
     if (m_eDebugWindowFocusPending == DEBUG_TOOL::WORLD_SCENE)
     { ImGui::SetNextWindowFocus(); m_eDebugWindowFocusPending = DEBUG_TOOL::NONE; }
     m_pWorldSceneTool->Render();
+    uint64_t selectedId = 0; bool selectedDeploy = false;
+    if (m_pWorldLevelTool && m_pWorldLevelTool->Is_Open() &&
+        m_pWorldSceneTool->Get_SelectedPlacement(selectedId, selectedDeploy))
+        m_pWorldLevelTool->Sync_LiveSelection(m_pWorldSceneTool->Get_AreaId(), selectedId, selectedDeploy);
     if (m_pWorldSceneTool->Consume_InteractionRequest()) m_eDebugInputOwner = DEBUG_TOOL::WORLD_SCENE;
     if (!m_pWorldSceneTool->Is_Open()) { SetDebugToolVisible(DEBUG_TOOL::WORLD_SCENE, false); return; }
     float3_t focus{}; float radius = 8.f;
@@ -516,9 +601,21 @@ void CMainApp::RenderWorldLevelTool()
     if (m_pWorldLevelTool->Consume_InteractionRequest()) m_eDebugInputOwner = DEBUG_TOOL::WORLD_LEVEL;
     if (!m_pWorldLevelTool->Is_Open()) { SetDebugToolVisible(DEBUG_TOOL::WORLD_LEVEL, false); return; }
     WORLD_LEVEL_TOOL_REQUEST request;
-    if (!m_pWorldLevelTool->Consume_Request(request)) return;
+    if (!m_pWorldLevelTool->Consume_Request(request))
+    { m_pWorldLevelTool->Render_MetadataDetails(); return; }
     std::string status;
-    if (request.kind == WORLD_LEVEL_REQUEST_KIND::SET_CHUNK_MODE)
+    if (request.kind == WORLD_LEVEL_REQUEST_KIND::INSPECT_METADATA)
+    {
+        if (m_pWorldSceneTool && m_pWorldSceneTool->Is_DetailsMode())
+            SetDebugToolVisible(DEBUG_TOOL::WORLD_SCENE, false);
+    }
+    else if (request.kind == WORLD_LEVEL_REQUEST_KIND::INSPECT_PLACEMENT)
+    {
+        (void)Debug_OpenWorldObjectDetails(request.areaId, request.placementId, request.deploy, status);
+        m_eDebugWindowFocusPending = DEBUG_TOOL::NONE;
+        m_eDebugInputOwner = DEBUG_TOOL::WORLD_LEVEL;
+    }
+    else if (request.kind == WORLD_LEVEL_REQUEST_KIND::SET_CHUNK_MODE)
     {
         if (!chunkRuntime || request.areaId != chunkArea || request.runtimeGeneration != chunkGeneration)
             status = "Chunk source changed; refresh the live Area before changing its display mode.";
@@ -536,17 +633,18 @@ void CMainApp::RenderWorldLevelTool()
     else if (request.kind == WORLD_LEVEL_REQUEST_KIND::FOCUS)
     {
         if (request.areaId != GetWorldLevelAreaId()) status = "Enter this Area before focusing its world position.";
+        else if (request.placementId)
+        {
+            if (Debug_OpenWorldObjectDetails(request.areaId, request.placementId, request.deploy, status))
+                (void)m_pWorldSceneTool->Request_SelectedFocus();
+            m_eDebugWindowFocusPending = DEBUG_TOOL::NONE;
+        }
         else (void)FocusWorldLevelPosition(request.position, request.focusRadius, status);
     }
     else if (request.kind == WORLD_LEVEL_REQUEST_KIND::PICK_IN_SCENE)
     {
-        const auto* host = Find_ActiveMapAuthoringHost();
-        if (!host || request.areaId != host->Get_MapAuthoringCatalog().Get_AreaId())
-            status = "Enter this Area before selecting its live meshes.";
-        else if (FAILED(EnsureDebugTool(DEBUG_TOOL::WORLD_SCENE))) status = "World Scene Tool could not open.";
-        else
+        if (Debug_OpenWorldObjectDetails(request.areaId, 0u, false, status))
         {
-            m_pWorldSceneTool->Update(0.f, true);
             m_pWorldSceneTool->Request_ScenePick();
             m_eDebugInputOwner = DEBUG_TOOL::WORLD_SCENE;
             m_eDebugWindowFocusPending = DEBUG_TOOL::WORLD_SCENE;
@@ -647,14 +745,8 @@ void CMainApp::RenderWorldLevelTool()
         if (host && request.areaId == host->Get_MapAuthoringCatalog().Get_AreaId() &&
             request.sequenceInstanceId.empty() && request.sourceItemId.empty())
         {
-            if (FAILED(EnsureDebugTool(DEBUG_TOOL::WORLD_SCENE))) status = "World Scene Tool could not open.";
-            else
+            if (Debug_OpenWorldObjectDetails(request.areaId, request.placementId, request.deploy, status))
             {
-                m_pWorldSceneTool->Update(0.f, true);
-                const bool selected = request.placementId == 0u ||
-                    m_pWorldSceneTool->Inspect_Placement(request.placementId, request.deploy);
-                status = selected ? "World Scene Tool opened on this Level. Pick in scene inspects meshes; enable editing only to change placements." :
-                    "This saved placement is outside the current live map scope. Previous scene selection was preserved.";
                 m_pWorldSceneTool->Set_Status(status);
                 m_eDebugInputOwner = DEBUG_TOOL::WORLD_SCENE;
                 m_eDebugWindowFocusPending = DEBUG_TOOL::WORLD_SCENE;
@@ -672,5 +764,6 @@ void CMainApp::RenderWorldLevelTool()
         }
     }
     m_pWorldLevelTool->Set_Status(std::move(status));
+    m_pWorldLevelTool->Render_MetadataDetails();
 }
 #endif

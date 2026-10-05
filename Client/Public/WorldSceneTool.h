@@ -30,6 +30,13 @@ public:
     bool Is_Open() const { return m_bOpen; }
     void Update(float deltaSeconds, bool visible);
     void Render();
+    void Set_DetailsMode(bool enabled) { m_bDetailsMode = enabled; }
+    bool Is_DetailsMode() const { return m_bDetailsMode; }
+    void Render_WorldDetails();
+    bool Get_SelectedPlacement(uint64_t& placementId, bool& deploy) const;
+    bool Request_SelectedFocus();
+    // A clean owner can hand placement editing back to Map Tool.
+    bool Release_PlacementEditing(std::string& status);
     bool Consume_PickRequest();
     bool Consume_InteractionRequest();
     bool Consume_FocusRequest(float3_t& position, float& radius);
@@ -47,6 +54,8 @@ private:
     void Select_Deploy(uint64_t placementId);
     void Render_Rows();
     void Render_MapDetails();
+    void Render_DetailsBody();
+    void Render_MaterialDetails();
     bool Begin_Editing();
     void Render_AnimationControls();
     void Render_DeployDetails();
@@ -58,7 +67,7 @@ private:
 
     struct ROW final { uint64_t id = 0; bool deploy = false; std::string label, search; };
     bool m_bOpen = false, m_bPickRequested = false, m_bInteraction = false;
-    bool m_bFocusRequested = false;
+    bool m_bFocusRequested = false, m_bDetailsMode = false;
     float3_t m_FocusPosition{};
     float m_FocusRadius = 8.f;
     uint32_t m_LevelIndex = UINT32_MAX;
@@ -69,13 +78,11 @@ private:
     std::vector<size_t> m_FilteredRows;
     bool m_bRowsDirty = true;
     bool m_bDeploySelected = false;
+    uint32_t m_InspectMeshIndex = UINT32_MAX;
     std::optional<MAP_WORLD_MESH_PICK> m_MapSelection;
     std::optional<DEPLOY_WORLD_MESH_PICK> m_DeploySelection;
     CMapPlacementEditSession m_Edit;
     std::optional<MAP_PLACEMENT_RECORD> m_SelectedOriginal;
-    std::vector<MAP_PLACEMENT_RECORD> m_Undo;
-    std::optional<MAP_PLACEMENT_RECORD> m_PendingUndo;
-    bool m_bUndoGestureSaved = false;
 
     // Animation methods live in WorldSceneTool_Animation.cpp. Only this tool's
     // Begin success grants it permission to Sample/End the borrowed preview.

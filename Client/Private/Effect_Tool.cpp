@@ -798,6 +798,7 @@ void Client::CEffect_Tool::Render()
             "EffectTool.ThumbnailTrim");
         m_pThumbnailCache->Trim();
     }
+    Finish_DocumentHistory();
 }
 
 void Client::CEffect_Tool::Render_EffectToolWindow()
@@ -1136,6 +1137,7 @@ void Client::CEffect_Tool::Discard_ActiveDocument()
 	Release_WorldPreview(true);
     Clear_ProductCuePreview();
 	Reset_RuntimeOccurrenceTuningSession();
+    Clear_DocumentHistory();
     m_ActiveDocument.reset();
 	m_ActiveRegistryBoundAuditionProvenance.reset();
     Clear_ActiveDocumentDrawableStatus();

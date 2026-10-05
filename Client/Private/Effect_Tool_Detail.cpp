@@ -1109,6 +1109,7 @@ bool_t Client::CEffect_Tool::Try_SetDocumentBloomIntensity(const f32_t value)
     }
     if (m_SourcePreviewDocument && m_SourcePreviewDocument->strEffectAssetId == assetId)
         m_SourcePreviewDocument->fBloomIntensity = value;
+    Begin_DocumentHistory();
     m_ActiveDocument->fBloomIntensity = value;
     m_bDocumentDirty = true;
     m_bActiveDocumentMatchesRuntime = false;

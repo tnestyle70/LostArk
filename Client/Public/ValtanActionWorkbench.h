@@ -8,6 +8,7 @@
 #include "CompositionResourceTree.h"
 #include "CompositionWorkbenchSession.h"
 #include "EffectV2_Document.h"
+#include "EditorUndoHistory.h"
 #include "EffectResourceCatalog.h"
 #include "EncounterPatternReference.h"
 #include "ValtanCombatObjectSoundCueDocument.h"
@@ -185,6 +186,8 @@ public:
 	void Begin_WorkbenchFrame() override;
 	void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) override;
 	void End_WorkbenchFrame() override;
+	bool Undo_Edit(std::string& status);
+	bool Redo_Edit(std::string& status);
 	COMPOSITION_WORKBENCH_VIEW_REQUEST Consume_WorkbenchViewRequest() override;
 	bool Execute_CompositionEdit(COMPOSITION_EDIT_COMMAND command, std::string& status) override;
 	bool Insert_CompositionTransfer(const COMPOSITION_TRANSFER& transfer, std::string& status) override;
@@ -686,6 +689,24 @@ private:
 	uint32_t m_iTimelineMoveSourceStartMs = 0u;
 	uint32_t m_iTimelineMoveSourceEndMs = 0u;
 
+	struct HISTORY_SCOPE;
+	struct EDIT_HISTORY_VALUES;
+	struct EDIT_HISTORY_STATE;
+	using HISTORY_STATE = std::shared_ptr<const EDIT_HISTORY_STATE>;
+	HISTORY_STATE Capture_EditHistory();
+	void Begin_EditHistory();
+	void Finish_EditHistory(bool force = false);
+	bool Restore_EditHistory(const EDIT_HISTORY_STATE& state, std::string& status);
+	void Render_EditHistoryButtons(const char* id);
+	void Process_EditHistoryRequest();
+	void Clear_EditHistory();
+	CEditorUndoHistory<HISTORY_STATE> m_EditHistory{16u};
+	std::shared_ptr<const EDIT_HISTORY_VALUES> m_HistoryValues;
+	HISTORY_STATE m_FrameHistoryBefore;
+	std::array<std::uint64_t, 5> m_HistoryGenerations{};
+	int m_PendingHistoryDirection = 0;
+	bool m_bKeepHistoryOnReload = false;
+	bool m_bHistoryWindowFocused = false;
 	std::vector<TIMELINE_SELECTION> m_TimelineSelection;
 	bool_t m_bTimelineMarqueeActive = false;
 	bool_t m_bTimelineMarqueeDragged = false;

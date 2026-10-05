@@ -1643,6 +1643,23 @@ bool_t Client::CEffectV2Catalog::Stage_AppendBossValtanBindings(
 	}
 }
 
+bool_t Client::CEffectV2Catalog::Restore_BossValtanBindingHistory(
+    const std::vector<EFFECT_V2_BINDING>& bindings, std::string& status)
+{
+    std::lock_guard<std::recursive_mutex> lock(m_SnapshotMutex);
+    if (!m_pSnapshot) { status = "Reload the Effect catalog before Undo / Redo."; return false; }
+    const auto bytes = CEffectV2Document::Serialize_Bindings(BOSS_VALTAN_ARCHETYPE_ID, bindings);
+    if (bytes == CEffectV2Document::Serialize_Bindings(BOSS_VALTAN_ARCHETYPE_ID, m_pSnapshot->m_BossValtanBindings)) return true;
+    if (!Commit_BossValtanBindingsLocked(bindings, "Undo / Redo", status)) return false;
+    std::vector<EFFECT_V2_BINDING> baseline;
+    std::string diagnostic;
+    if (CEffectV2Document::Parse_Bindings(m_strBossValtanBindingDraftBaselineBytes,
+        BOSS_VALTAN_ARCHETYPE_ID, baseline, diagnostic) &&
+        bytes == CEffectV2Document::Serialize_Bindings(BOSS_VALTAN_ARCHETYPE_ID, baseline))
+    { m_bBossValtanBindingDraftDirty = false; m_strBossValtanBindingDraftBaselineBytes.clear(); }
+    return true;
+}
+
 bool_t Client::CEffectV2Catalog::Apply_BossValtanBindingDraftTransaction(
     const std::function<bool_t(std::string&)>& Mutation, std::string& strOutError)
 {

@@ -5,6 +5,7 @@
 #include "Client_Defines.h"
 #include "ClassMovieInspector.h"
 #include "Effect_AuthoringDocument.h"
+#include "EditorUndoHistory.h"
 #include "Effect_ComponentDocument.h"
 #include "Effect_DirectAuthoredSourceIndex.h"
 #include "EffectResourceCatalog.h"
@@ -942,6 +943,27 @@ private:
 	bool_t Try_SetSelectedElementFollowAnchor(const std::string& strBoneName);
 	bool_t Try_ClearSelectedElementFollowAnchor();
     bool_t Try_CommitDocument(EFFECT_DOCUMENT_DESC&& Staged);
+    struct DOCUMENT_HISTORY_VALUE final
+    {
+        EFFECT_DOCUMENT_DESC document;
+        std::string canonical;
+    };
+    struct DOCUMENT_HISTORY_STATE final
+    {
+        std::shared_ptr<const DOCUMENT_HISTORY_VALUE> value;
+        EFFECT_DETAIL_SELECTION selection = EFFECT_DETAIL_SELECTION::NONE;
+        EFFECT_ELEMENT_KIND kind = EFFECT_ELEMENT_KIND::MESH;
+        EFFECT_RESOURCE_FILE_KIND resourceKind = EFFECT_RESOURCE_FILE_KIND::END;
+        std::string element, group, modelCue, ownerControl, component, emitter, sourceModule;
+        std::string resourceSlot, resourceAsset;
+        std::set<std::string, std::less<>> marked;
+    };
+    DOCUMENT_HISTORY_STATE Capture_DocumentHistory(bool reuseValue) const;
+    void Begin_DocumentHistory();
+    void Finish_DocumentHistory();
+    void Clear_DocumentHistory();
+    bool Restore_DocumentHistory(const DOCUMENT_HISTORY_STATE& state);
+    void Render_DocumentHistoryControls();
     bool_t Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER eFilter);
     bool_t Ensure_WorldPreviewObject();
 	bool_t Try_StartArtist31470FullPreview();
@@ -1229,6 +1251,9 @@ private:
     uint32_t m_iWorldPreviewLevel = UINT32_MAX;
 
     optional<EFFECT_DOCUMENT_DESC> m_ActiveDocument;
+    CEditorUndoHistory<DOCUMENT_HISTORY_STATE> m_DocumentHistory{32u};
+    std::shared_ptr<const DOCUMENT_HISTORY_VALUE> m_DocumentHistoryCurrent;
+    bool m_DocumentHistoryApplying = false;
     // Borrowed only during synchronous sequencer Refresh_Effects; restored on every exit.
     const EFFECT_DOCUMENT_DESC* m_pAuthoringRefreshDocument = nullptr;
 	optional<REGISTRY_BOUND_AUDITION_PROVENANCE>

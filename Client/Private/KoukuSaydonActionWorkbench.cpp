@@ -1747,6 +1747,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Reload(std::string& outStatus)
 	if (Is_CompleteSequencePlaying()) Stop_Preview();
 	const std::string previousPatternId = m_strSelectedPatternId;
 	m_Draft = m_Document.Get_LastGood();
+	m_EditHistory.Clear(); m_HistoryDocument.reset(); m_PendingHistoryDirection = 0;
 	m_strLogicValueDraftId.clear();
 	m_InlineLogicValueDrafts.clear();
 	m_strColliderLogicValueDraftId.clear();
@@ -1783,11 +1784,13 @@ bool_t Client::CKoukuSaydonActionWorkbench::Save(std::string& outStatus)
 		outStatus = m_strStatus = !m_bHasDraft ? "No composition is loaded." : "Publish is reading the saved source. Keep editing the draft; Save is available after publish finishes.";
 		return false;
 	}
+	Finish_EditHistory(true);
 	const auto saveWorldAnimations = [&]() {
 		if (!m_WorldAnimationEditsPending) return true;
 		if (!m_SaveWorldAnimation || !m_SaveWorldAnimation(outStatus))
 		{ m_strStatus = outStatus.empty() ? "World animation Save is unavailable. Edits are preserved." : outStatus; return false; }
 		m_WorldAnimationEditsPending = false;
+		if (m_CaptureWorldAnimationHistory) m_HistoryWorldDocument = m_CaptureWorldAnimationHistory(false);
 		return true;
 	};
 	if (Is_CompositionDirty())
@@ -1820,6 +1823,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Save(std::string& outStatus)
 		}
 		if (!m_Document.Save_Atomic(candidate, outStatus))
 		{ m_strStatus = outStatus; return false; }
+		candidate.iRevision = m_Document.Get_LastGood().iRevision;
+		if (candidate != m_Document.Get_LastGood()) m_EditHistory.Clear(); // External merge starts a new history boundary.
 		m_Draft = m_Document.Get_LastGood();
 		m_ResourceReferences = m_Document.Get_References();
 		m_bResourceTreeDirty = true;
@@ -2425,6 +2430,135 @@ bool_t Client::CKoukuSaydonActionWorkbench::Consume_ServerPlayRequest(
 	return true;
 }
 
+Client::CKoukuSaydonActionWorkbench::EDIT_HISTORY_STATE Client::CKoukuSaydonActionWorkbench::Capture_EditHistory(const bool prepareWorld)
+{
+    if (!m_HistoryDocument || m_HistoryDocumentGeneration != m_iDraftGeneration)
+    {
+        m_HistoryDocument = std::make_shared<const KOUKU_SAYDON_COMPOSITION_DOCUMENT>(m_Draft);
+        m_HistoryDocumentGeneration = m_iDraftGeneration;
+    }
+    EDIT_HISTORY_STATE state;
+    state.document = m_HistoryDocument; state.geometry = m_StagedPresentationGeometry;
+    if (m_CaptureWorldAnimationHistory) m_HistoryWorldDocument = m_CaptureWorldAnimationHistory(prepareWorld);
+    state.worldDocument = m_HistoryWorldDocument;
+    state.patternSelection = m_ePatternSelection;
+    state.gate = m_strSelectedGateId; state.folder = m_strSelectedFolderId; state.bundle = m_strSelectedBundleId;
+    state.pattern = m_strSelectedPatternId; state.stage = m_strSelectedStageId; state.animation = m_strSelectedOccurrenceId;
+    state.logic = m_strSelectedLogicId; state.logicBox = m_strSelectedLogicOccurrenceId;
+    state.summon = m_strSelectedSummonId; state.summonBox = m_strSelectedSummonOccurrenceId;
+    state.world = m_strSelectedWorldId; state.worldBox = m_strSelectedWorldOccurrenceId;
+    state.scene = m_strSelectedSceneProfileId; state.sceneBox = m_strSelectedSceneProfileOccurrenceId;
+    state.presentation = m_strSelectedPresentationResourceId; state.presentationBox = m_strSelectedPresentationOccurrenceId;
+    state.patternBox = m_strSelectedPatternOccurrenceId; state.timelinePattern = m_strTimelineSelectionPatternId;
+    state.stages = m_TimelineSelectedStageIds; state.occurrences = m_TimelineSelectedOccurrenceIds;
+    state.cursorPattern = m_strCursorPatternId; state.cursor = m_iCursorMs;
+    return state;
+}
+
+void Client::CKoukuSaydonActionWorkbench::Finish_EditHistory(const bool force)
+{
+    if (!m_EditHistory.Is_Pending()) return;
+    if (!force && ImGui::GetCurrentContext() && (ImGui::IsMouseDown(ImGuiMouseButton_Left) || ImGui::IsAnyItemActive())) return;
+    m_EditHistory.Commit(Capture_EditHistory(), [](const auto& before, const auto& after) {
+        return (before.document == after.document || *before.document == *after.document) && before.geometry == after.geometry && before.worldDocument == after.worldDocument;
+    });
+}
+
+void Client::CKoukuSaydonActionWorkbench::Begin_EditHistory(const bool prepareWorld)
+{
+    if (!m_HistoryRestoring && !m_EditHistory.Is_Pending()) m_EditHistory.Begin(Capture_EditHistory(prepareWorld));
+}
+
+bool Client::CKoukuSaydonActionWorkbench::Restore_EditHistory(const EDIT_HISTORY_STATE& state, const EDIT_HISTORY_STATE& expected, std::string& status)
+{
+    if (!state.document || !m_bHasDraft || Is_PublishRunning() || m_bServerPlayPreparationPending)
+    { status = "Finish the active save or playback preparation before Undo / Redo."; return false; }
+    auto candidate = *state.document;
+    // History changes the in-memory draft, never the current save baseline.
+    candidate.iRevision = m_Document.Get_LastGood().iRevision;
+    for (const auto& edit : state.geometry)
+    {
+        auto* pattern = Find_Pattern(candidate, edit.strPatternId);
+        const auto* resource = Find_PresentationResource(candidate, edit.Occurrence.strResourceId);
+        if (!pattern || !resource || !Valid_PresentationPlacement(*resource, edit.Occurrence) ||
+            !Valid_GameplayColliderScale(*resource, edit.Occurrence))
+        { status = "Undo / Redo placement failed validation; draft and history are preserved."; return false; }
+        const auto box = std::find_if(pattern->PresentationOccurrences.begin(), pattern->PresentationOccurrences.end(),
+            [&](const auto& row) { return row.strOccurrenceId == edit.Occurrence.strOccurrenceId && row.strResourceId == edit.Occurrence.strResourceId; });
+        if (box == pattern->PresentationOccurrences.end())
+        { status = "Undo / Redo placement identity is unavailable; draft and history are preserved."; return false; }
+        Copy_PresentationPlacement(edit.Occurrence, *box, resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT);
+    }
+    if (!CKoukuSaydonCompositionDocument::Validate(candidate, m_ResourceReferences, status)) return false;
+    auto restored = state;
+    if (state.worldDocument && expected.worldDocument && state.worldDocument != expected.worldDocument)
+    {
+        if (!m_RestoreWorldAnimationHistory || !m_RestoreWorldAnimationHistory(expected.worldDocument, state.worldDocument, status)) return false;
+        m_HistoryWorldDocument = state.worldDocument; m_WorldAnimationEditsPending = true;
+    }
+    m_HistoryRestoring = true;
+    Stop_Preview();
+    m_Draft = std::move(candidate); m_StagedPresentationGeometry.clear();
+    m_bDirty = m_Draft != m_Document.Get_LastGood(); ++m_iDraftGeneration;
+    m_ePatternSelection = state.patternSelection;
+    m_strSelectedGateId = std::move(restored.gate); m_strSelectedFolderId = std::move(restored.folder); m_strSelectedBundleId = std::move(restored.bundle);
+    m_strSelectedPatternId = std::move(restored.pattern); m_strSelectedStageId = std::move(restored.stage); m_strSelectedOccurrenceId = std::move(restored.animation);
+    m_strSelectedLogicId = std::move(restored.logic); m_strSelectedLogicOccurrenceId = std::move(restored.logicBox);
+    m_strSelectedSummonId = std::move(restored.summon); m_strSelectedSummonOccurrenceId = std::move(restored.summonBox);
+    m_strSelectedWorldId = std::move(restored.world); m_strSelectedWorldOccurrenceId = std::move(restored.worldBox);
+    m_strSelectedSceneProfileId = std::move(restored.scene); m_strSelectedSceneProfileOccurrenceId = std::move(restored.sceneBox);
+    m_strSelectedPresentationResourceId = std::move(restored.presentation); m_strSelectedPresentationOccurrenceId = std::move(restored.presentationBox);
+    m_strSelectedPatternOccurrenceId = std::move(restored.patternBox); m_strTimelineSelectionPatternId = std::move(restored.timelinePattern);
+    m_TimelineSelectedStageIds = std::move(restored.stages); m_TimelineSelectedOccurrenceIds = std::move(restored.occurrences);
+    m_strCursorPatternId = std::move(restored.cursorPattern); m_iCursorMs = state.cursor;
+    m_strLogicValueDraftId.clear(); m_strColliderLogicValueDraftId.clear(); m_InlineLogicValueDrafts.clear();
+    m_bResourceTreeDirty = true; m_iTimelineDragMode = 0; m_strTimelineGroupDragOccurrenceId.clear();
+    Normalize_Selection(); Synchronize_EditorFields();
+    m_HistoryRestoring = false;
+    status = "Restored draft and selection. Save keeps this state.";
+    return true;
+}
+
+bool Client::CKoukuSaydonActionWorkbench::Undo_Edit(std::string& status)
+{
+    Finish_EditHistory(true);
+    const bool changed = m_EditHistory.Undo([&](const auto& state, const auto& expected) { return Restore_EditHistory(state, expected, status); });
+    m_strStatus = status; return changed;
+}
+
+bool Client::CKoukuSaydonActionWorkbench::Redo_Edit(std::string& status)
+{
+    Finish_EditHistory(true);
+    const bool changed = m_EditHistory.Redo([&](const auto& state, const auto& expected) { return Restore_EditHistory(state, expected, status); });
+    m_strStatus = status; return changed;
+}
+
+void Client::CKoukuSaydonActionWorkbench::Render_EditHistoryButtons(const char* id)
+{
+    m_HistoryWindowFocused = m_HistoryWindowFocused || ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+    ImGui::PushID(id);
+    const bool busy = Is_PublishRunning() || m_bServerPlayPreparationPending;
+    ImGui::BeginDisabled(busy || !m_EditHistory.Can_Undo());
+    if (ImGui::Button("Undo")) m_PendingHistoryDirection = -1;
+    ImGui::EndDisabled(); ImGui::SameLine();
+    ImGui::BeginDisabled(busy || !m_EditHistory.Can_Redo());
+    if (ImGui::Button("Redo")) m_PendingHistoryDirection = 1;
+    ImGui::EndDisabled(); ImGui::PopID();
+    if (!busy && m_HistoryWindowFocused && !ImGui::GetIO().WantTextInput && !ImGui::IsAnyItemActive() && ImGui::GetIO().KeyCtrl)
+    {
+        if (ImGui::IsKeyPressed(ImGuiKey_Z, false)) m_PendingHistoryDirection = ImGui::GetIO().KeyShift ? 1 : -1;
+        else if (ImGui::IsKeyPressed(ImGuiKey_Y, false)) m_PendingHistoryDirection = 1;
+    }
+}
+
+void Client::CKoukuSaydonActionWorkbench::Process_EditHistoryRequest()
+{
+    Finish_EditHistory();
+    const int direction = std::exchange(m_PendingHistoryDirection, 0);
+    if (direction < 0) (void)Undo_Edit(m_strStatus);
+    else if (direction > 0) (void)Redo_Edit(m_strStatus);
+}
+
 bool_t Client::CKoukuSaydonActionWorkbench::Commit_Candidate(
 	KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate,
 	const std::string_view successStatus,
@@ -2482,6 +2616,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Commit_Candidate(
 		const auto* next = Find_Logic(candidate, entry.first);
 		return !previous || !next || *previous != *next;
 	});
+	if (candidate == m_Draft) { outStatus = m_strStatus = std::string(successStatus); return true; }
+	Begin_EditHistory();
 	m_Draft = std::move(candidate);
 	m_bDirty = true;
 	++m_iDraftGeneration;
@@ -5501,7 +5637,7 @@ void Client::CKoukuSaydonActionWorkbench::Synchronize_ServerPatternPlayback()
 
 void Client::CKoukuSaydonActionWorkbench::Render_ServerPlayButton(const char_t* label)
 {
-	if (m_bSequenceWorkspace) return;
+	if (m_bSequenceWorkspace) { ImGui::SameLine(); Render_EditHistoryButtons(label); return; }
 	const auto& audition = CKoukuSaydonPatternAuditionService::Get().Get_Snapshot();
 	ImGui::SameLine();
 	ImGui::BeginDisabled(m_bServerPlayPreparationPending || audition.Is_InFlight());
@@ -5533,6 +5669,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_ServerPlayButton(const char_t* 
 		}
 		ImGui::SetTooltip("Server target: %s\n%s\nValidates and runs the current applied draft from zero on the Server, including Collider, Logic and Sound timing. Save and Publish are separate.", targetName, targetId);
 	}
+	ImGui::SameLine(); Render_EditHistoryButtons(label);
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!m_bServerPlayPreparationPending && !audition.Can_Stop());
 	ImGui::PushID(label);
@@ -6710,6 +6847,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_PresentationGeometryPreview(
 	const bool effect = resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT;
 	auto placement = *source;
 	Copy_PresentationPlacement(value, placement, effect);
+	Begin_EditHistory();
 	{
 		const auto staged = std::find_if(m_StagedPresentationGeometry.begin(), m_StagedPresentationGeometry.end(),
 			[&](const auto& row) { return row.strPatternId == patternId && row.Occurrence.strOccurrenceId == value.strOccurrenceId; });
@@ -6831,6 +6969,7 @@ void Client::CKoukuSaydonActionWorkbench::Cancel_PresentationGeometryPreview(con
 			m_strPresentationGeometryPreviewOccurrenceId.clear();
 			return;
 		}
+		Begin_EditHistory();
 		std::erase_if(m_StagedPresentationGeometry, [&](const auto& row) {
 			return row.strPatternId == m_strPresentationGeometryPreviewPatternId &&
 				row.Occurrence.strOccurrenceId == m_strPresentationGeometryPreviewOccurrenceId; });
@@ -7226,6 +7365,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Transform_SelectedColliders(
 	const std::string patternId = m_strSelectedPatternId;
 	// Validate the complete batch first. Only small geometry rows change during a drag;
 	// Save performs the one document copy and its existing atomic validation/write.
+	Begin_EditHistory();
 	for (const auto& box : boxes)
 	{
 		const auto staged = std::find_if(m_StagedPresentationGeometry.begin(), m_StagedPresentationGeometry.end(),
@@ -7433,6 +7573,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Transform_SelectedEffects(
 	const std::string patternId = m_strSelectedPatternId;
 	// Stage every validated member before requesting a preview. The first preview
 	// preparation and Save both see the complete group, including pending edits.
+	Begin_EditHistory();
 	for (const auto& box : boxes)
 	{
 		const auto staged = std::find_if(m_StagedPresentationGeometry.begin(), m_StagedPresentationGeometry.end(),
@@ -8514,6 +8655,8 @@ void Client::CKoukuSaydonActionWorkbench::Rebuild_PatternChildRows(
 
 void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 {
+	if (m_ePatternSelection != KOUKU_PATTERN_SELECTION::PATTERN && m_ePatternSelection != KOUKU_PATTERN_SELECTION::BUNDLE)
+		Render_EditHistoryButtons("EmptyTimelineHistory");
 	const auto& io = ImGui::GetIO();
 	const bool additiveSelection = io.KeyCtrl || io.KeyShift;
 	Engine::CProfilerScope paneScope(CGameInstance::Get().Get_Profiler(), "ImGui.Composition.Timeline");
@@ -9378,6 +9521,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 				if (changed.startMs != row.edit.startMs || changed.sourceInMs != row.edit.sourceInMs || changed.sourceOutMs != row.edit.sourceOutMs)
 				{
 					std::string status;
+					Begin_EditHistory(true);
 					if (m_EditWorldAnimation(changed, status))
 					{ m_WorldAnimationEditsPending = true; ++m_iDraftGeneration; }
 					m_strStatus = std::move(status);
@@ -16862,6 +17006,7 @@ void Client::CKoukuSaydonActionWorkbench::Process_TimelineClipboardShortcuts()
 
 void Client::CKoukuSaydonActionWorkbench::Begin_WorkbenchFrame()
 {
+	m_HistoryWindowFocused = false;
     m_CompositionResourcesFocused = false;
 	m_bSharedWorkspaceActive = true;
 	m_bTimelineClipboardFocusThisFrame = false;
@@ -16906,10 +17051,12 @@ void Client::CKoukuSaydonActionWorkbench::End_WorkbenchFrame()
 	Render_CameraWindow();
 	// All pane-local Pattern and occurrence pointers have finished their frame.
 	m_bSharedWorkspaceActive = false;
+	Process_EditHistoryRequest();
 }
 
 void Client::CKoukuSaydonActionWorkbench::Render()
 {
+	m_HistoryWindowFocused = false;
 	m_bTimelineClipboardFocusThisFrame = false;
 	Poll_PublishProcess();
     Poll_DraftPlayProcess();
@@ -16929,6 +17076,7 @@ void Client::CKoukuSaydonActionWorkbench::Render()
 		ImGui::End();
 		Render_ResourcesWindow();
 		Render_CameraWindow();
+		Process_EditHistoryRequest();
 		return;
 	}
 	Render_Toolbar();
@@ -16958,6 +17106,7 @@ void Client::CKoukuSaydonActionWorkbench::Render()
 	Render_ResourcesWindow();
 	Render_CameraWindow();
 	Process_TimelineClipboardShortcuts();
+	Process_EditHistoryRequest();
 }
 
 

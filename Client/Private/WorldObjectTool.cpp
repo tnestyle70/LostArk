@@ -385,9 +385,7 @@ bool SynchronizeEmissionReferences(Client::KOUKU_SAYDON_COMPOSITION_DOCUMENT& do
             std::vector<uint32_t> origins;
             if (const auto found = provenance.find(after->sequenceId); found != provenance.end()) origins = found->second;
             else for (uint32_t row = 0; row < newMotion.EmissionCount(); ++row) origins.push_back(row);
-            if (origins.size() != newMotion.EmissionCount() || std::any_of(origins.begin(), origins.end(),
-                [&](uint32_t row) { return row >= oldMotion.EmissionCount(); }))
-                return fail("emission provenance is invalid for " + after->displayName + ". Reload the Object source.");
+
             const auto belongs = [&](const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& box) {
                 if (box.strAnchorKind != "WORLD" || box.strWorldId != worldBox.strWorldId) return false;
                 if (!box.strWorldOccurrenceId.empty()) return box.strWorldOccurrenceId == worldBox.strOccurrenceId;
@@ -404,6 +402,13 @@ bool SynchronizeEmissionReferences(Client::KOUKU_SAYDON_COMPOSITION_DOCUMENT& do
                 std::any_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(), [&](const auto& box) {
                     return box.strAnchorKind == "WORLD" && box.strWorldId == worldBox.strWorldId && box.strWorldOccurrenceId.empty() && isCollider(box); }))
                 return fail("Collider has an ambiguous WORLD occurrence. Select its exact Object box in Composition first.");
+            // Ordinal provenance is consumed only by linked Collider/Logic rows.
+            // A restored emission with no such rows is an ordinary authoring edit.
+            if (std::none_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+                [&](const auto& box) { return belongs(box) && isCollider(box); })) continue;
+            if (origins.size() != newMotion.EmissionCount() || std::any_of(origins.begin(), origins.end(),
+                [&](uint32_t row) { return row >= oldMotion.EmissionCount(); }))
+                return fail("emission provenance is invalid for " + after->displayName + ". Reload the Object source.");
             std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE> nextColliders;
             std::map<std::pair<std::string, uint32_t>, std::string> linkedLogics;
             std::set<std::string> removedLogicCandidates;
@@ -581,6 +586,220 @@ bool ResolveTransferredEffectDuration(const std::string& resourceKind, const std
 
 using namespace Client;
 
+CWorldObjectTool::HISTORY_STATE CWorldObjectTool::Capture_HistoryState()
+{
+    if (!m_HistoryDocument || m_HistoryDocument->Get_Revision() != m_Document.Get_Revision())
+        m_HistoryDocument = std::make_shared<const CWorldSequenceDocument>(m_Document);
+    HISTORY_STATE state;
+    state.document = m_HistoryDocument;
+    state.object = m_SelectedObject; state.group = m_SelectedGroup; state.instance = m_SelectedInstance;
+    state.folder = m_SelectedFolder; state.resources = m_SelectedResources;
+    state.resourceAnchor = m_ResourceAnchorKind; state.selectionAnchor = m_ResourceSelectionAnchor;
+    state.track = m_SelectedTrack; state.animation = m_SelectedAnimationRow; state.effect = m_SelectedEffectRow;
+    state.collider = m_SelectedColliderRow; state.key = m_SelectedKey; state.boxKind = m_SelectedBoxKind;
+    state.clockMs = m_ClockMs; state.editedMotions = m_EditedMotionIds;
+    state.previewObject = m_CompositionPreviewObjectId; state.pattern = m_CompositionPatternId;
+    state.occurrence = m_CompositionOccurrenceId; state.sequenceWorkspace = m_CompositionSequenceWorkspace;
+    state.previewPlacement = m_CompositionPreviewPlacement; state.editedPlacement = m_CompositionEditedPlacement;
+    state.previewAtCharacter = m_PreviewAtCharacter;
+    state.savedGeneration = m_SavedGeneration; state.emissionOrigins = m_EmissionOrigins;
+    return state;
+}
+
+std::shared_ptr<const CWorldSequenceDocument> CWorldObjectTool::Capture_TimelineHistory(const bool prepare)
+{
+    if (prepare && !m_Ready && !Load_Source()) return nullptr;
+    if (!m_Ready) return nullptr;
+    if (!m_HistoryDocument || m_HistoryDocument->Get_Revision() != m_Document.Get_Revision())
+        m_HistoryDocument = std::make_shared<const CWorldSequenceDocument>(m_Document);
+    return m_HistoryDocument;
+}
+
+bool CWorldObjectTool::Restore_TimelineHistory(
+    const std::shared_ptr<const CWorldSequenceDocument>& expected,
+    const std::shared_ptr<const CWorldSequenceDocument>& desired, std::string& status)
+{
+    if (!m_Ready || m_PublishProcess || !expected || !desired)
+    { status = m_Status = "World animation owner is unavailable or publishing. History was preserved."; return false; }
+    const auto current = Capture_TimelineHistory();
+    if (current != expected)
+    {
+        auto observed = m_Document;
+        auto baseline = *expected;
+        const auto revision = (std::max)(observed.Get_Revision(), baseline.Get_Revision());
+        while (observed.Get_Revision() < revision) observed.Touch();
+        while (baseline.Get_Revision() < revision) baseline.Touch();
+        if (!observed.Is_Equivalent(baseline))
+        { status = m_Status = "Object draft changed after this timeline edit. Both histories were preserved."; return false; }
+    }
+    Finish_HistoryGesture(true);
+    auto state = Capture_HistoryState();
+    m_History.Begin(state);
+    state.document = desired;
+    if (!Apply_HistoryState(state)) { m_History.Cancel(); status = m_Status; return false; }
+    // The Object owner records an external replay too, so its own controls
+    // remain a chronological history of the draft currently on screen.
+    Finish_HistoryGesture(true);
+    status = m_Status = "World animation timeline restored. Save commits the current draft.";
+    return true;
+}
+
+void CWorldObjectTool::Begin_HistoryFrame()
+{
+    if (m_HistoryFrameDepth++ == 0u && m_Ready && !m_History.Is_Pending())
+        m_History.Begin(Capture_HistoryState());
+}
+
+void CWorldObjectTool::Finish_HistoryGesture(const bool force)
+{
+    if (!m_Ready || !m_History.Is_Pending()) return;
+    if (!force && ImGui::GetCurrentContext() &&
+        (ImGui::IsAnyItemActive() || ImGui::IsMouseDown(ImGuiMouseButton_Left) ||
+            m_TimelineDrag || !m_StageResizeSequence.empty())) return;
+    m_History.Commit(Capture_HistoryState(), [](const HISTORY_STATE& before, const HISTORY_STATE& after) {
+        // Selection, playback and preview placement alone are not document edits.
+        return before.document == after.document && before.editedPlacement == after.editedPlacement;
+    });
+}
+
+void CWorldObjectTool::End_HistoryFrame()
+{
+    if (!m_HistoryFrameDepth || --m_HistoryFrameDepth) return;
+    Finish_HistoryGesture();
+    const int request = std::exchange(m_HistoryRequest, 0);
+    if (!request || m_PublishProcess) return;
+    const auto apply = [this](const HISTORY_STATE& state) { return Apply_HistoryState(state); };
+    const bool applied = request < 0 ? m_History.Undo(apply) : m_History.Redo(apply);
+    if (applied) m_Status = request < 0 ? "Object edit undone. Save commits this draft; published data is unchanged." :
+        "Object edit redone. Save commits this draft; published data is unchanged.";
+}
+
+std::string CWorldObjectTool::History_PlacementKey(const std::string& pattern,
+    const std::string& occurrence, const bool sequence)
+{
+    return (sequence ? "sequence:" : "action:") + std::to_string(pattern.size()) + ":" + pattern + occurrence;
+}
+
+void CWorldObjectTool::Remember_HistoryPlacementBaseline()
+{
+    if (!m_CompositionPatternId.empty() && !m_CompositionOccurrenceId.empty())
+        m_HistoryPlacementBaselines[History_PlacementKey(m_CompositionPatternId, m_CompositionOccurrenceId,
+            m_CompositionSequenceWorkspace)] = {m_CompositionSavedPlacement, m_CompositionExplicitPlacement};
+}
+
+void CWorldObjectTool::Remember_HistorySave()
+{
+    HISTORY_SAVE saved; saved.generation = m_SavedGeneration;
+    for (const auto& [id, origins] : m_EmissionOrigins)
+    {
+        bool identity = true;
+        const auto* before = m_SavedDocument.Find_Template(id);
+        if (!before || origins.size() != before->objectMotion.EmissionCount()) identity = false;
+        for (size_t i = 0; i < origins.size(); ++i) if (origins[i] != i) identity = false;
+        if (!identity) saved.origins.emplace(id, origins);
+    }
+    if (!saved.origins.empty()) m_HistorySaves.push_back(std::move(saved));
+}
+
+bool CWorldObjectTool::Apply_HistoryState(const HISTORY_STATE& state)
+{
+    if (!m_Ready || m_PublishProcess || !state.document)
+    { m_Status = "Wait for Object publication before Undo / Redo. Current draft preserved."; return false; }
+    auto staged = *state.document;
+    // The editor permits unfinished model-less resources. History restores that
+    // same authoring state; full runtime validation remains owned by Save/Play.
+    if (!staged.Validate_ObjectHierarchy(m_Status)) return false;
+    const auto revision = (std::max)({staged.Get_Revision(), m_Document.Get_Revision(), m_SavedDocument.Get_Revision()});
+    if (revision == UINT32_MAX)
+    { m_Status = "Object revision is exhausted. Current draft and history preserved."; return false; }
+    // A restored value still receives a fresh revision for timeline/preview consumers.
+    while (staged.Get_Revision() <= revision) staged.Touch();
+    auto saved = m_SavedDocument;
+    while (saved.Get_Revision() < staged.Get_Revision()) saved.Touch();
+    const bool documentDirty = !staged.Is_Equivalent(saved);
+    auto origins = state.emissionOrigins;
+    for (const auto& sequence : staged.Get_Templates())
+    {
+        auto [entry, inserted] = origins.try_emplace(sequence.sequenceId);
+        if (inserted)
+            for (uint32_t i = 0u; i < sequence.objectMotion.EmissionCount(); ++i) entry->second.push_back(i);
+        // Old saved ordinals must never be reused against a newer linked baseline.
+        // A removed origin stays invalid, so existing Save validation preserves
+        // linked Collider/Logic rows instead of attaching a restored row to a stranger.
+        for (const auto& transition : m_HistorySaves)
+            if (transition.generation >= state.savedGeneration)
+                if (const auto changed = transition.origins.find(sequence.sequenceId); changed != transition.origins.end())
+                    for (auto& origin : entry->second)
+                    {
+                        if (origin == UINT32_MAX) continue;
+                        const auto found = std::find(changed->second.begin(), changed->second.end(), origin);
+                        origin = found == changed->second.end() ? UINT32_MAX : static_cast<uint32_t>(found - changed->second.begin());
+                    }
+    }
+    const auto key = History_PlacementKey(state.pattern, state.occurrence, state.sequenceWorkspace);
+    const auto placementBaseline = m_HistoryPlacementBaselines.find(key);
+    if (state.editedPlacement && !state.occurrence.empty() && placementBaseline == m_HistoryPlacementBaselines.end())
+    { m_Status = "The World box save baseline is unavailable. Current draft and history preserved."; return false; }
+    auto snapshot = std::make_shared<const CWorldSequenceDocument>(staged);
+    // Restoration stops the existing preview; it never starts a fallible new runtime.
+    Stop_Preview();
+    m_PendingEffectPreviewDocument.reset(); m_PreviewPreparationPending = false; m_PlayAfterPreparation = false;
+    m_TimelineDrag.reset(); m_StageResizeSequence.clear(); m_TravelDraft.reset();
+    m_Document = std::move(staged); m_HistoryDocument = std::move(snapshot);
+    m_SelectedObject = state.object; m_SelectedGroup = state.group; m_SelectedInstance = state.instance;
+    m_SelectedFolder = state.folder; m_SelectedResources = state.resources;
+    m_ResourceAnchorKind = state.resourceAnchor; m_ResourceSelectionAnchor = state.selectionAnchor;
+    m_SelectedTrack = state.track; m_SelectedAnimationRow = state.animation; m_SelectedEffectRow = state.effect;
+    m_SelectedColliderRow = state.collider; m_SelectedKey = state.key; m_SelectedBoxKind = state.boxKind;
+    m_ClockMs = state.clockMs; m_PreviewAtCharacter = state.previewAtCharacter;
+    m_CompositionPreviewObjectId = state.previewObject; m_CompositionPatternId = state.pattern;
+    m_CompositionOccurrenceId = state.occurrence; m_CompositionSequenceWorkspace = state.sequenceWorkspace;
+    m_CompositionPreviewPlacement = state.previewPlacement; m_CompositionEditedPlacement = state.editedPlacement;
+    if (placementBaseline != m_HistoryPlacementBaselines.end())
+    {
+        m_CompositionSavedPlacement = placementBaseline->second.first;
+        m_CompositionExplicitPlacement = placementBaseline->second.second;
+    }
+    else { m_CompositionSavedPlacement.reset(); m_CompositionExplicitPlacement = false; }
+    m_CompositionPlacementDirty = m_CompositionEditedPlacement != m_CompositionSavedPlacement;
+    m_Dirty = documentDirty || m_CompositionPlacementDirty;
+    m_EmissionOrigins = std::move(origins); m_EditedMotionIds = state.editedMotions;
+    if (state.savedGeneration != m_SavedGeneration && documentDirty)
+    {
+        for (const auto& sequence : m_Document.Get_Templates()) m_EditedMotionIds.insert(sequence.sequenceId);
+        for (const auto& sequence : m_SavedDocument.Get_Templates()) m_EditedMotionIds.insert(sequence.sequenceId);
+    }
+    m_AnimationObjectId.clear(); m_AnimationCandidateObjectId.clear(); m_AnimationCandidateModelAssetId.clear();
+    m_TimelineAnimationCatalogs.clear(); m_PristinePatternId.clear();
+    if (const auto* instance = m_Document.Find_Instance(m_SelectedInstance))
+        if (const auto* sequence = m_Document.Find_Template(instance->templateId)) m_GroupCount = static_cast<int>(sequence->objectMotion.EmissionCount());
+    Reveal_Resource(m_SelectedFolder.empty() ? m_SelectedObject : m_SelectedFolder);
+    m_ResourcesOpen = m_SequencerOpen = m_DetailOpen = true;
+    return true;
+}
+
+void CWorldObjectTool::Render_HistoryControls(const char* id)
+{
+    ImGui::PushID(id);
+    const bool blocked = !m_Ready || m_PublishProcess || m_TimelineDrag.has_value() ||
+        !m_StageResizeSequence.empty();
+    ImGui::BeginDisabled(blocked || !m_History.Count_Undo());
+    if (ImGui::Button("Undo")) m_HistoryRequest = -1;
+    ImGui::EndDisabled(); ImGui::SameLine();
+    ImGui::BeginDisabled(blocked || !m_History.Count_Redo());
+    if (ImGui::Button("Redo")) m_HistoryRequest = 1;
+    ImGui::EndDisabled();
+    const auto& io = ImGui::GetIO();
+    if (!blocked && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
+        io.KeyCtrl && !io.KeyAlt && !io.WantTextInput && !ImGui::IsAnyItemActive() &&
+        !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId))
+    {
+        if (ImGui::IsKeyPressed(ImGuiKey_Z, false)) m_HistoryRequest = io.KeyShift ? 1 : -1;
+        else if (ImGui::IsKeyPressed(ImGuiKey_Y, false)) m_HistoryRequest = 1;
+    }
+    ImGui::PopID();
+}
+
 CWorldObjectTool::~CWorldObjectTool()
 {
     Stop_Preview();
@@ -603,6 +822,7 @@ bool CWorldObjectTool::Open_ObjectMotion(const std::string& objectId,
     if (m_CompositionPlacementDirty)
     { status = m_Status = "Save the edited World box position before opening another Object. Current edits preserved."; return false; }
     if (!m_Ready && !Load_Source()) { status = m_Status; return false; }
+    Finish_HistoryGesture(true);
     const auto* resource = m_Document.Find_ObjectResource(objectId);
     if (!resource)
     { status = m_Status = "The selected Object is absent from the current Object Tool draft. Existing edits are preserved."; return false; }
@@ -622,6 +842,7 @@ bool CWorldObjectTool::Open_ObjectMotion(const std::string& objectId,
     m_CompositionPatternId = patternId; m_CompositionOccurrenceId = occurrenceId;
     m_CompositionSequenceWorkspace = sequenceWorkspace; m_CompositionExplicitPlacement = explicitPlacement;
     m_CompositionPreviewObjectId = previewPlacement ? objectId : std::string{};
+    Remember_HistoryPlacementBaseline();
     if (previewPlacement) m_PreviewAtCharacter = false;
     status = m_Status = instanceId.empty() ? "Opened Object settings. Save keeps edits." :
         "Opened the selected Motion. Emissions, movement and rotation are shared by every box using this Motion.";
@@ -643,6 +864,7 @@ bool CWorldObjectTool::Edit_AnimationTimeline(const std::string& instanceId, con
         status = m_Status = reason + " Existing draft preserved."; return false;
     };
     if (!m_Ready && !Load_Source()) { status = m_Status; return false; }
+    HISTORY_SCOPE history(*this);
     if (m_PublishProcess) return refuse("Wait for the current World publish to finish.");
     const auto* instance = m_Document.Find_Instance(instanceId);
     auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
@@ -749,6 +971,7 @@ bool CWorldObjectTool::Edit_AnimationTimeline(const std::string& instanceId, con
 
 void CWorldObjectTool::Deactivate()
 {
+    Finish_HistoryGesture(true);
     m_TimelineDrag.reset();
     Stop_Preview();
     m_CompositionPreviewPlacement.reset();
@@ -807,6 +1030,9 @@ bool CWorldObjectTool::Load_Source()
     Select_Object(m_SelectedObject);
     m_RuntimePublishStatus = "Loaded Data; runtime publication status was not checked.";
     m_Status = "Source loaded. Save writes Object edits to Data; Publish applies the saved runtime files.";
+    m_History.Clear(); m_HistoryDocument.reset(); m_HistorySaves.clear(); m_HistoryPlacementBaselines.clear();
+    m_HistoryRequest = 0;
+    Remember_HistoryPlacementBaseline();
     return true;
 }
 
@@ -823,6 +1049,7 @@ bool CWorldObjectTool::Matches_SourceBaseline()
 
 bool CWorldObjectTool::Save_Source(const bool publishRuntime)
 {
+    Finish_HistoryGesture(true);
     if (!m_Ready || m_PublishProcess || !Matches_SourceBaseline()) return false;
     auto stagedPath = m_SourcePath;
     const auto suffix = L".world-object-" + std::to_wstring(GetCurrentProcessId());
@@ -928,11 +1155,14 @@ bool CWorldObjectTool::Save_Source(const bool publishRuntime)
     if (!Matches_SourceBaseline() || !CommitAuthoringWrites(writes, preserveRecovery, m_Status))
     { if (!preserveRecovery) cleanup(); return false; }
     cleanup();
+    Remember_HistorySave();
     m_SourceBytes = std::move(stagedBytes); m_Document = std::move(verified);
     m_SavedDocument = m_Document; m_Dirty = false; ++m_SavedGeneration;
     if (m_CompositionPlacementDirty) m_CompositionExplicitPlacement = true;
     m_CompositionSavedPlacement = m_CompositionEditedPlacement; m_CompositionPlacementDirty = false;
+    Remember_HistoryPlacementBaseline();
     m_EmissionOrigins.clear(); m_EditedMotionIds.clear();
+    if (m_HistoryFrameDepth) m_History.Begin(Capture_HistoryState());
     m_PristinePatternId.clear();
     m_LinkedSavePending = m_LinkedSavePending || linked;
     m_PublishLinkedPatterns = m_PublishLinkedPatterns || publishPatterns;
@@ -1386,6 +1616,7 @@ void CWorldObjectTool::Seek(const f32_t clockMs)
 void CWorldObjectTool::Render_QuickTransformTuning(const std::string& objectId, const std::string& instanceId)
 {
     if (!m_Ready && !Load_Source()) { ImGui::TextWrapped("%s", m_Status.c_str()); return; }
+    HISTORY_SCOPE history(*this);
     const auto* object = m_Document.Find_ObjectResource(objectId);
     const auto* instance = m_Document.Find_Instance(instanceId);
     const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
@@ -1439,6 +1670,7 @@ void CWorldObjectTool::Render_QuickTransformTuning(const std::string& objectId, 
 void CWorldObjectTool::Render_BingoSizeTuning()
 {
     if (!m_Ready && !Load_Source()) { ImGui::TextWrapped("%s", m_Status.c_str()); return; }
+    HISTORY_SCOPE history(*this);
     const auto* bomb = m_Document.Find_ObjectResource("world.object.kouku.bingo_bomb.original");
     const auto* hammer = m_Document.Find_ObjectResource("world.object.kouku.bingo_hammer");
     if (!bomb || !hammer) { ImGui::TextDisabled("Bingo Object settings are unavailable."); return; }
@@ -1489,6 +1721,7 @@ void CWorldObjectTool::Render_BingoSizeTuning()
 void CWorldObjectTool::Update(const f32_t seconds, const bool_t active)
 {
     Poll_Publish();
+    if (!m_HistoryFrameDepth) Finish_HistoryGesture();
     if (m_PhysicalScanRunning && m_PhysicalScan.Advance())
     {
         if (m_PhysicalScan.Commit(m_PhysicalAssets, m_PhysicalStatus)) Rebuild_PhysicalTree();
@@ -1884,6 +2117,7 @@ void CWorldObjectTool::Begin_WorkbenchFrame()
         CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
         CLevel_KakulSaydonArena::Get_Active())
         Load_Source();
+    Begin_HistoryFrame();
 }
 
 void CWorldObjectTool::End_WorkbenchFrame()
@@ -1895,6 +2129,7 @@ void CWorldObjectTool::End_WorkbenchFrame()
     m_PendingCompositionEdit.reset();
     if (transfer) Insert_CompositionTransfer(transfer, m_Status);
     else if (command) Execute_CompositionEdit(*command, m_Status);
+    End_HistoryFrame();
 }
 
 COMPOSITION_TRANSFER CWorldObjectTool::Capture_CompositionObject(const std::string& objectId,
@@ -1915,6 +2150,7 @@ COMPOSITION_TRANSFER CWorldObjectTool::Capture_CompositionObject(const std::stri
 
 bool CWorldObjectTool::Execute_CompositionEdit(const COMPOSITION_EDIT_COMMAND command, std::string& status)
 {
+    HISTORY_SCOPE history(*this);
     if (!m_Ready || m_PublishProcess)
     { status = m_Status = "Load Object Resources and wait for any active publish before editing."; return false; }
     const auto capture = [&](std::string& reason) -> COMPOSITION_TRANSFER
@@ -2027,6 +2263,7 @@ bool CWorldObjectTool::Insert_CompositionEffects(const COMPOSITION_EFFECT_TRANSF
 
 bool CWorldObjectTool::Insert_CompositionTransfer(const COMPOSITION_TRANSFER& transfer, std::string& status)
 {
+    HISTORY_SCOPE history(*this);
     if (!m_Ready || m_PublishProcess)
     { status = m_Status = "Load Object Resources and wait for any active publish before editing."; return false; }
     bool result = false;
@@ -2056,6 +2293,7 @@ bool CWorldObjectTool::Can_AppendCompositionAnimationResource(const COMPOSITION_
 bool CWorldObjectTool::Append_CompositionAnimationResource(const COMPOSITION_ANIMATION_RESOURCE& animation,
     const bool replace, std::string& status)
 {
+    HISTORY_SCOPE history(*this);
     if (!Can_AppendCompositionAnimationResource(animation, replace, status)) return false;
     const auto previous = m_SelectedAnimationClip;
     Refresh_AnimationResources();
@@ -2154,6 +2392,7 @@ void CWorldObjectTool::Render_SelectedSequence()
 void CWorldObjectTool::Render()
 {
     if (!m_Open) return;
+    Begin_HistoryFrame();
     m_CompositionResourceFocused = false;
     Render_ColliderPreview();
     const auto* viewport = ImGui::GetMainViewport();
@@ -2273,6 +2512,7 @@ void CWorldObjectTool::Render_Toolbar()
     if (ImGui::Button("Save")) Save_Source(false);
     ImGui::SameLine(); Render_PublishButton();
     ImGui::EndDisabled();
+    ImGui::SameLine(); Render_HistoryControls("ObjectToolbarHistory");
     if (m_CompositionPreviewPlacement)
     {
         const auto& position = m_CompositionPreviewPlacement->position;
@@ -4422,6 +4662,7 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
             { m_Playing = false; m_PlayAfterPreparation = false; }
             else Play_Preview();
         }
+        ImGui::SameLine(); Render_HistoryControls("ObjectGroupHistory");
         ImGui::SameLine();
         if (ImGui::Button("Play at Player")) Play_AtPlayer();
         ImGui::SameLine();
@@ -4524,6 +4765,7 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
             { m_Playing = false; m_PlayAfterPreparation = false; }
         else Play_Preview();
     }
+    ImGui::SameLine(); Render_HistoryControls("ObjectMotionHistory");
     ImGui::SameLine(); if (ImGui::Button("Play at Player")) Play_AtPlayer();
     ImGui::SameLine(); if (ImGui::Button("Stop / Restore")) { Stop_Preview(); m_ClockMs = 0.f; }
     const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);

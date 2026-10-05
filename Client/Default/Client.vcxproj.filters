@@ -3437,6 +3437,9 @@
     <None Include="..\..\Data\Effects\V2\Groups\kouku.gate2.intro.fade.effectv2group.json">
       <Filter>96.DataFiles\Effects\V2\Groups</Filter>
     </None>
+    <None Include="..\..\Data\Maps\Authoring\WorldHierarchy\*.json">
+      <Filter>96.DataFiles\Maps\Authoring</Filter>
+    </None>
     <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapplacements">
       <Filter>96.DataFiles\Maps\Authoring\LV_BER_BERNCASTLE</Filter>
     </None>
@@ -4273,6 +4276,9 @@
     <ClCompile Include="..\Private\WorldObjectTool.cpp">
       <Filter>03. Tools\00. Map\01.WorldTools</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\WorldLevelHierarchy.cpp">
+      <Filter>03. Tools\00. Map\01.WorldTools</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\WorldLevelTool.cpp">
       <Filter>03. Tools\00. Map\01.WorldTools</Filter>
     </ClCompile>
@@ -4292,6 +4298,12 @@
       <Filter>05.Presentation\06.World\RuntimeAndLoading</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\WorldObjectTool.h">
+      <Filter>03. Tools\00. Map\01.WorldTools</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EditorUndoHistory.h">
+      <Filter>03. Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\WorldLevelHierarchy.h">
       <Filter>03. Tools\00. Map\01.WorldTools</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\WorldLevelTool.h">

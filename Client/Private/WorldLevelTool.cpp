@@ -13,6 +13,7 @@
 #include <cctype>
 #include <cmath>
 #include <fstream>
+#include <functional>
 #include <iterator>
 #include <map>
 #include <unordered_map>
@@ -170,6 +171,8 @@ bool CWorldLevelTool::Load_Areas()
 
 bool CWorldLevelTool::Refresh()
 {
+    if (m_Hierarchy.Is_Dirty())
+    { m_Status = "Save the Parent hierarchy or Undo its changes before refreshing or changing Area."; return false; }
     const auto selected = std::find_if(m_Areas.begin(), m_Areas.end(),
         [&](const AREA& area) { return area.id == m_SelectedAreaId; });
     if (selected == m_Areas.end()) return false;
@@ -196,6 +199,7 @@ bool CWorldLevelTool::Refresh()
         row.target.placementId = placement.placementId;
         row.target.position = placement.position;
         row.status = placement.sourcePlacementId + " | source level " + placement.sourceLevel;
+        row.sourceLevel = placement.sourceLevel;
         mapPositions.emplace(std::to_string(placement.placementId), placement.position);
         staged.push_back(std::move(row));
     }
@@ -219,6 +223,7 @@ bool CWorldLevelTool::Refresh()
             row.target.deploy = true;
             row.target.position = placement.position;
             row.status = placement.sourcePlacementId;
+            row.sourceLevel = placement.sourcePlacementId.substr(0, placement.sourcePlacementId.find(':'));
             row.canEdit = asset != nullptr;
             if (placement.provenance == DEPLOY_PROP_PLACEMENT_PROVENANCE::SOURCE_EXACT)
                 row.status += " Source-exact placement: scene inspection and reversible preview; permanent placement is preserved.";
@@ -328,6 +333,10 @@ bool CWorldLevelTool::Refresh()
             compositions[i] = document.Get_LastGood();
         }
     }
+    CWorldLevelHierarchy hierarchy;
+    const auto hierarchyPath = CProjectDataRoot::Resolve("Maps/Authoring/WorldHierarchy/" + area.id + ".json");
+    if (!hierarchy.Load(hierarchyPath, area.id, m_Status)) return false;
+    m_Hierarchy = std::move(hierarchy);
     m_SavedRows = std::move(staged);
     m_SavedCompositions = std::move(compositions);
     m_RowsDirty = true;
@@ -361,7 +370,7 @@ void CWorldLevelTool::Append_CompositionRows(const KOUKU_SAYDON_COMPOSITION_DOCU
             const auto resource = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
                 [&](const auto& entry) { return entry.strResourceId == box.strResourceId; });
             ROW row = patternRow;
-            row.key = prefix + box.strOccurrenceId;
+            row.key = prefix + pattern.strPatternId + ":presentation:" + box.strOccurrenceId;
             row.target.occurrenceId = box.strOccurrenceId;
             row.name = resource == document.PresentationResources.end() ? box.strResourceId : resource->strDisplayName;
             row.kind = resource == document.PresentationResources.end() ? "Presentation" : PresentationName(resource->eKind);
@@ -380,7 +389,7 @@ void CWorldLevelTool::Append_CompositionRows(const KOUKU_SAYDON_COMPOSITION_DOCU
         for (const auto& box : pattern.WorldOccurrences)
         {
             ROW row = patternRow;
-            row.key = prefix + box.strOccurrenceId;
+            row.key = prefix + pattern.strPatternId + ":world:" + box.strOccurrenceId;
             row.kind = "World Box";
             row.target.occurrenceId = box.strOccurrenceId;
             row.name = box.strWorldId;
@@ -414,6 +423,7 @@ void CWorldLevelTool::Rebuild_Rows()
     }
     m_RowsDirty = false;
     m_FilterDirty = true;
+    m_TreeDirty = true;
 }
 
 void CWorldLevelTool::Request_Edit(const ROW& row)
@@ -559,137 +569,654 @@ void CWorldLevelTool::Render_ChunkView()
 }
 
 
+const CWorldLevelTool::ROW* CWorldLevelTool::Selected_Row() const
+{
+    const auto found = m_RowIndex.find(m_SelectedKey);
+    return found == m_RowIndex.end() ? nullptr : &m_Rows[found->second];
+}
+
+bool CWorldLevelTool::Row_Matches(const ROW& row, const std::string& search) const
+{
+    const bool kind = m_KindFilter == 0 || (m_KindFilter == 1 && row.kind == "Map") ||
+        (m_KindFilter == 2 && row.kind == "Deploy") ||
+        (m_KindFilter == 3 && (row.kind == "World Sequence" || row.kind == "Action Pattern" || row.kind == "Sequence" || row.kind == "World Box")) ||
+        (m_KindFilter == 4 && (row.kind == "Effect" || row.kind == "Light" || row.kind == "Map Effect" || row.kind == "Map Light")) ||
+        (m_KindFilter == 5 && row.kind == "Gameplay");
+    return kind && (search.empty() || Lower(row.name + " " + row.key + " " + row.assetId + " " +
+        row.sourceLevel + " " + row.target.patternId + " " + row.kind).find(search) != std::string::npos);
+}
+
+void CWorldLevelTool::Rebuild_Tree()
+{
+    m_Nodes.clear(); m_NodeIndex.clear(); m_RowIndex.clear();
+    m_Nodes.reserve(m_Rows.size() + 256u); m_NodeIndex.reserve(m_Rows.size() + 256u);
+    m_RowIndex.reserve(m_Rows.size());
+    for (size_t i = 0; i < m_Rows.size(); ++i) m_RowIndex.emplace(m_Rows[i].key, i);
+    const auto add = [&](const std::string& id, const std::string& label, size_t parent,
+        size_t row = SIZE_MAX, const std::string& folder = std::string{}) -> size_t
+    {
+        const auto found = m_NodeIndex.find(id);
+        if (found != m_NodeIndex.end()) return found->second;
+        const size_t index = m_Nodes.size();
+        TREE_NODE node; node.id = id; node.label = label; node.parent = parent; node.row = row; node.folderId = folder;
+        m_Nodes.push_back(std::move(node)); m_NodeIndex.emplace(id, index);
+        if (parent != SIZE_MAX) m_Nodes[parent].children.push_back(index);
+        return index;
+    };
+    const auto area = std::find_if(m_Areas.begin(), m_Areas.end(),
+        [&](const AREA& value) { return value.id == m_SelectedAreaId; });
+    const std::string rootId = "area:" + m_SelectedAreaId;
+    const size_t root = add(rootId, area == m_Areas.end() ? m_SelectedAreaId : area->label, SIZE_MAX);
+    m_ExpandedNodes.insert(rootId);
+    const size_t parents = add("parents", "User Parents", root);
+    m_ExpandedNodes.insert("parents");
+    // Create all folder IDs before linking: serialization order need not be parent-first.
+    for (const auto& folder : m_Hierarchy.Get_Folders())
+        add("folder:" + folder.id, folder.name, SIZE_MAX, SIZE_MAX, folder.id);
+    for (const auto& folder : m_Hierarchy.Get_Folders())
+    {
+        const auto child = m_NodeIndex.at("folder:" + folder.id);
+        const auto parent = m_NodeIndex.find("folder:" + folder.parent);
+        const auto owner = parent == m_NodeIndex.end() ? parents : parent->second;
+        m_Nodes[child].parent = owner; m_Nodes[owner].children.push_back(child);
+    }
+    const auto segment = [](const std::string& value) { return std::to_string(value.size()) + ":" + value; };
+    const auto category = [](const ROW& row) -> std::string
+    {
+        if (!row.target.patternId.empty()) return row.target.compositionOwner == WORLD_LEVEL_COMPOSITION_OWNER::ACTION ? "Action compositions" : "Sequence compositions";
+        if (row.kind == "World Sequence") return "World sequences";
+        if (row.kind == "Map Light") return "Map lights";
+        if (row.kind == "Map Effect") return "Map effects";
+        return row.kind;
+    };
+    // Pattern nodes are installed first so their stable occurrence children also
+    // follow a pattern that the user has organized under a Parent.
+    const auto appendRow = [&](size_t rowIndex)
+    {
+        const ROW& row = m_Rows[rowIndex];
+        const std::string assigned = m_Hierarchy.Get_Parent(row.key);
+        const auto folder = m_NodeIndex.find("folder:" + assigned);
+        size_t owner = SIZE_MAX;
+        if (!assigned.empty() && folder != m_NodeIndex.end()) owner = folder->second;
+        else
+        {
+            const auto domain = category(row);
+            owner = add("category:" + domain, domain, root);
+            if (row.kind == "Map" || row.kind == "Deploy")
+            {
+                const auto source = row.sourceLevel.empty() ? "Unspecified source level" : row.sourceLevel;
+                const auto sourceId = "source:" + segment(domain) + segment(source);
+                owner = add(sourceId, source, owner);
+                if (!row.assetId.empty()) owner = add("asset:" + segment(sourceId) + segment(row.assetId),
+                    row.name.empty() ? row.assetId : row.name, owner);
+            }
+            else if (!row.target.occurrenceId.empty())
+            {
+                const std::string prefix = row.target.compositionOwner == WORLD_LEVEL_COMPOSITION_OWNER::ACTION ? "action:" : "sequence:";
+                const auto pattern = m_NodeIndex.find("row:" + prefix + row.target.patternId);
+                if (pattern != m_NodeIndex.end()) owner = pattern->second;
+            }
+            else if (row.kind == "World Sequence")
+            {
+                const auto anchor = row.anchor.empty() ? "Unspecified anchor" : row.anchor;
+                owner = add("anchor:" + segment(domain) + segment(anchor), anchor, owner);
+            }
+        }
+        std::string label = row.name.empty() ? row.key : row.name;
+        if (row.kind == "Map" || row.kind == "Deploy") label += "  #" + std::to_string(row.target.placementId);
+        if (!row.visible) label += " [hidden]";
+        add("row:" + row.key, label, owner, rowIndex);
+    };
+    for (size_t i = 0; i < m_Rows.size(); ++i)
+        if (!m_Rows[i].target.patternId.empty() && m_Rows[i].target.occurrenceId.empty()) appendRow(i);
+    for (size_t i = 0; i < m_Rows.size(); ++i)
+        if (m_Rows[i].target.patternId.empty() || !m_Rows[i].target.occurrenceId.empty()) appendRow(i);
+    for (auto& node : m_Nodes)
+        std::stable_sort(node.children.begin(), node.children.end(), [&](size_t a, size_t b)
+        {
+            const auto& left = m_Nodes[a]; const auto& right = m_Nodes[b];
+            const bool leftBranch = left.row == SIZE_MAX || !left.children.empty();
+            const bool rightBranch = right.row == SIZE_MAX || !right.children.empty();
+            return leftBranch != rightBranch ? leftBranch : left.label < right.label;
+        });
+    for (auto it = m_SelectedNodes.begin(); it != m_SelectedNodes.end();)
+        if (!m_NodeIndex.contains(*it)) it = m_SelectedNodes.erase(it); else ++it;
+    if (!m_NodeIndex.contains(m_SelectedNode)) { m_SelectedNode.clear(); m_SelectedKey.clear(); }
+    m_TreeDirty = false; m_FilterDirty = true; m_VisibleDirty = true;
+}
+
+void CWorldLevelTool::Rebuild_VisibleTree()
+{
+    const auto search = Lower(std::string(m_Search.data()));
+    if (m_FilterDirty)
+    {
+        for (auto& node : m_Nodes)
+        {
+            node.matches = node.row != SIZE_MAX ? Row_Matches(m_Rows[node.row], search) :
+                (m_KindFilter == 0 && (search.empty() || Lower(node.label + " " + node.folderId).find(search) != std::string::npos));
+            node.branchMatches = node.matches;
+        }
+        for (size_t i = 0; i < m_Nodes.size(); ++i)
+            if (m_Nodes[i].matches)
+                for (size_t parent = m_Nodes[i].parent, depth = 0; parent != SIZE_MAX && depth < 256u; ++depth)
+                { m_Nodes[parent].branchMatches = true; parent = m_Nodes[parent].parent; }
+        m_FilterSearch = m_Search.data(); m_FilterKind = m_KindFilter; m_FilterDirty = false;
+    }
+    m_VisibleNodes.clear();
+    const bool filtered = !search.empty() || m_KindFilter != 0;
+    struct VISIT { size_t index; uint32_t depth; bool ancestorMatches; };
+    std::vector<VISIT> stack;
+    if (!m_Nodes.empty()) stack.push_back({0u, 0u, false});
+    while (!stack.empty())
+    {
+        const auto visit = stack.back(); stack.pop_back();
+        const auto& node = m_Nodes[visit.index];
+        if (filtered && !node.branchMatches && !visit.ancestorMatches) continue;
+        m_VisibleNodes.push_back({visit.index, visit.depth});
+        if (!m_ExpandedNodes.contains(node.id) && !filtered) continue;
+        const bool inheritMatch = visit.ancestorMatches ||
+            (!search.empty() && m_KindFilter == 0 && node.row == SIZE_MAX && node.matches);
+        for (auto it = node.children.rbegin(); it != node.children.rend(); ++it)
+            stack.push_back({*it, visit.depth + 1u, inheritMatch});
+    }
+    m_VisibleDirty = false;
+}
+
+void CWorldLevelTool::Reveal_Node(size_t node)
+{
+    m_ScrollToNode = m_Nodes[node].id;
+    for (size_t parent = m_Nodes[node].parent, depth = 0; parent != SIZE_MAX && depth < 256u; ++depth)
+    { m_ExpandedNodes.insert(m_Nodes[parent].id); parent = m_Nodes[parent].parent; }
+    m_VisibleDirty = true;
+}
+
+void CWorldLevelTool::Sync_LiveSelection(const std::string& areaId, uint64_t placementId, bool deploy, bool force)
+{
+    if (areaId != m_SelectedAreaId) return;
+    const auto key = std::string(deploy ? "deploy:" : "map:") + std::to_string(placementId);
+    if (!force && areaId == m_LastLiveArea && key == m_LastLiveKey) return;
+    m_LastLiveArea = areaId; m_LastLiveKey = key;
+    if (m_RowsDirty) Rebuild_Rows();
+    if (m_TreeDirty) Rebuild_Tree();
+    if (!force && key == m_SelectedKey) return;
+    const auto found = m_NodeIndex.find("row:" + key);
+    if (found == m_NodeIndex.end()) return;
+    const auto& selected = m_Nodes[found->second];
+    if (selected.row != SIZE_MAX && !Row_Matches(m_Rows[selected.row], Lower(m_Search.data())))
+    {
+        m_Search.fill('\0'); m_KindFilter = 0;
+        m_FilterDirty = true; m_VisibleDirty = true;
+    }
+    m_SelectedKey = key; m_SelectedNode = found->first;
+    m_SelectedNodes.clear(); m_SelectedNodes.insert(m_SelectedNode); m_SelectionAnchor = m_SelectedNode;
+    m_ShowMetadata = false; Reveal_Node(found->second);
+}
+
+void CWorldLevelTool::Select_Node(size_t index, bool control, bool shift)
+{
+    const auto& node = m_Nodes[index];
+    if (node.row == SIZE_MAX && node.folderId.empty()) return;
+    if (shift && !m_SelectionAnchor.empty())
+    {
+        size_t first = SIZE_MAX, last = SIZE_MAX;
+        for (size_t i = 0; i < m_VisibleNodes.size(); ++i)
+        {
+            const auto& id = m_Nodes[m_VisibleNodes[i].node].id;
+            if (id == m_SelectionAnchor) first = i;
+            if (id == node.id) last = i;
+        }
+        if (!control) m_SelectedNodes.clear();
+        if (first != SIZE_MAX && last != SIZE_MAX)
+            for (size_t i = (std::min)(first, last); i <= (std::max)(first, last); ++i)
+            {
+                const auto& selected = m_Nodes[m_VisibleNodes[i].node];
+                if (selected.row != SIZE_MAX || !selected.folderId.empty()) m_SelectedNodes.insert(selected.id);
+            }
+        else m_SelectedNodes.insert(node.id);
+    }
+    else
+    {
+        if (!control) m_SelectedNodes.clear();
+        if (control && m_SelectedNodes.contains(node.id)) m_SelectedNodes.erase(node.id);
+        else m_SelectedNodes.insert(node.id);
+        m_SelectionAnchor = node.id;
+    }
+    m_SelectedNode = node.id; m_SelectedKey = node.row == SIZE_MAX ? "" : m_Rows[node.row].key;
+    m_InteractionRequested = true;
+    WORLD_LEVEL_TOOL_REQUEST request; request.areaId = m_SelectedAreaId;
+    if (node.row != SIZE_MAX)
+    {
+        const ROW& row = m_Rows[node.row]; request = row.target;
+        const bool placement = row.kind == "Map" || row.kind == "Deploy";
+        request.kind = placement ? WORLD_LEVEL_REQUEST_KIND::INSPECT_PLACEMENT : WORLD_LEVEL_REQUEST_KIND::INSPECT_METADATA;
+        m_ShowMetadata = !placement;
+    }
+    else
+    {
+        request.kind = WORLD_LEVEL_REQUEST_KIND::INSPECT_METADATA; request.sourceItemId = node.folderId;
+        m_ShowMetadata = true;
+    }
+    m_MetadataOpen = m_ShowMetadata; m_Request = std::move(request);
+}
+
+bool CWorldLevelTool::Move_Selection(const std::string& parent, const std::string& newName)
+{
+    const auto& selection = m_ParentAction == PARENT_ACTION::CREATE || m_ParentAction == PARENT_ACTION::MOVE ?
+        m_ParentSelection : m_SelectedNodes;
+    CWorldLevelHierarchy staged = m_Hierarchy;
+    std::unordered_set<std::string> folders;
+    std::vector<std::string> rows;
+    for (const auto& id : selection)
+    {
+        const auto found = m_NodeIndex.find(id); if (found == m_NodeIndex.end()) continue;
+        const auto& node = m_Nodes[found->second];
+        bool selectedAncestor = false;
+        for (size_t parentIndex = node.parent, depth = 0; parentIndex != SIZE_MAX && depth < 256u; ++depth)
+        {
+            if (selection.contains(m_Nodes[parentIndex].id)) { selectedAncestor = true; break; }
+            parentIndex = m_Nodes[parentIndex].parent;
+        }
+        if (selectedAncestor) continue;
+        if (!node.folderId.empty()) folders.insert(node.folderId);
+        else if (node.row != SIZE_MAX) rows.push_back(m_Rows[node.row].key);
+    }
+    std::unordered_map<std::string, std::string> folderParents;
+    for (const auto& folder : staged.Get_Folders()) folderParents.emplace(folder.id, folder.parent);
+    const auto nested = [&](std::string current)
+    {
+        for (size_t depth = 0; !current.empty() && depth <= 64u; ++depth)
+        {
+            if (folders.contains(current)) return true;
+            const auto found = folderParents.find(current);
+            if (found == folderParents.end()) break;
+            current = found->second;
+        }
+        return false;
+    };
+    std::string destination = parent, created;
+    if (!newName.empty())
+    {
+        if (!staged.Create_Folder(newName, parent, created, m_Status)) return false;
+        destination = created;
+    }
+    if (nested(parent)) { m_Status = "A selected Parent cannot move into its own branch."; return false; }
+    std::vector<std::string> rootFolders;
+    for (const auto& folder : folders)
+        if (!nested(folderParents[folder])) rootFolders.push_back(folder);
+    std::vector<std::string> rootRows;
+    for (const auto& key : rows) if (!nested(m_Hierarchy.Get_Parent(key))) rootRows.push_back(key);
+    for (const auto& folder : rootFolders)
+        if (!staged.Move_Folder(folder, destination, m_Status)) return false;
+    if (!rootRows.empty() && !staged.Assign(rootRows, destination, m_Status)) return false;
+    Remember_HierarchySelection();
+    if (!m_Hierarchy.Commit_Edit(staged, m_Status)) return false;
+    m_TreeDirty = true; m_InteractionRequested = true;
+    if (!created.empty())
+    {
+        m_SelectedNode = "folder:" + created; m_SelectedKey.clear();
+        m_SelectedNodes.clear(); m_SelectedNodes.insert(m_SelectedNode); m_SelectionAnchor = m_SelectedNode;
+        m_ExpandedNodes.insert(m_SelectedNode); m_ShowMetadata = true; m_MetadataOpen = true;
+        WORLD_LEVEL_TOOL_REQUEST request; request.kind = WORLD_LEVEL_REQUEST_KIND::INSPECT_METADATA;
+        request.areaId = m_SelectedAreaId; request.sourceItemId = created; m_Request = std::move(request);
+    }
+    if (!destination.empty()) m_ExpandedNodes.insert("folder:" + destination);
+    m_Status = "Parent organization changed. Save hierarchy to keep it; object transforms are unchanged.";
+    return true;
+}
+
+void CWorldLevelTool::Begin_ParentAction(PARENT_ACTION action)
+{
+    m_ParentAction = action; m_ParentName.fill('\0'); m_ParentDestination.clear(); m_ParentDialogFolder.clear();
+    m_ParentSelection = m_SelectedNodes;
+    const auto node = m_NodeIndex.find(m_SelectedNode);
+    if (node != m_NodeIndex.end())
+    {
+        const auto& selected = m_Nodes[node->second];
+        if (!selected.folderId.empty())
+        {
+            m_ParentDialogFolder = selected.folderId;
+            for (const auto& folder : m_Hierarchy.Get_Folders()) if (folder.id == selected.folderId)
+            {
+                m_ParentDestination = folder.parent;
+                if (action == PARENT_ACTION::RENAME)
+                    std::copy_n(folder.name.data(), (std::min)(folder.name.size(), m_ParentName.size() - 1u), m_ParentName.data());
+                break;
+            }
+        }
+        else if (selected.row != SIZE_MAX) m_ParentDestination = m_Hierarchy.Get_Parent(m_Rows[selected.row].key);
+    }
+    m_ParentDialogRequested = true; m_InteractionRequested = true;
+}
+
+void CWorldLevelTool::Render_ParentDialog()
+{
+    if (m_ParentDialogRequested) { ImGui::OpenPopup("Parent hierarchy"); m_ParentDialogRequested = false; }
+    if (!ImGui::BeginPopupModal("Parent hierarchy", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) return;
+    const bool naming = m_ParentAction == PARENT_ACTION::CREATE || m_ParentAction == PARENT_ACTION::RENAME;
+    if (naming) ImGui::InputText("Name", m_ParentName.data(), m_ParentName.size());
+    if (m_ParentAction == PARENT_ACTION::CREATE || m_ParentAction == PARENT_ACTION::MOVE)
+    {
+        const char* label = "Root / automatic groups";
+        for (const auto& folder : m_Hierarchy.Get_Folders()) if (folder.id == m_ParentDestination) { label = folder.name.c_str(); break; }
+        if (ImGui::BeginCombo("Parent", label))
+        {
+            if (ImGui::Selectable("Root / automatic groups", m_ParentDestination.empty())) m_ParentDestination.clear();
+            for (const auto& folder : m_Hierarchy.Get_Folders())
+            {
+                ImGui::PushID(folder.id.c_str());
+                if (ImGui::Selectable(folder.name.c_str(), folder.id == m_ParentDestination)) m_ParentDestination = folder.id;
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", folder.id.c_str());
+                ImGui::PopID();
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::TextUnformatted("Parents organize rows only. Position, rotation and scale are not inherited.");
+    }
+    if (m_ParentAction == PARENT_ACTION::REMOVE)
+        ImGui::TextUnformatted("Delete this Parent and move its contents to its parent? Objects are kept.");
+    ImGui::BeginDisabled(naming && m_ParentName.front() == '\0');
+    if (ImGui::Button("Apply"))
+    {
+        bool changed = false;
+        Remember_HierarchySelection();
+        if (m_ParentAction == PARENT_ACTION::CREATE) changed = Move_Selection(m_ParentDestination, m_ParentName.data());
+        else if (m_ParentAction == PARENT_ACTION::MOVE) changed = Move_Selection(m_ParentDestination);
+        else if (m_ParentAction == PARENT_ACTION::RENAME) changed = m_Hierarchy.Rename_Folder(m_ParentDialogFolder, m_ParentName.data(), m_Status);
+        else if (m_ParentAction == PARENT_ACTION::REMOVE) changed = m_Hierarchy.Delete_Folder(m_ParentDialogFolder, m_Status);
+        if (changed) { m_TreeDirty = true; m_ParentAction = PARENT_ACTION::NONE; ImGui::CloseCurrentPopup(); }
+    }
+    ImGui::EndDisabled(); ImGui::SameLine();
+    if (ImGui::Button("Cancel")) { m_ParentAction = PARENT_ACTION::NONE; ImGui::CloseCurrentPopup(); }
+    if (!m_Status.empty()) ImGui::TextWrapped("%s", m_Status.c_str());
+    ImGui::EndPopup();
+}
+
+void CWorldLevelTool::Remember_HierarchySelection()
+{
+    CWorldLevelHierarchy::SELECTION selection;
+    selection.nodes.assign(m_SelectedNodes.begin(), m_SelectedNodes.end());
+    selection.primary = m_SelectedNode;
+    m_Hierarchy.Set_Selection(std::move(selection));
+}
+
+bool CWorldLevelTool::Apply_HierarchyHistory(bool redo)
+{
+    Remember_HierarchySelection();
+    if (redo ? !m_Hierarchy.Redo(m_Status) : !m_Hierarchy.Undo(m_Status)) return false;
+    m_TreeDirty = true; Rebuild_Tree();
+    const auto& selection = m_Hierarchy.Get_Selection();
+    m_SelectedNodes.clear();
+    for (const auto& id : selection.nodes) if (m_NodeIndex.contains(id)) m_SelectedNodes.insert(id);
+    m_SelectedNode = m_NodeIndex.contains(selection.primary) ? selection.primary : std::string{};
+    m_SelectionAnchor = m_SelectedNode; m_SelectedKey.clear();
+    WORLD_LEVEL_TOOL_REQUEST request; request.areaId = m_SelectedAreaId;
+    request.kind = WORLD_LEVEL_REQUEST_KIND::INSPECT_METADATA;
+    const auto selected = m_NodeIndex.find(m_SelectedNode);
+    m_ShowMetadata = true; m_MetadataOpen = true;
+    if (selected != m_NodeIndex.end())
+    {
+        const auto& node = m_Nodes[selected->second];
+        Reveal_Node(selected->second);
+        if (node.row != SIZE_MAX)
+        {
+            const auto& row = m_Rows[node.row]; m_SelectedKey = row.key;
+            request = row.target;
+            m_ShowMetadata = row.kind != "Map" && row.kind != "Deploy";
+            request.kind = m_ShowMetadata ? WORLD_LEVEL_REQUEST_KIND::INSPECT_METADATA : WORLD_LEVEL_REQUEST_KIND::INSPECT_PLACEMENT;
+        }
+    }
+    m_Request = std::move(request); m_InteractionRequested = true;
+    return true;
+}
+
+void CWorldLevelTool::Render_HierarchyControls()
+{
+    if (ImGui::Button("Create Parent")) Begin_ParentAction(PARENT_ACTION::CREATE);
+    ImGui::SameLine(); ImGui::BeginDisabled(m_SelectedNodes.empty());
+    if (ImGui::Button("Move to Parent")) Begin_ParentAction(PARENT_ACTION::MOVE);
+    ImGui::SameLine();
+    if (ImGui::Button("Unparent")) (void)Move_Selection({});
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    const auto& io = ImGui::GetIO();
+    const bool shortcut = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
+        !io.WantTextInput && !ImGui::IsAnyItemActive() && io.KeyCtrl;
+    ImGui::BeginDisabled(!m_Hierarchy.Can_Undo());
+    if (ImGui::Button("Undo") || (shortcut && !io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z, false)))
+        (void)Apply_HierarchyHistory(false);
+    ImGui::EndDisabled(); ImGui::SameLine();
+    ImGui::BeginDisabled(!m_Hierarchy.Can_Redo());
+    if (ImGui::Button("Redo") || (shortcut && (ImGui::IsKeyPressed(ImGuiKey_Y, false) ||
+        (io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z, false))))) (void)Apply_HierarchyHistory(true);
+    ImGui::EndDisabled();
+    ImGui::SameLine(); ImGui::BeginDisabled(!m_Hierarchy.Is_Dirty());
+    if (ImGui::Button("Save hierarchy") && m_Hierarchy.Save(m_Status)) m_TreeDirty = true;
+    ImGui::EndDisabled();
+    ImGui::TextDisabled("%zu selected | Parents organize only; no transform inheritance. %s",
+        m_SelectedNodes.size(), m_Hierarchy.Is_Dirty() ? "Unsaved hierarchy" : "Saved hierarchy");
+}
+
+void CWorldLevelTool::Render_Tree()
+{
+    if (m_TreeDirty) Rebuild_Tree();
+    if (m_FilterSearch != m_Search.data() || m_FilterKind != m_KindFilter) { m_FilterDirty = true; m_VisibleDirty = true; }
+    if (m_FilterDirty || m_VisibleDirty) Rebuild_VisibleTree();
+    ImGui::Text("%zu objects | %zu visible tree rows", m_Rows.size(), m_VisibleNodes.size());
+    if (!ImGui::BeginChild("WorldLevelTree", ImVec2(0.f, -95.f), ImGuiChildFlags_Borders)) { ImGui::EndChild(); return; }
+    ImGui::PushID(m_SelectedAreaId.c_str());
+    const bool filtered = !m_FilterSearch.empty() || m_KindFilter != 0;
+    const float rowHeight = ImGui::GetTextLineHeightWithSpacing();
+    if (!m_ScrollToNode.empty())
+    {
+        for (size_t i = 0; i < m_VisibleNodes.size(); ++i)
+            if (m_Nodes[m_VisibleNodes[i].node].id == m_ScrollToNode)
+            { ImGui::SetScrollY((std::max)(0.f, float(i) * rowHeight - ImGui::GetWindowHeight() * .4f)); break; }
+        m_ScrollToNode.clear();
+    }
+    ImGuiListClipper clipper; clipper.Begin(static_cast<int>(m_VisibleNodes.size()), rowHeight);
+    while (clipper.Step()) for (int display = clipper.DisplayStart; display < clipper.DisplayEnd; ++display)
+    {
+        const auto& visible = m_VisibleNodes[display]; const auto& node = m_Nodes[visible.node];
+        const bool leaf = node.children.empty();
+        const bool selectable = node.row != SIZE_MAX || !node.folderId.empty();
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_OpenOnArrow |
+            ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+        if (leaf) flags |= ImGuiTreeNodeFlags_Leaf;
+        if (m_SelectedNodes.contains(node.id)) flags |= ImGuiTreeNodeFlags_Selected;
+        const bool wasOpen = filtered || m_ExpandedNodes.contains(node.id);
+        ImGui::SetNextItemOpen(wasOpen, ImGuiCond_Always);
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + visible.depth * ImGui::GetFontSize() * .8f);
+        const bool open = ImGui::TreeNodeEx(node.id.c_str(), flags, "%s%s", node.label.c_str(), node.folderId.empty() ? "" : " [Parent]");
+        if (!leaf && open != wasOpen && !filtered)
+        { if (open) m_ExpandedNodes.insert(node.id); else m_ExpandedNodes.erase(node.id); m_VisibleDirty = true; }
+        if (selectable && ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
+            Select_Node(visible.node, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift);
+        if (node.row != SIZE_MAX && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+            Request_Focus(m_Rows[node.row]);
+        if (ImGui::IsItemHovered())
+        {
+            if (node.row != SIZE_MAX)
+            {
+                const auto& row = m_Rows[node.row];
+                ImGui::SetTooltip("%s\n%s\n%s", row.kind.c_str(), row.key.c_str(), row.assetId.c_str());
+            }
+            else if (!node.folderId.empty()) ImGui::SetTooltip("Parent: %s", node.folderId.c_str());
+        }
+        if (selectable && ImGui::BeginDragDropSource())
+        {
+            const auto* activePayload = ImGui::GetDragDropPayload();
+            if (!activePayload || !activePayload->IsDataType("WORLD_LEVEL_PARENT"))
+            {
+                if (!m_SelectedNodes.contains(node.id)) Select_Node(visible.node, false, false);
+                m_DragSelection = m_SelectedNodes; ++m_DragToken;
+            }
+            ImGui::SetDragDropPayload("WORLD_LEVEL_PARENT", &m_DragToken, sizeof(m_DragToken));
+            ImGui::Text("Move %zu selected rows", m_DragSelection.size()); ImGui::EndDragDropSource();
+        }
+        if ((!node.folderId.empty() || visible.node == 0u || node.id == "parents") && ImGui::BeginDragDropTarget())
+        {
+            if (const auto* payload = ImGui::AcceptDragDropPayload("WORLD_LEVEL_PARENT"))
+                if (payload->DataSize == sizeof(m_DragToken) && *static_cast<const uint64_t*>(payload->Data) == m_DragToken)
+                {
+                    const auto saved = m_SelectedNodes; m_SelectedNodes = m_DragSelection;
+                    if (!Move_Selection(node.folderId)) m_SelectedNodes = saved;
+                }
+            ImGui::EndDragDropTarget();
+        }
+        if (selectable && ImGui::BeginPopupContextItem(node.id.c_str()))
+        {
+            if (!m_SelectedNodes.contains(node.id)) Select_Node(visible.node, false, false);
+            else if (m_SelectedNode != node.id)
+            {
+                const auto selection = m_SelectedNodes;
+                Select_Node(visible.node, false, false);
+                m_SelectedNodes = selection;
+            }
+            if (ImGui::MenuItem("Create Parent")) Begin_ParentAction(PARENT_ACTION::CREATE);
+            if (ImGui::MenuItem("Move to Parent")) Begin_ParentAction(PARENT_ACTION::MOVE);
+            if (ImGui::MenuItem("Unparent")) (void)Move_Selection({});
+            if (!node.folderId.empty())
+            {
+                if (ImGui::MenuItem("Rename Parent")) Begin_ParentAction(PARENT_ACTION::RENAME);
+                if (ImGui::MenuItem("Delete Parent (keep contents)")) Begin_ParentAction(PARENT_ACTION::REMOVE);
+            }
+            else if (node.row != SIZE_MAX)
+            {
+                const auto& row = m_Rows[node.row];
+                if (ImGui::MenuItem("Focus", nullptr, false, row.hasPosition && row.target.areaId == m_ActiveAreaId)) Request_Focus(row);
+                if (ImGui::MenuItem("Open in owning tool", nullptr, false, row.canEdit)) Request_Edit(row);
+            }
+            ImGui::EndPopup();
+        }
+    }
+    ImGui::PopID(); ImGui::EndChild();
+}
+
+void CWorldLevelTool::Render_MetadataDetails()
+{
+    if (!m_ShowMetadata || !m_MetadataOpen) return;
+    ImGui::SetNextWindowSize(ImVec2(490.f, 580.f), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Object Details", &m_MetadataOpen)) { ImGui::End(); return; }
+    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) m_InteractionRequested = true;
+    const auto* row = Selected_Row();
+    if (row)
+    {
+        ImGui::TextWrapped("%s", row->name.c_str());
+        ImGui::TextWrapped("Type: %s\nArea: %s\nID: %s", row->kind.c_str(), m_SelectedAreaId.c_str(), row->key.c_str());
+        if (!row->assetId.empty()) ImGui::TextWrapped("Asset: %s", row->assetId.c_str());
+        ImGui::TextWrapped("Anchor: %s", row->anchor.c_str());
+        if (row->hasPosition) ImGui::Text("Saved origin: %.3f, %.3f, %.3f m", row->target.position.x, row->target.position.y, row->target.position.z);
+        if (row->timed) ImGui::Text("Start %.3f s | Duration %.3f s", row->startMs * .001, row->durationMs * .001);
+        ImGui::TextWrapped("%s", row->status.c_str());
+        if (row->kind == "Map Effect")
+            ImGui::TextWrapped("Surface-effect binding. It has no independent editable object transform. Select the receiver mesh to inspect its material; this row keeps its existing publisher owner.");
+        ImGui::BeginDisabled(!row->canEdit);
+        if (ImGui::Button("Open in owning tool")) Request_Edit(*row);
+        ImGui::EndDisabled(); ImGui::SameLine();
+        ImGui::BeginDisabled(!row->hasPosition || row->target.areaId != m_ActiveAreaId);
+        if (ImGui::Button("Focus (F)")) Request_Focus(*row);
+        ImGui::EndDisabled();
+        const auto& io = ImGui::GetIO();
+        if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !io.WantTextInput && !ImGui::IsAnyItemActive() &&
+            !io.KeyCtrl && !io.KeyAlt && !io.KeyShift && !io.KeySuper && ImGui::IsKeyPressed(ImGuiKey_F, false)) Request_Focus(*row);
+    }
+    else
+    {
+        const auto node = m_NodeIndex.find(m_SelectedNode);
+        if (node != m_NodeIndex.end() && !m_Nodes[node->second].folderId.empty())
+        {
+            ImGui::TextWrapped("%s", m_Nodes[node->second].label.c_str());
+            ImGui::TextWrapped("Parent: %s", m_Nodes[node->second].folderId.c_str());
+            ImGui::TextUnformatted("Organization only. Child objects keep their own position, rotation and scale.");
+            if (ImGui::Button("Rename Parent")) Begin_ParentAction(PARENT_ACTION::RENAME);
+            if (ImGui::Button("Move Parent")) Begin_ParentAction(PARENT_ACTION::MOVE);
+            if (ImGui::Button("Delete Parent (keep contents)")) Begin_ParentAction(PARENT_ACTION::REMOVE);
+        }
+        else ImGui::TextUnformatted("Select an object or Parent in the World Level tree.");
+    }
+    ImGui::End();
+}
+
 void CWorldLevelTool::Render()
 {
     if (!m_Open) return;
     if (m_RowsDirty) Rebuild_Rows();
-    ImGui::SetNextWindowSize(ImVec2(1040.f, 680.f), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Open World Level Tool", &m_Open)) { ImGui::End(); return; }
-    const bool focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
-    if (focused && (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right))) m_InteractionRequested = true;
-    ImGui::Text("Active level: %s", m_ActiveAreaId.empty() ? "No world loaded" : m_ActiveAreaId.c_str());
-    ImGui::SameLine();
-    if (ImGui::Button("DimensionMaster Guide"))
+    if (m_TreeDirty) Rebuild_Tree();
+    ImGui::SetNextWindowSize(ImVec2(1000.f, 720.f), ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Open World Level Tool", &m_Open))
     {
-        WORLD_LEVEL_TOOL_REQUEST request; request.kind = WORLD_LEVEL_REQUEST_KIND::OPEN_GUIDE;
-        m_Request = std::move(request); m_InteractionRequested = true;
-    }
-    ImGui::SetNextItemWidth(240.f);
-    if (ImGui::BeginCombo("Area inventory", m_SelectedAreaId.c_str()))
-    {
-        for (const auto& area : m_Areas) if (ImGui::Selectable(area.label.c_str(), area.id == m_SelectedAreaId))
+        const bool focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+        if (focused && (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right))) m_InteractionRequested = true;
+        ImGui::Text("Active level: %s", m_ActiveAreaId.empty() ? "No world loaded" : m_ActiveAreaId.c_str());
+        ImGui::BeginDisabled(m_Hierarchy.Is_Dirty());
+        ImGui::SetNextItemWidth(270.f);
+        if (ImGui::BeginCombo("Area", m_SelectedAreaId.c_str()))
         {
-            const auto previous = m_SelectedAreaId;
-            m_SelectedAreaId = area.id;
-            if (!Refresh()) m_SelectedAreaId = previous;
-            else m_SelectedKey.clear();
-        }
-        ImGui::EndCombo();
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Refresh Saved Inventory")) Refresh();
-    ImGui::TextWrapped("Map/deploy/world inventory reads saved authoring data. Open Composition owners contribute their current drafts after Apply. Editing and creation use each existing owner and its Save/Publish controls.");
-    if (m_SelectedAreaId != m_ActiveAreaId)
-        ImGui::TextWrapped("Browsing another Area. Camera focus is available after that Area is loaded; choosing an inventory does not change levels.");
-    const auto createRequest = [&](WORLD_LEVEL_REQUEST_KIND kind, WORLD_LEVEL_COMPOSITION_OWNER owner)
-    {
-        WORLD_LEVEL_TOOL_REQUEST request;
-        request.kind = kind; request.areaId = m_SelectedAreaId; request.compositionOwner = owner;
-        m_Request = std::move(request); m_InteractionRequested = true;
-    };
-    const auto* liveHost = Find_ActiveMapAuthoringHost();
-    const bool liveArea = liveHost && liveHost->Get_MapAuthoringCatalog().Get_AreaId() == m_SelectedAreaId;
-    ImGui::BeginDisabled(!liveArea);
-    if (ImGui::Button("Pick in scene")) createRequest(WORLD_LEVEL_REQUEST_KIND::PICK_IN_SCENE, WORLD_LEVEL_COMPOSITION_OWNER::ACTION);
-    ImGui::EndDisabled();
-    ImGui::SameLine();
-    if (ImGui::Button("Inspect / Edit Map Objects")) createRequest(WORLD_LEVEL_REQUEST_KIND::OPEN_MAP, WORLD_LEVEL_COMPOSITION_OWNER::ACTION);
-    ImGui::SameLine();
-    ImGui::BeginDisabled(m_SelectedAreaId != "LV_LUT_MIDNIGHTC_ED");
-    if (ImGui::Button("Create World Object")) createRequest(WORLD_LEVEL_REQUEST_KIND::OPEN_WORLD_OBJECT, WORLD_LEVEL_COMPOSITION_OWNER::ACTION);
-    ImGui::SameLine();
-    if (ImGui::Button("Create Sequence / Effect Box")) createRequest(WORLD_LEVEL_REQUEST_KIND::OPEN_COMPOSITION, WORLD_LEVEL_COMPOSITION_OWNER::SEQUENCE);
-    ImGui::EndDisabled();
-    Render_ChunkView();
-    ImGui::SetNextItemWidth(340.f);
-    ImGui::InputTextWithHint("##WorldLevelSearch", "Search name, asset, pattern or stable ID", m_Search.data(), m_Search.size());
-    ImGui::SameLine();
-    const char* filters[] = {"All", "Map", "Deploy", "Sequences / Boxes", "Effects / Lights", "Gameplay"};
-    ImGui::SetNextItemWidth(190.f);
-    ImGui::Combo("##WorldLevelKind", &m_KindFilter, filters, IM_ARRAYSIZE(filters));
-    if (m_FilterDirty || m_FilterKind != m_KindFilter || m_FilterSearch != m_Search.data())
-    {
-        m_FilterSearch = m_Search.data();
-        m_FilterKind = m_KindFilter;
-        const auto search = Lower(m_FilterSearch);
-        m_FilteredRows.clear();
-        m_FilteredRows.reserve(m_Rows.size());
-        for (size_t i = 0u; i < m_Rows.size(); ++i)
-        {
-            const auto& row = m_Rows[i];
-            bool include = m_KindFilter == 0 || (m_KindFilter == 1 && row.kind == "Map") || (m_KindFilter == 2 && row.kind == "Deploy") ||
-                (m_KindFilter == 3 && (row.kind == "World Sequence" || row.kind == "Action Pattern" || row.kind == "Sequence" || row.kind == "World Box")) ||
-                (m_KindFilter == 4 && (row.kind == "Effect" || row.kind == "Light" || row.kind == "Map Effect" || row.kind == "Map Light")) ||
-                (m_KindFilter == 5 && row.kind == "Gameplay");
-            if (include && (search.empty() || Lower(row.name + " " + row.key + " " + row.assetId + " " + row.target.patternId).find(search) != std::string::npos)) m_FilteredRows.push_back(i);
-        }
-        m_FilterDirty = false;
-    }
-    const auto& visible = m_FilteredRows;
-    ImGui::Text("%zu / %zu entries", visible.size(), m_Rows.size());
-    if (ImGui::BeginTable("WorldLevelInventory", 5, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY, ImVec2(0.f, -190.f)))
-    {
-        ImGui::TableSetupColumn("Name"); ImGui::TableSetupColumn("Kind", ImGuiTableColumnFlags_WidthFixed, 100.f);
-        ImGui::TableSetupColumn("Anchor", ImGuiTableColumnFlags_WidthFixed, 62.f);
-        ImGui::TableSetupColumn("World origin", ImGuiTableColumnFlags_WidthFixed, 195.f);
-        ImGui::TableSetupColumn("Start / Length (s)", ImGuiTableColumnFlags_WidthFixed, 135.f);
-        ImGui::TableSetupScrollFreeze(0, 1); ImGui::TableHeadersRow();
-        ImGuiListClipper clipper;
-        clipper.Begin(static_cast<int>(visible.size()));
-        while (clipper.Step()) for (int display = clipper.DisplayStart; display < clipper.DisplayEnd; ++display)
-        {
-            const ROW& row = m_Rows[visible[display]];
-            ImGui::PushID(row.key.c_str());
-            ImGui::TableNextRow(); ImGui::TableNextColumn();
-            const auto label = row.name + (row.visible ? "" : " [disabled/hidden]");
-            if (ImGui::Selectable(label.c_str(), m_SelectedKey == row.key, ImGuiSelectableFlags_SpanAllColumns))
+            for (const auto& area : m_Areas) if (ImGui::Selectable(area.label.c_str(), area.id == m_SelectedAreaId) && area.id != m_SelectedAreaId)
             {
-                m_SelectedKey = row.key;
+                const auto previous = m_SelectedAreaId; m_SelectedAreaId = area.id;
+                if (!Refresh()) m_SelectedAreaId = previous;
+                else
+                {
+                    m_SelectedKey.clear(); m_SelectedNode.clear(); m_SelectedNodes.clear(); m_SelectionAnchor.clear();
+                    m_ExpandedNodes.clear(); m_ShowMetadata = false; m_TreeDirty = true;
+                    WORLD_LEVEL_TOOL_REQUEST request; request.kind = WORLD_LEVEL_REQUEST_KIND::INSPECT_METADATA;
+                    request.areaId = m_SelectedAreaId; m_Request = std::move(request);
+                }
             }
-            if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) Request_Edit(row);
-            ImGui::TableNextColumn(); ImGui::TextUnformatted(row.kind.c_str());
-            ImGui::TableNextColumn(); ImGui::TextUnformatted(row.anchor.c_str());
-            ImGui::TableNextColumn();
-            if (row.hasPosition) ImGui::Text("%.2f, %.2f, %.2f", row.target.position.x, row.target.position.y, row.target.position.z);
-            else ImGui::TextDisabled("Dynamic / multiple / none");
-            ImGui::TableNextColumn();
-            if (row.timed) ImGui::Text("%.3f / %.3f", row.startMs * .001, row.durationMs * .001);
-            ImGui::PopID();
+            ImGui::EndCombo();
         }
-        ImGui::EndTable();
-    }
-    const auto selected = std::find_if(m_Rows.begin(), m_Rows.end(), [&](const ROW& row) { return row.key == m_SelectedKey; });
-    if (selected != m_Rows.end())
-    {
-        const ROW& row = *selected;
-        ImGui::TextWrapped("ID: %s", row.key.c_str());
-        if (!row.target.patternId.empty()) ImGui::TextWrapped("Pattern: %s", row.target.patternId.c_str());
-        ImGui::TextWrapped("%s", row.status.c_str());
-        ImGui::BeginDisabled(!row.canEdit);
-        if (ImGui::Button("Open Selected in Owner")) Request_Edit(row);
-        ImGui::EndDisabled();
         ImGui::SameLine();
-        ImGui::BeginDisabled(!row.hasPosition || row.target.areaId != m_ActiveAreaId);
-        if (ImGui::Button("Focus Origin (F)")) Request_Focus(row);
+        if (ImGui::Button("Refresh saved inventory")) (void)Refresh();
         ImGui::EndDisabled();
-        const auto& io = ImGui::GetIO();
-        if (focused && !io.WantTextInput && !ImGui::IsAnyItemActive() &&
-            !io.KeyCtrl && !io.KeyAlt && !io.KeyShift && !io.KeySuper &&
-            ImGui::IsKeyPressed(ImGuiKey_F, false)) Request_Focus(row);
+        if (m_Hierarchy.Is_Dirty()) ImGui::TextDisabled("Save hierarchy or Undo before changing Area or refreshing.");
+        if (m_SelectedAreaId != m_ActiveAreaId) ImGui::TextDisabled("Browsing saved data. Enter this Area to focus or edit live objects.");
+        const auto request = [&](WORLD_LEVEL_REQUEST_KIND kind, WORLD_LEVEL_COMPOSITION_OWNER owner)
+        {
+            WORLD_LEVEL_TOOL_REQUEST value; value.kind = kind; value.areaId = m_SelectedAreaId; value.compositionOwner = owner;
+            m_Request = std::move(value); m_InteractionRequested = true;
+        };
+        const auto* host = Find_ActiveMapAuthoringHost();
+        ImGui::BeginDisabled(!host || host->Get_MapAuthoringCatalog().Get_AreaId() != m_SelectedAreaId);
+        if (ImGui::Button("Pick in world")) request(WORLD_LEVEL_REQUEST_KIND::PICK_IN_SCENE, WORLD_LEVEL_COMPOSITION_OWNER::ACTION);
+        ImGui::EndDisabled(); ImGui::SameLine();
+        if (ImGui::Button("Inspect / Edit Map Objects")) request(WORLD_LEVEL_REQUEST_KIND::OPEN_MAP, WORLD_LEVEL_COMPOSITION_OWNER::ACTION);
+        ImGui::SameLine();
+        if (ImGui::Button("More tools")) ImGui::OpenPopup("World level tools");
+        if (ImGui::BeginPopup("World level tools"))
+        {
+            if (ImGui::MenuItem("DimensionMaster Guide")) request(WORLD_LEVEL_REQUEST_KIND::OPEN_GUIDE, WORLD_LEVEL_COMPOSITION_OWNER::ACTION);
+            const bool kouku = m_SelectedAreaId == "LV_LUT_MIDNIGHTC_ED";
+            if (ImGui::MenuItem("Create World Object", nullptr, false, kouku)) request(WORLD_LEVEL_REQUEST_KIND::OPEN_WORLD_OBJECT, WORLD_LEVEL_COMPOSITION_OWNER::ACTION);
+            if (ImGui::MenuItem("Create Sequence / Effect Box", nullptr, false, kouku)) request(WORLD_LEVEL_REQUEST_KIND::OPEN_COMPOSITION, WORLD_LEVEL_COMPOSITION_OWNER::SEQUENCE);
+            ImGui::EndPopup();
+        }
+        ImGui::SetNextItemWidth(390.f);
+        ImGui::InputTextWithHint("##WorldLevelSearch", "Search object, source level, asset or stable ID", m_Search.data(), m_Search.size());
+        ImGui::SameLine();
+        const char* filters[] = {"All", "Map", "Deploy", "Sequences / Boxes", "Effects / Lights", "Gameplay"};
+        ImGui::SetNextItemWidth(175.f); ImGui::Combo("##WorldLevelKind", &m_KindFilter, filters, IM_ARRAYSIZE(filters));
+        Render_HierarchyControls();
+        Render_Tree();
+        if (const auto* selected = Selected_Row())
+        {
+            ImGui::BeginDisabled(!selected->canEdit);
+            if (ImGui::Button("Open selected in owner")) Request_Edit(*selected);
+            ImGui::EndDisabled(); ImGui::SameLine();
+            ImGui::BeginDisabled(!selected->hasPosition || selected->target.areaId != m_ActiveAreaId);
+            if (ImGui::Button("Focus (F)")) Request_Focus(*selected);
+            ImGui::EndDisabled();
+            const auto& io = ImGui::GetIO();
+            if (focused && !io.WantTextInput && !ImGui::IsAnyItemActive() &&
+                !io.KeyCtrl && !io.KeyAlt && !io.KeyShift && !io.KeySuper && ImGui::IsKeyPressed(ImGuiKey_F, false)) Request_Focus(*selected);
+        }
+        Render_ChunkView();
+        if (!m_Status.empty()) ImGui::TextWrapped("%s", m_Status.c_str());
     }
-    ImGui::TextWrapped("%s", m_Status.c_str());
+    // Keep one popup ID owner even when the tree is collapsed and the request
+    // came from the independent Object Details window.
+    Render_ParentDialog();
     ImGui::End();
 }
-
 }
 #endif
