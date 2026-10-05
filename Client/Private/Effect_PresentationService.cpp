@@ -63,6 +63,15 @@ struct Client::EFFECT_PRODUCT_CAMERA_PREPARATION final
 namespace
 {
     constexpr const wchar_t* EFFECT_LAYER = L"Layer_Effect";
+
+	f32_t Commit_AmbientVisualDeltaSeconds(const f32_t rawDeltaSeconds)
+	{
+		if (!std::isfinite(rawDeltaSeconds) || rawDeltaSeconds <= 0.f) return 0.f;
+		// This local visual clock deliberately slows during a stall. Keeping the
+		// existing fixed steps preserves particle age, source bursts and RNG order
+		// without replaying discarded wall time on subsequent rendered frames.
+		return (std::min)(rawDeltaSeconds, 0.1f);
+	}
 	constexpr const char_t* RECONSTRUCTED_ARTIST_31470_ASSET_ID =
 		"effect.artist.skill.31470";
 	constexpr Client::EFFECT_RECONSTRUCTED_VISUAL_SCOPE
@@ -6530,6 +6539,8 @@ void Client::CEffectPresentationService::Submit_VisibleLevelPresentations()
 	auto* profiler = CGameInstance::Get().Get_Profiler();
 	Engine::CProfilerScope profile(profiler, "Effect.LevelPresentation.VisibleUpdate");
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	uint64_t maximumFixedSteps = 0u;
+	uint64_t discardedMicroseconds = 0u;
 	for (size_t index = g_ActiveEffects.size(); index-- > 0u;)
 	{
 		ACTIVE_EFFECT& effect = g_ActiveEffects[index];
@@ -6569,8 +6580,33 @@ void Client::CEffectPresentationService::Submit_VisibleLevelPresentations()
 			}
 			else
 			{
-				effect.pObject->Advance_Preview(effect.fAmbientTickDelta);
-				effect.fElapsedCueTimeSeconds += effect.fAmbientTickDelta;
+				// Apply after playback-rate scaling, only when this admitted ambient
+				// occurrence actually advances. Hidden time remains paused as before.
+				const f32_t visualDelta = Commit_AmbientVisualDeltaSeconds(effect.fAmbientTickDelta);
+				const uint64_t previousStep = effect.pObject->Get_PreviewSimulationStep();
+				effect.pObject->Advance_Preview(visualDelta);
+				effect.fElapsedCueTimeSeconds += visualDelta;
+				if (profiler)
+				{
+					const uint64_t currentStep = effect.pObject->Get_PreviewSimulationStep();
+					const uint64_t fixedSteps = currentStep >= previousStep ? currentStep - previousStep : 0u;
+					profiler->Add_Counter(EProfilerCounter::EffectAmbientFixedSteps, fixedSteps);
+					maximumFixedSteps = (std::max)(maximumFixedSteps, fixedSteps);
+					if (std::isfinite(effect.fAmbientTickDelta) && effect.fAmbientTickDelta > visualDelta)
+					{
+						profiler->Add_Counter(EProfilerCounter::EffectAmbientClampedUpdates);
+						const f64_t discarded = std::round((static_cast<f64_t>(effect.fAmbientTickDelta) -
+							static_cast<f64_t>(visualDelta)) * 1000000.0);
+						const uint64_t available = (std::numeric_limits<uint64_t>::max)() - discardedMicroseconds;
+						// Saturate only the integer telemetry capacity, never the raw
+						// duration used to calculate how much visual time was discarded.
+						if (std::isfinite(discarded) && discarded >= 0.0 &&
+							discarded < static_cast<f64_t>(available))
+							discardedMicroseconds += static_cast<uint64_t>(discarded);
+						else
+							discardedMicroseconds = (std::numeric_limits<uint64_t>::max)();
+					}
+				}
 			}
 		}
 		if (profiler) profiler->Add_Counter(EProfilerCounter::EffectAmbientAdvanced);
@@ -6585,6 +6621,11 @@ void Client::CEffectPresentationService::Submit_VisibleLevelPresentations()
 			Record_ActiveEffectRuntimeFailure(effect, "V1.ambient.submit", g_strStatus);
 			Remove_At(index);
 		}
+	}
+	if (profiler)
+	{
+		profiler->Set_Counter(EProfilerCounter::EffectAmbientDiscardedMicroseconds, discardedMicroseconds);
+		profiler->Set_Counter(EProfilerCounter::EffectAmbientMaxFixedSteps, maximumFixedSteps);
 	}
 }
 

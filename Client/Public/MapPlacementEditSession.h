@@ -19,7 +19,7 @@ NS_BEGIN(Client)
 class CTrigger_Box;
 class IMapAuthoringHost;
 
-/* Live map placement editing for the Debug World Level Tool.
+/* Live map placement editing for the Debug World Scene Tool.
 
    The session borrows the placements of the Level that currently owns the
    Area (IMapAuthoringHost) exactly the way the Map Tool does when it is
@@ -43,8 +43,8 @@ public:
 		std::filesystem::path sourceCatalog;
 		std::filesystem::path sourcePlacements;
 		std::filesystem::path sourceMaterials;
-		/* MapCatalog declares a light pair for this Area, so the Area publish
-		   rewrites <Area>.maplights.json as well. */
+		/* MapCatalog metadata retained for callers. Placement saves publish only
+		   placements and never rewrite lights or materials. */
 		bool_t declaresLights = false;
 		/* Keep every unloaded source row when editing a product map scope. */
 		bool_t allowPartialLive = false;
@@ -96,7 +96,7 @@ public:
 	bool_t Duplicate_Selected();
 	bool_t Delete_Selected();
 	/* Writes the authoring document after the freshness check, keeps a
-	   rollback copy and starts the Area publish. */
+	   rollback copy and starts the Placements publish. */
 	bool_t Save();
 
 private:
@@ -138,9 +138,8 @@ private:
 	std::string m_BaselineBytes;
 	std::string m_RollbackBytes;
 	std::filesystem::path m_SourcePlacements;
-	/* The source catalog of the Area with the live Level's prototypes bound
-	   onto it, so one catalog serves both the document writer and the runtime
-	   clone. */
+	/* Source metadata plus a shared view of the Level's loaded material and
+	   prototype owner. Rebinding never reparses the material DOM. */
 	CMapAssetCatalog m_Catalog;
 	std::vector<MAP_PLACEMENT_RECORD> m_Draft;
 	std::unordered_map<uint64_t, size_t> m_DraftIndex;

@@ -334,7 +334,20 @@ HRESULT CWorldSequenceObject::Render()
     for (uint32_t mesh = 0; mesh < m_Model->Get_NumMeshes(); ++mesh)
     {
         const auto* surface = m_Model->Get_MaterialSurface(mesh);
-        if (animated ? 0u != Resolve_ForwardSourcePass(surface) : IsMovieTranslucent(surface)) continue;
+        if (animated && 0u != Resolve_ForwardSourcePass(surface))
+        {
+            // The same hair as equipped characters needs its masked core in
+            // depth before BLEND; otherwise rear cards and props show through.
+            if (FAILED(m_Model->Bind_BoneMatrices(m_Shader, "g_BoneMatrices", mesh)))
+                return failed("hair bone matrix binding");
+            const DEFERRED_MATERIAL_PROFILE hairProfile = m_MaterialProfileId.empty() ? DEFERRED_MATERIAL_PROFILE{} :
+                Resolve_DeferredMaterialProfile(m_MaterialProfileId, m_Model->Get_MaterialName(mesh));
+            const HRESULT masked = Render_SourceHairMaskedMesh(
+                *m_Model, m_Shader, mesh, hairProfile, &m_CombatPresentation, m_Diffuse);
+            if (FAILED(masked)) return failed("hair masked core" + MaterialBindingFailure(*m_Model, mesh, masked));
+            continue;
+        }
+        if (!animated && IsMovieTranslucent(surface)) continue;
         if (!animated) profile = MovieStaticProfile(surface);
         const bool mapSurface = surface && surface->family == MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED;
         const DEFERRED_MATERIAL_PROFILE bodyProfile = m_MaterialProfileId.empty() ? DEFERRED_MATERIAL_PROFILE{} :

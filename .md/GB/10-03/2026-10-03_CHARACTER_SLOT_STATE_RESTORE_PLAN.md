@@ -78510,3 +78510,32 @@ def main() -> int:
 if __name__ == "__main__":
     raise SystemExit(main())
 ```
+
+
+## G08. 2026-10-05 선택창 복귀의 모델 준비 경계
+
+기준선은 `c999f7e91`, 작업 브랜치는 `codex/world-map-inspection-save-fix`다. 이전 G의
+구현 뒤 실제 `Return_ToCharacterSelect → Lobby loader → Open → Update_Stage`를 대조했다.
+Lobby loader는 공통 shader/prototype만 준비하므로 선택창이 먼저 열린 뒤 카드의 class 모델과
+저장된 아바타가 순차적으로 나타난다. 기존 typed capture와 슬롯 저장은 유지한다.
+
+`MainApp.cpp`의 `Start_Level`은 명시적인 선택창 복귀 때만 MainApp 소유 창을 기존 Loading에
+빌려준다. `Level_Loading.h/.cpp`는 이 경우 기존 시작되는 운명 chrome을 표시하고, Lobby의
+공통 준비가 끝난 뒤 같은 창의 `Advance_EntryPreparation`을 진행한다. 준비 완료 후에만
+기존 activation request를 제출한다. 처음 EXE를 시작하는 빈 Lobby 진입은 그대로 유지한다.
+
+`CharacterSelectWindowView.h/.cpp`는 기존 async class 준비와 Clone/Layer 경로로 채워진
+슬롯만 준비한다. 생성 외형과 장착 아바타 적용이 모두 성공해야 준비 완료다. 실패하면 새
+배우만 정리하고 메모리 roster는 보존한다. 5분 제한과 기존 worker의 협력 취소·bounded join을
+사용해 영구 로딩을 막으며 실패는 기존 LoadingRecovery의 Retry로 재시도한다.
+MainApp의 non-Lobby cleanup은 Loading이 준비 중인 창의 stage를 지우지 않는다.
+Loading owner pointer를 비교해 Retry의 이전 소멸자가 새 준비를 취소하지 못하게 한다.
+
+`CharacterSelectionState.h/.cpp`의 `Get_ActiveCharacterId`는 기존 mutex 안에서 ID를 복사한다.
+창은 nickname이나 class 대신 이 ID와 roster를 대조해 처음 선택한 카드로 돌아온다.
+초기 서버 선택 화면의 닫힌 창에서는 미리 class 모델을 준비하지 않는다.
+
+제품 C++ 신규 파일, JSON, 프로젝트/필터 추가는 없다. Debug Product 빌드는 root 세션에서
+한 번 실행한다. 기존 `Tools/Network/test_character_session_state.py` focused 검사의 상태
+보존 회귀와 diff check를 수행한다. Client/UI 실행과 실제 시작되는 운명 화면·모코코 첫 화면
+확인은 사용자가 수행하며 자동 검증 결과와 분리한다.

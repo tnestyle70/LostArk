@@ -9,6 +9,7 @@
 
 #include "Shader.h"
 #include "GameInstance.h"
+#include "Engine_RenderTypes.h"
 #include "Profiler.h"
 #include "StaticMeshLod.h"
 #include <algorithm>
@@ -79,10 +80,10 @@ HRESULT CMesh::Initialize_Prototype(MODEL eType, const aiMesh* pAIMesh, const ve
 }
 
 HRESULT CMesh::Initialize_Prototype(MODEL eType, const MODEL_MESH_DATA& mesh,
-	const MODEL_SKELETON_DATA& skeleton, fmatrix_t PreTransformMatrix)
+	const MODEL_SKELETON_DATA& skeleton, fmatrix_t PreTransformMatrix, bool_t preserveStaticVertices, bool_t buildPickingGeometry)
 {
 	const bool_t isAnimated = MODEL::ANIM == eType;
-	if (mesh.name.size() >= MAX_PATH || mesh.indices.empty() ||
+	if ((preserveStaticVertices && isAnimated) || mesh.name.size() >= MAX_PATH || mesh.indices.empty() ||
 		(isAnimated && mesh.vertexKind != MODEL_VERTEX_KIND::SKINNED) ||
 		(!isAnimated && mesh.vertexKind != MODEL_VERTEX_KIND::STATIC))
 		return E_FAIL;
@@ -137,6 +138,7 @@ HRESULT CMesh::Initialize_Prototype(MODEL eType, const MODEL_MESH_DATA& mesh,
 			VTXMESH& vertex = staticVertices[index];
 			// The WModel reader already decoded RGBA; upload without a second swizzle.
 			vertex.color0Rgba8 = mesh.hasColor0 ? mesh.color0Rgba8[index] : 0xffffffffu;
+            if (preserveStaticVertices) continue;
 			XMStoreFloat3(&vertex.vPosition,
 				XMVector3TransformCoord(XMLoadFloat3(&vertex.vPosition), PreTransformMatrix));
 			XMStoreFloat3(&vertex.vNormal,
@@ -161,6 +163,10 @@ HRESULT CMesh::Initialize_Prototype(MODEL eType, const MODEL_MESH_DATA& mesh,
 	indexInitialData.pSysMem = mesh.indices.data();
 	if (FAILED(m_pDevice->CreateBuffer(&indexBufferDesc, &indexInitialData, &m_pIB)))
 		return E_FAIL;
+
+    // Derived clusters retain the original placements for picking. Avoid a
+    // second CPU geometry copy and BVH for presentation-only aggregate buffers.
+    if (!buildPickingGeometry) return S_OK;
 
     auto pick = make_shared<PICK_GEOMETRY>();
     pick->skinned = isAnimated;
@@ -351,6 +357,21 @@ HRESULT CMesh::Render()
     return result;
 }
 
+uint32_t CMesh::Select_StaticLod(const MESH_SCREEN_LOD_DESC* view,
+    uint32_t& indexCount, uint32_t& firstIndex) const
+{
+    indexCount = m_iNumIndices;
+    firstIndex = 0u;
+    CStaticMeshLod::SELECTION selection{ m_iNumIndices, 0u, 0u };
+    if (!view || !m_StaticLod || Has_MorphBaseVertices() ||
+        !CGameInstance::Get().Get_RenderOptimizationSettings().MeshLodEnabled ||
+        S_OK != m_StaticLod->Select_Range(*view, selection))
+        return 0u;
+    indexCount = selection.indexCount;
+    firstIndex = selection.firstIndex;
+    return selection.level;
+}
+
 HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 	uint32_t iInstanceStride, uint32_t iNumInstances,
 	uint32_t iInstanceByteOffset, const MESH_SCREEN_LOD_DESC* screenLod)
@@ -375,8 +396,8 @@ HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
     // The view and immutable LOD errors are already CPU-owned. Select a range
     // directly instead of submitting a one-thread compute dispatch per draw.
     CStaticMeshLod::SELECTION selection{ m_iNumIndices, 0u, 0u };
-    const bool_t useLod = screenLod && m_StaticLod && !Has_MorphBaseVertices() &&
-        S_OK == m_StaticLod->Select_Range(*screenLod, selection) && selection.level > 0u;
+    selection.level = Select_StaticLod(screenLod, selection.indexCount, selection.firstIndex);
+    const bool_t useLod = selection.level > 0u;
 
 	ID3D11Buffer* vertexBuffers[] =
 	{
@@ -447,6 +468,57 @@ HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
         profiler->Record_MeshSubmitted(this, selection.indexCount, iNumInstances, m_szName, m_iNumVertices, m_iMaterialIndex);
 
 	return S_OK;
+}
+
+HRESULT CMesh::Prepare_StaticClusterStreams(std::span<const uint32_t> sourceIndices,
+    std::span<const uint32_t> farIndices)
+{
+    if (m_iVertexStride != sizeof(VTXMESH) || sourceIndices.size() != m_iNumVertices ||
+        sourceIndices.empty() || sourceIndices.size() > UINT32_MAX / sizeof(uint32_t) ||
+        farIndices.size() > UINT32_MAX / sizeof(uint32_t) || farIndices.size() % 3u != 0u ||
+        std::any_of(farIndices.begin(), farIndices.end(),
+            [&](uint32_t index) { return index >= m_iNumVertices; })) return E_INVALIDARG;
+    const auto create = [&](std::span<const uint32_t> values, UINT flags, ComPtr<ID3D11Buffer>& output)
+    {
+        D3D11_BUFFER_DESC desc{};
+        desc.ByteWidth = static_cast<UINT>(values.size_bytes());
+        desc.Usage = D3D11_USAGE_IMMUTABLE;
+        desc.BindFlags = flags;
+        D3D11_SUBRESOURCE_DATA data{};
+        data.pSysMem = values.data();
+        return m_pDevice->CreateBuffer(&desc, &data, &output);
+    };
+    ComPtr<ID3D11Buffer> sources, reduced;
+    HRESULT result = create(sourceIndices, D3D11_BIND_VERTEX_BUFFER, sources);
+    if (FAILED(result)) return result;
+    if (!farIndices.empty() && FAILED(result = create(farIndices, D3D11_BIND_INDEX_BUFFER, reduced))) return result;
+    m_ClusterSourceIndices = std::move(sources);
+    m_ClusterFarIndices = std::move(reduced);
+    m_iClusterFarIndexCount = static_cast<uint32_t>(farIndices.size());
+    return S_OK;
+}
+
+HRESULT CMesh::Render_StaticCluster(bool_t farGeometry)
+{
+    if (!m_pVB || !m_pIB || !m_ClusterSourceIndices || m_iNumIndices == 0u ||
+        Has_MorphBaseVertices()) return E_INVALIDARG;
+    const bool reduced = farGeometry && m_ClusterFarIndices && m_iClusterFarIndexCount > 0u;
+    const uint32_t count = reduced ? m_iClusterFarIndexCount : m_iNumIndices;
+    ID3D11Buffer* buffers[] = { m_pVB.Get(), m_ClusterSourceIndices.Get() };
+    const UINT strides[] = { sizeof(VTXMESH), sizeof(uint32_t) };
+    const UINT offsets[] = { 0u, 0u };
+    m_pContext->IASetVertexBuffers(0u, 2u, buffers, strides, offsets);
+    m_pContext->IASetIndexBuffer(reduced ? m_ClusterFarIndices.Get() : m_pIB.Get(), DXGI_FORMAT_R32_UINT, 0u);
+    m_pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    if (auto* profiler = CGameInstance::Get().Get_Profiler())
+    {
+        profiler->Add_Counter(EProfilerCounter::DrawCalls);
+        profiler->Add_Counter(EProfilerCounter::Indices, count);
+    }
+    m_pContext->DrawIndexed(count, 0u, 0);
+    if (auto* profiler = CGameInstance::Get().Get_Profiler())
+        profiler->Record_MeshSubmitted(this, count, 1u, m_szName, m_iNumVertices, m_iMaterialIndex);
+    return S_OK;
 }
 
 HRESULT CMesh::Ready_VertexBuffer_NonAnim(const aiMesh* pAIMesh, fmatrix_t PreTransformMatrix)
@@ -795,7 +867,7 @@ shared_ptr<CPrototype> CMesh::Clone(void* pArg)
 
 HRESULT CMesh::Prepare_StaticLod(const MODEL_MESH_DATA& mesh, fmatrix_t preTransform)
 {
-    if (mesh.vertexKind != MODEL_VERTEX_KIND::STATIC || mesh.indices.size() < 24576u ||
+    if (mesh.vertexKind != MODEL_VERTEX_KIND::STATIC || mesh.indices.size() < CStaticMeshLod::MINIMUM_INDICES ||
         mesh.indices.size() > 3u * 1024u * 1024u || Has_MorphBaseVertices()) return S_FALSE;
     try
     {

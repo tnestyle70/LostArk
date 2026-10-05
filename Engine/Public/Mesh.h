@@ -1,6 +1,7 @@
 #pragma once
 
 #include "VIBuffer.h"
+#include <span>
 
 struct aiMesh;
 
@@ -30,7 +31,8 @@ public:
 public:
 	virtual HRESULT Initialize_Prototype(MODEL eType, const aiMesh* pAIMesh, const vector<shared_ptr<class CBone>>& Bones, fmatrix_t PreTransformMatrix);
 	HRESULT Initialize_Prototype(MODEL eType, const MODEL_MESH_DATA& mesh,
-		const MODEL_SKELETON_DATA& skeleton, fmatrix_t PreTransformMatrix);
+		const MODEL_SKELETON_DATA& skeleton, fmatrix_t PreTransformMatrix,
+        bool_t preserveStaticVertices = false, bool_t buildPickingGeometry = true);
 	virtual HRESULT Initialize(void* pArg) override;
 
 public:
@@ -74,7 +76,15 @@ public:
 	bool_t Get_MorphBaseVertex(uint32_t iIndex, float3_t& OutPosition, float3_t& OutNormal) const;
 
 private:
+    HRESULT Prepare_StaticClusterStreams(std::span<const uint32_t> sourceIndices,
+        std::span<const uint32_t> farIndices);
+    HRESULT Render_StaticCluster(bool_t farGeometry);
+    ComPtr<ID3D11Buffer> m_ClusterSourceIndices;
+    ComPtr<ID3D11Buffer> m_ClusterFarIndices;
+    uint32_t m_iClusterFarIndexCount = 0u;
     HRESULT Prepare_StaticLod(const MODEL_MESH_DATA& mesh, fmatrix_t preTransform);
+    uint32_t Select_StaticLod(const MESH_SCREEN_LOD_DESC* view,
+        uint32_t& indexCount, uint32_t& firstIndex) const;
     std::shared_ptr<CStaticMeshLod> m_StaticLod;
 
 	char_t					m_szName[MAX_PATH] = {};

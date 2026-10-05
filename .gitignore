@@ -127,6 +127,11 @@
 /Client/Bin/Resources/**/*.pdb
 
 # Local tool state
+# Transaction recovery copies and isolated server test output stay local.
+/Data/**/*.backup*
+/Server/Bin/DataFiles/**/*.backup*
+/Server/Bin/DataFiles/**/*.retired.*
+/Server/Default/out/
 [Ii]mgui.ini
 __pycache__/
 *.py[cod]

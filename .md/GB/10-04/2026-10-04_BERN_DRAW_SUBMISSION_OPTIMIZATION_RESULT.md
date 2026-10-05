@@ -178,3 +178,428 @@ Spawn8.680ms, Rebuild1.340ms였다. 단순히 효과 개수가 늘어난 현상�
 Material·Pass·NonBlend 시간과 frame interval을 비교해야 한다. 원래 RNM·그림자·표시 순서와
 이동 입력도 함께 확인한다. 단일 mesh/noLOD 범위 밖의 배치와 Ambient.Advance 비용은
 남아 있으며 전체 컷신의 목표 FPS 달성을 주장하지 않는다.
+
+## G07. 사용자 12:45 새 캡처의 저장 범위와 병목 한계
+
+사용자 파일 `Client/Bin/ProfilerCaptures/베른_컷신_20261004_124545_628_frame170_44204_0.json`
+SHA256은 `725be83e133ffa8ac1b72401c5891d35a6c7645c3403754cda7ed4f5c307e746`이다.
+170개 수집 history 중 JSON 상세는 최근 120개(frame 51~170)만 포함한다. 앞쪽 50개는
+수집 불가가 아니라 저장 window에서 제외됐다. 제외 구간 최대 interval 1122.9942ms가 있어
+약 1FPS 순간이 있었음은 확인되지만, 그 구간의 느린 frame 수·연속성·scope 원인은 파일에 없다.
+사용자가 관찰한 10개 이상 느린 frame이 모두 보존됐다고 주장하지 않는다. 저FPS라서
+수집할 수 없다는 설명은 잘못이며 Profiler 기본 저장 window와 분석 window 결합이 원인이다.
+
+저장된 120개만의 평균 interval은 126.316ms(7.92FPS), 최대 277.492ms이다. CPU frame 평균
+123.362ms, Map.Batch.Render 53.062ms(내부 Draw 34.627/Material 9.291/Pass 7.727),
+fallback Map.Object.Render 10.684ms, Ambient.Advance 18.207ms가 측정됐다. GPU query는
+120/120 valid지만 CPU scope는 10개 frame에서 22,182개가 누락됐다. detailed=false로
+per-mesh GPU 원인은 없다. navigationQueries는 모두 0이며 Present 평균 0.146ms다.
+이 구간의 지속 비용을 제외된 1FPS 구간의 확정 원인으로 대신 기록하지 않는다.
+
+저장된 메모리 표본은 VRAM budget 최대 46.75%, 최소 물리 RAM 여유 31.9GiB다. 이후
+World Level 편집 클릭 시 EXE 종료를 이 캡처로 OOM이라 확정할 수 없다. 해당 시점 새 dump,
+WER 또는 종료원인 로그도 발견되지 않았다. 편집에서 Bern 재질 JSON 95,342,906byte를
+UI thread에서 다시 전체 파싱하는 부담은 별도 소스 경로로 확인했고 F1 도구 수정에서 다룬다.
+
+재현 분석과 05:08/05:10 이전 캡처 비교는
+`out/BernCliffFrameInvestigation20261004/performance/findings-and-source-consumers.json`,
+`comparison-summary.json`, `analyze_current_capture.py`에 보존했다. 이 조사는 원래 1FPS
+구간의 원인을 확정하거나 성능 개선 완료를 입증하지 않는다. 저장 범위 개선 후 동일 구간의
+전체 상세 캡처가 필요하다. 에이전트는 Client를 실행하거나 rendering option을 변경하지 않았다.
+
+## G08. 사용자 14:34 전체 캡처에서 확인한 연속 1FPS 구간
+
+새 `베른_컷신_20261004_143459_089_frame339_77492_0.json`은 119,073,515byte이며 SHA256은
+`9bd24cf8fd3e875ce44d087b1fa67793fed1f3b21d9638c36cb7e38eb8b1050a`다. 보유/저장339개,
+저장창 제외0/퇴출0으로 이번에는 앞쪽 저FPS frame도 모두 포함한다. interval frame2~16의
+15개가 연속으로 1.040~2.071초, 합계18.514초, 평균1.234초(약0.81FPS)다.
+interval N은 CPU frame N-1에 대응한다. 이 등식을15개 전부 확인했으며 frame gap 평균은
+0.884ms로 프레임 사이 대기가 초 단위 지연을 설명하지 않는다.
+
+| CPU 원인 frame1~15의 별도 누적 계측 | 프레임당 평균 | 평균 CPU frame 대비 |
+|---|---:|---:|
+| 전체 CPU frame | 1,233.399ms | 100% |
+| Ambient.Advance | 573.308ms | 46.48% |
+| Map.Batch.Render | 338.094ms | 27.41% |
+| Map.Object.Render | 62.568ms | 5.07% |
+
+Map.Batch.Render 안에는 Draw196.730ms, Material99.426ms, Pass32.899ms가 포함된다.
+부모와 자식 비용을 다시 더하지 않는다. 배경 효과 갱신은43~47회, batch render는5,602~6,757회,
+batch draw/material/pass는각각8,366~9,973회다. 후기frame200~339는 Ambient.Advance가37회/
+3.969ms, Map.Batch.Render가528회/16.663ms, 전체 CPU가47.050ms로 낮아진다.
+저FPS15개와 회복된140개를 섞은 평균으로 원인을 설명하지 않는다.
+
+실제 느린 구간의 저장된 FixedStep은 Effect.Playback.Update 내부에서 발생한다.
+Update 밖 FixedStep0, HistoryUpdate0이며 frame1~76에 ordinary ambient Update의60step
+상한 도달이 관측된다. frame18은 새 wall delta487.982ms(약29step)인데31개 effect가60step,
+frame60은254.671ms(약15step)인데37개 effect가60step을 수행한다. 새 delta만 처리한 것이
+아니라 이전부터 남은 시뮬레이션 시간이 계속 소모되는 증거다. 후기frame200/300은37개 effect가
+각각2~3step 수준이다. Prewarm 평균0.0923ms와 retained FixedStep의 부모를 함께 확인해
+반복 prewarm/Seek가 주원인이라는 가설과 구별했다.
+또한 frame72~76은 CPU scope drop0인데 새 interval155~171ms(약9~10step)에 비해 여러
+ambient 효과가60step을 수행한다. 따라서 backlog 증거는 상세 scope가 누락된 frame에만
+의존하지 않는다. frame1~15의 Ambient 시간 중99.893%는 일반 Playback.Update 내부였다.
+
+소스의 Timer_60은 실제 wall delta를 넘기고 Effect_PresentationService의 ambient tick은 이를
+playback rate와 곱해 사용한다. 숨긴 동안의 delta는 overwrite되므로 offscreen 전체 시간을
+쌓았다가 복귀 때 재생하는 경로와 다르다. Effect_Playback의 일반 Update는 누적기에 시간을
+더한 뒤1/60초 step을 effect당 최대60번 처리하고 미처리 잔량을 남긴다. 따라서 느린 frame이
+다음 frame의 더 많은 따라잡기 작업으로 이어지고, 그 작업이 다시 frame을 늘리는 반복 경로가
+현재 코드와 실제 계측에 함께 나타난다. 많은 맵 draw 제출도 같은 구간의 독립적인 큰 비용이다.
+최초 지연을 무엇이 시작했는지는 frame1이 이미60step 상한 상태여서 이 파일만으로 단정하지 않는다.
+
+GPU339개 모두 valid이고 pending/partial GPU scope0이다. 하지만 GPU timestamp는 CPU의
+명령 공급 대기도 포함하므로 GPU elapsed만으로 shader 포화나 특정 지형 재질을 지목하지 않는다.
+CPU 상세 scope는 전체71개 frame에서272,850개, 저FPS 원인15개에서88,608개가 capacity로
+누락됐다. **완료 frame 누락과 상세 scope 누락은 다르다.** 위 cpuWork는 별도 누적 계측이라
+표의 전체 작업 비용은 확인 가능하다. 누락된 자식의 정확한 self 비용이나 effect별 완전한 호출
+횟수는 주장하지 않는다. 60개가 실제 저장된 개별 Update는60step 상한 도달의 직접 근거다.
+effect asset/placement ID와 accumulator 잔량은 현재 capture에 없어 개별 emitter 지목은 남는다.
+
+수정 우선 대상은 일반 배경 이펙트의 누적시간 처리·한 frame 작업량과 이 구간의 맵 draw 제출이다.
+단순히 전역 delta를 줄여 gameplay 시간을 바꾸거나 누적기를 버리는 변경은 이번 조사에서 하지
+않았다. 원인 영역을 확인한 결과이며 성능 수정·개선 후 재측정 완료로 기록하지 않는다.
+이 캡처의 export metadata는 Debug/D3D debug layer ON이지만 모든 과거 frame의 설정·카메라를
+증명하지 않는다. Client/UI 실행·빌드·렌더링 옵션 변경도 하지 않았다.
+
+근거는 `out/BernCutscene1Fps20261004_143459/summary.json`, `all-15-low-intervals.json`,
+`all-frame-attribution.json`, `effect-step-parent-attribution.json`과 같은 폴더의 분석 스크립트다.
+
+## G09. 배경 시각 시간의 지연 누적 방지
+
+기존 deferred ambient admission에만 frame당 visual delta 최대0.1초를 적용했다. rate를 곱한
+입력에서 제한하며 실제 visible Advance와 service elapsed에 같은 값을 넣는다. 초과분은 다음
+frame으로 전달하지 않는다. 숨김 pause, 첫 Seek, owner/level 오류 제거와 render 제출은 기존 흐름이다.
+정상적인1/60 fixed-step 적분·입자 age/spawn/RNG·source loop는 그대로이며 일반 Update,
+transform history, authoring Seek, 전투와 Server의 시간은 변경하지 않았다.
+기존 승인 후 root 편집으로 bounds만 무효가 된 인스턴스도 같은 배경 시각 시간 정책을 유지한다.
+
+이 변경은 긴 frame 동안 배경 시각 시계를 느리게 한다. 건너뛴 실제 시간을 나중에 따라잡거나
+입자 clock만 순간이동하지 않는다. 원본의 실제 시간 기준 phase와 동등하다는 주장은 하지 않는다.
+Bern91개 SOURCE_LOOP 중 sprite85배치와 mesh 혼합6배치를 새롭게 합쳐 승인하지 않았으며,
+이번 제한은 원래 static-sprite bounds를 통과한 경로에만 적용한다.
+
+프로파일러에 다음4개 counter와 동일 UI 이름을 추가했다. 기존 counter 순서는 보존했다.
+
+| JSON counter | 의미 |
+|---|---|
+| effectAmbientClampedUpdates | visible Advance 중 입력 시간이 제한된 효과 수 |
+| effectAmbientDiscardedMicroseconds | 효과별 제외 시간의 합계. frame wall time·절약 CPU 시간이 아님 |
+| effectAmbientFixedSteps | initial Seek·hidden frame을 제외한 실제 committed simulation step 합계 |
+| effectAmbientMaxFixedSteps | 같은 frame의 단일 ambient Advance가 commit한 최대 step 수 |
+
+step은 두 읽기 전용 getter를 통해 기존 uint64 simulation step의 전후 차이를 센다.
+기존 Get_FixedStepClockSeconds는 accumulator까지 포함하므로 횟수로 환산하지 않았다.
+새 counter는 raw CPU scope capacity와 독립적이며 capture의 measurementSemantics에도 단위를
+기록했다. 비유한 입력은 visual delta0이며 제외 시간 표본을 만들지 않는다. 제외 시간 합계는
+uint64 계측 용량을 넘을 때만 포화한다. 새로운 재생 runtime·제품 C++ 파일·리소스는 없다.
+
+## G10. 카메라 속도 가설의 확인 범위
+
+실제 입장 데이터는 `Data/Encounters/Bern/BernEntranceCamera.json`의16초/16key 곡선이며
+FOVY60°다. 기본 follow의32.642°보다 같은 거리의 수직 범위를 약1.97배 넓게 본다.
+Level_Bern은 이미 컷신 시간을 frame당0.1초로 제한한다.1FPS일 때 카메라는 실제1초에
+컷신0.1초만 진행하므로 빠른 wall-clock 카메라 이동 때문에 메시가 밀린다는 가설은 확인되지 않았다.
+
+맵 geometry는 입장 scope에서 준비되며 현재 카메라로 동기 가시성을 계산한다. Bern의3frame
+reject grace로 직전 가시 대상이 잠시 함께 제출될 수는 있으나 이 비용의 비율은 기존 capture에 없다.
+느린15frame의 가시 맵은 평균19,676개, draw10,597회이며 후반에는961개/1,057회다.
+속도만 낮춰도 같은 pose의 FOV와 가시 대상 수는 줄지 않으므로 카메라·FOV·화질은 변경하지 않았다.
+맵 제출 비용과 최초 지연 유발 요인은 후속 캡처에서 계속 구분해야 한다.
+
+근거: `out/BernCutscene1Fps20261004_143459/camera-speed-readonly-audit.json`,
+`ambient-visual-delta-source-receipt.json`. 현재 파일과 수치 모델의 결과이며 실제 캡처의
+frame별 카메라 pose가 저장됐다는 뜻은 아니다.
+
+## G11. 이번 수정의 검증과 남은 실행 확인
+
+실제 Service.Update/Submit/helper, Object.Advance와 Playback.Update·getter 본문을 추출한
+headless native fixture31개 검사가 통과했다. Step은 관찰 경계로 대체했으므로 호출 예산과
+입력·시계 소비의 증거이며 particle 최종 좌표나 GPU 표시 동등성을 주장하지 않는다.
+수명·spawn·RNG를 포함한 Playback.cpp와 Object.cpp는 실제 diff가 없다.
+
+반복2초/1초 지연 뒤 정상1/60초 입력에서 이전 코드는60step과4.01667초 잔량을 유지했고,
+새 경로는1step으로 돌아왔다.339,000회 소수 delta에서도 committed clock 오차0을 확인했다.
+직전 잔량이 tick 경계에 가까운 경우에는7step이 가능하다. 실제 저장339개 interval을 초기
+accumulator0에서 재생한 모델은 기존3,344step/상한60회 도달21frame, 수정1,417step/최대6회였다.
+실제 캡처 시작 전 잔량과 effect별 활성 이력은 없으므로 이 수치를 캡처의 전체 호출 수나 FPS
+개선율로 대신하지 않는다.
+
+Step 실패를10회 주입하면 기존 accumulator가 남아 회복 때60step이 가능함도 확인했다.
+따라서6~7step은 새 인스턴스에서 정상 Step 성공이 이어질 때의 범위이며 절대 상한이 아니다.
+현재 정적 승인과 Bern11개 문서는 실패를 유발하는 model anchor/event 구성을 포함하지 않는다.
+비정상 실패·회복 시 새 counter는 실제60회를 숨기지 않는다. 실패 시계와 일반 재생 계약을
+이 최적화에서 임의 초기화하지 않았다. hidden/resume, initial Seek, stale owner/level,
+render failure 제거, root 이동, rate 적용 후 제한과 일반 combat/history 비적용도 검사했다.
+
+실제 Profiler.cpp·ProfilerCaptureIO.cpp·DataJson.cpp로 만든 headless exporter/importer는
+native54개와 JSON/호환성33개 검사를 통과했다. 기존88개 ordinal/이름은 유지되고 새4개가
+추가됐다. raw scope8192개 누락 중에도 counter가 저장된다. 이전v3의 없는 키는 미측정,
+명시적0은 측정0으로 유지하며 malformed 입력은 이전 분석 상태를 보존한 채 거절한다.
+
+정상 Debug Product 증분 compile/deploy가 성공했다:
+`out/BuildPipeline/runs/20261004T062359755Z-debug-product.json`.
+현재 checkout의 다른 세션 렌더링 변경도 포함한 빌드이며 이번 commit에는 이 기능의 변경만 묶는다.
+기존 인코딩·형변환 경고는 남아 있고 새 Client/UI를 실행하지 않았다. diff-check도 통과했다.
+Release 빌드와 실제 새 EXE의 컷신 FPS·장식 효과 화면 확인은 이번 검증에 포함하지 않는다.
+
+검증 재료는 `out/BernAmbientCatchupFix20261004/production-body-fixture-receipt.json`,
+`run_fixture.py`, `profiler/verification-receipt.json`에 보존한다. 사용자는 새 Debug EXE에서
+F7 Capture를 켠 뒤 같은 입장 컷신을 저장하고4개 새 counter와 Ambient.Advance·Map.Batch.Render를
+함께 비교한다. 맵 제출 비용과 최초 지연 원인이 모두 해결됐다고 결론내리지 않는다.
+
+## G12. 사용자 컷신2 재측정: 반복 제한 적용과 남은 저FPS
+
+`베른_컷신2_20261004_153522_285_frame217_80032_0.json`은217개 수집/저장, 제외/퇴출0,
+CPU/GPU scope 누락0이다. 사용자는 컷신 재생만 저장했다고 확인했다. 별도로 F6로 비슷한
+위치를 이동하면20FPS 이상이라는 관찰을 전달했지만, 이 파일에 F6 비교 구간이 있다는 뜻은 아니다.
+
+interval frame2~25의24개가400ms 이상이고 대응 CPU1~24 평균은597.400ms다.
+Map.Batch.Render292.591ms, Map.Object.Render55.172ms, Ambient.Advance65.367ms이며
+렌더 전체475.997ms, 업데이트116.676ms다. Map.Batch.Draw164.477/Material92.319/
+Pass28.014ms는 batch render의 자식이므로 다시 더하지 않는다. 느린 구간 batch render는
+평균5,599회, 전체 draw9,771.75회, 가시 맵18,021.42개다. 후반 CPU198~217은57.487ms,
+batch17.917ms/583회, draw1,200.45회와 가시 맵1,016개다. 양 끝은 동일 카메라 조건의 A/B가 아니다.
+
+새 effectAmbientMaxFixedSteps는 전체 최대6, 느린24개도 모두6이다. 이전 지연 누적 방지의
+작동은 실제 캡처로 확인했지만 컷신의 저FPS를 해결하지 못했다. 제한된 배경 효과의 갱신 비용도
+0이 아니며 입장 직후의 많은 맵 제출 비용이 계속 남는다. CPU밖 frame gap 평균2.340ms와
+Profiler.Panel.Refresh6.517ms·Memory.Sample4.698ms만으로597ms를 설명할 수 없다.
+frame197은 interval0이므로 앞 frame의 CPU에 대응시키지 않는다.
+
+카메라 source audit에서는 문서 load/Begin override의 매frame 반복이나 camera matrix revision의
+같은 frame 내 폭증을 찾지 못했다. moving frame의 batch visibility rebuild는15,794회이고
+가시성 판정이 전부 통과하는 fail-open 상태도 아니다. 실제 sampler/camera/frustum 본문을
+사용한10,568pose 검사는 같은 pose/FOV에서 cinematic과 free의 view/projection 차이0을 보였다.
+이 CPU 검사는 실제 동일경로 재생의 GPU 비용이나 FPS 동등성을 증명하지 않는다.
+
+다음 비교는 사용자가 요청한 F1 재생 버튼으로 초기 입장과 이후 반복 재생의 동일 경로·FOV를
+확보해 수행한다. 카메라 속도/FOV/화질을 바꾸거나 이번 결과를 단일 근본 원인 확정으로 기록하지 않는다.
+근거는 `out/BernCutscene2Investigation20261004/independent/summary.json`,
+`frame-rows.json`, `slow-interval-pairs.json` 및 `camera_render`의 source probe다.
+
+## G13. F1 Bern 입장 컷신 반복 재생
+
+Debug Bern의 F1 `Camera`에서 자유 이동 속도와 Reset 버튼 바로 아래에
+`Start Bern Cutscene`을 추가했다. UI는 요청만 제출하고 다음 Level Update에서 현재 상태를
+재검사한 뒤 기존 입장 컷신의 sampler·경로·FOV·재생 시간으로 실행한다. 자유 카메라 속도는
+이 재생 시간을 바꾸지 않는다. 반복 재생과 같은 process의 Bern 재입장을 모두 지원한다.
+
+재입장 때문에 cue가 준비되지 않은 경우에만 원본 문서를 임시 후보로 읽고 첫 pose까지 검증한
+뒤 반영한다. 최초 자동 재생 latch를 초기화하거나 정본 JSON을 저장하지 않는다. 정상 종료와
+ESC는 기존 camera override 종료 경로로 시작 전 pose/FOV와 follow/free 요청을 복원한다.
+중복 재생, 다른 camera owner, 레벨 전환·캐릭터 복원, 연결 종료와 placement 편집 충돌은
+기존 상태를 유지하고 이유를 표시한다. 새 제품 파일이나 프로젝트 등록은 필요하지 않았다.
+
+실제 Can/Request/Consume/Ready/Update/End 본문, DataJson·Bern parser와 shared Sample_Cue를
+실행한 native fixture25개 검사가 통과했다. 원본16key/16초, 반복·재입장, queued 요청의
+비변경, 중복, ESC edge/held ESC, consume 직전 owner 변경, 잘못된 문서·첫 pose,
+Begin/Apply 실패와 각 guard를 확인했다. Camera/Transform·network·ImGui는 경계 spy이므로
+실제 화면·GPU 행렬이나 FPS 개선 증거로 대신하지 않는다. 기존 camera contract4개도 통과했다.
+독립 소스 리뷰에서 추가 수정이 필요한 결함은 없었고 scoped diff-check도 통과했다.
+
+Debug Product 증분 compile/deploy는37,763ms에 PASS했다:
+`out/BuildPipeline/runs/20261004T065129859Z-debug-product.json`.
+같은 checkout의 다른 세션 미커밋 렌더링 변경을 포함한 빌드이며 이번 commit은 컷신 재생
+기능과 대응 문서만 포함한다. 검증 중 소스·정본 카메라 JSON hash는 유지됐다.
+재현 자료는 `out/BernEntranceReplay20261004/run_native_fixture.py`,
+`native-replay-fixture-receipt.json`과 `native-replay-fixture-run.log`다.
+
+Client/UI와 Release 빌드는 실행하지 않았다. 사용자가 새 Debug 실행 파일에서 F7 Capture를
+켠 뒤 F1 버튼으로 같은 경로를 재생하고 저장해 최초 입장과 비교한다. 이 변경은 비교용 재생
+진입점이며2FPS의 원인을 해결했거나 반복 재생 FPS가 개선됐다고 기록하지 않는다.
+
+## G14. 최초 입장과 같은 컷신 반복 재생의 실제 캡처 비교
+
+사용자가 F1 재생 버튼 추가 후 같은 process43604에서 저장한 두 문서를 분석했다.
+
+| 캡처 | 저장 frame 범위 | 저장 개수 | SHA256 |
+|---|---|---:|---|
+| 베른_처음입장컷신_20261004_160635_209_frame192_43604_0.json | 1~192 | 192 | f0d61a0cbd142084d2e619e091f62a997af32261722cd9b8de6595e707862972 |
+| 베른_두번째입장컷신_20261004_160747_660_frame391_43604_1.json | 193~391 | 199 | f74e80da2d7cd4013e865e38120279b5c6c0b2a1b43615908b8f4e1e05e51b1f |
+
+두 파일 모두 수집한 보관 구간 전체가 저장됐으며 제외·퇴출·CPU/GPU scope 누락·GPU pending은0이다.
+두 번째 파일명의391은 마지막 frame 번호이며 저장 개수는199다. 첫 캡처에1,000ms 이상 interval이
+3개 있고 최대1,284.568ms다. 두 번째 최대 interval은318.672ms다. interval N의 원인 CPU는
+N-1에 대응시켰고 reset 직후 interval0인 frame1·193은 이 대응에서 제외했다.
+
+전체 평균은 컷신 뒤 구간 길이가 달라 주된 비교로 사용하지 않았다. draw가10,000회 이상인
+비슷한 제출량 구간을 나누면 다음과 같다. frame별 정확한 카메라 pose/mesh 집합 동치는 아니다.
+
+| frame당 평균 | 첫 재생12 frame | 두 번째11 frame |
+|---|---:|---:|
+| Engine draw 호출 | 10,768.92 | 10,689.36 |
+| mapVisibleInstances | 20,045.33 | 19,775.82 |
+| 제출된 고유 CMesh 객체 | 1,149.75 | 1,160.82 |
+| 제출 index 수 | 26,149,564 | 26,096,871 |
+| CPU 작업 시간 | 827.122ms | 287.503ms |
+| Client.Render inclusive | 643.140ms | 269.056ms |
+| Client.Update inclusive | 177.184ms | 15.749ms |
+
+두 번째 heavy 구간의 Map.Batch.Draw는129.053ms/9,165호출, Material30.778ms,
+Pass28.017ms다. 이들은 Batch.Render 내부 구간이며 Render 전체와 중복 합산하지 않는다.
+같은 맵 제출 과정의 반복 비용이 남아 있다는 근거이고 Draw scope 자체도 driver/API 지연을
+포함하므로 순수 GPU triangle 처리 시간으로 해석하지 않는다.
+
+두 번째의 draw2,000회 미만55 frame은 평균837.07회, CPU43.789ms와 Render31.124ms다.
+재생을 반복해도 많은 맵을 제출하는 구간에서 긴 렌더 비용이 남는다. 반면 draw·가시 instance·
+batch render 호출·batch draw 호출 각각2% 이내인 독립1:1 유사 부하29쌍에서는 모두 두 번째가
+빠르다(CPU 평균608.937→265.198ms). 따라서 물량이 주요 비용 축이라는 근거와 최초 재생에
+추가 비용이 있었다는 근거를 함께 기록한다. 첫 추가 비용의 원인을 cache/driver/할당으로
+확정하거나 모든 지연을 geometry 수 하나로 설명하지 않는다.
+
+첫 캡처에는 worker의 Texture.Load.FileAndUpload83회와 texture requests161/new SRV89개가
+있고 두 번째에는 texture requests/new SRV가0이다. 첫 추가 비용 구간에서 비동기 리소스
+준비가 함께 진행됐다는 근거는 있다. worker 구간 합은 여러 frame에 걸친 병렬 elapsed이므로
+main CPU 시간에 더하거나 두 재생 차이의 전부로 귀속하지 않는다. 두 캡처의 주 스레드 shader
+생성 scope는0이므로 첫 지연을 shader compile로 단정하지 않는다.
+
+mapVisibleInstances는 제출 대상으로 인정한 맵 instance 수이며 고유 mesh 수나 최종 화면의
+픽셀 기여 수가 아니다. draw는 여러 pass·instance 제출을 포함하고 triangle 수도 아니다.
+고유 CMesh 개수 counter는 상세 OFF에서도 별도로 집계되며 누락0이다. 반면 두 캡처의 개별
+meshDraws 기록은0개이므로 구체적인 asset별 비용 순위나 같은 mesh 집합 여부는 알 수 없다.
+GPU timestamp 경과에는 CPU 제출 지연이 포함될 수 있어 긴 GPU 시간만으로 GPU 연산 포화나
+정점·픽셀 중 어느 쪽의 한계인지 단정하지 않는다. CPU 부모·자식 scope도 합산하지 않는다.
+
+export 당시 metadata는 두 파일이 동일하다(Debug, D3D debug layer ON,1920×1080,
+RTX4070, frame limiter OFF). 이것은 과거 모든 frame의 camera·옵션 동일성을 증명하지 않는다.
+실제 GPU pipeline의 heavy 평균 IA vertices는26.158→26.114백만, PS 호출은25.607→27.944백만이다.
+두 번째가 비슷한 정점과 더 많은 PS 호출을 처리하면서도 빨라졌으므로 호출 수만으로 첫 지연을
+모두 설명하지 않는다. 저장된 메모리 표본의 local 사용량/budget 최대 비율은46.791%/46.908%로
+budget 초과 증거가 없다. 1Hz 표본은 순간 peak나 driver 내부 paging 유무를 확정하지 않는다.
+이번 작업은 사용자 측정의 분석이며 제품 코드·카메라 속도·FOV·렌더링 옵션을 변경하거나
+Client를 실행하지 않았다. 다음 최적화는 많은 맵 draw와 반복되는 제출/재질 처리 비용을
+우선 검토하며 화면을 가리는 대상의 기여나 병합 가능성을 별도 검증해야 한다.
+
+재현 스크립트와 전체 집계는 `out/BernEntranceReplayComparison20261004/independent/analyze.py`,
+`summary.json`, `first-frames.json`, `second-frames.json`에 보존했다.
+
+## G15. 거리별 geometry LOD와 texture mip의 실제 적용 범위
+
+사용자는 멀리 있는 물체의 삼각형을 줄이는 LOD를 다음 해결 방향으로 제안했다.
+현재 CStaticMeshLod는 asset 준비 때 감소 index를 생성하고, 렌더 때 거리·투영·화면 오차로
+선택한다. LOD 자체가 없는 구현은 아니지만 이번 두 캡처에서 실제 감소량은 매우 작다.
+heavy 구간의 LOD 계측 대상 source 대비 submitted index 감소율은 첫0.843%, 두 번째0.837%다.
+이 분모는 screenLod가 전달된 admitted instanced draw만 포함하며 전체 렌더 index가 아니다.
+counter0인 frame을 모든 mesh가 LOD0로 선택됐다는 뜻으로 해석하지 않는다.
+
+현재 생성은24,576~3,145,728 indices와 최대1,048,576 vertices 범위로 제한한다.
+원본 정점·UV0~2·normal/tangent/binormal·color0의 오차와 경계를 보존하며, 줄일 수 없으면
+원본을 유지한다. 거리 임계값만 전역으로 완화하기 전에 생성 여부·재질 허용 여부·화면 오차
+조건 때문에 감소하지 않는 실제 대상을 분리해야 한다.
+
+09-22 RESULT에는 draw마다 compute dispatch/UAV/indirect로 LOD를 선택하던 비용을 CPU 선택과
+direct instanced draw로 바꾼 기록이 있다. 작은 fixture의 기존 compute LOD는 LOD0보다 느렸다.
+09-24 RESULT에는 생성 LOD가 없는 batch도 매 visibility 갱신에서 tight view envelope를
+계산하던 불필요 비용을 제거한 기록이 있다. 이는 LOD 알고리즘의 선택·준비 비용도 함께
+측정해야 한다는 근거이며 사용자에게 보인 모든 이전 회귀 원인을 확정한 것은 아니다.
+
+texture mip은 geometry LOD와 별도다. 오늘 설치된 Bern 조명 RNM4,618개·32,214 native mip은
+복원 기록과 실제 DirectXTK 전체 mip 업로드 검증이 있다. 현재 RNM1024²/11단, RNM4²/3단,
+shadow256²/9단 표본의 전체 SHA도 설치 receipt와 일치한다. 반면 일반 표면 텍스처인
+`MAP_D3C64DE8FC0C_BG_BER_BERNCASTLE_FLOOR06_SM_KSR/textures/lv_common_grass_24_d.dds`는
+1024² DXT5, 유효 mip1단이다. 조명 복원을 모든 표면 텍스처의 복원 완료로 확대하지 않는다.
+현재 source lightmap의 mip-linear Sample, bank의 SampleGrad와 surface anisotropic sampler는
+하위 mip 선택을 허용한다. 개별 과거 frame이 실제 어느 mip을 샘플했는지는 이 캡처에 없다.
+
+따라서 후속 방향은 화면에서 작게 보이는 원거리 대상의 geometry LOD 적용 범위를 늘리고,
+하위 mip이 없는 실제 표면 리소스를 보완하는 것이다. 삼각형 감소만으로 두 번째 heavy의
+Map.Batch.Draw129ms나 수천 번 재질 제출이 모두 사라지는 것은 아니므로 draw 병합·가시성
+제거와 구분해 성과를 측정한다. 기존 CPU 선택과 불변 감소 geometry를 재사용하고, 제한된
+대상에서 index·draw·CPU·GPU 시간과 사용자 실루엣/전환/재질 판정을 함께 확인한다.
+이번 답변에서는 LOD 정책·리소스·옵션을 변경하지 않았다.
+
+현재 mip 실측은 `out/BernEntranceReplayComparison20261004/code-audit/mip-sample-evidence.json`,
+초회 추가 비용은 `first-cost/conclusions.json`에 보존했다. 과거 구현 근거는
+`09-22/2026-09-22_BERN_RELEASE_PROFILER_OPTIMIZATION_RESULT.md`와
+`09-24/2026-09-24_RELEASE_CHARACTER_SELECT_PRELOAD_RESULT.md`다.
+
+## G16. 카메라 표현 오차로 빠지던 CPU LOD 적용 복구
+
+기존 Bern cue의10,568개 pose를 실제 sampler/inverse로 재현하면3,012개(28.50%)가
+view._44의 정확한1 비교 때문에 LOD를 거절했다. 최대 차이는1.5 float epsilon이다.
+camera snapshot에서 LOD 전용 view/보수 scale을 한 번 준비하고 두 LOD 소비자가 공유하도록
+수정했다. 원본 GPU view/projection·frustum plane은 byte 그대로 보존하며 실제 projective/
+비유한 행렬은 여전히 source LOD로 돌아간다.0.25px 기준과 기존 CPU 선택을 유지했다.
+
+실제 함수 검증에서 위 pose의 해당 거절은0이 됐다. 원본 homogeneous transform으로 구한
+253,632개 구 표면 표본의 envelope 포함, revision cache, invalid/near 경계도 통과했다.
+실제 게임 캡처에는 과거 행렬이 없으므로28.50%를 실제 저장 frame의 누락률로 확대하지 않는다.
+근거는 `out/BernLodDrawExpansion20261004/actual-affine/review-receipt.json`이다.
+
+작은 메시 생성 하한을6,144로 내리는 후보도 실제 Loader0.01 pre-transform·설치68개
+opaque submesh로 측정했다. 새51개 중3개만 감소했고 추가 준비 CPU 중앙값 합은
+Release241.60ms/Debug681.17ms, 추가 immutable index buffer550,392B였다.
+총21,702indices 감소는 배치/거리별 실제 화면 이득이 아니다. 생성 하한24,576은 유지했다.
+기존 생성 메시의 실제 query/Render_Instanced 선택은18개 거리/실패 사례에서 일치했다.
+근거는 `out/BernLodExpansion20261004/{final-generation-decision,selection-receipt}.json`이다.
+
+## G17. 작은 조명 묶음과 같은 LOD의 draw 병합
+
+같은 CMesh·비조명 재질·pass/profile·카메라 revision·선택 LOD를 가진 인접2~3개 배치를
+3slot/9SRV 전용 pass30~32로 합친다.4~8개는 기존8slot/24SRV pass27~29를 유지한다.
+다른 LOD와 다른 객체는 순서 경계이며 검색으로 뛰어넘지 않는다. 일반 draw에는 bank SRV를
+추가하지 않는다. 복사본의 bank index 외224B instance payload·wind·lighting 입력을 보존한다.
+
+설치 Bern의 가시 authored 후보 기준으로 최소4개 정책의1,103개 draw 절감 후보가 최소2개
+정책에서2,153개가 된다. 추가1,050개는 실제 카메라의 draw 절감량이나 FPS가 아니다.
+RTX4070의 staging/Map/Unmap 포함 작은 제출 fixture 중앙값은2개36.183→27.555us,
+3개46.247→23.116us다. 전체 material admission이나 게임 frame 비용은 이 측정에 없다.
+
+실제 Client banking/upload 함수80검사와 CMaterial compatibility/bind251검사는 통과했다.
+같은/다른 LOD, 순서, stale camera,2/3/4/8개, 실패 전 fallback과 제출 후 중복 draw 방지,
+bank 폭 전환과 setter 실패 시 disabled 상태를 확인했다. Debug/Release 설치 CSO 각각
+256개 GPU 비교에서8MRT가 기존 ordinary와 bitwise 같고 D3D error/warning은0이다.
+두 CSO SHA는 `fa64a095c0a62d2072b897f9193b5b0352bcbd727b631469320829195b23739e`다.
+근거는 `out/BernLodDrawExpansion20261004/bank/`의 contract 결과와
+`product-debug`, `product-release`의 input-receipt/gpu-parity다.
+
+## G18. 실제 mip 품질 연결과 빌드별 기본값
+
+작업 트리에 완료돼 있던 환경설정의 표면 sampler 연결을 필수 소비자로 검토해 함께 반영했다.
+관련 Shader/Renderer/UserSettings와 하네스 변경만 포함하며 다른 세션의 HorizonAO/SSR와
+Workbench 변경은 커밋 범위에서 제외했다. 별도 구현·기존 검증은
+[텍스처 mip 품질 결과](2026-10-04_SYSTEM_OPTION_TEXTURE_MIP_QUALITY_RESULT.md)를 따른다.
+
+이번 추가는 Debug 하(3), Release 최상(0)의 단일 기본값 함수다. 초기 로드의 missing fallback과
+실제 UI seed·Reset이 같은 함수를 사용한다. 기존 명시 저장0~3과 다른 렌더링 옵션은 보존한다.
+현재 개인 저장은0이므로 빌드 교체만으로 하가 되지 않으며 환경설정에서 하를 선택해 비교한다.
+최상0은 원본 sampler와 자동 mip 선택을 허용한다는 뜻이며 모든 표면을 항상 mip0로 읽지 않는다.
+
+실제 UserSettings/JSON/Win32 저장과 UI Effective_Default 본문을 사용하는 하네스는
+Debug/Release 각각134검사를 통과했다. 병렬 최초 실행은 제품의 공유 save mutex 때문에
+Debug 저장 검사가 실패해 로그를 보존했고, 직렬 Debug 재실행으로 통과했다. 개인 설정 파일은
+변경하지 않았다. 최종 Debug Engine.dll의 화면 없는 probe도16fixtures·sampler795·실제
+샘플400·clone160·제외상태420검사와 잘못된 품질 거부를 통과했다.
+근거는 `out/BernLodDrawExpansion20261004/mip-default/validation-receipt.json`과
+`out/BernTextureMipQualityProbe20261004/probe-result.json`이다.
+
+정상 Product 증분 compile/deploy는 Debug148,611ms, Release145,724ms에 PASS했다.
+영수증은 `out/BuildPipeline/runs/20261004T080415156Z-debug-product.json`과
+`20261004T080819210Z-release-product.json`이다. 공유 작업 트리의 별도 미커밋 렌더링 변경도
+빌드에 포함돼 있으며 이 기능의 commit 범위와 구분한다. Client/UI를 실행하지 않았고 실제
+베른·발탄 FPS와 전환 외형 확인은 사용자 재캡처가 남아 있다.60FPS 달성을 주장하지 않는다.
+
+## G19. 실제 typed 재질의 mip 입력 재대조
+
+G15의 단일 grass24 DDS는 WModel fallback 복사본이다. 현재 typed BG 재질581행은
+SourceMaterials의11단 DDS를 사용하고 Landscape42행은 NativeLayers의11단 DDS를 사용한다.
+따라서 fallback 표본을 실제 베른 잔디의 mip 부재로 확대하지 않는다. 원본 재회수 대조에서
+BG 입력의 mip0는 native와 같지만 하위10단은 다르고, Landscape 입력은11단 모두 같다.
+단계 부재와 프로젝트 생성 단계의 원본 복원은 서로 다른 작업이다.
+
+현재 runtime mapmaterials가 참조하는 비조명 DDS 기준 베른1,580개 중 단일11개,
+발탄434개 중 단일424개를 확인했다. 원본 source object와 대응시킨 실제 복원·설치 결과는
+별도 [표면 mip 복원 계획](2026-10-04_MAP_SURFACE_NATIVE_MIP_RESTORATION_IMPLEMENTATION_PLAN.md)
+및 그 대응 RESULT에서 관리한다. 이 inventory만으로 모든 단일 파일의 native 누락이나
+개별 mip의 FPS 병목 비중을 확정하지 않는다.
+
+## G20. 다음 캡처의 실효 mip 옵션 기록
+
+ProfilerTool의 기존 renderingOptions context에 `Texture.minimumMip`을 추가했다.
+renderer가 실제 소비하는 값0~3을 기록하며 기존 generic JSON writer/reader와 비교 경로를
+사용한다. 저장 시점 context이므로 과거 모든 frame의 실제 sample mip이나 texture별
+residency를 기록했다고 설명하지 않는다. frame 보관/저장 범위와 schema는 그대로다.
+최종 Debug Product 증분 compile/deploy는 PASS했으며 영수증은
+`out/BuildPipeline/runs/20261004T082217929Z-debug-product.json`이다.
+Client/UI를 실행하지 않아 새 사용자 캡처의 값 확인은 남아 있다.

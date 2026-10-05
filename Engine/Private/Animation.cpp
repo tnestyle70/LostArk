@@ -5,6 +5,7 @@
 #pragma pop_macro("new")
 #include "Profiler.h"
 #include "GameInstance.h"
+#include "Engine_RenderTypes.h"
 #include "BinaryAsset/ModelAssetData.h"
 #include "Channel.h"
 #include "Bone.h"
@@ -176,12 +177,15 @@ bool_t CAnimation::Update_TransformationMatrix(f32_t fTimeDelta, const vector<sh
 	if (m_SeparateTrackIndices.size() != m_iNumChannels)
 		m_SeparateTrackIndices.resize(m_iNumChannels);
 
-    if (m_pSampleReuse)
+    CProfiler* const sampleProfiler = m_pSampleReuse ? CGameInstance::Get().Get_Profiler() : nullptr;
+    if (sampleProfiler) sampleProfiler->Add_Counter(EProfilerCounter::AnimationSampleRequests);
+    if (m_pSampleReuse && CGameInstance::Get().Get_RenderOptimizationSettings().NpcPoseReuseEnabled)
     {
         const std::lock_guard sampleLock(m_pSampleReuse->mutex);
         if (m_pSampleReuse->valid && m_pSampleReuse->trackPosition == m_fCurrentTrackPosition)
         {
             Engine::CProfilerScope reuseScope(CGameInstance::Get().Get_Profiler(), "Animation.Channels.Reuse");
+            if (sampleProfiler) sampleProfiler->Add_Counter(EProfilerCounter::AnimationSampleReuseHits);
             for (uint32_t i = 0; i < m_iNumChannels; ++i)
                 Bones[m_Channels[i]->m_iBoneIndex]->Update_TransformationMatrix(
                     XMLoadFloat4x4(&m_pSampleReuse->localTransforms[i]));

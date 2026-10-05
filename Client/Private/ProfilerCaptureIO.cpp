@@ -106,6 +106,29 @@ namespace
             "mapBatchUploadBytes", "npcAuthoredHiddenUpdates", "ambientUnboundedUpdates",
             "npcCullingCandidates", "npcCulled", "npcDeferredPoseEvaluations",
             "meshDrawCalls", "meshInstances", "meshIndices", "uniqueMeshes", "droppedMeshSamples",
+            "effectAmbientClampedUpdates", "effectAmbientDiscardedMicroseconds",
+            "effectAmbientFixedSteps", "effectAmbientMaxFixedSteps",
+            "mapChunkCount", "mapChunkNearDraws", "mapChunkFarDraws", "mapChunkSourceDraws",
+            "mapChunkSubmittedIndices", "mapChunkOriginalIndices", "mapChunkGpuBytes", "mapChunkInvalidations",
+            "mapChunkEnabledCount", "mapChunkHlodEnabledCount",
+            "mapIdenticalInstanceSourceDraws", "mapIdenticalInstanceDraws",
+            "mapLightingBankSourceDraws", "mapLightingBankDraws",
+            "mapOcclusionCandidates",
+            "mapOcclusionTested",
+            "mapOcclusionRejectedBatches",
+            "mapOcclusionSourceDraws",
+            "mapOcclusionRejectedIndices",
+            "mapOcclusionOccluders",
+            "mapOcclusionRasterizedTriangles",
+            "mapDistanceTestedInstances",
+            "mapDistanceRejectedInstances",
+            "mapDistanceRejectedIndices",
+            "mapOcclusionCacheHits",
+            "mapVisibilityPreparedBatches", "mapVisibilityCpuJobs", "mapVisibilityCallerJobs",
+            "mapVisibilityWorkerJobs", "mapVisibilityAssistants",
+            "animationSampleRequests", "animationSampleReuseHits",
+            "effectParticleRootInverseRequests", "effectParticleRootInverseReuseHits",
+            "effectParticleCallerJobs", "effectParticleWorkerJobs", "effectParticleAssistants",
 	};
     static_assert(CounterNames.size() == static_cast<size_t>(Engine::EProfilerCounter::Count),
         "Every profiler counter must have exactly one JSON key.");
@@ -256,6 +279,7 @@ namespace
     {
         stream << "  \"measurementSemantics\": {\n"
             << "    \"drawCoverage\": \"CPU-issued draw submissions through instrumented Engine VIBuffer and CMesh paths; excludes DirectXTK internal draws and separately counted ImGui draws. Submission does not prove final pixel visibility.\",\n"
+            << "    \"ambientCatchup\": \"Only admitted offscreen-pausable level-owned ambient loops use a 0.1s visual-delta limit after playback rate. effectAmbientClampedUpdates counts limited visible advances; effectAmbientDiscardedMicroseconds sums omitted visual time over effects, not frame wall time or saved CPU time. effectAmbientFixedSteps and effectAmbientMaxFixedSteps count committed 1/60 steps from integer simulation-step deltas, excluding initial Seek and hidden updates. They remain available when raw CPU scopes drop. Invalid input contributes no omitted-time sample.\",\n"
             << "    \"instances\": \"Instances counts instanced Engine submissions only; meshInstances also counts one instance for a non-instanced CMesh draw.\",\n"
             << "    \"indices\": \"Indices includes instance multiplication. indirectDrawCalls and indirectIndexUpperBound are reserved fields with no current producer, so zero is unmeasured. An upper bound must never be treated as exact submitted indices.\",\n"
             << "    \"uniqueMeshes\": \"Distinct CMesh objects submitted in one frame, including shared geometry counted once; not asset IDs, scene objects or visible meshes. Internal addresses are not exported. droppedMeshSamples counts omitted distinct-key attempts; uniqueMeshes is then a lower bound.\",\n"

@@ -35,6 +35,8 @@
 #include "MapNavigationContract.h"
 #include "MapPlacementRuntime.h"
 #include "MapStaticBatchObject.h"
+#include "MapStaticChunkObject.h"
+#include <array>
 #include "WorldSequencePlayer.h"
 #include "WorldSequenceObject.h"
 #include "Navigation.h"
@@ -1380,6 +1382,16 @@ HRESULT CLoader::Ready_MapAuthoringCore(const uint32_t iLevelIndex)
 	{
 		return E_FAIL;
 	}
+
+    std::array<D3D11_INPUT_ELEMENT_DESC, VTXMESH::iNumElements + 1u> chunkElements{};
+    std::copy(std::begin(VTXMESH::Elements), std::end(VTXMESH::Elements), chunkElements.begin());
+    chunkElements.back() = { "SOURCEINDEX", 0, DXGI_FORMAT_R32_UINT, 1, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 };
+    if (FAILED(CGameInstance::Get().Add_Prototype(iLevelIndex, CMapStaticChunkObject::ShaderTag,
+        CShader::Create(m_pDevice, m_pContext, TEXT("../Bin/ShaderFiles/Shader_VtxMeshMapChunk.hlsl"),
+            chunkElements.data(), static_cast<uint32_t>(chunkElements.size())))) ||
+        FAILED(CGameInstance::Get().Add_Prototype(iLevelIndex, CMapStaticChunkObject::PrototypeTag,
+            CMapStaticChunkObject::Create(m_pDevice, m_pContext)))) return E_FAIL;
+
 
 	Set_Status(TEXT("Map: editor core prototypes"));
 	if (FAILED(CGameInstance::Get().Add_Prototype(

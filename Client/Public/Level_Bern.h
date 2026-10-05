@@ -18,6 +18,9 @@
 #include "WorldPlayerChatBubbleView.h"
 #include "WorldPlayerNameplateView.h"
 
+#include <chrono>
+#include <optional>
+
 NS_BEGIN(Engine)
 class CTransform;
 NS_END
@@ -91,6 +94,9 @@ public:
 		std::string& outStatus);
 #ifdef _DEBUG
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
+	bool_t Request_DebugEntranceReplay();
+	const std::string& Get_DebugEntranceReplayStatus() const
+	{ return m_strDebugEntranceReplayStatus; }
 	/* Map Tool borrows this level's live map the same way the Kouku and Valtan
 	   arenas lend theirs. The level keeps ownership; the tool only edits the
 	   placements in place. */
@@ -236,6 +242,8 @@ private:
 	void End_EntranceCinematic();
 
 #ifdef _DEBUG
+	bool_t Can_DebugEntranceReplay(std::string& outStatus) const;
+	void Consume_DebugEntranceReplay();
 	bool_t Ready_DebugLevelChangeTriggers(const std::string& areaId);
 	/* O opens m_ValtanEntryView without walking to the guide NPC first --
 	   debug-only shortcut for iterating on ValtanRaidEntry_Layout.json's visual
@@ -277,7 +285,7 @@ private:
 	updating so the closing connection is not reported as a loss. */
 	bool_t m_bReturningToCharacterSelect = false;
 	bool_t m_bCharacterRestoreSent = false;
-	f32_t m_fCharacterRestoreElapsed = 0.f;
+	std::optional<std::chrono::steady_clock::time_point> m_CharacterRestoreStarted;
 	std::vector<REPLICATED_PLAYER_VIEW> m_NameplatePlayers;
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
 	CPartyInteractionView m_PartyInteraction;
@@ -351,6 +359,9 @@ private:
 	weak_ptr<CTransform> m_pEntranceRestoreTarget;
 
 #ifdef _DEBUG
+	bool_t m_bDebugEntranceReplayRequested = false;
+	bool_t m_bDebugEntranceReplayActive = false;
+	std::string m_strDebugEntranceReplayStatus;
 	std::vector<shared_ptr<CTrigger_Box>> m_DebugLevelChangeTriggers;
 	bool_t m_bMapAuthoringActive = false;
 	bool_t m_wasODownForValtanEntryDebugPreview = false;

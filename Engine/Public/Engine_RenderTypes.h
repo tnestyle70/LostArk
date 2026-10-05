@@ -13,6 +13,22 @@
 
 namespace Engine
 {
+    // Transient benchmark controls. They select equivalent runtime work paths,
+    // never change authored quality, immutable asset preparation or gameplay.
+    struct RENDER_OPTIMIZATION_SETTINGS final
+    {
+        bool_t FrustumEnabled = true, MeshLodEnabled = true, MapInstancingEnabled = true;
+        bool_t IdenticalBatchEnabled = true, LightingBankEnabled = true, StaticShadowCacheEnabled = true;
+        bool_t NpcPoseReuseEnabled = true, ParticleRootCacheEnabled = true, ParticleWorkersEnabled = true;
+        uint64_t Revision = 1u;
+    };
+    // Session-only structural visibility controls; never overwrite authored render quality.
+    struct MAP_VISIBILITY_SETTINGS final
+    {
+        bool_t OcclusionEnabled = true, DistanceEnabled = true, ParallelPreparationEnabled = false;
+        f32_t DistanceScale = 1.f, DistanceMaxPixels = 24.f;
+        uint64_t Revision = 1u;
+    };
 	// The renderer owns the active scene cube; a staged value retains its SRV
 	// without changing current lighting until the profile transaction commits.
 	struct RENDER_ENVIRONMENT_STATE final
@@ -141,6 +157,12 @@ namespace Engine
         uint32_t iSSRStepCount = 32u;
         // Opt-in half-resolution SSGI gather; false retains the original path.
         bool_t bSSGIHalfResolution = false;
+		// User texture detail: finest permitted surface mip, 0..3. Zero preserves source samplers.
+		uint32_t iTextureMinMip = 0u;
+        // Opt-in session methods; defaults preserve the authored render path.
+        bool_t bHorizonAOEnabled = false;
+        bool_t bSSRRefinementEnabled = false;
+        bool_t bSSRRoughnessFilterEnabled = false;
 	}RENDER_QUALITY_SETTINGS;
 
 	enum class MATERIAL_DEBUG_VIEW : uint32_t

@@ -366,6 +366,9 @@
     <ClInclude Include="..\Public\MouseButtonReleaseGate.h">
       <Filter>01.System\01.Device\Input</Filter>
     </ClInclude>
+    <ClInclude Include="..\private\Model_StaticCluster.inl">
+      <Filter>02.Utility\04.Component\Model</Filter>
+    </ClInclude>
     <ClInclude Include="..\public\Model.h">
       <Filter>02.Utility\04.Component\Model</Filter>
     </ClInclude>
@@ -775,6 +778,13 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Private\Model_StaticProxy.inl"><Filter>02.Utility\04.Component\Model</Filter></ClInclude>
+    <ClInclude Include="..\ThirdPartyLib\xatlas\xatlas.h"><Filter>04. External</Filter></ClInclude>
+    <ClCompile Include="..\ThirdPartyLib\xatlas\xatlas.cpp"><Filter>04. External</Filter></ClCompile>
+    <None Include="..\ThirdPartyLib\xatlas\LICENSE.md"><Filter>04. External</Filter></None>
+    <None Include="..\ThirdPartyLib\xatlas\README.md"><Filter>04. External</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
     <ClInclude Include="..\Public\MeshLod.h">
       <Filter>02.Utility\04.Component\Model\Mesh</Filter>
     </ClInclude>
@@ -1072,5 +1082,20 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup576.hlsl">
       <Filter>03.ShaderFiles\01.Deferred\SourcePrograms</Filter>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Public\CpuJobPool.h"><Filter>02.Utility</Filter></ClInclude>
+    <ClCompile Include="..\Private\CpuJobPool.cpp"><Filter>02.Utility</Filter></ClCompile>
+    <ClInclude Include="..\Public\OcclusionCuller.h"><Filter>02.Utility\03.Renderer</Filter></ClInclude>
+    <ClCompile Include="..\Private\OcclusionCuller.cpp"><Filter>02.Utility\03.Renderer</Filter></ClCompile>
+    <ClInclude Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCulling.h"><Filter>04. External</Filter></ClInclude>
+    <ClInclude Include="..\ThirdPartyLib\MaskedOcclusionCulling\CompilerSpecific.inl"><Filter>04. External</Filter></ClInclude>
+    <ClInclude Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCullingCommon.inl"><Filter>04. External</Filter></ClInclude>
+    <ClCompile Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCulling.cpp"><Filter>04. External</Filter></ClCompile>
+    <ClCompile Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCullingAVX2.cpp"><Filter>04. External</Filter></ClCompile>
+    <ClCompile Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCullingAVX512.cpp"><Filter>04. External</Filter></ClCompile>
+    <None Include="..\ThirdPartyLib\MaskedOcclusionCulling\README.md"><Filter>04. External</Filter></None>
+    <None Include="..\ThirdPartyLib\MaskedOcclusionCulling\UPSTREAM_README.md"><Filter>04. External</Filter></None>
+    <None Include="..\ThirdPartyLib\MaskedOcclusionCulling\license.txt"><Filter>04. External</Filter></None>
   </ItemGroup>
 </Project>

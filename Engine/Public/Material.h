@@ -29,9 +29,14 @@ public:
 	HRESULT Bind_SourceSpecialSurface(shared_ptr<class CShader> shader);
     HRESULT Bind_SourceLandscapeSurface(shared_ptr<class CShader> shader);
 	HRESULT Bind_SurfaceLighting(shared_ptr<class CShader> pShader);
-    bool_t Can_BatchStaticLightingWith(const CMaterial& other) const;
+    bool_t Can_BatchStaticLightingWith(const CMaterial& other, bool_t staticCluster = false) const;
+    bool_t Has_SameStaticLightingTextures(const CMaterial& other) const;
+    bool_t Can_BakeStaticProxy() const;
+    bool_t Validate_StaticProxySourceFiles() const;
+    std::span<const filesystem::path> Get_StaticProxySourcePaths() const
+    { return m_StaticProxySourcePaths; }
     HRESULT Bind_StaticLightingBank(const shared_ptr<class CShader>& shader,
-        std::span<const CMaterial* const> materials) const;
+        std::span<const CMaterial* const> materials, bool_t staticCluster = false) const;
     HRESULT Bind_StaticShadow(shared_ptr<class CShader> shader);
     HRESULT Bind_SourceCharacter(shared_ptr<class CShader> shader);
     // Light constants and textures for a forward pass that also runs the base program.
@@ -103,6 +108,15 @@ private:
 
     // The cache holds weak references; material lifetime owns GPU texture data.
     vector<shared_ptr<ComPtr<ID3D11ShaderResourceView>>> m_SharedTextureViews;
+    // Immutable source dependencies for derived static material atlas cache keys.
+    vector<filesystem::path> m_StaticProxySourcePaths;
+    struct STATIC_PROXY_FILE_STAMP final
+    {
+        uintmax_t size = 0u;
+        filesystem::file_time_type modified{};
+        bool valid = false;
+    };
+    vector<STATIC_PROXY_FILE_STAMP> m_StaticProxySourceStamps;
 	vector<ComPtr<ID3D11ShaderResourceView>>	m_Textures[AI_TEXTURE_TYPE_MAX];
 	/* Sparse: only the slots the creation screen actually repainted. */
 	unordered_map<uint32_t, ComPtr<ID3D11ShaderResourceView>> m_TextureOverrides;

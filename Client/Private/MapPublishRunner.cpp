@@ -39,7 +39,8 @@ bool_t CMapPublishRunner::Start(
 		return false;
 	}
 	if (!IsPublisherAreaId(areaId) ||
-		("Area" != scope && "WorldSequences" != scope && "Lights" != scope))
+		("Area" != scope && "WorldSequences" != scope && "Lights" != scope &&
+			"Placements" != scope))
 	{
 		outStatus = "Publish rejected: invalid Area id or scope.";
 		return false;

@@ -18,6 +18,7 @@
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
+#include <tuple>
 
 namespace
 {
@@ -108,6 +109,8 @@ bool_t CMapPlacementRuntime::Load_Area(
 
 	std::vector<MAP_RUNTIME_PLACED_ENTRY> stagedPlacements;
 	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY> stagedBatches;
+	auto stagedFrame = levelIndex == ETOUI(LEVEL::BERN) ?
+		std::make_shared<MAP_STATIC_BATCH_FRAME_STATE>() : nullptr;
 	CMapAssetRenderUtils::Begin_FrustumDiagnostics(
 		areaId, loadScope.frustumCulling);
 	if (!Stage_PlacementRuntime(
@@ -116,7 +119,7 @@ bool_t CMapPlacementRuntime::Load_Area(
 		document,
 		stagedPlacements,
 		stagedBatches,
-		loadScope.frustumCulling, &m_Status))
+		loadScope.frustumCulling, &m_Status, levelIndex == ETOUI(LEVEL::BERN), stagedFrame))
 	{
 		Remove_PlacementRuntime(
 			levelIndex, stagedPlacements, stagedBatches);
@@ -124,12 +127,37 @@ bool_t CMapPlacementRuntime::Load_Area(
 		return false;
 	}
 
+    std::vector<std::shared_ptr<CMapStaticChunkObject>> stagedChunks;
+    auto stagedPolicy = std::make_shared<MAP_CHUNK_POLICY>();
+    MAP_CHUNK_BUILD_STATS stagedChunkStats{};
+    if (levelIndex == ETOUI(LEVEL::BERN))
+    {
+        try
+        {
+            std::vector<std::shared_ptr<CMapStaticBatchObject>> batches;
+            batches.reserve(stagedBatches.size());
+            for (const auto& entry : stagedBatches) batches.push_back(entry.object);
+            CMapStaticChunkObject::Stage_Proxy(levelIndex, batches, loadScope.frustumCulling,
+                stagedPolicy, stagedChunks, stagedChunkStats);
+        }
+        catch (const std::exception&)
+        {
+            CMapStaticChunkObject::Remove(levelIndex, stagedChunks);
+            stagedChunkStats = {};
+            OutputDebugStringA("[MapChunk] Preparation failed; original batches retained.\n");
+        }
+    }
 	Clear();
 	m_iLevelIndex = levelIndex;
 	m_FrustumCulling = loadScope.frustumCulling;
 	m_Catalog = std::move(stagedCatalog);
 	m_Placements = std::move(stagedPlacements);
 	m_StaticBatches = std::move(stagedBatches);
+	m_StaticBatchFrame = std::move(stagedFrame);
+	m_bStaticBatchCountersDirty = true;
+    m_StaticChunks = std::move(stagedChunks);
+    m_ChunkPolicy = std::move(stagedPolicy);
+    m_ChunkBuildStats = stagedChunkStats;
 
 	const size_t fallbackCount = static_cast<size_t>(std::count_if(
 		m_Placements.begin(), m_Placements.end(),
@@ -268,6 +296,15 @@ bool_t CMapPlacementRuntime::Try_GetCachedLoadStage(
 }
 
 #ifdef _DEBUG
+std::vector<MAP_CHUNK_DEBUG_ROW> CMapPlacementRuntime::Get_ChunkDebugRows() const
+{
+    std::vector<MAP_CHUNK_DEBUG_ROW> rows;
+    rows.reserve(m_StaticChunks.size());
+    for (size_t i = 0u; i < m_StaticChunks.size(); ++i)
+        rows.push_back(m_StaticChunks[i]->Get_DebugRow(static_cast<uint32_t>(i + 1u)));
+    return rows;
+}
+
 bool_t CMapPlacementRuntime::Try_PickInspectionSurface(const float3_t& rayOrigin,
     const float3_t& rayDirection, MAP_WORLD_MESH_PICK& outSelection) const
 {
@@ -325,8 +362,39 @@ bool_t CMapPlacementRuntime::Try_PickInspectionSurface(const float3_t& rayOrigin
 }
 #endif
 
+void CMapPlacementRuntime::Advance_StaticBatchFrame(const f32_t fTimeDelta)
+{
+	if (!m_StaticBatchFrame)
+		return;
+	m_StaticBatchFrame->elapsedTime += fTimeDelta;
+	++m_StaticBatchFrame->frameNumber;
+
+	if (m_bStaticBatchCountersDirty)
+	{
+		m_iSharedStaticBatchCount = 0u;
+		m_iSharedStaticPlacementCount = 0u;
+		for (const auto& entry : m_StaticBatches)
+		{
+			// Authoring Reload may replace these with ordinary self-ticking batches.
+			if (!entry.object || entry.object->m_FrameState != m_StaticBatchFrame)
+				continue;
+			++m_iSharedStaticBatchCount;
+			m_iSharedStaticPlacementCount += entry.object->m_Instances.size();
+		}
+		m_bStaticBatchCountersDirty = false;
+	}
+	if (auto* profiler = CGameInstance::Get().Get_Profiler())
+	{
+		profiler->Add_Counter(Engine::EProfilerCounter::MapPlacements, m_iSharedStaticPlacementCount);
+		profiler->Add_Counter(Engine::EProfilerCounter::MapBatchCount, m_iSharedStaticBatchCount);
+	}
+}
+
 void CMapPlacementRuntime::Clear()
 {
+    CMapStaticChunkObject::Remove(m_iLevelIndex, m_StaticChunks);
+    m_ChunkPolicy.reset();
+    m_ChunkBuildStats = {};
 	if (m_iLevelIndex < ETOUI(LEVEL::END))
 	{
 		Remove_PlacementRuntime(
@@ -338,6 +406,10 @@ void CMapPlacementRuntime::Clear()
 		m_StaticBatches.clear();
 	}
 
+	m_StaticBatchFrame.reset();
+	m_iSharedStaticBatchCount = 0u;
+	m_iSharedStaticPlacementCount = 0u;
+	m_bStaticBatchCountersDirty = true;
 	m_iLevelIndex = ETOUI(LEVEL::END);
 	m_SelfMotions.clear();
 	m_SelfMotionModels.clear();
@@ -568,7 +640,8 @@ bool_t CMapPlacementRuntime::Stage_PlacementRuntime(
 	std::vector<MAP_RUNTIME_PLACED_ENTRY>& outPlacements,
 	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY>& outBatches,
 	const MAP_FRUSTUM_CULLING_POLICY& frustumCulling,
-	std::string* outFailure)
+	std::string* outFailure, const bool spatialChunks,
+	const std::shared_ptr<MAP_STATIC_BATCH_FRAME_STATE>& frameState)
 {
 	if (outFailure) outFailure->clear();
 	auto fail = [&](const char* stage, const std::string& assetId,
@@ -579,7 +652,7 @@ bool_t CMapPlacementRuntime::Stage_PlacementRuntime(
 		OutputDebugStringA(("[MapPlacementRuntime] " + detail + "\n").c_str());
 		return false;
 	};
-	using BATCH_KEY = std::pair<std::string, bool_t>;
+	using BATCH_KEY = std::tuple<std::string, bool_t, int64_t, int64_t>;
 	std::map<BATCH_KEY, std::vector<const MAP_PLACEMENT_RECORD*>> groups;
 
 	for (const MAP_PLACEMENT_RECORD& record : records)
@@ -592,23 +665,135 @@ bool_t CMapPlacementRuntime::Stage_PlacementRuntime(
 
 		const bool_t mirrored = record.signedScale.x *
 			record.signedScale.y * record.signedScale.z < 0.f;
-		groups[{ record.assetId, mirrored }].push_back(&record);
+		// Spatial subdivision retains asset instancing, including wind vegetation.
+        const auto cell = [&](float position) -> int64_t {
+            return spatialChunks && std::isfinite(position) && std::abs(position) <= 1.e8f ?
+                static_cast<int64_t>(std::floor(position / CMapStaticChunkObject::CellMetres)) : 0;
+        };
+        groups[{record.assetId, mirrored, cell(record.position.x), cell(record.position.z)}].push_back(&record);
+	}
+
+	using BATCH_GROUP = decltype(groups)::value_type;
+	std::vector<const BATCH_GROUP*> orderedGroups;
+	orderedGroups.reserve(groups.size());
+	for (const auto& group : groups)
+		orderedGroups.push_back(&group);
+	// These immutable clones also supply bounds below. One clone per supported
+	// asset replaces the old temporary clone for every spatial cell.
+	std::unordered_map<std::string, shared_ptr<Engine::CModel>> stagedBatchModels;
+	if (spatialChunks)
+	{
+		struct SORTABLE_GROUP
+		{
+			const BATCH_GROUP* group;
+			const MAP_ASSET_ENTRY* asset;
+			size_t materialCohort = 0u;
+		};
+		std::vector<size_t> sortableSlots;
+		std::vector<SORTABLE_GROUP> sortableGroups;
+		for (size_t i = 0u; i < orderedGroups.size(); ++i)
+		{
+			const auto* asset = catalog.Find(std::get<0>(orderedGroups[i]->first));
+			if (!asset || asset->materialOverrides.empty() ||
+				!std::all_of(asset->materialOverrides.begin(), asset->materialOverrides.end(),
+					[](const Engine::MODEL_MATERIAL_OVERRIDE& material) {
+						return material.surface.family == Engine::MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED;
+					}))
+				continue;
+			sortableSlots.push_back(i);
+			sortableGroups.push_back({ orderedGroups[i], asset });
+		}
+		const auto geometryLess = [](const SORTABLE_GROUP& left, const SORTABLE_GROUP& right) {
+			if (left.asset->modelRelativePath != right.asset->modelRelativePath)
+				return left.asset->modelRelativePath < right.asset->modelRelativePath;
+			if (std::get<1>(left.group->first) != std::get<1>(right.group->first))
+				return std::get<1>(left.group->first) < std::get<1>(right.group->first);
+			return left.group->first < right.group->first;
+		};
+		std::stable_sort(sortableGroups.begin(), sortableGroups.end(), geometryLess);
+		const auto profileKey = [](const MAP_ASSET_RENDER_PROFILE& p) {
+			return std::tuple(p.renderMode, p.cullMode, p.uvScale.x, p.uvScale.y,
+				p.uvSpeed.x, p.uvSpeed.y, p.opacity, p.opacityPower, p.emissiveIntensity,
+				p.specularIntensity, p.specularPower, p.colorTint.x, p.colorTint.y,
+				p.colorTint.z, p.colorTint.w, p.triplanarHeightScale, p.castsShadow);
+		};
+		struct MATERIAL_COHORT
+		{
+			const MAP_ASSET_ENTRY* asset;
+			shared_ptr<Engine::CModel> model;
+		};
+		std::vector<MATERIAL_COHORT> cohorts;
+		std::unordered_map<std::string, size_t> cohortByAsset;
+		const SORTABLE_GROUP* previous = nullptr;
+		for (auto& entry : sortableGroups)
+		{
+			if (!previous || previous->asset->modelRelativePath != entry.asset->modelRelativePath ||
+				std::get<1>(previous->group->first) != std::get<1>(entry.group->first))
+			{
+				cohorts.clear();
+				cohortByAsset.clear();
+			}
+			previous = &entry;
+			if (const auto found = cohortByAsset.find(entry.asset->id); found != cohortByAsset.end())
+			{
+				entry.materialCohort = found->second;
+				continue;
+			}
+			auto& model = stagedBatchModels[entry.asset->id];
+			if (!model)
+				model = dynamic_pointer_cast<Engine::CModel>(CGameInstance::Get().Clone_Prototype(
+					levelIndex, entry.asset->prototypeTag));
+			if (!model)
+				return fail("Model prototype clone failed", entry.asset->id, entry.group->second.front());
+			entry.materialCohort = cohorts.size();
+			for (size_t i = 0u; i < cohorts.size(); ++i)
+			{
+				// Use the same live material/geometry predicate as the render bank,
+				// including all surface values, texture SRVs and legacy state. Only
+				// the banked RNM/shadow texture identity is allowed to differ.
+				if (profileKey(cohorts[i].asset->renderProfile) == profileKey(entry.asset->renderProfile) &&
+					cohorts[i].model->Can_BatchStaticLightingWith(*model))
+				{
+					entry.materialCohort = i;
+					break;
+				}
+			}
+			if (entry.materialCohort == cohorts.size())
+				cohorts.push_back({ entry.asset, model });
+			cohortByAsset.emplace(entry.asset->id, entry.materialCohort);
+		}
+		std::stable_sort(sortableGroups.begin(), sortableGroups.end(),
+			[&](const SORTABLE_GROUP& left, const SORTABLE_GROUP& right) {
+				if (left.asset->modelRelativePath != right.asset->modelRelativePath ||
+					std::get<1>(left.group->first) != std::get<1>(right.group->first))
+					return geometryLess(left, right);
+				if (left.materialCohort != right.materialCohort)
+					return left.materialCohort < right.materialCohort;
+				return left.group->first < right.group->first;
+			});
+		// Unsupported entries retain their slots. Runtime still checks the final
+		// camera, profile, LOD, claims and material compatibility before merging.
+		for (size_t i = 0u; i < sortableSlots.size(); ++i)
+			orderedGroups[sortableSlots[i]] = sortableGroups[i].group;
 	}
 
 	std::unordered_map<uint64_t, shared_ptr<CMapStaticBatchObject>>
 		batchByPlacement;
 	batchByPlacement.reserve(records.size());
 
-	for (const auto& [key, placements] : groups)
+	for (const auto* group : orderedGroups)
 	{
-		const MAP_ASSET_ENTRY* asset = catalog.Find(key.first);
+		const auto& [key, placements] = *group;
+		const MAP_ASSET_ENTRY* asset = catalog.Find(std::get<0>(key));
 		if (nullptr == asset)
-			return fail("Batch catalog lookup failed", key.first);
+			return fail("Batch catalog lookup failed", std::get<0>(key));
 
-		shared_ptr<Engine::CModel> model =
-			dynamic_pointer_cast<Engine::CModel>(
-				CGameInstance::Get().Clone_Prototype(
-					levelIndex, asset->prototypeTag));
+		shared_ptr<Engine::CModel> model;
+		if (const auto found = stagedBatchModels.find(asset->id); found != stagedBatchModels.end())
+			model = found->second;
+		else
+			model = dynamic_pointer_cast<Engine::CModel>(
+				CGameInstance::Get().Clone_Prototype(levelIndex, asset->prototypeTag));
 		if (nullptr == model)
 			return fail("Model prototype clone failed", asset->id, placements.front());
 
@@ -622,7 +807,8 @@ bool_t CMapPlacementRuntime::Stage_PlacementRuntime(
 		desc.ModelPrototypeTag = asset->prototypeTag;
 		desc.RenderProfile = asset->renderProfile;
 		desc.FrustumCulling = frustumCulling;
-		desc.Mirrored = key.second;
+		desc.Mirrored = std::get<1>(key);
+		desc.FrameState = frameState;
 		desc.Instances.reserve(placements.size());
 
 		bool_t batchIsValid = true;
@@ -661,7 +847,7 @@ bool_t CMapPlacementRuntime::Stage_PlacementRuntime(
 			return fail("Static batch type mismatch", asset->id, placements.front());
 		}
 
-		outBatches.push_back({ asset->id, key.second, batch });
+		outBatches.push_back({ asset->id, std::get<1>(key), batch });
 		for (const MAP_PLACEMENT_RECORD* record : placements)
 		{
 			const auto [iter, inserted] = batchByPlacement.emplace(

@@ -376,7 +376,7 @@ Shared NPC roster8종과 물총 모델·재질을 전투 전 준비한다. NPC �
 
 ### 레벨 전환 흐름
 
-Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 이전 프레임의 Level update/render가 끝난 뒤 다음 Update 시작에서 `LOADING` 진입과 목표 Level activation을 수행하는 유일한 `Change_Level` 호출자다. 새 Level은 자신의 첫 Update/Late_Update로 렌더 큐를 만든 뒤 Render한다. Loading 진입 시 STATIC의 Lobby 이미지와 캐릭터 선택 창을 숨겨 UI 갱신 억제 중 이전 화면이 남지 않게 한다. `CLevel_Loading`은 Loader 성공 후 activation 요청만 제출한다. 로드는 `parse -> validate -> stage -> commit`이며 실패/취소 시 staging을 rollback한다.
+Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 이전 프레임의 Level update/render가 끝난 뒤 다음 Update 시작에서 `LOADING` 진입과 목표 Level activation을 수행하는 유일한 `Change_Level` 호출자다. 새 Level은 자신의 첫 Update/Late_Update로 렌더 큐를 만든 뒤 Render한다. Loading 진입 시 STATIC의 Lobby 이미지와 캐릭터 선택 창을 숨겨 UI 갱신 억제 중 이전 화면이 남지 않게 한다. `CLevel_Loading`은 Loader와 목표 presentation 준비가 성공한 뒤 activation 요청만 제출한다. 월드에서 캐릭터 선택으로 명시 복귀할 때는 시작되는 운명 배경을 표시하고, 실제 채워진 로스터 슬롯의 모델·생성 외형·장착 아바타를 기존 선택창 준비 경로로 완성한 뒤 Lobby를 활성화한다. 마지막 active local character ID의 슬롯을 다시 선택하며 실패는 저장 슬롯을 보존하고 Loading 재시도를 제공한다. 최초 빈 Lobby의 캐릭터 미리 로드는 계속 생략한다. 로드는 `parse -> validate -> stage -> commit`이며 실패/취소 시 staging을 rollback한다.
 
 `CLevelRegistry` descriptor의 `MAP_LOAD_SCOPE`가 제품 맵 로딩 범위의 런타임 정본이다. Bern과 Valtan 제품 Level은 자신의 진입/전투 범위와 배경만 로드한다. Loader와 `CMapPlacementRuntime`은 같은 `MAP_LOAD_SCOPE`를 소비해야 하며 한쪽만 필터링하면 안 된다. 로더 작업 스레드의 실패는 상태와 HRESULT로 반환하고 `MessageBox`로 대기시키지 않는다.
 
@@ -507,6 +507,11 @@ Client/Server `Bin/DataFiles/Guide/Guide.runtime.json`만 교체한다. `-Mode V
 베른·발탄·쿠크 자유 카메라의 기본 속도는 20m/s다. Debug F1 `Camera`에서
 0.1~400m/s로 조절한다. Debug 발탄·쿠크는 같은 아레나의 process-session 값을 유지하고,
 베른과 Release 조절값은 현재 맵 방문 동안 적용한다. Shift는 현재 속도의 30배다.
+Debug Bern의 같은 `Camera` 패널에서 속도 조절 아래 `Start Bern Cutscene`으로 입장 컷신을
+반복 재생한다. 기존 경로·FOV·시간을 사용하며 종료 또는 ESC 뒤 시작 전 follow/free 상태로
+돌아간다. 컷신 재생 속도는 자유 이동 속도와 별개다. 재생·편집·전환 충돌이나 준비 실패는
+기존 상태를 유지하고 버튼 아래에 이유를 표시한다. F7 Capture를 먼저 켜고 재생하면 같은
+경로를 반복 측정할 수 있다. 최초 입장의 자동 재생 여부나 정본 카메라 JSON은 바꾸지 않는다.
 Debug F1 `Dragon`은 고대의 바다 탑승·하차, 비행 카메라 거리·pitch·주시 높이·방향 추종,
 지상·비행·상하 속도를 조절한다. 지상 탑승은 기존 캐릭터 시점을 유지하며 E로 이륙한 뒤에만
 비행 카메라를 적용한다. 속도 Save는 `Data/Vehicles/VehicleProfiles.json`의 해당 필드만 저장하고,
@@ -555,14 +560,17 @@ GPU timestamp의 원점은 별개이며 lane 사이 수평 정렬로 CPU/GPU 실
 process lifetime 값이며 현재 캡처 peak가 아니다. allocation stack·자원 residency 추적은 제공하지 않는다.
 `상용 엔진과 비교`에서 Unreal의 시간축·task/RHI·RDG·메모리·셰이더·GI 등 개념과 현재 빠진 기반,
 관측 수치의 한계 및 다음 실험을 확인한다. 병목 후보는 원인 확정이 아니라 확인할 실험을 제안한다.
+F7의 `Bern parallel visibility preparation`은 정적 맵의 CPU 가시성·payload 준비를 큰 작업 묶음으로 분산하는 세션 제어다. Debug/Release 기본은 OFF이며 OFF에서는 Layer의 job 수집도 생략한다. 실제 Bern CPU fixture에서 worker의 안정적인 순이득이 입증되지 않아 명시적인 비교용으로 제공한다. 같은 카메라 cachehit는 준비 작업을 만들지 않고, 작은 작업은 caller에서 처리한다. worker의 CPU 결과를 join한 뒤 기존 소유 스레드가 GPU 업로드·제출한다. CPU 작업 풀은 기존 파티클 경로와 공유하며 파티클은 기존 최대1helper 조건을 유지한다. GPU command list와 fiber scheduler는 이 기능에 포함되지 않는다.
+F7의 프레임 요약에는 Bern의 `Bern occlusion culling`, `Bern distance + screen-size culling`, 거리 scale과 최대 투영 지름 제어가 있다. 기본은 둘 다 ON·거리 scale1·지름24pixel이며 실행 세션에만 적용하고 팀장 rendering options JSON에는 저장하지 않는다. 가림 판정은 현재 카메라의 검증된 불투명 삼각형을 사용하며 캐시 재사용·제외 배치·인덱스와 `Render.MapOcclusion` 비용을 함께 확인한다. 거리 제외는 작은 정적 소품에 거리와 화면 크기 조건을 함께 요구한다. 각 SourceDraws는 후속 인스턴싱 전 입력이며 실제 GPU draw 절감량과 구분한다. 캡처 metadata는 저장 시점의 두 설정·거리 scale·pixel 상한을 기록한다.
 F7은 창만 열고 닫으며 수집은 창의 Capture에서 명시적으로 시작한다. 창을 닫아도 이미 시작한 수집은 계속된다. Capture/Reset과 상세 CPU 모드는 다음 프레임 경계에서 반영한다.
 촬영용 Release는 FPS 문자열을 그리지 않는다. Debug FPS도 cinematic HUD 숨김을 따른다. Map/Animation/Effect/Sequence 저작 창은 Debug 전용이고 Release의 docking/외부 viewport는 비활성이다. F1 테스트 허브는 Debug/Release에서 명시적으로 열 때만 표시한다. Release에는 기존 Level Navigation·Balance·Boss 등 공통 도구만 노출하고 Profiler 버튼은 표시하지 않는다.
 기본은 pass 시간과 작업량을 수집하고 `draw별 상세 CPU 계측 (추가 비용 발생)`를 켜면 map draw별 상세 scope도 기록한다.
-각 JSON은 기본으로 Frames 선택 구간(120프레임)만 복사·저장하고 선택을 해제하면 최근 최대 1200프레임을 저장한다.
+각 JSON은 기본으로 현재 보관 중인 전체 프레임(최대 1200개)을 저장하며 `분석·표시 프레임 범위`와 독립이다.
+`JSON 저장 범위 제한`을 명시적으로 켠 경우에만 `최근 프레임만 저장`의 개수로 저장 범위를 줄인다.
 세션 전체를 무제한 누적하지 않는다. v3 additive metadata는 저장 시점의 build/adapter/viewport/camera/render 설정이며
 모든 과거 프레임의 설정으로 간주하지 않는다. summary는 frame interval P50/P95/P99와 표본 유효율·누락 수를 제공한다.
-v3의 additive `captureWindow`는 저장·보유·선택창 제외·Reset 이후 history 퇴출 프레임 수와 번호 범위를 기록한다.
-창에서 제외된 retained frame의 최대 interval도 표시한다. 제외된 프레임은 선택창을 늘려 저장할 수 있지만,
+v3의 additive `captureWindow`는 저장·보유·저장 범위 제외·Reset 이후 history 퇴출 프레임 수와 번호 범위를 기록한다.
+저장 범위에서 제외된 retained frame의 최대 interval도 표시한다. 제외된 프레임은 저장 범위 제한을 끄면 포함할 수 있지만,
 1200-frame ring에서 퇴출된 프레임은 복구되지 않는다. 긴 저FPS 구간은 직후 Capture를 끄고 GPU pending 회수 뒤 저장한다.
 `저장 JSON` 탭에서 `목록 새로고침`으로 목록을 갱신하고 `선택 JSON 삭제`로 선택한 파일을 삭제한다.
 외부에서 교체·수정된 선택은 다시 선택해야 하며 기존 파일 덮어쓰기는 거부한다.
@@ -870,14 +878,27 @@ Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 
 Debug `Lobby → KoukuSaydon → F1 → Map Tool`에서는 현재 arena가 소유한 맵을 같은 편집기로 수정·저장할 수 있다. Test처럼 다른 Area로 전환하지 않으며 재생 중 target 변경은 Stop/Restore 후 수행한다. 원본 배치와 런타임 표시 상태를 분리해 저장하고, Server gameplay는 변경하지 않는다. 연결·저장 경계는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
 
 Debug Bern/Character Select/Valtan/KoukuSaydon에서 `F1 → World Scene Tool`을 연다.
-`Pick in world`를 누른 뒤 UI 밖에서 한 번 클릭하면 live map의 LOD0 삼각형과 Deploy의
+`Pick in scene`를 누른 뒤 UI 밖에서 한 번 클릭하면 live map의 LOD0 삼각형과 Deploy의
 현재 static/skeletal pose 중 최근접 mesh를 선택한다. 목록 검색·선택과 Focus, 원본
 placement/level, asset/WModel, mesh/material/hit XYZ 및 `Copy source selection`을 제공한다.
 Esc/우클릭/F1 닫기/입력 소유권·Level 변경은 피킹을 취소하며 miss는 기존 선택을 보존한다.
+World Level Tool의 `Pick in scene`도 현재 Area를 확인한 뒤 같은 World Scene Tool을 열어 다음 클릭을 전달한다.
+
+현재 Bern 제품 로드는 작은 파생 청크를 생성하지 않고 원본 공간 batch와 확장된 인스턴싱을 사용한다. 큰 atlas proxy는 품질 조건의 유효 coverage가 확인될 때까지 `atlasEnabled=false`이며 준비·메모리 할당도 건너뛴다. 따라서 아래 청크 도구는 생성된 청크가 없는 기본 실행에서는 빈 목록이다. 새 가림·거리 컬링은 원본 batch에 연결된다.
+
+Debug Bern의 World Level Tool → `Runtime chunks / HLOD`는 현재 생성된 정적 청크의 경계,
+동일한 활성 재질 입력으로 묶인 원본 placement/asset, 근거리·원거리 index와 상태를 보여 준다.
+`Show chunk bounds`와 `All chunks`로 선택/전체 경계를 표시하며 선택이 없으면 전체를 표시한다.
+`Focus chunk`와 원본 ID 선택으로 검토한다. 표의 실제 제출 여부와 near/HLOD draw를 함께 확인하며
+source group 수를 실제 절감 draw 수로 해석하지 않는다. `Merged chunk draws`와 `Distant HLOD`는 실행 중 비교용이며 저장된 rendering option을
+수정하지 않는다. World Scene Tool에도 같은 모드 제어가 있다. 위치·가시성을 편집한 청크는 원본
+제출로 복귀하며 맵 재로드 시 재생성한다. 성능 비교는 같은 카메라에서 overlay를 닫고 F7 Reset 후
+모드별 독립 JSON을 저장한다. 구현과 검증은 `.md/GB/10-04/2026-10-04_BERN_SPATIAL_CHUNK_HLOD_RESULT.md`를 따른다.
+선택은 기존 삼각형 질의를 사용하며 별도의 맵 편집 세션을 시작하지 않는다.
 
 `Enable map placement editing`은 별도 Map Tool 실행 없이 기존 `CMapPlacementEditSession`을
 연결한다. 이동·회전·signed scale·Visible, Undo/Reset, Duplicate/Delete duplicate를 제공하고
-`Save Data + publish Area`로 Data 원본과 공식 Area publisher를 소비한다. 미로드 원본 행,
+`Save Data + publish placements`로 Data 원본과 공식 Map publisher의 Placements scope를 소비한다. 미로드 원본 행,
 미저장 draft와 외부 저장본을 보존한다. VALTAN_PHASE/backdrop/active borrower 경계는 유지한다.
 Deploy는 가역 위치·회전·positive uniform scale·opacity/Reveal preview와 clip 선택·재생·정지·seek·loop를
 제공하며 Stop/창 숨김에서 복원한다. authoritative 파괴 상태는 preview를 선점해 정상 적용된다.
@@ -1027,6 +1048,27 @@ Rendering Workbench의 기본 탭은 `Restoration` (복원 시연)이다. 기본
 복원하므로 원래 OFF인 FXAA 등은 켜지지 않는다. `원래 화면으로 복귀`는 저장 없이 세션을 끝낸다.
 `Technique A/B`는 기법 선택 → 비교 준비 → A/B 전환, `Measure / Analyze`는 수치·반복·sweep·사전·픽셀 진단,
 `Saved Settings`는 저작 품질과 Save/Publish를 제공한다. 시연 중에는 저작 변경이 잠긴다.
+`Technique A/B`의 첫 영역은 현재 연결된 원본 재질·PBR 간접광·RNM/SH·환경 반사·Source tone/LUT의
+성분별 비교다. 시작 화면과 현재 입력을 기준으로 한 필드씩 비교하며 원본이 없는 값을 생성하지 않는다.
+`추가 품질 실험 (원본 복구와 별도)`는 기본 접힘이며 texture mip, 자체 Horizon AO,
+SSGI/SSR와 반사 교차 보정·roughness 필터의 통합/개별 후보를 제공한다. 새 기법은 기본OFF이고
+명시적인 A/B 선택에서만 session preview로 적용한다. 열기·기준 선택은 적용하지 않으며
+종료/닫기는 원래 설정으로 복원한다. 이 비교는 authored/runtime JSON·Resources를 저장하거나 게시하지 않는다.
+Debug Rendering Workbench의 `최적화 A/B`와 Release F1의 `Optimization Benchmark`는 같은12개 runtime 비교를 제공한다.
+프러스텀·occlusion·거리·mesh LOD·맵 instancing·동일 모델/재질 병합·RNM lighting bank·정적 shadow cache·
+NPC pose sample 재사용·particle root inverse 재사용·맵 worker·particle worker를 각각 A OFF/B ON으로 비교한다.
+전제 기능이 OFF이거나 표본에서 대상0이면 효과를 입증했다고 표시하지 않는다. 맵 worker 기본OFF는 유지한다.
+`ABBA 측정`은 고정 카메라에서 warmup 뒤 A1/B1/B2/A2를 수집하고 마지막에 이전 A/B 화면으로 돌아온다.
+측정 종료와 세션 종료는 다르며 `원래 화면으로 복귀`로 시작 전 설정을 복원한다. 기본은 창 숨김도 복원한다.
+`영상 촬영: F1로 숨겨도 최적화 A/B 화면 유지`를 명시적으로 켠 세션만 숨긴 채 preview를 유지한다.
+취소·장면/region/Video 변경·종료는 계속 복원한다. Release F7·일반 Profiler·FPS overlay·저작 창은 비활성이다.
+각 단계의 기존 Profiler raw JSON을 최대64MiB로 따로 저장하고 결과 JSON의 measurement ID·frame range·
+rawEvidence.path에 연결한다. 원본 저장이 끝난 뒤 다음 warmup을 시작한다. 전체counter·CPU work ledger·IA/VS,
+CPU/GPU 분포·유효/누락 GPU 표본과 build·device·viewport·옵션 조건을 함께 기록한다. 중첩 scope는 합산하지 않는다.
+자동 비교는 움직이는 컷신의 결정적 replay가 아니다. 정지 cache의 비용과 이동 중 계산 비용도 구분한다.
+32m 분할·material 정렬·geometry/atlas bake·LOD 생성 하한·파생 cache는 맵 준비 단계이며 즉시 toggle하지 않는다.
+Debug↔Release·D3D debug device는 별도 실행이 필요하다. 프로세스 재시작만으로 OS 파일 cache가 cold가 되지는 않는다.
+이 실험은 Data/Resources/저장 rendering options를 변경하지 않는다.
 Rendering Workbench → Measure / Analyze → 고급의 Rendering restoration은 Bern/Character Select/Valtan/Kouku의
 `Before` / `Restored source profile` / `Return to entry` 비교를 제공한다. 기존 설정은 before profile에
 보존하고 네 맵의 base profile에는 원본 후처리 입력을 연결한다. 도구를 닫으면 같은 Level에서
@@ -1174,6 +1216,15 @@ Engine backbuffer 크기의 정본은 실제 client rect다.
 DPI와 종횡비는 별개다. 같은16:9 해상도는 UI 배치 비율을 유지한다. 다른 종횡비는 기존
 reference 좌표의 X/Y viewport 비율을 각각 적용하므로 자동 anchor 재배치나 letterbox를
 보장하지 않는다. UI 이미지를125% 크기로 미리 확대 저장했다면 asset 자체의 품질은 별도로 확인한다.
+
+환경설정 `텍스처 품질`의 최상/상/중/하는 모델 표면의 최소 mip을 0/1/2/3으로 제한한다.
+일괄 설정에도 포함되며 선택 즉시 미리보기, 취소 복원, 적용/확인 저장과 재실행 후 복원을
+같은 개인 설정 경로로 처리한다. 현재 scene/region 조명·후처리 정본 위에 개인 설정을 합성한다.
+저장값이 없을 때와 해당 항목 초기화 시 기본값은 Debug `하`, Release `최상`이다.
+기존에 명시 저장한 품질은 두 빌드 모두 우선하며 빌드 전환만으로 덮어쓰지 않는다.
+맵·인스턴스·캐릭터·장비와 해당 SourceCharacter light pass에 적용하며 UI, LUT, BRDF/반사 lookup,
+원본 이펙트 전용 sampler는 유지한다. 없는 mip은 생성하지 않으며 GPU 상주 텍스처 용량을 줄이는
+streaming 기능은 아니다. mip 체인이 있는 재질로 최상/하를 비교한다.
 
 ### 새 GameObject 추가
 

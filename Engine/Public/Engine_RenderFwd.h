@@ -14,6 +14,8 @@ namespace Engine
     using SHADOW_LIGHT_DESC = tagShadowLightDesc;
     struct tagRenderQualitySettings;
     using RENDER_QUALITY_SETTINGS = tagRenderQualitySettings;
+    struct MAP_VISIBILITY_SETTINGS;
+    struct RENDER_OPTIMIZATION_SETTINGS;
     struct MATERIAL_RENDER_SETTINGS;
     struct tagHeightFogSettings;
     using HEIGHT_FOG_SETTINGS = tagHeightFogSettings;

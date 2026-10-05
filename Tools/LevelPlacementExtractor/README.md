@@ -225,6 +225,9 @@ BC3/DXT5, BC5/ATI2 DDS다. 원본 ObjectRedirector는 목적 package/object를 r
 따라가며 cycle, 불명확한 export, 외부 bulk, 미완성 chain, 다른 압축 형식과 mip0
 불일치는 오류로 반환한다. `TextureCube`, DX10 DDS, 일반 Crunch decoder와 임의
 normal/색공간 변환은 이 도구의 지원 범위에 포함하지 않는다.
+원본 object의 각 점 구분 이름은 영문·숫자·밑줄로 시작하고 이후 하이픈도 허용한다.
+`wp_fbm_av_002.tex.wp_fbm_av_002-1_d` 같은 실제 이름을 보존하며, 빈 이름·선행
+하이픈·공백·따옴표·슬래시·역슬래시·드라이브 경로는 계속 거부한다.
 
 UModel이 원본 mip0만 내보내는 제한 때문에 repo `out` 아래의 지정한 scratch-root에
 고유 run 폴더를 만들고, 복원한 package 복사본에서 mip record 순서만 바꿔 각 원본

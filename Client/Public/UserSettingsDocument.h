@@ -51,6 +51,8 @@ class CUserSettings final
 {
 public:
 	static CUserSettings& Get();
+	/* Only missing rows and explicit Reset use the build default; saved choices win. */
+	static f32_t Get_DefaultTextureQuality() noexcept;
 	~CUserSettings();
 
 public:
@@ -136,6 +138,7 @@ namespace SystemOptionRowId
 	constexpr const char* EFFECT_ON = "checkbox_effectsound";
 	constexpr const char* BACKGROUND_SOUND = "checkbox_backgroundsound";
 	constexpr const char* BRIGHTNESS = "slider_monitor_gamma";
+	constexpr const char* TEXTURE_QUALITY = "combobox_texturequality"; // best/high/medium/low -> min mip 0/1/2/3
 	constexpr const char* BLOOM = "checkbox_filter_effect_bloom";
 	constexpr const char* ANTIALIASING = "checkbox_antialiasing";     // combo: high/low/off
 	constexpr const char* SSAO = "combobox_antialiasing"; // combo: high/low/off

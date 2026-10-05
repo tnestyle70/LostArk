@@ -16,9 +16,15 @@ NS_BEGIN(Client)
 struct MAP_CAMERA_CULL_SNAPSHOT final
 {
 	uint64_t revision = {};
+    uint64_t optimizationRevision = 0u;
+    bool frustumEnabled = true;
 	float4x4_t view = {};
 	float4x4_t projection = {};
 	float4_t worldPlanes[6] = {};
+    // Derived once per camera revision, only for CPU geometry LOD. Rendering
+    // and culling keep the original view. Zero scale means unsupported.
+    float4x4_t lodView = {};
+    f32_t lodViewScale = 0.f;
 };
 
 // The light clip volume has its own revision and never consumes camera visibility.

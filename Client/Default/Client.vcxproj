@@ -125,6 +125,7 @@
     <ClInclude Include="..\Public\Effect_ProductPrewarmQueue.h" />
 	<ClInclude Include="..\Private\CharacterSelectArenaSpawnGate.h" />
     <ClInclude Include="..\Public\Level_CharacterSelect.h" />
+    <ClInclude Include="..\Public\CharacterSelectShowcase.h" />
     <ClInclude Include="..\Public\PlayableCharacterAssetService.h" />
     <ClInclude Include="..\Public\SquareHoleInstrumentCatalog.h" />
     <ClInclude Include="..\Public\DeployPropRuntime.h" />
@@ -237,6 +238,8 @@
     <ClInclude Include="..\Public\SourceMapTranslucentMaterialParameters.h" />
     <ClInclude Include="..\Public\MapAssetRenderUtils.h" />
     <ClInclude Include="..\Public\MapStaticBatchObject.h" />
+    <ClInclude Include="..\Public\MapStaticChunkObject.h" />
+    <ClInclude Include="..\Public\MapStaticProxyBaker.h" />
     <ClInclude Include="..\Public\Body_Valtan.h" />
     <ClInclude Include="..\Public\ValtanPatternTree.h" />
     <ClInclude Include="..\Public\ValtanCinematicEffectLibrary.h" />
@@ -442,6 +445,7 @@
     <ClCompile Include="..\Private\Effect_PresentationService.cpp" />
     <ClCompile Include="..\Private\Effect_ProductPrewarmQueue.cpp" />
     <ClCompile Include="..\Private\Level_CharacterSelect.cpp" />
+    <ClCompile Include="..\Private\CharacterSelectShowcase.cpp" />
     <ClCompile Include="..\Private\PlayableCharacterAssetService.cpp" />
     <ClCompile Include="..\Private\SquareHoleInstrumentCatalog.cpp" />
     <ClCompile Include="..\Private\Trigger_Box.cpp" />
@@ -543,6 +547,22 @@
       <ForcedIncludeFiles />
     </ClCompile>
     <ClCompile Include="..\Private\MapStaticBatchObject.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
+      <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SupportJustMyCode>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+    </ClCompile>
+    <ClCompile Include="..\Private\MapStaticChunkObject.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
+      <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SupportJustMyCode>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+    </ClCompile>
+    <ClCompile Include="..\Private\MapStaticProxyBaker.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
       <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
       <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
@@ -740,6 +760,7 @@
 	<None Include="..\..\Data\Rendering\Authored\RenderingProfiles.json" />
 	<None Include="..\..\Data\Rendering\Reference\KoukuImportedSourceLights.maplights.json" />
 	<None Include="..\..\Data\Rendering\Authored\CharacterSelectFloorSwap.json" />
+	<None Include="..\..\Data\Rendering\Authored\CharacterSelectShowcase.json" />
 	<None Include="..\..\Data\Compositions\Bosses\Valtan.bosscomposition.json" />
 	<None Include="..\..\Data\Compositions\Bosses\KoukuSaydonGate1.bosscomposition.json" />
 	<None Include="..\..\Data\Compositions\Sequences\ValtanArena.sequencer.json" />
@@ -1177,6 +1198,16 @@
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapInstance.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapChunk.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapProxy.hlsl">
       <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
       <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>

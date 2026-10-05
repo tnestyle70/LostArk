@@ -902,3 +902,71 @@ Release DirectXTK.pdb 누락 LNK4099 경고는 남았지만 빌드 오류는 없
 근거는 out/ClassMovieFullBuild20260930/build-summary.json, debug-build.log, release-build.log,
 read-only-installed-verification.json이다. 에이전트는 Client/Server/UI를 실행·조작하지 않았으며
 최종 구도·Loop 전환·재질 화면 판정은 사용자 확인 단계로 유지한다.
+
+## G26. MapTool 배경 저장 후 재진입 미반영 수정 (2026-10-04)
+
+차원술사 SL12 source와 runtime은 모두 1461개 동일 stable ID를 가진다. source export1876의
+sky_multi_sm(placement16549887706206081491, assetSL12_82D2D1E4E4F51A1AF5968E66)은 사용자
+저장본의 Y=702.599976, runtime의 Y=1003.07109로 달랐다. 나머지 1460행은 float 직렬화
+차이 범위였다. Save는 성공했지만 publisher가 연결되지 않아 다음 진입이 이전 위치를 읽었다.
+이 배경은 Movie WORLD Object가 아닌 기존 Level 소유 map runtime이며 임의 legacy 경로는 없었다.
+
+MapTool toolbar에 `Save Data + publish placements`를 연결하고 기존 Save는 `Save Data only`로
+명명했다. 통합 버튼은 기존 linked save의 source freshness/backup/readback 검증 뒤 같은 baseline을
+다시 확인하고 기존 CMapPublishRunner를 통해 Placements scope를 실행한다. runner 허용 scope에
+Placements만 추가했으며 새 publisher나 runtime은 만들지 않았다. source 저장 후 publish 시작 실패와
+process 실패는 `Saved ..., unpublished`로 따로 표시하고 source를 보존한다. 게시 중에는 Save·Reload·
+명시적 target 변경만 잠그며 목록 선택·카메라·메모리 draft 편집은 유지한다. 완료 후 disk 변경이나
+추가 draft가 있으면 별도 안내한다. 성공한 게시본은 다음 Level 진입에 반영된다.
+
+기존 attach는 저장된 source를 inspector draft로 읽되 기존 runtime 표시를 덮어쓰지 않는다.
+Movie 배경에 TRS/Visible 차이가 있으면 차이를 안내하고 `Apply saved background placements`를
+제공한다. clean draft에서 사용자가 누를 때만 기존 Load_Placements의 stage/commit을 호출한다.
+dirty/camera draft는 보존하며 자동 Reload는 추가하지 않았다. 없는 Publish controls와 F2 AssetTest
+안내는 현재 버튼/진입 안내로 교체했다. TEAM Area guide에도 실제 저장·게시·preview 반영을 구분했다.
+
+read-only publisher `-AreaId LV_LOBBY_CLASSSELECT_SL12 -Scope Placements -Mode Validate`는
+1461 placements/2 files, exit0이었다. 같은 범위 Check는 runtime 미게시 차이로 exit1이며 원인을
+정확히 SL12.mapplacements로 지목했다. `out/MapToolSavePublish20261004/source-runtime-evidence.json`
+에는 실제 float32 의미 비교와 파일 hash를 기록했다. 구현 전후 source SHA256
+b4b4a7e904649be5621c3099d8a256080c1a77bd6e98bd951d2471ce9993053f 및 runtime SHA256
+b4c74fc146fca6aaf58b9b66a6c2b56e36b5960e55a419dc9328b03b6a05978d가 유지됐다.
+신규 C++ 파일은 없으며 기존 project/filter 등록과 변경 범위 diff --check를 확인했다.
+
+이 G의 담당 에이전트는 실제 Data publish, Product/TU 빌드, Client/UI 실행을 하지 않았다.
+통합 root가 컴파일·제품 배포와 최신 저장본 게시를 조율한다. 사용자 화면 검증은 차원술사 Movie→
+Edit background in Map Tool→sky/export1876 선택→필요 시 Apply saved background placements→
+Save Data + publish placements 성공 확인→Level 재진입에서 같은 높이 유지다. 게시 실패 뒤
+authoring 저장본 보존 및 진행 중 메모리 편집은 코드 경로 검토이며 UI 실측 완료로 기록하지 않는다.
+
+G26 후속 실행 회귀: 실제 Save_AndPublishPlacements, Poll_PlacementPublish와 기존 runner의
+Start/Poll/Area 검증 본문 5개를 추출한 headless C++ fixture가 compile exit0, run exit0,
+18 checks/0 failures로 통과했다. 실패한 linked save의 spawn 차단, dirty Deploy/sequence 거부,
+save 이후 freshness/readback 실패, publisher 시작/종료 실패의 source 보존, 게시 중 추가된 memory
+draft 보존, 외부 저장 보존과 완료 한 번 전달, 정확한 Placements scope 및 잘못된 scope/Area 거부를
+실행했다. 기존 linked 저장 결과·파일 읽기·Win32 process/file handle만 대체했다. 실제 linked save
+I/O·PowerShell 실행·GPU·UI 검증으로 집계하지 않는다. 원본 추출 스크립트와 C++ 원문, compile/run log,
+함수별 source/body SHA 및 결과는 `out/MapToolSavePublish20261004/production-body-fixture*`와
+`run_production_body_fixture.py`에 있다. fixture의 가짜 owner 필드명과 production local 변수명의
+충돌에 따른 C4458 경고 2개가 있으며 제품 소스 경고로 집계하지 않는다.
+
+동시에 WorldLevel→WorldScene handoff를 독립 검토했다. host Area 불일치는 도구를 열기 전에
+거절하고, live 범위 밖 placement는 Select 호출 전에 거절해 같은 host의 이전 선택을 유지한다.
+Esc/우클릭/입력 owner 상실은 기존 world picker의 armed 상태만 취소하며 선택을 지우지 않는다.
+Level/Area/runtime generation 변경 시 기존 선택을 비우는 경계는 의도된 수명 처리다. handoff는
+별도 placement session을 만들지 않고 기존 WorldScene 선택·one-shot picker를 사용한다.
+현재 diff에서 새 P0/P1 결함은 확인하지 못했다. 이 handoff 검토는 코드 조사이며 UI 실행은 하지 않았다.
+
+## G27. 차원술사 배경의 현재 저장 위치 게시 (2026-10-04)
+
+통합 root가 G26 구현과 컴파일 검증 뒤 최신 디스크 저장본의 SHA를 다시 확인했다.
+기존 source/runtime 배치와 catalog를 out에 백업한 뒤 공식 Map publisher의
+`-AreaId LV_LOBBY_CLASSSELECT_SL12 -Scope Placements -Mode Publish`를 실행했다.
+Publish와 후속 Check 모두 1461 placements/2 files, exit0이다. export1876의 저장된
+Y=702.599976이 게시되었고 source/runtime mapplacements bytes가 같아졌다.
+source SHA는 b4b4a7e904649be5621c3099d8a256080c1a77bd6e98bd951d2471ce9993053f로
+유지된다. catalog 및 Data/Rendering 정본4개의 SHA도 그대로다.
+
+근거는 `out/MapToolSavePublish20261004/apply-saved-sl12/result.json`, publish.log,
+check.log 및 before 백업이다. 실행 중 도구를 Reload하거나 Client/UI를 실행하지 않았다.
+게시 데이터는 다음 Level 진입에서 소비되며 실제 구도 확인은 사용자 단계다.

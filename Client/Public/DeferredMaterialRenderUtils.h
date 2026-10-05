@@ -53,6 +53,18 @@ HRESULT Bind_DeferredMaterialInputs(
 	// Only callers that selected a binary character base pass may omit legacy inputs.
 	bool_t nativeBinaryBasePass = false);
 
+// Caller binds the skinned world/bone transforms. Draw the native hair core
+// through the existing two-sided base pass; S_FALSE means no masked hair mode.
+// Shared material constants stay immutable and transient shader inputs reset
+// even when binding, Begin or mesh submission fails.
+HRESULT Render_SourceHairMaskedMesh(
+    Engine::CModel& Model,
+    const shared_ptr<Engine::CShader>& pShader,
+    uint32_t meshIndex,
+    const DEFERRED_MATERIAL_PROFILE& Profile = {},
+    const DEFERRED_EMISSIVE_OVERRIDE* pEmissiveOverride = nullptr,
+    const ComPtr<ID3D11ShaderResourceView>& diffuseOverride = nullptr);
+
 HRESULT Bind_CombatPresentationInputs(Engine::CModel& Model,
 	const shared_ptr<Engine::CShader>& pShader, uint32_t meshIndex,
 	const DEFERRED_EMISSIVE_OVERRIDE& presentation);

@@ -1,12 +1,14 @@
 #pragma once
 
 #include "Component.h"
+#include "Engine_VertexTypes.h"
 #pragma push_macro("new")
 #undef new
 #include "Assimp/material.h"
 #pragma pop_macro("new")
 
 #include <array>
+#include <filesystem>
 #include <span>
 #include <set>
 
@@ -264,10 +266,120 @@ public:
 		uint32_t iInstanceStride, uint32_t iNumInstances,
 		uint32_t iInstanceByteOffset = 0u,
         const MESH_SCREEN_LOD_DESC* screenLod = nullptr);
-	// Only identical immutable single-mesh BG geometry may share a lighting bank.
+    // A cluster is derived presentation geometry inside this CModel/CMaterial
+    // path. Original placement identities, model assets and materials stay owned
+    // by the caller. Cluster picking is disabled; pick the original placements.
+    // Preparation never changes any source model or output on failure.
+    // Caller invalidates/rebuilds derived clusters before changing source material
+    // identities, geometry, per-placement transforms or baked-lighting inputs.
+    struct STATIC_CLUSTER_SOURCE final
+    {
+        const CModel* model = nullptr;
+        uint32_t meshIndex = 0u;
+        uint64_t sourceId = 0u;
+        VTXMESHINSTANCE instance{};
+    };
+    struct STATIC_CLUSTER_OPTIONS final
+    {
+        f32_t targetRatio = .35f;
+        f32_t maximumWorldError = .05f;
+        uint32_t maximumVertices = 262144u;
+        uint32_t maximumIndices = 1048576u;
+        uint32_t maximumSources = 4096u;
+    };
+    struct STATIC_CLUSTER_STATS final
+    {
+        uint32_t sourceCount = 0u, materialCount = 0u;
+        uint32_t clusterVertices = 0u, sourceIndices = 0u;
+        uint32_t nearIndices = 0u, farIndices = 0u;
+        f32_t maximumWorldError = 0.f;
+        float3_t boundsMin{}, boundsMax{};
+        bool_t hasFarGeometry = false;
+    };
+    // Build-stage lifetime only. Reuses decoded WModel inputs across clusters;
+    // release the cache after scene preparation to release all retained CPU data.
+    struct STATIC_CLUSTER_BUILD_CACHE;
+    static shared_ptr<STATIC_CLUSTER_BUILD_CACHE> Create_StaticClusterBuildCache();
+    static HRESULT Create_StaticCluster(std::span<const STATIC_CLUSTER_SOURCE> sources,
+        const STATIC_CLUSTER_OPTIONS& options, STATIC_CLUSTER_BUILD_CACHE& cache,
+        shared_ptr<CModel>& output, STATIC_CLUSTER_STATS& stats);
+    bool_t Can_ShareStaticClusterMaterialWith(uint32_t meshIndex,
+        const CModel& other, uint32_t otherMeshIndex) const;
+    // Sets g_MapClusterSources and the existing zero/small/eight lighting bank.
+    // Call after ordinary material binding, before the matching cluster VS pass.
+    HRESULT Bind_StaticClusterSources(const shared_ptr<class CShader>& shader) const;
+    HRESULT Render_StaticCluster(bool_t farGeometry);
+    const STATIC_CLUSTER_STATS* Get_StaticClusterStats() const;
+    std::span<const uint64_t> Get_StaticClusterSourceIds() const;
+    uint32_t Get_MeshIndexCount(uint32_t meshIndex) const;
+
+    // Borrowed LOD0 positions already include the model pre-transform. This is
+    // immutable original geometry; it remains valid for this model's lifetime.
+    // Material opacity/deformation admission belongs to the scene caller.
+    struct STATIC_OCCLUSION_MESH final
+    {
+        const float* positions = nullptr;
+        uint32_t vertexCount = 0u, strideBytes = 0u;
+        std::span<const uint32_t> indices;
+    };
+    // Failed lookup leaves output untouched and never reads GPU resources.
+    bool_t Try_GetStaticOcclusionMesh(uint32_t meshIndex, STATIC_OCCLUSION_MESH& output) const;
+
+    // Static atlas proxy: original source attributes remain intact until baking.
+    // Slot 1 is STATIC_PROXY_VERTEX (ATLASUV0 float2, SOURCEINDEX0 uint).
+    struct STATIC_PROXY_VERTEX final { float2_t atlasUV{}; uint32_t sourceIndex = 0u; };
+    static_assert(sizeof(STATIC_PROXY_VERTEX) == 12u);
+    struct STATIC_PROXY_METADATA final { uint32_t sourceFlags = 0u, stateFlags = 0u; };
+    static_assert(sizeof(STATIC_PROXY_METADATA) == 8u);
+    struct STATIC_PROXY_OPTIONS final
+    {
+        uint32_t atlasResolution = 2048u, padding = 8u, maximumSources = 256u;
+        f32_t texelsPerUnit = 16.f;
+        uint64_t maximumGeometryBytes = 64ull * 1024ull * 1024ull;
+    };
+    struct STATIC_PROXY_SOURCE_RANGE final
+    {
+        uint64_t sourceId = 0u;
+        uint32_t sourceMeshIndex = 0u, firstIndex = 0u, indexCount = 0u;
+        float3_t boundsMin{}, boundsMax{};
+    };
+    struct STATIC_PROXY_STATS final
+    {
+        uint32_t sourceCount = 0u, vertexCount = 0u, indexCount = 0u;
+        uint32_t atlasWidth = 0u, atlasHeight = 0u, chartCount = 0u;
+        f32_t texelsPerUnit = 0.f;
+        uint64_t geometryBytes = 0u;
+        bool_t loadedFromCache = false;
+    };
+    static HRESULT Create_StaticProxy(std::span<const STATIC_CLUSTER_SOURCE> sources,
+        const STATIC_PROXY_OPTIONS& options, STATIC_CLUSTER_BUILD_CACHE& cache,
+        shared_ptr<CModel>& output, STATIC_PROXY_STATS& stats);
+    const STATIC_PROXY_STATS* Get_StaticProxyStats() const;
+    array<uint8_t, 32> Get_StaticProxyGeometryIdentity() const;
+    bool_t Can_BakeStaticProxy(uint32_t meshIndex) const;
+    std::span<const std::filesystem::path> Get_StaticProxySourcePaths(uint32_t meshIndex) const;
+    bool_t Validate_StaticProxySourceFiles(uint32_t meshIndex) const;
+    std::span<const STATIC_PROXY_SOURCE_RANGE> Get_StaticProxySourceRanges() const;
+    HRESULT Set_StaticProxyMetadata(std::span<const STATIC_PROXY_METADATA> metadata);
+    HRESULT Set_StaticProxyAtlases(std::span<const ComPtr<ID3D11ShaderResourceView>> atlases);
+    HRESULT Bind_StaticProxySources(const shared_ptr<class CShader>& shader) const;
+    HRESULT Bind_StaticProxyAtlases(const shared_ptr<class CShader>& shader,
+        std::span<const char* const> shaderNames) const;
+    // sourceSlots must be strictly increasing. Empty means no runtime draw.
+    // Failed preparation leaves the last complete selection and GPU buffer intact.
+    HRESULT Prepare_StaticProxyVisibleSources(std::span<const uint32_t> sourceSlots);
+    HRESULT Render_StaticProxySource(uint32_t sourceIndex);
+    HRESULT Render_StaticProxy();
+
+	// Exact shared geometry/material state, including multi-mesh and wind instances.
+	bool_t Can_ShareStaticInstanceStateWith(const CModel& other) const;
+
+	// Corresponding immutable BG meshes share a separate lighting bank per mesh.
 	bool_t Can_BatchStaticLightingWith(const CModel& other) const;
+	// Lighting identity only; callers retain material/geometry compatibility checks.
+	bool_t Has_SameStaticLightingTextures(const CModel& other) const;
 	HRESULT Bind_StaticLightingBank(const shared_ptr<class CShader>& shader,
-		std::span<const CModel* const> models) const;
+		std::span<const CModel* const> models, uint32_t meshIndex = 0u) const;
 	/* Preparation is explicit: the caller owns the proof that every source
 	   submesh in this contiguous range uses the same effective draw state.
 	   Original meshes/material slots remain intact. S_FALSE means this model
@@ -369,6 +481,10 @@ public:
 	bool_t Has_MorphBaseVertices(uint32_t iMeshIndex) const;
 	// True only when the existing immutable mesh can consume screen-space LOD.
 	bool_t Has_StaticMeshLod(uint32_t iMeshIndex) const;
+	// Read-only CPU selection shared with the actual instanced draw. Invalid views keep LOD 0.
+	uint32_t Get_StaticMeshLodLevel(uint32_t iMeshIndex, const MESH_SCREEN_LOD_DESC* view) const;
+	// Same selected range as Render_Instanced; missing/invalid views keep the original index count.
+	uint32_t Get_StaticMeshSelectedIndexCount(uint32_t iMeshIndex, const MESH_SCREEN_LOD_DESC* view = nullptr) const;
 	bool_t Get_MorphBaseVertex(uint32_t iMeshIndex, uint32_t iVertexIndex,
 		float3_t& OutPosition, float3_t& OutNormal) const;
 	/* Must be called once (per CModel instance, i.e. per clone) before Update_Mesh_Vertices()
@@ -396,6 +512,17 @@ private:
 	float4x4_t							m_PreTransformMatrix = {};
 	bool_t m_bRetainOrderedStaticGeometry = false;
 	shared_ptr<const vector<MODEL_MESH_DATA>> m_pOrderedStaticGeometrySource;
+    struct STATIC_CLUSTER_STORAGE;
+    shared_ptr<const STATIC_CLUSTER_STORAGE> m_StaticCluster;
+    struct STATIC_PROXY_STORAGE;
+    shared_ptr<const STATIC_PROXY_STORAGE> m_StaticProxy;
+    vector<ComPtr<ID3D11ShaderResourceView>> m_StaticProxyAtlases;
+    ComPtr<ID3D11ShaderResourceView> m_StaticProxyMetadata;
+    ComPtr<ID3D11Buffer> m_StaticProxyVisibleIndices;
+    vector<uint32_t> m_StaticProxyVisibleSources;
+    uint32_t m_iStaticProxyVisibleIndexCount = 0u;
+    bool_t m_bStaticProxyVisiblePrepared = false;
+
 	struct ORDERED_STATIC_GEOMETRY final
 	{
 		uint32_t iHandle = 0u, iFirstMesh = 0u, iMeshCount = 0u;

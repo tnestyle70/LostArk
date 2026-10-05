@@ -26,7 +26,7 @@ public:
 	const std::string& Get_Scope() const { return m_Scope; }
 	const std::filesystem::path& Get_LogPath() const { return m_LogPath; }
 
-	/* scope is one of the publisher's Area / WorldSequences / Lights. logTag
+	/* scope is one of the publisher's Area / WorldSequences / Lights / Placements. logTag
 	   names the log file so two tools never write the same one. */
 	bool_t Start(
 		const std::string& areaId,

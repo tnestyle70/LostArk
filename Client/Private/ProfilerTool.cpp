@@ -460,6 +460,47 @@ namespace
         "메시 인덱스 제출",
         "고유 CMesh 객체",
         "고유 메시 계측 누락",
+        "주변 이펙트 시간 제한 적용",
+        "주변 이펙트 제외 시간 합계 (effect-us, CPU 시간 아님)",
+        "주변 이펙트 fixed-step 합계",
+        "주변 이펙트 단일 갱신 최대 fixed-step",
+        "맵 공간 묶음 수",
+        "맵 공간 묶음 근거리 제출",
+        "맵 공간 묶음 원거리 제출",
+        "맵 공간 묶음 원본 제출 수",
+        "맵 공간 묶음 제출 인덱스",
+        "맵 공간 묶음 원본 인덱스",
+        "맵 공간 묶음 GPU 버퍼 바이트",
+        "맵 공간 묶음 무효화",
+        "맵 공간 묶음 활성 수",
+        "맵 공간 묶음 HLOD 활성 수",
+        "동일 모델 결합 전 source draw",
+        "동일 모델 결합 draw",
+        "조명 bank 결합 전 source draw",
+        "조명 bank 결합 draw",
+        "가림 검사 후보 배치",
+        "가림 검사 실행 배치",
+        "가림 제외 배치",
+        "가림 제외 mesh 제출 (인스턴싱 결합 전)",
+        "가림 제외 인덱스",
+        "가림 깊이 생성 배치",
+        "가림 깊이 래스터 삼각형",
+        "거리 검사 인스턴스",
+        "거리 제외 인스턴스",
+        "거리 제외 원본 인덱스",
+        "동일 카메라·정적 배치 가림 결과 재사용",
+        "맵 CPU 준비 batch",
+        "맵 CPU 큰 작업 묶음",
+        "맵 CPU caller 완료 작업",
+        "맵 CPU worker 완료 작업",
+        "맵 CPU 보조 callback 제출",
+        "공유 대상 애니메이션 샘플 요청",
+        "애니메이션 샘플 캐시 재사용",
+        "파티클 root 역행렬 요청",
+        "파티클 root 역행렬 캐시 재사용",
+        "파티클 CPU caller 완료 작업",
+        "파티클 CPU worker 완료 작업",
+        "파티클 CPU 보조 callback 제출",
     };
     static_assert(std::size(COUNTER_LABELS) == static_cast<size_t>(Engine::EProfilerCounter::Count));
 
@@ -470,6 +511,10 @@ namespace
             {"Client.Update", "클라이언트 전체 갱신"}, {"Client.Render", "클라이언트 렌더 제출"},
             {"Render.World", "월드 렌더 제출"}, {"Render.Draw", "렌더 패스 전체"},
             {"Render.FinalCameraSubmission", "최종 카메라 가시성·제출"},
+            {"Map.Visibility.Prepare", "맵 CPU 준비·분배 전체"},
+            {"Map.Visibility.Dispatch", "맵 CPU 작업 실행·동기화"},
+            {"Map.Visibility.Join", "맵 CPU worker 잔여 대기"},
+            {"Map.Visibility.Worker", "맵 CPU 보조 스레드 계산"},
             {"Render.SubmitFrameProviders", "프레임 제공자 제출"},
             {"Render.NonBlend", "불투명 메시·G-buffer"}, {"Render.Shadow", "그림자 전체"},
             {"Render.Shadow.CacheAdmission", "그림자 캐시 조건 확인"},
@@ -625,8 +670,7 @@ void Client::CProfilerTool::Refresh(Engine::CProfiler& profiler)
     m_iHistoryFrames = profiler.Get_HistoryFrameCount();
     profiler.Get_ScopeNames(m_ScopeNames);
     const size_t window = static_cast<size_t>((std::max)(m_iWindowFrameInput, 1));
-    m_SaveWindowCoverage = profiler.Get_CaptureWindow(
-        m_bSaveWindowOnly ? window : Engine::CProfiler::MAX_HISTORY_FRAMES);
+    m_SaveWindowCoverage = profiler.Get_CaptureWindow(Save_FrameWindow());
     profiler.Get_ScopeAggregates(window, m_Aggregates);
     profiler.Get_GpuScopeAggregates(window, m_GpuAggregates, m_iGpuValidFrames, m_iGpuPartialFrames);
     profiler.Get_WindowFrameStats(window, m_fWindowCpuAvgMs, m_fWindowCpuMaxMs,
@@ -667,6 +711,12 @@ std::string Client::CProfilerTool::Thread_Label(uint32_t id) const
     return id == m_iMainThreadId ? "메인" : "작업 스레드 " + std::to_string(id);
 }
 
+size_t Client::CProfilerTool::Save_FrameWindow() const noexcept
+{
+    return m_bSaveWindowOnly ? static_cast<size_t>(std::clamp(m_iSaveFrameInput,
+        1, static_cast<int32_t>(Engine::CProfiler::MAX_HISTORY_FRAMES))) : Engine::CProfiler::MAX_HISTORY_FRAMES;
+}
+
 void Client::CProfilerTool::Request_Save(Engine::CProfiler& profiler)
 {
     if (m_Exporter.IsSaving()) return;
@@ -676,8 +726,7 @@ void Client::CProfilerTool::Request_Save(Engine::CProfiler& profiler)
     Engine::FProfilerCaptureSnapshot snapshot;
     {
         Engine::CProfilerScope scope(&profiler, "Profiler.Capture.Snapshot");
-        snapshot = profiler.Snapshot(m_bSaveWindowOnly ?
-            static_cast<size_t>((std::max)(m_iWindowFrameInput, 1)) : Engine::CProfiler::MAX_HISTORY_FRAMES);
+        snapshot = profiler.Snapshot(Save_FrameWindow());
     }
     if (snapshot.Frames.empty())
     { m_strCaptureStatus = "완료 프레임이 없습니다. 수집을 켜고 기다린 뒤 저장하세요."; return; }
@@ -687,8 +736,29 @@ void Client::CProfilerTool::Request_Save(Engine::CProfiler& profiler)
     std::filesystem::path output;
     if (!CProfilerCaptureIO::Make_NamedPath(m_CaptureName.data(), frame, output, &error))
     { m_strCaptureStatus = error; return; }
-    m_strCaptureStatus = m_Exporter.BeginSave(std::move(snapshot), output, &error, std::move(context)) ?
-        "백그라운드에서 JSON 저장 중..." : error;
+    // Describe this immutable export, not the live history that keeps changing while it is saved.
+    const auto& coverage = snapshot.CaptureWindow;
+    size_t gpuPending = 0, gpuDropped = 0;
+    uint64_t cpuScopesDropped = 0, gpuScopesDropped = 0;
+    for (const auto& savedFrame : snapshot.Frames)
+    {
+        gpuPending += savedFrame.GpuStatus == Engine::EProfilerGpuFrameStatus::Pending;
+        gpuDropped += savedFrame.GpuStatus == Engine::EProfilerGpuFrameStatus::Dropped;
+        cpuScopesDropped += savedFrame.DroppedCpuScopes;
+        gpuScopesDropped += savedFrame.DroppedGpuScopes;
+    }
+    const std::string coverageText = std::to_string(snapshot.Frames.size()) + "프레임 (" +
+        std::to_string(coverage.FirstSavedFrameNumber) + " - " + std::to_string(coverage.LastSavedFrameNumber) +
+        ") | 보관 중 제외 " + std::to_string(coverage.ExcludedRetainedFrames) +
+        " | 초기화 이후 퇴출 " + std::to_string(coverage.EvictedFramesSinceReset) +
+        " | 저장 GPU 결과 대기 " + std::to_string(gpuPending) + " / 누락 " + std::to_string(gpuDropped) +
+        " | 저장 CPU/GPU 구간 누락 " + std::to_string(cpuScopesDropped) + "/" + std::to_string(gpuScopesDropped);
+    if (m_Exporter.BeginSave(std::move(snapshot), output, &error, std::move(context)))
+    {
+        m_strSavingCoverage = coverageText;
+        m_strCaptureStatus = "백그라운드에서 JSON 저장 중... " + m_strSavingCoverage;
+    }
+    else m_strCaptureStatus = error;
 }
 
 Client::FProfilerCaptureContext Client::CProfilerTool::Sample_Context() const
@@ -727,6 +797,13 @@ Client::FProfilerCaptureContext Client::CProfilerTool::Sample_Context() const
     context.FXAAEnabled = quality.bFXAAEnabled;
     auto& options = context.RenderingOptions;
     options.clear(); context.RenderingAssets.clear();
+    options["Texture.minimumMip"] = quality.iTextureMinMip;
+    const auto visibility = game.Get_MapVisibilitySettings();
+    options["MapVisibility.parallelPreparation"] = visibility.ParallelPreparationEnabled;
+    options["MapVisibility.occlusion"] = visibility.OcclusionEnabled;
+    options["MapVisibility.distance"] = visibility.DistanceEnabled;
+    options["MapVisibility.distanceScale"] = visibility.DistanceScale;
+    options["MapVisibility.distanceMaxPixels"] = visibility.DistanceMaxPixels;
     const auto vector3 = [&](const std::string& key, const auto& value)
     { options[key + ".x"] = value.x; options[key + ".y"] = value.y; options[key + ".z"] = value.z; };
     const auto vector4 = [&](const std::string& key, const auto& value)
@@ -795,7 +872,7 @@ void Client::CProfilerTool::Update_SaveState()
     FProfilerCaptureSaveResult saveResult;
     if (!m_Exporter.Poll(saveResult)) return;
     m_strCaptureStatus = saveResult.Succeeded ?
-        "Saved " + Capture_PathLabel(saveResult.OutputPath) : saveResult.Error;
+        "Saved " + Capture_PathLabel(saveResult.OutputPath) + "\n" + m_strSavingCoverage : saveResult.Error;
     if (saveResult.Succeeded && Refresh_CaptureFiles())
         for (const auto& file : m_CaptureFiles)
             if (file.FileName == saveResult.OutputPath.filename())
@@ -831,7 +908,7 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
         profiler->Set_Enabled(enabled); m_fLastRefreshTime = -1.0;
     }
     ImGui::SameLine(); ImGui::SetNextItemWidth(100.f);
-    if (ImGui::DragInt("프레임 범위", &m_iWindowFrameInput, 1.f, 1,
+    if (ImGui::DragInt("분석·표시 프레임 범위", &m_iWindowFrameInput, 1.f, 1,
         static_cast<int>(Engine::CProfiler::MAX_HISTORY_FRAMES), "%d", ImGuiSliderFlags_AlwaysClamp))
         m_fLastRefreshTime = -1.0;
     ImGui::SameLine();
@@ -855,9 +932,17 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
         CProfilerCaptureIO::Reset_MovementSamples();
         m_fLastRefreshTime = -1.0;
     }
-    if (ImGui::Checkbox("선택한 프레임 범위만 저장", &m_bSaveWindowOnly))
+    if (ImGui::Checkbox("JSON 저장 범위 제한", &m_bSaveWindowOnly))
         m_fLastRefreshTime = -1.0;
-    ImGui::SameLine(); ImGui::TextDisabled("끄면 보관 중인 전체 프레임을 저장합니다 (최대 1200).");
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!m_bSaveWindowOnly);
+    ImGui::SetNextItemWidth(100.f);
+    if (ImGui::DragInt("최근 프레임만 저장", &m_iSaveFrameInput, 1.f, 1,
+        static_cast<int>(Engine::CProfiler::MAX_HISTORY_FRAMES), "%d", ImGuiSliderFlags_AlwaysClamp))
+        m_fLastRefreshTime = -1.0;
+    ImGui::EndDisabled();
+    ImGui::TextDisabled("기본은 보관 전체 저장 (최대 %zu). 분석·표시 범위와 별도입니다.", Engine::CProfiler::MAX_HISTORY_FRAMES);
+    ImGui::TextDisabled("GPU 결과 대기는 JSON에 pending으로 남으며, 완료된 0ms 측정값이 아닙니다.");
 
     const double now = ImGui::GetTime();
     if (m_fLastRefreshTime < 0.0 ||
@@ -873,7 +958,7 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
         static_cast<unsigned long long>(m_SaveWindowCoverage.RetainedFrames),
         static_cast<unsigned long long>(m_SaveWindowCoverage.EvictedFramesSinceReset));
     if (m_SaveWindowCoverage.ExcludedRetainedFrames != 0)
-        ImGui::TextWrapped("선택 범위에서 보관 프레임 %llu개 제외 (최대 간격 %.2f ms). 전체 보관분을 저장하려면 선택 범위만 저장을 끄세요.",
+        ImGui::TextWrapped("선택 범위에서 보관 프레임 %llu개 제외 (최대 간격 %.2f ms). 전체 보관분을 저장하려면 JSON 저장 범위 제한을 끄세요.",
             static_cast<unsigned long long>(m_SaveWindowCoverage.ExcludedRetainedFrames),
             m_SaveWindowCoverage.ExcludedMaxFrameIntervalMs);
     if (m_SaveWindowCoverage.EvictedFramesSinceReset != 0)
@@ -1080,6 +1165,31 @@ void Client::CProfilerTool::Render_FrameOverview()
     ImGui::Text("메시 draw %llu | 메시 인스턴스 %llu | 메시 인덱스 %llu | 고유 CMesh %llu",
         count(Engine::EProfilerCounter::MeshDrawCalls), count(Engine::EProfilerCounter::MeshInstances),
         count(Engine::EProfilerCounter::MeshIndices), count(Engine::EProfilerCounter::UniqueMeshes));
+    ImGui::Text("동일 모델 결합 %llu -> %llu draw | 조명 bank %llu -> %llu draw",
+        count(Engine::EProfilerCounter::MapIdenticalInstanceSourceDraws), count(Engine::EProfilerCounter::MapIdenticalInstanceDraws),
+        count(Engine::EProfilerCounter::MapLightingBankSourceDraws), count(Engine::EProfilerCounter::MapLightingBankDraws));
+    ImGui::TextWrapped("결합 전 수는 이번 프레임에 개별 제출했을 경우의 source draw입니다. 이전 제품 대비 감소율이나 전체 장면의 절감량을 의미하지 않습니다.");
+    auto visibility = Engine::CGameInstance::Get().Get_MapVisibilitySettings();
+    bool changedVisibility = ImGui::Checkbox("Bern parallel visibility preparation", &visibility.ParallelPreparationEnabled);
+    changedVisibility |= ImGui::Checkbox("Bern occlusion culling", &visibility.OcclusionEnabled);
+    changedVisibility |= ImGui::Checkbox("Bern distance + screen-size culling", &visibility.DistanceEnabled);
+    changedVisibility |= ImGui::SliderFloat("Distance range scale", &visibility.DistanceScale, .25f, 4.f, "%.2f");
+    changedVisibility |= ImGui::SliderFloat("Distance maximum diameter (px)", &visibility.DistanceMaxPixels, 4.f, 128.f, "%.0f");
+    if (changedVisibility) (void)Engine::CGameInstance::Get().Apply_MapVisibilitySettings(visibility);
+    ImGui::Text("가림 제외 %llu batch | 이번 재검사 %llu | 제외 인덱스 %llu | 깊이 geometry %llu triangles",
+        count(Engine::EProfilerCounter::MapOcclusionRejectedBatches), count(Engine::EProfilerCounter::MapOcclusionTested),
+        count(Engine::EProfilerCounter::MapOcclusionRejectedIndices), count(Engine::EProfilerCounter::MapOcclusionRasterizedTriangles));
+    ImGui::Text("거리 제외 %llu instances | 이번 재검사 %llu | 제외 원본 인덱스 %llu",
+        count(Engine::EProfilerCounter::MapDistanceRejectedInstances), count(Engine::EProfilerCounter::MapDistanceTestedInstances),
+        count(Engine::EProfilerCounter::MapDistanceRejectedIndices));
+    ImGui::TextWrapped("컬링은 세션 설정입니다. 범위 scale이 작을수록 가까이서 제외하며, 픽셀 제한을 높이면 더 큰 소품도 제외합니다. 가림/거리 인덱스와 draw 합계를 구분하고 Render.MapOcclusion CPU 비용도 비교하세요.");
+
+    ImGui::Text("맵 CPU 준비 %llu batch / %llu 작업 | caller %llu / worker %llu | 보조 callback %llu",
+        count(Engine::EProfilerCounter::MapVisibilityPreparedBatches), count(Engine::EProfilerCounter::MapVisibilityCpuJobs),
+        count(Engine::EProfilerCounter::MapVisibilityCallerJobs), count(Engine::EProfilerCounter::MapVisibilityWorkerJobs),
+        count(Engine::EProfilerCounter::MapVisibilityAssistants));
+    ImGui::TextWrapped("CPU 준비는 큰 작업만 worker로 나눕니다. 정지 카메라 재사용은 준비 0이며, Dispatch는 caller 계산과 Join 대기를 포함합니다. Worker 시간 합계를 메인 스레드 시간에 더하지 마세요.");
+
     if (count(Engine::EProfilerCounter::DroppedMeshSamples))
         ImGui::TextColored(ImVec4(1.f, .65f, .25f, 1.f), "고유 메시 표본 %llu개 누락: 고유 수는 하한입니다.", count(Engine::EProfilerCounter::DroppedMeshSamples));
     ImGui::TextWrapped("draw는 API 제출 횟수, 인스턴싱 제출 수는 instanced draw만의 반복 개수, 고유 CMesh는 서로 다른 CPU 메시 객체 수입니다. 인덱스는 인스턴스 수를 반영하며 고유 정점·오브젝트·화면 삼각형 수와 다릅니다. 그림자·초상 재제출도 포함합니다. DirectXTK 글자·디버그 도형 내부 draw는 위 합계에 미포함입니다. 간접 draw와 그 인덱스 상한은 생산자가 없는 미계측 예약 항목입니다.");

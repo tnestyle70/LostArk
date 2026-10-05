@@ -10,6 +10,8 @@
 
 NS_BEGIN(Client)
 
+class CCharacterSelectWindowView;
+
 class CLevel_Loading final : public CLevel
 {
 private:
@@ -23,7 +25,8 @@ public:
 public:
 	virtual HRESULT Initialize(
 		LEVEL eNextLevelID,
-		LOBBY_COMMAND_TOKEN lobbyCommandToken);
+		LOBBY_COMMAND_TOKEN lobbyCommandToken,
+		CCharacterSelectWindowView* pCharacterSelectReturn = nullptr);
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
 
@@ -44,6 +47,12 @@ private:
 
 private:
 	LEVEL m_eNextLevelID = LEVEL::END;
+	/* MainApp outlives its Loading level. Only an explicit roster return borrows this
+	   view; initial Lobby and creation-arena loading keep their existing paths. */
+	CCharacterSelectWindowView* m_pCharacterSelectReturn = nullptr;
+	bool_t m_bReturnChromeRendered = false;
+	std::string m_strCharacterSelectPreparationStatus;
+	f32_t m_fCharacterSelectPreparationProgress = 0.f;
 	LOBBY_COMMAND_TOKEN m_iLobbyCommandToken =
 		INVALID_LOBBY_COMMAND_TOKEN;
 	unique_ptr<class CLoader> m_pLoader = { nullptr };
@@ -117,7 +126,8 @@ public:
 		ComPtr<ID3D11DeviceContext> pContext,
 		LEVEL eNextLevelID,
 		LOBBY_COMMAND_TOKEN lobbyCommandToken =
-			INVALID_LOBBY_COMMAND_TOKEN);
+			INVALID_LOBBY_COMMAND_TOKEN,
+		CCharacterSelectWindowView* pCharacterSelectReturn = nullptr);
 };
 
 NS_END

@@ -319,3 +319,84 @@ G11/G12의126개 GPU payload 일치는 당시 생성한 DDS가 GPU에 그대로 
 이쪽 전달용 사본의 해당 DDS만 교정본으로 갱신하고 이전 bytes와 receipt를 `out/RenderingRestore20261004/reconciled-delivery-backup`에 보존했다. 워로드 작은 돌 WModel1개를 포함한 최종 전달본은185개(184DDS+1WModel),12,727,088B다. `out/RenderingRestore20261004/final-readback.json`에서185개 제품·전달 파일의 hash 일치, Bern authoring/runtime JSON 일치, 최종 Warlord V/Alt V3문서 hash, 기록한 Debug/Release 빌드 PASS를 재확인했다. 이 읽기 검증은 빌드 이후 다른 세션의 C++ 변경까지 재빌드했거나 실제 Client 화면을 확인했다는 뜻이 아니다. Drive 업로드와 실행 중 저작 도구의 Reload는 수행하지 않았다.
 
 후보 생성기의 source/output hash 확인만으로는 이전 decoder가 만든 잘못된 G8 캐시를 배제하지 못하는 재발 경로도 확인했다. `build_source_landscape_lighting_candidate.py`는 PF_DXT1 RNM에만 기존 캐시를 허용하고 PF_G8 shadow는 항상 원본 flags로 재해석하도록 수정했다. 실제 LAND02 원본·이전 shadow199 DDS·유효한 이전 receipt를 넣은 회귀 검사에서 구 dispatch는잘못된350ab08d…를, 수정 dispatch는설치본과같은ec9b9696…를 만들었다. mip4의256byte 중229byte가 교정됐고 나머지8mip은동일했다. 실제RNM1개는 UModel 호출을 차단한 상태에서도 기존 캐시를 그대로 재사용했다. 제품쓰기0과 설치hash불변을 확인했으며 Python문법·scoped diff check를 통과했다. 근거는 `out/BernLandscapeLightingCacheReview20261004/cache-regression-receipt.json`이다.
+
+## G14. F6 사용자 사진 이후 원본 Landscape 42개 재대조
+
+사용자는 성과 바다 경계의 잔디색 수직면 및 성벽 사이로 노출된 면을 F6 자유 카메라로
+확인한 사진 3장을 제공했다. 사진의 픽셀을 특정 placement/triangle로 식별한 상태는 아니다.
+이전 LC622 한 점의 StaticMesh coverage 검사를 새 사진 전체의 누락 없음으로 확대하지 않는다.
+
+LAND01 22개와 LAND02 20개 component의 원본 UPK instance→archetype→CDO를 다시
+읽었다. 42개 모두 visible이며 원본 hole 463 quad가 설치 모델 topology와 일치한다.
+42×62×62×2−463×2 = 321,970 triangle이다. 실제 모델 정점 166,270개는 full grid
+166,698개에서 hole에만 쓰이던 428개가 제외된 결과다. 원본 render/collision 높이 불일치 0,
+설치 정점 위치 최대 오차 2.441406e-6m, placement anchor 오차 0, topology/winding 차이 0이다.
+
+전체 17,707개 급경사 triangle(abs(normal.y)<0.2)이 원본 높이에 이미 있다. LC622 예시
+triangle 3822는 (112,0,-97.92)와 (111.36,49.14,-98.56)/(111.36,49.12,-97.92)를 잇는다.
+수평 0.64m에 높이 49.14m가 연결되고 UV는 평면 축만 사용하므로 잔디 무늬가 세로로 약
+76.8배 늘어진다. 이는 같은 heightfield의 경계면으로 설명되며 지형 2장이 겹쳤다는 증거가 아니다.
+원본 height RG=(128,0)은 height16=32768, 위쪽 (147,50)은 37682이며 collision도 같다.
+LC622는 __DataLayer__ 할당과 hole이 없고, 낮은 정점도 layer03=255로 유효 paint다.
+원본 NoLightmap/lightmapped PS 모두 clip/discard 명령이 없어 임의 hole 추가의 근거도 없다.
+
+높이·구멍 추출 누락 가설은 위 분모에서 지지되지 않는다. 다만 원래 카메라 밖에 노출된 면인지,
+그 위치를 가려야 할 별도 메시의 runtime 표시 문제인지는 실제 선택 ID와 가시성 대조가 남았다.
+높이 0을 삭제하거나 지형 전체를 숨기거나 재질을 임의 교체하지 않았다. 사용자의 World Level
+편집 진입 종료 보고로 사진 위치의 picker 결과를 아직 받지 못했으며, 도구 수정은 별도 F1 RESULT다.
+
+근거는 `out/BernCliffFrameInvestigation20261004/coverage/landscape-source-visibility.json`,
+`landscape-all42-geometry-hole.json`, `shader/current-installed-landscape-audit.json`,
+`native-all42-height-hole-audit.json`, `lc622-fresh-native-height-paint-clip.json`과 재현 Python이다.
+Client/UI 실행, 새 GPU draw 확인, 원작 해당 카메라 화면 비교는 하지 않았다.
+
+## G15. 사용자 Pick in scene 두 지점의 원본 삼각형 확인
+
+사용자가 World Scene Tool로 직접 선택한 두 지점으로 G14의 대상 식별 경계를 해소했다.
+두 선택 모두 풀 오브젝트가 아닌 Landscape mesh0이다. 화면의 `LANDSCAPE_BAKED`는 모델의
+material slot 이름이며 저작/게시 문서는 해당 slot에 `bg-source-landscape-opaque` family14를
+연결한다. 문자열만 보고 예전 baked fallback이 사용된 것으로 판정하지 않는다.
+
+| 항목 | 첫 사진 | 두 번째 사진 |
+|---|---|---|
+| source | LAND02 landscape export753 | LAND01 landscape export635 |
+| placement | 12383519469690094806 | 14713172032114739383 |
+| asset | MAP_E6841E9DBB0A_LAND02_LC_00753 | MAP_F913A992E7E1_LAND01_LC_00635 |
+| 사용자 hit(m) | (159.2495,31.2959,-5.1007) | (117.3409,23.9338,-6.6817) |
+| 설치 triangle | 995 | 1484 |
+| 원본/설치 정점 높이(m) | 34.93 / 17.01 / 17.01 | 0 / 36.55 / 36.55 |
+| 수평 grid 간격(m) | 0.64 | 0.64 |
+| 표면 면적 / XZ 투영 면적 | 39.6106 | 57.1183 |
+| component 원본 hole | 0 | 0 |
+
+표시된 XZ에서 삼각형 높이를 재계산하면 첫 사진의 Y와 0.3mm, 두 번째와 0.83mm 차이다.
+UI가 네 자리 소수로 반올림하고 급경사가 그 오차를 증폭하는 범위다. 각 세 정점의 native
+height16과 원본 collision sample, 설치 모델 위치가 일치한다. 두 지점 모두 원본 weightmap의
+layer02=255, 나머지 layer=0이며 layer02는 `lv_common_grass_24_d`를 사용한다.
+따라서 선택된 면의 늘어짐은 서로 다른 지형이 겹친 현상이 아니라 원본 급경사 한 면에
+평면 grid 기반의 잔디 UV가 적용되는 구조로 설명된다. G14의 LC622 높이0 예시를 첫 사진에
+그대로 대입하지 않는다. 첫 사진은 17.01→34.93m이고 두 번째가 0→36.55m다.
+
+각 component의 정확한 native material static key도 다시 확인했다. LAND02의 NoLightmap/
+lightmapped PS는 c49939…/e7a3bc…, LAND01은 2d7cb…/749c85…이며 네 PS 모두 clip/discard가
+없고 두 static set의 layercliff는 index -1이다. native VS는 기존 대조한 c9f016…/213423…와
+동일해 grid 기반 UV 근거를 이 두 대상에 직접 적용할 수 있다. 임의 cliff 투영이나 hole 삭제는
+원본 복구로 볼 수 없으므로 제품 데이터·재질을 변경하지 않았다.
+
+기존 원본35패키지 streaming closure의 StaticMesh bounds를 이번 두 component 전체 AABB에
+다시 대조했다. LAND02는 1,576행, LAND01은 931행이며 원본 visible 행 중 현재 게시 누락0,
+임의 hidden0, source/published TRS 최대 차이5e-7이다. 정확한 hit를 포함하는 bounds는 첫 지점의
+sky와 원본 hidden nav box, 두 번째의 sky뿐이다. 이 결과는 주변 원본 배치 행 누락을 지지하지
+않으며 AABB overlap을 실제 삼각형 가림/GPU draw 성공으로 대신하지 않는다.
+
+현재 결론은 **원본 Landscape 급경사와 잔디 UV의 늘어짐이 F6 화면에 노출된 것**이다.
+원작의 같은 위치·카메라·실제 draw 대조는 하지 않았으므로 원작 정상 카메라에서 그 면이
+어떤 오브젝트에 가려지는지까지 확정하지 않는다. geometry 추출 누락이나 잘못된 grass layer
+치환으로 확인된 결함은 없다. 선택 좌표를 제외한 사용자 카메라 pose도 임의 추정하지 않는다.
+
+증거는 `out/BernCliffFrameInvestigation20261004/shader/lc753-selected-hit-native-audit.json`,
+`lc635-selected-hit-native-audit.json`, `lc753-native-material-map.json`, `lc635-native-material-map.json`,
+각 native shader summary와 `selection753/source-runtime-coverage.json`,
+`selection635/source-runtime-coverage.json`이다. coverage의 원본35패키지 결과는 기존 추출 자료를
+재사용했고 게시본24개 shard는 현재 파일을 읽었다. 원본 shader 확인은 정확한 두 material export와
+관련 program만 읽었다. Client/UI·GPU 실행, 빌드, source/runtime/Resources 변경은 하지 않았다.

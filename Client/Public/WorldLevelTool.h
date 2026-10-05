@@ -4,16 +4,16 @@
 #include <array>
 #include <filesystem>
 #include <optional>
+#include <chrono>
 
 #ifdef _DEBUG
+#include "MapStaticChunkObject.h"
 namespace Client
 {
-class CMapPlacementEditSession;
-
 enum class WORLD_LEVEL_COMPOSITION_OWNER { ACTION, SEQUENCE };
-/* PICK_PLACEMENT asks MainApp for one viewport click; the tool's map edit
-   session consumes the resolved world point. */
-enum class WORLD_LEVEL_REQUEST_KIND { OPEN_MAP, OPEN_WORLD_OBJECT, OPEN_COMPOSITION, OPEN_LIGHT, FOCUS, PICK_PLACEMENT, OPEN_GUIDE };
+/* Scene requests use the live World Scene inspector; this inventory owns no
+   second placement draft or GPU world-point selection path. */
+enum class WORLD_LEVEL_REQUEST_KIND { OPEN_MAP, OPEN_WORLD_OBJECT, OPEN_COMPOSITION, OPEN_LIGHT, FOCUS, PICK_IN_SCENE, OPEN_GUIDE, SET_CHUNK_MODE };
 
 struct WORLD_LEVEL_TOOL_REQUEST final
 {
@@ -28,6 +28,9 @@ struct WORLD_LEVEL_TOOL_REQUEST final
     std::string occurrenceId;
     WORLD_LEVEL_COMPOSITION_OWNER compositionOwner = WORLD_LEVEL_COMPOSITION_OWNER::ACTION;
     float3_t position{};
+    float focusRadius = 8.f;
+    bool chunkEnabled = true, chunkHlodEnabled = true;
+    uint64_t runtimeGeneration = 0u;
 };
 
 // Read-only projection of the existing authoring owners. Requests carry stable
@@ -44,21 +47,19 @@ public:
     void Set_ActiveArea(const std::string& areaId);
     void Set_CompositionView(WORLD_LEVEL_COMPOSITION_OWNER owner,
         const KOUKU_SAYDON_COMPOSITION_DOCUMENT* document, uint64_t generation);
-    /* Drives the map edit session even while the window is closed, so a
-       running publish still reports and a Level change still ends it.
-       visible is the Developer Tools visibility of this window. */
-    void Update(bool visible);
     void Render();
+    bool Needs_ChunkView(const std::string& area, const void* source, uint64_t generation) const;
+    void Set_ChunkView(std::string area, const void* source, uint64_t generation,
+        std::vector<MAP_CHUNK_DEBUG_ROW> rows, bool enabled, bool hlodEnabled);
+    const std::vector<MAP_CHUNK_DEBUG_ROW>& Get_ChunkView() const { return m_ChunkRows; }
+    bool Show_ChunkBounds() const
+    { return m_Open && m_ShowChunkBounds && m_ChunkSource && m_ChunkArea == m_ActiveAreaId && m_ChunkArea == m_SelectedAreaId; }
+    bool Show_AllChunkBounds() const { return m_ShowAllChunkBounds || m_SelectedChunk == UINT32_MAX; }
+    uint32_t Get_SelectedChunk() const { return m_SelectedChunk; }
     bool Is_Open() const { return m_Open; }
     bool Consume_InteractionRequest();
     bool Consume_Request(WORLD_LEVEL_TOOL_REQUEST& request);
     void Set_Status(std::string status) { m_Status = std::move(status); }
-
-    /* Viewport pick ownership. MainApp validates the click and calls back. */
-    bool Is_PlacementPickArmed() const;
-    const std::string& Get_PlacementPickAreaId() const;
-    void Cancel_PlacementPick(std::string reason);
-    void Complete_PlacementPick(const float3_t& worldPoint);
 
 private:
     struct AREA final
@@ -84,18 +85,23 @@ private:
         const KOUKU_SAYDON_COMPOSITION_DOCUMENT* source = nullptr;
         uint64_t generation = 0u;
     };
+    void Render_ChunkView();
     bool Load_Areas();
     bool Refresh();
     void Rebuild_Rows();
-    /* Map rows follow the edit session draft while one is bound. */
-    void Apply_SessionRows();
-    void Render_MapEditing();
-    CMapPlacementEditSession& Session();
     void Append_CompositionRows(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         WORLD_LEVEL_COMPOSITION_OWNER owner, bool draft);
     void Request_Edit(const ROW& row);
     void Request_Focus(const ROW& row);
 
+    std::vector<MAP_CHUNK_DEBUG_ROW> m_ChunkRows;
+    std::string m_ChunkArea;
+    const void* m_ChunkSource = nullptr;
+    uint64_t m_ChunkGeneration = 0u;
+    std::chrono::steady_clock::time_point m_ChunkNextRefresh{};
+    uint32_t m_SelectedChunk = UINT32_MAX;
+    bool m_ShowChunkBounds = false, m_ShowAllChunkBounds = false;
+    bool m_ChunkEnabled = true, m_ChunkHlodEnabled = true;
     bool m_Open = false;
     bool m_InteractionRequested = false;
     bool m_RowsDirty = true;
@@ -111,8 +117,6 @@ private:
     std::array<char, 256u> m_Search{};
     int m_KindFilter = 0;
     std::optional<WORLD_LEVEL_TOOL_REQUEST> m_Request;
-    unique_ptr<CMapPlacementEditSession> m_pSession;
-    uint64_t m_SessionSelectionMirror = 0u;
 };
 }
 #endif

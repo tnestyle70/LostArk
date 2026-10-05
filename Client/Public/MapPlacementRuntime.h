@@ -5,6 +5,7 @@
 #include "MapLoadScope.h"
 #include "MapPlacementDocument.h"
 #include "MapStaticBatchObject.h"
+#include "MapStaticChunkObject.h"
 
 #include <memory>
 #include <string>
@@ -110,6 +111,10 @@ public:
 		const std::string& areaId,
 		const MAP_LOAD_SCOPE& loadScope = {});
 	void Clear();
+	// Bern calls once per frame, including transfer/restore wait frames.
+	void Advance_StaticBatchFrame(f32_t fTimeDelta);
+    const MAP_CHUNK_BUILD_STATS& Get_ChunkBuildStats() const { return m_ChunkBuildStats; }
+    const std::shared_ptr<MAP_CHUNK_POLICY>& Get_ChunkPolicy() const { return m_ChunkPolicy; }
 
 	/* Current CPU map geometry, independent of the rendered picking target.
 	   Uses immutable LOD0 triangles and live placement visibility/transforms;
@@ -121,6 +126,7 @@ public:
 #ifdef _DEBUG
     bool_t Try_PickInspectionSurface(const float3_t& rayOrigin,
         const float3_t& rayDirection, MAP_WORLD_MESH_PICK& outSelection) const;
+    std::vector<MAP_CHUNK_DEBUG_ROW> Get_ChunkDebugRows() const;
 #endif
 
 	const CMapAssetCatalog& Get_Catalog() const { return m_Catalog; }
@@ -140,6 +146,7 @@ public:
 	void Rebase_AuthoringSelfMotions(const std::vector<MAP_PLACEMENT_RECORD>& records);
 	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY>& Get_AuthoringBatches()
 	{
+		m_bStaticBatchCountersDirty = true;
 		return m_StaticBatches;
 	}
 #endif
@@ -216,7 +223,8 @@ public:
 		std::vector<MAP_RUNTIME_PLACED_ENTRY>& outPlacements,
 		std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY>& outBatches,
 		const MAP_FRUSTUM_CULLING_POLICY& frustumCulling = {},
-		std::string* outFailure = nullptr);
+		std::string* outFailure = nullptr, bool spatialChunks = false,
+		const std::shared_ptr<MAP_STATIC_BATCH_FRAME_STATE>& frameState = {});
 
 	static void Remove_PlacementRuntime(
 		uint32_t levelIndex,
@@ -345,6 +353,13 @@ private:
 	   every frame. */
 	std::unordered_map<std::string, shared_ptr<Engine::CModel>> m_SelfMotionModels;
 	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY> m_StaticBatches;
+	std::shared_ptr<MAP_STATIC_BATCH_FRAME_STATE> m_StaticBatchFrame;
+	uint64_t m_iSharedStaticBatchCount = 0u;
+	uint64_t m_iSharedStaticPlacementCount = 0u;
+	bool_t m_bStaticBatchCountersDirty = true;
+    std::shared_ptr<MAP_CHUNK_POLICY> m_ChunkPolicy;
+    std::vector<std::shared_ptr<CMapStaticChunkObject>> m_StaticChunks;
+    MAP_CHUNK_BUILD_STATS m_ChunkBuildStats{};
 	std::string m_Status = "Map runtime not loaded";
 	MAP_FRUSTUM_CULLING_POLICY m_FrustumCulling{};
 #ifdef _DEBUG

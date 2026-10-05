@@ -525,6 +525,32 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
 		material.colorMaskPath == material.diffusePath;
 	m_AuthoredColorTint = m_ColorTint;
 	m_Surface = material.surface;
+    if (m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED)
+    {
+        for (const auto* path : { &material.diffusePath, &material.normalPath,
+            &material.specularPath, &material.emissivePath, &material.surfaceDiffusePath,
+            &material.surfaceNormalPath, &material.surfaceSpecularPath, &material.detailNormalPath,
+            &material.surfaceEmissivePath, &material.bakedAveragePath,
+            &material.bakedDirectionalPath, &material.staticShadowPath })
+        {
+            if (path->empty()) continue;
+            const auto normalized = path->lexically_normal();
+            if (std::find(m_StaticProxySourcePaths.begin(), m_StaticProxySourcePaths.end(), normalized) ==
+                m_StaticProxySourcePaths.end())
+            {
+                STATIC_PROXY_FILE_STAMP stamp;
+                std::error_code error;
+                stamp.size = filesystem::file_size(normalized, error);
+                if (!error)
+                {
+                    stamp.modified = filesystem::last_write_time(normalized, error);
+                    stamp.valid = !error;
+                }
+                m_StaticProxySourcePaths.push_back(normalized);
+                m_StaticProxySourceStamps.push_back(stamp);
+            }
+        }
+    }
     if (m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_LANDSCAPE_OPAQUE)
     {
         const auto& source = m_Surface.sourceLandscape;
@@ -1317,7 +1343,7 @@ namespace
     }
 }
 
-bool_t CMaterial::Can_BatchStaticLightingWith(const CMaterial& other) const
+bool_t CMaterial::Can_BatchStaticLightingWith(const CMaterial& other, bool_t staticCluster) const
 {
     if (m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED ||
         other.m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED ||
@@ -1329,15 +1355,21 @@ bool_t CMaterial::Can_BatchStaticLightingWith(const CMaterial& other) const
             (!material.m_Surface.hasStaticShadow || material.m_StaticShadow);
     };
     if (!validLighting(*this) || !validLighting(other)) return false;
-    if (this == &other) return true;
+    if (this == &other && !staticCluster) return true;
     if (m_pDevice != other.m_pDevice || m_pContext != other.m_pContext ||
         m_iDiffuseMirrorU != other.m_iDiffuseMirrorU ||
         !SameStaticLightingValue(m_Surface, other.m_Surface) ||
         !SameStaticLightingValue(m_ColorTint, other.m_ColorTint) ||
         !SameStaticLightingValue(m_vDiffuseTint, other.m_vDiffuseTint)) return false;
-    // Preserve legacy slots as well as every surface input. Only the three
-    // original baked-light/shadow SRVs are allowed to differ.
-    for (size_t type = 0u; type < AI_TEXTURE_TYPE_MAX; ++type)
+    // Cluster source-BG passes bind typed diffuse/normal/specular/reflection
+    // after the legacy reset (MapAssetRenderUtils::Bind_Material). They cannot
+    // sample unused WModel fallback textures. Ordinary banks keep strict legacy
+    // identity; cluster admission additionally requires opaque typed diffuse.
+    if (staticCluster && ((m_Surface.sourceBgFlags & 64u) != 0u ||
+        !m_SurfaceDiffuse || !other.m_SurfaceDiffuse ||
+        m_Textures[aiTextureType_DIFFUSE].empty() ||
+        other.m_Textures[aiTextureType_DIFFUSE].empty())) return false;
+    for (size_t type = 0u; !staticCluster && type < AI_TEXTURE_TYPE_MAX; ++type)
     {
         if (m_Textures[type].size() != other.m_Textures[type].size()) return false;
         for (size_t slot = 0u; slot < m_Textures[type].size(); ++slot)
@@ -1362,24 +1394,82 @@ bool_t CMaterial::Can_BatchStaticLightingWith(const CMaterial& other) const
     return true;
 }
 
+bool_t CMaterial::Validate_StaticProxySourceFiles() const
+{
+    if (m_StaticProxySourcePaths.empty() || m_StaticProxySourcePaths.size() != m_StaticProxySourceStamps.size())
+        return false;
+    for (size_t i = 0u; i < m_StaticProxySourcePaths.size(); ++i)
+    {
+        const auto& stamp = m_StaticProxySourceStamps[i];
+        if (!stamp.valid) return false;
+        std::error_code error;
+        const auto size = filesystem::file_size(m_StaticProxySourcePaths[i], error);
+        if (error || size != stamp.size) return false;
+        const auto modified = filesystem::last_write_time(m_StaticProxySourcePaths[i], error);
+        if (error || modified != stamp.modified) return false;
+    }
+    return true;
+}
+
+bool_t CMaterial::Can_BakeStaticProxy() const
+{
+    const auto& s = m_Surface;
+    if (s.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED || s.sourceBgUnlit ||
+        (s.renderMode != MODEL_SURFACE_RENDER_MODE::INHERIT && s.renderMode != MODEL_SURFACE_RENDER_MODE::DEFERRED) ||
+        !m_TextureOverrides.empty() || !m_SourceCharacterTextureOverrides.empty() ||
+        m_ColorTint.isEnabled || m_vDiffuseTint.x != 1.f || m_vDiffuseTint.y != 1.f ||
+        m_vDiffuseTint.z != 1.f || m_vDiffuseTint.w != 1.f ||
+        m_StaticProxySourcePaths.empty() || !m_SurfaceDiffuse || Has_Texture(aiTextureType_OPACITY) ||
+        s.sourceFoliageWind || (s.sourceBgFlags & (2u | 16u | 64u)) != 0u ||
+        s.sourceBgPanning.x != 0.f || s.sourceBgPanning.y != 0.f ||
+        s.sourceBgSubspecular.x != 0.f || s.sourceBgRimlight.x != 0.f ||
+        s.sourceBgRimlight.y != 0.f || s.sourceBgRimlight.z != 0.f ||
+        (s.hasEmissive && s.emissiveIntensity != 0.f && s.sourceBgFlicker != 0u && s.emissiveFlickerSpeed != 0.f) ||
+        (s.hasBakedLighting && (!m_BakedAverage || !m_BakedDirectional)) ||
+        (s.hasStaticShadow && !m_StaticShadow)) return false;
+    // R11G11B10 stores positive HDR indirect. Extrapolated saturation can
+    // create negative diffuse radiance, so those source materials stay live.
+    if (!std::isfinite(s.diffuseSaturation) || s.diffuseSaturation < 0.f || s.diffuseSaturation > 1.f ||
+        !std::isfinite(s.diffuseBrightness) || s.diffuseBrightness < 0.f ||
+        !std::isfinite(s.specularPower) || s.specularPower < 0.f || s.specularPower > 65504.f ||
+        !std::isfinite(s.emissiveIntensity) || s.emissiveIntensity < 0.f) return false;
+    for (const float value : { s.diffuseColor.x, s.diffuseColor.y, s.diffuseColor.z,
+        s.emissiveColor.x, s.emissiveColor.y, s.emissiveColor.z })
+        if (!std::isfinite(value) || value < 0.f) return false;
+    return true;
+}
+
+bool_t CMaterial::Has_SameStaticLightingTextures(const CMaterial& other) const
+{
+    return m_BakedAverage == other.m_BakedAverage &&
+        m_BakedDirectional == other.m_BakedDirectional && m_StaticShadow == other.m_StaticShadow;
+}
+
 HRESULT CMaterial::Bind_StaticLightingBank(const shared_ptr<CShader>& shader,
-    std::span<const CMaterial* const> materials) const
+    std::span<const CMaterial* const> materials, bool_t staticCluster) const
 {
     if (!shader || materials.size() < 2u || materials.size() > 8u || materials.front() != this) return E_INVALIDARG;
     std::array<ID3D11ShaderResourceView*, 8> average{}, directional{}, shadow{};
     for (size_t i = 0u; i < materials.size(); ++i)
     {
         const auto* material = materials[i];
-        if (!material || !Can_BatchStaticLightingWith(*material)) return E_INVALIDARG;
+        if (!material || !Can_BatchStaticLightingWith(*material, staticCluster)) return E_INVALIDARG;
         average[i] = material->m_Surface.hasBakedLighting ? material->m_BakedAverage.Get() : nullptr;
         directional[i] = material->m_Surface.hasBakedLighting ? material->m_BakedDirectional.Get() : nullptr;
         shadow[i] = material->m_Surface.hasStaticShadow ? material->m_StaticShadow.Get() : nullptr;
     }
     const uint32_t disabled = 0u;
     if (FAILED(shader->Bind_RawValue("g_MapLightingBankSize", &disabled, sizeof(disabled)))) return E_FAIL;
-    if (FAILED(shader->Bind_Textures("g_MapBakedAverageBank", average.data(), 8u)) ||
-        FAILED(shader->Bind_Textures("g_MapBakedDirectionalBank", directional.data(), 8u)) ||
-        FAILED(shader->Bind_Textures("g_MapStaticShadowBank", shadow.data(), 8u))) return E_FAIL;
+    // The small-prefix pass references only these three-slot arrays; ordinary
+    // and eight-slot passes retain their original resource binding footprint.
+    const bool smallBank = !staticCluster && materials.size() < 4u;
+    const uint32_t capacity = smallBank ? 3u : 8u;
+    if (FAILED(shader->Bind_Textures(smallBank ? "g_MapBakedAverageSmallBank" : "g_MapBakedAverageBank",
+            average.data(), capacity)) ||
+        FAILED(shader->Bind_Textures(smallBank ? "g_MapBakedDirectionalSmallBank" : "g_MapBakedDirectionalBank",
+            directional.data(), capacity)) ||
+        FAILED(shader->Bind_Textures(smallBank ? "g_MapStaticShadowSmallBank" : "g_MapStaticShadowBank",
+            shadow.data(), capacity))) return E_FAIL;
     const uint32_t count = static_cast<uint32_t>(materials.size());
     const HRESULT result = shader->Bind_RawValue("g_MapLightingBankSize", &count, sizeof(count));
     if (FAILED(result)) (void)shader->Bind_RawValue("g_MapLightingBankSize", &disabled, sizeof(disabled));

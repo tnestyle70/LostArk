@@ -5,6 +5,8 @@
 #include "RuntimeAssetRoot.h"
 #include "ProjectDataRoot.h"
 
+#include <bcrypt.h>
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -14,6 +16,8 @@
 #include <limits>
 #include <unordered_map>
 #include <unordered_set>
+
+#pragma comment(lib, "bcrypt.lib")
 
 namespace
 {
@@ -38,6 +42,77 @@ namespace
 	   maps to that footprint, so world height must advance the substituted
 	   texture axis at the same rate the authored UV advances across it. */
 	constexpr float LANDSCAPE_TRIPLANAR_HEIGHT_SCALE = 1.f / 39.68f;
+
+	/* Hash the loaded bytes once; editor binding hashes only a bounded stream.
+	   Comparing with a later published file would miss an in-memory runtime
+	   whose material document has since been replaced. */
+	class MAP_DOCUMENT_HASH final
+	{
+	public:
+		MAP_DOCUMENT_HASH()
+		{
+			if (0 <= BCryptOpenAlgorithmProvider(&m_Algorithm,
+				BCRYPT_SHA256_ALGORITHM, nullptr, 0u))
+				BCryptCreateHash(m_Algorithm, &m_Hash, nullptr, 0u, nullptr, 0u, 0u);
+		}
+		~MAP_DOCUMENT_HASH()
+		{
+			if (m_Hash) BCryptDestroyHash(m_Hash);
+			if (m_Algorithm) BCryptCloseAlgorithmProvider(m_Algorithm, 0u);
+		}
+		bool Add(const char* bytes, size_t size)
+		{
+			return m_Hash && size <= (std::numeric_limits<ULONG>::max)() &&
+				0 <= BCryptHashData(m_Hash,
+					reinterpret_cast<PUCHAR>(const_cast<char*>(bytes)),
+					static_cast<ULONG>(size), 0u);
+		}
+		bool Finish(std::array<unsigned char, 32>& digest)
+		{
+			return m_Hash && 0 <= BCryptFinishHash(m_Hash, digest.data(),
+				static_cast<ULONG>(digest.size()), 0u);
+		}
+	private:
+		BCRYPT_ALG_HANDLE m_Algorithm = nullptr;
+		BCRYPT_HASH_HANDLE m_Hash = nullptr;
+	};
+
+	bool HashDocumentBytes(const std::string& bytes,
+		std::array<unsigned char, 32>& digest)
+	{
+		MAP_DOCUMENT_HASH hash;
+		return hash.Add(bytes.data(), bytes.size()) && hash.Finish(digest);
+	}
+
+	bool HashDocumentFile(const std::filesystem::path& path,
+		std::array<unsigned char, 32>& digest)
+	{
+		digest = {};
+		if (path.empty()) return true;
+		std::error_code error;
+		const auto size = std::filesystem::file_size(path, error);
+		if (error || size > 128u * 1024u * 1024u) return false;
+		const auto modified = std::filesystem::last_write_time(path, error);
+		if (error) return false;
+		std::ifstream input(path, std::ios::binary);
+		if (!input) return false;
+		MAP_DOCUMENT_HASH hash;
+		std::array<char, 64u * 1024u> buffer{};
+		uintmax_t read = 0u;
+		while (input)
+		{
+			input.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+			const auto count = input.gcount();
+			if (count > 0 && !hash.Add(buffer.data(), static_cast<size_t>(count))) return false;
+			read += static_cast<uintmax_t>(count);
+			if (read > size) return false;
+		}
+		if (!input.eof() || input.bad() || read != size ||
+			std::filesystem::file_size(path, error) != size || error ||
+			std::filesystem::last_write_time(path, error) != modified || error)
+			return false;
+		return hash.Finish(digest);
+	}
 
 	struct PARSED_MAP_ASSET_ROW
 	{
@@ -220,6 +295,26 @@ namespace
 			lhs.colorTint.w == rhs.colorTint.w;
 	}
 
+	bool EqualWaterProfile(const MAP_ASSET_WATER_PROFILE& lhs,
+		const MAP_ASSET_WATER_PROFILE& rhs)
+	{
+		const auto equalVector = [](const float4_t& a, const float4_t& b)
+		{ return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w; };
+		return lhs.materialName == rhs.materialName &&
+			lhs.detailNormalTexture == rhs.detailNormalTexture &&
+			lhs.reflectionTexture == rhs.reflectionTexture && lhs.foamTexture == rhs.foamTexture &&
+			lhs.opacity == rhs.opacity && lhs.opacityPower == rhs.opacityPower &&
+			lhs.fresnelIntensity == rhs.fresnelIntensity && lhs.fresnelPower == rhs.fresnelPower &&
+			lhs.screenDistortionIntensity == rhs.screenDistortionIntensity && lhs.normalIntensity == rhs.normalIntensity &&
+			lhs.detailNormalIntensity == rhs.detailNormalIntensity && lhs.normalDistortionIntensity == rhs.normalDistortionIntensity &&
+			lhs.reflectionIntensity == rhs.reflectionIntensity && lhs.reflectionUv == rhs.reflectionUv &&
+			lhs.depthBias == rhs.depthBias && lhs.diffuseTiling == rhs.diffuseTiling &&
+			equalVector(lhs.diffuseColor, rhs.diffuseColor) && equalVector(lhs.reflectionColor, rhs.reflectionColor) &&
+			equalVector(lhs.normalTilingPanning, rhs.normalTilingPanning) &&
+			equalVector(lhs.detailNormalTilingPanning, rhs.detailNormalTilingPanning) &&
+			equalVector(lhs.reflectionTilingPanning, rhs.reflectionTilingPanning);
+	}
+
 	bool_t EqualAssetEntry(const MAP_ASSET_ENTRY& lhs,
 		const MAP_ASSET_ENTRY& rhs)
 	{
@@ -270,6 +365,25 @@ bool_t CMapAssetCatalog::Load_Source(
 	const std::string& expectedAreaId,
 	const std::filesystem::path& materialsPath)
 {
+	return Load_SourceInternal(catalogPath, placementPath, expectedAreaId, materialsPath, true);
+}
+
+bool_t CMapAssetCatalog::Load_SourceMetadata(
+	const std::filesystem::path& catalogPath,
+	const std::filesystem::path& placementPath,
+	const std::string& expectedAreaId,
+	const std::filesystem::path& materialsPath)
+{
+	return Load_SourceInternal(catalogPath, placementPath, expectedAreaId, materialsPath, false);
+}
+
+bool_t CMapAssetCatalog::Load_SourceInternal(
+	const std::filesystem::path& catalogPath,
+	const std::filesystem::path& placementPath,
+	const std::string& expectedAreaId,
+	const std::filesystem::path& materialsPath,
+	const bool_t loadMaterials)
+{
 	CMapPathValidationScope pathValidation;
 	const std::filesystem::path normalizedCatalog =
 		catalogPath.lexically_normal();
@@ -291,7 +405,7 @@ bool_t CMapAssetCatalog::Load_Source(
 	staged.m_SourceMaterialOverride = materialsPath.lexically_normal();
 	if (!staged.Load_AreaStaged(expectedAreaId) ||
 		!staged.Resolve_MaterialDocumentPath() ||
-		!staged.Load_MaterialOverrides())
+		(loadMaterials && !staged.Load_MaterialOverrides()))
 	{
 		m_Status = staged.Get_Status();
 		return false;
@@ -300,10 +414,67 @@ bool_t CMapAssetCatalog::Load_Source(
 	const std::wstring authoringNamespace =
 		L"MapEditorArea:" +
 		std::wstring(expectedAreaId.begin(), expectedAreaId.end()) + L":";
-	for (MAP_ASSET_ENTRY& entry : staged.m_Entries)
+	for (MAP_ASSET_ENTRY& entry : staged.m_Data->entries)
 		entry.prototypeTag = authoringNamespace + entry.prototypeTag;
 	*this = std::move(staged);
 	return true;
+}
+
+bool_t CMapAssetCatalog::Bind_RuntimeView(const CMapAssetCatalog& runtimeCatalog)
+{
+	const auto& runtime = runtimeCatalog.m_RuntimeData ?
+		runtimeCatalog.m_RuntimeData : runtimeCatalog.m_Data;
+	if (!Is_Ready() || !runtimeCatalog.Is_Ready() || m_AreaId != runtimeCatalog.m_AreaId ||
+		!runtime || !runtime->materialPayloadReady || m_Data->entries.size() != runtime->entries.size())
+	{
+		m_Status = "Runtime/source catalog identity is not ready or differs";
+		return false;
+	}
+	for (const auto& asset : m_Data->entries)
+	{
+		const auto* live = runtimeCatalog.Find(asset.id);
+		if (!live || live->prototypeTag.empty() ||
+			live->resolvedModelPath.lexically_normal() != asset.resolvedModelPath.lexically_normal() ||
+			live->defaultScale.x != asset.defaultScale.x || live->defaultScale.y != asset.defaultScale.y ||
+			live->defaultScale.z != asset.defaultScale.z || live->anchor != asset.anchor ||
+			!EqualRenderProfile(live->renderProfile, asset.renderProfile) ||
+			live->renderProfile.triplanarHeightScale != asset.renderProfile.triplanarHeightScale)
+		{
+			m_Status = "Runtime/source model or render identity differs: " + asset.id;
+			return false;
+		}
+	}
+	std::array<unsigned char, 32> digest{};
+	if (!HashDocumentFile(m_MaterialDocumentPath, digest) || digest != runtime->materialDigest)
+	{
+		m_Status = "Source materials differ from the loaded runtime; publish and re-enter before editing";
+		return false;
+	}
+	// Water is already a small validated typed document. Its publisher may
+	// reformat JSON, so compare consumed values rather than serialized bytes.
+	if (m_Data->waterProfiles.size() != runtime->waterProfiles.size())
+	{
+		m_Status = "Source water identities differ from the loaded runtime";
+		return false;
+	}
+	for (const auto& [id, water] : m_Data->waterProfiles)
+	{
+		const auto live = runtime->waterProfiles.find(id);
+		if (live == runtime->waterProfiles.end() || !EqualWaterProfile(water, live->second))
+		{
+			m_Status = "Source water inputs differ from the loaded runtime: " + id;
+			return false;
+		}
+	}
+	// One immutable owner, no JSON DOM or material vectors copied by the editor.
+	m_RuntimeData = runtime;
+	return true;
+}
+
+bool_t CMapAssetCatalog::Is_RuntimeViewOf(const CMapAssetCatalog& runtimeCatalog) const
+{
+	return m_RuntimeData && m_RuntimeData == (runtimeCatalog.m_RuntimeData ?
+		runtimeCatalog.m_RuntimeData : runtimeCatalog.m_Data);
 }
 
 bool_t CMapAssetCatalog::Bind_RuntimePrototypes(const CMapAssetCatalog& runtimeCatalog)
@@ -314,7 +485,7 @@ bool_t CMapAssetCatalog::Bind_RuntimePrototypes(const CMapAssetCatalog& runtimeC
 		return false;
 	}
 	// Validate every identity before changing any tag. Never strip a prefix and guess.
-	for (const auto& asset : m_Entries)
+	for (const auto& asset : m_Data->entries)
 	{
 		const auto* live = runtimeCatalog.Find(asset.id);
 		if (!live || live->prototypeTag.empty() ||
@@ -324,7 +495,9 @@ bool_t CMapAssetCatalog::Bind_RuntimePrototypes(const CMapAssetCatalog& runtimeC
 			return false;
 		}
 	}
-	for (auto& asset : m_Entries)
+	if (m_Data.use_count() != 1) m_Data = std::make_shared<CATALOG_DATA>(*m_Data);
+	m_RuntimeData.reset();
+	for (auto& asset : m_Data->entries)
 		asset.prototypeTag = runtimeCatalog.Find(asset.id)->prototypeTag;
 	return true;
 }
@@ -393,7 +566,10 @@ bool_t CMapAssetCatalog::Resolve_MaterialDocumentPath()
 bool_t CMapAssetCatalog::Load_MaterialOverrides()
 {
 	if (m_MaterialDocumentPath.empty())
+	{
+		m_Data->materialPayloadReady = true;
 		return true;
+	}
 	std::ifstream input(m_MaterialDocumentPath, std::ios::binary);
 	const std::string text((std::istreambuf_iterator<char>(input)),
 		std::istreambuf_iterator<char>());
@@ -410,7 +586,14 @@ bool_t CMapAssetCatalog::Load_MaterialOverrides()
 		m_Status = "Map material document parse failed: " + error;
 		return false;
 	}
-	return Parse_MaterialOverrides(root);
+	if (!Parse_MaterialOverrides(root)) return false;
+	if (!HashDocumentBytes(text, m_Data->materialDigest))
+	{
+		m_Status = "Could not fingerprint the loaded map material document";
+		return false;
+	}
+	m_Data->materialPayloadReady = true;
+	return true;
 }
 
 bool_t CMapAssetCatalog::Parse_ModelSurface(const DATA_JSON_VALUE& row,
@@ -427,19 +610,19 @@ bool_t CMapAssetCatalog::Parse_ModelSurface(const DATA_JSON_VALUE& row,
 	staged.m_AreaId = "actor.materials";
 	MAP_ASSET_ENTRY entry{};
 	entry.id = asset->Get_String();
-	staged.m_EntryLookup.emplace(entry.id, 0u);
-	staged.m_Entries.push_back(std::move(entry));
+	staged.m_Data->entryLookup.emplace(entry.id, 0u);
+	staged.m_Data->entries.push_back(std::move(entry));
 	const auto document = DATA_JSON_VALUE::Object({
 		{ "schema", DATA_JSON_VALUE::String("lostark.map-materials") },
 		{ "formatVersion", DATA_JSON_VALUE::Number(2.0) },
 		{ "areaId", DATA_JSON_VALUE::String(staged.m_AreaId) },
 		{ "materials", DATA_JSON_VALUE::Array({ row }) } });
-	if (!staged.Parse_MaterialOverrides(document) || staged.m_Entries[0].materialOverrides.size() != 1u)
+	if (!staged.Parse_MaterialOverrides(document) || staged.m_Data->entries[0].materialOverrides.size() != 1u)
 	{
 		status = staged.Get_Status();
 		return false;
 	}
-	const auto& material = staged.m_Entries[0].materialOverrides.front();
+	const auto& material = staged.m_Data->entries[0].materialOverrides.front();
 	if ((material.surface.renderMode != Engine::MODEL_SURFACE_RENDER_MODE::DEFERRED &&
 		 material.surface.renderMode != Engine::MODEL_SURFACE_RENDER_MODE::INHERIT) ||
 		(material.surface.cullMode != Engine::MODEL_SURFACE_CULL_MODE::CULL_BACK &&
@@ -1916,7 +2099,7 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
             { m_Status = "Duplicate placement lighting source ID: " + sourceId; return false; }
         }
     }
-	for (auto& entry : m_Entries)
+	for (auto& entry : m_Data->entries)
 	{
 		const auto found = staged.find(entry.id);
 		if (found != staged.end())
@@ -1934,21 +2117,23 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
 			entry.materialOverrides = std::move(found->second);
 		}
 	}
-	m_PlacementLighting = std::move(stagedLighting);
-	m_PlacementWind = std::move(stagedWind);
+	m_Data->placementLighting = std::move(stagedLighting);
+	m_Data->placementWind = std::move(stagedWind);
 	return true;
 }
 
 const MAP_PLACEMENT_LIGHTING* CMapAssetCatalog::Find_PlacementLighting(const std::string& sourcePlacementId) const
 {
-    const auto found = m_PlacementLighting.find(sourcePlacementId);
-    return found == m_PlacementLighting.end() ? nullptr : &found->second;
+    const auto& data = m_RuntimeData ? m_RuntimeData : m_Data;
+    const auto found = data->placementLighting.find(sourcePlacementId);
+    return found == data->placementLighting.end() ? nullptr : &found->second;
 }
 
 const MAP_PLACEMENT_WIND* CMapAssetCatalog::Find_PlacementWind(const std::string& sourcePlacementId) const
 {
-    const auto found = m_PlacementWind.find(sourcePlacementId);
-    return found == m_PlacementWind.end() ? nullptr : &found->second;
+    const auto& data = m_RuntimeData ? m_RuntimeData : m_Data;
+    const auto found = data->placementWind.find(sourcePlacementId);
+    return found == data->placementWind.end() ? nullptr : &found->second;
 }
 
 bool_t CMapAssetCatalog::Load_AreaStaged(const std::string& areaId)
@@ -2133,8 +2318,8 @@ bool_t CMapAssetCatalog::Load_AreaStaged(const std::string& areaId)
 			}
 		}
 
-		m_Entries = std::move(stagedEntries);
-		m_EntryLookup = std::move(stagedLookup);
+		m_Data->entries = std::move(stagedEntries);
+		m_Data->entryLookup = std::move(stagedLookup);
 		m_Shards = std::move(stagedShards);
 		m_MaterialDocumentFilename = std::move(stagedMaterialFilename);
 		m_AreaId = std::move(selectedAreaId);
@@ -2149,7 +2334,7 @@ bool_t CMapAssetCatalog::Load_AreaStaged(const std::string& areaId)
 			return false;
 		}
 		m_Status = "Shard set ready: " + std::to_string(m_Shards.size()) +
-			" shards / " + std::to_string(m_Entries.size()) + " assets";
+			" shards / " + std::to_string(m_Data->entries.size()) + " assets";
 		return true;
 	}
 
@@ -2367,8 +2552,10 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
 	for (size_t index = 0; index < stagedEntries.size(); ++index)
 		stagedLookup.emplace(stagedEntries[index].id, index);
 
-	m_Entries = std::move(stagedEntries);
-	m_EntryLookup = std::move(stagedLookup);
+	m_Data = std::make_shared<CATALOG_DATA>();
+	m_RuntimeData.reset();
+	m_Data->entries = std::move(stagedEntries);
+	m_Data->entryLookup = std::move(stagedLookup);
 	m_Shards.clear();
 	m_MaterialDocumentFilename = std::move(stagedMaterialFilename);
 	m_AreaId = std::move(stagedAreaId);
@@ -2378,32 +2565,36 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
 	m_bSharded = false;
 	m_bReady = true;
 	m_Status = "Catalog ready (v" + std::to_string(version) + "): " +
-		std::to_string(m_Entries.size());
+		std::to_string(m_Data->entries.size());
 	return true;
 }
 
 const MAP_ASSET_ENTRY* CMapAssetCatalog::Find(const std::string& assetId) const
 {
-	const auto iter = m_EntryLookup.find(assetId);
-	return iter == m_EntryLookup.end() || iter->second >= m_Entries.size() ?
-		nullptr : &m_Entries[iter->second];
+	const auto source = m_Data->entryLookup.find(assetId);
+	if (source == m_Data->entryLookup.end()) return nullptr;
+	const auto& data = m_RuntimeData ? m_RuntimeData : m_Data;
+	const auto iter = data->entryLookup.find(assetId);
+	return iter == data->entryLookup.end() || iter->second >= data->entries.size() ?
+		nullptr : &data->entries[iter->second];
 }
 
 const MAP_ASSET_WATER_PROFILE* CMapAssetCatalog::Find_Water(
 	const std::string& assetId) const
 {
-	const auto iter = m_WaterProfiles.find(assetId);
-	return iter == m_WaterProfiles.end() ? nullptr : &iter->second;
+	const auto& data = m_RuntimeData ? m_RuntimeData : m_Data;
+	const auto iter = data->waterProfiles.find(assetId);
+	return iter == data->waterProfiles.end() ? nullptr : &iter->second;
 }
 
 bool_t CMapAssetCatalog::Load_WaterPresentation(const std::string& areaId)
 {
-	m_WaterProfiles.clear();
+	m_Data->waterProfiles.clear();
 
 	const auto countWaterAssets = [this]()
 	{
 		size_t count = 0;
-		for (const MAP_ASSET_ENTRY& entry : m_Entries)
+		for (const MAP_ASSET_ENTRY& entry : m_Data->entries)
 		{
 			if (MAP_ASSET_RENDER_MODE::WATER == entry.renderProfile.renderMode)
 				++count;
@@ -2565,7 +2756,7 @@ bool_t CMapAssetCatalog::Load_WaterPresentation(const std::string& areaId)
 
 	/* Both directions, so neither a water asset without parameters nor a row
 	   whose asset was never switched to WATER can pass unnoticed. */
-	for (const MAP_ASSET_ENTRY& entry : m_Entries)
+	for (const MAP_ASSET_ENTRY& entry : m_Data->entries)
 	{
 		const bool_t isWater =
 			MAP_ASSET_RENDER_MODE::WATER == entry.renderProfile.renderMode;
@@ -2579,7 +2770,7 @@ bool_t CMapAssetCatalog::Load_WaterPresentation(const std::string& areaId)
 		}
 	}
 
-	m_WaterProfiles = std::move(staged);
+	m_Data->waterProfiles = std::move(staged);
 	return true;
 }
 

@@ -1,5 +1,51 @@
 # LostArk merge 회귀 방지 정본
 
+## 같은 헤어의 무비와 장착 경로 차이
+
+- 정상 장착과 무비가 다른 머리처럼 보여도 먼저 basis를 맞춘 정점·UV·weight와 디코딩한 texture alpha를 대조한다. 동일한 hair55를 경로만 교체하면 무비 골격·clip을 잃을 수 있다.
+- 반투명 헤어는 forward만 연결하면 카드 사이의 깊이를 기록하지 못한다. CPart_Equipment와 CWorldSequenceObject는 공용 Render_SourceHairMaskedMesh로 native masked core를 먼저 그리고 기존 forward edge를 유지한다. 지원하지 않는 eyelash/ghost 등의 재질을 불투명으로 바꾸지 않는다.
+- caller가 native masked 상수를 설정했어도 shader 내부에서 같은 값을 다시0으로 덮으면 discard가 무효다. program7의 source[26].x는 draw 입력을 소비하며, 실제 alpha0의 depth 미기록과 core 차폐를 검사한다. masked mode와 상수는 실패 경로에서도 복원한다. [헤어 수정 결과](10-05/2026-10-05_DIMENSIONMASTER_MOVIE_HAIR_RESULT.md).
+
+## 프레임 CPU 작업의 병렬화 경계
+
+- final camera 이전 Update에서 맵 가시성 job을 시작하지 않는다. frame provider가 최종 camera/light를 반영한 뒤 Layer 후보에서 owner snapshot → 큰 CPU 작업 묶음 → 동기 join → 원래 순서 GPU commit을 사용한다.
+- worker는 per-batch staging만 변경한다. global camera capture·surface diagnostics·immediate context Map/Apply/Draw·렌더 큐는 owner에 둔다. 정규화 plane 검사처럼 숨은 전역 cache도 thread-local 또는 immutable 입력으로 바꾸고 검사한다. Profiler의 main-only WorkScope를 worker로 옮겨0으로 계측하지 않는다.
+- 객체마다 job을 제출하지 않는다. 실제 설치 batch 크기 분포와 cache hit·owner stage·dispatch·join을 포함한 순이득으로 최소 비용을 정한다. 프러스텀/거리 grace와 hysteresis는 GPU upload 성공 때 함께 commit하고 실패 재시도에서 같은 프레임을 두 번 진행하지 않는다.
+- 공통 pool의 nested callback은 caller/worker 양쪽 TLS guard로 직렬 처리하고 자기 pool의 lock/join을 기다리지 않는다. 외부 동시 제출은 직렬화한다. 이미 실행한 callback은 예외 뒤에도 모두 join되며 partial 쓰기는 소비자의 staging 책임이다. 작업에서 다른 스레드의 같은 pool 호출을 기다리는 순환 의존을 만들지 않는다.
+- NPC·이펙트 전체 Update는 순수 CPU 함수가 아니다. network/collider/sound/event/provider/렌더 상태를 포함한 함수를 통째로 병렬 루프에 넣지 않는다. 작업 분산은 계산량 제거와 다르며 fixture의 wall time을 실FPS 향상으로 바꾸어 보고하지 않는다.
+
+## Bern 가림·거리 컬링의 보수성과 검증
+
+- AABB는 가려지는 대상의 검사 범위다. 열린 창·틈이 있는 모델의 AABB를 꽉 찬 occluder로 대신 그리지 않는다. 현재 제출할 원본 LOD0의 불투명 삼각형만 가림 근거로 사용하며 masked·opacity·wind·morph·다른 선택 LOD는 occluder에서 제외한다. 변형 없는 masked BG는 occludee로 허용할 수 있다.
+- CPU와 D3D의 front face·mirror·cull을 실제 GPU 깊이와 비교한다. 같은 viewport 픽셀 중심과 triangle farthest-depth, 확장 query bounds로 보수성을 유지한다. 낮은 해상도 중심 샘플의 꽉 찬 셀 추정은 작은 틈을 메울 수 있고, 모든 삼각형의 안쪽 축소는 공유 내부 edge에 인위적 틈을 만든다.
+- 가림 결과는 view/projection·viewport·설정·weak owner·geometry/visibility revision과 descriptor 전체가 같을 때만 재사용한다. visible payload에 대응하는 tight world AABB는 upload 성공과 함께 commit한다. queue 준비 실패는 원본을 보존하고 실제 제외 counter는 commit 뒤 기록한다. 입력 삼각형 budget과 rasterized 삼각형은 서로 다르다.
+- Distance culling은 LOD와 별개다. 작은 정적 소품의 거리와 보수적 투영 크기 조건을 함께 검사하며 near plane/invalid 입력은 표시한다. 같은 aspect의 resize도 pixel 조건을 바꾸므로 viewport를 cache key에 넣는다. 거리·pixel hysteresis는 TRS/표시/설정 변경에 맞춰 무효화한다.
+- 컬링 CPU 비용·원본 source draw 상한·후속 instancing 이후 실제 draw·게임 FPS는 다른 수치다. 저장 카메라에서 distance 제외가0이면 그 사실을 기록하고 성능 향상을 주장하지 않는다. 작은 파생 청크와 atlas는 현재 Bern 기본 경로에서 생성하지 않는다. [구현·검증 결과](10-04/2026-10-04_BERN_SPATIAL_CHUNK_HLOD_RESULT.md).
+
+## 정적 청크 병합과 HLOD 검증 경계
+
+- WModel 파일을 하나로 만들거나 material 이름이 같은 것만으로 한 draw가 되지 않는다. 활성 shader 입력·texture·pass·cull 상태의 호환성을 검사하고 실제 병합 vertex/index buffer를 제출해야 한다. RNM atlas와 static shadow의 서로 다른 원본 입력은 source별 payload와 lighting bank로 보존한다.
+- 공간 분할 없이 멀리 떨어진 모든 동일 asset을 합치면 bounds가 커져 culling 이득을 잃는다. Bern은 원본 instancing부터 32m XZ origin cell로 나누고 geometry bounds를 별도로 보존한다. GPU 메모리·준비 시간과 현재 카메라의 실제 draw도 함께 측정한다.
+- 파생 청크는 placement/picking/shadow의 새 정본이 아니다. TRS·visible·stage/camera suppression은 공유 claim을 무효화하고 원본 제출로 복귀한다. source와 chunk의 활동 상태는 같은 frame 결정으로 고정한다. 원본 material 편집을 추가할 때도 같은 invalidation을 연결한다.
+- 합친 근거리 shader의 동치 검증과 원거리 geometry 오차 검증, 실제 게임 FPS는 서로 다른 증거다. synthetic triangle/callback 감소를 게임 FPS 개선율로 옮겨 쓰지 않는다. [청크/HLOD 결과](10-04/2026-10-04_BERN_SPATIAL_CHUNK_HLOD_RESULT.md)를 따른다.
+- 원본 batch/mesh 수는 실제 카메라의 절감 draw가 아니다. 원본 instance culling·mesh LOD·lighting-bank instancing을 함께 대조하고, 병합 전체 geometry가 원본보다 증가하는 후보를 자동으로 사용하지 않는다. 같은 프레임의 source와 chunk는 같은 선택을 소비해야 한다. 정적 batch의 Update를 제거할 때는 material 시간·shadow 시간·가시성 grace와 authoring Reload의 legacy 경로를 함께 보존한다.
+- 생성 하한과 실제 선택 하한은 같은 상수를 사용한다. 최소3개 원본 draw를 요구하면서2개 member 청크를 생성하면 어느 카메라에서도 선택되지 않는 geometry·GPU buffer·frame 검사만 남는다. source member 수는 절감 draw의 상한일 뿐이므로 생성 필터를 통과한 뒤에도 카메라·LOD·기존 instancing 검사를 유지한다.
+
+## 동일 형상 인스턴싱과 CPU 계산 공유
+
+- geometry/asset 이름 정렬만으로 실제 재질 호환 그룹이 이어지지 않는다. 준비 단계에서 실제 CModel/CMaterial predicate로 cohort를 구분하고 지원 외 객체의 슬롯을 보존한다. 저장 JSON의 일부 필드만 복제한 key를 최종 호환 판정으로 사용하지 않는다. runtime의 LOD·claim·시간·mirror 검사는 계속 필요하다.
+- lighting bank의8개 제한은 고유한 조명 텍스처 조합 수다. 모든 submesh의 RNM average/directional/static-shadow 조합이 같은 source만 슬롯을 공유하며 source batch 개수와 shader bank size를 혼용하지 않는다. 조합 하나의 ordinary pass에서는 원본 instance payload를 그대로 유지한다.
+- 공간 셀은 culling 단위이며 반드시 draw 단위일 필요는 없다. 셀별로 보이는 instance만 모으되 각 mesh의 LOD·claim·mirror·material·시간을 검증한다. 같은 geometry라도 RNM이나 서로 다른 활성 표면 입력이 있으면 해당 입력을 bank로 보존하거나 별도 draw를 유지한다.
+- identical prefix를 먼저 그려 작은 lighting bank를 쪼개지 않는다. 같은 재질 A/A 뒤 호환 RNM 변형 B가 오면 기존 A/A/B 한 draw를 두 draw로 늘리는 회귀가 생긴다. identical prefix는 길이와 무관하게 조명 조합 하나다. 기존 bank가 다음 호환 변형까지 확장할 수 있으면 bank 경로에 양보한다.
+- multi-mesh 결합은 draw 전에 모든 mesh의 compatibility와 LOD를 확인한다. 첫 mesh가 그려진 뒤 실패하면 원본 전체를 다시 그리지 않는다. source-draw 계측은 결합하지 않은 입력 수이며 과거 제품 대비 절감량이나 FPS가 아니다. 청크 선택의 원본 비용 하한도 확장된 instancing 기준으로 함께 갱신한다.
+- NPC 공유는 cooked channel 내용과 정확한 track time이 같을 때 local sample 계산만 재사용한다. 각 actor의 clock·blend·root suppression·최종 bone palette와 Server authority는 유지한다. 채널 동등성 fixture와 실제 실행의 reuse hit/FPS를 구분한다.
+- 정적 환경 particle-root 역행렬은 행렬 전체 bit가 같은 경우 재사용할 수 있다. moving root·NaN·signed zero·worker별 독립성을 확인하고, 해당 연산 microbenchmark를 전체 이펙트/FPS 개선으로 환산하지 않는다.
+
+## 클래스 무비의 숨김 목록과 동일 형상 복제본
+
+- 회색 저해상도 껍질이 다시 보이면 기존 stable ID의 제외 여부와 같은 WModel 형상을 쓰는 다른 occurrence를 각각 확인한다. native opacity 복원으로 이전의 잘못된 zero 입력에 가려졌던 복제본이 드러날 수 있다. 이를 shader 전체 opacity를 다시 끄는 방식으로 고치지 않는다.
+- 실제 머리카락과 보조 전신 shell을 설치 geometry·재질 program·timeline opacity로 구분한 뒤, 사용자가 제거를 요청한 정확한 movie occurrence만 제외한다. 원본 숨김 목록과 다른 클래스 편집은 유지한다. [실측과 적용 결과 G09](10-04/2026-10-04_BERN_SPATIAL_CHUNK_HLOD_RESULT.md#g09-차원술사-클래스-무비의-머리-껍질).
+
 ## 캐릭터 선택의 마지막 서버 응답과 빈 가방 이동
 
 - HUD의 마지막 inventory를 복사한 즉시 연결을 닫으면 직전에 보낸 구매·장착·강화 결과가
@@ -9,8 +55,10 @@
 - Bern 복원 요청을 보낸 프레임부터 성공 응답까지 gameplay/economy 입력을 막는다. 새
   admission은 계속 허용해야 거부 뒤 다른 캐릭터를 선택할 수 있다. sequence1 고정이나
   슬롯 index·닉네임을 저장 identity로 사용하지 않는다.
+- 입장 직후 fTimeDelta에는 앞선 loading/activation 시간이 들어갈 수 있다. 방금 보낸 복원 요청의 timeout에 이 값을 더하지 않고 steady_clock으로 실제 대기를 측정한다. Lobby 복귀를 슬롯 손상으로 단정하기 전에 entry.accepted, main-pump.stall, character.restore-timeout의 시각을 비교한다. 실제5초 제한과 실패 시 슬롯 보존은 유지한다. [수정 근거 G10](10-04/2026-10-04_BERN_SPATIAL_CHUNK_HLOD_RESULT.md#g10-다른-캐릭터-생성-후-첫-캐릭터의-베른-재입장).
 - 강화 UI의 전역 itemId map은 같은 직업 캐릭터 사이에 섞인다. 서버 inventory 항목의 단계와
   내구도를 복원·장착·해제에서 함께 보존하고, 선택창은 생성 외형 뒤 저장된 아바타를 적용한다.
+- 선택 복귀의 Loading 완료는 공통 prototype 준비만 뜻하지 않는다. 실제 채워진 슬롯의 class 모델·생성 외형·장착 아바타 성공까지 기다린 뒤 창을 열고 active local character ID로 원래 카드를 선택한다. 재시도는 새 Loading 생성 후 이전 Loading 소멸 순서일 수 있으므로 준비 owner를 확인해 이전 소멸자가 새 준비를 취소하지 않게 한다. 실패와 취소는 저장 로스터를 변경하지 않는다.
 - inventory.empty()는 fresh 입장 판정이 아니다. 이미 플레이한 빈 가방/0 재화도 명시적인
   carried state로 전달해야 월드 이동에서 초기 지급으로 바뀌지 않는다.
 - 구현과 실행 검증은 [캐릭터 슬롯 결과](10-03/2026-10-03_CHARACTER_SLOT_STATE_RESTORE_RESULT.md)를 따른다.
@@ -2199,6 +2247,7 @@ C++ 대상과 public header 파급, 게시 domain, ZIP I/O와 검증 범위를 �
 - cache 수명은 호출 안으로 제한한다. 출력 교체 전후 원본 bytes와 모델 hash를 다시 확인하고 변경되면 기존 rollback을 수행한다. 길이·mtime만 같다고 동일 입력으로 판정하지 않는다. PowerShell 원문 비교는 culture 비교인 `-cne` 대신 `StringComparison.Ordinal`을 사용한다.
 - projector 직접 변환 시간과 Product/Map/World/Balance 전체 게시 시간은 다르다. 같은 고정 입력의 전후 bytes와 단계별 실측을 함께 기록하고, 한국어 표시명이나 Resources 전체 hash를 측정 없이 원인으로 단정하지 않는다. 실제 imported 도구도 domain fingerprint에 포함한다. [Parent 타임라인 결과 G06](09-12/2026-09-12_KOUKU_PARENT_PATTERN_TIMELINE_IMPLEMENTATION_RESULT.md).
 
+- LOD 생성 최소 삼각형 수를 낮춰도 재질·UV·경계 오차 조건에서 실제 축약되지 않을 수 있다. 실제 설치 geometry의 생성 성공률과 cold/warm 준비 비용을 함께 측정한다. 파생 index cache는 변환된 전 채널 정점·index·알고리즘 revision으로 검증하고, 실패 결과도 재사용하되 손상·쓰기 실패는 원본 생성으로 복귀한다. 생성 가능한 LOD 수와 화면에서 선택한 LOD draw 수는 다르다.
 - Static mesh LOD는 원본 geometry와 현재 draw 재질을 함께 검사한다. CModel material variant는 CMesh를 공유하므로 load-time opaque admission만으로 masked/교체 재질까지 LOD를 적용하지 않는다. CPU가 이미 가진 scalar 화면 오차는 CPU에서 선택해 direct instanced draw로 제출하며 기존 0.25px 품질 경계를 유지한다. 선택된 direct index 수는 실제값을 기록하고 다른 indirect draw의 상한과 섞지 않는다. 넓게 분포한 instance를 하나의 world sphere로 감싸면 횡방향 폭이 가까운 깊이로 오인되어 LOD0에 묶일 수 있다. 각 visible instance의 보수적 view depth/XY envelope를 사용하고 finite·near·재질 실패는 원본으로 되돌린다.
 - light quad의 clip distance는 같은 VS 위치/UV를 유지해도 clipping 이후 interpolation 정밀도 차이를 만들 수 있다. coverage 누락과 FP16 출력 차이, clip-disabled control 및 사용자 visual 판정을 구분한다. 상세 근거는09-12 맵·캐릭터 성능 RESULT의G12–G14를 따른다.
 
@@ -4010,6 +4059,12 @@ SL00의11개 floor/star 쌍은 정지 캐릭터 미리보기 자리이며 원본
 배치와 원본 좌표를 구분한다. GuardianDragonHuman의 짧은 customization zoom과
 SCENE01 ChangeClass9의 Matinee75→74/SL10 소개 연출은 다른 경로다.
 
+검정 diffuse만으로 검정 무대를 보장하지 않는다. 현재 PBR은 diffuseBrightness 적용 뒤
+lightbox 반사를 기본색에 더하고 직접광·환경광 specular를 별도로 계산한다. 선택창 임시
+floor/star는 사용자 검정 표시 요청에 따라 기존 material variant의 diffuseBrightness,
+reflectionIntensity, specularPBRIntensity를 함께0으로 둔다. source catalog나 원래11쌍의
+재질을 덮어쓰지 않는다. 셰이더 계산 근거와 실제 화면 확인은 구분한다.
+
 카메라 반복과 particle 재시작도 같은 동작이 아니다. source infinite emitter와 finite burst의
 Lifetime0을 구분하고, 입자의 원본 나이와 owner 종료 창을 유지한다. 같은 이름의 skill FX보다
 해당 PSC의 실제 template·redirector를 먼저 대조한다. 조사·후보·설치·화면 검증의 경계는
@@ -5758,7 +5813,7 @@ placement ID와 TRS가 일치해도 오래된 Landscape WModel의 축이 반대�
 
 큰 타일을256px로 베이크한 결과는 원본 반복 텍스처를 복원한 것이 아니다. 베른은 원본 grid×0.1, 중심 회전의 source scalar×3.1400001049, layer tiling을 사용한다. component 폭으로 나누거나 rotation을 degree로 해석하면 무늬 크기부터 달라진다. 단순 upsample·mip bias로 보정하지 않는다.
 
-actor의 Landscape material instance static key와 원본 ShaderCache PS/VF를 맞춘 뒤 layer별 paint/height blend, linear 색 공간, sample normal RG 및 Heightmap BA의 pixel basis를 함께 연결한다. diffuse와 normal의 height blend는 같다고 가정하지 않는다. source PS가 layercliff를 샘플하지 않으면 경사면에 별도 cliff layer를 만들지 않는다. 원본 weight/height의 subsection 중복 경계와 모든 mip, geometry hole을 보존한다. WARP의 constant-sample 수치 일치를 실제 공간 UV·화면 검증으로 확대하지 않는다.
+actor의 Landscape material instance static key와 원본 ShaderCache PS/VF를 맞춘 뒤 layer별 paint/height blend, linear 색 공간, sample normal RG 및 Heightmap BA의 pixel basis를 함께 연결한다. diffuse와 normal의 height blend는 같다고 가정하지 않는다. source PS가 layercliff를 샘플하지 않으면 경사면에 별도 cliff layer를 만들지 않는다. 원본 weight/height의 subsection 중복 경계와 모든 mip, geometry hole을 보존한다. 수직면의 높이 0은 원본 height bytes·collision sample·paint·hole allocation과 선택 PS의 discard를 함께 확인한 뒤 판정한다. source 높이·hole과 설치 삼각형의 일치는 원작의 실제 draw/LOD나 사진 속 메시 식별을 대신하지 않는다. WARP의 constant-sample 수치 일치를 실제 공간 UV·화면 검증으로 확대하지 않는다.
 
 ### 본체 헤어를 숨기기 전에 기본 대체 파츠를 확인한다
 
@@ -5914,7 +5969,7 @@ suppression을 Render와 맞추고 debris를 걷는 바닥으로 승격하지 �
 
 ### Profiler 저장 범위와 누락된 CPU 자식을 먼저 확인한다
 
-- 기본 저장창은 최근 120프레임이며 전체 보유도 1200프레임 ring이다. 사용자가 관찰한 최저 FPS가 JSON에 실제로 있는지 frame interval과 `captureWindow`를 먼저 대조한다. 선택창 제외와 history 퇴출은 다르며, export metadata는 저장 순간의 조건이다.
+- 기본 JSON 저장은 현재 보유 전체(최대 1200프레임)이며 분석·표시 범위와 독립이다. `JSON 저장 범위 제한`을 켰을 때만 최근 프레임 수로 줄인다. 사용자가 관찰한 최저 FPS가 JSON에 실제로 있는지 frame interval과 `captureWindow`를 먼저 대조한다. 저장 범위 제외와 history 퇴출은 다르며 GPU pending/drop은 유효한 0ms가 아니다. export metadata는 저장 순간의 조건이다.
 - Detailed scope가 frame cap을 넘으면 빠진 자식 시간이 부모 Self로 남을 수 있다. 누락이 있는 선택 구간의 Self를 병목 확정에 쓰지 않는다. 해당 UI는 Self를 `--`로 표시하며, 다음 비교는 Detailed OFF로 수집하고 raw 범위와 고정 cpuWork를 함께 본다.
 - frame N interval은 Begin(N-1)→Begin(N), frame N CPU는 Begin(N) 이후 작업이다. 순간 지연은 CPU 원인 행과 interval 행 사이의 차이를 고려한다. GPU pending은 0ms가 아니고 전체 GPU timestamp 경과도 utilization이 아니다.
 - 같은 actor의 애니메이션 보간 재사용, 재질별 draw 병합, GPU LOD는 별도 비용을 줄인다. 한 kernel의 절감률을 전체 게임 FPS로 환산하지 않는다. 구조·검증·남은 실측은 [프레임 통합 계획](10-02/2026-10-02_FRAME_PIPELINE_OPTIMIZATION_IMPLEMENTATION_PLAN.md)을 따른다.
@@ -6096,6 +6151,13 @@ shader gain을100배 올리는 보정으로 대체하지 않는다. 다른 sourc
 Stage/particle count/finite 성공은 GPU 표시 성공을 대신하지 않는다. 합성 카메라의 실제 draw와
 인게임 구도·가림·후처리 판정도 분리한다. 이번 사례는09-09 Warlord ASVF RESULT G19에 있다.
 
+본 배율을 정규화해도 축 방향은 남는다. 같은 shader를 쓰는 V/Alt V도 notify·socket·pivot·분포가
+다르므로 한쪽 위치를 전부 복사하지 않는다. 머리 위 원점이 옆으로 밀리면 실제 본 basis에서
+notify translation을 먼저 계산한다. Alt V SDenergy는 Y1.55m가 Z-1.55m로 바뀌어 exact notify의
+18개 위치만 현재 본 공간으로 재표현했다. 전체 socket을 돌려 내부 분포·속도·mesh 방향까지
+바꾸지 않는다. 기존 방패 주변 낙뢰의 승인된 ring 위치와 원작 offset 의미의 미확정 경계는
+[워로드 결과 G23](09-09/2026-09-09_WARLORD_ASVF_FULL_RESTORE_IMPLEMENTATION_RESULT.md#g23-10-05-alt-v-시작-효과의-머리-위-원점-교정)에서 구분한다.
+
 ## 원본 데이터 동일성과 추가 GI A/B의 경계
 
 재설치 시 logical object/static shader key/serial hash를 먼저 맞추고 export index와 UE reference를
@@ -6108,6 +6170,39 @@ SSGI/SSR 옵션은 actual pass와 field whitelist/Apply/Restore/fingerprint/capt
 SSGI half는 marker3 전용 추가 screen-space GI다. 기존 full 경로와 원본 RNM/IBL을 보존하고
 Lumen/DXR로 표시하지 않는다. marker5/14를 조건문에만 추가하면 서로 다른 G-buffer ABI를 잘못 읽는다.
 half texture는 홀수·1픽셀·resize·depth/normal 경계를 검증하고 full/SSR 보존을 실제 픽셀로 대조한다.
+
+### 환경설정 텍스처 품질과 sampler owner
+
+`텍스처 품질`의 4등급은 원본 mip 체인의 최소 레벨0/1/2/3으로 연결한다. sampler state와
+마지막 적용 단계는 FX11 Effect와 같은 공유 owner에 보관하고, 실제 SourceCharacter variant의
+Begin에서도 적용한다. base FX의 state만 변경하면 별도 light/geometry variant가 이전 품질을 쓴다.
+인스턴스 표면의 LinearSampler를 포함하되 같은 이름의 UI/Deferred sampler에는 적용하지 않는다.
+lightmap/lookup sampler는 BRDF와 roughness cube도 공유하므로 일괄 변경하지 않는다.
+AnimMesh의 native ModelCue도 LinearSampler를 공유한다. `EffectModelCueNative*` 네 pass만
+원본으로 복원하고 다음 표면 draw에서 사용자 품질을 다시 적용한다. 모든 ModelCue pass를
+제외하면 일반 cue의 color0과 shadow15가 서로 다른 mip을 쓰므로 native 범위만 분리한다.
+최상은 원본 sampler 자체로 복귀하며 texture mip 제한이 바뀌면 masked static shadow cache도
+무효화한다. mip chain 복구와 샘플링 품질 선택, VRAM residency 절감은 별도 작업이다.
+
+낮은 mip을 고르더라도 draw 수·재질 바인딩·shader 연산 수·상주 texture allocation은 줄지 않는다.
+이미 화면 footprint가 더 작은 mip을 선택하거나 원본 sampler가 단일 mip을 강제하면 설정 차이가
+작거나 없을 수 있다. 성능 비교는 같은 카메라와 도구 상태의 A/B를 사용하고 GPU timestamp의
+경과 시간을 GPU 사용률로 읽지 않는다. 조명 OFF만으로 불투명 재질·RNM·이펙트 비용이 사라지지 않는다.
+LiveCompare의 Directional OFF는 diffuse/specular RGB를0으로 바꾸는 기여 비교이며 ambient와
+light 제출은 유지한다. 이 결과를 조명 pass 제거 실험으로 부르지 말고 실제 light draw와 시간을 확인한다.
+
+### 느린 frame의 배경 이펙트 따라잡기와 카메라 속도를 구분한다
+
+ambient fixed-step60회는 효과60개 생성이나 카메라 속도의 직접 증거가 아니다. 실제 delta와
+누적 잔량을 확인한다. 베른 입장 카메라는 이미 frame당0.1초 진행 제한이 있으므로 같은 넓은
+구도의 draw 비용과 배경 simulation 비용을 나눠 본다. 기존 offscreen pause 승인을 통과한
+독립 source-loop 배경만 rate 적용 후 visual delta를0.1초로 제한하며 object와 service elapsed에
+같은 값을 전달한다. 초과 시간은 다음 frame에 보관하지 않는다. 이는 과부하 동안 시각 재생을
+느리게 하는 정책이며 원본 wall-clock phase 보존이나 실제 FPS 개선 완료로 설명하지 않는다.
+combat/history/authoring의 fixed-step·Seek는 변경하지 않는다. fixed-step clock은 잔량도 포함하므로
+실행 횟수는 실제 simulation step 정수의 차이로 계측한다. 제외 시간은 effect별 합계로,
+frame wall time·절약 CPU 시간과 다르다. 수치와 재측정 경계는
+[베른 제출 비용 결과](10-04/2026-10-04_BERN_DRAW_SUBMISSION_OPTIMIZATION_RESULT.md)를 따른다.
 
 ### 원본 DDS mip 누락과 확대된 무늬를 구분한다
 
@@ -6136,7 +6231,9 @@ source/output hash만 있는 예전 캐시는 같은 decoder 결함을 보존할
 
 ### 복원 대상 메시 선택은 authoring AABB 추정과 분리한다
 
-Bern/Character Select/Valtan/Kouku의 원본 렌더링 대조는 독립 F1 `World Scene Tool → Pick in world`의 실제 삼각형 hit에서 placement/mesh/material ID를 함께 확보한다. GPU world-position을 가장 작은 포함 AABB로 해석한 결과는 exact mesh 증거가 아니다. 기존 CModel LOD0 CPU 질의와 현재 instance world/visibility/suppression을 소비하고, 이동 피커의 식생 제외 조건을 검사 피커에 전파하지 않는다. alpha coverage·shader wind/displacement·rendered LOD와 CPU hit는 별도다. 선택 자체는 데이터를 변경하지 않는다. 명시적 TRS/표시 편집은 기존 session을 사용하고 미로드 행·dirty draft·최신 source bytes를 보존한다. writer의 고유 temporary를 stage한 뒤 교체 직전 freshness를 다시 확인하며 stale 바이트는 덮어쓰지 않는다. self-motion/Deploy preview는 자기 Begin 성공과 host/runtime generation 소유권을 확인한 뒤에만 복원한다. Server 파괴는 Deploy preview를 정상 종료한 후 선점한다. rendering options는 변경하지 않는다. UI click과 취소 입력은 gameplay에 전달하지 않고 miss는 이전 선택을 보존한다.
+Bern/Character Select/Valtan/Kouku의 원본 렌더링 대조는 독립 F1 `World Scene Tool → Pick in scene`의 실제 삼각형 hit에서 placement/mesh/material ID를 함께 확보한다. GPU world-position을 가장 작은 포함 AABB로 해석한 결과는 exact mesh 증거가 아니다. 기존 CModel LOD0 CPU 질의와 현재 instance world/visibility/suppression을 소비하고, 이동 피커의 식생 제외 조건을 검사 피커에 전파하지 않는다. alpha coverage·shader wind/displacement·rendered LOD와 CPU hit는 별도다. 선택 자체는 데이터를 변경하지 않는다. 명시적 TRS/표시 편집은 기존 session을 사용하고 미로드 행·dirty draft·최신 source bytes를 보존한다. writer의 고유 temporary를 stage한 뒤 교체 직전 freshness를 다시 확인하며 stale 바이트는 덮어쓰지 않는다. self-motion/Deploy preview는 자기 Begin 성공과 host/runtime generation 소유권을 확인한 뒤에만 복원한다. Server 파괴는 Deploy preview를 정상 종료한 후 선점한다. rendering options는 변경하지 않는다. UI click과 취소 입력은 gameplay에 전달하지 않고 miss는 이전 선택을 보존한다.
+
+live 맵의 placement 편집을 열 때 큰 material JSON과 재질 벡터를 다시 복제하지 않는다. source metadata·material bytes·typed water 입력을 이미 로드한 runtime과 대조한 뒤 immutable payload의 소유권을 공유한다. 검증 실패는 읽기 전용으로 남기고, 새 runtime 소유자로 바뀌면 기존 draft를 보존한 채 편집을 해제한다. prototype 재바인딩은 copy-on-write로 기존 material·lighting·wind 입력을 보존한다.
 
 ### 원본 wind phase와 공유 draw state를 보존한다
 
@@ -6151,3 +6248,97 @@ Server의 동일-state 파괴 burst가 preview root를 유지하지 않게 한�
 ### Mario World 생성 준비와 캐시 수명
 
 모델 사전 로드와 실제 WorldObject clone 준비를 구분한다. 고유 motion ID 집합은 반복 occurrence의 수량을 잃으므로 발생 행과 EmissionCount를 함께 세며, NEXT/APPLY_TARGET를 새 spawn으로 합산하지 않는다. Hide는 pool 반환이 아니고 기존 owner 종료가 반환 시점이다. 인형·공은 이미 준비한 clone 수가 충분할 수 있으므로 부족을 추측하기 전에 실제 수량을 대조한다. 이미 검증한 object-only 재생 subset을 재사용할 때는 owner·level·device/context/catalog·Area/revision을 맞추고 동일 revision 문서 교체에서도 폐기한다. 재생 전 준비 개선을 GPU draw/FPS 성공으로 대신 기록하지 않는다. 근거는 `10-04/2026-10-04_MARIO_WORLD_PREWARM_IMPLEMENTATION_RESULT.md`다.
+
+### 원본 복구 A/B와 추가 품질 실험의 기준을 섞지 않는다
+
+원본 복구의 성분별 A/B는 시작 때 보관한 실효값을 기준으로 source material·PBR indirect·
+RNM/SH·IBL·source tone/LUT 중 한 필드만 비교한다. 현재 연결된 profile/resource ID는
+입력 근거이며 원작 화면 일치 인증이 아니다. 고정 복구된 UV/geometry/mip를 성분 OFF로
+과거 결함 상태까지 복원했다고 설명하지 않는다. 추가 Horizon AO/SSR 같은 자체 확장과
+통합 후보는 명시적인 별도 session 실험이며 기본ON·저장/publish로 전파하지 않는다.
+
+패키지를 개별 A/B의 기준으로 사용할 때 original 복원값을 덮어쓰지 않는다. 서비스 ownership은
+original 대비 A와 B 차이의 합집합, 비교 제외 mask는 A와 B의 실제 차이만 사용한다.
+선택 기준별 row ID·실제 expected A/B·공통 조건을 대조하여 다른 기준의 비용을 재사용하지 않는다.
+행별 ID가 없는 일반 캡처도 A 기준이 성공적으로 바뀔 때 새 experiment ID로 분리한다.
+거부된 기준 변경은 이전 ID를 유지하고, 같은 A에서 B만 바꾸는 실험과 구분한다.
+
+Horizon AO에서 depth는 실제 point sample의 texel-center UV로 재구성하고 표본의 실제
+방향에서 tangent를 구한다. 비정사각 viewport의 texel 비율을 빠뜨리거나 unquantized UV를
+point depth와 섞으면 평면·경사면이 스스로 어두워진다. OFF 보존과 평면1/접점차폐를 함께
+수치 검증한다. SSR 세부 탐색은 연속 표면의 실제 교차만 복구하며 depth 절벽을 hit로 만들지
+않는다. Roughness 필터도 depth/normal/family 경계를 검사한다. 실제 게임 화질·비용은 별도다.
+근거는 [Workbench 결과](10-03/2026-10-03_PROFILER_RENDERING_WORKBENCH_RESULT.md)를 따른다.
+
+### 카메라 행렬 오차와 인접 draw의 LOD 선택을 구분한다
+
+inverse view의 `_44`를 정확히1과 비교하면 affine 표현의 float 오차 때문에 원거리 LOD가
+건너뛰어질 수 있다. camera revision당 LOD 전용 view를 준비하고 같은 homogeneous scale로
+center·radius·error를 일관되게 계산한다. 원본 GPU view와 culling plane은 바꾸지 않는다.
+projective/비유한 행렬은 계속 거부하고 source LOD로 돌아간다. 실제 cue 재현과 화면 오차를
+함께 확인하며 생성 하한을 일괄 낮추기 전에 실제 asset의 감소율과 준비 비용을 측정한다.
+
+같은 mesh의 인접 lighting bank도 각 원래 batch가 선택한 LOD가 같을 때만 합친다. 서로 다른
+선택은 순서 경계로 남긴다. 작은2~3개 묶음은 별도3slot shader로 SRV 바인딩 비용을 제한하며
+기존4~8개 경로와 ordinary shader의 비용을 늘리지 않는다. native 수치 정합·실제 제출 비용과
+사용자 컷신 FPS 검증은 구분한다.
+
+텍스처 품질의 빌드별 기본값은 초기 로드 fallback과 UI seed·Reset에서 같은 함수를 쓴다.
+Debug 하/Release 최상은 저장값이 없는 경우의 기본값이며 기존 명시 저장값을 강제하지 않는다.
+
+### 실제 typed texture와 원본 mip 근거를 먼저 연결한다
+
+WModel의 legacy texture 복사본이 단일 mip이어도 현재 mapmaterials의 typed override는 다른
+DDS를 사용할 수 있다. 실제 asset/material/texture field에서 Resources ID를 따라간 뒤
+원본 MIC 상속과 Texture2D를 연결한다. full mip count도 native 복원 증거가 아니며 생성된
+하위 단계일 수 있다. 원본 mip0뿐 아니라 모든 단계의 압축 blocks를 비교한다.
+
+원본 native height가64/32/16/8/4까지만 보관하면 없는2/1단계를 복원 명목으로 생성하지 않는다.
+DX10 DDS의 format/sRGB와 기존 channel order를 유지하고, 원본 mip0 불일치·source object
+모호성·지원하지 않는 carrier를 임의 재압축이나 이름 추정으로 통과시키지 않는다.
+Resources 설치와 현재 GPU 메모리 갱신, sampler 품질 선택과 VRAM streaming은 구분한다.
+원본에 `TMGS_NoMipmaps`가 명시되고 native1단만 있으면 생성된 하위 단계를 원본 복원으로
+남기지 않는다. 실제 소비자·mip0·형식·색 공간을 확인하고 원본1단 정책을 별도로 복구한다.
+
+### 원거리 캐릭터 무대는 지면과 조명 기준점을 함께 이동한다
+
+미리보기 카메라만 이동하거나 지면을 복제해도 중앙의 POINT/SPOT·그림자 영역은 따라가지
+않는다. 설치 geometry의 실제 상면과 기본 캐릭터 발 원점을 대조하고, loaded placement의
+material override·RNM·sourceWind를 보존한 기존 Clone으로 지면을 준비한다. 조명 색·강도·
+방향·품질은 보존하면서 POINT/SPOT 위치의 frustum 검사와 제출, 그림자 eye/at를 함께
+평행이동한다. 그림자는 이전 자기 offset을 제거한 뒤 계산해 프레임 누적을 막는다. 현재
+저작 재질을 과거 원본 brightness 값으로 덮지 않는다. Server entity를 이동하지 않는 표시
+캐릭터는 정상 ObjectUpdate가 한 번 지난 뒤 보여주고 전환 시 실제 플레이어의 이전 숨김을
+복원한다. 지면 수치·컴파일 성공과 사용자의 화면 확인은 별도다.
+
+### Rendering Workbench의 옵션 연결과 촬영 적용을 구분한다
+
+before-restoration은 저장 scene profile 비교이며 current shader/assets를 과거 EXE로 되돌리지
+않는다. 이 profile 비교가 활성인 동안14단계 실험은 시작할 수 없으므로 현재 entry로 복귀한 뒤
+별도 시작한다. 각 Technique B는 직전 B 위에 누적되지 않는다. Debug 전용 Workbench를
+Release에서도 쓸 수 있다고 안내하지 않고, F1 숨김·Level/profile·region/Video 변경에 따른
+실험 종료를 촬영 절차에 반영한다. profile 복귀 실패 때 entry ID가 지워지는 현재 결함과
+일반 A/B fixture 통과는 별개이며, 복귀 성공 전 복원 정보 폐기를 재사용하지 않는다.
+
+SSGI/SSR marker3 수신 조건과 BG RNM의 AO 우회, FXAA subpixel0 조기 반환까지 확인한다.
+버튼 값이 바뀌거나 패스가 실행된다는 이유로 해당 바닥의 화면 변화까지 보장하지 않는다.
+게시 material override 행 수는 실제 load scope/픽셀·상속 WModel·동적 배우의 전수 집계가 아니다.
+촬영 적용 범위와 미연결 항목은 [Workbench 촬영 결과 G10](10-04/2026-10-04_RENDERING_WORKBENCH_PRESENTATION_RESULT.md)에 둔다.
+
+### 선택창 크기 차이는 기본 체형과 대기 자세를 따로 측정한다
+
+canonical mesh geometry, 설치 골격의 저장 rest pose, 실제 기본 idle의 skin 경계는 서로 다르다.
+워로드처럼 원래 몸체가 더 커도 전투 idle에서 높이가 크게 낮아질 수 있다. rig root 공통 basis와
+runtime preScale·presentation 배율을 함께 적용하고, 큰 무기를 포함한 전체 경계로 몸체 크기를
+대신하지 않는다. 선택창의 구도 문제는 전투 world 배율을 바꾸기 전에 전용 카메라에서 보정한다.
+거리·eye/look 높이를 같은 비율로 줄이면 pitch와 캐릭터 원점의 화면 위치를 보존하지만 깊이가
+다른 실제 발끝은 조금 움직인다. 몸체 CPU 계산과 장비·cloth를 포함한 실제 화면을 구분한다.
+근거는 [검은 무대 결과 G04 이후](10-05/2026-10-05_CHARACTER_SELECT_BLACK_STAGE_IMPLEMENTATION_RESULT.md)에 둔다.
+
+
+### 최적화 A/B의 cache 수명과 증거
+
+- 최적화 bool을 rendering quality의 매 프레임 base 복원/preview 재적용에 넣으면 ON cache가 계속 무효화된다. 구조 설정은 entry base·last applied·owned mask를 별도로 보관하고 실제 delta에만 setter/revision을 바꾼다. 종료는 최신 외부 변경을 보존하면서 남아 있는 소유 필드만 복원한다.
+- 같은 geometry의 instance1 draw와 instanced draw 비교는 제출 경로의 비교다. 객체 생성·map partition·material 정렬·LOD 생성·asset bake 비용까지 꺼진 것으로 표현하지 않는다. shadow cache OFF는 shadow OFF와 다르다.
+- 고정 카메라 warmup은 visibility cache를 재사용해 worker 준비 대상0이 될 수 있다. 대상0·cachehit·실제 worker 완료량을 보고하며 시간 차이만으로 병렬화 효과를 확정하지 않는다. Debug/Release와 D3D debug device는 각각의 실행 조건이며 재시작만으로 OS cache cold를 보장하지 않는다.
+- ABBA의 각 단계 raw frame window는1200frame history에서 사라지기 전에 따로 보관한다. 다음 측정은 저장 완료 뒤 warmup하고 summary에 measurement ID·실제 범위·raw 저장 성공을 연결한다. 중단·저장 실패·도구 표시/카메라 변경·GPU 미유효 표본을 정상 비교 수치로 제시하지 않는다.

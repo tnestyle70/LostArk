@@ -394,6 +394,7 @@ private:
 	otherwise keep showing across a level change or while closed. */
 	void Update_ItemUpgrade(f32_t fTimeDelta);
 	void Update_CustomizingSceneProfile();
+	void Update_ClassShowcaseShadowFocus();
 	void Update_KoukuGateSceneProfile();
 	void Hide_ItemUpgrade();
 	void Update_ItemUpgradeSelection();
@@ -624,6 +625,7 @@ private:
 	int m_iSequenceViewerPendingEditorAction = -1;
 	std::chrono::steady_clock::time_point m_SequenceViewerPendingDeadline{};
 	void RenderRenderingWorkbench();
+	void RenderOptimizationBenchmarkPanel();
 	void RenderLightingWorkbench();
 	void SelectRenderingLight(const string& id);
 	void RenderLightDetail();
@@ -644,6 +646,9 @@ private:
 	/* Set while the character-creation screen holds the dark stage profile, so the
 	swap happens on the open/close edge instead of every frame. */
 	string m_strSceneProfileBeforeCustomizing;
+	bool_t m_bClassShowcaseShadowFocusActive = false;
+	float4_t m_vShadowFocusBeforeClassShowcase{};
+	float4_t m_vClassShowcaseShadowFocus{};
 	string m_strKoukuGateProfileRequest;
 	string m_strKoukuGateProfileApplied;
 	string m_strSceneProfileBeforeKoukuGate;
