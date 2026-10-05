@@ -2,7 +2,7 @@
 
 [전체 코드 지도](2026-10-03_VISUAL_STUDIO_CODE_ATLAS.md) · [최종 VS 필터 트리](2026-10-03_VISUAL_STUDIO_FILTER_TREE.md)
 
-조사일: 2026-10-03. Winters 소스는 `C:/Users/tnest/Desktop/WintersEngine`의 현재 디스크 저장본을 읽었다. 이 저장소의 파일 수정·빌드·실행·Git 명령은 수행하지 않았다. Unreal 소스는 현재 PC에 없다는 사용자 확인에 따라 추가 탐색을 중단했다. 따라서 Winters 부분은 로컬 코드 근거, Unreal 부분은 Epic 공식 문서 근거다. 과거 Winters 문서의 Unreal 5.7.4 및 `C:/Users/user/Desktop/UnrealEngine/UnrealEngine`는 이번 세션의 실측 버전/경로가 아니다.
+조사일: 2026-10-03. Winters 소스는 `C:/Users/tnest/Desktop/WintersEngine`의 현재 디스크 저장본을 읽었다. Winters 저장소의 파일 수정·빌드·실행·Git 명령은 수행하지 않았다. 초기 조사 뒤 Unreal 소스 clone이 완료되어 현재 `C:/Users/tnest/Desktop/UnrealEngine`의 실제 코드도 대조했다. [Build.version](C:/Users/tnest/Desktop/UnrealEngine/Engine/Build/Build.version:1)은 **5.8.3**, 조사한 checkout commit은 `396c9f059903aed5fec78ecd3d437a40c6415368`이다. 아래 GC·객체 구성·Camera·World·AI 비교는 이 로컬 소스 근거이며, 기존 공식 문서 비교표는 해당 문서 버전의 보조 자료로 보존한다. 과거 Winters 문서의 Unreal 5.7.4 및 `C:/Users/user/Desktop/UnrealEngine/UnrealEngine`는 현재 실측 버전/경로가 아니다.
 
 이 문서는 전수 함수 명세나 구현 완료 선언이 아니라 기술서 첫 조사 지도다. 클래스가 존재한다는 사실, 제품에서 호출된다는 사실, 빌드 성공, 실제 표시 성공을 구분한다.
 
@@ -164,7 +164,7 @@ Overlay는 [비동기 save future](C:/Users/tnest/Desktop/WintersEngine/Engine/P
 
 ## 7. Unreal과 비교할 때의 정확한 대응
 
-공식 가이드의 버전 선택이 열리는 문서는 5.7로 고정했다. API/UObject/Cook/Insights 일부 페이지는 현재 공식 사이트가 5.8 제목으로 제공하므로 아래에 5.8로 표시했다. 하나의 UE checkout을 실측한 것처럼 버전을 합치지 않는다.
+다음 표는 로컬 UE 소스 확보 전 조사한 공식 문서 지도다. 버전 선택이 열리는 문서는 5.7로 고정했고 API/UObject/Cook/Insights 일부 페이지는 당시 공식 사이트의 5.8 제목으로 표시했다. 이 문서 표의 버전과 새로 확인한 **로컬 UE 5.8.3 구현**을 구분한다. 실제 코드 근거는 이어지는 7.1~7.8에 기록한다.
 
 | 주제 | Winters에서 확인한 구현 | Unreal 공식 구조 / 비교에서 배울 점 |
 |---|---|---|
@@ -177,11 +177,79 @@ Overlay는 [비동기 save future](C:/Users/tnest/Desktop/WintersEngine/Engine/P
 | 렌더링 | RHI resource handle와 명령 API, snapshot mesh submit loop | UE5.7 RDG는 CreateTexture/CreateBuffer, AddPass, Execute 및 parameter metadata로 dependency를 얻고 pass/resource 수명과 barrier 등을 처리한다. RHI abstraction과 render graph scheduling을 별도 계층으로 비교한다. [RDG](https://dev.epicgames.com/documentation/en-us/unreal-engine/render-dependency-graph-in-unreal-engine?application_version=5.7) |
 | 측정 | bounded QPC raw event/stat/counter, GPU query, JSON frame/timeline | UE5.8 TraceLog/TraceAnalysis, Trace Server, Insights UI는 capture/store/analysis를 분리한다. CPU/GPU뿐 아니라 Memory/Net/Load/RDG channel이 존재한다. [Trace](https://dev.epicgames.com/documentation/en-us/unreal-engine/trace-in-unreal-engine-5), [Insights](https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-insights-in-unreal-engine) |
 
-로컬 UE 소스를 다시 받으면 우선 `Engine/Build/Build.version` 및 commit을 기록하고 다음을 소스에서 재검증한다: CoreUObject의 Object 계층, MovieScene의 Sequence/Player/Track/Section/Channel, Editor/Sequencer, RenderCore/RenderGraphBuilder, RHI와 backend, AssetRegistry/UnrealEd cook, TraceLog/TraceAnalysis/UnrealInsights, Programs/UnrealBuildTool. 지금은 이 경로를 조사 예정 지도라고 부르며 line 번호를 만들지 않는다.
+이번 추가 조사에서는 CoreUObject의 객체 수명, Engine의 Actor/Component/World/Camera, CinematicCamera, AIModule과 BehaviorTreeEditor의 호출을 확인했다. MovieScene/Sequencer, RenderCore/RHI, Trace/Insights의 상세 비교는 각 담당 코드 가이드에서 다룬다. 다음 비교의 완료 증거는 파일·선언·호출 관계이며, Unreal 빌드·에디터 실행·PIE·화면·성능 검증은 수행하지 않았다.
+
+### 7.1. UObject와 우리 객체: 수명을 누가 끝내는가
+
+UE [GarbageCollection.cpp의 CollectGarbage](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp:6366)는 GC lock을 얻고 내부 수집을 실행한다. [MarkObjectsAsUnreachable](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp:4495)는 reachability 상태를 준비하고 root·cluster에서 도달 가능한 객체를 추적할 출발점을 마련한다. [PerformReachabilityAnalysis](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp:4643)와 [IncrementalPurgeGarbage](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp:4768)는 도달성 판정과 정리를 분리한다. [UObject::ConditionalBeginDestroy](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/CoreUObject/Private/UObject/Obj.cpp:1299)는 destruction flag와 BeginDestroy 호출을 관리한다.
+
+LostArk의 현재 객체 수명은 manual AddRef/Release가 아니다. [CGameObject::m_Components](C:/Users/tnest/Desktop/LostArk/Engine/Public/GameObject.h:55)는 component tag를 key로 하는 `map<wstring, shared_ptr<CComponent>>`, [CLayer::m_GameObjects](C:/Users/tnest/Desktop/LostArk/Engine/Public/Layer.h:30)는 `list<shared_ptr<CGameObject>>`다. [Remove_GameObject](C:/Users/tnest/Desktop/LostArk/Engine/Private/Layer.cpp:87)는 phase 등록과 Layer의 보유 참조를 제거한다. 다른 shared_ptr 보유자가 남았는지와 객체 소멸은 별개의 문제다.
+
+Winters [EntityHandle](C:/Users/tnest/Desktop/WintersEngine/Engine/Public/ECS/Entity.h:17)은 ID와 generation을 64-bit 값으로 묶어 재사용된 slot을 이전 객체로 오인하지 않도록 한다. [CWorld::DestroyEntity](C:/Users/tnest/Desktop/WintersEngine/Engine/Private/ECS/World.cpp:24)는 transform 부모·자식 관계를 정리하고 모든 component store에서 해당 entity를 제거한 뒤 entity manager를 갱신한다. handle은 생존 여부를 검사하는 identity이며 객체를 살려 두는 shared_ptr가 아니다.
+
+공통 문제는 객체 수명과 유효한 참조 유지다. UE의 참조 추적 GC, LostArk의 스마트 포인터 소유권, Winters의 명시적 ECS 제거는 해결 방식이 다르다. UObject GC가 모든 C++ 메모리를 수집한다거나 `TObjectPtr`가 `shared_ptr`와 같은 참조 계수라고 설명하지 않는다. UE의 [FWeakObjectPtr](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/CoreUObject/Public/UObject/WeakObjectPtr.h:290)도 유효성 검사 계약을 갖지만 Winters EntityHandle과 대상 저장소·수명 규칙까지 같지는 않다.
+
+### 7.2. Actor/Component와 Prototype/Clone, ECS store
+
+UE [AActor::RootComponent](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Classes/GameFramework/Actor.h:1022)는 `UPROPERTY`로 선언된 `TObjectPtr<USceneComponent>`이며 actor의 공간 기준을 정한다. [OwnedComponents](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Classes/GameFramework/Actor.h:4331)는 actor가 소유한 component 집합이다. [UActorComponent::RegisterComponentWithWorld](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/Components/ActorComponent.cpp:1967)는 world·owner·중복 등록 상태를 검사하고 초기화 및 등록을 연결한다. 객체가 존재하는 것과 world에서 갱신·렌더링되는 component로 등록된 것은 다르다.
+
+UE의 생성 진입점 [UWorld::SpawnActor](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/LevelActor.cpp:456)와 제거 진입점 [DestroyActor](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/LevelActor.cpp:839)를 함께 읽는다. 제거 시 component unregister와 garbage 표시, tick function 등록 해제가 이어진다([1051행](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/LevelActor.cpp:1051)). DestroyActor 호출을 즉시 C++ delete와 동일하게 설명하지 않는다.
+
+LostArk [CGameObject::Add_Component](C:/Users/tnest/Desktop/LostArk/Engine/Public/GameObject.h:62)는 `Clone_Prototype`으로 component를 얻고 tag map과 typed shared_ptr 출력에 연결한다. [Object_Manager.cpp](C:/Users/tnest/Desktop/LostArk/Engine/Private/Object_Manager.cpp:70)는 game object prototype을 clone한 뒤 Layer에 넣는다. Winters는 [ComponentStore](C:/Users/tnest/Desktop/WintersEngine/Engine/Public/ECS/ComponentStore.h:76)의 sparse index·dense entity 목록·연속 `vector<T>`와 [CWorld::m_mapStores](C:/Users/tnest/Desktop/WintersEngine/Engine/Public/ECS/World.h:229)의 type별 store 소유권을 사용한다.
+
+이 비교의 질문은 “어떤 component를 어디에 저장하고, 누가 생성·등록·제거하는가”다. UE의 reflection·Actor lifecycle 전체, LostArk의 Prototype/Clone/Layer, Winters의 ECS store를 단순 이름 대응으로 합치지 않는다.
+
+### 7.3. UWorld::Tick, GameInstance update, Winters scheduler
+
+UE [UWorld::Tick](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/LevelTick.cpp:1502)은 world 갱신의 실행 소유자다. [RunTickGroup 호출](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/LevelTick.cpp:1750)은 PrePhysics → StartPhysics → DuringPhysics → EndPhysics → PostPhysics로 이어지고, DuringPhysics는 완료를 기다리지 않는 호출을 사용한다(:1765). 이는 tick의 물리 전후 관계와 대기 시점을 드러낸다.
+
+LostArk [CGameInstance::Update_Engine](C:/Users/tnest/Desktop/LostArk/Engine/Private/GameInstance.cpp:192)은 object Priority_Update, camera refresh, object Update, physics, Post_Physics_Update, Level Update, Late_Update를 순서대로 연결한다. 함수 호출 순서를 설명할 수 있지만 이 사실만으로 UE의 TickFunction dependency와 task scheduling을 구현했다고 부를 수는 없다.
+
+Winters [CSystemSchedular::Execute](C:/Users/tnest/Desktop/WintersEngine/Engine/Private/ECS/SystemScheduler.cpp:85)는 phase별 실행 plan의 batch를 순회한다. 작은 batch 또는 job system 부재 시 순차 호출하고(:102), 병렬 batch는 job을 제출한 뒤 counter를 기다린다(:113). [CWorld](C:/Users/tnest/Desktop/WintersEngine/Engine/Public/ECS/World.h:229)의 데이터 보관과 scheduler의 실행 책임을 구분한다. `World`라는 이름이 같아도 UE UWorld의 전체 역할과 같지 않다.
+
+### 7.4. Level 교체와 동적 스트리밍의 경계
+
+UE [UWorld::PersistentLevel](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Classes/Engine/World.h:951)과 [StreamingLevels](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Classes/Engine/World.h:999)는 하나의 world 안에서 level들을 관리한다. [ULevel::Actors](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Classes/Engine/Level.h:429)는 actor 목록, [OwningWorld](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Classes/Engine/Level.h:457)는 소속 world를 가리킨다. [UWorld::UpdateLevelStreaming](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/World.cpp:5024)과 [UWorldPartitionStreamingPolicy::UpdateStreamingState](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/WorldPartition/WorldPartitionStreamingPolicy.cpp:271)는 streaming 상태를 실제로 갱신하는 코드다.
+
+LostArk [CLevel_Manager::Change_Level](C:/Users/tnest/Desktop/LostArk/Engine/Private/Level_Manager.cpp:14)은 이전 level resource 정리 후 `unique_ptr<CLevel>` 한 개를 교체한다. [CLIENT_LEVEL_DESCRIPTOR::MapLoadScope](C:/Users/tnest/Desktop/LostArk/Client/Public/LevelRegistry.h:37)는 제품 level의 로드 범위를 선언한다. 맵 진입 범위 선택, 화면 밖 물체의 culling, 실행 중 level/cell streaming은 서로 다른 문제다. 현재 MapLoadScope를 UE World Partition과 동등한 동적 셀 스트리밍으로 소개하지 않는다. Winters의 ECS CWorld에 대해서도 이번 조사로 level package나 streaming 구현 여부까지 판정하지 않는다.
+
+### 7.5. 최종 카메라 시점을 결정하는 호출자
+
+UE는 [APlayerCameraManager::DoUpdateCamera](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/PlayerCameraManager.cpp:881)에서 view target을 갱신한다. [UpdateViewTargetInternal](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/PlayerCameraManager.cpp:338)은 Blueprint camera 결과를 사용하거나 target의 `CalcCamera`를 호출한다. [AActor::CalcCamera](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/Actor.cpp:3688)는 active CameraComponent의 `GetCameraView`를 선택하고, CameraManager는 현재·pending `FMinimalViewInfo`를 blend한다([950행](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/PlayerCameraManager.cpp:950)).
+
+LostArk [CCamera::Begin_PresentationOverride](C:/Users/tnest/Desktop/LostArk/Engine/Private/Camera.cpp:57)의 owner ID는 현재 카메라 override를 소유한 연출을 식별하고 priority는 다른 연출의 선점을 판정한다. 이전 world pose와 FOV를 저장하므로 종료 복귀 상태도 이 계층이 소유한다. [Update_PipeLine](C:/Users/tnest/Desktop/LostArk/Engine/Private/Camera.cpp:198)은 최종 world matrix의 역행렬로 View를 만들고 FOV·aspect·near/far로 Projection을 만들어 GameInstance에 전달한다.
+
+Winters [CCamera::Ready](C:/Users/tnest/Desktop/WintersEngine/Engine/Private/Renderer/CCamera.cpp:6)는 eye/at/up와 projection 값을 설정하고 [RecalcView](C:/Users/tnest/Desktop/WintersEngine/Engine/Private/Renderer/CCamera.cpp:92)는 LookAt matrix를 계산한다. 세 구현 모두 최종 시점을 결정하지만 UE의 ViewTarget, LostArk의 owner/priority override, Winters의 camera/resolver를 동일한 관리자 API라고 설명하지 않는다.
+
+### 7.6. CineCamera lens와 카메라 키 저작 도구
+
+UE [UCineCameraComponent::GetCameraView](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/CinematicCamera/Private/CineCameraComponent.cpp:593)는 derived data 계산 → 일반 CameraView → lens 갱신 → near clip·off-center projection 적용 순서다. [GetHorizontalFieldOfView](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/CinematicCamera/Private/CineCameraComponent.cpp:288)는 filmback의 sensor width와 focal length, overscan을 사용한다. 위치·회전·FOV key뿐 아니라 렌즈의 의미를 보관하는 모델이다.
+
+LostArk [CameraTool](C:/Users/tnest/Desktop/LostArk/Client/Private/CameraTool.cpp:359)은 Valtan/Kouku Area source 선택과 Reload·Save·Validate를 ImGui로 제공한다. UI가 값을 편집한 뒤 [CValtanCinematicCameraController::Sample_Cue](C:/Users/tnest/Desktop/LostArk/Client/Private/ValtanCinematicCameraController.cpp:273)가 cue의 pose를 계산하며 [VALTAN_CINEMATIC_CAMERA_POSE](C:/Users/tnest/Desktop/LostArk/Client/Public/ValtanCinematicCameraDocument.h:22)는 FOVY를 보관한다. Winters [SeqCameraKey](C:/Users/tnest/Desktop/WintersEngine/Engine/Public/Cinematic/CSequenceAsset.h:28)는 위치·회전·FOV key이고 [CSequencePlayer::EvaluateCamera](C:/Users/tnest/Desktop/WintersEngine/Engine/Private/Cinematic/CSequencePlayer.cpp:204)가 resolver를 통해 camera에 적용한다.
+
+공통 구현은 시간에서 pose/FOV를 샘플링하는 부분이다. 위 LostArk/Winters 경로를 확인한 것만으로 UE CineCamera의 filmback·focal length·aperture·focus 모델 전체를 구현했다고 주장하지 않는다. 우리 도구의 Save/Validate와 실제 재생기의 연결을 먼저 설명하고, 렌즈 모델은 별도 비교 대상으로 둔다.
+
+### 7.7. AIController와 서버 Brain의 입력·출력
+
+UE [AAIController::OnPossess](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/AIModule/Private/AIController.cpp:484)는 Pawn 소유 lifecycle의 일부다. [RunBehaviorTree](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/AIModule/Private/AIController.cpp:1001)는 Blackboard asset 호환성을 검사하고 필요 시 `UBehaviorTreeComponent`를 생성·등록한 뒤 BrainComponent로 연결하여 `StartTree`를 호출한다(:1030~1039). possession, Blackboard 데이터, tree 실행기의 책임이 분리된다.
+
+LostArk [CMonsterBrain::Update](C:/Users/tnest/Desktop/LostArk/Server/Private/MonsterBrain.cpp:250)는 SERVER_WORLD_ENTITY, player map, gameplay catalog, navigation, collision, fixed dt, server tick을 입력으로 받는다. 현재 상태와 target을 판정하고 상태·경로 및 damage event 출력을 갱신한다. [IDLE/CHASE 분기](C:/Users/tnest/Desktop/LostArk/Server/Private/MonsterBrain.cpp:331)는 공격 범위에서 PATTERN_WINDUP으로 전환하고 [GameRoom_BossSimulation](C:/Users/tnest/Desktop/LostArk/Server/Private/GameRoom_BossSimulation.cpp:3073)이 이 Brain을 호출한다. 이 경로는 typed 서버 상태 머신이며 UE Behavior Tree graph라고 부르지 않는다.
+
+Winters 권위 서버는 [CServerAICommandProducer::Execute](C:/Users/tnest/Desktop/WintersEngine/Server/Private/Game/ServerAICommandProducer.cpp:24)에서 `CChampionAISystem::Execute(world, TickContext, outCommands)`를 호출한다. [ChampionAIBrain.cpp](C:/Users/tnest/Desktop/WintersEngine/Shared/GameSim/Systems/ChampionAI/ChampionAIBrain.cpp:15)의 retreat/champion/farm score 판단은 이 Shared AI 쪽 근거다. 아래 Engine BT 클래스가 존재한다는 사실을 서버의 실제 command 생산 경로로 대체해서 설명하지 않는다.
+
+### 7.8. Blackboard, BT 실행기, graph editor를 따로 비교하기
+
+UE [UBehaviorTreeComponent::StartTree](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/AIModule/Private/BehaviorTree/BehaviorTreeComponent.cpp:240)와 [TickComponent](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/AIModule/Private/BehaviorTree/BehaviorTreeComponent.cpp:1698)는 instance stack·node memory·실행 요청을 관리한다. [UBlackboardComponent::RegisterObserver](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/AIModule/Classes/BehaviorTree/BlackboardComponent.h:73)는 key 변경 관찰자를 연결한다. [ValueMemory/ValueOffsets](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/AIModule/Classes/BehaviorTree/BlackboardComponent.h:245)는 key 값을 보관하며 setter의 변경 경로는 observer 통지까지 연결된다(:361). 매 프레임 전체 tree를 처음부터 순회하는 구현 하나로 축약하지 않는다.
+
+Winters [CBTSelector::Tick와 CBTSequence::Tick](C:/Users/tnest/Desktop/WintersEngine/Engine/Private/AI/BehaviorTree.cpp:6)은 자식의 Running/Success/Failure를 검사한다. [CBlackboard](C:/Users/tnest/Desktop/WintersEngine/Engine/Public/AI/Blackboard.h:16)는 `unordered_map<string, variant<bool,int,float,Vec3,string,uint64>>`를 사용한다. [CBehaviorTreeSystem::Execute](C:/Users/tnest/Desktop/WintersEngine/Engine/Private/ECS/Systems/BehaviorTreeSystem.cpp:9)는 BotComponent와 BlackboardComponent를 함께 조회하고 누적 시간이 [TICK_INTERVAL=0.2초](C:/Users/tnest/Desktop/WintersEngine/Engine/Public/ECS/Systems/BehaviorTreeSystem.h:40)에 도달하면 BTContext를 구성해 Tick한다. **실제 등록은 [Scene_InGameLifecycle.cpp](C:/Users/tnest/Desktop/WintersEngine/Client/Private/Scene/Scene_InGameLifecycle.cpp:493)의 `!m_bNetworkAuthoritativeGameplay` 조건 아래**이므로 이 BT를 현재 권위 서버의 공통 AI runtime이라고 소개하지 않는다.
+
+UE 도구는 [FBehaviorTreeEditor::InitBehaviorTreeEditor](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Editor/BehaviorTreeEditor/Private/BehaviorTreeEditor.cpp:219), graph widget(:568), debugger 생성(:288), [SaveAsset_Execute](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Editor/BehaviorTreeEditor/Private/BehaviorTreeEditor.cpp:1391), pin 변경의 transaction(:1303)까지 별도 코드로 연결된다. 노드 실행 알고리즘, graph authoring, asset 저장, undo, 실행 중 debugger는 각각 증명해야 하는 기능이다. LostArk ImGui 도구의 저장·검증·서버 승인 기능을 이 기준으로 설명하되, UI 라이브러리 차이만으로 툴의 구현 원리를 판단하지 않는다.
+
+이 추가 비교에서 확인한 것은 세 저장소의 해당 코드 경로와 데이터 소유권이다. 누락 기능 전체 목록, 실제 UE editor 조작 절차, GC pause나 AI 처리량의 수치는 조사하지 않았다. 후속 영상에서는 한 객체의 생성·제거, 카메라 override, AI 입력·결과를 실제 실행 증거로 확인하여 코드 설명과 구분한다.
 
 ## 8. Epic–GitHub 재접근 절차
 
-이전에 연동했다면 로그인한 GitHub 계정으로 [EpicGames/UnrealEngine](https://github.com/EpicGames/UnrealEngine)을 먼저 연다. 이 주소의 접근 성공을 이번 세션에서 사용자 계정으로 확인한 것은 아니다.
+현재는 `C:/Users/tnest/Desktop/UnrealEngine`에 소스가 확보되어 있으며 7절은 그 소스를 읽은 결과다. 아래 절차는 계정 재연결이나 다른 PC에서 다시 받을 때의 참고로 보존한다. 이 로컬 파일 확인과 브라우저에서 사용자 계정의 조직 권한을 직접 검증하는 것은 구분한다. 이전에 연동했다면 로그인한 GitHub 계정으로 [EpicGames/UnrealEngine](https://github.com/EpicGames/UnrealEngine)을 먼저 연다.
 
 접근이 안 될 때 공식 순서는 Epic 계정의 **APPS & ACCOUNTS → Accounts → GitHub Connect**, 계정 연결, **Authorize EpicGames**, GitHub 이메일의 **Join @EpicGames**다. 공식 안내상 초대는 7일 안에 수락해야 한다. 예전 연동 상태만으로 현재 조직 접근이 유지된다고 가정하지 않는다. [Epic 공식 소스 접근 안내](https://www.unrealengine.com/ue-on-github?lang=en-US).
 
@@ -196,4 +264,4 @@ Overlay는 [비동기 save future](C:/Users/tnest/Desktop/WintersEngine/Engine/P
 5. profiler 영상은 코드 설명과 실제 capture evidence를 같이 둔다. dropped/omitted event, raw history 제한, GPU frame attribution도 보여준다.
 6. 자기소개서에는 확인한 구현 원리·책임 경계·해결한 문제와 재현 증거를 쓴다. Unreal 동급, 전체 AAA 엔진 구현, 모든 graph/runtime 연결 완료 같은 미검증 표현은 쓰지 않는다.
 
-이 조사로 소스·데이터·VS 필터를 읽는 기준을 만들었다. 전체 함수/멤버/알고리즘 사전, LostArk와의 상세 3자 비교, 실제 툴 화면과 영상 타임코드, 200페이지 PDF의 본문·도판은 후속 산출물이다.
+이 조사로 소스·데이터·VS 필터를 읽는 기준과 객체 수명·카메라·World·AI의 실제 3자 비교 근거를 추가했다. 전체 함수/멤버/알고리즘 사전, 다른 도메인까지 확대한 3자 비교, 실제 툴 화면과 영상 타임코드, 200페이지 PDF의 본문·도판은 후속 산출물이다.

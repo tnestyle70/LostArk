@@ -6,8 +6,10 @@
 근거를 연결한다. 한 기능의 헤더와 CPP는 같은 필터 안에서 함께 확인한다.
 
 LostArk는 현재 PC의 main 렌더링 변경과 기존 캐릭터 슬롯 작업을 통합한 소스를 기준으로 했다.
-WintersEngine은 바탕화면의 실제 소스를 읽었다. Unreal 5 소스는 현재 PC에 없으므로
-아래 비교에서 Unreal 부분은 Epic 공식 문서 근거이며, 로컬 구현을 확인한 것으로 표시하지 않는다.
+WintersEngine은 바탕화면의 실제 소스를 읽었다. Unreal은 공식 `release` 브랜치를
+`C:/Users/tnest/Desktop/UnrealEngine`에 내려받았으며 `Build.version`은 5.8.3,
+commit은 `396c9f059903aed5fec78ecd3d437a40c6415368`이다. 아래 연결 문서의 Unreal 비교는
+이 소스의 실제 선언과 호출을 근거로 보완했다. 에디터 설치·실행·화면 비교는 별도 단계다.
 전수 파일 색인은 프로젝트 등록 항목을 대상으로 한다. 모든 함수·리소스·스킬을 실행 검증했다는 뜻은 아니다.
 
 ## G01. 솔루션 탐색기와 물리 폴더를 구별한다
@@ -178,11 +180,27 @@ Winters의 `CSequenceAsset::SaveToJson`은 현재 직접 파일 쓰기이며 쿠
 Winters의 Cubic 보간도 해당 코드에서는 smoothstep이다. 이런 구체적인 차이가 기술서의
 비교 근거이며 상용 엔진과 동급이라는 포괄적인 표현을 대신한다.
 
-Unreal 소스를 받은 뒤 `Engine/Build/Build.version`과 commit을 고정하고 MovieScene, Sequencer,
-CoreUObject, AssetRegistry, RenderCore/RDG, Trace와 UnrealBuildTool의 실제 소스를 다시 대조한다.
+내려받은 Unreal 5.8.3의 MovieScene, Sequencer, CoreUObject, AssetRegistry, RenderCore/RDG,
+Trace, Camera, World, BehaviorTree의 실제 소스를 연결 문서에 대조했다. UnrealBuildTool의
+전체 빌드 흐름과 모든 대상 플랫폼을 검증한 것은 아니다.
 원작 Lost Ark의 cooked UE3 자료를 복원하는 작업과 Unreal5 소스를 연구하는 작업도 구별한다.
 
-## G09. Unreal 소스 저장소에 다시 접근한다
+## G09. Unreal 소스 다운로드 상태와 에디터 설치를 구별한다
+
+2026-10-03에 공식 저장소 접근을 확인하고 `release`를 `--depth 1 --single-branch`로 clone했다.
+현재 commit의 추적 파일 224,004개를 모두 checkout했으며 `git status --short`는 비어 있다.
+과거 Git 이력은 생략했지만 소스 폴더 일부만 받는 sparse checkout은 사용하지 않았다.
+버전 정본은 [Build.version](C:/Users/tnest/Desktop/UnrealEngine/Engine/Build/Build.version:2)이다.
+디렉터리 실측 논리 크기는 `.git` 포함3,558,249,571byte(약3.31GiB)다. 디스크 할당 크기나
+추후 설치될 에디터·의존성·중간 빌드 산출물의 용량을 뜻하지 않는다.
+
+`Setup.bat`, 외부 binary dependency 수신, `GenerateProjectFiles.bat`, 엔진 소스 빌드는 실행하지
+않았다. 코드 열람용 clone이 완료된 상태이며 실행 가능한 에디터 설치 완료를 의미하지 않는다.
+공식 다운로드 링크의 `EpicGamesLauncherInstaller.exe`는 Downloads에 받아 Epic Games Inc.의
+유효한 디지털 서명을 확인했다. 실행 요청 뒤 targetable window는 확인되지 않았다.
+이후 사용자가 Launcher와 에디터를 직접 설치하겠다고 하여 에이전트의 설치 조작을 중단했다.
+
+다른 PC에서 저장소 접근을 복구해야 할 때는 아래 절차를 사용한다.
 
 로그인한 GitHub에서 [EpicGames/UnrealEngine](https://github.com/EpicGames/UnrealEngine)을 먼저 연다.
 접근이 되면 기존 연동을 다시 할 필요가 없다. 404가 나오면 Epic 계정의 **APPS & ACCOUNTS →
@@ -193,7 +211,7 @@ Accounts → GitHub Connect**를 확인하고 **Authorize EpicGames**, 이메일
 계정 권한이 확인되면 연구할 release/tag를 선택해 다운로드하거나 clone한다. 코드 열람을
 시작하는 데 전체 엔진 빌드가 선행 조건은 아니다. Setup/GenerateProjectFiles와 실제 build는
 선택한 버전의 [Epic 소스 다운로드 안내](https://dev.epicgames.com/documentation/en-us/unreal-engine/downloading-source-code-in-unreal-engine)를
-따른다. 이번 작업은 사용자 계정 연결·초대 수락·대용량 clone을 대신 수행하지 않았다.
+따른다. 이번 세션의 계정 로그인은 사용자가 수행했고, 그 뒤 소스 clone은 에이전트가 완료했다.
 
 ## G10. 코드 이해를 영상과 기술 소개서로 연결한다
 
@@ -205,6 +223,15 @@ Accounts → GitHub Connect**를 확인하고 **Authorize EpicGames**, 이메일
 World sequence → 물/조명 → Profiler A/B로 잡을 수 있다. 실제 타임코드는 재촬영본을 받은 뒤
 정한다. 각 컷에는 결과 화면, 도구 작업, 소스 심볼, 저장 파일, 검증 기록 중 필요한 증거를 연결한다.
 현재 MP4의 장면을 재확인하거나 새 화면을 촬영한 것으로 기록하지 않는다.
+
+사용자가 정한 제출 목표는 10월 30일 펄어비스 인턴 지원이다. 준비 순서는 실제 구현과 저장
+계약 확인 → 재현 가능한 도구 시연 → 같은 책임의 Unreal 화면·코드 대조 → 영상 자막과 기술
+소개서 → 개인 기여가 확인되는 자기소개서 사례다. 지원 공고의 외부 마감일을 별도 검증한 것은 아니다.
+
+사용자가 제안한 쿠크 뿅망치 사례는 앵커와 Collider, player 탐색·추적 Logic, 시간 구간을
+편집하는 화면에서 시작해 Save 파일, Publish 출력, Server가 읽는 정의와 실행 상태까지
+연결하는 촬영 후보로 둔다. 각 동작이 현재 구현돼 있는지, 추가 구현이 필요한지는 해당
+소스와 실제 재현으로 판정한다. Preview 화면만으로 서버 판정·반영 성공을 기록하지 않는다.
 
 200쪽 기술서의 아래 배분은 집필 설계이며 완성된 PDF가 아니다. 내용과 검증이 모인 후 분량을 조정한다.
 
@@ -234,5 +261,5 @@ World sequence → 물/조명 → Profiler A/B로 잡을 수 있다. 실제 타�
 전체 교체 XML은 [PLAN](2026-10-03_VISUAL_STUDIO_DOMAIN_FILTERS_PLAN.md)에 보존한다.
 
 이번 지도는 파일과 핵심 호출·데이터 흐름의 첫 정리다. 모든 함수·변수의 전수 해설,
-Unreal 로컬 소스 대조, 사용자 도구 시연·화면 판단, 새 촬영·SRT, 자기소개서와 제출용 PDF,
+Unreal 세부 기능의 추가 대조, 사용자 도구 시연·화면 판단, 새 촬영·SRT, 자기소개서와 제출용 PDF,
 200쪽 본문은 각각 별도 검증과 집필을 이어갈 범위다.
