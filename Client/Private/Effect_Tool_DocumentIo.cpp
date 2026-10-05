@@ -564,6 +564,7 @@ bool_t Client::CEffect_Tool::Try_SaveDocumentAs(
     const bool_t bWasDrawable = m_bActiveDocumentDrawable;
     std::string PreviousDrawableError = m_strActiveDocumentDrawableError;
     Clear_ProductCuePreview();
+    Clear_DocumentHistory();
     m_ActiveDocument = std::move(Staged);
     m_bMarkedElementIdsNeedPrune = true;
     Set_ActiveDocumentDrawableStatus(
@@ -675,6 +676,7 @@ bool_t Client::CEffect_Tool::
 	}
 
 	Clear_ProductCuePreview();
+	Clear_DocumentHistory();
 	m_ActiveDocument = std::move(Staged);
 	m_bMarkedElementIdsNeedPrune = true;
 	Set_ActiveDocumentDrawableStatus(true, {});
@@ -798,6 +800,7 @@ bool_t Client::CEffect_Tool::Try_PromoteImportedDocument()
         return false;
     }
     Clear_ProductCuePreview();
+    Clear_DocumentHistory();
     m_ActiveDocument = std::move(Staged);
     m_bMarkedElementIdsNeedPrune = true;
     Set_ActiveDocumentDrawableStatus(true, {});
@@ -1256,6 +1259,7 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
 	Clear_ProductCuePreview();
 	if (RetainedProductPreview.has_value())
 		m_ProductPreview = std::move(RetainedProductPreview);
+	Clear_DocumentHistory();
 	m_ActiveDocument = std::move(Staged);
     m_KoukuPatternPreviewContext.reset();
     m_strKoukuPatternPreviewStatus.clear();

@@ -513,6 +513,7 @@ bool_t Client::CMapTool::Open_ClassMovieBackground(
 		!m_bRuntimeAuthoring || m_iAuthoringLevelIndex != levelIndex))
 	{ status = "Save the current Map Tool draft before changing the background target."; return false; }
 	SetOpen(true);
+	if (!m_bOpen) { status = m_Status; return false; }
 	Handle_LevelTransition(levelIndex, true);
 	if (!m_bRuntimeAuthoring || target != m_ClassMovieBackgroundAreaId)
 	{

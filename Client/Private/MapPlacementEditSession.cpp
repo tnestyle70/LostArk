@@ -191,6 +191,7 @@ bool_t Client::CMapPlacementEditSession::Bind(
 		static_assert(std::is_nothrow_move_assignable_v<CMapAssetCatalog>);
 		End();
 		m_SessionCreated.clear();
+        Reset_History();
 		m_iNextPlacementId = 1u;
 		m_bDirty = false;
 		m_bPreserveUnloadedRows = desc.allowPartialLive;
@@ -237,6 +238,7 @@ bool_t Client::CMapPlacementEditSession::Discard_DetachedDraft()
 {
     if (m_bBound || Is_Publishing()) return false;
     m_Draft.clear(); m_DraftIndex.clear(); m_SessionCreated.clear();
+    Reset_History();
     m_bDirty = false; m_bRowsDirty = true;
     m_Status = "Detached placement draft explicitly discarded.";
     return true;
@@ -397,11 +399,13 @@ bool_t Client::CMapPlacementEditSession::Can_ChangeStructure()
 
 void Client::CMapPlacementEditSession::Select_Placement(const uint64_t placementId)
 {
+	if (m_iSelectedPlacementId != placementId) End_EditGesture();
 	m_iSelectedPlacementId = placementId;
 }
 
 void Client::CMapPlacementEditSession::Clear_Selection()
 {
+	End_EditGesture();
 	m_iSelectedPlacementId = 0u;
 	Remove_Outline();
 }
@@ -508,6 +512,17 @@ bool_t Client::CMapPlacementEditSession::Apply_Transform(
 		m_Status = "The current Level no longer owns " + m_AreaId + ".";
 		return false;
 	}
+    const auto* draft = Find_Draft(placementId);
+    if (!draft) return false;
+    if (SamePose(*draft, staged) && draft->visible == staged.visible) return true;
+    MAP_PLACEMENT_RECORD before, after, draftAfter;
+    try
+    {
+        before = *draft; after = draftAfter = staged;
+        if (!m_HistoryReplay) m_UndoHistory.reserve(m_UndoHistory.size() + 1u);
+    }
+    catch (const std::bad_alloc&)
+    { m_Status = "Transform history allocation failed; the draft and runtime were preserved."; return false; }
 	const bool_t wasBatched = nullptr != entry->batch;
 	const bool_t parityFlip = wasBatched &&
 		IsMirrored(entry->record.signedScale) != IsMirrored(staged.signedScale);
@@ -521,7 +536,8 @@ bool_t Client::CMapPlacementEditSession::Apply_Transform(
 			(wasBatched ? " (the batched instance stays visible)." : "."));
 		return false;
 	}
-	Remember_Draft(entry->record);
+    m_Draft[m_DraftIndex.at(placementId)] = std::move(draftAfter);
+    Record_Edit(std::move(before), std::move(after), m_iSelectedPlacementId, m_iSelectedPlacementId);
 	m_bDirty = true;
 	Rebase_SelfMotions();
 	return true;
@@ -567,6 +583,20 @@ bool_t Client::CMapPlacementEditSession::Duplicate_Selected()
 	record.sourceLevel = "EDITOR";
 	record.transformSource = "editor";
 
+    std::vector<MAP_PLACEMENT_RECORD> stagedDraft;
+    std::unordered_map<uint64_t, size_t> stagedIndex;
+    std::vector<uint64_t> stagedCreated;
+    MAP_PLACEMENT_RECORD historyAfter;
+    try
+    {
+        stagedDraft = m_Draft; stagedIndex = m_DraftIndex; stagedCreated = m_SessionCreated;
+        stagedIndex.emplace(placementId, stagedDraft.size()); stagedDraft.push_back(record);
+        stagedCreated.push_back(placementId); historyAfter = record;
+        host->Get_MapAuthoringPlacements().reserve(host->Get_MapAuthoringPlacements().size() + 1u);
+        m_UndoHistory.reserve(m_UndoHistory.size() + 1u);
+    }
+    catch (const std::bad_alloc&)
+    { m_Status = "Duplicate staging failed; the draft and runtime were preserved."; return false; }
 	MAP_RUNTIME_PLACED_ENTRY placed{};
 	if (!CMapPlacementRuntime::Create_Placement(
 		m_iLevelIndex, m_Catalog, record, placed))
@@ -575,9 +605,10 @@ bool_t Client::CMapPlacementEditSession::Duplicate_Selected()
 		return false;
 	}
 	host->Get_MapAuthoringPlacements().push_back(std::move(placed));
-	Remember_Draft(record);
-	m_SessionCreated.push_back(placementId);
+    m_Draft.swap(stagedDraft); m_DraftIndex.swap(stagedIndex); m_SessionCreated.swap(stagedCreated);
 	m_iSelectedPlacementId = placementId;
+    End_EditGesture();
+    Record_Edit(std::nullopt, std::move(historyAfter), sourceId, placementId);
 	m_bDirty = true;
 	m_bRowsDirty = true;
 	Rebase_SelfMotions();
@@ -619,6 +650,23 @@ bool_t Client::CMapPlacementEditSession::Delete_Selected()
 		m_Status = "The duplicate is no longer in the live Level.";
 		return false;
 	}
+    const auto* authored = Find_Draft(placementId);
+    if (!authored) { m_Status = "The duplicate has no authoring record; deletion was not applied."; return false; }
+    MAP_PLACEMENT_RECORD deleted;
+    std::vector<MAP_PLACEMENT_RECORD> stagedDraft;
+    std::unordered_map<uint64_t, size_t> stagedIndex;
+    std::vector<uint64_t> stagedCreated;
+    try
+    {
+        deleted = *authored; stagedDraft = m_Draft; stagedCreated = m_SessionCreated;
+        std::erase_if(stagedDraft, [placementId](const auto& row) { return row.placementId == placementId; });
+        stagedIndex.reserve(stagedDraft.size());
+        for (size_t i = 0u; i < stagedDraft.size(); ++i) stagedIndex.emplace(stagedDraft[i].placementId, i);
+        std::erase(stagedCreated, placementId);
+        if (!m_HistoryReplay) m_UndoHistory.reserve(m_UndoHistory.size() + 1u);
+    }
+    catch (const std::bad_alloc&)
+    { m_Status = "Delete staging failed; the draft and runtime were preserved."; return false; }
 	if (nullptr != found->object)
 	{
 		if (FAILED(CGameInstance::Get().Remove_GameObject_from_Layer(
@@ -643,14 +691,114 @@ bool_t Client::CMapPlacementEditSession::Delete_Selected()
 		return false;
 	}
 	live.erase(found);
-	Forget_Draft(placementId);
-	std::erase(m_SessionCreated, placementId);
+    m_Draft.swap(stagedDraft); m_DraftIndex.swap(stagedIndex); m_SessionCreated.swap(stagedCreated);
 	Clear_Selection();
+    Record_Edit(std::move(deleted), std::nullopt, placementId, 0u);
 	m_bDirty = true;
 	m_bRowsDirty = true;
 	Rebase_SelfMotions();
 	m_Status = "Deleted the duplicate #" + std::to_string(placementId) + ".";
 	return true;
+}
+
+void Client::CMapPlacementEditSession::Reset_History()
+{
+    m_UndoHistory.clear(); m_RedoHistory.clear();
+    m_HistoryRevision = m_SavedRevision = m_NextRevision = m_RollbackRevision = 0u;
+    m_HistoryReplay = false; End_EditGesture();
+}
+
+void Client::CMapPlacementEditSession::Record_Edit(
+    std::optional<MAP_PLACEMENT_RECORD> before, std::optional<MAP_PLACEMENT_RECORD> after,
+    uint64_t selectedBefore, uint64_t selectedAfter)
+{
+    if (m_HistoryReplay) return;
+    const uint64_t revision = ++m_NextRevision;
+    if (m_HistoryGesture && m_GestureRecorded && before && after && !m_UndoHistory.empty() &&
+        m_UndoHistory.back().before && m_UndoHistory.back().after &&
+        m_UndoHistory.back().after->placementId == before->placementId)
+    {
+        auto& edit = m_UndoHistory.back();
+        edit.after = std::move(after); edit.selectedAfter = selectedAfter; edit.revisionAfter = revision;
+    }
+    else
+    {
+        m_UndoHistory.push_back({std::move(before), std::move(after), selectedBefore,
+            selectedAfter, m_HistoryRevision, revision});
+        if (m_UndoHistory.size() > 64u) m_UndoHistory.erase(m_UndoHistory.begin());
+    }
+    m_HistoryRevision = revision; m_GestureRecorded = m_HistoryGesture;
+    m_RedoHistory.clear();
+}
+
+bool Client::CMapPlacementEditSession::Undo() { return Apply_History(false); }
+bool Client::CMapPlacementEditSession::Redo() { return Apply_History(true); }
+
+bool Client::CMapPlacementEditSession::Apply_History(bool redo)
+{
+    if (redo ? !Can_Redo() : !Can_Undo())
+    { m_Status = "No placement history is available, or publishing is in progress."; return false; }
+    if (!Can_ChangeStructure()) return false;
+    auto& source = redo ? m_RedoHistory : m_UndoHistory;
+    auto& destination = redo ? m_UndoHistory : m_RedoHistory;
+    EDIT edit;
+    try { edit = source.back(); destination.reserve(destination.size() + 1u); }
+    catch (const std::bad_alloc&)
+    { m_Status = "Placement history allocation failed; the draft and history were preserved."; return false; }
+    const auto& expected = redo ? edit.before : edit.after;
+    const auto& target = redo ? edit.after : edit.before;
+    const uint64_t id = expected ? expected->placementId : target->placementId;
+    auto* host = Resolve_Host();
+    const auto* current = Find_Draft(id);
+    if (!host || (expected ? (!current || current->assetId != expected->assetId ||
+        current->sourcePlacementId != expected->sourcePlacementId ||
+        !SamePose(*current, *expected) || current->visible != expected->visible) : current != nullptr))
+    { m_Status = "Placement history conflicts with the current draft; selection and history were preserved."; return false; }
+    const uint64_t previousSelection = m_iSelectedPlacementId;
+    bool applied = false;
+    End_EditGesture();
+    m_HistoryReplay = true;
+    if (expected && target) applied = Apply_Transform(id, *target);
+    else if (expected)
+    {
+        m_iSelectedPlacementId = id;
+        applied = Delete_Selected();
+    }
+    else if (target && !Find_Entry(id) && CMapPlacementDocument::Is_Valid(*target, m_Catalog))
+    {
+        std::vector<MAP_PLACEMENT_RECORD> stagedDraft;
+        std::unordered_map<uint64_t, size_t> stagedIndex;
+        std::vector<uint64_t> stagedCreated;
+        try
+        {
+            stagedDraft = m_Draft; stagedIndex = m_DraftIndex; stagedCreated = m_SessionCreated;
+            stagedIndex.emplace(id, stagedDraft.size()); stagedDraft.push_back(*target); stagedCreated.push_back(id);
+            host->Get_MapAuthoringPlacements().reserve(host->Get_MapAuthoringPlacements().size() + 1u);
+        }
+        catch (const std::bad_alloc&)
+        {
+            m_HistoryReplay = false;
+            m_Status = "Placement recreation staging failed; the draft and history were preserved.";
+            return false;
+        }
+        MAP_RUNTIME_PLACED_ENTRY placed{};
+        if (CMapPlacementRuntime::Create_Placement(m_iLevelIndex, m_Catalog, *target, placed))
+        {
+            host->Get_MapAuthoringPlacements().push_back(std::move(placed));
+            m_Draft.swap(stagedDraft); m_DraftIndex.swap(stagedIndex); m_SessionCreated.swap(stagedCreated);
+            Rebase_SelfMotions(); applied = true;
+        }
+        else m_Status = "Could not recreate the deleted placement; the draft and history were preserved.";
+    }
+    else m_Status = "Placement history target is invalid or its stable ID is already live.";
+    m_HistoryReplay = false;
+    if (!applied) { m_iSelectedPlacementId = previousSelection; return false; }
+    m_HistoryRevision = redo ? edit.revisionAfter : edit.revisionBefore;
+    m_iSelectedPlacementId = redo ? edit.selectedAfter : edit.selectedBefore;
+    destination.push_back(std::move(edit)); source.pop_back();
+    m_bDirty = m_HistoryRevision != m_SavedRevision; m_bRowsDirty = true;
+    m_Status = redo ? "Placement edit redone; selection restored." : "Placement edit undone; selection restored.";
+    return true;
 }
 
 std::filesystem::path Client::CMapPlacementEditSession::Rollback_CopyPath() const
@@ -759,6 +907,9 @@ bool_t Client::CMapPlacementEditSession::Save()
 		return false;
 	}
 	m_BaselineBytes = savedBytes;
+    End_EditGesture();
+    m_RollbackRevision = m_SavedRevision;
+    m_SavedRevision = m_HistoryRevision;
 	m_bDirty = false;
 	m_RollbackBytes = std::move(currentBytes);
 	m_bRollbackValid = true;
@@ -821,7 +972,8 @@ void Client::CMapPlacementEditSession::Poll_Publish()
 			if (WriteDocumentBytesAtomic(m_SourcePlacements, m_RollbackBytes))
 			{
 				m_BaselineBytes = m_RollbackBytes;
-				m_bDirty = true;
+                m_SavedRevision = m_RollbackRevision;
+				m_bDirty = m_HistoryRevision != m_SavedRevision;
 				std::error_code removeError;
 				std::filesystem::remove(rollback, removeError);
 				restore = "Authoring file restored to its pre-save bytes; the draft stays dirty for another Save.";

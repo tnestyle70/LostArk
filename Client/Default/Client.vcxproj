@@ -937,6 +937,7 @@
     <None Include="..\..\Data\Effects\V2\Groups\cardmaze.mark.diamond.effectv2group.json" />
     <None Include="..\..\Data\Effects\V2\Groups\cardmaze.exit.diamond.effectv2group.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapplacements" />
+    <None Include="..\..\Data\Maps\Authoring\WorldHierarchy\*.json" />
     <None Include="..\..\Data\Maps\SequenceViewer.labels.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_DEV_TRAINING_GROUND\LV_DEV_TRAINING_GROUND.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.mapplacements" />
@@ -1522,6 +1523,7 @@
     <ClCompile Include="..\Private\Level_KakulSaydonArena_WorldObjects.cpp" />
     <ClCompile Include="..\Private\WorldObjectTool.cpp" />
     <ClCompile Include="..\Private\WorldLevelTool.cpp" />
+    <ClCompile Include="..\Private\WorldLevelHierarchy.cpp" />
     <ClCompile Include="..\Private\WorldSceneTool.cpp" />
     <ClCompile Include="..\Private\WorldSceneTool_Animation.cpp" />
     <ClInclude Include="..\Public\WorldSceneTool.h" />
@@ -1529,6 +1531,8 @@
     <ClInclude Include="..\Public\WorldSequenceObject.h" />
     <ClInclude Include="..\Public\WorldObjectTool.h" />
     <ClInclude Include="..\Public\WorldLevelTool.h" />
+    <ClInclude Include="..\Public\WorldLevelHierarchy.h" />
+    <ClInclude Include="..\Public\EditorUndoHistory.h" />
     <ClInclude Include="..\Public\PhysicalResourceCatalog.h" />
   </ItemGroup>
   <ItemGroup>

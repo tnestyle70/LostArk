@@ -2399,16 +2399,64 @@ bool Client::CBalanceTool::Remove_ValtanSummonDraft(
 	MarkDirty(true); status.clear(); return true;
 }
 
+struct Client::CBalanceTool::VALTAN_EDIT_SNAPSHOT final
+{
+    VALTAN_PATTERN_TREE_VIEW tree;
+    std::vector<SUMMON_CLONE> summonClones;
+    std::vector<DAMAGE_EDIT> damage;
+    std::vector<BOSS_EDIT> bosses;
+    VALTAN_AXE_VOLLEY_EDIT axe;
+};
+
+std::shared_ptr<const Client::CBalanceTool::VALTAN_EDIT_SNAPSHOT>
+Client::CBalanceTool::Capture_ValtanEditHistory() const
+{
+    if (!m_valtanHistorySnapshot || m_valtanHistoryGeneration != m_valtanDraftGeneration)
+    {
+        auto value = std::make_shared<VALTAN_EDIT_SNAPSHOT>();
+        value->tree = m_valtanPatternTree; value->summonClones = m_valtanSummonClones;
+        value->damage = m_damageProfiles; value->bosses = m_bosses; value->axe = m_valtanAxeVolley;
+        m_valtanHistorySnapshot = std::move(value); m_valtanHistoryGeneration = m_valtanDraftGeneration;
+    }
+    return m_valtanHistorySnapshot;
+}
+
+bool Client::CBalanceTool::Restore_ValtanEditHistory(const VALTAN_EDIT_SNAPSHOT& state, std::string& status)
+{
+    if (!Require_ValtanAuthoringAdmission("Undo / Redo", status) ||
+        Is_ValtanSaveJobBlockingAuthoring() || Is_ServerRuntimeSetPublishRunning()) return false;
+    const auto previous = Capture_ValtanEditHistory();
+    // Baselines, disk revisions and save receipts belong to the current owner.
+    // Restore only editable values and validate the resulting stable-ID patch.
+    m_valtanPatternTree = state.tree; m_valtanSummonClones = state.summonClones;
+    m_damageProfiles = state.damage; m_bosses = state.bosses; m_valtanAxeVolley = state.axe;
+    std::string patch;
+    DATA_JSON_VALUE parsed;
+    if (!ValidateDraft(status) || !BuildValtanDraftPatch(patch, status) || !CDataJson::Parse(patch, parsed, status))
+    {
+        m_valtanPatternTree = previous->tree; m_valtanSummonClones = previous->summonClones;
+        m_damageProfiles = previous->damage; m_bosses = previous->bosses; m_valtanAxeVolley = previous->axe;
+        return false;
+    }
+    const auto* operations = parsed.Find("operations");
+    m_dirty = !operations || !operations->Is_Array() || !operations->Get_Array().empty();
+    ++m_valtanDraftGeneration; m_valtanDraftValidated = false;
+    m_valtanCandidateRevision.clear(); m_valtanCandidateApplyClass.clear();
+    m_valtanHistorySnapshot.reset();
+    return true;
+}
+
 bool Client::CBalanceTool::Apply_ValtanCompositionDraftTransaction(
 	const std::function<bool(std::string&)>& edit, std::string& status)
 {
 	if (!Require_ValtanAuthoringAdmission("Valtan composition transaction", status)) return false;
 	const auto tree = m_valtanPatternTree;
 	const auto summonClones = m_valtanSummonClones;
+	const auto damage = m_damageProfiles; const auto bosses = m_bosses; const auto axe = m_valtanAxeVolley;
 	const auto generation = m_valtanDraftGeneration;
 	const bool dirty = m_dirty, validated = m_valtanDraftValidated;
 	const auto revision = m_valtanCandidateRevision, applyClass = m_valtanCandidateApplyClass;
-	const auto rollback = [&]() { m_valtanPatternTree = tree; m_valtanSummonClones = summonClones; m_valtanDraftGeneration = generation; m_dirty = dirty; m_valtanDraftValidated = validated; m_valtanCandidateRevision = revision; m_valtanCandidateApplyClass = applyClass; };
+	const auto rollback = [&]() { m_valtanPatternTree = tree; m_valtanSummonClones = summonClones; m_damageProfiles = damage; m_bosses = bosses; m_valtanAxeVolley = axe; m_valtanHistorySnapshot.reset(); m_valtanDraftGeneration = generation; m_dirty = dirty; m_valtanDraftValidated = validated; m_valtanCandidateRevision = revision; m_valtanCandidateApplyClass = applyClass; };
 	try { if (!edit(status)) { rollback(); return false; } }
 	catch (...) { rollback(); throw; }
 	if (m_valtanDraftGeneration != generation) m_valtanDraftGeneration = generation + 1u;

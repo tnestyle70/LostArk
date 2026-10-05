@@ -2828,6 +2828,8 @@ bool_t Client::CValtanActionWorkbench::Reload_Canonical(
 		std::move(CanonicalSourceRevision);
 	m_bAuthoringDraftDirty = false;
 	m_eAdmission = VALTAN_VIEW_ADMISSION::ADMITTED;
+	if (!m_bKeepHistoryOnReload) Clear_EditHistory();
+	else { m_HistoryValues.reset(); m_FrameHistoryBefore.reset(); }
 	m_bConfirmDiscardPatternSoundDraft = false;
 	m_strDisplayProvenance =
 		"SOURCE / paired gameplay and presentation; authoring revision " +
@@ -6712,6 +6714,7 @@ Validate_ManualStageTopologySoundDependencies(
 
 bool_t Client::CValtanActionWorkbench::Save_Reload()
 {
+	Finish_EditHistory(true);
 	const bool_t bPublishAfterSave = std::exchange(m_bPublishWithPendingSave, false);
 	Engine::CProfilerScope Profile(
 		CGameInstance::Get().Get_Profiler(), "Tool.Composition.SaveReload");
@@ -7020,7 +7023,9 @@ bool_t Client::CValtanActionWorkbench::Accept_PendingSaveOwners(
 bool_t Client::CValtanActionWorkbench::Reload_AfterPendingSave(
 	std::string& strOutStatus)
 {
+	m_bKeepHistoryOnReload = true;
 	const bool_t reopened = Reload_Canonical(!m_bPendingSavePublishesRuntime);
+	m_bKeepHistoryOnReload = false;
 	strOutStatus = m_strStatus;
 	if (reopened && m_bProductSourceReady && m_pValtanBossTool)
 	{
@@ -8218,13 +8223,14 @@ void Client::CValtanActionWorkbench::Render_Preview(
 	ImGui::BeginDisabled(nullptr == pPattern || !bServerVerificationAdmitted || !m_bProductSourceReady ||
 		m_bAuthoringDraftDirty || m_bPatternSoundDependencyDirty || m_CombatObjectSounds.bDraftDirty || CEffectV2Catalog::Get().Has_BossValtanBindingDraft() ||
 		IsValtanServerPlaybackBusy(m_pValtanBossTool));
-	if (ImGui::Button("Play Pattern##PreviewPanel", ImVec2(-1.f, 0.f)))
+	if (ImGui::Button("Play Pattern##PreviewPanel"))
 	{
 		std::string Status;
 		(void)Play_ServerVerification(*pPattern, Status);
 		m_strStatus = std::move(Status);
 	}
 	ImGui::EndDisabled();
+	ImGui::SameLine(); Render_EditHistoryButtons("PreviewHistory");
 	if (!bServerVerificationAdmitted || !m_bProductSourceReady || m_bAuthoringDraftDirty ||
 		m_bPatternSoundDependencyDirty || m_CombatObjectSounds.bDraftDirty || CEffectV2Catalog::Get().Has_BossValtanBindingDraft())
 	{
@@ -12333,6 +12339,8 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 		ImGui::SetTooltip("Run the saved, published Pattern on the Server. Save/Publish and the active Server revision must agree; no older Pattern is substituted for this draft.");
 	ImGui::EndDisabled();
 	ImGui::SameLine();
+	Render_EditHistoryButtons("TimelineHistory");
+	ImGui::SameLine();
 	ImGui::Checkbox("Loop", &m_bLoopPreview);
 	ImGui::SameLine();
 	ImGui::TextDisabled("%s | %.3f / %.3f s%s%s", bHasUnsavedChanges ? "Unsaved source edits" : "Source saved",
@@ -15574,6 +15582,182 @@ void Client::CValtanActionWorkbench::On_WorkbenchDeactivated()
 	}
 }
 
+struct Client::CValtanActionWorkbench::HISTORY_SCOPE final
+{
+    CValtanActionWorkbench& owner;
+    bool standalone;
+    explicit HISTORY_SCOPE(CValtanActionWorkbench& value) : owner(value),
+        standalone(!value.m_bWorkbenchFrameActive && !value.m_FrameHistoryBefore && !value.m_EditHistory.Is_Pending())
+    { if (standalone) owner.Begin_EditHistory(); }
+    ~HISTORY_SCOPE() { if (standalone) owner.Finish_EditHistory(true); }
+};
+
+struct Client::CValtanActionWorkbench::EDIT_HISTORY_VALUES final
+{
+    std::shared_ptr<const CBalanceTool::VALTAN_EDIT_SNAPSHOT> balance;
+    std::optional<VALTAN_PATTERN_SOUND_CUE_DOCUMENT> sounds;
+    std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> effects;
+    VALTAN_PATTERN_SHAKE_CUE_DOCUMENT shakes;
+    VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT objectSounds;
+};
+
+struct Client::CValtanActionWorkbench::EDIT_HISTORY_STATE final
+{
+    std::shared_ptr<const EDIT_HISTORY_VALUES> values;
+    std::vector<TIMELINE_SELECTION> selection;
+    std::string pattern, stage, stable;
+    DETAIL_OWNER owner = DETAIL_OWNER::PATTERN;
+    uint32_t cursor = 0u;
+};
+
+Client::CValtanActionWorkbench::HISTORY_STATE Client::CValtanActionWorkbench::Capture_EditHistory()
+{
+    if (!m_pBalanceTool || !m_pAnimationTool || !Is_FullyAdmitted()) return {};
+    const std::array<std::uint64_t, 5> generations{
+        m_pBalanceTool->Get_ValtanDraftGeneration(), m_pAnimationTool->Get_ValtanCompositionPatternSoundDraftGeneration(),
+        CEffectV2Catalog::Get().Get_Revision(), m_PatternShakes.iDraftGeneration, m_CombatObjectSounds.iDraftGeneration};
+    if (!m_HistoryValues || generations != m_HistoryGenerations)
+    {
+        auto values = std::make_shared<EDIT_HISTORY_VALUES>();
+        values->balance = m_pBalanceTool->Capture_ValtanEditHistory();
+        bool dirty = false; std::string status;
+        if (const auto* sounds = m_pAnimationTool->Get_ValtanCompositionPatternSoundDraft(dirty, status)) values->sounds = *sounds;
+        values->effects = CEffectV2Catalog::Get().Get_Snapshot();
+        values->shakes = m_PatternShakes; values->objectSounds = m_CombatObjectSounds;
+        m_HistoryValues = std::move(values); m_HistoryGenerations = generations;
+    }
+    auto state = std::make_shared<EDIT_HISTORY_STATE>();
+    state->values = m_HistoryValues; state->selection = m_TimelineSelection;
+    state->pattern = m_strSelectedPatternId; state->stage = m_strSelectedStageId;
+    state->stable = m_strSelectedStableId; state->owner = m_eDetailOwner; state->cursor = m_iPlayheadMs;
+    return state;
+}
+
+void Client::CValtanActionWorkbench::Begin_EditHistory()
+{
+    if (!m_EditHistory.Is_Pending() && !m_FrameHistoryBefore)
+    {
+        const auto previous = m_HistoryValues;
+        m_FrameHistoryBefore = Capture_EditHistory();
+        // Another owner tool may edit while this Workbench is inactive. Those
+        // changes must never be silently overwritten by an older local entry.
+        if (previous && m_FrameHistoryBefore && previous != m_FrameHistoryBefore->values) m_EditHistory.Clear();
+    }
+}
+
+void Client::CValtanActionWorkbench::Finish_EditHistory(const bool force)
+{
+    const auto after = Capture_EditHistory();
+    if (!after) { m_FrameHistoryBefore.reset(); return; }
+    if (m_FrameHistoryBefore && m_FrameHistoryBefore->values != after->values)
+        m_EditHistory.Begin(m_FrameHistoryBefore);
+    m_FrameHistoryBefore.reset();
+    if (!m_EditHistory.Is_Pending()) return;
+    if (!force && ImGui::GetCurrentContext() && (ImGui::IsMouseDown(ImGuiMouseButton_Left) || ImGui::IsAnyItemActive())) return;
+    m_EditHistory.Commit(after, [](const auto& before, const auto& current) { return before->values == current->values; });
+}
+
+void Client::CValtanActionWorkbench::Clear_EditHistory()
+{
+    m_EditHistory.Clear(); m_FrameHistoryBefore.reset(); m_HistoryValues.reset(); m_PendingHistoryDirection = 0;
+}
+
+bool Client::CValtanActionWorkbench::Restore_EditHistory(const EDIT_HISTORY_STATE& state, std::string& status)
+{
+    if (!state.values || !state.values->balance || !m_pBalanceTool || !m_pAnimationTool || !Is_FullyAdmitted() ||
+        m_iPendingSaveJobId || m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() ||
+        m_pBalanceTool->Is_ServerRuntimeSetPublishRunning() || m_pAnimationTool->Is_ValtanCompositionPatternTransactionActive())
+    { status = "Finish the active Save, Publish or Pattern creation before Undo / Redo."; return false; }
+    const auto& values = *state.values;
+    // Stage auxiliary owners against their CURRENT source baselines. A history
+    // entry contains values only; it can never rewind a saved disk revision.
+    auto shakes = values.shakes; auto objectSounds = values.objectSounds;
+    shakes.strSourceBytes = m_PatternShakes.strSourceBytes; shakes.iDraftGeneration = m_PatternShakes.iDraftGeneration + 1u;
+    objectSounds.strSourceBytes = m_CombatObjectSounds.strSourceBytes; objectSounds.iDraftGeneration = m_CombatObjectSounds.iDraftGeneration + 1u;
+    std::string baseline, candidate; uint64_t generation = 0u;
+    if (m_bPatternShakesReady)
+    {
+        shakes.bDraftDirty = true;
+        if (!CValtanPatternShakeCueDocument::Prepare_Save(shakes, baseline, candidate, generation, status)) return false;
+        shakes.bDraftDirty = candidate != baseline;
+    }
+    if (m_bCombatObjectSoundsReady)
+    {
+        objectSounds.bDraftDirty = true;
+        if (!CValtanCombatObjectSoundCueDocument::Prepare_Save(objectSounds, baseline, candidate, generation, status)) return false;
+        objectSounds.bDraftDirty = candidate != baseline;
+    }
+    const auto restoreEffects = [&](std::string& diagnostic) {
+        return !values.effects || CEffectV2Catalog::Get().Restore_BossValtanBindingHistory(
+            values.effects->Get_BossValtanBindings(), diagnostic);
+    };
+    const auto restoreSoundAndEffects = [&](std::string& diagnostic) {
+        if (!values.sounds) return restoreEffects(diagnostic);
+        return m_pAnimationTool->Apply_ValtanCompositionPatternSoundDraftTransaction([&](std::string& message) {
+            return m_pAnimationTool->Restore_ValtanCompositionSoundHistory(*values.sounds, message) && restoreEffects(message);
+        }, diagnostic);
+    };
+    if (!m_pBalanceTool->Apply_ValtanCompositionDraftTransaction([&](std::string& diagnostic) {
+        return m_pBalanceTool->Restore_ValtanEditHistory(*values.balance, diagnostic) && restoreSoundAndEffects(diagnostic);
+    }, status)) return false;
+    m_PendingLocalPreview.reset(); std::string stopStatus;
+    m_pAnimationTool->Stop_ValtanCompositionPattern(stopStatus);
+    m_PatternShakes = std::move(shakes); m_CombatObjectSounds = std::move(objectSounds);
+    m_TimelineSelection = state.selection; m_strSelectedPatternId = state.pattern;
+    m_strSelectedStageId = state.stage; m_strSelectedStableId = state.stable; m_eDetailOwner = state.owner; m_iPlayheadMs = state.cursor;
+    m_bTimelineMoveActive = false; m_bTimelineTrimActive = false; m_bTimelineMarqueeActive = false;
+    m_BossPatternOutcomeOverrides.clear(); ++m_iBossPatternRouteGeneration;
+    Reset_EffectCueEditor(); Invalidate_EffectivePatternCache(); Invalidate_TimelineCache();
+    m_bAuthoringDraftDirty = m_pBalanceTool->Is_ValtanDraftDirty();
+    m_HistoryValues = state.values;
+    m_HistoryGenerations = {m_pBalanceTool->Get_ValtanDraftGeneration(), m_pAnimationTool->Get_ValtanCompositionPatternSoundDraftGeneration(),
+        CEffectV2Catalog::Get().Get_Revision(), m_PatternShakes.iDraftGeneration, m_CombatObjectSounds.iDraftGeneration};
+    m_FrameHistoryBefore.reset(); status = "Restored draft and selection. Save commits this state.";
+    return true;
+}
+
+bool Client::CValtanActionWorkbench::Undo_Edit(std::string& status)
+{
+    Finish_EditHistory(true);
+    const bool changed = m_EditHistory.Undo([&](const auto& state) { return Restore_EditHistory(*state, status); });
+    m_strStatus = status; return changed;
+}
+
+bool Client::CValtanActionWorkbench::Redo_Edit(std::string& status)
+{
+    Finish_EditHistory(true);
+    const bool changed = m_EditHistory.Redo([&](const auto& state) { return Restore_EditHistory(*state, status); });
+    m_strStatus = status; return changed;
+}
+
+void Client::CValtanActionWorkbench::Render_EditHistoryButtons(const char* id)
+{
+    m_bHistoryWindowFocused = m_bHistoryWindowFocused || ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+    const bool busy = !Is_FullyAdmitted() || !m_pBalanceTool || m_iPendingSaveJobId ||
+        m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() || m_pBalanceTool->Is_ServerRuntimeSetPublishRunning() ||
+        m_bTimelineMoveActive || m_bTimelineTrimActive;
+    ImGui::PushID(id);
+    ImGui::BeginDisabled(busy || m_EditHistory.Count_Undo() == 0u);
+    if (ImGui::Button("Undo")) m_PendingHistoryDirection = -1;
+    ImGui::EndDisabled(); ImGui::SameLine();
+    ImGui::BeginDisabled(busy || m_EditHistory.Count_Redo() == 0u);
+    if (ImGui::Button("Redo")) m_PendingHistoryDirection = 1;
+    ImGui::EndDisabled(); ImGui::PopID();
+    if (!busy && m_bHistoryWindowFocused && !ImGui::GetIO().WantTextInput && !ImGui::IsAnyItemActive() && ImGui::GetIO().KeyCtrl)
+    {
+        if (ImGui::IsKeyPressed(ImGuiKey_Z, false)) m_PendingHistoryDirection = ImGui::GetIO().KeyShift ? 1 : -1;
+        else if (ImGui::IsKeyPressed(ImGuiKey_Y, false)) m_PendingHistoryDirection = 1;
+    }
+}
+
+void Client::CValtanActionWorkbench::Process_EditHistoryRequest()
+{
+    Finish_EditHistory();
+    const int direction = std::exchange(m_PendingHistoryDirection, 0);
+    if (direction < 0) (void)Undo_Edit(m_strStatus);
+    else if (direction > 0) (void)Redo_Edit(m_strStatus);
+}
+
 void Client::CValtanActionWorkbench::Begin_WorkbenchFrame()
 {
 	if (m_bWorkbenchFrameActive)
@@ -15793,6 +15977,8 @@ void Client::CValtanActionWorkbench::Begin_WorkbenchFrame()
 	m_bWorkbenchFrameLocalPreviewAdmitted = bLocalPreviewAdmitted;
 	m_bWorkbenchFrameMutationAdmitted = bMutationAdmitted;
 	m_bWorkbenchFramePatternMutationAdmitted = bPatternMutationAdmitted;
+	m_bHistoryWindowFocused = false;
+	Begin_EditHistory();
 	m_bWorkbenchFrameActive = true;
 }
 
@@ -16211,6 +16397,7 @@ bool Client::CValtanActionWorkbench::Apply_CompositionTransfer(const COMPOSITION
 	const std::string& patternId, const std::string& stageId, const uint32_t playheadMs,
 	const bool duplicate, std::string& status)
 {
+	HISTORY_SCOPE history(*this);
 	if (!m_pBalanceTool || !Can_MutateValtanView(m_eAdmission) || m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() ||
 		m_pBalanceTool->Is_ServerRuntimeSetPublishRunning() ||
 		(m_pAnimationTool && m_pAnimationTool->Is_ValtanCompositionPatternTransactionActive()))
@@ -16841,6 +17028,7 @@ bool Client::CValtanActionWorkbench::Append_CompositionAnimationResource(
 bool Client::CValtanActionWorkbench::Apply_CompositionResourceAppend(
 	const PENDING_RESOURCE_APPEND& command, std::string& status)
 {
+	HISTORY_SCOPE history(*this);
 	if (command.strPatternId != m_strSelectedPatternId)
 	{ status = "The selected Pattern changed before append; the queued append was canceled without changing a draft."; return false; }
 	if (!Can_AppendCompositionAnimationResource(command.Resource, true, status))
@@ -16899,6 +17087,7 @@ void Client::CValtanActionWorkbench::End_WorkbenchFrame()
 		m_PendingResourceAppend.reset();
 		(void)Apply_CompositionResourceAppend(command, m_strStatus);
 	}
+	Process_EditHistoryRequest();
 	if (m_bSavePatternRequested)
 	{
 		/* Details only queues this command.  All windows finish using this

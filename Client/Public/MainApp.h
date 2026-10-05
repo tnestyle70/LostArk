@@ -176,6 +176,10 @@ public:
 	   CValtanBossTool -> CValtanPatternAuditionService and never resets Arena world,
 	   navigation, wall, or debris state. */
 	bool_t Debug_CompletePlaySelected(std::string& strOutStatus);
+    bool Debug_PrepareMapToolAuthoring(std::string& status);
+    bool Debug_PrepareWorldPlacementEditing(const std::string& areaId, std::string& status);
+    bool Debug_OpenWorldObjectDetails(const std::string& areaId, uint64_t placementId,
+        bool deploy, std::string& status);
 	/* Opens the one canonical Valtan Boss Tool Flow owner from the integrated
 	   composition shell. */
 	bool_t Debug_OpenValtanPatternFlow(std::string& strOutStatus);

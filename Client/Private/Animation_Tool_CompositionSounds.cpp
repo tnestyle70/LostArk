@@ -772,6 +772,23 @@ bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSoundPlacement(
 	return true;
 }
 
+bool_t Client::CAnimation_Tool::Restore_ValtanCompositionSoundHistory(
+    const VALTAN_PATTERN_SOUND_CUE_DOCUMENT& document, std::string& status)
+{
+    if (Is_ValtanCompositionPatternTransactionActive() ||
+        !Can_CommitValtanCompositionPatternSoundGeneration(status) ||
+        !Ensure_ValtanCompositionPatternSounds(status)) return false;
+    std::string bytes;
+    if (!CValtanPatternSoundCueDocument::Serialize_TransactionCandidate(document, bytes, status)) return false;
+    std::string currentBytes;
+    if (CValtanPatternSoundCueDocument::Serialize_TransactionCandidate(m_ValtanPatternSoundCues, currentBytes, status) && currentBytes == bytes) return true;
+    m_ValtanPatternSoundCues = document;
+    m_bValtanPatternSoundCuesDirty = bytes != m_strValtanPatternSoundCueBaselineSourceBytes;
+    ++m_iValtanPatternSoundDraftGeneration;
+    m_bValtanPatternSoundRuntimeApplyReady = false; m_ValtanPatternSoundRuntimeAppliedRevision = {};
+    return true;
+}
+
 bool_t Client::CAnimation_Tool::Apply_ValtanCompositionPatternSoundDraftTransaction(
 	const std::function<bool(std::string&)>& Mutation, std::string& strOutStatus)
 {

@@ -557,6 +557,8 @@ public:
 	   the ordinary map target; a dirty target is never replaced. */
 	bool_t Open_ClassMovieBackground(const std::string& areaId, std::string& status);
 	std::string Debug_GetActiveAreaId() const;
+    bool Debug_HasPendingAuthoring() const
+    { return Has_UnsavedAuthoring() || Is_CameraShotDraftDirty() || m_PlacementPublishRunner.Is_Running(); }
 	shared_ptr<CCamera_Free> Debug_GetCamera() const { return m_pAssetTestCamera.lock(); }
 	int Debug_WorldLevelSelection(const std::string& areaId, uint64_t placementId,
 		bool_t deploy, std::string& status);

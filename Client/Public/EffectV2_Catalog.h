@@ -145,6 +145,7 @@ public:
 		const std::vector<EFFECT_V2_BINDING>& Sources,
 		std::vector<std::string>& OutBindingIds, std::string& strOutError);
 	// In-memory owner transaction; callbacks may invoke the existing staged mutations.
+	bool_t Restore_BossValtanBindingHistory(const std::vector<EFFECT_V2_BINDING>& bindings, std::string& status);
 	bool_t Apply_BossValtanBindingDraftTransaction(
 		const std::function<bool_t(std::string&)>& Mutation, std::string& strOutError);
 	bool_t Stage_RemoveBossValtanBindings(

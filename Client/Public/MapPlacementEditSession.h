@@ -11,6 +11,7 @@
 
 #include <filesystem>
 #include <string>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -95,6 +96,13 @@ public:
 	bool_t Apply_Transform(uint64_t placementId, const MAP_PLACEMENT_RECORD& staged);
 	bool_t Duplicate_Selected();
 	bool_t Delete_Selected();
+    // Consecutive changes to one placement during a widget gesture form one history step.
+    void Begin_EditGesture() { m_HistoryGesture = true; m_GestureRecorded = false; }
+    void End_EditGesture() { m_HistoryGesture = false; m_GestureRecorded = false; }
+    bool Can_Undo() const { return m_bBound && !m_bReadOnly && !Is_Publishing() && !m_UndoHistory.empty(); }
+    bool Can_Redo() const { return m_bBound && !m_bReadOnly && !Is_Publishing() && !m_RedoHistory.empty(); }
+    bool Undo();
+    bool Redo();
 	/* Writes the authoring document after the freshness check, keeps a
 	   rollback copy and starts the Placements publish. */
 	bool_t Save();
@@ -106,6 +114,20 @@ private:
 		MAP_PLACEMENT_RECORD pose;
 		shared_ptr<CTrigger_Box> object;
 	};
+
+    struct EDIT final
+    {
+        std::optional<MAP_PLACEMENT_RECORD> before, after;
+        uint64_t selectedBefore = 0u, selectedAfter = 0u;
+        uint64_t revisionBefore = 0u, revisionAfter = 0u;
+    };
+    void Record_Edit(std::optional<MAP_PLACEMENT_RECORD> before,
+        std::optional<MAP_PLACEMENT_RECORD> after, uint64_t selectedBefore, uint64_t selectedAfter);
+    bool Apply_History(bool redo);
+    void Reset_History();
+    std::vector<EDIT> m_UndoHistory, m_RedoHistory;
+    uint64_t m_HistoryRevision = 0u, m_SavedRevision = 0u, m_NextRevision = 0u, m_RollbackRevision = 0u;
+    bool m_HistoryReplay = false, m_HistoryGesture = false, m_GestureRecorded = false;
 
 	IMapAuthoringHost* Resolve_Host() const;
 	MAP_RUNTIME_PLACED_ENTRY* Find_Entry(uint64_t placementId);

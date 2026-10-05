@@ -1010,6 +1010,8 @@ void CEffect_Tool::Render_ClassMovieControls(const bool showEffects)
     if (ImGui::Button("Play All")) (void)Play_ClassMovie();
     ImGui::EndDisabled();
     ImGui::SameLine();
+    Render_DocumentHistoryControls();
+    ImGui::SameLine();
     ImGui::BeginDisabled(!state.active);
     if (ImGui::Button(state.paused ? "Resume" : "Pause") && m_ClassMovieCallbacks.pause)
         m_ClassMovieCallbacks.pause(!state.paused);

@@ -1994,6 +1994,8 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	    if (!m_bActiveDocumentDrawable && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 		    ImGui::SetTooltip("%s", m_strActiveDocumentDrawableError.c_str());
         ImGui::SameLine();
+        Render_DocumentHistoryControls();
+        ImGui::SameLine();
     }
     ImGui::BeginDisabled(!m_bActiveDocumentDrawable || !m_pAuthoringSequencer || m_MarkedElementIds.empty());
     if (ImGui::SmallButton("Play Group")) (void)Try_PlayMarkedElementGroup();
