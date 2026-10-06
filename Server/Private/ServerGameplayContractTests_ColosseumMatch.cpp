@@ -2,6 +2,7 @@
 #include "ServerApp.h"
 #include "ClientSession.h"
 #include "ColosseumCombatPolicy.h"
+#include "ColosseumThreatAssessment.h"
 #include "Network/PacketWriter.h"
 #include "Network/PacketReader.h"
 #include <algorithm>
@@ -9,6 +10,7 @@
 #include <cmath>
 #include <limits>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -304,33 +306,30 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
     {
         const auto& merc = room->m_Players.at(id);
         std::vector<std::string> slots;
-        bool valid = !ai.ComboSkills.empty();
-        for (const auto skillId : ai.ComboSkills)
+        bool valid = !ai.AvailableSkills.empty();
+        for (const auto skillId : ai.AvailableSkills)
         {
             const auto* skill = room->m_GameplayCatalog.Find_Skill(skillId);
             valid = valid && skill &&
-                (merc.eCharacterClass != CHARACTER_CLASS_ID::DIMENSIONMASTER || (skill->strInputSlot != "LMB" && skill->strInputSlot != "SPACE")) &&
                 skill->eCharacterClass == merc.eCharacterClass &&
                 (skill->eRequiredStance == PLAYER_STANCE_ID::NONE || skill->eRequiredStance == merc.eStance);
             if (skill) slots.push_back(skill->strInputSlot);
         }
-        tests.Require(valid, "Staged skills resolve actual class/stance bindings; only DimensionMaster excludes basic attacks");
-        if (merc.eCharacterClass == CHARACTER_CLASS_ID::DIMENSIONMASTER)
-            tests.Require(!room->m_GuideCatalog.Combos.empty() && slots == room->m_GuideCatalog.Combos.front().Slots,
-                "DimensionMaster rotation reuses the first published Guide combo in authored order");
-        if (merc.eCharacterClass != CHARACTER_CLASS_ID::DIMENSIONMASTER)
+        tests.Require(valid, "Every mercenary stages actual class/stance bindings without a fixed Guide combo");
         {
             std::vector<SKILL_ID> allAvailable;
             for (const auto& [skillId, skill] : room->m_GameplayCatalog.Active().Get_Skills())
                 if (skill.eCharacterClass == merc.eCharacterClass &&
                     (skill.eRequiredStance == PLAYER_STANCE_ID::NONE || skill.eRequiredStance == merc.eStance)) allAvailable.push_back(skillId);
             std::sort(allAvailable.begin(), allAvailable.end());
-            auto admittedSkills = ai.ComboSkills;
+            auto admittedSkills = ai.AvailableSkills;
             std::sort(admittedSkills.begin(), admittedSkills.end());
-            tests.Require(admittedSkills == allAvailable && !slots.empty() && slots.front() == "LMB",
-                "Other mercenary classes include every current published skill and LMB");
+            tests.Require(admittedSkills == allAvailable &&
+                std::find(slots.begin(), slots.end(), "LMB") != slots.end() &&
+                std::find(slots.begin(), slots.end(), "SPACE") != slots.end(),
+                "All classes, including DimensionMaster, include every current published skill, LMB and SPACE");
         }
-        std::cout << "Mercenary combo class=" << static_cast<unsigned>(merc.eCharacterClass) << " slots=";
+        std::cout << "Mercenary available class=" << static_cast<unsigned>(merc.eCharacterClass) << " slots=";
         for (const auto& slot : slots) std::cout << slot << ' ';
         std::cout << '\n';
     }
@@ -521,7 +520,8 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
         hazardRoom->Update_Colosseum(.25f);
         const auto& evading = hazardRoom->m_Players.at(merc.iPlayerId);
         tests.Require(evading.hasMoveGoal && evading.eAction == PLAYER_ACTION_STATE::NONE &&
-            std::hypot(evading.fMoveGoalX - landing.x, evading.fMoveGoalZ - landing.z) > 2.f,
+            std::hypot(evading.fMoveGoalX - landing.x, evading.fMoveGoalZ - landing.z) > .5f &&
+            hazardRoom->m_ColosseumMercenaries.at(merc.iPlayerId).Threats.At(evading.fMoveGoalX, evading.fPositionY, evading.fMoveGoalZ).risk == 0.f,
             "Circle/ring/box/cone/full-cone future hit selects an actual navigation escape instead of attacking");
         if (shapeKind == 0u)
         {
@@ -532,70 +532,6 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
             const auto* admittedDodge = catalog->Find_Skill(dodgeActor.iCurrentSkillId);
             tests.Require(admittedDodge && Is_DodgeSkill(*admittedDodge) && dodgeActor.eAction == PLAYER_ACTION_STATE::SKILL,
                 "A non-DimensionMaster uses available SPACE toward the validated escape instead of suppressing dodge skills");
-            auto& ai = hazardRoom->m_ColosseumMercenaries.at(merc.iPlayerId);
-            const auto admitted = std::find_if(room->m_ColosseumMercenaries.begin(), room->m_ColosseumMercenaries.end(),
-                [&](const auto& value) { return room->m_Players.at(value.first).eCharacterClass == CHARACTER_CLASS_ID::DIMENSIONMASTER; });
-            tests.Require(admitted != room->m_ColosseumMercenaries.end(), "Fixed rotation fixture finds the admitted DimensionMaster combo");
-            if (admitted != room->m_ColosseumMercenaries.end() && admitted->second.ComboSkills.size() >= 2u)
-            {
-                ai = admitted->second; ai.iSkillCursor = 0u; ai.iSequence = 0u;
-                ai.fComboElapsed = ai.fStepWaitElapsed = ai.fThinkElapsed = 0.f;
-                auto& controlled = hazardRoom->m_Players.at(merc.iPlayerId);
-                auto& target = hazardRoom->m_Players.at(caster.iPlayerId);
-                controlled = merc;
-                const auto* fixedProfile = catalog->Find_Player(CHARACTER_CLASS_ID::DIMENSIONMASTER);
-                controlled.eCharacterClass = CHARACTER_CLASS_ID::DIMENSIONMASTER; controlled.eStance = fixedProfile->eDefaultStance;
-                controlled.iCurrentResource = controlled.iMaximumResource = fixedProfile->iMaximumResource;
-                controlled.iMaximumIdentity = fixedProfile->iMaximumIdentity;
-                CPlayerSkillSystem::Reset_Gauges(controlled, hazardRoom->m_GameplayCatalog);
-                target.eAction = PLAYER_ACTION_STATE::NONE; target.iCurrentSkillId = INVALID_SKILL_ID;
-                target.fPositionZ = landing.z + 1.f;
-                const auto first = ai.ComboSkills[0], second = ai.ComboSkills[1];
-                controlled.CooldownEndTickBySkillId[first] = 1000u;
-                hazardRoom->Update_Colosseum(.25f);
-                tests.Require(controlled.eAction == PLAYER_ACTION_STATE::NONE && ai.iSkillCursor == 0u &&
-                    std::string(ai.pReason) == "Waiting for the ordered skill cooldown",
-                    "A blocked first skill waits without selecting another ready skill or LMB");
-                controlled.CooldownEndTickBySkillId.clear();
-                hazardRoom->Update_Colosseum(.25f);
-                tests.Require(controlled.eAction == PLAYER_ACTION_STATE::SKILL && controlled.iCurrentSkillId == first && ai.iSkillCursor == 1u,
-                    "The real AI admits the first ordered skill once its cooldown clears");
-                hazardRoom->Update_Colosseum(.25f);
-                tests.Require(controlled.iCurrentSkillId == first && ai.iSkillCursor == 1u && controlled.PendingCommand.eKind == PLAYER_PENDING_COMMAND_KIND::NONE,
-                    "The second ordered skill is not queued before the first action finishes");
-                const auto finishAction = [&]()
-                {
-                    std::vector<SERVER_WORLD_ENTITY> world;
-                    std::vector<DAMAGE_EVENT> damage;
-                    for (unsigned tick = 0u; tick < 900u && controlled.eAction != PLAYER_ACTION_STATE::NONE; ++tick)
-                        hazardRoom->m_PlayerSkillSystem.Update(controlled, world, hazardRoom->m_GameplayCatalog,
-                            &hazardRoom->m_ServerNavigation, nullptr, 1.f / 30.f, ++hazardRoom->m_iServerTick, damage);
-                };
-                finishAction();
-                tests.Require(controlled.eAction == PLAYER_ACTION_STATE::NONE, "The admitted action completes through the actual shared skill runtime");
-                controlled.fPositionX = landing.x; controlled.fPositionY = landing.y; controlled.fPositionZ = landing.z;
-                controlled.bPatternBound = true;
-                hazardRoom->Update_Colosseum(.25f);
-                tests.Require(ai.iSkillCursor == 1u && controlled.eAction == PLAYER_ACTION_STATE::NONE,
-                    "Crowd control pauses the fixed combo without losing its next step");
-                controlled.bPatternBound = false;
-                hazardRoom->Update_Colosseum(.25f);
-                tests.Require(controlled.iCurrentSkillId == second && controlled.eAction == PLAYER_ACTION_STATE::SKILL && ai.iSkillCursor == 2u,
-                    "The ordered second skill resumes after crowd control ends");
-                finishAction();
-                controlled.fPositionX = landing.x; controlled.fPositionY = landing.y; controlled.fPositionZ = landing.z;
-                ai.iSkillCursor = 1u; ai.fStepWaitElapsed = 0.f; ai.fStepWaitTimeout = .4f;
-                controlled.CooldownEndTickBySkillId[second] = hazardRoom->m_iServerTick + 1000u;
-                hazardRoom->Update_Colosseum(.25f); hazardRoom->Update_Colosseum(.25f);
-                tests.Require(ai.iSkillCursor == 0u && controlled.eAction == PLAYER_ACTION_STATE::NONE &&
-                    std::string(ai.pReason) == "Unavailable skill exceeded its wait deadline",
-                    "An unavailable ordered step aborts at its wait deadline without fallback attacks");
-                ai.iSkillCursor = 1u; ai.fComboElapsed = ai.fComboTimeout - .1f;
-                hazardRoom->Update_Colosseum(.25f);
-                tests.Require(ai.iSkillCursor == 0u && controlled.eAction == PLAYER_ACTION_STATE::NONE &&
-                    std::string(ai.pReason) == "Combo total deadline reached",
-                    "The full combo deadline resets its order without injecting a skill");
-            }
             // Real published manual/automatic chains, through the actual room AI
             // input and native skill Update. No stage is advanced by the test.
             const std::array<SKILL_ID, 10> chainSkills{ 17080u, 34160u, 34140u, 31210u, 49110u, 17080u, 17000u, 34010u, 31000u, 49000u };
@@ -630,9 +566,9 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
                 chainAi = {};
                 const auto admittedChain = std::find_if(room->m_ColosseumMercenaries.begin(), room->m_ColosseumMercenaries.end(),
                     [&](const auto& value) { return room->m_Players.at(value.first).eCharacterClass == chain->eCharacterClass; });
-                tests.Require(admittedChain != room->m_ColosseumMercenaries.end() && !admittedChain->second.ComboSkills.empty(),
-                    "Native continuation class has an admitted next-slot rotation");
-                if (admittedChain == room->m_ColosseumMercenaries.end() || admittedChain->second.ComboSkills.empty()) continue;
+                tests.Require(admittedChain != room->m_ColosseumMercenaries.end() && !admittedChain->second.AvailableSkills.empty(),
+                    "Native continuation class has admitted available skill bindings");
+                if (admittedChain == room->m_ColosseumMercenaries.end() || admittedChain->second.AvailableSkills.empty()) continue;
                 SKILL_ID nextSkill = INVALID_SKILL_ID;
                 for (const auto& [id, definition] : catalog->Get_Skills())
                     if (definition.eCharacterClass == actor.eCharacterClass)
@@ -642,9 +578,11 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
                             (definition.eRequiredStance == PLAYER_STANCE_ID::NONE || definition.eRequiredStance == actor.eStance)) nextSkill = id;
                     }
                 controlled.CooldownEndTickBySkillId.erase(chain->iSkillId);
-                chainAi.ComboSkills = admittedChain->second.ComboSkills;
+                chainAi.AvailableSkills = admittedChain->second.AvailableSkills;
                 hazardRoom->Update_Colosseum(.25f);
-                const auto cursorAfterStart = chainAi.iSkillCursor;
+                const auto lastAfterStart = chainAi.iLastSkillId;
+                const auto recentAfterStart = chainAi.RecentSkills;
+                const auto recentCursorAfterStart = chainAi.iRecentSkillCursor;
                 const bool chainStarted = controlled.eAction == PLAYER_ACTION_STATE::SKILL && controlled.iCurrentSkillId == chain->iSkillId;
                 const auto paidResource = controlled.iCurrentResource;
                 const auto paidCooldown = controlled.CooldownEndTickBySkillId[chain->iSkillId];
@@ -666,7 +604,8 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
                         inputWindowsOnly = inputWindowsOnly && stage.iInputCloseMs > 0u &&
                             beforeMs >= stage.iInputOpenMs && beforeMs <= stage.iInputCloseMs && controlled.hasBufferedComboInput;
                     }
-                    ordered = ordered && chainAi.iSkillCursor == cursorAfterStart && controlled.iCurrentSkillId == chain->iSkillId &&
+                    ordered = ordered && chainAi.iLastSkillId == lastAfterStart && chainAi.RecentSkills == recentAfterStart &&
+                        chainAi.iRecentSkillCursor == recentCursorAfterStart && controlled.iCurrentSkillId == chain->iSkillId &&
                         controlled.PendingCommand.eKind == PLAYER_PENDING_COMMAND_KIND::NONE;
                     hazardRoom->m_PlayerSkillSystem.Update(controlled, emptyWorld, hazardRoom->m_GameplayCatalog,
                         &hazardRoom->m_ServerNavigation, nullptr, 1.f / 30.f, ++hazardRoom->m_iServerTick, damage);
@@ -681,51 +620,168 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
                 std::cout << "Mercenary native chain skill=" << chain->iSkillId << " narrow=" << (chainIndex == 5u)
                     << " stages=" << maximumStage << '/' << chain->ComboStages.size() << " buffers=" << buffered << '/' << expectedBuffers << '\n';
                 controlled.fPositionX = landing.x; controlled.fPositionY = landing.y; controlled.fPositionZ = landing.z;
+                controlled.CooldownEndTickBySkillId[chain->iSkillId] = hazardRoom->m_iServerTick + 100000u;
                 controlled.CooldownEndTickBySkillId.erase(nextSkill);
+                chainAi.fThinkElapsed = 1.f;
                 hazardRoom->Update_Colosseum(.25f);
                 tests.Require(controlled.eAction == PLAYER_ACTION_STATE::SKILL && controlled.iCurrentSkillId == nextSkill,
                     "Only the completed native COMBO opens another available skill on the following decision");
                 chain->ComboStages.front().iInputOpenMs = originalOpen;
                 chain->ComboStages.front().iInputCloseMs = originalClose;
             }
-            // With every skill initially ready, the actual AI must advance the
-            // explicit rotation after one native LMB cycle, not restart LMB or sort IDs.
-            for (const auto classId : { CHARACTER_CLASS_ID::LANCE_MASTER, CHARACTER_CLASS_ID::WARLORD,
-                CHARACTER_CLASS_ID::GUARDIANKNIGHT, CHARACTER_CLASS_ID::ARTIST })
+            // Fresh actors isolate new-cast admission while preserving each random
+            // stream and recent-skill memory; normal simulation advances these clocks.
+            for (const auto classId : { CHARACTER_CLASS_ID::DIMENSIONMASTER, CHARACTER_CLASS_ID::LANCE_MASTER,
+                CHARACTER_CLASS_ID::WARLORD, CHARACTER_CLASS_ID::GUARDIANKNIGHT, CHARACTER_CLASS_ID::ARTIST })
             {
                 auto& actor = hazardRoom->m_Players.at(merc.iPlayerId);
-                actor = merc;
+                auto& selection = hazardRoom->m_ColosseumMercenaries.at(merc.iPlayerId);
                 const auto* actorProfile = catalog->Find_Player(classId);
-                actor.eCharacterClass = classId; actor.eStance = actorProfile->eDefaultStance;
-                actor.iCurrentResource = actor.iMaximumResource = actorProfile->iMaximumResource;
-                actor.iMaximumIdentity = actorProfile->iMaximumIdentity;
-                actor.fMoveSpeed = actorProfile->fMoveSpeed;
-                actor.CooldownEndTickBySkillId.clear();
-                CPlayerSkillSystem::Reset_Gauges(actor, hazardRoom->m_GameplayCatalog);
+                auto fresh = merc;
+                fresh.eCharacterClass = classId; fresh.eStance = actorProfile->eDefaultStance;
+                fresh.iCurrentResource = fresh.iMaximumResource = actorProfile->iMaximumResource;
+                fresh.iMaximumIdentity = actorProfile->iMaximumIdentity;
+                fresh.fMoveSpeed = actorProfile->fMoveSpeed; fresh.CooldownEndTickBySkillId.clear();
+                CPlayerSkillSystem::Reset_Gauges(fresh, hazardRoom->m_GameplayCatalog);
                 auto& target = hazardRoom->m_Players.at(caster.iPlayerId);
-                target.eAction = PLAYER_ACTION_STATE::NONE; target.iCurrentSkillId = INVALID_SKILL_ID;
-                target.fPositionX = landing.x; target.fPositionY = landing.y; target.fPositionZ = landing.z + 1.f;
-                auto& rotation = hazardRoom->m_ColosseumMercenaries.at(merc.iPlayerId);
-                rotation = {};
-                bool ordered = true;
-                std::vector<SERVER_WORLD_ENTITY> emptyWorld;
-                std::vector<DAMAGE_EVENT> damage;
-                for (const auto* slot : { "LMB", "Q", "W" })
+                target = caster; target.eAction = PLAYER_ACTION_STATE::NONE; target.iCurrentSkillId = INVALID_SKILL_ID;
+                target.fPositionZ = landing.z + 1.f;
+                const auto trace = [&](const std::uint64_t seed)
                 {
-                    actor.fPositionX = landing.x; actor.fPositionY = landing.y; actor.fPositionZ = landing.z;
-                    hazardRoom->Update_Colosseum(.25f);
-                    const auto* running = catalog->Find_Skill(actor.iCurrentSkillId);
-                    ordered = ordered && actor.eAction == PLAYER_ACTION_STATE::SKILL && running && running->strInputSlot == slot;
-                    for (unsigned tick = 0u; tick < 900u && actor.eAction != PLAYER_ACTION_STATE::NONE; ++tick)
+                    selection = {}; selection.iRandomState = seed;
+                    std::vector<SKILL_ID> result;
+                    bool valid = true;
+                    for (unsigned sample = 0u; sample < 32u; ++sample)
                     {
-                        hazardRoom->Update_Colosseum(1.f / 30.f);
-                        hazardRoom->m_PlayerSkillSystem.Update(actor, emptyWorld, hazardRoom->m_GameplayCatalog,
-                            &hazardRoom->m_ServerNavigation, nullptr, 1.f / 30.f, ++hazardRoom->m_iServerTick, damage);
+                        hazardRoom->m_iServerTick = 10000u + sample * 120u;
+                        actor = fresh; selection.iNextAttackTick = 0u; selection.fThinkElapsed = 1.f;
+                        hazardRoom->Update_Colosseum(.25f);
+                        const auto* running = catalog->Find_Skill(actor.iCurrentSkillId);
+                        valid = valid && actor.eAction == PLAYER_ACTION_STATE::SKILL && running &&
+                            running->eCharacterClass == classId && !Is_DodgeSkill(*running) &&
+                            running->eSkillKind != PLAYER_SKILL_KIND::STANDUP && running->strInputSlot != "ALT_V" &&
+                            (running->eRequiredStance == PLAYER_STANCE_ID::NONE || running->eRequiredStance == fresh.eStance) &&
+                            selection.iLastSkillId == actor.iCurrentSkillId;
+                        result.push_back(actor.iCurrentSkillId);
                     }
-                    ordered = ordered && actor.eAction == PLAYER_ACTION_STATE::NONE;
+                    tests.Require(valid, "Weighted draws admit only actual ready class/stance attacks and commit successful-cast memory");
+                    return result;
+                };
+                const auto first = trace(0x123456789abcdefu);
+                const auto replay = trace(0x123456789abcdefu);
+                const auto different = trace(0x987654321abcdefu);
+                tests.Require(first == replay && first != different && std::set<SKILL_ID>(first.begin(), first.end()).size() >= 3u,
+                    "Every class has reproducible seeded choices and multiple different ready skills instead of a fixed rotation");
+                actor = fresh; actor.bPatternBound = true;
+                selection.iNextAttackTick = 0u; selection.fThinkElapsed = 1.f;
+                const auto previousLast = selection.iLastSkillId;
+                const auto previousRecent = selection.RecentSkills;
+                const auto previousCursor = selection.iRecentSkillCursor;
+                hazardRoom->Update_Colosseum(.25f);
+                tests.Require(actor.eAction == PLAYER_ACTION_STATE::NONE && selection.iLastSkillId == previousLast &&
+                    selection.RecentSkills == previousRecent && selection.iRecentSkillCursor == previousCursor,
+                    "Crowd control admits no new skill and preserves the successful-cast history");
+                actor = fresh;
+                for (const auto& [id, definition] : catalog->Get_Skills())
+                    if (definition.eCharacterClass == classId) actor.CooldownEndTickBySkillId[id] = hazardRoom->m_iServerTick + 10000u;
+                selection.iNextAttackTick = 0u; selection.fThinkElapsed = 1.f;
+                hazardRoom->Update_Colosseum(.25f);
+                tests.Require(actor.eAction == PLAYER_ACTION_STATE::NONE && selection.iLastSkillId == previousLast &&
+                    selection.RecentSkills == previousRecent && selection.iRecentSkillCursor == previousCursor,
+                    "Unavailable skills do not consume successful-cast memory or fabricate an attack");
+                if (classId == CHARACTER_CLASS_ID::GUARDIANKNIGHT)
+                {
+                    actor = fresh; actor.iEmberOrbs = 0u; selection = {};
+                    const PLAYER_SKILL_DEFINITION* expression = nullptr;
+                    for (const auto& [id, definition] : catalog->Get_Skills())
+                        if (definition.eCharacterClass == classId && definition.iEmberCost > 0u &&
+                            (definition.eRequiredStance == PLAYER_STANCE_ID::NONE || definition.eRequiredStance == actor.eStance))
+                        { expression = &definition; break; }
+                    tests.Require(expression != nullptr, "Guardian fixture resolves a native human-form ember expression skill");
+                    if (expression)
+                    {
+                        for (const auto& [id, definition] : catalog->Get_Skills())
+                            if (definition.eCharacterClass == classId && id != expression->iSkillId)
+                                actor.CooldownEndTickBySkillId[id] = hazardRoom->m_iServerTick + 10000u;
+                        auto native = actor;
+                        C2S_USE_SKILL request; request.iClientSequence = 1u; request.iSkillId = expression->iSkillId;
+                        request.eTargetIntent = expression->eTargetIntent; request.fAimX = target.fPositionX; request.fAimZ = target.fPositionZ;
+                        const bool nativeAccepted = hazardRoom->m_PlayerSkillSystem.Try_Start(native, request, *catalog,
+                            hazardRoom->m_iServerTick + 1u, &hazardRoom->m_ServerNavigation);
+                        hazardRoom->Update_Colosseum(.25f);
+                        tests.Require(nativeAccepted && actor.eAction == PLAYER_ACTION_STATE::SKILL &&
+                            actor.iCurrentSkillId == expression->iSkillId && actor.iEmberOrbs == 0u &&
+                            selection.iLastSkillId == expression->iSkillId,
+                            "Guardian AI preserves native zero-ember expression admission instead of adding a stricter resource gate");
+                    }
                 }
-                tests.Require(ordered, "Every other class completes native LMB then Q then W in the explicit rotation with every skill ready");
-                std::cout << "Mercenary ready rotation class=" << static_cast<unsigned>(classId) << " LMB,Q,W=" << ordered << '\n';
+                actor = fresh; actor.eAction = PLAYER_ACTION_STATE::KNOCKDOWN;
+                actor.iKnockdownEndTick = hazardRoom->m_iServerTick + 300u; selection = {};
+                hazardRoom->Update_Colosseum(.25f);
+                const auto* standup = catalog->Find_Skill(actor.iCurrentSkillId);
+                const bool hasPublishedStandup = std::any_of(catalog->Get_Skills().begin(), catalog->Get_Skills().end(),
+                    [&](const auto& entry) { return entry.second.eCharacterClass == classId &&
+                        entry.second.eSkillKind == PLAYER_SKILL_KIND::STANDUP; });
+                if (classId == CHARACTER_CLASS_ID::GUARDIANKNIGHT)
+                    tests.Require(!hasPublishedStandup && !standup && actor.eAction == PLAYER_ACTION_STATE::KNOCKDOWN &&
+                        actor.iKnockdownEndTick == hazardRoom->m_iServerTick + 300u &&
+                        actor.PendingCommand.eKind == PLAYER_PENDING_COMMAND_KIND::NONE,
+                        "Guardian has no published stand-up and waits for native knockdown recovery without fabricating a skill");
+                else
+                    tests.Require(hasPublishedStandup && standup && standup->eSkillKind == PLAYER_SKILL_KIND::STANDUP &&
+                        actor.eAction == PLAYER_ACTION_STATE::SKILL && actor.iKnockdownEndTick == 0u &&
+                        selection.eTactic == CGameRoom::COLOSSEUM_TACTIC::RECOVER,
+                        "All four classes with a published stand-up, including DimensionMaster, use native knockdown recovery admission");
+                actor = fresh; target = caster; selection = {};
+                hazardRoom->Update_Colosseum(.25f);
+                const auto* dodge = catalog->Find_Skill(actor.iCurrentSkillId);
+                tests.Require(dodge && Is_DodgeSkill(*dodge) && actor.eAction == PLAYER_ACTION_STATE::SKILL &&
+                    selection.eTactic == CGameRoom::COLOSSEUM_TACTIC::EVADE,
+                    "Every class including DimensionMaster uses native SPACE against an imminent enemy hit");
+                std::vector<SERVER_WORLD_ENTITY> dodgeWorld;
+                std::vector<DAMAGE_EVENT> dodgeDamage;
+                for (unsigned tick = 0u; tick < 300u && actor.eAction != PLAYER_ACTION_STATE::NONE; ++tick)
+                    hazardRoom->m_PlayerSkillSystem.Update(actor, dodgeWorld, hazardRoom->m_GameplayCatalog,
+                        &hazardRoom->m_ServerNavigation, nullptr, 1.f / 30.f, ++hazardRoom->m_iServerTick, dodgeDamage);
+                tests.Require(dodge && actor.eAction == PLAYER_ACTION_STATE::NONE &&
+                    selection.Threats.At(actor.fPositionX, actor.fPositionY, actor.fPositionZ).risk == 0.f &&
+                    std::hypot(actor.fPositionX - landing.x, actor.fPositionZ - landing.z) > 1.5f,
+                    "Native SPACE root motion completes at an actually safe position for every class, including abrupt and backward-tail curves");
+            }
+            // A soft repetition penalty lowers likelihood; it deliberately permits
+            // a repeated cast when it remains the only usable option.
+            {
+                auto& actor = hazardRoom->m_Players.at(merc.iPlayerId);
+                auto& selection = hazardRoom->m_ColosseumMercenaries.at(merc.iPlayerId);
+                auto& target = hazardRoom->m_Players.at(caster.iPlayerId);
+                target = caster; target.eAction = PLAYER_ACTION_STATE::NONE; target.iCurrentSkillId = INVALID_SKILL_ID;
+                target.fPositionZ = landing.z + 1.f;
+                const auto countQ = [&](const bool penalized)
+                {
+                    unsigned count = 0u;
+                    for (unsigned sample = 1u; sample <= 128u; ++sample)
+                    {
+                        hazardRoom->m_iServerTick = 20000u;
+                        actor = merc; selection = {}; selection.iRandomState = 0x123456789abcdefu * sample;
+                        for (const auto& [id, definition] : catalog->Get_Skills())
+                            if (definition.eCharacterClass == actor.eCharacterClass && id != 34040u && id != 34090u)
+                                actor.CooldownEndTickBySkillId[id] = 30000u;
+                        if (penalized) { selection.iLastSkillId = 34040u; selection.RecentSkills.fill(34040u); }
+                        hazardRoom->Update_Colosseum(.25f);
+                        if (actor.iCurrentSkillId == 34040u) ++count;
+                    }
+                    return count;
+                };
+                const auto unpenalized = countQ(false), penalized = countQ(true);
+                tests.Require(unpenalized > 20u && penalized < unpenalized / 2u,
+                    "Recent successful skills receive a measurable soft penalty in otherwise identical weighted draws");
+                actor = merc; selection = {}; selection.iLastSkillId = 34040u; selection.RecentSkills.fill(34040u);
+                for (const auto& [id, definition] : catalog->Get_Skills())
+                    if (definition.eCharacterClass == actor.eCharacterClass && id != 34040u)
+                        actor.CooldownEndTickBySkillId[id] = 30000u;
+                hazardRoom->Update_Colosseum(.25f);
+                tests.Require(actor.iCurrentSkillId == 34040u && actor.eAction == PLAYER_ACTION_STATE::SKILL,
+                    "A recent skill remains usable when all alternatives are unavailable");
             }
             // Drive both real AI selectors against the published ALT_V binding.
             // Player resets below isolate command admission; the production
@@ -764,17 +820,22 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
                     blockOtherSkills(player);
                     return player;
                 };
+                const auto decide = [&]()
+                {
+                    interval.fThinkElapsed = 1.f; interval.iNextAttackTick = 0u;
+                    hazardRoom->Update_Colosseum(.25f);
+                };
                 constexpr std::uint32_t firstTick = 200000u;
                 hazardRoom->m_iServerTick = firstTick;
                 hazardRoom->m_iColosseumPhaseEnd = firstTick + 3600u;
                 hazardRoom->m_eColosseumPhase = COLOSSEUM_MATCH_PHASE::ACTIVE;
-                actor = freshActor(); interval = {}; interval.ComboSkills = { awakening->iSkillId };
+                actor = freshActor(); interval = {}; interval.AvailableSkills = { awakening->iSkillId };
                 actor.CooldownEndTickBySkillId[awakening->iSkillId] = firstTick + 1200u;
-                hazardRoom->Update_Colosseum(.25f);
+                decide();
                 tests.Require(actor.eAction == PLAYER_ACTION_STATE::NONE && !interval.iLastAltVAdmissionTick,
                     "A native cooldown rejection does not consume the mercenary ALT_V interval");
                 actor.CooldownEndTickBySkillId.erase(awakening->iSkillId);
-                hazardRoom->Update_Colosseum(.25f);
+                decide();
                 tests.Require(actor.eAction == PLAYER_ACTION_STATE::SKILL && actor.iCurrentSkillId == awakening->iSkillId &&
                     interval.iLastAltVAdmissionTick == firstTick,
                     "An accepted ALT_V starts that mercenary's thirty-second admission interval");
@@ -787,22 +848,22 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
                     actor.CooldownEndTickBySkillId.empty() && interval.iLastAltVAdmissionTick == firstTick,
                     "Actual arena respawn restores twenty-bar HP and clears native cooldowns while preserving the ALT_V interval");
                 blockOtherSkills(actor);
-                hazardRoom->Update_Colosseum(.25f);
+                decide();
                 tests.Require(actor.eAction == PLAYER_ACTION_STATE::NONE && interval.iLastAltVAdmissionTick == firstTick,
                     "Respawn cannot authorize another mercenary ALT_V before thirty seconds");
                 hazardRoom->m_iServerTick = firstTick + 899u; actor = freshActor();
-                hazardRoom->Update_Colosseum(.25f);
+                decide();
                 tests.Require(actor.eAction == PLAYER_ACTION_STATE::NONE && interval.iLastAltVAdmissionTick == firstTick,
                     "The same mercenary ALT_V stays blocked at the 899-tick boundary");
                 hazardRoom->m_iServerTick = firstTick + 900u; actor = freshActor();
-                hazardRoom->Update_Colosseum(.25f);
+                decide();
                 tests.Require(actor.eAction == PLAYER_ACTION_STATE::SKILL && actor.iCurrentSkillId == awakening->iSkillId &&
                     interval.iLastAltVAdmissionTick == firstTick + 900u,
                     "The same mercenary ALT_V is admitted at 900 ticks when its native cooldown permits");
 
                 hazardRoom->m_iServerTick = firstTick + 1800u; actor = freshActor();
                 actor.CooldownEndTickBySkillId[awakening->iSkillId] = firstTick + 2700u;
-                hazardRoom->Update_Colosseum(.25f);
+                decide();
                 tests.Require(actor.eAction == PLAYER_ACTION_STATE::NONE &&
                     actor.CooldownEndTickBySkillId.at(awakening->iSkillId) == firstTick + 2700u &&
                     interval.iLastAltVAdmissionTick == firstTick + 900u,
@@ -810,8 +871,8 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
                 auto peer = freshActor(); peer.iPlayerId = 3u; peer.iNetEntityId = 103u;
                 hazardRoom->m_Players.emplace(peer.iPlayerId, peer);
                 auto& peerInterval = hazardRoom->m_ColosseumMercenaries[peer.iPlayerId];
-                peerInterval.ComboSkills = { awakening->iSkillId };
-                hazardRoom->Update_Colosseum(.25f);
+                peerInterval.AvailableSkills = { awakening->iSkillId };
+                decide();
                 tests.Require(hazardRoom->m_Players.at(peer.iPlayerId).iCurrentSkillId == awakening->iSkillId &&
                     peerInterval.iLastAltVAdmissionTick == firstTick + 1800u && interval.iLastAltVAdmissionTick == firstTick + 900u,
                     "A different mercenary owns an independent ALT_V interval");
@@ -819,7 +880,7 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
                 for (const auto phase : { COLOSSEUM_MATCH_PHASE::RECRUITING, COLOSSEUM_MATCH_PHASE::FINISHED })
                 {
                     hazardRoom->m_eColosseumPhase = phase;
-                    hazardRoom->Update_Colosseum(.25f);
+                    decide();
                     tests.Require(interval.iLastAltVAdmissionTick == firstTick + 900u,
                         "Recruitment and match completion do not erase a mercenary's accepted ALT_V clock");
                 }
@@ -827,16 +888,16 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
 
                 const auto beforeWrap = (std::numeric_limits<std::uint32_t>::max)() - 400u;
                 hazardRoom->m_iServerTick = beforeWrap; actor = freshActor();
-                interval = {}; interval.ComboSkills = { awakening->iSkillId };
-                hazardRoom->Update_Colosseum(.25f);
+                interval = {}; interval.AvailableSkills = { awakening->iSkillId };
+                decide();
                 tests.Require(interval.iLastAltVAdmissionTick == beforeWrap && actor.iCurrentSkillId == awakening->iSkillId,
                     "The mercenary ALT_V interval records an accepted cast near server tick wrap");
                 hazardRoom->m_iServerTick = beforeWrap + 899u; actor = freshActor();
-                hazardRoom->Update_Colosseum(.25f);
+                decide();
                 tests.Require(actor.eAction == PLAYER_ACTION_STATE::NONE && interval.iLastAltVAdmissionTick == beforeWrap,
                     "Unsigned elapsed ticks keep ALT_V blocked across wrap before thirty seconds");
                 hazardRoom->m_iServerTick = beforeWrap + 900u; actor = freshActor();
-                hazardRoom->Update_Colosseum(.25f);
+                decide();
                 tests.Require(actor.iCurrentSkillId == awakening->iSkillId &&
                     interval.iLastAltVAdmissionTick == beforeWrap + 900u,
                     "ALT_V becomes eligible exactly at the thirty-second interval across tick wrap");
@@ -862,10 +923,10 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
                 tests.Require(controlled.eStance == PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR,
                     "The native action commits the stance before the next AI decision");
                 controlled.CooldownEndTickBySkillId.erase(34510u);
-                controlled.CooldownEndTickBySkillId.erase(34540u);
+                selection.iNextAttackTick = 0u; selection.fThinkElapsed = 1.f;
                 hazardRoom->Update_Colosseum(.25f);
                 tests.Require(controlled.iCurrentSkillId == 34510u,
-                    "A shorter stance skill list preserves the next input slot and wraps from Z to the new LMB");
+                    "The native stance exposes its ready LMB through the refreshed class bindings");
                 for (unsigned tick = 0u; tick < 900u && controlled.eAction != PLAYER_ACTION_STATE::NONE; ++tick)
                 {
                     hazardRoom->Update_Colosseum(1.f / 30.f);
@@ -873,10 +934,13 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
                         &hazardRoom->m_ServerNavigation, nullptr, 1.f / 30.f, ++hazardRoom->m_iServerTick, damage);
                 }
                 controlled.fPositionX = landing.x; controlled.fPositionY = landing.y; controlled.fPositionZ = landing.z;
+                controlled.CooldownEndTickBySkillId[34510u] = hazardRoom->m_iServerTick + 100000u;
+                controlled.CooldownEndTickBySkillId.erase(34540u);
+                selection.iNextAttackTick = 0u; selection.fThinkElapsed = 1.f;
                 hazardRoom->Update_Colosseum(.25f);
                 tests.Require(controlled.iCurrentSkillId == 34540u &&
-                    std::find(selection.ComboSkills.begin(), selection.ComboSkills.end(), 34540u) != selection.ComboSkills.end() &&
-                    std::find(selection.ComboSkills.begin(), selection.ComboSkills.end(), 34040u) == selection.ComboSkills.end(),
+                    std::find(selection.AvailableSkills.begin(), selection.AvailableSkills.end(), 34540u) != selection.AvailableSkills.end() &&
+                    std::find(selection.AvailableSkills.begin(), selection.AvailableSkills.end(), 34040u) == selection.AvailableSkills.end(),
                     "Selection refreshes actual active-catalog bindings after a native stance change");
                 controlled = merc; controlled.eAction = PLAYER_ACTION_STATE::KNOCKDOWN;
                 controlled.iKnockdownEndTick = hazardRoom->m_iServerTick + 300u; selection = {};
@@ -886,6 +950,180 @@ int CServerGameplayContractRunner::Run_ColosseumMatchContracts()
                     controlled.eAction == PLAYER_ACTION_STATE::SKILL && controlled.iKnockdownEndTick == 0u,
                     "A non-DimensionMaster mercenary uses the existing stand-up executor only while knocked down");
             }
+        }
+    }
+    // Exercise the observation against state committed by the real skill executor,
+    // then drive the room selector with that same lingering ground hazard.
+    {
+        auto catalog = std::make_shared<CGameplayCatalog>(source->m_GameplayCatalog.Active());
+        auto tactical = std::make_unique<CGameRoom>(WORLD_ID::COLOSSEUM, catalog);
+        SERVER_NAV_POINT landing;
+        const bool ready = tactical->Is_Ready() && tactical->m_ServerNavigation.Sample_Position(-20.4f, -2.6f, landing, 12.22f);
+        tests.Require(ready, "Tactical fixtures load the actual Colosseum navigation and native skill catalog");
+        if (ready)
+        {
+            tactical->m_iColosseumMatchId = 901u; tactical->m_eColosseumPhase = COLOSSEUM_MATCH_PHASE::ACTIVE;
+            tactical->m_iServerTick = 100u;
+            const auto* profile = catalog->Find_Player(CHARACTER_CLASS_ID::LANCE_MASTER);
+            SERVER_PLAYER fresh;
+            fresh.iPlayerId = 1u; fresh.iNetEntityId = 101u;
+            fresh.eControlKind = PLAYER_CONTROL_KIND::COLOSSEUM_MERCENARY_AI;
+            fresh.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER; fresh.eStance = profile->eDefaultStance;
+            fresh.iCurrentHp = fresh.iMaximumHp = expectedMatchHp; fresh.iColosseumDamageReferenceHp = expectedReferenceHp;
+            fresh.iCurrentResource = fresh.iMaximumResource = profile->iMaximumResource;
+            fresh.fMoveSpeed = profile->fMoveSpeed; fresh.iColosseumMatchId = 901u;
+            fresh.iColosseumTeam = 0u; fresh.bColosseumParticipant = true;
+            fresh.isCombatReady = fresh.bColosseumCombatActive = true;
+            fresh.fPositionX = landing.x; fresh.fPositionY = landing.y; fresh.fPositionZ = landing.z;
+            auto enemy = fresh;
+            enemy.iPlayerId = 2u; enemy.iNetEntityId = 102u; enemy.iColosseumTeam = 1u;
+            enemy.eControlKind = PLAYER_CONTROL_KIND::HUMAN; enemy.fPositionZ += 4.f;
+            tactical->m_Players.emplace(1u, fresh); tactical->m_Players.emplace(2u, enemy);
+            auto& actor = tactical->m_Players.at(1u);
+            auto& caster = tactical->m_Players.at(2u);
+            auto& ai = tactical->m_ColosseumMercenaries[1u];
+            auto* skill = const_cast<PLAYER_SKILL_DEFINITION*>(catalog->Find_Skill(34040u));
+            skill->eSkillKind = PLAYER_SKILL_KIND::ACTIVE; skill->ComboStages.clear(); skill->RootMotion.clear();
+            skill->Hits.clear(); skill->Projectiles.clear(); skill->iActionDurationMs = 100u;
+            skill->iCooldownMs = 0u; skill->iResourceCost = 0u;
+            skill->eTargetIntent = SKILL_TARGET_INTENT_KIND::GROUND_POINT;
+            skill->fTargetMaximumRange = skill->fMaximumRange = 12.f; skill->requiresWalkableTarget = true;
+            PLAYER_SKILL_HIT hit; hit.iResultKind = 1u; hit.iTimeMs = 80u; hit.iAreaType = 1u; hit.fRange = .8f;
+            skill->Hits.push_back(hit);
+            C2S_USE_SKILL command; command.iClientSequence = 1u; command.iSkillId = skill->iSkillId;
+            command.eTargetIntent = SKILL_TARGET_INTENT_KIND::GROUND_POINT; command.fAimX = landing.x; command.fAimZ = landing.z;
+            const bool groundCast = tactical->m_PlayerSkillSystem.Try_Start(caster, command, *catalog, tactical->m_iServerTick,
+                &tactical->m_ServerNavigation);
+            CColosseumThreatAssessment observed;
+            const std::vector<SERVER_COMBAT_OBJECT> noObjects;
+            observed.Observe(actor, tactical->m_Players, noObjects, *catalog, tactical->m_iServerTick);
+            tests.Require(groundCast && caster.hasSkillTarget && observed.At(landing.x, landing.y, landing.z).risk > 0.f &&
+                observed.At(caster.fPositionX, caster.fPositionY, caster.fPositionZ).risk == 0.f &&
+                observed.At(landing.x, landing.y + 5.f, landing.z).risk == 0.f,
+                "Native ground-target admission places predicted damage at the committed aim point with the actual height guard");
+            caster = enemy; skill->Hits.clear();
+            PLAYER_SKILL_PROJECTILE area; area.eKind = PLAYER_PROJECTILE_KIND::FIXAREA;
+            area.eOrigin = PLAYER_PROJECTILE_ORIGIN::AIM; area.fMaxDistance = 12.f; area.iLifeMs = 1000u;
+            PLAYER_PROJECTILE_HIT contact; contact.isContact = true; contact.Hit = hit; contact.Hit.iTimeMs = 0u;
+            area.Hits.push_back(contact); skill->Projectiles.push_back(area);
+            const bool areaCast = tactical->m_PlayerSkillSystem.Try_Start(caster, command, *catalog, tactical->m_iServerTick,
+                &tactical->m_ServerNavigation);
+            std::vector<SERVER_WORLD_ENTITY> emptyWorld; std::vector<DAMAGE_EVENT> damage;
+            for (unsigned tick = 0u; tick < 5u; ++tick)
+                tactical->m_PlayerSkillSystem.Update(caster, emptyWorld, tactical->m_GameplayCatalog,
+                    &tactical->m_ServerNavigation, nullptr, 1.f / 30.f, ++tactical->m_iServerTick, damage);
+            observed.Observe(actor, tactical->m_Players, noObjects, *catalog, tactical->m_iServerTick);
+            tests.Require(areaCast && caster.eAction == PLAYER_ACTION_STATE::NONE && !caster.Projectiles.empty() &&
+                observed.At(landing.x, landing.y, landing.z).risk > 0.f,
+                "A projectile spawned by the native executor remains a threat after its caster action finishes");
+            tests.Require(observed.At(landing.x - 3.f, landing.y, landing.z).risk == 0.f &&
+                observed.At(landing.x + 3.f, landing.y, landing.z).risk == 0.f &&
+                observed.Along(landing.x - 3.f, landing.y, landing.z, landing.x + 3.f, landing.y, landing.z, .6f) > 0.f &&
+                observed.Along(landing.x - 3.f, landing.y, landing.z + 3.f, landing.x + 3.f, landing.y, landing.z + 3.f, .6f) == 0.f,
+                "Route assessment detects crossing a lingering hit even when both endpoints are safe and accepts a clear detour");
+            actor.CooldownEndTickBySkillId[34020u] = 10000u;
+            tactical->Update_Colosseum(.25f);
+            tests.Require(actor.hasMoveGoal && actor.eAction == PLAYER_ACTION_STATE::NONE &&
+                ai.eTactic == CGameRoom::COLOSSEUM_TACTIC::EVADE &&
+                observed.At(actor.fMoveGoalX, actor.fPositionY, actor.fMoveGoalZ, .4f).risk == 0.f,
+                "The actual AI walks to a safe navigation goal for an active lingering area when SPACE is cooling down");
+            if (!caster.Projectiles.empty())
+            {
+                caster.Projectiles.front().ContactMarks.push_back({actor.iNetEntityId, 0u, 1u, 0.f});
+                observed.Observe(actor, tactical->m_Players, noObjects, *catalog, tactical->m_iServerTick);
+                tests.Require(observed.At(landing.x, landing.y, landing.z).risk == 0.f,
+                    "Consumed per-target contact hits are not predicted as fresh damage");
+                caster.Projectiles.front().ContactMarks.clear();
+            }
+            caster.iCurrentHp = 0u;
+            observed.Observe(actor, tactical->m_Players, noObjects, *catalog, tactical->m_iServerTick);
+            tests.Require(observed.ThreatCount() == 0u, "A dead projectile owner is excluded by the same PvP source guard as damage");
+            caster = enemy; caster.fPositionZ = landing.z + 1.f; actor = fresh; ai = {};
+            auto challenger = caster; challenger.iPlayerId = 3u; challenger.iNetEntityId = 103u; challenger.fPositionZ += .1f;
+            tactical->m_Players.emplace(3u, challenger);
+            const auto decide = [&]()
+            {
+                ai.fThinkElapsed = 1.f; ai.iNextAttackTick = 0u;
+                for (const auto& [id, definition] : catalog->Get_Skills())
+                    if (definition.eCharacterClass == actor.eCharacterClass)
+                        actor.CooldownEndTickBySkillId[id] = tactical->m_iServerTick + 10000u;
+                tactical->Update_Colosseum(.25f);
+            };
+            decide();
+            tests.Require(ai.iTargetEntityId == caster.iNetEntityId, "Target scoring selects the closest comparable living opponent");
+            tactical->m_Players.at(3u).fPositionZ = landing.z + .9f; tactical->m_iServerTick += 6u;
+            decide();
+            tests.Require(ai.iTargetEntityId == caster.iNetEntityId, "Target hysteresis retains an opponent through a small short-lived score change");
+            caster.iCurrentHp = 0u; tactical->m_iServerTick += 6u; decide();
+            tests.Require(ai.iTargetEntityId == challenger.iNetEntityId, "A dead target is replaced immediately by another eligible opponent");
+            tactical->m_Players.at(3u).iColosseumMatchId = 999u; decide();
+            tests.Require(ai.iTargetEntityId == INVALID_NET_ENTITY_ID && ai.eTactic == CGameRoom::COLOSSEUM_TACTIC::WAIT,
+                "Other matches are excluded from target selection even when their players are nearby");
+            tactical->m_Players.erase(3u); caster = enemy; caster.fPositionZ = landing.z + 2.f;
+            actor = fresh; actor.iCurrentHp = actor.iMaximumHp / 5u; ai = {}; ai.iObservedHp = fresh.iMaximumHp;
+            tactical->m_iServerTick = 1000u; decide();
+            const auto retreatUntil = ai.iTacticUntilTick;
+            tests.Require(ai.eTactic == CGameRoom::COLOSSEUM_TACTIC::RETREAT && actor.hasMoveGoal && retreatUntil > 1000u,
+                "Low health under nearby pressure enters a bounded retreat through the real movement executor");
+            caster.fPositionZ = landing.z + 10.f; tactical->m_iServerTick = 1006u; decide();
+            tests.Require(ai.eTactic == CGameRoom::COLOSSEUM_TACTIC::RETREAT && ai.iTacticUntilTick == retreatUntil,
+                "Retreat hysteresis holds its existing deadline when immediate pressure disappears");
+            tactical->m_iServerTick = retreatUntil + 1u; decide();
+            tests.Require(ai.eTactic != CGameRoom::COLOSSEUM_TACTIC::RETREAT && actor.iCurrentHp == actor.iMaximumHp / 5u &&
+                ai.iRetreatAllowedTick > tactical->m_iServerTick,
+                "Retreat re-engages after its deadline without waiting for unavailable passive healing and cannot immediately retrigger");
+            // Full room ticks exercise simultaneous decisions, movement, native
+            // skill damage, hit reactions and score/respawn guards together.
+            auto battle = std::make_unique<CGameRoom>(WORLD_ID::COLOSSEUM,
+                std::make_shared<CGameplayCatalog>(source->m_GameplayCatalog.Active()));
+            battle->m_iColosseumMatchId = 902u; battle->m_eColosseumPhase = COLOSSEUM_MATCH_PHASE::ACTIVE;
+            battle->m_iServerTick = 100u; battle->m_iColosseumPhaseEnd = 10000u;
+            const std::array<CHARACTER_CLASS_ID, 6> classes{ CHARACTER_CLASS_ID::DIMENSIONMASTER,
+                CHARACTER_CLASS_ID::LANCE_MASTER, CHARACTER_CLASS_ID::WARLORD,
+                CHARACTER_CLASS_ID::GUARDIANKNIGHT, CHARACTER_CLASS_ID::ARTIST, CHARACTER_CLASS_ID::LANCE_MASTER };
+            std::map<PLAYER_ID, std::array<float, 2>> initialPositions;
+            std::map<PLAYER_ID, std::set<SKILL_ID>> casts;
+            for (std::size_t i = 0u; i < classes.size(); ++i)
+            {
+                auto player = fresh;
+                player.iPlayerId = static_cast<PLAYER_ID>(i + 1u); player.iNetEntityId = static_cast<NET_ENTITY_ID>(201u + i);
+                player.iColosseumMatchId = 902u; player.iColosseumTeam = static_cast<std::uint8_t>(i % 2u);
+                const auto* memberProfile = battle->m_GameplayCatalog.Find_Player(classes[i]);
+                player.eCharacterClass = classes[i]; player.eStance = memberProfile->eDefaultStance;
+                player.iCurrentResource = player.iMaximumResource = memberProfile->iMaximumResource;
+                player.iMaximumIdentity = memberProfile->iMaximumIdentity; player.fMoveSpeed = memberProfile->fMoveSpeed;
+                CPlayerSkillSystem::Reset_Gauges(player, battle->m_GameplayCatalog);
+                SERVER_NAV_POINT position;
+                const float angle = static_cast<float>(i) * 1.04719755f;
+                if (battle->m_ServerNavigation.Sample_Position(landing.x + std::cos(angle) * 1.5f,
+                    landing.z + std::sin(angle) * 1.5f, position, landing.y))
+                { player.fPositionX = position.x; player.fPositionY = position.y; player.fPositionZ = position.z; }
+                player.fColosseumSpawnX = player.fPositionX; player.fColosseumSpawnY = player.fPositionY;
+                player.fColosseumSpawnZ = player.fPositionZ;
+                initialPositions[player.iPlayerId] = { player.fPositionX, player.fPositionZ };
+                battle->m_PlayerIdByEntityId[player.iNetEntityId] = player.iPlayerId;
+                battle->m_Players.emplace(player.iPlayerId, player);
+                battle->m_ColosseumMercenaries[player.iPlayerId].iRandomState = 0x123456789abcdefu * (i + 1u);
+            }
+            std::size_t actualDamageEvents = 0u;
+            bool moved = false, lostHp = false;
+            for (unsigned tick = 0u; tick < 360u; ++tick)
+            {
+                battle->Tick(1.f / 30.f);
+                actualDamageEvents += battle->m_TickDamageEvents.size();
+                for (const auto& [id, player] : battle->m_Players)
+                {
+                    const auto& initial = initialPositions.at(id);
+                    moved = moved || std::hypot(player.fPositionX - initial[0], player.fPositionZ - initial[1]) > .5f;
+                    lostHp = lostHp || player.iCurrentHp < player.iMaximumHp;
+                    if (player.eAction == PLAYER_ACTION_STATE::SKILL) casts[id].insert(player.iCurrentSkillId);
+                }
+            }
+            const auto variedActors = std::count_if(casts.begin(), casts.end(), [](const auto& entry) { return entry.second.size() >= 2u; });
+            tests.Require(battle->m_iServerTick == 460u && actualDamageEvents > 0u && moved && lostHp && variedActors >= 2,
+                "Twelve seconds of full room ticks produce real PvP damage, HP loss, movement and varied skill use by multiple mercenaries");
+            std::cout << "Mercenary battle ticks=" << (battle->m_iServerTick - 100u) << " damage=" << actualDamageEvents
+                << " moved=" << moved << " lostHp=" << lostHp << " variedActors=" << variedActors << '\n';
         }
     }
     auto preview = std::make_unique<CGameRoom>(WORLD_ID::COLOSSEUM);

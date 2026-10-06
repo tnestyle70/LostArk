@@ -39,6 +39,7 @@
 	<ClInclude Include="..\Public\BossCombatRuntime.h" />
 	<ClInclude Include="..\Public\CombatObjectRuntime.h" />
 	<ClInclude Include="..\Public\ServerCombatGeometry.h" />
+    <ClInclude Include="..\Public\ColosseumThreatAssessment.h" />
 	<ClInclude Include="..\Public\ServerCombatHitRuntime.h" />
 	<ClInclude Include="..\Public\PlayerSkillSystem.h" />
     <ClInclude Include="..\Public\ColosseumCombatPolicy.h" />
@@ -83,6 +84,7 @@
 	<ClCompile Include="..\Private\BossCombatRuntime.cpp" />
 	<ClCompile Include="..\Private\CombatObjectRuntime.cpp" />
 	<ClCompile Include="..\Private\ServerCombatGeometry.cpp" />
+    <ClCompile Include="..\Private\ColosseumThreatAssessment.cpp" />
 	<ClCompile Include="..\Private\ServerCombatHitRuntime.cpp" />
 	<ClCompile Include="..\Private\PlayerSkillSystem.cpp" />
 	<ClCompile Include="..\Private\ServerNavigation.cpp" />

@@ -165,6 +165,9 @@
     <ClCompile Include="..\Private\ServerCombatGeometry.cpp">
       <Filter>05.Combat</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\ColosseumThreatAssessment.cpp">
+      <Filter>06.AI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\ServerCombatHitRuntime.cpp">
       <Filter>05.Combat</Filter>
     </ClCompile>
@@ -457,6 +460,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\ServerCombatGeometry.h">
       <Filter>05.Combat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ColosseumThreatAssessment.h">
+      <Filter>06.AI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\ServerCombatHitRuntime.h">
       <Filter>05.Combat</Filter>
