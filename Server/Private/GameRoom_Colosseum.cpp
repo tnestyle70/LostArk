@@ -24,73 +24,113 @@ namespace
     constexpr std::array<const char*, 5> MERCENARY_NAMES = {
         "차원술사 용병", "창술사 용병", "워로드 용병", "가디언나이트 용병", "도화가 용병" };
 
-    std::size_t MercenarySlotRank(const std::string& slot)
+    bool DeadlineReached(std::uint32_t now, std::uint32_t deadline)
+    { return deadline == 0u || static_cast<std::int32_t>(now - deadline) >= 0; }
+
+    // Stable per-match streams make decisions reproducible without synchronizing bots.
+    float RandomUnit(std::uint64_t& state)
     {
-        constexpr std::array<const char*, 15> order = {
-            "LMB", "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V", "ALT_V", "Z", "X", "SPACE" };
-        const auto found = std::find(order.begin(), order.end(), slot);
-        return static_cast<std::size_t>(found - order.begin());
+        if (!state) state = 0x9e3779b97f4a7c15ULL;
+        state ^= state >> 12; state ^= state << 25; state ^= state >> 27;
+        return static_cast<float>((state * 2685821657736338717ULL) >> 40) / 16777216.f;
     }
 
-    // Reuse storage and resolve every currently available class/stance binding.
-    // Preserve the next slot, rather than a stale index, when stance changes the list.
     void BuildAvailableMercenarySkills(const CGameplayCatalog& catalog,
-        const SERVER_PLAYER& merc, std::vector<SKILL_ID>& skills, std::size_t* cursor = nullptr)
+        const SERVER_PLAYER& merc, std::vector<SKILL_ID>& skills)
     {
-        std::size_t nextRank = 0u;
-        if (cursor && *cursor < skills.size())
-            if (const auto* next = catalog.Find_Skill(skills[*cursor]))
-                nextRank = MercenarySlotRank(next->strInputSlot);
         skills.clear();
         for (const auto& [id, skill] : catalog.Get_Skills())
             if (skill.eCharacterClass == merc.eCharacterClass &&
                 (skill.eRequiredStance == PLAYER_STANCE_ID::NONE || skill.eRequiredStance == merc.eStance))
                 skills.push_back(id);
-        std::sort(skills.begin(), skills.end(), [&](const auto left, const auto right)
-        {
-            const auto& leftSlot = catalog.Find_Skill(left)->strInputSlot;
-            const auto& rightSlot = catalog.Find_Skill(right)->strInputSlot;
-            const auto leftRank = MercenarySlotRank(leftSlot), rightRank = MercenarySlotRank(rightSlot);
-            if (leftRank != rightRank) return leftRank < rightRank;
-            if (leftSlot != rightSlot) return leftSlot < rightSlot;
-            return left < right;
-        });
-        if (cursor)
-        {
-            const auto next = std::find_if(skills.begin(), skills.end(), [&](const auto id) {
-                return MercenarySlotRank(catalog.Find_Skill(id)->strInputSlot) >= nextRank;
-            });
-            *cursor = next == skills.end() ? 0u : static_cast<std::size_t>(next - skills.begin());
-        }
+        // Catalog iteration order must not change a seeded weighted draw.
+        std::sort(skills.begin(), skills.end());
     }
 
-    // Only DimensionMaster follows the authored fixed rotation without LMB.
-    bool BuildMercenaryCombo(const CGameplayCatalog& catalog, const CGuideCatalog& guide,
-        const SERVER_PLAYER& merc, std::vector<SKILL_ID>& skills, float& timeout, float& stepWait)
+    bool SkillResourcesReady(const SERVER_PLAYER& merc, const PLAYER_SKILL_DEFINITION& skill,
+        std::uint32_t tick)
     {
-        if (merc.eCharacterClass != CHARACTER_CLASS_ID::DIMENSIONMASTER)
+        const auto cooldown = merc.CooldownEndTickBySkillId.find(skill.iSkillId);
+        return skill.eCharacterClass == merc.eCharacterClass &&
+            (skill.eRequiredStance == PLAYER_STANCE_ID::NONE || skill.eRequiredStance == merc.eStance) &&
+            (cooldown == merc.CooldownEndTickBySkillId.end() || DeadlineReached(tick, cooldown->second)) &&
+            merc.iCurrentResource >= skill.iResourceCost && merc.iCurrentIdentity >= skill.iIdentityCost &&
+            (skill.eSetsStance == PLAYER_STANCE_ID::NONE || DeadlineReached(tick, merc.iStanceSwitchCooldownEndTick));
+    }
+
+    float HealthFraction(const SERVER_PLAYER& player)
+    { return player.iMaximumHp ? static_cast<float>(player.iCurrentHp) / player.iMaximumHp : 0.f; }
+
+    float SkillReach(const PLAYER_SKILL_DEFINITION& skill)
+    { return (std::max)(2.f, skill.fMaximumRange); }
+
+    struct DODGE_MOTION_POINT { float time = 0.f, forward = 0.f, lateral = 0.f; };
+    struct DODGE_MOTION
+    {
+        std::array<DODGE_MOTION_POINT, 181> points{};
+        std::size_t count = 1u;
+        bool releaseHold = false;
+    };
+
+    // Read the same cumulative curve as PlayerSkillSystem::Update. These samples
+    // are observations only; the normal skill executor still commits every move.
+    std::pair<float, float> SampleDodgeMotion(const std::vector<ROOT_MOTION_SAMPLE>& samples, float seconds)
+    {
+        if (samples.empty()) return {};
+        const float milliseconds = seconds * 1000.f;
+        if (milliseconds <= float(samples.front().iTimeMs))
+            return {samples.front().fForward, samples.front().fLateral};
+        for (std::size_t index = 1u; index < samples.size(); ++index)
         {
-            BuildAvailableMercenarySkills(catalog, merc, skills);
-            return !skills.empty();
+            const auto& previous = samples[index - 1u]; const auto& current = samples[index];
+            if (milliseconds > float(current.iTimeMs)) continue;
+            const float span = float(current.iTimeMs) - float(previous.iTimeMs);
+            const float alpha = span <= 0.f ? 0.f : (milliseconds - float(previous.iTimeMs)) / span;
+            return {previous.fForward + (current.fForward - previous.fForward) * alpha,
+                previous.fLateral + (current.fLateral - previous.fLateral) * alpha};
         }
-        if (!guide.Loaded || guide.Combos.empty()) return false;
-        const auto& authored = guide.Combos.front();
-        timeout = static_cast<float>(authored.TimeoutMs) * .001f;
-        stepWait = static_cast<float>(authored.StepWaitMs) * .001f;
-        for (const auto& slot : authored.Slots)
+        return {samples.back().fForward, samples.back().fLateral};
+    }
+
+    bool ReadDodgeMotion(const PLAYER_SKILL_DEFINITION& skill, float fixedSeconds, DODGE_MOTION& out)
+    {
+        const auto* samples = &skill.RootMotion;
+        std::uint32_t durationMs = skill.iActionDurationMs;
+        out = {};
+        if (skill.eSkillKind == PLAYER_SKILL_KIND::HOLD && !skill.ComboStages.empty() &&
+            skill.ComboStages.front().iComboAdvanceMs < skill.ComboStages.front().iActionDurationMs)
         {
-            if (slot == "LMB" || slot == "SPACE") continue;
-            const PLAYER_SKILL_DEFINITION* resolved = nullptr;
-            for (const auto& [id, skill] : catalog.Get_Skills())
-                if (skill.eCharacterClass == merc.eCharacterClass && skill.strInputSlot == slot &&
-                    (skill.eRequiredStance == PLAYER_STANCE_ID::NONE || skill.eRequiredStance == merc.eStance))
-                {
-                    if (resolved) return false;
-                    resolved = &skill;
-                }
-            if (resolved) skills.push_back(resolved->iSkillId);
+            // An immediately released branching HOLD completes its start landing,
+            // without the duration/route changing with a later tactical release.
+            samples = &skill.ComboStages.front().RootMotion;
+            durationMs = skill.ComboStages.front().iActionDurationMs;
+            out.releaseHold = true;
         }
-        return !skills.empty() && timeout > 0.f && stepWait > 0.f;
+        else if (skill.eSkillKind != PLAYER_SKILL_KIND::ACTIVE && skill.eSkillKind != PLAYER_SKILL_KIND::STANDUP)
+            return false;
+        const float duration = float(durationMs) * .001f;
+        if (!(fixedSeconds > 0.f) || !(duration > 0.f) || !std::isfinite(skill.fRootMotionScale)) return false;
+        float elapsed = 0.f, forward = 0.f, lateral = 0.f;
+        while (elapsed < duration)
+        {
+            if (out.count == out.points.size()) return false;
+            elapsed += fixedSeconds;
+            float deltaForward = 0.f, deltaLateral = 0.f;
+            if (!samples->empty())
+            {
+                const auto previous = SampleDodgeMotion(*samples, (std::max)(0.f, elapsed - fixedSeconds));
+                const auto current = SampleDodgeMotion(*samples, elapsed);
+                deltaForward = current.first - previous.first;
+                deltaLateral = current.second - previous.second;
+            }
+            else if (skill.fMovementDistance > 0.f)
+                deltaForward = skill.fMovementDistance / duration * fixedSeconds;
+            forward += deltaForward * skill.fRootMotionScale;
+            lateral += deltaLateral * skill.fRootMotionScale;
+            if (!std::isfinite(forward) || !std::isfinite(lateral)) return false;
+            out.points[out.count++] = {elapsed, forward, lateral};
+        }
+        return true;
     }
 
     S2C_PLAYER_SPAWNED MakeSpawn(const SERVER_PLAYER& player)
@@ -110,34 +150,7 @@ namespace
         return message;
     }
 
-    bool HitOverlaps(const PLAYER_SKILL_HIT& hit, const SERVER_PLAYER& source,
-        float x, float z)
-    {
-        SERVER_COMBAT_SHAPE_XZ shape;
-        shape.eKind = hit.iAreaType == 1u ? (hit.fInner > 0.f ?
-            SERVER_COMBAT_SHAPE_KIND::RING : SERVER_COMBAT_SHAPE_KIND::CIRCLE) :
-            hit.iAreaType == 2u ? SERVER_COMBAT_SHAPE_KIND::FORWARD_BOX :
-            hit.iAreaType == 3u ? SERVER_COMBAT_SHAPE_KIND::CONE : SERVER_COMBAT_SHAPE_KIND::END;
-        shape.fOffset = hit.fOffset;
-        // Geometry validates unused fields as zero; each primitive owns only its extent.
-        if (hit.iAreaType == 1u)
-        {
-            shape.fOuterRadius = hit.fRange; shape.fInnerRadius = hit.fInner;
-        }
-        else if (hit.iAreaType == 2u)
-        {
-            shape.fLength = hit.fRange; shape.fHalfWidth = hit.fWidth * .5f;
-        }
-        else if (hit.iAreaType == 3u)
-        {
-            shape.fLength = hit.fRange; shape.fInnerRadius = hit.fInner;
-            shape.fAngleDegrees = hit.fAngleDegrees <= 0.f ? 360.f : (std::min)(360.f, hit.fAngleDegrees);
-        }
-        const float angle = source.fYawDegrees * PI / 180.f;
-        return CServerCombatGeometry::Is_Valid(shape) &&
-            CServerCombatGeometry::Overlaps_Pose(shape, source.fPositionX, source.fPositionZ,
-                std::sin(angle), std::cos(angle), { x, z, .5f });
-    }
+
 }
 
 bool CGameRoom::Transfer_ColosseumMatchTo(CGameRoom& target,
@@ -341,9 +354,11 @@ bool CGameRoom::Transfer_ColosseumMatchTo(CGameRoom& target,
             players.emplace(merc.iPlayerId, merc);
             entityPlayers.emplace(merc.iNetEntityId, merc.iPlayerId);
             COLOSSEUM_MERCENARY_RUNTIME ai;
-            if (!BuildMercenaryCombo(target.m_GameplayCatalog.Active(), target.m_GuideCatalog,
-                merc, ai.ComboSkills, ai.fComboTimeout, ai.fStepWaitTimeout))
-                return reject("Colosseum mercenary combo has no valid published class/stance rotation");
+            BuildAvailableMercenarySkills(target.m_GameplayCatalog.Active(), merc, ai.AvailableSkills);
+            if (ai.AvailableSkills.empty())
+            { status = "Colosseum mercenary has no published class skills"; return false; }
+            ai.iRandomState = matchId ^ (static_cast<std::uint64_t>(merc.iNetEntityId) * 0x9e3779b97f4a7c15ULL);
+            ai.iObservedHp = merc.iCurrentHp;
             mercenaries.emplace(merc.iPlayerId, std::move(ai));
             candidates.push_back(std::move(merc));
         }
@@ -567,236 +582,404 @@ void CGameRoom::Update_Colosseum(float seconds)
     if (m_eColosseumPhase != COLOSSEUM_MATCH_PHASE::ACTIVE) return;
     for (auto& [playerId, runtime] : m_ColosseumMercenaries)
     {
-        auto& merc = m_Players.at(playerId);
-        if (!merc.bColosseumParticipant || merc.iCurrentHp == 0u) continue;
-        const bool fixedRotation = merc.eCharacterClass == CHARACTER_CLASS_ID::DIMENSIONMASTER;
+        auto actor = m_Players.find(playerId);
+        if (actor == m_Players.end()) continue;
+        auto& merc = actor->second;
+        if (!merc.bColosseumParticipant || merc.iColosseumMatchId != m_iColosseumMatchId) continue;
+        if (!merc.iCurrentHp)
+        {
+            runtime.iTargetEntityId = INVALID_NET_ENTITY_ID;
+            runtime.eTactic = COLOSSEUM_TACTIC::WAIT;
+            runtime.iObservedHp = 0u; runtime.iNextAttackTick = runtime.iNextEvadeTick = 0u;
+            runtime.fSenseElapsed = 1.f; runtime.fThreatAgeSeconds = 0.f;
+            runtime.pReason = "Waiting for the server respawn";
+            continue;
+        }
+        if (!runtime.iRandomState)
+            runtime.iRandomState = m_iColosseumMatchId ^ (std::uint64_t(merc.iNetEntityId) * 0x9e3779b97f4a7c15ULL);
+        if (runtime.iObservedHp && merc.iCurrentHp < runtime.iObservedHp) runtime.iLastDamageTick = m_iServerTick;
+        runtime.iObservedHp = merc.iCurrentHp;
+        runtime.fThinkElapsed += seconds; runtime.fSenseElapsed += seconds;
+        const bool thinking = runtime.fThinkElapsed >= runtime.fDecisionInterval || runtime.AvailableSkills.empty();
+        if (thinking)
+        {
+            runtime.fThinkElapsed = 0.f;
+            runtime.fDecisionInterval = .16f + RandomUnit(runtime.iRandomState) * .12f;
+            BuildAvailableMercenarySkills(m_GameplayCatalog.Active(), merc, runtime.AvailableSkills);
+        }
+        // Observations are refreshed at 10 Hz; the cached moving shapes are sampled
+        // every fixed tick. Tactical lotteries never run at the simulation frequency.
+        if (runtime.fSenseElapsed >= .1f || thinking)
+        {
+            runtime.Threats.Observe(merc, m_Players, m_CombatObjectRuntime.Get_LiveObjects(),
+                m_GameplayCatalog.Active(), m_iServerTick);
+            runtime.fSenseElapsed = 0.f;
+        }
+        const auto immediate = runtime.Threats.At(merc.fPositionX, merc.fPositionY, merc.fPositionZ, runtime.fSenseElapsed);
+        const auto approaching = runtime.Threats.At(merc.fPositionX, merc.fPositionY, merc.fPositionZ, runtime.fSenseElapsed + .3f);
+        const float risk = (std::max)((std::max)(immediate.risk, approaching.risk),
+            runtime.Threats.Along(merc.fPositionX, merc.fPositionY, merc.fPositionZ,
+                merc.fPositionX, merc.fPositionY, merc.fPositionZ, .65f, runtime.fSenseElapsed));
+        runtime.fThreatAgeSeconds = risk > 0.f ? runtime.fThreatAgeSeconds + seconds : 0.f;
+        const auto eligibleEnemy = [&](const SERVER_PLAYER& other)
+        {
+            return other.bColosseumParticipant && other.iColosseumMatchId == m_iColosseumMatchId &&
+                other.iColosseumTeam < 2u && other.iColosseumTeam != merc.iColosseumTeam &&
+                other.iCurrentHp && other.isCombatReady && std::abs(other.fPositionY - merc.fPositionY) < 3.f;
+        };
+        const SERVER_PLAYER* enemy = nullptr;
+        for (const auto& [id, other] : m_Players)
+            if (other.iNetEntityId == runtime.iTargetEntityId && eligibleEnemy(other)) enemy = &other;
+        if (thinking || !enemy)
+        {
+            const SERVER_PLAYER* best = enemy; float bestScore = -1.f, retainedScore = -1.f;
+            for (const auto& [id, other] : m_Players)
+            {
+                if (!eligibleEnemy(other)) continue;
+                const float distance = std::hypot(other.fPositionX - merc.fPositionX, other.fPositionZ - merc.fPositionZ);
+                float score = 6.f / (2.f + distance) + (1.f - HealthFraction(other)) * 1.5f;
+                if (other.Has_TimeStop(m_iServerTick) || !DeadlineReached(m_iServerTick, other.iInvulnerableEndTick)) score *= .15f;
+                if (other.eAction == PLAYER_ACTION_STATE::KNOCKDOWN) score += .7f;
+                for (const auto& [allyId, ally] : m_Players)
+                {
+                    if (!ally.bColosseumParticipant || ally.iColosseumMatchId != m_iColosseumMatchId ||
+                        ally.iColosseumTeam != merc.iColosseumTeam || !ally.iCurrentHp || allyId == playerId) continue;
+                    // Help a pressured ally and mildly prefer the team's current focus.
+                    if (HealthFraction(ally) < .45f &&
+                        std::hypot(other.fPositionX - ally.fPositionX, other.fPositionZ - ally.fPositionZ) < 4.f) score += .6f;
+                    const auto allyBrain = m_ColosseumMercenaries.find(allyId);
+                    if (allyBrain != m_ColosseumMercenaries.end() && allyBrain->second.iTargetEntityId == other.iNetEntityId) score += .15f;
+                }
+                if (m_ServerNavigation.Is_Loaded() && !m_ServerNavigation.Has_LineOfSight(merc.fPositionX, merc.fPositionZ,
+                    other.fPositionX, other.fPositionZ, merc.fPositionY)) score *= .5f;
+                if (&other == enemy) retainedScore = score;
+                if (score > bestScore) { best = &other; bestScore = score; }
+            }
+            if (enemy && best != enemy && (bestScore < retainedScore * 1.25f ||
+                (m_iServerTick - runtime.iTargetSelectedTick < 30u && bestScore < retainedScore * 1.7f))) best = enemy;
+            if (best != enemy || !enemy)
+            {
+                runtime.iTargetEntityId = best ? best->iNetEntityId : INVALID_NET_ENTITY_ID;
+                runtime.iTargetSelectedTick = m_iServerTick;
+            }
+            enemy = best;
+        }
+        if (merc.bPatternBound || merc.fKnockbackRemainingSeconds > 0.f || merc.TriggerMove.isActive ||
+            merc.Has_TimeStop(m_iServerTick) || merc.eAction == PLAYER_ACTION_STATE::DEAD || merc.eAction == PLAYER_ACTION_STATE::FALLING)
+        { runtime.pReason = "Waiting for crowd control to end"; continue; }
         const auto altVReady = [&](const PLAYER_SKILL_DEFINITION& skill)
         {
             return skill.strInputSlot != "ALT_V" || !runtime.iLastAltVAdmissionTick ||
                 m_iServerTick - *runtime.iLastAltVAdmissionTick >= MERCENARY_ALT_V_INTERVAL_TICKS;
         };
-        const auto trySkill = [&](const PLAYER_SKILL_DEFINITION& skill, const C2S_USE_SKILL& command)
+        const auto trySkill = [&](const PLAYER_SKILL_DEFINITION& skill, float x, float z)
         {
-            if (!altVReady(skill) || !Execute_PlayerSkill(merc, command)) return false;
-            // Keep the authored cooldown; only accepted AI casts start the extra interval.
+            if (!altVReady(skill) || !SkillResourcesReady(merc, skill, m_iServerTick + 1u)) return false;
+            C2S_USE_SKILL command;
+            command.iClientSequence = ++runtime.iSequence; command.iSkillId = skill.iSkillId;
+            command.eTargetIntent = skill.eTargetIntent; command.fAimX = x; command.fAimZ = z;
+            if (!Execute_PlayerSkill(merc, command) || merc.eAction != PLAYER_ACTION_STATE::SKILL ||
+                merc.iCurrentSkillId != skill.iSkillId || merc.PendingCommand.eKind != PLAYER_PENDING_COMMAND_KIND::NONE) return false;
+            // Only an actual admission changes memory, never a pending COMBO command.
             if (skill.strInputSlot == "ALT_V") runtime.iLastAltVAdmissionTick = m_iServerTick;
+            else if (!Is_DodgeSkill(skill) && skill.eSkillKind != PLAYER_SKILL_KIND::STANDUP)
+            {
+                runtime.iLastSkillId = skill.iSkillId;
+                runtime.RecentSkills[runtime.iRecentSkillCursor++ % runtime.RecentSkills.size()] = skill.iSkillId;
+            }
             return true;
         };
-        runtime.fThinkElapsed += seconds;
-        if (fixedRotation) runtime.fComboElapsed += seconds;
-        // Manual COMBO input is sampled on every fixed Server tick, independently
-        // of the 5 Hz tactical think. A narrow authored input window must not be lost.
-        const auto* running = merc.eAction == PLAYER_ACTION_STATE::SKILL ?
-            m_GameplayCatalog.Find_Skill(merc.iCurrentSkillId) : nullptr;
-        if (!merc.bPatternBound && merc.fKnockbackRemainingSeconds <= 0.f && !merc.TriggerMove.isActive &&
-            running && running->eSkillKind == PLAYER_SKILL_KIND::COMBO && running->eCharacterClass == merc.eCharacterClass &&
-            (!fixedRotation || (running->strInputSlot != "LMB" &&
-             std::find(runtime.ComboSkills.begin(), runtime.ComboSkills.end(), running->iSkillId) != runtime.ComboSkills.end())) &&
+        const auto moveTo = [&](const SERVER_NAV_POINT& point)
+        {
+            if (merc.eAction != PLAYER_ACTION_STATE::NONE && !Is_MoveCancellableAction(merc)) return false;
+            if (merc.hasMoveGoal && std::hypot(merc.fMoveGoalX - point.x, merc.fMoveGoalZ - point.z) < .05f) return true;
+            C2S_MOVE move; move.iClientSequence = ++runtime.iSequence; move.fGoalX = point.x; move.fGoalZ = point.z;
+            Execute_PlayerMove(merc, move);
+            return merc.hasMoveGoal && merc.PendingCommand.eKind == PLAYER_PENDING_COMMAND_KIND::NONE &&
+                std::hypot(merc.fMoveGoalX - point.x, merc.fMoveGoalZ - point.z) < .05f;
+        };
+        const float hp = HealthFraction(merc);
+        unsigned nearbyEnemies = 0u, nearbyAllies = 0u;
+        for (const auto& [id, other] : m_Players)
+        {
+            if (id == playerId || !other.bColosseumParticipant || other.iColosseumMatchId != m_iColosseumMatchId || !other.iCurrentHp) continue;
+            if (std::hypot(other.fPositionX - merc.fPositionX, other.fPositionZ - merc.fPositionZ) > 6.f) continue;
+            if (other.iColosseumTeam == merc.iColosseumTeam) ++nearbyAllies; else ++nearbyEnemies;
+        }
+        const float nearest = enemy ? std::hypot(enemy->fPositionX - merc.fPositionX, enemy->fPositionZ - merc.fPositionZ) : 0.f;
+        // Range preference follows the currently available attacks, not a class-name script.
+        float preferredRange = 2.f, reachSum = 0.f; unsigned reachCount = 0u;
+        for (const auto id : runtime.AvailableSkills)
+            if (const auto* skill = m_GameplayCatalog.Find_Skill(id); skill && skill->strInputSlot != "ALT_V" &&
+                !Is_DodgeSkill(*skill) && skill->eSkillKind != PLAYER_SKILL_KIND::STANDUP &&
+                SkillResourcesReady(merc, *skill, m_iServerTick + 1u))
+            { reachSum += std::clamp(SkillReach(*skill) * .65f, 1.5f, 7.f); ++reachCount; }
+        if (reachCount) preferredRange = reachSum / reachCount;
+        const auto choosePosition = [&](bool escape, bool retreat, float radius, float speed, SERVER_NAV_POINT& out)
+        {
+            bool found = false; float bestScore = (std::numeric_limits<float>::max)();
+            const auto scorePoint = [&](const SERVER_NAV_POINT& point)
+            {
+                const float distance = std::hypot(point.x - merc.fPositionX, point.z - merc.fPositionZ);
+                const float travel = distance / (std::max)(speed, 1.f);
+                const float endRisk = runtime.Threats.At(point.x, point.y, point.z, runtime.fSenseElapsed + travel).risk;
+                const float pathRisk = runtime.Threats.Along(merc.fPositionX, merc.fPositionY, merc.fPositionZ,
+                    point.x, point.y, point.z, travel, runtime.fSenseElapsed);
+                float score = endRisk * 10.f + pathRisk * 4.f;
+                float closestEnemy = 100.f, closestAlly = 100.f;
+                for (const auto& [id, other] : m_Players)
+                {
+                    if (id == playerId || !other.bColosseumParticipant || other.iColosseumMatchId != m_iColosseumMatchId || !other.iCurrentHp) continue;
+                    const float gap = std::hypot(point.x - other.fPositionX, point.z - other.fPositionZ);
+                    if (other.iColosseumTeam == merc.iColosseumTeam) closestAlly = (std::min)(closestAlly, gap);
+                    else closestEnemy = (std::min)(closestEnemy, gap);
+                    if (gap < 1.4f) score += (1.4f - gap) * 2.f;
+                }
+                if (retreat) score -= (std::min)(closestEnemy, 8.f) * .8f;
+                else if (enemy) score += std::abs(std::hypot(point.x - enemy->fPositionX, point.z - enemy->fPositionZ) - preferredRange) * (escape ? .08f : .4f);
+                if (retreat && closestAlly < 100.f) score += (std::max)(0.f, closestAlly - 4.f) * .12f;
+                if (merc.hasMoveGoal && std::hypot(point.x - merc.fMoveGoalX, point.z - merc.fMoveGoalZ) < .6f) score -= .35f;
+                return std::pair{score, endRisk};
+            };
+            const float stay = scorePoint({merc.fPositionX, merc.fPositionY, merc.fPositionZ}).first;
+            for (unsigned i = 0u; i < 25u; ++i)
+            {
+                if (i == 24u && !merc.hasMoveGoal) continue;
+                const float angle = float(i % 12u) * PI / 6.f;
+                const float length = i < 12u ? radius : radius * .5f;
+                const float x = i == 24u ? merc.fMoveGoalX : merc.fPositionX + std::sin(angle) * length;
+                const float z = i == 24u ? merc.fMoveGoalZ : merc.fPositionZ + std::cos(angle) * length;
+                SERVER_NAV_POINT point;
+                if (!Find_GuideLanding(merc, x, merc.fPositionY, z, point) ||
+                    !m_ServerNavigation.Has_LineOfSight(merc.fPositionX, merc.fPositionZ, point.x, point.z, merc.fPositionY)) continue;
+                const auto [score, endRisk] = scorePoint(point);
+                if (escape && endRisk >= risk) continue;
+                if (score >= bestScore || (!escape && score >= stay - .15f)) continue;
+                // Leaving the current hit may cross its boundary, but a second
+                // dangerous zone must not be preferred just for a safe endpoint.
+                if (escape && score > stay + 1.f) continue;
+                out = point; bestScore = score; found = true;
+            }
+            return found;
+        };
+        const auto chooseDodge = [&](const PLAYER_SKILL_DEFINITION& skill, SERVER_NAV_POINT& aim, bool& releaseHold)
+        {
+            DODGE_MOTION motion;
+            if (!ReadDodgeMotion(skill, seconds, motion)) return false;
+            bool found = false; float bestScore = (std::numeric_limits<float>::max)();
+            const float stayRisk = runtime.Threats.Along(merc.fPositionX, merc.fPositionY, merc.fPositionZ,
+                merc.fPositionX, merc.fPositionY, merc.fPositionZ, .65f, runtime.fSenseElapsed);
+            for (unsigned direction = 0u; direction < 12u; ++direction)
+            {
+                const float angle = float(direction) * PI / 6.f;
+                const float forwardX = std::sin(angle), forwardZ = std::cos(angle);
+                SERVER_PLAYER pose;
+                pose.iMarioStage = merc.iMarioStage;
+                pose.fPositionX = merc.fPositionX; pose.fPositionY = merc.fPositionY; pose.fPositionZ = merc.fPositionZ;
+                bool valid = true; float pathRisk = 0.f;
+                for (std::size_t step = 1u; step < motion.count; ++step)
+                {
+                    const auto& previous = motion.points[step - 1u]; const auto& current = motion.points[step];
+                    const float deltaForward = current.forward - previous.forward;
+                    const float deltaLateral = current.lateral - previous.lateral;
+                    SERVER_NAV_POINT next{pose.fPositionX + forwardX * deltaForward + forwardZ * deltaLateral,
+                        pose.fPositionY, pose.fPositionZ + forwardZ * deltaForward - forwardX * deltaLateral};
+                    if (deltaForward != 0.f || deltaLateral != 0.f)
+                    {
+                        bool clamped = false;
+                        if (m_ServerNavigation.Is_Loaded())
+                            CPlayerSkillSystem::Clamp_StepToWalkable(m_ServerNavigation,
+                                pose.fPositionX, pose.fPositionZ, next.x, next.z, next, clamped, pose.fPositionY);
+                        // Reject an altered route, instead of inventing where a
+                        // native wall clamp or body slide would eventually land.
+                        if (clamped) { valid = false; break; }
+                        float x = next.x, y = next.y, z = next.z; bool blocked = false;
+                        if (!m_ServerCollisionSystem.Resolve_PlayerMove(pose, next.x, next.y, next.z, x, y, z, blocked) ||
+                            blocked || std::abs(x-next.x) > .001f || std::abs(y-next.y) > .001f || std::abs(z-next.z) > .001f)
+                        { valid = false; break; }
+                    }
+                    pathRisk = (std::max)(pathRisk, runtime.Threats.Along(pose.fPositionX, pose.fPositionY, pose.fPositionZ,
+                        next.x, next.y, next.z, current.time-previous.time, runtime.fSenseElapsed+previous.time, 0.f));
+                    pose.fPositionX = next.x; pose.fPositionY = next.y; pose.fPositionZ = next.z;
+                }
+                if (!valid || std::hypot(pose.fPositionX-merc.fPositionX, pose.fPositionZ-merc.fPositionZ) < .25f) continue;
+                const float endRisk = runtime.Threats.At(pose.fPositionX, pose.fPositionY, pose.fPositionZ,
+                    runtime.fSenseElapsed+motion.points[motion.count-1u].time).risk;
+                if (risk > 0.f && (endRisk >= risk || pathRisk > stayRisk)) continue;
+                float score = endRisk * 10.f + pathRisk * 4.f;
+                if (enemy) score += std::abs(std::hypot(pose.fPositionX-enemy->fPositionX,
+                    pose.fPositionZ-enemy->fPositionZ)-preferredRange) * .08f;
+                for (const auto& [id, other] : m_Players)
+                {
+                    if (id == playerId || !other.bColosseumParticipant || other.iColosseumMatchId != m_iColosseumMatchId || !other.iCurrentHp) continue;
+                    const float gap = std::hypot(pose.fPositionX-other.fPositionX, pose.fPositionZ-other.fPositionZ);
+                    if (gap < 1.4f) score += (1.4f-gap) * 2.f;
+                }
+                if (score >= bestScore) continue;
+                // Aim selects a direction only. It is deliberately distinct from
+                // the predicted landing; native motion never caps at aim distance.
+                aim = {merc.fPositionX+forwardX, merc.fPositionY, merc.fPositionZ+forwardZ};
+                releaseHold = motion.releaseHold; bestScore = score; found = true;
+            }
+            return found;
+        };
+        if (merc.eAction == PLAYER_ACTION_STATE::KNOCKDOWN)
+        {
+            if (thinking)
+                for (const auto id : runtime.AvailableSkills)
+                    if (const auto* skill = m_GameplayCatalog.Find_Skill(id); skill && skill->eSkillKind == PLAYER_SKILL_KIND::STANDUP)
+                    {
+                        SERVER_NAV_POINT goal{merc.fPositionX, merc.fPositionY, merc.fPositionZ};
+                        bool releaseHold = false;
+                        (void)chooseDodge(*skill, goal, releaseHold);
+                        if (trySkill(*skill, goal.x, goal.z))
+                        { runtime.eTactic = COLOSSEUM_TACTIC::RECOVER; runtime.pReason = "Stand-up toward a safer position"; break; }
+                    }
+            continue;
+        }
+        const auto* running = merc.eAction == PLAYER_ACTION_STATE::SKILL ? m_GameplayCatalog.Find_Skill(merc.iCurrentSkillId) : nullptr;
+        if (risk > 0.f && runtime.fThreatAgeSeconds >= .065f && DeadlineReached(m_iServerTick, runtime.iNextEvadeTick))
+        {
+            bool escaped = false;
+            // The COMBO executor buffers different skills before checking cancel
+            // admission. Preserve that boundary; a queued SPACE is not a dodge.
+            if (!running || running->eSkillKind != PLAYER_SKILL_KIND::COMBO)
+                for (const auto id : runtime.AvailableSkills)
+                    if (const auto* skill = m_GameplayCatalog.Find_Skill(id); skill && Is_DodgeSkill(*skill) &&
+                        SkillResourcesReady(merc, *skill, m_iServerTick + 1u))
+                    {
+                        SERVER_NAV_POINT aim; bool releaseHold = false;
+                        if (chooseDodge(*skill, aim, releaseHold) && trySkill(*skill, aim.x, aim.z))
+                        {
+                            if (releaseHold)
+                            {
+                                C2S_RELEASE_SKILL release; release.iClientSequence = ++runtime.iSequence; release.iSkillId = skill->iSkillId;
+                                m_PlayerSkillSystem.Release(merc, release, m_GameplayCatalog);
+                            }
+                            escaped = true; runtime.pReason = "Dodge admitted along its authored motion route"; break;
+                        }
+                    }
+            if (!escaped)
+            {
+                SERVER_NAV_POINT safe;
+                if (choosePosition(true, false, 3.f, merc.fMoveSpeed, safe) && moveTo(safe))
+                { escaped = true; runtime.pReason = "Walking out of a predicted attack"; }
+            }
+            runtime.iNextEvadeTick = m_iServerTick + (escaped ? 6u : 3u);
+            if (escaped)
+            { runtime.eTactic = COLOSSEUM_TACTIC::EVADE; runtime.iTacticUntilTick = m_iServerTick + 9u; continue; }
+        }
+        // Native staged inputs stay tick-accurate even while the tactical clock sleeps.
+        if (running && running->eSkillKind == PLAYER_SKILL_KIND::COMBO && enemy &&
             !merc.hasBufferedComboInput && merc.iComboStage > 0u && merc.iComboStage < running->ComboStages.size())
         {
             const auto& stage = running->ComboStages[merc.iComboStage - 1u];
             const float nowMs = merc.fActionElapsedSeconds * 1000.f;
-            if (stage.iInputCloseMs > 0u && nowMs >= stage.iInputOpenMs && nowMs <= stage.iInputCloseMs)
+            if (stage.iInputCloseMs && nowMs >= stage.iInputOpenMs && nowMs <= stage.iInputCloseMs)
             {
-                const SERVER_PLAYER* target = nullptr;
-                float closest = (std::numeric_limits<float>::max)();
-                for (const auto& [id, other] : m_Players)
-                    if (other.bColosseumParticipant && other.iColosseumTeam != merc.iColosseumTeam && other.iCurrentHp && other.isCombatReady)
-                    {
-                        const float distance = std::hypot(other.fPositionX - merc.fPositionX, other.fPositionZ - merc.fPositionZ);
-                        if (distance < closest) { closest = distance; target = &other; }
-                    }
-                if (target)
-                {
-                    C2S_USE_SKILL continuation;
-                    continuation.iClientSequence = ++runtime.iSequence; continuation.iSkillId = running->iSkillId;
-                    continuation.eTargetIntent = running->eTargetIntent;
-                    continuation.fAimX = target->fPositionX; continuation.fAimZ = target->fPositionZ;
-                    // A buffered continuation intentionally returns false. Only the
-                    // shared executor owns the stage advance; the rotation stays put.
-                    (void)Execute_PlayerSkill(merc, continuation);
-                    if (merc.hasBufferedComboInput) runtime.pReason = "Buffered the current skill continuation";
-                }
+                C2S_USE_SKILL continuation;
+                continuation.iClientSequence = ++runtime.iSequence; continuation.iSkillId = running->iSkillId;
+                continuation.eTargetIntent = running->eTargetIntent;
+                continuation.fAimX = enemy->fPositionX; continuation.fAimZ = enemy->fPositionZ;
+                (void)Execute_PlayerSkill(merc, continuation);
+                if (merc.hasBufferedComboInput) runtime.pReason = "Buffered the current skill continuation";
             }
         }
-        if (runtime.fThinkElapsed < .2f) continue;
-        const float elapsed = runtime.fThinkElapsed;
-        runtime.fThinkElapsed = 0.f;
-        if (fixedRotation && runtime.fComboElapsed >= runtime.fComboTimeout)
+        if (running && running->eSkillKind == PLAYER_SKILL_KIND::HOLD && !merc.hasReleasedHold &&
+            merc.fActionElapsedSeconds >= (risk > 0.f ? .25f : 1.f))
         {
-            runtime.iSkillCursor = 0u; runtime.fComboElapsed = runtime.fStepWaitElapsed = 0.f;
-            runtime.pReason = "Combo total deadline reached";
-            continue;
+            C2S_RELEASE_SKILL release; release.iClientSequence = ++runtime.iSequence; release.iSkillId = running->iSkillId;
+            m_PlayerSkillSystem.Release(merc, release, m_GameplayCatalog);
         }
-        if (merc.bPatternBound || merc.fKnockbackRemainingSeconds > 0.f || merc.TriggerMove.isActive ||
-            merc.eAction == PLAYER_ACTION_STATE::DEAD || merc.eAction == PLAYER_ACTION_STATE::FALLING)
-        { runtime.pReason = "Waiting for crowd control to end"; continue; }
-        if (!fixedRotation)
+        if (!thinking) continue;
+        if (!enemy) { runtime.eTactic = COLOSSEUM_TACTIC::WAIT; runtime.pReason = "No living opponent in this match"; continue; }
+        if (runtime.eTactic == COLOSSEUM_TACTIC::EVADE && !DeadlineReached(m_iServerTick, runtime.iTacticUntilTick)) continue;
+        const bool hurtRecently = runtime.iLastDamageTick && m_iServerTick - runtime.iLastDamageTick < 45u;
+        if (runtime.eTactic == COLOSSEUM_TACTIC::RETREAT && DeadlineReached(m_iServerTick, runtime.iTacticUntilTick))
         {
-            BuildAvailableMercenarySkills(m_GameplayCatalog.Active(), merc, runtime.ComboSkills, &runtime.iSkillCursor);
-            if (merc.eAction == PLAYER_ACTION_STATE::KNOCKDOWN)
-            {
-                for (const auto id : runtime.ComboSkills)
-                    if (const auto* skill = m_GameplayCatalog.Find_Skill(id); skill && skill->eSkillKind == PLAYER_SKILL_KIND::STANDUP)
-                    {
-                        C2S_USE_SKILL standup;
-                        standup.iClientSequence = ++runtime.iSequence; standup.iSkillId = id;
-                        standup.eTargetIntent = skill->eTargetIntent;
-                        standup.fAimX = merc.fPositionX; standup.fAimZ = merc.fPositionZ;
-                        if (Execute_PlayerSkill(merc, standup))
-                        { runtime.pReason = "Stand-up skill admitted"; break; }
-                    }
-                continue;
-            }
+            // PvP offers no passive full heal: retreat buys space, then counterattack.
+            runtime.eTactic = COLOSSEUM_TACTIC::ENGAGE;
+            runtime.iRetreatAllowedTick = m_iServerTick + 60u;
         }
-        if (merc.eAction == PLAYER_ACTION_STATE::SKILL)
-            if (const auto* skill = m_GameplayCatalog.Find_Skill(merc.iCurrentSkillId);
-                skill && skill->eSkillKind == PLAYER_SKILL_KIND::HOLD && merc.fActionElapsedSeconds >= 1.f)
-            {
-                C2S_RELEASE_SKILL release; release.iClientSequence = ++runtime.iSequence; release.iSkillId = merc.iCurrentSkillId;
-                m_PlayerSkillSystem.Release(merc, release, m_GameplayCatalog);
-            }
-        const SERVER_PLAYER* enemy = nullptr; float nearest = (std::numeric_limits<float>::max)();
-        for (const auto& [id, other] : m_Players)
-            if (other.bColosseumParticipant && other.iColosseumTeam != merc.iColosseumTeam && other.iCurrentHp && other.isCombatReady)
-            {
-                const float distance = std::hypot(other.fPositionX - merc.fPositionX, other.fPositionZ - merc.fPositionZ);
-                if (distance < nearest) { nearest = distance; enemy = &other; }
-            }
-        if (!enemy) continue;
-        const auto risk = [this, &merc](float x, float z)
+        else if (runtime.eTactic != COLOSSEUM_TACTIC::RETREAT && DeadlineReached(m_iServerTick, runtime.iRetreatAllowedTick) &&
+            ((hp < .3f && (nearbyEnemies || hurtRecently)) || (hp < .55f && nearbyEnemies > nearbyAllies + 1u)))
+        { runtime.eTactic = COLOSSEUM_TACTIC::RETREAT; runtime.iTacticUntilTick = m_iServerTick + 45u; }
+        if (runtime.eTactic == COLOSSEUM_TACTIC::RETREAT)
         {
-            unsigned result = 0;
-            for (const auto& [id, other] : m_Players)
-            {
-                if (!other.bColosseumParticipant || other.iColosseumTeam == merc.iColosseumTeam || other.iCurrentHp == 0u || other.eAction != PLAYER_ACTION_STATE::SKILL) continue;
-                const auto* skill = m_GameplayCatalog.Find_Skill(other.iCurrentSkillId);
-                if (!skill) continue;
-                const auto* hits = &skill->Hits;
-                if (other.iComboStage > 0u && other.iComboStage <= skill->ComboStages.size()) hits = &skill->ComboStages[other.iComboStage - 1u].Hits;
-                for (const auto& hit : *hits)
-                {
-                    const float now = other.fActionElapsedSeconds * 1000.f;
-                    const float end = static_cast<float>(hit.iTimeMs + (hit.iRepeatCount ? hit.iRepeatCount - 1u : 0u) * hit.iRepeatMs + hit.iDurationMs);
-                    if (end + 100.f >= now && hit.iTimeMs <= now + 400.f && HitOverlaps(hit, other, x, z)) ++result;
-                }
-            }
-            return result;
-        };
-        const auto currentRisk = risk(merc.fPositionX, merc.fPositionZ);
-        if (currentRisk > 0u)
-        {
-            unsigned bestRisk = currentRisk; SERVER_NAV_POINT best; bool found = false;
-            for (unsigned i = 0; i < 12u; ++i)
-            {
-                const float angle = i * PI / 6.f; SERVER_NAV_POINT point;
-                if (!Find_GuideLanding(merc, merc.fPositionX + std::sin(angle) * 3.f, merc.fPositionY,
-                    merc.fPositionZ + std::cos(angle) * 3.f, point)) continue;
-                const auto candidateRisk = risk(point.x, point.z);
-                if (candidateRisk >= bestRisk || !m_ServerNavigation.Has_LineOfSight(merc.fPositionX, merc.fPositionZ, point.x, point.z, merc.fPositionY)) continue;
-                bestRisk = candidateRisk; best = point; found = true;
-            }
-            if (found)
-            {
-                bool dodged = false;
-                const auto* running = merc.eAction == PLAYER_ACTION_STATE::SKILL ?
-                    m_GameplayCatalog.Find_Skill(merc.iCurrentSkillId) : nullptr;
-                // The common command boundary queues a different skill during
-                // COMBO before testing availability. Keep that as navigation
-                // avoidance, rather than mistaking a pending dodge for approval.
-                if (!fixedRotation && (!running || running->eSkillKind != PLAYER_SKILL_KIND::COMBO))
-                    for (const auto id : runtime.ComboSkills)
-                        if (const auto* skill = m_GameplayCatalog.Find_Skill(id); skill && Is_DodgeSkill(*skill))
-                        {
-                            C2S_USE_SKILL dodge;
-                            dodge.iClientSequence = ++runtime.iSequence; dodge.iSkillId = id;
-                            dodge.eTargetIntent = skill->eTargetIntent; dodge.fAimX = best.x; dodge.fAimZ = best.z;
-                            if (!Execute_PlayerSkill(merc, dodge)) continue;
-                            runtime.pReason = "Dodge skill admitted toward safer navigation";
-                            dodged = true;
-                            break;
-                        }
-                if (dodged) continue;
-                C2S_MOVE move; move.iClientSequence = ++runtime.iSequence; move.fGoalX = best.x; move.fGoalZ = best.z;
-                Execute_PlayerMove(merc, move);
-                runtime.pReason = "Evading a pending enemy hit";
-                continue;
-            }
+            SERVER_NAV_POINT safe;
+            if (choosePosition(false, true, 4.f, merc.fMoveSpeed, safe) && moveTo(safe))
+            { runtime.pReason = "Regrouping away from pressure before re-engaging"; continue; }
         }
         if (merc.eAction != PLAYER_ACTION_STATE::NONE)
-        { runtime.pReason = "Waiting for the admitted skill to finish"; continue; }
-        if (runtime.ComboSkills.empty())
-        { runtime.pReason = "No admitted skills"; continue; }
-        if (!fixedRotation)
+        { runtime.pReason = "Preserving the admitted skill and its native input windows"; continue; }
+        if (risk > 0.f)
+        { runtime.pReason = "Threat remains; withholding a new attack commitment"; continue; }
+        if (!DeadlineReached(m_iServerTick, runtime.iNextAttackTick)) continue;
+        struct CHOICE { const PLAYER_SKILL_DEFINITION* skill; float weight, x, z; };
+        std::vector<CHOICE> choices;
+        const PLAYER_SKILL_DEFINITION* awakening = nullptr;
+        for (const auto id : runtime.AvailableSkills)
         {
-            bool started = false;
-            for (std::size_t attempt = 0u; attempt < runtime.ComboSkills.size(); ++attempt)
+            const auto* skill = m_GameplayCatalog.Find_Skill(id);
+            if (!skill || Is_DodgeSkill(*skill) || skill->eSkillKind == PLAYER_SKILL_KIND::STANDUP ||
+                !SkillResourcesReady(merc, *skill, m_iServerTick + 1u) || nearest > SkillReach(*skill)) continue;
+            if (skill->strInputSlot == "ALT_V") { if (altVReady(*skill)) awakening = skill; continue; }
+            float weight = skill->strInputSlot == "LMB" ? .45f : 1.f;
+            const float castSeconds = (std::max)(.15f, skill->iActionDurationMs * .001f);
+            weight *= 1.f / (1.f + castSeconds * static_cast<float>(nearbyEnemies) * .25f);
+            if (enemy->eAction == PLAYER_ACTION_STATE::KNOCKDOWN) weight *= 1.f + (std::min)(castSeconds, 2.f);
+            if (HealthFraction(*enemy) < .3f) weight *= 1.f + 1.f / castSeconds;
+            if (skill->eSetsStance != PLAYER_STANCE_ID::NONE) weight *= reachCount <= 2u ? 2.f : .35f;
+            if (const auto* buffs = m_GameplayCatalog.Active().Find_SkillBuffs(id))
+                for (const auto& buff : *buffs)
+                    if (buff.eTarget != CGameplayCatalog::SKILL_BUFF_TARGET::ENEMY)
+                    {
+                        const bool active = std::any_of(merc.ActiveBuffs.begin(), merc.ActiveBuffs.end(),
+                            [&](const auto& row) { return row.iBuffId == buff.iBuffId; });
+                        weight *= active ? .25f : (buff.iShieldPercentOfMaxHp && hp < .6f ? 2.5f : 1.2f);
+                    }
+            if (!DeadlineReached(m_iServerTick, enemy->iInvulnerableEndTick) || enemy->Has_TimeStop(m_iServerTick)) weight *= .05f;
+            if (id == runtime.iLastSkillId) weight *= .12f;
+            else if (std::find(runtime.RecentSkills.begin(), runtime.RecentSkills.end(), id) != runtime.RecentSkills.end()) weight *= .5f;
+            float x = enemy->fPositionX, z = enemy->fPositionZ;
+            if (enemy->hasMoveGoal)
             {
-                const auto index = (runtime.iSkillCursor + attempt) % runtime.ComboSkills.size();
-                const auto* skill = m_GameplayCatalog.Find_Skill(runtime.ComboSkills[index]);
-                if (!skill || skill->eSkillKind == PLAYER_SKILL_KIND::STANDUP || Is_DodgeSkill(*skill) ||
-                    nearest > (std::max)(2.f, skill->fMaximumRange)) continue;
-                C2S_USE_SKILL command;
-                command.iClientSequence = ++runtime.iSequence; command.iSkillId = skill->iSkillId;
-                command.eTargetIntent = skill->eTargetIntent; command.fAimX = enemy->fPositionX; command.fAimZ = enemy->fPositionZ;
-                if (!trySkill(*skill, command)) continue;
-                runtime.iSkillCursor = (index + 1u) % runtime.ComboSkills.size();
-                runtime.pReason = "Available class skill admitted";
-                started = true;
-                break;
+                const float dx = enemy->fMoveGoalX - x, dz = enemy->fMoveGoalZ - z;
+                const float length = std::hypot(dx, dz);
+                const float lead = (std::min)(length, enemy->fMoveSpeed * std::clamp(skill->iHitTimeMs * .001f, .1f, .35f));
+                if (length > .01f) { x += dx * lead / length; z += dz * lead / length; }
             }
-            if (!started && nearest > 1.5f)
-            {
-                C2S_MOVE move; move.iClientSequence = ++runtime.iSequence;
-                move.fGoalX = enemy->fPositionX + (merc.fPositionX - enemy->fPositionX) * 1.5f / nearest;
-                move.fGoalZ = enemy->fPositionZ + (merc.fPositionZ - enemy->fPositionZ) * 1.5f / nearest;
-                Execute_PlayerMove(merc, move);
-                runtime.pReason = "Approaching available class skill range";
-            }
-            else if (!started) runtime.pReason = "No class skill currently available";
+            choices.push_back({skill, (std::max)(.01f, weight), x, z});
+        }
+        bool started = false;
+        // Awakening has its own tactical opportunity and 30-second admission gate.
+        if (awakening && (choices.empty() || nearbyEnemies >= 2u || HealthFraction(*enemy) < .4f) &&
+            trySkill(*awakening, enemy->fPositionX, enemy->fPositionZ))
+        { runtime.pReason = "Awakening admitted at a tactical opportunity"; started = true; }
+        while (!started && !choices.empty())
+        {
+            float total = 0.f; for (const auto& choice : choices) total += choice.weight;
+            float draw = RandomUnit(runtime.iRandomState) * total;
+            std::size_t index = choices.size() - 1u;
+            for (std::size_t i = 0u; i < choices.size(); ++i)
+                if ((draw -= choices[i].weight) <= 0.f) { index = i; break; }
+            const auto selected = choices[index];
+            started = trySkill(*selected.skill, selected.x, selected.z);
+            choices.erase(choices.begin() + index);
+            if (started) runtime.pReason = "Weighted skill choice matched range, resources and pressure";
+        }
+        if (started)
+        {
+            runtime.eTactic = COLOSSEUM_TACTIC::ENGAGE;
+            // The admitted action owns its real duration, including early HOLD
+            // release and interruption. Never wait for a nominal duration afterward.
+            runtime.iNextAttackTick = m_iServerTick + 3u +
+                static_cast<std::uint32_t>(RandomUnit(runtime.iRandomState) * 6.f);
             continue;
         }
-        if (runtime.iSkillCursor >= runtime.ComboSkills.size())
-        {
-            runtime.iSkillCursor = 0u; runtime.fComboElapsed = runtime.fStepWaitElapsed = 0.f;
-        }
-        const auto* skill = m_GameplayCatalog.Find_Skill(runtime.ComboSkills[runtime.iSkillCursor]);
-        if (!skill || skill->strInputSlot == "LMB" || skill->eCharacterClass != merc.eCharacterClass)
-        { runtime.pReason = "Published combo binding is unavailable"; continue; }
-        const float range = (std::max)(2.f, skill->fMaximumRange);
-        if (nearest > range)
-        {
-            C2S_MOVE move; move.iClientSequence = ++runtime.iSequence;
-            const float stop = (std::max)(1.f, range * .75f);
-            move.fGoalX = enemy->fPositionX + (merc.fPositionX - enemy->fPositionX) * stop / nearest;
-            move.fGoalZ = enemy->fPositionZ + (merc.fPositionZ - enemy->fPositionZ) * stop / nearest;
-            Execute_PlayerMove(merc, move);
-            runtime.pReason = "Approaching the next combo skill range";
-            continue;
-        }
-        // Exactly one ordered skill is attempted. A rejected cooldown/resource
-        // check never falls through to another slot or to a basic attack.
-        C2S_USE_SKILL command;
-        command.iClientSequence = ++runtime.iSequence; command.iSkillId = skill->iSkillId;
-        command.eTargetIntent = skill->eTargetIntent; command.fAimX = enemy->fPositionX; command.fAimZ = enemy->fPositionZ;
-        if (trySkill(*skill, command))
-        {
-            ++runtime.iSkillCursor; runtime.fStepWaitElapsed = 0.f;
-            runtime.pReason = "Ordered skill admitted";
-        }
-        else
-        {
-            runtime.fStepWaitElapsed += elapsed;
-            const auto cooldown = merc.CooldownEndTickBySkillId.find(skill->iSkillId);
-            runtime.pReason = !altVReady(*skill) ? "Waiting for the ALT_V minimum interval" :
-                cooldown != merc.CooldownEndTickBySkillId.end() &&
-                static_cast<std::int32_t>(cooldown->second - m_iServerTick) > 0 ?
-                "Waiting for the ordered skill cooldown" : "Waiting for ordered skill resources or status";
-            if (runtime.fStepWaitElapsed >= runtime.fStepWaitTimeout)
-            {
-                runtime.iSkillCursor = 0u; runtime.fComboElapsed = runtime.fStepWaitElapsed = 0.f;
-                runtime.pReason = "Unavailable skill exceeded its wait deadline";
-            }
-        }
+        SERVER_NAV_POINT position;
+        if (choosePosition(false, false, 3.f, merc.fMoveSpeed, position) && moveTo(position))
+        { runtime.eTactic = COLOSSEUM_TACTIC::REPOSITION; runtime.pReason = "Repositioning for a useful attack range"; }
+        else { runtime.eTactic = COLOSSEUM_TACTIC::WAIT; runtime.pReason = "Holding position while useful skills recover"; }
     }
 }

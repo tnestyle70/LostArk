@@ -2879,7 +2879,8 @@ winnerTeam은 종료 전 또는 무승부에255이며 승리 팀은0/1이다. �
 
 COLOSSEUM_MERCENARY_AI(3)는 팀 파티 슬롯을 사용하지만 인간 session·match 인원으로 세지 않는다.
 인간1~4명 입장과 팀별5후보 spawn은 admission 및 reliable FIFO 준비 후 함께 commit한다.
-각 팀은 배정된 인간과 직접 고용한 용병을 합해4명을 유지하며 인간 없는 팀의 용병도 미선택 후보로 남는다.
+각 팀은 배정된 인간과 고용한 용병을 합해4명을 유지한다. 인간1명 입장에서는 상대 팀 용병4명만 자동 선발하고,
+본인 팀 용병3명은 직접 고용한다. 인간2~4명 입장에서는 양 팀이 부족한 용병을 직접 고용한다.
 후보는 피해 대상과 전투HP 표시에서 제외한다. 혼합 `S2C_PARTY_ROSTER::Members`는 팀당 총4명이고
 용병은 부족한 슬롯만 채운다. GuideCompanion을 포함하지 않는다.
 이 roster는 콜로세움 경기에서만 발신하며 일반 월드의 인간 최대4명 파티 계약은 유지하며 안내 Guide는 roster에 넣지 않는다.
@@ -2888,7 +2889,20 @@ COLOSSEUM_MERCENARY_AI(3)는 팀 파티 슬롯을 사용하지만 인간 session
 보스 레이드의 balance 데이터·기본 damage/knockback 경로는 변경하지 않는다. Artist T1/5도 PvP만 적용한다.
 넉백은 기존 이동 거리·이동 시간의10%(V0.51m/217ms, ALT_V1.6m/150ms)이며 별도 CC 시간은 유지한다.
 용병별 ALT_V는 마지막 승인부터 최소900tick(30초) 간격을 지키고 원래 더 긴 cooldown도 검사한다.
-이 마지막 승인 tick은 사망·부활·rotation reset에서 초기화하지 않으며 인간 스킬 입력에는 적용하지 않는다.
+이 마지막 승인 tick은 사망·부활·전술 상태 초기화에서 지우지 않으며 인간 스킬 입력에는 적용하지 않는다.
+
+다섯 직업의 일반 스킬은 현재 stance·자원·쿨다운·거리 조건을 통과한 후보에서 상황 점수와 최근 반복
+감점을 적용해 가중 무작위 선택한다. 차원술사에도 같은 정책과 LMB를 적용하며 고정 슬롯 순서는 없다.
+SPACE는 위험 회피, STANDUP은 기상, ALT_V는 별도 공격 기회와 위의30초 승인 간격을 사용한다.
+시작한 native COMBO의 입력창은 매 fixed tick에 처리하고 HOLD release도 기존 스킬 실행기를 사용한다.
+
+Server가 실제 상대 시전의 지상 목표·단계·이미 소모된 적중, 남은 native projectile와 combat object를
+관측한다. 향후0.8초의 범위·높이·도착 시간을 계산하고 후보 착지뿐 아니라 이동 경로를 평가한다.
+10Hz 관측과 약0.16~0.28초 전술 판단을 분리하며, 표적 유지·아군 지원·기회 공격·낮은HP/열세시
+제한된 후퇴와 재교전을 결정한다. 경기와 용병별 난수 상태는 재현 가능하고 서로 독립이다.
+이는 관측 기반의 제한된 전술 정책이며 미래 입력·아직 생성되지 않은 투사체를 미리 알지 못한다.
+선택한 명령은 기존 Execute_PlayerMove/Execute_PlayerSkill의 navigation·cancel·cost·damage 권위를
+통과한다. pending COMBO 명령은 새 스킬 승인이나 실제 회피 성공으로 기록하지 않는다.
 
 RAID_ENTRY_TARGET 끝에 MAHARAKA/MAHARAKA_RETURN을 추가해 기존 발탄·쿠크 값은 유지한다.
 Bern↔Maharaka의 G dock은 같은 전원 확인 UI와 all-or-none party transfer를 사용한다.
