@@ -8840,7 +8840,10 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		if (!m_strChildRowsStatus.empty()) ImGui::TextWrapped("%s", m_strChildRowsStatus.c_str());
 	}
 	constexpr f32_t labelWidth = CompositionTimeline::LabelWidth;
-	constexpr f32_t rulerHeight = 24.f;
+	const auto metrics = CompositionTimeline::GetCompactRowMetrics();
+	const f32_t rulerHeight = metrics.rulerHeight;
+	const f32_t laneHeight = metrics.laneHeight;
+	const f32_t boxHeight = metrics.boxHeight;
 	const ImVec2 available = ImGui::GetContentRegionAvail();
 	if (m_bFitRequested && durationMs > 0u)
 	{
@@ -8983,7 +8986,6 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		cache.canEditWorldAnimation = bool(m_EditWorldAnimation);
 		cache.cameraBlendOutMs = std::move(cameraBlendOutMs);
 	}
-	const bool hasPatternLane = cache.hasPatternLane, hasBossAnimations = cache.hasBossAnimations;
 	std::size_t nextRow = cache.nextRow;
     std::vector<std::size_t> childDisplayRows(m_PatternChildRows.size());
     std::map<std::string, std::size_t> childAnimationLanes;
@@ -9000,7 +9002,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
             if (inserted) ++nextRow;
             childDisplayRows[i] = lane->second;
         }
-	const f32_t height = rulerHeight + TIMELINE_LANE_HEIGHT * static_cast<f32_t>(nextRow);
+	const f32_t height = rulerHeight + laneHeight * static_cast<f32_t>(nextRow);
 	layoutScope.reset();
 	if (!ImGui::BeginChild("##KoukuTimeline", ImVec2(0.f, 0.f), ImGuiChildFlags_Borders,
 		ImGuiWindowFlags_HorizontalScrollbar))
@@ -9017,11 +9019,31 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	{
 		CompositionTimeline::DrawBox(draw, min, max, color, selected, label, leftGrip, rightGrip);
 	};
-	const auto laneY = [&](const std::size_t lane) {
-		return origin.y + rulerHeight + TIMELINE_LANE_HEIGHT * static_cast<f32_t>(lanes[lane].firstRow);
-	};
+	const auto stageGeometry = CompositionTimeline::DrawCategoryLane(draw,
+		ImVec2(origin.x, origin.y + rulerHeight), timelineWidth, labelWidth, 1u,
+		laneHeight, "Stages", CompositionTimeline::StageLabelColor);
+	std::array<const char*, laneCount> laneLabels{
+		"Animation", "Logic", "Summon", "World", "Scene Profile"};
+	std::array<ImU32, laneCount> laneLabelColors{
+		CompositionTimeline::AnimationLabelColor, CompositionTimeline::LogicLabelColor,
+		CompositionTimeline::SummonLabelColor, CompositionTimeline::WorldLabelColor,
+		CompositionTimeline::SceneProfileLabelColor};
+	for (std::size_t i = 0u; i < 6u; ++i)
+	{
+		laneLabels[presentationLaneBegin + i] = Presentation_Label(i == 5u ?
+			KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE : static_cast<KOUKU_SAYDON_PRESENTATION_KIND>(i));
+		laneLabelColors[presentationLaneBegin + i] = CompositionTimeline::PresentationLabelColor;
+	}
+	laneLabels[patternLane] = "Pattern";
+	laneLabelColors[patternLane] = IM_COL32(180, 160, 240, 255);
+	std::array<CompositionTimeline::CATEGORY_LANE_GEOMETRY, laneCount> laneGeometry{};
+	for (std::size_t lane = 0u; lane < laneCount; ++lane)
+		laneGeometry[lane] = CompositionTimeline::DrawCategoryLane(draw,
+			ImVec2(origin.x, origin.y + rulerHeight + laneHeight * static_cast<f32_t>(lanes[lane].firstRow)),
+			timelineWidth, labelWidth, lanes[lane].rowCount, laneHeight,
+			laneLabels[lane], laneLabelColors[lane], lane % 2u == 0u);
 	const auto boxY = [&](const std::size_t lane, const std::string& occurrenceId) {
-		return laneY(lane) + TIMELINE_LANE_HEIGHT * static_cast<f32_t>(lanes[lane].layout.occurrenceRows.at(occurrenceId));
+		return laneGeometry[lane].SubrowOrigin(lanes[lane].layout.occurrenceRows.at(occurrenceId)).y;
 	};
 	// The publisher reads saved files; selection, scrubbing and box edits only
 	// change this draft. Save owns the source-write lock until publish completes.
@@ -9053,8 +9075,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			const auto delta = movingGroup ? groupMove.deltaMs : 0;
 			const float x = origin.x + labelWidth + static_cast<float>(std::int64_t(group.startMs) + delta) * scale;
 			const float endX = origin.x + labelWidth + static_cast<float>(std::int64_t(group.endMs) + delta) * scale;
-			const float y = origin.y + rulerHeight + static_cast<float>(lane.firstRow + group.firstRow) * TIMELINE_LANE_HEIGHT;
-			const float bottom = y + static_cast<float>(group.rowCount) * TIMELINE_LANE_HEIGHT;
+			const float y = origin.y + rulerHeight + static_cast<float>(lane.firstRow + group.firstRow) * laneHeight;
+			const float bottom = y + static_cast<float>(group.rowCount) * laneHeight;
 			draw->AddRectFilled(ImVec2(x - 2.f, y), ImVec2(endX + 2.f, bottom), IM_COL32(95, 186, 180, 25), 3.f);
 			draw->AddRect(ImVec2(x - 2.f, y), ImVec2(endX + 2.f, bottom), IM_COL32(125, 205, 198, 125), 3.f);
 		}
@@ -9089,64 +9111,38 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		draw->AddLine(ImVec2(playheadX, origin.y), ImVec2(playheadX, origin.y + height),
 			(patternPreview || serverPlayback) ? IM_COL32(255, 220, 72, 230) : IM_COL32(200, 200, 200, 140), 1.5f);
 	}
-	draw->AddText(ImVec2(origin.x + 4.f, origin.y + rulerHeight + 4.f), CompositionTimeline::StageLabelColor, "Stages");
-	if (hasBossAnimations || worldClipLanes.empty())
-		draw->AddText(ImVec2(origin.x + 4.f, laneY(animationLane) + 4.f),
-			CompositionTimeline::AnimationLabelColor, "Animation");
 	for (const auto& actorLane : worldClipLanes)
 	{
-		const float y = laneY(animationLane) + TIMELINE_LANE_HEIGHT * static_cast<float>(actorLane.firstRow);
-		std::string label = actorLane.label;
-		if (const auto separator = label.rfind(" / "); separator != std::string::npos)
-			label.erase(0u, separator + 3u);
-		label = "Anim: " + label;
-		if (actorLane.slotId != "actor") label += " / " + actorLane.slotId;
-		draw->PushClipRect(ImVec2(origin.x, y), ImVec2(origin.x + labelWidth - 4.f, y + TIMELINE_LANE_HEIGHT), true);
-		draw->AddText(ImVec2(origin.x + 4.f, y + 4.f), CompositionTimeline::AnimationLabelColor, label.c_str());
-		draw->PopClipRect();
-		if (ImGui::IsMouseHoveringRect(ImVec2(origin.x, y), ImVec2(origin.x + labelWidth, y + TIMELINE_LANE_HEIGHT)))
+		const float y = laneGeometry[animationLane].SubrowOrigin(actorLane.firstRow).y;
+		if (ImGui::IsMouseHoveringRect(ImVec2(origin.x, y), ImVec2(origin.x + labelWidth, y + laneHeight)))
 			ImGui::SetTooltip("Animation: %s\nWorld occurrence: %s\nSlot: %s\nClips keep this actor's own timing.",
 				actorLane.label.c_str(), actorLane.occurrenceId.c_str(), actorLane.slotId.c_str());
 	}
-	draw->AddText(ImVec2(origin.x + 4.f, laneY(logicLane) + 4.f),
-		CompositionTimeline::LogicLabelColor, "Logic");
 
 	std::string editStageId, editOccurrenceId, editLogicBoxId, editPatternBoxId;
 	std::uint32_t newPatternStartMs = 0u, newPatternDurationMs = 0u;
 	bool_t newPatternRepeat = false;
 	std::uint32_t newOffset = 0u, newSourceStart = 0u, newSourceEnd = 0u, newPlayMs = 0u, newStageDuration = 0u;
 	std::uint32_t newLogicStartMs = 0u, newLogicDurationMs = 0u;
-	const f32_t summonLaneY = laneY(summonLane);
-	draw->AddText(ImVec2(origin.x + 4.f, summonLaneY + 4.f),
-		CompositionTimeline::SummonLabelColor, "Summon");
 	std::string editSummonBoxId;
 	std::uint32_t newSummonStartMs = 0u, newSummonDurationMs = 0u;
-	const f32_t worldLaneY = laneY(worldLane);
-	draw->AddText(ImVec2(origin.x + 4.f, worldLaneY + 4.f),
-		CompositionTimeline::WorldLabelColor, "World");
 	std::string editWorldBoxId;
 	std::uint32_t newWorldStartMs = 0u, newWorldDurationMs = 0u;
-	const f32_t sceneLaneY = laneY(sceneLane);
-	draw->AddText(ImVec2(origin.x + 4.f, sceneLaneY + 4.f),
-		CompositionTimeline::SceneProfileLabelColor, "Scene Profile");
 	std::string editSceneBoxId;
 	std::uint32_t newSceneStartMs = 0u, newSceneDurationMs = 0u;
 	bool commitGroupMove = false;
 	std::string editPresentationBoxId;
 	KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE editedPresentationBox;
-	for (int i = 0; i < 6; ++i)
-		draw->AddText(ImVec2(origin.x + 4.f, laneY(presentationLaneBegin + static_cast<std::size_t>(i)) + 4.f),
-			CompositionTimeline::PresentationLabelColor, Presentation_Label(i == 5 ? KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE : static_cast<KOUKU_SAYDON_PRESENTATION_KIND>(i)));
 	int32_t moveStageDirection = 0;
 	std::uint32_t stageStartMs = 0u;
 	for (const auto& stage : pattern->Stages)
 	{
 		const f32_t stageX = origin.x + labelWidth + stageStartMs * scale;
-		const f32_t stageY = origin.y + rulerHeight;
+		const f32_t stageY = stageGeometry.SubrowOrigin(0u).y;
 		const f32_t stageWidth = (std::max)(8.f, stage.iDurationMs * scale);
 		ImGui::PushID(stage.strStageId.c_str());
 		ImGui::SetCursorScreenPos(ImVec2(stageX, stageY));
-		ImGui::InvisibleButton("##StageBox", ImVec2(stageWidth, TIMELINE_LANE_HEIGHT - 2.f));
+		ImGui::InvisibleButton("##StageBox", ImVec2(stageWidth, boxHeight));
 		if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemActivated())
 		{
 			m_iDragOriginOffsetMs = stage.iDurationMs;
@@ -9173,10 +9169,10 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			}
 		}
 		drawBox(ImVec2(stageX, stageY),
-			ImVec2(stageX + shownStageWidth, stageY + 22.f), CompositionTimeline::StageColor,
+			ImVec2(stageX + shownStageWidth, stageY + boxHeight), CompositionTimeline::StageColor,
 			contains(m_TimelineSelectedStageIds, stage.strStageId), stage.strStageId.c_str(), false, true);
 		hitBoxes.push_back({ stage.strStageId, {}, ImVec2(stageX, stageY),
-			ImVec2(stageX + shownStageWidth, stageY + 22.f) });
+			ImVec2(stageX + shownStageWidth, stageY + boxHeight) });
 		ImGui::PopID();
 
 		for (const auto& occurrence : stage.AnimationOccurrences)
@@ -9186,7 +9182,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			const f32_t width = (std::max)(8.f, occurrence.iPlayMs * scale);
 			ImGui::PushID(occurrence.strOccurrenceId.c_str());
 			ImGui::SetCursorScreenPos(ImVec2(x, y));
-			ImGui::InvisibleButton("##AnimationBox", ImVec2(width, 22.f));
+			ImGui::InvisibleButton("##AnimationBox", ImVec2(width, boxHeight));
 			if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemActivated())
 			{
 				m_iDragOriginOffsetMs = occurrence.iStartOffsetMs;
@@ -9237,11 +9233,11 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 					occurrence.iStartOffsetMs, occurrence.iSourceStartMs, occurrence.iPlayMs,
 					occurrence.fPlayRate, occurrence.strEndPolicy.c_str());
 			drawBox(ImVec2(shownX, y),
-				ImVec2(shownX + shownWidth, y + 22.f), CompositionTimeline::AnimationColor,
+				ImVec2(shownX + shownWidth, y + boxHeight), CompositionTimeline::AnimationColor,
 				contains(m_TimelineSelectedOccurrenceIds, occurrence.strOccurrenceId) ||
 				contains(m_TimelineSelectedStageIds, stage.strStageId), occurrence.strRuntimeClip.c_str());
 			hitBoxes.push_back({ stage.strStageId, occurrence.strOccurrenceId, ImVec2(shownX, y),
-				ImVec2(shownX + shownWidth, y + 22.f) });
+				ImVec2(shownX + shownWidth, y + boxHeight) });
 			ImGui::PopID();
 		}
 		stageStartMs += stage.iDurationMs;
@@ -9254,7 +9250,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		const f32_t width = (std::max)(8.f, box.iDurationMs * scale);
 		ImGui::PushID(box.strOccurrenceId.c_str());
 		ImGui::SetCursorScreenPos(ImVec2(x, logicBoxY));
-		ImGui::InvisibleButton("##LogicBox", ImVec2(width, 22.f));
+		ImGui::InvisibleButton("##LogicBox", ImVec2(width, boxHeight));
 		if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemActivated())
 		{
 			m_iDragOriginOffsetMs = box.iStartMs;
@@ -9314,10 +9310,10 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			ImGui::SetTooltip("%s\n%s | start %u ms | lifetime %u ms",
 				box.strOccurrenceId.c_str(), label.c_str(), box.iStartMs, box.iDurationMs);
 		drawBox(ImVec2(shownX, logicBoxY),
-			ImVec2(shownX + shownWidth, logicBoxY + 22.f), TIMELINE_LOGIC_COLOR,
+			ImVec2(shownX + shownWidth, logicBoxY + boxHeight), TIMELINE_LOGIC_COLOR,
 			contains(m_TimelineSelectedOccurrenceIds, box.strOccurrenceId), label.c_str());
 		hitBoxes.push_back({ {}, box.strOccurrenceId, ImVec2(shownX, logicBoxY),
-			ImVec2(shownX + shownWidth, logicBoxY + 22.f) });
+			ImVec2(shownX + shownWidth, logicBoxY + boxHeight) });
 		ImGui::PopID();
 	}
 	/* Summon boxes: spawn at the left edge, despawn at the right edge. */
@@ -9328,7 +9324,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		const f32_t width = (std::max)(8.f, box.iDurationMs * scale);
 		ImGui::PushID(box.strOccurrenceId.c_str());
 		ImGui::SetCursorScreenPos(ImVec2(x, summonBoxY));
-		ImGui::InvisibleButton("##SummonBox", ImVec2(width, 22.f));
+		ImGui::InvisibleButton("##SummonBox", ImVec2(width, boxHeight));
 		if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemActivated())
 		{
 			m_iDragOriginOffsetMs = box.iStartMs;
@@ -9373,14 +9369,13 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			ImGui::SetTooltip("%s\n%s | spawn %u ms | lifetime %u ms",
 				box.strOccurrenceId.c_str(), label.c_str(), box.iStartMs, box.iDurationMs);
 		drawBox(ImVec2(shownX, summonBoxY),
-			ImVec2(shownX + shownWidth, summonBoxY + 22.f), TIMELINE_SUMMON_COLOR,
+			ImVec2(shownX + shownWidth, summonBoxY + boxHeight), TIMELINE_SUMMON_COLOR,
 			contains(m_TimelineSelectedOccurrenceIds, box.strOccurrenceId), label.c_str());
 		hitBoxes.push_back({ {}, box.strOccurrenceId, ImVec2(shownX, summonBoxY),
-			ImVec2(shownX + shownWidth, summonBoxY + 22.f) });
+			ImVec2(shownX + shownWidth, summonBoxY + boxHeight) });
 		ImGui::PopID();
 	}
 	/* A Pattern box owns a fixed execution window, including its child Logic. */
-	if (hasPatternLane) draw->AddText(ImVec2(origin.x + 4.f, laneY(patternLane) + 4.f), IM_COL32(180, 160, 240, 255), "Pattern");
 	for (const auto& box : pattern->PatternOccurrences)
 	{
 		const f32_t patternBoxY = boxY(patternLane, box.strOccurrenceId);
@@ -9388,7 +9383,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		const f32_t width = (std::max)(8.f, box.iDurationMs * scale);
 		ImGui::PushID(box.strOccurrenceId.c_str());
 		ImGui::SetCursorScreenPos(ImVec2(x, patternBoxY));
-		ImGui::InvisibleButton("##PatternBox", ImVec2(width, 22.f));
+		ImGui::InvisibleButton("##PatternBox", ImVec2(width, boxHeight));
 		if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemActivated())
 		{
 			m_iDragOriginOffsetMs = box.iStartMs;
@@ -9434,10 +9429,10 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			ImGui::SetTooltip("%s\n%s | spawn %u ms | lifetime %u ms",
 				box.strOccurrenceId.c_str(), label.c_str(), box.iStartMs, box.iDurationMs);
 		drawBox(ImVec2(shownX, patternBoxY),
-			ImVec2(shownX + shownWidth, patternBoxY + 22.f), IM_COL32(115, 90, 170, 255),
+			ImVec2(shownX + shownWidth, patternBoxY + boxHeight), IM_COL32(115, 90, 170, 255),
 			contains(m_TimelineSelectedOccurrenceIds, box.strOccurrenceId), label.c_str());
 		hitBoxes.push_back({ {}, box.strOccurrenceId, ImVec2(shownX, patternBoxY),
-			ImVec2(shownX + shownWidth, patternBoxY + 22.f) });
+			ImVec2(shownX + shownWidth, patternBoxY + boxHeight) });
 		ImGui::PopID();
 	}
 
@@ -9446,7 +9441,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
         for (std::size_t i = 0u; i < m_PatternChildRows.size(); ++i)
         {
             const auto& row = m_PatternChildRows[i];
-            const float y = origin.y + rulerHeight + TIMELINE_LANE_HEIGHT * static_cast<float>(childDisplayRows[i]);
+            const float y = origin.y + rulerHeight + laneHeight * static_cast<float>(childDisplayRows[i]);
             if (i == 0u || std::find(childDisplayRows.begin(), childDisplayRows.begin() + i, childDisplayRows[i]) == childDisplayRows.begin() + i)
                 draw->AddText(ImVec2(origin.x + 12.f, y + 4.f), IM_COL32(180, 160, 220, 255),
                     row.stageId.empty() ? "  > Child" : "  > Animation");
@@ -9454,8 +9449,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
             const float width = (std::max)(8.f, row.durationMs * scale);
             ImGui::PushID(row.runtimeId.c_str());
             ImGui::SetCursorScreenPos(ImVec2(x, y));
-            const bool openSource = ImGui::InvisibleButton("##ExpandedChild", ImVec2(width, 22.f));
-            drawBox(ImVec2(x, y), ImVec2(x + width, y + 22.f), row.color, false, row.label.c_str());
+            const bool openSource = ImGui::InvisibleButton("##ExpandedChild", ImVec2(width, boxHeight));
+            drawBox(ImVec2(x, y), ImVec2(x + width, y + boxHeight), row.color, false, row.label.c_str());
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%u..%u ms in Parent\nSource: %s / %s\nClick to edit the shared source box.",
                 row.label.c_str(), row.startMs, row.startMs + row.durationMs, row.patternId.c_str(), row.occurrenceId.c_str());
             ImGui::PopID();
@@ -9480,7 +9475,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		const float width = (std::max)(8.f, row.durationMs * scale);
 		ImGui::PushID(row.id.c_str());
 		ImGui::SetCursorScreenPos(top);
-		ImGui::InvisibleButton("##WorldAnimationClip", ImVec2(width, 22.f));
+		ImGui::InvisibleButton("##WorldAnimationClip", ImVec2(width, boxHeight));
 		if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemActivated())
 		{
 			m_TimelineSelectedStageIds.clear(); m_TimelineSelectedOccurrenceIds.clear();
@@ -9537,12 +9532,12 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 				row.startMs, row.startMs + row.durationMs, row.edit.sourceInMs, row.edit.sourceOutMs,
 				row.editable ? "Drag center: move. Drag either edge: trim this clip. Save commits the animation." : "This legacy clip has no explicit Source Out.");
 		}
-		drawBox(ImVec2(shownX, top.y), ImVec2(shownX + shownWidth, top.y + 22.f),
+		drawBox(ImVec2(shownX, top.y), ImVec2(shownX + shownWidth, top.y + boxHeight),
 			IM_COL32(105, 151, 186, 240), m_SelectedWorldAnimationId == row.id, row.label.c_str());
 		if (row.editable)
 		{
-			draw->AddLine(ImVec2(shownX + 3.f, top.y + 4.f), ImVec2(shownX + 3.f, top.y + 18.f), IM_COL32(235, 245, 255, 210), 2.f);
-			draw->AddLine(ImVec2(shownX + shownWidth - 3.f, top.y + 4.f), ImVec2(shownX + shownWidth - 3.f, top.y + 18.f), IM_COL32(235, 245, 255, 210), 2.f);
+			draw->AddLine(ImVec2(shownX + 3.f, top.y + 4.f), ImVec2(shownX + 3.f, top.y + boxHeight - 4.f), IM_COL32(235, 245, 255, 210), 2.f);
+			draw->AddLine(ImVec2(shownX + shownWidth - 3.f, top.y + 4.f), ImVec2(shownX + shownWidth - 3.f, top.y + boxHeight - 4.f), IM_COL32(235, 245, 255, 210), 2.f);
 		}
 		ImGui::PopID();
 	}
@@ -9555,7 +9550,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		const f32_t width = (std::max)(8.f, box.iDurationMs * scale);
 		ImGui::PushID(box.strOccurrenceId.c_str());
 		ImGui::SetCursorScreenPos(ImVec2(x, worldBoxY));
-		ImGui::InvisibleButton("##WorldBox", ImVec2(width, 22.f));
+		ImGui::InvisibleButton("##WorldBox", ImVec2(width, boxHeight));
 		if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemActivated())
 		{
 			m_iDragOriginOffsetMs = box.iStartMs;
@@ -9602,10 +9597,10 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			ImGui::SetTooltip("%s\n%s | start %u ms | shown %u ms | speed x%.2f",
 				box.strOccurrenceId.c_str(), label.c_str(), box.iStartMs, box.iDurationMs, box.fPlaybackSpeed);
 		drawBox(ImVec2(shownX, worldBoxY),
-			ImVec2(shownX + shownWidth, worldBoxY + 22.f), TIMELINE_WORLD_COLOR,
+			ImVec2(shownX + shownWidth, worldBoxY + boxHeight), TIMELINE_WORLD_COLOR,
 			contains(m_TimelineSelectedOccurrenceIds, box.strOccurrenceId), label.c_str());
 		hitBoxes.push_back({ {}, box.strOccurrenceId, ImVec2(shownX, worldBoxY),
-			ImVec2(shownX + shownWidth, worldBoxY + 22.f) });
+			ImVec2(shownX + shownWidth, worldBoxY + boxHeight) });
 		ImGui::PopID();
 	}
 	for (const auto& box : pattern->SceneProfileOccurrences)
@@ -9615,7 +9610,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		const f32_t width = (std::max)(8.f, box.iDurationMs * scale);
 		ImGui::PushID(box.strOccurrenceId.c_str());
 		ImGui::SetCursorScreenPos(ImVec2(x, sceneBoxY));
-		ImGui::InvisibleButton("##SceneProfileBox", ImVec2(width, 22.f));
+		ImGui::InvisibleButton("##SceneProfileBox", ImVec2(width, boxHeight));
 		if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemActivated())
 		{
 			m_iDragOriginOffsetMs = box.iStartMs;
@@ -9660,10 +9655,10 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			ImGui::SetTooltip("%s\n%s | start %u ms | lifetime %u ms | blend %u ms",
 				box.strOccurrenceId.c_str(), label.c_str(), box.iStartMs, box.iDurationMs, box.iBlendMs);
 		drawBox(ImVec2(shownX, sceneBoxY),
-			ImVec2(shownX + shownWidth, sceneBoxY + 22.f), TIMELINE_SCENE_PROFILE_COLOR,
+			ImVec2(shownX + shownWidth, sceneBoxY + boxHeight), TIMELINE_SCENE_PROFILE_COLOR,
 			contains(m_TimelineSelectedOccurrenceIds, box.strOccurrenceId), label.c_str());
 		hitBoxes.push_back({ {}, box.strOccurrenceId, ImVec2(shownX, sceneBoxY),
-			ImVec2(shownX + shownWidth, sceneBoxY + 22.f) });
+			ImVec2(shownX + shownWidth, sceneBoxY + boxHeight) });
 		ImGui::PopID();
 	}
 	for (const auto& box : pattern->PresentationOccurrences)
@@ -9676,7 +9671,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		const f32_t width = (std::max)(8.f, box.iDurationMs * scale);
 		ImGui::PushID(box.strOccurrenceId.c_str());
 		ImGui::SetCursorScreenPos(ImVec2(x, presentationLaneY));
-		ImGui::InvisibleButton("##PresentationBox", ImVec2(width, 22.f));
+		ImGui::InvisibleButton("##PresentationBox", ImVec2(width, boxHeight));
 		if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemActivated())
 		{
 			m_iDragOriginOffsetMs = box.iStartMs;
@@ -9796,14 +9791,14 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			{
 				const float endX = shownX + shownWidth;
 				draw->AddRectFilled(ImVec2(endX, presentationLaneY + 4.f),
-					ImVec2(endX + float(shot->iBlendOutMs) * scale, presentationLaneY + 18.f), IM_COL32(94, 165, 151, 70));
+					ImVec2(endX + float(shot->iBlendOutMs) * scale, presentationLaneY + boxHeight - 4.f), IM_COL32(94, 165, 151, 70));
 				draw->AddText(ImVec2(endX + 3.f, presentationLaneY + 3.f), IM_COL32(154, 205, 191, 255), "return");
 			}
 		drawBox(ImVec2(shownX, presentationLaneY),
-			ImVec2(shownX + shownWidth, presentationLaneY + 22.f), CompositionTimeline::PresentationColor,
+			ImVec2(shownX + shownWidth, presentationLaneY + boxHeight), CompositionTimeline::PresentationColor,
 			contains(m_TimelineSelectedOccurrenceIds, box.strOccurrenceId), label.c_str());
 		hitBoxes.push_back({ {}, box.strOccurrenceId, ImVec2(shownX, presentationLaneY),
-			ImVec2(shownX + shownWidth, presentationLaneY + 22.f) });
+			ImVec2(shownX + shownWidth, presentationLaneY + boxHeight) });
 		ImGui::PopID();
 	}
 	if (!canInteract)
@@ -9814,7 +9809,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	// Submit the background last: existing boxes/ruler win hit testing, while
 	// an empty-space press owns an active item instead of dragging the window.
 	ImGui::SetCursorScreenPos(origin);
-	const f32_t canvasHeight = (std::max)(height + 48.f,
+	const f32_t canvasHeight = (std::max)(height + 2.f * laneHeight,
 		ImGui::GetWindowSize().y + ImGui::GetScrollY());
 	ImGui::InvisibleButton("##KoukuMarquee", ImVec2(timelineWidth, canvasHeight));
 	if (canInteract && ImGui::IsItemActivated())
@@ -9899,7 +9894,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		}
 	}
 	ImGui::SetCursorScreenPos(origin);
-	ImGui::Dummy(ImVec2(timelineWidth, height + 48.f));
+	ImGui::Dummy(ImVec2(timelineWidth, height + 2.f * laneHeight));
 	ImGui::EndChild();
 	drawScope.reset();
 	std::string status;

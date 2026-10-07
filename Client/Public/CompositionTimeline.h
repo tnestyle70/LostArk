@@ -64,6 +64,41 @@ inline void DrawTrackLabel(ImDrawList* draw, const ImVec2 origin, const float wi
 	draw->PopClipRect();
 }
 
+// A category owns one label and all of its display subrows. Stable identities,
+// interval packing and edit transactions remain with the authoring owner.
+struct CATEGORY_LANE_GEOMETRY
+{
+	ImVec2 origin, contentMin, contentMax;
+	float rowHeight = 0.f;
+	std::size_t rowCount = 0u;
+
+	ImVec2 SubrowOrigin(const std::size_t row) const
+	{
+		return {contentMin.x, contentMin.y + rowHeight * static_cast<float>(row)};
+	}
+};
+
+inline CATEGORY_LANE_GEOMETRY DrawCategoryLane(ImDrawList* draw,
+	const ImVec2 origin, const float totalWidth, const float labelWidth,
+	const std::size_t rowCount, const float rowHeight, const char* label,
+	const ImU32 labelColor, const bool alternate = false,
+	const float labelRightPadding = 0.f)
+{
+	const CATEGORY_LANE_GEOMETRY geometry{origin,
+		{origin.x + labelWidth, origin.y},
+		{origin.x + totalWidth, origin.y + rowHeight * static_cast<float>(rowCount)},
+		rowHeight, rowCount};
+	if (!draw || !rowCount || rowHeight <= 0.f || totalWidth <= labelWidth)
+		return geometry;
+	draw->AddRectFilled(origin, geometry.contentMax,
+		alternate ? IM_COL32(31, 34, 41, 255) : IM_COL32(38, 41, 49, 255));
+	draw->AddLine(origin, {geometry.contentMax.x, origin.y}, IM_COL32(64, 68, 76, 255));
+	draw->AddLine(geometry.contentMin, {geometry.contentMin.x, geometry.contentMax.y},
+		IM_COL32(64, 68, 76, 255));
+	DrawTrackLabel(draw, origin, labelWidth - labelRightPadding, rowHeight, label, labelColor);
+	return geometry;
+}
+
 // Keep the legacy constants for editors that own their own row geometry.
 // Font-aware callers use the same dimensions for drawing and hit testing.
 inline float GetBoxHeight()

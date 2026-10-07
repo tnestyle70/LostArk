@@ -12251,8 +12251,9 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 	const bool_t bMutationAdmitted,
 	const bool_t bPatternMutationAdmitted)
 {
-	const float TIMELINE_ROW_HEIGHT = CompositionTimeline::GetLaneHeight();
-	const float TIMELINE_BLOCK_HEIGHT = CompositionTimeline::GetBoxHeight();
+	const auto metrics = CompositionTimeline::GetCompactRowMetrics();
+	const float TIMELINE_ROW_HEIGHT = metrics.laneHeight;
+	const float TIMELINE_BLOCK_HEIGHT = metrics.boxHeight;
     if ((m_bTimelineMoveActive || m_bTimelineTrimActive) &&
         (ImGui::IsKeyPressed(ImGuiKey_Escape) || !m_pBalanceTool ||
          m_iTimelineGestureDraftGeneration != m_pBalanceTool->Get_ValtanDraftGeneration() ||
@@ -12792,10 +12793,10 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 		fCanvasWidth = (std::max)(fCanvasWidth,
 			fDisplayEndX + TIMELINE_CANVAS_END_PADDING_PX);
 	}
-	const float fTimelineHeight = TIMELINE_ROW_HEIGHT *
-		(1.f + static_cast<float>(std::accumulate(
+	const float fTimelineHeight = metrics.rulerHeight + TIMELINE_ROW_HEIGHT *
+		static_cast<float>(std::accumulate(
 			m_TimelineLaneSubrowCounts.begin(),
-			m_TimelineLaneSubrowCounts.end(), std::size_t{ 0u })));
+			m_TimelineLaneSubrowCounts.end(), std::size_t{ 0u }));
 	// Keep the pan track visible, with the complete sequence width known before BeginChild.
 	ImGui::SetNextWindowContentSize(
 		ImVec2(TIMELINE_LANE_LABEL_WIDTH + fCanvasWidth, 0.f));
@@ -12811,7 +12812,7 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 	const ImVec2 CanvasOrigin = ImGui::GetCursorScreenPos();
 	ImGui::SetCursorScreenPos(ImVec2(CanvasOrigin.x + TIMELINE_LANE_LABEL_WIDTH, CanvasOrigin.y));
 	ImGui::InvisibleButton(
-		"##TimelineRuler", ImVec2(fCanvasWidth, TIMELINE_ROW_HEIGHT));
+		"##TimelineRuler", ImVec2(fCanvasWidth, metrics.rulerHeight));
 	const ImVec2 RulerMin = ImGui::GetItemRectMin();
 	const ImVec2 RulerMax = ImGui::GetItemRectMax();
 	ImDrawList* const pDrawList = ImGui::GetWindowDrawList();
@@ -12890,7 +12891,7 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 	const bool_t bLaneColliderExists = bLaneColliderDraftReady ?
 		"NONE" != LaneColliderDraft.hitShape :
 		(nullptr != pLaneStage && pLaneStage->Has_HitShape());
-	float fLaneY = CanvasOrigin.y + TIMELINE_ROW_HEIGHT;
+	float fLaneY = CanvasOrigin.y + metrics.rulerHeight;
 	for (const TIMELINE_LANE eLane : TIMELINE_LANE_ORDER)
 	{
 		const std::size_t iSubrowCount =
@@ -12908,7 +12909,10 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 		case TIMELINE_LANE::SCENE_PROFILE: labelColor = CompositionTimeline::SceneProfileLabelColor; break;
 		default: break;
 		}
-		pDrawList->AddText(ImVec2(CanvasOrigin.x + 4.f, fLaneY + 4.f), labelColor, Lane_Label(eLane));
+		const auto LaneGeometry = CompositionTimeline::DrawCategoryLane(pDrawList,
+			ImVec2(CanvasOrigin.x, fLaneY), TIMELINE_LANE_LABEL_WIDTH + fCanvasWidth,
+			TIMELINE_LANE_LABEL_WIDTH, iSubrowCount, TIMELINE_ROW_HEIGHT,
+			Lane_Label(eLane), labelColor, static_cast<std::size_t>(eLane) % 2u != 0u, 28.f);
 		ImGui::SetCursorScreenPos(ImVec2(CanvasOrigin.x + TIMELINE_LANE_LABEL_WIDTH - 28.f, fLaneY));
 		ImGui::PushID(static_cast<int32_t>(eLane));
 		const bool_t bColliderLaneButtonAdmitted =
@@ -12971,7 +12975,7 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 			}
 		}
 		ImGui::PopID();
-		ImGui::SetCursorScreenPos(ImVec2(CanvasOrigin.x + TIMELINE_LANE_LABEL_WIDTH, fLaneY));
+		ImGui::SetCursorScreenPos(LaneGeometry.contentMin);
 		ImGui::PushID(static_cast<int32_t>(eLane));
 		ImGui::InvisibleButton(
 			"##TimelineLaneRow", ImVec2(fCanvasWidth, fLaneHeight));
@@ -13007,8 +13011,7 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 		const float fEndX = (std::max)(
 			fStartX + fDisplayWidthPx,
 			fSemanticEndX);
-		const float fSubrowY = RowMin.y + TIMELINE_ROW_HEIGHT *
-			static_cast<float>(Item.iSubrow);
+		const float fSubrowY = LaneGeometry.SubrowOrigin(Item.iSubrow).y;
 		const ImVec2 BlockMin(fStartX, fSubrowY);
 		const ImVec2 BlockMax(
 			(std::min)(fEndX, RowMax.x), fSubrowY + TIMELINE_BLOCK_HEIGHT);
@@ -13860,7 +13863,7 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 		m_iTimelineMoveSourceEndMs = 0u;
 	}
 	ImGui::SetCursorScreenPos(CanvasOrigin);
-	ImGui::Dummy(ImVec2(TIMELINE_LANE_LABEL_WIDTH + fCanvasWidth, fTimelineHeight + 48.f));
+	ImGui::Dummy(ImVec2(TIMELINE_LANE_LABEL_WIDTH + fCanvasWidth, fTimelineHeight + 2.f * TIMELINE_ROW_HEIGHT));
 	ImGui::EndChild();
 }
 

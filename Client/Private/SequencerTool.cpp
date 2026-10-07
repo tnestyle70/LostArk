@@ -248,11 +248,11 @@ namespace
             case PANE::RESOURCES:
                 ImGui::Text("Character Select / %s", m_State.selectedLabel.c_str());
                 if (m_Timeline)
-                    for (const auto* kind : ROW_KINDS)
+                    for (const auto& lane : MOVIE_LANES)
                     {
                         size_t count = 0;
-                        for (const auto& row : m_Timeline->rows) if (row.kind == kind) count += row.boxes.size();
-                        ImGui::BulletText("%s: %zu", kind, count);
+                        for (const auto& row : m_Timeline->rows) if (row.kind == lane.sourceKind) count += row.boxes.size();
+                        ImGui::BulletText("%s: %zu", lane.label, count);
                     }
                 break;
             case PANE::PREVIEW:
@@ -402,21 +402,18 @@ namespace
             ImGui::EndDisabled();
         }
 
-        void Render_Transport()
+        void Render_PlaybackButtons(const bool sequencer)
         {
-            ImGui::TextUnformatted("World / Character Select");
-            Render_CategorySelector();
-            bool repeatMovie = m_State.repeatMovie;
-            ImGui::BeginDisabled(!m_State.available || !m_OpenedAuthoring || !m_Callbacks.setRepeatMovie ||
-                m_RowDirty || m_State.authoringPublishPending);
-            if (ImGui::Checkbox("Repeat movie", &repeatMovie))
-                m_RequestedRepeatMovie = REPEAT_MOVIE_REQUEST{m_State.selectedClassId, repeatMovie};
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-                ImGui::SetTooltip("Off: Play All runs the intro once and holds its last frame. An explicit Loop preview also plays once.\nOn: the intro continues into the repeating loop. Save movie keeps this class setting.");
-            ImGui::EndDisabled();
+            if (sequencer)
+            {
+                ImGui::BeginDisabled(!m_OpenedAuthoring || m_State.authoringPublishPending);
+                if (ImGui::Button("Save")) m_SaveRequested = true;
+                ImGui::EndDisabled();
+                ImGui::SameLine();
+            }
             ImGui::BeginDisabled(!m_State.available || !m_Callbacks.play);
             const bool restarting = m_State.active && m_State.activeClassId == m_State.selectedClassId;
-            if (ImGui::Button(restarting ? "Play All (restart intro)" : "Play All")) m_Pending = COMMAND::PLAY;
+            if (ImGui::Button(sequencer ? "Play" : restarting ? "Play All (restart intro)" : "Play All")) m_Pending = COMMAND::PLAY;
             ImGui::EndDisabled();
             ImGui::SameLine();
             ImGui::BeginDisabled(!m_State.active || m_State.completedHold || !m_Callbacks.setPaused);
@@ -430,6 +427,36 @@ namespace
             ImGui::BeginDisabled(!m_State.active || !m_Callbacks.stop);
             if (ImGui::Button("Stop")) m_Pending = COMMAND::STOP;
             ImGui::EndDisabled();
+            if (sequencer)
+            {
+                ImGui::SameLine();
+                ImGui::BeginDisabled(m_RowDirty || m_State.authoringPublishPending ||
+                    !m_State.available || !m_Callbacks.seek);
+                if (ImGui::Button("Reset")) Queue_Seek(m_ViewLoop, 0.);
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                    ImGui::SetTooltip("Pause at the start of the selected Intro or Loop.");
+                ImGui::EndDisabled();
+                ImGui::SameLine();
+                ImGui::Text("%s | %.0f / %.0f ms",
+                    m_State.authoringDirty || m_RowDirty ? "Unsaved" : "Saved",
+                    MatchesPlayback() ? m_State.clockMs : double(m_EditMs),
+                    m_ViewLoop ? m_State.loopDurationMs : m_State.introDurationMs);
+            }
+        }
+
+        void Render_Transport()
+        {
+            ImGui::TextUnformatted("World / Character Select");
+            Render_CategorySelector();
+            bool repeatMovie = m_State.repeatMovie;
+            ImGui::BeginDisabled(!m_State.available || !m_OpenedAuthoring || !m_Callbacks.setRepeatMovie ||
+                m_RowDirty || m_State.authoringPublishPending);
+            if (ImGui::Checkbox("Repeat movie", &repeatMovie))
+                m_RequestedRepeatMovie = REPEAT_MOVIE_REQUEST{m_State.selectedClassId, repeatMovie};
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                ImGui::SetTooltip("Off: Play All runs the intro once and holds its last frame. An explicit Loop preview also plays once.\nOn: the intro continues into the repeating loop. Save movie keeps this class setting.");
+            ImGui::EndDisabled();
+            Render_PlaybackButtons(false);
             if (m_State.completedHold)
                 ImGui::TextWrapped("Movie complete - holding last frame. Play All replays.");
             Render_RateControl();
@@ -479,8 +506,24 @@ namespace
         }
 
 
-        inline static constexpr std::array<const char*, 8> ROW_KINDS = {
-            "World Model", "Animation", "Camera", "Effect", "Material", "Light", "Sound", "Time Control"};
+        struct MOVIE_LANE
+        {
+            const char* sourceKind;
+            const char* label;
+            ImU32 labelColor, boxColor;
+        };
+        // Display categories share the Boss/Sequence order. Source kinds and
+        // actor/slot rows remain the identities used by movie edit callbacks.
+        inline static constexpr std::array<MOVIE_LANE, 8> MOVIE_LANES = {{
+            {"Animation", "Animation", Client::CompositionTimeline::AnimationLabelColor, Client::CompositionTimeline::AnimationColor},
+            {"World Model", "World", Client::CompositionTimeline::WorldLabelColor, Client::CompositionTimeline::WorldColor},
+            {"Material", "Material", Client::CompositionTimeline::SceneProfileLabelColor, Client::CompositionTimeline::SceneProfileColor},
+            {"Effect", "Effect", Client::CompositionTimeline::PresentationLabelColor, Client::CompositionTimeline::PresentationColor},
+            {"Sound", "Sound", Client::CompositionTimeline::PresentationLabelColor, Client::CompositionTimeline::PresentationColor},
+            {"Camera", "Camera", Client::CompositionTimeline::PresentationLabelColor, Client::CompositionTimeline::PresentationColor},
+            {"Light", "Light", Client::CompositionTimeline::PresentationLabelColor, Client::CompositionTimeline::PresentationColor},
+            {"Time Control", "Time Control", Client::CompositionTimeline::LogicLabelColor, Client::CompositionTimeline::LogicColor}
+        }};
 
         bool Row_SourceChanged() const
         { return m_EditBox && m_EditBox->generation != m_State.authoringGeneration; }
@@ -619,6 +662,7 @@ namespace
 
         void Render_Timeline()
         {
+            Render_PlaybackButtons(true);
             ImGui::Text("%s / %s", m_State.selectedLabel.c_str(), m_ViewLoop ? "Loop" : "Intro");
             ImGui::BeginDisabled(m_RowDirty);
             if (ImGui::RadioButton("Intro", !m_ViewLoop)) { m_ViewLoop = false; m_FollowPlayback = false; m_EditBox.reset(); m_SelectedBox.clear(); m_SelectedKind.clear(); m_Drag.reset(); }
@@ -634,22 +678,8 @@ namespace
                 ImGui::Text("Movie %.3f s -> source %.3f s | source rate %.3fx | movie speed %.2fx",
                     m_State.clockMs * .001, m_State.sourceClockMs * .001, m_State.sourceRate, m_State.playbackRate);
             const float duration = static_cast<float>(m_Timeline->movieDurationMs);
-            ImGui::BeginDisabled(m_RowDirty || !m_State.available || !m_Callbacks.seek);
-            ImGui::SetNextItemWidth(-1.f);
-            (void)ImGui::SliderFloat("##ClassSelectionClock", &m_EditMs, 0.f, (std::max)(1.f, duration), "Movie %.0f ms");
-            if (ImGui::IsItemActivated())
-            {
-                m_Scrubbing = true; m_ScrubLoop = m_ViewLoop;
-                m_RequestedPause = true; m_Pending = COMMAND::PAUSE;
-            }
-            if (ImGui::IsItemDeactivatedAfterEdit()) Queue_Seek(m_ScrubLoop, m_EditMs);
-            if (ImGui::IsItemDeactivated()) m_Scrubbing = false;
-            if (ImGui::Button("Intro start")) { m_ViewLoop = false; Queue_Seek(false, 0.); }
-            ImGui::SameLine();
-            if (ImGui::Button("Loop start")) { m_ViewLoop = true; Queue_Seek(true, 0.); }
-            ImGui::EndDisabled();
             Render_VisibilityControls();
-            m_RowFilter.Draw("Filter rows", 220.f);
+            m_RowFilter.Draw("Filter boxes", 220.f);
             ImGui::SameLine(); ImGui::SetNextItemWidth(155.f);
             ImGui::BeginDisabled(m_Drag.has_value() || m_Scrubbing);
             if (ImGui::SliderFloat("Zoom", &m_PixelsPerSecond, 1.f, 500.f, "%.1f px/s"))
@@ -664,6 +694,7 @@ namespace
             {
                 using namespace Client::CompositionTimeline;
                 constexpr float labelWidth = LabelWidth;
+                const auto rowMetrics = GetCompactRowMetrics();
                 auto* draw = ImGui::GetWindowDrawList();
                 const auto origin = ImGui::GetCursorScreenPos();
                 const float availableWidth = (std::max)(40.f, ImGui::GetWindowSize().x -
@@ -686,13 +717,13 @@ namespace
                 // The canvas can fill the window without changing the authored time scale.
                 const float width = (std::max)(availableWidth, duration * .001f * m_PixelsPerSecond);
                 const float timeX = origin.x + labelWidth;
-                DrawRuler(draw, {timeX, origin.y}, {timeX + width, origin.y + LaneHeight},
+                DrawRuler(draw, {timeX, origin.y}, {timeX + width, origin.y + rowMetrics.rulerHeight},
                     static_cast<uint32_t>(duration), m_PixelsPerSecond);
                 ImGui::SetCursorScreenPos({timeX, origin.y});
                 const bool canRulerSeek = !m_RowDirty && !m_State.authoringPublishPending &&
                     m_State.available && bool(m_Callbacks.seek) && !m_Drag;
                 ImGui::BeginDisabled(!canRulerSeek);
-                ImGui::InvisibleButton("MovieRulerSeek", {width, LaneHeight});
+                ImGui::InvisibleButton("MovieRulerSeek", {width, rowMetrics.rulerHeight});
                 if (ImGui::IsItemActivated())
                 {
                     m_Scrubbing = true; m_ScrubLoop = m_ViewLoop;
@@ -706,36 +737,15 @@ namespace
                     m_Scrubbing = false;
                 }
                 ImGui::EndDisabled();
-                float y = origin.y + LaneHeight;
-                const auto foldHeader = [&](const std::string& key, const std::string& label,
-                    const std::string& detail, const ImU32 color, const bool defaultOpen)
+                float y = origin.y + rowMetrics.rulerHeight;
+                using REF = std::pair<const Client::CLASS_MOVIE_TIMELINE_ROW*, const Client::CLASS_MOVIE_TIMELINE_BOX*>;
+                const double cursorMs = m_Scrubbing ? m_EditMs : MatchesPlayback() ? m_State.clockMs : m_EditMs;
+                for (const auto& lane : MOVIE_LANES)
                 {
-                    auto [state, inserted] = m_TimelineFoldOpen.try_emplace(key, defaultOpen);
-                    ImGui::PushID(key.c_str());
-                    ImGui::SetCursorScreenPos({origin.x, y});
-                    if (ImGui::InvisibleButton("Fold", {labelWidth, LaneHeight})) state->second = !state->second;
-                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", detail.c_str());
-                    const float centre = y + LaneHeight * .5f;
-                    if (state->second)
-                        draw->AddTriangleFilled({origin.x + 4.f, centre - 3.f}, {origin.x + 12.f, centre - 3.f},
-                            {origin.x + 8.f, centre + 3.f}, color);
-                    else
-                        draw->AddTriangleFilled({origin.x + 5.f, centre - 4.f}, {origin.x + 11.f, centre},
-                            {origin.x + 5.f, centre + 4.f}, color);
-                    DrawTrackLabel(draw, {origin.x + 14.f, y}, labelWidth - 14.f, LaneHeight, label.c_str(), color);
-                    ImGui::PopID();
-                    return state->second;
-                };
-                const ImU32 labelColors[] = {WorldLabelColor, AnimationLabelColor, PresentationLabelColor,
-                    PresentationLabelColor, SceneProfileLabelColor, SceneProfileLabelColor, PresentationLabelColor, LogicLabelColor};
-                for (size_t family = 0; family < ROW_KINDS.size(); ++family)
-                {
-                    const std::string kind = ROW_KINDS[family];
-                    using REF = std::pair<const Client::CLASS_MOVIE_TIMELINE_ROW*, const Client::CLASS_MOVIE_TIMELINE_BOX*>;
-                    std::map<std::string, std::vector<REF>> partitions;
+                    std::vector<REF> refs;
+                    std::vector<DISPLAY_INTERVAL> intervals;
                     size_t total = 0, active = 0;
-                    const double cursorMs = m_Scrubbing ? m_EditMs : MatchesPlayback() ? m_State.clockMs : m_EditMs;
-                    for (const auto& row : m_Timeline->rows) if (row.kind == kind)
+                    for (const auto& row : m_Timeline->rows) if (row.kind == lane.sourceKind)
                         for (const auto& box : row.boxes)
                         {
                             ++total;
@@ -743,57 +753,35 @@ namespace
                             if (alive) ++active;
                             if (m_ActiveOnly && !alive) continue;
                             if (!m_RowFilter.PassFilter((row.label + " " + box.label + " " + box.resource).c_str())) continue;
-                            partitions[kind == "Animation" ? row.id : kind].push_back({&row, &box});
+                            refs.push_back({&row, &box});
+                            intervals.push_back({box.id, box.movieStartMs, box.movieEndMs - box.movieStartMs,
+                                (std::max)(0., box.movieHoldEndMs - box.movieEndMs), {}});
                         }
-                    if (total == 0) continue;
-                    const std::string heading = kind + " (" + std::to_string(total) + ")";
-                    const std::string detail = kind + " / " + std::to_string(total) + " boxes / " + std::to_string(active) + " active";
-                    const bool compact = kind == "World Model" || kind == "Material" || kind == "Light";
-                    const bool expanded = foldHeader("family|" + kind, heading, detail, labelColors[family], !compact);
-                    if (!expanded)
-                        for (const auto& [partition, refs] : partitions) for (const auto& ref : refs)
-                        {
-                            const auto& box = *ref.second;
-                            draw->AddRectFilled({timeX + float(box.movieStartMs * .001 * m_PixelsPerSecond), y + 9.f},
-                                {timeX + float(box.movieEndMs * .001 * m_PixelsPerSecond), y + 14.f}, IM_COL32(73,95,120,100));
-                        }
-                    y += LaneHeight;
-                    if (!expanded) continue;
-                    for (const auto& [partition, refs] : partitions)
+                    // Display rows share a category; source actor/slot rows still
+                    // own selection, overlap validation and all edit commands.
+                    const auto layout = AllocateDisplayRows(std::move(intervals), MinimumBoxWidth * 1000. / m_PixelsPerSecond);
+                    const auto geometry = DrawCategoryLane(draw, {origin.x, y}, labelWidth + width,
+                        labelWidth, layout.rowCount, rowMetrics.laneHeight, lane.label, lane.labelColor,
+                        (&lane - MOVIE_LANES.data()) % 2 != 0);
+                    std::vector<std::vector<REF>> refsByLane(layout.rowCount);
+                    for (const auto& ref : refs) refsByLane[layout.occurrenceRows.at(ref.second->id)].push_back(ref);
+                    ImGui::PushID(lane.sourceKind);
+                    for (size_t subrow = 0; subrow < refsByLane.size(); ++subrow)
                     {
-                        if (kind == "Animation")
-                        {
-                            const auto& actor = refs.front().first->label;
-                            const bool show = foldHeader("actor|" + m_State.selectedClassId + "|" + partition,
-                                "Anim: " + actor, actor, AnimationLabelColor, true);
-                            y += LaneHeight;
-                            if (!show) continue;
-                        }
-                        std::vector<DISPLAY_INTERVAL> intervals;
-                        for (const auto& [row, box] : refs)
-                            intervals.push_back({box->id, box->movieStartMs, box->movieEndMs - box->movieStartMs,
-                                (std::max)(0., box->movieHoldEndMs - box->movieEndMs), {}});
-                        const auto layout = AllocateDisplayRows(std::move(intervals), MinimumBoxWidth * 1000. / m_PixelsPerSecond);
-                        std::vector<std::vector<REF>> refsByLane(layout.rowCount);
-                        for (const auto& ref : refs) refsByLane[layout.occurrenceRows.at(ref.second->id)].push_back(ref);
-                        for (size_t lane = 0; lane < refsByLane.size(); ++lane)
-                        {
-                            const ImVec2 p{origin.x, y};
-                            const auto& laneRefs = refsByLane[lane];
-                            ImGui::PushID(partition.c_str()); ImGui::PushID(static_cast<int>(lane));
-                            ImGui::SetCursorScreenPos(p);
-                            ImGui::InvisibleButton("lane", {labelWidth + width, LaneHeight});
-                            const bool hovered = ImGui::IsItemHovered();
-                            draw->AddRectFilled({timeX, y}, {timeX + width, y + LaneHeight}, IM_COL32(32,36,44,255));
-                            std::string label = kind + " " + std::to_string(lane + 1u);
-                            if (compact && !laneRefs.empty()) label = laneRefs.front().first->label;
-                            DrawTrackLabel(draw, p, labelWidth, LaneHeight, label.c_str(), labelColors[family]);
-                            for (const auto& [row, box] : laneRefs)
-                                Render_TimelineBox(*row, *box, p, labelWidth, hovered, family);
-                            ImGui::PopID(); ImGui::PopID();
-                            y += LaneHeight;
-                        }
+                        const ImVec2 p{origin.x, geometry.SubrowOrigin(subrow).y};
+                        ImGui::PushID(static_cast<int>(subrow));
+                        ImGui::SetCursorScreenPos(p);
+                        ImGui::InvisibleButton("lane", {labelWidth + width, geometry.rowHeight});
+                        const bool hovered = ImGui::IsItemHovered();
+                        if (hovered && io.MousePos.x < geometry.contentMin.x)
+                            ImGui::SetTooltip("%s / %zu boxes / %zu active / %zu shown",
+                                lane.label, total, active, refs.size());
+                        for (const auto& [row, box] : refsByLane[subrow])
+                            Render_TimelineBox(*row, *box, p, labelWidth, hovered, lane.boxColor, rowMetrics);
+                        ImGui::PopID();
                     }
+                    ImGui::PopID();
+                    y = geometry.contentMax.y;
                 }
                 const double clockMs = m_Scrubbing ? m_EditMs : MatchesPlayback() ? m_State.clockMs : m_EditMs;
                 const float cursorX = timeX + float(clockMs * .001 * m_PixelsPerSecond);
@@ -834,7 +822,8 @@ namespace
         }
 
         void Render_TimelineBox(const Client::CLASS_MOVIE_TIMELINE_ROW& row,
-            const Client::CLASS_MOVIE_TIMELINE_BOX& box, const ImVec2 p, float labelWidth, bool hovered, size_t family)
+            const Client::CLASS_MOVIE_TIMELINE_BOX& box, const ImVec2 p, float labelWidth, bool hovered,
+            const ImU32 boxColor, const Client::CompositionTimeline::ROW_METRICS& rowMetrics)
         {
             using namespace Client::CompositionTimeline;
             auto* draw = ImGui::GetWindowDrawList();
@@ -843,15 +832,13 @@ namespace
             { start = m_Drag->startMovie; end = m_Drag->endMovie; }
             const float x = p.x + labelWidth + float(start * .001 * m_PixelsPerSecond);
             const float endX = (std::max)(x + MinimumBoxWidth, p.x + labelWidth + float(end * .001 * m_PixelsPerSecond));
-            const ImVec2 min{x, p.y}, max{endX, p.y + BoxHeight};
+            const ImVec2 min{x, p.y}, max{endX, p.y + rowMetrics.boxHeight};
             const bool selected = (m_SelectedKind == row.kind && m_SelectedBox == box.id) ||
                 (row.kind == "World Model" && m_InspectedWorldId == box.id);
             const bool editable = row.kind == "Camera" || row.kind == "Effect" || row.kind == "Sound" ||
                 (row.kind == "Animation" && !box.loopAnimation && box.nativeDurationMs > 0.);
-            const ImU32 colors[] = {WorldColor, AnimationColor, PresentationColor, PresentationColor,
-                SceneProfileColor, SceneProfileColor, PresentationColor, LogicColor};
-            std::string label = box.label;
-            ImU32 color = colors[family];
+            std::string label = row.kind == "Animation" ? row.label + " | " + box.label : box.label;
+            ImU32 color = boxColor;
             if (row.kind == "World Model")
             {
                 const auto item = std::find_if(m_Inspection.items.begin(), m_Inspection.items.end(),
@@ -865,10 +852,12 @@ namespace
             }
             DrawBox(draw, min, max, color, selected, label.c_str(), editable, editable);
             if (box.movieHoldEndMs > end)
-                draw->AddRectFilled({endX, p.y + 7.f}, {p.x + labelWidth + float(box.movieHoldEndMs * .001 * m_PixelsPerSecond), p.y + LaneHeight - 7.f}, IM_COL32(72,116,79,70));
+                draw->AddRectFilled({endX, p.y + rowMetrics.boxHeight * .3f},
+                    {p.x + labelWidth + float(box.movieHoldEndMs * .001 * m_PixelsPerSecond), p.y + rowMetrics.boxHeight * .7f}, IM_COL32(72,116,79,70));
             if (hovered && ImGui::IsMouseHoveringRect(min, max))
             {
-                ImGui::SetTooltip("%s\nMovie %.3f - %.3f s | Source %.3f - %.3f s\n%s", box.label.c_str(),
+                ImGui::SetTooltip("%s\n%s\n%s\nMovie %.3f - %.3f s | Source %.3f - %.3f s\n%s",
+                    row.label.c_str(), box.label.c_str(), box.resource.c_str(),
                     start * .001, end * .001, box.sourceStartMs * .001, box.sourceEndMs * .001,
                     editable ? (row.kind == "Camera" ? "Drag to reorder cuts; drag an edge to move the shared cut boundary. Double-click to edit camera." : "Drag to move; drag an edge to trim. Double-click to open the resource.") : "This track spans its phase. Select it to edit its keys.");
                 if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !m_RowDirty)
@@ -1203,7 +1192,6 @@ namespace
         bool m_ViewLoop = false, m_FollowPlayback = true;
         float m_PixelsPerSecond = 45.f;
         bool m_TimelineFitRequested = true;
-        std::map<std::string, bool> m_TimelineFoldOpen;
         int m_CameraKey = 0;
         bool m_LiveCamera = true;
         ImGuiTextFilter m_RowFilter;
