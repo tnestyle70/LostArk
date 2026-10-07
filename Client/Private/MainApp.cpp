@@ -11605,6 +11605,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 			m_pMapTool = move(mapTool);
 		}
 		m_pMapTool->SetOpen(true);
+		if (!m_pMapTool->IsOpen()) return E_FAIL;
 		break;
 	case DEBUG_TOOL::ANIMATION:
 		if (FAILED(EnsureAnimationPreviewBackend())) return E_FAIL;
@@ -14390,7 +14391,19 @@ void CMainApp::RefreshWorldObjectResources()
 {
 	if (!m_pKoukuSaydonActionWorkbench && !m_pSequenceActionWorkbench) return;
 	for (auto* editor : {m_pKoukuSaydonActionWorkbench.get(), m_pSequenceActionWorkbench.get()})
-		if (editor) editor->Set_WorldAnimationCallbacks(
+		if (editor)
+		{
+			editor->Set_WorldAnimationHistoryCallbacks(
+				[this](bool prepare) -> std::shared_ptr<const CWorldSequenceDocument> {
+					if (prepare && FAILED(EnsureDebugTool(DEBUG_TOOL::WORLD_OBJECT, false))) return {};
+					return m_pWorldObjectTool ? m_pWorldObjectTool->Capture_TimelineHistory(prepare) : nullptr;
+				},
+				[this](const auto& expected, const auto& desired, std::string& status) {
+					if (!m_pWorldObjectTool)
+					{ status = "World animation owner is unavailable. History was preserved."; return false; }
+					return m_pWorldObjectTool->Restore_TimelineHistory(expected, desired, status);
+				});
+			editor->Set_WorldAnimationCallbacks(
 			[this](const KOUKU_WORLD_ANIMATION_EDIT& edit, std::string& status) {
 				if (FAILED(EnsureDebugTool(DEBUG_TOOL::WORLD_OBJECT, false)) || !m_pWorldObjectTool)
 				{ status = "World animation owner is unavailable. Existing clips are preserved."; return false; }
@@ -14408,6 +14421,7 @@ void CMainApp::RefreshWorldObjectResources()
 						if (owner) owner->Notify_WorldAnimationSaved();
 				return saved;
 			});
+		}
 	const auto* level = CLevel_KakulSaydonArena::Get_Active();
 	const CWorldSequenceDocument* document = m_pWorldObjectTool ? m_pWorldObjectTool->Get_AuthoringDraftDocument() : nullptr;
 	const uint64_t generation = document ? m_pWorldObjectTool->Get_SavedGeneration() : 0;

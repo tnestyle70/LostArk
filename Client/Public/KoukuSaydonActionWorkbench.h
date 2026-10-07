@@ -5,6 +5,7 @@
 #include "CompositionAnimationResource.h"
 #include "KoukuCinematicAnimationCatalog.h"
 #include "CompositionWorkbenchSession.h"
+#include "EditorUndoHistory.h"
 #include "KoukuSaydonCompositionDocument.h"
 
 #include <cstdint>
@@ -20,6 +21,7 @@ namespace Client
 {
 	enum class ANIMATION_BONE_TARGET : uint8_t;
 	struct ANIMATION_MODEL_TARGET_VIEW;
+	class CWorldSequenceDocument;
     // One immutable click snapshot. Outputs are temporary; neither Save nor Publish is performed.
     struct KOUKU_DRAFT_PLAY_REQUEST final
     {
@@ -148,6 +150,7 @@ namespace Client
 	{
 		std::string strPatternId;
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE Occurrence;
+		bool operator==(const KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST&) const = default;
 	};
 
 
@@ -189,6 +192,8 @@ namespace Client
 		void Begin_WorkbenchFrame() override;
 		void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) override;
 		void End_WorkbenchFrame() override;
+		bool Undo_Edit(std::string& status);
+		bool Redo_Edit(std::string& status);
 		COMPOSITION_WORKBENCH_VIEW_REQUEST Consume_WorkbenchViewRequest() override;
 		void Tick_Background() { Poll_PublishProcess(); Poll_DraftPlayProcess(); }
 		bool_t Consume_ProductInventoryRefreshRequest() {
@@ -201,6 +206,11 @@ namespace Client
 			std::function<bool_t(const KOUKU_WORLD_ANIMATION_EDIT&, std::string&)> edit,
 			std::function<bool_t(std::string&)> save)
 		{ m_EditWorldAnimation = std::move(edit); m_SaveWorldAnimation = std::move(save); }
+		using WORLD_HISTORY_DOCUMENT = std::shared_ptr<const CWorldSequenceDocument>;
+		void Set_WorldAnimationHistoryCallbacks(
+			std::function<WORLD_HISTORY_DOCUMENT(bool)> capture,
+			std::function<bool(const WORLD_HISTORY_DOCUMENT&, const WORLD_HISTORY_DOCUMENT&, std::string&)> restore)
+		{ m_CaptureWorldAnimationHistory = std::move(capture); m_RestoreWorldAnimationHistory = std::move(restore); }
 		bool_t Consume_WorldObjectEditRequest(KOUKU_WORLD_OBJECT_EDIT_REQUEST& outRequest);
 		void Notify_WorldObjectEditResult(std::string status) { m_strStatus = std::move(status); }
 		/* MainApp supplies admitted camera/audio rows from the existing readers;
@@ -1048,6 +1058,9 @@ namespace Client
 		KOUKU_WORLD_OBJECT_EDIT_REQUEST m_PendingWorldObjectEditRequest;
 		std::function<bool_t(const KOUKU_WORLD_ANIMATION_EDIT&, std::string&)> m_EditWorldAnimation;
 		std::function<bool_t(std::string&)> m_SaveWorldAnimation;
+		std::function<WORLD_HISTORY_DOCUMENT(bool)> m_CaptureWorldAnimationHistory;
+		std::function<bool(const WORLD_HISTORY_DOCUMENT&, const WORLD_HISTORY_DOCUMENT&, std::string&)> m_RestoreWorldAnimationHistory;
+		WORLD_HISTORY_DOCUMENT m_HistoryWorldDocument;
 		bool m_WorldAnimationEditsPending = false;
 		std::string m_SelectedWorldAnimationId;
 		int m_WorldAnimationDragMode = -1;
@@ -1130,6 +1143,29 @@ namespace Client
 		std::optional<TIMELINE_CLIPBOARD> m_TimelineClipboard;
         bool m_CompositionResourcesFocused = false;
 		KOUKU_SAYDON_COMPOSITION_DOCUMENT m_Draft;
+		struct EDIT_HISTORY_STATE
+		{
+			std::shared_ptr<const KOUKU_SAYDON_COMPOSITION_DOCUMENT> document;
+			std::vector<KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST> geometry;
+			WORLD_HISTORY_DOCUMENT worldDocument;
+			KOUKU_PATTERN_SELECTION patternSelection = KOUKU_PATTERN_SELECTION::GATE;
+			std::string gate, folder, bundle, pattern, stage, animation, logic, logicBox, summon, summonBox;
+			std::string world, worldBox, scene, sceneBox, presentation, presentationBox, patternBox, timelinePattern, cursorPattern;
+			std::vector<std::string> stages, occurrences;
+			std::uint32_t cursor = 0u;
+		};
+		EDIT_HISTORY_STATE Capture_EditHistory(bool prepareWorld = false);
+		void Begin_EditHistory(bool prepareWorld = false);
+		bool Restore_EditHistory(const EDIT_HISTORY_STATE& state, const EDIT_HISTORY_STATE& expected, std::string& status);
+		void Finish_EditHistory(bool force = false);
+		void Render_EditHistoryButtons(const char* id);
+		void Process_EditHistoryRequest();
+		CEditorUndoHistory<EDIT_HISTORY_STATE> m_EditHistory{16u};
+		std::shared_ptr<const KOUKU_SAYDON_COMPOSITION_DOCUMENT> m_HistoryDocument;
+		std::uint64_t m_HistoryDocumentGeneration = UINT64_MAX;
+		int m_PendingHistoryDirection = 0;
+		bool m_HistoryRestoring = false;
+		bool m_HistoryWindowFocused = false;
 		// This view owns labels and stable IDs, never pointers into a replaced draft.
 		struct PATTERN_TREE_LEAF
 		{

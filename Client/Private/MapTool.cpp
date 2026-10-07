@@ -91,6 +91,10 @@ void Client::CMapTool::Toggle()
 
 void Client::CMapTool::SetOpen(const bool_t isOpen)
 {
+#ifdef _DEBUG
+    if (isOpen && !m_bOpen)
+        if (auto* app = CMainApp::Get_Active(); app && !app->Debug_PrepareMapToolAuthoring(m_Status)) return;
+#endif
 	if (isOpen && !m_bOpen && !m_bRuntimeAuthoring && Runtime_AuthoringTargets().pPlacements)
 		m_iAuthoringLevelIndex = ETOUI(LEVEL::END);
 	if (m_bOpen && !isOpen)
@@ -1456,6 +1460,15 @@ void Client::CMapTool::Render_Inspector()
 		pEntry->record.sourceLevel.c_str(),
 		pEntry->record.transformSource.c_str());
 	ImGui::TextWrapped("Asset: %s", pEntry->record.assetId.c_str());
+#ifdef _DEBUG
+    if (ImGui::Button("Open Object Details"))
+    {
+        if (auto* app = CMainApp::Get_Active())
+            (void)app->Debug_OpenWorldObjectDetails(Debug_GetActiveAreaId(),
+                pEntry->record.placementId, false, m_Status);
+    }
+    ImGui::TextDisabled("Live Level mesh, material, textures and transform inspector");
+#endif
 	ImGui::Text("Runtime: %s",
 		nullptr != pEntry->batch ? "Static Batch" : "Standalone Fallback");
 	ImGui::BeginDisabled(m_bRuntimeAuthoring && !Can_ChangeRuntimeStructure());

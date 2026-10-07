@@ -1,3 +1,4 @@
+#include "imgui.h"
 #include "Effect_Tool_Internal.h"
 #include "AnimationTargetService.h"
 #include "Character.h"
@@ -265,6 +266,7 @@ bool_t Client::CEffect_Tool::Try_CreateDocument()
     m_MarkedElementIds.clear();
 	Release_WorldPreview(true);
     Clear_ProductCuePreview();
+    Clear_DocumentHistory();
     m_ActiveDocument = std::move(Document);
     m_bMarkedElementIdsNeedPrune = true;
 	m_ActiveRegistryBoundAuditionProvenance.reset();
@@ -727,6 +729,8 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
         return false;
     }
 
+    if (bUsesActiveDocument) Begin_DocumentHistory();
+    else Clear_DocumentHistory();
     m_ActiveDocument = std::move(Staged);
     m_bMarkedElementIdsNeedPrune = true;
     Set_ActiveDocumentDrawableStatus(true, {});
@@ -3265,6 +3269,7 @@ bool_t Client::CEffect_Tool::Try_CommitDocument(
     std::string DrawableError;
     if (!CEffectDocumentCodec::Validate_Drawable(Staged, DrawableError))
     {
+        Begin_DocumentHistory();
         m_ActiveDocument = std::move(Staged);
         m_bMarkedElementIdsNeedPrune = true;
         Set_ActiveDocumentDrawableStatus(false, DrawableError);
@@ -3289,6 +3294,7 @@ bool_t Client::CEffect_Tool::Try_CommitDocument(
             m_strPreviewStatus;
         return false;
     }
+    Begin_DocumentHistory();
     m_ActiveDocument = std::move(Staged);
     m_bMarkedElementIdsNeedPrune = true;
     Set_ActiveDocumentDrawableStatus(true, {});
@@ -3387,4 +3393,116 @@ bool_t Client::CEffect_Tool::Try_SetPreviewFilter(
         return false;
     }
     return true;
+}
+
+
+Client::CEffect_Tool::DOCUMENT_HISTORY_STATE Client::CEffect_Tool::Capture_DocumentHistory(const bool reuseValue) const
+{
+    DOCUMENT_HISTORY_STATE state;
+    if (!m_ActiveDocument) return state;
+    if (reuseValue && m_DocumentHistoryCurrent)
+        state.value = m_DocumentHistoryCurrent;
+    else
+        state.value = std::make_shared<const DOCUMENT_HISTORY_VALUE>(DOCUMENT_HISTORY_VALUE{
+            *m_ActiveDocument, CEffectDocumentCodec::Serialize(*m_ActiveDocument)});
+    state.selection = m_eDetailSelection; state.kind = m_eSelectedEffectType;
+    state.resourceKind = m_eResourceLibraryFileKind;
+    state.element = m_strSelectedElementId; state.group = m_strSelectedElementGroupId;
+    state.modelCue = m_strSelectedModelCueId; state.ownerControl = m_strSelectedOwnerControlId;
+    state.component = m_strSelectedComponentId; state.emitter = m_strSelectedEmitterId;
+    state.sourceModule = m_strSelectedSourceModuleId;
+    state.resourceSlot = m_strSelectedResourceSlotId; state.resourceAsset = m_strSelectedResourceAssetId;
+    state.marked = m_MarkedElementIds;
+    return state;
+}
+
+void Client::CEffect_Tool::Begin_DocumentHistory()
+{
+    if (m_DocumentHistoryApplying || m_DocumentHistory.Is_Pending() || !m_ActiveDocument ||
+        (m_eActiveDocumentSource != EFFECT_DOCUMENT_SOURCE::AUTHORED &&
+         m_eActiveDocumentSource != EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT)) return;
+    m_DocumentHistory.Begin(Capture_DocumentHistory(true));
+}
+
+void Client::CEffect_Tool::Finish_DocumentHistory()
+{
+    // Group repeated commits from one drag/text gesture. Selection is captured
+    // after the caller completes its successful create/duplicate/delete command.
+    if (!m_DocumentHistory.Is_Pending() || ImGui::IsAnyItemActive()) return;
+    if (!m_ActiveDocument) { Clear_DocumentHistory(); return; }
+    auto after = Capture_DocumentHistory(false);
+    m_DocumentHistoryCurrent = after.value;
+    m_DocumentHistory.Commit(std::move(after), [](const auto& before, const auto& next)
+    { return before.value->canonical == next.value->canonical; });
+}
+
+void Client::CEffect_Tool::Clear_DocumentHistory()
+{
+    m_DocumentHistory.Clear();
+    m_DocumentHistoryCurrent.reset();
+}
+
+bool Client::CEffect_Tool::Restore_DocumentHistory(const DOCUMENT_HISTORY_STATE& state)
+{
+    if (!state.value || !m_ActiveDocument || Has_UnappliedDetailDraft() || m_bOccurrenceTuningDirty ||
+        state.value->document.strEffectAssetId != m_ActiveDocument->strEffectAssetId)
+    {
+        m_strElementStatus = "Apply or Revert the open Detail draft before Undo/Redo; the current draft is preserved.";
+        return false;
+    }
+    // A deleted Solo target must not make the restored document's preview empty.
+    // Keep the current preview filter if validation/staging rejects the restore.
+    const auto filter = m_ePreviewFilter;
+    const auto family = m_ePreviewIsolationAuthoringFamily;
+    const auto element = m_strPreviewIsolationElementId, group = m_strPreviewIsolationGroupId;
+    const auto cue = m_strPreviewIsolationModelCueId;
+    const auto ids = m_PreviewIsolationElementIds;
+    m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
+    m_ePreviewIsolationAuthoringFamily = EFFECT_AUTHORING_FAMILY::END;
+    m_strPreviewIsolationElementId.clear(); m_strPreviewIsolationGroupId.clear();
+    m_strPreviewIsolationModelCueId.clear(); m_PreviewIsolationElementIds.clear();
+    auto staged = state.value->document;
+    m_DocumentHistoryApplying = true;
+    const bool accepted = Try_CommitDocument(std::move(staged));
+    m_DocumentHistoryApplying = false;
+    if (!accepted)
+    {
+        m_ePreviewFilter = filter; m_ePreviewIsolationAuthoringFamily = family;
+        m_strPreviewIsolationElementId = element; m_strPreviewIsolationGroupId = group;
+        m_strPreviewIsolationModelCueId = cue; m_PreviewIsolationElementIds = ids;
+        return false;
+    }
+    Reset_ParticleSystemDraft(); Reset_DetailDraft(); Reset_ModelCueDraft();
+    m_eDetailSelection = state.selection; m_eSelectedEffectType = state.kind;
+    m_eResourceLibraryFileKind = state.resourceKind;
+    m_strSelectedElementId = state.element; m_strSelectedElementGroupId = state.group;
+    m_strSelectedModelCueId = state.modelCue; m_strSelectedOwnerControlId = state.ownerControl;
+    m_strSelectedComponentId = state.component; m_strSelectedEmitterId = state.emitter;
+    m_strSelectedSourceModuleId = state.sourceModule;
+    m_strSelectedResourceSlotId = state.resourceSlot; m_strSelectedResourceAssetId = state.resourceAsset;
+    m_MarkedElementIds = state.marked; m_bMarkedElementIdsNeedPrune = true;
+    m_DocumentHistoryCurrent = state.value;
+    // Save baselines and disk files never travel through the history stack.
+    m_bDocumentDirty = m_strActiveDocumentBaselineCanonical.empty() ||
+        state.value->canonical != m_strActiveDocumentBaselineCanonical;
+    Refresh_RuntimeEquivalence();
+    m_strElementStatus = m_strDocumentStatus = "Restored the Effect document and selection. Save Changes persists this draft.";
+    return true;
+}
+
+void Client::CEffect_Tool::Render_DocumentHistoryControls()
+{
+    const bool blocked = Has_UnappliedDetailDraft() || m_bOccurrenceTuningDirty;
+    ImGui::BeginDisabled(blocked || !m_DocumentHistory.Can_Undo());
+    if (ImGui::SmallButton("Undo##EffectDocument"))
+        m_DocumentHistory.Undo([this](const auto& state) { return Restore_DocumentHistory(state); });
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        ImGui::SetTooltip(blocked ? "Apply or Revert the open Detail draft first; its values are preserved." :
+            "Undo the last committed Effect edit, including deleted Elements and selection. Saved files stay unchanged.");
+    ImGui::SameLine();
+    ImGui::BeginDisabled(blocked || !m_DocumentHistory.Can_Redo());
+    if (ImGui::SmallButton("Redo##EffectDocument"))
+        m_DocumentHistory.Redo([this](const auto& state) { return Restore_DocumentHistory(state); });
+    ImGui::EndDisabled();
 }

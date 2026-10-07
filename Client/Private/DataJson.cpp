@@ -37,10 +37,14 @@ namespace
 		}
 	}
 
-	class JSON_READER final
+}
+
+NS_BEGIN(Client)
+
+	class DATA_JSON_READER final
 	{
 	public:
-		explicit JSON_READER(const string_view text,
+		explicit DATA_JSON_READER(const string_view text,
 			const DATA_JSON_PARSE_LIMITS& limits)
 			: m_Text(text), m_Limits(limits)
 		{
@@ -131,9 +135,8 @@ namespace
 				DATA_JSON_VALUE value;
 				if (!ReadValue(depth + 1u, value))
 					return false;
-				// map's move may throw, so vector growth otherwise deep-copies
-				// parsed subtrees. Only this private staging array is relocated;
-				// the caller's outValue is still committed after complete parsing.
+				// Keep bounded growth in the private staging array; the caller's
+				// outValue is still committed only after complete parsing.
 				if (values.size() == values.capacity())
 				{
 					DATA_JSON_VALUE::ARRAY expanded;
@@ -162,12 +165,19 @@ namespace
 			DATA_JSON_VALUE& outValue)
 		{
 			++m_Position;
-			DATA_JSON_VALUE::OBJECT values;
-			vector<string> insertionOrder;
+			// Reader outputs are private staging nodes until Parse commits the root.
+			// Construct the map in its final owner instead of moving a staging map.
+			outValue = DATA_JSON_VALUE::Null();
+			outValue.m_Payload.emplace<DATA_JSON_VALUE::OBJECT_STORAGE>(
+				std::make_unique<DATA_JSON_VALUE::OBJECT_PAYLOAD>());
+			outValue.m_eType = DATA_JSON_TYPE::OBJECT;
+			auto& payload = *std::get<DATA_JSON_VALUE::OBJECT_STORAGE>(
+				outValue.m_Payload);
+			auto& values = payload.values;
+			auto& insertionOrder = payload.insertionOrder;
 			SkipWhitespace();
 			if (Consume('}'))
 			{
-				outValue = DATA_JSON_VALUE::Object(move(values));
 				return true;
 			}
 
@@ -197,8 +207,6 @@ namespace
 					return SetError("Trailing comma in object");
 			}
 
-			outValue = DATA_JSON_VALUE::Object(
-				move(values), move(insertionOrder));
 			return true;
 		}
 
@@ -412,6 +420,50 @@ namespace
 		size_t m_ValueCount = {};
 		string m_Error;
 	};
+
+NS_END
+
+DATA_JSON_VALUE::DATA_JSON_VALUE(const DATA_JSON_VALUE& other)
+	: m_eType(other.m_eType)
+	, m_Boolean(other.m_Boolean)
+	, m_Number(other.m_Number)
+	, m_bFloatingPointToken(other.m_bFloatingPointToken)
+{
+	switch (m_eType)
+	{
+	case DATA_JSON_TYPE::STRING:
+		m_Payload.emplace<string>(other.Get_String());
+		break;
+	case DATA_JSON_TYPE::ARRAY:
+		m_Payload.emplace<ARRAY>(other.Get_Array());
+		break;
+	case DATA_JSON_TYPE::OBJECT:
+	{
+		const OBJECT_STORAGE& source = std::get<OBJECT_STORAGE>(other.m_Payload);
+		if (source)
+		{
+			m_Payload.emplace<OBJECT_STORAGE>(
+				std::make_unique<OBJECT_PAYLOAD>(*source));
+		}
+		else
+		{
+			m_Payload.emplace<OBJECT_STORAGE>();
+		}
+		break;
+	}
+	default:
+		break;
+	}
+}
+
+DATA_JSON_VALUE& DATA_JSON_VALUE::operator=(const DATA_JSON_VALUE& other)
+{
+	if (this != &other)
+	{
+		DATA_JSON_VALUE staged(other);
+		*this = move(staged);
+	}
+	return *this;
 }
 
 DATA_JSON_VALUE DATA_JSON_VALUE::Null()
@@ -465,8 +517,8 @@ DATA_JSON_VALUE DATA_JSON_VALUE::Object(
 		for (const auto& [key, child] : value)
 			insertionOrder.push_back(key);
 	}
-	result.m_Payload.emplace<OBJECT_PAYLOAD>(
-		move(value), move(insertionOrder));
+	result.m_Payload.emplace<OBJECT_STORAGE>(
+		std::make_unique<OBJECT_PAYLOAD>(move(value), move(insertionOrder)));
 	return result;
 }
 
@@ -488,16 +540,22 @@ const DATA_JSON_VALUE::ARRAY& DATA_JSON_VALUE::Get_Array() const
 
 const DATA_JSON_VALUE::OBJECT& DATA_JSON_VALUE::Get_Object() const
 {
-	if (const auto* value = std::get_if<OBJECT_PAYLOAD>(&m_Payload))
-		return value->values;
+	if (const auto* value = std::get_if<OBJECT_STORAGE>(&m_Payload);
+		value && *value)
+	{
+		return (*value)->values;
+	}
 	static const OBJECT empty;
 	return empty;
 }
 
 const vector<string>& DATA_JSON_VALUE::Get_ObjectInsertionOrder() const
 {
-	if (const auto* value = std::get_if<OBJECT_PAYLOAD>(&m_Payload))
-		return value->insertionOrder;
+	if (const auto* value = std::get_if<OBJECT_STORAGE>(&m_Payload);
+		value && *value)
+	{
+		return (*value)->insertionOrder;
+	}
 	static const vector<string> empty;
 	return empty;
 }
@@ -543,7 +601,7 @@ bool_t CDataJson::Parse(
 	}
 
 	DATA_JSON_VALUE staged;
-	if (!JSON_READER(text, limits).Read(staged, outError))
+	if (!DATA_JSON_READER(text, limits).Read(staged, outError))
 		return false;
 	outValue = move(staged);
 	return true;

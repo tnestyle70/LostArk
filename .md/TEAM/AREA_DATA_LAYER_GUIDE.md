@@ -1030,24 +1030,100 @@ FrontCounterClockwise만 뒤집고 원래 rasterizer를 복원하며 CullNone을
 
 WORLD Animation의 첫 track은 `startMs > 0`을 허용한다. 첫 시작 전에는 해당 clip의 Source In 자세를 유지하고, 이후 기존 sample/rate 계약을 소비한다. Sequencer의 WORLD Animation 행은 가운데 이동과 양끝 Source In/Out trim을 기존 WorldObjectTool draft에 적용한다. Save는 WORLD 저작 파일만 저장하며 다른 Composition의 미저장 변경을 대신 저장하거나 자동 publish하지 않는다.
 
-### F1 World Scene Tool
+### 편집 이력
 
-Debug Bern/Character Select/Valtan/Kouku는 기존 IMapAuthoringHost를 통해 현재 Level-owned map/Deploy를
-독립 F1 창에 제공한다. `Get_MapAuthoringRuntime`은 기존 runtime reference이며 새 로더가 아니다.
-nearest LOD0/static/current-skeletal geometry의 placement/source/asset/WModel/mesh/material과 hit XYZ를
-읽고 목록·Focus·clipboard를 제공한다. 피킹은 authoring parity를 요구하지 않으며 실패는 선택을 보존한다.
+Effect Tool V1·Saydon·Valtan·Object Sequencer·World Object의 재생 toolbar 오른쪽에 Undo/Redo를
+둔다. 해당 창에서 Ctrl+Z와 Ctrl+Y/Ctrl+Shift+Z를 사용할 수 있으며 Saydon/Valtan은 재생·시퀀서
+창의 focus를 사용한다. 텍스트 입력과 진행 중 drag에는 단축키를 가로채지 않는다. 편집 값과 당시 stable 선택을
+함께 복원하고 한 번의 drag를 한 단계로 묶는다. 새 편집은 Redo를 비우며 복원 검증 실패는 현재
+draft와 이력을 유지한다. 같은 문서의 일반 Save는 최신 저장 기준만 갱신하고 이력을 유지한다.
+외부 병합과 Valtan의 다른 owner 변경 감지는 이전 이력의 경계다. 명시 Reload·문서
+교체와 기존 New Pattern의 durable 생성은 이력 경계다. 서버 재생은 Undo의 대상이 아니다.
 
-map placement 편집은 CMapPlacementEditSession의 stable ID 계약과 공식 Area publish를 사용한다.
-부분 live scope는 전체 source draft를 보존하고 live ID/asset 검증을 통과한 변경만 저장한다. 실제 writer는
-stage·고유 temporary·교체 직전 expected source bytes 비교·atomic replace를 수행한다. 바인딩 실패,
-runtime reload와 도구 숨김은 dirty draft를 삭제하지 않는다. VALTAN_PHASE/backdrop과 active borrower
-경계는 유지한다. Delete는 session duplicate만 제거하며 원본 행의 identity는 Visible로 보존한다.
+WORLD animation lane은 WorldObject 문서의 예상 snapshot을 함께 검사하므로 다른 도구의
+후속 편집을 덮어쓰지 않는다. emission 삭제를 저장하여 연결 Collider/Logic 원본까지 제거한 뒤
+Undo한 경우, 이미 제거된 외부 provenance의 재저장은 거부하고 복원 draft를 보존한다.
 
-Deploy preview는 기존 Begin/Sample/End를 사용하고 clip이 없는 static/bind-pose 모델도 가역 root
+### F1 World Level 트리와 Object Details
+
+Debug Bern/Character Select/Valtan/Kouku의 `World Level Tool`은 저장된 Area inventory와 열린
+Composition 소유자의 적용된 draft를 트리로 보여준다. Map/Deploy는 source level·asset 아래,
+World Sequence는 anchor 아래, Composition은 pattern과 occurrence 관계로 묶인다. 검색·종류 필터와
+Ctrl/Shift 다중 선택, 사용자 Parent 생성·이름 변경·이동·삭제·drag/drop·Undo/Redo를 제공한다.
+다른 Area 또는 현재 live scope 밖의 행도 저장 inventory에 남으며, 선택했다고 로드하거나 Level을
+바꾸지 않는다. live 배치가 아닌 항목의 Focus/편집 요청은 현재 소유자의 검증을 통과해야 한다.
+
+사용자 Parent는 `Data/Maps/Authoring/WorldHierarchy/<AreaId>.json`에 독립 저장한다.
+`schema=lostark.world-level-hierarchy`, `version=1`, `areaId`와 `folders`, `assignments`가
+정본이다. folder는 `id/name/parent`, assignment는 `key/parent`를 가진다. 빈 parent는 자동
+그룹으로 돌아가는 루트이며, Parent는 이름과 조직 관계만 소유한다. 자식 TRS·Visible 상속이나
+새 runtime actor를 만들지 않는다. Parent 삭제는 자식 Parent와 배치 행을 상위 Parent로 옮긴다.
+
+assignment는 기존 inventory의 stable key를 그대로 사용한다.
+
+| 대상 | 저장 key |
+|---|---|
+| Map / Deploy | `map:<placementId>` / `deploy:<runtimePlacementId>` |
+| World Sequence instance | `world:<instanceId>` |
+| Action / Sequence pattern | `action:<patternId>` / `sequence:<patternId>` |
+| pattern의 presentation / world occurrence | pattern key 뒤에 `:presentation:<occurrenceId>` / `:world:<occurrenceId>` |
+| Gameplay / Map Light / Map Effect | `Gameplay:<placementId>` / `Map Light:<lightId>` / `Map Effect:<independentEffectId>` |
+
+vector index, 표시 이름, prototype tag를 저장 key로 바꾸지 않는다. 현재 inventory에서 보이지 않는
+assignment도 저장 시 유지한다. 파일이 없으면 빈 조직 상태로 시작하고 `Save hierarchy`에서만
+생성한다. 저장은 baseline·draft·최신 disk를 비교해 무관한 변경을 병합하고 같은 필드 충돌은
+거부한다. 검증·고유 temporary·교체 직전 freshness·백업·atomic replace를 사용하며 실패하면
+기존 draft를 보존한다. 미저장 조직 변경은 Area 전환/Refresh 전에 Save 또는 Undo로 정리한다.
+이 JSON은 편집기 조직 자료이며 Area publisher나 Client/Server 실행 데이터에 게시하지 않는다.
+조직 Undo/Redo는 당시 stable 선택도 복원한다. Save 뒤에도 이력은 유지되며 저장 기준으로 돌아오면
+clean이다. Reload 또는 외부 변경을 합친 Save는 이전 조직 이력과의 경계다.
+
+현재 live Map/Deploy의 트리 선택과 `Pick in world`는 공용 `Object Details`로 연결한다.
+기존 `World Scene Tool`의 독립 검색 목록도 같은 선택과 편집 session을 사용한다.
+`IMapAuthoringHost::Get_MapAuthoringRuntime`은 기존 Level-owned runtime reference이며 새 로더가
+아니다. 피킹은 nearest LOD0/static/current-skeletal geometry에서 placement/source/asset/WModel/
+mesh/material과 hit XYZ를 읽는다. 목록 선택 및 재질 mesh combo는 triangle hit 증거와 구분한다.
+피킹 실패는 이전 선택을 보존하며, 선택만으로 authoring 문서를 Bind하거나 데이터를 수정하지 않는다.
+Focus/F는 선택한 배치의 현재 live pose와 모델 bounds를 사용하고, bounds가 없으면 유효한 현재
+pivot을 사용한다. alpha holes·shader wind/displacement·실제 LOD pixel 경계는 CPU 피킹과 다르다.
+
+`Enable map placement editing`을 명시적으로 눌렀을 때만 기존 `CMapPlacementEditSession` 하나를
+Bind한다. Object Details의 위치·회전·signed scale·Visible과 Undo/Redo/Reset을 사용하며 동일한 배치를
+다시 선택해도 진행 중 Undo를 지우지 않는다. 한 번의 drag는 하나의 단계이며 배치 선택이 달라져도
+같은 session의 이력을 유지한다. session duplicate 생성·삭제와 당시 선택도 복원한다. Save는 이력을
+유지하고 최신 저장본을 dirty 비교 기준으로 삼으며 Reload/Area 변경은 이력 경계다. `Save Data + publish placements`는 원래 placement
+정본과 공식 `Publish-MapAuthoring.ps1 -Scope Placements`를 사용한다. 부분 live scope에서도
+전체 source draft와 미로드 원본 행을 보존하고 live ID/asset 검증을 통과한 변경만 저장한다.
+writer는 stage·고유 temporary·교체 직전 expected source bytes 비교·atomic replace를 수행한다.
+바인딩 실패, runtime reload와 도구 숨김은 dirty draft를 삭제하지 않는다. VALTAN_PHASE/backdrop과
+active borrower 경계를 유지하며 Delete는 session duplicate만 제거한다. 원본 행의 identity는
+Visible로 보존한다. MapTool의 live 배치 인계도 같은 Object Details를 사용하며 MapTool의 미저장
+저작본을 버리고 인계하지 않는다. 인계는 양방향으로 검사한다. MapTool이 미저장 편집이나 게시를
+소유하면 Object Details의 placement 편집 활성화를 거부하고, Object Details가 dirty/publishing이면
+MapTool 열기를 거부해 원래 draft를 보존한다. clean session만 기존 편집 연결을
+해제하고 자기 preview를 복원한 뒤 다른 편집기에 넘긴다. 독립 MapTool과 Movie 배경은 기존
+inspector 소유권을 유지한다.
+
+Deploy는 기존 Begin/Sample/End preview로 clip이 없는 static/bind-pose 모델까지 가역 root
 position/rotation/positive uniform scale와 opacity/Reveal을 제공한다. overlay는 product packet을
-덮어쓰지 않으며 authoritative state/debris/suppression이 선점한다. SOURCE_EXACT Deploy 영구 저장은
-수행하지 않는다. self-motion preview의 host/area/level/runtime generation이 바뀌면 새 runtime에 과거
-clock을 복원하지 않는다. 렌더링 옵션과 Server gameplay는 이 도구의 저장 범위 밖이다.
+덮어쓰지 않으며 authoritative state/debris/suppression이 선점한다. SOURCE_EXACT Deploy 영구
+배치는 저장하지 않는다. self-motion preview의 host/area/level/runtime generation이 바뀌면 새
+runtime에 과거 clock을 복원하지 않는다. 도구 숨김은 자기 preview를 복원한다. Server gameplay와
+팀장 렌더링 옵션은 이 도구의 저장 범위 밖이다.
+
+Object Details의 `Rendering / materials (read only)`는 현재 live CModel의 mesh별 CMaterial 이름,
+원본 material slot, surface family/program/render·cull 정책과 UV 입력을 읽는다. 실제 material 이름과
+정확히 일치하는 catalog typed override의 texture ID는 Resources 상대 경로로 표시하며 WModel의
+상속 재질과 구분한다. runtime texture replacement가 있으면 catalog 입력이 대체될 수 있음을 표시한다.
+원본 shader/parent 이름이나 live API에 없는 WModel 내부 texture ID는 `unknown`으로 남긴다.
+빈 typed override를 실제 texture 누락으로 판단하거나 asset 이름으로 식생·폭포·물을 추정하지 않는다.
+
+식생은 실제 surface의 foliage wind 입력과 program, source wind 방향/속도 및 placementWind의
+원본 actor 위치·dimensions/radius를 별도로 표시한다. map water는 실제 catalog row의 수치와
+normal tiling/panning을 읽는다. water row에 선언된 detail normal/reflection/foam texture는 현재
+물 binder의 보조 SRV에 연결되지 않았다는 경계를 함께 표시한다. 현재 binder가 사용하는 모델
+texture와 선언만 된 입력을 섞지 않는다. source-material 옵션도 읽기 전용이며, 표시된 입력은
+실제 GPU pass/pixel 관찰이나 최종 화면 확인을 대신하지 않는다.
 
 ### 원본 식생 material·primitive wind 입력
 

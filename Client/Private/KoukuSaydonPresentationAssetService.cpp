@@ -1128,6 +1128,13 @@ bool Client::CKoukuSaydonPresentationAssetService::Collect_CompletePlayResources
         std::set<std::string> pending(patternIds.begin(), patternIds.end()), visited, v1, worlds, actors;
         std::set<std::pair<std::string, std::string>> v2;
         std::set<std::string> selectedVisuals, selectedFears;
+        std::map<std::string, std::vector<std::string>> worldSpawns;
+        std::map<std::string, std::set<std::string>> patternChildren;
+        std::set<std::string>* currentChildren = nullptr;
+        const auto addPattern = [&](const std::string& id) {
+            pending.insert(id);
+            if (currentChildren) currentChildren->insert(id);
+        };
         const auto addEffect = [&](const DATA_JSON_VALUE& row) {
             if (text(row, "kind") != "EFFECT") return;
             const auto& id = text(row, "assetId"); const auto& kind = text(row, "resourceKind");
@@ -1151,12 +1158,12 @@ bool Client::CKoukuSaydonPresentationAssetService::Collect_CompletePlayResources
             for (const auto& [key, child] : value.Get_Object())
             {
                 if (key == "patternId" || key == "clonePatternId")
-                { if (child.Is_String() && !child.Get_String().empty()) pending.insert(child.Get_String()); }
+                { if (child.Is_String() && !child.Get_String().empty()) addPattern(child.Get_String()); }
                 else if (key == "patternIds" || key == "directionPatternIds")
                 {
                     if (!child.Is_Array()) throw std::runtime_error("Invalid child pattern dependency array.");
                     for (const auto& id : child.Get_Array())
-                    { if (!id.Is_String() || id.Get_String().empty()) throw std::runtime_error("Invalid child pattern identity."); pending.insert(id.Get_String()); }
+                    { if (!id.Is_String() || id.Get_String().empty()) throw std::runtime_error("Invalid child pattern identity."); addPattern(id.Get_String()); }
                 }
                 else if (key == "sequenceInstanceId" || key == "worldSequenceInstanceId" ||
                     key == "targetWorldInstanceId" || key == "motionInstanceId")
@@ -1182,12 +1189,54 @@ bool Client::CKoukuSaydonPresentationAssetService::Collect_CompletePlayResources
             const auto source = patterns.find(id), visual = presentationPatterns.find(id);
             if (source == patterns.end() || visual == presentationPatterns.end())
                 throw std::runtime_error("Missing published Complete Play child pattern: " + id);
+            currentChildren = &patternChildren[id];
             dependencies(*source->second);
+            // These published Encounter rows create WORLD owners. Recursive
+            // motionInstanceId/APPLY_TARGET dependencies only prepare resources.
+            if (source->second->Find("worldSequences"))
+                for (const auto& row : array(*source->second, "worldSequences"))
+                    worldSpawns[id].push_back(text(row, "sequenceInstanceId"));
             const auto actor = CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(text(*source->second, "targetBossPlacementId"));
             if (actor.empty()) throw std::runtime_error("Missing Complete Play boss identity: " + id);
             actors.emplace(actor);
             for (const auto& row : array(*visual->second, "presentationOccurrences"))
             { addEffect(row); dependencies(row); }
+        }
+        currentChildren = nullptr;
+        std::vector<std::vector<std::string>> spawnGroups;
+        const auto appendSpawnClosure = [&](const std::string& root, std::vector<std::string>& group) {
+            std::set<std::string> queued{root}, seen;
+            while (!queued.empty())
+            {
+                const auto id = *queued.begin(); queued.erase(queued.begin());
+                if (!seen.insert(id).second) continue;
+                const auto spawns = worldSpawns.find(id);
+                if (spawns != worldSpawns.end())
+                {
+                    if (group.size() + spawns->second.size() > 16384u)
+                        throw std::runtime_error("Complete Play WORLD spawn reservation exceeds its bounded capacity.");
+                    group.insert(group.end(), spawns->second.begin(), spawns->second.end());
+                }
+                const auto children = patternChildren.find(id);
+                if (children != patternChildren.end()) queued.insert(children->second.begin(), children->second.end());
+            }
+        };
+        // Whole-raid roots run sequentially: reserve their maximum in the Level,
+        // not their sum. A root's reachable branches are conservatively combined.
+        for (const auto& id : visited)
+        {
+            std::vector<std::string> group; appendSpawnClosure(id, group);
+            if (!group.empty()) spawnGroups.push_back(std::move(group));
+        }
+        for (const auto& [id, bundle] : bundles)
+        {
+            const auto& members = array(*bundle, "members");
+            if (!std::all_of(members.begin(), members.end(), [&](const auto& member) {
+                return visited.contains(text(member, "patternId")); })) continue;
+            std::vector<std::string> group;
+            // Two members may name the same pattern and still own distinct props.
+            for (const auto& member : members) appendSpawnClosure(text(member, "patternId"), group);
+            if (!group.empty()) spawnGroups.push_back(std::move(group));
         }
         for (const auto& id : selectedVisuals)
         {
@@ -1212,6 +1261,7 @@ bool Client::CKoukuSaydonPresentationAssetService::Collect_CompletePlayResources
         staged.PatternIds.assign(visited.begin(), visited.end()); staged.V1EffectIds.assign(v1.begin(), v1.end());
         staged.V2Effects.assign(v2.begin(), v2.end()); staged.WorldInstanceIds.assign(worlds.begin(), worlds.end());
         staged.BossArchetypeIds.assign(actors.begin(), actors.end());
+        staged.WorldSpawnGroups = std::move(spawnGroups);
         output = std::move(staged);
         status = "Complete Play dependency closure collected.";
         return true;

@@ -171,6 +171,9 @@ public:
 	   drafts are never discarded implicitly. */
 	bool Reload_ValtanSource(std::string& status);
 	bool Get_ValtanAuthoringView(VALTAN_PATTERN_TREE_VIEW& view, std::string& status) const;
+	struct VALTAN_EDIT_SNAPSHOT;
+	std::shared_ptr<const VALTAN_EDIT_SNAPSHOT> Capture_ValtanEditHistory() const;
+	bool Restore_ValtanEditHistory(const VALTAN_EDIT_SNAPSHOT& state, std::string& status);
 	bool Apply_ValtanCompositionDraftTransaction(const std::function<bool(std::string&)>& edit, std::string& status);
 	bool Upsert_ValtanSummonDraft(const std::string& patternId, const std::string& stageId, const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& summon, std::string& status);
 	bool Clone_ValtanSummonDraft(const std::string& patternId, const std::string& stageId,
@@ -951,6 +954,8 @@ private:
 	bool m_showPlayers = true;
 	bool m_dirty = false;
 	std::uint64_t m_valtanDraftGeneration = 1u;
+	mutable std::shared_ptr<const VALTAN_EDIT_SNAPSHOT> m_valtanHistorySnapshot;
+	mutable std::uint64_t m_valtanHistoryGeneration = ~std::uint64_t{0};
 	bool m_reloadConfirmationOpen = false;
 	bool m_initializationAttempted = false;
 	bool m_initialized = false;

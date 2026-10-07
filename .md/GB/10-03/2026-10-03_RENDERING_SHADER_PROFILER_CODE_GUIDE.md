@@ -242,3 +242,96 @@ Effect native shader에도 같은 주의가 필요하다. [Shader_EffectArtistNa
 5. Unreal 비교는 본 repository의 cooked UE3 복원 evidence, 로컬 Unreal5 source, LostArk 프로젝트의 현재 구현을 구분해 쓴다. 별도 WintersEngine 저장소와도 실제 소스를 비교하며, 현재 프로젝트를 그 저장소 자체로 부르지 않는다. UE5 내부가 곧 Lost Ark 원본 구현이라고 서술하지 않는다.
 
 이 조사의 결과만으로 새로운 visual PASS나 게임 FPS 향상을 선언하지 않는다. 코드 연결, 기존 RESULT의 실행 증거, 사용자가 직접 확인할 실제 화면을 분리해 포트폴리오의 문장을 작성한다.
+
+## G10. UE 5.8.3 실제 소스로 연결한 렌더링·Profiler 비교
+
+비교 대상은 `C:/Users/tnest/Desktop/UnrealEngine`의 source checkout이다. [Build.version:2](C:/Users/tnest/Desktop/UnrealEngine/Engine/Build/Build.version:2)의 버전은 5.8.3이며 조사한 Git HEAD는 `396c9f059903aed5fec78ecd3d437a40c6415368`이다. 아래 링크는 이 PC의 해당 checkout 기준이다. 다른 PC에서는 같은 버전과 commit을 먼저 맞추고 심볼로 다시 찾는다. Launcher 설치본·소스 빌드 성공·실행 중인 Editor 버전을 이 파일의 존재만으로 확인한 것은 아니다.
+
+이번 G는 기존 LostArk 구현을 설명하기 위한 소스 비교다. C++/HLSL이나 데이터 계약을 추가하는 구현 PLAN이 아니며, 기존 G01~G09의 설명과 검증 경계를 유지한다. UE와 LostArk의 UI 실행, 실제 GPU 캡처, 동일 장면 성능 비교는 수행하지 않았다. 아래에서 말하는 차이는 코드가 소유하는 책임과 관측 범위이며 성능 우열이나 화면 품질 판정이 아니다.
+
+### G10-01. DeferredShadingRenderer.h / cpp — 프레임을 구성하는 owner
+
+[DeferredShadingRenderer.h:260](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Renderer/Private/DeferredShadingRenderer.h:260)의 `FDeferredShadingSceneRenderer`는 `FSceneRenderer`를 상속하고 [377행](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Renderer/Private/DeferredShadingRenderer.h:377)에 `Render(FRDGBuilder&, const FSceneRenderUpdateInputs*)`를 선언한다. CPP의 [Render:1823](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Renderer/Private/DeferredShadingRenderer.cpp:1823)는 view의 상태를 scene에 연결하고 기능 조건을 판정하며 전달받은 graph builder로 렌더링 작업을 구성한다. `Views`는 각 시점의 렌더링 입력이고 `ViewState`는 프레임 사이에 이어지는 view 상태다.
+
+LostArk의 대응 진입점은 [CRenderer::Draw:865](C:/Users/tnest/Desktop/LostArk/Engine/Private/Renderer.cpp:865)다. G01의 순서대로 queue와 render target을 소비하고 각 pass를 직접 호출한다. 비교 설명은 “둘 다 한 프레임의 렌더링을 조율하지만 pass와 자원 의존성을 표현하는 방법이 다르다”로 시작한다. 함수 길이 또는 pass 개수만으로 엔진의 성능을 비교하지 않는다.
+
+### G10-02. RenderGraphBuilder.h / cpp — pass parameter에서 자원 사용을 계산
+
+[RenderGraphBuilder.h:45](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/RenderCore/Public/RenderGraphBuilder.h:45)는 RDG parameter로부터 barrier와 lifetime을 도출하는 계약을 설명한다. [AddPass:221](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/RenderCore/Public/RenderGraphBuilder.h:221)는 pass 이름, parameter 구조체, `ERDGPassFlags`, 실행 lambda를 받는다. parameter는 shader 값만 담는 꾸러미가 아니라 그 pass가 읽고 쓰는 자원을 graph가 알아내는 연결점이다.
+
+[FRDGBuilder::Compile:1327](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/RenderCore/Private/RenderGraphBuilder.cpp:1327)는 pass dependency, 참조 수와 culling을 처리하고, [Execute:1766](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/RenderCore/Private/RenderGraphBuilder.cpp:1766)는 graph 실행과 자원 정리를 조직한다. `Passes`, texture/buffer reference count, async setup task는 실행 순서와 자원 사용의 자료구조다. LostArk는 [Begin_MRT 호출:954](C:/Users/tnest/Desktop/LostArk/Engine/Private/Renderer.cpp:954), 대응 End와 SRV/copy 순서를 각 함수에서 명시한다. 현재 renderer를 RDG 구현이라고 소개하지 않는다. 후속 확장 대상으로 pass의 읽기·쓰기 선언, lifetime 검증과 사용하지 않는 pass 제거를 구체적으로 설명할 수 있다.
+
+### G10-03. DynamicRHI.h / cpp — 플랫폼 GPU API를 감싸는 경계
+
+[DynamicRHI.h:198](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/RHI/Public/DynamicRHI.h:198)의 `FDynamicRHI`는 backend 경계다. [RHIInit:291](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/RHI/Private/DynamicRHI.cpp:291)는 플랫폼 shader 정보를 초기화하고 `PlatformCreateDynamicRHI`로 구현을 선택한 뒤 `GDynamicRHI->Init()`을 호출한다. 따라서 renderer의 pass 구성과 플랫폼 device 초기화가 별도 책임으로 나뉜다.
+
+LostArk의 [CGraphic_Device::Initialize:17](C:/Users/tnest/Desktop/LostArk/Engine/Private/Graphic_Device.cpp:17)는 [D3D11CreateDevice:39](C:/Users/tnest/Desktop/LostArk/Engine/Private/Graphic_Device.cpp:39)를 직접 호출하고 device/context를 나머지 렌더링 경로에 전달한다. 현재 D3D11 상태·resource 바인딩을 이해한 성과와 여러 GPU API를 포괄하는 RHI abstraction을 만든 성과를 구분한다.
+
+### G10-04. MaterialShared.h / cpp — 재질 표현을 shader map으로 변환
+
+[MaterialShared.h:3151](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Public/MaterialShared.h:3151)의 `FMaterial::BeginCompileShaderMap`은 shader map ID, static parameter set, precompile mode와 target platform을 받는다. [CPP:3714](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/Materials/MaterialShared.cpp:3714)의 흐름은 새 `FMaterialShaderMap` 생성 → `Translate` → uniform/compiler environment 구성 → `Compile`이다. shader map ID는 컴파일할 변형의 identity이고 target/quality/static parameter는 어떤 GPU 프로그램이 필요한지를 결정한다. [Material.cpp:2618](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/Materials/Material.cpp:2618)의 cooked build 경로는 새 컴파일 대신 이미 로드한 shader map을 등록한다.
+
+LostArk의 [CShader::Initialize_Prototype:210](C:/Users/tnest/Desktop/LostArk/Engine/Private/Shader.cpp:210)는 사전 CSO를 읽어 FX11 effect를 만들고, [CMaterial::Bind_SourceCharacterInputs:948](C:/Users/tnest/Desktop/LostArk/Engine/Private/Material.cpp:948)는 기존 program ABI에 typed 입력을 바인딩한다. source family별 식과 입력 복원을 범용 재질 그래프를 HLSL로 번역하는 compiler와 동일하게 부르지 않는다.
+
+### G10-05. ShaderCompiler.cpp — 컴파일 요청과 worker 결과의 수명
+
+[FShaderCompilingManager::SubmitJobs:1519](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/ShaderCompiler/ShaderCompiler.cpp:1519)는 shader compile job 묶음을 제출한다. [LaunchWorker:1671](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/ShaderCompiler/ShaderCompiler.cpp:1671)는 작업 디렉터리와 입력·출력 파일을 받아 worker process를 만들고, [ProcessAsyncResults:2865](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/ShaderCompiler/ShaderCompiler.cpp:2865)는 완료된 결과를 처리한다. 컴파일 요청, 실행 중인 worker, material이 사용할 결과는 같은 상태가 아니다.
+
+LostArk의 shader build와 런타임 CSO 로딩도 분리해서 보여준다. G02의 `CShader`는 에디터 재질 변경을 받아 worker compile job과 shader map 교체를 모두 소유하는 객체가 아니다. 이미 준비된 CSO를 선택하고 FX11 변수·pass를 연결하는 구현을 설명하는 것이 정확하다.
+
+### G10-06. LumenScreenProbeGather.cpp — 화면 ray만으로 설명할 수 없는 GI 입력
+
+[RenderLumenScreenProbeGather:2169](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Renderer/Private/Lumen/LumenScreenProbeGather.cpp:2169)는 `FPreviousViewInfo`, `FLumenMeshSDFGridParameters`, radiance-cache interpolation parameter 등을 받는다. 이 함수 안에서 importance sampling ray 생성:2624 → trace용 RDG texture/UAV 준비:2637 → `TraceScreenProbes`:2647 → `FilterScreenProbes`:2661 → `UpdateHistoryScreenProbeGather`:2734로 이어진다. previous-view/history는 프레임 간 상태이고 radiance cache/SDF는 현재 화면 color/depth와 별도인 입력이다. 설정과 경로에 따른 사용 여부를 구분한다.
+
+LostArk의 [PS_SSGI:146](C:/Users/tnest/Desktop/LostArk/Client/Bin/ShaderFiles/Shader_ScreenSpaceLighting.hlsl:146)는 MapPBR receiver에 한해 현재 opaque radiance와 depth를 추적하는 가산 조명이다. G05에서 확인한 4/8/16 ray와 8-step 검사, offscreen·history·temporal denoising 부재를 함께 제시한다. “Lumen 완성” 대신 “화면 공간 GI를 구현하고 화면 의존성과 샘플 수의 비용을 분석했다”는 설명이 현재 코드에 맞는다.
+
+### G10-07. ScreenSpaceRayTracing.cpp — SSR의 품질·이전 프레임·후속 처리
+
+[RenderScreenSpaceReflections:1018](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Renderer/Private/ScreenSpaceRayTracing.cpp:1018)는 `FRDGBuilder`, scene texture, view, SSR quality, denoiser 입력 출력, SingleLayerWater 여부를 받는다. [1032행](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Renderer/Private/ScreenSpaceRayTracing.cpp:1032)부터 previous custom SSR input 또는 half-resolution temporal history를 쓰는 조건 분기가 있다. [IsSSRTemporalPassRequired:213](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Renderer/Private/ScreenSpaceRayTracing.cpp:213)는 AA 방식과 설정에 따라 temporal pass 필요 여부를 판정한다. 모든 설정에서 같은 후속 처리가 실행된다는 뜻은 아니다.
+
+LostArk의 [PS_SSR:180](C:/Users/tnest/Desktop/LostArk/Client/Bin/ShaderFiles/Shader_ScreenSpaceLighting.hlsl:180)는 fixed-step trace 결과에 Fresnel, roughness, 화면 경계 감쇠를 곱한다. 현재 경로는 opaque MapPBR용이므로 물·스킬의 투명 표면 전체 반사 또는 temporal SSR과 구분한다. 화면 바깥으로 반사 대상을 이동하는 시연은 이 제한을 설명하는 관측 항목이며, 이번 조사에서 결과를 촬영한 것은 아니다.
+
+### G10-08. EditorViewportClient.cpp / Scalability.cpp — 표시 실험과 저장 상태
+
+[FEditorViewportClient::SetViewMode:6466](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Editor/UnrealEd/Private/EditorViewportClient.cpp:6466)는 view mode parameter를 초기화하고 perspective/orthographic mode에 맞춰 `ApplyViewMode`와 show flags를 갱신한 뒤 viewport를 invalidate한다. [Scalability::SaveState:1218](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Engine/Private/Scalability.cpp:1218)는 임시 quality 상태이면 backup quality를 선택하고 `ScalabilityGroups`의 해상도·AA·shadow·GI·reflection 등을 INI에 기록한다. view mode 전환, quality 변경과 설정 저장은 서로 다른 함수의 책임이다.
+
+LostArk는 G06의 [Set_ExperimentPreview:720](C:/Users/tnest/Desktop/LostArk/Client/Private/RenderingProfileService.cpp:720)와 [Save_Authored:2238](C:/Users/tnest/Desktop/LostArk/Client/Private/RenderingProfileService.cpp:2238)를 비교 진입점으로 삼는다. Workbench의 [Save Authored / Publish Runtime 버튼:15435](C:/Users/tnest/Desktop/LostArk/Client/Private/MainApp.cpp:15435), 세션 overlay, benchmark capture JSON을 별도로 보여준다. UE editor viewport/scalability 전체와 동일한 도구라고 부르기보다 실험값의 수명과 저장 owner를 직접 설계한 부분을 설명한다.
+
+### G10-09. CpuProfilerTrace.h / cpp — 이벤트를 계측 stream으로 내보내기
+
+[CpuProfilerTrace.h:107](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Core/Public/ProfilingDebugging/CpuProfilerTrace.h:107)의 `OutputBeginEvent(uint32 SpecId)`는 등록된 event specification ID를 받는다. [CPP:247](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/Core/Private/ProfilingDebugging/CpuProfilerTrace.cpp:247)는 begin event를 기록하고 `EventBatchV3` 등의 trace schema로 수집한다. [FCpuProfilerAnalyzer::OnAnalysisBegin:57](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Developer/TraceServices/Private/Analyzers/CpuProfilerTraceAnalysis.cpp:57)는 event 종류를 analyzer에 route하며 이후 thread timeline의 begin/end로 복원한다.
+
+LostArk의 [CProfiler::Begin_Scope:294](C:/Users/tnest/Desktop/LostArk/Engine/Private/Profiler.cpp:294)와 `End_Scope`:316은 이름 ID, thread, 중첩 깊이와 QPC 시간을 frame sample로 모은다. 자체 CPU 계측과 Self 계산은 구현된 비교 대상이다. trace stream 분석 계층까지 모두 가진 것으로 확장해 설명하지 않는다. worker 시간과 main-thread 시간을 합쳐 frame elapsed처럼 표시하지 않는 이유도 G07의 규칙과 함께 설명한다.
+
+### G10-10. GpuProfilerTrace.h / cpp — queue 시간과 fence 관계
+
+[GpuProfilerTrace.h:77](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/RHI/Public/GpuProfilerTrace.h:77)의 `FGpuProfilerTrace`는 queue별 event 출력을 선언한다. [BeginWork:134](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Runtime/RHI/Private/GpuProfilerTrace.cpp:134)는 `QueueId`, GPU timestamp와 CPU timestamp를 기록하고, `TraceWait`:149와 `SignalFence`:165, `WaitFence`:173은 대기 구간과 queue 사이 fence 관계를 전달한다. 이 자료는 단순 pass duration보다 더 넓은 실행 관계를 분석할 근거다.
+
+LostArk의 [Resolve_GpuFrames:1176](C:/Users/tnest/Desktop/LostArk/Engine/Private/Profiler.cpp:1176)는 D3D11 timestamp/disjoint query를 `DONOTFLUSH`로 읽어 원래 frame에 귀속한다. 제출 counter와 elapsed 측정은 제공하지만 현재 profiler에 UE의 queue/fence 관계 trace를 대응시키지 않는다. GPU pending, disjoint, 누락을 0ms와 구분하는 현재 구현부터 보여준다.
+
+### G10-11. AnalysisService.cpp / TimingProfiler.h·cpp — 수집·분석·UI 분리
+
+[FAnalysisService::StartAnalysis:304](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Developer/TraceServices/Private/AnalysisService.cpp:304)는 file stream을 열고 analysis session과 thread/frame/counter provider를 구성한다. [TimingProfiler.h:107](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Developer/TraceServices/Public/TraceServices/Model/TimingProfiler.h:107)의 `FCreateAggregationParams`는 집계 조건을 전달하고, [FTimingProfilerProvider::CreateAggregation:893](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Developer/TraceServices/Private/Model/TimingProfiler.cpp:893)은 선택한 timeline과 구간을 집계한다. UI는 [FTimingProfilerManager::SpawnTab:215](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Developer/TraceInsights/Private/Insights/TimingProfiler/TimingProfilerManager.cpp:215)에서 별도 Slate window로 생성된다.
+
+LostArk는 [CProfilerTool::Render:799](C:/Users/tnest/Desktop/LostArk/Client/Private/ProfilerTool.cpp:799)와 [ProfilerCaptureIO의 비동기 exporter:797](C:/Users/tnest/Desktop/LostArk/Client/Private/ProfilerCaptureIO.cpp:797)를 연결한다. 게임 내 ImGui 표시, 유한 history, JSON 저장/reader를 구현했다. Unreal Insights와의 비교는 “같은 숫자를 보여주는 창”에 그치지 않고 수집 자료구조 → 저장 → 분석 → 시각화의 각 owner를 대조한다. 저장 실패·이름 충돌·캡처 범위 표기까지 현재 구현의 증거로 삼는다.
+
+### G10-12. AllocationsAnalysis.cpp — 메모리 표본과 할당 수명은 다른 관측
+
+[FAllocationsAnalyzer::OnAnalysisBegin:46](C:/Users/tnest/Desktop/UnrealEngine/Engine/Source/Developer/TraceServices/Private/Analyzers/AllocationsAnalysis.cpp:46)은 Memory의 Alloc/Free/Realloc 및 system/video 이벤트를 analyzer로 route한다. 이러한 이벤트 기반 분석은 할당과 해제의 관계를 보존할 수 있는 입력 계약이다. 필요한 trace channel과 생산자가 실제 실행에서 활성화됐는지는 별도 캡처로 확인해야 한다.
+
+LostArk의 [CProfiler::Sample_Memory:214](C:/Users/tnest/Desktop/LostArk/Engine/Private/Profiler.cpp:214)는 약 1Hz의 process/system/DXGI 사용량과 budget 표본이다. 이를 texture별 소유량, 할당별 lifetime, 누수 원인의 callstack 분석으로 소개하지 않는다. G07의 texture cache request/hit/new-SRV counter도 관측한 생산자의 범위와 누적값 의미를 함께 표시한다.
+
+## G11. 비교 영상·기술소개서에서 사용자가 직접 확인할 장면
+
+아래는 다음 촬영의 확인 항목이며 이번 조사에서 완료된 실행 결과가 아니다. Client와 Editor의 실행·조작은 사용자가 수행한다. 기존 팀 rendering 저장값은 유지하고 허용된 세션 실험을 사용한다.
+
+| 시연 순서 | 화면에서 확인할 내용 | 함께 보여줄 코드·저장 증거 |
+|---|---|---|
+| 한 프레임 추적 | LostArk의 동일 장면에서 주요 pass와 GPU pending/valid 상태를 확인 | G01의 `Draw` 순서, G10-01~02의 UE renderer/RDG owner |
+| Rendering Workbench A/B | camera·viewport·quality·capture detail 조건을 고정하고 한 변수만 변경. 준비 frame과 비교 제외 조건을 기록 | 세션 overlay와 복구, benchmark fingerprint·JSON. gameplay 결정적 replay 검증으로 확대하지 않기 |
+| SSGI/SSR 한계 | 반사 대상이 화면 밖으로 나가는 경우, camera 이동, 얇은 표면·화면 경계에서 결과 관찰 | `TraceScreen`의 fixed step과 receiver 조건. UE의 history/SDF/cache 입력과 구조 비교 |
+| 재질 입력 추적 | 물 또는 스킬 하나를 골라 material family/program/texture/constant와 최종 pixel을 연결 | `CMaterial`/`CShader` 바인딩과 UE의 Translate→shader map compile 단계 차이 |
+| Profiler capture | CPU inclusive/self, GPU elapsed, draw 작업량을 같은 의미의 항목끼리 읽고 이름 있는 capture 저장 | CaptureWindow와 pending/누락 표기, JSON schema·원자 저장. Insights는 실제 trace를 열어 해당 channel 수집 여부부터 확인 |
+| 메모리 읽기 | process/VRAM 사용량 변화와 valid flag를 관찰 | 1Hz 표본의 한계. UE allocation trace를 사용할 때는 allocation/free 이벤트 수집 조건을 별도로 기록 |
+
+두 엔진의 ms를 직접 비교하려면 scene·geometry/material·해상도·quality·GPU/driver·빌드 구성·계측 상태가 동등한지 먼저 기록한다. 현재 두 프로젝트에서 같은 장면을 같은 작업량으로 렌더링했다는 증거는 없다. 이번 기술소개서에는 구현 원리와 확인 가능한 범위의 차이를 쓰고, FPS 향상·UE 대비 성능 우열·시각적 parity는 실제 측정과 사용자 화면 확인 뒤에만 추가한다.

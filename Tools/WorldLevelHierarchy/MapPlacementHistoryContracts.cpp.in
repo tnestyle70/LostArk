@@ -1,0 +1,172 @@
+#include <algorithm>
+#include <cstdint>
+#include <iostream>
+#include <optional>
+#include <string>
+#include <vector>
+#include <unordered_map>
+
+// This seam executes the production history methods with a deterministic host.
+// Runtime creation / deletion / transform can fail without running Client.
+namespace Client {
+using bool_t = bool;
+struct MAP_PLACEMENT_RECORD {
+    uint64_t placementId = 0;
+    std::string assetId = "asset", sourcePlacementId = "editor:area:1";
+    float position = 0.f;
+    bool visible = true;
+    bool operator==(const MAP_PLACEMENT_RECORD&) const = default;
+};
+struct MAP_RUNTIME_PLACED_ENTRY { MAP_PLACEMENT_RECORD record; };
+inline bool SamePose(const MAP_PLACEMENT_RECORD& a, const MAP_PLACEMENT_RECORD& b) { return a.position == b.position; }
+struct Host {
+    std::vector<MAP_RUNTIME_PLACED_ENTRY> live;
+    auto& Get_MapAuthoringPlacements() { return live; }
+};
+struct CMapPlacementDocument {
+    static bool Is_Valid(const MAP_PLACEMENT_RECORD& value, int) { return value.placementId && value.assetId != "invalid"; }
+};
+struct CMapPlacementRuntime {
+    inline static bool failCreate = false;
+    static bool Create_Placement(int, int, const MAP_PLACEMENT_RECORD& value, MAP_RUNTIME_PLACED_ENTRY& out) {
+        if (failCreate) return false; out.record = value; return true;
+    }
+};
+class CMapPlacementEditSession {
+public:
+    struct EDIT {
+        std::optional<MAP_PLACEMENT_RECORD> before, after;
+        uint64_t selectedBefore = 0, selectedAfter = 0, revisionBefore = 0, revisionAfter = 0;
+    };
+    std::vector<EDIT> m_UndoHistory, m_RedoHistory;
+    uint64_t m_HistoryRevision = 0, m_SavedRevision = 0, m_NextRevision = 0, m_RollbackRevision = 0;
+    bool m_HistoryReplay = false, m_HistoryGesture = false, m_GestureRecorded = false;
+    bool m_bBound = true, m_bReadOnly = false, publishing = false, allowed = true, owner = true;
+    bool m_bDirty = false, m_bRowsDirty = false, failTransform = false, failDelete = false;
+    uint64_t m_iSelectedPlacementId = 0;
+    int m_iLevelIndex = 0, m_Catalog = 0;
+    std::string m_Status;
+    std::vector<MAP_PLACEMENT_RECORD> m_Draft;
+    std::unordered_map<uint64_t, size_t> m_DraftIndex;
+    std::vector<uint64_t> m_SessionCreated;
+    Host host;
+    void Reset_History();
+    void Record_Edit(std::optional<MAP_PLACEMENT_RECORD>, std::optional<MAP_PLACEMENT_RECORD>, uint64_t, uint64_t);
+    bool Undo(); bool Redo(); bool Apply_History(bool);
+    bool Can_Undo() const { return m_bBound && !m_bReadOnly && !publishing && !m_UndoHistory.empty(); }
+    bool Can_Redo() const { return m_bBound && !m_bReadOnly && !publishing && !m_RedoHistory.empty(); }
+    bool Can_ChangeStructure() { return allowed; }
+    void Begin_EditGesture() { m_HistoryGesture = true; m_GestureRecorded = false; }
+    void End_EditGesture() { m_HistoryGesture = m_GestureRecorded = false; }
+    Host* Resolve_Host() { return owner ? &host : nullptr; }
+    MAP_PLACEMENT_RECORD* Find_Draft(uint64_t id) {
+        auto i = std::find_if(m_Draft.begin(), m_Draft.end(), [=](auto& p) { return p.placementId == id; });
+        return i == m_Draft.end() ? nullptr : &*i;
+    }
+    MAP_RUNTIME_PLACED_ENTRY* Find_Entry(uint64_t id) {
+        auto i = std::find_if(host.live.begin(), host.live.end(), [=](auto& p) { return p.record.placementId == id; });
+        return i == host.live.end() ? nullptr : &*i;
+    }
+    void Remember_Draft(const MAP_PLACEMENT_RECORD& p) {
+        if (auto* existing = Find_Draft(p.placementId)) *existing = p; else m_Draft.push_back(p);
+    }
+    void Rebase_SelfMotions() {}
+    bool Apply_Transform(uint64_t id, const MAP_PLACEMENT_RECORD& target) {
+        auto* p = Find_Draft(id); auto* live = Find_Entry(id);
+        if (failTransform || !p || !live) return false;
+        auto before = *p; *p = target; live->record = target;
+        Record_Edit(before, target, m_iSelectedPlacementId, m_iSelectedPlacementId);
+        m_bDirty = true; return true;
+    }
+    bool Delete_Selected() {
+        if (failDelete || std::find(m_SessionCreated.begin(), m_SessionCreated.end(), m_iSelectedPlacementId) == m_SessionCreated.end()) return false;
+        auto* p = Find_Draft(m_iSelectedPlacementId); if (!p) return false;
+        auto before = *p;
+        std::erase_if(m_Draft, [&](auto& row) { return row.placementId == before.placementId; });
+        std::erase_if(host.live, [&](auto& row) { return row.record.placementId == before.placementId; });
+        std::erase(m_SessionCreated, before.placementId); m_iSelectedPlacementId = 0;
+        Record_Edit(before, std::nullopt, before.placementId, 0); m_bDirty = true; return true;
+    }
+};
+}
+
+// PRODUCTION_HISTORY_METHODS
+
+using namespace Client;
+int checks = 0, failures = 0;
+void Check(bool condition, const char* name) {
+    ++checks; if (!condition) { ++failures; std::cerr << "FAIL " << name << '\n'; }
+}
+MAP_PLACEMENT_RECORD Record(uint64_t id, float x = 0.f) {
+    MAP_PLACEMENT_RECORD p; p.placementId = id; p.position = x; p.sourcePlacementId = "editor:area:" + std::to_string(id); return p;
+}
+void Seed(CMapPlacementEditSession& s, const MAP_PLACEMENT_RECORD& p, bool created = false) {
+    s.m_DraftIndex.emplace(p.placementId, s.m_Draft.size());
+    s.m_Draft.push_back(p); s.host.live.push_back({p}); s.m_iSelectedPlacementId = p.placementId;
+    if (created) s.m_SessionCreated.push_back(p.placementId);
+}
+int main() {
+    {
+        CMapPlacementEditSession s; Seed(s, Record(1));
+        s.Apply_Transform(1, Record(1, 5));
+        Check(s.m_UndoHistory.size() == 1 && s.m_RedoHistory.empty(), "edit records one delta");
+        s.m_iSelectedPlacementId = 99;
+        Check(s.Undo() && s.Find_Draft(1)->position == 0 && s.m_iSelectedPlacementId == 1, "undo restores transform and stable selection");
+        Check(!s.m_bDirty && s.m_RedoHistory.size() == 1, "undo reaches saved baseline");
+        Check(s.Redo() && s.Find_Draft(1)->position == 5 && s.m_bDirty, "redo restores edit");
+        s.m_SavedRevision = s.m_HistoryRevision; s.m_bDirty = false;
+        Check(s.Undo() && s.m_bDirty, "undo after save is dirty");
+        Check(s.Redo() && !s.m_bDirty, "redo to current save marker is clean");
+        Check(s.Undo(), "prepare branch");
+        s.Apply_Transform(1, Record(1, 7));
+        Check(s.m_RedoHistory.empty() && s.m_bDirty && s.m_HistoryRevision != s.m_SavedRevision, "new branch clears redo without reusing saved revision");
+    }
+    {
+        CMapPlacementEditSession s; Seed(s, Record(1));
+        s.Begin_EditGesture();
+        for (int i = 1; i <= 50; ++i) s.Apply_Transform(1, Record(1, float(i)));
+        s.End_EditGesture();
+        Check(s.m_UndoHistory.size() == 1, "drag coalesces to one delta");
+        Check(s.Undo() && s.Find_Draft(1)->position == 0, "drag undo first value");
+        Check(s.Redo() && s.Find_Draft(1)->position == 50, "drag redo last value");
+        for (int i = 51; i <= 150; ++i) s.Apply_Transform(1, Record(1, float(i)));
+        Check(s.m_UndoHistory.size() == 64, "history bounded to 64 edits");
+    }
+    {
+        CMapPlacementEditSession s; Seed(s, Record(1)); s.Apply_Transform(1, Record(1, 5));
+        const auto revision = s.m_HistoryRevision;
+        s.failTransform = true; s.m_iSelectedPlacementId = 77;
+        Check(!s.Undo(), "failed transform refused");
+        Check(s.Find_Draft(1)->position == 5 && s.m_iSelectedPlacementId == 77 && s.m_HistoryRevision == revision && s.m_UndoHistory.size() == 1 && s.m_RedoHistory.empty(), "failure preserves m_Draft selection and stacks");
+        s.failTransform = false; Check(s.Undo(), "failed undo can retry");
+        s.Find_Draft(1)->assetId = "other";
+        Check(!s.Redo() && s.m_RedoHistory.size() == 1, "asset mismatch refuses replay");
+        s.Find_Draft(1)->assetId = "asset"; s.Find_Draft(1)->position = 30;
+        Check(!s.Redo(), "pose mismatch refuses replay");
+        s.Find_Draft(1)->position = 0; s.owner = false;
+        Check(!s.Redo(), "detached owner refuses replay");
+        s.owner = true; s.publishing = true;
+        Check(!s.Redo(), "publishing blocks replay");
+        s.publishing = false; Check(s.Redo(), "valid retry restores history");
+    }
+    {
+        CMapPlacementEditSession s; Seed(s, Record(1)); Seed(s, Record(2, 3), true);
+        s.Record_Edit(std::nullopt, Record(2, 3), 1, 2);
+        s.failDelete = true;
+        Check(!s.Undo() && s.Find_Draft(2) && s.m_iSelectedPlacementId == 2, "failed undo-create preserves duplicate");
+        s.failDelete = false;
+        Check(s.Undo() && !s.Find_Draft(2) && s.m_iSelectedPlacementId == 1, "undo-create removes duplicate and selects source");
+        CMapPlacementRuntime::failCreate = true;
+        Check(!s.Redo() && !s.Find_Draft(2) && s.m_RedoHistory.size() == 1 && s.m_iSelectedPlacementId == 1, "failed recreate preserves stack and selection");
+        CMapPlacementRuntime::failCreate = false;
+        Check(s.Redo() && s.Find_Draft(2) && s.Find_Draft(2)->sourcePlacementId == "editor:area:2" && s.m_iSelectedPlacementId == 2, "redo-create preserves stable identity");
+        s.m_SavedRevision = s.m_HistoryRevision;
+        Check(s.Delete_Selected() && !s.Find_Draft(2), "delete records source");
+        Check(s.Undo() && s.Find_Draft(2) && !s.m_bDirty, "undo-delete restores saved duplicate");
+        Check(s.Redo() && !s.Find_Draft(2) && s.m_bDirty, "redo-delete restores absence");
+        s.Reset_History();
+        Check(!s.Undo() && !s.Redo() && s.m_HistoryRevision == 0 && !s.m_HistoryReplay, "explicit reset clears stacks and markers");
+    }
+    std::cout << "checks=" << checks << " failures=" << failures << '\n';
+    return failures ? 1 : 0;
+}

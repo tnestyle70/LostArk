@@ -7,6 +7,7 @@
 #include "EffectV2_Catalog.h"
 #include "EffectAuthoringResourceTree.h"
 #include "CompositionWorkbenchSession.h"
+#include "EditorUndoHistory.h"
 
 #include <array>
 #include <filesystem>
@@ -69,10 +70,55 @@ public:
     bool Edit_AnimationTimeline(const std::string& instanceId, const std::string& slotId,
         const std::string& clipName, uint32_t expectedStartMs, uint32_t startMs,
         uint32_t sourceInMs, uint32_t sourceOutMs, std::string& status);
+    // The integrated Animation lane stores this owner's immutable draft beside
+    // its Composition snapshot. Restore rejects intervening Object edits.
+    std::shared_ptr<const CWorldSequenceDocument> Capture_TimelineHistory(bool prepare = false);
+    bool Restore_TimelineHistory(const std::shared_ptr<const CWorldSequenceDocument>& expected,
+        const std::shared_ptr<const CWorldSequenceDocument>& desired, std::string& status);
     [[nodiscard]] bool Is_Dirty() const noexcept { return m_Dirty; }
     [[nodiscard]] const std::string& Get_Status() const noexcept { return m_Status; }
 
 private:
+    struct HISTORY_STATE
+    {
+        std::shared_ptr<const CWorldSequenceDocument> document;
+        std::string object, group, instance, folder, resourceAnchor, selectionAnchor;
+        std::set<std::string> resources, editedMotions;
+        size_t track = 0, animation = 0, effect = 0, collider = 0, key = 0;
+        int boxKind = 0;
+        float clockMs = 0.f;
+        std::string previewObject, pattern, occurrence;
+        std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT> previewPlacement, editedPlacement;
+        bool sequenceWorkspace = false, previewAtCharacter = false;
+        uint64_t savedGeneration = 0;
+        std::map<std::string, std::vector<uint32_t>> emissionOrigins;
+    };
+    struct HISTORY_SCOPE
+    {
+        CWorldObjectTool& owner;
+        explicit HISTORY_SCOPE(CWorldObjectTool& value) : owner(value) { owner.Begin_HistoryFrame(); }
+        ~HISTORY_SCOPE() { owner.End_HistoryFrame(); }
+    };
+    HISTORY_STATE Capture_HistoryState();
+    void Begin_HistoryFrame();
+    void End_HistoryFrame();
+    void Finish_HistoryGesture(bool force = false);
+    bool Apply_HistoryState(const HISTORY_STATE& state);
+    void Render_HistoryControls(const char* id);
+    void Remember_HistoryPlacementBaseline();
+    void Remember_HistorySave();
+    static std::string History_PlacementKey(const std::string& pattern, const std::string& occurrence, bool sequence);
+    CEditorUndoHistory<HISTORY_STATE> m_History{8u};
+    std::shared_ptr<const CWorldSequenceDocument> m_HistoryDocument;
+    uint32_t m_HistoryFrameDepth = 0u;
+    int m_HistoryRequest = 0;
+    struct HISTORY_SAVE
+    {
+        uint64_t generation = 0u;
+        std::map<std::string, std::vector<uint32_t>> origins;
+    };
+    std::vector<HISTORY_SAVE> m_HistorySaves;
+    std::map<std::string, std::pair<std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>, bool>> m_HistoryPlacementBaselines;
     bool Load_Source();
     COMPOSITION_TRANSFER Capture_CompositionObject(const std::string& objectId,
         const std::string& motionId, std::string& status) const;

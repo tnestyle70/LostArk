@@ -539,6 +539,7 @@ public:
 		std::optional<uint32_t> iPlaybackDurationMs,
 		VALTAN_PATTERN_SOUND_REPEAT_POLICY eRepeatPolicy,
 		std::string& strOutStatus);
+	bool_t Restore_ValtanCompositionSoundHistory(const VALTAN_PATTERN_SOUND_CUE_DOCUMENT& document, std::string& status);
 	bool_t Apply_ValtanCompositionPatternSoundDraftTransaction(
 		const std::function<bool(std::string&)>& Mutation,
 		std::string& strOutStatus);

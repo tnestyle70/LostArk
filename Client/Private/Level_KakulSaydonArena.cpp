@@ -6321,9 +6321,7 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
     auto player = std::make_shared<CWorldSequencePlayer>();
     player->Set_SoundAudience(Is_SequenceSoundAudience);
     const auto placement = WorldPlacementFromCue(play);
-    CWorldSequenceDocument playback;
-    if (!m_SequencePlayer.Get_Document().Build_PlaybackSubset({play.strSequenceInstanceId}, playback, status) ||
-        !player->Set_Document(playback, targets, status) ||
+    if (!player->Set_PlaybackSubset(m_SequencePlayer, play.strSequenceInstanceId, targets, status) ||
         !PrepareCompositionWorld(*player, play.strSequenceInstanceId, targets, placement, status) ||
         !PlayCompositionWorld(*player, play.strSequenceInstanceId, cueTargets, play.fPlaybackSpeed,
             float3_t(play.fPositionOffsetX, play.fPositionOffsetY, play.fPositionOffsetZ), play.iDurationMs, placement) ||
@@ -6423,7 +6421,8 @@ bool Client::CLevel_KakulSaydonArena::Prepare_EntryRaidResources(std::string& st
     // Each call advances one actor, V2 or WORLD item, then at most one binding
     // archetype. Never wait for asynchronous work while Level activation owns the thread.
     const size_t maximumSteps = resources.BossArchetypeIds.size() + resources.V2Effects.size() +
-        resources.WorldInstanceIds.size() + CActorCatalog::Get_Bosses().size() + 2u;
+        resources.WorldInstanceIds.size() + m_CompletePlayPreparation->worldCloneCount +
+        m_CompletePlayPreparation->worldSubsetIds.size() + CActorCatalog::Get_Bosses().size() + 2u;
     for (size_t step = 0u; step < maximumSteps && !ready; ++step)
         if (!Prepare_CompletePlayResources(patterns, {}, sourceRevision, ready, status, true, {}, false)) return false;
     if (!ready)
@@ -6538,6 +6537,71 @@ bool Client::CLevel_KakulSaydonArena::Prepare_CompletePlayResources(
         }
         staged.resources.V1EffectIds.assign(v1.begin(), v1.end()); staged.resources.V2Effects.assign(v2.begin(), v2.end());
         staged.resources.WorldInstanceIds.assign(motions.begin(), motions.end());
+        const auto isPreparedMechanic = [](const std::string& objectId) {
+            return objectId == "world.object.kouku.odd_doll.large" ||
+                objectId == "world.object.kouku.mario_circus_ball" ||
+                objectId == "world.object.kouku.cutting_blade" || objectId == "world.object.kouku.hook";
+        };
+        std::map<std::string, COMPLETE_PLAY_PREPARATION::WORLD_CLONE_RESERVATION> reservations;
+        std::set<std::string> subsetRoots;
+        for (const auto& group : staged.resources.WorldSpawnGroups)
+        {
+            std::map<std::string, uint32_t> groupCounts;
+            for (const auto& root : group)
+                for (const auto& id : CompositionWorldMotions(document, root))
+                {
+                    const auto* instance = document.Find_Instance(id);
+                    if (!instance || !instance->enabled || instance->bindings.size() != 1u ||
+                        instance->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE) continue;
+                    const auto& objectId = instance->bindings.front().targetId;
+                    if (!isPreparedMechanic(objectId)) continue;
+                    const auto* sequence = document.Find_Template(instance->templateId);
+                    if (!sequence || instance->anchorKind != "WORLD")
+                    { status = "Complete Play WORLD clone reservation has an invalid spawn: " + id; return false; }
+                    const uint32_t copies = sequence->objectMotion.EmissionCount();
+                    auto& count = groupCounts[objectId];
+                    if (!copies || copies > 128u || count > 128u - copies)
+                    { status = "Complete Play WORLD clone reservation exceeds 128 for " + objectId; return false; }
+                    count += copies;
+                    auto& reservation = reservations[objectId];
+                    if (reservation.instanceId.empty()) reservation.instanceId = id;
+                    reservation.copies = (std::max)(reservation.copies, count);
+                    subsetRoots.insert(root);
+                }
+        }
+        // Preserve state-driven minimums and reserve at least one full emitter
+        // set for enabled mechanic resources reached outside an explicit spawn.
+        for (const auto& id : staged.resources.WorldInstanceIds)
+        {
+            const auto* instance = document.Find_Instance(id);
+            if (!instance || instance->bindings.size() != 1u ||
+                instance->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE) continue;
+            const auto& objectId = instance->bindings.front().targetId;
+            uint32_t copies = id == "world.object.instance.kouku.card" ? 6u :
+                id == "world.object.instance.kouku.joker_card" ? 1u :
+                (objectId == "world.object.kouku.mario_circus_ball" || objectId == "world.object.kouku.odd_doll.large") ? 4u : 0u;
+            if (isPreparedMechanic(objectId))
+            {
+                const auto* sequence = document.Find_Template(instance->templateId);
+                if (!sequence || instance->anchorKind != "WORLD")
+                { status = "Complete Play WORLD clone reservation has an invalid motion: " + id; return false; }
+                copies = (std::max)(copies, sequence->objectMotion.EmissionCount());
+            }
+            if (!copies) continue;
+            if (copies > 128u)
+            { status = "Complete Play WORLD clone reservation exceeds 128 for " + objectId; return false; }
+            auto& reservation = reservations[objectId];
+            if (reservation.instanceId.empty()) reservation.instanceId = id;
+            reservation.copies = (std::max)(reservation.copies, copies);
+        }
+        for (auto& [objectId, reservation] : reservations)
+        {
+            if (staged.worldCloneCount + reservation.copies > 1024u)
+            { status = "Complete Play WORLD clone reservations exceed the Level capacity of 1024."; return false; }
+            staged.worldCloneCount += reservation.copies;
+            staged.worldCloneReservations.push_back(std::move(reservation));
+        }
+        staged.worldSubsetIds.assign(subsetRoots.begin(), subsetRoots.end());
         std::vector<std::string> registered;
         if (!staged.resources.V1EffectIds.empty() && !CEffectPresentationService::Queue_ProductTargets_Priority(
             staged.resources.V1EffectIds, registered, status)) return false;
@@ -6567,7 +6631,9 @@ bool Client::CLevel_KakulSaydonArena::Prepare_CompletePlayResources(
     status = "Preparing Complete Play: V1 " + std::to_string(probe.iPreparedCount) + "/" + std::to_string(resources.V1EffectIds.size()) +
         ", V2 " + std::to_string(pending.v2Index) + "/" + std::to_string(resources.V2Effects.size()) +
         ", actors " + std::to_string(pending.actorIndex) + "/" + std::to_string(resources.BossArchetypeIds.size()) +
-        ", WORLD " + std::to_string(pending.worldIndex) + "/" + std::to_string(resources.WorldInstanceIds.size()) + ". Server playback has not started.";
+        ", WORLD " + std::to_string(pending.worldIndex) + "/" + std::to_string(resources.WorldInstanceIds.size()) +
+        ", clone pools " + std::to_string(pending.worldCloneIndex) + "/" + std::to_string(pending.worldCloneReservations.size()) +
+        ", spawn documents " + std::to_string(pending.worldSubsetIndex) + "/" + std::to_string(pending.worldSubsetIds.size()) + ". Server playback has not started.";
     // GPU/context owners stay on their existing main thread. At most one bounded
     // V2/model/WORLD item is prepared per update; V1 uses its existing worker queue.
     if (pending.actorIndex < resources.BossArchetypeIds.size())
@@ -6593,15 +6659,23 @@ bool Client::CLevel_KakulSaydonArena::Prepare_CompletePlayResources(
         const auto targets = Make_WorldSequenceTargets();
         if (!m_SequencePlayer.Prepare_InstanceResources(id, targets))
         { status = "Complete Play WORLD preparation failed: " + id + "; " + m_SequencePlayer.Get_Status(); return false; }
-        const uint32_t copies = id == "world.object.instance.kouku.card" ? 6u :
-            id == "world.object.instance.kouku.joker_card" ? 1u :
-            (id == "world.object.instance.kouku.mario_circus_ball.aura" ||
-             id == "world.object.instance.kouku.odd_doll.large.att_battle_2_01") ? 4u : 0u;
-        // A runtime reload clears the entry pools. Rebuild them inside this
-        // preparation barrier, before Server playback can create the first props.
-        if (copies && !m_SequencePlayer.Prewarm_ObjectInstances(id, copies, targets))
-        { status = "Complete Play WORLD clone preparation failed: " + id + "; " + m_SequencePlayer.Get_Status(); return false; }
         ++pending.worldIndex; return true;
+    }
+    if (pending.worldCloneIndex < pending.worldCloneReservations.size())
+    {
+        const auto& reservation = pending.worldCloneReservations[pending.worldCloneIndex];
+        bool_t poolReady = false;
+        if (!m_SequencePlayer.Prewarm_ObjectInstancesStep(reservation.instanceId, reservation.copies,
+            Make_WorldSequenceTargets(), poolReady))
+        { status = "Complete Play WORLD clone preparation failed: " + reservation.instanceId + "; " + m_SequencePlayer.Get_Status(); return false; }
+        if (poolReady) ++pending.worldCloneIndex;
+        return true;
+    }
+    if (pending.worldSubsetIndex < pending.worldSubsetIds.size())
+    {
+        const auto& id = pending.worldSubsetIds[pending.worldSubsetIndex];
+        if (!m_SequencePlayer.Prepare_PlaybackSubset(id, Make_WorldSequenceTargets(), status)) return false;
+        ++pending.worldSubsetIndex; return true;
     }
     bool bindingsReady = false;
     if (!CKoukuSaydonPresentationAssetService::Prepare_ProductBindings(
