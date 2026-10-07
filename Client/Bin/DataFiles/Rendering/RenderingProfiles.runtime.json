@@ -1,7 +1,7 @@
 {
     "schema":  "lostark.rendering-profiles",
     "formatVersion":  1,
-    "revision":  91,
+    "revision":  92,
     "globalQuality":  {
                           "ssaoEnabled":  true,
                           "ssaoRadius":  0.0399999991,
@@ -714,7 +714,7 @@
                                         "dynamicBakedStrength":  0
                                     },
                          "fog":  {
-                                     "enabled":  false,
+                                     "enabled":  true,
                                      "color":  [
                                                    3.55294108,
                                                    4.42352962,
