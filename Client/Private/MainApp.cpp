@@ -10673,14 +10673,16 @@ void CMainApp::RenderCinematicSubtitles()
 
 void CMainApp::RenderFpsText()
 {
-#ifdef _DEBUG
 	/* combobox_fps: 0 always, 1 in combat only (a hit within the last few seconds), 2 never.
 	Small YG760 line in the top-left corner; the retail placement was not traced. */
 	if (m_fSmoothedFps <= 0.f)
 		return;
+#ifdef _DEBUG
 	const int32_t iMode = CUserSettings::Get().Get_FpsDisplayMode();
 	if (2 == iMode || (1 == iMode && Product_Now_Seconds() - m_dLastDamageSeconds > 6.0))
 		return;
+#endif
+	// Release keeps the readout visible for frame-rate checks without changing saved settings.
 	const float2_t viewportSize = CGameInstance::Get().Get_ViewportSize();
 	if (viewportSize.x <= 0.f || viewportSize.y <= 0.f)
 		return;
@@ -10694,7 +10696,6 @@ void CMainApp::RenderFpsText()
 	CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), text,
 		float2_t(std::round(8.f * refScale), std::round(6.f * refScale)),
 		XMVectorSet(1.f, 0.95f, 0.6f, 1.f), 0.f, float2_t(0.f, 0.f), 13.f * refScale / measured.y);
-#endif
 }
 
 void CMainApp::Limit_FrameRate()
