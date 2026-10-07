@@ -1,5 +1,12 @@
 # LostArk merge 회귀 방지 정본
 
+## 날짜 기준 옵션 복원과 명시적인 OFF 정본
+
+과거 commit의 값과 현재 사용자가 유지하라고 지정한 예외를 함께 확인한다.
+베른 `scene.bern.neutral-day.v1.fog.enabled=false`와 쿠크 Mario1~4의 FXAA OFF를
+날짜 복원·merge·publish로 다시 켜지 않는다. revision은 과거로 낮추지 않고 증가시키며,
+최신 저장본의 요청 필드만 병합하고 정본 publisher로 실행 데이터를 갱신한다.
+
 ## 같은 헤어의 무비와 장착 경로 차이
 
 - 정상 장착과 무비가 다른 머리처럼 보여도 먼저 basis를 맞춘 정점·UV·weight와 디코딩한 texture alpha를 대조한다. 동일한 hair55를 경로만 교체하면 무비 골격·clip을 잃을 수 있다.

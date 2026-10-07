@@ -258,7 +258,7 @@ Loader worker에서 호출되는 shader/model/navigation/camera/character/part/V
 중복 가산을 막는다. 조명·LUT의 물리 경로는 `Resources/Map/Lighting/Maharaka`이며
 다른 맵의 quality override와 전역 렌더링 튜닝은 독립적으로 유지한다.
 
-품질·scene/region 정본은 `Data/Rendering/Authored/RenderingProfiles.json`이다. 쿠크의 실제 base는 `scene.kakulsaydon.g1.base.v1`이며 그 `qualityOverride`는 패턴 scene 전환에도 유지된다. source 비교 profile이나 region override를 수정할 때도 같은 팀장 저장값을 보존한다. `Tools/RenderingPipeline/Publish-RenderingProfiles.ps1 -Mode Publish`만 `Client/Bin/DataFiles/Rendering/RenderingProfiles.runtime.json`을 생성한다. 생성물을 수동 편집하거나 효과 수정에 무관한 렌더링 재설정을 끼워 넣지 않는다. 실행 중 draft·사용자 video 설정과 게시 파일은 서로 다른 수명이며 게시를 자동 Reload로 설명하지 않는다.
+품질·scene/region 정본은 `Data/Rendering/Authored/RenderingProfiles.json`이다. 베른의 기본 진입 프로필 `scene.bern.neutral-day.v1`은 `fog.enabled=false`가 정본이며 지역 안개도 이 scene gate를 따른다. 날짜 기준 복원이나 병합 후에도 OFF를 유지한다. 쿠크의 실제 base는 `scene.kakulsaydon.g1.base.v1`이며 그 `qualityOverride`는 패턴 scene 전환에도 유지된다. source 비교 profile이나 region override를 수정할 때도 같은 팀장 저장값을 보존한다. `Tools/RenderingPipeline/Publish-RenderingProfiles.ps1 -Mode Publish`만 `Client/Bin/DataFiles/Rendering/RenderingProfiles.runtime.json`을 생성한다. 생성물을 수동 편집하거나 효과 수정에 무관한 렌더링 재설정을 끼워 넣지 않는다. 실행 중 draft·사용자 video 설정과 게시 파일은 서로 다른 수명이며 게시를 자동 Reload로 설명하지 않는다.
 
 ## 팀 협업 규칙
 

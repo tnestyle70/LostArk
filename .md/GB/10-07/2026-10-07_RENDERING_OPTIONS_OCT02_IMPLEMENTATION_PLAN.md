@@ -1,5 +1,8 @@
 # 10월 2일 렌더링 옵션 복원 구현 계획
 
+최종 사용자 지시: **베른 기본 안개 OFF를 정본으로 유지한다.** 아래 G00~G03은 최초 날짜
+복원 조사이며, 실제 최종 적용은 G04의 OFF 정책이 우선한다.
+
 ## G00. 기준과 실제 차이
 
 사용자 요청은 Git 10월 2일의 렌더링 옵션으로 돌아가되 무비·오클루전 컬링 등 최적화는
@@ -39,3 +42,16 @@ publisher Validate/Publish, 중복 키·JSON parse, baseline과 revision을 제�
 변경 필드 제한과 `git diff --check`를 확인한다. 데이터만 바뀌므로 제품 재컴파일은 필요 없다.
 기존 Release 실행 파일과 노란 FPS는 유지한다. Client/UI는 자동 실행하지 않으며
 재실행 후 실제 안개·FPS와 프레임 드랍 원인은 사용자가 확인한다.
+
+## G04. 베른 안개 OFF 정본과 main 동기화
+
+사용자의 후속 지시에 따라 `scene.bern.neutral-day.v1.fog.enabled`를 false로 되돌리고
+revision은 92→93으로 올린다. AGENTS와 CLAUDE에 안개 OFF의 정본 경계를 기록해
+과거 날짜 복원·merge·publish로 다시 켜지지 않도록 한다. 다른 품질·비교 프로필은 유지한다.
+후보 Validate, 최신 hash/백업/원자 교체와 공식 Publish, source/runtime 비교를 다시 수행한다.
+
+시작 git status는 clean이며, PR534에 origin/main의 최신 World Level Tool과 DataJson/Mario
+준비 변경을 병합한다. AGENTS 충돌은 노란 FPS와 World Level Tool 설명을 함께 보존한다.
+병합 전후 668개 shader 입력의 byte hash·mtime를 확인하고 정상 Debug/Release Product Build로
+검증한다. 변경과 검증을 기존 PR에 반영해 main에 병합한 뒤 현재 checkout도 fast-forward한다.
+노트북은 연결된 실행 호스트가 없어 이 PC에서 직접 조작하지 않고 같은 main을 받는 명령을 안내한다.

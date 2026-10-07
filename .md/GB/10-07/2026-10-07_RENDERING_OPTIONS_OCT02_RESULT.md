@@ -1,5 +1,8 @@
 # 10월 2일 렌더링 옵션 복원 결과
 
+**최종 정본은 베른 안개 OFF(revision 93)다.** 사용자의 후속 지시를 반영한 G04가
+아래 G00~G03의 최초 ON 적용 기록보다 우선한다.
+
 ## G00. 반영한 옵션
 
 기준은 현재 ancestry의 KST 2026-10-02 마지막 first-parent commit
@@ -55,3 +58,43 @@ Client/Server/UI를 자동 실행하거나 캡처하지 않았다. 새로 실행
 실행 중 프로세스의 메모리 draft/세션 A/B 상태가 자동 Reload됐다고 주장하지 않는다.
 실제 화면·FPS·프레임 드랍 원인은 미측정이다. 이번 작업은 설정 복원이며 10월 2일의
 shader/material 구현이나 전체 화면/성능을 그대로 재현한 것은 아니다.
+
+## G04. 베른 안개 OFF 정본 확정과 main 병합
+
+사용자의 후속 요청으로 `scene.bern.neutral-day.v1.fog.enabled=false`를 복원하고
+revision을 92→93으로 올려 공식 publisher로 게시했다. 다른 품질값은 유지했다.
+AGENTS와 CLAUDE에 OFF 정본을 명시했으며 날짜 복원·merge·publish를 이유로 다시 켜지 않는다.
+gotchas에도 날짜 기준 복원에서 사용자의 명시적인 OFF 예외를 보존하도록 기록했다.
+
+시작 git status는 clean이었다. 기존 PR534 브랜치에서 `origin/main e38867def`를
+`8ae4e01de`로 병합했다. 유일한 AGENTS 문장 충돌은 Release 노란 FPS와 main의
+World Level Tool·Object Details 설명을 모두 보존했다. MainApp 자동 병합도 FPS,
+MapTool open 실패 처리와 world-animation 이력 callback이 함께 남음을 확인했다.
+원격 main의 DataJson·Mario 준비·World Level Tree 변경은 그대로 받아들였다.
+
+후보 Validate·Publish·게시본 Validate, source/runtime JSON 동등성, 다른 옵션 보존,
+Client project/filter XML parse와 충돌 경로 0개를 확인했다. main 대비 Engine 변경은 없고,
+668개 기존 shader 입력의 byte hash·mtime가 병합 전후 동일하다.
+검증·백업·게시 로그는 `out/BernFogMainSync20261007`에 있다.
+
+현재 연결된 실행 호스트는 이 PC뿐이다. 노트북의 checkout·Resources·미커밋 상태는
+직접 확인하지 않았으며 원격 main 동기화를 노트북 pull 완료로 기록하지 않는다.
+
+## G05. 통합 제품 빌드와 전달
+
+main 병합 코드와 최종 OFF 데이터를 고정한 상태에서 정본 Product Build를 순서대로 실행했다.
+
+| 구성 | 결과 | Client 컴파일·링크 | 제품 receipt |
+|---|---|---|---|
+| Release x64 | PASS | 224,238ms, OBJ241·EXE1·CSO0 | `out/BuildPipeline/runs/20261007T023934251Z-release-product.json` |
+| Debug x64 | PASS | 185,166ms, OBJ243·EXE1·CSO0 | `out/BuildPipeline/runs/20261007T024242764Z-debug-product.json` |
+
+두 구성 모두 Engine→Shared→Server→Client와 정상 배포가 성공했고,
+missingRuntimeInputs/invalidRuntimeInputs는 빈 배열이다. 기존 인코딩·외부 PDB 경고는 남았다.
+Client 공용 헤더 변경을 정상 의존성 빌드로 반영했으며 Clean/Rebuild·tracking 삭제·mtime 조작은 없다.
+로그는 `out/BernFogMainSync20261007/product-{release,debug}.log`다.
+
+원본/게시 JSON, 프로젝트 XML, merge 충돌 경로 없음과 `git diff --check`를 확인했다.
+빌드 산출물·Resources·개인 설정은 커밋 대상에서 제외하며 기존 PR534로 전달한다.
+Client/Server/UI는 실행하지 않았다. 노트북은 미커밋 상태를 먼저 확인한 뒤 동일 main을
+fast-forward하고 필요한 정상 증분 빌드를 수행한다. 전체 publish나 navigation bake는 필요 없다.
