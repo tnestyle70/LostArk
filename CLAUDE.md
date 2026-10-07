@@ -264,7 +264,7 @@ Loader worker에서 호출되는 shader/model/navigation/camera/character/part/V
 중복 가산을 막는다. 조명·LUT의 물리 경로는 `Resources/Map/Lighting/Maharaka`이며
 다른 맵의 quality override와 전역 렌더링 튜닝은 독립적으로 유지한다.
 
-품질·scene/region 정본은 `Data/Rendering/Authored/RenderingProfiles.json`이다. 쿠크의 실제 base는 `scene.kakulsaydon.g1.base.v1`이며 그 `qualityOverride`는 패턴 scene 전환에도 유지된다. source 비교 profile이나 region override를 수정할 때도 같은 팀장 저장값을 보존한다. `Tools/RenderingPipeline/Publish-RenderingProfiles.ps1 -Mode Publish`만 `Client/Bin/DataFiles/Rendering/RenderingProfiles.runtime.json`을 생성한다. 생성물을 수동 편집하거나 효과 수정에 무관한 렌더링 재설정을 끼워 넣지 않는다. 실행 중 draft·사용자 video 설정과 게시 파일은 서로 다른 수명이며 게시를 자동 Reload로 설명하지 않는다.
+품질·scene/region 정본은 `Data/Rendering/Authored/RenderingProfiles.json`이다. 베른의 기본 진입 프로필 `scene.bern.neutral-day.v1`은 `fog.enabled=false`가 정본이며 지역 안개도 이 scene gate를 따른다. 날짜 기준 복원이나 병합 후에도 OFF를 유지한다. 쿠크의 실제 base는 `scene.kakulsaydon.g1.base.v1`이며 그 `qualityOverride`는 패턴 scene 전환에도 유지된다. source 비교 profile이나 region override를 수정할 때도 같은 팀장 저장값을 보존한다. `Tools/RenderingPipeline/Publish-RenderingProfiles.ps1 -Mode Publish`만 `Client/Bin/DataFiles/Rendering/RenderingProfiles.runtime.json`을 생성한다. 생성물을 수동 편집하거나 효과 수정에 무관한 렌더링 재설정을 끼워 넣지 않는다. 실행 중 draft·사용자 video 설정과 게시 파일은 서로 다른 수명이며 게시를 자동 Reload로 설명하지 않는다.
 
 ## 팀 협업 규칙
 
@@ -509,7 +509,7 @@ Client/Server `Bin/DataFiles/Guide/Guide.runtime.json`만 교체한다. `-Mode V
 
 ### 디버그 툴 (ImGui / MapTool)
 
-`CMainApp`이 Developer Tools 허브를 소유하고 Debug/Release에서 F1로 토글한다. Release의 F7·Profiler 창과 화면 FPS 표시는 비활성화한다. Debug 허브는 Level Navigation(Lobby, Character Select, Bern, Valtan, KoukuSaydon, Entrance PvP Arena, Maharaka), Balance Test, Profiler, 광기·체력바 위치 조절과 저장·재로드, Valtan/Kouku Boss Tool과 아레나 Load/Complete Play/Kill Boss, Valtan 벽·지형 상태 선택을 제공하며 기본은 닫힘이다. F6는 gameplay camera의 follow/free mode를 전환한다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용하며 그동안 `CPlayerController`는 물리 key/mouse edge만 동기화하고 gameplay command는 제출하지 않는다. follow 복귀 뒤 새 press부터 제출한다. F7은 Debug Profiler 창만 열고 닫는다. F2~F5와 F8~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막되 Character Select Server gameplay는 text input이 아닐 때만 명시적 keyboard passthrough를 사용한다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
+`CMainApp`이 Developer Tools 허브를 소유하고 Debug/Release에서 F1로 토글한다. Release의 F7·Profiler 창은 비활성화하며 노란 FPS는 cinematic HUD 숨김 외에는 항상 표시한다. Debug 허브는 Level Navigation(Lobby, Character Select, Bern, Valtan, KoukuSaydon, Entrance PvP Arena, Maharaka), Balance Test, Profiler, 광기·체력바 위치 조절과 저장·재로드, Valtan/Kouku Boss Tool과 아레나 Load/Complete Play/Kill Boss, Valtan 벽·지형 상태 선택을 제공하며 기본은 닫힘이다. F6는 gameplay camera의 follow/free mode를 전환한다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용하며 그동안 `CPlayerController`는 물리 key/mouse edge만 동기화하고 gameplay command는 제출하지 않는다. follow 복귀 뒤 새 press부터 제출한다. F7은 Debug Profiler 창만 열고 닫는다. F2~F5와 F8~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막되 Character Select Server gameplay는 text input이 아닐 때만 명시적 keyboard passthrough를 사용한다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
 베른·발탄·쿠크 자유 카메라의 기본 속도는 20m/s다. Debug F1 `Camera`에서
 0.1~400m/s로 조절한다. Debug 발탄·쿠크는 같은 아레나의 process-session 값을 유지하고,
 베른과 Release 조절값은 현재 맵 방문 동안 적용한다. Shift는 현재 속도의 30배다.
@@ -569,7 +569,7 @@ process lifetime 값이며 현재 캡처 peak가 아니다. allocation stack·�
 F7의 `Bern parallel visibility preparation`은 정적 맵의 CPU 가시성·payload 준비를 큰 작업 묶음으로 분산하는 세션 제어다. Debug/Release 기본은 OFF이며 OFF에서는 Layer의 job 수집도 생략한다. 실제 Bern CPU fixture에서 worker의 안정적인 순이득이 입증되지 않아 명시적인 비교용으로 제공한다. 같은 카메라 cachehit는 준비 작업을 만들지 않고, 작은 작업은 caller에서 처리한다. worker의 CPU 결과를 join한 뒤 기존 소유 스레드가 GPU 업로드·제출한다. CPU 작업 풀은 기존 파티클 경로와 공유하며 파티클은 기존 최대1helper 조건을 유지한다. GPU command list와 fiber scheduler는 이 기능에 포함되지 않는다.
 F7의 프레임 요약에는 Bern의 `Bern occlusion culling`, `Bern distance + screen-size culling`, 거리 scale과 최대 투영 지름 제어가 있다. 기본은 둘 다 ON·거리 scale1·지름24pixel이며 실행 세션에만 적용하고 팀장 rendering options JSON에는 저장하지 않는다. 가림 판정은 현재 카메라의 검증된 불투명 삼각형을 사용하며 캐시 재사용·제외 배치·인덱스와 `Render.MapOcclusion` 비용을 함께 확인한다. 거리 제외는 작은 정적 소품에 거리와 화면 크기 조건을 함께 요구한다. 각 SourceDraws는 후속 인스턴싱 전 입력이며 실제 GPU draw 절감량과 구분한다. 캡처 metadata는 저장 시점의 두 설정·거리 scale·pixel 상한을 기록한다.
 F7은 창만 열고 닫으며 수집은 창의 Capture에서 명시적으로 시작한다. 창을 닫아도 이미 시작한 수집은 계속된다. Capture/Reset과 상세 CPU 모드는 다음 프레임 경계에서 반영한다.
-촬영용 Release는 FPS 문자열을 그리지 않는다. Debug FPS도 cinematic HUD 숨김을 따른다. Map/Animation/Effect/Sequence 저작 창은 Debug 전용이고 Release의 docking/외부 viewport는 비활성이다. F1 테스트 허브는 Debug/Release에서 명시적으로 열 때만 표시한다. Release에는 기존 Level Navigation·Balance·Boss 등 공통 도구만 노출하고 Profiler 버튼은 표시하지 않는다.
+Release는 좌측 상단에 기존 노란 `FPS N`을 항상 표시하며 저장된 표시 모드를 변경하거나 요구하지 않는다. Debug는 기존 표시 모드를 유지하고 두 구성 모두 cinematic HUD 숨김을 따른다. Map/Animation/Effect/Sequence 저작 창은 Debug 전용이고 Release의 docking/외부 viewport는 비활성이다. F1 테스트 허브는 Debug/Release에서 명시적으로 열 때만 표시한다. Release에는 기존 Level Navigation·Balance·Boss 등 공통 도구만 노출하고 Profiler 버튼은 표시하지 않는다.
 기본은 pass 시간과 작업량을 수집하고 `draw별 상세 CPU 계측 (추가 비용 발생)`를 켜면 map draw별 상세 scope도 기록한다.
 각 JSON은 기본으로 현재 보관 중인 전체 프레임(최대 1200개)을 저장하며 `분석·표시 프레임 범위`와 독립이다.
 `JSON 저장 범위 제한`을 명시적으로 켠 경우에만 `최근 프레임만 저장`의 개수로 저장 범위를 줄인다.
@@ -1067,7 +1067,7 @@ NPC pose sample 재사용·particle root inverse 재사용·맵 worker·particle
 `ABBA 측정`은 고정 카메라에서 warmup 뒤 A1/B1/B2/A2를 수집하고 마지막에 이전 A/B 화면으로 돌아온다.
 측정 종료와 세션 종료는 다르며 `원래 화면으로 복귀`로 시작 전 설정을 복원한다. 기본은 창 숨김도 복원한다.
 `영상 촬영: F1로 숨겨도 최적화 A/B 화면 유지`를 명시적으로 켠 세션만 숨긴 채 preview를 유지한다.
-취소·장면/region/Video 변경·종료는 계속 복원한다. Release F7·일반 Profiler·FPS overlay·저작 창은 비활성이다.
+취소·장면/region/Video 변경·종료는 계속 복원한다. Release F7·일반 Profiler·저작 창은 비활성이다. 노란 FPS overlay는 공통 표시 계약을 따른다.
 각 단계의 기존 Profiler raw JSON을 최대64MiB로 따로 저장하고 결과 JSON의 measurement ID·frame range·
 rawEvidence.path에 연결한다. 원본 저장이 끝난 뒤 다음 warmup을 시작한다. 전체counter·CPU work ledger·IA/VS,
 CPU/GPU 분포·유효/누락 GPU 표본과 build·device·viewport·옵션 조건을 함께 기록한다. 중첩 scope는 합산하지 않는다.

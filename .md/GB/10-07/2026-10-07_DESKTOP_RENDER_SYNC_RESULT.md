@@ -60,3 +60,21 @@ GPU/showcase 변경의 기존 Debug·Release Product 빌드와 실제 RTX 선택
 각 receipt와 로그는 `out/DesktopRenderSync20261007/harness-debug`, `harness-release`에 있다.
 최종 authored/runtime JSON 의미값 일치와 Bern fog OFF, revision 93을 확인했고
 `git diff --check`도 통과했다. Product 재빌드나 Client 자율 실행은 하지 않았다.
+
+## 후속 PR 병합을 위한 통합 검증
+
+사용자의 순차 병합·동기화 요청으로 #531, #532, #533을 main에 merge commit 방식으로
+병합했다. #532와 #533은 선행 PR 병합 후 base를 main으로 변경해 같은 커밋을 보존했다.
+이미 병합된 #534의 Release 노란 FPS와 안개 OFF 정본 규칙을 #535 브랜치에 통합했다.
+통합 기준 main은 `d77ed0fc88c7c446602b9bf8a65286ef9e0684f5`다.
+
+충돌은 gotchas 상단의 새 섹션 한 곳이었다. GPU 선택 규칙과 날짜 복원 시 OFF 정본 보존
+규칙을 모두 유지했다. MainApp의 GPU 시작 로그와 Release FPS는 서로 다른 구간이며 자동
+병합 결과를 독립 검토했다. authored/runtime JSON은 양쪽 모두 revision 93, Bern fog OFF로
+동일했고 나머지 옵션도 유지됐다. 미해결 충돌과 `git diff --check` 오류는 없다.
+
+이 통합 후보에 Release Product 증분 빌드·배포를 실행해 PASS했다.
+증거는 `out/BuildPipeline/runs/20261007T041319584Z-release-product.json` 및
+`out/DesktopRenderSync20261007/merged-release-build.log`다. MainApp OBJ와 Client 실행 파일을
+갱신했으며 기존 C4819·외부 DirectXTK PDB 경고는 남았다. 새 컴파일·링크 오류는 없다.
+이번 통합 검증에서도 Client/UI를 자율 실행하거나 무비 순간 멈춤 해결을 판정하지 않았다.
