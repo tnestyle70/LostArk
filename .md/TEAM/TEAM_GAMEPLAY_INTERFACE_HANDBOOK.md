@@ -497,7 +497,7 @@ GPU Gems는 자료 모음이고 Lumen·DXR·Nanite·DLSS 같은 외부 renderer/
 
 ### 4.0 F1 Level Navigation
 
-Release는 F1 Developer Tools 허브를 명시적으로 열 수 있다. F7 입력·Profiler 창·화면 FPS 표시와 기존 Debug 전용 저작 도구는 비활성 상태를 유지한다. F6와 제품 UI는 유지한다.
+Release는 F1 Developer Tools 허브를 명시적으로 열 수 있다. F7 입력·Profiler 창과 기존 Debug 전용 저작 도구는 비활성 상태를 유지한다. Release의 노란 FPS는 좌측 상단에 항상 표시하되 cinematic HUD 숨김을 따르며 개인 표시 모드 저장값은 바꾸지 않는다. F6와 제품 UI는 유지한다.
 
 Debug/Release F1의 Level Navigation은 Lobby, Character Select, Bern, Valtan,
 KoukuSaydon, Entrance PvP Arena, Maharaka 일곱 버튼을 제공한다. Lobby 복귀는 기존
