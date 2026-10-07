@@ -157,7 +157,7 @@ bool_t Client::USER_SETTINGS::Has_SameValues(const USER_SETTINGS& Other) const
 f32_t Client::CUserSettings::Get_DefaultTextureQuality() noexcept
 {
 #ifdef _DEBUG
-	return 3.f;
+	return 0.f;
 #else
 	return 0.f;
 #endif
