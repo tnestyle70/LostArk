@@ -1,6 +1,50 @@
 #include "..\public\Graphic_Device.h"
 #include "Profiler.h"
 #include "GameInstance.h"
+#include <dxgi1_6.h>
+
+#pragma comment(lib, "dxgi.lib")
+
+namespace
+{
+    HRESULT CreatePreferredHardwareDevice(UINT flags, ComPtr<ID3D11Device>& device,
+        D3D_FEATURE_LEVEL& featureLevel, ComPtr<ID3D11DeviceContext>& context)
+    {
+        ComPtr<IDXGIFactory1> factory;
+        ComPtr<IDXGIFactory6> preferredFactory;
+        if (SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(factory.GetAddressOf()))) &&
+            SUCCEEDED(factory.As(&preferredFactory)))
+        {
+            for (UINT index = 0u; ; ++index)
+            {
+                ComPtr<IDXGIAdapter1> adapter;
+                if (FAILED(preferredFactory->EnumAdapterByGpuPreference(index,
+                    DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(adapter.GetAddressOf()))))
+                    break;
+                DXGI_ADAPTER_DESC1 description{};
+                if (FAILED(adapter->GetDesc1(&description)) ||
+                    (description.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) != 0u)
+                    continue;
+                ComPtr<ID3D11Device> stagedDevice;
+                ComPtr<ID3D11DeviceContext> stagedContext;
+                D3D_FEATURE_LEVEL stagedLevel{};
+                const HRESULT result = D3D11CreateDevice(adapter.Get(), D3D_DRIVER_TYPE_UNKNOWN,
+                    nullptr, flags, nullptr, 0u, D3D11_SDK_VERSION,
+                    stagedDevice.GetAddressOf(), &stagedLevel, stagedContext.GetAddressOf());
+                if (FAILED(result)) continue;
+                device = std::move(stagedDevice);
+                context = std::move(stagedContext);
+                featureLevel = stagedLevel;
+                return S_OK;
+            }
+        }
+        // Older DXGI or unavailable preferred hardware retains the hardware path.
+        // WARP remains an explicit caller choice, never an automatic fallback.
+        return D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, flags,
+            nullptr, 0u, D3D11_SDK_VERSION, device.GetAddressOf(), &featureLevel,
+            context.GetAddressOf());
+    }
+}
 
 CGraphic_Device::CGraphic_Device()
 
@@ -36,8 +80,10 @@ HRESULT CGraphic_Device::Initialize(HWND hWnd, WINMODE eWinMode, D3D_DRIVER_TYPE
 		eDriverType != D3D_DRIVER_TYPE_WARP)
 		return E_INVALIDARG;
 
-	HRESULT hDeviceResult = D3D11CreateDevice(nullptr, eDriverType, 0, iFlag, nullptr, 0,
-		D3D11_SDK_VERSION, &m_pDevice, &FeatureLV, &m_pDeviceContext);
+	HRESULT hDeviceResult = eDriverType == D3D_DRIVER_TYPE_HARDWARE ?
+		CreatePreferredHardwareDevice(iFlag, m_pDevice, FeatureLV, m_pDeviceContext) :
+		D3D11CreateDevice(nullptr, eDriverType, 0, iFlag, nullptr, 0,
+			D3D11_SDK_VERSION, &m_pDevice, &FeatureLV, &m_pDeviceContext);
 #ifdef _DEBUG
 	if (FAILED(hDeviceResult) && eDriverType == D3D_DRIVER_TYPE_WARP &&
 		0 != (iFlag & D3D11_CREATE_DEVICE_DEBUG))

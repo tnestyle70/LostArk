@@ -1,3 +1,530 @@
+# Character Select GPU selection implementation plan
+
+## G01. Preferred hardware device
+
+Observed Client3504 raw engine delta: AMD840M91.9613%, RTX4050 0%, Copy0% over2.1010824seconds. GPU allocations: AMD6,785,732,608bytes and NVIDIA20,819,968bytes. Existing adapter-unspecified creation is unchanged from October2 a0ff0185. This is not established as a migration-introduced defect.
+
+Graphic_Device.cpp selects hardware through DXGI HIGH_PERFORMANCE order and uses UNKNOWN with an explicit adapter. Only successful staged device/context are committed. Software adapters are excluded; unavailable Factory6/candidates retain the original hardware creation. Explicit WARP and its Debug retry remain unchanged. Feature-level policy and swapchain remain unchanged. dxgi.lib is linked by TU pragma. Existing CP949/CRLF preserved. No new C++ file/project/filter registration.
+
+## G02. Actual adapter startup evidence
+
+MainApp.cpp queries the actual created device and writes Graphics.Adapter to existing ClientStartup.user.log. Name, vendor/device IDs, LUID, feature level and memory capacities are logged. Capacities are not current usage. Diagnostics do not alter startup success. UTF-8/CRLF preserved.
+
+Saved rendering profiles, UserSettings, Resources, movie and occlusion optimizations remain unchanged. A running Client retains its current device until user restart. No autonomous Client/UI launch or termination.
+
+## Verification
+
+Incremental Release Product build; Debug compile/link subject to running module lock. Small no-window adapter/device probe, encoding and diff checks. No JSON/XML schema change. Actual restarted Client FPS remains user verification.
+
+## Graphic_Device.cpp full source
+
+```cpp
+#include "..\public\Graphic_Device.h"
+#include "Profiler.h"
+#include "GameInstance.h"
+#include <dxgi1_6.h>
+
+#pragma comment(lib, "dxgi.lib")
+
+namespace
+{
+    HRESULT CreatePreferredHardwareDevice(UINT flags, ComPtr<ID3D11Device>& device,
+        D3D_FEATURE_LEVEL& featureLevel, ComPtr<ID3D11DeviceContext>& context)
+    {
+        ComPtr<IDXGIFactory1> factory;
+        ComPtr<IDXGIFactory6> preferredFactory;
+        if (SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(factory.GetAddressOf()))) &&
+            SUCCEEDED(factory.As(&preferredFactory)))
+        {
+            for (UINT index = 0u; ; ++index)
+            {
+                ComPtr<IDXGIAdapter1> adapter;
+                if (FAILED(preferredFactory->EnumAdapterByGpuPreference(index,
+                    DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(adapter.GetAddressOf()))))
+                    break;
+                DXGI_ADAPTER_DESC1 description{};
+                if (FAILED(adapter->GetDesc1(&description)) ||
+                    (description.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) != 0u)
+                    continue;
+                ComPtr<ID3D11Device> stagedDevice;
+                ComPtr<ID3D11DeviceContext> stagedContext;
+                D3D_FEATURE_LEVEL stagedLevel{};
+                const HRESULT result = D3D11CreateDevice(adapter.Get(), D3D_DRIVER_TYPE_UNKNOWN,
+                    nullptr, flags, nullptr, 0u, D3D11_SDK_VERSION,
+                    stagedDevice.GetAddressOf(), &stagedLevel, stagedContext.GetAddressOf());
+                if (FAILED(result)) continue;
+                device = std::move(stagedDevice);
+                context = std::move(stagedContext);
+                featureLevel = stagedLevel;
+                return S_OK;
+            }
+        }
+        // Older DXGI or unavailable preferred hardware retains the hardware path.
+        // WARP remains an explicit caller choice, never an automatic fallback.
+        return D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, flags,
+            nullptr, 0u, D3D11_SDK_VERSION, device.GetAddressOf(), &featureLevel,
+            context.GetAddressOf());
+    }
+}
+
+CGraphic_Device::CGraphic_Device()
+
+{
+
+}
+
+CGraphic_Device::~CGraphic_Device()
+{
+
+
+}
+
+HRESULT CGraphic_Device::Initialize(HWND hWnd, WINMODE eWinMode, D3D_DRIVER_TYPE eDriverType,
+	int32_t iWinSizeX, int32_t iWinSizeY, ComPtr<ID3D11Device>& pOutDevice,
+	ComPtr<ID3D11DeviceContext>& pOutContext)
+{
+	int32_t		iFlag = 0;
+
+	m_iWinSizeX = iWinSizeX;
+	m_iWinSizeY = iWinSizeY;
+
+#ifdef _DEBUG
+	iFlag = D3D11_CREATE_DEVICE_DEBUG;
+#endif
+	D3D_FEATURE_LEVEL			FeatureLV;
+
+	/* dx9 : 장치 초기화를 하기위한 설정을 쭈욱 하고나서 최종적으로 장치객체를 생성한다. */
+	/* dx11 : 우선적으로 장치 객체를 생성하고 장치객체를 통해서 기타 초기화작업 및 설정을 해나간다. */
+
+	/* 그래픽 장치를 초기화한다. */
+	if (eDriverType != D3D_DRIVER_TYPE_HARDWARE &&
+		eDriverType != D3D_DRIVER_TYPE_WARP)
+		return E_INVALIDARG;
+
+	HRESULT hDeviceResult = eDriverType == D3D_DRIVER_TYPE_HARDWARE ?
+		CreatePreferredHardwareDevice(iFlag, m_pDevice, FeatureLV, m_pDeviceContext) :
+		D3D11CreateDevice(nullptr, eDriverType, 0, iFlag, nullptr, 0,
+			D3D11_SDK_VERSION, &m_pDevice, &FeatureLV, &m_pDeviceContext);
+#ifdef _DEBUG
+	if (FAILED(hDeviceResult) && eDriverType == D3D_DRIVER_TYPE_WARP &&
+		0 != (iFlag & D3D11_CREATE_DEVICE_DEBUG))
+	{
+		iFlag &= ~D3D11_CREATE_DEVICE_DEBUG;
+		hDeviceResult = D3D11CreateDevice(nullptr, eDriverType, 0, iFlag, nullptr, 0,
+			D3D11_SDK_VERSION, &m_pDevice, &FeatureLV, &m_pDeviceContext);
+	}
+#endif
+	if (FAILED(hDeviceResult))
+		return hDeviceResult;
+
+
+
+
+	/* SwapChain : 더블버퍼링. 전면과 후면버퍼를 번갈아가며 화면에 보여준다.(Present) */
+
+
+	/* 스왑체인객체를 생성하였고 생성한 스왑체인 객체가 백버퍼를 내장한다. 백버퍼를 생성하기 위한 ID3D11Texture2D 만든거야. */
+	/* 스왑체인 객체를 만들면서 백버퍼에 해당하는 ID3D11Texture2D객체를 만들어 스왑체인 객체가 내장한다. */
+	if (FAILED(Ready_SwapChain(hWnd, eWinMode, iWinSizeX, iWinSizeY)))
+		return E_FAIL;
+
+	/* 스왑체인이 들고 있는 텍스쳐 2D를 가져와서 이를 바탕으로 백버퍼 렌더타겟 뷰를 만든다.*/
+	if (FAILED(Ready_BackBufferRenderTargetView()))
+		return E_FAIL;
+
+	if (FAILED(Ready_DepthStencilView(iWinSizeX, iWinSizeY)))
+		return E_FAIL;
+
+	/* 장치에 바인드해놓을 렌더 타겟들과 뎁스스텐실뷰를 세팅한다. */
+	/* 장치는 동시에 최대 4->8개의 렌더타겟을 들고 있을 수 있다. */
+	if (FAILED(Bind_MainRenderTarget()))
+		return E_FAIL;
+
+	pOutDevice = m_pDevice;
+	pOutContext = m_pDeviceContext;
+
+
+	return S_OK;
+}
+
+HRESULT CGraphic_Device::Clear_BackBuffer_View(const float4_t* pClearColor)
+{
+	if (nullptr == m_pDeviceContext)
+		return E_FAIL;
+
+	if (FAILED(Bind_MainRenderTarget()))
+		return E_FAIL;
+
+	/* DX9기준 : Clear함수는 백버퍼, 깊이스텐실버퍼를 한꺼번에 지운다.  */
+	// m_pGraphic_Device->Clear(어떤 영역만큼 지울까, 어떤 것들을 지울까? , 뭘로 지울가. );
+
+	/* 백버퍼를 초기화한다.  */
+	m_pDeviceContext->ClearRenderTargetView(m_pBackBufferRTV.Get(), reinterpret_cast<const f32_t*>(pClearColor));
+
+	return S_OK;
+}
+
+HRESULT CGraphic_Device::Bind_MainRenderTarget()
+{
+	if (nullptr == m_pDeviceContext ||
+		nullptr == m_pBackBufferRTV ||
+		nullptr == m_pDepthStencilView)
+		return E_FAIL;
+
+	ID3D11RenderTargetView* pRTVs[] = {
+		m_pBackBufferRTV.Get(),
+	};
+
+	m_pDeviceContext->OMSetRenderTargets(
+		1,
+		pRTVs,
+		m_pDepthStencilView.Get());
+
+	D3D11_VIEWPORT ViewPortDesc{};
+	ViewPortDesc.TopLeftX = 0.f;
+	ViewPortDesc.TopLeftY = 0.f;
+	ViewPortDesc.Width = static_cast<f32_t>(m_iWinSizeX);
+	ViewPortDesc.Height = static_cast<f32_t>(m_iWinSizeY);
+	ViewPortDesc.MinDepth = 0.f;
+	ViewPortDesc.MaxDepth = 1.f;
+
+	m_pDeviceContext->RSSetViewports(1, &ViewPortDesc);
+
+	return S_OK;
+}
+
+HRESULT CGraphic_Device::Clear_DepthStencil_View()
+{
+	if (nullptr == m_pDeviceContext)
+		return E_FAIL;
+
+	m_pDeviceContext->ClearDepthStencilView(m_pDepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 0);
+
+	return S_OK;
+}
+
+HRESULT CGraphic_Device::Present()
+{
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.Present");
+	if (nullptr == m_pSwapChain)
+		return E_FAIL;
+
+	/* 전면 버퍼와 후면 버퍼를 교체하여 후면 버퍼를 전면으로 보여주는 역할을 한다. */
+	/* 후면 버퍼를 직접 화면에 보여줄게. */
+	return m_pSwapChain->Present(0, 0);
+}
+
+HRESULT CGraphic_Device::Resize_BackBuffer(uint32_t width, uint32_t height)
+{
+    if (!m_pDevice || !m_pDeviceContext || !m_pSwapChain || width == 0u || height == 0u ||
+        width > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION || height > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION)
+        return E_INVALIDARG;
+    if (!m_bBackBufferResizePending && m_pBackBufferRTV && m_pDepthStencilView &&
+        width == static_cast<uint32_t>(m_iWinSizeX) && height == static_cast<uint32_t>(m_iWinSizeY))
+        return S_OK;
+
+    DXGI_SWAP_CHAIN_DESC swapDesc{};
+    const HRESULT description = m_pSwapChain->GetDesc(&swapDesc);
+    if (FAILED(description)) return description;
+    // Allocate every independent resource before releasing the old backbuffer view.
+    D3D11_TEXTURE2D_DESC desc{};
+    desc.Width = width; desc.Height = height;
+    desc.MipLevels = desc.ArraySize = desc.SampleDesc.Count = 1u;
+    desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+    ComPtr<ID3D11Texture2D> texture;
+    ComPtr<ID3D11DepthStencilView> depth;
+    HRESULT result = m_pDevice->CreateTexture2D(&desc, nullptr, texture.GetAddressOf());
+    if (SUCCEEDED(result)) result = m_pDevice->CreateDepthStencilView(texture.Get(), nullptr, depth.GetAddressOf());
+    if (FAILED(result)) return result;
+
+    // The caller already dropped Target_Manager's saved output references.
+    // No pass is active: clearing context bindings cannot invalidate a draw in progress.
+    m_bBackBufferResizePending = true;
+    m_pDeviceContext->ClearState();
+    m_pBackBufferRTV.Reset();
+    result = m_pSwapChain->ResizeBuffers(0u, width, height, DXGI_FORMAT_UNKNOWN, swapDesc.Flags);
+    if (FAILED(result))
+    {
+        const HRESULT restore = Ready_BackBufferRenderTargetView();
+        if (SUCCEEDED(restore)) (void)Bind_MainRenderTarget();
+        return FAILED(restore) ? restore : result;
+    }
+
+    result = Ready_BackBufferRenderTargetView();
+    if (FAILED(result))
+    {
+        m_pBackBufferRTV.Reset();
+        const HRESULT rollback = m_pSwapChain->ResizeBuffers(0u, static_cast<uint32_t>(m_iWinSizeX),
+            static_cast<uint32_t>(m_iWinSizeY), DXGI_FORMAT_UNKNOWN, swapDesc.Flags);
+        if (FAILED(rollback)) return rollback;
+        const HRESULT restore = Ready_BackBufferRenderTargetView();
+        if (FAILED(restore)) return restore;
+        (void)Bind_MainRenderTarget();
+        return result;
+    }
+    m_pDepthStencilView.Swap(depth);
+    m_iWinSizeX = static_cast<int32_t>(width);
+    m_iWinSizeY = static_cast<int32_t>(height);
+    m_bBackBufferResizePending = false;
+    return Bind_MainRenderTarget();
+}
+
+HRESULT CGraphic_Device::Set_FullscreenMode(bool fullscreen, uint32_t width, uint32_t height)
+{
+    if (!m_pSwapChain || (fullscreen && (width == 0u || height == 0u ||
+        width > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION || height > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION)))
+        return E_INVALIDARG;
+    BOOL previousFullscreen = FALSE;
+    ComPtr<IDXGIOutput> previousOutput;
+    DXGI_SWAP_CHAIN_DESC previousDesc{};
+    HRESULT result = m_pSwapChain->GetFullscreenState(&previousFullscreen, previousOutput.GetAddressOf());
+    if (SUCCEEDED(result)) result = m_pSwapChain->GetDesc(&previousDesc);
+    if (FAILED(result)) return result;
+    if (!fullscreen && !previousFullscreen) return S_OK;
+
+    // DXGI's in-progress status is a success HRESULT, but no mode is committed yet.
+    const auto completed = [](HRESULT status) -> HRESULT
+    {
+        return status == DXGI_STATUS_MODE_CHANGE_IN_PROGRESS ? E_PENDING : status;
+    };
+    ComPtr<IDXGIOutput> desiredOutput;
+    if (fullscreen)
+    {
+        result = m_pSwapChain->GetContainingOutput(desiredOutput.GetAddressOf());
+        if (FAILED(result)) return result;
+        result = completed(m_pSwapChain->SetFullscreenState(TRUE, desiredOutput.Get()));
+        if (SUCCEEDED(result))
+        {
+            DXGI_MODE_DESC mode = previousDesc.BufferDesc;
+            mode.Width = width; mode.Height = height;
+            mode.RefreshRate = {0u, 0u};
+            mode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+            mode.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+            result = completed(m_pSwapChain->ResizeTarget(&mode));
+        }
+    }
+    else result = completed(m_pSwapChain->SetFullscreenState(FALSE, nullptr));
+    if (SUCCEEDED(result))
+    {
+        BOOL currentFullscreen = FALSE;
+        result = m_pSwapChain->GetFullscreenState(&currentFullscreen, nullptr);
+        if (SUCCEEDED(result) && (currentFullscreen != FALSE) != fullscreen)
+            result = E_PENDING;
+    }
+    if (FAILED(result))
+    {
+        m_bBackBufferResizePending = true;
+        const HRESULT rollback = completed(m_pSwapChain->SetFullscreenState(previousFullscreen, previousOutput.Get()));
+        if (FAILED(rollback)) return rollback;
+        DXGI_MODE_DESC mode = previousDesc.BufferDesc;
+        const HRESULT restore = completed(m_pSwapChain->ResizeTarget(&mode));
+        if (FAILED(restore)) return restore;
+        BOOL restoredFullscreen = FALSE;
+        const HRESULT verify = m_pSwapChain->GetFullscreenState(&restoredFullscreen, nullptr);
+        if (FAILED(verify)) return verify;
+        return (restoredFullscreen != FALSE) == (previousFullscreen != FALSE) ? result : E_PENDING;
+    }
+    // A mode transition must realize new buffers even when the pixel size is unchanged.
+    m_bBackBufferResizePending = true;
+    return S_OK;
+}
+
+void CGraphic_Device::Shutdown()
+{
+	if (nullptr != m_pDeviceContext)
+	{
+		m_pDeviceContext->ClearState();
+		m_pDeviceContext->Flush();
+	}
+
+
+	if (m_pSwapChain) (void)m_pSwapChain->SetFullscreenState(FALSE, nullptr);
+	m_pSwapChain.Reset();
+	m_pBackBufferRTV.Reset();
+	m_pDepthStencilView.Reset();
+	m_pDeviceContext.Reset();
+
+
+
+#if defined(DEBUG) || defined(_DEBUG)
+	ID3D11Debug* d3dDebug = nullptr;
+	HRESULT hr = nullptr == m_pDevice ? E_FAIL :
+		m_pDevice->QueryInterface(__uuidof(ID3D11Debug), reinterpret_cast<void**>(&d3dDebug));
+	if (SUCCEEDED(hr))
+	{
+		OutputDebugStringW(L"----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- \r ");
+		OutputDebugStringW(L"                                                                    D3D11 Live Object ref Count Checker \r ");
+		OutputDebugStringW(L"----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- \r ");
+
+		hr = d3dDebug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
+
+		OutputDebugStringW(L"----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- \r ");
+		OutputDebugStringW(L"                                                                    D3D11 Live Object ref Count Checker END \r ");
+		OutputDebugStringW(L"----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- \r ");
+	}
+	if (d3dDebug != nullptr)            d3dDebug->Release();
+#endif
+
+
+	m_pDevice.Reset();
+}
+
+
+HRESULT CGraphic_Device::Ready_SwapChain(HWND hWnd, WINMODE isWindowed, int32_t iWinCX, int32_t iWinCY)
+{
+	ComPtr<IDXGIDevice>			pDevice = nullptr;
+	m_pDevice->QueryInterface(__uuidof(IDXGIDevice), (void**)pDevice.GetAddressOf());
+
+	ComPtr < IDXGIAdapter>			pAdapter = nullptr;
+	pDevice->GetParent(__uuidof(IDXGIAdapter), (void**)pAdapter.GetAddressOf());
+
+	ComPtr < IDXGIFactory>			pFactory = nullptr;
+	pAdapter->GetParent(__uuidof(IDXGIFactory), (void**)pFactory.GetAddressOf());
+
+	/* 스왑체인을 생성한다. = 텍스쳐를 생성하는 행위 + 스왑하는 형태  */
+	DXGI_SWAP_CHAIN_DESC		SwapChain;
+	ZeroMemory(&SwapChain, sizeof(DXGI_SWAP_CHAIN_DESC));
+
+	/* 백버퍼 == 텍스쳐 */
+	/*텍스처(백버퍼 == ID3D11Texture2D)를 생성하는 행위*/
+	SwapChain.BufferDesc.Width = iWinCX;	/* 가로 픽셀 수 */
+	SwapChain.BufferDesc.Height = iWinCY;	/* 세로 픽셀 수 */
+
+	/* float4(1.f, 1.f, 1.f, 1.f) */
+	/* float4(1.f, 0.f, 0.f, 1.f) */
+
+	SwapChain.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; /*D3DFMT_A8R8G8B8*/ /* 만든 픽셀하나의 데이터 정보 : 32BIT픽셀생성하되 부호가 없는 정규화된 수를 저장할께 */
+	SwapChain.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+	SwapChain.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+
+	/* 스케치북에 사과를 그릴꺼야. */
+	/* RENDER_TARGET : 그림을 당하는 대상. 스케치북 */
+	SwapChain.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	SwapChain.BufferCount = 1;
+
+	/*스왑하는 형태 : 모니터 주사율에 따라 조절해도 됨. */
+	SwapChain.BufferDesc.RefreshRate.Numerator = 60;
+	SwapChain.BufferDesc.RefreshRate.Denominator = 1;
+
+	/* 멀티샘플링 : 안티얼라이징 (계단현상방지) */
+	/* 나중에 후처리 렌더링 : 멀티샘플링 지원(x) */
+	SwapChain.SampleDesc.Quality = 0;
+	SwapChain.SampleDesc.Count = 1;
+
+	SwapChain.OutputWindow = hWnd;
+	SwapChain.Windowed = static_cast<BOOL>(isWindowed);
+	SwapChain.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+	SwapChain.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+
+	/* 백버퍼라는 텍스처(ID3D11Texture2D)를 생성했다. */
+	if (FAILED(pFactory->CreateSwapChain(m_pDevice.Get(), &SwapChain, &m_pSwapChain)))
+		return E_FAIL;
+	// Display mode is owned by the application settings, never implicit Alt+Enter.
+	if (FAILED(pFactory->MakeWindowAssociation(hWnd, DXGI_MWA_NO_ALT_ENTER)))
+		return E_FAIL;
+
+
+
+
+
+	return S_OK;
+}
+
+
+HRESULT CGraphic_Device::Ready_BackBufferRenderTargetView()
+{
+	if (nullptr == m_pDevice)
+		return E_FAIL;
+
+	/* 내가 앞으로 사용 하기위한 용도의 텍스쳐를 생성하기위한 베이스 데이터를 가지고 있는 객체이다. */
+	/* 내가 앞으로 사용 하기위한 용도의 텍스쳐 : ID3D11RenderTargetView, ID3D11ShaderResoureView, ID3D11DepthStencilView */
+	ComPtr<ID3D11Texture2D>		pBackBufferTexture = nullptr;
+
+	/* 스왑체인이 들고있던 텍스처를 가져와봐. */
+	if (FAILED(m_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)pBackBufferTexture.GetAddressOf())))
+		return E_FAIL;
+
+	/* 실제 렌더타겟용도로 사용할 수 있는 텍스쳐 타입(ID3D11RenderTargetView)의 객체를 생성한다. */
+	if (FAILED(m_pDevice->CreateRenderTargetView(pBackBufferTexture.Get(), nullptr, m_pBackBufferRTV.GetAddressOf())))
+		return E_FAIL;
+
+
+	return S_OK;
+}
+
+HRESULT CGraphic_Device::Ready_DepthStencilView(int32_t iWinCX, int32_t iWinCY)
+{
+	if (nullptr == m_pDevice)
+		return E_FAIL;
+
+	ComPtr<ID3D11Texture2D> pDepthStencilTexture = { nullptr };
+
+	D3D11_TEXTURE2D_DESC	TextureDesc{};
+
+	/* 깊이 버퍼의 픽셀은 백버퍼의 픽셀과 갯수가 동일해야만 깊이 테스트가 가능해진다. */
+	/* 픽셀의 수가 다르면 아에 렌더링을 못함. */
+	TextureDesc.Width = iWinCX;
+	TextureDesc.Height = iWinCY;
+	TextureDesc.MipLevels = 1;
+	TextureDesc.ArraySize = 1;
+	TextureDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+
+	TextureDesc.SampleDesc.Quality = 0;
+	TextureDesc.SampleDesc.Count = 1;
+
+	/* 동적? 정적?  */
+	TextureDesc.Usage = D3D11_USAGE_DEFAULT /* 정적 */;
+	/* 추후에 어떤 용도로 바인딩 될 수 있는 View타입의 텍스쳐를 만들기위한 Texture2D입니까? */
+	TextureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL
+		/*| D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE*/;
+	TextureDesc.CPUAccessFlags = 0;
+	TextureDesc.MiscFlags = 0;
+
+	if (FAILED(m_pDevice->CreateTexture2D(&TextureDesc, nullptr, pDepthStencilTexture.GetAddressOf())))
+		return E_FAIL;
+
+
+	if (FAILED(m_pDevice->CreateDepthStencilView(pDepthStencilTexture.Get(), nullptr, m_pDepthStencilView.GetAddressOf())))
+		return E_FAIL;
+
+
+
+	return S_OK;
+}
+
+unique_ptr<CGraphic_Device> CGraphic_Device::Create(HWND hWnd, WINMODE eWinMode, D3D_DRIVER_TYPE eDriverType,
+	int32_t iWinSizeX, int32_t iWinSizeY, ComPtr<ID3D11Device>& pOutDevice,
+	ComPtr<ID3D11DeviceContext>& pOutContext)
+{
+	auto		pInstance = unique_ptr<CGraphic_Device>(new CGraphic_Device());
+
+	if (FAILED(pInstance->Initialize(hWnd, eWinMode, eDriverType, iWinSizeX, iWinSizeY,
+		pOutDevice, pOutContext)))
+		return nullptr;
+
+	return pInstance;
+}
+//
+//void CGraphic_Device::Free()
+//{
+//	Safe_Release(m_pSwapChain);
+//	Safe_Release(m_pDepthStencilView);
+//	Safe_Release(m_pBackBufferRTV);
+//	Safe_Release(m_pDeviceContext);
+//
+//
+
+//
+//
+//	Safe_Release(m_pDevice);
+//}
+
+```
+
+## MainApp.cpp full source
+
+```cpp
 #include <WinSock2.h>
 #include "imgui.h"
 #pragma push_macro("new")
@@ -9493,7 +10020,7 @@ void CMainApp::RenderDeadSceneText()
 	DeadScene_TitleTextMarker/_ReviveButton/_SpectateButton/_ReviveMessageMarker slot rects out of
 	its own m_pDeadSceneView every frame -- moving any of those in the HUD Layout Tool moves this
 	text with them, instead of a hand-copied constant here drifting out of sync the way it just did. */
-	const wstring strTitle = L"\xC0AC\xB9DD\xD558\xC600\xC2B5\xB2C8\xB2E4"; // 사망하였습니다 
+	const wstring strTitle = L"\xC0AC\xB9DD\xD558\xC600\xC2B5\xB2C8\xB2E4"; // 사망하였습니다
 	const float2_t vTitleMeasured =
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
 	const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ?
@@ -9503,7 +10030,7 @@ void CMainApp::RenderDeadSceneText()
 			(rects.fTitleY + rects.fTitleHeight * 0.5f) * textScaleY),
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fTitleScale * textUiScale);
 
-	const wstring strReviveLabel = L"\xBD80\xD65C"; // 부활 
+	const wstring strReviveLabel = L"\xBD80\xD65C"; // 부활
 	const float2_t vReviveMeasured =
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strReviveLabel.c_str());
 	const f32_t fReviveScale = (vReviveMeasured.y > 0.f) ?
@@ -9513,7 +10040,7 @@ void CMainApp::RenderDeadSceneText()
 			(rects.fReviveTextY + rects.fReviveTextHeight * 0.5f) * textScaleY),
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fReviveScale * textUiScale);
 
-	const wstring strSpectateLabel = L"\xAD00\xC804\xD558\xAE30"; // 관전하기 
+	const wstring strSpectateLabel = L"\xAD00\xC804\xD558\xAE30"; // 관전하기
 	const float2_t vSpectateMeasured =
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strSpectateLabel.c_str());
 	const f32_t fSpectateScale = (vSpectateMeasured.y > 0.f) ?
@@ -9557,7 +10084,7 @@ void CMainApp::RenderRaidClearText()
 		/* Real loc key traced from epicgatecommonclear.gfx's clearTF field (fontClass=$YoonGasiIIM,
 		white, initialText="[$]commander.dungeon_clear") -- this project has no loc-key table, so
 		the real Korean string it resolves to in the reference screenshot is used directly. */
-		const wstring strTitle = L"\xB358\xC804 \xD074\xB9AC\xC5B4"; // 던전 클리어 
+		const wstring strTitle = L"\xB358\xC804 \xD074\xB9AC\xC5B4"; // 던전 클리어
 		const float2_t vTitleMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
 		const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ?
@@ -9574,7 +10101,7 @@ void CMainApp::RenderRaidClearText()
 	// overlay itself has finished (isButtonValid), never together with isValid.
 	if (rects.isButtonValid)
 	{
-		const wstring strReturnLabel = L"\xB3CC\xC544\xAC00\xAE30"; // 돌아가기 
+		const wstring strReturnLabel = L"\xB3CC\xC544\xAC00\xAE30"; // 돌아가기
 		const float2_t vReturnMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strReturnLabel.c_str());
 		const f32_t fScaleByHeight = (vReturnMeasured.y > 0.f) ?
@@ -15775,3 +16302,5 @@ void CMainApp::Free()
 	CEffectV2Runtime::Release_Resources();
 	CEffectCatalog::Clear();
 }
+
+```

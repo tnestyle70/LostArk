@@ -16,7 +16,7 @@ powershell -ExecutionPolicy Bypass -File Tools/UserSettingsContractHarness/Run-U
 - 첫 저장/다시 로드, unknown numeric row와 escaped ID 보존, defaults seeding, 세 window mode round-trip, exact-byte backup.
 - Preview 비저장 및 non-display만 적용, cancel snapshot 복원.
 - 텍스처 최상/상/중/하의 선택값0/1/2/3이 실제 `Apply_Video`의 `iTextureMinMip`으로 이어지는지, Preview 비저장·취소 복원·Commit/reload 유지 여부. 비중립 감마·색상 필터와 scene의 Bloom/FXAA/SSAO ON/OFF 보존.
-- 누락 텍스처 행은 Debug mip3(하), Release mip0(최상)을 사용한다. 실제 UI `Effective_Default` 함수 본문을 추출해 초기 seed·Reset과 같은 기본값인지, 로드 전·후 seed와 명시 저장0~3 보존을 검사한다. 음수·범위 초과·분수 선택값의 안전한 mip0 처리, NaN/무한대 Preview 거부와 잘못된 default의 안전 처리는 유지한다.
+- 누락 텍스처 행은 Debug와 Release 모두 mip0(최상)을 사용한다. 실제 UI `Effective_Default` 함수 본문을 추출해 초기 seed·Reset과 같은 기본값인지, 로드 전·후 seed와 명시 저장0~3 보존을 검사한다. 음수·범위 초과·분수 선택값의 안전한 mip0 처리, NaN/무한대 Preview 거부와 잘못된 default의 안전 처리는 유지한다.
 - 문법 오류·array root·schema 누락·분수 해상도·알 수 없는 window mode·문자열 row value 거부, 기존 메모리·파일 보존.
 - callback 실패와 NaN 후보 거부, 디스크·메모리 보존과 임시 파일 정리.
 - Apply 전 또는 callback 실행 도중 외부 저장 발생 시 freshness 검사 거부, display rollback, 외부 bytes 보존.

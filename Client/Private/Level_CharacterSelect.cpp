@@ -360,7 +360,7 @@ void CLevel_CharacterSelect::Set_BrowseStage(const CLASS_BROWSE_STAGE eStage, co
 
 void CLevel_CharacterSelect::End_ClassShowcaseCamera()
 {
-	m_pClassShowcase->Hide();
+	m_pClassShowcase->Leave();
 	if (!m_bShowcaseCameraActive)
 		return;
 	m_bShowcaseCameraActive = false;

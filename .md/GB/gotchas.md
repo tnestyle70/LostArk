@@ -1,5 +1,12 @@
 # LostArk merge 회귀 방지 정본
 
+## 하이브리드 GPU의 실제 실행 장치를 먼저 확인한다
+
+- RTX 4050 Laptop GPU가 장착된 이 노트북의 제품 Debug/Release Client는 반드시 RTX 4050으로 렌더링하는지 확인한다. 시작 로그의 `Graphics.Adapter` 이름이 `NVIDIA GeForce RTX 4050 Laptop GPU`인지 확인하며, AMD Radeon 840M이면 성능 검증을 진행하지 않고 GPU 선택 경로부터 바로잡는다. GPU 이름이나 LUID를 공용 코드에 하드코딩하지 않는다. 데스크탑 등 다른 PC에서는 그 PC의 고성능 하드웨어 GPU를 선택하고 실제 adapter 로그를 확인한다.
+- Windows의 고성능 선호 설정만으로 D3D11 장치를 확정하지 않는다. 실제 EXE 경로·PID와 `Client/Default/ClientStartup.user.log`의 `Graphics.Adapter` LUID를 OS GPU engine/memory의 같은 PID·LUID와 연결한다.
+- 하드웨어 선택은 DXGI `HIGH_PERFORMANCE` 순서와 software adapter 제외를 유지한다. 명시 adapter의 `D3D11CreateDevice`는 `UNKNOWN` driver type을 사용하며, WARP를 자동 fallback으로 추가하지 않는다.
+- private bytes·working set·GPU committed/usage/budget은 다른 값이다. 가용 RAM과 paging을 함께 확인하고 비정상 counter나 파일 크기를 실제 GPU 사용량으로 해석하지 않는다. 장치 선택 확인 전 무비·컬링 최적화나 저장 렌더링 옵션을 원인으로 단정해 되돌리지 않는다.
+
 ## 같은 헤어의 무비와 장착 경로 차이
 
 - 정상 장착과 무비가 다른 머리처럼 보여도 먼저 basis를 맞춘 정점·UV·weight와 디코딩한 texture alpha를 대조한다. 동일한 hair55를 경로만 교체하면 무비 골격·clip을 잃을 수 있다.
@@ -6286,7 +6293,7 @@ projective/비유한 행렬은 계속 거부하고 source LOD로 돌아간다. �
 사용자 컷신 FPS 검증은 구분한다.
 
 텍스처 품질의 빌드별 기본값은 초기 로드 fallback과 UI seed·Reset에서 같은 함수를 쓴다.
-Debug 하/Release 최상은 저장값이 없는 경우의 기본값이며 기존 명시 저장값을 강제하지 않는다.
+Debug/Release 모두 최상이 저장값이 없는 경우의 기본값이며 기존 명시 저장값을 강제하지 않는다.
 
 ### 실제 typed texture와 원본 mip 근거를 먼저 연결한다
 

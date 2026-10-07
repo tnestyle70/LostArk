@@ -399,10 +399,18 @@ void CCharacterSelectShowcase::Hide()
     }
 }
 
-void CCharacterSelectShowcase::Clear()
+void CCharacterSelectShowcase::Leave()
 {
     Hide();
+    // Suppression only skips rendering. Remove the display clone from its Layer
+    // so trial/customizing/movies do not keep evaluating an invisible character.
+    // The two static floor placements stay cached for the next preview.
     m_State->display.reset();
+}
+
+void CCharacterSelectShowcase::Clear()
+{
+    Leave();
     m_State->scene.reset();
     m_State->failedApprovedCharacter.reset();
     m_State->failedClass = CHARACTER_CLASS_ID::END;
