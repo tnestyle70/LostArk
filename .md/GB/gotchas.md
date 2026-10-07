@@ -45,6 +45,8 @@
 - 공간 셀은 culling 단위이며 반드시 draw 단위일 필요는 없다. 셀별로 보이는 instance만 모으되 각 mesh의 LOD·claim·mirror·material·시간을 검증한다. 같은 geometry라도 RNM이나 서로 다른 활성 표면 입력이 있으면 해당 입력을 bank로 보존하거나 별도 draw를 유지한다.
 - identical prefix를 먼저 그려 작은 lighting bank를 쪼개지 않는다. 같은 재질 A/A 뒤 호환 RNM 변형 B가 오면 기존 A/A/B 한 draw를 두 draw로 늘리는 회귀가 생긴다. identical prefix는 길이와 무관하게 조명 조합 하나다. 기존 bank가 다음 호환 변형까지 확장할 수 있으면 bank 경로에 양보한다.
 - multi-mesh 결합은 draw 전에 모든 mesh의 compatibility와 LOD를 확인한다. 첫 mesh가 그려진 뒤 실패하면 원본 전체를 다시 그리지 않는다. source-draw 계측은 결합하지 않은 입력 수이며 과거 제품 대비 절감량이나 FPS가 아니다. 청크 선택의 원본 비용 하한도 확장된 instancing 기준으로 함께 갱신한다.
+- 조명 bank의 전체 후보 admission을 없애고 현재 mesh 검증만 남기지 않는다. 반대로 이미 admission된 후보를 각 mesh에서 다시 전체 순회하면 material 검사가 mesh 수의 제곱으로 늘어난다. 현재 mesh의 geometry·transform·실제 CMaterial 입력을 매번 검증하는 binder를 사용하고, draw 수·GPU 시간·CPU 검사 비용은 따로 보고한다.
+- shader cache의 재사용 이득은 실제 호출자의 변경 입력·row 전환·기존 중복 제거를 포함해 검증한다. 모든 바인딩을 고정한 microbenchmark만으로 공통 setter에 추가 비교·복사 비용을 넣지 않는다. shared Effect의 Clone·부분 write·실패·직접 write 무효화도 별도로 검사한다.
 - NPC 공유는 cooked channel 내용과 정확한 track time이 같을 때 local sample 계산만 재사용한다. 각 actor의 clock·blend·root suppression·최종 bone palette와 Server authority는 유지한다. 채널 동등성 fixture와 실제 실행의 reuse hit/FPS를 구분한다.
 - 정적 환경 particle-root 역행렬은 행렬 전체 bit가 같은 경우 재사용할 수 있다. moving root·NaN·signed zero·worker별 독립성을 확인하고, 해당 연산 microbenchmark를 전체 이펙트/FPS 개선으로 환산하지 않는다.
 

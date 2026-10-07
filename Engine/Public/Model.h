@@ -380,6 +380,12 @@ public:
 	bool_t Has_SameStaticLightingTextures(const CModel& other) const;
 	HRESULT Bind_StaticLightingBank(const shared_ptr<class CShader>& shader,
 		std::span<const CModel* const> models, uint32_t meshIndex = 0u) const;
+    // Validate and bind only this mesh's bank. Multi-mesh callers must first
+    // admit the complete candidate with Can_BatchStaticLightingWith. Geometry,
+    // transform and current material compatibility are still checked per bind;
+    // no prepared pointers or compatibility result survive this call.
+    HRESULT Bind_StaticLightingBankMesh(const shared_ptr<class CShader>& shader,
+        std::span<const CModel* const> models, uint32_t meshIndex) const;
 	/* Preparation is explicit: the caller owns the proof that every source
 	   submesh in this contiguous range uses the same effective draw state.
 	   Original meshes/material slots remain intact. S_FALSE means this model
