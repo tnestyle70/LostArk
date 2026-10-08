@@ -93,6 +93,73 @@ function Assert-JsonNumber([object]$Value, [string]$Context) {
     }
 }
 
+function New-KoukuBingoBoardRow([object]$Trigger, [string]$EncounterId, [string]$PatternId) {
+    $defaults = [ordered]@{
+        bingoActiveMode = 'ENCOUNTER'; bingoFirstBombDelayMs = 30000
+        bingoBombIntervalMs = 20000; bingoBombMarkMs = 6000
+        bingoBombDropDelayMs = 2000; bingoBombFuseMs = 4000; bingoInitialMarkedCells = 2
+    }
+    if ($Trigger.kind -cne 'BINGO_BOARD') {
+        foreach ($field in (@($defaults.Keys) + @('bingoControlOnly'))) {
+            if ($null -ne $Trigger.PSObject.Properties[$field]) { throw 'Only Bingo board can carry Bingo settings' }
+        }
+        return $null
+    }
+    Assert-StableId $EncounterId 'Bingo settings encounter'
+    Assert-StableId $PatternId 'Bingo settings pattern'
+    Assert-StableId $Trigger.triggerId 'Bingo settings trigger'
+    $values = [ordered]@{}
+    foreach ($field in $defaults.Keys) {
+        $values[$field] = if ($null -ne $Trigger.PSObject.Properties[$field]) { $Trigger.$field } else { $defaults[$field] }
+    }
+    if ($values.bingoActiveMode -isnot [string] -or $values.bingoActiveMode -cnotin @('ENCOUNTER','WINDOW')) {
+        throw 'Bingo active mode must be ENCOUNTER or WINDOW'
+    }
+    Assert-JsonInteger $values.bingoFirstBombDelayMs 'Bingo first bomb delay' 0 600000
+    foreach ($field in @('bingoBombIntervalMs','bingoBombMarkMs','bingoBombDropDelayMs')) {
+        Assert-JsonInteger $values[$field] "Bingo $field" 1 600000
+    }
+    Assert-JsonInteger $values.bingoBombFuseMs 'Bingo bomb fuse' 250 80000
+    Assert-JsonInteger $values.bingoInitialMarkedCells 'Bingo initial marked cells' 0 25
+    if (([long]$values.bingoBombMarkMs + [long]$values.bingoBombDropDelayMs + [long]$values.bingoBombFuseMs) -gt
+        (4L * [long]$values.bingoBombIntervalMs)) {
+        throw 'Bingo bomb phases exceed the four-bomb capacity'
+    }
+    $phaseTicks = 0L
+    foreach ($field in @('bingoBombMarkMs','bingoBombDropDelayMs','bingoBombFuseMs')) {
+        $phaseTicks += [long][Math]::Ceiling(([long]$values[$field] * 30.0) / 1000.0)
+    }
+    $intervalTicks = [long][Math]::Ceiling(([long]$values.bingoBombIntervalMs * 30.0) / 1000.0)
+    if ($phaseTicks -gt 4L * $intervalTicks) { throw 'Bingo bomb phases exceed the four-bomb capacity at 30 Hz' }
+    return (@('PATTERNBINGOBOARD', $EncounterId, $PatternId, $Trigger.triggerId) + @($values.Values)) -join "`t"
+}
+
+function New-KoukuBingoControlRow([object]$Pattern, [object]$Trigger, [string]$EncounterId) {
+    if ($null -eq $Trigger.PSObject.Properties['bingoControlOnly']) { return $null }
+    if ($Trigger.kind -cne 'BINGO_BOARD' -or $Trigger.bingoControlOnly -isnot [bool]) {
+        throw 'Bingo control marker requires a Bingo board and Boolean value'
+    }
+    if (-not $Trigger.bingoControlOnly) { return $null }
+    if ($Pattern.gateId -cne 'BINGO' -or @($Pattern.mechanicTriggers).Count -ne 1 -or @($Pattern.logicWindows).Count -ne 0 -or
+        @($Pattern.worldSequences).Count -ne 0 -or @($Pattern.sceneProfiles).Count -ne 0 -or
+        @($Pattern.sourceActionIds).Count -ne 0 -or $Pattern.resetBossToSpawn -or
+        $null -ne $Pattern.PSObject.Properties['parentPatternSequence'] -or
+        $null -ne $Pattern.PSObject.Properties['bossMotion'] -or
+        $null -ne $Pattern.PSObject.Properties['resetBossYawDegrees'] -or
+        $null -ne $Pattern.PSObject.Properties['showtimeTargets'] -or
+        $null -ne $Pattern.PSObject.Properties['pursuitProjectiles'] -or
+        $null -ne $Pattern.PSObject.Properties['trackBombs']) {
+        throw 'Bingo control must be an independent board-only Pattern'
+    }
+    foreach ($stage in @($Pattern.stages)) {
+        if ($stage.hitShape -cne 'NONE' -or $stage.hitCount -ne 0 -or $stage.pushMs -ne 0 -or
+            $stage.knockdown -or $null -ne $stage.PSObject.Properties['rootMotionSamples']) {
+            throw 'Bingo control cannot carry an actor attack or motion'
+        }
+    }
+    return (@('PATTERNBINGOCONTROL', $EncounterId, $Pattern.patternId, $Trigger.triggerId) -join "`t")
+}
+
 function Format-JsonSignedNumbers([object[]]$Values, [string]$Context) {
     # Collider tracks contain tens of thousands of keys. Keep the exact JSON
     # number and signed-float admission, without two function/pipeline calls
@@ -565,11 +632,11 @@ function Get-BootstrapRowSortKey {
 		$dependencyOrder = if ($fields[0] -ceq 'PATTERNBOSSMOTION') { 0 } else { 1 }
 		$Row = (@('PATTERNBOSSMOTION',$fields[1],$fields[2],$dependencyOrder) + @($fields[3..($fields.Count - 1)])) -join "`t"
 	}
-	if ($fields.Count -ge 4 -and $fields[0] -cin @('PATTERNMECHANICTRIGGER','PATTERNALBIONAIRBORNE','PATTERNCARDMAZESTAGING','PATTERNBINGOHAMMER','PATTERNCARDRAINSOLDIERS','PATTERNTRACKBOMB','PATTERNTRACKMOVE')) {
+	if ($fields.Count -ge 4 -and $fields[0] -cin @('PATTERNMECHANICTRIGGER','PATTERNALBIONAIRBORNE','PATTERNCARDMAZESTAGING','PATTERNBINGOHAMMER','PATTERNBINGOBOARD','PATTERNBINGOCONTROL','PATTERNCARDRAINSOLDIERS','PATTERNTRACKBOMB','PATTERNTRACKMOVE')) {
 		# Child settings resolve their exact, already loaded mechanic occurrence.
 		$dependencyOrder = if ($fields[0] -ceq 'PATTERNMECHANICTRIGGER') { 0 } else { 1 }
-		$Row = (@('PATTERNMECHANICTRIGGER',$fields[1],$fields[2],$fields[3],$dependencyOrder) +
-			@($fields[4..($fields.Count - 1)])) -join "`t"
+		$Row = @('PATTERNMECHANICTRIGGER',$fields[1],$fields[2],$fields[3],$dependencyOrder) -join "`t"
+		if ($fields.Count -gt 4) { $Row += "`t" + ($fields[4..($fields.Count - 1)] -join "`t") }
 	}
 	if ($fields.Count -ge 5 -and $fields[0] -cin @(
 		'PATTERNSHOWTIMETARGETS','PATTERNSHOWTIMERANDOM')) {
@@ -1830,6 +1897,10 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		if ($null -ne $trigger.PSObject.Properties['patternSpawns']) { $triggerOptionalProperties += 'patternSpawns' }
 		if ($null -ne $trigger.PSObject.Properties['playerEntryPositions']) { $triggerOptionalProperties += 'playerEntryPositions' }
 		if ($null -ne $trigger.PSObject.Properties['hammerHalfExtentsM']) { $triggerOptionalProperties += 'hammerHalfExtentsM' }
+		foreach ($field in @('bingoActiveMode','bingoFirstBombDelayMs','bingoBombIntervalMs','bingoBombMarkMs',
+			'bingoBombDropDelayMs','bingoBombFuseMs','bingoInitialMarkedCells','bingoControlOnly')) {
+			if ($null -ne $trigger.PSObject.Properties[$field]) { $triggerOptionalProperties += $field }
+		}
 		foreach ($field in @('airbornePhase','airborneHeightM','airborneDurationMs','airborneTargetPositionPolicy','selectedEffectVisualId','selectedEffectLifetimeMs')) {
 			if ($null -ne $trigger.PSObject.Properties[$field]) { $triggerOptionalProperties += $field }
 		}
@@ -1923,6 +1994,10 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 				$koukuPattern.patternId, $trigger.triggerId, (Format-InvariantFloat $trigger.hammerHalfExtentsM[0] 'Bingo head half forward'),
 				(Format-InvariantFloat $trigger.hammerHalfExtentsM[1] 'Bingo head half width')) -join "`t"))
 		} elseif ($null -ne $trigger.PSObject.Properties['hammerHalfExtentsM']) { throw 'Only Bingo board can carry hammer half extents' }
+		$bingoBoardRow = New-KoukuBingoBoardRow $trigger $koukuEncounterDocument.encounterId $koukuPattern.patternId
+		if ($null -ne $bingoBoardRow) { $spawnRows.Add($bingoBoardRow) }
+		$bingoControlRow = New-KoukuBingoControlRow $koukuPattern $trigger $koukuEncounterDocument.encounterId
+		if ($null -ne $bingoControlRow) { $spawnRows.Add($bingoControlRow) }
 		if ($trigger.kind -ceq 'CARD_MAZE_STAGE_PLAYERS') {
 			if ($trigger.playerEntryPositions -isnot [Array] -or @($trigger.playerEntryPositions).Count -lt 1 -or
 				@($trigger.playerEntryPositions).Count -gt 4) { throw 'Card maze staging needs one to four player entry positions' }

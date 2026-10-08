@@ -31,7 +31,7 @@ namespace
         case BOSS::KOUKU_SAYDON: return "Saydon";
         case BOSS::KOUKU_SAYDON_GATE2: return "Large Saydon, Kouku";
         case BOSS::KOUKU_SAYDON_GATE3: return "Saydon (Gate 3)";
-        case BOSS::KOUKU_SAYDON_ENCORE: return "Encore Saydon";
+        case BOSS::KOUKU_SAYDON_ENCORE: return "Bingo / Encore Saydon";
         default: return "Unavailable boss";
         }
     }

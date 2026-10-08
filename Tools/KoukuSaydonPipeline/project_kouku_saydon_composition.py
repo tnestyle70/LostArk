@@ -145,6 +145,12 @@ PATTERN_OPTIONAL_KEYS = {
     "presentationOccurrences", "nextPresentationOccurrenceOrdinal", "gateId", "targetBossPlacementId", "folderId",
 }
 LOGIC_KEYS = {"logicId", "displayName", "logicType"}
+BINGO_BOARD_DEFAULTS = {
+    "bingoActiveMode": "ENCOUNTER", "bingoFirstBombDelayMs": 30000,
+    "bingoBombIntervalMs": 20000, "bingoBombMarkMs": 6000,
+    "bingoBombDropDelayMs": 2000, "bingoBombFuseMs": 4000,
+    "bingoInitialMarkedCells": 2,
+}
 # Typed judgement values live on the DURATION definition, typed outcome values
 # on the RESULT definition. Which value keys a kind may carry is exact.
 LOGIC_KIND_VALUE_KEYS = {
@@ -166,7 +172,7 @@ LOGIC_KIND_VALUE_KEYS = {
     "BOSS_TRACK_TARGET": {"followSpeedScale", "bombPresentationOccurrenceId", "bombExplosionPresentationOccurrenceId",
                           "bombSectorPresentationOccurrenceId", "bombSectorRadiusM", "bombSectorHalfAngleDegrees"},
     "BOSS_RANDOM_TARGET": {"trackingPresentationOccurrenceId"},
-    "BINGO_BOARD": set(),
+    "BINGO_BOARD": set(BINGO_BOARD_DEFAULTS),
     "BINGO_COMPLETED_LINES": {"threshold"},
     "PURSUIT_PROJECTILES": {"projectileHits", "visualIds", "cardSymbols", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "spawnIntervalMs", "homing", "countPerWave", "maxDistanceM"},
     "CROSS_DIRECTION_CLONES": {"directionPatternIds", "cloneEndStageId", "summonOccurrenceId"},
@@ -551,6 +557,28 @@ def outcome_logic_ids(box: dict[str, Any], slot: str) -> list[str]:
     return [singular] if singular else []
 
 
+def _bingo_board_settings(logic: dict[str, Any], context: str) -> dict[str, Any]:
+    mode = logic.get("bingoActiveMode", BINGO_BOARD_DEFAULTS["bingoActiveMode"])
+    if not isinstance(mode, str) or mode not in {"ENCOUNTER", "WINDOW"}:
+        raise CompositionError(f"{context} bingoActiveMode must be ENCOUNTER or WINDOW")
+    settings = {"bingoActiveMode": mode}
+    for field, minimum, maximum in (
+        ("bingoFirstBombDelayMs", 0, 600000), ("bingoBombIntervalMs", 1, 600000),
+        ("bingoBombMarkMs", 1, 600000), ("bingoBombDropDelayMs", 1, 600000),
+        ("bingoBombFuseMs", 250, 80000), ("bingoInitialMarkedCells", 0, 25),
+    ):
+        settings[field] = _integer(logic.get(field, BINGO_BOARD_DEFAULTS[field]),
+                                   f"{context} {field}", minimum, maximum)
+    if (settings["bingoBombMarkMs"] + settings["bingoBombDropDelayMs"] + settings["bingoBombFuseMs"] >
+            4 * settings["bingoBombIntervalMs"]):
+        raise CompositionError(f"{context} Bingo bomb phases exceed the four-bomb capacity")
+    ticks = lambda milliseconds: (milliseconds * 30 + 999) // 1000
+    if (sum(ticks(settings[key]) for key in ("bingoBombMarkMs", "bingoBombDropDelayMs", "bingoBombFuseMs")) >
+            4 * ticks(settings["bingoBombIntervalMs"])):
+        raise CompositionError(f"{context} Bingo bomb phases exceed the four-bomb capacity at 30 Hz")
+    return settings
+
+
 def _validate_logic_definition(
     logic: dict[str, Any], context: str, next_logic: int
 ) -> tuple[str, dict[str, Any]]:
@@ -687,6 +715,8 @@ def _validate_logic_definition(
             definition["completionCount"] = _integer(logic.get("completionCount", 0), f"{context} completionCount", 1, len(candidates))
         elif kind == "INVULNERABILITY_ZONE":
             definition["threshold"] = _integer(logic.get("threshold", 0), f"{context} threshold", 0, 4)
+        elif kind == "BINGO_BOARD":
+            definition.update(_bingo_board_settings(logic, context))
         elif kind == "BINGO_COMPLETED_LINES":
             definition["threshold"] = _integer(logic.get("threshold", 3), f"{context} threshold", 1, 10)
         elif kind == "STAGGER_WINDOW":
@@ -4926,7 +4956,52 @@ def _project_card_maze_entry_positions(pattern, box, logic, resources):
     return positions
 
 
+def _is_bingo_control_pattern(pattern: dict[str, Any], logics: dict[str, Any], *, include_disabled=False) -> bool:
+    """Only an empty actor timeline may release Flow while the board clock continues."""
+    if (pattern.get("gateId") != "BINGO" or "resetBossYawDegrees" in pattern or any(pattern.get(key) for key in
+            ("patternOccurrences", "bossMotion", "resetBossToSpawn", "enterCombatOnFinish"))):
+        return False
+    if any(stage.get("animationOccurrences") for stage in pattern.get("stages", [])):
+        return False
+    if any(row.get("enabled", True) for key in ("summonOccurrences", "worldOccurrences",
+                                               "sceneProfileOccurrences", "presentationOccurrences")
+           for row in pattern.get(key, [])):
+        return False
+    boxes = [row for row in pattern.get("logicOccurrences", []) if row.get("enabled", True)]
+    if include_disabled and not boxes:
+        boxes = [row for row in pattern.get("logicOccurrences", [])
+                 if logics.get(row["logicId"], {}).get("logicType") == "DURATION" and
+                 logics.get(row["logicId"], {}).get("judgementKind") == "BINGO_BOARD"]
+    return (len(boxes) == 1 and
+            logics.get(boxes[0]["logicId"], {}).get("logicType") == "DURATION" and
+            logics.get(boxes[0]["logicId"], {}).get("judgementKind") == "BINGO_BOARD")
+
+
+def _project_disabled_bingo_controls(document: dict[str, Any]) -> dict[str, Any]:
+    """A disabled scheduling window must not become an equally long empty Flow action."""
+    logics = {logic["logicId"]: logic for logic in document.get("logics", [])}
+    patterns = []
+    changed = False
+    for pattern in document["patterns"]:
+        if (_is_bingo_control_pattern(pattern, logics, include_disabled=True) and
+                not _is_bingo_control_pattern(pattern, logics)):
+            pattern = copy.deepcopy(pattern)
+            pattern["durationMs"] = 34
+            pattern["stages"] = [{"stageId": "STAGE_1", "actionId": pattern["patternId"] + ".stage.1",
+                                  "stageKind": "ACTIVE", "durationMs": 34, "animationOccurrences": []}]
+            for lane in ("logicOccurrences", "summonOccurrences", "worldOccurrences",
+                         "sceneProfileOccurrences", "presentationOccurrences"):
+                pattern[lane] = []
+            changed = True
+        patterns.append(pattern)
+    return {**document, "patterns": patterns} if changed else document
+
+
 def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
+    document = _project_disabled_bingo_controls(document)
+    source_logics = {logic["logicId"]: logic for logic in document.get("logics", [])}
+    bingo_controls = {row["patternId"] for row in document["patterns"]
+                      if _is_bingo_control_pattern(row, source_logics)}
     document = _expand_parent_patterns(document)
     arena_archetypes_by_profile = arena_boss_archetypes_by_profile(root)
     logics = {logic["logicId"]: logic for logic in document.get("logics", [])}
@@ -5043,7 +5118,9 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 raise CompositionError(f"{box['occurrenceId']} clone pattern must be PRODUCT: {clone_id}")
             mechanic_triggers.append({
                 "triggerId": box["occurrenceId"], "kind": "BOSS_RANDOM_TARGET_PRESENTATION" if kind == "BOSS_RANDOM_TARGET" and logic["logicType"] == "DURATION" else kind,
-                **({"hammerHalfExtentsM": _project_bingo_hammer_geometry(
+                **({**_bingo_board_settings(logic, box["occurrenceId"]),
+                    **({"bingoControlOnly": True} if source["patternId"] in bingo_controls else {}),
+                    "hammerHalfExtentsM": _project_bingo_hammer_geometry(
                     world_sequences if world_sequences is not None else load_world_sequences(root, document["areaId"]))}
                    if kind == "BINGO_BOARD" else {}),
                 **({"soldierCounts": list(logic.get("soldierCounts", [1, 1, 1])),
@@ -6125,6 +6202,7 @@ def _project_attachment_grips(document: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def project_presentation(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
+    document = _project_disabled_bingo_controls(document)
     document = _expand_parent_patterns(document)
     light_revision = _join_light_resources(document, root)
     bindings: list[dict[str, Any]] = []

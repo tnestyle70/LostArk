@@ -880,6 +880,23 @@ namespace LostArk::Server
 		BOSS_LOGIC_REGION FanRegion;
 	};
 
+	struct BOSS_BINGO_BOARD_SETTINGS final
+	{
+		bool bWindowOnly = false;
+		std::uint32_t iFirstBombDelayMs = 30000u, iBombIntervalMs = 20000u;
+		std::uint32_t iBombMarkMs = 6000u, iBombDropDelayMs = 2000u, iBombFuseMs = 4000u;
+		std::uint32_t iInitialMarkedCells = 2u;
+		[[nodiscard]] bool Is_Valid() const noexcept
+		{
+			const auto ticks = [](const std::uint32_t ms) { return (std::uint64_t(ms) * 30u + 999u) / 1000u; };
+			return iFirstBombDelayMs <= 600000u && iBombIntervalMs && iBombIntervalMs <= 600000u &&
+				iBombMarkMs && iBombMarkMs <= 600000u && iBombDropDelayMs && iBombDropDelayMs <= 600000u &&
+				iBombFuseMs >= 250u && iBombFuseMs <= 80000u && iInitialMarkedCells <= 25u &&
+				std::uint64_t(iBombMarkMs) + iBombDropDelayMs + iBombFuseMs <= std::uint64_t(iBombIntervalMs) * 4u &&
+				ticks(iBombMarkMs) + ticks(iBombDropDelayMs) + ticks(iBombFuseMs) <= ticks(iBombIntervalMs) * 4u;
+		}
+	};
+
 	struct BOSS_PATTERN_MECHANIC_TRIGGER final
 	{
 		std::string strTriggerId;
@@ -940,6 +957,9 @@ namespace LostArk::Server
 		std::optional<BOSS_SHOWTIME_BOMB_RESOLUTION> ShowtimeBomb;
 		// WORLD head box after authored Object scale: path-forward, transverse.
 		std::optional<std::array<float, 2u>> BingoHammerHalfExtentsM;
+		std::optional<BOSS_BINGO_BOARD_SETTINGS> BingoBoardSettings;
+		// Publisher certifies this Pattern has no animation or other active authoring lanes.
+		bool bBingoControlOnly = false;
 	};
 
 	/* Presentation cues the pattern clock fires. The Server only knows the

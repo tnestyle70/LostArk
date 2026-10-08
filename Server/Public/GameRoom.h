@@ -2013,7 +2013,9 @@ namespace LostArk::Server
         struct KOUKU_BINGO_DURATION final
         {
             LostArk::Shared::NET_ENTITY_ID iOwnerId = LostArk::Shared::INVALID_NET_ENTITY_ID;
-            std::uint32_t iPatternSequence = 0u, iEndTick = 0u;
+            std::uint32_t iPatternSequence = 0u, iEndTick = 0u, iActivationTick = 0u;
+            BOSS_BINGO_BOARD_SETTINGS Settings;
+            bool bActivated = false, bInitializeCells = false;
             std::uint32_t iNextBombTick = 0u, iNextHammerTick = 0u, iNextMadnessTick = 0u;
             std::uint32_t iMarkedBombCount = 0u;
             float fHammerHalfForwardM = 0.f, fHammerHalfWidthM = 0.f;
@@ -2028,6 +2030,7 @@ namespace LostArk::Server
         void Begin_KoukuBingoDuration(const SERVER_WORLD_ENTITY& owner,
             const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, std::uint32_t tick);
         void Stop_KoukuBingoDuration(bool clearBoard);
+        void Activate_KoukuBingoBoard(std::uint32_t tick);
 
 		std::uint32_t m_iCardMazeMarchStartTick = 0u;
 		std::uint32_t m_iCardMazeCycleMs = 0u;

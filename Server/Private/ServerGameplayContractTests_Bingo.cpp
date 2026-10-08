@@ -1,4 +1,5 @@
 #include "ServerGameplayContractTests_Runner.h"
+#include "ServerApp.h"
 #include "Network/PacketMessages.h"
 #include "KoukuSaydonLogicRuntime.h"
 #include "GameRoom.h"
@@ -813,6 +814,130 @@ int LostArk::Server::Run_ServerBingoContractTests()
                     !outsider.iInvulnerableEndTick && unsafe.iInvulnerableEndTick == 20908u,
                     "An eligible revived participant may claim the retained new line without renewing dead or unpinned players");
             }
+
+            // Authored encounter windows use the raid clock and drain already marked bombs.
+            room->Stop_KoukuBingoDuration(true);
+            owner.iCurrentHp = owner.iMaximumHp; owner.iPatternSequence = 901u;
+            room->m_KoukuRaid.State.ePhase = KOUKUSAYDON_RAID_PHASE::COMBAT;
+            room->m_KoukuRaid.State.strGateId = "BINGO"; room->m_KoukuRaid.State.iRunEpoch = 72u;
+            room->m_KoukuRaid.State.iStartTick = 1000u;
+            room->m_KoukuRaid.pCatalog = audition.pProductGeneration;
+            player.iCurrentHp = 100u; player.eAction = PLAYER_ACTION_STATE::NONE;
+            player.fPositionX = Kouku_BingoCellCenterX(12); player.fPositionZ = Kouku_BingoCellCenterZ(12);
+            for (auto& [id, other] : room->m_Players) if (id != 1u) other.iCurrentHp = 0u;
+            BOSS_BINGO_BOARD_SETTINGS tuned;
+            tuned.bWindowOnly = true; tuned.iFirstBombDelayMs = 1000u; tuned.iBombIntervalMs = 5000u;
+            tuned.iBombMarkMs = 2000u; tuned.iBombDropDelayMs = 1000u; tuned.iBombFuseMs = 8000u;
+            tuned.iInitialMarkedCells = 7u;
+            auto authoredBoard = trigger;
+            authoredBoard.iStartMs = 2000u; authoredBoard.iDurationMs = 2500u; authoredBoard.BingoBoardSettings = tuned;
+            room->Begin_KoukuBingoDuration(owner, authoredBoard, 1000u);
+            room->Update_KoukuBingo(1059u);
+            tests.Require(!room->m_KoukuBingoDuration.bActivated && !room->m_KoukuBingo.Get_WhiteMask(),
+                "Authored Bingo start offset delays initial cells and every periodic scheduler");
+            room->Update_KoukuBingo(1060u);
+            tests.Require(room->m_KoukuBingoDuration.bActivated && std::popcount(room->m_KoukuBingo.Get_WhiteMask()) == 7 &&
+                room->m_KoukuBingoDuration.iNextBombTick == 1090u && room->m_KoukuBingoDuration.iEndTick == 1135u,
+                "Window starts from raid combat time with seven distinct cells and the authored first delay");
+            room->m_KoukuBingo.Reset();
+            room->m_KoukuBingoDuration.iNextMadnessTick = room->m_KoukuBingoDuration.iNextHammerTick = 99999u;
+            room->Update_KoukuBingo(1089u);
+            tests.Require(countPhase(BINGO_BOMB_PHASE::MARKED) == 0, "A tuned first mark cannot begin before its exact deadline");
+            room->Update_KoukuBingo(1090u);
+            tests.Require(countPhase(BINGO_BOMB_PHASE::MARKED) == 1 && room->m_KoukuBingo.Get_Bombs()[0].iDetonateTick == 1150u &&
+                room->m_KoukuBingoDuration.iNextBombTick == 1240u,
+                "First delay, mark duration and recurring interval independently consume authored values");
+            room->Update_KoukuBingo(1135u);
+            room->Begin_KoukuBingoDuration(owner, authoredBoard, 1136u);
+            tests.Require(room->m_KoukuBingoDuration.iOwnerId == owner.iNetEntityId &&
+                room->m_KoukuBingoDuration.iActivationTick == 1060u && countPhase(BINGO_BOMB_PHASE::MARKED) == 1,
+                "Window expiry retains its encounter owner and cannot restart or discard an in-flight mark");
+            room->m_KoukuBingoDuration.Settings.iBombDropDelayMs = 2000u;
+            room->m_KoukuBingoDuration.Settings.iBombFuseMs = 4000u;
+            room->Update_KoukuBingo(1150u);
+            tests.Require(room->m_KoukuBingo.Get_Bombs()[0].iPlantTick == 1180u,
+                "A pending mark retains its captured drop delay after the active window or settings change");
+            room->Update_KoukuBingo(1180u);
+            tests.Require(countPhase(BINGO_BOMB_PHASE::PLANTED) == 1 && room->m_KoukuBingo.Get_Bombs()[0].iDetonateTick == 1420u,
+                "The pending ground bomb retains its authored eight-second fuse beyond the board window");
+            room->Update_KoukuBingo(1420u); room->Update_KoukuBingo(1500u);
+            tests.Require(!countPhase(BINGO_BOMB_PHASE::MARKED) && !countPhase(BINGO_BOMB_PHASE::PLANTED) &&
+                room->m_KoukuBingo.Get_WhiteMask() == Kouku_BingoCrossMask(12) && room->m_KoukuBingoDuration.iMarkedBombCount == 1u,
+                "A window drains its last bomb and flips the board without issuing later marks");
+            for (const auto count : {0u, 25u})
+            {
+                room->Stop_KoukuBingoDuration(true); ++room->m_KoukuRaid.State.iRunEpoch;
+                authoredBoard.iStartMs = 0u; authoredBoard.BingoBoardSettings->iInitialMarkedCells = count;
+                room->Begin_KoukuBingoDuration(owner, authoredBoard, 1000u);
+                tests.Require(std::popcount(room->m_KoukuBingo.Get_WhiteMask()) == int(count),
+                    count ? "Initial-cell maximum fills exactly the full board" : "Zero initial cells preserves an empty board");
+            }
+            room->Stop_KoukuBingoDuration(true);
+
+            // Exercise the real transactional catalog reader with the new supplemental rows.
+            namespace fs = std::filesystem;
+            auto baseRows = audition.pProductGeneration->Export_BootstrapBytes();
+            std::istringstream sourceRows(baseRows); std::string line, stripped;
+            while (std::getline(sourceRows, line))
+                if (!line.starts_with("PATTERNBINGOBOARD\t") && !line.starts_with("PATTERNBINGOCONTROL\t")) stripped += line + "\n";
+            baseRows = std::move(stripped);
+            const std::string identity = "\tENCOUNTER_KAKULSAYDON_G1\tKAKULSAYDON_G1_PATTERN_129\tKAKULSAYDON_G1_PATTERN_129.logic.1";
+            const std::string settingsRow = "PATTERNBINGOBOARD" + identity + "\tWINDOW\t1000\t5000\t2000\t1000\t8000\t7\n";
+            const std::string controlRow = "PATTERNBINGOCONTROL" + identity + "\n";
+            const auto directory = fs::temp_directory_path() / (L"LostArkBingoSettings-" + std::to_wstring(GetCurrentProcessId()));
+            std::error_code fileError; fs::create_directories(directory, fileError);
+            const auto path = directory / L"Gameplay.bootstrap";
+            auto admitted = std::make_unique<CGameplayCatalog>();
+            const auto readRows = [&](const std::string& addition) {
+                auto bytes = baseRows + addition;
+                const auto end = bytes.find('\n'), field = bytes.rfind('\t', end);
+                bytes.replace(field + 1u, end - field - 1u, std::to_string(std::count(bytes.begin(), bytes.end(), '\n') - 1u));
+                { std::ofstream file(path, std::ios::binary | std::ios::trunc); file.write(bytes.data(), static_cast<std::streamsize>(bytes.size())); }
+                GameplayDataRevision hash; std::string status;
+                return !fileError && CServerApp::Hash_GameplayFileForAdmission(path, hash, status) &&
+                    admitted->Load_FromBootstrap(fs::canonical(path), hash, hash);
+            };
+            const bool validSettings = readRows(settingsRow + controlRow);
+            if (!validSettings) std::cout << "[BINGO SETTINGS] " << admitted->Get_Status() << '\n';
+            tests.Require(validSettings, "Native catalog admits authored Bingo settings and the explicit pure-control marker");
+            const auto locateSettings = [&]() -> const BOSS_PATTERN_MECHANIC_TRIGGER* {
+                const auto* patterns = admitted->Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
+                if (patterns) for (const auto& pattern : *patterns) if (pattern.strPatternId == "KAKULSAYDON_G1_PATTERN_129")
+                    for (const auto& item : pattern.MechanicTriggers) if (item.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD) return &item;
+                return nullptr;
+            };
+            const auto* parsed = locateSettings();
+            tests.Require(parsed && parsed->BingoBoardSettings && parsed->BingoBoardSettings->iBombFuseMs == 8000u &&
+                parsed->BingoBoardSettings->bWindowOnly && parsed->bBingoControlOnly,
+                "Native catalog retains timing, active mode and certified control ownership");
+            if (validSettings)
+            {
+                auto controlCatalog = std::make_shared<CGameplayCatalog>(*admitted);
+                auto* patterns = const_cast<std::vector<BOSS_PATTERN_DEFINITION>*>(controlCatalog->Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1"));
+                auto control = std::find_if(patterns->begin(), patterns->end(), [](const auto& pattern) { return pattern.strPatternId == "KAKULSAYDON_G1_PATTERN_129"; });
+                control->Stages.front().iDurationMs = control->iTimelineDurationMs = 600000u;
+                control->MechanicTriggers.front().iDurationMs = 600000u;
+                auto& run = room->m_KoukuRaid; run.pCatalog = controlCatalog; run.iPrimaryBossId = owner.iNetEntityId;
+                run.State.iFlowEntryIndex = 0u; run.bEntryRunning = false;
+                tests.Require(room->Start_KoukuRaidEntry(2000u) && !run.bEntryRunning && run.State.iFlowEntryIndex == 1u && run.iNextEntryTick == 2002u,
+                    "A certified ten-minute board control advances after the historical 34ms instead of blocking ordinary boss attacks");
+                control->MechanicTriggers.front().bBingoControlOnly = false;
+                run.State.iFlowEntryIndex = 0u; run.State.strFlowEntryId.clear();
+                tests.Require(!room->Start_KoukuRaidEntry(2100u) && run.State.iFlowEntryIndex == 0u && run.State.strFlowEntryId.empty(),
+                    "An unmarked Pattern is never inferred to be an empty control and skipped");
+            }
+            for (const auto& invalid : {
+                settingsRow + settingsRow, settingsRow + controlRow + controlRow,
+                "PATTERNBINGOBOARD" + identity + "\tWINDOW\t1000\t5000\t2000\t1000\t249\t7\n",
+                "PATTERNBINGOBOARD" + identity + "\tWINDOW\t1000\t1000\t2000\t1000\t8000\t7\n",
+                "PATTERNBINGOBOARD" + identity + "\tWINDOW\t1000\t100\t1\t1\t398\t7\n"})
+            {
+                tests.Require(!readRows(invalid), "Native Bingo settings reject duplicates, unsupported fuse rates and bomb-slot overflow");
+                parsed = locateSettings();
+                tests.Require(parsed && parsed->BingoBoardSettings && parsed->BingoBoardSettings->iBombFuseMs == 8000u,
+                    "Rejected Bingo settings preserve the previously admitted catalog");
+            }
+            fs::remove(path, fileError); fs::remove(directory, fileError);
         }
     }
 #endif

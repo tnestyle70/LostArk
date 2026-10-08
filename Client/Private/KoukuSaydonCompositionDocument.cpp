@@ -403,6 +403,22 @@ namespace
                 logic != plain)
             { outStatus = "Collider contact role requires a plain ENTER_AREA Trigger and DAMAGE/KNOCKBACK role."; return false; }
         }
+        const bool bingoBoard = logic.strLogicType == "DURATION" && logic.strJudgementKind == "BINGO_BOARD";
+        const bool hasBingoValues = logic.strBingoActiveMode != "ENCOUNTER" || logic.iBingoFirstBombDelayMs != 30000u ||
+            logic.iBingoBombIntervalMs != 20000u || logic.iBingoBombMarkMs != 6000u ||
+            logic.iBingoBombDropDelayMs != 2000u || logic.iBingoBombFuseMs != 4000u || logic.iBingoInitialMarkedCells != 2u;
+        const auto bingoTicks = [](const std::uint32_t ms) { return (std::uint64_t(ms) * 30u + 999u) / 1000u; };
+        if ((!bingoBoard && hasBingoValues) || (bingoBoard &&
+            ((logic.strBingoActiveMode != "ENCOUNTER" && logic.strBingoActiveMode != "WINDOW") ||
+             logic.iBingoFirstBombDelayMs > MAX_TIME_MS || !logic.iBingoBombIntervalMs || logic.iBingoBombIntervalMs > MAX_TIME_MS ||
+             !logic.iBingoBombMarkMs || logic.iBingoBombMarkMs > MAX_TIME_MS ||
+             !logic.iBingoBombDropDelayMs || logic.iBingoBombDropDelayMs > MAX_TIME_MS ||
+             logic.iBingoBombFuseMs < 250u || logic.iBingoBombFuseMs > 80000u || logic.iBingoInitialMarkedCells > 25u ||
+             std::uint64_t(logic.iBingoBombMarkMs) + logic.iBingoBombDropDelayMs + logic.iBingoBombFuseMs >
+                4ull * logic.iBingoBombIntervalMs ||
+             bingoTicks(logic.iBingoBombMarkMs) + bingoTicks(logic.iBingoBombDropDelayMs) + bingoTicks(logic.iBingoBombFuseMs) >
+                4ull * bingoTicks(logic.iBingoBombIntervalMs))))
+        { outStatus = "BINGO_BOARD requires ENCOUNTER/WINDOW, bounded bomb timing, 0..25 initial cells and at most four simultaneous bombs."; return false; }
 		const bool hitShowtime = logic.strLogicType == "DURATION" && logic.strJudgementKind == "SHOWTIME_PLAYER_TARGETS";
 		const bool hitPursuit = ((logic.strLogicType == "DURATION" && logic.strJudgementKind == "PURSUIT_PROJECTILES") ||
             (logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "PURSUIT_PROJECTILES"));
@@ -3399,7 +3415,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		for (const DATA_JSON_VALUE& logicValue : logics->Get_Array())
 		{
 			if (!Has_Properties(logicValue, { "logicId", "displayName", "logicType" },
-					{ "colliderDamageContactRole", "judgementKind", "fixedHits", "trackingHits", "projectileHits", "randomVolleyHits", "fixedSelectionGroupId", "trackingPresentationOccurrenceId", "spawnIntervalMs", "followSpeedScale",
+					{ "bingoActiveMode", "bingoFirstBombDelayMs", "bingoBombIntervalMs", "bingoBombMarkMs", "bingoBombDropDelayMs", "bingoBombFuseMs", "bingoInitialMarkedCells",
+                      "colliderDamageContactRole", "judgementKind", "fixedHits", "trackingHits", "projectileHits", "randomVolleyHits", "fixedSelectionGroupId", "trackingPresentationOccurrenceId", "spawnIntervalMs", "followSpeedScale",
                       "bombPresentationOccurrenceId", "bombExplosionPresentationOccurrenceId", "bombSectorPresentationOccurrenceId", "bombSectorRadiusM", "bombSectorHalfAngleDegrees",
                       "visualIds", "cardSymbols", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "homing", "countPerWave",
 					  "randomVolleyOccurrenceSets", "randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM", "randomAnchorKind", "randomScaleMin", "randomScaleMax", "insideOutcome", "sectorCount", "sectorSymbols", "regionIds", "centerX", "centerZ",
@@ -3499,6 +3516,13 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			const DATA_JSON_VALUE* const repeatAfterKnockback = logicValue.Find("repeatAfterKnockback");
 			const DATA_JSON_VALUE* const randomPlayerOnly = logicValue.Find("randomPlayerOnly");
 			if (!optionalText("judgementKind", stagedLogic.strJudgementKind) ||
+                !optionalText("bingoActiveMode", stagedLogic.strBingoActiveMode) ||
+                !optionalUnsigned("bingoFirstBombDelayMs", MAX_TIME_MS, stagedLogic.iBingoFirstBombDelayMs) ||
+                !optionalUnsigned("bingoBombIntervalMs", MAX_TIME_MS, stagedLogic.iBingoBombIntervalMs) ||
+                !optionalUnsigned("bingoBombMarkMs", MAX_TIME_MS, stagedLogic.iBingoBombMarkMs) ||
+                !optionalUnsigned("bingoBombDropDelayMs", MAX_TIME_MS, stagedLogic.iBingoBombDropDelayMs) ||
+                !optionalUnsigned("bingoBombFuseMs", 80000u, stagedLogic.iBingoBombFuseMs) ||
+                !optionalUnsigned("bingoInitialMarkedCells", 25u, stagedLogic.iBingoInitialMarkedCells) ||
                 !optionalText("triggerKind", stagedLogic.strTriggerKind) ||
                 !optionalText("colliderDamageContactRole", stagedLogic.strColliderDamageContactRole) ||
 				!optionalText("fixedSelectionGroupId", stagedLogic.strFixedSelectionGroupId) ||
@@ -3607,6 +3631,11 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				outStatus = "KoukuSaydon Logic definition typed value is invalid: " + stagedLogic.strLogicId;
 				return false;
 			}
+            const std::array bingoKeys{ "bingoActiveMode", "bingoFirstBombDelayMs", "bingoBombIntervalMs", "bingoBombMarkMs",
+                "bingoBombDropDelayMs", "bingoBombFuseMs", "bingoInitialMarkedCells" };
+            if (std::any_of(bingoKeys.begin(), bingoKeys.end(), [&](const char* key) { return logicValue.Find(key) != nullptr; }) &&
+                (stagedLogic.strLogicType != "DURATION" || stagedLogic.strJudgementKind != "BINGO_BOARD"))
+            { outStatus = "Bingo settings belong only to DURATION BINGO_BOARD."; return false; }
             const bool soldierFields = logicValue.Find("soldierMaxHp") || logicValue.Find("soldierDamage") || logicValue.Find("soldierCounts") || logicValue.Find("spawnRadiusMinM") || logicValue.Find("spawnRadiusMaxM");
             if (soldierFields && (stagedLogic.strLogicType != "TRIGGER" || stagedLogic.strTriggerKind != "CARD_RAIN_SOLDIERS"))
             { outStatus = "Card soldier fields belong only to CARD_RAIN_SOLDIERS."; return false; }
@@ -5021,7 +5050,17 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 		if ("DURATION" == logic.strLogicType && !logic.strJudgementKind.empty())
 		{
 			output << ",\n      \"judgementKind\": \"" << CDataJson::Escape(logic.strJudgementKind) << "\"";
-			if ("SHOWTIME_PLAYER_TARGETS" == logic.strJudgementKind)
+            if ("BINGO_BOARD" == logic.strJudgementKind)
+            {
+                output << ",\n      \"bingoActiveMode\": \"" << CDataJson::Escape(logic.strBingoActiveMode) << "\""
+                    << ",\n      \"bingoFirstBombDelayMs\": " << logic.iBingoFirstBombDelayMs
+                    << ",\n      \"bingoBombIntervalMs\": " << logic.iBingoBombIntervalMs
+                    << ",\n      \"bingoBombMarkMs\": " << logic.iBingoBombMarkMs
+                    << ",\n      \"bingoBombDropDelayMs\": " << logic.iBingoBombDropDelayMs
+                    << ",\n      \"bingoBombFuseMs\": " << logic.iBingoBombFuseMs
+                    << ",\n      \"bingoInitialMarkedCells\": " << logic.iBingoInitialMarkedCells;
+            }
+			else if ("SHOWTIME_PLAYER_TARGETS" == logic.strJudgementKind)
 			{
 				output << ",\n      \"fixedSelectionGroupId\": \"" << CDataJson::Escape(logic.strFixedSelectionGroupId)
 					<< "\",\n      \"trackingPresentationOccurrenceId\": \"" << CDataJson::Escape(logic.strTrackingPresentationOccurrenceId)

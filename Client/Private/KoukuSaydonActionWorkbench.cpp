@@ -741,6 +741,53 @@ namespace
 		return found == document.Logics.end() ? nullptr : &*found;
 	}
 
+
+    const KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW* Find_BingoFlow(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document)
+    {
+        const auto found = std::find_if(document.PatternFlows.begin(), document.PatternFlows.end(),
+            [](const auto& flow) { return flow.strGateId == "BINGO"; });
+        return found == document.PatternFlows.end() ? nullptr : &*found;
+    }
+
+    std::pair<const KOUKU_SAYDON_COMPOSITION_PATTERN*, const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE*>
+        Find_BingoBoard(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document)
+    {
+        const auto* flow = Find_BingoFlow(document);
+        std::pair<const KOUKU_SAYDON_COMPOSITION_PATTERN*, const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE*> disabled{};
+        if (flow) for (const auto& entry : flow->Entries)
+        {
+            if (entry.strKind != "PATTERN") continue;
+            const auto* pattern = Find_Pattern(document, entry.strTargetId);
+            if (!pattern) continue;
+            for (const auto& box : pattern->LogicOccurrences)
+                if (const auto* logic = Find_Logic(document, box.strLogicId);
+                    logic && logic->strLogicType == "DURATION" && logic->strJudgementKind == "BINGO_BOARD")
+                {
+                    if (box.bEnabled) return {pattern, &box};
+                    if (!disabled.first) disabled = {pattern, &box};
+                }
+        }
+        return disabled;
+    }
+
+    bool Is_BingoBoardControl(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
+    {
+        if (pattern.strGateId != "BINGO" || pattern.bEnterCombatOnFinish || pattern.bResetBossToSpawn || pattern.ResetBossYawDegrees ||
+            pattern.BossMotion || !pattern.PatternOccurrences.empty()) return false;
+        for (const auto& stage : pattern.Stages) if (!stage.AnimationOccurrences.empty()) return false;
+        if (!pattern.SummonOccurrences.empty() || !pattern.WorldOccurrences.empty() ||
+            !pattern.SceneProfileOccurrences.empty() || !pattern.PresentationOccurrences.empty()) return false;
+        size_t count = 0;
+        for (const auto& box : pattern.LogicOccurrences)
+        {
+            const auto* logic = Find_Logic(document, box.strLogicId);
+            if (logic && logic->strLogicType == "DURATION" && logic->strJudgementKind == "BINGO_BOARD") ++count;
+            else if (box.bEnabled) return false;
+        }
+        return count == 1;
+    }
+
 	bool Has_CompletionChain(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
 		const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
 	{
@@ -2073,8 +2120,277 @@ void Client::CKoukuSaydonActionWorkbench::Select_WorkbenchBoss(const COMPOSITION
 	case COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON_ENCORE: gate = "BINGO"; break;
 	default: break;
 	}
-	if (gate != m_strSelectedGateId) Select_Hierarchy(KOUKU_PATTERN_SELECTION::GATE, gate);
+	if (gate != m_strSelectedGateId)
+    {
+        Select_Hierarchy(KOUKU_PATTERN_SELECTION::GATE, gate);
+        if (gate == "BINGO") { std::string status; (void)Select_BingoParent(status); }
+    }
 }
+
+bool_t Client::CKoukuSaydonActionWorkbench::Select_BingoParent(std::string& outStatus)
+{
+    if (m_bSequenceWorkspace || !m_bHasDraft || !Find_BingoFlow(m_Draft))
+    { outStatus = m_strStatus = "Load the saved Bingo Pattern Flow before opening its Parent."; return false; }
+    Select_Hierarchy(KOUKU_PATTERN_SELECTION::GATE, "BINGO");
+    m_ePatternSelection = KOUKU_PATTERN_SELECTION::BINGO_PARENT;
+    m_bBingoParentReturn = false;
+    Select_BingoParentBox(0);
+    outStatus = m_strStatus = "Bingo Parent: common board, special interruption and repeating Pattern Flow.";
+    return true;
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Set_BingoFlow(
+    const KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW& flow, std::string& outStatus)
+{
+    const auto* original = Find_BingoFlow(m_Draft);
+    if (!original || flow.strGateId != "BINGO" || flow.strFlowId != original->strFlowId)
+    { outStatus = m_strStatus = "Bingo Parent edits must retain the saved Flow identity."; return false; }
+    auto candidate = m_Draft;
+    for (auto& row : candidate.PatternFlows) if (row.strFlowId == flow.strFlowId) row = flow;
+    return Commit_Candidate(std::move(candidate), "Updated Bingo Parent. Save and Publish All Patterns before Complete Play.", outStatus);
+}
+
+void Client::CKoukuSaydonActionWorkbench::Select_BingoParentBox(const int kind, const std::string& entryId)
+{
+    m_iBingoParentBox = kind;
+    m_strBingoParentEntryId = entryId;
+    Clear_TimelineSelection();
+    m_strSelectedPatternId.clear(); m_strSelectedLogicOccurrenceId.clear();
+    m_strSelectedPresentationOccurrenceId.clear(); m_strSelectedPatternOccurrenceId.clear();
+    m_strSelectedWorldOccurrenceId.clear(); m_strSelectedSceneProfileOccurrenceId.clear();
+    m_strSelectedSummonOccurrenceId.clear(); m_strSelectedOccurrenceId.clear(); m_strSelectedStageId.clear();
+    if (kind == 0)
+    {
+        const auto [pattern, box] = Find_BingoBoard(m_Draft);
+        if (pattern && box)
+        { m_strSelectedPatternId = pattern->strPatternId; m_strSelectedLogicOccurrenceId = box->strOccurrenceId; }
+    }
+    if (const auto* flow = Find_BingoFlow(m_Draft))
+        for (const auto& entry : flow->Entries)
+            if (entry.strEntryId == entryId) m_iBingoEntryWaitMs = static_cast<int>(entry.iWaitAfterMs);
+    Synchronize_EditorFields();
+}
+
+void Client::CKoukuSaydonActionWorkbench::Render_BingoParentTimeline()
+{
+    const auto* source = Find_BingoFlow(m_Draft);
+    if (!source) { ImGui::TextDisabled("The saved Bingo Flow is unavailable."); return; }
+    const auto flow = *source; // UI commands can replace the draft.
+    ImGui::SeparatorText("Bingo Complete [Parent]");
+    ImGui::TextWrapped("%s", flow.strDisplayName.c_str());
+    ImGui::BeginDisabled(!Is_Dirty() || Is_PublishRunning());
+    if (ImGui::Button("Save##BingoParent")) { std::string status; (void)Save(status); }
+    ImGui::EndDisabled(); ImGui::SameLine();
+    ImGui::BeginDisabled(Is_Dirty() || Is_PublishRunning() || !m_CompleteSequenceAdmission);
+    if (ImGui::Button("Play Bingo Parent"))
+    { std::string status; (void)m_CompleteSequenceAdmission("BINGO", status); m_strStatus = status; }
+    ImGui::EndDisabled();
+    ImGui::TextWrapped("Common Logic runs alongside normal Patterns. Every third head mark interrupts the current Pattern with the special Parent; afterwards that Pattern restarts. Select a box to edit its details.");
+    ImGui::TextDisabled("Pattern lengths below describe one pass. The Server advances after actual completion and follow-ups.");
+    if (!m_strStatus.empty()) ImGui::TextWrapped("%s", m_strStatus.c_str());
+
+    const auto card = [&](const char* id, const std::string& label, const bool selected, const ImU32 color, const float height) {
+        ImGui::PushID(id);
+        const auto origin = ImGui::GetCursorScreenPos();
+        const float width = (std::max)(80.f, ImGui::GetContentRegionAvail().x);
+        const bool clicked = ImGui::InvisibleButton("box", ImVec2(width, height));
+        auto* draw = ImGui::GetWindowDrawList();
+        const ImVec2 end(origin.x + width, origin.y + height);
+        draw->AddRectFilled(origin, end, color, 4.f);
+        draw->AddRect(origin, end, selected ? IM_COL32(255, 215, 80, 255) : IM_COL32(100, 130, 150, 255), 4.f, 0, selected ? 2.f : 1.f);
+        draw->PushClipRect(origin, end, true);
+        draw->AddText(nullptr, ImGui::GetFontSize(), ImVec2(origin.x + 8, origin.y + 6), IM_COL32_WHITE, label.c_str(), nullptr, width - 16);
+        draw->PopClipRect();
+        ImGui::PopID();
+        return clicked;
+    };
+    if (ImGui::BeginChild("BingoParentFlow", ImVec2(0, 0), ImGuiChildFlags_Borders))
+    {
+        ImGui::SeparatorText("Common Logic / concurrent with all Patterns");
+        const auto [boardPattern, boardBox] = Find_BingoBoard(m_Draft);
+        const auto* board = boardBox ? Find_Logic(m_Draft, boardBox->strLogicId) : nullptr;
+        std::string boardLabel = board ? board->strDisplayName : "BINGO_BOARD is not connected to this Flow";
+        if (board)
+            boardLabel += "\n" + board->strBingoActiveMode + " | start " + std::to_string(boardBox->iStartMs) +
+                (board->strBingoActiveMode == "WINDOW" ? " ms | lifetime " + std::to_string(boardBox->iDurationMs) + " ms" : " ms | until encounter ends") + " | first bomb " +
+                std::to_string(board->iBingoFirstBombDelayMs) + " ms | interval " + std::to_string(board->iBingoBombIntervalMs) + " ms" +
+                (boardBox->bEnabled ? "" : " | DISABLED");
+        if (card("board", boardLabel, m_iBingoParentBox == 0, IM_COL32(47, 95, 75, 255), 82)) Select_BingoParentBox(0);
+        if (board && ImGui::BeginTable("BombLifecycle", 4, ImGuiTableFlags_SizingStretchSame))
+        {
+            const std::array<std::pair<const char*, std::uint32_t>, 4> phases = {{{"First delay", board->iBingoFirstBombDelayMs},
+                {"Head mark", board->iBingoBombMarkMs}, {"Drop delay", board->iBingoBombDropDelayMs}, {"Planted fuse", board->iBingoBombFuseMs}}};
+            for (const auto& [name, duration] : phases)
+            {
+                ImGui::TableNextColumn();
+                if (card(name, std::string(name) + "\n" + std::to_string(duration) + " ms", false, IM_COL32(38, 69, 60, 255), 60))
+                    Select_BingoParentBox(0);
+            }
+            ImGui::EndTable();
+            ImGui::TextDisabled("Each mark repeats at the authored interval. Fuse completion flips the centre cell and its four neighbours.");
+        }
+
+        ImGui::SeparatorText("Special Patterns / every third head mark");
+        const auto* special = Find_Pattern(m_Draft, flow.strBingoSpecialPatternId);
+        if (card("special", special ? special->strDisplayName + "\n[Special Parent] Select to change its target or open child Logic." :
+            "Select the special Parent in Box Detail", m_iBingoParentBox == 1, IM_COL32(110, 65, 48, 255), 72)) Select_BingoParentBox(1);
+        if (special) for (const auto& child : special->PatternOccurrences)
+        {
+            const auto* pattern = Find_Pattern(m_Draft, child.strPatternId);
+            ImGui::PushID(child.strOccurrenceId.c_str());
+            const auto label = std::to_string(child.iStartMs) + " - " + std::to_string(child.iStartMs + child.iDurationMs) +
+                " ms | " + (pattern ? pattern->strDisplayName : child.strPatternId);
+            if (ImGui::Selectable(label.c_str()))
+            {
+                std::string status;
+                if (Select_PatternById(child.strPatternId, status)) m_bBingoParentReturn = true;
+                ImGui::PopID(); ImGui::EndChild(); return;
+            }
+            ImGui::PopID();
+        }
+        const auto loop = std::find_if(flow.Entries.begin(), flow.Entries.end(),
+            [&](const auto& entry) { return entry.strEntryId == flow.strLoopStartEntryId; });
+        const size_t loopIndex = static_cast<size_t>(loop - flow.Entries.begin());
+        const auto drawSection = [&](const char* title, const size_t first, const size_t last) {
+            ImGui::SeparatorText(title);
+            const int columns = std::clamp(static_cast<int>(ImGui::GetContentRegionAvail().x / 260.f), 1, 4);
+            if (!ImGui::BeginTable(title, columns, ImGuiTableFlags_SizingStretchSame)) return;
+            for (size_t i = first; i < last; ++i)
+            {
+                const auto& entry = flow.Entries[i];
+                const auto* pattern = entry.strKind == "PATTERN" ? Find_Pattern(m_Draft, entry.strTargetId) : nullptr;
+                // The common controller already has its own lane above.
+                if (pattern && Is_BingoBoardControl(m_Draft, *pattern)) continue;
+                const auto foundBundle = std::find_if(m_Draft.Bundles.begin(), m_Draft.Bundles.end(),
+                    [&](const auto& row) { return entry.strKind == "BUNDLE" && row.strBundleId == entry.strTargetId; });
+                const auto* bundle = foundBundle == m_Draft.Bundles.end() ? nullptr : &*foundBundle;
+                ImGui::TableNextColumn();
+                const std::string name = pattern ? pattern->strDisplayName : bundle ? bundle->strDisplayName : entry.strTargetId;
+                std::string label = std::to_string(i + 1) + ". " + name + "\n";
+                if (pattern) label += std::to_string(Pattern_DurationMs(*pattern)) + " ms + ";
+                label += "wait " + std::to_string(entry.iWaitAfterMs) + " ms";
+                if (entry.strEntryId == flow.strLoopStartEntryId) label += "\nLOOP START";
+                if (card(entry.strEntryId.c_str(), label, m_iBingoParentBox == 2 && m_strBingoParentEntryId == entry.strEntryId,
+                    i >= loopIndex ? IM_COL32(42, 78, 109, 255) : IM_COL32(60, 64, 80, 255), 104))
+                    Select_BingoParentBox(2, entry.strEntryId);
+            }
+            ImGui::EndTable();
+        };
+        drawSection("Opening Patterns / once", 0, loopIndex);
+        drawSection("Repeating Patterns / return to LOOP START", loopIndex, flow.Entries.size());
+        if (ImGui::Button("Append Pattern to Flow")) ImGui::OpenPopup("BingoFlowAppend");
+        if (ImGui::BeginPopup("BingoFlowAppend"))
+        {
+            for (const auto& pattern : m_Draft.Patterns)
+            {
+                if (!pattern.strLoadError.empty() || pattern.strPatternId == flow.strBingoSpecialPatternId ||
+                    pattern.strGateId != "BINGO") continue;
+                if (ImGui::Selectable((pattern.strDisplayName + "##" + pattern.strPatternId).c_str()))
+                {
+                    auto edited = flow;
+                    KOUKU_SAYDON_COMPOSITION_FLOW_ENTRY entry;
+                    unsigned ordinal = 1;
+                    do { entry.strEntryId = flow.strFlowId + ".entry." + std::to_string(ordinal++); }
+                    while (std::any_of(edited.Entries.begin(), edited.Entries.end(), [&](const auto& row) { return row.strEntryId == entry.strEntryId; }));
+                    entry.strKind = "PATTERN"; entry.strTargetId = pattern.strPatternId;
+                    edited.Entries.push_back(entry);
+                    std::string status;
+                    if (Set_BingoFlow(edited, status)) Select_BingoParentBox(2, entry.strEntryId);
+                    ImGui::EndPopup(); ImGui::EndChild(); return;
+                }
+            }
+            ImGui::EndPopup();
+        }
+    }
+    ImGui::EndChild();
+}
+
+void Client::CKoukuSaydonActionWorkbench::Render_BingoParentDetails()
+{
+    const auto* source = Find_BingoFlow(m_Draft);
+    if (!source) { ImGui::TextDisabled("Bingo Parent is unavailable."); return; }
+    const auto flow = *source;
+    ImGui::SeparatorText("Bingo Parent / Box Detail");
+    if (m_iBingoParentBox == 0)
+    {
+        const auto [pattern, box] = Find_BingoBoard(m_Draft);
+        if (!pattern || !box) { ImGui::TextWrapped("Append a Pattern containing BINGO_BOARD to this Flow to connect its common Logic."); return; }
+        if (m_strSelectedPatternId != pattern->strPatternId || m_strSelectedLogicOccurrenceId != box->strOccurrenceId)
+            Select_BingoParentBox(0);
+        ImGui::TextWrapped("The common board shares the whole battle. Its Logic window does not delay the normal attack sequence. ENCOUNTER ignores Lifetime; WINDOW uses Start and Lifetime to stop new spawns.");
+        if (ImGui::Button("Open Board Pattern Timeline"))
+        {
+            const auto patternId = pattern->strPatternId, boxId = box->strOccurrenceId;
+            std::string status;
+            if (Select_PatternById(patternId, status))
+            { m_bBingoParentReturn = true; m_strSelectedLogicOccurrenceId = boxId; Synchronize_EditorFields(); }
+            return;
+        }
+        Render_LogicBoxDetails(*pattern);
+        return;
+    }
+    if (m_iBingoParentBox == 1)
+    {
+        const auto* pattern = Find_Pattern(m_Draft, flow.strBingoSpecialPatternId);
+        ImGui::TextWrapped("The third bomb head mark interrupts the normal row. The special Parent owns teleport, Medusa, black hole and its child Logic.");
+        std::string replacement;
+        if (ImGui::BeginCombo("Special Parent", pattern ? pattern->strDisplayName.c_str() : "Select Parent"))
+        {
+            for (const auto& item : m_Draft.Patterns)
+            {
+                std::string error;
+                if (!CKoukuSaydonCompositionDocument::Validate_BingoSpecialPatternTarget(m_Draft, item.strPatternId, error)) continue;
+                if (ImGui::Selectable((item.strDisplayName + "##" + item.strPatternId).c_str(), item.strPatternId == flow.strBingoSpecialPatternId)) replacement = item.strPatternId;
+            }
+            ImGui::EndCombo();
+        }
+        if (!replacement.empty())
+        { auto edited = flow; edited.strBingoSpecialPatternId = replacement; std::string status; (void)Set_BingoFlow(edited, status); return; }
+        if (pattern && ImGui::Button("Open Special Parent Timeline"))
+        { std::string status; if (Select_PatternById(pattern->strPatternId, status)) m_bBingoParentReturn = true; }
+        return;
+    }
+    const auto selected = std::find_if(flow.Entries.begin(), flow.Entries.end(),
+        [&](const auto& entry) { return entry.strEntryId == m_strBingoParentEntryId; });
+    if (selected == flow.Entries.end()) { ImGui::TextDisabled("Select a Pattern box in the Parent."); return; }
+    const auto index = static_cast<size_t>(selected - flow.Entries.begin());
+    const auto* pattern = selected->strKind == "PATTERN" ? Find_Pattern(m_Draft, selected->strTargetId) : nullptr;
+    ImGui::TextWrapped("%s", pattern ? pattern->strDisplayName.c_str() : selected->strTargetId.c_str());
+    ImGui::TextDisabled("%s", selected->strEntryId.c_str());
+    if (ImGui::Button("Open Pattern / Bundle Timeline"))
+    {
+        std::string status;
+        const bool opened = pattern ? Select_PatternById(selected->strTargetId, status) : Select_BundleById(selected->strTargetId, status);
+        if (opened) m_bBingoParentReturn = true;
+        return;
+    }
+    ImGui::InputInt("Wait after completion (ms)", &m_iBingoEntryWaitMs, 100, 1000);
+    m_iBingoEntryWaitMs = std::clamp(m_iBingoEntryWaitMs, 0, 600000);
+    if (ImGui::Button("Apply Wait"))
+    { auto edited = flow; edited.Entries[index].iWaitAfterMs = static_cast<unsigned>(m_iBingoEntryWaitMs); std::string status; (void)Set_BingoFlow(edited, status); return; }
+    ImGui::BeginDisabled(index == 0);
+    if (ImGui::Button("< Earlier##BingoFlow"))
+    { auto edited = flow; std::swap(edited.Entries[index], edited.Entries[index - 1]); std::string status; (void)Set_BingoFlow(edited, status); ImGui::EndDisabled(); return; }
+    ImGui::EndDisabled(); ImGui::SameLine(); ImGui::BeginDisabled(index + 1 == flow.Entries.size());
+    if (ImGui::Button("Later >##BingoFlow"))
+    { auto edited = flow; std::swap(edited.Entries[index], edited.Entries[index + 1]); std::string status; (void)Set_BingoFlow(edited, status); ImGui::EndDisabled(); return; }
+    ImGui::EndDisabled();
+    if (ImGui::Button("Set Loop Start Here"))
+    { auto edited = flow; edited.strLoopStartEntryId = selected->strEntryId; std::string status; (void)Set_BingoFlow(edited, status); return; }
+    ImGui::TextWrapped("Rows before Loop Start play once. The remaining rows repeat. A special interruption restarts the interrupted row afterwards.");
+    const bool referenced = selected->strEntryId == flow.strLoopStartEntryId || std::any_of(flow.EntryGroups.begin(), flow.EntryGroups.end(),
+        [&](const auto& group) { return group.strStartEntryId == selected->strEntryId || group.strEndEntryId == selected->strEntryId; });
+    ImGui::BeginDisabled(flow.Entries.size() <= 1 || referenced);
+    if (ImGui::Button("Remove from Flow"))
+    {
+        auto edited = flow; edited.Entries.erase(edited.Entries.begin() + index); std::string status;
+        if (Set_BingoFlow(edited, status)) Select_BingoParentBox(0);
+        ImGui::EndDisabled(); return;
+    }
+    ImGui::EndDisabled();
+    if (referenced) ImGui::TextDisabled("Move the Loop Start or group boundary before removing this row.");
+}
+
 
 bool_t Client::CKoukuSaydonActionWorkbench::Select_PatternById(
 	const std::string_view patternId,
@@ -2442,6 +2758,8 @@ Client::CKoukuSaydonActionWorkbench::EDIT_HISTORY_STATE Client::CKoukuSaydonActi
     if (m_CaptureWorldAnimationHistory) m_HistoryWorldDocument = m_CaptureWorldAnimationHistory(prepareWorld);
     state.worldDocument = m_HistoryWorldDocument;
     state.patternSelection = m_ePatternSelection;
+    state.bingoParentBox = m_iBingoParentBox; state.bingoEntryWaitMs = m_iBingoEntryWaitMs;
+    state.bingoParentEntryId = m_strBingoParentEntryId; state.bingoParentReturn = m_bBingoParentReturn;
     state.gate = m_strSelectedGateId; state.folder = m_strSelectedFolderId; state.bundle = m_strSelectedBundleId;
     state.pattern = m_strSelectedPatternId; state.stage = m_strSelectedStageId; state.animation = m_strSelectedOccurrenceId;
     state.logic = m_strSelectedLogicId; state.logicBox = m_strSelectedLogicOccurrenceId;
@@ -2501,6 +2819,8 @@ bool Client::CKoukuSaydonActionWorkbench::Restore_EditHistory(const EDIT_HISTORY
     m_Draft = std::move(candidate); m_StagedPresentationGeometry.clear();
     m_bDirty = m_Draft != m_Document.Get_LastGood(); ++m_iDraftGeneration;
     m_ePatternSelection = state.patternSelection;
+    m_iBingoParentBox = state.bingoParentBox; m_iBingoEntryWaitMs = state.bingoEntryWaitMs;
+    m_strBingoParentEntryId = state.bingoParentEntryId; m_bBingoParentReturn = state.bingoParentReturn;
     m_strSelectedGateId = std::move(restored.gate); m_strSelectedFolderId = std::move(restored.folder); m_strSelectedBundleId = std::move(restored.bundle);
     m_strSelectedPatternId = std::move(restored.pattern); m_strSelectedStageId = std::move(restored.stage); m_strSelectedOccurrenceId = std::move(restored.animation);
     m_strSelectedLogicId = std::move(restored.logic); m_strSelectedLogicOccurrenceId = std::move(restored.logicBox);
@@ -4682,6 +5002,10 @@ void Client::CKoukuSaydonActionWorkbench::Normalize_Selection()
 
 void Client::CKoukuSaydonActionWorkbench::Synchronize_EditorFields()
 {
+    if (m_ePatternSelection == KOUKU_PATTERN_SELECTION::BINGO_PARENT && m_iBingoParentBox == 2)
+        if (const auto* flow = Find_BingoFlow(m_Draft))
+            for (const auto& entry : flow->Entries)
+                if (entry.strEntryId == m_strBingoParentEntryId) m_iBingoEntryWaitMs = static_cast<int>(entry.iWaitAfterMs);
 	Cancel_MapEffectPlacementRequest();
 	Cancel_PresentationGeometryPreview(false);
 	std::erase_if(m_StagedPresentationGeometry, [&](const auto& row) {
@@ -4888,6 +5212,7 @@ namespace
 
 void Client::CKoukuSaydonActionWorkbench::Select_Hierarchy(const KOUKU_PATTERN_SELECTION kind, const std::string_view id)
 {
+    m_bBingoParentReturn = false;
 	Stop_Preview();
 	m_bPresentationPreviewRequestPending = false;
 	m_bServerPlayRequestPending = false;
@@ -5195,6 +5520,12 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternTree(const bool_t resour
 			(!resourcePicker && m_ePatternSelection == KOUKU_PATTERN_SELECTION::GATE && m_strSelectedGateId == gate.id ? ImGuiTreeNodeFlags_Selected : 0));
 		if (!resourcePicker && ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) Select_Hierarchy(KOUKU_PATTERN_SELECTION::GATE, gate.id);
 		if (!gateOpen) continue;
+        if (!resourcePicker && !m_bSequenceWorkspace && gate.id == "BINGO" && Find_BingoFlow(m_Draft))
+        {
+            if (ImGui::Selectable("Bingo Complete [Parent]##BingoFlowRoot", m_ePatternSelection == KOUKU_PATTERN_SELECTION::BINGO_PARENT))
+            { std::string status; (void)Select_BingoParent(status); }
+            if (!ImGui::TreeNode("Authored Patterns##BingoInventory")) { ImGui::TreePop(); continue; }
+        }
 		for (const auto& folder : gate.folders)
 		{
 			const auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen |
@@ -5213,6 +5544,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternTree(const bool_t resour
 			ImGui::TreePop();
 		}
 		drawLeaves(gate.leaves, {});
+        if (!resourcePicker && !m_bSequenceWorkspace && gate.id == "BINGO" && Find_BingoFlow(m_Draft)) ImGui::TreePop();
 		ImGui::TreePop();
 	}
 	ImGui::PopID();
@@ -7072,6 +7404,8 @@ void Client::CKoukuSaydonActionWorkbench::Stop_Preview()
 
 void Client::CKoukuSaydonActionWorkbench::Render_Transport()
 {
+    if (m_ePatternSelection == KOUKU_PATTERN_SELECTION::BINGO_PARENT)
+    { ImGui::TextWrapped("Use Play Bingo Parent to run the complete Server battle. Open a child Pattern for animation / resource preview."); return; }
 	Render_CompleteSequenceTransport();
 	if (m_ePatternSelection == KOUKU_PATTERN_SELECTION::BUNDLE) { Render_BundleTransport(); return; }
 	if (m_ePatternSelection != KOUKU_PATTERN_SELECTION::PATTERN) { ImGui::TextDisabled("Select a playback bundle or Pattern."); return; }
@@ -8677,6 +9011,9 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	const bool additiveSelection = io.KeyCtrl || io.KeyShift;
 	Engine::CProfilerScope paneScope(CGameInstance::Get().Get_Profiler(), "ImGui.Composition.Timeline");
 	Render_CompleteSequenceTransport();
+	if (m_ePatternSelection == KOUKU_PATTERN_SELECTION::BINGO_PARENT) { Render_BingoParentTimeline(); return; }
+	if (m_bBingoParentReturn && ImGui::Button("Back to Bingo Parent"))
+	{ std::string status; (void)Select_BingoParent(status); return; }
 	if (m_ePatternSelection == KOUKU_PATTERN_SELECTION::BUNDLE) { Render_BundleTimeline(); return; }
 	if (m_ePatternSelection == KOUKU_PATTERN_SELECTION::FOLDER)
 	{
@@ -10159,7 +10496,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_LogicBoxWindow(
 	}
 	const std::uint64_t lifetimeMs = Pattern_DurationMs(*pattern);
 	const std::uint64_t endMs = static_cast<std::uint64_t>(startMs) + durationMs;
-	if (0u == durationMs || endMs > lifetimeMs)
+	if (0u == durationMs || endMs > MAX_EDITOR_TIME_MS || (endMs > lifetimeMs && !Is_BingoBoardControl(candidate, *pattern)))
 	{
 		outStatus = m_strStatus = "Logic box window must stay inside the Pattern lifetime of " +
 			std::to_string(lifetimeMs) + " ms.";
@@ -10172,6 +10509,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_LogicBoxWindow(
 	}
 	box->iStartMs = startMs;
 	box->iDurationMs = durationMs;
+	if (endMs > lifetimeMs && !Extend_PatternLifetimeForAuthoredLanes(*pattern, outStatus))
+	{ m_strStatus = outStatus; return false; }
 	for (auto& collider : pattern->PresentationOccurrences)
 		if (collider.strLogicOccurrenceId == occurrenceId)
 		{
@@ -15269,12 +15608,34 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 			}
 			ImGui::TextWrapped("Success fires after this many actual Server pattern completions. Duration does not advance the phase.");
 		}
+        else if ("BINGO_BOARD" == draft.strJudgementKind)
+        {
+            if (ImGui::BeginCombo("Active mode", draft.strBingoActiveMode.c_str()))
+            {
+                for (const char* mode : {"ENCOUNTER", "WINDOW"})
+                    if (ImGui::Selectable(mode, draft.strBingoActiveMode == mode)) draft.strBingoActiveMode = mode;
+                ImGui::EndCombo();
+            }
+            const auto input = [](const char* label, std::uint32_t& value, int minimum, int maximum) {
+                int edit = static_cast<int>(value);
+                if (ImGui::InputInt(label, &edit, 100, 1000)) value = static_cast<std::uint32_t>(std::clamp(edit, minimum, maximum));
+            };
+            input("First bomb delay (ms)", draft.iBingoFirstBombDelayMs, 0, 600000);
+            input("Bomb interval (ms)", draft.iBingoBombIntervalMs, 1, 600000);
+            input("Head mark duration (ms)", draft.iBingoBombMarkMs, 1, 600000);
+            input("Drop delay (ms)", draft.iBingoBombDropDelayMs, 1, 600000);
+            input("Planted bomb fuse (ms)", draft.iBingoBombFuseMs, 250, 80000);
+            input("Initial black cells", draft.iBingoInitialMarkedCells, 0, 25);
+            ImGui::TextWrapped("ENCOUNTER schedules bombs until the battle ends. WINDOW uses this Logic box's Start and Lifetime. Existing bombs finish after the window closes.");
+            ImGui::TextWrapped("First delay starts when the board window opens. Interval is measured between head marks; every third mark runs the special Parent. Initial cells are chosen when the board starts.");
+            ImGui::TextDisabled("Mark + drop + fuse must fit within four bomb intervals.");
+        }
 		else if ("BINGO_COMPLETED_LINES" == draft.strJudgementKind)
 		{
 			int lines = static_cast<int>(draft.iThreshold);
 			if (ImGui::InputInt("Completed red rows / columns", &lines))
 				draft.iThreshold = static_cast<std::uint32_t>(std::clamp(lines, 1, 10));
-			ImGui::TextWrapped("Judges the board once when the third bomb actually explodes. Connect Success to the timed player invulnerability Result.");
+			ImGui::TextWrapped("Judges the board at the special third-bomb checkpoint. Connect Success to a Result. Separately, each newly completed unused row or column grants the Server board reward.");
 		}
 		else if ("STAGGER_WINDOW" == draft.strJudgementKind)
 		{
@@ -16309,6 +16670,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicBoxDetails(
 void Client::CKoukuSaydonActionWorkbench::Render_Details()
 {
 	Engine::CProfilerScope paneScope(CGameInstance::Get().Get_Profiler(), "ImGui.Composition.Details");
+	if (m_ePatternSelection == KOUKU_PATTERN_SELECTION::BINGO_PARENT) { Render_BingoParentDetails(); return; }
 	if (m_ePatternSelection != KOUKU_PATTERN_SELECTION::PATTERN) { Render_HierarchyDetails(); return; }
 	const KOUKU_SAYDON_COMPOSITION_PATTERN* const pattern =
 		Find_Pattern(m_Draft, m_strSelectedPatternId);

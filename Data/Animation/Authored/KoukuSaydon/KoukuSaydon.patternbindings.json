@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "lightResourceRevision": 30,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 2498,
+  "sourceRevision": 2500,
   "bindings": [
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.43",
@@ -12419,7 +12419,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_1.presentation.1",
-          "startMs": 2263,
+          "startMs": 2257,
           "durationMs": 10684,
           "loopEffectToDuration": true,
           "brightnessMultiplier": 1,
@@ -49624,8 +49624,8 @@
           "durationMs": 14413,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -49684,8 +49684,8 @@
           "durationMs": 14413,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         }
       ]
@@ -133624,8 +133624,8 @@
           "durationMs": 37744,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -133684,8 +133684,8 @@
           "durationMs": 37744,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -133744,8 +133744,8 @@
           "durationMs": 37744,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -133804,8 +133804,8 @@
           "durationMs": 37744,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -134581,8 +134581,8 @@
           "durationMs": 36366,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -134641,8 +134641,8 @@
           "durationMs": 36366,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -136615,8 +136615,8 @@
           "durationMs": 40383,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -136675,8 +136675,8 @@
           "durationMs": 40383,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -136735,8 +136735,8 @@
           "durationMs": 40383,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -136795,8 +136795,8 @@
           "durationMs": 40383,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -137805,8 +137805,8 @@
           "durationMs": 40918,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -137865,8 +137865,8 @@
           "durationMs": 40918,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -137925,8 +137925,8 @@
           "durationMs": 40918,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -137985,8 +137985,8 @@
           "durationMs": 40918,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -138995,8 +138995,8 @@
           "durationMs": 39181,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -139055,8 +139055,8 @@
           "durationMs": 39181,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -139115,8 +139115,8 @@
           "durationMs": 39181,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {
@@ -139175,8 +139175,8 @@
           "durationMs": 39181,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "boneRotation": "BONE",
           "worldEffectTrackId": "effect.doll.flame",
+          "boneRotation": "BONE",
           "worldSequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
         },
         {

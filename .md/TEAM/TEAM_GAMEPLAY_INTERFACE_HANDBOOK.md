@@ -2465,6 +2465,12 @@ Client preview와 Server 게시 좌표는 모두 `Bone × EffectTrackTRS × Obje
 
 빙고 전투 묶음은 `patternFlows`의 일반 entry/loop와 `bingoSpecialPatternId`의 특수 Parent를 함께 저장한다. 이 참조는 제품 BINGO에 필수이며 같은 gate·encounter·boss와 유일한 폭발을 가진 유효 Parent만 게시한다. `RAIDBINGOSPECIAL` supplemental 행을 Server gate definition에 고정하고 이름 검색이나 전체 패턴 추론으로 선택하지 않는다. 빙고 페이즈 진입 때 encounter 시계를 시작하며 매 세 번째 머리 표식에 현재 일반 occurrence를 정리하고 특수 Parent를 실행한다. 완료 뒤 중단했던 일반 entry를 처음부터 재생한다. 보드·폭탄 시계와 raid owner는 유지하며 동시에 두 패턴이 보스를 제어하지 않는다. 기존 다중 actor 동시 재생 Bundle 계약은 유지한다.
 
+빙고 전체 Parent는 저장된 `patternFlows`를 편집·재생하는 집합 뷰다. Composition의 `Bingo / Encore Saydon` → `Bingo Complete [Parent]`와 F1의 빙고 선택에서 공통 보드 Logic, 처음 한 번 재생하는 Opening, Loop Start부터 반복하는 Patterns, `bingoSpecialPatternId`를 구분한다. 자식 box는 기존 Pattern 타임라인을 열고, Flow 순서·대기·반복 시작과 특수 Parent 참조는 Composition의 검증·Undo·Save로 저장한다. 전체 재생은 기존 Server Complete Play를 사용하며 별도 Client 반복 시계를 만들지 않는다.
+
+`DURATION/BINGO_BOARD`의 Box Detail은 `bingoActiveMode`(ENCOUNTER/WINDOW), `bingoFirstBombDelayMs`, `bingoBombIntervalMs`, `bingoBombMarkMs`, `bingoBombDropDelayMs`, `bingoBombFuseMs`, `bingoInitialMarkedCells`를 편집한다. 생략 기본은 ENCOUNTER, 30000/20000/6000/2000/4000ms, 초기 검은 칸2개다. 첫 지연은 활성화 시점부터, interval은 머리 표식 사이 간격이다. WINDOW는 Logic box의 startMs/durationMs를 전투 시작 기준으로 사용하며 종료 후 새 폭탄·망치·광기 주기를 예약하지 않는다. 이미 표식·투하·설치 중인 폭탄은 캡처한 시간값으로 끝까지 처리한다. 보드 소유권은 유지하여 일반 패턴 교체나 WINDOW 종료가 보드를 초기화하지 않는다.
+
+설정은 `PATTERNBINGOBOARD` supplemental 행으로 기존 mechanic trigger에 연결한다. 폭탄 phase 시간은 밀리초 합과 각 phase의30Hz 올림 tick 합 모두에서 네 개 slot 용량 이내여야 한다. fuse250..80000ms는 기존 WORLD playback speed 범위에서 심지와 폭발을 함께 맞춘다. publisher가 애니메이션·다른 활성 lane·boss motion이 없는 보드 전용 Pattern에만 `PATTERNBINGOCONTROL` marker를 발급한다. 그 공통 Logic lifetime이 길어져도 일반 Flow를 같은 시간 동안 멈추지 않는다. 보드 전용 Logic을 비활성화하면 저작 시간값은 보존하고 encounter와 animation binding 양쪽에는34ms 빈 carrier만 투영하므로 일반 공격을 지연하지 않는다. 기존 짧은 보드 시작과 기존 데이터의 생략 기본값은 유지한다.
+
 같은 Server 접촉 경로의 추가 입력 계약은 다음과 같다.
 
 - Result `FIXED_DAMAGE`는 정수 `damageAmount`(1~1,000,000,000 HP)를 받으며 `percent`와 `durationMs`는0이다. 기존 안전존·피해 및 밀림 경로를 함께 사용한다.

@@ -1007,16 +1007,106 @@ bool Client::CKoukuSaydonBossTool::Render_SavedPatternFlow(const std::string_vie
 		selectionKind = 0; selectedId.clear();
 		return false;
 	}
+    if (gateId == "BINGO")
+    {
+        const auto& source = m_FlowDocument.Get_LastGood();
+        const auto findSource = [&](const std::string& id) -> const KOUKU_SAYDON_COMPOSITION_PATTERN* {
+            const auto found = std::find_if(source.Patterns.begin(), source.Patterns.end(),
+                [&](const auto& row) { return row.strPatternId == id; });
+            return found == source.Patterns.end() ? nullptr : &*found;
+        };
+        const auto isBoardBox = [&](const auto& box) {
+            return std::any_of(source.Logics.begin(), source.Logics.end(), [&](const auto& logic) {
+                return logic.strLogicId == box.strLogicId && logic.strLogicType == "DURATION" && logic.strJudgementKind == "BINGO_BOARD";
+            });
+        };
+        const auto isBoardControl = [&](const auto& pattern) {
+            if (pattern.strGateId != "BINGO" || pattern.bResetBossToSpawn || pattern.bEnterCombatOnFinish || pattern.ResetBossYawDegrees ||
+                pattern.BossMotion || !pattern.PatternOccurrences.empty()) return false;
+            for (const auto& stage : pattern.Stages) if (!stage.AnimationOccurrences.empty()) return false;
+            if (!pattern.SummonOccurrences.empty() || !pattern.WorldOccurrences.empty() ||
+                !pattern.SceneProfileOccurrences.empty() || !pattern.PresentationOccurrences.empty()) return false;
+            std::size_t count = 0u;
+            for (const auto& box : pattern.LogicOccurrences)
+            {
+                if (isBoardBox(box)) ++count;
+                else if (box.bEnabled) return false;
+            }
+            return count == 1u;
+        };
+        const auto drawTarget = [&](const std::string& id, const std::string& kind, const std::string& uiId) {
+            KOUKU_SAYDON_COMPOSITION_FLOW_ENTRY entry;
+            entry.strKind = kind; entry.strTargetId = id;
+            std::string error;
+            const auto name = Describe_FlowEntry(entry, gateId, error);
+            const int targetKind = kind == "BUNDLE" ? 2 : 3;
+            if (ImGui::Selectable((name + (error.empty() ? "" : " [Unavailable]") + "##" + uiId).c_str(),
+                selectionKind == targetKind && selectedId == id))
+            { selectionKind = targetKind; selectedId = id; }
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%s", id.c_str(), error.c_str());
+        };
+        ImGui::PushID(flow->strFlowId.c_str());
+        const bool open = ImGui::TreeNodeEx("Bingo Complete [Parent]##BingoParent",
+            ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
+            (selectionKind == 4 && selectedId == flow->strFlowId ? ImGuiTreeNodeFlags_Selected : 0));
+        if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+        { selectionKind = 4; selectedId = flow->strFlowId; }
+        if (open)
+        {
+            if (ImGui::TreeNodeEx("Common Logic", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                std::unordered_set<std::string> shown;
+                for (const auto& entry : flow->Entries)
+                    if (entry.strKind == "PATTERN")
+                        if (const auto* pattern = findSource(entry.strTargetId); pattern &&
+                            std::any_of(pattern->LogicOccurrences.begin(), pattern->LogicOccurrences.end(), isBoardBox) &&
+                            shown.insert(pattern->strPatternId).second)
+                            drawTarget(pattern->strPatternId, "PATTERN", "board." + pattern->strPatternId);
+                if (shown.empty()) ImGui::TextDisabled("No Bingo board Logic in this Flow.");
+                ImGui::TreePop();
+            }
+            if (ImGui::TreeNodeEx("Special Patterns", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                if (flow->strBingoSpecialPatternId.empty()) ImGui::TextDisabled("No special Parent assigned.");
+                else
+                {
+                    drawTarget(flow->strBingoSpecialPatternId, "PATTERN", "special.parent");
+                    if (const auto* special = findSource(flow->strBingoSpecialPatternId))
+                    {
+                        ImGui::Indent();
+                        for (const auto& child : special->PatternOccurrences)
+                            drawTarget(child.strPatternId, "PATTERN", "special." + child.strOccurrenceId);
+                        ImGui::Unindent();
+                    }
+                }
+                ImGui::TreePop();
+            }
+            const auto loop = std::find_if(flow->Entries.begin(), flow->Entries.end(),
+                [&](const auto& entry) { return entry.strEntryId == flow->strLoopStartEntryId; });
+            const auto loopIndex = static_cast<std::size_t>(loop - flow->Entries.begin());
+            for (const bool repeating : {false, true})
+                if (ImGui::TreeNodeEx(repeating ? "Repeating Patterns" : "Opening Patterns", ImGuiTreeNodeFlags_DefaultOpen))
+                {
+                    std::size_t shown = 0u;
+                    const auto begin = repeating ? loopIndex : 0u;
+                    const auto end = repeating ? flow->Entries.size() : loopIndex;
+                    for (auto index = begin; index < end; ++index)
+                    {
+                        const auto& entry = flow->Entries[index];
+                        const auto* pattern = entry.strKind == "PATTERN" ? findSource(entry.strTargetId) : nullptr;
+                        if (pattern && isBoardControl(*pattern)) continue;
+                        drawTarget(entry.strTargetId, entry.strKind, entry.strEntryId);
+                        ++shown;
+                    }
+                    if (!shown) ImGui::TextDisabled("No Patterns in this section.");
+                    ImGui::TreePop();
+                }
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
+        return true;
+    }
 	ImGui::TextUnformatted(flow->strDisplayName.c_str());
-	if (gateId == "BINGO" && !flow->strBingoSpecialPatternId.empty())
-	{
-		const auto special = std::find_if(m_ProductPatterns.begin(), m_ProductPatterns.end(),
-			[&](const auto& row) { return row.strPatternId == flow->strBingoSpecialPatternId; });
-		const std::string name = special == m_ProductPatterns.end() ? flow->strBingoSpecialPatternId : special->strDisplayName;
-		if (ImGui::Selectable(("[Every third bomb] " + name + "##bingoSpecial").c_str(),
-			selectionKind == 3 && selectedId == flow->strBingoSpecialPatternId))
-		{ selectionKind = 3; selectedId = flow->strBingoSpecialPatternId; }
-	}
 	const bool hasHealthRepeats = std::any_of(flow->EntryGroups.begin(), flow->EntryGroups.end(),
 		[](const auto& group) { return group.RepeatUntilHealthBars.has_value(); });
 	if (hasHealthRepeats)
