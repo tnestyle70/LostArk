@@ -2885,6 +2885,179 @@ namespace
 			"switching group members changed data or retained the wrong detail focus");
 		RequireEditorRoundtrip(memberEditor);
 
+		// Cross-Pattern copies need their fixed birth Effect, while same-Pattern
+		// Collider duplication keeps sharing that existing capture frame.
+		{
+			const auto liveSourceBefore = ReadText(sourceRoot / relativeSource);
+			auto anchorSource = colliderSource;
+			auto& anchorPattern = anchorSource.Patterns.front();
+			KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE anchorResource;
+			anchorResource.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(anchorSource.iNextPresentationResourceOrdinal++);
+			anchorResource.strDisplayName = "Clipboard birth Effect";
+			anchorResource.eKind = KOUKU_SAYDON_PRESENTATION_KIND::EFFECT;
+			anchorResource.strAssetId = "effect.clipboard.birth"; anchorResource.strResourceKind = "V1_EFFECT";
+			anchorResource.iDurationMs = 3000u;
+			anchorSource.PresentationResources.push_back(anchorResource);
+			KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE anchor;
+			anchor.strOccurrenceId = patternId + ".presentation." + std::to_string(anchorPattern.iNextPresentationOccurrenceOrdinal++);
+			anchor.strResourceId = anchorResource.strResourceId; anchor.iStartMs = 100u; anchor.iDurationMs = 3000u;
+			anchor.strAnchorKind = "BOSS"; anchor.bFollowBoss = false; anchor.PositionOffset = {2.0, 0.5, 3.0};
+			for (unsigned i = 0u; i < 2u; ++i)
+				anchorPattern.PresentationOccurrences[i].strAnchorPresentationOccurrenceId = anchor.strOccurrenceId;
+			anchorPattern.PresentationOccurrences.push_back(anchor);
+			auto dependentEffect = anchor;
+			dependentEffect.strOccurrenceId = patternId + ".presentation." + std::to_string(anchorPattern.iNextPresentationOccurrenceOrdinal++);
+			dependentEffect.strAnchorPresentationOccurrenceId = anchor.strOccurrenceId;
+			dependentEffect.iStartMs = 1700u; dependentEffect.RotationDegrees[1] = 180.0;
+			anchorPattern.PresentationOccurrences.push_back(dependentEffect);
+			const auto sourcePatternBefore = anchorPattern;
+			auto destination = anchorPattern;
+			destination.strPatternId = "KAKULSAYDON_G1_PATTERN_" + std::to_string(anchorSource.iNextPatternOrdinal++);
+			destination.strDisplayName = "Clipboard birth destination";
+			destination.PresentationOccurrences.clear(); destination.LogicOccurrences.clear();
+			destination.iNextPresentationOccurrenceOrdinal = 1u; destination.iNextLogicOccurrenceOrdinal = 1u;
+			const auto destinationId = destination.strPatternId;
+			anchorSource.Patterns.push_back(destination);
+			const auto anchorBytes = CKoukuSaydonCompositionDocument::Serialize(anchorSource);
+			Require(WriteText(sourcePath, anchorBytes), "write isolated birth-anchor clipboard fixture");
+			CKoukuSaydonActionWorkbench duplicateEditor;
+			RequireEditorStep(duplicateEditor.Reload(status), status, "load birth-anchor clipboard fixture");
+			RequireEditorStep(EditorPattern(duplicateEditor, patternId).strLoadError.empty(),
+				EditorPattern(duplicateEditor, patternId).strLoadError, "admit birth-anchor source");
+			RequireEditorStep(duplicateEditor.Duplicate_TimelineSelection(patternId, {}, {cylinderIds[0]}, status, true),
+				status, "same-time Collider duplicate retains existing birth Effect");
+			const auto& samePattern = EditorPattern(duplicateEditor, patternId);
+			Require(samePattern.PresentationOccurrences.size() == sourcePatternBefore.PresentationOccurrences.size() + 2u &&
+				samePattern.PresentationOccurrences.back().strAnchorPresentationOccurrenceId == anchor.strOccurrenceId &&
+				std::count_if(samePattern.PresentationOccurrences.begin(), samePattern.PresentationOccurrences.end(),
+					[&](const auto& row) { return row.strResourceId == anchorResource.strResourceId; }) == 2,
+				"same-time Collider duplicate copied its birth Effect or lost the shared capture frame");
+			CKoukuSaydonActionWorkbench anchorEditor;
+			RequireEditorStep(anchorEditor.Reload(status), status, "load a fresh clipboard owner from the unchanged fixture");
+			RequireEditorStep(anchorEditor.Copy_TimelineSelection(patternId, {}, {cylinderIds[0], cylinderIds[1]}, status),
+				status, "copy only Colliders sharing an earlier birth Effect");
+			for (unsigned repetition = 0u; repetition < 2u; ++repetition)
+			{
+				const auto beforePaste = EditorPattern(anchorEditor, destinationId);
+				RequireEditorStep(anchorEditor.Paste_TimelineClipboard(destinationId, status), status, "paste birth-anchored Colliders into another Pattern");
+				const auto& pasted = EditorPattern(anchorEditor, destinationId);
+				const auto first = beforePaste.PresentationOccurrences.size();
+				Require(pasted.PresentationOccurrences.size() == first + 3u &&
+					pasted.LogicOccurrences.size() == beforePaste.LogicOccurrences.size() + 1u,
+					"Collider-only Paste omitted or duplicated its shared birth Effect or judging Logic");
+				Require(std::equal(beforePaste.PresentationOccurrences.begin(), beforePaste.PresentationOccurrences.end(), pasted.PresentationOccurrences.begin()) &&
+					std::equal(beforePaste.LogicOccurrences.begin(), beforePaste.LogicOccurrences.end(), pasted.LogicOccurrences.begin()),
+					"repeated birth-anchor Paste changed existing destination rows");
+				const auto& copiedAnchor = pasted.PresentationOccurrences[first + 2u];
+				const auto& copiedLogic = pasted.LogicOccurrences.back();
+				Require(pasted.iDurationMs >= copiedAnchor.iStartMs + copiedAnchor.iDurationMs,
+					"Paste clipped the birth Effect tail beyond the selected Collider windows");
+				const auto delta = std::int64_t(copiedAnchor.iStartMs) - anchor.iStartMs;
+				auto expectedAnchor = anchor;
+				expectedAnchor.strOccurrenceId = copiedAnchor.strOccurrenceId; expectedAnchor.iStartMs = copiedAnchor.iStartMs;
+				Require(copiedAnchor == expectedAnchor && copiedAnchor.strOccurrenceId.starts_with(destinationId + ".presentation.") &&
+					std::none_of(beforePaste.PresentationOccurrences.begin(), beforePaste.PresentationOccurrences.end(),
+						[&](const auto& row) { return row.strOccurrenceId == copiedAnchor.strOccurrenceId; }),
+					"Paste changed the birth Effect or reused its source/previous-copy identity");
+				for (unsigned i = 0u; i < 2u; ++i)
+				{
+					const auto& copy = pasted.PresentationOccurrences[first + i];
+					auto expected = sourcePatternBefore.PresentationOccurrences[i];
+					expected.strOccurrenceId = copy.strOccurrenceId; expected.strRegionId = copy.strRegionId;
+					expected.strLogicOccurrenceId = copiedLogic.strOccurrenceId;
+					expected.strAnchorPresentationOccurrenceId = copiedAnchor.strOccurrenceId;
+					expected.iStartMs = static_cast<std::uint32_t>(std::int64_t(expected.iStartMs) + delta);
+					Require(copy == expected && copy.strOccurrenceId.starts_with(destinationId + ".presentation.") &&
+						copy.strRegionId == copy.strOccurrenceId + ".region",
+						"Paste lost the shared new anchor, relative clock, Collider motion or owned Logic mapping");
+				}
+				auto expectedLogic = contactBox;
+				expectedLogic.strOccurrenceId = copiedLogic.strOccurrenceId;
+				expectedLogic.iStartMs = static_cast<std::uint32_t>(std::int64_t(expectedLogic.iStartMs) + delta);
+				Require(copiedLogic == expectedLogic && EditorPattern(anchorEditor, patternId) == sourcePatternBefore &&
+					anchorEditor.Get_Composition().PresentationResources == anchorSource.PresentationResources &&
+					anchorEditor.Get_Composition().Logics == anchorSource.Logics && ReadText(sourcePath) == anchorBytes,
+					"birth-anchor Paste changed its source, reusable definitions or saved fixture");
+			}
+			const auto beforeFailedPaste = anchorEditor.Get_Composition();
+			const auto selectedBeforeFailure = CKoukuSaydonWorkbenchTestAccess::SelectedBoxes(anchorEditor);
+			const auto generationBeforeFailure = anchorEditor.Get_DraftGeneration();
+			Require(!anchorEditor.Paste_TimelineClipboard("missing.pattern", status) && anchorEditor.Has_TimelineClipboard() &&
+				anchorEditor.Get_Composition() == beforeFailedPaste && anchorEditor.Get_DraftGeneration() == generationBeforeFailure &&
+				CKoukuSaydonWorkbenchTestAccess::SelectedBoxes(anchorEditor) == selectedBeforeFailure,
+				"failed birth-anchor Paste changed its draft, selection, generation or clipboard");
+			RequireEditorStep(anchorEditor.Copy_TimelineSelection(patternId, {}, {dependentEffect.strOccurrenceId}, status),
+				status, "copy only an Effect dependent on another birth Effect");
+			const auto beforeEffectPaste = EditorPattern(anchorEditor, destinationId);
+			RequireEditorStep(anchorEditor.Paste_TimelineClipboard(destinationId, status), status, "paste dependent Effect with its birth Effect");
+			const auto& effectsPasted = EditorPattern(anchorEditor, destinationId);
+			const auto effectFirst = beforeEffectPaste.PresentationOccurrences.size();
+			Require(effectsPasted.PresentationOccurrences.size() == effectFirst + 2u &&
+				effectsPasted.LogicOccurrences == beforeEffectPaste.LogicOccurrences,
+				"dependent Effect Paste pulled unrelated Colliders/Logic or omitted its birth Effect");
+			const auto& effectAnchor = effectsPasted.PresentationOccurrences[effectFirst];
+			const auto& effectCopy = effectsPasted.PresentationOccurrences[effectFirst + 1u];
+			auto expectedEffect = dependentEffect;
+			expectedEffect.strOccurrenceId = effectCopy.strOccurrenceId;
+			expectedEffect.strAnchorPresentationOccurrenceId = effectAnchor.strOccurrenceId;
+			expectedEffect.iStartMs = effectAnchor.iStartMs + dependentEffect.iStartMs - anchor.iStartMs;
+			Require(effectCopy == expectedEffect && effectAnchor.strOccurrenceId.starts_with(destinationId + ".presentation.") &&
+				EditorPattern(anchorEditor, patternId) == sourcePatternBefore,
+				"dependent Effect Paste lost its remapped birth frame, clock, basis or source preservation");
+			// Only directly selected (or group-selected) Effects bring their linked
+			// Colliders; the dependent-only copy above must remain presentation-only.
+			for (const bool grouped : {false, true})
+			{
+				if (grouped)
+					RequireEditorStep(anchorEditor.Set_EffectSelectionGroup(patternId,
+						{anchor.strOccurrenceId, dependentEffect.strOccurrenceId}, true, status), status, "group the birth and dependent Effects");
+				const auto selectedSource = EditorPattern(anchorEditor, patternId);
+				RequireEditorStep(anchorEditor.Copy_TimelineSelection(patternId, {},
+					{grouped ? dependentEffect.strOccurrenceId : anchor.strOccurrenceId}, status),
+					status, grouped ? "copy one Effect group member with linked Colliders" : "copy a birth Effect with linked Colliders");
+				const auto beforeLinkedPaste = EditorPattern(anchorEditor, destinationId);
+				RequireEditorStep(anchorEditor.Paste_TimelineClipboard(destinationId, status), status, "paste selected Effects and their Collider/Logic closure");
+				const auto& linkedPaste = EditorPattern(anchorEditor, destinationId);
+				const auto first = beforeLinkedPaste.PresentationOccurrences.size();
+				Require(linkedPaste.PresentationOccurrences.size() == first + (grouped ? 4u : 3u) &&
+					linkedPaste.LogicOccurrences.size() == beforeLinkedPaste.LogicOccurrences.size() + 1u,
+					"Effect Copy omitted linked Colliders/Logic or pulled unrelated rows");
+				Require(std::equal(beforeLinkedPaste.PresentationOccurrences.begin(), beforeLinkedPaste.PresentationOccurrences.end(),
+					linkedPaste.PresentationOccurrences.begin()) && EditorPattern(anchorEditor, patternId) == selectedSource,
+					"Effect Copy/Paste changed its source or existing destination rows");
+				const auto& linkedAnchor = linkedPaste.PresentationOccurrences[first + 2u];
+				const auto& linkedLogic = linkedPaste.LogicOccurrences.back();
+				const auto delta = std::int64_t(linkedAnchor.iStartMs) - anchor.iStartMs;
+				for (unsigned i = 0u; i < 2u; ++i)
+				{
+					const auto& copy = linkedPaste.PresentationOccurrences[first + i];
+					auto expected = sourcePatternBefore.PresentationOccurrences[i];
+					expected.strOccurrenceId = copy.strOccurrenceId; expected.strRegionId = copy.strRegionId;
+					expected.strLogicOccurrenceId = linkedLogic.strOccurrenceId;
+					expected.strAnchorPresentationOccurrenceId = linkedAnchor.strOccurrenceId;
+					expected.iStartMs = static_cast<std::uint32_t>(std::int64_t(expected.iStartMs) + delta);
+					Require(copy == expected && copy.strOccurrenceId.starts_with(destinationId + ".presentation."),
+						"Effect group Paste lost Collider anchor/Logic remapping, clock or geometry");
+				}
+				auto expectedLogic = contactBox;
+				expectedLogic.strOccurrenceId = linkedLogic.strOccurrenceId;
+				expectedLogic.iStartMs = static_cast<std::uint32_t>(std::int64_t(expectedLogic.iStartMs) + delta);
+				Require(linkedLogic == expectedLogic && linkedPaste.iDurationMs >= linkedAnchor.iStartMs + linkedAnchor.iDurationMs,
+					"Effect group Paste lost judging Logic timing or the long Effect tail");
+				if (grouped)
+				{
+					const auto& linkedEffect = linkedPaste.PresentationOccurrences[first + 3u];
+					Require(!linkedAnchor.strSelectionGroupId.empty() && linkedEffect.strSelectionGroupId == linkedAnchor.strSelectionGroupId &&
+						linkedEffect.strAnchorPresentationOccurrenceId == linkedAnchor.strOccurrenceId &&
+						linkedEffect.iStartMs - linkedAnchor.iStartMs == dependentEffect.iStartMs - anchor.iStartMs &&
+						linkedAnchor.strSelectionGroupId != selectedSource.PresentationOccurrences[3].strSelectionGroupId,
+						"Effect group Paste shared the source group or lost its dependent Effect frame");
+				}
+			}
+			RequireEditorRoundtrip(anchorEditor);
+			Require(ReadText(sourceRoot / relativeSource) == liveSourceBefore, "birth-anchor clipboard fixture changed live authoring data");
+		}
+
 		if (duplicateOnly) return;
 
 		// Effect groups retain independent gun frames and duplicate their own boxes only.
@@ -4354,7 +4527,7 @@ int Run_KoukuColliderDuplicateContractTests()
 	try
 	{
 		VerifyKoukuColliderSelectionGroups(true);
-		std::cout << "KoukuColliderDuplicateContractTests: same-time-Cylinder/group-expansion/owned-Logic-remap/motion-and-clock-preservation/fresh-identities/copied-selection/singleton-focus/member-focus/independent-horizontal-distance/Back-to-Group/Save-Reopen/source-preservation passed\n";
+		std::cout << "KoukuColliderDuplicateContractTests: same-time-Cylinder/group-expansion/owned-Logic-remap/motion-and-clock-preservation/fresh-identities/copied-selection/singleton-focus/member-focus/independent-horizontal-distance/Back-to-Group/birth-anchor-Copy-Paste/Save-Reopen/source-preservation passed\n";
 		return 0;
 	}
 	catch (const std::exception& error)

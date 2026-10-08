@@ -7766,18 +7766,35 @@ bool_t Client::CKoukuSaydonActionWorkbench::Copy_TimelineSelection(
 	auto expanded = occurrenceIds;
 	Expand_PresentationSelection(*pattern, expanded);
 	selected.insert(expanded.begin(), expanded.end());
+	// Selected Effects bring their anchored Collider regions and judging Logic.
+	// Freeze the user/group selection before adding dependencies, so copying one
+	// Collider does not pull every other Collider sharing its required birth Effect.
+	const auto requestedSelection = selected;
+	for (const auto& row : pattern->PresentationOccurrences)
+	{
+		if (row.strAnchorPresentationOccurrenceId.empty() ||
+			!requestedSelection.contains(row.strAnchorPresentationOccurrenceId)) continue;
+		const auto* resource = Find_PresentationResource(m_Draft, row.strResourceId);
+		if (resource && resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER)
+			selected.insert(row.strOccurrenceId);
+	}
 	std::string status;
 	// The clipboard closes the same ownership links Ctrl+D closes, so Paste never
 	// separates a Logic from its hold, regions, summon or an Object from its companion.
-	// Unlike a same-Pattern duplicate, a cross-Pattern copy must also carry the Object
-	// box a WORLD-anchored row references, because the destination does not own it.
+	// Unlike a same-Pattern duplicate, a cross-Pattern copy must also carry the
+	// referenced World owner and fixed birth Effect: the destination owns neither.
 	for (bool grown = true; grown;)
 	{
 		if (!Expand_TimelineClosure(m_Draft, *pattern, selected, status)) return reject(status + "; previous clipboard preserved.");
 		grown = false;
 		for (const auto& row : pattern->PresentationOccurrences)
-			if (selected.contains(row.strOccurrenceId) && !row.strWorldOccurrenceId.empty())
+		{
+			if (!selected.contains(row.strOccurrenceId)) continue;
+			if (!row.strWorldOccurrenceId.empty())
 				grown |= selected.insert(row.strWorldOccurrenceId).second;
+			if (!row.strAnchorPresentationOccurrenceId.empty())
+				grown |= selected.insert(row.strAnchorPresentationOccurrenceId).second;
+		}
 	}
 	TIMELINE_CLIPBOARD clipboard;
 	std::uint64_t first = MAX_EDITOR_TIME_MS, last = 0u, base = 0u;

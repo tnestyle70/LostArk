@@ -124,3 +124,40 @@
 - typed 참조를 가진 Logic 정의는 paste마다 `(copy)` 정의가 하나씩 늘어난다(Duplicate와 같은 정책).
 - `MainApp_WorldLevel.cpp:227`의 인자 없는 `GetBackgroundDrawList()`는 같은 ini 상태에서 사라질 수 있으며 별도 변경으로 남긴다.
 - forward/lateral 이름이 +X 정면 rig에서 뒤바뀐 의미인 점은 BossCatalog per-actor basis 같은 후속 범위이며 이번에 바꾸지 않았다.
+
+## G05. 2026-10-08 화염 파동 birth-anchor Ctrl+C/V
+
+### 실제 원인과 수정
+
+사용자 캡처의 `Birth anchor source requires an earlier independent fixed BOSS Effect in the same Pattern`은 복사된 Collider/Effect의 `anchorPresentationOccurrenceId`가 이전 Pattern의 Effect를 가리키는데 그 기준 Effect는 clipboard에 없어서 발생했다. revision 2500의 원본 P58에서 Collider `.presentation.11~24`는 Effect `.presentation.1`(1904ms), `.25~38`은 `.presentation.9`(6117ms)를 참조한다. P130은 조사 당시 디스크에 없으므로 실행 중 draft의 배치를 추정해 수정하지 않았다.
+
+`KoukuSaydonActionWorkbench.cpp::Copy_TimelineSelection`의 clipboard 전용 의존 항목 확장에 birth-anchor Effect를 추가했다. 같은 기준 Effect를 여러 행이 사용해도 set에 한 번만 담는다. Collider뿐 아니라 다른 Effect를 기준으로 하는 Effect만 선택한 경우에도 적용한다. 기존 clone의 ID 재매핑과 상대 시각·수명 계산, 후보 validation을 그대로 사용한다. 공유 ownership helper와 Ctrl+D는 변경하지 않아 같은 Pattern의 Duplicate는 기존 기준 Effect를 공유한다.
+
+사용자가 추가 요청한 Effect 그룹 복사는 직접 선택한 Effect와 group 멤버를 가리키는 Collider도 먼저 seed로 추가한다. 이후 기존 ownership 확장이 Logic과 region을 가져온다. 이 역방향 확장은 최초 선택에만 적용해, Collider/dependent Effect 때문에 의존 항목으로만 추가된 기준 Effect의 다른 Collider까지 불러오지 않는다. 실제 P58 두 Effect를 선택했을 때 closure는 `8 Logic, 2 Effects, 28 Colliders`다. 나머지 unanchored Collider는 포함하지 않는다.
+
+### 검증 증거
+
+검사는 `Tools/ValtanPatternAuditionServiceHarness`의 기존 Debug target과 임시 Data fixture를 사용했다. 기존 `--kouku-collider-duplicate-contract`에 검사만 추가했으며 새 CLI/파일/프로젝트 등록은 없다.
+
+| 검사 | 결과와 증거 |
+|---|---|
+| 수정 전 재현 | `out/KoukuClipboardBirthAnchor20261008/baseline-test-retry.log`: 다른 Pattern Paste가 캡처와 같은 birth-anchor 오류로 실패(exit 1) |
+| 수정 후 Debug harness 컴파일 | `fixed-build.log`: exit 0. 기존 헤더 C4828와 Workbench C4244 경고는 남아 있다 |
+| Collider-only Copy/Paste | `fixed-duplicate-test.log`: PASS. 공유 Effect 한 개·Logic 복사, 새 anchor/region/Logic ID, 상대 시각·형상·넉백 정의 보존 |
+| 반복 Paste·긴 Effect tail | 같은 검사 PASS. 이전 대상 행 보존, 새 ID, Effect 종료까지 대상 Pattern 수명 확장 |
+| Effect-only Copy/Paste | 같은 검사 PASS. 다른 Effect를 기준으로 사용하는 Effect만 선택해도 기준 Effect 포함·새 ID 연결·상대 시각 보존 |
+| 기존 같은 Pattern Duplicate | 같은 검사 PASS. 그룹 확장·소유 Logic 복제·기존 기준 Effect 공유·원본 보존 |
+| 실패 원자성과 Save/reopen | 같은 검사 PASS. 실패 시 draft/선택/generation/clipboard 유지, 임시 fixture의 Save/reopen 성공, 실제 저작 파일 미변경 |
+| Effect 직접 선택·그룹 선택 후속 | `group-selection-build.log`, `group-selection-test.log`: Debug 컴파일 및 기존 duplicate-contract PASS. 기준 Effect 직접 선택과 그룹의 다른 멤버만 선택한 두 경우 모두 연결 Collider·Logic, 새 group/anchor/Logic ID, 상대 시각·형상·긴 tail 보존 |
+| 전체 Collider group 검사 | `fixed-group-test.log`: 기존 저장 충돌 assertion에서 실패. 수정 전 코드를 다시 빌드한 `baseline-group-test.log`도 동일 실패(exit 1). 앞선 Set Group·Duplicate·Ungroup 검사는 통과했지만 전체 suite를 PASS로 기록하지 않는다 |
+| Debug Product 빌드 | `out/BuildPipeline/runs/20261008T083823926Z-debug-product.json`: PASS, 전체14.809초/Client12.456초, Client OBJ1개·EXE1개, CSO0개. 기존 C4819/C4244 경고는 남음. 데이터 publish 없음 |
+
+전체 group 검사의 기존 fixture는 외부 displayName/revision 변경과 로컬 geometry 변경이 서로 다른 필드인데도 Save 거절을 요구한다. 현재 `Save_Atomic`은 이 변경을 3-way merge하므로 기대가 맞지 않는다. 이 assertion은 새 clipboard 검사보다 앞이며 이번 수정에서 변경하지 않았다. 신규 테스트 작성 중 dirty fixture에 Reload를 호출해 한 번 실패한 것은 별도의 깨끗한 임시 editor를 사용하도록 바로잡았다.
+
+### 적용 상태와 사용자 확인
+
+- 팀 사용서와 gotchas에 기준 Effect 자동 복사 계약을 반영했다. 실제 저작 JSON, 게시 데이터, 실행 중 draft를 수정하거나 Save/Publish/Reload하지 않았다.
+- 사용자가 저장하고 Client·Server를 종료한 뒤 Debug Product 빌드가 완료됐다. 이 수정과 Logic Catalog 180→540px 변경이 `Client/Bin/Debug/Client.exe`에 반영됐다. Client/UI를 실행하지 않았으며 화면 확인은 사용자에게 남는다.
+- 사용자 요청으로 예시 삭제 상태를 읽기 전용 확인했다. authoring revision2500/121 Patterns와 Encounter·patternbindings projection(sourceRevision2498), Server Gameplay.bootstrap, Sequence·Arena world 원본/게시본에서 `세이튼_화염파동_예시`(공백/underscore 정규화 포함)와 `KAKULSAYDON_G1_PATTERN_130`은 0건이다. 원본 P58은 3 Stages/38 Logic/56 Collider/2 Effect/4 Sound로 보존됐다. 이 확인을 위해 파일을 삭제하거나 publish하지 않았다.
+- 반영 후 원본 패턴에서 Collider 또는 Effect를 다시 Ctrl+C하고 대상 Pattern에서 Ctrl+V한다. 기존 clipboard는 프로세스 내부 상태이므로 새로 복사해야 한다. 필요한 기준 Effect가 복사 요약의 Effect 개수에 포함되는지 확인한다.
+- Ctrl+V는 계속 대상 Pattern의 끝에 추가한다. 미리 추가한 Animation 위에 자동 정렬하는 동작은 이번 수정 범위가 아니다.

@@ -554,5 +554,8 @@ UTF-8 BOM 없음/CRLF를 유지했고 `git diff --check`를 통과했다. JSON/X
 Debug Product 빌드를 시도했으나 실행 중인 Client PID57368와 Server PID58296를 정본 runner의
 output-lock-preflight가 감지해 컴파일 전에 중단했다. 최초 기록은
 `out/BuildPipeline/runs/20261008T081457214Z-debug-product.json`이다.
-사용자에게 저장 후 두 프로그램 종료를 요청했으며, 새 코드의 빌드·실행 파일 반영은 아직 미완료다.
+사용자가 저장 후 두 프로그램을 종료한 뒤 Debug Product 빌드를 재실행해 PASS했다.
+`out/BuildPipeline/runs/20261008T083823926Z-debug-product.json`에 전체14.809초, Client12.456초,
+OBJ1개·EXE1개 갱신과 CSO0개가 기록됐다. Catalog 540px와 Ctrl+C/V 후속 수정이 함께 EXE에 반영됐다.
+기존 C4819/C4244 경고는 남았으며 시각 확인은 사용자의 새 실행으로 남는다.
 Client/UI를 에이전트가 종료·조작하거나 화면을 캡처하지 않았다.

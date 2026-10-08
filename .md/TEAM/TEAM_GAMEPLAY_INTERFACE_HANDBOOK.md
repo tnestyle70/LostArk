@@ -1297,10 +1297,13 @@ Stage가 포함되면 뒤 구간을 밀고 삽입점을 가로지르는 기존 m
 한 타격만 복제할 때는 선택 표시를 확인한다. lane만 복제하면 선택 끝에 배치하고 필요한 끝 시간을 늘린다.
 Delete도 선택 전체를 한 번에 처리한다. Earlier/Later는 Stage/Animation만 선택했을 때 사용한다.
 쿠크 Composition과 독립 Sequence에서 Ctrl+C는 모든 lane의 선택과 그 소유 연결(hold·summon·group·
-region·companion·WORLD owner)을 세션 안에 복사하고, 다른 Pattern을 선택한 뒤 Ctrl+V는 대상 Pattern 끝에
+region·companion·WORLD owner·birth-anchor Effect)을 세션 안에 복사하고, 다른 Pattern을 선택한 뒤 Ctrl+V는 대상 Pattern 끝에
 추가하며 빈 대상에는 0ms부터 배치한다. 혼합 선택의 상대 시각·clip 구간·재생 속도·Effect 수명·배치·
 그룹을 유지하고 새 stable ID를 발급하며 Ctrl+D와 같은 복제 엔진을 사용한다. 함께 선택한 두 clip의
-Animation Blend와 필요한 World owner도 연결한다. 복사 뒤 삭제된 Effect resource·World·Logic·Summon·
+Animation Blend와 필요한 World owner도 연결한다. Collider/Effect가 먼저 생성된 Effect의 위치를 기준으로
+사용하면 그 기준 Effect도 한 번만 복사하고 새 occurrence ID로 연결한다. 직접 선택한 Effect나 Effect 그룹을
+기준으로 하는 Collider와 그 Logic도 함께 복사한다. 이름·시간 겹침만으로 다른 Collider를 연결하지 않는다.
+복사 뒤 삭제된 Effect resource·World·Logic·Summon·
 Scene Profile 정의는 복원하고, 변경된 정의는 `changed; copy again`으로 전체 붙여넣기를 거절한다.
 Pattern row는 같은 Gate·actor·대상 boss의 Parent에만 붙여넣는다. 다른 actor의 animation과 누락된
 의존 정의는 이유를 표시하고 전체 붙여넣기를 거절한다. 텍스트 입력·드래그 중에는
