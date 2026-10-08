@@ -6264,7 +6264,6 @@ void Client::CKoukuSaydonActionWorkbench::Render_AnimationResources()
 	}
 	if (m_bResourceTreeDirty || m_strResourceTreeQuery != m_ResourceSearch)
 		Rebuild_ResourceTree();
-	if (Render_CinematicResources()) return;
 
 	const KOUKU_SAYDON_COMPOSITION_PATTERN* const selectedPattern =
 		Find_Pattern(m_Draft, m_strSelectedPatternId);
