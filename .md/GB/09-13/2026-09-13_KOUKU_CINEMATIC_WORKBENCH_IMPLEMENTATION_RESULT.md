@@ -523,3 +523,39 @@ Locate Source·Element 펼치기·Refresh를 사용자가 확인한다. 현재 �
 사용자가 JSON은 우리 작업을 정본으로 유지하도록 지시했다. clean 작업 트리160b7a2a에 origin/main de223741을 병합하고 충돌6개를 해결했다. runtime/authoring WorldSequences와 Sequence Composition 세 JSON은 병합 전 우리 HEAD의 Git blob과 바이트 단위로 같게 유지했다. 세 Markdown은 양쪽 독립 추가 내용을 보존하고 중복·충돌 표시를 정리했으며, 상충한 Object Tool 사용법은 현재 Action Workbench 통합 계약을 유지했다.
 
 JSON3개 parse와 원본 blob 일치, 프로젝트 XML4개 parse, Sequence camera62개·WORLD instance49개 참조 존재, 미해결 index0 및 staged diff --check를 확인했다. 자동 병합된 Albion root query·포탈 capture boundary·불 unlit binder/shader는 우리 기존 구현과 동일함을 읽기 전용으로 대조했다. 이번 충돌 해결에서 제품 소스나 JSON의 추가 구현은 하지 않았으며, 전체 빌드/실행은 재실행하지 않았다. G18의 빌드는 병합 전 수정본의 검증 기록이다.
+
+## G20. 2026-10-08 촬영용 Cinematic 보조 영역 표시 제거
+
+사용자가 지목한 위치는 `Composition Resources → Animation → 연출 / Cinematic`이다.
+`KoukuSaydonActionWorkbench.cpp`의 `Render_CinematicResources`가 한글 제목·설명문·전체 Append 버튼과
+`KoukuSaydon.cinematicreference.json`의 한글 `displayName`을 독립 250px child에 출력했다.
+G01의 한글 참고 tree 표시 계약은 이번 요청으로 종료한다. `Render_AnimationResources`에서 이 함수를
+부르는 유일한 한 줄을 삭제했으며 일반 Animation resource tree·Physical Clips·Preview/Append는 보존했다.
+Subtitle category, catalog와 원본 애니메이션 파일, 저장된 Sequence/Pattern은 변경하지 않았다.
+한글 렌더링의 정확한 원인이나 촬영 화면의 품질을 소스 조사만으로 확정하지 않는다.
+
+`Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug` Product Build가 PASS했다.
+Client의 해당 OBJ 1개 재컴파일과 EXE 링크만 발생했고 Engine/Shared/Server의 OBJ 및 전체 CSO 변경은 0개다.
+전체 19.196초, Client 단계 16.681초였으며 기존 C4819/C4244 경고는 남았다.
+증거는 Git 제외 `out/BuildPipeline/runs/20261008T074830366Z-debug-product.json`이다.
+기존 UTF-8 BOM 없음/CRLF를 유지했고 `git diff --check`도 통과했다. JSON/XML 변경은 없다.
+실행 파일은 `Client/Bin/Debug/Client.exe`, 작업 디렉터리는 `Client/Default`다.
+Client/UI 실행과 화면 확인은 수행하지 않았다. 사용자가 같은 Animation 탭에서 Cinematic 영역이 사라지고
+기존 Animation 목록 및 Preview/Append가 표시되는지 확인하면 된다. Release 빌드는 실행하지 않았다.
+
+## G21. 2026-10-08 Logic Catalog 목록 높이 3배 확대
+
+첨부 화면의 210 logics / DURATION 목록을 현재 코드의 `##KoukuLogicList`와 대조했다.
+`KoukuSaydonActionWorkbench.cpp`의 `Render_LogicResources`에서 child 높이 한 값만
+180px에서540px로 변경했다. 공용 Boss Saydon Sequencer도 같은 표시 함수를 사용한다.
+기존 목록 스크롤과 아래 Create/Selected Logic 기능을 유지하며, 창 높이를 넘는 내용은 바깥 창에서 스크롤한다.
+
+UTF-8 BOM 없음/CRLF를 유지했고 `git diff --check`를 통과했다. JSON/XML과 리소스는 변경하지 않았다.
+Debug Product 빌드를 시도했으나 실행 중인 Client PID57368와 Server PID58296를 정본 runner의
+output-lock-preflight가 감지해 컴파일 전에 중단했다. 최초 기록은
+`out/BuildPipeline/runs/20261008T081457214Z-debug-product.json`이다.
+사용자가 저장 후 두 프로그램을 종료한 뒤 Debug Product 빌드를 재실행해 PASS했다.
+`out/BuildPipeline/runs/20261008T083823926Z-debug-product.json`에 전체14.809초, Client12.456초,
+OBJ1개·EXE1개 갱신과 CSO0개가 기록됐다. Catalog 540px와 Ctrl+C/V 후속 수정이 함께 EXE에 반영됐다.
+기존 C4819/C4244 경고는 남았으며 시각 확인은 사용자의 새 실행으로 남는다.
+Client/UI를 에이전트가 종료·조작하거나 화면을 캡처하지 않았다.

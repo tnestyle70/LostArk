@@ -349,3 +349,24 @@ inventory refresh·V1/V2·owner·검색·draft generation 변경 때의 재구�
 검증을 대신하지 않는다. 현재 소스의 관련 TU 컴파일과 diff 검사를 별도로 기록하고, 사용자가
 직접 제품을 빌드한 뒤 동일 조건 Profiler와 선택·Locate·펼치기·Refresh 동작을 확인한다.
 에이전트는 Client/UI 실행·조작·캡처를 하지 않으며 사용자 Effect/Composition JSON은 변경하지 않는다.
+
+## G20. 2026-10-08 촬영용 Animation Resources의 Cinematic 보조 영역 제거
+
+사용자는 Composition Resources → Animation에서 한글이 깨지는 Cinematic 영역만 제거하도록 요청했다.
+현재 `Render_ResourceTree → Render_AnimationResources → Render_CinematicResources`로 연결되며,
+마지막 함수가 `연출 / Cinematic`, 한글 안내문, Reference JSON의 한글 장면명과 전체 Append 버튼을
+별도 250px child에 표시한다. 일반 Animation 목록 앞에 붙은 유일한 호출을 제거한다.
+
+수정 파일은 `Client/Private/KoukuSaydonActionWorkbench.cpp` 하나다. 함수 정의와 참고 catalog,
+일반 Physical Clips/Animation tree, Preview/Append, Subtitle 탭과 저장된 연출 데이터는 유지한다.
+헤더·프로젝트 등록·JSON·리소스 변경은 없다. 기존 UTF-8 BOM 없음과 CRLF를 유지한다.
+
+검증은 표시 호출 제거 및 기존 Animation 경로 보존 확인, Debug Product 증분 빌드와
+`git diff --check`다. Client 실행과 촬영 화면의 최종 확인은 사용자가 직접 한다.
+
+## G21. 2026-10-08 Logic Catalog 목록 높이 3배 확대
+
+첨부 화면의 `Composition Resources → Logic → Logic Catalog` 목록은
+`Render_LogicResources`의 `##KoukuLogicList` child이며 높이가 180px로 고정돼 있다.
+같은 child의 높이만 540px로 바꾼다. 폭·폰트·행 높이·선택·Create/Append 동작은 유지한다.
+기존 UTF-8 BOM 없음/CRLF를 유지하고 diff-check와 Debug Product 증분 빌드로 확인한다.

@@ -190,3 +190,27 @@ Update_KoukuSaydonBoss → Apply_StageRootMotion
 | 인코딩·공백 | python byte scan(CR/LF/BOM) 전후, `git diff --check` | 삽입 줄이 이웃 줄 끝과 같음, whitespace 오류 0 |
 
 Product MSBuild, 실행 중 Client/Server 교체·재시작, publisher 실행과 화면 판정은 이 계획의 자동 검증에 포함하지 않는다. 사용자가 Debug Product 빌드 뒤 F1 흐름으로 확인한다.
+
+## G05. 2026-10-08 화염 파동 birth-anchor Ctrl+C/V 보완
+
+### 근거와 적용 범위
+
+- revision 2500의 `KAKULSAYDON_G1_PATTERN_58`은 `.presentation.1`(1904ms)과 `.presentation.9`(6117ms)의 fixed BOSS Effect를 각각 Collider 14개가 `anchorPresentationOccurrenceId`로 참조한다.
+- 사용자 캡처는 Logic 18개와 Collider 28개만 복사한 뒤 P130에 붙여넣다가 `Birth anchor source requires an earlier independent fixed BOSS Effect in the same Pattern`으로 거절된다. P130은 현재 디스크에 없어 실행 중 draft의 내용은 확정하지 않는다.
+- `Copy_TimelineSelection`은 WORLD owner를 추가하지만 birth-anchor Effect를 누락한다. `Clone_TimelineSelectionInto`에는 이미 anchor ID 재매핑이 있으나, 복사되지 않은 source ID는 대상 Pattern에 존재하지 않아 문서 검증이 거절한다.
+
+### 구현
+
+- `Copy_TimelineSelection`의 clipboard 전용 의존 항목 확장에서 선택한 presentation의 `strAnchorPresentationOccurrenceId`도 추가하고 기존 ownership 확장을 다시 적용한다. 같은 기준 Effect를 여러 Collider가 공유해도 set에 한 번만 담는다.
+- 사용자가 직접 선택한 Effect와 그 그룹 멤버를 기준으로 삼는 Collider도 복사 seed에 추가한다. 기존 ownership 확장이 그 Collider의 Logic과 region을 연결한다. 이름·시간 겹침으로 연결을 추정하지 않으며, Collider 선택 때문에 의존 항목으로만 포함된 기준 Effect에서 무관한 Collider까지 역확장하지 않는다.
+- 붙여넣기는 기존 clone의 새 stable ID 발급·anchor 재매핑·상대 시각 유지·끝에 append·후보 검증을 그대로 사용한다. validation을 완화하거나 anchor를 지우지 않는다.
+- 같은 Pattern의 Ctrl+D와 same-time Duplicate는 기존 기준 Effect를 계속 공유한다. 공유 `Expand_TimelineClosure`는 변경하지 않는다.
+- 저작 JSON, 실행 중 draft, Save/Publish/Reload는 수정하지 않는다. 필요한 기준 Effect가 clipboard 요약의 Effect 개수에 포함된다.
+
+### 검증
+
+- 기존 `BossCompositionDocumentContractTests.cpp`의 Collider duplicate fixture에 검사를 추가한다. 신규 파일·프로젝트 등록·CLI를 만들지 않는다.
+- 수정 전 같은 birth-anchor 오류를 재현하고, 수정 후 Collider 두 개가 공유하는 Effect 한 개와 Logic의 복사·새 anchor/region/Logic ID·상대 시각·반복 Paste·실패 원자성·Effect→Effect 참조·Save/reopen·원본 보존을 확인한다.
+- 기존 Set Group/Ungroup/그룹 Duplicate 검사도 함께 실행한다. 검사는 임시 Data fixture를 사용하며 실제 저작 파일을 저장하지 않는다.
+- Effect 그룹 멤버 하나만 선택해도 전체 그룹과 연결 Collider·Logic이 새 ID로 복사되는지 확인하고, 기준 Effect가 다른 선택의 의존 항목으로만 포함된 경우에는 역확장하지 않는지 구분한다.
+- Debug harness 컴파일과 `git diff --check`를 수행한다. 사용자가 앞서 요청한 Debug Product 빌드는 실행 중 EXE 점유가 해제되면 정상 runner로 수행하며 결과를 별도 기록한다. Client/UI 화면 판정은 사용자가 수행한다.
