@@ -542,3 +542,17 @@ Client의 해당 OBJ 1개 재컴파일과 EXE 링크만 발생했고 Engine/Shar
 실행 파일은 `Client/Bin/Debug/Client.exe`, 작업 디렉터리는 `Client/Default`다.
 Client/UI 실행과 화면 확인은 수행하지 않았다. 사용자가 같은 Animation 탭에서 Cinematic 영역이 사라지고
 기존 Animation 목록 및 Preview/Append가 표시되는지 확인하면 된다. Release 빌드는 실행하지 않았다.
+
+## G21. 2026-10-08 Logic Catalog 목록 높이 3배 확대
+
+첨부 화면의 210 logics / DURATION 목록을 현재 코드의 `##KoukuLogicList`와 대조했다.
+`KoukuSaydonActionWorkbench.cpp`의 `Render_LogicResources`에서 child 높이 한 값만
+180px에서540px로 변경했다. 공용 Boss Saydon Sequencer도 같은 표시 함수를 사용한다.
+기존 목록 스크롤과 아래 Create/Selected Logic 기능을 유지하며, 창 높이를 넘는 내용은 바깥 창에서 스크롤한다.
+
+UTF-8 BOM 없음/CRLF를 유지했고 `git diff --check`를 통과했다. JSON/XML과 리소스는 변경하지 않았다.
+Debug Product 빌드를 시도했으나 실행 중인 Client PID57368와 Server PID58296를 정본 runner의
+output-lock-preflight가 감지해 컴파일 전에 중단했다. 최초 기록은
+`out/BuildPipeline/runs/20261008T081457214Z-debug-product.json`이다.
+사용자에게 저장 후 두 프로그램 종료를 요청했으며, 새 코드의 빌드·실행 파일 반영은 아직 미완료다.
+Client/UI를 에이전트가 종료·조작하거나 화면을 캡처하지 않았다.

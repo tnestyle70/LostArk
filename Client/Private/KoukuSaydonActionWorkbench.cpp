@@ -15959,7 +15959,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicResources()
 	const std::string targetPatternName = nullptr == selectedPattern ?
 		std::string("none") : selectedPattern->strDisplayName;
 
-	if (ImGui::BeginChild("##KoukuLogicList", ImVec2(0.f, 180.f), ImGuiChildFlags_Borders))
+	if (ImGui::BeginChild("##KoukuLogicList", ImVec2(0.f, 540.f), ImGuiChildFlags_Borders))
 	{
 		if (m_Draft.Logics.empty())
 			ImGui::TextDisabled("No Logic yet. Choose a type, name it, and press Create Logic.");

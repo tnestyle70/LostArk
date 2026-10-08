@@ -363,3 +363,10 @@ inventory refresh·V1/V2·owner·검색·draft generation 변경 때의 재구�
 
 검증은 표시 호출 제거 및 기존 Animation 경로 보존 확인, Debug Product 증분 빌드와
 `git diff --check`다. Client 실행과 촬영 화면의 최종 확인은 사용자가 직접 한다.
+
+## G21. 2026-10-08 Logic Catalog 목록 높이 3배 확대
+
+첨부 화면의 `Composition Resources → Logic → Logic Catalog` 목록은
+`Render_LogicResources`의 `##KoukuLogicList` child이며 높이가 180px로 고정돼 있다.
+같은 child의 높이만 540px로 바꾼다. 폭·폰트·행 높이·선택·Create/Append 동작은 유지한다.
+기존 UTF-8 BOM 없음/CRLF를 유지하고 diff-check와 Debug Product 증분 빌드로 확인한다.
