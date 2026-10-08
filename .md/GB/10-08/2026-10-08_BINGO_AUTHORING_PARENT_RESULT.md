@@ -21,12 +21,15 @@ Client codec → projector → 게시/초안 공용 bootstrap writer → Server 
 ## 자동 검증
 
 - Debug Product 정상 runner PASS. 최종 보고서: `out/BuildPipeline/runs/20261008T101724460Z-debug-product.json`. 앞선 전체 변경 빌드는 `20261008T101231698Z-debug-product.json`에서64.048초·Client OBJ94·CSO0, 마지막 UI 버퍼 보완은 Client OBJ1·CSO0으로 증분 빌드했다. 기존 인코딩/숫자 변환 warning은 남아 있으며 컴파일·링크 오류는 없다.
-- native `--kouku-fixed-damage-contract`: 기본값 누락 호환, 비기본 WINDOW 왕복, 잘못된 type/mode/range/ms 및 tick 용량 거절, 공유 설정 Apply, Parent 선택, Flow 순서/대기/반복, Undo/Redo, Save/Reopen, 활성·비활성 보드 구간 확장 및 일반 Pattern 시간 보존을 검사했다. 로그: `out/bingo-native-build.log`, `out/bingo-native-contract.log`.
+- native `--kouku-fixed-damage-contract` 최종 PASS: 기본값 누락 호환, 비기본 WINDOW 왕복, 잘못된 type/mode/range/ms 및 tick 용량 거절, 공유 설정 Apply, Parent 선택, Flow 순서/대기/반복, Undo/Redo, Save/Reopen, 활성·비활성 보드 구간 확장 및 일반 Pattern 시간 보존을 검사했다. 로그: `out/bingo-native-build.log`, `out/bingo-native-contract.log`.
 - Server `--bingo-contract-test` 최종176 PASS / 0 FAIL. 실제 게시 bootstrap을 사용하여 커스텀 시계, WINDOW 종료와 pending 폭탄, 초기 칸 수, 새 row 파싱·중복·잘못된 수치의 rollback, 긴 control의 일반 Flow 비차단을 확인했다. 로그: `out/bingo-authoring-server-contract-final.log`.
+- Server `--kouku-raid-contract-test` 최종2071 PASS / 0 FAIL, exit0. 기존1~3관문, 빙고 준비·반복·특수 인터럽트·사망/엔딩, 참가자 승인과 전환 계약을 회귀 검사했다. 로그: `out/bingo-authoring-raid-contract-final.log`. 모든 CPU 검사가 종료되어 Server 프로세스는 남지 않았다.
 - `Tools/KoukuSaydonPipeline/test_bingo_board_settings.py` 5개 PASS. 기존 tracking-bomb writer 1개, raid projection 16개 PASS. 실제 전체 저작본의 투영도 입력 불변 검사와 함께 통과했다.
 - 정상 Kouku owner 최종 재게시 PASS,217.8초. `out/KoukuBingoPublish20261008/owner-republish.log`, `final-verification.json`에 기록했다. 저작 revision2500 및 SHA-256 `6c7ae0cb9e4ceb4ec663bb4de7352fd8f2d2e014beb9824b028f912681a5f3bf`를 유지했다. 설치된 Encounter/bindings/bootstrap도2500이며 새 board/control 행 각1개를 확인했다. 렌더링 관련9개 파일 hash는 모두 같다.
 
 게시 결과의 변경은 Kouku Encounter, animation bindings, Gameplay.bootstrap 세 파일이다. bindings의 P1 Effect 시작2263→2257ms는 이미 저장되어 있던2500 정본의 값이며 이번에 저작 값을 바꾼 것이 아니다. source Composition을 덮어쓰지 않았다.
+
+`git diff --check`와 변경/참조 JSON parse는 PASS다. 최신 `origin/main`(0164be5a9)에 대한 `git merge-tree --write-tree`도 충돌 없이 통과했다. 실제 main merge나 Client 실행은 수행하지 않았다. 기존 PR536은 main에 병합되어 이 변경은 빙고 기능만 분리한 PR이다.
 
 ## 사용자 화면 확인
 
