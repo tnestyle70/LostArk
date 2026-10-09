@@ -18,8 +18,9 @@ Visual Studio Solution Build:
   compile success does not certify that every runtime domain is ready.
   `Client.vcxproj` is the single owner of EngineSDK,
   compiled-shader and Client runtime dependency deployment.
-- `-Profile Core`: Product plus publisher validation, NetworkProtocol, and
-  one real-Server Character Select `Core` isolation scenario.
+- `-Profile Core`: Product plus publisher validation, NetworkProtocol,
+  ValtanPatternAuditionService (including composition/presentation contracts),
+  and one real-Server Character Select `Core` isolation scenario.
 - `-Profile FullDiagnostic`: Core plus Character Select `Party2`/`Party4` transfer,
   presentation, map, point-light, physics, WModel and broad Server diagnostics for
   affected domains.
