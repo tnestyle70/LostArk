@@ -11,11 +11,10 @@
 #include "Network/PacketMessages.h"
 #include "Network/PacketStreamParser.h"
 
-//race�� �����ϱ� ���ؼ� atomic header�� �߰�
+//race condition 같은 문제를 해결하기 위해서 추가된 header
 #include <atomic>
 #include <deque>
 #include <memory>
-//���� ���� race�� ���� ���ؼ� mutex ���� �� ���
 #include <mutex>
 #include <thread>
 #include <cstdint>

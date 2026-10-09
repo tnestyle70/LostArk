@@ -15,15 +15,17 @@
 namespace Client
 {
 enum class COMPOSITION_EDIT_COMMAND : std::uint8_t { COPY, PASTE, DUPLICATE_SELECTION };
-
+//editor를 기준으로 적용할 수 있는 input 상태를 모아둔 구조체
 struct COMPOSITION_EDIT_INPUT
 {
     bool focused = false, control = false, textInput = false, activeItem = false;
     bool popup = false, dragging = false;
     bool copyPressed = false, pastePressed = false, duplicatePressed = false;
 };
+
 inline std::optional<COMPOSITION_EDIT_COMMAND> Resolve_CompositionShortcut(const COMPOSITION_EDIT_INPUT& input)
 {
+    //단축키 호출 API
     if (!input.focused || !input.control || input.textInput || input.activeItem || input.popup || input.dragging)
         return std::nullopt;
     if (input.copyPressed) return COMPOSITION_EDIT_COMMAND::COPY;
@@ -40,6 +42,7 @@ struct COMPOSITION_TRANSFER_SNAPSHOT
     virtual std::string_view Type() const noexcept = 0;
     std::string label;
 };
+//composition transfer가 의미하는 게 뭐지? 어떤 거를 의미하는 거고 왜 shared_ptr로 선언이 되어있는 걸까?
 using COMPOSITION_TRANSFER = std::shared_ptr<const COMPOSITION_TRANSFER_SNAPSHOT>;
 
 struct COMPOSITION_ANIMATION_TRANSFER final : COMPOSITION_TRANSFER_SNAPSHOT
@@ -63,6 +66,7 @@ struct COMPOSITION_EFFECT_ITEM
     bool fitToDuration = false;
     bool loopToDuration = false;
 };
+
 struct COMPOSITION_EFFECT_TRANSFER : COMPOSITION_TRANSFER_SNAPSHOT
 {
     std::vector<COMPOSITION_EFFECT_ITEM> items;
@@ -70,6 +74,7 @@ struct COMPOSITION_EFFECT_TRANSFER : COMPOSITION_TRANSFER_SNAPSHOT
 };
 
 struct WORLD_SEQUENCE_OBJECT_BUNDLE;
+
 struct COMPOSITION_WORLD_OBJECT_TRANSFER final : COMPOSITION_TRANSFER_SNAPSHOT
 {
     std::shared_ptr<const WORLD_SEQUENCE_OBJECT_BUNDLE> bundle;

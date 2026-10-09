@@ -41,6 +41,7 @@ namespace LostArk::Server
 	class CKoukuSaydonBrain final
 	{
 	public:
+		//전부 다 static 함수로 정의가 되어있다. why? 왜 전부 다 static fuction으로 정의가 되어있는 거지?
 		[[nodiscard]] static bool Is_GateOneBoss(
 			LostArk::Shared::WORLD_ID worldId,
 			const SERVER_WORLD_ENTITY& boss) noexcept;
@@ -54,20 +55,25 @@ namespace LostArk::Server
 		/* Placement form of Is_ArenaBoss for the Debug spawn command: a disabled
 		BOSS placement of the Gate 1 encounter with an arena boss archetype. The
 		statically enabled Gate 1 Kouku is deliberately not one. */
+		//아레나 보스가 정말 존재하는지? 서버에 플레이 시킬 수 있는 보스가 존재하는지를 물어보는 API?
 		[[nodiscard]] static bool Is_ArenaBossPlacement(
 			LostArk::Shared::WORLD_ID worldId,
 			const WORLD_BOOTSTRAP_PLACEMENT& placement) noexcept;
+
 		[[nodiscard]] static bool Validate_AnimationOnlyPattern(
 			const BOSS_PATTERN_DEFINITION& pattern,
 			std::string& status);
+		//무언가 소환을 해야 하는 패턴이 있는지를 물어보는 API?
 		[[nodiscard]] static bool Validate_SummonedPattern(
 			const BOSS_PATTERN_DEFINITION& owner, const BOSS_PATTERN_DEFINITION& child,
 			std::string& status, bool allowActorLocalAirborne = false);
+
 		[[nodiscard]] static bool Select_CrossDirection(
 			const SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& parent,
 			const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, const CGameplayCatalog& catalog,
 			std::size_t& selected, std::array<std::uint32_t, 4u>& cloneDurationsMs,
 			std::string& status);
+
 		[[nodiscard]] static const BOSS_PATTERN_DEFINITION*
 			Find_AnimationOnlyPattern(
 				const CGameplayCatalog& catalog,

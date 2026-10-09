@@ -29,7 +29,9 @@ void InsertResourceTree(
 	COMPOSITION_RESOURCE_TREE_NODE& Root,
 	const std::vector<std::string>& CategorySegments,
 	std::size_t iLeafIndex);
+
 std::size_t FinalizeResourceTree(COMPOSITION_RESOURCE_TREE_NODE& Node);
+
 void RenderResourceTree(
 	const COMPOSITION_RESOURCE_TREE_NODE& Node,
 	const std::function<void(std::size_t)>& RenderLeaf,
@@ -39,6 +41,7 @@ void RenderResourceTree(
 // when its drag starts; ImGui transports only the token, never a source pointer.
 void Offer_CompositionResourceDrag(const char* label,
     const std::function<COMPOSITION_TRANSFER()>& capture);
+
 COMPOSITION_TRANSFER Accept_CompositionResourceDropInWindow();
 
 NS_END
