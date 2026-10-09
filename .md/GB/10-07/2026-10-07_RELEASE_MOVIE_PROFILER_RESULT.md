@@ -49,3 +49,34 @@ F1 배치와 최종 캡처 메타데이터까지 반영한 Release Product도 `o
 기존 Bern entrance 계약 테스트4개, JSON parse·FOV외 exact 보존, Client/Engine 프로젝트·filters XML4개 parse, 코드 독립 검토와 git diff --check를 통과했다. 신규 C++/프로젝트 항목은 없으며 기존 C++ 인코딩·CRLF를 유지했다. Renderer.h는 기존 CP949, 나머지 변경 C++은 UTF-8 BOM 없음이다. PLAN에는 변경10개 C++ 파일 전체 코드와 카메라 JSON을 보존한다.
 
 Client/Server를 자율 실행하거나 종료·UI 조작·화면 캡처하지 않았다. 기존 프로세스 종료를 확인한 뒤 빌드했다. 실제 F1/F7 표시·JSON 저장·컷신 구도·FPS 개선은 사용자 확인 전이며 드랍 해결로 기록하지 않는다.
+
+## G05. 2026-10-09 main 동기화 검증
+
+사용자가 `git status`의 수정27개·신규문서5개를 모두 보존해 main에 반영하도록 승인했다.
+Release Profiler/Bern 카메라, 카메라 키 목록, 프로젝트 조사, 기존 코드 학습 주석,
+Customization 필터 변경을 기능별5개 커밋으로 나누고 최신 main `0164be5a`를 충돌 없이 병합했다.
+PR은 [#538](https://github.com/tnestyle70/LostArk/pull/538)이며 아래 빌드 대상은 `b69de645`다.
+
+초기32개 파일을 Git 제외 `out/MainSync20261009/backup`에 보존했다. 백업 대조에서
+25개는 바이트 동일, 소스4개의 줄 끝 공백17줄과 전체코드 PLAN의 줄 끝 공백16줄만 정리했다.
+gotchas와 팀 사용서에는 원격 main의 독립 변경만 추가됐으며 원래 수정 내용도 유지했다.
+원본 MainApp.cpp의 인코딩 관련 주석 끝 공백은 변경하지 않았다.
+
+| 정본 Product 검증 | 전체 시간 | 보고서 |
+|---|---:|---|
+| Debug x64 | 291.739s | `out/BuildPipeline/runs/20261009T011844823Z-debug-product.json` |
+| Release x64 | 323.312s | `out/BuildPipeline/runs/20261009T012425216Z-release-product.json` |
+
+두 구성 모두 Engine/Shared/Server/Client 컴파일·링크·배포가 PASS이며 실제 빌드다.
+Client OBJ 갱신은 Debug215개·Release213개, 두 구성 PCH·CSO 갱신은0개다.
+필수 runtime 파일·Navigation 참조·Item/Valtan 보상 검사에서 누락·무효 입력이 없었다.
+기존 C4819/C4828과 외부 DirectXTK LNK4099 경고는 남아 있으며 경고0건을 의미하지 않는다.
+
+BernEntranceCamera JSON의16키 FOV45도와 나머지 값 보존, Client project/filter XML parse,
+파일등록2934개 일치·미정의 filter0·C++ 물리경로 누락0, 빈 SolutionFolder2줄만 제거된 것을
+확인했다. 최초32개와 PR 변경 경로가 같고 바이너리·Resources·빌드 산출물은 포함하지 않았다.
+전체 변경의 `git diff --check`가 통과했으며 셰이더 입력668개의 바이트와 수정시각을 보존했다.
+
+데이터 publish·Core/FullDiagnostic·Client/Server 실행·UI 조작·화면 캡처는 수행하지 않았다.
+기존 Undo/Redo 구현 `1ef2616b`와 PR #530은 통합 이력에 남아 있다.
+실제 F1/F7·컷신 구도·카메라 목록·게임 화면 확인은 사용자 검증으로 남는다.
