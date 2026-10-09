@@ -356,6 +356,9 @@ namespace LostArk::Server
 			// Invisible gap after the head mark; reserves this slot until ground spawn.
 			std::uint32_t iPlantTick = 0u;
 			std::uint32_t iMarkOrdinal = 0u;
+			// Capture per bomb: a later board window/configuration cannot retime pending phases.
+			std::uint32_t iDropDelayMs = LostArk::Shared::KOUKU_BINGO_BOMB_DROP_DELAY_MS;
+			std::uint32_t iFuseMs = LostArk::Shared::KOUKU_BINGO_BOMB_FUSE_MS;
 		};
 		using BOMB_SLOTS = std::array<BOMB,
 			static_cast<std::size_t>(LostArk::Shared::KOUKU_BINGO_MAX_BOMBS)>;
@@ -364,7 +367,9 @@ namespace LostArk::Server
 		false rather than replacing an existing mark, so a double press cannot
 		restart someone else's clock. */
 		bool Start_Bomb(LostArk::Shared::NET_ENTITY_ID carrier,
-			std::uint32_t detonateTick, std::uint32_t markOrdinal = 0u) noexcept;
+			std::uint32_t detonateTick, std::uint32_t markOrdinal = 0u,
+			std::uint32_t dropDelayMs = LostArk::Shared::KOUKU_BINGO_BOMB_DROP_DELAY_MS,
+			std::uint32_t fuseMs = LostArk::Shared::KOUKU_BINGO_BOMB_FUSE_MS) noexcept;
 		/* Turns a MARKED slot into a PLANTED bomb at this position, burning
 		until the given tick. */
 		void Plant_Bomb(std::size_t slot, float x, float z,

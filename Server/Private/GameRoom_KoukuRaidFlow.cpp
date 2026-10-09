@@ -401,6 +401,32 @@ bool LostArk::Server::CGameRoom::Start_KoukuRaidEntry(const std::uint32_t tick)
     run.State.iFlowEntryIndex = gate->Resolve_ReadyEntry(run.State.iFlowEntryIndex,
         primary->iCurrentHp, primary->iMaximumHp, primary->iMaximumHealthBars);
     if (run.State.iFlowEntryIndex >= gate->Entries.size()) return true;
+    const auto& entry = gate->Entries[run.State.iFlowEntryIndex];
+    if (run.State.strGateId == "BINGO" && !entry.bBundle)
+    {
+        std::string status;
+        const auto* control = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*run.pCatalog, entry.strTargetId, status);
+        std::uint64_t stageMs = 0u;
+        if (control) for (const auto& stage : control->Stages) stageMs += stage.iDurationMs;
+        if (control && control->MechanicTriggers.size() == 1u && control->MechanicTriggers.front().bBingoControlOnly &&
+            (std::max)(stageMs, std::uint64_t(control->iTimelineDurationMs)) > 34u)
+        {
+            // The publisher explicitly certifies an empty control Pattern. Its long
+            // board window already runs on the encounter clock and must not hold the boss idle.
+            // The historical 34ms opener retains its original admission/lifecycle path.
+            run.State.strFlowEntryId = entry.strEntryId;
+            run.State.iFlowEntryIndex = gate->Resolve_NextCompletedEntry(run.State.iFlowEntryIndex,
+                primary->iCurrentHp, primary->iMaximumHp, primary->iMaximumHealthBars);
+            if (run.State.iFlowEntryIndex == gate->Entries.size())
+            {
+                const auto loop = std::find_if(gate->Entries.begin(), gate->Entries.end(), [&](const auto& row) { return row.strEntryId == gate->strLoopStartEntryId; });
+                run.State.iFlowEntryIndex = loop == gate->Entries.end() ? 0u : static_cast<std::uint32_t>(loop - gate->Entries.begin());
+            }
+            run.iNextEntryTick = Add_ServerTicksSkippingReservedZero(tick,
+                CKoukuSaydonLogicRuntime::Ticks_FromMs(34u + entry.iWaitAfterMs));
+            run.State.iServerTick = tick; Broadcast_KoukuRaidState(); return true;
+        }
+    }
     C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST request;
     if (!Build_KoukuRaidEntryRequest(*gate, run.State.iFlowEntryIndex, request)) return false;
     const auto published = m_pKoukuPublishedProductGeneration; m_pKoukuPublishedProductGeneration = run.pCatalog;
@@ -740,9 +766,11 @@ void LostArk::Server::CGameRoom::Update_KoukuRaid(const std::uint32_t tick)
                     [](const auto& trigger) { return trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD; });
                 if (found != pattern->MechanicTriggers.end()) { board = &*found; break; }
             }
-            if (!board || !board->BingoHammerHalfExtentsM)
+            if (board && !board->BingoHammerHalfExtentsM)
             { Stop_KoukuRaid("Pinned Bingo flow has no authored board geometry"); return; }
-            Begin_KoukuBingoDuration(*primary, *board, tick);
+            // Disabled authored rows are absent from the projection. Ordinary Flow
+            // playback remains valid while its optional board controller is disabled.
+            if (board) Begin_KoukuBingoDuration(*primary, *board, tick);
         }
         if (run.State.strGateId == "BINGO" && m_KoukuBingoDuration.bSpecialPatternPending && !run.bBingoSpecialRunning)
         {

@@ -49,6 +49,8 @@ struct CKoukuSaydonWorkbenchTestAccess
     { return workbench.Move_PresentationTimelineSelection(patternId, ids, delta, generation, status); }
     static void PrimeDamageDirty(CKoukuSaydonActionWorkbench& workbench) { workbench.m_bColliderDamageDirty = true; }
     static bool DamageDirty(const CKoukuSaydonActionWorkbench& workbench) { return workbench.m_bColliderDamageDirty; }
+    static KOUKU_PATTERN_SELECTION Selection(const CKoukuSaydonActionWorkbench& workbench) { return workbench.m_ePatternSelection; }
+    static const std::string& SelectedLogicBox(const CKoukuSaydonActionWorkbench& workbench) { return workbench.m_strSelectedLogicOccurrenceId; }
 };
 }
 namespace
@@ -4908,6 +4910,204 @@ int Run_KoukuFixedDamageContractTests()
         const auto firstId = pattern.PresentationOccurrences[0].strOccurrenceId;
         const auto secondId = pattern.PresentationOccurrences[1].strOccurrenceId;
         source.Patterns.push_back(pattern);
+        {
+            // Exercise the existing codec/editor on an isolated board fixture, without publishing live Data.
+            auto boardFixture = source;
+            KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION board;
+            board.strLogicId = "kakulsaydon.g1.logic." + std::to_string(boardFixture.iNextLogicOrdinal++);
+            board.strDisplayName = "Editable Bingo board"; board.strLogicType = "DURATION"; board.strJudgementKind = "BINGO_BOARD";
+            boardFixture.Logics.push_back(board);
+            auto& owner = boardFixture.Patterns.front();
+            for (const auto start : {100u, 5000u})
+            {
+                KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE occurrence;
+                occurrence.strOccurrenceId = patternId + ".logic." + std::to_string(owner.iNextLogicOccurrenceOrdinal++);
+                occurrence.strLogicId = board.strLogicId; occurrence.iStartMs = start; occurrence.iDurationMs = 1000u;
+                owner.LogicOccurrences.push_back(occurrence);
+            }
+            const auto windows = owner.LogicOccurrences;
+            const auto defaultText = CKoukuSaydonCompositionDocument::Serialize(boardFixture);
+            auto legacyText = defaultText;
+            for (const auto& field : std::array<std::pair<const char*, const char*>, 7>{{
+                {"bingoActiveMode", "\"ENCOUNTER\""}, {"bingoFirstBombDelayMs", "30000"}, {"bingoBombIntervalMs", "20000"},
+                {"bingoBombMarkMs", "6000"}, {"bingoBombDropDelayMs", "2000"}, {"bingoBombFuseMs", "4000"}, {"bingoInitialMarkedCells", "2"}}})
+            {
+                const auto row = std::string(",\n      \"") + field.first + "\": " + field.second;
+                const auto at = legacyText.find(row);
+                Require(at != std::string::npos, "Bingo codec omitted an explicit setting");
+                legacyText.erase(at, row.size());
+            }
+            KOUKU_SAYDON_COMPOSITION_DOCUMENT decoded;
+            RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(legacyText, decoded, status), status, "read legacy Bingo defaults");
+            Require(decoded == boardFixture, "legacy Bingo defaults changed the first 30 second bomb or occurrence windows");
+            board.strBingoActiveMode = "WINDOW"; board.iBingoFirstBombDelayMs = 0u; board.iBingoBombIntervalMs = 1000u;
+            board.iBingoBombMarkMs = 1000u; board.iBingoBombDropDelayMs = 500u; board.iBingoBombFuseMs = 250u;
+            board.iBingoInitialMarkedCells = 0u;
+            boardFixture.Logics.front() = board;
+            RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(
+                CKoukuSaydonCompositionDocument::Serialize(boardFixture), decoded, status), status, "roundtrip custom Bingo WINDOW settings");
+            Require(decoded == boardFixture, "Bingo roundtrip lost settings or independent activation windows");
+            const auto good = decoded;
+            const auto reject = [&](const auto& change, const char* message) {
+                auto invalid = boardFixture;
+                change(invalid.Logics.front());
+                Require(!CKoukuSaydonCompositionDocument::Parse_Text(CKoukuSaydonCompositionDocument::Serialize(invalid), decoded, status) &&
+                    decoded == good, message);
+            };
+            reject([](auto& value) { value.strBingoActiveMode = "AUTO"; }, "unknown Bingo mode must preserve the last good document");
+            reject([](auto& value) { value.iBingoFirstBombDelayMs = 600001u; }, "Bingo first delay overflow was accepted");
+            reject([](auto& value) { value.iBingoBombIntervalMs = 0u; }, "zero Bingo interval was accepted");
+            reject([](auto& value) { value.iBingoBombMarkMs = 0u; }, "zero Bingo mark duration was accepted");
+            reject([](auto& value) { value.iBingoBombDropDelayMs = 0u; }, "zero Bingo drop delay was accepted");
+            reject([](auto& value) { value.iBingoBombFuseMs = 249u; }, "Bingo fuse below visual precision was accepted");
+            reject([](auto& value) { value.iBingoBombFuseMs = 80001u; }, "Bingo fuse above visual precision was accepted");
+            reject([](auto& value) { value.iBingoInitialMarkedCells = 26u; }, "Bingo initial cells exceeded board capacity");
+            reject([](auto& value) { value.iBingoBombIntervalMs = 400u; }, "Bingo bomb scheduling exceeded four slots");
+            reject([](auto& value) { value.iBingoBombIntervalMs = 100u; value.iBingoBombMarkMs = 1u;
+                value.iBingoBombDropDelayMs = 1u; value.iBingoBombFuseMs = 398u; },
+                "Bingo 30 Hz rounded phases exceeded four slots despite an exact millisecond fit");
+            auto foreignText = defaultText;
+            const std::string kind = "\"judgementKind\": \"BINGO_BOARD\"";
+            foreignText.replace(foreignText.find(kind), kind.size(), "\"judgementKind\": \"CARD_DICE_BIND\"");
+            Require(!CKoukuSaydonCompositionDocument::Parse_Text(foreignText, decoded, status) && decoded == good,
+                "default-valued Bingo fields on another kind were accepted");
+            auto typedText = CKoukuSaydonCompositionDocument::Serialize(boardFixture);
+            const std::string mark = "\"bingoBombMarkMs\": 1000";
+            typedText.replace(typedText.find(mark), mark.size(), "\"bingoBombMarkMs\": \"1000\"");
+            Require(!CKoukuSaydonCompositionDocument::Parse_Text(typedText, decoded, status) && decoded == good,
+                "text Bingo milliseconds were accepted");
+            auto upper = boardFixture;
+            upper.Logics.front().iBingoFirstBombDelayMs = 600000u; upper.Logics.front().iBingoBombIntervalMs = 320000u;
+            upper.Logics.front().iBingoBombMarkMs = 600000u; upper.Logics.front().iBingoBombDropDelayMs = 600000u;
+            upper.Logics.front().iBingoBombFuseMs = 80000u; upper.Logics.front().iBingoInitialMarkedCells = 25u;
+            RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(CKoukuSaydonCompositionDocument::Serialize(upper), decoded, status),
+                status, "accept Bingo bounds and exact four-slot capacity");
+            Require(decoded == upper, "Bingo upper bounds changed during roundtrip");
+            Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(boardFixture)), "write isolated Bingo fixture");
+            SCOPED_ENVIRONMENT_VARIABLE boardEnvironment(L"LOSTARK_PROJECT_DATA_ROOT");
+            Require(boardEnvironment.Set(dataRoot), "select isolated Bingo root");
+            CKoukuSaydonActionWorkbench boardEditor;
+            RequireEditorStep(boardEditor.Reload(status), status, "load Bingo fixture");
+            board.iBingoFirstBombDelayMs = 1750u; board.iBingoInitialMarkedCells = 7u;
+            RequireEditorStep(boardEditor.Set_LogicDefinitionValues(board.strLogicId, board, status), status, "edit shared Bingo settings");
+            Require(boardEditor.Get_Composition().Logics.front() == board &&
+                EditorPattern(boardEditor, patternId).LogicOccurrences == windows,
+                "shared Bingo Apply changed occurrence identities or windows");
+            RequireEditorRoundtrip(boardEditor);
+            Require(boardEditor.Get_Composition().Logics.front() == board &&
+                EditorPattern(boardEditor, patternId).LogicOccurrences == windows,
+                "Bingo Save/Reopen lost shared settings or activation windows");
+            const auto saved = boardEditor.Get_Composition();
+            const auto savedBytes = ReadText(sourcePath);
+            auto invalid = board; invalid.iBingoBombIntervalMs = 1u;
+            Require(!boardEditor.Set_LogicDefinitionValues(board.strLogicId, invalid, status) &&
+                boardEditor.Get_Composition() == saved && ReadText(sourcePath) == savedBytes,
+                "invalid Bingo Apply partially committed the draft or disk");
+
+            auto parentFixture = boardFixture;
+            parentFixture.PresentationResources.clear();
+            auto& control = parentFixture.Patterns.front();
+            control.strGateId = "BINGO"; control.strActorProfileId = "MN_RPCT_05";
+            control.strTargetBossPlacementId = "boss.kakulsaydon.bingo.saydon";
+            control.PresentationOccurrences.clear(); control.Stages.clear(); control.iDurationMs = 34u;
+            control.LogicOccurrences.resize(1u); control.LogicOccurrences.front().iStartMs = 0u;
+            control.LogicOccurrences.front().iDurationMs = 34u;
+            const auto controlId = control.strPatternId, controlBoxId = control.LogicOccurrences.front().strOccurrenceId;
+            auto normal = control;
+            KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION ordinary;
+            ordinary.strLogicId = "kakulsaydon.g1.logic." + std::to_string(parentFixture.iNextLogicOrdinal++);
+            ordinary.strDisplayName = "Ordinary timed rule"; ordinary.strLogicType = "DURATION"; ordinary.strJudgementKind = "EXTERNAL_SIGNAL";
+            parentFixture.Logics.push_back(ordinary);
+            std::vector<std::string> normalIds;
+            for (unsigned i = 0u; i < 2u; ++i)
+            {
+                normal.strPatternId = "KAKULSAYDON_G1_PATTERN_" + std::to_string(parentFixture.iNextPatternOrdinal++);
+                normal.strDisplayName = "Bingo normal " + std::to_string(i + 1u); normal.iDurationMs = 1000u;
+                normal.LogicOccurrences.front().strOccurrenceId = normal.strPatternId + ".logic.1";
+                normal.LogicOccurrences.front().strLogicId = ordinary.strLogicId; normal.LogicOccurrences.front().iDurationMs = 1000u;
+                normal.iNextLogicOccurrenceOrdinal = 2u;
+                normalIds.push_back(normal.strPatternId); parentFixture.Patterns.push_back(normal);
+            }
+            KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW parentFlow;
+            parentFlow.strFlowId = "contract.bingo.flow"; parentFlow.strGateId = "BINGO"; parentFlow.strDisplayName = "Bingo Parent fixture";
+            parentFlow.Entries = {{"contract.board", "PATTERN", controlId, 0u},
+                {"contract.opening", "PATTERN", normalIds[0], 0u}, {"contract.repeat", "PATTERN", normalIds[1], 100u}};
+            parentFlow.strLoopStartEntryId = "contract.repeat";
+            parentFixture.PatternFlows = {parentFlow};
+            Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(parentFixture)), "write isolated Bingo Parent fixture");
+            CKoukuSaydonActionWorkbench parentEditor;
+            RequireEditorStep(parentEditor.Reload(status), status, "load Bingo Parent fixture");
+            const auto beforeSelect = parentEditor.Get_Composition();
+            RequireEditorStep(parentEditor.Select_BingoParent(status), status, "select Bingo Complete Parent");
+            Require(parentEditor.Get_Composition() == beforeSelect && !parentEditor.Is_Dirty() &&
+                CKoukuSaydonWorkbenchTestAccess::Selection(parentEditor) == KOUKU_PATTERN_SELECTION::BINGO_PARENT &&
+                parentEditor.Get_SelectedPatternId() == controlId && CKoukuSaydonWorkbenchTestAccess::SelectedLogicBox(parentEditor) == controlBoxId,
+                "Bingo Parent selection changed data or failed to focus its common board Logic");
+            auto editedFlow = parentFlow;
+            std::swap(editedFlow.Entries[1], editedFlow.Entries[2]);
+            editedFlow.Entries[1].iWaitAfterMs = 750u; editedFlow.strLoopStartEntryId = editedFlow.Entries[2].strEntryId;
+            RequireEditorStep(parentEditor.Set_BingoFlow(editedFlow, status), status, "edit Bingo Flow order, wait and loop marker");
+            Require(parentEditor.Get_Composition().PatternFlows.front() == editedFlow &&
+                parentEditor.Get_Composition().Patterns == beforeSelect.Patterns, "Bingo Flow edit retimed or changed its referenced Patterns");
+            RequireEditorStep(parentEditor.Undo_Edit(status), status, "undo Bingo Flow edit");
+            Require(parentEditor.Get_Composition() == beforeSelect, "Bingo Flow Undo did not restore the saved document");
+            RequireEditorStep(parentEditor.Redo_Edit(status), status, "redo Bingo Flow edit");
+            Require(parentEditor.Get_Composition().PatternFlows.front() == editedFlow, "Bingo Flow Redo lost order, wait or stable loop marker");
+            RequireEditorRoundtrip(parentEditor);
+            Require(parentEditor.Get_Composition().PatternFlows.front() == editedFlow, "Bingo Flow Save/Reopen lost edits");
+            const auto flowGood = parentEditor.Get_Composition(); const auto flowBytes = ReadText(sourcePath);
+            auto invalidFlow = editedFlow; invalidFlow.Entries[1].strTargetId = "KAKULSAYDON_G1_PATTERN_999999";
+            Require(!parentEditor.Set_BingoFlow(invalidFlow, status) && parentEditor.Get_Composition() == flowGood && ReadText(sourcePath) == flowBytes,
+                "missing Bingo Flow target partially committed");
+            invalidFlow = editedFlow; invalidFlow.strLoopStartEntryId = "contract.missing";
+            Require(!parentEditor.Set_BingoFlow(invalidFlow, status) && parentEditor.Get_Composition() == flowGood,
+                "missing Bingo loop marker partially committed");
+            invalidFlow = editedFlow; invalidFlow.strFlowId = "contract.other";
+            Require(!parentEditor.Set_BingoFlow(invalidFlow, status) && parentEditor.Get_Composition() == flowGood,
+                "Bingo Flow identity replacement was accepted");
+            RequireEditorStep(parentEditor.Select_BingoParent(status), status, "reselect Bingo Parent after reopen");
+            RequireEditorStep(parentEditor.Set_LogicBoxWindow(controlId, controlBoxId, 1500u, 45000u, status), status,
+                "extend the pure Bingo board activation beyond its original marker");
+            const auto extended = parentEditor.Get_Composition();
+            Require(EditorPattern(parentEditor, controlId).iDurationMs == 46500u &&
+                EditorPattern(parentEditor, controlId).LogicOccurrences.front().iStartMs == 1500u &&
+                EditorPattern(parentEditor, controlId).LogicOccurrences.front().iDurationMs == 45000u &&
+                extended.PatternFlows == flowGood.PatternFlows && extended.Patterns[1] == flowGood.Patterns[1] && extended.Patterns[2] == flowGood.Patterns[2],
+                "common board activation extension changed normal Pattern timing or Flow order");
+            const auto& normalBox = EditorPattern(parentEditor, normalIds[0]).LogicOccurrences.front();
+            Require(!parentEditor.Set_LogicBoxWindow(normalIds[0], normalBox.strOccurrenceId, 0u, 1001u, status) &&
+                parentEditor.Get_Composition() == extended, "ordinary Logic incorrectly inherited Bingo board lifetime extension");
+            Require(!parentEditor.Set_LogicBoxWindow(controlId, controlBoxId, 600000u, 1u, status) &&
+                parentEditor.Get_Composition() == extended, "Bingo activation exceeded the editor lifetime bound");
+            RequireEditorRoundtrip(parentEditor);
+            Require(EditorPattern(parentEditor, controlId).iDurationMs == 46500u &&
+                parentEditor.Get_Composition().PatternFlows.front() == editedFlow,
+                "Bingo Parent Save/Reopen lost activation duration or Flow edits");
+
+            auto disabledBoard = parentEditor.Get_Composition();
+            disabledBoard.Patterns.front().LogicOccurrences.front().bEnabled = false;
+            Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(disabledBoard)), "write disabled long Bingo board fixture");
+            RequireEditorStep(parentEditor.Reload(status), status, "load disabled long Bingo board");
+            RequireEditorStep(parentEditor.Select_BingoParent(status), status, "select disabled common board");
+            Require(parentEditor.Get_SelectedPatternId() == controlId &&
+                CKoukuSaydonWorkbenchTestAccess::SelectedLogicBox(parentEditor) == controlBoxId,
+                "disabled common board became unavailable to the Parent editor");
+            RequireEditorStep(parentEditor.Set_LogicBoxWindow(controlId, controlBoxId, 1800u, 48000u, status), status,
+                "extend disabled common board while preserving its enable state");
+            const auto& disabledBox = EditorPattern(parentEditor, controlId).LogicOccurrences.front();
+            Require(!disabledBox.bEnabled && disabledBox.iStartMs == 1800u && disabledBox.iDurationMs == 48000u &&
+                EditorPattern(parentEditor, controlId).iDurationMs == 49800u &&
+                parentEditor.Get_Composition().PatternFlows == disabledBoard.PatternFlows &&
+                parentEditor.Get_Composition().Patterns[1] == disabledBoard.Patterns[1] &&
+                parentEditor.Get_Composition().Patterns[2] == disabledBoard.Patterns[2],
+                "disabled board extension enabled gameplay or changed normal Pattern timing");
+            RequireEditorRoundtrip(parentEditor);
+            Require(!EditorPattern(parentEditor, controlId).LogicOccurrences.front().bEnabled &&
+                EditorPattern(parentEditor, controlId).iDurationMs == 49800u &&
+                EditorPattern(parentEditor, controlId).LogicOccurrences.front().iStartMs == 1800u &&
+                EditorPattern(parentEditor, controlId).LogicOccurrences.front().iDurationMs == 48000u,
+                "disabled board Save/Reopen lost its retained activation window");
+        }
         KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION attack;
         attack.strLogicId = "kakulsaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
         attack.strDisplayName = "Airborne hit codec"; attack.strLogicType = "TRIGGER";

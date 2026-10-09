@@ -3849,6 +3849,32 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			trigger->fSoldierSpawnRadiusMaxM = radiusMax; trigger->bHasSoldierTuning = true;
 			trigger->iSoldierMaxHp = maxHp; trigger->iSoldierDamage = damage;
 		}
+		else if (!fields.empty() && ("PATTERNBINGOBOARD" == fields[0] || "PATTERNBINGOCONTROL" == fields[0]))
+		{
+			const bool control = fields[0] == "PATTERNBINGOCONTROL";
+			if (fields.size() != (control ? 4u : 11u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]))
+			{ m_strStatus = "Bingo settings row identity is invalid"; return false; }
+			const auto encounter = m_BossPatterns.find(std::string(fields[1]));
+			if (encounter == m_BossPatterns.end()) return false;
+			const auto pattern = std::find_if(encounter->second.begin(), encounter->second.end(), [&](const auto& row) { return row.strPatternId == fields[2]; });
+			if (pattern == encounter->second.end()) return false;
+			const auto trigger = std::find_if(pattern->MechanicTriggers.begin(), pattern->MechanicTriggers.end(), [&](const auto& row) { return row.strTriggerId == fields[3]; });
+			if (trigger == pattern->MechanicTriggers.end() || trigger->eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD ||
+				(control ? trigger->bBingoControlOnly : trigger->BingoBoardSettings.has_value()))
+			{ m_strStatus = "Bingo settings owner is missing, incompatible or duplicated"; return false; }
+			if (control) trigger->bBingoControlOnly = true;
+			else
+			{
+				BOSS_BINGO_BOARD_SETTINGS settings;
+				if ((fields[4] != "ENCOUNTER" && fields[4] != "WINDOW") ||
+					!ParseNumber(fields[5], settings.iFirstBombDelayMs) || !ParseNumber(fields[6], settings.iBombIntervalMs) ||
+					!ParseNumber(fields[7], settings.iBombMarkMs) || !ParseNumber(fields[8], settings.iBombDropDelayMs) ||
+					!ParseNumber(fields[9], settings.iBombFuseMs) || !ParseNumber(fields[10], settings.iInitialMarkedCells) || !settings.Is_Valid())
+				{ m_strStatus = "Bingo board timing or initial cells are invalid"; return false; }
+				settings.bWindowOnly = fields[4] == "WINDOW";
+				trigger->BingoBoardSettings = settings;
+			}
+		}
 		else if (!fields.empty() && "PATTERNBINGOHAMMER" == fields[0])
 		{
 			std::array<float, 2u> half{};
@@ -7983,8 +8009,19 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		(void)encounterId;
 		patternCount += patterns.size();
 		for (const auto& pattern : patterns) for (const auto& trigger : pattern.MechanicTriggers)
+		{
 			if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD && !trigger.BingoHammerHalfExtentsM)
 			{ m_strStatus = "Bingo board is missing its published WORLD head geometry"; return false; }
+			if (trigger.bBingoControlOnly && (pattern.strGateId != "BINGO" || pattern.MechanicTriggers.size() != 1u ||
+				!pattern.LogicWindows.empty() || !pattern.WorldSequences.empty() || !pattern.SceneProfiles.empty() ||
+				!pattern.ParentChildren.empty() || pattern.BossMotion || pattern.bResetBossToSpawn || pattern.ResetBossYawDegrees ||
+				pattern.Motion.eKind != BOSS_PATTERN_MOTION_KIND::NONE || pattern.fVerticalOffsetM != 0.f ||
+				std::any_of(pattern.Stages.begin(), pattern.Stages.end(), [](const auto& stage) {
+					return stage.eHitShape != BOSS_PATTERN_HIT_SHAPE::NONE || !stage.Actions.empty() ||
+						!stage.AttackContacts.empty() || stage.Motion.eKind != BOSS_PATTERN_STAGE_MOTION_KIND::NONE ||
+						!stage.Motion.RootMotion.empty(); })))
+			{ m_strStatus = "Bingo control-only marker cannot own another active lane"; return false; }
+		}
         for (const auto& parent : patterns) if (!parent.ParentChildren.empty())
         {
             const auto failParent = [&](const char* reason) { m_strStatus = "Parent " + parent.strPatternId + ": " + reason; return false; };

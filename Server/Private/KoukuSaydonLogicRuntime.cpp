@@ -2702,7 +2702,8 @@ bool LostArk::Server::CKoukuBingoRuntime::Consume_CompletedRowsAndColumns(const 
 
 bool LostArk::Server::CKoukuBingoRuntime::Start_Bomb(
 	const LostArk::Shared::NET_ENTITY_ID carrier,
-	const std::uint32_t detonateTick, const std::uint32_t markOrdinal) noexcept
+	const std::uint32_t detonateTick, const std::uint32_t markOrdinal,
+	const std::uint32_t dropDelayMs, const std::uint32_t fuseMs) noexcept
 {
 	using namespace LostArk::Shared;
 	if (INVALID_NET_ENTITY_ID == carrier)
@@ -2731,6 +2732,8 @@ bool LostArk::Server::CKoukuBingoRuntime::Start_Bomb(
 	started.iCarrierNetEntityId = carrier;
 	started.iDetonateTick = detonateTick;
 	started.iMarkOrdinal = markOrdinal;
+	started.iDropDelayMs = dropDelayMs;
+	started.iFuseMs = fuseMs;
 	return true;
 }
 

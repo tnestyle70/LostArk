@@ -126,6 +126,14 @@ namespace Client
 		std::string strLogicType;
 		/* DURATION values. Only the keys of strJudgementKind are meaningful. */
 		std::string strJudgementKind;
+        // BINGO_BOARD policy is shared by its occurrences; WINDOW uses each box's clock.
+        std::string strBingoActiveMode = "ENCOUNTER";
+        std::uint32_t iBingoFirstBombDelayMs = 30000u;
+        std::uint32_t iBingoBombIntervalMs = 20000u;
+        std::uint32_t iBingoBombMarkMs = 6000u;
+        std::uint32_t iBingoBombDropDelayMs = 2000u;
+        std::uint32_t iBingoBombFuseMs = 4000u;
+        std::uint32_t iBingoInitialMarkedCells = 2u;
 		std::string strFixedSelectionGroupId;
 		std::string strTrackingPresentationOccurrenceId;
 		std::uint32_t iSpawnIntervalMs = 0u;

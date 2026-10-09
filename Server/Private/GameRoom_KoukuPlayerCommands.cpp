@@ -228,40 +228,73 @@ void LostArk::Server::CGameRoom::Stop_KoukuBingoDuration(const bool clearBoard)
     }
 }
 
+void LostArk::Server::CGameRoom::Activate_KoukuBingoBoard(const std::uint32_t tick)
+{
+    using namespace LostArk::Shared;
+    auto& duration = m_KoukuBingoDuration;
+    if (duration.bActivated || !duration.iOwnerId || !Has_ReachedServerTick(tick, duration.iActivationTick)) return;
+    duration.bActivated = true;
+    if (duration.bInitializeCells)
+    {
+        auto random = Mix_DeterministicRandom((std::uint64_t(m_iKoukuBingoBoardEpoch) << 32u) | duration.iActivationTick);
+        const auto first = std::uint32_t(random % KOUKU_BINGO_CELL_COUNT);
+        // Preserve the exact existing two-cell seed/layout; additional cells are distinct.
+        auto next = first;
+        std::uint32_t mask = 0u;
+        for (std::uint32_t count = 0u; count < duration.Settings.iInitialMarkedCells; ++count)
+        {
+            if (count == 1u) next = (first + 1u + std::uint32_t((random >> 8u) % (KOUKU_BINGO_CELL_COUNT - 1))) % KOUKU_BINGO_CELL_COUNT;
+            else if (count > 1u) { random = Mix_DeterministicRandom(random); next = std::uint32_t(random % KOUKU_BINGO_CELL_COUNT); }
+            while (mask & (1u << next)) next = (next + 1u) % KOUKU_BINGO_CELL_COUNT;
+            mask |= 1u << next;
+        }
+        m_KoukuBingo.Fill(mask);
+        duration.bInitializeCells = false;
+    }
+    if (!duration.iNextBombTick) duration.iNextBombTick = Add_ServerTicksSkippingReservedZero(duration.iActivationTick,
+        CKoukuSaydonLogicRuntime::Ticks_FromMs(duration.Settings.iFirstBombDelayMs));
+    if (!duration.iNextHammerTick) duration.iNextHammerTick = Add_ServerTicksSkippingReservedZero(duration.iActivationTick,
+        CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_HAMMER_INTERVAL_MS));
+    if (!duration.iNextMadnessTick) duration.iNextMadnessTick = Add_ServerTicksSkippingReservedZero(duration.iActivationTick, SERVER_TICK_HZ);
+}
+
 void LostArk::Server::CGameRoom::Begin_KoukuBingoDuration(const SERVER_WORLD_ENTITY& owner,
     const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, const std::uint32_t tick)
 {
     using namespace LostArk::Shared;
-    if (owner.strArchetypeId != "BOSS_KAKULSAYDON_BINGO_SAYDON" || !trigger.iDurationMs || trigger.iDurationMs > 600000u || !trigger.BingoHammerHalfExtentsM) return;
+    const auto settings = trigger.BingoBoardSettings.value_or(BOSS_BINGO_BOARD_SETTINGS{});
+    if (owner.strArchetypeId != "BOSS_KAKULSAYDON_BINGO_SAYDON" || !trigger.iDurationMs ||
+        trigger.iDurationMs > 600000u || !trigger.BingoHammerHalfExtentsM || !settings.Is_Valid()) return;
     const auto epoch = Is_KoukuRaidRunning() ? m_KoukuRaid.State.iRunEpoch : m_KoukuSaydonPatternAudition.iRoomAuditionEpoch;
     if (!epoch) return;
-    if (m_iKoukuBingoBoardEpoch != epoch)
+    const bool initializeCells = m_iKoukuBingoBoardEpoch != epoch;
+    if (initializeCells)
     {
         Stop_KoukuBingoDuration(true);
         m_iKoukuBingoBoardEpoch = epoch;
-        const auto random = Mix_DeterministicRandom((std::uint64_t(epoch) << 32u) | tick);
-        const auto first = std::uint32_t(random % KOUKU_BINGO_CELL_COUNT);
-        const auto second = (first + 1u + std::uint32_t((random >> 8u) % (KOUKU_BINGO_CELL_COUNT - 1))) % KOUKU_BINGO_CELL_COUNT;
-        m_KoukuBingo.Fill((1u << first) | (1u << second));
     }
     else if (m_KoukuBingoDuration.bEncounterOwned && m_KoukuBingoDuration.iOwnerId == owner.iNetEntityId) return;
     else Stop_KoukuBingoDuration(false);
     auto& duration = m_KoukuBingoDuration;
     duration.iOwnerId = owner.iNetEntityId; duration.iPatternSequence = owner.iPatternSequence;
+    duration.Settings = settings; duration.bInitializeCells = initializeCells;
     duration.fHammerHalfForwardM = (*trigger.BingoHammerHalfExtentsM)[0];
     duration.fHammerHalfWidthM = (*trigger.BingoHammerHalfExtentsM)[1];
-    duration.iEndTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(trigger.iDurationMs));
     duration.bEncounterOwned = Is_KoukuRaidRunning() && m_KoukuRaid.State.strGateId == "BINGO";
-    if (duration.bEncounterOwned) duration.iEndTick = 0u;
-    if (const auto* catalog = Resolve_KoukuProductCatalog())
+    // Raid control windows are relative to combat entry, never the currently playing attack.
+    // A standalone trigger is already fired at its authored start offset by the Pattern clock.
+    const auto baseTick = duration.bEncounterOwned && m_KoukuRaid.State.iStartTick ? m_KoukuRaid.State.iStartTick : tick;
+    duration.iActivationTick = duration.bEncounterOwned ? Add_ServerTicksSkippingReservedZero(baseTick,
+        CKoukuSaydonLogicRuntime::Ticks_FromMs(trigger.iStartMs)) : tick;
+    duration.iEndTick = Add_ServerTicksSkippingReservedZero(duration.iActivationTick, CKoukuSaydonLogicRuntime::Ticks_FromMs(trigger.iDurationMs));
+    if (duration.bEncounterOwned && !settings.bWindowOnly) duration.iEndTick = 0u;
+    if (!settings.bWindowOnly) if (const auto* catalog = Resolve_KoukuProductCatalog())
     {
         std::string status;
         const auto* pattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, owner.strPatternId, status);
         if (pattern && !pattern->strParentLoopStartOccurrenceId.empty()) duration.iEndTick = 0u;
     }
-    if (!duration.iNextBombTick) duration.iNextBombTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_INITIAL_DELAY_MS + KOUKU_BINGO_BOMB_INTERVAL_MS));
-    if (!duration.iNextHammerTick) duration.iNextHammerTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_HAMMER_INTERVAL_MS));
-    if (!duration.iNextMadnessTick) duration.iNextMadnessTick = Add_ServerTicksSkippingReservedZero(tick, SERVER_TICK_HZ);
+    Activate_KoukuBingoBoard(tick);
 }
 
 void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
@@ -278,15 +311,19 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
         if (found != m_WorldEntities.end()) owner = &*found;
     }
     else if (duration.iOwnerId) owner = Find_KoukuOccurrenceOwner(duration.iOwnerId, duration.iPatternSequence);
-    if (duration.iOwnerId && (!owner || !owner->iCurrentHp || (duration.iEndTick && Has_ReachedServerTick(tick, duration.iEndTick))))
+    if (duration.iOwnerId && (!owner || !owner->iCurrentHp ||
+        (!duration.bEncounterOwned && !duration.Settings.bWindowOnly && duration.iEndTick && Has_ReachedServerTick(tick, duration.iEndTick))))
     { Stop_KoukuBingoDuration(false); owner = nullptr; }
+    if (owner) Activate_KoukuBingoBoard(tick);
+    const bool activeWindow = owner && duration.bActivated &&
+        (!duration.iEndTick || !Has_ReachedServerTick(tick, duration.iEndTick));
     if (owner)
     {
         std::vector<SERVER_PLAYER*> alive;
         for (auto& [id, player] : m_Players)
             if (player.iCurrentHp && player.eAction != PLAYER_ACTION_STATE::DEAD &&
                 Is_KoukuBingoCell(Kouku_BingoCellAt(player.fPositionX, player.fPositionZ))) alive.push_back(&player);
-        if (Has_ReachedServerTick(tick, duration.iNextHammerTick))
+        if (activeWindow && Has_ReachedServerTick(tick, duration.iNextHammerTick))
         {
             const auto random = Mix_DeterministicRandom((std::uint64_t(duration.iPatternSequence) << 32u) | tick);
             const int axis = int(random % 2u) * KOUKU_BINGO_SIDE;
@@ -304,7 +341,7 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
         }
         const auto* catalog = Resolve_KoukuProductCatalog();
         const auto* madness = catalog ? catalog->Find_KoukuMadnessPolicy("ENCOUNTER_KAKULSAYDON_G1") : nullptr;
-        if (Has_ReachedServerTick(tick, duration.iNextMadnessTick))
+        if (activeWindow && Has_ReachedServerTick(tick, duration.iNextMadnessTick))
         {
             for (auto* player : alive)
             {
@@ -352,10 +389,10 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
         {
             const auto x = bombs[slot].fPositionX, z = bombs[slot].fPositionZ;
             const auto fuseTick = Add_ServerTicksSkippingReservedZero(bombs[slot].iPlantTick,
-                CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_FUSE_MS));
+                CKoukuSaydonLogicRuntime::Ticks_FromMs(bombs[slot].iFuseMs));
             m_KoukuBingo.Plant_Bomb(slot, x, z, fuseTick);
             Broadcast_WorldSequencePlay("world.sequence.instance.kouku.bingo.bomb.planted.slot." +
-                std::to_string(slot), 1.f, x, 0.f, z);
+                std::to_string(slot), float(KOUKU_BINGO_BOMB_FUSE_MS) / float(bombs[slot].iFuseMs), x, 0.f, z);
         }
 		if (BINGO_BOMB_PHASE::PLANTED == bombs[slot].ePhase)
 		{
@@ -442,12 +479,12 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
             const auto x = Kouku_BingoCellCenterX(cell), z = Kouku_BingoCellCenterZ(cell);
             m_KoukuBingo.Queue_BombPlant(slot, x, z,
                 Add_ServerTicksSkippingReservedZero(bombs[slot].iDetonateTick,
-                    CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_DROP_DELAY_MS)));
+                    CKoukuSaydonLogicRuntime::Ticks_FromMs(bombs[slot].iDropDelayMs)));
 
 		}
 	}
-    // The board clock survives ordinary pattern changes; head marks recur every twenty seconds.
-    if (owner && Has_ReachedServerTick(tick, duration.iNextBombTick))
+    // The authored board clock survives ordinary pattern changes and stops new marks at its window end.
+    if (activeWindow && Has_ReachedServerTick(tick, duration.iNextBombTick))
     {
         std::vector<NET_ENTITY_ID> alive;
         for (const auto& [id, player] : m_Players)
@@ -457,14 +494,15 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
         {
             const auto pick = Mix_DeterministicRandom(std::uint64_t(tick) ^ (std::uint64_t(duration.iPatternSequence) << 32u)) % alive.size();
             if (m_KoukuBingo.Start_Bomb(alive[pick], Add_ServerTicksSkippingReservedZero(tick,
-                CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_MARK_MS)), duration.iMarkedBombCount + 1u))
+                CKoukuSaydonLogicRuntime::Ticks_FromMs(duration.Settings.iBombMarkMs)), duration.iMarkedBombCount + 1u,
+                duration.Settings.iBombDropDelayMs, duration.Settings.iBombFuseMs))
             {
                 ++duration.iMarkedBombCount;
                 if (duration.bEncounterOwned && duration.iMarkedBombCount % 3u == 0u)
                 { duration.bSpecialPatternPending = true; duration.bLastLineCompletionSucceeded = false; duration.iLastLineJudgementTick = 0u; }
             }
         }
-        duration.iNextBombTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_INTERVAL_MS));
+        duration.iNextBombTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(duration.Settings.iBombIntervalMs));
     }
 }
 

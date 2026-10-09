@@ -4913,6 +4913,13 @@ source 실패를 매프레임 재파싱하지 않으며 기존 재생 cache를 �
   새 필수 geometry를 연결할 때 timeline trigger뿐 아니라 entry idle의 자동 보드 시작도
   현재 pinned flow의 실제 BINGO_BOARD 정의를 소비해야 한다. 빈 synthetic trigger는
   보드 시작을 건너뛰어 원래 폭탄·망치 deadline까지 밀리게 한다.
+- 빙고 공통 Logic의 수명과 일반 Flow entry의 완료 시계를 섞지 않는다. WINDOW를 늘린
+  보드 전용 Pattern은 publisher의 control marker로 짧게 소비하고 공통 구간만 전투 시계에 둔다.
+  비활성화하면 trigger만 빼지 말고 encounter와 animation binding 모두34ms 빈 carrier로
+  투영해야 긴 빈 Pattern 대기를 막는다. 소스 구간은 유지하여 다시 활성화할 때 복원한다.
+- 빙고 폭탄 slot 용량은 밀리초 합만으로 검증하지 않는다. mark/drop/fuse 각각을30Hz tick으로
+  올림한 합도 네 interval tick 안에 들어야 한다. 1/1/398ms phase와100ms interval은
+  밀리초로는400<=400이지만 실제14tick>12tick이므로 저장·게시·Server 모두 거부한다.
 - GRABBED는 일반 공격에서 제외된다. 잡기 전용 저작 피해만 허용할 때는 같은 boss ID,
   pattern sequence, BOSS_LEFT_HAND 및 활성 hold를 모두 검사하고 전역 면역을 풀지 않는다.
 - 주사위는 동문양 피해 면제와 속박 해제가 별도 소비다. 실제 CombatObject 접촉에서

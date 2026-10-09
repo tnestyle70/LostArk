@@ -68,7 +68,7 @@ namespace Client
 		bool Cancel_PlayPreparation(std::string& status);
 		[[nodiscard]] bool Is_Open() const noexcept { return m_bOpen; }
 		void Render();
-		// Shared F1 tree; selection kinds are 0 none, 1 parent, 2 bundle, 3 pattern.
+		// Shared F1 tree; selection kinds are 0 none, 1 folder, 2 bundle, 3 pattern, 4 Bingo Flow Parent.
 		bool Render_PatternTree(std::string_view gateId, int& selectionKind, std::string& selectedId) const;
 		bool Reload(std::string& outStatus);
 		bool Play_PatternById(
@@ -85,7 +85,7 @@ namespace Client
         bool Play_PatternFlow(std::string_view gateId, std::string& status,
             std::uint32_t expectedSourceRevision = 0u);
 		const KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW* Get_SavedFlow(std::string_view gateId) const;
-		// Saved HP groups are display-only headers; only Pattern/Bundle rows change the playable selection.
+		// Saved HP group headers only expand; Bingo also exposes its complete Flow as a playable Parent.
 		bool Render_SavedPatternFlow(std::string_view gateId, int& selectionKind, std::string& selectedId) const;
 		bool Request_PublishSavedPatterns(std::string& status);
 		bool Consume_PublishRequest() { const bool requested = m_bPublishRequested; m_bPublishRequested = false; return requested; }

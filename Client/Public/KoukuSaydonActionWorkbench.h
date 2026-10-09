@@ -49,7 +49,7 @@ namespace Client
 		double fPushYawOffsetDegrees = 0.0;
 	};
 
-	enum class KOUKU_PATTERN_SELECTION : std::uint8_t { GATE, FOLDER, BUNDLE, PATTERN };
+	enum class KOUKU_PATTERN_SELECTION : std::uint8_t { GATE, FOLDER, BUNDLE, PATTERN, BINGO_PARENT };
 
 	enum class KOUKU_PREVIEW_TRANSPORT : std::uint8_t
 	{
@@ -302,6 +302,8 @@ namespace Client
 		}
         [[nodiscard]] const std::string& Get_SelectedPresentationOccurrenceId() const noexcept
         { return m_strSelectedPresentationOccurrenceId; }
+		bool_t Select_BingoParent(std::string& outStatus);
+		bool_t Set_BingoFlow(const KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW& flow, std::string& outStatus);
 		bool_t Select_PatternById(
 			std::string_view patternId,
 			std::string& outStatus);
@@ -898,6 +900,9 @@ namespace Client
 		void Render_SceneProfileBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		void Render_ResourcesWindow();
 		void Render_Timeline();
+		void Render_BingoParentTimeline();
+		void Render_BingoParentDetails();
+		void Select_BingoParentBox(int kind, const std::string& entryId = {});
 		void Clear_TimelineSelection();
 		void Process_TimelineClipboardShortcuts();
 		void Select_TimelineBox(const std::string& stageId,
@@ -944,6 +949,11 @@ namespace Client
 		int32_t m_iNewLogicType = 0;
 		int32_t m_iNewLogicBoxDurationMs = 1000;
 		char_t m_NewLogicName[256]{};
+		// The aggregate edits the saved Flow; child Pattern clocks remain Server-owned.
+		int m_iBingoParentBox = 0; // 0 common board, 1 special, 2 normal entry.
+		std::string m_strBingoParentEntryId;
+		int m_iBingoEntryWaitMs = 0;
+		bool m_bBingoParentReturn = false;
 		std::string m_strSelectedLogicId;
 		std::string m_strSelectedLogicOccurrenceId;
 		int32_t m_iLogicBoxStartMs = 0;
@@ -1153,6 +1163,9 @@ namespace Client
 			std::string world, worldBox, scene, sceneBox, presentation, presentationBox, patternBox, timelinePattern, cursorPattern;
 			std::vector<std::string> stages, occurrences;
 			std::uint32_t cursor = 0u;
+            int bingoParentBox = 0, bingoEntryWaitMs = 0;
+            std::string bingoParentEntryId;
+            bool bingoParentReturn = false;
 		};
 		EDIT_HISTORY_STATE Capture_EditHistory(bool prepareWorld = false);
 		void Begin_EditHistory(bool prepareWorld = false);

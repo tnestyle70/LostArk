@@ -11715,6 +11715,8 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 					return true;
 				});
 		}
+		m_pKoukuSaydonActionWorkbench->Set_CompleteSequenceAdmission(
+            [this](std::string_view gate, std::string& status) { return StartKoukuGateCompletePlay(gate, status); });
 		if (!m_pWorldObjectTool) m_pWorldObjectTool = make_unique<CWorldObjectTool>();
 		m_pWorldObjectTool->Set_LinkedSaveCallbacks(
 			[this](std::string& status) {
@@ -13723,7 +13725,7 @@ bool_t CMainApp::PrepareKoukuGateCompletePlay(const std::string_view gateId, std
     if (gateId != "GATE1" && gateId != "GATE2" && gateId != "GATE3" && gateId != "BINGO")
     { status = "Complete raid playback requires a saved Gate or Bingo flow."; return false; }
     if ((m_pKoukuSaydonActionWorkbench && (m_pKoukuSaydonActionWorkbench->Is_Dirty() || m_pKoukuSaydonActionWorkbench->Is_PublishRunning())) ||
-        (m_pSequenceActionWorkbench && m_pSequenceActionWorkbench->Is_Dirty()))
+        (m_pSequenceActionWorkbench && (m_pSequenceActionWorkbench->Is_Dirty() || m_pSequenceActionWorkbench->Is_PublishRunning())))
     { status = "Save the Action and Sequence documents and publish before Complete Play."; return false; }
     if (!m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
     m_pKoukuSaydonBossTool->Set_CompletePlayAdmission(
@@ -13863,6 +13865,19 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	if (ImGui::Combo("Gate##KoukuCompletePlayGate", &m_iKoukuCompletePlayGate, labels, 4))
 	{ m_iKoukuCompletePlaySelection = 0; m_strKoukuCompletePlayPatternId.clear(); }
 	const std::string gate = gates[m_iKoukuCompletePlayGate];
+#ifdef _DEBUG
+    if (gate == "BINGO" && ImGui::Button("Open Bingo Parent"))
+    {
+        if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER)) && m_pSequencerTool && m_pKoukuSaydonActionWorkbench)
+        {
+            SetDebugToolVisible(DEBUG_TOOL::SEQUENCER, true);
+            m_pSequencerTool->Open(COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON_ENCORE);
+            if (m_pKoukuSaydonActionWorkbench->Has_Composition() ||
+                m_pKoukuSaydonActionWorkbench->Reload(m_strKoukuCompletePlayStatus))
+                (void)m_pKoukuSaydonActionWorkbench->Select_BingoParent(m_strKoukuCompletePlayStatus);
+        }
+    }
+#endif
 	if (ImGui::Combo("Category##KoukuCompletePlay", &m_iKoukuCompletePlayCategory, "Saved Pattern Flow\0All Patterns\0"))
 	{ m_iKoukuCompletePlaySelection = 0; m_strKoukuCompletePlayPatternId.clear(); }
 	const auto& patterns = m_pKoukuSaydonBossTool->Get_ProductPatterns();
@@ -13877,7 +13892,12 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	const auto* pattern=m_iKoukuCompletePlaySelection==3?findPattern(m_strKoukuCompletePlayPatternId):nullptr;
 	const auto selectedBundle=std::find_if(bundles.begin(),bundles.end(),[&](const auto& b){return m_iKoukuCompletePlaySelection==2 && b.strBundleId==m_strKoukuCompletePlayPatternId && b.strGateId==gate;});
 	const bool bundleSelected=selectedBundle!=bundles.end();
-	if (bundleSelected)
+    const auto* savedFlow = gate == "BINGO" ? m_pKoukuSaydonBossTool->Get_SavedFlow(gate) : nullptr;
+    const bool bingoParentSelected = m_iKoukuCompletePlaySelection == 4 && savedFlow &&
+        m_strKoukuCompletePlayPatternId == savedFlow->strFlowId;
+    if (bingoParentSelected)
+        ImGui::TextWrapped("Selected: Bingo Complete [Parent]. Plays Common Logic, opening and repeating Patterns, with the saved special Parent.");
+	else if (bundleSelected)
 	{
 		ImGui::Text("Selected bundle: %s",selectedBundle->strDisplayName.c_str());
 		for (const auto& member : selectedBundle->Members)
@@ -13889,12 +13909,29 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 		ImGui::TextWrapped("Selected Pattern: %s | %s",pattern->strDisplayName.c_str(),pattern->strTargetBossPlacementId.c_str());
 		if (!pattern->strLoadError.empty()) ImGui::TextWrapped("%s",pattern->strLoadError.c_str());
 	}
-	else ImGui::TextDisabled("Select a playback bundle or child Pattern. Parent folders are not executable.");
+	else ImGui::TextDisabled(gate == "BINGO" ? "Select Bingo Complete [Parent], a bundle or a child Pattern." :
+        "Select a playback bundle or child Pattern. Parent folders are not executable.");
 	auto& service=CKoukuSaydonPatternAuditionService::Get(); const auto audition=service.Get_Snapshot();
 	const auto flow = service.Get_FlowSnapshot();
 	const bool preparing = m_pKoukuSaydonBossTool->Is_PlayPreparationPending();
 	const bool arena=ETOUI(LEVEL::KAKULSAYDON_ARENA)==CGameInstance::Get().Get_CurrentLevelID();
-	const bool ready=bundleSelected?selectedBundle->strLoadError.empty() && !selectedBundle->Members.empty():pattern && pattern->strGateId==gate && pattern->strLoadError.empty();
+    const auto patternReady = [&](const std::string& id) {
+        const auto* row = findPattern(id);
+        return row && row->strGateId == gate && row->strLoadError.empty() && !row->Stages.empty();
+    };
+    const bool bingoParentReady = bingoParentSelected && !savedFlow->Entries.empty() &&
+        patternReady(savedFlow->strBingoSpecialPatternId) &&
+        std::all_of(savedFlow->Entries.begin(), savedFlow->Entries.end(), [&](const auto& entry) {
+            if (entry.strKind == "PATTERN") return patternReady(entry.strTargetId);
+            const auto found = std::find_if(bundles.begin(), bundles.end(), [&](const auto& row) {
+                return entry.strKind == "BUNDLE" && row.strBundleId == entry.strTargetId && row.strGateId == gate;
+            });
+            return found != bundles.end() && found->strLoadError.empty() && !found->Members.empty();
+        }) &&
+        (!m_pKoukuSaydonActionWorkbench || (!m_pKoukuSaydonActionWorkbench->Is_Dirty() && !m_pKoukuSaydonActionWorkbench->Is_PublishRunning())) &&
+        (!m_pSequenceActionWorkbench || (!m_pSequenceActionWorkbench->Is_Dirty() && !m_pSequenceActionWorkbench->Is_PublishRunning()));
+	const bool ready = bingoParentSelected ? bingoParentReady : bundleSelected ?
+        selectedBundle->strLoadError.empty() && !selectedBundle->Members.empty() : pattern && pattern->strGateId == gate && pattern->strLoadError.empty();
 	const bool sequencePlaying = m_KoukuRaidResourcePreparation || m_iKoukuRaidPendingRequest || !m_strKoukuCompletePlayFlowGate.empty() ||
 		(m_pSequenceActionWorkbench && m_pSequenceActionWorkbench->Is_CompleteSequencePlaying());
 	ImGui::BeginDisabled(!arena || !ready || audition.Is_InFlight() || flow.bActive || sequencePlaying || preparing);
@@ -13922,9 +13959,14 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 		}
 		return true;
 	};
-	const std::string playLabel=(bundleSelected?"Complete Play - "+std::to_string(selectedBundle->Members.size())+" actors":"Complete Play - Selected Pattern")+"##KoukuServerPattern";
+	const std::string playLabel = (bingoParentSelected ? "Complete Play - Bingo Parent" :
+        bundleSelected ? "Complete Play - " + std::to_string(selectedBundle->Members.size()) + " actors" :
+        "Complete Play - Selected Pattern") + std::string("##KoukuServerPattern");
 	if (ImGui::Button(playLabel.c_str()))
 	{
+        if (bingoParentSelected) (void)StartKoukuGateCompletePlay(gate, m_strKoukuCompletePlayStatus);
+        else
+        {
 		// Reload can replace the inventory backing these UI pointers.
 		const std::string selectedId = bundleSelected ? selectedBundle->strBundleId : pattern->strPatternId;
 		if (prepareSavedProduct())
@@ -13932,6 +13974,7 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 			if (bundleSelected) (void)m_pKoukuSaydonBossTool->Play_SavedBundleById(selectedId,m_strKoukuCompletePlayStatus);
 			else (void)m_pKoukuSaydonBossTool->Play_SavedPatternById(selectedId,m_strKoukuCompletePlayStatus);
 		}
+        }
 	}
 	ImGui::EndDisabled(); ImGui::SameLine();
 	ImGui::BeginDisabled(!arena || (!sequencePlaying && !flow.bActive && !audition.Can_Stop() && !preparing));
@@ -13949,7 +13992,7 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	if (ImGui::Button("Restart Bundle")) (void)service.Restart_Bundle(m_strKoukuCompletePlayStatus);
 	ImGui::EndDisabled(); ImGui::EndDisabled();
 	ImGui::BeginDisabled(!arena || audition.Is_InFlight() || flow.bActive || sequencePlaying || preparing);
-	if (ImGui::Button(gate == "BINGO" ? "Complete Play - Bingo Loop" : "Complete Play - Sequences + Pattern Flow"))
+	if (ImGui::Button(gate == "BINGO" ? "Complete Play - Bingo Parent" : "Complete Play - Sequences + Pattern Flow"))
 		(void)StartKoukuGateCompletePlay(gate, m_strKoukuCompletePlayStatus);
 	ImGui::SameLine();
 	if (ImGui::Button("Play Saved Pattern Flow"))
