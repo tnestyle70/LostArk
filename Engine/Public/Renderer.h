@@ -35,7 +35,7 @@ public:
 
 	HRESULT Initialize();
 	HRESULT Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<CGameObject> pRenderObject);
-	HRESULT Draw();
+	HRESULT Draw(bool staticOcclusionAllowed = false);
     MAP_VISIBILITY_SETTINGS Get_MapVisibilitySettings() const { return m_MapVisibility; }
     HRESULT Apply_MapVisibilitySettings(const MAP_VISIBILITY_SETTINGS& settings);
     RENDER_OPTIMIZATION_SETTINGS Get_RenderOptimizationSettings() const { return m_RenderOptimization; }
@@ -199,7 +199,7 @@ private:
 private:
 	HRESULT Render_Priority();
 	HRESULT Render_Shadow();
-	HRESULT Render_NonBlend();
+	HRESULT Render_NonBlend(bool staticOcclusionAllowed);
     void Cull_StaticOcclusion();
 	HRESULT Render_SSAO();
 	HRESULT Render_SSAOPass(const wstring_t& strMRTTag, DEFERRED ePass);

@@ -24,7 +24,7 @@
           44.4352875,
           -33.8718529
         ],
-        "fovYDegrees": 60
+        "fovYDegrees": 45
       },
       {
         "sceneId": "camera.scene.auto.2",
@@ -39,7 +39,7 @@
           44.439827,
           -41.9692154
         ],
-        "fovYDegrees": 60
+        "fovYDegrees": 45
       },
       {
         "sceneId": "camera.scene.auto.3",
@@ -54,7 +54,7 @@
           43.4362679,
           -49.2743797
         ],
-        "fovYDegrees": 60
+        "fovYDegrees": 45
       },
       {
         "sceneId": "camera.scene.auto.4",
@@ -69,7 +69,7 @@
           43.5766869,
           -58.6210327
         ],
-        "fovYDegrees": 60
+        "fovYDegrees": 45
       },
       {
         "sceneId": "camera.scene.auto.5",
@@ -84,7 +84,7 @@
           44.1950722,
           -68.091156
         ],
-        "fovYDegrees": 60
+        "fovYDegrees": 45
       },
       {
         "sceneId": "camera.scene.auto.6",
@@ -99,7 +99,7 @@
           43.69244,
           -80.8781281
         ],
-        "fovYDegrees": 60
+        "fovYDegrees": 45
       },
       {
         "sceneId": "camera.scene.auto.7",
@@ -114,7 +114,7 @@
           43.54245,
           -78.9255829
         ],
-        "fovYDegrees": 60
+        "fovYDegrees": 45
       },
       {
         "sceneId": "camera.scene.auto.8",
@@ -129,7 +129,7 @@
           43.5650139,
           -82.5199738
         ],
-        "fovYDegrees": 60
+        "fovYDegrees": 45
       },
       {
         "sceneId": "camera.scene.auto.9",
@@ -144,7 +144,7 @@
           45.8750954,
           -84.6012573
         ],
-        "fovYDegrees": 60
+        "fovYDegrees": 45
       },
       {
         "sceneId": "camera.scene.auto.10",
@@ -159,7 +159,7 @@
           43.694355,
           -88.7493134
         ],
-        "fovYDegrees": 60
+        "fovYDegrees": 45
       },
       {
         "sceneId": "camera.scene.auto.11",
@@ -174,7 +174,7 @@
           47.6193237,
           -107.016655
         ],
-        "fovYDegrees": 60
+        "fovYDegrees": 45
       },
       {
         "sceneId": "camera.scene.auto.12",
@@ -189,7 +189,7 @@
           52.9633408,
           -124.282768
         ],
-        "fovYDegrees": 60
+        "fovYDegrees": 45
       },
       {
         "sceneId": "camera.scene.auto.13",
@@ -204,7 +204,7 @@
           53.8779831,
           -138.506561
         ],
-        "fovYDegrees": 60
+        "fovYDegrees": 45
       },
       {
         "sceneId": "camera.scene.auto.14",
@@ -219,7 +219,7 @@
           52.9385605,
           -149.919846
         ],
-        "fovYDegrees": 60
+        "fovYDegrees": 45
       },
       {
         "sceneId": "camera.scene.auto.15",
@@ -234,7 +234,7 @@
           54.9609985,
           -162.14566
         ],
-        "fovYDegrees": 60
+        "fovYDegrees": 45
       },
       {
         "sceneId": "camera.scene.auto.16",
@@ -249,7 +249,7 @@
           51.5476532,
           -175.937286
         ],
-        "fovYDegrees": 60
+        "fovYDegrees": 45
       }
     ]
   }

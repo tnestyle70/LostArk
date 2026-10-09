@@ -206,7 +206,7 @@ inline FProfilerMemoryChartValue ProfilerMemoryValue(const Engine::FProfilerMemo
     return {valid, valid ? double(bytes) / (1024.0 * 1024.0) : 0.0};
 }
 
-/* Profiler panel presented by the current Debug F1/F7 routes. It only reads Engine::CProfiler aggregates and never
+/* Profiler panel presented by Debug F1 and the common F7 route. It only reads Engine::CProfiler aggregates and never
    owns timing data: the Engine profiler stays the single owner of scopes,
    counters and GPU queries. */
 class CProfilerTool final
@@ -232,6 +232,7 @@ private:
 	void Rebuild_CpuRows(bool_t bImGuiOnly);
 	void Render_Gpu();
 	void Render_FrameOverview();
+    void Render_Culling();
 	void Render_LongOperations();
 	void Render_Counters() const;
 	bool_t Refresh_CaptureFiles();
@@ -306,6 +307,7 @@ private:
     std::string m_ComparisonStatus;
     bool m_bComparisonRefresh = true, m_bFollowComparisonFrames = true;
     int m_iComparisonFrame = 0;
+    int m_iComparisonTabRequest = 0;
     int m_iComparedFrame = -1;
     Engine::FProfilerCaptureSnapshot m_RecentFrameSnapshot, m_TimelineSnapshot;
     std::vector<FProfilerTimelineEvent> m_TimelineEvents;

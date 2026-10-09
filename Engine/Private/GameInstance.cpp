@@ -263,9 +263,9 @@ HRESULT CGameInstance::Render_Begin(const float4_t* pClearColor)
 	return S_OK;
 }
 
-HRESULT CGameInstance::Render()
+HRESULT CGameInstance::Render(const bool staticOcclusionAllowed)
 {
-	const HRESULT hDrawResult = m_pRenderer->Draw();
+	const HRESULT hDrawResult = m_pRenderer->Draw(staticOcclusionAllowed);
 	if (FAILED(hDrawResult))
 		return hDrawResult;
 

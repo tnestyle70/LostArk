@@ -4243,7 +4243,8 @@ HRESULT CMainApp::Render()
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.World");
 		/* Level text (nameplates, chat bubbles) is world text: under every UI surface. */
 		CUITextOcclusion::Get().Apply(UI_TEXT_LAYER::WORLD);
-		hWorldResult = CGameInstance::Get().Render();
+		hWorldResult = CGameInstance::Get().Render(
+			CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::BERN));
 	}
 	if (FAILED(hWorldResult))
 	{
@@ -4707,7 +4708,6 @@ HRESULT CMainApp::Render()
 			}
 #endif
 		}
-#ifdef _DEBUG
         bool_t profilerWindowVisible = m_bRuntimeProfilerVisible;
         profilerWindowVisible |= m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::PROFILER);
         if (profilerWindowVisible && DEBUG_TOOL::PROFILER == m_eDebugWindowFocusPending)
@@ -4725,7 +4725,6 @@ HRESULT CMainApp::Render()
                 SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
             }
         }
-#endif
 		{
 			if (m_bKoukuBingoHammerColliders)
 				if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_DrawBingoHammerColliders();
@@ -11330,7 +11329,6 @@ void CMainApp::UpdateProfilerRuntime()
 {
     // F7 only shows the profiler; Capture is an explicit action inside the window.
     if (m_pProfilerTool) m_pProfilerTool->Update_SaveState();
-#ifdef _DEBUG
     const bool_t down = IsWindowOwnedByCurrentProcess(GetForegroundWindow()) &&
         0 != (GetAsyncKeyState(VK_F7) & 0x8000);
     if (down && !m_bF7Down && !ImGui::GetIO().WantTextInput &&
@@ -11350,7 +11348,6 @@ void CMainApp::UpdateProfilerRuntime()
         else SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
     }
     m_bF7Down = down;
-#endif
 }
 
 #ifdef _DEBUG
@@ -14721,6 +14718,30 @@ void CMainApp::RenderDeveloperTools()
 	ImGui::Text("Current level id: %u", currentLevelId);
 	if (currentLevelId == ETOUI(LEVEL::CHARACTER_SELECT))
 		RenderCameraSpeedControls();
+    if (ImGui::CollapsingHeader("Bern Entrance Camera", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        float bernFov = CLevel_Bern::Get_EntranceCinematicFovYOverride().value_or(
+            CLevel_Bern::Get_EntranceCinematicAuthoredFovYDegrees());
+        ImGui::SetNextItemWidth(260.f);
+        if (ImGui::SliderFloat("Cutscene vertical FOV (session)", &bernFov,
+            20.f, 60.f, "%.1f deg", ImGuiSliderFlags_AlwaysClamp))
+            (void)CLevel_Bern::Set_EntranceCinematicFovYOverride(bernFov);
+        for (const float preset : {30.f, 35.f, 40.f, 45.f})
+        {
+            if (preset != 30.f) ImGui::SameLine();
+            ImGui::PushID(static_cast<int>(preset));
+            const std::string label = std::to_string(static_cast<int>(preset)) + " deg";
+            if (ImGui::SmallButton(label.c_str()))
+                (void)CLevel_Bern::Set_EntranceCinematicFovYOverride(preset);
+            ImGui::PopID();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Use authored FOV")) CLevel_Bern::Clear_EntranceCinematicFovYOverride();
+        ImGui::TextDisabled("Authored %.1f deg / session override %s",
+            CLevel_Bern::Get_EntranceCinematicAuthoredFovYDegrees(),
+            CLevel_Bern::Get_EntranceCinematicFovYOverride().has_value() ? "ON" : "OFF");
+        ImGui::TextWrapped("Only the Bern entrance cinematic, from its next camera sample. You can select this before entering Bern. Gameplay and ship cameras are unchanged; this session control does not save JSON.");
+    }
 	RenderDebugLevelNavigation();
 #ifdef _DEBUG
 	RenderWorldMeshInspection();
@@ -15179,11 +15200,7 @@ void CMainApp::RenderDeveloperTools()
 	}
 
 #endif
-#ifdef _DEBUG
 	ImGui::TextDisabled("F1: Developer Tools  |  F6: Follow/Free Camera  |  F7: Profiler");
-#else
-	ImGui::TextDisabled("F1: Developer Tools  |  F6: Follow/Free Camera");
-#endif
 	ImGui::End();
 }
 

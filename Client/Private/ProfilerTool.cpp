@@ -1,6 +1,7 @@
 #include "imgui.h"
 #include "ProfilerTool.h"
 #include "GameInstance.h"
+#include "Level_Bern.h"
 #include "Engine_RenderTypes.h"
 #include "ClientWindowDisplay.h"
 #include "UserSettingsDocument.h"
@@ -511,6 +512,9 @@ namespace
             {"Client.Update", "클라이언트 전체 갱신"}, {"Client.Render", "클라이언트 렌더 제출"},
             {"Render.World", "월드 렌더 제출"}, {"Render.Draw", "렌더 패스 전체"},
             {"Render.FinalCameraSubmission", "최종 카메라 가시성·제출"},
+            {"Render.MapOcclusion", "맵 CPU 가림 처리 전체"},
+            {"Render.MapOcclusion.Rasterize", "맵 CPU 가림 깊이 생성"},
+            {"Render.MapOcclusion.Test", "맵 CPU 가림 검사·제외 집계"},
             {"Map.Visibility.Prepare", "맵 CPU 준비·분배 전체"},
             {"Map.Visibility.Dispatch", "맵 CPU 작업 실행·동기화"},
             {"Map.Visibility.Join", "맵 CPU worker 잔여 대기"},
@@ -801,6 +805,13 @@ Client::FProfilerCaptureContext Client::CProfilerTool::Sample_Context() const
     const auto visibility = game.Get_MapVisibilitySettings();
     options["MapVisibility.parallelPreparation"] = visibility.ParallelPreparationEnabled;
     options["MapVisibility.occlusion"] = visibility.OcclusionEnabled;
+    options["Camera.bernEntranceAuthoredFovYDegrees"] = CLevel_Bern::Get_EntranceCinematicAuthoredFovYDegrees();
+    options["Camera.bernEntranceFovYOverrideEnabled"] = CLevel_Bern::Get_EntranceCinematicFovYOverride().has_value();
+    if (const auto fov = CLevel_Bern::Get_EntranceCinematicFovYOverride())
+        options["Camera.bernEntranceFovYOverrideDegrees"] = *fov;
+    options["MapVisibility.occlusionPolicyAllowed"] = visibility.OcclusionEnabled &&
+        game.Get_CurrentLevelID() == ETOUI(LEVEL::BERN) && !game.Is_SceneEnvironmentReplaced();
+    options["Optimization.frustum"] = game.Get_RenderOptimizationSettings().FrustumEnabled;
     options["MapVisibility.distance"] = visibility.DistanceEnabled;
     options["MapVisibility.distanceScale"] = visibility.DistanceScale;
     options["MapVisibility.distanceMaxPixels"] = visibility.DistanceMaxPixels;
@@ -899,7 +910,7 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
 #ifdef _DEBUG
     ImGui::TextDisabled("Debug | F7: 창 표시 / 수집(Capture): 계측 시작·정지");
 #else
-    ImGui::TextDisabled("Release 빌드에서는 Profiler 창을 제공하지 않습니다.");
+    ImGui::TextDisabled("Release | F7: 창 표시 / 수집(Capture): 계측 시작·정지");
 #endif
     ImGui::TextWrapped("비교 순서: 장면 준비 → 초기화 → F7로 창 숨김 → 같은 카메라·동작 재현 → 다시 열어 저장. 창을 닫아도 수집은 계속됩니다. JSON의 카메라·설정 정보는 저장 시점 값입니다.");
     bool enabled = profiler->Is_Enabled();
@@ -997,12 +1008,17 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
     if (ImGui::BeginTabBar("##ProfilerTabs"))
     {
         if (ImGui::BeginTabItem("한 프레임 해석")) { Render_FrameOverview(); ImGui::EndTabItem(); }
+        if (ImGui::BeginTabItem("컬링 비용·제외량###CullingCost")) { Render_Culling(); ImGui::EndTabItem(); }
         if (ImGui::BeginTabItem("타임라인###ScopeTimeline")) { Render_Timeline(*profiler); ImGui::EndTabItem(); }
         if (ImGui::BeginTabItem("병목 후보·다음 실험###BottleneckCandidates")) { Render_Candidates(*profiler); ImGui::EndTabItem(); }
         if (ImGui::BeginTabItem("RAM·GPU 메모리###MemoryTimeline")) { Render_Memory(*profiler); ImGui::EndTabItem(); }
         if (ImGui::BeginTabItem("상용 엔진과 비교###CommercialProfilerReference")) { RenderingReferenceGuide::Render(); ImGui::EndTabItem(); }
-        if (ImGui::BeginTabItem("프레임 변화###FrameChanges")) { Render_FrameChanges(*profiler); ImGui::EndTabItem(); }
-        if (ImGui::BeginTabItem("기준 A/B###BaselineComparison")) { Render_Comparison(*profiler); ImGui::EndTabItem(); }
+        if (ImGui::BeginTabItem("프레임 변화###FrameChanges", nullptr,
+            m_iComparisonTabRequest == 1 ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None))
+        { if (m_iComparisonTabRequest == 1) m_iComparisonTabRequest = 0; Render_FrameChanges(*profiler); ImGui::EndTabItem(); }
+        if (ImGui::BeginTabItem("기준 A/B###BaselineComparison", nullptr,
+            m_iComparisonTabRequest == 2 ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None))
+        { if (m_iComparisonTabRequest == 2) m_iComparisonTabRequest = 0; Render_Comparison(*profiler); ImGui::EndTabItem(); }
         if (ImGui::BeginTabItem("CPU 병목")) { Render_Bottlenecks(); ImGui::EndTabItem(); }
         if (ImGui::BeginTabItem("GPU 패스·draw")) { Render_Gpu(); ImGui::EndTabItem(); }
         if (ImGui::BeginTabItem("ImGui 도구")) { Render_ImGui(); ImGui::EndTabItem(); }
@@ -1169,26 +1185,7 @@ void Client::CProfilerTool::Render_FrameOverview()
         count(Engine::EProfilerCounter::MapIdenticalInstanceSourceDraws), count(Engine::EProfilerCounter::MapIdenticalInstanceDraws),
         count(Engine::EProfilerCounter::MapLightingBankSourceDraws), count(Engine::EProfilerCounter::MapLightingBankDraws));
     ImGui::TextWrapped("결합 전 수는 이번 프레임에 개별 제출했을 경우의 source draw입니다. 이전 제품 대비 감소율이나 전체 장면의 절감량을 의미하지 않습니다.");
-    auto visibility = Engine::CGameInstance::Get().Get_MapVisibilitySettings();
-    bool changedVisibility = ImGui::Checkbox("Bern parallel visibility preparation", &visibility.ParallelPreparationEnabled);
-    changedVisibility |= ImGui::Checkbox("Bern occlusion culling", &visibility.OcclusionEnabled);
-    changedVisibility |= ImGui::Checkbox("Bern distance + screen-size culling", &visibility.DistanceEnabled);
-    changedVisibility |= ImGui::SliderFloat("Distance range scale", &visibility.DistanceScale, .25f, 4.f, "%.2f");
-    changedVisibility |= ImGui::SliderFloat("Distance maximum diameter (px)", &visibility.DistanceMaxPixels, 4.f, 128.f, "%.0f");
-    if (changedVisibility) (void)Engine::CGameInstance::Get().Apply_MapVisibilitySettings(visibility);
-    ImGui::Text("가림 제외 %llu batch | 이번 재검사 %llu | 제외 인덱스 %llu | 깊이 geometry %llu triangles",
-        count(Engine::EProfilerCounter::MapOcclusionRejectedBatches), count(Engine::EProfilerCounter::MapOcclusionTested),
-        count(Engine::EProfilerCounter::MapOcclusionRejectedIndices), count(Engine::EProfilerCounter::MapOcclusionRasterizedTriangles));
-    ImGui::Text("거리 제외 %llu instances | 이번 재검사 %llu | 제외 원본 인덱스 %llu",
-        count(Engine::EProfilerCounter::MapDistanceRejectedInstances), count(Engine::EProfilerCounter::MapDistanceTestedInstances),
-        count(Engine::EProfilerCounter::MapDistanceRejectedIndices));
-    ImGui::TextWrapped("컬링은 세션 설정입니다. 범위 scale이 작을수록 가까이서 제외하며, 픽셀 제한을 높이면 더 큰 소품도 제외합니다. 가림/거리 인덱스와 draw 합계를 구분하고 Render.MapOcclusion CPU 비용도 비교하세요.");
-
-    ImGui::Text("맵 CPU 준비 %llu batch / %llu 작업 | caller %llu / worker %llu | 보조 callback %llu",
-        count(Engine::EProfilerCounter::MapVisibilityPreparedBatches), count(Engine::EProfilerCounter::MapVisibilityCpuJobs),
-        count(Engine::EProfilerCounter::MapVisibilityCallerJobs), count(Engine::EProfilerCounter::MapVisibilityWorkerJobs),
-        count(Engine::EProfilerCounter::MapVisibilityAssistants));
-    ImGui::TextWrapped("CPU 준비는 큰 작업만 worker로 나눕니다. 정지 카메라 재사용은 준비 0이며, Dispatch는 caller 계산과 Join 대기를 포함합니다. Worker 시간 합계를 메인 스레드 시간에 더하지 마세요.");
+    ImGui::TextDisabled("컬링 설정·CPU 비용·제외량·캐시는 '컬링 비용·제외량' 탭에서 함께 확인합니다.");
 
     if (count(Engine::EProfilerCounter::DroppedMeshSamples))
         ImGui::TextColored(ImVec4(1.f, .65f, .25f, 1.f), "고유 메시 표본 %llu개 누락: 고유 수는 하한입니다.", count(Engine::EProfilerCounter::DroppedMeshSamples));
@@ -1217,6 +1214,121 @@ void Client::CProfilerTool::Render_FrameOverview()
     }
     if (!m_iGpuValidFrames) ImGui::TextDisabled("빛 GPU 구간은 아직 유효한 완료 결과가 없습니다.");
     ImGui::TextWrapped("이 표의 부모·자식 행은 중첩됩니다. 전체 값을 더하지 마세요. GPU timestamp는 명령 공급 대기를 포함한 경과 시간이며 GPU 점유율이 아닙니다. 개별 광원의 ALU·메모리·캐시 비용과 자원별 VRAM 귀속, Server 연산은 미계측입니다. 프로세스 GPU segment 사용량은 RAM·GPU 메모리 탭에서 확인합니다.");
+    ImGui::EndChild();
+}
+
+void Client::CProfilerTool::Render_Culling()
+{
+    if (!ImGui::BeginChild("##CullingCostScroll")) { ImGui::EndChild(); return; }
+    auto& game = Engine::CGameInstance::Get();
+    auto visibility = game.Get_MapVisibilitySettings();
+    auto optimization = game.Get_RenderOptimizationSettings();
+    const bool bern = game.Get_CurrentLevelID() == ETOUI(LEVEL::BERN);
+    ImGui::TextDisabled("베른 컷신 시야각은 F1 → Bern Entrance Camera에서 조절합니다.");
+    if (ImGui::Checkbox("프러스텀 컬링 (세션)", &optimization.FrustumEnabled))
+        (void)game.Apply_RenderOptimizationSettings(optimization);
+    bool changedVisibility = ImGui::Checkbox("Bern occlusion culling", &visibility.OcclusionEnabled);
+    changedVisibility |= ImGui::Checkbox("Bern parallel visibility preparation", &visibility.ParallelPreparationEnabled);
+    changedVisibility |= ImGui::Checkbox("Bern distance + screen-size culling", &visibility.DistanceEnabled);
+    changedVisibility |= ImGui::SliderFloat("Distance range scale", &visibility.DistanceScale, .25f, 4.f, "%.2f");
+    changedVisibility |= ImGui::SliderFloat("Distance maximum diameter (px)", &visibility.DistanceMaxPixels, 4.f, 128.f, "%.0f");
+    if (changedVisibility) (void)game.Apply_MapVisibilitySettings(visibility);
+    const bool occlusionAllowed = bern && visibility.OcclusionEnabled && !game.Is_SceneEnvironmentReplaced();
+    ImGui::Text("현재 CPU 가림 옵션: %s / 현재 장면 정책: %s",
+        visibility.OcclusionEnabled ? "ON" : "OFF", occlusionAllowed ? "허용" : "실행 제외");
+    if (!bern) ImGui::TextWrapped("Bern 외 장면에서는 CPU 가림 패스를 실행하지 않습니다. Character Select 무비도 이 범위에 포함됩니다.");
+    else if (game.Is_SceneEnvironmentReplaced()) ImGui::TextWrapped("장면 배경 교체 중에는 CPU 가림 패스를 실행하지 않습니다.");
+    ImGui::TextWrapped("위 값은 현재 세션 설정입니다. 허용 상태라도 후보·가림 geometry가 없으면 실제 검사를 생략합니다. 아래 기록은 수집 당시 값이며 설정 변경만으로 갱신되지 않습니다. 거리 scale이 작거나 픽셀 제한이 클수록 더 많이 제외합니다.");
+    if (ImGui::Button("프레임 변화에서 비교")) m_iComparisonTabRequest = 1;
+    ImGui::SameLine();
+    if (ImGui::Button("기준 A/B에서 비교")) m_iComparisonTabRequest = 2;
+    ImGui::TextWrapped("같은 장면·카메라에서 OFF 수집창을 A로 보관 → 설정 변경·초기화 → ON 수집창을 B로 보관합니다. 전원 모드·해상도·상세 계측도 맞추고, 카메라 정지 캐시와 이동 중 재계산을 따로 비교하세요. 제외량만으로 FPS 개선을 확정하지 않습니다.");
+    ImGui::Separator();
+    ImGui::Text("CPU 비용: 분석 범위 %zu프레임의 평균 (ms/프레임)", m_iWindowFrames);
+    ImGui::TextWrapped("전체 시간은 자식을 포함합니다. 가림 전체와 Rasterize/Test, Prepare와 Dispatch/Join/Worker를 더하지 마세요. FinalCameraSubmission은 프러스텀 검사 외 준비·제출도 포함하며 순수 프러스텀 비용이 아닙니다. Worker 시간도 메인 시간과 합산하지 않습니다.");
+    if (ImGui::BeginTable("##CullingCpuCosts", 5,
+        ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_Resizable))
+    {
+        ImGui::TableSetupColumn("CPU 구간", ImGuiTableColumnFlags_WidthStretch, 3.f);
+        for (const char* label : {"스레드", "전체 ms/프레임", "자체 ms/프레임", "호출/프레임"})
+            ImGui::TableSetupColumn(label);
+        ImGui::TableHeadersRow();
+        const double frames = static_cast<double>((std::max)(m_iWindowFrames, size_t{1}));
+        for (const char* name : {"Render.FinalCameraSubmission", "Map.Visibility.Prepare",
+            "Map.Visibility.Dispatch", "Map.Visibility.Join", "Map.Visibility.Worker",
+            "Map.Batch.CullAndPack", "Render.MapOcclusion", "Render.MapOcclusion.Rasterize", "Render.MapOcclusion.Test"})
+        {
+            bool observed = false;
+            for (const auto& row : m_Aggregates)
+            {
+                if (!m_iWindowFrames || !row.Calls || std::string_view(Scope_Name(row.NameId)) != name) continue;
+                observed = true;
+                ImGui::TableNextRow(); ImGui::TableNextColumn(); Scope_Label(name);
+                ImGui::TableNextColumn(); ImGui::TextUnformatted(Thread_Label(row.ThreadId).c_str());
+                ImGui::TableNextColumn(); ImGui::Text("%.3f", row.InclusiveMs / frames);
+                ImGui::TableNextColumn();
+                if (row.SelfComplete) ImGui::Text("%.3f", row.SelfMs / frames);
+                else ImGui::TextDisabled("-- (누락)");
+                ImGui::TableNextColumn(); ImGui::Text("%.2f", double(row.Calls) / frames);
+            }
+            if (!observed) Unobserved_Row(name, 5);
+        }
+        ImGui::EndTable();
+    }
+    ImGui::TextDisabled("미관측은 비활성·실행 생략·상세 OFF·표본 누락 등을 포함하며 0ms 성공 측정이 아닙니다.");
+    ImGui::Separator();
+    if (!m_bLiveValid)
+    {
+        ImGui::TextDisabled("최근 완료 프레임이 없습니다. 수집을 켜면 제외량과 캐시 기록을 표시합니다.");
+        ImGui::EndChild(); return;
+    }
+    ImGui::Text("최근 CPU 완료 프레임 #%llu의 작업량 (위 구간 평균과 별도)",
+        static_cast<unsigned long long>(m_Live.FrameNumber));
+    const auto& visibilityWork = m_Live.CpuWork[static_cast<size_t>(Engine::EProfilerWork::MapBatchVisibility)];
+    if (visibilityWork.Calls)
+        ImGui::Text("맵 가시성 고정 계측: %.3f ms / %llu회 (상세 OFF에서도 기록)",
+            visibilityWork.CpuMs, static_cast<unsigned long long>(visibilityWork.Calls));
+    else ImGui::TextDisabled("맵 가시성 고정 계측: 미관측 (호출 없음)");
+    ImGui::TextWrapped("고정 계측도 자식을 포함합니다. 위 scope 비용에 더하지 마세요. 아래 0은 이 프레임 카운터 증가 없음이며 기능 전체의 실행·성공을 증명하지 않습니다.");
+    const auto count = [&](Engine::EProfilerCounter counter)
+    { return static_cast<unsigned long long>(m_Live.Counters[static_cast<size_t>(counter)]); };
+    using Counter = Engine::EProfilerCounter;
+    if (ImGui::BeginTable("##CullingWorkCounts", 3,
+        ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_Resizable))
+    {
+        ImGui::TableSetupColumn("컬링 단계");
+        ImGui::TableSetupColumn("최근 프레임 입력·작업", ImGuiTableColumnFlags_WidthStretch, 2.f);
+        ImGui::TableSetupColumn("최근 프레임 결과·재사용", ImGuiTableColumnFlags_WidthStretch, 2.f);
+        ImGui::TableHeadersRow();
+        const auto row = [](const char* label)
+        { ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextUnformatted(label); ImGui::TableNextColumn(); };
+        row("맵 세부 가시성");
+        ImGui::Text("인스턴스 후보 %llu", count(Counter::MapCullingCandidates)); ImGui::TableNextColumn();
+        ImGui::Text("통과 %llu / bounds 제외 %llu batch", count(Counter::MapCullingVisible), count(Counter::MapBatchBoundsRejected));
+        row("맵 가시성 캐시");
+        ImGui::Text("재계산 %llu회", count(Counter::MapBatchVisibilityRebuilds)); ImGui::TableNextColumn();
+        ImGui::Text("재사용 %llu회", count(Counter::MapBatchVisibilityCacheHits));
+        row("가림 판정 (batch)");
+        ImGui::Text("후보 %llu / 재검사 %llu", count(Counter::MapOcclusionCandidates), count(Counter::MapOcclusionTested)); ImGui::TableNextColumn();
+        ImGui::Text("제외 %llu / 캐시 재사용 %llu회", count(Counter::MapOcclusionRejectedBatches), count(Counter::MapOcclusionCacheHits));
+        row("가림으로 제외한 제출");
+        ImGui::Text("source mesh draw %llu", count(Counter::MapOcclusionSourceDraws)); ImGui::TableNextColumn();
+        ImGui::Text("제출 인덱스 %llu", count(Counter::MapOcclusionRejectedIndices));
+        row("가림 깊이 생성");
+        ImGui::Text("배치 %llu", count(Counter::MapOcclusionOccluders)); ImGui::TableNextColumn();
+        ImGui::Text("CPU 래스터 삼각형 %llu", count(Counter::MapOcclusionRasterizedTriangles));
+        row("거리·화면 크기");
+        ImGui::Text("재검사 %llu instances", count(Counter::MapDistanceTestedInstances)); ImGui::TableNextColumn();
+        ImGui::Text("제외 %llu / 원본 인덱스 %llu", count(Counter::MapDistanceRejectedInstances), count(Counter::MapDistanceRejectedIndices));
+        row("맵 CPU 준비");
+        ImGui::Text("%llu batch / %llu 작업", count(Counter::MapVisibilityPreparedBatches), count(Counter::MapVisibilityCpuJobs)); ImGui::TableNextColumn();
+        ImGui::Text("caller %llu / worker %llu", count(Counter::MapVisibilityCallerJobs), count(Counter::MapVisibilityWorkerJobs));
+        row("전체 렌더 제출");
+        ImGui::Text("Engine draw %llu", count(Counter::DrawCalls)); ImGui::TableNextColumn();
+        ImGui::Text("메시 제출 인덱스 %llu", count(Counter::MeshIndices));
+        ImGui::EndTable();
+    }
+    ImGui::TextWrapped("맵 세부 가시성은 거리·프러스텀을 함께 검사하며 bounds 조기 제외는 세부 후보와 별도입니다. 거리·가림 제외에는 캐시 결과도 포함됩니다. source draw는 인스턴싱 결합 전 수이고, 거리 인덱스는 원본 LOD0 기준이므로 전체 제출·다른 제외량과 합산하지 마세요. 전체 렌더 제출에는 그림자·초상도 포함됩니다. 순수 프러스텀 비용·제외량은 별도 계측이 없습니다.");
     ImGui::EndChild();
 }
 

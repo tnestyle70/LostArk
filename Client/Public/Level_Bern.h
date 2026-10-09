@@ -92,6 +92,14 @@ public:
 	{ return m_strFollowCameraProfileStatus; }
 	bool_t Set_FollowCameraProfile(const ARENA_CAMERA_PROFILE& profile,
 		std::string& outStatus);
+	/* Main-thread-only, process-session lens override for the Bern entrance cue.
+	   Empty uses the authored track. Set accepts finite 10..120 degree vertical FOV;
+	   clearing restores that track on the next sample without changing other cameras. */
+	static std::optional<f32_t> Get_EntranceCinematicFovYOverride();
+	static bool_t Set_EntranceCinematicFovYOverride(f32_t fovYDegrees);
+	static void Clear_EntranceCinematicFovYOverride();
+	// First key of the active authored cue, or 45 degrees before it is prepared.
+	static f32_t Get_EntranceCinematicAuthoredFovYDegrees();
 #ifdef _DEBUG
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
 	bool_t Request_DebugEntranceReplay();
