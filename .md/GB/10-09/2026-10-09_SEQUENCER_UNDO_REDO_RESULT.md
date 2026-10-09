@@ -42,7 +42,7 @@ Effect element 내부 편집은 기존 Effect Tool 이력을 사용한다.
 
 ## 남은 화면 확인과 비용
 
-Client/UI 실행·자동 조작·캡처는 하지 않았다. Release 빌드도 이번 기능에서는 실행하지 않았다.
+Client/UI 실행·자동 조작·캡처는 하지 않았다. Debug·Release 통합 빌드는 아래 main 병합 검증에서 완료했다.
 사용자는 새 Debug Client의 F1 → Action Workbench에서 Boss Saydon, Sequence, World를 각각 열어
 box 편집 후 Undo/Redo를 확인한다. World는 Character Select에 입장한 뒤 Intro/Loop의 camera key와
 box timing, 모델 제외/복원, Save 이후 Undo, Reload를 확인한다. 미적용 row가 있으면 먼저 Apply/Revert한다.
@@ -51,3 +51,25 @@ World 이력은16단계 compact JSON 문자열이며 인접 상태는 shared sna
 대형 문서의 실제 변경 순간에는 직렬화 비용이 있다. 최적화 없는 독립 fixture에서17회 Capture/Finish는
 12.315초, private memory 증가는286.2MB였다. 이는 실행 중 Client 프레임 수치가 아니며
 사용자의 실제 편집 반응·최종 영상 판정은 남아 있다. Build 산출물과 out 진단은 소스 commit에서 제외한다.
+
+## 최신 main 병합 검증
+
+사용자의 전체 작업 main 병합 요청에 따라 최신 `origin/main`의 `033e5621b`(PR538)를
+통합 브랜치에 충돌 없이 병합했다. 검증한 코드 commit은 `13ae933b3`이다. PR537의 Bingo
+Parent·Box Detail 작업과 PR539의 World Undo/Redo를 함께 검증했으며, main의 Release F7 profiler,
+Bern 전용 culling·입장 카메라 FOV, camera key 목록 높이와 설명 주석을 보존했다.
+작업 시작 당시 미커밋 변경은 없었다. protocol133과 기존 렌더링 옵션도 유지했다.
+
+- Debug Product PASS: `out/BuildPipeline/runs/20261009T022349090Z-debug-product.json`.
+  전체167872ms, Engine/Shared/Server/Client OBJ는 각각34/3/94/263개다.
+- Release Product PASS: `out/BuildPipeline/runs/20261009T022649180Z-release-product.json`.
+  전체179821ms, Engine/Shared/Server/Client OBJ는 각각35/3/94/271개다.
+- 두 구성 모두 PCH0/CSO0, 각 project의 tracking identity 변경 없음이며 정상 증분 Build로
+  컴파일·링크·SDK/shader/DLL 배포를 완료했다. 기존 인코딩/PDB warning은 남아 있다.
+  기본 runner의 runtime 입력 누락·오류는 모두0개이며 domain publish나 Client 실행은 하지 않았다.
+- shader/project 입력671개의 병합 전후 SHA256과 mtime가 동일했다.
+  근거는 `out/MainMerge20261009/shader-inputs-before.json`과 제품 빌드 로그다.
+- 바뀐 JSON3개, Engine/Client/Server project/filter XML6개 parse와 `git diff --check` PASS.
+  `python -m unittest Tools.ValtanPipeline.test_bern_entrance_camera_contract`:4 tests PASS.
+- 독립 병합 검토에서 최신 main과 두 기능의 실제 연결을 대조했고 추가 충돌이나 P0/P1 회귀
+  근거는 발견하지 않았다. 빌드 PASS를 Client 화면·영상 또는 전체 gameplay 검증으로 확대하지 않는다.
