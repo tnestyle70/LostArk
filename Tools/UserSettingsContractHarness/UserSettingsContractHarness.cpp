@@ -79,12 +79,12 @@ int wmain(int argc,wchar_t** argv) {
     Check(preview.Preview(initial,status) && preview.Get_Settings().Has_SameValues(initial),"cancel preview restores snapshot without file");
 
 #ifdef _DEBUG
-    constexpr uint32_t textureDefault=3u;
+    constexpr uint32_t textureDefault=0u;
 #else
     constexpr uint32_t textureDefault=0u;
 #endif
     const float uiTextureDefault=EffectiveDefaultForHarness(SystemOptionRowId::TEXTURE_QUALITY,0.f);
-    Check(CUserSettings::Get_DefaultTextureQuality()==float(textureDefault),"configuration texture default matches Debug low or Release best");
+    Check(CUserSettings::Get_DefaultTextureQuality()==float(textureDefault),"configuration texture default matches Debug and Release best");
     Check(uiTextureDefault==float(textureDefault),"actual UI default used by initial seed and Reset matches configuration");
     Check(EffectiveDefaultForHarness("unrelated.row",7.f)==7.f &&
         EffectiveDefaultForHarness(SystemOptionRowId::BATTLE_FONT_SIZE,-1.f)==1.f,

@@ -1,5 +1,12 @@
 # LostArk merge 회귀 방지 정본
 
+## 하이브리드 GPU의 실제 실행 장치를 먼저 확인한다
+
+- RTX 4050 Laptop GPU가 장착된 이 노트북의 제품 Debug/Release Client는 반드시 RTX 4050으로 렌더링하는지 확인한다. 시작 로그의 `Graphics.Adapter` 이름이 `NVIDIA GeForce RTX 4050 Laptop GPU`인지 확인하며, AMD Radeon 840M이면 성능 검증을 진행하지 않고 GPU 선택 경로부터 바로잡는다. GPU 이름이나 LUID를 공용 코드에 하드코딩하지 않는다. 데스크탑 등 다른 PC에서는 그 PC의 고성능 하드웨어 GPU를 선택하고 실제 adapter 로그를 확인한다.
+- Windows의 고성능 선호 설정만으로 D3D11 장치를 확정하지 않는다. 실제 EXE 경로·PID와 `Client/Default/ClientStartup.user.log`의 `Graphics.Adapter` LUID를 OS GPU engine/memory의 같은 PID·LUID와 연결한다.
+- 하드웨어 선택은 DXGI `HIGH_PERFORMANCE` 순서와 software adapter 제외를 유지한다. 명시 adapter의 `D3D11CreateDevice`는 `UNKNOWN` driver type을 사용하며, WARP를 자동 fallback으로 추가하지 않는다.
+- private bytes·working set·GPU committed/usage/budget은 다른 값이다. 가용 RAM과 paging을 함께 확인하고 비정상 counter나 파일 크기를 실제 GPU 사용량으로 해석하지 않는다. 장치 선택 확인 전 무비·컬링 최적화나 저장 렌더링 옵션을 원인으로 단정해 되돌리지 않는다.
+
 ## 날짜 기준 옵션 복원과 명시적인 OFF 정본
 
 과거 commit의 값과 현재 사용자가 유지하라고 지정한 예외를 함께 확인한다.
@@ -45,6 +52,8 @@
 - 공간 셀은 culling 단위이며 반드시 draw 단위일 필요는 없다. 셀별로 보이는 instance만 모으되 각 mesh의 LOD·claim·mirror·material·시간을 검증한다. 같은 geometry라도 RNM이나 서로 다른 활성 표면 입력이 있으면 해당 입력을 bank로 보존하거나 별도 draw를 유지한다.
 - identical prefix를 먼저 그려 작은 lighting bank를 쪼개지 않는다. 같은 재질 A/A 뒤 호환 RNM 변형 B가 오면 기존 A/A/B 한 draw를 두 draw로 늘리는 회귀가 생긴다. identical prefix는 길이와 무관하게 조명 조합 하나다. 기존 bank가 다음 호환 변형까지 확장할 수 있으면 bank 경로에 양보한다.
 - multi-mesh 결합은 draw 전에 모든 mesh의 compatibility와 LOD를 확인한다. 첫 mesh가 그려진 뒤 실패하면 원본 전체를 다시 그리지 않는다. source-draw 계측은 결합하지 않은 입력 수이며 과거 제품 대비 절감량이나 FPS가 아니다. 청크 선택의 원본 비용 하한도 확장된 instancing 기준으로 함께 갱신한다.
+- 조명 bank의 전체 후보 admission을 없애고 현재 mesh 검증만 남기지 않는다. 반대로 이미 admission된 후보를 각 mesh에서 다시 전체 순회하면 material 검사가 mesh 수의 제곱으로 늘어난다. 현재 mesh의 geometry·transform·실제 CMaterial 입력을 매번 검증하는 binder를 사용하고, draw 수·GPU 시간·CPU 검사 비용은 따로 보고한다.
+- shader cache의 재사용 이득은 실제 호출자의 변경 입력·row 전환·기존 중복 제거를 포함해 검증한다. 모든 바인딩을 고정한 microbenchmark만으로 공통 setter에 추가 비교·복사 비용을 넣지 않는다. shared Effect의 Clone·부분 write·실패·직접 write 무효화도 별도로 검사한다.
 - NPC 공유는 cooked channel 내용과 정확한 track time이 같을 때 local sample 계산만 재사용한다. 각 actor의 clock·blend·root suppression·최종 bone palette와 Server authority는 유지한다. 채널 동등성 fixture와 실제 실행의 reuse hit/FPS를 구분한다.
 - 정적 환경 particle-root 역행렬은 행렬 전체 bit가 같은 경우 재사용할 수 있다. moving root·NaN·signed zero·worker별 독립성을 확인하고, 해당 연산 microbenchmark를 전체 이펙트/FPS 개선으로 환산하지 않는다.
 
@@ -6305,7 +6314,7 @@ projective/비유한 행렬은 계속 거부하고 source LOD로 돌아간다. �
 사용자 컷신 FPS 검증은 구분한다.
 
 텍스처 품질의 빌드별 기본값은 초기 로드 fallback과 UI seed·Reset에서 같은 함수를 쓴다.
-Debug 하/Release 최상은 저장값이 없는 경우의 기본값이며 기존 명시 저장값을 강제하지 않는다.
+Debug/Release 모두 최상이 저장값이 없는 경우의 기본값이며 기존 명시 저장값을 강제하지 않는다.
 
 ### 실제 typed texture와 원본 mip 근거를 먼저 연결한다
 
@@ -6363,3 +6372,18 @@ runtime preScale·presentation 배율을 함께 적용하고, 큰 무기를 포�
 - 같은 geometry의 instance1 draw와 instanced draw 비교는 제출 경로의 비교다. 객체 생성·map partition·material 정렬·LOD 생성·asset bake 비용까지 꺼진 것으로 표현하지 않는다. shadow cache OFF는 shadow OFF와 다르다.
 - 고정 카메라 warmup은 visibility cache를 재사용해 worker 준비 대상0이 될 수 있다. 대상0·cachehit·실제 worker 완료량을 보고하며 시간 차이만으로 병렬화 효과를 확정하지 않는다. Debug/Release와 D3D debug device는 각각의 실행 조건이며 재시작만으로 OS cache cold를 보장하지 않는다.
 - ABBA의 각 단계 raw frame window는1200frame history에서 사라지기 전에 따로 보관한다. 다음 측정은 저장 완료 뒤 warmup하고 summary에 measurement ID·실제 범위·raw 저장 성공을 연결한다. 중단·저장 실패·도구 표시/카메라 변경·GPU 미유효 표본을 정상 비교 수치로 제시하지 않는다.
+
+
+### 용병 AI의 후보·종료·회피 예측은 native 실행 계약과 대조한다
+
+- 후보의 resource 필드를 모두 hard gate로 해석하지 않는다. Guardian emberCost는 보유량만큼 소비해
+  피해를 강화하는 값이며 잔불0에서도 native 시전을 허용한다. AI가 더 엄격한 제한을 만들면 안 된다.
+- top-level actionDurationMs는 native COMBO/HOLD의 실제 종료 시각이 아니다. 실제 action state와
+  입력창으로 진행하고, nominal duration을 별도 공격 잠금으로 다시 적용하지 않는다.
+- SPACE aim은 방향이며 aim까지 이동하는 거리 제한이 아니다. 원본 root-motion의 초기 offset,
+  forward/lateral, scale, stage/release를 시간별로 읽어 실제 경로와 착지를 평가한다. 위협 cache의
+  경과 시간도 경로 샘플에 반영하며 예측을 별도 이동·피해 실행기로 만들지 않는다.
+- 거절된 Move가 이전 goal을 보존할 수 있으므로 hasMoveGoal만으로 새 회피 성공을 판정하지 않는다.
+  기존 executor의 결과 goal과 요청한 안전 후보를 비교한다. STANDUP도 실제 published 정의가 있는
+  직업만 검사하며 미정의 기상기를 합성하지 않는다.
+근거는 [콜로세움 용병 결과 G10](10-01/2026-10-01_COLOSSEUM_PVP_MERCENARY_RESULT.md)에 둔다.

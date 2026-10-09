@@ -13,6 +13,7 @@
 #include "ValtanClearRewards.h"
 #include "PlayerSkillSystem.h"
 #include "CombatObjectRuntime.h"
+#include "ColosseumThreatAssessment.h"
 #include "ServerNavigation.h"
 #include "ServerCollisionSystem.h"
 #include "ServerTriggerSystem.h"
@@ -1920,16 +1921,25 @@ namespace LostArk::Server
 		std::uint8_t m_iColosseumWinnerTeam = 255u;
 		std::uint32_t m_iColosseumRevision = 1u;
 		std::array<std::uint32_t, 2> m_ColosseumTeamPartyIds{};
+		enum class COLOSSEUM_TACTIC : std::uint8_t { WAIT, ENGAGE, REPOSITION, RETREAT, EVADE, RECOVER };
 		struct COLOSSEUM_MERCENARY_RUNTIME final
 		{
 			float fThinkElapsed = 0.f;
+			float fSenseElapsed = 0.f, fDecisionInterval = .2f, fThreatAgeSeconds = 0.f;
 			std::uint32_t iSequence = 0u;
-			// Match-owned admission clock survives player respawn and rotation resets.
+			// Match-owned admission clock survives player respawn and tactical resets.
 			std::optional<std::uint32_t> iLastAltVAdmissionTick;
-			std::size_t iSkillCursor = 0u;
-			std::vector<LostArk::Shared::SKILL_ID> ComboSkills;
-			float fComboElapsed = 0.f, fStepWaitElapsed = 0.f;
-			float fComboTimeout = 45.f, fStepWaitTimeout = 5.f;
+			std::uint64_t iRandomState = 0u;
+			std::vector<LostArk::Shared::SKILL_ID> AvailableSkills;
+			std::array<LostArk::Shared::SKILL_ID, 3> RecentSkills{};
+			std::size_t iRecentSkillCursor = 0u;
+			LostArk::Shared::SKILL_ID iLastSkillId = LostArk::Shared::INVALID_SKILL_ID;
+			LostArk::Shared::NET_ENTITY_ID iTargetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+			std::uint32_t iTargetSelectedTick = 0u, iTacticUntilTick = 0u;
+			std::uint32_t iNextAttackTick = 0u, iNextEvadeTick = 0u, iRetreatAllowedTick = 0u;
+			std::uint32_t iLastDamageTick = 0u, iObservedHp = 0u;
+			COLOSSEUM_TACTIC eTactic = COLOSSEUM_TACTIC::ENGAGE;
+			CColosseumThreatAssessment Threats;
 			const char* pReason = "Waiting for recruitment";
 		};
 		std::map<LostArk::Shared::PLAYER_ID, COLOSSEUM_MERCENARY_RUNTIME> m_ColosseumMercenaries;

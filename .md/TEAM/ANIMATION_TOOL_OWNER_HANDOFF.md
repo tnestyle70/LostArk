@@ -73,7 +73,7 @@ Preview와 toolbar는 공통 shell이 소유하고 각 세션은 자기 문서·
 
 - Boss는 기존 Valtan과 Kouku 관문·Parent·Pattern을 사용한다. Sequence는 독립 저장 문서와 기존
   Complete Play의 `enterCombatOnFinish`/전투 handoff를 유지한다. Boss와 Sequence의 관문 선택은 독립이다.
-- Kouku의 WORLD Animation 표시 행은 World occurrence+slot별로 고정하고 label/tooltip에 배우를 표시한다.
+- Kouku의 WORLD Animation 표시 행은 World occurrence+slot별로 고정하고 box의 tooltip에 배우를 표시한다.
   이동·trim은 같은 배우의 이웃 clip과 Motion 범위를 검증하며 다른 배우나 lane의 시계를 자동 이동하지 않는다.
 - Character는 `PlayerSkills.json`의 일곱 class(GuardianKnight 포함)와 LMB/SPACE/ALT_V/ACTIVE 입력을 나열한다. action
   Parent와 combo stage에서 실제 clip, Effect/Sound/Shake cue, Collider → AREA_OVERLAP Logic → Result
@@ -98,10 +98,17 @@ Preview와 toolbar는 공통 shell이 소유하고 각 세션은 자기 문서·
   Level의 같은 Movie owner에 전달되며 원본 배우 애니메이션·Effect·카메라가 같은 시계를 사용한다.
   검증된 Element 초안은 이 Movie의 해당 Effect 인스턴스에만 임시 반영한다. Product catalog를
   덮지 않고, 편집 종료 시 최신 저장 정의로 복원한다. 다른 Effect를 열 때 미저장 초안 보호를 유지한다.
-- `Timeline / Camera`는 기존 World 세션을 연다. 같은 종류의 비중첩 box는 Boss/Sequence와 같은
-  공용 행 배치를 사용하며 Animation은 배우 occurrence/slot을 분리한다. World Model/Material/Light는
-  기본 접힌 그룹에서 유지 구간과 활성 개수를 표시하고 펼치기·검색·Active at cursor를 지원한다.
-  접기는 표시 상태이며 재생과 mute를 바꾸지 않는다. Effect·Sound·유한 Animation의 이동/trim은
+- `Timeline / Camera`는 기존 World 세션을 연다. Movie와 Boss/Sequence는 같은 종류별 레인 표시 함수를
+  사용한다. 종류 이름은 왼쪽에 한 번 표시하고 시간 box를 오른쪽에 배치한다. 행·box·ruler 높이는
+  공통 `GetCompactRowMetrics`로 현재 폰트에 맞추며 그리기와 선택 영역에 같은 값을 사용한다.
+  Movie의 순서는 Animation/World/Material/Effect/Sound/Camera/Light/Time Control이다. 원본 kind
+  `World Model`은 화면에 `World`로 표시하며 원본 row·actor/slot·box ID는 편집·검증에서 유지한다.
+  종류별 비중첩 box는 같은 표시 행을 재사용하고 겹치는 box는 하위 행으로 배치한다. 객체·배우별 제목과
+  접기 행은 두지 않으며 배우·모델·리소스는 box와 tooltip/Box Detail에서 확인한다. 유지 구간과
+  검색·Active at cursor는 유지하고 종류 라벨 tooltip에 전체·활성·표시 개수를 표시한다.
+  시퀀서의 Save/Play/Pause/Stop/Reset은 기존 Movie owner에 위임한다. Reset은 선택 Intro/Loop의
+  시작으로 이동해 일시정지하며, 시간 탐색은 ruler를 끌고 놓아서 사용한다.
+  Effect·Sound·유한 Animation의 이동/trim은
   source 시간으로 변환해 기존 문서 검증을 거친다. Camera 가운데 이동은 컷 재정렬, 경계 이동은
   이웃 컷과 경계를 함께 변경해 전체 phase를 빈틈없이 유지한다. 고정·loop 행은 Box Detail을 사용한다.
 - Camera box의 `Open Sequence Camera Tool` 또는 더블클릭은 같은 Movie의 컷·키 편집창을 연다.

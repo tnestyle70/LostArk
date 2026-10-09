@@ -27,6 +27,9 @@ public:
     bool Show(const CMapPlacementRuntime& sourceMap,
         const std::shared_ptr<CCharacter>& approvedCharacter, std::string& status);
     void Hide();
+    // End PREVIEW: restore the replica and remove its display-only clone.
+    // Show recreates the default idle and preserves its normal warmup frame.
+    void Leave();
     void Clear();
     std::shared_ptr<CCharacter> Get_Character() const;
     bool Is_Visible() const;

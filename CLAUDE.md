@@ -99,6 +99,12 @@ Engine와 실제 Client 실행 폴더의 CSO가 동일한지 확인한다.
 준비해야 하며 다른 팀 PC는 공유 LAN Server를 사용한다. 바로가기를 실행하는 것은 재설치가 아니다.
 설치기를 다시 실행하면 ZIP의 EXE/DLL/CSO와 DataFiles로 로컬 수정 결과를 교체할 수 있다.
 
+그래픽 장치는 Debug/Release 모두 DXGI의 `HIGH_PERFORMANCE` 순서로 하드웨어 GPU를 선택한다.
+해당 API나 후보 장치를 사용할 수 없으면 기존 기본 하드웨어 경로로 돌아가며 WARP는 명시 요청만 사용한다.
+실제 선택 결과는 `Client/Default/ClientStartup.user.log`의 같은 PID `Graphics.Adapter` 행에서
+GPU 이름·Vendor/Device ID·LUID·feature level·메모리 용량을 확인한다. Windows GPU 선호 설정이나
+GPU 번호만으로 실제 실행 장치를 판정하지 않는다.
+
 Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더에 생성한다.
 
 - Engine: `Engine\Bin\Debug\`, `Engine\Bin\Release\`
@@ -1220,7 +1226,7 @@ reference 좌표의 X/Y viewport 비율을 각각 적용하므로 자동 anchor 
 환경설정 `텍스처 품질`의 최상/상/중/하는 모델 표면의 최소 mip을 0/1/2/3으로 제한한다.
 일괄 설정에도 포함되며 선택 즉시 미리보기, 취소 복원, 적용/확인 저장과 재실행 후 복원을
 같은 개인 설정 경로로 처리한다. 현재 scene/region 조명·후처리 정본 위에 개인 설정을 합성한다.
-저장값이 없을 때와 해당 항목 초기화 시 기본값은 Debug `하`, Release `최상`이다.
+저장값이 없을 때와 해당 항목 초기화 시 기본값은 Debug와 Release 모두 `최상`이다.
 기존에 명시 저장한 품질은 두 빌드 모두 우선하며 빌드 전환만으로 덮어쓰지 않는다.
 맵·인스턴스·캐릭터·장비와 해당 SourceCharacter light pass에 적용하며 UI, LUT, BRDF/반사 lookup,
 원본 이펙트 전용 sampler는 유지한다. 없는 mip은 생성하지 않으며 GPU 상주 텍스처 용량을 줄이는

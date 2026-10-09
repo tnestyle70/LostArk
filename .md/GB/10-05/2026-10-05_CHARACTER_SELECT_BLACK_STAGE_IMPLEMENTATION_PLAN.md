@@ -57,3 +57,4992 @@ RNM·환경 texture·geometry·normal·opacity와 캐릭터 및 조명 설정도
 최소 컴파일을 수행한다. 실행 파일이 잠겨 있으면 제품 출력을 교체하지 않으며, 종료를
 확인한 뒤 Debug/Release 제품 빌드까지 수행한다. Client/UI는 실행하지 않고 사용자 화면
 확인과 제품 빌드를 결과에서 분리한다.
+
+## G07. 체험 전환 뒤 숨겨진 표시 캐릭터의 갱신 해제
+
+10-07 Release 선택창 조사에서 PREVIEW의 표시 CCharacter가 TRIAL 진입 뒤에도
+Layer_CharacterSelectShowcase에 남아 매 프레임 CCharacter::Update와
+CPart_Body::Update_Animation을 실행하는 연결을 확인했다. suppression은 Late_Update와
+Render만 막는다. 심각한 전체 FPS 저하의 단독 원인으로 판정하지 않으며 이 중복 갱신을 제거한다.
+
+CharacterSelectShowcase::Leave는 Hide로 replica의 이전 suppression과 무대 표시를 복원하고
+표시 clone을 제거한다. 두 정적 바닥과 catalog는 보존한다. Level_CharacterSelect의
+End_ClassShowcaseCamera만 Leave를 호출한다. Show가 새 clone 생성 뒤 false를 반환하는
+준비 프레임은 기존 Hide를 유지하므로 다음 정상 Object Update 뒤에만 표시한다.
+PREVIEW 복귀는 기존 기본 class/stance/idle 생성 경로를 사용한다. Server 캐릭터와 공용
+Character suppression 의미는 변경하지 않는다. 새 C++ 파일/project/filter 등록은 없다.
+
+검증은 PREVIEW 준비 프레임 보존, TRIAL/CATEGORY/생성 전환의 Layer 제거, replica 상태 복원,
+재진입의 default idle 준비, 최소 컴파일과 diff check다. Client/UI 및 실제 FPS 검증은 사용자 몫이다.
+다음은 G07 적용 후보의 전체 코드다.
+
+### Client/Public/CharacterSelectShowcase.h
+
+```cpp
+#pragma once
+
+#include "Client_Defines.h"
+#include "Engine_Defines.h"
+
+#include <memory>
+#include <string>
+
+NS_BEGIN(Client)
+
+class CCharacter;
+class CMapPlacementRuntime;
+
+/* A Level-owned presentation stage. Objects still use the ordinary Layer
+update/render path; this service never controls the replicated actor's pose. */
+class CCharacterSelectShowcase final
+{
+public:
+    CCharacterSelectShowcase();
+    ~CCharacterSelectShowcase();
+    CCharacterSelectShowcase(const CCharacterSelectShowcase&) = delete;
+    CCharacterSelectShowcase& operator=(const CCharacterSelectShowcase&) = delete;
+
+    /* Call once per Level Update. A new clone stays hidden until the next
+    normal Object Update; false with an empty status is this pending frame.
+    Hide preserves that preparation, while Clear removes all owned objects. */
+    bool Show(const CMapPlacementRuntime& sourceMap,
+        const std::shared_ptr<CCharacter>& approvedCharacter, std::string& status);
+    void Hide();
+    // End PREVIEW: restore the replica and remove its display-only clone.
+    // Show recreates the default idle and preserves its normal warmup frame.
+    void Leave();
+    void Clear();
+    std::shared_ptr<CCharacter> Get_Character() const;
+    bool Is_Visible() const;
+    float3_t Get_LightingTranslation() const;
+
+private:
+    struct STATE;
+    std::unique_ptr<STATE> m_State;
+};
+
+NS_END
+```
+
+### Client/Private/CharacterSelectShowcase.cpp
+
+```cpp
+#include "CharacterSelectShowcase.h"
+#include "Character.h"
+#include "CharacterCatalog.h"
+#include "DataJson.h"
+#include "GameInstance.h"
+#include "MapPlacementRuntime.h"
+#include "PlayableCharacterAssetService.h"
+#include "ProjectDataRoot.h"
+#include "Transform.h"
+
+#include <array>
+#include <charconv>
+#include <cmath>
+#include <fstream>
+#include <limits>
+#include <stdexcept>
+#include <utility>
+
+using namespace Client;
+using namespace LostArk::Shared;
+
+namespace
+{
+    constexpr uint32_t STAGE_LEVEL = ETOUI(LEVEL::CHARACTER_SELECT);
+    constexpr size_t MAXIMUM_DOCUMENT_BYTES = 16u * 1024u;
+    constexpr const wchar_t* CHARACTER_LAYER = L"Layer_CharacterSelectShowcase";
+    constexpr const char* AREA_ID = "LV_LOBBY_CLASSSELECT_SL00";
+    constexpr std::array<const char*, 2> SOURCE_IDS = {
+        "LV_LOBBY_CLASSSELECT_SL00:export:1053",
+        "LV_LOBBY_CLASSSELECT_SL00:export:1054"
+    };
+    constexpr std::array<uint64_t, 2> PLACEMENT_IDS = { 9000101u, 9000102u };
+
+    const DATA_JSON_VALUE& Field(const DATA_JSON_VALUE& object, const char* name)
+    {
+        const auto* value = object.Is_Object() ? object.Find(name) : nullptr;
+        if (!value)
+            throw std::runtime_error(std::string("Missing showcase field: ") + name);
+        return *value;
+    }
+
+    const std::string& String(const DATA_JSON_VALUE& value)
+    {
+        if (!value.Is_String())
+            throw std::runtime_error("Showcase field must be a string");
+        return value.Get_String();
+    }
+
+    float Number(const DATA_JSON_VALUE& value)
+    {
+        if (!value.Is_Number() || !std::isfinite(value.Get_Number()) ||
+            std::abs(value.Get_Number()) > (std::numeric_limits<float>::max)())
+            throw std::runtime_error("Showcase number must be a finite float");
+        return static_cast<float>(value.Get_Number());
+    }
+
+    template<size_t Count>
+    std::array<float, Count> Vector(const DATA_JSON_VALUE& value)
+    {
+        if (!value.Is_Array() || value.Get_Array().size() != Count)
+            throw std::runtime_error("Invalid showcase vector size");
+        std::array<float, Count> result{};
+        for (size_t index = 0; index < Count; ++index)
+            result[index] = Number(value.Get_Array()[index]);
+        return result;
+    }
+
+    float3_t Position(const DATA_JSON_VALUE& value)
+    {
+        const auto v = Vector<3>(value);
+        return float3_t(v[0], v[1], v[2]);
+    }
+
+    uint64_t PlacementId(const DATA_JSON_VALUE& value)
+    {
+        const std::string& text = String(value);
+        uint64_t result = 0u;
+        const auto parsed = std::from_chars(text.data(), text.data() + text.size(), result);
+        if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size() ||
+            0u == result || result > CMapPlacementDocument::MAX_EDITOR_PLACEMENT_ID)
+            throw std::runtime_error("Invalid showcase placement ID");
+        return result;
+    }
+
+    struct STAGE_CONFIG
+    {
+        std::array<MAP_PLACEMENT_RECORD, 2> placements;
+        float3_t characterPosition{};
+        float characterYaw = 0.f;
+        float3_t lightingTranslation{};
+    };
+
+    STAGE_CONFIG Read_Config(const CMapPlacementRuntime& sourceMap)
+    {
+        if (!sourceMap.Get_Catalog().Is_Ready() ||
+            sourceMap.Get_Catalog().Get_AreaId() != AREA_ID)
+            throw std::runtime_error("Showcase requires the loaded Character Select map");
+
+        std::ifstream input(CProjectDataRoot::Resolve(
+            L"Rendering/Authored/CharacterSelectShowcase.json"), std::ios::binary | std::ios::ate);
+        if (!input)
+            throw std::runtime_error("Character Select showcase document could not be opened");
+        const std::streamoff length = input.tellg();
+        if (length <= 0 || length > static_cast<std::streamoff>(MAXIMUM_DOCUMENT_BYTES))
+            throw std::runtime_error("Character Select showcase document exceeds its size limit");
+        std::string text(static_cast<size_t>(length), '\0');
+        input.seekg(0);
+        if (!input.read(text.data(), static_cast<std::streamsize>(text.size())) ||
+            input.peek() != std::char_traits<char>::eof())
+            throw std::runtime_error("Character Select showcase document changed while reading");
+
+        DATA_JSON_VALUE root;
+        std::string parseError;
+        DATA_JSON_PARSE_LIMITS limits;
+        limits.iMaximumBytes = MAXIMUM_DOCUMENT_BYTES;
+        limits.iMaximumDepth = 8u;
+        limits.iMaximumValues = 256u;
+        if (!CDataJson::Parse(text, root, parseError, limits))
+            throw std::runtime_error("Invalid showcase JSON: " + parseError);
+        const auto& version = Field(root, "formatVersion");
+        if (String(Field(root, "schema")) != "lostark.character-select-showcase" ||
+            String(Field(root, "areaId")) != AREA_ID || !version.Is_Number() ||
+            version.Was_FloatingPointToken() || version.Get_Number() != 1.0)
+            throw std::runtime_error("Unsupported Character Select showcase schema");
+        const auto& rows = Field(root, "placements");
+        if (!rows.Is_Array() || rows.Get_Array().size() != SOURCE_IDS.size())
+            throw std::runtime_error("Showcase requires exactly its floor and star placements");
+
+        STAGE_CONFIG config;
+        std::array<bool, 2> seen{};
+        for (const auto& row : rows.Get_Array())
+        {
+            const std::string& sourceId = String(Field(row, "sourcePlacementId"));
+            size_t slot = SOURCE_IDS.size();
+            for (size_t index = 0; index < SOURCE_IDS.size(); ++index)
+                if (sourceId == SOURCE_IDS[index]) slot = index;
+            if (slot == SOURCE_IDS.size() || seen[slot])
+                throw std::runtime_error("Unknown or duplicate showcase source placement");
+            seen[slot] = true;
+
+            const uint64_t placementId = PlacementId(Field(row, "placementId"));
+            if (placementId != PLACEMENT_IDS[slot])
+                throw std::runtime_error("Unexpected showcase runtime placement ID");
+            const std::string runtimeSourceId = "showcase:character-select:" + std::to_string(placementId);
+            const MAP_PLACEMENT_RECORD* sourceRecord = nullptr;
+            for (const auto& entry : sourceMap.Get_Placements())
+            {
+                if (entry.record.placementId == placementId ||
+                    entry.record.sourcePlacementId == runtimeSourceId)
+                    throw std::runtime_error("Showcase runtime placement ID collides with the map");
+                if (entry.record.sourcePlacementId == sourceId)
+                {
+                    if (sourceRecord)
+                        throw std::runtime_error("Showcase source placement is not unique");
+                    sourceRecord = &entry.record;
+                }
+            }
+            if (!sourceRecord)
+                throw std::runtime_error("Showcase source placement is not loaded");
+
+            /* Preserve the loaded asset, RNM, source wind and all catalog inputs.
+            Low runtime IDs are overlays, never imported actor IDs. */
+            auto& record = config.placements[slot];
+            record = *sourceRecord;
+            record.placementId = placementId;
+            record.sourcePlacementId = runtimeSourceId;
+            record.transformSource = "overlay";
+            record.position = Position(Field(row, "position"));
+            const auto rotation = Vector<4>(Field(row, "rotationQuaternion"));
+            double normSquared = 0.0;
+            for (float component : rotation)
+                normSquared += static_cast<double>(component) * component;
+            if (std::abs(normSquared - 1.0) > 1.e-4)
+                throw std::runtime_error("Showcase quaternion must be unit length");
+            record.rotationQuaternion = float4_t(rotation[0], rotation[1], rotation[2], rotation[3]);
+            record.signedScale = Position(Field(row, "signedScale"));
+            if (record.signedScale.x < 1.e-6f || record.signedScale.y < 1.e-6f ||
+                record.signedScale.z < 1.e-6f)
+                throw std::runtime_error("Showcase scale must be positive and nondegenerate");
+            record.visible = false;
+            if (!CMapPlacementDocument::Is_Valid(record, sourceMap.Get_Catalog()))
+                throw std::runtime_error("Invalid showcase placement record");
+        }
+        const auto& character = Field(root, "character");
+        config.characterPosition = Position(Field(character, "position"));
+        config.characterYaw = Number(Field(character, "yawDegrees"));
+        const float3_t lightingOrigin = Position(Field(root, "lightingOrigin"));
+        config.lightingTranslation = float3_t(
+            config.characterPosition.x - lightingOrigin.x,
+            config.characterPosition.y - lightingOrigin.y,
+            config.characterPosition.z - lightingOrigin.z);
+        if (!std::isfinite(config.lightingTranslation.x) ||
+            !std::isfinite(config.lightingTranslation.y) || !std::isfinite(config.lightingTranslation.z))
+            throw std::runtime_error("Showcase lighting translation is not finite");
+        return config;
+    }
+
+    struct STAGE_SCENE
+    {
+        STAGE_CONFIG config;
+        CMapAssetCatalog catalog;
+        std::vector<MAP_RUNTIME_PLACED_ENTRY> placements;
+        std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY> batches;
+
+        ~STAGE_SCENE()
+        {
+            for (auto& entry : placements)
+                CMapPlacementRuntime::Set_RuntimeVisible(entry, false);
+            CMapPlacementRuntime::Remove_PlacementRuntime(STAGE_LEVEL, placements, batches);
+        }
+    };
+
+    struct STAGE_CHARACTER
+    {
+        std::shared_ptr<Engine::CGameObject> object;
+        std::shared_ptr<CCharacter> character;
+        ~STAGE_CHARACTER()
+        {
+            if (character) character->Set_CinematicPresentationSuppressed(true);
+            if (object)
+                CGameInstance::Get().Remove_GameObject_from_Layer(STAGE_LEVEL, CHARACTER_LAYER, object);
+        }
+    };
+
+    PLAYER_STANCE_ID Default_Stance(CHARACTER_CLASS_ID characterClass)
+    {
+        switch (characterClass)
+        {
+        case CHARACTER_CLASS_ID::LANCE_MASTER: return PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+        case CHARACTER_CLASS_ID::WARLORD: return PLAYER_STANCE_ID::WARLORD_NORMAL;
+        case CHARACTER_CLASS_ID::GUARDIANKNIGHT: return PLAYER_STANCE_ID::GUARDIANKNIGHT_HUMAN;
+        default: return PLAYER_STANCE_ID::NONE;
+        }
+    }
+
+    std::unique_ptr<STAGE_CHARACTER> Create_Character(
+        CHARACTER_CLASS_ID characterClass, const STAGE_CONFIG& config)
+    {
+        const CHARACTER_SPEC* spec = CCharacterCatalog::Find_Spec(characterClass);
+        if (!spec)
+            throw std::runtime_error("Showcase class has no default character spec");
+        auto result = std::make_unique<STAGE_CHARACTER>();
+        CCharacter::CHARACTER_DESC desc{};
+        desc.iPrototypeLevelIndex = STAGE_LEVEL;
+        desc.pSpec = spec;
+        desc.eCharacterClass = characterClass;
+        desc.fSpeedPerSec = 6.f;
+        desc.fRotationPerSec = 180.f;
+        desc.vPosition = config.characterPosition;
+        desc.isLocallyControlled = false;
+        if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(STAGE_LEVEL,
+            L"Prototype_GameObject_Character", STAGE_LEVEL, CHARACTER_LAYER, &desc, &result->object)))
+            throw std::runtime_error("Showcase default character clone failed");
+        result->character = std::dynamic_pointer_cast<CCharacter>(result->object);
+        if (!result->character || !result->character->Get_Transform())
+            throw std::runtime_error("Showcase default character is incomplete");
+        auto& character = *result->character;
+        character.Set_CinematicPresentationSuppressed(true);
+        character.Apply_NetworkStance(Default_Stance(characterClass));
+        if (!character.Set_Animation(CHARACTER_ANIM::IDLE, true))
+            throw std::runtime_error("Showcase default idle animation is unavailable");
+        // This display clone has no network yaw. Keep cloth/hair chain yaw in the
+        // same basis as its world transform without enabling creation-only parts.
+        character.Set_CreationPreviewYawOffset(config.characterYaw);
+        character.Get_Transform()->Rotation(0.f, config.characterYaw, 0.f);
+        character.Set_Position(XMVectorSet(config.characterPosition.x,
+            config.characterPosition.y, config.characterPosition.z, 1.f));
+        return result;
+    }
+}
+
+struct CCharacterSelectShowcase::STATE
+{
+    std::unique_ptr<STAGE_SCENE> scene;
+    std::unique_ptr<STAGE_CHARACTER> display;
+    std::weak_ptr<CCharacter> suppressedReplica;
+    bool replicaWasSuppressed = false;
+    bool holdsSuppression = false;
+    bool visible = false;
+    std::weak_ptr<CCharacter> failedApprovedCharacter;
+    CHARACTER_CLASS_ID failedClass = CHARACTER_CLASS_ID::END;
+    std::string failureStatus;
+};
+
+CCharacterSelectShowcase::CCharacterSelectShowcase() : m_State(std::make_unique<STATE>()) {}
+CCharacterSelectShowcase::~CCharacterSelectShowcase() { Clear(); }
+
+bool CCharacterSelectShowcase::Show(const CMapPlacementRuntime& sourceMap,
+    const std::shared_ptr<CCharacter>& approvedCharacter, std::string& status)
+{
+    status.clear();
+    if (!approvedCharacter)
+    {
+        Hide();
+        return false;
+    }
+    const CHARACTER_CLASS_ID characterClass = approvedCharacter->Get_CharacterClass();
+    if (m_State->failedApprovedCharacter.lock() == approvedCharacter &&
+        m_State->failedClass == characterClass)
+    {
+        Hide();
+        status = m_State->failureStatus;
+        return false;
+    }
+    if (!CPlayableCharacterAssetService::Is_Ready(STAGE_LEVEL, characterClass))
+    {
+        Hide();
+        return false;
+    }
+    try
+    {
+        std::unique_ptr<STAGE_SCENE> stagedScene;
+        STAGE_SCENE* scene = m_State->scene.get();
+        if (!scene)
+        {
+            stagedScene = std::make_unique<STAGE_SCENE>();
+            stagedScene->config = Read_Config(sourceMap);
+            stagedScene->catalog = sourceMap.Get_Catalog();
+            stagedScene->placements.resize(stagedScene->config.placements.size());
+            for (size_t index = 0; index < stagedScene->placements.size(); ++index)
+            {
+                const auto& record = stagedScene->config.placements[index];
+                const auto* asset = stagedScene->catalog.Find(record.assetId);
+                if (!asset || asset->materialOverrides.empty())
+                    throw std::runtime_error("Showcase floor or star material is unavailable");
+                auto materials = asset->materialOverrides;
+                for (auto& material : materials)
+                {
+                    // PBR adds the reflection texture after diffuse brightness;
+                    // direct/indirect specular also survives a black diffuse.
+                    // Only these display clones receive the black stage variant.
+                    material.surface.diffuseBrightness = 0.f;
+                    material.surface.reflectionIntensity = 0.f;
+                    material.surface.specularPBRIntensity = 0.f;
+                }
+                if (!CMapPlacementRuntime::Create_Placement(STAGE_LEVEL, stagedScene->catalog,
+                    record, stagedScene->placements[index], {}, &materials))
+                    throw std::runtime_error("Showcase floor or star clone failed");
+            }
+            scene = stagedScene.get();
+        }
+        if (!m_State->display || m_State->display->character->Get_CharacterClass() != characterClass)
+        {
+            auto stagedCharacter = Create_Character(characterClass, scene->config);
+            Hide();
+            if (stagedScene) m_State->scene = std::move(stagedScene);
+            m_State->display = std::move(stagedCharacter);
+            m_State->failedApprovedCharacter.reset();
+            m_State->failureStatus.clear();
+            /* Level Update follows Object Update. Keeping the clone hidden for
+            this first frame lets the standard next update form every part's
+            combined world and animated pose before normal render submission. */
+            return false;
+        }
+
+        if (m_State->holdsSuppression && m_State->suppressedReplica.lock() != approvedCharacter)
+            Hide();
+        for (auto& entry : m_State->scene->placements)
+            if (!CMapPlacementRuntime::Set_RuntimeVisible(entry, true))
+                throw std::runtime_error("Showcase placement visibility failed");
+        if (!m_State->holdsSuppression)
+        {
+            m_State->suppressedReplica = approvedCharacter;
+            m_State->replicaWasSuppressed = approvedCharacter->Is_CinematicPresentationSuppressed();
+            m_State->holdsSuppression = true;
+        }
+        approvedCharacter->Set_CinematicPresentationSuppressed(true);
+        m_State->display->character->Set_CinematicPresentationSuppressed(false);
+        m_State->visible = true;
+        m_State->failedApprovedCharacter.reset();
+        m_State->failureStatus.clear();
+        return true;
+    }
+    catch (const std::exception& error)
+    {
+        Hide();
+        m_State->failedApprovedCharacter = approvedCharacter;
+        m_State->failedClass = characterClass;
+        m_State->failureStatus = std::string("Character Select showcase unavailable: ") + error.what();
+        status = m_State->failureStatus;
+        return false;
+    }
+}
+
+void CCharacterSelectShowcase::Hide()
+{
+    m_State->visible = false;
+    if (m_State->display)
+        m_State->display->character->Set_CinematicPresentationSuppressed(true);
+    if (m_State->scene)
+        for (auto& entry : m_State->scene->placements)
+            CMapPlacementRuntime::Set_RuntimeVisible(entry, false);
+    if (m_State->holdsSuppression)
+    {
+        if (auto character = m_State->suppressedReplica.lock())
+            character->Set_CinematicPresentationSuppressed(m_State->replicaWasSuppressed);
+        m_State->suppressedReplica.reset();
+        m_State->holdsSuppression = false;
+    }
+}
+
+void CCharacterSelectShowcase::Leave()
+{
+    Hide();
+    // Suppression only skips rendering. Remove the display clone from its Layer
+    // so trial/customizing/movies do not keep evaluating an invisible character.
+    // The two static floor placements stay cached for the next preview.
+    m_State->display.reset();
+}
+
+void CCharacterSelectShowcase::Clear()
+{
+    Leave();
+    m_State->scene.reset();
+    m_State->failedApprovedCharacter.reset();
+    m_State->failedClass = CHARACTER_CLASS_ID::END;
+    m_State->failureStatus.clear();
+}
+
+std::shared_ptr<CCharacter> CCharacterSelectShowcase::Get_Character() const
+{
+    return m_State->display ? m_State->display->character : nullptr;
+}
+
+bool CCharacterSelectShowcase::Is_Visible() const { return m_State->visible; }
+
+float3_t CCharacterSelectShowcase::Get_LightingTranslation() const
+{
+    return m_State->scene ? m_State->scene->config.lightingTranslation : float3_t{};
+}
+```
+
+### Client/Private/Level_CharacterSelect.cpp
+
+```cpp
+#include <WinSock2.h>
+#include <dinput.h>
+#include "imgui.h"
+#pragma push_macro("new")
+#undef new
+#include <DirectXColors.h>
+#pragma pop_macro("new")
+
+#include "Level_CharacterSelect.h"
+
+#include "AnimationEffectCueDocument.h"
+#include "AnimationTargetService.h"
+#include "ActorCatalog.h"
+#include "Camera_Free.h"
+#include "Character.h"
+#include "CharacterCatalog.h"
+#include "CharacterSelectArenaSpawnGate.h"
+#include "CharacterSelectShowcase.h"
+#include "CharacterSelectionState.h"
+#include "CharacterSpec.h"
+#include "CombatHUDViewModel.h"
+#include "CustomizingView.h"
+#include "DataJson.h"
+#include "Effect_PresentationService.h"
+#include "GameInstance.h"
+#include "ImGuiLayer.h"
+#include "LevelRegistry.h"
+#include "LevelTransitionService.h"
+#include "LobbyCommandService.h"
+#include "MainApp.h"
+#include "MapAssetCatalog.h"
+#include "MapLightPresentationRuntime.h"
+#include "MapEffectPresentationRuntime.h"
+#include "Network/PacketMessages.h"
+#include "NetworkManager.h"
+#include "NetworkPlayerCommandSink.h"
+#include "NetworkWorldEntityCommandSink.h"
+#include "PlayableCharacterAssetService.h"
+#include "ProjectDataRoot.h"
+#include "RaidEntryPreviewView.h"
+#include "RuntimeAssetRoot.h"
+#include "Transform.h"
+#include "UIInputRouter.h"
+#include "UILabelFont.h"
+#include "UILayoutRuntime.h"
+#include "ValtanPatternEffectCueDocument.h"
+#include "ValtanPatternTree.h"
+#include "ValtanPresentationAssetService.h"
+
+#include <algorithm>
+#include <cmath>
+#include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <unordered_set>
+#ifdef _DEBUG
+#include <charconv>
+#endif
+
+namespace
+{
+	/* Client/Default/CharacterSelectBrowse.user.log, beside the startup log. */
+	void Write_BrowseLog(const std::string& strLine)
+	{
+		wchar_t szModule[MAX_PATH] = {};
+		const DWORD iLength = GetModuleFileNameW(nullptr, szModule, MAX_PATH);
+		if (0u == iLength || iLength >= MAX_PATH)
+			return;
+		const std::filesystem::path Path = std::filesystem::path(szModule).parent_path()
+			.parent_path().parent_path() / L"Default" / L"CharacterSelectBrowse.user.log";
+		std::ofstream Output(Path, std::ios::binary | std::ios::app);
+		if (!Output)
+			return;
+		SYSTEMTIME Time{};
+		GetLocalTime(&Time);
+		char szStamp[40] = {};
+		(void)sprintf_s(szStamp, "%02u:%02u:%02u.%03u ", Time.wHour, Time.wMinute, Time.wSecond, Time.wMilliseconds);
+		Output << szStamp << strLine << "\n";
+	}
+
+	constexpr f32_t ARENA_INITIAL_TARGET_X = -772.017f;
+	constexpr f32_t ARENA_INITIAL_TARGET_Y = -142.55f;
+	constexpr f32_t ARENA_INITIAL_TARGET_Z = 197.538f;
+	/* Owner token for the camera presentation override the customizing screen holds. */
+	constexpr uint64_t CUSTOMIZING_CAMERA_OWNER_ID = 0x4355'53544F4D'495Aull;
+	/* Owner token for the camera override the class-standing step holds. */
+	constexpr uint64_t SHOWCASE_CAMERA_OWNER_ID = 0x5348'4F57'4341'5345ull;
+	/* Shared standing-view framing. Warlord's lower battle idle uses a closer camera;
+	scale eye/look offsets with distance to preserve the root anchor and viewing pitch. */
+	constexpr f32_t SHOWCASE_CAMERA_METRES = 4.6f;
+	constexpr f32_t SHOWCASE_WARLORD_CAMERA_METRES = 4.4f;
+	constexpr f32_t SHOWCASE_EYE_HEIGHT = 1.05f;
+	constexpr f32_t SHOWCASE_LOOK_HEIGHT = 0.95f;
+	constexpr f32_t SHOWCASE_FOV_DEGREES = 30.f;
+	constexpr std::chrono::seconds CONNECTION_TIMEOUT{ 5 };
+	constexpr std::chrono::seconds CLASS_CHANGE_TIMEOUT{ 5 };
+	constexpr std::chrono::seconds ARENA_SPAWN_REQUEST_TIMEOUT{ 5 };
+
+	struct ARENA_SPAWN_OPTION final
+	{
+		const char_t* pLabel = nullptr;
+		const char_t* pStableId = nullptr;
+		const char_t* pArchetypeId = nullptr;
+		bool_t requiresValtanPrewarm = false;
+	};
+
+	constexpr std::array<ARENA_SPAWN_OPTION, 3> ARENA_SPAWN_OPTIONS =
+	{
+		ARENA_SPAWN_OPTION{
+			"Monster", "spawn.character-select.monster",
+			"MONSTER_VALTAN_PADD_01", false },
+		ARENA_SPAWN_OPTION{
+			"Mid Boss (Lugaru)", "spawn.character-select.miniboss",
+			"MINIBOSS_LUGARU", false },
+		ARENA_SPAWN_OPTION{
+			"Valtan", "boss.valtan.character-select.lazy",
+			"BOSS_VALTAN", true }
+	};
+
+	const char* Get_CinematicClassId(size_t index);
+
+	const char* Get_MovieClassForCategory(const std::string& categoryId)
+	{
+		if (categoryId == "class.warrior") return "WARLORD";
+		if (categoryId == "class.fighter") return "LANCE_MASTER";
+		if (categoryId == "class.specialist") return "ARTIST";
+		if (categoryId == "class.dragon_human") return "GUARDIANKNIGHT";
+		if (categoryId == "class.specialist_male") return "DIMENSIONMASTER";
+		return "";
+	}
+
+	const char_t* Get_CharacterClassName(
+		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		switch (characterClass)
+		{
+		case CHARACTER_CLASS_ID::LANCE_MASTER: return "Lance Master";
+		case CHARACTER_CLASS_ID::GUNSLINGER: return "Gunslinger";
+		case CHARACTER_CLASS_ID::SLAYER: return "Slayer";
+		case CHARACTER_CLASS_ID::ARTIST: return "Artist";
+		case CHARACTER_CLASS_ID::DIMENSIONMASTER: return "Dimension Master";
+		case CHARACTER_CLASS_ID::WARLORD: return "Warlord";
+		case CHARACTER_CLASS_ID::GUARDIANKNIGHT: return "Guardian Knight";
+		default: return "Unknown";
+		}
+	}
+
+	const char_t* Get_StageName(const LOBBY_STAGE stage)
+	{
+		switch (stage)
+		{
+		case LOBBY_STAGE::TEST: return "Character Select";
+		case LOBBY_STAGE::CHARACTER_SELECT: return "Character Select";
+		case LOBBY_STAGE::BERN: return "Bern";
+		case LOBBY_STAGE::VALTAN: return "Valtan";
+		case LOBBY_STAGE::KOUKU_SAYDON: return "KoukuSaydon";
+		case LOBBY_STAGE::MAHARAKA: return "Maharaka";
+		case LOBBY_STAGE::COLOSSEUM: return "Colosseum";
+		default: return "Unknown";
+		}
+	}
+
+	const char_t* Get_StageTransitionSource(const LOBBY_STAGE stage)
+	{
+		switch (stage)
+		{
+		case LOBBY_STAGE::TEST: return "character-select.server-play";
+		case LOBBY_STAGE::CHARACTER_SELECT: return "character-select.server-entry";
+		case LOBBY_STAGE::BERN: return "character-select.enter-bern";
+		case LOBBY_STAGE::VALTAN: return "character-select.enter-valtan";
+		case LOBBY_STAGE::KOUKU_SAYDON: return "character-select.enter-koukusaydon";
+		case LOBBY_STAGE::MAHARAKA: return "character-select.enter-maharaka";
+		case LOBBY_STAGE::COLOSSEUM: return "character-select.enter-colosseum";
+		default: return nullptr;
+		}
+	}
+}
+
+CLevel_CharacterSelect* CLevel_CharacterSelect::s_pActiveInstance = nullptr;
+
+CLevel_CharacterSelect::CLevel_CharacterSelect(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext)
+	: CLevel{ pDevice, pContext },
+	m_pClassShowcase{ std::make_unique<CCharacterSelectShowcase>() },
+	m_pArenaSpawnGate{ std::make_unique<CCharacterSelectArenaSpawnGate>() }
+{
+	s_pActiveInstance = this;
+}
+
+CLevel_CharacterSelect::~CLevel_CharacterSelect()
+{
+	m_ClassSelectionPresentation.Clear();
+	m_pClassShowcase->Clear();
+	for (auto& background : m_ClassCinemaBackgrounds)
+		if (background.runtime) background.runtime->Clear();
+	m_ClassCinemaBackgrounds.clear();
+	// Stop the owner before clearing level/catalog/replication state it observes.
+	m_pClassAssetPreparation.reset();
+	if (this == s_pActiveInstance)
+		s_pActiveInstance = nullptr;
+	/* A level teardown with the Create Character modal still open (disconnect -> Lobby, world
+	transfer) must release the WM_CHAR capture, or Is_TextInputActive stays stuck true and every
+	keybind it gates stays dead for the rest of the process. */
+	if (m_isCreateCharacterModalOpen)
+		CUIInputRouter::Get().Stop_TextInput();
+	CAnimationTargetService::Unbind(m_pActiveCharacter);
+	if (!m_preserveServerConnectionForTransfer)
+		CNetworkManager::Get().Close_ServerConnection();
+	m_Replication.Reset();
+	CCombatHUDViewModel::Get().Reset_RuntimeState();
+	// Update may have queued this provider before the level transition. Keep its
+	// document valid until Presentation_Manager releases the pending frame owner.
+	m_pMapLightPresentation.reset();
+	if (m_pMapEffectPresentation)
+		m_pMapEffectPresentation->Clear();
+	m_pMapEffectPresentation.reset();
+	m_MapRuntime.Clear();
+	m_pMapLightAuthoringOverride.reset();
+}
+
+HRESULT CLevel_CharacterSelect::Initialize()
+{
+	if (FAILED(__super::Initialize()))
+	{
+		OutputDebugStringA(
+			"[Level_CharacterSelect] base CLevel::Initialize failed.\n");
+		return E_FAIL;
+	}
+	if (!CCombatHUDViewModel::Get().Initialize_Definitions())
+	{
+		OutputDebugStringA((
+			"[Level_CharacterSelect] CombatHUDViewModel::Initialize_Definitions failed: " +
+			CCombatHUDViewModel::Get().Get_Status() + "\n").c_str());
+		return E_FAIL;
+	}
+
+	const CLIENT_LEVEL_DESCRIPTOR* entry =
+		CLevelRegistry::Find(LEVEL::CHARACTER_SELECT);
+	if (nullptr == entry || nullptr == entry->pMapAreaId ||
+		!m_MapRuntime.Load_Area(
+			ETOUI(LEVEL::CHARACTER_SELECT),
+			entry->pMapAreaId,
+			entry->MapLoadScope))
+	{
+		OutputDebugStringA((
+			"[Level_CharacterSelect] " +
+			m_MapRuntime.Get_Status() + "\n").c_str());
+		return E_FAIL;
+	}
+
+	if (!m_MapRuntime.Load_SelfMotions(entry->pMapAreaId))
+		OutputDebugStringA("[Level_CharacterSelect] Optional map self-motions could not be read.\n");
+
+#ifdef _DEBUG
+	/* Optional debug authoring data must never block Server-approved entry. */
+	(void)Debug_ReloadFloorSwapOptions();
+#endif
+
+	if (FAILED(Ready_Lights()) || FAILED(Ready_ServerGameplay()))
+		return E_FAIL;
+
+	LostArk::Shared::CHARACTER_CLASS_ID initialClass =
+		SUPPORTED_CLASSES.front();
+	if (CCharacterSelectionState::Try_Get_SelectedClass(initialClass))
+	{
+		const auto selected = std::find(
+			SUPPORTED_CLASSES.begin(),
+			SUPPORTED_CLASSES.end(),
+			initialClass);
+		if (SUPPORTED_CLASSES.end() == selected)
+		{
+			OutputDebugStringA(
+				"[Level_CharacterSelect] Selected class is not in SUPPORTED_CLASSES.\n");
+			return E_INVALIDARG;
+		}
+		m_iSelectedClassIndex = static_cast<size_t>(
+			std::distance(SUPPORTED_CLASSES.begin(), selected));
+	}
+	if (Load_ClassMovieCategories())
+		(void)Select_ClassCinematic(initialClass);
+
+	if (FAILED(Ready_Camera()))
+		return E_FAIL;
+
+	CWorldSequencePlayer::TARGET_SET selectionTargets;
+	selectionTargets.levelIndex = ETOUI(LEVEL::CHARACTER_SELECT);
+	selectionTargets.pCatalog = &m_MapRuntime.Get_Catalog();
+	selectionTargets.pPlacements = &m_MapRuntime.Get_MutablePlacements();
+	selectionTargets.pDeployRuntime = &m_MapAuthoringDeploy;
+	selectionTargets.device = m_pDevice;
+	selectionTargets.context = m_pContext;
+	m_strClassCinemaPreparationFailure.clear();
+	bool_t cinemaManifestReady = false;
+	if (!CClassSelectionPresentation::Is_Configured())
+		m_strClassCinemaPreparationFailure = "Class selection manifest is missing: Data/Camera/ClassSelection.cinematics.json";
+	else
+		cinemaManifestReady = Load_ClassCinematicBackgrounds(entry->pMapAreaId,
+			entry->pPresentationMapAreaId ? entry->pPresentationMapAreaId : "", entry->PresentationMapLoadScope);
+	if (!cinemaManifestReady)
+		OutputDebugStringA(("[Level_CharacterSelect][ClassCinema] " +
+			m_strClassCinemaPreparationFailure + "\n").c_str());
+	// Background admission is per Area; one missing scene's map cannot disable every movie.
+	if (cinemaManifestReady &&
+		!m_ClassSelectionPresentation.Initialize(entry->pMapAreaId, selectionTargets, m_pCamera))
+	{
+		m_strClassCinemaPreparationFailure = m_ClassSelectionPresentation.Get_Status();
+		OutputDebugStringA(("[Level_CharacterSelect][ClassCinema] " +
+			m_strClassCinemaPreparationFailure + "\n").c_str());
+	}
+
+	m_pClassSelectView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::CHARACTER_SELECT), TEXT("Layer_UI"),
+		L"UI/ClassSelect/ClassSelect_Layout.json");
+	/* Authored layer tints are opaque -- every accordion/right-panel/product-button slot would
+	otherwise sit fully visible from this Level's own load until Update_ServerArena's first tick
+	flips m_eMode to SERVER_ARENA. Update_ClassList/Update_ArenaSpawnButtons's own early-return
+	(still MODE::CONNECTING here) already hides everything they own, so this just runs that path
+	once up front instead of duplicating the same slot list a second time. */
+	Update_ClassList();
+	Update_ArenaSpawnButtons();
+	Update_BrowseButtons();
+
+	m_pCustomizingView = std::make_unique<CCustomizingView>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::CHARACTER_SELECT));
+
+#ifdef _DEBUG
+	m_pDebugRaidEntryPreviewView =
+		std::make_unique<CRaidEntryPreviewView>(
+			m_pDevice, m_pContext, ETOUI(LEVEL::CHARACTER_SELECT));
+#endif
+
+	m_eMode = MODE::CONNECTING;
+	Reset_ArenaSpawnRequest();
+	m_ArenaSpawnAccepted.fill(false);
+	m_ConnectionDeadline =
+		std::chrono::steady_clock::now() + CONNECTION_TIMEOUT;
+	m_strStatus =
+		"Lobby-approved Server Arena; waiting for replicated character...";
+
+	const filesystem::path bgmPath = CRuntimeAssetRoot::Resolve(
+		L"Sound/BGM/Lobby/bgm_wallpaperin.wav");
+	CGameInstance::Get().Play_Music(bgmPath.wstring(), 1.f);
+	return S_OK;
+}
+
+void CLevel_CharacterSelect::Set_BrowseStage(const CLASS_BROWSE_STAGE eStage, const char* pReason)
+{
+	static constexpr const char* NAMES[] = { "CATEGORY", "PREVIEW", "TRIAL" };
+	Write_BrowseLog(std::string("stage ") + NAMES[static_cast<int>(m_eBrowseStage)] + " -> " +
+		NAMES[static_cast<int>(eStage)] + " reason=" + pReason);
+	/* Leaving the standing step gives the camera back before whatever comes next (a category
+	movie, the trial follow camera) asks for it. */
+	if (CLASS_BROWSE_STAGE::PREVIEW != eStage)
+		End_ClassShowcaseCamera();
+	m_eBrowseStage = eStage;
+}
+
+void CLevel_CharacterSelect::End_ClassShowcaseCamera()
+{
+	m_pClassShowcase->Leave();
+	if (!m_bShowcaseCameraActive)
+		return;
+	m_bShowcaseCameraActive = false;
+	if (nullptr != m_pCamera)
+		m_pCamera->End_PresentationOverride(SHOWCASE_CAMERA_OWNER_ID);
+}
+
+void CLevel_CharacterSelect::Update_ClassShowcaseCamera()
+{
+	if (!Is_ClassShowcaseOpen() || nullptr == m_pCamera || nullptr == m_pActiveCharacter ||
+		nullptr == m_pActiveCharacter->Get_Transform())
+	{
+		End_ClassShowcaseCamera();
+		return;
+	}
+	if (!m_bShowcaseCameraActive)
+	{
+		if (!m_pCamera->Begin_PresentationOverride(SHOWCASE_CAMERA_OWNER_ID))
+			return;
+		m_bShowcaseCameraActive = true;
+	}
+	std::string showcaseStatus;
+	const bool_t showcaseReady = m_pClassShowcase->Show(
+		m_MapRuntime, m_pActiveCharacter, showcaseStatus);
+	if (!showcaseReady)
+	{
+		m_pClassShowcase->Hide();
+		if (!showcaseStatus.empty() && showcaseStatus != m_strClassShowcaseFailure)
+		{
+			m_strClassShowcaseFailure = showcaseStatus;
+			m_strStatus = showcaseStatus;
+			OutputDebugStringA(("[Level_CharacterSelect][Showcase] " + showcaseStatus + "\n").c_str());
+		}
+	}
+	else
+		m_strClassShowcaseFailure.clear();
+	// Only the display model and camera use the remote stage; Server state stays in the arena.
+	const auto character = showcaseReady ? m_pClassShowcase->Get_Character() : m_pActiveCharacter;
+	const auto pTransform = character->Get_Transform();
+	const vector_t vPosition = pTransform->Get_State(Engine::STATE::POSITION);
+	vector_t vLook = XMVectorSetY(pTransform->Get_State(Engine::STATE::LOOK), 0.f);
+	if (XMVector3Equal(vLook, XMVectorZero()))
+		vLook = XMVectorSet(0.f, 0.f, 1.f, 0.f);
+	vLook = XMVector3Normalize(vLook);
+	const f32_t fCameraDistance = character->Get_CharacterClass() ==
+		LostArk::Shared::CHARACTER_CLASS_ID::WARLORD ?
+		SHOWCASE_WARLORD_CAMERA_METRES : SHOWCASE_CAMERA_METRES;
+	const f32_t fFramingRatio = fCameraDistance / SHOWCASE_CAMERA_METRES;
+	float3_t vEye{}, vAt{};
+	XMStoreFloat3(&vEye, vPosition + vLook * fCameraDistance +
+		XMVectorSet(0.f, SHOWCASE_EYE_HEIGHT * fFramingRatio, 0.f, 0.f));
+	XMStoreFloat3(&vAt, vPosition +
+		XMVectorSet(0.f, SHOWCASE_LOOK_HEIGHT * fFramingRatio, 0.f, 0.f));
+	m_pCamera->Apply_PresentationPose(SHOWCASE_CAMERA_OWNER_ID, vEye, vAt, SHOWCASE_FOV_DEGREES);
+}
+
+bool_t CLevel_CharacterSelect::Try_GetClassShowcaseFocus(float3_t& outFocus) const
+{
+	if (!Is_ClassShowcaseOpen() || !m_pClassShowcase->Is_Visible())
+		return false;
+	const auto character = m_pClassShowcase->Get_Character();
+	if (!character || !character->Get_Transform())
+		return false;
+	XMStoreFloat3(&outFocus, character->Get_Transform()->Get_State(Engine::STATE::POSITION) +
+		XMVectorSet(0.f, SHOWCASE_LOOK_HEIGHT, 0.f, 0.f));
+	return true;
+}
+
+void CLevel_CharacterSelect::Log_PresentationGate()
+{
+	static constexpr const char* NAMES[] = { "CATEGORY", "PREVIEW", "TRIAL" };
+	static constexpr const char* MODES[] = { "CONNECTING", "SERVER_ARENA", "RETURNING_TO_LOBBY" };
+	const int32_t iOpen = Is_ProductPresentationOpen() ? 1 : 0;
+	if (iOpen == m_iLoggedPresentationOpen)
+		return;
+	m_iLoggedPresentationOpen = iOpen;
+	Write_BrowseLog(std::string("presentationOpen=") + std::to_string(iOpen) + " stage=" +
+		NAMES[static_cast<int>(m_eBrowseStage)] + " mode=" + MODES[static_cast<int>(m_eMode)] +
+		" customizing=" + std::to_string(Is_CustomizingOpen() ? 1 : 0) +
+		" cinematic=" + std::to_string(Is_ClassCinematicActive() ? 1 : 0));
+}
+
+void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
+{
+	Log_PresentationGate();
+	__super::Update(fTimeDelta);
+#ifdef _DEBUG
+	if (!m_bMapAuthoringActive)
+#endif
+	{
+		m_MapRuntime.Update_SelfMotions(fTimeDelta);
+		for (auto& background : m_ClassCinemaBackgrounds)
+			if (background.runtime && background.failure.empty())
+				background.runtime->Update_SelfMotions(fTimeDelta);
+	}
+	if (m_pMapEffectPresentation)
+		m_pMapEffectPresentation->Update_LevelPresentation(fTimeDelta);
+	switch (m_eMode)
+	{
+	case MODE::CONNECTING:
+		Update_Connecting();
+		break;
+	case MODE::SERVER_ARENA:
+		Update_ServerArena();
+		break;
+	case MODE::RETURNING_TO_LOBBY:
+		break;
+	default:
+		break;
+	}
+
+	/* Update_ClassList/Update_ArenaSpawnButtons drive real CUI_Sprite GameObjects now -- same
+	Is_DebugRaidEntryPreviewOpen() reasoning Render() used to gate their old ImGui image draws
+	with (the O-key preview's own left info column and panel frame occupy this same screen
+	region). Unlike the old ImGui pass (which simply stopped drawing that frame), these sprites
+	keep showing their last state unless told otherwise, so the preview being open explicitly
+	hides them (also stopping their hover/click handling) instead of just skipping the call.
+	Is_DebugRaidEntryPreviewOpen() only exists in Debug, so the gate itself has to stay
+	Debug-only too. */
+#ifdef _DEBUG
+	const bool_t isRaidEntryDebugPreviewOpenForClassList = Is_DebugRaidEntryPreviewOpen();
+#else
+	const bool_t isRaidEntryDebugPreviewOpenForClassList = false;
+#endif
+	if (isRaidEntryDebugPreviewOpenForClassList || Is_CustomizingOpen())
+	{
+		Hide_ClassList();
+		Hide_ArenaSpawnButtons();
+		/* Hides the preview/trial slots too: it shows nothing while customizing is open. */
+		Update_BrowseButtons();
+	}
+	else
+	{
+		Update_ClassList();
+		Update_ArenaSpawnButtons();
+		Update_BrowseButtons();
+	}
+	Update_Customizing(fTimeDelta);
+	Update_ClassShowcaseCamera();
+	if (!Can_PlayClassCinematic())
+		m_ClassSelectionPresentation.Stop();
+	else
+		m_ClassSelectionPresentation.Update(fTimeDelta);
+	m_ClassSelectionPresentation.Update_InspectionPicking(Is_ProductPointerHovered());
+	Update_ClassCinematicBackgroundVisibility();
+	Update_CustomizingStageVisibility();
+	const auto& lights = m_pMapLightAuthoringOverride ?
+		m_pMapLightAuthoringOverride : m_pMapLightPresentation;
+	const float3_t lightOffset = m_pClassShowcase->Is_Visible() ?
+		m_pClassShowcase->Get_LightingTranslation() : float3_t{};
+	if (lights && !lights->Submit_Frame(lightOffset) && !m_bMapLightSubmissionFailureReported)
+	{
+		m_bMapLightSubmissionFailureReported = true;
+		OutputDebugStringA(("[Level_CharacterSelect][MapLight] " +
+			lights->Get_Status() + "\n").c_str());
+	}
+}
+
+HRESULT CLevel_CharacterSelect::Render()
+{
+	if (FAILED(__super::Render()))
+		return E_FAIL;
+
+#ifdef _DEBUG
+	CMainApp::Update_DebugWindowTitleWithFps(
+		TEXT("LostArk Character Select - Server Arena"));
+	/* The debug status window would otherwise sit right where the O-key raid-
+	   entry preview's left info column and panel frame want to draw -- hidden
+	   while that preview is open instead of fighting it for the same space. */
+	if (!Is_DebugRaidEntryPreviewOpen())
+		Render_SelectionPanel();
+#endif
+	/* No matching Render_ClassList()/Render_ArenaSpawnButtons() -- migrated to real CUI_Sprite
+	GameObjects on this Level's own "Layer_UI" (see Update_ClassList/Update_ArenaSpawnButtons,
+	called from Update() instead), so CObject_Manager's normal Update/Late_Update/Render cycle
+	draws them without an explicit call here. Render_ClassListText (ImGui-font text only) still
+	needs the same O-key preview gate its old combined function used, since it draws over that
+	same screen region. */
+	/* The roster's sprites are hidden by Update_ClassList's own gate, but this LOA-font pass
+	is a separate call: without the same condition the class name, category rows and identity
+	blurb keep drawing straight through the customizing screen. */
+#ifdef _DEBUG
+	const bool_t isClassListTextHidden =
+		Is_DebugRaidEntryPreviewOpen() || Is_CustomizingOpen();
+#else
+	const bool_t isClassListTextHidden = Is_CustomizingOpen();
+#endif
+	if (!isClassListTextHidden)
+		Render_ClassListText();
+	Render_CreateCharacterProductInputHost();
+	return S_OK;
+}
+
+HRESULT CLevel_CharacterSelect::Ready_Lights()
+{
+	if (!Reload_MapLights())
+		return E_FAIL;
+	const auto* descriptor = CLevelRegistry::Find(LEVEL::CHARACTER_SELECT);
+	if (!descriptor || !descriptor->pMapAreaId)
+		return E_FAIL;
+	const auto effectsPath = CMapAssetCatalog::Get_MapDataRoot() /
+		(std::string(descriptor->pMapAreaId) + ".mapeffects.json");
+	std::error_code effectsError;
+	const bool effectsExist = std::filesystem::exists(effectsPath, effectsError);
+	if (effectsError)
+	{
+		OutputDebugStringA(("[Level_CharacterSelect][MapEffect] Path inspection failed: " +
+			effectsError.message() + "\n").c_str());
+		return E_FAIL;
+	}
+	// Match the Loader's optional ambient document contract for this Area.
+	if (!effectsExist)
+		return S_OK;
+	auto staged = std::make_shared<CMapEffectPresentationRuntime>();
+	std::string status;
+	if (!staged->Load_AmbientArea(ETOUI(LEVEL::CHARACTER_SELECT), descriptor->pMapAreaId, status))
+	{
+		OutputDebugStringA(("[Level_CharacterSelect][MapEffect] " + status + "\n").c_str());
+		return E_FAIL;
+	}
+	m_pMapEffectPresentation = std::move(staged);
+	return S_OK;
+}
+
+bool_t CLevel_CharacterSelect::Reload_MapLights()
+{
+	auto staged = std::make_shared<CMapLightPresentationRuntime>();
+	const auto* descriptor = CLevelRegistry::Find(LEVEL::CHARACTER_SELECT);
+	if (!descriptor || !descriptor->pMapAreaId || !staged->Load_Runtime(descriptor->pMapAreaId))
+	{
+		OutputDebugStringA(("[Level_CharacterSelect][MapLight] " + staged->Get_Status() + "\n").c_str());
+		return false;
+	}
+	m_pMapLightPresentation = std::move(staged);
+	m_bMapLightSubmissionFailureReported = false;
+	return true;
+}
+
+HRESULT CLevel_CharacterSelect::Ready_Camera()
+{
+	if (!CArenaCameraProfile::Load(ARENA_CAMERA_MAP::CHARACTER_SELECT,
+		m_FollowCameraProfile, m_strFollowCameraProfileStatus))
+	{
+		OutputDebugStringA(("[Level_CharacterSelect][FollowCamera] " +
+			m_strFollowCameraProfileStatus + "\n").c_str());
+	}
+	CCamera_Free::CAMERA_FREE_DESC desc{};
+	const float3_t positionOffset = m_FollowCameraProfile.positionOffset;
+	const float3_t lookOffset = CArenaCameraProfile::LookOffset(m_FollowCameraProfile);
+	desc.vEye = float3_t(
+		ARENA_INITIAL_TARGET_X + positionOffset.x,
+		ARENA_INITIAL_TARGET_Y + positionOffset.y,
+		ARENA_INITIAL_TARGET_Z + positionOffset.z);
+	desc.vAt = float3_t(
+		ARENA_INITIAL_TARGET_X + lookOffset.x,
+		ARENA_INITIAL_TARGET_Y + lookOffset.y,
+		ARENA_INITIAL_TARGET_Z + lookOffset.z);
+	desc.fFovy = m_FollowCameraProfile.fovYDegrees;
+	desc.fNear = 0.1f;
+	desc.fFar = 2000.f;
+	desc.fSpeedPerSec = 20.f;
+	desc.fRotationPerSec = 90.f;
+	desc.fMouseSensor = 0.1f;
+	desc.pFollowTarget = nullptr;
+	desc.vPositionOffset = positionOffset;
+	desc.vLookOffset = lookOffset;
+	desc.fFollowResponse = m_FollowCameraProfile.followResponse;
+	desc.fFollowRollDegrees = m_FollowCameraProfile.rotationDegrees.z;
+	desc.isFollowEnabled = false;
+	desc.allowCapturedKeyboardInput = true;
+
+	shared_ptr<CGameObject> gameObject;
+	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+		ETOUI(LEVEL::CHARACTER_SELECT),
+		TEXT("Prototype_GameObject_Camera_Free"),
+		ETOUI(LEVEL::CHARACTER_SELECT),
+		TEXT("Layer_Camera"),
+		&desc,
+		&gameObject)))
+	{
+		OutputDebugStringA(
+			"[Level_CharacterSelect] Ready_Camera: Add_GameObject_to_Layer failed.\n");
+		return E_FAIL;
+	}
+	m_pCamera = dynamic_pointer_cast<CCamera_Free>(gameObject);
+	if (nullptr == m_pCamera)
+	{
+		OutputDebugStringA(
+			"[Level_CharacterSelect] Ready_Camera: spawned object was not a CCamera_Free.\n");
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			ETOUI(LEVEL::CHARACTER_SELECT),
+			TEXT("Layer_Camera"),
+			gameObject);
+		return E_FAIL;
+	}
+	m_pCameraTarget.reset();
+	return S_OK;
+}
+
+bool_t CLevel_CharacterSelect::Set_FollowCameraProfile(
+	const ARENA_CAMERA_PROFILE& profile,
+	std::string& outStatus)
+{
+	if (!CArenaCameraProfile::Validate(profile, outStatus))
+		return false;
+	if (nullptr == m_pCamera || !m_pCamera->Set_FollowPose(
+		profile.positionOffset, CArenaCameraProfile::LookOffset(profile),
+		profile.rotationDegrees.z, profile.fovYDegrees, profile.followResponse))
+	{
+		outStatus = "The active follow camera could not apply these settings.";
+		return false;
+	}
+	m_FollowCameraProfile = profile;
+	if (const auto character = Get_LocalCharacter())
+		CCharacter::Set_MapPresentationSizeProfile(profile);
+	outStatus = "Applied to this map's follow camera. Save to keep these settings.";
+	m_strFollowCameraProfileStatus = outStatus;
+	return true;
+}
+
+HRESULT CLevel_CharacterSelect::Ready_ServerGameplay()
+{
+	const CLIENT_LEVEL_DESCRIPTOR* entry =
+		CLevelRegistry::Find(LEVEL::CHARACTER_SELECT);
+	if (nullptr == entry || nullptr == entry->pMapAreaId)
+		return E_FAIL;
+
+	CClientReplication::DESC desc{};
+	desc.pDevice = m_pDevice;
+	desc.pContext = m_pContext;
+	desc.iPrototypeLevelIndex = ETOUI(LEVEL::CHARACTER_SELECT);
+	desc.iLayerLevelIndex = ETOUI(LEVEL::CHARACTER_SELECT);
+	desc.strMapAreaId = entry->pMapAreaId;
+	desc.strPlayerLayerTag = TEXT("Layer_Player");
+	desc.strWorldEntityLayerTag = TEXT("Layer_WorldEntity");
+	desc.bDeferLocalCharacterClassReplacement = true;
+	if (!m_Replication.Initialize(desc))
+	{
+		OutputDebugStringA(
+			"[Level_CharacterSelect] Ready_ServerGameplay: CClientReplication::Initialize failed.\n");
+		return E_FAIL;
+	}
+
+	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
+	m_pWorldEntityCommandSink =
+		make_shared<CNetworkWorldEntityCommandSink>();
+	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
+	m_PlayerController.Set_MovementSurfaceResolver([this](const float3_t& origin,
+		const float3_t& direction, float3_t& surface)
+	{ return m_MapRuntime.Try_PickMovementSurface(origin, direction, surface); });
+	m_PlayerController.Set_ItemTargetResolver([this](const float3_t& origin, const float3_t& direction)
+	{ return m_Replication.Find_ItemTargetPlayerFromRay(origin, direction); });
+	m_PlayerController.Set_AllowCapturedKeyboardInput(true);
+	if (!m_PlayerController.Initialize_TargetingPreview(
+			ETOUI(LEVEL::CHARACTER_SELECT)))
+	{
+		OutputDebugStringA(
+			"[Level_CharacterSelect] Ready_ServerGameplay: Initialize_TargetingPreview failed.\n");
+		return E_FAIL;
+	}
+	if (!m_PlayerController.Initialize_ClickMoveEffect(
+			ETOUI(LEVEL::CHARACTER_SELECT)))
+	{
+		OutputDebugStringA(
+			"[Level_CharacterSelect] Ready_ServerGameplay: Initialize_ClickMoveEffect failed.\n");
+		return E_FAIL;
+	}
+	return S_OK;
+}
+
+bool_t CLevel_CharacterSelect::Bind_CameraTarget(
+	const shared_ptr<CCharacter>& character)
+{
+	if (nullptr == m_pCamera || nullptr == character ||
+		nullptr == character->Get_Transform())
+	{
+		return false;
+	}
+	CCharacter::Set_MapPresentationSizeProfile(m_FollowCameraProfile);
+	if (m_pCameraTarget.lock() == character)
+		return true;
+
+	m_pCamera->Set_FollowTarget(character->Get_Transform());
+	m_pCamera->Set_FollowEnabled(true);
+	m_pCameraTarget = character;
+	return true;
+}
+
+bool_t CLevel_CharacterSelect::Request_ClassChange(const size_t index)
+{
+	m_ClassSelectionPresentation.Stop();
+	if (m_isCreateCharacterModalOpen || Is_CustomizingOpen() ||
+		MODE::SERVER_ARENA != m_eMode || CLevelTransitionService::Is_Pending() ||
+		index >= SUPPORTED_CLASSES.size() || nullptr == m_pPlayerCommandSink)
+		return false;
+	// Keep only the latest intent. No model IO, parsing, or prototype mutation
+	// occurs in the click handler; the previous Server character remains active.
+	if (m_iRequestedClassIndex != index)
+		Reset_RequestedClassEffectPreparation();
+	m_iRequestedClassIndex = index;
+	if (m_pClassAssetPreparation && m_iPreparingClassIndex != m_iRequestedClassIndex)
+		m_pClassAssetPreparation->Cancel_AsyncPreparation();
+	m_strStatus = std::string("Class preparation requested: ") +
+		Get_CharacterClassName(SUPPORTED_CLASSES[index]) + ".";
+	return true;
+}
+
+void CLevel_CharacterSelect::Advance_ClassAssetPreparation()
+{
+	if (CLevelTransitionService::Is_Pending())
+	{
+		m_iRequestedClassIndex.reset();
+		Reset_RequestedClassEffectPreparation();
+		if (m_pClassAssetPreparation)
+		{
+			m_pClassAssetPreparation->Cancel_AsyncPreparation();
+			HRESULT result; std::string status;
+			(void)m_pClassAssetPreparation->Poll_AsyncPreparation(false, result, status);
+		}
+		return;
+	}
+	if (!m_pClassAssetPreparation)
+		m_pClassAssetPreparation = std::make_unique<CPlayableCharacterAssetService>();
+	if (m_pClassAssetPreparation->Is_Preparing())
+	{
+		const bool_t wanted = m_iPreparingClassIndex == m_iRequestedClassIndex;
+		HRESULT result = E_PENDING;
+		std::string status;
+		if (!m_pClassAssetPreparation->Poll_AsyncPreparation(wanted, result, status))
+		{
+			if (wanted && !status.empty()) m_strStatus = std::move(status);
+			return;
+		}
+		m_iPreparingClassIndex.reset();
+		if (wanted && FAILED(result) && result != HRESULT_FROM_WIN32(ERROR_CANCELLED))
+		{
+			m_iRequestedClassIndex.reset();
+			Reset_RequestedClassEffectPreparation();
+			m_strStatus = status + " The active character was kept.";
+			return;
+		}
+	}
+	if (!m_iRequestedClassIndex) return;
+	const size_t index = *m_iRequestedClassIndex;
+	DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_VIEW pending;
+	const bool_t awaitingSnapshot = m_iPendingClassIndex.has_value() ||
+		m_Replication.Try_Get_DeferredLocalCharacterClassReplacement(pending);
+	if (index == m_iSelectedClassIndex && !awaitingSnapshot)
+	{
+		m_iRequestedClassIndex.reset();
+		Reset_RequestedClassEffectPreparation();
+		m_strStatus = "The selected class is already active.";
+		return;
+	}
+	const auto characterClass = SUPPORTED_CLASSES[index];
+	if (!CPlayableCharacterAssetService::Is_Ready(ETOUI(LEVEL::CHARACTER_SELECT), characterClass))
+	{
+		const HRESULT started = m_pClassAssetPreparation->Begin_AsyncPreparation(
+			m_pDevice, m_pContext, ETOUI(LEVEL::CHARACTER_SELECT), characterClass);
+		if (FAILED(started))
+		{
+			m_iRequestedClassIndex.reset();
+			Reset_RequestedClassEffectPreparation();
+			m_strStatus = "The selected class preparation could not start. The active character was kept.";
+		}
+		else if (started == S_OK) m_iPreparingClassIndex = index;
+		return;
+	}
+	// Commands stay sequential. A later click may prepare while the prior
+	// authoritative snapshot settles, but never replaces that Server decision.
+	if (awaitingSnapshot || CLASS_PRESENTATION_PREPARATION_STATE::IDLE != m_eClassPresentationPreparationState)
+		return;
+
+	// Keep the current authoritative character playable until both its replacement
+	// models and that class's exact Effect targets have settled. Preparing after
+	// the Server command would leave the old body waiting on a new class snapshot.
+	auto effectProbe = CEffectPresentationService::Get_ProductCuePreparationProbe(
+		m_RequestedClassEffectTargets);
+	if (m_iRequestedClassEffectIndex != index ||
+		m_iRequestedClassEffectRevision != effectProbe.iCatalogRevision ||
+		!effectProbe.bCatalogRevisionCurrent)
+	{
+		Reset_RequestedClassEffectPreparation();
+		const auto prepared = CPlayableCharacterAssetService::Get_PreparedPresentation(
+			ETOUI(LEVEL::CHARACTER_SELECT), characterClass);
+		std::string status = prepared ?
+			(prepared->HasSkillBindings ? prepared->EffectStatus : prepared->SkillStatus) :
+			"Class authoring was not prepared with its model prototypes.";
+		// Skill/effect authoring is optional presentation data. A damaged action
+		// stays isolated; it must not reject the Server's playable class itself.
+		if (!prepared || !CEffectPresentationService::Queue_ProductCues_Priority(
+				prepared->HasEffectCues ? prepared->EffectCues.Cues :
+					std::vector<ANIMATION_EFFECT_CUE>{}, m_RequestedClassEffectTargets, status))
+		{
+			m_iRequestedClassIndex.reset();
+			Reset_RequestedClassEffectPreparation();
+			m_strStatus = "Class presentation preparation could not register: " + status +
+				" The active character was kept and remains playable.";
+			return;
+		}
+		m_iRequestedClassEffectIndex = index;
+		effectProbe = CEffectPresentationService::Get_ProductCuePreparationProbe(
+			m_RequestedClassEffectTargets);
+		m_iRequestedClassEffectRevision = effectProbe.iCatalogRevision;
+	}
+	if (!Is_ProductPrewarmTargetActivationReady(effectProbe, false))
+	{
+		m_strStatus = std::string("Preparing ") + Get_CharacterClassName(characterClass) +
+			" Product Effects " + std::to_string(effectProbe.iPreparedCount +
+				effectProbe.iFailedCount + effectProbe.iUnavailableCount) + "/" +
+			std::to_string(effectProbe.iTargetCount) +
+			". The active character remains playable.";
+		return;
+	}
+	// Failed/unavailable individual Effects are terminal isolation outcomes,
+	// not an endless class-change gate. The commit path preserves their warning.
+	const std::uint32_t sequence = m_iNextClassChangeSequence++;
+	if (0u == m_iNextClassChangeSequence)
+		m_iNextClassChangeSequence = 1u;
+	if (!m_pPlayerCommandSink->Request_ChangeCharacterClass(
+		sequence, characterClass))
+	{
+		m_strStatus = "The class change request could not be sent.";
+		m_iRequestedClassIndex.reset();
+		Reset_RequestedClassEffectPreparation();
+		return;
+	}
+	m_iPendingClassIndex = index;
+	m_iPendingClassChangeSequence = sequence;
+	m_ClassChangeDeadline =
+		std::chrono::steady_clock::now() + CLASS_CHANGE_TIMEOUT;
+	m_strStatus = std::string("Server class change requested: ") +
+		Get_CharacterClassName(characterClass) + ".";
+	m_iRequestedClassIndex.reset();
+	Reset_RequestedClassEffectPreparation();
+}
+
+void CLevel_CharacterSelect::Consume_ClassChangeResults()
+{
+	using namespace LostArk::Shared;
+	S2C_CHARACTER_CLASS_CHANGE_RESULT result{};
+	while (CNetworkManager::Get().Try_Consume_CharacterClassChangeResult(result))
+	{
+		if (!m_iPendingClassIndex.has_value() ||
+			result.iClientSequence != m_iPendingClassChangeSequence ||
+			result.eRequestedClass != SUPPORTED_CLASSES[*m_iPendingClassIndex])
+		{
+			continue;
+		}
+		if (CHARACTER_CLASS_CHANGE_RESULT::ACCEPTED == result.eResult)
+		{
+			m_strStatus = "Server approved the class change; waiting for snapshot.";
+			continue;
+		}
+		m_iPendingClassIndex.reset();
+		m_iPendingClassChangeSequence = 0u;
+		switch (result.eResult)
+		{
+		case CHARACTER_CLASS_CHANGE_RESULT::REJECTED_SAME_CLASS:
+			m_strStatus = "Server reports that class is already active.";
+			break;
+		case CHARACTER_CLASS_CHANGE_RESULT::REJECTED_STALE_SEQUENCE:
+			m_strStatus = "Server rejected a stale class change request.";
+			break;
+		case CHARACTER_CLASS_CHANGE_RESULT::REJECTED_UNSUPPORTED_CLASS:
+			m_strStatus = "Server rejected an unsupported class.";
+			break;
+		case CHARACTER_CLASS_CHANGE_RESULT::REJECTED_WRONG_WORLD:
+			m_strStatus = "Class changes are unavailable in this Server world.";
+			break;
+		default:
+			m_strStatus = "Server rejected the class change; the active character was kept.";
+			break;
+		}
+	}
+}
+
+bool_t CLevel_CharacterSelect::Advance_DeferredClassPresentation()
+{
+	using namespace LostArk::Shared;
+	DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_VIEW Pending;
+	if (!m_Replication.Try_Get_DeferredLocalCharacterClassReplacement(Pending))
+	{
+		Reset_ClassPresentationPreparation();
+		return true;
+	}
+	if (0u == Pending.iGeneration || 0u == Pending.iServerTick ||
+		INVALID_NET_ENTITY_ID == Pending.iNetEntityId ||
+		!Is_Supported_Playable_Character_Class(Pending.eCharacterClass))
+	{
+		m_strStatus =
+			"Deferred class presentation snapshot identity is invalid.";
+		return false;
+	}
+
+	const bool_t bNewGeneration =
+		CLASS_PRESENTATION_PREPARATION_STATE::IDLE ==
+			m_eClassPresentationPreparationState ||
+		m_iClassPresentationPreparationGeneration != Pending.iGeneration ||
+		m_iClassPresentationNetEntityId != Pending.iNetEntityId ||
+		m_eClassPresentationTargetClass != Pending.eCharacterClass;
+	if (bNewGeneration)
+	{
+		Reset_ClassPresentationPreparation();
+		m_strClassPresentationCommitWarning.clear();
+		m_iClassPresentationPreparationGeneration = Pending.iGeneration;
+		m_iClassPresentationNetEntityId = Pending.iNetEntityId;
+		m_eClassPresentationTargetClass = Pending.eCharacterClass;
+		m_eClassPresentationPreparationState =
+			CLASS_PRESENTATION_PREPARATION_STATE::WAITING_FOR_PRODUCT_EFFECTS;
+
+		const auto IsolateRegistrationFailure =
+			[this](const std::string& Status)
+		{
+			m_eClassPresentationPreparationState =
+				CLASS_PRESENTATION_PREPARATION_STATE::
+					REGISTRATION_FAILURE_ISOLATED;
+			m_ClassPresentationEffectTargets.clear();
+			m_strClassPresentationPreparationFailure = Status;
+			OutputDebugStringA((
+				"[Level_CharacterSelect] Class Effect preparation isolated: " +
+				Status + "\n").c_str());
+		};
+
+		const CHARACTER_SPEC* pSpec =
+			CCharacterCatalog::Find_Spec(Pending.eCharacterClass);
+		if (nullptr == pSpec || nullptr == pSpec->pAssetName)
+		{
+			IsolateRegistrationFailure(
+				"Server class has no animation asset spec.");
+		}
+		else
+		{
+			const auto Prepared = CPlayableCharacterAssetService::Get_PreparedPresentation(
+				ETOUI(LEVEL::CHARACTER_SELECT), Pending.eCharacterClass);
+			std::string Status = Prepared ? Prepared->EffectStatus : "Class authoring was not prepared with its model prototypes.";
+			if (Prepared && !Prepared->HasSkillBindings)
+				m_strClassPresentationCommitWarning =
+					"Skill presentation isolated: " + Prepared->SkillStatus + ".";
+			if (!Prepared || !Prepared->HasEffectCues ||
+				!CEffectPresentationService::Queue_ProductCues_Priority(
+					Prepared->EffectCues.Cues,
+					m_ClassPresentationEffectTargets,
+					Status))
+			{
+				IsolateRegistrationFailure(Status);
+			}
+			else if (!Prepared->EffectCues.UnavailableEffectAssetIds.empty())
+			{
+				const auto& unavailable = Prepared->EffectCues.UnavailableEffectAssetIds;
+				if (!m_strClassPresentationCommitWarning.empty())
+					m_strClassPresentationCommitWarning += " ";
+				m_strClassPresentationCommitWarning += std::to_string(unavailable.size()) +
+					" authored Effect target(s) absent from the catalog were isolated. First: " +
+					unavailable.front() + ".";
+			}
+		}
+	}
+
+	const EFFECT_PRODUCT_PREWARM_TARGET_PROBE Probe =
+		CEffectPresentationService::Get_ProductCuePreparationProbe(
+			m_ClassPresentationEffectTargets);
+	const bool_t bRegistrationFailureIsolated =
+		CLASS_PRESENTATION_PREPARATION_STATE::
+			REGISTRATION_FAILURE_ISOLATED ==
+		m_eClassPresentationPreparationState;
+	if (!Is_ProductPrewarmTargetActivationReady(
+			Probe, bRegistrationFailureIsolated))
+	{
+		if (bRegistrationFailureIsolated)
+		{
+			m_strStatus =
+				"Class Effect preparation was isolated; waiting for the "
+				"current Product Effect catalog revision before presentation commit.";
+		}
+		else
+		{
+			m_strStatus = std::string("Preparing ") +
+				Get_CharacterClassName(Pending.eCharacterClass) +
+				" Product Effects " +
+				std::to_string(Probe.iPreparedCount + Probe.iFailedCount +
+					Probe.iUnavailableCount) + "/" +
+				std::to_string(Probe.iTargetCount) +
+				" (selected pending " +
+				std::to_string(Probe.iPendingCount) +
+				", background pending " +
+				std::to_string(Probe.iQueuePendingCount) + ").";
+		}
+		return true;
+	}
+
+	/* Replacement is attempted once per stable class/entity generation.  Repeated
+	   snapshots update the staged state, but cannot create a 20 Hz clone-failure
+	   loop; only a different authoritative target generation may retry. */
+	if (m_hasClassPresentationCommitAttempted)
+		return true;
+	m_hasClassPresentationCommitAttempted = true;
+	const DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT CommitResult =
+		m_Replication.Commit_DeferredLocalCharacterClassReplacement();
+	switch (CommitResult)
+	{
+	case DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::NO_PENDING:
+		Reset_ClassPresentationPreparation();
+		return true;
+
+	case DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::COMMITTED:
+		if (bRegistrationFailureIsolated)
+		{
+			if (!m_strClassPresentationCommitWarning.empty())
+				m_strClassPresentationCommitWarning += " ";
+			m_strClassPresentationCommitWarning +=
+				"Effect preparation was isolated: " +
+				m_strClassPresentationPreparationFailure;
+		}
+		else if (0u != Probe.iFailedCount + Probe.iUnavailableCount)
+		{
+			if (!m_strClassPresentationCommitWarning.empty())
+				m_strClassPresentationCommitWarning += " ";
+			m_strClassPresentationCommitWarning +=
+				std::to_string(
+					Probe.iFailedCount + Probe.iUnavailableCount) +
+				" Product Effect target(s) were isolated.";
+		}
+		m_strStatus = std::string("Prepared and committed ") +
+			Get_CharacterClassName(Pending.eCharacterClass) +
+			" from Server snapshot generation " +
+			std::to_string(Pending.iGeneration) + ".";
+		Reset_ClassPresentationPreparation();
+		return true;
+
+	case DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::RECOVERED_FAILURE:
+		m_strStatus =
+			"Class presentation commit failed; returning to Lobby instead of leaving Character Select input blocked.";
+		return false;
+
+	case DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::FATAL_FAILURE:
+	default:
+		m_strStatus = "Deferred class presentation commit failed fatally.";
+		return false;
+	}
+}
+
+bool_t CLevel_CharacterSelect::Is_ClassPresentationPreparationPending() const
+{
+	return m_iRequestedClassIndex ||
+		(m_pClassAssetPreparation && m_pClassAssetPreparation->Is_Preparing()) ||
+		Is_AuthoritativeClassReplacementPending();
+}
+
+bool_t CLevel_CharacterSelect::Is_AuthoritativeClassReplacementPending() const
+{
+	// The request has left the Client, so the Server may already use the new
+	// skill profile even before its snapshot arrives. Do not submit old skills.
+	if (m_iPendingClassIndex || CLASS_PRESENTATION_PREPARATION_STATE::IDLE !=
+		m_eClassPresentationPreparationState)
+		return true;
+	DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_VIEW pending;
+	return m_Replication.Try_Get_DeferredLocalCharacterClassReplacement(pending);
+}
+
+void CLevel_CharacterSelect::Reset_RequestedClassEffectPreparation()
+{
+	m_iRequestedClassEffectIndex.reset();
+	m_iRequestedClassEffectRevision = 0u;
+	m_RequestedClassEffectTargets.clear();
+}
+
+void CLevel_CharacterSelect::Reset_ClassPresentationPreparation()
+{
+	m_eClassPresentationPreparationState =
+		CLASS_PRESENTATION_PREPARATION_STATE::IDLE;
+	m_iClassPresentationPreparationGeneration = 0u;
+	m_iClassPresentationNetEntityId =
+		LostArk::Shared::INVALID_NET_ENTITY_ID;
+	m_eClassPresentationTargetClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END;
+	m_hasClassPresentationCommitAttempted = false;
+	m_ClassPresentationEffectTargets.clear();
+	m_strClassPresentationPreparationFailure.clear();
+}
+
+bool_t CLevel_CharacterSelect::Synchronize_LocalCharacter()
+{
+	const shared_ptr<CCharacter> localCharacter =
+		m_Replication.Get_LocalCharacter();
+	if (nullptr == localCharacter || nullptr == localCharacter->Get_Spec())
+		return false;
+	const auto selected = std::find(
+		SUPPORTED_CLASSES.begin(), SUPPORTED_CLASSES.end(),
+		localCharacter->Get_Spec()->eCharacterClass);
+	if (SUPPORTED_CLASSES.end() == selected)
+		return false;
+	const size_t selectedIndex = static_cast<size_t>(
+		std::distance(SUPPORTED_CLASSES.begin(), selected));
+
+	const bool_t bPresentationChanged = m_pActiveCharacter != localCharacter;
+	if (bPresentationChanged)
+	{
+		CAnimationTargetService::Unbind(m_pActiveCharacter);
+		CAnimationTargetService::Bind(localCharacter);
+		if (!Bind_CameraTarget(localCharacter))
+		{
+			return false;
+		}
+		m_PlayerController.Rebind_LocalCharacter(localCharacter);
+		m_pActiveCharacter = localCharacter;
+		/* Visual sets belong to one class, so the new model starts bare rather than
+		carrying ids Apply_Preview would reject for the whole outfit. */
+		m_CustomizingOutfit = {};
+		/* Character creation keeps the head bare for the hairstyle grid, so the new
+		class needs its own hairstyle put on straight away or it stands there bald. */
+		if (nullptr != m_pCustomizingView && m_pCustomizingView->Is_Open())
+			Apply_CustomizingHair();
+	}
+	m_iSelectedClassIndex = selectedIndex;
+	if (!CCharacterSelectionState::Select(
+		localCharacter->Get_Spec()->eCharacterClass))
+	{
+		return false;
+	}
+	if (m_iPendingClassIndex.has_value() &&
+		*m_iPendingClassIndex == selectedIndex)
+	{
+		m_iPendingClassIndex.reset();
+		m_iPendingClassChangeSequence = 0u;
+		m_strStatus = std::string("Class changed to ") +
+			Get_CharacterClassName(localCharacter->Get_Spec()->eCharacterClass) +
+			". Skills now resolve from the new class.";
+		if (!m_strClassPresentationCommitWarning.empty())
+		{
+			m_strStatus += " " + m_strClassPresentationCommitWarning;
+			m_strClassPresentationCommitWarning.clear();
+		}
+	}
+	else if (bPresentationChanged &&
+		!m_strClassPresentationCommitWarning.empty())
+	{
+		m_strStatus += " " + m_strClassPresentationCommitWarning;
+		m_strClassPresentationCommitWarning.clear();
+	}
+	return true;
+}
+
+void CLevel_CharacterSelect::Update_Connecting()
+{
+	CNetworkManager& network = CNetworkManager::Get();
+	if (!network.Is_Connected())
+	{
+		Fail_ServerArena(
+			"Server disconnected before arena admission.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_CONNECTION_LOST);
+		return;
+	}
+	if (!m_Replication.Update())
+	{
+		Fail_ServerArena(
+			"Arena replication failed while staging the character.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_REPLICATION_FAILED);
+		return;
+	}
+	if (nullptr != m_Replication.Get_LocalCharacter())
+	{
+		if (!Commit_ServerArena())
+			Fail_ServerArena(
+				"Replicated character could not bind to Server Arena.",
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+					CLIENT_REPLICATION_FAILED);
+		return;
+	}
+	if (std::chrono::steady_clock::now() >= m_ConnectionDeadline)
+		Fail_ServerArena(
+			"Server arena admission timed out after 5 seconds.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_APPROVAL_TIMEOUT);
+}
+
+bool_t CLevel_CharacterSelect::Commit_ServerArena()
+{
+	const shared_ptr<CCharacter> localCharacter =
+		m_Replication.Get_LocalCharacter();
+	if (nullptr == localCharacter)
+	{
+		return false;
+	}
+	m_PlayerController.Set_LocalCharacter(localCharacter);
+	m_pActiveCharacter.reset();
+	if (!Synchronize_LocalCharacter())
+		return false;
+
+	m_eMode = MODE::SERVER_ARENA;
+	m_strStatus =
+		"Server Arena active. Select a class thumbnail, then test its skill keys.";
+	return true;
+}
+
+void CLevel_CharacterSelect::Update_ServerArena()
+{
+	/* A Debug arena transfer publishes S2C_ENTER_ACCEPTED before the target
+	world's spawn/snapshot events. Consume that authority edge first so this
+	Character Select replication instance never tries to present Kakul entities
+	with the Character Select map/prototype scope. */
+	const SERVER_WORLD_TRANSFER_PUMP_RESULT transferResult =
+		CLevelTransitionService::Pump_ServerApprovedWorldTransfer(
+			LEVEL::CHARACTER_SELECT);
+	if (SERVER_WORLD_TRANSFER_PUMP_RESULT::REQUESTED == transferResult)
+	{
+		m_preserveServerConnectionForTransfer = true;
+		return;
+	}
+	if (SERVER_WORLD_TRANSFER_PUMP_RESULT::RECOVERY_REQUESTED == transferResult)
+	{
+		return;
+	}
+
+	Consume_ClassChangeResults();
+	LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT spawnResult{};
+	while (CNetworkManager::Get().Try_Consume_WorldEntitySpawnResult(
+		spawnResult))
+	{
+		const auto option = std::find_if(
+			ARENA_SPAWN_OPTIONS.begin(),
+			ARENA_SPAWN_OPTIONS.end(),
+			[&spawnResult](const ARENA_SPAWN_OPTION& candidate)
+			{
+				return spawnResult.strPlacementId == candidate.pStableId;
+			});
+		if (ARENA_SPAWN_OPTIONS.end() == option)
+			continue;
+		const size_t optionIndex = static_cast<size_t>(
+			std::distance(ARENA_SPAWN_OPTIONS.begin(), option));
+		if (LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::REJECTED ==
+			spawnResult.eResult)
+		{
+			m_ArenaSpawnAccepted[optionIndex] = false;
+			m_strStatus = std::string{ "Server rejected " } +
+				option->pLabel + " spawn; retry is available.";
+		}
+		else
+		{
+			m_ArenaSpawnAccepted[optionIndex] = true;
+			m_strStatus = std::string{ "Server accepted " } +
+				option->pLabel + " spawn.";
+		}
+		if (m_iPendingArenaSpawnIndex == optionIndex)
+		{
+			if (LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::REJECTED ==
+				spawnResult.eResult)
+			{
+				m_pArenaSpawnGate->Mark_RequestFailed();
+				m_iPendingArenaSpawnIndex.reset();
+				m_iArenaSpawnIntentIndex.reset();
+				m_ValtanEffectPreparationTargets.clear();
+			}
+			else
+			{
+				Reset_ArenaSpawnRequest();
+			}
+		}
+	}
+	if (!m_Replication.Update())
+	{
+		Fail_ServerArena(
+			"Server presentation failed.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_REPLICATION_FAILED);
+		return;
+	}
+	if (!Advance_DeferredClassPresentation())
+	{
+		Fail_ServerArena(
+			"Deferred Server class presentation failed.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_REPLICATION_FAILED);
+		return;
+	}
+	string presentationFailure;
+	if (m_Replication.Try_Consume_PresentationFailure(presentationFailure))
+		m_strStatus = std::move(presentationFailure);
+	if (m_Replication.Has_PendingConnectionLoss() ||
+		!CNetworkManager::Get().Is_Connected())
+	{
+		Fail_ServerArena(
+			"Server disconnected.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_CONNECTION_LOST);
+		return;
+	}
+
+	if (!Synchronize_LocalCharacter())
+	{
+		Fail_ServerArena(
+			"The replicated local character is unavailable.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+				CLIENT_REPLICATION_FAILED);
+		return;
+	}
+	Advance_ClassAssetPreparation();
+	if (Is_ProductPointerHovered() || m_ClassSelectionPresentation.Is_InspectionPickArmed())
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
+	if (!m_isCreateCharacterModalOpen && !Is_ProductPresentationOpen() &&
+		!Is_AuthoritativeClassReplacementPending())
+	{
+		m_PlayerController.Update(
+			nullptr != m_pCamera && m_pCamera->Is_FollowEnabled());
+	}
+	DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_VIEW pendingClassSnapshot;
+	if (m_iPendingClassIndex.has_value() &&
+		!m_Replication.Try_Get_DeferredLocalCharacterClassReplacement(pendingClassSnapshot) &&
+		CLASS_PRESENTATION_PREPARATION_STATE::IDLE == m_eClassPresentationPreparationState &&
+		std::chrono::steady_clock::now() >= m_ClassChangeDeadline)
+	{
+		m_iPendingClassIndex.reset();
+		m_iPendingClassChangeSequence = 0u;
+		m_strStatus =
+			"Class change was not observed within 5 seconds; the active presentation was kept.";
+	}
+	for (size_t index = 0; index < ARENA_SPAWN_OPTIONS.size(); ++index)
+	{
+		if (m_Replication.Has_WorldEntity(
+			ARENA_SPAWN_OPTIONS[index].pArchetypeId))
+		{
+			m_ArenaSpawnAccepted[index] = true;
+			if (m_iPendingArenaSpawnIndex == index ||
+				m_iArenaSpawnIntentIndex == index)
+			{
+				Reset_ArenaSpawnRequest();
+			}
+		}
+	}
+	Advance_ArenaSpawnRequest();
+	if (m_iPendingArenaSpawnIndex.has_value() &&
+		std::chrono::steady_clock::now() >= m_ArenaSpawnRequestDeadline)
+	{
+		m_pArenaSpawnGate->Mark_ResponseTimedOut();
+		m_iPendingArenaSpawnIndex.reset();
+		m_iArenaSpawnIntentIndex.reset();
+		m_ValtanEffectPreparationTargets.clear();
+		m_strStatus =
+			"Arena spawn response timed out; retry is available.";
+	}
+}
+
+void CLevel_CharacterSelect::Fail_ServerArena(
+	const string& reason,
+	const LostArk::Shared::SESSION_DIAGNOSTIC_REASON diagnosticReason)
+{
+	CLevelTransitionService::Report_Recovery(
+		diagnosticReason,
+		"character-select.server-arena-failure",
+		reason);
+	Return_ServerArenaToLobby(
+		reason, "character-select.server-disconnect");
+}
+
+void CLevel_CharacterSelect::Leave_ServerArena()
+{
+	Return_ServerArenaToLobby(
+		"Leaving Server Arena.", "character-select.back");
+}
+
+void CLevel_CharacterSelect::Return_ServerArenaToLobby(
+	const string& reason,
+	const char_t* pTransitionSource)
+{
+	m_ClassSelectionPresentation.Stop();
+	if (m_pClassAssetPreparation) m_pClassAssetPreparation->Cancel_AsyncPreparation();
+	m_iRequestedClassIndex.reset();
+	CAnimationTargetService::Unbind(m_pActiveCharacter);
+	m_pActiveCharacter.reset();
+	CNetworkManager::Get().Close_ServerConnection();
+	m_Replication.Reset();
+	m_PlayerController.Set_LocalCharacter(nullptr);
+	m_eMode = MODE::RETURNING_TO_LOBBY;
+	Reset_ArenaSpawnRequest();
+	m_iPendingClassIndex.reset();
+	m_iPendingClassChangeSequence = 0u;
+	Reset_ClassPresentationPreparation();
+	m_strClassPresentationCommitWarning.clear();
+	m_strStatus = reason + " Returning to Lobby; local gameplay fallback is disabled.";
+	if (!CLevelTransitionService::Request_Load(
+		LEVEL::LOBBY,
+		pTransitionSource))
+	{
+		m_strStatus += " " + CLevelTransitionService::Get_Status();
+	}
+}
+
+bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
+{
+	if (m_isCreateCharacterModalOpen || MODE::SERVER_ARENA != m_eMode ||
+		Is_ClassPresentationPreparationPending() ||
+		m_iSelectedArenaSpawnIndex >= ARENA_SPAWN_OPTIONS.size() ||
+		m_iPendingArenaSpawnIndex.has_value() ||
+		m_pArenaSpawnGate->Is_Busy() ||
+		m_ArenaSpawnAccepted[m_iSelectedArenaSpawnIndex])
+	{
+		return false;
+	}
+	const ARENA_SPAWN_OPTION& option =
+		ARENA_SPAWN_OPTIONS[m_iSelectedArenaSpawnIndex];
+	if (!m_pArenaSpawnGate->Begin(option.requiresValtanPrewarm))
+		return false;
+	m_iArenaSpawnIntentIndex = m_iSelectedArenaSpawnIndex;
+
+	if (option.requiresValtanPrewarm)
+	{
+		CValtanCanonicalProductReadAdmission ProductAdmission;
+		std::string Status;
+		VALTAN_CANONICAL_READ_DIAGNOSTIC ProductDiagnostic;
+		if (!ProductAdmission.Acquire(ProductDiagnostic))
+		{
+			Isolate_ValtanSpawnPreparationFailure(
+				ProductDiagnostic.strStatus, false);
+			return false;
+		}
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
+		if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
+				CueDocument, Status) || CueDocument.Cues.empty())
+		{
+			if (Status.empty())
+				Status = "Valtan Product Effect cue contract has no targets.";
+			Isolate_ValtanSpawnPreparationFailure(Status, false);
+			return false;
+		}
+
+		const BOSS_ACTOR_ENTRY* pBossActor = CActorCatalog::Find_Boss(
+			CueDocument.strOwnerArchetypeId);
+		if (nullptr == pBossActor ||
+			pBossActor->combatObjectVisuals.empty())
+		{
+			Status = nullptr == pBossActor ? CActorCatalog::Get_Status() :
+				"Valtan BossCatalog has no combat-object visuals to prepare.";
+			Isolate_ValtanSpawnPreparationFailure(Status, false);
+			return false;
+		}
+		std::vector<std::string> EffectAssetIds{
+			"effect.valtan.action.420627.stage000.full.restore",
+			"effect.valtan.action.420628.stage000.full.restore" };
+		EffectAssetIds.reserve(CueDocument.Cues.size() +
+			pBossActor->combatObjectVisuals.size());
+#ifdef _DEBUG
+		std::vector<std::string> OptionalV1EffectAssetIds;
+		OptionalV1EffectAssetIds.reserve(CueDocument.Cues.size());
+#endif
+		for (const VALTAN_PATTERN_EFFECT_CUE& Cue : CueDocument.Cues)
+		{
+			EffectAssetIds.push_back(Cue.strEffectAssetId);
+		#ifdef _DEBUG
+			if (!Cue.strV1EffectAssetId.empty())
+				OptionalV1EffectAssetIds.push_back(Cue.strV1EffectAssetId);
+		#endif
+		}
+		for (const BOSS_COMBAT_OBJECT_VISUAL_ENTRY& Visual :
+			pBossActor->combatObjectVisuals)
+		{
+			if (BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V1 ==
+				Visual.activeEffectKind)
+			{
+				EffectAssetIds.push_back(Visual.effectAssetId);
+			}
+			if (!Visual.hitEffectAssetId.empty())
+				EffectAssetIds.push_back(Visual.hitEffectAssetId);
+			if (!Visual.armedEffectAssetId.empty())
+				EffectAssetIds.push_back(Visual.armedEffectAssetId);
+		}
+		if (!ProductAdmission.Validate_StillCurrent(Status))
+		{
+			Isolate_ValtanSpawnPreparationFailure(Status, false);
+			return false;
+		}
+#ifdef _DEBUG
+		/* The Debug V1 audition is background preparation only. The required
+		   V0 enqueue below is deliberately last so it owns the priority FIFO and
+		   the spawn gate observes only V0/combat-object targets. */
+		if (!OptionalV1EffectAssetIds.empty())
+		{
+			std::vector<std::string> IgnoredV1Targets;
+			std::string V1Status;
+			if (!CEffectPresentationService::Queue_ProductTargets_Priority(
+					OptionalV1EffectAssetIds, IgnoredV1Targets, V1Status))
+			{
+				OutputDebugStringA((
+					"[Level_CharacterSelect] Optional Valtan Material V1 prewarm registration isolated: " +
+					V1Status + "\n").c_str());
+			}
+		}
+#endif
+		if (!CEffectPresentationService::Queue_ProductTargets_Priority(
+				EffectAssetIds,
+				m_ValtanEffectPreparationTargets,
+				Status) || m_ValtanEffectPreparationTargets.empty())
+		{
+			if (Status.empty())
+				Status = "No unique Valtan Product Effect target was registered.";
+			Isolate_ValtanSpawnPreparationFailure(Status, false);
+			return false;
+		}
+		m_ValtanPrewarmDeadline = std::chrono::steady_clock::now() +
+			CCharacterSelectArenaSpawnGate::PREWARM_TIMEOUT;
+		m_strStatus = "Priority-prewarming " +
+			std::to_string(m_ValtanEffectPreparationTargets.size()) +
+			" unique Valtan Product Effects before the Server spawn request.";
+		return true;
+	}
+
+	Advance_ArenaSpawnRequest();
+	return m_iPendingArenaSpawnIndex == m_iSelectedArenaSpawnIndex;
+}
+
+void CLevel_CharacterSelect::Advance_ArenaSpawnRequest()
+{
+	if (!m_iArenaSpawnIntentIndex.has_value() ||
+		*m_iArenaSpawnIntentIndex >= ARENA_SPAWN_OPTIONS.size())
+	{
+		return;
+	}
+	const size_t optionIndex = *m_iArenaSpawnIntentIndex;
+	const ARENA_SPAWN_OPTION& option = ARENA_SPAWN_OPTIONS[optionIndex];
+
+	if (m_pArenaSpawnGate->Is_Preparing())
+	{
+		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE Probe =
+			CEffectPresentationService::Get_ProductCuePreparationProbe(
+				m_ValtanEffectPreparationTargets);
+		if (Probe.bSettled)
+		{
+			const size_t iExpectedTargetCount =
+				m_ValtanEffectPreparationTargets.size();
+			const bool_t bAllTargetsPrepared =
+				0u != iExpectedTargetCount &&
+				Probe.iTargetCount == iExpectedTargetCount &&
+				Probe.iPreparedCount == iExpectedTargetCount &&
+				0u == Probe.iPendingCount && 0u == Probe.iFailedCount &&
+				0u == Probe.iUnavailableCount;
+			if (!bAllTargetsPrepared ||
+				!m_pArenaSpawnGate->Mark_PrewarmReady())
+			{
+				Isolate_ValtanSpawnPreparationFailure(
+					"One or more Valtan Product Effects failed closed during "
+					"priority prewarm.", false);
+				return;
+			}
+		}
+		else
+		{
+			if (std::chrono::steady_clock::now() >= m_ValtanPrewarmDeadline)
+			{
+				Isolate_ValtanSpawnPreparationFailure(
+					"Valtan Product Effect priority prewarm timed out after "
+					"30 seconds.", true);
+				return;
+			}
+			m_strStatus = "Priority-prewarming Valtan Product Effects " +
+				std::to_string(Probe.iPreparedCount) + "/" +
+				std::to_string(Probe.iTargetCount) +
+				" (boss pending " + std::to_string(Probe.iPendingCount) +
+				", total preserved queue pending " +
+				std::to_string(Probe.iQueuePendingCount) + ").";
+			return;
+		}
+	}
+
+	if (CHARACTER_SELECT_ARENA_SPAWN_GATE_STATE::REQUEST_READY !=
+		m_pArenaSpawnGate->Get_State())
+	{
+		return;
+	}
+	if (option.requiresValtanPrewarm &&
+		FAILED(CValtanPresentationAssetService::Ensure_Prototypes(
+			m_pDevice,
+			m_pContext,
+			ETOUI(LEVEL::CHARACTER_SELECT))))
+	{
+		Isolate_ValtanSpawnPreparationFailure(
+			"Valtan prototypes failed to prepare after Product Effect prewarm.",
+			false);
+		return;
+	}
+
+	if (!m_pArenaSpawnGate->Try_ConsumeServerRequest())
+		return;
+	if (nullptr == m_pWorldEntityCommandSink ||
+		!m_pWorldEntityCommandSink->Request_SpawnWorldEntity(option.pStableId))
+	{
+		m_pArenaSpawnGate->Mark_RequestFailed();
+		m_iArenaSpawnIntentIndex.reset();
+		m_ValtanEffectPreparationTargets.clear();
+		m_strStatus = std::string{ option.pLabel } +
+			" spawn request could not be sent; retry is available.";
+		return;
+	}
+	m_iPendingArenaSpawnIndex = optionIndex;
+	m_ArenaSpawnRequestDeadline =
+		std::chrono::steady_clock::now() + ARENA_SPAWN_REQUEST_TIMEOUT;
+	m_strStatus = std::string{ option.pLabel } +
+		" spawn requested from Server.";
+}
+
+void CLevel_CharacterSelect::Isolate_ValtanSpawnPreparationFailure(
+	const std::string& reason,
+	const bool_t bTimedOut)
+{
+	m_pArenaSpawnGate->Mark_PrewarmFailed(bTimedOut);
+	m_iArenaSpawnIntentIndex.reset();
+	m_ValtanEffectPreparationTargets.clear();
+	m_strStatus = reason +
+		" No Server spawn was requested; retry is available.";
+	OutputDebugStringA((
+		"[Level_CharacterSelect] Valtan spawn preparation isolated: " +
+		m_strStatus + "\n").c_str());
+}
+
+void CLevel_CharacterSelect::Reset_ArenaSpawnRequest()
+{
+	m_pArenaSpawnGate->Reset();
+	m_iArenaSpawnIntentIndex.reset();
+	m_iPendingArenaSpawnIndex.reset();
+	m_ValtanEffectPreparationTargets.clear();
+}
+
+void CLevel_CharacterSelect::Open_CreateCharacterModal()
+{
+	if (MODE::SERVER_ARENA != m_eMode ||
+		m_iSelectedClassIndex >= SUPPORTED_CLASSES.size() ||
+		m_iPendingClassIndex.has_value() ||
+		Is_ClassPresentationPreparationPending() ||
+		CLevelTransitionService::Is_Pending())
+	{
+		m_strStatus =
+			"Character creation is unavailable while another action is pending.";
+		return;
+	}
+
+	m_isCreateCharacterModalOpen = true;
+	m_strStatus = "Enter a 1-32 byte nickname, then confirm.";
+	/* Seed the UTF-16 edit buffer from whatever UTF-8 draft survived a previous open -- the
+	same persistence ImGui::InputText's member char buffer used to give for free. */
+	m_NicknameDraftW.clear();
+	if ('\0' != m_NicknameDraft[0])
+	{
+		wchar_t wide[LostArk::Shared::MAX_NICKNAME_BYTES + 1u]{};
+		const int32_t iWideLength = ::MultiByteToWideChar(CP_UTF8, 0,
+			m_NicknameDraft.data(), -1, wide, static_cast<int32_t>(std::size(wide)));
+		if (iWideLength > 1)
+			m_NicknameDraftW.assign(wide, static_cast<size_t>(iWideLength - 1));
+	}
+	CUIInputRouter::Get().Start_TextInput();
+}
+
+bool_t CLevel_CharacterSelect::Confirm_CreateCharacter()
+{
+	if (MODE::SERVER_ARENA != m_eMode ||
+		m_iSelectedClassIndex >= SUPPORTED_CLASSES.size() ||
+		Is_ClassPresentationPreparationPending())
+	{
+		m_strStatus = "The selected class is unavailable.";
+		return false;
+	}
+
+	const std::string nickname{ m_NicknameDraft.data() };
+	if (!LostArk::Shared::Is_Valid_PlayerNickname(nickname))
+	{
+		m_strStatus = "Use 1-32 UTF-8 bytes with no control or edge whitespace.";
+		return false;
+	}
+
+	/* The look made on the customizing screen goes with the new character. Nothing to capture when
+	the screen was never used: the character then keeps its class default. */
+	std::string strAppearance;
+	if (nullptr != m_pCustomizingView && nullptr != m_pActiveCharacter)
+		strAppearance = m_pCustomizingView->Serialize_Appearance(m_pActiveCharacter);
+	if (!CCharacterSelectionState::Stage_Creation(
+		SUPPORTED_CLASSES[m_iSelectedClassIndex], nickname, strAppearance))
+	{
+		m_strStatus = "The character identity could not be staged.";
+		return false;
+	}
+
+	if (!Enter_Stage(LOBBY_STAGE::BERN))
+	{
+		CCharacterSelectionState::Cancel_PendingCreation();
+		return false;
+	}
+	return true;
+}
+
+void CLevel_CharacterSelect::Cancel_CreateCharacter()
+{
+	CCharacterSelectionState::Cancel_PendingCreation();
+	m_isCreateCharacterModalOpen = false;
+	m_strStatus = "Character creation canceled.";
+	CUIInputRouter::Get().Stop_TextInput();
+}
+
+void CLevel_CharacterSelect::Render_CreateCharacterModal()
+{
+	if (nullptr == m_pClassSelectView)
+		return;
+	if (!m_isCreateCharacterModalOpen)
+	{
+		/* Sole owner of these 4 slots' visibility (see the class comment on
+		m_isCreateCharacterModalOpen) -- Update_ClassList's own generic pass must never touch
+		them, the same double-draw boundary Esther_GaugeFill/Ready glows use. */
+		m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_Panel", false);
+		m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_TextBox", false);
+		m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_ConfirmButton", false);
+		m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_CancelButton", false);
+		return;
+	}
+
+	/* Panel/TextBox/Confirm/Cancel are real CUI_Sprite GameObjects (same rects, same authored
+	art) rendering through the normal engine pipeline; this keeps their visibility/hover-texture
+	state current. No ImGui popup remains: text entry is CUIInputRouter's WM_CHAR capture (below),
+	and the nickname/composition/caret/status text draws in Render_ClassListText's LOA-font pass
+	with everything else. */
+	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_Panel", true);
+	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_TextBox", true);
+
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	/* Modal semantics: the pointer belongs to this popup every frame it's open (its dim/panel
+	swallow clicks), exactly as BeginPopupModal behaved -- not only while a button is hovered. */
+	Router.Claim_Mouse_This_Frame();
+	const f32_t fRefWidth = m_pClassSelectView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pClassSelectView->Get_ResolutionHeight();
+	bool_t confirmFromButton = false;
+	bool_t cancel = false;
+	struct MODAL_BUTTON { const char_t* pSlotId; bool_t* pOutClicked; };
+	const MODAL_BUTTON MODAL_BUTTONS[] =
+	{
+		{ "CreateCharacterModal_ConfirmButton", &confirmFromButton },
+		{ "CreateCharacterModal_CancelButton", &cancel },
+	};
+	for (const MODAL_BUTTON& Button : MODAL_BUTTONS)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pClassSelectView->Get_SlotRect(Button.pSlotId, fX, fY, fWidth, fHeight))
+			continue;
+		m_pClassSelectView->Set_SlotVisible(Button.pSlotId, true);
+		const bool_t bHovered = Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
+		m_pClassSelectView->Set_SlotTexture(Button.pSlotId, bHovered ?
+			"UI/ClassSelect/Common/NormalButtonHover.png" :
+			"UI/ClassSelect/Common/NormalButton.png");
+		if (bHovered)
+		{
+			Router.Claim_Mouse_This_Frame();
+			if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+			{
+				CMainApp::Play_UIButtonClickSound();
+				*Button.pOutClicked = true;
+			}
+		}
+	}
+
+	/* Runtime nickname editing -- CUIInputRouter's WM_CHAR capture replaces ImGui::InputText.
+	Committed Hangul syllables arrive as ordinary WM_CHAR units (the IME's GCS_RESULTSTR ->
+	WM_IME_CHAR -> WM_CHAR default chain), so the committed text needs no IME handling here; the
+	still-composing string is drawn separately from CImGuiLayer::Get_ImeCompositionString().
+	Backspace/Enter/Escape ride the same WM_CHAR stream ('\b'/'\r'/27), the classic Win32 edit
+	loop. */
+	const auto Fn_EraseLastCodePoint = [this]()
+	{
+		if (m_NicknameDraftW.empty())
+			return;
+		size_t iErase = 1;
+		/* A supplementary-plane character is two UTF-16 units -- erase the whole pair, or the
+		leftover half re-encodes as garbage. */
+		if (m_NicknameDraftW.size() >= 2 &&
+			m_NicknameDraftW.back() >= 0xDC00 && m_NicknameDraftW.back() <= 0xDFFF &&
+			m_NicknameDraftW[m_NicknameDraftW.size() - 2] >= 0xD800 &&
+			m_NicknameDraftW[m_NicknameDraftW.size() - 2] <= 0xDBFF)
+		{
+			iErase = 2;
+		}
+		m_NicknameDraftW.resize(m_NicknameDraftW.size() - iErase);
+	};
+
+	bool_t confirmFromEnter = false;
+	bool_t textChanged = false;
+	const wstring_t typed = Router.Take_TypedChars();
+	for (const wchar_t ch : typed)
+	{
+		if (L'\r' == ch || L'\n' == ch)
+		{
+			confirmFromEnter = true;
+		}
+		else if (L'\x1b' == ch)
+		{
+			/* Escape closed the old BeginPopupModal too. */
+			cancel = true;
+		}
+		else if (L'\b' == ch)
+		{
+			if (!m_NicknameDraftW.empty())
+			{
+				Fn_EraseLastCodePoint();
+				textChanged = true;
+			}
+		}
+		else if (ch >= L' ' && L'\x7f' != ch)
+		{
+			m_NicknameDraftW.push_back(ch);
+			textChanged = true;
+		}
+	}
+	if (textChanged)
+	{
+		/* Re-encode into the UTF-8 buffer Confirm_CreateCharacter validates/sends. If the draft
+		outgrew the 32-byte wire cap, drop the newest code point(s) until it fits -- the same
+		hard stop InputText's fixed byte buffer imposed at the same limit. */
+		for (;;)
+		{
+			if (m_NicknameDraftW.empty())
+			{
+				m_NicknameDraft.fill('\0');
+				break;
+			}
+			std::array<char_t, LostArk::Shared::MAX_NICKNAME_BYTES + 1u> utf8{};
+			const int32_t iBytes = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+				m_NicknameDraftW.c_str(), -1, utf8.data(),
+				static_cast<int32_t>(utf8.size()), nullptr, nullptr);
+			if (iBytes > 0)
+			{
+				m_NicknameDraft = utf8;
+				break;
+			}
+			/* Doesn't fit (or a stray lone surrogate slipped in) -- trim and retry. */
+			Fn_EraseLastCodePoint();
+		}
+	}
+
+	if (cancel)
+	{
+		Cancel_CreateCharacter();
+	}
+	else if ((confirmFromEnter || confirmFromButton) &&
+		Confirm_CreateCharacter())
+	{
+		m_isCreateCharacterModalOpen = false;
+		CUIInputRouter::Get().Stop_TextInput();
+	}
+
+	/* Status text moved to Render_ClassListText's modal block -- same LOA-font pass that
+	already draws the modal's title/labels, since this function no longer owns an ImGui draw
+	list to put it on. */
+}
+
+bool_t CLevel_CharacterSelect::Enter_Stage(const LOBBY_STAGE stage)
+{
+	m_ClassSelectionPresentation.Stop();
+	const char_t* stageName = Get_StageName(stage);
+	const char_t* transitionSource = Get_StageTransitionSource(stage);
+	if (MODE::SERVER_ARENA != m_eMode || nullptr == transitionSource ||
+		m_iSelectedClassIndex >= SUPPORTED_CLASSES.size() ||
+		m_iPendingClassIndex.has_value() ||
+		Is_ClassPresentationPreparationPending() ||
+		CLevelTransitionService::Is_Pending())
+	{
+		m_strStatus = "The selected stage is not available here.";
+		return false;
+	}
+	if (!CCharacterSelectionState::Select(
+		SUPPORTED_CLASSES[m_iSelectedClassIndex]))
+	{
+		m_strStatus = "The selected class could not be preserved for entry.";
+		return false;
+	}
+
+	LOBBY_COMMAND_TOKEN token = INVALID_LOBBY_COMMAND_TOKEN;
+	if (!CLobbyCommandService::Request(stage, token))
+	{
+		m_strStatus = CLobbyCommandService::Get_Status();
+		return false;
+	}
+	if (!CLevelTransitionService::Request_Load(
+		LEVEL::LOBBY,
+		transitionSource,
+		token))
+	{
+		CLobbyCommandService::Cancel(
+			token,
+			"Lobby load request was rejected");
+		m_strStatus = CLevelTransitionService::Get_Status();
+		return false;
+	}
+
+	m_eMode = MODE::RETURNING_TO_LOBBY;
+	m_strStatus = std::string("Lobby will request ") +
+		stageName + " from Server.";
+	return true;
+}
+
+#ifdef _DEBUG
+bool_t CLevel_CharacterSelect::Debug_Request_KakulSaydonArena()
+{
+	if (MODE::SERVER_ARENA != m_eMode ||
+		m_iSelectedClassIndex >= SUPPORTED_CLASSES.size() ||
+		m_iPendingClassIndex.has_value() ||
+		Is_ClassPresentationPreparationPending() ||
+		m_isCreateCharacterModalOpen ||
+		CLevelTransitionService::Is_Pending())
+	{
+		m_strStatus =
+			"KoukuSaydon transfer requires an idle, Server-approved Character Select arena.";
+		return false;
+	}
+	if (nullptr == m_pWorldEntityCommandSink)
+	{
+		m_strStatus =
+			"KoukuSaydon world-transfer command owner is unavailable.";
+		return false;
+	}
+
+	const std::uint32_t requestSequence =
+		m_iNextKakulArenaRequestSequence++;
+	if (0u == m_iNextKakulArenaRequestSequence)
+		m_iNextKakulArenaRequestSequence = 1u;
+	if (!m_pWorldEntityCommandSink->Request_EnterKakulSaydonArena(
+		requestSequence))
+	{
+		m_strStatus =
+			"KoukuSaydon Server arena request could not be sent.";
+		return false;
+	}
+
+	m_strStatus = "KoukuSaydon Server arena transfer requested.";
+	return true;
+}
+#endif
+
+void CLevel_CharacterSelect::Render_CreateCharacterProductInputHost()
+{
+	/* Used to be an invisible ImGui window purely so OpenPopup/BeginPopupModal had a host --
+	the modal is now CUI_Sprite art + CUIInputRouter WM_CHAR capture with no ImGui in it, so
+	only the click-consume and per-frame modal drive remain. */
+	Render_CreateCharacterModal();
+}
+
+bool_t CLevel_CharacterSelect::Can_PlayClassCinematic() const
+{
+	if (MODE::SERVER_ARENA != m_eMode || Is_CustomizingOpen() ||
+		m_isCreateCharacterModalOpen || CLevelTransitionService::Is_Pending()) return false;
+#ifdef _DEBUG
+	if (Is_DebugRaidEntryPreviewOpen()) return false;
+#endif
+	return true;
+}
+
+bool_t CLevel_CharacterSelect::Load_ClassCinematicBackgrounds(const std::string& primaryAreaId,
+	const std::string& fallbackAreaId, const MAP_LOAD_SCOPE& loadScope)
+{
+	std::vector<std::string> areaIds;
+	std::string status;
+	if (!CClassSelectionPresentation::Load_BackgroundAreas(primaryAreaId, fallbackAreaId,
+		areaIds, status))
+	{
+		m_strClassCinemaPreparationFailure = status;
+		return false;
+	}
+
+	std::vector<CLASS_CINEMA_BACKGROUND> staged;
+	for (const auto& areaId : areaIds)
+	{
+		// The primary Area is already alive and is never owned by cinematic suppression.
+		if (areaId == primaryAreaId) continue;
+		CLASS_CINEMA_BACKGROUND background;
+		background.areaId = areaId;
+		background.runtime = std::make_unique<CMapPlacementRuntime>();
+		if (!background.runtime->Load_Area(ETOUI(LEVEL::CHARACTER_SELECT), areaId, loadScope))
+		{
+			background.failure = "Class selection background " + areaId + ": " + background.runtime->Get_Status();
+			OutputDebugStringA(("[Level_CharacterSelect][ClassCinema] " + background.failure + "\n").c_str());
+		}
+		else if (!background.runtime->Load_SelfMotions(areaId))
+			OutputDebugStringA(("[Level_CharacterSelect][ClassCinema] Optional map self-motions could not be read: " + areaId + "\n").c_str());
+		for (auto& placement : background.runtime->Get_MutablePlacements())
+			(void)CMapPlacementRuntime::Set_RuntimeSuppressed(placement, true);
+		staged.push_back(std::move(background));
+	}
+	m_ClassCinemaBackgrounds.swap(staged);
+	m_strClassCinemaFallbackAreaId = fallbackAreaId;
+	m_strClassCinemaPreparationFailure.clear();
+	return true;
+}
+
+std::string CLevel_CharacterSelect::Resolve_ClassCinematicBackgroundArea(const std::string& classId) const
+{
+	const auto& authored = m_ClassSelectionPresentation.Get_BackgroundAreaId(classId);
+	return authored.empty() ? m_strClassCinemaFallbackAreaId : authored;
+}
+
+#ifdef _DEBUG
+CMapPlacementRuntime* CLevel_CharacterSelect::Find_ClassCinematicBackgroundRuntime(const std::string& areaId)
+{
+	if (areaId.empty()) return nullptr;
+	if (m_MapRuntime.Get_Catalog().Is_Ready() && areaId == m_MapRuntime.Get_Catalog().Get_AreaId())
+		return &m_MapRuntime;
+	const auto background = std::find_if(m_ClassCinemaBackgrounds.begin(), m_ClassCinemaBackgrounds.end(),
+		[&](const auto& value) { return value.areaId == areaId; });
+	if (background == m_ClassCinemaBackgrounds.end() || !background->failure.empty() ||
+		!background->runtime || !background->runtime->Get_Catalog().Is_Ready()) return nullptr;
+	return background->runtime.get();
+}
+
+std::string CLevel_CharacterSelect::Get_ClassCinematicBackgroundArea(const std::string& classId) const
+{
+	return m_ClassSelectionPresentation.Has_Class(classId) ?
+		Resolve_ClassCinematicBackgroundArea(classId) : std::string{};
+}
+#endif
+
+bool_t CLevel_CharacterSelect::Check_ClassCinematicBackground(const std::string& classId,
+	std::string& outFailure) const
+{
+	outFailure.clear();
+	const auto areaId = Resolve_ClassCinematicBackgroundArea(classId);
+	if (areaId.empty())
+	{
+		outFailure = "Class selection presentation background Area is not configured.";
+		return false;
+	}
+	if (areaId == m_MapRuntime.Get_Catalog().Get_AreaId()) return true;
+	const auto background = std::find_if(m_ClassCinemaBackgrounds.begin(), m_ClassCinemaBackgrounds.end(),
+		[&](const auto& value) { return value.areaId == areaId; });
+	if (background == m_ClassCinemaBackgrounds.end() || !background->runtime)
+		outFailure = "Class selection background was not prepared: " + areaId;
+	else if (!background->failure.empty())
+		outFailure = background->failure;
+	else
+		return true;
+	return false;
+}
+
+void CLevel_CharacterSelect::Update_ClassCinematicBackgroundVisibility()
+{
+	const auto activeArea = m_ClassSelectionPresentation.Is_Active() &&
+		m_ClassSelectionPresentation.Is_InspectionBackgroundVisible() ?
+		Resolve_ClassCinematicBackgroundArea(m_ClassSelectionPresentation.Get_ActiveClass()) : std::string{};
+	for (auto& background : m_ClassCinemaBackgrounds)
+	{
+		const bool_t visible = background.runtime && background.failure.empty() && background.areaId == activeArea;
+		if (visible == background.visible) continue;
+		background.visible = visible;
+		if (background.runtime)
+			for (auto& placement : background.runtime->Get_MutablePlacements())
+				(void)CMapPlacementRuntime::Set_RuntimeSuppressed(placement, !visible);
+	}
+}
+
+bool_t CLevel_CharacterSelect::Load_ClassMovieCategories()
+{
+	try
+	{
+		const auto path = CProjectDataRoot::Resolve(L"Rendering/Authored/CharacterSelectFloorSwap.json");
+		std::ifstream input(path, std::ios::binary | std::ios::ate);
+		if (!input.is_open() || input.tellg() < 0 || input.tellg() > 65536)
+		{
+			m_strClassMovieCatalogFailure = "Cannot read class movie categories: " + path.string();
+			return false;
+		}
+		input.seekg(0);
+		std::ostringstream text;
+		text << input.rdbuf();
+		if (input.bad())
+		{
+			m_strClassMovieCatalogFailure = "Class movie category read failed; previous options retained.";
+			return false;
+		}
+		DATA_JSON_VALUE root;
+		DATA_JSON_PARSE_LIMITS limits;
+		limits.iMaximumBytes = 65536u;
+		limits.iMaximumDepth = 8u;
+		limits.iMaximumValues = 1024u;
+		std::string error;
+		if (!CDataJson::Parse(text.str(), root, error, limits))
+		{
+			m_strClassMovieCatalogFailure = "Class movie category JSON: " + error;
+			return false;
+		}
+		const auto readString = [](const DATA_JSON_VALUE* value, std::string& out)
+		{
+			if (!value || !value->Is_String() || value->Get_String().empty() ||
+				value->Get_String().size() > 256u ||
+				std::any_of(value->Get_String().begin(), value->Get_String().end(),
+					[](const unsigned char c) { return c < 32u || c == 127u; })) return false;
+			out = value->Get_String();
+			return true;
+		};
+		std::string schema, area;
+		const auto* version = root.Find("formatVersion");
+		const auto* options = root.Find("options");
+		if (!root.Is_Object() || !readString(root.Find("schema"), schema) ||
+			schema != "lostark.character-select-floor-swap" ||
+			!version || !version->Is_Number() || version->Was_FloatingPointToken() || version->Get_Number() != 1.0 ||
+			!readString(root.Find("areaId"), area) || area != "LV_LOBBY_CLASSSELECT_SL00" ||
+			area != m_MapRuntime.Get_Catalog().Get_AreaId() ||
+			!options || !options->Is_Array() || options->Get_Array().empty() || options->Get_Array().size() > 32u)
+		{
+			m_strClassMovieCatalogFailure = "Class movie categories require the SL00 floor catalog.";
+			return false;
+		}
+		std::vector<CHARACTER_SELECT_MOVIE_OPTION> staged;
+		std::unordered_set<std::string> ids, floors;
+		for (const auto& value : options->Get_Array())
+		{
+			CHARACTER_SELECT_MOVIE_OPTION option;
+			if (!value.Is_Object() || !readString(value.Find("id"), option.id) ||
+				!readString(value.Find("label"), option.label) ||
+				!readString(value.Find("floorSourcePlacementId"), option.floorSourcePlacementId) ||
+				!ids.insert(option.id).second || !floors.insert(option.floorSourcePlacementId).second)
+			{
+				m_strClassMovieCatalogFailure = "Class movie category ID, label, or floor source is invalid or duplicated.";
+				return false;
+			}
+			option.classId = Get_MovieClassForCategory(option.id);
+			if (option.classId.empty()) continue;
+			const auto& placements = m_MapRuntime.Get_Placements();
+			if (1 != std::count_if(placements.begin(), placements.end(), [&](const auto& entry)
+				{ return entry.record.sourcePlacementId == option.floorSourcePlacementId; }))
+			{
+				m_strClassMovieCatalogFailure = "Class movie floor is missing or ambiguous: " + option.floorSourcePlacementId;
+				return false;
+			}
+			staged.push_back(std::move(option));
+		}
+		// Both F1 and the Action Workbench consume this one admitted movie list.
+		const std::array<std::pair<const char*, const char*>, 5> movies = {{{"ARTIST", "\353\217\204\355\231\224\352\260\200"},
+			{"WARLORD", "\354\233\214\353\241\234\353\223\234"}, {"DIMENSIONMASTER", "\354\260\250\354\233\220\354\210\240\354\202\254"},
+			{"LANCE_MASTER", "\354\260\275\354\210\240\354\202\254"}, {"GUARDIANKNIGHT", "\352\260\200\353\224\224\354\226\270\353\202\230\354\235\264\355\212\270"}}};
+		std::vector<CHARACTER_SELECT_MOVIE_OPTION> ordered;
+		for (const auto& [classId, label] : movies)
+		{
+			const auto found = std::find_if(staged.begin(), staged.end(),
+				[&](const auto& option) { return option.classId == classId; });
+			if (found == staged.end())
+			{
+				m_strClassMovieCatalogFailure = std::string("Missing movie category: ") + classId;
+				return false;
+			}
+			found->label = label;
+			ordered.push_back(std::move(*found));
+		}
+		m_ClassMovieOptions.swap(ordered);
+		m_iSelectedClassMovieCategory = 0;
+		m_strClassMovieCatalogFailure.clear();
+		m_strClassMovieRequestFailure.clear();
+		return true;
+	}
+	catch (const std::exception& error)
+	{
+		m_strClassMovieCatalogFailure = std::string("Class movie category load failed: ") + error.what();
+		return false;
+	}
+}
+
+const std::string& CLevel_CharacterSelect::Get_ClassMovieCategoryId() const
+{
+	static const std::string empty;
+	return m_iSelectedClassMovieCategory < m_ClassMovieOptions.size() ?
+		m_ClassMovieOptions[m_iSelectedClassMovieCategory].id : empty;
+}
+
+const std::string& CLevel_CharacterSelect::Get_ClassMovieId() const
+{
+	static const std::string empty;
+	return m_iSelectedClassMovieCategory < m_ClassMovieOptions.size() ?
+		m_ClassMovieOptions[m_iSelectedClassMovieCategory].classId : empty;
+}
+
+const std::string& CLevel_CharacterSelect::Get_ClassMovieLabel() const
+{
+	static const std::string unavailable = "No class movie category";
+	return m_iSelectedClassMovieCategory < m_ClassMovieOptions.size() ?
+		m_ClassMovieOptions[m_iSelectedClassMovieCategory].label : unavailable;
+}
+
+bool_t CLevel_CharacterSelect::Select_ClassMovieCategory(const size_t index)
+{
+	if (index >= m_ClassMovieOptions.size()) return false;
+	if (m_iSelectedClassMovieCategory != index) m_strClassMovieRequestFailure.clear();
+	m_iSelectedClassMovieCategory = index;
+	return true;
+}
+
+bool_t CLevel_CharacterSelect::Select_ClassCinematic(
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+{
+	const auto found = std::find(SUPPORTED_CLASSES.begin(), SUPPORTED_CLASSES.end(), characterClass);
+	if (found == SUPPORTED_CLASSES.end()) return false;
+	const std::string classId = Get_CinematicClassId(static_cast<size_t>(std::distance(SUPPORTED_CLASSES.begin(), found)));
+	for (size_t i = 0; i < m_ClassMovieOptions.size(); ++i)
+		if (m_ClassMovieOptions[i].classId == classId) return Select_ClassMovieCategory(i);
+	return false;
+}
+
+bool_t CLevel_CharacterSelect::Validate_ClassCinematicPlay(const std::string& classId)
+{
+	m_strClassMovieRequestFailure.clear();
+	std::string backgroundFailure;
+	const std::string selected = Get_ClassMovieLabel() + " [" + Get_ClassMovieCategoryId() + "]";
+	if (!m_strClassMovieCatalogFailure.empty())
+		m_strClassMovieRequestFailure = m_strClassMovieCatalogFailure;
+	else if (classId != Get_ClassMovieId())
+		m_strClassMovieRequestFailure = "Movie selection changed; choose Play again for " + selected + ".";
+	else if (!Can_PlayClassCinematic())
+		m_strClassMovieRequestFailure = "Cannot play " + selected + ": wait for Server admission and close character creation or raid-entry preview.";
+	else if (classId.empty())
+		m_strClassMovieRequestFailure = "No movie is connected to " + selected + ".";
+	else if (!m_strClassCinemaPreparationFailure.empty())
+		m_strClassMovieRequestFailure = "Cannot play " + selected + " (" + classId + "): " + m_strClassCinemaPreparationFailure;
+	else if (!m_ClassSelectionPresentation.Has_Class(classId))
+		m_strClassMovieRequestFailure = "No prepared movie for " + selected + " (" + classId + "). " + m_ClassSelectionPresentation.Get_Status();
+	else if (!Check_ClassCinematicBackground(classId, backgroundFailure))
+		m_strClassMovieRequestFailure = "Cannot play " + selected + " (" + classId + "): " + backgroundFailure;
+	else return true;
+	return false;
+}
+
+bool_t CLevel_CharacterSelect::Play_ClassCinematic(const std::string& classId)
+{
+    if (!Validate_ClassCinematicPlay(classId)) return false;
+    if (!m_ClassSelectionPresentation.Play(classId))
+    { m_strClassMovieRequestFailure = m_ClassSelectionPresentation.Get_Status(); return false; }
+    Update_ClassCinematicBackgroundVisibility();
+    return true;
+}
+
+bool_t CLevel_CharacterSelect::Play_ClassCinematicSelection(const std::string& classId, const bool loop,
+    const EFFECT_DOCUMENT_DESC& full, const EFFECT_DOCUMENT_DESC& selected,
+    const std::vector<std::string>& drawElementIds, const double startAgeMs, const double endAgeMs, const bool repeat, std::string& status)
+{
+    if (!Validate_ClassCinematicPlay(classId))
+    { status = m_strClassMovieRequestFailure; return false; }
+    if (!m_ClassSelectionPresentation.Play_EffectSelection(classId, loop, full, selected,
+        drawElementIds, startAgeMs, endAgeMs, repeat, status))
+    { m_strClassMovieRequestFailure = status; return false; }
+    Update_ClassCinematicBackgroundVisibility();
+    return true;
+}
+
+void CLevel_CharacterSelect::Render_ClassSelectMovieControls()
+{
+	ImGui::PushID("CharacterSelectMovie");
+	auto* const level = Get_Active();
+	if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+	{
+		ImGui::TextDisabled("Enter Character Select to preview this movie");
+		ImGui::PopID();
+		return;
+	}
+	if (ImGui::BeginCombo("Category", level->Get_ClassMovieLabel().c_str()))
+	{
+		for (size_t i = 0; i < level->m_ClassMovieOptions.size(); ++i)
+		{
+			const auto& option = level->m_ClassMovieOptions[i];
+			const bool selected = level->m_iSelectedClassMovieCategory == i;
+			if (ImGui::Selectable(option.label.c_str(), selected))
+				(void)level->Select_ClassMovieCategory(i);
+			if (selected) ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::TextDisabled("Movie preview only; your Server character stays unchanged.");
+	const std::string classId = level->Get_ClassMovieId();
+	for (size_t i = 0; i < SUPPORTED_CLASSES.size(); ++i)
+		if (classId == Get_CinematicClassId(i))
+			ImGui::Text("Class: %s", Get_CharacterClassName(SUPPORTED_CLASSES[i]));
+	auto& presentation = level->m_ClassSelectionPresentation;
+	const bool admitted = presentation.Has_Class(classId);
+	const bool canPlay = level->Can_PlayClassCinematic();
+	ImGui::BeginDisabled(!canPlay);
+	if (ImGui::Button(presentation.Is_Active() && presentation.Get_ActiveClass() == classId ? "Restart Intro" : "Play"))
+		(void)level->Play_ClassCinematic(classId);
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!presentation.Is_Active());
+	if (ImGui::Button("Stop")) presentation.Stop();
+	ImGui::EndDisabled();
+	if (!canPlay)
+		ImGui::TextWrapped("Wait for Server admission and close character creation or raid-entry preview before Play.");
+	if (!admitted)
+		ImGui::TextWrapped("No prepared movie for %s%s.", level->Get_ClassMovieLabel().c_str(),
+			classId.empty() ? " (no class movie connected)" : "");
+	ImGui::TextWrapped("%s", level->Get_ClassCinematicStatus().c_str());
+	if (presentation.Is_Active())
+		ImGui::Text("%s | %s%s | %.2f / %.2f s", presentation.Get_ActiveClass().c_str(),
+			presentation.Is_Looping() ? "Loop" : "Intro", presentation.Is_Paused() ? " (paused)" : "",
+			presentation.Get_ClockMs() / 1000., presentation.Get_DurationMs() / 1000.);
+	ImGui::PopID();
+}
+
+bool_t CLevel_CharacterSelect::Is_CustomizingOpen() const
+{
+	return nullptr != m_pCustomizingView && m_pCustomizingView->Is_Open();
+}
+
+void CLevel_CharacterSelect::Update_CustomizingStageVisibility()
+{
+	// Keep authored/editor visibility intact while creation or the separate remote showcase
+	// temporarily suppresses the arena. The showcase owns its own two floor placements.
+	const bool_t wantsStageHidden = Is_CustomizingOpen() || Is_ClassShowcaseOpen();
+	if (wantsStageHidden == m_isCustomizingStageHidden)
+		return;
+	m_isCustomizingStageHidden = wantsStageHidden;
+
+	for (MAP_RUNTIME_PLACED_ENTRY& entry : m_MapRuntime.Get_MutablePlacements())
+	{
+		(void)CMapPlacementRuntime::Set_RuntimeSuppressed(entry, wantsStageHidden);
+	}
+}
+
+void CLevel_CharacterSelect::Apply_CustomizingCostume()
+{
+	/* The left column's five try-on costumes are equipment visual sets, so putting one on is
+	the existing preview transaction -- the same one the equipment authoring tool drives. The
+	document names the set; the catalog owns its parts. */
+	if (nullptr == m_pActiveCharacter || nullptr == m_pCustomizingView)
+		return;
+	const CHARACTER_SPEC* const pSpec = m_pActiveCharacter->Get_Spec();
+	if (nullptr == pSpec || nullptr == pSpec->pAssetName)
+		return;
+
+	if (!Ensure_EquipmentPresentation())
+		return;
+
+	const std::vector<std::string>* const pSetIds =
+		m_CostumeDocument.Find(pSpec->pAssetName);
+	if (nullptr == pSetIds)
+		return;
+	const int32_t iSelected = m_pCustomizingView->Get_SelectedCostume();
+	/* No row picked: the model wears its class default equipment, so take off whichever
+	try-on set this class's list put on and leave everything else -- the hair included --
+	exactly as it is. */
+	if (iSelected < 0)
+	{
+		Remove_CustomizingCostume(*pSetIds);
+		return;
+	}
+	if (static_cast<size_t>(iSelected) >= pSetIds->size())
+		return;
+
+	Wear_CustomizingSet((*pSetIds)[iSelected], "Costume");
+}
+
+void CLevel_CharacterSelect::Remove_CustomizingCostume(
+	const std::vector<std::string>& SetIds)
+{
+	if (!Ensure_EquipmentPresentation())
+		return;
+
+	std::array<std::string, ETOI(EQUIPMENT_SLOT_ID::END)> selected = m_CustomizingOutfit;
+	bool_t isRemoved = false;
+	for (std::string& worn : selected)
+	{
+		if (worn.empty() ||
+			SetIds.end() == std::find(SetIds.begin(), SetIds.end(), worn))
+			continue;
+		worn.clear();
+		isRemoved = true;
+	}
+	if (!isRemoved)
+		return;
+
+	std::string error;
+	if (!m_pEquipmentPresentation->Apply_Preview(
+		*m_pActiveCharacter, m_EquipmentCatalog, selected, error))
+	{
+		m_strStatus = "Costume removal: " + error;
+		OutputDebugStringA(
+			("[Level_CharacterSelect][Customizing] " + error + "\n").c_str());
+		return;
+	}
+	m_CustomizingOutfit = std::move(selected);
+	if (m_pCustomizingView)
+		m_pCustomizingView->Reapply_HairControls(m_pActiveCharacter);
+	m_strStatus = "Costume removed";
+}
+
+void CLevel_CharacterSelect::Wear_CustomizingSet(
+	const std::string& strSetId, const char_t* const pWhat)
+{
+	/* A set names itself in its primary slot only -- Apply_Preview expands the other slots it
+	occupies itself, and rejects the same slot being claimed twice. */
+	const EQUIPMENT_VISUAL_SET* const pSet = m_EquipmentCatalog.Find_Set(strSetId);
+	if (nullptr == pSet || pSet->primarySlot >= EQUIPMENT_SLOT_ID::END)
+	{
+		m_strStatus = std::string(pWhat) + " set not in catalog: " + strSetId;
+		OutputDebugStringA(
+			("[Level_CharacterSelect][Customizing] " + m_strStatus + "\n").c_str());
+		return;
+	}
+
+	/* Everything already worn stays on, so picking hair no longer undresses the model and
+	picking a costume no longer shaves it. Only a piece this one physically overlaps comes
+	off, which is what lets a helmet set take the hair with it. */
+	std::array<std::string, ETOI(EQUIPMENT_SLOT_ID::END)> selected = m_CustomizingOutfit;
+	selected[ETOI(pSet->primarySlot)].clear();
+	for (const EQUIPMENT_SLOT_ID occupied : pSet->occupiedSlots)
+	{
+		for (std::string& worn : selected)
+		{
+			if (worn.empty())
+				continue;
+			const EQUIPMENT_VISUAL_SET* const pWorn = m_EquipmentCatalog.Find_Set(worn);
+			if (nullptr == pWorn ||
+				pWorn->occupiedSlots.end() != std::find(pWorn->occupiedSlots.begin(),
+					pWorn->occupiedSlots.end(), occupied))
+			{
+				worn.clear();
+			}
+		}
+	}
+	selected[ETOI(pSet->primarySlot)] = strSetId;
+
+	std::string error;
+	if (!m_pEquipmentPresentation->Apply_Preview(
+		*m_pActiveCharacter, m_EquipmentCatalog, selected, error))
+	{
+		/* On screen as well as in the debugger: this screen has no other way to say why the
+		model kept what it had on. The stored outfit is left alone so it still describes what
+		is actually being drawn. */
+		m_strStatus = std::string(pWhat) + ": " + error;
+		OutputDebugStringA(
+			("[Level_CharacterSelect][Customizing] " + error + "\n").c_str());
+		return;
+	}
+	m_CustomizingOutfit = std::move(selected);
+	if (m_pCustomizingView)
+		m_pCustomizingView->Reapply_HairControls(m_pActiveCharacter);
+	m_strStatus = std::string(pWhat) + " applied: " + strSetId;
+}
+
+bool_t CLevel_CharacterSelect::Ensure_EquipmentPresentation()
+{
+	if (nullptr == m_pEquipmentPresentation)
+	{
+		m_pEquipmentPresentation =
+			std::make_unique<CEquipmentPresentationService>(m_pDevice, m_pContext);
+	}
+	if (m_isEquipmentPresentationLoaded)
+		return true;
+
+	std::string error;
+	if (!m_EquipmentCatalog.Load(error) || !m_CostumeDocument.Load() ||
+		!m_HairstyleDocument.Load())
+	{
+		/* A missing document leaves the model in whatever it is already wearing rather than
+		half-dressing it. */
+		m_strStatus = "Equipment data: " +
+			(error.empty() ? m_CostumeDocument.Get_Status() : error);
+		OutputDebugStringA(
+			("[Level_CharacterSelect][Costume] " + m_strStatus + "\n").c_str());
+		return false;
+	}
+	m_isEquipmentPresentationLoaded = true;
+	return true;
+}
+
+void CLevel_CharacterSelect::Apply_CustomizingHair()
+{
+	/* The hair grid lists every style the retail table carries, but only the styles this
+	project has a cooked head model for can be worn. Anything past that says so rather than
+	silently doing nothing. */
+	if (nullptr == m_pActiveCharacter || nullptr == m_pCustomizingView)
+		return;
+	if (!Ensure_EquipmentPresentation())
+		return;
+
+	const CHARACTER_SPEC* const pSpec = m_pActiveCharacter->Get_Spec();
+	if (nullptr == pSpec || nullptr == pSpec->pAssetName)
+		return;
+	/* Paired by position with the hair icon list, the way the costume row is -- the document's
+	own order is the table's, so cell N really is hairstyle N. */
+	const std::vector<std::string>* const pSetIds =
+		m_HairstyleDocument.Find(pSpec->pAssetName);
+	m_pCustomizingView->Configure_HairDefault(pSpec->pAssetName,
+		m_HairstyleDocument.Get_DefaultIndex(pSpec->pAssetName));
+	const int32_t iSelected = m_pCustomizingView->Get_SelectedHair();
+	if (-1 == iSelected && pSpec->isBodyHairFallback &&
+		-1 == m_HairstyleDocument.Get_DefaultIndex(pSpec->pAssetName))
+	{
+		/* The body is this class's default hairstyle. Remove only the explicit HEAD
+		selection; the costume remains part of the same equipment transaction. */
+		auto selected = m_CustomizingOutfit;
+		selected[ETOI(EQUIPMENT_SLOT_ID::HEAD)].clear();
+		std::string error;
+		if (!m_pEquipmentPresentation->Apply_Preview(
+			*m_pActiveCharacter, m_EquipmentCatalog, selected, error))
+		{
+			m_strStatus = "Default hair: " + error;
+			return;
+		}
+		m_CustomizingOutfit = std::move(selected);
+		m_pCustomizingView->Reapply_HairControls(m_pActiveCharacter);
+		m_strStatus = "Default body hair applied";
+		return;
+	}
+	if (nullptr == pSetIds || iSelected < 0 ||
+		static_cast<size_t>(iSelected) >= pSetIds->size())
+	{
+		m_strStatus = "Hair: style " + std::to_string(iSelected) + " is not in the document.";
+		return;
+	}
+
+	Wear_CustomizingSet((*pSetIds)[iSelected], "Hair");
+}
+
+void CLevel_CharacterSelect::Open_Customizing()
+{
+	m_ClassSelectionPresentation.Stop();
+	if (nullptr == m_pCustomizingView)
+		return;
+	m_pCustomizingView->Open();
+	End_ClassShowcaseCamera();
+	/* The retail framing is an exact eye/look/FOV, so it goes through the presentation
+	override rather than the follow camera's own smoothed offsets. */
+	if (nullptr != m_pCamera)
+		m_pCamera->Begin_PresentationOverride(CUSTOMIZING_CAMERA_OWNER_ID);
+	m_strStatus =
+		"Customizing: drag to rotate, wheel to zoom, then press the decide button.";
+}
+
+void CLevel_CharacterSelect::Close_Customizing()
+{
+	if (nullptr == m_pCustomizingView)
+		return;
+	m_pCustomizingView->Close();
+	/* Everything this screen borrowed goes back: the camera pose and the equipment it hid. */
+	if (nullptr != m_pCamera)
+		m_pCamera->End_PresentationOverride(CUSTOMIZING_CAMERA_OWNER_ID);
+	if (nullptr != m_pActiveCharacter)
+	{
+		m_pActiveCharacter->Set_CreationPreviewActive(false);
+		/* The turn was the screen's, not the world's, so it leaves with the screen. */
+		m_pActiveCharacter->Set_CreationPreviewYawOffset(0.f);
+	}
+	m_strStatus = "Server Arena active. Select a class thumbnail, then test its skill keys.";
+}
+
+void CLevel_CharacterSelect::Apply_CustomizingCameraPose()
+{
+	if (nullptr == m_pCamera || nullptr == m_pCustomizingView ||
+		nullptr == m_pActiveCharacter ||
+		nullptr == m_pActiveCharacter->Get_Transform())
+	{
+		return;
+	}
+	float3_t vCharacter{};
+	XMStoreFloat3(&vCharacter,
+		m_pActiveCharacter->Get_Transform()->Get_State(Engine::STATE::POSITION));
+	if (!std::isfinite(vCharacter.x) || !std::isfinite(vCharacter.y) ||
+		!std::isfinite(vCharacter.z))
+	{
+		return;
+	}
+	const float3_t vEyeOffset = m_pCustomizingView->Get_CameraPositionOffset();
+	const float3_t vLookOffset = m_pCustomizingView->Get_CameraLookOffset();
+	m_pCamera->Apply_PresentationPose(
+		CUSTOMIZING_CAMERA_OWNER_ID,
+		float3_t(vCharacter.x + vEyeOffset.x,
+			vCharacter.y + vEyeOffset.y,
+			vCharacter.z + vEyeOffset.z),
+		float3_t(vCharacter.x + vLookOffset.x,
+			vCharacter.y + vLookOffset.y,
+			vCharacter.z + vLookOffset.z),
+		m_pCustomizingView->Get_FieldOfViewDegrees());
+}
+
+void CLevel_CharacterSelect::Update_Customizing(const f32_t fTimeDelta)
+{
+	if (nullptr == m_pCustomizingView)
+		return;
+
+	if (m_hasCreateCharacterButtonClick)
+	{
+		m_hasCreateCharacterButtonClick = false;
+		if (!m_pCustomizingView->Is_Open() && !m_isCreateCharacterModalOpen &&
+			MODE::SERVER_ARENA == m_eMode)
+		{
+			/* The same left-click edge that opened this screen must not also reach one of its
+			own widgets on the frame it appears. */
+			Open_Customizing();
+			return;
+		}
+	}
+	if (!m_pCustomizingView->Is_Open())
+		return;
+	/* Leaving the arena for any reason (disconnect, transfer, failure) takes the screen with
+	it -- its sprites would otherwise keep their last state over whatever comes next. */
+	if (MODE::SERVER_ARENA != m_eMode)
+	{
+		Close_Customizing();
+		return;
+	}
+	/* The nickname step draws on top and owns the pointer; the customizing art stays exactly
+	as it was behind it instead of competing for the same clicks. */
+	if (m_isCreateCharacterModalOpen)
+		return;
+
+	if (m_pActiveCharacter && Ensure_EquipmentPresentation())
+	{
+		const auto* spec = m_pActiveCharacter->Get_Spec();
+		if (spec && spec->pAssetName)
+			m_pCustomizingView->Configure_HairDefault(spec->pAssetName,
+				m_HairstyleDocument.Get_DefaultIndex(spec->pAssetName));
+	}
+	m_pCustomizingView->Update(fTimeDelta, m_pActiveCharacter);
+	/* The drag gesture turns the model, so the offset is pushed every frame -- the character
+	rewrites its rotation from the replicated yaw on each network update. */
+	if (nullptr != m_pActiveCharacter)
+	{
+		m_pActiveCharacter->Set_CreationPreviewYawOffset(
+			m_pCustomizingView->Get_SubjectYawOffsetDegrees());
+	}
+	if (m_pCustomizingView->Try_Consume_CostumeChange())
+		Apply_CustomizingCostume();
+	if (m_pCustomizingView->Try_Consume_HairChange())
+		Apply_CustomizingHair();
+	if (m_pCustomizingView->Try_Consume_Back())
+	{
+		Close_Customizing();
+		return;
+	}
+	if (m_pCustomizingView->Try_Consume_Decide())
+	{
+		Open_CreateCharacterModal();
+		return;
+	}
+	Apply_CustomizingCameraPose();
+	/* Re-applied every frame: a class change or a replicated respawn builds a fresh character
+	wearing its default helmet again. */
+	if (nullptr != m_pActiveCharacter)
+		m_pActiveCharacter->Set_CreationPreviewActive(true);
+}
+
+void CLevel_CharacterSelect::Render_CustomizingText()
+{
+	if (nullptr != m_pCustomizingView)
+		m_pCustomizingView->Render_Text();
+}
+
+#ifdef _DEBUG
+void CLevel_CharacterSelect::Render_SelectionPanel()
+{
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	if (nullptr != viewport)
+	{
+		ImGui::SetNextWindowViewport(viewport->ID);
+		ImGui::SetNextWindowPos(
+			ImVec2(viewport->WorkPos.x + 224.f, viewport->WorkPos.y + 24.f),
+			ImGuiCond_Always);
+	}
+	if (!ImGui::Begin(
+		"Character Select",
+		nullptr,
+		ImGuiWindowFlags_AlwaysAutoResize |
+		ImGuiWindowFlags_NoSavedSettings))
+	{
+		ImGui::End();
+		return;
+	}
+
+	ImGui::TextUnformatted("Server-authorized Character Select");
+	const bool_t isConnecting = MODE::CONNECTING == m_eMode;
+	const bool_t isServerArena = MODE::SERVER_ARENA == m_eMode;
+	const bool_t isReturning = MODE::RETURNING_TO_LOBBY == m_eMode;
+	const bool_t transitionPending = CLevelTransitionService::Is_Pending();
+	if (isConnecting)
+		ImGui::TextDisabled("Waiting for the approved Server character...");
+	else if (isReturning)
+		ImGui::TextDisabled("Returning to Lobby...");
+
+	ImGui::Separator();
+	ImGui::TextUnformatted("Class selection cinematic");
+	ImGui::Text("Selected movie: %s", Get_ClassMovieLabel().c_str());
+	ImGui::TextWrapped("%s", Get_ClassCinematicStatus().c_str());
+	ImGui::BeginDisabled(!Can_PlayClassCinematic());
+	if (ImGui::Button("Play selected class intro / loop"))
+		(void)Play_ClassCinematic(Get_ClassMovieId());
+	ImGui::EndDisabled();
+	if (m_ClassSelectionPresentation.Is_Active() && ImGui::Button("Stop class cinematic"))
+		m_ClassSelectionPresentation.Stop();
+	ImGui::Separator();
+	ImGui::TextUnformatted("Playable class");
+	ImGui::BeginDisabled(!isServerArena || transitionPending ||
+		m_isCreateCharacterModalOpen || Is_CustomizingOpen());
+	for (size_t index = 0; index < SUPPORTED_CLASSES.size(); ++index)
+	{
+		if (ImGui::Selectable(
+			Get_CharacterClassName(SUPPORTED_CLASSES[index]),
+			index == m_iSelectedClassIndex))
+		{
+			Request_ClassChange(index);
+		}
+	}
+	ImGui::EndDisabled();
+	if (Is_ClassPresentationPreparationPending())
+		ImGui::TextDisabled("Preparing the Server-approved class presentation...");
+	else if (m_iPendingClassIndex.has_value())
+		ImGui::TextDisabled("Waiting for Server class-change approval and snapshot...");
+
+	if (isServerArena)
+	{
+		ImGui::Separator();
+		ImGui::TextUnformatted("Server arena spawn");
+		ImGui::BeginDisabled(m_pArenaSpawnGate->Is_Busy());
+		for (size_t index = 0; index < ARENA_SPAWN_OPTIONS.size(); ++index)
+		{
+			if (ImGui::RadioButton(
+				ARENA_SPAWN_OPTIONS[index].pLabel,
+				m_iSelectedArenaSpawnIndex == index))
+			{
+				m_iSelectedArenaSpawnIndex = index;
+			}
+			if (index + 1u < ARENA_SPAWN_OPTIONS.size())
+				ImGui::SameLine();
+		}
+		ImGui::EndDisabled();
+		ImGui::BeginDisabled(
+			Is_ClassPresentationPreparationPending() ||
+			m_iPendingArenaSpawnIndex.has_value() ||
+			m_pArenaSpawnGate->Is_Busy() ||
+			m_ArenaSpawnAccepted[m_iSelectedArenaSpawnIndex]);
+		if (ImGui::Button("Spawn Selected"))
+			Request_SelectedArenaSpawn();
+		ImGui::EndDisabled();
+		if (m_ArenaSpawnAccepted[m_iSelectedArenaSpawnIndex])
+			ImGui::SameLine(), ImGui::TextDisabled("Spawned");
+		else if (m_iPendingArenaSpawnIndex == m_iSelectedArenaSpawnIndex)
+			ImGui::SameLine(), ImGui::TextDisabled("Requested");
+		else if (m_pArenaSpawnGate->Is_Preparing() &&
+			m_iArenaSpawnIntentIndex == m_iSelectedArenaSpawnIndex)
+		{
+			ImGui::SameLine();
+			ImGui::TextDisabled("Prewarming %zu unique boss Effects",
+				m_ValtanEffectPreparationTargets.size());
+		}
+		else if (m_pArenaSpawnGate->Can_Retry())
+			ImGui::SameLine(), ImGui::TextDisabled("Retry available");
+#ifdef _DEBUG
+		ImGui::TextDisabled(
+			"Combat geometry: F1 > Diagnostics > Live Combat Geometry");
+#endif
+	}
+
+	ImGui::Separator();
+	ImGui::BeginDisabled(isConnecting || isReturning || transitionPending ||
+		m_isCreateCharacterModalOpen ||
+		m_iPendingClassIndex.has_value() ||
+		Is_ClassPresentationPreparationPending());
+	if (ImGui::Button("Create Character"))
+		Request_CreateCharacterButtonClick();
+	ImGui::SameLine();
+	if (ImGui::Button("Enter Valtan Map"))
+		Enter_Stage(LOBBY_STAGE::VALTAN);
+	ImGui::SameLine();
+	if (ImGui::Button("Enter KoukuSaydon Arena"))
+		(void)Debug_Request_KakulSaydonArena();
+	ImGui::SameLine();
+	if (ImGui::Button("Back"))
+		Leave_ServerArena();
+	ImGui::EndDisabled();
+
+	ImGui::TextDisabled(
+		"F1: tools  |  F6: follow/free  |  Server-authorized skill input enabled");
+	ImGui::TextWrapped("%s", m_strStatus.c_str());
+	ImGui::End();
+}
+#endif
+
+namespace
+{
+	/* Same fX/fWidth/fHeight ClassList_RowN's own JSON rect was authored with (see
+	Update_ClassList) -- Update_ClassList already owns writing that rect back via
+	Set_SlotPosition every frame (fY moves with the accordion), so this array stays the single
+	source of the constant values instead of a round trip that would just read back what this
+	same array already wrote. */
+	struct CLASS_LIST_ENTRY
+	{
+		f32_t fX, fWidth, fHeight;
+		size_t iSupportedClassIndex;
+		/* "Warlord" etc -- matches ClassSelect_Layout.json's "classes" array and each per-class
+		slot's ownerClass, not Get_CharacterClassName()'s display text ("Dimension Master" has a
+		space an ownerClass match would never see). */
+		const char* pJsonClassName;
+		const char* pCategoryLabel;
+		const char* pClassLabel;
+		/* File under UI/ClassSelect/Common/, or nullptr where no category symbol has been cut
+		yet (Specialist(M) -- text-only per an earlier explicit "substitute for now"). Drawn as a
+		small square at the row's left edge, not stretched across the row: that stretch (a
+		280x48 slot layer scaling a ~76x72 source) was the exact "horizontally squashed symbol"
+		this replaces. */
+		const char* pCategorySymbolFile;
+	};
+
+	/* No fY here: rows accordion (a click pushes every row below it down by the expanded
+	thumbnail's height instead of the thumbnail always drawing in one fixed spot), so each row's
+	actual y is only known at update time -- see Update_ClassList's running fRowY. fX/fWidth/
+	fHeight still aren't read from the JSON's own ClassList_RowN slots even though those exist
+	now (added alongside this migration) -- Update_ClassList already owns writing that rect via
+	Set_SlotPosition every frame, so reading it back from the same slot would be a pointless
+	round trip through the exact values this array already holds. */
+	constexpr CLASS_LIST_ENTRY CLASS_LIST_ENTRIES[] =
+	{
+		{ 950.f, 280.f, 48.f, 5, "Warlord",         "\xec\xa0\x84\xec\x82\xac(\xeb\x82\xa8)", "\xec\x9b\x8c\xeb\xa1\x9c\xeb\x93\x9c", "CategorySymbol_Warrior.png" },
+		{ 950.f, 280.f, 48.f, 2, "Slayer",          "\xec\xa0\x84\xec\x82\xac(\xec\x97\xac)", "\xec\x8a\xac\xeb\xa0\x88\xec\x9d\xb4\xec\x96\xb4", "CategorySymbol_WarriorFemale.png" },
+		{ 950.f, 280.f, 48.f, 0, "LanceMaster",     "\xeb\xac\xb4\xeb\x8f\x84\xea\xb0\x80(\xec\x97\xac)", "\xec\xb0\xbd\xec\x88\xa0\xec\x82\xac", "CategorySymbol_MartialW.png" },
+		{ 950.f, 280.f, 48.f, 1, "Gunslinger",      "\xed\x97\x8c\xed\x84\xb0(\xec\x97\xac)", "\xea\xb1\xb4\xec\x8a\xac\xeb\xa7\x81\xea\xb1\xb0", "CategorySymbol_HunterFemale.png" },
+		{ 950.f, 280.f, 48.f, 3, "Artist",          "\xec\x8a\xa4\xed\x8e\x98\xec\x85\x9c\xeb\xa6\xac\xec\x8a\xa4\xed\x8a\xb8(\xec\x97\xac)", "\xeb\x8f\x84\xed\x99\x94\xea\xb0\x80", "CategorySymbol_SpecialistF.png" },
+		{ 950.f, 280.f, 48.f, 4, "DimensionMaster", "\xec\x8a\xa4\xed\x8e\x98\xec\x85\x9c\xeb\xa6\xac\xec\x8a\xa4\xed\x8a\xb8(\xeb\x82\xa8)", "\xec\xb0\xa8\xec\x9b\x90\xec\x88\xa0\xec\x82\xac", "CategorySymbol_Specialist_M.png" },
+		{ 950.f, 280.f, 48.f, 6, "GuardianKnight",  "\xea\xb0\x80\xeb\x94\x94\xec\x96\xb8\xeb\x82\x98\xec\x9d\xb4\xed\x8a\xb8", "\xea\xb0\x80\xeb\x94\x94\xec\x96\xb8\xeb\x82\x98\xec\x9d\xb4\xed\x8a\xb8", "CategorySymbol_DragonKnight.png" },
+	};
+
+	constexpr f32_t REF_WIDTH = 1280.f;
+	constexpr f32_t REF_HEIGHT = 720.f;
+
+	/* <Class>_IdentityDescription's rect ended up identical for every class once LanceMaster/
+	Artist/DimensionMaster were lined up on Warlord's values, so one shared rect (rather than
+	one per class) drives where this centers each class's identity blurb. */
+	constexpr f32_t IDENTITY_DESC_X = 19.2857151f;
+	constexpr f32_t IDENTITY_DESC_Y = 568.571472f;
+	constexpr f32_t IDENTITY_DESC_WIDTH = 210.f;
+	constexpr f32_t IDENTITY_DESC_LINE_HEIGHT = 18.f;
+
+	constexpr const char* WARLORD_IDENTITY_DESC[] = {
+		"\xec\xa0\x81\xec\x9d\x84\x20\xea\xb3\xb5\xea\xb2\xa9\xed\x95\xb4\x20\xec\x8b\xa4\xeb\x93\x9c\x20\xea\xb2\x8c\xec\x9d\xb4\xec\xa7\x80\xeb\xa5\xbc\x20\xeb\xaa\xa8\xec\x9d\x80\x20\xeb\x92\xa4",
+		"\x5a\xed\x82\xa4\xeb\xa1\x9c\x20\xec\x9e\x90\xec\x8b\xa0\xec\x9d\x84\x20\xeb\xb3\xb4\xed\x98\xb8\xed\x95\x98\xea\xb3\xa0\x20\x58\xed\x82\xa4\xeb\xa1\x9c\x20\xed\x8c\x8c\xed\x8b\xb0\xec\x9b\x90\xec\x9d\x84\x20\xec\xa7\x80\xec\xbc\x9c",
+		"\xec\xa4\x84\x20\xec\x88\x98\x20\xec\x9e\x88\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4",
+	};
+	constexpr const char* LANCEMASTER_IDENTITY_DESC[] = {
+		"\x5a\xed\x82\xa4\xeb\xa5\xbc\x20\xec\x82\xac\xec\x9a\xa9\xed\x95\x98\xec\x97\xac\x20\xeb\x82\x9c\xeb\xac\xb4\xec\x99\x80\x20\xec\xa7\x91\xec\xa4\x91\x20\xec\x8a\xa4\xed\x83\xa0\xec\x8a\xa4\xeb\xa1\x9c",
+		"\xec\x9e\x90\xec\x9c\xa0\xeb\xa1\xad\xea\xb2\x8c\x20\xeb\xb3\x80\xea\xb2\xbd\xed\x95\xa0\x20\xec\x88\x98\x20\xec\x9e\x88\xea\xb3\xa0\x20\xea\xb2\x8c\xec\x9d\xb4\xec\xa7\x80\xeb\xa5\xbc\x20\xeb\xaa\xa8\xec\x9d\x80",
+		"\xed\x9b\x84\x20\xeb\xb3\x80\xea\xb2\xbd\x20\xec\x8b\x9c\x20\xec\xb6\x94\xea\xb0\x80\xed\x9a\xa8\xea\xb3\xbc\xeb\xa5\xbc\x20\xec\x96\xbb\xec\x9d\x84\x20\xec\x88\x98\x20\xec\x9e\x88\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4\x2e",
+	};
+	constexpr const char* ARTIST_IDENTITY_DESC[] = {
+		"\xec\xa0\x81\xec\x9d\x84\x20\xea\xb3\xb5\xea\xb2\xa9\xed\x95\xb4\x20\xec\xa1\xb0\xed\x99\x94\x20\xea\xb2\x8c\xec\x9d\xb4\xec\xa7\x80\xeb\xa5\xbc\x20\xeb\xaa\xa8\xec\x9d\x80\x20\xeb\x92\xa4\x20\x5a\xed\x82\xa4\xeb\xa1\x9c",
+		"\xed\x8c\x8c\xed\x8b\xb0\xec\x9b\x90\xec\x9d\x98\x20\xea\xb3\xb5\xea\xb2\xa9\xeb\xa0\xa5\xec\x9d\x84\x20\xec\xa6\x9d\xea\xb0\x80\xec\x8b\x9c\xed\x82\xa4\xea\xb1\xb0\xeb\x82\x98\x2c\x20\x58\xed\x82\xa4\xeb\xa1\x9c",
+		"\xed\x8c\x8c\xed\x8b\xb0\xec\x9b\x90\x20\xed\x95\x9c\x20\xeb\xaa\x85\xec\x9d\x84\x20\xed\x9a\x8c\xeb\xb3\xb5\xec\x8b\x9c\xed\x82\xac\x20\xec\x88\x98\x20\xec\x9e\x88\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4\x2e",
+	};
+	constexpr const char* DIMENSIONMASTER_IDENTITY_DESC[] = {
+		"\xec\xb0\xa8\xec\x9b\x90\xec\x88\xa0\xec\x82\xac\xec\x9d\x98\x20\xec\x95\x84\xec\x9d\xb4\xeb\x8d\xb4\xed\x8b\xb0\xed\x8b\xb0\xec\x9d\xb8\x20\x27\xec\xb0\xa8\xec\x9b\x90\xec\x8b\x9c\xea\xb3\x84\x27\xeb\x8a\x94\x20\xec\xa0\x81\xec\x97\x90\xea\xb2\x8c",
+		"\xec\x8a\xa4\xed\x82\xac\xec\x9d\x84\x20\xec\xa0\x81\xec\xa4\x91\xec\x8b\x9c\xed\x82\xac\x20\xeb\x95\x8c\x20\xeb\xa7\x88\xeb\x8b\xa4\x20\xec\x8b\x9c\xea\xb0\x84\xec\x9d\xb4\x20\xea\xb0\x80\xec\x86\x8d\xeb\x90\xa9\xeb\x8b\x88\xeb\x8b\xa4\x2e",
+		"\xec\xb0\xa8\xec\x9b\x90\x20\xec\x8b\x9c\xea\xb3\x84\xeb\x8a\x94\x20\xec\xb0\xa8\xec\x9b\x90\xec\x88\xa0\xec\x82\xac\xea\xb0\x80\x20\xec\x86\x8d\xed\x95\x9c\x20\xec\x8b\x9c\xea\xb0\x84\xea\xb3\xbc\x20\xeb\x8f\x99\xea\xb8\xb0\xed\x99\x94",
+		"\xeb\x90\x98\xec\x96\xb4\x20\xec\x9e\x88\xec\x96\xb4\x2c\x20\xec\xb0\xa8\xec\x9b\x90\xec\x8b\x9c\xea\xb3\x84\xec\x9d\x98\x20\xec\x8b\x9c\xea\xb0\x84\xec\x9d\xb4\x20\xeb\xb9\xa0\xeb\xa5\xb4\xea\xb2\x8c\x20\xed\x9d\x90\xeb\xa5\xb4\xeb\xa9\xb4",
+		"\xec\xb0\xa8\xec\x9b\x90\xec\x88\xa0\xec\x82\xac\x20\xeb\xb3\xb8\xec\x9d\xb8\x20\xeb\x98\x90\xed\x95\x9c\x20\xea\xb0\x80\xec\x86\x8d\xeb\x90\x98\xeb\x8a\x94\x20\xed\x8a\xb9\xec\xa7\x95\xec\x9d\x84\x20\xea\xb0\x80\xec\xa7\x80\xea\xb3\xa0",
+		"\xec\x9e\x88\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4\x2e",
+	};
+
+	constexpr const char* GUARDIANKNIGHT_IDENTITY_DESC[] = {
+		"\xec\xa0\x81\xec\x9d\x84\x20\xea\xb3\xb5\xea\xb2\xa9\xed\x95\xb4",
+		"\xec\x97\xa0\xeb\xb2\x84\xeb\xa0\x88\xec\x8a\xa4\x20\xec\x98\xa4\xeb\xb8\x8c\x20\xea\xb2\x8c\xec\x9d\xb4\xec\xa7\x80\xeb\xa5\xbc\x20\xed\x9a\x8c\xeb\xb3\xb5\xed\x95\xa9\xeb\x8b\x88\xeb\x8b\xa4\x2e",
+		"\xea\xb2\x8c\xec\x9d\xb4\xec\xa7\x80\xea\xb0\x80\x20\xea\xb0\x80\xeb\x93\x9d\x20\xec\xb0\xbc\xec\x9d\x84\x20\xeb\x95\x8c\x20\x5a\xed\x82\xa4\x20\xec\x82\xac\xec\x9a\xa9\x20\xec\x8b\x9c\x2c",
+		"\xed\x99\x94\xec\x8b\xa0\x20\xec\x83\x81\xed\x83\x9c\xeb\xa1\x9c\x20\xec\xa0\x84\xed\x99\x98\xeb\x90\x98\xec\x96\xb4",
+		"\xeb\x8d\x94\xec\x9a\xb1\x20\xea\xb0\x95\xeb\xa0\xa5\xed\x95\x9c\x20\xea\xb3\xb5\xea\xb2\xa9\xec\x9d\x84\x20\xed\x8d\xbc\xeb\xb6\x93\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4\x2e",
+	};
+
+	struct IDENTITY_DESCRIPTION
+	{
+		const char* pJsonClassName;
+		const char* const* ppLines;
+		int32_t iLineCount;
+	};
+
+	constexpr IDENTITY_DESCRIPTION IDENTITY_DESCRIPTIONS[] = {
+		{ "Warlord", WARLORD_IDENTITY_DESC, static_cast<int32_t>(std::size(WARLORD_IDENTITY_DESC)) },
+		{ "LanceMaster", LANCEMASTER_IDENTITY_DESC, static_cast<int32_t>(std::size(LANCEMASTER_IDENTITY_DESC)) },
+		{ "Artist", ARTIST_IDENTITY_DESC, static_cast<int32_t>(std::size(ARTIST_IDENTITY_DESC)) },
+		{ "DimensionMaster", DIMENSIONMASTER_IDENTITY_DESC, static_cast<int32_t>(std::size(DIMENSIONMASTER_IDENTITY_DESC)) },
+		{ "GuardianKnight", GUARDIANKNIGHT_IDENTITY_DESC, static_cast<int32_t>(std::size(GUARDIANKNIGHT_IDENTITY_DESC)) },
+	};
+
+	struct CLASS_OWNED_SLOT final { const char* pSlotId; const char* pOwnerClass; };
+
+	/* ClassSelect_Layout.json's own ownerClass-tagged right panel slots -- CHUDRuntimeView's
+	Render(strSelectedClass, revision) used to filter these automatically (show if ownerClass ==
+	strSelectedClass); CUILayoutRuntime has no such pass, so Update_ClassList applies the same
+	filter by hand against this mirror of the JSON's own ownerClass field. Slayer/Gunslinger
+	have no slots here at all (never authored) -- selecting either one simply shows none of this,
+	same gap as before this migration. Tag_5 only exists for Warlord/Artist (5 tags); LanceMaster/
+	DimensionMaster stop at Tag_4. */
+	constexpr CLASS_OWNED_SLOT CLASS_OWNED_SLOTS[] = {
+		{ "Warlord_DifficultyFill", "Warlord" },
+		{ "LanceMaster_DifficultyFill", "LanceMaster" },
+		{ "Artist_DifficultyFill", "Artist" },
+		{ "DimensionMaster_DifficultyFill", "DimensionMaster" },
+		{ "Warlord_Tag_1", "Warlord" }, { "Warlord_Tag_2", "Warlord" },
+		{ "Warlord_Tag_3", "Warlord" }, { "Warlord_Tag_4", "Warlord" }, { "Warlord_Tag_5", "Warlord" },
+		{ "LanceMaster_Tag_1", "LanceMaster" }, { "LanceMaster_Tag_2", "LanceMaster" },
+		{ "LanceMaster_Tag_3", "LanceMaster" }, { "LanceMaster_Tag_4", "LanceMaster" },
+		{ "Artist_Tag_1", "Artist" }, { "Artist_Tag_2", "Artist" }, { "Artist_Tag_3", "Artist" },
+		{ "Artist_Tag_4", "Artist" }, { "Artist_Tag_5", "Artist" },
+		{ "DimensionMaster_Tag_1", "DimensionMaster" }, { "DimensionMaster_Tag_2", "DimensionMaster" },
+		{ "DimensionMaster_Tag_3", "DimensionMaster" }, { "DimensionMaster_Tag_4", "DimensionMaster" },
+		{ "Warlord_Illustration", "Warlord" }, { "Warlord_NameSymbol", "Warlord" },
+		{ "Warlord_Description", "Warlord" }, { "Warlord_IdentityID", "Warlord" },
+		{ "Warlord_IdentityDescription", "Warlord" },
+		{ "LanceMaster_Illustration", "LanceMaster" }, { "LanceMaster_NameSymbol", "LanceMaster" },
+		{ "LanceMaster_Description", "LanceMaster" }, { "LanceMaster_IdentityID", "LanceMaster" },
+		{ "LanceMaster_IdentityDescription", "LanceMaster" },
+		{ "Artist_Illustration", "Artist" }, { "Artist_NameSymbol", "Artist" },
+		{ "Artist_Description", "Artist" }, { "Artist_IdentityID", "Artist" },
+		{ "Artist_IdentityDescription", "Artist" },
+		{ "DimensionMaster_Illustration", "DimensionMaster" }, { "DimensionMaster_NameSymbol", "DimensionMaster" },
+		{ "DimensionMaster_Description", "DimensionMaster" }, { "DimensionMaster_IdentityID", "DimensionMaster" },
+		{ "DimensionMaster_IdentityDescription", "DimensionMaster" },
+		{ "Slayer_DifficultyFill", "Slayer" },
+		{ "Slayer_Tag_1", "Slayer" },
+		{ "Slayer_Tag_2", "Slayer" },
+		{ "Slayer_Tag_3", "Slayer" },
+		{ "Slayer_Tag_4", "Slayer" },
+		{ "Slayer_Illustration", "Slayer" },
+		{ "Slayer_NameSymbol", "Slayer" },
+		{ "Slayer_Description", "Slayer" },
+		{ "Slayer_IdentityID", "Slayer" },
+		{ "Slayer_IdentityDescription", "Slayer" },
+		{ "Gunslinger_DifficultyFill", "Gunslinger" },
+		{ "Gunslinger_Tag_1", "Gunslinger" },
+		{ "Gunslinger_Tag_2", "Gunslinger" },
+		{ "Gunslinger_Tag_3", "Gunslinger" },
+		{ "Gunslinger_Tag_4", "Gunslinger" },
+		{ "Gunslinger_Illustration", "Gunslinger" },
+		{ "Gunslinger_NameSymbol", "Gunslinger" },
+		{ "Gunslinger_Description", "Gunslinger" },
+		{ "Gunslinger_IdentityID", "Gunslinger" },
+		{ "Gunslinger_IdentityDescription", "Gunslinger" },
+		{ "GuardianKnight_DifficultyFill", "GuardianKnight" },
+		{ "GuardianKnight_Tag_1", "GuardianKnight" },
+		{ "GuardianKnight_Tag_2", "GuardianKnight" },
+		{ "GuardianKnight_Tag_3", "GuardianKnight" },
+		{ "GuardianKnight_Tag_4", "GuardianKnight" },
+		{ "GuardianKnight_Tag_5", "GuardianKnight" },
+		{ "GuardianKnight_Illustration", "GuardianKnight" },
+		{ "GuardianKnight_NameSymbol", "GuardianKnight" },
+		{ "GuardianKnight_Description", "GuardianKnight" },
+		{ "GuardianKnight_IdentityID", "GuardianKnight" },
+		{ "GuardianKnight_IdentityDescription", "GuardianKnight" },
+	};
+
+	/* ownerClass == null chrome that used to show via the same generic Render(strSelectedClass,
+	revision) pass -- always visible while SERVER_ARENA regardless of selected class. */
+	constexpr const char* ALWAYS_VISIBLE_CLASS_LIST_CHROME[] = {
+		"PanelBgLeft", "PanelBgRight", "PanelBgRightBottom", "Frame",
+		"DifficultyBg", "TagsBg", "New_Slot", "InfoSeparateBar", "IdentitySeparateBar",
+	};
+
+	constexpr f32_t ROW_Y_START = 60.f;
+	constexpr f32_t ROW_GAP = 7.f;
+	/* The right panel is a body plate with a separate bottom cap, and the list it frames is
+	an accordion: expanding a category pushes every row below it down by the thumbnail's
+	height. So the panel cannot keep the fixed rect ClassSelect_Layout.json authored -- that
+	one frames the retail row count and our six categories already overrun it collapsed, and
+	by a further thumbnail expanded, which is why the panel stopped halfway down the list.
+	Only the body grows; the cap keeps its authored height and the overlap it was authored
+	at (296.29 - 235.71 into the body, 305.71 - 296.29 below it). */
+	constexpr f32_t PANEL_BODY_X = 930.f;
+	constexpr f32_t PANEL_BODY_Y = 4.29f;
+	constexpr f32_t PANEL_WIDTH = 340.f;
+	constexpr f32_t PANEL_CAP_X = 950.f;
+	constexpr f32_t PANEL_CAP_HEIGHT = 70.f;
+	constexpr f32_t PANEL_CAP_OVERLAP = 60.57f;
+	constexpr f32_t PANEL_CAP_BELOW_BODY = 9.43f;
+	/* Below the last row, to the panel's own edge. */
+	constexpr f32_t PANEL_BOTTOM_MARGIN = 14.f;
+	constexpr f32_t THUMB_W = 134.f;
+	constexpr f32_t THUMB_H = 78.f;
+	constexpr f32_t THUMB_MARGIN_TOP = 10.f;
+	constexpr f32_t THUMB_MARGIN_BOTTOM = 10.f;
+
+	struct CHARACTER_SELECT_PRODUCT_SLOT final
+	{
+		const char_t* pSlotId;
+		const char_t* pIdlePath;
+		const char_t* pHoverPath;
+		f32_t fX;
+		f32_t fY;
+		f32_t fWidth;
+		f32_t fHeight;
+	};
+
+	constexpr std::array<CHARACTER_SELECT_PRODUCT_SLOT, 5> PRODUCT_BUTTON_SLOTS =
+	{{
+		{ "SpawnMonsterButton", "UI/ClassSelect/Common/SpawnMonsterButton.png",
+			"UI/ClassSelect/Common/SpawnMonsterButtonHover.png",
+			1036.84436f, 624.437317f, 70.f, 69.f },
+		{ "BossSpawnButton", "UI/ClassSelect/Common/BossSpawnButton.png",
+			"UI/ClassSelect/Common/BossSpawnButtonHover.png",
+			1099.70178f, 624.437317f, 70.f, 69.f },
+		{ "SpawnCancelButton", "UI/ClassSelect/Common/SpawnCancelButton.png",
+			"UI/ClassSelect/Common/SpawnCancelButtonHover.png",
+			1165.41553f, 624.437317f, 70.f, 69.f },
+		{ "CreateCharacterButton", "UI/ClassSelect/Common/CreateCharacterButton.png",
+			"UI/ClassSelect/Common/CreateCharacterButtonHover.png",
+			1105.71472f, 565.714478f, 140.f, 47.f },
+		{ "GoBackIcon", "UI/ClassSelect/Common/GoBackIcon.png",
+			"UI/ClassSelect/Common/GoBackIconHover.png",
+			44.7142868f, 674.648804f, 40.f, 39.f },
+	}};
+
+	bool_t Is_ValidProductSlotRect(
+		const f32_t fX, const f32_t fY, const f32_t fWidth, const f32_t fHeight)
+	{
+		return std::isfinite(fX) && std::isfinite(fY) &&
+			std::isfinite(fWidth) && std::isfinite(fHeight) &&
+			fWidth > 0.f && fHeight > 0.f;
+	}
+
+	const CHARACTER_SELECT_PRODUCT_SLOT* Find_ProductButtonSlot(const char_t* pSlotId)
+	{
+		for (const CHARACTER_SELECT_PRODUCT_SLOT& Slot : PRODUCT_BUTTON_SLOTS)
+		{
+			if (0 == std::strcmp(Slot.pSlotId, pSlotId))
+				return &Slot;
+		}
+		return nullptr;
+	}
+
+	bool_t Has_CompleteProductButtonSlots(CUILayoutRuntime* pView)
+	{
+		if (nullptr == pView)
+			return false;
+		for (const CHARACTER_SELECT_PRODUCT_SLOT& Slot : PRODUCT_BUTTON_SLOTS)
+		{
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			if (!pView->Get_SlotRect(Slot.pSlotId, fX, fY, fWidth, fHeight) ||
+				!Is_ValidProductSlotRect(fX, fY, fWidth, fHeight))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	void Resolve_ProductButtonRect(
+		CUILayoutRuntime* pView,
+		const CHARACTER_SELECT_PRODUCT_SLOT& Slot,
+		const bool_t hasCompleteAuthoredSlots,
+		f32_t& outX, f32_t& outY, f32_t& outWidth, f32_t& outHeight)
+	{
+		if (hasCompleteAuthoredSlots && nullptr != pView &&
+			pView->Get_SlotRect(Slot.pSlotId, outX, outY, outWidth, outHeight) &&
+			Is_ValidProductSlotRect(outX, outY, outWidth, outHeight))
+		{
+			return;
+		}
+		outX = Slot.fX;
+		outY = Slot.fY;
+		outWidth = Slot.fWidth;
+		outHeight = Slot.fHeight;
+	}
+
+	string Build_ClassSelectAssetPath(const char* pClassName, const char* pFileName)
+	{
+		return string("UI/ClassSelect/") + pClassName + "/" + pFileName;
+	}
+}
+
+bool_t CLevel_CharacterSelect::Is_ProductPointerHovered() const
+{
+	if (MODE::SERVER_ARENA != m_eMode || nullptr == m_pClassSelectView)
+		return false;
+
+	/* Same router every other product widget on this screen hit-tests through -- this is
+	gameplay-path code (it gates whether an LMB also reaches PlayerController), so it reads the
+	native cursor, not ImGui's. */
+	const auto IsHovered = [](const f32_t fX, const f32_t fY,
+		const f32_t fWidth, const f32_t fHeight)
+	{
+		return CUIInputRouter::Get().Is_Hovered(
+			fX, fY, fWidth, fHeight, REF_WIDTH, REF_HEIGHT);
+	};
+
+	const bool_t hasCompleteAuthoredButtons =
+		Has_CompleteProductButtonSlots(m_pClassSelectView.get());
+	for (const CHARACTER_SELECT_PRODUCT_SLOT& Slot : PRODUCT_BUTTON_SLOTS)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		Resolve_ProductButtonRect(m_pClassSelectView.get(), Slot,
+			hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
+		if (IsHovered(fX, fY, fWidth, fHeight))
+			return true;
+	}
+
+	/* Class rows and their expanded thumbnail occupy this stable authored right-side panel.
+	Blocking the panel before PlayerController::Update keeps a class-selection LMB from also
+	becoming a Server basic-attack command in the same frame. */
+	return IsHovered(940.f, 48.f, 320.f, 540.f);
+}
+
+namespace
+{
+	const char* Get_CinematicClassId(const size_t index)
+	{
+		constexpr const char* ids[] = {"LANCE_MASTER", "GUNSLINGER", "SLAYER", "ARTIST",
+			"DIMENSIONMASTER", "WARLORD", "GUARDIANKNIGHT"};
+		return index < std::size(ids) ? ids[index] : "";
+	}
+
+	string Get_SelectedJsonClassName(const size_t iSelectedClassIndex)
+	{
+		for (const CLASS_LIST_ENTRY& Entry : CLASS_LIST_ENTRIES)
+			if (Entry.iSupportedClassIndex == iSelectedClassIndex)
+				return Entry.pJsonClassName;
+		return {};
+	}
+}
+
+void CLevel_CharacterSelect::Hide_ClassList()
+{
+	if (nullptr == m_pClassSelectView)
+		return;
+
+	for (const char* pId : ALWAYS_VISIBLE_CLASS_LIST_CHROME)
+		m_pClassSelectView->Set_SlotVisible(pId, false);
+	for (const CLASS_OWNED_SLOT& Slot : CLASS_OWNED_SLOTS)
+		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId, false);
+	for (int32_t i = 0; i < static_cast<int32_t>(std::size(CLASS_LIST_ENTRIES)); ++i)
+	{
+		m_pClassSelectView->Set_SlotVisible("ClassList_Row" + std::to_string(i), false);
+		m_pClassSelectView->Set_SlotVisible("ClassList_Symbol" + std::to_string(i), false);
+	}
+	m_pClassSelectView->Set_SlotVisible("ClassList_Thumb", false);
+	m_pClassSelectView->Set_SlotVisible("ClassList_ThumbSymbol", false);
+	m_pClassSelectView->Set_SlotVisible("ClassList_ThumbFrame", false);
+}
+
+void CLevel_CharacterSelect::Update_ClassList()
+{
+	/* MODE::SERVER_ARENA is the real "scene has finished transitioning" signal --
+	Commit_ServerArena only sets it once the Server-replicated local character has
+	actually spawned and bound to the camera. Showing this panel any earlier (still
+	MODE::CONNECTING, still waiting on that network round trip) put the fully-formed
+	side panels on screen while the arena itself had not finished settling, which read
+	as the UI arriving before the scene transition had actually completed. */
+	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
+	{
+		Hide_ClassList();
+		return;
+	}
+
+	const string strSelectedClass = m_iSelectedClassIndex < SUPPORTED_CLASSES.size()
+		? Get_SelectedJsonClassName(m_iSelectedClassIndex)
+		: string{};
+
+	const bool_t bClassOnShow = !Is_ClassCinematicActive() &&
+		CLASS_BROWSE_STAGE::CATEGORY != m_eBrowseStage;
+	for (const char* pId : ALWAYS_VISIBLE_CLASS_LIST_CHROME)
+		m_pClassSelectView->Set_SlotVisible(pId, bClassOnShow ||
+			0 == std::strcmp(pId, "PanelBgRight") || 0 == std::strcmp(pId, "PanelBgRightBottom") ||
+			0 == std::strcmp(pId, "Frame"));
+	/* ownerClass filter CHUDRuntimeView's own Render(strSelectedClass, revision) used to apply
+	automatically -- CUILayoutRuntime has no such pass, so this shows only the selected class's
+	own right-panel slots and hides every other class's. */
+	for (const CLASS_OWNED_SLOT& Slot : CLASS_OWNED_SLOTS)
+		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId,
+			bClassOnShow && strSelectedClass == Slot.pOwnerClass);
+
+	const bool_t hasCompleteProductButtons =
+		Has_CompleteProductButtonSlots(m_pClassSelectView.get());
+	for (const CHARACTER_SELECT_PRODUCT_SLOT& Slot : PRODUCT_BUTTON_SLOTS)
+		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId, hasCompleteProductButtons &&
+			((!Is_ClassCinematicActive() && CLASS_BROWSE_STAGE::TRIAL == m_eBrowseStage) ||
+				0 == std::strcmp(Slot.pSlotId, "GoBackIcon")));
+
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pClassSelectView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pClassSelectView->Get_ResolutionHeight();
+	const bool_t bInteractable = MODE::SERVER_ARENA == m_eMode &&
+		!m_isCreateCharacterModalOpen && !Is_CustomizingOpen() &&
+		!CLevelTransitionService::Is_Pending();
+
+	/* Accordion: fRowY advances past each row, and past the expanded row's thumbnail block too,
+	so a category expanding pushes every row beneath it down instead of the thumbnail always
+	drawing in one fixed spot regardless of which category opened it. Render_ClassListText below
+	recomputes this exact same fRowY sequence for its own text-only pass -- both are pure
+	functions of m_iExpandedCategory/CLASS_LIST_ENTRIES, so recomputing instead of caching stays
+	safe as long as nothing else touches m_iExpandedCategory between here and Render(). */
+	/* Default hidden -- only the loop's own bExpanded branch below shows these, and unlike the
+	old ImGui pass (which simply drew nothing when no category was expanded), a CUI_Sprite would
+	otherwise keep showing whichever class was expanded last even after every row collapses. */
+	m_pClassSelectView->Set_SlotVisible("ClassList_Thumb", false);
+	m_pClassSelectView->Set_SlotVisible("ClassList_ThumbSymbol", false);
+	m_pClassSelectView->Set_SlotVisible("ClassList_ThumbFrame", false);
+
+	const int32_t iExpandedBefore = m_iExpandedCategory;
+	f32_t fRowY = ROW_Y_START;
+	for (int32_t i = 0; i < static_cast<int32_t>(std::size(CLASS_LIST_ENTRIES)); ++i)
+	{
+		const CLASS_LIST_ENTRY& Entry = CLASS_LIST_ENTRIES[i];
+		const string strRowId = "ClassList_Row" + std::to_string(i);
+		const string strSymbolId = "ClassList_Symbol" + std::to_string(i);
+		const bool_t bExpanded = i == iExpandedBefore;
+
+		m_pClassSelectView->Set_SlotVisible(strRowId, true);
+		m_pClassSelectView->Set_SlotPosition(strRowId, Entry.fX, fRowY);
+		m_pClassSelectView->Set_SlotTexture(strRowId, bExpanded ?
+			"UI/ClassSelect/Common/CategorySelected.png" : "UI/ClassSelect/Common/Category.png");
+
+		const bool_t bHovered = bInteractable &&
+			Router.Is_Hovered(Entry.fX, fRowY, Entry.fWidth, Entry.fHeight, fRefWidth, fRefHeight);
+		/* Same hover callout as the old AddRect(...,160,...) outline -- a brighten tint instead
+		of a border image CUILayoutRuntime has no primitive for. Only while collapsed: the
+		expanded row already reads as selected via CategorySelected.png. */
+		m_pClassSelectView->Set_SlotTint(strRowId,
+			(!bExpanded && bHovered) ? float4_t(1.15f, 1.15f, 1.05f, 1.f) : float4_t(1.f, 1.f, 1.f, 1.f));
+
+		if (nullptr != Entry.pCategorySymbolFile)
+		{
+			m_pClassSelectView->Set_SlotVisible(strSymbolId, true);
+			m_pClassSelectView->Set_SlotPosition(strSymbolId, Entry.fX + 8.f, fRowY + 6.f);
+			m_pClassSelectView->Set_SlotTexture(strSymbolId,
+				string("UI/ClassSelect/Common/") + Entry.pCategorySymbolFile);
+		}
+		else
+		{
+			m_pClassSelectView->Set_SlotVisible(strSymbolId, false);
+		}
+
+		if (bHovered)
+		{
+			Router.Claim_Mouse_This_Frame();
+			if (Router.Is_Clicked(Entry.fX, fRowY, Entry.fWidth, Entry.fHeight, fRefWidth, fRefHeight))
+			{
+				CMainApp::Play_UIButtonClickSound();
+				m_iExpandedCategory = bExpanded ? -1 : i;
+				Set_BrowseStage(CLASS_BROWSE_STAGE::CATEGORY, "category-row-click");
+				const bool selectedMovie = Select_ClassCinematic(SUPPORTED_CLASSES[Entry.iSupportedClassIndex]);
+				if (!bExpanded && selectedMovie && m_ClassSelectionPresentation.Has_Class(Get_ClassMovieId()))
+				{
+					if (!Play_ClassCinematic(Get_ClassMovieId()))
+						m_strStatus = Get_ClassCinematicStatus();
+				}
+				else
+					m_ClassSelectionPresentation.Stop();
+			}
+		}
+
+		fRowY += Entry.fHeight + ROW_GAP;
+
+		if (bExpanded)
+		{
+			const bool_t bConfirmed = Entry.iSupportedClassIndex == m_iSelectedClassIndex;
+			const f32_t fThumbY = fRowY + THUMB_MARGIN_TOP;
+
+			m_pClassSelectView->Set_SlotVisible("ClassList_Thumb", true);
+			m_pClassSelectView->Set_SlotPosition("ClassList_Thumb", Entry.fX, fThumbY);
+			/* Set_SlotTexture(missingPath) resolves to a null SRV and reverts the sprite to its
+			own authored default (CategorySelected.png, same fallback as the old
+			Load_Texture-returned-null branch) -- Slayer/Gunslinger have no IllustrationSmall.png
+			today, same gap as before this migration. */
+			m_pClassSelectView->Set_SlotTexture("ClassList_Thumb",
+				Build_ClassSelectAssetPath(Entry.pJsonClassName, "IllustrationSmall.png"));
+
+			/* No missing-asset fallback for the identity symbol overlay (unlike Thumb just
+			above) -- a failed load here reverts to ClassList_ThumbSymbol's own authored
+			placeholder texture instead of hiding, a minor cosmetic gap versus the old
+			Load_Texture-returns-null-so-skip-drawing behavior, only reachable for a class
+			missing this one asset. */
+			m_pClassSelectView->Set_SlotVisible("ClassList_ThumbSymbol", true);
+			m_pClassSelectView->Set_SlotPosition(
+				"ClassList_ThumbSymbol", Entry.fX + THUMB_W - 22.f, fThumbY - 4.f);
+			m_pClassSelectView->Set_SlotTexture("ClassList_ThumbSymbol",
+				Build_ClassSelectAssetPath(Entry.pJsonClassName, "IdentitySymbol.png"));
+
+			const bool_t bThumbHovered = bInteractable &&
+				Router.Is_Hovered(Entry.fX, fThumbY, THUMB_W, THUMB_H, fRefWidth, fRefHeight);
+
+			/* Small illust selected.png is the one hover/confirm frame -- both states use the
+			same authored art instead of a placeholder AddRect() outline. */
+			m_pClassSelectView->Set_SlotVisible("ClassList_ThumbFrame", bConfirmed || bThumbHovered);
+			m_pClassSelectView->Set_SlotPosition(
+				"ClassList_ThumbFrame", Entry.fX - 2.f, fThumbY - 2.f);
+
+			if (bThumbHovered)
+			{
+				Router.Claim_Mouse_This_Frame();
+				if (Router.Is_Clicked(Entry.fX, fThumbY, THUMB_W, THUMB_H, fRefWidth, fRefHeight))
+				{
+					CMainApp::Play_UIButtonClickSound();
+					if (Request_ClassChange(Entry.iSupportedClassIndex) &&
+						CLASS_BROWSE_STAGE::CATEGORY == m_eBrowseStage)
+						Set_BrowseStage(CLASS_BROWSE_STAGE::PREVIEW, "class-thumbnail-click");
+				}
+			}
+
+			fRowY = fThumbY + THUMB_H + THUMB_MARGIN_BOTTOM;
+		}
+	}
+
+	/* fRowY is now the bottom of the list, so the panel behind it is sized to what was
+	actually laid out this frame rather than to a rect authored for a different row count. */
+	const f32_t fBodyHeight = fRowY + PANEL_BOTTOM_MARGIN - PANEL_CAP_BELOW_BODY - PANEL_BODY_Y;
+	m_pClassSelectView->Set_SlotRect(
+		"PanelBgRight", PANEL_BODY_X, PANEL_BODY_Y, PANEL_WIDTH, fBodyHeight);
+	m_pClassSelectView->Set_SlotRect("PanelBgRightBottom", PANEL_CAP_X,
+		PANEL_BODY_Y + fBodyHeight - PANEL_CAP_OVERLAP, PANEL_WIDTH, PANEL_CAP_HEIGHT);
+}
+
+void CLevel_CharacterSelect::Render_ClassListText()
+{
+	/* Same MODE::SERVER_ARENA gate as Update_ClassList -- these are that panel's own text, so
+	they must disappear and reappear together with it instead of floating on screen without the
+	art underneath. Draws with the LOA font (CGameInstance::Draw_Text) like every other product
+	label; ImGui is Debug-tool-only. */
+	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
+		return;
+
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fScaleX = vViewportSize.x / REF_WIDTH;
+	const f32_t fScaleY = vViewportSize.y / REF_HEIGHT;
+	const f32_t fUiScale = (std::min)(fScaleX, fScaleY);
+
+	/* The labels are UTF-8 byte literals (this file has no BOM and the project builds without
+	/utf-8), and Draw_Text takes wide text. */
+	const auto Fn_Widen = [](const char* pUtf8) -> wstring_t
+	{
+		if (nullptr == pUtf8 || '\0' == pUtf8[0])
+			return {};
+		const int32_t iLength = ::MultiByteToWideChar(CP_UTF8, 0, pUtf8, -1, nullptr, 0);
+		if (iLength <= 1)
+			return {};
+		wstring_t wide(static_cast<size_t>(iLength - 1), L'\0');
+		::MultiByteToWideChar(CP_UTF8, 0, pUtf8, -1, wide.data(), iLength);
+		return wide;
+	};
+
+	/* fSize is the reference-resolution pixel height -- Draw_Text scales relative to the font's
+	own measured height instead of taking a size directly. Anchored top-left (0,0 pivot) unless
+	a pivot is given. One draw per label with the real weight the retail classselect.gfx uses
+	(section headers $YoonGasiIIM, identity blurb $YG760) -- the earlier four-offset faux-bold
+	pass on YG330 read as smeared/fat. bShadow adds the 1px dark drop the retail
+	LabelEx_*_shadow labels carry. */
+	const auto Fn_DrawPanelTextAt = [&](const wstring& strFont, f32_t fX, f32_t fY,
+		f32_t fSize, const fvector_t& vColor, const char* pUtf8, const float2_t& vPivot,
+		bool_t bShadow)
+	{
+		const wstring_t wide = Fn_Widen(pUtf8);
+		if (wide.empty())
+			return;
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(strFont, wide.c_str());
+		if (vMeasured.y <= 0.f)
+			return;
+		const f32_t fScale = (fSize / vMeasured.y) * fUiScale;
+		const float2_t vPos(fX * fScaleX, fY * fScaleY);
+		if (bShadow)
+		{
+			CGameInstance::Get().Draw_Text(strFont, wide.c_str(),
+				float2_t(vPos.x + 1.f, vPos.y + 1.f),
+				XMVectorSet(0.f, 0.f, 0.f, 0.8f), 0.f, vPivot, fScale);
+		}
+		CGameInstance::Get().Draw_Text(strFont, wide.c_str(), vPos, vColor, 0.f, vPivot, fScale);
+	};
+
+	const auto Fn_DrawPanelText = [&](const wstring& strFont, f32_t fX, f32_t fY, f32_t fSize,
+		const fvector_t& vColor, const char* pUtf8)
+	{
+		Fn_DrawPanelTextAt(strFont, fX, fY, fSize, vColor, pUtf8, float2_t(0.f, 0.f), false);
+	};
+
+	/* Centers pText within [fRectX, fRectX + fRectWidth) at reference scale -- a 0.5 x-pivot
+	does what the old explicit CalcTextSizeA half-width offset did. */
+	const auto Fn_DrawPanelTextCentered = [&](const wstring& strFont, f32_t fRectX,
+		f32_t fRectWidth, f32_t fY, f32_t fSize, const fvector_t& vColor, const char* pUtf8)
+	{
+		Fn_DrawPanelTextAt(strFont, fRectX + fRectWidth * 0.5f, fY, fSize, vColor, pUtf8,
+			float2_t(0.5f, 0.f), false);
+	};
+
+	/* Class list row / thumbnail labels: retail ClassSelectClassButtonTop/Bottom textField is
+	$YoonGasiIIM 16px at 1080p -> 10.667px in 1280 reference units, single draw. */
+	const auto Fn_DrawText = [&](f32_t fX, f32_t fY, const fvector_t& vColor, const char* pUtf8)
+	{
+		Fn_DrawPanelText(TEXT("Font_YoonGasiIIM"), fX, fY, 16.f, vColor, pUtf8);
+	};
+
+	/* Left panel text: JSON slots only carry images, so the class name, the three yellow section
+	labels, and the identity blurb are drawn here against the rects CHUDLayoutTool wrote for
+	<Class>_NameSymbol / _IdentityDescription in ClassSelect_Layout.json. <Class>_Description's
+	rect is currently unused/overlapped by IdentityID after the identity section moved up under
+	the tags, so no text is drawn there. */
+	for (const CLASS_LIST_ENTRY& Entry : CLASS_LIST_ENTRIES)
+	{
+		if (Is_ClassCinematicActive() || CLASS_BROWSE_STAGE::CATEGORY == m_eBrowseStage ||
+			Entry.iSupportedClassIndex != m_iSelectedClassIndex)
+			continue;
+
+		/* Aligned against Warlord_NameSymbol's current rect (50x50 at y=191.29): text sits to
+		the symbol's right, vertically centered on its 50px height. */
+		/* Same IM_COL32 values the ImGui draws used, as normalized RGBA. */
+		const fvector_t vSectionLabelColor =
+			XMVectorSet(1.f, 220.f / 255.f, 140.f / 255.f, 1.f);
+		Fn_DrawPanelText(TEXT("Font_YoonGasiIIM"), 72.f, 203.f, 32.f, Colors::White,
+			Entry.pClassLabel);
+		Fn_DrawPanelText(TEXT("Font_YoonGasiIIM"), 15.f, 262.f, 20.f, vSectionLabelColor,
+			"\xec\xa1\xb0\xec\x9e\x91 \xeb\x82\x9c\xec\x9d\xb4\xeb\x8f\x84");
+		Fn_DrawPanelText(TEXT("Font_YoonGasiIIM"), 15.f, 335.f, 20.f, vSectionLabelColor,
+			"\xea\xb8\xb0\xeb\xb3\xb8 \xec\xa0\x95\xeb\xb3\xb4");
+		Fn_DrawPanelText(TEXT("Font_YoonGasiIIM"), 15.f, 453.f, 20.f, vSectionLabelColor,
+			"\xec\x95\x84\xec\x9d\xb4\xeb\x8d\xb4\xed\x8b\xb0\xed\x8b\xb0");
+
+		for (const IDENTITY_DESCRIPTION& Desc : IDENTITY_DESCRIPTIONS)
+		{
+			if (0 != strcmp(Desc.pJsonClassName, Entry.pJsonClassName))
+				continue;
+
+			for (int32_t iLine = 0; iLine < Desc.iLineCount; ++iLine)
+			{
+				Fn_DrawPanelTextCentered(TEXT("Font_YG760"), IDENTITY_DESC_X, IDENTITY_DESC_WIDTH,
+					IDENTITY_DESC_Y + static_cast<f32_t>(iLine) * IDENTITY_DESC_LINE_HEIGHT,
+					16.f,
+					XMVectorSet(220.f / 255.f, 220.f / 255.f, 220.f / 255.f, 1.f),
+					Desc.ppLines[iLine]);
+			}
+			break;
+		}
+		break;
+	}
+
+	/* "클래스 선택" -- retail classselect.gfx puts it as a LabelEx_YGasiIIM_shadow label
+	scaled 2.7x (about 32px at 1080p, 22px here) centered over the frame art's title band;
+	centered on the authored Frame slot so it stays aligned if the tool moves the frame. */
+	{
+		f32_t fFrameX = 940.f, fFrameY = -8.57f, fFrameW = 381.f, fFrameH = 67.f;
+		(void)m_pClassSelectView->Get_SlotRect("Frame", fFrameX, fFrameY, fFrameW, fFrameH);
+		Fn_DrawPanelTextAt(TEXT("Font_YoonGasiIIM"), fFrameX + fFrameW * 0.5f, fFrameY + 36.f,
+			24.f, XMVectorSet(1.f, 220.f / 255.f, 140.f / 255.f, 1.f),
+			"\xed\x81\xb4\xeb\x9e\x98\xec\x8a\xa4 \xec\x84\xa0\xed\x83\x9d",
+			float2_t(0.5f, 0.5f), true);
+	}
+
+	/* Same fRowY recompute as Update_ClassList's own accordion loop, purely for these two text
+	draws -- see that function's comment for why recomputing instead of caching stays safe. */
+	const int32_t iExpandedBefore = m_iExpandedCategory;
+	f32_t fRowY = ROW_Y_START;
+	for (int32_t i = 0; i < static_cast<int32_t>(std::size(CLASS_LIST_ENTRIES)); ++i)
+	{
+		const CLASS_LIST_ENTRY& Entry = CLASS_LIST_ENTRIES[i];
+		const bool_t bExpanded = i == iExpandedBefore;
+
+		Fn_DrawText(Entry.fX + 52.f, fRowY + 16.f,
+			XMVectorSet(230.f / 255.f, 230.f / 255.f, 230.f / 255.f, 1.f),
+			Entry.pCategoryLabel);
+
+		fRowY += Entry.fHeight + ROW_GAP;
+
+		if (bExpanded)
+		{
+			const f32_t fThumbY = fRowY + THUMB_MARGIN_TOP;
+			Fn_DrawText(Entry.fX + 4.f, fThumbY + THUMB_H - 18.f,
+				Colors::White, Entry.pClassLabel);
+			fRowY = fThumbY + THUMB_H + THUMB_MARGIN_BOTTOM;
+		}
+	}
+}
+
+void CLevel_CharacterSelect::Hide_ArenaSpawnButtons()
+{
+	if (nullptr == m_pClassSelectView)
+		return;
+	for (const CHARACTER_SELECT_PRODUCT_SLOT& Slot : PRODUCT_BUTTON_SLOTS)
+		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId, false);
+}
+
+void CLevel_CharacterSelect::Update_ArenaSpawnButtons()
+{
+	/* Same MODE::SERVER_ARENA gate as Update_ClassList -- these debug spawn buttons and the
+	Create Character button are gameplay-tied and meaningless (their click handlers all touch
+	m_pWorldEntityCommandSink/m_pPlayerCommandSink, which are only useful once the arena has
+	actually admitted the local character) before the scene has really finished transitioning. */
+	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
+	{
+		Hide_ArenaSpawnButtons();
+		return;
+	}
+
+	const bool_t hasCompleteAuthoredButtons =
+		Has_CompleteProductButtonSlots(m_pClassSelectView.get());
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pClassSelectView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pClassSelectView->Get_ResolutionHeight();
+	const bool_t bInteractable = MODE::SERVER_ARENA == m_eMode &&
+		!m_isCreateCharacterModalOpen && !Is_ClassCinematicActive() &&
+		!Is_ClassPresentationPreparationPending() &&
+		!CLevelTransitionService::Is_Pending() &&
+		CLASS_BROWSE_STAGE::TRIAL == m_eBrowseStage;
+
+	/* The authored spawn icon rects overlap by a few pixels. Resolve the visually topmost slot
+	first (later draw order wins) so one physical click can submit exactly one typed command. */
+	const char_t* pHoveredSpawnSlotId = nullptr;
+	constexpr const char_t* SPAWN_HIT_ORDER[] =
+	{
+		"SpawnCancelButton", "BossSpawnButton", "SpawnMonsterButton"
+	};
+	if (bInteractable)
+	{
+		for (const char_t* pSlotId : SPAWN_HIT_ORDER)
+		{
+			const CHARACTER_SELECT_PRODUCT_SLOT* pSlot = Find_ProductButtonSlot(pSlotId);
+			if (nullptr == pSlot)
+				continue;
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
+				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
+			if (Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+			{
+				pHoveredSpawnSlotId = pSlotId;
+				break;
+			}
+		}
+	}
+
+	/* ARENA_SPAWN_OPTIONS[1] (Mid Boss / Lugaru) has no button in this row -- only reachable
+	through the ImGui debug radio list -- so the middle button maps to option index 2 (Valtan),
+	not the array's own middle entry. */
+	struct SPAWN_BUTTON final { const char_t* pSlotId; size_t iOptionIndex; };
+	constexpr SPAWN_BUTTON SPAWN_BUTTONS[] =
+	{
+		{ "SpawnMonsterButton", 0u },
+		{ "BossSpawnButton", 2u },
+	};
+
+	for (const SPAWN_BUTTON& Button : SPAWN_BUTTONS)
+	{
+		const CHARACTER_SELECT_PRODUCT_SLOT* pSlot =
+			Find_ProductButtonSlot(Button.pSlotId);
+		if (nullptr == pSlot)
+			continue;
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
+			hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
+
+		const bool_t bHovered = nullptr != pHoveredSpawnSlotId &&
+			0 == std::strcmp(pHoveredSpawnSlotId, Button.pSlotId);
+
+		/* Visibility is Update_ClassList's own concern (hasCompleteProductButtons, called just
+		before this from Update()) -- this only owns which texture shows. Empty path reverts the
+		sprite to its own authored default, which is this same pIdlePath art, so only the hover
+		swap needs an explicit override. */
+		m_pClassSelectView->Set_SlotTexture(Button.pSlotId, bHovered ? pSlot->pHoverPath : "");
+
+		if (bHovered)
+		{
+			Router.Claim_Mouse_This_Frame();
+			if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+			{
+				CMainApp::Play_UIButtonClickSound();
+				m_iSelectedArenaSpawnIndex = Button.iOptionIndex;
+				Request_SelectedArenaSpawn();
+			}
+		}
+	}
+
+	/* SpawnCancelButton (rightmost, "되돌리기"): despawns every world entity the two buttons to
+	its left created in this room -- C2S_DESPAWN_ALL_WORLD_ENTITIES, mirroring how the other two
+	buttons already call Request_SelectedArenaSpawn/IWorldEntityCommandSink. */
+	{
+		const CHARACTER_SELECT_PRODUCT_SLOT* pSlot =
+			Find_ProductButtonSlot("SpawnCancelButton");
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (nullptr != pSlot)
+		{
+			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
+				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
+			const bool_t bHovered = nullptr != pHoveredSpawnSlotId &&
+				0 == std::strcmp(pHoveredSpawnSlotId, pSlot->pSlotId);
+			m_pClassSelectView->Set_SlotTexture(pSlot->pSlotId, bHovered ? pSlot->pHoverPath : "");
+			if (bHovered)
+			{
+				Router.Claim_Mouse_This_Frame();
+				if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight) &&
+					nullptr != m_pWorldEntityCommandSink)
+				{
+					CMainApp::Play_UIButtonClickSound();
+					m_pWorldEntityCommandSink->Request_DespawnAllWorldEntities(
+						m_iNextDespawnRequestSequence++);
+					/* Request_SelectedArenaSpawn refuses to resend once
+					m_ArenaSpawnAccepted[index] is true (see its own gate check) -- that flag only
+					meant "don't ask the Server to spawn something it already told us exists", but
+					never got cleared on despawn, so re-spawning either option silently no-op'd
+					after a revert even though the Server-side entity was really gone. */
+					m_ArenaSpawnAccepted.fill(false);
+				}
+			}
+		}
+	}
+
+	/* CreateCharacterButton stages the same one-shot request as the Debug "Create Character"
+	button; Render_CreateCharacterProductInputHost consumes it and drives the (now ImGui-free)
+	modal in both configurations. bInteractable already covers
+	isConnecting/isReturning/transitionPending via MODE::SERVER_ARENA and the other two checks;
+	m_iPendingClassIndex is the one condition bInteractable does not already include. */
+	{
+		const CHARACTER_SELECT_PRODUCT_SLOT* pSlot =
+			Find_ProductButtonSlot("CreateCharacterButton");
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (nullptr != pSlot)
+		{
+			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
+				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
+			const bool_t bHovered = bInteractable && !m_iPendingClassIndex.has_value() &&
+				Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
+			m_pClassSelectView->Set_SlotTexture(pSlot->pSlotId, bHovered ? pSlot->pHoverPath : "");
+			if (bHovered)
+			{
+				Router.Claim_Mouse_This_Frame();
+				if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+				{
+					CMainApp::Play_UIButtonClickSound();
+					Request_CreateCharacterButtonClick();
+				}
+			}
+		}
+	}
+
+	/* Back: same expected Leave_ServerArena() the ImGui "Back" button already calls. Not gated by
+	bInteractable -- an escape hatch should stay clickable through pending/preparing states, only
+	guarded against firing again mid-transition. */
+	{
+		const CHARACTER_SELECT_PRODUCT_SLOT* pSlot =
+			Find_ProductButtonSlot("GoBackIcon");
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (nullptr != pSlot)
+		{
+			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
+				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
+			const bool_t bHovered = !m_isCreateCharacterModalOpen &&
+				!CLevelTransitionService::Is_Pending() &&
+				Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
+			m_pClassSelectView->Set_SlotTexture(pSlot->pSlotId, bHovered ? pSlot->pHoverPath : "");
+			if (bHovered)
+			{
+				Router.Claim_Mouse_This_Frame();
+				if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+				{
+					CMainApp::Play_UIButtonClickSound();
+					if (CLASS_BROWSE_STAGE::TRIAL == m_eBrowseStage)
+						Set_BrowseStage(CLASS_BROWSE_STAGE::PREVIEW, "go-back-icon-click");
+					else
+						Leave_ServerArena();
+				}
+			}
+		}
+	}
+}
+
+void CLevel_CharacterSelect::Update_BrowseButtons()
+{
+	constexpr const char* PREVIEW_STEP_SLOTS[] = {
+		"PreviewButton", "TrialButton", "CreateCharacterCenterButton" };
+	constexpr const char* TRIAL_STEP_SLOTS[] = { "TrialModeBand", "TrialModePlate" };
+	if (nullptr == m_pClassSelectView)
+		return;
+	const bool_t bArena = MODE::SERVER_ARENA == m_eMode && !Is_CustomizingOpen();
+	const bool_t bPreview = bArena && !Is_ClassCinematicActive() &&
+		CLASS_BROWSE_STAGE::PREVIEW == m_eBrowseStage;
+	const bool_t bTrial = bArena && CLASS_BROWSE_STAGE::TRIAL == m_eBrowseStage;
+	for (const char* pId : PREVIEW_STEP_SLOTS)
+		m_pClassSelectView->Set_SlotVisible(pId, bPreview);
+	for (const char* pId : TRIAL_STEP_SLOTS)
+		m_pClassSelectView->Set_SlotVisible(pId, bTrial);
+	if (!bPreview || m_isCreateCharacterModalOpen || CLevelTransitionService::Is_Pending())
+		return;
+
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pClassSelectView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pClassSelectView->Get_ResolutionHeight();
+	for (const char* pId : PREVIEW_STEP_SLOTS)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pClassSelectView->Get_SlotRect(pId, fX, fY, fWidth, fHeight) ||
+			!Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+			continue;
+		Router.Claim_Mouse_This_Frame();
+		if (!Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+			continue;
+		CMainApp::Play_UIButtonClickSound();
+		/* Preview has no action yet. Trial waits for a class change still in flight, the same
+		condition the corner create button already waits on. */
+		if (0 == std::strcmp(pId, "TrialButton") && !m_iPendingClassIndex.has_value() &&
+			!Is_ClassPresentationPreparationPending())
+			Set_BrowseStage(CLASS_BROWSE_STAGE::TRIAL, "trial-button-click");
+		else if (0 == std::strcmp(pId, "CreateCharacterCenterButton") &&
+			!m_iPendingClassIndex.has_value())
+			Request_CreateCharacterButtonClick();
+	}
+}
+
+void CLevel_CharacterSelect::Render_BrowseLabels()
+{
+	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode ||
+		Is_CustomizingOpen() || m_isCreateCharacterModalOpen)
+		return;
+	const bool_t bPreview = !Is_ClassCinematicActive() &&
+		CLASS_BROWSE_STAGE::PREVIEW == m_eBrowseStage;
+	const bool_t bTrial = CLASS_BROWSE_STAGE::TRIAL == m_eBrowseStage;
+	if (!bPreview && !bTrial)
+		return;
+
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fScaleX = vViewportSize.x / REF_WIDTH;
+	const f32_t fScaleY = vViewportSize.y / REF_HEIGHT;
+	const f32_t fUiScale = (std::min)(fScaleX, fScaleY);
+	/* Retail px at 1920 wide -> 1280 reference, through the baked label font so the small
+	captions stay sharp; rounded to whole pixels for the same reason. */
+	const auto DrawCentered = [&](const f32_t fX, const f32_t fY, const f32_t fW, const f32_t fH,
+		const wchar_t* pText, const wstring_t& strFamily, const f32_t fRetailPx,
+		const fvector_t& vColor, const bool_t bShadow)
+	{
+		f32_t fTextScale = 1.f;
+		const wstring_t strFont = UILabelFont::Resolve(
+			strFamily, fRetailPx * (2.f / 3.f) * fUiScale, fTextScale);
+		const float2_t vMeasured = CGameInstance::Get().Measure_Text(strFont, pText);
+		const float2_t vPos(
+			std::round((fX + fW * 0.5f) * fScaleX - vMeasured.x * fTextScale * 0.5f),
+			std::round((fY + fH * 0.5f) * fScaleY - vMeasured.y * fTextScale * 0.5f));
+		if (bShadow)
+			CGameInstance::Get().Draw_Text(strFont, pText, float2_t(vPos.x + 1.f, vPos.y + 1.f),
+				XMVectorSet(0.f, 0.f, 0.f, 0.85f), 0.f, float2_t(0.f, 0.f), fTextScale);
+		CGameInstance::Get().Draw_Text(strFont, pText, vPos, vColor, 0.f,
+			float2_t(0.f, 0.f), fTextScale);
+	};
+
+	f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
+	if (bPreview)
+	{
+		/* pccreate.preview_btn / trymod_btn: $YG760 14; complete_btn: $YoonGasiIIM 18. */
+		if (m_pClassSelectView->Get_SlotRect("PreviewButton", fX, fY, fW, fH))
+			DrawCentered(fX, fY, fW, fH, L"\xBBF8\xB9AC\xBCF4\xAE30", TEXT("Font_YG760"), 14.f,
+				Colors::White, false);
+		if (m_pClassSelectView->Get_SlotRect("TrialButton", fX, fY, fW, fH))
+			DrawCentered(fX, fY, fW, fH, L"\xCCB4\xD5D8 \xD558\xAE30", TEXT("Font_YG760"), 14.f,
+				Colors::White, false);
+		if (m_pClassSelectView->Get_SlotRect("CreateCharacterCenterButton", fX, fY, fW, fH))
+			DrawCentered(fX, fY, fW, fH, L"\xCE90\xB9AD\xD130 \xC0DD\xC131",
+				TEXT("Font_YoonGasiIIM"), 18.f, Colors::White, false);
+	}
+	else
+	{
+		/* exam_title_lb: pccreate.trymode_title, $YoonGasiIIM 26 #FFF6E2 with a drop shadow,
+		in the stage box (660,14) 600x50. */
+		DrawCentered(440.f, 9.333f, 400.f, 33.333f, L"\xCCB4\xD5D8 \xBAA8\xB4DC",
+			TEXT("Font_YoonGasiIIM"), 26.f, XMVectorSet(1.f, 246.f / 255.f, 226.f / 255.f, 1.f), true);
+	}
+}
+
+void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
+{
+	if (Is_ClassCinematicActive()) return;
+	/* Spawn and corner create captions go with their buttons, which only the trial step shows. */
+	if (CLASS_BROWSE_STAGE::TRIAL != m_eBrowseStage) return;
+	/* Same MODE::SERVER_ARENA gate as Update_ClassList/Update_ArenaSpawnButtons -- these are
+	just the text captions for that same button art, so they must disappear and reappear
+	together with it instead of floating on screen without their buttons underneath. */
+	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
+		return;
+
+	struct SPAWN_LABEL { const char_t* pSlotId; const wchar_t* pLabel; };
+	constexpr SPAWN_LABEL LABELS[] = {
+		/* "몬스터 소환" */ { "SpawnMonsterButton", L"\xBAAC\xC2A4\xD130 \xC18C\xD658" },
+		/* "보스 소환" */   { "BossSpawnButton",    L"\xBCF4\xC2A4 \xC18C\xD658" },
+		/* "되돌리기" */    { "SpawnCancelButton",  L"\xB418\xB3CC\xB9AC\xAE30" },
+	};
+
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vViewportSize.x / 1280.f;
+	const float textScaleY = vViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+	const bool_t hasCompleteAuthoredButtons =
+		Has_CompleteProductButtonSlots(m_pClassSelectView.get());
+
+	if (!m_isCreateCharacterModalOpen)
+	{
+		/* One caption size for the three buttons: each label's own height / width cap is
+		measured first and the smallest wins, so the longer "monster spawn" caption no longer
+		shrinks on its own below its two neighbours. The width cap (0.75x icon width) still
+		guards against neighbouring labels running into one string; the icons sit ~63 px apart. */
+		struct PLACED_LABEL { const wchar_t* pLabel; f32_t fCenterX; f32_t fBottomY; float2_t vMeasured; };
+		PLACED_LABEL Placed[std::size(LABELS)]{};
+		size_t iPlacedCount = 0;
+		f32_t fSharedScale = 1.f;
+		for (const SPAWN_LABEL& Label : LABELS)
+		{
+			const CHARACTER_SELECT_PRODUCT_SLOT* pSlot =
+				Find_ProductButtonSlot(Label.pSlotId);
+			if (nullptr == pSlot)
+				continue;
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
+				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
+			const float2_t vMeasured =
+				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel);
+			const f32_t fScaleByHeight = (vMeasured.y > 0.f) ?
+				(fHeight * 0.2f / vMeasured.y) : 1.f;
+			const f32_t fScaleByWidth = (vMeasured.x > 0.f) ?
+				(fWidth * 0.75f / vMeasured.x) : 1.f;
+			fSharedScale = (std::min)(fSharedScale, (std::min)(fScaleByHeight, fScaleByWidth));
+			Placed[iPlacedCount++] = PLACED_LABEL{ Label.pLabel, fX + fWidth * 0.5f, fY + fHeight, vMeasured };
+		}
+		for (size_t i = 0; i < iPlacedCount; ++i)
+		{
+			/* Centered anchor like every other Draw_Text call in this codebase (see
+			RenderQuickSlotKeyLabels), offset down by half the scaled glyph height so the label sits
+			just under the icon instead of straddling its bottom edge. */
+			const f32_t fLabelCenterY =
+				Placed[i].fBottomY + 4.f + Placed[i].vMeasured.y * fSharedScale * 0.5f;
+			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Placed[i].pLabel,
+				float2_t(Placed[i].fCenterX * textScaleX, fLabelCenterY * textScaleY),
+				Colors::White, 0.f, float2_t(0.5f, 0.5f), fSharedScale * textUiScale);
+		}
+
+		/* CreateCharacterButton: label centered inside the button itself (Lobby's
+		Lobby_CreateCharacterButton uses the same literal/font for the same text). */
+		{
+			const CHARACTER_SELECT_PRODUCT_SLOT* pSlot =
+				Find_ProductButtonSlot("CreateCharacterButton");
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			if (nullptr != pSlot)
+			{
+				Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
+					hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
+				const wchar_t* pLabel = L"\xCE90\xB9AD\xD130 \xC0DD\xC131"; // "캐릭터 생성"
+				const float2_t vMeasured =
+					CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+				const f32_t fScaleByHeight = (vMeasured.y > 0.f) ?
+					(fHeight * 0.32f / vMeasured.y) : 1.f;
+				const f32_t fScaleByWidth = (vMeasured.x > 0.f) ?
+					(fWidth * 0.8f / vMeasured.x) : 1.f;
+				const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
+				CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
+					float2_t((fX + fWidth * 0.5f) * textScaleX,
+						(fY + fHeight * 0.5f) * textScaleY),
+					Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+			}
+		}
+	}
+
+}
+
+void CLevel_CharacterSelect::Render_CreateCharacterModalText()
+{
+	/* Split out of Render_ArenaSpawnLabels: that pass is skipped while the customizing screen
+	is up (its spawn-button captions must not float over it), and the nickname step opens from
+	inside that screen -- so the modal drew its art with none of its text, which also looked
+	like the field refusing to type. This runs whenever the modal is open, whatever is behind
+	it. */
+	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
+		return;
+
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vViewportSize.x / 1280.f;
+	const float textScaleY = vViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	/* Create Character modal text -- real Draw_Text same as everything else above.
+	Render_CreateCharacterModal owns the CUI_Sprite art state and the WM_CHAR editing; every
+	glyph the modal shows (title/labels, the nickname itself, the IME's in-progress syllable,
+	caret, status line) draws here in the LOA-font pass. */
+	if (m_isCreateCharacterModalOpen)
+	{
+		const auto Fn_DrawCentered = [&](f32_t fCenterX, f32_t fCenterY, const wchar_t* pLabel,
+			f32_t fTargetHeight, const fvector_t& vColor)
+		{
+			const float2_t vMeasured =
+				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+			const f32_t fScale = (vMeasured.y > 0.f) ? (fTargetHeight / vMeasured.y) : 1.f;
+			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
+				float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
+				vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+		};
+
+		f32_t fPanelX = 0.f, fPanelY = 0.f, fPanelW = 0.f, fPanelH = 0.f;
+		if (m_pClassSelectView->Get_SlotRect(
+			"CreateCharacterModal_Panel", fPanelX, fPanelY, fPanelW, fPanelH))
+		{
+			const f32_t fPanelCenterX = fPanelX + fPanelW * 0.5f;
+			/* Real divider line sits at 43/131 of the panel art's own height (measured from the
+			source pixels) -- subtitle goes just above it, inside the panel. Title sits clearly
+			above the panel's own top edge instead (fLineY-based offset put it only 3px below
+			fPanelY, overlapping the panel art). */
+			const f32_t fLineY = fPanelY + fPanelH * (43.f / 131.f);
+			Fn_DrawCentered(fPanelCenterX, fPanelY - 20.f,
+				L"\xCE90\xB9AD\xD130 \xC774\xB984 \xC785\xB825", // "캐릭터 이름 입력"
+				22.f, Colors::White);
+			Fn_DrawCentered(fPanelCenterX, fLineY - 15.f,
+				L"\xD55C\xAE00, \xC601\xBB38, \xC22B\xC790 12\xC790\xAE4C\xC9C0 \xC785\xB825 \xAC00\xB2A5", // "한글, 영문, 숫자 12자까지 입력 가능"
+				15.f, Colors::Gold);
+		}
+
+		struct MODAL_BUTTON_LABEL { const char_t* pSlotId; const wchar_t* pLabel; };
+		const MODAL_BUTTON_LABEL BUTTON_LABELS[] = {
+			{ "CreateCharacterModal_ConfirmButton", L"\xD655\xC778" }, // "확인"
+			{ "CreateCharacterModal_CancelButton", L"\xCDE8\xC18C" },  // "취소"
+		};
+		for (const MODAL_BUTTON_LABEL& Label : BUTTON_LABELS)
+		{
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			if (!m_pClassSelectView->Get_SlotRect(Label.pSlotId, fX, fY, fWidth, fHeight))
+				continue;
+			Fn_DrawCentered(fX + fWidth * 0.5f, fY + fHeight * 0.5f, Label.pLabel,
+				fHeight * 0.32f, Colors::White);
+		}
+
+		/* The nickname text itself + the IME's still-composing syllable + a blinking caret --
+		the drawing half of the runtime text field (editing lives in Render_CreateCharacterModal,
+		fed by CUIInputRouter's WM_CHAR queue). Left-aligned inside the TextBox art the way the
+		old transparent InputText sat over it. */
+		f32_t fBoxX = 0.f, fBoxY = 0.f, fBoxW = 0.f, fBoxH = 0.f;
+		if (m_pClassSelectView->Get_SlotRect(
+			"CreateCharacterModal_TextBox", fBoxX, fBoxY, fBoxW, fBoxH))
+		{
+			constexpr f32_t TEXT_HEIGHT = 18.f;
+			const f32_t fCenterScreenY = (fBoxY + fBoxH * 0.5f) * textScaleY;
+			/* Returns the drawn advance in screen pixels so the next piece starts where this
+			one ended -- position and advance both live in screen space (textScaleX vs
+			textUiScale differ on a non-16:9 viewport, so mixing spaces would drift). */
+			const auto Fn_DrawLeft = [&](f32_t fScreenX, const wchar_t* pText,
+				const fvector_t& vColor) -> f32_t
+			{
+				const float2_t vMeasured =
+					CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), pText);
+				if (vMeasured.y <= 0.f)
+					return 0.f;
+				const f32_t fScale = (TEXT_HEIGHT / vMeasured.y) * textUiScale;
+				CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), pText,
+					float2_t(fScreenX, fCenterScreenY),
+					vColor, 0.f, float2_t(0.f, 0.5f), fScale);
+				return vMeasured.x * fScale;
+			};
+
+			f32_t fCursorScreenX = (fBoxX + 12.f) * textScaleX;
+			if (!m_NicknameDraftW.empty())
+				fCursorScreenX += Fn_DrawLeft(fCursorScreenX, m_NicknameDraftW.c_str(),
+					Colors::White);
+			/* In-progress (uncommitted) Hangul straight from the OS IME, gold so it reads as
+			not-yet-committed -- the inline preview the old InputText overlay drew. */
+			const wchar_t* pComposition = Engine::CImGuiLayer::Get_ImeCompositionString();
+			if (nullptr != pComposition && L'\0' != pComposition[0])
+				fCursorScreenX += Fn_DrawLeft(fCursorScreenX, pComposition, Colors::Gold);
+			/* Blinking caret on its own wall clock (steady_clock, not ImGui's). */
+			const int64_t iHalfSeconds =
+				std::chrono::duration_cast<std::chrono::milliseconds>(
+					std::chrono::steady_clock::now().time_since_epoch()).count() / 500;
+			if (0 == (iHalfSeconds % 2))
+				Fn_DrawLeft(fCursorScreenX + 1.f, L"|", Colors::White);
+		}
+
+		/* Status line -- moved out of the removed ImGui popup (same slot/fallback rect and
+		amber tone its AddText version used). The messages are ASCII, so the byte-wise widen is
+		exact. */
+		if (!m_strStatus.empty())
+		{
+			f32_t fStatusX = 400.f, fStatusY = 340.f;
+			f32_t fStatusWidth = 480.f, fStatusHeight = 20.f;
+			f32_t fAuthoredX = 0.f, fAuthoredY = 0.f;
+			f32_t fAuthoredWidth = 0.f, fAuthoredHeight = 0.f;
+			if (m_pClassSelectView->Get_SlotRect(
+				"CreateCharacterModal_StatusText", fAuthoredX, fAuthoredY,
+				fAuthoredWidth, fAuthoredHeight) &&
+				std::isfinite(fAuthoredX) && std::isfinite(fAuthoredY) &&
+				std::isfinite(fAuthoredWidth) && std::isfinite(fAuthoredHeight) &&
+				fAuthoredWidth > 0.f && fAuthoredHeight > 0.f)
+			{
+				fStatusX = fAuthoredX;
+				fStatusY = fAuthoredY;
+				fStatusWidth = fAuthoredWidth;
+				fStatusHeight = fAuthoredHeight;
+			}
+			const wstring_t strStatusWide(m_strStatus.begin(), m_strStatus.end());
+			const float2_t vMeasured =
+				CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), strStatusWide.c_str());
+			if (vMeasured.y > 0.f)
+			{
+				f32_t fScale = (14.f / vMeasured.y) * textUiScale;
+				/* Keep the whole line inside the authored width instead of the popup's old
+				wrap -- Draw_Text has no wrapping, shrink-to-fit reads better than clipping. */
+				const f32_t fMaxWidth = (fStatusWidth - 8.f) * textScaleX;
+				if (vMeasured.x * fScale > fMaxWidth && vMeasured.x > 0.f)
+					fScale = fMaxWidth / vMeasured.x;
+				/* Centered on the panel's own middle, the same x every Korean line in this
+				modal (title, subtitle, button labels) is centered on -- left-anchored inside
+				the status slot put it visibly off-axis from the text right above it. */
+				f32_t fCenterX = fStatusX + fStatusWidth * 0.5f;
+				f32_t fPanelX = 0.f, fPanelY = 0.f, fPanelW = 0.f, fPanelH = 0.f;
+				if (m_pClassSelectView->Get_SlotRect(
+					"CreateCharacterModal_Panel", fPanelX, fPanelY, fPanelW, fPanelH))
+				{
+					fCenterX = fPanelX + fPanelW * 0.5f;
+				}
+				const float2_t vPosition(
+					fCenterX * textScaleX,
+					(fStatusY + fStatusHeight * 0.5f) * textScaleY);
+				CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strStatusWide.c_str(),
+					float2_t(vPosition.x + 1.f, vPosition.y + 1.f),
+					XMVectorSet(0.f, 0.f, 0.f, 0.9f), 0.f, float2_t(0.5f, 0.5f), fScale);
+				CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strStatusWide.c_str(),
+					vPosition,
+					XMVectorSet(1.f, 210.f / 255.f, 120.f / 255.f, 1.f), 0.f,
+					float2_t(0.5f, 0.5f), fScale);
+			}
+		}
+	}
+}
+
+
+#ifdef _DEBUG
+void CLevel_CharacterSelect::Render_RaidEntryDebugPreview()
+{
+	if (nullptr == m_pDebugRaidEntryPreviewView)
+		return;
+	// Visual-only: no real NPC, no command sink -- Entrance just closes it too.
+	(void)m_pDebugRaidEntryPreviewView->Render();
+}
+
+void CLevel_CharacterSelect::Render_RaidEntryDebugPreviewText()
+{
+	if (nullptr != m_pDebugRaidEntryPreviewView)
+		m_pDebugRaidEntryPreviewView->RenderText();
+}
+
+bool_t CLevel_CharacterSelect::Is_DebugRaidEntryPreviewOpen() const
+{
+	return nullptr != m_pDebugRaidEntryPreviewView &&
+		m_pDebugRaidEntryPreviewView->Is_Open();
+}
+#endif
+
+unique_ptr<CLevel_CharacterSelect> CLevel_CharacterSelect::Create(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext)
+{
+	auto instance = unique_ptr<CLevel_CharacterSelect>(
+		new CLevel_CharacterSelect(pDevice, pContext));
+	if (FAILED(instance->Initialize()))
+		return nullptr;
+	return instance;
+}
+
+#ifdef _DEBUG
+namespace
+{
+	bool_t FloorSwapString(const DATA_JSON_VALUE* value, std::string& out)
+	{
+		if (!value || !value->Is_String() || value->Get_String().empty() ||
+			value->Get_String().size() > 256u ||
+			std::any_of(value->Get_String().begin(), value->Get_String().end(),
+				[](const unsigned char c) { return c < 32u || c == 127u; }))
+			return false;
+		out = value->Get_String();
+		return true;
+	}
+
+	bool_t FloorSwapId(const DATA_JSON_VALUE* value, uint64_t& out)
+	{
+		std::string text;
+		if (!FloorSwapString(value, text) || text.front() == '0') return false;
+		const auto result = std::from_chars(text.data(), text.data() + text.size(), out);
+		return result.ec == std::errc{} && result.ptr == text.data() + text.size() &&
+			out > 0u && out <= CMapPlacementDocument::MAX_EDITOR_PLACEMENT_ID;
+	}
+
+	bool_t FloorSwapOffsetValid(const float3_t& value)
+	{
+		return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z) &&
+			std::abs(value.x) <= 100.f && std::abs(value.y) <= 100.f && std::abs(value.z) <= 100.f;
+	}
+
+	const MAP_PLACEMENT_RECORD* FloorSwapRecord(
+		const CMapPlacementRuntime& runtime, const std::string& sourceId)
+	{
+		const MAP_PLACEMENT_RECORD* result = nullptr;
+		for (const auto& entry : runtime.Get_Placements())
+		{
+			if (entry.record.sourcePlacementId != sourceId) continue;
+			if (result) return nullptr;
+			result = &entry.record;
+		}
+		return result;
+	}
+
+	matrix_t FloorSwapMatrix(const MAP_PLACEMENT_RECORD& record)
+	{
+		return XMMatrixScaling(record.signedScale.x, record.signedScale.y, record.signedScale.z) *
+			XMMatrixRotationQuaternion(XMQuaternionNormalize(XMLoadFloat4(&record.rotationQuaternion))) *
+			XMMatrixTranslation(record.position.x, record.position.y, record.position.z);
+	}
+
+	bool_t FloorSwapDecompose(fmatrix_t matrix, MAP_PLACEMENT_RECORD& record)
+	{
+		vector_t scale, rotation, position;
+		if (!XMMatrixDecompose(&scale, &rotation, &position, matrix)) return false;
+		XMStoreFloat3(&record.signedScale, scale);
+		XMStoreFloat4(&record.rotationQuaternion, XMQuaternionNormalize(rotation));
+		XMStoreFloat3(&record.position, position);
+		return true;
+	}
+
+	bool_t FloorSwapIsPbr(const Engine::MODEL_MATERIAL_OVERRIDE& material)
+	{
+		return material.surface.family == Engine::MODEL_SURFACE_FAMILY::PBR_OPAQUE ||
+			material.surface.family == Engine::MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE;
+	}
+
+	bool_t FloorSwapEnvironment(const MAP_ASSET_ENTRY& source,
+		const MAP_ASSET_ENTRY& center, const CHARACTER_SELECT_FLOOR_ENVIRONMENT mode,
+		const f32_t groupYaw, std::vector<Engine::MODEL_MATERIAL_OVERRIDE>& out,
+		std::string& status)
+	{
+		out = source.materialOverrides;
+		const auto central = std::find_if(center.materialOverrides.begin(),
+			center.materialOverrides.end(), FloorSwapIsPbr);
+		if (out.empty() || (mode == CHARACTER_SELECT_FLOOR_ENVIRONMENT::CENTER_FLOOR &&
+			central == center.materialOverrides.end()))
+		{
+			status = "Floor swap source or central PBR material input is missing.";
+			return false;
+		}
+		for (auto& material : out)
+		{
+			if (!FloorSwapIsPbr(material))
+			{
+				status = "Floor swap environment expects source PBR material rows.";
+				return false;
+			}
+			auto& pbr = material.surface;
+			if (mode == CHARACTER_SELECT_FLOOR_ENVIRONMENT::CENTER_FLOOR)
+			{
+				/* Center mode is a world-space environment: user yaw does not turn the light. */
+				material.environmentCubePath = central->environmentCubePath;
+				material.environmentBRDFPath = central->environmentBRDFPath;
+				pbr.hasEnvironmentCube = central->surface.hasEnvironmentCube;
+				pbr.environmentColor = central->surface.environmentColor;
+				pbr.environmentRotation = central->surface.environmentRotation;
+				pbr.minimumRoughness = central->surface.minimumRoughness;
+			}
+			else
+			{
+				/* Shader_MapMaterialSurface samples (b*x+a*z,y,a*x-b*z). For the
+				DirectX +Y world rotation, subtract group yaw to preserve source lookup. */
+				const f32_t a = pbr.environmentRotation.x, b = pbr.environmentRotation.y;
+				const f32_t sine = std::sin(groupYaw), cosine = std::cos(groupYaw);
+				pbr.environmentRotation = float2_t(a * cosine - b * sine, b * cosine + a * sine);
+			}
+		}
+		return true;
+	}
+}
+
+bool_t CLevel_CharacterSelect::Debug_ReloadFloorSwapOptions()
+{
+	if (!m_FloorSwapSelectedId.empty())
+	{
+		m_FloorSwapStatus = "Restore original before reloading floor swap options; current preview retained.";
+		return false;
+	}
+	try
+	{
+		const auto path = CProjectDataRoot::Resolve(L"Rendering/Authored/CharacterSelectFloorSwap.json");
+		std::ifstream input(path, std::ios::binary | std::ios::ate);
+		if (!input.is_open() || input.tellg() < 0 || input.tellg() > 65536)
+		{
+			m_FloorSwapStatus = "Cannot read floor swap JSON (maximum 65536 bytes): " + path.string();
+			return false;
+		}
+		input.seekg(0);
+		std::ostringstream text;
+		text << input.rdbuf();
+		if (input.bad())
+		{
+			m_FloorSwapStatus = "Floor swap JSON read failed; previous options retained.";
+			return false;
+		}
+		DATA_JSON_VALUE root;
+		DATA_JSON_PARSE_LIMITS limits;
+		limits.iMaximumBytes = 65536u;
+		limits.iMaximumDepth = 8u;
+		limits.iMaximumValues = 1024u;
+		if (!CDataJson::Parse(text.str(), root, m_FloorSwapStatus, limits)) return false;
+		std::string schema, area, targetId;
+		const auto* version = root.Find("formatVersion");
+		if (!root.Is_Object() || root.Get_Object().size() != 10u ||
+			!FloorSwapString(root.Find("schema"), schema) || schema != "lostark.character-select-floor-swap" ||
+			!version || !version->Is_Number() || version->Was_FloatingPointToken() || version->Get_Number() != 1.0 ||
+			!FloorSwapString(root.Find("areaId"), area) || area != "LV_LOBBY_CLASSSELECT_SL00" ||
+			area != m_MapRuntime.Get_Catalog().Get_AreaId() ||
+			!FloorSwapString(root.Find("targetFloorSourcePlacementId"), targetId) ||
+			!FloorSwapRecord(m_MapRuntime, targetId))
+		{
+			m_FloorSwapStatus = "Floor swap schema, area, or unique target placement is invalid.";
+			return false;
+		}
+		uint64_t floorId = 0u, starId = 0u;
+		if (!FloorSwapId(root.Find("previewFloorPlacementId"), floorId) ||
+			!FloorSwapId(root.Find("previewStarPlacementId"), starId) || floorId == starId ||
+			std::any_of(m_MapRuntime.Get_Placements().begin(), m_MapRuntime.Get_Placements().end(),
+				[&](const auto& entry) { return entry.record.placementId == floorId || entry.record.placementId == starId; }))
+		{
+			m_FloorSwapStatus = "Floor swap preview IDs must be unique unused decimal editor ID strings.";
+			return false;
+		}
+		auto readOffset = [&](const char* field, float3_t& out) {
+			const auto* value = root.Find(field);
+			if (!value || !value->Is_Array() || value->Get_Array().size() != 3u ||
+				std::any_of(value->Get_Array().begin(), value->Get_Array().end(),
+					[](const auto& component) { return !component.Is_Number() || !std::isfinite(component.Get_Number()) || std::abs(component.Get_Number()) > 100.0; }))
+				return false;
+			out = float3_t(static_cast<f32_t>(value->Get_Array()[0].Get_Number()),
+				static_cast<f32_t>(value->Get_Array()[1].Get_Number()), static_cast<f32_t>(value->Get_Array()[2].Get_Number()));
+			return true;
+		};
+		float3_t baseOffset{}, starOffset{};
+		if (!readOffset("offsetMeters", baseOffset) || !readOffset("starOffsetMeters", starOffset))
+		{
+			m_FloorSwapStatus = "Floor swap offsetMeters and starOffsetMeters require three finite numbers within +/-100 metres.";
+			return false;
+		}
+		const auto* hidden = root.Find("hiddenSourcePlacementIds");
+		std::vector<std::string> hiddenIds;
+		std::unordered_set<std::string> hiddenSet;
+		if (!hidden || !hidden->Is_Array() || hidden->Get_Array().empty() || hidden->Get_Array().size() > 16u)
+		{
+			m_FloorSwapStatus = "Floor swap requires explicit hidden source placements.";
+			return false;
+		}
+		for (const auto& value : hidden->Get_Array())
+		{
+			std::string id;
+			if (!FloorSwapString(&value, id) || !hiddenSet.insert(id).second || !FloorSwapRecord(m_MapRuntime, id))
+			{
+				m_FloorSwapStatus = "Floor swap hidden placement is missing, duplicated, or ambiguous.";
+				return false;
+			}
+			hiddenIds.push_back(id);
+		}
+		if (!hiddenSet.count(targetId))
+		{
+			m_FloorSwapStatus = "Floor swap must hide its target floor while the preview is active.";
+			return false;
+		}
+		const auto* options = root.Find("options");
+		std::vector<CHARACTER_SELECT_FLOOR_SWAP_OPTION> labels;
+		std::vector<FLOOR_SWAP_SOURCE_PAIR> sources;
+		std::unordered_set<std::string> optionIds, sourceIds;
+		if (!options || !options->Is_Array() || options->Get_Array().empty() || options->Get_Array().size() > 32u)
+		{
+			m_FloorSwapStatus = "Floor swap requires exactly eleven stage pair options.";
+			return false;
+		}
+		for (const auto& option : options->Get_Array())
+		{
+			CHARACTER_SELECT_FLOOR_SWAP_OPTION label;
+			FLOOR_SWAP_SOURCE_PAIR source;
+			if (!option.Is_Object() || option.Get_Object().size() != 4u ||
+				!FloorSwapString(option.Find("id"), label.id) || !optionIds.insert(label.id).second ||
+				!FloorSwapString(option.Find("label"), label.label) ||
+				!FloorSwapString(option.Find("floorSourcePlacementId"), source.floorSourcePlacementId) ||
+				!FloorSwapString(option.Find("starSourcePlacementId"), source.starSourcePlacementId))
+			{
+				m_FloorSwapStatus = "Floor swap option ID, label, or source pair is invalid.";
+				return false;
+			}
+			source.optionId = label.id;
+			for (const auto* id : { &source.floorSourcePlacementId, &source.starSourcePlacementId })
+			{
+				const auto* record = FloorSwapRecord(m_MapRuntime, *id);
+				if (!record || !sourceIds.insert(*id).second || hiddenSet.count(*id) ||
+					!CMapPlacementDocument::Is_Valid(*record, m_MapRuntime.Get_Catalog()))
+				{
+					m_FloorSwapStatus = "Floor swap source placement is missing, invalid, or reused: " + *id;
+					return false;
+				}
+			}
+			labels.push_back(std::move(label));
+			sources.push_back(std::move(source));
+		}
+		std::string loadedStatus = "11 stage pairs loaded. Original central floor remains active. Offsets are session previews only.";
+		m_FloorSwapOptions.swap(labels);
+		m_FloorSwapSources.swap(sources);
+		m_FloorSwapTargetSourceId.swap(targetId);
+		m_FloorSwapHiddenSourceIds.swap(hiddenIds);
+		m_FloorSwapPreviewFloorId = floorId;
+		m_FloorSwapPreviewStarId = starId;
+		m_FloorSwapBaseOffset = baseOffset;
+		m_FloorSwapStarOffset = starOffset;
+		m_FloorSwapStatus.swap(loadedStatus);
+		return true;
+	}
+	catch (const std::exception& error)
+	{
+		m_FloorSwapStatus = std::string("Floor swap JSON failed; previous options retained: ") + error.what();
+		return false;
+	}
+}
+
+bool_t CLevel_CharacterSelect::Debug_ApplyFloorSwap(const std::string& optionId,
+	const CHARACTER_SELECT_FLOOR_SWAP_SETTINGS& settings)
+{
+	if (Is_CustomizingOpen() || m_isCustomizingStageHidden)
+	{
+		m_FloorSwapStatus = "Close character customization before applying a floor preview.";
+		return false;
+	}
+	if (!FloorSwapOffsetValid(settings.offsetMeters) || !std::isfinite(settings.yawDegrees) ||
+		std::abs(settings.yawDegrees) > 3600.f ||
+		(settings.environment != CHARACTER_SELECT_FLOOR_ENVIRONMENT::SOURCE_STAGE &&
+			settings.environment != CHARACTER_SELECT_FLOOR_ENVIRONMENT::CENTER_FLOOR))
+	{
+		m_FloorSwapStatus = "Floor swap settings require finite offsets within +/-100 metres, yaw within +/-3600 degrees, and a known environment.";
+		return false;
+	}
+	const auto pair = std::find_if(m_FloorSwapSources.begin(), m_FloorSwapSources.end(),
+		[&](const auto& source) { return source.optionId == optionId; });
+	if (pair == m_FloorSwapSources.end())
+	{
+		m_FloorSwapStatus = "Unknown floor swap option; previous selection retained: " + optionId;
+		return false;
+	}
+	const auto* floor = FloorSwapRecord(m_MapRuntime, pair->floorSourcePlacementId);
+	const auto* star = FloorSwapRecord(m_MapRuntime, pair->starSourcePlacementId);
+	const auto* center = FloorSwapRecord(m_MapRuntime, m_FloorSwapTargetSourceId);
+	if (!floor || !star || !center)
+	{
+		m_FloorSwapStatus = "Floor swap source or central placement is no longer uniquely available.";
+		return false;
+	}
+	try
+	{
+		const float3_t offset(m_FloorSwapBaseOffset.x + settings.offsetMeters.x,
+			m_FloorSwapBaseOffset.y + settings.offsetMeters.y, m_FloorSwapBaseOffset.z + settings.offsetMeters.z);
+		/* Row-vector assembly transform: star * inverse(source floor) * target floor. */
+		const matrix_t destination = FloorSwapMatrix(*center) *
+			XMMatrixTranslation(-center->position.x, -center->position.y, -center->position.z) *
+			XMMatrixRotationY(XMConvertToRadians(settings.yawDegrees)) *
+			XMMatrixTranslation(center->position.x + offset.x, center->position.y + offset.y, center->position.z + offset.z);
+		const matrix_t group = XMMatrixInverse(nullptr, FloorSwapMatrix(*floor)) * destination;
+		MAP_PLACEMENT_RECORD groupPose;
+		if (!FloorSwapDecompose(group, groupPose) ||
+			!std::isfinite(groupPose.signedScale.x) || groupPose.signedScale.x <= 0.000001f ||
+			std::abs(groupPose.signedScale.x - groupPose.signedScale.y) > 0.0001f ||
+			std::abs(groupPose.signedScale.x - groupPose.signedScale.z) > 0.0001f ||
+			std::abs(groupPose.rotationQuaternion.x) > 0.0001f || std::abs(groupPose.rotationQuaternion.z) > 0.0001f)
+		{
+			m_FloorSwapStatus = "Floor swap requires a uniform, upright source-to-center assembly transform.";
+			return false;
+		}
+		const f32_t groupYaw = 2.f * std::atan2(groupPose.rotationQuaternion.y, groupPose.rotationQuaternion.w);
+		std::vector<MAP_DEBUG_PLACEMENT_PREVIEW> previews(2);
+		previews[0].record = *floor;
+		previews[1].record = *star;
+		if (!FloorSwapDecompose(destination, previews[0].record) ||
+			!FloorSwapDecompose(FloorSwapMatrix(*star) * group, previews[1].record))
+		{
+			m_FloorSwapStatus = "Floor swap assembly transform cannot be represented without shear.";
+			return false;
+		}
+		/* Keep the original floor layer below its rings. Only the star receives
+		the independently measured world-space bridge clearance. */
+		previews[1].record.position.x += m_FloorSwapStarOffset.x;
+		previews[1].record.position.y += m_FloorSwapStarOffset.y;
+		previews[1].record.position.z += m_FloorSwapStarOffset.z;
+		const auto& catalog = m_MapRuntime.Get_Catalog();
+		const auto* centralAsset = catalog.Find(center->assetId);
+		if (!centralAsset)
+		{
+			m_FloorSwapStatus = "Central floor material asset is missing.";
+			return false;
+		}
+		for (size_t i = 0; i < previews.size(); ++i)
+		{
+			auto& preview = previews[i];
+			preview.record.placementId = i == 0u ? m_FloorSwapPreviewFloorId : m_FloorSwapPreviewStarId;
+			preview.record.sourcePlacementId = "debug:character-select-floor-swap:" + std::to_string(preview.record.placementId);
+			preview.record.transformSource = "overlay";
+			preview.record.visible = true;
+			const auto* asset = catalog.Find(preview.record.assetId);
+			/* The record copy preserves the exact source RNM atlas UV windows and scales.
+			Never re-resolve lighting by the new debug source ID, which has no authored row. */
+			if (!asset || !CMapPlacementDocument::Is_Valid(preview.record, catalog) ||
+				!FloorSwapEnvironment(*asset, *centralAsset, settings.environment, groupYaw,
+					preview.materialOverrides, m_FloorSwapStatus))
+			{
+				if (!asset) m_FloorSwapStatus = "Source floor swap material asset is missing.";
+				return false;
+			}
+			if (settings.useShaderDefaultBrightness)
+			{
+				/* Compare the source shader default on these private preview copies only. */
+				for (auto& material : preview.materialOverrides)
+					material.surface.diffuseBrightness = 1.f;
+			}
+		}
+		std::string committedId = optionId;
+		std::string committedStatus = "Applied " + optionId + "; nearby stages preserved. Source RNM retained, not rebaked for the center.";
+		if (!m_MapRuntime.Replace_DebugPlacementPreview(previews, m_FloorSwapHiddenSourceIds, m_FloorSwapStatus))
+			return false;
+		m_FloorSwapSelectedId.swap(committedId);
+		m_FloorSwapAppliedSettings = settings;
+		m_FloorSwapStatus.swap(committedStatus);
+		return true;
+	}
+	catch (const std::exception& error)
+	{
+		m_FloorSwapStatus = std::string("Floor swap failed; previous selection retained: ") + error.what();
+		return false;
+	}
+}
+
+bool_t CLevel_CharacterSelect::Debug_ResetFloorSwap()
+{
+	if (Is_CustomizingOpen() || m_isCustomizingStageHidden)
+	{
+		m_FloorSwapStatus = "Close character customization before restoring the central floor.";
+		return false;
+	}
+	if (!m_MapRuntime.Clear_DebugPlacementPreview(m_FloorSwapStatus)) return false;
+	m_FloorSwapSelectedId.clear();
+	m_FloorSwapAppliedSettings = {};
+	return true;
+}
+#endif
+```

@@ -1,5 +1,69 @@
 # 콜로세움 PvP · 용병 결과
 
+## G10. 2026-10-06 전술 판단과 가중 무작위 스킬 선택
+
+이번 사용자 요청에 따라 아래 G04~G06의 고정 슬롯 순서·차원술사 LMB 금지·rotation timeout은
+폐기했다. 다섯 직업 모두 현재 class/stance의 실제 published 스킬을 같은 정책으로 선택한다.
+ALT_V는 일반 무작위 후보에서 제외하고, 별도 공격 기회와 마지막 실제 승인 이후900tick 및
+원본 cooldown을 함께 검사한다. 사망·부활로 이 시각을 지우지 않는다.
+
+WintersEngine의 실제 ChampionAISystem.cpp(생존 우선, 관측/판단 분리)와 ChampionAIBrain.cpp
+(태세 유지)를 참고했다. 그 시스템의 가중치 정렬을 무작위 구현으로 오인하거나 research-only
+InfluenceMap을 전투에 연결했다고 기록하지 않는다. 이번 LostArk 변경은 기존 Server 실행기 위에서
+위험을 관측하고 스킬·이동 명령을 선택하는 제한된 전술 정책이다.
+
+### 현재 연결한 동작
+
+- 같은 경기의 상대 caster hit/ground target/현재 combo stage, 시전 종료 후 남은 native projectile,
+  live combat object를 시간·범위·높이와 함께 읽는다. 이미 소모한 hit와 다른 팀/경기·죽은 소스를
+  구분한다. 위험 예측은 최대256개/0.8초로 제한하며 실제 피해를 발생시키지 않는다.
+- 10Hz 관측과0.16~0.28초 전술 판단을 분리한다. 표적의 거리·체력·상태, 가까운 아군 지원과
+  팀 집중 공격에 작은 가중치를 주고, 작은 점수 변화에는 현재 표적을 유지한다.
+- 일반 스킬은 자원·stance·쿨다운·거리 후보에 시전 시간·주변 압박·적 빈틈·보호 효과와 최근
+  반복 감점을 적용해 뽑는다. 경기/용병별 재현 가능한 난수 상태를 사용한다. 준비된 스킬 하나만
+  있으면 최근 사용했어도 허용한다. 실패/예약을 새 시전 성공으로 기록하지 않는다.
+- 위험시 기존 SPACE 또는 안전한 도보 후보를 평가한다. 도착점뿐 아니라 이동 도중의 범위와
+  시간을 확인한다. 낮은 체력·열세에서는 최대1.5초 후퇴하고 이후2초 재진입 제한으로 연속 후퇴를
+  방지한다. 기존 native COMBO는 fixed tick 입력창으로 유지하며 STANDUP/HOLD도 원래 실행기를 쓴다.
+
+### 검증 증거
+
+최종 Debug/Release Product 빌드 모두 PASS했다. Engine→Shared→Server→Client와 필수 runtime
+입력 검사를 수행했다. source/Data/Resources 게시 변경은 없다. 빌드 증거는 각각
+out/BuildPipeline/runs/20261006T042806001Z-debug-product.json과
+out/BuildPipeline/runs/20261006T043102785Z-release-product.json이다.
+기존 Client 인코딩/변환 및 DirectXTK PDB 경고는 남아 있으며 warning-free로 기록하지 않는다.
+
+| 서버 계약검사 | Debug | Release |
+|---|---:|---:|
+| colosseum-match (확률 선택·감지·회피·전술·native 연계·모집/경기 격리) | 370/370 | 370/370 |
+| colosseum-combat (PvP 적중·CC·레이드 경계) | 95/95 | 95/95 |
+| colosseum (대기열·phase·득점·부활·귀환) | 25/25 | 25/25 |
+| skill-stages (native 단계·HOLD·원본 피해 시점) | 95/95 | 95/95 |
+
+모든 검사는exit0이다. 두 구성의360tick/12초 전체 room 실행에서6명 모두 여러 스킬을 사용했고,
+실제 이동·HP 감소·damage event를 생성했다. 최종 Debug는31개, Release는36개 damage event다.
+이는 실제 정책/스킬/이동/피해 경로의 통합 검증이며 두 빌드 전투 결과가 bit-identical하다는 뜻은 아니다.
+고정 관측·seed의 가중 선택 재현성과 seed 차이에 따른 다양성은 별도 fixture로 확인했다.
+기계 판독 결과와 각 원본 로그는 out/ColosseumTactics20261006/verification.json에 연결했다.
+
+새 위험 helper28개 검사는PASS했다(out/ColosseumThreat20261006/run.log).
+설치된SPACE/STANDUP11개와 합성3개 곡선의 native delta를 원문 소비와 비교한527개 검사도
+PASS했다(495개 point 최대 오차0, out/ColosseumThreat20261006/motion_run.log).
+project/filter XML parse·각 새 파일 단일 등록·UTF8/BOM없음/CRLF 보존·diff --check와
+PLAN G11의5개 전체 소스 일치 검사도PASS다. 독립 리뷰에서 Guardian ember hard gate,
+명목 지속시간 추가 대기, 실패한Move의 이전goal 오인과 실제회피곡선 불일치를 확인·수정했다.
+
+초기 match 실패1개는 현재 Guardian STANDUP 미정의에 대한 잘못된 테스트 전제였다.
+정의가 있는4직업은native기상, 없는Guardian은기존KNOCKDOWN/자동회복 유지로 검사를 교정해
+최종370/370을 확인했다. 첫 Release 시도는 종료 전인 본 세션 Debug 계약검사EXE를
+product output guard가 감지해 컴파일 전에 중단했다. 검사가 정상 종료된 뒤 재실행했으며
+실행 중 프로세스를 강제 종료하지 않았다.
+
+Client/UI는 자율 실행하지 않았으며 화면의 전투 체감은 사용자 확인 범위다. 빌드된 Server를
+다음 실행할 때 새 정책이 적용된다. 실행 중 공유 Server가 자동 갱신됐다고 주장하지 않는다.
+미래 입력이나 아직 생성되지 않은 투사체는 예측하지 않고 현재 관측에 따른 판단을 사용한다.
+
 ## G00. 경기와 레이드 격리
 
 인간 네 명을 한 transaction으로 입장시켜 무작위 두 팀과 자동 파티를 만든다.

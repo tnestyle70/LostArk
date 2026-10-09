@@ -321,6 +321,11 @@ Product 빌드: Engine → Shared → Server → Client (SDK·shader·runtime DL
   선택된 Participants는 최대8명, 후보 포함 Players는 최대14명이며 arrival index는 team+slot*2다.
   COLOSSEUM_MERCENARY_AI는 fake session 없이 기존 player 이동·스킬·피격·snapshot을 사용한다.
   후보와 참가자를 구분하고, 단일 안내 Guide를 party slot에 넣지 않으며 Waterpang AI의 인간 roster 제외 규칙을 유지한다.
+- 다섯 직업 용병은 같은 Server 전술 판단을 사용한다. 현재 stance·자원·쿨다운·사거리를 만족하는
+  일반 스킬을 최근 반복 감점과 상황 점수로 가중 무작위 선택하며 ALT_V는 별도 기회 판단으로 분리한다.
+  실제 공격·남은 투사체·combat object의 시간/범위를 관측해 이동 경로의 위험과 아군/적군 위치를 평가하고,
+  표적 유지·위험 회피·제한된 후퇴·재교전을 결정한다. 관측은 피해를 확정하지 않으며 기존 player executor가
+  이동·스킬·CC를 최종 승인한다. native COMBO 입력창은 전술 판단 주기와 독립적으로 fixed tick에서 처리한다.
 - 참가자의 실제 최대HP는 입장 시 발탄160줄 profile의 피해 기준HP(`damageReferenceHp`, 미지정은 `maximumHp`)에서20줄 분량으로 정하고, 스킬 피해도 같은 기준HP를 고정한다. 발탄 실제 최대HP를 따로 늘려도 명시된 피해 기준HP와 기존 PvP 수치는 유지한다.
   기존 스킬 피해 산식을 재사용하며 Artist T의1/5 및 넉백 거리·이동 시간10%(V0.51m/217ms, ALT_V1.6m/150ms)는 위 PvP guard 아래에서만 적용한다.
   용병 ALT_V는 개별 마지막 승인부터 최소30초 간격이며 기존 더 긴 cooldown도 유지한다. 사망·부활로 이 간격을 초기화하지 않는다.

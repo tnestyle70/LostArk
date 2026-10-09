@@ -161,3 +161,42 @@ material-evidence.json, verification.json, source-change.diff와 구성별 컴�
 제품 receipt는 out/BuildPipeline/runs에 있으며 기존 인코딩·외부PDB 경고를 무경고로
 설명하지 않는다. 다음 Client 실행에서 변경을 소비한다. Client/UI를 자율 실행하지 않았고
 최종 검정 별·바닥 화면은 사용자 확인이 남는다.
+
+## G07. 10-07 체험 모드의 숨겨진 표시 캐릭터 제거
+
+Release Character Select의 화질·프레임 저하 조사 중, 10-05에 추가한 별도 PREVIEW
+CCharacter가 TRIAL·CATEGORY·생성 화면으로 전환해도 Layer에 계속 남는 것을 확인했다.
+기존 Hide는 cinematic suppression만 설정한다. CCharacter::Update는 이 상태와 무관하게
+CContainerObject::Update로 body/equipment를 갱신하고 CPart_Body::Update가 매번
+CModel::Update_Animation을 호출한다. 숨김 검사는 뒤의 Late_Update/Render에 있다.
+사용자 캡처의 전체 저하 원인이나 FPS 감소율을 이 코드 한 경로로 확정하지 않는다.
+
+CharacterSelectShowcase::Leave를 추가했다. 기존 Hide로 바닥 표시와 Server replica의
+이전 suppression을 복원한 뒤 display를 해제한다. STAGE_CHARACTER의 기존 destructor가
+Layer_CharacterSelectShowcase에서 소유 객체를 제거하므로 이후 체험 프레임은 이 표시
+캐릭터를 갱신하지 않는다. 두 바닥·catalog는 유지한다. Level의 End_ClassShowcaseCamera는
+Hide 대신 Leave를 호출하며 Clear도 같은 수명 정리를 재사용한다.
+
+Show의 첫 생성이 false를 반환하는 준비 프레임은 기존 Hide를 유지한다. 따라서 새 clone은
+다음 정상 Object Update를 거친 뒤 보인다. 복귀 때는 기존 class/stance/default idle 생성
+경로를 다시 사용하며 이전 표시 clone의 idle 시간은 재시작한다. Server identity/위치/스킬,
+공용 Character suppression 의미와 저작 렌더링 값은 바뀌지 않는다. 실제 새 clone 준비 비용과
+전체 FPS는 별도 측정 대상이다.
+
+확인한 항목:
+
+- Engine 순서 Object Update → Level Update → Late Update에서 Level의 제거가 다음 Layer
+  phase 목록에도 반영되는 것을 실제 CLayer::Remove_GameObject 구현으로 대조했다.
+- PREVIEW 첫 Show의 숨긴 clone 보존, 실제 PREVIEW 종료의 삭제, repeated Leave의 빈 상태,
+  Show의 재생성, 실패 시 기존 replica suppression 복원 경로를 코드로 검토했다.
+- 새 파일/project/filter 등록은 없다. 세 기존 C++ 파일은 UTF-8 무BOM/CRLF를 보존했다.
+- git diff --check PASS. 변경한 JSON/XML은 없다.
+- Debug/Release 제품 증분 빌드·배포 PASS. receipt는 각각
+  `20261007T022504858Z-debug-product.json`, `20261007T022407502Z-release-product.json`이다.
+  실제 FPS·사용자 화면 판정은 미확인이다.
+
+같은 조사에서 현재 UserSettings의 texturequality는0, 전경·배경 FPS 제한은 둘 다OFF였다.
+선택창 UI texture cache는 성공·실패를 캐시하고 slot은 hash로 찾으므로 매 프레임 파일
+재로드라는 가설은 제외했다. Bern용 occlusion/distance 경로는 FrameState가 없는
+Character Select batch에 적용되지 않는다. 최신 저장 Profiler는10-02 Debug 무비/베른이며
+10-07 Release 체험의 성능 측정으로 재사용하지 않았다.

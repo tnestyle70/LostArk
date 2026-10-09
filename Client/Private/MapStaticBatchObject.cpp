@@ -718,7 +718,7 @@ HRESULT CMapStaticBatchObject::Render_AdjacentNonBlend(
             if (FAILED(result)) return failedPreparation(result);
             if (bankCount > 1u)
             {
-                result = m_pModelCom->Bind_StaticLightingBank(m_pShaderCom,
+                result = m_pModelCom->Bind_StaticLightingBankMesh(m_pShaderCom,
                     std::span<const Engine::CModel* const>(models.data(), bankCount), mesh);
                 if (FAILED(result)) return failedPreparation(result);
             }
