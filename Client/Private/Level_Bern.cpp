@@ -61,6 +61,8 @@ namespace
 	constexpr f32_t BERN_ENTRANCE_PLAYBACK_RATE = 0.5f;
 	// Main-thread presentation state outlives Level instances, not the Client process.
 	bool_t s_hasPresentedBernEntranceThisSession = false;
+	// Main-thread only; survives level changes and is never written to the authored JSON.
+	std::optional<f32_t> s_bernEntranceFovYOverride;
 	constexpr const char_t* BERN_ENTRANCE_CAMERA_SCHEMA =
 		"lostark.level-entrance-camera";
 	constexpr uint32_t BERN_ENTRANCE_CAMERA_FORMAT_VERSION = 1u;
@@ -802,6 +804,32 @@ void CLevel_Bern::Consume_DebugEntranceReplay()
 }
 #endif
 
+std::optional<f32_t> CLevel_Bern::Get_EntranceCinematicFovYOverride()
+{
+	return s_bernEntranceFovYOverride;
+}
+
+bool_t CLevel_Bern::Set_EntranceCinematicFovYOverride(const f32_t fovYDegrees)
+{
+	if (!std::isfinite(fovYDegrees) || fovYDegrees < 10.f || fovYDegrees > 120.f)
+		return false;
+	s_bernEntranceFovYOverride = fovYDegrees;
+	return true;
+}
+
+void CLevel_Bern::Clear_EntranceCinematicFovYOverride()
+{
+	s_bernEntranceFovYOverride.reset();
+}
+
+f32_t CLevel_Bern::Get_EntranceCinematicAuthoredFovYDegrees()
+{
+	if (s_pActiveInstance && s_pActiveInstance->m_hasEntranceCameraCue &&
+		!s_pActiveInstance->m_EntranceCameraCue.Keyframes.empty())
+		return s_pActiveInstance->m_EntranceCameraCue.Keyframes.front().fFovYDegrees;
+	return 45.f;
+}
+
 bool_t CLevel_Bern::Ready_EntranceCinematic()
 {
 	if (s_hasPresentedBernEntranceThisSession)
@@ -884,9 +912,11 @@ void CLevel_Bern::Update_EntranceCinematic(const f32_t fTimeDelta)
 	if (std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
 		m_fEntranceCinematicSeconds += (std::min)(fTimeDelta, 0.1f) * BERN_ENTRANCE_PLAYBACK_RATE;
 	VALTAN_CINEMATIC_CAMERA_POSE pose{};
-	if (!CValtanCinematicCameraController::Sample_Cue(
-		m_EntranceCameraCue, m_fEntranceCinematicSeconds, pose) ||
-		!m_pCamera->Apply_PresentationPose(
+	const bool_t sampled = CValtanCinematicCameraController::Sample_Cue(
+		m_EntranceCameraCue, m_fEntranceCinematicSeconds, pose);
+	if (sampled && s_bernEntranceFovYOverride)
+		pose.fFovYDegrees = *s_bernEntranceFovYOverride;
+	if (!sampled || !m_pCamera->Apply_PresentationPose(
 			BERN_ENTRANCE_CINEMATIC_OWNER_ID,
 			pose.vEye, pose.vLookAt, pose.fFovYDegrees))
 	{

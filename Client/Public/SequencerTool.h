@@ -24,6 +24,7 @@ class CSequencerTool final
 {
 public:
     enum class ANIMATION_PREVIEW_TRANSPORT : std::uint8_t { NONE, PAUSE, RESUME, STOP };
+
     struct ANIMATION_PREVIEW_STATE final
     {
         std::string strPatternId;
@@ -38,6 +39,7 @@ public:
     {
         std::string categoryId, label, classId;
     };
+
     struct CLASS_SELECTION_PREVIEW_STATE final
     {
         std::vector<CLASS_SELECTION_PREVIEW_OPTION> options;
@@ -67,6 +69,7 @@ public:
     };
     // The Level owns playback, camera and resources. This session only submits
     // transport commands to that same product presentation and reads its clock.
+    //전부 다 call back 함수들인 건가? 이것들이 실제 sequencer에서 어떤 식으로 동작하는 구조인 거지?
     struct CLASS_SELECTION_PREVIEW_CALLBACKS final
     {
         std::function<CLASS_SELECTION_PREVIEW_STATE()> state;

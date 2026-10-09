@@ -52,9 +52,6 @@
     <Filter Include="02.GameObjects\00. Character\02. Artist">
       <UniqueIdentifier>{a708339b-9aaf-468a-bfb9-c2d18436186e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="02.GameObjects\00. Character\02.Customization">
-      <UniqueIdentifier>{830a186f-d7ce-54f7-98ab-2dab7269fb9a}</UniqueIdentifier>
-    </Filter>
     <Filter Include="02.GameObjects\00. Character\03. Slayer">
       <UniqueIdentifier>{15752942-3ae9-4fcd-91ce-48f56a75769b}</UniqueIdentifier>
     </Filter>
@@ -1108,6 +1105,9 @@
     <Filter Include="99.Defines">
       <UniqueIdentifier>{875044a5-ca30-4aac-9081-e3d4d5b065fe}</UniqueIdentifier>
     </Filter>
+    <Filter Include="02.GameObjects\00. Character\07. Customization">
+      <UniqueIdentifier>{830a186f-d7ce-54f7-98ab-2dab7269fb9a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\MainApp.cpp">
@@ -1585,16 +1585,16 @@
       <Filter>02.GameObjects\01. Boss</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\BoneChainSimulation.cpp">
-      <Filter>02.GameObjects\00. Character\02.Customization</Filter>
+      <Filter>02.GameObjects\00. Character\07. Customization</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\FaceCustomizeApplier.cpp">
-      <Filter>02.GameObjects\00. Character\02.Customization</Filter>
+      <Filter>02.GameObjects\00. Character\07. Customization</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\FaceMorphApplier.cpp">
-      <Filter>02.GameObjects\00. Character\02.Customization</Filter>
+      <Filter>02.GameObjects\00. Character\07. Customization</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\FaceSliderDocument.cpp">
-      <Filter>02.GameObjects\00. Character\02.Customization</Filter>
+      <Filter>02.GameObjects\00. Character\07. Customization</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Character.cpp">
       <Filter>02.GameObjects\00. Character\00.ActorAndParts</Filter>
@@ -2349,16 +2349,16 @@
       <Filter>02.GameObjects\01. Boss</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\BoneChainSimulation.h">
-      <Filter>02.GameObjects\00. Character\02.Customization</Filter>
+      <Filter>02.GameObjects\00. Character\07. Customization</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\FaceCustomizeApplier.h">
-      <Filter>02.GameObjects\00. Character\02.Customization</Filter>
+      <Filter>02.GameObjects\00. Character\07. Customization</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\FaceMorphApplier.h">
-      <Filter>02.GameObjects\00. Character\02.Customization</Filter>
+      <Filter>02.GameObjects\00. Character\07. Customization</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\FaceSliderDocument.h">
-      <Filter>02.GameObjects\00. Character\02.Customization</Filter>
+      <Filter>02.GameObjects\00. Character\07. Customization</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Character.h">
       <Filter>02.GameObjects\00. Character\00.ActorAndParts</Filter>

@@ -460,7 +460,7 @@ RENDER_OPTIMIZATION_SETTINGS9개와 기존 MAP_VISIBILITY_SETTINGS3개를 읽고
 적용한다. 품질의 매 프레임 restore/apply cycle로 cache를 초기화하지 않는다. 외부 제어가 바꾼 값과
 거리 scale/pixel 정책은 보존하고 실패한 복원은 소유 정보를 유지해 재시도한다.
 Debug Workbench `최적화 A/B`와 Release F1 `Optimization Benchmark`는 같은 ABBA·raw evidence 저장을
-사용한다. Release의 일반 Profiler/F7/저작 Save/Publish는 계속 비활성이다. 촬영용 숨김 유지의 명시적
+사용한다. Release도 F7 Profiler의 Capture·JSON 저장을 지원하며 저작 Save/Publish는 계속 비활성이다. 촬영용 숨김 유지의 명시적
 선택을 제외한 기존 닫기 복원 계약을 보존한다. runtime gate는 실제 로드된 작업 경로만 비교하며
 생성·bake·프로세스 build 차이를 즉시 toggle한 것으로 표시하지 않는다. 사용법은 CLAUDE를 따른다.
 
@@ -497,7 +497,7 @@ GPU Gems는 자료 모음이고 Lumen·DXR·Nanite·DLSS 같은 외부 renderer/
 
 ### 4.0 F1 Level Navigation
 
-Release는 F1 Developer Tools 허브를 명시적으로 열 수 있다. F7 입력·Profiler 창과 기존 Debug 전용 저작 도구는 비활성 상태를 유지한다. Release의 노란 FPS는 좌측 상단에 항상 표시하되 cinematic HUD 숨김을 따르며 개인 표시 모드 저장값은 바꾸지 않는다. F6와 제품 UI는 유지한다.
+Release는 F1 Developer Tools 허브를 명시적으로 열 수 있다. F7은 Profiler 창을 열고 닫으며 Capture 수집과 이름 있는 JSON 저장은 창에서 실행한다. 창을 숨겨도 수집은 계속되며 기존 Debug 전용 저작 도구는 비활성 상태를 유지한다. Release의 노란 FPS는 좌측 상단에 항상 표시하되 cinematic HUD 숨김을 따르며 개인 표시 모드 저장값은 바꾸지 않는다. F6와 제품 UI는 유지한다. F1의 `Bern Entrance Camera`는 베른 입장 컷신 FOV의 process-session override만 typed Level API로 전달한다. F7 컬링 탭의 비용·작업량·A/B 비교와 사용 범위는 CLAUDE를 따른다.
 
 Debug/Release F1의 Level Navigation은 Lobby, Character Select, Bern, Valtan,
 KoukuSaydon, Entrance PvP Arena, Maharaka 일곱 버튼을 제공한다. Lobby 복귀는 기존

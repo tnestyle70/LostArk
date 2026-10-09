@@ -29,6 +29,8 @@
 - NPC·이펙트 전체 Update는 순수 CPU 함수가 아니다. network/collider/sound/event/provider/렌더 상태를 포함한 함수를 통째로 병렬 루프에 넣지 않는다. 작업 분산은 계산량 제거와 다르며 fixture의 wall time을 실FPS 향상으로 바꾸어 보고하지 않는다.
 
 ## Bern 가림·거리 컬링의 보수성과 검증
+- occlusion 옵션 ON과 실제 가림 판정 실행을 구분한다. Bern의 frame state가 없는 객체는 descriptor를 거절하지만 전역 패스에 들어가면 후보 순회 비용은 남는다. Client가 매 프레임 Bern 정책을 Render 호출에 전달하고 다른 Level은 패스 진입 전에 건너뛴다. A/B의 사용자 bool을 레벨마다 덮어쓰지 않는다. 후보·래스터·검사 수가0인 캡처를 실제 depth 계산의 성능 회귀라고 설명하지 않는다.
+- 노트북 성능 비교는 같은 EXE·adapter·viewport·장면·수집 조건에 AC 전원 상태도 맞춘다. 가용 RAM과 system page-in을 함께 보되 메모리 압박이나 배터리 상태만으로 해당 프레임 병목을 확정하지 않는다.
 
 - AABB는 가려지는 대상의 검사 범위다. 열린 창·틈이 있는 모델의 AABB를 꽉 찬 occluder로 대신 그리지 않는다. 현재 제출할 원본 LOD0의 불투명 삼각형만 가림 근거로 사용하며 masked·opacity·wind·morph·다른 선택 LOD는 occluder에서 제외한다. 변형 없는 masked BG는 occludee로 허용할 수 있다.
 - CPU와 D3D의 front face·mirror·cull을 실제 GPU 깊이와 비교한다. 같은 viewport 픽셀 중심과 triangle farthest-depth, 확장 query bounds로 보수성을 유지한다. 낮은 해상도 중심 샘플의 꽉 찬 셀 추정은 작은 틈을 메울 수 있고, 모든 삼각형의 안쪽 축소는 공유 내부 edge에 인위적 틈을 만든다.

@@ -867,7 +867,7 @@ void CRenderer::Advance_PresentationClock(f32_t fTimeDelta)
 		m_fPresentationClock + fTimeDelta, CLOCK_WRAP_SECONDS);
 }
 
-HRESULT CRenderer::Draw()
+HRESULT CRenderer::Draw(const bool staticOcclusionAllowed)
 {
     m_bPickingDepthCaptured = false;
     // Priority sky and later forward water share this frame clock.
@@ -929,7 +929,7 @@ HRESULT CRenderer::Draw()
 	{
 		CProfilerScope scope(pProfiler, "Render.NonBlend");
 		CProfilerGpuScope gpuScope(pProfiler, "Render.NonBlend", true);
-		hResult = Render_NonBlend();
+		hResult = Render_NonBlend(staticOcclusionAllowed);
 	}
 	if (FAILED(hResult))
 		return FailFrame("Render_NonBlend", hResult);
@@ -1397,9 +1397,9 @@ void CRenderer::Cull_StaticOcclusion()
     catch (...) { m_OcclusionVisibleQueue.clear(); } // Keep the original queue on preparation failure.
 }
 
-HRESULT CRenderer::Render_NonBlend()
+HRESULT CRenderer::Render_NonBlend(const bool staticOcclusionAllowed)
 {
-    Cull_StaticOcclusion();
+    if (staticOcclusionAllowed) Cull_StaticOcclusion();
     CMaterial::Reset_SourceCharacterFrame(m_fPresentationClock);
 	/* Diffuse + Normal */
 	if (FAILED(CGameInstance::Get().Begin_MRT(TEXT("MRT_GameObject"))))
