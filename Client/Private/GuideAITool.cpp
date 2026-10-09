@@ -1,5 +1,7 @@
 #include "imgui.h"
 #include "GuideAITool.h"
+
+//왜 여기에 debug가 달려있는 거지? release에서도 사용해야 하는 Guide 관련된 툴인 거 아닌가?
 #ifdef _DEBUG
 #include "ProjectDataRoot.h"
 #include "GameInstance.h"
@@ -12,22 +14,35 @@
 namespace Client
 {
 using namespace GuideJson;
+//ananymous namespace
 namespace
 {
+
 bool EditText(const char* label, J& value, const char* key, bool multiline = false)
 {
     std::array<char, 8192> buffer{}; const auto text = String(value,key); std::copy_n(text.data(), (std::min)(text.size(), buffer.size()-1), buffer.data());
     const bool changed = multiline ? ImGui::InputTextMultiline(label,buffer.data(),buffer.size(),ImVec2(-1,110)) : ImGui::InputText(label,buffer.data(),buffer.size());
     if (changed) Set(value,key,J::String(buffer.data())); return changed;
 }
+
 bool EditNumber(const char* label, J& value, const char* key, float speed = 0.1f)
 { float number = static_cast<float>(Number(value,key)); if (!ImGui::DragFloat(label,&number,speed)) return false; Set(value,key,J::Number(number,true)); return true; }
+
 bool EditMilliseconds(const char* label, J& value, const char* key)
 { int number = static_cast<int>(Number(value,key)); if (!ImGui::InputInt(label,&number)) return false; Set(value,key,J::Number(number)); return true; }
+
 bool EditBool(const char* label, J& value, const char* key)
 { bool flag=Boolean(value,key); if(!ImGui::Checkbox(label,&flag))return false;Set(value,key,J::Boolean(flag));return true; }
+//edit vector, pos, rot, scale을 조정하기 위한 API?
 bool EditVector(const char* label, J& value, const char* key)
-{ float xyz[3]{};const auto& source=Field(value,key).Get_Array();for(size_t i=0;i<(std::min)(source.size(),size_t(3));++i)xyz[i]=static_cast<float>(source[i].Get_Number());if(!ImGui::DragFloat3(label,xyz,0.1f))return false;Set(value,key,J::Array({J::Number(xyz[0],true),J::Number(xyz[1],true),J::Number(xyz[2],true)}));return true; }
+{ float xyz[3]{}; const auto& source=Field(value,key).Get_Array();
+    for(size_t i=0;i<(std::min)(source.size(),size_t(3));++i)
+        xyz[i]=static_cast<float>(source[i].Get_Number());
+    if(!ImGui::DragFloat3(label,xyz,0.1f)) return false;
+    Set(value,key,J::Array({J::Number(xyz[0],true),J::Number(xyz[1],true),J::Number(xyz[2],true)}));
+    return true;
+}
+
 bool EditBoxVector(const char* label, J& event, const char* key, double displayScale, double minimum, double maximum)
 {
     const auto& source = Field(event, key).Get_Array();
@@ -41,8 +56,10 @@ bool EditBoxVector(const char* label, J& event, const char* key, double displayS
     Set(event, key, J::Array({J::Number(stored(xyz[0]), true), J::Number(stored(xyz[1]), true), J::Number(stored(xyz[2]), true)}));
     return true;
 }
+
 bool Choose(const char* label,J& value,const char* key,const std::vector<std::pair<std::string,std::string>>& choices)
 { bool changed=false;auto current=String(value,key);if(ImGui::BeginCombo(label,current.c_str())){for(const auto& [id,name]:choices)if(ImGui::Selectable(name.c_str(),id==current)){Set(value,key,J::String(id));changed=true;}ImGui::EndCombo();}return changed; }
+
 std::vector<std::pair<std::string,std::string>> Choices(const J::ARRAY& rows,const char* id,const char* label,bool empty=false)
 {std::vector<std::pair<std::string,std::string>> result;if(empty)result.emplace_back("","None");for(const auto& row:rows)result.emplace_back(String(row,id),String(row,label));return result;}
 size_t Selected(const J::ARRAY& rows,const char* key,const std::string& id)

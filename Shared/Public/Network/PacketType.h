@@ -129,6 +129,8 @@ namespace LostArk::Shared
 	// Independent 130 branches add per-item durability or match-isolated Colosseum/Guide contracts.
 	// 132 combines them with the revised Colosseum queue/start layout and rejects older peers.
 	// 133 carries character capture barriers and authoritative per-item upgrade levels.
+	// 해당 네트워크 프로토콜 버전이 맞지 않아서 계속해서 에러가 났었다.
+	// 모든 팀원들과 같이 protocol 버전을 맞춰서 서버와의 계약을 동일하게 맞춰야 한다.
 	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 133;
 
 	enum class WORLD_ID : std::uint16_t
@@ -142,7 +144,7 @@ namespace LostArk::Shared
 		COLOSSEUM = 7,
 		END
 	};
-
+	//World 진입에 대한 요청을 확인할 때 사용하는 API? 월드 진입에 대한 검증을 할 때 호출한다.
 	[[nodiscard]]
 	constexpr bool Is_Known_World_Id(const WORLD_ID worldId)
 	{
@@ -155,6 +157,8 @@ namespace LostArk::Shared
 			WORLD_ID::COLOSSEUM == worldId;
 	}
 
+	//캐릭터 선택에 대한 요청을 보낼 때, 해당 캐릭터에 대한 정보를 담아서 어떤 캐릭터에 대한 요청인지를
+	//받을 수 있도록 한다.
 	enum class CHARACTER_CLASS_ID : std::uint8_t
 	{
 		LANCE_MASTER = 0,
@@ -168,6 +172,7 @@ namespace LostArk::Shared
 		END
 	};
 
+	//유효한 캐릭터 클래스인지를 검증하는 API
 	[[nodiscard]]
 	constexpr bool Is_Known_Character_Class(const CHARACTER_CLASS_ID characterClass)
 	{
@@ -205,10 +210,17 @@ namespace LostArk::Shared
 	}
 
 	// v116: server-owned companion identity, separate party companion, prompt and trace.
-	enum class PLAYER_CONTROL_KIND : std::uint8_t { HUMAN = 0, GUIDE_AI = 1, WATERPANG_AI = 2, COLOSSEUM_MERCENARY_AI = 3 };
-	constexpr bool Is_Known_Player_Control_Kind(PLAYER_CONTROL_KIND kind)
-	{ return kind == PLAYER_CONTROL_KIND::HUMAN || kind == PLAYER_CONTROL_KIND::GUIDE_AI || kind == PLAYER_CONTROL_KIND::WATERPANG_AI || kind == PLAYER_CONTROL_KIND::COLOSSEUM_MERCENARY_AI; }
+	enum class PLAYER_CONTROL_KIND : std::uint8_t { HUMAN = 0,
+		GUIDE_AI = 1, WATERPANG_AI = 2, COLOSSEUM_MERCENARY_AI = 3 };
 
+	//캐릭터에 대한 조작을 어떤 방식으로 하는 지에 대한 선택을 한다.
+	constexpr bool Is_Known_Player_Control_Kind(PLAYER_CONTROL_KIND kind)
+	{ return kind == PLAYER_CONTROL_KIND::HUMAN ||
+		kind == PLAYER_CONTROL_KIND::GUIDE_AI ||
+		kind == PLAYER_CONTROL_KIND::WATERPANG_AI ||
+		kind == PLAYER_CONTROL_KIND::COLOSSEUM_MERCENARY_AI; }
+
+	//받는 타입에 대한 정보를 정리한 부분이다.
 	enum class PACKET_TYPE : std::uint16_t
 	{
 		INVALID,

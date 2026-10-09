@@ -40,7 +40,8 @@ public:
 	void Update_Engine(f32_t fTimeDelta);
 	void Submit_FinalCameraObjects();
 	HRESULT Render_Begin(const float4_t* pClearColor);
-	HRESULT Render();
+	// The caller opts into static occlusion for this frame without changing session settings.
+	HRESULT Render(bool staticOcclusionAllowed = false);
 	HRESULT Render_End();
 	HRESULT Clear_Resources(uint32_t iClearLevelID);
 
