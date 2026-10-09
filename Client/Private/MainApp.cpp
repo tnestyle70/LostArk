@@ -11846,6 +11846,8 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
                 state.authoringPublishPending = preview.Is_AuthoringPublishPending();
                 state.authoringStatus = preview.Get_AuthoringStatus();
                 state.authoringGeneration = preview.Get_AuthoringGeneration();
+                state.canUndoAuthoring = preview.Can_UndoAuthoring();
+                state.canRedoAuthoring = preview.Can_RedoAuthoring();
 				state.active = preview.Is_Active();
 				state.paused = preview.Is_Paused();
 				state.looping = preview.Is_Looping();
@@ -11917,6 +11919,28 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
             classSelection.beginAuthoring = [](std::string& status) {
                 auto* level = CLevel_CharacterSelect::Get_Active();
                 return level && level->Get_ClassSelectionPresentation().Begin_Authoring(status);
+            };
+            classSelection.setHistorySelection = [](const CLASS_MOVIE_HISTORY_SELECTION& selection) {
+                if (auto* level = CLevel_CharacterSelect::Get_Active(); level &&
+                    CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+                    level->Get_ClassSelectionPresentation().Set_AuthoringHistorySelection(selection);
+            };
+            classSelection.finishHistory = [] {
+                if (auto* level = CLevel_CharacterSelect::Get_Active(); level &&
+                    CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+                    level->Get_ClassSelectionPresentation().Finish_AuthoringHistory();
+            };
+            classSelection.undoAuthoring = [](CLASS_MOVIE_HISTORY_SELECTION& selection, std::string& status) {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+                { status = "Enter Character Select before restoring Movie edits."; return false; }
+                return level->Get_ClassSelectionPresentation().Undo_Authoring(selection, status);
+            };
+            classSelection.redoAuthoring = [](CLASS_MOVIE_HISTORY_SELECTION& selection, std::string& status) {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+                { status = "Enter Character Select before restoring Movie edits."; return false; }
+                return level->Get_ClassSelectionPresentation().Redo_Authoring(selection, status);
             };
             classSelection.editableBox = [](const std::string& classId, bool loop, const std::string& kind,
                 const std::string& id, CLASS_MOVIE_AUTHORING_BOX& out, std::string& status) {
