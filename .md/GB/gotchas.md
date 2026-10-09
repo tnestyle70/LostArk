@@ -5181,6 +5181,13 @@ snapshot tick 진행과 자유 플레이어의 실제 이동까지 확인한다.
 - 보스 위치에서 발생한 고정 장판은 `BOSS + followBoss=false`로 시작 pose를 보존한다.
   MAP으로만 바꾸면 local offset이 절대 맵 좌표가 된다. Collider는 해당 이펙트의
   `anchorPresentationOccurrenceId`를 공유해야 Client 표시와 Server `captureStartMs`가 일치한다.
+- Collider/Effect의 다른 Pattern 복사에는 `anchorPresentationOccurrenceId`가 가리키는 기준 Effect도
+  포함해야 한다. Logic·region 소유 연결만 복사하면 Paste가 같은 Pattern의 선행 fixed BOSS Effect를
+  찾지 못해 거절된다. clipboard 의존 항목 확장 후 새 ID로 연결하며, anchor 삭제나 validation 완화로
+  우회하지 않는다. 같은 Pattern Duplicate는 기존 기준 Effect 공유를 유지한다.
+- Effect 또는 Effect 그룹을 직접 선택한 Copy는 그 Effect를 기준으로 삼는 Collider와 Logic도 포함한다.
+  이 역방향 확장은 사용자/group 선택을 기준으로 고정한다. Collider를 복사하면서 필요해진 기준 Effect까지
+  새 선택으로 취급하면 같은 Effect를 공유하는 무관한 Collider가 연쇄 복사된다. 이름·시간 겹침으로 추정하지 않는다.
 - 사운드가 빠졌다고 애니메이션 notify만 검사하지 않는다. 원본 Projectile의 AkEvent와
   실제 저장 occurrence/group 내부 clock을 대조한다. 사각 그룹 앞에 미사일 시간을 넣을 때
   내부 폭발 clock 증가와 occurrence 시작 감소를 함께 적용해 사용자 폭발 시간을 유지한다.
