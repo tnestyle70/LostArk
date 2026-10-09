@@ -510,6 +510,112 @@ bool CClassSelectionPresentation::Begin_Authoring(std::string& status)
     m_Authoring = std::move(staged); m_Timelines.clear(); return true;
 }
 
+void CClassSelectionPresentation::Set_AuthoringHistorySelection(const CLASS_MOVIE_HISTORY_SELECTION& selection)
+{
+    m_AuthoringHistorySelection = selection;
+    if (!std::isfinite(m_AuthoringHistorySelection.cursorMs) || m_AuthoringHistorySelection.cursorMs < 0.)
+        m_AuthoringHistorySelection.cursorMs = 0.;
+}
+
+CClassSelectionPresentation::AUTHORING_HISTORY_STATE CClassSelectionPresentation::Capture_AuthoringHistory()
+{
+    if (!m_Authoring->historyDocument || m_Authoring->historyGeneration != m_Authoring->generation)
+    {
+        m_Authoring->historyDocument = std::make_shared<const AUTHORING_HISTORY_DOCUMENT>(
+            AUTHORING_HISTORY_DOCUMENT{Serialize(m_Authoring->manifest), Serialize(m_Authoring->world)});
+        m_Authoring->historyGeneration = m_Authoring->generation;
+    }
+    return {m_Authoring->historyDocument, m_AuthoringHistorySelection};
+}
+
+void CClassSelectionPresentation::Begin_AuthoringHistory()
+{
+    // Called only after admission succeeds, before replacing the authored JSON.
+    // Several live camera updates in one UI gesture keep its first before value.
+    if (m_Authoring && !m_Authoring->history.Is_Pending())
+        m_Authoring->history.Begin(Capture_AuthoringHistory());
+}
+
+void CClassSelectionPresentation::Finish_AuthoringHistory()
+{
+    if (!m_Authoring || !m_Authoring->history.Is_Pending()) return;
+    m_Authoring->history.Commit(Capture_AuthoringHistory(), [](const auto& before, const auto& after) {
+        return before.document == after.document ||
+            (before.document->manifest == after.document->manifest && before.document->world == after.document->world);
+    });
+}
+
+bool CClassSelectionPresentation::Can_UndoAuthoring() const
+{
+    return m_Authoring && !Is_AuthoringPublishPending() && m_Authoring->history.Can_Undo();
+}
+
+bool CClassSelectionPresentation::Can_RedoAuthoring() const
+{
+    return m_Authoring && !Is_AuthoringPublishPending() && m_Authoring->history.Can_Redo();
+}
+
+bool CClassSelectionPresentation::Restore_AuthoringHistory(const AUTHORING_HISTORY_STATE& target,
+    const AUTHORING_HISTORY_STATE& expected, CLASS_MOVIE_HISTORY_SELECTION& restored, std::string& status)
+{
+    if (!m_Authoring || !target.document || !expected.document || Is_AuthoringPublishPending())
+    { status = "Wait for Movie publishing to finish before Undo / Redo."; return false; }
+    Json manifest, world;
+    // Save can merge independent edits into this draft. Reapply only the recorded
+    // delta; a whole old snapshot would silently erase those newer fields.
+    {
+        Json before, after;
+        if (!CDataJson::Parse(expected.document->manifest, before, status) ||
+            !CDataJson::Parse(target.document->manifest, after, status) ||
+            !Merge(before, after, m_Authoring->manifest, manifest, status, "Movie history")) return false;
+    }
+    {
+        Json before, after;
+        if (!CDataJson::Parse(expected.document->world, before, status) ||
+            !CDataJson::Parse(target.document->world, after, status) ||
+            !Merge(before, after, m_Authoring->world, world, status, "World history")) return false;
+    }
+    if (const auto* revision = m_Authoring->world.Find("revision")) world = Set(world, "revision", *revision);
+    std::vector<SCENE> scenes; CWorldSequenceDocument document;
+    auto selection = target.selection;
+    if (!Validate_Authoring(manifest, world, scenes, document, status) ||
+        !Prepare_Authoring(scenes, document, status) || !Commit_Authoring(std::move(scenes), document, status)) return false;
+    m_Authoring->scenes = m_Scenes; m_Authoring->document = m_Resources.Get_Document();
+    m_Authoring->manifest = std::move(manifest); m_Authoring->world = std::move(world);
+    // Baselines, publish receipts and file freshness belong to Save, never history.
+    m_Authoring->dirty = !Equal(m_Authoring->manifest, m_Authoring->manifestBase) ||
+        !Equal(m_Authoring->world, m_Authoring->worldBase);
+    ++m_Authoring->generation;
+    m_AuthoringHistorySelection = selection; restored = std::move(selection);
+    status = "Movie draft and selection restored. Save movie keeps this state.";
+    m_Authoring->status = status;
+    return true;
+}
+
+bool CClassSelectionPresentation::Undo_Authoring(CLASS_MOVIE_HISTORY_SELECTION& restored, std::string& status)
+{
+    Finish_AuthoringHistory();
+    if (!m_Authoring) { status = "Open a Movie before Undo."; return false; }
+    const bool changed = m_Authoring->history.Undo([&](const auto& target, const auto& expected) {
+        return Restore_AuthoringHistory(target, expected, restored, status);
+    });
+    if (!changed && !m_Authoring->history.Can_Undo()) status = "No Movie edit to undo.";
+    m_Authoring->status = status;
+    return changed;
+}
+
+bool CClassSelectionPresentation::Redo_Authoring(CLASS_MOVIE_HISTORY_SELECTION& restored, std::string& status)
+{
+    Finish_AuthoringHistory();
+    if (!m_Authoring) { status = "Open a Movie before Redo."; return false; }
+    const bool changed = m_Authoring->history.Redo([&](const auto& target, const auto& expected) {
+        return Restore_AuthoringHistory(target, expected, restored, status);
+    });
+    if (!changed && !m_Authoring->history.Can_Redo()) status = "No Movie edit to redo.";
+    m_Authoring->status = status;
+    return changed;
+}
+
 bool CClassSelectionPresentation::Reload_Authoring(std::string& status)
 {
     if (Is_AuthoringPublishPending()) { status = "Wait for the movie runtime publish to finish before reloading."; return false; }
@@ -558,6 +664,7 @@ bool CClassSelectionPresentation::Set_RepeatMovie(const std::string& classId,
     std::vector<SCENE> validated;
     if (!Parse(manifest, m_Resources.Get_Document().Get_AreaId(), validated, status)) return false;
     // This policy never changes admission, resources or the current playback pose.
+    Begin_AuthoringHistory();
     live->repeatMovie = authored->repeatMovie = repeat;
     m_Authoring->manifest = std::move(manifest);
     m_Authoring->dirty = !Equal(m_Authoring->manifest, m_Authoring->manifestBase) ||
@@ -625,6 +732,7 @@ bool CClassSelectionPresentation::Apply_AuthoringBox(const CLASS_MOVIE_AUTHORING
                 if (!Sample_Camera(currentPhase, sampleMs))
                 { *currentRow = std::move(previous); status = m_Status; return false; }
             }
+            Begin_AuthoringHistory();
             *row = candidate;
             m_Authoring->manifest = std::move(manifest);
             m_Authoring->dirty = !Equal(m_Authoring->manifest, m_Authoring->manifestBase) ||
@@ -654,6 +762,7 @@ bool CClassSelectionPresentation::Apply_AuthoringBox(const CLASS_MOVIE_AUTHORING
         }
     }
     if (!Prepare_Authoring(scenes, document, status) || !Commit_Authoring(std::move(scenes), document, status)) return false;
+    Begin_AuthoringHistory();
     m_Authoring->scenes = m_Scenes; m_Authoring->document = m_Resources.Get_Document();
     m_Authoring->manifest = std::move(manifest); m_Authoring->world = std::move(worldJson);
     m_Authoring->dirty = !Equal(m_Authoring->manifest, m_Authoring->manifestBase) || !Equal(m_Authoring->world, m_Authoring->worldBase);
@@ -816,6 +925,7 @@ bool CClassSelectionPresentation::Edit_AuthoringTiming(const CLASS_MOVIE_AUTHORI
     std::vector<SCENE> scenes; CWorldSequenceDocument document;
     if (!Validate_Authoring(manifest, m_Authoring->world, scenes, document, status) ||
         !Prepare_Authoring(scenes, document, status) || !Commit_Authoring(std::move(scenes), document, status)) return false;
+    Begin_AuthoringHistory();
     m_Authoring->manifest = std::move(manifest); m_Authoring->scenes = m_Scenes;
     m_Authoring->dirty = !Equal(m_Authoring->manifest, m_Authoring->manifestBase) || !Equal(m_Authoring->world, m_Authoring->worldBase);
     ++m_Authoring->generation;
@@ -854,6 +964,7 @@ bool CClassSelectionPresentation::Set_WorldExcluded(const std::string& classId,
     if (!Validate_Authoring(manifest, m_Authoring->world, scenes, document, status)) return false;
     // This edit changes only drawing. Do not Stop/rebuild actors or invalidate
     // Effect bone providers, the current camera, pause, or the Movie clock.
+    Begin_AuthoringHistory();
     live->excludedWorldObjectIds.assign(ids.begin(), ids.end());
     authored->excludedWorldObjectIds = live->excludedWorldObjectIds;
     m_Authoring->manifest = manifest;
@@ -869,6 +980,7 @@ bool CClassSelectionPresentation::Set_WorldExcluded(const std::string& classId,
 
 bool CClassSelectionPresentation::Save_Authoring(std::string& status, const bool publish)
 {
+    Finish_AuthoringHistory();
     if (!Begin_Authoring(status)) return false;
     if (Is_AuthoringPublishPending()) { status = "Movie runtime publishing is still running."; return false; }
     const auto paths = SourcePaths(m_Resources.Get_Document().Get_AreaId());

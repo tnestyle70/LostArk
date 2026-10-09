@@ -41,6 +41,14 @@ struct CLASS_MOVIE_AUTHORING_BOX final
     uint64_t generation = 0u;
     DATA_JSON_VALUE value;
 };
+// Stable editor selection accompanying an authored change. Playback itself is
+// not history: cursorMs is the editor's Movie time, restored without a Play.
+struct CLASS_MOVIE_HISTORY_SELECTION final
+{
+    std::string classId, kind, boxId, keyId;
+    bool loop = false;
+    double cursorMs = 0.;
+};
 struct CLASS_MOVIE_CAMERA_SAMPLE final
 {
     bool valid = false;

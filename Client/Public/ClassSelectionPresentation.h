@@ -3,6 +3,7 @@
 #include "EffectRecoveryCamera.h"
 #include "ClassSelectionTimeline.h"
 #include "ClassMovieInspection.h"
+#include "EditorUndoHistory.h"
 #include "WorldSequencePlayer.h"
 #include "Effect_PresentationService.h"
 
@@ -169,6 +170,12 @@ public:
     bool Publish_Authoring(std::string& status);
     bool Edit_AuthoringTiming(const CLASS_MOVIE_AUTHORING_BOX& before,
         double sourceStartMs, double sourceEndMs, CLASS_MOVIE_TIMING_EDIT gesture, std::string& status);
+    void Set_AuthoringHistorySelection(const CLASS_MOVIE_HISTORY_SELECTION& selection);
+    void Finish_AuthoringHistory();
+    bool Can_UndoAuthoring() const;
+    bool Can_RedoAuthoring() const;
+    bool Undo_Authoring(CLASS_MOVIE_HISTORY_SELECTION& restored, std::string& status);
+    bool Redo_Authoring(CLASS_MOVIE_HISTORY_SELECTION& restored, std::string& status);
     bool Reload_Authoring(std::string& status);
     bool Has_AuthoringChanges() const { return m_Authoring && m_Authoring->dirty; }
     uint64_t Get_AuthoringGeneration() const { return m_Authoring ? m_Authoring->generation : 0u; }
@@ -218,6 +225,16 @@ private:
 
     void Fail(const std::string& reason);
 
+    struct AUTHORING_HISTORY_DOCUMENT final
+    {
+        // Movie JSON is large; retain compact text rather than a DOM per step.
+        std::string manifest, world;
+    };
+    struct AUTHORING_HISTORY_STATE final
+    {
+        std::shared_ptr<const AUTHORING_HISTORY_DOCUMENT> document;
+        CLASS_MOVIE_HISTORY_SELECTION selection;
+    };
     struct AUTHORING_STATE final
     {
         DATA_JSON_VALUE manifest, world, manifestBase, worldBase;
@@ -228,8 +245,15 @@ private:
         HANDLE publishProcess = nullptr;
         std::filesystem::path publishLog;
         std::string status;
+        CEditorUndoHistory<AUTHORING_HISTORY_STATE> history{16u};
+        std::shared_ptr<const AUTHORING_HISTORY_DOCUMENT> historyDocument;
+        uint64_t historyGeneration = 0u;
         ~AUTHORING_STATE() { if (publishProcess) CloseHandle(publishProcess); }
     };
+    AUTHORING_HISTORY_STATE Capture_AuthoringHistory();
+    void Begin_AuthoringHistory();
+    bool Restore_AuthoringHistory(const AUTHORING_HISTORY_STATE& target,
+        const AUTHORING_HISTORY_STATE& expected, CLASS_MOVIE_HISTORY_SELECTION& restored, std::string& status);
     bool Validate_Authoring(const DATA_JSON_VALUE& manifest, const DATA_JSON_VALUE& world,
         std::vector<SCENE>& scenes, CWorldSequenceDocument& document, std::string& status) const;
     bool Prepare_Authoring(const std::vector<SCENE>& scenes, const CWorldSequenceDocument& document,
@@ -239,6 +263,7 @@ private:
     void Start_AuthoringPublish();
     void Poll_AuthoringPublish();
     std::unique_ptr<AUTHORING_STATE> m_Authoring;
+    CLASS_MOVIE_HISTORY_SELECTION m_AuthoringHistorySelection;
     CWorldSequencePlayer m_Resources;
     std::unique_ptr<CWorldSequencePlayer> m_Active;
     CWorldSequencePlayer::TARGET_SET m_Targets;
