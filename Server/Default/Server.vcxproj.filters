@@ -390,6 +390,9 @@
     <ClCompile Include="..\Private\Server_Pch.cpp">
       <Filter>99.Default</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\IocpService.cpp">
+      <Filter>01.Network</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\ServerApp.h">
@@ -529,6 +532,9 @@
     </ClInclude>
     <ClInclude Include="..\..\Tools\Build\CppStandardPch.h">
       <Filter>99.Default</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\IocpService.h">
+      <Filter>01.Network</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

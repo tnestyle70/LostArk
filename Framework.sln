@@ -21,7 +21,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WModelGeometryContractHarne
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PointLightFalloffContractHarness", "Tools\PointLightFalloffContractHarness\Default\PointLightFalloffContractHarness.vcxproj", "{6D0C24DF-FC4B-4BA1-9E20-F38903BA14AE}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ValtanPatternAuditionServiceHarness", "Tools\ValtanPatternAuditionServiceHarness\Default\ValtanPatternAuditionServiceHarness.vcxproj", "{4970BA90-455F-4ADB-B855-93D1CC2C1CA2}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BossToolTests", "Tools\BossToolTests\Default\BossToolTests.vcxproj", "{4970BA90-455F-4ADB-B855-93D1CC2C1CA2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

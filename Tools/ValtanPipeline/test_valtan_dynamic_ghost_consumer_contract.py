@@ -65,7 +65,7 @@ class DynamicGhostConsumerContractTests(unittest.TestCase):
 
     def test_executable_contract_fixtures_cover_dynamic_and_rollback_paths(self) -> None:
         client_test = read(
-            "Tools/ValtanPatternAuditionServiceHarness/Private/"
+            "Tools/BossToolTests/Private/"
             "ValtanEncounterReferenceContractTests.cpp"
         )
         server_test = read_cpp_domain(ROOT / "Server", "ServerGameplayContractTests")

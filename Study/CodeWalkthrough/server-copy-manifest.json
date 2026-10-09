@@ -1,0 +1,80 @@
+{
+  "schema": "lostark.study.server-comment-copies.v1",
+  "createdDate": "2026-10-09",
+  "purpose": "현재 제품 소스에 한국어 설명 주석을 추가한 읽기 전용 참고 복사본. 제품 빌드 대상이 아니다.",
+  "sourceRoot": "C:/Users/tnest/Desktop/LostArk",
+  "verification": {
+    "algorithm": "C++ comments and whitespace ignored; identifiers, numeric tokens, operators, ordinary strings/chars and raw strings retained in order",
+    "buildOrRuntimeExecuted": false
+  },
+  "files": [
+    {
+      "sourcePath": "C:/Users/tnest/Desktop/LostArk/Shared/Private/Network/PacketFrame.cpp",
+      "copyPath": "C:/Users/tnest/Desktop/LostArk/Study/CodeWalkthrough/Reference/Shared/Private/Network/PacketFrame.cpp",
+      "sourceSha256": "60c30c9d3d65b5990cc8927920ee02bcc7c8a0def40cf560213fc732f49da9bc",
+      "copySha256": "cf65a39a03b2939adeccf51dd74f605b83adf5f5181f8fca8b35c23bbdac27fa",
+      "sourceEncoding": "UTF-8 no BOM",
+      "copyEncoding": "UTF-8 no BOM",
+      "sourceNewline": "CRLF",
+      "copyNewline": "CRLF",
+      "sourceLineCount": 85,
+      "copyLineCount": 103,
+      "addedCommentBlocks": 3,
+      "replacedCommentCount": 3,
+      "nonCommentTokenCount": 292,
+      "nonCommentTokensEqual": true,
+      "sourceUnchangedAfterCopy": true
+    },
+    {
+      "sourcePath": "C:/Users/tnest/Desktop/LostArk/Shared/Private/Network/PacketStreamParser.cpp",
+      "copyPath": "C:/Users/tnest/Desktop/LostArk/Study/CodeWalkthrough/Reference/Shared/Private/Network/PacketStreamParser.cpp",
+      "sourceSha256": "07230859d7ec415e8607c345af2d2be17aa204a144b665bedf68e14e8647f2b6",
+      "copySha256": "2879631bc92546193a63aac594b3b5fef03cd4930905305f02787d405158b897",
+      "sourceEncoding": "UTF-8 no BOM",
+      "copyEncoding": "UTF-8 no BOM",
+      "sourceNewline": "CRLF",
+      "copyNewline": "CRLF",
+      "sourceLineCount": 113,
+      "copyLineCount": 143,
+      "addedCommentBlocks": 6,
+      "replacedCommentCount": 5,
+      "nonCommentTokenCount": 401,
+      "nonCommentTokensEqual": true,
+      "sourceUnchangedAfterCopy": true
+    },
+    {
+      "sourcePath": "C:/Users/tnest/Desktop/LostArk/Server/Private/ClientSession.cpp",
+      "copyPath": "C:/Users/tnest/Desktop/LostArk/Study/CodeWalkthrough/Reference/Server/Private/ClientSession.cpp",
+      "sourceSha256": "c910eb13befe798ebece2dcc96bf218e2e132f2023996daeb5ee8d36db3196a6",
+      "copySha256": "7b944d89b9f587a4ff20157eac180f675dbba9c8ff15350330930c40085edac6",
+      "sourceEncoding": "UTF-8 no BOM",
+      "copyEncoding": "UTF-8 no BOM",
+      "sourceNewline": "CRLF",
+      "copyNewline": "CRLF",
+      "sourceLineCount": 944,
+      "copyLineCount": 1062,
+      "addedCommentBlocks": 22,
+      "replacedCommentCount": 0,
+      "nonCommentTokenCount": 5084,
+      "nonCommentTokensEqual": true,
+      "sourceUnchangedAfterCopy": true
+    },
+    {
+      "sourcePath": "C:/Users/tnest/Desktop/LostArk/Server/Private/GameRoom_Replication.cpp",
+      "copyPath": "C:/Users/tnest/Desktop/LostArk/Study/CodeWalkthrough/Reference/Server/Private/GameRoom_Replication.cpp",
+      "sourceSha256": "70d006f266991709d20dc818a7197592c739462ad87a6b7fecf9fec9847eb4ba",
+      "copySha256": "2ce425f39c5e35d5139f9ccc1d353736fb19b68110d1ad86e213a1e60720debd",
+      "sourceEncoding": "UTF-8 no BOM",
+      "copyEncoding": "UTF-8 no BOM",
+      "sourceNewline": "CRLF",
+      "copyNewline": "CRLF",
+      "sourceLineCount": 948,
+      "copyLineCount": 977,
+      "addedCommentBlocks": 5,
+      "replacedCommentCount": 0,
+      "nonCommentTokenCount": 6201,
+      "nonCommentTokensEqual": true,
+      "sourceUnchangedAfterCopy": true
+    }
+  ]
+}

@@ -28,8 +28,8 @@ $protocolHarnessExe = Join-Path $repoRoot `
     "Tools\NetworkProtocolHarness\Bin\$Configuration\NetworkProtocolHarness.exe"
 $characterSelectIsolationHarnessExe = Join-Path $repoRoot `
     "Tools\CharacterSelectIsolationHarness\Bin\$Configuration\CharacterSelectIsolationHarness.exe"
-$valtanAuditionServiceHarnessExe = Join-Path $repoRoot `
-    "Tools\ValtanPatternAuditionServiceHarness\Bin\$Configuration\ValtanPatternAuditionServiceHarness.exe"
+$bossToolTestsExe = Join-Path $repoRoot `
+    "Tools\BossToolTests\Bin\$Configuration\BossToolTests.exe"
 $pointLightFalloffHarnessExe = Join-Path $repoRoot `
     "Tools\PointLightFalloffContractHarness\Bin\$Configuration\PointLightFalloffContractHarness.exe"
 $physicsHarnessExe = Join-Path $repoRoot `
@@ -349,7 +349,7 @@ function Assert-RuntimeLayout {
     }
     if ($includeFullDiagnostic) {
         $required += @(
-            $valtanAuditionServiceHarnessExe,
+            $bossToolTestsExe,
             $pointLightFalloffHarnessExe,
             $physicsHarnessExe,
             $wmodelHarnessExe
@@ -757,7 +757,7 @@ try {
             Invoke-MSBuildProject $msbuild `
                 'Tools\CharacterSelectIsolationHarness\Default\CharacterSelectIsolationHarness.vcxproj'
             Invoke-MSBuildProject $msbuild `
-                'Tools\ValtanPatternAuditionServiceHarness\Default\ValtanPatternAuditionServiceHarness.vcxproj'
+                'Tools\BossToolTests\Default\BossToolTests.vcxproj'
         }
         Invoke-MSBuildProject $msbuild 'Server\Default\Server.vcxproj'
         Invoke-MSBuildProject $msbuild 'Client\Default\Client.vcxproj'
@@ -865,9 +865,9 @@ try {
         throw 'NetworkProtocolHarness failed.'
     }
 
-    & $valtanAuditionServiceHarnessExe
+    & $bossToolTestsExe
     if ($global:LASTEXITCODE -ne 0) {
-        throw 'ValtanPatternAuditionServiceHarness failed.'
+        throw 'BossToolTests failed.'
     }
 
     if ($includeFullDiagnostic) {

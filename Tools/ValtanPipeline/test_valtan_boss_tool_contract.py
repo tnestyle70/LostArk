@@ -34,7 +34,7 @@ SERVER_ROOM = ROOT / "Server/Private/GameRoom.cpp"
 SERVER_TESTS = ROOT / "Server/Private/ServerGameplayContractTests.cpp"
 PRESENTATION_ADMISSION_NATIVE_TESTS = (
     ROOT
-    / "Tools/ValtanPatternAuditionServiceHarness/Private/"
+    / "Tools/BossToolTests/Private/"
     "ValtanPresentationGenerationAdmissionContractTests.cpp"
 )
 PROJECT = ROOT / "Client/Default/Client.vcxproj"

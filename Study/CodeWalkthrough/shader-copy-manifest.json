@@ -1,0 +1,240 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "purpose": "실제 셰이더 코드를 유지하고 한국어 설명 주석을 추가한 학습 사본. Deferred 사본의 후행 공백과 마지막 빈 줄은 Git 전달 시 정리했다.",
+  "notBuildInputs": true,
+  "scope": "비인스턴싱 deferred map PBR: CPU binding → material → GBuffer → direct/indirect → HDR → final LDR",
+  "verification": "원본 바이트 hash와 인코딩/줄 수 기록. 개별 removingOnlyAddedCommentsRestoresOriginalBytes 값은 추가 주석만 제거한 바이트 복원 여부이며, 공백 정리된 Deferred는 false다. 문자열을 보존하는 lexer로 주석·공백 제외 토큰 배열을 동일하게 유지한다.",
+  "originalTotalLines": 4622,
+  "originalTotalBytes": 209761,
+  "files": [
+    {
+      "source": "C:/Users/tnest/Desktop/LostArk/Client/Bin/ShaderFiles/Shader_VtxMeshBinary.hlsl",
+      "copy": "C:/Users/tnest/Desktop/LostArk/Study/CodeWalkthrough/Reference/Client/Bin/ShaderFiles/Shader_VtxMeshBinary.hlsl",
+      "encoding": "utf-8",
+      "newline": "CRLF",
+      "originalBytes": 55993,
+      "copyBytes": 60622,
+      "originalLines": 1295,
+      "copyLines": 1353,
+      "originalSha256": "d6f125bdadfaf090faaf476ec74741e7790d062d57f8ac092d376bb6e951d3ee",
+      "copySha256": "e84ba97772c9ce646a42b653bb92c09fa813a9224f88bd8e60bfe896c35e4aca",
+      "tokenCount": 8263,
+      "commentExcludedTokenSha256": "d7f6e26d3d7e526e854c6e61c1b5b128d89b0d4ddad48ffe76f134374981a449",
+      "commentExcludedTokensEqual": true,
+      "removingOnlyAddedCommentsRestoresOriginalBytes": true,
+      "sourceHashUnchangedAfterCopy": true,
+      "annotations": [
+        {
+          "originalLine": 1,
+          "commentCopyLine": 1,
+          "originalCodeCopyLine": 10
+        },
+        {
+          "originalLine": 6,
+          "commentCopyLine": 15,
+          "originalCodeCopyLine": 20
+        },
+        {
+          "originalLine": 70,
+          "commentCopyLine": 84,
+          "originalCodeCopyLine": 88
+        },
+        {
+          "originalLine": 76,
+          "commentCopyLine": 94,
+          "originalCodeCopyLine": 100
+        },
+        {
+          "originalLine": 107,
+          "commentCopyLine": 131,
+          "originalCodeCopyLine": 137
+        },
+        {
+          "originalLine": 247,
+          "commentCopyLine": 277,
+          "originalCodeCopyLine": 282
+        },
+        {
+          "originalLine": 313,
+          "commentCopyLine": 348,
+          "originalCodeCopyLine": 353
+        },
+        {
+          "originalLine": 332,
+          "commentCopyLine": 372,
+          "originalCodeCopyLine": 378
+        },
+        {
+          "originalLine": 354,
+          "commentCopyLine": 400,
+          "originalCodeCopyLine": 407
+        },
+        {
+          "originalLine": 922,
+          "commentCopyLine": 975,
+          "originalCodeCopyLine": 980
+        }
+      ]
+    },
+    {
+      "source": "C:/Users/tnest/Desktop/LostArk/Client/Bin/ShaderFiles/Shader_MapMaterialSurface.hlsli",
+      "copy": "C:/Users/tnest/Desktop/LostArk/Study/CodeWalkthrough/Reference/Client/Bin/ShaderFiles/Shader_MapMaterialSurface.hlsli",
+      "encoding": "utf-8",
+      "newline": "CRLF",
+      "originalBytes": 48520,
+      "copyBytes": 54312,
+      "originalLines": 893,
+      "copyLines": 967,
+      "originalSha256": "1493370c1ff80510cf14ebc6a18e1ce4677c243ed17b1f4f5904138e69819e4a",
+      "copySha256": "41ef754ba815b42905299efbb8b7b9c1b1f02bf00e759432784df0ee4dcf996d",
+      "tokenCount": 7289,
+      "commentExcludedTokenSha256": "ab7228a5b66b6f16bbcac37095a34d1cd3eaf1c6ad5e985d3c0af4e08fc9244a",
+      "commentExcludedTokensEqual": true,
+      "removingOnlyAddedCommentsRestoresOriginalBytes": true,
+      "sourceHashUnchangedAfterCopy": true,
+      "annotations": [
+        {
+          "originalLine": 1,
+          "commentCopyLine": 1,
+          "originalCodeCopyLine": 9
+        },
+        {
+          "originalLine": 54,
+          "commentCopyLine": 62,
+          "originalCodeCopyLine": 68
+        },
+        {
+          "originalLine": 70,
+          "commentCopyLine": 84,
+          "originalCodeCopyLine": 90
+        },
+        {
+          "originalLine": 103,
+          "commentCopyLine": 123,
+          "originalCodeCopyLine": 129
+        },
+        {
+          "originalLine": 447,
+          "commentCopyLine": 473,
+          "originalCodeCopyLine": 478
+        },
+        {
+          "originalLine": 458,
+          "commentCopyLine": 489,
+          "originalCodeCopyLine": 495
+        },
+        {
+          "originalLine": 486,
+          "commentCopyLine": 523,
+          "originalCodeCopyLine": 530
+        },
+        {
+          "originalLine": 497,
+          "commentCopyLine": 541,
+          "originalCodeCopyLine": 548
+        },
+        {
+          "originalLine": 594,
+          "commentCopyLine": 645,
+          "originalCodeCopyLine": 651
+        },
+        {
+          "originalLine": 642,
+          "commentCopyLine": 699,
+          "originalCodeCopyLine": 704
+        },
+        {
+          "originalLine": 672,
+          "commentCopyLine": 734,
+          "originalCodeCopyLine": 741
+        },
+        {
+          "originalLine": 825,
+          "commentCopyLine": 894,
+          "originalCodeCopyLine": 899
+        }
+      ]
+    },
+    {
+      "source": "C:/Users/tnest/Desktop/LostArk/Engine/Bin/ShaderFiles/Shader_Deferred.hlsl",
+      "copy": "C:/Users/tnest/Desktop/LostArk/Study/CodeWalkthrough/Reference/Engine/Bin/ShaderFiles/Shader_Deferred.hlsl",
+      "encoding": "utf-8",
+      "newline": "CRLF",
+      "originalBytes": 105248,
+      "copyBytes": 110351,
+      "originalLines": 2434,
+      "copyLines": 2503,
+      "originalSha256": "3b01cb2b8319a6c09f54b211b3e9a481973898c0ba855f1ee304f8aa23891915",
+      "copySha256": "bd558a04b386747a666db611270e01bfe8884ca60a22de72a1d5a5e95e97d88e",
+      "tokenCount": 17129,
+      "commentExcludedTokenSha256": "1d36cfd2b89a2cbcc23a96909ae968823c24fed5efb0c52b3d8f2088b67e7755",
+      "commentExcludedTokensEqual": true,
+      "removingOnlyAddedCommentsRestoresOriginalBytes": false,
+      "sourceHashUnchangedAfterCopy": true,
+      "annotations": [
+        {
+          "originalLine": 1,
+          "commentCopyLine": 1,
+          "originalCodeCopyLine": 9
+        },
+        {
+          "originalLine": 373,
+          "commentCopyLine": 381,
+          "originalCodeCopyLine": 387
+        },
+        {
+          "originalLine": 397,
+          "commentCopyLine": 411,
+          "originalCodeCopyLine": 419
+        },
+        {
+          "originalLine": 414,
+          "commentCopyLine": 436,
+          "originalCodeCopyLine": 443
+        },
+        {
+          "originalLine": 1206,
+          "commentCopyLine": 1235,
+          "originalCodeCopyLine": 1242
+        },
+        {
+          "originalLine": 1283,
+          "commentCopyLine": 1319,
+          "originalCodeCopyLine": 1324
+        },
+        {
+          "originalLine": 1718,
+          "commentCopyLine": 1759,
+          "originalCodeCopyLine": 1765
+        },
+        {
+          "originalLine": 1727,
+          "commentCopyLine": 1774,
+          "originalCodeCopyLine": 1779
+        },
+        {
+          "originalLine": 1739,
+          "commentCopyLine": 1791,
+          "originalCodeCopyLine": 1798
+        },
+        {
+          "originalLine": 1781,
+          "commentCopyLine": 1840,
+          "originalCodeCopyLine": 1844
+        },
+        {
+          "originalLine": 1855,
+          "commentCopyLine": 1918,
+          "originalCodeCopyLine": 1922
+        },
+        {
+          "originalLine": 2113,
+          "commentCopyLine": 2180,
+          "originalCodeCopyLine": 2185
+        }
+      ],
+      "whitespaceNormalization": "Git 전달 검사에 맞춰 학습 사본의 후행 공백과 마지막 빈 줄만 제거했다. 원본 제품 파일은 보존했고 주석·공백 제외 토큰은 동일하다."
+    }
+  ]
+}

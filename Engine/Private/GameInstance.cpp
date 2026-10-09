@@ -42,6 +42,7 @@ bool Engine::Is_NonInteractiveErrorMode()
 int Engine::Show_EngineMessage(const wchar_t* pMessage)
 {
 	const wchar_t* pResolvedMessage = nullptr != pMessage ? pMessage : L"Engine error";
+
 	if (Is_NonInteractiveErrorMode())
 	{
 		OutputDebugStringW(pResolvedMessage);
@@ -60,7 +61,8 @@ CGameInstance::~CGameInstance()
 {
 }
 
-HRESULT CGameInstance::Initialize_Engine(const ENGINE_DESC& EngineDesc, ComPtr<ID3D11Device>& pOutDevice, ComPtr<ID3D11DeviceContext>& pOutContext)
+HRESULT CGameInstance::Initialize_Engine(const ENGINE_DESC& EngineDesc,
+	ComPtr<ID3D11Device>& pOutDevice, ComPtr<ID3D11DeviceContext>& pOutContext)
 {
 	Set_NonInteractiveErrorMode(EngineDesc.bNonInteractiveErrors);
 	pOutDevice.Reset();

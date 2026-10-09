@@ -1,0 +1,1353 @@
+/* LOSTARK_SHADER_STUDY_COMMENT
+이 파일은 원본 전체에 한국어 설명 주석만 추가한 학습 사본이다.
+원본: Client/Bin/ShaderFiles/Shader_VtxMeshBinary.hlsl. 제품 셰이더로 빌드하지 않는다.
+이름의 Vtx는 정점 셰이더만 있다는 뜻이 아니다. VS, 여러 PS, technique/pass가 한 Effects 파일에 있다.
+이번 학습은 CMapAssetObject::Render의 비인스턴싱 DEFERRED PBR 경로를 따라간다.
+CPU가 CMapAssetRenderUtils::Bind_Material로 숫자/텍스처를 넣고 CShader::Begin으로 pass를 적용한다.
+CModel::Render가 정점/인덱스 버퍼를 그리면 아래 VS_MAIN → PS_MAIN이 실행된다.
+정적 인스턴싱, 캐릭터, 물, 반투명은 별도 분기이므로 이 흐름을 모든 물체의 수식으로 일반화하지 않는다.
+*/
+#ifndef SOURCE_CHARACTER_PROGRAM_GROUP
+#define SOURCE_CHARACTER_PROGRAM_GROUP 0
+#endif
+#include "Engine_Shader_Defines.hlsli"
+
+/* LOSTARK_SHADER_STUDY_COMMENT
+CPU의 월드/뷰/투영 행렬은 위치를 로컬 → 월드 → 카메라 → 클립 공간으로 옮긴다.
+법선은 비균일 스케일에서도 면과 수직이어야 하므로 월드 역전치 행렬을 별도로 받는다.
+Texture2D 변수는 색 자체가 아니라 CPU가 연결한 GPU texture SRV를 읽는 입구다.
+*/
+float4x4 g_WorldMatrix, g_WorldInvTransposeMatrix, g_ViewMatrix, g_ProjMatrix;
+Texture2D g_DiffuseTexture;
+Texture2D g_NormalTexture;
+Texture2D g_EmissiveTexture;
+Texture2D g_SpecularTexture;
+Texture2D g_OpacityTexture;
+uint g_HasNormalTexture = 0;
+uint g_HasEmissiveTexture = 0;
+uint g_HasSpecularTexture = 0;
+uint g_HasOpacityTexture = 0;
+float g_EmissiveIntensity = 1.f;
+float4 g_EmissiveColor = 1.f;
+float g_EmissiveMaskPower = 1.f;
+uint g_HasFullSurfaceEmissiveOverride = 0;
+float4 g_FullSurfaceEmissiveColor = 1.f;
+float g_FullSurfaceEmissiveIntensity = 0.f;
+/* 0: diffuse luminance weights the whole surface (skill glow).
+   1: camera-facing rim for a brief hit response; authored surface stays visible. */
+uint g_FullSurfaceEmissiveMaskMode = 0;
+float g_SpecularIntensity = 1.f;
+float g_SpecularPower = 50.f;
+float g_TriplanarHeightScale = 0.f;
+float2 g_UVScale = float2(1.f, 1.f);
+float2 g_UVOffset = float2(0.f, 0.f);
+float g_Opacity = 1.f;
+float g_OpacityPower = 1.f;
+float4 g_ColorTint = 1.f;
+/* Presentation-only Valtan vortex treatment. 0=none, 1=dark aperture,
+   2=red ring, 3=masked red cloud disc. The map-object path binds its bounded
+   state per draw and restores profile 0/strength 0 before returning. */
+uint g_PresentationVortexProfile = 0;
+float g_PresentationVortexStrength = 0.f;
+/* Fallback map objects own every translucent and water placement. Keep this
+   contract in the VTXMESH shader that CMapAssetObject actually clones; the
+   instanced shader is only consumed by deferred static batches. */
+Texture2D g_DetailNormalTexture;
+Texture2D g_ReflectionTexture;
+vector g_vCamPosition;
+float g_ElapsedTime = 0.f;
+uint g_HasDetailNormalTexture = 0;
+uint g_HasReflectionTexture = 0;
+float g_WaterOpacity = 1.f;
+float g_WaterOpacityPower = 1.f;
+float g_WaterFresnelIntensity = 0.f;
+float g_WaterFresnelPower = 1.f;
+float g_WaterScreenDistortionIntensity = 0.f;
+float g_WaterNormalIntensity = 0.f;
+float g_WaterDetailNormalIntensity = 0.f;
+float g_WaterReflectionIntensity = 0.f;
+float g_WaterDiffuseTiling = 1.f;
+float4 g_WaterDiffuseColor = float4(1.f, 1.f, 1.f, 1.f);
+float4 g_WaterReflectionColor = float4(1.f, 1.f, 1.f, 1.f);
+float4 g_WaterNormalTilingPanning = float4(1.f, 1.f, 0.f, 0.f);
+float4 g_WaterDetailNormalTilingPanning = float4(1.f, 1.f, 0.f, 0.f);
+float4 g_WaterReflectionTilingPanning = float4(1.f, 1.f, 0.f, 0.f);
+/* The source game's dye contract: the mask's channels select colour regions
+of a mostly achromatic diffuse and each region multiplies its tint in. */
+Texture2D g_DyeMaskTexture;
+uint g_HasDyeMask = 0;
+float4 g_DyeDiffuseColor = 1.f;
+float4 g_DyeRegionA = 1.f;
+float4 g_DyeRegionB = 1.f;
+float4 g_DyeRegionC = 1.f;
+
+/* LOSTARK_SHADER_STUDY_COMMENT
+재질 수식의 실제 구현은 이 include의 EvaluateMapSurface에 있다.
+거대한 모든 include를 복사하지 않았다. 원본 상대 include 문장은 유지되지만 사본 묶음은 독립 빌드 대상이 아니다.
+*/
+#include "Shader_MapMaterialSurface.hlsli"
+#include "Shader_SourceFoliageWind.hlsli"
+#include "Shader_SourceMaharakaStandWind.hlsli"
+#include "Shader_SourceCharacterMaterial.hlsli"
+#include "Shader_SourceMapForwardPrograms.hlsli"
+
+/* LOSTARK_SHADER_STUDY_COMMENT
+VS_IN은 모델 버퍼에 저장된 정점 입력이다. POSITION/NORMAL/TEXCOORD는 C++ input layout과 맞아야 한다.
+VS_OUT은 래스터라이저가 픽셀마다 보간하여 PS에 넘기는 값이다.
+vRawTexcoord는 원본 UV, vWorldPos는 광원/시선 계산용 월드 위치, vProjPos는 깊이 기록용 값이다.
+nointerpolation 값은 픽셀 위치에 따라 보간하지 않는 인스턴스의 라이트맵 계수다.
+*/
+struct VS_IN
+{
+    float3 vPosition : POSITION;
+    float3 vNormal : NORMAL;
+    float3 vTangent : TANGENT;
+    float3 vBinormal : BINORMAL;
+    float2 vTexcoord : TEXCOORD0;
+    float2 vLightmapUV : TEXCOORD1;
+    float2 vTexcoord2 : TEXCOORD2;
+    float4 vColor : COLOR0;
+};
+
+struct VS_OUT
+{
+    float4 vPosition : SV_POSITION;
+    float4 vNormal : NORMAL;
+    float4 vTangent : TANGENT;
+    float4 vBinormal : BINORMAL;
+    float2 vTexcoord : TEXCOORD0;
+    float4 vWorldPos : TEXCOORD1;
+    float4 vProjPos : TEXCOORD2;
+    /* Radial masks must remain centered while the authored texture pans. */
+    float2 vRawTexcoord : TEXCOORD3;
+    float2 vLightmapUV : TEXCOORD4;
+    float4 vColor : COLOR0;
+    nointerpolation float4 vLightmapAverageScale : TEXCOORD5;
+    nointerpolation float4 vLightmapDirectionalScale : TEXCOORD6;
+    float2 vStaticShadowUV : TEXCOORD7;
+    float4 vSourceExtraUV : TEXCOORD8;
+};
+
+/* LOSTARK_SHADER_STUDY_COMMENT
+한 정점의 위치와 표면 기저를 화면에 그릴 형태로 바꾼다.
+행벡터 곱 순서는 position * World * View * Projection이다.
+법선 변환과 접선 직교화, 원본 binormal의 handedness를 함께 보존해야 normal map이 뒤집히지 않는다.
+이후 바람/파도 등의 선택된 source program이 있으면 위치를 변형하므로 이 함수는 위치 전달만 하지는 않는다.
+*/
+VS_OUT VS_MAIN(VS_IN input)
+{
+    VS_OUT output;
+    output.vSourceExtraUV = float4(input.vLightmapUV, input.vTexcoord2);
+    output.vColor = input.vColor; // Decoded source PS RGBA, no second BGRA swizzle.
+    matrix worldView = mul(g_WorldMatrix, g_ViewMatrix);
+    matrix worldViewProjection = mul(worldView, g_ProjMatrix);
+    output.vPosition = mul(float4(input.vPosition, 1.f), worldViewProjection);
+    float3 normal = normalize(
+        mul(float4(input.vNormal, 0.f), g_WorldInvTransposeMatrix).xyz);
+    float3 tangentLinear =
+        mul(float4(input.vTangent, 0.f), g_WorldMatrix).xyz;
+    float3 tangent = dot(input.vBinormal, input.vBinormal) == 0.f ? normalize(tangentLinear) : normalize(
+        tangentLinear - normal * dot(tangentLinear, normal));
+    float3 sourceBinormalLinear =
+        mul(float4(input.vBinormal, 0.f), g_WorldMatrix).xyz;
+    float handedness =
+        dot(cross(normal, tangent), sourceBinormalLinear) < 0.f ? -1.f : 1.f;
+    float3 binormal = dot(input.vBinormal, input.vBinormal) == 0.f ? 0.f : MapGeometryNormalizeOrZero(cross(normal, tangent)) * handedness;
+    output.vNormal = float4(normal, 0.f);
+    output.vTangent = float4(tangent, 0.f);
+    output.vBinormal = float4(binormal, 0.f);
+    output.vTexcoord = input.vTexcoord * g_UVScale + g_UVOffset;
+    output.vWorldPos = mul(float4(input.vPosition, 1.f), g_WorldMatrix);
+    if(g_SourceCharacterProgram==43u)
+    {
+        // Native beach-wave VS: centimetre world XY, authored blue vertex mask.
+        const float2 phase=(float2(output.vWorldPos.x,-output.vWorldPos.z)*.03f+
+            g_SourceCharacterTime*.09f)*6.283185f;
+        output.vWorldPos.y+=(-sin(phase.x)-cos(phase.y))*
+            g_SourceCharacterBaseConstants[63].x*input.vColor.b*.01f;
+        output.vPosition=mul(mul(output.vWorldPos,g_ViewMatrix),g_ProjMatrix);
+    }
+    if(g_SourceCharacterProgram==1531u)
+    {
+        output.vWorldPos.xyz += SourceMaharakaStandWorldOffset(output.vWorldPos.xyz,
+            input.vColor,g_WorldMatrix,g_SourceCharacterTime,g_SourceFoliageWindDirectionSpeed);
+        output.vPosition=mul(mul(output.vWorldPos,g_ViewMatrix),g_ProjMatrix);
+    }
+    if(g_SourceFoliageWindEnabled!=0u)
+    {
+        output.vWorldPos.xyz += SourceFoliageWorldOffset(output.vWorldPos.xyz,input.vColor,g_WorldMatrix);
+        output.vPosition=mul(mul(output.vWorldPos,g_ViewMatrix),g_ProjMatrix);
+    }
+    output.vProjPos = output.vPosition;
+    // Landscape reconstructs its pixel TBN from the original packed height normal.
+    // Carry the actual draw transform instead of the imported mesh tangent basis.
+    if (IsMapSurfaceSourceLandscape())
+    {
+        output.vTangent = float4(mul(float4(1.f, 0.f, 0.f, 0.f), g_WorldInvTransposeMatrix).xyz, 0.f);
+        output.vBinormal = float4(mul(float4(0.f, 1.f, 0.f, 0.f), g_WorldInvTransposeMatrix).xyz, 0.f);
+        output.vNormal = float4(mul(float4(0.f, 0.f, 1.f, 0.f), g_WorldInvTransposeMatrix).xyz, 0.f);
+    }
+
+    output.vRawTexcoord = input.vTexcoord;
+    // Landscape's native CPU grid-to-lightmap and atlas transforms are composed
+    // in the existing placement scale/bias; its WModel stores grid UV in UV0.
+    const float2 lightingUV = IsMapSurfaceSourceLandscape() ? input.vTexcoord : input.vLightmapUV;
+    output.vLightmapUV = lightingUV * g_LightmapScaleBias.xy + g_LightmapScaleBias.zw;
+    output.vLightmapAverageScale = g_LightmapAverageScale;
+    output.vLightmapDirectionalScale = g_LightmapDirectionalScale;
+    output.vStaticShadowUV = lightingUV * g_StaticShadowScaleBias.xy + g_StaticShadowScaleBias.zw;
+    return output;
+}
+
+// Matches VS_MAIN position operation order for the admitted static opaque families.
+// Source character/map vertex motion never selects this pass.
+float4 VS_SHADOW_OPAQUE(VS_IN input) : SV_POSITION
+{
+    matrix worldView = mul(g_WorldMatrix, g_ViewMatrix);
+    matrix worldViewProjection = mul(worldView, g_ProjMatrix);
+    return mul(float4(input.vPosition, 1.f), worldViewProjection);
+}
+
+VS_OUT VS_MAIN_SKY(VS_IN input)
+{
+    VS_OUT output = VS_MAIN(input);
+    output.vPosition.z = output.vPosition.w * 0.99999f;
+    output.vProjPos = output.vPosition;
+    return output;
+}
+
+struct PS_OUT
+{
+    float4 vDiffuse : SV_TARGET0;
+    float4 vNormal : SV_TARGET1;
+    float4 vDepth : SV_TARGET2;
+    float4 vPickPos : SV_TARGET3;
+    float4 vEmissive : SV_TARGET4;
+    float4 vMaterialSpecular : SV_TARGET5;
+    float4 vCharacterSurface : SV_TARGET6;
+    float4 vCharacterGeometry : SV_TARGET7;
+};
+
+/* The landscape atlas is authored as a top-down XZ projection, so a
+   near-vertical heightfield face stretches a single texel column over the
+   whole cliff. Substituting world height for the compressed axis restores
+   the authored texel density, and the normal weighted blend leaves flat
+   ground on the authored mapping exactly. */
+float4 SampleMapDiffuse(float2 texcoord, float3 worldPos)
+{
+    /* Heightfield vertex normals are averaged between the flat top and the
+       vertical wall that share an edge, so the interpolated normal still
+       reads as up across most of a cliff face. The screen space derivative
+       of world position gives the true facing of the shaded triangle, and
+       it is taken before the uniform early out so the quad stays valid. */
+    const float3 faceNormal =
+        normalize(cross(ddx(worldPos), ddy(worldPos)));
+
+    const float4 topDown = SampleMapDiffuseTexture(texcoord, SurfaceAnisotropicSampler);
+    if (g_TriplanarHeightScale <= 0.f)
+        return topDown;
+
+    const float heightCoord = worldPos.y * g_TriplanarHeightScale;
+    const float4 sideX =
+        SampleMapDiffuseTexture(float2(texcoord.y, heightCoord), SurfaceAnisotropicSampler);
+    const float4 sideZ =
+        SampleMapDiffuseTexture(float2(texcoord.x, heightCoord), SurfaceAnisotropicSampler);
+
+    float3 weight = pow(abs(faceNormal), 8.f);
+    weight /= max(weight.x + weight.y + weight.z, 1e-5f);
+    return sideX * weight.x + topDown * weight.y + sideZ * weight.z;
+}
+
+void ApplyPresentationOpacityDither(float4 screenPosition)
+{
+    /* Opaque Deploy props cannot alpha-blend into the G-buffer. A fixed 4x4
+       ordered mask gives their short destruction envelope a deterministic
+       coverage fade while preserving depth/deferred correctness. Opacity 1 is
+       byte-for-byte the legacy draw path and opacity 0 submits no fragment. */
+    static const float thresholds[16] = {
+        0.5f / 16.f,  8.5f / 16.f,  2.5f / 16.f, 10.5f / 16.f,
+       12.5f / 16.f,  4.5f / 16.f, 14.5f / 16.f,  6.5f / 16.f,
+        3.5f / 16.f, 11.5f / 16.f,  1.5f / 16.f,  9.5f / 16.f,
+       15.5f / 16.f,  7.5f / 16.f, 13.5f / 16.f,  5.5f / 16.f
+    };
+    const uint2 pixel = uint2(screenPosition.xy) & 3u;
+    clip(saturate(g_Opacity) - thresholds[pixel.y * 4u + pixel.x]);
+}
+
+/* LOSTARK_SHADER_STUDY_COMMENT
+PS_MAIN은 이 픽셀의 최종 화면 RGB 대신 여러 렌더 타깃에 재질 정보를 쓴다.
+이번 읽기 경로는 source character 등의 선행 분기를 통과하고 g_SurfaceProgram이 PBR을 선택한 경우다.
+뒤의 Shader_Deferred.hlsl이 같은 픽셀의 GBuffer를 읽고 조명·후처리를 계산한다.
+*/
+PS_OUT PS_MAIN(VS_OUT input)
+{
+    PS_OUT output = (PS_OUT)0;
+    ApplyPresentationOpacityDither(input.vPosition);
+    if (g_SourceCharacterProgram == 64u)
+    {
+        // Source lv_module.mat.black is opaque and texture-free; its components reject lights.
+        // Row -1 excludes every character light while marker 5 excludes generic light.
+        output.vDiffuse = float4(0.f,0.f,0.f,1.f);
+        output.vNormal = float4(normalize(input.vNormal.xyz)*0.5f+0.5f,0.f);
+        output.vDepth = float4(input.vProjPos.z/input.vProjPos.w,input.vProjPos.w/1000.f,-1.f,5.f);
+        output.vPickPos = float4(input.vWorldPos.xyz,1.f);
+        return output;
+    }
+    if (g_SourceCharacterProgram != 0u)
+    {
+        const float4 localPrimitive = g_SourceCharacterBaseConstants[62];
+        const float3 primitiveCenter = mul(float4(localPrimitive.xyz,1.f),g_WorldMatrix).xyz;
+        const float primitiveRadius = localPrimitive.w * max(length(g_WorldMatrix[0].xyz),max(length(g_WorldMatrix[1].xyz),length(g_WorldMatrix[2].xyz)));
+        SOURCE_CHARACTER_GBUFFER source = EvaluateSourceCharacterGeometry(input.vTexcoord,
+            IsSourceStaticMapSL10() ? input.vColor : 0.f, input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz,
+            input.vNormal.xyz, input.vProjPos, input.vPosition, g_ViewMatrix, g_ProjMatrix, true,
+            input.vLightmapUV, input.vLightmapAverageScale, input.vLightmapDirectionalScale,
+            input.vStaticShadowUV, float4(primitiveCenter.x,-primitiveCenter.z,primitiveCenter.y,primitiveRadius)*100.f);
+        output.vDiffuse = source.diffuse;
+        output.vNormal = source.normal;
+        output.vDepth = source.depth;
+        output.vPickPos = source.pickPosition;
+        output.vEmissive = source.indirect;
+        output.vMaterialSpecular = source.extraUV;
+        output.vCharacterSurface = source.surfaceUVTangent;
+        output.vCharacterGeometry = source.geometricNormal;
+        // Existing hit/skill presentation stays independent of material light.
+        if (g_HasFullSurfaceEmissiveOverride != 0u)
+        {
+            float3 camera = -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
+            float weight = g_FullSurfaceEmissiveMaskMode == 1u ?
+                pow(1.f - saturate(dot(normalize(input.vNormal.xyz),
+                    normalize(camera - input.vWorldPos.xyz))), 1.5f) : 1.f;
+            output.vEmissive.rgb += g_FullSurfaceEmissiveColor.rgb *
+                g_FullSurfaceEmissiveIntensity * weight;
+        }
+        return output;
+    }
+
+    output.vMaterialSpecular = 0.f;
+    if (g_SurfaceProgram == 7u)
+    {
+        const MAP_STONE_GBUFFER stone = EvaluateMapSourceStoneGeometry(
+            input.vRawTexcoord, input.vColor, input.vWorldPos.xyz,
+            input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz,
+            input.vProjPos, input.vLightmapUV, input.vLightmapAverageScale,
+            input.vLightmapDirectionalScale);
+        output.vDiffuse = stone.diffuse;
+        output.vNormal = stone.normal;
+        output.vDepth = stone.depth;
+        output.vPickPos = stone.pickPosition;
+        output.vPickPos.w = EncodeMapStaticShadowChannel(output.vPickPos.w);
+        output.vEmissive = stone.indirect;
+        output.vEmissive.a = 1.f - EvaluateMapStaticShadow(input.vStaticShadowUV);
+        output.vMaterialSpecular = stone.materialSpecular;
+        output.vCharacterSurface = stone.surface;
+        output.vCharacterGeometry = stone.geometry;
+        return output;
+    }
+
+/* LOSTARK_SHADER_STUDY_COMMENT
+CPU가 선택한 재질 계열을 EvaluateMapSurface에 보낸다. PBR이면 EvaluateMapPBRSurface가 호출된다.
+입력은 UV, 정점색, 월드 위치와 접선/종법선/법선이다. 출력은 albedo, normal, roughness, metallic, AO, F0다.
+이 블록의 BG/foliage 등 다른 계열은 서로 다른 payload를 사용하므로 PBR marker 3과 구분해 읽는다.
+*/
+    if (g_SurfaceProgram != 0u)
+    {
+        const MAP_SURFACE_SAMPLE surface = EvaluateMapSurface(input.vRawTexcoord, input.vColor,
+            input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz);
+        if (IsMapSurfaceSourceBG())
+        {
+            if (g_SourceBgUnlit != 0u)
+            {
+                // Authored luminous BG props keep source UV/mask/color, but do not
+                // receive diffuse/specular lighting from the deferred light pass.
+                output.vDiffuse = float4(0.f, 0.f, 0.f, surface.diffuse.a);
+                output.vNormal = float4(surface.worldNormal * .5f + .5f, 0.f);
+                output.vDepth = float4(input.vProjPos.z / input.vProjPos.w,
+                    input.vProjPos.w / 1000.f, 0.f, 1.f);
+                output.vPickPos = input.vWorldPos;
+                output.vEmissive = float4(surface.diffuse.rgb, 0.f);
+                return output;
+            }
+        }
+/* LOSTARK_SHADER_STUDY_COMMENT
+PBR GBuffer 전달표: vDiffuse.rgb=albedo, vNormal.rgb=worldNormal*0.5+0.5, vNormal.a=roughness.
+vDepth.z=material AO, vDepth.w=3은 후속 조명 셰이더가 PBR 분기를 고르는 표식이다.
+vMaterialSpecular.rgb=F0, .a=metallic이며 위치/기하법선 등은 vPickPos에 전달한다.
+노멀을 0~1로 저장했으므로 deferred에서 *2-1로 다시 읽는다. 이 인코딩은 밝기 보정이 아니다.
+*/
+        output.vDiffuse = surface.diffuse;
+        if (g_SurfaceDebugView == 4u)
+            output.vDiffuse.rgb = surface.reflectionDelta;
+        const bool pbr = IsMapSurfacePBR();
+        const bool sourceBG = IsMapSurfaceSourceBG();
+        const bool sourceFoliage = IsMapSurfaceSourceFoliage();
+        const bool sourceSpecial = IsMapSurfaceSourceSpecial();
+        const bool sourceSpecular = IsMapSurfaceSourceSpecular() || sourceBG || sourceFoliage || sourceSpecial;
+        const float diffuseScale = sourceSpecular ?
+            max(1.f, max(output.vDiffuse.r, max(output.vDiffuse.g, output.vDiffuse.b))) : 1.f;
+        output.vDiffuse.rgb /= diffuseScale;
+        output.vNormal = float4(surface.worldNormal * 0.5f + 0.5f,
+            pbr ? surface.roughness : 0.f);
+        output.vDepth = float4(input.vProjPos.z / input.vProjPos.w,
+            input.vProjPos.w / 1000.f, pbr ? surface.ambientOcclusion : (sourceSpecial ? surface.specularPower : g_SurfaceSpecularPower),
+            pbr ? 3.f : ((sourceFoliage || sourceSpecial) ? float(g_SurfaceProgram) : (sourceBG ? 8.f : (sourceSpecular ? 4.f : 1.f))));
+        output.vPickPos = input.vWorldPos;
+        if (pbr || sourceSpecular)
+            output.vPickPos.w = EncodeMapSurfaceGeometricNormal(
+                IsMapSurfaceSourceLandscape() ? surface.geometricNormal : input.vNormal.xyz,
+                g_HasBakedLighting != 0u && input.vLightmapAverageScale.w != 0.f);
+        output.vPickPos.w = EncodeMapStaticShadowChannel(output.vPickPos.w);
+/* LOSTARK_SHADER_STUDY_COMMENT
+라이트맵과 환경 간접광은 여기서 별도로 계산한다.
+EvaluateMapSourceIndirectLighting의 반환값에는 환경 specular까지 포함될 수 있다.
+PBR에서는 반환값을 vCharacterGeometry에, 환경 specular 부분을 기여도 표시용 vCharacterSurface에 따로 보존한다.
+둘을 단순히 다시 더하면 IBL을 중복 계산할 수 있으므로 후속 combined 소비를 함께 읽어야 한다.
+진짜 발광은 vEmissive에 남겨 AO/수신 그림자가 발광 에너지를 깎지 않도록 분리한다.
+*/
+        float3 environmentSpecular;
+        const float3 indirect = EvaluateMapSourceIndirectLighting(surface,
+            input.vLightmapUV, input.vLightmapAverageScale,
+            input.vLightmapDirectionalScale, input.vWorldPos.xyz,
+            input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz, environmentSpecular);
+        // Marker 3 has no character geometry payload. Carry RNM/IBL separately
+        // so AO and moving-caster shadows never attenuate actual emission.
+        if (pbr)
+        {
+            output.vCharacterGeometry = float4(indirect, 0.f);
+            // PBR leaves RT6 free: preserve IBL for independent contribution views.
+            output.vCharacterSurface = float4(environmentSpecular, 0.f);
+        }
+        output.vEmissive = float4((pbr ? 0.f : indirect) +
+            EvaluateMapSurfaceEmissive(input.vRawTexcoord),
+            1.f - EvaluateMapStaticShadow(input.vStaticShadowUV));
+        if (sourceBG) output.vCharacterSurface =
+            float4(surface.rimlightRadiance, float(g_SourceBgFlags & 1023u));
+        if (sourceFoliage) output.vCharacterSurface.rgb = surface.transmission;
+        if (sourceSpecial) output.vCharacterSurface.rgb = surface.rimlightRadiance;
+        output.vMaterialSpecular = float4(surface.specular, pbr ? surface.metallic :
+            (sourceSpecular ? diffuseScale : 0.f));
+        return output;
+    }
+    float4 diffuse = SampleMapDiffuse(
+        input.vTexcoord, input.vWorldPos.xyz);
+    diffuse *= g_ColorTint;
+    if (diffuse.a < 0.3f)
+        discard;
+    if (0 != g_HasDyeMask)
+    {
+        float3 mask = g_DyeMaskTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord).rgb;
+        float3 tint = g_DyeDiffuseColor.rgb;
+        tint *= lerp(1.f.xxx, g_DyeRegionA.rgb, mask.r);
+        tint *= lerp(1.f.xxx, g_DyeRegionB.rgb, mask.g);
+        tint *= lerp(1.f.xxx, g_DyeRegionC.rgb, mask.b);
+        diffuse.rgb *= tint;
+    }
+    float3 normal = normalize(input.vNormal.xyz);
+    if (0 != g_HasNormalTexture)
+    {
+        float4 encodedNormal =
+            g_NormalTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord);
+        float3 tangentNormal;
+        if (encodedNormal.b <= 0.0001f)
+        {
+            float2 tangentXY = encodedNormal.rg * 2.f - 1.f;
+            float tangentZ = sqrt(saturate(1.f - dot(tangentXY, tangentXY)));
+            tangentNormal = float3(tangentXY, tangentZ);
+        }
+        else
+        {
+            tangentNormal = normalize(encodedNormal.xyz * 2.f - 1.f);
+        }
+        float3x3 tangentToWorld = float3x3(
+            MapGeometryNormalizeOrZero(input.vTangent.xyz),
+            MapGeometryNormalizeOrZero(input.vBinormal.xyz) * -1.f,
+            normal);
+        normal = normalize(mul(tangentNormal, tangentToWorld));
+    }
+    output.vDiffuse = diffuse;
+    float specularMask = g_SpecularIntensity;
+    if (0 != g_HasSpecularTexture)
+    {
+        float3 specular = g_SpecularTexture.Sample(
+            SurfaceAnisotropicSampler, input.vTexcoord).rgb;
+        specularMask *= dot(specular, float3(0.299f, 0.587f, 0.114f));
+    }
+    output.vNormal = float4(normal * 0.5f + 0.5f, specularMask);
+    output.vDepth = float4(
+        input.vProjPos.z / input.vProjPos.w,
+        input.vProjPos.w / 1000.f, g_SpecularPower, g_HasSurfaceDefinition != 0u ? 2.f : 0.f);
+    output.vPickPos = input.vWorldPos;
+    output.vEmissive = 0.f;
+    if (0 != g_HasEmissiveTexture)
+    {
+        float3 emissive = g_EmissiveTexture.Sample(
+            SurfaceAnisotropicSampler, input.vTexcoord).rgb;
+        output.vEmissive = float4(
+            emissive * g_EmissiveColor.rgb * g_EmissiveIntensity, 0.f);
+    }
+    if (0 != g_HasFullSurfaceEmissiveOverride)
+    {
+        if (1 == g_FullSurfaceEmissiveMaskMode)
+        {
+            /* Hit flash: only the silhouette rim glows, so the body keeps its
+               own colour and shading. */
+            const float3 cameraPosition =
+                -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
+            const float3 toCamera =
+                normalize(cameraPosition - input.vWorldPos.xyz);
+            const float rim = pow(1.f - saturate(dot(normal, toCamera)), 1.5f);
+            output.vEmissive.rgb += g_FullSurfaceEmissiveColor.rgb *
+                rim * g_FullSurfaceEmissiveIntensity * diffuse.a;
+        }
+        else
+        {
+            const float textureDetail = saturate(0.35f +
+                dot(diffuse.rgb, float3(0.299f, 0.587f, 0.114f)) * 0.65f);
+            output.vEmissive.rgb +=
+                g_FullSurfaceEmissiveColor.rgb *
+                g_FullSurfaceEmissiveIntensity * textureDetail * diffuse.a;
+        }
+    }
+    if (g_HasSurfaceDefinition != 0u && g_SurfaceDebugView == 4u)
+        output.vDiffuse.rgb = 0.f;
+    return output;
+}
+
+struct PS_OUT_FORWARD
+{
+    float4 vColor : SV_TARGET0;
+    float4 vBloomContribution : SV_TARGET2;
+};
+
+float PresentationVortexRadial(float2 rawTexcoord)
+{
+    return length(rawTexcoord - float2(0.5f, 0.5f)) * 2.f;
+}
+
+float PresentationVortexRadialEdgeMask(float2 rawTexcoord)
+{
+    /* Every midpoint and corner of the source square is exactly transparent.
+       The authored texture may pan, but the silhouette stays camera-centred. */
+    const float radial = PresentationVortexRadial(rawTexcoord);
+    return 1.f - smoothstep(0.86f, 1.f, radial);
+}
+
+PS_OUT_FORWARD PS_MAIN_ALPHA(VS_OUT input)
+{
+    PS_OUT_FORWARD output;
+#if SOURCE_CHARACTER_PROGRAM_GROUP == 0
+    if (IsSourceMapForward())
+    {
+        output.vColor = EvaluateSourceMapForward(input.vRawTexcoord, input.vWorldPos.xyz,
+            input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz, input.vProjPos, input.vColor, input.vSourceExtraUV, input.vLightmapUV);
+        output.vColor.a *= g_Opacity;
+        output.vBloomContribution = Write_SceneBloom(output.vColor);
+    return output;
+    }
+#endif
+    const float4 textureColor =
+        g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord);
+    float4 color = textureColor;
+    color.rgb *= g_ColorTint.rgb;
+    float opacityMask = 1.f;
+    if (0 != g_HasOpacityTexture)
+    {
+        float3 opacitySample =
+            g_OpacityTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord).rgb;
+        opacityMask = pow(saturate(dot(
+            opacitySample, float3(0.299f, 0.587f, 0.114f))),
+            g_OpacityPower);
+    }
+    const float authoredAlpha = saturate(
+        color.a * opacityMask * g_Opacity * g_ColorTint.a);
+
+    const float vortexStrength = saturate(g_PresentationVortexStrength);
+    if (1 == g_PresentationVortexProfile && vortexStrength > 0.f)
+    {
+        /* A nearly black alpha-blended disc is required to remove light from
+           the arena sky. The soft burgundy shoulder retains cloud detail. */
+        const float radial = PresentationVortexRadial(input.vRawTexcoord);
+        const float radialEdge =
+            PresentationVortexRadialEdgeMask(input.vRawTexcoord);
+        const float core = 1.f - smoothstep(0.18f, 0.72f, radial);
+        const float shoulder =
+            smoothstep(0.14f, 0.38f, radial) *
+            (1.f - smoothstep(0.66f, 0.94f, radial));
+        const float textureDetail = saturate(dot(
+            textureColor.rgb, float3(0.299f, 0.587f, 0.114f)) * 1.35f);
+        const float radialMask =
+            saturate(core + shoulder * 0.42f) *
+            lerp(0.72f, 1.f, textureDetail) * radialEdge;
+        const float rimBlend = smoothstep(0.16f, 0.92f, radial);
+        color.rgb = lerp(
+            float3(0.004f, 0.001f, 0.003f),
+            float3(0.075f, 0.004f, 0.012f), rimBlend) *
+            lerp(0.72f, 1.f, textureDetail);
+        /* The procedural disc owns its silhouette. Diffuse/opacity texture
+           alpha may contain a hollow center and must not erase the aperture. */
+        const float apertureOpacity = saturate(
+            g_Opacity * g_ColorTint.a);
+        color.a = saturate(
+            apertureOpacity * 2.2f * radialMask * vortexStrength);
+    }
+    else if (2 == g_PresentationVortexProfile && vortexStrength > 0.f)
+    {
+        /* Preserve the panning source texture as moving breakup, but form the
+           overall ring from the unpanned UV so its center never drifts. */
+        const float2 centeredUV = input.vRawTexcoord - float2(0.5f, 0.5f);
+        const float radial = PresentationVortexRadial(input.vRawTexcoord);
+        const float radialEdge =
+            PresentationVortexRadialEdgeMask(input.vRawTexcoord);
+        const float annulus =
+            smoothstep(0.25f, 0.43f, radial) *
+            (1.f - smoothstep(0.72f, 0.94f, radial));
+        const float safeAngleX = radial > 0.00001f ?
+            centeredUV.x : 1.f;
+        const float angle = atan2(centeredUV.y, safeAngleX);
+        const float angularBreak =
+            abs(sin(angle * 7.f + radial * 19.f));
+        const float textureDetail = saturate(dot(
+            textureColor.rgb, float3(0.299f, 0.587f, 0.114f)) * 1.6f);
+        const float brokenMask = smoothstep(
+            0.18f, 0.72f,
+            textureDetail * 0.72f + angularBreak * 0.28f);
+        const float ringMask = annulus * brokenMask * radialEdge;
+        color.rgb = float3(0.46f, 0.008f, 0.022f) *
+            lerp(0.42f, 0.88f, textureDetail);
+        color.a = saturate(
+            g_Opacity * g_ColorTint.a * 0.9f * ringMask * vortexStrength);
+    }
+    else if (3 == g_PresentationVortexProfile && vortexStrength > 0.f)
+    {
+        /* Generic cloud tiles are useful only as moving breakup. A procedural
+           burgundy disc owns the colour and circular silhouette. */
+        const float2 centeredUV = input.vRawTexcoord - float2(0.5f, 0.5f);
+        const float radial = PresentationVortexRadial(input.vRawTexcoord);
+        const float radialEdge =
+            PresentationVortexRadialEdgeMask(input.vRawTexcoord);
+        const float safeAngleX = radial > 0.00001f ? centeredUV.x : 1.f;
+        const float angle = atan2(centeredUV.y, safeAngleX);
+        const float textureDetail = saturate(dot(
+            textureColor.rgb, float3(0.299f, 0.587f, 0.114f)));
+        const float spiral = 0.5f + 0.5f *
+            sin(angle * 5.f - radial * 19.f + textureDetail * 3.f);
+        const float breakup = smoothstep(
+            0.12f, 0.88f, textureDetail * 0.68f + spiral * 0.32f);
+        const float hollowShoulder = lerp(
+            0.32f, 1.f, smoothstep(0.12f, 0.46f, radial));
+        const float cloudMask = radialEdge * hollowShoulder *
+            lerp(0.34f, 0.92f, breakup);
+        const float burgundy = saturate(
+            breakup * 0.62f + spiral * 0.22f + (1.f - radial) * 0.16f);
+        color.rgb = lerp(
+            float3(0.012f, 0.0005f, 0.002f),
+            float3(0.16f, 0.005f, 0.018f), burgundy);
+        color.a = saturate(
+            g_Opacity * g_ColorTint.a * 0.82f * cloudMask * vortexStrength);
+    }
+    else
+    {
+        /* NONE deliberately remains the original map-material path. */
+        color.a = authoredAlpha;
+    }
+    if (color.a < 0.001f)
+        discard;
+    output.vColor = color;
+    output.vBloomContribution = Write_SceneBloom(output.vColor);
+    return output;
+}
+
+/* MRT_SceneHDR binds scene colour at RT0 and distortion at RT1. The deferred
+   final pass consumes the second target as a bounded screen-space UV offset. */
+struct PS_OUT_WATER
+{
+    float4 vColor : SV_TARGET0;
+    float4 vDistortion : SV_TARGET1;
+    float4 vBloomContribution : SV_TARGET2;
+};
+
+float2 Water_PannedUV(float2 baseUV, float4 tilingPanning)
+{
+    return baseUV * tilingPanning.xy + tilingPanning.zw * g_ElapsedTime;
+}
+
+float3 Water_SampleNormal(
+    Texture2D normalTexture,
+    float2 baseUV,
+    float4 tilingPanning,
+    float intensity)
+{
+    const float3 packed = normalTexture.Sample(
+        SurfaceAnisotropicSampler,
+        Water_PannedUV(baseUV, tilingPanning)).xyz * 2.f - 1.f;
+    return float3(packed.xy * intensity, 1.f);
+}
+
+PS_OUT_WATER PS_MAIN_WATER(VS_OUT input)
+{
+    PS_OUT_WATER output;
+    float3 tangentNormal = float3(0.f, 0.f, 1.f);
+
+    if (0 != g_HasNormalTexture)
+    {
+        tangentNormal = Water_SampleNormal(
+            g_NormalTexture,
+            input.vTexcoord,
+            g_WaterNormalTilingPanning,
+            g_WaterNormalIntensity);
+    }
+    if (0 != g_HasDetailNormalTexture)
+    {
+        const float3 detail = Water_SampleNormal(
+            g_DetailNormalTexture,
+            input.vTexcoord,
+            g_WaterDetailNormalTilingPanning,
+            g_WaterDetailNormalIntensity);
+        tangentNormal = float3(tangentNormal.xy + detail.xy, 1.f);
+    }
+    tangentNormal = normalize(tangentNormal);
+
+    const float3x3 tangentBasis = float3x3(
+        MapGeometryNormalizeOrZero(input.vTangent.xyz),
+        MapGeometryNormalizeOrZero(input.vBinormal.xyz),
+        normalize(input.vNormal.xyz));
+    const float3 worldNormal = normalize(mul(tangentNormal, tangentBasis));
+    const float3 viewDirection = normalize(
+        g_vCamPosition.xyz - input.vWorldPos.xyz);
+    const float fresnel = saturate(pow(
+        saturate(1.f - saturate(dot(worldNormal, viewDirection))),
+        max(g_WaterFresnelPower, 0.0001f)) *
+        g_WaterFresnelIntensity);
+
+    float4 color = g_DiffuseTexture.Sample(
+        SurfaceAnisotropicSampler,
+        input.vTexcoord * g_WaterDiffuseTiling);
+    color.rgb *= g_WaterDiffuseColor.rgb * g_ColorTint.rgb;
+
+    if (0 != g_HasReflectionTexture)
+    {
+        const float3 reflection = g_ReflectionTexture.Sample(
+            SurfaceAnisotropicSampler,
+            Water_PannedUV(
+                input.vTexcoord + tangentNormal.xy,
+                g_WaterReflectionTilingPanning)).rgb;
+        color.rgb += reflection *
+            g_WaterReflectionColor.rgb *
+            g_WaterReflectionIntensity *
+            fresnel;
+    }
+
+    float alpha = saturate(pow(
+        saturate(g_WaterOpacity),
+        max(g_WaterOpacityPower, 0.0001f)));
+    alpha = saturate(alpha + (1.f - alpha) * fresnel);
+    alpha *= g_ColorTint.a;
+    if (alpha < 0.001f)
+        discard;
+
+    output.vColor = float4(color.rgb, alpha);
+    output.vDistortion = float4(
+        tangentNormal.xy *
+            g_WaterScreenDistortionIntensity * 0.05f,
+        0.f,
+        alpha);
+    output.vBloomContribution = Write_SceneBloom(output.vColor);
+    return output;
+}
+
+PS_OUT_FORWARD PS_MAIN_SKY(VS_OUT input)
+{
+    PS_OUT_FORWARD output;
+#if SOURCE_CHARACTER_PROGRAM_GROUP == 0
+    if (IsSourceMapForward())
+    {
+        output.vColor = EvaluateSourceMapForward(input.vRawTexcoord, input.vWorldPos.xyz,
+            input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz, input.vProjPos, input.vColor, input.vSourceExtraUV, input.vLightmapUV);
+        output.vColor.a *= g_Opacity;
+        output.vBloomContribution = Write_SceneBloom(output.vColor);
+    return output;
+    }
+#endif
+    float4 color = g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord);
+    output.vColor = float4(color.rgb * g_ColorTint.rgb, 1.f);
+    output.vBloomContribution = Write_SceneBloom(output.vColor);
+    return output;
+}
+
+void PS_MAIN_SHADOW(VS_OUT input)
+{
+    ApplyPresentationOpacityDither(input.vPosition);
+    if (g_SourceCharacterProgram == 64u) return; // Texture-free opaque source blocker.
+    if (g_SurfaceProgram != 0u)
+    {
+        // The four Character Select source overrides are opaque, including
+        // diffuse alpha=0. Kouku's original masked programs retain their cutoff.
+        if (IsMapSurfaceSourceBG())
+        {
+            const float3x3 tangentToWorld = float3x3(MapGeometryNormalizeOrZero(input.vTangent.xyz),
+                MapGeometryNormalizeOrZero(input.vBinormal.xyz), normalize(input.vNormal.xyz));
+            const float3 tangentView = normalize(mul(tangentToWorld,
+                g_vCamPosition.xyz - input.vWorldPos.xyz));
+            float2 uv; float bumpShade;
+            MapSourceBGDiffuse(input.vRawTexcoord, tangentView, uv, bumpShade);
+        }
+        else if (IsMapSurfaceSourceFoliage())
+            clip(g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord).a - 0.3333f);
+        else if (g_SurfaceProgram == 7u && (g_SourceOverlayFlags & 64u) != 0u)
+            clip(SampleMapDiffuseTexture(MapSourceOverlayUV(input.vRawTexcoord), SurfaceAnisotropicSampler).a - 0.3333f);
+        else if (IsMapSurfacePBR() && g_SurfacePBRMasked != 0u)
+            clip(g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vRawTexcoord * g_SurfaceUVTiling).a - 0.3333f);
+        else if (!IsMapSurfacePBR() && !IsMapSurfaceSourceSpecular() &&
+            !IsMapSurfaceSourceLandscape() && g_SurfaceProgram != 7u)
+            clip(SampleMapDiffuseTexture(input.vRawTexcoord, SurfaceAnisotropicSampler).a - 0.3333f);
+        return;
+    }
+    float4 diffuse =
+        SampleMapDiffuseTexture(input.vTexcoord, SurfaceAnisotropicSampler) *
+        g_ColorTint;
+    if (diffuse.a < 0.3f)
+        discard;
+}
+
+struct PS_OUT_DEFERRED_EMISSIVE_OVERLAY
+{
+    float3 vEmissive : SV_TARGET4;
+};
+
+PS_OUT_DEFERRED_EMISSIVE_OVERLAY PS_MAIN_DEFERRED_EMISSIVE_OVERLAY(
+    VS_OUT input)
+{
+    clip((float)g_HasEmissiveTexture - 0.5f);
+
+    const float3 emissive = pow(saturate(g_EmissiveTexture.Sample(
+        SurfaceAnisotropicSampler, input.vTexcoord).rgb),
+        float3(g_EmissiveMaskPower, g_EmissiveMaskPower,
+            g_EmissiveMaskPower));
+    clip(max(emissive.r, max(emissive.g, emissive.b)) - (1.f / 255.f));
+
+    /* The crack layer shares one UV region between the plate tops and the
+       gap walls: 69% of the gap-interior texels are also covered by
+       up-facing triangles, so the mask cannot separate them. Geometry
+       decides instead, and only surfaces that face away from up belong
+       inside the gap. The band is soft because the shared vertex normal
+       turns over across that edge. */
+    const float upFacing = saturate(normalize(input.vNormal.xyz).y);
+    const float gapWeight = 1.f - smoothstep(0.35f, 0.70f, upFacing);
+    clip(gapWeight - (1.f / 255.f));
+
+    PS_OUT_DEFERRED_EMISSIVE_OVERLAY output;
+    output.vEmissive =
+        emissive * g_EmissiveColor.rgb * g_EmissiveIntensity * gapWeight;
+    return output;
+}
+
+/* The source crack mesh is nearly coplanar with the intact arena stone.
+   A one-unit negative bias makes only this read-only overlay win equal-depth
+   comparisons without moving the authored world transform. */
+RasterizerState RS_DeferredEmissiveOverlay
+{
+    FillMode = Solid;
+    CullMode = Back;
+    FrontCounterClockwise = false;
+    DepthBias = -1;
+    DepthBiasClamp = 0.f;
+    SlopeScaledDepthBias = -1.f;
+};
+
+/* MRT_GameObject binds five targets. Preserve the finished opaque G-buffer
+   and update RGB of Target_Emissive only. */
+BlendState BS_DeferredEmissiveOverlay
+{
+    BlendEnable[0] = false;
+    BlendEnable[1] = false;
+    BlendEnable[2] = false;
+    BlendEnable[3] = false;
+    BlendEnable[4] = false;
+    BlendEnable[5] = false;
+    RenderTargetWriteMask[0] = 0x00;
+    RenderTargetWriteMask[1] = 0x00;
+    RenderTargetWriteMask[2] = 0x00;
+    RenderTargetWriteMask[3] = 0x00;
+    RenderTargetWriteMask[4] = 0x07;
+    RenderTargetWriteMask[5] = 0x00;
+};
+
+
+/* Forward-lit preview pass for the character info window's live portrait: socketed weapon
+   parts share this static-mesh shader, so the skinned shader's ScreenCutin look is mirrored
+   here (same light/hemisphere/rim terms, this file's own diffuse/tint/normal inputs). */
+float3 g_CutinLightDirection = float3(-0.45f, -0.75f, 0.35f);
+
+float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
+{
+    float4 diffuse = SampleMapDiffuse(input.vTexcoord, input.vWorldPos.xyz);
+    diffuse *= g_ColorTint;
+    if (diffuse.a < 0.3f)
+        discard;
+    if (0 != g_HasDyeMask)
+    {
+        float3 mask = g_DyeMaskTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord).rgb;
+        float3 tint = g_DyeDiffuseColor.rgb;
+        tint *= lerp(1.f.xxx, g_DyeRegionA.rgb, mask.r);
+        tint *= lerp(1.f.xxx, g_DyeRegionB.rgb, mask.g);
+        tint *= lerp(1.f.xxx, g_DyeRegionC.rgb, mask.b);
+        diffuse.rgb *= tint;
+    }
+    float3 normal = normalize(input.vNormal.xyz);
+    if (0 != g_HasNormalTexture)
+    {
+        float4 encodedNormal =
+            g_NormalTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord);
+        float3 tangentNormal;
+        if (encodedNormal.b <= 0.0001f)
+        {
+            float2 tangentXY = encodedNormal.rg * 2.f - 1.f;
+            float tangentZ = sqrt(saturate(1.f - dot(tangentXY, tangentXY)));
+            tangentNormal = float3(tangentXY, tangentZ);
+        }
+        else
+        {
+            tangentNormal = normalize(encodedNormal.xyz * 2.f - 1.f);
+        }
+        float3x3 tangentToWorld = float3x3(
+            MapGeometryNormalizeOrZero(input.vTangent.xyz),
+            MapGeometryNormalizeOrZero(input.vBinormal.xyz) * -1.f,
+            normal);
+        normal = normalize(mul(tangentNormal, tangentToWorld));
+    }
+    const float3 cameraPosition =
+        -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
+    const float3 toCamera = normalize(cameraPosition - input.vWorldPos.xyz);
+    /* Portrait studio lighting rides the camera (the character can face any world
+       direction): key from the camera's upper left, softer fill from the lower right,
+       plus the hemisphere/rim terms. g_CutinLightDirection stays as an extra world key. */
+    const float3 cameraRight = normalize(float3(g_ViewMatrix._11, g_ViewMatrix._21, g_ViewMatrix._31));
+    const float3 cameraUp = normalize(float3(g_ViewMatrix._12, g_ViewMatrix._22, g_ViewMatrix._32));
+    const float3 cameraLook = normalize(float3(g_ViewMatrix._13, g_ViewMatrix._23, g_ViewMatrix._33));
+    const float3 keyLight = normalize(-cameraLook + cameraUp * 0.6f - cameraRight * 0.5f);
+    const float3 fillLight = normalize(-cameraLook - cameraUp * 0.15f + cameraRight * 0.7f);
+    const float3 worldLight = normalize(-g_CutinLightDirection);
+    const float diffuseLight =
+        saturate(dot(normal, keyLight)) * 0.85f +
+        saturate(dot(normal, fillLight)) * 0.35f +
+        saturate(dot(normal, worldLight)) * 0.25f;
+    const float hemisphere = 0.5f + saturate(normal.y) * 0.2f;
+    const float rim = pow(1.f - saturate(dot(normal, toCamera)), 3.f) * 0.15f;
+    float3 color = diffuse.rgb * (hemisphere + diffuseLight) + rim;
+    if (0 != g_HasEmissiveTexture)
+    {
+        float3 emissive =
+            g_EmissiveTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord).rgb;
+        color += emissive * g_EmissiveColor.rgb * g_EmissiveIntensity;
+    }
+    return float4(color, 1.f);
+}
+
+float4 g_SourceMapForwardLightAmbient[400];
+float SourceCharacterForwardLightAttenuation(uint index, float3 worldPosition, float3 normal,
+    out float3 direction)
+{
+    const float4 directionType = g_SourceMapForwardLightDirectionType[index];
+    direction = -directionType.xyz;
+    if (directionType.w <= 1.f)
+        return 1.f;
+    const float4 positionRange = g_SourceMapForwardLightPositionRange[index];
+    const float3 delta = positionRange.xyz - worldPosition;
+    const float distance = length(delta);
+    direction = distance > 1e-6f ? delta / distance : normal;
+    float attenuation = pow(saturate((positionRange.w - distance) /
+        max(positionRange.w, 1e-6f)), g_SourceMapForwardLightColorExponent[index].w);
+    if (directionType.w > 2.f)
+    {
+        const float4 coneShadow = g_SourceMapForwardLightConeShadow[index];
+        const float cone = saturate((dot(-direction, SourceCharacterSafeUnit(directionType.xyz)) -
+            coneShadow.y) / max(coneShadow.x - coneShadow.y, .0001f));
+        attenuation *= cone * cone;
+    }
+    return attenuation;
+}
+
+#define SOURCE_CHARACTER_FORWARD_CONSTANTS_PRESENT 1
+#include "Shader_SourceCharacterForward.hlsli"
+
+// BEGIN SHARED MODEL PASS PROGRAMS
+// Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
+/* LOSTARK_SHADER_STUDY_COMMENT
+Effects용 컴파일 선언이다. FXC의 fx_5_0 입력 하나가 여러 VS/PS/pass를 포함한다.
+여러 pass가 이미 컴파일된 셰이더 변수를 공유하므로 pass 개수만으로 중복 컴파일 횟수를 단정하지 않는다.
+15분 기록은 과거 이 계열 파일의 FXC command부터 CSO 저장까지의 경과이지 이 함수의 GPU 시간은 아니다.
+*/
+VertexShader BinaryMeshVS = compile vs_5_0 VS_MAIN();
+PixelShader BinaryMeshPS = compile ps_5_0 PS_MAIN();
+PixelShader BinaryMeshAlphaPS = compile ps_5_0 PS_MAIN_ALPHA();
+VertexShader BinaryMeshSkyVS = compile vs_5_0 VS_MAIN_SKY();
+PixelShader BinaryMeshSkyPS = compile ps_5_0 PS_MAIN_SKY();
+PixelShader BinaryMeshShadowPS = compile ps_5_0 PS_MAIN_SHADOW();
+PixelShader BinaryMeshWaterPS = compile ps_5_0 PS_MAIN_WATER();
+PixelShader BinaryMeshSourceTranslucentPS = compile ps_5_0 PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT();
+// END SHARED MODEL PASS PROGRAMS
+
+// Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
+VertexShader BinaryMeshShadowOpaqueVS = compile vs_5_0 VS_SHADOW_OPAQUE();
+
+// PROJECT_AUTHORED pose echo; source TrailGhost native material ABI is unrecovered.
+float4 g_ChargeAfterimageColor = 0.f;
+float g_ChargeAfterimageSourceIntensity = 0.f;
+SCENE_COLOR_BLOOM_OUT PS_MAIN_CHARGE_AFTERIMAGE(VS_OUT input)
+{
+    const float3 view = normalize(g_vCamPosition.xyz - input.vWorldPos.xyz);
+    const float rim = pow(1.f - saturate(abs(dot(normalize(input.vNormal.xyz), view))), 2.f);
+    float3 source = 0.f;
+    if (g_ChargeAfterimageSourceIntensity > 0.f)
+        source = g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord).rgb * g_ChargeAfterimageSourceIntensity;
+    return Write_SceneColorAndBloom(float4(source + g_ChargeAfterimageColor.rgb,
+        g_ChargeAfterimageColor.a * lerp(.3f, 1.f, rim)));
+}
+
+#if SOURCE_CHARACTER_PROGRAM_GROUP == 0
+PixelShader ChargeAfterimagePS = compile ps_5_0 PS_MAIN_CHARGE_AFTERIMAGE();
+#define BINARY_STATIC_AFTERIMAGE_PASS_POLICY 1
+#else
+PixelShader ChargeAfterimagePS = NULL;
+#define BINARY_STATIC_AFTERIMAGE_PASS_POLICY 2
+#endif
+
+// The completed frame's cursor query owns this payload, after every G-buffer
+// geometry/normal consumer. It never contributes scene color or lighting.
+float4 PS_MAIN_PICKING(VS_OUT input) : SV_TARGET0
+{
+    return float4(input.vWorldPos.xyz, 1.f);
+}
+
+// Picking belongs to the base program; source-material variants keep its ABI only.
+#if SOURCE_CHARACTER_PROGRAM_GROUP == 0
+PixelShader BinaryMeshPickingPS = compile ps_5_0 PS_MAIN_PICKING();
+#define BINARY_STATIC_PICKING_PASS_POLICY 1
+#else
+PixelShader BinaryMeshPickingPS = NULL;
+#define BINARY_STATIC_PICKING_PASS_POLICY 2
+#endif
+
+// ColorOption.loa OUTLINE_MONSTER_ENEMY is FE0000; energy remains project tuned.
+// Combat target outline uses this same model, pose and native alpha coverage.
+// It owns no stencil bits and never changes the scene depth or shared material.
+float2 g_CombatHoverNdcWidth = 0.f;
+uint g_CombatHoverReflected = 0u;
+VS_OUT VS_COMBAT_HOVER(VS_IN input)
+{
+    VS_OUT output = VS_MAIN(input);
+    const float3 viewNormal = mul(float4(output.vNormal.xyz, 0.f), g_ViewMatrix).xyz;
+    const float2 direction = viewNormal.xy * float2(g_ProjMatrix[0][0], g_ProjMatrix[1][1]);
+    const float lengthSquared = dot(direction, direction);
+    if (lengthSquared > 1e-10f)
+        output.vPosition.xy += direction * rsqrt(lengthSquared) *
+            g_CombatHoverNdcWidth * output.vPosition.w;
+    return output;
+}
+PS_OUT PS_COMBAT_HOVER(VS_OUT input, bool frontFace : SV_IsFrontFace)
+{
+    if (frontFace != (g_CombatHoverReflected != 0u)) discard;
+    PS_MAIN(input);
+    PS_OUT output = (PS_OUT)0;
+    output.vDepth = float4(input.vProjPos.z / input.vProjPos.w,
+        input.vProjPos.w / 1000.f, 0.f, 1.f);
+    output.vEmissive = float4(2.f * (254.f / 255.f), 0.f, 0.f, 0.f);
+    return output;
+}
+SCENE_COLOR_BLOOM_OUT PS_COMBAT_HOVER_FORWARD(VS_OUT input, bool frontFace : SV_IsFrontFace)
+{
+    if (frontFace != (g_CombatHoverReflected != 0u)) discard;
+    PS_MAIN(input);
+    return Write_SceneColorAndBloom(float4(2.f * (254.f / 255.f), 0.f, 0.f, 1.f));
+}
+
+VertexShader CombatHoverVS = compile vs_5_0 VS_COMBAT_HOVER();
+
+technique11 DefaultTechnique
+{
+    pass DefaultPass
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshPS;
+    }
+    pass MirroredPass
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshPS;
+    }
+    pass TwoSidedOpaquePass
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshPS;
+    }
+    pass AlphaBackPass
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshAlphaPS;
+    }
+    pass AlphaFrontPass
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshAlphaPS;
+    }
+    pass AlphaTwoSidedPass
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshAlphaPS;
+    }
+    pass SkyBackPass
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshSkyVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshSkyPS;
+    }
+    pass SkyFrontPass
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshSkyVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshSkyPS;
+    }
+    pass SkyTwoSidedPass
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshSkyVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshSkyPS;
+    }
+    pass AdditiveBackPass
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshAlphaPS;
+    }
+    pass AdditiveFrontPass
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshAlphaPS;
+    }
+    pass AdditiveTwoSidedPass
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshAlphaPS;
+    }
+    pass ShadowBackPass
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshShadowPS;
+    }
+    pass ShadowFrontPass
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshShadowPS;
+    }
+    pass ShadowTwoSidedPass
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshShadowPS;
+    }
+    pass WaterBackPass
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshWaterPS;
+    }
+    pass WaterFrontPass
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshWaterPS;
+    }
+    pass WaterTwoSidedPass
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshWaterPS;
+    }
+    pass DeferredEmissiveOverlayPass
+    {
+        SetRasterizerState(RS_DeferredEmissiveOverlay);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_DeferredEmissiveOverlay,
+            float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_DEFERRED_EMISSIVE_OVERLAY();
+    }
+
+    /* Index 19: character info window portrait (see CCharacterInfoWindowView). Appended last so
+       every existing pass index above stays where its consumers expect it. */
+    pass ScreenCutin
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SCREEN_CUTIN();
+    }
+
+    // Appended 20-22: no opacity discard, texture input or source vertex displacement.
+    pass OpaqueShadowBackPass
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshShadowOpaqueVS;
+        GeometryShader = NULL;
+        PixelShader = NULL;
+    }
+    pass OpaqueShadowFrontPass
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshShadowOpaqueVS;
+        GeometryShader = NULL;
+        PixelShader = NULL;
+    }
+    pass OpaqueShadowTwoSidedPass
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshShadowOpaqueVS;
+        GeometryShader = NULL;
+        PixelShader = NULL;
+    }
+    // Index 23: same bounded pose history for socketed live equipment.
+    pass ChargeAfterimage
+    < int ProgramVariantPass = BINARY_STATIC_AFTERIMAGE_PASS_POLICY; >
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = ChargeAfterimagePS;
+    }
+    // Index 24: native alpha materials on socketed equipment.
+    pass SourceCharacterTranslucentTwoSided
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshSourceTranslucentPS;
+    }
+    // Appended 25..27: opt-in transparent gameplay surfaces, color MRT = PickPos only.
+    pass PickingBackPass
+    < int ProgramVariantPass = BINARY_STATIC_PICKING_PASS_POLICY; >
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshPickingPS;
+    }
+    pass PickingFrontPass
+    < int ProgramVariantPass = BINARY_STATIC_PICKING_PASS_POLICY; >
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshPickingPS;
+    }
+    pass PickingTwoSidedPass
+    < int ProgramVariantPass = BINARY_STATIC_PICKING_PASS_POLICY; >
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshPickingPS;
+    }
+
+    // Appended combat hover passes preserve every existing pass index.
+    pass CombatHoverOutline
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = CombatHoverVS;
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_COMBAT_HOVER();
+    }
+    pass CombatHoverOutlineForward
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = CombatHoverVS;
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_COMBAT_HOVER_FORWARD();
+    }
+}

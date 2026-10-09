@@ -66,7 +66,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "Client/Private/AnimationSkillBindingDocument.cpp"
         )
         cls.animation_binding_harness = read(
-            "Tools/ValtanPatternAuditionServiceHarness/Private/"
+            "Tools/BossToolTests/Private/"
             "ValtanPatternAnimationBindingDocumentContractTests.cpp"
         )
         cls.balance_h = read("Client/Public/BalanceTool.h")
@@ -104,7 +104,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "Client/Private/ValtanPatternSoundCueDocument.cpp"
         )
         cls.pattern_sound_harness = read(
-            "Tools/ValtanPatternAuditionServiceHarness/Private/"
+            "Tools/BossToolTests/Private/"
             "ValtanPatternSoundCueDocumentContractTests.cpp"
         )
 

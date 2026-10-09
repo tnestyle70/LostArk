@@ -1417,7 +1417,7 @@ int main(const int argc, const char* const argv[])
 		return Run_KoukuCompositionEditorContractTests();
 	if (argc != 1)
 	{
-		std::cerr << "Usage: ValtanPatternAuditionServiceHarness "
+		std::cerr << "Usage: BossToolTests "
 			"[--action-composition-graph-contract | --cinematic-view-rebase-contract | --valtan-presentation-contract | --kouku-pattern-delete-contract | --presentation-generation-admission-contract | --kouku-composition-editor-contract | --kouku-world-effect-frame-contract | --kouku-preview-transport-contract | --kouku-sequence-document-contract | --kouku-collider-group-contract | --kouku-collider-duplicate-contract | --kouku-fixed-damage-contract | --kouku-parent-timing-contract | --kouku-independent-row-clock-contract | --kouku-sound-timeline-contract]\n";
 		return 2;
 	}
@@ -1463,7 +1463,7 @@ int main(const int argc, const char* const argv[])
 			std::cerr << "FAIL " << Name << ": " << Error.what() << '\n';
 		}
 	}
-	std::cout << "ValtanPatternAuditionServiceHarness: " << Tests.size() - Failed
+	std::cout << "BossToolTests: " << Tests.size() - Failed
 		<< "/" << Tests.size() << " passed\n";
 	const int FlowFailures = Run_ValtanPatternFlowServiceTests();
 	const int TuningFailures = Run_ValtanTuningCommandServiceTests();

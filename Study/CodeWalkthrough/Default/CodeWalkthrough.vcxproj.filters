@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="00.Start"><UniqueIdentifier>{04E1B22E-85A0-5E64-B2E1-268C9334D705}</UniqueIdentifier></Filter>
+    <Filter Include="01.IOCP"><UniqueIdentifier>{6C2EFD32-D3CA-5D82-A665-006749F9954F}</UniqueIdentifier></Filter>
+    <Filter Include="02.ServerReference"><UniqueIdentifier>{05E80EA3-C366-5A57-96A5-09585209C43A}</UniqueIdentifier></Filter>
+    <Filter Include="03.ProfilerReference"><UniqueIdentifier>{2C463995-2DE8-5EFC-A0DC-29A1ED802CAA}</UniqueIdentifier></Filter>
+    <Filter Include="04.ShaderReference"><UniqueIdentifier>{CF3628BE-1E6E-52EC-8ADD-83E0939D7BC8}</UniqueIdentifier></Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Server\Public\IocpService.h"><Filter>01.IOCP</Filter></ClInclude>
+    <ClCompile Include="..\Server\Private\IocpService.cpp"><Filter>01.IOCP</Filter></ClCompile>
+    <None Include="..\README.md"><Filter>00.Start</Filter></None>
+    <None Include="..\Reference\Client\Bin\ShaderFiles\Shader_MapMaterialSurface.hlsli"><Filter>04.ShaderReference</Filter></None>
+    <None Include="..\Reference\Client\Bin\ShaderFiles\Shader_VtxMeshBinary.hlsl"><Filter>04.ShaderReference</Filter></None>
+    <None Include="..\Reference\Engine\Bin\ShaderFiles\Shader_Deferred.hlsl"><Filter>04.ShaderReference</Filter></None>
+    <None Include="..\Reference\Engine\Private\Profiler.cpp"><Filter>03.ProfilerReference</Filter></None>
+    <None Include="..\Reference\Engine\Public\Profiler.h"><Filter>03.ProfilerReference</Filter></None>
+    <None Include="..\Reference\Server\Private\ClientSession.cpp"><Filter>02.ServerReference</Filter></None>
+    <None Include="..\Reference\Server\Private\GameRoom_Replication.cpp"><Filter>02.ServerReference</Filter></None>
+    <None Include="..\Reference\Shared\Private\Network\PacketFrame.cpp"><Filter>02.ServerReference</Filter></None>
+    <None Include="..\Reference\Shared\Private\Network\PacketStreamParser.cpp"><Filter>02.ServerReference</Filter></None>
+    <None Include="..\..\..\.md\GB\10-09\2026-10-09_SERVER_CALL_FLOW_STUDY.md"><Filter>00.Start</Filter></None>
+    <None Include="..\..\..\.md\GB\10-09\2026-10-09_PROFILER_CALL_FLOW_STUDY.md"><Filter>00.Start</Filter></None>
+    <None Include="..\..\..\.md\GB\10-09\2026-10-09_SHADER_CALL_FLOW_STUDY.md"><Filter>00.Start</Filter></None>
+  </ItemGroup>
+</Project>

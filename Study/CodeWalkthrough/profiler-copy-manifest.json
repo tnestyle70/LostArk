@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2026-10-09T10:24:47.185924+00:00",
+  "purpose": "Profiler learning reference copies; no product edits or builds",
+  "verification": "Lex C++ comments, escaped string/character literals, identifiers, numeric and operator tokens; ignore only comments and whitespace; exact token sequence comparison; raw strings explicitly rejected (none in sources).",
+  "files": [
+    {
+      "source": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Public\\Profiler.h",
+      "copy": "C:\\Users\\tnest\\Desktop\\LostArk\\Study\\CodeWalkthrough\\Reference\\Engine\\Public\\Profiler.h",
+      "sourceEncoding": "utf-8",
+      "copyEncoding": "UTF-8 without BOM",
+      "sourceSha256": "ee1107d5b6b0584d1eceb2a04344df76b1c7731052c4ff4c2bd7cbb0028d05d0",
+      "copySha256": "032189bce5737efb9edbc8d94ada8b04fd48f6bf6d92d18f147e17b2c7e32d96",
+      "sourceLines": 722,
+      "copyLines": 750,
+      "annotationAnchors": 14,
+      "nonCommentTokensEqual": true,
+      "tokenCount": 3065,
+      "tokenSequenceSha256": "92dcc93b241e998909339cb2d606f473dd520ad76d3ac32758f3586bafb1d986",
+      "sourceUnchangedAfterWrite": true
+    },
+    {
+      "source": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Private\\Profiler.cpp",
+      "copy": "C:\\Users\\tnest\\Desktop\\LostArk\\Study\\CodeWalkthrough\\Reference\\Engine\\Private\\Profiler.cpp",
+      "sourceEncoding": "utf-8",
+      "copyEncoding": "UTF-8 without BOM",
+      "sourceSha256": "0f197e69b73fa19092611f35e20706cfdab66b62b11ee77a60355bfdb94716fc",
+      "copySha256": "f20d22f273662c8a6b5202734ab4efec7269ab47e8c475416aa25004611d8ea8",
+      "sourceLines": 1309,
+      "copyLines": 1355,
+      "annotationAnchors": 23,
+      "nonCommentTokensEqual": true,
+      "tokenCount": 8533,
+      "tokenSequenceSha256": "62662fa5a36cb278d6daae723d72ac1db05604d1442e97db71908518d5c59e86",
+      "sourceUnchangedAfterWrite": true
+    }
+  ]
+}

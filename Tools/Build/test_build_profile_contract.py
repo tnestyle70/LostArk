@@ -238,15 +238,15 @@ class BuildProfileContractTests(unittest.TestCase):
         )
         core_block = runner[core_build:server_build]
         self.assertIn(
-            "Tools\\ValtanPatternAuditionServiceHarness\\Default\\ValtanPatternAuditionServiceHarness.vcxproj",
+            "Tools\\BossToolTests\\Default\\BossToolTests.vcxproj",
             core_block,
         )
-        run = runner.index("& $valtanAuditionServiceHarnessExe")
+        run = runner.index("& $bossToolTestsExe")
         full_diagnostic_server = runner.index(
             "if ($includeFullDiagnostic) {", run
         )
         self.assertLess(run, full_diagnostic_server)
-        self.assertIn("ValtanPatternAuditionServiceHarness failed.", runner[run:])
+        self.assertIn("BossToolTests failed.", runner[run:])
 
     def test_product_runner_rejects_locked_standard_exes_before_publish_or_build(self) -> None:
         runner = read("Tools/Build/Invoke-BuildAndRegression.ps1")
@@ -469,7 +469,7 @@ class BuildProfileContractTests(unittest.TestCase):
 
         valtan_project_path = (
             ROOT
-            / "Tools/ValtanPatternAuditionServiceHarness/Default/ValtanPatternAuditionServiceHarness.vcxproj"
+            / "Tools/BossToolTests/Default/BossToolTests.vcxproj"
         )
         valtan_filters_path = valtan_project_path.with_suffix(".vcxproj.filters")
         character_project_path = (
@@ -497,7 +497,7 @@ class BuildProfileContractTests(unittest.TestCase):
             self.assertEqual(project_sources, filtered_sources, project_path)
 
         valtan_project = read(
-            "Tools/ValtanPatternAuditionServiceHarness/Default/ValtanPatternAuditionServiceHarness.vcxproj"
+            "Tools/BossToolTests/Default/BossToolTests.vcxproj"
         )
         character_project = read(
             "Tools/CharacterSelectIsolationHarness/Default/CharacterSelectIsolationHarness.vcxproj"
@@ -557,7 +557,7 @@ class BuildProfileContractTests(unittest.TestCase):
         self.assertEqual(1, character_project.count("..\\..\\..\\Client\\Private\\"))
 
         valtan_tests = read(
-            "Tools/ValtanPatternAuditionServiceHarness/Private/ValtanPresentationContractTests.cpp"
+            "Tools/BossToolTests/Private/ValtanPresentationContractTests.cpp"
         )
         party_tests = read(
             "Tools/CharacterSelectIsolationHarness/Private/ClientPresentationPrimitiveContractTests.cpp"

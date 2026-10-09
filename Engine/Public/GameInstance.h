@@ -1,7 +1,5 @@
 #pragma once
 
-/* ���̺귯���� ����� �ܺ� ����ڿ��� �����ִ� ��Ȱ. */
-/* ���̺귯�� ���� ���Ϲ����� �̱��ϰ�ü. */
 #include "Prototype_Manager.h"
 #pragma push_macro("new")
 #undef new
@@ -32,7 +30,6 @@ public:
 
 
 public:
-	/* ������ ����� �̿��� �� �ֵ���, �ʿ��� �ʱ�ȭ ������ �����Ѵ�. */
 	HRESULT Initialize_Engine(const ENGINE_DESC& EngineDesc, ComPtr<ID3D11Device>& pOutDevice, ComPtr<ID3D11DeviceContext>& pOutContext);
 	// Physical client pixels; call between frames, before update and rendering.
 	HRESULT Resize_Viewport(uint32_t width, uint32_t height);
@@ -46,7 +43,6 @@ public:
 	HRESULT Clear_Resources(uint32_t iClearLevelID);
 
 public: /* For.Graphic_Device */
-
 
 public: /* For.Input_Device */
 	int8_t	Get_DIKeyState(uint8_t byKeyID);
@@ -254,8 +250,6 @@ private:
 
 private:
 	float2_t			m_vViewportDesc = {};
-
-
 
 public:
 	void Release_Engine();
