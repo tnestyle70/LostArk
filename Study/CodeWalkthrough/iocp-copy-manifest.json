@@ -1,0 +1,23 @@
+{
+  "origin": "C:\\Users\\tnest\\Desktop\\LostArk\\.md\\GB\\10-09\\2026-10-09_SERVER_IOCP_JOB_COMPARISON_PLAN.md",
+  "recovered_cpp_sha256": "2be2489f017f224b2a29483051ab6346dbe173cf3d9f9b79883e4cebf13f8798",
+  "cpp_lines_before": 217,
+  "cpp_lines_after": 301,
+  "non_comment_changes": [
+    "include <exception> 직접 선언",
+    "접수 실패 delete raw를 unique_ptr 회수/즉시 파괴로 표현"
+  ],
+  "product_files_modified": false,
+  "current_files": [
+    {
+      "file": "Server/Public/IocpService.h",
+      "lines": 176,
+      "sha256": "1ce89203d4712f4beab770805a0496dd0f723478c395c9ba32e7b0a13f120443"
+    },
+    {
+      "file": "Server/Private/IocpService.cpp",
+      "lines": 301,
+      "sha256": "2dcfeb508d282debec52d10eb613dbb3a4f6f3ab4628a439b34942107a64ecae"
+    }
+  ]
+}

@@ -55,7 +55,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - `Client\Default\Client.vcxproj` — 게임 EXE 생성, `Engine.lib`에 링크
 - `Server\Default\Server.vcxproj` — 서버 권위 world/room 실행 파일
 - `Tools\NetworkProtocolHarness\Default\NetworkProtocolHarness.vcxproj` — protocol 회귀 하네스
-- `Tools\ValtanPatternAuditionServiceHarness\Default\ValtanPatternAuditionServiceHarness.vcxproj` — 실제 Client audition service의 Next lifecycle·재시도 계약 하네스, UI 실행 없음
+- `Tools\BossToolTests\Default\BossToolTests.vcxproj` — 발탄·쿠크 보스 도구의 명령 상태·문서·그래프·연출 계약을 검사하는 콘솔 테스트. 설명과 VS 필터 안내: `Tools/BossToolTests/README.md`
 - `Tools\PointLightFalloffContractHarness\Default\PointLightFalloffContractHarness.vcxproj` — Engine Deferred compiled shader 소비 계약 하네스
 
 (`Engine\External\imgui\examples\*`의 vcxproj들은 ImGui 원본에 딸려온 샘플이며 솔루션에 포함되지 않는다. 건드리지 않는다.)
@@ -299,7 +299,7 @@ Loader worker에서 호출되는 shader/model/navigation/camera/character/part/V
 
 ### 소스 파일 인코딩 — 중요
 
-`Engine/`, `Client/` C++ 소스는 CP949, UTF-8(BOM 포함/미포함), ASCII가 혼재한다. 편집 전에 파일별 기존 인코딩을 감지하고 그대로 보존한다. 인코딩을 확신할 수 없는 기존 파일은 ASCII 구간만 최소 수정하며 파일 전체를 임의 변환하지 않는다. 새 C++ 파일은 UTF-8(BOM 없음)과 영문 주석을 기본으로 한다. 인코딩 일괄 변환은 별도 합의 작업으로만 수행한다.
+`Engine/`, `Client/` C++ 소스는 CP949, UTF-8(BOM 포함/미포함), ASCII가 혼재한다. 편집 전에 파일별 기존 인코딩을 감지하고 그대로 보존한다. 인코딩을 확신할 수 없는 기존 파일은 ASCII 구간만 최소 수정하며 파일 전체를 임의 변환하지 않는다. 새 C++ 파일은 UTF-8(BOM 없음)으로 저장한다. 새로 쓰거나 요청에 따라 보완하는 설명 주석은 한국어를 기본으로 하며, `AGENTS.md`의 코드 설명 원칙을 따른다. 인코딩 일괄 변환은 별도 합의 작업으로만 수행한다.
 
 반대로 `.md/GB/**/*.md` 문서와 이 파일은 UTF-8이다.
 
@@ -1376,7 +1376,7 @@ snapshot까지 직접 구현해야 하며, Server 담당 파일이라는 이유�
 - 실시간 게임 엔진이다. 성능이 중요하다 — 갱신/렌더 루프에서 힙 할당을 피한다.
 - `new`/`delete` 직접 사용 금지. 스마트 포인터, `ComPtr`, `Safe_Delete`/`Safe_Release`를 쓴다.
 - 서브시스템 소유권이 헷갈리면 위 "서브시스템 소유권" 표를 본다.
-- 기존 소스는 주변 주석의 언어와 파일별 인코딩을 그대로 맞춘다. 저장소 전체가 하나의 인코딩이라는 가정을 금지한다.
+- 기존 소스의 파일별 인코딩은 보존한다. 새 설명 주석은 주변의 영문 주석에 맞추지 않고 한국어로 작성하며, 함수·API·변수 이름은 실제 코드 이름을 유지한다. 저장소 전체가 하나의 인코딩이라는 가정을 금지한다.
 - `Engine/Public/` 변경 후에는 Product runner로 Engine → Client 컴파일과 SDK 반영을 확인한다. 그 밖의 변경은 해당 기능에 필요한 최소 컴파일을 사용한다. 발견된 컴파일·링크 오류는 수정하고, 아직 하지 않은 실행 확인은 구분해 보고한다.
 
 ### 워터팡 AI와 효과 저작 진입

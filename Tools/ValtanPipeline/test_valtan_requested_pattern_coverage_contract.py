@@ -23,11 +23,11 @@ from validate_valtan_requested_pattern_coverage import (  # noqa: E402
 
 NATIVE_CONTRACT = (
     ROOT
-    / "Tools/ValtanPatternAuditionServiceHarness/Private/ValtanCanonicalGraphContractTests.cpp"
+    / "Tools/BossToolTests/Private/ValtanCanonicalGraphContractTests.cpp"
 )
 HARNESS_PROJECT = (
     ROOT
-    / "Tools/ValtanPatternAuditionServiceHarness/Default/ValtanPatternAuditionServiceHarness.vcxproj"
+    / "Tools/BossToolTests/Default/BossToolTests.vcxproj"
 )
 
 

@@ -30,7 +30,7 @@ PRESENTATION_ADMISSION_CPP = (
 )
 PRESENTATION_ADMISSION_NATIVE_TESTS = (
     ROOT
-    / "Tools/ValtanPatternAuditionServiceHarness/Private/"
+    / "Tools/BossToolTests/Private/"
     "ValtanPresentationGenerationAdmissionContractTests.cpp"
 )
 MAIN_APP_CPP = ROOT / "Client/Private/MainApp.cpp"

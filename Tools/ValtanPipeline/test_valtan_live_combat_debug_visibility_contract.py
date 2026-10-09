@@ -119,8 +119,8 @@ class LiveCombatDebugVisibilityContractTests(unittest.TestCase):
     def test_new_native_contract_is_registered_and_projects_parse(self) -> None:
         client_project = ROOT / "Client/Default/Client.vcxproj"
         harness_project = ROOT / (
-            "Tools/ValtanPatternAuditionServiceHarness/Default/"
-            "ValtanPatternAuditionServiceHarness.vcxproj"
+            "Tools/BossToolTests/Default/"
+            "BossToolTests.vcxproj"
         )
         ET.parse(client_project)
         ET.parse(harness_project)
@@ -129,8 +129,8 @@ class LiveCombatDebugVisibilityContractTests(unittest.TestCase):
         self.assertIn("CombatDebugVisibility.h", harness_text)
         self.assertIn("CombatDebugVisibilityContractTests.cpp", harness_text)
         harness_main = read(
-            "Tools/ValtanPatternAuditionServiceHarness/Private/"
-            "ValtanPatternAuditionServiceHarness.cpp"
+            "Tools/BossToolTests/Private/"
+            "Main.cpp"
         )
         self.assertIn("Run_CombatDebugVisibilityContractTests", harness_main)
 

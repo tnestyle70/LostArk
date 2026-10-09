@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion><Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{C7F1CC11-7175-4A87-AF6F-943CD2EF0096}</ProjectGuid><RootNamespace>CodeWalkthrough</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType><PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Debug'">true</UseDebugLibraries>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Release'">false</UseDebugLibraries>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <OutDir>$(ProjectDir)..\..\..\out\CodeWalkthrough20261009\Build\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\..\out\CodeWalkthrough20261009\Intermediate\$(Configuration)\</IntDir>
+    <TargetName>IocpServiceStudy</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel><LanguageStandard>stdcpp20</LanguageStandard>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader><ExceptionHandling>Sync</ExceptionHandling>
+      <ConformanceMode>true</ConformanceMode><AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <PreprocessorDefinitions>NOMINMAX;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\Server\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Server\Public\IocpService.h" />
+    <ClCompile Include="..\Server\Private\IocpService.cpp" />
+    <None Include="..\README.md" />
+    <None Include="..\Reference\Client\Bin\ShaderFiles\Shader_MapMaterialSurface.hlsli" />
+    <None Include="..\Reference\Client\Bin\ShaderFiles\Shader_VtxMeshBinary.hlsl" />
+    <None Include="..\Reference\Engine\Bin\ShaderFiles\Shader_Deferred.hlsl" />
+    <None Include="..\Reference\Engine\Private\Profiler.cpp" />
+    <None Include="..\Reference\Engine\Public\Profiler.h" />
+    <None Include="..\Reference\Server\Private\ClientSession.cpp" />
+    <None Include="..\Reference\Server\Private\GameRoom_Replication.cpp" />
+    <None Include="..\Reference\Shared\Private\Network\PacketFrame.cpp" />
+    <None Include="..\Reference\Shared\Private\Network\PacketStreamParser.cpp" />
+    <None Include="..\..\..\.md\GB\10-09\2026-10-09_SERVER_CALL_FLOW_STUDY.md" />
+    <None Include="..\..\..\.md\GB\10-09\2026-10-09_PROFILER_CALL_FLOW_STUDY.md" />
+    <None Include="..\..\..\.md\GB\10-09\2026-10-09_SHADER_CALL_FLOW_STUDY.md" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

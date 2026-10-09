@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="00.Start">
+      <UniqueIdentifier>{86467246-DC48-501B-B673-F12B0B319D1F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Tests.Valtan">
+      <UniqueIdentifier>{456AD3BB-3E23-559A-9122-8FA219A1C9B9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.Tests.SharedAndKouku">
+      <UniqueIdentifier>{81E3E450-1651-5C85-8A05-C7714919B8EF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03.Client.Services">
+      <UniqueIdentifier>{AEE2C837-B6E2-5CCD-B832-124702299C4B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="04.Client.Documents">
+      <UniqueIdentifier>{BE5FE3A8-0771-5380-8E79-7D9403DB410D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="05.Client.Presentation">
+      <UniqueIdentifier>{133704AC-0D0E-5437-952C-1FB826A40E08}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="06.Client.Support">
+      <UniqueIdentifier>{055DB138-CF65-5A9F-BAA5-E8F56C9BB014}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\Main.cpp">
+      <Filter>00.Start</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ValtanCanonicalGraphContractTests.cpp">
+      <Filter>01.Tests.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\BossCompositionDocumentContractTests.cpp">
+      <Filter>02.Tests.SharedAndKouku</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ActionCompositionGraphModelContractTests.cpp">
+      <Filter>02.Tests.SharedAndKouku</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\BossLogicFlowViewModelContractTests.cpp">
+      <Filter>02.Tests.SharedAndKouku</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ValtanPresentationGenerationAdmissionContractTests.cpp">
+      <Filter>01.Tests.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\CombatDebugVisibilityContractTests.cpp">
+      <Filter>02.Tests.SharedAndKouku</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\PlayerHandGripTransformContractTests.cpp">
+      <Filter>02.Tests.SharedAndKouku</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ValtanEncounterReferenceContractTests.cpp">
+      <Filter>01.Tests.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ValtanPatternFlowServiceTests.cpp">
+      <Filter>01.Tests.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ValtanPatternAnimationBindingDocumentContractTests.cpp">
+      <Filter>01.Tests.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ValtanPatternEffectCueAuthoringContractTests.cpp">
+      <Filter>01.Tests.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ValtanPatternSoundCueDocumentContractTests.cpp">
+      <Filter>01.Tests.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ValtanPresentationContractTests.cpp">
+      <Filter>01.Tests.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ValtanTuningCommandServiceTests.cpp">
+      <Filter>01.Tests.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanPatternAuditionService.cpp">
+      <Filter>03.Client.Services</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanPatternTree.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ActionCompositionGraphModel.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\BossLogicFlowViewModel.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\BossCompositionDocument.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonCompositionDocument.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonAnimationActionDocument.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\CompositionResourceTree.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanPresentationGenerationAdmission.cpp">
+      <Filter>05.Client.Presentation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\EffectV2_Document.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\EffectV2_Catalog.cpp">
+      <Filter>06.Client.Support</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanPatternFlowDocument.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanPatternEffectCueDocument.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanPatternEffectCueAuthoring.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_DirectAuthoredSourceIndex.cpp">
+      <Filter>06.Client.Support</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanPatternFlowService.cpp">
+      <Filter>03.Client.Services</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanTuningCommandService.cpp">
+      <Filter>03.Client.Services</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\DataJson.cpp">
+      <Filter>06.Client.Support</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ProjectDataRoot.cpp">
+      <Filter>06.Client.Support</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\RuntimeAssetRoot.cpp">
+      <Filter>06.Client.Support</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\SoundCueCatalog.cpp">
+      <Filter>06.Client.Support</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanCombatObjectSoundCueDocument.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanPatternSoundCueDocument.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ActionPresentationTimeline.cpp">
+      <Filter>05.Client.Presentation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\CameraShakeService.cpp">
+      <Filter>05.Client.Presentation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\EncounterPatternReference.cpp">
+      <Filter>05.Client.Presentation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanCinematicCameraController.cpp">
+      <Filter>05.Client.Presentation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanCinematicCameraDocument.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\Client\Public\ValtanPatternAuditionService.h">
+      <Filter>03.Client.Services</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\ValtanPatternTree.h">
+      <Filter>04.Client.Documents</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\PlayerHandGripTransform.h">
+      <Filter>05.Client.Presentation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\CombatDebugVisibility.h">
+      <Filter>05.Client.Presentation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\ActionCompositionGraphModel.h">
+      <Filter>04.Client.Documents</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\BossLogicFlowView.h">
+      <Filter>04.Client.Documents</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\BossCompositionDocument.h">
+      <Filter>04.Client.Documents</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\ValtanPresentationGenerationAdmission.h">
+      <Filter>05.Client.Presentation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\EffectV2_Document.h">
+      <Filter>04.Client.Documents</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\EffectV2_Catalog.h">
+      <Filter>06.Client.Support</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\ValtanPatternEffectCueDocument.h">
+      <Filter>04.Client.Documents</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\ValtanPatternEffectCueAuthoring.h">
+      <Filter>04.Client.Documents</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\Effect_DirectAuthoredSourceIndex.h">
+      <Filter>06.Client.Support</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\ValtanPatternFlowService.h">
+      <Filter>03.Client.Services</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\ValtanTuningCommandService.h">
+      <Filter>03.Client.Services</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\DataJson.h">
+      <Filter>06.Client.Support</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\RuntimeAssetRoot.h">
+      <Filter>06.Client.Support</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\SoundCueCatalog.h">
+      <Filter>06.Client.Support</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\ValtanCombatObjectSoundCueDocument.h">
+      <Filter>04.Client.Documents</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\ActionPresentationTimeline.h">
+      <Filter>05.Client.Presentation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\CameraShakeService.h">
+      <Filter>05.Client.Presentation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\EncounterPatternReference.h">
+      <Filter>05.Client.Presentation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\MonsterPresentationContract.h">
+      <Filter>05.Client.Presentation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\ValtanCinematicCameraController.h">
+      <Filter>05.Client.Presentation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\ValtanCinematicCameraDocument.h">
+      <Filter>04.Client.Documents</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Public\ValtanPatternFlowDocument.h">
+      <Filter>04.Client.Documents</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Filter>00.Start</Filter>
+    </None>
+  </ItemGroup>
+</Project>

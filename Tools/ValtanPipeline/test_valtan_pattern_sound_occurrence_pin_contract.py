@@ -27,11 +27,11 @@ class ValtanPatternSoundOccurrencePinContractTests(unittest.TestCase):
         cls.replication_cpp = read("Client/Private/ClientReplication.cpp")
         cls.valtan_cpp = read("Client/Private/Valtan.cpp")
         cls.audition_test = read(
-            "Tools/ValtanPatternAuditionServiceHarness/Private/"
-            "ValtanPatternAuditionServiceHarness.cpp"
+            "Tools/BossToolTests/Private/"
+            "Main.cpp"
         )
         cls.flow_test = read(
-            "Tools/ValtanPatternAuditionServiceHarness/Private/"
+            "Tools/BossToolTests/Private/"
             "ValtanPatternFlowServiceTests.cpp"
         )
 

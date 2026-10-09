@@ -42,15 +42,15 @@ class NativeCompositionFacadeContractTests(unittest.TestCase):
         cls.document_h = read("Client/Public/BossCompositionDocument.h")
         cls.document_cpp = read("Client/Private/BossCompositionDocument.cpp")
         cls.harness_project = read(
-            "Tools/ValtanPatternAuditionServiceHarness/Default/"
-            "ValtanPatternAuditionServiceHarness.vcxproj"
+            "Tools/BossToolTests/Default/"
+            "BossToolTests.vcxproj"
         )
         cls.harness_main = read(
-            "Tools/ValtanPatternAuditionServiceHarness/Private/"
-            "ValtanPatternAuditionServiceHarness.cpp"
+            "Tools/BossToolTests/Private/"
+            "Main.cpp"
         )
         cls.harness_contract = read(
-            "Tools/ValtanPatternAuditionServiceHarness/Private/"
+            "Tools/BossToolTests/Private/"
             "BossCompositionDocumentContractTests.cpp"
         )
 
