@@ -71,6 +71,18 @@ Effect는 F1의 `Open Effect Tool V1`, `Open Effect Tool V2`로 각각 원래 �
 Action의 Effect resource 편집 명령은 해당 독립 Effect owner를 연다. Resources, Sequencer, Box Detail,
 Preview와 toolbar는 공통 shell이 소유하고 각 세션은 자기 문서·초안·선택·저장을 소유한다.
 
+Boss Saydon·Sequence·World Movie는 재생 toolbar의 `Undo`/`Redo`로 편집을 되돌린다.
+해당 Sequencer 또는 재생 창에 focus가 있을 때 `Ctrl+Z`, `Ctrl+Y`/`Ctrl+Shift+Z`를 사용한다.
+World의 별도 Sequence Camera Tool에서도 같은 Movie 이력을 사용한다. 텍스트 입력과 미적용
+row는 가로채지 않으며 pending row는 먼저 Apply 또는 Revert한다. 한 번의 drag/연속 카메라
+입력은 한 단계다. World는 row·camera cut·시간 이동/trim·Repeat movie·배우 제외/복원을 기록하며
+당시 class/Intro·Loop/box/key와 편집 cursor를 복원한다. Play/Pause/Stop/seek 및 임시 Mute/Solo는
+문서 편집 이력에 넣지 않는다. World Undo/Redo는 재생을 정지하고 초안을 복원하며 Save는 별도다.
+일반 Save 후에도 이력을 유지하고 최신 저장 기준·World revision·다른 필드의 외부 병합을 보존한다.
+같은 필드 충돌이나 admission 실패는 현재 초안·이력을 유지한다. 게시 중에는 복원을 막으며
+명시적인 Reload 성공 또는 Level 종료에서 Movie 이력을 초기화한다. Effect 내부 element 편집은
+기존 Effect Tool이 별도로 소유한다.
+
 - Boss는 기존 Valtan과 Kouku 관문·Parent·Pattern을 사용한다. Sequence는 독립 저장 문서와 기존
   Complete Play의 `enterCombatOnFinish`/전투 handoff를 유지한다. Boss와 Sequence의 관문 선택은 독립이다.
 - Kouku의 WORLD Animation 표시 행은 World occurrence+slot별로 고정하고 box의 tooltip에 배우를 표시한다.

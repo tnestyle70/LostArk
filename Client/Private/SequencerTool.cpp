@@ -200,6 +200,8 @@ namespace
             m_Scrubbing = false;
             m_Pending = COMMAND::NONE; m_Drag.reset(); m_DeleteWorldItem.clear();
             m_RequestedRepeatMovie.reset();
+            m_HistoryRequest = 0;
+            if (m_Callbacks.finishHistory) m_Callbacks.finishHistory();
         }
 
         void Begin_WorkbenchFrame() override
@@ -219,12 +221,15 @@ namespace
                 m_EditBox.reset(); m_CameraEditor = {}; m_Drag.reset();
             }
             m_Timeline = m_Callbacks.timeline ? m_Callbacks.timeline(m_State.selectedClassId, m_ViewLoop) : nullptr;
-            if (!m_Scrubbing) m_EditMs = MatchesPlayback() ? static_cast<float>(m_State.clockMs) : 0.f;
+            if (!m_Scrubbing && MatchesPlayback()) m_EditMs = static_cast<float>(m_State.clockMs);
+            else if (!m_Scrubbing) m_EditMs = static_cast<float>(std::clamp(double(m_EditMs), 0.,
+                (std::max)(0., m_ViewLoop ? m_State.loopDurationMs : m_State.introDurationMs)));
             Sync_WorldSelection();
         }
 
         void Render_WorkbenchPane(const PANE pane) override
         {
+            Sync_HistorySelection();
             switch (pane)
             {
             case PANE::PATTERNS:
@@ -274,6 +279,8 @@ namespace
             Render_CameraWindow();
             Render_VisibilityWindow();
             Sync_WorldSelection();
+            Sync_HistorySelection();
+            if (Process_HistoryRequest()) return;
             if (!m_DeleteWorldItem.empty())
             {
                 if (!m_RowDirty && !m_State.authoringPublishPending)
@@ -300,16 +307,22 @@ namespace
             m_RequestedRate.reset();
             if (m_ApplyRequested && m_EditBox && m_Callbacks.applyBox)
             {
+                // Camera key creation/deletion changes selection before applying
+                // the row. Keep the pre-edit key for Undo and the new key for Redo.
+                if (m_CameraHistorySelection && m_Callbacks.setHistorySelection)
+                    m_Callbacks.setHistorySelection(*m_CameraHistorySelection);
                 if (!Row_SourceChanged() && m_Callbacks.applyBox(*m_EditBox, m_EditValue, m_EditStatus))
                 { m_EditBox.reset(); m_RowDirty = false; }
+                Sync_HistorySelection();
             }
+            if (!m_RowDirty) m_CameraHistorySelection.reset();
             m_ApplyRequested = false;
             if (m_SaveRequested && !m_RowDirty && m_Callbacks.saveAuthoring && m_Callbacks.saveAuthoring(m_EditStatus)) m_EditBox.reset();
             if (m_PublishRequested && !m_RowDirty && m_Callbacks.publishAuthoring) m_Callbacks.publishAuthoring(m_EditStatus);
             m_PublishRequested = false;
             m_SaveRequested = false;
             if (m_ReloadRequested && m_Callbacks.reloadAuthoring && m_Callbacks.reloadAuthoring(m_EditStatus))
-            { m_EditBox.reset(); m_RowDirty = false; }
+            { m_EditBox.reset(); m_RowDirty = false; m_CameraHistorySelection.reset(); }
             m_ReloadRequested = false;
             if (!m_OpenEffect.empty() && m_Callbacks.openEffectEditor)
             {
@@ -320,6 +333,8 @@ namespace
                     m_OwnsPlayback = owned;
             }
             m_OpenEffect.clear();
+            if (!ImGui::IsMouseDown(ImGuiMouseButton_Left) && !ImGui::IsAnyItemActive() && m_Callbacks.finishHistory)
+                m_Callbacks.finishHistory();
             const auto command = std::exchange(m_Pending, COMMAND::NONE);
             switch (command)
             {
@@ -356,6 +371,87 @@ namespace
             return state;
         }
 
+        Client::CLASS_MOVIE_HISTORY_SELECTION Capture_HistorySelection() const
+        {
+            Client::CLASS_MOVIE_HISTORY_SELECTION selection;
+            selection.classId = m_State.selectedClassId;
+            selection.kind = m_SelectedKind; selection.boxId = m_SelectedBox;
+            selection.keyId = m_CameraEditor.selectedKeyId;
+            selection.loop = m_ViewLoop;
+            selection.cursorMs = MatchesPlayback() ? m_State.clockMs : double(m_EditMs);
+            return selection;
+        }
+
+        void Sync_HistorySelection()
+        {
+            if (m_Callbacks.setHistorySelection) m_Callbacks.setHistorySelection(Capture_HistorySelection());
+        }
+
+        bool History_Blocked() const
+        {
+            return !m_State.available || !m_OpenedAuthoring || m_State.authoringPublishPending ||
+                m_RowDirty || m_Drag.has_value() || m_Scrubbing || m_ApplyRequested || m_SaveRequested ||
+                m_PublishRequested || m_ReloadRequested || m_RequestedRepeatMovie.has_value() ||
+                !m_DeleteWorldItem.empty() || !m_OpenEffect.empty() || m_Pending != COMMAND::NONE;
+        }
+
+        void Render_HistoryButtons()
+        {
+            const bool blocked = History_Blocked();
+            ImGui::BeginDisabled(blocked || !m_State.canUndoAuthoring || !m_Callbacks.undoAuthoring);
+            if (ImGui::Button("Undo")) m_HistoryRequest = -1;
+            ImGui::EndDisabled(); ImGui::SameLine();
+            ImGui::BeginDisabled(blocked || !m_State.canRedoAuthoring || !m_Callbacks.redoAuthoring);
+            if (ImGui::Button("Redo")) m_HistoryRequest = 1;
+            ImGui::EndDisabled();
+            if (!blocked && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
+                !ImGui::GetIO().WantTextInput && !ImGui::IsAnyItemActive() && ImGui::GetIO().KeyCtrl)
+            {
+                if (ImGui::IsKeyPressed(ImGuiKey_Z, false)) m_HistoryRequest = ImGui::GetIO().KeyShift ? 1 : -1;
+                else if (ImGui::IsKeyPressed(ImGuiKey_Y, false)) m_HistoryRequest = 1;
+            }
+        }
+
+        bool Process_HistoryRequest()
+        {
+            const int direction = std::exchange(m_HistoryRequest, 0);
+            if (!direction || History_Blocked()) return false;
+            const auto& apply = direction < 0 ? m_Callbacks.undoAuthoring : m_Callbacks.redoAuthoring;
+            Client::CLASS_MOVIE_HISTORY_SELECTION selection;
+            if (!apply || !apply(selection, m_EditStatus)) return false;
+            m_State = Read_State();
+            const auto option = std::find_if(m_State.options.begin(), m_State.options.end(),
+                [&](const auto& value) { return value.classId == selection.classId; });
+            if (option != m_State.options.end() && m_Callbacks.selectCategory)
+                m_Callbacks.selectCategory(static_cast<std::size_t>(option - m_State.options.begin()));
+            m_State = Read_State();
+            m_OwnsPlayback = false; m_FollowPlayback = false; m_ViewLoop = selection.loop;
+            m_EditMs = static_cast<float>(std::clamp(selection.cursorMs, 0.,
+                (std::max)(0., m_ViewLoop ? m_State.loopDurationMs : m_State.introDurationMs)));
+            m_SelectedKind.clear(); m_SelectedRow.clear(); m_SelectedBox.clear();
+            m_EditBox.reset(); m_CameraEditor = {}; m_KeySelections.clear(); m_ModelPositionDelta = {};
+            m_Timeline = m_Callbacks.timeline ? m_Callbacks.timeline(m_State.selectedClassId, m_ViewLoop) : nullptr;
+            if (m_Timeline && m_State.selectedClassId == selection.classId)
+                for (const auto& row : m_Timeline->rows) if (row.kind == selection.kind)
+                    for (const auto& box : row.boxes) if (box.id == selection.boxId)
+                    {
+                        m_InspectedWorldId.clear();
+                        const auto historyStatus = m_EditStatus;
+                        Select_Box(row, box);
+                        m_EditStatus = historyStatus;
+                        m_CameraEditor.selectedKeyId = selection.keyId;
+                    }
+            m_PendingWorldSelection.clear();
+            m_ObservedWorldClass = m_State.selectedClassId; m_ObservedWorldLoop = m_ViewLoop;
+            if (m_Callbacks.inspection.state)
+            {
+                const auto inspection = m_Callbacks.inspection.state(m_State.selectedClassId, m_ViewLoop);
+                m_ObservedWorldId = inspection.selectedId;
+                m_ObservedWorldGeneration = inspection.selectionGeneration;
+            }
+            return true;
+        }
+
         void Claim_Playback()
         {
             const auto state = Read_State();
@@ -390,7 +486,7 @@ namespace
                         m_Pending = COMMAND::NONE;
                         m_RequestedRepeatMovie.reset();
                         m_State = Read_State();
-                        m_SelectedBox.clear(); m_SelectedRow.clear(); m_SelectedKind.clear(); m_ViewLoop = false;
+                        m_SelectedBox.clear(); m_SelectedRow.clear(); m_SelectedKind.clear(); m_ViewLoop = false; m_EditMs = 0.f;
                         m_EditBox.reset(); m_CameraEditor = {}; m_Drag.reset();
                         m_Timeline = m_Callbacks.timeline ? m_Callbacks.timeline(m_State.selectedClassId, false) : nullptr;
                     }
@@ -427,6 +523,7 @@ namespace
             ImGui::BeginDisabled(!m_State.active || !m_Callbacks.stop);
             if (ImGui::Button("Stop")) m_Pending = COMMAND::STOP;
             ImGui::EndDisabled();
+            ImGui::SameLine(); Render_HistoryButtons();
             if (sequencer)
             {
                 ImGui::SameLine();
@@ -818,6 +915,7 @@ namespace
                     m_InspectedWorldId = box.id;
             }
             m_CameraKey = 0; m_EditBox.reset(); m_CameraEditor = {}; m_FollowPlayback = false;
+            m_CameraHistorySelection.reset();
             m_ModelPositionDelta = {};
         }
 
@@ -913,6 +1011,7 @@ namespace
                         drag.before.kind != "Camera" && drag.before.kind != "Sound")
                         end = start + m_Callbacks.mapTime(drag.before.classId, drag.before.loop, drag.originalEnd, true)
                             - m_Callbacks.mapTime(drag.before.classId, drag.before.loop, drag.originalStart, true);
+                    Sync_HistorySelection();
                     if (m_Callbacks.editTiming(drag.before, start, end, drag.gesture, m_EditStatus))
                     { m_EditBox.reset(); m_RowDirty = false; }
                 }
@@ -1095,6 +1194,7 @@ namespace
             if (ImGui::Button("Publish")) m_PublishRequested = true;
             ImGui::EndDisabled();
             ImGui::EndDisabled();
+            ImGui::SameLine(); Render_HistoryButtons();
             ImGui::SameLine(); ImGui::Checkbox("Live preview", &m_LiveCamera);
             ImGui::TextWrapped("Camera keys are saved for Client playback. Publish applies saved World changes; server action timing is unchanged.");
             if (!m_EditStatus.empty()) ImGui::TextWrapped("%s", m_EditStatus.c_str());
@@ -1135,9 +1235,11 @@ namespace
                         double sourceCursor = MatchesPlayback() ? m_State.sourceClockMs :
                             m_Callbacks.mapTime ? m_Callbacks.mapTime(m_State.selectedClassId, m_ViewLoop, m_EditMs, true) : 0.;
                         const auto local = static_cast<uint32_t>(std::clamp(sourceCursor - row.startMs, 0., double(row.cue.iDurationMs)));
+                        const auto beforeSelection = Capture_HistorySelection();
                         const auto result = Client::CSequenceCameraEditor::Render(row, m_CameraEditor, local, m_Callbacks.captureFreeCamera);
                         if (result.changed)
                         {
+                            if (!m_CameraHistorySelection) m_CameraHistorySelection = beforeSelection;
                             m_EditValue = Client::CEffectRecoveryCamera::Write_Row(row, &m_EditValue);
                             m_RowDirty = true; m_FollowPlayback = false;
                             if (m_LiveCamera) m_ApplyRequested = true;
@@ -1181,6 +1283,7 @@ namespace
         CALLBACKS m_Callbacks;
         STATE m_State;
         COMMAND m_Pending = COMMAND::NONE;
+        int m_HistoryRequest = 0;
         std::uint64_t m_OwnerToken = 0;
         bool m_OwnsPlayback = false;
         bool m_RequestedPause = false;
@@ -1211,6 +1314,7 @@ namespace
         bool m_OpenedAuthoring = false, m_RowDirty = false;
         bool m_ApplyRequested = false, m_SaveRequested = false, m_ReloadRequested = false;
         std::optional<Client::CLASS_MOVIE_AUTHORING_BOX> m_EditBox;
+        std::optional<Client::CLASS_MOVIE_HISTORY_SELECTION> m_CameraHistorySelection;
         Client::DATA_JSON_VALUE m_EditValue;
         std::map<std::string, int> m_KeySelections;
         std::string m_EditStatus, m_OpenEffect, m_DeleteWorldItem;

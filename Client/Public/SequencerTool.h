@@ -46,6 +46,7 @@ public:
         std::size_t selectedCategory = 0u;
         std::string selectedClassId, activeClassId, selectedLabel;
         bool authoringDirty = false, authoringPublishPending = false;
+        bool canUndoAuthoring = false, canRedoAuthoring = false;
         std::string authoringStatus;
         std::uint64_t authoringGeneration = 0;
         bool available = false;
@@ -81,6 +82,9 @@ public:
         std::function<bool(const std::string&, bool, std::string&)> setRepeatMovie;
         std::function<std::shared_ptr<const CLASS_MOVIE_TIMELINE>(const std::string&, bool)> timeline;
         std::function<bool(std::string&)> beginAuthoring, saveAuthoring, reloadAuthoring, publishAuthoring;
+        std::function<void(const CLASS_MOVIE_HISTORY_SELECTION&)> setHistorySelection;
+        std::function<void()> finishHistory;
+        std::function<bool(CLASS_MOVIE_HISTORY_SELECTION&, std::string&)> undoAuthoring, redoAuthoring;
         std::function<double(const std::string&, bool, double, bool)> mapTime;
         std::function<bool(VALTAN_CINEMATIC_CAMERA_POSE&, std::string&)> captureFreeCamera;
         std::function<bool(const std::string&, bool, const std::string&, const std::string&, CLASS_MOVIE_AUTHORING_BOX&, std::string&)> editableBox;
