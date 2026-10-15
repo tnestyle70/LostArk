@@ -6,6 +6,7 @@
 #include "AnimationPreviewAssets.h"
 #include "BinaryAsset/WModelDecoder.h"
 #include "Effect_Catalog.h"
+#include "DataJson.h"
 #include "Model.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
@@ -104,11 +105,151 @@ std::unordered_map<std::string, std::string> Client::Read_CompositionAnimationDi
     return names;
 }
 
-bool_t Client::CAnimation_Tool::Read_CompositionAnimationResources(
-	std::vector<COMPOSITION_ANIMATION_RESOURCE>& outResources,
-	std::string& outStatus) const
+
+namespace
 {
-	m_bCompositionResourcesReadAttempted = true;
+std::string WorldText(const Client::DATA_JSON_VALUE& row, const char* key)
+{
+    const auto* value = row.Find(key);
+    return value && value->Is_String() ? value->Get_String() : std::string{};
+}
+
+// 목록은 저장된 이름·identity만 투영한다. 실제 Motion 재생과 편집 검증은 기존 WorldObjectTool이 소유한다.
+// 네이티브 clip이 없는 분열 공을 임의 Animation으로 만들지 않고 명시적인 Object Motion으로 남긴다.
+bool Read_WorldAnimationResources(std::vector<Client::COMPOSITION_ANIMATION_RESOURCE>& resources,
+    const std::vector<Client::COMPOSITION_ANIMATION_RESOURCE>& previous, std::string& diagnostics)
+{
+    using namespace Client;
+    constexpr const char* area = "LV_LUT_MIDNIGHTC_ED";
+    const auto path = CProjectDataRoot::Resolve(std::filesystem::path("Maps/Authoring") / area /
+        (std::string(area) + ".worldsequences.json"));
+    const auto retainAll = [&](const std::string& error)
+    {
+        diagnostics += " World Object inventory: " + error + "; previous rows retained. ";
+        for (const auto& row : previous) if (!row.strWorldObjectId.empty()) resources.push_back(row);
+        return false;
+    };
+    std::error_code error;
+    const auto bytes = std::filesystem::file_size(path, error);
+    if (error || bytes > 16u * 1024u * 1024u) return retainAll("source unavailable or exceeds 16 MiB");
+    std::ifstream input(path, std::ios::binary);
+    const std::string text((std::istreambuf_iterator<char>(input)), {});
+    DATA_JSON_VALUE root; std::string status;
+    if (!input || input.bad() || text.size() != bytes || !CDataJson::Parse(text, root, status) ||
+        WorldText(root, "schema") != "lostark.world-sequences" || WorldText(root, "areaId") != area)
+        return retainAll("invalid source: " + status);
+    const auto* objects = root.Find("objectResources");
+    const auto* instances = root.Find("instances");
+    const auto* templates = root.Find("templates");
+    if (!objects || !objects->Is_Array() || !instances || !instances->Is_Array() || !templates || !templates->Is_Array())
+        return retainAll("missing object/motion arrays");
+    std::unordered_map<std::string, const DATA_JSON_VALUE*> motions;
+    for (const auto& row : templates->Get_Array()) motions.emplace(WorldText(row, "sequenceId"), &row);
+    // 같은 WModel을 사용하는 여러 크기/이름의 Object는 한 번만 디코드하되 각각의 stable ID를 유지한다.
+    std::unordered_map<std::string, std::vector<Engine::MODEL_ANIMATION_CATALOG_ENTRY>> catalogs;
+    std::unordered_set<std::string> failedModels, objectIds;
+    bool complete = true;
+    for (const auto& object : objects->Get_Array())
+    {
+        const auto id = WorldText(object, "objectId");
+        const auto modelId = WorldText(object, "modelAssetId");
+        const auto* scale = object.Find("modelPreScale");
+        const auto* animated = object.Find("animated");
+        const auto donor = WorldText(object, "animationSetAssetId");
+        if (!animated || !animated->Is_Boolean() || id.empty() || !objectIds.insert(id).second || !scale || !scale->Is_Number() ||
+            !std::isfinite(scale->Get_Number()) || scale->Get_Number() <= 0. || scale->Get_Number() > 100000. ||
+            (!modelId.empty() && CRuntimeAssetRoot::Resolve(modelId).empty()) ||
+            (!donor.empty() && CRuntimeAssetRoot::Resolve(donor).empty()))
+            return retainAll("invalid object identity/model/scale");
+    }
+    for (const auto& object : objects->Get_Array())
+    {
+        COMPOSITION_ANIMATION_RESOURCE base;
+        base.strWorldObjectId = WorldText(object, "objectId");
+        base.strTargetAssetName = "WorldObject:" + base.strWorldObjectId;
+        base.strModelAssetId = base.strSourceAssetId = WorldText(object, "modelAssetId");
+        base.strProfileId = base.strTargetAssetName;
+        base.strAnimationSetAssetId = WorldText(object, "animationSetAssetId");
+        base.fModelPreScale = static_cast<float>(object.Find("modelPreScale")->Get_Number());
+        auto label = WorldText(object, "displayName");
+        if (label.empty()) label = base.strWorldObjectId;
+        if (!base.strModelAssetId.empty()) label += " [" + std::filesystem::path(base.strModelAssetId).stem().string() + "]";
+        base.CategoryPath = {"World", label};
+        const auto* animated = object.Find("animated");
+        if (animated && animated->Is_Boolean() && animated->Get_Boolean() && !base.strModelAssetId.empty())
+        {
+            const auto readSource = [&](const std::string& source)
+            {
+                if (source.empty()) return;
+                if (!catalogs.contains(source) && !failedModels.contains(source))
+                {
+                    std::vector<Engine::MODEL_ANIMATION_CATALOG_ENTRY> catalog;
+                    const auto file = CRuntimeAssetRoot::Resolve(source);
+                    if (file.empty() || !Engine::CWModelDecoder::Read_AnimationCatalog(file, catalog, status))
+                    { failedModels.insert(source); diagnostics += " " + source + ": " + status; }
+                    else catalogs.emplace(source, std::move(catalog));
+                }
+                if (failedModels.contains(source))
+                {
+                    complete = false;
+                    for (const auto& old : previous)
+                        if (old.strWorldObjectId == base.strWorldObjectId && old.strSourceAssetId == source && !old.Is_WorldMotion())
+                            resources.push_back(old);
+                    return;
+                }
+                for (const auto& clip : catalogs.at(source))
+                {
+                    const double duration = std::round(double(clip.durationTicks) / Engine::CAnimation::COOKED_TICK_RATE * 1000.);
+                    if (clip.name.empty() || !std::isfinite(duration) || duration < 1. || duration > 600000.) continue;
+                    auto row = base; row.strSourceAssetId = source;
+                    row.strRuntimeClip = row.strDisplayName = clip.name;
+                    row.fDurationTicks = clip.durationTicks; row.fTicksPerSecond = Engine::CAnimation::COOKED_TICK_RATE;
+                    row.iDurationMs = static_cast<std::uint32_t>(duration);
+                    row.CategoryPath.push_back("Native clips"); resources.push_back(std::move(row));
+                }
+            };
+            readSource(base.strModelAssetId);
+            readSource(WorldText(object, "animationSetAssetId"));
+        }
+        bool hasMotion = false;
+        for (const auto& instance : instances->Get_Array())
+        {
+            const auto* bindings = instance.Find("bindings");
+            bool owns = false;
+            if (bindings && bindings->Is_Array()) for (const auto& binding : bindings->Get_Array())
+                owns |= WorldText(binding, "targetKind") == "OBJECT_RESOURCE" && WorldText(binding, "targetId") == base.strWorldObjectId;
+            const auto instanceId = WorldText(instance, "instanceId");
+            const auto* grouped = object.Find("motionInstanceIds");
+            if (grouped && grouped->Is_Array()) for (const auto& value : grouped->Get_Array())
+                owns |= value.Is_String() && value.Get_String() == instanceId;
+            owns |= WorldText(object, "sequenceInstanceId") == instanceId && !instanceId.empty();
+            if (!owns || instanceId.empty()) continue;
+            const auto motion = motions.find(WorldText(instance, "templateId"));
+            if (motion == motions.end()) { complete = false; continue; }
+            auto row = base; row.strWorldMotionId = instanceId;
+            row.strDisplayName = WorldText(*motion->second, "displayName");
+            if (row.strDisplayName.empty()) row.strDisplayName = instanceId;
+            row.strDisplayName += " [Object Motion]"; row.CategoryPath.push_back("Object Motions");
+            const auto* duration = motion->second->Find("durationMs");
+            if (duration && duration->Is_Number() && duration->Get_Number() > 0. && duration->Get_Number() <= 600000.)
+                row.iDurationMs = static_cast<std::uint32_t>(duration->Get_Number());
+            resources.push_back(std::move(row)); hasMotion = true;
+        }
+        if (!hasMotion)
+        {
+            base.strDisplayName = "Open Object / " + label;
+            base.CategoryPath.push_back("Object Motions"); resources.push_back(std::move(base));
+        }
+    }
+    return complete;
+}
+}
+
+bool Client::Read_CompositionAnimationResources(
+	std::vector<COMPOSITION_ANIMATION_RESOURCE>& outResources,
+	std::string& outStatus)
+{
+	const auto previousResources = outResources;
 	std::vector<COMPOSITION_ANIMATION_RESOURCE> resources;
 	std::string diagnostics;
 	bool_t succeeded = true;
@@ -122,7 +263,7 @@ bool_t Client::CAnimation_Tool::Read_CompositionAnimationResources(
 		{
 			succeeded = false;
 			diagnostics += std::string(targetName) + ": preview descriptor is missing. ";
-			for (const auto& previous : m_CompositionAnimationResources)
+			for (const auto& previous : previousResources)
 				if (previous.strTargetAssetName == targetName) resources.push_back(previous);
 			continue;
 		}
@@ -139,7 +280,7 @@ bool_t Client::CAnimation_Tool::Read_CompositionAnimationResources(
 				diagnostics += std::string(source) + ": " +
 					(path.empty() ? "invalid Resources-relative path" : status) +
 					"; previous rows retained. ";
-				for (const auto& previous : m_CompositionAnimationResources)
+				for (const auto& previous : previousResources)
 					if (previous.strTargetAssetName == targetName && previous.strSourceAssetId == source)
 						resources.push_back(previous);
 				continue;
@@ -189,16 +330,25 @@ bool_t Client::CAnimation_Tool::Read_CompositionAnimationResources(
         }
         else if (model) { succeeded = false; diagnostics += "Valtan authored clips rejected: " + status; }
     }
+	if (!Read_WorldAnimationResources(resources, previousResources, diagnostics)) succeeded = false;
 	std::sort(resources.begin(), resources.end(), [](const auto& left, const auto& right) {
-		return std::tie(left.strTargetAssetName, left.strRuntimeClip, left.strSourceAssetId) <
-			std::tie(right.strTargetAssetName, right.strRuntimeClip, right.strSourceAssetId);
+		return std::tie(left.strTargetAssetName, left.strRuntimeClip, left.strSourceAssetId, left.strWorldMotionId) <
+			std::tie(right.strTargetAssetName, right.strRuntimeClip, right.strSourceAssetId, right.strWorldMotionId);
 	});
-	m_CompositionAnimationResources = std::move(resources);
-	outResources = m_CompositionAnimationResources;
+	outResources = std::move(resources);
 	outStatus = std::to_string(outResources.size()) +
-		" animation clips / " + std::to_string(COMPOSITION_ANIMATION_TARGET_ASSET_NAMES.size()) + " model targets. " + diagnostics;
-	m_strCompositionAnimationResourceStatus = outStatus;
+		" animation / World Motion resources. " + diagnostics;
 	return succeeded;
+}
+
+bool_t Client::CAnimation_Tool::Read_CompositionAnimationResources(
+    std::vector<COMPOSITION_ANIMATION_RESOURCE>& resources, std::string& status) const
+{
+    m_bCompositionResourcesReadAttempted = true;
+    const bool result = Client::Read_CompositionAnimationResources(m_CompositionAnimationResources, status);
+    resources = m_CompositionAnimationResources;
+    m_strCompositionAnimationResourceStatus = status;
+    return result;
 }
 
 std::string Client::CAnimation_Tool::Get_EventFilePath() const

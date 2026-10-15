@@ -31,12 +31,14 @@ class CKoukuSaydonPresentationPlayer;
 class CEffectAuthoringV2Pane;
 class CEffectAuthoringResourceTree;
 class CEffectAuthoringSequencer;
+struct COMPOSITION_ANIMATION_RESOURCE;
 class CNpc;
 class CValtan;
 
 class CEffect_Tool_V2 final
 {
 public:
+    bool Consume_WorldMotionRequest(COMPOSITION_ANIMATION_RESOURCE& resource);
 	using EFFECT_TYPE = EFFECT_V2_TYPE;
 
 	enum class RESOURCE_SLOT : int32_t

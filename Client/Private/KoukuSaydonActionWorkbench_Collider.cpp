@@ -884,7 +884,10 @@ void Client::CKoukuSaydonActionWorkbench::Render_ColliderBoxDetails(const KOUKU_
 		ImGui::TextDisabled("Circular motion requires equal X/Z scale at both ends.");
 	changed |= beforeAnchor.strAnchorKind != edit.strAnchorKind || beforeAnchor.bFollowBoss != edit.bFollowBoss ||
 		beforeAnchor.strBone != edit.strBone || beforeAnchor.strBoneTarget != edit.strBoneTarget ||
-		beforeAnchor.strWorldId != edit.strWorldId;
+		beforeAnchor.strBoneRotation != edit.strBoneRotation || beforeAnchor.strWorldId != edit.strWorldId ||
+		beforeAnchor.strWorldOccurrenceId != edit.strWorldOccurrenceId ||
+		beforeAnchor.iWorldEmissionIndex != edit.iWorldEmissionIndex ||
+		beforeAnchor.strWorldEffectTrackId != edit.strWorldEffectTrackId;
 	ImGui::BeginDisabled(!movable);
 	changed |= vectorControl("End position offset (m)", edit.ColliderEndPositionOffset, -100000.f, 100000.f);
 	changed |= vectorControl("End size (scale)", edit.ColliderEndScale, .001f, 10000.f);

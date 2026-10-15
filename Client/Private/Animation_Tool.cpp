@@ -410,7 +410,7 @@ bool_t Client::CAnimation_Tool::Preview_CompositionAnimationResource(
 	const COMPOSITION_ANIMATION_RESOURCE& resource,
 	std::string& strOutStatus)
 {
-	if (resource.strRuntimeClip.empty() || resource.iDurationMs == 0u ||
+	if (resource.Is_WorldMotion() || resource.strRuntimeClip.empty() || resource.iDurationMs == 0u ||
 		resource.iDurationMs > 600000u)
 	{
 		strOutStatus = m_Status = m_strKoukuSaydonPatternStatus =

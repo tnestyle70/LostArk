@@ -5350,3 +5350,8 @@ const char* Client::CEffect_Tool_V2::Slot_Description(const RESOURCE_SLOT eSlot)
 	default: return "";
 	}
 }
+
+bool Client::CEffect_Tool_V2::Consume_WorldMotionRequest(COMPOSITION_ANIMATION_RESOURCE& resource)
+{
+    return m_pAuthoringSequencer && m_pAuthoringSequencer->Consume_WorldMotionRequest(resource);
+}

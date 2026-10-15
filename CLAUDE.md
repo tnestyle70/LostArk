@@ -842,6 +842,11 @@ Complete Play, Restart, Next를 runtime-ready로 표시하지 않는다. consume
 비교하고 성공 receipt도 exact Server revision에 고정한다.
 
 Debug F1의 `Effect Tool V1`과 `Effect Tool V2`는 각각 독립 창·입력 focus·닫기 상태를 갖는다.
+두 도구의 `Model View → Animation Library`에서 Character/Boss/World 목록을 열고 모델·clip을
+선택한다. `Load Model`, `Add Animation`, `Add & Play`는 기존 Character Preview와 Effect sequencer를
+사용한다. World의 native clip과 Object Motion, 전체 Effect occurrence와 Element 본 부착의 저장
+범위 및 Kouku Collider의 `Load anchor model` 사용법은
+[Animation Tool 인계](.md/TEAM/ANIMATION_TOOL_OWNER_HANDOFF.md#effect-모델애니메이션과-본-선택)를 따른다.
 V1의 `All Effects`는 direct-authored Player Product cue와 Valtan pattern cue를 같은 저작 tree로 연다.
 V1 Model/Summon detail의 `Loop Animation`은 cue window 안에서 clip만 반복하고 이동은 계속한다.
 `Hold Last Frame`과 동시에 켤 수 없으며 저장 문서의 생략된 `loop`는 false다. 한 문서는 ModelCue를 최대 16개 가진다.

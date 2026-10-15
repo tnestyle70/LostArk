@@ -25,6 +25,12 @@ std::string Parent_Key(const EFFECT_RESOURCE_KEY& key)
 { return std::to_string(static_cast<int>(key.eOwnerKind)) + ":" + key.strStableId; }
 }
 
+// Resources의 World motion 선택을 MainApp의 기존 WorldObjectTool 진입점에 전달한다.
+bool CEffect_Tool::Consume_WorldMotionRequest(COMPOSITION_ANIMATION_RESOURCE& resource)
+{
+    return m_pAuthoringSequencer && m_pAuthoringSequencer->Consume_WorldMotionRequest(resource);
+}
+
 bool CEffect_Tool::Build_KoukuPatternPreviewContext(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
     const std::string& patternId, const std::string& occurrenceId, const std::string& effectId,
     EFFECT_TOOL_KOUKU_PATTERN_PREVIEW& context, std::string& status)

@@ -816,6 +816,13 @@ namespace Client
 		{
 			m_PresentationModelResolver = std::move(resolver);
 		}
+		// 상세 창의 명시적 Load 요청만 공용 Preview 소유자에게 전달한다. 읽기용 resolver는 모델을 생성하지 않는다.
+		using PRESENTATION_MODEL_LOADER = std::function<bool_t(
+			const KOUKU_SAYDON_COMPOSITION_PATTERN&, std::string&)>;
+		void Set_PresentationModelLoader(PRESENTATION_MODEL_LOADER loader)
+		{
+			m_PresentationModelLoader = std::move(loader);
+		}
 		void Set_WorldPlacementResolver(std::function<bool_t(KOUKU_SAYDON_WORLD_PLACEMENT&, std::string&)> resolver)
 		{
 			m_WorldPlacementResolver = std::move(resolver);
@@ -1307,6 +1314,8 @@ namespace Client
 		// World 문서에서 받은 값 목록과 선택 box 입력이다. 실제 arena 객체 포인터를 목록에 보관하지 않는다.
 		std::vector<KOUKU_WORLD_SEQUENCE_RESOURCE> m_WorldSequenceResources;
 		PRESENTATION_MODEL_RESOLVER m_PresentationModelResolver;
+		PRESENTATION_MODEL_LOADER m_PresentationModelLoader;
+		std::array<char_t, 128u> m_PresentationBoneSearch{};
 		std::function<bool_t(KOUKU_SAYDON_WORLD_PLACEMENT&, std::string&)> m_WorldPlacementResolver;
 		bool_t Stage_NewWorldPlacement(std::string_view instanceId,
 			std::optional<KOUKU_SAYDON_WORLD_PLACEMENT>& outPlacement, std::string& outStatus) const;

@@ -2431,6 +2431,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationAnchor(const KOUKU_
 		edit.strBoneRotation = "TARGET_YAW";
 	if (edit.strAnchorKind == "BOSS")
 	{
+		ImGui::SeparatorText("Bone Anchor");
 		ANIMATION_MODEL_TARGET_VIEW bodyView, weaponView;
 		const auto resolve = [&](ANIMATION_BONE_TARGET target, ANIMATION_MODEL_TARGET_VIEW &view) {
 			if (m_PresentationModelResolver && m_PresentationModelResolver(pattern, target, view))
@@ -2439,53 +2440,79 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationAnchor(const KOUKU_
 					   CAnimationTargetService::Resolve_AssetName()) == pattern.strActorProfileId &&
 				CAnimationTargetService::Resolve_ModelTarget(target, view);
 		};
-		const bool hasBody = resolve(ANIMATION_BONE_TARGET::BODY, bodyView);
-		const bool hasWeapon = resolve(ANIMATION_BONE_TARGET::WEAPON, weaponView);
-		ImGui::BeginDisabled(!hasBody);
+		bool hasBody = resolve(ANIMATION_BONE_TARGET::BODY, bodyView);
+		bool hasWeapon = resolve(ANIMATION_BONE_TARGET::WEAPON, weaponView);
+		ImGui::Text("Model: %s", pattern.strActorProfileId.c_str());
+		ImGui::BeginDisabled(!m_PresentationModelLoader);
+		if (ImGui::Button("Load anchor model##PresentationAnchor"))
+		{
+			// 모델 로드와 본 선택을 분리하여 아직 Play하지 않은 Pattern에서도 실제 골격을 열거한다.
+			// 실패는 edit의 기존 bone을 그대로 두며 공용 Preview 소유자가 이전 모델을 보존한다.
+			if (m_PresentationModelLoader(pattern, m_strStatus))
+			{
+				hasBody = resolve(ANIMATION_BONE_TARGET::BODY, bodyView);
+				hasWeapon = resolve(ANIMATION_BONE_TARGET::WEAPON, weaponView);
+			}
+		}
+		ImGui::EndDisabled();
 		if (ImGui::BeginCombo("Bone target##PresentationAnchor", edit.strBoneTarget.c_str()))
 		{
-			if (ImGui::Selectable("BODY", edit.strBoneTarget == "BODY"))
+			if (ImGui::Selectable("BODY", edit.strBoneTarget == "BODY") && edit.strBoneTarget != "BODY")
 			{
 				edit.strBoneTarget = "BODY";
 				edit.strBone.clear();
 				edit.strBoneRotation = "TARGET_YAW";
+				m_PresentationBoneSearch[0] = '\0';
 			}
 			ImGui::BeginDisabled(!hasWeapon);
-			if (ImGui::Selectable("WEAPON", edit.strBoneTarget == "WEAPON"))
+			if (ImGui::Selectable("WEAPON", edit.strBoneTarget == "WEAPON") && edit.strBoneTarget != "WEAPON")
 			{
 				edit.strBoneTarget = "WEAPON";
 				edit.strBone.clear();
 				edit.bFollowBoss = true;
 				edit.strBoneRotation = "TARGET_YAW";
+				m_PresentationBoneSearch[0] = '\0';
 			}
 			ImGui::EndDisabled();
 			ImGui::EndCombo();
 		}
 		const auto &targetView = edit.strBoneTarget == "WEAPON" ? weaponView : bodyView;
-		if (ImGui::BeginCombo("Bone##PresentationAnchor", edit.strBone.empty() ? "(pivot)" : edit.strBone.c_str()))
+		const bool hasTarget = edit.strBoneTarget == "WEAPON" ? hasWeapon : hasBody;
+		ImGui::BeginDisabled(!hasTarget);
+		ImGui::InputTextWithHint("Find bone##PresentationAnchor", "hand, weapon, head...",
+			m_PresentationBoneSearch.data(), m_PresentationBoneSearch.size());
+		if (ImGui::BeginCombo("Anchor bone##PresentationAnchor", edit.strBone.empty() ? "(boss pivot)" : edit.strBone.c_str()))
 		{
-			const auto bones = targetView.Model ? targetView.Model->Get_BoneNames() : std::vector<std::string>{};
-			if (edit.strBoneTarget == "BODY" && ImGui::Selectable("(pivot)", edit.strBone.empty()))
+			const std::vector<std::string> bones = targetView.Model ? targetView.Model->Get_BoneNames() : std::vector<std::string>{};
+			if (edit.strBoneTarget == "BODY" && ImGui::Selectable("(boss pivot)", edit.strBone.empty()))
 			{
 				edit.strBone.clear();
 				edit.strBoneRotation = "TARGET_YAW";
 			}
 			for (const auto &bone : bones)
+			{
+				if (!ContainsInsensitive(bone, m_PresentationBoneSearch.data()))
+				{
+					continue;
+				}
 				if (ImGui::Selectable(bone.c_str(), edit.strBone == bone))
 				{
 					edit.strBone = bone;
 					edit.bFollowBoss = true;
 				}
+			}
 			ImGui::EndCombo();
 		}
 		ImGui::EndDisabled();
 		if (!hasBody)
-			ImGui::TextDisabled("Preview this Pattern's model to choose its actual bones.");
+			ImGui::TextWrapped("Load anchor model to select a hand or socket before playing this Pattern.");
 		else if (edit.strBoneTarget == "WEAPON" && !hasWeapon)
 			ImGui::TextDisabled("This preview model has no registered weapon.");
 		else if (!edit.strBone.empty() &&
 			(!targetView.Model || targetView.Model->Find_BoneIndex(edit.strBone.c_str()) < 0))
 			ImGui::TextDisabled("The saved bone is unavailable on this target.");
+		else
+			ImGui::TextDisabled("Actual %s model bones. The selected name is saved with this box.", edit.strBoneTarget.c_str());
 		{
 			ImGui::BeginDisabled(edit.strBone.empty());
 			bool boneRotation = edit.strBoneRotation == "BONE";
@@ -2495,7 +2522,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationAnchor(const KOUKU_
 		}
 		ImGui::TextWrapped("%s",
 			edit.strBoneRotation == "BONE"
-				? "BODY (pivot) follows the boss body. This bone owns position and orientation, so the Effect turns with the bone and this box's rotation is applied in the bone's frame."
+				? "This bone owns position and orientation. The box offset and rotation are applied in its frame; Server Colliders use the sampled planar frame."
 				: "BODY (pivot) follows the boss body. Named bones follow their position; rotation uses boss facing and this box's rotation.");
 	}
 	if (!effect && edit.strAnchorKind == "WORLD")

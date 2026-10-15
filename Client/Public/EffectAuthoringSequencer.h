@@ -125,6 +125,7 @@ public:
     bool Is_ValtanSourcePreview(const std::string& assetId) const
     { return m_ValtanEffectPreview && m_ValtanEffectPreview->assetId == assetId; }
     bool Consume_InteractionRequest();
+    bool Consume_WorldMotionRequest(COMPOSITION_ANIMATION_RESOURCE& resource);
     const std::string& Status() const { return m_Status; }
     std::uint32_t ClockMs() const { return static_cast<std::uint32_t>(m_ClockMs); }
 
@@ -226,6 +227,8 @@ private:
         EFFECT_RESOURCE_KEY key;
         std::uint32_t durationMs = 3000u;
         KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE collider;
+        COMPOSITION_ANIMATION_RESOURCE animation;
+        bool loadedModelSupplement = false;
     };
     bool Validate_AnimationRows(const std::vector<CLIP>& rows);
     bool Validate_SoundRows(const std::vector<SOUND_ROW>& rows);
@@ -245,6 +248,10 @@ private:
     void Render_CompositionResources(bool embedded = false);
     void Render_BoxDetail(bool embedded = false);
     bool Refresh_CompositionResourceInventory();
+    void Refresh_LoadedModelAnimationResources();
+    void Render_AnimationLibrary();
+    void Render_AnimationResourceActions(const COMPOSITION_ANIMATION_RESOURCE& resource);
+    bool Load_AnimationResource(const COMPOSITION_ANIMATION_RESOURCE& resource);
     void Rebuild_CompositionResourceTrees();
     void Select_TimelineRow(TRACK_KIND kind, const std::string& id);
     bool Apply_AnimationRow(const CLIP& row);
@@ -419,6 +426,9 @@ private:
     std::array<std::string, 6> m_ResourceQueries, m_SelectedResourceIds;
     std::array<std::array<char, 160>, 6> m_ResourceSearch{};
     std::vector<RESOURCE_ENTRY> m_CompositionResources;
+    std::vector<COMPOSITION_ANIMATION_RESOURCE> m_AnimationLibrary;
+    std::optional<COMPOSITION_ANIMATION_RESOURCE> m_WorldMotionRequest;
+    std::array<char, 128u> m_AnchorSearch{};
     int m_ResourceTab = 0;
     bool m_ResourcesLoaded = false, m_ResourcesOpen = true, m_BoxDetailOpen = true;
     std::uint64_t m_ResourceModelGeneration = ~std::uint64_t{0u};
