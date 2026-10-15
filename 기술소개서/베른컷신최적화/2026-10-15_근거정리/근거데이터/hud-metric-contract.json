@@ -1,0 +1,275 @@
+{
+  "schema": "lostark.out.hud-metric-contract.v1",
+  "auditedAt": "2026-10-15T19:01:00.234845+09:00",
+  "scope": "Read-only source and existing evidence audit. No build, UI, app, GPU run, product change, or new measurement.",
+  "hud": {
+    "fps": {
+      "expression": "EMA(1 / MainApp update fTimeDelta), alpha=0.1; rounded integer",
+      "not": "instantaneous 1000 / JSON gpuFrameMs"
+    },
+    "vertex": {
+      "expression": "CProfiler::Get_GeometryStats().VSInvocations",
+      "meaning": "GPU vertex-shader invocations for the complete Update/Render query interval, including all submitted passes and TK/UI; not unique mesh vertices or VB capacity",
+      "validity": "VertexValid; otherwise --"
+    },
+    "indices": {
+      "expression": "CProfiler::Get_GeometryStats().TotalIndices",
+      "meaning": "instrumented Engine direct indexed counts plus read-back actual indirect indexCount * instanceCount * submission count; repeated passes/instances included, uninstrumented TK/ImGui indexed calls excluded",
+      "validity": "IndexValid; otherwise --"
+    },
+    "timing": "Latest completed geometry result, not the current CPU frame. Ring size 8; minimum read latency 4 frames; GPU -NF is actual current geometry frame minus completed result frame. FPS and geometry are not same-time samples."
+  },
+  "json": {
+    "ordinaryVS": {
+      "path": "frames[].pipeline.vsInvocations",
+      "relationship": "Separate D3D11 pipeline query, but same whole Update/Render draw population as HUD. Filter gpuValid / valid status, align frame identity. No basis to call HUD map-only or multiply/divide by pass count to reconcile differences.",
+      "exactHUDHistoryPresent": false
+    },
+    "distanceVS": {
+      "path": "bernCutsceneGeometry.cutsceneSamples[].geometry.vsInvocations",
+      "relationship": "Exact same Geometry query used by HUD, retrieved by sampled geometryFrameNumber via Get_GeometryStatsForFrame."
+    },
+    "distanceIndices": "bernCutsceneGeometry.cutsceneSamples[].geometry.totalIndices",
+    "frameJoin": "cutsceneSamples[].geometry.captureFrameNumber == frames[].frameNumber when Capture enabled; geometry.frameNumber identifies geometryFrameNumber. captureFrameNumber is 0 if ordinary Capture was disabled.",
+    "matchingCamera": "Each cutsceneSamples[].map contains cameraPosition, view, projection, viewport; each sample also has cueSeconds and observedWallMs.",
+    "validity": "Require geometry.resolved, vertexValid and indexValid. Invalid/pending geometry fields are null; do not treat as zero. Geometry sample captures rendered frame; HUD later displays that frame on query completion.",
+    "notComparableFields": [
+      "meshDraws[].vertexCount is VB capacity, not actual VS invocation count",
+      "ordinary counters.indices is instrumented CPU-known/direct work, not exact HUD TotalIndices including actual indirect counts",
+      "indirect submitted upper bounds are not actual indirect geometry",
+      "mapDraws has static-map color-pass scope, not full-frame HUD scope"
+    ],
+    "distanceRange": "0..250m filters source-distance rows by bounding-sphere center. It does not crop whole-frame Geometry counters; mapDraws remain all instrumented static-map color submissions.",
+    "g44Save": "Current normal JSON Save stops/drains an existing distance recording and includes retained immutable distance data using the existing writer. With genuinely no distance data it saves ordinary frames and explicitly reports distance records absent. Saving does not start distance recording."
+  },
+  "historicalWindows": [
+    {
+      "file": "Bern_CutScene_20261015_140215_622_frame1122_18456_0.json",
+      "sha256": "b47c07a92d6872bc7fa4bb7a6c02ee62f028e8967003e44e806e6f39783b376c",
+      "frames": 1122,
+      "gpuValidFrames": 1118,
+      "gpuPendingFrames": 4,
+      "seconds": 28.4766096,
+      "VSmedian": 1799259.5,
+      "VSmax": 6820320,
+      "meshDetailAvailable": false
+    },
+    {
+      "file": "Bern_CutScene_20261015_140227_980_frame1468_18456_1.json",
+      "sha256": "a52db88e3b519e726b020960db38ec46a64cca599992e4c83dd5d06f4aa70c57",
+      "frames": 120,
+      "gpuValidFrames": 116,
+      "gpuPendingFrames": 4,
+      "seconds": 6.5284047,
+      "VSmedian": 5312514.5,
+      "VSmax": 6569137,
+      "meshDetailAvailable": false
+    }
+  ],
+  "reconciliation": [
+    "The 1,799,259.5 and 5,312,514.5 values are medians of two different whole-window ordinary captures (1118 valid of1122 and116 valid of120 frames), not the exact frame on which the user read HUD 800k or500k.",
+    "The old captures have no distance section to align cue/camera/HUD geometry frame and no detailed mesh draws. Their median cannot confirm or refute the user-observed early-shot numbers, nor establish their causal reduction.",
+    "HUD and ordinary JSON are both whole-frame VS populations. Extra render passes may affect both; they do not by themselves explain the discrepancy between these two measurements.",
+    "800k to500k would be about300k /37.5% fewer VS invocations if measured for matched camera and conditions. This arithmetic describes the observation; source audit does not establish a paired measured reduction."
+  ],
+  "minimumUserCapture": [
+    "In Release, enter Bern and wait until any currently playing entrance cutscene has ended. Keep FOV, viewport, render settings and recording-detail settings unchanged.",
+    "Press F7. Enable 수집 (Capture) to retain ordinary frame/counter join. Set an identifying save label if desired.",
+    "In 베른 컷신 거리 / 실제 geometry 기록, use 기록 간격100ms, 최소 거리0m, 최대 거리250m. Click 컷신 재생 + 거리 기록. No F1 Start is necessary; this button requests the same replay and arms recording.",
+    "After approximately5seconds of actual playback, click 기록 종료 + 저장. This stops recording, not the cutscene camera; the cutscene continues normally. Wait for GPU drain and actual save-complete file path before closing the application.",
+    "This file preserves the early-shot HUD Geometry query plus per-sample camera/cue coordinates. The playback multiplier is0.5, so5wall-seconds is approximately2.5cueSeconds, subject to frame-delta cap. Compare by saved cueSeconds/view/projection, not an assumed16s duration.",
+    "If F7 was hidden, recording continues; reopen it to stop/save. Starting during a running cutscene changes the button to 진행 중 컷신 거리 기록 and records StartedMidCue, so wait and use replay for comparable starts."
+  ],
+  "abAvailability": {
+    "lowProxyOnlySwitch": false,
+    "cutscenePauseSeekOrFixedPoseUI": false,
+    "sameCameraConsecutiveLowProxyABBAUI": false,
+    "F1BernEntranceCamera": "Start Bern Cutscene replays authored cue; FOV controls change session FOV. Neither freezes/ seeks the camera.",
+    "F1OptimizationBenchmark": "화면 오차 LOD A OFF/B ON affects existing Mesh LOD and also gates the new low proxy. It is not a new-low-proxy-only switch. Its ABBA measurement requires a fixed camera and rejects camera/viewport/settings changes; moving cutscene replay is not deterministic ABBA.",
+    "restore": "Existing optimization session has 원래 화면으로 복귀 and restores its owned settings on end/cancel/change. That availability does not create a low-proxy-only A/B control.",
+    "conclusion": "Current UI can reliably save the reported current early-cutscene approximately500k HUD values, but cannot by itself isolate only the new lowproxy at an identical fixed camera. Do not present generic MeshLOD A/B as that causal test."
+  },
+  "nativeProbe": {
+    "sameCounter": "product-full-scene Probe.cpp uses Get_GeometryStatsForFrame(finalFrame): vsInvocations=VSInvocations and engineIndices=TotalIndices.",
+    "differentSceneScope": "Harness runs production Bern map-only offscreen renderer, fixed saved viewpoints, dt0; excludes full Client/Level actors/sky/local map lights/UI/sound/physics. No Present/vsync. Its VS is actual GPU work in that harness but not directly the Client HUD scene.",
+    "differentTiming": "Legacy renderFps is CPU wall throughput over16 render submissions plus final GPU event drain after8 warmup frames, not Client HUD FPS; GPU timings are separate profiler timestamp intervals.",
+    "isolatingLowProxy": "The harness can separately call Set_CutsceneGeometryEnabled(enabled) with fixed saved camera and unchanged MeshLod/HLod; this control is not exposed as current Release UI. No harness was run for this audit."
+  },
+  "sourceEvidence": [
+    {
+      "path": "Client/Default/Client.cpp",
+      "startLine": 141,
+      "endLine": 164,
+      "meaning": "main loop Begin_Frame -> Update -> Render -> End_Frame",
+      "sha256": "b709f8cd96757d8800c1e31c505dbd553c33d6180db404366207e819b20eb520"
+    },
+    {
+      "path": "Client/Private/MainApp.cpp",
+      "startLine": 2181,
+      "endLine": 2187,
+      "meaning": "FPS = exponential smoothing of 1 / frame delta, weight 0.1",
+      "sha256": "aaf3a10b19f331a57f42beb658069262f6de50d8d5b606f7fdc0edf98343ad83"
+    },
+    {
+      "path": "Client/Private/MainApp.cpp",
+      "startLine": 10505,
+      "endLine": 10542,
+      "meaning": "HUD Get_GeometryStats -> VSInvocations, TotalIndices, LatencyFrames",
+      "sha256": "aaf3a10b19f331a57f42beb658069262f6de50d8d5b606f7fdc0edf98343ad83"
+    },
+    {
+      "path": "Engine/Private/Profiler.cpp",
+      "startLine": 99,
+      "endLine": 208,
+      "meaning": "Geometry and ordinary capture query boundaries",
+      "sha256": "7f3ce857e2ecadac10bb26204f58733083a5ccf86950b7ac99a71a0ef6d01779"
+    },
+    {
+      "path": "Engine/Private/Profiler.cpp",
+      "startLine": 1110,
+      "endLine": 1272,
+      "meaning": "ordinary pipeline query begin/end and asynchronous frame-number resolution",
+      "sha256": "7f3ce857e2ecadac10bb26204f58733083a5ccf86950b7ac99a71a0ef6d01779"
+    },
+    {
+      "path": "Engine/Private/Profiler_Geometry.inl",
+      "startLine": 79,
+      "endLine": 131,
+      "meaning": "latest completed HUD result and exact-frame lookup",
+      "sha256": "d80c3ee8e2a0c14fb67485f6daff736b8f0a39e5676d704443f826c801799fa9"
+    },
+    {
+      "path": "Engine/Private/Profiler_Geometry.inl",
+      "startLine": 188,
+      "endLine": 301,
+      "meaning": "geometry frame query / capture-frame join / direct indices",
+      "sha256": "d80c3ee8e2a0c14fb67485f6daff736b8f0a39e5676d704443f826c801799fa9"
+    },
+    {
+      "path": "Engine/Private/Profiler_Geometry.inl",
+      "startLine": 357,
+      "endLine": 472,
+      "meaning": "asynchronous GPU readback and actual indirect totals",
+      "sha256": "d80c3ee8e2a0c14fb67485f6daff736b8f0a39e5676d704443f826c801799fa9"
+    },
+    {
+      "path": "Engine/Public/Profiler.h",
+      "startLine": 412,
+      "endLine": 429,
+      "meaning": "geometry metrics definition and scope",
+      "sha256": "d2632b1be9de98a5149091c15450a0fbf0017bcafe41becddd5ce41bb0cda9b6"
+    },
+    {
+      "path": "Client/Private/ProfilerCaptureIO.cpp",
+      "startLine": 652,
+      "endLine": 677,
+      "meaning": "ordinary frame pipeline and mesh draw fields",
+      "sha256": "eb3c4196e8344315bb8496fb4e266fd9fd52c78b9d15cf80825da0ed0e9c9b0f"
+    },
+    {
+      "path": "Client/Private/ProfilerTool.cpp",
+      "startLine": 955,
+      "endLine": 997,
+      "meaning": "F7 Capture and JSON controls",
+      "sha256": "126882d9b4991ecb83750cc41b2d517c48741eef1ba255a3628fe2199837edcd"
+    },
+    {
+      "path": "Client/Private/ProfilerTool_Cutscene.inl",
+      "startLine": 32,
+      "endLine": 133,
+      "meaning": "render-boundary samples and stop",
+      "sha256": "8f7ce55cca8b03797a957732336ff9247a9b7ba81f86a368c01ec8a123a6c29b"
+    },
+    {
+      "path": "Client/Private/ProfilerTool_Cutscene.inl",
+      "startLine": 263,
+      "endLine": 393,
+      "meaning": "exact-frame drain and F7 controls",
+      "sha256": "8f7ce55cca8b03797a957732336ff9247a9b7ba81f86a368c01ec8a123a6c29b"
+    },
+    {
+      "path": "Client/Private/ProfilerCaptureIO_Cutscene.inl",
+      "startLine": 105,
+      "endLine": 161,
+      "meaning": "per-sample camera and HUD geometry serialization",
+      "sha256": "9f894d56550ed1072a9404cbab11119e664003fe9503c9a89366abe918d26aa8"
+    },
+    {
+      "path": "Client/Private/ProfilerCaptureIO_Cutscene.inl",
+      "startLine": 241,
+      "endLine": 305,
+      "meaning": "distance schema semantics and cue samples",
+      "sha256": "9f894d56550ed1072a9404cbab11119e664003fe9503c9a89366abe918d26aa8"
+    },
+    {
+      "path": "Client/Private/Level_Bern.cpp",
+      "startLine": 58,
+      "endLine": 58,
+      "meaning": "entrance playback rate = 0.5",
+      "sha256": "caeb33a6ab7a5aed718574f7d59b014a053dad1ae820818bbeb2c7b0560fd165"
+    },
+    {
+      "path": "Client/Private/Level_Bern.cpp",
+      "startLine": 714,
+      "endLine": 802,
+      "meaning": "replay requests, no pause/seek interface",
+      "sha256": "caeb33a6ab7a5aed718574f7d59b014a053dad1ae820818bbeb2c7b0560fd165"
+    },
+    {
+      "path": "Client/Private/Level_Bern.cpp",
+      "startLine": 855,
+      "endLine": 955,
+      "meaning": "camera lease and low-geometry enable/end restoration",
+      "sha256": "caeb33a6ab7a5aed718574f7d59b014a053dad1ae820818bbeb2c7b0560fd165"
+    },
+    {
+      "path": "Client/Private/MapStaticBatchObject.cpp",
+      "startLine": 445,
+      "endLine": 484,
+      "meaning": "MeshLodEnabled gates new low proxy as well",
+      "sha256": "43c453482eb63826d6ed9bfbaef80ecdb41914b65ffbc0269bfb9411b96a5590"
+    },
+    {
+      "path": "Client/Private/RenderingBenchmark.cpp",
+      "startLine": 727,
+      "endLine": 779,
+      "meaning": "A OFF / B ON / ABBA requires fixed camera; moving cutscene caveat",
+      "sha256": "789003b3ab2ddba98e261a2a36846e96282d7cddc5368801cba57222f2784514"
+    },
+    {
+      "path": "Client/Private/RenderingBenchmark.cpp",
+      "startLine": 2193,
+      "endLine": 2215,
+      "meaning": "original view restoration",
+      "sha256": "789003b3ab2ddba98e261a2a36846e96282d7cddc5368801cba57222f2784514"
+    },
+    {
+      "path": "Client/Private/MainApp.cpp",
+      "startLine": 14462,
+      "endLine": 14494,
+      "meaning": "Bern Entrance Camera replay/FOV UI",
+      "sha256": "aaf3a10b19f331a57f42beb658069262f6de50d8d5b606f7fdc0edf98343ad83"
+    },
+    {
+      "path": "Client/Private/MainApp.cpp",
+      "startLine": 14962,
+      "endLine": 14967,
+      "meaning": "Release Optimization Benchmark UI",
+      "sha256": "aaf3a10b19f331a57f42beb658069262f6de50d8d5b606f7fdc0edf98343ad83"
+    },
+    {
+      "path": "out/BernGeometryProxy20261014/product-full-scene/Probe.cpp",
+      "startLine": 163,
+      "endLine": 239,
+      "meaning": "native harness uses same exact-frame Geometry result",
+      "sha256": "1f432dbaf71e75c597acf91622d6ec0cac9265994cf6bf7cc7321576bd391a29"
+    },
+    {
+      "path": "out/BernGeometryProxy20261014/product-full-scene/Probe.cpp",
+      "startLine": 262,
+      "endLine": 263,
+      "meaning": "native harness scope excludes full Client / actors / UI; no Present",
+      "sha256": "1f432dbaf71e75c597acf91622d6ec0cac9265994cf6bf7cc7321576bd391a29"
+    }
+  ]
+}

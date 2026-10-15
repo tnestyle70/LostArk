@@ -1,0 +1,72 @@
+베른 PNG 근거 추천 목록 — 2026-10-15
+기존 이미지는 수정·생성하지 않았다. 제품/GPU를 실행하지 않았다.
+
+분류한 근거 PNG 1841개 / 관련 JSON 179개. 실제 Client FPS 스크린샷으로 확인된 PNG 0개.
+
+우선 추천
+1. C:\Users\tnest\Desktop\LostArk\기술소개서\베른컷신최적화\2026-10-15_성탑62개_실측\bern-subset-measured-4views-applied.png
+가장 강한 실제 적용 기하 증거. 62성탑 범위/같은 카메라/OFF·이전규칙ON·70m규칙ON; FPS를 쓰지 않음.
+
+2. C:\Users\tnest\Desktop\LostArk\기술소개서\베른컷신최적화\2026-10-15_성탑62개_실측\native-crop-00s.png
+원본 해상도 표면 차이 공개. 성탑 윤곽 유지와 지붕 거칠어짐을 같이 설명.
+
+3. C:\Users\tnest\Desktop\LostArk\기술소개서\베른컷신최적화\2026-10-15_성탑62개_실측\native-crop-04s.png
+다른 동일 시점의 표면 차이 보조자료.
+
+4. C:\Users\tnest\Desktop\LostArk\기술소개서\베른컷신최적화\2026-10-15_성탑62개_실측\native-crop-export.png
+실제 저장 카메라의 대체 효과. cue 시간 미상, 컷신 전체 대표라고 하지 않음.
+
+5. C:\Users\tnest\Desktop\LostArk\기술소개서\베른컷신최적화\02_새기하_단일모델_검증중\성기둥2종_GPU_기하감소_검증중.png
+원본VB/IB 교체 원리. P06/P07 단일모델 실제GPU 감소; position-only/cullnone/재질미포함 경계 유지.
+
+6. C:\Users\tnest\Desktop\LostArk\기술소개서\베른컷신최적화\04_최종조명_품질검토중\실제기하감소와_UV좌표보정_2종.png
+UV32/J32 및 원본RNM/static shadow 보존의 품질 개선 설명. 완전 동일 픽셀 아님.
+
+7. C:\Users\tnest\Desktop\LostArk\기술소개서\베른컷신최적화\00_베른컷신_6시점_개선전_기준.png
+개선 전 장면/카메라 배경 자료. 1600x900 역사적 map-only 실험; 현재 제품 전후FPS와 연결 금지.
+
+8. C:\Users\tnest\Desktop\LostArk\기술소개서\베른컷신최적화\01_개선전_기준과_기존설정비교\mip0-mesh1-hlod1-cue-00-start.png
+FPS·VS·Idx 동시표시가 꼭 필요한 경우에만 조사자료로 사용. FPS는16프레임 offscreen 평균 처리율이며 현재성과 아님.
+
+대표 실측(62성탑/같은1920x1080카메라, 게임FPS 아님)
+cue0 VS445,695 → 이전ON366,201 → 70mON242,225; Idx1,081,890 →904,962 →620,544.
+cue4 VS307,676 →299,657 →186,274; Idx760,614 →742,734 →481,740.
+cue6 VS127,010 →127,010 →99,144; Idx324,126 →324,126 →258,198.
+저장카메라(cue미상) VS141,795 →141,795 →106,820; Idx353,994 →353,994 →273,804.
+현재숫자는G43/Release003역사증거이며 G44mirror9 추가효과가 아니다.
+
+FPS를 포함해야 할 때
+01폴더의 맵렌더FPS는16프레임 offscreen 평균 처리율이다. 같은이미지·기하에서도 drift13.1626→17.4705(+32.73%)이므로 게임FPS나 개선율로 쓰지 않는다.
+새 실제게임캡처2개로 별도수치plot은 가능하나 동일pose A/B가 아니며 PNG의 카메라와 capture 개별프레임 숫자를 임의결합하지 않는다.
+
+제외/오해 방지
+기술소개서 현재상태.txt(2026-10-14), 검증결과.txt의 Release003/current/user-unverified 서술은 당시 역사기록이다. 최신 G44 Product와 실제사용자확인을 그대로 반영하지 않는다.
+02·04 폴더 검증중 파일명만으로 제품 미적용/현재 실패를 단정하지 않는다. 해당 stage와 생성시점을 설명한다.
+baseline-subset-002 및 candidate70-subset-002는 일부 query 미완료; 0/null을 기하0으로 읽지 않는다. 완성된 diagnostic31-case 근거를 우선한다.
+단일 성탑 1/8 이하 감소를 전체 베른 컷신 1/8 달성으로 확대하면 안 된다.
+성탑62 결과는 다른 배경/캐릭터/하늘/로컬라이트/게임 프레임을 포함하지 않는다. G44 mirror9 추가효과는 아직native미측정.
+1920x1080 subset·1600x900 historicalmap·1198x718 realgamecapture는 동일 A/B가 아니다.
+새 오후 실제게임캡처는 real frameInterval로 FPS통계 작성 가능하나 저장카메라는 export-only이며 같은프레임 영상/카메라가 없어 screenshot에 특정프레임 VS/FPS를 붙일 수 없다.
+실제 subset scope는62placement/60batch이다. 선택개수와 성공draw수는 다를 수 있다(첫뷰 selected24, actualdraw23).
+기존 tower소실/alpha/IA문제 추정은 철회된 이력이다. 실패원인 그림으로 재사용하지 않는다.
+512 quality 후보는 실행이 막힌 미래단계다. 이전native-bake의512실험이미지를 현재설치256이나 새512완료로 표시하지 않는다.
+
+기타
+PNG/JSON경로·SHA·해상도·category·실제case수치·동일hash복사본은 png-inventory.json에 기록했다.
+단일모델 GPU 그림은 원리 설명에 적합하고, geometry/grass/native-bake 실험 디렉터리의 미선별 그림은 현재 적용완료 근거로 쓰지 않는다.
+각대표 figure rawSHA 및12개counter row를 실제 batch-results.json과 대조했다.
+검증결과: {"source": "C:\\Users\\tnest\\Desktop\\LostArk\\기술소개서\\베른컷신최적화\\2026-10-15_성탑62개_실측\\figure-evidence.json", "allRawShaMatch": true, "allCountersMatchBatch": true, "checks": null, "crossVariantAllGeometryValid": true, "crossVariantAllTimestampIntervalsComplete": true, "crossVariantOffRawIdentical": true, "crossVariantCameraAndSettingsEqual": true}
+
+기존 FPS·VS·Idx 동시표시 6시점 순서(역사적 조사자료만)
+C:\Users\tnest\Desktop\LostArk\기술소개서\베른컷신최적화\01_개선전_기준과_기존설정비교\mip0-mesh1-hlod1-cue-00-start.png
+cue 0.201457s | 맵 offscreen 평균 18.4545 frames/s | final-frame VS 7,793,748 | Idx 17,573,211
+C:\Users\tnest\Desktop\LostArk\기술소개서\베른컷신최적화\01_개선전_기준과_기존설정비교\mip0-mesh1-hlod1-cue-01.png
+cue 1.001458s | 맵 offscreen 평균 16.8169 frames/s | final-frame VS 6,921,078 | Idx 15,520,194
+C:\Users\tnest\Desktop\LostArk\기술소개서\베른컷신최적화\01_개선전_기준과_기존설정비교\mip0-mesh1-hlod1-cue-02.png
+cue 1.993884s | 맵 offscreen 평균 19.3972 frames/s | final-frame VS 6,021,005 | Idx 13,493,832
+C:\Users\tnest\Desktop\LostArk\기술소개서\베른컷신최적화\01_개선전_기준과_기존설정비교\mip0-mesh1-hlod1-cue-03.png
+cue 3.007016s | 맵 offscreen 평균 22.8553 frames/s | final-frame VS 5,315,466 | Idx 11,878,290
+C:\Users\tnest\Desktop\LostArk\기술소개서\베른컷신최적화\01_개선전_기준과_기존설정비교\mip0-mesh1-hlod1-cue-04.png
+cue 4.010106s | 맵 offscreen 평균 27.4313 frames/s | final-frame VS 4,376,687 | Idx 9,862,137
+C:\Users\tnest\Desktop\LostArk\기술소개서\베른컷신최적화\01_개선전_기준과_기존설정비교\mip0-mesh1-hlod1-cue-05-end.png
+cue 5.107775s | 맵 offscreen 평균 48.0646 frames/s | final-frame VS 2,296,417 | Idx 5,290,563

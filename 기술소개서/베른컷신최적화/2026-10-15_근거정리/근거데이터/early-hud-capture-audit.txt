@@ -1,0 +1,32 @@
+초반 HUD80만 →50만 저장근거 조사
+결론: 지정된 저장파일에서 동일pose/cue의80만→50만HUD A/B쌍은 확인되지 않았다. 사용자의 관찰을 부정하는 판정이 아니라 그 두표본을 재현할 저장근거가 부족하다는 뜻이다.
+
+과거2GB 거리기록
+100표본 /cue0.201457~5.107775 /geometryFrame88037~88143
+VS 2,282,114~8,952,634; 첫표본VS8,952,634 /Idx19,670,838.
+cue0~5초 98개 저장표본 VS 2,282,114~8,952,634;70~90만VS표본0.
+camera행렬/위치/viewport·cue·geometryframe·유효VS/Idx 보존. 평활HUD FPS값은미저장.
+첫interval0, 나머지interval은진단render경계로capture비용이포함되어HUD FPS와동일하지않음.
+SHA256 f53591844f997a21cfc6745ddbfd2a74990f8e78c31b28693c95686c947bb2c6
+2GB는ijson.items(use_float=False)로표본1개씩1회추가스트리밍,기존SHA및100표본 VS/Idx일치.전체DOM로드없음.
+
+베른_컷신_20261015_011643_266_frame203_24544_0.json
+GPU유효203/203 /pipelineVS1,253,733~9,353,429 /70~90만0프레임 /40~60만0.
+HUDgeometryFrame·totalIndices·cue·프레임별camera없음. Exportcamera만있어개별프레임/초반cue와join불가.
+SHA256 eb30909341ac2c4b78e31427f028d60657ac5d26adea950d1ac98988bda720bf
+
+Bern_CutScene_20261015_140215_622_frame1122_18456_0.json
+GPU유효1118/1122 /pipelineVS863,920~6,820,320 /70~90만58프레임 /40~60만0.
+HUDgeometryFrame·totalIndices·cue·프레임별camera없음. Exportcamera만있어개별프레임/초반cue와join불가.
+SHA256 b47c07a92d6872bc7fa4bb7a6c02ee62f028e8967003e44e806e6f39783b376c
+
+Bern_CutScene_20261015_140227_980_frame1468_18456_1.json
+GPU유효116/120 /pipelineVS3,121,231~6,569,137 /70~90만0프레임 /40~60만0.
+HUDgeometryFrame·totalIndices·cue·프레임별camera없음. Exportcamera만있어개별프레임/초반cue와join불가.
+SHA256 a52db88e3b519e726b020960db38ec46a64cca599992e4c83dd5d06f4aa70c57
+
+HUD표시계약
+FPS는1/fTimeDelta를0.1계수로평활하고반올림. Vtx는최신비동기완료GeometryStats.VSInvocations,Idx는유효TotalIndices. GPU-NF표시만큼현재카메라와수치시점이달라질수있다.
+일반capture pipelinehistory를별도HUDgeometryhistory로바꾸어설명하지않는다.
+따라서37.5%를실측감소율로기록하거나다른camera/subset수치로80만→50만쌍을만들지않는다.
+제품실행/GPU실행/원본capture수정없음.

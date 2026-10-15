@@ -1,0 +1,327 @@
+{
+  "schema": "lostark.effect-anchor-readonly-audit.v1",
+  "timestamp": "2026-10-15T09:42:38.236636+00:00",
+  "root": "C:\\Users\\tnest\\Desktop\\LostArk",
+  "scope": "Read-only review of PR #542; no build, application launch, source/index/branch/remote mutation by this agent.",
+  "git": {
+    "base": "703294d542dedb932dc440863628ba037ffbafa2",
+    "inspectedMain": "92169ebe11bc05daa1242bc3a8d2229858b3f35e",
+    "feature": "6057739db369ebe8fc88d4e9b88472d2239e6d21",
+    "currentHead": "92169ebe11bc05daa1242bc3a8d2229858b3f35e",
+    "currentBranch": "main",
+    "featureAlreadyMerged": true,
+    "mergePullRequest": 542,
+    "mergeUrl": "https://github.com/tnestyle70/LostArk/pull/542",
+    "mainVsFeatureLeftRight": "1\t0",
+    "mergeCommitParents": "703294d542dedb932dc440863628ba037ffbafa2 6057739db369ebe8fc88d4e9b88472d2239e6d21"
+  },
+  "changes": {
+    "fileCount": 25,
+    "added": 958,
+    "removed": 157,
+    "sourceFiles": 19,
+    "newCppFiles": false,
+    "projectRegistrationChanged": false,
+    "jsonXmlDataResourcesChanged": false,
+    "files": [
+      {
+        "path": ".md/GB/10-15/2026-10-15_EFFECT_ANIMATION_BONE_ANCHOR_IMPLEMENTATION_PLAN.md",
+        "added": 52,
+        "removed": 0,
+        "commitSha256": "605f3203967e43cc7892d8813fed9c5e3fd76c356bd05276de0bbee1af217a18",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": ".md/GB/10-15/2026-10-15_EFFECT_ANIMATION_BONE_ANCHOR_RESULT.md",
+        "added": 128,
+        "removed": 0,
+        "commitSha256": "0bf8e005117cde0067dcf02bd8aa17789a1469631e79f2b8b532e5db828757b9",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": ".md/GB/gotchas.md",
+        "added": 17,
+        "removed": 0,
+        "commitSha256": "4fa4a0ad90e9c91fb094834bc5d6a023f11a065a4fdc3927975c52df0185ba18",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": ".md/GB/렌더링이펙트복원V2.md",
+        "added": 7,
+        "removed": 0,
+        "commitSha256": "5c9e6047d7f304e1c7d7780e488bd09d5d0ea193dc46f810397448443f9c8935",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": ".md/TEAM/ANIMATION_TOOL_OWNER_HANDOFF.md",
+        "added": 26,
+        "removed": 0,
+        "commitSha256": "2e6f7df67d45ed7ee22471dbaf351f135b711791aabe7f114d298ebc2c5a4c57",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "CLAUDE.md",
+        "added": 5,
+        "removed": 0,
+        "commitSha256": "9d20f4fbf71ff3377c9f11ba7998607e25dc6fd3bca56b53e13c4db5a26ba153",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Private/Animation_Tool.cpp",
+        "added": 1,
+        "removed": 1,
+        "commitSha256": "d7d69314bf44facc06a2a766e5d132f71d382d479099689bcaeb80e128265729",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Private/Animation_Tool_DocumentIo.cpp",
+        "added": 161,
+        "removed": 11,
+        "commitSha256": "1dba4d46af0b5ce068f5e32cf9a1b91e7b02d9effeb6386d5372788e1cd2b480",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Private/CharacterPreviewPanel.cpp",
+        "added": 109,
+        "removed": 10,
+        "commitSha256": "25c904939719497ddf67524f0f6b1e8935d575f40fea828a2c9e57fd320cb899",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Private/EffectAuthoringSequencer.cpp",
+        "added": 38,
+        "removed": 0,
+        "commitSha256": "fede4aa3444d323df51ed182b184d35a8033ab3bd916a59d3b376cab6f8ca2a2",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Private/EffectAuthoringSequencer_Resources.cpp",
+        "added": 137,
+        "removed": 40,
+        "commitSha256": "0bbfa52d982759bbb1922c1168b7380dd601fb629a10551a043b64c47b631f5a",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Private/Effect_Tool_Editing.cpp",
+        "added": 8,
+        "removed": 2,
+        "commitSha256": "380d8d8f8471f039fee5d734050ef71e672bcfd7f90616f8ec4f64652c6bd0a6",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Private/Effect_Tool_ResourceBrowser.cpp",
+        "added": 113,
+        "removed": 67,
+        "commitSha256": "995fade458cfc951b0e325770dc4888028bfbdda60f73ca2e794c9f755b360c2",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Private/Effect_Tool_V2.cpp",
+        "added": 5,
+        "removed": 0,
+        "commitSha256": "e9ac93cd47d2c3faaf01600a105bbd61d926d3ef2575e1b2f0bc7b1f082cc6ec",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Private/Effect_Tool_Workspace.cpp",
+        "added": 6,
+        "removed": 0,
+        "commitSha256": "80dc73d63a422a2559cf8574428d630513eb9da4e26d16904ca759ef9c7721f4",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Private/KoukuSaydonActionWorkbench_Collider.cpp",
+        "added": 4,
+        "removed": 1,
+        "commitSha256": "b1a61378e6d7eee62bc3f9fb08734bedbd507e0d53e5908a71a393fa38849191",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Private/KoukuSaydonActionWorkbench_Presentation.cpp",
+        "added": 38,
+        "removed": 11,
+        "commitSha256": "4c5d3236d60a2ee7b2b29900ef692328b0b6165c33a786cd650c9847f064b444",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Private/MainApp.cpp",
+        "added": 42,
+        "removed": 0,
+        "commitSha256": "4e28225f206b12b889ef68e560d2523bca60d1e2783fafbded20b9f47ed63883",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Private/SequencerTool.cpp",
+        "added": 12,
+        "removed": 11,
+        "commitSha256": "f71f65ccfdaf655104c1a50500c4025ed96de2df5c3fbbe0055259a42ca39d39",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Public/CharacterPreviewPanel.h",
+        "added": 8,
+        "removed": 3,
+        "commitSha256": "542a41d07e9278922c840ac38fcac08bed7edb8e99c484c3a57638e81fb2aafe",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Public/CompositionAnimationResource.h",
+        "added": 15,
+        "removed": 0,
+        "commitSha256": "a3378207887f810730180b7bf1d03aa37e45fc47b3b2996fd41a0296cec646a7",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Public/EffectAuthoringSequencer.h",
+        "added": 10,
+        "removed": 0,
+        "commitSha256": "22bd26fcb582d4f15cdf47584d59c04506d0c71dd649c8e1336535056459b54a",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Public/Effect_Tool.h",
+        "added": 5,
+        "removed": 0,
+        "commitSha256": "640fc6f9701d6667d9260a4636c5d33f05458e43c291f13c497cb760861a6b6f",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Public/Effect_Tool_V2.h",
+        "added": 2,
+        "removed": 0,
+        "commitSha256": "87eca65215385df90032557c827910f2ef23fe789c13cedc631a8ddb9e0f165d",
+        "currentEqualsCommitIgnoringCRLF": true
+      },
+      {
+        "path": "Client/Public/KoukuSaydonActionWorkbench.h",
+        "added": 9,
+        "removed": 0,
+        "commitSha256": "29963d076b79c946f1d40bc90ae3bb7c04e33d7558cd06c19cef1810616db86e",
+        "currentEqualsCommitIgnoringCRLF": true
+      }
+    ]
+  },
+  "consumerContracts": [
+    {
+      "area": "Inventory",
+      "locations": [
+        "Client/Public/CompositionAnimationResource.h:36",
+        "Client/Private/Animation_Tool_DocumentIo.cpp:123",
+        "Client/Private/Animation_Tool_DocumentIo.cpp:246"
+      ],
+      "result": "Shared inventory uses installed Character/Boss clips and saved World object stable IDs, model/donor/preScale. Native clips and Object Motion have distinct consumers. Read failures retain prior rows and diagnostics."
+    },
+    {
+      "area": "Load model",
+      "locations": [
+        "Client/Private/CharacterPreviewPanel.cpp:120",
+        "Client/Private/CharacterPreviewPanel.cpp:132",
+        "Client/Private/CharacterPreviewPanel.cpp:545",
+        "Client/Private/CharacterPreviewPanel.cpp:1021"
+      ],
+      "result": "Existing CModel prototype/clone and preview owner are reused. World identity includes model, donor and exact preScale bits. Required clip is checked on the staged model before releasing the prior preview. Session locks and failed load preserve prior target."
+    },
+    {
+      "area": "Effect sequence UI and saved anchors",
+      "locations": [
+        "Client/Private/EffectAuthoringSequencer.cpp:158",
+        "Client/Private/EffectAuthoringSequencer_Resources.cpp:370",
+        "Client/Private/EffectAuthoringSequencer.cpp:1469",
+        "Client/Private/EffectAuthoringSequencer.cpp:2603"
+      ],
+      "result": "Model View/Composition Resources provide Load Model, Add Animation, Add & Play. Existing animation rows and named anchors guard a rig switch. Actual loaded bones are selected; sequence formatVersion 4 stores stable anchorSlotId in Data/Effects/Sequences/*.effectsequence.json. Existing freshness checks remain."
+    },
+    {
+      "area": "Effect element-local attachment",
+      "locations": [
+        "Client/Private/Effect_Tool_ResourceBrowser.cpp:794",
+        "Client/Private/Effect_Tool_ResourceBrowser.cpp:919",
+        "Client/Private/Effect_Tool_Editing.cpp:3112",
+        "Client/Private/Effect_Tool_Editing.cpp:3249"
+      ],
+      "result": "V1 sequencer early-return path now exposes existing supported-element Attach/Clear. Actual bone validation precedes document stage/commit. Per-element runtime slot is stable element ID, distinct from whole-occurrence anchors. Save Changes persists the Effect document; active preview uses cursor-preserving stage instead of restarting."
+    },
+    {
+      "area": "World Motion route",
+      "locations": [
+        "Client/Private/SequencerTool.cpp:1709",
+        "Client/Private/MainApp.cpp:3045",
+        "Client/Private/MainApp.cpp:4610"
+      ],
+      "result": "Motion rows are not pasted as skeletal animations. Stable object/motion IDs are consumed by existing WorldObjectTool::Open_ObjectMotion."
+    },
+    {
+      "area": "Collider anchor UI",
+      "locations": [
+        "Client/Private/MainApp.cpp:2876",
+        "Client/Private/KoukuSaydonActionWorkbench_Presentation.cpp:2434",
+        "Client/Private/KoukuSaydonActionWorkbench_Collider.cpp:885"
+      ],
+      "result": "Explicit Load anchor model stages Pattern actor through shared preview. BODY/WEAPON resolver provides actual bones. boneRotation, World occurrence/emission/effect-frame changes now trigger geometry preview."
+    },
+    {
+      "area": "Collider storage/publisher/Server",
+      "locations": [
+        "Client/Private/KoukuSaydonCompositionDocument.cpp:1452",
+        "Client/Private/KoukuSaydonCompositionDocument.cpp:7231",
+        "Tools/KoukuSaydonPipeline/project_kouku_saydon_composition.py:4444",
+        "Tools/KoukuSaydonPipeline/project_kouku_saydon_composition.py:4683",
+        "Server/Private/KoukuSaydonLogicRuntime.cpp:263"
+      ],
+      "result": "Existing bone/boneTarget/boneRotation schema is unchanged. Publisher validates actual installed bone, samples body/weapon animation into a planar worldTrack; Server interpolates the track and applies live authoritative BOSS_CURRENT root once. No Client-only damage path or new Valtan schema."
+    }
+  ],
+  "independentActionableDefects": [],
+  "conclusion": "Reviewed changed paths and the existing save/publisher/Server consumers; no independently reproducible new defect established. Already merged remotely; local synchronization/build is parent-owned.",
+  "checksPerformed": [
+    "Commit ancestry and exact diff",
+    "All 25 changed files captured at fixed commit",
+    "Changed C++ flow and storage-consumer code review",
+    "git diff --check BASE MAIN (exit 0)",
+    "Required contract documentation and matching PLAN/RESULT reviewed"
+  ],
+  "checksNotPerformed": [
+    "Compilation/link",
+    "Client/UI execution",
+    "Interactive save/reopen",
+    "Live Server activation or hit validation",
+    "Native WModel inventory/sampling rerun"
+  ],
+  "upstreamReportedEvidence": {
+    "resultDocument": ".md/GB/10-15/2026-10-15_EFFECT_ANIMATION_BONE_ANCHOR_RESULT.md",
+    "debugProduct": "Reported PASS/exit 0, four projects. Local binary freshness is not established by this read-only audit.",
+    "nativeInventory": "Reported 28 fixed targets/3104 clips; 470 World objects/3322 native/660 Motion rows; 7086 identities with no duplicates.",
+    "sampling": "Reported actual P17 BODY bip001-l-hand: 42 finite samples, 0..788 ms, normalized quaternion, max displacement 6.777605 m; missing bone rejected.",
+    "knownTestFailures": "Three existing Python tests reported failures=6/errors=1 due to current P1 DRAFT and STAGE_51=1001ms vs stale fixture assumptions. This audit did not execute or mark those tests PASS.",
+    "localEvidenceAvailability": [
+      {
+        "path": "out/BuildPipeline/runs/20261015T063842290Z-debug-product.json",
+        "exists": false
+      },
+      {
+        "path": "out/EffectAnimationBoneAnchor20261015/product-build.log",
+        "exists": false
+      },
+      {
+        "path": "out/animation-library-inventory.json",
+        "exists": false
+      },
+      {
+        "path": "out/EffectAnimationBoneAnchor20261015/p17-bone-sampling.json",
+        "exists": false
+      }
+    ]
+  },
+  "remainingValidation": [
+    "Parent: incremental Product build for required configuration(s) after local synchronization; no new project registration or JSON/XML edits are present.",
+    "User UI: V1/V2 Animation Library -> actual Character/Boss/World native model -> Add & Play; confirm current authored/Vehicle clip supplements.",
+    "User UI: occurrence bone/socket -> save sequence -> reopen; V1 supported Element Attach/Clear -> Save Changes -> reopen; ensure preview cursor preservation.",
+    "User UI: Kouku Collider Box Detail -> BOSS -> Load anchor model -> BODY/WEAPON -> named bone/rotation -> existing Apply/Save/Publish; verify live Server activation separately.",
+    "Negative UI: pending Detail, incompatible previous rig/named anchors, unavailable native file/clip/bone preserve prior editing state."
+  ],
+  "boundedLimitations": [
+    "Five World model resource files are reported unavailable in upstream RESULT; native inventory isolates them with status. They were not added by this PR.",
+    "World inventory is currently the saved LV_LUT_MIDNIGHTC_ED authoring document; it is not a claim to enumerate every map's object catalog.",
+    "Model loading, installed-bone numeric proof, authored saving/publishing and user-visible fidelity are separate evidence boundaries."
+  ]
+}

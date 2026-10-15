@@ -1,0 +1,84 @@
+베른 최적화 적용 상태와 기술소개서 이미지 사용 안내 — 2026-10-15
+
+현재 결론
+저폴리 교체 전체가 미적용됐던 것은 아니다. PILLAR06/PILLAR07 2종·53 asset ID·62 placement에
+실제 저폴리 VB/IB와 70m/1200px 선택 규칙이 설치돼 있었다. 사용자 F7 캡처에서도 실제 저폴리
+draw가 0~19, 느린 구간에서는 8~19회 제출됐고 fallback/preflight/late failure는 0이었다.
+다만 전체 배경을 교체한 것은 아니며 준비 범위와 카메라 조건 때문에 적용 대상이 제한됐다.
+
+적용됐고 측정한 부분
+- 기존 mesh LOD: 원본 VB를 유지하고 단순화 IB를 선택한다. 두 캡처의 source 내 saved-index 평균
+  175,322.8 / 525,871.0. native HLOD도 평균 4,895.8 / 23,530.8을 기록했다. 전체 장면 절감률이 아니다.
+- 새 저폴리: 별도 저폴리 VB/IB를 기존 CModel 경로에 넣는다. 원본을 무조건 숨기지 않고 준비 및
+  shader 바인딩 성공 후 선택된 placement만 원본 color draw에서 제외한다. 실패 시 원본으로 복귀한다.
+- 거리 기준: P06의 이전 121.6m/202px, P07의 82.6m/553px 대신 두 모델 모두 70m/1200px를 사용한다.
+  거리만이 아니라 화면상 지름, frustum/depth, 준비 성공, 재질, 컷신 활성 조건도 모두 통과해야 한다.
+- 통제된 성탑62개 부분 장면 0초: VS 445,695 → 242,225 (45.65% 감소), Idx 1,081,890 → 620,544
+  (42.64% 감소), map draw 260 → 145. 동일 카메라/설정과 GPU query 완료를 원문 JSON으로 확인했다.
+
+적용되지 않았거나 적용 범위가 제한된 부분
+- 이전 준비 결과는 60 batch 중 37 준비/23 거절이었다. 최초 거절 이유는 mirrored 13,
+  transform 6, material identity 4였다. 그러므로 지원 이름이 있다고 모든 배치를 저폴리로 그리지 않았다.
+- G44는 미러 13개 중 안전한 균일 미러 9개를 허용했다. CPU 필요조건 기준 준비 placement 39→48,
+  batch 37→46이다. 코드·Release/Debug 빌드 반영과 별개로 이 9개 추가분의 GPU 감소량은 미측정이다.
+- 남은 14개는 비균일 변환 9개·재질 불일치 5개다. 기존 TBN/재질을 깨뜨리며 강제 허용하지 않았다.
+- 기본 카메라는 컷신 lease가 없어서 이 저폴리 교체를 사용하지 않는다. 사용자 복구 확인은 있으나
+  통제된 기본 카메라 FPS 전후 실험은 없다.
+- 기존 xatlas 경로는 indexCount를 보존한다. 텍스처 mip도 삼각형을 줄이지 않는다. 이를
+  저폴리 VB/IB 교체와 같은 기하량 최적화 성과로 계산하면 안 된다.
+- atlas512 새 품질 후보는 미설치다. 현재 설치는 atlas256이다.
+- 전체 베른 1/8 목표는 미달성이다. 전체 장면 GPU 비교는 로드 중 메모리 하한에 도달해 첫 draw 전에 중단됐고,
+  성탑62개 실험을 전체 게임 또는 G44 추가 개선 수치로 확대할 수 없다.
+
+저장된 캡처의 경계
+두 사용자 JSON은 정상 파일이며 SHA를 재확인했다. 그러나 bernCutsceneGeometry와 meshDraws 상세는
+그 파일에 없다. 당시 저장 누락의 정확한 단일 분기는 재현하지 못했다. G44에서 일반 JSON 저장도
+보관한 거리 기록을 포함하도록 수정했고 상태검사55건/serializer13범주를 통과했다. 실제 F7 저장 및
+재열기의 최종 UI 확인은 별도다. 통계 그림은 실제게임 수치이지만 두 구간은 전후 A/B가 아니다.
+
+기술소개서에 사용할 문장
+“동일 카메라의 성탑 62개 부분 장면에서 저폴리 대체를 적용해 GPU VS 호출을 445,695에서
+242,225로 45.65%, 제출 index를 1,081,890에서 620,544로 42.64% 줄였다.”
+‘전체 베른 FPS 몇 % 향상’, ‘전체 1/8 달성’, ‘미러9개 추가분 실측 완료’라고 쓰지 않는다.
+VS는 GPU vertex shader 호출 수이며 고유 정점 수와 다르다. 실제게임 Idx 통계는 CPU-known
+제출량이다. 서로 다른 카메라/해상도/시간 구간의 수치를 동일 프레임 화면에 합성하지 않았다.
+
+이미지 순서
+01_동일카메라_실측기하: 대표 4뷰 합본, 3개 원본 품질 crop, 10개 카메라 수치 도표.
+02_실제게임_F7통계: 사용자 캡처 2개의 FPS/VS/Idx 통계. 전후 비교가 아님.
+03_구현원리_보조자료: 단일 모델 VB/IB와 UV 보정 설명.
+90_과거실험_FPS는게임수치아님: 기존 FPS·VS·Idx 표시 6뷰. FPS는 offscreen 처리율이라
+성과 근거로 쓰지 않는다. 동일 기하/영상에서도 13.16→17.47(+32.73%) 시간 변동이 있었다.
+원본 PNG는 그대로 복사하고 SHA를 대조했다. 새 PNG 2개는 JSON에서 그린 데이터 도표다.
+전체 기존 자료1841개 경로/SHA/분류는 근거데이터/all-png-inventory.json에 남겼다.
+
+Effect Tool 및 Collider Box Detail main 병합
+PR #542 / feature 6057739db / merge 92169ebe1의 변경을 로컬로 fast-forward했다.
+Effect 모델 라이브러리는 Character/Boss/World를 분리하고 Load Model / Add Animation / Add & Play를
+기존 CharacterPreviewPanel/CModel에 연결한다. 실제 clip 검증 후 이전 preview를 교체한다.
+실제 로드한 골격의 본을 검색·선택한다. occurrence anchor는 sequence Save,
+개별 Element 부착은 Effect Save Changes로 저장하는 기존 계약을 유지한다.
+Box Detail → Bone Anchor → Load anchor model에서 실제 BODY/WEAPON을 준비하고,
+Find bone / Anchor bone / Rotate with this bone을 선택한다. boneRotation 변경도 preview를 갱신한다.
+기존 publisher가 실제 WModel 본을 샘플링하고 Server worldTrack이 소비한다. 새 schema나 runtime을
+추가하지 않았다. UI 저장·재열기/실제 본 추종/Server 피격은 이번 코드·빌드 검토에서 실행하지 않았다.
+상세 파일/함수/행과 한계는 근거데이터/effect-anchor-audit.json에 있다.
+
+
+후속 요청: HUD 80만 → 50만의 초반 실측
+그 두 수치가 정확히 같은 카메라·설정·지표라면 산술 감소율은37.5%다. 현재 저장 파일만으로
+그 조건을 증명하지 못하므로 이번 기술소개서의 검증된 개선율로 사용하지 않는다.
+HUD Vtx와 일반 JSON pipeline VS는 모두 Update→Render 전체 GPU 프레임을 센다. HUD를 맵만,
+JSON을 전체 장면이라고 구분하지 않는다. HUD는 완료된 과거 geometry frame을 표시하고 FPS는
+별도 평활값이므로 화면의현재카메라·통계중앙값·GPU결과를 같은 순간으로 임의 연결하지 않는다.
+거리 JSON의 cutsceneSamples[].geometry.vsInvocations/totalIndices는 HUD와 같은 geometry query다.
+captureFrameNumber와 geometry frame, cue, view/projection, viewport를 대조해야 한다.
+새 측정 도구 실행 전 free commit5.1899GiB(기준8GiB), 물리여유1.7052GiB로 native를 시작하지 않았다.
+과거 전체맵 로드 중 중단과 이번 실행 전 거절은 별도 사건이다. 현재 추가 GPU 측정 성공은 없다.
+
+최신 빌드
+Effect #542를 포함한 Product Release·Debug 모두 Engine/Shared/Server/Client compile·link·deploy PASS.
+각 빌드 전후 source fingerprint 동일. C4819/C4828 및 DirectXTK PDB LNK4099 등 기존 warning은 남는다.
+실제 Effect UI 저장·재열기 및 Server 피격/본 추종 검증은 수행하지 않았다. upstream RESULT에 적힌
+과거 Python fixture 6 failures/1 error를 이번 작업에서 재실행하거나 PASS로 바꾸지 않았다.
+EXE/DLL SHA와 공식 build result 경로는 근거데이터/latest-build-verification.json에 있다.

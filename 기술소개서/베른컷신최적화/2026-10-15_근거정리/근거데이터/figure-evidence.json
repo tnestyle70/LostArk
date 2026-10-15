@@ -1,0 +1,192 @@
+{
+  "scope": "Actual production Bern map-only offscreen renderer; no Client, HWND, Level actors, sky, local map lights, UI, sound or physics. Authored product-sampled viewpoints or explicitly labelled saved viewpoints; export cue may be unknown. Supported-subset runs exclude other map objects. dt=0; not animated full-game cutscene replay.",
+  "gameFpsMeasured": false,
+  "wholeSceneMeasured": false,
+  "pixelPresentation": "1920x1080 raw RGB reduced to 640x360 per tile; labels outside image except camera footer.",
+  "candidateInstalledByThisScript": false,
+  "installationReceipt": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\validated-limits-install\\application.json",
+  "measurementPrecedesInstall": true,
+  "installedBytesMatchMeasuredCandidate": true,
+  "evidence": [
+    {
+      "cameraId": "authored-00s",
+      "column": "Original OFF",
+      "counters": {
+        "vsInvocations": 445695,
+        "engineIndices": 1081890,
+        "mapIndices": 1081854,
+        "mapDraws": 260,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "rawPath": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-subset-installed-001\\sweep-cameras-results\\authored-00s-off-before.rgba",
+      "rawSha256": "b58afd51711ea14d65ba864cbc66806246395609b3f68fa9a54fc6c7cfc874de"
+    },
+    {
+      "cameraId": "authored-00s",
+      "column": "Previous rules ON",
+      "counters": {
+        "vsInvocations": 366201,
+        "engineIndices": 904962,
+        "mapIndices": 904926,
+        "mapDraws": 214,
+        "lowGeometryIndices": 34560,
+        "lowGeometryDraws": 10,
+        "fallbackDraws": 0
+      },
+      "rawPath": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-subset-installed-001\\sweep-cameras-results\\authored-00s-on.rgba",
+      "rawSha256": "20230070d0ffe5cfb0f26cfa2e879304c03019617882f723735840f2f56001dd"
+    },
+    {
+      "cameraId": "authored-00s",
+      "column": "Applied 70m / 1200px ON",
+      "counters": {
+        "vsInvocations": 242225,
+        "engineIndices": 620544,
+        "mapIndices": 620508,
+        "mapDraws": 145,
+        "lowGeometryIndices": 87168,
+        "lowGeometryDraws": 23,
+        "fallbackDraws": 0
+      },
+      "rawPath": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-subset-70m-001\\sweep-cameras-results\\authored-00s-on.rgba",
+      "rawSha256": "aad84462df54be3f7f7b2343ca0443e3b33ef3701068b44c27d0d646ad63f78c"
+    },
+    {
+      "cameraId": "authored-04s",
+      "column": "Original OFF",
+      "counters": {
+        "vsInvocations": 307676,
+        "engineIndices": 760614,
+        "mapIndices": 760578,
+        "mapDraws": 173,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "rawPath": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-subset-installed-001\\sweep-cameras-results\\authored-04s-off-before.rgba",
+      "rawSha256": "c30fe61ef6a73dcb086901a54938a6748ed63531fcf86ed43a0e9cea0d215ba6"
+    },
+    {
+      "cameraId": "authored-04s",
+      "column": "Previous rules ON",
+      "counters": {
+        "vsInvocations": 299657,
+        "engineIndices": 742734,
+        "mapIndices": 742698,
+        "mapDraws": 168,
+        "lowGeometryIndices": 3456,
+        "lowGeometryDraws": 1,
+        "fallbackDraws": 0
+      },
+      "rawPath": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-subset-installed-001\\sweep-cameras-results\\authored-04s-on.rgba",
+      "rawSha256": "8090b6f265ea957f52a81dffb3aea999130ae618931f6e50ae77d95c094eb171"
+    },
+    {
+      "cameraId": "authored-04s",
+      "column": "Applied 70m / 1200px ON",
+      "counters": {
+        "vsInvocations": 186274,
+        "engineIndices": 481740,
+        "mapIndices": 481704,
+        "mapDraws": 101,
+        "lowGeometryIndices": 51072,
+        "lowGeometryDraws": 14,
+        "fallbackDraws": 0
+      },
+      "rawPath": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-subset-70m-001\\sweep-cameras-results\\authored-04s-on.rgba",
+      "rawSha256": "bcfae45d0629e5e5bcfb4572fa2697d7fe249472a2e31a6b512effcbdeef1540"
+    },
+    {
+      "cameraId": "authored-06s",
+      "column": "Original OFF",
+      "counters": {
+        "vsInvocations": 127010,
+        "engineIndices": 324126,
+        "mapIndices": 324090,
+        "mapDraws": 60,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "rawPath": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-subset-installed-001\\sweep-cameras-results\\authored-06s-off-before.rgba",
+      "rawSha256": "9e9013bcf5b049c20b8e834b53b85eafe19a380f6c9aca8b0774a1e46798585f"
+    },
+    {
+      "cameraId": "authored-06s",
+      "column": "Previous rules ON",
+      "counters": {
+        "vsInvocations": 127010,
+        "engineIndices": 324126,
+        "mapIndices": 324090,
+        "mapDraws": 60,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "rawPath": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-subset-installed-001\\sweep-cameras-results\\authored-06s-on.rgba",
+      "rawSha256": "9e9013bcf5b049c20b8e834b53b85eafe19a380f6c9aca8b0774a1e46798585f"
+    },
+    {
+      "cameraId": "authored-06s",
+      "column": "Applied 70m / 1200px ON",
+      "counters": {
+        "vsInvocations": 99144,
+        "engineIndices": 258198,
+        "mapIndices": 258162,
+        "mapDraws": 43,
+        "lowGeometryIndices": 11136,
+        "lowGeometryDraws": 3,
+        "fallbackDraws": 0
+      },
+      "rawPath": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-subset-70m-001\\sweep-cameras-results\\authored-06s-on.rgba",
+      "rawSha256": "b53125e2739e1d46f05ee0da5359a757bbdd6cbbd7d14766fc22b548c0afd937"
+    },
+    {
+      "cameraId": "export-20261015-011643",
+      "column": "Original OFF",
+      "counters": {
+        "vsInvocations": 141795,
+        "engineIndices": 353994,
+        "mapIndices": 353958,
+        "mapDraws": 80,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "rawPath": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-subset-installed-001\\sweep-cameras-results\\export-20261015-011643-off-before.rgba",
+      "rawSha256": "53bac133544f7254bafd82b50176463cdaaf15a1030338b49d83e7ca54ea202b"
+    },
+    {
+      "cameraId": "export-20261015-011643",
+      "column": "Previous rules ON",
+      "counters": {
+        "vsInvocations": 141795,
+        "engineIndices": 353994,
+        "mapIndices": 353958,
+        "mapDraws": 80,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "rawPath": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-subset-installed-001\\sweep-cameras-results\\export-20261015-011643-on.rgba",
+      "rawSha256": "53bac133544f7254bafd82b50176463cdaaf15a1030338b49d83e7ca54ea202b"
+    },
+    {
+      "cameraId": "export-20261015-011643",
+      "column": "Applied 70m / 1200px ON",
+      "counters": {
+        "vsInvocations": 106820,
+        "engineIndices": 273804,
+        "mapIndices": 273768,
+        "mapDraws": 58,
+        "lowGeometryIndices": 14592,
+        "lowGeometryDraws": 4,
+        "fallbackDraws": 0
+      },
+      "rawPath": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-subset-70m-001\\sweep-cameras-results\\export-20261015-011643-on.rgba",
+      "rawSha256": "aafa53f2f6c9ad39c0da03460e74590e658208259307f3cbbfc07b2af05cb33d"
+    }
+  ]
+}

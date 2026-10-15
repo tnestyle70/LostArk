@@ -1,0 +1,4708 @@
+{
+  "schema": "lostark.bern.early-hud-capture-audit.v1",
+  "createdUtc": "2026-10-15T10:00:44.678354+00:00",
+  "readOnly": true,
+  "gpuOrProductRun": false,
+  "conclusion": {
+    "samePose80manTo50manHudPairConfirmed": false,
+    "oldEarlySaved80manGeometrySampleFound": false,
+    "latestOrdinary40to60manWholePipelineSampleFound": false,
+    "latestOrdinaryNear80manPipelineFrames": 58,
+    "interpretation": "The user-observed HUD improvement is not rejected. These saved files do not preserve the two matching HUD frames/cameras required to independently quantify it. No37.5% measured reduction is asserted."
+  },
+  "hudContract": {
+    "fps": "MainApp updates instantaneous1/fTimeDelta with EMA coefficient0.1 and rounds for display; the smoothed value is not saved here.",
+    "fpsSource": "Client/Private/MainApp.cpp:2183-2187,10533-10534",
+    "vs": "Get_GeometryStats returns latest completed asynchronous geometry.VSInvocations; number is not unique vertices or VBcapacity.",
+    "indices": "geometry.TotalIndices only when IndexValid; Engine direct+resolvedindirect submissions including instances, scope differs from whole-frameVS.",
+    "geometrySource": "Client/Private/MainApp.cpp:10522-10535; Client/Private/ProfilerCaptureIO_Cutscene.inl:138-161",
+    "latency": "HUD reports GPU -N F. Its displayedcompletedframe may differ from current camera/FPS update. Ordinary capture frame IDs do not preserve that association."
+  },
+  "distanceCapture": {
+    "source": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\ProfilerCaptures\\bern-distance_20261014_002751_254_frame88147_48928_0.json",
+      "bytes": 2059987253,
+      "mtimeNs": 1791905372774924300,
+      "sha256": "f53591844f997a21cfc6745ddbfd2a74990f8e78c31b28693c95686c947bb2c6"
+    },
+    "freshAuditVerification": "Complete ijson.items(use_float=False), one sample at a time, with inlineSHA256. The fresh SHA matched existing camera-extraction SHA and all100 sample geometryFrame/VS/totalIndices matched distance-summary.json. Before/after size+mtime unchanged. Final artifact reuses those validated small summaries.",
+    "fullDocumentDomLoaded": false,
+    "sourceRowsCopiedIntoAudit": false,
+    "sampleCount": 100,
+    "sampledCueRange": [
+      0.201457,
+      5.107775
+    ],
+    "sampledGeometryFrameRange": [
+      88037,
+      88143
+    ],
+    "validVs": {
+      "count": 100,
+      "minimum": 2282114,
+      "maximum": 8952634,
+      "mean": 6436663.86,
+      "median": 6612821.0
+    },
+    "validTotalIndices": {
+      "count": 100,
+      "minimum": 5660637,
+      "maximum": 19670838,
+      "mean": 14097042.33,
+      "median": 14288937.0
+    },
+    "cue0to5SampleCount": 98,
+    "cue0to5Vs": {
+      "count": 98,
+      "minimum": 2282114,
+      "maximum": 8952634,
+      "mean": 6512414.5,
+      "median": 6621840.5
+    },
+    "sampledVs700000to900000Count": 0,
+    "sampledVs400000to600000Count": 0,
+    "geometryFrameCameraCueVsIndicesPreserved": true,
+    "smoothedHudFpsPreserved": false,
+    "geometryValidity": {
+      "vertexValidSamples": 100,
+      "indexValidSamples": 100
+    },
+    "metadata": {
+      "schema": "LostArkBernCutsceneGeometry.v1",
+      "intervalMs": 100,
+      "minimumDistance": 0.0,
+      "maximumDistance": 250.0,
+      "cueDurationSeconds": 16.0,
+      "elapsedWallMs": 14510.5931,
+      "startedMidCue": true,
+      "sourceRows": 2000000,
+      "skippedTicks": 45,
+      "stopReason": "capture_budget_reached",
+      "measurementSemantics": {
+        "sampling": "Fixed wall-time schedule, observing an actual rendered frame at or after each due tick. Missed ticks are counted, never synthesized. cueSeconds uses the existing cutscene playback clock, which can advance differently from wall time. cutsceneSamples are retained separately from the raw v3 history ring and are not restricted by the raw JSON frame window.",
+        "vertices": "vsInvocations is the whole-frame GPU vertex shader invocation count, including passes and internal UI/DirectXTK draws within the query. It is not a unique vertex-buffer count, resident vertices, or final visible geometry.",
+        "indices": "directIndices and indirectIndices cover instrumented Engine indexed submissions, including repeated passes and instance multiplication; totalIndices is their sum only when indexValid. They exclude uninstrumented DirectXTK and separately rendered ImGui draws. These are a different coverage from whole-frame vsInvocations.",
+        "distance": "Meters from the observed camera to each placement/model bounding sphere: centerDistance to its center, nearDistance to its nearest sphere surface. These are not submesh surface distances. Source rows use centerDistance for the requested interval filter; mapDraws retain all instrumented static-map color submissions before that filter.",
+        "distanceDelta": "Stable key (placementId, assetId, meshIndex). Differences use the previous observed sample of that key, which may precede skipped or filtered ticks. First observation has null previous tick, delta and rate. Negative rate means approaching the model sphere center.",
+        "lod": "sources.lodDiagnostic and diagnosticIndexCount are CPU envelope diagnostics only. GPU source-level surviving LOD is not observed. mapDraws.lod describes the submitted draw/bin; a native HLOD path without one LOD number exports null. vertexBufferCount is the bound source VB vertex count, which need not shrink with an index-only LOD. instanceCount is actual only when known or joined with same-frame indirect args.",
+        "indirectJoin": "geometryFrameNumber + indirectBufferOrdinal/bufferOrdinal + argsByteOffset. Ordinals are ephemeral frame-local IDs, never pointers. One map draw uses one instanceCount; argument.drawCount explains repeated use of the same args and must not be multiplied into every map row. Unknown values are null.",
+        "sourceJoin": "sourceIdsKnown is true only when all submitted source placement IDs are observed. GPU draws leave source IDs unknown; source.gpuCohortId and meshIndex join only the cohort/bin aggregate, not individual surviving placements. draw.assetId is a representative asset and is not an exhaustive asset list for a merged draw.",
+        "frameInterval": "frameIntervalMs measures consecutive diagnostic render boundaries before world rendering, while geometry belongs to this rendered frame. It is distinct from raw v3 profiler Begin-to-Begin timing. GPU results may resolve later; currentFrameNumberAtResolve and latencyFrames identify that delay."
+      }
+    },
+    "fieldPaths": {
+      "geometryFrame": "bernCutsceneGeometry.cutsceneSamples[i].geometryFrame",
+      "queryFrame": "bernCutsceneGeometry.cutsceneSamples[i].geometry.frameNumber",
+      "vs": "bernCutsceneGeometry.cutsceneSamples[i].geometry.vsInvocations",
+      "index": "bernCutsceneGeometry.cutsceneSamples[i].geometry.totalIndices",
+      "camera": "bernCutsceneGeometry.cutsceneSamples[i].map.{cameraPosition,view,projection,viewport}",
+      "cue": "bernCutsceneGeometry.cutsceneSamples[i].cueSeconds",
+      "interval": "bernCutsceneGeometry.cutsceneSamples[i].frameIntervalMs"
+    },
+    "samples": [
+      {
+        "geometryFrame": 88037,
+        "tick": 0,
+        "scheduledWallMs": 0.0,
+        "observedWallMs": 0.0,
+        "cueSeconds": 0.201457,
+        "frameIntervalMs": 0.0,
+        "collectionCpuMs": 236.8945,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88037,
+          "currentFrameNumberAtResolve": 88041,
+          "captureFrameNumber": 0,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 8952634,
+          "directIndices": 15969942,
+          "indirectIndices": 3700896,
+          "totalIndices": 19670838,
+          "indirectDrawCalls": 750
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 5,
+          "cameraRevision": 5098,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.319824,
+            45.83865,
+            -25.894712
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88038,
+        "tick": 5,
+        "scheduledWallMs": 500.0,
+        "observedWallMs": 593.5236,
+        "cueSeconds": 0.251457,
+        "frameIntervalMs": 593.5236,
+        "collectionCpuMs": 27.5727,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88038,
+          "currentFrameNumberAtResolve": 88042,
+          "captureFrameNumber": 0,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 8940598,
+          "directIndices": 15974346,
+          "indirectIndices": 3663549,
+          "totalIndices": 19637895,
+          "indirectDrawCalls": 747
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 6,
+          "cameraRevision": 5099,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.410431,
+            45.708324,
+            -26.501297
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88039,
+        "tick": 7,
+        "scheduledWallMs": 700.0,
+        "observedWallMs": 790.4095,
+        "cueSeconds": 0.301457,
+        "frameIntervalMs": 196.8859,
+        "collectionCpuMs": 19.8078,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88039,
+          "currentFrameNumberAtResolve": 88043,
+          "captureFrameNumber": 0,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 8911073,
+          "directIndices": 15913827,
+          "indirectIndices": 3654180,
+          "totalIndices": 19568007,
+          "indirectDrawCalls": 760
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 7,
+          "cameraRevision": 5100,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.500931,
+            45.572227,
+            -27.146318
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88040,
+        "tick": 9,
+        "scheduledWallMs": 900.0,
+        "observedWallMs": 967.7655,
+        "cueSeconds": 0.351457,
+        "frameIntervalMs": 177.356,
+        "collectionCpuMs": 12.8993,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88040,
+          "currentFrameNumberAtResolve": 88044,
+          "captureFrameNumber": 0,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 8899807,
+          "directIndices": 15883518,
+          "indirectIndices": 3640767,
+          "totalIndices": 19524285,
+          "indirectDrawCalls": 748
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 8,
+          "cameraRevision": 5101,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.585846,
+            45.434319,
+            -27.819031
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88041,
+        "tick": 11,
+        "scheduledWallMs": 1100.0,
+        "observedWallMs": 1118.9239,
+        "cueSeconds": 0.401457,
+        "frameIntervalMs": 151.1584,
+        "collectionCpuMs": 17.9198,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88041,
+          "currentFrameNumberAtResolve": 88045,
+          "captureFrameNumber": 0,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 8830548,
+          "directIndices": 15759921,
+          "indirectIndices": 3612396,
+          "totalIndices": 19372317,
+          "indirectDrawCalls": 745
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 9,
+          "cameraRevision": 5102,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.659622,
+            45.298595,
+            -28.508671
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88042,
+        "tick": 12,
+        "scheduledWallMs": 1200.0,
+        "observedWallMs": 1265.0227,
+        "cueSeconds": 0.451458,
+        "frameIntervalMs": 146.0988,
+        "collectionCpuMs": 19.2364,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88042,
+          "currentFrameNumberAtResolve": 88046,
+          "captureFrameNumber": 0,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 8746127,
+          "directIndices": 15610848,
+          "indirectIndices": 3552315,
+          "totalIndices": 19163163,
+          "indirectDrawCalls": 750
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 10,
+          "cameraRevision": 5103,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.716736,
+            45.16906,
+            -29.204487
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88043,
+        "tick": 14,
+        "scheduledWallMs": 1400.0,
+        "observedWallMs": 1415.1375,
+        "cueSeconds": 0.501458,
+        "frameIntervalMs": 150.1148,
+        "collectionCpuMs": 30.7806,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88043,
+          "currentFrameNumberAtResolve": 88047,
+          "captureFrameNumber": 0,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 8671767,
+          "directIndices": 15555366,
+          "indirectIndices": 3433011,
+          "totalIndices": 18988377,
+          "indirectDrawCalls": 740
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 11,
+          "cameraRevision": 5104,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.751633,
+            45.049664,
+            -29.895729
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88044,
+        "tick": 16,
+        "scheduledWallMs": 1600.0,
+        "observedWallMs": 1652.9522,
+        "cueSeconds": 0.551458,
+        "frameIntervalMs": 237.8147,
+        "collectionCpuMs": 40.5368,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88044,
+          "currentFrameNumberAtResolve": 88048,
+          "captureFrameNumber": 1,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 8620488,
+          "directIndices": 15432954,
+          "indirectIndices": 3430560,
+          "totalIndices": 18863514,
+          "indirectDrawCalls": 739
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 12,
+          "cameraRevision": 5105,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.758698,
+            44.944416,
+            -30.571627
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88045,
+        "tick": 19,
+        "scheduledWallMs": 1900.0,
+        "observedWallMs": 1919.8891,
+        "cueSeconds": 0.601458,
+        "frameIntervalMs": 266.9369,
+        "collectionCpuMs": 57.5644,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88045,
+          "currentFrameNumberAtResolve": 88049,
+          "captureFrameNumber": 2,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 8556577,
+          "directIndices": 15268821,
+          "indirectIndices": 3429402,
+          "totalIndices": 18698223,
+          "indirectDrawCalls": 738
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 13,
+          "cameraRevision": 5106,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.732468,
+            44.857285,
+            -31.221445
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88046,
+        "tick": 22,
+        "scheduledWallMs": 2200.0,
+        "observedWallMs": 2211.6497,
+        "cueSeconds": 0.651458,
+        "frameIntervalMs": 291.7606,
+        "collectionCpuMs": 61.7736,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88046,
+          "currentFrameNumberAtResolve": 88050,
+          "captureFrameNumber": 3,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 8469632,
+          "directIndices": 15151077,
+          "indirectIndices": 3368397,
+          "totalIndices": 18519474,
+          "indirectDrawCalls": 732
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 14,
+          "cameraRevision": 5107,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.667435,
+            44.792286,
+            -31.834421
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88047,
+        "tick": 25,
+        "scheduledWallMs": 2500.0,
+        "observedWallMs": 2574.8277,
+        "cueSeconds": 0.701458,
+        "frameIntervalMs": 363.178,
+        "collectionCpuMs": 24.0704,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88047,
+          "currentFrameNumberAtResolve": 88051,
+          "captureFrameNumber": 4,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 8359871,
+          "directIndices": 15012303,
+          "indirectIndices": 3263943,
+          "totalIndices": 18276246,
+          "indirectDrawCalls": 727
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 15,
+          "cameraRevision": 5108,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.550171,
+            44.753239,
+            -32.409264
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88048,
+        "tick": 27,
+        "scheduledWallMs": 2700.0,
+        "observedWallMs": 2736.4775,
+        "cueSeconds": 0.751458,
+        "frameIntervalMs": 161.6498,
+        "collectionCpuMs": 19.8671,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88048,
+          "currentFrameNumberAtResolve": 88052,
+          "captureFrameNumber": 5,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 8282317,
+          "directIndices": 14865786,
+          "indirectIndices": 3207855,
+          "totalIndices": 18073641,
+          "indirectDrawCalls": 720
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 16,
+          "cameraRevision": 5109,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.3647,
+            44.739307,
+            -32.969452
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88049,
+        "tick": 29,
+        "scheduledWallMs": 2900.0,
+        "observedWallMs": 2915.8417,
+        "cueSeconds": 0.801458,
+        "frameIntervalMs": 179.3642,
+        "collectionCpuMs": 20.5791,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88049,
+          "currentFrameNumberAtResolve": 88053,
+          "captureFrameNumber": 6,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 8155695,
+          "directIndices": 14591412,
+          "indirectIndices": 3182238,
+          "totalIndices": 17773650,
+          "indirectDrawCalls": 722
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 17,
+          "cameraRevision": 5110,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.123062,
+            44.746239,
+            -33.519318
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88050,
+        "tick": 31,
+        "scheduledWallMs": 3100.0,
+        "observedWallMs": 3115.0716,
+        "cueSeconds": 0.851458,
+        "frameIntervalMs": 199.2299,
+        "collectionCpuMs": 19.7989,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88050,
+          "currentFrameNumberAtResolve": 88054,
+          "captureFrameNumber": 7,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 8133729,
+          "directIndices": 14494710,
+          "indirectIndices": 3222897,
+          "totalIndices": 17717607,
+          "indirectDrawCalls": 724
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 18,
+          "cameraRevision": 5111,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            137.838257,
+            44.769794,
+            -34.061718
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88051,
+        "tick": 32,
+        "scheduledWallMs": 3200.0,
+        "observedWallMs": 3298.2462,
+        "cueSeconds": 0.901458,
+        "frameIntervalMs": 183.1746,
+        "collectionCpuMs": 18.4599,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88051,
+          "currentFrameNumberAtResolve": 88055,
+          "captureFrameNumber": 8,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 8112965,
+          "directIndices": 14417823,
+          "indirectIndices": 3243036,
+          "totalIndices": 17660859,
+          "indirectDrawCalls": 727
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 19,
+          "cameraRevision": 5112,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            137.523239,
+            44.805676,
+            -34.599468
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88052,
+        "tick": 34,
+        "scheduledWallMs": 3400.0,
+        "observedWallMs": 3447.6256,
+        "cueSeconds": 0.951458,
+        "frameIntervalMs": 149.3794,
+        "collectionCpuMs": 20.0569,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88052,
+          "currentFrameNumberAtResolve": 88056,
+          "captureFrameNumber": 9,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 8024718,
+          "directIndices": 14259156,
+          "indirectIndices": 3232830,
+          "totalIndices": 17491986,
+          "indirectDrawCalls": 727
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 20,
+          "cameraRevision": 5113,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            137.191147,
+            44.84964,
+            -35.135441
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88053,
+        "tick": 35,
+        "scheduledWallMs": 3500.0,
+        "observedWallMs": 3587.4895,
+        "cueSeconds": 1.001458,
+        "frameIntervalMs": 139.8639,
+        "collectionCpuMs": 15.1146,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88053,
+          "currentFrameNumberAtResolve": 88057,
+          "captureFrameNumber": 10,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 8004985,
+          "directIndices": 14222214,
+          "indirectIndices": 3231759,
+          "totalIndices": 17453973,
+          "indirectDrawCalls": 729
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 21,
+          "cameraRevision": 5114,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.855011,
+            44.897434,
+            -35.672451
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88054,
+        "tick": 37,
+        "scheduledWallMs": 3700.0,
+        "observedWallMs": 3716.8511,
+        "cueSeconds": 1.051458,
+        "frameIntervalMs": 129.3616,
+        "collectionCpuMs": 16.5276,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88054,
+          "currentFrameNumberAtResolve": 88058,
+          "captureFrameNumber": 11,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7983269,
+          "directIndices": 14146179,
+          "indirectIndices": 3257862,
+          "totalIndices": 17404041,
+          "indirectDrawCalls": 724
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 22,
+          "cameraRevision": 5115,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.527908,
+            44.944778,
+            -36.213356
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88055,
+        "tick": 38,
+        "scheduledWallMs": 3800.0,
+        "observedWallMs": 3835.2655,
+        "cueSeconds": 1.101457,
+        "frameIntervalMs": 118.4144,
+        "collectionCpuMs": 12.43,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88055,
+          "currentFrameNumberAtResolve": 88059,
+          "captureFrameNumber": 12,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7957961,
+          "directIndices": 14086314,
+          "indirectIndices": 3273279,
+          "totalIndices": 17359593,
+          "indirectDrawCalls": 715
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 23,
+          "cameraRevision": 5116,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.222839,
+            44.987392,
+            -36.760979
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88056,
+        "tick": 39,
+        "scheduledWallMs": 3900.0,
+        "observedWallMs": 3946.2561,
+        "cueSeconds": 1.151457,
+        "frameIntervalMs": 110.9906,
+        "collectionCpuMs": 16.5608,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88056,
+          "currentFrameNumberAtResolve": 88060,
+          "captureFrameNumber": 13,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7934939,
+          "directIndices": 14011254,
+          "indirectIndices": 3294822,
+          "totalIndices": 17306076,
+          "indirectDrawCalls": 715
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 24,
+          "cameraRevision": 5117,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.952942,
+            45.021053,
+            -37.31818
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88057,
+        "tick": 40,
+        "scheduledWallMs": 4000.0,
+        "observedWallMs": 4070.2019,
+        "cueSeconds": 1.201457,
+        "frameIntervalMs": 123.9458,
+        "collectionCpuMs": 12.7734,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88057,
+          "currentFrameNumberAtResolve": 88061,
+          "captureFrameNumber": 14,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7870476,
+          "directIndices": 13922430,
+          "indirectIndices": 3229398,
+          "totalIndices": 17151828,
+          "indirectDrawCalls": 713
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 25,
+          "cameraRevision": 5118,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.731186,
+            45.041473,
+            -37.887794
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88058,
+        "tick": 41,
+        "scheduledWallMs": 4100.0,
+        "observedWallMs": 4173.1972,
+        "cueSeconds": 1.251457,
+        "frameIntervalMs": 102.9953,
+        "collectionCpuMs": 15.2274,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88058,
+          "currentFrameNumberAtResolve": 88062,
+          "captureFrameNumber": 15,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7850342,
+          "directIndices": 13872231,
+          "indirectIndices": 3236205,
+          "totalIndices": 17108436,
+          "indirectDrawCalls": 708
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 26,
+          "cameraRevision": 5119,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.570587,
+            45.044376,
+            -38.472645
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88059,
+        "tick": 42,
+        "scheduledWallMs": 4200.0,
+        "observedWallMs": 4279.7474,
+        "cueSeconds": 1.301457,
+        "frameIntervalMs": 106.5502,
+        "collectionCpuMs": 14.2813,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88059,
+          "currentFrameNumberAtResolve": 88063,
+          "captureFrameNumber": 16,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7758195,
+          "directIndices": 13714788,
+          "indirectIndices": 3203820,
+          "totalIndices": 16918608,
+          "indirectDrawCalls": 705
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 27,
+          "cameraRevision": 5120,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.484375,
+            45.025528,
+            -39.075611
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88060,
+        "tick": 43,
+        "scheduledWallMs": 4300.0,
+        "observedWallMs": 4386.9082,
+        "cueSeconds": 1.351457,
+        "frameIntervalMs": 107.1608,
+        "collectionCpuMs": 16.1564,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88060,
+          "currentFrameNumberAtResolve": 88064,
+          "captureFrameNumber": 17,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7714658,
+          "directIndices": 13636950,
+          "indirectIndices": 3187101,
+          "totalIndices": 16824051,
+          "indirectDrawCalls": 701
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 28,
+          "cameraRevision": 5121,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.482513,
+            44.985268,
+            -39.649429
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88061,
+        "tick": 45,
+        "scheduledWallMs": 4500.0,
+        "observedWallMs": 4502.0631,
+        "cueSeconds": 1.401457,
+        "frameIntervalMs": 115.1549,
+        "collectionCpuMs": 14.3405,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88061,
+          "currentFrameNumberAtResolve": 88065,
+          "captureFrameNumber": 18,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7677736,
+          "directIndices": 13563225,
+          "indirectIndices": 3184134,
+          "totalIndices": 16747359,
+          "indirectDrawCalls": 697
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 29,
+          "cameraRevision": 5122,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.55191,
+            44.930603,
+            -40.171375
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88062,
+        "tick": 46,
+        "scheduledWallMs": 4600.0,
+        "observedWallMs": 4621.2781,
+        "cueSeconds": 1.451457,
+        "frameIntervalMs": 119.215,
+        "collectionCpuMs": 25.5905,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88062,
+          "currentFrameNumberAtResolve": 88066,
+          "captureFrameNumber": 19,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7633682,
+          "directIndices": 13532271,
+          "indirectIndices": 3121845,
+          "totalIndices": 16654116,
+          "indirectDrawCalls": 692
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 30,
+          "cameraRevision": 5123,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.681519,
+            44.860313,
+            -40.704102
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88063,
+        "tick": 47,
+        "scheduledWallMs": 4700.0,
+        "observedWallMs": 4745.3416,
+        "cueSeconds": 1.501457,
+        "frameIntervalMs": 124.0635,
+        "collectionCpuMs": 12.9021,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88063,
+          "currentFrameNumberAtResolve": 88067,
+          "captureFrameNumber": 20,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7591155,
+          "directIndices": 13493061,
+          "indirectIndices": 3069066,
+          "totalIndices": 16562127,
+          "indirectDrawCalls": 678
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 31,
+          "cameraRevision": 5124,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.862473,
+            44.776718,
+            -41.24659
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88064,
+        "tick": 48,
+        "scheduledWallMs": 4800.0,
+        "observedWallMs": 4846.9774,
+        "cueSeconds": 1.551457,
+        "frameIntervalMs": 101.6358,
+        "collectionCpuMs": 19.7787,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88064,
+          "currentFrameNumberAtResolve": 88068,
+          "captureFrameNumber": 21,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7550295,
+          "directIndices": 13461618,
+          "indirectIndices": 3010875,
+          "totalIndices": 16472493,
+          "indirectDrawCalls": 671
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 32,
+          "cameraRevision": 5125,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.085785,
+            44.682121,
+            -41.797787
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88065,
+        "tick": 49,
+        "scheduledWallMs": 4900.0,
+        "observedWallMs": 4952.8704,
+        "cueSeconds": 1.601457,
+        "frameIntervalMs": 105.893,
+        "collectionCpuMs": 12.9868,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88065,
+          "currentFrameNumberAtResolve": 88069,
+          "captureFrameNumber": 22,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7515951,
+          "directIndices": 13386828,
+          "indirectIndices": 3007767,
+          "totalIndices": 16394595,
+          "indirectDrawCalls": 664
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 33,
+          "cameraRevision": 5126,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.342651,
+            44.578819,
+            -42.356655
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88066,
+        "tick": 50,
+        "scheduledWallMs": 5000.0,
+        "observedWallMs": 5063.5811,
+        "cueSeconds": 1.651457,
+        "frameIntervalMs": 110.7107,
+        "collectionCpuMs": 16.8985,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88066,
+          "currentFrameNumberAtResolve": 88070,
+          "captureFrameNumber": 23,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7483813,
+          "directIndices": 13358427,
+          "indirectIndices": 2962782,
+          "totalIndices": 16321209,
+          "indirectDrawCalls": 647
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 34,
+          "cameraRevision": 5127,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.624161,
+            44.469177,
+            -42.922188
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88067,
+        "tick": 51,
+        "scheduledWallMs": 5100.0,
+        "observedWallMs": 5185.9316,
+        "cueSeconds": 1.701457,
+        "frameIntervalMs": 122.3505,
+        "collectionCpuMs": 16.4887,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88067,
+          "currentFrameNumberAtResolve": 88071,
+          "captureFrameNumber": 24,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7420372,
+          "directIndices": 13260192,
+          "indirectIndices": 2919465,
+          "totalIndices": 16179657,
+          "indirectDrawCalls": 642
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 35,
+          "cameraRevision": 5128,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.921371,
+            44.355431,
+            -43.493301
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88068,
+        "tick": 52,
+        "scheduledWallMs": 5200.0,
+        "observedWallMs": 5281.9508,
+        "cueSeconds": 1.749342,
+        "frameIntervalMs": 96.0192,
+        "collectionCpuMs": 12.125,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88068,
+          "currentFrameNumberAtResolve": 88072,
+          "captureFrameNumber": 25,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7398882,
+          "directIndices": 13223976,
+          "indirectIndices": 2909820,
+          "totalIndices": 16133796,
+          "indirectDrawCalls": 635
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 36,
+          "cameraRevision": 5129,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            137.212509,
+            44.244846,
+            -44.044556
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88069,
+        "tick": 53,
+        "scheduledWallMs": 5300.0,
+        "observedWallMs": 5382.9836,
+        "cueSeconds": 1.797172,
+        "frameIntervalMs": 101.0328,
+        "collectionCpuMs": 22.3208,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88069,
+          "currentFrameNumberAtResolve": 88073,
+          "captureFrameNumber": 26,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7373943,
+          "directIndices": 13205859,
+          "indirectIndices": 2877282,
+          "totalIndices": 16083141,
+          "indirectDrawCalls": 627
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 37,
+          "cameraRevision": 5130,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            137.501877,
+            44.134811,
+            -44.598473
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88070,
+        "tick": 55,
+        "scheduledWallMs": 5500.0,
+        "observedWallMs": 5504.6263,
+        "cueSeconds": 1.847172,
+        "frameIntervalMs": 121.6427,
+        "collectionCpuMs": 16.106,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88070,
+          "currentFrameNumberAtResolve": 88074,
+          "captureFrameNumber": 27,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7313677,
+          "directIndices": 13094742,
+          "indirectIndices": 2848650,
+          "totalIndices": 15943392,
+          "indirectDrawCalls": 614
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 38,
+          "cameraRevision": 5131,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            137.794205,
+            44.02243,
+            -45.180031
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88071,
+        "tick": 56,
+        "scheduledWallMs": 5600.0,
+        "observedWallMs": 5626.0379,
+        "cueSeconds": 1.897171,
+        "frameIntervalMs": 121.4116,
+        "collectionCpuMs": 20.8773,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88071,
+          "currentFrameNumberAtResolve": 88075,
+          "captureFrameNumber": 28,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7262092,
+          "directIndices": 13016553,
+          "indirectIndices": 2807295,
+          "totalIndices": 15823848,
+          "indirectDrawCalls": 612
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 39,
+          "cameraRevision": 5132,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.06749,
+            43.915051,
+            -45.763138
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88072,
+        "tick": 57,
+        "scheduledWallMs": 5700.0,
+        "observedWallMs": 5737.2476,
+        "cueSeconds": 1.947171,
+        "frameIntervalMs": 111.2097,
+        "collectionCpuMs": 12.998,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88072,
+          "currentFrameNumberAtResolve": 88076,
+          "captureFrameNumber": 29,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7209062,
+          "directIndices": 12953073,
+          "indirectIndices": 2748675,
+          "totalIndices": 15701748,
+          "indirectDrawCalls": 606
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 40,
+          "cameraRevision": 5133,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.312744,
+            43.814934,
+            -46.346748
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88073,
+        "tick": 58,
+        "scheduledWallMs": 5800.0,
+        "observedWallMs": 5831.0253,
+        "cueSeconds": 1.993884,
+        "frameIntervalMs": 93.7777,
+        "collectionCpuMs": 15.1091,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88073,
+          "currentFrameNumberAtResolve": 88077,
+          "captureFrameNumber": 30,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7158065,
+          "directIndices": 12859752,
+          "indirectIndices": 2726727,
+          "totalIndices": 15586479,
+          "indirectDrawCalls": 602
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 41,
+          "cameraRevision": 5134,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.508789,
+            43.730053,
+            -46.891541
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88074,
+        "tick": 59,
+        "scheduledWallMs": 5900.0,
+        "observedWallMs": 5928.4696,
+        "cueSeconds": 2.042471,
+        "frameIntervalMs": 97.4443,
+        "collectionCpuMs": 12.4685,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88074,
+          "currentFrameNumberAtResolve": 88078,
+          "captureFrameNumber": 31,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 7066769,
+          "directIndices": 12699387,
+          "indirectIndices": 2666961,
+          "totalIndices": 15366348,
+          "indirectDrawCalls": 588
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 42,
+          "cameraRevision": 5135,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.670761,
+            43.65271,
+            -47.456814
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88075,
+        "tick": 60,
+        "scheduledWallMs": 6000.0,
+        "observedWallMs": 6015.8983,
+        "cueSeconds": 2.086287,
+        "frameIntervalMs": 87.4287,
+        "collectionCpuMs": 14.6828,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88075,
+          "currentFrameNumberAtResolve": 88079,
+          "captureFrameNumber": 32,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6991949,
+          "directIndices": 12559389,
+          "indirectIndices": 2630463,
+          "totalIndices": 15189852,
+          "indirectDrawCalls": 583
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 43,
+          "cameraRevision": 5136,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.773468,
+            43.594231,
+            -47.964584
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88076,
+        "tick": 61,
+        "scheduledWallMs": 6100.0,
+        "observedWallMs": 6131.8163,
+        "cueSeconds": 2.136287,
+        "frameIntervalMs": 115.918,
+        "collectionCpuMs": 12.8858,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88076,
+          "currentFrameNumberAtResolve": 88080,
+          "captureFrameNumber": 33,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6971041,
+          "directIndices": 12563985,
+          "indirectIndices": 2565204,
+          "totalIndices": 15129189,
+          "indirectDrawCalls": 567
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 44,
+          "cameraRevision": 5137,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.832458,
+            43.542652,
+            -48.54076
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88077,
+        "tick": 62,
+        "scheduledWallMs": 6200.0,
+        "observedWallMs": 6235.0239,
+        "cueSeconds": 2.186287,
+        "frameIntervalMs": 103.2076,
+        "collectionCpuMs": 13.235,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88077,
+          "currentFrameNumberAtResolve": 88081,
+          "captureFrameNumber": 34,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6943930,
+          "directIndices": 12515775,
+          "indirectIndices": 2556879,
+          "totalIndices": 15072654,
+          "indirectDrawCalls": 560
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 45,
+          "cameraRevision": 5138,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.825211,
+            43.505489,
+            -49.1101
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88078,
+        "tick": 63,
+        "scheduledWallMs": 6300.0,
+        "observedWallMs": 6357.4309,
+        "cueSeconds": 2.236287,
+        "frameIntervalMs": 122.407,
+        "collectionCpuMs": 12.5919,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88078,
+          "currentFrameNumberAtResolve": 88082,
+          "captureFrameNumber": 35,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6906835,
+          "directIndices": 12434994,
+          "indirectIndices": 2558052,
+          "totalIndices": 14993046,
+          "indirectDrawCalls": 552
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 46,
+          "cameraRevision": 5139,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.759903,
+            43.476082,
+            -49.67038
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88079,
+        "tick": 64,
+        "scheduledWallMs": 6400.0,
+        "observedWallMs": 6468.6584,
+        "cueSeconds": 2.286287,
+        "frameIntervalMs": 111.2275,
+        "collectionCpuMs": 13.8463,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88079,
+          "currentFrameNumberAtResolve": 88083,
+          "captureFrameNumber": 36,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6862785,
+          "directIndices": 12366417,
+          "indirectIndices": 2519112,
+          "totalIndices": 14885529,
+          "indirectDrawCalls": 540
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 47,
+          "cameraRevision": 5140,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.644012,
+            43.453945,
+            -50.223808
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88080,
+        "tick": 65,
+        "scheduledWallMs": 6500.0,
+        "observedWallMs": 6579.996,
+        "cueSeconds": 2.336287,
+        "frameIntervalMs": 111.3376,
+        "collectionCpuMs": 12.2333,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88080,
+          "currentFrameNumberAtResolve": 88084,
+          "captureFrameNumber": 37,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6828204,
+          "directIndices": 12312153,
+          "indirectIndices": 2487285,
+          "totalIndices": 14799438,
+          "indirectDrawCalls": 533
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 48,
+          "cameraRevision": 5141,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.485031,
+            43.438766,
+            -50.77253
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88081,
+        "tick": 67,
+        "scheduledWallMs": 6700.0,
+        "observedWallMs": 6713.6344,
+        "cueSeconds": 2.386287,
+        "frameIntervalMs": 133.6384,
+        "collectionCpuMs": 15.4961,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88081,
+          "currentFrameNumberAtResolve": 88085,
+          "captureFrameNumber": 38,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6794112,
+          "directIndices": 12245520,
+          "indirectIndices": 2467692,
+          "totalIndices": 14713212,
+          "indirectDrawCalls": 534
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 49,
+          "cameraRevision": 5142,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.29039,
+            43.43026,
+            -51.318748
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88083,
+        "tick": 68,
+        "scheduledWallMs": 6800.0,
+        "observedWallMs": 6881.2231,
+        "cueSeconds": 2.468606,
+        "frameIntervalMs": 82.496,
+        "collectionCpuMs": 17.8652,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88083,
+          "currentFrameNumberAtResolve": 88087,
+          "captureFrameNumber": 40,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6717971,
+          "directIndices": 12085311,
+          "indirectIndices": 2446551,
+          "totalIndices": 14531862,
+          "indirectDrawCalls": 532
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 51,
+          "cameraRevision": 5144,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            137.911865,
+            43.429989,
+            -52.218342
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88084,
+        "tick": 69,
+        "scheduledWallMs": 6900.0,
+        "observedWallMs": 6995.413,
+        "cueSeconds": 2.518606,
+        "frameIntervalMs": 114.1899,
+        "collectionCpuMs": 11.518,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88084,
+          "currentFrameNumberAtResolve": 88088,
+          "captureFrameNumber": 41,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6667116,
+          "directIndices": 11990901,
+          "indirectIndices": 2427075,
+          "totalIndices": 14417976,
+          "indirectDrawCalls": 535
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 52,
+          "cameraRevision": 5145,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            137.658661,
+            43.437679,
+            -52.768421
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88085,
+        "tick": 70,
+        "scheduledWallMs": 7000.0,
+        "observedWallMs": 7098.1573,
+        "cueSeconds": 2.568579,
+        "frameIntervalMs": 102.7443,
+        "collectionCpuMs": 19.7474,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88085,
+          "currentFrameNumberAtResolve": 88089,
+          "captureFrameNumber": 42,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6629347,
+          "directIndices": 11897016,
+          "indirectIndices": 2430630,
+          "totalIndices": 14327646,
+          "indirectDrawCalls": 532
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 53,
+          "cameraRevision": 5146,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            137.397018,
+            43.450916,
+            -53.323624
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88086,
+        "tick": 72,
+        "scheduledWallMs": 7200.0,
+        "observedWallMs": 7222.1144,
+        "cueSeconds": 2.618579,
+        "frameIntervalMs": 123.9571,
+        "collectionCpuMs": 22.3026,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88086,
+          "currentFrameNumberAtResolve": 88090,
+          "captureFrameNumber": 43,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6611308,
+          "directIndices": 11863692,
+          "indirectIndices": 2421231,
+          "totalIndices": 14284923,
+          "indirectDrawCalls": 524
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 54,
+          "cameraRevision": 5147,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            137.13414,
+            43.46944,
+            -53.886734
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88087,
+        "tick": 73,
+        "scheduledWallMs": 7300.0,
+        "observedWallMs": 7326.2933,
+        "cueSeconds": 2.668507,
+        "frameIntervalMs": 104.1789,
+        "collectionCpuMs": 14.3459,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88087,
+          "currentFrameNumberAtResolve": 88091,
+          "captureFrameNumber": 44,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6645689,
+          "directIndices": 11858766,
+          "indirectIndices": 2506482,
+          "totalIndices": 14365248,
+          "indirectDrawCalls": 518
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 55,
+          "cameraRevision": 5148,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.877838,
+            43.492878,
+            -54.458805
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88088,
+        "tick": 74,
+        "scheduledWallMs": 7400.0,
+        "observedWallMs": 7429.105,
+        "cueSeconds": 2.718507,
+        "frameIntervalMs": 102.8117,
+        "collectionCpuMs": 15.0407,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88088,
+          "currentFrameNumberAtResolve": 88092,
+          "captureFrameNumber": 45,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6614334,
+          "directIndices": 11793486,
+          "indirectIndices": 2499465,
+          "totalIndices": 14292951,
+          "indirectDrawCalls": 512
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 56,
+          "cameraRevision": 5149,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.634949,
+            43.521019,
+            -55.04364
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88089,
+        "tick": 75,
+        "scheduledWallMs": 7500.0,
+        "observedWallMs": 7522.4918,
+        "cueSeconds": 2.765839,
+        "frameIntervalMs": 93.3868,
+        "collectionCpuMs": 14.637,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88089,
+          "currentFrameNumberAtResolve": 88093,
+          "captureFrameNumber": 46,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6577130,
+          "directIndices": 11725686,
+          "indirectIndices": 2479455,
+          "totalIndices": 14205141,
+          "indirectDrawCalls": 510
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 57,
+          "cameraRevision": 5150,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.424393,
+            43.551682,
+            -55.610256
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88090,
+        "tick": 76,
+        "scheduledWallMs": 7600.0,
+        "observedWallMs": 7616.9528,
+        "cueSeconds": 2.813121,
+        "frameIntervalMs": 94.461,
+        "collectionCpuMs": 13.3983,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88090,
+          "currentFrameNumberAtResolve": 88094,
+          "captureFrameNumber": 47,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6543244,
+          "directIndices": 11668677,
+          "indirectIndices": 2463966,
+          "totalIndices": 14132643,
+          "indirectDrawCalls": 509
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 58,
+          "cameraRevision": 5151,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.239258,
+            43.585941,
+            -56.190742
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88091,
+        "tick": 77,
+        "scheduledWallMs": 7700.0,
+        "observedWallMs": 7732.1162,
+        "cueSeconds": 2.863121,
+        "frameIntervalMs": 115.1634,
+        "collectionCpuMs": 20.105,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88091,
+          "currentFrameNumberAtResolve": 88095,
+          "captureFrameNumber": 48,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6450328,
+          "directIndices": 11541588,
+          "indirectIndices": 2442924,
+          "totalIndices": 13984512,
+          "indirectDrawCalls": 507
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 59,
+          "cameraRevision": 5152,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.07785,
+            43.625866,
+            -56.822414
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88092,
+        "tick": 78,
+        "scheduledWallMs": 7800.0,
+        "observedWallMs": 7837.2381,
+        "cueSeconds": 2.913121,
+        "frameIntervalMs": 105.1219,
+        "collectionCpuMs": 24.1766,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88092,
+          "currentFrameNumberAtResolve": 88096,
+          "captureFrameNumber": 49,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6419066,
+          "directIndices": 11491002,
+          "indirectIndices": 2428842,
+          "totalIndices": 13919844,
+          "indirectDrawCalls": 505
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 60,
+          "cameraRevision": 5153,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.959137,
+            43.66927,
+            -57.474503
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88093,
+        "tick": 79,
+        "scheduledWallMs": 7900.0,
+        "observedWallMs": 7933.2148,
+        "cueSeconds": 2.961166,
+        "frameIntervalMs": 95.9767,
+        "collectionCpuMs": 12.5628,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88093,
+          "currentFrameNumberAtResolve": 88097,
+          "captureFrameNumber": 50,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6366217,
+          "directIndices": 11385408,
+          "indirectIndices": 2408769,
+          "totalIndices": 13794177,
+          "indirectDrawCalls": 502
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 61,
+          "cameraRevision": 5154,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.892181,
+            43.713947,
+            -58.121834
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88094,
+        "tick": 80,
+        "scheduledWallMs": 8000.0,
+        "observedWallMs": 8035.6415,
+        "cueSeconds": 3.007016,
+        "frameIntervalMs": 102.4267,
+        "collectionCpuMs": 16.263,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88094,
+          "currentFrameNumberAtResolve": 88098,
+          "captureFrameNumber": 51,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6320233,
+          "directIndices": 11298252,
+          "indirectIndices": 2400981,
+          "totalIndices": 13699233,
+          "indirectDrawCalls": 501
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 62,
+          "cameraRevision": 5155,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.860519,
+            43.747593,
+            -58.608067
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88095,
+        "tick": 81,
+        "scheduledWallMs": 8100.0,
+        "observedWallMs": 8135.5256,
+        "cueSeconds": 3.057016,
+        "frameIntervalMs": 99.8841,
+        "collectionCpuMs": 21.9433,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88095,
+          "currentFrameNumberAtResolve": 88099,
+          "captureFrameNumber": 52,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6266543,
+          "directIndices": 11222889,
+          "indirectIndices": 2356476,
+          "totalIndices": 13579365,
+          "indirectDrawCalls": 495
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 63,
+          "cameraRevision": 5156,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.82402,
+            43.784954,
+            -59.156395
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88096,
+        "tick": 82,
+        "scheduledWallMs": 8200.0,
+        "observedWallMs": 8255.5919,
+        "cueSeconds": 3.107016,
+        "frameIntervalMs": 120.0663,
+        "collectionCpuMs": 16.5684,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88096,
+          "currentFrameNumberAtResolve": 88100,
+          "captureFrameNumber": 53,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6218102,
+          "directIndices": 11151531,
+          "indirectIndices": 2317074,
+          "totalIndices": 13468605,
+          "indirectDrawCalls": 490
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 64,
+          "cameraRevision": 5157,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.787323,
+            43.823322,
+            -59.721798
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88097,
+        "tick": 83,
+        "scheduledWallMs": 8300.0,
+        "observedWallMs": 8355.528,
+        "cueSeconds": 3.157016,
+        "frameIntervalMs": 99.9361,
+        "collectionCpuMs": 19.086,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88097,
+          "currentFrameNumberAtResolve": 88101,
+          "captureFrameNumber": 54,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6188862,
+          "directIndices": 11127438,
+          "indirectIndices": 2272212,
+          "totalIndices": 13399650,
+          "indirectDrawCalls": 485
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 65,
+          "cameraRevision": 5158,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.752319,
+            43.863045,
+            -60.30246
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88098,
+        "tick": 84,
+        "scheduledWallMs": 8400.0,
+        "observedWallMs": 8442.1802,
+        "cueSeconds": 3.200072,
+        "frameIntervalMs": 86.6522,
+        "collectionCpuMs": 11.6955,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88098,
+          "currentFrameNumberAtResolve": 88102,
+          "captureFrameNumber": 55,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6139771,
+          "directIndices": 11027430,
+          "indirectIndices": 2260272,
+          "totalIndices": 13287702,
+          "indirectDrawCalls": 481
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 66,
+          "cameraRevision": 5159,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.724991,
+            43.898521,
+            -60.813274
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88099,
+        "tick": 85,
+        "scheduledWallMs": 8500.0,
+        "observedWallMs": 8542.7265,
+        "cueSeconds": 3.250072,
+        "frameIntervalMs": 100.5463,
+        "collectionCpuMs": 17.4048,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88099,
+          "currentFrameNumberAtResolve": 88103,
+          "captureFrameNumber": 56,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6068376,
+          "directIndices": 10955259,
+          "indirectIndices": 2160321,
+          "totalIndices": 13115580,
+          "indirectDrawCalls": 468
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 67,
+          "cameraRevision": 5160,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.698166,
+            43.941498,
+            -61.417393
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88100,
+        "tick": 86,
+        "scheduledWallMs": 8600.0,
+        "observedWallMs": 8636.3965,
+        "cueSeconds": 3.296579,
+        "frameIntervalMs": 93.67,
+        "collectionCpuMs": 15.8476,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88100,
+          "currentFrameNumberAtResolve": 88104,
+          "captureFrameNumber": 57,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 6028476,
+          "directIndices": 10884264,
+          "indirectIndices": 2146641,
+          "totalIndices": 13030905,
+          "indirectDrawCalls": 464
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 68,
+          "cameraRevision": 5161,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.67955,
+            43.983433,
+            -61.988277
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88101,
+        "tick": 87,
+        "scheduledWallMs": 8700.0,
+        "observedWallMs": 8731.544,
+        "cueSeconds": 3.344692,
+        "frameIntervalMs": 95.1475,
+        "collectionCpuMs": 12.791,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88101,
+          "currentFrameNumberAtResolve": 88105,
+          "captureFrameNumber": 58,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5930484,
+          "directIndices": 10778268,
+          "indirectIndices": 2091882,
+          "totalIndices": 12870150,
+          "indirectDrawCalls": 456
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 69,
+          "cameraRevision": 5162,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.668365,
+            44.029079,
+            -62.586369
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88102,
+        "tick": 88,
+        "scheduledWallMs": 8800.0,
+        "observedWallMs": 8818.7575,
+        "cueSeconds": 3.388464,
+        "frameIntervalMs": 87.2135,
+        "collectionCpuMs": 11.6704,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88102,
+          "currentFrameNumberAtResolve": 88106,
+          "captureFrameNumber": 59,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5881836,
+          "directIndices": 10698000,
+          "indirectIndices": 2070000,
+          "totalIndices": 12768000,
+          "indirectDrawCalls": 450
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 70,
+          "cameraRevision": 5163,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.666641,
+            44.072842,
+            -63.135723
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88103,
+        "tick": 89,
+        "scheduledWallMs": 8900.0,
+        "observedWallMs": 8938.565,
+        "cueSeconds": 3.438464,
+        "frameIntervalMs": 119.8075,
+        "collectionCpuMs": 12.6147,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88103,
+          "currentFrameNumberAtResolve": 88107,
+          "captureFrameNumber": 60,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5829356,
+          "directIndices": 10594341,
+          "indirectIndices": 2059593,
+          "totalIndices": 12653934,
+          "indirectDrawCalls": 447
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 71,
+          "cameraRevision": 5164,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.676361,
+            44.125683,
+            -63.767723
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88104,
+        "tick": 90,
+        "scheduledWallMs": 9000.0,
+        "observedWallMs": 9042.7289,
+        "cueSeconds": 3.488464,
+        "frameIntervalMs": 104.1639,
+        "collectionCpuMs": 18.92,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88104,
+          "currentFrameNumberAtResolve": 88108,
+          "captureFrameNumber": 61,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5792504,
+          "directIndices": 10549239,
+          "indirectIndices": 2029851,
+          "totalIndices": 12579090,
+          "indirectDrawCalls": 443
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 72,
+          "cameraRevision": 5165,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.700211,
+            44.181885,
+            -64.402763
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88105,
+        "tick": 91,
+        "scheduledWallMs": 9100.0,
+        "observedWallMs": 9153.8789,
+        "cueSeconds": 3.538464,
+        "frameIntervalMs": 111.15,
+        "collectionCpuMs": 19.3583,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88105,
+          "currentFrameNumberAtResolve": 88109,
+          "captureFrameNumber": 62,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5761942,
+          "directIndices": 10508676,
+          "indirectIndices": 2014743,
+          "totalIndices": 12523419,
+          "indirectDrawCalls": 438
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 73,
+          "cameraRevision": 5166,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.740143,
+            44.241745,
+            -65.038933
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88106,
+        "tick": 92,
+        "scheduledWallMs": 9200.0,
+        "observedWallMs": 9239.292,
+        "cueSeconds": 3.587293,
+        "frameIntervalMs": 85.4131,
+        "collectionCpuMs": 12.6121,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88106,
+          "currentFrameNumberAtResolve": 88110,
+          "captureFrameNumber": 63,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5718135,
+          "directIndices": 10433316,
+          "indirectIndices": 1995537,
+          "totalIndices": 12428853,
+          "indirectDrawCalls": 440
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 74,
+          "cameraRevision": 5167,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.796417,
+            44.304031,
+            -65.659576
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88107,
+        "tick": 93,
+        "scheduledWallMs": 9300.0,
+        "observedWallMs": 9338.8057,
+        "cueSeconds": 3.637166,
+        "frameIntervalMs": 99.5137,
+        "collectionCpuMs": 17.2001,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88107,
+          "currentFrameNumberAtResolve": 88111,
+          "captureFrameNumber": 64,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5667268,
+          "directIndices": 10354839,
+          "indirectIndices": 1956771,
+          "totalIndices": 12311610,
+          "indirectDrawCalls": 438
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 75,
+          "cameraRevision": 5168,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.873444,
+            44.371853,
+            -66.291023
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88108,
+        "tick": 94,
+        "scheduledWallMs": 9400.0,
+        "observedWallMs": 9414.8643,
+        "cueSeconds": 3.675261,
+        "frameIntervalMs": 76.0586,
+        "collectionCpuMs": 15.3534,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88108,
+          "currentFrameNumberAtResolve": 88112,
+          "captureFrameNumber": 65,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5646964,
+          "directIndices": 10323567,
+          "indirectIndices": 1939098,
+          "totalIndices": 12262665,
+          "indirectDrawCalls": 431
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 76,
+          "cameraRevision": 5169,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            135.946671,
+            44.426712,
+            -66.770561
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88109,
+        "tick": 95,
+        "scheduledWallMs": 9500.0,
+        "observedWallMs": 9506.173,
+        "cueSeconds": 3.719332,
+        "frameIntervalMs": 91.3087,
+        "collectionCpuMs": 20.3407,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88109,
+          "currentFrameNumberAtResolve": 88113,
+          "captureFrameNumber": 66,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5613656,
+          "directIndices": 10267317,
+          "indirectIndices": 1920435,
+          "totalIndices": 12187752,
+          "indirectDrawCalls": 428
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 77,
+          "cameraRevision": 5170,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.048126,
+            44.493641,
+            -67.321068
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88110,
+        "tick": 96,
+        "scheduledWallMs": 9600.0,
+        "observedWallMs": 9602.0675,
+        "cueSeconds": 3.768193,
+        "frameIntervalMs": 95.8945,
+        "collectionCpuMs": 21.5563,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88110,
+          "currentFrameNumberAtResolve": 88114,
+          "captureFrameNumber": 67,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5541441,
+          "directIndices": 10222449,
+          "indirectIndices": 1859604,
+          "totalIndices": 12082053,
+          "indirectDrawCalls": 426
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 78,
+          "cameraRevision": 5171,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.183151,
+            44.572483,
+            -67.924728
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88111,
+        "tick": 97,
+        "scheduledWallMs": 9700.0,
+        "observedWallMs": 9718.4143,
+        "cueSeconds": 3.818193,
+        "frameIntervalMs": 116.3468,
+        "collectionCpuMs": 26.3559,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88111,
+          "currentFrameNumberAtResolve": 88115,
+          "captureFrameNumber": 68,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5543402,
+          "directIndices": 10233411,
+          "indirectIndices": 1850409,
+          "totalIndices": 12083820,
+          "indirectDrawCalls": 420
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 79,
+          "cameraRevision": 5172,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.347687,
+            44.658474,
+            -68.533371
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88112,
+        "tick": 98,
+        "scheduledWallMs": 9800.0,
+        "observedWallMs": 9833.1773,
+        "cueSeconds": 3.868193,
+        "frameIntervalMs": 114.763,
+        "collectionCpuMs": 21.1597,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88112,
+          "currentFrameNumberAtResolve": 88116,
+          "captureFrameNumber": 69,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5532663,
+          "directIndices": 10279182,
+          "indirectIndices": 1787316,
+          "totalIndices": 12066498,
+          "indirectDrawCalls": 401
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 80,
+          "cameraRevision": 5173,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.54068,
+            44.750141,
+            -69.130997
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88113,
+        "tick": 99,
+        "scheduledWallMs": 9900.0,
+        "observedWallMs": 9939.1088,
+        "cueSeconds": 3.918193,
+        "frameIntervalMs": 105.9315,
+        "collectionCpuMs": 13.1463,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88113,
+          "currentFrameNumberAtResolve": 88117,
+          "captureFrameNumber": 70,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5542661,
+          "directIndices": 10396581,
+          "indirectIndices": 1692795,
+          "totalIndices": 12089376,
+          "indirectDrawCalls": 383
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 81,
+          "cameraRevision": 5174,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.764038,
+            44.84779,
+            -69.715752
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88114,
+        "tick": 100,
+        "scheduledWallMs": 10000.0,
+        "observedWallMs": 10022.684,
+        "cueSeconds": 3.960519,
+        "frameIntervalMs": 83.5752,
+        "collectionCpuMs": 12.4335,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88114,
+          "currentFrameNumberAtResolve": 88118,
+          "captureFrameNumber": 71,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5472453,
+          "directIndices": 10256043,
+          "indirectIndices": 1673580,
+          "totalIndices": 11929623,
+          "indirectDrawCalls": 375
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 82,
+          "cameraRevision": 5175,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            136.97818,
+            44.935364,
+            -70.199356
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88115,
+        "tick": 101,
+        "scheduledWallMs": 10100.0,
+        "observedWallMs": 10132.3797,
+        "cueSeconds": 4.010106,
+        "frameIntervalMs": 109.6957,
+        "collectionCpuMs": 11.8937,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88115,
+          "currentFrameNumberAtResolve": 88119,
+          "captureFrameNumber": 72,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5428215,
+          "directIndices": 10181997,
+          "indirectIndices": 1672128,
+          "totalIndices": 11854125,
+          "indirectDrawCalls": 369
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 83,
+          "cameraRevision": 5176,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            137.260025,
+            45.043949,
+            -70.751015
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88116,
+        "tick": 102,
+        "scheduledWallMs": 10200.0,
+        "observedWallMs": 10219.4298,
+        "cueSeconds": 4.059074,
+        "frameIntervalMs": 87.0501,
+        "collectionCpuMs": 12.6717,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88116,
+          "currentFrameNumberAtResolve": 88120,
+          "captureFrameNumber": 73,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5338619,
+          "directIndices": 10016163,
+          "indirectIndices": 1667733,
+          "totalIndices": 11683896,
+          "indirectDrawCalls": 369
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 84,
+          "cameraRevision": 5177,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            137.544342,
+            45.146759,
+            -71.228096
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88118,
+        "tick": 103,
+        "scheduledWallMs": 10300.0,
+        "observedWallMs": 10357.0436,
+        "cueSeconds": 4.126612,
+        "frameIntervalMs": 58.707,
+        "collectionCpuMs": 13.4954,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88118,
+          "currentFrameNumberAtResolve": 88122,
+          "captureFrameNumber": 75,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5317177,
+          "directIndices": 9986124,
+          "indirectIndices": 1736352,
+          "totalIndices": 11722476,
+          "indirectDrawCalls": 376
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 86,
+          "cameraRevision": 5179,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            137.975082,
+            45.285328,
+            -71.802048
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88119,
+        "tick": 104,
+        "scheduledWallMs": 10400.0,
+        "observedWallMs": 10423.8607,
+        "cueSeconds": 4.161301,
+        "frameIntervalMs": 66.8171,
+        "collectionCpuMs": 12.9796,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88119,
+          "currentFrameNumberAtResolve": 88123,
+          "captureFrameNumber": 76,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5240452,
+          "directIndices": 9883605,
+          "indirectIndices": 1723284,
+          "totalIndices": 11606889,
+          "indirectDrawCalls": 375
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 87,
+          "cameraRevision": 5180,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.231827,
+            45.361938,
+            -72.093498
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88121,
+        "tick": 105,
+        "scheduledWallMs": 10500.0,
+        "observedWallMs": 10547.1592,
+        "cueSeconds": 4.222775,
+        "frameIntervalMs": 54.3371,
+        "collectionCpuMs": 14.8722,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88121,
+          "currentFrameNumberAtResolve": 88125,
+          "captureFrameNumber": 78,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5236669,
+          "directIndices": 9868713,
+          "indirectIndices": 1759629,
+          "totalIndices": 11628342,
+          "indirectDrawCalls": 372
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 89,
+          "cameraRevision": 5182,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            138.739746,
+            45.505978,
+            -72.604576
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88122,
+        "tick": 106,
+        "scheduledWallMs": 10600.0,
+        "observedWallMs": 10621.375,
+        "cueSeconds": 4.259931,
+        "frameIntervalMs": 74.2158,
+        "collectionCpuMs": 12.4957,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88122,
+          "currentFrameNumberAtResolve": 88126,
+          "captureFrameNumber": 79,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5285048,
+          "directIndices": 9984198,
+          "indirectIndices": 1754343,
+          "totalIndices": 11738541,
+          "indirectDrawCalls": 372
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 90,
+          "cameraRevision": 5183,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            139.076447,
+            45.597759,
+            -72.910217
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88124,
+        "tick": 107,
+        "scheduledWallMs": 10700.0,
+        "observedWallMs": 10757.1583,
+        "cueSeconds": 4.327927,
+        "frameIntervalMs": 64.8645,
+        "collectionCpuMs": 14.6849,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88124,
+          "currentFrameNumberAtResolve": 88128,
+          "captureFrameNumber": 81,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5339923,
+          "directIndices": 10063002,
+          "indirectIndices": 1769829,
+          "totalIndices": 11832831,
+          "indirectDrawCalls": 384
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 92,
+          "cameraRevision": 5185,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            139.742996,
+            45.773937,
+            -73.463432
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88125,
+        "tick": 108,
+        "scheduledWallMs": 10800.0,
+        "observedWallMs": 10850.4931,
+        "cueSeconds": 4.374365,
+        "frameIntervalMs": 93.3348,
+        "collectionCpuMs": 22.2842,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88125,
+          "currentFrameNumberAtResolve": 88129,
+          "captureFrameNumber": 82,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5319751,
+          "directIndices": 10048833,
+          "indirectIndices": 1733241,
+          "totalIndices": 11782074,
+          "indirectDrawCalls": 389
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 93,
+          "cameraRevision": 5186,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            140.230499,
+            45.899693,
+            -73.836853
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88126,
+        "tick": 109,
+        "scheduledWallMs": 10900.0,
+        "observedWallMs": 10952.1218,
+        "cueSeconds": 4.424366,
+        "frameIntervalMs": 101.6287,
+        "collectionCpuMs": 15.1311,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88126,
+          "currentFrameNumberAtResolve": 88130,
+          "captureFrameNumber": 83,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5420722,
+          "directIndices": 10362279,
+          "indirectIndices": 1649484,
+          "totalIndices": 12011763,
+          "indirectDrawCalls": 392
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 94,
+          "cameraRevision": 5187,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            140.779602,
+            46.039345,
+            -74.235023
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88127,
+        "tick": 110,
+        "scheduledWallMs": 11000.0,
+        "observedWallMs": 11098.0612,
+        "cueSeconds": 4.474366,
+        "frameIntervalMs": 145.9394,
+        "collectionCpuMs": 14.1781,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88127,
+          "currentFrameNumberAtResolve": 88131,
+          "captureFrameNumber": 84,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5335735,
+          "directIndices": 10270629,
+          "indirectIndices": 1581006,
+          "totalIndices": 11851635,
+          "indirectDrawCalls": 435
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 95,
+          "cameraRevision": 5188,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            141.349091,
+            46.182812,
+            -74.629341
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88128,
+        "tick": 112,
+        "scheduledWallMs": 11200.0,
+        "observedWallMs": 11292.5001,
+        "cueSeconds": 4.524366,
+        "frameIntervalMs": 194.4389,
+        "collectionCpuMs": 24.2801,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88128,
+          "currentFrameNumberAtResolve": 88132,
+          "captureFrameNumber": 85,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5045555,
+          "directIndices": 10124574,
+          "indirectIndices": 1295124,
+          "totalIndices": 11419698,
+          "indirectDrawCalls": 426
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 96,
+          "cameraRevision": 5189,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            141.934219,
+            46.329472,
+            -75.019936
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88129,
+        "tick": 115,
+        "scheduledWallMs": 11500.0,
+        "observedWallMs": 11514.7944,
+        "cueSeconds": 4.574366,
+        "frameIntervalMs": 222.2943,
+        "collectionCpuMs": 22.3628,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88129,
+          "currentFrameNumberAtResolve": 88133,
+          "captureFrameNumber": 86,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5109053,
+          "directIndices": 10271793,
+          "indirectIndices": 1267308,
+          "totalIndices": 11539101,
+          "indirectDrawCalls": 441
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 97,
+          "cameraRevision": 5190,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            142.530136,
+            46.478676,
+            -75.406921
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88130,
+        "tick": 120,
+        "scheduledWallMs": 12000.0,
+        "observedWallMs": 12098.3656,
+        "cueSeconds": 4.624366,
+        "frameIntervalMs": 583.5712,
+        "collectionCpuMs": 12.6315,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88130,
+          "currentFrameNumberAtResolve": 88134,
+          "captureFrameNumber": 87,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 5037759,
+          "directIndices": 10144833,
+          "indirectIndices": 1045140,
+          "totalIndices": 11189973,
+          "indirectDrawCalls": 411
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 98,
+          "cameraRevision": 5191,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            143.132065,
+            46.629818,
+            -75.790466
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88131,
+        "tick": 128,
+        "scheduledWallMs": 12800.0,
+        "observedWallMs": 12880.1996,
+        "cueSeconds": 4.674366,
+        "frameIntervalMs": 781.834,
+        "collectionCpuMs": 21.5324,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88131,
+          "currentFrameNumberAtResolve": 88135,
+          "captureFrameNumber": 88,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 4063851,
+          "directIndices": 8489361,
+          "indirectIndices": 764733,
+          "totalIndices": 9254094,
+          "indirectDrawCalls": 358
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 99,
+          "cameraRevision": 5192,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            143.735214,
+            46.782269,
+            -76.170692
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88132,
+        "tick": 134,
+        "scheduledWallMs": 13400.0,
+        "observedWallMs": 13403.6143,
+        "cueSeconds": 4.724367,
+        "frameIntervalMs": 523.4147,
+        "collectionCpuMs": 13.0308,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88132,
+          "currentFrameNumberAtResolve": 88136,
+          "captureFrameNumber": 89,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 3537763,
+          "directIndices": 7615998,
+          "indirectIndices": 593097,
+          "totalIndices": 8209095,
+          "indirectDrawCalls": 296
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 100,
+          "cameraRevision": 5193,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            144.334717,
+            46.935379,
+            -76.547737
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88133,
+        "tick": 137,
+        "scheduledWallMs": 13700.0,
+        "observedWallMs": 13759.8129,
+        "cueSeconds": 4.774367,
+        "frameIntervalMs": 356.1986,
+        "collectionCpuMs": 12.8964,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88133,
+          "currentFrameNumberAtResolve": 88137,
+          "captureFrameNumber": 90,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 3105908,
+          "directIndices": 6747216,
+          "indirectIndices": 609546,
+          "totalIndices": 7356762,
+          "indirectDrawCalls": 256
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 101,
+          "cameraRevision": 5194,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            144.925873,
+            47.088551,
+            -76.921722
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88134,
+        "tick": 138,
+        "scheduledWallMs": 13800.0,
+        "observedWallMs": 13881.8498,
+        "cueSeconds": 4.824367,
+        "frameIntervalMs": 122.0369,
+        "collectionCpuMs": 11.7114,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88134,
+          "currentFrameNumberAtResolve": 88138,
+          "captureFrameNumber": 91,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 2756164,
+          "directIndices": 6144270,
+          "indirectIndices": 567657,
+          "totalIndices": 6711927,
+          "indirectDrawCalls": 225
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 102,
+          "cameraRevision": 5195,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            145.503815,
+            47.241138,
+            -77.292831
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88135,
+        "tick": 139,
+        "scheduledWallMs": 13900.0,
+        "observedWallMs": 13978.4076,
+        "cueSeconds": 4.873436,
+        "frameIntervalMs": 96.5578,
+        "collectionCpuMs": 11.9517,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88135,
+          "currentFrameNumberAtResolve": 88139,
+          "captureFrameNumber": 92,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 2562275,
+          "directIndices": 5584677,
+          "indirectIndices": 694866,
+          "totalIndices": 6279543,
+          "indirectDrawCalls": 219
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 103,
+          "cameraRevision": 5196,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            146.053482,
+            47.389717,
+            -77.654312
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88136,
+        "tick": 140,
+        "scheduledWallMs": 14000.0,
+        "observedWallMs": 14040.3949,
+        "cueSeconds": 4.904897,
+        "frameIntervalMs": 61.9873,
+        "collectionCpuMs": 12.716,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88136,
+          "currentFrameNumberAtResolve": 88140,
+          "captureFrameNumber": 93,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 2282114,
+          "directIndices": 4967532,
+          "indirectIndices": 693105,
+          "totalIndices": 5660637,
+          "indirectDrawCalls": 209
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 104,
+          "cameraRevision": 5197,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            146.394714,
+            47.484104,
+            -77.884727
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88137,
+        "tick": 141,
+        "scheduledWallMs": 14100.0,
+        "observedWallMs": 14100.2624,
+        "cueSeconds": 4.934654,
+        "frameIntervalMs": 59.8675,
+        "collectionCpuMs": 12.581,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88137,
+          "currentFrameNumberAtResolve": 88141,
+          "captureFrameNumber": 94,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 2314488,
+          "directIndices": 4979304,
+          "indirectIndices": 725280,
+          "totalIndices": 5704584,
+          "indirectDrawCalls": 208
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 105,
+          "cameraRevision": 5198,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            146.708084,
+            47.572556,
+            -78.101746
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88139,
+        "tick": 142,
+        "scheduledWallMs": 14200.0,
+        "observedWallMs": 14222.0705,
+        "cueSeconds": 4.995463,
+        "frameIntervalMs": 52.557,
+        "collectionCpuMs": 12.9705,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88139,
+          "currentFrameNumberAtResolve": 88143,
+          "captureFrameNumber": 96,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 2494781,
+          "directIndices": 5156862,
+          "indirectIndices": 796716,
+          "totalIndices": 5953578,
+          "indirectDrawCalls": 227
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 107,
+          "cameraRevision": 5200,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            147.315948,
+            47.750362,
+            -78.542564
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88141,
+        "tick": 143,
+        "scheduledWallMs": 14300.0,
+        "observedWallMs": 14342.0037,
+        "cueSeconds": 5.055338,
+        "frameIntervalMs": 51.2466,
+        "collectionCpuMs": 11.8891,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88141,
+          "currentFrameNumberAtResolve": 88145,
+          "captureFrameNumber": 98,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 2645981,
+          "directIndices": 5413497,
+          "indirectIndices": 812181,
+          "totalIndices": 6225678,
+          "indirectDrawCalls": 225
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 109,
+          "cameraRevision": 5202,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            147.8647,
+            47.920578,
+            -78.973259
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      },
+      {
+        "geometryFrame": 88143,
+        "tick": 144,
+        "scheduledWallMs": 14400.0,
+        "observedWallMs": 14445.8991,
+        "cueSeconds": 5.107775,
+        "frameIntervalMs": 47.8303,
+        "collectionCpuMs": 11.4154,
+        "geometry": {
+          "resolved": true,
+          "frameNumber": 88143,
+          "currentFrameNumberAtResolve": 88147,
+          "captureFrameNumber": 100,
+          "latencyFrames": 4,
+          "droppedFrames": 0,
+          "pending": false,
+          "vertexValid": true,
+          "indexValid": true,
+          "vsInvocations": 2803784,
+          "directIndices": 5670282,
+          "indirectIndices": 861987,
+          "totalIndices": 6532269,
+          "indirectDrawCalls": 253
+        },
+        "camera": {
+          "cameraValid": true,
+          "frameNumber": 111,
+          "cameraRevision": 5204,
+          "areaId": "LV_BER_BERNCASTLE",
+          "cameraPosition": [
+            148.298279,
+            48.064873,
+            -79.347961
+          ],
+          "viewport": [
+            1600.0,
+            900.0
+          ]
+        }
+      }
+    ],
+    "sixNearestCameraPayloads": [
+      {
+        "cameraId": "cue-00-start",
+        "requestedCueSeconds": 0.201457,
+        "cueSeconds": 0.201457,
+        "absoluteCueDeltaSeconds": 0.0,
+        "sourceSampleIndex": 0,
+        "geometryFrame": 88037,
+        "mapFrameNumber": 5,
+        "cameraRevision": 5098,
+        "areaId": "LV_BER_BERNCASTLE",
+        "tick": 0,
+        "scheduledWallMs": 0.0,
+        "observedWallMs": 0.0,
+        "frameIntervalMs": 0.0,
+        "view": [
+          -0.99896,
+          0.006266,
+          0.045156,
+          0.0,
+          -0.0,
+          0.990511,
+          -0.137438,
+          0.0,
+          -0.045589,
+          -0.137296,
+          -0.98948,
+          0.0,
+          136.995499,
+          -49.825554,
+          -25.568306,
+          1.0
+        ],
+        "projection": [
+          1.357995,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          2.414213,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.000005,
+          1.0,
+          0.0,
+          0.0,
+          -0.100001,
+          0.0
+        ],
+        "viewport": [
+          1600.0,
+          900.0
+        ],
+        "position": [
+          138.319824,
+          45.83865,
+          -25.894712
+        ],
+        "cameraPayloadSha256": "f9bd73cc11eb93ca1c570a287be6143dec00dc00b488c45b57bf49bf89237f35"
+      },
+      {
+        "cameraId": "cue-01",
+        "requestedCueSeconds": 1,
+        "cueSeconds": 1.001458,
+        "absoluteCueDeltaSeconds": 0.001458,
+        "sourceSampleIndex": 16,
+        "geometryFrame": 88053,
+        "mapFrameNumber": 21,
+        "cameraRevision": 5114,
+        "areaId": "LV_BER_BERNCASTLE",
+        "tick": 35,
+        "scheduledWallMs": 3500.0,
+        "observedWallMs": 3587.4895,
+        "frameIntervalMs": 139.8639,
+        "view": [
+          -0.997888,
+          -0.006352,
+          -0.064652,
+          0.0,
+          0.0,
+          0.99521,
+          -0.09777,
+          0.0,
+          0.064964,
+          -0.097564,
+          -0.993107,
+          0.0,
+          138.883377,
+          -47.293453,
+          -22.188932,
+          1.0
+        ],
+        "projection": [
+          1.357995,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          2.414213,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.000005,
+          1.0,
+          0.0,
+          0.0,
+          -0.100001,
+          0.0
+        ],
+        "viewport": [
+          1600.0,
+          900.0
+        ],
+        "position": [
+          136.855011,
+          44.897434,
+          -35.672451
+        ],
+        "cameraPayloadSha256": "af6992c6c91294c57b654541a8d0005c2cd2c9c025d3af7c113665125c7d4c71"
+      },
+      {
+        "cameraId": "cue-02",
+        "requestedCueSeconds": 2,
+        "cueSeconds": 1.993884,
+        "absoluteCueDeltaSeconds": 0.006116,
+        "sourceSampleIndex": 36,
+        "geometryFrame": 88073,
+        "mapFrameNumber": 41,
+        "cameraRevision": 5134,
+        "areaId": "LV_BER_BERNCASTLE",
+        "tick": 58,
+        "scheduledWallMs": 5800.0,
+        "observedWallMs": 5831.0253,
+        "frameIntervalMs": 93.7777,
+        "view": [
+          -0.997337,
+          -0.001642,
+          -0.072926,
+          0.0,
+          -0.0,
+          0.999748,
+          -0.022507,
+          0.0,
+          0.072944,
+          -0.022447,
+          -0.997084,
+          0.0,
+          141.560349,
+          -44.544205,
+          -35.669708,
+          1.0
+        ],
+        "projection": [
+          1.357995,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          2.414213,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.000005,
+          1.0,
+          0.0,
+          0.0,
+          -0.100001,
+          0.0
+        ],
+        "viewport": [
+          1600.0,
+          900.0
+        ],
+        "position": [
+          138.508789,
+          43.730053,
+          -46.891541
+        ],
+        "cameraPayloadSha256": "5e7403932a8b11e7e3c21773e2322f930ac1caa534711476175e7ed8ddd7ba80"
+      },
+      {
+        "cameraId": "cue-03",
+        "requestedCueSeconds": 3,
+        "cueSeconds": 3.007016,
+        "absoluteCueDeltaSeconds": 0.007016,
+        "sourceSampleIndex": 56,
+        "geometryFrame": 88094,
+        "mapFrameNumber": 62,
+        "cameraRevision": 5155,
+        "areaId": "LV_BER_BERNCASTLE",
+        "tick": 80,
+        "scheduledWallMs": 8000.0,
+        "observedWallMs": 8035.6415,
+        "frameIntervalMs": 102.4267,
+        "view": [
+          -0.998301,
+          -0.002607,
+          0.058221,
+          0.0,
+          0.0,
+          0.999,
+          0.044738,
+          0.0,
+          -0.05828,
+          0.044662,
+          -0.997302,
+          0.0,
+          132.21402,
+          -40.732098,
+          -68.317085,
+          1.0
+        ],
+        "projection": [
+          1.357995,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          2.414213,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.000005,
+          1.0,
+          0.0,
+          0.0,
+          -0.100001,
+          0.0
+        ],
+        "viewport": [
+          1600.0,
+          900.0
+        ],
+        "position": [
+          135.860519,
+          43.747593,
+          -58.608067
+        ],
+        "cameraPayloadSha256": "25ce2484d7249d55edff76072fb9872ab76531a2a723aa0aac35f43a4fb5820e"
+      },
+      {
+        "cameraId": "cue-04",
+        "requestedCueSeconds": 4,
+        "cueSeconds": 4.010106,
+        "absoluteCueDeltaSeconds": 0.010106,
+        "sourceSampleIndex": 77,
+        "geometryFrame": 88115,
+        "mapFrameNumber": 83,
+        "cameraRevision": 5176,
+        "areaId": "LV_BER_BERNCASTLE",
+        "tick": 101,
+        "scheduledWallMs": 10100.0,
+        "observedWallMs": 10132.3797,
+        "frameIntervalMs": 109.6957,
+        "view": [
+          -0.996588,
+          -0.010961,
+          -0.081809,
+          0.0,
+          -0.0,
+          0.991145,
+          -0.132797,
+          0.0,
+          0.08254,
+          -0.132344,
+          -0.987763,
+          0.0,
+          142.631577,
+          -52.504036,
+          -52.674358,
+          1.0
+        ],
+        "projection": [
+          1.357995,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          2.414213,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.000005,
+          1.0,
+          0.0,
+          0.0,
+          -0.100001,
+          0.0
+        ],
+        "viewport": [
+          1600.0,
+          900.0
+        ],
+        "position": [
+          137.260025,
+          45.043949,
+          -70.751015
+        ],
+        "cameraPayloadSha256": "9ea2a169a2f7696847a46769f36b9d5e2fb40788cf5e523077bcf095b96b9e62"
+      },
+      {
+        "cameraId": "cue-05-end",
+        "requestedCueSeconds": 5.107775,
+        "cueSeconds": 5.107775,
+        "absoluteCueDeltaSeconds": 0.0,
+        "sourceSampleIndex": 99,
+        "geometryFrame": 88143,
+        "mapFrameNumber": 111,
+        "cameraRevision": 5204,
+        "areaId": "LV_BER_BERNCASTLE",
+        "tick": 144,
+        "scheduledWallMs": 14400.0,
+        "observedWallMs": 14445.8991,
+        "frameIntervalMs": 47.8303,
+        "view": [
+          0.019313,
+          -0.508989,
+          -0.860559,
+          0.0,
+          0.0,
+          0.86072,
+          -0.509084,
+          0.0,
+          0.999815,
+          0.009832,
+          0.016623,
+          -0.0,
+          76.469162,
+          34.89196,
+          153.407455,
+          1.0
+        ],
+        "projection": [
+          1.357995,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          2.414213,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.000005,
+          1.0,
+          0.0,
+          0.0,
+          -0.100001,
+          0.0
+        ],
+        "viewport": [
+          1600.0,
+          900.0
+        ],
+        "position": [
+          148.298279,
+          48.064873,
+          -79.347961
+        ],
+        "cameraPayloadSha256": "7bb4daad873f9045e1e3003122009bd85728533a2bff6efd3913a0fd082df74b"
+      }
+    ],
+    "reusedEvidence": [
+      {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\ProfilerInspection20261014\\distance-summary.json",
+        "bytes": 198496,
+        "sha256": "6cd559946574e0bdccd178ac96b3acde87c5a00879d5c189515130a344459a50"
+      },
+      {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\ProfilerInspection20261014\\full-scene-probe\\sweep-cameras.json",
+        "bytes": 9951,
+        "sha256": "e952e865bd691608c5b52674451632eebe53f3657ae4bef76695ec0c7d9f7e42"
+      }
+    ]
+  },
+  "ordinaryCaptures": [
+    {
+      "source": {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\ProfilerCaptures\\베른_컷신_20261015_011643_266_frame203_24544_0.json",
+        "bytes": 59140428,
+        "mtimeNs": 1791994603998438900,
+        "sha256": "eb30909341ac2c4b78e31427f028d60657ac5d26adea950d1ac98988bda720bf",
+        "unchangedDuringAnalysis": true
+      },
+      "sourceCurrentSizeMtimeMatches": true,
+      "freshAuditVerification": "Complete per-frame ijson.parse(use_float=False) stream, SHA256 matched prior analysis source; size+mtime unchanged. No whole-file DOM.",
+      "sourceAnalysis": {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\latest-capture-analysis.json",
+        "bytes": 27538,
+        "sha256": "857d10f2737988375fb5b387333c24999ce1ea02e928ceec88043d19f5a9f349"
+      },
+      "schema": "LostArkProfilerCapture.v3",
+      "captureWindow": {
+        "requestedFrames": 1200,
+        "retainedFrames": 203,
+        "savedFrames": 203,
+        "recordedFramesSinceReset": 203,
+        "excludedRetainedFrames": 0,
+        "evictedFramesSinceReset": 0,
+        "firstRetainedFrameNumber": 1,
+        "lastRetainedFrameNumber": 203,
+        "firstSavedFrameNumber": 1,
+        "lastSavedFrameNumber": 203,
+        "excludedMaxFrameIntervalMs": 0.0,
+        "note": "Newest completed frames only. Excluded retained frames can still be saved with a larger window; evicted frames cannot. Frame N interval runs from Begin(N-1) to Begin(N), while frame N CPU scopes measure work after Begin(N)."
+      },
+      "frameCount": 203,
+      "validGpuFrames": 203,
+      "validPipelineVsRange": [
+        1253733,
+        9353429
+      ],
+      "validPipelineVs700000to900000Count": 0,
+      "validPipelineVs400000to600000Count": 0,
+      "cueSecondsPerFramePreserved": false,
+      "geometryFrameHistoryPreserved": false,
+      "geometryTotalIndicesHistoryPreserved": false,
+      "perFrameCameraPreserved": false,
+      "distanceSamplesPreserved": false,
+      "smoothedHudFpsPreserved": false,
+      "cameraAtExportOnly": {
+        "sampledAtExport": true,
+        "buildConfiguration": "Release",
+        "processId": 24544,
+        "viewport": [
+          1920.0,
+          1080.0
+        ],
+        "cameraPosition": [
+          148.550552,
+          48.154724,
+          -79.587135,
+          1.0
+        ]
+      },
+      "availableFields": [
+        "frames[i].frameNumber",
+        "frames[i].frameBeginTick",
+        "frames[i].frameIntervalMs",
+        "frames[i].gpuValid/gpuStatus",
+        "frames[i].pipeline.vsInvocations",
+        "frames[i].pipeline.iaVertices",
+        "frames[i].counters.indices"
+      ],
+      "clockAndIndexLimits": "Ordinary frameNumber is not geometryFrame. counters.indices is CPU-known instrumented indexed references excluding unresolved GPU-surviving indirect. pipeline.iaVertices has a different scope. None is the saved HUDgeometry.TotalIndices. Export camera is not per-frame. First0..5capture-seconds cannot be called authored cue0..5."
+    },
+    {
+      "source": {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\ProfilerCaptures\\Bern_CutScene_20261015_140215_622_frame1122_18456_0.json",
+        "bytes": 206809959,
+        "mtimeNs": 1792040538557654500,
+        "sha256": "b47c07a92d6872bc7fa4bb7a6c02ee62f028e8967003e44e806e6f39783b376c"
+      },
+      "sourceCurrentSizeMtimeMatches": true,
+      "freshAuditVerification": "Complete per-frame ijson.parse(use_float=False) stream, SHA256 matched prior analysis source; size+mtime unchanged. No whole-file DOM.",
+      "sourceAnalysis": {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\afternoon-analysis\\Bern_CutScene_20261015_140215_622_frame1122_18456_0-analysis.json",
+        "bytes": 392312,
+        "sha256": "505fa15f0d23c4def60c181257325cc19c00b337b1312395d759bea0d9d6117d"
+      },
+      "schema": "LostArkProfilerCapture.v3",
+      "captureWindow": {
+        "requestedFrames": 1200,
+        "retainedFrames": 1122,
+        "savedFrames": 1122,
+        "recordedFramesSinceReset": 1122,
+        "excludedRetainedFrames": 0,
+        "evictedFramesSinceReset": 0,
+        "firstRetainedFrameNumber": 1,
+        "lastRetainedFrameNumber": 1122,
+        "firstSavedFrameNumber": 1,
+        "lastSavedFrameNumber": 1122,
+        "excludedMaxFrameIntervalMs": 0.0,
+        "note": "Newest completed frames only. Excluded retained frames can still be saved with a larger window; evicted frames cannot. Frame N interval runs from Begin(N-1) to Begin(N), while frame N CPU scopes measure work after Begin(N)."
+      },
+      "frameCount": 1122,
+      "validGpuFrames": 1118,
+      "validPipelineVsRange": [
+        863920,
+        6820320
+      ],
+      "validPipelineVs700000to900000Count": 58,
+      "validPipelineVs400000to600000Count": 0,
+      "cueSecondsPerFramePreserved": false,
+      "geometryFrameHistoryPreserved": false,
+      "geometryTotalIndicesHistoryPreserved": false,
+      "perFrameCameraPreserved": false,
+      "distanceSamplesPreserved": false,
+      "smoothedHudFpsPreserved": false,
+      "cameraAtExportOnly": {
+        "sampledAtExport": true,
+        "buildConfiguration": "Release",
+        "processId": 18456,
+        "viewport": [
+          1198.0,
+          718.0
+        ],
+        "cameraPosition": [
+          137.091888,
+          53.817684,
+          -157.28447,
+          1.0
+        ]
+      },
+      "availableFields": [
+        "frames[i].frameNumber",
+        "frames[i].frameBeginTick",
+        "frames[i].frameIntervalMs",
+        "frames[i].gpuValid/gpuStatus",
+        "frames[i].pipeline.vsInvocations",
+        "frames[i].pipeline.iaVertices",
+        "frames[i].counters.indices"
+      ],
+      "clockAndIndexLimits": "Ordinary frameNumber is not geometryFrame. counters.indices is CPU-known instrumented indexed references excluding unresolved GPU-surviving indirect. pipeline.iaVertices has a different scope. None is the saved HUDgeometry.TotalIndices. Export camera is not per-frame. First0..5capture-seconds cannot be called authored cue0..5."
+    },
+    {
+      "source": {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\ProfilerCaptures\\Bern_CutScene_20261015_140227_980_frame1468_18456_1.json",
+        "bytes": 38840073,
+        "mtimeNs": 1792040548336130000,
+        "sha256": "a52db88e3b519e726b020960db38ec46a64cca599992e4c83dd5d06f4aa70c57"
+      },
+      "sourceCurrentSizeMtimeMatches": true,
+      "freshAuditVerification": "Complete per-frame ijson.parse(use_float=False) stream, SHA256 matched prior analysis source; size+mtime unchanged. No whole-file DOM.",
+      "sourceAnalysis": {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\afternoon-analysis\\Bern_CutScene_20261015_140227_980_frame1468_18456_1-analysis.json",
+        "bytes": 360604,
+        "sha256": "29ca009edf049388e57e72ce6b918e849e78f63836db26b9e22a7d697bd0d040"
+      },
+      "schema": "LostArkProfilerCapture.v3",
+      "captureWindow": {
+        "requestedFrames": 1200,
+        "retainedFrames": 120,
+        "savedFrames": 120,
+        "recordedFramesSinceReset": 120,
+        "excludedRetainedFrames": 0,
+        "evictedFramesSinceReset": 0,
+        "firstRetainedFrameNumber": 1349,
+        "lastRetainedFrameNumber": 1468,
+        "firstSavedFrameNumber": 1349,
+        "lastSavedFrameNumber": 1468,
+        "excludedMaxFrameIntervalMs": 0.0,
+        "note": "Newest completed frames only. Excluded retained frames can still be saved with a larger window; evicted frames cannot. Frame N interval runs from Begin(N-1) to Begin(N), while frame N CPU scopes measure work after Begin(N)."
+      },
+      "frameCount": 120,
+      "validGpuFrames": 116,
+      "validPipelineVsRange": [
+        3121231,
+        6569137
+      ],
+      "validPipelineVs700000to900000Count": 0,
+      "validPipelineVs400000to600000Count": 0,
+      "cueSecondsPerFramePreserved": false,
+      "geometryFrameHistoryPreserved": false,
+      "geometryTotalIndicesHistoryPreserved": false,
+      "perFrameCameraPreserved": false,
+      "distanceSamplesPreserved": false,
+      "smoothedHudFpsPreserved": false,
+      "cameraAtExportOnly": {
+        "sampledAtExport": true,
+        "buildConfiguration": "Release",
+        "processId": 18456,
+        "viewport": [
+          1198.0,
+          718.0
+        ],
+        "cameraPosition": [
+          144.047165,
+          46.861691,
+          -76.366791,
+          1.0
+        ]
+      },
+      "availableFields": [
+        "frames[i].frameNumber",
+        "frames[i].frameBeginTick",
+        "frames[i].frameIntervalMs",
+        "frames[i].gpuValid/gpuStatus",
+        "frames[i].pipeline.vsInvocations",
+        "frames[i].pipeline.iaVertices",
+        "frames[i].counters.indices"
+      ],
+      "clockAndIndexLimits": "Ordinary frameNumber is not geometryFrame. counters.indices is CPU-known instrumented indexed references excluding unresolved GPU-surviving indirect. pipeline.iaVertices has a different scope. None is the saved HUDgeometry.TotalIndices. Export camera is not per-frame. First0..5capture-seconds cannot be called authored cue0..5."
+    }
+  ],
+  "comparisonLimits": [
+    "Old distance capture is100samples at configured100ms wall cadence,45skipped ticks,0.201457..5.107775cue and14.4458991secobservedwall; source budget stopped at2mrows. Unsampled frames outside these saved100 are not ruled out.",
+    "Old distance firstinterval0 means no FPS value. Later diagnosticrender-boundary intervals include captureoverhead and are not smoothedHUD FPS.",
+    "Old distance viewport1600x900;01:16export1920x1080;afternoonexport1198x718. Different source/config/camera histories cannot be a controlled A/B.",
+    "Afternoon58pipelineframes in700k..900k searchbin are not evidence of the old80manHUD moment. No400k..600k validpipelineframe in specified3ordinaryfiles.",
+    "Whole-frameVS/pipelineVS/CPUknownindices/Mapdrawcounts cannot be substituted withoutmatching queryscope andframe. No inclusivepassdouble sums.",
+    "Latest generalcaptures saved onlyexportcamera and noHUDgeometry/cue/distancehistory; metadata cannot reconstruct camera perframe.",
+    "Historical62subset/offscreenfigures are separate experiments and must not be used to manufacture theHUD800k→500kpair."
+  ],
+  "artifactsOnly": [
+    "early-hud-capture-audit.json",
+    "early-hud-capture-audit.txt"
+  ]
+}

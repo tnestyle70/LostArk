@@ -1,0 +1,88 @@
+{
+  "schema": "bern.evidence.current-build.v1",
+  "sourceMain": "92169ebe11bc05daa1242bc3a8d2229858b3f35e",
+  "effectPullRequest": "https://github.com/tnestyle70/LostArk/pull/542",
+  "builds": [
+    {
+      "configuration": "Release",
+      "result": "PASS",
+      "profile": "Product",
+      "sourceStability": {
+        "buildExit": 0,
+        "sourceStable": true,
+        "sourceBefore": "ffdd693bccc60b8fa062f6e8339bd6b8fdb7603f3138b18beb215207f042ad63",
+        "sourceAfter": "ffdd693bccc60b8fa062f6e8339bd6b8fdb7603f3138b18beb215207f042ad63",
+        "completedUtc": "2026-10-15T09:40:39.1462548Z"
+      },
+      "resultPath": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BuildPipeline\\runs\\20261015T094035032Z-release-product.json",
+      "resultSha256": "3725a40843368620edea874dab263c89538d59343445e2d234ac28e6cb398057",
+      "binaries": [
+        {
+          "path": "Client/Bin/Release/Client.exe",
+          "bytes": 19589120,
+          "sha256": "4681526784d2bc3a42db67ed7f9ab6df6ed79f41456a573e48188503ce51e37f"
+        },
+        {
+          "path": "Client/Bin/Release/Engine.dll",
+          "bytes": 3348480,
+          "sha256": "d3bc8e8753caadde2dac891f6112ea5c4cbbf0f7f2a6723762d4eef29c5da294"
+        },
+        {
+          "path": "Server/Bin/Release/Server.exe",
+          "bytes": 5926912,
+          "sha256": "ad3cde7fa81f48f3ff31ae669eecc7a0435c4343f37a062de7fdb861343276a8"
+        }
+      ],
+      "warningFree": false,
+      "newGameplayRun": false
+    },
+    {
+      "configuration": "Debug",
+      "result": "PASS",
+      "profile": "Product",
+      "sourceStability": {
+        "buildExit": 0,
+        "sourceStable": true,
+        "sourceBefore": "b67a0428b7dfa02d494e82a67d205caa0576aee882e1119b3214e28faf1647b5",
+        "sourceAfter": "b67a0428b7dfa02d494e82a67d205caa0576aee882e1119b3214e28faf1647b5",
+        "completedUtc": "2026-10-15T09:46:43.6944222Z"
+      },
+      "resultPath": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BuildPipeline\\runs\\20261015T094639831Z-debug-product.json",
+      "resultSha256": "f9a683952b88aae51ddab52fa92c3b8aff3b53e73c1109b9b3404565b976af31",
+      "binaries": [
+        {
+          "path": "Client/Bin/Debug/Client.exe",
+          "bytes": 85969920,
+          "sha256": "e7c02e8d193644cd2245844c614ddc2efada8fe73eba3a988759d931de61d4c5"
+        },
+        {
+          "path": "Client/Bin/Debug/Engine.dll",
+          "bytes": 9205760,
+          "sha256": "47ea652627eed94576df25b58b08ee85cd42c4c0f22300cdae450a0549b426b7"
+        },
+        {
+          "path": "Server/Bin/Debug/Server.exe",
+          "bytes": 23976448,
+          "sha256": "66b27dd2e458d25bbe93379c90684bc63fcd17a9371824189c115635dae57789"
+        }
+      ],
+      "warningFree": false,
+      "newGameplayRun": false
+    }
+  ],
+  "noSourceCodeEditsForThisDelivery": true,
+  "newEarlyGpuRun": {
+    "schema": "bern.early-gpu-admission.v1",
+    "utc": "2026-10-15T09:52:11.8873068Z",
+    "requestedScope": "early Bern cutscene: match HUD VS and completed Engine index queries at the same camera",
+    "requiredFreeCommitGiB": 8,
+    "observedFreeCommitGiB": 5.189907073974609,
+    "observedAvailablePhysicalGiB": 1.7051925659179688,
+    "accepted": false,
+    "nativeStarted": false,
+    "guardLowered": false,
+    "productOrUserProcessesStopped": false,
+    "state": "NOT_STARTED_MEMORY_PRECHECK_FAILED",
+    "previous62SubsetIsNot800kTo500kProof": true
+  }
+}

@@ -126,3 +126,22 @@ fixture를 통과했다고 주장하지 않으며, 요청한 실제 grab의 samp
    `BODY → bip001-l-hand`와 필요한 bone rotation을 선택해 저장·게시하고 왼손 부착 화면을 확인한다.
 4. 잘못된 clip/본, 미적용 Detail draft, 다른 골격의 sequence가 남은 상태에서는 기존 편집 내용이
    유지되는지 확인한다. 위 화면 검증과 실행 중 Server 활성화는 아직 수행하지 않았다.
+
+
+<!-- LOCAL_MAIN_BUILD_AUDIT_20261015 -->
+## main 통합 후 로컬 빌드·연결 검토
+
+PR #542 (`6057739db` → main `92169ebe1`)를 로컬로 fast-forward했다. 변경25파일 중 기존
+C++/헤더19개와 문서6개이며 새 프로젝트 등록/JSON/XML/Resources/schema 변경은 없다.
+실제 모델 stage→clip 검증→preview 교체, occurrence와 Element의 저장 분리,
+BODY/WEAPON 본 선택→기존 publisher sampling→Server worldTrack 소비를 대조했다.
+독립 재현 가능한 새 결함은 확인하지 못했고 source diff whitespace 검사는 통과했다.
+
+이 PC에서 Product Release·Debug를 다시 빌드했다. 공식 결과는 각각
+`out/BuildPipeline/runs/20261015T094035032Z-release-product.json`,
+`out/BuildPipeline/runs/20261015T094639831Z-debug-product.json`이며 두 구성 모두 PASS다.
+빌드 전후 source fingerprint는 각 구성에서 동일했고 기존 warning은 남는다.
+실제 UI 저장·재열기/본 추종/Server 활성화·피격을 이번 작업에서 실행하지 않았다.
+앞 절의 upstream inventory/42표본 및 Python fixture 실패를 재실행하거나 결과를 덮어쓰지 않았다.
+상세 검토는 `기술소개서/베른컷신최적화/2026-10-15_근거정리/근거데이터/effect-anchor-audit.json`,
+최신 binary SHA는 같은 폴더의 `latest-build-verification.json`을 따른다.

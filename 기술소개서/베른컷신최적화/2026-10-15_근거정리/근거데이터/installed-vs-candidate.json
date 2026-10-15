@@ -1,0 +1,4169 @@
+{
+  "scope": "Actual production Bern map-only offscreen renderer; no Client, HWND, Level actors, sky, local map lights, UI, sound or physics. Authored product-sampled viewpoints or explicitly labelled saved viewpoints; export cue may be unknown. Supported-subset runs exclude other map objects. dt=0; not animated full-game cutscene replay.",
+  "probeScope": "supported_subset",
+  "installedResult": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-subset-installed-001\\sweep-cameras-results",
+  "candidateResult": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-subset-70m-001\\sweep-cameras-results",
+  "measurement": "Geometry values describe each final measured frame; timestamp validity separately covers 16 frames. Short offscreen map-only measurements are not Client FPS or whole-game one-eighth proof.",
+  "gameFpsMeasured": false,
+  "wholeGameOneEighthMeasured": false,
+  "allFinalGeometryQueriesValid": true,
+  "allTimestampIntervalsComplete": true,
+  "allOffRawImagesIdentical": true,
+  "allCameraAndSettingsEqual": true,
+  "sourceHashes": [
+    "f0484311130f557aed9992024290812d9fc427052a405c174b5b4997cf3f484a",
+    "d290c608aba68beb7a14a855f58740883c9b921d697dd3550779557cedb3d623"
+  ],
+  "comparisons": [
+    {
+      "cameraId": "authored-00s",
+      "cueSeconds": 0,
+      "cueSecondsKnown": true,
+      "sameCameraAndSettings": true,
+      "offRawImagesIdentical": true,
+      "offCountersEqual": {
+        "vsInvocations": true,
+        "engineIndices": true,
+        "mapIndices": true,
+        "mapDraws": true
+      },
+      "installedOff": {
+        "vsInvocations": 445695,
+        "engineIndices": 1081890,
+        "mapIndices": 1081854,
+        "mapDraws": 260,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "installedOn": {
+        "vsInvocations": 366201,
+        "engineIndices": 904962,
+        "mapIndices": 904926,
+        "mapDraws": 214,
+        "lowGeometryIndices": 34560,
+        "lowGeometryDraws": 10,
+        "fallbackDraws": 0
+      },
+      "candidateOff": {
+        "vsInvocations": 445695,
+        "engineIndices": 1081890,
+        "mapIndices": 1081854,
+        "mapDraws": 260,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "candidateOn": {
+        "vsInvocations": 242225,
+        "engineIndices": 620544,
+        "mapIndices": 620508,
+        "mapDraws": 145,
+        "lowGeometryIndices": 87168,
+        "lowGeometryDraws": 23,
+        "fallbackDraws": 0
+      },
+      "installedEffect": {
+        "vsInvocations": {
+          "before": 445695,
+          "after": 366201,
+          "saved": 79494,
+          "remainingRatio": 0.8216403594386296,
+          "reductionFraction": 0.17835964056137044
+        },
+        "engineIndices": {
+          "before": 1081890,
+          "after": 904962,
+          "saved": 176928,
+          "remainingRatio": 0.836463965837562,
+          "reductionFraction": 0.163536034162438
+        },
+        "mapIndices": {
+          "before": 1081854,
+          "after": 904926,
+          "saved": 176928,
+          "remainingRatio": 0.8364585239782817,
+          "reductionFraction": 0.1635414760217183
+        },
+        "mapDraws": {
+          "before": 260,
+          "after": 214,
+          "saved": 46,
+          "remainingRatio": 0.823076923076923,
+          "reductionFraction": 0.17692307692307696
+        }
+      },
+      "candidateEffect": {
+        "vsInvocations": {
+          "before": 445695,
+          "after": 242225,
+          "saved": 203470,
+          "remainingRatio": 0.543477041474551,
+          "reductionFraction": 0.456522958525449
+        },
+        "engineIndices": {
+          "before": 1081890,
+          "after": 620544,
+          "saved": 461346,
+          "remainingRatio": 0.5735740232371128,
+          "reductionFraction": 0.4264259767628872
+        },
+        "mapIndices": {
+          "before": 1081854,
+          "after": 620508,
+          "saved": 461346,
+          "remainingRatio": 0.5735598333971127,
+          "reductionFraction": 0.4264401666028873
+        },
+        "mapDraws": {
+          "before": 260,
+          "after": 145,
+          "saved": 115,
+          "remainingRatio": 0.5576923076923077,
+          "reductionFraction": 0.4423076923076923
+        }
+      },
+      "additionalEffectOverInstalledOn": {
+        "vsInvocations": {
+          "before": 366201,
+          "after": 242225,
+          "saved": 123976,
+          "remainingRatio": 0.6614536825404628,
+          "reductionFraction": 0.3385463174595372
+        },
+        "engineIndices": {
+          "before": 904962,
+          "after": 620544,
+          "saved": 284418,
+          "remainingRatio": 0.6857127702599667,
+          "reductionFraction": 0.3142872297400333
+        },
+        "mapIndices": {
+          "before": 904926,
+          "after": 620508,
+          "saved": 284418,
+          "remainingRatio": 0.6857002672041692,
+          "reductionFraction": 0.3142997327958308
+        },
+        "mapDraws": {
+          "before": 214,
+          "after": 145,
+          "saved": 69,
+          "remainingRatio": 0.677570093457944,
+          "reductionFraction": 0.32242990654205606
+        }
+      },
+      "finalGeometryQueriesValid": true,
+      "timestampsAll16Valid": true,
+      "lowSourceFallbackRows": [
+        0,
+        0
+      ],
+      "selectedInstances": [
+        10,
+        24
+      ],
+      "preparedInstances": [
+        39,
+        39
+      ],
+      "preparation": [
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        },
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        }
+      ],
+      "gpuScene": [
+        null,
+        null
+      ]
+    },
+    {
+      "cameraId": "authored-02s",
+      "cueSeconds": 2,
+      "cueSecondsKnown": true,
+      "sameCameraAndSettings": true,
+      "offRawImagesIdentical": true,
+      "offCountersEqual": {
+        "vsInvocations": true,
+        "engineIndices": true,
+        "mapIndices": true,
+        "mapDraws": true
+      },
+      "installedOff": {
+        "vsInvocations": 332568,
+        "engineIndices": 815862,
+        "mapIndices": 815826,
+        "mapDraws": 187,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "installedOn": {
+        "vsInvocations": 277131,
+        "engineIndices": 692574,
+        "mapIndices": 692538,
+        "mapDraws": 156,
+        "lowGeometryIndices": 24192,
+        "lowGeometryDraws": 7,
+        "fallbackDraws": 0
+      },
+      "candidateOff": {
+        "vsInvocations": 332568,
+        "engineIndices": 815862,
+        "mapIndices": 815826,
+        "mapDraws": 187,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "candidateOn": {
+        "vsInvocations": 188564,
+        "engineIndices": 489624,
+        "mapIndices": 489588,
+        "mapDraws": 104,
+        "lowGeometryIndices": 61824,
+        "lowGeometryDraws": 17,
+        "fallbackDraws": 0
+      },
+      "installedEffect": {
+        "vsInvocations": {
+          "before": 332568,
+          "after": 277131,
+          "saved": 55437,
+          "remainingRatio": 0.8333062711986722,
+          "reductionFraction": 0.16669372880132782
+        },
+        "engineIndices": {
+          "before": 815862,
+          "after": 692574,
+          "saved": 123288,
+          "remainingRatio": 0.8488862086970591,
+          "reductionFraction": 0.1511137913029409
+        },
+        "mapIndices": {
+          "before": 815826,
+          "after": 692538,
+          "saved": 123288,
+          "remainingRatio": 0.8488795404902516,
+          "reductionFraction": 0.1511204595097484
+        },
+        "mapDraws": {
+          "before": 187,
+          "after": 156,
+          "saved": 31,
+          "remainingRatio": 0.8342245989304813,
+          "reductionFraction": 0.1657754010695187
+        }
+      },
+      "candidateEffect": {
+        "vsInvocations": {
+          "before": 332568,
+          "after": 188564,
+          "saved": 144004,
+          "remainingRatio": 0.5669938178056818,
+          "reductionFraction": 0.4330061821943182
+        },
+        "engineIndices": {
+          "before": 815862,
+          "after": 489624,
+          "saved": 326238,
+          "remainingRatio": 0.6001309044912008,
+          "reductionFraction": 0.39986909550879923
+        },
+        "mapIndices": {
+          "before": 815826,
+          "after": 489588,
+          "saved": 326238,
+          "remainingRatio": 0.6001132594450287,
+          "reductionFraction": 0.3998867405549713
+        },
+        "mapDraws": {
+          "before": 187,
+          "after": 104,
+          "saved": 83,
+          "remainingRatio": 0.5561497326203209,
+          "reductionFraction": 0.44385026737967914
+        }
+      },
+      "additionalEffectOverInstalledOn": {
+        "vsInvocations": {
+          "before": 277131,
+          "after": 188564,
+          "saved": 88567,
+          "remainingRatio": 0.6804146775351729,
+          "reductionFraction": 0.31958532246482707
+        },
+        "engineIndices": {
+          "before": 692574,
+          "after": 489624,
+          "saved": 202950,
+          "remainingRatio": 0.7069627216730631,
+          "reductionFraction": 0.29303727832693693
+        },
+        "mapIndices": {
+          "before": 692538,
+          "after": 489588,
+          "saved": 202950,
+          "remainingRatio": 0.7069474888020585,
+          "reductionFraction": 0.2930525111979415
+        },
+        "mapDraws": {
+          "before": 156,
+          "after": 104,
+          "saved": 52,
+          "remainingRatio": 0.6666666666666666,
+          "reductionFraction": 0.33333333333333337
+        }
+      },
+      "finalGeometryQueriesValid": true,
+      "timestampsAll16Valid": true,
+      "lowSourceFallbackRows": [
+        0,
+        0
+      ],
+      "selectedInstances": [
+        7,
+        17
+      ],
+      "preparedInstances": [
+        39,
+        39
+      ],
+      "preparation": [
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        },
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        }
+      ],
+      "gpuScene": [
+        null,
+        null
+      ]
+    },
+    {
+      "cameraId": "authored-04s",
+      "cueSeconds": 4,
+      "cueSecondsKnown": true,
+      "sameCameraAndSettings": true,
+      "offRawImagesIdentical": true,
+      "offCountersEqual": {
+        "vsInvocations": true,
+        "engineIndices": true,
+        "mapIndices": true,
+        "mapDraws": true
+      },
+      "installedOff": {
+        "vsInvocations": 307676,
+        "engineIndices": 760614,
+        "mapIndices": 760578,
+        "mapDraws": 173,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "installedOn": {
+        "vsInvocations": 299657,
+        "engineIndices": 742734,
+        "mapIndices": 742698,
+        "mapDraws": 168,
+        "lowGeometryIndices": 3456,
+        "lowGeometryDraws": 1,
+        "fallbackDraws": 0
+      },
+      "candidateOff": {
+        "vsInvocations": 307676,
+        "engineIndices": 760614,
+        "mapIndices": 760578,
+        "mapDraws": 173,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "candidateOn": {
+        "vsInvocations": 186274,
+        "engineIndices": 481740,
+        "mapIndices": 481704,
+        "mapDraws": 101,
+        "lowGeometryIndices": 51072,
+        "lowGeometryDraws": 14,
+        "fallbackDraws": 0
+      },
+      "installedEffect": {
+        "vsInvocations": {
+          "before": 307676,
+          "after": 299657,
+          "saved": 8019,
+          "remainingRatio": 0.9739368686540386,
+          "reductionFraction": 0.026063131345961388
+        },
+        "engineIndices": {
+          "before": 760614,
+          "after": 742734,
+          "saved": 17880,
+          "remainingRatio": 0.9764926756541426,
+          "reductionFraction": 0.02350732434585745
+        },
+        "mapIndices": {
+          "before": 760578,
+          "after": 742698,
+          "saved": 17880,
+          "remainingRatio": 0.9764915629955113,
+          "reductionFraction": 0.02350843700448868
+        },
+        "mapDraws": {
+          "before": 173,
+          "after": 168,
+          "saved": 5,
+          "remainingRatio": 0.9710982658959537,
+          "reductionFraction": 0.028901734104046284
+        }
+      },
+      "candidateEffect": {
+        "vsInvocations": {
+          "before": 307676,
+          "after": 186274,
+          "saved": 121402,
+          "remainingRatio": 0.6054225873971321,
+          "reductionFraction": 0.39457741260286794
+        },
+        "engineIndices": {
+          "before": 760614,
+          "after": 481740,
+          "saved": 278874,
+          "remainingRatio": 0.6333567354794942,
+          "reductionFraction": 0.3666432645205058
+        },
+        "mapIndices": {
+          "before": 760578,
+          "after": 481704,
+          "saved": 278874,
+          "remainingRatio": 0.6333393813652248,
+          "reductionFraction": 0.36666061863477517
+        },
+        "mapDraws": {
+          "before": 173,
+          "after": 101,
+          "saved": 72,
+          "remainingRatio": 0.5838150289017341,
+          "reductionFraction": 0.4161849710982659
+        }
+      },
+      "additionalEffectOverInstalledOn": {
+        "vsInvocations": {
+          "before": 299657,
+          "after": 186274,
+          "saved": 113383,
+          "remainingRatio": 0.6216240568383185,
+          "reductionFraction": 0.37837594316168155
+        },
+        "engineIndices": {
+          "before": 742734,
+          "after": 481740,
+          "saved": 260994,
+          "remainingRatio": 0.6486036723779981,
+          "reductionFraction": 0.3513963276220019
+        },
+        "mapIndices": {
+          "before": 742698,
+          "after": 481704,
+          "saved": 260994,
+          "remainingRatio": 0.64858663952239,
+          "reductionFraction": 0.35141336047760996
+        },
+        "mapDraws": {
+          "before": 168,
+          "after": 101,
+          "saved": 67,
+          "remainingRatio": 0.6011904761904762,
+          "reductionFraction": 0.39880952380952384
+        }
+      },
+      "finalGeometryQueriesValid": true,
+      "timestampsAll16Valid": true,
+      "lowSourceFallbackRows": [
+        0,
+        0
+      ],
+      "selectedInstances": [
+        1,
+        14
+      ],
+      "preparedInstances": [
+        39,
+        39
+      ],
+      "preparation": [
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        },
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        }
+      ],
+      "gpuScene": [
+        null,
+        null
+      ]
+    },
+    {
+      "cameraId": "authored-06s",
+      "cueSeconds": 6,
+      "cueSecondsKnown": true,
+      "sameCameraAndSettings": true,
+      "offRawImagesIdentical": true,
+      "offCountersEqual": {
+        "vsInvocations": true,
+        "engineIndices": true,
+        "mapIndices": true,
+        "mapDraws": true
+      },
+      "installedOff": {
+        "vsInvocations": 127010,
+        "engineIndices": 324126,
+        "mapIndices": 324090,
+        "mapDraws": 60,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "installedOn": {
+        "vsInvocations": 127010,
+        "engineIndices": 324126,
+        "mapIndices": 324090,
+        "mapDraws": 60,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "candidateOff": {
+        "vsInvocations": 127010,
+        "engineIndices": 324126,
+        "mapIndices": 324090,
+        "mapDraws": 60,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "candidateOn": {
+        "vsInvocations": 99144,
+        "engineIndices": 258198,
+        "mapIndices": 258162,
+        "mapDraws": 43,
+        "lowGeometryIndices": 11136,
+        "lowGeometryDraws": 3,
+        "fallbackDraws": 0
+      },
+      "installedEffect": {
+        "vsInvocations": {
+          "before": 127010,
+          "after": 127010,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "engineIndices": {
+          "before": 324126,
+          "after": 324126,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapIndices": {
+          "before": 324090,
+          "after": 324090,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapDraws": {
+          "before": 60,
+          "after": 60,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        }
+      },
+      "candidateEffect": {
+        "vsInvocations": {
+          "before": 127010,
+          "after": 99144,
+          "saved": 27866,
+          "remainingRatio": 0.7805999527596252,
+          "reductionFraction": 0.21940004724037476
+        },
+        "engineIndices": {
+          "before": 324126,
+          "after": 258198,
+          "saved": 65928,
+          "remainingRatio": 0.7965976194442902,
+          "reductionFraction": 0.2034023805557098
+        },
+        "mapIndices": {
+          "before": 324090,
+          "after": 258162,
+          "saved": 65928,
+          "remainingRatio": 0.7965750254558919,
+          "reductionFraction": 0.20342497454410813
+        },
+        "mapDraws": {
+          "before": 60,
+          "after": 43,
+          "saved": 17,
+          "remainingRatio": 0.7166666666666667,
+          "reductionFraction": 0.2833333333333333
+        }
+      },
+      "additionalEffectOverInstalledOn": {
+        "vsInvocations": {
+          "before": 127010,
+          "after": 99144,
+          "saved": 27866,
+          "remainingRatio": 0.7805999527596252,
+          "reductionFraction": 0.21940004724037476
+        },
+        "engineIndices": {
+          "before": 324126,
+          "after": 258198,
+          "saved": 65928,
+          "remainingRatio": 0.7965976194442902,
+          "reductionFraction": 0.2034023805557098
+        },
+        "mapIndices": {
+          "before": 324090,
+          "after": 258162,
+          "saved": 65928,
+          "remainingRatio": 0.7965750254558919,
+          "reductionFraction": 0.20342497454410813
+        },
+        "mapDraws": {
+          "before": 60,
+          "after": 43,
+          "saved": 17,
+          "remainingRatio": 0.7166666666666667,
+          "reductionFraction": 0.2833333333333333
+        }
+      },
+      "finalGeometryQueriesValid": true,
+      "timestampsAll16Valid": true,
+      "lowSourceFallbackRows": [
+        0,
+        0
+      ],
+      "selectedInstances": [
+        0,
+        3
+      ],
+      "preparedInstances": [
+        39,
+        39
+      ],
+      "preparation": [
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        },
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        }
+      ],
+      "gpuScene": [
+        null,
+        null
+      ]
+    },
+    {
+      "cameraId": "authored-08s",
+      "cueSeconds": 8,
+      "cueSecondsKnown": true,
+      "sameCameraAndSettings": true,
+      "offRawImagesIdentical": true,
+      "offCountersEqual": {
+        "vsInvocations": true,
+        "engineIndices": true,
+        "mapIndices": true,
+        "mapDraws": true
+      },
+      "installedOff": {
+        "vsInvocations": 101225,
+        "engineIndices": 264756,
+        "mapIndices": 264720,
+        "mapDraws": 42,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "installedOn": {
+        "vsInvocations": 101225,
+        "engineIndices": 264756,
+        "mapIndices": 264720,
+        "mapDraws": 42,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "candidateOff": {
+        "vsInvocations": 101225,
+        "engineIndices": 264756,
+        "mapIndices": 264720,
+        "mapDraws": 42,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "candidateOn": {
+        "vsInvocations": 101225,
+        "engineIndices": 264756,
+        "mapIndices": 264720,
+        "mapDraws": 42,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "installedEffect": {
+        "vsInvocations": {
+          "before": 101225,
+          "after": 101225,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "engineIndices": {
+          "before": 264756,
+          "after": 264756,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapIndices": {
+          "before": 264720,
+          "after": 264720,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapDraws": {
+          "before": 42,
+          "after": 42,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        }
+      },
+      "candidateEffect": {
+        "vsInvocations": {
+          "before": 101225,
+          "after": 101225,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "engineIndices": {
+          "before": 264756,
+          "after": 264756,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapIndices": {
+          "before": 264720,
+          "after": 264720,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapDraws": {
+          "before": 42,
+          "after": 42,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        }
+      },
+      "additionalEffectOverInstalledOn": {
+        "vsInvocations": {
+          "before": 101225,
+          "after": 101225,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "engineIndices": {
+          "before": 264756,
+          "after": 264756,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapIndices": {
+          "before": 264720,
+          "after": 264720,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapDraws": {
+          "before": 42,
+          "after": 42,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        }
+      },
+      "finalGeometryQueriesValid": true,
+      "timestampsAll16Valid": true,
+      "lowSourceFallbackRows": [
+        0,
+        0
+      ],
+      "selectedInstances": [
+        0,
+        0
+      ],
+      "preparedInstances": [
+        39,
+        39
+      ],
+      "preparation": [
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        },
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        }
+      ],
+      "gpuScene": [
+        null,
+        null
+      ]
+    },
+    {
+      "cameraId": "authored-10s",
+      "cueSeconds": 10,
+      "cueSecondsKnown": true,
+      "sameCameraAndSettings": true,
+      "offRawImagesIdentical": true,
+      "offCountersEqual": {
+        "vsInvocations": true,
+        "engineIndices": true,
+        "mapIndices": true,
+        "mapDraws": true
+      },
+      "installedOff": {
+        "vsInvocations": 280486,
+        "engineIndices": 710400,
+        "mapIndices": 710364,
+        "mapDraws": 157,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "installedOn": {
+        "vsInvocations": 280486,
+        "engineIndices": 710400,
+        "mapIndices": 710364,
+        "mapDraws": 157,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "candidateOff": {
+        "vsInvocations": 280486,
+        "engineIndices": 710400,
+        "mapIndices": 710364,
+        "mapDraws": 157,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "candidateOn": {
+        "vsInvocations": 263505,
+        "engineIndices": 671394,
+        "mapIndices": 671358,
+        "mapDraws": 147,
+        "lowGeometryIndices": 6912,
+        "lowGeometryDraws": 2,
+        "fallbackDraws": 0
+      },
+      "installedEffect": {
+        "vsInvocations": {
+          "before": 280486,
+          "after": 280486,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "engineIndices": {
+          "before": 710400,
+          "after": 710400,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapIndices": {
+          "before": 710364,
+          "after": 710364,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapDraws": {
+          "before": 157,
+          "after": 157,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        }
+      },
+      "candidateEffect": {
+        "vsInvocations": {
+          "before": 280486,
+          "after": 263505,
+          "saved": 16981,
+          "remainingRatio": 0.9394586539078599,
+          "reductionFraction": 0.060541346092140125
+        },
+        "engineIndices": {
+          "before": 710400,
+          "after": 671394,
+          "saved": 39006,
+          "remainingRatio": 0.9450929054054054,
+          "reductionFraction": 0.05490709459459464
+        },
+        "mapIndices": {
+          "before": 710364,
+          "after": 671358,
+          "saved": 39006,
+          "remainingRatio": 0.9450901228102776,
+          "reductionFraction": 0.0549098771897224
+        },
+        "mapDraws": {
+          "before": 157,
+          "after": 147,
+          "saved": 10,
+          "remainingRatio": 0.9363057324840764,
+          "reductionFraction": 0.06369426751592355
+        }
+      },
+      "additionalEffectOverInstalledOn": {
+        "vsInvocations": {
+          "before": 280486,
+          "after": 263505,
+          "saved": 16981,
+          "remainingRatio": 0.9394586539078599,
+          "reductionFraction": 0.060541346092140125
+        },
+        "engineIndices": {
+          "before": 710400,
+          "after": 671394,
+          "saved": 39006,
+          "remainingRatio": 0.9450929054054054,
+          "reductionFraction": 0.05490709459459464
+        },
+        "mapIndices": {
+          "before": 710364,
+          "after": 671358,
+          "saved": 39006,
+          "remainingRatio": 0.9450901228102776,
+          "reductionFraction": 0.0549098771897224
+        },
+        "mapDraws": {
+          "before": 157,
+          "after": 147,
+          "saved": 10,
+          "remainingRatio": 0.9363057324840764,
+          "reductionFraction": 0.06369426751592355
+        }
+      },
+      "finalGeometryQueriesValid": true,
+      "timestampsAll16Valid": true,
+      "lowSourceFallbackRows": [
+        0,
+        0
+      ],
+      "selectedInstances": [
+        0,
+        2
+      ],
+      "preparedInstances": [
+        39,
+        39
+      ],
+      "preparation": [
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        },
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        }
+      ],
+      "gpuScene": [
+        null,
+        null
+      ]
+    },
+    {
+      "cameraId": "authored-12s",
+      "cueSeconds": 12,
+      "cueSecondsKnown": true,
+      "sameCameraAndSettings": true,
+      "offRawImagesIdentical": true,
+      "offCountersEqual": {
+        "vsInvocations": true,
+        "engineIndices": true,
+        "mapIndices": true,
+        "mapDraws": true
+      },
+      "installedOff": {
+        "vsInvocations": 210652,
+        "engineIndices": 553086,
+        "mapIndices": 553050,
+        "mapDraws": 109,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "installedOn": {
+        "vsInvocations": 210652,
+        "engineIndices": 553086,
+        "mapIndices": 553050,
+        "mapDraws": 109,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "candidateOff": {
+        "vsInvocations": 210652,
+        "engineIndices": 553086,
+        "mapIndices": 553050,
+        "mapDraws": 109,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "candidateOn": {
+        "vsInvocations": 210652,
+        "engineIndices": 553086,
+        "mapIndices": 553050,
+        "mapDraws": 109,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "installedEffect": {
+        "vsInvocations": {
+          "before": 210652,
+          "after": 210652,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "engineIndices": {
+          "before": 553086,
+          "after": 553086,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapIndices": {
+          "before": 553050,
+          "after": 553050,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapDraws": {
+          "before": 109,
+          "after": 109,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        }
+      },
+      "candidateEffect": {
+        "vsInvocations": {
+          "before": 210652,
+          "after": 210652,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "engineIndices": {
+          "before": 553086,
+          "after": 553086,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapIndices": {
+          "before": 553050,
+          "after": 553050,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapDraws": {
+          "before": 109,
+          "after": 109,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        }
+      },
+      "additionalEffectOverInstalledOn": {
+        "vsInvocations": {
+          "before": 210652,
+          "after": 210652,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "engineIndices": {
+          "before": 553086,
+          "after": 553086,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapIndices": {
+          "before": 553050,
+          "after": 553050,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapDraws": {
+          "before": 109,
+          "after": 109,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        }
+      },
+      "finalGeometryQueriesValid": true,
+      "timestampsAll16Valid": true,
+      "lowSourceFallbackRows": [
+        0,
+        0
+      ],
+      "selectedInstances": [
+        0,
+        0
+      ],
+      "preparedInstances": [
+        39,
+        39
+      ],
+      "preparation": [
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        },
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        }
+      ],
+      "gpuScene": [
+        null,
+        null
+      ]
+    },
+    {
+      "cameraId": "authored-14s",
+      "cueSeconds": 14,
+      "cueSecondsKnown": true,
+      "sameCameraAndSettings": true,
+      "offRawImagesIdentical": true,
+      "offCountersEqual": {
+        "vsInvocations": true,
+        "engineIndices": true,
+        "mapIndices": true,
+        "mapDraws": true
+      },
+      "installedOff": {
+        "vsInvocations": 214234,
+        "engineIndices": 554928,
+        "mapIndices": 554892,
+        "mapDraws": 117,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "installedOn": {
+        "vsInvocations": 214234,
+        "engineIndices": 554928,
+        "mapIndices": 554892,
+        "mapDraws": 117,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "candidateOff": {
+        "vsInvocations": 214234,
+        "engineIndices": 554928,
+        "mapIndices": 554892,
+        "mapDraws": 117,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "candidateOn": {
+        "vsInvocations": 197253,
+        "engineIndices": 515922,
+        "mapIndices": 515886,
+        "mapDraws": 107,
+        "lowGeometryIndices": 6912,
+        "lowGeometryDraws": 2,
+        "fallbackDraws": 0
+      },
+      "installedEffect": {
+        "vsInvocations": {
+          "before": 214234,
+          "after": 214234,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "engineIndices": {
+          "before": 554928,
+          "after": 554928,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapIndices": {
+          "before": 554892,
+          "after": 554892,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapDraws": {
+          "before": 117,
+          "after": 117,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        }
+      },
+      "candidateEffect": {
+        "vsInvocations": {
+          "before": 214234,
+          "after": 197253,
+          "saved": 16981,
+          "remainingRatio": 0.9207362043373134,
+          "reductionFraction": 0.0792637956626866
+        },
+        "engineIndices": {
+          "before": 554928,
+          "after": 515922,
+          "saved": 39006,
+          "remainingRatio": 0.9297098001902949,
+          "reductionFraction": 0.07029019980970508
+        },
+        "mapIndices": {
+          "before": 554892,
+          "after": 515886,
+          "saved": 39006,
+          "remainingRatio": 0.9297052399385827,
+          "reductionFraction": 0.07029476006141733
+        },
+        "mapDraws": {
+          "before": 117,
+          "after": 107,
+          "saved": 10,
+          "remainingRatio": 0.9145299145299145,
+          "reductionFraction": 0.0854700854700855
+        }
+      },
+      "additionalEffectOverInstalledOn": {
+        "vsInvocations": {
+          "before": 214234,
+          "after": 197253,
+          "saved": 16981,
+          "remainingRatio": 0.9207362043373134,
+          "reductionFraction": 0.0792637956626866
+        },
+        "engineIndices": {
+          "before": 554928,
+          "after": 515922,
+          "saved": 39006,
+          "remainingRatio": 0.9297098001902949,
+          "reductionFraction": 0.07029019980970508
+        },
+        "mapIndices": {
+          "before": 554892,
+          "after": 515886,
+          "saved": 39006,
+          "remainingRatio": 0.9297052399385827,
+          "reductionFraction": 0.07029476006141733
+        },
+        "mapDraws": {
+          "before": 117,
+          "after": 107,
+          "saved": 10,
+          "remainingRatio": 0.9145299145299145,
+          "reductionFraction": 0.0854700854700855
+        }
+      },
+      "finalGeometryQueriesValid": true,
+      "timestampsAll16Valid": true,
+      "lowSourceFallbackRows": [
+        0,
+        0
+      ],
+      "selectedInstances": [
+        0,
+        2
+      ],
+      "preparedInstances": [
+        39,
+        39
+      ],
+      "preparation": [
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        },
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        }
+      ],
+      "gpuScene": [
+        null,
+        null
+      ]
+    },
+    {
+      "cameraId": "authored-15.999s",
+      "cueSeconds": 15.999,
+      "cueSecondsKnown": true,
+      "sameCameraAndSettings": true,
+      "offRawImagesIdentical": true,
+      "offCountersEqual": {
+        "vsInvocations": true,
+        "engineIndices": true,
+        "mapIndices": true,
+        "mapDraws": true
+      },
+      "installedOff": {
+        "vsInvocations": 98908,
+        "engineIndices": 259692,
+        "mapIndices": 259656,
+        "mapDraws": 52,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "installedOn": {
+        "vsInvocations": 98908,
+        "engineIndices": 259692,
+        "mapIndices": 259656,
+        "mapDraws": 52,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "candidateOff": {
+        "vsInvocations": 98908,
+        "engineIndices": 259692,
+        "mapIndices": 259656,
+        "mapDraws": 52,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "candidateOn": {
+        "vsInvocations": 98908,
+        "engineIndices": 259692,
+        "mapIndices": 259656,
+        "mapDraws": 52,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "installedEffect": {
+        "vsInvocations": {
+          "before": 98908,
+          "after": 98908,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "engineIndices": {
+          "before": 259692,
+          "after": 259692,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapIndices": {
+          "before": 259656,
+          "after": 259656,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapDraws": {
+          "before": 52,
+          "after": 52,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        }
+      },
+      "candidateEffect": {
+        "vsInvocations": {
+          "before": 98908,
+          "after": 98908,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "engineIndices": {
+          "before": 259692,
+          "after": 259692,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapIndices": {
+          "before": 259656,
+          "after": 259656,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapDraws": {
+          "before": 52,
+          "after": 52,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        }
+      },
+      "additionalEffectOverInstalledOn": {
+        "vsInvocations": {
+          "before": 98908,
+          "after": 98908,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "engineIndices": {
+          "before": 259692,
+          "after": 259692,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapIndices": {
+          "before": 259656,
+          "after": 259656,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapDraws": {
+          "before": 52,
+          "after": 52,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        }
+      },
+      "finalGeometryQueriesValid": true,
+      "timestampsAll16Valid": true,
+      "lowSourceFallbackRows": [
+        0,
+        0
+      ],
+      "selectedInstances": [
+        0,
+        0
+      ],
+      "preparedInstances": [
+        39,
+        39
+      ],
+      "preparation": [
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        },
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        }
+      ],
+      "gpuScene": [
+        null,
+        null
+      ]
+    },
+    {
+      "cameraId": "export-20261015-011643",
+      "cueSeconds": null,
+      "cueSecondsKnown": false,
+      "sameCameraAndSettings": true,
+      "offRawImagesIdentical": true,
+      "offCountersEqual": {
+        "vsInvocations": true,
+        "engineIndices": true,
+        "mapIndices": true,
+        "mapDraws": true
+      },
+      "installedOff": {
+        "vsInvocations": 141795,
+        "engineIndices": 353994,
+        "mapIndices": 353958,
+        "mapDraws": 80,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "installedOn": {
+        "vsInvocations": 141795,
+        "engineIndices": 353994,
+        "mapIndices": 353958,
+        "mapDraws": 80,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "candidateOff": {
+        "vsInvocations": 141795,
+        "engineIndices": 353994,
+        "mapIndices": 353958,
+        "mapDraws": 80,
+        "lowGeometryIndices": 0,
+        "lowGeometryDraws": 0,
+        "fallbackDraws": 0
+      },
+      "candidateOn": {
+        "vsInvocations": 106820,
+        "engineIndices": 273804,
+        "mapIndices": 273768,
+        "mapDraws": 58,
+        "lowGeometryIndices": 14592,
+        "lowGeometryDraws": 4,
+        "fallbackDraws": 0
+      },
+      "installedEffect": {
+        "vsInvocations": {
+          "before": 141795,
+          "after": 141795,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "engineIndices": {
+          "before": 353994,
+          "after": 353994,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapIndices": {
+          "before": 353958,
+          "after": 353958,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        },
+        "mapDraws": {
+          "before": 80,
+          "after": 80,
+          "saved": 0,
+          "remainingRatio": 1.0,
+          "reductionFraction": 0.0
+        }
+      },
+      "candidateEffect": {
+        "vsInvocations": {
+          "before": 141795,
+          "after": 106820,
+          "saved": 34975,
+          "remainingRatio": 0.7533410910116718,
+          "reductionFraction": 0.2466589089883282
+        },
+        "engineIndices": {
+          "before": 353994,
+          "after": 273804,
+          "saved": 80190,
+          "remainingRatio": 0.7734707367921491,
+          "reductionFraction": 0.22652926320785094
+        },
+        "mapIndices": {
+          "before": 353958,
+          "after": 273768,
+          "saved": 80190,
+          "remainingRatio": 0.7734476971844118,
+          "reductionFraction": 0.22655230281558825
+        },
+        "mapDraws": {
+          "before": 80,
+          "after": 58,
+          "saved": 22,
+          "remainingRatio": 0.725,
+          "reductionFraction": 0.275
+        }
+      },
+      "additionalEffectOverInstalledOn": {
+        "vsInvocations": {
+          "before": 141795,
+          "after": 106820,
+          "saved": 34975,
+          "remainingRatio": 0.7533410910116718,
+          "reductionFraction": 0.2466589089883282
+        },
+        "engineIndices": {
+          "before": 353994,
+          "after": 273804,
+          "saved": 80190,
+          "remainingRatio": 0.7734707367921491,
+          "reductionFraction": 0.22652926320785094
+        },
+        "mapIndices": {
+          "before": 353958,
+          "after": 273768,
+          "saved": 80190,
+          "remainingRatio": 0.7734476971844118,
+          "reductionFraction": 0.22655230281558825
+        },
+        "mapDraws": {
+          "before": 80,
+          "after": 58,
+          "saved": 22,
+          "remainingRatio": 0.725,
+          "reductionFraction": 0.275
+        }
+      },
+      "finalGeometryQueriesValid": true,
+      "timestampsAll16Valid": true,
+      "lowSourceFallbackRows": [
+        0,
+        0
+      ],
+      "selectedInstances": [
+        0,
+        4
+      ],
+      "preparedInstances": [
+        39,
+        39
+      ],
+      "preparation": [
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        },
+        {
+          "totalBatches": 60,
+          "unsupportedBatches": 0,
+          "supportedBatches": 60,
+          "preparedBatches": 37,
+          "rejectedBatches": 23,
+          "failedBatches": 0,
+          "droppedFailures": 0,
+          "indexError": "",
+          "stagingError": "",
+          "failures": [
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.static_material_identity_mismatch",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "reason": "replacement.placement_transform:placement=14824152473043933651",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.placement_transform:placement=10811022027575254792",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "reason": "replacement.placement_transform:placement=12435209427121481189",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "reason": "replacement.placement_transform:placement=11094169587549392671",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "reason": "replacement.placement_transform:placement=12444929523485881965",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "reason": "replacement.placement_transform:placement=12815816220378801894",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            },
+            {
+              "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "reason": "replacement.batch_mirrored",
+              "hresult": 1
+            }
+          ]
+        }
+      ],
+      "gpuScene": [
+        null,
+        null
+      ]
+    }
+  ]
+}
